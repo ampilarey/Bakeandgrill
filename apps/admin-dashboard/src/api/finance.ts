@@ -874,11 +874,21 @@ export interface PurchaseLineEdit {
  * Replace an order's lines. Refused once anything has been received — those
  * lines have already produced stock movements and price history.
  */
+/** The header fields an unreceived order can change alongside its lines. */
+export interface PurchaseHeaderEdit {
+  purchase_date?: string;
+  expected_delivery_date?: string | null;
+  notes?: string | null;
+  /** A shop name; the server matches it to a supplier or makes one. */
+  supplier_name_text?: string;
+}
+
 export async function updatePurchaseLines(
   id: number,
   items: PurchaseLineEdit[],
+  header: PurchaseHeaderEdit = {},
 ): Promise<{ purchase: Purchase }> {
-  return req(`/purchases/${id}`, { method: 'PATCH', body: JSON.stringify({ items }) });
+  return req(`/purchases/${id}`, { method: 'PATCH', body: JSON.stringify({ ...header, items }) });
 }
 
 /** Call off an order. Short-closes a part-delivered one; never touches stock. */

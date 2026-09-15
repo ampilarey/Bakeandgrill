@@ -125,11 +125,26 @@ class PurchaseController extends Controller
          * Rewriting it underneath those would leave the ledger describing an
          * order that never happened.
          */
-        if ($lines !== null) {
+        // Changing who it was bought from is judged like a line edit: a
+        // received order's price history already hangs off its supplier.
+        $sellerChange = array_key_exists('supplier_id', $validated) || array_key_exists('supplier_name_text', $validated);
+        if ($lines !== null || $sellerChange) {
             $blocked = app(PurchaseEditPolicy::class)->whyCannotEdit($purchase);
             if ($blocked !== null) {
                 return response()->json(['message' => $blocked], 422);
             }
+        }
+
+        if ($sellerChange) {
+            $seller = app(SupplierResolver::class)->resolve(
+                isset($validated['supplier_id']) ? (int) $validated['supplier_id'] : null,
+                $validated['supplier_name_text'] ?? null,
+            );
+            if ($seller === null) {
+                return response()->json(['message' => 'An order needs a seller — pick a supplier or type the shop.'], 422);
+            }
+            $validated['supplier_id'] = $seller->id;
+            $validated['supplier_name_text'] = $seller->name;
         }
 
         /*

@@ -25,6 +25,17 @@ class UpdatePurchaseRequest extends FormRequest
             'status' => 'nullable|string|max:50',
             'notes' => 'nullable|string',
             'purchase_date' => BackdatePolicy::rules(required: false),
+            /*
+             * Owner, 2026-09-15: "in edit po, no option to change the date…
+             * can u add most possible edit options." The date, the seller and
+             * the expected delivery were fixed at creation; before anything
+             * arrives they are as much a draft as the lines are. The seller
+             * takes the same two shapes as raising an order: a picked id, or
+             * a typed name the resolver turns into a supplier.
+             */
+            'expected_delivery_date' => 'nullable|date',
+            'supplier_id' => 'nullable|integer|exists:suppliers,id',
+            'supplier_name_text' => 'nullable|string|max:255',
             'supplier_tin' => 'nullable|string|max:30',
             'supplier_invoice_no' => 'nullable|string|max:64',
             'supplier_invoice_date' => 'nullable|date',

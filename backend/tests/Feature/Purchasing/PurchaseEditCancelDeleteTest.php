@@ -186,6 +186,55 @@ class PurchaseEditCancelDeleteTest extends TestCase
         $this->assertStringContainsString('Invoice filed', (string) $po->fresh()->notes);
     }
 
+    /*
+     * Owner, 2026-09-15: "in edit po, no option to change the date… can u
+     * add most possible edit options." Before anything arrives the order is
+     * a draft in every respect, not just its lines.
+     */
+    public function test_the_date_the_seller_the_delivery_date_and_the_notes_change_before_receipt(): void
+    {
+        $rice = $this->item('Rice', 'RICE-1', 'kg');
+        $po = $this->draft($rice, 10, 5);
+        $lastWeek = now()->subDays(7)->toDateString();
+        $nextWeek = now()->addDays(7)->toDateString();
+
+        $this->patchJson("/api/purchases/{$po->id}", [
+            'purchase_date' => $lastWeek,
+            'expected_delivery_date' => $nextWeek,
+            'notes' => 'Backdated — the bill turned up late',
+            // A shop typed by hand becomes a supplier, the way it does when raising an order.
+            'supplier_name_text' => 'Corner Shop',
+        ])->assertOk();
+
+        $po->refresh();
+        $this->assertSame($lastWeek, $po->purchase_date->toDateString());
+        $this->assertSame($nextWeek, $po->expected_delivery_date?->toDateString());
+        $this->assertSame('Backdated — the bill turned up late', $po->notes);
+        $corner = Supplier::where('name', 'Corner Shop')->firstOrFail();
+        $this->assertSame($corner->id, $po->supplier_id);
+        $this->assertSame('Corner Shop', $po->supplier_name_text);
+
+        // Picking a supplier off the list works too, and the id wins.
+        $agora = Supplier::create(['name' => 'Agora', 'is_active' => true]);
+        $this->patchJson("/api/purchases/{$po->id}", ['supplier_id' => $agora->id])->assertOk();
+        $this->assertSame($agora->id, $po->fresh()->supplier_id);
+    }
+
+    public function test_a_received_order_keeps_its_seller(): void
+    {
+        // Its price history already hangs off that supplier.
+        $rice = $this->item('Rice', 'RICE-1', 'kg');
+        $po = $this->draft($rice, 10, 5);
+        $this->approve($po);
+        $this->receiveAll($po->fresh()->load('items'));
+        $before = $po->fresh()->supplier_id;
+
+        $this->patchJson("/api/purchases/{$po->id}", ['supplier_name_text' => 'Somewhere Else'])
+            ->assertStatus(422);
+
+        $this->assertSame($before, $po->fresh()->supplier_id);
+    }
+
     // ── Cancelling ───────────────────────────────────────────────────────
 
     public function test_a_draft_can_be_cancelled_with_a_reason(): void

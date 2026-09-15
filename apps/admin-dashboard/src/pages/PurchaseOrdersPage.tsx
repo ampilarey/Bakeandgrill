@@ -831,8 +831,17 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
     purchase_unit_id: string; packs: InventoryPurchaseUnit[]; base_unit: string;
     /** The pack this line was ordered in, when it can no longer be matched. */
     lostPack: string | null;
-    brand: string; gst: boolean;
+    brand: string; brands: string[]; gst: boolean;
   }>>([]);
+  /*
+   * The header of the order being edited. Owner, 2026-09-15: "in edit po, no
+   * option to change the date… can u add most possible edit options."
+   * Before anything arrives the date, the shop, the expected delivery and
+   * the notes are as much a draft as the lines.
+   */
+  const emptyEditHeader = { supplier_name_text: '', purchase_date: '', expected_delivery_date: '', notes: '' };
+  const [editHeader, setEditHeader] = useState(emptyEditHeader);
+  const [editHeaderWas, setEditHeaderWas] = useState(emptyEditHeader);
   const [deletePo, setDeletePo] = useState<Purchase | null>(null);
   /*
    * Undoing a delivery. Owner, 2026-09-06: "how can admin del or edit PO?" —
@@ -850,6 +859,19 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
     setEditPo(po);
     setEditAddPick(null);
     setError('');
+    const header = {
+      supplier_name_text: po.supplier?.name ?? po.supplier_name_text ?? '',
+      purchase_date: po.purchase_date ?? '',
+      expected_delivery_date: po.expected_delivery_date ?? '',
+      notes: po.notes ?? '',
+    };
+    setEditHeader(header);
+    setEditHeaderWas(header);
+    // The shops on file, for the seller box — the same list the manual
+    // order offers.
+    if (manualSuppliers.length === 0) {
+      fetchSuppliers({ active_only: true }).then((res) => setManualSuppliers(res.data ?? [])).catch(() => {});
+    }
 
     const rows = await Promise.all((po.items ?? []).map(async (line) => {
       const itemId = Number(line.inventory_item_id ?? line.inventory_item?.id ?? 0);
@@ -857,11 +879,13 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
         inventory_item_id: String(itemId || ''),
         name: line.inventory_item?.name ?? `Item #${line.inventory_item_id ?? '?'}`,
         brand: line.brand ?? '',
+        brands: [] as string[],
         gst: (line.gst_rate_bp ?? 0) > 0,
       };
 
       // The packs this item is bought in, so the line can stay in the one it
-      // was ordered in and be moved to another.
+      // was ordered in and be moved to another — and the brands it has been
+      // bought as, so the brand box has something to offer.
       let packs: InventoryPurchaseUnit[] = [];
       let baseUnit = line.inventory_item?.unit ?? '';
       if (itemId) {
@@ -869,6 +893,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
           const res = await getPurchaseUnits(itemId);
           packs = res.purchase_units ?? [];
           baseUnit = res.base_unit || baseUnit;
+          base.brands = res.brands ?? [];
         } catch { /* the picker just offers the base unit */ }
       }
 
@@ -944,10 +969,23 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
       setError('An order needs at least one line. Cancel it instead of emptying it.');
       return;
     }
+    if (editHeader.supplier_name_text.trim() === '') {
+      setError('An order needs a seller — pick a supplier or type the shop.');
+      return;
+    }
+
+    // Only what changed. An untouched date is not re-sent, so an order
+    // older than the back-dating window can still have its lines fixed.
+    const header: Record<string, string | null> = {};
+    if (editHeader.supplier_name_text.trim() !== editHeaderWas.supplier_name_text.trim()) header.supplier_name_text = editHeader.supplier_name_text.trim();
+    if (editHeader.purchase_date !== editHeaderWas.purchase_date && editHeader.purchase_date) header.purchase_date = editHeader.purchase_date;
+    if (editHeader.expected_delivery_date !== editHeaderWas.expected_delivery_date) header.expected_delivery_date = editHeader.expected_delivery_date || null;
+    if (editHeader.notes !== editHeaderWas.notes) header.notes = editHeader.notes.trim() || null;
 
     setActionLoading(true);
     try {
-      await updatePurchaseLines(editPo.id, lines);
+      if (Object.keys(header).length > 0) await updatePurchaseLines(editPo.id, lines, header);
+      else await updatePurchaseLines(editPo.id, lines);
       setEditPo(null);
       showToast('Purchase order updated.');
       void load();
@@ -2040,12 +2078,53 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
       {/* Edit the lines. Only reachable while nothing has been received — the
           server refuses otherwise, and the button is not shown. */}
       {editPo && (
-        <Modal title={`Edit ${editPo.purchase_number}`} onClose={() => setEditPo(null)} maxWidth={640}>
+        <Modal title={`Edit ${editPo.purchase_number}`} onClose={() => setEditPo(null)} maxWidth={680}>
           <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 14 }}>
-            Nothing has arrived against this order yet, so its lines can still change.
-            Quantity and cost are counted in whatever each line is bought by — pick the pack
-            under the name, and the figure beneath says what that comes to in stock.
+            Nothing has arrived against this order yet, so all of it can still change: who it was
+            bought from, the date, the lines. Quantity and cost are counted in whatever each line is
+            bought by — pick the pack under the name, and the figure beneath says what that comes to in stock.
           </p>
+
+          <div data-responsive-grid style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={lineLabelStyle}>Bought from *</label>
+              <PickOrType
+                ariaLabel="Edit bought from"
+                options={manualSuppliers.map((s) => ({ value: s.name, label: s.name }))}
+                value={editHeader.supplier_name_text}
+                emptyLabel="Pick a shop or supplier"
+                placeholder="Search a shop, or type a new one"
+                onChange={(v) => setEditHeader((h) => ({ ...h, supplier_name_text: v }))}
+              />
+            </div>
+            <div>
+              <label htmlFor="po-edit-purchase-date" style={lineLabelStyle}>Purchase date *</label>
+              <input
+                id="po-edit-purchase-date" type="date" value={editHeader.purchase_date} max={today()}
+                data-testid="po-edit-purchase-date"
+                onChange={(e) => setEditHeader((h) => ({ ...h, purchase_date: e.target.value }))}
+                style={manualBoxStyle}
+              />
+            </div>
+            <div>
+              <label htmlFor="po-edit-expected-date" style={lineLabelStyle}>Expected delivery</label>
+              <input
+                id="po-edit-expected-date" type="date" value={editHeader.expected_delivery_date}
+                data-testid="po-edit-expected-date"
+                onChange={(e) => setEditHeader((h) => ({ ...h, expected_delivery_date: e.target.value }))}
+                style={manualBoxStyle}
+              />
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label htmlFor="po-edit-notes" style={lineLabelStyle}>Notes</label>
+              <textarea
+                id="po-edit-notes" aria-label="Notes" value={editHeader.notes} rows={2}
+                onChange={(e) => setEditHeader((h) => ({ ...h, notes: e.target.value }))}
+                style={{ ...manualBoxStyle, minHeight: 56, padding: '8px 12px', resize: 'vertical' }}
+              />
+            </div>
+          </div>
+
           <div style={{ display: 'grid', gap: 8, marginBottom: 12 }} data-testid="po-edit-lines">
             {editLines.map((line, idx) => (
               <div
@@ -2079,6 +2158,18 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                       Was bought as {line.lostPack}, which no longer exists — now counted in {line.base_unit || 'units'}.
                     </span>
                   )}
+                  {/* The brand, offered from what this item has been bought as. */}
+                  <div style={{ marginTop: 4, fontWeight: 400 }}>
+                    <PickOrType
+                      ariaLabel={`Brand for ${line.name}`}
+                      options={line.brands.map((b) => ({ value: b, label: b }))}
+                      value={line.brand}
+                      emptyLabel="No brand"
+                      placeholder="Brand"
+                      onChange={(v) => setEditLines((rows) => rows.map((r, i) => i === idx ? { ...r, brand: v } : r))}
+                      style={{ minHeight: 34, fontSize: 12, padding: '0 30px 0 8px' }}
+                    />
+                  </div>
                   {/* What the two boxes come to in the item's own unit. */}
                   {editLineBase(line) !== null && (
                     <span style={{ display: 'block', fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 400, marginTop: 2 }} data-testid={`po-edit-base-${idx}`}>
@@ -2141,12 +2232,13 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                   base_unit: sel.item.unit ?? '',
                   lostPack: null,
                   brand: '',
+                  brands: [],
                   gst: (sel.item.gst_rate_bp ?? 0) > 0,
                 }]);
                 // Its packs, so this line can be bought by the case too.
                 void getPurchaseUnits(sel.id).then((res) => setEditLines((rows) => rows.map((r) => (
                   r.inventory_item_id === String(sel.id) && r.packs.length === 0
-                    ? { ...r, packs: res.purchase_units ?? [], base_unit: res.base_unit || r.base_unit }
+                    ? { ...r, packs: res.purchase_units ?? [], base_unit: res.base_unit || r.base_unit, brands: res.brands ?? [] }
                     : r
                 )))).catch(() => {});
               }}

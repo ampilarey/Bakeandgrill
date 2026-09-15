@@ -166,6 +166,62 @@ describe('Editing a purchase order line bought by the pack', () => {
     expect(payload[0]).not.toHaveProperty('purchase_unit_id');
   });
 
+  /*
+   * Owner, 2026-09-15: "in edit po, no option to change the date… can u add
+   * most possible edit options." The header opens on what the order has and
+   * only what was changed is sent, so an untouched old date is not re-judged
+   * against the back-dating window.
+   */
+  it('edits the shop, the dates, the notes and a line brand, sending only what changed', async () => {
+    getPurchaseUnits.mockImplementation((id: number) => Promise.resolve(
+      id === 7
+        ? { base_unit: 'pcs', purchase_units: [CASE, TRAY], brands: ['Sunrise', 'Royal'] }
+        : { base_unit: 'kg', purchase_units: [] },
+    ));
+    const dialog = await openTheEditor();
+
+    expect(within(dialog).getByLabelText('Edit bought from')).toHaveValue('Fahi Store');
+    expect(within(dialog).getByTestId('po-edit-purchase-date')).toHaveValue('2026-09-07');
+    expect(within(dialog).getByTestId('po-edit-expected-date')).toHaveValue('');
+
+    fireEvent.change(within(dialog).getByTestId('po-edit-purchase-date'), { target: { value: '2026-09-05' } });
+    fireEvent.change(within(dialog).getByTestId('po-edit-expected-date'), { target: { value: '2026-09-12' } });
+    fireEvent.change(within(dialog).getByLabelText('Notes'), { target: { value: 'Bill came late' } });
+    fireEvent.change(within(dialog).getByLabelText('Edit bought from'), { target: { value: 'Corner Shop' } });
+    const brand = within(dialog).getByLabelText('Brand for Egg');
+    fireEvent.focus(brand);
+    fireEvent.mouseDown(within(dialog).getByRole('option', { name: 'Royal' }));
+
+    fireEvent.click(saveButton(dialog));
+    await waitFor(() => expect(updatePurchaseLines).toHaveBeenCalled());
+    const [, lines, header] = updatePurchaseLines.mock.calls[0] as [number, { brand?: string }[], Record<string, unknown>];
+    expect(header).toEqual({
+      supplier_name_text: 'Corner Shop',
+      purchase_date: '2026-09-05',
+      expected_delivery_date: '2026-09-12',
+      notes: 'Bill came late',
+    });
+    expect(lines[0]).toMatchObject({ brand: 'Royal' });
+  });
+
+  it('sends no header fields when only the lines were touched', async () => {
+    // So an untouched old date is not re-judged against the back-dating window.
+    const dialog = await openTheEditor();
+    fireEvent.click(saveButton(dialog));
+
+    await waitFor(() => expect(updatePurchaseLines).toHaveBeenCalled());
+    expect(updatePurchaseLines.mock.calls[0][2]).toBeUndefined();
+  });
+
+  it('will not save an order with no seller', async () => {
+    const dialog = await openTheEditor();
+    fireEvent.change(within(dialog).getByLabelText('Edit bought from'), { target: { value: '' } });
+    fireEvent.click(saveButton(dialog));
+
+    expect(await screen.findByText(/An order needs a seller/)).toBeInTheDocument();
+    expect(updatePurchaseLines).not.toHaveBeenCalled();
+  });
+
   it('falls back to the stored unit when the pack no longer exists', async () => {
     // Somebody deleted the Case, or resized it, after the order was placed.
     getPurchaseUnits.mockImplementation((id: number) => Promise.resolve(
