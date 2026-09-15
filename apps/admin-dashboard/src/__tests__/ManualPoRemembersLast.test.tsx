@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { PurchaseOrdersPage } from '../pages/PurchaseOrdersPage';
 
@@ -112,12 +112,14 @@ describe('A purchase line opens on what was last bought', () => {
   it('offers every brand this item has been bought as', async () => {
     await pickTheBun();
 
-    const select = await screen.findByLabelText('Brand for item 1');
-    const options = within(select).getAllByRole('option').map((o) => o.textContent);
+    const box = await screen.findByLabelText('Brand for item 1');
+    fireEvent.focus(box);
+    const options = screen.getAllByRole('option').map((o) => o.textContent);
     expect(options).toContain('Sunrise');
     expect(options).toContain('Royal');
-    // And a way out for a brand never bought before.
-    expect(options.some((o) => o?.includes('not bought before'))).toBe(true);
+    // And a way out for a brand never bought before: type it into the same box.
+    fireEvent.change(box, { target: { value: 'Nev' } });
+    expect(screen.getByRole('option', { name: '＋ Use “Nev”' })).toBeInTheDocument();
   });
 
   it('falls back to the average cost when the item has never been bought', async () => {

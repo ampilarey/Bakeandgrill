@@ -4,10 +4,11 @@ import { useState } from 'react';
 import { PickOrType } from '../components/PickOrType';
 
 /*
- * A dropdown that does not dead-end.
+ * One box to search, pick, or type something new.
  *
  * Owner, 2026-09-06: "in all the drop down places if the item is not listed,
  * add option to write so it will be saved in respective field."
+ * Owner, 2026-09-15: "no search option, can u add search and pick in same box?"
  */
 
 const CATS = [
@@ -15,9 +16,10 @@ const CATS = [
   { value: '2', label: 'Dairy' },
 ];
 
-function Harness({ onCreate, initial = '' }: {
+function Harness({ onCreate, initial = '', required = false }: {
   onCreate?: (t: string) => Promise<string | null>;
   initial?: string;
+  required?: boolean;
 }) {
   const [value, setValue] = useState(initial);
   return (
@@ -28,64 +30,81 @@ function Harness({ onCreate, initial = '' }: {
         value={value}
         onChange={setValue}
         onCreate={onCreate}
-        emptyLabel="No category"
-        addLabel="＋ Add a new category"
+        emptyLabel={required ? undefined : 'No category'}
       />
       <output data-testid="value">{value}</output>
     </>
   );
 }
 
-describe('PickOrType', () => {
-  it('picks a value that is already on the list', () => {
-    render(<Harness />);
-    fireEvent.change(screen.getByLabelText('Category'), { target: { value: '2' } });
+const box = () => screen.getByLabelText('Category');
+const listed = () => screen.getAllByRole('option').map((o) => o.textContent);
 
+describe('PickOrType', () => {
+  it('opens the list on focus and picks a row', () => {
+    render(<Harness />);
+    fireEvent.focus(box());
+    expect(listed()).toEqual(['No category', 'Dry goods', 'Dairy']);
+
+    fireEvent.mouseDown(screen.getByRole('option', { name: 'Dairy' }));
     expect(screen.getByTestId('value')).toHaveTextContent('2');
+    expect(box()).toHaveValue('Dairy');
+    expect(screen.queryByRole('listbox')).toBeNull();
   });
 
-  it('saves what was typed when nothing has to be created', async () => {
+  it('narrows the list to what is typed', () => {
+    render(<Harness />);
+    fireEvent.change(box(), { target: { value: 'dai' } });
+    expect(listed()).toEqual(['Dairy', '＋ Use “dai”']);
+  });
+
+  it('is the text itself, letter by letter, when nothing has to be created', () => {
     // A unit is its own value: type "sachet" and the field is "sachet".
     render(<Harness />);
-    fireEvent.change(screen.getByLabelText('Category'), { target: { value: '__pick_or_type_add__' } });
-    fireEvent.change(await screen.findByLabelText('New category'), { target: { value: 'sachet' } });
-    fireEvent.click(screen.getByText('Use this'));
-
-    await waitFor(() => expect(screen.getByTestId('value')).toHaveTextContent('sachet'));
+    fireEvent.change(box(), { target: { value: 'sachet' } });
+    expect(screen.getByTestId('value')).toHaveTextContent('sachet');
   });
 
-  it('creates the thing and selects what came back', async () => {
+  it('creates the thing from the "Use" row and selects what came back', async () => {
     const onCreate = vi.fn().mockResolvedValue('99');
     render(<Harness onCreate={onCreate} />);
 
-    fireEvent.change(screen.getByLabelText('Category'), { target: { value: '__pick_or_type_add__' } });
-    fireEvent.change(await screen.findByLabelText('New category'), { target: { value: 'Spices' } });
-    fireEvent.click(screen.getByText('Use this'));
+    fireEvent.change(box(), { target: { value: 'Spices' } });
+    // Not created just by typing — an id field waits to be told.
+    expect(screen.getByTestId('value')).toHaveTextContent('');
+    fireEvent.mouseDown(screen.getByRole('option', { name: '＋ Use “Spices” — add it' }));
 
     await waitFor(() => expect(onCreate).toHaveBeenCalledWith('Spices'));
     expect(screen.getByTestId('value')).toHaveTextContent('99');
   });
 
-  it('matches an existing option rather than making a second one that means the same', async () => {
+  it('creates on Enter too', async () => {
+    const onCreate = vi.fn().mockResolvedValue('99');
+    render(<Harness onCreate={onCreate} />);
+    fireEvent.change(box(), { target: { value: 'Spices' } });
+    fireEvent.keyDown(box(), { key: 'Enter' });
+    await waitFor(() => expect(screen.getByTestId('value')).toHaveTextContent('99'));
+  });
+
+  it('matches an existing option rather than making a second one that means the same', () => {
     // "dairy " and "Dairy" are the same category. Creating both is how a list
     // rots into uselessness.
     const onCreate = vi.fn();
     render(<Harness onCreate={onCreate} />);
 
-    fireEvent.change(screen.getByLabelText('Category'), { target: { value: '__pick_or_type_add__' } });
-    fireEvent.change(await screen.findByLabelText('New category'), { target: { value: '  dairy ' } });
-    fireEvent.click(screen.getByText('Use this'));
-
-    await waitFor(() => expect(screen.getByTestId('value')).toHaveTextContent('2'));
+    fireEvent.change(box(), { target: { value: '  dairy ' } });
+    expect(screen.getByTestId('value')).toHaveTextContent('2');
+    expect(screen.queryByRole('option', { name: /Use “/ })).toBeNull();
     expect(onCreate).not.toHaveBeenCalled();
   });
 
-  it('says so rather than saving nothing', async () => {
-    render(<Harness />);
-    fireEvent.change(screen.getByLabelText('Category'), { target: { value: '__pick_or_type_add__' } });
-    fireEvent.click(await screen.findByText('Use this'));
+  it('says so rather than saving nothing when a choice is required', () => {
+    render(<Harness required />);
+    fireEvent.change(box(), { target: { value: 'x' } });
+    fireEvent.change(box(), { target: { value: '' } });
+    fireEvent.keyDown(box(), { key: 'Enter' });
 
-    expect(await screen.findByText('Type something first.')).toBeInTheDocument();
+    expect(screen.getByText('Type something first.')).toBeInTheDocument();
     expect(screen.getByTestId('value')).toHaveTextContent('');
   });
 
@@ -93,32 +112,43 @@ describe('PickOrType', () => {
     const onCreate = vi.fn().mockRejectedValue(new Error('That name is taken.'));
     render(<Harness onCreate={onCreate} />);
 
-    fireEvent.change(screen.getByLabelText('Category'), { target: { value: '__pick_or_type_add__' } });
-    fireEvent.change(await screen.findByLabelText('New category'), { target: { value: 'Dry' } });
-    fireEvent.click(screen.getByText('Use this'));
+    fireEvent.change(box(), { target: { value: 'Dry' } });
+    fireEvent.keyDown(box(), { key: 'Enter' });
 
     expect(await screen.findByText('That name is taken.')).toBeInTheDocument();
     expect(screen.getByTestId('value')).toHaveTextContent('');
   });
 
-  it('goes back to the list without changing anything', async () => {
-    render(<Harness initial="1" />);
-    fireEvent.change(screen.getByLabelText('Category'), { target: { value: '__pick_or_type_add__' } });
-    fireEvent.click(await screen.findByText('Back to list'));
+  it('drops a half-typed name on an id field when you walk away, and on Escape', () => {
+    const onCreate = vi.fn();
+    render(<Harness onCreate={onCreate} initial="1" />);
 
-    expect(await screen.findByLabelText('Category')).toBeInTheDocument();
+    fireEvent.change(box(), { target: { value: 'Dai' } });
+    fireEvent.keyDown(box(), { key: 'Escape' });
     expect(screen.getByTestId('value')).toHaveTextContent('1');
+    expect(box()).toHaveValue('Dry goods');
+
+    fireEvent.change(box(), { target: { value: 'Spi' } });
+    fireEvent.blur(box());
+    expect(screen.getByTestId('value')).toHaveTextContent('1');
+    expect(box()).toHaveValue('Dry goods');
+    expect(onCreate).not.toHaveBeenCalled();
   });
 
   it('shows a value the list has never heard of instead of blanking the field', () => {
     /*
      * An item whose unit is "sachet" opens on a list built from other items.
-     * Without this the select would fall back to its first option and the
-     * next save would quietly change the unit.
+     * The box shows it as it is, and the next save keeps it.
      */
     render(<Harness initial="sachet" />);
+    expect(box()).toHaveValue('sachet');
+  });
 
-    const select = screen.getByLabelText('Category') as HTMLSelectElement;
-    expect(select.value).toBe('sachet');
+  it('walks the list with the arrow keys', () => {
+    render(<Harness />);
+    fireEvent.keyDown(box(), { key: 'ArrowDown' });
+    fireEvent.keyDown(box(), { key: 'ArrowDown' });
+    fireEvent.keyDown(box(), { key: 'Enter' });
+    expect(screen.getByTestId('value')).toHaveTextContent('1');
   });
 });

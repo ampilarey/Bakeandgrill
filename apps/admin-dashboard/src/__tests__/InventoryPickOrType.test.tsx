@@ -148,7 +148,7 @@ describe('The item form has no dead ends', () => {
     expect(fetchSuppliers).toHaveBeenCalled();
 
     const cat = await screen.findByLabelText('Category');
-    expect(within(cat).getByText('Dry store')).toBeInTheDocument();
+    expect(cat).toHaveValue('Dry store');
   });
 
   it('names the current category rather than printing its id while the list loads', async () => {
@@ -156,49 +156,38 @@ describe('The item form has no dead ends', () => {
     fetchInventoryCategories.mockReturnValue(new Promise(() => {}));
     await openEditor();
 
-    const cat = screen.getByLabelText('Category') as HTMLSelectElement;
-    expect(cat.value).toBe('3');
-    expect(cat.selectedOptions[0].text).toBe('Dry store');
+    expect(screen.getByLabelText('Category')).toHaveValue('Dry store');
   });
 
   it('offers the units the store already uses', async () => {
     await openEditor();
 
-    const unit = screen.getByLabelText('Item unit') as HTMLSelectElement;
-    const listed = [...unit.options].map((o) => o.value);
-
-    expect(listed).toContain('sachet');
-    expect(unit.value).toBe('ml');
+    const unit = screen.getByLabelText('Item unit');
+    expect(unit).toHaveValue('ml');
+    fireEvent.focus(unit);
+    expect(screen.getByRole('option', { name: 'sachet' })).toBeInTheDocument();
   });
 
   it('takes a unit that is on no list at all', async () => {
     await openEditor();
-    fireEvent.change(screen.getByLabelText('Item unit'), { target: { value: '__pick_or_type_add__' } });
-    fireEvent.change(await screen.findByLabelText('New item unit'), { target: { value: 'bushel' } });
-    fireEvent.click(screen.getByText('Use this'));
+    fireEvent.change(screen.getByLabelText('Item unit'), { target: { value: 'bushel' } });
 
-    await waitFor(() => {
-      expect((screen.getByLabelText('Item unit') as HTMLSelectElement).value).toBe('bushel');
-    });
+    expect(screen.getByLabelText('Item unit')).toHaveValue('bushel');
   });
 
   it('makes a category from the form it is needed in', async () => {
     await openEditor();
-    fireEvent.change(screen.getByLabelText('Category'), { target: { value: '__pick_or_type_add__' } });
-    fireEvent.change(await screen.findByLabelText('New category'), { target: { value: 'Spices' } });
-    fireEvent.click(screen.getByText('Use this'));
+    fireEvent.change(screen.getByLabelText('Category'), { target: { value: 'Spices' } });
+    fireEvent.mouseDown(screen.getByRole('option', { name: '＋ Use “Spices” — add it' }));
 
     await waitFor(() => expect(createInventoryCategory).toHaveBeenCalledWith({ name: 'Spices' }));
-    await waitFor(() => {
-      expect((screen.getByLabelText('Category') as HTMLSelectElement).value).toBe('9');
-    });
+    await waitFor(() => expect(screen.getByLabelText('Category')).toHaveValue('Spices'));
   });
 
   it('makes a supplier the same way', async () => {
     await openEditor();
-    fireEvent.change(screen.getByLabelText('Preferred supplier'), { target: { value: '__pick_or_type_add__' } });
-    fireEvent.change(await screen.findByLabelText('New preferred supplier'), { target: { value: 'Reefside' } });
-    fireEvent.click(screen.getByText('Use this'));
+    fireEvent.change(screen.getByLabelText('Preferred supplier'), { target: { value: 'Reefside' } });
+    fireEvent.mouseDown(screen.getByRole('option', { name: '＋ Use “Reefside” — add it' }));
 
     await waitFor(() => expect(createSupplier).toHaveBeenCalledWith({ name: 'Reefside' }));
   });

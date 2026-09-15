@@ -70,11 +70,9 @@ async function openCard() {
   return await screen.findByLabelText('Bought from');
 }
 
-/** Name a shop that is not on file: the picker's "type it" row, then the box. */
+/** Name a shop that is not on file: type it into the same box the list is in. */
 async function nameShop(name: string) {
-  fireEvent.change(screen.getByLabelText('Bought from'), { target: { value: '__pick_or_type_add__' } });
-  fireEvent.change(await screen.findByLabelText('New bought from'), { target: { value: name } });
-  fireEvent.click(screen.getByText('Use this'));
+  fireEvent.change(await screen.findByLabelText('Bought from'), { target: { value: name } });
 }
 
 describe('Create Manual Purchase Order card', () => {
@@ -179,11 +177,15 @@ describe('Create Manual Purchase Order card', () => {
 
   it('offers the suppliers on file to pick from, and a row to type a new one', async () => {
     // A real picker, not a datalist — a phone draws nothing under a datalist
-    // (owner, 2026-09-14: "shop list are not showing").
+    // (owner, 2026-09-14: "shop list are not showing"). And a search in the
+    // same box (owner, 2026-09-15: "add search and pick in same box").
     const seller = await openCard();
+    fireEvent.focus(seller);
 
-    expect(await within(seller).findByRole('option', { name: 'Island Wholesale' })).toBeInTheDocument();
-    expect(within(seller).getByRole('option', { name: /not on the list/ })).toBeInTheDocument();
+    expect(await screen.findByRole('option', { name: 'Island Wholesale' })).toBeInTheDocument();
+    fireEvent.change(seller, { target: { value: 'isl' } });
+    const list = screen.getByRole('listbox', { name: 'Bought from choices' });
+    expect(within(list).getAllByRole('option').map((o) => o.textContent)).toEqual(['Island Wholesale', '＋ Use “isl”']);
   });
 
   /*
@@ -394,13 +396,13 @@ describe('Create Manual Purchase Order card', () => {
     const brand = await screen.findByLabelText('Brand for item 1');
     // Past brands are offered as a list you can pick from, newest first,
     // and it does not dead-end on a brand never bought before.
-    const labels = [...brand.querySelectorAll('option')].map((o) => o.textContent);
+    fireEvent.focus(brand);
+    const labels = screen.getAllByRole('option').map((o) => o.textContent);
     expect(labels).toContain('Brand A');
     expect(labels).toContain('Brand B');
 
-    fireEvent.change(brand, { target: { value: '__pick_or_type_add__' } });
-    fireEvent.change(await screen.findByLabelText('New brand for item 1'), { target: { value: 'Brand C' } });
-    fireEvent.click(screen.getByText('Use this'));
+    fireEvent.change(brand, { target: { value: 'Brand C' } });
+    fireEvent.blur(brand);
     fireEvent.change(screen.getByLabelText('Quantity for item 1'), { target: { value: '30' } });
     fireEvent.change(screen.getByLabelText('Unit cost for item 1'), { target: { value: '2.1' } });
     fireEvent.click(screen.getByRole('button', { name: /Create PO/i }));

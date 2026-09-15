@@ -2228,6 +2228,9 @@ a { text-decoration: none; color: inherit; }
  * from one that fits, so it dimmed the last tab when there was nothing
  * more to see. Grouping (see HubPage) is what keeps these rows short.
  */
+/* A row in the pick-or-type list: hover is a look, not a choice. */
+.pick-option:hover { background: var(--color-bg) !important; }
+
 /* A heading that sorts (TableControls): the arrow is CSS so the heading's
    text stays its label. Dim when the column is not the sorted one. */
 .table-sort-btn::after {

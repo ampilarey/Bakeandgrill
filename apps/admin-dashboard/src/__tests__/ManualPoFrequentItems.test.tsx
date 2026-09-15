@@ -62,8 +62,8 @@ async function openCard() {
 async function nameTheShop() {
   const seller = await openCard();
   // The supplier list has to have arrived before it can be picked from.
-  await within(seller).findByRole('option', { name: 'The Royal Bakery' });
-  fireEvent.change(seller, { target: { value: 'The Royal Bakery' } });
+  fireEvent.focus(seller);
+  fireEvent.mouseDown(await screen.findByRole('option', { name: 'The Royal Bakery' }));
   return await screen.findByTestId('manual-po-frequent');
 }
 
@@ -92,19 +92,16 @@ describe('What a shop usually sells us', () => {
 
   it('appears for a shop on file typed by hand, however it is capitalised', async () => {
     const seller = await openCard();
-    await within(seller).findByRole('option', { name: 'The Royal Bakery' });
-    fireEvent.change(seller, { target: { value: '__pick_or_type_add__' } });
-    fireEvent.change(await screen.findByLabelText('New bought from'), { target: { value: 'the royal bakery' } });
-    fireEvent.click(screen.getByText('Use this'));
+    fireEvent.focus(seller);
+    await screen.findByRole('option', { name: 'The Royal Bakery' });
+    fireEvent.change(seller, { target: { value: 'the royal bakery' } });
 
     expect(await screen.findByTestId('manual-po-frequent')).toHaveTextContent('Usually bought from The Royal Bakery');
   });
 
   it('is not there for a shop that is not on file', async () => {
     const seller = await openCard();
-    fireEvent.change(seller, { target: { value: '__pick_or_type_add__' } });
-    fireEvent.change(await screen.findByLabelText('New bought from'), { target: { value: 'Somewhere new' } });
-    fireEvent.click(screen.getByText('Use this'));
+    fireEvent.change(seller, { target: { value: 'Somewhere new' } });
 
     expect(screen.queryByTestId('manual-po-frequent')).toBeNull();
     expect(getSupplierFrequentItems).not.toHaveBeenCalled();
