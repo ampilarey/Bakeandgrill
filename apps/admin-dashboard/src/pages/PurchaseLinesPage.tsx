@@ -54,7 +54,15 @@ export default function PurchaseLinesPage({ embedded = false }: { embedded?: boo
   usePageTitle(embedded ? 'Purchasing · Purchase lines' : 'Purchase lines');
   const isMobile = useIsMobile();
 
-  const [days, setDays] = useState(90);
+  /*
+   * The window. A preset sets both dates; either date typed by hand makes
+   * the window its own (owner, 2026-09-16: "how about adding a date
+   * selection option in looking back"). "All time" reaches back to when
+   * the first order was keyed in.
+   */
+  const [range, setRange] = useState({ from: daysAgo(90), to: today() });
+  const preset = WINDOWS.find((w) => range.to === today() && range.from === (w.days > 0 ? daysAgo(w.days) : '2000-01-01'))?.days ?? null;
+  const usePreset = (d: number) => setRange({ from: d > 0 ? daysAgo(d) : '2000-01-01', to: today() });
   const [lines, setLines] = useState<PurchaseLineRow[]>([]);
   const [truncated, setTruncated] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -62,11 +70,12 @@ export default function PurchaseLinesPage({ embedded = false }: { embedded?: boo
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
+    // A half-cleared date box is not a window yet.
+    if (!range.from || !range.to) return;
     let cancelled = false;
     setLoading(true);
     setError('');
-    // "All time" reaches back to when the first order was keyed in.
-    getPurchaseLines(days > 0 ? { from: daysAgo(days), to: today() } : { from: '2000-01-01', to: today() })
+    getPurchaseLines({ from: range.from, to: range.to })
       .then((res) => {
         if (cancelled) return;
         setLines(res.lines ?? []);
@@ -75,7 +84,7 @@ export default function PurchaseLinesPage({ embedded = false }: { embedded?: boo
       .catch((e: Error) => { if (!cancelled) setError(e.message); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [days]);
+  }, [range.from, range.to]);
 
   const ctl = useSortFilter(lines, [
     { key: 'date', label: 'Date', get: (l) => l.purchase_date },
@@ -129,10 +138,26 @@ export default function PurchaseLinesPage({ embedded = false }: { embedded?: boo
       <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 14, flexWrap: 'wrap' }}>
         <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontWeight: 600 }}>Looking back</span>
         {WINDOWS.map((w) => (
-          <Btn key={w.days} small variant={days === w.days ? 'primary' : 'secondary'} disabled={loading} onClick={() => setDays(w.days)} data-testid={`purchase-lines-window-${w.days}`}>
+          <Btn key={w.days} small variant={preset === w.days ? 'primary' : 'secondary'} aria-pressed={preset === w.days} disabled={loading} onClick={() => usePreset(w.days)} data-testid={`purchase-lines-window-${w.days}`}>
             {w.label}
           </Btn>
         ))}
+        {/* Or any two dates. One unit, so "to" never lands on a line of its own on a phone. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <input
+            type="date" aria-label="From date" data-testid="purchase-lines-from"
+            value={range.from === '2000-01-01' ? '' : range.from} max={range.to || today()}
+            onChange={(e) => setRange((r) => ({ ...r, from: e.target.value }))}
+            style={{ height: 36, padding: '0 8px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)', minWidth: 0, width: 140 }}
+          />
+          <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>to</span>
+          <input
+            type="date" aria-label="To date" data-testid="purchase-lines-to"
+            value={range.to} min={range.from === '2000-01-01' ? undefined : range.from} max={today()}
+            onChange={(e) => setRange((r) => ({ ...r, to: e.target.value }))}
+            style={{ height: 36, padding: '0 8px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)', minWidth: 0, width: 140 }}
+          />
+        </div>
         <div style={{ marginLeft: 'auto' }}>
           <Btn small variant="secondary" onClick={exportCsv} disabled={shown.length === 0}>Export CSV</Btn>
         </div>

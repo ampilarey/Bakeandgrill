@@ -85,6 +85,25 @@ describe('Purchase lines', () => {
     expect(getPurchaseLines.mock.calls[1][0]).toMatchObject({ from: '2000-01-01' });
   });
 
+  it('takes any two dates, and a typed date is its own window rather than a preset', async () => {
+    render(<MemoryRouter><PurchaseLinesPage /></MemoryRouter>);
+    await screen.findByTestId('purchase-line-1');
+
+    fireEvent.change(screen.getByTestId('purchase-lines-from'), { target: { value: '2026-08-01' } });
+    await screen.findByTestId('purchase-line-1');
+    fireEvent.change(screen.getByTestId('purchase-lines-to'), { target: { value: '2026-08-31' } });
+    await screen.findByTestId('purchase-line-1');
+
+    const last = getPurchaseLines.mock.calls[getPurchaseLines.mock.calls.length - 1][0];
+    expect(last).toEqual({ from: '2026-08-01', to: '2026-08-31' });
+    // No preset lights up for a hand-picked window.
+    for (const d of [30, 90, 365, 0]) {
+      expect(screen.getByTestId(`purchase-lines-window-${d}`)).toHaveAttribute('aria-pressed', 'false');
+    }
+    fireEvent.click(screen.getByTestId('purchase-lines-window-30'));
+    expect(screen.getByTestId('purchase-lines-window-30')).toHaveAttribute('aria-pressed', 'true');
+  });
+
   it('says what a line was bought as', () => {
     expect(boughtAs(LINES[0])).toBe('2 × Bottle 640 ml');
     expect(boughtAs(LINES[1])).toBe('1000 ml');
