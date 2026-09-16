@@ -989,6 +989,49 @@ export type SupplierFrequentItem = {
   last_quantity: number | null;
 };
 
+/**
+ * One line bought, flat: its shop, brand, pack and price. Owner, 2026-09-16:
+ * "where i can see all the items purchased from a specific store and
+ * specific brand?"
+ */
+export interface PurchaseLineRow {
+  id: number;
+  purchase_id: number;
+  purchase_number: string;
+  purchase_date: string;
+  status: string;
+  supplier_id: number | null;
+  supplier: string | null;
+  item_id: number;
+  item: string;
+  unit: string;
+  brand: string | null;
+  pack_name: string | null;
+  pack_size: number | null;
+  pack_quantity: number | null;
+  /** In the item's own unit. */
+  quantity: number;
+  received_quantity: number;
+  /** Per item unit. */
+  unit_cost: number;
+  /** Per pack, as typed; null for a loose line. */
+  pack_cost: number | null;
+  line_total: number;
+  gst_rate_bp: number | null;
+}
+
+export async function getPurchaseLines(params: { from?: string; to?: string } = {}): Promise<{
+  lines: PurchaseLineRow[];
+  window: { from: string; to: string };
+  truncated: boolean;
+}> {
+  const q = new URLSearchParams();
+  if (params.from) q.set('from', params.from);
+  if (params.to) q.set('to', params.to);
+  const qs = q.toString();
+  return req(`/purchases/lines${qs ? `?${qs}` : ''}`);
+}
+
 export async function getSupplierFrequentItems(params: { supplier_id?: number; supplier_name?: string }): Promise<{
   supplier: { id: number; name: string } | null;
   items: SupplierFrequentItem[];

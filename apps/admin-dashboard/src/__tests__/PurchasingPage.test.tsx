@@ -24,6 +24,7 @@ vi.mock('../hooks/usePageTitle', () => ({ usePageTitle: () => {} }));
 vi.mock('../pages/PurchaseRequestsPage', () => ({ default: () => <div data-testid="tab-requests">requests</div> }));
 vi.mock('../pages/PurchaseOrdersPage', () => ({ PurchaseOrdersPage: () => <div data-testid="tab-orders">orders</div> }));
 vi.mock('../pages/ShoppingListsPage', () => ({ default: () => <div data-testid="tab-lists">lists</div> }));
+vi.mock('../pages/PurchaseLinesPage', () => ({ default: () => <div data-testid="tab-lines">lines</div> }));
 vi.mock('../pages/SupplierIntelligencePage', () => ({ SupplierIntelligencePage: () => <div data-testid="tab-suppliers">suppliers</div> }));
 
 vi.mock('../components/ui', () => ({
@@ -85,7 +86,7 @@ describe('PurchasingPage', () => {
     await waitFor(() => expect(screen.getByTestId('loc').textContent).toBe('/purchasing/requests'));
     const tabs = screen.getAllByRole('tab').map((t) => t.textContent);
     expect(tabs).toEqual(PURCHASING_TABS.map((t) => t.label));
-    expect(tabs).toEqual(['Requests', 'Purchase orders', 'Shopping lists', 'Suppliers', 'Settings']);
+    expect(tabs).toEqual(['Requests', 'Purchase orders', 'Purchase lines', 'Shopping lists', 'Suppliers', 'Settings']);
     // Tab pages are lazy: they arrive after a Suspense tick.
     expect(await screen.findByTestId('tab-requests')).toBeInTheDocument();
   });

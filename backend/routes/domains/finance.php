@@ -115,6 +115,8 @@ Route::middleware(['auth:sanctum', 'permission:suppliers.purchases'])->prefix('p
     Route::post('/from-suggest', [App\Http\Controllers\Api\PurchaseWorkflowController::class, 'createFromSuggest']);
     // What a shop usually sells us, so a manual order can be tapped together.
     Route::get('/frequent-items', [App\Http\Controllers\Api\SupplierFrequentItemsController::class, 'index']);
+    // Every line bought in a window, flat, for narrowing by shop, brand or item.
+    Route::get('/lines', [App\Http\Controllers\Api\PurchaseLinesController::class, 'index']);
     Route::post('/{id}/approve', [App\Http\Controllers\Api\PurchaseWorkflowController::class, 'approve'])->whereNumber('id');
     // /reject is the old name for the same act, kept so nothing in flight breaks.
     Route::post('/{id}/reject', [App\Http\Controllers\Api\PurchaseWorkflowController::class, 'reject'])->whereNumber('id');

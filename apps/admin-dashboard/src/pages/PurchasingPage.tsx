@@ -23,11 +23,13 @@ import { PurchasingSettings } from './PurchasingPage/PurchasingSettings';
 const PurchaseRequestsPage = lazy(() => import('./PurchaseRequestsPage'));
 const PurchaseOrdersPage = lazy(() => import('./PurchaseOrdersPage').then((m) => ({ default: m.PurchaseOrdersPage })));
 const ShoppingListsPage = lazy(() => import('./ShoppingListsPage'));
+const PurchaseLinesPage = lazy(() => import('./PurchaseLinesPage'));
 const SupplierIntelligencePage = lazy(() => import('./SupplierIntelligencePage').then((m) => ({ default: m.SupplierIntelligencePage })));
 
 export const PURCHASING_TABS = [
   { id: 'requests', label: 'Requests', permissions: ['purchase_requests.view_all'], desc: 'What staff have asked for, and where each request is' },
   { id: 'orders', label: 'Purchase orders', permissions: ['suppliers.purchases'], desc: 'Orders placed with suppliers and shops, and what has arrived' },
+  { id: 'lines', label: 'Purchase lines', permissions: ['suppliers.purchases'], desc: 'Every line bought — narrow it by shop, brand or item' },
   { id: 'lists', label: 'Shopping lists', permissions: ['purchase_requests.create'], desc: 'Staples that get requested on a schedule' },
   { id: 'suppliers', label: 'Suppliers', permissions: ['suppliers.view'], desc: 'Who you buy from, how they perform, and what they charge' },
   { id: 'settings', label: 'Settings', permissions: ['settings.update', 'purchase_requests.view_all'], desc: 'Every switch that governs buying, in the order the work happens' },
@@ -109,6 +111,7 @@ export function PurchasingPage() {
       <Suspense fallback={<p style={{ color: 'var(--color-text-muted)' }}>Loading…</p>}>
         {active === 'requests' && <PurchaseRequestsPage embedded />}
         {active === 'orders' && <PurchaseOrdersPage embedded />}
+        {active === 'lines' && <PurchaseLinesPage embedded />}
         {active === 'lists' && <ShoppingListsPage embedded />}
         {active === 'suppliers' && <SupplierIntelligencePage embedded />}
         {active === 'settings' && <PurchasingSettings canEdit={can('settings.update')} />}
