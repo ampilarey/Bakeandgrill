@@ -43,6 +43,9 @@ class PurchaseLinesController extends Controller
             ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')
             ->join('inventory_items', 'inventory_items.id', '=', 'purchase_items.inventory_item_id')
             ->leftJoin('suppliers', 'suppliers.id', '=', 'purchases.supplier_id')
+            // Owner, 2026-09-16: "how to see items bought for a specific
+            // category for a period" — the item's category, for the pick.
+            ->leftJoin('inventory_categories', 'inventory_categories.id', '=', 'inventory_items.inventory_category_id')
             ->whereNull('purchases.deleted_at')
             ->whereBetween('purchases.purchase_date', [$from, $to])
             ->orderByDesc('purchases.purchase_date')
@@ -60,6 +63,7 @@ class PurchaseLinesController extends Controller
                 'purchase_items.inventory_item_id',
                 'inventory_items.name as item',
                 'inventory_items.unit',
+                'inventory_categories.name as category',
                 'purchase_items.brand',
                 'purchase_items.pack_name',
                 'purchase_items.pack_size',
@@ -90,6 +94,7 @@ class PurchaseLinesController extends Controller
                 'item_id' => (int) $r->inventory_item_id,
                 'item' => $r->item,
                 'unit' => $r->unit,
+                'category' => $r->category ?: null,
                 'brand' => $r->brand ?: null,
                 'pack_name' => $r->pack_name ?: null,
                 'pack_size' => $packSize,

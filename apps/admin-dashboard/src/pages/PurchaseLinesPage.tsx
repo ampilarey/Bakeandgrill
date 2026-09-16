@@ -91,6 +91,7 @@ export default function PurchaseLinesPage({ embedded = false }: { embedded?: boo
     { key: 'order', label: 'Order', get: (l) => l.purchase_number },
     { key: 'shop', label: 'Shop', kind: 'select', get: (l) => l.supplier ?? '' },
     { key: 'item', label: 'Item', get: (l) => l.item },
+    { key: 'category', label: 'Category', kind: 'select', get: (l) => l.category ?? '' },
     { key: 'brand', label: 'Brand', kind: 'select', get: (l) => l.brand ?? '' },
     { key: 'bought', label: 'Bought as', get: (l) => boughtAs(l) },
     { key: 'pack_cost', label: 'Per pack', kind: 'number', get: (l) => l.pack_cost },
@@ -111,6 +112,7 @@ export default function PurchaseLinesPage({ embedded = false }: { embedded?: boo
     Order: l.purchase_number,
     Shop: l.supplier ?? '',
     Item: l.item,
+    Category: l.category ?? '',
     Brand: l.brand ?? '',
     'Bought as': boughtAs(l),
     'Quantity (base unit)': l.quantity,
@@ -193,6 +195,7 @@ export default function PurchaseLinesPage({ embedded = false }: { embedded?: boo
                   subtitle={`${l.purchase_date} · ${l.supplier ?? 'No shop'} · ${l.purchase_number}`}
                   badge={<Badge color={STATUS_COLOR[l.status] ?? 'gray'}>{l.status}</Badge>}
                   fields={[
+                    { label: 'Category', value: l.category ?? '—' },
                     { label: 'Brand', value: l.brand ?? '—' },
                     { label: 'Bought as', value: boughtAs(l) },
                     { label: 'Per pack', value: l.pack_cost != null ? mvr(l.pack_cost) : '—' },
@@ -210,7 +213,7 @@ export default function PurchaseLinesPage({ embedded = false }: { embedded?: boo
             <SortFilterHead controls={ctl} allRows={lines} />
             <tbody>
               {shown.length === 0 && (
-                <tr><td colSpan={10}><EmptyState message="Nothing matches these filters." /></td></tr>
+                <tr><td colSpan={11}><EmptyState message="Nothing matches these filters." /></td></tr>
               )}
               {shown.map((l) => (
                 <tr key={l.id} data-testid={`purchase-line-${l.id}`}>
@@ -222,6 +225,7 @@ export default function PurchaseLinesPage({ embedded = false }: { embedded?: boo
                   </td>
                   <td style={TD}>{l.supplier ?? <span style={{ color: 'var(--color-text-muted)' }}>—</span>}</td>
                   <td style={{ ...TD, fontWeight: 600 }}>{l.item}</td>
+                  <td style={TD}>{l.category ?? <span style={{ color: 'var(--color-text-muted)' }}>—</span>}</td>
                   <td style={TD}>{l.brand ?? <span style={{ color: 'var(--color-text-muted)' }}>—</span>}</td>
                   <td style={{ ...TD, whiteSpace: 'nowrap' }}>
                     {boughtAs(l)}

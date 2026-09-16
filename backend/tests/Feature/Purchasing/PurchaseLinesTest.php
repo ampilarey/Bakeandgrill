@@ -36,6 +36,9 @@ class PurchaseLinesTest extends TestCase
         ]);
         $this->soya = $make('Dark soya sauce', 'ml');
         $this->flour = $make('Flour', 'kg');
+        // Sauces are filed; flour is not, so one line has a category and one has none.
+        $sauces = \App\Models\InventoryCategory::create(['name' => 'Sauces', 'slug' => 'sauces', 'is_active' => true]);
+        $this->soya->update(['inventory_category_id' => $sauces->id]);
     }
 
     private function buy(string $shop, array $lines, string $date): int
@@ -72,6 +75,7 @@ class PurchaseLinesTest extends TestCase
         $elephant = $lines->firstWhere('brand', 'Elephant');
         $this->assertSame('Bazaaru', $elephant['supplier']);
         $this->assertSame('Dark soya sauce', $elephant['item']);
+        $this->assertSame('Sauces', $elephant['category']);
         $this->assertSame('Bottle 640 ml', $elephant['pack_name']);
         // Two bottles of 640 ml at MVR 45 a bottle: stored per ml, shown both ways.
         $this->assertEqualsWithDelta(1280.0, $elephant['quantity'], 0.001);
@@ -80,6 +84,7 @@ class PurchaseLinesTest extends TestCase
         $this->assertEqualsWithDelta(90.0, $elephant['line_total'], 0.01);
 
         $loose = $lines->firstWhere('item', 'Flour');
+        $this->assertNull($loose['category']);
         $this->assertNull($loose['brand']);
         $this->assertNull($loose['pack_name']);
         $this->assertNull($loose['pack_cost']);

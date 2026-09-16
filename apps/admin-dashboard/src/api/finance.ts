@@ -1005,6 +1005,8 @@ export interface PurchaseLineRow {
   item_id: number;
   item: string;
   unit: string;
+  /** The item's category, for narrowing a period to one kind of thing. */
+  category: string | null;
   brand: string | null;
   pack_name: string | null;
   pack_size: number | null;

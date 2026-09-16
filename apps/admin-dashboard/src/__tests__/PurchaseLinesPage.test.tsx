@@ -19,7 +19,7 @@ vi.mock('../api', () => ({
 
 const line = (over: Partial<Parameters<typeof boughtAs>[0]>) => ({
   id: 1, purchase_id: 1, purchase_number: 'PO-1', purchase_date: '2026-09-10', status: 'received',
-  supplier_id: 1, supplier: 'Bazaaru', item_id: 1, item: 'Dark soya sauce', unit: 'ml',
+  supplier_id: 1, supplier: 'Bazaaru', item_id: 1, item: 'Dark soya sauce', unit: 'ml', category: 'Sauces',
   brand: 'Elephant', pack_name: 'Bottle 640 ml', pack_size: 640, pack_quantity: 2,
   quantity: 1280, received_quantity: 1280, unit_cost: 0.0703125, pack_cost: 45, line_total: 90, gst_rate_bp: 0,
   ...over,
@@ -28,7 +28,7 @@ const line = (over: Partial<Parameters<typeof boughtAs>[0]>) => ({
 const LINES = [
   line({ id: 1 }),
   line({ id: 2, purchase_id: 2, purchase_number: 'PO-2', supplier: 'Redwave', brand: 'Lee Kum Kee', pack_name: null, pack_quantity: null, pack_cost: null, quantity: 1000, unit_cost: 0.05, line_total: 50 }),
-  line({ id: 3, purchase_id: 3, purchase_number: 'PO-3', item: 'Flour', unit: 'kg', brand: null, pack_name: null, pack_quantity: null, pack_cost: null, quantity: 10, unit_cost: 12, line_total: 120 }),
+  line({ id: 3, purchase_id: 3, purchase_number: 'PO-3', item: 'Flour', unit: 'kg', category: 'Dry goods', brand: null, pack_name: null, pack_quantity: null, pack_cost: null, quantity: 10, unit_cost: 12, line_total: 120 }),
 ];
 
 const rows = () => screen.getAllByRole('row').filter((r) => r.closest('tbody')).map((r) => r.querySelector('td:nth-child(4)')?.textContent);
@@ -72,6 +72,18 @@ describe('Purchase lines', () => {
     expect(rows()).toEqual(['Dark soya sauce']);
     expect(screen.getByTestId('purchase-lines-summary')).toHaveTextContent('MVR 90.00');
     expect(screen.getByTestId('purchase-lines-summary')).toHaveTextContent('Total of what is shown');
+  });
+
+  it('narrows by category too, for what a period was spent on', async () => {
+    // Owner, 2026-09-16: "how to see items bought for a specific category for a period".
+    render(<MemoryRouter><PurchaseLinesPage /></MemoryRouter>);
+    await screen.findByTestId('purchase-line-1');
+
+    const category = screen.getByTestId('purchase-lines-filter-category');
+    expect(within(category).getAllByRole('option').map((o) => o.textContent)).toEqual(['All', 'Dry goods', 'Sauces']);
+    fireEvent.change(category, { target: { value: 'Sauces' } });
+    expect(rows()).toEqual(['Dark soya sauce', 'Dark soya sauce']);
+    expect(screen.getByTestId('purchase-lines-summary')).toHaveTextContent('MVR 140.00');
   });
 
   it('asks the server for a wider window when told to look back further', async () => {
