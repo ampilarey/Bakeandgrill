@@ -17,15 +17,18 @@ import App from "./App";
  * that the CSS is not waiting on a framework that is no longer installed.
  */
 
-const order = (id: number, status: string, name: string, qty: number) => ({
+const order = (id: number, status: string, name: string, qty: number, extra: Record<string, unknown> = {}) => ({
   id,
   order_number: String(2400 + id),
   status,
+  type: "takeaway",
   created_at: new Date(Date.now() - 60_000).toISOString(),
   items: [{ id: id * 10, item_id: id, item_name: name, quantity: qty, modifiers: [] }],
+  ...extra,
 });
 
 const fetchKdsOrders = vi.fn();
+const startOrder = vi.fn();
 
 vi.mock("./api", async () => {
   const { createTokenStore } = await import("@shared/auth");
@@ -43,7 +46,9 @@ vi.mock("./api", async () => {
     fetchKdsOrders: (...a: unknown[]) => fetchKdsOrders(...a),
     fetchKdsMenuGroups: vi.fn().mockResolvedValue([]),
     fetchKdsActivity: vi.fn().mockResolvedValue([]),
-    startOrder: vi.fn(),
+    registerKdsDevice: vi.fn().mockResolvedValue(undefined),
+    failureMessage: (e: unknown, fallback: string) => (e as { message?: string })?.message ?? fallback,
+    startOrder: (...a: unknown[]) => startOrder(...a),
     kitchenDoneOrder: vi.fn(),
     printKitchenTicket: vi.fn(),
     bumpOrder: vi.fn(),
@@ -102,4 +107,47 @@ describe("the kitchen board", () => {
     expect(["ok", "warn", "late"]).toContain(ticket.getAttribute("data-urgency"));
   });
 
+  /*
+   * Audit, 2026-09-17: the server sent the cashier's per-line note, the
+   * variant and the order type on every ticket, and the board showed none of
+   * them. "No onions" reached the printer and not the screen.
+   */
+  it("shows the line note, the variant and where the food is going", async () => {
+    fetchKdsOrders.mockResolvedValue([
+      order(1, "pending", "Chicken Shawarma", 2, {
+        type: "dine_in",
+        table_number: "4",
+        customer_notes: "Pack sauces separately",
+        items: [{
+          id: 10, item_id: 1, item_name: "Chicken Shawarma", variant_name: "Large", quantity: 2,
+          notes: "No onions · Extra spicy", modifiers: [{ id: 1, modifier_name: "Extra cheese" }],
+        }],
+      }),
+      order(2, "pending", "Masroshi", 1, { type: "delivery", delivery_island: "Hulhumalé" }),
+    ]);
+    render(<App />);
+
+    const tickets = await screen.findAllByTestId("kds-ticket");
+    expect(within(tickets[0]).getByTestId("kds-line-note")).toHaveTextContent("No onions · Extra spicy");
+    expect(within(tickets[0]).getByTestId("kds-variant")).toHaveTextContent("Large");
+    expect(within(tickets[0]).getByTestId("kds-order-type")).toHaveTextContent("Dine-in");
+    expect(within(tickets[0]).getByTestId("kds-customer-note")).toHaveTextContent("Pack sauces separately");
+    expect(tickets[0]).toHaveTextContent("Table 4");
+
+    // Delivery keeps its island tag and gets no second type tag.
+    expect(within(tickets[1]).queryByTestId("kds-order-type")).toBeNull();
+    expect(tickets[1]).toHaveTextContent("Hulhumalé");
+  });
+
+  it("repeats the server's reason when a kitchen action is refused", async () => {
+    // Production requires a device header on every kitchen action, and the
+    // refusal used to be swallowed into "Failed to start order".
+    const { fireEvent } = await import("@testing-library/react");
+    startOrder.mockRejectedValue(Object.assign(new Error("This POS device is waiting for approval."), { status: 403 }));
+    render(<App />);
+
+    fireEvent.click((await screen.findAllByRole("button", { name: "Start cooking" }))[0]);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("waiting for approval");
+  });
 });

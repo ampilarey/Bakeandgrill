@@ -23,6 +23,15 @@ interface UseKdsSseOptions {
    * kitchen UI does not flicker "Polling…" on every server stream rotate.
    */
   disconnectGraceMs?: number;
+  /**
+   * How long the stream may go silent before it is treated as dead. The
+   * server writes a heartbeat every 15 seconds, so a stream that has said
+   * nothing for three of those has gone — even though the socket may still
+   * look open for many minutes on a kitchen wifi that dropped without a
+   * goodbye. While that lasted, the board sat on "● Live" showing nothing
+   * new, because the poll only runs when the stream reports disconnected.
+   */
+  staleAfterMs?: number;
 }
 
 export function useKdsSse({
@@ -30,6 +39,7 @@ export function useKdsSse({
   onEvent,
   enabled = true,
   disconnectGraceMs = 2_500,
+  staleAfterMs = 45_000,
 }: UseKdsSseOptions): { connected: boolean } {
   const [connected, setConnected] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -79,6 +89,7 @@ export function useKdsSse({
       abortRef.current?.abort();
       const ctrl = new AbortController();
       abortRef.current = ctrl;
+      let stale = false;
 
       const url = `${apiBaseUrl}/stream/kds${sinceId ? `?since=${encodeURIComponent(sinceId)}` : ""}`;
 
@@ -104,34 +115,49 @@ export function useKdsSse({
         let curId = sinceId;
         let curType = "message";
         let curData = "";
+        let lastByteAt = Date.now();
+        // Aborting the fetch makes the pending read() throw AbortError. A
+        // stale abort is a drop and reconnects below; every other abort is
+        // this hook being torn down, which must not.
+        const watchdog = setInterval(() => {
+          if (Date.now() - lastByteAt > staleAfterMs) {
+            stale = true;
+            ctrl.abort();
+          }
+        }, 5_000);
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            lastByteAt = Date.now();
 
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() ?? "";
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() ?? "";
 
-          for (const line of lines) {
-            if (line === "") {
-              if (curData !== "") {
-                onEventRef.current({ id: curId, type: curType, data: curData.trimEnd() });
-                curType = "message";
-                curData = "";
+            for (const line of lines) {
+              if (line === "") {
+                if (curData !== "") {
+                  onEventRef.current({ id: curId, type: curType, data: curData.trimEnd() });
+                  curType = "message";
+                  curData = "";
+                }
+              } else if (line.startsWith("id:")) {
+                curId = line.slice(3).trim();
+                lastEventId.current = curId;
+              } else if (line.startsWith("event:")) {
+                curType = line.slice(6).trim();
+              } else if (line.startsWith("data:")) {
+                curData += line.slice(5).trimStart() + "\n";
               }
-            } else if (line.startsWith("id:")) {
-              curId = line.slice(3).trim();
-              lastEventId.current = curId;
-            } else if (line.startsWith("event:")) {
-              curType = line.slice(6).trim();
-            } else if (line.startsWith("data:")) {
-              curData += line.slice(5).trimStart() + "\n";
             }
           }
+        } finally {
+          clearInterval(watchdog);
         }
       } catch (err) {
-        if ((err as Error).name === "AbortError") return;
+        if ((err as Error).name === "AbortError" && !stale) return;
       } finally {
         if (!stopped) scheduleDisconnected();
       }
@@ -150,7 +176,7 @@ export function useKdsSse({
       abortRef.current?.abort();
       setConnected(false);
     };
-  }, [token, enabled, disconnectGraceMs]);
+  }, [token, enabled, disconnectGraceMs, staleAfterMs]);
 
   return { connected };
 }

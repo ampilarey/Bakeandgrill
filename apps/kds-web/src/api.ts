@@ -1,5 +1,5 @@
 import { createApiClient } from '@shared/api';
-import { createTokenStore } from '@shared/auth';
+import { createTokenStore, readStored } from '@shared/auth';
 import { ENDPOINTS } from '@shared/api';
 
 export type KdsOrderItem = {
@@ -54,6 +54,8 @@ export type KdsOrder = {
   table_number?: string | null;
   ticket_name?: string | null;
   notes?: string | null;
+  /** What the customer typed on an online order. */
+  customer_notes?: string | null;
   kitchen_done_at?: string | null;
   kitchen_done_by?: { id: number; name: string } | null;
   kitchen_handover_status?: string | null;
@@ -97,8 +99,44 @@ const { request } = createApiClient({
   getToken: () => kdsToken.get(),
 });
 
-function authHeaders(token: string) {
-  return { Authorization: `Bearer ${token}` };
+/*
+ * Every kitchen action (start, kitchen done, cooked, print, complete, recall)
+ * sits behind the `device.active` middleware, which wants to know which
+ * screen is acting. In production `pos.require_device_header` is on by
+ * default, so a request without `X-Device-Identifier` is refused with 428
+ * before it reaches the order — and this app never sent one. The id has
+ * been on the sign-in screen the whole time; it just never left it.
+ */
+function authHeaders(token: string): Record<string, string> {
+  const deviceId = readStored(KDS_DEVICE_ID_KEY);
+  return {
+    Authorization: `Bearer ${token}`,
+    ...(deviceId ? { 'X-Device-Identifier': deviceId } : {}),
+  };
+}
+
+/**
+ * Tell the server this screen exists, under its own type, so it shows in
+ * Admin → Devices as "KDS …" rather than as a till named after an id. Under
+ * strict device approval the owner approves it there once; until then the
+ * kitchen actions answer with the reason, which the board shows.
+ */
+export async function registerKdsDevice(token: string, identifier: string): Promise<void> {
+  await request('/devices/self-register', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify({ identifier, name: `KDS ${identifier}`, type: 'kds' }),
+  });
+}
+
+/** What to tell the cook when a call fails: the server's reason if it gave one. */
+export function failureMessage(error: unknown, fallback: string): string {
+  const status = (error as { status?: number })?.status;
+  const message = (error as { message?: string })?.message;
+  if (typeof status === 'number' && status >= 400 && status < 500 && message) {
+    return message;
+  }
+  return fallback;
 }
 
 export async function staffLogin(

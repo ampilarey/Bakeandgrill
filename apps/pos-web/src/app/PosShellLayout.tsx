@@ -1194,8 +1194,11 @@ export function PosShellLayout() {
             if (offlineOrder.discount_amount != null && offlineOrder.discount_amount > 0) {
               cart.setDiscountAmount(String(offlineOrder.discount_amount));
             }
+            // The queued sale's tender comes back as itself. A transfer used
+            // to reopen as cash, so a fixed-and-resent sale that was paid by
+            // bank transfer landed in the drawer count.
             const payMethod = offlineOrder.payment.method === 'bank_transfer'
-              ? 'cash'
+              ? 'digital_wallet'
               : offlineOrder.payment.method === 'qr'
                 ? 'qr'
                 : offlineOrder.payment.method === 'card'

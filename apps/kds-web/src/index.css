@@ -366,8 +366,11 @@ button {
 }
 
 .kds-tag--late { background: rgba(244, 84, 76, 0.2); color: #ffb0ab; }
+.kds-tag--type { background: rgba(253, 250, 244, 0.12); color: var(--kds-ink); }
 .kds-tag--done { background: rgba(53, 196, 106, 0.18); color: #8bf0b0; }
-.kds-tag--delivery { background: rgba(240, 145, 63, 0.18); color: #ffc793; }
+/* The island keeps its own case: "MALE" in capitals reads as something
+   else entirely. */
+.kds-tag--delivery { background: rgba(240, 145, 63, 0.18); color: #ffc793; text-transform: none; }
 
 /* ── Lines ──────────────────────────────────────────────────────────────── */
 
@@ -424,6 +427,24 @@ button {
 
 .kds-line-note--mods {
   color: #ffc793;
+  font-weight: 600;
+}
+
+/* A per-line instruction is read from as far away as the dish, and it is
+   the thing that gets a plate sent back — so it is nearly dish-sized. */
+.kds-line-note--instruction {
+  font-size: calc(var(--kds-dish) - 4px);
+  font-weight: 800;
+  color: #ffb0ab;
+  background: rgba(244, 84, 76, 0.14);
+  border-radius: 6px;
+  padding: 3px 8px;
+  margin-top: 5px;
+  overflow-wrap: anywhere;
+}
+
+.kds-variant {
+  color: var(--kds-ink-dim);
   font-weight: 600;
 }
 

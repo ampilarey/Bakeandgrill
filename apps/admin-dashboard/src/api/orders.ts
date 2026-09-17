@@ -1,3 +1,4 @@
+import { getOrCreateDeviceId } from '@shared/auth';
 import { req } from './client';
 
 export type OrderItem = {
@@ -161,16 +162,29 @@ export async function fetchKdsOrders(): Promise<{ orders: KdsTicket[] }> {
   return req('/kds/orders?status=pending,paid,preparing,in_progress,ready');
 }
 
+/*
+ * The kitchen actions sit behind `device.active`, which in production wants
+ * `X-Device-Identifier` on every call (428 without it). The standalone KDS
+ * app sends its own; this board is the same routes from a browser, so it
+ * introduces itself the same way, with an id that persists per browser and
+ * reads as "ADMIN-…" in Settings → Devices.
+ */
+const ADMIN_KDS_DEVICE_KEY = 'admin_kds_device_id';
+
+function kdsDeviceHeaders(): Record<string, string> {
+  return { 'X-Device-Identifier': getOrCreateDeviceId(ADMIN_KDS_DEVICE_KEY, 'ADMIN') };
+}
+
 export async function kdsStart(id: number): Promise<void> {
-  await req(`/kds/orders/${id}/start`, { method: 'POST' });
+  await req(`/kds/orders/${id}/start`, { method: 'POST', headers: kdsDeviceHeaders() });
 }
 
 export async function kdsBump(id: number): Promise<void> {
-  await req(`/kds/orders/${id}/bump`, { method: 'POST' });
+  await req(`/kds/orders/${id}/bump`, { method: 'POST', headers: kdsDeviceHeaders() });
 }
 
 export async function kdsRecall(id: number): Promise<void> {
-  await req(`/kds/orders/${id}/recall`, { method: 'POST' });
+  await req(`/kds/orders/${id}/recall`, { method: 'POST', headers: kdsDeviceHeaders() });
 }
 
 // ── Refunds ───────────────────────────────────────────────────────────────────

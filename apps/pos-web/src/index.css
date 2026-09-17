@@ -581,6 +581,16 @@ html, body, #root {
   }
 }
 
+/* "CONFIRM PAYMENT" and the amount are two spans. On phones they stack (see
+   the 840px block); on the iPad they sat inline with no space at all and read
+   "CONFIRM PAYMENTMVR 8.64". */
+.pos-charge-confirm-label {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 10px;
+}
+
 @media (max-width: 840px) {
   :root {
     --pos-main-pad: 8px;

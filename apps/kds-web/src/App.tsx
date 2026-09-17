@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getOrCreateDeviceId, writeStored } from "@shared/auth";
 import {
   bumpOrder,
+  failureMessage,
   kdsToken,
   kdsUsername,
   KDS_DEVICE_ID_KEY,
@@ -14,6 +15,7 @@ import {
   markItem86,
   printKitchenTicket,
   recallOrder,
+  registerKdsDevice,
   staffLogin,
   startOrder,
   markOrderItemCooked,
@@ -39,6 +41,24 @@ function ticketPrepTarget(order: KdsOrder): number {
 
 const formatTime = (iso: string) =>
   new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+/**
+ * Where the food is going, as the ticket's first tag. Delivery keeps its own
+ * island tag below; the rest were not on the ticket at all, so a cook could
+ * not tell a takeaway bag from a plate for table four.
+ */
+const ORDER_TYPE_LABEL: Record<string, string> = {
+  dine_in: "Dine-in",
+  takeaway: "Takeaway",
+  online_pickup: "Pickup",
+  catering: "Catering",
+  wholesale: "Wholesale",
+};
+
+function orderTypeTag(type: string | undefined): string | null {
+  if (!type || type === "delivery") return null;
+  return ORDER_TYPE_LABEL[type] ?? type.replace(/_/g, " ");
+}
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -163,10 +183,12 @@ function App() {
     enabled: isLoggedIn,
   });
 
+  // Fifteen seconds while polling is all there is; a slow backstop even
+  // while the stream is live, so a missed event costs a minute, not a service.
   useEffect(() => {
-    if (!token || sseConnected) return;
+    if (!token) return;
     const poll = () => void load(token);
-    const timerId = window.setInterval(poll, 15_000);
+    const timerId = window.setInterval(poll, sseConnected ? 60_000 : 15_000);
     return () => window.clearInterval(timerId);
   }, [token, sseConnected, load]);
 
@@ -208,11 +230,20 @@ function App() {
     setEightySixing(itemId);
     markItem86(token, itemId)
       .then(() => void load(token))
-      .catch(() => setErrorMessage(
+      .catch((err: unknown) => setErrorMessage(failureMessage(
+        err,
         currentlyAvailable ? "Failed to mark item sold out." : "Failed to restore item.",
-      ))
+      )))
       .finally(() => setEightySixing(null));
   };
+
+  // Once per sign-in: the screen introduces itself so it is listed by name
+  // under Devices. Failing to is not worth a banner — the first action will
+  // say what is wrong, with the server's own words.
+  useEffect(() => {
+    if (!isLoggedIn || !token) return;
+    void registerKdsDevice(token, deviceId.trim()).catch(() => undefined);
+  }, [isLoggedIn, token, deviceId]);
 
   const canStart = hasKdsPermission(permissions, "kds.start_order");
   const canKitchenDone = hasKdsPermission(permissions, "kds.mark_kitchen_done");
@@ -267,35 +298,35 @@ function App() {
     if (!token) return;
     startOrder(token, orderId)
       .then(() => void load(token))
-      .catch(() => setErrorMessage(`Failed to start order #${orderId}. Please retry.`));
+      .catch((err: unknown) => setErrorMessage(failureMessage(err, `Failed to start order #${orderId}. Please retry.`)));
   };
 
   const handleBump = (orderId: number) => {
     if (!token) return;
     bumpOrder(token, orderId)
       .then(() => void load(token))
-      .catch(() => setErrorMessage(`Failed to complete order #${orderId}. Please retry.`));
+      .catch((err: unknown) => setErrorMessage(failureMessage(err, `Failed to complete order #${orderId}. Please retry.`)));
   };
 
   const handleKitchenDone = (orderId: number) => {
     if (!token) return;
     kitchenDoneOrder(token, orderId)
       .then(() => void load(token))
-      .catch(() => setErrorMessage(`Failed to mark order #${orderId} kitchen done.`));
+      .catch((err: unknown) => setErrorMessage(failureMessage(err, `Failed to mark order #${orderId} kitchen done.`)));
   };
 
   const handleItemCooked = (orderId: number, itemId: number) => {
     if (!token) return;
     markOrderItemCooked(token, orderId, itemId)
       .then(() => void load(token))
-      .catch(() => setErrorMessage("Failed to mark item cooked."));
+      .catch((err: unknown) => setErrorMessage(failureMessage(err, "Failed to mark item cooked.")));
   };
 
   const handlePrint = (orderId: number) => {
     if (!token) return;
     printKitchenTicket(token, orderId)
       .then(() => setErrorMessage(""))
-      .catch(() => setErrorMessage(`Failed to queue print for order #${orderId}.`));
+      .catch((err: unknown) => setErrorMessage(failureMessage(err, `Failed to queue print for order #${orderId}.`)));
   };
 
   const handleLogout = () => {
@@ -314,7 +345,7 @@ function App() {
     if (!token) return;
     recallOrder(token, orderId)
       .then(() => void load(token))
-      .catch(() => setErrorMessage(`Failed to recall order #${orderId}. Please retry.`));
+      .catch((err: unknown) => setErrorMessage(failureMessage(err, `Failed to recall order #${orderId}. Please retry.`)));
   };
 
   const toggleAudio = () => {
@@ -322,6 +353,26 @@ function App() {
     setAudioOn(next);
     setAudioEnabled(next);
   };
+
+  // A screen with a keyboard attached — a laptop in the pass, a tablet in a
+  // case — can type the PIN as well as tap it, as the till can. Only while
+  // signed out, and never while the cursor is in a text field.
+  const loginRef = useRef(handleLogin);
+  loginRef.current = handleLogin;
+  useEffect(() => {
+    if (isLoggedIn) return;
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement | null)?.tagName === "INPUT") return;
+      if (/^[0-9]$/.test(e.key)) setPin((p) => (p.length < 8 ? p + e.key : p));
+      else if (e.key === "Backspace") setPin((p) => p.slice(0, -1));
+      else if (e.key === "Escape") setPin("");
+      else if (e.key === "Enter") void loginRef.current();
+      else return;
+      e.preventDefault();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isLoggedIn]);
 
   if (!isLoggedIn) {
     const appendPin = (d: string) => { if (pin.length < 8) setPin((p) => p + d); };
@@ -345,6 +396,7 @@ function App() {
               className="kds-input"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
               autoComplete="username"
             />
           </div>
@@ -442,8 +494,11 @@ function App() {
             <div className="kds-ticket-number">#{order.order_number}</div>
             <div className="kds-ticket-where">
               {overdue && <span className="kds-tag kds-tag--late">Overdue</span>}
-              {order.delivery_island && (
-                <span className="kds-tag kds-tag--delivery">🛵 {order.delivery_island}</span>
+              {orderTypeTag(order.type) && (
+                <span className="kds-tag kds-tag--type" data-testid="kds-order-type">{orderTypeTag(order.type)}</span>
+              )}
+              {order.type === "delivery" && (
+                <span className="kds-tag kds-tag--delivery">🛵 {order.delivery_island || "Delivery"}</span>
               )}
               {order.table_number && <span className="kds-tag">Table {order.table_number}</span>}
               {order.kitchen_done_at && <span className="kds-tag kds-tag--done">Kitchen done</span>}
@@ -456,6 +511,9 @@ function App() {
         </div>
 
         {order.notes && <p className="kds-ticket-note">{order.notes}</p>}
+        {order.customer_notes && (
+          <p className="kds-ticket-note" data-testid="kds-customer-note">Customer: {order.customer_notes}</p>
+        )}
 
         <div className="kds-lines">
           {order.items.map((item) => (
@@ -469,10 +527,21 @@ function App() {
               <div className="kds-line-body">
                 <div className="kds-dish">
                   {item.parent_order_item_id ? `↳ ${item.item_name}` : item.item_name}
+                  {item.variant_name && (
+                    <span className="kds-variant" data-testid="kds-variant"> · {item.variant_name}</span>
+                  )}
                 </div>
                 {item.modifiers && item.modifiers.length > 0 && (
                   <div className="kds-line-note kds-line-note--mods">
                     {item.modifiers.map((mod) => mod.modifier_name).join(" · ")}
+                  </div>
+                )}
+                {/* The cashier's per-line note — "no onions", "well done" —
+                    was sent by the till and printed on paper, but the screen
+                    dropped it. It is the one line a cook must not miss. */}
+                {item.notes && (
+                  <div className="kds-line-note kds-line-note--instruction" data-testid="kds-line-note">
+                    {item.notes}
                   </div>
                 )}
                 {/* A fixed bundle used to print as one line with its name, so

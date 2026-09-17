@@ -1293,11 +1293,20 @@ export function usePosApp() {
     canTradeDispatch, canTradeReconcile,
   ]);
 
+  /*
+   * Move off a pane the cashier can no longer use — but only once the shift
+   * is known. Sales needs an open shift, and for the first render after
+   * sign-in the shift has not been checked yet, so Sales read as forbidden
+   * and this sent the till to the first pane that did not need a shift:
+   * Events. The shift then arrived and Sales was allowed again, but nothing
+   * moved back, so every sign-in opened on "No upcoming events".
+   */
   useEffect(() => {
+    if (!isLoggedIn || !shift.ready) return;
     if (paneAllowed[pane]) return;
     const fallback = (Object.keys(paneAllowed) as Pane[]).find((p) => paneAllowed[p]);
     if (fallback) setPane(fallback);
-  }, [pane, paneAllowed]);
+  }, [isLoggedIn, shift.ready, pane, paneAllowed]);
 
   return {
     isLoggedIn, username, setUsername, pin, setPin, cashierName, staffRole, staffPermissions,

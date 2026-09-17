@@ -13,6 +13,8 @@ vi.mock("./api", async () => {
   KDS_DEVICE_ID_KEY: "kds_device_id",
   staffLogin: vi.fn(),
   fetchMe: vi.fn(),
+  registerKdsDevice: vi.fn().mockResolvedValue(undefined),
+  failureMessage: (_e: unknown, fallback: string) => fallback,
   fetchKdsOrders: vi.fn().mockResolvedValue([]),
   fetchKdsMenuGroups: vi.fn().mockResolvedValue([]),
   startOrder: vi.fn(),

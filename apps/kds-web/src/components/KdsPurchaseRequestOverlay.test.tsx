@@ -6,6 +6,8 @@ const createPurchaseRequest = vi.fn();
 const fetchRequestCatalog = vi.fn();
 const fetchItemsToReceive = vi.fn();
 const receivePurchaseRequestItem = vi.fn();
+const fetchAssignedPurchaseRequests = vi.fn();
+const markPurchaseRequestItemBought = vi.fn();
 
 vi.mock("../api", () => ({
   createPurchaseRequest: (...a: unknown[]) => createPurchaseRequest(...a),
@@ -13,8 +15,8 @@ vi.mock("../api", () => ({
   fetchItemsToReceive: (...a: unknown[]) => fetchItemsToReceive(...a),
   receivePurchaseRequestItem: (...a: unknown[]) => receivePurchaseRequestItem(...a),
   fetchMyPurchaseRequests: vi.fn().mockResolvedValue({ data: [] }),
-  fetchAssignedPurchaseRequests: vi.fn().mockResolvedValue({ data: [] }),
-  markPurchaseRequestItemBought: vi.fn(),
+  fetchAssignedPurchaseRequests: (...a: unknown[]) => fetchAssignedPurchaseRequests(...a),
+  markPurchaseRequestItemBought: (...a: unknown[]) => markPurchaseRequestItemBought(...a),
   markPurchaseRequestItemNotAvailable: vi.fn(),
   markPurchaseRequestItemPartial: vi.fn(),
 }));
@@ -37,6 +39,33 @@ describe("KdsPurchaseRequestOverlay", () => {
     fetchRequestCatalog.mockReset().mockResolvedValue(catalog);
     fetchItemsToReceive.mockReset().mockResolvedValue({ items: [] });
     receivePurchaseRequestItem.mockReset().mockResolvedValue({});
+    fetchAssignedPurchaseRequests.mockReset().mockResolvedValue({ data: [] });
+    markPurchaseRequestItemBought.mockReset().mockResolvedValue(undefined);
+  });
+
+  it("reloads the buying list after a line is marked bought, and shows a refusal", async () => {
+    // Audit, 2026-09-17: the three buyer buttons fired and forgot, so a row
+    // never changed and a refusal was never seen.
+    const line = { id: 5, name: "Chicken thigh", requested_qty: 20, requested_unit: "kg", approved_qty: null, status: "approved" };
+    fetchAssignedPurchaseRequests
+      .mockResolvedValueOnce({ data: [{ id: 2, request_no: "PR-2", status: "approved", priority: "normal", items: [line] }] })
+      .mockResolvedValueOnce({ data: [{ id: 2, request_no: "PR-2", status: "approved", priority: "normal", items: [{ ...line, status: "bought" }] }] });
+    render(<KdsPurchaseRequestOverlay token="t" mode="buying" onClose={vi.fn()} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Bought" }));
+
+    await waitFor(() => expect(markPurchaseRequestItemBought).toHaveBeenCalledWith("t", 2, 5, { actual_qty: 20 }));
+    await waitFor(() => expect(fetchAssignedPurchaseRequests).toHaveBeenCalledTimes(2));
+    expect(screen.queryByRole("button", { name: "Bought" })).toBeNull();
+    expect(screen.getByText(/\(bought\)/)).toBeInTheDocument();
+
+    markPurchaseRequestItemBought.mockRejectedValueOnce(new Error("Already bought by somebody else."));
+    fetchAssignedPurchaseRequests.mockResolvedValueOnce({ data: [{ id: 2, request_no: "PR-2", status: "approved", priority: "normal", items: [line] }] });
+    // Nothing else to press on a bought line; the refusal path is exercised
+    // through a fresh render with the line open again.
+    render(<KdsPurchaseRequestOverlay token="t" mode="buying" onClose={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Bought" }));
+    expect(await screen.findByText("Already bought by somebody else.")).toBeInTheDocument();
   });
 
   it("requests by picking, sending the item id and its unit", async () => {

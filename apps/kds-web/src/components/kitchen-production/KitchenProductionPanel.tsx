@@ -74,7 +74,9 @@ export function KitchenProductionPanel({
   };
 
   return (
-    <div style={{ padding: "12px 16px 24px" }}>
+    // The cards below are white, on a board whose text is near-white. The
+    // colour is set here so what is written on them can be read.
+    <div style={{ padding: "12px 16px 24px", color: "#1C1408" }}>
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
         {(["orders", "prepared"] as const).map((t) => (
           <button
@@ -105,10 +107,10 @@ export function KitchenProductionPanel({
       {tab === "orders" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {!canProduce && (
-            <p style={{ color: "#8B7355" }}>No production permission on this account.</p>
+            <p style={{ color: "#b6a992" }}>No production permission on this account.</p>
           )}
           {canProduce && cookingOrders.length === 0 && (
-            <p style={{ color: "#8B7355" }}>No tickets cooking right now.</p>
+            <p style={{ color: "#b6a992" }}>No tickets cooking right now.</p>
           )}
           {canProduce && cookingOrders.map((order) => (
             <div key={order.id} style={{ background: "#fff", border: "1px solid #EDE4D4", borderRadius: 12, padding: 14 }}>

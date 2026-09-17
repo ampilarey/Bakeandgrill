@@ -385,7 +385,7 @@ export function TicketRow({
               lineHeight: 1.35,
             }}
           >
-            {(t.items?.length ?? 0)} items
+            {(t.items?.length ?? 0)} {(t.items?.length ?? 0) === 1 ? "item" : "items"}
             {typeLabel ? ` · ${typeEmoji ? `${typeEmoji} ` : ""}${typeLabel}` : ""}
             {t.type === "delivery" && t.delivery_island ? ` · ${t.delivery_island}` : ""}
             {ageIso ? (

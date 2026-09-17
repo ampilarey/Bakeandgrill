@@ -53,16 +53,17 @@ class SseStreamService
             function () use ($orderId, $fetchEvents, $initialCursor): void {
                 $this->disableOutputBuffering();
 
-                // First emit any events since the cursor (catch-up)
+                // First emit any events since the cursor (catch-up). The
+                // heartbeat goes first so the headers leave now rather than
+                // with the first Redis message (see runDbPollingLoop).
+                echo StreamEvent::heartbeat();
                 $cursor = $initialCursor;
                 $events = $fetchEvents($cursor);
                 foreach ($events as $event) {
                     echo $event->toSseString();
                     $cursor = $event->id;
                 }
-                if (!empty($events)) {
-                    flush();
-                }
+                flush();
 
                 $startedAt = time();
 
@@ -135,6 +136,13 @@ class SseStreamService
     {
         $startedAt = time();
         $lastHeartbeat = time();
+
+        // Say hello at once. Until the first byte goes out, the headers do
+        // not either, so a client's connect() sat unresolved for a full
+        // heartbeat interval — fifteen seconds of "○ Polling" on the kitchen
+        // display after every sign-in and every five-minute stream rotate.
+        echo StreamEvent::heartbeat();
+        flush();
 
         while (true) {
             if (connection_aborted()) {

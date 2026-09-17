@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   createPurchaseRequest,
   fetchAssignedPurchaseRequests,
@@ -59,11 +59,14 @@ export function KdsPurchaseRequestOverlay({ token, mode, onClose }: Props) {
   // Receiving
   const [toReceive, setToReceive] = useState<KdsToReceiveItem[]>([]);
 
+  const loadRows = useCallback(() => {
+    const fetcher = mode === "my" ? fetchMyPurchaseRequests : fetchAssignedPurchaseRequests;
+    return fetcher(token).then((r) => setRows(r.data ?? [])).catch((e) => setErr((e as Error).message));
+  }, [mode, token]);
+
   useEffect(() => {
-    if (mode === "my") {
-      void fetchMyPurchaseRequests(token).then((r) => setRows(r.data ?? [])).catch((e) => setErr((e as Error).message));
-    } else if (mode === "buying") {
-      void fetchAssignedPurchaseRequests(token).then((r) => setRows(r.data ?? [])).catch((e) => setErr((e as Error).message));
+    if (mode === "my" || mode === "buying") {
+      void loadRows();
     } else if (mode === "receive") {
       void fetchItemsToReceive(token).then((r) => setToReceive(r.items ?? [])).catch((e) => setErr((e as Error).message));
     } else {
@@ -71,7 +74,25 @@ export function KdsPurchaseRequestOverlay({ token, mode, onClose }: Props) {
         .then((r) => { setCatalog(r.items ?? []); setCategories(r.categories ?? []); })
         .catch((e) => setErr((e as Error).message));
     }
-  }, [mode, token]);
+  }, [mode, token, loadRows]);
+
+  /*
+   * A buying-list action used to fire and forget: the row kept its three
+   * buttons whatever the server said, so a buyer who tapped Bought saw no
+   * change and tapped again. Now the list reloads and a refusal is shown.
+   */
+  const buyerAction = async (run: () => Promise<void>) => {
+    setBusy(true);
+    setErr("");
+    try {
+      await run();
+      await loadRows();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const visible = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -154,7 +175,8 @@ export function KdsPurchaseRequestOverlay({ token, mode, onClose }: Props) {
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 50, background: "rgba(15,23,42,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-      <div role="dialog" aria-label={title} style={{ background: "#fff", borderRadius: 12, width: "min(520px, 100%)", maxHeight: "90vh", overflow: "auto", padding: 20 }}>
+      {/* The board's text is near-white; on this white card it must not be. */}
+      <div role="dialog" aria-label={title} style={{ background: "#fff", color: "#1C1408", borderRadius: 12, width: "min(520px, 100%)", maxHeight: "90vh", overflow: "auto", padding: 20 }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
           <h2 style={{ margin: 0, fontSize: 18 }}>{title}</h2>
           <button type="button" onClick={onClose} aria-label="Close" style={{ border: "none", background: "none", fontSize: 20, cursor: "pointer" }}>×</button>
@@ -276,20 +298,42 @@ export function KdsPurchaseRequestOverlay({ token, mode, onClose }: Props) {
             {rows.length === 0 ? <p style={{ color: "#8B7355" }}>Nothing here.</p> : rows.map((r) => (
               <div key={r.id} style={{ border: "1px solid #EDE4D4", borderRadius: 8, padding: 10 }}>
                 <div style={{ fontWeight: 700 }}>{r.request_no}</div>
-                <div style={{ fontSize: 12, color: "#8B7355" }}>{r.status} · {r.priority}</div>
+                <div style={{ fontSize: 12, color: "#8B7355" }}>{r.status.replace(/_/g, " ")} · {r.priority}</div>
                 <ul style={{ margin: "8px 0 0", paddingLeft: 16, fontSize: 13 }}>
-                  {r.items.map((item) => (
-                    <li key={item.id} style={{ marginBottom: 6 }}>
-                      {item.name} — {item.approved_qty ?? item.requested_qty} {item.requested_unit}
-                      {mode === "buying" && !["received", "not_available", "bought"].includes(item.status) && (
-                        <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
-                          <button type="button" onClick={() => void markPurchaseRequestItemBought(token, r.id, item.id, { actual_qty: item.approved_qty ?? item.requested_qty })} style={{ fontSize: 11, padding: "4px 8px", borderRadius: 6, border: "none", background: "#047857", color: "#fff", cursor: "pointer" }}>Bought</button>
-                          <button type="button" onClick={() => void markPurchaseRequestItemPartial(token, r.id, item.id, { actual_qty: (item.approved_qty ?? item.requested_qty) / 2 })} style={{ fontSize: 11, padding: "4px 8px", borderRadius: 6, border: "1px solid #EDE4D4", cursor: "pointer" }}>Partial</button>
-                          <button type="button" onClick={() => void markPurchaseRequestItemNotAvailable(token, r.id, item.id)} style={{ fontSize: 11, padding: "4px 8px", borderRadius: 6, border: "1px solid #EDE4D4", cursor: "pointer" }}>N/A</button>
-                        </div>
-                      )}
-                    </li>
-                  ))}
+                  {r.items.map((item) => {
+                    const qty = item.approved_qty ?? item.requested_qty;
+                    const open = !["received", "not_available", "bought", "partial"].includes(item.status);
+                    const btn = (primary: boolean) => ({
+                      minHeight: 40, fontSize: 12, fontWeight: 700 as const, padding: "0 12px", borderRadius: 8,
+                      border: primary ? "none" : "1px solid #EDE4D4", background: primary ? "#047857" : "#fff",
+                      color: primary ? "#fff" : "#1C1408", cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.6 : 1,
+                    });
+
+                    return (
+                      <li key={item.id} style={{ marginBottom: 6 }}>
+                        {item.name} — {qty} {item.requested_unit}
+                        {!open && <span style={{ marginLeft: 6, fontSize: 11, color: "#8B7355" }}>({item.status.replace(/_/g, " ")})</span>}
+                        {mode === "buying" && open && (
+                          <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
+                            <button type="button" disabled={busy} onClick={() => void buyerAction(() => markPurchaseRequestItemBought(token, r.id, item.id, { actual_qty: qty }))} style={btn(true)}>Bought</button>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => {
+                                // Half was assumed before; the buyer knows how much came.
+                                const typed = window.prompt(`How much of ${item.name} did you get? (asked for ${qty} ${item.requested_unit})`, "");
+                                const got = Number.parseFloat(typed ?? "");
+                                if (!Number.isFinite(got) || got <= 0) return;
+                                void buyerAction(() => markPurchaseRequestItemPartial(token, r.id, item.id, { actual_qty: got }));
+                              }}
+                              style={btn(false)}
+                            >Partial</button>
+                            <button type="button" disabled={busy} onClick={() => void buyerAction(() => markPurchaseRequestItemNotAvailable(token, r.id, item.id))} style={btn(false)}>Not available</button>
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             ))}
