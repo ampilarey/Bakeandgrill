@@ -78,6 +78,30 @@ function slotHours(from: number, to: number): string {
   return `${h(from)}–${h(to)}`;
 }
 
+/*
+ * Owner, 2026-09-17: "admin/manager assign and requests items that should
+ * be made for tomorrow and assign time and staff to do that, so when he
+ * prepares and cashier receives the amount it will be in the prepared list
+ * and will be added to the stock."
+ *
+ * A cook and a time per slot. Every line of the slot is saved with them,
+ * and the cook's KDS lists the lines as the day's jobs.
+ */
+type SlotAssignment = { assigned_to: string; assigned_name: string | null; due_time: string };
+
+function assignmentsFrom(p: ProductionPlan): Record<string, SlotAssignment> {
+  const out: Record<string, SlotAssignment> = {};
+  for (const slot of p.slots) {
+    const row = p.items.map((it) => it.slots[slot.key]).find((r) => r && (r.assigned_to != null || r.due_time));
+    out[slot.key] = {
+      assigned_to: row?.assigned_to != null ? String(row.assigned_to) : '',
+      assigned_name: row?.assigned_name ?? null,
+      due_time: row?.due_time ?? '',
+    };
+  }
+  return out;
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 // ─── Plan ─────────────────────────────────────────────────────────────────────
@@ -89,6 +113,7 @@ export function PlanTab({ canManage }: { canManage: boolean }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [drafts, setDrafts] = useState<Record<string, Record<string, string>>>({});
+  const [assign, setAssign] = useState<Record<string, SlotAssignment>>({});
   const [open, setOpen] = useState<string | null>(null);
   const [showHidden, setShowHidden] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -98,8 +123,10 @@ export function PlanTab({ canManage }: { canManage: boolean }) {
     setLoading(true);
     setError('');
     try {
-      setPlan(await getProductionPlan(d));
+      const p = await getProductionPlan(d);
+      setPlan(p);
       setDrafts({});
+      setAssign(assignmentsFrom(p));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load the plan.');
     } finally {
@@ -129,6 +156,11 @@ export function PlanTab({ canManage }: { canManage: boolean }) {
 
   const setDraft = (key: string, slotKey: string, value: string) =>
     setDrafts((d) => ({ ...d, [key]: { ...(d[key] ?? {}), [slotKey]: value } }));
+  const setAssignment = (slotKey: string, patch: Partial<SlotAssignment>) =>
+    setAssign((a) => {
+      const current: SlotAssignment = a[slotKey] ?? { assigned_to: '', assigned_name: null, due_time: '' };
+      return { ...a, [slotKey]: { ...current, ...patch } };
+    });
 
   const shift = (days: number) => {
     const d = new Date(`${date}T12:00:00`);
@@ -145,6 +177,7 @@ export function PlanTab({ canManage }: { canManage: boolean }) {
       const lines: PlanCommitLine[] = [];
       for (const item of items) {
         for (const slot of plan.slots) {
+          const a = assign[slot.key];
           lines.push({
             item_id: item.item_id,
             variant_id: item.variant_id,
@@ -153,6 +186,8 @@ export function PlanTab({ canManage }: { canManage: boolean }) {
             slot_label: slot.label,
             forecast_qty: item.slots[slot.key].forecast,
             planned_qty: plannedFor(item, slot.key),
+            assigned_to: a?.assigned_to ? Number(a.assigned_to) : null,
+            due_time: a?.due_time ? a.due_time : null,
           });
         }
       }
@@ -202,6 +237,17 @@ export function PlanTab({ canManage }: { canManage: boolean }) {
 
       {!loading && plan && !plan.closed && !plan.history.enough && (
         <EmptyState message={`Only ${plan.history.open_days} trading day${plan.history.open_days === 1 ? '' : 's'} of sales so far. The plan needs at least a week of completed orders before it can say anything useful.`} />
+      )}
+
+      {!loading && plan && !plan.closed && plan.history.enough && items.length > 0 && (
+        <WhoMakesIt
+          plan={plan}
+          assign={assign}
+          onChange={setAssignment}
+          isMobile={isMobile}
+          plannedIn={(slotKey) => items.reduce((sum, it) => sum + plannedFor(it, slotKey), 0)}
+          items={items}
+        />
       )}
 
       {!loading && plan && !plan.closed && plan.history.enough && (
@@ -291,6 +337,76 @@ export function PlanTab({ canManage }: { canManage: boolean }) {
   );
 }
 
+function WhoMakesIt({ plan, assign, onChange, isMobile, plannedIn, items }: {
+  plan: ProductionPlan;
+  assign: Record<string, SlotAssignment>;
+  onChange: (slotKey: string, patch: Partial<SlotAssignment>) => void;
+  isMobile: boolean;
+  plannedIn: (slotKey: string) => number;
+  items: PlanItem[];
+}) {
+  const progress = (slotKey: string): { made: number; received: number; saved: boolean } => {
+    let made = 0;
+    let received = 0;
+    let saved = false;
+    for (const it of items) {
+      const row = it.slots[slotKey];
+      if (!row) continue;
+      if (row.made != null || row.received != null) saved = true;
+      made += row.made ?? 0;
+      received += row.received ?? 0;
+    }
+    return { made, received, saved };
+  };
+
+  return (
+    <Card data-testid="plan-assign">
+      <h3 style={{ margin: '0 0 4px', fontSize: 15 }}>Who makes it</h3>
+      <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 12px', lineHeight: 1.5 }}>
+        A cook and a time for each slot. Saving the plan puts its lines on their KDS as the day's jobs. What they send
+        to the counter shows here as <b>made</b>; what the counter takes in shows as <b>received</b> and goes into prepared stock.
+      </p>
+      <div style={{ display: 'grid', gap: 10 }}>
+        {plan.slots.map((slot) => {
+          const a = assign[slot.key] ?? { assigned_to: '', assigned_name: null, due_time: '' };
+          const known = plan.assignees.some((u) => String(u.id) === a.assigned_to);
+          const options = [
+            { value: '', label: '— nobody yet —' },
+            ...plan.assignees.map((u) => ({ value: String(u.id), label: u.name })),
+            ...(a.assigned_to && !known ? [{ value: a.assigned_to, label: `${a.assigned_name ?? 'Former staff'} (no longer active)` }] : []),
+          ];
+          const p = progress(slot.key);
+          return (
+            <div
+              key={slot.key}
+              data-testid={`plan-assign-${slot.key}`}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : 'minmax(120px, 1fr) minmax(180px, 2fr) 140px minmax(160px, 2fr)',
+                gap: 8,
+                alignItems: 'center',
+              }}
+            >
+              <div style={{ fontSize: 13, fontWeight: 600 }}>
+                {slot.label} <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>{slotHours(slot.from, slot.to)}</span>
+              </div>
+              <Select aria-label={`${slot.label} cook`} options={options} value={a.assigned_to} onChange={(v) => onChange(slot.key, { assigned_to: v })} />
+              <Input aria-label={`${slot.label} due by`} id={`plan-due-${slot.key}`} type="time" value={a.due_time} onChange={(v) => onChange(slot.key, { due_time: v })} />
+              <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }} data-testid={`plan-slot-progress-${slot.key}`}>
+                {plannedIn(slot.key) === 0 && p.made === 0
+                  ? 'nothing in this slot'
+                  : p.saved
+                    ? `made ${q(p.made)} of ${q(plannedIn(slot.key))} · counter got ${q(p.received)}`
+                    : `${q(plannedIn(slot.key))} to make`}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
 function DayStrip({ plan }: { plan: ProductionPlan }) {
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginTop: 12, fontSize: 13 }} data-testid="plan-day-strip">
@@ -345,6 +461,8 @@ function SlotHints({ item, slotKey, reviewing }: { item: PlanItem; slotKey: stri
         </span>
       )}
       {row.saved_planned != null && <span title="Saved plan">saved {q(row.saved_planned)}</span>}
+      {row.made != null && row.made > 0 && <span title="Sent to the counter by the kitchen">made {q(row.made)}</span>}
+      {row.received != null && row.received > 0 && <span title="Taken in at the counter">counter got {q(row.received)}</span>}
     </div>
   );
 }
@@ -396,6 +514,7 @@ function PlanRow({ item, plan, reviewing, drafts, plannedFor, dayTotal, onDraft,
             ≈ {q(item.day.forecast)}
             {reviewing && item.day.actual != null ? ` · sold ${q(item.day.actual)}` : ''}
             {reviewing && item.day.made != null && item.day.made > 0 ? ` · made ${q(item.day.made)}` : ''}
+            {item.day.received != null && item.day.received > 0 ? ` · counter got ${q(item.day.received)}` : ''}
           </div>
         </td>
         <td style={{ ...TD, fontSize: 12 }} data-testid={`plan-customers-${item.key}`}>
@@ -653,6 +772,7 @@ export function PlanAccuracyTab() {
           <Select label="Looking back" value={String(weeks)} onChange={(v) => setWeeks(Number(v))} options={[2, 4, 8, 12].map((w) => ({ value: String(w), label: `${w} weeks` }))} />
           <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)', flex: 1 }}>
             Every saved plan, marked against what then sold. <b>Enough</b> is a slot that neither ran out nor sold more than was planned.
+            <b> Made</b> is what the kitchen sent to the counter; <b>received</b> is what the counter took in.
           </p>
         </div>
       </Card>
@@ -663,6 +783,7 @@ export function PlanAccuracyTab() {
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }} data-testid="accuracy-totals">
             <StatCard label="Days planned" value={String(data.days)} sub={`${t.n} item-slots`} />
+            <StatCard label="Made" value={q(t.made)} sub={`of ${q(t.planned)} planned · ${q(t.received)} received`} accent="var(--color-primary)" />
             <StatCard label="Enough" value={pct(t.enough_pct)} sub="slots that covered demand" accent="var(--color-success)" />
             <StatCard label="Model bias" value={t.bias_pct == null ? '—' : `${t.bias_pct > 0 ? '+' : ''}${t.bias_pct}%`} sub="forecast vs sold" accent="var(--color-warning)" />
             <StatCard label="Over-made" value={q(t.over)} sub="planned beyond what sold" accent="var(--color-danger)" />
@@ -676,6 +797,8 @@ export function PlanAccuracyTab() {
                   <th style={{ ...TH, textAlign: 'right' }}>Slots</th>
                   <th style={{ ...TH, textAlign: 'right' }}>Forecast</th>
                   <th style={{ ...TH, textAlign: 'right' }}>Planned</th>
+                  <th style={{ ...TH, textAlign: 'right' }}>Made</th>
+                  <th style={{ ...TH, textAlign: 'right' }}>Received</th>
                   <th style={{ ...TH, textAlign: 'right' }}>Sold</th>
                   <th style={{ ...TH, textAlign: 'right' }}>Over</th>
                   <th style={{ ...TH, textAlign: 'right' }}>Short</th>
@@ -690,6 +813,8 @@ export function PlanAccuracyTab() {
                     <td style={{ ...TD, textAlign: 'right' }}>{row.n}</td>
                     <td style={{ ...TD, textAlign: 'right' }}>{q(row.forecast)}</td>
                     <td style={{ ...TD, textAlign: 'right' }}>{q(row.planned)}</td>
+                    <td style={{ ...TD, textAlign: 'right' }}>{q(row.made)}</td>
+                    <td style={{ ...TD, textAlign: 'right' }}>{q(row.received)}</td>
                     <td style={{ ...TD, textAlign: 'right' }}>{q(row.actual)}</td>
                     <td style={{ ...TD, textAlign: 'right' }}>{q(row.over)}</td>
                     <td style={{ ...TD, textAlign: 'right' }}>{q(row.short)}{row.sold_out > 0 ? ` (${row.sold_out} ran out)` : ''}</td>
@@ -700,6 +825,38 @@ export function PlanAccuracyTab() {
               </tbody>
             </table>
           </TableCard>
+          {data.cooks.length > 0 && (
+            <TableCard>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }} data-testid="accuracy-cooks">
+                <thead>
+                  <tr>
+                    <th style={TH}>Cook</th>
+                    <th style={{ ...TH, textAlign: 'right' }}>Jobs</th>
+                    <th style={{ ...TH, textAlign: 'right' }}>Planned</th>
+                    <th style={{ ...TH, textAlign: 'right' }}>Made</th>
+                    <th style={{ ...TH, textAlign: 'right' }}>Received</th>
+                    <th style={{ ...TH, textAlign: 'right' }}>On time</th>
+                    <th style={{ ...TH, textAlign: 'right' }}>Late</th>
+                    <th style={{ ...TH, textAlign: 'right' }}>Not made</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.cooks.map((c) => (
+                    <tr key={c.id} data-testid={`accuracy-cook-${c.id}`}>
+                      <td style={TD}>{c.name}</td>
+                      <td style={{ ...TD, textAlign: 'right' }}>{c.n}</td>
+                      <td style={{ ...TD, textAlign: 'right' }}>{q(c.planned)}</td>
+                      <td style={{ ...TD, textAlign: 'right' }}>{q(c.made)}{c.made_pct != null ? ` (${c.made_pct}%)` : ''}</td>
+                      <td style={{ ...TD, textAlign: 'right' }}>{q(c.received)}</td>
+                      <td style={{ ...TD, textAlign: 'right', color: 'var(--color-success-strong)' }}>{c.on_time}</td>
+                      <td style={{ ...TD, textAlign: 'right', color: c.late > 0 ? 'var(--color-warning)' : 'inherit' }}>{c.late}</td>
+                      <td style={{ ...TD, textAlign: 'right', color: c.not_made > 0 ? 'var(--color-danger)' : 'inherit' }}>{c.not_made}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TableCard>
+          )}
           {data.records.length > 0 && (
             <TableCard>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -708,8 +865,11 @@ export function PlanAccuracyTab() {
                     <th style={TH}>Day</th>
                     <th style={TH}>Slot</th>
                     <th style={TH}>Item</th>
+                    <th style={TH}>Cook</th>
                     <th style={{ ...TH, textAlign: 'right' }}>Forecast</th>
                     <th style={{ ...TH, textAlign: 'right' }}>Planned</th>
+                    <th style={{ ...TH, textAlign: 'right' }}>Made</th>
+                    <th style={{ ...TH, textAlign: 'right' }}>Received</th>
                     <th style={{ ...TH, textAlign: 'right' }}>Sold</th>
                   </tr>
                 </thead>
@@ -719,8 +879,11 @@ export function PlanAccuracyTab() {
                       <td style={TD}>{r.weekday} {r.date}</td>
                       <td style={TD}>{r.slot_label}</td>
                       <td style={TD}>{r.name}</td>
+                      <td style={{ ...TD, fontSize: 12 }}>{r.cook ?? '—'}{r.due_time ? ` by ${r.due_time}` : ''}</td>
                       <td style={{ ...TD, textAlign: 'right' }}>{q(r.forecast)}</td>
                       <td style={{ ...TD, textAlign: 'right' }}>{q(r.planned)}</td>
+                      <td style={{ ...TD, textAlign: 'right' }}>{q(r.made)}</td>
+                      <td style={{ ...TD, textAlign: 'right' }}>{q(r.received)}</td>
                       <td style={{ ...TD, textAlign: 'right', color: r.sold_out ? 'var(--color-danger)' : r.actual > r.planned ? 'var(--color-warning)' : 'inherit' }}>
                         {q(r.actual)}{r.sold_out ? ' ran out' : ''}
                       </td>

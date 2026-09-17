@@ -61,6 +61,8 @@ vi.mock("./api", async () => {
     markPurchaseRequestItemBought: vi.fn(),
     markPurchaseRequestItemPartial: vi.fn(),
     markPurchaseRequestItemNotAvailable: vi.fn(),
+    fetchPlanTasks: vi.fn().mockResolvedValue({ date: "", tasks: [] }),
+    markPlanTaskMade: vi.fn(),
     hasKdsPermission: (perms: string[], slug: string) => perms.includes(slug),
   };
 });

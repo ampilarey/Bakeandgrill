@@ -13,6 +13,7 @@ use App\Models\KitchenReceivingBatch;
 use App\Models\KitchenReceivingItem;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\ProductionPlanRecord;
 use App\Models\User;
 use App\Models\Variant;
 use Illuminate\Http\Request;
@@ -366,6 +367,16 @@ class KitchenReceivingService
 
         $stockUnits = max(0, (int) round($incremental, 0, PHP_ROUND_HALF_UP));
         $this->applyPreparedStock($receivingBatch, $prodItem, $stockUnits, $user, $targetCumulative);
+
+        // A batch made off the day's plan tells the plan line what the
+        // counter took in, so "How it did" can show planned, made and
+        // received side by side.
+        if ($prodItem->production_plan_record_id) {
+            $record = ProductionPlanRecord::query()->whereKey($prodItem->production_plan_record_id)->lockForUpdate()->first();
+            if ($record) {
+                $record->forceFill(['received_qty' => (float) $record->received_qty + $incremental])->save();
+            }
+        }
 
         $this->audit->log(
             'kitchen.receiving.received',

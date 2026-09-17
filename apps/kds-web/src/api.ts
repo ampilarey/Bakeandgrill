@@ -254,6 +254,58 @@ export async function submitKitchenProductionBatch(token: string, batchId: numbe
   });
 }
 
+/*
+ * Owner, 2026-09-17: "admin/manager assign and requests items that should
+ * be made for tomorrow and assign time and staff to do that, so when he
+ * prepares and cashier receives the amount it will be in the prepared list
+ * and will be added to the stock."
+ *
+ * The day's plan, line by line, as the kitchen's jobs. Sending what was
+ * made creates and submits a prepared-stock batch tied to the line, so the
+ * counter receives it like any other and the plan fills in by itself.
+ */
+export type KdsPlanTask = {
+  id: number;
+  item_id: number;
+  variant_id: number;
+  name: string;
+  slot_label: string;
+  slot_start: number;
+  slot_end: number;
+  slot_time: string;
+  planned_qty: number;
+  made_qty: number;
+  received_qty: number;
+  remaining: number;
+  assigned_to: number | null;
+  assigned_name: string | null;
+  due_time: string | null;
+  made_at: string | null;
+  made_by_name: string | null;
+  status: 'todo' | 'partial' | 'made' | 'received';
+};
+
+export async function fetchPlanTasks(token: string, date?: string): Promise<{ date: string; tasks: KdsPlanTask[] }> {
+  const data = await request<{ date: string; tasks: KdsPlanTask[] }>(
+    `/production-plan/tasks${date ? `?date=${encodeURIComponent(date)}` : ''}`,
+    { headers: authHeaders(token) },
+  );
+  return { date: data.date, tasks: data.tasks ?? [] };
+}
+
+export async function markPlanTaskMade(
+  token: string,
+  taskId: number,
+  qty: number,
+  notes?: string,
+): Promise<{ task: KdsPlanTask }> {
+  return request(`/production-plan/tasks/${taskId}/made`, {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify({ qty, ...(notes ? { notes } : {}) }),
+  });
+}
+
 export async function printKitchenTicket(token: string, orderId: number): Promise<void> {
   await request<void>(ENDPOINTS.KDS_ORDER_PRINT_TICKET(orderId), {
     method: 'POST',

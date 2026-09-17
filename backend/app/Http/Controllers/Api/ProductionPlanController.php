@@ -7,12 +7,14 @@ namespace App\Http\Controllers\Api;
 use App\Domains\Kitchen\Services\CustomerHabits;
 use App\Domains\Kitchen\Services\ProductionCalendar;
 use App\Domains\Kitchen\Services\ProductionPlanner;
+use App\Domains\Kitchen\Services\ProductionTasks;
 use App\Domains\Kitchen\Support\PlanSlots;
 use App\Http\Controllers\Controller;
 use App\Models\Item;
 use App\Models\ProductionCalendarPeriod;
 use App\Models\ProductionPlanItem;
 use App\Models\ProductionPlanRecord;
+use App\Models\User;
 use App\Models\Variant;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -21,7 +23,9 @@ use Illuminate\Validation\Rule;
 
 /**
  * The production plan: what to make for a day, the calendar of days that
- * are not ordinary, the dials per item, and how past plans fared.
+ * are not ordinary, the dials per item, how past plans fared — and, since
+ * 2026-09-17, the plan as the kitchen's task list: who makes what by when,
+ * what they made, and what the counter took in.
  */
 class ProductionPlanController extends Controller
 {
@@ -29,6 +33,7 @@ class ProductionPlanController extends Controller
         private readonly ProductionPlanner $planner,
         private readonly ProductionCalendar $calendar,
         private readonly CustomerHabits $habits,
+        private readonly ProductionTasks $tasks,
     ) {}
 
     /** GET /production-plan?date=YYYY-MM-DD (default: tomorrow) */
@@ -39,7 +44,40 @@ class ProductionPlanController extends Controller
         ]);
         $date = $validated['date'] ?? Carbon::now(config('app.timezone'))->addDay()->toDateString();
 
-        return response()->json($this->planner->plan($date));
+        $plan = $this->planner->plan($date);
+        $plan['assignees'] = $this->tasks->assignees();
+
+        return response()->json($plan);
+    }
+
+    /** GET /production-plan/tasks?date=YYYY-MM-DD (default: today) — the day's jobs for the kitchen. */
+    public function tasks(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'date' => ['nullable', 'date_format:Y-m-d'],
+        ]);
+        $date = $validated['date'] ?? Carbon::now(config('app.timezone'))->toDateString();
+
+        return response()->json($this->tasks->forDate($date));
+    }
+
+    /** POST /production-plan/tasks/{id}/made — the cook made some and is sending it to the counter. */
+    public function taskMade(Request $request, int $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'qty' => ['required', 'numeric', 'min:0.001', 'max:100000'],
+            'notes' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $record = ProductionPlanRecord::query()->findOrFail($id);
+        /** @var User $user */
+        $user = $request->user();
+        $result = $this->tasks->made($record, $user, (float) $validated['qty'], $validated['notes'] ?? null, $request);
+
+        return response()->json([
+            'task' => $result['task'],
+            'batch' => KitchenProductionController::formatBatch($result['batch']),
+        ], 201);
     }
 
     /** GET /production-plan/settings */
@@ -169,11 +207,28 @@ class ProductionPlanController extends Controller
             'lines.*.slot_label' => ['nullable', 'string', 'max:40'],
             'lines.*.forecast_qty' => ['required', 'numeric', 'min:0', 'max:100000'],
             'lines.*.planned_qty' => ['required', 'numeric', 'min:0', 'max:100000'],
+            // Who makes it and by when. Left out of a line, the line keeps
+            // whatever it had; sent as null, it is cleared.
+            'lines.*.assigned_to' => ['nullable', 'integer', 'exists:users,id'],
+            'lines.*.due_time' => ['nullable', 'date_format:H:i'],
         ]);
 
         $userId = $request->user()?->id;
         $saved = 0;
         foreach ($validated['lines'] as $line) {
+            $values = [
+                'slot_end' => (int) $line['slot_end'],
+                'slot_label' => $line['slot_label'] ?? null,
+                'forecast_qty' => (float) $line['forecast_qty'],
+                'planned_qty' => (float) $line['planned_qty'],
+                'created_by' => $userId,
+            ];
+            if (array_key_exists('assigned_to', $line)) {
+                $values['assigned_to'] = $line['assigned_to'] !== null ? (int) $line['assigned_to'] : null;
+            }
+            if (array_key_exists('due_time', $line)) {
+                $values['due_time'] = $line['due_time'] !== null ? (string) $line['due_time'] : null;
+            }
             ProductionPlanRecord::query()->updateOrCreate(
                 [
                     'plan_date' => $validated['date'],
@@ -181,13 +236,7 @@ class ProductionPlanController extends Controller
                     'item_id' => (int) $line['item_id'],
                     'variant_id' => (int) ($line['variant_id'] ?? 0),
                 ],
-                [
-                    'slot_end' => (int) $line['slot_end'],
-                    'slot_label' => $line['slot_label'] ?? null,
-                    'forecast_qty' => (float) $line['forecast_qty'],
-                    'planned_qty' => (float) $line['planned_qty'],
-                    'created_by' => $userId,
-                ],
+                $values,
             );
             $saved++;
         }

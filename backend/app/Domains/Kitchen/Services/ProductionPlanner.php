@@ -9,6 +9,7 @@ use App\Domains\Kitchen\Support\WeightedStats;
 use App\Models\Item;
 use App\Models\ProductionPlanItem;
 use App\Models\ProductionPlanRecord;
+use App\Models\User;
 use App\Models\Variant;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -125,8 +126,13 @@ final class ProductionPlanner
         /** @var Collection<string, ProductionPlanItem> $config */
         $config = ProductionPlanItem::query()->get()
             ->keyBy(fn (ProductionPlanItem $c) => SalesHistory::key((int) $c->item_id, (int) $c->variant_id));
-        $saved = ProductionPlanRecord::query()->where('plan_date', $targetDate)->get()
+        $savedRecords = ProductionPlanRecord::query()->where('plan_date', $targetDate)->get();
+        $saved = $savedRecords
             ->groupBy(fn (ProductionPlanRecord $r) => SalesHistory::key((int) $r->item_id, (int) $r->variant_id));
+        $assigneeIds = $savedRecords->pluck('assigned_to')->filter()->map(fn ($id) => (int) $id)->unique()->values()->all();
+        $assigneeNames = $assigneeIds === []
+            ? collect()
+            : User::query()->whereIn('id', $assigneeIds)->pluck('name', 'id');
 
         $keys = array_values(array_unique(array_merge(
             array_keys($sales['items']),
@@ -173,6 +179,12 @@ final class ProductionPlanner
             foreach ($forecast['slots'] as $slotKey => &$slotRow) {
                 $record = $savedRows?->first(fn (ProductionPlanRecord $r) => (string) $r->slot_start === (string) $slotKey);
                 $slotRow['saved_planned'] = $record ? (float) $record->planned_qty : null;
+                // The task side of the line: who, by when, and how it went.
+                $slotRow['assigned_to'] = $record?->assigned_to !== null ? (int) $record->assigned_to : null;
+                $slotRow['assigned_name'] = $record?->assigned_to !== null ? ($assigneeNames->get((int) $record->assigned_to) ?? null) : null;
+                $slotRow['due_time'] = $record?->due_time;
+                $slotRow['made'] = $record ? round((float) ($record->made_qty ?? 0.0), 1) : null;
+                $slotRow['received'] = $record ? round((float) ($record->received_qty ?? 0.0), 1) : null;
                 $cell = $actual[$key][$targetDate][$slotKey] ?? null;
                 $slotRow['actual'] = $reviewing ? (float) ($cell['qty'] ?? 0.0) : null;
                 if ($reviewing) {
@@ -192,6 +204,9 @@ final class ProductionPlanner
                 : null;
             $forecast['day']['saved_planned'] = $savedRows
                 ? round((float) $savedRows->sum('planned_qty'), 1)
+                : null;
+            $forecast['day']['received'] = $savedRows
+                ? round((float) $savedRows->sum(fn (ProductionPlanRecord $r) => (float) ($r->received_qty ?? 0.0)), 1)
                 : null;
 
             $out['items'][] = [
@@ -248,11 +263,16 @@ final class ProductionPlanner
             'days' => 0,
             'totals' => null,
             'items' => [],
+            'cooks' => [],
             'records' => [],
         ];
         if ($records->isEmpty()) {
             return $out;
         }
+
+        $cookIds = $records->pluck('assigned_to')->merge($records->pluck('made_by'))->filter()->map(fn ($id) => (int) $id)->unique()->values()->all();
+        $cookNames = $cookIds === [] ? collect() : User::query()->whereIn('id', $cookIds)->pluck('name', 'id');
+        $perCook = [];
 
         $first = $records->min(fn (ProductionPlanRecord $r) => $r->plan_date->toDateString());
         $last = $records->max(fn (ProductionPlanRecord $r) => $r->plan_date->toDateString());
@@ -263,7 +283,7 @@ final class ProductionPlanner
         [$items, $variants] = $this->catalogue($keys);
 
         $perItem = [];
-        $totals = ['n' => 0, 'forecast' => 0.0, 'planned' => 0.0, 'actual' => 0.0, 'over' => 0.0, 'short' => 0.0, 'sold_out' => 0, 'enough' => 0, 'abs_error' => 0.0];
+        $totals = ['n' => 0, 'forecast' => 0.0, 'planned' => 0.0, 'actual' => 0.0, 'made' => 0.0, 'received' => 0.0, 'over' => 0.0, 'short' => 0.0, 'sold_out' => 0, 'enough' => 0, 'abs_error' => 0.0];
         $dates = [];
 
         foreach ($records as $record) {
@@ -280,6 +300,8 @@ final class ProductionPlanner
 
             $planned = (float) $record->planned_qty;
             $forecast = (float) $record->forecast_qty;
+            $made = (float) ($record->made_qty ?? 0.0);
+            $received = (float) ($record->received_qty ?? 0.0);
             $over = max(0.0, $planned - $actualQty);
             $short = max(0.0, $actualQty - $planned);
             $enough = !$soldOut && $actualQty <= $planned;
@@ -289,13 +311,34 @@ final class ProductionPlanner
             $variant = $variantId > 0 ? $variants->get($variantId) : null;
             $name = $item ? ($variant ? $item->name . ' — ' . $variant->name : $item->name) : 'Deleted item';
 
-            $row = $perItem[$key] ?? ['key' => $key, 'name' => $name, 'n' => 0, 'forecast' => 0.0, 'planned' => 0.0, 'actual' => 0.0, 'over' => 0.0, 'short' => 0.0, 'sold_out' => 0, 'enough' => 0, 'abs_error' => 0.0];
-            foreach (['n' => 1, 'forecast' => $forecast, 'planned' => $planned, 'actual' => $actualQty, 'over' => $over, 'short' => $short, 'sold_out' => $soldOut ? 1 : 0, 'enough' => $enough ? 1 : 0, 'abs_error' => abs($forecast - $actualQty)] as $field => $delta) {
+            $row = $perItem[$key] ?? ['key' => $key, 'name' => $name, 'n' => 0, 'forecast' => 0.0, 'planned' => 0.0, 'actual' => 0.0, 'made' => 0.0, 'received' => 0.0, 'over' => 0.0, 'short' => 0.0, 'sold_out' => 0, 'enough' => 0, 'abs_error' => 0.0];
+            foreach (['n' => 1, 'forecast' => $forecast, 'planned' => $planned, 'actual' => $actualQty, 'made' => $made, 'received' => $received, 'over' => $over, 'short' => $short, 'sold_out' => $soldOut ? 1 : 0, 'enough' => $enough ? 1 : 0, 'abs_error' => abs($forecast - $actualQty)] as $field => $delta) {
                 $row[$field] += $delta;
                 $totals[$field] += $delta;
             }
             $perItem[$key] = $row;
             $dates[$date] = true;
+
+            // Per cook: the one it was given to, or whoever made it unasked.
+            $cookId = $record->assigned_to !== null ? (int) $record->assigned_to : ($record->made_by !== null ? (int) $record->made_by : null);
+            if ($cookId !== null && $planned > 0) {
+                $cook = $perCook[$cookId] ?? ['id' => $cookId, 'name' => $cookNames->get($cookId) ?? 'Former staff', 'n' => 0, 'planned' => 0.0, 'made' => 0.0, 'received' => 0.0, 'on_time' => 0, 'late' => 0, 'not_made' => 0];
+                $cook['n']++;
+                $cook['planned'] += $planned;
+                $cook['made'] += $made;
+                $cook['received'] += $received;
+                if ($made <= 0) {
+                    $cook['not_made']++;
+                } elseif ($record->due_time && $record->made_at) {
+                    $due = Carbon::parse($date . ' ' . $record->due_time, $tz);
+                    if ($record->made_at->copy()->setTimezone($tz)->lte($due)) {
+                        $cook['on_time']++;
+                    } else {
+                        $cook['late']++;
+                    }
+                }
+                $perCook[$cookId] = $cook;
+            }
 
             $out['records'][] = [
                 'date' => $date,
@@ -305,8 +348,12 @@ final class ProductionPlanner
                 'name' => $name,
                 'forecast' => round($forecast, 1),
                 'planned' => round($planned, 1),
+                'made' => round($made, 1),
+                'received' => round($received, 1),
                 'actual' => round($actualQty, 1),
                 'sold_out' => $soldOut,
+                'cook' => $cookId !== null ? ($cookNames->get($cookId) ?? 'Former staff') : null,
+                'due_time' => $record->due_time,
             ];
         }
 
@@ -314,7 +361,7 @@ final class ProductionPlanner
             $row['bias_pct'] = $row['actual'] > 0 ? round(($row['forecast'] - $row['actual']) / $row['actual'] * 100, 1) : null;
             $row['enough_pct'] = $row['n'] > 0 ? round($row['enough'] / $row['n'] * 100) : null;
             $row['mean_abs_error'] = $row['n'] > 0 ? round($row['abs_error'] / $row['n'], 1) : null;
-            foreach (['forecast', 'planned', 'actual', 'over', 'short'] as $f) {
+            foreach (['forecast', 'planned', 'actual', 'made', 'received', 'over', 'short'] as $f) {
                 $row[$f] = round($row[$f], 1);
             }
             unset($row['abs_error']);
@@ -326,6 +373,15 @@ final class ProductionPlanner
         $out['totals'] = $finish($totals);
         $out['items'] = array_values(array_map($finish, $perItem));
         usort($out['items'], fn (array $a, array $b) => $b['actual'] <=> $a['actual']);
+        $out['cooks'] = array_values(array_map(function (array $c): array {
+            foreach (['planned', 'made', 'received'] as $f) {
+                $c[$f] = round($c[$f], 1);
+            }
+            $c['made_pct'] = $c['planned'] > 0 ? round($c['made'] / $c['planned'] * 100) : null;
+
+            return $c;
+        }, $perCook));
+        usort($out['cooks'], fn (array $a, array $b) => $b['planned'] <=> $a['planned']);
         $out['records'] = array_slice(array_reverse($out['records']), 0, 300);
 
         return $out;

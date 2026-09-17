@@ -201,6 +201,7 @@ class KitchenProductionService
             foreach ($payload['items'] ?? [] as $line) {
                 $prodItem = KitchenProductionItem::create([
                     'kitchen_production_batch_id' => $batch->id,
+                    'production_plan_record_id' => $line['production_plan_record_id'] ?? null,
                     'order_id' => $batch->order_id,
                     'item_id' => $line['item_id'] ?? null,
                     'variant_id' => $line['variant_id'] ?? null,

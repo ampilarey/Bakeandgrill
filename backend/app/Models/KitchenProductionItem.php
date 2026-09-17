@@ -15,10 +15,10 @@ class KitchenProductionItem extends Model
     ];
 
     protected $fillable = [
-        'kitchen_production_batch_id', 'order_id', 'order_item_id', 'item_id', 'variant_id',
-        'inventory_item_id', 'recipe_id', 'free_text_name', 'produced_qty', 'unit',
-        'waste_qty', 'extra_qty', 'expected_receive_qty', 'batch_code', 'expires_at',
-        'status', 'kitchen_notes',
+        'kitchen_production_batch_id', 'production_plan_record_id', 'order_id', 'order_item_id',
+        'item_id', 'variant_id', 'inventory_item_id', 'recipe_id', 'free_text_name',
+        'produced_qty', 'unit', 'waste_qty', 'extra_qty', 'expected_receive_qty', 'batch_code',
+        'expires_at', 'status', 'kitchen_notes',
     ];
 
     protected $casts = [
@@ -52,6 +52,12 @@ class KitchenProductionItem extends Model
     public function receivingItems(): HasMany
     {
         return $this->hasMany(KitchenReceivingItem::class);
+    }
+
+    /** The plan line this batch line was made for, when it came off the day's plan. */
+    public function planRecord(): BelongsTo
+    {
+        return $this->belongsTo(ProductionPlanRecord::class, 'production_plan_record_id');
     }
 
     public function displayName(): string

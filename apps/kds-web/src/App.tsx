@@ -740,6 +740,7 @@ function App() {
             orders={orders}
             canProduce={canProduce}
             canPreparedStock={canPreparedStock}
+            userId={staffUser?.id ?? null}
             onRefresh={() => void load(token)}
           />
         ) : (

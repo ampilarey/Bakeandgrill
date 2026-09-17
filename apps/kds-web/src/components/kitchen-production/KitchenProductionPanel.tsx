@@ -1,10 +1,14 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   createKitchenProductionBatch,
+  failureMessage,
+  fetchPlanTasks,
   markOrderItemCooked,
+  markPlanTaskMade,
   submitKitchenProductionBatch,
   type KdsOrder,
   type KdsOrderItem,
+  type KdsPlanTask,
 } from "../../api";
 
 type Props = {
@@ -12,26 +16,82 @@ type Props = {
   orders: KdsOrder[];
   canProduce: boolean;
   canPreparedStock: boolean;
+  /** Who is signed in, so their own jobs come first. */
+  userId?: number | null;
   onRefresh: () => void;
 };
+
+type Tab = "plan" | "orders" | "prepared";
+
+const TASK_STATUS_LABEL: Record<KdsPlanTask["status"], string> = {
+  todo: "To make",
+  partial: "Part made",
+  made: "Sent to counter",
+  received: "Counter has it",
+};
+
+/** Refetch the day's jobs this often while the panel is open. */
+const TASKS_REFRESH_MS = 60_000;
+
+/**
+ * The cook's own jobs first, then everyone else's, each group earliest due
+ * first (the server already orders by time); finished jobs sink to the end.
+ */
+export function orderTasks(tasks: KdsPlanTask[], userId: number | null | undefined): KdsPlanTask[] {
+  const rank = (t: KdsPlanTask): number => {
+    const done = t.remaining <= 0 ? 2 : 0;
+    const mine = userId != null && t.assigned_to === userId ? 0 : 1;
+    return done + mine;
+  };
+  return tasks
+    .map((t, i) => ({ t, i }))
+    .sort((a, b) => rank(a.t) - rank(b.t) || a.i - b.i)
+    .map(({ t }) => t);
+}
+
+function fmtQty(n: number): string {
+  return Number.isInteger(n) ? String(n) : n.toFixed(1);
+}
 
 export function KitchenProductionPanel({
   token,
   orders,
   canProduce,
   canPreparedStock,
+  userId,
   onRefresh,
 }: Props) {
-  const [tab, setTab] = useState<"orders" | "prepared">("orders");
+  const [tab, setTab] = useState<Tab>("plan");
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [err, setErr] = useState("");
   const [prepName, setPrepName] = useState("");
   const [prepQty, setPrepQty] = useState("10");
   const [prepUnit, setPrepUnit] = useState("pcs");
+  const [tasks, setTasks] = useState<KdsPlanTask[] | null>(null);
+  const [tasksDate, setTasksDate] = useState("");
+  const [madeQty, setMadeQty] = useState<Record<number, string>>({});
 
   const cookingOrders = orders.filter((o) =>
     ["in_progress", "preparing"].includes(o.status),
   );
+
+  const loadTasks = useCallback(async () => {
+    try {
+      const res = await fetchPlanTasks(token);
+      setTasks(res.tasks);
+      setTasksDate(res.date);
+    } catch (e) {
+      setErr(failureMessage(e, "Could not load today's plan."));
+      setTasks((t) => t ?? []);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (!canProduce) return;
+    void loadTasks();
+    const id = window.setInterval(() => void loadTasks(), TASKS_REFRESH_MS);
+    return () => window.clearInterval(id);
+  }, [canProduce, loadTasks]);
 
   const handleCooked = async (orderId: number, itemId: number) => {
     setBusyKey(`${orderId}-${itemId}`);
@@ -40,7 +100,25 @@ export function KitchenProductionPanel({
       await markOrderItemCooked(token, orderId, itemId);
       onRefresh();
     } catch (e) {
-      setErr((e as Error).message);
+      setErr(failureMessage(e, "Could not mark that cooked."));
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
+  const sendTask = async (task: KdsPlanTask) => {
+    const raw = madeQty[task.id];
+    const qty = raw === undefined || raw === "" ? task.remaining : parseFloat(raw);
+    if (!Number.isFinite(qty) || qty <= 0) { setErr("Enter how many were made."); return; }
+    setBusyKey(`task-${task.id}`);
+    setErr("");
+    try {
+      await markPlanTaskMade(token, task.id, qty);
+      setMadeQty((m) => { const next = { ...m }; delete next[task.id]; return next; });
+      await loadTasks();
+      onRefresh();
+    } catch (e) {
+      setErr(failureMessage(e, "Could not send that to the counter."));
     } finally {
       setBusyKey(null);
     }
@@ -67,18 +145,21 @@ export function KitchenProductionPanel({
       setPrepQty("10");
       onRefresh();
     } catch (e) {
-      setErr((e as Error).message);
+      setErr(failureMessage(e, "Could not submit that batch."));
     } finally {
       setBusyKey(null);
     }
   };
 
+  const ordered = orderTasks(tasks ?? [], userId);
+  const openCount = ordered.filter((t) => t.remaining > 0).length;
+
   return (
     // The cards below are white, on a board whose text is near-white. The
     // colour is set here so what is written on them can be read.
     <div style={{ padding: "12px 16px 24px", color: "#1C1408" }}>
-      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-        {(["orders", "prepared"] as const).map((t) => (
+      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+        {(["plan", "orders", "prepared"] as const).map((t) => (
           <button
             key={t}
             type="button"
@@ -87,20 +168,99 @@ export function KitchenProductionPanel({
               padding: "8px 14px",
               borderRadius: 8,
               border: "none",
-              background: tab === t ? "#1C1408" : "#EDE4D4",
+              // The board behind the tabs is near-black, so the chosen tab
+              // is the orange the rest of the screen uses, not black on black.
+              background: tab === t ? "#D4813A" : "#EDE4D4",
               color: tab === t ? "#fff" : "#2A1E0C",
               fontWeight: 700,
               cursor: "pointer",
             }}
           >
-            {t === "orders" ? "Order production" : "Prepared stock"}
+            {t === "plan" ? `Today's plan${openCount > 0 ? ` (${openCount})` : ""}` : t === "orders" ? "Order production" : "Prepared stock"}
           </button>
         ))}
       </div>
 
       {err && (
-        <div style={{ marginBottom: 12, padding: 10, background: "#FEE2E2", color: "#991B1B", borderRadius: 8, fontSize: 13 }}>
+        <div style={{ marginBottom: 12, padding: 10, background: "#FEE2E2", color: "#991B1B", borderRadius: 8, fontSize: 13 }} role="alert">
           {err}
+        </div>
+      )}
+
+      {tab === "plan" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }} data-testid="kds-plan-tasks">
+          {!canProduce && (
+            <p style={{ color: "#b6a992" }}>No production permission on this account.</p>
+          )}
+          {canProduce && tasks === null && (
+            <p style={{ color: "#b6a992" }}>Loading today's plan…</p>
+          )}
+          {canProduce && tasks !== null && tasks.length === 0 && (
+            <p style={{ color: "#b6a992" }}>Nothing planned for today{tasksDate ? ` (${tasksDate})` : ""}. The manager saves the plan under Kitchen → Plan.</p>
+          )}
+          {canProduce && ordered.map((task) => {
+            const mine = userId != null && task.assigned_to === userId;
+            const done = task.remaining <= 0;
+            const busy = busyKey === `task-${task.id}`;
+            return (
+              <div
+                key={task.id}
+                data-testid={`kds-plan-task-${task.id}`}
+                style={{
+                  background: "#fff",
+                  border: mine && !done ? "2px solid #D4813A" : "1px solid #EDE4D4",
+                  borderRadius: 12,
+                  padding: 14,
+                  opacity: done ? 0.7 : 1,
+                  display: "grid",
+                  gap: 8,
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                  <div style={{ fontWeight: 700, fontSize: 16 }}>
+                    {fmtQty(task.planned_qty)} × {task.name}
+                  </div>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: done ? "#047857" : "#8B7355", background: done ? "#ECFDF5" : "#F7F1E8", padding: "2px 8px", borderRadius: 999 }}>
+                    {TASK_STATUS_LABEL[task.status]}
+                  </span>
+                </div>
+                <div style={{ fontSize: 13, color: "#6B5D4F", display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <span>{task.slot_label}{task.due_time ? ` · by ${task.due_time}` : ""}</span>
+                  <span>{task.assigned_name ? (mine ? "You" : task.assigned_name) : "Anyone"}</span>
+                  {task.made_qty > 0 && <span>made {fmtQty(task.made_qty)}</span>}
+                  {task.received_qty > 0 && <span>counter got {fmtQty(task.received_qty)}</span>}
+                </div>
+                {!done && (
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      inputMode="numeric"
+                      aria-label={`Made of ${task.name}`}
+                      value={madeQty[task.id] ?? String(task.remaining)}
+                      onChange={(e) => setMadeQty((m) => ({ ...m, [task.id]: e.target.value }))}
+                      style={{ width: 90, padding: 10, borderRadius: 8, border: "1px solid #EDE4D4", fontSize: 16, fontWeight: 700, textAlign: "center" }}
+                    />
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void sendTask(task)}
+                      style={{ padding: "10px 14px", borderRadius: 8, border: "none", background: "#D4813A", color: "#fff", fontWeight: 700, cursor: "pointer" }}
+                    >
+                      {busy ? "Sending…" : "Send to counter"}
+                    </button>
+                    <span style={{ fontSize: 12, color: "#8B7355" }}>{fmtQty(task.remaining)} still to make</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {canProduce && tasks !== null && (
+            <button type="button" onClick={() => void loadTasks()} style={{ alignSelf: "flex-start", padding: "6px 10px", borderRadius: 8, border: "1px solid #EDE4D4", background: "#fff", cursor: "pointer", fontSize: 12 }}>
+              Refresh
+            </button>
+          )}
         </div>
       )}
 
@@ -180,6 +340,9 @@ export function KitchenProductionPanel({
             <p style={{ color: "#8B7355" }}>Prepared stock batches are disabled for this account.</p>
           ) : (
             <>
+              <p style={{ margin: "0 0 10px", fontSize: 12, color: "#8B7355" }}>
+                Something made that was not on the plan. Typed by name, so it reaches the counter but not the stock count — plan lines do both.
+              </p>
               <input
                 value={prepName}
                 onChange={(e) => setPrepName(e.target.value)}

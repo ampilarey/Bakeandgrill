@@ -40,6 +40,18 @@ export interface PlanSlotRow {
   saved_planned: number | null;
   actual: number | null;
   actual_sold_out: boolean | null;
+  /* The task side of a saved line: who makes it, by when, and how it went. */
+  assigned_to: number | null;
+  assigned_name: string | null;
+  due_time: string | null;
+  made: number | null;
+  received: number | null;
+}
+
+/** Someone who can be given a task: an active account allowed to make batches. */
+export interface PlanAssignee {
+  id: number;
+  name: string;
 }
 
 export interface PlanFactorMeta {
@@ -76,6 +88,7 @@ export interface PlanItem {
     made: number | null;
     actual: number | null;
     saved_planned: number | null;
+    received: number | null;
   };
   customers: {
     registered_share_pct: number | null;
@@ -99,6 +112,7 @@ export interface ProductionPlan {
   settings: PlanSettings;
   history: { from: string; to: string; open_days: number; enough: boolean };
   items: PlanItem[];
+  assignees: PlanAssignee[];
 }
 
 export interface PlanCalendarPeriod {
@@ -137,6 +151,8 @@ export interface PlanAccuracyRow {
   forecast: number;
   planned: number;
   actual: number;
+  made: number;
+  received: number;
   over: number;
   short: number;
   sold_out: number;
@@ -146,6 +162,20 @@ export interface PlanAccuracyRow {
   mean_abs_error: number | null;
 }
 
+/** One cook's record over the window: what they were given and what came of it. */
+export interface PlanCookRow {
+  id: number;
+  name: string;
+  n: number;
+  planned: number;
+  made: number;
+  received: number;
+  on_time: number;
+  late: number;
+  not_made: number;
+  made_pct: number | null;
+}
+
 export interface PlanAccuracy {
   weeks: number;
   from: string;
@@ -153,6 +183,7 @@ export interface PlanAccuracy {
   days: number;
   totals: PlanAccuracyRow | null;
   items: PlanAccuracyRow[];
+  cooks: PlanCookRow[];
   records: {
     date: string;
     weekday: string;
@@ -161,8 +192,12 @@ export interface PlanAccuracy {
     name: string;
     forecast: number;
     planned: number;
+    made: number;
+    received: number;
     actual: number;
     sold_out: boolean;
+    cook: string | null;
+    due_time: string | null;
   }[];
 }
 
@@ -187,6 +222,9 @@ export interface PlanCommitLine {
   slot_label: string;
   forecast_qty: number;
   planned_qty: number;
+  /** Who makes it and by when ("17:30"). Left out, the line keeps what it had; null clears. */
+  assigned_to?: number | null;
+  due_time?: string | null;
 }
 
 export async function getProductionPlan(date?: string): Promise<ProductionPlan> {

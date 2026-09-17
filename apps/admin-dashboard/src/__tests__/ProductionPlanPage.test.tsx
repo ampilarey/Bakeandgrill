@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { PlanTab, PlanCalendarTab, PlanSettingsTab } from '../pages/ProductionPlanPage';
+import { PlanTab, PlanCalendarTab, PlanSettingsTab, PlanAccuracyTab } from '../pages/ProductionPlanPage';
 import { daysFromToday } from '../utils/dateHelpers';
-import type { PlanItem, PlanSlotRow, ProductionPlan } from '../api/production-plan';
+import type { PlanAccuracy, PlanItem, PlanSlotRow, ProductionPlan } from '../api/production-plan';
 
 /*
  * Owner, 2026-09-08: "for Friday evening we will need to make 50 bajiya" —
@@ -37,6 +37,7 @@ const createProductionCalendarPeriod = vi.fn();
 const getProductionPlanSettings = vi.fn();
 const updateProductionPlanSettings = vi.fn();
 const updateProductionPlanItem = vi.fn();
+const getProductionPlanAccuracy = vi.fn();
 
 vi.mock('../api/production-plan', () => ({
   getProductionPlan: (...a: unknown[]) => getProductionPlan(...a),
@@ -48,7 +49,7 @@ vi.mock('../api/production-plan', () => ({
   getProductionPlanSettings: (...a: unknown[]) => getProductionPlanSettings(...a),
   updateProductionPlanSettings: (...a: unknown[]) => updateProductionPlanSettings(...a),
   updateProductionPlanItem: (...a: unknown[]) => updateProductionPlanItem(...a),
-  getProductionPlanAccuracy: vi.fn().mockResolvedValue({ weeks: 4, from: '', to: '', days: 0, totals: null, items: [], records: [] }),
+  getProductionPlanAccuracy: (...a: unknown[]) => getProductionPlanAccuracy(...a),
   getPlanCustomerHabits: vi.fn(),
 }));
 
@@ -62,7 +63,9 @@ const slots = [
 function slotRow(over: Partial<PlanSlotRow>): PlanSlotRow {
   return {
     label: 'Slot', forecast: 0, planned: 0, known: 0, sold_out_days: 0, sample: [],
-    saved_planned: null, actual: null, actual_sold_out: null, ...over,
+    saved_planned: null, actual: null, actual_sold_out: null,
+    assigned_to: null, assigned_name: null, due_time: null, made: null, received: null,
+    ...over,
   };
 }
 
@@ -91,7 +94,7 @@ const bajiya: PlanItem = {
       })),
     }),
   },
-  day: { forecast: 65.7, planned: 70, sample_days: 8, last_same_weekday: { date: '2026-09-04', qty: 62 }, known: 0, made: null, actual: null, saved_planned: null },
+  day: { forecast: 65.7, planned: 70, sample_days: 8, last_same_weekday: { date: '2026-09-04', qty: 62 }, known: 0, made: null, actual: null, saved_planned: null, received: null },
   customers: { registered_share_pct: 20, buyers: 4, regulars: 1, regulars_weekly_qty: 10, regulars_same_weekday_avg: 9.5 },
 };
 
@@ -113,9 +116,12 @@ function plan(over: Partial<ProductionPlan> = {}): ProductionPlan {
     settings: { slots: slots.map(({ label, from, to }) => ({ label, from, to })), lookback_weeks: 12, sample_weeks: 8, default_service_level_pct: 85 },
     history: { from: '2026-06-19', to: '2026-09-10', open_days: 70, enough: true },
     items: [bajiya, water],
+    assignees: [{ id: 3, name: 'Aishath' }, { id: 4, name: 'Hassan' }],
     ...over,
   };
 }
+
+const noAccuracy: PlanAccuracy = { weeks: 4, from: '', to: '', days: 0, totals: null, items: [], cooks: [], records: [] };
 
 /*
  * These are the Plan tabs of the Kitchen hub, which draws the title and the
@@ -134,6 +140,10 @@ function showSettings() {
   render(<MemoryRouter><PlanSettingsTab canManage={manage} /></MemoryRouter>);
 }
 
+function showAccuracy() {
+  render(<MemoryRouter><PlanAccuracyTab /></MemoryRouter>);
+}
+
 describe('The production plan', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -141,6 +151,7 @@ describe('The production plan', () => {
     mobile = false;
     getProductionPlan.mockResolvedValue(plan());
     commitProductionPlan.mockResolvedValue({ date: tomorrow, saved: 4 });
+    getProductionPlanAccuracy.mockResolvedValue(noAccuracy);
   });
 
   it('opens on tomorrow and shows the reckoning under a box the kitchen can change', async () => {
@@ -178,10 +189,10 @@ describe('The production plan', () => {
     fireEvent.click(screen.getByTestId('plan-save'));
 
     await waitFor(() => expect(commitProductionPlan).toHaveBeenCalledTimes(1));
-    const [date, lines] = commitProductionPlan.mock.calls[0] as [string, { item_id: number; slot_start: number; planned_qty: number; forecast_qty: number; slot_label: string }[]];
+    const [date, lines] = commitProductionPlan.mock.calls[0] as [string, { item_id: number; slot_start: number; planned_qty: number; forecast_qty: number; slot_label: string; assigned_to: number | null; due_time: string | null }[]];
     expect(date).toBe(tomorrow);
     const evening = lines.find((l) => l.item_id === 7 && l.slot_start === 18);
-    expect(evening).toMatchObject({ planned_qty: 60, forecast_qty: 47.3, slot_label: 'Evening' });
+    expect(evening).toMatchObject({ planned_qty: 60, forecast_qty: 47.3, slot_label: 'Evening', assigned_to: null, due_time: null });
     const morning = lines.find((l) => l.item_id === 7 && l.slot_start === 6);
     expect(morning).toMatchObject({ planned_qty: 20 });
     // Hidden items are not part of the plan.
@@ -190,6 +201,60 @@ describe('The production plan', () => {
     expect(await screen.findByRole('status')).toHaveTextContent('Saved the plan');
     // Reloaded so the saved figures show.
     await waitFor(() => expect(getProductionPlan).toHaveBeenCalledTimes(2));
+  });
+
+  /*
+   * Owner, 2026-09-17: "admin/manager assign and requests items that should
+   * be made for tomorrow and assign time and staff to do that."
+   */
+  it('gives a slot a cook and a time, and saves them on every line of that slot', async () => {
+    show();
+
+    await screen.findByLabelText('Bajiya Evening planned');
+    const card = screen.getByTestId('plan-assign');
+    expect(within(card).getByTestId('plan-slot-progress-18')).toHaveTextContent('50 to make');
+
+    fireEvent.change(screen.getByLabelText('Evening cook'), { target: { value: '3' } });
+    fireEvent.change(screen.getByLabelText('Evening due by'), { target: { value: '17:30' } });
+    fireEvent.click(screen.getByTestId('plan-save'));
+
+    await waitFor(() => expect(commitProductionPlan).toHaveBeenCalledTimes(1));
+    const lines = commitProductionPlan.mock.calls[0][1] as { item_id: number; slot_start: number; assigned_to: number | null; due_time: string | null }[];
+    expect(lines.find((l) => l.item_id === 7 && l.slot_start === 18)).toMatchObject({ assigned_to: 3, due_time: '17:30' });
+    expect(lines.find((l) => l.item_id === 7 && l.slot_start === 6)).toMatchObject({ assigned_to: null, due_time: null });
+  });
+
+  it('opens on who was saved and shows how the day is going', async () => {
+    getProductionPlan.mockResolvedValue(plan({
+      is_today: true,
+      items: [{
+        ...bajiya,
+        slots: { ...bajiya.slots, '18': { ...bajiya.slots['18'], saved_planned: 50, assigned_to: 3, assigned_name: 'Aishath', due_time: '17:30', made: 30, received: 30 } },
+        day: { ...bajiya.day, saved_planned: 70, made: 30, received: 30 },
+      }],
+    }));
+    show();
+
+    await screen.findByLabelText('Bajiya Evening planned');
+    expect(screen.getByLabelText('Evening cook')).toHaveValue('3');
+    expect(screen.getByLabelText('Evening due by')).toHaveValue('17:30');
+    expect(screen.getByLabelText('Morning cook')).toHaveValue('');
+    expect(screen.getByTestId('plan-slot-progress-18')).toHaveTextContent('made 30 of 50 · counter got 30');
+    expect(screen.getByTestId('plan-forecast-7:0-18')).toHaveTextContent('made 30');
+    expect(screen.getByTestId('plan-forecast-7:0-18')).toHaveTextContent('counter got 30');
+    expect(screen.getByTestId('plan-day-7:0')).toHaveTextContent('counter got 30');
+  });
+
+  it('keeps a cook who has since left on the line rather than dropping them', async () => {
+    getProductionPlan.mockResolvedValue(plan({
+      items: [{ ...bajiya, slots: { ...bajiya.slots, '6': { ...bajiya.slots['6'], assigned_to: 99, assigned_name: 'Old cook' } } }],
+    }));
+    show();
+
+    await screen.findByLabelText('Bajiya Evening planned');
+    const morning = screen.getByLabelText('Morning cook') as HTMLSelectElement;
+    expect(morning).toHaveValue('99');
+    expect(within(morning).getByText('Old cook (no longer active)')).toBeInTheDocument();
   });
 
   it('keeps hidden items out of the way until asked', async () => {
@@ -261,6 +326,32 @@ describe('The production plan', () => {
     expect(within(card).getByText('Evening')).toBeInTheDocument();
     expect(within(card).getByLabelText('Bajiya Evening planned')).toHaveValue(50);
     expect(within(card).getByText('Day:')).toBeInTheDocument();
+  });
+});
+
+describe('How it did', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getProductionPlanAccuracy.mockResolvedValue({
+      weeks: 4, from: '2026-08-10', to: '2026-09-07', days: 1,
+      totals: { n: 1, forecast: 45, planned: 50, actual: 40, made: 50, received: 50, over: 10, short: 0, sold_out: 0, enough: 1, bias_pct: 12.5, enough_pct: 100, mean_abs_error: 5 },
+      items: [{ key: '7:0', name: 'Bajiya', n: 1, forecast: 45, planned: 50, actual: 40, made: 50, received: 50, over: 10, short: 0, sold_out: 0, enough: 1, bias_pct: 12.5, enough_pct: 100, mean_abs_error: 5 }],
+      cooks: [{ id: 3, name: 'Aishath', n: 1, planned: 50, made: 50, received: 50, on_time: 1, late: 0, not_made: 0, made_pct: 100 }],
+      records: [{ date: '2026-09-07', weekday: 'Mon', slot_label: 'Evening', slot_start: 18, name: 'Bajiya', forecast: 45, planned: 50, made: 50, received: 50, actual: 40, sold_out: false, cook: 'Aishath', due_time: '17:30' }],
+    } satisfies PlanAccuracy);
+  });
+
+  it('shows planned, made, received and sold side by side, and per cook', async () => {
+    showAccuracy();
+
+    const totals = await screen.findByTestId('accuracy-totals');
+    expect(totals).toHaveTextContent('of 50 planned · 50 received');
+
+    const cook = screen.getByTestId('accuracy-cook-3');
+    expect(cook).toHaveTextContent('Aishath');
+    expect(cook).toHaveTextContent('50 (100%)');
+    expect(within(cook).getAllByText('1')).toHaveLength(2); // jobs, on time
+    expect(screen.getByText('Aishath by 17:30')).toBeInTheDocument();
   });
 });
 

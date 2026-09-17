@@ -129,6 +129,14 @@ if (routes_domain_section_is('kitchen', 'production') && !routes_domain_loaded('
         ->middleware('permission:kitchen.production.plan');
     Route::get('/production-plan/accuracy', [App\Http\Controllers\Api\ProductionPlanController::class, 'accuracy'])
         ->middleware('permission:kitchen.production.plan');
+    // The plan as the day's jobs. Anyone who makes batches can see them;
+    // marking one made creates and submits a prepared-stock batch, so it
+    // asks for the same rights as doing that by hand.
+    Route::get('/production-plan/tasks', [App\Http\Controllers\Api\ProductionPlanController::class, 'tasks'])
+        ->middleware('permission.any:kitchen.production.create,kitchen.production.plan');
+    Route::post('/production-plan/tasks/{id}/made', [App\Http\Controllers\Api\ProductionPlanController::class, 'taskMade'])
+        ->whereNumber('id')
+        ->middleware(['permission:kitchen.production.create', 'permission:kitchen.production.submit']);
     Route::get('/production-plan/customers', [App\Http\Controllers\Api\ProductionPlanController::class, 'customers'])
         ->middleware('permission:kitchen.production.plan');
 }
