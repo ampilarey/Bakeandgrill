@@ -17,6 +17,7 @@ import { AppShell } from './components/shell/AppShell';
 import { AbandonedCartTracker } from './components/AbandonedCartTracker';
 import { ScrollToTop } from './components/ScrollToTop';
 import { ServiceUnavailableModal } from './components/ServiceUnavailableModal';
+import { registerServiceWorker } from './lib/registerServiceWorker';
 import '@shared/styles/fonts.css';
 // Custom Thaana override: /css/dhivehi-font.css?app=order_app reads content key dhivehi_font.
 import './index.css';
@@ -28,6 +29,10 @@ try {
 } catch {
   /* private mode / quota */
 }
+
+// Offline shell, push, and the update-on-deploy path all hang off this. It
+// was an inline script in index.html that the page's CSP refused.
+registerServiceWorker();
 
 const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
 if (sentryDsn) {

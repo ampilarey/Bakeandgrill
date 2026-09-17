@@ -582,7 +582,10 @@ html.js .menu-fav { display: inline-flex; }
        more generous scroll-padding-top. */
     :root { --menu-rail-w: 76px; --menu-sticky: 64px; }
     .menu-shell { gap: 0.5rem; padding: 0 0.75rem 5rem; }
-    .menu-grid { grid-template-columns: repeat(2, 1fr); }
+    /* minmax(0, 1fr), not 1fr: a bare 1fr will not shrink below a card's
+       own minimum, and two 143px cards plus the gap ran 4px past a 390px
+       phone, so the whole page wobbled sideways under a thumb. */
+    .menu-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .menu-rail-thumb { width: 60px; height: 60px; }
     .menu-rail-label { font-size: 0.6875rem; }
     .menu-rail a.menu-rail-sub .menu-rail-label { font-size: 0.625rem; }

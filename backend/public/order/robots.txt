@@ -3,4 +3,4 @@ Allow: /order/
 Disallow: /order/checkout
 Disallow: /order/orders/
 
-Sitemap: https://test.bakeandgrill.mv/order/sitemap.xml
+Sitemap: https://bakeandgrill.mv/order/sitemap.xml

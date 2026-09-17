@@ -97,7 +97,10 @@
                     @endif
                     @if($titleVisible)
                         {{-- Glass panel, full-width bar, or outline/halo — never per-line boxes. --}}
-                        <h2
+                        {{-- The first slide's title is the page's H1: the home page had none.
+                             Later slides say the same kind of thing, so they stay H2. --}}
+                        @php $titleTag = $sIdx === 0 ? 'h1' : 'h2'; @endphp
+                        <{{ $titleTag }}
                             class="banner-title"
                             @if($titleBand !== '') data-len="{{ $titleBand }}" @endif
                             @if(!empty($titleEl['css']))
@@ -113,7 +116,7 @@
                             @if(!empty($titleStyle['outline'])) data-outline="1" @endif
                             @if(!empty($titleStyle['border'])) data-border="1" @endif
                             @if($titleVars !== '') style="{{ $titleVars }}" @endif
-                        >@foreach(\App\Domains\Content\HeroSlides::splitRichTextLines($titleHtml) as $lineIdx => $titleLine)@if($lineIdx > 0)<br>@endif<span class="hero-title-line" style="--hero-line-i: {{ $lineIdx }};">{!! $part['title']['text'] === 'word' ? \App\Domains\Content\HeroSlides::splitWordSpans($titleLine) : $titleLine !!}</span>@endforeach</h2>
+                        >@foreach(\App\Domains\Content\HeroSlides::splitRichTextLines($titleHtml) as $lineIdx => $titleLine)@if($lineIdx > 0)<br>@endif<span class="hero-title-line" style="--hero-line-i: {{ $lineIdx }};">{!! $part['title']['text'] === 'word' ? \App\Domains\Content\HeroSlides::splitWordSpans($titleLine) : $titleLine !!}</span>@endforeach</{{ $titleTag }}>
                     @endif
                     @if($subtitle !== '')
                         <p
@@ -171,7 +174,7 @@
                 <div class="banner-overlay">
                     <div class="banner-copy">
                     <span class="banner-eyebrow">🍞 Fresh daily from 5am</span>
-                    <h2 class="banner-title"><span class="hero-title-line">{{ $siteName }}</span><br><span class="hero-title-line"><em>{{ $tagline }}</em></span></h2>
+                    <h1 class="banner-title"><span class="hero-title-line">{{ $siteName }}</span><br><span class="hero-title-line"><em>{{ $tagline }}</em></span></h1>
                     <p class="banner-sub">Real food, proper char — order online or visit us in Malé.</p>
                     <div class="banner-ctas">
                         <a href="/order/" class="banner-cta-primary">🛒 Order Now →</a>

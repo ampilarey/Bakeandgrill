@@ -151,8 +151,33 @@ export type PreorderGateStatus = {
   next_open_window: string | null;
 };
 
+/*
+ * Audit, 2026-09-17: one cold load of the home page asked for the ordering
+ * status four times — the mode cards, the floating cart bar, the page
+ * itself — because every component fetched on its own mount. The routes
+ * are throttled per IP, so a family on one connection with a couple of tabs
+ * open was pushed towards 429 for nothing. One answer is shared by everyone
+ * who asks within this window; a failure is not remembered.
+ */
+const ORDERING_STATUS_SHARE_MS = 15_000;
+let orderingStatusShared: { at: number; promise: Promise<OnlineOrderingStatus> } | null = null;
+
+export function resetOnlineOrderingStatusShare(): void {
+  orderingStatusShared = null;
+}
+
 export async function fetchOnlineOrderingStatus(): Promise<OnlineOrderingStatus> {
-  return request<OnlineOrderingStatus>(ENDPOINTS.ORDERING_STATUS);
+  const now = Date.now();
+  if (orderingStatusShared && now - orderingStatusShared.at < ORDERING_STATUS_SHARE_MS) {
+    return orderingStatusShared.promise;
+  }
+  const promise = request<OnlineOrderingStatus>(ENDPOINTS.ORDERING_STATUS);
+  const entry = { at: now, promise };
+  orderingStatusShared = entry;
+  promise.catch(() => {
+    if (orderingStatusShared === entry) orderingStatusShared = null;
+  });
+  return promise;
 }
 
 export async function fetchPreorderStatus(): Promise<PreorderGateStatus> {

@@ -998,6 +998,9 @@ export function MenuPage() {
 
   return (
     <div style={{ maxWidth: 'var(--layout-max)', margin: '0 auto', padding: '0 var(--page-gutter) 5rem', position: 'relative' }}>
+      {/* The page's one heading, for readers and crawlers; the day and mode
+          switches above the list are controls, not a title. */}
+      <h1 className="sr-only">{menuTitle}</h1>
       {/* ── Sticky menu controls ─────────────────────────────────── */}
       <div
         ref={menuStickyRef}

@@ -67,6 +67,10 @@
             font: inherit;
             font-size: 0.875rem;
             font-weight: 600;
+            /* Tall enough to hit on a phone; the row was 31px. */
+            display: inline-flex;
+            align-items: center;
+            min-height: 40px;
             padding: 0.45rem 0.9rem;
             border: 1.5px solid #d9d2c8;
             border-radius: 8px;

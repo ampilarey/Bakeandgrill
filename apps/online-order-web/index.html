@@ -26,21 +26,21 @@
     <meta name="keywords" content="Bake and Grill, food delivery Maldives, Male restaurant, online order" />
     <meta name="author" content="Bake & Grill" />
     <meta name="robots" content="index, follow" />
-    <link rel="canonical" href="https://test.bakeandgrill.mv/order/" />
+    <link rel="canonical" href="https://bakeandgrill.mv/order/" />
 
     <!-- Open Graph -->
     <meta property="og:type" content="restaurant.restaurant" />
     <meta property="og:site_name" content="Bake & Grill" />
     <meta property="og:title" content="Bake & Grill — Order Online" />
     <meta property="og:description" content="Order food online from Bake & Grill, Male', Maldives. Authentic Dhivehi breakfast, fresh bakes, and grills." />
-    <meta property="og:image" content="https://test.bakeandgrill.mv/logo.png" />
-    <meta property="og:url" content="https://test.bakeandgrill.mv/order/" />
+    <meta property="og:image" content="https://bakeandgrill.mv/logo.png" />
+    <meta property="og:url" content="https://bakeandgrill.mv/order/" />
 
     <!-- Twitter / X Card -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Bake & Grill — Order Online" />
     <meta name="twitter:description" content="Order food online from Bake & Grill, Male', Maldives." />
-    <meta name="twitter:image" content="https://test.bakeandgrill.mv/logo.png" />
+    <meta name="twitter:image" content="https://bakeandgrill.mv/logo.png" />
 
     <!-- JSON-LD Structured Data -->
     <script type="application/ld+json">
@@ -49,8 +49,8 @@
       "@type": ["Restaurant", "LocalBusiness"],
       "name": "Bake & Grill",
       "description": "Authentic Dhivehi cuisine, artisan pastries, and expertly grilled specialties — freshly made every day in the heart of Malé.",
-      "url": "https://test.bakeandgrill.mv",
-      "image": "https://test.bakeandgrill.mv/logo.png",
+      "url": "https://bakeandgrill.mv",
+      "image": "https://bakeandgrill.mv/logo.png",
       "telephone": "+960-912-0011",
       "email": "admin@bakeandgrill.mv",
       "address": {
@@ -66,10 +66,10 @@
       },
       "servesCuisine": ["Maldivian", "Bakery"],
       "priceRange": "$$",
-      "hasMenu": "https://test.bakeandgrill.mv/order/menu",
+      "hasMenu": "https://bakeandgrill.mv/order/menu",
       "orderAction": {
         "@type": "OrderAction",
-        "target": "https://test.bakeandgrill.mv/order/menu"
+        "target": "https://bakeandgrill.mv/order/menu"
       }
     }
     </script>
@@ -92,36 +92,5 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <script>
-      // Register service worker for offline support + push notifications.
-      // We tell the SW to skip waiting whenever a new version finishes
-      // installing, so the customer always gets fresh JS on next reload
-      // without having to close every tab manually.
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', async () => {
-          try {
-            const reg = await navigator.serviceWorker.register('/order/sw.js', { scope: '/order/' });
-            if (reg.waiting) reg.waiting.postMessage('SKIP_WAITING');
-            reg.addEventListener('updatefound', () => {
-              const sw = reg.installing;
-              if (!sw) return;
-              sw.addEventListener('statechange', () => {
-                if (sw.state === 'installed' && navigator.serviceWorker.controller) {
-                  sw.postMessage('SKIP_WAITING');
-                }
-              });
-            });
-            // Reload exactly once when the new SW takes control so the
-            // fresh asset URLs are picked up immediately.
-            let reloaded = false;
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
-              if (reloaded) return;
-              reloaded = true;
-              location.reload();
-            });
-          } catch (e) { console.error('SW registration failed', e); }
-        });
-      }
-    </script>
   </body>
 </html>

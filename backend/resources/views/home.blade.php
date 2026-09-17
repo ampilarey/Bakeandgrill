@@ -495,7 +495,8 @@
 .banner-dot::before {
     content: '';
     position: absolute;
-    inset: -12px -10px;
+    /* The dot stays 6–8px; the finger gets 44px. */
+    inset: -18px -16px;
 }
 .banner-dot.active { width: 24px; background: var(--amber); }
 @media (max-width: 768px) {

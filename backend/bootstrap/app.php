@@ -76,6 +76,12 @@ return Application::configure(basePath: dirname(__DIR__))
             // no session here to ride. Both are rate limited instead.
             'api/board/pair/start',
             'api/board/pair/status',
+            // The website's anonymous visit counter. The page sends it with
+            // navigator.sendBeacon, which cannot carry an XSRF header, and
+            // the site is a stateful origin, so every page view answered 419
+            // and the website's counter never moved. It reads no session and
+            // no identity — an aggregate tally per surface — and is throttled.
+            'api/visits/beacon',
         ]);
 
         $middleware->alias([

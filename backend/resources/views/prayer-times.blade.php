@@ -9,6 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Accurate daily prayer times for all islands of Maldives.">
     <title>Prayer Times — {{ $siteName }}</title>
+    <link rel="canonical" href="{{ url('/prayer-times') }}">
     <link rel="icon" type="image/png" href="{{ content('favicon', asset('logo.png')) }}">
 
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}">
@@ -91,6 +92,7 @@
 
         .pt-page-title {
             flex: 1;
+            margin: 0;
             font-size: 0.9rem;
             font-weight: 600;
             color: var(--muted);
@@ -635,7 +637,7 @@
             <img src="{{ $logoUrl }}" alt="{{ $siteName }}">
             <span>{{ $siteName }}</span>
         </a>
-        <span class="pt-page-title">🕌 Prayer Times</span>
+        <h1 class="pt-page-title">🕌 Prayer Times</h1>
         <a href="/" class="pt-back-btn">← Back to website</a>
     </div>
 </header>

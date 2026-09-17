@@ -88,6 +88,9 @@ class SecurityHeaders
 
         // Public Blade site: nonced inline scripts, self-hosted fonts, GA/GTM, and the
         // Cloudflare Web Analytics beacon that Cloudflare injects at the edge.
-        return "default-src 'self'; script-src 'self' {$nonce} https://www.googletagmanager.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https:; connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://cloudflareinsights.com;";
+        // frame-src is for the Google Maps embed on the contact page: with
+        // nothing set it fell back to default-src 'self' and the browser
+        // refused the map, leaving an empty box where it should be.
+        return "default-src 'self'; script-src 'self' {$nonce} https://www.googletagmanager.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https:; connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://cloudflareinsights.com; frame-src https://www.google.com https://maps.google.com;";
     }
 }

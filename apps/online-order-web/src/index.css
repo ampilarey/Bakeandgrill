@@ -648,11 +648,25 @@ img.brand-logo--dark { display: none; }
   transition: width 0.3s, background 0.3s;
   position: relative;
 }
-/* Expand tap target without changing visible size */
+/* Expand tap target without changing visible size: the dot stays 6px, the
+   finger gets 44px. */
 .home-promo-hero__dot::before {
   content: '';
   position: absolute;
-  inset: -12px -10px;
+  inset: -19px -17px;
+}
+
+/* Read by screen readers and search engines, drawn for nobody. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 .home-promo-hero__dot.is-active {
   width: 24px;
