@@ -177,9 +177,11 @@ export function KdsPurchaseRequestOverlay({ token, mode, onClose }: Props) {
     <div style={{ position: "fixed", inset: 0, zIndex: 50, background: "rgba(15,23,42,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
       {/* The board's text is near-white; on this white card it must not be. */}
       <div role="dialog" aria-label={title} style={{ background: "#fff", color: "#1C1408", borderRadius: 12, width: "min(520px, 100%)", maxHeight: "90vh", overflow: "auto", padding: 20 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <h2 style={{ margin: 0, fontSize: 18 }}>{title}</h2>
-          <button type="button" onClick={onClose} aria-label="Close" style={{ border: "none", background: "none", fontSize: 20, cursor: "pointer" }}>×</button>
+          {/* A 24px × is a hard target with a floury thumb; the same size as
+              every other control on this screen. */}
+          <button type="button" onClick={onClose} aria-label="Close" style={{ width: 44, height: 44, marginRight: -10, border: "none", background: "none", fontSize: 24, cursor: "pointer", color: "#1C1408" }}>×</button>
         </div>
 
         {err && <p style={{ color: "#ef4444", fontSize: 13 }}>{err}</p>}

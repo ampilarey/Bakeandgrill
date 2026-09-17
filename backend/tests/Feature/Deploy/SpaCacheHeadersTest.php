@@ -30,7 +30,7 @@ class SpaCacheHeadersTest extends TestCase
         'admin' => ['index.html', 'theme-init.js'],
         'order' => ['index.html', 'sw.js'],
         'pos' => ['index.html', 'sw.js'],
-        'kds' => ['index.html'],
+        'kds' => ['index.html', 'manifest.webmanifest'],
         'driver' => ['index.html', 'sw.js', 'registerSW.js'],
     ];
 

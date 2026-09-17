@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { getOrCreateDeviceId, writeStored } from "@shared/auth";
 import {
   bumpOrder,
@@ -60,6 +60,35 @@ function orderTypeTag(type: string | undefined): string | null {
   return ORDER_TYPE_LABEL[type] ?? type.replace(/_/g, " ");
 }
 
+/*
+ * One column of the board. Defined here, at module level, on purpose: it
+ * used to be declared inside App's render, which gave React a brand-new
+ * component type on every render — every poll, every 30-second clock tick —
+ * so each lane was torn down and rebuilt from scratch. A cook who had
+ * scrolled a busy Cooking lane to the bottom was thrown back to the top of
+ * it twice a minute.
+ */
+function Lane({ title, items, flash, renderTicket }: {
+  title: string;
+  items: KdsOrder[];
+  flash?: boolean;
+  renderTicket: (order: KdsOrder) => ReactNode;
+}) {
+  return (
+    <section className="kds-lane" data-testid={`kds-lane-${title.toLowerCase()}`}>
+      <div className="kds-lane-head" data-flash={flash ? "true" : "false"}>
+        <h2 className="kds-lane-title">{title}{flash ? " — new!" : ""}</h2>
+        <span className="kds-lane-count">{items.length}</span>
+      </div>
+      <div className="kds-lane-body">
+        {items.length === 0
+          ? <p className="kds-lane-empty">Nothing here.</p>
+          : items.map(renderTicket)}
+      </div>
+    </section>
+  );
+}
+
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [username, setUsername] = useState(() => kdsUsername.get() ?? "");
@@ -86,6 +115,10 @@ function App() {
   // Off by default: the board is for cooking, and who-did-what is a
   // question asked occasionally rather than read continuously.
   const [showActivity, setShowActivity] = useState(false);
+  // On a phone the bar's nine buttons took four rows — a third of the screen
+  // before the first ticket. The ones a cook reaches for between tickets
+  // stay out; the rest sit behind "More". Desktop shows everything.
+  const [moreOpen, setMoreOpen] = useState(false);
   const [activity, setActivity] = useState<KdsActivityRow[]>([]);
 
   const prevPendingIdsRef = useRef<Set<number>>(new Set());
@@ -631,26 +664,12 @@ function App() {
     );
   };
 
-  const Lane = ({ title, items, flash }: { title: string; items: KdsOrder[]; flash?: boolean }) => (
-    <section className="kds-lane" data-testid={`kds-lane-${title.toLowerCase()}`}>
-      <div className="kds-lane-head" data-flash={flash ? "true" : "false"}>
-        <h2 className="kds-lane-title">{title}{flash ? " — new!" : ""}</h2>
-        <span className="kds-lane-count">{items.length}</span>
-      </div>
-      <div className="kds-lane-body">
-        {items.length === 0
-          ? <p className="kds-lane-empty">Nothing here.</p>
-          : items.map(renderTicket)}
-      </div>
-    </section>
-  );
-
   const overPrepTarget = [...pendingOrders, ...inProgressOrders]
     .filter((t) => minutesSince(t.created_at) >= ticketPrepTarget(t)).length;
 
   return (
     <div className="kds-shell">
-      <header className="kds-topbar">
+      <header className="kds-topbar" data-more={moreOpen ? "true" : "false"}>
         <h1 className="kds-brand">Bake &amp; Grill KDS</h1>
         <span className="kds-who">
           {staffUser?.name ?? "Kitchen"} · {deviceId}
@@ -692,22 +711,10 @@ function App() {
         <span className="kds-live" data-state={sseConnected ? "live" : "polling"}>
           {sseConnected ? "● Live" : isLoading ? "Refreshing…" : "○ Polling"}
         </span>
-        <button type="button" className="kds-btn" onClick={toggleAudio} aria-pressed={audioOn}>
-          {audioOn ? "🔔 Sound on" : "🔕 Sound off"}
-        </button>
         {canCreatePurchaseRequest && (
           <button type="button" className="kds-btn kds-btn--primary" onClick={() => setPrOverlay("request")}>
             Request item
           </button>
-        )}
-        {canViewOwnPurchaseRequests && (
-          <button type="button" className="kds-btn" onClick={() => setPrOverlay("my")}>My requests</button>
-        )}
-        {canBuyAssigned && (
-          <button type="button" className="kds-btn" onClick={() => setPrOverlay("buying")}>Buying list</button>
-        )}
-        {canReceiveDeliveries && (
-          <button type="button" className="kds-btn" onClick={() => setPrOverlay("receive")}>To receive</button>
         )}
         {canProduce && (
           <button
@@ -718,17 +725,40 @@ function App() {
             {viewMode === "production" ? "Ticket board" : "Production"}
           </button>
         )}
-        {activity.length > 0 && (
-          <button
-            type="button"
-            className="kds-btn"
-            onClick={() => setShowActivity((v) => !v)}
-            aria-expanded={showActivity}
-          >
-            {showActivity ? "Hide activity" : "Activity"}
+        <button
+          type="button"
+          className="kds-btn kds-more"
+          aria-expanded={moreOpen}
+          aria-controls="kds-topbar-tools"
+          onClick={() => setMoreOpen((v) => !v)}
+        >
+          {moreOpen ? "Less ▴" : "More ▾"}
+        </button>
+        <div className="kds-topbar-tools" id="kds-topbar-tools" data-testid="kds-topbar-tools">
+          <button type="button" className="kds-btn" onClick={toggleAudio} aria-pressed={audioOn}>
+            {audioOn ? "🔔 Sound on" : "🔕 Sound off"}
           </button>
-        )}
-        <button type="button" className="kds-btn" onClick={handleLogout}>Logout</button>
+          {canViewOwnPurchaseRequests && (
+            <button type="button" className="kds-btn" onClick={() => setPrOverlay("my")}>My requests</button>
+          )}
+          {canBuyAssigned && (
+            <button type="button" className="kds-btn" onClick={() => setPrOverlay("buying")}>Buying list</button>
+          )}
+          {canReceiveDeliveries && (
+            <button type="button" className="kds-btn" onClick={() => setPrOverlay("receive")}>To receive</button>
+          )}
+          {activity.length > 0 && (
+            <button
+              type="button"
+              className="kds-btn"
+              onClick={() => setShowActivity((v) => !v)}
+              aria-expanded={showActivity}
+            >
+              {showActivity ? "Hide activity" : "Activity"}
+            </button>
+          )}
+          <button type="button" className="kds-btn" onClick={handleLogout}>Logout</button>
+        </div>
       </header>
 
       {errorMessage && <div className="kds-banner" role="alert">{errorMessage}</div>}
@@ -745,9 +775,9 @@ function App() {
           />
         ) : (
           <>
-            <Lane title="Pending" items={pendingOrders} flash={newTicketFlash} />
-            <Lane title="Cooking" items={inProgressOrders} />
-            <Lane title="Ready" items={readyOrders} />
+            <Lane title="Pending" items={pendingOrders} flash={newTicketFlash} renderTicket={renderTicket} />
+            <Lane title="Cooking" items={inProgressOrders} renderTicket={renderTicket} />
+            <Lane title="Ready" items={readyOrders} renderTicket={renderTicket} />
           </>
         )}
       </main>

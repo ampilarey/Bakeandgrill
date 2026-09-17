@@ -141,6 +141,43 @@ describe("the kitchen board", () => {
     expect(tickets[1]).toHaveTextContent("Hulhumalé");
   });
 
+  /*
+   * Audit, 2026-09-17: the lane component was declared inside App's render,
+   * so every poll and every clock tick remounted all three lanes and threw a
+   * scrolled lane back to its top.
+   */
+  it("keeps the lane's DOM across re-renders, so a scrolled lane stays put", async () => {
+    const { fireEvent } = await import("@testing-library/react");
+    render(<App />);
+
+    const pending = await screen.findByTestId("kds-lane-pending");
+    const body = pending.querySelector(".kds-lane-body");
+    expect(body).not.toBeNull();
+
+    // Any state change re-renders the board; the sound toggle is the cheapest.
+    fireEvent.click(screen.getByRole("button", { name: /Sound/ }));
+
+    expect(screen.getByTestId("kds-lane-pending").querySelector(".kds-lane-body")).toBe(body);
+  });
+
+  it("folds the lesser tools behind More, and opens them on request", async () => {
+    const { fireEvent } = await import("@testing-library/react");
+    render(<App />);
+
+    await screen.findByTestId("kds-lane-pending");
+    const more = screen.getByRole("button", { name: "More ▾" });
+    const header = more.closest("header");
+    expect(header).toHaveAttribute("data-more", "false");
+    // Logout and Sound live in the folding group; the board switch does not.
+    const tools = screen.getByTestId("kds-topbar-tools");
+    expect(within(tools).getByRole("button", { name: "Logout" })).toBeInTheDocument();
+    expect(within(tools).queryByRole("button", { name: "Production" })).toBeNull();
+
+    fireEvent.click(more);
+    expect(header).toHaveAttribute("data-more", "true");
+    expect(screen.getByRole("button", { name: "Less ▴" })).toHaveAttribute("aria-expanded", "true");
+  });
+
   it("repeats the server's reason when a kitchen action is refused", async () => {
     // Production requires a device header on every kitchen action, and the
     // refusal used to be swallowed into "Failed to start order".

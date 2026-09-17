@@ -153,6 +153,27 @@ button {
 .kds-live[data-state="live"] { color: var(--kds-ok); }
 .kds-live[data-state="polling"] { color: var(--kds-warn); }
 
+/* The lesser buttons — sound, requests, activity, logout — flow inline in
+   the bar on a screen with room. On a phone they fold behind "More". */
+.kds-topbar-tools {
+  display: contents;
+}
+
+.kds-more {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .kds-more { display: inline-block; }
+  .kds-topbar-tools { display: none; }
+  .kds-topbar[data-more="true"] .kds-topbar-tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+  }
+}
+
 /* ── Buttons ────────────────────────────────────────────────────────────── */
 
 .kds-btn {
@@ -222,8 +243,12 @@ button {
   .kds-who { display: none; }
 }
 
+/* The production screen is one long column, not three lanes that scroll on
+   their own — so it scrolls itself. Without this the page's overflow:hidden
+   cut it off at the fold, and the day's fifth job could not be reached. */
 .kds-board--single {
   grid-template-columns: minmax(0, 1fr);
+  overflow-y: auto;
 }
 
 .kds-lane {
@@ -586,10 +611,13 @@ button {
 
 /* ── Sign-in ────────────────────────────────────────────────────────────── */
 
+/* Its own scroll, with a fixed height: on a short, wide screen (a 1024×600
+   kitchen tablet on its side) the card runs past the fold, and the page
+   underneath never scrolls, so the Sign in button was out of reach. */
 .kds-signin {
-  min-height: 100%;
+  height: 100%;
   display: flex;
-  align-items: center;
+  align-items: safe center;
   justify-content: center;
   padding: 24px;
   overflow-y: auto;

@@ -245,7 +245,16 @@ export function KDSPage() {
         title="Kitchen Display"
         subtitle={sseConnected ? '● Live monitor' : '○ Polling every 15s'}
         action={
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            {/* The cooks' screen is its own app; this page only watches it. */}
+            <a
+              href="/kds/"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ display: 'inline-flex', alignItems: 'center', minHeight: 40, padding: '0 12px', color: 'var(--color-primary)', fontWeight: 600, fontSize: 13, textDecoration: 'none' }}
+            >
+              Open kitchen screen ↗
+            </a>
             <Btn onClick={load} variant="secondary">↻ Refresh</Btn>
             <Btn onClick={toggleFullscreen} variant="secondary" title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}>
               {isFullscreen ? '⛶ Exit' : '⛶ Fullscreen'}
