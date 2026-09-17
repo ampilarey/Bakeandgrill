@@ -797,9 +797,12 @@ a { text-decoration: none; color: inherit; }
     grid-template-columns: repeat(2, 1fr) !important;
   }
 
-  /* Stat grids: single column */
+  /* Stat grids: two across. One column made every tile a full-width slab
+     and the dashboard's four site totals ran to two screens before the
+     first list (owner, 2026-09-17: "enhance the mobile view"). A number,
+     its label and a one-line note fit in half a phone. */
   .stat-grid {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: 1fr 1fr !important;
   }
 
   /* Service Availability: keep a compact 2×2 summary (4 stacked cards is too tall) */
@@ -2302,6 +2305,29 @@ a { text-decoration: none; color: inherit; }
     flex-direction: column;
     align-items: stretch;
   }
+  /*
+   * On a phone the top bar already says "Team · My Account", so the
+   * breadcrumb under it said the same thing a third time, with the title.
+   * Owner, 2026-09-17: three lines of chrome before the first card. The
+   * breadcrumb goes; the title and its one-line subtitle stay, smaller.
+   */
+  .page-header-breadcrumb { display: none; }
+  .page-header-title { font-size: 1.2rem; line-height: 1.25; }
+  .page-header-subtitle { font-size: 0.8125rem; margin-top: 0.15rem; }
+  .page-header { margin-bottom: 1rem; }
+  /* A form's single primary action reaches across the phone, as a thumb does. */
+  .mobile-full-btn { width: 100%; justify-content: center; }
+  /*
+   * The filter boxes under a table's headings squeezed to sixty pixels on a
+   * phone — "contains…" cut to "conta" — because the columns shared the
+   * viewport. A box needs room for a word; the table scrolls sideways anyway.
+   */
+  [data-testid$="-filter-row"] input,
+  [data-testid$="-filter-row"] select { min-width: 120px !important; } /* the box carries minWidth: 0 inline */
+  /* Cards: 16px a side on a phone rather than 20. Both card components. */
+  .admin-card { padding: 1rem !important; }
+  .admin-ui-card > .p-5,
+  .admin-ui-card > .p-6 { padding: 1rem; }
   /*
    * Hub chrome on a phone: breadcrumb, title, subtitle and a tab strip all
    * stacked before any content. The subtitle is the line that can go.
@@ -6027,11 +6053,14 @@ work area is a single column that
   .menu-items-pager > button { flex: 1 1 auto; justify-content: center; }
 }
 
-/* ── Narrow phones: header controls that do not fit beside the title ─────
+/* ── Phones: header controls that do not fit beside the title ────────────
    Owner, 2026-09-07: on a phone the four header icons crowd the page title
-   down to a few letters. Below 430px the theme and sound toggles leave the
-   header and sit in the section sheet, next to Log Out. */
-@media (max-width: 429px) {
+   down to a few letters. The theme and sound toggles leave the header and
+   sit in the section sheet, next to Log Out. This used to apply below 430px
+   only; on a 440px phone (owner's, 2026-09-17) five controls still sat in
+   the bar and the sound toggle read as a second notifications bell. Every
+   phone now gets the same two: search and notifications. */
+@media (max-width: 767px) {
   .admin-shell-mobile-top .admin-shell-icon-btn--secondary { display: none; }
 }
 
@@ -6065,7 +6094,7 @@ work area is a single column that
 }
 
 /* Desktop and tablets keep every control in the header; the sheet is mobile-only anyway. */
-@media (min-width: 430px) {
+@media (min-width: 768px) {
   .admin-shell-sheet-prefs { display: none; }
 }
 

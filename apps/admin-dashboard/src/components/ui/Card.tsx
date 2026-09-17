@@ -13,7 +13,7 @@ const paddingStyles = { none: '', sm: 'p-4', md: 'p-5', lg: 'p-6' };
 
 export function Card({ children, className = '', padding = 'md', header, footer, style }: Props) {
   return (
-    <div style={style} className={['bg-white border border-[var(--color-border)] rounded-[14px] shadow-[0_1px_2px_rgba(28,20,8,0.05)]', className].join(' ')}>
+    <div style={style} className={['admin-ui-card bg-white border border-[var(--color-border)] rounded-[14px] shadow-[0_1px_2px_rgba(28,20,8,0.05)]', className].join(' ')}>
       {header && (
         <div className="px-5 py-4 border-b border-[var(--color-border)]">{header}</div>
       )}

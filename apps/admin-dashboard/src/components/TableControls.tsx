@@ -254,6 +254,8 @@ export function SortFilterHead<T>({ controls, leading, allRows, thStyle }: {
                 style={{
                   all: 'unset', cursor: 'pointer', font: 'inherit', color: state ? 'var(--color-primary)' : 'inherit',
                   textTransform: 'inherit', letterSpacing: 'inherit', display: 'inline-flex', gap: 4, alignItems: 'center',
+                  // 18px of text is a poor thumb target; the cell has the room.
+                  minHeight: 32,
                 }}
               >
                 {col.label}

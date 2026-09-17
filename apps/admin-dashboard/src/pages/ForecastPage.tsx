@@ -1060,7 +1060,10 @@ export function ForecastPage() {
       </div>
 
       {loading ? <Spinner /> : (
-        <div style={{ display: 'grid', gap: 20 }}>
+        // minmax(0, 1fr): a grid track defaults to min-content width, so the
+        // bar chart's own scroll row pushed the Sales Trends card out past
+        // the right edge of a phone (phone sweep, 2026-09-17).
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 20 }}>
 
           {/* Sales Trends chart (bar chart using divs) */}
           {trends && (

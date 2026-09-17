@@ -35,7 +35,16 @@
     <link rel="stylesheet" href="/css/dhivehi-font.css?app=website" />
     <script src="%BASE_URL%theme-init.js"></script>
     <style>
-      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      /*
+       * In the base layer, where Tailwind keeps its own copy of this reset.
+       * Unlayered, it outranked every utility in @layer utilities, so the
+       * shared Card's p-5, the Button's px-4 and every p-* / m-* class in the
+       * app computed to zero — cards with text against their border, buttons
+       * with none beside their label (owner's phone, 2026-09-17).
+       */
+      @layer base {
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      }
       body { font-family: var(--font-ui); background: #f1f5f9; color: #1e293b; }
       html[data-theme="dark"] body { background: #0F0D0A; color: #F0EAE0; }
       button { font-family: inherit; cursor: pointer; }

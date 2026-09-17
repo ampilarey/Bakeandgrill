@@ -32,7 +32,9 @@ export function Card({
 }: { children: ReactNode; style?: React.CSSProperties; className?: string } & React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={className}
+      // `admin-card` lets the stylesheet trim the padding on a phone, where
+      // twenty pixels a side out of 390 is a fifth of the card gone.
+      className={['admin-card', className].filter(Boolean).join(' ')}
       {...rest}
       style={{
         background: 'var(--color-surface)',

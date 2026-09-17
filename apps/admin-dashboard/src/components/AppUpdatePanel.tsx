@@ -34,6 +34,15 @@ export function AppUpdatePanel() {
   const [standalone] = useState(isStandalone);
   const [refreshedAt, setRefreshedAt] = useState<string | null>(null);
 
+  // The panel opens on "Last checked: not yet" when it is reached inside the
+  // first seconds of a launch, before the timed check has run. Ask once on
+  // open so the three lines say something true.
+  useEffect(() => {
+    if (!u.lastCheckedAt) void u.checkNow();
+    // Only on first open: a re-check on every render of the hook state is not wanted.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Android and desktop Chrome hand over an install prompt; iOS never does.
   useEffect(() => {
     const onPrompt = (e: Event) => { e.preventDefault(); setInstallPrompt(e as InstallPromptEvent); };

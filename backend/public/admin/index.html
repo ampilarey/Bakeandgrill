@@ -35,15 +35,24 @@
     <link rel="stylesheet" href="/css/dhivehi-font.css?app=website" />
     <script src="/admin/theme-init.js"></script>
     <style>
-      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      /*
+       * In the base layer, where Tailwind keeps its own copy of this reset.
+       * Unlayered, it outranked every utility in @layer utilities, so the
+       * shared Card's p-5, the Button's px-4 and every p-* / m-* class in the
+       * app computed to zero — cards with text against their border, buttons
+       * with none beside their label (owner's phone, 2026-09-17).
+       */
+      @layer base {
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      }
       body { font-family: var(--font-ui); background: #f1f5f9; color: #1e293b; }
       html[data-theme="dark"] body { background: #0F0D0A; color: #F0EAE0; }
       button { font-family: inherit; cursor: pointer; }
       input, select, textarea { font-family: inherit; }
     </style>
-    <script type="module" crossorigin src="/admin/assets/index-BDKOzo6l.js"></script>
+    <script type="module" crossorigin src="/admin/assets/index-DfukunHs.js"></script>
     <link rel="modulepreload" crossorigin href="/admin/assets/vendor-BWxBgI-I.js">
-    <link rel="stylesheet" crossorigin href="/admin/assets/index-CedmZM_e.css">
+    <link rel="stylesheet" crossorigin href="/admin/assets/index-Btxdo5o6.css">
   <link rel="manifest" href="/admin/manifest.webmanifest"></head>
   <body>
     <div id="root"></div>

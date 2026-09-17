@@ -7,7 +7,7 @@ import type { StaffUser } from '../api';
 /*
  * Owner, 2026-09-07, from a phone: the four header icons crowd the page title
  * down to a few letters. On a narrow phone the theme and sound toggles leave
- * the header (CSS hides them under 430px) and live in the section sheet
+ * the header (CSS hides them on every phone width, under 768px) and live in the section sheet
  * beside Log Out, so they are still one tap away.
  */
 

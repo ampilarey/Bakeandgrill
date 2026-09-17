@@ -125,7 +125,7 @@ export function MyAccountPage() {
         </label>
 
         <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Button onClick={() => void handleSave()} disabled={loading || saving}>
+          <Button className="mobile-full-btn" onClick={() => void handleSave()} disabled={loading || saving}>
             {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save preferences'}
           </Button>
         </div>

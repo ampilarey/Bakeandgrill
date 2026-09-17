@@ -300,7 +300,7 @@ export function TwoFactorCard() {
                 <em> and</em> a code from your phone — so a stolen password on its own
                 gets nowhere. The POS is not affected; tills keep using their PIN.
               </p>
-              <Button disabled={busy} onClick={handleSetup}>
+              <Button className="mobile-full-btn" disabled={busy} onClick={handleSetup}>
                 {busy ? 'Starting…' : status.pending ? 'Resume setup' : 'Set up'}
               </Button>
             </>
