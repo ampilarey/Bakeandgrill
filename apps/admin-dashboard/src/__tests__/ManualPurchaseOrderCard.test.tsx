@@ -254,6 +254,40 @@ describe('Create Manual Purchase Order card', () => {
     expect(screen.queryByLabelText('Size of one case for item 1')).not.toBeInTheDocument();
   });
 
+  it('offers every pack of the chosen brand when the unit box is opened, whatever it already says', async () => {
+    /*
+     * Owner, 2026-09-17: "in manual po it doesn't show the second pack". The
+     * box was a text field with a browser datalist, which only lists rows
+     * matching the text already in it — so once it read "Packet of 2.25 Kg",
+     * Dano's "Packet of 900g" could not be found from it.
+     */
+    getPurchaseUnits.mockResolvedValue({
+      base_unit: 'g',
+      purchase_units: [
+        { id: 1, name: 'Packet of 900g', base_units: 900, brand: 'Dano', brand_key: 'dano', default_unit_cost: 145.5 },
+        { id: 2, name: 'Packet of 2.25 Kg', base_units: 2250, brand: 'Dano', brand_key: 'dano', default_unit_cost: 336.5 },
+        { id: 3, name: 'Packet 1 Kg', base_units: 1000, brand: 'Lavazza', brand_key: 'lavazza', default_unit_cost: 615 },
+      ],
+      brands: ['Dano', 'Lavazza'],
+    });
+    await openCard();
+    fireEvent.click(screen.getByText('pick-flour'));
+    fireEvent.change(await screen.findByLabelText('Brand for item 1'), { target: { value: 'Dano' } });
+
+    const unit = screen.getByLabelText('Unit for item 1');
+    await waitFor(() => expect(unit).toHaveValue('Packet of 2.25 Kg'));
+
+    fireEvent.click(unit);
+    const list = await screen.findByRole('listbox', { name: 'Unit for item 1 choices' });
+    const offered = within(list).getAllByRole('option').map((o) => o.textContent);
+    expect(offered.slice(0, 3)).toEqual(['kg', 'Packet of 2.25 Kg', 'Packet of 900g']);
+    expect(offered).not.toContain('Packet 1 Kg');
+
+    fireEvent.mouseDown(within(list).getByRole('option', { name: 'Packet of 900g' }));
+    expect(screen.getByLabelText('Unit for item 1')).toHaveValue('Packet of 900g');
+    expect(await screen.findByText('Price per packet of 900g (MVR)')).toBeInTheDocument();
+  });
+
   it('lets you buy by the case and works out the price of one egg', async () => {
     getPurchaseUnits.mockResolvedValue({
       base_unit: 'kg',

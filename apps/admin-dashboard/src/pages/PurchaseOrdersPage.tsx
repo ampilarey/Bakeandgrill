@@ -209,6 +209,27 @@ function linePack(line: ManualPoLine): InventoryPurchaseUnit | null {
   return line.packs.find((p) => p.name.trim().toLowerCase() === typed) ?? null;
 }
 
+/**
+ * What the unit box offers: the item's own unit, then the packs of the brand
+ * on the line (its own before the shared ones, priced before unpriced —
+ * `packsForBrand`), then the common words. Names only, because the name is
+ * the value: `linePack` resolves whatever is typed by name.
+ */
+export function unitChoices(line: Pick<ManualPoLine, 'selection' | 'packs' | 'brand'>): Array<{ value: string; label: string }> {
+  const seen = new Set<string>();
+  const out: Array<{ value: string; label: string }> = [];
+  const add = (name: string) => {
+    const key = name.trim().toLowerCase();
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    out.push({ value: name, label: name });
+  };
+  if (line.selection) add(line.selection.item.unit);
+  for (const p of packsForBrand(line.packs, line.brand)) add(p.name);
+  for (const u of UNIT_SUGGESTIONS) add(u);
+  return out;
+}
+
 /** Buying in the item's own unit — nothing to convert. */
 function isBaseUnit(line: ManualPoLine): boolean {
   const typed = line.unitText.trim().toLowerCase();
@@ -1857,33 +1878,37 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                     {/* Quantity and the unit it is counted in, together. The unit
                         box is always on screen — greyed until an item is picked,
                         since only the item knows what it is sold in. */}
-                    <div style={{ display: 'flex', gap: 6 }}>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
                       <input id={`manual-po-qty-${idx}`} type="number" min="0.000001" step="any"
                         aria-label={`Quantity for item ${idx + 1}`}
                         value={line.quantity}
                         onChange={(e) => setManualPoForm((f) => ({ ...f, lines: f.lines.map((l, i) => i === idx ? { ...l, quantity: e.target.value } : l) }))}
-                        style={{ ...manualBoxStyle, flex: 1, minWidth: 0, width: 'auto' }} />
-                      <input
-                        id={`manual-po-pack-${idx}`}
-                        aria-label={`Unit for item ${idx + 1}`}
-                        list={`manual-po-unit-options-${idx}`}
-                        autoComplete="off"
-                        placeholder={line.selection?.item.unit ?? 'kg, case…'}
-                        value={line.unitText}
-                        onChange={(e) => setManualPoForm((f) => ({
-                          ...f,
-                          lines: f.lines.map((l, i) => i === idx ? { ...l, unitText: e.target.value, unitTyped: true } : l),
-                        }))}
-                        style={{ ...manualBoxStyle, width: 96, flexShrink: 0 }}
-                      />
-                      <datalist id={`manual-po-unit-options-${idx}`}>
-                        {/* The item's own unit and any pack it has been bought
-                            by, then the common words. Suggestions only: type
-                            anything and the line will ask what it holds. */}
-                        {line.selection && <option value={line.selection.item.unit} />}
-                        {line.packs.map((pk) => <option key={pk.id} value={pk.name} />)}
-                        {UNIT_SUGGESTIONS.map((u) => <option key={u} value={u} />)}
-                      </datalist>
+                        style={{ ...manualBoxStyle, width: 84, flexShrink: 0 }} />
+                      {/*
+                        The unit, as a search-and-pick box like the brand's.
+                        This was a text box with a browser datalist, and a
+                        datalist only offers rows that match what is already
+                        typed: with "Packet of 2.25 Kg" in the box, Dano's
+                        other pack, "Packet of 900g", was nowhere to be seen
+                        (owner, 2026-09-17: "in manual po it doesn't show the
+                        second pack"). Open this and every pack of the chosen
+                        brand is there, its own first; type and it narrows;
+                        type a word the item has no pack for and the line asks
+                        what it holds, as before.
+                      */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <PickOrType
+                          ariaLabel={`Unit for item ${idx + 1}`}
+                          placeholder={line.selection?.item.unit ?? 'kg, case…'}
+                          value={line.unitText}
+                          options={unitChoices(line)}
+                          onChange={(v) => setManualPoForm((f) => ({
+                            ...f,
+                            lines: f.lines.map((l, i) => i === idx ? { ...l, unitText: v, unitTyped: true } : l),
+                          }))}
+                          style={{ ...manualBoxStyle, minHeight: 0, padding: '8px 30px 8px 10px' }}
+                        />
+                      </div>
                     </div>
                   </div>
                   <div>
