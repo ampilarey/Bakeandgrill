@@ -1365,9 +1365,9 @@ class ReportsService
      *
      * @return array{rows: list<array{item_id: int, name: string, price: float, cost: float|null, margin_pct: float|null, category: string|null}>}
      */
-    public function productMargins(int $limit = 100): array
+    public function productMargins(int $limit = 2000): array
     {
-        $limit = min(200, max(10, $limit));
+        $limit = min(2000, max(10, $limit));
         $recipeCosts = app(RecipeCostCalculator::class);
 
         $rows = Item::query()

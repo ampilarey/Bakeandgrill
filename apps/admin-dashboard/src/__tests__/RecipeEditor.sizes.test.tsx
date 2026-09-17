@@ -83,7 +83,7 @@ describe('Recipe editor — rows per size', () => {
       { inventory_item_id: 30, quantity: 1, unit: 'pcs', variant_id: null },
       { inventory_item_id: 31, quantity: 1, unit: 'pcs', variant_id: 1 },
       { inventory_item_id: 32, quantity: 1, unit: 'pcs', variant_id: null },
-    ], true, 'sale');
+    ], true, 'sale', 1);
   });
 
   it('hides the size column for a dish with no sizes', async () => {

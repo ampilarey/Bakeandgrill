@@ -690,7 +690,12 @@ export interface RecipeIngredient {
   variant: { id: number; name: string } | null;
   quantity: number;
   unit: string | null;
-  line_cost: number;
+  /** In the ingredient's own unit, whatever the row is written in; null when the row cannot be costed. */
+  line_cost: number | null;
+  /** The ingredient has been deleted from inventory. */
+  missing_ingredient?: boolean;
+  /** The row's unit can be turned into the ingredient's unit. */
+  unit_ok?: boolean;
 }
 
 /** A size costed on its own: its share of the shared rows plus what is its alone. */
@@ -721,6 +726,8 @@ export interface ItemWithRecipe {
   base_price: number;
   recipe_cost: number | null;
   effective_cost: number | null;
+  /** The item's own typed cost, when it is what wins over the recipe. */
+  manual_cost?: number | null;
   profit: number | null;
   margin_pct: number | null;
   /** Active sizes, for rows that belong to one size. */
@@ -748,6 +755,7 @@ export async function saveItemRecipe(
   ingredients: RecipeIngredientInput[],
   limitsAvailability?: boolean,
   consumedAt?: 'sale' | 'production',
+  yieldQuantity?: number,
 ): Promise<{ item: ItemWithRecipe }> {
   return req(`/items/${id}/recipe`, {
     method: 'PUT',
@@ -755,6 +763,7 @@ export async function saveItemRecipe(
       ingredients,
       ...(limitsAvailability === undefined ? {} : { limits_availability: limitsAvailability }),
       ...(consumedAt === undefined ? {} : { consumed_at: consumedAt }),
+      ...(yieldQuantity === undefined ? {} : { yield_quantity: yieldQuantity }),
     }),
   });
 }

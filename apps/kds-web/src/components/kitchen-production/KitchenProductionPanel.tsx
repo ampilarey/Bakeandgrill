@@ -230,6 +230,12 @@ export function KitchenProductionPanel({
                   {task.made_qty > 0 && <span>made {fmtQty(task.made_qty)}</span>}
                   {task.received_qty > 0 && <span>counter got {fmtQty(task.received_qty)}</span>}
                 </div>
+                {task.instructions && (
+                  <details data-testid={`kds-plan-recipe-${task.id}`} style={{ fontSize: 13, color: "#6B5D4F" }}>
+                    <summary style={{ cursor: "pointer", fontWeight: 700, minHeight: 28, display: "flex", alignItems: "center" }}>How to make</summary>
+                    <div style={{ whiteSpace: "pre-wrap", padding: "6px 10px", borderLeft: "2px solid #EDE4D4", marginTop: 2 }}>{task.instructions}</div>
+                  </details>
+                )}
                 {!done && (
                   <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                     <input

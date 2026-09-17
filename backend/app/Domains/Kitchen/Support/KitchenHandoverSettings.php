@@ -35,12 +35,14 @@ final class KitchenHandoverSettings
         return self::bool('kitchen_photo_required_for_reject_waste', false);
     }
 
-    public static function productionConsumesRecipeStock(): bool
-    {
-        return self::bool('kitchen_production_consumes_recipe_stock', false);
-    }
-
-    /** @return array<string, bool> */
+    /**
+     * There is no "production consumes recipe stock" switch any more. It was
+     * shown, saved and read by nothing: whether a batch takes ingredients is
+     * decided per recipe ("these ingredients leave stock when the kitchen
+     * records making it"), which is the control that actually works.
+     *
+     * @return array<string, bool>
+     */
     public static function all(): array
     {
         return [
@@ -49,7 +51,6 @@ final class KitchenHandoverSettings
             'kitchen_manager_verification_for_prepared_stock' => self::managerVerificationForPreparedStock(),
             'kitchen_allow_staff_prepared_stock_batches' => self::allowStaffPreparedStockBatches(),
             'kitchen_photo_required_for_reject_waste' => self::photoRequiredForRejectWaste(),
-            'kitchen_production_consumes_recipe_stock' => self::productionConsumesRecipeStock(),
         ];
     }
 

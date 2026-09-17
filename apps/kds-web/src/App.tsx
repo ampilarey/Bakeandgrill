@@ -593,6 +593,14 @@ function App() {
                     Cooked {item.kitchen_produced_qty}/{item.quantity}
                   </div>
                 )}
+                {/* The recipe's method, folded away: typed in the recipe
+                    editor and, until the 2026-09-17 audit, shown nowhere. */}
+                {item.recipe_instructions && (
+                  <details className="kds-recipe" data-testid="kds-recipe">
+                    <summary>How to make</summary>
+                    <div className="kds-recipe-body">{item.recipe_instructions}</div>
+                  </details>
+                )}
               </div>
               <div className="kds-line-actions">
                 {canProduce && cooking && (item.kitchen_produced_qty ?? 0) < item.quantity && (

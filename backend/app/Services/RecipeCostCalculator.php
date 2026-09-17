@@ -6,13 +6,29 @@ namespace App\Services;
 
 use App\Models\Item;
 use App\Models\Recipe;
+use App\Models\RecipeItem;
 use App\Models\Variant;
 
 /**
  * Roll up ingredient unit costs into a menu item recipe cost (MVR).
+ *
+ * Audit, 2026-09-17. Three things this used to get wrong, all silently:
+ *
+ *   - A row's unit was ignored. Stock deduction converts a row written in
+ *     grams into the kilos the ingredient is stocked and priced in; costing
+ *     multiplied the 200 by the price of a kilo. Every recipe written in
+ *     grams or millilitres against a kilo or litre ingredient showed a cost
+ *     hundreds of times too high.
+ *   - The recipe's yield was applied in stock but not in cost. Deduction
+ *     divided by it, the whole-dish cost did not, a size's own rows did.
+ *   - A row whose ingredient had been deleted, or whose unit had no
+ *     conversion, was costed at zero — an unknown cost became a confident
+ *     one. It is null now, and the editor says why.
  */
 class RecipeCostCalculator
 {
+    public function __construct(private readonly UnitConversionService $units) {}
+
     public function forItem(Item $item): ?float
     {
         if (!$item->relationLoaded('recipe') || $item->recipe === null) {
@@ -20,6 +36,34 @@ class RecipeCostCalculator
         }
 
         return $this->forRecipe($item->recipe);
+    }
+
+    /**
+     * What one recipe row costs, whatever unit it is written in.
+     *
+     * Null when the ingredient is gone or the row's unit cannot be turned
+     * into the ingredient's — an unknown cost must stay unknown rather than
+     * become a confident zero.
+     */
+    public function lineCost(RecipeItem $row): ?float
+    {
+        $inv = $row->inventoryItem;
+        if (!$inv) {
+            return null;
+        }
+        $from = (string) ($row->unit ?: $inv->unit);
+        if (!$this->units->canConvert($from, (string) $inv->unit)) {
+            return null;
+        }
+        $qty = $this->units->convert((float) $row->quantity, $from, (string) $inv->unit);
+
+        return round($qty * (float) ($inv->unit_cost ?? 0), 4);
+    }
+
+    /** Whether a row can be costed at all: its ingredient exists and its unit converts. */
+    public function lineIsCostable(RecipeItem $row): bool
+    {
+        return $this->lineCost($row) !== null;
     }
 
     public function forRecipe(Recipe $recipe): ?float
@@ -41,18 +85,24 @@ class RecipeCostCalculator
         // is that size's cost, not the dish's — see effectiveCostForVariant.
         $sum = 0.0;
         $hasIngredients = false;
+        $yield = max(1.0, (float) $recipe->yield_quantity);
 
         foreach ($recipe->recipeItems as $row) {
             if ($row->variant_id !== null) {
                 continue;
             }
             $hasIngredients = true;
-            $unitCost = (float) ($row->inventoryItem?->unit_cost ?? 0);
-            $sum += (float) $row->quantity * $unitCost;
+            $line = $this->lineCost($row);
+            if ($line === null) {
+                return null;
+            }
+            $sum += $line;
         }
 
         if ($hasIngredients) {
-            return round($sum, 2);
+            // The rows describe what the recipe makes; the dish is one of
+            // those — the same division stock deduction applies.
+            return round($sum / $yield, 2);
         }
 
         // A recipe made only of per-size rows has no cost as a whole; the
@@ -67,7 +117,12 @@ class RecipeCostCalculator
         return $stored > 0 ? round($stored, 2) : null;
     }
 
-    /** What one size's own rows cost, on top of its share of the dish. */
+    /**
+     * What one size's own rows cost, on top of its share of the dish.
+     *
+     * 0.0 when the size has no rows of its own; null when it has rows that
+     * cannot be costed.
+     */
     public function ownRowsCostForVariant(Recipe $recipe, Variant $variant): ?float
     {
         if (!$recipe->relationLoaded('recipeItems')) {
@@ -75,12 +130,16 @@ class RecipeCostCalculator
         }
         $own = $recipe->recipeItems->filter(fn ($r) => (int) $r->variant_id === (int) $variant->id);
         if ($own->isEmpty()) {
-            return null;
+            return 0.0;
         }
         $yield = max(1.0, (float) $recipe->yield_quantity);
         $sum = 0.0;
         foreach ($own as $row) {
-            $sum += (float) $row->quantity * (float) ($row->inventoryItem?->unit_cost ?? 0) / $yield;
+            $line = $this->lineCost($row);
+            if ($line === null) {
+                return null;
+            }
+            $sum += $line / $yield;
         }
 
         return round($sum, 2);
@@ -115,6 +174,9 @@ class RecipeCostCalculator
      * costing a bundle as if nobody ever takes the optional side is the
      * optimistic direction, and this number exists to stop optimism.
      *
+     * A row that names a size is costed at that size (audit, 2026-09-17: a
+     * set meal of half portions was costed as fulls).
+     *
      * Null when nothing inside has a cost — an unknown cost must stay unknown
      * rather than become a confident zero. Platters are excluded: their
      * contents are chosen at order time, so there is no fixed cost to state.
@@ -128,7 +190,7 @@ class RecipeCostCalculator
 
         $rows = $item->relationLoaded('comboItems')
             ? $item->comboItems
-            : $item->comboItems()->with(['item.recipe.recipeItems.inventoryItem'])->get();
+            : $item->comboItems()->with(['item.recipe.recipeItems.inventoryItem', 'variant'])->get();
 
         $total = 0.0;
         $known = false;
@@ -139,9 +201,14 @@ class RecipeCostCalculator
                 continue;
             }
 
-            $childCost = $child->cost !== null && (float) $child->cost > 0
-                ? (float) $child->cost
-                : ($this->forItem($child) ?? $this->bundleCost($child, $depth + 1));
+            $variant = $row->variant_id ? ($row->relationLoaded('variant') ? $row->variant : $row->variant()->first()) : null;
+            if ($variant !== null) {
+                $childCost = $this->effectiveCostForVariant($child, $variant);
+            } else {
+                $childCost = $child->cost !== null && (float) $child->cost > 0
+                    ? (float) $child->cost
+                    : ($this->forItem($child) ?? $this->bundleCost($child, $depth + 1));
+            }
 
             if ($childCost === null) {
                 continue;
@@ -176,14 +243,18 @@ class RecipeCostCalculator
         // Its share of what every size uses, plus whatever is its alone
         // (owner, 2026-09-07: the 1.5L size's own bottle).
         $itemCost = $this->effectiveCost($item);
-        $own = ($item->relationLoaded('recipe') ? $item->recipe : $item->recipe()->first())
-            ? $this->ownRowsCostForVariant($item->relationLoaded('recipe') ? $item->recipe : $item->recipe()->first(), $variant)
-            : null;
+        $recipe = $item->relationLoaded('recipe') ? $item->recipe : $item->recipe()->first();
+        $own = $recipe ? $this->ownRowsCostForVariant($recipe, $variant) : 0.0;
 
-        if ($itemCost === null && $own === null) {
+        // Own rows that cannot be costed make the size's cost unknown.
+        if ($own === null) {
+            return null;
+        }
+        $hasOwnRows = $recipe !== null && $recipe->recipeItems->contains(fn ($r) => (int) $r->variant_id === (int) $variant->id);
+        if ($itemCost === null && !$hasOwnRows) {
             return null;
         }
 
-        return round(($itemCost ?? 0) * $variant->consumptionFactor() + ($own ?? 0), 2);
+        return round(($itemCost ?? 0) * $variant->consumptionFactor() + $own, 2);
     }
 }

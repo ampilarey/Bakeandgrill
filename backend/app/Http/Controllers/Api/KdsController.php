@@ -56,6 +56,7 @@ class KdsController extends Controller
         $orders = Order::with([
             'items.modifiers',
             'items.item:id,menu_group_id,prep_time_minutes,is_available,is_combo',
+            'items.item.recipe:id,item_id,instructions',
             'table:id,name,location',
             'kitchenDoneBy:id,name',
         ])
@@ -239,6 +240,9 @@ class KdsController extends Controller
                     'kitchen_received_qty' => $line->kitchen_received_qty !== null ? (float) $line->kitchen_received_qty : null,
                     // KDS never renders notes for platter composition — children are lines.
                     'notes' => $line->parent_order_item_id ? null : $line->notes,
+                    // The recipe's method, for a cook who wants it. Audit,
+                    // 2026-09-17: typed in the recipe editor, shown nowhere.
+                    'recipe_instructions' => self::instructionsFor($line),
                     'status' => $line->status,
                     'menu_group_id' => $line->item?->menu_group_id,
                     'prep_time_minutes' => $line->item?->prep_time_minutes,
@@ -275,6 +279,23 @@ class KdsController extends Controller
      *
      * @return list<array{name: string, quantity: int}>|null
      */
+    /**
+     * The recipe's method for this line, trimmed for a ticket. Platter and
+     * bundle children carry their own; a line with no recipe carries none.
+     */
+    private static function instructionsFor(OrderItem $line): ?string
+    {
+        // The list loads the recipe with the items; the single-order
+        // responses (start, bump, recall) load the item alone.
+        $line->item?->loadMissing('recipe:id,item_id,instructions');
+        $text = trim((string) ($line->item?->recipe?->instructions ?? ''));
+        if ($text === '') {
+            return null;
+        }
+
+        return mb_strlen($text) > 1200 ? mb_substr($text, 0, 1200) . '…' : $text;
+    }
+
     private static function bundleContentsFor(OrderItem $line): ?array
     {
         $item = $line->item;

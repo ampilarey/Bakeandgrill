@@ -103,10 +103,6 @@ const SETTINGS_META: Record<keyof KitchenHandoverSettings, { label: string; hint
     label: 'Photo required for reject / waste',
     hint: 'Reject and waste variances must include a photo attachment.',
   },
-  kitchen_production_consumes_recipe_stock: {
-    label: 'Production consumes recipe stock',
-    hint: 'Submitting a batch deducts recipe ingredients from inventory.',
-  },
 };
 
 function titleCase(value: string): string {

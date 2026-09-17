@@ -371,7 +371,9 @@ class ReportsController extends Controller
 
     public function productMargins(Request $request)
     {
-        $limit = min(200, max(10, (int) $request->input('limit', 100)));
+        // Every dish by default: a cap of 100 by name cut a bigger menu off
+        // at the letter it reached (audit, 2026-09-17).
+        $limit = min(2000, max(10, (int) $request->input('limit', 2000)));
 
         return response()->json($this->reports->productMargins($limit));
     }

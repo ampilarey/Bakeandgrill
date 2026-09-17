@@ -334,6 +334,22 @@ class InventoryDeductionService
                 if (!$inv || $perUnit <= 0 || $pilePortions <= 0) {
                     continue;
                 }
+                // A row in a unit the ingredient's cannot be reached from used
+                // to be taken 1:1 — 200 g of flour stocked in kilos left as
+                // 200 kg. The editor and the import refuse such rows now; one
+                // that predates that is skipped and said out loud rather than
+                // guessed at (audit, 2026-09-17).
+                if (!$this->unitConversions->canConvert($recipeItem->unit ?: $inv->unit, $inv->unit)) {
+                    Log::warning('inventory.recipe_unit_unconvertible', [
+                        'inventory_item_id' => $inv->id,
+                        'name' => $inv->name,
+                        'row_unit' => $recipeItem->unit,
+                        'stock_unit' => $inv->unit,
+                        'item_id' => $item->id,
+                    ]);
+
+                    continue;
+                }
                 $needed = $this->unitConversions->convert(
                     ($perUnit * $pilePortions) / $yield,
                     $recipeItem->unit ?: $inv->unit,

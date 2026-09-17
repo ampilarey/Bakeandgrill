@@ -180,6 +180,8 @@ final class ProductionTasks
             'made_at' => $r->made_at?->toIso8601String(),
             'made_by_name' => $r->maker?->name,
             'status' => $status,
+            // The recipe's method, for the cook making it.
+            'instructions' => trim((string) ($item->recipe?->instructions ?? '')) ?: null,
         ];
     }
 
@@ -192,7 +194,9 @@ final class ProductionTasks
         $itemIds = $records->pluck('item_id')->map(fn ($id) => (int) $id)->unique()->values()->all();
         $variantIds = $records->pluck('variant_id')->map(fn ($id) => (int) $id)->filter(fn (int $id) => $id > 0)->unique()->values()->all();
 
-        $items = $itemIds === [] ? new Collection : Item::query()->whereIn('id', $itemIds)->get()->keyBy('id');
+        $items = $itemIds === []
+            ? new Collection
+            : Item::query()->whereIn('id', $itemIds)->with('recipe:id,item_id,instructions')->get()->keyBy('id');
         $variants = $variantIds === [] ? new Collection : Variant::query()->whereIn('id', $variantIds)->get()->keyBy('id');
 
         return [$items, $variants];

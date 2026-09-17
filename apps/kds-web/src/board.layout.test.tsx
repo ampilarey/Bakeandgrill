@@ -178,6 +178,24 @@ describe("the kitchen board", () => {
     expect(screen.getByRole("button", { name: "Less ▴" })).toHaveAttribute("aria-expanded", "true");
   });
 
+  /*
+   * Audit, 2026-09-17: the recipe's method was typed in the admin and shown
+   * on no screen. It folds under the dish for a cook who wants it.
+   */
+  it("folds the recipe's method under the dish", async () => {
+    fetchKdsOrders.mockResolvedValue([
+      order(1, "pending", "Bajiya", 2, {
+        items: [{ id: 10, item_id: 1, item_name: "Bajiya", quantity: 2, recipe_instructions: "Fry until golden." }],
+      }),
+    ]);
+    render(<App />);
+
+    const recipe = await screen.findByTestId("kds-recipe");
+    expect(recipe).toHaveTextContent("How to make");
+    expect(recipe).toHaveTextContent("Fry until golden.");
+    expect(recipe).not.toHaveAttribute("open");
+  });
+
   it("repeats the server's reason when a kitchen action is refused", async () => {
     // Production requires a device header on every kitchen action, and the
     // refusal used to be swallowed into "Failed to start order".

@@ -486,6 +486,30 @@ button {
   color: var(--kds-ink-dim);
 }
 
+/* The recipe's method, folded under the dish until a cook opens it. */
+.kds-recipe {
+  margin-top: 5px;
+  font-size: var(--kds-meta);
+  color: var(--kds-ink-dim);
+}
+
+.kds-recipe summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--kds-ink-faint);
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+}
+
+.kds-recipe-body {
+  white-space: pre-wrap;
+  padding: 6px 10px;
+  border-left: 2px solid var(--kds-card-edge);
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+}
+
 .kds-line-actions {
   display: flex;
   flex-direction: column;

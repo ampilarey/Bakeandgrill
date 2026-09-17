@@ -324,6 +324,8 @@ class KitchenProductionWorkflowTest extends TestCase
     {
         $this->assertFalse(KitchenHandoverSettings::requirePosReceivingBeforeReady());
         $this->assertTrue(KitchenHandoverSettings::receiveUpdatesPreparedStock());
-        $this->assertFalse(KitchenHandoverSettings::productionConsumesRecipeStock());
+        // The dead "production consumes recipe stock" switch is gone; the
+        // recipe's own "consumed at" is the control.
+        $this->assertArrayNotHasKey('kitchen_production_consumes_recipe_stock', KitchenHandoverSettings::all());
     }
 }

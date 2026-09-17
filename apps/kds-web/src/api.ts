@@ -12,6 +12,8 @@ export type KdsOrderItem = {
   kitchen_produced_qty?: number | null;
   kitchen_received_qty?: number | null;
   notes?: string | null;
+  /** The recipe's method, for a cook who wants it. */
+  recipe_instructions?: string | null;
   status?: string;
   menu_group_id?: number | null;
   prep_time_minutes?: number | null;
@@ -283,6 +285,8 @@ export type KdsPlanTask = {
   made_at: string | null;
   made_by_name: string | null;
   status: 'todo' | 'partial' | 'made' | 'received';
+  /** The recipe's method, for the cook making it. */
+  instructions?: string | null;
 };
 
 export async function fetchPlanTasks(token: string, date?: string): Promise<{ date: string; tasks: KdsPlanTask[] }> {

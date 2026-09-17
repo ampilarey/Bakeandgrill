@@ -31,6 +31,24 @@ final class UnitConversionService
         return round($quantity * $factor, 6);
     }
 
+    /**
+     * Whether a quantity in one unit can be expressed in another: the same
+     * unit, or a conversion on file in either direction. convert() answers
+     * an unknown pair with the quantity unchanged, which is right for two
+     * spellings of the same thing and disastrous for grams against kilos;
+     * callers that must not guess ask this first.
+     */
+    public function canConvert(?string $fromUnit, ?string $toUnit): bool
+    {
+        $from = $this->normalize($fromUnit);
+        $to = $this->normalize($toUnit);
+        if ($from === '' || $to === '' || $from === $to) {
+            return true;
+        }
+
+        return $this->factor($from, $to) !== null;
+    }
+
     public function factor(string $fromUnit, string $toUnit): ?float
     {
         $from = $this->normalize($fromUnit);

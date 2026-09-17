@@ -8,6 +8,7 @@ use App\Models\InventoryItem;
 use App\Models\Item;
 use App\Models\Recipe;
 use App\Services\RecipeCostCalculator;
+use App\Services\UnitConversionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -26,7 +27,37 @@ class RecipeController extends Controller
 {
     private const CSV_HEADER = ['item_id', 'item', 'category', 'size_id', 'size', 'ingredient_id', 'ingredient', 'quantity', 'unit'];
 
-    public function __construct(private readonly RecipeCostCalculator $costs) {}
+    public function __construct(
+        private readonly RecipeCostCalculator $costs,
+        private readonly UnitConversionService $units,
+    ) {}
+
+    /**
+     * Refuse a row written in a unit the ingredient's unit cannot be reached
+     * from. Audit, 2026-09-17: such a row was taken and costed 1:1 — 200 g
+     * of flour stocked in kilos left as 200 kg — and nothing said a word.
+     *
+     * @param array<int, array{inventory_item_id: int, unit?: ?string}> $rows
+     * @return array<string, list<string>> validation errors keyed by row
+     */
+    private function unitErrors(array $rows, string $prefix = 'ingredients'): array
+    {
+        $ids = array_values(array_unique(array_map(fn ($r) => (int) $r['inventory_item_id'], $rows)));
+        $units = InventoryItem::query()->whereIn('id', $ids)->pluck('unit', 'id');
+        $errors = [];
+        foreach ($rows as $i => $row) {
+            $rowUnit = trim((string) ($row['unit'] ?? ''));
+            $invUnit = (string) ($units[(int) $row['inventory_item_id']] ?? '');
+            if ($rowUnit === '' || $invUnit === '' || $this->units->canConvert($rowUnit, $invUnit)) {
+                continue;
+            }
+            $errors["{$prefix}.{$i}.unit"] = [
+                "There is no conversion from '{$rowUnit}' to '{$invUnit}'. Write the row in {$invUnit}, or add the conversion under Inventory → Units.",
+            ];
+        }
+
+        return $errors;
+    }
 
     /** GET /api/items/{id}/recipe — recipe + live cost / margin / profit. */
     public function show(int $id): JsonResponse
@@ -72,6 +103,10 @@ class RecipeController extends Controller
                     "ingredients.{$i}.variant_id" => ['That size does not belong to this item.'],
                 ]);
             }
+        }
+        $unitErrors = $this->unitErrors($data['ingredients']);
+        if ($unitErrors !== []) {
+            throw \Illuminate\Validation\ValidationException::withMessages($unitErrors);
         }
 
         $item = DB::transaction(fn () => $this->saveRecipe($item, $data));
@@ -266,11 +301,18 @@ class RecipeController extends Controller
                 continue;
             }
 
+            $unit = $cell($row, 'unit') !== '' ? mb_substr($cell($row, 'unit'), 0, 20) : ($ingredient->unit ?? null);
+            if ($unit !== null && !$this->units->canConvert($unit, (string) $ingredient->unit)) {
+                $errors[] = "Line {$line}: '{$ingredient->name}' is stocked in {$ingredient->unit} and there is no conversion from '{$unit}'.";
+
+                continue;
+            }
+
             $perItem[$item->id][] = [
                 'inventory_item_id' => (int) $ingredient->id,
                 'variant_id' => $variantId,
                 'quantity' => (float) $qty,
-                'unit' => $cell($row, 'unit') !== '' ? mb_substr($cell($row, 'unit'), 0, 20) : ($ingredient->unit ?? null),
+                'unit' => $unit,
             ];
         }
         fclose($handle);
@@ -377,6 +419,10 @@ class RecipeController extends Controller
             'base_price' => $price,
             'recipe_cost' => $cost,
             'effective_cost' => $effectiveCost,
+            // The item's own typed cost, when it is what wins over the recipe
+            // (audit, 2026-09-17: it won silently, and an old figure kept
+            // beating a recipe recorded later).
+            'manual_cost' => $item->cost !== null && (float) $item->cost > 0 ? (float) $item->cost : null,
             'profit' => $profit,
             'margin_pct' => $marginPct,
             'variants' => $variants->where('is_active', true)->sortBy('sort_order')->values()->map(fn ($v) => [
@@ -402,9 +448,13 @@ class RecipeController extends Controller
                     ] : null,
                     'quantity' => (float) $ri->quantity,
                     'unit' => $ri->unit,
-                    'line_cost' => $ri->inventoryItem
-                        ? round((float) $ri->quantity * (float) ($ri->inventoryItem->unit_cost ?? 0), 2)
-                        : 0.0,
+                    // In the ingredient's own unit, whatever the row is written
+                    // in; null when the row cannot be costed, and the two flags
+                    // say why (audit, 2026-09-17).
+                    'line_cost' => ($lc = $this->costs->lineCost($ri)) !== null ? round($lc, 2) : null,
+                    'missing_ingredient' => $ri->inventoryItem === null,
+                    'unit_ok' => $ri->inventoryItem !== null
+                        && $this->units->canConvert($ri->unit ?: $ri->inventoryItem->unit, $ri->inventoryItem->unit),
                 ])->values(),
             ] : null,
         ];
