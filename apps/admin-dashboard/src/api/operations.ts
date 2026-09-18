@@ -33,6 +33,8 @@ export interface InventoryItem {
   gst_rate_bp: number | null;
   last_counted_at: string | null;
   created_at: string;
+  /** The item's own picture, not a brand's (owner, 2026-09-18). */
+  photo_url?: string | null;
   /* Setup fields, editable from Inventory. Present on the list payload
      because the backend paginates whole models. */
   lead_days: number | null;
@@ -66,6 +68,7 @@ export interface InventoryCategory {
 type BackendInventoryRow = {
   id: number;
   name: string;
+  photo_url?: string | null;
   sku: string | null;
   barcode?: string | null;
   unit: string;
@@ -95,6 +98,7 @@ function mapInventoryRow(row: BackendInventoryRow): InventoryItem {
   return {
     id: row.id,
     name: row.name,
+    photo_url: row.photo_url ?? null,
     sku: row.sku ?? null,
     barcode: row.barcode ?? null,
     unit: row.unit,
@@ -735,6 +739,17 @@ export async function uploadBrandPhoto(
 
 export async function deleteBrandPhoto(itemId: number, id: number): Promise<{ deleted: boolean }> {
   return req(`/inventory/${itemId}/brand-photos/${id}`, { method: 'DELETE' });
+}
+
+/** The item's own picture (owner, 2026-09-18: "not brand"). Uploading again replaces it. */
+export async function uploadInventoryPhoto(itemId: number, file: File): Promise<{ item_id: number; photo_url: string | null }> {
+  const form = new FormData();
+  form.append('photo', file);
+  return req(`/inventory/${itemId}/photo`, { method: 'POST', body: form });
+}
+
+export async function deleteInventoryPhoto(itemId: number): Promise<{ item_id: number; photo_url: null }> {
+  return req(`/inventory/${itemId}/photo`, { method: 'DELETE' });
 }
 
 /**

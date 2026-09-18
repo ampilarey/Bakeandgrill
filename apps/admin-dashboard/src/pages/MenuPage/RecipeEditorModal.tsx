@@ -278,9 +278,14 @@ export function RecipeEditorModal({
                 const choices = id ? unitChoices(conversions, stockUnit) : [];
                 const unitKnown = !r.unit || choices.includes(norm(r.unit));
                 const lineCost = rowCost(r);
+                const photo = id ? options.find((o) => o.id === id)?.photo_url : null;
                 return (
                   <tr key={r.key}>
-                    <td style={td}>
+                    <td style={{ ...td, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {photo && (
+                        <img src={photo} alt="" data-testid="recipe-ingredient-thumb" style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 6, flexShrink: 0, border: '1px solid var(--color-border)' }} />
+                      )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
                       <select
                         value={r.inventory_item_id}
                         aria-label="Ingredient"
@@ -308,6 +313,7 @@ export function RecipeEditorModal({
                           This ingredient no longer exists in inventory. Until the row is fixed the dish has no cost and this ingredient is not taken from stock.
                         </span>
                       )}
+                      </div>
                     </td>
                     {hasSizes && (
                       <td style={td}>

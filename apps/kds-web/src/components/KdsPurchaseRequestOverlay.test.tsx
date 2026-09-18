@@ -23,7 +23,7 @@ vi.mock("../api", () => ({
 
 const catalog = {
   items: [
-    { id: 3, name: "Chicken thigh", unit: "kg", category_id: 1, category: "Meat", current_stock: 2, reorder_point: 10, suggested_qty: 20 },
+    { id: 3, name: "Chicken thigh", unit: "kg", category_id: 1, category: "Meat", current_stock: 2, reorder_point: 10, suggested_qty: 20, photo_url: "/storage/inventory-photos/3/thigh.jpg" },
     { id: 4, name: "Cooking oil", unit: "L", category_id: 2, category: "Dry goods", current_stock: 30, reorder_point: 5, suggested_qty: null },
   ],
   categories: [{ id: 1, name: "Meat" }, { id: 2, name: "Dry goods" }],
@@ -81,6 +81,17 @@ describe("KdsPurchaseRequestOverlay", () => {
     expect(line.free_text_name).toBeUndefined();
     // 2kg left against a reorder point of 10 — the useful ask is 20.
     expect(line.requested_qty).toBe(20);
+  });
+
+  /* Owner, 2026-09-18: a picture of the thing itself, so the cook picks
+     the right one from the list. */
+  it("shows the item's picture beside its name when it has one", async () => {
+    render(<KdsPurchaseRequestOverlay token="t" mode="request" onClose={() => {}} />);
+
+    await screen.findByText("Chicken thigh");
+    const thumbs = screen.getAllByTestId("kds-item-thumb");
+    expect(thumbs).toHaveLength(1);
+    expect(thumbs[0]).toHaveAttribute("src", "/storage/inventory-photos/3/thigh.jpg");
   });
 
   it("has no free-text item field at all", async () => {

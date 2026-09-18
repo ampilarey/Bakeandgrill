@@ -235,7 +235,14 @@ export function KdsPurchaseRequestOverlay({ token, mode, onClose }: Props) {
                       border: `1px solid ${lines.some((l) => l.item.id === item.id) ? "#1C1408" : "#EDE4D4"}`,
                     }}
                   >
-                    <span style={{ fontWeight: 700, fontSize: 13 }}>{item.name}</span>
+                    <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                      {/* The thing itself, so a cook picks flour and not
+                          cornflour (owner, 2026-09-18). */}
+                      {item.photo_url && (
+                        <img src={item.photo_url} alt="" data-testid="kds-item-thumb" style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 6, flexShrink: 0, border: "1px solid #EDE4D4" }} />
+                      )}
+                      <span style={{ fontWeight: 700, fontSize: 13 }}>{item.name}</span>
+                    </span>
                     <span style={{ fontSize: 12, color: low ? "#b45309" : "#8B7355", whiteSpace: "nowrap" }}>
                       {low ? "Low · " : ""}{item.current_stock} {item.unit} left
                     </span>
@@ -269,8 +276,11 @@ export function KdsPurchaseRequestOverlay({ token, mode, onClose }: Props) {
               <p data-testid="kds-to-receive-empty" style={{ color: "#8B7355" }}>Nothing waiting.</p>
             ) : toReceive.map((item) => (
               <div key={item.id} data-testid="kds-to-receive-row" style={{ border: "1px solid #EDE4D4", borderRadius: 8, padding: 12, display: "flex", flexDirection: "column", gap: 6 }}>
-                <div style={{ fontWeight: 800, fontSize: 15 }}>
-                  {item.qty} {item.unit} · {item.name}{item.partial ? " · part only" : ""}
+                <div style={{ fontWeight: 800, fontSize: 15, display: "flex", alignItems: "center", gap: 10 }}>
+                  {item.photo_url && (
+                    <img src={item.photo_url} alt="" data-testid="kds-item-thumb" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8, flexShrink: 0, border: "1px solid #EDE4D4" }} />
+                  )}
+                  <span>{item.qty} {item.unit} · {item.name}{item.partial ? " · part only" : ""}</span>
                 </div>
                 <div style={{ fontSize: 12, color: "#8B7355" }}>
                   {item.shop ? `From ${item.shop}` : "Shop not recorded"}

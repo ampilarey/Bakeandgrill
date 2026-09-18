@@ -98,6 +98,7 @@ class PurchaseRequestController extends Controller
                 'unit' => $item->unit,
                 'category_id' => $item->inventory_category_id,
                 'category' => $item->category?->name,
+                'photo_url' => $item->photo_url,
                 'current_stock' => (float) $item->current_stock,
                 // "Do we need it?" is the question a requester is answering, so
                 // the reorder point rides along to answer it for them.
@@ -132,7 +133,7 @@ class PurchaseRequestController extends Controller
         $isOwner = ($user->role?->slug ?? '') === 'owner';
 
         $items = PurchaseRequestItem::query()
-            ->with(['purchaseRequest:id,request_no,priority,requested_by', 'purchaseRequest.requester:id,name', 'inventoryItem:id,name,unit', 'buyer:id,name'])
+            ->with(['purchaseRequest:id,request_no,priority,requested_by', 'purchaseRequest.requester:id,name', 'inventoryItem:id,name,unit,photo_path', 'buyer:id,name'])
             ->whereIn('status', ['bought', 'partially_bought'])
             ->whereHas('purchaseRequest', fn ($q) => $q->whereNotIn('status', PurchaseRequest::TERMINAL_STATUSES))
             ->orderBy('bought_at')
@@ -148,6 +149,7 @@ class PurchaseRequestController extends Controller
                     'request_id' => $item->purchase_request_id,
                     'request_no' => $item->purchaseRequest?->request_no,
                     'name' => $item->inventoryItem?->name ?? $item->free_text_name ?? 'Item',
+                    'photo_url' => $item->inventoryItem?->photo_url,
                     'qty' => (float) ($item->actual_qty ?? $item->approved_qty ?? $item->requested_qty),
                     'unit' => $item->actual_unit ?? $item->inventoryItem?->unit ?? $item->requested_unit,
                     // The supplier record is the seller; the text is its copy.
@@ -740,6 +742,8 @@ class PurchaseRequestController extends Controller
         $payload['brand_photos'] = $item->inventory_item_id
             ? array_values($brandPhotos[$item->inventory_item_id] ?? [])
             : [];
+        // The thing itself, whatever packet it comes in (owner, 2026-09-18).
+        $payload['photo_url'] = $item->inventoryItem?->photo_url;
 
         if (!$staffView) {
             $payload['estimated_unit_cost_laar'] = $item->estimated_unit_cost_laar;

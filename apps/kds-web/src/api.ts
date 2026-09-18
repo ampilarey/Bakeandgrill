@@ -379,6 +379,8 @@ function prHeaders(token: string) {
 export type KdsCatalogItem = {
   id: number;
   name: string;
+  /** The item's own picture, so the cook picks the right thing (owner, 2026-09-18). */
+  photo_url?: string | null;
   unit: string;
   category_id: number | null;
   category: string | null;
@@ -400,6 +402,7 @@ export type KdsToReceiveItem = {
   request_id: number;
   request_no: string | null;
   name: string;
+  photo_url?: string | null;
   qty: number;
   unit: string;
   shop: string | null;

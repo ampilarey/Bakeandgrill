@@ -160,6 +160,11 @@ Route::middleware(['auth:sanctum', 'permission:inventory.view'])
     ->whereNumber('itemId');
 
 Route::middleware(['auth:sanctum', 'permission:inventory.manage'])->group(function () {
+    // The item's own picture (owner, 2026-09-18: "not brand").
+    Route::post('/inventory/{itemId}/photo', [App\Http\Controllers\Api\InventoryItemPhotoController::class, 'store'])
+        ->whereNumber('itemId');
+    Route::delete('/inventory/{itemId}/photo', [App\Http\Controllers\Api\InventoryItemPhotoController::class, 'destroy'])
+        ->whereNumber('itemId');
     Route::post('/inventory/{itemId}/brand-photos', [App\Http\Controllers\Api\InventoryBrandPhotoController::class, 'store'])
         ->whereNumber('itemId');
     Route::delete('/inventory/{itemId}/brand-photos/{id}', [App\Http\Controllers\Api\InventoryBrandPhotoController::class, 'destroy'])

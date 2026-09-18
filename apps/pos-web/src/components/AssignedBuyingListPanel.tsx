@@ -148,7 +148,13 @@ export function AssignedBuyingListPanel({ onClose }: Props) {
               const receiptId = `receipt-${item.id}`;
               return (
                 <div key={item.id} style={{ borderTop: `1px solid ${palette.border}`, paddingTop: space.s, marginTop: space.s }}>
-                  <div style={{ fontWeight: 600 }}>{item.name}</div>
+                  <div style={{ fontWeight: 600, display: "flex", alignItems: "center", gap: space.s }}>
+                    {/* The thing itself; the packets follow below. */}
+                    {item.photo_url && (
+                      <img src={item.photo_url} alt="" data-testid={`item-photo-${item.id}`} style={{ width: 40, height: 40, objectFit: "cover", borderRadius: radius.m, flexShrink: 0, border: `1px solid ${palette.border}` }} />
+                    )}
+                    <span>{item.name}</span>
+                  </div>
                   {/*
                     The packets, so the person holding the phone can match the
                     shelf. Owner, 2026-09-09: "upload a pic of different brand

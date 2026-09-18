@@ -21,6 +21,7 @@ import { planShelfLabels, shelfLabelsHtml } from '../utils/shelfLabels';
 import { ScanSheet } from '../components/ScanSheet';
 import { PickOrType } from '../components/PickOrType';
 import { BrandPhotos, BrandThumb } from '../components/BrandPhotos';
+import { InventoryItemPhoto, ItemThumb } from '../components/InventoryItemPhoto';
 import {
   BrandPacks, packRowFromUnit, type BrandPackRow, type BrandPackStore, type BrandPacksHandle, type BrandRow,
 } from '../components/BrandPacks';
@@ -1501,7 +1502,8 @@ export default function InventoryPage() {
                       }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start' }}>
-                        <div style={{ minWidth: 0 }}>
+                        <ItemThumb url={item.photo_url} name={item.name} size={44} />
+                        <div style={{ minWidth: 0, flex: 1 }}>
                           <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--color-text)' }}>{item.name}</div>
                           <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>
                             {[item.sku, item.category?.name].filter(Boolean).join(' · ') || 'No SKU'}
@@ -1647,6 +1649,7 @@ export default function InventoryPage() {
                   return (
                     <tr key={item.id}>
                       <td style={{ ...TD, fontWeight: 600 }}>
+                        {item.photo_url && <span style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: 8 }}><ItemThumb url={item.photo_url} name={item.name} size={32} /></span>}
                         {item.name}
                         {/* Archived rows stay in the list so they can be found
                             and brought back; the badge says why they read as
@@ -2544,6 +2547,21 @@ export default function InventoryPage() {
                   </p>
                 </div>
               )}
+
+              {/* The thing itself, before the packets it comes in
+                  (owner, 2026-09-18: "inventory item photo - not brand"). */}
+              <div style={{ marginBottom: 18 }}>
+                <InventoryItemPhoto
+                  itemId={priceHistoryItem.id}
+                  itemName={priceHistoryItem.name}
+                  photoUrl={priceHistoryItem.photo_url ?? null}
+                  canManage={canManage}
+                  onChanged={(url) => {
+                    setPriceHistoryItem((cur) => (cur ? { ...cur, photo_url: url } : cur));
+                    setItems((prev) => prev.map((i) => (i.id === priceHistoryItem.id ? { ...i, photo_url: url } : i)));
+                  }}
+                />
+              </div>
 
               {/* The packets themselves, so a name on a price row becomes a
                   thing you can recognise on a shelf. */}

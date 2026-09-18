@@ -15,7 +15,17 @@ class InventoryItem extends Model
         'lead_days', 'cover_days', 'restock_snoozed_until', 'restock_excluded',
         'unit_cost', 'last_purchase_price', 'gst_rate_bp', 'expiry_date', 'is_active', 'requestable',
         'inventory_category_id', 'preferred_supplier_id', 'storage_location', 'notes',
+        'photo_path',
     ];
+
+    /** The item's own picture rides on every payload the model is serialised into. */
+    protected $appends = ['photo_url'];
+
+    /** Owner, 2026-09-18: a picture of the ingredient itself, not of a brand. */
+    public function getPhotoUrlAttribute(): ?string
+    {
+        return $this->photo_path === null ? null : \Illuminate\Support\Facades\Storage::disk('public')->url($this->photo_path);
+    }
 
     protected $casts = [
         'expiry_date' => 'date',

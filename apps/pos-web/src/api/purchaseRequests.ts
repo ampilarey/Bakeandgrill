@@ -24,6 +24,8 @@ export type PosPurchaseRequestItem = {
    * a brand name means nothing when you are looking at a shelf of tins.
    */
   brand_photos?: { id: number; brand: string; url: string | null; note: string | null }[];
+  /** The item's own picture — the thing, not a packet (owner, 2026-09-18). */
+  photo_url?: string | null;
 };
 
 export type PosPurchaseRequest = {
