@@ -8,6 +8,7 @@ import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import { ItemSearch, type InventoryItemSelection } from '../components/ItemSearch';
 import { PickOrType } from '../components/PickOrType';
 import { BrandThumb } from '../components/BrandPhotos';
+import { ItemThumb } from '../components/InventoryItemPhoto';
 import { brandKey, type BrandPhoto } from '../api/operations';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -1866,10 +1867,16 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                     )}
                     {/* The packet itself. A brand name is only a name until you
                         are standing in front of the shelf (owner, 2026-09-09). */}
-                    {line.selection && line.brandPhotos[brandKey(line.brand)] && (
+                    {line.selection && (line.selection.item.photo_url || line.brandPhotos[brandKey(line.brand)]) && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }} data-testid={`manual-po-brand-photo-${idx}`}>
-                        <BrandThumb photo={line.brandPhotos[brandKey(line.brand)]} size={40} />
-                        <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>This is what {line.brand} looks like.</span>
+                        {/* The thing itself first, then the packet (audit, 2026-09-18). */}
+                        <ItemThumb url={line.selection.item.photo_url} name={line.selection.item.name} size={40} />
+                        {line.brandPhotos[brandKey(line.brand)] && (
+                          <>
+                            <BrandThumb photo={line.brandPhotos[brandKey(line.brand)]} size={40} />
+                            <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>This is what {line.brand} looks like.</span>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>

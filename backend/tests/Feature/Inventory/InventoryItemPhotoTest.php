@@ -61,6 +61,41 @@ class InventoryItemPhotoTest extends TestCase
         $this->assertCount(0, Storage::disk('public')->allFiles());
     }
 
+    /**
+     * Audit, 2026-09-18: uploads were kept exactly as sent, so a 6 MB phone
+     * photo was downloaded by every buying list that showed it as a thumb.
+     * Fitted within 1200px and re-encoded as JPEG, whatever came in.
+     */
+    public function test_the_picture_is_fitted_within_1200px_and_kept_as_jpeg(): void
+    {
+        Sanctum::actingAs($this->makeOwner(), ['staff']);
+
+        $this->post("/api/inventory/{$this->flour->id}/photo", ['photo' => UploadedFile::fake()->image('big.png', 3000, 1500)])->assertCreated();
+
+        $path = $this->flour->fresh()->photo_path;
+        $this->assertStringEndsWith('.jpg', $path);
+        [$w, $h] = getimagesizefromstring(Storage::disk('public')->get($path));
+        $this->assertSame(1200, $w);
+        $this->assertSame(600, $h);
+    }
+
+    /**
+     * Audit, 2026-09-18: deleting an item cascaded the rows and left the
+     * files. The picture and every packet picture go with the item.
+     */
+    public function test_deleting_the_item_removes_its_pictures_from_the_disk(): void
+    {
+        Sanctum::actingAs($this->makeOwner(), ['staff']);
+        $this->post("/api/inventory/{$this->flour->id}/photo", ['photo' => UploadedFile::fake()->image('flour.jpg', 300, 300)])->assertCreated();
+        $this->post("/api/inventory/{$this->flour->id}/brand-photos", ['brand' => 'Sunrise', 'photo' => UploadedFile::fake()->image('sunrise.jpg', 300, 300)])->assertCreated();
+        $this->assertCount(2, Storage::disk('public')->allFiles());
+
+        $this->deleteJson("/api/inventory/{$this->flour->id}")->assertOk();
+
+        $this->assertNull(InventoryItem::find($this->flour->id));
+        $this->assertCount(0, Storage::disk('public')->allFiles());
+    }
+
     public function test_the_picture_reaches_the_kitchens_request_list(): void
     {
         Sanctum::actingAs($this->makeOwner(), ['staff']);

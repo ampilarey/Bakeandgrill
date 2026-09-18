@@ -60,6 +60,8 @@ export type PurchaseRequestLineInput = {
 export type RequestCatalogItem = {
   id: number;
   name: string;
+  /** The item's own picture, so the cashier picks flour and not cornflour. */
+  photo_url?: string | null;
   unit: string;
   category_id: number | null;
   category: string | null;
@@ -111,6 +113,15 @@ export type ToReceiveItem = {
   request_id: number;
   request_no: string | null;
   name: string;
+  /** The item's own picture. */
+  photo_url?: string | null;
+  /**
+   * The brand the buyer recorded, with its packet picture when the item has
+   * one for it — so the person at the door checks the box against what was
+   * bought, not just against a name (audit, 2026-09-18).
+   */
+  brand?: string | null;
+  brand_photo_url?: string | null;
   qty: number;
   unit: string;
   shop: string | null;

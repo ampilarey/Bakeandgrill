@@ -33,6 +33,13 @@ class MenuImageProcessor
 
     public const MASTER_JPEG_QUALITY = 90;
 
+    /**
+     * Longest edge of a picture that is only ever looked at small — an
+     * inventory item or the packet it is bought in. A phone photo is 4000px
+     * and several megabytes; the thumbnail it becomes is 40px.
+     */
+    public const FIT_MAX_EDGE = 1200;
+
     public function thumbWidth(): int
     {
         return (int) config('menu_media.thumb.width', 400);
@@ -109,6 +116,43 @@ class MenuImageProcessor
     public function storeMaster(UploadedFile $file, string $directory): string
     {
         return $this->writeBinary($this->processMasterJpeg($file), $directory);
+    }
+
+    /**
+     * Store a picture straightened and fitted within a square, full frame,
+     * as a JPEG on the public disk.
+     *
+     * Audit, 2026-09-18: inventory item and brand pictures were saved exactly
+     * as uploaded — a sideways 6 MB phone photo stayed a sideways 6 MB phone
+     * photo, and every buying list that showed it as a 40px thumb downloaded
+     * the lot. Same loader as the menu pictures (EXIF orientation, size
+     * guards, HEIC refused with a readable message), no crop, and written
+     * through the disk so a faked disk in tests sees it. Not registered in
+     * the media library: these are not content, they are labels.
+     *
+     * @return string Relative storage path (e.g. inventory-photos/12/uuid.jpg)
+     */
+    public function storeFit(UploadedFile $file, string $directory, int $maxEdge = self::FIT_MAX_EDGE, int $quality = self::JPEG_QUALITY): string
+    {
+        $image = $this->loadUploaded($file);
+
+        try {
+            [$srcW, $srcH] = $this->dimensions($image);
+            $scale = min(1, $maxEdge / max($srcW, $srcH));
+            $targetW = max(1, (int) round($srcW * $scale));
+            $targetH = max(1, (int) round($srcH * $scale));
+
+            $jpeg = $this->resampleToJpeg($image, 0, 0, $srcW, $srcH, $targetW, $targetH, $quality);
+        } finally {
+            imagedestroy($image);
+        }
+
+        $relative = trim($directory, '/') . '/' . Str::uuid()->toString() . '.jpg';
+        if (!\Illuminate\Support\Facades\Storage::disk('public')->put($relative, $jpeg)) {
+            throw new RuntimeException('Could not save the picture.');
+        }
+
+        return $relative;
     }
 
     /**
@@ -341,7 +385,7 @@ class MenuImageProcessor
     }
 
     /**
-     * @param  array{jpeg: string, webp: string|null}  $encoded
+     * @param array{jpeg: string, webp: string|null} $encoded
      * @return array{path: string, webp_path: string|null}
      */
     private function writeEncodedPair(array $encoded, string $directory): array
@@ -416,7 +460,7 @@ class MenuImageProcessor
 
         $mime = (string) ($file->getMimeType() ?: ($info['mime'] ?? ''));
         if (str_contains(strtolower($mime), 'webp') || strtolower(pathinfo($path, PATHINFO_EXTENSION)) === 'webp') {
-            if (!\App\Support\ImageCapabilities::supportsWebp()) {
+            if (!ImageCapabilities::supportsWebp()) {
                 throw new RuntimeException(
                     "WebP isn't supported on this server; upload JPEG or PNG.",
                 );

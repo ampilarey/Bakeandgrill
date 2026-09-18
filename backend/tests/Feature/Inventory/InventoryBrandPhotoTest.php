@@ -63,6 +63,23 @@ class InventoryBrandPhotoTest extends TestCase
         Storage::disk('public')->assertExists($row->file_path);
     }
 
+    /** Audit, 2026-09-18: a packet is a thumb on a phone at the shop, not a 6 MB photo. */
+    public function test_the_packet_picture_is_fitted_within_1200px(): void
+    {
+        $this->post("/api/inventory/{$this->egg->id}/brand-photos", [
+            'brand' => 'Sunrise',
+            'photo' => UploadedFile::fake()->image('tall.png', 1000, 2400),
+        ])->assertCreated();
+
+        $row = InventoryBrandPhoto::firstOrFail();
+        $this->assertStringEndsWith('.jpg', $row->file_path);
+        $this->assertSame('image/jpeg', $row->mime_type);
+        $this->assertSame(Storage::disk('public')->size($row->file_path), (int) $row->size);
+        [$w, $h] = getimagesizefromstring(Storage::disk('public')->get($row->file_path));
+        $this->assertSame(500, $w);
+        $this->assertSame(1200, $h);
+    }
+
     public function test_one_brand_keeps_one_picture_and_the_old_file_goes(): void
     {
         $first = $this->upload('Sunrise', 'old.jpg')->assertCreated();

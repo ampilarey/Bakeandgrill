@@ -7,6 +7,7 @@ import {
   TableSkeleton, TableStateBar, ConfirmDialog, useConfirmDialog,
 } from '../components/SharedUI';
 import { SortFilterHead, useSortFilter } from '../components/TableControls';
+import { ItemThumb } from '../components/InventoryItemPhoto';
 import { useToast } from '../components/ui';
 import { fetchStaff } from '../api';
 import {
@@ -373,7 +374,10 @@ export default function PurchaseRequestsPage({ embedded = false }: { embedded?: 
                       <td style={TD} colSpan={6}>
                         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) repeat(4, minmax(0, 0.7fr)) minmax(0, 0.8fr)', gap: 8, alignItems: 'start' }}>
                           <div>
-                            <div>{item.name}</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <ItemThumb url={item.photo_url} name={item.name} size={32} />
+                              <span>{item.name}</span>
+                            </div>
                             {item.price_hint && (
                               <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 2 }}>
                                 {item.price_hint.last_paid != null && <>Last MVR {item.price_hint.last_paid.toFixed(2)} </>}
@@ -552,6 +556,7 @@ export default function PurchaseRequestsPage({ embedded = false }: { embedded?: 
                   <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Edit approved quantities before approving</p>
                   {detail.items.map((item) => (
                     <label key={item.id} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6, fontSize: 13 }}>
+                      <ItemThumb url={item.photo_url} name={item.name} size={32} />
                       <span style={{ flex: 1 }}>{item.name}</span>
                       <input
                         type="number"

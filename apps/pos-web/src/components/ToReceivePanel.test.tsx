@@ -39,6 +39,29 @@ describe("ToReceivePanel", () => {
     expect(list).toHaveTextContent("bought by Ahmed");
   });
 
+  /* Audit, 2026-09-18: the row named the item and the shop but not the brand
+     the buyer recorded, so the box in hand could not be checked against it. */
+  it("shows the item's picture, the brand bought and its packet", async () => {
+    fetchItemsToReceive.mockResolvedValue({
+      items: [line({ photo_url: "/storage/inventory-photos/1/flour.jpg", brand: "Sunrise", brand_photo_url: "/storage/brand-photos/1/sunrise.jpg" })],
+    });
+    render(<ToReceivePanel onClose={vi.fn()} />);
+
+    const list = await screen.findByTestId("to-receive-list");
+    expect(screen.getByTestId("to-receive-item-thumb")).toHaveAttribute("src", "/storage/inventory-photos/1/flour.jpg");
+    expect(screen.getByTestId("to-receive-brand")).toHaveTextContent("Brand: Sunrise");
+    expect(screen.getByAltText("Sunrise packet")).toHaveAttribute("src", "/storage/brand-photos/1/sunrise.jpg");
+    expect(list).toHaveTextContent("25 kg · Flour");
+  });
+
+  it("says nothing about a brand when none was recorded", async () => {
+    render(<ToReceivePanel onClose={vi.fn()} />);
+
+    await screen.findByTestId("to-receive-list");
+    expect(screen.queryByTestId("to-receive-brand")).toBeNull();
+    expect(screen.queryByTestId("to-receive-item-thumb")).toBeNull();
+  });
+
   it("says the accept button adds to stock, because that is what it does", async () => {
     render(<ToReceivePanel onClose={vi.fn()} />);
 

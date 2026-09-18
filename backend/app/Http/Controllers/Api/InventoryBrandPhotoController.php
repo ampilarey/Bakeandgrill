@@ -8,10 +8,12 @@ use App\Http\Controllers\Controller;
 use App\Models\InventoryBrandPhoto;
 use App\Models\InventoryItem;
 use App\Services\AuditLogService;
+use App\Services\MenuImageProcessor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 
 /**
  * Pictures of the brands an ingredient gets bought as.
@@ -39,7 +41,7 @@ class InventoryBrandPhotoController extends Controller
     }
 
     /** POST /inventory/{itemId}/brand-photos */
-    public function store(Request $request, int $itemId): JsonResponse
+    public function store(Request $request, int $itemId, MenuImageProcessor $images): JsonResponse
     {
         $item = InventoryItem::query()->findOrFail($itemId);
 
@@ -66,7 +68,20 @@ class InventoryBrandPhotoController extends Controller
         }
 
         $file = $request->file('photo');
-        $path = $file?->store("brand-photos/{$item->id}", 'public');
+        $path = null;
+        if ($file !== null) {
+            // Audit, 2026-09-18: straightened and fitted within 1200px. A
+            // packet is looked at as a thumb on a phone at the shop, not as
+            // the 6 MB photo it was taken as.
+            try {
+                $path = $images->storeFit($file, "brand-photos/{$item->id}");
+            } catch (RuntimeException $e) {
+                return response()->json([
+                    'message' => $e->getMessage(),
+                    'errors' => ['photo' => [$e->getMessage()]],
+                ], 422);
+            }
+        }
 
         $photo = DB::transaction(function () use ($item, $brand, $key, $path, $file, $validated, $request) {
             $existing = InventoryBrandPhoto::query()
@@ -98,8 +113,8 @@ class InventoryBrandPhotoController extends Controller
             if ($path !== null && $file !== null) {
                 $fields['file_path'] = $path;
                 $fields['original_filename'] = $file->getClientOriginalName();
-                $fields['mime_type'] = $file->getClientMimeType();
-                $fields['size'] = $file->getSize();
+                $fields['mime_type'] = 'image/jpeg';
+                $fields['size'] = Storage::disk('public')->size($path);
             }
             $row->fill($fields);
             $row->save();

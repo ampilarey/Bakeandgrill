@@ -317,7 +317,14 @@ export function RequestItemModal({ onClose, onCreated, prefillInventoryId }: Pro
                   background: picked.has(item.id) ? palette.border : palette.panel,
                 }}
               >
-                <span style={{ fontWeight: 700, fontSize: type.bodySm.fontSize }}>{item.name}</span>
+                <span style={{ display: "flex", alignItems: "center", gap: space.s, minWidth: 0 }}>
+                  {/* The thing itself, so a cashier picks flour and not
+                      cornflour (audit, 2026-09-18). */}
+                  {item.photo_url && (
+                    <img src={item.photo_url} alt="" data-testid="request-item-thumb" style={{ width: 36, height: 36, objectFit: "cover", borderRadius: radius.s, flexShrink: 0, border: `1px solid ${palette.border}` }} />
+                  )}
+                  <span style={{ fontWeight: 700, fontSize: type.bodySm.fontSize }}>{item.name}</span>
+                </span>
                 <span style={{ fontSize: type.bodySm.fontSize, color: low ? "#b45309" : palette.panelMuted, whiteSpace: "nowrap" }}>
                   {low ? "Low · " : ""}{item.current_stock} {item.unit} left
                 </span>

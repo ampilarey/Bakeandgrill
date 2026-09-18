@@ -110,8 +110,11 @@ export function ToReceivePanel({ onClose, onReceived }: Props) {
               }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", gap: space.s, flexWrap: "wrap" }}>
-                <span style={{ fontWeight: 800, fontSize: type.body.fontSize }}>
-                  {item.qty} {item.unit} · {item.name}
+                <span style={{ fontWeight: 800, fontSize: type.body.fontSize, display: "flex", alignItems: "center", gap: space.s }}>
+                  {item.photo_url && (
+                    <img src={item.photo_url} alt="" data-testid="to-receive-item-thumb" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: radius.m, flexShrink: 0, border: `1px solid ${palette.border}` }} />
+                  )}
+                  <span>{item.qty} {item.unit} · {item.name}</span>
                 </span>
                 {item.partial && (
                   <span style={{ fontSize: type.bodySm.fontSize, fontWeight: 700, color: "#b45309" }}>
@@ -119,6 +122,18 @@ export function ToReceivePanel({ onClose, onReceived }: Props) {
                   </span>
                 )}
               </div>
+
+              {/* The brand the buyer recorded and, when we have one, the
+                  packet — what the person at the door is holding should
+                  match this (audit, 2026-09-18). */}
+              {item.brand && (
+                <div data-testid="to-receive-brand" style={{ display: "flex", alignItems: "center", gap: space.s, fontSize: type.bodySm.fontSize }}>
+                  {item.brand_photo_url && (
+                    <img src={item.brand_photo_url} alt={`${item.brand} packet`} style={{ width: 44, height: 44, objectFit: "cover", borderRadius: radius.m, flexShrink: 0, border: `1px solid ${palette.border}` }} />
+                  )}
+                  <span>Brand: <strong>{item.brand}</strong></span>
+                </div>
+              )}
 
               <div style={{ fontSize: type.bodySm.fontSize, color: palette.panelMuted }}>
                 {item.shop ? `From ${item.shop}` : "Shop not recorded"}

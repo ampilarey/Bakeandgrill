@@ -357,6 +357,16 @@ export type KdsPurchaseRequestItem = {
   requested_unit: string;
   approved_qty: number | null;
   status: string;
+  /** The item's own picture — the thing, not a packet. */
+  photo_url?: string | null;
+  /** What the kitchen usually buys, or what the buyer recorded. */
+  brand?: string | null;
+  /**
+   * A picture of each brand this item has been bought as, so the cook sent
+   * to the shop picks a packet rather than reads a name. The POS buying
+   * list had these; the KDS one did not (audit, 2026-09-18).
+   */
+  brand_photos?: { id: number; brand: string; url: string | null; note: string | null }[];
 };
 
 export type KdsPurchaseRequest = {
@@ -403,6 +413,9 @@ export type KdsToReceiveItem = {
   request_no: string | null;
   name: string;
   photo_url?: string | null;
+  /** The brand the buyer recorded, and its packet when the item has one. */
+  brand?: string | null;
+  brand_photo_url?: string | null;
   qty: number;
   unit: string;
   shop: string | null;
@@ -465,7 +478,7 @@ export async function markPurchaseRequestItemBought(
   token: string,
   requestId: number,
   itemId: number,
-  payload: { actual_qty?: number; buyer_notes?: string },
+  payload: { actual_qty?: number; brand?: string; buyer_notes?: string },
 ): Promise<void> {
   await request(`/purchase-requests/${requestId}/items/${itemId}/mark-bought`, {
     method: 'POST',
@@ -478,7 +491,7 @@ export async function markPurchaseRequestItemPartial(
   token: string,
   requestId: number,
   itemId: number,
-  payload: { actual_qty: number },
+  payload: { actual_qty: number; brand?: string },
 ): Promise<void> {
   await request(`/purchase-requests/${requestId}/items/${itemId}/mark-partial`, {
     method: 'POST',

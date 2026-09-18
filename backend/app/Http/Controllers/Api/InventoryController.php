@@ -13,6 +13,7 @@ use App\Http\Requests\AdjustInventoryRequest;
 use App\Http\Requests\StockCountRequest;
 use App\Http\Requests\StoreInventoryItemRequest;
 use App\Http\Requests\UpdateInventoryItemRequest;
+use App\Models\InventoryBrandPhoto;
 use App\Models\InventoryItem;
 use App\Models\InventoryReorderAlert;
 use App\Models\PurchaseItem;
@@ -24,6 +25,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class InventoryController extends Controller
@@ -296,7 +298,20 @@ class InventoryController extends Controller
 
         $name = $item->name;
         // Packs and brand pictures are the item's own, and cascade with it.
+        // The rows cascade; the files do not (audit, 2026-09-18), so the
+        // item's picture and every packet picture go from the disk here.
+        $files = InventoryBrandPhoto::query()
+            ->where('inventory_item_id', $item->id)
+            ->whereNotNull('file_path')
+            ->pluck('file_path')
+            ->all();
+        if ($item->photo_path !== null) {
+            $files[] = $item->photo_path;
+        }
         $item->delete();
+        if ($files !== []) {
+            Storage::disk('public')->delete($files);
+        }
 
         app(AuditLogService::class)->log(
             'inventory.item_deleted',
@@ -581,7 +596,7 @@ class InventoryController extends Controller
             // A picture of each brand on the shelf, keyed by the brand folded
             // to lower case, so the price table can show which tin a row is
             // talking about (owner, 2026-09-09).
-            'brand_photos' => \App\Models\InventoryBrandPhoto::forItems([$item->id])[$item->id] ?? [],
+            'brand_photos' => InventoryBrandPhoto::forItems([$item->id])[$item->id] ?? [],
         ]);
     }
 

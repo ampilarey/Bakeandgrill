@@ -28,6 +28,11 @@ export type PurchaseRequestItem = {
     last_paid: number | null;
     cheapest: { supplier_id: number; supplier_name: string | null; unit_price: number } | null;
   };
+  /** The item's own picture — the thing, not a packet (owner, 2026-09-18). */
+  photo_url?: string | null;
+  /** What the buyer recorded, or what the kitchen usually buys. */
+  brand?: string | null;
+  brand_photos?: { id: number; brand: string; url: string | null; note: string | null }[];
 };
 
 export type PurchaseRequest = {

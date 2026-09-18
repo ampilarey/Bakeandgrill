@@ -732,9 +732,17 @@ export async function uploadBrandPhoto(
 ): Promise<{ photo: BrandPhoto }> {
   const form = new FormData();
   form.append('brand', brand);
-  if (file) form.append('photo', file);
+  // Audit, 2026-09-18: the phone photo went up as taken, so a 6 MB packet
+  // shot hit the host's upload limit before the server could shrink it.
+  // Same client-side step as every other picture the admin sends.
+  if (file) form.append('photo', await prepareInventoryPicture(file));
   if (note) form.append('note', note);
   return req(`/inventory/${itemId}/brand-photos`, { method: 'POST', body: form });
+}
+
+async function prepareInventoryPicture(file: File): Promise<File> {
+  const { prepareImageForUpload } = await import('../utils/prepareUpload');
+  return prepareImageForUpload(file);
 }
 
 export async function deleteBrandPhoto(itemId: number, id: number): Promise<{ deleted: boolean }> {
@@ -744,7 +752,7 @@ export async function deleteBrandPhoto(itemId: number, id: number): Promise<{ de
 /** The item's own picture (owner, 2026-09-18: "not brand"). Uploading again replaces it. */
 export async function uploadInventoryPhoto(itemId: number, file: File): Promise<{ item_id: number; photo_url: string | null }> {
   const form = new FormData();
-  form.append('photo', file);
+  form.append('photo', await prepareInventoryPicture(file));
   return req(`/inventory/${itemId}/photo`, { method: 'POST', body: form });
 }
 

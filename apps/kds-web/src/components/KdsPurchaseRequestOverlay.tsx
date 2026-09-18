@@ -11,6 +11,7 @@ import {
   receivePurchaseRequestItem,
   type KdsCatalogItem,
   type KdsPurchaseRequest,
+  type KdsPurchaseRequestItem,
   type KdsToReceiveItem,
 } from "../api";
 
@@ -58,6 +59,15 @@ export function KdsPurchaseRequestOverlay({ token, mode, onClose }: Props) {
 
   // Receiving
   const [toReceive, setToReceive] = useState<KdsToReceiveItem[]>([]);
+
+  // Buying: the packet the buyer tapped, per line. Nothing tapped means the
+  // brand the request already names, if any.
+  const [brandPick, setBrandPick] = useState<Record<number, string>>({});
+  const brandFor = (item: KdsPurchaseRequestItem): string | undefined => {
+    const picked = brandPick[item.id] ?? item.brand ?? "";
+
+    return picked.trim() === "" ? undefined : picked.trim();
+  };
 
   const loadRows = useCallback(() => {
     const fetcher = mode === "my" ? fetchMyPurchaseRequests : fetchAssignedPurchaseRequests;
@@ -282,6 +292,16 @@ export function KdsPurchaseRequestOverlay({ token, mode, onClose }: Props) {
                   )}
                   <span>{item.qty} {item.unit} · {item.name}{item.partial ? " · part only" : ""}</span>
                 </div>
+                {/* The brand the buyer recorded and its packet, so the box at
+                    the door is checked against what was bought (audit, 2026-09-18). */}
+                {item.brand && (
+                  <div data-testid="kds-to-receive-brand" style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                    {item.brand_photo_url && (
+                      <img src={item.brand_photo_url} alt={`${item.brand} packet`} style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8, flexShrink: 0, border: "1px solid #EDE4D4" }} />
+                    )}
+                    <span>Brand: <strong>{item.brand}</strong></span>
+                  </div>
+                )}
                 <div style={{ fontSize: 12, color: "#8B7355" }}>
                   {item.shop ? `From ${item.shop}` : "Shop not recorded"}
                   {item.bought_by ? ` · bought by ${item.bought_by}` : ""}
@@ -321,13 +341,53 @@ export function KdsPurchaseRequestOverlay({ token, mode, onClose }: Props) {
                       color: primary ? "#fff" : "#1C1408", cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.6 : 1,
                     });
 
+                    const packets = (item.brand_photos ?? []).filter((p) => p.url);
+                    const chosen = brandFor(item);
+
                     return (
                       <li key={item.id} style={{ marginBottom: 6 }}>
-                        {item.name} — {qty} {item.requested_unit}
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                          {item.photo_url && (
+                            <img src={item.photo_url} alt="" data-testid="kds-item-thumb" style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 6, flexShrink: 0, border: "1px solid #EDE4D4" }} />
+                          )}
+                          <span>{item.name} — {qty} {item.requested_unit}</span>
+                        </span>
                         {!open && <span style={{ marginLeft: 6, fontSize: 11, color: "#8B7355" }}>({item.status.replace(/_/g, " ")})</span>}
+                        {/* Which packet. Tapping one records that brand on the
+                            line when it is marked bought — the same choice the
+                            POS buying list offers (audit, 2026-09-18). */}
+                        {mode === "buying" && open && packets.length > 0 && (
+                          <div data-testid={`kds-brand-packets-${item.id}`} style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
+                            {packets.map((p) => {
+                              const on = chosen != null && chosen.toLowerCase() === p.brand.toLowerCase();
+
+                              return (
+                                <button
+                                  key={p.id}
+                                  type="button"
+                                  aria-pressed={on}
+                                  aria-label={`Brand ${p.brand}`}
+                                  title={p.note ?? p.brand}
+                                  onClick={() => setBrandPick((prev) => ({ ...prev, [item.id]: on ? "" : p.brand }))}
+                                  style={{
+                                    display: "flex", flexDirection: "column", alignItems: "center", gap: 2, padding: 4,
+                                    borderRadius: 8, background: "#fff", cursor: "pointer",
+                                    border: on ? "2px solid #D4813A" : "1px solid #EDE4D4",
+                                  }}
+                                >
+                                  <img src={p.url ?? undefined} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 6 }} />
+                                  <span style={{ fontSize: 11, fontWeight: on ? 700 : 500, maxWidth: 64, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.brand}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                        {mode === "buying" && open && packets.length === 0 && item.brand && (
+                          <div style={{ fontSize: 11, color: "#8B7355", marginTop: 2 }}>Usually {item.brand}</div>
+                        )}
                         {mode === "buying" && open && (
                           <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
-                            <button type="button" disabled={busy} onClick={() => void buyerAction(() => markPurchaseRequestItemBought(token, r.id, item.id, { actual_qty: qty }))} style={btn(true)}>Bought</button>
+                            <button type="button" disabled={busy} onClick={() => void buyerAction(() => markPurchaseRequestItemBought(token, r.id, item.id, { actual_qty: qty, ...(chosen ? { brand: chosen } : {}) }))} style={btn(true)}>Bought</button>
                             <button
                               type="button"
                               disabled={busy}
@@ -336,7 +396,7 @@ export function KdsPurchaseRequestOverlay({ token, mode, onClose }: Props) {
                                 const typed = window.prompt(`How much of ${item.name} did you get? (asked for ${qty} ${item.requested_unit})`, "");
                                 const got = Number.parseFloat(typed ?? "");
                                 if (!Number.isFinite(got) || got <= 0) return;
-                                void buyerAction(() => markPurchaseRequestItemPartial(token, r.id, item.id, { actual_qty: got }));
+                                void buyerAction(() => markPurchaseRequestItemPartial(token, r.id, item.id, { actual_qty: got, ...(chosen ? { brand: chosen } : {}) }));
                               }}
                               style={btn(false)}
                             >Partial</button>

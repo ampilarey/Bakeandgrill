@@ -98,6 +98,34 @@ class PurchaseRequestReceivingTest extends TestCase
         $this->assertTrue($row['can_receive']);
     }
 
+    /**
+     * Audit, 2026-09-18: the list named the item and the shop but not the
+     * brand the buyer recorded, so the person at the door could not check
+     * the packet against what was bought. The brand comes with its picture
+     * when the item has one for it, matched the way the buying list matches.
+     */
+    public function test_the_list_shows_the_brand_bought_and_its_packet_picture(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+        \App\Models\InventoryBrandPhoto::create([
+            'inventory_item_id' => $this->flour->id, 'brand' => 'Sunrise', 'brand_key' => 'sunrise',
+            'file_path' => 'brand-photos/1/sunrise.jpg',
+        ]);
+        $this->boughtLine($this->manager, ['brand' => ' sunrise ']);
+        $this->boughtLine($this->manager, ['brand' => 'Unknown Mill']);
+        $this->boughtLine($this->manager);
+
+        Sanctum::actingAs($this->cashier, ['staff']);
+        $rows = $this->getJson('/api/purchase-requests/to-receive')->assertOk()->json('items');
+
+        $this->assertSame('sunrise', $rows[0]['brand']);
+        $this->assertStringEndsWith('/brand-photos/1/sunrise.jpg', $rows[0]['brand_photo_url']);
+        $this->assertSame('Unknown Mill', $rows[1]['brand']);
+        $this->assertNull($rows[1]['brand_photo_url']);
+        $this->assertNull($rows[2]['brand']);
+        $this->assertNull($rows[2]['brand_photo_url']);
+    }
+
     public function test_a_cashier_can_accept_a_delivery_and_the_stock_goes_up(): void
     {
         // Accepting is what puts it on the shelf — the point of the screen.

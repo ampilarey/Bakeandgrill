@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api;
 use App\Domains\Inventory\Services\BackdatePolicy;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePurchaseRequestItemQuoteRequest;
+use App\Models\InventoryBrandPhoto;
 use App\Models\InventoryCategory;
 use App\Models\InventoryItem;
 use App\Models\PurchaseRequest;
@@ -133,16 +134,30 @@ class PurchaseRequestController extends Controller
         $isOwner = ($user->role?->slug ?? '') === 'owner';
 
         $items = PurchaseRequestItem::query()
-            ->with(['purchaseRequest:id,request_no,priority,requested_by', 'purchaseRequest.requester:id,name', 'inventoryItem:id,name,unit,photo_path', 'buyer:id,name'])
+            // `supplier` loaded up front: with two or more lines waiting the
+            // lazy-loading guard threw on the first `$item->supplier`, so the
+            // list only ever worked for a single delivery (audit, 2026-09-18).
+            ->with(['purchaseRequest:id,request_no,priority,requested_by', 'purchaseRequest.requester:id,name', 'inventoryItem:id,name,unit,photo_path', 'buyer:id,name', 'supplier:id,name'])
             ->whereIn('status', ['bought', 'partially_bought'])
             ->whereHas('purchaseRequest', fn ($q) => $q->whereNotIn('status', PurchaseRequest::TERMINAL_STATUSES))
             ->orderBy('bought_at')
             ->limit(200)
             ->get();
 
+        // Audit, 2026-09-18: the person accepting a delivery is checking the
+        // packet against what was bought, so the brand the buyer recorded
+        // comes with its picture when the item has one.
+        $brandPhotos = InventoryBrandPhoto::forItems(
+            $items->pluck('inventory_item_id')->filter()->map(fn ($id) => (int) $id)->unique()->values()->all(),
+        );
+
         return response()->json([
-            'items' => $items->map(function (PurchaseRequestItem $item) use ($user, $isOwner) {
+            'items' => $items->map(function (PurchaseRequestItem $item) use ($user, $isOwner, $brandPhotos) {
                 $mine = $item->bought_by !== null && (int) $item->bought_by === (int) $user->id;
+                $brand = $item->brand !== null && trim((string) $item->brand) !== '' ? trim((string) $item->brand) : null;
+                $brandPhoto = $brand === null || $item->inventory_item_id === null
+                    ? null
+                    : ($brandPhotos[(int) $item->inventory_item_id][InventoryBrandPhoto::keyFor($brand)] ?? null);
 
                 return [
                     'id' => $item->id,
@@ -150,6 +165,8 @@ class PurchaseRequestController extends Controller
                     'request_no' => $item->purchaseRequest?->request_no,
                     'name' => $item->inventoryItem?->name ?? $item->free_text_name ?? 'Item',
                     'photo_url' => $item->inventoryItem?->photo_url,
+                    'brand' => $brand,
+                    'brand_photo_url' => $brandPhoto['url'] ?? null,
                     'qty' => (float) ($item->actual_qty ?? $item->approved_qty ?? $item->requested_qty),
                     'unit' => $item->actual_unit ?? $item->inventoryItem?->unit ?? $item->requested_unit,
                     // The supplier record is the seller; the text is its copy.
@@ -661,7 +678,7 @@ class PurchaseRequestController extends Controller
         // Pictures of the brands each line has been bought as, so whoever is
         // standing in the shop can see which tin to reach for. Owner,
         // 2026-09-09. Loaded once for the whole request, not per line.
-        $brandPhotos = \App\Models\InventoryBrandPhoto::forItems($inventoryIds);
+        $brandPhotos = InventoryBrandPhoto::forItems($inventoryIds);
 
         $payload = [
             'id' => $pr->id,

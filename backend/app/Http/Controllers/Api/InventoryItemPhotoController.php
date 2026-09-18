@@ -7,9 +7,11 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\InventoryItem;
 use App\Services\AuditLogService;
+use App\Services\MenuImageProcessor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 
 /**
  * The picture of an ingredient itself — not of a brand it is bought as.
@@ -17,11 +19,15 @@ use Illuminate\Support\Facades\Storage;
  * Owner, 2026-09-18: "is there any option to add inventory item photo - not
  * brand". One photo per item; uploading again replaces it. Same disk and
  * limits as the brand photos, so nothing new has to be true of the server.
+ *
+ * Audit, 2026-09-18: the upload is straightened and fitted within 1200px
+ * before it is kept, so a phone photo does not arrive on every buying list
+ * at its full size.
  */
 class InventoryItemPhotoController extends Controller
 {
     /** POST /inventory/{itemId}/photo */
-    public function store(Request $request, int $itemId): JsonResponse
+    public function store(Request $request, int $itemId, MenuImageProcessor $images): JsonResponse
     {
         $item = InventoryItem::query()->findOrFail($itemId);
 
@@ -30,7 +36,14 @@ class InventoryItemPhotoController extends Controller
         ]);
 
         $file = $request->file('photo');
-        $path = $file->store("inventory-photos/{$item->id}", 'public');
+        try {
+            $path = $images->storeFit($file, "inventory-photos/{$item->id}");
+        } catch (RuntimeException $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+                'errors' => ['photo' => [$e->getMessage()]],
+            ], 422);
+        }
         $old = $item->photo_path;
 
         $item->photo_path = $path;

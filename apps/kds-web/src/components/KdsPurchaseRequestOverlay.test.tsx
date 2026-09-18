@@ -68,6 +68,52 @@ describe("KdsPurchaseRequestOverlay", () => {
     expect(await screen.findByText("Already bought by somebody else.")).toBeInTheDocument();
   });
 
+  /* Audit, 2026-09-18: the POS buying list showed the packets and recorded
+     the brand tapped; the KDS one showed a name and recorded nothing. */
+  it("shows the packets on the buying list and records the one tapped as the brand", async () => {
+    const line = {
+      id: 5, name: "Egg", requested_qty: 30, requested_unit: "piece", approved_qty: null, status: "approved",
+      photo_url: "/storage/inventory-photos/9/egg.jpg", brand: null,
+      brand_photos: [
+        { id: 1, brand: "Sunrise", url: "/storage/brand-photos/9/sunrise.jpg", note: null },
+        { id: 2, brand: "Happy Hen", url: "/storage/brand-photos/9/hen.jpg", note: "blue tray" },
+        { id: 3, brand: "No picture", url: null, note: null },
+      ],
+    };
+    fetchAssignedPurchaseRequests.mockResolvedValue({ data: [{ id: 2, request_no: "PR-2", status: "approved", priority: "normal", items: [line] }] });
+    render(<KdsPurchaseRequestOverlay token="t" mode="buying" onClose={vi.fn()} />);
+
+    await screen.findByRole("button", { name: "Bought" });
+    expect(screen.getByTestId("kds-item-thumb")).toHaveAttribute("src", "/storage/inventory-photos/9/egg.jpg");
+    const packets = screen.getByTestId("kds-brand-packets-5");
+    expect(packets.querySelectorAll("button")).toHaveLength(2);
+
+    fireEvent.click(screen.getByRole("button", { name: "Brand Happy Hen" }));
+    expect(screen.getByRole("button", { name: "Brand Happy Hen" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Brand Sunrise" })).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(screen.getByRole("button", { name: "Bought" }));
+    await waitFor(() => expect(markPurchaseRequestItemBought).toHaveBeenCalledWith("t", 2, 5, { actual_qty: 30, brand: "Happy Hen" }));
+  });
+
+  it("starts with the brand the request already names, and can be untapped", async () => {
+    const line = {
+      id: 5, name: "Egg", requested_qty: 30, requested_unit: "piece", approved_qty: null, status: "approved",
+      brand: "sunrise",
+      brand_photos: [{ id: 1, brand: "Sunrise", url: "/storage/brand-photos/9/sunrise.jpg", note: null }],
+    };
+    fetchAssignedPurchaseRequests.mockResolvedValue({ data: [{ id: 2, request_no: "PR-2", status: "approved", priority: "normal", items: [line] }] });
+    render(<KdsPurchaseRequestOverlay token="t" mode="buying" onClose={vi.fn()} />);
+
+    const packet = await screen.findByRole("button", { name: "Brand Sunrise" });
+    expect(packet).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(packet);
+    expect(packet).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(screen.getByRole("button", { name: "Bought" }));
+    await waitFor(() => expect(markPurchaseRequestItemBought).toHaveBeenCalledWith("t", 2, 5, { actual_qty: 30 }));
+  });
+
   it("requests by picking, sending the item id and its unit", async () => {
     render(<KdsPurchaseRequestOverlay token="t" mode="request" onClose={vi.fn()} />);
 
@@ -132,6 +178,7 @@ describe("KdsPurchaseRequestOverlay", () => {
         id: 9, request_id: 2, request_no: "PR-9", name: "Chicken thigh", qty: 20, unit: "kg",
         shop: "Agora", bought_by: "Ahmed", partial: false, requested_by: "Cook",
         can_receive: true, blocked_reason: null,
+        brand: "Sunrise", brand_photo_url: "/storage/brand-photos/3/sunrise.jpg",
       }],
     });
     render(<KdsPurchaseRequestOverlay token="t" mode="receive" onClose={vi.fn()} />);
@@ -139,6 +186,10 @@ describe("KdsPurchaseRequestOverlay", () => {
     const row = await screen.findByTestId("kds-to-receive-row");
     expect(row).toHaveTextContent("20 kg · Chicken thigh");
     expect(row).toHaveTextContent("From Agora");
+    // The brand bought and its packet, so the box is checked against it
+    // (audit, 2026-09-18).
+    expect(screen.getByTestId("kds-to-receive-brand")).toHaveTextContent("Brand: Sunrise");
+    expect(screen.getByAltText("Sunrise packet")).toHaveAttribute("src", "/storage/brand-photos/3/sunrise.jpg");
 
     fireEvent.click(screen.getByRole("button", { name: /add to stock/i }));
     await waitFor(() => expect(receivePurchaseRequestItem).toHaveBeenCalledWith("t", 2, 9));
@@ -157,5 +208,6 @@ describe("KdsPurchaseRequestOverlay", () => {
 
     expect(await screen.findByText(/somebody else has to accept it/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /add to stock/i })).not.toBeInTheDocument();
+    expect(screen.queryByTestId("kds-to-receive-brand")).toBeNull();
   });
 });

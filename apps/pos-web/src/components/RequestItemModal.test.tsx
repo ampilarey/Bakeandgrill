@@ -13,7 +13,7 @@ vi.mock("../api", () => ({
 
 const catalog = {
   items: [
-    { id: 7, name: "Chicken box", unit: "pcs", category_id: 1, category: "Packaging", current_stock: 40, reorder_point: 100, suggested_qty: 500 },
+    { id: 7, name: "Chicken box", unit: "pcs", category_id: 1, category: "Packaging", current_stock: 40, reorder_point: 100, suggested_qty: 500, photo_url: "/storage/inventory-photos/7/box.jpg" },
     { id: 8, name: "Mozzarella", unit: "kg", category_id: 2, category: "Dairy", current_stock: 6, reorder_point: 2, suggested_qty: null },
   ],
   categories: [{ id: 1, name: "Packaging" }, { id: 2, name: "Dairy" }],
@@ -44,6 +44,16 @@ describe("RequestItemModal", () => {
     // The unit is the item's own, so nobody can send "pcs" as "packs".
     expect(payload.items[0].requested_unit).toBe("pcs");
     expect(payload.items[0].free_text_name).toBeUndefined();
+  });
+
+  /* Audit, 2026-09-18: the KDS picker had the item's picture; this one did not. */
+  it("shows the item's picture beside its name when it has one", async () => {
+    open();
+    await screen.findByRole("button", { name: /Chicken box/ });
+
+    const thumbs = screen.getAllByTestId("request-item-thumb");
+    expect(thumbs).toHaveLength(1);
+    expect(thumbs[0]).toHaveAttribute("src", "/storage/inventory-photos/7/box.jpg");
   });
 
   it("starts a line at the reorder quantity when the list suggests one", async () => {
