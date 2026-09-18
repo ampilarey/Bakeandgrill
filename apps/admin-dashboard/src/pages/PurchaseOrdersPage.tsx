@@ -1338,6 +1338,79 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
             {' · '}Status: <strong style={{ color: 'var(--color-text)' }}>{detail.status}</strong>
             {' · '}Total: <strong style={{ color: 'var(--color-primary)' }}>MVR {parseFloat(String(detail.total ?? 0)).toFixed(2)}</strong>
           </p>
+          {isMobile ? (
+            /* Owner, 2026-09-18 (screenshot): five columns on a phone ran off
+               the right edge — the receiving box was half hidden and the
+               status column never seen at all. One card per line instead,
+               with the box full width. Same test ids as the table. */
+            <div data-testid="receive-lines-mobile" style={{ display: 'grid', gap: 10 }}>
+              {detail.items?.map((item) => {
+                const receiving = ['ordered', 'partial'].includes(detail.status);
+                const unit = item.inventory_item?.unit ? ` ${item.inventory_item.unit}` : '';
+                return (
+                  <div key={item.id} style={{ border: '1px solid var(--color-border)', borderRadius: 12, padding: 12, display: 'grid', gap: 8 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'flex-start' }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: 14 }}>{item.inventory_item?.name ?? '—'}</div>
+                        {(item.brand || describePack(item, item.inventory_item?.unit)) && (
+                          <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }} data-testid={`pack-of-${item.id}`}>
+                            {[item.brand, describePack(item, item.inventory_item?.unit)].filter(Boolean).join(' · ')}
+                          </div>
+                        )}
+                        {(item.gst_laar ?? 0) > 0 && (
+                          <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>incl. GST {mvr((item.gst_laar ?? 0) / 100)}</div>
+                        )}
+                      </div>
+                      <Badge
+                        label={item.receive_status}
+                        color={item.receive_status === 'complete' ? 'green' : item.receive_status === 'partial' ? 'yellow' : 'gray'}
+                      />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 13 }}>
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Ordered</div>
+                        <div>{tidyNumber(item.quantity)}{unit}</div>
+                        {asPacks(item.quantity, item, item.inventory_item?.unit) && (
+                          <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }} data-testid={`ordered-packs-${item.id}`}>
+                            {asPacks(item.quantity, item, item.inventory_item?.unit)}
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Already received</div>
+                        <div style={{ fontWeight: 700, color: item.received_quantity >= item.quantity ? 'var(--color-success)' : 'var(--color-warning)' }}>
+                          {tidyNumber(item.received_quantity)}{unit}
+                        </div>
+                        {asPacks(item.received_quantity, item, item.inventory_item?.unit) && (
+                          <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+                            {asPacks(item.received_quantity, item, item.inventory_item?.unit)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {receiving && (
+                      <label style={{ display: 'grid', gap: 4, fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>
+                        Receiving now{unit ? ` (${unit.trim()})` : ''}
+                        <input
+                          type="number"
+                          min={0}
+                          max={item.quantity - item.received_quantity}
+                          value={receiveQtys[item.id] ?? 0}
+                          onChange={(e) => { const v = parseFloat(e.target.value); setReceiveQtys((q) => ({ ...q, [item.id]: isNaN(v) ? 0 : Math.max(0, v) })); }}
+                          style={{ width: '100%', height: 44, padding: '0 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 16, fontFamily: 'inherit', boxSizing: 'border-box' }}
+                        />
+                        {asPacks(receiveQtys[item.id] ?? 0, item, item.inventory_item?.unit) && (
+                          <span style={{ fontSize: 12, fontWeight: 400, textTransform: 'none', color: 'var(--color-text-muted)' }} data-testid={`receiving-packs-${item.id}`}>
+                            = {asPacks(receiveQtys[item.id] ?? 0, item, item.inventory_item?.unit)}
+                          </span>
+                        )}
+                      </label>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
           <TableCard>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
@@ -1416,6 +1489,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
               </tbody>
             </table>
           </TableCard>
+          )}
 
           {['ordered', 'partial'].includes(detail.status) && (
             <Card style={{ padding: 12, marginTop: 12 }} data-testid="receive-scan">

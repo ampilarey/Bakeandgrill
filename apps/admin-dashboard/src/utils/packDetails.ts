@@ -38,6 +38,10 @@ export function describePack(line: PackedLine, unit?: string | null): string | n
   if (size === null) return null;
   const name = (line.pack_name ?? '').trim() || 'pack';
   const per = unit?.trim() ? ` ${unit.trim()}` : '';
+  // Owner, 2026-09-18 (screenshot): packs are named "Packet of 2Kg" and
+  // "Tin of 100ml" here, so "Packet of 2Kg of 2000 g" read twice over. A
+  // name that already says "of" gets its base units in brackets instead.
+  if (/\bof\b/i.test(name)) return `${name} (${tidyNumber(size)}${per})`;
   return `${name} of ${tidyNumber(size)}${per}`;
 }
 
