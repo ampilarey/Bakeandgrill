@@ -47,6 +47,26 @@ class ComplaintBoxTest extends TestCase
         $this->get('/complain/poster')->assertOk()->assertSee('data:image/svg+xml', false);
     }
 
+    /**
+     * Owner, 2026-09-19: "Qr code should be of live site, and add logo". The
+     * poster points at the Business Website address whatever host it is
+     * printed from, and carries the logo on top and in the middle of the code.
+     */
+    public function test_the_poster_points_at_the_live_site_and_carries_the_logo(): void
+    {
+        $res = $this->get('http://test.bakeandgrill.mv/complain/poster')->assertOk();
+
+        $res->assertSee('bakeandgrill.mv/complain', false);
+        $res->assertDontSee('test.bakeandgrill.mv', false);
+        $res->assertSee('class="logo"', false);
+        $res->assertSee('class="mark"', false);
+
+        // The code on the page is byte-for-byte the code for the live address,
+        // generated with room for the logo.
+        preg_match('#data:image/svg\+xml;base64,[A-Za-z0-9+/=]+#', $res->getContent(), $m);
+        $this->assertSame(\App\Support\QrSvg::dataUri('https://bakeandgrill.mv/complain?from=poster', 480, true), $m[0]);
+    }
+
     public function test_an_anonymous_complaint_reaches_the_owner_by_sms_and_nobody_else(): void
     {
         $res = $this->postJson('/api/complaint-box', [

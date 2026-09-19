@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use BaconQrCode\Common\ErrorCorrectionLevel;
+use BaconQrCode\Encoder\Encoder;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
@@ -19,16 +21,25 @@ use BaconQrCode\Writer;
  */
 final class QrSvg
 {
-    public static function svg(string $text, int $size = 160): string
+    /**
+     * @param bool $withLogoSpace Highest error correction, so a logo laid
+     *                            over the middle (up to about a quarter of
+     *                            the width) still leaves the code readable.
+     */
+    public static function svg(string $text, int $size = 160, bool $withLogoSpace = false): string
     {
         $renderer = new ImageRenderer(new RendererStyle($size, 1), new SvgImageBackEnd);
 
-        return (new Writer($renderer))->writeString($text);
+        return (new Writer($renderer))->writeString(
+            $text,
+            Encoder::DEFAULT_BYTE_MODE_ENCODING,
+            $withLogoSpace ? ErrorCorrectionLevel::H() : null,
+        );
     }
 
     /** `data:` URI for an <img>, which dompdf renders the same as a browser. */
-    public static function dataUri(string $text, int $size = 160): string
+    public static function dataUri(string $text, int $size = 160, bool $withLogoSpace = false): string
     {
-        return 'data:image/svg+xml;base64,' . base64_encode(self::svg($text, $size));
+        return 'data:image/svg+xml;base64,' . base64_encode(self::svg($text, $size, $withLogoSpace));
     }
 }
