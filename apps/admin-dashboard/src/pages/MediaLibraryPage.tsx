@@ -1241,7 +1241,7 @@ export function MediaLibraryPage() {
       <PageHeader
         title="Media Library"
         subtitle="Upload, organise and edit images, video, audio, and documents"
-        section="System"
+        section="Customers & Marketing"
         action={
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {canManage && (

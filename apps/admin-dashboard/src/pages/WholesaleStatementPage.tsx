@@ -173,7 +173,7 @@ export default function WholesaleStatementPage() {
       </div>
 
       <PageHeader
-        section="Wholesale"
+        section="Manage"
         title={`${account.shop_name} — statement`}
         subtitle="What they owe, what they hold, and payments received"
         action={canRepay && openInvoices.length > 0 ? (

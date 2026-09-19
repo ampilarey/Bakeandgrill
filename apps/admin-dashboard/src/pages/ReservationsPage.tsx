@@ -438,7 +438,7 @@ export function ReservationsPage() {
   return (
     <PageShell>
     <>
-      <PageHeader section="Manage" title="Reservations" />
+      <PageHeader section="Monitor" title="Reservations" />
 
       <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--color-border)', marginBottom: 24 }}>
         <button style={tabBtnStyle(tab === 'list')}     onClick={() => setTab('list')}>Reservations</button>

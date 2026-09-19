@@ -587,7 +587,7 @@ export function DashboardPage() {
     opsCards.push({
       key: 'print', label: 'Print Queue', value: String(printPending),
       sub: 'Pending jobs', accent: 'var(--color-warning)', icon: Printer,
-      onClick: () => navigate('/print-jobs'),
+      onClick: () => navigate('/devices/print-queue'),
     });
   }
   if (canDelivery && deliveryPending > 0) {

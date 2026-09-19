@@ -111,7 +111,7 @@ export default function ActivityPage() {
   return (
     <PageShell>
     <div>
-      <PageHeader section="Monitor"
+      <PageHeader section="Team"
         title="POS Activity"
         subtitle="Audit trail of cashier actions — voids, payments, shifts, devices"
         action={

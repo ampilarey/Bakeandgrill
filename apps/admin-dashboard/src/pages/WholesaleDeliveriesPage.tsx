@@ -68,7 +68,7 @@ function DeliveryList() {
   return (
     <PageShell>
       <PageHeader
-        section="Wholesale"
+        section="Manage"
         title="Deliveries"
         subtitle="What we sent to shops — money is not charged until invoicing later"
       />
@@ -168,7 +168,7 @@ function DeliveryDetail({ id }: { id: number }) {
         <Link to="/wholesale/deliveries" style={{ color: 'var(--color-primary)', textDecoration: 'none', fontSize: 13 }}>← Deliveries</Link>
       </div>
       <PageHeader
-        section="Wholesale"
+        section="Manage"
         title={delivery.delivery_number}
         subtitle={`${delivery.shop_name ?? 'Shop'} · ${STATUS_LABEL[delivery.status] ?? delivery.status}`}
       />

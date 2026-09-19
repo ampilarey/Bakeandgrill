@@ -259,7 +259,7 @@ export default function WholesaleInvoicingPage() {
       </div>
 
       <PageHeader
-        section="Wholesale"
+        section="Manage"
         title="Raise invoice"
         subtitle={account
           ? `Bill ${account.shop_name} for reconciled deliveries`

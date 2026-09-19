@@ -1,5 +1,5 @@
 import { lazy, useEffect, useState } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { HubPage, hubPermissions, type HubTab } from '../components/HubPage';
 import { PermissionsSettings } from './SettingsPage/PermissionsSettingsSubPage';
 import { ServiceChargeSettings } from './SettingsPage/ServiceChargeSettings';
@@ -395,5 +395,14 @@ export function SettingsPage() {
     return null;
   }
 
-  return <HubPage base="/settings" section="System" title="Settings" tabs={SETTINGS_TABS} />;
+  // Route audit, 2026-09-19: three settings tabs live with their pages (owner,
+  // 2026-09-08). Said here, so nobody hunts through this page for them.
+  const note = (
+    <span data-testid="settings-elsewhere">
+      Buying switches are under <Link to="/purchasing/settings">Purchasing → Settings</Link>, kitchen handover rules under{' '}
+      <Link to="/kitchen/settings">Kitchen → Settings</Link>, and every SMS on/off under <Link to="/sms?tab=control-center">SMS → Control Center</Link>.
+    </span>
+  );
+
+  return <HubPage base="/settings" section="System" title="Settings" tabs={SETTINGS_TABS} note={note} />;
 }

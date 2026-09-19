@@ -1,14 +1,14 @@
 import {
   LayoutDashboard, ClipboardList, ChefHat, Truck,
   UtensilsCrossed, Package, Tag, CalendarDays, Plus,
-  BarChart3, DollarSign, Receipt, TrendingDown,
+  BarChart3, DollarSign, TrendingDown,
   Users, LogOut,
   Heart, MessageSquare, BarChart2, Webhook,
-  Target, RotateCcw,
+  Target,
   Boxes, LayoutGrid, Wallet, Clock, Monitor, Share2,
-  Printer, Link, ShoppingBag, Zap,
+  Link, ShoppingBag, Zap,
   ConciergeBell, Wrench, ClipboardCheck, HeartPulse, UserCircle, Utensils,
-  AlertTriangle, LayoutTemplate, Shield, UserCog, Images, Tv, Store, Inbox,
+  LayoutTemplate, Shield, UserCog, Images, Tv, Store,
 } from 'lucide-react';
 import type { StaffUser } from '../api';
 
@@ -54,6 +54,25 @@ export function navItemPathname(to: string): string {
   return to.split(/[?#]/)[0] || '/';
 }
 
+/*
+ * Route audit, 2026-09-19 (owner: "some parts are not in the relevant tab
+ * ... complain management should be under customers ... some duplicates").
+ * The rule for what goes where:
+ *
+ *   Monitor   — what is happening now on the floor
+ *   Manage    — the things being sold and stocked
+ *   Customers — the people, and everything that talks to them (marketing,
+ *               content, complaints)
+ *   Analyze   — the numbers
+ *   System    — plumbing
+ *   Team      — the people who work here
+ *
+ * Complaints, GST and Refunds left Analyze for the hubs they belong to;
+ * the procurement report joined Purchasing; website content and the media
+ * library joined marketing; Reservations sits with Tables; POS Activity (a
+ * cashier audit trail) sits with Shifts; Print Queue is a tab of Devices;
+ * Service Availability is a tab of System Health. Every old path redirects.
+ */
 export const NAV_GROUPS: NavGroup[] = [
   {
     id: 'monitor',
@@ -66,12 +85,12 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/orders',    icon: ClipboardList,   label: 'Orders',    permission: 'orders.view',    description: 'Live order queue' },
       { to: '/kds',       icon: ChefHat,         label: 'Kitchen Display', permission: 'orders.view', description: 'KDS screen' },
       { to: '/tables',      icon: LayoutGrid, label: 'Tables',         permission: 'orders.view',            description: 'Floor plan & seating' },
+      { to: '/reservations', icon: CalendarDays, label: 'Reservations', permission: 'reservations.manage',   description: 'Table bookings' },
       { to: '/delivery',    icon: Truck,      label: 'Delivery Orders', permission: 'orders.manage',          description: 'Active delivery queue' },
       // Owner, 2026-09-08: "related tabs together". The production plan and
       // the handover (batches, receiving, variances, waste) share one page
       // and one settings tab; each tab keeps the permission its page had.
       { to: '/kitchen', icon: Utensils, label: 'Kitchen', permissions: ['kitchen.production.plan', 'kitchen.production.reports', 'kitchen.production.view_all', 'kitchen.variance.review', 'kitchen.production.manage', 'menu.manage'], description: 'Plan, handover, receiving & variance' },
-      { to: '/activity',    icon: Zap,        label: 'POS Activity',   permission: 'reports.view',            description: 'Audit log & POS events' },
     ],
   },
   {
@@ -85,12 +104,11 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/specials',          icon: Tag,         label: 'Daily Specials',   permission: 'menu.manage',     description: 'Scheduled item discounts' },
       // 2026-09-07 audit, finding 11: add-ons had no screen and moved no stock.
       { to: '/modifiers',         icon: Plus,        label: 'Add-ons',          permission: 'menu.manage',     description: 'Extras and what each one uses' },
-      { to: '/inventory',             icon: Boxes,         label: 'Inventory',       permission: 'inventory.view',      description: 'Stock levels, counts, waste' },
+      { to: '/inventory',             icon: Boxes,         label: 'Inventory',       permission: 'inventory.view',      description: 'Stock levels, counts, waste logs' },
       // Purchasing audit, 2026-09-05: requests, orders, shopping lists, suppliers
       // and every buying switch are tabs of one page. Old paths redirect.
-      { to: '/purchasing',            icon: Package,       label: 'Purchasing',      permissions: ['purchase_requests.view_all', 'suppliers.purchases', 'purchase_requests.create', 'suppliers.view', 'settings.update'], description: 'Requests, orders, suppliers & buying settings' },
-      { to: '/reservations',     icon: CalendarDays, label: 'Reservations',  permission: 'reservations.manage',   description: 'Table bookings' },
-      // Delivery settings: Ordering Control → Delivery tab only (/delivery-settings). Not listed again here.
+      { to: '/purchasing',            icon: Package,       label: 'Purchasing',      permissions: ['purchase_requests.view_all', 'suppliers.purchases', 'purchase_requests.create', 'suppliers.view', 'reports.financial', 'settings.update'], description: 'Requests, orders, suppliers, spend reports & buying settings' },
+      // Delivery settings: Settings → Delivery tab only. Not listed again here.
       { to: '/wholesale', icon: Store, label: 'Wholesale', permission: 'trade.view', description: 'Shops, deliveries, invoicing & reports' },
     ],
   },
@@ -101,13 +119,16 @@ export const NAV_GROUPS: NavGroup[] = [
     icon: Users,
     order: 3,
     items: [
-      { to: '/customers',        icon: Users,      label: 'Customers',       permission: 'customers.manage',    description: 'Directory, growth, referrals & reviews' },
+      { to: '/customers',        icon: Users,      label: 'Customers',       permissions: ['customers.manage', 'complaints.view'], description: 'Directory, growth, referrals, reviews & complaints' },
       { to: '/catering',         icon: ConciergeBell, label: 'Events & Catering', permissions: ['events.manage', 'customers.manage'], description: 'Event orders, quotes & catering pipeline' },
       { to: '/loyalty',          icon: Heart,      label: 'Loyalty',         permission: 'loyalty.manage',      description: 'Points & rewards' },
       { to: '/promotions', icon: Target,        label: 'Promotions',      permissions: ['promotions.manage', 'promotions.discount_cards', 'discounts.settings.manage'], description: 'Offers, gift cards, discount cards & controls' },
       { to: '/sms',        icon: MessageSquare, label: 'SMS & Messaging', permissions: ['integrations.sms', 'sms_marketing.manage', 'sms.settings.manage', 'sms.logs.view'], description: 'Campaigns, templates, sends & the control center' },
-      { to: '/signage', icon: Tv, label: 'TV Signage', permission: 'signage.manage', description: 'Digital menu boards' },
       { to: '/social', icon: Share2, label: 'Social Hub', permission: 'social.view', description: 'Post to Facebook, Instagram & Telegram' },
+      { to: '/signage', icon: Tv, label: 'TV Signage', permission: 'signage.manage', description: 'Digital menu boards' },
+      { to: '/content/website', icon: LayoutTemplate, label: 'Website Content', permission: 'website.manage', description: 'Public website copy, branding & visuals' },
+      { to: '/content/order-app', icon: ShoppingBag, label: 'Order App Content', permission: 'website.manage', description: 'Ordering app copy, branding & visuals' },
+      { to: '/media', icon: Images, label: 'Media Library', permission: 'media.view', description: 'Uploaded images, video, audio & documents' },
     ],
   },
   {
@@ -119,15 +140,8 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: '/reports',     icon: BarChart3,  label: 'Reports',       permission: 'reports.view',        description: 'Sales & daily summaries' },
       { to: '/analytics',        icon: BarChart2,  label: 'Analytics',       permission: 'customers.analytics', description: 'Advanced insights' },
-      { to: '/forecasts',             icon: TrendingDown,  label: 'Forecasts',       permission: 'reports.financial',   description: 'Demand forecasting' },
-      { to: '/procurement-report',     icon: ShoppingBag,   label: 'Procurement',     permission: 'reports.financial',   description: 'Spend, price trends & quote savings' },
-      { to: '/gst',         icon: Receipt,    label: 'GST',           permission: 'reports.financial',   description: 'MIRA GST reports & exports' },
-      { to: '/finance',     icon: DollarSign, label: 'Finance',       permissions: ['reports.financial', 'finance.expenses', 'finance.invoices', 'finance.settlements'], description: 'Monthly sheet, P&L, break-even, expenses, invoices & settlements' },
-      // Owner, 2026-09-07: "the system must match actual money received."
-      { to: '/refunds',     icon: RotateCcw,  label: 'Refunds',       permission: 'orders.refund',       description: 'Refund history' },
-      { to: '/complaints',  icon: AlertTriangle, label: 'Complaints', permission: 'complaints.view',    description: 'Customer receipt & invoice concerns' },
-      // Owner, 2026-09-19: "a separate complaints option not the one now used".
-      { to: '/complaint-box', icon: Inbox, label: 'Complaint Box', permission: 'complaints.view', description: 'Staff, food & service complaints from the public form' },
+      { to: '/forecasts',             icon: TrendingDown,  label: 'Forecasts',       permission: 'reports.financial',   description: 'Demand forecasting & restock alerts' },
+      { to: '/finance',     icon: DollarSign, label: 'Finance',       permissions: ['reports.financial', 'finance.expenses', 'finance.invoices', 'finance.settlements', 'orders.refund'], description: 'Monthly sheet, P&L, break-even, expenses, invoices, settlements, GST & refunds' },
     ],
   },
   {
@@ -137,18 +151,13 @@ export const NAV_GROUPS: NavGroup[] = [
     icon: Wrench,
     order: 5,
     items: [
-      { to: '/content/website', icon: LayoutTemplate, label: 'Website Content', permission: 'website.manage', description: 'Public website copy, branding & visuals' },
-      { to: '/content/order-app', icon: ShoppingBag, label: 'Order App Content', permission: 'website.manage', description: 'Ordering app copy, branding & visuals' },
-      { to: '/media', icon: Images, label: 'Media Library', permission: 'media.view', description: 'Uploaded images, video, audio & documents' },
       // Every switch not owned by a domain page: business record, ordering,
       // delivery, charges, credit, notifications, currency photos, roles.
       { to: '/settings', icon: Shield, label: 'Settings', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'], description: 'Business, ordering, delivery, fees, credit, notifications & roles' },
-      { to: '/devices',       icon: Monitor,     label: 'Devices',        permission: 'devices.view',   description: 'POS & KDS devices' },
-      { to: '/print-jobs',    icon: Printer,     label: 'Print Queue',    permission: 'devices.view',   description: 'Receipt print jobs' },
+      { to: '/devices',       icon: Monitor,     label: 'Devices',        permission: 'devices.view',   description: 'POS & KDS devices, and the print queue' },
+      { to: '/system-health', icon: HeartPulse,  label: 'System Health',  permissions: ['website.manage', 'service_availability.view'], description: 'Queue, webhooks & alerts, and the maintenance switches' },
       { to: '/webhooks',      icon: Webhook,     label: 'Webhooks',       permission: 'integrations.webhooks', description: 'Outbound integrations' },
       { to: '/xero',          icon: Link,        label: 'Xero',           permission: 'integrations.xero',    description: 'Accounting sync' },
-      { to: '/system-health', icon: HeartPulse,  label: 'System Health',  permission: 'website.manage', description: 'Queue, webhooks & alerts' },
-      { to: '/service-availability', icon: AlertTriangle, label: 'Service Availability', permission: 'service_availability.view', description: 'Maintenance & incident controls' },
     ],
   },
   {
@@ -161,6 +170,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/staff',         icon: Users,       label: 'Staff',          permission: 'staff.view',     description: 'Team management & schedules' },
       { to: '/shifts',      icon: Wallet,     label: 'Shifts & Cash',  permission: 'shifts.view_all_history', description: 'Live stations & shift history' },
       { to: '/time-clock',  icon: Clock,      label: 'Time Clock',     permissions: ['staff.view', 'pos.time_clock'], description: 'Punch history & summaries' },
+      { to: '/activity',    icon: Zap,        label: 'POS Activity',   permission: 'reports.view',            description: 'Audit trail of cashier actions' },
       { to: '/account',       icon: UserCircle,  label: 'My Account',     description: 'Profile & session' },
     ],
   },
@@ -181,22 +191,21 @@ function withoutPinnedItems(items: NavItem[]): NavItem[] {
   return items.filter((i) => !PINNED_PATHS.has(navItemPathname(i.to)));
 }
 
-/** @deprecated Checklist is always in System nav (permission-gated). Kept for Dashboard CTA. */
+/** @deprecated The checklist is reached from the Dashboard button, not the sidebar. */
 export function showDevNavItems(): boolean {
   return true;
 }
 
+/*
+ * Route audit, 2026-09-19: the go-live checklist was a launch-time page still
+ * in every owner's sidebar. The route stays and the Dashboard still offers
+ * it; it just no longer sits in System.
+ */
 export function getNavGroups(_includeDevItems = true): NavGroup[] {
   return NAV_GROUPS
     .slice()
     .sort((a, b) => a.order - b.order)
-    .map((g) => {
-      const items = withoutPinnedItems(g.items);
-      if (g.id === 'system') {
-        return { ...g, items: [...items, CHECKLIST_NAV_ITEM] };
-      }
-      return { ...g, items };
-    });
+    .map((g) => ({ ...g, items: withoutPinnedItems(g.items) }));
 }
 
 export function getAllNavItems(_includeDevItems = true): NavItem[] {
@@ -233,6 +242,14 @@ export const NAV_PATH_ALIASES: Record<string, string> = {
   '/business-details': '/settings',
   '/online-ordering': '/settings',
   '/delivery-settings': '/settings',
+  // Route audit, 2026-09-19.
+  '/complaints': '/customers',
+  '/complaint-box': '/customers',
+  '/gst': '/finance',
+  '/refunds': '/finance',
+  '/procurement-report': '/purchasing',
+  '/print-jobs': '/devices',
+  '/service-availability': '/system-health',
 };
 
 function resolveNavPath(pathname: string): string {

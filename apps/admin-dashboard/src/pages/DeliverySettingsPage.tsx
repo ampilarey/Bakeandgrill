@@ -156,7 +156,7 @@ export default function DeliverySettingsPage() {
     return (
       <PageShell>
         <div className="ordering-page">
-          <PageHeader section="Manage" title="Ordering Control Center" />
+          <PageHeader section="System" title="Ordering Control Center" />
           <OrderingControlTabs />
           <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>Loading…</p>
         </div>
@@ -168,7 +168,7 @@ export default function DeliverySettingsPage() {
     return (
       <PageShell>
         <div className="ordering-page">
-          <PageHeader section="Manage" title="Ordering Control Center" />
+          <PageHeader section="System" title="Ordering Control Center" />
           <OrderingControlTabs />
           <p style={{ color: 'var(--color-danger-strong)', fontSize: 14 }}>{error || 'Status unavailable.'}</p>
         </div>
@@ -195,7 +195,7 @@ export default function DeliverySettingsPage() {
   return (
     <PageShell>
     <div className="ordering-page">
-      <PageHeader section="Manage"
+      <PageHeader section="System"
         title="Ordering Control Center"
         subtitle="Delivery zones, fees, and capacity"
       />

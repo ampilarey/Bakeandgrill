@@ -176,7 +176,7 @@ export default function ComplaintBoxPage() {
   return (
     <PageShell>
       <PageHeader
-        section="Analyze"
+        section="Customers & Marketing"
         title="Complaint Box"
         subtitle="Staff, food and service complaints from the public form — anonymous or with a number"
         action={(

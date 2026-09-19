@@ -1323,7 +1323,7 @@ export default function InventoryPage() {
           <>
             <button style={S.tab(tab === 'conversions')} onClick={() => setTab('conversions')}>Unit Conversions</button>
             <button style={S.tab(tab === 'stock-count')} onClick={() => setTab('stock-count')}>Stock Count</button>
-            <button style={S.tab(tab === 'waste')} onClick={() => setTab('waste')}>Waste</button>
+            <button style={S.tab(tab === 'waste')} onClick={() => setTab('waste')}>Waste logs</button>
           </>
         )}
       </div>

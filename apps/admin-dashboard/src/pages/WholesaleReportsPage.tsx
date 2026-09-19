@@ -124,7 +124,7 @@ export default function WholesaleReportsPage() {
   return (
     <PageShell>
       <PageHeader
-        section="Analyze"
+        section="Manage"
         title="Wholesale reports"
         subtitle="Sell-through, next-run quantities, waste, margin, ageing and leak lists"
         action={(

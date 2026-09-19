@@ -66,6 +66,17 @@ describe('App route coverage', () => {
       'shopping-lists',
       'supplier-intelligence',
       'waste-logs',
+      // Route audit, 2026-09-19: these redirect into the hub that owns them
+      // now (Customers, Finance, Purchasing, Devices, System Health).
+      'complaints',
+      'complaint-box',
+      'gst',
+      'refunds',
+      'procurement-report',
+      'print-jobs',
+      'service-availability',
+      // The go-live checklist left the sidebar; the Dashboard still links it.
+      'checklist',
     ]);
 
     const routes = appRoutePaths(src);

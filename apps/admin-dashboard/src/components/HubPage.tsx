@@ -89,7 +89,7 @@ function TabStrip({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-export function HubPage({ base, section, title, subtitle, tabs, aliases = {} }: {
+export function HubPage({ base, section, title, subtitle, tabs, aliases = {}, note }: {
   /** Path the tabs hang off, e.g. "/finance". */
   base: string;
   section: string;
@@ -99,6 +99,8 @@ export function HubPage({ base, section, title, subtitle, tabs, aliases = {} }: 
   tabs: readonly HubTab[];
   /** Old segment → tab id, for paths that used to mean something else. */
   aliases?: Record<string, string>;
+  /** A line under the tabs, on every tab — e.g. where the other settings live. */
+  note?: ReactNode;
 }) {
   const navigate = useNavigate();
   const { pathname, search } = useLocation();
@@ -169,6 +171,8 @@ export function HubPage({ base, section, title, subtitle, tabs, aliases = {} }: 
           </TabStrip>
         </div>
       )}
+
+      {note && <div className="hub-note" style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: '-8px 0 16px' }}>{note}</div>}
 
       <HubContext.Provider value={true}>
         <Suspense fallback={<p style={{ color: 'var(--color-text-muted)' }}>Loading…</p>}>

@@ -524,7 +524,7 @@ export function ContentHubPage() {
     <PageShell>
       <div className={`content-studio-page hub-page${effectiveDirtyCount > 0 ? ' content-studio-page--dirty' : ''}`}>
         <PageHeader
-          section="System"
+          section="Customers & Marketing"
           title={hubTitle}
           subtitle={
             hubApp === 'website'

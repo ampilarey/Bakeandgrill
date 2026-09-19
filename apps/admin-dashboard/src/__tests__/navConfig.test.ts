@@ -34,14 +34,14 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
   { to: '/inventory', permission: 'inventory.view' },
   // Purchasing audit, 2026-09-05: five entries became one hub whose tabs are
   // each gated on the permission the old page carried.
-  { to: '/purchasing', permissions: ['purchase_requests.view_all', 'suppliers.purchases', 'purchase_requests.create', 'suppliers.view', 'settings.update'] },
+  // Route audit, 2026-09-19: the procurement report is a Purchasing tab.
+  { to: '/purchasing', permissions: ['purchase_requests.view_all', 'suppliers.purchases', 'purchase_requests.create', 'suppliers.view', 'reports.financial', 'settings.update'] },
   { to: '/reservations', permission: 'reservations.manage' },
   { to: '/wholesale', permission: 'trade.view' },
-  { to: '/customers', permission: 'customers.manage' },
+  // Route audit, 2026-09-19: both complaint pages are Customers tabs.
+  { to: '/customers', permissions: ['customers.manage', 'complaints.view'] },
   { to: '/catering', permissions: ['events.manage', 'customers.manage'] },
   { to: '/loyalty', permission: 'loyalty.manage' },
-  { to: '/complaints', permission: 'complaints.view' },
-  { to: '/complaint-box', permission: 'complaints.view' },
   { to: '/promotions', permissions: ['promotions.manage', 'promotions.discount_cards', 'discounts.settings.manage'] },
   { to: '/sms', permissions: ['integrations.sms', 'sms_marketing.manage', 'sms.settings.manage', 'sms.logs.view'] },
   { to: '/signage', permission: 'signage.manage' },
@@ -49,24 +49,21 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
   { to: '/reports', permission: 'reports.view' },
   { to: '/analytics', permission: 'customers.analytics' },
   { to: '/forecasts', permission: 'reports.financial' },
-  { to: '/procurement-report', permission: 'reports.financial' },
-  { to: '/gst', permission: 'reports.financial' },
-  { to: '/finance', permissions: ['reports.financial', 'finance.expenses', 'finance.invoices', 'finance.settlements'] },
+  // Route audit, 2026-09-19: GST and Refunds are Finance tabs.
+  { to: '/finance', permissions: ['reports.financial', 'finance.expenses', 'finance.invoices', 'finance.settlements', 'orders.refund'] },
   { to: '/modifiers', permission: 'menu.manage' },
-  { to: '/refunds', permission: 'orders.refund' },
   { to: '/staff', permission: 'staff.view' },
   { to: '/content/website', permission: 'website.manage' },
   { to: '/content/order-app', permission: 'website.manage' },
   { to: '/media', permission: 'media.view' },
   { to: '/settings', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'] },
+  // Route audit, 2026-09-19: Print Queue is a Devices tab; Service
+  // Availability is a System Health tab.
   { to: '/devices', permission: 'devices.view' },
-  { to: '/print-jobs', permission: 'devices.view' },
   { to: '/webhooks', permission: 'integrations.webhooks' },
   { to: '/xero', permission: 'integrations.xero' },
-  { to: '/system-health', permission: 'website.manage' },
-  { to: '/service-availability', permission: 'service_availability.view' },
+  { to: '/system-health', permissions: ['website.manage', 'service_availability.view'] },
   { to: '/account' },
-  { to: '/checklist', permission: 'website.manage' },
 ];
 
 function staff(permissions: string[]): StaffUser {
@@ -114,7 +111,7 @@ describe('navConfig', () => {
     expect(byTo['/menu']?.permission).toBe('menu.manage');
     expect(byTo['/delivery']?.permission).toBe('orders.manage');
     expect(byTo['/reservations']?.permission).toBe('reservations.manage');
-    expect(byTo['/finance']?.permissions).toEqual(['reports.financial', 'finance.expenses', 'finance.invoices', 'finance.settlements']);
+    expect(byTo['/finance']?.permissions).toEqual(['reports.financial', 'finance.expenses', 'finance.invoices', 'finance.settlements', 'orders.refund']);
     expect(byTo['/sms']?.permissions).toEqual(['integrations.sms', 'sms_marketing.manage', 'sms.settings.manage', 'sms.logs.view']);
     expect(byTo['/webhooks']?.permission).toBe('integrations.webhooks');
     expect(byTo['/xero']?.permission).toBe('integrations.xero');
@@ -182,6 +179,22 @@ describe('navConfig', () => {
     expect(getActiveSection('/finance/expenses')?.id).toBe('analyze');
     expect(getActiveSection('/expenses')?.id).toBe('analyze');
     expect(getActiveSection('/wholesale/deliveries/3')?.id).toBe('manage');
+    // Route audit, 2026-09-19: moved pages light up their new section, old
+    // paths included.
+    expect(getActiveSection('/complaints')?.id).toBe('customers-marketing');
+    expect(getActiveSection('/customers/complaint-box')?.id).toBe('customers-marketing');
+    expect(getActiveSection('/gst')?.id).toBe('analyze');
+    expect(getActiveSection('/finance/refunds')?.id).toBe('analyze');
+    expect(getActiveSection('/procurement-report')?.id).toBe('manage');
+    expect(getActiveSection('/purchasing/reports')?.id).toBe('manage');
+    expect(getActiveSection('/print-jobs')?.id).toBe('system');
+    expect(getActiveSection('/devices/print-queue')?.id).toBe('system');
+    expect(getActiveSection('/service-availability')?.id).toBe('system');
+    expect(getActiveSection('/system-health/controls')?.id).toBe('system');
+    expect(getActiveSection('/content/website')?.id).toBe('customers-marketing');
+    expect(getActiveSection('/media')?.id).toBe('customers-marketing');
+    expect(getActiveSection('/reservations')?.id).toBe('monitor');
+    expect(getActiveSection('/activity')?.id).toBe('team');
   });
 
   it('Inventory lives in Manage group, not pinned', () => {

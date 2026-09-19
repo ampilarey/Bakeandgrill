@@ -189,7 +189,7 @@ export default function ComplaintsPage() {
 
   return (
     <PageShell>
-      <PageHeader section="Analyze" title="Complaints" subtitle="Customer concerns from receipts and invoices" />
+      <PageHeader section="Customers & Marketing" title="Complaints" subtitle="Customer concerns from receipts and invoices" />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 12, marginBottom: 16 }}>
         <StatCard label="Open" value={String(meta.open_count)} />

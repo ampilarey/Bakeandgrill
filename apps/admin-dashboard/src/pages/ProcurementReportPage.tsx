@@ -138,7 +138,7 @@ export default function ProcurementReportPage() {
   return (
     <PageShell>
     <div>
-      <PageHeader section="Analyze"
+      <PageHeader section="Manage"
         title="Procurement"
         subtitle="Spend by category / supplier / buyer · price trends · cheapest-pick savings"
         action={<Btn variant="secondary" onClick={exportCsv} disabled={!data}>Export CSV</Btn>}

@@ -28,10 +28,8 @@ const MenuPage                = lazyWithRetry(() => import('./pages/MenuPage').t
 const StaffPage               = lazyWithRetry(() => import('./pages/StaffPage').then((m) => ({ default: m.StaffPage })));
 const ReservationsPage        = lazyWithRetry(() => import('./pages/ReservationsPage'));
 const AnalyticsPage           = lazyWithRetry(() => import('./pages/AnalyticsPage'));
-const GstPage                 = lazyWithRetry(() => import('./pages/GstPage'));
 const ModifiersPage           = lazyWithRetry(() => import('./pages/ModifiersPage').then((m) => ({ default: m.ModifiersPage })));
 const ForecastPage            = lazyWithRetry(() => import('./pages/ForecastPage').then((m) => ({ default: m.ForecastPage })));
-const ProcurementReportPage   = lazyWithRetry(() => import('./pages/ProcurementReportPage'));
 const PurchasingPage          = lazyWithRetry(() => import('./pages/PurchasingPage').then((m) => ({ default: m.PurchasingPage })));
 const KitchenHub              = lazyWithRetry(() => import('./pages/KitchenHub').then((m) => ({ default: m.KitchenHub })));
 const CustomersHub            = lazyWithRetry(() => import('./pages/CustomersHub').then((m) => ({ default: m.CustomersHub })));
@@ -45,9 +43,6 @@ const SettingsPage            = lazyWithRetry(() => import('./pages/SettingsPage
 const ContentHubPage          = lazyWithRetry(() => import('./pages/ContentHub/ContentHubPage'));
 const ContentHubChooser       = lazyWithRetry(() => import('./pages/ContentHub/ContentHubChooser').then((m) => ({ default: m.ContentHubChooser })));
 const SpecialsPage            = lazyWithRetry(() => import('./pages/SpecialsPage'));
-const RefundsPage             = lazyWithRetry(() => import('./pages/RefundsPage'));
-const ComplaintsPage          = lazyWithRetry(() => import('./pages/ComplaintsPage'));
-const ComplaintBoxPage        = lazyWithRetry(() => import('./pages/ComplaintBoxPage'));
 const CateringPage            = lazyWithRetry(() => import('./pages/CateringPage').then((m) => ({ default: m.CateringPage })));
 const CateringDetailPage      = lazyWithRetry(() => import('./pages/CateringDetailPage').then((m) => ({ default: m.CateringDetailPage })));
 const InventoryPage           = lazyWithRetry(() => import('./pages/InventoryPage'));
@@ -55,11 +50,9 @@ const TablesPage              = lazyWithRetry(() => import('./pages/TablesPage')
 const ActivityPage            = lazyWithRetry(() => import('./pages/ActivityPage'));
 const ShiftsPage              = lazyWithRetry(() => import('./pages/ShiftsPage'));
 const TimeClockPage           = lazyWithRetry(() => import('./pages/TimeClockPage'));
-const DevicesPage             = lazyWithRetry(() => import('./pages/DevicesPage'));
-const PrintJobsPage           = lazyWithRetry(() => import('./pages/PrintJobsPage'));
+const DevicesHub              = lazyWithRetry(() => import('./pages/DevicesHub').then((m) => ({ default: m.DevicesHub })));
 const XeroPage                = lazyWithRetry(() => import('./pages/XeroPage'));
-const ServiceAvailabilityPage = lazyWithRetry(() => import('./pages/ServiceAvailabilityPage'));
-const SystemHealthPage        = lazyWithRetry(() => import('./pages/SystemHealthPage').then((m) => ({ default: m.SystemHealthPage })));
+const SystemHub               = lazyWithRetry(() => import('./pages/SystemHub').then((m) => ({ default: m.SystemHub })));
 const MyAccountPage           = lazyWithRetry(() => import('./pages/MyAccountPage').then((m) => ({ default: m.MyAccountPage })));
 const MediaLibraryPage        = lazyWithRetry(() => import('./pages/MediaLibraryPage').then((m) => ({ default: m.MediaLibraryPage })));
 const SignagePage             = lazyWithRetry(() => import('./pages/SignagePage').then((m) => ({ default: m.SignagePage })));
@@ -348,22 +341,14 @@ export default function App() {
                 <Route path="monthly-sheet" element={<MovedTo to="/finance/monthly-sheet" />} />
                 <Route path="settlements" element={<MovedTo to="/finance/settlements" />} />
                 <Route path="break-even" element={<MovedTo to="/finance/break-even" />} />
-                <Route path="gst" element={
-                  <PermissionGuard user={user} permission="reports.financial">
-                    <GstPage />
-                  </PermissionGuard>
-                } />
+                <Route path="gst" element={<MovedTo to="/finance/gst" />} />
                 <Route path="supplier-intelligence" element={<MovedTo to="/purchasing/suppliers" />} />
                 <Route path="forecasts" element={
                   <PermissionGuard user={user} permission="reports.financial">
                     <ForecastPage />
                   </PermissionGuard>
                 } />
-                <Route path="procurement-report" element={
-                  <PermissionGuard user={user} permission="reports.financial">
-                    <ProcurementReportPage />
-                  </PermissionGuard>
-                } />
+                <Route path="procurement-report" element={<MovedTo to="/purchasing/reports" />} />
                 {/* Purchasing hub — audit 2026-09-05: five sidebar entries became one
                     page with tabs. The old paths redirect to their tab. */}
                 <Route path="purchasing/*" element={
@@ -450,21 +435,9 @@ export default function App() {
                     <SpecialsPage />
                   </PermissionGuard>
                 } />
-                <Route path="refunds" element={
-                  <PermissionGuard user={user} permission="orders.refund">
-                    <RefundsPage />
-                  </PermissionGuard>
-                } />
-                <Route path="complaints" element={
-                  <PermissionGuard user={user} permission="complaints.view">
-                    <ComplaintsPage />
-                  </PermissionGuard>
-                } />
-                <Route path="complaint-box" element={
-                  <PermissionGuard user={user} permission="complaints.view">
-                    <ComplaintBoxPage />
-                  </PermissionGuard>
-                } />
+                <Route path="refunds" element={<MovedTo to="/finance/refunds" />} />
+                <Route path="complaints" element={<MovedTo to="/customers/complaints" />} />
+                <Route path="complaint-box" element={<MovedTo to="/customers/complaint-box" />} />
                 {/* Waste is a tab of Inventory now. */}
                 <Route path="waste-logs" element={<MovedTo to="/inventory?tab=waste" />} />
                 <Route path="catering" element={
@@ -503,29 +476,23 @@ export default function App() {
                     <TimeClockPage />
                   </PermissionGuard>
                 } />
-                <Route path="devices" element={
+                {/* Route audit, 2026-09-19: Devices and Print Queue are one hub. */}
+                <Route path="devices/*" element={
                   <PermissionGuard user={user} permission="devices.view">
-                    <DevicesPage />
+                    <DevicesHub />
                   </PermissionGuard>
                 } />
-                <Route path="print-jobs" element={
-                  <PermissionGuard user={user} permission="devices.view">
-                    <PrintJobsPage />
-                  </PermissionGuard>
-                } />
+                <Route path="print-jobs" element={<MovedTo to="/devices/print-queue" />} />
                 <Route path="xero" element={
                   <PermissionGuard user={user} permission="integrations.xero">
                     <XeroPage />
                   </PermissionGuard>
                 } />
-                <Route path="service-availability" element={
-                  <PermissionGuard user={user} permission="service_availability.view">
-                    <ServiceAvailabilityPage />
-                  </PermissionGuard>
-                } />
-                <Route path="system-health" element={
-                  <PermissionGuard user={user} permission="website.manage">
-                    <SystemHealthPage />
+                <Route path="service-availability" element={<MovedTo to="/system-health/controls" />} />
+                {/* Route audit, 2026-09-19: System Health and Service Availability are one hub. */}
+                <Route path="system-health/*" element={
+                  <PermissionGuard user={user} permissions={['website.manage', 'service_availability.view']}>
+                    <SystemHub />
                   </PermissionGuard>
                 } />
                 <Route path="media" element={

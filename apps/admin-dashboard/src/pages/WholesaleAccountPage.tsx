@@ -242,7 +242,7 @@ export default function WholesaleAccountPage() {
         </Link>
       </div>
       <PageHeader
-        section="Wholesale"
+        section="Manage"
         title={account.shop_name}
         subtitle={account.is_active ? 'Active trade account' : 'Inactive — not used for new deliveries'}
         action={(

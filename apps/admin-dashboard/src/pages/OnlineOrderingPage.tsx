@@ -587,7 +587,7 @@ export default function OnlineOrderingPage() {
   return (
     <PageShell>
     <div className="ordering-page">
-      <PageHeader section="Manage"
+      <PageHeader section="System"
         title="Ordering Control Center"
         subtitle="One place for online, delivery, pre-order, and feature gates"
       />

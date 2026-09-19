@@ -91,7 +91,7 @@ export function SettlementsPage() {
   return (
     <PageShell>
       <PageHeader
-        section="Finance"
+        section="Analyze"
         title="Bank Settlements"
         subtitle="Does the money in the bank match what the till says?"
       />

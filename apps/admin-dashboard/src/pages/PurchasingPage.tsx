@@ -4,6 +4,7 @@ import { PageHeader, PageShell, TabScrollRow } from '../components/SharedUI';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { PurchasingSettings } from './PurchasingPage/PurchasingSettings';
+import { HubContext } from '../components/hubContext';
 
 /*
  * Purchasing — one page for the whole of buying.
@@ -25,6 +26,9 @@ const PurchaseOrdersPage = lazy(() => import('./PurchaseOrdersPage').then((m) =>
 const ShoppingListsPage = lazy(() => import('./ShoppingListsPage'));
 const PurchaseLinesPage = lazy(() => import('./PurchaseLinesPage'));
 const SupplierIntelligencePage = lazy(() => import('./SupplierIntelligencePage').then((m) => ({ default: m.SupplierIntelligencePage })));
+// Route audit, 2026-09-19: the procurement report (spend, price trends, quote
+// savings) sat under Analyze; it is about the suppliers on this page.
+const ProcurementReportPage = lazy(() => import('./ProcurementReportPage'));
 
 export const PURCHASING_TABS = [
   { id: 'requests', label: 'Requests', permissions: ['purchase_requests.view_all'], desc: 'What staff have asked for, and where each request is' },
@@ -32,6 +36,7 @@ export const PURCHASING_TABS = [
   { id: 'lines', label: 'Purchase lines', permissions: ['suppliers.purchases'], desc: 'Every line bought — narrow it by shop, brand or item' },
   { id: 'lists', label: 'Shopping lists', permissions: ['purchase_requests.create'], desc: 'Staples that get requested on a schedule' },
   { id: 'suppliers', label: 'Suppliers', permissions: ['suppliers.view'], desc: 'Who you buy from, how they perform, and what they charge' },
+  { id: 'reports', label: 'Reports', permissions: ['reports.financial'], desc: 'Spend, price trends and what the quotes saved' },
   { id: 'settings', label: 'Settings', permissions: ['settings.update', 'purchase_requests.view_all'], desc: 'Every switch that governs buying, in the order the work happens' },
 ] as const;
 
@@ -114,6 +119,7 @@ export function PurchasingPage() {
         {active === 'lines' && <PurchaseLinesPage embedded />}
         {active === 'lists' && <ShoppingListsPage embedded />}
         {active === 'suppliers' && <SupplierIntelligencePage embedded />}
+        {active === 'reports' && <HubContext.Provider value={true}><ProcurementReportPage /></HubContext.Provider>}
         {active === 'settings' && <PurchasingSettings canEdit={can('settings.update')} />}
       </Suspense>
     </PageShell>

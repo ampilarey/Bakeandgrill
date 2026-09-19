@@ -112,7 +112,7 @@ export default function WholesalePage() {
   return (
     <PageShell>
       <PageHeader
-        section="Wholesale"
+        section="Manage"
         title="Shops we supply"
         subtitle={`${total} trade account${total !== 1 ? 's' : ''}`}
         action={canManage ? (
