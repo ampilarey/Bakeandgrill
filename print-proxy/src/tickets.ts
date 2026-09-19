@@ -27,7 +27,11 @@ export type PrintPayload = {
   type?: string;
   /** Public web receipt URL; printed as a QR at the foot of a receipt. */
   receipt_url?: string | null;
+  /** The complaint form on the live site; a second QR under the first (owner, 2026-09-19). */
+  complaint_url?: string | null;
 };
+
+const isUrl = (v: unknown): v is string => typeof v === 'string' && /^https?:\/\/[^\s]+$/.test(v);
 
 /**
  * ESC/POS for a QR code (GS ( k), as Epson and the compatible clones read
@@ -140,13 +144,21 @@ export const buildReceiptTicket = (payload: PrintPayload): string => {
   // order back up at the till, or opens feedback and complaints. The URL is
   // ours, never customer text, so it does not go through the sanitizer —
   // that would strip nothing useful and the QR bytes must be exact.
-  const qr = typeof payload.receipt_url === 'string' && /^https?:\/\/[^\s]+$/.test(payload.receipt_url)
-    ? escPosQr(payload.receipt_url)
-    : '';
+  const qr = isUrl(payload.receipt_url) ? escPosQr(payload.receipt_url) : '';
   if (qr) {
     lines.push('-----------------------------\n');
     lines.push('\x1Ba\x01Scan for your receipt\n\x1Ba\x00');
     lines.push(qr);
+    lines.push('\n');
+  }
+  // The complaint box. Owner, 2026-09-19: "also add the complaint QR on the
+  // receipt print" — staff, food or service, anonymous or with a number,
+  // straight to the owner. Same rule: our URL, never customer text.
+  const complaintQr = isUrl(payload.complaint_url) ? escPosQr(payload.complaint_url) : '';
+  if (complaintQr) {
+    lines.push('-----------------------------\n');
+    lines.push('\x1Ba\x01Not happy? Scan to tell the owner\n\x1Ba\x00');
+    lines.push(complaintQr);
     lines.push('\n');
   }
   lines.push('\n\n\n');

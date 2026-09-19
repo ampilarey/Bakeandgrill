@@ -182,6 +182,10 @@ class PrintPayloadContractTest extends ContractTestCase
             $this->assertArrayHasKey('receipt', $payload);
             $this->assertSame($payload['receipt_url'], $payload['receipt']['url'] ?? null);
             $this->assertSame($payload['receipt_url'], $payload['receipt']['qr_payload'] ?? null);
+            // The complaint box QR under it (owner, 2026-09-19) — always the live site.
+            $this->assertArrayHasKey('complaint_url', $payload, 'Receipt print payload missing complaint_url (for the second QR)');
+            $this->assertStringStartsWith('https://bakeandgrill.mv/complain?from=receipt', $payload['complaint_url']);
+            $this->assertSame($payload['complaint_url'], $payload['receipt']['complaint_url'] ?? null);
 
             $order = $payload['order'];
             $this->assertArrayHasKey('subtotal', $order, 'Receipt payload missing subtotal');

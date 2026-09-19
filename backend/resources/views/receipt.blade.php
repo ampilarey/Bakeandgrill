@@ -199,12 +199,25 @@
         ])
 
         {{-- The complaint box (owner, 2026-09-19): about the staff, the food
-             or the place rather than this order. Anonymous or with a number. --}}
-        <p class="doc-complaint-box-link" data-testid="receipt-complaint-box-link" style="margin:14px 0 0;font-size:13px;line-height:1.5;color:#6B5D4F;">
-            Something about our staff or service, not this order?
-            <a href="{{ url('/complain?from=receipt&order=' . rawurlencode((string) ($order->order_number ?? ''))) }}" style="color:#D4813A;font-weight:700;">Make a complaint</a>
-            — anonymously, or leave your number.
-        </p>
+             or the place rather than this order. Anonymous or with a number.
+             A QR as well as a link, because this page is what the till prints
+             ("also add the complaint QR on the receipt print"). Not inside
+             .doc-mistake-cta, which the print stylesheet hides. --}}
+        @php
+            $complaintUrl = \App\Support\ComplaintBoxLink::url('receipt', (string) ($order->order_number ?? ''));
+            $complaintLogo = \App\Support\ComplaintBoxLink::logo();
+        @endphp
+        <div class="doc-qr doc-complaint-qr" data-testid="receipt-complaint-qr" style="display:flex;align-items:center;gap:14px;margin:10px 0 6px;padding:12px;border:1px solid var(--border, #E8E0D8);border-radius:12px;background:#fff;">
+            <a href="{{ $complaintUrl }}" style="position:relative;display:block;width:96px;height:96px;flex-shrink:0;">
+                <img src="{{ \App\Support\ComplaintBoxLink::qr($complaintUrl, 200) }}" alt="QR code to the complaint form" width="96" height="96" style="width:96px;height:96px;display:block;">
+                <img src="{{ $complaintLogo }}" alt="" aria-hidden="true" style="position:absolute;left:50%;top:50%;width:34px;height:34px;transform:translate(-50%,-50%);background:#fff;padding:2px;border-radius:6px;object-fit:contain;">
+            </a>
+            <div style="font-size:13px;line-height:1.5;color:#6B5D4F;">
+                <strong style="display:block;color:#1C1408;">Not happy with our staff, food or service?</strong>
+                Scan to tell the owner directly — anonymously, or leave your number and we will message you back.
+                <a href="{{ $complaintUrl }}" style="color:#D4813A;font-weight:700;">Make a complaint</a>
+            </div>
+        </div>
 
         @if ($doc['show_feedback'])
             <div class="doc-feedback" data-receipt-rating-root data-order-id="{{ $receipt->order_id }}" data-existing-rating="{{ $existingFeedback?->rating ?? '' }}">

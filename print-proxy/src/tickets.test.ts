@@ -81,6 +81,23 @@ test('receipt prints its link as an ESC/POS QR when one is given', () => {
   assert.ok(ticket.indexOf('\x31\x51\x30') > ticket.indexOf(payload.receipt_url));
 });
 
+test('receipt prints the complaint form as a second QR under the receipt one', () => {
+  // Owner, 2026-09-19: "also add the complaint QR on the receipt print".
+  const payload = hostilePayload();
+  payload.receipt_url = 'https://bakeandgrill.mv/receipts/abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKL';
+  payload.complaint_url = 'https://bakeandgrill.mv/complain?from=receipt&order=BG-20260919-0007';
+  const ticket = buildReceiptTicket(payload);
+  assert.ok(ticket.includes('Not happy? Scan to tell the owner'));
+  assert.ok(ticket.includes(`\x31\x50\x30${payload.complaint_url}`));
+  assert.ok(ticket.indexOf(payload.complaint_url) > ticket.indexOf(payload.receipt_url), 'complaint QR comes after the receipt QR');
+  assert.ok(ticket.indexOf('\x1DVA0') > ticket.indexOf(payload.complaint_url), 'cut comes last');
+
+  const bad = hostilePayload();
+  bad.complaint_url = `${GS}(k not a url`;
+  assert.ok(!buildReceiptTicket(bad).includes('Not happy?'));
+  assert.ok(!buildReceiptTicket(hostilePayload()).includes('Not happy?'));
+});
+
 test('receipt prints no QR without a link, or with one that is not a URL', () => {
   assert.ok(!buildReceiptTicket(hostilePayload()).includes('Scan for your receipt'));
   const bad = hostilePayload();

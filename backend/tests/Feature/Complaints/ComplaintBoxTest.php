@@ -48,6 +48,29 @@ class ComplaintBoxTest extends TestCase
     }
 
     /**
+     * Owner, 2026-09-19: "also add the complaint QR on the receipt print".
+     * The receipt page is what the till prints, so the code sits on it,
+     * outside the block the print stylesheet hides, pointing at the live
+     * site with the order number attached.
+     */
+    public function test_the_receipt_page_carries_the_complaint_qr_for_the_live_site(): void
+    {
+        $customer = $this->makeCustomer(['phone' => '+9607700200']);
+        $order = $this->makePaidOrder($customer, ['order_number' => 'BG-CB-0007', 'total' => 40]);
+        $receipt = \App\Models\Receipt::create(['order_id' => $order->id, 'token' => \Illuminate\Support\Str::random(48), 'channel' => 'sms', 'recipient' => $customer->phone]);
+
+        $expectedUrl = 'https://bakeandgrill.mv/complain?from=receipt&order=BG-CB-0007';
+        $res = $this->get('http://test.bakeandgrill.mv/receipts/' . $receipt->token)->assertOk();
+        $res->assertSee('data-testid="receipt-complaint-qr"', false);
+        // Blade escapes the & in the href.
+        $res->assertSee('href="' . str_replace('&', '&amp;', $expectedUrl) . '"', false);
+        $res->assertSee(\App\Support\ComplaintBoxLink::qr($expectedUrl, 200), false);
+
+        // And the thermal slip gets the same address.
+        $this->assertSame($expectedUrl, \App\Support\ComplaintBoxLink::url('receipt', 'BG-CB-0007'));
+    }
+
+    /**
      * Owner, 2026-09-19: "Qr code should be of live site, and add logo". The
      * poster points at the Business Website address whatever host it is
      * printed from, and carries the logo on top and in the middle of the code.
@@ -58,7 +81,8 @@ class ComplaintBoxTest extends TestCase
 
         $res->assertSee('bakeandgrill.mv/complain', false);
         $res->assertDontSee('test.bakeandgrill.mv', false);
-        $res->assertSee('class="logo"', false);
+        // "remove the logo from the top and make the logo inside the qr code bigger"
+        $res->assertDontSee('class="logo"', false);
         $res->assertSee('class="mark"', false);
 
         // The code on the page is byte-for-byte the code for the live address,

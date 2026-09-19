@@ -125,5 +125,18 @@
             Show it at the counter to bring the order up, or scan it later for feedback and a complaint form.
         </td>
     </tr>
+    {{-- The complaint box (owner, 2026-09-19): about the staff, the food or
+         the place rather than this order. Plain code here — dompdf cannot
+         be trusted to lay an image over another. --}}
+    @php $complaintUrl = \App\Support\ComplaintBoxLink::url('receipt', (string) ($order->order_number ?? '')); @endphp
+    <tr>
+        <td style="width:110px;vertical-align:middle;padding-top:8px;">
+            <img src="{{ \App\Support\ComplaintBoxLink::qr($complaintUrl, 100) }}" alt="QR code to the complaint form" width="96" height="96" style="width:96px;height:96px;">
+        </td>
+        <td style="vertical-align:middle;font-size:11px;color:#6B5D4F;line-height:1.5;padding-top:8px;">
+            <strong style="color:#1C1408;">Not happy with our staff, food or service?</strong><br>
+            Scan to tell the owner directly — anonymously, or leave your number and we will message you back.
+        </td>
+    </tr>
 </table>
 @endsection

@@ -9,6 +9,7 @@ use App\Models\Printer;
 use App\Models\PrintJob;
 use App\Models\Receipt;
 use App\Services\PrintProxyService;
+use App\Support\ComplaintBoxLink;
 use Illuminate\Support\Str;
 
 class PrintJobService
@@ -238,16 +239,22 @@ class PrintJobService
         $receipt->save();
 
         $receiptUrl = rtrim((string) config('app.url'), '/') . '/receipts/' . $receipt->token;
+        // The complaint box (owner, 2026-09-19): "also add the complaint QR on
+        // the receipt print". Always the live site, whatever host printed it.
+        $complaintUrl = ComplaintBoxLink::url('receipt', (string) $order->order_number);
 
         return [
             'printer_name' => $printer->name,
             'type' => 'receipt',
             /** Public web receipt URL — print proxy should render as a QR code on the slip. */
             'receipt_url' => $receiptUrl,
+            /** Complaint form on the live site — a second QR under the first. */
+            'complaint_url' => $complaintUrl,
             'receipt' => [
                 'url' => $receiptUrl,
                 'token' => $receipt->token,
                 'qr_payload' => $receiptUrl,
+                'complaint_url' => $complaintUrl,
             ],
             'printer' => [
                 'id' => $printer->id,
