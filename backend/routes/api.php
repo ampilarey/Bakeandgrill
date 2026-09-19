@@ -136,6 +136,10 @@ Route::post('/receipts/{token}/complaints', [App\Http\Controllers\Api\PublicComp
     ->middleware('throttle:20,1');
 Route::post('/invoices/{token}/complaints', [App\Http\Controllers\Api\PublicComplaintController::class, 'storeForInvoice'])
     ->middleware('throttle:20,1');
+// The complaint box (owner, 2026-09-19): no token, no login. The controller
+// adds per-network and per-phone limits on top of this one.
+Route::post('/complaint-box', [App\Http\Controllers\Api\PublicComplaintBoxController::class, 'store'])
+    ->middleware('throttle:20,1');
 Route::post('/receipts/{token}/complaint-photos', [App\Http\Controllers\Api\ComplaintPhotoController::class, 'uploadForReceipt'])
     ->middleware('throttle:20,1');
 Route::post('/invoices/{token}/complaint-photos', [App\Http\Controllers\Api\ComplaintPhotoController::class, 'uploadForInvoice'])

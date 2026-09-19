@@ -47,6 +47,7 @@ const ContentHubChooser       = lazyWithRetry(() => import('./pages/ContentHub/C
 const SpecialsPage            = lazyWithRetry(() => import('./pages/SpecialsPage'));
 const RefundsPage             = lazyWithRetry(() => import('./pages/RefundsPage'));
 const ComplaintsPage          = lazyWithRetry(() => import('./pages/ComplaintsPage'));
+const ComplaintBoxPage        = lazyWithRetry(() => import('./pages/ComplaintBoxPage'));
 const CateringPage            = lazyWithRetry(() => import('./pages/CateringPage').then((m) => ({ default: m.CateringPage })));
 const CateringDetailPage      = lazyWithRetry(() => import('./pages/CateringDetailPage').then((m) => ({ default: m.CateringDetailPage })));
 const InventoryPage           = lazyWithRetry(() => import('./pages/InventoryPage'));
@@ -457,6 +458,11 @@ export default function App() {
                 <Route path="complaints" element={
                   <PermissionGuard user={user} permission="complaints.view">
                     <ComplaintsPage />
+                  </PermissionGuard>
+                } />
+                <Route path="complaint-box" element={
+                  <PermissionGuard user={user} permission="complaints.view">
+                    <ComplaintBoxPage />
                   </PermissionGuard>
                 } />
                 {/* Waste is a tab of Inventory now. */}

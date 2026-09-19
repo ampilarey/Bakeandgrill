@@ -312,6 +312,44 @@ class SmsTemplateSeeder extends Seeder
                     ['name' => 'no_contact_count', 'description' => 'Legacy no-contact count'],
                 ]),
             ],
+            // Complaint box (owner, 2026-09-19) — same rows the migration seeds.
+            [
+                'slug' => 'owner_complaint_box_received',
+                'name' => 'Complaint box: new complaint (owner)',
+                'type' => 'order_notification',
+                'body' => 'New complaint {{reference}}: {{category}}{{staff}}. {{contact}} Open Complaint Box in admin.',
+                'description' => 'Sent to owner phones when a complaint arrives through the public complaint form.',
+                'is_system' => true,
+                'variables' => json_encode([
+                    ['name' => 'reference', 'description' => 'Complaint reference'],
+                    ['name' => 'category', 'description' => 'What it is about'],
+                    ['name' => 'staff', 'description' => '" about <name>" when the customer named someone, else empty'],
+                    ['name' => 'contact', 'description' => '"Customer left a number." or "Anonymous."'],
+                ]),
+            ],
+            [
+                'slug' => 'customer_complaint_box_acknowledged',
+                'name' => 'Complaint box: received (customer)',
+                'type' => 'order_notification',
+                'body' => 'Bake & Grill: thank you, we have received your complaint ({{reference}}). We will look into it and message you here.',
+                'description' => 'Acknowledgement to a customer who left a phone number on the complaint form.',
+                'is_system' => true,
+                'variables' => json_encode([
+                    ['name' => 'reference', 'description' => 'Complaint reference'],
+                ]),
+            ],
+            [
+                'slug' => 'customer_complaint_box_update',
+                'name' => 'Complaint box: update (customer)',
+                'type' => 'order_notification',
+                'body' => 'Bake & Grill ({{reference}}): {{message}}',
+                'description' => 'What the owner writes to the customer when a complaint is taken up or closed.',
+                'is_system' => true,
+                'variables' => json_encode([
+                    ['name' => 'reference', 'description' => 'Complaint reference'],
+                    ['name' => 'message', 'description' => 'The message typed in admin'],
+                ]),
+            ],
         ];
 
         foreach ($templates as $template) {

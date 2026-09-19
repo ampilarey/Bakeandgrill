@@ -257,6 +257,15 @@
     $contactEventsHeadline = content('contact_events_cta_headline', 'Planning an event?');
     $contactEventsText = content('contact_events_cta_text', 'Build a draft order with catering trays and custom lines — we will send a quote.');
 @endphp
+{{-- The complaint box (owner, 2026-09-19): straight to the owner, anonymous or with a number. --}}
+<section class="contact-events-cta" data-testid="contact-complaint-cta">
+    <div style="background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:1.75rem 2rem; text-align:center;">
+        <h2 style="font-size:1.35rem; font-weight:800; color:var(--dark); margin:0 0 0.5rem;">Something to complain about?</h2>
+        <p style="margin:0 0 1rem; color:var(--muted); font-size:0.95rem;">Staff, food, service or cleanliness — tell the owner directly. Stay anonymous, or leave your number and we will message you back.</p>
+        <a href="/complain" class="btn-primary" style="display:inline-flex; min-height:44px; align-items:center; padding:0 1.25rem;">Make a complaint →</a>
+    </div>
+</section>
+
 <section class="contact-events-cta">
     <div style="background:var(--amber-light); border:1px solid var(--border); border-radius:16px; padding:1.75rem 2rem; text-align:center;">
         <h2 style="font-size:1.35rem; font-weight:800; color:var(--dark); margin:0 0 0.5rem;">{{ $contactEventsHeadline }}</h2>

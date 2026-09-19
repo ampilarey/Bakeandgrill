@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Api\ComplaintBoxController;
 use App\Http\Controllers\Api\ComplaintController;
 use Illuminate\Support\Facades\Route;
 
@@ -20,9 +21,25 @@ Route::patch('/complaints/{id}/status', [ComplaintController::class, 'updateStat
 Route::post('/complaints/{id}/contact-logs', [ComplaintController::class, 'addContactLog'])
     ->middleware('permission:complaints.manage')
     ->whereNumber('id');
-Route::get('/complaints/{id}/photo', [\App\Http\Controllers\Api\ComplaintPhotoController::class, 'showStaff'])
+Route::get('/complaints/{id}/photo', [App\Http\Controllers\Api\ComplaintPhotoController::class, 'showStaff'])
     ->middleware('permission:complaints.view')
     ->whereNumber('id');
 Route::post('/complaints/{id}/link-refund', [ComplaintController::class, 'linkRefund'])
+    ->middleware('permission:complaints.manage')
+    ->whereNumber('id');
+
+/*
+| The complaint box — staff, food and service complaints from the public form
+| (owner, 2026-09-19). Same two permissions as the receipt complaints.
+*/
+Route::get('/complaint-box', [ComplaintBoxController::class, 'index'])
+    ->middleware('permission:complaints.view');
+Route::get('/complaint-box/{id}', [ComplaintBoxController::class, 'show'])
+    ->middleware('permission:complaints.view')
+    ->whereNumber('id');
+Route::patch('/complaint-box/{id}/status', [ComplaintBoxController::class, 'updateStatus'])
+    ->middleware('permission:complaints.manage')
+    ->whereNumber('id');
+Route::post('/complaint-box/{id}/message', [ComplaintBoxController::class, 'message'])
     ->middleware('permission:complaints.manage')
     ->whereNumber('id');

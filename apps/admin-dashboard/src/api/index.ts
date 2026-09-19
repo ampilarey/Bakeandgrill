@@ -36,6 +36,7 @@ export * from './tradeDeliveries';
 export * from './tradeInvoices';
 export * from './tradeReports';
 export * from './complaints';
+export * from './complaintBox';
 
 // Re-export shared types that were previously re-exported from the monolithic api.ts
 export type { StaffUser } from '@shared/types';

@@ -114,6 +114,10 @@ final class SmsTypeRegistry
             self::def('owner_complaint_received', 'Owner: complaint received', 'staff', true, false, 'owner_complaint_received', 'sms_owner_complaint_received_enabled', 'sms.transactional.manage', false, 'Owner phone(s)', false),
             self::def('customer_complaint_acknowledged', 'Complaint acknowledged', 'transactional', true, true, 'customer_complaint_acknowledged', 'sms_customer_complaint_acknowledged_enabled', 'sms.transactional.manage', false, 'Order / receipt customer phone', false),
             self::def('customer_complaint_resolved', 'Complaint resolved', 'transactional', true, true, 'customer_complaint_resolved', 'sms_customer_complaint_resolved_enabled', 'sms.transactional.manage', false, 'Order / receipt customer phone', false),
+            // Complaint box (owner, 2026-09-19): the public form, separate from receipt complaints.
+            self::def('owner_complaint_box_received', 'Owner: complaint box — new complaint', 'staff', true, false, 'owner_complaint_box_received', 'sms_owner_complaint_box_received_enabled', 'sms.transactional.manage', false, 'Owner phone(s)', false),
+            self::def('customer_complaint_box_acknowledged', 'Complaint box: received', 'transactional', true, true, 'customer_complaint_box_acknowledged', 'sms_customer_complaint_box_acknowledged_enabled', 'sms.transactional.manage', false, 'The number the customer typed on the form', false),
+            self::def('customer_complaint_box_update', 'Complaint box: update from owner', 'transactional', true, true, 'customer_complaint_box_update', 'sms_customer_complaint_box_update_enabled', 'sms.transactional.manage', false, 'The number the customer typed on the form', true),
 
             // Marketing
             self::def('marketing_campaign', 'Bulk campaign', 'marketing', true, true, null, 'sms_marketing_campaigns_enabled', 'sms.campaigns.send', false, 'Campaign audience', true),
@@ -333,6 +337,13 @@ final class SmsTypeRegistry
                 'code' => 'GIFT-DEMO',
                 'expires' => '31 Dec 2026',
                 'note' => 'Happy birthday!',
+            ],
+            'owner_complaint_box_received', 'customer_complaint_box_acknowledged', 'customer_complaint_box_update' => [
+                'reference' => 'CB-17',
+                'category' => 'Staff behaviour',
+                'staff' => ' about the cashier',
+                'contact' => 'Customer left a number.',
+                'message' => 'We have spoken to the staff member and it will not happen again. Thank you for telling us.',
             ],
             'service_restoration' => [
                 'label' => 'Online Ordering',

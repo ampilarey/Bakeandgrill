@@ -198,6 +198,14 @@
             'canSubmitAnother' => $complaintForm['can_submit_another'],
         ])
 
+        {{-- The complaint box (owner, 2026-09-19): about the staff, the food
+             or the place rather than this order. Anonymous or with a number. --}}
+        <p class="doc-complaint-box-link" data-testid="receipt-complaint-box-link" style="margin:14px 0 0;font-size:13px;line-height:1.5;color:#6B5D4F;">
+            Something about our staff or service, not this order?
+            <a href="{{ url('/complain?from=receipt&order=' . rawurlencode((string) ($order->order_number ?? ''))) }}" style="color:#D4813A;font-weight:700;">Make a complaint</a>
+            — anonymously, or leave your number.
+        </p>
+
         @if ($doc['show_feedback'])
             <div class="doc-feedback" data-receipt-rating-root data-order-id="{{ $receipt->order_id }}" data-existing-rating="{{ $existingFeedback?->rating ?? '' }}">
                 <h3>Share feedback</h3>

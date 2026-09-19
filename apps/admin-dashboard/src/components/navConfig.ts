@@ -8,7 +8,7 @@ import {
   Boxes, LayoutGrid, Wallet, Clock, Monitor, Share2,
   Printer, Link, ShoppingBag, Zap,
   ConciergeBell, Wrench, ClipboardCheck, HeartPulse, UserCircle, Utensils,
-  AlertTriangle, LayoutTemplate, Shield, UserCog, Images, Tv, Store,
+  AlertTriangle, LayoutTemplate, Shield, UserCog, Images, Tv, Store, Inbox,
 } from 'lucide-react';
 import type { StaffUser } from '../api';
 
@@ -126,6 +126,8 @@ export const NAV_GROUPS: NavGroup[] = [
       // Owner, 2026-09-07: "the system must match actual money received."
       { to: '/refunds',     icon: RotateCcw,  label: 'Refunds',       permission: 'orders.refund',       description: 'Refund history' },
       { to: '/complaints',  icon: AlertTriangle, label: 'Complaints', permission: 'complaints.view',    description: 'Customer receipt & invoice concerns' },
+      // Owner, 2026-09-19: "a separate complaints option not the one now used".
+      { to: '/complaint-box', icon: Inbox, label: 'Complaint Box', permission: 'complaints.view', description: 'Staff, food & service complaints from the public form' },
     ],
   },
   {

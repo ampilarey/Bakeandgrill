@@ -1953,6 +1953,7 @@
             <a href="/order/events">Catering &amp; Events</a>
             <a href="/hours">Opening Hours</a>
             <a href="/contact">Contact Us</a>
+            <a href="/complain">Make a Complaint</a>
         </div>
         <div class="footer-col footer-col--hours" data-footer-hours>
             <h4>{{ $footerHoursHeading }}</h4>
@@ -2074,6 +2075,7 @@
                     <a href="/order/events" class="brand-footer__link">Catering &amp; Events</a>
                     <a href="/hours" class="brand-footer__link">Opening Hours</a>
                     <a href="/contact" class="brand-footer__link">Contact Us</a>
+                    <a href="/complain" class="brand-footer__link">Make a Complaint</a>
                 </div>
                 <div class="brand-footer__col">
                     <h4 class="brand-footer__heading">{{ $footerLocationHeading }}</h4>

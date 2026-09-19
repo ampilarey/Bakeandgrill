@@ -41,6 +41,7 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
   { to: '/catering', permissions: ['events.manage', 'customers.manage'] },
   { to: '/loyalty', permission: 'loyalty.manage' },
   { to: '/complaints', permission: 'complaints.view' },
+  { to: '/complaint-box', permission: 'complaints.view' },
   { to: '/promotions', permissions: ['promotions.manage', 'promotions.discount_cards', 'discounts.settings.manage'] },
   { to: '/sms', permissions: ['integrations.sms', 'sms_marketing.manage', 'sms.settings.manage', 'sms.logs.view'] },
   { to: '/signage', permission: 'signage.manage' },

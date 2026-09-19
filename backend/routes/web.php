@@ -41,6 +41,10 @@ Route::get('/sitemap.xml', [App\Http\Controllers\SitemapController::class, 'inde
 Route::middleware(['content.locale', 'service.banner'])->group(function () {
     Route::get('/', [HomeController::class, 'index'])->name('home');
     Route::get('/contact', [HomeController::class, 'contact'])->name('contact');
+    // The complaint box: staff, food and service complaints from anybody,
+    // with or without an order (owner, 2026-09-19). Posts to /api/complaint-box.
+    Route::get('/complain', [App\Http\Controllers\ComplaintBoxPageController::class, 'show'])->name('complain');
+    Route::get('/complain/poster', [App\Http\Controllers\ComplaintBoxPageController::class, 'poster'])->name('complain.poster');
     Route::get('/hours', [HomeController::class, 'hours'])->name('hours');
     Route::get('/terms', [HomeController::class, 'terms'])->name('terms');
     Route::get('/refund', [HomeController::class, 'refund'])->name('refund');

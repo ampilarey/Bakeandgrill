@@ -66,6 +66,9 @@ return Application::configure(basePath: dirname(__DIR__))
             // fetch from /receipts|/invoices pages that have no CSRF meta/cookie dance.
             'api/receipts/*/complaints',
             'api/receipts/*/complaint-photos',
+            // The complaint box (owner, 2026-09-19): public, no auth, rate
+            // limited. A cached /complain page would carry a stale token.
+            'api/complaint-box',
             'api/invoices/*/complaints',
             'api/invoices/*/complaint-photos',
             // Wall-screen pairing. Same shape as the complaint routes above:
