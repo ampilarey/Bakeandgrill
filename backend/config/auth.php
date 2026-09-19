@@ -22,6 +22,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | How long an admin sign-in is remembered on a device
+    |--------------------------------------------------------------------------
+    |
+    | Owner, 2026-09-19: the admin app on a phone asked for a login every
+    | time it was opened, because the session alone expires after
+    | SESSION_LIFETIME minutes of quiet. The sign-in also sets a remember
+    | cookie for this many days; 0 switches that off. Logging out, or "Log
+    | out everywhere", cycles the token behind every such cookie.
+    |
+    */
+
+    'staff_remember_days' => (int) env('STAFF_REMEMBER_DAYS', 30),
+
+    /*
+    |--------------------------------------------------------------------------
     | Authentication Guards
     |--------------------------------------------------------------------------
     |

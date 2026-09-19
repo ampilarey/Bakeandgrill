@@ -13,6 +13,7 @@ use App\Services\AuditLogService;
 use App\Services\StaffAuthRateLimit;
 use App\Services\StaffUserLookup;
 use App\Services\TwoFactorService;
+use Illuminate\Auth\SessionGuard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -731,7 +732,20 @@ class StaffAuthController extends Controller
         $user->forceFill(['last_login_at' => now()])->save();
         $user->loadMissing('role');
 
-        Auth::guard('web')->login($user);
+        // Owner, 2026-09-19: "in mobile pwa ... i have to login every time i
+        // open". The session cookie alone dies after SESSION_LIFETIME minutes
+        // of quiet — two hours unless set — which a phone opened a few times
+        // a day is always past. A remember cookie rebuilds the session from
+        // the user's remember token, for a bounded number of days, on this
+        // device only; logout cycles the token so every copy dies with it.
+        $guard = Auth::guard('web');
+        $rememberDays = (int) config('auth.staff_remember_days', 30);
+        if ($rememberDays > 0 && $guard instanceof SessionGuard) {
+            $guard->setRememberDuration($rememberDays * 24 * 60);
+            $guard->login($user, true);
+        } else {
+            $guard->login($user);
+        }
         if ($request->hasSession()) {
             $request->session()->regenerate();
         }
