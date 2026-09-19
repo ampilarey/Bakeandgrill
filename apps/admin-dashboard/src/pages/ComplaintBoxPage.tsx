@@ -187,6 +187,11 @@ export default function ComplaintBoxPage() {
             <a href={`${origin}/complain/poster`} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: '0 14px', borderRadius: 10, border: '1px solid var(--color-border)', fontWeight: 600, fontSize: 13 }}>
               Print QR poster
             </a>
+            {/* Owner, 2026-09-19: "where i can download the qr code to past in
+                the wall". A PNG of the code with the logo, for a print shop. */}
+            <Btn onClick={() => window.open(`${origin}/complain/poster?download=1`, '_blank', 'noopener')}>
+              Download QR image
+            </Btn>
           </div>
         )}
       />
