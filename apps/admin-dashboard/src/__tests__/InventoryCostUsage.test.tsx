@@ -71,11 +71,12 @@ const costUsage = {
 
 const getInventoryCostUsage = vi.fn();
 const fetchInventoryItems = vi.fn();
+const getInventoryPriceHistory = vi.fn();
 
 vi.mock('../api', () => ({
   getInventoryCostUsage: (...a: unknown[]) => getInventoryCostUsage(...a),
   fetchInventoryItems: (...a: unknown[]) => fetchInventoryItems(...a),
-  getInventoryPriceHistory: vi.fn().mockResolvedValue({ history: [] }),
+  getInventoryPriceHistory: (...a: unknown[]) => getInventoryPriceHistory(...a),
   getInventoryCheapestSupplier: vi.fn().mockResolvedValue({ supplier: null }),
   getPurchaseUnits: vi.fn().mockResolvedValue({ base_unit: 'ml', purchase_units: [] }),
   createPurchaseUnit: vi.fn(),
@@ -107,6 +108,7 @@ describe('Cost & usage panel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getInventoryCostUsage.mockResolvedValue(costUsage);
+    getInventoryPriceHistory.mockResolvedValue({ history: [] });
     fetchInventoryItems.mockResolvedValue({
       data: [ghee], meta: { current_page: 1, last_page: 1, total: 1 },
     });
@@ -185,5 +187,27 @@ describe('Cost & usage panel', () => {
     expect(await screen.findByText('Nothing bought in this window.')).toBeInTheDocument();
     // An unknown average is not a claim that it was free.
     expect(screen.getByTestId('cost-usage-totals').textContent).toContain('Not known');
+  });
+  // Owner, 2026-09-19: "Where i can see the price difference of each product
+  // over time" — the line drawn above the purchase list once there are two
+  // prices to draw between.
+  it('draws the price line above the purchase list once there are two prices', async () => {
+    getInventoryPriceHistory.mockResolvedValue({ history: [
+      { purchase_id: 1, purchase_number: 'PO-1', supplier: 'Euro Store', unit_cost: 0.21, quantity: 500, purchase_date: '2026-08-01' },
+      { purchase_id: 2, purchase_number: 'PO-2', supplier: 'Euro Store', unit_cost: 0.19, quantity: 500, purchase_date: '2026-09-15' },
+    ] });
+    await openPanel();
+
+    const chart = await screen.findByTestId('price-history-chart');
+    expect(chart.querySelector('svg')?.getAttribute('aria-label')).toContain('0.21 on 1 Aug to 0.19 on 15 Sept');
+  });
+
+  it('draws no line for a single price', async () => {
+    getInventoryPriceHistory.mockResolvedValue({ history: [
+      { purchase_id: 1, purchase_number: 'PO-1', supplier: 'Euro Store', unit_cost: 0.21, quantity: 500, purchase_date: '2026-08-01' },
+    ] });
+    await openPanel();
+    await screen.findByText('PO-1');
+    expect(screen.queryByTestId('price-history-chart')).toBeNull();
   });
 });

@@ -43,3 +43,58 @@ export async function updatePurchasingSettings(
 ): Promise<{ settings: PurchasingSettings; message: string }> {
   return req('/purchasing/settings', { method: 'PATCH', body: JSON.stringify(patch) });
 }
+
+/*
+ * Price changes — what each thing we buy costs now against before.
+ *
+ * Owner, 2026-09-19: "Where i can see the price difference of each product
+ * over time. An easy way to". Every receipt already wrote a price row; this
+ * is the first screen that reads them all at once.
+ */
+export interface PricePoint {
+  price: number;
+  date: string;
+  supplier: string | null;
+  brand: string | null;
+}
+
+export interface PriceChangeItem {
+  item_id: number;
+  name: string;
+  unit: string;
+  photo_url: string | null;
+  last: PricePoint;
+  previous: PricePoint | null;
+  month_ago: PricePoint | null;
+  /** Last buy against the one before, in percent, or null when bought once. */
+  change_pct: number | null;
+  /** Last buy against the latest price at least 30 days old. */
+  change_pct_month: number | null;
+  purchases_90d: number;
+  sparkline: Array<{ date: string; price: number }>;
+}
+
+export interface PriceChangesSummary {
+  items: number;
+  up_over_10: number;
+  up: number;
+  down: number;
+  unchanged: number;
+  single_price: number;
+}
+
+export async function fetchPriceChanges(): Promise<{ items: PriceChangeItem[]; summary: PriceChangesSummary }> {
+  return req('/purchasing/price-changes');
+}
+
+export interface ItemPriceHistoryPoint extends PricePoint {
+  purchase_id: number | null;
+  purchase_number: string | null;
+}
+
+export async function fetchItemPriceHistory(itemId: number): Promise<{
+  item: { id: number; name: string; unit: string; photo_url: string | null };
+  points: ItemPriceHistoryPoint[];
+}> {
+  return req(`/purchasing/price-changes/${itemId}`);
+}

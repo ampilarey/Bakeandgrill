@@ -97,6 +97,13 @@ Route::middleware(['auth:sanctum', 'permission:reports.financial'])->get(
     [App\Http\Controllers\Api\ProcurementReportController::class, 'show'],
 );
 
+// Price changes (owner, 2026-09-19): every item's last price against before.
+// Whoever buys, or whoever reads the money reports, may look.
+Route::middleware(['auth:sanctum', 'permission.any:suppliers.purchases,reports.financial'])->group(function () {
+    Route::get('/purchasing/price-changes', [App\Http\Controllers\Api\PriceChangesController::class, 'index']);
+    Route::get('/purchasing/price-changes/{itemId}', [App\Http\Controllers\Api\PriceChangesController::class, 'show'])->whereNumber('itemId');
+});
+
 // ─── Supplier Intelligence ─────────────────────────────────────────────────
 Route::middleware(['auth:sanctum', 'permission:suppliers.manage'])->prefix('suppliers')->group(function () {
     // Static routes MUST come before parameterised /{id} routes

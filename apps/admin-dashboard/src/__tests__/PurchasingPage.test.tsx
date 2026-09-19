@@ -86,7 +86,7 @@ describe('PurchasingPage', () => {
     await waitFor(() => expect(screen.getByTestId('loc').textContent).toBe('/purchasing/requests'));
     const tabs = screen.getAllByRole('tab').map((t) => t.textContent);
     expect(tabs).toEqual(PURCHASING_TABS.map((t) => t.label));
-    expect(tabs).toEqual(['Requests', 'Purchase orders', 'Purchase lines', 'Shopping lists', 'Suppliers', 'Reports', 'Settings']);
+    expect(tabs).toEqual(['Requests', 'Purchase orders', 'Purchase lines', 'Shopping lists', 'Suppliers', 'Price changes', 'Reports', 'Settings']);
     // Tab pages are lazy: they arrive after a Suspense tick.
     expect(await screen.findByTestId('tab-requests')).toBeInTheDocument();
   });

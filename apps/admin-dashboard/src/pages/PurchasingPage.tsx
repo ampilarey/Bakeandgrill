@@ -29,6 +29,9 @@ const SupplierIntelligencePage = lazy(() => import('./SupplierIntelligencePage')
 // Route audit, 2026-09-19: the procurement report (spend, price trends, quote
 // savings) sat under Analyze; it is about the suppliers on this page.
 const ProcurementReportPage = lazy(() => import('./ProcurementReportPage'));
+// Owner, 2026-09-19: "Where i can see the price difference of each product
+// over time. An easy way to" — every item, last price against before.
+const PriceChangesPage = lazy(() => import('./PriceChangesPage'));
 
 export const PURCHASING_TABS = [
   { id: 'requests', label: 'Requests', permissions: ['purchase_requests.view_all'], desc: 'What staff have asked for, and where each request is' },
@@ -36,6 +39,7 @@ export const PURCHASING_TABS = [
   { id: 'lines', label: 'Purchase lines', permissions: ['suppliers.purchases'], desc: 'Every line bought — narrow it by shop, brand or item' },
   { id: 'lists', label: 'Shopping lists', permissions: ['purchase_requests.create'], desc: 'Staples that get requested on a schedule' },
   { id: 'suppliers', label: 'Suppliers', permissions: ['suppliers.view'], desc: 'Who you buy from, how they perform, and what they charge' },
+  { id: 'price-changes', label: 'Price changes', permissions: ['suppliers.purchases', 'reports.financial'], desc: 'What each item costs now against before' },
   { id: 'reports', label: 'Reports', permissions: ['reports.financial'], desc: 'Spend, price trends and what the quotes saved' },
   { id: 'settings', label: 'Settings', permissions: ['settings.update', 'purchase_requests.view_all'], desc: 'Every switch that governs buying, in the order the work happens' },
 ] as const;
@@ -119,6 +123,7 @@ export function PurchasingPage() {
         {active === 'lines' && <PurchaseLinesPage embedded />}
         {active === 'lists' && <ShoppingListsPage embedded />}
         {active === 'suppliers' && <SupplierIntelligencePage embedded />}
+        {active === 'price-changes' && <HubContext.Provider value={true}><PriceChangesPage /></HubContext.Provider>}
         {active === 'reports' && <HubContext.Provider value={true}><ProcurementReportPage /></HubContext.Provider>}
         {active === 'settings' && <PurchasingSettings canEdit={can('settings.update')} />}
       </Suspense>

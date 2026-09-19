@@ -22,6 +22,7 @@ import {
   cleanupStaleTickets,
   fetchPrintJobs,
   fetchSmsLogStats,
+  fetchPriceChanges,
   getCreditExposureReport,
   type MaintenancePreview,
   type InventoryItem,
@@ -315,6 +316,7 @@ export function DashboardPage() {
   const canSms = can('sms_marketing.view');
   const canPrintJobs = can('devices.view');
   const canDelivery = can('delivery.view');
+  const canPriceChanges = can('suppliers.purchases') || can('reports.financial');
   const showChecklist = showDevNavItems() || can('website.manage');
   const [summaryDate, setSummaryDate] = useState(today);
 
@@ -490,6 +492,16 @@ export function DashboardPage() {
   });
   const shiftErr = shiftQueryError?.message ?? '';
 
+  // Owner, 2026-09-19: "Where i can see the price difference of each product
+  // over time" — the count of items up 10%+ on their last buy, when there
+  // are any, leading to Purchasing → Price changes.
+  const { data: priceRises = 0 } = useQuery({
+    queryKey: ['dashboard', 'price-rises'],
+    queryFn: async () => (await fetchPriceChanges()).summary.up_over_10,
+    enabled: canPriceChanges,
+    staleTime: 5 * 60_000,
+  });
+
   const { data: printPending = 0 } = useQuery({
     queryKey: ['dashboard', 'print-jobs-pending'],
     queryFn: async () => {
@@ -588,6 +600,13 @@ export function DashboardPage() {
       key: 'print', label: 'Print Queue', value: String(printPending),
       sub: 'Pending jobs', accent: 'var(--color-warning)', icon: Printer,
       onClick: () => navigate('/devices/print-queue'),
+    });
+  }
+  if (canPriceChanges && priceRises > 0) {
+    opsCards.push({
+      key: 'prices', label: 'Price rises', value: String(priceRises),
+      sub: 'Items up 10%+ on last buy', accent: 'var(--color-warning)', icon: TrendingUp,
+      onClick: () => navigate('/purchasing/price-changes'),
     });
   }
   if (canDelivery && deliveryPending > 0) {

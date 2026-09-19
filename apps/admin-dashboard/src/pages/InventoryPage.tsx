@@ -22,6 +22,7 @@ import { ScanSheet } from '../components/ScanSheet';
 import { PickOrType } from '../components/PickOrType';
 import { BrandPhotos, BrandThumb } from '../components/BrandPhotos';
 import { InventoryItemPhoto, ItemThumb } from '../components/InventoryItemPhoto';
+import { PriceHistoryChart } from '../components/PriceHistoryChart';
 import {
   BrandPacks, packRowFromUnit, type BrandPackRow, type BrandPackStore, type BrandPacksHandle, type BrandRow,
 } from '../components/BrandPacks';
@@ -2618,6 +2619,20 @@ export default function InventoryPage() {
               {cheapestSupplier && (
                 <div style={{ background: 'var(--color-success-bg)', color: 'var(--color-success-strong)', padding: '10px 14px', borderRadius: 10, marginBottom: 16, fontSize: 13, fontWeight: 600 }}>
                   💰 Cheapest supplier: <strong>{cheapestSupplier.name}</strong> at MVR {cheapestSupplier.min_cost.toFixed(2)}
+                </div>
+              )}
+              {/* Owner, 2026-09-19: "Where i can see the price difference of
+                  each product over time" — the line above the list, once there
+                  are two prices to draw between. */}
+              {priceHistory.filter((h) => h.purchase_date).length >= 2 && (
+                <div style={{ marginBottom: 14 }}>
+                  <PriceHistoryChart
+                    unit={priceHistoryItem.unit}
+                    height={200}
+                    points={priceHistory
+                      .filter((h): h is InventoryPriceHistoryEntry & { purchase_date: string } => !!h.purchase_date)
+                      .map((h) => ({ date: h.purchase_date, price: h.unit_cost, supplier: h.supplier }))}
+                  />
                 </div>
               )}
               {priceHistory.length === 0 ? (
