@@ -1,3 +1,9 @@
+@php
+    // Blade directives choke on regex arguments, so the strings the script
+    // and the card share are worked out here.
+    $displayUrl = preg_replace('#^https?://#', '', preg_replace('#\?.*$#', '', $url));
+    $eyebrow = mb_strtoupper($siteName);
+@endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -43,13 +49,13 @@
             <img class="code" src="{{ $qr }}" alt="QR code to the complaint form">
             <img class="mark" src="{{ $logo }}" alt="">
         </div>
-        <div class="url">{{ preg_replace('#^https?://#', '', preg_replace('#\?.*$#', '', $url)) }}</div>
+        <div class="url">{{ $displayUrl }}</div>
         <div class="small">Goes straight to the owner's phone.</div>
         <div class="actions">
             <button type="button" class="print" data-print>Print this card</button>
             <button type="button" class="download" data-download>Download QR image</button>
         </div>
-        <p class="hint">The image is a 1200 px PNG of the code with the logo — send it to a print shop, or drop it into your own poster.</p>
+        <p class="hint">The image is a 1200 px wide PNG of this whole card — heading, what it is for, the code with the logo and the address — ready for a print shop.</p>
     </div>
     {{-- Owner, 2026-09-19: "where i can download the qr code to past in the
          wall". The SVG code and the logo are both data: URIs on this page, so
@@ -82,33 +88,83 @@
             ctx.closePath();
         }
 
+        // Owner, 2026-09-19: "Add some details what the code is about" — the
+        // image is the whole card, not a bare code, so a printed copy explains
+        // itself on the wall.
+        var TEXT = {
+            eyebrow: @json($eyebrow),
+            title: 'Not happy? Tell the owner.',
+            body: 'Staff, food, service, cleanliness \u2014 scan and tell us. Anonymous if you like, or leave your number and we will message you back.',
+            url: @json($displayUrl),
+            foot: "Goes straight to the owner's phone."
+        };
+        var FONT = '"Plus Jakarta Sans", "Segoe UI", Helvetica, Arial, sans-serif';
+
+        function wrap(ctx, text, maxWidth) {
+            var words = text.split(' '), lines = [], line = '';
+            words.forEach(function (w) {
+                var t = line ? line + ' ' + w : w;
+                if (ctx.measureText(t).width > maxWidth && line) { lines.push(line); line = w; } else { line = t; }
+            });
+            if (line) lines.push(line);
+            return lines;
+        }
+
         function makePng() {
-            var size = 1200;
-            var quiet = 60; // white margin all round, which scanners want
+            var W = 1200, pad = 90, qrSize = 840;
             var canvas = document.createElement('canvas');
-            canvas.width = size + quiet * 2;
-            canvas.height = size + quiet * 2;
             var ctx = canvas.getContext('2d');
+            ctx.font = 'bold 34px ' + FONT;
+            var bodyLines = wrap(ctx, TEXT.body, W - pad * 2);
+            var H = 110 + 90 + bodyLines.length * 46 + 50 + qrSize + 40 + 60 + 44 + pad;
+            canvas.width = W; canvas.height = H;
+            ctx = canvas.getContext('2d');
             ctx.fillStyle = '#fff';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillRect(0, 0, W, H);
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'alphabetic';
+
+            var y = 110;
+            ctx.fillStyle = '#D4813A';
+            ctx.font = 'bold 26px ' + FONT;
+            ctx.fillText(TEXT.eyebrow.split('').join('\u200A'), W / 2, y);
+            y += 74;
+            ctx.fillStyle = '#1C1408';
+            ctx.font = 'bold 64px ' + FONT;
+            ctx.fillText(TEXT.title, W / 2, y);
+            y += 58;
+            ctx.fillStyle = '#6B5D4F';
+            ctx.font = '34px ' + FONT;
+            bodyLines.forEach(function (l) { ctx.fillText(l, W / 2, y); y += 46; });
+            y += 14;
+
+            var qx = (W - qrSize) / 2, qy = y;
             return load(codeImg.src).then(function (qr) {
-                ctx.drawImage(qr, quiet, quiet, size, size);
+                ctx.drawImage(qr, qx, qy, qrSize, qrSize);
                 return load(markImg.src);
             }).then(function (logo) {
                 // Same proportions as on screen: logo about a third of the code
                 // on a white pad, which the high error correction allows for.
-                var l = Math.round(size * 0.33);
-                var pad = Math.round(size * 0.025);
-                var x = quiet + (size - l) / 2;
-                var y = quiet + (size - l) / 2;
+                var l = Math.round(qrSize * 0.33);
+                var p = Math.round(qrSize * 0.025);
+                var x = qx + (qrSize - l) / 2, ly = qy + (qrSize - l) / 2;
                 ctx.fillStyle = '#fff';
-                roundRect(ctx, x - pad, y - pad, l + pad * 2, l + pad * 2, Math.round(l * 0.16));
+                roundRect(ctx, x - p, ly - p, l + p * 2, l + p * 2, Math.round(l * 0.16));
                 ctx.fill();
                 ctx.save();
-                roundRect(ctx, x, y, l, l, Math.round(l * 0.14));
+                roundRect(ctx, x, ly, l, l, Math.round(l * 0.14));
                 ctx.clip();
-                ctx.drawImage(logo, x, y, l, l);
+                ctx.drawImage(logo, x, ly, l, l);
                 ctx.restore();
+
+                y = qy + qrSize + 70;
+                ctx.fillStyle = '#1C1408';
+                ctx.font = 'bold 46px ' + FONT;
+                ctx.fillText(TEXT.url, W / 2, y);
+                y += 50;
+                ctx.fillStyle = '#9C8E7E';
+                ctx.font = '28px ' + FONT;
+                ctx.fillText(TEXT.foot, W / 2, y);
                 return new Promise(function (resolve) { canvas.toBlob(resolve, 'image/png'); });
             });
         }
