@@ -24,9 +24,12 @@ backend/routes/domains/complaints.php:22:complaints.manage
 backend/routes/domains/complaints.php:25:complaints.view
 backend/routes/domains/complaints.php:28:complaints.manage
 backend/routes/domains/complaints.php:36:complaints.view
-backend/routes/domains/complaints.php:38:complaints.view
-backend/routes/domains/complaints.php:41:complaints.manage
+backend/routes/domains/complaints.php:40:complaints.view
+backend/routes/domains/complaints.php:42:complaints.manage
 backend/routes/domains/complaints.php:44:complaints.manage
+backend/routes/domains/complaints.php:46:complaints.view
+backend/routes/domains/complaints.php:49:complaints.manage
+backend/routes/domains/complaints.php:52:complaints.manage
 backend/routes/domains/devices.php:23:devices.view
 backend/routes/domains/devices.php:24:devices.view
 backend/routes/domains/devices.php:26:devices.manage

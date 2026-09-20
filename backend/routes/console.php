@@ -95,6 +95,18 @@ Schedule::command('expenses:generate-recurring')
     ->onFailure($alertOnFailure('expenses:generate-recurring'))
     ->after($trackSuccess('expenses:generate-recurring'));
 
+// Complaints (owner, 2026-09-21): the week in one text on Monday, and a
+// nudge for anything left unread.
+Schedule::command('complaints:weekly-summary')
+    ->weeklyOn(1, '09:05')
+    ->onFailure($alertOnFailure('complaints:weekly-summary'))
+    ->after($trackSuccess('complaints:weekly-summary'));
+
+Schedule::command('complaints:remind-stale')
+    ->dailyAt('09:10')
+    ->onFailure($alertOnFailure('complaints:remind-stale'))
+    ->after($trackSuccess('complaints:remind-stale'));
+
 // Purchasing: Monday morning SMS of what went up (owner, 2026-09-21). Off
 // unless switched on in Purchasing → Settings; silent when nothing rose.
 Schedule::command('purchasing:price-rise-alert')

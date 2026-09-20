@@ -34,6 +34,14 @@ Route::post('/complaints/{id}/link-refund', [ComplaintController::class, 'linkRe
 */
 Route::get('/complaint-box', [ComplaintBoxController::class, 'index'])
     ->middleware('permission:complaints.view');
+// Phase B (owner, 2026-09-21): complaints per named staff member, and the
+// alert switches. Static paths before /{id}.
+Route::get('/complaint-box/by-staff', [ComplaintBoxController::class, 'byStaff'])
+    ->middleware('permission:complaints.view');
+Route::get('/complaint-box/alert-settings', [ComplaintBoxController::class, 'alertSettings'])
+    ->middleware('permission:complaints.manage');
+Route::patch('/complaint-box/alert-settings', [ComplaintBoxController::class, 'updateAlertSettings'])
+    ->middleware('permission:complaints.manage');
 Route::get('/complaint-box/{id}', [ComplaintBoxController::class, 'show'])
     ->middleware('permission:complaints.view')
     ->whereNumber('id');

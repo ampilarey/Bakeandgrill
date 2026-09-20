@@ -27,7 +27,13 @@ vi.mock('../api', () => ({
   getComplaintBoxEntry: (...a: unknown[]) => getComplaintBoxEntry(...a),
   updateComplaintBoxStatus: (...a: unknown[]) => updateComplaintBoxStatus(...a),
   messageComplaintBoxCustomer: (...a: unknown[]) => messageComplaintBoxCustomer(...a),
+  fetchComplaintsByStaff: (...a: unknown[]) => fetchComplaintsByStaff(...a),
+  getComplaintAlertSettings: (...a: unknown[]) => getComplaintAlertSettings(...a),
+  updateComplaintAlertSettings: (...a: unknown[]) => updateComplaintAlertSettings(...a),
 }));
+const fetchComplaintsByStaff = vi.fn();
+const getComplaintAlertSettings = vi.fn();
+const updateComplaintAlertSettings = vi.fn();
 
 const withNumber = {
   id: 7, reference_number: 'CB-7', categories: ['staff_behaviour'], about_staff: 'The tall cashier',
@@ -112,5 +118,50 @@ describe('ComplaintBoxPage', () => {
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(updateComplaintBoxStatus).toHaveBeenCalledWith(8, { status: 'in_progress', internal_note: undefined, message: undefined }));
+  });
+});
+
+// Phase B (owner, 2026-09-21): who keeps getting named, and the alert switches.
+describe('ComplaintBoxPage by staff and alerts', () => {
+  beforeEach(() => {
+    fetchComplaintBox.mockResolvedValue({
+      entries: { data: [], current_page: 1, last_page: 1, total: 0 },
+      meta: { open_count: 0, new_count: 0, staff_open_count: 0, this_week_count: 0 },
+      categories: [{ value: 'staff_behaviour', label: 'Staff behaviour' }],
+    });
+    fetchComplaintsByStaff.mockResolvedValue({
+      staff: [
+        { name: 'Ali', total: 3, open: 1, last_at: new Date().toISOString(), first_at: new Date().toISOString(), last_30_days: 2,
+          categories: [{ key: 'staff_behaviour', label: 'Staff behaviour', count: 2 }, { key: 'slow_service', label: 'Slow service', count: 1 }],
+          recent: [{ id: 7, reference: 'CB-7', status: 'new', created_at: new Date().toISOString() }] },
+      ],
+      unnamed: 4,
+    });
+    getComplaintAlertSettings.mockResolvedValue({ settings: { weekly_sms: false, stale_sms: true, stale_days: 2 } });
+    updateComplaintAlertSettings.mockImplementation(async (patch: Record<string, unknown>) => ({ message: 'ok', settings: { weekly_sms: false, stale_sms: true, stale_days: 2, ...patch } }));
+    getComplaintBoxEntry.mockResolvedValue({ entry: withNumber });
+  });
+
+  it('lists who was named, how often, and opens a recent one', async () => {
+    render(<MemoryRouter><ComplaintBoxPage /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('tab', { name: 'By staff member' }));
+    const panel = await screen.findByTestId('complaints-by-staff');
+    const row = await within(panel).findByText('Ali');
+    expect(row.closest('tr')?.textContent).toContain('Staff behaviour 2, Slow service 1');
+    expect(within(panel).getByText('4 complaints named nobody.')).toBeInTheDocument();
+    fireEvent.click(within(panel).getByRole('button', { name: 'CB-7' }));
+    await waitFor(() => expect(getComplaintBoxEntry).toHaveBeenCalledWith(7));
+  });
+
+  it('switches the weekly summary on and changes the unread days', async () => {
+    render(<MemoryRouter><ComplaintBoxPage /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('button', { name: 'Alerts' }));
+    const box = await screen.findByTestId('complaint-alerts');
+    fireEvent.click(within(box).getByLabelText(/Weekly summary by SMS/));
+    await waitFor(() => expect(updateComplaintAlertSettings).toHaveBeenCalledWith({ weekly_sms: true }));
+    const days = within(box).getByLabelText('Days before unread');
+    fireEvent.change(days, { target: { value: '5' } });
+    fireEvent.blur(days);
+    await waitFor(() => expect(updateComplaintAlertSettings).toHaveBeenCalledWith({ stale_days: 5 }));
   });
 });

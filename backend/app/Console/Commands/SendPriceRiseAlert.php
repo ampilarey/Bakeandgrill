@@ -7,8 +7,8 @@ namespace App\Console\Commands;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
 use App\Models\SiteSetting;
-use App\Models\User;
 use App\Services\PriceChangesService;
+use App\Support\OwnerPhones;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -51,23 +51,7 @@ class SendPriceRiseAlert extends Command
         $more = count($rises) > 3 ? ' +' . (count($rises) - 3) . ' more' : '';
         $message = 'Bake & Grill price rises: ' . implode('; ', $lines) . $more . '. See Purchasing → Price changes.';
 
-        $phones = User::query()
-            ->where('is_active', true)
-            ->whereHas('role', fn ($q) => $q->whereIn('slug', ['owner', 'manager']))
-            ->whereNotNull('phone')
-            ->where('phone', '!=', '')
-            ->pluck('phone')
-            ->map(fn ($p) => trim((string) $p))
-            ->filter()
-            ->unique()
-            ->values();
-
-        if ($phones->isEmpty()) {
-            $fallback = trim((string) SiteSetting::get('business_phone', ''));
-            if ($fallback !== '') {
-                $phones = collect([$fallback]);
-            }
-        }
+        $phones = OwnerPhones::all();
         if ($phones->isEmpty()) {
             $this->warn('Price rise SMS enabled but no owner/manager phone or business_phone set.');
 

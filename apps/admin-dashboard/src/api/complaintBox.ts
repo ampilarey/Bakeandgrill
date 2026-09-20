@@ -83,3 +83,32 @@ export async function messageComplaintBoxCustomer(id: number, message: string) {
     body: JSON.stringify({ message }),
   });
 }
+
+/*
+ * Phase B (owner, 2026-09-21): complaints per named staff member, and the
+ * alert switches — a weekly summary text and a nudge for what sits unread.
+ */
+export type ComplaintStaffRow = {
+  name: string;
+  total: number;
+  open: number;
+  last_at: string | null;
+  first_at: string | null;
+  last_30_days: number;
+  categories: Array<{ key: string; label: string; count: number }>;
+  recent: Array<{ id: number; reference: string; status: ComplaintBoxStatus; created_at: string | null }>;
+};
+
+export async function fetchComplaintsByStaff(): Promise<{ staff: ComplaintStaffRow[]; unnamed: number }> {
+  return req('/complaint-box/by-staff');
+}
+
+export type ComplaintAlertSettings = { weekly_sms: boolean; stale_sms: boolean; stale_days: number };
+
+export async function getComplaintAlertSettings(): Promise<{ settings: ComplaintAlertSettings }> {
+  return req('/complaint-box/alert-settings');
+}
+
+export async function updateComplaintAlertSettings(patch: Partial<ComplaintAlertSettings>): Promise<{ message: string; settings: ComplaintAlertSettings }> {
+  return req('/complaint-box/alert-settings', { method: 'PATCH', body: JSON.stringify(patch) });
+}

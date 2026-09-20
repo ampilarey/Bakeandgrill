@@ -66,7 +66,7 @@ class ComplaintBoxEntry extends Model
         'reference_number', 'categories', 'about_staff', 'comment', 'phone', 'is_anonymous',
         'order_ref', 'visited_on', 'source', 'status', 'owner_alert_status', 'owner_alert_detail',
         'internal_note', 'last_message', 'last_message_at', 'taken_up_at', 'resolved_at',
-        'resolved_by', 'ip_hash',
+        'resolved_by', 'ip_hash', 'stale_reminded_at',
     ];
 
     protected $casts = [
@@ -76,6 +76,7 @@ class ComplaintBoxEntry extends Model
         'last_message_at' => 'datetime',
         'taken_up_at' => 'datetime',
         'resolved_at' => 'datetime',
+        'stale_reminded_at' => 'datetime',
     ];
 
     /** The number is never sent to the browser as-is: the list shows it masked. */

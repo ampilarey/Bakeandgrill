@@ -9,12 +9,17 @@ import {
 import { useToast } from '../components/ui';
 import {
   fetchComplaintBox,
+  fetchComplaintsByStaff,
+  getComplaintAlertSettings,
   getComplaintBoxEntry,
   messageComplaintBoxCustomer,
+  updateComplaintAlertSettings,
   updateComplaintBoxStatus,
+  type ComplaintAlertSettings,
   type ComplaintBoxEntry,
   type ComplaintBoxMeta,
   type ComplaintBoxStatus,
+  type ComplaintStaffRow,
 } from '../api';
 
 /*
@@ -88,6 +93,40 @@ export default function ComplaintBoxPage() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Phase B (owner, 2026-09-21): who keeps getting named, and the alert switches.
+  const [view, setView] = useState<'list' | 'staff'>('list');
+  const [staffRows, setStaffRows] = useState<ComplaintStaffRow[] | null>(null);
+  const [unnamed, setUnnamed] = useState(0);
+  const [alerts, setAlerts] = useState<ComplaintAlertSettings | null>(null);
+  const [alertsOpen, setAlertsOpen] = useState(false);
+
+  const loadStaff = async () => {
+    try {
+      const res = await fetchComplaintsByStaff();
+      setStaffRows(res.staff);
+      setUnnamed(res.unnamed);
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+  useEffect(() => { if (view === 'staff' && staffRows === null) void loadStaff(); }, [view]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const openAlerts = async () => {
+    try {
+      setAlerts((await getComplaintAlertSettings()).settings);
+      setAlertsOpen(true);
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+  const saveAlerts = async (patch: Partial<ComplaintAlertSettings>) => {
+    try {
+      setAlerts((await updateComplaintAlertSettings(patch)).settings);
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
 
   const [detail, setDetail] = useState<ComplaintBoxEntry | null>(null);
   const [nextStatus, setNextStatus] = useState<ComplaintBoxStatus>('in_progress');
@@ -192,6 +231,7 @@ export default function ComplaintBoxPage() {
             <Btn onClick={() => window.open(`${origin}/complain/poster?download=1`, '_blank', 'noopener')}>
               Download QR image
             </Btn>
+            {canManage && <Btn variant="secondary" onClick={() => void openAlerts()}>Alerts</Btn>}
           </div>
         )}
       />
@@ -203,6 +243,57 @@ export default function ComplaintBoxPage() {
         <StatCard label="This week" value={String(meta.this_week_count)} />
       </div>
 
+      <div role="tablist" aria-label="Complaint views" style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+        {([['list', 'All complaints'], ['staff', 'By staff member']] as Array<['list' | 'staff', string]>).map(([id, label]) => (
+          <button
+            key={id}
+            role="tab"
+            aria-selected={view === id}
+            onClick={() => setView(id)}
+            style={{
+              padding: '8px 16px', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13, fontFamily: 'inherit',
+              background: view === id ? 'var(--color-primary)' : 'transparent',
+              color: view === id ? 'var(--color-on-primary, white)' : 'var(--color-text-secondary)',
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {view === 'staff' && (
+        <div data-testid="complaints-by-staff" style={{ marginBottom: 16 }}>
+          {staffRows === null ? <TableSkeleton rows={4} cols={5} /> : staffRows.length === 0 ? (
+            <p style={{ color: 'var(--color-text-muted)' }}>No complaint has named a staff member yet.</p>
+          ) : (
+            <TableCard>
+              <table>
+                <thead><tr>{['Named as', 'Total', 'Open', 'Last 30 days', 'About', 'Latest', ''].map((h) => <th key={h} style={TH}>{h}</th>)}</tr></thead>
+                <tbody>
+                  {staffRows.map((r) => (
+                    <tr key={r.name} style={r.open > 0 ? { background: 'color-mix(in srgb, var(--color-warning) 8%, transparent)' } : undefined}>
+                      <td style={{ ...TD, fontWeight: 700 }}>{r.name}</td>
+                      <td style={TD}>{r.total}</td>
+                      <td style={{ ...TD, fontWeight: r.open > 0 ? 700 : undefined, color: r.open > 0 ? 'var(--color-danger-strong)' : undefined }}>{r.open}</td>
+                      <td style={TD}>{r.last_30_days}</td>
+                      <td style={{ ...TD, fontSize: 13 }}>{r.categories.map((c) => `${c.label} ${c.count}`).join(', ')}</td>
+                      <td style={TD} title={when(r.last_at)}>{r.last_at ? ageLabel(r.last_at) : '—'}</td>
+                      <td style={TD}>
+                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                          {r.recent.map((e) => <Btn key={e.id} small variant="secondary" onClick={() => void openDetail(e.id)}>{e.reference}</Btn>)}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TableCard>
+          )}
+          {unnamed > 0 && <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '8px 0 0' }}>{unnamed} complaint{unnamed === 1 ? '' : 's'} named nobody.</p>}
+        </div>
+      )}
+
+      {view === 'list' && (<>
       <form
         onSubmit={(e) => { e.preventDefault(); setPage(1); void load(); }}
         style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}
@@ -281,6 +372,34 @@ export default function ComplaintBoxPage() {
       )}
 
       <Pagination page={page} totalPages={lastPage} onChange={setPage} />
+      </>
+      )}
+
+      {alertsOpen && alerts && (
+        <Modal title="Complaint alerts" onClose={() => setAlertsOpen(false)} maxWidth={480}>
+          <div style={{ display: 'grid', gap: 14, fontSize: 14 }} data-testid="complaint-alerts">
+            <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <input type="checkbox" checked={alerts.weekly_sms} onChange={(e) => void saveAlerts({ weekly_sms: e.target.checked })} />
+              <span><strong>Weekly summary by SMS.</strong> <span style={{ color: 'var(--color-text-secondary)' }}>Every Monday: how many came in, about what, who was named, and how many are still open.</span></span>
+            </label>
+            <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <input type="checkbox" checked={alerts.stale_sms} onChange={(e) => void saveAlerts({ stale_sms: e.target.checked })} />
+              <span><strong>Nudge when a complaint sits unread.</strong> <span style={{ color: 'var(--color-text-secondary)' }}>A text naming any complaint still "new" after the days below, and again every so many days while it stays unread.</span></span>
+            </label>
+            <label style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <span>Days before a complaint counts as left unread</span>
+              <input
+                type="number" min={1} max={30} aria-label="Days before unread"
+                defaultValue={alerts.stale_days}
+                onBlur={(e) => { const n = Math.max(1, Math.min(30, parseInt(e.target.value, 10) || 1)); if (n !== alerts.stale_days) void saveAlerts({ stale_days: n }); }}
+                style={{ width: 70, minHeight: 40, padding: '0 8px', border: '1px solid var(--color-border)', borderRadius: 8 }}
+              />
+            </label>
+            <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>Texts go to every owner and manager with a phone on file. Each change saves as you make it.</p>
+          </div>
+          <ModalActions><Btn variant="secondary" onClick={() => setAlertsOpen(false)}>Done</Btn></ModalActions>
+        </Modal>
+      )}
 
       {detail && (
         <Modal title={`${detail.reference_number} · ${STATUS_LABEL[detail.status] ?? detail.status}`} onClose={() => setDetail(null)} maxWidth={720}>
