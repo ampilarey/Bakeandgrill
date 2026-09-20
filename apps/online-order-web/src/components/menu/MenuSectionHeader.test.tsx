@@ -84,4 +84,13 @@ describe('MenuSectionHeader', () => {
     render(<MenuSectionHeader category={{ ...baseCat, id: 9, name: 'Sweets', slug: null }} />);
     expect(screen.getByRole('button', { name: 'Share Sweets' })).toBeInTheDocument();
   });
+
+  /** Owner, 2026-09-21: "opening the menu page when banner is clicked". */
+  it('makes the strip a link to the category page, with the Share pill on top of it', () => {
+    render(<MenuSectionHeader category={{ ...baseCat, slug: 'grill-favourites' }} />);
+    const link = screen.getByRole('link', { name: 'Open the Grill Favourites menu page' });
+    expect(link.getAttribute('href')).toBe('https://example.test/menu/c/grill-favourites');
+    expect(link.parentElement).toHaveClass('menu-cat-promo-wrap');
+    expect(screen.getByTestId('category-share').parentElement).toBe(link.parentElement);
+  });
 });

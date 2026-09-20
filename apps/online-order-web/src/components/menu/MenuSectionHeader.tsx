@@ -1,7 +1,7 @@
 import { API_ORIGIN } from '../../api';
 import type { Category } from '../../api';
 import { ShareControl } from '../ShareControl';
-import { categoryShareProps } from '../../utils/categoryShare';
+import { categoryShareProps, categoryShareUrl } from '../../utils/categoryShare';
 
 type Props = {
   category: Category;
@@ -55,6 +55,7 @@ export function MenuSectionHeader({ category, id, active = false }: Props) {
         only heading now, so hiding the band would hide the category itself from
         a screen reader. The decorative parts opt out individually.
       */}
+      <div className="menu-cat-promo-wrap">
       <div
         className="menu-cat-promo"
         style={img ? undefined : { background: tintFromId(category.id) }}
@@ -78,10 +79,20 @@ export function MenuSectionHeader({ category, id, active = false }: Props) {
           ) : null}
         </div>
       </div>
-      {/* Share this category on its own page (owner, 2026-09-21). Outside the
-          strip, which clips its overflow, so the popover can open below. */}
+      {/* The strip opens the category's own page (owner, 2026-09-21: "opening
+          the menu page when banner is clicked"). A stretched link over the
+          strip, under the Share pill. */}
+      <a
+        className="menu-cat-promo__link"
+        href={categoryShareUrl(category)}
+        aria-label={`Open the ${category.name} menu page`}
+        data-testid="category-link"
+      />
+      {/* Share this category on its own page. Outside the strip, which clips
+          its overflow, so the popover can open below. */}
       <div className="menu-cat-promo__share" data-testid="category-share">
         <ShareControl {...categoryShareProps(category)} />
+      </div>
       </div>
     </header>
   );

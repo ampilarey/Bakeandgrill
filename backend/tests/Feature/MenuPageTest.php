@@ -279,6 +279,13 @@ class MenuPageTest extends TestCase
         $this->assertStringContainsString('aria-label="Share Cold Drinks"', $html);
         // The share styles and script travel once, not once per category.
         $this->assertSame(1, substr_count($html, 'window.__shareInit = function'));
+
+        // The band itself opens the category page (owner, 2026-09-21) — on
+        // the full menu, not on the category's own page.
+        $this->assertStringContainsString('class="menu-cat-band-link" href="http://localhost:8000/menu/c/drinks"', $html);
+        $this->assertStringContainsString('aria-label="Open the Drinks menu page"', $html);
+        $own = $this->get('/menu/c/drinks')->assertOk()->getContent();
+        $this->assertStringNotContainsString('class="menu-cat-band-link"', $own);
     }
 
     public function test_a_size_that_has_run_out_is_greyed_on_the_item_page(): void

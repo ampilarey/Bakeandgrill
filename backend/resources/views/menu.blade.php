@@ -366,7 +366,9 @@ html.rail-right .menu-rail-side .menu-rail-side__icon { transform: scaleX(-1); }
 }
 .menu-cat-band-scrim { border-radius: 12px; }
 /* Share this category: a pill on the band's right, popover opening below. */
-.menu-cat-band-share { position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%); z-index: 2; }
+.menu-cat-band-share { position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%); z-index: 3; }
+.menu-cat-band-link { position: absolute; inset: 0; z-index: 2; border-radius: 12px; }
+.menu-cat-band-link:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 .menu-band-share {
     min-height: 34px; padding: 0 0.75rem;
     border: 1.5px solid rgba(255,255,255,0.75); border-radius: 999px;
@@ -1133,6 +1135,12 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                             <p>{{ $cat->description }}</p>
                         @endif
                     </div>
+                    @if($cat && ! $menuOnlyCategory)
+                        {{-- The band opens the category's own page (owner,
+                             2026-09-21). Stretched over the band, under Share. --}}
+                        <a class="menu-cat-band-link" href="{{ $menuCategoryUrls[$cat->id] ?? url('/menu/c/' . $cat->id) }}"
+                           aria-label="Open the {{ $name['text'] }} menu page" data-testid="category-link"></a>
+                    @endif
                     @if($cat)
                         {{-- Share this category on its own page (owner, 2026-09-21). --}}
                         <div class="menu-cat-band-share">

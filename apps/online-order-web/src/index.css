@@ -3996,10 +3996,14 @@ textarea.field-input {
 }
 
 /* Thin ZUS-style category strip — keep items above the fold */
-/* Share this category: a pill on the strip's right; the header, not the
-   clipped strip, is the popover's box. */
-.menu-section-header { position: relative; }
-.menu-cat-promo__share { position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%); z-index: 2; }
+/* Share this category: a pill on the strip's right. The wrap is exactly the
+   strip's box (the header has uneven padding, which put the pill low —
+   owner, 2026-09-21), and it does not clip, so the popover can open below. */
+.menu-cat-promo-wrap { position: relative; }
+.menu-cat-promo__share { position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%); z-index: 3; }
+/* The strip itself opens the category's own page on the website menu. */
+.menu-cat-promo__link { position: absolute; inset: 0; z-index: 2; border-radius: var(--radius-lg, 12px); }
+.menu-cat-promo__link:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .menu-cat-promo__share .share-control-btn {
   min-height: 34px; min-width: 0; padding: 0 0.75rem;
   border: 1.5px solid rgba(255, 255, 255, 0.75); border-radius: 999px;
@@ -4016,8 +4020,9 @@ textarea.field-input {
 .menu-cat-promo {
   position: relative;
   width: 100%;
-  height: 56px;
-  max-height: 56px;
+  /* Same box as the website menu's band (owner, 2026-09-21: "make same"). */
+  height: 76px;
+  max-height: 76px;
   aspect-ratio: auto;
   border-radius: var(--radius-lg, 12px);
   overflow: hidden;
@@ -4060,7 +4065,7 @@ textarea.field-input {
 
 .menu-cat-promo__title {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 1.05rem;
   font-weight: 700;
   line-height: 1.2;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
@@ -4118,8 +4123,9 @@ textarea.field-input {
 /* Must come AFTER the base .menu-cat-promo rule or mobile height is overridden */
 @media (max-width: 767px) {
   .menu-cat-promo {
-    height: var(--cat-rail-item-height, 76px);
-    max-height: var(--cat-rail-item-height, 76px);
+    /* The website band's 76px on every width (owner, 2026-09-21: "make same"). */
+    height: 76px;
+    max-height: 76px;
   }
 
   .menu-cat-promo__title {
@@ -4129,8 +4135,8 @@ textarea.field-input {
 
 @media (min-width: 768px) {
   .menu-cat-promo {
-    height: 64px;
-    max-height: 64px;
+    height: 76px;
+    max-height: 76px;
   }
 
   .menu-cat-promo__title {
