@@ -485,7 +485,7 @@ class MenuPageController extends Controller
             'brandPhone' => trim((string) content('business_phone', '')),
             // Scan the sheet, open the live menu. The printed prices are a
             // snapshot; this is the copy that is never out of date.
-            'menuQr' => QrSvg::dataUri(route('menu'), 180),
+            'menuQr' => QrSvg::branded(route('menu'), 180),
             'menuUrl' => preg_replace('#^https?://#', '', route('menu')),
             // Named here so the page's share sheet and the download agree on
             // what the file is called.
@@ -505,7 +505,7 @@ class MenuPageController extends Controller
             // coming from print (owner, 2026-09-21).
             'complaintLine' => trim((string) content('complaint_prompt_text', '')),
             'complaintUrl' => \App\Support\ComplaintBoxLink::url('print'),
-            'complaintQr' => QrSvg::dataUri(\App\Support\ComplaintBoxLink::url('print'), 140),
+            'complaintQr' => \App\Support\ComplaintBoxLink::qr(\App\Support\ComplaintBoxLink::url('print'), 180),
             'menuCategories' => $groups,
             'menuItemCount' => $items->count(),
             'menuPriceByItemId' => $this->effectivePrices($items),

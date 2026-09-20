@@ -412,9 +412,11 @@
         }
 
         .foot td { vertical-align: middle; padding: 0; }
-        .foot__qr { width: 76px; text-align: center; padding-left: 6px; }
+        .foot__qr { width: 80px; text-align: center; padding-left: 10px; }
         .foot__qr img { width: 62px; height: 62px; }
-        .foot__qr-label { font-size: 0.58rem; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; }
+        /* Wraps inside its own cell: "COMPLAINT? SCAN" and "MENU ONLINE" set
+           side by side on one line read as a single run-on phrase. */
+        .foot__qr-label { font-size: 0.55rem; line-height: 1.2; letter-spacing: 0.03em; text-transform: uppercase; }
         .foot__complain { margin-top: 3px; font-style: italic; }
         .foot strong { color: #1c1408; font-size: 0.8rem; }
         .foot p { margin: 0 0 2px; }

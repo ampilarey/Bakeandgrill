@@ -36,10 +36,16 @@ final class ComplaintBoxLink
         return $url;
     }
 
-    /** The QR with room for the logo in the middle, as a `data:` URI. */
-    public static function qr(string $url, int $size = 200): string
+    /**
+     * The QR with the logo in the middle, as a `data:` URI.
+     *
+     * Owner, 2026-09-21: "Why no logo inside the qr code?" The logo used to
+     * be a second picture the view laid on top, so only two of the five
+     * places that print this code ever showed it. It is inside the SVG now.
+     */
+    public static function qr(string $url, int $size = 200, float $logoRatio = QrSvg::LOGO_RATIO): string
     {
-        return QrSvg::dataUri($url, $size, withLogoSpace: true);
+        return QrSvg::branded($url, $size, $logoRatio);
     }
 
     /**

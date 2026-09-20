@@ -106,12 +106,18 @@ class ComplaintBoxTest extends TestCase
         $res->assertDontSee('test.bakeandgrill.mv', false);
         // "remove the logo from the top and make the logo inside the qr code bigger"
         $res->assertDontSee('class="logo"', false);
-        $res->assertSee('class="mark"', false);
+        // Owner, 2026-09-21: the logo is drawn inside the code's own SVG, so
+        // there is no second picture laid over it any more.
+        $res->assertDontSee('class="mark"', false);
 
         // The code on the page is byte-for-byte the code for the live address,
-        // generated with room for the logo.
+        // logo and all, at the size it has had on the wall since 2026-09-19.
         preg_match('#data:image/svg\+xml;base64,[A-Za-z0-9+/=]+#', $res->getContent(), $m);
-        $this->assertSame(\App\Support\QrSvg::dataUri('https://bakeandgrill.mv/complain?from=poster', 480, true), $m[0]);
+        $this->assertSame(
+            \App\Support\ComplaintBoxLink::qr('https://bakeandgrill.mv/complain?from=poster', 480, 0.33),
+            $m[0],
+        );
+        $this->assertStringContainsString('<image ', base64_decode(substr($m[0], 26)));
     }
 
     public function test_an_anonymous_complaint_reaches_the_owner_by_sms_and_nobody_else(): void

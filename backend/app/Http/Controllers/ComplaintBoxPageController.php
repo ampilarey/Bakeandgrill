@@ -46,8 +46,10 @@ class ComplaintBoxPageController extends Controller
 
         return view('complain-poster', [
             'url' => $url,
-            'qr' => ComplaintBoxLink::qr($url, 480),
-            'logo' => ComplaintBoxLink::logo(),
+            // A third of the width, as it has been on the wall since
+            // 2026-09-19 ("make the logo inside the qr code bigger") — the
+            // mark is inside the code's SVG now rather than laid over it.
+            'qr' => ComplaintBoxLink::qr($url, 480, 0.33),
             'siteName' => (string) content('site_name', 'Bake & Grill'),
         ]);
     }

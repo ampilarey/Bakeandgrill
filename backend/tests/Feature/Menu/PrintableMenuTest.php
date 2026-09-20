@@ -676,9 +676,15 @@ class PrintableMenuTest extends TestCase
         $this->assertStringContainsString('Complaint? Scan', $html);
         $this->assertStringContainsString('Say so, we listen.', $html);
         $this->assertStringContainsString(
-            \App\Support\QrSvg::dataUri('https://bakeandgrill.mv/complain?from=print', 140),
+            \App\Support\ComplaintBoxLink::qr('https://bakeandgrill.mv/complain?from=print', 180),
             $html,
         );
+        // Owner, 2026-09-21: "Why no logo inside the qr code?" Both codes on
+        // the sheet carry the brand mark inside their own SVG.
+        $data = $this->printViewData();
+        foreach (['complaintQr', 'menuQr'] as $code) {
+            $this->assertStringContainsString('<image ', base64_decode(substr($data[$code], 26)), $code);
+        }
         $this->assertSame('https://bakeandgrill.mv/complain?from=print', $this->printViewData()['complaintUrl']);
     }
 

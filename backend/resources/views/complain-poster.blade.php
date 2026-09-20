@@ -21,10 +21,6 @@
         p { color: #6B5D4F; font-size: 15px; line-height: 1.5; margin: 0 0 18px; }
         .qr { position: relative; width: 260px; height: 260px; margin: 0 auto 14px; }
         .qr img.code { width: 260px; height: 260px; display: block; }
-        /* The logo sits on a white pad in the middle, about a third of the
-           width; the code is generated with the highest error correction so
-           it still scans around it (checked by decoding a screenshot). */
-        .qr img.mark { position: absolute; left: 50%; top: 50%; width: 96px; height: 96px; transform: translate(-50%, -50%); background: #fff; padding: 6px; border-radius: 16px; object-fit: contain; }
         .url { font-weight: 700; font-size: 18px; color: #1C1408; word-break: break-all; margin-bottom: 6px; }
         .small { font-size: 12px; color: #9C8E7E; }
         .actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
@@ -36,7 +32,6 @@
             .sheet { border: none; margin: 0; max-width: none; padding: 0; }
             .actions, .hint { display: none; }
             .qr, .qr img.code { width: 300px; height: 300px; }
-            .qr img.mark { width: 110px; height: 110px; }
         }
     </style>
 </head>
@@ -46,8 +41,10 @@
         <h1>Not happy? Tell the owner.</h1>
         <p>Staff, food, service, cleanliness — scan and tell us. Anonymous if you like, or leave your number and we will message you back.</p>
         <div class="qr" data-testid="poster-qr">
+            {{-- The logo is drawn inside the code's own SVG (owner,
+                 2026-09-21), so there is nothing to lay on top here and the
+                 PNG export below is one drawImage. --}}
             <img class="code" src="{{ $qr }}" alt="QR code to the complaint form">
-            <img class="mark" src="{{ $logo }}" alt="">
         </div>
         <div class="url">{{ $displayUrl }}</div>
         <div class="small">Goes straight to the owner's phone.</div>
@@ -66,7 +63,6 @@
         document.querySelector('[data-print]').addEventListener('click', function () { window.print(); });
 
         var codeImg = document.querySelector('.qr img.code');
-        var markImg = document.querySelector('.qr img.mark');
         var btn = document.querySelector('[data-download]');
 
         function load(src) {
@@ -76,16 +72,6 @@
                 img.onerror = reject;
                 img.src = src;
             });
-        }
-
-        function roundRect(ctx, x, y, w, h, r) {
-            ctx.beginPath();
-            ctx.moveTo(x + r, y);
-            ctx.arcTo(x + w, y, x + w, y + h, r);
-            ctx.arcTo(x + w, y + h, x, y + h, r);
-            ctx.arcTo(x, y + h, x, y, r);
-            ctx.arcTo(x, y, x + w, y, r);
-            ctx.closePath();
         }
 
         // Owner, 2026-09-19: "Add some details what the code is about" — the
@@ -139,23 +125,9 @@
             y += 14;
 
             var qx = (W - qrSize) / 2, qy = y;
+            // One drawImage: the logo and its white pad are inside the SVG.
             return load(codeImg.src).then(function (qr) {
                 ctx.drawImage(qr, qx, qy, qrSize, qrSize);
-                return load(markImg.src);
-            }).then(function (logo) {
-                // Same proportions as on screen: logo about a third of the code
-                // on a white pad, which the high error correction allows for.
-                var l = Math.round(qrSize * 0.33);
-                var p = Math.round(qrSize * 0.025);
-                var x = qx + (qrSize - l) / 2, ly = qy + (qrSize - l) / 2;
-                ctx.fillStyle = '#fff';
-                roundRect(ctx, x - p, ly - p, l + p * 2, l + p * 2, Math.round(l * 0.16));
-                ctx.fill();
-                ctx.save();
-                roundRect(ctx, x, ly, l, l, Math.round(l * 0.14));
-                ctx.clip();
-                ctx.drawImage(logo, x, ly, l, l);
-                ctx.restore();
 
                 y = qy + qrSize + 70;
                 ctx.fillStyle = '#1C1408';
@@ -187,7 +159,7 @@
         btn.addEventListener('click', download);
         // /complain/poster?download=1 — the admin's "Download QR image" button.
         if (new URLSearchParams(window.location.search).get('download') === '1') {
-            Promise.all([load(codeImg.src), load(markImg.src)]).then(download);
+            load(codeImg.src).then(download);
         }
     })();
     </script>
