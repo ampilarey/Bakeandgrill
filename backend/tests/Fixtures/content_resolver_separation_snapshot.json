@@ -1,6 +1,6 @@
 {
     "meta": {
-        "key_count": 180,
+        "key_count": 181,
         "apps": [
             "website",
             "order_app"
@@ -9,7 +9,7 @@
             "en",
             "dv"
         ],
-        "combinations": 720
+        "combinations": 724
     },
     "values": {
         "website": {
@@ -33,6 +33,7 @@
                 "business_viber": "viber://chat?number=9609120011",
                 "business_website": "https://bakeandgrill.mv",
                 "business_whatsapp": "https://wa.me/9609120011",
+                "complaint_prompt_text": "Not happy? Tell the owner directly. Anonymous if you like.",
                 "contact_email_label": "Email",
                 "contact_events_cta_headline": "Planning an event?",
                 "contact_events_cta_text": "Build a draft order with catering trays and custom lines — we will send a quote.",
@@ -215,6 +216,7 @@
                 "business_viber": "viber://chat?number=9609120011",
                 "business_website": "https://bakeandgrill.mv",
                 "business_whatsapp": "https://wa.me/9609120011",
+                "complaint_prompt_text": "Not happy? Tell the owner directly. Anonymous if you like.",
                 "contact_email_label": "Email",
                 "contact_events_cta_headline": "Planning an event?",
                 "contact_events_cta_text": "Build a draft order with catering trays and custom lines — we will send a quote.",
@@ -399,6 +401,7 @@
                 "business_viber": "viber://chat?number=9609120011",
                 "business_website": "https://bakeandgrill.mv",
                 "business_whatsapp": "https://wa.me/9609120011",
+                "complaint_prompt_text": "Not happy? Tell the owner directly. Anonymous if you like.",
                 "contact_email_label": "Email",
                 "contact_events_cta_headline": "Planning an event?",
                 "contact_events_cta_text": "Ask us about catering and trays for offices and celebrations.",
@@ -581,6 +584,7 @@
                 "business_viber": "viber://chat?number=9609120011",
                 "business_website": "https://bakeandgrill.mv",
                 "business_whatsapp": "https://wa.me/9609120011",
+                "complaint_prompt_text": "Not happy? Tell the owner directly. Anonymous if you like.",
                 "contact_email_label": "Email",
                 "contact_events_cta_headline": "Planning an event?",
                 "contact_events_cta_text": "Ask us about catering and trays for offices and celebrations.",

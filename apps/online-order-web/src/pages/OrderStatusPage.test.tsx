@@ -176,6 +176,22 @@ describe('OrderStatusPage error banner', () => {
     expect(getOrderDetailMock).not.toHaveBeenCalled();
   });
 
+  /** Owner, 2026-09-21: a complaint against the order, once it is done, tagged with its number. */
+  it('a finished order offers the complaint box with its number; a live one does not', async () => {
+    authState.authReady = true;
+    authState.isAuthenticated = true;
+    getOrderDetailMock.mockResolvedValueOnce({ order: { ...sampleOrder, status: 'completed' } });
+
+    mount('/orders/42');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('order-complain')).toBeTruthy();
+    });
+    // The box lives on the site the API is served from, one origin up from /order.
+    expect(screen.getByTestId('order-complain-link').getAttribute('href'))
+      .toMatch(/^https?:\/\/[^/]+\/complain\?from=order&order=BG-10042$/);
+  });
+
   it('failed poll after success then recovered poll → banner appears then disappears', async () => {
     authState.authReady = true;
     authState.isAuthenticated = true;

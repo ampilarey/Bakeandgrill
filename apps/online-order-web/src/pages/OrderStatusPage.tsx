@@ -7,6 +7,7 @@ import { WhatsAppIcon, ViberIcon } from "../components/icons";
 import { useCart } from "../context/CartContext";
 import { usePushNotifications } from "../hooks/usePushNotifications";
 import { useSiteSettings } from "../context/SiteSettingsContext";
+import { complaintUrl } from "../utils/complaintLink";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { isGiftCardOrder } from "../utils/giftCardOrder";
@@ -259,6 +260,7 @@ export function OrderStatusPage() {
   const navigate = useNavigate();
   const { clearCart, addItem } = useCart();
   const s = useSiteSettings();
+  const complaintLine = String((s as Record<string, unknown>)?.complaint_prompt_text ?? '').trim() || 'Not happy? Tell the owner directly. Anonymous if you like.';
   const { isAuthenticated, authReady } = useAuth();
   const { t } = useLanguage();
 
@@ -1302,6 +1304,18 @@ export function OrderStatusPage() {
                 )}
               </div>
             </div>
+
+            {/* The complaint box against this order, once it is in the
+                customer's hands (owner, 2026-09-21). Tagged "order" and
+                carrying the number, so the kitchen can act on it. */}
+            {(isDone || ['delivered', 'picked_up'].includes(order.status)) && (
+              <p className="order-complain" data-testid="order-complain">
+                {complaintLine}{' '}
+                <a href={complaintUrl('order', order.order_number)} data-testid="order-complain-link">
+                  Something wrong with this order? Tell us
+                </a>
+              </p>
+            )}
 
             {/* CTA */}
             {isDone && (

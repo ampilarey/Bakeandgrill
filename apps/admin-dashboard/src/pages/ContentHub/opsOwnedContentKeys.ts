@@ -41,6 +41,7 @@ export const OPS_OWNED_CONTENT_KEYS = new Set([
   'menu_other_banner_image',
   'menu_events_banner_image',
   'menu_featured_title',
+  'complaint_prompt_text',
 ]);
 
 export function isOpsOwnedContentKey(key: string): boolean {

@@ -501,6 +501,11 @@ class MenuPageController extends Controller
                 now()->format('Y-m-d'),
             ),
             'brandHours' => $this->hoursLines(),
+            // A second code on the last page: the complaint box, tagged as
+            // coming from print (owner, 2026-09-21).
+            'complaintLine' => trim((string) content('complaint_prompt_text', '')),
+            'complaintUrl' => \App\Support\ComplaintBoxLink::url('print'),
+            'complaintQr' => QrSvg::dataUri(\App\Support\ComplaintBoxLink::url('print'), 140),
             'menuCategories' => $groups,
             'menuItemCount' => $items->count(),
             'menuPriceByItemId' => $this->effectivePrices($items),

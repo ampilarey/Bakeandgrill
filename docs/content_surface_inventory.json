@@ -50,7 +50,8 @@
                     "social_tiktok",
                     "nav_order_cta_text",
                     "home_chat_label",
-                    "dhivehi_font"
+                    "dhivehi_font",
+                    "complaint_prompt_text"
                 ],
                 "renderers": {
                     "language_switcher_enabled": "layout.blade.php header",
@@ -94,7 +95,8 @@
                     "social_tiktok": "layout site_footer chrome",
                     "nav_order_cta_text": "layout HEADER Order CTA (group=Footer mismatch)",
                     "home_chat_label": "layout footer chat (group=Homepage mismatch)",
-                    "dhivehi_font": "layout.blade.php + /css/dhivehi-font.css?app=website"
+                    "dhivehi_font": "layout.blade.php + /css/dhivehi-font.css?app=website",
+                    "complaint_prompt_text": "menu.blade.php + menu-print.blade.php + layout site_footer chrome"
                 }
             },
             "home": {
@@ -1501,6 +1503,13 @@
                 "label": "Featured items heading",
                 "group": "Menu",
                 "renderer": "backend/resources/views/menu.blade.php"
+            },
+            "complaint_prompt_text": {
+                "page": "everywhere",
+                "order": 43,
+                "label": "Complaint invitation line",
+                "group": "Everywhere",
+                "renderer": "menu.blade.php + menu-print.blade.php + layout site_footer chrome"
             }
         }
     },
@@ -1548,7 +1557,8 @@
                     "social_tiktok",
                     "nav_order_cta_text",
                     "home_chat_label",
-                    "dhivehi_font"
+                    "dhivehi_font",
+                    "complaint_prompt_text"
                 ],
                 "renderers": {
                     "language_switcher_enabled": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
@@ -1587,7 +1597,8 @@
                     "social_tiktok": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
                     "nav_order_cta_text": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
                     "home_chat_label": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
-                    "dhivehi_font": "index.html + /css/dhivehi-font.css?app=order_app (content key dhivehi_font)"
+                    "dhivehi_font": "index.html + /css/dhivehi-font.css?app=order_app (content key dhivehi_font)",
+                    "complaint_prompt_text": "apps/online-order-web/src/components/home/BrandFooter.tsx + pages/OrderStatusPage.tsx"
                 }
             },
             "home": {
@@ -2471,6 +2482,13 @@
                 "label": "Featured items heading",
                 "group": "Menu",
                 "renderer": "apps/online-order-web/src/pages/MenuPage.tsx"
+            },
+            "complaint_prompt_text": {
+                "page": "everywhere",
+                "order": 38,
+                "label": "Complaint invitation line",
+                "group": "Everywhere",
+                "renderer": "apps/online-order-web/src/components/home/BrandFooter.tsx + pages/OrderStatusPage.tsx"
             }
         }
     },

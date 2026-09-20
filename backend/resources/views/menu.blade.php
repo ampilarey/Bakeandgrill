@@ -705,6 +705,8 @@ html.js .menu-fav { display: inline-flex; }
 }
 
 .menu-cta { padding: 1.5rem 0 1rem; text-align: center; }
+.menu-complain { margin: 0 0 1rem; text-align: center; font-size: 0.8125rem; color: var(--muted); }
+.menu-complain a { color: var(--amber); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
 .menu-empty { max-width: 34rem; margin: 4rem auto; text-align: center; color: var(--muted); padding: 0 1.25rem; }
 
 /* Dhivehi names and descriptions get the Thaana face and RTL flow even on an
@@ -893,6 +895,7 @@ body.menu-sheet-open { overflow: hidden; }
     $menuOffers = $menuOffers ?? collect();
     $menuFeatured = $menuFeatured ?? collect();
     $menuFeaturedTitle = $menuFeaturedTitle ?? "Chef's picks";
+    $menuComplaintLine = trim((string) ($menuComplaintLine ?? content('complaint_prompt_text', '')));
     $menuNewItemIds = $menuNewItemIds ?? [];
     $menuSoldOut = $menuSoldOut ?? [];
     $menuCatering = $menuCatering ?? collect();
@@ -1450,6 +1453,12 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                 <a href="/menu" class="btn-outline" style="margin-left:0.6rem">See the full menu</a>
             @endif
         </div>
+        {{-- One quiet line, under the food, never on a card or in the rail
+             (owner, 2026-09-21: complaint details "shortly" in the menu). --}}
+        <p class="menu-complain" data-testid="menu-complain">
+            {{ $menuComplaintLine }}
+            <a href="/complain?from=menu">Make a complaint</a>
+        </p>
     </div>
 </div>
 

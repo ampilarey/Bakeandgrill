@@ -174,10 +174,11 @@ class OpsOwnedSettingsOwnershipTest extends TestCase
             array_keys(OpsOwnedContent::DELIVERY_OPS),
             OpsOwnedContent::BUSINESS_DETAILS_KEYS,
         )));
-        // 2 delivery ops mirrors (threshold + promise) + 30 Business Details
+        // 2 delivery ops mirrors (threshold + promise) + 31 Business Details
         // keys (13 original + 14 moved 2026-08-14, incl. menu_new_days, the
-        // two menu section banners and the featured heading added 2026-09-21).
-        $this->assertCount(32, $keys);
+        // two menu section banners, the featured heading and the complaint
+        // line added 2026-09-21).
+        $this->assertCount(33, $keys);
 
         $blocks = collect($this->getJson('/api/admin/content')->assertOk()->json('blocks'));
 

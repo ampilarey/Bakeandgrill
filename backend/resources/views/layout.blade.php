@@ -1044,6 +1044,7 @@
             text-transform: uppercase;
             color: rgba(255, 255, 255, 0.35);
         }
+        .footer-complain-line { margin: 0.1rem 0 0.6rem; font-size: 0.78rem; opacity: 0.75; }
         .brand-footer--website .brand-footer__link {
             display: flex;
             align-items: center;
@@ -1953,7 +1954,8 @@
             <a href="/order/events">Catering &amp; Events</a>
             <a href="/hours">Opening Hours</a>
             <a href="/contact">Contact Us</a>
-            <a href="/complain">Make a Complaint</a>
+            <a href="/complain?from=footer">Make a Complaint</a>
+            @if(trim((string) content('complaint_prompt_text', '')) !== '')<p class="footer-complain-line" data-testid="footer-complain-line">{{ trim((string) content('complaint_prompt_text', '')) }}</p>@endif
         </div>
         <div class="footer-col footer-col--hours" data-footer-hours>
             <h4>{{ $footerHoursHeading }}</h4>
@@ -2075,7 +2077,8 @@
                     <a href="/order/events" class="brand-footer__link">Catering &amp; Events</a>
                     <a href="/hours" class="brand-footer__link">Opening Hours</a>
                     <a href="/contact" class="brand-footer__link">Contact Us</a>
-                    <a href="/complain" class="brand-footer__link">Make a Complaint</a>
+                    <a href="/complain?from=footer" class="brand-footer__link">Make a Complaint</a>
+                    @if(trim((string) content('complaint_prompt_text', '')) !== '')<p class="footer-complain-line" data-testid="footer-complain-line">{{ trim((string) content('complaint_prompt_text', '')) }}</p>@endif
                 </div>
                 <div class="brand-footer__col">
                     <h4 class="brand-footer__heading">{{ $footerLocationHeading }}</h4>

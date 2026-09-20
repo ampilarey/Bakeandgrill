@@ -43,8 +43,31 @@ class ComplaintBoxTest extends TestCase
             ->assertSee('/api/complaint-box');
 
         $this->get('/complain?order=BG-77&from=receipt')->assertOk()->assertSee('value="BG-77"', false);
-        $this->get('/')->assertOk()->assertSee('href="/complain"', false);
+        $this->get('/')->assertOk()->assertSee('href="/complain?from=footer"', false);
         $this->get('/complain/poster')->assertOk()->assertSee('data:image/svg+xml', false);
+    }
+
+    /**
+     * Owner, 2026-09-21: the complaint box offered from the menu, the
+     * printed menu, both apps' footers and the order status page, each
+     * tagged so the Complaint Box says where it came from.
+     */
+    public function test_every_surface_that_offers_the_form_tags_where_it_came_from(): void
+    {
+        foreach (['menu', 'print', 'order', 'app', 'footer'] as $from) {
+            $this->get('/complain?from=' . $from)->assertOk()
+                ->assertSee('name="source" value="' . $from . '"', false);
+        }
+        // An unknown tag falls back to plain web rather than erroring.
+        $this->get('/complain?from=nonsense')->assertOk()->assertSee('name="source" value="web"', false);
+
+        $this->postJson('/api/complaint-box', [
+            'categories' => ['food_quality'],
+            'comment' => 'Cold',
+            'anonymous' => true,
+            'source' => 'print',
+        ])->assertCreated();
+        $this->assertDatabaseHas('complaint_box_entries', ['comment' => 'Cold', 'source' => 'print']);
     }
 
     /**

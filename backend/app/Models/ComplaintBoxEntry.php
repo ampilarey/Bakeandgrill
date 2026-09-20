@@ -62,6 +62,12 @@ class ComplaintBoxEntry extends Model
 
     public const MAX_CATEGORIES = 3;
 
+    /**
+     * Where a complaint came in from, shown as "via …" in the Complaint Box.
+     * Every surface that offers the form tags itself (owner, 2026-09-21).
+     */
+    public const SOURCES = ['web', 'receipt', 'poster', 'menu', 'print', 'order', 'app', 'footer'];
+
     protected $fillable = [
         'reference_number', 'categories', 'about_staff', 'comment', 'phone', 'is_anonymous',
         'order_ref', 'visited_on', 'source', 'status', 'owner_alert_status', 'owner_alert_detail',

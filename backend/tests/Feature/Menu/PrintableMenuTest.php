@@ -661,6 +661,27 @@ class PrintableMenuTest extends TestCase
         $this->assertStringNotContainsString('★</span> Bis Keemia', $html);
     }
 
+    /**
+     * Owner, 2026-09-21: the complaint box on the printed menu. A second
+     * code beside the live-menu one on the last page, and on the booklet's
+     * back cover, pointing at the live site and tagged as coming from print.
+     */
+    public function test_the_sheet_carries_a_complaint_code_for_the_live_site(): void
+    {
+        $this->dish('Mas Huni', 35);
+        \App\Models\SiteSetting::set('complaint_prompt_text', 'Say so, we listen.', 'shared');
+
+        $html = $this->get('/menu/print')->assertOk()->getContent();
+        $this->assertStringContainsString('data-testid="menu-print-complaint-qr"', $html);
+        $this->assertStringContainsString('Complaint? Scan', $html);
+        $this->assertStringContainsString('Say so, we listen.', $html);
+        $this->assertStringContainsString(
+            \App\Support\QrSvg::dataUri('https://bakeandgrill.mv/complain?from=print', 140),
+            $html,
+        );
+        $this->assertSame('https://bakeandgrill.mv/complain?from=print', $this->printViewData()['complaintUrl']);
+    }
+
     public function test_cost_price_never_reaches_the_paper(): void
     {
         // The page is public. Anything the kitchen pays must stay off it.

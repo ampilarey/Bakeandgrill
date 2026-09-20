@@ -32,6 +32,7 @@ final class BusinessDetailsKeys
             'business_email',
             'business_whatsapp',
             'business_viber',
+            'complaint_prompt_text',
         ],
         'address' => [
             'business_address',
@@ -145,6 +146,7 @@ final class BusinessDetailsKeys
         'menu_other_banner_image' => ['Website menu "Other" banner', 'Order App menu "Other" banner'],
         'menu_events_banner_image' => ['Website menu "Event & catering" banner', 'Order App menu "Event & catering" banner'],
         'menu_featured_title' => ['Website menu featured strip', 'Order App menu featured strip'],
+        'complaint_prompt_text' => ['Website menu foot and footer', 'Printed menu', 'Order App footer and order status'],
     ];
 
     /**

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { WhatsAppIcon, ViberIcon } from '../icons';
 import { useLanguage } from '../../context/LanguageContext';
 import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
+import { complaintUrl } from '../../utils/complaintLink';
 import { fetchOpeningHoursSchedule } from '../../api';
 import type { DaySchedule } from '../../api';
 import { MAIN_WEBSITE_HREF } from '../../utils/mainWebsite';
@@ -113,6 +114,7 @@ export function BrandFooter({
   const { footerLinks, text } = useSiteSettingsContext();
   const name = siteName || text('site_name', 'Bake & Grill');
   const rights = text('footer_rights_suffix', 'All rights reserved.');
+  const complaintLine = text('complaint_prompt_text', 'Not happy? Tell the owner directly. Anonymous if you like.').trim();
   const tagline = text('site_tagline', '');
   const thanks = (thanksProp ?? '').trim() || FOOTER_THANKS_DEFAULT || t('home.footer_thanks');
   const blurbLine = normalizeFooterBlurb(blurb ?? '', tagline);
@@ -265,6 +267,12 @@ export function BrandFooter({
             {quickLinks.map((item) => (
               <FooterNavLink key={`d-${item.url}`} item={item} className="" />
             ))}
+            {/* The complaint box, straight to the owner (2026-09-21): one
+                fixed link with the owner's one-line invitation under it. */}
+            <a href={complaintUrl('app')} className="footer-complain-link" data-testid="footer-complain-link">
+              Make a complaint
+            </a>
+            {complaintLine ? <p className="footer-complain-line" data-testid="footer-complain-line">{complaintLine}</p> : null}
           </div>
 
           <div className="footer-col footer-col--hours" data-footer-hours>
@@ -372,6 +380,10 @@ export function BrandFooter({
               {quickLinks.map((item) => (
                 <FooterNavLink key={`m-${item.url}`} item={item} className="brand-footer__link" />
               ))}
+              <a href={complaintUrl('app')} className="brand-footer__link footer-complain-link" data-testid="footer-complain-link">
+                Make a complaint
+              </a>
+              {complaintLine ? <p className="footer-complain-line" data-testid="footer-complain-line">{complaintLine}</p> : null}
             </div>
 
             <div className="brand-footer__col">

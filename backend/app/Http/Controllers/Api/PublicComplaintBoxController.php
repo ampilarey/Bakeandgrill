@@ -42,7 +42,7 @@ class PublicComplaintBoxController extends Controller
             'visited_on' => ['nullable', 'date', 'before_or_equal:today'],
             'anonymous' => ['nullable', 'boolean'],
             'phone' => ['nullable', 'string', 'max:20', new MaldivesPhone],
-            'source' => ['nullable', 'string', Rule::in(['web', 'receipt', 'poster'])],
+            'source' => ['nullable', 'string', Rule::in(ComplaintBoxEntry::SOURCES)],
             // Honeypot.
             'website' => ['nullable', 'string', 'max:0'],
         ], [

@@ -20,7 +20,7 @@ class ComplaintBoxPageController extends Controller
     public function show(Request $request): View
     {
         $orderRef = trim((string) $request->query('order', ''));
-        $source = in_array($request->query('from'), ['receipt', 'poster'], true) ? (string) $request->query('from') : 'web';
+        $source = in_array($request->query('from'), ComplaintBoxEntry::SOURCES, true) ? (string) $request->query('from') : 'web';
 
         return view('complain', [
             'categories' => ComplaintBoxEntry::categoryOptions(),

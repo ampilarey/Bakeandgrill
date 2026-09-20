@@ -14,7 +14,7 @@ use App\Domains\Content\ContentResolver;
 final class ContentResolverSnapshot
 {
     /** 179 non-deprecated keys × 2 apps × 2 locales (updated when content.php grows). */
-    public const EXPECTED_COMBINATIONS = 720;
+    public const EXPECTED_COMBINATIONS = 724;
 
     public static function fixturePath(): string
     {

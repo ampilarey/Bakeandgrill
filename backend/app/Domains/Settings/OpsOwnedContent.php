@@ -46,6 +46,7 @@ final class OpsOwnedContent
         'menu_other_banner_image',
         'menu_events_banner_image',
         'menu_featured_title',
+        'complaint_prompt_text',
         'site_name',
         'business_website',
         'business_phone',

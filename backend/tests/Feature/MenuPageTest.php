@@ -933,6 +933,28 @@ class MenuPageTest extends TestCase
         $this->assertStringContainsString('Chef&#039;s picks', $this->get('/menu')->getContent());
     }
 
+    /**
+     * Owner, 2026-09-21: complaint details "shortly" in the menu. One quiet
+     * line under the food, with the owner's wording and a link tagged as
+     * coming from the menu; never on a card or in the rail.
+     */
+    public function test_the_menu_ends_with_the_complaint_line(): void
+    {
+        $cat = $this->category('Shorteats');
+        $this->item($cat, 'Bajiya', 10);
+        SiteSetting::set('complaint_prompt_text', 'Something wrong? Say so.', 'shared');
+
+        $html = $this->get('/menu')->assertOk()->getContent();
+        $this->assertStringContainsString('data-testid="menu-complain"', $html);
+        $this->assertStringContainsString('Something wrong? Say so.', $html);
+        $this->assertStringContainsString('href="/complain?from=menu"', $html);
+        $this->assertSame(1, substr_count($html, 'from=menu'));
+        $this->assertLessThan(strpos($html, 'data-testid="menu-complain"'), strpos($html, '>Bajiya<'));
+
+        // A category's own page carries it too.
+        $this->get('/menu/c/shorteats')->assertOk()->assertSee('data-testid="menu-complain"', false);
+    }
+
     public function test_without_offers_the_section_and_pill_are_absent(): void
     {
         $cat = $this->category('Shorteats');

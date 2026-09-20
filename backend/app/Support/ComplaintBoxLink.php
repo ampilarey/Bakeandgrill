@@ -25,7 +25,7 @@ final class ComplaintBoxLink
         return rtrim((string) (safe_public_url($configured) ?? self::FALLBACK_SITE), '/');
     }
 
-    /** @param  string  $from  web|receipt|poster — what the Complaint Box shows as "via …" */
+    /** @param  string  $from  One of ComplaintBoxEntry::SOURCES — what the Complaint Box shows as "via …" */
     public static function url(string $from, ?string $orderNumber = null): string
     {
         $url = self::site() . '/complain?from=' . rawurlencode($from);

@@ -38,6 +38,8 @@
     $pageWidthMm = $pageWidthMm ?? 210;
     $dhivehiFontFile = $dhivehiFontFile ?? null;
     $brandHours = $brandHours ?? [];
+    $complaintLine = $complaintLine ?? '';
+    $complaintQr = $complaintQr ?? '';
     $styleLabels = ['short' => 'Short list', 'full' => 'With details', 'wall' => 'Large / wall'];
     // Every toolbar link carries the whole choice, so switching the paper
     // keeps the layout and the language, and the other way round.
@@ -410,8 +412,10 @@
         }
 
         .foot td { vertical-align: middle; padding: 0; }
-        .foot__qr { width: 76px; text-align: right; }
-        .foot__qr img { width: 68px; height: 68px; }
+        .foot__qr { width: 76px; text-align: center; padding-left: 6px; }
+        .foot__qr img { width: 62px; height: 62px; }
+        .foot__qr-label { font-size: 0.58rem; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; }
+        .foot__complain { margin-top: 3px; font-style: italic; }
         .foot strong { color: #1c1408; font-size: 0.8rem; }
         .foot p { margin: 0 0 2px; }
 
@@ -469,8 +473,10 @@
            sits the back cover a third of the way down rather than at the top. */
         .back .cover td { vertical-align: top; padding-top: 34mm; }
         .back .foot { border-top: 0; margin-top: 0; padding-top: 0; font-size: 0.85rem; }
-        .back .foot__qr { width: 100%; text-align: center; padding-top: 8mm; }
-        .back .foot__qr img { width: 32mm; height: 32mm; }
+        .back .back__codes { width: 70mm; margin: 8mm auto 0; }
+        .back .foot__qr { width: 50%; text-align: center; padding: 0 2mm; }
+        .back .foot__qr img { width: 26mm; height: 26mm; }
+        .back .foot__complain { margin-top: 3mm; font-size: 0.8rem; }
         .back h2 { margin: 0 0 3mm; font-size: 1.1rem; letter-spacing: 0.1em; text-transform: uppercase; }
         .back p { margin: 0 0 1.5mm; }
 
@@ -845,11 +851,20 @@
                 @foreach ($brandHours as $line)
                     <p>{{ $line }}</p>
                 @endforeach
-                <table class="foot"><tr><td class="foot__qr">
-                    <img src="{{ $menuQr }}" alt="Scan for the menu online">
-                    <div style="font-size:0.7rem;letter-spacing:0.04em">{{ $menuUrl }}</div>
-                    <p style="margin-top:4mm">Printed {{ $printedAt->format('j M Y') }} · prices may change</p>
-                </td></tr></table>
+                <table class="foot back__codes"><tr>
+                    <td class="foot__qr">
+                        <img src="{{ $menuQr }}" alt="Scan for the menu online">
+                        <div class="foot__qr-label">Menu online</div>
+                    </td>
+                    <td class="foot__qr" data-testid="menu-print-complaint-qr">
+                        <img src="{{ $complaintQr }}" alt="Scan to make a complaint">
+                        <div class="foot__qr-label">Complaint? Scan</div>
+                    </td>
+                </tr></table>
+                @if ($complaintLine !== '')
+                    <p class="foot__complain">{{ $complaintLine }}</p>
+                @endif
+                <p style="margin-top:4mm;font-size:0.7rem;color:#6b5d4f">{{ $menuUrl }} · Printed {{ $printedAt->format('j M Y') }} · prices may change</p>
             </td></tr></table>
         </div>
     @else
@@ -864,11 +879,19 @@
                     <p>{{ $brandPhone }}</p>
                 @endif
                 <p>Printed {{ $printedAt->format('j M Y') }} · prices may change</p>
+                @if ($complaintLine !== '')
+                    <p class="foot__complain">{{ $complaintLine }}</p>
+                @endif
+            </td>
+            <td class="foot__qr foot__qr--complain" data-testid="menu-print-complaint-qr">
+                {{-- The complaint box, straight to the owner (2026-09-21). --}}
+                <img src="{{ $complaintQr }}" alt="Scan to make a complaint">
+                <div class="foot__qr-label">Complaint? Scan</div>
             </td>
             <td class="foot__qr">
                 {{-- The printed sheet ages; this is the copy that never does. --}}
                 <img src="{{ $menuQr }}" alt="Scan for the menu online">
-                <div style="font-size:0.6rem;letter-spacing:0.04em">{{ $menuUrl }}</div>
+                <div class="foot__qr-label">Menu online</div>
             </td>
         </tr>
     </table>

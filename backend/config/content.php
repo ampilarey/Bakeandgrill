@@ -549,6 +549,21 @@ return [
             'default' => '[]',
             'description' => 'Legal / policy links in the compact mobile footer (Website + Order App).',
         ],
+        // The one line that invites a complaint, used wherever the complaint
+        // box is offered: the foot of the menu, the printed menu, both apps'
+        // footers and the order status page (owner, 2026-09-21).
+        'complaint_prompt_text' => [
+            'label' => 'Complaint invitation line',
+            'group' => 'Everywhere',
+            'type' => 'text',
+            'apps' => ['website', 'order_app'],
+            'shareable' => true,
+            'public' => true,
+            'rich' => false,
+            'description' => 'Short line beside every "Make a complaint" link: the foot of the menu, the printed menu, both footers and the order status page.',
+            'validate' => 'nullable|string|max:160',
+            'default' => 'Not happy? Tell the owner directly. Anonymous if you like.',
+        ],
         'footer_location_heading' => [
             'label' => 'Footer — Location Heading',
             'group' => 'Everywhere',
