@@ -47,6 +47,8 @@ class PurchasingSettingsController extends Controller
 
     private const KEY_REORDER_SMS = 'ops_inventory_reorder_alert_sms';
 
+    private const KEY_PRICE_RISE_SMS = 'ops_price_rise_alert_sms';
+
     public function show(): JsonResponse
     {
         return response()->json(['settings' => $this->current()]);
@@ -74,6 +76,7 @@ class PurchasingSettingsController extends Controller
             'restock_include_waste' => ['sometimes', 'boolean'],
             'restock_high_waste_pct' => ['sometimes', 'numeric', 'min:0', 'max:100'],
             'reorder_alert_sms' => ['sometimes', 'boolean'],
+            'price_rise_alert_sms' => ['sometimes', 'boolean'],
         ]);
 
         $bool = fn (string $k): string => filter_var($data[$k], FILTER_VALIDATE_BOOLEAN) ? '1' : '0';
@@ -124,6 +127,9 @@ class PurchasingSettingsController extends Controller
         if (array_key_exists('reorder_alert_sms', $data)) {
             SiteSetting::set(self::KEY_REORDER_SMS, $bool('reorder_alert_sms'));
         }
+        if (array_key_exists('price_rise_alert_sms', $data)) {
+            SiteSetting::set(self::KEY_PRICE_RISE_SMS, $bool('price_rise_alert_sms'));
+        }
 
         SiteSetting::bust();
 
@@ -155,6 +161,7 @@ class PurchasingSettingsController extends Controller
             'restock_include_waste' => $flag(self::KEY_RESTOCK_INCLUDE_WASTE, '0'),
             'restock_high_waste_pct' => (float) SiteSetting::get(self::KEY_RESTOCK_HIGH_WASTE, '15'),
             'reorder_alert_sms' => $flag(self::KEY_REORDER_SMS, '0'),
+            'price_rise_alert_sms' => $flag(self::KEY_PRICE_RISE_SMS, '0'),
             // For the category picker, so the screen needs one call.
             'expense_categories' => ExpenseCategory::query()->orderBy('name')->get(['id', 'name'])
                 ->map(fn ($c) => ['id' => $c->id, 'name' => $c->name])->all(),

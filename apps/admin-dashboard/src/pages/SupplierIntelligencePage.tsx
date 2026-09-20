@@ -2,9 +2,10 @@ import { Fragment, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   getSupplierPerformance, rateSupplier, getPriceComparison,
-  fetchSuppliers, createSupplier, updateSupplier, deleteSupplier,
-  type SupplierPerf, type Supplier,
+  fetchSuppliers, createSupplier, updateSupplier, deleteSupplier, fetchPayables,
+  type SupplierPerf, type Supplier, type PayableRow,
 } from '../api';
+import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
   Badge, Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Spinner, TableCard, TD, TH,
 } from '../components/SharedUI';
@@ -30,6 +31,16 @@ type ScoreField = 'quality_score' | 'delivery_score' | 'accuracy_score' | 'price
 export function SupplierIntelligencePage({ embedded = false }: { embedded?: boolean } = {}) {
   usePageTitle(embedded ? 'Purchasing · Suppliers' : 'Supplier Intelligence');
   const isMobile = useIsMobile();
+  const { can } = useCurrentUserPermissions();
+  // What is owed to whom (owner, 2026-09-21): the one question the list
+  // could not answer.
+  const canSeeOwed = can('suppliers.purchases') || can('reports.financial');
+  const [payables, setPayables] = useState<{ suppliers: PayableRow[]; total_owed: number; orders: number } | null>(null);
+  useEffect(() => {
+    if (!canSeeOwed) return;
+    fetchPayables().then(setPayables).catch(() => setPayables(null));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canSeeOwed]);
   const [perfs, setPerfs]       = useState<SupplierPerf[]>([]);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState('');
@@ -222,6 +233,35 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
         />
       )}
       {error && <ErrorMsg message={error} />}
+
+      {/* ── Owed to suppliers ── */}
+      {canSeeOwed && payables && (
+        <Card style={{ marginBottom: 20, borderColor: payables.total_owed > 0 ? 'var(--color-warning)' : undefined }} data-testid="payables-card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8, marginBottom: payables.suppliers.length ? 10 : 0 }}>
+            <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', margin: 0 }}>Owed to suppliers</p>
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)' }}>
+              {payables.total_owed > 0
+                ? <><strong style={{ color: 'var(--color-text)' }}>MVR {payables.total_owed.toFixed(2)}</strong> across {payables.orders} order{payables.orders === 1 ? '' : 's'}</>
+                : 'Nothing owed. Every placed order is paid.'}
+            </p>
+          </div>
+          {payables.suppliers.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {payables.suppliers.map((r) => (
+                <div key={`${r.supplier_id ?? 't'}-${r.name}`} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 13, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span>
+                    {r.supplier_id
+                      ? <Link to={`/purchasing/suppliers/${r.supplier_id}`} style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}>{r.name}</Link>
+                      : <span style={{ fontWeight: 600 }}>{r.name}</span>}
+                    <span style={{ color: 'var(--color-text-muted)' }}> · {r.orders} order{r.orders === 1 ? '' : 's'}{r.oldest_date ? `, oldest ${r.oldest_number} on ${r.oldest_date}` : ''}</span>
+                  </span>
+                  <strong style={{ fontVariantNumeric: 'tabular-nums' }}>MVR {r.owed.toFixed(2)}</strong>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
 
       {/* ── Suppliers directory ── */}
       <Card style={{ marginBottom: 20 }}>

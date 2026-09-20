@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Copy, Download, Phone, Star } from 'lucide-react';
+import { ArrowLeft, Copy, Download, Phone, ShoppingCart, Star } from 'lucide-react';
 import {
   fetchSupplierItems, fetchSupplierOverview, fetchSupplierRatings, fetchItemPriceHistory,
-  type SupplierCard, type SupplierItem,
+  recordPurchasePayment, clearPurchasePayment,
+  type SupplierCard, type SupplierItem, type PurchasePaymentMethod,
 } from '../api/purchasing';
-import { fetchPurchases, rateSupplier, updateSupplier, type Purchase } from '../api';
+import { createPurchaseFromSuggest, fetchPurchases, rateSupplier, updateSupplier, type Purchase } from '../api';
 import { Badge, Btn, Card, Modal, ModalActions, PageHeader, PageShell, StatCard, TabScrollRow, TD, TH } from '../components/SharedUI';
 import { ItemThumb } from '../components/InventoryItemPhoto';
 import { PriceHistoryChart } from '../components/PriceHistoryChart';
@@ -104,6 +105,9 @@ export default function SupplierProfilePage({ supplierId }: { supplierId: number
                 <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: 'var(--color-text)' }}>{supplier.name}</h2>
                 {!supplier.is_active && <Badge color="red" label="Inactive" />}
                 {overview.data && overview.data.orders.open > 0 && <Badge color="blue" label={`${overview.data.orders.open} open order${overview.data.orders.open === 1 ? '' : 's'}`} />}
+                {overview.data && overview.data.owed.amount > 0 && (
+                  <span data-testid="supplier-owed"><Badge color="orange" label={`Owed ${money(overview.data.owed.amount)} · ${overview.data.owed.orders} order${overview.data.owed.orders === 1 ? '' : 's'}`} /></span>
+                )}
               </div>
               <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 4, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 {supplier.contact_name && <span>{supplier.contact_name}</span>}
@@ -158,8 +162,8 @@ export default function SupplierProfilePage({ supplierId }: { supplierId: number
       {overview.isLoading && <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Loading…</p>}
 
       {tab === 'overview' && overview.data && <OverviewTab data={overview.data} isMobile={isMobile} onSeeItems={() => setTab('items')} />}
-      {tab === 'orders' && supplier && <OrdersTab supplier={supplier} isMobile={isMobile} />}
-      {tab === 'items' && supplier && <ItemsTab supplier={supplier} isMobile={isMobile} />}
+      {tab === 'orders' && supplier && <OrdersTab supplier={supplier} isMobile={isMobile} canPay={can('suppliers.purchases')} />}
+      {tab === 'items' && supplier && <ItemsTab supplier={supplier} isMobile={isMobile} canOrder={can('suppliers.purchases')} />}
       {tab === 'ratings' && supplier && canRate && <RatingsTab supplier={supplier} />}
       {tab === 'details' && supplier && <DetailsTab supplier={supplier} canEdit={can('suppliers.manage')} />}
     </PageShell>
@@ -250,7 +254,22 @@ function OverviewTab({ data, isMobile, onSeeItems }: { data: NonNullable<ReturnT
 
 // ── Purchase orders ─────────────────────────────────────────────────────
 
-function OrdersTab({ supplier, isMobile }: { supplier: SupplierCard; isMobile: boolean }) {
+const PAY_COLOR: Record<string, string> = { paid: 'green', partial: 'yellow', unpaid: 'orange' };
+
+function PaidBadge({ p }: { p: Purchase }) {
+  const st = p.payment_status ?? 'none';
+  if (st === 'none') return <span style={{ color: 'var(--color-text-muted)' }}>—</span>;
+  return (
+    <span data-testid={`paid-${p.id}`}>
+      <Badge color={PAY_COLOR[st] ?? 'gray'} label={st === 'partial' ? `Owes ${money(Number(p.owed ?? 0))}` : st} />
+      {st === 'paid' && p.paid_at && <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{shortDate(p.paid_at)}{p.payment_method ? ` · ${p.payment_method}` : ''}</div>}
+    </span>
+  );
+}
+
+function OrdersTab({ supplier, isMobile, canPay }: { supplier: SupplierCard; isMobile: boolean; canPay: boolean }) {
+  const qc = useQueryClient();
+  const [paying, setPaying] = useState<Purchase | null>(null);
   const [status, setStatus] = useState('all');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -262,6 +281,7 @@ function OrdersTab({ supplier, isMobile }: { supplier: SupplierCard; isMobile: b
   });
   const rows: Purchase[] = q.data?.purchases.data ?? [];
   const total = rows.filter((p) => p.status !== 'cancelled' && p.status !== 'draft').reduce((s, p) => s + Number(p.total), 0);
+  const owed = rows.reduce((s, p) => s + Number(p.owed ?? 0), 0);
 
   const exportCsv = () => downloadCSV(`${supplier.name}-orders.csv`, rows.map((p) => ({
     'PO': p.purchase_number, 'Date': p.purchase_date ?? '', 'Status': p.status, 'Lines': p.items?.length ?? 0,
@@ -296,6 +316,12 @@ function OrdersTab({ supplier, isMobile }: { supplier: SupplierCard; isMobile: b
                       <Badge color={STATUS_COLOR[p.status] ?? 'gray'} label={p.status} />
                     </div>
                   </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, gap: 8 }}>
+                    <PaidBadge p={p} />
+                    {canPay && p.payment_status && p.payment_status !== 'none' && p.payment_status !== 'paid' && (
+                      <Btn small variant="secondary" onClick={(e) => { e.preventDefault(); setPaying(p); }}>Record payment</Btn>
+                    )}
+                  </div>
                 </Card>
               </Link>
             ))}
@@ -304,7 +330,7 @@ function OrdersTab({ supplier, isMobile }: { supplier: SupplierCard; isMobile: b
           <div style={{ overflowX: 'auto', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead><tr>
-                <th style={TH}>PO</th><th style={TH}>Date</th><th style={TH}>Status</th><th style={TH}>Items</th><th style={TH}>Delivered</th><th style={TH}>Total</th>
+                <th style={TH}>PO</th><th style={TH}>Date</th><th style={TH}>Status</th><th style={TH}>Items</th><th style={TH}>Delivered</th><th style={TH}>Total</th><th style={TH}>Paid</th>
               </tr></thead>
               <tbody>
                 {rows.map((p) => (
@@ -323,12 +349,24 @@ function OrdersTab({ supplier, isMobile }: { supplier: SupplierCard; isMobile: b
                     </td>
                     <td style={TD}>{p.actual_delivery_date ? shortDate(p.actual_delivery_date) : p.expected_delivery_date ? <span style={{ color: 'var(--color-text-muted)' }}>due {shortDate(p.expected_delivery_date)}</span> : '—'}</td>
                     <td style={{ ...TD, fontWeight: 700 }}>{money(Number(p.total))}</td>
+                    <td style={TD}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <PaidBadge p={p} />
+                        {canPay && p.payment_status && p.payment_status !== 'none' && p.payment_status !== 'paid' && (
+                          <Btn small variant="secondary" onClick={() => setPaying(p)}>Record payment</Btn>
+                        )}
+                        {canPay && p.payment_status === 'paid' && (
+                          <button type="button" onClick={() => void clearPurchasePayment(p.id).then(() => qc.invalidateQueries({ queryKey: ['purchasing'] }))} style={{ border: 'none', background: 'none', color: 'var(--color-text-muted)', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>Undo</button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
               <tfoot><tr>
                 <td style={{ ...TD, fontWeight: 700 }} colSpan={5}>Total of placed orders on this page</td>
                 <td style={{ ...TD, fontWeight: 800 }} data-testid="supplier-orders-total">{money(total)}</td>
+                <td style={{ ...TD, fontWeight: 700 }} data-testid="supplier-orders-owed">{owed > 0 ? `${money(owed)} owed` : 'All paid'}</td>
               </tr></tfoot>
             </table>
           </div>
@@ -341,7 +379,64 @@ function OrdersTab({ supplier, isMobile }: { supplier: SupplierCard; isMobile: b
           <Btn small variant="secondary" disabled={page >= q.data.purchases.last_page} onClick={() => setPage((p) => p + 1)}>Next</Btn>
         </div>
       )}
+
+      {paying && (
+        <PaymentModal
+          purchase={paying}
+          onClose={() => setPaying(null)}
+          onSaved={() => { setPaying(null); void qc.invalidateQueries({ queryKey: ['purchasing'] }); }}
+        />
+      )}
     </div>
+  );
+}
+
+/**
+ * Money out against one order (owner, 2026-09-21). The amount starts at what
+ * is still owed, so "Mark paid" is one tap; a part payment is a smaller
+ * number typed over it.
+ */
+function PaymentModal({ purchase, onClose, onSaved }: { purchase: Purchase; onClose: () => void; onSaved: () => void }) {
+  const owedNow = Number(purchase.owed ?? purchase.total);
+  const [amount, setAmount] = useState(String(owedNow.toFixed(2)));
+  const [paidOn, setPaidOn] = useState(new Date().toISOString().slice(0, 10));
+  const [method, setMethod] = useState<PurchasePaymentMethod>('cash');
+  const [reference, setReference] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const num = Number(amount);
+  const valid = Number.isFinite(num) && num > 0 && num <= owedNow + 0.005;
+
+  const save = async () => {
+    setSaving(true); setError('');
+    try {
+      await recordPurchasePayment(purchase.id, { amount: Math.round(num * 100) / 100, paid_on: paidOn, method, reference: reference.trim() || undefined });
+      onSaved();
+    } catch (e) { setError((e as Error).message); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <Modal title={`Record payment — ${purchase.purchase_number}`} onClose={onClose} maxWidth={420}>
+      <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--color-text-secondary)' }}>
+        Order total {money(Number(purchase.total))}{Number(purchase.paid_amount ?? 0) > 0 ? `, ${money(Number(purchase.paid_amount))} paid so far` : ''}. Still owed <strong>{money(owedNow)}</strong>.
+      </p>
+      {error && <p style={{ color: 'var(--color-danger-strong)', fontSize: 13 }}>{error}</p>}
+      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }} htmlFor="pay-amount">Amount (MVR)</label>
+      <input id="pay-amount" type="number" min={0.01} step={0.01} max={owedNow} value={amount} onChange={(e) => setAmount(e.target.value)} style={{ ...selectStyle, width: '100%', boxSizing: 'border-box', marginBottom: 10 }} />
+      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }} htmlFor="pay-date">Paid on</label>
+      <input id="pay-date" type="date" value={paidOn} onChange={(e) => setPaidOn(e.target.value)} style={{ ...selectStyle, width: '100%', boxSizing: 'border-box', marginBottom: 10 }} />
+      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }} htmlFor="pay-method">How</label>
+      <select id="pay-method" value={method} onChange={(e) => setMethod(e.target.value as PurchasePaymentMethod)} style={{ ...selectStyle, width: '100%', marginBottom: 10 }}>
+        <option value="cash">Cash</option><option value="transfer">Bank transfer</option><option value="other">Other</option>
+      </select>
+      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }} htmlFor="pay-ref">Reference (optional)</label>
+      <input id="pay-ref" value={reference} onChange={(e) => setReference(e.target.value)} placeholder="Transfer ref, receipt no…" style={{ ...selectStyle, width: '100%', boxSizing: 'border-box' }} />
+      <ModalActions>
+        <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
+        <Btn onClick={() => void save()} disabled={saving || !valid}>{saving ? 'Saving…' : num + 0.005 >= owedNow ? 'Mark paid' : 'Record part payment'}</Btn>
+      </ModalActions>
+    </Modal>
   );
 }
 
@@ -352,9 +447,15 @@ const selectStyle: React.CSSProperties = {
 
 // ── Items bought ────────────────────────────────────────────────────────
 
-function ItemsTab({ supplier, isMobile }: { supplier: SupplierCard; isMobile: boolean }) {
+function ItemsTab({ supplier, isMobile, canOrder }: { supplier: SupplierCard; isMobile: boolean; canOrder: boolean }) {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState<SupplierItem | null>(null);
+  // Owner, 2026-09-21: order the same things again from here.
+  const [picked, setPicked] = useState<number[]>([]);
+  const [ordering, setOrdering] = useState(false);
+  const [orderError, setOrderError] = useState('');
+  const togglePick = (id: number) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
   const q = useQuery({
     queryKey: ['purchasing', 'supplier', supplier.id, 'items'],
     queryFn: () => fetchSupplierItems(supplier.id),
@@ -364,6 +465,20 @@ function ItemsTab({ supplier, isMobile }: { supplier: SupplierCard; isMobile: bo
     return (q.data?.items ?? []).filter((i) => !s || i.name.toLowerCase().includes(s));
   }, [q.data, search]);
   const cheaperCount = (q.data?.items ?? []).filter((i) => i.elsewhere?.cheaper).length;
+
+  const reorder = async () => {
+    const chosen = (q.data?.items ?? []).filter((i) => picked.includes(i.item_id));
+    if (chosen.length === 0) return;
+    setOrdering(true); setOrderError('');
+    try {
+      const res = await createPurchaseFromSuggest({
+        supplier_id: supplier.id,
+        items: chosen.map((i) => ({ inventory_item_id: i.item_id, quantity: i.last.quantity, unit_cost: i.last.price })),
+        notes: `Reordered from ${supplier.name}'s page`,
+      });
+      navigate(`/purchasing/orders?search=${encodeURIComponent(res.purchase.purchase_number)}`);
+    } catch (e) { setOrderError((e as Error).message); setOrdering(false); }
+  };
 
   const exportCsv = () => downloadCSV(`${supplier.name}-items.csv`, rows.map((i) => ({
     'Item': i.name, 'Unit': i.unit, 'Orders': i.orders, 'Quantity': i.quantity, 'Spend': i.spend.toFixed(2),
@@ -376,6 +491,12 @@ function ItemsTab({ supplier, isMobile }: { supplier: SupplierCard; isMobile: bo
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search items…" aria-label="Search items" style={{ ...selectStyle, flex: '1 1 180px', maxWidth: 300 }} />
         {cheaperCount > 0 && <Badge color="orange" label={`${cheaperCount} cheaper elsewhere`} />}
+        {canOrder && (
+          <Btn small onClick={() => void reorder()} disabled={picked.length === 0 || ordering}>
+            <ShoppingCart size={13} /> {ordering ? 'Creating…' : `Order again${picked.length ? ` (${picked.length})` : ''}`}
+          </Btn>
+        )}
+        {orderError && <span style={{ color: 'var(--color-danger-strong)', fontSize: 12 }}>{orderError}</span>}
         <Btn small variant="secondary" onClick={exportCsv} disabled={rows.length === 0}><Download size={13} /> CSV</Btn>
       </div>
 
@@ -384,7 +505,9 @@ function ItemsTab({ supplier, isMobile }: { supplier: SupplierCard; isMobile: bo
         : isMobile ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {rows.map((i) => (
-              <button key={i.item_id} type="button" onClick={() => setOpen(i)} style={{ display: 'flex', gap: 10, alignItems: 'center', textAlign: 'left', width: '100%', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '10px 12px', cursor: 'pointer', font: 'inherit', color: 'inherit' }}>
+              <div key={i.item_id} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              {canOrder && <input type="checkbox" aria-label={`Pick ${i.name}`} checked={picked.includes(i.item_id)} onChange={() => togglePick(i.item_id)} />}
+              <button type="button" onClick={() => setOpen(i)} style={{ display: 'flex', gap: 10, alignItems: 'center', textAlign: 'left', flex: 1, minWidth: 0, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '10px 12px', cursor: 'pointer', font: 'inherit', color: 'inherit' }}>
                 <ItemThumb url={i.photo_url} name={i.name} size={40} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 14 }}>{i.name}</div>
@@ -393,17 +516,24 @@ function ItemsTab({ supplier, isMobile }: { supplier: SupplierCard; isMobile: bo
                 </div>
                 <ChangeBadge pct={i.change_pct} />
               </button>
+              </div>
             ))}
           </div>
         ) : (
           <div style={{ overflowX: 'auto', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }} data-testid="supplier-items-table">
               <thead><tr>
+                {canOrder && <th style={TH}><input type="checkbox" aria-label="Pick every item" checked={rows.length > 0 && rows.every((i) => picked.includes(i.item_id))} onChange={(e) => setPicked(e.target.checked ? rows.map((i) => i.item_id) : [])} /></th>}
                 <th style={TH}>Item</th><th style={TH}>Orders</th><th style={TH}>Quantity</th><th style={TH}>Spend</th><th style={TH}>Last price</th><th style={TH}>First price</th><th style={TH}>Change</th><th style={TH}>Elsewhere</th>
               </tr></thead>
               <tbody>
                 {rows.map((i) => (
                   <tr key={i.item_id} onClick={() => setOpen(i)} style={{ cursor: 'pointer' }} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(i); } }}>
+                    {canOrder && (
+                      <td style={TD} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                        <input type="checkbox" aria-label={`Pick ${i.name}`} checked={picked.includes(i.item_id)} onChange={() => togglePick(i.item_id)} />
+                      </td>
+                    )}
                     <td style={TD}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <ItemThumb url={i.photo_url} name={i.name} size={32} />

@@ -36,7 +36,7 @@ class SupplierProfileService
             ->where('supplier_id', $supplier->id)
             ->orderBy('purchase_date')
             ->orderBy('id')
-            ->get(['id', 'purchase_number', 'status', 'total', 'purchase_date', 'expected_delivery_date', 'actual_delivery_date']);
+            ->get(['id', 'purchase_number', 'status', 'total', 'paid_amount', 'purchase_date', 'expected_delivery_date', 'actual_delivery_date']);
 
         $statusCounts = ['draft' => 0, 'ordered' => 0, 'partial' => 0, 'received' => 0, 'cancelled' => 0];
         foreach ($all as $p) {
@@ -61,9 +61,16 @@ class SupplierProfileService
         $avg = fn (string $col) => $ratings->isEmpty() ? null : round((float) $ratings->avg($col), 1);
 
         $lines = $this->lines($supplier->id);
+        $owing = $counted->filter(fn (Purchase $p) => (float) $p->owed > 0.0);
 
         return [
             'supplier' => $this->supplierCard($supplier),
+            // What is still to pay them (owner, 2026-09-21).
+            'owed' => [
+                'amount' => round((float) $owing->sum(fn (Purchase $p) => (float) $p->owed), 2),
+                'orders' => $owing->count(),
+                'oldest_date' => $owing->map(fn (Purchase $p) => $p->purchase_date?->toDateString())->filter()->min(),
+            ],
             'orders' => [
                 'count' => $counted->count(),
                 'spend' => $spend,
@@ -153,6 +160,8 @@ class SupplierProfileService
                     'date' => $last->purchase->purchase_date?->toDateString(),
                     'brand' => $last->brand,
                     'purchase_number' => $last->purchase->purchase_number,
+                    // For "order it again": the same amount as last time.
+                    'quantity' => round((float) $last->quantity, 3),
                 ],
                 'change_pct' => $sorted->count() > 1 ? PriceChangesService::pct($firstPrice, $lastPrice) : null,
                 // What we paid this shop each time, for the chart. From the
@@ -176,6 +185,48 @@ class SupplierProfileService
         usort($out, fn (array $a, array $b) => $b['spend'] <=> $a['spend'] ?: strcasecmp($a['name'], $b['name']));
 
         return ['supplier' => $this->supplierCard($supplier), 'items' => $out];
+    }
+
+    /**
+     * What is owed to whom: every placed, uncancelled order with money still
+     * to pay, added up per supplier. A purchase from a typed shop name with
+     * no supplier record is listed under that name.
+     *
+     * @return array{suppliers: list<array<string, mixed>>, total_owed: float, orders: int}
+     */
+    public function payables(): array
+    {
+        $open = Purchase::query()
+            ->with('supplier:id,name')
+            ->whereIn('status', Purchase::OWING_STATUSES)
+            ->whereColumn('paid_amount', '<', 'total')
+            ->orderBy('purchase_date')
+            ->limit(5000)
+            ->get(['id', 'purchase_number', 'supplier_id', 'supplier_name_text', 'status', 'total', 'paid_amount', 'purchase_date'])
+            ->filter(fn (Purchase $p) => (float) $p->owed > 0.0);
+
+        $rows = $open->groupBy(fn (Purchase $p) => $p->supplier_id ? 's:' . $p->supplier_id : 't:' . mb_strtolower(trim((string) $p->supplier_name_text)))
+            ->map(function (Collection $orders) {
+                $first = $orders->first();
+
+                return [
+                    'supplier_id' => $first->supplier_id,
+                    'name' => $first->supplier?->name ?? (trim((string) $first->supplier_name_text) ?: 'Unknown shop'),
+                    'owed' => round((float) $orders->sum(fn (Purchase $p) => (float) $p->owed), 2),
+                    'orders' => $orders->count(),
+                    'oldest_date' => $orders->map(fn (Purchase $p) => $p->purchase_date?->toDateString())->filter()->min(),
+                    'oldest_number' => $first->purchase_number,
+                ];
+            })
+            ->sortByDesc('owed')
+            ->values()
+            ->all();
+
+        return [
+            'suppliers' => $rows,
+            'total_owed' => round((float) $open->sum(fn (Purchase $p) => (float) $p->owed), 2),
+            'orders' => $open->count(),
+        ];
     }
 
     /** @return Collection<int, PurchaseItem> */

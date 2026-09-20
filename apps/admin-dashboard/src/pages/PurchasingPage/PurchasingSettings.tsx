@@ -311,6 +311,11 @@ export function PurchasingSettings({ canEdit }: { canEdit: boolean }) {
           help="An SMS to every owner phone on file when stock drops under a reorder point. Independent of the automatic request above — you can have the message without the request, or both."
           control={toggle('reorder_alert_sms')}
         />
+        <Row
+          label="Text the owner every Monday with what went up"
+          help="An SMS naming the items whose last buy was 10% or more above the one before, with the old and new price. Nothing is sent in a week when nothing rose."
+          control={toggle('price_rise_alert_sms')}
+        />
       </Section>
     </div>
   );

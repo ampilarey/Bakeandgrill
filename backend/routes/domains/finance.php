@@ -109,6 +109,8 @@ Route::middleware(['auth:sanctum', 'permission.any:suppliers.purchases,reports.f
 Route::middleware(['auth:sanctum', 'permission.any:suppliers.purchases,suppliers.manage,reports.financial'])->group(function () {
     Route::get('/purchasing/suppliers/{id}/overview', [App\Http\Controllers\Api\SupplierProfileController::class, 'overview'])->whereNumber('id');
     Route::get('/purchasing/suppliers/{id}/items', [App\Http\Controllers\Api\SupplierProfileController::class, 'items'])->whereNumber('id');
+    // What is owed to whom (owner, 2026-09-21).
+    Route::get('/purchasing/payables', [App\Http\Controllers\Api\SupplierProfileController::class, 'payables']);
 });
 
 // ─── Supplier Intelligence ─────────────────────────────────────────────────
@@ -131,6 +133,9 @@ Route::middleware(['auth:sanctum', 'permission:suppliers.purchases'])->prefix('p
     Route::get('/frequent-items', [App\Http\Controllers\Api\SupplierFrequentItemsController::class, 'index']);
     // Every line bought in a window, flat, for narrowing by shop, brand or item.
     Route::get('/lines', [App\Http\Controllers\Api\PurchaseLinesController::class, 'index']);
+    // Money out against an order (owner, 2026-09-21): part or whole, and undo.
+    Route::post('/{id}/payment', [App\Http\Controllers\Api\PurchasePaymentController::class, 'store'])->whereNumber('id');
+    Route::delete('/{id}/payment', [App\Http\Controllers\Api\PurchasePaymentController::class, 'destroy'])->whereNumber('id');
     Route::post('/{id}/approve', [App\Http\Controllers\Api\PurchaseWorkflowController::class, 'approve'])->whereNumber('id');
     // /reject is the old name for the same act, kept so nothing in flight breaks.
     Route::post('/{id}/reject', [App\Http\Controllers\Api\PurchaseWorkflowController::class, 'reject'])->whereNumber('id');

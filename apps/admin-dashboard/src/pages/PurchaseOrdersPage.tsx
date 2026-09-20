@@ -1252,7 +1252,11 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                 >
                   {po.purchase_number}
                 </button>
-                <Badge label={po.status.toUpperCase()} color={STATUS_COLOR[po.status] ?? 'gray'} />
+                <span style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  <Badge label={po.status.toUpperCase()} color={STATUS_COLOR[po.status] ?? 'gray'} />
+                  {po.payment_status === 'paid' && <Badge label="PAID" color="green" />}
+                  {po.payment_status === 'partial' && <Badge label={`OWES ${Number(po.owed ?? 0).toFixed(2)}`} color="yellow" />}
+                </span>
               </div>
               <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>
                 {po.supplier?.name ?? po.supplier_name_text ?? 'No supplier'}
@@ -1297,7 +1301,12 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                   </td>
                   <td style={{ ...TD, color: 'var(--color-text-secondary)' }}>{po.supplier?.name ?? po.supplier_name_text ?? '—'}</td>
                   <td style={TD}>
-                    <Badge label={po.status.toUpperCase()} color={STATUS_COLOR[po.status] ?? 'gray'} />
+                    <span style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                      <Badge label={po.status.toUpperCase()} color={STATUS_COLOR[po.status] ?? 'gray'} />
+                      {/* Money out (owner, 2026-09-21): paid, or how much is still owed. */}
+                      {po.payment_status === 'paid' && <Badge label="PAID" color="green" />}
+                      {po.payment_status === 'partial' && <Badge label={`OWES ${Number(po.owed ?? 0).toFixed(2)}`} color="yellow" />}
+                    </span>
                   </td>
                   <td style={{ ...TD, fontWeight: 700, color: 'var(--color-primary)' }}>MVR {parseFloat(String(po.total ?? po.subtotal ?? 0)).toFixed(2)}</td>
                   <td style={{ ...TD, color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>{po.purchase_date ?? '—'}</td>

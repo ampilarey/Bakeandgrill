@@ -47,6 +47,7 @@ const settings = {
   restock_include_waste: false,
   restock_high_waste_pct: 15,
   reorder_alert_sms: false,
+  price_rise_alert_sms: false,
   expense_categories: [{ id: 3, name: 'Supplies' }],
 };
 const getPurchasingSettings = vi.fn();
@@ -170,6 +171,6 @@ describe('PurchasingPage', () => {
     await screen.findByText('Server said no');
     // Still Off: the optimistic flip was rolled back. Eight switches, one
     // (price hints) defaults On, so seven read Off — same as before the click.
-    expect(screen.getAllByRole('button', { name: 'Off' })).toHaveLength(7);
+    expect(screen.getAllByRole('button', { name: 'Off' })).toHaveLength(8);
   });
 });

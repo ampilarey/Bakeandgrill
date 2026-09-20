@@ -25,12 +25,17 @@ vi.mock('../api/purchasing', () => ({
   fetchSupplierItems: (...a: unknown[]) => fetchSupplierItems(...a),
   fetchSupplierRatings: (...a: unknown[]) => fetchSupplierRatings(...a),
   fetchItemPriceHistory: (...a: unknown[]) => fetchItemPriceHistory(...a),
+  recordPurchasePayment: (...a: unknown[]) => recordPurchasePayment(...a),
+  clearPurchasePayment: vi.fn().mockResolvedValue({ message: '' }),
 }));
+const recordPurchasePayment = vi.fn();
+const createPurchaseFromSuggest = vi.fn();
 const fetchPurchases = vi.fn();
 const rateSupplier = vi.fn();
 const updateSupplier = vi.fn();
 vi.mock('../api', () => ({
   fetchPurchases: (...a: unknown[]) => fetchPurchases(...a),
+  createPurchaseFromSuggest: (...a: unknown[]) => createPurchaseFromSuggest(...a),
   rateSupplier: (...a: unknown[]) => rateSupplier(...a),
   updateSupplier: (...a: unknown[]) => updateSupplier(...a),
 }));
@@ -42,6 +47,7 @@ const agora = {
 };
 const overview = {
   supplier: agora,
+  owed: { amount: 230, orders: 2, oldest_date: '2026-08-21' },
   orders: {
     count: 3, spend: 330, average: 110, first_date: '2026-07-22', last_date: '2026-09-18', days_between: 29,
     on_time: { on_time: 2, timed: 2, rate: 100 }, by_status: { draft: 1, ordered: 1, partial: 0, received: 2, cancelled: 1 }, open: 1,
@@ -53,13 +59,13 @@ const overview = {
 const items = [
   {
     item_id: 1, name: 'Flour', unit: 'kg', photo_url: null, is_active: true, orders: 3, quantity: 25, spend: 270,
-    first: { price: 10, date: '2026-07-22' }, last: { price: 12, date: '2026-09-18', brand: 'Pillsbury', purchase_number: 'PO-3' },
+    first: { price: 10, date: '2026-07-22' }, last: { price: 12, date: '2026-09-18', brand: 'Pillsbury', purchase_number: 'PO-3', quantity: 5 },
     change_pct: 20, elsewhere: { supplier: 'Fahi Store', price: 11.5, date: '2026-09-15', cheaper: true },
     points: [{ date: '2026-07-22', price: 10, brand: null, purchase_number: 'PO-1' }, { date: '2026-09-18', price: 12, brand: 'Pillsbury', purchase_number: 'PO-3' }],
   },
   {
     item_id: 2, name: 'Eggs', unit: 'pcs', photo_url: null, is_active: true, orders: 1, quantity: 30, spend: 60,
-    first: { price: 2, date: '2026-08-21' }, last: { price: 2, date: '2026-08-21', brand: null, purchase_number: 'PO-2' },
+    first: { price: 2, date: '2026-08-21' }, last: { price: 2, date: '2026-08-21', brand: null, purchase_number: 'PO-2', quantity: 30 },
     change_pct: null, elsewhere: { supplier: 'Fahi Store', price: 2.5, date: '2026-09-15', cheaper: false },
     points: [{ date: '2026-08-21', price: 2, brand: null, purchase_number: 'PO-2' }],
   },
@@ -68,9 +74,9 @@ const orders = {
   purchases: {
     current_page: 1, last_page: 1, total: 3,
     data: [
-      { id: 3, purchase_number: 'PO-3', supplier_id: 7, status: 'ordered', total: 60, purchase_date: '2026-09-18', created_at: '', items: [{ id: 1, quantity: 5, received_quantity: 0, receive_status: 'pending', unit_cost: 12, inventory_item: { id: 1, name: 'Flour' } }] },
-      { id: 2, purchase_number: 'PO-2', supplier_id: 7, status: 'received', total: 170, purchase_date: '2026-08-21', created_at: '', actual_delivery_date: '2026-08-22', items: [] },
-      { id: 5, purchase_number: 'PO-5', supplier_id: 7, status: 'cancelled', total: 180, purchase_date: '2026-08-31', created_at: '', items: [] },
+      { id: 3, purchase_number: 'PO-3', supplier_id: 7, status: 'ordered', total: 60, paid_amount: 0, owed: 60, payment_status: 'unpaid', purchase_date: '2026-09-18', created_at: '', items: [{ id: 1, quantity: 5, received_quantity: 0, receive_status: 'pending', unit_cost: 12, inventory_item: { id: 1, name: 'Flour' } }] },
+      { id: 2, purchase_number: 'PO-2', supplier_id: 7, status: 'received', total: 170, paid_amount: 0, owed: 170, payment_status: 'unpaid', purchase_date: '2026-08-21', created_at: '', actual_delivery_date: '2026-08-22', items: [] },
+      { id: 5, purchase_number: 'PO-5', supplier_id: 7, status: 'cancelled', total: 180, paid_amount: 0, owed: 0, payment_status: 'none', purchase_date: '2026-08-31', created_at: '', items: [] },
     ],
   },
 };
@@ -96,6 +102,8 @@ beforeEach(() => {
     { date: '2026-09-18', price: 12, supplier: 'Agora', brand: 'Pillsbury', purchase_id: 3, purchase_number: 'PO-3' },
   ] });
   fetchPurchases.mockResolvedValue(orders);
+  recordPurchasePayment.mockResolvedValue({ message: 'Marked as paid.', purchase: {} });
+  createPurchaseFromSuggest.mockResolvedValue({ purchase: { id: 9, purchase_number: 'PO-9' } });
   rateSupplier.mockResolvedValue({ rating: {} });
   updateSupplier.mockResolvedValue({ supplier: agora });
 });
@@ -203,5 +211,49 @@ describe('SupplierProfilePage', () => {
     fireEvent.click(within(tab).getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(updateSupplier).toHaveBeenCalledWith(7, { notes: 'Closed Fridays. Ask for Ali.', payment_terms: 'Cash on delivery', lead_days: 3 }));
     expect(await within(tab).findByText('Saved.')).toBeInTheDocument();
+  });
+  // Owner, 2026-09-21: close the buying loop.
+  it('says what is owed, records a payment against an order, and shows it paid', async () => {
+    mount();
+    const head = await screen.findByTestId('supplier-head');
+    expect(within(head).getByTestId('supplier-owed').textContent).toContain('Owed MVR 230.00 · 2 orders');
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Purchase orders' }));
+    const tab = await screen.findByTestId('supplier-orders');
+    await within(tab).findByText('PO-3');
+    expect(within(tab).getByTestId('supplier-orders-owed').textContent).toBe('MVR 230.00 owed');
+    expect(within(tab).getByTestId('paid-3').textContent).toBe('unpaid');
+
+    fireEvent.click(within(tab).getAllByRole('button', { name: 'Record payment' })[0]);
+    const dialog = await screen.findByRole('dialog');
+    expect((within(dialog).getByLabelText('Amount (MVR)') as HTMLInputElement).value).toBe('60.00');
+    fireEvent.change(within(dialog).getByLabelText('How'), { target: { value: 'transfer' } });
+    fireEvent.change(within(dialog).getByLabelText('Reference (optional)'), { target: { value: 'BML 1' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Mark paid' }));
+    await waitFor(() => expect(recordPurchasePayment).toHaveBeenCalledWith(3, expect.objectContaining({ amount: 60, method: 'transfer', reference: 'BML 1' })));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    // A smaller amount is a part payment; more than is owed cannot be sent.
+    fireEvent.click(within(tab).getAllByRole('button', { name: 'Record payment' })[0]);
+    const again = await screen.findByRole('dialog');
+    fireEvent.change(within(again).getByLabelText('Amount (MVR)'), { target: { value: '25' } });
+    expect(await within(again).findByRole('button', { name: /Record part payment/ })).toBeEnabled();
+    fireEvent.change(within(again).getByLabelText('Amount (MVR)'), { target: { value: '999' } });
+    // Above what is owed the button cannot be pressed at all.
+    await waitFor(() => expect(within(again).getByRole('button', { name: /Mark paid/ })).toBeDisabled());
+  });
+
+  it('orders picked items again at the last quantity and price, then opens the new order', async () => {
+    mount();
+    await screen.findByTestId('supplier-head');
+    fireEvent.click(screen.getByRole('tab', { name: 'Items bought' }));
+    await screen.findByTestId('supplier-items-table');
+    expect(screen.getByRole('button', { name: /Order again/ })).toBeDisabled();
+    fireEvent.click(screen.getByLabelText('Pick Flour'));
+    fireEvent.click(screen.getByRole('button', { name: 'Order again (1)' }));
+    await waitFor(() => expect(createPurchaseFromSuggest).toHaveBeenCalledWith(expect.objectContaining({
+      supplier_id: 7,
+      items: [{ inventory_item_id: 1, quantity: 5, unit_cost: 12 }],
+    })));
   });
 });

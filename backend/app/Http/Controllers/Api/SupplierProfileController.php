@@ -23,6 +23,12 @@ class SupplierProfileController extends Controller
         return response()->json($this->profile->overview(Supplier::findOrFail($id)));
     }
 
+    /** GET /purchasing/payables — what is owed to whom. */
+    public function payables(): JsonResponse
+    {
+        return response()->json($this->profile->payables());
+    }
+
     /** GET /purchasing/suppliers/{id}/items */
     public function items(int $id): JsonResponse
     {

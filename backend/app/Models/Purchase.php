@@ -37,6 +37,12 @@ class Purchase extends Model
         'gst_laar',
         'total_laar',
         'total',
+        // What has been paid on it (owner, 2026-09-21): the loop from
+        // order to money out, so the system can say what is owed.
+        'paid_amount',
+        'paid_at',
+        'payment_method',
+        'payment_ref',
         'is_tax_invoice_received',
         'is_input_tax_claimable',
         'claim_block_reason',
@@ -56,6 +62,8 @@ class Purchase extends Model
         'subtotal' => 'decimal:2',
         'tax_amount' => 'decimal:2',
         'total' => 'decimal:2',
+        'paid_amount' => 'decimal:2',
+        'paid_at' => 'date:Y-m-d',
         /*
          * Date-only on the wire. A plain `date` cast serialises midnight in
          * the app's timezone, so a purchase dated 2026-09-01 left here as
@@ -75,6 +83,35 @@ class Purchase extends Model
         'is_tax_invoice_received' => 'boolean',
         'is_input_tax_claimable' => 'boolean',
     ];
+
+    /** Statuses that are money: placed with the shop and not cancelled. */
+    public const OWING_STATUSES = ['ordered', 'partial', 'received'];
+
+    protected $appends = ['owed', 'payment_status'];
+
+    /** What is still to pay: the total less what has been paid, never below zero. */
+    public function getOwedAttribute(): float
+    {
+        if (!in_array((string) $this->status, self::OWING_STATUSES, true)) {
+            return 0.0;
+        }
+
+        return round(max(0.0, (float) $this->total - (float) $this->paid_amount), 2);
+    }
+
+    /** unpaid, partial or paid — or none for a draft or cancelled order. */
+    public function getPaymentStatusAttribute(): string
+    {
+        if (!in_array((string) $this->status, self::OWING_STATUSES, true)) {
+            return 'none';
+        }
+        $paid = (float) $this->paid_amount;
+        if ($paid <= 0.0) {
+            return 'unpaid';
+        }
+
+        return $paid + 0.005 >= (float) $this->total ? 'paid' : 'partial';
+    }
 
     public function supplier(): BelongsTo
     {

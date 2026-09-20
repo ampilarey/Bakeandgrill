@@ -798,6 +798,14 @@ export interface Purchase {
   /** Why the GST on this order cannot be claimed yet, when it cannot. */
   claim_block_reason?: string | null;
   revenue_or_capital?: 'revenue' | 'capital' | null;
+  /** Money out against this order (owner, 2026-09-21). */
+  paid_amount?: number;
+  paid_at?: string | null;
+  payment_method?: string | null;
+  payment_ref?: string | null;
+  /** total − paid, never below zero; 0 for a draft or cancelled order. */
+  owed?: number;
+  payment_status?: 'none' | 'unpaid' | 'partial' | 'paid';
   created_at: string;
   items?: {
     id: number;

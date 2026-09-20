@@ -23,6 +23,7 @@ import {
   fetchPrintJobs,
   fetchSmsLogStats,
   fetchPriceChanges,
+  fetchPayables,
   getCreditExposureReport,
   type MaintenancePreview,
   type InventoryItem,
@@ -502,6 +503,14 @@ export function DashboardPage() {
     staleTime: 5 * 60_000,
   });
 
+  // Owner, 2026-09-21: what is owed to suppliers, when anything is.
+  const { data: owedToSuppliers = 0 } = useQuery({
+    queryKey: ['dashboard', 'payables'],
+    queryFn: async () => (await fetchPayables()).total_owed,
+    enabled: canPriceChanges,
+    staleTime: 5 * 60_000,
+  });
+
   const { data: printPending = 0 } = useQuery({
     queryKey: ['dashboard', 'print-jobs-pending'],
     queryFn: async () => {
@@ -607,6 +616,13 @@ export function DashboardPage() {
       key: 'prices', label: 'Price rises', value: String(priceRises),
       sub: 'Items up 10%+ on last buy', accent: 'var(--color-warning)', icon: TrendingUp,
       onClick: () => navigate('/purchasing/price-changes'),
+    });
+  }
+  if (canPriceChanges && owedToSuppliers > 0) {
+    opsCards.push({
+      key: 'payables', label: 'Owed to suppliers', value: fmt(owedToSuppliers),
+      sub: 'Placed orders not yet paid', accent: 'var(--color-warning)', icon: Truck,
+      onClick: () => navigate('/purchasing/suppliers'),
     });
   }
   if (canDelivery && deliveryPending > 0) {

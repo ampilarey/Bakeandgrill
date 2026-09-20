@@ -28,6 +28,8 @@ export interface PurchasingSettings {
   restock_include_waste: boolean;
   restock_high_waste_pct: number;
   reorder_alert_sms: boolean;
+  /** Monday SMS of the items up 10%+ on their last buy (owner, 2026-09-21). */
+  price_rise_alert_sms: boolean;
   /** For the category picker, so the screen needs one request. */
   expense_categories: Array<{ id: number; name: string }>;
 }
@@ -126,6 +128,8 @@ export interface SupplierCard {
 
 export interface SupplierOverview {
   supplier: SupplierCard;
+  /** What is still to pay them (owner, 2026-09-21). */
+  owed: { amount: number; orders: number; oldest_date: string | null };
   orders: {
     count: number;
     spend: number;
@@ -152,7 +156,7 @@ export interface SupplierItem {
   quantity: number;
   spend: number;
   first: { price: number; date: string | null };
-  last: { price: number; date: string | null; brand: string | null; purchase_number: string };
+  last: { price: number; date: string | null; brand: string | null; purchase_number: string; quantity: number };
   change_pct: number | null;
   elsewhere: { supplier: string | null; price: number; date: string; cheaper: boolean } | null;
   /** What we paid this shop each time, oldest first, for the chart. */
@@ -183,4 +187,34 @@ export interface SupplierRatingRow {
 
 export async function fetchSupplierRatings(supplierId: number): Promise<{ data: SupplierRatingRow[] }> {
   return req(`/suppliers/${supplierId}/ratings`);
+}
+
+/*
+ * What is owed to whom (owner, 2026-09-21: close the buying loop). Every
+ * placed, uncancelled order with money still to pay, per shop.
+ */
+export interface PayableRow {
+  supplier_id: number | null;
+  name: string;
+  owed: number;
+  orders: number;
+  oldest_date: string | null;
+  oldest_number: string;
+}
+
+export async function fetchPayables(): Promise<{ suppliers: PayableRow[]; total_owed: number; orders: number }> {
+  return req('/purchasing/payables');
+}
+
+export type PurchasePaymentMethod = 'cash' | 'transfer' | 'other';
+
+/** Record money out against an order. No amount means the rest of it. */
+export async function recordPurchasePayment(purchaseId: number, data: {
+  amount?: number; paid_on?: string; method?: PurchasePaymentMethod; reference?: string;
+}): Promise<{ message: string; purchase: Record<string, unknown> }> {
+  return req(`/purchases/${purchaseId}/payment`, { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function clearPurchasePayment(purchaseId: number): Promise<{ message: string }> {
+  return req(`/purchases/${purchaseId}/payment`, { method: 'DELETE' });
 }

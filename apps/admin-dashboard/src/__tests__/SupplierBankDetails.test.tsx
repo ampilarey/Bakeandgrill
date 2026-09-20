@@ -52,6 +52,7 @@ vi.mock('../api', () => ({
   getSupplierPriceHistory: vi.fn().mockResolvedValue({ data: [] }),
   comparePrices: vi.fn().mockResolvedValue({ suppliers: [] }),
   fetchInventoryItems: vi.fn().mockResolvedValue({ data: [] }),
+  fetchPayables: vi.fn().mockResolvedValue({ suppliers: [], total_owed: 0, orders: 0 }),
 }));
 
 function open() {

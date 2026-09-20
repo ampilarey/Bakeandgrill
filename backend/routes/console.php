@@ -95,6 +95,13 @@ Schedule::command('expenses:generate-recurring')
     ->onFailure($alertOnFailure('expenses:generate-recurring'))
     ->after($trackSuccess('expenses:generate-recurring'));
 
+// Purchasing: Monday morning SMS of what went up (owner, 2026-09-21). Off
+// unless switched on in Purchasing → Settings; silent when nothing rose.
+Schedule::command('purchasing:price-rise-alert')
+    ->weeklyOn(1, '09:00')
+    ->onFailure($alertOnFailure('purchasing:price-rise-alert'))
+    ->after($trackSuccess('purchasing:price-rise-alert'));
+
 Schedule::command('purchase-requests:generate-recurring-lists')
     ->dailyAt('06:15')
     ->onFailure($alertOnFailure('purchase-requests:generate-recurring-lists'))
