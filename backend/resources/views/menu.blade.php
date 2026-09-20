@@ -513,6 +513,22 @@ html.js .menu-fav { display: inline-flex; }
     border-radius: 999px;
     box-shadow: 0 2px 8px rgba(220,38,38,0.35);
 }
+/* Sold out: the card fades but stays a link, as in the order app. The badge
+   sits where New would, and takes its place — a sold-out dish is not news. */
+.menu-badge-soldout {
+    display: inline-block;
+    background: var(--dark);
+    color: #fff; border: none;
+    font-size: 0.68rem; font-weight: 800;
+    letter-spacing: 0.03em; text-transform: uppercase;
+    padding: 0.24rem 0.5rem; line-height: 1.2;
+    border-radius: 999px;
+    box-shadow: 0 2px 8px rgba(28, 20, 8, 0.3);
+    white-space: nowrap;
+}
+.menu-card--sold-out .menu-card-circle-photo { opacity: 0.45; filter: grayscale(0.7); }
+.menu-card--sold-out .menu-card-body { opacity: 0.55; }
+.menu-card--sold-out:hover .menu-card-circle { transform: none; }
 
 /* Bundles say so on the card. A "Mixed Platter" that a customer picks the
    contents of read exactly like a dish until now (owner's audit, 2026-09-06,
@@ -755,6 +771,7 @@ body.menu-sheet-open { overflow: hidden; }
     $defaultItemImage = $mediaUrl(content('default_item_image'));
     $menuOffers = $menuOffers ?? collect();
     $menuNewItemIds = $menuNewItemIds ?? [];
+    $menuSoldOut = $menuSoldOut ?? [];
     $menuBundles = $menuBundles ?? [];
     $menuSpecialsByItemId = $menuSpecialsByItemId ?? [];
     $menuPriceByItemId = $menuPriceByItemId ?? [];
@@ -1088,6 +1105,7 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                                 $photo = $chosen['url'] ?? null;
                                 $webp  = $chosen['webp'] ?? null;
                                 $isNew = isset($menuNewItemIds[$item->id]);
+                                $soldOut = $menuSoldOut[$item->id] ?? null;
                                 $bundle = $menuBundles[$item->id] ?? null;
 
                                 // Search matches the English name too, always.
@@ -1114,7 +1132,11 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                                  the order app. A small "Order →" caption made a 60px
                                  target next to a 130px photo that did nothing. The heart
                                  is a sibling so it is not a button inside an <a>. --}}
-                            <article class="menu-card"
+                            {{-- A sold-out dish stays on the page, dimmed and still a link
+                                 (owner, 2026-09-21): the details are what a customer taps
+                                 for, and a dish that vanishes reads as "they don't make
+                                 this" rather than "come back tomorrow". --}}
+                            <article class="{{ $soldOut ? 'menu-card menu-card--sold-out' : 'menu-card' }}"
                                      data-search="{{ $haystack }}"
                                      data-diet="{{ $tags }}"
                                      data-name="{{ mb_strtolower($iname['text']) }}"
@@ -1124,7 +1146,8 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                                           otherwise sort every platter to the top. --}}
                                      data-price="{{ number_format($price['price'], 2, '.', '') }}"
                                      @if($price['was'] !== null) data-special="1" @endif
-                                     @if($isNew) data-new="1" @endif>
+                                     @if($isNew) data-new="1" @endif
+                                     @if($soldOut) data-sold-out="1" @endif>
                                 <a class="menu-card-link" href="/menu/{{ $item->id }}">
                                     <div class="menu-card-circle">
                                         <div class="menu-card-circle-photo">
@@ -1138,7 +1161,11 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                                                 <span aria-hidden="true">🍽️</span>
                                             @endif
                                         </div>
-                                        @if($isNew)
+                                        @if($soldOut)
+                                            <div class="menu-card-image-badges menu-card-image-badges--circle">
+                                                <span class="menu-badge-soldout">{{ $soldOut }}</span>
+                                            </div>
+                                        @elseif($isNew)
                                             <div class="menu-card-image-badges menu-card-image-badges--circle">
                                                 <span class="menu-badge-new">New</span>
                                             </div>
@@ -1193,8 +1220,8 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
         'name' => 'Bake & Grill menu',
         'url' => url('/menu'),
         'inLanguage' => $menuLocale === 'dv' ? 'dv' : 'en',
-        'hasMenuSection' => $menuCategories->map(function ($group) use ($itemName, $itemDesc, $categoryName, $priceFor, $menuPhotos) {
-            $toMenuItem = function ($item) use ($itemName, $itemDesc, $priceFor, $menuPhotos) {
+        'hasMenuSection' => $menuCategories->map(function ($group) use ($itemName, $itemDesc, $categoryName, $priceFor, $menuPhotos, $menuSoldOut) {
+            $toMenuItem = function ($item) use ($itemName, $itemDesc, $priceFor, $menuPhotos, $menuSoldOut) {
                 $price = $priceFor($item);
                 $desc = $itemDesc($item)['text'];
 
@@ -1208,11 +1235,12 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                     'image' => ($menuPhotos[$item->id]['full'] ?? null)
                         ?: (($menuPhotos[$item->id]['url'] ?? null) ?: ($item->display_image_url ?: null)),
                     'url' => url('/menu/' . $item->id),
-                    'offers' => [
+                    'offers' => array_filter([
                         '@type' => 'Offer',
                         'price' => number_format($price['price'], 2, '.', ''),
                         'priceCurrency' => 'MVR',
-                    ],
+                        'availability' => isset($menuSoldOut[$item->id]) ? 'https://schema.org/SoldOut' : null,
+                    ], fn ($v) => $v !== null),
                 ], fn ($v) => $v !== null);
             };
 

@@ -65,6 +65,9 @@
     $pageTitle = $iname['text'] . ' – Menu – Bake & Grill';
     $pageDesc = $desc !== '' ? \Illuminate\Support\Str::limit($desc, 160) : $iname['text'] . ' at Bake & Grill. Prices in MVR.';
     $itemAvailable = $itemAvailable ?? true;
+    $itemUnavailableLabel = $itemUnavailableLabel ?? 'Currently unavailable';
+    $itemUnavailableNote = $itemUnavailableNote ?? 'This item is not on the menu right now. You can still share the page, or browse something else.';
+    $menuSizeSoldOut = $menuSizeSoldOut ?? [];
     $alternatives = $alternatives ?? collect();
     $menuVariantPrices = $menuVariantPrices ?? [];
     $socialImage = $socialImage ?? ['url' => '', 'alt' => $iname['text']];
@@ -117,8 +120,8 @@
 
     @if(! $itemAvailable)
         <div class="menu-item-unavailable" data-testid="item-unavailable">
-            <p>Currently unavailable</p>
-            <p class="menu-item-unavailable-note">This item is not on the menu right now. You can still share the page, or browse something else.</p>
+            <p>{{ $itemUnavailableLabel }}</p>
+            <p class="menu-item-unavailable-note">{{ $itemUnavailableNote }}</p>
         </div>
     @endif
 
@@ -221,17 +224,27 @@
             <p class="menu-item-sizes-label">Choose size</p>
             <div class="menu-item-size-chips">
                 @foreach($variants as $variant)
-                    @php $vPrice = $menuVariantPrices[$variant->id] ?? ['price' => (float) $variant->price, 'was' => null]; @endphp
+                    @php
+                        $vPrice = $menuVariantPrices[$variant->id] ?? ['price' => (float) $variant->price, 'was' => null];
+                        // A size the kitchen has run out of is greyed and cannot
+                        // be picked, as in the order app's sheet.
+                        $sizeOff = isset($menuSizeSoldOut[$variant->id]);
+                    @endphp
                     <button type="button"
-                            class="menu-item-size"
+                            class="{{ $sizeOff ? 'menu-item-size menu-item-size--sold-out' : 'menu-item-size' }}"
                             data-size
                             data-variant="{{ $variant->id }}"
-                            aria-pressed="false">
+                            aria-pressed="false"
+                            @if($sizeOff) disabled aria-disabled="true" @endif>
                         <span class="menu-item-size-name">{{ $variant->name }}</span>
                         <span class="menu-item-size-price">
-                            MVR {{ number_format((float) $vPrice['price'], 2) }}
-                            @if(!empty($vPrice['was']))
-                                <s class="menu-item-was">MVR {{ number_format((float) $vPrice['was'], 2) }}</s>
+                            @if($sizeOff)
+                                Sold out
+                            @else
+                                MVR {{ number_format((float) $vPrice['price'], 2) }}
+                                @if(!empty($vPrice['was']))
+                                    <s class="menu-item-was">MVR {{ number_format((float) $vPrice['was'], 2) }}</s>
+                                @endif
                             @endif
                         </span>
                     </button>

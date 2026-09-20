@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Domains\Catalog\Services\NewMenuItemService;
+use App\Domains\Inventory\Services\RecipeStockService;
 use App\Domains\Menu\Services\BundleSummaryService;
 use App\Domains\Promotions\Services\OffersService;
 use App\Models\Category;
 use App\Models\Item;
+use App\Services\AvailabilityResult;
 use App\Services\EffectivePriceService;
+use App\Services\ItemAvailabilityService;
 use App\Services\SpecialPricingService;
 use App\Support\ItemDisplayPhoto;
 use App\Support\QrSvg;
@@ -58,7 +61,7 @@ class MenuPageController extends Controller
 
     public function index(): View
     {
-        $items = $this->sellableItems();
+        $items = $this->menuItems();
         $categories = $this->activeCategories();
         $groups = $this->groupByParent($items, $categories);
 
@@ -69,6 +72,7 @@ class MenuPageController extends Controller
         return view('menu', [
             'menuCategories' => $groups,
             'menuItemCount' => $items->count(),
+            'menuSoldOut' => $this->soldOutLabels($items),
             'menuOffers' => $offers,
             'menuSpecialsByItemId' => $specialsByItemId,
             'menuPriceByItemId' => $this->effectivePrices($items),
@@ -284,6 +288,7 @@ class MenuPageController extends Controller
         $row = Item::query()
             ->with([
                 'variants', 'category', 'photos',
+                'recipe.recipeItems.inventoryItem',
                 'comboItems.item:id,name,name_dv,is_active,base_price,has_variants',
                 'comboItems.item.variants',
                 'platterGroups.allowedItems.item:id,name,is_active',
@@ -295,8 +300,15 @@ class MenuPageController extends Controller
             abort(404);
         }
 
-        $available = !$row->trashed() && $row->is_active && $row->is_available;
+        // Retired and deleted dishes are simply off. A live one is asked the
+        // same question the order app asks — stock, ingredients, the Sold out
+        // toggle — so the page never offers what the kitchen cannot make.
+        $verdict = (!$row->trashed() && $row->is_active)
+            ? app(ItemAvailabilityService::class)->checkAnyChannel($row)
+            : null;
+        $available = $verdict?->allowed ?? false;
         $alternatives = $available ? collect() : $this->categoryAlternatives($row);
+        $note = trim((string) ($row->unavailable_reason_note ?? ''));
 
         $priced = collect([$row])->concat($alternatives);
         $specialsByItemId = $this->indexSpecialsByItem(
@@ -315,6 +327,11 @@ class MenuPageController extends Controller
             'menuItemLayout' => $isSheet ? 'layouts.fragment' : 'layout',
             'item' => $row,
             'itemAvailable' => $available,
+            'itemUnavailableLabel' => $verdict ? $this->unavailableLabel($verdict) : 'Currently unavailable',
+            'itemUnavailableNote' => $note !== '' ? $note : ($verdict && $verdict->reasonCode === 'out_of_stock'
+                ? 'We have run out for now. You can still share the page, or browse something else.'
+                : 'This item is not on the menu right now. You can still share the page, or browse something else.'),
+            'menuSizeSoldOut' => $this->soldOutSizes($row),
             'alternatives' => $alternatives,
             'menuPhotos' => $this->displayPhotos($priced),
             'menuSpecialsByItemId' => $specialsByItemId,
@@ -328,26 +345,95 @@ class MenuPageController extends Controller
     }
 
     /**
+     * Every active dish, sold out or not.
+     *
+     * Owner, 2026-09-21: "if the item is out of stock, I want the customers
+     * to see and click even though it's dimmed. Because details will be seen
+     * when clicked." Until then a dish with the Sold out toggle off was
+     * dropped from the page, which reads as "they don't make this" rather
+     * than "come back tomorrow". Retired dishes stay off: that one really is
+     * not on the menu.
+     *
      * @return Collection<int, Item>
      */
-    private function sellableItems(): Collection
+    private function menuItems(): Collection
     {
         return Item::query()
             // The bundle relations are what tells a reader that "Mixed Platter"
             // is choose-your-own (owner's audit, 2026-09-06, F7). Eager-loaded
             // rather than resolved per card, which would be an N+1 across the
-            // whole menu.
+            // whole menu. The recipe is loaded for the same reason: the
+            // sold-out check reads the ingredient pool of every dish that
+            // limits itself by it.
             ->with([
                 'variants', 'category', 'photos', 'extraCategories',
+                'recipe.recipeItems.inventoryItem',
                 'comboItems.item:id,name,name_dv,is_active,base_price,has_variants',
                 'comboItems.item.variants',
                 'platterGroups.allowedItems.item:id,name,is_active',
             ])
             ->where('is_active', true)
-            ->where('is_available', true)
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get();
+    }
+
+    /**
+     * The dishes a customer cannot have today, keyed by id, with the word the
+     * card wears. The order app's own vocabulary: "Sold out" when the kitchen
+     * has run out or switched it off, "Unavailable today" for a snooze.
+     *
+     * @param Collection<int, Item> $items
+     * @return array<int, string>
+     */
+    private function soldOutLabels(Collection $items): array
+    {
+        $availability = app(ItemAvailabilityService::class);
+
+        $out = [];
+        foreach ($items as $item) {
+            $verdict = $availability->checkAnyChannel($item);
+            if (!$verdict->allowed) {
+                $out[$item->id] = $this->unavailableLabel($verdict);
+            }
+        }
+
+        return $out;
+    }
+
+    private function unavailableLabel(AvailabilityResult $verdict): string
+    {
+        return match ($verdict->reasonCode) {
+            'out_of_stock', 'item_unavailable' => 'Sold out',
+            'snoozed' => 'Unavailable today',
+            default => 'Currently unavailable',
+        };
+    }
+
+    /**
+     * Sizes of one dish that cannot be picked today, keyed by variant id —
+     * the same verdict the order app's size chips get.
+     *
+     * @return array<int, true>
+     */
+    private function soldOutSizes(Item $item): array
+    {
+        if (!$item->has_variants || $item->trashed()) {
+            return [];
+        }
+
+        $availability = app(ItemAvailabilityService::class);
+        $portions = app(RecipeStockService::class)->portionsByVariant($item);
+
+        $out = [];
+        foreach ($item->variants as $variant) {
+            $fields = $availability->sizeFields($variant, $portions);
+            if (($fields['is_available'] ?? true) === false) {
+                $out[(int) $variant->id] = true;
+            }
+        }
+
+        return $out;
     }
 
     /**
@@ -454,7 +540,7 @@ class MenuPageController extends Controller
      * one item is an argument at the counter.
      *
      * No N+1: both underlying resolvers read memoised/cached maps rather than
-     * querying per item, and variants are eager-loaded by sellableItems().
+     * querying per item, and variants are eager-loaded by menuItems().
      *
      * @param Collection<int, Item> $items
      * @return array<int, array{price: float, was: float|null, from: bool}>

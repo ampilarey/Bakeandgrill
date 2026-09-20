@@ -341,7 +341,7 @@ class ItemController extends Controller
                 // for old receipts (owner, 2026-09-03).
                 'variants' => ($item->has_variants ? $item->variants : $item->variants->take(0))
                     ->sortBy('sort_order')
-                    ->map(function ($v) use ($includeAdminExtras, $includeCost, $includeAvailability, $item, $effectivePricing, $variantPortions) {
+                    ->map(function ($v) use ($includeAdminExtras, $includeCost, $includeAvailability, $item, $effectivePricing, $variantPortions, $availability) {
                         $variantRow = $includeAdminExtras ? [
                             'id' => $v->id,
                             'name' => $v->name,
@@ -367,17 +367,11 @@ class ItemController extends Controller
                         ];
 
                         // Admin already has the raw flag above; for the public
-                        // and POS feeds it is combined with the shared pool, so
-                        // one field answers "can a customer pick this".
+                        // and POS feeds it is combined with the shared pool and
+                        // the size's own stock, so one field answers "can a
+                        // customer pick this".
                         if (!$includeAdminExtras) {
-                            $soldOut = !$v->isAvailableNow();
-                            if (array_key_exists((int) $v->id, $variantPortions)) {
-                                $left = $variantPortions[(int) $v->id];
-                                $variantRow['available_stock'] = $left;
-                                $variantRow['is_available'] = !$soldOut && $left > 0;
-                            } elseif ($soldOut) {
-                                $variantRow['is_available'] = false;
-                            }
+                            $variantRow += $availability->sizeFields($v, $variantPortions);
                         }
 
                         if ($includeAvailability) {

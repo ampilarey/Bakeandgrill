@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Domains\Inventory\Services\RecipeStockService;
 use App\Domains\Kitchen\Services\KitchenMenuResolver;
 use App\Models\Item;
+use App\Models\Variant;
 use Carbon\Carbon;
 
 /**
@@ -44,8 +45,28 @@ class ItemAvailabilityService
      */
     public function check(Item $item, string $channel, ?Carbon $at = null): AvailabilityResult
     {
-        $at ??= now();
+        return $this->evaluate($item, $channel, $at ?? now());
+    }
 
+    /**
+     * Is the dish on the menu today, whichever way somebody would order it.
+     *
+     * The website menu (owner, 2026-09-21: "if the item is out of stock, I
+     * want the customers to see and click even though it's dimmed") reads
+     * this. It is a menu to read, not a channel to order on, so the channel
+     * switches and menu-group hours are left out: a dish that is takeaway-only
+     * is not "sold out", and neither is a breakfast dish at three in the
+     * afternoon. Everything that means the kitchen cannot serve it — the
+     * Sold out toggle, the snooze, stock, the ingredient pool, a bundle's
+     * parts — still counts.
+     */
+    public function checkAnyChannel(Item $item, ?Carbon $at = null): AvailabilityResult
+    {
+        return $this->evaluate($item, null, $at ?? now());
+    }
+
+    private function evaluate(Item $item, ?string $channel, Carbon $at): AvailabilityResult
+    {
         // 1. Item-level flags
         if (!$item->is_active) {
             return AvailabilityResult::unavailable('item_inactive', 'This item is currently unavailable.');
@@ -63,7 +84,7 @@ class ItemAvailabilityService
         }
 
         // 2. Channel + menu-group check
-        if (!$this->menuResolver->isItemVisibleForChannel($item, $channel, $at)) {
+        if ($channel !== null && !$this->menuResolver->isItemVisibleForChannel($item, $channel, $at)) {
             return AvailabilityResult::unavailable(
                 'channel_unavailable',
                 "This item is not available for {$channel} orders right now.",
@@ -230,13 +251,17 @@ class ItemAvailabilityService
 
     /**
      * Server-side low-stock flag. Threshold stays admin-only — never expose it publicly.
+     *
+     * Whatever counted the portions counts here: the item's own stock, or the
+     * ingredient pool when the recipe limits availability. A dish limited by
+     * its ingredients used to go straight from normal to "Sold out" with no
+     * "Few left" in between, because only tracked stock was looked at.
+     * `availableStock` is null whenever nothing counts, so an untracked dish
+     * with an open recipe is never flagged.
      */
     public function isLowStock(Item $item, AvailabilityResult $result): bool
     {
         if (!$result->allowed) {
-            return false;
-        }
-        if (!$item->track_stock || $item->availability_type !== 'stock_based') {
             return false;
         }
 
@@ -290,10 +315,65 @@ class ItemAvailabilityService
     }
 
     /**
+     * What a menu feed says about one size: how many are left, when anything
+     * counts them, and whether a customer can pick it.
+     *
+     * Three things take a size off: the owner marked it sold out today, the
+     * shared ingredient pool no longer covers it, or its own tracked stock
+     * has run out (minus the online holds not yet released). The third was
+     * missing until 2026-09-21 — a size with "Track stock" on and nothing
+     * left looked pickable in both apps, and the customer found out at
+     * checkout. The public and POS feeds both read this so they cannot drift.
+     *
+     * @param array<int, int> $variantPortions From RecipeStockService::portionsByVariant().
+     * @return array{available_stock?: int, is_available?: bool}
+     */
+    public function sizeFields(Variant $variant, array $variantPortions): array
+    {
+        $soldOut = !$variant->isAvailableNow();
+        $left = $this->sizeLeft($variant, $variantPortions);
+
+        if ($left !== null) {
+            return ['available_stock' => $left, 'is_available' => !$soldOut && $left > 0];
+        }
+
+        return $soldOut ? ['is_available' => false] : [];
+    }
+
+    /**
+     * Portions of this size still to be had, or null when nothing counts.
+     *
+     * @param array<int, int> $variantPortions
+     */
+    private function sizeLeft(Variant $variant, array $variantPortions): ?int
+    {
+        $left = $variantPortions[(int) $variant->id] ?? null;
+
+        if ($variant->track_stock) {
+            $stock = $this->reservations->variantStockLeft($variant);
+            $left = $left === null ? $stock : min($left, $stock);
+        }
+
+        return $left;
+    }
+
+    /**
+     * Can somebody pick this size right now: on the menu, not marked sold
+     * out today, and with stock left if it tracks any.
+     */
+    public function sizeSellable(Variant $variant): bool
+    {
+        return (bool) $variant->is_active
+            && $variant->isAvailableNow()
+            && (!$variant->track_stock || $this->reservations->variantStockLeft($variant) > 0);
+    }
+
+    /**
      * True unless this is a sized dish whose every size is off.
      *
-     * A size is pickable when it is active (on the menu at all) and available
-     * (not sold out today). An item with no sizes is not affected.
+     * A size is pickable when it is active (on the menu at all), available
+     * (not sold out today) and, if it tracks its own stock, has some left.
+     * An item with no sizes is not affected.
      *
      * Queries when the relation is not loaded rather than assuming: an answer
      * that changes with eager loading is worse than an extra query, and the
@@ -313,9 +393,7 @@ class ItemAvailabilityService
             return true;
         }
 
-        return $variants->contains(
-            fn (\App\Models\Variant $v) => $v->is_active && $v->isAvailableNow(),
-        );
+        return $variants->contains(fn (Variant $v) => $this->sizeSellable($v));
     }
 
     private function channelAvailableFrom(Item $item, string $channel, Carbon $at): ?string

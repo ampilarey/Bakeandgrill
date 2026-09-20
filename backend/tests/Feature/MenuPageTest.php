@@ -122,18 +122,92 @@ class MenuPageTest extends TestCase
             ->assertDontSee('/order/menu?item=' . $item->id, false);
     }
 
-    public function test_it_hides_what_a_customer_cannot_order(): void
+    public function test_a_sold_out_dish_stays_on_the_page_dimmed_and_a_retired_one_does_not(): void
     {
+        // Owner, 2026-09-21: "if the item is out of stock, I want the
+        // customers to see and click even though it's dimmed." A dish that
+        // vanishes reads as "they don't make this"; one that is greyed reads
+        // as "come back tomorrow". Retired really is gone.
         $cat = $this->category('Shorteats');
         $this->item($cat, 'Available Item', 5);
-        $this->item($cat, 'Sold Out Item', 5, ['is_available' => false]);
+        $soldOut = $this->item($cat, 'Sold Out Item', 5, ['is_available' => false]);
         $this->item($cat, 'Retired Item', 5, ['is_active' => false]);
 
         $response = $this->get('/menu')->assertOk();
 
         $response->assertSee('Available Item', false);
-        $response->assertDontSee('Sold Out Item', false);
+        $response->assertSee('Sold Out Item', false);
         $response->assertDontSee('Retired Item', false);
+
+        $html = $response->getContent();
+        $this->assertSame(1, substr_count($html, 'data-sold-out="1"'));
+        $this->assertStringContainsString('menu-card menu-card--sold-out', $html);
+        $this->assertStringContainsString('<span class="menu-badge-soldout">Sold out</span>', $html);
+        // Still a link: the details are what the customer taps for.
+        $this->assertStringContainsString('href="/menu/' . $soldOut->id . '"', $html);
+        // And the structured data says so rather than advertising it.
+        $this->assertStringContainsString('https://schema.org/SoldOut', $html);
+    }
+
+    public function test_the_website_menu_reads_stock_the_way_the_order_app_does(): void
+    {
+        // The website used to honour only the manual toggle. A dish counted
+        // out by its stock showed at full price with no badge.
+        $cat = $this->category('Cakes');
+        $gone = $this->item($cat, 'Last Slice', 30, [
+            'track_stock' => true, 'availability_type' => 'stock_based', 'stock_quantity' => 0,
+        ]);
+        $this->item($cat, 'Plenty Cake', 30, [
+            'track_stock' => true, 'availability_type' => 'stock_based', 'stock_quantity' => 8,
+        ]);
+        $snoozed = $this->item($cat, 'Resting Cake', 30, ['snoozed_until' => now()->addHours(3)]);
+
+        $html = $this->get('/menu')->assertOk()->getContent();
+
+        $this->assertSame(2, substr_count($html, 'data-sold-out="1"'));
+        $this->assertStringContainsString('<span class="menu-badge-soldout">Sold out</span>', $html);
+        $this->assertStringContainsString('<span class="menu-badge-soldout">Unavailable today</span>', $html);
+
+        // The item page agrees, with the reason rather than a generic line.
+        $page = $this->get('/menu/' . $gone->id)->assertOk();
+        $page->assertSee('data-testid="item-unavailable"', false);
+        $page->assertSee('<p>Sold out</p>', false);
+        $page->assertSee('We have run out for now', false);
+        $page->assertDontSee('/order/menu?item=' . $gone->id, false);
+
+        $this->get('/menu/' . $snoozed->id)->assertOk()->assertSee('<p>Unavailable today</p>', false);
+    }
+
+    public function test_a_size_that_has_run_out_is_greyed_on_the_item_page(): void
+    {
+        $cat = $this->category('Drinks');
+        $water = $this->item($cat, 'Water', 0, ['has_variants' => true]);
+        $small = \App\Models\Variant::create([
+            'item_id' => $water->id, 'name' => '500ml', 'price' => 10, 'is_active' => true,
+            'sort_order' => 0, 'track_stock' => true, 'stock_qty' => 6,
+        ]);
+        $large = \App\Models\Variant::create([
+            'item_id' => $water->id, 'name' => '1.5L', 'price' => 20, 'is_active' => true,
+            'sort_order' => 1, 'track_stock' => true, 'stock_qty' => 0,
+        ]);
+
+        $html = $this->get('/menu/' . $water->id)->assertOk()->getContent();
+
+        // The dish itself is on: one size is still there to pick.
+        $this->assertStringNotContainsString('data-testid="item-unavailable"', $html);
+        $this->assertStringContainsString('/order/menu?item=' . $water->id, $html);
+
+        $this->assertMatchesRegularExpression(
+            '/data-variant="' . $large->id . '"[^>]*disabled/s',
+            $html,
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/data-variant="' . $small->id . '"[^>]*disabled/s',
+            $html,
+        );
+        $this->assertStringContainsString('Sold out', $html);
+        $this->assertStringContainsString('MVR 10.00', $html);
+        $this->assertStringNotContainsString('MVR 20.00', $html);
     }
 
     public function test_an_item_whose_category_is_gone_is_still_shown(): void
@@ -1166,7 +1240,9 @@ class MenuPageTest extends TestCase
 
         $soldOut = $this->get('/menu/' . $gone->id)->assertOk()->getContent();
         $this->assertStringContainsString('Sold Out Item', $soldOut);
-        $this->assertStringContainsString('Currently unavailable', $soldOut);
+        // The Sold out toggle is how the kitchen 86s a dish, so the page says
+        // so — the order app's word, not a generic "unavailable".
+        $this->assertStringContainsString('<p>Sold out</p>', $soldOut);
         $this->assertStringContainsString('data-testid="item-unavailable"', $soldOut);
         $this->assertStringContainsString('Cutlet', $soldOut);
         $this->assertStringContainsString('/menu/' . $alt->id, $soldOut);

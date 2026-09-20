@@ -205,6 +205,10 @@ html.js .menu-item-page .menu-fav { display: inline-flex; }
     background: var(--amber-light);
     box-shadow: inset 0 0 0 1px var(--amber);
 }
+.menu-item-size--sold-out, .menu-item-size[disabled] {
+    opacity: 0.45; cursor: not-allowed;
+}
+.menu-item-size--sold-out .menu-item-size-price { color: var(--muted); }
 .menu-item-size-name { font-weight: 700; }
 .menu-item-size-price { font-weight: 600; color: var(--amber); }
 .menu-item-size .menu-item-was { margin-left: 0.3rem; font-size: 0.8rem; color: var(--muted); }

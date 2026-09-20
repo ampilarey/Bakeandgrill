@@ -14,7 +14,8 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Builds the POS menu payload (categories + channel-filtered items) in
- * batched queries — no per-item availability service calls.
+ * batched queries — no per-item availability service calls. The one thing
+ * asked of the service is the per-size verdict, which the public feed shares.
  */
 class PosMenuBuilder
 {
@@ -24,6 +25,7 @@ class PosMenuBuilder
         private readonly EffectivePriceService $effectivePricing,
         private readonly ItemAffinityService $affinity,
         private readonly RecipeStockService $recipeStock,
+        private readonly ItemAvailabilityService $availability,
     ) {}
 
     /**
@@ -148,16 +150,10 @@ class PosMenuBuilder
                         'sort_order' => $v->sort_order,
                     ];
 
-                    // Two ways a size can be off: the owner marked it sold out
-                    // today, or the shared ingredient pool no longer covers it.
-                    $soldOut = !$v->isAvailableNow();
-                    if (array_key_exists((int) $v->id, $variantPortions)) {
-                        $left = $variantPortions[(int) $v->id];
-                        $variantRow['available_stock'] = $left;
-                        $variantRow['is_available'] = !$soldOut && $left > 0;
-                    } elseif ($soldOut) {
-                        $variantRow['is_available'] = false;
-                    }
+                    // Three ways a size can be off: the owner marked it sold
+                    // out today, the shared ingredient pool no longer covers
+                    // it, or its own tracked stock has run out.
+                    $variantRow += $this->availability->sizeFields($v, $variantPortions);
 
                     $variantPricing = $this->effectivePricing->resolveUnitPrice(
                         $item->id,
@@ -347,7 +343,7 @@ class PosMenuBuilder
         // every size is greyed out — a dead end mid-service.
         $sizes = $item->relationLoaded('variants') ? $item->variants : $item->variants()->get();
         if ($item->has_variants && $sizes->isNotEmpty()
-            && !$sizes->contains(fn ($v) => $v->is_active && $v->isAvailableNow())) {
+            && !$sizes->contains(fn ($v) => $this->availability->sizeSellable($v))) {
             return [
                 'available' => false,
                 'reason_code' => 'out_of_stock',

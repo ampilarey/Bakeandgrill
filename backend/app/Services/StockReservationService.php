@@ -35,6 +35,28 @@ class StockReservationService
     }
 
     /**
+     * Available stock for a size, without sweeping expired holds first.
+     *
+     * The menu feeds read this for every tracked size on every load, and a
+     * DELETE per size on every load is latency the till noticed (see
+     * PosMenuBuilder). Expired holds are excluded by the date instead, which
+     * gives the same number; the sweep happens when an order is placed.
+     */
+    public function variantStockLeft(Variant $variant): int
+    {
+        if (!$variant->track_stock) {
+            return 9999;
+        }
+
+        $reserved = (int) DB::table('stock_reservations')
+            ->where('variant_id', $variant->id)
+            ->where('expires_at', '>', now())
+            ->sum('quantity');
+
+        return max(0, (int) $variant->stock_qty - $reserved);
+    }
+
+    /**
      * Available stock for a specific variant.
      */
     public function getAvailableVariantStock(Variant $variant): int
