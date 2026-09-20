@@ -330,15 +330,17 @@ class PrintableMenuTest extends TestCase
         $disposition = (string) $this->get('/menu/print.pdf')->assertOk()
             ->headers->get('content-disposition');
 
-        $this->assertStringContainsString('-menu-' . now()->format('Y-m-d') . '.pdf', $disposition);
+        $this->assertStringContainsString('-menu-a4-' . now()->format('Y-m-d') . '.pdf', $disposition);
     }
 
     public function test_the_pdf_honours_the_layout_it_was_asked_for(): void
     {
         $this->dish('Mas Huni', 35, ['description' => 'Tuna, coconut and onion']);
 
-        $short = $this->get('/menu/print.pdf?style=short')->assertOk()->getContent();
-        $full = $this->get('/menu/print.pdf?style=full')->assertOk()->getContent();
+        // Same paper for both: A5 runs one column either way, so the only
+        // difference between the files is the description.
+        $short = $this->get('/menu/print.pdf?style=short&paper=a5')->assertOk()->getContent();
+        $full = $this->get('/menu/print.pdf?style=full&paper=a5')->assertOk()->getContent();
 
         // The detailed layout carries descriptions, so it is the larger file.
         $this->assertGreaterThan(strlen($short), strlen($full));
@@ -369,7 +371,7 @@ class PrintableMenuTest extends TestCase
         $html = $this->get('/menu/print')->assertOk()->getContent();
 
         $this->assertStringContainsString('@media screen and (max-width: 700px)', $html);
-        $this->assertStringContainsString('.style-short .body { column-count: 1; }', $html);
+        $this->assertStringContainsString('.body { column-count: 1; }', $html);
     }
 
     public function test_the_phone_rules_never_reach_the_pdf(): void
@@ -398,7 +400,7 @@ class PrintableMenuTest extends TestCase
 
         $this->get('/menu/print?style=short')
             ->assertOk()
-            ->assertSee('.style-short .body { column-count: 2; column-gap: 9mm; }', false);
+            ->assertSee('.body { column-count: 2; column-gap: 9mm; }', false);
     }
 
     /** @return array<string, mixed> */
@@ -445,7 +447,7 @@ class PrintableMenuTest extends TestCase
     {
         $this->dish('Mas Huni', 35);
 
-        $expected = 'menu-' . now()->format('Y-m-d') . '.pdf';
+        $expected = 'menu-a4-' . now()->format('Y-m-d') . '.pdf';
 
         $this->get('/menu/print')->assertOk()->assertSee($expected, false);
         $this->assertStringContainsString(
@@ -506,6 +508,157 @@ class PrintableMenuTest extends TestCase
             ->assertOk()
             ->assertSee('.row td.row__dots {', false)
             ->assertSee('border-bottom: 1px dotted #cfc6b8;', false);
+    }
+
+    /**
+     * Owner, 2026-09-21: "paper size options, a5, a4, a3. Portrait,
+     * landscape." Both are on the toolbar, both reach @page, and the
+     * column count follows them.
+     */
+    public function test_the_sheet_can_be_laid_out_for_each_paper_and_both_ways_round(): void
+    {
+        $this->dish('Mas Huni', 35);
+
+        $res = $this->get('/menu/print')->assertOk();
+        $res->assertSee('data-testid="menu-print-papers"', false);
+        $res->assertSee('>A5<', false)->assertSee('>A4<', false)->assertSee('>A3<', false);
+        $res->assertSee('>Portrait<', false)->assertSee('>Landscape<', false);
+        $res->assertSee('@page { size: A4 portrait;', false);
+        $res->assertSee('.body { column-count: 2;', false);
+
+        $this->get('/menu/print?paper=a5')->assertOk()
+            ->assertSee('@page { size: A5 portrait;', false)
+            ->assertSee('.body { column-count: 1;', false)
+            ->assertSee('max-width: 148mm', false);
+
+        $this->get('/menu/print?paper=a3&orient=landscape')->assertOk()
+            ->assertSee('@page { size: A3 landscape;', false)
+            ->assertSee('.body { column-count: 4;', false)
+            ->assertSee('max-width: 420mm', false);
+
+        // Descriptions want width: the detailed layout takes one column fewer.
+        $this->get('/menu/print?paper=a4&orient=landscape&style=full')->assertOk()
+            ->assertSee('.body { column-count: 2;', false);
+
+        // A nonsense size or way round falls back rather than erroring.
+        $this->get('/menu/print?paper=letter&orient=sideways')->assertOk()
+            ->assertSee('@page { size: A4 portrait;', false);
+    }
+
+    public function test_switching_the_paper_keeps_the_layout_and_the_language(): void
+    {
+        $this->dish('Mas Huni', 35);
+
+        $html = $this->get('/menu/print?style=full&dv=1&orient=landscape')->assertOk()->getContent();
+
+        // The A5 link carries everything else that was chosen.
+        $this->assertMatchesRegularExpression(
+            '#href="[^"]*menu/print\?style=full&(amp;)?paper=a5&(amp;)?orient=landscape&(amp;)?dv=1"#',
+            $html,
+        );
+        // And the PDF is the same sheet.
+        $this->assertMatchesRegularExpression(
+            '#href="[^"]*menu/print\.pdf\?style=full&(amp;)?paper=a4&(amp;)?orient=landscape&(amp;)?dv=1"#',
+            $html,
+        );
+    }
+
+    /**
+     * Owner, 2026-09-21: "logo and branding in each page without taking
+     * more space." A browser repeats a table's head and foot on every
+     * printed page; the PDF's header is a fixed block and its footer is
+     * written by the controller with the page numbers.
+     */
+    public function test_every_printed_page_carries_the_brand_line_and_the_foot_line(): void
+    {
+        $this->dish('Mas Huni', 35);
+
+        $html = $this->get('/menu/print')->assertOk()->getContent();
+        $this->assertStringContainsString('<thead><tr><td><table class="run run--head run--screen"', $html);
+        $this->assertStringContainsString('<tfoot><tr><td>', $html);
+        $this->assertStringContainsString('data-testid="menu-print-running-footer"', $html);
+        // Shown on paper, not on screen, where the page has its masthead.
+        $this->assertStringContainsString('.run--screen { display: none; }', $html);
+        $this->assertStringContainsString('.run--screen { display: table; }', $html);
+
+        // The PDF's header is a fixed block in the top margin; the PDF is a
+        // real one with pages rather than a screen sheet.
+        $data = $this->printViewData();
+        $this->assertSame(2, $data['columns']);
+        $pdf = $this->get('/menu/print.pdf')->assertOk()->getContent();
+        $this->assertStringStartsWith('%PDF-', $pdf);
+    }
+
+    /** The PDF's paper follows the request: A3 landscape is a wider page than A4 portrait. */
+    public function test_the_pdf_is_the_size_it_was_asked_for(): void
+    {
+        $this->dish('Mas Huni', 35);
+
+        $a4 = $this->get('/menu/print.pdf?paper=a4')->assertOk()->getContent();
+        $a3 = $this->get('/menu/print.pdf?paper=a3&orient=landscape')->assertOk()->getContent();
+
+        // dompdf writes the page box in points: A4 portrait 595×842, A3 landscape 1191×842.
+        $this->assertMatchesRegularExpression('#/MediaBox \[0(\.0+)? 0(\.0+)? 595(\.\d+)? 841(\.\d+)?\]#', $a4);
+        $this->assertMatchesRegularExpression('#/MediaBox \[0(\.0+)? 0(\.0+)? 1190(\.\d+)? 841(\.\d+)?\]#', $a3);
+        $this->assertStringContainsString('menu-a3-', (string) $this->get('/menu/print.pdf?paper=a3')->headers->get('content-disposition'));
+    }
+
+    /**
+     * Owner, 2026-09-21: "printing menu to make as a book or booklet." A5
+     * pages on A4 landscape sheets, covers included, in folding order.
+     */
+    public function test_the_booklet_is_a4_landscape_sheets_with_covers(): void
+    {
+        $this->dish('Mas Huni', 35);
+
+        $this->get('/menu/print')->assertOk()
+            ->assertSee('data-testid="menu-print-booklet"', false)
+            ->assertSee('menu/print/booklet.pdf', false);
+
+        $res = $this->get('/menu/print/booklet.pdf')->assertOk();
+        $this->assertSame('application/pdf', $res->headers->get('content-type'));
+        $this->assertStringContainsString('-menu-booklet-', (string) $res->headers->get('content-disposition'));
+        $pdf = $res->getContent();
+        $this->assertStringStartsWith('%PDF-', $pdf);
+        // FPDF writes the sheet as A4 landscape in points.
+        $this->assertMatchesRegularExpression('#/MediaBox \[0 0 841\.\d+ 595\.\d+\]#', $pdf);
+        // Cover, one page of menu, a blank, back cover: one sheet, two sides.
+        $this->assertSame(2, preg_match_all('#/Type /Page[^s]#', $pdf));
+    }
+
+    /**
+     * The PDF's own fonts have no Thaana, so a sheet asked for in Dhivehi
+     * came out as boxes. A Thaana face is embedded from disk when asked for,
+     * and only then.
+     */
+    public function test_the_dhivehi_pdf_embeds_a_thaana_font(): void
+    {
+        $this->dish('Mas Huni', 35, ['name_dv' => 'މަސްހުނި']);
+
+        $plain = $this->get('/menu/print')->assertOk()->original->getData();
+        $this->assertNull($plain['dhivehiFontFile']);
+
+        $dv = $this->get('/menu/print?dv=1')->assertOk()->original->getData();
+        $this->assertNotNull($dv['dhivehiFontFile']);
+        $this->assertFileExists($dv['dhivehiFontFile']);
+        $this->assertStringEndsWith('.ttf', $dv['dhivehiFontFile']);
+
+        // The screen sheet never carries the file path; the PDF does.
+        $this->get('/menu/print?dv=1')->assertOk()->assertDontSee('@font-face', false);
+        $pdf = $this->get('/menu/print.pdf?dv=1')->assertOk()->getContent();
+        $this->assertStringContainsString('/FontFile2', $pdf);
+    }
+
+    /** A dish the owner ticked Featured carries a star on paper, as it leads the menu online. */
+    public function test_a_featured_dish_is_starred(): void
+    {
+        $this->dish('Mas Huni', 35, ['is_featured' => true]);
+        $this->dish('Bis Keemia', 5);
+
+        $html = $this->get('/menu/print')->assertOk()->getContent();
+
+        $this->assertStringContainsString('<span class="row__star">★</span> Mas Huni', $html);
+        $this->assertStringNotContainsString('★</span> Bis Keemia', $html);
     }
 
     public function test_cost_price_never_reaches_the_paper(): void

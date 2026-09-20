@@ -77,6 +77,11 @@ Route::get('/menu/print', [App\Http\Controllers\MenuPageController::class, 'prin
 Route::get('/menu/print.pdf', [App\Http\Controllers\MenuPageController::class, 'printPdf'])
     ->middleware(['content.locale'])
     ->name('menu.print.pdf');
+// A5 pages imposed on A4 landscape sheets in folding order, with covers
+// (owner, 2026-09-21: "printing menu to make as a book or booklet").
+Route::get('/menu/print/booklet.pdf', [App\Http\Controllers\MenuPageController::class, 'printBooklet'])
+    ->middleware(['content.locale'])
+    ->name('menu.print.booklet');
 // One category on its own, for sharing (owner, 2026-09-21: "share a
 // category in the menu ... when opened only that category shows but option
 // to see full menu"). Slug or id; the same page as /menu with the rest

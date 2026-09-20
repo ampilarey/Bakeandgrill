@@ -40,7 +40,8 @@
          with no price beside it would be a rule to nowhere. --}}
     <table class="row{{ !$hasSizes && $price ? ' row--priced' : '' }}">
         <tr>
-            <td class="row__name">{{ $item->card_name ?: $item->name }}</td>
+            {{-- The owner's pick carries a star, as it leads the menu online. --}}
+            <td class="row__name">@if($item->is_featured)<span class="row__star">★</span> @endif{{ $item->card_name ?: $item->name }}</td>
             @if ($showDhivehi && $dv !== '')
                 {{-- Beside the name, not on a line of its own: a Dhivehi name
                      alone on the right margin reads as a separate entry. --}}

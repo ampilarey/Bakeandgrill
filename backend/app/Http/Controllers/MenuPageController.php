@@ -264,15 +264,11 @@ class MenuPageController extends Controller
      */
     public function print(Request $request): View
     {
-        $style = (string) $request->query('style', 'short');
-        if (!in_array($style, self::PRINT_STYLES, true)) {
-            $style = 'short';
-        }
-
+        $options = $this->printOptions($request);
         $items = $this->printableItems();
         $categories = $this->activeCategories();
 
-        return view('menu-print', $this->printData($items, $categories, $style, $request->boolean('dv')));
+        return view('menu-print', $this->printData($items, $categories, $options));
     }
 
     /**
@@ -285,18 +281,168 @@ class MenuPageController extends Controller
      */
     public function printPdf(Request $request): Response
     {
-        $style = (string) $request->query('style', 'short');
-        if (!in_array($style, self::PRINT_STYLES, true)) {
-            $style = 'short';
-        }
-
-        $items = $this->printableItems();
-        $data = $this->printData($items, $this->activeCategories(), $style, $request->boolean('dv'));
+        $options = $this->printOptions($request);
+        $data = $this->printData($this->printableItems(), $this->activeCategories(), $options);
         $data['forPdf'] = true;
 
-        return Pdf::loadView('menu-print', $data)
-            ->setPaper('a4')
-            ->download($data['pdfFilename']);
+        return $this->renderPdf($data)->download($data['pdfFilename']);
+    }
+
+    /**
+     * The menu as a booklet: A5 pages imposed two-up on A4 landscape sheets
+     * in the order that folds and staples in the middle.
+     *
+     * Owner, 2026-09-21: "sometimes we will be downloading and printing menu
+     * to make as a book or booklet." A cover, the menu, a back cover with the
+     * QR, padded to a multiple of four so the fold works; print it two-sided,
+     * flipped on the short edge, fold the stack in half.
+     */
+    public function printBooklet(Request $request): Response
+    {
+        $options = $this->printOptions($request);
+        $options['paper'] = 'a5';
+        $options['orient'] = 'portrait';
+        $data = $this->printData($this->printableItems(), $this->activeCategories(), $options);
+        $data['forPdf'] = true;
+        $data['booklet'] = true;
+
+        $pages = $this->renderPdf($data)->output();
+        $imposed = app(\App\Domains\Menu\Services\BookletImposer::class)->impose($pages);
+
+        return response($imposed, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="' . $data['bookletFilename'] . '"',
+        ]);
+    }
+
+    /**
+     * Paper sizes the sheet can be laid out for, and the two ways round.
+     * Owner, 2026-09-21: "paper size options, a5, a4, a3. Portrait, landscape."
+     */
+    public const PRINT_PAPERS = ['a5', 'a4', 'a3'];
+
+    public const PRINT_ORIENTATIONS = ['portrait', 'landscape'];
+
+    /**
+     * The sheet's options off the query string, each falling back rather than
+     * failing: a pasted or edited URL should print something, not a 500.
+     *
+     * @return array{style: string, paper: string, orient: string, dv: bool}
+     */
+    private function printOptions(Request $request): array
+    {
+        $style = (string) $request->query('style', 'short');
+        $paper = strtolower((string) $request->query('paper', 'a4'));
+        $orient = strtolower((string) $request->query('orient', 'portrait'));
+
+        return [
+            'style' => in_array($style, self::PRINT_STYLES, true) ? $style : 'short',
+            'paper' => in_array($paper, self::PRINT_PAPERS, true) ? $paper : 'a4',
+            'orient' => in_array($orient, self::PRINT_ORIENTATIONS, true) ? $orient : 'portrait',
+            'dv' => $request->boolean('dv'),
+        ];
+    }
+
+    /**
+     * How many columns the list runs in, from the paper and the layout. A
+     * short price list on A4 reads in two; the same list on A5 needs one,
+     * and on A3 sideways it can take four. Descriptions want width, so the
+     * detailed layout takes one fewer; wall type takes one, two sideways.
+     */
+    public static function printColumns(string $style, string $paper, string $orient): int
+    {
+        $landscape = $orient === 'landscape';
+
+        return match ($style) {
+            'full' => match ($paper) {
+                'a5' => 1,
+                'a3' => $landscape ? 3 : 2,
+                default => $landscape ? 2 : 1,
+            },
+            'wall' => $landscape ? 2 : 1,
+            default => match ($paper) {
+                'a5' => $landscape ? 2 : 1,
+                'a3' => $landscape ? 4 : 3,
+                default => $landscape ? 3 : 2,
+            },
+        };
+    }
+
+    /**
+     * dompdf's page, with the running footer written onto every page after
+     * layout: "Bake & Grill · bakeandgrill.mv/menu · page 2 of 5". Page
+     * numbers cannot be known from inside the HTML, which is why the footer
+     * is drawn here and not in the view.
+     */
+    private function renderPdf(array $data): \Barryvdh\DomPDF\PDF
+    {
+        \Illuminate\Support\Facades\File::ensureDirectoryExists(storage_path('fonts'));
+
+        $pdf = Pdf::loadView('menu-print', $data)
+            ->setPaper($data['paper'], $data['orient']);
+        $pdf->render();
+
+        $canvas = $pdf->getDomPDF()->getCanvas();
+        $metrics = $pdf->getDomPDF()->getFontMetrics();
+        $font = $metrics->getFont('DejaVu Sans', 'normal');
+        $size = $data['paper'] === 'a5' ? 6.5 : 7.5;
+        $mm = 72 / 25.4;
+        $colour = [0.42, 0.36, 0.31];
+        $left = $data['brand'] . '  ·  ' . $data['menuUrl'] . '  ·  Prices in MVR, may change';
+        $booklet = (bool) ($data['booklet'] ?? false);
+
+        $canvas->page_script(function (int $pageNumber, int $pageCount, $canvas) use ($left, $font, $size, $mm, $colour, $metrics, $booklet): void {
+            // A booklet's covers carry their own foot; the running one stays off them.
+            if ($booklet && ($pageNumber === 1 || $pageNumber === $pageCount)) {
+                return;
+            }
+            $y = $canvas->get_height() - 11 * $mm;
+            $right = $booklet
+                ? sprintf('%d', $pageNumber - 1)
+                : sprintf('Page %d of %d', $pageNumber, $pageCount);
+            $rightWidth = $metrics->getTextWidth($right, $font, $size);
+            $canvas->text(12 * $mm, $y, $left, $font, $size, $colour);
+            $canvas->text($canvas->get_width() - 12 * $mm - $rightWidth, $y, $right, $font, $size, $colour);
+        });
+
+        return $pdf;
+    }
+
+    /**
+     * Opening hours as a few short lines for the booklet's back cover:
+     * consecutive days with the same hours fold into one, "Sat–Thu 07:00–23:00".
+     *
+     * @return list<string>
+     */
+    private function hoursLines(): array
+    {
+        try {
+            $hours = app(\App\Services\OpeningHoursService::class)->getHoursForDisplay();
+        } catch (\Throwable) {
+            return [];
+        }
+        $names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        $runs = [];
+        for ($day = 0; $day < 7; $day++) {
+            $row = $hours[$day] ?? null;
+            $text = (!is_array($row) || ($row['closed'] ?? false) || empty($row['open']) || empty($row['close']))
+                ? 'Closed'
+                : $row['open'] . '–' . $row['close'];
+            $last = $runs !== [] ? array_key_last($runs) : null;
+            if ($last !== null && $runs[$last]['text'] === $text) {
+                $runs[$last]['to'] = $day;
+            } else {
+                $runs[] = ['from' => $day, 'to' => $day, 'text' => $text];
+            }
+        }
+        if (count($runs) === 1 && $runs[0]['text'] === 'Closed') {
+            return [];
+        }
+
+        return array_map(
+            fn (array $run) => ($run['from'] === $run['to'] ? $names[$run['from']] : $names[$run['from']] . '–' . $names[$run['to']]) . ' ' . $run['text'],
+            $runs,
+        );
     }
 
     /**
@@ -304,17 +450,34 @@ class MenuPageController extends Controller
      *
      * @param Collection<int, Item> $items
      * @param Collection<int, Category> $categories
+     * @param array{style: string, paper: string, orient: string, dv: bool} $options
      * @return array<string, mixed>
      */
-    private function printData(Collection $items, Collection $categories, string $style, bool $showDhivehi): array
+    private function printData(Collection $items, Collection $categories, array $options): array
     {
         $brand = trim((string) (content('site_name', '') ?: config('app.name', 'Bake & Grill')));
+        $style = $options['style'];
+        $showDhivehi = $options['dv'];
+        $groups = $this->groupByParent($items, $categories);
+        $columns = self::printColumns($style, $options['paper'], $options['orient']);
 
         return [
             'printStyle' => $style,
             'printStyles' => self::PRINT_STYLES,
+            'printPapers' => self::PRINT_PAPERS,
+            'paper' => $options['paper'],
+            'orient' => $options['orient'],
+            // For @page and the on-screen sheet: "A4 landscape" and its mm.
+            'pageSize' => strtoupper($options['paper']) . ' ' . $options['orient'],
+            'pageWidthMm' => $this->paperWidthMm($options['paper'], $options['orient']),
+            'columns' => $columns,
+            // dompdf has no CSS columns, so the PDF's columns are a table with
+            // the categories dealt across it in menu order, balanced by rows.
+            'columnRows' => $this->columnRows($this->dealAcrossColumns($groups, $columns)),
             'showDhivehi' => $showDhivehi,
+            'dhivehiFontFile' => $showDhivehi ? $this->dhivehiFontFile() : null,
             'forPdf' => false,
+            'booklet' => false,
             'brand' => $brand,
             'brandLogo' => $this->brandLogoDataUri(),
             'brandTagline' => trim((string) content('site_tagline', '')),
@@ -327,17 +490,143 @@ class MenuPageController extends Controller
             // Named here so the page's share sheet and the download agree on
             // what the file is called.
             'pdfFilename' => sprintf(
-                '%s-menu-%s.pdf',
+                '%s-menu-%s-%s.pdf',
+                Str::slug($brand) ?: 'menu',
+                $options['paper'],
+                now()->format('Y-m-d'),
+            ),
+            'bookletFilename' => sprintf(
+                '%s-menu-booklet-%s.pdf',
                 Str::slug($brand) ?: 'menu',
                 now()->format('Y-m-d'),
             ),
-            'menuCategories' => $this->groupByParent($items, $categories),
+            'brandHours' => $this->hoursLines(),
+            'menuCategories' => $groups,
             'menuItemCount' => $items->count(),
             'menuPriceByItemId' => $this->effectivePrices($items),
             'menuVariantPricesByItemId' => $this->variantPrices($items),
             'menuLocale' => $this->menuLocale(),
             'printedAt' => now(),
         ];
+    }
+
+    /** The sheet's width on screen, so the preview is the shape of the paper. */
+    private function paperWidthMm(string $paper, string $orient): int
+    {
+        [$short, $long] = match ($paper) {
+            'a5' => [148, 210],
+            'a3' => [297, 420],
+            default => [210, 297],
+        };
+
+        return $orient === 'landscape' ? $long : $short;
+    }
+
+    /**
+     * Deal the categories across N columns in menu order, each column taking
+     * roughly the same number of rows. A category is never split, so a
+     * heading always sits over its own dishes.
+     *
+     * @param Collection<int, array{category: ?Category, items: Collection<int, Item>, subcategories: list<array{category: Category, items: Collection<int, Item>}>}> $groups
+     * @return list<list<array{category: ?Category, items: Collection<int, Item>, subcategories: list<array{category: Category, items: Collection<int, Item>}>}>>
+     */
+    private function dealAcrossColumns(Collection $groups, int $columns): array
+    {
+        $weight = static function (array $group): int {
+            $rows = 2 + $group['items']->count();
+            foreach ($group['subcategories'] as $sub) {
+                $rows += 1 + $sub['items']->count();
+            }
+
+            return $rows;
+        };
+
+        $total = $groups->sum($weight);
+        $target = $columns > 0 ? $total / $columns : $total;
+        $dealt = array_fill(0, max(1, $columns), []);
+        $col = 0;
+        $filled = 0;
+        foreach ($groups as $group) {
+            $rows = $weight($group);
+            // Move on once this column is fuller than its share, unless it is
+            // the last one, which takes the rest.
+            if ($filled > 0 && $filled + $rows / 2 > $target && $col < $columns - 1) {
+                $col++;
+                $filled = 0;
+            }
+            $dealt[$col][] = $group;
+            $filled += $rows;
+        }
+
+        return $dealt;
+    }
+
+    /**
+     * The dealt columns as table rows for dompdf: row i holds the i-th line
+     * of every column, one dish or heading per cell.
+     *
+     * dompdf has no CSS columns, and a table with one tall cell per column
+     * cannot break across pages — it jumped whole to the next page and lost
+     * its right-hand cell. Short rows break wherever they like, so the
+     * columns flow down the pages together.
+     *
+     * @param list<list<array{category: ?Category, items: Collection<int, Item>, subcategories: list<array{category: Category, items: Collection<int, Item>}>}>> $columnGroups
+     * @return list<list<array{kind: string, text?: string, item?: Item}|null>>
+     */
+    private function columnRows(array $columnGroups): array
+    {
+        $lines = [];
+        foreach ($columnGroups as $groups) {
+            $column = [];
+            foreach ($groups as $group) {
+                if ($group['items']->isEmpty() && $group['subcategories'] === []) {
+                    continue;
+                }
+                $column[] = ['kind' => 'cat', 'text' => $group['category']?->name ?: 'Other'];
+                foreach ($group['items'] as $item) {
+                    $column[] = ['kind' => 'dish', 'item' => $item];
+                }
+                foreach ($group['subcategories'] as $sub) {
+                    $column[] = ['kind' => 'sub', 'text' => $sub['category']->name];
+                    foreach ($sub['items'] as $item) {
+                        $column[] = ['kind' => 'dish', 'item' => $item];
+                    }
+                }
+            }
+            $lines[] = $column;
+        }
+
+        $height = max(array_map('count', $lines) ?: [0]);
+        $rows = [];
+        for ($i = 0; $i < $height; $i++) {
+            $rows[] = array_map(fn (array $column) => $column[$i] ?? null, $lines);
+        }
+
+        return $rows;
+    }
+
+    /**
+     * A Thaana font file dompdf can embed, or null.
+     *
+     * The PDF's own fonts have no Thaana, so a sheet asked for in Dhivehi
+     * came out as boxes. The owner's uploaded font is used when it is a TTF
+     * or OTF on disk; a WOFF2 (what the upload converts to when it can) is
+     * not something dompdf reads, and the shipped A_Faruma covers it then.
+     */
+    private function dhivehiFontFile(): ?string
+    {
+        $custom = trim((string) content(\App\Domains\Content\DhivehiFont::CONTENT_KEY, ''));
+        if ($custom !== '' && \App\Domains\Content\DhivehiFont::isSafePublicUrl($custom)
+            && preg_match('/\.(ttf|otf)$/', $custom)) {
+            $file = public_path(ltrim($custom, '/'));
+            if (is_file($file) && is_readable($file)) {
+                return $file;
+            }
+        }
+
+        $shipped = public_path('fonts/a_faruma.ttf');
+
+        return is_file($shipped) ? $shipped : null;
     }
 
     /**

@@ -17,6 +17,8 @@
         "phpoffice/phpspreadsheet": "^5.9",
         "predis/predis": "^3.4",
         "sentry/sentry-laravel": "^4.25",
+        "setasign/fpdf": "^1.9",
+        "setasign/fpdi": "^2.6",
         "spatie/laravel-backup": "^10.2"
     },
     "require-dev": {
