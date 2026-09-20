@@ -77,6 +77,13 @@ Route::get('/menu/print', [App\Http\Controllers\MenuPageController::class, 'prin
 Route::get('/menu/print.pdf', [App\Http\Controllers\MenuPageController::class, 'printPdf'])
     ->middleware(['content.locale'])
     ->name('menu.print.pdf');
+// One category on its own, for sharing (owner, 2026-09-21: "share a
+// category in the menu ... when opened only that category shows but option
+// to see full menu"). Slug or id; the same page as /menu with the rest
+// left out and a way back to all of it.
+Route::get('/menu/c/{category}', [App\Http\Controllers\MenuPageController::class, 'category'])
+    ->middleware(['content.locale', 'service.banner'])
+    ->name('menu.category');
 // Own Blade document — not 58 hidden dialogs, and not in the sitemap
 // (per-item URLs are deferred; see docs/IMPROVEMENT_PLAN.md).
 Route::get('/menu/{item}', [App\Http\Controllers\MenuPageController::class, 'show'])

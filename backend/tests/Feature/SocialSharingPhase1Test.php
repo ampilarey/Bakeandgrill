@@ -258,7 +258,13 @@ class SocialSharingPhase1Test extends TestCase
 
         $html = $this->get('/menu')->assertOk()->getContent();
 
-        $this->assertStringNotContainsString('data-testid="share-open"', $html);
+        // The category bands carry a Share button (owner, 2026-09-21); the
+        // cards themselves still do not.
+        preg_match_all('#<article class="menu-card[^"]*".*?</article>#s', $html, $cards);
+        $this->assertNotEmpty($cards[0]);
+        foreach ($cards[0] as $card) {
+            $this->assertStringNotContainsString('data-testid="share-open"', $card);
+        }
     }
 
     public function test_the_item_page_is_laid_out_like_the_order_app_sheet(): void

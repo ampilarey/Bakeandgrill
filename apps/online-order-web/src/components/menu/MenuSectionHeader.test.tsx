@@ -73,4 +73,15 @@ describe('MenuSectionHeader', () => {
 
     expect(screen.getByRole('heading', { level: 2, name: 'Grill Favourites' })).toBeVisible();
   });
+
+  /** Owner, 2026-09-21: "add share button in ... order app menu". One address per category. */
+  it('carries a Share button for the category\'s own page on the website menu', () => {
+    render(<MenuSectionHeader category={{ ...baseCat, slug: 'grill-favourites' }} />);
+    const share = screen.getByRole('button', { name: 'Share Grill Favourites' });
+    expect(share).toBeInTheDocument();
+    expect(screen.getByTestId('category-share')).toContainElement(share);
+
+    render(<MenuSectionHeader category={{ ...baseCat, id: 9, name: 'Sweets', slug: null }} />);
+    expect(screen.getByRole('button', { name: 'Share Sweets' })).toBeInTheDocument();
+  });
 });

@@ -228,6 +228,59 @@ class MenuPageTest extends TestCase
         $this->assertNotContains('Events', $names);
     }
 
+    public function test_a_category_can_be_shared_on_its_own_page_with_a_way_back(): void
+    {
+        // Owner, 2026-09-21: "share a category in the menu? When opened only
+        // that category shows but option to see full menu."
+        $food = $this->category('Shorteats', 1);
+        $drinks = $this->category('Drinks', 2);
+        $hot = Category::create(['name' => 'Hot Drinks', 'slug' => 'hot-drinks', 'is_active' => true, 'sort_order' => 1, 'parent_id' => $drinks->id]);
+        $cold = Category::create(['name' => 'Cold Drinks', 'slug' => 'cold-drinks', 'is_active' => true, 'sort_order' => 2, 'parent_id' => $drinks->id]);
+        $this->item($food, 'Bajiya', 5);
+        $this->item($hot, 'Black Tea', 10);
+        $this->item($cold, 'Lime Juice', 25);
+
+        $html = $this->get('/menu/c/drinks')->assertOk()->getContent();
+
+        $this->assertStringContainsString('<title>Drinks – Menu – Bake &amp; Grill</title>', $html);
+        $this->assertStringContainsString('data-testid="menu-only-category"', $html);
+        $this->assertStringContainsString('Showing <strong>Drinks</strong>', $html);
+        $this->assertStringContainsString('href="/menu" class="btn-outline menu-only-full"', $html);
+        $this->assertStringNotContainsString('<nav class="menu-rail"', $html);
+        $this->assertStringContainsString('Black Tea', $html);
+        $this->assertStringContainsString('Lime Juice', $html);
+        $this->assertStringNotContainsString('Bajiya', $html);
+        $this->assertStringNotContainsString('id="cat-' . $food->id . '"', $html);
+
+        // A sub-category: under its parent band, without its siblings.
+        $sub = $this->get('/menu/c/cold-drinks')->assertOk()->getContent();
+        $this->assertStringContainsString('Showing <strong>Cold Drinks</strong>', $sub);
+        $this->assertStringContainsString('Lime Juice', $sub);
+        $this->assertStringNotContainsString('Black Tea', $sub);
+        $this->assertStringContainsString('id="cat-' . $drinks->id . '"', $sub);
+
+        // The id works too, and an unknown category is a real 404.
+        $this->get('/menu/c/' . $drinks->id)->assertOk()->assertSee('Black Tea', false);
+        $this->get('/menu/c/nothing-here')->assertNotFound();
+    }
+
+    public function test_every_category_band_and_sub_title_carries_a_share_button_for_its_own_link(): void
+    {
+        $drinks = $this->category('Drinks', 2);
+        $cold = Category::create(['name' => 'Cold Drinks', 'slug' => 'cold-drinks', 'is_active' => true, 'sort_order' => 2, 'parent_id' => $drinks->id]);
+        $this->item($drinks, 'Water', 5);
+        $this->item($cold, 'Lime Juice', 25);
+
+        $html = $this->get('/menu')->assertOk()->getContent();
+
+        $this->assertStringContainsString('data-share-url="http://localhost:8000/menu/c/drinks"', $html);
+        $this->assertStringContainsString('aria-label="Share Drinks"', $html);
+        $this->assertStringContainsString('data-share-url="http://localhost:8000/menu/c/cold-drinks"', $html);
+        $this->assertStringContainsString('aria-label="Share Cold Drinks"', $html);
+        // The share styles and script travel once, not once per category.
+        $this->assertSame(1, substr_count($html, 'window.__shareInit = function'));
+    }
+
     public function test_a_size_that_has_run_out_is_greyed_on_the_item_page(): void
     {
         $cat = $this->category('Drinks');
@@ -695,9 +748,10 @@ class MenuPageTest extends TestCase
         // band with no title, do not. Owner, 2026-09-02: "adding a line
         // before subcategory".
         $this->assertStringContainsString('<div class="menu-subcat-block">', $main[0]);
-        // …and the block carries the anchor the rail link points at.
+        // …and the block carries the anchor the rail link points at. The
+        // title sits in a head row beside its Share button (2026-09-21).
         $this->assertMatchesRegularExpression(
-            '#<div class="menu-subcat-block menu-subcat-block--titled" id="cat-' . $child->id . '">\s*<h3 class="menu-subcat-title"#',
+            '#<div class="menu-subcat-block menu-subcat-block--titled" id="cat-' . $child->id . '">\s*<div class="menu-subcat-head">\s*<h3 class="menu-subcat-title"#',
             $main[0],
         );
     }

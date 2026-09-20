@@ -1,5 +1,7 @@
 import { API_ORIGIN } from '../../api';
 import type { Category } from '../../api';
+import { ShareControl } from '../ShareControl';
+import { categoryShareProps } from '../../utils/categoryShare';
 
 type Props = {
   category: Category;
@@ -75,6 +77,11 @@ export function MenuSectionHeader({ category, id, active = false }: Props) {
             <p className="menu-cat-promo__desc">{description}</p>
           ) : null}
         </div>
+      </div>
+      {/* Share this category on its own page (owner, 2026-09-21). Outside the
+          strip, which clips its overflow, so the popover can open below. */}
+      <div className="menu-cat-promo__share" data-testid="category-share">
+        <ShareControl {...categoryShareProps(category)} />
       </div>
     </header>
   );

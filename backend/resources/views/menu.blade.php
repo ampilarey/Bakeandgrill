@@ -1,7 +1,9 @@
 @extends('layout')
 
-@section('title', 'Menu – Bake & Grill')
-@section('description', 'The full Bake &amp; Grill menu — Dhivehi hedhikaa, fast food, sweet treats and drinks, freshly made in Malé. Prices in MVR.')
+@section('title', !empty($menuOnlyCategoryName) ? ($menuOnlyCategoryName . ' – Menu – Bake & Grill') : 'Menu – Bake & Grill')
+@section('description', !empty($menuOnlyCategoryName)
+    ? ('The ' . $menuOnlyCategoryName . ' menu at Bake &amp; Grill, freshly made in Malé. Prices in MVR.')
+    : 'The full Bake &amp; Grill menu — Dhivehi hedhikaa, fast food, sweet treats and drinks, freshly made in Malé. Prices in MVR.')
 
 @section('styles')
 <style>
@@ -345,7 +347,8 @@ html.rail-right .menu-rail-side .menu-rail-side__icon { transform: scaleX(-1); }
     position: relative;
     height: 76px;
     border-radius: 12px;
-    overflow: hidden;
+    /* Not overflow:hidden — the Share popover opens out of the band. The
+       photo and scrim carry the radius themselves instead. */
     margin: 1.25rem 0 0.6rem;
     background: var(--amber-light);
     /* No scroll-margin here on purpose: the layout already sets
@@ -353,6 +356,7 @@ html.rail-right .menu-rail-side .menu-rail-side__icon { transform: scaleX(-1); }
 }
 .menu-cat-band img {
     position: absolute; inset: 0;
+    border-radius: 12px;
     width: 100%; height: 100%;
     object-fit: cover; display: block;
 }
@@ -360,6 +364,34 @@ html.rail-right .menu-rail-side .menu-rail-side__icon { transform: scaleX(-1); }
     position: absolute; inset: 0;
     background: linear-gradient(90deg, rgba(28,20,8,0.62) 0%, rgba(28,20,8,0.24) 55%, transparent 100%);
 }
+.menu-cat-band-scrim { border-radius: 12px; }
+/* Share this category: a pill on the band's right, popover opening below. */
+.menu-cat-band-share { position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%); z-index: 2; }
+.menu-band-share {
+    min-height: 34px; padding: 0 0.75rem;
+    border: 1.5px solid rgba(255,255,255,0.75); border-radius: 999px;
+    background: rgba(28,20,8,0.35); color: #fff;
+    font: inherit; font-size: 0.8rem; font-weight: 700; cursor: pointer;
+    -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+}
+.menu-cat-band-share .share-popover { bottom: auto; top: calc(100% + 0.4rem); left: auto; right: 0; }
+.menu-cat-band-copy { padding-right: 5.5rem; }
+.menu-subcat-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.menu-sub-share {
+    min-height: 32px; padding: 0 0.65rem;
+    border: 1px solid var(--border); border-radius: 999px;
+    background: var(--card, #fff); color: var(--muted);
+    font: inherit; font-size: 0.78rem; font-weight: 700; cursor: pointer;
+}
+.menu-subcat-head .share-popover { bottom: auto; top: calc(100% + 0.4rem); left: auto; right: 0; }
+/* A shared category on its own: one line saying so, and the way back. */
+.menu-only {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;
+    margin: 0.25rem 0 0.75rem; padding: 0.7rem 0.9rem;
+    background: var(--amber-light); border: 1px solid var(--border); border-radius: 12px;
+}
+.menu-only p { margin: 0; font-size: 0.95rem; }
+.menu-shell--single .menu-main { max-width: 100%; }
 .menu-cat-band-copy {
     position: absolute; inset: 0;
     display: flex; flex-direction: column; justify-content: center;
@@ -775,6 +807,18 @@ body.menu-sheet-open { overflow: hidden; }
     $menuNewItemIds = $menuNewItemIds ?? [];
     $menuSoldOut = $menuSoldOut ?? [];
     $menuCatering = $menuCatering ?? collect();
+    $menuOnlyCategory = $menuOnlyCategory ?? null;
+    $menuOnlyCategoryName = $menuOnlyCategoryName ?? null;
+    $menuCategoryUrls = $menuCategoryUrls ?? [];
+    $shareFor = function ($category, $text) use ($menuCategoryUrls) {
+        return [
+            'shareUrl' => $menuCategoryUrls[$category->id] ?? url('/menu/c/' . $category->id),
+            'shareTitle' => $text . ' – Bake & Grill menu',
+            'shareText' => 'See our ' . $text . ' menu at Bake & Grill',
+            'shareId' => 'share-cat-' . $category->id,
+            'shareLabel' => 'Share ' . $text,
+        ];
+    };
     $menuBundles = $menuBundles ?? [];
     $menuSpecialsByItemId = $menuSpecialsByItemId ?? [];
     $menuPriceByItemId = $menuPriceByItemId ?? [];
@@ -833,7 +877,8 @@ body.menu-sheet-open { overflow: hidden; }
 <script nonce="{{ csp_nonce() }}">
 try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.documentElement.classList.add('rail-right'); } catch (e) {}
 </script>
-<div class="menu-shell">
+<div class="{{ $menuOnlyCategory ? 'menu-shell menu-shell--single' : 'menu-shell' }}">
+    @unless($menuOnlyCategory)
     <nav class="menu-rail" aria-label="Menu categories">
         <div class="menu-rail-scroll">
         <div class="menu-rail-list">
@@ -924,8 +969,16 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
         </div>
         </div>
     </nav>
+    @endunless
 
     <div class="menu-main">
+        @if($menuOnlyCategory)
+            {{-- A shared category: say what this is and where the rest went. --}}
+            <div class="menu-only" data-testid="menu-only-category">
+                <p>Showing <strong>{{ $menuOnlyCategoryName }}</strong> from our menu.</p>
+                <a href="/menu" class="btn-outline menu-only-full" data-testid="menu-only-full">See the full menu →</a>
+            </div>
+        @endif
         {{-- Filtering needs JavaScript — the whole menu is in the HTML and the
              bar hides the cards that do not match. So the bar itself is hidden
              until the layout's inline script has set html.js, rather than
@@ -1080,6 +1133,12 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                             <p>{{ $cat->description }}</p>
                         @endif
                     </div>
+                    @if($cat)
+                        {{-- Share this category on its own page (owner, 2026-09-21). --}}
+                        <div class="menu-cat-band-share">
+                            @include('partials.share-control', $shareFor($cat, $name['text']) + ['shareButtonClass' => 'menu-band-share'])
+                        </div>
+                    @endif
                 </header>
 
                 @php
@@ -1098,7 +1157,10 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                     <div class="menu-subcat-block{{ $block['heading'] ? ' menu-subcat-block--titled' : '' }}"@if($block['heading']) id="cat-{{ $block['heading']->id }}"@endif>
                     @if($block['heading'])
                         @php $subName = $categoryName($block['heading']); @endphp
-                        <h3 class="menu-subcat-title" @if($subName['dv']) lang="dv" @endif>{{ $subName['text'] }}</h3>
+                        <div class="menu-subcat-head">
+                            <h3 class="menu-subcat-title" @if($subName['dv']) lang="dv" @endif>{{ $subName['text'] }}</h3>
+                            @include('partials.share-control', $shareFor($block['heading'], $subName['text']) + ['shareButtonClass' => 'menu-sub-share'])
+                        </div>
                     @endif
                     <div class="menu-grid">
                         @foreach($block['items'] as $item)
@@ -1141,6 +1203,9 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
 
 <div class="menu-cta">
     <a href="/order/menu" class="btn-primary">Start your order →</a>
+    @if($menuOnlyCategory)
+        <a href="/menu" class="btn-outline" style="margin-left:0.6rem">See the full menu</a>
+    @endif
 </div>
 
 @php

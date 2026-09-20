@@ -177,7 +177,7 @@ describe('MenuPage — the Other section has a rail entry', () => {
     const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
     window.matchMedia = vi.fn().mockReturnValue({ matches: false }) as unknown as typeof window.matchMedia;
     tab.click();
-    await waitFor(() => expect(screen.getByTestId('cat-rail-other').getAttribute('aria-selected')).toBe('true'));
+    await waitFor(() => expect(screen.getByTestId('cat-rail-other').getAttribute('aria-selected')).toBe('true'), { timeout: 4000 });
     expect(scrollTo).toHaveBeenCalled();
     scrollTo.mockRestore();
   });

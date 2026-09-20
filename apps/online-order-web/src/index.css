@@ -3996,6 +3996,23 @@ textarea.field-input {
 }
 
 /* Thin ZUS-style category strip — keep items above the fold */
+/* Share this category: a pill on the strip's right; the header, not the
+   clipped strip, is the popover's box. */
+.menu-section-header { position: relative; }
+.menu-cat-promo__share { position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%); z-index: 2; }
+.menu-cat-promo__share .share-control-btn {
+  min-height: 34px; min-width: 0; padding: 0 0.75rem;
+  border: 1.5px solid rgba(255, 255, 255, 0.75); border-radius: 999px;
+  background: rgba(28, 20, 8, 0.35); color: #fff; font-size: 0.8rem;
+  -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+}
+.menu-cat-promo__copy { padding-right: 5.5rem; }
+.menu-subcat-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.55rem; }
+.menu-subcat-head .menu-subcat-title { margin-bottom: 0; }
+.menu-subcat-head .share-control-btn {
+  min-height: 32px; min-width: 0; padding: 0 0.65rem;
+  border-radius: 999px; font-size: 0.78rem; color: var(--color-text-muted);
+}
 .menu-cat-promo {
   position: relative;
   width: 100%;

@@ -18,6 +18,7 @@
             aria-haspopup="dialog"
             aria-expanded="false"
             aria-controls="{{ $shareId }}-popover"
+            @if(!empty($shareLabel)) aria-label="{{ $shareLabel }}" @endif
             data-testid="share-open">
         Share
     </button>
@@ -46,6 +47,8 @@
         <button type="button" class="share-close" data-share-close>Close</button>
     </div>
 </div>
+{{-- One copy of the styles and script however many controls a page has. --}}
+@once
 <style>
 .share-control { position: relative; display: inline-flex; }
 .share-popover {
@@ -169,3 +172,4 @@
     window.__shareInit();
 })();
 </script>
+@endonce

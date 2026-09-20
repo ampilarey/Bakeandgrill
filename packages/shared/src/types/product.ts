@@ -40,6 +40,8 @@ export type ItemSpecialPricing = {
 export type Category = {
   id: number;
   name: string;
+  /** The category's link on the website menu (/menu/c/{slug}). */
+  slug?: string | null;
   name_dv?: string | null;
   description?: string | null;
   image_url?: string | null;

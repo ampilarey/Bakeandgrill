@@ -61,22 +61,82 @@ class MenuPageController extends Controller
 
     public function index(): View
     {
+        return $this->renderMenu(null);
+    }
+
+    /**
+     * One category on its own, for sharing.
+     *
+     * Owner, 2026-09-21: "Is there any way that I can share a category in
+     * the menu? When opened only that category shows but option to see full
+     * menu." The same page as /menu — same cards, same sheet, same sold-out
+     * marks — with the other categories, the rail and the offers left out,
+     * a line saying what is being shown, and a way back to everything. A
+     * sub-category shows under its parent's band with its siblings left out.
+     */
+    public function category(string $category): View
+    {
+        $row = Category::query()->where('is_active', true)->where('slug', $category)->first();
+        if ($row === null && ctype_digit($category)) {
+            $row = Category::query()->where('is_active', true)->find((int) $category);
+        }
+        if ($row === null) {
+            abort(404);
+        }
+
+        return $this->renderMenu($row);
+    }
+
+    /** The link a category is shared by: its slug when it has one, else its id. */
+    public static function categoryUrl(Category $category): string
+    {
+        $slug = trim((string) ($category->slug ?? ''));
+
+        return url('/menu/c/' . ($slug !== '' ? $slug : $category->id));
+    }
+
+    private function renderMenu(?Category $only): View
+    {
         $items = $this->menuItems();
         $categories = $this->activeCategories();
-        // Event and catering dishes get their own section at the end, as in
-        // the order app, and leave their category (a bare "Events" parent
-        // would otherwise be a second copy of the same list).
-        [$catering, $regular] = $items->partition(fn (Item $item) => $this->isCateringItem($item, $categories));
-        $groups = $this->groupByParent($regular->values(), $categories);
+        $offers = collect(app(OffersService::class)->activeOffers());
+
+        if ($only !== null) {
+            // The category and its children, or a sub-category and its parent
+            // (for the band). Nothing else, so an "also show in" placement
+            // elsewhere does not drag another section in.
+            $family = $categories->filter(fn (Category $c) => (int) $c->id === (int) $only->id
+                || (int) $c->parent_id === (int) $only->id);
+            $ids = $family->keys()->map(fn ($id) => (int) $id)->all();
+            $items = $items->filter(fn (Item $item) => in_array((int) $item->category_id, $ids, true)
+                || array_intersect($ids, $item->extraCategoryIds()) !== [])->values();
+            $categories = $categories->filter(fn (Category $c) => in_array((int) $c->id, $ids, true)
+                || ($only->parent_id !== null && (int) $c->id === (int) $only->parent_id));
+            $offers = collect();
+
+            $parentOfOnly = $only->parent_id ? $categories->get((int) $only->parent_id) : null;
+            $isEvents = self::categoryLooksLikeCatering($only->name)
+                || ($parentOfOnly !== null && self::categoryLooksLikeCatering($parentOfOnly->name));
+            $catering = $isEvents ? $items : collect();
+            $groups = $isEvents ? collect() : $this->groupByParent($items, $categories);
+        } else {
+            // Event and catering dishes get their own section at the end, as in
+            // the order app, and leave their category (a bare "Events" parent
+            // would otherwise be a second copy of the same list).
+            [$catering, $regular] = $items->partition(fn (Item $item) => $this->isCateringItem($item, $categories));
+            $groups = $this->groupByParent($regular->values(), $categories);
+        }
 
         $pricing = app(SpecialPricingService::class);
         $specialsByItemId = $this->indexSpecialsByItem($pricing->activeSpecialsForDisplay());
-        $offers = collect(app(OffersService::class)->activeOffers());
 
         return view('menu', [
             'menuCategories' => $groups,
             'menuItemCount' => $items->count(),
             'menuCatering' => $catering->values(),
+            'menuOnlyCategory' => $only,
+            'menuOnlyCategoryName' => $only?->name,
+            'menuCategoryUrls' => $this->activeCategories()->map(fn (Category $c) => self::categoryUrl($c))->all(),
             'menuSoldOut' => $this->soldOutLabels($items),
             'menuOffers' => $offers,
             'menuSpecialsByItemId' => $specialsByItemId,

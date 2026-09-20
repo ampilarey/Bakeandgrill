@@ -31,6 +31,8 @@ import { useServiceStatusContext } from '../context/ServiceStatusContext';
 import { isDeliveryBlocked, isPickupBlocked } from '../utils/fulfilmentAvailability';
 import { CategoryRail } from '../components/menu/CategoryRail';
 import { MenuSectionHeader } from '../components/menu/MenuSectionHeader';
+import { ShareControl } from '../components/ShareControl';
+import { categoryShareProps } from '../utils/categoryShare';
 import { FilterChipsRow, type SaleFilter } from '../components/menu/FilterChipsRow';
 import { MenuQuickFilters } from '../components/menu/MenuQuickFilters';
 import { OffersRail } from '../components/home/OffersRail';
@@ -1370,9 +1372,12 @@ export function MenuPage() {
                         paddingBottom: '0.85rem',
                       }}
                     >
-                      <h3 className="menu-subcat-title" data-testid="menu-subcat-title">
-                        {sub.category.name}
-                      </h3>
+                      <div className="menu-subcat-head">
+                        <h3 className="menu-subcat-title" data-testid="menu-subcat-title">
+                          {sub.category.name}
+                        </h3>
+                        <ShareControl {...categoryShareProps(sub.category)} />
+                      </div>
                       <div className={viewMode === 'list' ? 'menu-list' : 'menu-grid'}>
                         {sub.items.map(renderProductCard)}
                       </div>

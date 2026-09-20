@@ -4,6 +4,8 @@ export type ShareControlProps = {
   url: string;
   title: string;
   text?: string;
+  /** Accessible name when a page carries several Share buttons ("Share Drinks"). */
+  ariaLabel?: string;
 };
 
 /**
@@ -11,7 +13,7 @@ export type ShareControlProps = {
  * (Clipboard API, then a select-and-copy field) and encoded intent URLs.
  * No share counting in this phase.
  */
-export function ShareControl({ url, title, text }: ShareControlProps) {
+export function ShareControl({ url, title, text, ariaLabel }: ShareControlProps) {
   const shareText = text ?? title;
   const popoverId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -111,6 +113,7 @@ export function ShareControl({ url, title, text }: ShareControlProps) {
         ref={openBtnRef}
         type="button"
         className="share-control-btn"
+        aria-label={ariaLabel}
         onClick={onOpen}
         aria-haspopup="dialog"
         aria-expanded={open}
