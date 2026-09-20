@@ -25,7 +25,7 @@ const newRow = (): Row => ({ key: `r${_rowSeq++}`, inventory_item_id: '', quanti
 
 function rowsFromItem(item: ItemWithRecipe): Row[] {
   const ings = item.recipe?.ingredients ?? [];
-  if (ings.length === 0) return [newRow()];
+  if (ings.length === 0) return (item.variants ?? []).length > 0 ? [] : [newRow()];
   return ings.map((ing) => ({
     key: `r${_rowSeq++}`,
     inventory_item_id: ing.inventory_item_id ?? '',
@@ -89,6 +89,13 @@ export function RecipeEditorModal({
   onSaved: (updated: ItemWithRecipe) => void;
 }) {
   const [rows, setRows] = useState<Row[]>(() => rowsFromItem(item));
+  // Which size's rows are on screen: a variant id, or '' for the rows every
+  // size shares. Owner, 2026-09-21: "select variant, add recipe separately"
+  // — one flat list with a size dropdown per row made you filter it in your
+  // head. A sized dish opens on its first size, since that is usually what
+  // needs filling in (a bottle per size); a curry sold in halves and fulls
+  // switches to "Every size" once.
+  const [tab, setTab] = useState<number | ''>(() => (item.variants ?? [])[0]?.id ?? '');
   const [options, setOptions] = useState<InventoryItem[] | null>(null);
   const [conversions, setConversions] = useState<UnitConversion[]>([]);
   const [saving, setSaving] = useState(false);
@@ -189,7 +196,25 @@ export function RecipeEditorModal({
   const setRow = (key: string, patch: Partial<Row>) =>
     setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
   const removeRow = (key: string) =>
-    setRows((rs) => (rs.length > 1 ? rs.filter((r) => r.key !== key) : [newRow()]));
+    setRows((rs) => {
+      const next = rs.filter((r) => r.key !== key);
+      return next.length === 0 && !hasSizes ? [newRow()] : next;
+    });
+
+  /** The rows on the open tab; every row when the dish has no sizes. */
+  const visibleRows = hasSizes ? rows.filter((r) => r.variant_id === tab) : rows;
+  const sharedCount = rows.filter((r) => r.variant_id === '').length;
+  const countFor = (id: number | '') => rows.filter((r) => r.variant_id === id).length;
+  const addRow = () => setRows((rs) => [...rs, { ...newRow(), variant_id: hasSizes ? tab : '' }]);
+  /** Copy another size's rows onto the open tab — most sizes differ by one quantity. */
+  const copyFrom = (fromId: number | '') =>
+    setRows((rs) => [...rs, ...rs.filter((r) => r.variant_id === fromId).map((r) => ({ ...r, key: `r${_rowSeq++}`, variant_id: tab }))]);
+  /** One blank row on every size at once: the bottled-drink shape. */
+  const oneIngredientPerSize = () => {
+    setRows((rs) => [...rs, ...sizes.map((v) => ({ ...newRow(), variant_id: v.id }))]);
+    setTab(sizes[0]?.id ?? '');
+  };
+  const currentSize = typeof tab === 'number' ? sizes.find((v) => v.id === tab) ?? null : null;
 
   const handleSave = async () => {
     if (rows.some((r) => r.missing)) {
@@ -261,18 +286,97 @@ export function RecipeEditorModal({
             </p>
           )}
 
+          {hasSizes && (
+            <div data-testid="recipe-size-tabs" style={{ marginBottom: 12 }}>
+              <div role="tablist" aria-label="Recipe for" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                {([{ id: '' as const, name: 'Every size' }, ...sizes.map((v) => ({ id: v.id, name: v.name }))]).map((t) => {
+                  const n = countFor(t.id);
+                  const empty = t.id !== '' && n === 0 && sharedCount === 0;
+                  return (
+                    <button
+                      key={String(t.id)}
+                      role="tab"
+                      aria-selected={tab === t.id}
+                      onClick={() => setTab(t.id)}
+                      style={{
+                        padding: '8px 14px', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13, fontFamily: 'inherit',
+                        background: tab === t.id ? 'var(--color-primary)' : 'var(--color-bg)',
+                        color: tab === t.id ? 'var(--color-on-primary, white)' : 'var(--color-text-secondary)',
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                      }}
+                    >
+                      {t.name}
+                      <span style={{ fontSize: 11, opacity: 0.8 }}>{n}</span>
+                      {empty && <span aria-label="No ingredients" title="No ingredients" style={{ width: 8, height: 8, borderRadius: 99, background: 'var(--color-warning)' }} />}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* The whole picture, whichever tab is open. */}
+              <div data-testid="recipe-size-costs" style={{ border: '1px solid var(--color-border)', borderRadius: 10, overflow: 'hidden' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead><tr>
+                    <th style={th}>Size</th>
+                    <th style={{ ...th, textAlign: 'right' }}>Price</th>
+                    <th style={{ ...th, textAlign: 'right' }}>Cost</th>
+                    <th style={{ ...th, textAlign: 'right' }}>Profit</th>
+                    <th style={{ ...th, textAlign: 'right' }}>Margin</th>
+                  </tr></thead>
+                  <tbody>
+                    {sizeCosts.map((v) => {
+                      const p = v.cost === null ? null : v.price - v.cost;
+                      return (
+                        <tr key={v.id} data-testid={`recipe-size-cost-${v.id}`} style={tab === v.id ? { background: 'color-mix(in srgb, var(--color-primary) 8%, transparent)' } : undefined}>
+                          <td style={{ ...td, fontWeight: tab === v.id ? 700 : undefined }}>{v.name}{v.consumption_factor !== 1 ? <span style={{ color: 'var(--color-text-muted)', fontSize: 11, fontWeight: 400 }}> · uses {v.consumption_factor}</span> : null}</td>
+                          <td style={{ ...td, textAlign: 'right' }}>{money(v.price)}</td>
+                          <td style={{ ...td, textAlign: 'right' }}>{money(v.cost)}</td>
+                          <td style={{ ...td, textAlign: 'right', color: p != null && p < 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>{money(p)}</td>
+                          <td style={{ ...td, textAlign: 'right' }}>{p != null && v.price > 0 ? `${((p / v.price) * 100).toFixed(1)}%` : '—'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '10px 0 0' }} data-testid="recipe-tab-note">
+                {currentSize
+                  ? <>Rows here belong to <strong>{currentSize.name}</strong> alone and are taken exactly as written when it sells.{sharedCount > 0 ? <> It also takes <strong>{currentSize.consumption_factor}×</strong> every &ldquo;Every size&rdquo; row{currentSize.consumption_factor !== 1 ? ' (its Uses factor, set on the item\'s Sizes tab)' : ''}.</> : ''}</>
+                  : <>Rows here are shared by every size. Each size takes its Uses share of them: {sizes.map((v) => `${v.name} ${v.consumption_factor}×`).join(', ')}. Change Uses on the item&rsquo;s Sizes tab.</>}
+              </p>
+
+              {currentSize && countFor(tab) === 0 && (
+                <div data-testid="recipe-empty-size" style={{ ...notice, marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                  <span style={{ flex: '1 1 220px' }}>
+                    {sharedCount === 0
+                      ? <><strong>{currentSize.name}</strong> has no ingredients, so it costs nothing and takes no stock.</>
+                      : <><strong>{currentSize.name}</strong> has nothing of its own yet; it only takes its share of the shared rows.</>}
+                  </span>
+                  {sizes.filter((v) => v.id !== tab && countFor(v.id) > 0).map((v) => (
+                    <Btn key={v.id} small variant="secondary" onClick={() => copyFrom(v.id)}>Copy from {v.name}</Btn>
+                  ))}
+                  {rows.length === 0 && sizes.length > 1 && (
+                    <Btn small variant="secondary" onClick={oneIngredientPerSize} title="A blank row on every size — a bottle per size, a can per size">
+                      One ingredient per size
+                    </Btn>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
           <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: hasSizes ? 560 : 420 }}>
+          {visibleRows.length > 0 && (
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 420 }} data-testid="recipe-rows">
             <thead><tr>
               <th style={th}>Ingredient</th>
-              {hasSizes && <th style={{ ...th, width: 120 }}>For size</th>}
               <th style={{ ...th, width: 90 }}>Qty</th>
               <th style={{ ...th, width: 84 }}>Unit</th>
               <th style={{ ...th, width: 90, textAlign: 'right' }}>Line cost</th>
               <th style={{ ...th, width: 34 }} aria-label="Remove" />
             </tr></thead>
             <tbody>
-              {rows.map((r) => {
+              {visibleRows.map((r) => {
                 const id = typeof r.inventory_item_id === 'number' ? r.inventory_item_id : 0;
                 const stockUnit = id ? (unitOf.get(id) ?? '') : '';
                 const choices = id ? unitChoices(conversions, stockUnit) : [];
@@ -315,20 +419,6 @@ export function RecipeEditorModal({
                       )}
                       </div>
                     </td>
-                    {hasSizes && (
-                      <td style={td}>
-                        <select
-                          aria-label="Which size this row is for"
-                          value={r.variant_id}
-                          onChange={(e) => setRow(r.key, { variant_id: e.target.value ? Number(e.target.value) : '' })}
-                          title="All sizes: shared, scaled by each size's Uses factor. One size: taken exactly as written, only when that size sells."
-                          style={{ ...control, cursor: 'pointer' }}
-                        >
-                          <option value="">All sizes</option>
-                          {sizes.map((v) => <option key={v.id} value={v.id}>{v.name} only</option>)}
-                        </select>
-                      </td>
-                    )}
                     <td style={td}>
                       <input
                         type="number" min="0" step="any" inputMode="decimal"
@@ -373,11 +463,12 @@ export function RecipeEditorModal({
               })}
             </tbody>
           </table>
+          )}
           </div>
 
           <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
-            <Btn small variant="secondary" onClick={() => setRows((rs) => [...rs, newRow()])}>
-              + Add ingredient
+            <Btn small variant="secondary" onClick={addRow}>
+              + Add ingredient{currentSize ? ` for ${currentSize.name}` : ''}
             </Btn>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text)' }}>
               These rows make
@@ -403,7 +494,9 @@ export function RecipeEditorModal({
             </p>
           )}
 
-          {/* Live cost / margin / profit summary. */}
+          {/* Live cost / margin / profit summary. A sized dish never charges
+              its base price, so its numbers live in the per-size strip above. */}
+          {!hasSizes && (
           <div style={{
             marginTop: 18, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
             gap: 10, padding: 14, borderRadius: 12,
@@ -422,39 +515,11 @@ export function RecipeEditorModal({
               color={marginPct != null && marginPct < 0 ? 'var(--color-danger)' : undefined}
             />
           </div>
+          )}
           <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '10px 0 0' }}>
             Cost rolls up live from inventory unit prices — a later price change moves the margin
             without re-saving. Profit is the selling price less this cost.
-            {hasSizes ? ' Rows marked "All sizes" are the recipe cost above; each size adds its own rows below.' : ''}
           </p>
-
-          {hasSizes && (
-            <div data-testid="recipe-size-costs" style={{ marginTop: 12, border: '1px solid var(--color-border)', borderRadius: 10, overflow: 'hidden' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                <thead><tr>
-                  <th style={th}>Size</th>
-                  <th style={{ ...th, textAlign: 'right' }}>Price</th>
-                  <th style={{ ...th, textAlign: 'right' }}>Cost</th>
-                  <th style={{ ...th, textAlign: 'right' }}>Profit</th>
-                  <th style={{ ...th, textAlign: 'right' }}>Margin</th>
-                </tr></thead>
-                <tbody>
-                  {sizeCosts.map((v) => {
-                    const p = v.cost === null ? null : v.price - v.cost;
-                    return (
-                      <tr key={v.id} data-testid={`recipe-size-cost-${v.id}`}>
-                        <td style={td}>{v.name}{v.consumption_factor !== 1 ? <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}> · uses {v.consumption_factor}</span> : null}</td>
-                        <td style={{ ...td, textAlign: 'right' }}>{money(v.price)}</td>
-                        <td style={{ ...td, textAlign: 'right' }}>{money(v.cost)}</td>
-                        <td style={{ ...td, textAlign: 'right', color: p != null && p < 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>{money(p)}</td>
-                        <td style={{ ...td, textAlign: 'right' }}>{p != null && v.price > 0 ? `${((p / v.price) * 100).toFixed(1)}%` : '—'}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
 
           <div style={{ marginTop: 16, padding: 12, borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-bg)' }}>
             <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>
@@ -500,8 +565,8 @@ export function RecipeEditorModal({
                 Stop selling when these ingredients run out
               </span>
               <span style={{ display: 'block', fontSize: 11, color: 'var(--color-text-muted)', marginTop: 3, lineHeight: 1.5 }}>
-                Rows for all sizes are one shared pool, each size taking its own share (see <strong>Uses</strong> on
-                the variants tab); a row for one size is that size's own stock. A size stays on the menu while its
+                &ldquo;Every size&rdquo; rows are one shared pool, each size taking its own share (see <strong>Uses</strong> on
+                the variants tab); a size's own rows are that size's own stock. A size stays on the menu while its
                 ingredients cover it, so a full portion is offered down to the last whole piece. Leave off if the
                 ingredient counts are not kept current.
               </span>

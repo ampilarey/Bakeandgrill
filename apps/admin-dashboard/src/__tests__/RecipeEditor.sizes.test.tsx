@@ -6,8 +6,11 @@ import type { ItemWithRecipe } from '../api';
 /*
  * Owner, 2026-09-07: "water has 500ml bottles and 1.5L bottles. In menu it's
  * as one item with variants." Each size is a different thing on the shelf,
- * so a recipe row can belong to one size. The editor shows which size a row
- * is for, costs each size on its own, and sends the size with the row.
+ * so a recipe row can belong to one size.
+ *
+ * Owner, 2026-09-21: "select variant, add recipe separately" — a tab per
+ * size, plus "Every size" for what they share. The rows are the same
+ * underneath; only where you look at them changed.
  */
 
 const fetchInventoryItems = vi.fn();
@@ -47,50 +50,90 @@ const water: ItemWithRecipe = {
   },
 };
 
-describe('Recipe editor — rows per size', () => {
+const ingredientValues = () => screen.queryAllByLabelText('Ingredient').map((s) => (s as HTMLSelectElement).value);
+const tab = (name: string) => screen.getByRole('tab', { name: new RegExp(`^${name}`) });
+
+describe('Recipe editor — a tab per size', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     fetchInventoryItems.mockResolvedValue({ data: [inv(30, 'Paper cup', 0.5), inv(31, 'Water 500ml', 4), inv(32, 'Water 1.5L', 9)], meta: { last_page: 1 } });
     saveItemRecipe.mockResolvedValue({ item: water });
   });
 
-  it('shows which size each row is for and costs each size on its own', async () => {
+  it('opens on the first size, shows only its rows, and costs every size in the strip', async () => {
     render(<RecipeEditorModal item={water} onClose={() => {}} onSaved={() => {}} />);
+    await screen.findByRole('tablist', { name: 'Recipe for' });
 
-    const selects = await screen.findAllByLabelText('Which size this row is for');
-    expect(selects.map((s) => (s as HTMLSelectElement).value)).toEqual(['', '1', '2']);
+    expect(tab('500ml')).toHaveAttribute('aria-selected', 'true');
+    expect(ingredientValues()).toEqual(['31']);
+    expect(screen.getByTestId('recipe-tab-note').textContent).toContain('belong to 500ml alone');
 
-    // Shared cup 0.50 + own bottle: 4.50 for 500ml, 9.50 for 1.5L.
-    const small = screen.getByTestId('recipe-size-cost-1');
-    expect(small).toHaveTextContent('MVR 4.50');
-    expect(small).toHaveTextContent('MVR 5.50');
-    const large = screen.getByTestId('recipe-size-cost-2');
-    expect(large).toHaveTextContent('MVR 9.50');
-    expect(large).toHaveTextContent('MVR 10.50');
+    fireEvent.click(tab('1.5L'));
+    expect(ingredientValues()).toEqual(['32']);
+    fireEvent.click(tab('Every size'));
+    expect(ingredientValues()).toEqual(['30']);
+    expect(screen.getByTestId('recipe-tab-note').textContent).toContain('shared by every size');
+
+    // Shared cup 0.50 + own bottle: 4.50 for 500ml, 9.50 for 1.5L, whichever tab is open.
+    expect(screen.getByTestId('recipe-size-cost-1')).toHaveTextContent('MVR 4.50');
+    expect(screen.getByTestId('recipe-size-cost-1')).toHaveTextContent('MVR 5.50');
+    expect(screen.getByTestId('recipe-size-cost-2')).toHaveTextContent('MVR 9.50');
+    expect(screen.getByTestId('recipe-size-cost-2')).toHaveTextContent('MVR 10.50');
+    // The base-price stat block is not shown for a sized dish.
+    expect(screen.queryByText('Selling price')).toBeNull();
   });
 
-  it('sends the size with each row when saving', async () => {
+  it('adds a row to the open size and sends the size with each row when saving', async () => {
     render(<RecipeEditorModal item={water} onClose={() => {}} onSaved={() => {}} />);
-    const selects = await screen.findAllByLabelText('Which size this row is for');
+    await screen.findByRole('tablist', { name: 'Recipe for' });
 
-    // Move the 1.5L bottle row to "All sizes" and watch the costs follow.
-    fireEvent.change(selects[2], { target: { value: '' } });
-    expect(within(screen.getByTestId('recipe-size-cost-1')).getByText('MVR 13.50')).toBeInTheDocument();
+    fireEvent.click(tab('1.5L'));
+    fireEvent.click(screen.getByRole('button', { name: '+ Add ingredient for 1.5L' }));
+    const selects = screen.getAllByLabelText('Ingredient');
+    expect(selects).toHaveLength(2);
+    fireEvent.change(selects[1], { target: { value: '30' } });
+    fireEvent.change(screen.getAllByLabelText('Quantity')[1], { target: { value: '2' } });
+    // 9 + 0.5 shared + 2 × 0.5 own = 10.50
+    expect(within(screen.getByTestId('recipe-size-cost-2')).getByText('MVR 10.50')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Save recipe' }));
     await waitFor(() => expect(saveItemRecipe).toHaveBeenCalledTimes(1));
     expect(saveItemRecipe).toHaveBeenCalledWith(5, [
       { inventory_item_id: 30, quantity: 1, unit: 'pcs', variant_id: null },
       { inventory_item_id: 31, quantity: 1, unit: 'pcs', variant_id: 1 },
-      { inventory_item_id: 32, quantity: 1, unit: 'pcs', variant_id: null },
+      { inventory_item_id: 32, quantity: 1, unit: 'pcs', variant_id: 2 },
+      { inventory_item_id: 30, quantity: 2, unit: 'pcs', variant_id: 2 },
     ], true, 'sale', 1);
   });
 
-  it('hides the size column for a dish with no sizes', async () => {
+  it('warns on an empty size and can copy another size or start one ingredient per size', async () => {
+    const fresh: ItemWithRecipe = { ...water, recipe: { ...water.recipe!, ingredients: [] } };
+    render(<RecipeEditorModal item={fresh} onClose={() => {}} onSaved={() => {}} />);
+    await screen.findByRole('tablist', { name: 'Recipe for' });
+
+    const warn = screen.getByTestId('recipe-empty-size');
+    expect(warn.textContent).toContain('500ml has no ingredients, so it costs nothing and takes no stock.');
+    expect(within(warn).queryByRole('button', { name: /Copy from/ })).toBeNull();
+
+    fireEvent.click(within(warn).getByRole('button', { name: 'One ingredient per size' }));
+    expect(ingredientValues()).toEqual(['']);
+    fireEvent.change(screen.getByLabelText('Ingredient'), { target: { value: '31' } });
+    fireEvent.change(screen.getByLabelText('Quantity'), { target: { value: '1' } });
+
+    fireEvent.click(tab('1.5L'));
+    expect(ingredientValues()).toEqual(['']);
+    fireEvent.click(screen.getByLabelText('Remove ingredient'));
+    fireEvent.click(within(screen.getByTestId('recipe-empty-size')).getByRole('button', { name: 'Copy from 500ml' }));
+    expect(ingredientValues()).toEqual(['31']);
+    expect(screen.getByTestId('recipe-size-cost-2')).toHaveTextContent('MVR 4.00');
+  });
+
+  it('hides the tabs and the strip for a dish with no sizes', async () => {
     const plain: ItemWithRecipe = { ...water, variants: [], variant_costs: [], recipe: { ...water.recipe!, ingredients: [water.recipe!.ingredients[0]] } };
     render(<RecipeEditorModal item={plain} onClose={() => {}} onSaved={() => {}} />);
     await screen.findByRole('button', { name: 'Save recipe' });
-    expect(screen.queryByLabelText('Which size this row is for')).toBeNull();
+    expect(screen.queryByRole('tablist', { name: 'Recipe for' })).toBeNull();
     expect(screen.queryByTestId('recipe-size-costs')).toBeNull();
+    expect(screen.getByText('Selling price')).toBeInTheDocument();
   });
 });
