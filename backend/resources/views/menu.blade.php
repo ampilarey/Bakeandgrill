@@ -387,9 +387,10 @@ html.rail-right .menu-rail-side .menu-rail-side__icon { transform: scaleX(-1); }
 }
 .menu-subcat-head .share-popover { bottom: auto; top: calc(100% + 0.4rem); left: auto; right: 0; }
 /* A category's own page: back and Share in one row, then a hero band. */
+.menu-only-top-wrap { max-width: 1180px; margin: 0 auto; padding: 0.75rem 1.25rem 0; }
 .menu-only-top {
     display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
-    margin: 0.1rem 0 0.75rem;
+    margin: 0 0 0.25rem;
 }
 .menu-only-back {
     display: inline-flex; align-items: center; gap: 0.4rem; min-height: 44px; padding: 0 0.9rem;
@@ -432,9 +433,35 @@ html.rail-right .menu-rail-side .menu-rail-side__icon { transform: scaleX(-1); }
 .menu-neighbour-eyebrow { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
 .menu-neighbour-name { font-weight: 700; }
 @media (max-width: 768px) {
+    .menu-only-top-wrap { padding: 0.5rem 0.75rem 0; }
     .menu-cat-hero { height: 120px; }
     .menu-cat-hero h2 { font-size: 1.3rem; }
     .menu-cat-hero-desc { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    /* A category's own page on a phone: the rail is a strip across the top,
+       not a column beside two dishes and a screen of nothing (owner's
+       screenshots, 2026-09-21). Same entries, same photos, scrolling
+       sideways; the current one is lit with a bar under it. */
+    .menu-shell--single, html.rail-right .menu-shell--single { flex-direction: column; gap: 0; }
+    .menu-shell--single .menu-rail {
+        position: static; width: 100%; flex: none; align-self: stretch;
+        border: 0; border-bottom: 1px solid var(--border); margin-bottom: 0.6rem;
+    }
+    .menu-shell--single .menu-rail-scroll {
+        max-height: none; overflow-x: auto; overflow-y: hidden; touch-action: pan-x;
+        padding: 0.25rem 0 0.5rem; scrollbar-width: none;
+    }
+    .menu-shell--single .menu-rail-scroll::-webkit-scrollbar { display: none; }
+    .menu-shell--single .menu-rail-list { flex-direction: row; gap: 6px; padding: 0 2px; width: max-content; }
+    .menu-shell--single .menu-rail-group { flex-direction: row; flex: none; }
+    .menu-shell--single .menu-rail a { width: 74px; flex: none; padding: 0.45rem 0; }
+    .menu-shell--single .menu-rail a.menu-rail-sub { width: 66px; }
+    .menu-shell--single .menu-rail a.menu-rail-sub::before {
+        top: 8px; bottom: 8px; left: 0; right: auto; border-top: 0; border-left: 1px solid var(--border);
+    }
+    .menu-shell--single .menu-rail a.is-active { box-shadow: inset 0 -3px 0 var(--amber); }
+    .menu-shell--single .menu-rail a.is-active.is-within { box-shadow: none; }
+    .menu-shell--single .menu-rail a.menu-rail-events { margin-top: 0; border-top: 0; }
+    .menu-shell--single .menu-rail-side { display: none; }
 }
 .menu-shell--single .menu-main { max-width: 100%; }
 .menu-cat-band-copy {
@@ -950,7 +977,23 @@ body.menu-sheet-open { overflow: hidden; }
 <script nonce="{{ csp_nonce() }}">
 try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.documentElement.classList.add('rail-right'); } catch (e) {}
 </script>
-<div class="menu-shell">
+@if($menuOnlyCategory)
+    @php
+        $topEntry = $menuOnlyCategory;
+        $topKey = $pageKey($topEntry);
+        $topName = $pageName($topEntry);
+        $topShort = $topEntry === 'events' ? 'Event & catering' : $topName['text'];
+    @endphp
+    {{-- The way back and Share, above the rail and the dishes alike, as on a
+         dish's page. On a phone the rail becomes a strip under this row. --}}
+    <div class="menu-only-top-wrap">
+        <div class="menu-only-top" data-testid="menu-only-category">
+            <a href="/menu" class="menu-only-back" data-testid="menu-only-full"><span aria-hidden="true">←</span> Full menu</a>
+            @include('partials.share-control', $shareFor($topKey, $topShort) + ['shareButtonClass' => 'btn-outline menu-only-share'])
+        </div>
+    </div>
+@endif
+<div class="{{ $menuOnlyCategory ? 'menu-shell menu-shell--single' : 'menu-shell' }}">
     <nav class="menu-rail" aria-label="Menu categories">
         <div class="menu-rail-scroll">
         <div class="menu-rail-list">
@@ -1067,10 +1110,6 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                     : collect();
                 $shareShort = $heroEntry === 'events' ? 'Event & catering' : $heroName['text'];
             @endphp
-            <div class="menu-only-top" data-testid="menu-only-category">
-                <a href="/menu" class="menu-only-back" data-testid="menu-only-full"><span aria-hidden="true">←</span> Full menu</a>
-                @include('partials.share-control', $shareFor($heroKey, $shareShort) + ['shareButtonClass' => 'btn-outline menu-only-share'])
-            </div>
             <header class="menu-cat-hero" data-testid="category-hero" @if(! $heroImage) style="background: {{ $heroTint }}" @endif>
                 @if($heroImage)
                     <img src="{{ $heroImage }}" alt="">
@@ -1654,7 +1693,12 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
     // the fold and could not be reached until the page itself moved
     // (owner, 2026-09-03: "make it scroll till the last cat").
     var mainCol = document.querySelector('.menu-main');
+    var list = rail.querySelector('.menu-rail-list');
+    // On a category's own page at phone width the rail is a strip across the
+    // top (see .menu-shell--single); it scrolls sideways and needs no cap.
+    function isStrip() { return !!list && getComputedStyle(list).flexDirection === 'row'; }
     function fitRail() {
+        if (isStrip()) { scroller.style.maxHeight = ''; return; }
         var top = scroller.getBoundingClientRect().top;
         var room = window.innerHeight - top - 8;
         // A category page with three dishes must not end in a blank column
@@ -1682,6 +1726,14 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
     });
     function revealInRail(el) {
         if (Date.now() - touchedAt < 1500) return;
+        if (isStrip()) {
+            var left = el.offsetLeft, right = left + el.offsetWidth;
+            var viewLeft = scroller.scrollLeft, viewRight = viewLeft + scroller.clientWidth;
+            if (left >= viewLeft && right <= viewRight) return;
+            var x = Math.max(0, left - (scroller.clientWidth - el.offsetWidth) / 2);
+            if (scroller.scrollTo) scroller.scrollTo({ left: x, behavior: 'smooth' }); else scroller.scrollLeft = x;
+            return;
+        }
         var top = el.offsetTop, bottom = top + el.offsetHeight;
         var viewTop = scroller.scrollTop, viewBottom = viewTop + scroller.clientHeight;
         if (top >= viewTop && bottom <= viewBottom) return;
