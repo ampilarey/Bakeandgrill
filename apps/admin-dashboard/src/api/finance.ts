@@ -1514,6 +1514,45 @@ export type ProductMarginRow = {
   category: string | null;
 };
 
+/*
+ * Phase C (owner, 2026-09-21): what each dish made over a period, at
+ * today's recipe cost, with how the ingredients moved and what was binned.
+ */
+export type MarginWasteRow = {
+  item_id: number;
+  variant_id: number | null;
+  name: string;
+  category: string | null;
+  units: number;
+  revenue: number;
+  avg_price: number | null;
+  unit_cost: number | null;
+  cost: number | null;
+  profit: number | null;
+  margin_pct: number | null;
+  cost_change_pct: number | null;
+  waste_qty: number;
+  waste_cost: number;
+  waste_pct: number | null;
+  flags: Array<'low_margin' | 'high_waste' | 'cost_up'>;
+};
+
+export type MarginWasteReport = {
+  from: string;
+  to: string;
+  thresholds: { low_margin_pct: number; high_waste_pct: number; cost_up_pct: number };
+  summary: {
+    revenue: number; cost: number; profit: number; margin_pct: number | null; costed_share_pct: number | null;
+    dish_waste_cost: number; ingredient_waste_cost: number; low_margin: number; high_waste: number; cost_up: number; dishes: number;
+  };
+  rows: MarginWasteRow[];
+};
+
+export async function getMarginWasteReport(params: { from?: string; to?: string } = {}): Promise<MarginWasteReport> {
+  const q = new URLSearchParams(params as Record<string, string>);
+  return req(`/reports/margin-waste?${q}`);
+}
+
 export type ProductMarginsReport = {
   rows: ProductMarginRow[];
 };

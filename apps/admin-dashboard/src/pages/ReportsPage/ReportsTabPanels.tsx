@@ -52,6 +52,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
   const customerCohorts = reportData?.customerCohorts ?? null;
   const cashierPerf = reportData?.cashierPerf ?? null;
   const productMargins = reportData?.productMargins ?? null;
+  const marginWaste = reportData?.marginWaste ?? null;
   const stockDiscrepancy = reportData?.stockDiscrepancy ?? null;
   const usageVariance = reportData?.usageVariance ?? null;
   const hourlySales = reportData?.hourlySales ?? null;
@@ -1383,6 +1384,70 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
         </Card>
       )}
 
+      {/* Phase C (owner, 2026-09-21): what each dish made us over the period,
+          at today's recipe cost, with how the ingredients moved and what was
+          binned — the three numbers that were never in one table. */}
+      {!loading && tab === 'Margin & Waste' && marginWaste && (
+        <div data-testid="margin-waste-report">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 16 }}>
+            <StatCard label="Sold" value={mvr(marginWaste.summary.revenue)} sub={`${marginWaste.summary.dishes} dishes`} accent="var(--color-primary)" />
+            <StatCard label="Cost to make" value={mvr(marginWaste.summary.cost)} sub={marginWaste.summary.costed_share_pct != null && marginWaste.summary.costed_share_pct < 100 ? `${marginWaste.summary.costed_share_pct}% of sales have a cost` : 'At today\'s recipe cost'} accent="var(--color-warning)" />
+            <StatCard label="Gross profit" value={mvr(marginWaste.summary.profit)} sub={marginWaste.summary.margin_pct != null ? `${marginWaste.summary.margin_pct}% margin` : 'No costs recorded'} accent="var(--color-success)" />
+            <StatCard label="Thrown away" value={mvr(marginWaste.summary.dish_waste_cost + marginWaste.summary.ingredient_waste_cost)} sub={`${mvr(marginWaste.summary.dish_waste_cost)} dishes · ${mvr(marginWaste.summary.ingredient_waste_cost)} ingredients`} accent="var(--color-danger)" />
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12, fontSize: 13 }}>
+            <span style={{ padding: '4px 10px', borderRadius: 999, background: 'var(--color-danger-bg)', color: 'var(--color-danger-strong)', fontWeight: 600 }}>{marginWaste.summary.low_margin} under {marginWaste.thresholds.low_margin_pct}% margin</span>
+            <span style={{ padding: '4px 10px', borderRadius: 999, background: 'var(--color-warning-bg)', color: 'var(--color-warning-strong)', fontWeight: 600 }}>{marginWaste.summary.high_waste} with {marginWaste.thresholds.high_waste_pct}%+ waste</span>
+            <span style={{ padding: '4px 10px', borderRadius: 999, background: 'var(--color-bg)', color: 'var(--color-text-secondary)', fontWeight: 600 }}>{marginWaste.summary.cost_up} whose ingredients rose {marginWaste.thresholds.cost_up_pct}%+</span>
+          </div>
+          <Card>
+            {marginWaste.rows.length === 0 ? (
+              <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Nothing sold in this period.</p>
+            ) : (
+              <ResponsiveTable>
+                <table style={S.table}>
+                  <thead><tr>
+                    <th style={S.th}>Dish</th>
+                    <th style={S.th}>Sold</th>
+                    <th style={S.th}>Revenue</th>
+                    <th style={S.th}>Cost each</th>
+                    <th style={S.th}>Profit</th>
+                    <th style={S.th}>Margin</th>
+                    <th style={S.th}>Cost vs month ago</th>
+                    <th style={S.th}>Waste</th>
+                  </tr></thead>
+                  <tbody>
+                    {marginWaste.rows.map((row) => (
+                      <tr key={`${row.item_id}-${row.variant_id ?? 0}`} data-testid={`mw-${row.item_id}-${row.variant_id ?? 0}`}>
+                        <td style={{ ...S.td, fontWeight: 600 }}>
+                          {row.name}
+                          {row.category && <div style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 400 }}>{row.category}</div>}
+                        </td>
+                        <td style={S.td}>{row.units}</td>
+                        <td style={S.td}>{mvr(row.revenue)}</td>
+                        <td style={S.td}>{row.unit_cost != null ? mvr(row.unit_cost) : <span style={{ color: 'var(--color-text-muted)' }}>no cost</span>}</td>
+                        <td style={{ ...S.td, fontWeight: 700 }}>{row.profit != null ? mvr(row.profit) : '—'}</td>
+                        <td style={{ ...S.td, fontWeight: 700, color: row.flags.includes('low_margin') ? 'var(--color-danger)' : row.margin_pct != null ? 'var(--color-success-strong)' : undefined }}>
+                          {row.margin_pct != null ? `${row.margin_pct}%` : '—'}
+                        </td>
+                        <td style={{ ...S.td, color: row.flags.includes('cost_up') ? 'var(--color-danger)' : row.cost_change_pct != null && row.cost_change_pct < 0 ? 'var(--color-success-strong)' : 'var(--color-text-muted)', fontWeight: row.flags.includes('cost_up') ? 700 : undefined }}>
+                          {row.cost_change_pct != null ? `${row.cost_change_pct > 0 ? '+' : ''}${row.cost_change_pct}%` : '—'}
+                        </td>
+                        <td style={{ ...S.td, color: row.flags.includes('high_waste') ? 'var(--color-danger)' : undefined, fontWeight: row.flags.includes('high_waste') ? 700 : undefined }}>
+                          {row.waste_qty > 0 ? `${row.waste_qty} (${mvr(row.waste_cost)}${row.waste_pct != null ? `, ${row.waste_pct}% of sold` : ''})` : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </ResponsiveTable>
+            )}
+            <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '10px 0 0' }}>
+              Cost is today's recipe cost, so profit here is what the same sales would make at current prices. "Cost vs month ago" reprices the recipe at each ingredient's purchase price 30 days ago. Dish waste comes from waste logs against the dish; ingredient waste cannot be pinned to one dish and is totalled above.
+            </p>
+          </Card>
+        </div>
+      )}
       {/* Stock audit 2026-09-03 (S4): the gap between what the recipes say we
           used and what the counts had to correct — the number that finds
           theft, over-portioning and unrecorded waste. */}

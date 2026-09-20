@@ -369,6 +369,14 @@ class ReportsController extends Controller
         return response()->json($this->reports->cashierPerformance($from, $to));
     }
 
+    /** Phase C (owner, 2026-09-21): what each dish made us over a period, and what was binned. */
+    public function marginWaste(Request $request, \App\Domains\Reporting\Services\MarginWasteService $service)
+    {
+        [$from, $to] = $this->parseRange($request);
+
+        return response()->json($service->report($from, $to));
+    }
+
     public function productMargins(Request $request)
     {
         // Every dish by default: a cap of 100 by name cut a bigger menu off

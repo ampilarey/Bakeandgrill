@@ -4,7 +4,7 @@ import {
   getPromotionReport, getLoyaltyReport, getDeliveryZonesReport,
   getDiscountsByTypeReport, getVoidsByStaffReport, getVoidsByReasonReport, getRefundsByReasonReport, getCreditExposureReport, getDepositExposureReport, getDepositActivityReport,
   getManagerOverridesReport, getStockVelocityReport, getShiftVariancesReport, getCustomerLtvReport,
-  getCashierPerformanceReport, getProductMarginsReport, getCustomerCohortsReport, getStockDiscrepancyReport,
+  getCashierPerformanceReport, getProductMarginsReport, getMarginWasteReport, getCustomerCohortsReport, getStockDiscrepancyReport,
   getUsageVarianceReport,
   getHourlySalesReport, getStationPerformanceReport, getSpendByItem, getSpendHub,
   type SalesSummary, type SalesBreakdown, type XReport, type ZReport,
@@ -12,7 +12,7 @@ import {
   type PromotionReportItem, type LoyaltyReport, type DeliveryZonesReport,
   type DiscountsByTypeReport, type VoidsByStaffReport, type VoidsByReasonReport, type RefundsByReasonReport, type CreditExposureReport, type DepositExposureReport, type DepositActivityReport,
   type ManagerOverridesReport, type StockVelocityReport, type ShiftVariancesReport, type CustomerLtvReport,
-  type CashierPerformanceReport, type ProductMarginsReport, type CustomerCohortsReport, type StockDiscrepancyReport,
+  type CashierPerformanceReport, type ProductMarginsReport, type MarginWasteReport, type CustomerCohortsReport, type StockDiscrepancyReport,
   type HourlySalesReport, type StationPerformanceReport, type SpendByItemReport, type SpendHubReport,
   type PaymentCommissionSummary, type UsageVarianceReport,
 } from '../../api';
@@ -80,7 +80,7 @@ export const REPORT_SECTIONS = [
   {
     id: 'sales',
     label: 'Sales',
-    tabs: ['Summary', 'Breakdown', 'Hourly Sales', 'Station Performance', 'Cashier Performance', 'Product Margins'],
+    tabs: ['Summary', 'Breakdown', 'Hourly Sales', 'Station Performance', 'Cashier Performance', 'Product Margins', 'Margin & Waste'],
   },
   {
     id: 'finance',
@@ -150,6 +150,7 @@ export type ReportData = {
   customerCohorts?: CustomerCohortsReport;
   cashierPerf?: CashierPerformanceReport;
   productMargins?: ProductMarginsReport;
+  marginWaste?: MarginWasteReport;
   stockDiscrepancy?: StockDiscrepancyReport;
   usageVariance?: UsageVarianceReport;
   hourlySales?: HourlySalesReport;
@@ -205,6 +206,7 @@ export async function fetchReportData(
   if (tab === 'Customer Cohorts') result.customerCohorts = await getCustomerCohortsReport({ from, to });
   if (tab === 'Cashier Performance') result.cashierPerf = await getCashierPerformanceReport({ from, to });
   if (tab === 'Product Margins') result.productMargins = await getProductMarginsReport();
+  if (tab === 'Margin & Waste') result.marginWaste = await getMarginWasteReport({ from, to });
   if (tab === 'Stock Discrepancy') result.stockDiscrepancy = await getStockDiscrepancyReport();
   if (tab === 'Usage Variance') result.usageVariance = await getUsageVarianceReport({ from, to });
   if (tab === 'Hourly Sales') result.hourlySales = await getHourlySalesReport({ from, to });

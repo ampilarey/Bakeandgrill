@@ -43,6 +43,7 @@ if (routes_domain_section_is_or_unset('reporting', 'reports', 'reports') && !rou
         Route::get('/reports/customer-ltv', [ReportsController::class, 'customerLtv']);
         Route::get('/reports/cashier-performance', [ReportsController::class, 'cashierPerformance']);
         Route::get('/reports/product-margins', [ReportsController::class, 'productMargins']);
+        Route::get('/reports/margin-waste', [ReportsController::class, 'marginWaste']);
         Route::get('/reports/customer-cohorts', [ReportsController::class, 'customerCohorts']);
         Route::get('/reports/stock-discrepancy', [ReportsController::class, 'stockDiscrepancy']);
         // S4: recipe-theoretical usage against what the counts had to correct.
