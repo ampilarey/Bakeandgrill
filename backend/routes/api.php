@@ -17,7 +17,7 @@ Route::get('/health', [App\Http\Controllers\Api\SystemHealthController::class, '
 
 // Privacy-friendly visit counter beacon (no cookies, aggregates only).
 Route::post('/visits/beacon', [App\Http\Controllers\Api\SiteStatsController::class, 'beacon'])
-    ->middleware('throttle:60,1');
+    ->middleware('throttle:240,1');
 
 // Public "social proof" counters (owner-enabled, rounded, cached).
 Route::get('/public-stats', [App\Http\Controllers\Api\SiteStatsController::class, 'publicStats'])
@@ -37,6 +37,11 @@ Route::post('/deploy/test-pull', App\Http\Controllers\Api\TestDeployWebhookContr
 Route::get('/orders/track/{token}', [OrderTrackingController::class, 'trackByToken'])
     ->middleware('throttle:public-order-track');
 
+// The order app reads /content, /page-blocks and /site-settings/public on
+// every open, and a café full of phones shares one public IP (Wi-Fi NAT,
+// carrier CGNAT). Phone audit, 2026-09-21: at 60 a minute per IP, a dozen
+// opens in a minute from one address were enough to start refusing the
+// rest. These are cached reads; the budget is per address, not per person.
 // ── Prayer Times (public, throttled) ─────────────────────────────────────────
 Route::middleware('throttle:60,1')
     ->prefix('prayer-times')
@@ -194,7 +199,7 @@ require __DIR__ . '/domains/admin_customers.php';
 require __DIR__ . '/domains/trade.php';
 
 Route::get('/content', [App\Http\Controllers\Api\ContentController::class, 'public'])
-    ->middleware('throttle:60,1');
+    ->middleware('throttle:240,1');
 
 // Order-app draft preview — requires opaque draft token (never public without it).
 Route::get('/content/preview', [App\Http\Controllers\Api\ContentPreviewController::class, 'draftContent'])
@@ -202,10 +207,10 @@ Route::get('/content/preview', [App\Http\Controllers\Api\ContentPreviewControlle
 
 // Home page layout blocks (public render path — one query per page).
 Route::get('/page-blocks', [App\Http\Controllers\Api\PageBlockController::class, 'publicIndex'])
-    ->middleware('throttle:60,1');
+    ->middleware('throttle:240,1');
 
 Route::get('/site-settings/public', [App\Http\Controllers\Api\SiteSettingsController::class, 'public'])
-    ->middleware('throttle:60,1');
+    ->middleware('throttle:240,1');
 
 // POS close-shift currency photos — public map of face → custom photo URL.
 Route::get('/currency-images', [App\Http\Controllers\Api\CurrencyImageController::class, 'index'])

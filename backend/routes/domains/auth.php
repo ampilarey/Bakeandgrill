@@ -81,8 +81,11 @@ Route::prefix('auth/customer')
 
         // New: check if already authenticated via session cookie
         // React app calls this on mount to auto-login customers from Blade session
+        // Called once per app open by every phone behind the same public IP
+        // (phone audit, 2026-09-21). It reads a session and writes nothing, so
+        // it is budgeted like the other public reads, not like the OTP routes.
         Route::get('/check', [CustomerAuthController::class, 'check'])
-            ->middleware('throttle:20,1');
+            ->middleware('throttle:120,1');
 
         // Password reset — controller guards per-phone (5 req / 30 min per phone).
         Route::post('/forgot-password', [CustomerAuthController::class, 'forgotPassword'])
