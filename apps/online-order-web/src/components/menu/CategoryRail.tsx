@@ -28,6 +28,15 @@ type Props = {
   cateringActive?: boolean;
   cateringCount?: number;
   onCateringClick?: () => void;
+  /**
+   * The "Other" section — dishes with no live category. Owner, 2026-09-21:
+   * "'other' items that are not in category does not show the tab in rail."
+   * The section was on the page; the rail had nothing to reach it with.
+   */
+  showOtherPill?: boolean;
+  otherActive?: boolean;
+  otherCount?: number;
+  onOtherClick?: () => void;
   /** Sub-categories by parent id, listed under their parent with a smaller photo. */
   subcategories?: Record<number, Category[]>;
   activeSubcategoryId?: number | null;
@@ -98,6 +107,10 @@ export function CategoryRail({
   cateringActive = false,
   cateringCount = 0,
   onCateringClick,
+  showOtherPill = false,
+  otherActive = false,
+  otherCount = 0,
+  onOtherClick,
   subcategories = {},
   activeSubcategoryId = null,
   onSelectSubcategory,
@@ -125,7 +138,7 @@ export function CategoryRail({
     const target = top < viewTop ? top - 8 : bottom - box.clientHeight + 8;
     if (typeof box.scrollTo === 'function') box.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
     else box.scrollTop = Math.max(0, target);
-  }, [activeCategoryId, activeSubcategoryId, cateringActive]);
+  }, [activeCategoryId, activeSubcategoryId, cateringActive, otherActive]);
 
   const noteTouch = () => { userTouchedAt.current = Date.now(); };
 
@@ -245,6 +258,32 @@ export function CategoryRail({
             </div>
           );
         })}
+        {/* Dishes with no live category, after the categories and before Events. */}
+        {showOtherPill && onOtherClick && (
+          <button
+            type="button"
+            role="tab"
+            aria-selected={otherActive}
+            aria-label={otherCount > 0 ? `Other, ${otherCount} item${otherCount === 1 ? '' : 's'}` : undefined}
+            ref={otherActive ? activeRef : undefined}
+            className={`cat-rail__item cat-rail__item--other${otherActive ? ' is-active' : ''}`}
+            data-testid="cat-rail-other"
+            onClick={onOtherClick}
+          >
+            <span
+              className="cat-rail__thumb"
+              aria-hidden="true"
+              style={{
+                background: 'hsl(48 55% 88%)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontWeight: 800, fontSize: '1.1rem', color: 'var(--color-dark)',
+              }}
+            >
+              O
+            </span>
+            <span className="cat-rail__label">Other</span>
+          </button>
+        )}
         {/* Events / catering shortcut — always last on the left rail */}
         {showCateringPill && onCateringClick && (
           <button

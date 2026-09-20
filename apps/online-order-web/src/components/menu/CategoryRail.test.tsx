@@ -164,6 +164,46 @@ describe('CategoryRail', () => {
     expect(labels[labels.length - 1]).toMatch(/Events/i);
     expect(container.querySelector('[data-testid="cat-rail-events"]')).toBeTruthy();
   });
+
+  /** Owner, 2026-09-21: "'other' items that are not in category does not show the tab in rail." */
+  it('offers an Other entry after the categories and before Events, only when asked', () => {
+    const onOtherClick = vi.fn();
+    const { container, rerender } = render(
+      <CategoryRail
+        categories={cats}
+        activeCategoryId={1}
+        onSelect={() => {}}
+        showOtherPill
+        otherCount={3}
+        onOtherClick={onOtherClick}
+        showCateringPill
+        onCateringClick={() => {}}
+      />,
+    );
+    const labels = Array.from(container.querySelectorAll('[role="tab"] .cat-rail__label')).map((el) => el.textContent?.trim());
+    expect(labels).toEqual(['Breakfast Specials', 'Grills', 'Other', 'Events']);
+
+    const other = screen.getByRole('tab', { name: 'Other, 3 items' });
+    expect(other.getAttribute('aria-selected')).toBe('false');
+    other.click();
+    expect(onOtherClick).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <CategoryRail
+        categories={cats}
+        activeCategoryId={null}
+        onSelect={() => {}}
+        showOtherPill
+        otherActive
+        otherCount={3}
+        onOtherClick={onOtherClick}
+      />,
+    );
+    expect(screen.getByRole('tab', { name: 'Other, 3 items' })).toHaveClass('is-active');
+
+    rerender(<CategoryRail categories={cats} activeCategoryId={1} onSelect={() => {}} />);
+    expect(container.querySelector('[data-testid="cat-rail-other"]')).toBeNull();
+  });
 });
 
 

@@ -63,7 +63,11 @@ class MenuPageController extends Controller
     {
         $items = $this->menuItems();
         $categories = $this->activeCategories();
-        $groups = $this->groupByParent($items, $categories);
+        // Event and catering dishes get their own section at the end, as in
+        // the order app, and leave their category (a bare "Events" parent
+        // would otherwise be a second copy of the same list).
+        [$catering, $regular] = $items->partition(fn (Item $item) => $this->isCateringItem($item, $categories));
+        $groups = $this->groupByParent($regular->values(), $categories);
 
         $pricing = app(SpecialPricingService::class);
         $specialsByItemId = $this->indexSpecialsByItem($pricing->activeSpecialsForDisplay());
@@ -72,6 +76,7 @@ class MenuPageController extends Controller
         return view('menu', [
             'menuCategories' => $groups,
             'menuItemCount' => $items->count(),
+            'menuCatering' => $catering->values(),
             'menuSoldOut' => $this->soldOutLabels($items),
             'menuOffers' => $offers,
             'menuSpecialsByItemId' => $specialsByItemId,
@@ -366,7 +371,7 @@ class MenuPageController extends Controller
             // sold-out check reads the ingredient pool of every dish that
             // limits itself by it.
             ->with([
-                'variants', 'category', 'photos', 'extraCategories',
+                'variants', 'category', 'photos', 'extraCategories', 'channelAvailabilities',
                 'recipe.recipeItems.inventoryItem',
                 'comboItems.item:id,name,name_dv,is_active,base_price,has_variants',
                 'comboItems.item.variants',
@@ -376,6 +381,37 @@ class MenuPageController extends Controller
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get();
+    }
+
+    /**
+     * Does this dish belong in the Event & catering section? The order app's
+     * rule (`isMenuCateringItem`): switched on for the catering channel, or
+     * filed under a category — or a sub-category of one — named Catering or
+     * Events.
+     *
+     * @param Collection<int, Category> $categories
+     */
+    private function isCateringItem(Item $item, Collection $categories): bool
+    {
+        if ((bool) ($item->channelAvailabilityFor('catering')?->is_enabled ?? false)) {
+            return true;
+        }
+
+        $category = $item->category_id ? $categories->get((int) $item->category_id) : null;
+        if ($category === null) {
+            return false;
+        }
+        if (self::categoryLooksLikeCatering($category->name)) {
+            return true;
+        }
+        $parent = $category->parent_id ? $categories->get((int) $category->parent_id) : null;
+
+        return $parent !== null && self::categoryLooksLikeCatering($parent->name);
+    }
+
+    public static function categoryLooksLikeCatering(?string $name): bool
+    {
+        return $name !== null && preg_match('/\b(catering|events?)\b/i', trim($name)) === 1;
     }
 
     /**

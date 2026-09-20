@@ -529,6 +529,8 @@ html.js .menu-fav { display: inline-flex; }
 .menu-card--sold-out .menu-card-circle-photo { opacity: 0.45; filter: grayscale(0.7); }
 .menu-card--sold-out .menu-card-body { opacity: 0.55; }
 .menu-card--sold-out:hover .menu-card-circle { transform: none; }
+/* The event section's one extra: a way into the wizard, above its dishes. */
+.menu-events-plan { margin: 0.25rem 0 0.9rem; }
 
 /* Bundles say so on the card. A "Mixed Platter" that a customer picks the
    contents of read exactly like a dish until now (owner's audit, 2026-09-06,
@@ -772,6 +774,7 @@ body.menu-sheet-open { overflow: hidden; }
     $menuOffers = $menuOffers ?? collect();
     $menuNewItemIds = $menuNewItemIds ?? [];
     $menuSoldOut = $menuSoldOut ?? [];
+    $menuCatering = $menuCatering ?? collect();
     $menuBundles = $menuBundles ?? [];
     $menuSpecialsByItemId = $menuSpecialsByItemId ?? [];
     $menuPriceByItemId = $menuPriceByItemId ?? [];
@@ -820,7 +823,7 @@ body.menu-sheet-open { overflow: hidden; }
      and give search results nothing to title the page with. --}}
 <h1 class="visually-hidden">Bake &amp; Grill menu</h1>
 
-@if($menuCategories->isEmpty() && $menuOffers->isEmpty())
+@if($menuCategories->isEmpty() && $menuOffers->isEmpty() && $menuCatering->isEmpty())
     <div class="menu-empty">
         <p>The menu is being updated. Please check back shortly, or call us to order.</p>
         <p style="margin-top:1rem"><a href="/contact" class="btn-primary">Contact us →</a></p>
@@ -894,12 +897,14 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                 @endforeach
                 </div>
             @endforeach
-            {{-- Same last-on-rail shortcut as the order app CategoryRail.
-                 Off-page: the wizard lives at /order/events, not an in-page anchor. --}}
-            <a href="/order/events"
+            {{-- Same last-on-rail shortcut as the order app CategoryRail: the
+                 on-page Event & catering section when there is one, else the
+                 wizard at /order/events. --}}
+            @php $eventsCount = $menuCatering->count(); @endphp
+            <a href="{{ $eventsCount > 0 ? '#cat-events' : '/order/events' }}"
                class="menu-rail-events"
                data-testid="cat-rail-events"
-               aria-label="Events">
+               aria-label="{{ $eventsCount > 0 ? 'Events, ' . $eventsCount . ' ' . Str::plural('item', $eventsCount) : 'Events' }}">
                 <span class="menu-rail-thumb" aria-hidden="true"
                       style="background: hsl(32 55% 88%)">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1097,112 +1102,40 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                     @endif
                     <div class="menu-grid">
                         @foreach($block['items'] as $item)
-                            @php
-                                $iname = $itemName($item);
-                                $idesc = $itemDesc($item);
-                                $price = $priceFor($item);
-                                $chosen = $menuPhotos[$item->id] ?? ['url' => null, 'webp' => null];
-                                $photo = $chosen['url'] ?? null;
-                                $webp  = $chosen['webp'] ?? null;
-                                $isNew = isset($menuNewItemIds[$item->id]);
-                                $soldOut = $menuSoldOut[$item->id] ?? null;
-                                $bundle = $menuBundles[$item->id] ?? null;
-
-                                // Search matches the English name too, always.
-                                // A Dhivehi visitor typing "bajiya" on a Latin
-                                // keyboard must still find ބަޖިޔާ.
-                                $haystack = collect([
-                                    $iname['text'], $idesc['text'],
-                                    $item->card_name, $item->name,
-                                    $item->name_dv, $item->card_name_dv,
-                                ])
-                                  // A bundle is findable by what is in it. Somebody
-                                  // searching "chicken" wants the family bundle that
-                                  // contains chicken, not only dishes named for it.
-                                  ->concat(collect($bundle['contents'] ?? [])->pluck('name'))
-                                  ->concat(collect($bundle['groups'] ?? [])->flatMap(fn ($g) => $g['choices']))
-                                  ->filter()->map(fn ($v) => mb_strtolower(trim((string) $v)))
-                                  ->unique()->implode(' ');
-
-                                $tags = collect((array) ($item->dietary_tags ?? []))
-                                    ->map(fn ($t) => \App\Http\Controllers\MenuPageController::dietarySlug((string) $t))
-                                    ->filter()->unique()->values()->implode(' ');
-                            @endphp
-                            {{-- The whole card is the tap target (stretched <a>), as in
-                                 the order app. A small "Order →" caption made a 60px
-                                 target next to a 130px photo that did nothing. The heart
-                                 is a sibling so it is not a button inside an <a>. --}}
-                            {{-- A sold-out dish stays on the page, dimmed and still a link
-                                 (owner, 2026-09-21): the details are what a customer taps
-                                 for, and a dish that vanishes reads as "they don't make
-                                 this" rather than "come back tomorrow". --}}
-                            <article class="{{ $soldOut ? 'menu-card menu-card--sold-out' : 'menu-card' }}"
-                                     data-search="{{ $haystack }}"
-                                     data-diet="{{ $tags }}"
-                                     data-name="{{ mb_strtolower($iname['text']) }}"
-                                     {{-- The displayed price, so "cheapest first"
-                                          agrees with what the card says. A sized
-                                          item carries base_price 0, which would
-                                          otherwise sort every platter to the top. --}}
-                                     data-price="{{ number_format($price['price'], 2, '.', '') }}"
-                                     @if($price['was'] !== null) data-special="1" @endif
-                                     @if($isNew) data-new="1" @endif
-                                     @if($soldOut) data-sold-out="1" @endif>
-                                <a class="menu-card-link" href="/menu/{{ $item->id }}">
-                                    <div class="menu-card-circle">
-                                        <div class="menu-card-circle-photo">
-                                            @if($photo)
-                                                <picture>
-                                                    @if($webp)<source srcset="{{ $webp }}" type="image/webp">@endif
-                                                    <img src="{{ $photo }}" alt="{{ $iname['text'] }}"
-                                                         loading="lazy" width="132" height="132">
-                                                </picture>
-                                            @else
-                                                <span aria-hidden="true">🍽️</span>
-                                            @endif
-                                        </div>
-                                        @if($soldOut)
-                                            <div class="menu-card-image-badges menu-card-image-badges--circle">
-                                                <span class="menu-badge-soldout">{{ $soldOut }}</span>
-                                            </div>
-                                        @elseif($isNew)
-                                            <div class="menu-card-image-badges menu-card-image-badges--circle">
-                                                <span class="menu-badge-new">New</span>
-                                            </div>
-                                        @endif
-                                    </div>
-                                    <div class="menu-card-body">
-                                        {{-- Outline is h1 page → h2 category → h3 subcategory
-                                             → h4 item. When the category has no subcategory
-                                             the item takes the h3, so the level is not
-                                             skipped — which is the common case here. --}}
-                                        @php $itemHeading = $block['heading'] ? 'h4' : 'h3'; @endphp
-                                        <{{ $itemHeading }} class="menu-card-name" @if($iname['dv']) lang="dv" @endif>{{ $iname['text'] }}</{{ $itemHeading }}>
-                                        @if($idesc['text'] !== '')
-                                            <p class="menu-card-desc" @if($idesc['dv']) lang="dv" @endif>{{ Str::limit($idesc['text'], 60) }}</p>
-                                        @endif
-                                        @if($bundle)
-                                            <span class="menu-card-bundle">{{ $bundle['label'] }}</span>
-                                        @endif
-                                        <div class="menu-card-price">
-                                            {{-- An item with sizes keeps its money on the variants, so
-                                                 base_price is 0 and printing it would read "MVR 0.00". --}}
-                                            @if($price['from'])<span class="menu-card-from">From</span> @endif
-                                            MVR {{ number_format($price['price'], 2) }}
-                                            @if($price['was'] !== null)
-                                                <s class="menu-card-price-was">MVR {{ number_format($price['was'], 2) }}</s>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </a>
-                                @include('partials.menu-favourite', ['item' => $item, 'favouriteIds' => $favouriteIds])
-                            </article>
+                            @include('partials.menu-card', ['item' => $item, 'itemHeading' => $block['heading'] ? 'h4' : 'h3'])
                         @endforeach
                     </div>
                     </div>{{-- /.menu-subcat-block --}}
                 @endforeach
             </section>
         @endforeach
+        {{-- Event & catering menu — the same block the order app ends with.
+             Owner, 2026-09-21: "events does not show item in event menu, but
+             redirect to event order page." The rail's Events entry used to be
+             a bare link to the wizard; a dish filed under Catering or Events,
+             or switched on for the catering channel, now lands here and the
+             entry scrolls to it. The wizard is one tap away inside. --}}
+        @if($menuCatering->isNotEmpty())
+            <section class="menu-cat-section menu-cat-section--events" data-testid="menu-events-section">
+                <header class="menu-cat-band" id="cat-events" style="background: hsl(32 55% 88%)">
+                    <div class="menu-cat-band-scrim" aria-hidden="true"></div>
+                    <div class="menu-cat-band-copy">
+                        <h2>Event &amp; catering menu</h2>
+                        <p>Order for today like any other dish, or plan an event.</p>
+                    </div>
+                </header>
+                <div class="menu-subcat-block">
+                    <p class="menu-events-plan">
+                        <a href="/order/events" class="btn-outline" data-testid="menu-events-plan">Plan an event →</a>
+                    </p>
+                    <div class="menu-grid">
+                        @foreach($menuCatering as $item)
+                            @include('partials.menu-card', ['item' => $item, 'itemHeading' => 'h3'])
+                        @endforeach
+                    </div>
+                </div>
+            </section>
+        @endif
     </div>
 </div>
 
@@ -1214,36 +1147,36 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
     // Built as an array and emitted with @json rather than hand-written:
     // an item name with an apostrophe or a quote would otherwise produce
     // invalid JSON-LD, and Google reports that to nobody.
+    $toMenuItem = function ($item) use ($itemName, $itemDesc, $priceFor, $menuPhotos, $menuSoldOut) {
+        $price = $priceFor($item);
+        $desc = $itemDesc($item)['text'];
+
+        return array_filter([
+            '@type' => 'MenuItem',
+            'name' => $itemName($item)['text'],
+            'description' => $desc !== '' ? $desc : null,
+            // The full size, not the card's thumbnail: Google wants a
+            // large image for rich results, and the card deliberately
+            // asks for 400px because it draws a 132px circle.
+            'image' => ($menuPhotos[$item->id]['full'] ?? null)
+                ?: (($menuPhotos[$item->id]['url'] ?? null) ?: ($item->display_image_url ?: null)),
+            'url' => url('/menu/' . $item->id),
+            'offers' => array_filter([
+                '@type' => 'Offer',
+                'price' => number_format($price['price'], 2, '.', ''),
+                'priceCurrency' => 'MVR',
+                'availability' => isset($menuSoldOut[$item->id]) ? 'https://schema.org/SoldOut' : null,
+            ], fn ($v) => $v !== null),
+        ], fn ($v) => $v !== null);
+    };
+
     $menuSchema = [
         '@context' => 'https://schema.org',
         '@type' => 'Menu',
         'name' => 'Bake & Grill menu',
         'url' => url('/menu'),
         'inLanguage' => $menuLocale === 'dv' ? 'dv' : 'en',
-        'hasMenuSection' => $menuCategories->map(function ($group) use ($itemName, $itemDesc, $categoryName, $priceFor, $menuPhotos, $menuSoldOut) {
-            $toMenuItem = function ($item) use ($itemName, $itemDesc, $priceFor, $menuPhotos, $menuSoldOut) {
-                $price = $priceFor($item);
-                $desc = $itemDesc($item)['text'];
-
-                return array_filter([
-                    '@type' => 'MenuItem',
-                    'name' => $itemName($item)['text'],
-                    'description' => $desc !== '' ? $desc : null,
-                    // The full size, not the card's thumbnail: Google wants a
-                    // large image for rich results, and the card deliberately
-                    // asks for 400px because it draws a 132px circle.
-                    'image' => ($menuPhotos[$item->id]['full'] ?? null)
-                        ?: (($menuPhotos[$item->id]['url'] ?? null) ?: ($item->display_image_url ?: null)),
-                    'url' => url('/menu/' . $item->id),
-                    'offers' => array_filter([
-                        '@type' => 'Offer',
-                        'price' => number_format($price['price'], 2, '.', ''),
-                        'priceCurrency' => 'MVR',
-                        'availability' => isset($menuSoldOut[$item->id]) ? 'https://schema.org/SoldOut' : null,
-                    ], fn ($v) => $v !== null),
-                ], fn ($v) => $v !== null);
-            };
-
+        'hasMenuSection' => $menuCategories->map(function ($group) use ($categoryName, $toMenuItem) {
             $section = [
                 '@type' => 'MenuSection',
                 'name' => $categoryName($group['category'])['text'],
@@ -1262,7 +1195,11 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
             }
 
             return $section;
-        })->values()->all(),
+        })->values()->concat($menuCatering->isNotEmpty() ? [[
+            '@type' => 'MenuSection',
+            'name' => 'Event & catering menu',
+            'hasMenuItem' => $menuCatering->map($toMenuItem)->values()->all(),
+        ]] : [])->all(),
     ];
 @endphp
 <script type="application/ld+json">@json($menuSchema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)</script>

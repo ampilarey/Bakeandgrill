@@ -178,6 +178,56 @@ class MenuPageTest extends TestCase
         $this->get('/menu/' . $snoozed->id)->assertOk()->assertSee('<p>Unavailable today</p>', false);
     }
 
+    public function test_event_dishes_sit_in_their_own_section_and_the_events_pill_scrolls_to_it(): void
+    {
+        // Owner, 2026-09-21: "events does not show item in event menu, but
+        // redirect to event order page." The rail's Events entry was a bare
+        // link to the wizard. Now, as in the order app, dishes filed under an
+        // Events/Catering category or switched on for the catering channel
+        // form an "Event & catering menu" section the entry jumps to.
+        $shorteats = $this->category('Shorteats', 1);
+        $events = $this->category('Events', 2);
+        $this->item($shorteats, 'Bajiya', 5);
+        $buffet = $this->item($events, 'Buffet for 20', 900);
+        $platter = $this->item($shorteats, 'Party Platter', 250);
+        \App\Models\ItemChannelAvailability::query()->updateOrCreate(
+            ['item_id' => $platter->id, 'channel' => 'catering'],
+            ['is_enabled' => true],
+        );
+
+        $html = $this->get('/menu')->assertOk()->getContent();
+
+        $this->assertStringContainsString('id="cat-events"', $html);
+        $this->assertStringContainsString('Event &amp; catering menu', $html);
+        $this->assertStringContainsString('href="/order/events" class="btn-outline" data-testid="menu-events-plan"', $html);
+        // The Events category is not a second, ordinary section.
+        $this->assertStringNotContainsString('id="cat-' . $events->id . '"', $html);
+
+        preg_match('#<section class="menu-cat-section menu-cat-section--events".*?</section>#s', $html, $section);
+        $this->assertNotEmpty($section, 'the event section must be in the HTML');
+        $this->assertStringContainsString('Buffet for 20', $section[0]);
+        $this->assertStringContainsString('Party Platter', $section[0]);
+        $this->assertStringNotContainsString('Bajiya', $section[0]);
+        $this->assertSame(1, substr_count($html, 'href="/menu/' . $buffet->id . '"'));
+        $this->assertSame(1, substr_count($html, 'href="/menu/' . $platter->id . '"'));
+
+        preg_match('#<nav class="menu-rail".*?</nav>#s', $html, $rail);
+        $this->assertStringContainsString('href="#cat-events"', $rail[0]);
+        $this->assertStringContainsString('aria-label="Events, 2 items"', $rail[0]);
+        $this->assertStringNotContainsString('href="/order/events"', $rail[0]);
+
+        // Structured data lists the section too (the Menu block, not the
+        // layout's Restaurant one).
+        preg_match_all('#<script type="application/ld\+json">(.*?)</script>#s', $html, $ld);
+        $schema = collect($ld[1])
+            ->map(fn ($json) => json_decode(trim($json), true))
+            ->first(fn ($decoded) => ($decoded['@type'] ?? null) === 'Menu');
+        $this->assertNotNull($schema);
+        $names = array_column($schema['hasMenuSection'], 'name');
+        $this->assertContains('Event & catering menu', $names);
+        $this->assertNotContains('Events', $names);
+    }
+
     public function test_a_size_that_has_run_out_is_greyed_on_the_item_page(): void
     {
         $cat = $this->category('Drinks');

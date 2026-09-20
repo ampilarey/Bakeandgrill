@@ -45,6 +45,13 @@ import { formatTomorrowDateLabel } from '../utils/collectOn';
 import { consumePendingPlatterReorder } from '../utils/applyReorderToCart';
 import { itemSortPrice } from '../utils/money';
 const MENU_VIEW_KEY = 'bg-menu-view';
+/**
+ * The "Other" section's id in the scroll-spy and the rail: dishes with no
+ * live category. A real category id is never negative, so this one cannot
+ * collide. Owner, 2026-09-21: the section was on the page but the rail had
+ * no entry for it, so it could neither be reached nor lit.
+ */
+export const OTHER_SECTION_ID = -1;
 
 /**
  * How stale an open menu is allowed to get before it refetches itself. Two
@@ -748,8 +755,8 @@ export function MenuPage() {
     [sectionedMenu.sections],
   );
 
-  const scrollToCategorySection = (categoryId: number, behavior: ScrollBehavior = 'smooth') => {
-    const section = document.getElementById(`menu-section-${categoryId}`);
+  const scrollToSectionElement = (domId: string, behavior: ScrollBehavior = 'smooth') => {
+    const section = document.getElementById(domId);
     if (!section) return;
     const reduced =
       typeof window !== 'undefined' &&
@@ -764,20 +771,15 @@ export function MenuPage() {
     window.scrollTo({ top, behavior: reduced ? 'auto' : behavior });
   };
 
-  const scrollToCateringSection = (behavior: ScrollBehavior = 'smooth') => {
-    const section = document.getElementById('menu-section-catering');
-    if (!section) return;
-    const reduced =
-      typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const stickyH = menuStickyRef.current?.getBoundingClientRect().height ?? stickyOffset;
-    const top = categoryScrollTop(
-      section.getBoundingClientRect().top,
-      window.scrollY,
-      stickyH,
-      4,
+  const scrollToCategorySection = (categoryId: number, behavior: ScrollBehavior = 'smooth') => {
+    scrollToSectionElement(
+      categoryId === OTHER_SECTION_ID ? 'menu-section-other' : `menu-section-${categoryId}`,
+      behavior,
     );
-    window.scrollTo({ top, behavior: reduced ? 'auto' : behavior });
+  };
+
+  const scrollToCateringSection = (behavior: ScrollBehavior = 'smooth') => {
+    scrollToSectionElement('menu-section-catering', behavior);
   };
 
   const handleSelectCatering = () => {
@@ -1272,6 +1274,10 @@ export function MenuPage() {
           onSelectSubcategory={handleSelectSubcategory}
           showOffersPill={offers.length > 0}
           onOffersClick={() => document.getElementById('offers')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          showOtherPill={sectionedMenu.other.length > 0}
+          otherActive={activeCategoryId === OTHER_SECTION_ID}
+          otherCount={sectionedMenu.other.length}
+          onOtherClick={() => handleSelectCategory(OTHER_SECTION_ID)}
           showCateringPill
           cateringActive={cateringRailActive}
           cateringCount={sectionedMenu.catering.length}
@@ -1382,7 +1388,14 @@ export function MenuPage() {
                     scrollMarginTop: 'calc(var(--menu-sticky-offset, var(--menu-header-height)) + 4px)',
                   }}
                 >
-                  <header style={{ padding: '1.25rem 0 0.75rem' }}>
+                  {/* Spied like a category header so the rail's Other entry lights up
+                      when this section is the one in view. */}
+                  <header
+                    className="menu-section-header"
+                    data-category-id={OTHER_SECTION_ID}
+                    data-testid="menu-section-other-header"
+                    style={{ padding: '1.25rem 0 0.75rem' }}
+                  >
                     <h2 className="section-accent" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 800, color: 'var(--color-dark)' }}>
                       Other
                     </h2>
