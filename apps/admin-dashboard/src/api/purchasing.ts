@@ -98,3 +98,89 @@ export async function fetchItemPriceHistory(itemId: number): Promise<{
 }> {
   return req(`/purchasing/price-changes/${itemId}`);
 }
+
+/*
+ * One supplier, everything bought from them.
+ *
+ * Owner, 2026-09-20: "in suppliers list, when clicked, can u add advanced
+ * features to know all the po and items bought from each supplier". The
+ * orders themselves come from fetchPurchases({ supplier_id }).
+ */
+export interface SupplierCard {
+  id: number;
+  name: string;
+  contact_name: string | null;
+  phone: string | null;
+  extra_phones: string[];
+  email: string | null;
+  address: string | null;
+  tin: string | null;
+  payment_terms: string | null;
+  lead_days: number | null;
+  bank_name: string | null;
+  bank_account_name: string | null;
+  bank_account_number: string | null;
+  notes: string | null;
+  is_active: boolean;
+}
+
+export interface SupplierOverview {
+  supplier: SupplierCard;
+  orders: {
+    count: number;
+    spend: number;
+    average: number | null;
+    first_date: string | null;
+    last_date: string | null;
+    days_between: number | null;
+    on_time: { on_time: number; timed: number; rate: number } | null;
+    by_status: Record<string, number>;
+    open: number;
+  };
+  items: { count: number; top: Array<{ item_id: number; name: string; spend: number; orders: number }> };
+  monthly: Array<{ month: string; spend: number; orders: number }>;
+  ratings: { count: number; quality: number | null; delivery: number | null; accuracy: number | null; price: number | null; overall: number | null };
+}
+
+export interface SupplierItem {
+  item_id: number;
+  name: string;
+  unit: string;
+  photo_url: string | null;
+  is_active: boolean;
+  orders: number;
+  quantity: number;
+  spend: number;
+  first: { price: number; date: string | null };
+  last: { price: number; date: string | null; brand: string | null; purchase_number: string };
+  change_pct: number | null;
+  elsewhere: { supplier: string | null; price: number; date: string; cheaper: boolean } | null;
+  /** What we paid this shop each time, oldest first, for the chart. */
+  points: Array<{ date: string | null; price: number; brand: string | null; purchase_number: string }>;
+}
+
+export async function fetchSupplierOverview(supplierId: number): Promise<SupplierOverview> {
+  return req(`/purchasing/suppliers/${supplierId}/overview`);
+}
+
+export async function fetchSupplierItems(supplierId: number): Promise<{ supplier: SupplierCard; items: SupplierItem[] }> {
+  return req(`/purchasing/suppliers/${supplierId}/items`);
+}
+
+/** What GET /suppliers/{id}/ratings actually returns per row. */
+export interface SupplierRatingRow {
+  id: number;
+  quality_score: number;
+  delivery_score: number;
+  accuracy_score: number;
+  price_score: number;
+  overall: number;
+  notes: string | null;
+  purchase: { id: number; number: string } | null;
+  rated_by: string | null;
+  created_at: string;
+}
+
+export async function fetchSupplierRatings(supplierId: number): Promise<{ data: SupplierRatingRow[] }> {
+  return req(`/suppliers/${supplierId}/ratings`);
+}

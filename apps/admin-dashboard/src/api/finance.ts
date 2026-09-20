@@ -832,13 +832,20 @@ export interface Purchase {
   undo_receipt_blocked_reason?: string | null;
 }
 
-export async function fetchPurchases(params?: { status?: string; page?: number; search?: string }): Promise<{
+export async function fetchPurchases(params?: {
+  status?: string; page?: number; search?: string;
+  /** The supplier page (owner, 2026-09-20): one shop's orders, in a date window. */
+  supplier_id?: number; from?: string; to?: string;
+}): Promise<{
   purchases: { data: Purchase[]; current_page: number; last_page: number; total: number };
 }> {
   const qs = new URLSearchParams();
   if (params?.status) qs.set('status', params.status);
   if (params?.page) qs.set('page', String(params.page));
   if (params?.search) qs.set('search', params.search);
+  if (params?.supplier_id) qs.set('supplier_id', String(params.supplier_id));
+  if (params?.from) qs.set('from', params.from);
+  if (params?.to) qs.set('to', params.to);
   const query = qs.toString() ? `?${qs}` : '';
   return req(`/purchases${query}`);
 }

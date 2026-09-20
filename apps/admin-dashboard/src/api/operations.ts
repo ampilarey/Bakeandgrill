@@ -1128,6 +1128,9 @@ export async function updateSupplier(id: number, data: Partial<{
   bank_account_name: string;
   bank_account_number: string;
   lead_days: number | null;
+  payment_terms: string | null;
+  address: string | null;
+  notes: string | null;
   is_active: boolean;
 }>): Promise<{ supplier: Supplier }> {
   return req(`/suppliers/${id}`, { method: 'PATCH', body: JSON.stringify(data) });

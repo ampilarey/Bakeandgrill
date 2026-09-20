@@ -1,11 +1,9 @@
 import { Fragment, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
-  getSupplierPerformance, rateSupplier,
-  getSupplierRatings, getSupplierPerformanceSingle, refreshSupplierCache,
-  getSupplierPriceHistory, getPriceComparison,
+  getSupplierPerformance, rateSupplier, getPriceComparison,
   fetchSuppliers, createSupplier, updateSupplier, deleteSupplier,
-  type SupplierPerf, type SupplierRating, type PriceHistory, type Supplier,
+  type SupplierPerf, type Supplier,
 } from '../api';
 import {
   Badge, Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Spinner, TableCard, TD, TH,
@@ -29,8 +27,6 @@ function Stars({ rating, max = 5 }: { rating: number | null; max?: number }) {
 
 type ScoreField = 'quality_score' | 'delivery_score' | 'accuracy_score' | 'price_score';
 
-type DrillDown = { supplierId: number; supplierName: string };
-
 export function SupplierIntelligencePage({ embedded = false }: { embedded?: boolean } = {}) {
   usePageTitle(embedded ? 'Purchasing · Suppliers' : 'Supplier Intelligence');
   const isMobile = useIsMobile();
@@ -41,22 +37,12 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
   const [rateForm, setRateForm] = useState({ quality_score: 3, delivery_score: 3, accuracy_score: 3, price_score: 3, notes: '' });
   const [saving, setSaving]     = useState(false);
 
-  // Drill-down state
   // Global price comparison (not per-supplier)
   const [showCompare, setShowCompare]   = useState(false);
   const [compareItem, setCompareItem]   = useState<InventoryItemSelection | null>(null);
   const [compareData, setCompareData]   = useState<{ inventory_item_id: number; prices: { supplier_id: number; supplier_name: string; unit_price: number; unit: string; recorded_at: string }[]; cheapest: { supplier_id: number; supplier_name: string; unit_price: number } | null } | null>(null);
   const [compareLoading, setCompareLoading] = useState(false);
 
-  const [drill, setDrill]               = useState<DrillDown | null>(null);
-  const [drillTab, setDrillTab]         = useState<'ratings' | 'prices'>('ratings');
-  const [drillRatings, setDrillRatings] = useState<SupplierRating[]>([]);
-  const [drillLoading, setDrillLoading] = useState(false);
-  const [drillRefreshing, setDrillRefreshing] = useState(false);
-  // Price history
-  const [priceItem, setPriceItem]       = useState<InventoryItemSelection | null>(null);
-  const [priceHistory, setPriceHistory] = useState<PriceHistory[]>([]);
-  const [priceLoading, setPriceLoading] = useState(false);
 
   // Suppliers CRUD
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -153,6 +139,19 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
 
   useEffect(() => { void load(); void loadSuppliers(); }, []);
 
+  // The supplier page's Edit button lands here with ?edit=ID.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const editParam = searchParams.get('edit');
+  useEffect(() => {
+    if (!editParam || suppliers.length === 0) return;
+    const sup = suppliers.find((x) => String(x.id) === editParam);
+    if (sup) openSupplierModal(sup);
+    const next = new URLSearchParams(searchParams);
+    next.delete('edit');
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editParam, suppliers]);
+
   const openCompare = async (item: InventoryItemSelection | null) => {
     setCompareItem(item);
     setCompareData(null);
@@ -163,47 +162,6 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
       setCompareData(res);
     } catch (e) { setError((e as Error).message); }
     finally { setCompareLoading(false); }
-  };
-
-  const openDrill = async (sup: SupplierPerf) => {
-    setDrill({ supplierId: sup.supplier_id, supplierName: sup.supplier_name });
-    setDrillTab('ratings');
-    setDrillRatings([]);
-    setPriceHistory([]);
-    setPriceItem(null);
-    setDrillLoading(true);
-    try {
-      const ratingsRes = await getSupplierRatings(sup.supplier_id);
-      setDrillRatings(ratingsRes.data);
-    } catch (e) { setError((e as Error).message); }
-    finally { setDrillLoading(false); }
-  };
-
-  const handleRefreshCache = async () => {
-    if (!drill) return;
-    setDrillRefreshing(true);
-    try {
-      await refreshSupplierCache(drill.supplierId);
-      const res = await getSupplierPerformanceSingle(drill.supplierId);
-      setPerfs((prev) => prev.map((p) =>
-        p.supplier_id === drill.supplierId
-          ? { ...p, avg_quality: res.avg_quality, avg_delivery: res.avg_delivery, total_spend: res.total_spend, purchase_count: res.purchase_count }
-          : p,
-      ));
-    } catch (e) { setError((e as Error).message); }
-    finally { setDrillRefreshing(false); }
-  };
-
-  const loadPriceHistory = async (item: InventoryItemSelection | null) => {
-    setPriceItem(item);
-    setPriceHistory([]);
-    if (!drill || !item) return;
-    setPriceLoading(true);
-    try {
-      const res = await getSupplierPriceHistory(drill.supplierId, item.id);
-      setPriceHistory(res.data ?? res.history ?? []);
-    } catch (e) { setError((e as Error).message); }
-    finally { setPriceLoading(false); }
   };
 
   const handleRate = async () => {
@@ -285,7 +243,7 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
                 key={s.id}
                 testId={`supplier-card-${s.id}`}
                 accent={s.is_active ? 'var(--color-border)' : 'var(--color-danger)'}
-                title={s.name}
+                title={<Link to={`/purchasing/suppliers/${s.id}`} data-testid={`supplier-link-${s.id}`} style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>{s.name}</Link>}
                 subtitle={[s.contact_name, s.phone, ...(s.extra_phones ?? [])].filter(Boolean).join(' · ')}
                 badge={s.is_active ? undefined : <Badge color="red">Inactive</Badge>}
                 fields={[
@@ -303,6 +261,7 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
                   s.email ? { label: 'Email', value: s.email } : null,
                 ]}
                 actions={<>
+                  <Link to={`/purchasing/suppliers/${s.id}`} style={{ textDecoration: 'none' }}><Btn small variant="secondary">Open</Btn></Link>
                   <Btn small variant="secondary" onClick={() => openSupplierModal(s)}>Edit</Btn>
                   <Btn small variant="danger" onClick={() => void handleDeleteSupplier(s.id)}>Delete</Btn>
                 </>}
@@ -316,7 +275,9 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
             <tbody>
               {supplierCtl.rows.map((s) => (
                 <tr key={s.id}>
-                  <td style={{ ...TD, fontWeight: 600 }}>{s.name}</td>
+                  <td style={{ ...TD, fontWeight: 600 }}>
+                    <Link to={`/purchasing/suppliers/${s.id}`} data-testid={`supplier-link-${s.id}`} style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>{s.name}</Link>
+                  </td>
                   <td style={TD}>{s.contact_name ?? '—'}</td>
                   <td style={TD} data-testid={`supplier-phones-${s.id}`}>
                     {s.phone ?? '—'}
@@ -403,12 +364,9 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
                   >
                     Rate Supplier
                   </Btn>
-                  <Btn
-                    variant="secondary"
-                    onClick={() => void openDrill(sup)}
-                  >
-                    View History
-                  </Btn>
+                  <Link to={`/purchasing/suppliers/${sup.supplier_id}`} style={{ textDecoration: 'none' }}>
+                    <Btn variant="secondary" style={{ width: '100%' }}>Open supplier</Btn>
+                  </Link>
                 </div>
               </div>
             </Card>
@@ -479,132 +437,6 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
 
           <ModalActions>
             <Btn variant="secondary" onClick={() => { setShowCompare(false); setCompareItem(null); setCompareData(null); }}>Close</Btn>
-          </ModalActions>
-        </Modal>
-      )}
-
-      {/* Drill-down Modal */}
-      {drill && (
-        <Modal title={drill.supplierName} onClose={() => { setDrill(null); setPriceItem(null); setPriceHistory([]); }} maxWidth={620}>
-          {/* Tabs */}
-          <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--color-border)', marginBottom: 20 }}>
-            {(['ratings', 'prices'] as const).map((t) => (
-              <button key={t} onClick={() => setDrillTab(t)} style={{
-                padding: '8px 18px', border: 'none',
-                borderBottom: drillTab === t ? '2px solid #D4783A' : '2px solid transparent',
-                background: 'transparent', fontSize: 14,
-                fontWeight: drillTab === t ? 700 : 500,
-                color: drillTab === t ? '#D4783A' : 'var(--color-text-secondary)',
-                cursor: 'pointer', fontFamily: 'inherit',
-              }}>
-                {t === 'ratings' ? 'Rating History' : 'Price History'}
-              </button>
-            ))}
-            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center' }}>
-              <Btn small variant="secondary" onClick={() => void handleRefreshCache()} disabled={drillRefreshing}>
-                {drillRefreshing ? '…' : '↻ Refresh Cache'}
-              </Btn>
-            </div>
-          </div>
-
-          {drillLoading ? <Spinner /> : drillTab === 'ratings' ? (
-            drillRatings.length === 0 ? (
-              <EmptyState message="No ratings yet for this supplier." />
-            ) : (
-              <TableCard>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                  <thead>
-                    <tr>
-                      {['Date', 'Quality', 'Delivery', 'Pricing', 'Overall', 'Comment'].map((h) => (
-                        <th key={h} style={TH}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {drillRatings.map((r) => (
-                      <tr key={r.id}>
-                        <td style={{ ...TD, whiteSpace: 'nowrap', color: 'var(--color-text-muted)', fontSize: 12 }}>
-                          {new Date(r.created_at).toLocaleDateString()}
-                        </td>
-                        <td style={{ ...TD, textAlign: 'center' }}>
-                          <span style={{ color: 'var(--color-warning)' }}>{'★'.repeat(Math.round(r.quality_score))}</span>
-                        </td>
-                        <td style={{ ...TD, textAlign: 'center' }}>
-                          <span style={{ color: 'var(--color-warning)' }}>{'★'.repeat(Math.round(r.delivery_score))}</span>
-                        </td>
-                        <td style={{ ...TD, textAlign: 'center' }}>
-                          <span style={{ color: 'var(--color-warning)' }}>{'★'.repeat(Math.round(r.pricing_score))}</span>
-                        </td>
-                        <td style={{ ...TD, textAlign: 'center', fontWeight: 700, color: 'var(--color-primary)' }}>
-                          {parseFloat(String(r.overall_score ?? 0)).toFixed(1)}
-                        </td>
-                        <td style={{ ...TD, color: 'var(--color-text-secondary)', maxWidth: 180, fontSize: 12 }}>
-                          {r.comment ?? '—'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </TableCard>
-            )
-          ) : (
-            <div>
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 6 }}>
-                  Search inventory item to see price history
-                </label>
-                <ItemSearch
-                  kind="inventory"
-                  value={priceItem}
-                  onChange={(v) => void loadPriceHistory(v)}
-                  placeholder="Search inventory by name or SKU…"
-                />
-              </div>
-              {priceLoading ? <Spinner /> : priceHistory.length === 0 ? (
-                <EmptyState message={priceItem ? 'No price history for this item from this supplier.' : 'Search and select an item above.'} />
-              ) : (
-                <TableCard>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                    <thead>
-                      <tr>
-                        {['Date', 'Unit Price (MVR)', 'Unit', 'Purchase #'].map((h) => (
-                          <th key={h} style={TH}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {priceHistory.map((ph, i) => (
-                        <tr key={i}>
-                          <td style={{ ...TD, whiteSpace: 'nowrap', color: 'var(--color-text-muted)', fontSize: 12 }}>
-                            {new Date(ph.recorded_at).toLocaleDateString()}
-                          </td>
-                          <td style={{ ...TD, fontWeight: 700, color: 'var(--color-primary)' }}>
-                            {parseFloat(String(ph.unit_price ?? 0)).toFixed(2)}
-                          </td>
-                          <td style={{ ...TD, color: 'var(--color-text-secondary)' }}>{ph.unit}</td>
-                          <td style={TD}>
-                            {ph.purchase_id ? (
-                              <Link
-                                to={`/purchasing/orders?search=${encodeURIComponent(ph.purchase_number || String(ph.purchase_id))}`}
-                                style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none', fontSize: 12 }}
-                              >
-                                {ph.purchase_number || `PO #${ph.purchase_id}`}
-                              </Link>
-                            ) : (
-                              <span style={{ color: 'var(--color-text-muted)' }}>—</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </TableCard>
-              )}
-            </div>
-          )}
-
-          <ModalActions>
-            <Btn variant="secondary" onClick={() => setDrill(null)}>Close</Btn>
           </ModalActions>
         </Modal>
       )}

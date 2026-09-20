@@ -104,6 +104,13 @@ Route::middleware(['auth:sanctum', 'permission.any:suppliers.purchases,reports.f
     Route::get('/purchasing/price-changes/{itemId}', [App\Http\Controllers\Api\PriceChangesController::class, 'show'])->whereNumber('itemId');
 });
 
+// One supplier, everything bought from them (owner, 2026-09-20). The
+// purchase orders themselves come from GET /purchases?supplier_id=.
+Route::middleware(['auth:sanctum', 'permission.any:suppliers.purchases,suppliers.manage,reports.financial'])->group(function () {
+    Route::get('/purchasing/suppliers/{id}/overview', [App\Http\Controllers\Api\SupplierProfileController::class, 'overview'])->whereNumber('id');
+    Route::get('/purchasing/suppliers/{id}/items', [App\Http\Controllers\Api\SupplierProfileController::class, 'items'])->whereNumber('id');
+});
+
 // ─── Supplier Intelligence ─────────────────────────────────────────────────
 Route::middleware(['auth:sanctum', 'permission:suppliers.manage'])->prefix('suppliers')->group(function () {
     // Static routes MUST come before parameterised /{id} routes

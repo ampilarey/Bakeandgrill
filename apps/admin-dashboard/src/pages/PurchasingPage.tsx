@@ -32,6 +32,8 @@ const ProcurementReportPage = lazy(() => import('./ProcurementReportPage'));
 // Owner, 2026-09-19: "Where i can see the price difference of each product
 // over time. An easy way to" — every item, last price against before.
 const PriceChangesPage = lazy(() => import('./PriceChangesPage'));
+// Owner, 2026-09-20: a supplier's name opens everything bought from them.
+const SupplierProfilePage = lazy(() => import('./SupplierProfilePage'));
 
 export const PURCHASING_TABS = [
   { id: 'requests', label: 'Requests', permissions: ['purchase_requests.view_all'], desc: 'What staff have asked for, and where each request is' },
@@ -72,6 +74,8 @@ export function PurchasingPage() {
 
   const visible = PURCHASING_TABS.filter((t) => t.permissions.some((p) => can(p)));
   const pathTab = purchasingPathTab(pathname);
+  // /purchasing/suppliers/12 is the Suppliers tab, showing one supplier.
+  const supplierId = pathname.match(/^\/purchasing\/suppliers\/(\d+)/)?.[1];
   const active: PurchasingTabId | null = isTab(pathTab) && visible.some((t) => t.id === pathTab) ? pathTab : null;
   const current = PURCHASING_TABS.find((t) => t.id === active);
 
@@ -122,7 +126,8 @@ export function PurchasingPage() {
         {active === 'orders' && <PurchaseOrdersPage embedded />}
         {active === 'lines' && <PurchaseLinesPage embedded />}
         {active === 'lists' && <ShoppingListsPage embedded />}
-        {active === 'suppliers' && <SupplierIntelligencePage embedded />}
+        {active === 'suppliers' && supplierId && <HubContext.Provider value={true}><SupplierProfilePage key={supplierId} supplierId={Number(supplierId)} /></HubContext.Provider>}
+        {active === 'suppliers' && !supplierId && <SupplierIntelligencePage embedded />}
         {active === 'price-changes' && <HubContext.Provider value={true}><PriceChangesPage /></HubContext.Provider>}
         {active === 'reports' && <HubContext.Provider value={true}><ProcurementReportPage /></HubContext.Provider>}
         {active === 'settings' && <PurchasingSettings canEdit={can('settings.update')} />}

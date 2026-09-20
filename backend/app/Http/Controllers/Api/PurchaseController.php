@@ -38,6 +38,17 @@ class PurchaseController extends Controller
             $query->where('status', $request->query('status'));
         }
 
+        // The supplier page (owner, 2026-09-20) lists one shop's orders.
+        if ($request->filled('supplier_id')) {
+            $query->where('supplier_id', (int) $request->query('supplier_id'));
+        }
+        if ($request->filled('from')) {
+            $query->whereDate('purchase_date', '>=', (string) $request->query('from'));
+        }
+        if ($request->filled('to')) {
+            $query->whereDate('purchase_date', '<=', (string) $request->query('to'));
+        }
+
         if ($request->filled('search')) {
             $raw = (string) $request->query('search');
             $term = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $raw) . '%';
