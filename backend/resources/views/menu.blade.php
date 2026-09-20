@@ -420,7 +420,7 @@ html.rail-right .menu-rail-side .menu-rail-side__icon { transform: scaleX(-1); }
 .menu-subchip-count { margin-left: 0.3rem; opacity: 0.7; font-weight: 600; }
 .menu-neighbours {
     display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;
-    max-width: 1180px; margin: 0.5rem auto 0; padding: 0 1.25rem;
+    margin: 1.25rem 0 0;
 }
 .menu-neighbour {
     display: flex; flex-direction: column; gap: 0.15rem; padding: 0.8rem 1rem;
@@ -664,7 +664,7 @@ html.js .menu-fav { display: inline-flex; }
     padding: 0.2rem 0.45rem; border-radius: 999px;
 }
 
-.menu-cta { max-width: 1180px; margin: 0 auto; padding: 0 1.25rem 4rem; text-align: center; }
+.menu-cta { padding: 1.5rem 0 1rem; text-align: center; }
 .menu-empty { max-width: 34rem; margin: 4rem auto; text-align: center; color: var(--muted); padding: 0 1.25rem; }
 
 /* Dhivehi names and descriptions get the Thaana face and RTL flow even on an
@@ -1335,36 +1335,40 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                 </div>
             </section>
         @endif
+        {{-- The way on and the order button sit under the dishes, inside the
+             content column: a short category page used to end in a blank
+             column beside a rail taller than its content, with these floating
+             a screen below (owner's screenshot, 2026-09-21). --}}
+        @if($menuOnlyCategory && $menuNeighbours && ($menuNeighbours['prev'] || $menuNeighbours['next']))
+            {{-- Browse on without going back: the pages either side of this one. --}}
+            <nav class="menu-neighbours" aria-label="Nearby categories" data-testid="category-neighbours">
+                @if($menuNeighbours['prev'])
+                    @php $pn = $pageName($menuNeighbours['prev']); @endphp
+                    <a class="menu-neighbour menu-neighbour--prev" href="{{ $menuCategoryUrls[$pageKey($menuNeighbours['prev'])] ?? '/menu' }}" rel="prev">
+                        <span class="menu-neighbour-eyebrow">Previous</span>
+                        <span class="menu-neighbour-name" @if($pn['dv']) lang="dv" @endif>← {{ $pn['text'] }}</span>
+                    </a>
+                @else
+                    <span></span>
+                @endif
+                @if($menuNeighbours['next'])
+                    @php $nn = $pageName($menuNeighbours['next']); @endphp
+                    <a class="menu-neighbour menu-neighbour--next" href="{{ $menuCategoryUrls[$pageKey($menuNeighbours['next'])] ?? '/menu' }}" rel="next">
+                        <span class="menu-neighbour-eyebrow">Next</span>
+                        <span class="menu-neighbour-name" @if($nn['dv']) lang="dv" @endif>{{ $nn['text'] }} →</span>
+                    </a>
+                @endif
+            </nav>
+        @endif
+        <div class="menu-cta">
+            <a href="/order/menu" class="btn-primary">Start your order →</a>
+            @if($menuOnlyCategory)
+                <a href="/menu" class="btn-outline" style="margin-left:0.6rem">See the full menu</a>
+            @endif
+        </div>
     </div>
 </div>
 
-@if($menuOnlyCategory && $menuNeighbours && ($menuNeighbours['prev'] || $menuNeighbours['next']))
-    {{-- Browse on without going back: the pages either side of this one. --}}
-    <nav class="menu-neighbours" aria-label="Nearby categories" data-testid="category-neighbours">
-        @if($menuNeighbours['prev'])
-            @php $pn = $pageName($menuNeighbours['prev']); @endphp
-            <a class="menu-neighbour menu-neighbour--prev" href="{{ $menuCategoryUrls[$pageKey($menuNeighbours['prev'])] ?? '/menu' }}" rel="prev">
-                <span class="menu-neighbour-eyebrow">Previous</span>
-                <span class="menu-neighbour-name" @if($pn['dv']) lang="dv" @endif>← {{ $pn['text'] }}</span>
-            </a>
-        @else
-            <span></span>
-        @endif
-        @if($menuNeighbours['next'])
-            @php $nn = $pageName($menuNeighbours['next']); @endphp
-            <a class="menu-neighbour menu-neighbour--next" href="{{ $menuCategoryUrls[$pageKey($menuNeighbours['next'])] ?? '/menu' }}" rel="next">
-                <span class="menu-neighbour-eyebrow">Next</span>
-                <span class="menu-neighbour-name" @if($nn['dv']) lang="dv" @endif>{{ $nn['text'] }} →</span>
-            </a>
-        @endif
-    </nav>
-@endif
-<div class="menu-cta">
-    <a href="/order/menu" class="btn-primary">Start your order →</a>
-    @if($menuOnlyCategory)
-        <a href="/menu" class="btn-outline" style="margin-left:0.6rem">See the full menu</a>
-    @endif
-</div>
 
 @php
     // Built as an array and emitted with @json rather than hand-written:
@@ -1649,9 +1653,14 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
     // of the page the rail starts lower, so its bottom entries sat below
     // the fold and could not be reached until the page itself moved
     // (owner, 2026-09-03: "make it scroll till the last cat").
+    var mainCol = document.querySelector('.menu-main');
     function fitRail() {
         var top = scroller.getBoundingClientRect().top;
         var room = window.innerHeight - top - 8;
+        // A category page with three dishes must not end in a blank column
+        // beside a rail a whole screen tall: the rail scrolls inside a box no
+        // taller than the content it sits beside.
+        if (mainCol && mainCol.offsetHeight > 0) room = Math.min(room, mainCol.offsetHeight);
         scroller.style.maxHeight = Math.max(160, room) + 'px';
     }
     var fitPending = false;
