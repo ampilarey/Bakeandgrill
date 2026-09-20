@@ -737,7 +737,7 @@ body.menu-sheet-open { overflow: hidden; }
     };
 
     $categoryName = function ($category) use ($menuLocale) {
-        if (! $category) return ['text' => 'More', 'dv' => false];
+        if (! $category) return ['text' => 'Other', 'dv' => false];
         if ($menuLocale === 'dv') {
             $dv = trim((string) ($category->name_dv ?: ''));
             if ($dv !== '') return ['text' => $dv, 'dv' => true];

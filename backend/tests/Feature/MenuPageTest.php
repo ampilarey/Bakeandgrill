@@ -275,8 +275,13 @@ class MenuPageTest extends TestCase
 
         $response->assertSee('Bajiya', false);
         $response->assertSee('Orphan Item', false);
-        // Grouped under a neutral heading rather than the retired category.
+        // Grouped under a neutral heading rather than the retired category —
+        // "Other", the same word the order app uses (owner, 2026-09-21:
+        // "others or more?").
         $response->assertDontSee('Retired Category', false);
+        $response->assertSee('id="cat-other"', false);
+        $response->assertSee('>Other</h2>', false);
+        $response->assertDontSee('>More<', false);
     }
 
     public function test_categories_follow_menu_order(): void

@@ -247,7 +247,7 @@ class PrintableMenuTest extends TestCase
         /*
          * The 500 on the live site. `groupByParent` puts items with no *active*
          * category into a bucket whose `category` is null — the website menu
-         * heads that "More" — and the print sheet read `->name` off it. Every
+         * heads that "Other" — and the print sheet read `->name` off it. Every
          * test here had given its items a live category, so nothing caught it.
          */
         $retired = Category::create(['name' => 'Old Section', 'is_active' => false]);
@@ -256,7 +256,7 @@ class PrintableMenuTest extends TestCase
         $this->get('/menu/print')
             ->assertOk()
             ->assertSee('Orphan Dish')
-            ->assertSee('More');
+            ->assertSee('Other');
     }
 
     public function test_an_item_with_no_category_at_all_still_prints(): void

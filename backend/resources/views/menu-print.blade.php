@@ -571,11 +571,11 @@
                     /*
                      * `groupByParent` ends with a bucket for items whose
                      * category is switched off or missing, and that bucket's
-                     * category is null. The website menu heads it "More"; this
+                     * category is null. The website menu heads it "Other"; this
                      * read `->name` off it and returned a 500 the first time
                      * somebody opened the page.
                      */
-                    $heading = $group['category']?->name ?: 'More';
+                    $heading = $group['category']?->name ?: 'Other';
                     $hasRows = $group['items']->isNotEmpty() || $group['subcategories'] !== [];
                 @endphp
 
