@@ -33,6 +33,9 @@ export interface SiteSettings {
   logo_dark?: string;
   /** Fills circular cards when a menu item has no photo of its own. */
   default_item_image?: string;
+  /** Banner photos for the two menu sections that are not categories (owner, 2026-09-21). */
+  menu_other_banner_image?: string;
+  menu_events_banner_image?: string;
   favicon?: string;
   business_phone?: string;
   /** Public website URL (TV brand card, contact). */

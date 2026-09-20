@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   fetchCategories,
   fetchItems,
@@ -54,6 +54,8 @@ const MENU_VIEW_KEY = 'bg-menu-view';
  * no entry for it, so it could neither be reached nor lit.
  */
 export const OTHER_SECTION_ID = -1;
+/** The Event & catering section's id in the scroll-spy, for the same reason. */
+export const EVENTS_SECTION_ID = -2;
 
 /**
  * How stale an open menu is allowed to get before it refetches itself. Two
@@ -302,7 +304,7 @@ export function MenuPage() {
   }, []);
 
   const [deliveryFallback, setDeliveryFallback] = useState(false);
-  const { text } = useSiteSettingsContext();
+  const { text, settings: siteSettings } = useSiteSettingsContext();
   const menuTitle = text('menu_page_title', 'Menu');
 
   usePageTitle(menuTitle);
@@ -720,7 +722,17 @@ export function MenuPage() {
     sectionedMenu.sections.length > 0
     || sectionedMenu.other.length > 0
     || sectionedMenu.catering.length > 0;
-  const [cateringOpen, setCateringOpen] = useState(true);
+  // The two sections that are not categories wear a category's banner
+  // (owner, 2026-09-21: "same type banner as a category and option to share
+  // and open same way"), with the picture the owner set in Business Details.
+  const otherSection = useMemo<Category>(() => ({
+    id: OTHER_SECTION_ID, name: 'Other', slug: 'other', sort_order: 0,
+    image_url: siteSettings.menu_other_banner_image || null,
+  }), [siteSettings.menu_other_banner_image]);
+  const eventsSection = useMemo<Category>(() => ({
+    id: EVENTS_SECTION_ID, name: 'Event & catering menu', slug: 'events', sort_order: 0,
+    image_url: siteSettings.menu_events_banner_image || null,
+  }), [siteSettings.menu_events_banner_image]);
   const [cateringRailActive, setCateringRailActive] = useState(false);
 
   // Keep --menu-sticky-offset in sync with the real sticky controls height
@@ -790,7 +802,6 @@ export function MenuPage() {
       void navigate('/events');
       return;
     }
-    setCateringOpen(true);
     setCateringRailActive(true);
     setActiveCategoryId(null);
     isProgrammaticScroll.current = true;
@@ -1281,7 +1292,7 @@ export function MenuPage() {
           otherCount={sectionedMenu.other.length}
           onOtherClick={() => handleSelectCategory(OTHER_SECTION_ID)}
           showCateringPill
-          cateringActive={cateringRailActive}
+          cateringActive={cateringRailActive || activeCategoryId === EVENTS_SECTION_ID}
           cateringCount={sectionedMenu.catering.length}
           onCateringClick={handleSelectCatering}
         />
@@ -1395,16 +1406,11 @@ export function MenuPage() {
                 >
                   {/* Spied like a category header so the rail's Other entry lights up
                       when this section is the one in view. */}
-                  <header
-                    className="menu-section-header"
-                    data-category-id={OTHER_SECTION_ID}
-                    data-testid="menu-section-other-header"
-                    style={{ padding: '1.25rem 0 0.75rem' }}
-                  >
-                    <h2 className="section-accent" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 800, color: 'var(--color-dark)' }}>
-                      Other
-                    </h2>
-                  </header>
+                  <MenuSectionHeader
+                    category={otherSection}
+                    active={activeCategoryId === OTHER_SECTION_ID}
+                    testId="menu-section-other-header"
+                  />
                   <div className={viewMode === 'list' ? 'menu-list' : 'menu-grid'} style={{ paddingBottom: '1.25rem' }}>
                     {sectionedMenu.other.map(renderProductCard)}
                   </div>
@@ -1420,34 +1426,19 @@ export function MenuPage() {
                     marginBottom: '0.5rem',
                   }}
                 >
-                  <button
-                    type="button"
-                    onClick={() => setCateringOpen((o) => !o)}
-                    style={{
-                      width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      gap: 12, padding: '0.85rem 0', background: 'transparent', border: 'none',
-                      borderTop: '1px solid var(--color-border, #E8E0D8)',
-                      borderBottom: cateringOpen ? 'none' : '1px solid var(--color-border, #E8E0D8)',
-                      cursor: 'pointer', textAlign: 'left', minHeight: 44,
-                    }}
-                  >
-                    <div>
-                      <h2 className="section-accent" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 800, color: 'var(--color-dark)' }}>
-                        Event & catering menu
-                      </h2>
-                      <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--color-muted, #6B5D4F)' }}>
-                        {sectionedMenu.catering.length} item{sectionedMenu.catering.length === 1 ? '' : 's'} · order for today like any other menu item
-                      </p>
-                    </div>
-                    <span style={{ fontSize: 18, color: 'var(--color-muted, #6B5D4F)', flexShrink: 0 }} aria-hidden>
-                      {cateringOpen ? '▾' : '▸'}
-                    </span>
-                  </button>
-                  {cateringOpen && (
-                    <div className={viewMode === 'list' ? 'menu-list' : 'menu-grid'} style={{ paddingBottom: '1.25rem' }}>
-                      {sectionedMenu.catering.map(renderProductCard)}
-                    </div>
-                  )}
+                  <MenuSectionHeader
+                    category={eventsSection}
+                    active={cateringRailActive || activeCategoryId === EVENTS_SECTION_ID}
+                    testId="menu-section-catering-header"
+                  />
+                  <p style={{ margin: '0 0 0.75rem', fontSize: 13, color: 'var(--color-muted, #6B5D4F)' }}>
+                    {sectionedMenu.catering.length} item{sectionedMenu.catering.length === 1 ? '' : 's'} · order for today like any other menu item
+                    {' · '}
+                    <Link to="/events" style={{ color: 'var(--color-primary)', fontWeight: 700 }}>Plan an event →</Link>
+                  </p>
+                  <div className={viewMode === 'list' ? 'menu-list' : 'menu-grid'} style={{ paddingBottom: '1.25rem' }}>
+                    {sectionedMenu.catering.map(renderProductCard)}
+                  </div>
                 </section>
               )}
             </div>

@@ -24,13 +24,13 @@ class ContentResolverSeparationSnapshotTest extends TestCase
     public function test_resolver_snapshot_matches_committed_fixture_for_all_680_combinations(): void
     {
         $keys = ContentResolverSnapshot::nonDeprecatedKeys();
-        $this->assertCount(177, $keys, 'Expected 177 non-deprecated content.php keys');
+        $this->assertCount(179, $keys, 'Expected 179 non-deprecated content.php keys');
 
         $actual = ContentResolverSnapshot::capture();
         $this->assertSame(
             ContentResolverSnapshot::EXPECTED_COMBINATIONS,
             $actual['meta']['combinations'],
-            'Expected 177 keys × 2 apps × 2 locales = 708 combinations',
+            'Expected 179 keys × 2 apps × 2 locales = 716 combinations',
         );
 
         $path = ContentResolverSnapshot::fixturePath();

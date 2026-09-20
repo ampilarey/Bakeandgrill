@@ -37,6 +37,8 @@ const KEY_HELPERS: Record<string, string> = {
   maps_embed_url: 'Google Maps embed URL for the contact/location map.',
   menu_page_title: 'Title at the top of the order-app menu.',
   menu_new_days: 'How many days an item stays marked as “New”.',
+  menu_other_banner_image: 'Banner photo over the “Other” section of the menu.',
+  menu_events_banner_image: 'Banner photo over the “Event & catering menu” section.',
   language_switcher_enabled: 'Show the EN / ދވ language toggle on the website and order app. Off by default.',
   announcement_enabled: 'Show or hide the announcement banner.',
   announcement_text: 'Message inside the announcement banner.',

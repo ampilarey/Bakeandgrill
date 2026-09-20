@@ -80,12 +80,24 @@ class MenuPageController extends Controller
         if ($row === null && ctype_digit($category)) {
             $row = Category::query()->where('is_active', true)->find((int) $category);
         }
-        if ($row === null) {
-            abort(404);
+        if ($row !== null) {
+            return $this->renderMenu($row);
+        }
+        // The two sections that are not categories share the same page shape
+        // (owner, 2026-09-21: "same type banner as a category and option to
+        // share and open same way"). A real category with either slug wins.
+        if (array_key_exists($category, self::SECTION_NAMES)) {
+            return $this->renderMenu(null, $category);
         }
 
-        return $this->renderMenu($row);
+        abort(404);
     }
+
+    /** The menu's two sections that are not categories, by the slug of their page. */
+    public const SECTION_NAMES = [
+        'other' => 'Other',
+        'events' => 'Event & catering menu',
+    ];
 
     /** The link a category is shared by: its slug when it has one, else its id. */
     public static function categoryUrl(Category $category): string
@@ -95,13 +107,26 @@ class MenuPageController extends Controller
         return url('/menu/c/' . ($slug !== '' ? $slug : $category->id));
     }
 
-    private function renderMenu(?Category $only): View
+    private function renderMenu(?Category $only, ?string $section = null): View
     {
         $items = $this->menuItems();
         $categories = $this->activeCategories();
         $offers = collect(app(OffersService::class)->activeOffers());
 
-        if ($only !== null) {
+        if ($section !== null) {
+            [$catering, $regular] = $items->partition(fn (Item $item) => $this->isCateringItem($item, $categories));
+            if ($section === 'events') {
+                $groups = collect();
+                $items = $catering->values();
+            } else {
+                // The leftover bucket alone: groupByParent's group with no category.
+                $groups = $this->groupByParent($regular->values(), $categories)
+                    ->filter(fn (array $group) => $group['category'] === null)->values();
+                $items = $groups->flatMap(fn (array $group) => $group['items'])->values();
+                $catering = collect();
+            }
+            $offers = collect();
+        } elseif ($only !== null) {
             // The category and its children, or a sub-category and its parent
             // (for the band). Nothing else, so an "also show in" placement
             // elsewhere does not drag another section in.
@@ -134,9 +159,14 @@ class MenuPageController extends Controller
             'menuCategories' => $groups,
             'menuItemCount' => $items->count(),
             'menuCatering' => $catering->values(),
-            'menuOnlyCategory' => $only,
-            'menuOnlyCategoryName' => $only?->name,
-            'menuCategoryUrls' => $this->activeCategories()->map(fn (Category $c) => self::categoryUrl($c))->all(),
+            'menuOnlyCategory' => $only ?? $section,
+            'menuOnlyCategoryName' => $only?->name ?? ($section !== null ? self::SECTION_NAMES[$section] : null),
+            'menuCategoryUrls' => $this->activeCategories()->map(fn (Category $c) => self::categoryUrl($c))->all()
+                + ['other' => url('/menu/c/other'), 'events' => url('/menu/c/events')],
+            'menuSectionBanners' => [
+                'other' => (string) content('menu_other_banner_image'),
+                'events' => (string) content('menu_events_banner_image'),
+            ],
             'menuSoldOut' => $this->soldOutLabels($items),
             'menuOffers' => $offers,
             'menuSpecialsByItemId' => $specialsByItemId,

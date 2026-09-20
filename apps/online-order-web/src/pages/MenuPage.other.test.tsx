@@ -13,7 +13,10 @@ vi.mock('../api', async () => {
       ],
     }),
     // The catering listing is asked for too; nothing here belongs to it.
-    fetchItems: vi.fn().mockImplementation((channel?: string) => Promise.resolve(channel === 'catering' ? { data: [], channelUsed: 'catering', deliveryFallback: false } : {
+    fetchItems: vi.fn().mockImplementation((channel?: string) => Promise.resolve(channel === 'catering' ? {
+      data: [{ id: 20, name: 'Buffet for 20', description: 'Event dish', base_price: 900, category_id: null, is_available: true, has_variants: false, variants: [], is_catering: true }],
+      channelUsed: 'catering', deliveryFallback: false,
+    } : {
       data: [
         {
           id: 10,
@@ -95,7 +98,7 @@ vi.mock('../context/ShellNavContext', () => ({
 vi.mock('../context/SiteSettingsContext', () => ({
   useSiteSettingsContext: () => ({
     text: (_k: string, d: string) => d,
-    settings: { logo: '/logo.png' },
+    settings: { logo: '/logo.png', menu_other_banner_image: '/media/other-banner.jpg', menu_events_banner_image: '/media/events-banner.jpg' },
   }),
 }));
 
@@ -169,6 +172,17 @@ describe('MenuPage — the Other section has a rail entry', () => {
     expect(within(section).getByText('Mystery Bun')).toBeInTheDocument();
     expect(within(section).getByText('Orphan Roll')).toBeInTheDocument();
     expect(within(section).queryByText('House Salad')).toBeNull();
+
+    // The section wears a category's banner: the owner's picture, a Share
+    // pill and a tap that opens its own page (owner, 2026-09-21).
+    expect(header.querySelector('.menu-cat-promo__img')?.getAttribute('src')).toContain('/media/other-banner.jpg');
+    expect(within(header).getByRole('button', { name: 'Share Other' })).toBeInTheDocument();
+    expect(within(header).getByRole('link', { name: 'Open the Other menu page' }).getAttribute('href')).toMatch(/\/menu\/c\/other$/);
+    const events = screen.getByTestId('menu-section-catering-header');
+    expect(events.querySelector('.menu-cat-promo__img')?.getAttribute('src')).toContain('/media/events-banner.jpg');
+    expect(within(events).getByRole('button', { name: 'Share Event & catering menu' })).toBeInTheDocument();
+    expect(within(events).getByRole('link', { name: 'Open the Event & catering menu menu page' }).getAttribute('href')).toMatch(/\/menu\/c\/events$/);
+    expect(within(events.closest('section') as HTMLElement).getByText('Buffet for 20')).toBeInTheDocument();
 
     const tab = screen.getByTestId('cat-rail-other');
     expect(tab).toHaveTextContent('Other, 2');

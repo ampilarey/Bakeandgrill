@@ -93,4 +93,12 @@ describe('MenuSectionHeader', () => {
     expect(link.parentElement).toHaveClass('menu-cat-promo-wrap');
     expect(screen.getByTestId('category-share').parentElement).toBe(link.parentElement);
   });
+
+  it('tints a section with a negative id (Other, Events) without a broken colour', () => {
+    const { container } = render(<MenuSectionHeader category={{ id: -1, name: 'Other', slug: 'other', sort_order: 0 }} testId="hdr" />);
+    const promo = container.querySelector('.menu-cat-promo') as HTMLElement;
+    expect(promo.style.background).not.toContain('undefined');
+    expect(promo.style.background).toContain('linear-gradient');
+    expect(container.querySelector('[data-testid="hdr"]')).toBeTruthy();
+  });
 });

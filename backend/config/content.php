@@ -1233,6 +1233,33 @@ return [
             'validate' => 'nullable|string|max:2048',
             'default' => '',
         ],
+        // The two menu sections that are not categories — "Other" (dishes
+        // with no live category) and "Event & catering menu" — get a banner
+        // like a category's, and this is its picture (owner, 2026-09-21).
+        'menu_other_banner_image' => [
+            'label' => 'Banner photo: Other section',
+            'group' => 'Menu',
+            'type' => 'image',
+            'apps' => ['website', 'order_app'],
+            'shareable' => true,
+            'public' => true,
+            'rich' => false,
+            'description' => 'Banner over the "Other" section of the menu — dishes with no live category. Blank keeps the tinted band.',
+            'validate' => 'nullable|string|max:2048',
+            'default' => '',
+        ],
+        'menu_events_banner_image' => [
+            'label' => 'Banner photo: Event & catering menu',
+            'group' => 'Menu',
+            'type' => 'image',
+            'apps' => ['website', 'order_app'],
+            'shareable' => true,
+            'public' => true,
+            'rich' => false,
+            'description' => 'Banner over the "Event & catering menu" section. Blank keeps the tinted band.',
+            'validate' => 'nullable|string|max:2048',
+            'default' => '',
+        ],
         'menu_new_days' => [
             'label' => 'New items window (days)',
             'group' => 'Menu',

@@ -288,6 +288,57 @@ class MenuPageTest extends TestCase
         $this->assertStringNotContainsString('class="menu-cat-band-link"', $own);
     }
 
+    public function test_the_other_and_event_sections_get_a_banner_a_share_button_and_a_page_like_a_category(): void
+    {
+        // Owner, 2026-09-21: "I need same type banner as a category and option
+        // to share and open same way and option to add pic in admin to the banner."
+        SiteSetting::set('menu_other_banner_image', 'https://cdn.example.com/other.jpg', 'shared');
+        SiteSetting::set('menu_events_banner_image', 'https://cdn.example.com/events.jpg', 'shared');
+        SiteSetting::bust();
+        \App\Domains\Content\ContentResolver::bust();
+
+        $food = $this->category('Shorteats', 1);
+        $events = $this->category('Event Platters', 2);
+        $this->item($food, 'Bajiya', 5);
+        $this->item($events, 'Buffet for 20', 900);
+        $retired = $this->category('Retired Category', 3);
+        $orphan = $this->item($retired, 'Orphan Item', 7);
+        $retired->update(['is_active' => false]);
+
+        $html = $this->get('/menu')->assertOk()->getContent();
+
+        // Both bands: the owner's picture, a Share button and a tap-through.
+        $this->assertStringContainsString('<img src="https://cdn.example.com/other.jpg"', $html);
+        $this->assertStringContainsString('<img src="https://cdn.example.com/events.jpg"', $html);
+        $this->assertStringContainsString('aria-label="Share Other"', $html);
+        $this->assertStringContainsString('data-share-url="http://localhost:8000/menu/c/other"', $html);
+        $this->assertStringContainsString('aria-label="Open the Other menu page"', $html);
+        $this->assertStringContainsString('aria-label="Share Event &amp; catering"', $html);
+        $this->assertStringContainsString('data-share-url="http://localhost:8000/menu/c/events"', $html);
+        $this->assertStringContainsString('href="http://localhost:8000/menu/c/events"', $html);
+
+        // Each has a page of its own, shaped like a category's.
+        $other = $this->get('/menu/c/other')->assertOk()->getContent();
+        $this->assertStringContainsString('<title>Other – Menu – Bake &amp; Grill</title>', $other);
+        $this->assertStringContainsString('Showing <strong>Other</strong>', $other);
+        $this->assertStringContainsString('Orphan Item', $other);
+        $this->assertStringNotContainsString('Bajiya', $other);
+        $this->assertStringNotContainsString('Buffet for 20', $other);
+        $this->assertStringContainsString('href="/menu/' . $orphan->id . '"', $other);
+
+        $ev = $this->get('/menu/c/events')->assertOk()->getContent();
+        $this->assertStringContainsString('Showing <strong>Event &amp; catering menu</strong>', $ev);
+        $this->assertStringContainsString('Buffet for 20', $ev);
+        $this->assertStringNotContainsString('Bajiya', $ev);
+        $this->assertStringNotContainsString('Orphan Item', $ev);
+        $this->assertStringContainsString('data-testid="menu-events-plan"', $ev);
+        $this->assertStringNotContainsString('class="menu-cat-band-link"', $ev);
+
+        // A real category with the slug "events" takes the page over.
+        $events->update(['slug' => 'events']);
+        $this->get('/menu/c/events')->assertOk()->assertSee('Showing <strong>Event Platters</strong>', false);
+    }
+
     public function test_a_size_that_has_run_out_is_greyed_on_the_item_page(): void
     {
         $cat = $this->category('Drinks');

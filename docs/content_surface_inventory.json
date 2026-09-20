@@ -2,7 +2,7 @@
     "generated_for_commit": "a377ebc37",
     "audited_at": "2026-08-13",
     "website": {
-        "page_count_keys": 153,
+        "page_count_keys": 155,
         "pages": {
             "everywhere": {
                 "title": "Everywhere (layout chrome)",
@@ -374,9 +374,15 @@
                 "title": "Menu",
                 "route": "GET /menu → 301 /order/menu",
                 "template": "(no website blade — Order App owns Menu)",
-                "keys": [],
+                "keys": [
+                    "menu_other_banner_image",
+                    "menu_events_banner_image"
+                ],
                 "notes": "No website Menu page renderer. menu_new_days is listed under reads_nowhere for website.",
-                "renderers": []
+                "renderers": {
+                    "menu_other_banner_image": "backend/resources/views/menu.blade.php",
+                    "menu_events_banner_image": "backend/resources/views/menu.blade.php"
+                }
             },
             "events_catering": {
                 "title": "Events & Catering",
@@ -1472,11 +1478,25 @@
                 "label": "Dhivehi font",
                 "group": "Everywhere",
                 "renderer": "layout.blade.php + /css/dhivehi-font.css?app=website"
+            },
+            "menu_other_banner_image": {
+                "page": "menu",
+                "order": 1,
+                "label": "Banner photo: Other section",
+                "group": "Menu",
+                "renderer": "backend/resources/views/menu.blade.php"
+            },
+            "menu_events_banner_image": {
+                "page": "menu",
+                "order": 2,
+                "label": "Banner photo: Event & catering menu",
+                "group": "Menu",
+                "renderer": "backend/resources/views/menu.blade.php"
             }
         }
     },
     "order_app": {
-        "page_count_keys": 92,
+        "page_count_keys": 94,
         "pages": {
             "everywhere": {
                 "title": "Everywhere (shell chrome)",
@@ -1656,13 +1676,17 @@
                 "keys": [
                     "menu_page_title",
                     "default_item_image",
-                    "menu_new_days"
+                    "menu_new_days",
+                    "menu_other_banner_image",
+                    "menu_events_banner_image"
                 ],
                 "notes": "menu_new_days is read on MenuViewPage (/view) and Signage, not MenuPage itself — still assigned to Menu as the product surface.",
                 "renderers": {
                     "menu_page_title": "apps/online-order-web/src/pages/MenuPage.tsx",
                     "default_item_image": "apps/online-order-web/src/pages/MenuPage.tsx",
-                    "menu_new_days": "apps/online-order-web/src/pages/MenuPage.tsx"
+                    "menu_new_days": "apps/online-order-web/src/pages/MenuPage.tsx",
+                    "menu_other_banner_image": "apps/online-order-web/src/pages/MenuPage.tsx",
+                    "menu_events_banner_image": "apps/online-order-web/src/pages/MenuPage.tsx"
                 }
             },
             "ordering": {
@@ -2415,6 +2439,20 @@
                 "label": "Dhivehi font",
                 "group": "Everywhere",
                 "renderer": "index.html + /css/dhivehi-font.css?app=order_app (content key dhivehi_font)"
+            },
+            "menu_other_banner_image": {
+                "page": "menu",
+                "order": 4,
+                "label": "Banner photo: Other section",
+                "group": "Menu",
+                "renderer": "apps/online-order-web/src/pages/MenuPage.tsx"
+            },
+            "menu_events_banner_image": {
+                "page": "menu",
+                "order": 5,
+                "label": "Banner photo: Event & catering menu",
+                "group": "Menu",
+                "renderer": "apps/online-order-web/src/pages/MenuPage.tsx"
             }
         }
     },

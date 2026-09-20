@@ -66,6 +66,8 @@ final class BusinessDetailsKeys
         ],
         'menu_rules' => [
             'menu_new_days',
+            'menu_other_banner_image',
+            'menu_events_banner_image',
         ],
     ];
 
@@ -139,6 +141,8 @@ final class BusinessDetailsKeys
         'google_analytics_id' => ['Website visitor tracking', 'Order App visitor tracking'],
         'google_tag_manager_id' => ['Website visitor tracking', 'Order App visitor tracking'],
         'menu_new_days' => ['Order App menu "New items"', 'TV signage'],
+        'menu_other_banner_image' => ['Website menu "Other" banner', 'Order App menu "Other" banner'],
+        'menu_events_banner_image' => ['Website menu "Event & catering" banner', 'Order App menu "Event & catering" banner'],
     ];
 
     /**

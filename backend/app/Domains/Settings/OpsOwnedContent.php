@@ -41,6 +41,10 @@ final class OpsOwnedContent
      * @var list<string>
      */
     public const BUSINESS_DETAILS_KEYS = [
+        // The menu's two section banners are set in Business Details and read
+        // by the website and the order app alike (owner, 2026-09-21).
+        'menu_other_banner_image',
+        'menu_events_banner_image',
         'site_name',
         'business_website',
         'business_phone',
@@ -138,10 +142,10 @@ final class OpsOwnedContent
         }
 
         if (abs($amount - round($amount)) < 0.001) {
-            return 'MVR '.(string) (int) round($amount);
+            return 'MVR ' . (string) (int) round($amount);
         }
 
-        return 'MVR '.number_format($amount, 2, '.', '');
+        return 'MVR ' . number_format($amount, 2, '.', '');
     }
 
     /**

@@ -8,6 +8,7 @@ type Props = {
   id?: string;
   /** When true, this section is the scroll-spy active category */
   active?: boolean;
+  testId?: string;
 };
 
 function resolveImageUrl(url: string | null | undefined): string | null {
@@ -18,7 +19,8 @@ function resolveImageUrl(url: string | null | undefined): string | null {
 
 function tintFromId(id: number): string {
   const hues = [18, 28, 38, 160, 200, 280];
-  const h = hues[id % hues.length];
+  // The Other and Events sections carry negative ids (see MenuPage).
+  const h = hues[Math.abs(id) % hues.length];
   return `linear-gradient(135deg, hsl(${h} 48% 42%) 0%, hsl(${(h + 28) % 360} 42% 28%) 100%)`;
 }
 
@@ -36,7 +38,7 @@ function tintFromId(id: number): string {
  * outline. Uses category.image_url when set; otherwise a branded gradient so
  * every category still gets the same treatment.
  */
-export function MenuSectionHeader({ category, id, active = false }: Props) {
+export function MenuSectionHeader({ category, id, active = false, testId }: Props) {
   const img = resolveImageUrl(category.image_url);
   const description = category.description?.trim() || null;
 
@@ -45,6 +47,7 @@ export function MenuSectionHeader({ category, id, active = false }: Props) {
       id={id}
       className={`menu-section-header${active ? ' is-active' : ''}`}
       data-category-id={category.id}
+      data-testid={testId}
       style={{
         padding: '0.35rem 0 0.45rem',
         scrollMarginTop: 'calc(var(--menu-sticky-offset, var(--menu-header-height)) + 4px)',

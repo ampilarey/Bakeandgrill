@@ -812,12 +812,15 @@ body.menu-sheet-open { overflow: hidden; }
     $menuOnlyCategory = $menuOnlyCategory ?? null;
     $menuOnlyCategoryName = $menuOnlyCategoryName ?? null;
     $menuCategoryUrls = $menuCategoryUrls ?? [];
-    $shareFor = function ($category, $text) use ($menuCategoryUrls) {
+    $menuSectionBanners = $menuSectionBanners ?? [];
+    // $key is a category id, or 'other' / 'events' for the two sections that
+    // are not categories but get the same banner, share and page.
+    $shareFor = function ($key, $text) use ($menuCategoryUrls) {
         return [
-            'shareUrl' => $menuCategoryUrls[$category->id] ?? url('/menu/c/' . $category->id),
+            'shareUrl' => $menuCategoryUrls[$key] ?? url('/menu/c/' . $key),
             'shareTitle' => $text . ' – Bake & Grill menu',
             'shareText' => 'See our ' . $text . ' menu at Bake & Grill',
-            'shareId' => 'share-cat-' . $category->id,
+            'shareId' => 'share-cat-' . $key,
             'shareLabel' => 'Share ' . $text,
         ];
     };
@@ -1118,7 +1121,8 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
             @php
                 $cat   = $group['category'];
                 $name  = $categoryName($cat);
-                $band  = $mediaUrl($cat?->image_url);
+                $band  = $mediaUrl($cat ? $cat->image_url : ($menuSectionBanners['other'] ?? null));
+                $bandKey = $cat ? $cat->id : 'other';
             @endphp
             <section class="menu-cat-section">
                 {{-- The band carries the section's only heading, as it does in the
@@ -1135,18 +1139,16 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                             <p>{{ $cat->description }}</p>
                         @endif
                     </div>
-                    @if($cat && ! $menuOnlyCategory)
+                    @if(! $menuOnlyCategory)
                         {{-- The band opens the category's own page (owner,
                              2026-09-21). Stretched over the band, under Share. --}}
-                        <a class="menu-cat-band-link" href="{{ $menuCategoryUrls[$cat->id] ?? url('/menu/c/' . $cat->id) }}"
+                        <a class="menu-cat-band-link" href="{{ $menuCategoryUrls[$bandKey] ?? url('/menu/c/' . $bandKey) }}"
                            aria-label="Open the {{ $name['text'] }} menu page" data-testid="category-link"></a>
                     @endif
-                    @if($cat)
-                        {{-- Share this category on its own page (owner, 2026-09-21). --}}
-                        <div class="menu-cat-band-share">
-                            @include('partials.share-control', $shareFor($cat, $name['text']) + ['shareButtonClass' => 'menu-band-share'])
-                        </div>
-                    @endif
+                    {{-- Share this category on its own page (owner, 2026-09-21). --}}
+                    <div class="menu-cat-band-share">
+                        @include('partials.share-control', $shareFor($bandKey, $name['text']) + ['shareButtonClass' => 'menu-band-share'])
+                    </div>
                 </header>
 
                 @php
@@ -1167,7 +1169,7 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                         @php $subName = $categoryName($block['heading']); @endphp
                         <div class="menu-subcat-head">
                             <h3 class="menu-subcat-title" @if($subName['dv']) lang="dv" @endif>{{ $subName['text'] }}</h3>
-                            @include('partials.share-control', $shareFor($block['heading'], $subName['text']) + ['shareButtonClass' => 'menu-sub-share'])
+                            @include('partials.share-control', $shareFor($block['heading']->id, $subName['text']) + ['shareButtonClass' => 'menu-sub-share'])
                         </div>
                     @endif
                     <div class="menu-grid">
@@ -1186,12 +1188,25 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
              or switched on for the catering channel, now lands here and the
              entry scrolls to it. The wizard is one tap away inside. --}}
         @if($menuCatering->isNotEmpty())
+            @php $eventsBand = $mediaUrl($menuSectionBanners['events'] ?? null); @endphp
             <section class="menu-cat-section menu-cat-section--events" data-testid="menu-events-section">
-                <header class="menu-cat-band" id="cat-events" style="background: hsl(32 55% 88%)">
+                {{-- The same band as a category: photo when the owner set one,
+                     Share, and a tap that opens the section's own page. --}}
+                <header class="menu-cat-band" id="cat-events" @if(! $eventsBand) style="background: {{ $tint(2) }}" @endif>
+                    @if($eventsBand)
+                        <img src="{{ $eventsBand }}" alt="" loading="lazy">
+                    @endif
                     <div class="menu-cat-band-scrim" aria-hidden="true"></div>
                     <div class="menu-cat-band-copy">
                         <h2>Event &amp; catering menu</h2>
                         <p>Order for today like any other dish, or plan an event.</p>
+                    </div>
+                    @if(! $menuOnlyCategory)
+                        <a class="menu-cat-band-link" href="{{ $menuCategoryUrls['events'] ?? url('/menu/c/events') }}"
+                           aria-label="Open the Event &amp; catering menu page" data-testid="category-link"></a>
+                    @endif
+                    <div class="menu-cat-band-share">
+                        @include('partials.share-control', $shareFor('events', 'Event & catering') + ['shareButtonClass' => 'menu-band-share'])
                     </div>
                 </header>
                 <div class="menu-subcat-block">
