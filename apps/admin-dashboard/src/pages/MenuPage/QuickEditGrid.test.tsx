@@ -895,3 +895,43 @@ describe('QuickEditGrid layout', () => {
     expect(screen.getByTestId('quick-edit-scroll')).toHaveClass('has-menu');
   });
 });
+
+// Owner, 2026-09-20: "in quick edit menu items, can u add 'also show in' option
+// so more category can be added in bulk".
+describe('QuickEditGrid also show in', () => {
+  it('adds a second category to the whole selection, previews it, and sends the full list per row', async () => {
+    renderGrid({
+      initialItems: [
+        item({ id: 1, name: 'Bajiya', category_id: 1, extra_category_ids: [] }),
+        item({ id: 2, name: 'Gulha', category_id: 1, extra_category_ids: [2] }),
+      ],
+    });
+    fireEvent.click(screen.getByLabelText('Select Bajiya'));
+    fireEvent.click(screen.getByLabelText('Select Gulha'));
+    fireEvent.click(screen.getByRole('button', { name: 'Organise' }));
+    fireEvent.change(screen.getByLabelText('Also show in category'), { target: { value: '2' } });
+
+    const preview = within(screen.getByTestId('bulk-preview'));
+    // Gulha is already listed under Grill, so only Bajiya moves.
+    expect(preview.getByText(/1 of 2 selected items would change/)).toBeInTheDocument();
+    expect(preview.getByText('Grill')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Stage 1 change/ }));
+    expect(screen.getByTestId('quick-edit-dirty')).toHaveTextContent('1 unsaved change');
+
+    fireEvent.click(screen.getByRole('button', { name: /^Save/ }));
+    await waitFor(() => expect(bulkUpdateItems).toHaveBeenCalledTimes(1));
+    expect(bulkUpdateItems).toHaveBeenCalledWith([{ id: 1, fields: { extra_category_ids: [2] } }], [], []);
+  });
+
+  it("says why nothing changes when the pick is every row's own category", () => {
+    renderGrid();
+    fireEvent.click(screen.getByLabelText('Select Bajiya'));
+    fireEvent.click(screen.getByRole('button', { name: 'Organise' }));
+    fireEvent.change(screen.getByLabelText('Also show in category'), { target: { value: '1' } });
+
+    const preview = within(screen.getByTestId('bulk-preview'));
+    expect(preview.getByText('Nothing would change')).toBeInTheDocument();
+    expect(preview.getByTestId('bulk-preview-reasons')).toHaveTextContent('already its own category');
+  });
+});

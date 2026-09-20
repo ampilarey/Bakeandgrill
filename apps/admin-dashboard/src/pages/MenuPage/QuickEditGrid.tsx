@@ -967,13 +967,20 @@ function ItemCell({
     );
   }
   if (column.key === 'also_in') {
-    const names = (item.extra_category_ids ?? [])
+    // A staged "Also show in" bulk action lands here as the draft list.
+    const ids = Array.isArray(value) ? (value as number[]) : (item.extra_category_ids ?? []);
+    const names = ids
       .map((id) => categories.find((c) => c.id === id)?.name)
       .filter((n): n is string => !!n);
     return (
       <td
-        style={{ ...cell, fontSize: 12, color: names.length ? 'var(--color-text-secondary)' : 'var(--color-text-muted)' }}
-        title={names.length ? `Also listed under ${names.join(', ')} — change it in the item editor` : 'Only under its own category — add more in the item editor'}
+        style={{
+          ...cell, fontSize: 12,
+          color: names.length ? 'var(--color-text-secondary)' : 'var(--color-text-muted)',
+          fontWeight: dirty ? 700 : undefined,
+          background: dirty ? 'var(--color-warning-bg)' : undefined,
+        }}
+        title={names.length ? `Also listed under ${names.join(', ')} — tick rows and use Organise → Also show in to change it` : 'Only under its own category — tick rows and use Organise → Also show in to add more'}
         data-testid={`also-in-${item.id}`}
       >
         {names.length ? names.join(', ') : '—'}

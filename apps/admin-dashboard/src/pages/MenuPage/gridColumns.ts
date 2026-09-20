@@ -94,7 +94,8 @@ export const GRID_COLUMNS: GridColumn[] = [
   { key: 'category', label: 'Category', group: 'Basics', kind: 'category', field: 'category_id', minWidth: 150, defaultOn: true, sortValue: (i) => str(i.category?.name) },
   // Read-only here: the extra placements are picked in the item editor
   // ("Also show in", owner 2026-09-03); the grid shows where a dish also sits.
-  { key: 'also_in', label: 'Also in', group: 'Basics', kind: 'text', minWidth: 160, defaultOn: false, sortValue: (i) => (i.extra_category_ids ?? []).length },
+  // Read-only in the cell; written by the bulk bar's "Also show in" (owner, 2026-09-20).
+  { key: 'also_in', label: 'Also in', group: 'Basics', kind: 'text', field: 'extra_category_ids', minWidth: 160, defaultOn: false, sortValue: (i) => (i.extra_category_ids ?? []).length },
   { key: 'menu_group', label: 'Menu group', group: 'Basics', kind: 'menu_group', field: 'menu_group_id', minWidth: 140, defaultOn: false, sortValue: (i) => str(i.menu_group?.name) },
   { key: 'price', label: 'Price', group: 'Money', kind: 'money', field: 'base_price', variantField: 'price', width: 96, defaultOn: true, sortValue: (i) => numOf(i.base_price) },
   { key: 'cost', label: 'Cost', group: 'Money', kind: 'money', field: 'cost', variantField: 'cost', width: 96, costOnly: true, defaultOn: true, sortValue: (i) => numOf(i.cost) },

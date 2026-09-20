@@ -101,6 +101,7 @@ export function BulkActionBar({
 
   const yesNo = (v: unknown) => (v ? 'yes' : 'no');
   const tabs = TABS.filter((t) => !t.costOnly || canSeeCost);
+  const categoryNames = Object.fromEntries(categories.map((c) => [c.id, c.name])) as Record<number, string>;
 
   return (
     <div data-testid="bulk-actions">
@@ -216,6 +217,33 @@ export function BulkActionBar({
               <option value="">Move to menu group…</option>
               {menuGroupOptions(menuGroups).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
+          </div>
+          {/* Owner, 2026-09-20: "add 'also show in' option so more category
+              can be added in bulk". The home category stays; these are the
+              extra places the same item is listed. */}
+          <div style={row}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Also show in</span>
+            <select
+              aria-label="Also show in category"
+              value=""
+              onChange={(e) => e.target.value && onPropose({ kind: 'also_in', mode: 'add', categoryId: Number(e.target.value), names: categoryNames })}
+              style={control}
+            >
+              <option value="">Add to…</option>
+              {categoryOptions(categories).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+            <select
+              aria-label="Remove from also-show-in category"
+              value=""
+              onChange={(e) => e.target.value && onPropose({ kind: 'also_in', mode: 'remove', categoryId: Number(e.target.value), names: categoryNames })}
+              style={control}
+            >
+              <option value="">Remove from…</option>
+              {categoryOptions(categories).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+            <Btn small variant="secondary" onClick={() => onPropose({ kind: 'also_in', mode: 'clear', categoryId: null, names: categoryNames })}>
+              Own category only
+            </Btn>
           </div>
           <div style={row}>
             <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Renumber the selection in the order shown, in steps of</span>

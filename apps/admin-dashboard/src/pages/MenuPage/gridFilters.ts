@@ -90,6 +90,8 @@ export function columnValue(item: MenuItem, key: string): string {
 
   const raw = (item as unknown as Record<string, unknown>)[column?.field ?? key];
   if (raw === null || raw === undefined || raw === '') return '—';
+  // The "also show in" list: filter on how many extra places, not on ids.
+  if (Array.isArray(raw)) return raw.length === 0 ? '—' : `${raw.length} more`;
   if (typeof raw === 'boolean') return raw ? 'Yes' : 'No';
   if (column?.kind === 'money') return Number(raw).toFixed(2);
   if (column?.kind === 'select') {

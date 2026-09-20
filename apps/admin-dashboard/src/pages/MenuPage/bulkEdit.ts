@@ -22,6 +22,14 @@ export type BulkAction =
   /** Price computed backwards from cost to hit a target margin. */
   | { kind: 'margin'; marginPct: number; round: RoundMode }
   | { kind: 'category'; categoryId: number | null }
+  /**
+   * "Also show in" placements for the whole selection (owner, 2026-09-20:
+   * "can u add 'also show in' option so more category can be added in
+   * bulk"). Add puts one more category on every row, remove takes one off,
+   * clear leaves each item under its home category alone. `names` is the
+   * category list, for the preview to say words rather than ids.
+   */
+  | { kind: 'also_in'; mode: 'add' | 'remove' | 'clear'; categoryId: number | null; names: Record<number, string> }
   | { kind: 'menu_group'; menuGroupId: number | null }
   | { kind: 'tax_code'; taxCode: string }
   | { kind: 'field'; field: string; value: unknown; label: string; format?: (v: unknown) => string }
@@ -170,6 +178,20 @@ export function previewAction(
           after: '',
         };
       }
+      case 'also_in': {
+        const current = [...(item.extra_category_ids ?? [])].sort((a, b) => a - b);
+        const next = nextAlsoIn(item, action);
+        const words = (ids: number[]) => (ids.length === 0 ? 'own category only' : ids.map((id) => action.names[id] ?? `#${id}`).join(', '));
+        const same = current.join(',') === next.join(',');
+        return {
+          item,
+          fields: same ? {} : { extra_category_ids: next },
+          before: words(current),
+          after: same && action.mode === 'add' && action.categoryId === (item.category_id ?? null)
+            ? 'already its own category'
+            : words(next),
+        };
+      }
       case 'menu_group': {
         const same = (item.menu_group_id ?? null) === action.menuGroupId;
         return {
@@ -243,6 +265,24 @@ export function previewAction(
   });
 }
 
+/**
+ * The "also show in" list an item would have after one bulk action, sorted,
+ * never containing its own home category — the server drops that anyway,
+ * and the preview should show what will actually be kept.
+ */
+export function nextAlsoIn(item: MenuItem, action: Extract<BulkAction, { kind: 'also_in' }>): number[] {
+  const home = item.category_id ?? null;
+  const current = new Set((item.extra_category_ids ?? []).filter((id) => id !== home));
+  if (action.mode === 'clear') {
+    current.clear();
+  } else if (action.categoryId != null && action.categoryId !== home) {
+    if (action.mode === 'add') current.add(action.categoryId);
+    else current.delete(action.categoryId);
+  }
+
+  return [...current].sort((a, b) => a - b);
+}
+
 /** Anything the grid can edit a row of — an item or one of its sizes. */
 export type EditableRecord = { id?: number } & Record<string, unknown>;
 
@@ -252,6 +292,12 @@ export function fieldChanged(item: EditableRecord, field: string, value: unknown
 
   if (typeof value === 'boolean' || typeof current === 'boolean') {
     return !!current !== !!value;
+  }
+  // A list of ids — the "also show in" placements — is the same list in
+  // any order.
+  if (Array.isArray(value) || Array.isArray(current)) {
+    const norm = (v: unknown) => (Array.isArray(v) ? [...v].map(Number).sort((a, b) => a - b).join(',') : '');
+    return norm(current) !== norm(value);
   }
   if (value === null || current === null || value === undefined || current === undefined) {
     return (current ?? null) !== (value ?? null);

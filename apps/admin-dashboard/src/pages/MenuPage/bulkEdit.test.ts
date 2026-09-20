@@ -5,6 +5,7 @@ import {
   countDirtyCells,
   draftsToChanges,
   fieldChanged,
+  nextAlsoIn,
   nextPrice,
   previewAction,
   roundPrice,
@@ -225,5 +226,46 @@ describe('sized dishes and price actions', () => {
     const [row] = previewAction([sized], { kind: 'category', categoryId: 9 });
 
     expect(row.fields).toEqual({ category_id: 9 });
+  });
+});
+
+// Owner, 2026-09-20: "can u add 'also show in' option so more category can
+// be added in bulk".
+describe('also show in', () => {
+  const names = { 3: 'Snacks', 5: 'Evening', 7: 'Tea time' };
+
+  it('adds one more place to every row and leaves rows that already have it alone', () => {
+    const rows = previewAction(
+      [item({ id: 1, extra_category_ids: [] }), item({ id: 2, extra_category_ids: [5] })],
+      { kind: 'also_in', mode: 'add', categoryId: 5, names },
+    );
+
+    expect(rows[0].fields).toEqual({ extra_category_ids: [5] });
+    expect(rows[0].before).toBe('own category only');
+    expect(rows[0].after).toBe('Evening');
+    expect(rows[1].fields).toEqual({});
+  });
+
+  it('never adds an item to its own home category', () => {
+    const [row] = previewAction([item({ id: 1, category_id: 3, extra_category_ids: [] })], { kind: 'also_in', mode: 'add', categoryId: 3, names });
+
+    expect(row.fields).toEqual({});
+    expect(row.after).toBe('already its own category');
+  });
+
+  it('keeps the other places when one is removed, and clears them all on request', () => {
+    const it1 = item({ id: 1, extra_category_ids: [5, 7] });
+
+    expect(nextAlsoIn(it1, { kind: 'also_in', mode: 'remove', categoryId: 5, names })).toEqual([7]);
+    expect(nextAlsoIn(it1, { kind: 'also_in', mode: 'clear', categoryId: null, names })).toEqual([]);
+    const [row] = previewAction([it1], { kind: 'also_in', mode: 'remove', categoryId: 5, names });
+    expect(row.before).toBe('Evening, Tea time');
+    expect(row.after).toBe('Tea time');
+  });
+
+  it('treats the same list in another order as unchanged', () => {
+    expect(fieldChanged(item({ extra_category_ids: [5, 7] }) as never, 'extra_category_ids', [7, 5])).toBe(false);
+    expect(fieldChanged(item({ extra_category_ids: [5] }) as never, 'extra_category_ids', [5, 7])).toBe(true);
+    expect(draftsToChanges([item({ id: 1, extra_category_ids: [5, 7] }) as never], { 1: { extra_category_ids: [7, 5] } })).toEqual([]);
   });
 });
