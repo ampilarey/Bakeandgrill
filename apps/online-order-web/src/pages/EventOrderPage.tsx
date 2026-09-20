@@ -29,6 +29,9 @@ import {
   type EventDraftLine,
   type ItemPickerTab,
   type WizardStep,
+  itemLeadHours,
+  itemMinQty,
+  requestLeadHours,
 } from './eventOrderHelpers';
 import type { CSSProperties } from 'react';
 import { itemDisplayPrice } from '../utils/money';
@@ -130,7 +133,7 @@ export function EventOrderPage() {
 
   const tabItems = tab === 'catering' ? cateringItems : regularItems;
   const filtered = filterItemsForTab(tabItems, tab, search);
-  const minDate = minEventDateInput(leadHours);
+  const minDate = minEventDateInput(requestLeadHours(leadHours, lines, [...cateringItems, ...regularItems]));
   const pendingItem = pendingItemId != null
     ? tabItems.find((i) => i.id === pendingItemId) ?? cateringItems.find((i) => i.id === pendingItemId) ?? null
     : null;
@@ -391,6 +394,8 @@ export function EventOrderPage() {
                                 {itemDisplayPrice(item).from ? 'From ' : ''}MVR {itemDisplayPrice(item).price.toFixed(2)}
                                 {item.is_catering ? ' · Catering' : ''}
                                 {item.has_variants ? ' · Options' : ''}
+                                {itemMinQty(item) > 1 ? ` · Min ${itemMinQty(item)}` : ''}
+                                {itemLeadHours(item) > 0 ? ` · ${itemLeadHours(item)}h notice` : ''}
                               </div>
                             </div>
                             {!isPending && (

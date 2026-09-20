@@ -163,6 +163,10 @@ export type MenuItem = {
    * Null/undefined = no daily limit. Never exposes the configured max itself.
    */
   tomorrow_remaining?: number | null;
+  /** Fewest units one order may take. Null/undefined = 1. */
+  min_order_qty?: number | null;
+  /** Notice the kitchen needs, in hours, before this dish can be collected. Null/undefined = none. */
+  lead_time_hours?: number | null;
 };
 
 /** Which size of a sized child a bundle or platter names (2026-09-07 audit). */

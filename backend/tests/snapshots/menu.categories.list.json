@@ -67,7 +67,9 @@
                     "unavailable_reason_note": null,
                     "tomorrow_daily_capacity": null,
                     "image_webp_url": null,
-                    "thumb_webp_url": null
+                    "thumb_webp_url": null,
+                    "min_order_qty": null,
+                    "lead_time_hours": null
                 }
             ]
         }

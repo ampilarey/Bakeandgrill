@@ -11,10 +11,14 @@ import { useCart } from '../context/CartContext';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { useLanguage } from '../context/LanguageContext';
 import {
+  endOfTomorrow,
   isItemOrderableForDay,
   itemLowStockLabel,
+  itemMinOrderQty,
+  itemNoticeLabel,
   itemTomorrowLowLabel,
   itemUnavailableLabel,
+  needsMoreNoticeThan,
 } from '../utils/itemAvailability';
 import { buildItemSlides } from '../utils/itemMedia';
 import { formatCardPrice, formatSavingsLabel, itemDisplayPrice } from '../utils/money';
@@ -97,11 +101,14 @@ export function ItemSheet({
   const itemAvailable = isItemOrderableForDay(item, orderDay);
   const blockedForTomorrow = orderDay === 'tomorrow' && !item.allow_pre_order;
   const fullForTomorrow = orderDay === 'tomorrow' && item.allow_pre_order && item.tomorrow_remaining === 0;
+  const noticeForTomorrow = orderDay === 'tomorrow' && item.allow_pre_order && !fullForTomorrow
+    && needsMoreNoticeThan(item, endOfTomorrow());
   const unavailLabel = !itemAvailable
     ? (blockedForTomorrow
       ? t('cart.blocks_tomorrow')
-      : (fullForTomorrow ? t('menu.sold_out_tomorrow') : itemUnavailableLabel(item, t)))
+      : (fullForTomorrow ? t('menu.sold_out_tomorrow') : noticeForTomorrow ? itemNoticeLabel(item) : itemUnavailableLabel(item, t)))
     : null;
+  const minQty = itemMinOrderQty(item);
   // Today: stock badge. Tomorrow: remaining of the daily make-limit.
   const lowStockLabel = itemAvailable
     ? (orderDay === 'today' ? itemLowStockLabel(item, t) : itemTomorrowLowLabel(item, t))
@@ -543,6 +550,19 @@ export function ItemSheet({
                 }}
               >
                 {lowStockLabel}
+              </p>
+            )}
+            {/* Owner, 2026-09-21: a platter that only makes sense from ten up says so
+                before the customer picks a size, and the cart starts there. */}
+            {(minQty > 1 || Number(item.lead_time_hours) > 0) && (
+              <p
+                data-testid="item-sheet-limits"
+                style={{ margin: '0 0 0.85rem', fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-muted)' }}
+              >
+                {[
+                  minQty > 1 ? `Minimum ${minQty} per order` : null,
+                  Number(item.lead_time_hours) > 0 ? `${Number(item.lead_time_hours)} hours' notice` : null,
+                ].filter(Boolean).join(' · ')}
               </p>
             )}
 

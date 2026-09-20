@@ -622,20 +622,47 @@ class OrderCreationService
                 abort(422, "Quantity must be greater than zero for item {$itemId}.");
             }
 
-            // Collect-tomorrow daily kitchen cap (per item, per fulfil_date).
-            // Stock for today is still skipped below — this is a separate limit.
-            if ($deferStockForTomorrow && $order->fulfil_date !== null) {
-                $fulfilDate = $order->fulfil_date instanceof \Carbon\CarbonInterface
-                    ? $order->fulfil_date->toDateString()
-                    : (string) $order->fulfil_date;
+            // "Most you can make in a day", per item, on the day the kitchen is
+            // asked for it: the fulfil_date of a collect-tomorrow order, today
+            // for everything else. Stock is a separate limit, checked below. A
+            // confirmed event's order is skipped: its request already holds
+            // the date (see TomorrowDailyCapacityService).
+            if ($itemModel->tomorrow_daily_capacity !== null && $order->type !== 'catering') {
+                $capacityDate = $order->fulfil_date === null
+                    ? now()->toDateString()
+                    : ($order->fulfil_date instanceof \Carbon\CarbonInterface
+                        ? $order->fulfil_date->toDateString()
+                        : (string) $order->fulfil_date);
                 $itemModel = app(TomorrowDailyCapacityService::class)->assertCanAllocate(
                     $itemModel,
-                    $fulfilDate,
+                    $capacityDate,
                     $quantity,
                     $order->id,
                     (float) ($tomorrowQueuedByItem[$itemModel->id] ?? 0),
                 );
                 $tomorrowQueuedByItem[$itemModel->id] = (float) ($tomorrowQueuedByItem[$itemModel->id] ?? 0) + $quantity;
+            }
+
+            // Customer orders honour the item's own limits (owner, 2026-09-21:
+            // "there might be a limit to order"). Staff at the till are trusted
+            // to know when five of a ten-minimum platter is fine.
+            if ($isOnlineOrder) {
+                $minQty = (int) ($itemModel->min_order_qty ?? 0);
+                if ($minQty > 1 && $quantity < $minQty) {
+                    abort(422, "\"{$itemModel->name}\" is ordered in at least {$minQty}.");
+                }
+
+                $lead = (int) ($itemModel->lead_time_hours ?? 0);
+                if ($lead > 0) {
+                    $madeBy = $order->fulfil_date === null
+                        ? now()->endOfDay()
+                        : \Carbon\Carbon::parse((string) ($order->fulfil_date instanceof \Carbon\CarbonInterface
+                            ? $order->fulfil_date->toDateString()
+                            : $order->fulfil_date), config('app.timezone'))->endOfDay();
+                    if (now()->addHours($lead)->gt($madeBy)) {
+                        abort(422, "\"{$itemModel->name}\" needs {$lead} hours' notice — plan it as an event instead.");
+                    }
+                }
             }
 
             // ── Variant resolution ────────────────────────────────────────────

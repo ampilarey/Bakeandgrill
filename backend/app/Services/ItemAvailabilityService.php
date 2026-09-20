@@ -32,11 +32,27 @@ use Carbon\Carbon;
  */
 class ItemAvailabilityService
 {
+    /** Channels on which a dish's notice period is enforced. */
+    public const NOTICE_CHANNELS = ['online_pickup', 'delivery'];
+
     public function __construct(
         private readonly KitchenMenuResolver $menuResolver,
         private readonly StockReservationService $reservations,
         private readonly RecipeStockService $recipeStock,
+        private readonly TomorrowDailyCapacityService $dailyCapacity,
     ) {}
+
+    /**
+     * What is left of the item's daily cap for today, or null when it has none.
+     */
+    private function remainingToday(Item $item, Carbon $at): ?int
+    {
+        if ($item->tomorrow_daily_capacity === null) {
+            return null;
+        }
+
+        return $this->dailyCapacity->remainingMap([$item], $at->toDateString())[(int) $item->id] ?? null;
+    }
 
     /**
      * Full availability check for a single item on a given channel.
@@ -92,6 +108,19 @@ class ItemAvailabilityService
             );
         }
 
+        // 2b. Notice. A dish that needs 48 hours cannot be had today; the
+        // customer is pointed at the event wizard. Only the online channels
+        // ask — the till serves whoever is at the counter, and the website
+        // menu is a menu, not an order.
+        $lead = (int) ($item->lead_time_hours ?? 0);
+        if ($lead > 0 && in_array($channel, self::NOTICE_CHANNELS, true)
+            && $at->copy()->addHours($lead)->gt($at->copy()->endOfDay())) {
+            return AvailabilityResult::unavailable(
+                'needs_notice',
+                "Needs {$lead} hours' notice",
+            );
+        }
+
         // 3. A dish sold in sizes needs at least one size somebody can pick.
         // Without this the tile stays enabled, the customer opens it, and every
         // size is greyed out — a dead end nobody can act on.
@@ -113,6 +142,21 @@ class ItemAvailabilityService
                 "{$item->name} is currently sold out.",
                 availableStock: 0,
             );
+        }
+
+        // 4b. "Most you can make in a day", today's share of it. Whatever
+        // is left joins the count the menu shows, so a dish capped at ten
+        // reads "Only 2 left" and then "Sold out" like any other.
+        $dayLeft = $this->remainingToday($item, $at);
+        if ($dayLeft !== null) {
+            if ($dayLeft <= 0) {
+                return AvailabilityResult::unavailable(
+                    'out_of_stock',
+                    "{$item->name} is sold out for today.",
+                    availableStock: 0,
+                );
+            }
+            $portions = $portions === null ? $dayLeft : min($portions, $dayLeft);
         }
 
         // 5. Stock check (for prepared items only)

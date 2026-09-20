@@ -89,3 +89,28 @@ describe('eventOrderHelpers', () => {
     expect(line?.unit_price).toBe(120);
   });
 });
+
+/** Owner, 2026-09-21: a dish's own minimum and notice in the wizard. */
+describe('eventOrderHelpers — per-dish limits', () => {
+  it('starts a catalog line at the minimum and never below it', async () => {
+    const { buildCatalogDraftLine, upsertCatalogLine, itemMinQty } = await import('./eventOrderHelpers');
+    const platter = { id: 7, name: 'Party Platter', base_price: 250, min_order_qty: 10 };
+    expect(itemMinQty(platter)).toBe(10);
+    const line = buildCatalogDraftLine(platter, null, null)!;
+    expect(line.quantity).toBe(10);
+    const lines = upsertCatalogLine([], line, 1);
+    expect(lines[0].quantity).toBe(10);
+    expect(upsertCatalogLine(lines, line, 1)[0].quantity).toBe(11);
+  });
+
+  it('pushes the earliest event date out to the longest notice among the dishes picked', async () => {
+    const { buildCatalogDraftLine, requestLeadHours, minEventDateInput } = await import('./eventOrderHelpers');
+    const cake = { id: 1, name: 'Wedding cake', base_price: 900, lead_time_hours: 72 };
+    const bun = { id: 2, name: 'Bun', base_price: 5 };
+    const lines = [buildCatalogDraftLine(cake, null, null)!, buildCatalogDraftLine(bun, null, null)!];
+    expect(requestLeadHours(24, lines, [cake, bun])).toBe(72);
+    expect(requestLeadHours(24, [lines[1]], [cake, bun])).toBe(24);
+    const now = new Date('2026-08-04T15:00:00Z');
+    expect(minEventDateInput(requestLeadHours(24, lines, [cake, bun]), now)).toBe('2026-08-07');
+  });
+});

@@ -13,16 +13,51 @@ export function isItemAvailableNow(item: Pick<MenuItem, 'available_now' | 'is_av
  * gates the daily kitchen make-limit.
  */
 export function isItemOrderableForDay(
-  item: Pick<MenuItem, 'available_now' | 'is_available' | 'allow_pre_order' | 'tomorrow_remaining'>,
+  item: Pick<MenuItem, 'available_now' | 'is_available' | 'allow_pre_order' | 'tomorrow_remaining' | 'lead_time_hours'>,
   day: 'today' | 'tomorrow',
+  now: Date = new Date(),
 ): boolean {
   if (day === 'tomorrow') {
     if (!item.allow_pre_order) return false;
     // Explicit 0 = fully booked for tomorrow. null/undefined = unlimited.
     if (item.tomorrow_remaining === 0) return false;
+    if (needsMoreNoticeThan(item, endOfTomorrow(now), now)) return false;
     return true;
   }
   return isItemAvailableNow(item);
+}
+
+/** Minimum units per order for this dish; 1 when the owner set none. */
+export function itemMinOrderQty(item: Pick<MenuItem, 'min_order_qty'>): number {
+  const n = Number(item.min_order_qty);
+  return Number.isFinite(n) && n > 1 ? Math.floor(n) : 1;
+}
+
+/**
+ * True when the dish's notice period runs past the moment it would be made.
+ * The server enforces the same rule on the order; this only keeps the app
+ * from offering what it would then refuse.
+ */
+export function needsMoreNoticeThan(
+  item: Pick<MenuItem, 'lead_time_hours'>,
+  madeBy: Date,
+  now: Date = new Date(),
+): boolean {
+  const lead = Number(item.lead_time_hours);
+  if (!Number.isFinite(lead) || lead <= 0) return false;
+  return now.getTime() + lead * 60 * 60 * 1000 > madeBy.getTime();
+}
+
+export function endOfTomorrow(now: Date = new Date()): Date {
+  const d = new Date(now);
+  d.setDate(d.getDate() + 1);
+  d.setHours(23, 59, 59, 999);
+  return d;
+}
+
+/** "Needs 48 hours' notice" — for the tomorrow badge, where the server's reason does not apply. */
+export function itemNoticeLabel(item: Pick<MenuItem, 'lead_time_hours'>): string {
+  return `Needs ${Number(item.lead_time_hours)} hours' notice`;
 }
 
 /** True when the item is allowed for tomorrow but the daily make-limit is full. */
@@ -74,6 +109,10 @@ export function itemUnavailableLabel(
     }
     case 'channel_unavailable':
       base = t('menu.channel_unavailable');
+      break;
+    case 'needs_notice':
+      // The server words this one ("Needs 48 hours' notice").
+      base = item.availability?.reason_message || t('menu.unavailable');
       break;
     case 'item_unavailable':
     case 'item_inactive':

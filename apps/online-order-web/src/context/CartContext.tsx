@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type { Item, Modifier } from '../api';
 import type { PlatterSelection, Variant } from '@shared/types';
 import { platterSelectionsKey, surchargeTotal } from '../utils/platterRules';
+import { itemMinOrderQty } from '../utils/itemAvailability';
 
 export type CartEntry = {
   item: Item;
@@ -211,6 +212,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
     options?: { rewardPromotionId?: number | null; platterSelections?: PlatterSelection[] },
   ) => {
     if (quantity < 1) return;
+    // A dish ordered in tens starts at ten (owner, 2026-09-21).
+    quantity = Math.max(quantity, itemMinOrderQty(item));
     const rewardPromotionId = options?.rewardPromotionId ?? null;
     const platterSelections = options?.platterSelections ?? [];
     setCart((prev) => {
@@ -271,7 +274,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const updateQuantity = useCallback((index: number, quantity: number) => {
     setCart((prev) => {
-      if (quantity <= 0) return prev.filter((_, i) => i !== index);
+      // Stepping under the dish's minimum takes the line out, the same as
+      // stepping under one: the customer cannot have fewer than the owner set.
+      const min = itemMinOrderQty(prev[index]?.item ?? {});
+      if (quantity <= 0 || quantity < min) return prev.filter((_, i) => i !== index);
       const next = [...prev];
       next[index] = { ...next[index], quantity };
       return next;

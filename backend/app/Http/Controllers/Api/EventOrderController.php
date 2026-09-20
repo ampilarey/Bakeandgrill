@@ -18,6 +18,7 @@ use App\Models\Variant;
 use App\Rules\MaldivesPhone;
 use App\Services\CateringOrderingGateService;
 use App\Services\SpecialPricingService;
+use App\Services\TomorrowDailyCapacityService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -149,7 +150,13 @@ class EventOrderController extends Controller
             ]);
         }
 
-        $resolvedLines = $this->resolveLines($validated['lines']);
+        // Each dish's own notice and daily cap are checked against the moment
+        // the food is wanted, not the day the request is typed.
+        $eventAt = Carbon::parse(
+            $validated['event_date'] . ' ' . Carbon::parse($validated['fulfillment_time'])->format('H:i'),
+            config('app.timezone'),
+        );
+        $resolvedLines = $this->resolveLines($validated['lines'], $eventAt);
 
         $row = DB::transaction(function () use ($validated, $customer, $resolvedLines, $fulfillmentMethod, $contactName, $phone) {
             $row = CateringRequest::create([
@@ -218,9 +225,13 @@ class EventOrderController extends Controller
      * @param list<array<string, mixed>> $lines
      * @return list<array{item_id:?int,variant_id:?int,packaging_option_id:?int,name:string,quantity:int,unit_price:?float,notes:?string,is_custom:bool}>
      */
-    private function resolveLines(array $lines): array
+    private function resolveLines(array $lines, Carbon $eventAt): array
     {
         $out = [];
+        // Same dish on two lines shares one day's cap.
+        $queued = [];
+        $capacity = app(TomorrowDailyCapacityService::class);
+        $eventDate = $eventAt->toDateString();
         foreach ($lines as $i => $line) {
             $qty = (int) $line['quantity'];
             $notes = isset($line['notes']) ? (string) $line['notes'] : null;
@@ -263,6 +274,32 @@ class EventOrderController extends Controller
                     throw ValidationException::withMessages([
                         "lines.{$i}.packaging_option_id" => [$e->getMessage() ?: 'Invalid packaging option for this item.'],
                     ]);
+                }
+
+                // The item's own limits (owner, 2026-09-21: "catering does not
+                // require stock, but there might be a limit to order").
+                $minQty = (int) ($item->min_order_qty ?? 0);
+                if ($minQty > 1 && $qty < $minQty) {
+                    throw ValidationException::withMessages([
+                        "lines.{$i}.quantity" => ["{$item->name} is ordered in at least {$minQty}."],
+                    ]);
+                }
+                $lead = (int) ($item->lead_time_hours ?? 0);
+                if ($lead > 0 && now()->addHours($lead)->gt($eventAt)) {
+                    $earliest = now()->addHours($lead)->format('j M, H:i');
+                    throw ValidationException::withMessages([
+                        "lines.{$i}.item_id" => ["{$item->name} needs {$lead} hours' notice — the earliest is {$earliest}."],
+                    ]);
+                }
+                if ($item->tomorrow_daily_capacity !== null) {
+                    $left = ($capacity->remainingMap([$item], $eventDate)[(int) $item->id] ?? 0)
+                        - (int) ($queued[(int) $item->id] ?? 0);
+                    if ($qty > $left) {
+                        throw ValidationException::withMessages([
+                            "lines.{$i}.quantity" => [$capacity->onlyLeftMessage(max(0, $left), $eventDate) . " of {$item->name}."],
+                        ]);
+                    }
+                    $queued[(int) $item->id] = (int) ($queued[(int) $item->id] ?? 0) + $qty;
                 }
 
                 $catalogPrice = $variant ? (float) $variant->price : (float) $item->base_price;

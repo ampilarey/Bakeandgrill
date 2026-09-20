@@ -1207,17 +1207,17 @@ export function MenuItemEditorModal({
                 <input
                   type="checkbox"
                   checked={form.allow_pre_order}
-                  onChange={(e) => {
-                    set('allow_pre_order', e.target.checked);
-                    if (!e.target.checked) set('tomorrow_daily_capacity', '');
-                  }}
+                  onChange={(e) => set('allow_pre_order', e.target.checked)}
                   data-testid="allow-pre-order-toggle"
                 />
                 Can be ordered for tomorrow
               </label>
             </div>
-            {form.allow_pre_order && (
-              <div style={{ maxWidth: 280 }} data-testid="tomorrow-daily-capacity-field">
+            {/* Owner, 2026-09-21: "catering does not require stock, but there
+                might be a limit to order." Three numbers, read by the menu,
+                the till and the event wizard alike. */}
+            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }} data-testid="order-limits">
+              <div style={{ width: 200 }} data-testid="tomorrow-daily-capacity-field">
                 <Field label="Most you can make in a day">
                   <Input
                     value={form.tomorrow_daily_capacity}
@@ -1226,11 +1226,33 @@ export function MenuItemEditorModal({
                     data-testid="tomorrow-daily-capacity-input"
                   />
                 </Field>
-                <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
-                  Leave blank for no limit. Counts every tomorrow order for this item across all customers.
-                </p>
               </div>
-            )}
+              <div style={{ width: 200 }}>
+                <Field label="Minimum per order">
+                  <Input
+                    value={form.min_order_qty}
+                    onChange={(v) => set('min_order_qty', v.replace(/[^\d]/g, ''))}
+                    placeholder="1"
+                    data-testid="min-order-qty-input"
+                  />
+                </Field>
+              </div>
+              <div style={{ width: 200 }}>
+                <Field label="Notice needed (hours)">
+                  <Input
+                    value={form.lead_time_hours}
+                    onChange={(v) => set('lead_time_hours', v.replace(/[^\d]/g, ''))}
+                    placeholder="None"
+                    data-testid="lead-time-hours-input"
+                  />
+                </Field>
+              </div>
+            </div>
+            <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+              The day&apos;s cap counts every order for that day — today, tomorrow and event dates — across all customers,
+              and shows as &ldquo;Only N left&rdquo; then &ldquo;Sold out&rdquo;. The minimum and the notice apply to customer
+              orders and the event wizard; the till is not held to them.
+            </p>
             {itemId != null && onSnooze && (
               <ItemSnoozeControls
                 ref={snoozeRef}

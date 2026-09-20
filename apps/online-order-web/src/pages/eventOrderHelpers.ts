@@ -54,7 +54,42 @@ export type CatalogItemLike = {
   has_variants?: boolean;
   variants?: VariantLike[];
   packaging_options?: PackagingLike[];
+  /** Fewest units one order may take (owner, 2026-09-21). */
+  min_order_qty?: number | null;
+  /** Notice the kitchen needs, in hours, before this dish. */
+  lead_time_hours?: number | null;
 };
+
+/** Fewest units of this dish one order may take; 1 when the owner set none. */
+export function itemMinQty(item: Pick<CatalogItemLike, 'min_order_qty'>): number {
+  const n = Number(item.min_order_qty);
+  return Number.isFinite(n) && n > 1 ? Math.floor(n) : 1;
+}
+
+/** Notice in hours this dish needs; 0 when the owner set none. */
+export function itemLeadHours(item: Pick<CatalogItemLike, 'lead_time_hours'>): number {
+  const n = Number(item.lead_time_hours);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+}
+
+/**
+ * The notice the whole request needs: the global lead time, or the longest
+ * lead among the dishes on it, whichever is more. The server checks each
+ * line against the event's own time; this keeps the date picker honest.
+ */
+export function requestLeadHours(
+  globalLeadHours: number,
+  lines: EventDraftLine[],
+  items: Array<Pick<CatalogItemLike, 'id' | 'lead_time_hours'>>,
+): number {
+  let lead = Math.max(0, globalLeadHours);
+  for (const line of lines) {
+    if (line.kind !== 'catalog') continue;
+    const item = items.find((i) => i.id === line.item_id);
+    if (item) lead = Math.max(lead, itemLeadHours(item));
+  }
+  return lead;
+}
 
 export function isCateringItem(item: { is_catering?: boolean }): boolean {
   return item.is_catering === true;
@@ -128,7 +163,7 @@ export function buildCatalogDraftLine(
     packaging_option_id: pkgId,
     packaging_option_name: pkgName,
     name,
-    quantity: 1,
+    quantity: itemMinQty(item),
     unit_price: unitPrice,
     is_catering: item.is_catering,
   };
@@ -218,7 +253,8 @@ export function upsertCatalogLine(
   );
   if (idx < 0) {
     if (deltaQty <= 0) return lines;
-    return [...lines, { ...line, quantity: deltaQty }];
+    // Never start under the dish's minimum.
+    return [...lines, { ...line, quantity: Math.max(deltaQty, line.quantity) }];
   }
   const next = [...lines];
   const cur = next[idx] as Extract<EventDraftLine, { kind: 'catalog' }>;

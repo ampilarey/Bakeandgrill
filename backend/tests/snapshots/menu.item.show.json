@@ -29,6 +29,8 @@
         "variants": [],
         "modifiers": [],
         "is_catering": false,
+        "min_order_qty": null,
+        "lead_time_hours": null,
         "availability": {
             "available": true,
             "reason_code": null,

@@ -81,6 +81,8 @@ class MenuBulkUpdateService
             'packaging_fee_mode' => 'string|in:per_unit,per_line',
             'allow_pre_order' => 'boolean',
             'tomorrow_daily_capacity' => 'nullable|integer|min:1|max:100000',
+            'min_order_qty' => 'nullable|integer|min:1|max:100000',
+            'lead_time_hours' => 'nullable|integer|min:0|max:8760',
             'show_on_signage' => 'boolean',
             'is_signage_promoted' => 'boolean',
             'card_name' => 'nullable|string|max:120',

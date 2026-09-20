@@ -119,8 +119,12 @@ export type MenuItem = {
   availability_type?: 'always' | 'stock_based' | 'made_to_order' | 'pre_order_only' | null;
   /** When true, customers may order this item for tomorrow collection. */
   allow_pre_order?: boolean;
-  /** Max units kitchen can make for one tomorrow collection date. Null = no limit. */
+  /** "Most you can make in a day": units per day across today, tomorrow and event dates. Null = no limit. */
   tomorrow_daily_capacity?: number | null;
+  /** Fewest units one customer order may take. Null = 1. */
+  min_order_qty?: number | null;
+  /** Notice the kitchen needs, in hours, before this dish can be collected. Null = none. */
+  lead_time_hours?: number | null;
   category_id?: number | null;
   /** "Also show in": extra menu placements beside the home category. */
   extra_category_ids?: number[];
@@ -231,6 +235,8 @@ export type MenuItemPayload = {
   availability_type?: 'always' | 'stock_based' | 'made_to_order' | 'pre_order_only';
   allow_pre_order?: boolean;
   tomorrow_daily_capacity?: number | null;
+  min_order_qty?: number | null;
+  lead_time_hours?: number | null;
   channel_availability?: Array<{
     channel: string;
     is_enabled: boolean;

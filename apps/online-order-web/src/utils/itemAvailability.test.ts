@@ -131,3 +131,39 @@ describe('itemTomorrowLowLabel', () => {
     expect(itemTomorrowLowLabel({ allow_pre_order: true, tomorrow_remaining: null }, t)).toBeNull();
   });
 });
+
+/**
+ * Owner, 2026-09-21: "catering does not require stock, but there might be a
+ * limit to order." The dish's own minimum and notice, read from the feed.
+ */
+describe('item order limits', () => {
+  const t = (k: string) => k;
+
+  it('reads the minimum per order, defaulting to one', async () => {
+    const { itemMinOrderQty } = await import('./itemAvailability');
+    expect(itemMinOrderQty({ min_order_qty: 10 })).toBe(10);
+    expect(itemMinOrderQty({ min_order_qty: 1 })).toBe(1);
+    expect(itemMinOrderQty({ min_order_qty: null })).toBe(1);
+    expect(itemMinOrderQty({})).toBe(1);
+  });
+
+  it('keeps a dish off tomorrow when its notice runs past the end of tomorrow', async () => {
+    const { isItemOrderableForDay, needsMoreNoticeThan, endOfTomorrow, itemNoticeLabel } = await import('./itemAvailability');
+    const now = new Date('2026-08-04T15:00:00');
+    const base = { available_now: true, is_available: true, allow_pre_order: true, tomorrow_remaining: null };
+
+    expect(isItemOrderableForDay({ ...base, lead_time_hours: 48 }, 'tomorrow', now)).toBe(false);
+    expect(isItemOrderableForDay({ ...base, lead_time_hours: 24 }, 'tomorrow', now)).toBe(true);
+    expect(isItemOrderableForDay({ ...base, lead_time_hours: null }, 'tomorrow', now)).toBe(true);
+    expect(needsMoreNoticeThan({ lead_time_hours: 48 }, endOfTomorrow(now), now)).toBe(true);
+    expect(itemNoticeLabel({ lead_time_hours: 48 })).toBe("Needs 48 hours' notice");
+  });
+
+  it("shows the server's wording for a dish that needs notice today", async () => {
+    const { itemUnavailableLabel } = await import('./itemAvailability');
+    expect(itemUnavailableLabel({
+      unavailable_reason: 'needs_notice',
+      availability: { available: false, reason_code: 'needs_notice', reason_message: "Needs 48 hours' notice", available_stock: null, available_from: null },
+    }, t)).toBe("Needs 48 hours' notice");
+  });
+});

@@ -296,6 +296,10 @@ class ItemController extends Controller
                 'tomorrow_daily_capacity' => $includeAdminExtras
                     ? ($item->tomorrow_daily_capacity !== null ? (int) $item->tomorrow_daily_capacity : null)
                     : null,
+                // Not secrets: a customer needs to know a platter starts at ten
+                // and a dish needs two days' notice before they try to order it.
+                'min_order_qty' => $item->min_order_qty !== null ? (int) $item->min_order_qty : null,
+                'lead_time_hours' => $item->lead_time_hours !== null ? (int) $item->lead_time_hours : null,
                 'is_active' => $item->is_active,
                 'sort_order' => $item->sort_order,
                 // Signage board flags — default safely when the columns predate the migration.
@@ -744,6 +748,8 @@ class ItemController extends Controller
             'is_catering' => $item->channelAvailabilities->contains(
                 fn ($r) => $r->channel === 'catering' && (bool) $r->is_enabled,
             ),
+            'min_order_qty' => $item->min_order_qty !== null ? (int) $item->min_order_qty : null,
+            'lead_time_hours' => $item->lead_time_hours !== null ? (int) $item->lead_time_hours : null,
         ];
 
         if ($isAdmin) {

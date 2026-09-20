@@ -13,6 +13,7 @@
             "sku": "GRL-001",
             "image_url": null,
             "base_price": "30.00",
+            "bundle_contents_price": null,
             "price_note": null,
             "packaging_fee": 0,
             "packaging_fee_mode": "per_unit",
@@ -23,6 +24,8 @@
             "snoozed_until": null,
             "unavailable_reason_note": null,
             "allow_pre_order": false,
+            "min_order_qty": null,
+            "lead_time_hours": null,
             "is_active": true,
             "sort_order": 0,
             "show_on_signage": true,
@@ -70,8 +73,7 @@
             "unavailable_reason": null,
             "available_from": null,
             "is_low_stock": false,
-            "tomorrow_remaining": null,
-            "bundle_contents_price": null
+            "tomorrow_remaining": null
         }
     ],
     "first_page_url": "http://localhost:8000/api/items?page=1",

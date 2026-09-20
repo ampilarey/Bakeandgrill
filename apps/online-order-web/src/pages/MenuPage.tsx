@@ -25,7 +25,7 @@ import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { OrderDayToggle } from '../components/OrderDayToggle';
 import { DaySwitchConfirmSheet } from '../components/DaySwitchConfirmSheet';
 import { useOrderDay, type OrderDay } from '../context/OrderDayContext';
-import { isItemAvailableNow } from '../utils/itemAvailability';
+import { isItemAvailableNow, itemMinOrderQty } from '../utils/itemAvailability';
 import { useOrderMode } from '../context/OrderModeContext';
 import { useServiceStatusContext } from '../context/ServiceStatusContext';
 import { isDeliveryBlocked, isPickupBlocked } from '../utils/fulfilmentAvailability';
@@ -906,7 +906,7 @@ export function MenuPage() {
     if (programmaticScrollTimerRef.current !== null) window.clearTimeout(programmaticScrollTimerRef.current);
   }, []);
 
-  const handleSelectItem = (item: Item, qty = 1) => { setSelectedItem(item); setSelectedQty(qty); setSelectedModifiers([]); };
+  const handleSelectItem = (item: Item, qty = 1) => { setSelectedItem(item); setSelectedQty(Math.max(qty, itemMinOrderQty(item))); setSelectedModifiers([]); };
   const toggleModifier = (mod: Modifier) => {
     setSelectedModifiers((prev) => {
       const exists = prev.some((m) => m.id === mod.id);

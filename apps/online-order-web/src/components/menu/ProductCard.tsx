@@ -9,10 +9,13 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
 import { buildItemSlides } from '../../utils/itemMedia';
 import {
+  endOfTomorrow,
   isItemOrderableForDay,
   itemLowStockLabel,
+  itemNoticeLabel,
   itemTomorrowLowLabel,
   itemUnavailableLabel,
+  needsMoreNoticeThan,
 } from '../../utils/itemAvailability';
 import { formatCardPrice, itemDisplayPrice } from '../../utils/money';
 import { MenuImageSlider } from './MenuImageSlider';
@@ -107,8 +110,10 @@ export function ProductCard({
   const fullForTomorrow = orderDay === 'tomorrow' && item.allow_pre_order && item.tomorrow_remaining === 0;
   // Tomorrow-blocked (not ticked) cards dim without a badge — the reason shows
   // in the item sheet. Fully booked for tomorrow uses the sold-out badge.
+  const noticeForTomorrow = orderDay === 'tomorrow' && item.allow_pre_order && !fullForTomorrow
+    && needsMoreNoticeThan(item, endOfTomorrow());
   const unavailLabel = isUnavailable && !blockedForTomorrow
-    ? (fullForTomorrow ? t('menu.sold_out_tomorrow') : itemUnavailableLabel(item, t))
+    ? (fullForTomorrow ? t('menu.sold_out_tomorrow') : noticeForTomorrow ? itemNoticeLabel(item) : itemUnavailableLabel(item, t))
     : null;
   // Today: stock badge. Tomorrow: remaining of the daily make-limit (same badge).
   const lowStockLabel = !isUnavailable

@@ -98,6 +98,9 @@ class UpdateItemRequest extends FormRequest
             'allow_pre_order' => 'sometimes|boolean',
             // Per-day max for collect-tomorrow. Null/omitted = unlimited.
             'tomorrow_daily_capacity' => 'sometimes|nullable|integer|min:1',
+            // Fewest units per order and notice needed, in hours. Null = none.
+            'min_order_qty' => 'sometimes|nullable|integer|min:1|max:100000',
+            'lead_time_hours' => 'sometimes|nullable|integer|min:0|max:8760',
             'sort_order' => 'nullable|integer',
             'modifier_ids' => 'sometimes|array',
             'modifier_ids.*' => 'integer|exists:modifiers,id',

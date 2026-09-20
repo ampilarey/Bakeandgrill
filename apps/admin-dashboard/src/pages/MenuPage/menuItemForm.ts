@@ -92,8 +92,12 @@ export type ItemForm = {
   low_stock_threshold: string;
   /** Customers may order this item for tomorrow collection. */
   allow_pre_order: boolean;
-  /** Max the kitchen can make for one tomorrow date. Empty = no limit. */
+  /** "Most you can make in a day", any day. Empty = no limit. */
   tomorrow_daily_capacity: string;
+  /** Fewest units one customer order may take. Empty = 1. */
+  min_order_qty: string;
+  /** Notice the kitchen needs, in hours. Empty = none. */
+  lead_time_hours: string;
   variants: VariantRow[];
   dietary_tags: string;
   allergens: string;
@@ -233,6 +237,8 @@ export function itemToForm(item: MenuItem): ItemForm {
     tomorrow_daily_capacity: item.tomorrow_daily_capacity != null
       ? String(item.tomorrow_daily_capacity)
       : '',
+    min_order_qty: item.min_order_qty != null && item.min_order_qty > 1 ? String(item.min_order_qty) : '',
+    lead_time_hours: item.lead_time_hours != null && item.lead_time_hours > 0 ? String(item.lead_time_hours) : '',
     variants: (item.variants ?? []).map((v) => ({ ...v, _key: String(v.id ?? Math.random()) })),
     dietary_tags: (item.dietary_tags ?? []).join(', '),
     allergens: (item.allergens ?? []).join(', '),
@@ -410,15 +416,14 @@ export function formToPayload(form: ItemForm, includeChannels: boolean): MenuIte
     : null;
   payload.spice_level = form.spice_level === 'none' ? null : form.spice_level;
   payload.allow_pre_order = form.allow_pre_order;
-  if (form.allow_pre_order) {
-    const raw = form.tomorrow_daily_capacity.trim();
-    payload.tomorrow_daily_capacity = raw !== ''
-      ? Math.max(1, parseInt(raw, 10) || 1)
-      : null;
-  } else {
-    // Unticked: clear any leftover limit so it cannot apply by accident.
-    payload.tomorrow_daily_capacity = null;
-  }
+  // The day's cap stands whether or not tomorrow is ticked: it counts
+  // today's orders and event dates too (owner, 2026-09-21).
+  const cap = form.tomorrow_daily_capacity.trim();
+  payload.tomorrow_daily_capacity = cap !== '' ? Math.max(1, parseInt(cap, 10) || 1) : null;
+  const minQty = form.min_order_qty.trim();
+  payload.min_order_qty = minQty !== '' && (parseInt(minQty, 10) || 0) > 1 ? parseInt(minQty, 10) : null;
+  const lead = form.lead_time_hours.trim();
+  payload.lead_time_hours = lead !== '' && (parseInt(lead, 10) || 0) > 0 ? parseInt(lead, 10) : null;
   return payload;
 }
 
@@ -444,7 +449,7 @@ export function emptyItemForm(selectedCat: number | null): ItemForm {
     show_on_signage: true, is_signage_promoted: false,
     track_stock: false, stock_quantity: '0', low_stock_threshold: '5',
     allow_pre_order: false,
-    tomorrow_daily_capacity: '',
+    tomorrow_daily_capacity: '', min_order_qty: '', lead_time_hours: '',
     dietary_tags: '', allergens: '',
     prep_time_minutes: '', calories: '', spice_level: 'none',
   };
