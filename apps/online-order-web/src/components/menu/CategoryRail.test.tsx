@@ -104,7 +104,7 @@ describe('CategoryRail', () => {
     expect(grillsImg).not.toHaveClass('cat-rail__thumb--sub');
     const chickenImg = screen.getByRole('tab', { name: 'Chicken, 3 items' }).querySelector('img');
     expect(chickenImg?.getAttribute('src')).toContain('/media/chicken.jpg');
-    expect(chickenImg?.getAttribute('width')).toBe('52');
+    expect(chickenImg?.getAttribute('width')).toBe('40');
     expect(chickenImg).toHaveClass('cat-rail__thumb--sub');
     // No image → tinted initial, still the smaller size class.
     const beefThumb = screen.getByRole('tab', { name: /Beef/ }).querySelector('.cat-rail__thumb--sub') as HTMLElement;

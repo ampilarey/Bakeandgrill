@@ -107,23 +107,47 @@
 .menu-rail a.is-active.is-within .menu-rail-label { font-weight: 700; }
 .menu-rail a.is-active.is-within .menu-rail-thumb { box-shadow: none; }
 /* Owner, 2026-09-03: "no visual separation between categories, and between
-   sub-categories". Each category is its own soft panel; its sub-categories
-   sit inside it under thin inset lines; panels have air between them. */
-.menu-rail-group {
+   sub-categories". Each category is its own panel with air between them.
+   Owner, 2026-09-21: "in the rail no much difference between main category
+   and sub". One size down was not a difference, so the two ranks now have
+   different shapes. A category is the panel's header: its photo fills the
+   panel's top edge to edge over a dark bold name on a tinted band. Its
+   sub-categories hang beneath on a guide line down the panel's left, each a
+   small round photo with a lighter, smaller name — a thread back to the
+   parent, not a second tile. Offers, Other and Events are top-rank tiles
+   of the same header shape. */
+.menu-rail-group,
+.menu-rail-list > a {
     display: flex; flex-direction: column;
-    /* A shade off the page, in both themes: the border colour thinned into the surface. */
-    background: color-mix(in srgb, var(--border) 30%, var(--surface));
+    background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 14px;
-    padding: 3px;
+    overflow: hidden;
+    padding: 0;
 }
-.menu-rail a.menu-rail-sub { position: relative; border-radius: 10px; }
-.menu-rail a.menu-rail-sub::before {
-    content: ''; position: absolute; top: 0; left: 10px; right: 10px;
-    border-top: 1px solid var(--border);
+/* :where() keeps this at class weight, so .menu-rail a.is-active still wins. */
+.menu-rail a:where(.menu-rail-list > a, .menu-rail-group > a:not(.menu-rail-sub)) {
+    gap: 0.3rem;
+    padding: 0 0 0.45rem;
+    border-radius: 0;
+    color: var(--text);
+    /* A shade off the page, in both themes: the border colour thinned into the surface. */
+    background: color-mix(in srgb, var(--border) 30%, var(--surface));
 }
-.menu-rail a.menu-rail-sub.is-active::before,
-.menu-rail a.is-active + a.menu-rail-sub::before { border-top-color: transparent; }
+.menu-rail a:where(.menu-rail-list > a, .menu-rail-group > a:not(.menu-rail-sub)) .menu-rail-thumb {
+    width: 100%; height: auto; aspect-ratio: 5 / 4;
+    border-radius: 0;
+}
+.menu-rail a:where(.menu-rail-list > a, .menu-rail-group > a:not(.menu-rail-sub)) .menu-rail-label {
+    font-weight: 700; padding: 0 3px;
+}
+.menu-rail-list > a { border-radius: 14px; }
+/* The chosen category's mark on a flush photo: the ring becomes an inset outline. */
+.menu-rail a:where(.menu-rail-list > a, .menu-rail-group > a:not(.menu-rail-sub)).is-active .menu-rail-thumb {
+    box-shadow: none;
+    outline: 3px solid var(--amber); outline-offset: -3px;
+}
+.menu-rail a.is-active.is-within .menu-rail-thumb { outline: 0; }
 /* Owner, 2026-09-02: bigger picture and text in the rail, same rail width. */
 .menu-rail-thumb {
     width: 64px; height: 64px;
@@ -144,24 +168,38 @@ span.menu-rail-thumb {
 }
 /* The count stays in the link's aria-label; no numeral under the photo (ZUS look). */
 .menu-rail-count { display: none; }
-.menu-rail a.menu-rail-events {
-    margin-top: 6px;
-    border-top: 1px solid var(--border);
-    font-weight: 700;
-}
+.menu-rail a.menu-rail-events { font-weight: 700; }
 /* Sub-categories. Owner, 2026-09-02: "add subcategories to the rail as
-   well"; 2026-09-03: "add photos to subcategory also … main category big
-   and subcategory little smaller" — the ZUS app look. Same shape as a
-   category entry, photo over label, one size down. The count stays in
-   the link's aria-label only. */
+   well"; 2026-09-03: "add photos to subcategory also"; 2026-09-21: they
+   must read as a rank below. A round photo (the parent's is square and
+   flush), a lighter smaller name, and a guide line down the panel's left
+   with a tick into each photo — the last one ends at its tick. The count
+   stays in the link's aria-label only. */
 .menu-rail a.menu-rail-sub {
-    gap: 0.3rem;
-    padding: 0.4rem 0 0.5rem;
+    --sub-thumb: 40px;
+    --sub-mid: calc(0.4rem + var(--sub-thumb) / 2);
+    position: relative;
+    gap: 0.25rem;
+    padding: 0.4rem 3px 0.45rem 14px;
+    border-radius: 0;
     color: var(--muted);
 }
-.menu-rail a.menu-rail-sub.is-active { color: var(--amber); }
-.menu-rail-thumb--sub { width: 52px; height: 52px; border-radius: 12px; }
-span.menu-rail-thumb--sub { font-size: 0.9rem; }
+.menu-rail a.menu-rail-sub::before {
+    content: ''; position: absolute; left: 9px; top: 0; bottom: 0;
+    border-left: 2px solid var(--border);
+}
+.menu-rail a.menu-rail-sub:last-child::before { bottom: auto; height: var(--sub-mid); }
+.menu-rail a.menu-rail-sub::after {
+    content: ''; position: absolute; left: 9px; width: 9px; top: var(--sub-mid);
+    border-top: 2px solid var(--border);
+}
+/* The chosen sub-category lights its thread instead of a bar down the edge,
+   which would sit on top of the guide line. */
+.menu-rail a.menu-rail-sub.is-active { color: var(--amber); box-shadow: none; }
+.menu-rail a.menu-rail-sub.is-active::before,
+.menu-rail a.menu-rail-sub.is-active::after { border-color: var(--amber); }
+.menu-rail-thumb--sub { width: var(--sub-thumb); height: var(--sub-thumb); border-radius: 50%; }
+span.menu-rail-thumb--sub { font-size: 0.85rem; }
 .menu-rail a.menu-rail-sub .menu-rail-label { font-size: 0.6875rem; font-weight: 500; }
 .menu-rail a.menu-rail-sub.is-active .menu-rail-label { font-weight: 700; }
 .menu-rail a.menu-rail-sub .menu-rail-count { display: none; }
@@ -683,13 +721,15 @@ html.js .menu-fav { display: inline-flex; }
        own minimum, and two 143px cards plus the gap ran 4px past a 390px
        phone, so the whole page wobbled sideways under a thumb. */
     .menu-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .menu-rail-thumb { width: 60px; height: 60px; }
     .menu-rail-label { font-size: 0.6875rem; }
+    .menu-rail a.menu-rail-sub { --sub-thumb: 36px; padding-left: 12px; }
+    .menu-rail a.menu-rail-sub::before,
+    .menu-rail a.menu-rail-sub::after { left: 7px; }
+    .menu-rail a.menu-rail-sub::after { width: 8px; }
     .menu-rail a.menu-rail-sub .menu-rail-label { font-size: 0.625rem; }
-    .menu-rail-thumb--sub { width: 48px; height: 48px; }
-    /* The 76px rail: keep the panel inset small so two-word labels still fit. */
+    /* The 76px rail: a narrower list inset so two-word labels still fit. */
     .menu-rail-list { padding: 0 3px; }
-    .menu-rail-group { padding: 2px; border-radius: 12px; }
+    .menu-rail-group, .menu-rail-list > a { border-radius: 12px; }
 
     /* Nothing in the filter bar is pinned on a phone (owner, 2026-09-03:
        "search and grid/list container is fixed" — again). Search, Grid/List,
@@ -1021,7 +1061,7 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                        data-parent="{{ $anchorFor($group) }}"
                        aria-label="{{ $subName['text'] }}, {{ $subCount }} {{ Str::plural('item', $subCount) }}">
                         @if($subThumb)
-                            <img class="menu-rail-thumb menu-rail-thumb--sub" src="{{ $subThumb }}" alt="" loading="lazy" width="52" height="52">
+                            <img class="menu-rail-thumb menu-rail-thumb--sub" src="{{ $subThumb }}" alt="" loading="lazy" width="40" height="40">
                         @else
                             <span class="menu-rail-thumb menu-rail-thumb--sub" aria-hidden="true"
                                   style="background: {{ $tintSoft($subCat?->id ?? 0) }}">

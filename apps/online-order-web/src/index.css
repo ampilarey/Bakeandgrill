@@ -4236,38 +4236,91 @@ textarea.field-input {
  * entry — photo over label — one size down, under its parent.
  */
 /* Owner, 2026-09-03: "no visual separation between categories, and between
-   sub-categories". Each category is its own soft panel; its sub-categories
-   sit inside it under thin inset lines; panels have air between them. */
-.cat-rail__group {
+   sub-categories". Each category is its own panel with air between them.
+   Owner, 2026-09-21: "in the rail no much difference between main category
+   and sub". One size down was not a difference, so the two ranks now have
+   different shapes — the same design as the website menu rail. A category
+   is the panel's header: its photo fills the panel's top edge to edge over
+   a dark bold name on a tinted band. Its sub-categories hang beneath on a
+   guide line down the panel's left, each a small round photo with a
+   lighter, smaller name — a thread back to the parent, not a second tile.
+   Offers, Other and Events are top-rank tiles of the same header shape. */
+.cat-rail__group,
+.cat-rail__list > .cat-rail__item {
   display: flex;
   flex-direction: column;
-  background: var(--color-bg, #F8F6F3);
+  background: var(--color-surface, #fff);
   border: 1px solid var(--color-border-light, #F0EBE5);
   border-radius: 14px;
-  padding: 3px;
+  overflow: hidden;
+  padding: 0;
 }
-.cat-rail__item.cat-rail__sub {
-  min-height: 0;
+/* :where() keeps these at one class of weight, so .cat-rail__item.is-active
+   still wins the background and colour. */
+.cat-rail__item:where(.cat-rail__list > .cat-rail__item, .cat-rail__group > .cat-rail__item:not(.cat-rail__sub)) {
   gap: 0.3rem;
-  padding: 0.45rem 0.3rem 0.5rem;
-  border-radius: 10px;
+  padding: 0 0 0.45rem;
+  border-radius: 0;
+  color: var(--color-text, #2A1E0C);
+  background: var(--color-bg, #F8F6F3);
+}
+.cat-rail__list > .cat-rail__item { border-radius: 14px; }
+/* Outranks the mobile `.cat-rail__item img` size rule above. */
+.cat-rail__item:where(.cat-rail__list > .cat-rail__item, .cat-rail__group > .cat-rail__item:not(.cat-rail__sub)) .cat-rail__thumb {
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 5 / 4;
+  border-radius: 0;
+}
+.cat-rail__item:where(.cat-rail__list > .cat-rail__item, .cat-rail__group > .cat-rail__item:not(.cat-rail__sub)) .cat-rail__label {
+  font-weight: 700;
+  padding: 0 3px;
+}
+/* The chosen category's mark on a flush photo: the ring becomes an inset outline. */
+.cat-rail__item:where(.cat-rail__list > .cat-rail__item, .cat-rail__group > .cat-rail__item:not(.cat-rail__sub)).is-active .cat-rail__thumb {
+  box-shadow: none;
+  outline: 3px solid var(--color-primary);
+  outline-offset: -3px;
+}
+.cat-rail__item.is-active.is-within .cat-rail__thumb { outline: 0; }
+/* Sub-categories: a round photo (the parent's is square and flush), a
+   lighter smaller name, and a guide line down the panel's left with a tick
+   into each photo — the last one ends at its tick. */
+.cat-rail__item.cat-rail__sub {
+  --sub-thumb: 40px;
+  --sub-mid: calc(0.4rem + var(--sub-thumb) / 2);
+  min-height: 0;
+  gap: 0.25rem;
+  padding: 0.4rem 3px 0.45rem 14px;
+  border-radius: 0;
   position: relative;
 }
 .cat-rail__item.cat-rail__sub::before {
   content: '';
   position: absolute;
+  left: 9px;
   top: 0;
-  left: 10px;
-  right: 10px;
-  border-top: 1px solid var(--color-border, #E8E0D8);
+  bottom: 0;
+  border-left: 2px solid var(--color-border, #E8E0D8);
 }
+.cat-rail__item.cat-rail__sub:last-child::before { bottom: auto; height: var(--sub-mid); }
+.cat-rail__item.cat-rail__sub::after {
+  content: '';
+  position: absolute;
+  left: 9px;
+  width: 9px;
+  top: var(--sub-mid);
+  border-top: 2px solid var(--color-border, #E8E0D8);
+}
+/* The chosen sub-category lights its thread instead of a bar down the edge,
+   which would sit on top of the guide line. */
+.cat-rail__item.cat-rail__sub.is-active { box-shadow: none; }
 .cat-rail__item.cat-rail__sub.is-active::before,
-.cat-rail__item.is-active + .cat-rail__sub::before { border-top-color: transparent; }
-/* Outranks the mobile `.cat-rail__item img` size rule above. */
+.cat-rail__item.cat-rail__sub.is-active::after { border-color: var(--color-primary); }
 .cat-rail__item .cat-rail__thumb--sub {
-  width: 52px !important;
-  height: 52px !important;
-  border-radius: 12px;
+  width: var(--sub-thumb) !important;
+  height: var(--sub-thumb) !important;
+  border-radius: 50%;
 }
 .cat-rail__sub-label {
   font-size: 0.6875rem !important;
@@ -4275,13 +4328,13 @@ textarea.field-input {
 }
 .cat-rail__item.cat-rail__sub.is-active .cat-rail__sub-label { font-weight: 700; }
 @media (max-width: 767px) {
-  /* The 76px rail: keep the panel inset small so two-word labels still fit. */
+  /* The 76px rail: a narrower list inset so two-word labels still fit. */
   .cat-rail__list { padding: 0 3px; }
-  .cat-rail__group { padding: 2px; border-radius: 12px; }
-  .cat-rail__item .cat-rail__thumb--sub {
-    width: 48px !important;
-    height: 48px !important;
-  }
+  .cat-rail__group, .cat-rail__list > .cat-rail__item { border-radius: 12px; }
+  .cat-rail__item.cat-rail__sub { --sub-thumb: 36px; padding-left: 12px; }
+  .cat-rail__item.cat-rail__sub::before,
+  .cat-rail__item.cat-rail__sub::after { left: 7px; }
+  .cat-rail__item.cat-rail__sub::after { width: 8px; }
   .cat-rail__sub-label {
     font-size: 0.625rem !important;
   }
@@ -4615,10 +4668,7 @@ textarea.field-input {
     width: 54px !important;
     height: 54px !important;
   }
-  .cat-rail__item .cat-rail__thumb--sub {
-    width: 44px !important;
-    height: 44px !important;
-  }
+  .cat-rail__item.cat-rail__sub { --sub-thumb: 32px; }
 }
 
 /* Tablet shell at exactly 768 — preserve prior edge-to-edge tokens (mobile audit). */

@@ -89,11 +89,14 @@ function RailThumb({ category, size, className }: { category: Category; size: nu
 /**
  * Sticky left category rail — scroll-spy sync via activeCategoryId.
  *
- * One look for every entry, the way the ZUS app does it (owner, 2026-09-03:
- * "make the pic in main category big and subcategory little smaller"): a
- * photo over a short label, air between entries, the active one marked by
- * a left bar and the brand colour. Sub-categories sit under their parent
- * with the same shape and a smaller photo — no pills, hairlines or folding.
+ * A photo over a short label, the way the ZUS app does it (owner,
+ * 2026-09-03), the active one marked by the brand colour. Two ranks with
+ * two shapes (owner, 2026-09-21: "no much difference between main category
+ * and sub"): a category is its panel's header with a flush square photo
+ * and a bold name; its sub-categories hang beneath on a guide line, each a
+ * small round photo with a lighter name. The shapes live in the stylesheet
+ * (`.cat-rail__group`, `.cat-rail__sub`); `size` here is only the image
+ * hint.
  */
 export function CategoryRail({
   categories,
@@ -250,7 +253,7 @@ export function CategoryRail({
                     data-parent-category-id={cat.id}
                     onClick={() => onSelectSubcategory?.(sub.id, cat.id)}
                   >
-                    <RailThumb category={sub} size={52} className="cat-rail__thumb cat-rail__thumb--sub" />
+                    <RailThumb category={sub} size={40} className="cat-rail__thumb cat-rail__thumb--sub" />
                     <span className="cat-rail__label cat-rail__sub-label">{sub.name}</span>
                   </button>
                 );
