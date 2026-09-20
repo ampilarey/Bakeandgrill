@@ -386,13 +386,56 @@ html.rail-right .menu-rail-side .menu-rail-side__icon { transform: scaleX(-1); }
     font: inherit; font-size: 0.78rem; font-weight: 700; cursor: pointer;
 }
 .menu-subcat-head .share-popover { bottom: auto; top: calc(100% + 0.4rem); left: auto; right: 0; }
-/* A shared category on its own: one line saying so, and the way back. */
-.menu-only {
-    display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;
-    margin: 0.25rem 0 0.75rem; padding: 0.7rem 0.9rem;
-    background: var(--amber-light); border: 1px solid var(--border); border-radius: 12px;
+/* A category's own page: back and Share in one row, then a hero band. */
+.menu-only-top {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+    margin: 0.1rem 0 0.75rem;
 }
-.menu-only p { margin: 0; font-size: 0.95rem; }
+.menu-only-back {
+    display: inline-flex; align-items: center; gap: 0.4rem; min-height: 44px; padding: 0 0.9rem;
+    border: 1.5px solid var(--amber); border-radius: 12px;
+    color: var(--amber); font-weight: 700; text-decoration: none; background: var(--card, #fff);
+}
+.menu-only-back:hover { background: var(--amber-light); }
+.menu-only-share { min-height: 44px; }
+.menu-only-top .share-popover { bottom: auto; top: calc(100% + 0.4rem); left: auto; right: 0; }
+.menu-cat-hero {
+    position: relative; height: 150px; border-radius: 16px; overflow: hidden;
+    margin: 0 0 0.85rem; background: var(--amber-light);
+}
+.menu-cat-hero img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.menu-cat-hero-scrim {
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg, rgba(28,20,8,0.72) 0%, rgba(28,20,8,0.35) 60%, rgba(28,20,8,0.1) 100%);
+}
+.menu-cat-hero-copy {
+    position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center;
+    padding: 0.8rem 1.25rem; color: #fff;
+}
+.menu-cat-hero h2 { margin: 0; font-size: 1.6rem; font-weight: 800; line-height: 1.15; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+.menu-cat-hero-desc { margin: 0.3rem 0 0; font-size: 0.9rem; opacity: 0.95; max-width: 40rem; text-shadow: 0 1px 2px rgba(0,0,0,0.4); }
+.menu-cat-hero-count { margin: 0.35rem 0 0; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.02em; opacity: 0.9; }
+.menu-subchips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0 0 0.85rem; }
+.menu-subchips .menu-chip { text-decoration: none; }
+.menu-subchip-count { margin-left: 0.3rem; opacity: 0.7; font-weight: 600; }
+.menu-neighbours {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;
+    max-width: 1180px; margin: 0.5rem auto 0; padding: 0 1.25rem;
+}
+.menu-neighbour {
+    display: flex; flex-direction: column; gap: 0.15rem; padding: 0.8rem 1rem;
+    border: 1px solid var(--border); border-radius: 12px; text-decoration: none; color: var(--dark);
+    background: var(--card, #fff);
+}
+.menu-neighbour--next { text-align: right; }
+.menu-neighbour:hover { border-color: var(--amber); }
+.menu-neighbour-eyebrow { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.menu-neighbour-name { font-weight: 700; }
+@media (max-width: 768px) {
+    .menu-cat-hero { height: 120px; }
+    .menu-cat-hero h2 { font-size: 1.3rem; }
+    .menu-cat-hero-desc { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+}
 .menu-shell--single .menu-main { max-width: 100%; }
 .menu-cat-band-copy {
     position: absolute; inset: 0;
@@ -815,6 +858,14 @@ body.menu-sheet-open { overflow: hidden; }
     $menuSectionBanners = $menuSectionBanners ?? [];
     // The rail: the whole menu, always. On a category's own page an entry is
     // a link to that category's page and the current one is lit.
+    $menuNeighbours = $menuNeighbours ?? null;
+    // A page's name, whether it is a category or one of the two sections.
+    $pageName = function ($entry) use ($categoryName) {
+        if ($entry === 'other') return ['text' => 'Other', 'dv' => false];
+        if ($entry === 'events') return ['text' => 'Event & catering menu', 'dv' => false];
+        return $categoryName($entry);
+    };
+    $pageKey = fn ($entry) => is_string($entry) ? $entry : $entry->id;
     $menuRailGroups = $menuRailGroups ?? $menuCategories;
     $menuRailCateringCount = $menuRailCateringCount ?? $menuCatering->count();
     $menuRailActive = $menuRailActive ?? [];
@@ -995,11 +1046,52 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
 
     <div class="menu-main">
         @if($menuOnlyCategory)
-            {{-- A shared category: say what this is and where the rest went. --}}
-            <div class="menu-only" data-testid="menu-only-category">
-                <p>Showing <strong>{{ $menuOnlyCategoryName }}</strong> from our menu.</p>
-                <a href="/menu" class="btn-outline menu-only-full" data-testid="menu-only-full">See the full menu →</a>
+            @php
+                // A category's own page (owner, 2026-09-21, "the layout of each
+                // category page needs enhancement"): the way back and Share in
+                // one top row, as on a dish's page; then a hero band with the
+                // photo, name, description and count; then its sub-categories
+                // as chips. No "Showing X" box — the hero says what this is.
+                $heroEntry = $menuOnlyCategory instanceof \App\Models\Category ? $menuOnlyCategory : $menuOnlyCategory;
+                $heroKey = $pageKey($heroEntry);
+                $heroName = $pageName($heroEntry);
+                $heroImage = $mediaUrl($heroEntry instanceof \App\Models\Category
+                    ? $heroEntry->image_url
+                    : ($menuSectionBanners[$heroEntry] ?? null));
+                $heroDesc = $heroEntry instanceof \App\Models\Category
+                    ? trim((string) ($heroEntry->description ?? ''))
+                    : ($heroEntry === 'events' ? 'Order for today like any other dish, or plan an event.' : '');
+                $heroTint = $heroEntry instanceof \App\Models\Category ? $tint($heroEntry->id) : $tint($heroEntry === 'events' ? 2 : 0);
+                $heroChips = ($heroEntry instanceof \App\Models\Category && $heroEntry->parent_id === null)
+                    ? collect($menuCategories->first()['subcategories'] ?? [])
+                    : collect();
+                $shareShort = $heroEntry === 'events' ? 'Event & catering' : $heroName['text'];
+            @endphp
+            <div class="menu-only-top" data-testid="menu-only-category">
+                <a href="/menu" class="menu-only-back" data-testid="menu-only-full"><span aria-hidden="true">←</span> Full menu</a>
+                @include('partials.share-control', $shareFor($heroKey, $shareShort) + ['shareButtonClass' => 'btn-outline menu-only-share'])
             </div>
+            <header class="menu-cat-hero" data-testid="category-hero" @if(! $heroImage) style="background: {{ $heroTint }}" @endif>
+                @if($heroImage)
+                    <img src="{{ $heroImage }}" alt="">
+                @endif
+                <div class="menu-cat-hero-scrim" aria-hidden="true"></div>
+                <div class="menu-cat-hero-copy">
+                    <h2 @if($heroName['dv']) lang="dv" @endif>{{ $heroName['text'] }}</h2>
+                    @if($heroDesc !== '')
+                        <p class="menu-cat-hero-desc">{{ $heroDesc }}</p>
+                    @endif
+                    <p class="menu-cat-hero-count">{{ $menuItemCount }} {{ Str::plural('dish', $menuItemCount) }}</p>
+                </div>
+            </header>
+            @if($heroChips->isNotEmpty())
+                <nav class="menu-subchips" aria-label="Sections of {{ $heroName['text'] }}" data-testid="category-subchips">
+                    @foreach($heroChips as $chip)
+                        @php $chipName = $categoryName($chip['category']); @endphp
+                        <a href="#cat-{{ $chip['category']->id }}" class="menu-chip" @if($chipName['dv']) lang="dv" @endif>{{ $chipName['text'] }} <span class="menu-subchip-count">{{ count($chip['items']) }}</span></a>
+                    @endforeach
+                </nav>
+            @endif
         @endif
         {{-- Filtering needs JavaScript — the whole menu is in the HTML and the
              bar hides the cards that do not match. So the bar itself is hidden
@@ -1143,7 +1235,9 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
             @endphp
             <section class="menu-cat-section">
                 {{-- The band carries the section's only heading, as it does in the
-                     order app: a second <h2> under the strip read as a duplicate. --}}
+                     order app: a second <h2> under the strip read as a duplicate.
+                     On the category's own page the hero above is that heading. --}}
+                @unless($menuOnlyCategory)
                 <header class="menu-cat-band" id="{{ $anchorFor($group) }}"
                         @if(! $band) style="background: {{ $tint($cat?->id ?? 0) }}" @endif>
                     @if($band)
@@ -1167,6 +1261,7 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                         @include('partials.share-control', $shareFor($bandKey, $name['text']) + ['shareButtonClass' => 'menu-band-share'])
                     </div>
                 </header>
+                @endunless
 
                 @php
                     $blocks = [];
@@ -1182,7 +1277,7 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                          its items; a lone heading over an empty grid reads as a
                          rendering bug. --}}
                     <div class="menu-subcat-block{{ $block['heading'] ? ' menu-subcat-block--titled' : '' }}"@if($block['heading']) id="cat-{{ $block['heading']->id }}"@endif>
-                    @if($block['heading'])
+                    @if($block['heading'] && ! ($menuOnlyCategory instanceof \App\Models\Category && (int) $menuOnlyCategory->id === (int) $block['heading']->id))
                         @php $subName = $categoryName($block['heading']); @endphp
                         <div class="menu-subcat-head">
                             <h3 class="menu-subcat-title" @if($subName['dv']) lang="dv" @endif>{{ $subName['text'] }}</h3>
@@ -1209,6 +1304,7 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
             <section class="menu-cat-section menu-cat-section--events" data-testid="menu-events-section">
                 {{-- The same band as a category: photo when the owner set one,
                      Share, and a tap that opens the section's own page. --}}
+                @unless($menuOnlyCategory)
                 <header class="menu-cat-band" id="cat-events" @if(! $eventsBand) style="background: {{ $tint(2) }}" @endif>
                     @if($eventsBand)
                         <img src="{{ $eventsBand }}" alt="" loading="lazy">
@@ -1226,6 +1322,7 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                         @include('partials.share-control', $shareFor('events', 'Event & catering') + ['shareButtonClass' => 'menu-band-share'])
                     </div>
                 </header>
+                @endunless
                 <div class="menu-subcat-block">
                     <p class="menu-events-plan">
                         <a href="/order/events" class="btn-outline" data-testid="menu-events-plan">Plan an event →</a>
@@ -1241,6 +1338,27 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
     </div>
 </div>
 
+@if($menuOnlyCategory && $menuNeighbours && ($menuNeighbours['prev'] || $menuNeighbours['next']))
+    {{-- Browse on without going back: the pages either side of this one. --}}
+    <nav class="menu-neighbours" aria-label="Nearby categories" data-testid="category-neighbours">
+        @if($menuNeighbours['prev'])
+            @php $pn = $pageName($menuNeighbours['prev']); @endphp
+            <a class="menu-neighbour menu-neighbour--prev" href="{{ $menuCategoryUrls[$pageKey($menuNeighbours['prev'])] ?? '/menu' }}" rel="prev">
+                <span class="menu-neighbour-eyebrow">Previous</span>
+                <span class="menu-neighbour-name" @if($pn['dv']) lang="dv" @endif>← {{ $pn['text'] }}</span>
+            </a>
+        @else
+            <span></span>
+        @endif
+        @if($menuNeighbours['next'])
+            @php $nn = $pageName($menuNeighbours['next']); @endphp
+            <a class="menu-neighbour menu-neighbour--next" href="{{ $menuCategoryUrls[$pageKey($menuNeighbours['next'])] ?? '/menu' }}" rel="next">
+                <span class="menu-neighbour-eyebrow">Next</span>
+                <span class="menu-neighbour-name" @if($nn['dv']) lang="dv" @endif>{{ $nn['text'] }} →</span>
+            </a>
+        @endif
+    </nav>
+@endif
 <div class="menu-cta">
     <a href="/order/menu" class="btn-primary">Start your order →</a>
     @if($menuOnlyCategory)
