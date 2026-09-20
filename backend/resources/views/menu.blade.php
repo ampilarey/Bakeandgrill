@@ -813,6 +813,23 @@ body.menu-sheet-open { overflow: hidden; }
     $menuOnlyCategoryName = $menuOnlyCategoryName ?? null;
     $menuCategoryUrls = $menuCategoryUrls ?? [];
     $menuSectionBanners = $menuSectionBanners ?? [];
+    // The rail: the whole menu, always. On a category's own page an entry is
+    // a link to that category's page and the current one is lit.
+    $menuRailGroups = $menuRailGroups ?? $menuCategories;
+    $menuRailCateringCount = $menuRailCateringCount ?? $menuCatering->count();
+    $menuRailActive = $menuRailActive ?? [];
+    $railHref = function ($key, $anchor) use ($menuOnlyCategory, $menuCategoryUrls) {
+        return $menuOnlyCategory ? ($menuCategoryUrls[$key] ?? url('/menu/c/' . $key)) : '#' . $anchor;
+    };
+    $railActiveClass = function ($key, bool $sub = false) use ($menuOnlyCategory, $menuRailActive) {
+        if (! $menuOnlyCategory) return '';
+        $active = $menuRailActive['category'] ?? null;
+        $section = $menuRailActive['section'] ?? null;
+        if (($key === 'other' && $section === 'other') || ($key === 'events' && $section === 'events')) return 'is-active';
+        if ($active !== null && (int) $active === (int) $key) return 'is-active';
+        if (! $sub && ($menuRailActive['parent'] ?? null) !== null && (int) $menuRailActive['parent'] === (int) $key) return 'is-active is-within';
+        return '';
+    };
     // $key is a category id, or 'other' / 'events' for the two sections that
     // are not categories but get the same banner, share and page.
     $shareFor = function ($key, $text) use ($menuCategoryUrls) {
@@ -882,8 +899,7 @@ body.menu-sheet-open { overflow: hidden; }
 <script nonce="{{ csp_nonce() }}">
 try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.documentElement.classList.add('rail-right'); } catch (e) {}
 </script>
-<div class="{{ $menuOnlyCategory ? 'menu-shell menu-shell--single' : 'menu-shell' }}">
-    @unless($menuOnlyCategory)
+<div class="menu-shell">
     <nav class="menu-rail" aria-label="Menu categories">
         <div class="menu-rail-scroll">
         <div class="menu-rail-list">
@@ -895,17 +911,19 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                     <span class="menu-rail-label">Offers</span>
                 </a>
             @endif
-            @foreach($menuCategories as $group)
+            @foreach($menuRailGroups as $group)
                 @php
                     $cat  = $group['category'];
                     $name = $categoryName($cat);
-                    $thumb = $mediaUrl($cat?->thumb_url ?: $cat?->image_url);
+                    $thumb = $mediaUrl($cat ? ($cat->thumb_url ?: $cat->image_url) : ($menuSectionBanners['other'] ?? null));
                     $count = $sectionCount($group);
+                    $railKey = $cat ? $cat->id : 'other';
+                    $railClass = $railActiveClass($railKey);
                 @endphp
                 <div class="menu-rail-group">
                 {{-- The count is a bare numeral beside a name; spoken aloud it
                      reads "Shorteats 3", so the link carries it as words instead. --}}
-                <a href="#{{ $anchorFor($group) }}"
+                <a href="{{ $railHref($railKey, $anchorFor($group)) }}"@if($railClass !== '') class="{{ $railClass }}"@endif
                    aria-label="{{ $name['text'] }}, {{ $count }} {{ Str::plural('item', $count) }}">
                     @if($thumb)
                         <img class="menu-rail-thumb" src="{{ $thumb }}" alt="" loading="lazy" width="64" height="64">
@@ -929,8 +947,8 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                         $subCount = count($sub['items']);
                         $subThumb = $mediaUrl($subCat?->thumb_url ?: $subCat?->image_url);
                     @endphp
-                    <a href="#cat-{{ $subCat->id }}"
-                       class="menu-rail-sub"
+                    <a href="{{ $railHref($subCat->id, 'cat-' . $subCat->id) }}"
+                       class="{{ trim('menu-rail-sub ' . $railActiveClass($subCat->id, true)) }}"
                        data-parent="{{ $anchorFor($group) }}"
                        aria-label="{{ $subName['text'] }}, {{ $subCount }} {{ Str::plural('item', $subCount) }}">
                         @if($subThumb)
@@ -950,9 +968,9 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
             {{-- Same last-on-rail shortcut as the order app CategoryRail: the
                  on-page Event & catering section when there is one, else the
                  wizard at /order/events. --}}
-            @php $eventsCount = $menuCatering->count(); @endphp
-            <a href="{{ $eventsCount > 0 ? '#cat-events' : '/order/events' }}"
-               class="menu-rail-events"
+            @php $eventsCount = $menuRailCateringCount; @endphp
+            <a href="{{ $eventsCount > 0 ? $railHref('events', 'cat-events') : '/order/events' }}"
+               class="{{ trim('menu-rail-events ' . $railActiveClass('events')) }}"
                data-testid="cat-rail-events"
                aria-label="{{ $eventsCount > 0 ? 'Events, ' . $eventsCount . ' ' . Str::plural('item', $eventsCount) : 'Events' }}">
                 <span class="menu-rail-thumb" aria-hidden="true"
@@ -974,7 +992,6 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
         </div>
         </div>
     </nav>
-    @endunless
 
     <div class="menu-main">
         @if($menuOnlyCategory)
@@ -1544,6 +1561,10 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
         var target = Math.max(0, top < viewTop ? top - 8 : bottom - scroller.clientHeight + 8);
         if (scroller.scrollTo) scroller.scrollTo({ top: target, behavior: 'smooth' }); else scroller.scrollTop = target;
     }
+
+    // On a category's own page the current entry arrives lit; bring it into view.
+    var preset = rail.querySelector('a.is-active:not(.is-within)');
+    if (preset) revealInRail(preset);
 
     var byId = {};
     links.forEach(function (a) {

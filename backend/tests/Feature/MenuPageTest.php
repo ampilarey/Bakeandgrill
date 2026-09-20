@@ -246,7 +246,15 @@ class MenuPageTest extends TestCase
         $this->assertStringContainsString('data-testid="menu-only-category"', $html);
         $this->assertStringContainsString('Showing <strong>Drinks</strong>', $html);
         $this->assertStringContainsString('href="/menu" class="btn-outline menu-only-full"', $html);
-        $this->assertStringNotContainsString('<nav class="menu-rail"', $html);
+        // The rail stays (owner, 2026-09-21: "adding rails same as menu? When
+        // clicked only that category shows"): every entry opens that
+        // category's own page, and the current one is lit.
+        preg_match('#<nav class="menu-rail".*?</nav>#s', $html, $rail);
+        $this->assertNotEmpty($rail);
+        $this->assertStringContainsString('href="http://localhost:8000/menu/c/shorteats"', $rail[0]);
+        $this->assertStringContainsString('href="http://localhost:8000/menu/c/drinks" class="is-active"', $rail[0]);
+        $this->assertStringContainsString('href="http://localhost:8000/menu/c/hot-drinks"', $rail[0]);
+        $this->assertStringNotContainsString('href="#cat-', $rail[0]);
         $this->assertStringContainsString('Black Tea', $html);
         $this->assertStringContainsString('Lime Juice', $html);
         $this->assertStringNotContainsString('Bajiya', $html);
@@ -258,6 +266,9 @@ class MenuPageTest extends TestCase
         $this->assertStringContainsString('Lime Juice', $sub);
         $this->assertStringNotContainsString('Black Tea', $sub);
         $this->assertStringContainsString('id="cat-' . $drinks->id . '"', $sub);
+        preg_match('#<nav class="menu-rail".*?</nav>#s', $sub, $subRail);
+        $this->assertStringContainsString('href="http://localhost:8000/menu/c/cold-drinks"' . "\n" . '                       class="menu-rail-sub is-active"', $subRail[0]);
+        $this->assertStringContainsString('href="http://localhost:8000/menu/c/drinks" class="is-active is-within"', $subRail[0]);
 
         // The id works too, and an unknown category is a real 404.
         $this->get('/menu/c/' . $drinks->id)->assertOk()->assertSee('Black Tea', false);

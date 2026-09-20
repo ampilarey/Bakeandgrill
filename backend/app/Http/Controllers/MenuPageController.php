@@ -113,6 +113,14 @@ class MenuPageController extends Controller
         $categories = $this->activeCategories();
         $offers = collect(app(OffersService::class)->activeOffers());
 
+        // The rail lists the whole menu on every page. On a category's own
+        // page each entry opens that category's page instead of scrolling
+        // (owner, 2026-09-21: "adding rails same as menu? When clicked only
+        // that category shows").
+        [$railCatering, $railRegular] = $items->partition(fn (Item $item) => $this->isCateringItem($item, $categories));
+        $railGroups = $this->groupByParent($railRegular->values(), $categories);
+        $railCateringCount = $railCatering->count();
+
         if ($section !== null) {
             [$catering, $regular] = $items->partition(fn (Item $item) => $this->isCateringItem($item, $categories));
             if ($section === 'events') {
@@ -161,6 +169,13 @@ class MenuPageController extends Controller
             'menuCatering' => $catering->values(),
             'menuOnlyCategory' => $only ?? $section,
             'menuOnlyCategoryName' => $only?->name ?? ($section !== null ? self::SECTION_NAMES[$section] : null),
+            'menuRailGroups' => $railGroups,
+            'menuRailCateringCount' => $railCateringCount,
+            'menuRailActive' => [
+                'category' => $only?->id,
+                'parent' => $only?->parent_id,
+                'section' => $section,
+            ],
             'menuCategoryUrls' => $this->activeCategories()->map(fn (Category $c) => self::categoryUrl($c))->all()
                 + ['other' => url('/menu/c/other'), 'events' => url('/menu/c/events')],
             'menuSectionBanners' => [
