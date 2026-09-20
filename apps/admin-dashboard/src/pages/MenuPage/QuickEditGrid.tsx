@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MenuCategory, MenuGroupRow, MenuItem, MenuVariant } from '../../api';
 import {
   bulkRowErrors, bulkUpdateItems, fetchAdminItems,
@@ -967,24 +967,17 @@ function ItemCell({
     );
   }
   if (column.key === 'also_in') {
-    // A staged "Also show in" bulk action lands here as the draft list.
+    // A staged "Also show in" bulk action lands here as the draft list; the
+    // cell itself is a picker too (owner, 2026-09-20: "cannot edit also in").
     const ids = Array.isArray(value) ? (value as number[]) : (item.extra_category_ids ?? []);
-    const names = ids
-      .map((id) => categories.find((c) => c.id === id)?.name)
-      .filter((n): n is string => !!n);
     return (
-      <td
-        style={{
-          ...cell, fontSize: 12,
-          color: names.length ? 'var(--color-text-secondary)' : 'var(--color-text-muted)',
-          fontWeight: dirty ? 700 : undefined,
-          background: dirty ? 'var(--color-warning-bg)' : undefined,
-        }}
-        title={names.length ? `Also listed under ${names.join(', ')} — tick rows and use Organise → Also show in to change it` : 'Only under its own category — tick rows and use Organise → Also show in to add more'}
-        data-testid={`also-in-${item.id}`}
-      >
-        {names.length ? names.join(', ') : '—'}
-      </td>
+      <AlsoInCell
+        item={item}
+        ids={ids}
+        categories={categories}
+        dirty={dirty}
+        onChange={onChange}
+      />
     );
   }
 
@@ -1306,5 +1299,109 @@ function FieldError({ messages }: { messages: string[] }) {
     <div style={{ fontSize: 11, color: 'var(--color-danger)', marginTop: 3, lineHeight: 1.4 }}>
       {messages[0]}
     </div>
+  );
+}
+
+/**
+ * The "Also in" cell: the extra categories an item is listed under, as a
+ * button that opens a checklist. Owner, 2026-09-20, after the bulk action
+ * shipped: "cannot edit also in" — one row should be editable on its own
+ * too, without ticking it and going to the bulk bar.
+ */
+function AlsoInCell({ item, ids, categories, dirty, onChange }: {
+  item: MenuItem;
+  ids: number[];
+  categories: MenuCategory[];
+  dirty: boolean;
+  onChange: (value: unknown) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const home = item.category_id ?? null;
+  const names = ids
+    .map((id) => categories.find((c) => c.id === id)?.name)
+    .filter((n): n is string => !!n);
+  // Every category but the item's own home — the server drops that one anyway.
+  const options = categoryOptions(categories.filter((c) => c.is_active !== false && c.id !== home));
+
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', away);
+    document.addEventListener('keydown', esc);
+    return () => {
+      document.removeEventListener('mousedown', away);
+      document.removeEventListener('keydown', esc);
+    };
+  }, [open]);
+
+  const toggle = (id: number) => {
+    const next = ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id];
+    onChange([...new Set(next)].filter((x) => x !== home).sort((a, b) => a - b));
+  };
+
+  return (
+    <td style={{ ...cell, fontSize: 12, position: 'relative' }} data-testid={`also-in-${item.id}`}>
+      <div ref={wrapRef}>
+        <button
+          type="button"
+          aria-label={`Also in for ${item.name}`}
+          aria-haspopup="true"
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+          title={names.length ? `Also listed under ${names.join(', ')}` : 'Only under its own category'}
+          style={{
+            ...inputStyle(dirty, false),
+            width: '100%', textAlign: 'left', cursor: 'pointer',
+            color: names.length ? 'var(--color-text)' : 'var(--color-text-muted)',
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}
+        >
+          {names.length ? names.join(', ') : '—'}
+        </button>
+        {open && (
+          <div
+            role="group"
+            aria-label={`Also show ${item.name} in`}
+            style={{
+              position: 'absolute', zIndex: 20, top: '100%', left: 8, minWidth: 220, maxHeight: 260, overflowY: 'auto',
+              background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 10,
+              boxShadow: '0 8px 24px rgba(28,20,8,0.12)', padding: 6,
+            }}
+          >
+            {options.length === 0 && (
+              <div style={{ padding: '6px 8px', color: 'var(--color-text-muted)' }}>No other categories.</div>
+            )}
+            {options.map((o) => {
+              const id = Number(o.value);
+              const on = ids.includes(id);
+              return (
+                <label
+                  key={o.value}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 6, cursor: 'pointer', fontSize: 13 }}
+                >
+                  <input type="checkbox" checked={on} onChange={() => toggle(id)} aria-label={`${o.label.replace(/^↳ /, '')} for ${item.name}`} />
+                  <span>{o.label}</span>
+                </label>
+              );
+            })}
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 6, padding: '6px 8px 2px' }}>
+              <button
+                type="button"
+                onClick={() => onChange([])}
+                disabled={ids.length === 0}
+                style={{ border: 'none', background: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', padding: 0 }}
+              >
+                Own category only
+              </button>
+              <Btn small variant="secondary" onClick={() => setOpen(false)}>Done</Btn>
+            </div>
+          </div>
+        )}
+      </div>
+    </td>
   );
 }

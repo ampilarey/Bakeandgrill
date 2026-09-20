@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MenuItem } from '../../api';
 import { QuickEditGrid } from './QuickEditGrid';
+import { defaultVisibleColumns, saveVisibleColumns } from './gridColumns';
 
 const bulkUpdateItems = vi.fn();
 
@@ -933,5 +934,48 @@ describe('QuickEditGrid also show in', () => {
     const preview = within(screen.getByTestId('bulk-preview'));
     expect(preview.getByText('Nothing would change')).toBeInTheDocument();
     expect(preview.getByTestId('bulk-preview-reasons')).toHaveTextContent('already its own category');
+  });
+});
+
+// Owner, 2026-09-20, after the bulk action: "cannot edit also in" — one row
+// on its own, straight in the cell.
+describe('QuickEditGrid also in cell', () => {
+  // The column is off by default; switch it on the way the column picker does.
+  beforeEach(() => saveVisibleColumns([...defaultVisibleColumns(true), 'also_in']));
+
+  it('opens a checklist of the other categories and stages the pick for that row only', async () => {
+    renderGrid({
+      initialItems: [
+        item({ id: 1, name: 'Bajiya', category_id: 1, extra_category_ids: [] }),
+        item({ id: 2, name: 'Gulha', category_id: 1, extra_category_ids: [] }),
+      ],
+    });
+
+    const cell = screen.getByRole('button', { name: 'Also in for Bajiya' });
+    expect(cell).toHaveTextContent('—');
+    fireEvent.click(cell);
+    const list = screen.getByRole('group', { name: 'Also show Bajiya in' });
+    // Its own category is not offered.
+    expect(within(list).queryByLabelText('Snacks for Bajiya')).toBeNull();
+    fireEvent.click(within(list).getByLabelText('Grill for Bajiya'));
+
+    expect(screen.getByRole('button', { name: 'Also in for Bajiya' })).toHaveTextContent('Grill');
+    expect(screen.getByRole('button', { name: 'Also in for Gulha' })).toHaveTextContent('—');
+    expect(screen.getByTestId('quick-edit-dirty')).toHaveTextContent('1 unsaved change');
+
+    fireEvent.click(screen.getByRole('button', { name: /^Save/ }));
+    await waitFor(() => expect(bulkUpdateItems).toHaveBeenCalledTimes(1));
+    expect(bulkUpdateItems).toHaveBeenCalledWith([{ id: 1, fields: { extra_category_ids: [2] } }], [], []);
+  });
+
+  it('unticking the last one is a change back to own category only', () => {
+    renderGrid({ initialItems: [item({ id: 1, name: 'Bajiya', category_id: 1, extra_category_ids: [2] })] });
+    fireEvent.click(screen.getByRole('button', { name: 'Also in for Bajiya' }));
+    fireEvent.click(screen.getByLabelText('Grill for Bajiya'));
+    expect(screen.getByRole('button', { name: 'Also in for Bajiya' })).toHaveTextContent('—');
+    expect(screen.getByTestId('quick-edit-dirty')).toHaveTextContent('1 unsaved change');
+    // And ticking it again is back to where it started.
+    fireEvent.click(screen.getByLabelText('Grill for Bajiya'));
+    expect(screen.getByTestId('quick-edit-dirty')).toHaveTextContent('No unsaved changes');
   });
 });
