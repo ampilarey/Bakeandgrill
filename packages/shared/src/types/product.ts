@@ -136,6 +136,12 @@ export type MenuItem = {
   show_on_signage?: boolean;
   /** TV signage board — force a showcase slide with no photo or discount. */
   is_signage_promoted?: boolean;
+  /**
+   * Owner-ticked: leads the menu in the "Chef's picks" strip ahead of the
+   * categories, on the website and in the order app, and stays in its own
+   * category too (owner, 2026-09-21).
+   */
+  is_featured?: boolean;
   // Combo / bundle
   is_combo?: boolean;
   combo_discount_pct?: number | null;

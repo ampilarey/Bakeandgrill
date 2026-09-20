@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { PartyPopper } from 'lucide-react';
+import { PartyPopper, Star } from 'lucide-react';
 import { API_ORIGIN } from '../../api';
 import type { Category } from '../../api';
 import { useLanguage } from '../../context/LanguageContext';
@@ -24,6 +24,10 @@ type Props = {
   counts?: Record<number, number>;
   showOffersPill?: boolean;
   onOffersClick?: () => void;
+  /** The owner's hand-picked strip ahead of the categories (2026-09-21). */
+  showFeaturedPill?: boolean;
+  featuredLabel?: string;
+  onFeaturedClick?: () => void;
   showCateringPill?: boolean;
   cateringActive?: boolean;
   cateringCount?: number;
@@ -106,6 +110,9 @@ export function CategoryRail({
   counts = {},
   showOffersPill = false,
   onOffersClick,
+  showFeaturedPill = false,
+  featuredLabel = "Chef's picks",
+  onFeaturedClick,
   showCateringPill = false,
   cateringActive = false,
   cateringCount = 0,
@@ -215,6 +222,28 @@ export function CategoryRail({
               %
             </span>
             <span className="cat-rail__label">Offers</span>
+          </button>
+        )}
+        {showFeaturedPill && onFeaturedClick && (
+          <button
+            type="button"
+            role="tab"
+            className="cat-rail__item cat-rail__item--featured"
+            data-testid="cat-rail-featured"
+            aria-label={featuredLabel}
+            onClick={onFeaturedClick}
+          >
+            <span
+              className="cat-rail__thumb"
+              aria-hidden="true"
+              style={{
+                background: 'hsl(42 70% 86%)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-dark)',
+              }}
+            >
+              <Star size={24} strokeWidth={1.5} fill="currentColor" />
+            </span>
+            <span className="cat-rail__label">{featuredLabel}</span>
           </button>
         )}
         {categories.map((cat) => {

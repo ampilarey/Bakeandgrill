@@ -893,6 +893,46 @@ class MenuPageTest extends TestCase
         $this->assertStringContainsString('20% OFF', $html);
     }
 
+    /**
+     * Owner, 2026-09-21: "Is there any specific category to show at the top
+     * of the menu?" A ticked item leads the page under the owner's heading,
+     * with a rail entry, and still sits in its own category.
+     */
+    public function test_featured_items_lead_the_menu_under_the_owners_heading(): void
+    {
+        $cat = $this->category('Shorteats');
+        $this->item($cat, 'Bajiya', 10, ['is_featured' => true]);
+        $this->item($cat, 'Cutlet', 8);
+        SiteSetting::set('menu_featured_title', 'Favourites', 'shared');
+
+        $html = $this->get('/menu')->assertOk()->getContent();
+
+        $this->assertStringContainsString('id="menu-view-featured"', $html);
+        $this->assertStringContainsString('data-testid="menu-featured-pill"', $html);
+        $this->assertStringContainsString('aria-label="Favourites, 1 item"', $html);
+        $this->assertStringContainsString('<h2 class="menu-offers-title">Favourites</h2>', $html);
+        // The strip comes before the first category, and the dish is in both.
+        $this->assertLessThan(strpos($html, 'id="cat-' . $cat->id . '"'), strpos($html, 'id="menu-view-featured"'));
+        $this->assertSame(2, substr_count($html, '>Bajiya<'));
+        $this->assertSame(1, substr_count($html, '>Cutlet<'));
+    }
+
+    public function test_the_featured_strip_is_absent_with_nothing_ticked_and_on_a_category_page(): void
+    {
+        $cat = $this->category('Shorteats');
+        $this->item($cat, 'Cutlet', 8);
+
+        $html = $this->get('/menu')->assertOk()->getContent();
+        $this->assertStringNotContainsString('id="menu-view-featured"', $html);
+        $this->assertStringNotContainsString('data-testid="menu-featured-pill"', $html);
+
+        $this->item($cat, 'Bajiya', 10, ['is_featured' => true]);
+        $html = $this->get('/menu/c/shorteats')->assertOk()->getContent();
+        $this->assertStringNotContainsString('id="menu-view-featured"', $html);
+        $this->assertStringNotContainsString('data-testid="menu-featured-pill"', $html);
+        $this->assertStringContainsString('Chef&#039;s picks', $this->get('/menu')->getContent());
+    }
+
     public function test_without_offers_the_section_and_pill_are_absent(): void
     {
         $cat = $this->category('Shorteats');

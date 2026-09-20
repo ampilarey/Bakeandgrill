@@ -87,6 +87,7 @@ export type ItemForm = {
   platter_groups: PlatterGroupRow[];
   show_on_signage: boolean;
   is_signage_promoted: boolean;
+  is_featured: boolean;
   track_stock: boolean;
   stock_quantity: string;
   low_stock_threshold: string;
@@ -193,6 +194,7 @@ export function itemToForm(item: MenuItem): ItemForm {
     combo_mode: (item.platter_groups?.length ?? 0) > 0 ? 'choose' : 'fixed',
     show_on_signage: item.show_on_signage ?? true,
     is_signage_promoted: item.is_signage_promoted ?? false,
+    is_featured: item.is_featured ?? false,
     combo_discount_pct: item.combo_discount_pct != null ? String(item.combo_discount_pct) : '',
     combo_items: (item.combo_items ?? []).map((row) => ({
       item_id: String(row.item_id),
@@ -320,6 +322,7 @@ export function formToPayload(form: ItemForm, includeChannels: boolean): MenuIte
   payload.modifier_ids = form.modifier_ids;
   payload.show_on_signage = form.show_on_signage;
   payload.is_signage_promoted = form.is_signage_promoted;
+  payload.is_featured = form.is_featured;
   payload.combo_discount_pct = form.combo_discount_pct !== '' ? parseFloat(form.combo_discount_pct) : null;
   if (form.is_combo && form.combo_mode === 'choose') {
     payload.platter_groups = form.platter_groups
@@ -446,7 +449,7 @@ export function emptyItemForm(selectedCat: number | null): ItemForm {
     modifier_ids: [],
     has_variants: false, variants: [],
     is_combo: false, combo_mode: 'fixed', combo_discount_pct: '', combo_items: [], platter_groups: [],
-    show_on_signage: true, is_signage_promoted: false,
+    show_on_signage: true, is_signage_promoted: false, is_featured: false,
     track_stock: false, stock_quantity: '0', low_stock_threshold: '5',
     allow_pre_order: false,
     tomorrow_daily_capacity: '', min_order_qty: '', lead_time_hours: '',

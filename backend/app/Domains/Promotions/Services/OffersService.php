@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Promotions\Services;
 
+use App\Models\Category;
 use App\Models\Item;
 use App\Models\Promotion;
 use App\Services\SpecialPricingService;
@@ -118,22 +119,64 @@ class OffersService
                         $catalog,
                     );
                 } elseif ($target->target_type === 'category') {
+                    // A category-wide deal used to be a card with the
+                    // promotion's admin name and no photo. It now reads as
+                    // "20% OFF · Drinks" over the category's own picture.
+                    $category = Category::query()->find($target->target_id);
+                    if (!$category || !$category->is_active) {
+                        continue;
+                    }
                     $offers[] = $this->promoOfferRow(
                         $promo,
                         [
                             'type' => 'category',
                             'item_id' => null,
                             'variant_id' => null,
-                            'category_id' => (int) $target->target_id,
+                            'category_id' => (int) $category->id,
                         ],
-                        '/menu?category=' . $target->target_id,
-                        $promo->name,
+                        '/menu?category=' . $category->id,
+                        $category->name,
+                        $category->image_url ?: null,
                     );
                 }
             }
         }
 
-        return $offers;
+        return $this->rank($offers);
+    }
+
+    /**
+     * Biggest saving first, so the strip leads with the deal most worth a
+     * tap; a percentage beats an unknown; cart-level deals (no price to show)
+     * come last. Ties keep their build order — specials before promotions.
+     *
+     * @param list<array<string, mixed>> $offers
+     * @return list<array<string, mixed>>
+     */
+    private function rank(array $offers): array
+    {
+        $saving = static function (array $o): float {
+            $original = (float) ($o['original_price'] ?? 0);
+            $effective = $o['effective_price'] ?? null;
+            if ($original > 0 && $effective !== null && (float) $effective < $original) {
+                return ($original - (float) $effective) / $original;
+            }
+
+            return ((int) ($o['discount_pct'] ?? 0)) / 100;
+        };
+
+        $rows = array_map(fn (array $o, int $i) => [$o, $i], $offers, array_keys($offers));
+        usort($rows, function (array $a, array $b) use ($saving): int {
+            $aOrder = ($a[0]['target']['type'] ?? '') === 'order';
+            $bOrder = ($b[0]['target']['type'] ?? '') === 'order';
+            if ($aOrder !== $bOrder) {
+                return $aOrder <=> $bOrder;
+            }
+
+            return ($saving($b[0]) <=> $saving($a[0])) ?: ($a[1] <=> $b[1]);
+        });
+
+        return array_map(fn (array $row) => $row[0], $rows);
     }
 
     /**

@@ -891,6 +891,8 @@ body.menu-sheet-open { overflow: hidden; }
 
     $defaultItemImage = $mediaUrl(content('default_item_image'));
     $menuOffers = $menuOffers ?? collect();
+    $menuFeatured = $menuFeatured ?? collect();
+    $menuFeaturedTitle = $menuFeaturedTitle ?? "Chef's picks";
     $menuNewItemIds = $menuNewItemIds ?? [];
     $menuSoldOut = $menuSoldOut ?? [];
     $menuCatering = $menuCatering ?? collect();
@@ -1018,6 +1020,19 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                     <span class="menu-rail-thumb" aria-hidden="true"
                           style="background: hsl(18 55% 88%)">%</span>
                     <span class="menu-rail-label">Offers</span>
+                </a>
+            @endif
+            {{-- The owner's picks, ahead of the categories (2026-09-21). --}}
+            @if($menuFeatured->isNotEmpty())
+                <a href="#menu-view-featured" data-testid="menu-featured-pill"
+                   aria-label="{{ $menuFeaturedTitle }}, {{ $menuFeatured->count() }} {{ Str::plural('item', $menuFeatured->count()) }}">
+                    <span class="menu-rail-thumb" aria-hidden="true"
+                          style="background: hsl(42 70% 86%)">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6L2.5 9.4l6.6-.8z"/>
+                        </svg>
+                    </span>
+                    <span class="menu-rail-label">{{ $menuFeaturedTitle }}</span>
                 </a>
             @endif
             @foreach($menuRailGroups as $group)
@@ -1236,6 +1251,21 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
             Nothing on the menu matches that. <button type="button" class="menu-clear">Clear filters</button>
         </p>
 
+        {{-- The owner's hand-picked dishes, ahead of the categories (owner,
+             2026-09-21: "any specific category to show at the top?"). Each is
+             the same card it has in its own category, so the two cannot
+             drift; the filter script leaves this strip out while filtering,
+             as it does the offers. --}}
+        @if($menuFeatured->isNotEmpty())
+            <section class="menu-offers menu-featured" id="menu-view-featured" data-testid="menu-view-featured">
+                <h2 class="menu-offers-title">{{ $menuFeaturedTitle }}</h2>
+                <div class="menu-grid">
+                    @foreach($menuFeatured as $item)
+                        @include('partials.menu-card', ['item' => $item, 'itemHeading' => 'h3'])
+                    @endforeach
+                </div>
+            </section>
+        @endif
         @if($menuOffers->isNotEmpty())
             <section class="menu-offers" id="menu-view-offers" data-testid="menu-view-offers">
                 <h2 class="menu-offers-title">Offers</h2>
@@ -1504,7 +1534,12 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
     var clearChip = bar.querySelector('.menu-clear-chip');
     var main = document.querySelector('.menu-main');
     var grids = Array.prototype.slice.call(document.querySelectorAll('.menu-subcat-block .menu-grid'));
-    var cards = Array.prototype.slice.call(document.querySelectorAll('.menu-card[data-search]'));
+    var featured = document.getElementById('menu-view-featured');
+    // The featured strip repeats cards from the categories; it is hidden
+    // while filtering, so its copies must not count as matches either.
+    var cards = Array.prototype.slice.call(document.querySelectorAll('.menu-card[data-search]')).filter(function (c) {
+        return !featured || !featured.contains(c);
+    });
     var sections = Array.prototype.slice.call(document.querySelectorAll('.menu-cat-section'));
     var blocks = Array.prototype.slice.call(document.querySelectorAll('.menu-subcat-block'));
     var offers = document.getElementById('menu-view-offers');
@@ -1555,6 +1590,7 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
         // Offers are their own cards and are not searchable; hide the strip
         // while filtering rather than leaving it as an unexplained exception.
         if (offers) offers.hidden = filtering;
+        if (featured) featured.hidden = filtering;
 
         if (noMatch) noMatch.hidden = !(filtering && shown === 0);
         if (clearChip) clearChip.hidden = !filtering;

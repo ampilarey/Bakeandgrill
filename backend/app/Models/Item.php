@@ -66,6 +66,7 @@ class Item extends Model
         'combo_discount_pct',
         'show_on_signage',
         'is_signage_promoted',
+        'is_featured',
     ];
 
     /**
@@ -269,6 +270,7 @@ class Item extends Model
         'combo_discount_pct' => 'decimal:2',
         'show_on_signage' => 'boolean',
         'is_signage_promoted' => 'boolean',
+        'is_featured' => 'boolean',
     ];
 
     /** True when the item is configured to require a variant selection. */

@@ -45,6 +45,7 @@ final class OpsOwnedContent
         // by the website and the order app alike (owner, 2026-09-21).
         'menu_other_banner_image',
         'menu_events_banner_image',
+        'menu_featured_title',
         'site_name',
         'business_website',
         'business_phone',

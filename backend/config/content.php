@@ -1260,6 +1260,20 @@ return [
             'validate' => 'nullable|string|max:2048',
             'default' => '',
         ],
+        // Heading over the hand-picked strip at the top of both menus. The
+        // strip shows only when at least one item is ticked "Featured".
+        'menu_featured_title' => [
+            'label' => 'Featured items heading',
+            'group' => 'Menu',
+            'type' => 'text',
+            'apps' => ['website', 'order_app'],
+            'shareable' => true,
+            'public' => true,
+            'rich' => false,
+            'description' => 'Heading over the items ticked "Featured" in the menu editor, shown ahead of the categories on the website menu and the order app.',
+            'validate' => 'nullable|string|max:80',
+            'default' => "Chef's picks",
+        ],
         'menu_new_days' => [
             'label' => 'New items window (days)',
             'group' => 'Menu',

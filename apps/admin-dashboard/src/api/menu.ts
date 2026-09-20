@@ -139,6 +139,7 @@ export type MenuItem = {
   is_platter?: boolean;
   show_on_signage?: boolean;
   is_signage_promoted?: boolean;
+  is_featured?: boolean;
   combo_discount_pct?: number | null;
   combo_items?: Array<{
     item_id: number;
@@ -246,6 +247,7 @@ export type MenuItemPayload = {
   is_combo?: boolean;
   show_on_signage?: boolean;
   is_signage_promoted?: boolean;
+  is_featured?: boolean;
   combo_discount_pct?: number | null;
   combo_items?: Array<{ item_id: number; variant_id?: number | null; quantity?: number; is_optional?: boolean; surcharge?: number }>;
   /** Add-ons the customer may pick on this item. */

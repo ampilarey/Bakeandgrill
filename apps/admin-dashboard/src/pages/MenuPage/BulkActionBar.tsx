@@ -324,6 +324,9 @@ export function BulkActionBar({
           <Btn small variant="secondary" onClick={() => onPropose(field('Promoted', 'is_signage_promoted', true, yesNo))}>Promote on signage</Btn>
           <Btn small variant="secondary" onClick={() => onPropose(field('Promoted', 'is_signage_promoted', false, yesNo))}>Stop promoting</Btn>
           <span style={{ width: 1, height: 24, background: 'var(--color-border)' }} />
+          <Btn small variant="secondary" onClick={() => onPropose(field('Featured', 'is_featured', true, yesNo))}>Feature at top of menu</Btn>
+          <Btn small variant="secondary" onClick={() => onPropose(field('Featured', 'is_featured', false, yesNo))}>Unfeature</Btn>
+          <span style={{ width: 1, height: 24, background: 'var(--color-border)' }} />
           <Btn small variant="secondary" onClick={() => onPropose(field('Price note', 'price_note', null, (v) => String(v ?? '—')))}>Clear price note</Btn>
         </div>
       )}

@@ -129,6 +129,7 @@ class StoreItemRequest extends FormRequest
             'is_combo' => 'sometimes|boolean',
             'show_on_signage' => 'sometimes|boolean',
             'is_signage_promoted' => 'sometimes|boolean',
+            'is_featured' => 'sometimes|boolean',
             'combo_discount_pct' => 'nullable|numeric|min:0|max:100',
             'combo_items' => 'sometimes|array',
             'combo_items.*.item_id' => 'required_with:combo_items|integer|exists:items,id',

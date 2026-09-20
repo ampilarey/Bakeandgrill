@@ -305,6 +305,9 @@ class ItemController extends Controller
                 // Signage board flags — default safely when the columns predate the migration.
                 'show_on_signage' => (bool) ($item->show_on_signage ?? true),
                 'is_signage_promoted' => (bool) ($item->is_signage_promoted ?? false),
+                // Hand-picked for the "Chef's picks" strip at the top of both
+                // menus (owner, 2026-09-21). The item stays in its category too.
+                'is_featured' => (bool) ($item->is_featured ?? false),
                 'created_at' => $item->created_at?->toIso8601String(),
                 'category_id' => $item->category_id,
                 // "Also show in" (owner, 2026-09-03): every surface places the

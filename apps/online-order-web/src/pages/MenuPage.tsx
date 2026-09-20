@@ -718,6 +718,16 @@ export function MenuPage() {
     return { sections, other, catering };
   }, [categories, parentCategories, items, cateringListing, sortBy]);
 
+  // The owner's picks, ahead of the categories (owner, 2026-09-21: "any
+  // specific category to show at the top?"). Menu order, not the sort chip:
+  // a hand-picked strip keeps the hand-picked order. Each dish stays in its
+  // category too, so it is the same card twice, as on the website.
+  const featuredItems = useMemo(
+    () => items.filter((item) => item.is_featured === true && !isMenuCateringItem(item, categories)),
+    [items, categories],
+  );
+  const featuredTitle = text('menu_featured_title', "Chef's picks") || "Chef's picks";
+
   const hasSectionedItems =
     sectionedMenu.sections.length > 0
     || sectionedMenu.other.length > 0
@@ -1287,6 +1297,9 @@ export function MenuPage() {
           onSelectSubcategory={handleSelectSubcategory}
           showOffersPill={offers.length > 0}
           onOffersClick={() => document.getElementById('offers')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          showFeaturedPill={featuredItems.length > 0 && !filtersActive}
+          featuredLabel={featuredTitle}
+          onFeaturedClick={() => scrollToSectionElement('menu-section-featured')}
           showOtherPill={sectionedMenu.other.length > 0}
           otherActive={activeCategoryId === OTHER_SECTION_ID}
           otherCount={sectionedMenu.other.length}
@@ -1347,6 +1360,25 @@ export function MenuPage() {
             <div className={viewMode === 'list' ? 'menu-list' : 'menu-grid'} style={{ paddingBottom: '1.25rem' }}>
               {filteredItems.map(renderProductCard)}
             </div>
+          )}
+
+          {!loading && !filtersActive && featuredItems.length > 0 && (
+            <section
+              id="menu-section-featured"
+              data-testid="menu-section-featured"
+              className="menu-section menu-section--featured"
+              aria-label={featuredTitle}
+              style={{
+                scrollMarginTop: 'calc(var(--menu-sticky-offset, var(--menu-header-height)) + 4px)',
+              }}
+            >
+              <div className="menu-subcat-head">
+                <h2 className="menu-subcat-title" data-testid="menu-featured-title">{featuredTitle}</h2>
+              </div>
+              <div className={viewMode === 'list' ? 'menu-list' : 'menu-grid'} style={{ paddingBottom: '1rem' }}>
+                {featuredItems.map(renderProductCard)}
+              </div>
+            </section>
           )}
 
           {!loading && !filtersActive && hasSectionedItems && (

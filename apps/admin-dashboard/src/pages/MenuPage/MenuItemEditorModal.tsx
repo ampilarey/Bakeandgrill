@@ -657,7 +657,7 @@ function VariantsEditor({
  * is always in reach.
  */
 type SectionId =
-  | 'basics' | 'pricing' | 'card' | 'details' | 'selling' | 'photo' | 'stock' | 'packaging' | 'addons' | 'bundle' | 'signage';
+  | 'basics' | 'pricing' | 'card' | 'details' | 'selling' | 'photo' | 'stock' | 'packaging' | 'addons' | 'bundle' | 'signage' | 'featured';
 
 const SECTIONS: Array<{ id: SectionId; label: string }> = [
   { id: 'basics', label: 'Basics' },
@@ -671,6 +671,7 @@ const SECTIONS: Array<{ id: SectionId; label: string }> = [
   { id: 'addons', label: 'Add-ons' },
   { id: 'bundle', label: 'Bundle' },
   { id: 'signage', label: 'TV board' },
+  { id: 'featured', label: 'Featured' },
 ];
 
 function Section({
@@ -1638,6 +1639,23 @@ export function MenuItemEditorModal({
               />
               <span style={{ fontWeight: 600 }}>Feature on its own slide</span>
             </label>
+          </Section>
+          <Section id="featured" title="Featured on the menu" register={register}>
+            {/* Owner, 2026-09-21: "any specific category to show at the top of
+                the menu and order app?" This is it: ticked dishes lead both
+                menus under the heading set in Business Details. */}
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={form.is_featured}
+                onChange={(e) => set('is_featured', e.target.checked)}
+                data-testid="item-featured-toggle"
+              />
+              <span style={{ fontWeight: 600 }}>Featured: show at the top of the menu</span>
+            </label>
+            <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
+              Leads the website menu and the order app in a "Chef's picks" strip ahead of the categories. The dish stays in its own category too.
+            </p>
           </Section>
         </div>
       )}

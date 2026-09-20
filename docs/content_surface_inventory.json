@@ -376,12 +376,14 @@
                 "template": "(no website blade — Order App owns Menu)",
                 "keys": [
                     "menu_other_banner_image",
-                    "menu_events_banner_image"
+                    "menu_events_banner_image",
+                    "menu_featured_title"
                 ],
                 "notes": "No website Menu page renderer. menu_new_days is listed under reads_nowhere for website.",
                 "renderers": {
                     "menu_other_banner_image": "backend/resources/views/menu.blade.php",
-                    "menu_events_banner_image": "backend/resources/views/menu.blade.php"
+                    "menu_events_banner_image": "backend/resources/views/menu.blade.php",
+                    "menu_featured_title": "backend/resources/views/menu.blade.php"
                 }
             },
             "events_catering": {
@@ -1492,6 +1494,13 @@
                 "label": "Banner photo: Event & catering menu",
                 "group": "Menu",
                 "renderer": "backend/resources/views/menu.blade.php"
+            },
+            "menu_featured_title": {
+                "page": "menu",
+                "order": 3,
+                "label": "Featured items heading",
+                "group": "Menu",
+                "renderer": "backend/resources/views/menu.blade.php"
             }
         }
     },
@@ -1678,7 +1687,8 @@
                     "default_item_image",
                     "menu_new_days",
                     "menu_other_banner_image",
-                    "menu_events_banner_image"
+                    "menu_events_banner_image",
+                    "menu_featured_title"
                 ],
                 "notes": "menu_new_days is read on MenuViewPage (/view) and Signage, not MenuPage itself — still assigned to Menu as the product surface.",
                 "renderers": {
@@ -1686,7 +1696,8 @@
                     "default_item_image": "apps/online-order-web/src/pages/MenuPage.tsx",
                     "menu_new_days": "apps/online-order-web/src/pages/MenuPage.tsx",
                     "menu_other_banner_image": "apps/online-order-web/src/pages/MenuPage.tsx",
-                    "menu_events_banner_image": "apps/online-order-web/src/pages/MenuPage.tsx"
+                    "menu_events_banner_image": "apps/online-order-web/src/pages/MenuPage.tsx",
+                    "menu_featured_title": "apps/online-order-web/src/pages/MenuPage.tsx"
                 }
             },
             "ordering": {
@@ -2451,6 +2462,13 @@
                 "page": "menu",
                 "order": 5,
                 "label": "Banner photo: Event & catering menu",
+                "group": "Menu",
+                "renderer": "apps/online-order-web/src/pages/MenuPage.tsx"
+            },
+            "menu_featured_title": {
+                "page": "menu",
+                "order": 6,
+                "label": "Featured items heading",
                 "group": "Menu",
                 "renderer": "apps/online-order-web/src/pages/MenuPage.tsx"
             }

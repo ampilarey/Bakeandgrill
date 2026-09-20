@@ -1,6 +1,6 @@
 {
     "meta": {
-        "key_count": 179,
+        "key_count": 180,
         "apps": [
             "website",
             "order_app"
@@ -9,7 +9,7 @@
             "en",
             "dv"
         ],
-        "combinations": 716
+        "combinations": 720
     },
     "values": {
         "website": {
@@ -126,6 +126,7 @@
                 "logo_dark": "",
                 "maps_embed_url": "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3960.9!2d73.5093!3d4.1755!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNMKwMTAnMzEuOCJOIDczwrAzMCczMy41IkU!5e0!3m2!1sen!2s!4v1234567890",
                 "menu_events_banner_image": "",
+                "menu_featured_title": "Chef's picks",
                 "menu_new_days": "30",
                 "menu_other_banner_image": "",
                 "menu_page_title": "Our Complete Menu",
@@ -307,6 +308,7 @@
                 "logo_dark": "",
                 "maps_embed_url": "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3960.9!2d73.5093!3d4.1755!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNMKwMTAnMzEuOCJOIDczwrAzMCczMy41IkU!5e0!3m2!1sen!2s!4v1234567890",
                 "menu_events_banner_image": "",
+                "menu_featured_title": "Chef's picks",
                 "menu_new_days": "30",
                 "menu_other_banner_image": "",
                 "menu_page_title": "Our Complete Menu",
@@ -490,6 +492,7 @@
                 "logo_dark": "",
                 "maps_embed_url": "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3960.9!2d73.5093!3d4.1755!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNMKwMTAnMzEuOCJOIDczwrAzMCczMy41IkU!5e0!3m2!1sen!2s!4v1234567890",
                 "menu_events_banner_image": "",
+                "menu_featured_title": "Chef's picks",
                 "menu_new_days": "30",
                 "menu_other_banner_image": "",
                 "menu_page_title": "Our Complete Menu",
@@ -671,6 +674,7 @@
                 "logo_dark": "",
                 "maps_embed_url": "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3960.9!2d73.5093!3d4.1755!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNMKwMTAnMzEuOCJOIDczwrAzMCczMy41IkU!5e0!3m2!1sen!2s!4v1234567890",
                 "menu_events_banner_image": "",
+                "menu_featured_title": "Chef's picks",
                 "menu_new_days": "30",
                 "menu_other_banner_image": "",
                 "menu_page_title": "Our Complete Menu",

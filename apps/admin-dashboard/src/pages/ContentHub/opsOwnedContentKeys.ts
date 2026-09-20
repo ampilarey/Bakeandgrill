@@ -40,6 +40,7 @@ export const OPS_OWNED_CONTENT_KEYS = new Set([
   // Menu section banners: set in Business Details, read by both menus (2026-09-21).
   'menu_other_banner_image',
   'menu_events_banner_image',
+  'menu_featured_title',
 ]);
 
 export function isOpsOwnedContentKey(key: string): boolean {

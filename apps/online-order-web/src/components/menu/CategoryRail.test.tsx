@@ -204,6 +204,31 @@ describe('CategoryRail', () => {
     rerender(<CategoryRail categories={cats} activeCategoryId={1} onSelect={() => {}} />);
     expect(container.querySelector('[data-testid="cat-rail-other"]')).toBeNull();
   });
+
+  /** Owner, 2026-09-21: the hand-picked strip leads the menu, so its entry leads the rail. */
+  it('leads with the featured entry under the owner\'s heading, only when asked', () => {
+    const onFeaturedClick = vi.fn();
+    const { container, rerender } = render(
+      <CategoryRail
+        categories={cats}
+        activeCategoryId={1}
+        onSelect={() => {}}
+        showFeaturedPill
+        featuredLabel="Favourites"
+        onFeaturedClick={onFeaturedClick}
+        showCateringPill
+        onCateringClick={() => {}}
+      />,
+    );
+    const labels = Array.from(container.querySelectorAll('[role="tab"] .cat-rail__label')).map((el) => el.textContent?.trim());
+    expect(labels).toEqual(['Favourites', 'Breakfast Specials', 'Grills', 'Events']);
+
+    screen.getByRole('tab', { name: 'Favourites' }).click();
+    expect(onFeaturedClick).toHaveBeenCalledTimes(1);
+
+    rerender(<CategoryRail categories={cats} activeCategoryId={1} onSelect={() => {}} />);
+    expect(container.querySelector('[data-testid="cat-rail-featured"]')).toBeNull();
+  });
 });
 
 
