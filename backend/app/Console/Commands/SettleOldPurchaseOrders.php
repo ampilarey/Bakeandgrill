@@ -4,15 +4,14 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Models\Purchase;
+use App\Services\LegacyPurchaseSettlementService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Collection;
 
 /**
  * Mark purchase orders placed before payment tracking existed as paid.
  *
  * Owner, 2026-09-21: "Why i see owed to suppliers in suppliers page" — then
- * "i dont know" when asked how to clear it.
+ * "i dont know" when asked how to clear it, and "still same" after.
  *
  * Payment tracking shipped on 2026-09-21 and started every order at zero
  * paid, because there was nothing to read a history of payments from. So
@@ -20,11 +19,10 @@ use Illuminate\Support\Collection;
  * ago it was actually settled, and "Owed to suppliers" opens with a debt
  * the shop does not have.
  *
- * This shows that list and, only when asked twice, settles it. It does not
- * claim a payment that did not happen: the payment method is recorded as
- * `pre-system` and the reference says so, and the date is the order's own,
- * not today's. An order that really is still owed can be put back with
- * Record payment's undo on the order itself.
+ * This shows that list and, only when asked twice, settles it. The same
+ * work is a button on the payables card for anyone who would rather not
+ * open a terminal; both go through LegacyPurchaseSettlementService, so the
+ * list you are shown and the list that gets settled cannot drift apart.
  */
 class SettleOldPurchaseOrders extends Command
 {
@@ -35,32 +33,32 @@ class SettleOldPurchaseOrders extends Command
 
     protected $description = 'Settle purchase orders from before payment tracking existed, so "Owed to suppliers" starts from real debt';
 
-    /** The day paid_amount arrived, defaulting every existing order to nothing paid. */
-    public const TRACKING_STARTED = '2026-09-21';
+    /** The same names the card's button and the service use. */
+    public const TRACKING_STARTED = LegacyPurchaseSettlementService::TRACKING_STARTED;
 
-    public const METHOD = 'pre-system';
+    public const METHOD = LegacyPurchaseSettlementService::METHOD;
 
-    public const REFERENCE = 'Settled before payment tracking';
+    public const REFERENCE = LegacyPurchaseSettlementService::REFERENCE;
 
-    public function handle(): int
+    public function handle(LegacyPurchaseSettlementService $legacy): int
     {
-        $before = trim((string) ($this->option('before') ?: self::TRACKING_STARTED));
+        $raw = (string) $this->option('before');
         try {
-            $before = \Carbon\CarbonImmutable::parse($before)->startOfDay();
+            $before = $legacy->cutOff($raw);
         } catch (\Throwable) {
-            $this->error("Could not read a date from --before={$before}.");
+            $this->error("Could not read a date from --before={$raw}.");
 
             return self::FAILURE;
         }
 
-        // Order numbers, because that is what the list above and the screen
+        // Order numbers, because that is what the list below and the screen
         // both show; an id still works for anyone who has one.
         $except = collect(explode(',', (string) $this->option('except')))
             ->map(fn (string $ref) => trim($ref))
             ->filter()
             ->all();
 
-        $orders = $this->owing($before, $except);
+        $orders = $legacy->owing($before, $except);
 
         if ($orders->isEmpty()) {
             $this->info("Nothing owing on orders placed before {$before->toDateString()}. The card is already showing real debt.");
@@ -68,7 +66,7 @@ class SettleOldPurchaseOrders extends Command
             return self::SUCCESS;
         }
 
-        $this->report($orders, $before);
+        $this->report($legacy->summarise($orders), $before);
 
         if (!$this->option('apply')) {
             $this->newLine();
@@ -80,7 +78,7 @@ class SettleOldPurchaseOrders extends Command
             return self::SUCCESS;
         }
 
-        $settled = $this->settle($orders);
+        $settled = $legacy->settle($orders);
         $this->newLine();
         $this->info("Settled {$settled} order(s). \"Owed to suppliers\" now shows only what is really owed.");
         $this->line('Any of them still owing? Open the order and undo its payment.');
@@ -88,71 +86,28 @@ class SettleOldPurchaseOrders extends Command
         return self::SUCCESS;
     }
 
-    /**
-     * @param list<string> $except
-     * @return Collection<int, Purchase>
-     */
-    private function owing(\Carbon\CarbonImmutable $before, array $except): Collection
-    {
-        return Purchase::query()
-            ->with('supplier:id,name')
-            ->whereIn('status', Purchase::OWING_STATUSES)
-            ->whereColumn('paid_amount', '<', 'total')
-            ->whereDate('purchase_date', '<', $before->toDateString())
-            ->when($except !== [], fn ($q) => $q->where(function ($w) use ($except) {
-                $w->whereNotIn('purchase_number', $except)
-                    ->whereNotIn('id', array_map('intval', array_filter($except, 'ctype_digit')) ?: [0]);
-            }))
-            ->orderBy('purchase_date')
-            ->get()
-            ->filter(fn (Purchase $p) => (float) $p->owed > 0.0)
-            ->values();
-    }
-
-    /** @param Collection<int, Purchase> $orders */
-    private function report(Collection $orders, \Carbon\CarbonImmutable $before): void
+    /** @param array{total: float, orders: int, suppliers: list<array<string, mixed>>} $summary */
+    private function report(array $summary, \Carbon\CarbonImmutable $before): void
     {
         $this->line("Orders placed before {$before->toDateString()} that still show as owing:");
         $this->newLine();
 
-        $rows = $orders
-            ->groupBy(fn (Purchase $p) => $p->supplier?->name ?? (trim((string) $p->supplier_name_text) ?: 'Unknown shop'))
-            ->map(fn (Collection $group, string $name) => [
-                $name,
-                $group->count(),
-                number_format($group->sum(fn (Purchase $p) => (float) $p->owed), 2),
-                (string) $group->min(fn (Purchase $p) => $p->purchase_date?->toDateString()),
-                $group->sortBy('purchase_date')->first()->purchase_number,
-            ])
-            ->sortByDesc(fn (array $r) => (float) str_replace(',', '', $r[2]))
-            ->values()
-            ->all();
+        $this->table(
+            ['Supplier', 'Orders', 'Owed (MVR)', 'Oldest', 'Oldest order'],
+            array_map(fn (array $r) => [
+                $r['name'],
+                $r['orders'],
+                number_format((float) $r['owed'], 2),
+                (string) $r['oldest_date'],
+                $r['oldest_number'],
+            ], $summary['suppliers']),
+        );
 
-        $this->table(['Supplier', 'Orders', 'Owed (MVR)', 'Oldest', 'Oldest order'], $rows);
         $this->line(sprintf(
             'Total: MVR %s across %d order(s), %d supplier(s).',
-            number_format($orders->sum(fn (Purchase $p) => (float) $p->owed), 2),
-            $orders->count(),
-            count($rows),
+            number_format($summary['total'], 2),
+            $summary['orders'],
+            count($summary['suppliers']),
         ));
-    }
-
-    /** @param Collection<int, Purchase> $orders */
-    private function settle(Collection $orders): int
-    {
-        $settled = 0;
-        foreach ($orders as $order) {
-            $order->forceFill([
-                'paid_amount' => $order->total,
-                // The order's own date, never today's: this is a record of
-                // money that went out back then, not a payment made now.
-                'paid_at' => $order->purchase_date,
-                'payment_method' => self::METHOD,
-                'payment_ref' => self::REFERENCE,
-            ])->save();
-            $settled++;
-        }
-
-        return $settled;
     }
 }

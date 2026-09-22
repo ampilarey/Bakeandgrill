@@ -3,7 +3,8 @@ import { Link, useSearchParams } from 'react-router-dom';
 import {
   getSupplierPerformance, rateSupplier, getPriceComparison,
   fetchSuppliers, createSupplier, updateSupplier, deleteSupplier, fetchPayables,
-  type SupplierPerf, type Supplier, type PayableRow,
+  fetchLegacyPayables, settleLegacyPayables,
+  type SupplierPerf, type Supplier, type PayableRow, type LegacyPayables,
 } from '../api';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
@@ -36,11 +37,38 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
   // could not answer.
   const canSeeOwed = can('suppliers.purchases') || can('reports.financial');
   const [payables, setPayables] = useState<{ suppliers: PayableRow[]; total_owed: number; orders: number } | null>(null);
+  /*
+   * Owner, 2026-09-21, looking at 103 unpaid orders: "still same". Payment
+   * tracking started after every one of them, so none could ever have been
+   * marked paid. The card now says so, and offers to clear them.
+   */
+  const canSettleLegacy = can('suppliers.purchases');
+  const [legacy, setLegacy] = useState<LegacyPayables | null>(null);
+  const [legacyOpen, setLegacyOpen] = useState(false);
+  const [settling, setSettling] = useState(false);
+  const [settleMsg, setSettleMsg] = useState('');
+  const loadPayables = () => {
+    fetchPayables().then(setPayables).catch(() => setPayables(null));
+    fetchLegacyPayables().then(setLegacy).catch(() => setLegacy(null));
+  };
   useEffect(() => {
     if (!canSeeOwed) return;
-    fetchPayables().then(setPayables).catch(() => setPayables(null));
+    loadPayables();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canSeeOwed]);
+
+  const confirmSettleLegacy = async () => {
+    setSettling(true);
+    try {
+      const res = await settleLegacyPayables();
+      setSettleMsg(res.message);
+      loadPayables();
+    } catch (e) {
+      setSettleMsg(e instanceof Error ? e.message : 'Could not settle those orders.');
+    } finally {
+      setSettling(false);
+    }
+  };
   const [perfs, setPerfs]       = useState<SupplierPerf[]>([]);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState('');
@@ -245,6 +273,21 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
                 : 'Nothing owed. Every placed order is paid.'}
             </p>
           </div>
+          {canSettleLegacy && legacy && legacy.orders > 0 && (
+            <div
+              data-testid="legacy-payables-note"
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', margin: '0 0 12px', padding: '8px 10px', borderRadius: 8, background: 'var(--color-bg)', fontSize: 12.5, color: 'var(--color-text-secondary)' }}
+            >
+              <span>
+                <strong style={{ color: 'var(--color-text)' }}>{legacy.orders}</strong> of these
+                {' '}(MVR {legacy.total.toFixed(2)}) were placed before payment tracking started on {legacy.before},
+                so they could never be marked paid. They may not be money you still owe.
+              </span>
+              <Btn small variant="secondary" onClick={() => { setSettleMsg(''); setLegacyOpen(true); }} data-testid="legacy-payables-review">
+                Review and settle
+              </Btn>
+            </div>
+          )}
           {payables.suppliers.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {payables.suppliers.map((r) => (
@@ -261,6 +304,39 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
             </div>
           )}
         </Card>
+      )}
+
+      {legacyOpen && legacy && (
+        <Modal title="Settle orders from before payment tracking" onClose={() => setLegacyOpen(false)} maxWidth={560}>
+          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: '0 0 12px' }}>
+            Payment tracking started on {legacy.before}. Every order placed before then began at nothing paid,
+            because there was no record of payments to read, so each one still shows as owing however long ago
+            it was actually settled.
+          </p>
+          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: '0 0 12px' }}>
+            Settling marks them paid on their own order date, noted as “{'Settled before payment tracking'}”, so
+            anyone opening one later can see where the figure came from. Anything still genuinely owed can be put
+            back by opening that order and undoing its payment.
+          </p>
+          <div style={{ maxHeight: 220, overflowY: 'auto', border: '1px solid var(--color-border)', borderRadius: 8, padding: 10, marginBottom: 12 }}>
+            {legacy.suppliers.map((r) => (
+              <div key={r.name} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 13, padding: '3px 0' }}>
+                <span>{r.name}<span style={{ color: 'var(--color-text-muted)' }}> · {r.orders} order{r.orders === 1 ? '' : 's'}</span></span>
+                <strong style={{ fontVariantNumeric: 'tabular-nums' }}>MVR {r.owed.toFixed(2)}</strong>
+              </div>
+            ))}
+          </div>
+          <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 6px' }}>
+            Total to settle: MVR {legacy.total.toFixed(2)} across {legacy.orders} order{legacy.orders === 1 ? '' : 's'}.
+          </p>
+          {settleMsg && <p data-testid="legacy-payables-result" style={{ fontSize: 13, color: 'var(--color-primary)', margin: '0 0 6px' }}>{settleMsg}</p>}
+          <ModalActions>
+            <Btn variant="secondary" onClick={() => setLegacyOpen(false)}>Cancel</Btn>
+            <Btn onClick={() => void confirmSettleLegacy()} disabled={settling || legacy.orders === 0} data-testid="legacy-payables-confirm">
+              {settling ? 'Settling…' : `Settle ${legacy.orders} order${legacy.orders === 1 ? '' : 's'}`}
+            </Btn>
+          </ModalActions>
+        </Modal>
       )}
 
       {/* ── Suppliers directory ── */}

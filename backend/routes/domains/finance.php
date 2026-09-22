@@ -111,6 +111,15 @@ Route::middleware(['auth:sanctum', 'permission.any:suppliers.purchases,suppliers
     Route::get('/purchasing/suppliers/{id}/items', [App\Http\Controllers\Api\SupplierProfileController::class, 'items'])->whereNumber('id');
     // What is owed to whom (owner, 2026-09-21).
     Route::get('/purchasing/payables', [App\Http\Controllers\Api\SupplierProfileController::class, 'payables']);
+    // The orders that only look unpaid because tracking started after them
+    // (owner, 2026-09-21: "still same"). Reading it is the same permission
+    // as reading the card; clearing it needs the purchasing permission,
+    // since it writes money against every one of them.
+    Route::get('/purchasing/payables/legacy', [App\Http\Controllers\Api\LegacyPayablesController::class, 'show']);
+});
+
+Route::middleware(['auth:sanctum', 'permission:suppliers.purchases'])->group(function () {
+    Route::post('/purchasing/payables/legacy/settle', [App\Http\Controllers\Api\LegacyPayablesController::class, 'settle']);
 });
 
 // ─── Supplier Intelligence ─────────────────────────────────────────────────

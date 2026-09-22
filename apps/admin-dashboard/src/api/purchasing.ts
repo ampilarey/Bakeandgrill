@@ -206,6 +206,25 @@ export async function fetchPayables(): Promise<{ suppliers: PayableRow[]; total_
   return req('/purchasing/payables');
 }
 
+/**
+ * The slice of that debt which only looks unpaid because payment tracking
+ * started after those orders were placed (owner, 2026-09-21).
+ */
+export interface LegacyPayables {
+  before: string;
+  total: number;
+  orders: number;
+  suppliers: Omit<PayableRow, 'supplier_id'>[];
+}
+
+export async function fetchLegacyPayables(): Promise<LegacyPayables> {
+  return req('/purchasing/payables/legacy');
+}
+
+export async function settleLegacyPayables(data: { before?: string; except?: string[] } = {}): Promise<{ message: string; settled: number; total: number }> {
+  return req('/purchasing/payables/legacy/settle', { method: 'POST', body: JSON.stringify(data) });
+}
+
 export type PurchasePaymentMethod = 'cash' | 'transfer' | 'other';
 
 /** Record money out against an order. No amount means the rest of it. */
