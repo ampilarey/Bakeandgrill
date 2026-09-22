@@ -47,13 +47,15 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
   const [legacyOpen, setLegacyOpen] = useState(false);
   const [settling, setSettling] = useState(false);
   const [settleMsg, setSettleMsg] = useState('');
-  const loadPayables = () => {
-    fetchPayables().then(setPayables).catch(() => setPayables(null));
-    fetchLegacyPayables().then(setLegacy).catch(() => setLegacy(null));
+  const loadPayables = async () => {
+    await Promise.all([
+      fetchPayables().then(setPayables).catch(() => setPayables(null)),
+      fetchLegacyPayables().then(setLegacy).catch(() => setLegacy(null)),
+    ]);
   };
   useEffect(() => {
     if (!canSeeOwed) return;
-    loadPayables();
+    void loadPayables();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canSeeOwed]);
 
@@ -62,7 +64,7 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
     try {
       const res = await settleLegacyPayables();
       setSettleMsg(res.message);
-      loadPayables();
+      void loadPayables();
     } catch (e) {
       setSettleMsg(e instanceof Error ? e.message : 'Could not settle those orders.');
     } finally {
@@ -176,6 +178,21 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
     finally { setLoading(false); }
   };
 
+  /*
+   * Owner, 2026-09-22: "Refresh doesn't work." It reloaded the performance
+   * figures only — not the supplier list, and not the "Owed to suppliers"
+   * card, which are the two things actually on the screen. Pressing it
+   * after settling a supplier's orders left the old total sitting there,
+   * so the button looked broken because for anything you could see, it was.
+   */
+  const refreshAll = async () => {
+    await Promise.all([
+      load(),
+      loadSuppliers(),
+      canSeeOwed ? loadPayables() : Promise.resolve(),
+    ]);
+  };
+
   useEffect(() => { void load(); void loadSuppliers(); }, []);
 
   // The supplier page's Edit button lands here with ?edit=ID.
@@ -244,7 +261,7 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
       <Btn variant="secondary" onClick={() => { setShowCompare(true); setCompareItem(null); setCompareData(null); }}>
         ⚖ Price Compare
       </Btn>
-      <Btn onClick={load} variant="secondary">↻ Refresh</Btn>
+      <Btn onClick={() => void refreshAll()} variant="secondary" data-testid="suppliers-refresh">↻ Refresh</Btn>
     </div>
   );
 
@@ -298,7 +315,11 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
                       : <span style={{ fontWeight: 600 }}>{r.name}</span>}
                     <span style={{ color: 'var(--color-text-muted)' }}> · {r.orders} order{r.orders === 1 ? '' : 's'}{r.oldest_date ? `, oldest ${r.oldest_number} on ${r.oldest_date}` : ''}</span>
                   </span>
-                  <strong style={{ fontVariantNumeric: 'tabular-nums' }}>MVR {r.owed.toFixed(2)}</strong>
+                  {/* marginLeft auto, not just space-between: on a phone the
+                      row wraps and the amount lands on its own line, where
+                      space-between puts it at the left margin under the name
+                      (owner's screenshot, 2026-09-22). */}
+                  <strong style={{ fontVariantNumeric: 'tabular-nums', marginLeft: 'auto' }}>MVR {r.owed.toFixed(2)}</strong>
                 </div>
               ))}
             </div>
