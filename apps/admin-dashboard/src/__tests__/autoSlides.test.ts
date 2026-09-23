@@ -68,7 +68,7 @@ describe('qualifiesForShowcase', () => {
       [item(1, { name_dv: 'އައިޓަމް' })],
       [{ id: 1, name: 'Burgers', name_dv: 'ބާގަރ' }],
     );
-    const title = out[0].elements?.find((e) => e.type === 'text');
+    const title = out[0].elements?.find((e) => e.type === 'text' && e.id.endsWith('-title'));
     expect(title?.text).toBe('Burgers');
     expect(title?.text_dv).toBe('ބާގަރ');
   });
@@ -96,7 +96,43 @@ describe('expandAutoSlides', () => {
     const out = expandAutoSlides(autoSlide(), items, CATEGORIES);
 
     expect(showcaseIds(out)).toEqual(['auto-sc-2', 'auto-sc-1']); // special sorts first
-    expect(listedIds(out).sort()).toEqual([3, 4]);
+    // Layout pass, 2026-09-23: every item is listed under its category — a
+    // showcase is extra, not instead.
+    expect(listedIds(out).sort()).toEqual([1, 2, 3, 4]);
+  });
+
+  it('lists a photographed item on its category slide even when it also gets a showcase', () => {
+    const out = expandAutoSlides(autoSlide(), [item(1, { image_url: '/a.jpg' }), item(2)], CATEGORIES);
+    expect(showcaseIds(out)).toEqual(['auto-sc-1']);
+    expect(listedIds(out)).toEqual([1, 2]);
+  });
+
+  it('always showcases the items with a reason and fills the rest of the cap with photos', () => {
+    const items = [
+      ...Array.from({ length: 10 }, (_, i) => item(i + 1, { image_url: `/${i}.jpg` })),
+      item(50, { special: { effective_price: 8 } }),
+      item(51, { is_featured: true }),
+    ];
+    const loop0 = showcaseIds(expandAutoSlides(autoSlide({ showcase_cap: 4 }), items, CATEGORIES, 0));
+    const loop1 = showcaseIds(expandAutoSlides(autoSlide({ showcase_cap: 4 }), items, CATEGORIES, 1));
+    expect(loop0.slice(0, 2)).toEqual(['auto-sc-50', 'auto-sc-51']);
+    expect(loop1.slice(0, 2)).toEqual(['auto-sc-50', 'auto-sc-51']);
+    expect(loop0).toHaveLength(4);
+    expect(loop0.slice(2)).not.toEqual(loop1.slice(2));
+  });
+
+  it('puts the parent category over the title and shows thumbnails unless switched off', () => {
+    const cats = [
+      { id: 10, name: 'Food' },
+      { id: 11, name: 'Shorteats', parent_id: 10 },
+    ];
+    const out = expandAutoSlides(autoSlide(), [item(1, { category_id: 11 })], cats);
+    const texts = out[0].elements?.filter((e) => e.type === 'text').map((e) => e.text);
+    expect(texts).toEqual(['Food', 'Shorteats']);
+    expect(out[0].elements?.find((e) => e.type === 'menu_list')?.style?.showThumbs).toBe(true);
+
+    const off = expandAutoSlides(autoSlide({ show_thumbs: false }), [item(1, { category_id: 11 })], cats);
+    expect(off[0].elements?.find((e) => e.type === 'menu_list')?.style?.showThumbs).toBe(false);
   });
 
   it('excludes sold-out items from showcase and category lists', () => {
@@ -108,7 +144,7 @@ describe('expandAutoSlides', () => {
     ];
     const out = expandAutoSlides(autoSlide(), items, CATEGORIES);
     expect(showcaseIds(out)).toEqual(['auto-sc-3']);
-    expect(listedIds(out)).toEqual([4]);
+    expect(listedIds(out)).toEqual([3, 4]);
   });
 
   it('excludes items flagged off the board', () => {

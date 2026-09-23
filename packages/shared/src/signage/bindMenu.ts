@@ -34,6 +34,9 @@ export function resolveBoundItems(
               name_dv: b.name_dv ?? null,
               base_price: b.base_price,
               image_url: b.image_url,
+              thumb_url: b.thumb_url ?? null,
+              image_webp_url: b.image_webp_url ?? null,
+              thumb_webp_url: b.thumb_webp_url ?? null,
               short_description: b.short_description,
               sales_30d: b.sales_30d,
             }))

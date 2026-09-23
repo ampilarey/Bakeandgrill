@@ -26,10 +26,11 @@ export {
   isOnSignage,
   isSoldOutOnSignage,
   qualifiesForShowcase,
+  showcaseReason,
   rotateWindow,
 } from './autoSlides';
 
-export { interpolate, buildWeightedRotation } from './interpolate';
+export { interpolate, tidyInterpolated, buildWeightedRotation } from './interpolate';
 export { resolveBoundItems, formatPrice, slideHasContent, pruneEmptySlides } from './bindMenu';
 export { SlideCanvas } from './SlideCanvas';
 export type { SlideCanvasProps } from './SlideCanvas';

@@ -115,7 +115,7 @@ class SignageItemFlagsTest extends TestCase
         $slide = \App\Domains\Signage\Services\SignageTemplateFactory::template('auto_menu');
         $binding = $slide['elements'][0]['binding'] ?? [];
 
-        $this->assertSame(12, $binding['showcase_cap']);
+        $this->assertSame(6, $binding['showcase_cap']);
         $this->assertSame(14, $binding['rows_per_slide']);
         $this->assertArrayHasKey('showcase_seconds', $binding);
         $this->assertArrayHasKey('category_seconds', $binding);

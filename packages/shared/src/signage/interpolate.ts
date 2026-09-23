@@ -7,6 +7,21 @@ export function interpolate(text: string | null | undefined, vars: Record<string
   });
 }
 
+/**
+ * Drop the pieces of a " · " separated line that came out empty.
+ *
+ * "Wi‑Fi: {{wifi_name}} · {{wifi_password}}" with nothing set rendered as
+ * "Wi‑Fi: ·" on the QR slide. A piece that is blank, or a bare label with
+ * nothing after its colon, is left out; so is the line when nothing is left.
+ */
+export function tidyInterpolated(text: string): string {
+  if (!text.includes('·')) return text;
+  return text
+    .split(/\s*·\s*/)
+    .filter((piece) => piece.trim() !== '' && !/:\s*$/.test(piece))
+    .join(' · ');
+}
+
 export function buildWeightedRotation(slides: Array<{ id: string; weight?: number }>): string[] {
   const weights: Record<string, number> = {};
   for (const s of slides) {

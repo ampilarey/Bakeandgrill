@@ -204,11 +204,11 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
           style: { fontSize: 6, fontWeight: 800, color: '#FFF8F0', textAlign: 'center' },
           animation: { entrance: 'fade' },
           binding: {
-            showcase_cap: 12,
+            showcase_cap: 6,
             rows_per_slide: 14,
             showcase_seconds: 10,
             category_seconds: 14,
-            show_thumbs: false,
+            show_thumbs: true,
             ...patch,
           },
         }];
@@ -527,7 +527,7 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
                     max={60}
                     data-testid="auto-showcase-cap"
                     style={input}
-                    value={Number(autoBinding.showcase_cap ?? 12)}
+                    value={Number(autoBinding.showcase_cap ?? 6)}
                     onChange={(e) => patchAutoBinding({ showcase_cap: Math.max(1, Number(e.target.value) || 1) })}
                   />
                 </div>
@@ -572,7 +572,7 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
                 <input
                   type="checkbox"
                   data-testid="auto-show-thumbs"
-                  checked={autoBinding.show_thumbs === true}
+                  checked={autoBinding.show_thumbs !== false}
                   onChange={(e) => patchAutoBinding({ show_thumbs: e.target.checked })}
                   style={{ width: 18, height: 18 }}
                 />

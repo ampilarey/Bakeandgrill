@@ -74,19 +74,20 @@ describe('auto menu expansion parity (order app)', () => {
   it('expands one auto_menu entry into the same slides in both apps', () => {
     const expanded = expandAutoSlides(PARITY_AUTO_SLIDE, PARITY_AUTO_ITEMS, PARITY_CATEGORIES, 0);
 
-    // Photographed + discounted items earn showcase slides; the plain one is
-    // listed. Category 2 produces no list slide because its only item is a
-    // showcase, and the opted-out item appears nowhere.
+    // Every item is listed under its category; the discounted and the
+    // photographed one also earn showcase slides, spread through the lists.
+    // The opted-out item appears nowhere.
     expect(expanded.map((s) => s.id)).toEqual([
-      'auto-sc-22',
-      'auto-sc-21',
       'auto-cat-1-0',
+      'auto-sc-22',
+      'auto-cat-2-0',
+      'auto-sc-21',
     ]);
 
     const config = parityConfig('landscape');
     render(
       <SlideCanvas
-        slide={expanded[0]}
+        slide={expanded[1]}
         theme={PARITY_THEME}
         variables={PARITY_VARIABLES}
         items={PARITY_AUTO_ITEMS}

@@ -1,8 +1,8 @@
-import { Component, type CSSProperties, type ErrorInfo, type ImgHTMLAttributes, type ReactNode, useMemo } from 'react';
+import { Component, type CSSProperties, type ErrorInfo, type ImgHTMLAttributes, type ReactNode, useMemo, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { formatPrice, resolveBoundItems } from './bindMenu';
 import { EmergencyIcon } from './emergencyIcons';
-import { interpolate } from './interpolate';
+import { interpolate, tidyInterpolated } from './interpolate';
 import type { MenuItemLite, SignageConfig, SignageElement, SignageSlide, SignageTheme } from './types';
 
 function PictureImg({
@@ -37,6 +37,68 @@ function DvName({ text, className, style }: { text?: string | null; className: s
 /** How wide the brand mark sits across the code — the same as the printed codes. */
 const QR_SIZE = 300;
 const QR_LOGO_RATIO = 0.26;
+
+function isNewItem(item: MenuItemLite, days: number): boolean {
+  if (!item.created_at || !(days > 0)) return false;
+  const t = new Date(item.created_at).getTime();
+  return Number.isFinite(t) && Date.now() - t <= days * 86400000;
+}
+
+/**
+ * The pill on a showcase card: why this dish has a slide of its own.
+ * A special leads with its saving; the others say what the owner ticked.
+ */
+export function cardBadge(item: MenuItemLite, config: SignageConfig): string | null {
+  const special = item.special;
+  if (special) return special.discount_pct ? `${special.discount_pct}% OFF` : 'SPECIAL';
+  if (item.is_signage_promoted === true) return 'FEATURED';
+  if (item.is_featured === true) return "CHEF'S PICK";
+  if (isNewItem(item, config.menu_new_days)) return 'NEW';
+  return null;
+}
+
+/**
+ * Row type size that fills a list box, in vmin.
+ *
+ * Layout pass, 2026-09-23: eight bestsellers in a box meant for fourteen
+ * sat in the top third of the screen over a dark void. Rows now stretch
+ * to the box, and the type follows the row height — bigger for a short
+ * list, smaller for a long one — inside sane bounds.
+ */
+export function fitListFontSize(boxHeightPct: number, rows: number, columns: number, requested?: number): number {
+  const perColumn = Math.max(1, Math.ceil(Math.max(1, rows) / Math.max(1, columns)));
+  const rowHeight = Math.max(1, boxHeightPct) / perColumn;
+  const fit = Math.min(4.6, Math.max(2, rowHeight * 0.36));
+  return requested != null && Number.isFinite(requested) && requested > 0 ? Math.max(Math.min(requested, fit), Math.min(fit, 2)) : fit;
+}
+
+/**
+ * The showcase card: photo beside the words (`split`), or the words under
+ * a round photo. A photo that fails to load drops the card back to words
+ * alone rather than leaving a broken frame on the screen.
+ */
+function ShowcaseCard({ item, split, children }: { item: MenuItemLite; split: boolean; children: ReactNode }) {
+  const [broken, setBroken] = useState(false);
+  const photo = !broken && item.image_url ? item.image_url : null;
+  const onError = () => setBroken(true);
+
+  if (split && photo) {
+    return (
+      <div className="signage-card signage-card--split" data-layout="split">
+        <PictureImg src={photo} webpSrc={item.image_webp_url} alt="" className="signage-card-photo" onError={onError} />
+        <div className="signage-card-words signage-card-words--left">{children}</div>
+      </div>
+    );
+  }
+  return (
+    <div className="signage-card signage-card--stack">
+      {photo ? (
+        <PictureImg src={photo} webpSrc={item.image_webp_url} alt="" className="signage-card-photo signage-card-photo--round" onError={onError} />
+      ) : null}
+      <div className="signage-card-words">{children}</div>
+    </div>
+  );
+}
 
 class ElementBoundary extends Component<{ children: ReactNode }, { err: boolean }> {
   state = { err: false };
@@ -132,7 +194,7 @@ function SignageEl({
     case 'variable':
       body = (
         <div className="signage-text" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '0.6em' }}>
-          {interpolate(el.text || String(el.binding?.text ?? ''), variables)}
+          {tidyInterpolated(interpolate(el.text || String(el.binding?.text ?? ''), variables))}
           <DvName text={el.text_dv} className="signage-text-dv" />
         </div>
       );
@@ -224,7 +286,7 @@ function SignageEl({
           data-url={abs}
           role="img"
           aria-label="QR code"
-          style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff' }}
+          style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff', borderRadius: '2.4vmin', padding: '2%', boxSizing: 'border-box', boxShadow: '0 1.2vmin 4vmin rgba(0,0,0,0.45)' }}
         >
           <QRCodeSVG
             value={abs}
@@ -243,29 +305,65 @@ function SignageEl({
     case 'menu_list': {
       const list = resolveBoundItems(el, items, config);
       const cols = Number(style.columns ?? 2) || 2;
+      const ranked = Boolean(style.rank) || String(el.binding?.smart_type ?? '') === 'bestsellers';
+      // Smart lists (offers, bestsellers, new) show photos unless told not to;
+      // a hand-designed list keeps its own switch.
+      const showThumbs = style.showThumbs != null ? Boolean(style.showThumbs) : String(el.binding?.type ?? '') === 'smart';
+      const fontSize = fitListFontSize(el.h, list.length, cols, style.fontSize as number | undefined);
+      const anyThumb = showThumbs && list.some((i) => i.thumb_url || i.image_url);
+      // A handful of rows sits under the title; a full page spreads evenly.
+      const perColumn = Math.ceil(list.length / cols);
+      const spread = perColumn > 3;
       body = (
-        <div className="signage-menu-list" style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: '0.6vmin 2vmin', width: '100%', height: '100%', alignContent: 'start' }}>
-          {list.map((item) => {
-            const thumb = style.showThumbs ? (item.thumb_url ?? item.image_url) : null;
-            const thumbWebp = style.showThumbs ? (item.thumb_webp_url ?? item.image_webp_url) : null;
+        <div
+          className="signage-menu-list"
+          data-rows={list.length}
+          style={{
+            display: 'grid',
+            gridTemplateColumns: `repeat(${cols}, 1fr)`,
+            gridAutoFlow: 'row',
+            gridAutoRows: spread ? '1fr' : 'auto',
+            columnGap: '3vmin',
+            rowGap: spread ? 0 : '0.6em',
+            width: '100%',
+            height: '100%',
+            alignContent: spread ? 'stretch' : 'start',
+            alignItems: 'center',
+            fontSize: `${fontSize}vmin`,
+          }}
+        >
+          {list.map((item, index) => {
+            const thumb = showThumbs ? (item.thumb_url ?? item.image_url) : null;
+            const thumbWebp = showThumbs ? (item.thumb_webp_url ?? item.image_webp_url) : null;
+            const special = item.special ?? null;
+            const now = Number(special?.effective_price ?? item.base_price);
+            const was = Number(special?.original_price ?? 0);
             return (
-              <div key={item.id} className="signage-menu-row" style={{ display: 'flex', justifyContent: 'space-between', gap: '1vmin', borderBottom: '1px solid rgba(255,255,255,0.12)', padding: '0.4vmin 0', alignItems: 'center' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '1vmin', minWidth: 0 }}>
-                  {thumb ? (
-                    <PictureImg
-                      src={thumb}
-                      webpSrc={thumbWebp}
-                      alt=""
-                      data-testid="signage-row-thumb"
-                      style={{ width: '3.4vmin', height: '3.4vmin', objectFit: 'cover', borderRadius: '50%', flex: '0 0 auto' }}
-                    />
-                  ) : null}
-                  <span style={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
+              <div key={item.id} className="signage-menu-row">
+                {ranked ? <span className="signage-row-rank" style={{ color: theme.primary }}>{index + 1}</span> : null}
+                {anyThumb ? (
+                  <span className="signage-row-thumb-slot">
+                    {thumb ? (
+                      <PictureImg
+                        src={thumb}
+                        webpSrc={thumbWebp}
+                        alt=""
+                        data-testid="signage-row-thumb"
+                        className="signage-row-thumb"
+                        onError={(e) => { (e.target as HTMLImageElement).style.visibility = 'hidden'; }}
+                      />
+                    ) : null}
+                  </span>
+                ) : null}
+                <span className="signage-row-name">
+                  <span className="signage-row-name-en">{item.name}</span>
                   <DvName text={item.name_dv} className="signage-row-dv" />
                 </span>
-                <span style={{ color: theme.primary, fontWeight: 800, whiteSpace: 'nowrap' }}>
-                  {formatPrice(Number(item.special?.effective_price ?? item.base_price))}
-                </span>
+                <span className="signage-row-leader" aria-hidden="true" />
+                {special && was > now ? (
+                  <span className="signage-row-was" data-testid="signage-row-was" style={{ color: theme.muted }}>{formatPrice(was)}</span>
+                ) : null}
+                <span className="signage-row-price" style={{ color: theme.primary }}>{formatPrice(now)}</span>
               </div>
             );
           })}
@@ -279,46 +377,38 @@ function SignageEl({
       const special = item?.special ?? null;
       const wasPrice = Number(special?.original_price ?? item?.base_price ?? 0);
       const nowPrice = Number(special?.effective_price ?? item?.base_price ?? 0);
-      const badge = special
-        ? (special.discount_pct ? `${special.discount_pct}% OFF` : 'SPECIAL')
-        : null;
-      body = item ? (
-        <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', gap: '0.8vmin', alignItems: 'center', justifyContent: 'center' }}>
-          {item.image_url ? (
-            <PictureImg
-              src={item.image_url}
-              webpSrc={item.image_webp_url}
-              alt=""
-              style={{ flex: 1, minHeight: 0, objectFit: 'cover', borderRadius: '50%', aspectRatio: '1' }}
-            />
-          ) : null}
-          {badge && style.showBadge ? (
-            <div
-              data-testid="signage-special-badge"
-              style={{ background: theme.primary, color: '#1C1408', fontWeight: 800, borderRadius: '99vmin', padding: '0.3vmin 1.6vmin', fontSize: '0.55em', letterSpacing: '0.08em' }}
-            >
-              {badge}
-            </div>
-          ) : null}
-          <div style={{ fontWeight: 800, textAlign: 'center' }}>{item.name}</div>
+      const badge = item ? cardBadge(item, config) : null;
+      const eyebrow = typeof style.eyebrow === 'string' ? style.eyebrow.trim() : '';
+      const pill = badge && style.showBadge ? (
+        <div
+          className="signage-card-badge"
+          data-testid="signage-special-badge"
+          style={{ background: theme.primary, color: '#1C1408' }}
+        >
+          {badge}
+        </div>
+      ) : null;
+      const words = item ? (
+        <>
+          {eyebrow ? <div className="signage-card-eyebrow" style={{ color: theme.primary }}>{eyebrow}</div> : null}
+          {pill}
+          <div className="signage-card-name" style={{ fontFamily: theme.font_display || 'var(--font-display)' }}>{item.name}</div>
           <DvName text={item.name_dv} className="signage-card-dv" style={{ color: theme.muted }} />
           {style.showDescription && item.short_description ? (
-            <div style={{ fontSize: '0.5em', color: theme.muted, textAlign: 'center', maxWidth: '80%' }}>
-              {item.short_description}
-            </div>
+            <div className="signage-card-desc" style={{ color: theme.muted }}>{item.short_description}</div>
           ) : null}
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '1.2vmin' }}>
+          <div className="signage-card-prices">
             {special && wasPrice > nowPrice ? (
-              <span
-                data-testid="signage-was-price"
-                style={{ color: theme.muted, textDecoration: 'line-through', fontSize: '0.62em' }}
-              >
+              <span data-testid="signage-was-price" className="signage-card-was" style={{ color: theme.muted, textDecoration: 'line-through' }}>
                 {formatPrice(wasPrice)}
               </span>
             ) : null}
-            <span style={{ color: theme.primary, fontWeight: 800 }}>{formatPrice(nowPrice)}</span>
+            <span className="signage-card-price" style={{ color: theme.primary }}>{formatPrice(nowPrice)}</span>
           </div>
-        </div>
+        </>
+      ) : null;
+      body = item ? (
+        <ShowcaseCard item={item} split={style.layout === 'split'}>{words}</ShowcaseCard>
       ) : null;
       break;
     }
@@ -359,9 +449,11 @@ export function SlideCanvas({
     [slide.elements],
   );
 
+  const solid = !slide.background?.type || slide.background.type === 'solid';
+
   return (
     <div
-      className={`signage-slide-canvas${preview ? ' is-preview' : ''}`}
+      className={`signage-slide-canvas${preview ? ' is-preview' : ''}${solid ? ' has-solid-bg' : ''}`}
       data-testid="signage-slide-canvas"
       data-slide-id={slide.id}
       style={{
@@ -371,6 +463,7 @@ export function SlideCanvas({
         overflow: 'hidden',
         color: theme.text || '#FFF8F0',
         fontFamily: theme.font_body || 'var(--font-ui)',
+        ['--signage-primary' as string]: theme.primary || '#D4813A',
         ...bgStyle(slide, theme),
       }}
     >

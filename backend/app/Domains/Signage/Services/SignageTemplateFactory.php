@@ -56,7 +56,7 @@ final class SignageTemplateFactory
     }
 
     /**
-     * @param  array<string, mixed>  $opts
+     * @param array<string, mixed> $opts
      * @return array<string, mixed>
      */
     public static function template(string $key, array $opts = []): array
@@ -189,11 +189,11 @@ final class SignageTemplateFactory
                     'text' => (string) ($fields['title'] ?? 'Our menu'),
                     'style' => ['fontSize' => 6, 'fontWeight' => 800, 'color' => '#FFF8F0', 'textAlign' => 'center'],
                     'binding' => [
-                        'showcase_cap' => (int) ($fields['showcase_cap'] ?? 12),
+                        'showcase_cap' => (int) ($fields['showcase_cap'] ?? 6),
                         'rows_per_slide' => (int) ($fields['rows_per_slide'] ?? 14),
                         'showcase_seconds' => (int) ($fields['showcase_seconds'] ?? 10),
                         'category_seconds' => (int) ($fields['category_seconds'] ?? 14),
-                        'show_thumbs' => (bool) ($fields['show_thumbs'] ?? false),
+                        'show_thumbs' => (bool) ($fields['show_thumbs'] ?? true),
                     ],
                 ]),
             ],
@@ -243,7 +243,7 @@ final class SignageTemplateFactory
     }
 
     /**
-     * @param  array<string, mixed>  $opts
+     * @param array<string, mixed> $opts
      * @return array<string, mixed>
      */
     public static function smartSlide(string $smartType, array $opts = []): array
@@ -265,7 +265,7 @@ final class SignageTemplateFactory
     }
 
     /**
-     * @param  array<string, mixed>  $opts  title, body, title_dv, body_dv, layout, reopen_at, media_type, media_url, icon
+     * @param array<string, mixed> $opts title, body, title_dv, body_dv, layout, reopen_at, media_type, media_url, icon
      * @return array<string, mixed>
      */
     public static function emergencySlide(string $mode, array $opts = []): array
@@ -276,13 +276,13 @@ final class SignageTemplateFactory
         $titleDv = (string) ($opts['title_dv'] ?? '');
         $bodyDv = (string) ($opts['body_dv'] ?? '');
         $layout = (string) ($opts['layout'] ?? SignageEmergencyNormalizer::defaultLayoutForMode($mode));
-        if (! in_array($layout, SignageEmergencyNormalizer::LAYOUTS, true)) {
+        if (!in_array($layout, SignageEmergencyNormalizer::LAYOUTS, true)) {
             $layout = SignageEmergencyNormalizer::defaultLayoutForMode($mode);
         }
         $reopenAt = isset($opts['reopen_at']) && is_string($opts['reopen_at']) ? $opts['reopen_at'] : null;
 
         $mediaType = (string) ($opts['media_type'] ?? 'none');
-        if (! in_array($mediaType, SignageEmergencyNormalizer::MEDIA_TYPES, true)) {
+        if (!in_array($mediaType, SignageEmergencyNormalizer::MEDIA_TYPES, true)) {
             $mediaType = 'none';
         }
         $isFireAlarm = $mode === 'fire_alarm';
@@ -291,7 +291,7 @@ final class SignageTemplateFactory
         }
         $mediaUrl = is_string($opts['media_url'] ?? null) ? trim((string) $opts['media_url']) : '';
         $icon = (string) ($opts['icon'] ?? SignageEmergencyNormalizer::defaultIconForMode($mode));
-        if (! in_array($icon, SignageEmergencyNormalizer::ICONS, true)) {
+        if (!in_array($icon, SignageEmergencyNormalizer::ICONS, true)) {
             $icon = SignageEmergencyNormalizer::defaultIconForMode($mode);
         }
 
@@ -460,7 +460,7 @@ final class SignageTemplateFactory
                     'style' => ['fontSize' => 3.8, 'color' => '#FFF8F0', 'textAlign' => 'center'],
                 ]);
             }
-            if ($mediaEl === null && ! $isFireAlarm && $layout === 'notice') {
+            if ($mediaEl === null && !$isFireAlarm && $layout === 'notice') {
                 $elements[] = self::el('logo', 78, 8, 16, 14, [
                     'animation' => ['entrance' => 'fade', 'duration' => 600],
                 ]);
@@ -568,7 +568,7 @@ final class SignageTemplateFactory
     }
 
     /**
-     * @param  array<string, mixed>  $extra
+     * @param array<string, mixed> $extra
      * @return array<string, mixed>
      */
     private static function el(string $type, float $x, float $y, float $w, float $h, array $extra = []): array

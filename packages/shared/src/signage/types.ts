@@ -169,6 +169,9 @@ export type SignageConfig = {
     name_dv?: string | null;
     base_price: number;
     image_url?: string | null;
+    thumb_url?: string | null;
+    image_webp_url?: string | null;
+    thumb_webp_url?: string | null;
     short_description?: string | null;
     sales_30d?: number;
   }>;
@@ -212,4 +215,6 @@ export type SignageCategoryLite = {
   id: number;
   name: string;
   name_dv?: string | null;
+  /** Parent category, shown as the eyebrow over a category slide's title. */
+  parent_id?: number | null;
 };

@@ -8,21 +8,32 @@ import type {
 /** `template_origin` marking a playlist entry that expands into generated slides. */
 export const AUTO_MENU_ORIGIN = 'auto_menu';
 
-const DEFAULT_SHOWCASE_CAP = 12;
+const DEFAULT_SHOWCASE_CAP = 6;
 const DEFAULT_ROWS_PER_SLIDE = 14;
 const DEFAULT_SHOWCASE_SECONDS = 10;
 const DEFAULT_CATEGORY_SECONDS = 14;
 
 /**
- * An item earns a full-screen showcase slide when it has something to show:
- * a photo, an active special, a Chef's pick, or an explicit promoted flag.
- * Everything else is listed as a row on a category slide.
+ * Why an item gets a full-screen showcase slide of its own.
+ *
+ * Layout pass, 2026-09-23: a photo alone used to be a reason, and once
+ * every dish had a photo the board was nothing but showcase slides — no
+ * category list anywhere, and a loop of a dozen close-ups before the
+ * prices came round. Now every item is listed on its category slide with
+ * its photo as a thumbnail, and a showcase is earned by a special, a
+ * Chef's pick or the promoted flag. Photographed items still take turns
+ * in whatever room the cap leaves, so the close-ups keep coming.
  */
+export function showcaseReason(item: MenuItemLite): 'special' | 'featured' | 'promoted' | null {
+  if (item.special) return 'special';
+  if (item.is_signage_promoted === true) return 'promoted';
+  if (item.is_featured === true) return 'featured';
+  return null;
+}
+
+/** An item can appear on a showcase slide: it has a reason, or at least a photo. */
 export function qualifiesForShowcase(item: MenuItemLite): boolean {
-  return Boolean(item.image_url)
-    || Boolean(item.special)
-    || item.is_featured === true
-    || item.is_signage_promoted === true;
+  return showcaseReason(item) !== null || Boolean(item.image_url);
 }
 
 /** `show_on_signage` is opt-out: undefined/null means the item is on the board. */
@@ -40,12 +51,12 @@ export function isSoldOutOnSignage(item: MenuItemLite): boolean {
 }
 
 function showcaseRank(item: MenuItemLite): number {
-  if (item.special) return 0;
-  if (item.is_signage_promoted) return 1;
-  // The picks the owner curates for the menu come before a mere photo
-  // (signage audit, 2026-09-23: they were not on the board at all).
-  if (item.is_featured) return 2;
-  return 3;
+  switch (showcaseReason(item)) {
+    case 'special': return 0;
+    case 'promoted': return 1;
+    case 'featured': return 2;
+    default: return 3;
+  }
 }
 
 /** Specials, then promoted, then Chef's picks, then best-selling, then name. Total order — stable. */
@@ -109,7 +120,12 @@ function el(
   };
 }
 
-function showcaseSlide(item: MenuItemLite, source: SignageSlide, seconds: number): SignageSlide {
+function showcaseSlide(
+  item: MenuItemLite,
+  categoryName: string | null,
+  source: SignageSlide,
+  seconds: number,
+): SignageSlide {
   return {
     id: `auto-sc-${item.id}`,
     name: item.name,
@@ -122,14 +138,21 @@ function showcaseSlide(item: MenuItemLite, source: SignageSlide, seconds: number
     background: source.background ?? { type: 'solid', value: '#1C1408', opacity: 1 },
     template_origin: `${AUTO_MENU_ORIGIN}:showcase`,
     elements: [
-      el(`auto-sc-${item.id}-card`, 'item_card', 8, 8, 84, 76, {
+      el(`auto-sc-${item.id}-card`, 'item_card', 5, 7, 90, 82, {
         binding: { type: 'item', item_id: item.id },
-        style: { fontSize: 4.5, color: '#FFF8F0', showDescription: true, showBadge: true },
+        style: {
+          layout: 'split',
+          fontSize: 4.5,
+          color: '#FFF8F0',
+          showDescription: true,
+          showBadge: true,
+          eyebrow: categoryName ?? '',
+        },
         animation: { entrance: 'fade', duration: 700 },
       }),
       el(`auto-sc-${item.id}-logo`, 'logo', 86, 3, 10, 9),
-      el(`auto-sc-${item.id}-clock`, 'clock', 78, 88, 18, 7, {
-        style: { fontSize: 2.4, color: '#C4B5A5', textAlign: 'right' },
+      el(`auto-sc-${item.id}-clock`, 'clock', 78, 91, 18, 6, {
+        style: { fontSize: 2.2, color: '#C4B5A5', textAlign: 'right' },
       }),
     ],
   };
@@ -139,11 +162,35 @@ function categorySlide(
   key: string,
   title: string,
   titleDv: string | null,
+  parentName: string | null,
   rows: MenuItemLite[],
   source: SignageSlide,
   seconds: number,
   showThumbs: boolean,
 ): SignageSlide {
+  const elements: SignageElement[] = [];
+  if (parentName) {
+    elements.push(el(`auto-cat-${key}-parent`, 'text', 4, 3, 70, 4, {
+      text: parentName,
+      style: { fontSize: 2.1, fontWeight: 700, color: '#D4813A', letterSpacing: 0.14, textTransform: 'uppercase' },
+    }));
+  }
+  elements.push(
+    el(`auto-cat-${key}-title`, 'text', 4, parentName ? 7 : 4, 78, 9, {
+      text: title,
+      text_dv: titleDv,
+      style: { fontSize: 5, fontWeight: 800, color: '#FFF8F0', fontFamily: 'display' },
+    }),
+    el(`auto-cat-${key}-rule`, 'shape', 4, 17, 7, 0.7, {
+      style: { fill: 'var(--signage-primary, #D4813A)', borderRadius: 4 },
+    }),
+    el(`auto-cat-${key}-list`, 'menu_list', 4, 20, 92, 76, {
+      binding: { type: 'ids', item_ids: rows.map((r) => r.id), limit: rows.length },
+      style: { fontSize: 2.8, color: '#FFF8F0', columns: 2, showThumbs },
+    }),
+    el(`auto-cat-${key}-logo`, 'logo', 86, 3, 10, 9),
+  );
+
   return {
     id: `auto-cat-${key}`,
     name: title,
@@ -153,18 +200,7 @@ function categorySlide(
     transition_ms: source.transition_ms ?? 700,
     background: source.background ?? { type: 'solid', value: '#1C1408', opacity: 1 },
     template_origin: `${AUTO_MENU_ORIGIN}:category`,
-    elements: [
-      el(`auto-cat-${key}-title`, 'text', 4, 4, 78, 8, {
-        text: title,
-        text_dv: titleDv,
-        style: { fontSize: 4.5, fontWeight: 800, color: '#FFF8F0' },
-      }),
-      el(`auto-cat-${key}-list`, 'menu_list', 4, 14, 92, 78, {
-        binding: { type: 'ids', item_ids: rows.map((r) => r.id), limit: rows.length },
-        style: { fontSize: 2.8, color: '#FFF8F0', columns: 2, showThumbs },
-      }),
-      el(`auto-cat-${key}-logo`, 'logo', 86, 3, 10, 9),
-    ],
+    elements,
   };
 }
 
@@ -183,7 +219,7 @@ export function expandAutoSlides(
   if (slide.template_origin !== AUTO_MENU_ORIGIN) return [slide];
 
   const binding = (slide.elements?.[0]?.binding ?? {}) as Record<string, unknown>;
-  const cap = Math.max(1, Number(binding.showcase_cap ?? DEFAULT_SHOWCASE_CAP) || DEFAULT_SHOWCASE_CAP);
+  const cap = Math.max(0, Number(binding.showcase_cap ?? DEFAULT_SHOWCASE_CAP) || 0);
   const rowsPerSlide = Math.max(
     1,
     Number(binding.rows_per_slide ?? DEFAULT_ROWS_PER_SLIDE) || DEFAULT_ROWS_PER_SLIDE,
@@ -196,26 +232,38 @@ export function expandAutoSlides(
     1,
     Number(binding.category_seconds ?? DEFAULT_CATEGORY_SECONDS) || DEFAULT_CATEGORY_SECONDS,
   );
-  const showThumbs = binding.show_thumbs === true;
+  // Thumbnails are on unless switched off — a row with its photo is the board.
+  const showThumbs = binding.show_thumbs !== false;
 
   const visible = items.filter(isOnSignage).filter((i) => !isSoldOutOnSignage(i));
-  const showcaseAll = visible.filter(qualifiesForShowcase).sort(compareShowcase);
-  const listed = visible.filter((i) => !qualifiesForShowcase(i));
+  const byCategory = new Map(categories.map((c) => [c.id, c]));
 
-  const featured = rotateWindow(showcaseAll, cap, loopIndex);
-  const showcaseSlides = featured.map((item) => showcaseSlide(item, slide, showcaseSeconds));
+  // Showcase: everything with a reason, then photographed items taking turns
+  // in the room left under the cap. Length is fixed for a given menu.
+  const reasons = visible.filter((i) => showcaseReason(i) !== null).sort(compareShowcase);
+  const photos = visible.filter((i) => showcaseReason(i) === null && Boolean(i.image_url)).sort(compareShowcase);
+  const featured = reasons.length >= cap
+    ? rotateWindow(reasons, cap, loopIndex)
+    : [...reasons, ...rotateWindow(photos, cap - reasons.length, loopIndex)];
+  const showcaseSlides = featured.map((item) => showcaseSlide(
+    item,
+    item.category_id != null ? (byCategory.get(item.category_id)?.name ?? null) : null,
+    slide,
+    showcaseSeconds,
+  ));
 
-  // Group listed items by category, following the admin's category order.
-  const known = categories.filter((c) => listed.some((i) => i.category_id === c.id));
-  const orphans = listed.filter((i) => !categories.some((c) => c.id === i.category_id));
-  const groups: Array<{ key: string; title: string; titleDv: string | null; rows: MenuItemLite[] }> = known.map((c) => ({
+  // Every visible item is listed under its category, in the admin's order.
+  const known = categories.filter((c) => visible.some((i) => i.category_id === c.id));
+  const orphans = visible.filter((i) => !categories.some((c) => c.id === i.category_id));
+  const groups: Array<{ key: string; title: string; titleDv: string | null; parent: string | null; rows: MenuItemLite[] }> = known.map((c) => ({
     key: String(c.id),
     title: c.name,
     titleDv: c.name_dv?.trim() || null,
-    rows: listed.filter((i) => i.category_id === c.id),
+    parent: c.parent_id != null ? (byCategory.get(c.parent_id)?.name ?? null) : null,
+    rows: visible.filter((i) => i.category_id === c.id),
   }));
   if (orphans.length > 0) {
-    groups.push({ key: 'other', title: 'More on the menu', titleDv: null, rows: orphans });
+    groups.push({ key: 'other', title: 'More on the menu', titleDv: null, parent: null, rows: orphans });
   }
 
   const categorySlides: SignageSlide[] = [];
@@ -225,14 +273,15 @@ export function expandAutoSlides(
       const rows = group.rows.slice(p * rowsPerSlide, (p + 1) * rowsPerSlide);
       const title = pages > 1 ? `${group.title} (${p + 1}/${pages})` : group.title;
       categorySlides.push(
-        categorySlide(`${group.key}-${p}`, title, group.titleDv, rows, slide, categorySeconds, showThumbs),
+        categorySlide(`${group.key}-${p}`, title, group.titleDv, group.parent, rows, slide, categorySeconds, showThumbs),
       );
     }
   }
 
-  const expanded = showcaseSlides.length >= categorySlides.length
-    ? interleave(showcaseSlides, categorySlides)
-    : interleave(categorySlides, showcaseSlides);
+  // The lists carry the loop; showcases are spread through them.
+  const expanded = categorySlides.length >= showcaseSlides.length
+    ? interleave(categorySlides, showcaseSlides)
+    : interleave(showcaseSlides, categorySlides);
 
   // An empty menu must not blank the board — keep the placeholder in rotation.
   return expanded.length > 0 ? expanded : [slide];

@@ -311,7 +311,7 @@ export function SignagePage() {
         if (cancelled) return;
         const lite = toLite(itemsRes.data ?? []);
         const cats: SignageCategoryLite[] = (catsRes.data ?? [])
-          .map((c) => ({ id: Number(c.id), name: String(c.name ?? ''), name_dv: c.name_dv ?? null }))
+          .map((c) => ({ id: Number(c.id), name: String(c.name ?? ''), name_dv: c.name_dv ?? null, parent_id: c.parent_id ?? null }))
           .filter((c) => Number.isFinite(c.id) && c.name !== '');
 
         writeCache(screen, { config: cfg, items: lite, categories: cats, savedAt: Date.now() });
