@@ -179,6 +179,36 @@ describe('SignagePage', () => {
     expect(health.textContent).toMatch(/1920x1080/);
   });
 
+  it('shows each TV\'s thumbnail, a stuck badge, and lets the owner switch the SMS alert', async () => {
+    vi.spyOn(api, 'fetchSignageDevices').mockResolvedValue({
+      data: [{
+        id: 7, device_id: 'tv-7', pairing_code: null, approved: true, screen_id: 100,
+        screen: { id: 100, name: 'Main Dining', slug: 'default' }, last_seen_at: new Date().toISOString(), online: true,
+        offline_minutes: null, stuck_minutes: 14, screenshot_url: '/storage/signage/devices/7.jpg?t=x',
+        meta: { resolution: '1920x1080', screenshot_at: new Date().toISOString(), current_slide: 'hero' }, queued_command: null,
+      }, {
+        id: 8, device_id: 'tv-8', pairing_code: null, approved: true, screen_id: 100,
+        screen: { id: 100, name: 'Counter', slug: 'counter' }, last_seen_at: new Date(Date.now() - 9 * 60_000).toISOString(), online: false,
+        offline_minutes: 9, stuck_minutes: null, screenshot_url: null, meta: {}, queued_command: null,
+      }],
+    } as never);
+    const save = vi.spyOn(api, 'setSignageBoardSettings').mockResolvedValue({ settings: { sold_out_badge_minutes: 20, device_alert_sms: false } });
+
+    renderWithRouter(<SignagePage />);
+    fireEvent.click(screen.getByRole('button', { name: 'Devices' }));
+
+    expect((await screen.findByTestId('signage-device-shot-7')).getAttribute('src')).toContain('/storage/signage/devices/7.jpg');
+    expect(screen.getByTestId('signage-device-stuck-7')).toHaveTextContent(/Stuck on one slide for 14 min/);
+    expect(screen.getByTestId('signage-device-offline-8')).toHaveTextContent(/for 9 min/);
+    expect(screen.queryByTestId('signage-device-shot-8')).toBeNull();
+
+    const toggle = screen.getByTestId('signage-device-alert-sms') as HTMLInputElement;
+    expect(toggle.checked).toBe(true);
+    fireEvent.click(toggle);
+    await waitFor(() => expect(save).toHaveBeenCalledWith({ device_alert_sms: false }));
+    await waitFor(() => expect((screen.getByTestId('signage-device-alert-sms') as HTMLInputElement).checked).toBe(false));
+  });
+
   it('pending pairing row keeps responsive grid hooks at 390px', async () => {
     setViewportWidth(390);
     renderWithRouter(<SignagePage />);

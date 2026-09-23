@@ -101,6 +101,12 @@ vi.mock('../lib/signageBoard', async () => {
   };
 });
 
+const shot = vi.hoisted(() => ({ captureBoard: vi.fn().mockResolvedValue('data:image/jpeg;base64,/9j/AAAA') }));
+vi.mock('../lib/boardShot', () => ({
+  BOARD_SHOT_INTERVAL_MS: 120_000,
+  captureBoard: (...a: unknown[]) => shot.captureBoard(...a),
+}));
+
 vi.mock('../context/SiteSettingsContext', () => ({
   useSiteSettingsContext: () => ({
     settings: {
@@ -755,6 +761,35 @@ describe('SignagePage', () => {
         .map((c) => JSON.parse(String((c[1] as RequestInit).body)).mode);
       expect(modes).toContain('asleep');
     });
+  });
+
+  it('sends a thumbnail, its pause state and slide count with the heartbeat', async () => {
+    const fetchMock = vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/signage/heartbeat')) {
+        return { ok: true, json: async () => ({ device: { approved: true, pairing_code: null, screen_slug: 'default' }, command: null }) };
+      }
+      return { ok: true, json: async () => config };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter initialEntries={['/tv']}>
+        <Routes>
+          <Route path="/tv" element={<SignagePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      const beats = fetchMock.mock.calls.filter((c) => String(c[0]).includes('/signage/heartbeat'));
+      expect(beats.length).toBeGreaterThan(0);
+      const body = JSON.parse(String((beats[0][1] as RequestInit).body));
+      expect(body.screenshot).toMatch(/^data:image\/jpeg/);
+      expect(body.paused).toBe(false);
+      expect(typeof body.slide_count).toBe('number');
+    });
+    expect(shot.captureBoard).toHaveBeenCalled();
   });
 
   it('hides info banner under emergency and prayer_break modes', async () => {

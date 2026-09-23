@@ -192,6 +192,13 @@ Schedule::command('content:publish-scheduled')
     ->onFailure($alertOnFailure('content:publish-scheduled'))
     ->after($trackSuccess('content:publish-scheduled'));
 
+// TV signage: alert once when a paired TV is offline or stuck (see CheckSignageDevices)
+Schedule::command('signage:check-devices')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->onFailure($alertOnFailure('signage:check-devices'))
+    ->after($trackSuccess('signage:check-devices'));
+
 // Orders: cancel stale payment_pending orders every 5 minutes
 Schedule::command('orders:cancel-stale')
     ->everyFiveMinutes()

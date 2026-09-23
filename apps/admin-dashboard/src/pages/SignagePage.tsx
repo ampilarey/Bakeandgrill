@@ -29,6 +29,7 @@ import {
   fetchAdminCategories,
   type MenuCategory,
   updateSignageScreen,
+  setSignageBoardSettings,
 } from '../api';
 import {
   BANNER_REPEAT_SLIDER,
@@ -314,6 +315,19 @@ export function SignagePage() {
   // counter per screen that reloads its preview after a look is saved.
   const [menuCategories, setMenuCategories] = useState<MenuCategory[]>([]);
   const [lookSaving, setLookSaving] = useState<string | null>(null);
+  const [alertSmsSaving, setAlertSmsSaving] = useState(false);
+  const onToggleAlertSms = async (on: boolean) => {
+    setAlertSmsSaving(true);
+    try {
+      const res = await setSignageBoardSettings({ device_alert_sms: on });
+      setOverview((prev) => (prev ? { ...prev, settings: res.settings } : prev));
+      toast.success(on ? 'You will get an SMS when a TV goes quiet or sticks.' : 'TV alerts by SMS are off.');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not save');
+    } finally {
+      setAlertSmsSaving(false);
+    }
+  };
   const [previewKeys, setPreviewKeys] = useState<Record<number, number>>({});
   const [groupSaving, setGroupSaving] = useState<number | null>(null);
 
@@ -1909,6 +1923,23 @@ export function SignagePage() {
           {tab === 'devices' && (
             <div data-testid="signage-devices-panel" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <Card>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    data-testid="signage-device-alert-sms"
+                    checked={overview?.settings?.device_alert_sms !== false}
+                    disabled={alertSmsSaving}
+                    onChange={(e) => void onToggleAlertSms(e.target.checked)}
+                  />
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
+                    SMS the business phone when a TV is offline for 5 minutes or stuck on one slide for 10
+                  </span>
+                </label>
+                <p style={{ margin: '4px 0 0 30px', fontSize: 12, color: 'var(--color-text-muted)' }}>
+                  Checked every five minutes; one message per incident, and a thumbnail of each screen refreshes every couple of minutes below.
+                </p>
+              </Card>
+              <Card>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 12 }}>
                   <h3 style={cardTitle}>Pending pairings</h3>
                   <Btn variant="secondary" onClick={() => void loadDevices()} disabled={devicesLoading} style={{ minHeight: 44 }}>
@@ -1982,7 +2013,17 @@ export function SignagePage() {
                           style={{ border: '1px solid var(--color-border)', borderRadius: 12, padding: 14 }}
                         >
                           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                            <div>
+                            {d.screenshot_url ? (
+                              <a href={d.screenshot_url} target="_blank" rel="noopener noreferrer" title={`On screen as of ${meta.screenshot_at ? new Date(String(meta.screenshot_at)).toLocaleTimeString() : ''}`} style={{ flex: '0 0 auto' }}>
+                                <img
+                                  src={d.screenshot_url}
+                                  alt={`What ${d.screen?.name || 'this TV'} is showing`}
+                                  data-testid={`signage-device-shot-${d.id}`}
+                                  style={{ width: 160, aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: 8, border: '1px solid var(--color-border)', background: '#0d0a07', display: 'block' }}
+                                />
+                              </a>
+                            ) : null}
+                            <div style={{ flex: '1 1 240px' }}>
                               <div style={{ fontWeight: 700, color: 'var(--color-text)' }}>
                                 {d.screen?.name || 'Unassigned screen'}
                                 <span
@@ -1998,6 +2039,16 @@ export function SignagePage() {
                                 >
                                   {d.online ? 'Online' : 'Offline'}
                                 </span>
+                                {!d.online && d.offline_minutes != null && (
+                                  <span data-testid={`signage-device-offline-${d.id}`} style={{ marginLeft: 6, fontSize: 12, fontWeight: 600, color: '#9A3412', background: '#FFEDD5', padding: '2px 8px', borderRadius: 999 }}>
+                                    for {d.offline_minutes} min
+                                  </span>
+                                )}
+                                {d.stuck_minutes != null && (
+                                  <span data-testid={`signage-device-stuck-${d.id}`} style={{ marginLeft: 6, fontSize: 12, fontWeight: 600, color: '#fff', background: 'var(--color-danger)', padding: '2px 8px', borderRadius: 999 }}>
+                                    Stuck on one slide for {d.stuck_minutes} min
+                                  </span>
+                                )}
                                 {d.online && meta.mode === 'asleep' && (
                                   <span
                                     data-testid={`signage-device-asleep-${d.id}`}

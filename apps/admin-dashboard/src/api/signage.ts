@@ -103,7 +103,7 @@ export type SignageNotice = {
   expires_at: string | null;
 };
 
-export type SignageBoardSettings = { sold_out_badge_minutes: number };
+export type SignageBoardSettings = { sold_out_badge_minutes: number; device_alert_sms?: boolean };
 
 export async function postSignageNotice(body: {
   text: string;
@@ -336,6 +336,12 @@ export type SignageDevice = {
   screen: { id: number; name: string; slug: string } | null;
   last_seen_at: string | null;
   online: boolean;
+  /** Minutes since last seen, once past the alert threshold. */
+  offline_minutes?: number | null;
+  /** Minutes on the same slide, once that counts as stuck. */
+  stuck_minutes?: number | null;
+  /** The board's latest thumbnail. */
+  screenshot_url?: string | null;
   meta: Record<string, unknown>;
   queued_command: { type?: string; payload?: unknown; queued_at?: string } | null;
   store_id?: number | null;

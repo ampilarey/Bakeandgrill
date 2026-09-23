@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Signage;
 
+use App\Domains\Signage\Services\SignageDeviceHealth;
 use App\Http\Controllers\Controller;
 use App\Models\SignageDevice;
 use App\Models\SignageScreen;
@@ -11,6 +12,7 @@ use App\Services\AuditLogService;
 use App\Support\SpaBuild;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 final class SignageDeviceController extends Controller
@@ -45,6 +47,11 @@ final class SignageDeviceController extends Controller
             'build_version' => ['nullable', 'string', 'max:40'],
             // awake | asleep — the sleep schedule on the screen's look.
             'mode' => ['nullable', 'string', 'max:20'],
+            // For the stuck check: a paused board is not stuck, nor a one-slide loop.
+            'paused' => ['nullable', 'boolean'],
+            'slide_count' => ['nullable', 'integer', 'min:0'],
+            // A small JPEG of what is on the screen, every couple of minutes.
+            'screenshot' => ['nullable', 'string', 'max:400000'],
         ]);
 
         $screenId = null;
@@ -74,7 +81,16 @@ final class SignageDeviceController extends Controller
             $device->pairing_code = $this->makePairingCode();
         }
 
+        $previous = $device->meta ?? [];
         $device->last_seen_at = now();
+        $slide = $data['current_slide'] ?? null;
+        $slideSince = ($slide !== null && $slide === ($previous['current_slide'] ?? null) && is_string($previous['slide_since'] ?? null))
+            ? $previous['slide_since']
+            : now()->toIso8601String();
+        $screenshotAt = $previous['screenshot_at'] ?? null;
+        if (!empty($data['screenshot']) && $this->storeScreenshot($device, (string) $data['screenshot'])) {
+            $screenshotAt = now()->toIso8601String();
+        }
         $device->meta = array_filter([
             'screen_slug' => $data['screen'] ?? null,
             'current_slide' => $data['current_slide'] ?? null,
@@ -86,6 +102,13 @@ final class SignageDeviceController extends Controller
             'mem' => $data['mem'] ?? null,
             'build_version' => $data['build_version'] ?? null,
             'mode' => $data['mode'] ?? null,
+            'paused' => isset($data['paused']) ? (bool) $data['paused'] : null,
+            'slide_count' => isset($data['slide_count']) ? (int) $data['slide_count'] : null,
+            'slide_since' => $slideSince,
+            'screenshot_at' => $screenshotAt,
+            // Alert flags belong to signage:check-devices; carry them across.
+            'alerted_offline_at' => $previous['alerted_offline_at'] ?? null,
+            'alerted_stuck_at' => $previous['alerted_stuck_at'] ?? null,
         ], static fn ($v) => $v !== null);
 
         if ($screenId && $device->approved && !$device->screen_id) {
@@ -192,9 +215,34 @@ final class SignageDeviceController extends Controller
         return response()->json(['data' => $this->serialize($device->fresh('screen'))]);
     }
 
+    /**
+     * Keep the board's thumbnail: a JPEG data URI, decoded and capped, on the
+     * public disk under the device's id. Anything else is quietly ignored.
+     */
+    private function storeScreenshot(SignageDevice $device, string $dataUri): bool
+    {
+        if (!preg_match('#^data:image/jpeg;base64,([A-Za-z0-9+/=]+)$#', $dataUri, $m)) {
+            return false;
+        }
+        $bytes = base64_decode($m[1], true);
+        if ($bytes === false || strlen($bytes) < 100 || strlen($bytes) > 300_000) {
+            return false;
+        }
+        // JPEG magic: FF D8 FF
+        if (!str_starts_with($bytes, "\xFF\xD8\xFF")) {
+            return false;
+        }
+        if (!$device->exists) {
+            $device->save();
+        }
+        Storage::disk('public')->put(SignageDeviceHealth::screenshotPath($device), $bytes);
+
+        return true;
+    }
+
     private function serialize(SignageDevice $d): array
     {
-        $online = $d->last_seen_at && $d->last_seen_at->gt(now()->subMinutes(2));
+        $online = SignageDeviceHealth::isOnline($d);
 
         return [
             'id' => $d->id,
@@ -207,6 +255,9 @@ final class SignageDeviceController extends Controller
                 : null,
             'last_seen_at' => $d->last_seen_at?->toIso8601String(),
             'online' => $online,
+            'offline_minutes' => SignageDeviceHealth::offlineMinutes($d),
+            'stuck_minutes' => SignageDeviceHealth::stuckMinutes($d),
+            'screenshot_url' => SignageDeviceHealth::screenshotUrl($d),
             'meta' => $d->meta ?? [],
             'queued_command' => $d->queued_command,
             'store_id' => $d->store_id,

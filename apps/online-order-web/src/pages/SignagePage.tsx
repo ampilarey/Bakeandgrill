@@ -31,6 +31,7 @@ import {
 import '@shared/signage/signage.css';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { boardNeedsReload, currentBuild, reloadBoard } from '../lib/signageBoard';
+import { BOARD_SHOT_INTERVAL_MS, captureBoard } from '../lib/boardShot';
 
 const CACHE_KEY = 'bg_signage_cache_v1';
 const DEVICE_ID_KEY = 'bg_signage_device_id';
@@ -248,6 +249,9 @@ export function SignagePage() {
   const asleep = useMemo(() => isAsleep(config?.layout?.sleep, new Date(nowMs)), [config?.layout?.sleep, nowMs]);
   const asleepRef = useRef(false);
   asleepRef.current = asleep;
+  const pausedRef = useRef(false);
+  pausedRef.current = paused;
+  const lastShotRef = useRef(0);
 
   // Live clock variables
   const liveVars = useMemo(() => {
@@ -326,6 +330,8 @@ export function SignagePage() {
   const currentSlide = rotation.length
     ? slidesById.get(rotation[index % rotation.length]) ?? null
     : null;
+  const rotationLengthRef = useRef(0);
+  rotationLengthRef.current = rotation.length;
 
   const bumpChrome = () => {
     if (embedded) return;
@@ -553,6 +559,12 @@ export function SignagePage() {
     let cancelled = false;
     const beat = async () => {
       try {
+        // A thumbnail every couple of minutes, never of a sleeping screen.
+        let screenshot: string | null = null;
+        if (!asleepRef.current && Date.now() - lastShotRef.current >= BOARD_SHOT_INTERVAL_MS) {
+          screenshot = await captureBoard(pageRef.current);
+          lastShotRef.current = Date.now();
+        }
         const res = await fetch(`${API_ORIGIN}/api/signage/heartbeat`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -568,6 +580,9 @@ export function SignagePage() {
             failed_assets: 0,
             build_version: BUILD_VERSION,
             mode: asleepRef.current ? 'asleep' : 'awake',
+            paused: pausedRef.current,
+            slide_count: rotationLengthRef.current,
+            ...(screenshot ? { screenshot } : {}),
           }),
         });
         if (!res.ok || cancelled) return;
