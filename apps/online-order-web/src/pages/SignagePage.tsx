@@ -3,13 +3,14 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { API_ORIGIN, fetchCategories, fetchItems, fetchOffers } from '../api';
+import { API_ORIGIN, fetchCategories, fetchItems } from '../api';
 import type { Item } from '../api';
 import type { Category } from '@shared/types';
 import {
   AUTO_MENU_ORIGIN,
   buildWeightedRotation,
   expandPlaylist,
+  pruneEmptySlides,
   brandCardSlide,
   SignageBanner,
   shouldShowBanner,
@@ -21,10 +22,12 @@ import {
 } from '@shared/signage';
 import '@shared/signage/signage.css';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
+import { boardNeedsReload, currentBuild, reloadBoard } from '../lib/signageBoard';
 
 const CACHE_KEY = 'bg_signage_cache_v1';
 const DEVICE_ID_KEY = 'bg_signage_device_id';
-const BUILD_VERSION = '2.1';
+/** The build stamped into this page's shell; 'dev' when nothing stamped it. */
+const BUILD_VERSION = currentBuild() ?? 'dev';
 const CHROME_HIDE_MS = 5000;
 
 function getOrCreateDeviceId(): string {
@@ -52,6 +55,7 @@ function toLite(items: Item[]): MenuItemLite[] {
   return items.map((i) => ({
     id: i.id,
     name: i.name,
+    name_dv: i.name_dv ?? null,
     base_price: Number(i.base_price),
     category_id: i.category_id,
     image_url: i.image_url,
@@ -63,6 +67,7 @@ function toLite(items: Item[]): MenuItemLite[] {
     special: i.special ?? null,
     show_on_signage: i.show_on_signage,
     is_signage_promoted: i.is_signage_promoted,
+    is_featured: i.is_featured,
     available_now: i.available_now,
     unavailable_reason: i.unavailable_reason,
     availability: i.availability
@@ -190,6 +195,8 @@ export function SignagePage() {
   const embedded = forceEmbed || inIframe;
 
   const versionRef = useRef<string>('');
+  /** Set when the server is serving a newer build; acted on at a slide boundary. */
+  const staleBuildRef = useRef(false);
   const advanceTimer = useRef<number | null>(null);
   const wakeLockRef = useRef<{ release: () => Promise<void> } | null>(null);
   const deviceIdRef = useRef(getOrCreateDeviceId());
@@ -221,20 +228,35 @@ export function SignagePage() {
     [config?.slides],
   );
 
+  // A bound slide with nothing to show (no offer running, nothing new) is
+  // left out rather than shown as a title over an empty screen. Whether a
+  // slide is empty does not depend on the loop, so the count stays fixed.
+  const playable = (loop: number): SignageSlide[] => {
+    if (!config) return [];
+    const base = hasAutoMenu ? expandPlaylist(config.slides ?? [], items, categories, loop) : (config.slides ?? []);
+    return pruneEmptySlides(base, items, config);
+  };
+
   // The expanded rotation has a fixed length (the showcase window is capped and
   // every generated slide carries weight 1), so loop N can be derived from the
   // running slide index without feeding the expansion back into itself.
   const rotationLength = useMemo(() => {
     if (!config) return 0;
-    if (!hasAutoMenu) return (config.rotation?.length ? config.rotation : buildWeightedRotation(config.slides ?? [])).length;
-    return buildWeightedRotation(expandPlaylist(config.slides ?? [], items, categories, 0)).length;
+    const kept = playable(0);
+    if (!hasAutoMenu && config.rotation?.length) {
+      const ids = new Set(kept.map((s) => s.id));
+      return config.rotation.filter((id) => ids.has(id)).length;
+    }
+    return buildWeightedRotation(kept).length;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config, hasAutoMenu, items, categories]);
 
   const loopIndex = rotationLength > 0 ? Math.floor(index / rotationLength) : 0;
 
   const slides = useMemo(
-    () => (hasAutoMenu ? expandPlaylist(config?.slides ?? [], items, categories, loopIndex) : (config?.slides ?? [])),
-    [config?.slides, hasAutoMenu, items, categories, loopIndex],
+    () => playable(loopIndex),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [config, hasAutoMenu, items, categories, loopIndex],
   );
 
   const slidesById = useMemo(() => {
@@ -247,9 +269,9 @@ export function SignagePage() {
     if (!config) return [] as string[];
     // Generated slide ids are not in the server-built rotation — rebuild locally.
     if (hasAutoMenu) return buildWeightedRotation(slides);
-    if (config.rotation?.length) return config.rotation;
-    return buildWeightedRotation(config.slides ?? []);
-  }, [config, hasAutoMenu, slides]);
+    if (config.rotation?.length) return config.rotation.filter((id) => slidesById.has(id));
+    return buildWeightedRotation(slides);
+  }, [config, hasAutoMenu, slides, slidesById]);
 
   const currentSlide = rotation.length
     ? slidesById.get(rotation[index % rotation.length]) ?? null
@@ -289,10 +311,8 @@ export function SignagePage() {
         if (cancelled) return;
         const lite = toLite(itemsRes.data ?? []);
         const cats: SignageCategoryLite[] = (catsRes.data ?? [])
-          .map((c) => ({ id: Number(c.id), name: String(c.name ?? '') }))
+          .map((c) => ({ id: Number(c.id), name: String(c.name ?? ''), name_dv: c.name_dv ?? null }))
           .filter((c) => Number.isFinite(c.id) && c.name !== '');
-        // Also pull offers into specials hint — items already carry special
-        void fetchOffers().catch(() => null);
 
         writeCache(screen, { config: cfg, items: lite, categories: cats, savedAt: Date.now() });
         setOffline(false);
@@ -405,6 +425,12 @@ export function SignagePage() {
     if (advanceTimer.current) window.clearTimeout(advanceTimer.current);
     const ms = Math.max(3, Number(currentSlide.seconds ?? 12)) * 1000;
     advanceTimer.current = window.setTimeout(() => {
+      // A deploy happened — take the fresh build between slides, never mid-slide.
+      if (staleBuildRef.current) {
+        staleBuildRef.current = false;
+        void reloadBoard();
+        return;
+      }
       // Apply pending config swap on boundary
       if (pendingConfig) {
         versionRef.current = pendingConfig.playlist_version;
@@ -440,9 +466,9 @@ export function SignagePage() {
       if (cmd === 'skip') setIndex((i) => i + 1);
       if (cmd === 'refresh' || cmd === 'reload_cache') {
         versionRef.current = '';
-        window.location.reload();
+        void reloadBoard();
       }
-      if (cmd === 'restart') window.location.reload();
+      if (cmd === 'restart') void reloadBoard();
       if (cmd === 'fullscreen') {
         // Fullscreen API needs a gesture to enter; arm a tap prompt if denied.
         void (async () => {
@@ -493,10 +519,12 @@ export function SignagePage() {
             screen_slug?: string | null;
           };
           command?: { type?: string; command?: string; payload?: unknown } | null;
+          server_build?: string | null;
         };
         const approved = Boolean(json.device?.approved);
         setDeviceApproved(approved);
         setPairingCode(approved ? null : (json.device?.pairing_code ?? null));
+        if (boardNeedsReload(currentBuild(), json.server_build)) staleBuildRef.current = true;
 
         const assigned = json.device?.screen_slug;
         if (approved && assigned && assigned !== screen && !screenParam) {

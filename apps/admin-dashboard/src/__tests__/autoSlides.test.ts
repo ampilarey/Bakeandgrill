@@ -41,10 +41,36 @@ const listedIds = (slides: SignageSlide[]) => slides
     .flatMap((e) => (e.binding?.item_ids as number[]) ?? []));
 
 describe('qualifiesForShowcase', () => {
-  it('qualifies on a photo, a special, or the promoted flag', () => {
+  it('qualifies on a photo, a special, a Chef\'s pick, or the promoted flag', () => {
     expect(qualifiesForShowcase(item(1, { image_url: '/a.jpg' }))).toBe(true);
     expect(qualifiesForShowcase(item(2, { special: { effective_price: 8 } }))).toBe(true);
     expect(qualifiesForShowcase(item(3, { is_signage_promoted: true }))).toBe(true);
+    // Signage audit, 2026-09-23: the picks curated for the menu were not on the board.
+    expect(qualifiesForShowcase(item(5, { is_featured: true }))).toBe(true);
+  });
+
+  it('ranks a Chef\'s pick ahead of a plain photo and behind a special', () => {
+    const out = expandAutoSlides(
+      { id: 'auto', template_origin: AUTO_MENU_ORIGIN, elements: [] },
+      [
+        item(1, { image_url: '/a.jpg', sales_30d: 99 }),
+        item(2, { is_featured: true }),
+        item(3, { special: { effective_price: 8 } }),
+      ],
+      CATEGORIES,
+    );
+    expect(showcaseIds(out)).toEqual(['auto-sc-3', 'auto-sc-2', 'auto-sc-1']);
+  });
+
+  it('titles a category slide in Dhivehi too when the category has a name_dv', () => {
+    const out = expandAutoSlides(
+      { id: 'auto', template_origin: AUTO_MENU_ORIGIN, elements: [] },
+      [item(1, { name_dv: 'އައިޓަމް' })],
+      [{ id: 1, name: 'Burgers', name_dv: 'ބާގަރ' }],
+    );
+    const title = out[0].elements?.find((e) => e.type === 'text');
+    expect(title?.text).toBe('Burgers');
+    expect(title?.text_dv).toBe('ބާގަރ');
   });
 
   it('does not qualify a plain item', () => {

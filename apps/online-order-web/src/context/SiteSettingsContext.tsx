@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AnalyticsTracker } from '../components/AnalyticsTracker';
+import { isSignagePath } from '../lib/signageBoard';
 import { applyFavicon } from '../lib/applyFavicon';
 import { applyBrandPalette, deriveBrandPalette } from '../lib/brandPalette';
 import { isHeroSlideInScheduleWindow } from '../utils/heroSlidePresentation';
@@ -354,6 +355,7 @@ const SiteSettingsContext = createContext<SiteSettingsContextValue>(defaultConte
 
 export function SiteSettingsProvider({ children }: { children: React.ReactNode }) {
   const { lang } = useLanguage();
+  const [onSignageBoard] = useState(() => typeof window !== 'undefined' && isSignagePath(window.location.pathname));
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
   const requestSeq = useRef(0);
 
@@ -460,7 +462,8 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
 
   return (
     <SiteSettingsContext.Provider value={value}>
-      <AnalyticsTracker settings={settings} />
+      {/* A TV board is not a visitor: no visit beacon, no GA/GTM (signage audit, 2026-09-23). */}
+      {!onSignageBoard && <AnalyticsTracker settings={settings} />}
       {children}
     </SiteSettingsContext.Provider>
   );

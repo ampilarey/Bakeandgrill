@@ -30,7 +30,7 @@ export {
 } from './autoSlides';
 
 export { interpolate, buildWeightedRotation } from './interpolate';
-export { resolveBoundItems, formatPrice } from './bindMenu';
+export { resolveBoundItems, formatPrice, slideHasContent, pruneEmptySlides } from './bindMenu';
 export { SlideCanvas } from './SlideCanvas';
 export type { SlideCanvasProps } from './SlideCanvas';
 export {

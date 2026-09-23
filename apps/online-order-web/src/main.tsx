@@ -18,6 +18,7 @@ import { AbandonedCartTracker } from './components/AbandonedCartTracker';
 import { ScrollToTop } from './components/ScrollToTop';
 import { ServiceUnavailableModal } from './components/ServiceUnavailableModal';
 import { registerServiceWorker } from './lib/registerServiceWorker';
+import { isSignagePath } from './lib/signageBoard';
 import '@shared/styles/fonts.css';
 // Custom Thaana override: /css/dhivehi-font.css?app=order_app reads content key dhivehi_font.
 import './index.css';
@@ -83,7 +84,33 @@ function PageSkeleton() {
 
 const rootEl = document.getElementById('root');
 if (!rootEl) throw new Error('Root element #root not found in DOM');
-ReactDOM.createRoot(rootEl).render(
+
+// The TV board gets a tree of its own (signage audit, 2026-09-23). Mounted
+// under the customer providers it probed the customer session, fetched the
+// home-page layout, ran the abandoned-cart tracker and could have the
+// service-unavailable modal drop over the menu. None of that belongs on a
+// screen that only ever shows /order/tv. Site settings (logo, name) and the
+// service worker (offline shell, reload on deploy) are what it does need.
+if (isSignagePath(window.location.pathname)) {
+  ReactDOM.createRoot(rootEl).render(
+    <React.StrictMode>
+      <ErrorBoundary variant="signage">
+        <LanguageProvider>
+          <SiteSettingsProvider>
+            <BrowserRouter basename="/order">
+              <Suspense fallback={null}>
+                <Routes>
+                  <Route path="tv" element={<SignagePage />} />
+                  <Route path="tv/:screen" element={<SignagePage />} />
+                </Routes>
+              </Suspense>
+            </BrowserRouter>
+          </SiteSettingsProvider>
+        </LanguageProvider>
+      </ErrorBoundary>
+    </React.StrictMode>,
+  );
+} else ReactDOM.createRoot(rootEl).render(
   <React.StrictMode>
     <ErrorBoundary>
       <LanguageProvider>
@@ -107,8 +134,6 @@ ReactDOM.createRoot(rootEl).render(
                   <Route path="checkout" element={<ErrorBoundary inline><CheckoutPage /></ErrorBoundary>} />
                   <Route path="track/:trackingToken" element={<ErrorBoundary inline><OrderStatusPage /></ErrorBoundary>} />
                   <Route path="orders/:orderId" element={<ErrorBoundary inline><OrderStatusPage /></ErrorBoundary>} />
-                  <Route path="tv" element={<ErrorBoundary inline><SignagePage /></ErrorBoundary>} />
-                  <Route path="tv/:screen" element={<ErrorBoundary inline><SignagePage /></ErrorBoundary>} />
 
                   {/* Public pages wrapped in AppShell (5-tab chrome) */}
                   <Route element={<AppShell />}>

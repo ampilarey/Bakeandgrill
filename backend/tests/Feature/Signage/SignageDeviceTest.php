@@ -10,6 +10,7 @@ use App\Models\Role;
 use App\Models\SignageDevice;
 use App\Models\SignageScreen;
 use App\Models\User;
+use App\Support\SpaBuild;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\Sanctum;
@@ -57,6 +58,76 @@ final class SignageDeviceTest extends TestCase
             'screen' => 'default',
         ]);
         $again->assertOk()->assertJsonPath('device.pairing_code', $code);
+    }
+
+    /**
+     * Signage audit, 2026-09-23. The test above passes without a Referer,
+     * which is not how a TV sends it. From the board page on the site's own
+     * origin, Sanctum's stateful pipeline ran CSRF on the heartbeat and
+     * answered 419 — so no TV ever paired and the Devices tab stayed empty.
+     */
+    public function test_heartbeat_from_the_board_page_is_not_refused_for_csrf(): void
+    {
+        // The CSRF middleware stands down entirely under APP_ENV=testing, so
+        // a request sent as-is proves nothing. Pretend to be a live box for
+        // this one request; without the bootstrap except-list entry this
+        // answers 419.
+        $this->app['env'] = 'local';
+        try {
+            $site = rtrim((string) config('app.url'), '/');
+            $res = $this
+                ->withHeader('Origin', $site)
+                ->withHeader('Referer', $site . '/order/tv')
+                ->postJson('/api/signage/heartbeat', [
+                    'device_id' => 'tv-in-the-shop',
+                    'screen' => 'default',
+                ]);
+        } finally {
+            $this->app['env'] = 'testing';
+        }
+
+        $this->assertNotSame(419, $res->status(), (string) $res->getContent());
+        $res->assertOk()->assertJsonPath('device.device_id', 'tv-in-the-shop');
+    }
+
+    public function test_heartbeat_tells_the_board_which_build_the_server_is_serving(): void
+    {
+        SpaBuild::fake('order', 'abc123def456');
+        try {
+            $this->postJson('/api/signage/heartbeat', ['device_id' => 'tv-build'])
+                ->assertOk()
+                ->assertJsonPath('server_build', 'abc123def456');
+        } finally {
+            SpaBuild::clearFake();
+        }
+
+        // An unbuilt checkout has no stamp; the board then never reloads.
+        SpaBuild::fake('order', null);
+        try {
+            $this->postJson('/api/signage/heartbeat', ['device_id' => 'tv-build'])
+                ->assertOk()
+                ->assertJsonPath('server_build', null);
+        } finally {
+            SpaBuild::clearFake();
+        }
+    }
+
+    public function test_the_build_stamp_is_read_from_the_built_index_html(): void
+    {
+        $dir = sys_get_temp_dir() . '/spa-build-' . uniqid();
+        mkdir($dir);
+        file_put_contents($dir . '/index.html', "<!doctype html><html><head>\n<meta name=\"app-build\" content=\"0F1E2D3C4B5A\" />\n</head></html>");
+        file_put_contents($dir . '/dev.html', '<meta name="app-build" content="__SW_BUILD_ID__" />');
+
+        try {
+            $this->assertSame('0f1e2d3c4b5a', SpaBuild::read($dir . '/index.html'));
+            $this->assertNull(SpaBuild::read($dir . '/dev.html'), 'an unreplaced placeholder is not a build');
+            $this->assertNull(SpaBuild::read($dir . '/missing.html'));
+        } finally {
+            @unlink($dir . '/index.html');
+            @unlink($dir . '/dev.html');
+            @rmdir($dir);
+        }
     }
 
     public function test_approve_assigns_screen_and_is_audited(): void

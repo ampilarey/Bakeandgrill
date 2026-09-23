@@ -15,11 +15,14 @@ const DEFAULT_CATEGORY_SECONDS = 14;
 
 /**
  * An item earns a full-screen showcase slide when it has something to show:
- * a photo, an active special, or an explicit promoted flag. Everything else is
- * listed as a row on a category slide.
+ * a photo, an active special, a Chef's pick, or an explicit promoted flag.
+ * Everything else is listed as a row on a category slide.
  */
 export function qualifiesForShowcase(item: MenuItemLite): boolean {
-  return Boolean(item.image_url) || Boolean(item.special) || item.is_signage_promoted === true;
+  return Boolean(item.image_url)
+    || Boolean(item.special)
+    || item.is_featured === true
+    || item.is_signage_promoted === true;
 }
 
 /** `show_on_signage` is opt-out: undefined/null means the item is on the board. */
@@ -39,10 +42,13 @@ export function isSoldOutOnSignage(item: MenuItemLite): boolean {
 function showcaseRank(item: MenuItemLite): number {
   if (item.special) return 0;
   if (item.is_signage_promoted) return 1;
-  return 2;
+  // The picks the owner curates for the menu come before a mere photo
+  // (signage audit, 2026-09-23: they were not on the board at all).
+  if (item.is_featured) return 2;
+  return 3;
 }
 
-/** Specials first, then promoted, then best-selling, then name. Total order — stable. */
+/** Specials, then promoted, then Chef's picks, then best-selling, then name. Total order — stable. */
 function compareShowcase(a: MenuItemLite, b: MenuItemLite): number {
   return (
     showcaseRank(a) - showcaseRank(b)
@@ -132,6 +138,7 @@ function showcaseSlide(item: MenuItemLite, source: SignageSlide, seconds: number
 function categorySlide(
   key: string,
   title: string,
+  titleDv: string | null,
   rows: MenuItemLite[],
   source: SignageSlide,
   seconds: number,
@@ -147,8 +154,9 @@ function categorySlide(
     background: source.background ?? { type: 'solid', value: '#1C1408', opacity: 1 },
     template_origin: `${AUTO_MENU_ORIGIN}:category`,
     elements: [
-      el(`auto-cat-${key}-title`, 'text', 4, 4, 70, 8, {
+      el(`auto-cat-${key}-title`, 'text', 4, 4, 78, 8, {
         text: title,
+        text_dv: titleDv,
         style: { fontSize: 4.5, fontWeight: 800, color: '#FFF8F0' },
       }),
       el(`auto-cat-${key}-list`, 'menu_list', 4, 14, 92, 78, {
@@ -200,13 +208,14 @@ export function expandAutoSlides(
   // Group listed items by category, following the admin's category order.
   const known = categories.filter((c) => listed.some((i) => i.category_id === c.id));
   const orphans = listed.filter((i) => !categories.some((c) => c.id === i.category_id));
-  const groups: Array<{ key: string; title: string; rows: MenuItemLite[] }> = known.map((c) => ({
+  const groups: Array<{ key: string; title: string; titleDv: string | null; rows: MenuItemLite[] }> = known.map((c) => ({
     key: String(c.id),
     title: c.name,
+    titleDv: c.name_dv?.trim() || null,
     rows: listed.filter((i) => i.category_id === c.id),
   }));
   if (orphans.length > 0) {
-    groups.push({ key: 'other', title: 'More on the menu', rows: orphans });
+    groups.push({ key: 'other', title: 'More on the menu', titleDv: null, rows: orphans });
   }
 
   const categorySlides: SignageSlide[] = [];
@@ -216,7 +225,7 @@ export function expandAutoSlides(
       const rows = group.rows.slice(p * rowsPerSlide, (p + 1) * rowsPerSlide);
       const title = pages > 1 ? `${group.title} (${p + 1}/${pages})` : group.title;
       categorySlides.push(
-        categorySlide(`${group.key}-${p}`, title, rows, slide, categorySeconds, showThumbs),
+        categorySlide(`${group.key}-${p}`, title, group.titleDv, rows, slide, categorySeconds, showThumbs),
       );
     }
   }

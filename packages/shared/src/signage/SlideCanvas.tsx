@@ -1,4 +1,5 @@
 import { Component, type CSSProperties, type ErrorInfo, type ImgHTMLAttributes, type ReactNode, useMemo } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { formatPrice, resolveBoundItems } from './bindMenu';
 import { EmergencyIcon } from './emergencyIcons';
 import { interpolate } from './interpolate';
@@ -22,6 +23,20 @@ function PictureImg({
     </picture>
   );
 }
+
+/**
+ * A Dhivehi name beside its English one. Marking it `lang="dv"` is what
+ * selects the Thaana face (shared fonts.css) — no per-element font wiring.
+ */
+function DvName({ text, className, style }: { text?: string | null; className: string; style?: CSSProperties }) {
+  const dv = text?.trim();
+  if (!dv) return null;
+  return <span lang="dv" dir="rtl" className={className} style={style}>{dv}</span>;
+}
+
+/** How wide the brand mark sits across the code — the same as the printed codes. */
+const QR_SIZE = 300;
+const QR_LOGO_RATIO = 0.26;
 
 class ElementBoundary extends Component<{ children: ReactNode }, { err: boolean }> {
   state = { err: false };
@@ -116,8 +131,9 @@ function SignageEl({
     case 'text':
     case 'variable':
       body = (
-        <div className="signage-text" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center' }}>
+        <div className="signage-text" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '0.6em' }}>
           {interpolate(el.text || String(el.binding?.text ?? ''), variables)}
+          <DvName text={el.text_dv} className="signage-text-dv" />
         </div>
       );
       break;
@@ -196,10 +212,32 @@ function SignageEl({
       break;
     }
     case 'qr': {
+      // Drawn here, with the brand mark in the middle, as on the receipts
+      // and posters. It used to be fetched from api.qrserver.com — a bare
+      // code from a third party that a TV in offline mode could not reach.
       const url = String(el.binding?.url ?? '/menu');
       const abs = url.startsWith('http') ? url : `${typeof window !== 'undefined' ? window.location.origin : ''}${url.startsWith('/') ? '' : '/'}${url}`;
-      const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(abs)}`;
-      body = <img src={qrSrc} alt="QR" style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#fff' }} />;
+      const logoSide = Math.round(QR_SIZE * QR_LOGO_RATIO);
+      body = (
+        <div
+          data-testid="signage-qr"
+          data-url={abs}
+          role="img"
+          aria-label="QR code"
+          style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff' }}
+        >
+          <QRCodeSVG
+            value={abs}
+            size={QR_SIZE}
+            level="H"
+            marginSize={2}
+            bgColor="#ffffff"
+            fgColor="#1C1408"
+            imageSettings={logoUrl ? { src: logoUrl, width: logoSide, height: logoSide, excavate: true } : undefined}
+            style={{ width: '100%', height: '100%' }}
+          />
+        </div>
+      );
       break;
     }
     case 'menu_list': {
@@ -223,6 +261,7 @@ function SignageEl({
                     />
                   ) : null}
                   <span style={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
+                  <DvName text={item.name_dv} className="signage-row-dv" />
                 </span>
                 <span style={{ color: theme.primary, fontWeight: 800, whiteSpace: 'nowrap' }}>
                   {formatPrice(Number(item.special?.effective_price ?? item.base_price))}
@@ -262,6 +301,7 @@ function SignageEl({
             </div>
           ) : null}
           <div style={{ fontWeight: 800, textAlign: 'center' }}>{item.name}</div>
+          <DvName text={item.name_dv} className="signage-card-dv" style={{ color: theme.muted }} />
           {style.showDescription && item.short_description ? (
             <div style={{ fontSize: '0.5em', color: theme.muted, textAlign: 'center', maxWidth: '80%' }}>
               {item.short_description}
@@ -287,7 +327,10 @@ function SignageEl({
       const item = list[0];
       body = item ? (
         <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-          <span>{item.name}</span>
+          <span style={{ display: 'flex', alignItems: 'baseline', gap: '1vmin', minWidth: 0 }}>
+            {item.name}
+            <DvName text={item.name_dv} className="signage-row-dv" />
+          </span>
           <span className="signage-price" style={{ color: theme.primary, fontWeight: 800 }}>
             {formatPrice(Number(item.special?.effective_price ?? item.base_price))}
           </span>

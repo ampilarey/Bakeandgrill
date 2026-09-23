@@ -8,9 +8,9 @@ use App\Http\Controllers\Controller;
 use App\Models\SignageDevice;
 use App\Models\SignageScreen;
 use App\Services\AuditLogService;
+use App\Support\SpaBuild;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 final class SignageDeviceController extends Controller
@@ -46,7 +46,7 @@ final class SignageDeviceController extends Controller
         ]);
 
         $screenId = null;
-        if (! empty($data['screen'])) {
+        if (!empty($data['screen'])) {
             $screen = SignageScreen::query()
                 ->where(function ($q) use ($data) {
                     $q->where('slug', $data['screen']);
@@ -59,16 +59,16 @@ final class SignageDeviceController extends Controller
         }
 
         $device = SignageDevice::query()->firstOrNew(['device_id' => $data['device_id']]);
-        if (! $device->exists) {
+        if (!$device->exists) {
             $device->pairing_code = $this->makePairingCode();
             $device->approved = false;
         }
 
-        if (! empty($data['pairing_code']) && ! $device->approved && ! $device->pairing_code) {
+        if (!empty($data['pairing_code']) && !$device->approved && !$device->pairing_code) {
             $device->pairing_code = strtoupper((string) $data['pairing_code']);
         }
 
-        if (! $device->approved && ! $device->pairing_code) {
+        if (!$device->approved && !$device->pairing_code) {
             $device->pairing_code = $this->makePairingCode();
         }
 
@@ -85,7 +85,7 @@ final class SignageDeviceController extends Controller
             'build_version' => $data['build_version'] ?? null,
         ], static fn ($v) => $v !== null);
 
-        if ($screenId && $device->approved && ! $device->screen_id) {
+        if ($screenId && $device->approved && !$device->screen_id) {
             $device->screen_id = $screenId;
         }
 
@@ -108,6 +108,10 @@ final class SignageDeviceController extends Controller
                 'screen_slug' => $device->screen?->slug,
             ],
             'command' => $command,
+            // The build a fresh load of /order would give this TV. The board
+            // compares it with its own stamp and reloads on a slide boundary
+            // when they differ, so a deploy reaches every screen by itself.
+            'server_build' => SpaBuild::current('order'),
         ]);
     }
 
@@ -130,7 +134,7 @@ final class SignageDeviceController extends Controller
         ]);
 
         $screenId = $data['screen_id'] ?? null;
-        if (! $screenId && ! empty($data['group_id'])) {
+        if (!$screenId && !empty($data['group_id'])) {
             $screen = SignageScreen::query()
                 ->where('group_id', $data['group_id'])
                 ->orderBy('id')

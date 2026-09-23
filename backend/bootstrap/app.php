@@ -85,6 +85,13 @@ return Application::configure(basePath: dirname(__DIR__))
             // and the website's counter never moved. It reads no session and
             // no identity — an aggregate tally per surface — and is throttled.
             'api/visits/beacon',
+            // The TV board's heartbeat (signage audit, 2026-09-23). Same
+            // shape again: the board page has no session and sends no XSRF
+            // header, so on a stateful origin every heartbeat answered 419.
+            // No TV ever paired, the Devices tab stayed empty and remote
+            // commands had nowhere to go. It reads a device id of its own
+            // making, no cookie and no identity, and is throttled.
+            'api/signage/heartbeat',
         ]);
 
         $middleware->alias([

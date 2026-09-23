@@ -2,7 +2,7 @@
     "generated_for_commit": "a377ebc37",
     "audited_at": "2026-08-13",
     "website": {
-        "page_count_keys": 155,
+        "page_count_keys": 157,
         "pages": {
             "everywhere": {
                 "title": "Everywhere (layout chrome)",
@@ -1514,7 +1514,7 @@
         }
     },
     "order_app": {
-        "page_count_keys": 94,
+        "page_count_keys": 96,
         "pages": {
             "everywhere": {
                 "title": "Everywhere (shell chrome)",

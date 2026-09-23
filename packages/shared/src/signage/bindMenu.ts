@@ -1,4 +1,4 @@
-import type { MenuItemLite, SignageConfig, SignageElement } from './types';
+import type { MenuItemLite, SignageConfig, SignageElement, SignageSlide } from './types';
 
 function isNew(item: MenuItemLite, days: number, now = Date.now()): boolean {
   if (!item.created_at || !(days > 0)) return false;
@@ -31,6 +31,7 @@ export function resolveBoundItems(
           ? config.bestsellers.map((b) => ({
               id: b.id,
               name: b.name,
+              name_dv: b.name_dv ?? null,
               base_price: b.base_price,
               image_url: b.image_url,
               short_description: b.short_description,
@@ -42,9 +43,12 @@ export function resolveBoundItems(
         list = list.filter((i) => !!i.is_combo);
         break;
       case 'chef_recommendation':
-      case 'featured_product':
-        list = list.slice(0, limit);
+      case 'featured_product': {
+        // The owner's Chef's picks, when any are ticked; the whole list otherwise.
+        const picks = list.filter((i) => i.is_featured === true);
+        list = (picks.length > 0 ? picks : list).slice(0, limit);
         break;
+      }
       case 'category_highlight': {
         const catId = binding.category_id != null ? Number(binding.category_id) : null;
         list = catId != null ? list.filter((i) => i.category_id === catId) : list;
@@ -85,4 +89,36 @@ export function resolveBoundItems(
 
 export function formatPrice(n: number): string {
   return `${Number(n).toFixed(2)}/-`;
+}
+
+/** Element types whose whole content comes from the menu binding. */
+const MENU_BOUND_TYPES = new Set(['menu_list', 'item_card', 'price_row']);
+
+/**
+ * Whether a slide has anything to show once its menu bindings resolve.
+ *
+ * Signage audit, 2026-09-23: "Today's offers" is a list slide bound to
+ * items on special. With no special running it still took its 14 seconds
+ * in every loop, as a title over an empty dark screen. A slide with no
+ * menu-bound element is always content; one with such elements is content
+ * only if at least one of them resolves to an item.
+ */
+export function slideHasContent(
+  slide: SignageSlide,
+  items: MenuItemLite[],
+  config: SignageConfig,
+): boolean {
+  const bound = (slide.elements ?? []).filter((e) => !e.hidden && MENU_BOUND_TYPES.has(e.type));
+  if (bound.length === 0) return true;
+
+  return bound.some((e) => resolveBoundItems(e, items, config).length > 0);
+}
+
+/** The slides worth showing — see {@link slideHasContent}. */
+export function pruneEmptySlides(
+  slides: SignageSlide[],
+  items: MenuItemLite[],
+  config: SignageConfig,
+): SignageSlide[] {
+  return slides.filter((s) => slideHasContent(s, items, config));
 }

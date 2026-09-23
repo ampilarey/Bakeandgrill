@@ -58,14 +58,18 @@ describe('shared signage renderer parity (admin app)', () => {
         variables={PARITY_VARIABLES}
         items={PARITY_ITEMS}
         config={parityConfig('portrait')}
+        logoUrl="/logo.png"
         preview
       />,
     );
 
-    const img = document.querySelector('img[alt="QR"]');
-    expect(img).toBeTruthy();
-    const encoded = new URL((img as HTMLImageElement).src).searchParams.get('data') ?? '';
-    expect(decodeURIComponent(encoded)).toMatch(/\/menu$/);
+    // Drawn in-page with the brand mark, not fetched from a third party
+    // (signage audit, 2026-09-23), so it works offline and carries the logo.
+    const qr = screen.getByTestId('signage-qr');
+    expect(qr.getAttribute('data-url')).toMatch(/\/menu$/);
+    expect(qr.querySelector('svg')).toBeTruthy();
+    expect(qr.querySelector('svg image')).toBeTruthy();
+    expect(document.querySelector('img[src*="qrserver"]')).toBeNull();
   });
 });
 

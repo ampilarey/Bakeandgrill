@@ -156,7 +156,7 @@ final class SignageResolver
             ->orderByDesc('id');
 
         foreach ($q->get() as $campaign) {
-            if (! $this->campaignMatches($campaign, $now)) {
+            if (!$this->campaignMatches($campaign, $now)) {
                 continue;
             }
 
@@ -195,11 +195,11 @@ final class SignageResolver
         $best = null;
         $bestPriority = -1;
         foreach ($settings['entries'] as $entry) {
-            if (! ($entry['is_active'] ?? false)) {
+            if (!($entry['is_active'] ?? false)) {
                 continue;
             }
             $schedule = is_array($entry['schedule'] ?? null) ? $entry['schedule'] : [];
-            if ($schedule !== [] && ! SignageScheduleMatcher::matches($schedule, $now)) {
+            if ($schedule !== [] && !SignageScheduleMatcher::matches($schedule, $now)) {
                 continue;
             }
             $priority = (int) ($entry['priority'] ?? 0);
@@ -236,26 +236,26 @@ final class SignageResolver
     {
         $raw = SiteSetting::get('signage_prayer', '{}');
         $cfg = is_string($raw) ? (json_decode($raw, true) ?: []) : (is_array($raw) ? $raw : []);
-        if (! ($cfg['enabled'] ?? false)) {
+        if (!($cfg['enabled'] ?? false)) {
             return false;
         }
         $breakMinutes = max(1, (int) ($cfg['break_minutes'] ?? 15));
         $prayers = array_values(array_filter(array_map('strval', $cfg['prayers'] ?? ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'])));
 
         $island = $this->resolvePrayerIsland();
-        if (! $island instanceof IslandData) {
+        if (!$island instanceof IslandData) {
             return false;
         }
         try {
             $result = $this->prayerTimes->execute($island, $now->copy()->startOfDay());
-            if (! $result) {
+            if (!$result) {
                 return false;
             }
             $map = $result->prayersOnly();
             $nowMin = ((int) $now->format('H')) * 60 + (int) $now->format('i');
             foreach ($prayers as $name) {
                 $t = $map[$name] ?? null;
-                if (! is_string($t) || ! preg_match('/^\d{1,2}:\d{2}/', $t)) {
+                if (!is_string($t) || !preg_match('/^\d{1,2}:\d{2}/', $t)) {
                     continue;
                 }
                 [$h, $m] = array_map('intval', explode(':', $t));
@@ -303,18 +303,18 @@ final class SignageResolver
         $schedule = [];
         $nextPrayer = '';
         $island = $this->resolvePrayerIsland();
-        if (! $island instanceof IslandData) {
+        if (!$island instanceof IslandData) {
             return ['next_prayer' => '', 'schedule' => []];
         }
 
         try {
             $result = $this->prayerTimes->execute($island, $now->copy()->startOfDay());
-            if (! $result) {
+            if (!$result) {
                 return ['next_prayer' => '', 'schedule' => []];
             }
             $nowMin = ((int) $now->format('H')) * 60 + (int) $now->format('i');
             foreach ($result->prayersOnly() as $name => $t) {
-                if (! is_string($t) || ! preg_match('/^\d{1,2}:\d{2}/', $t)) {
+                if (!is_string($t) || !preg_match('/^\d{1,2}:\d{2}/', $t)) {
                     continue;
                 }
                 [$h, $m] = array_map('intval', explode(':', substr($t, 0, 5)));
@@ -378,7 +378,7 @@ final class SignageResolver
      */
     private function bestsellers(int $limit): array
     {
-        if (! Schema::hasTable('items')) {
+        if (!Schema::hasTable('items')) {
             return [];
         }
 
@@ -394,7 +394,7 @@ final class SignageResolver
                 ->orderByDesc('sales_30d')
                 ->limit($limit)
                 ->get([
-                    'id', 'name', 'base_price', 'image_url', 'thumb_url',
+                    'id', 'name', 'name_dv', 'base_price', 'image_url', 'thumb_url',
                     'image_webp_url', 'thumb_webp_url',
                     'category_id', 'short_description',
                 ]);
@@ -405,6 +405,7 @@ final class SignageResolver
         return $items->map(fn (Item $i) => [
             'id' => $i->id,
             'name' => $i->name,
+            'name_dv' => $i->name_dv,
             'base_price' => (float) $i->base_price,
             'image_url' => $i->image_url,
             'thumb_url' => $i->thumb_url,

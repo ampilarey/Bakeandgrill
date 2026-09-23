@@ -73,6 +73,8 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
+  board.reloadBoard.mockClear();
+  board.build = 'build-on-the-tv';
 });
 
 vi.mock('../api', async () => {
@@ -83,6 +85,19 @@ vi.mock('../api', async () => {
     fetchItems: vi.fn().mockResolvedValue({ data: [], channelUsed: 'online_pickup', deliveryFallback: false }),
     fetchOffers: vi.fn().mockResolvedValue({ offers: [] }),
     fetchCategories: vi.fn().mockResolvedValue({ data: [] }),
+  };
+});
+
+const board = vi.hoisted(() => ({
+  reloadBoard: vi.fn().mockResolvedValue(undefined),
+  build: 'build-on-the-tv' as string | null,
+}));
+vi.mock('../lib/signageBoard', async () => {
+  const actual = await vi.importActual<typeof import('../lib/signageBoard')>('../lib/signageBoard');
+  return {
+    ...actual,
+    reloadBoard: (...a: unknown[]) => board.reloadBoard(...a),
+    currentBuild: () => board.build,
   };
 });
 
@@ -575,6 +590,140 @@ describe('SignagePage', () => {
     );
 
     expect(await screen.findByTestId('signage-banner')).toBeTruthy();
+  });
+
+  /*
+   * Signage audit, 2026-09-23: "Today's offers" is bound to items on
+   * special. With none running it played its full dwell as a title over an
+   * empty screen. It is left out of the rotation until there is an offer.
+   */
+  it('leaves an offers slide out of the rotation while nothing is on special', async () => {
+    const offers = {
+      id: 'offers',
+      name: "Today's offers",
+      seconds: 1,
+      weight: 4,
+      elements: [
+        { id: 'o-title', type: 'text', x: 4, y: 4, w: 70, h: 8, text: "Today's offers", style: {}, animation: {}, binding: {} },
+        { id: 'o-list', type: 'menu_list', x: 4, y: 14, w: 92, h: 78, style: {}, animation: {}, binding: { type: 'smart', smart_type: 'offers', limit: 8 } },
+      ],
+    };
+    const withOffers = { ...config, slides: [config.slides[0], offers], rotation: ['offers', 's1', 'offers', 'offers', 'offers'] };
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/signage/heartbeat')) {
+        return { ok: true, json: async () => ({ device: { approved: true, pairing_code: null, screen_slug: 'default' }, command: null }) };
+      }
+      return { ok: true, json: async () => withOffers };
+    }));
+
+    render(
+      <MemoryRouter initialEntries={['/tv']}>
+        <Routes>
+          <Route path="/tv" element={<SignagePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    // The rotation opens with the offers slide; the hero shows instead.
+    expect(await screen.findByText(/Hello Bake & Grill/)).toBeTruthy();
+    expect(screen.queryByText("Today's offers")).toBeNull();
+    expect(screen.getByTestId('signage-slide-canvas').getAttribute('data-slide-id')).toBe('s1');
+  });
+
+  it('reloads on the next slide boundary once the server reports a newer build', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/signage/heartbeat')) {
+        return {
+          ok: true,
+          json: async () => ({
+            device: { approved: true, pairing_code: null, screen_slug: 'default' },
+            command: null,
+            server_build: 'build-just-deployed',
+          }),
+        };
+      }
+      return { ok: true, json: async () => config };
+    }));
+
+    render(
+      <MemoryRouter initialEntries={['/tv']}>
+        <Routes>
+          <Route path="/tv" element={<SignagePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId('signage-slide-canvas')).toBeTruthy());
+    // Not mid-slide.
+    expect(board.reloadBoard).not.toHaveBeenCalled();
+
+    // The shortest dwell is three seconds; the boundary is where it reloads.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3_500);
+    });
+    await waitFor(() => expect(board.reloadBoard).toHaveBeenCalledTimes(1));
+  });
+
+  it('never reloads a board that has no build stamp, whatever the server says', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    board.build = null;
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/signage/heartbeat')) {
+        return {
+          ok: true,
+          json: async () => ({
+            device: { approved: true, pairing_code: null, screen_slug: 'default' },
+            command: null,
+            server_build: 'build-just-deployed',
+          }),
+        };
+      }
+      return { ok: true, json: async () => config };
+    }));
+
+    render(
+      <MemoryRouter initialEntries={['/tv']}>
+        <Routes>
+          <Route path="/tv" element={<SignagePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId('signage-slide-canvas')).toBeTruthy());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3_500);
+    });
+    expect(board.reloadBoard).not.toHaveBeenCalled();
+  });
+
+  it('reports the stamped build in its heartbeat rather than a hand-typed number', async () => {
+    const fetchMock = vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/signage/heartbeat')) {
+        return { ok: true, json: async () => ({ device: { approved: true, pairing_code: null, screen_slug: 'default' }, command: null }) };
+      }
+      return { ok: true, json: async () => config };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter initialEntries={['/tv']}>
+        <Routes>
+          <Route path="/tv" element={<SignagePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      const beat = fetchMock.mock.calls.find((c) => String(c[0]).includes('/signage/heartbeat'));
+      expect(beat).toBeTruthy();
+      const body = JSON.parse(String((beat?.[1] as RequestInit).body));
+      expect(body.build_version).toBe('build-on-the-tv');
+    });
   });
 
   it('hides info banner under emergency and prayer_break modes', async () => {

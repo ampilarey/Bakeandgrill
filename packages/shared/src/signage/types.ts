@@ -17,6 +17,8 @@ export type SignageElement = {
   };
   binding?: Record<string, unknown>;
   text?: string;
+  /** Dhivehi rendering of `text`, shown beside it in the Thaana face. */
+  text_dv?: string | null;
   locked?: boolean;
   hidden?: boolean;
 };
@@ -164,6 +166,7 @@ export type SignageConfig = {
   bestsellers: Array<{
     id: number;
     name: string;
+    name_dv?: string | null;
     base_price: number;
     image_url?: string | null;
     short_description?: string | null;
@@ -176,6 +179,8 @@ export type SignageConfig = {
 export type MenuItemLite = {
   id: number;
   name: string;
+  /** Dhivehi name — the board shows it beside the English one, as the menu does. */
+  name_dv?: string | null;
   base_price: number;
   category_id?: number | null;
   image_url?: string | null;
@@ -191,6 +196,8 @@ export type MenuItemLite = {
   show_on_signage?: boolean;
   /** Force a showcase slide even with no photo and no discount. */
   is_signage_promoted?: boolean;
+  /** Chef's pick — leads the menu and the order app; earns a showcase slide too. */
+  is_featured?: boolean;
   /** From public menu — used to keep sold-out dishes off showcase slides. */
   available_now?: boolean;
   unavailable_reason?: string | null;
@@ -204,4 +211,5 @@ export type MenuItemLite = {
 export type SignageCategoryLite = {
   id: number;
   name: string;
+  name_dv?: string | null;
 };
