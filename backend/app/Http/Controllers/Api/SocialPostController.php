@@ -51,12 +51,30 @@ class SocialPostController extends Controller
         ]);
     }
 
+    /**
+     * History. Channel test posts are hidden unless asked for
+     * (`include_tests=1`) so "Test post" on the Channels tab does not
+     * litter the list the owner reads; `status` and `source` narrow it.
+     */
     public function index(Request $request): JsonResponse
     {
-        $posts = SocialPost::query()
+        $query = SocialPost::query()
             ->with(['deliveries.channel:id,platform,name'])
-            ->orderByDesc('id')
-            ->paginate(min(50, max(10, (int) $request->input('per_page', 25))));
+            ->orderByDesc('id');
+
+        if (!$request->boolean('include_tests')) {
+            $query->where('source', '!=', 'channel_test');
+        }
+        $status = trim((string) $request->input('status', ''));
+        if ($status !== '') {
+            $query->where('status', $status);
+        }
+        $source = trim((string) $request->input('source', ''));
+        if ($source !== '') {
+            $query->where('source', $source);
+        }
+
+        $posts = $query->paginate(min(50, max(10, (int) $request->input('per_page', 25))));
 
         return response()->json([
             'posts' => collect($posts->items())->map(fn (SocialPost $p) => $this->payload($p))->values(),
@@ -71,7 +89,7 @@ class SocialPostController extends Controller
     public function store(Request $request, SocialPublisher $publisher, SocialDriverRegistry $drivers): JsonResponse
     {
         $data = $request->validate([
-            'caption' => ['required', 'string', 'max:2200'],
+            'caption' => ['required', 'string', 'max:10000'],
             'image_url' => ['nullable', 'string', 'max:500', 'url'],
             'item_id' => ['nullable', 'integer', 'exists:items,id'],
             'channel_ids' => ['required', 'array', 'min:1'],
@@ -87,19 +105,9 @@ class SocialPostController extends Controller
         });
 
         $channels = SocialChannel::query()->whereIn('id', $data['channel_ids'])->get();
-
-        // Capability check up front: a caption-only post cannot go to a
-        // platform that requires an image.
-        if (empty($data['image_url'])) {
-            $needsPhoto = $channels->filter(
-                fn (SocialChannel $c) => $drivers->for($c->platform)->capabilities()['requires_photo'],
-            );
-            if ($needsPhoto->isNotEmpty()) {
-                return response()->json([
-                    'message' => 'These channels require an image: '
-                        . $needsPhoto->pluck('name')->implode(', '),
-                ], 422);
-            }
+        $snapshot = $this->buildSnapshot($data);
+        if ($problem = $this->capabilityProblem($channels, $snapshot, $drivers)) {
+            return response()->json(['message' => $problem], 422);
         }
 
         $post = SocialPost::create([
@@ -108,11 +116,11 @@ class SocialPostController extends Controller
                 'schedule' => SocialPost::STATUS_SCHEDULED,
                 default => SocialPost::STATUS_DRAFT,
             },
-            'snapshot' => $this->buildSnapshot($data),
+            'snapshot' => $snapshot,
             'source' => 'manual',
             'business_date' => now(config('app.timezone', 'Indian/Maldives'))->toDateString(),
             'created_by' => $request->user()?->id,
-            'scheduled_at' => $data['action'] === 'schedule' ? $data['scheduled_at'] : null,
+            'scheduled_at' => $data['action'] === 'schedule' ? $this->localTime($data['scheduled_at']) : null,
         ]);
 
         if ($data['action'] === 'now') {
@@ -230,6 +238,44 @@ class SocialPostController extends Controller
         return response()->json(['ok' => true], 202);
     }
 
+    /**
+     * Why these channels cannot take this post, or null. Checked after the
+     * snapshot is built so an item's photo counts as the image. Caption
+     * limits are per platform (Telegram allows 1024 characters on a photo,
+     * Instagram 2200) — a post that would be cut or refused at publish
+     * time is refused here instead.
+     *
+     * @param \Illuminate\Support\Collection<int, SocialChannel> $channels
+     * @param array<string, mixed> $snapshot
+     */
+    private function capabilityProblem($channels, array $snapshot, SocialDriverRegistry $drivers): ?string
+    {
+        $hasImage = !empty($snapshot['image_url']);
+        $length = mb_strlen((string) ($snapshot['caption'] ?? ''));
+
+        $needsPhoto = [];
+        $tooLong = [];
+        foreach ($channels as $channel) {
+            $caps = $drivers->for($channel->platform)->capabilities();
+            if (!$hasImage && $caps['requires_photo']) {
+                $needsPhoto[] = $channel->name;
+            }
+            $limit = (int) ($hasImage ? $caps['caption_max_photo'] : $caps['caption_max']);
+            if ($limit > 0 && $length > $limit) {
+                $tooLong[] = "{$channel->name} ({$limit})";
+            }
+        }
+
+        if ($needsPhoto !== []) {
+            return 'These channels require an image: ' . implode(', ', $needsPhoto);
+        }
+        if ($tooLong !== []) {
+            return "The caption is {$length} characters; too long for " . implode(', ', $tooLong) . '.';
+        }
+
+        return null;
+    }
+
     /** @param array<string, mixed> $data
      * @return array<string, mixed> */
     private function buildSnapshot(array $data): array
@@ -261,6 +307,16 @@ class SocialPostController extends Controller
         }
 
         return $snapshot;
+    }
+
+    /**
+     * A schedule time as the app's zone. The composer sends the browser's
+     * local time with its offset; Eloquent would store the wall-clock of
+     * that offset unconverted, an hour out for a phone set to Dubai.
+     */
+    private function localTime(string $value): \Carbon\Carbon
+    {
+        return \Carbon\Carbon::parse($value)->setTimezone(config('app.timezone', 'Indian/Maldives'));
     }
 
     private function requirePermission(Request $request, string $slug): void

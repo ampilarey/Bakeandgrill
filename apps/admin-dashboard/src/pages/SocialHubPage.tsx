@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  cancelSocialPost, createSocialChannel, createSocialPost, deleteSocialChannel,
+  cancelSocialPost, checkSocialChannel, createSocialChannel, createSocialPost, deleteSocialChannel,
   deleteSocialVideo, fetchSocialAutomation, fetchSocialChannelOptions, fetchSocialChannels,
-  fetchSocialPosts, fetchSocialVideos, generateSocialVideo,
+  fetchSocialPost, fetchSocialPosts, fetchSocialVideos, generateSocialVideo,
   publishSocialPostNow, retrySocialDelivery, testSocialChannel,
   updateSocialAutomation, updateSocialChannel,
   type SocialAutomationConfig, type SocialChannelOption, type SocialChannelRow,
@@ -80,7 +80,7 @@ export function SocialHubPage() {
       <PageHeader
         section="Customers & Marketing"
         title="Social Hub"
-        subtitle="Post to the business's Facebook, Instagram and Telegram"
+        subtitle="Post to the business's Facebook, Instagram, Telegram and Viber"
         action={canCompose ? <Btn onClick={() => setComposing(true)}>+ New post</Btn> : undefined}
       />
 
@@ -556,6 +556,26 @@ function ChannelList({ channels, onEdit, onChanged }: {
     finally { setBusy(false); }
   };
 
+  /**
+   * A test post is a real delivery on the queue. Rather than "check the
+   * Posts tab" (where test posts are now hidden by default), watch it for
+   * a short while and say here whether the platform took it.
+   */
+  const runTest = async (c: SocialChannelRow) => {
+    setBusy(true);
+    setNotice(`Sending a test post to ${c.name}…`);
+    try {
+      const { post_id } = await testSocialChannel(c.id);
+      const outcome = await waitForTestOutcome(post_id);
+      setNotice(outcome);
+      onChanged();
+    } catch (e) {
+      setNotice((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (channels.length === 0) {
     return (
       <Card style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 13 }}>
@@ -582,13 +602,23 @@ function ChannelList({ channels, onEdit, onChanged }: {
             <Badge label={c.is_enabled ? 'Enabled' : 'Disabled'} color={c.is_enabled ? 'green' : 'gray'} />
             {c.is_test_channel && <Badge label="Test channel" color="orange" />}
             {c.recent_failures > 0 && <Badge label={`${c.recent_failures} recent failures`} color="red" />}
-            <div style={{ display: 'flex', gap: 6 }}>
+            <ChannelHealthBadge channel={c} />
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               <Btn small variant="secondary" disabled={busy} onClick={() => onEdit(c)}>Edit</Btn>
               <Btn
                 small
                 variant="secondary"
+                disabled={busy || !c.has_credentials}
+                title="Ask the platform whether the credentials still work"
+                onClick={() => { void act(() => checkSocialChannel(c.id), `Checked ${c.name}.`); }}
+              >
+                Check now
+              </Btn>
+              <Btn
+                small
+                variant="secondary"
                 disabled={busy || !c.is_enabled}
-                onClick={() => { void act(() => testSocialChannel(c.id), 'Test post queued — check the Posts tab.'); }}
+                onClick={() => { void runTest(c); }}
               >
                 Test post
               </Btn>
@@ -610,6 +640,71 @@ function ChannelList({ channels, onEdit, onChanged }: {
       ))}
     </div>
   );
+}
+
+/**
+ * The last health check, as a badge: green "Connected", amber "Token
+ * expires in N days", red with the platform's reason. Nothing until the
+ * daily check (or "Check now") has run once.
+ */
+function ChannelHealthBadge({ channel }: { channel: SocialChannelRow }) {
+  const h = channel.health;
+  if (!h) return null;
+  const when = new Date(h.checked_at).toLocaleString();
+  let color: 'green' | 'orange' | 'red' = 'green';
+  let label: string;
+  if (h.status === 'error') {
+    color = 'red';
+    label = `Not working: ${h.message}`;
+  } else if (h.status === 'warning') {
+    color = 'orange';
+    const days = h.token_days_left;
+    label = days === null ? h.message : days <= 0 ? 'Token expired' : `Token expires in ${days} day${days === 1 ? '' : 's'}`;
+  } else {
+    const expiry = h.token_days_left === null ? '' : ` · token ${h.token_days_left} days left`;
+    label = `Connected${h.account_label ? ` as ${h.account_label}` : ''}${expiry}`;
+  }
+  const palette = {
+    green: { bg: 'var(--color-success-bg)', text: 'var(--color-success-strong)' },
+    orange: { bg: 'var(--color-warning-bg)', text: '#c2410c' },
+    red: { bg: 'var(--color-danger-bg)', text: 'var(--color-danger-strong)' },
+  }[color];
+  return (
+    <span
+      data-testid="channel-health"
+      data-status={h.status}
+      title={`${h.message} Checked ${when}.`}
+      style={{
+        display: 'inline-block', padding: '0.15rem 0.5rem', borderRadius: 9999,
+        fontSize: '0.72rem', fontWeight: 700, background: palette.bg, color: palette.text,
+        border: '1px solid var(--color-border)', maxWidth: 360, overflowWrap: 'anywhere',
+      }}
+    >
+      {label}
+    </span>
+  );
+}
+
+/** Poll a test post for up to ~20 s and describe how its one delivery ended. */
+export async function waitForTestOutcome(
+  postId: number,
+  opts: { attempts?: number; delayMs?: number; sleep?: (ms: number) => Promise<void> } = {},
+): Promise<string> {
+  const attempts = opts.attempts ?? 10;
+  const delayMs = opts.delayMs ?? 2000;
+  const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  for (let i = 0; i < attempts; i++) {
+    const { post } = await fetchSocialPost(postId);
+    const d = post.deliveries[0];
+    if (d?.status === 'published') {
+      return `Test post published${d.permalink ? ` — ${d.permalink}` : '.'}`;
+    }
+    if (d && ['failed', 'skipped', 'unknown', 'cancelled'].includes(d.status)) {
+      return `Test post ${d.status}${d.error_message ? `: ${d.error_message}` : '.'}`;
+    }
+    if (i < attempts - 1) await sleep(delayMs);
+  }
+  return 'Test post is still queued — is the queue worker running? It will show under Posts (tick "Show test posts").';
 }
 
 function ComposeModal({ onClose, onSaved, canPublish, canSchedule }: {
@@ -655,7 +750,9 @@ function ComposeModal({ onClose, onSaved, canPublish, canSchedule }: {
         item_id: itemId ? Number(itemId) : null,
         channel_ids: selected,
         action,
-        scheduled_at: action === 'schedule' ? scheduledAt : null,
+        // The browser's local wall-clock, sent with its offset so the server
+        // schedules the same instant whatever zone the phone is set to.
+        scheduled_at: action === 'schedule' && scheduledAt ? new Date(scheduledAt).toISOString() : null,
       });
       onSaved();
     } catch (e) {

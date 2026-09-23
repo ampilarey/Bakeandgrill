@@ -24,7 +24,39 @@ class FacebookPageDriver implements SocialDriverInterface
 
     public function capabilities(): array
     {
-        return ['text' => true, 'photo' => true, 'requires_photo' => false];
+        return ['text' => true, 'photo' => true, 'requires_photo' => false, 'caption_max' => 63206, 'caption_max_photo' => 63206];
+    }
+
+    public function checkHealth(SocialChannel $channel): ChannelHealth
+    {
+        $pageId = $channel->credential('page_id');
+        $token = $channel->credential('access_token');
+        if ($pageId === '' || $token === '') {
+            return ChannelHealth::error('Facebook channel is missing page_id or access_token.');
+        }
+
+        return $this->metaHealth($token, '/' . $pageId, 'name');
+    }
+
+    public function insights(SocialChannel $channel, SocialPostDelivery $delivery): ?array
+    {
+        $id = trim((string) $delivery->provider_post_id);
+        if ($id === '') {
+            return null;
+        }
+        $json = $this->graphGetQuiet('/' . $id, [
+            'fields' => 'likes.summary(true).limit(0),comments.summary(true).limit(0),shares',
+            'access_token' => $channel->credential('access_token'),
+        ]);
+        if ($json === null) {
+            return null;
+        }
+
+        return [
+            'likes' => (int) ($json['likes']['summary']['total_count'] ?? 0),
+            'comments' => (int) ($json['comments']['summary']['total_count'] ?? 0),
+            'shares' => (int) ($json['shares']['count'] ?? 0),
+        ];
     }
 
     public function requiredCredentials(): array

@@ -57,5 +57,6 @@ if (routes_domain_section_is('social', 'admin') && !routes_domain_loaded('social
         Route::patch('/channels/{id}', [SocialChannelController::class, 'update']);
         Route::delete('/channels/{id}', [SocialChannelController::class, 'destroy']);
         Route::post('/channels/{id}/test', [SocialChannelController::class, 'testPost']);
+        Route::post('/channels/{id}/check', [SocialChannelController::class, 'check']);
     });
 }

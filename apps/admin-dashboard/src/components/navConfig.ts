@@ -124,7 +124,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/loyalty',          icon: Heart,      label: 'Loyalty',         permission: 'loyalty.manage',      description: 'Points & rewards' },
       { to: '/promotions', icon: Target,        label: 'Promotions',      permissions: ['promotions.manage', 'promotions.discount_cards', 'discounts.settings.manage'], description: 'Offers, gift cards, discount cards & controls' },
       { to: '/sms',        icon: MessageSquare, label: 'SMS & Messaging', permissions: ['integrations.sms', 'sms_marketing.manage', 'sms.settings.manage', 'sms.logs.view'], description: 'Campaigns, templates, sends & the control center' },
-      { to: '/social', icon: Share2, label: 'Social Hub', permission: 'social.view', description: 'Post to Facebook, Instagram & Telegram' },
+      { to: '/social', icon: Share2, label: 'Social Hub', permission: 'social.view', description: 'Post to Facebook, Instagram, Telegram & Viber' },
       { to: '/signage', icon: Tv, label: 'TV Signage', permission: 'signage.manage', description: 'Digital menu boards' },
       { to: '/content/website', icon: LayoutTemplate, label: 'Website Content', permission: 'website.manage', description: 'Public website copy, branding & visuals' },
       { to: '/content/order-app', icon: ShoppingBag, label: 'Order App Content', permission: 'website.manage', description: 'Ordering app copy, branding & visuals' },

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Social\Services\SocialChannelHealthChecker;
 use App\Domains\Social\Services\SocialDriverRegistry;
 use App\Domains\Social\Services\SocialPublisher;
 use App\Models\SocialChannel;
@@ -123,6 +124,19 @@ class SocialChannelController extends Controller
         return response()->json(['post_id' => $post->id, 'delivery_id' => $deliveries[0]->id], 202);
     }
 
+    /**
+     * Ask the platform now whether this channel still works (the daily
+     * `social:check-channels` does the same unattended). Stores the result
+     * on the channel so the tab shows it next time too.
+     */
+    public function check(SocialChannelHealthChecker $checker, int $id): JsonResponse
+    {
+        $channel = SocialChannel::findOrFail($id);
+        $checker->check($channel);
+
+        return response()->json(['channel' => $this->payload($channel->fresh())]);
+    }
+
     /** @param array<string, mixed> $credentials */
     private function assertRequiredCredentials(string $platform, array $credentials): void
     {
@@ -154,6 +168,25 @@ class SocialChannelController extends Controller
                 ->whereIn('status', [SocialPostDelivery::STATUS_FAILED, SocialPostDelivery::STATUS_UNKNOWN])
                 ->where('updated_at', '>=', now()->subDays(7))
                 ->count(),
+            'health' => $this->healthPayload($channel),
+        ];
+    }
+
+    /** @return array<string, mixed>|null */
+    private function healthPayload(SocialChannel $channel): ?array
+    {
+        $health = $channel->health ?? [];
+        if (empty($health['checked_at'])) {
+            return null;
+        }
+
+        return [
+            'status' => (string) ($health['status'] ?? 'ok'),
+            'message' => (string) ($health['message'] ?? ''),
+            'account_label' => $health['account_label'] ?? null,
+            'checked_at' => $health['checked_at'],
+            'token_expires_at' => $health['token_expires_at'] ?? null,
+            'token_days_left' => $channel->tokenDaysLeft(),
         ];
     }
 }

@@ -26,7 +26,7 @@ class PublishDueSocialPosts extends Command
             ->where('status', SocialPost::STATUS_SCHEDULED)
             ->where('scheduled_at', '<=', now())
             ->orderBy('scheduled_at')
-            ->limit(20)
+            ->limit(200)
             ->get();
 
         foreach ($due as $post) {

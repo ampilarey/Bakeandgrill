@@ -39,7 +39,7 @@ class SocialDriverRegistry
     }
 
     /**
-     * @return array<string, array{text: bool, photo: bool, requires_photo: bool, credentials: list<string>}>
+     * @return array<string, array{text: bool, photo: bool, requires_photo: bool, caption_max: int, caption_max_photo: int, credentials: list<string>}>
      */
     public function capabilities(): array
     {

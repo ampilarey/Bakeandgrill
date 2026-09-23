@@ -28,6 +28,7 @@ class SocialChannel extends Model
         'is_enabled',
         'is_test_channel',
         'last_published_at',
+        'health',
     ];
 
     protected $hidden = ['credentials'];
@@ -37,7 +38,33 @@ class SocialChannel extends Model
         'is_enabled' => 'boolean',
         'is_test_channel' => 'boolean',
         'last_published_at' => 'datetime',
+        'health' => 'array',
     ];
+
+    /** When the stored token expires, if the last health check learned it. */
+    public function tokenExpiresAt(): ?\Carbon\Carbon
+    {
+        $raw = ($this->health ?? [])['token_expires_at'] ?? null;
+        if (!is_string($raw) || $raw === '') {
+            return null;
+        }
+        try {
+            return \Carbon\Carbon::parse($raw);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /** Whole days until the token expires; null when it does not or is unknown. */
+    public function tokenDaysLeft(?\Carbon\Carbon $now = null): ?int
+    {
+        $expires = $this->tokenExpiresAt();
+        if ($expires === null) {
+            return null;
+        }
+
+        return (int) floor(($now ?? now())->diffInDays($expires, false));
+    }
 
     public function deliveries(): HasMany
     {

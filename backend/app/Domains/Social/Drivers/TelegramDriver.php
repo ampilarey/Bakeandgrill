@@ -24,7 +24,35 @@ class TelegramDriver implements SocialDriverInterface
 
     public function capabilities(): array
     {
-        return ['text' => true, 'photo' => true, 'requires_photo' => false];
+        // Bot API: 4096 characters for a message, 1024 for a photo caption.
+        return ['text' => true, 'photo' => true, 'requires_photo' => false, 'caption_max' => 4096, 'caption_max_photo' => 1024];
+    }
+
+    public function checkHealth(SocialChannel $channel): ChannelHealth
+    {
+        $token = $channel->credential('bot_token');
+        $chatId = $channel->credential('chat_id');
+        if ($token === '' || $chatId === '') {
+            return ChannelHealth::error('Telegram channel is missing bot_token or chat_id.');
+        }
+
+        try {
+            $chat = Http::timeout(15)->get("https://api.telegram.org/bot{$token}/getChat", ['chat_id' => $chatId]);
+        } catch (ConnectionException $e) {
+            return ChannelHealth::error('Could not reach Telegram: ' . $e->getMessage());
+        }
+        if (!$chat->successful() || $chat->json('ok') !== true) {
+            return ChannelHealth::error((string) ($chat->json('description') ?? ('HTTP ' . $chat->status())));
+        }
+        $title = trim((string) ($chat->json('result.title') ?? $chat->json('result.username') ?? ''));
+
+        // Bot tokens do not expire; the check is that the bot still reaches the chat.
+        return ChannelHealth::ok('Connected; bot tokens do not expire.', null, $title !== '' ? $title : null);
+    }
+
+    public function insights(SocialChannel $channel, SocialPostDelivery $delivery): ?array
+    {
+        return null; // the Bot API exposes no view or reaction counts for channel posts
     }
 
     public function requiredCredentials(): array

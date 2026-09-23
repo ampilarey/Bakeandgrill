@@ -19,9 +19,28 @@ interface SocialDriverInterface
     public function platform(): string;
 
     /**
-     * @return array{text: bool, photo: bool, requires_photo: bool}
+     * `caption_max` is the platform's limit for a text post and
+     * `caption_max_photo` the (sometimes tighter) limit when a photo is
+     * attached — the composer and the store endpoint both check them.
+     *
+     * @return array{text: bool, photo: bool, requires_photo: bool, caption_max: int, caption_max_photo: int}
      */
     public function capabilities(): array;
+
+    /**
+     * Ask the platform whether the stored credentials still reach the
+     * account, and when the token expires if it knows. Never throws:
+     * a network failure is an `error` result with the reason.
+     */
+    public function checkHealth(SocialChannel $channel): ChannelHealth;
+
+    /**
+     * Engagement numbers for a published delivery (likes, comments,
+     * shares…) or null when the platform offers none through its API.
+     *
+     * @return array<string, int>|null
+     */
+    public function insights(SocialChannel $channel, SocialPostDelivery $delivery): ?array;
 
     /**
      * Which credential keys a channel of this platform must carry.

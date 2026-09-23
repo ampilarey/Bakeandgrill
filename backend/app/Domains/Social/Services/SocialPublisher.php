@@ -245,16 +245,17 @@ class SocialPublisher
 
         if (!$e->isRetryable()) {
             $post->refreshStatusFromDeliveries();
-            $this->alertFailure($channel, $e);
+            $this->alertFailure($channel, $e->errorClass);
         }
     }
 
     /**
      * One SMS per channel per alert interval, and only when a business
      * phone is configured. Never includes credentials — only the platform,
-     * channel name and error class.
+     * channel name and the reason (an error class, or "retries exhausted"
+     * when the queue gave up on a transient error).
      */
-    private function alertFailure(SocialChannel $channel, SocialPublishException $e): void
+    public function alertFailure(SocialChannel $channel, string $reason): void
     {
         $interval = max(60, (int) config('social.alert_interval', 3600));
         if (!Cache::add("social-alert:{$channel->id}", 1, $interval)) {
@@ -269,7 +270,7 @@ class SocialPublisher
         try {
             app(SmsService::class)->send(new SmsMessage(
                 to: $phone,
-                message: "Social post to {$channel->platform} channel \"{$channel->name}\" failed ({$e->errorClass}). Check Social Hub in admin.",
+                message: "Social post to {$channel->platform} channel \"{$channel->name}\" failed ({$reason}). Check Social Hub in admin.",
                 type: 'system',
                 referenceType: 'social_channel',
                 referenceId: (string) $channel->id,

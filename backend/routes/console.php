@@ -185,6 +185,13 @@ Schedule::command('social:run-automations')
     ->onFailure($alertOnFailure('social:run-automations'))
     ->after($trackSuccess('social:run-automations'));
 
+// Social Hub: daily channel health — credentials still work, token expiry
+Schedule::command('social:check-channels')
+    ->dailyAt('09:15')
+    ->withoutOverlapping()
+    ->onFailure($alertOnFailure('social:check-channels'))
+    ->after($trackSuccess('social:check-channels'));
+
 // Content Studio: apply due scheduled publishes
 Schedule::command('content:publish-scheduled')
     ->everyMinute()

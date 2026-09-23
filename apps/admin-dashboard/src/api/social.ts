@@ -8,7 +8,20 @@ export interface SocialPlatformCaps {
   text: boolean;
   photo: boolean;
   requires_photo: boolean;
+  /** Caption limit for a text post, and the (sometimes tighter) one with a photo. */
+  caption_max: number;
+  caption_max_photo: number;
   credentials: string[];
+}
+
+/** What the platform said the last time we asked whether the channel still works. */
+export interface SocialChannelHealth {
+  status: 'ok' | 'warning' | 'error';
+  message: string;
+  account_label: string | null;
+  checked_at: string;
+  token_expires_at: string | null;
+  token_days_left: number | null;
 }
 
 export interface SocialChannelRow {
@@ -22,6 +35,7 @@ export interface SocialChannelRow {
   credential_summary: Record<string, string>;
   has_credentials: boolean;
   recent_failures: number;
+  health: SocialChannelHealth | null;
 }
 
 export interface SocialDeliveryRow {
@@ -101,11 +115,35 @@ export async function testSocialChannel(id: number): Promise<{ post_id: number; 
   return req(`/admin/social/channels/${id}/test`, { method: 'POST', body: JSON.stringify({}) });
 }
 
-export async function fetchSocialPosts(page = 1): Promise<{
+/** Ask the platform now whether the channel still works (the daily check does the same). */
+export async function checkSocialChannel(id: number): Promise<{ channel: SocialChannelRow }> {
+  return req(`/admin/social/channels/${id}/check`, { method: 'POST', body: JSON.stringify({}) });
+}
+
+export interface SocialPostFilters {
+  page?: number;
+  status?: string;
+  source?: string;
+  /** Channel test posts are hidden unless asked for. */
+  include_tests?: boolean;
+}
+
+export async function fetchSocialPosts(filters: SocialPostFilters | number = {}): Promise<{
   posts: SocialPostRow[];
   meta: { current_page: number; last_page: number; total: number };
 }> {
-  return req(`/admin/social/posts?page=${page}`);
+  const f = typeof filters === 'number' ? { page: filters } : filters;
+  const qs = new URLSearchParams();
+  if (f.page && f.page > 1) qs.set('page', String(f.page));
+  if (f.status) qs.set('status', f.status);
+  if (f.source) qs.set('source', f.source);
+  if (f.include_tests) qs.set('include_tests', '1');
+  const q = qs.toString();
+  return req(`/admin/social/posts${q ? `?${q}` : ''}`);
+}
+
+export async function fetchSocialPost(id: number): Promise<{ post: SocialPostRow }> {
+  return req(`/admin/social/posts/${id}`);
 }
 
 export async function createSocialPost(data: {

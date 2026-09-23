@@ -37,7 +37,33 @@ class ViberChannelDriver implements SocialDriverInterface
 
     public function capabilities(): array
     {
-        return ['text' => true, 'photo' => true, 'requires_photo' => false];
+        return ['text' => true, 'photo' => true, 'requires_photo' => false, 'caption_max' => 7000, 'caption_max_photo' => 7000];
+    }
+
+    public function checkHealth(SocialChannel $channel): ChannelHealth
+    {
+        $token = $channel->credential('auth_token');
+        if ($token === '' || $channel->credential('sender_id') === '') {
+            return ChannelHealth::error('Viber channel is missing auth_token or sender_id.');
+        }
+
+        try {
+            $response = $this->call('/get_account_info', $token, []);
+        } catch (SocialPublishException $e) {
+            return ChannelHealth::error($e->getMessage());
+        }
+        $status = (int) ($response->json('status') ?? -1);
+        if (!$response->successful() || $status !== 0) {
+            return ChannelHealth::error((string) ($response->json('status_message') ?? ('HTTP ' . $response->status())));
+        }
+        $name = trim((string) ($response->json('name') ?? ''));
+
+        return ChannelHealth::ok('Connected; Viber tokens do not expire.', null, $name !== '' ? $name : null);
+    }
+
+    public function insights(SocialChannel $channel, SocialPostDelivery $delivery): ?array
+    {
+        return null; // the Channels Post API offers no per-post statistics
     }
 
     public function requiredCredentials(): array

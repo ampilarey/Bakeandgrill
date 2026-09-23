@@ -28,7 +28,38 @@ class InstagramDriver implements SocialDriverInterface
 
     public function capabilities(): array
     {
-        return ['text' => false, 'photo' => true, 'requires_photo' => true];
+        return ['text' => false, 'photo' => true, 'requires_photo' => true, 'caption_max' => 2200, 'caption_max_photo' => 2200];
+    }
+
+    public function checkHealth(SocialChannel $channel): ChannelHealth
+    {
+        $igUserId = $channel->credential('ig_user_id');
+        $token = $channel->credential('access_token');
+        if ($igUserId === '' || $token === '') {
+            return ChannelHealth::error('Instagram channel is missing ig_user_id or access_token.');
+        }
+
+        return $this->metaHealth($token, '/' . $igUserId, 'username');
+    }
+
+    public function insights(SocialChannel $channel, SocialPostDelivery $delivery): ?array
+    {
+        $id = trim((string) $delivery->provider_post_id);
+        if ($id === '') {
+            return null;
+        }
+        $json = $this->graphGetQuiet('/' . $id, [
+            'fields' => 'like_count,comments_count',
+            'access_token' => $channel->credential('access_token'),
+        ]);
+        if ($json === null) {
+            return null;
+        }
+
+        return [
+            'likes' => (int) ($json['like_count'] ?? 0),
+            'comments' => (int) ($json['comments_count'] ?? 0),
+        ];
     }
 
     public function requiredCredentials(): array

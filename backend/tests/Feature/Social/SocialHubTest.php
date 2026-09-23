@@ -425,6 +425,65 @@ class SocialHubTest extends TestCase
         $this->assertSame(SocialPost::STATUS_PUBLISHED, SocialPost::firstOrFail()->status);
     }
 
+    public function test_caption_limits_are_per_platform(): void
+    {
+        // Telegram takes 4096 characters of text but only 1024 on a photo.
+        $channel = $this->channel([
+            'platform' => 'telegram',
+            'name' => 'TG',
+            'credentials' => ['bot_token' => '1:abc', 'chat_id' => '@bakeandgrill'],
+        ]);
+        $this->actingAsOwner();
+        $long = str_repeat('މ', 1500);
+
+        $this->postJson('/api/admin/social/posts', [
+            'caption' => $long,
+            'channel_ids' => [$channel->id],
+            'action' => 'draft',
+        ])->assertCreated();
+
+        $res = $this->postJson('/api/admin/social/posts', [
+            'caption' => $long,
+            'image_url' => 'https://bakeandgrill.mv/storage/m.jpg',
+            'channel_ids' => [$channel->id],
+            'action' => 'draft',
+        ])->assertStatus(422);
+        $this->assertStringContainsString('TG (1024)', $res->json('message'));
+        $this->assertSame(1, SocialPost::count());
+    }
+
+    public function test_channel_test_posts_are_hidden_from_the_history_unless_asked(): void
+    {
+        $channel = $this->channel();
+        SocialPost::create(['status' => 'published', 'snapshot' => ['caption' => 'real'], 'source' => 'manual']);
+        SocialPost::create(['status' => 'published', 'snapshot' => ['caption' => 'test'], 'source' => 'channel_test', 'source_ref' => 'channel:' . $channel->id]);
+        $this->actingAsOwner();
+
+        $this->assertSame(1, $this->getJson('/api/admin/social/posts')->assertOk()->json('meta.total'));
+        $this->assertSame(2, $this->getJson('/api/admin/social/posts?include_tests=1')->assertOk()->json('meta.total'));
+        $this->assertSame(1, $this->getJson('/api/admin/social/posts?include_tests=1&source=channel_test')->assertOk()->json('meta.total'));
+    }
+
+    public function test_schedule_time_arrives_with_a_zone_offset_and_is_kept(): void
+    {
+        // The composer sends the browser's local time as ISO 8601 with its
+        // offset, so a phone set to Dubai schedules the same instant.
+        $channel = $this->channel();
+        $this->actingAsOwner();
+        $at = now()->addHours(3)->setTimezone('+04:00')->toIso8601String();
+
+        $id = $this->postJson('/api/admin/social/posts', [
+            'caption' => 'Later',
+            'channel_ids' => [$channel->id],
+            'action' => 'schedule',
+            'scheduled_at' => $at,
+        ])->assertCreated()->json('post.id');
+
+        $stored = SocialPost::findOrFail($id)->scheduled_at;
+        $this->assertSame(\Carbon\Carbon::parse($at)->getTimestamp(), $stored->getTimestamp());
+        $this->assertSame(config('app.timezone'), $stored->timezoneName, 'stored in the app zone, not the browser offset');
+    }
+
     public function test_cancel_stops_a_scheduled_post(): void
     {
         $channel = $this->channel();

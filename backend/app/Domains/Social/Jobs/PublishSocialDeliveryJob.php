@@ -44,13 +44,23 @@ class PublishSocialDeliveryJob implements ShouldQueue
     public function failed(): void
     {
         // Retries exhausted on a transient error: leave an honest terminal
-        // state instead of a delivery stuck in queued.
+        // state instead of a delivery stuck in queued — and say so. Until
+        // the 2026-09-24 audit this path was silent: a channel timing out
+        // three times in a row told nobody.
         $delivery = SocialPostDelivery::find($this->deliveryId);
         if ($delivery === null || $delivery->status !== SocialPostDelivery::STATUS_QUEUED) {
             return;
         }
 
-        $delivery->forceFill(['status' => SocialPostDelivery::STATUS_FAILED])->save();
+        $delivery->recordAttempt('failed', 'Retries exhausted.');
+        $delivery->forceFill([
+            'status' => SocialPostDelivery::STATUS_FAILED,
+            'error_message' => trim('Gave up after repeated attempts. ' . (string) $delivery->error_message),
+        ])->save();
         $delivery->post?->refreshStatusFromDeliveries();
+
+        if ($delivery->channel !== null) {
+            app(SocialPublisher::class)->alertFailure($delivery->channel, 'retries exhausted');
+        }
     }
 }
