@@ -33,6 +33,8 @@ export type SignageSlide = {
   background?: { type?: string; value?: string; opacity?: number };
   template_origin?: string;
   smart_type?: string;
+  /** ISO time after which the board drops the slide itself (notices). */
+  expires_at?: string | null;
   elements?: SignageElement[];
 };
 
@@ -106,6 +108,8 @@ export type SignageBannerItem = {
   inset_percent: number;
   /** Absent / empty = always on. */
   schedule?: SignageSchedule | null;
+  /** ISO time after which the board drops this line itself (notices). */
+  expires_at?: string | null;
 };
 
 export type SignageBannerSettings = {
@@ -176,6 +180,8 @@ export type SignageConfig = {
     sales_30d?: number;
   }>;
   menu_new_days: number;
+  /** How long a sold-out dish keeps its row with a pill. */
+  sold_out_badge_minutes?: number;
   server_time?: string;
   /** The screen's look (group → screen), already merged by the server. See layout.ts. */
   layout?: {
@@ -214,6 +220,8 @@ export type MenuItemLite = {
   is_signage_promoted?: boolean;
   /** Chef's pick — leads the menu and the order app; earns a showcase slide too. */
   is_featured?: boolean;
+  /** Sold out, still within the grace period: listed with a pill, never showcased. */
+  sold_out_badge?: boolean;
   /** From public menu — used to keep sold-out dishes off showcase slides. */
   available_now?: boolean;
   unavailable_reason?: string | null;

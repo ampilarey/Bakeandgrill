@@ -9,6 +9,7 @@ use App\Domains\Signage\Services\SignageBannerNormalizer;
 use App\Domains\Signage\Services\SignageCache;
 use App\Domains\Signage\Services\SignageEmergencyNormalizer;
 use App\Domains\Signage\Services\SignageLayout;
+use App\Domains\Signage\Services\SignageNotices;
 use App\Domains\Signage\Services\SignageTemplateFactory;
 use App\Http\Controllers\Controller;
 use App\Models\SignageCampaign;
@@ -47,7 +48,71 @@ final class SignageAdminController extends Controller
                 'name' => (string) SiteSetting::get('signage_wifi_name', ''),
                 'password' => (string) SiteSetting::get('signage_wifi_password', ''),
             ],
+            'notices' => SignageNotices::all(),
+            'settings' => $this->boardSettings(),
         ]);
+    }
+
+    // ── Notices ──────────────────────────────────────────────────────────────
+
+    /**
+     * Quick notice from the admin phone: text, look, where it shows, how long.
+     * `minutes` counts from now; 0 or absent means "until removed".
+     */
+    public function storeNotice(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'text' => 'required|string|max:160',
+            'text_dv' => 'nullable|string|max:160',
+            'look' => 'nullable|string|in:' . implode(',', SignageNotices::LOOKS),
+            'show' => 'nullable|string|in:' . implode(',', SignageNotices::SHOWS),
+            'seconds' => 'nullable|integer|min:4|max:60',
+            'minutes' => 'nullable|integer|min:0|max:10080',
+        ]);
+        $minutes = (int) ($data['minutes'] ?? 0);
+        $notice = SignageNotices::add([
+            'text' => $data['text'],
+            'text_dv' => $data['text_dv'] ?? '',
+            'look' => $data['look'] ?? 'info',
+            'show' => $data['show'] ?? 'both',
+            'seconds' => $data['seconds'] ?? 8,
+            'expires_at' => $minutes > 0 ? now()->addMinutes($minutes)->toIso8601String() : null,
+        ]);
+        $this->touch($request, 'signage.notice.posted', null, [], $notice);
+
+        return response()->json(['data' => $notice, 'notices' => SignageNotices::all()], 201);
+    }
+
+    public function destroyNotice(Request $request, string $id): JsonResponse
+    {
+        $removed = SignageNotices::remove($id);
+        if ($removed) {
+            $this->touch($request, 'signage.notice.removed', null, ['id' => $id], []);
+        }
+
+        return response()->json(['ok' => $removed, 'notices' => SignageNotices::all()]);
+    }
+
+    /** Board-wide knobs that are not a look: how long a sold-out dish keeps its row. */
+    public function updateSettings(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'sold_out_badge_minutes' => 'nullable|integer|min:0|max:240',
+        ]);
+        $old = $this->boardSettings();
+        if (array_key_exists('sold_out_badge_minutes', $data)) {
+            SiteSetting::set('signage_sold_out_minutes', (string) (int) $data['sold_out_badge_minutes']);
+            SiteSetting::bust();
+        }
+        $this->touch($request, 'signage.settings.updated', null, $old, $this->boardSettings());
+
+        return response()->json(['settings' => $this->boardSettings()]);
+    }
+
+    /** @return array{sold_out_badge_minutes: int} */
+    private function boardSettings(): array
+    {
+        return ['sold_out_badge_minutes' => (int) SiteSetting::get('signage_sold_out_minutes', 20)];
     }
 
     // ── Playlists ────────────────────────────────────────────────────────────

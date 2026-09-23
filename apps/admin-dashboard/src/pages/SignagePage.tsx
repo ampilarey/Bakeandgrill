@@ -48,6 +48,7 @@ import { BannerLivePreview } from './signage/BannerLivePreview';
 import { nearestPresetValue } from './signage/bannerAppearanceUx';
 import { SignageDesigner, type DesignerSlide } from './signage/SignageDesigner';
 import { LookPanel, type LookSave } from './signage/LookPanel';
+import { NoticesPanel } from './signage/NoticesPanel';
 
 const BANNER_FIELD_OPTS = [
   { value: 'date', label: 'Date' },
@@ -57,7 +58,7 @@ const BANNER_FIELD_OPTS = [
   { value: 'all_prayers', label: 'All prayers' },
 ] as const;
 
-type Tab = 'screens' | 'playlists' | 'campaigns' | 'emergency' | 'prayer' | 'banner' | 'devices';
+type Tab = 'screens' | 'playlists' | 'campaigns' | 'emergency' | 'notices' | 'prayer' | 'banner' | 'devices';
 
 type SlideDraft = {
   id: string;
@@ -74,6 +75,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'playlists', label: 'Playlists' },
   { id: 'campaigns', label: 'Campaigns' },
   { id: 'emergency', label: 'Emergency' },
+  { id: 'notices', label: 'Notices' },
   { id: 'prayer', label: 'Prayer' },
   { id: 'banner', label: 'Banner' },
   { id: 'devices', label: 'Devices' },
@@ -1260,6 +1262,15 @@ export function SignagePage() {
                 })
               )}
             </div>
+          )}
+
+          {tab === 'notices' && (
+            <NoticesPanel
+              notices={overview?.notices ?? []}
+              settings={overview?.settings}
+              onNotices={(list) => setOverview((prev) => (prev ? { ...prev, notices: list } : prev))}
+              onSettings={(next) => setOverview((prev) => (prev ? { ...prev, settings: next } : prev))}
+            />
           )}
 
           {tab === 'emergency' && (

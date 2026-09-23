@@ -38,6 +38,9 @@ Route::middleware(['auth:sanctum', 'staff.token', 'permission:signage.manage'])
         Route::put('/emergency', [SignageAdminController::class, 'updateEmergency']);
         Route::put('/prayer', [SignageAdminController::class, 'updatePrayer']);
         Route::put('/banner', [SignageAdminController::class, 'updateBanner']);
+        Route::post('/notices', [SignageAdminController::class, 'storeNotice']);
+        Route::delete('/notices/{id}', [SignageAdminController::class, 'destroyNotice'])->where('id', '[A-Za-z0-9_-]+');
+        Route::put('/settings', [SignageAdminController::class, 'updateSettings']);
         Route::post('/templates', [SignageAdminController::class, 'saveCustomTemplate']);
         Route::post('/templates/build', [SignageAdminController::class, 'buildTemplate']);
 

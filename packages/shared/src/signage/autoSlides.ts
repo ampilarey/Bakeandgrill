@@ -283,7 +283,8 @@ export function expandAutoSlides(
 
   const visible = items
     .filter(isOnSignage)
-    .filter((i) => !isSoldOutOnSignage(i))
+    // Sold out and past its grace: gone. Within the grace: listed with a pill.
+    .filter((i) => !isSoldOutOnSignage(i) || i.sold_out_badge === true)
     // A screen may show part of the menu — the drinks counter, say. A
     // parent category takes its children along.
     .filter((i) => onlyCategories.length === 0 || inCategories(i, onlyCategories, categories));
@@ -291,8 +292,9 @@ export function expandAutoSlides(
 
   // Showcase: everything with a reason, then photographed items taking turns
   // in the room left under the cap. Length is fixed for a given menu.
-  const reasons = visible.filter((i) => showcaseReason(i) !== null).sort(compareShowcase);
-  const photos = visible.filter((i) => showcaseReason(i) === null && Boolean(i.image_url)).sort(compareShowcase);
+  const inStock = visible.filter((i) => i.sold_out_badge !== true);
+  const reasons = inStock.filter((i) => showcaseReason(i) !== null).sort(compareShowcase);
+  const photos = inStock.filter((i) => showcaseReason(i) === null && Boolean(i.image_url)).sort(compareShowcase);
   const featured = reasons.length >= cap
     ? rotateWindow(reasons, cap, loopIndex)
     : [...reasons, ...rotateWindow(photos, cap - reasons.length, loopIndex)];

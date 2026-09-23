@@ -41,6 +41,9 @@ export {
 } from './layout';
 export type { SignageLayout, SignageLayoutInput, SignageLayoutPreset } from './layout';
 export { activeDaypart, isAsleep, sleepUntilLabel } from './dayparts';
+export { SOLD_OUT_BADGE_MINUTES, trackSoldOut } from './soldOut';
+export type { SoldOutSince } from './soldOut';
+export { dropExpired, isExpired } from './expiry';
 export type { SignageDaypart, SignageSleep } from './dayparts';
 export { resolveBoundItems, formatPrice, slideHasContent, pruneEmptySlides } from './bindMenu';
 export { SlideCanvas } from './SlideCanvas';

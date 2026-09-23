@@ -13,9 +13,12 @@ import {
   pruneEmptySlides,
   activeDaypart,
   applyLayoutToSlides,
+  dropExpired,
   effectiveLayout,
   isAsleep,
   sleepUntilLabel,
+  trackSoldOut,
+  type SoldOutSince,
   brandCardSlide,
   SignageBanner,
   shouldShowBanner,
@@ -31,6 +34,7 @@ import { boardNeedsReload, currentBuild, reloadBoard } from '../lib/signageBoard
 
 const CACHE_KEY = 'bg_signage_cache_v1';
 const DEVICE_ID_KEY = 'bg_signage_device_id';
+const SOLD_OUT_KEY = 'bg_signage_soldout_v1';
 /** The build stamped into this page's shell; 'dev' when nothing stamped it. */
 const BUILD_VERSION = currentBuild() ?? 'dev';
 const CHROME_HIDE_MS = 5000;
@@ -83,6 +87,22 @@ function toLite(items: Item[]): MenuItemLite[] {
         }
       : null,
   }));
+}
+
+function readSoldOut(): SoldOutSince {
+  try {
+    const raw = localStorage.getItem(SOLD_OUT_KEY);
+    const parsed = raw ? JSON.parse(raw) as unknown : null;
+    return parsed && typeof parsed === 'object' ? parsed as SoldOutSince : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeSoldOut(since: SoldOutSince) {
+  try {
+    localStorage.setItem(SOLD_OUT_KEY, JSON.stringify(since));
+  } catch { /* quota */ }
 }
 
 function readCache(screen: string): CacheBlob | null {
@@ -201,6 +221,8 @@ export function SignagePage() {
   const embedded = forceEmbed || inIframe;
 
   const versionRef = useRef<string>('');
+  /** When each sold-out item was first seen sold out — the badge's clock. */
+  const soldOutRef = useRef<SoldOutSince>(readSoldOut());
   /** Set when the server is serving a newer build; acted on at a slide boundary. */
   const staleBuildRef = useRef(false);
   const advanceTimer = useRef<number | null>(null);
@@ -242,13 +264,25 @@ export function SignagePage() {
     [config?.slides],
   );
 
+  // Which notice slides and ticker lines are still live — changes only when one expires.
+  const liveNoticeKey = useMemo(
+    () => dropExpired(config?.slides ?? [], nowMs).map((s) => s.id).join('|'),
+    [config?.slides, nowMs],
+  );
+  const liveBanner = useMemo(() => {
+    if (!config?.banner) return config?.banner;
+    return { ...config.banner, banners: dropExpired(config.banner.banners ?? [], nowMs) };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config?.banner, liveNoticeKey]);
+
   // A bound slide with nothing to show (no offer running, nothing new) is
   // left out rather than shown as a title over an empty screen. Whether a
   // slide is empty does not depend on the loop, so the count stays fixed.
   const playable = (loop: number): SignageSlide[] => {
     if (!config) return [];
     // The screen's look (and the day part in force) overrides the playlist's own knobs.
-    const looked = applyLayoutToSlides(config.slides ?? [], effectiveLayout(config.layout, daypart));
+    // Notice slides carry a use-by time; the board drops them on the minute.
+    const looked = applyLayoutToSlides(dropExpired(config.slides ?? [], nowMs), effectiveLayout(config.layout, daypart));
     const base = hasAutoMenu ? expandPlaylist(looked, items, categories, loop) : looked;
     return pruneEmptySlides(base, items, config);
   };
@@ -265,14 +299,14 @@ export function SignagePage() {
     }
     return buildWeightedRotation(kept).length;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [config, hasAutoMenu, items, categories, daypart?.id]);
+  }, [config, hasAutoMenu, items, categories, daypart?.id, liveNoticeKey]);
 
   const loopIndex = rotationLength > 0 ? Math.floor(index / rotationLength) : 0;
 
   const slides = useMemo(
     () => playable(loopIndex),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [config, hasAutoMenu, items, categories, loopIndex, daypart?.id],
+    [config, hasAutoMenu, items, categories, loopIndex, daypart?.id, liveNoticeKey],
   );
 
   const slidesById = useMemo(() => {
@@ -325,7 +359,15 @@ export function SignagePage() {
           fetchCategories().catch(() => ({ data: [] as Category[] })),
         ]);
         if (cancelled) return;
-        const lite = toLite(itemsRes.data ?? []);
+        const tracked = trackSoldOut(
+          toLite(itemsRes.data ?? []),
+          soldOutRef.current,
+          Date.now(),
+          cfg.sold_out_badge_minutes,
+        );
+        soldOutRef.current = tracked.since;
+        writeSoldOut(tracked.since);
+        const lite = tracked.items;
         const cats: SignageCategoryLite[] = (catsRes.data ?? [])
           .map((c) => ({ id: Number(c.id), name: String(c.name ?? ''), name_dv: c.name_dv ?? null, parent_id: c.parent_id ?? null }))
           .filter((c) => Number.isFinite(c.id) && c.name !== '');
@@ -576,7 +618,7 @@ export function SignagePage() {
     config
     && !black
     && !asleep
-    && shouldShowBanner(config.banner, config.mode, new Date(nowMs)),
+    && shouldShowBanner(liveBanner, config.mode, new Date(nowMs)),
   );
   const isLoading = !config && !offline && !bootError;
   const showIdleBrand = Boolean(config && !currentSlide && !black);
@@ -665,9 +707,9 @@ export function SignagePage() {
           />
         </div>
       )}
-      {showBanner && config?.banner && (
+      {showBanner && config && liveBanner && (
         <SignageBanner
-          banner={config.banner}
+          banner={liveBanner}
           schedule={config.prayer_schedule ?? []}
           mode={config.mode}
           nowMs={nowMs}

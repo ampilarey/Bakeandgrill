@@ -387,10 +387,13 @@ function SignageEl({
                   <ItemName item={item} config={config} enClass="signage-row-name-en" dvClass="signage-row-dv" />
                 </span>
                 <span className="signage-row-leader" aria-hidden="true" />
-                {special && was > now ? (
+                {item.sold_out_badge ? (
+                  <span className="signage-sold-out" data-testid="signage-sold-out">Sold out</span>
+                ) : null}
+                {!item.sold_out_badge && special && was > now ? (
                   <span className="signage-row-was" data-testid="signage-row-was" style={{ color: theme.muted }}>{formatPrice(was)}</span>
                 ) : null}
-                <span className="signage-row-price" style={{ color: theme.primary }}>{formatPrice(now)}</span>
+                <span className="signage-row-price" style={{ color: item.sold_out_badge ? theme.muted : theme.primary, opacity: item.sold_out_badge ? 0.6 : 1, textDecoration: item.sold_out_badge ? 'line-through' : undefined }}>{formatPrice(now)}</span>
               </div>
             );
           })}
@@ -424,6 +427,7 @@ function SignageEl({
             const photo = item.image_url ?? item.thumb_url ?? null;
             return (
               <div key={item.id} className="signage-tile" style={{ background: theme.surface || 'rgba(255,255,255,0.05)' }}>
+                {item.sold_out_badge ? <span className="signage-sold-out signage-sold-out--tile" data-testid="signage-sold-out">Sold out</span> : null}
                 {photo ? (
                   <PictureImg
                     src={photo}

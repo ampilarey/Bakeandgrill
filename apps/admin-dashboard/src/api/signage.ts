@@ -87,7 +87,48 @@ export type SignageOverview = {
   templates: Array<{ key: string; label: string }>;
   custom_templates: Array<{ key: string; label: string; slide: Record<string, unknown> }> | Record<string, unknown>;
   wifi: { name: string; password: string };
+  notices?: SignageNotice[];
+  settings?: SignageBoardSettings;
 };
+
+/** A quick notice on the board — a slide, a ticker line, or both; gone by itself. */
+export type SignageNotice = {
+  id: string;
+  text: string;
+  text_dv: string;
+  look: 'info' | 'warning' | 'celebrate' | string;
+  show: 'ticker' | 'slide' | 'both' | string;
+  seconds: number;
+  created_at: string;
+  expires_at: string | null;
+};
+
+export type SignageBoardSettings = { sold_out_badge_minutes: number };
+
+export async function postSignageNotice(body: {
+  text: string;
+  text_dv?: string;
+  look?: string;
+  show?: string;
+  seconds?: number;
+  minutes?: number;
+}) {
+  return req<{ data: SignageNotice; notices: SignageNotice[] }>('/admin/signage/notices', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function deleteSignageNotice(id: string) {
+  return req<{ ok: boolean; notices: SignageNotice[] }>(`/admin/signage/notices/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
+export async function setSignageBoardSettings(body: Partial<SignageBoardSettings>) {
+  return req<{ settings: SignageBoardSettings }>('/admin/signage/settings', {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  });
+}
 
 export type SignagePlaylist = {
   id: number;

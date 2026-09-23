@@ -95,6 +95,28 @@ final class SignageResolver
             $source = 'prayer';
         }
 
+        // Quick notices ride along in normal mode only: a slide at the front
+        // of the loop and/or a line ahead of the ticker's own banners.
+        $banner = $this->bannerConfig();
+        if ($mode === 'normal') {
+            $notices = SignageNotices::active($now);
+            $noticeSlides = [];
+            $noticeLines = [];
+            foreach ($notices as $notice) {
+                if (in_array($notice['show'], ['slide', 'both'], true)) {
+                    $noticeSlides[] = SignageNotices::slide($notice);
+                }
+                if (in_array($notice['show'], ['ticker', 'both'], true)) {
+                    $noticeLines[] = SignageNotices::bannerItem($notice);
+                }
+            }
+            $slides = array_merge($noticeSlides, array_values($slides));
+            if ($noticeLines !== []) {
+                $banner['enabled'] = true;
+                $banner['banners'] = array_merge($noticeLines, $banner['banners'] ?? []);
+            }
+        }
+
         $rotation = WeightedRotation::buildOrder($slides);
         $prayer = $this->prayerPayload($now);
 
@@ -117,9 +139,10 @@ final class SignageResolver
             'rotation' => $rotation,
             'variables' => $this->variables($now, $prayer['next_prayer']),
             'prayer_schedule' => $prayer['schedule'],
-            'banner' => $this->bannerConfig(),
+            'banner' => $banner,
             'bestsellers' => $this->bestsellers(8),
             'menu_new_days' => (int) SiteSetting::get('menu_new_days', 30),
+            'sold_out_badge_minutes' => (int) SiteSetting::get('signage_sold_out_minutes', 20),
             // The screen's look: group under screen; null keeps the playlist's own.
             'layout' => SignageLayout::merge($group?->layout, $screen?->layout),
             'templates' => SignageTemplateFactory::templateCatalog(),

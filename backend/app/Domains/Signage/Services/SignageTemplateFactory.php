@@ -571,7 +571,7 @@ final class SignageTemplateFactory
      * @param array<string, mixed> $extra
      * @return array<string, mixed>
      */
-    private static function el(string $type, float $x, float $y, float $w, float $h, array $extra = []): array
+    public static function el(string $type, float $x, float $y, float $w, float $h, array $extra = []): array
     {
         return array_merge([
             'id' => self::id(),

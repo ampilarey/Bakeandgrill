@@ -424,6 +424,28 @@
   z-index: 100;
 }
 
+/* Sold out, within the grace period: the row stays with a pill. */
+.signage-sold-out {
+  flex: 0 0 auto;
+  font-size: 0.5em;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #fff8f0;
+  background: #b91c1c;
+  border-radius: 99vmin;
+  padding: 0.25em 0.9em;
+  white-space: nowrap;
+}
+
+.signage-sold-out--tile {
+  position: absolute;
+  top: 0.8em;
+  left: 0.8em;
+  z-index: 2;
+  font-size: 0.6em;
+}
+
 /* Asleep (sleep schedule): black, with the wake time faint in a corner. */
 .signage-asleep {
   z-index: 90;
