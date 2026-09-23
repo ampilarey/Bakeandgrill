@@ -187,6 +187,8 @@ export type SignageConfig = {
     card_style?: 'split' | 'stack' | string;
     category_ids?: number[];
     dhivehi_first?: boolean;
+    dayparts?: unknown[];
+    sleep?: unknown;
   } | null;
 };
 

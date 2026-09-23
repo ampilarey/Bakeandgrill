@@ -424,6 +424,21 @@
   z-index: 100;
 }
 
+/* Asleep (sleep schedule): black, with the wake time faint in a corner. */
+.signage-asleep {
+  z-index: 90;
+  align-items: flex-end;
+  justify-content: flex-end;
+}
+
+.signage-asleep-note {
+  font-size: 1.6vmin;
+  color: rgba(255, 248, 240, 0.18);
+  padding: 2vmin 2.4vmin;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .signage-pairing {
   position: absolute;
   inset: 0;

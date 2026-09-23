@@ -43,6 +43,8 @@ final class SignageDeviceController extends Controller
             'mem' => ['nullable', 'numeric'],
             'pairing_code' => ['nullable', 'string', 'max:8'],
             'build_version' => ['nullable', 'string', 'max:40'],
+            // awake | asleep — the sleep schedule on the screen's look.
+            'mode' => ['nullable', 'string', 'max:20'],
         ]);
 
         $screenId = null;
@@ -83,6 +85,7 @@ final class SignageDeviceController extends Controller
             'failed_assets' => $data['failed_assets'] ?? null,
             'mem' => $data['mem'] ?? null,
             'build_version' => $data['build_version'] ?? null,
+            'mode' => $data['mode'] ?? null,
         ], static fn ($v) => $v !== null);
 
         if ($screenId && $device->approved && !$device->screen_id) {

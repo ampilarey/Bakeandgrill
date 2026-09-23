@@ -726,6 +726,37 @@ describe('SignagePage', () => {
     });
   });
 
+  it('goes black inside the sleep window and says so in its heartbeat', async () => {
+    const hh = String(new Date().getHours()).padStart(2, '0');
+    const asleepNow = { ...config, layout: { sleep: { enabled: true, off: `${hh}:00`, on: `${hh}:59` } } };
+    const fetchMock = vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/signage/heartbeat')) {
+        return { ok: true, json: async () => ({ device: { approved: true, pairing_code: null, screen_slug: 'default' }, command: null }) };
+      }
+      return { ok: true, json: async () => asleepNow };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter initialEntries={['/tv']}>
+        <Routes>
+          <Route path="/tv" element={<SignagePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId('signage-asleep')).toHaveTextContent(`Back at ${hh}:59`);
+    // The first beat goes out before the config (and its sleep window) has
+    // arrived; falling asleep sends another straight away.
+    await waitFor(() => {
+      const modes = fetchMock.mock.calls
+        .filter((c) => String(c[0]).includes('/signage/heartbeat'))
+        .map((c) => JSON.parse(String((c[1] as RequestInit).body)).mode);
+      expect(modes).toContain('asleep');
+    });
+  });
+
   it('hides info banner under emergency and prayer_break modes', async () => {
     for (const mode of ['emergency:closed', 'prayer_break'] as const) {
       const withBanner = {

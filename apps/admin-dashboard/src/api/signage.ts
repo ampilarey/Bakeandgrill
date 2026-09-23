@@ -108,6 +108,23 @@ export type SignageLayoutBag = {
   card_style?: 'split' | 'stack';
   category_ids?: number[];
   dhivehi_first?: boolean;
+  dayparts?: SignageDaypartBag[];
+  sleep?: SignageSleepBag | null;
+};
+
+export type SignageDaypartBag = {
+  id: string;
+  label: string;
+  category_ids: number[];
+  preset?: string | null;
+  schedule?: { days?: number[] | null; windows?: Array<{ start: string; end: string }> | null } | null;
+};
+
+export type SignageSleepBag = {
+  enabled: boolean;
+  off: string;
+  on: string;
+  days?: number[] | null;
 };
 
 export type SignageGroup = {

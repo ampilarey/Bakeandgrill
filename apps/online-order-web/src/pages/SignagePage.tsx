@@ -11,8 +11,11 @@ import {
   buildWeightedRotation,
   expandPlaylist,
   pruneEmptySlides,
+  activeDaypart,
   applyLayoutToSlides,
-  resolveLayout,
+  effectiveLayout,
+  isAsleep,
+  sleepUntilLabel,
   brandCardSlide,
   SignageBanner,
   shouldShowBanner,
@@ -217,14 +220,22 @@ export function SignagePage() {
     if (offset !== null) setClockOffset(offset);
   };
 
+  // Day part in force and whether the screen is asleep — by the board's own
+  // clock, so a switch lands on the minute rather than on the next refresh.
+  const daypart = useMemo(() => activeDaypart(config?.layout?.dayparts, new Date(nowMs)), [config?.layout?.dayparts, nowMs]);
+  const asleep = useMemo(() => isAsleep(config?.layout?.sleep, new Date(nowMs)), [config?.layout?.sleep, nowMs]);
+  const asleepRef = useRef(false);
+  asleepRef.current = asleep;
+
   // Live clock variables
   const liveVars = useMemo(() => {
     const base = { ...(config?.variables ?? {}) };
     const now = new Date(nowMs);
     base.current_time = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
     base.today = now.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' });
+    base.daypart = daypart?.label ?? '';
     return base;
-  }, [config?.variables, nowMs]);
+  }, [config?.variables, nowMs, daypart?.label]);
 
   const hasAutoMenu = useMemo(
     () => (config?.slides ?? []).some((s) => s.template_origin === AUTO_MENU_ORIGIN),
@@ -236,8 +247,8 @@ export function SignagePage() {
   // slide is empty does not depend on the loop, so the count stays fixed.
   const playable = (loop: number): SignageSlide[] => {
     if (!config) return [];
-    // The screen's look, when one is set in admin, overrides the playlist's own knobs.
-    const looked = config.layout ? applyLayoutToSlides(config.slides ?? [], resolveLayout(config.layout)) : (config.slides ?? []);
+    // The screen's look (and the day part in force) overrides the playlist's own knobs.
+    const looked = applyLayoutToSlides(config.slides ?? [], effectiveLayout(config.layout, daypart));
     const base = hasAutoMenu ? expandPlaylist(looked, items, categories, loop) : looked;
     return pruneEmptySlides(base, items, config);
   };
@@ -254,14 +265,14 @@ export function SignagePage() {
     }
     return buildWeightedRotation(kept).length;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [config, hasAutoMenu, items, categories]);
+  }, [config, hasAutoMenu, items, categories, daypart?.id]);
 
   const loopIndex = rotationLength > 0 ? Math.floor(index / rotationLength) : 0;
 
   const slides = useMemo(
     () => playable(loopIndex),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [config, hasAutoMenu, items, categories, loopIndex],
+    [config, hasAutoMenu, items, categories, loopIndex, daypart?.id],
   );
 
   const slidesById = useMemo(() => {
@@ -426,7 +437,7 @@ export function SignagePage() {
 
   // Advance slides
   useEffect(() => {
-    if (!currentSlide || paused || black) return;
+    if (!currentSlide || paused || black || asleep) return;
     if (advanceTimer.current) window.clearTimeout(advanceTimer.current);
     const ms = Math.max(3, Number(currentSlide.seconds ?? 12)) * 1000;
     advanceTimer.current = window.setTimeout(() => {
@@ -451,7 +462,7 @@ export function SignagePage() {
       if (advanceTimer.current) window.clearTimeout(advanceTimer.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentSlide, index, paused, black, pendingConfig]);
+  }, [currentSlide, index, paused, black, asleep, pendingConfig]);
 
   // Keep current slide id for heartbeat payload
   useEffect(() => {
@@ -514,6 +525,7 @@ export function SignagePage() {
             cache_status: offlineRef.current ? 'offline' : 'ok',
             failed_assets: 0,
             build_version: BUILD_VERSION,
+            mode: asleepRef.current ? 'asleep' : 'awake',
           }),
         });
         if (!res.ok || cancelled) return;
@@ -553,7 +565,9 @@ export function SignagePage() {
       cancelled = true;
       window.clearInterval(t);
     };
-  }, [screen, screenParam, navigate, embedded]);
+    // `asleep` is a dependency so a screen going to sleep or waking reports
+    // it at once, not on the next minute.
+  }, [screen, screenParam, navigate, embedded, asleep]);
 
   const transition = currentSlide?.transition || 'fade';
   const orientation = config?.orientation === 'portrait' ? 'portrait' : 'landscape';
@@ -561,6 +575,7 @@ export function SignagePage() {
   const showBanner = Boolean(
     config
     && !black
+    && !asleep
     && shouldShowBanner(config.banner, config.mode, new Date(nowMs)),
   );
   const isLoading = !config && !offline && !bootError;
@@ -605,6 +620,11 @@ export function SignagePage() {
       onPointerMove={() => bumpChrome()}
       onDoubleClick={() => { void toggleFullscreen(); }}
     >
+      {asleep && !black && (
+        <div className="signage-blackout signage-asleep" data-testid="signage-asleep">
+          <span className="signage-asleep-note">{sleepUntilLabel(config?.layout?.sleep)}</span>
+        </div>
+      )}
       {black && (
         <div className="signage-blackout" data-testid="signage-blackout">
           {command === 'maintenance' ? 'Maintenance' : ''}

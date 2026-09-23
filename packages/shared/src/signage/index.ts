@@ -35,10 +35,13 @@ export {
   LAYOUT_PRESETS,
   LAYOUT_PRESET_KEYS,
   applyLayoutToSlides,
+  effectiveLayout,
   isLayoutPreset,
   resolveLayout,
 } from './layout';
 export type { SignageLayout, SignageLayoutInput, SignageLayoutPreset } from './layout';
+export { activeDaypart, isAsleep, sleepUntilLabel } from './dayparts';
+export type { SignageDaypart, SignageSleep } from './dayparts';
 export { resolveBoundItems, formatPrice, slideHasContent, pruneEmptySlides } from './bindMenu';
 export { SlideCanvas } from './SlideCanvas';
 export type { SlideCanvasProps } from './SlideCanvas';

@@ -1987,6 +1987,14 @@ export function SignagePage() {
                                 >
                                   {d.online ? 'Online' : 'Offline'}
                                 </span>
+                                {d.online && meta.mode === 'asleep' && (
+                                  <span
+                                    data-testid={`signage-device-asleep-${d.id}`}
+                                    style={{ marginLeft: 6, fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', background: 'var(--color-border-light)', padding: '2px 8px', borderRadius: 999 }}
+                                  >
+                                    Asleep
+                                  </span>
+                                )}
                               </div>
                               <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4 }}>
                                 Playlist {String(meta.playlist_version || '—')} · Slide {String(meta.current_slide || '—')} · Build {String(meta.build_version || '—')}

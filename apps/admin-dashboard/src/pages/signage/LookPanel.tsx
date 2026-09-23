@@ -14,7 +14,7 @@ import {
   resolveLayout,
   type SignageLayoutPreset,
 } from '@shared/signage';
-import type { MenuCategory, SignageLayoutBag } from '../../api';
+import type { MenuCategory, SignageDaypartBag, SignageLayoutBag, SignageSleepBag } from '../../api';
 import { Btn } from '../../components/SharedUI';
 
 export type LookTheme = {
@@ -46,6 +46,19 @@ const FONT_CHOICES: Array<{ value: string; label: string; display: string; body:
   { value: 'serif', label: 'Serif headings', display: 'Georgia, serif', body: '' },
   { value: 'system', label: 'System font', display: 'system-ui, sans-serif', body: 'system-ui, sans-serif' },
 ];
+
+const DAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const EMPTY_SLEEP: SignageSleepBag = { enabled: false, off: '23:00', on: '06:45', days: [] };
+
+function newDaypart(): SignageDaypartBag {
+  return {
+    id: `dp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+    label: '',
+    category_ids: [],
+    preset: null,
+    schedule: { days: [], windows: [{ start: '06:00', end: '10:59' }] },
+  };
+}
 
 const DEFAULT_THEME: Required<Pick<LookTheme, 'primary' | 'background' | 'text' | 'muted'>> = {
   primary: '#D4813A',
@@ -129,18 +142,34 @@ function PresetSketch({ preset }: { preset: SignageLayoutPreset }) {
 }
 
 export function LookPanel({ kind, layout, theme, inherited, inheritedLabel, categories, saving, onSave, testId = 'signage-look' }: Props) {
-  const [open, setOpen] = useState(Boolean(layout?.preset) || Boolean(theme && Object.keys(theme).length));
+  const [open, setOpen] = useState(Boolean(layout?.preset) || Boolean(layout?.dayparts?.length) || Boolean(layout?.sleep?.enabled) || Boolean(theme && Object.keys(theme).length));
   // null preset = "Playlist's own" — no look at this level.
   const [preset, setPreset] = useState<SignageLayoutPreset | null>(isLayoutPreset(layout?.preset) ? layout.preset : null);
   const [draft, setDraft] = useState<SignageLayoutBag>(layout ?? {});
   const [colors, setColors] = useState({ ...DEFAULT_THEME, ...Object.fromEntries(Object.entries(theme ?? {}).filter(([k, v]) => k in DEFAULT_THEME && typeof v === 'string')) });
   const [font, setFont] = useState(fontChoice(theme));
   const [themeOn, setThemeOn] = useState(Boolean(theme && Object.keys(theme).length));
+  const [dayparts, setDayparts] = useState<SignageDaypartBag[]>(layout?.dayparts ?? []);
+  const [sleep, setSleep] = useState<SignageSleepBag>({ ...EMPTY_SLEEP, ...(layout?.sleep ?? {}) });
 
   useEffect(() => {
     setPreset(isLayoutPreset(layout?.preset) ? layout.preset : null);
     setDraft(layout ?? {});
+    setDayparts(layout?.dayparts ?? []);
+    setSleep({ ...EMPTY_SLEEP, ...(layout?.sleep ?? {}) });
   }, [layout]);
+
+  const patchDaypart = (id: string, next: Partial<SignageDaypartBag>) => setDayparts((list) => list.map((d) => (d.id === id ? { ...d, ...next } : d)));
+  const patchWindow = (dp: SignageDaypartBag, key: 'start' | 'end', value: string) => {
+    const w = dp.schedule?.windows?.[0] ?? { start: '06:00', end: '10:59' };
+    patchDaypart(dp.id, { schedule: { ...(dp.schedule ?? {}), windows: [{ ...w, [key]: value }] } });
+  };
+  const toggleDay = (days: number[] | null | undefined, d: number): number[] => {
+    const set = new Set(days ?? []);
+    if (set.has(d)) set.delete(d); else set.add(d);
+    return Array.from(set).sort();
+  };
+  const sleepSet = sleep.enabled;
 
   // What the TV will actually use with the current draft.
   const effective = useMemo(
@@ -166,6 +195,11 @@ export function LookPanel({ kind, layout, theme, inherited, inheritedLabel, cate
   };
 
   const save = () => {
+    const usableDayparts = dayparts.filter((d) => d.label.trim() !== '');
+    const timed: Partial<SignageLayoutBag> = {
+      ...(usableDayparts.length > 0 ? { dayparts: usableDayparts } : {}),
+      ...(sleepSet ? { sleep } : {}),
+    };
     const nextLayout: SignageLayoutBag | null = preset
       ? {
         preset,
@@ -176,8 +210,9 @@ export function LookPanel({ kind, layout, theme, inherited, inheritedLabel, cate
         card_style: effective.card_style,
         category_ids: draft.category_ids ?? [],
         dhivehi_first: draft.dhivehi_first ?? false,
+        ...timed,
       }
-      : null;
+      : (Object.keys(timed).length > 0 ? timed : null);
     const fontPick = FONT_CHOICES.find((f) => f.value === font) ?? FONT_CHOICES[0];
     const nextTheme: LookTheme | null = themeOn
       ? { ...colors, font_display: fontPick.display, font_body: fontPick.body }
@@ -201,6 +236,8 @@ export function LookPanel({ kind, layout, theme, inherited, inheritedLabel, cate
         Look &amp; theme
         <span style={{ fontWeight: 500, fontSize: 12, color: 'var(--color-text-muted)' }}>
           {preset ? LAYOUT_PRESETS[preset].label : `Playlist's own · falls back to ${inheritsFrom}`}
+          {dayparts.length > 0 ? ` · ${dayparts.length} day part${dayparts.length === 1 ? '' : 's'}` : ''}
+          {sleepSet ? ` · sleeps ${sleep.off}–${sleep.on}` : ''}
         </span>
       </button>
 
@@ -290,6 +327,103 @@ export function LookPanel({ kind, layout, theme, inherited, inheritedLabel, cate
               </div>
             </div>
           )}
+
+          <div style={{ marginTop: 16 }} data-testid={`${testId}-dayparts`}>
+            <div style={label}>Day parts — a different menu by time of day</div>
+            {dayparts.length === 0 && (
+              <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--color-text-muted)' }}>
+                None — the same menu all day. Add one to show, say, only breakfast until 11.
+              </p>
+            )}
+            {dayparts.map((dp, i) => {
+              const w = dp.schedule?.windows?.[0] ?? { start: '06:00', end: '10:59' };
+              const days = dp.schedule?.days ?? [];
+              const picked = new Set(dp.category_ids);
+              return (
+                <div key={dp.id} data-testid={`${testId}-daypart-${i}`} style={{ border: '1px solid var(--color-border)', borderRadius: 12, padding: 10, marginBottom: 8 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10 }}>
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <label style={label}>Name</label>
+                      <input data-testid={`${testId}-daypart-${i}-label`} style={field} value={dp.label} placeholder="Breakfast" onChange={(e) => patchDaypart(dp.id, { label: e.target.value })} />
+                    </div>
+                    <div>
+                      <label style={label}>From</label>
+                      <input data-testid={`${testId}-daypart-${i}-start`} type="time" style={field} value={w.start} onChange={(e) => patchWindow(dp, 'start', e.target.value)} />
+                    </div>
+                    <div>
+                      <label style={label}>Until</label>
+                      <input data-testid={`${testId}-daypart-${i}-end`} type="time" style={field} value={w.end} onChange={(e) => patchWindow(dp, 'end', e.target.value)} />
+                    </div>
+                    <div>
+                      <label style={label}>Layout</label>
+                      <select data-testid={`${testId}-daypart-${i}-preset`} style={field} value={dp.preset ?? ''} onChange={(e) => patchDaypart(dp.id, { preset: e.target.value || null })}>
+                        <option value="">Keep the look</option>
+                        {LAYOUT_PRESET_KEYS.map((p) => <option key={p} value={p}>{LAYOUT_PRESETS[p].label}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 4, marginTop: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <span style={{ ...label, marginBottom: 0, marginRight: 6 }}>Days</span>
+                    {DAY_LETTERS.map((l, d) => (
+                      <button key={d} type="button" aria-pressed={days.includes(d)} aria-label={`day ${d}`} onClick={() => patchDaypart(dp.id, { schedule: { ...(dp.schedule ?? {}), days: toggleDay(days, d) } })} style={{ ...chip(days.includes(d), false), minWidth: 34, padding: 0 }}>
+                        {l}
+                      </button>
+                    ))}
+                    <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{days.length === 0 ? 'every day' : ''}</span>
+                  </div>
+                  {categories.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                      {categories.map((c) => (
+                        <button key={c.id} type="button" data-testid={`${testId}-daypart-${i}-cat-${c.id}`} aria-pressed={picked.has(c.id)} onClick={() => {
+                          const next = new Set(picked);
+                          if (next.has(c.id)) next.delete(c.id); else next.add(c.id);
+                          patchDaypart(dp.id, { category_ids: Array.from(next) });
+                        }} style={chip(picked.has(c.id), c.parent_id == null)}>
+                          {c.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div style={{ marginTop: 8 }}>
+                    <button type="button" data-testid={`${testId}-daypart-${i}-remove`} onClick={() => setDayparts((list) => list.filter((d) => d.id !== dp.id))} style={{ background: 'none', border: 0, color: 'var(--color-danger)', cursor: 'pointer', minHeight: 36, padding: 0, fontFamily: 'inherit', fontSize: 13 }}>
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+            <button type="button" data-testid={`${testId}-daypart-add`} onClick={() => setDayparts((list) => [...list, newDaypart()])} style={{ ...chip(false, true), minHeight: 40 }}>
+              + Add day part
+            </button>
+          </div>
+
+          <div style={{ marginTop: 16 }} data-testid={`${testId}-sleep`}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, cursor: 'pointer' }}>
+              <input data-testid={`${testId}-sleep-on`} type="checkbox" checked={sleep.enabled} onChange={(e) => setSleep((s) => ({ ...s, enabled: e.target.checked }))} />
+              <span style={{ fontSize: 13, fontWeight: 600 }}>Sleep — screen goes black outside opening hours</span>
+            </label>
+            {sleep.enabled && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10 }}>
+                <div>
+                  <label style={label}>Off at</label>
+                  <input data-testid={`${testId}-sleep-off`} type="time" style={field} value={sleep.off} onChange={(e) => setSleep((s) => ({ ...s, off: e.target.value }))} />
+                </div>
+                <div>
+                  <label style={label}>Back on at</label>
+                  <input data-testid={`${testId}-sleep-back`} type="time" style={field} value={sleep.on} onChange={(e) => setSleep((s) => ({ ...s, on: e.target.value }))} />
+                </div>
+                <div style={{ gridColumn: 'span 2', display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span style={{ ...label, marginBottom: 0, marginRight: 6 }}>Nights</span>
+                  {DAY_LETTERS.map((l, d) => (
+                    <button key={d} type="button" aria-pressed={(sleep.days ?? []).includes(d)} aria-label={`sleep day ${d}`} onClick={() => setSleep((s) => ({ ...s, days: toggleDay(s.days, d) }))} style={{ ...chip((sleep.days ?? []).includes(d), false), minWidth: 34, padding: 0 }}>
+                      {l}
+                    </button>
+                  ))}
+                  <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{(sleep.days ?? []).length === 0 ? 'every night' : ''}</span>
+                </div>
+              </div>
+            )}
+          </div>
 
           <div style={{ marginTop: 14 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, cursor: 'pointer' }}>

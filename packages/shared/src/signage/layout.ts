@@ -1,4 +1,5 @@
 import type { SignageSlide } from './types';
+import type { SignageDaypart, SignageSleep } from './dayparts';
 
 /**
  * A TV's "look": which layout preset the generated menu uses and the knobs
@@ -25,6 +26,10 @@ export type SignageLayout = {
   category_ids: number[];
   /** Dhivehi as the main name, English small — for a screen facing the local crowd. */
   dhivehi_first: boolean;
+  /** Time-of-day menus — see dayparts.ts. */
+  dayparts?: SignageDaypart[];
+  /** Hours the screen goes black — see dayparts.ts. */
+  sleep?: SignageSleep | null;
 };
 
 /** What a stored or server-sent look may hold — checked field by field by resolveLayout. */
@@ -104,7 +109,37 @@ export function resolveLayout(...layers: SignageLayoutInput[]): SignageLayout {
     }
     if (typeof layer.dhivehi_first === 'boolean') out.dhivehi_first = layer.dhivehi_first;
   }
+  // Day parts and sleep are whole-bag: the last layer that has them wins.
+  for (const layer of layers) {
+    if (!layer) continue;
+    if (Array.isArray(layer.dayparts)) out.dayparts = layer.dayparts as SignageDaypart[];
+    if (layer.sleep && typeof layer.sleep === 'object') out.sleep = layer.sleep as SignageSleep;
+  }
   return out;
+}
+
+/**
+ * What a look actually changes on the playlist, given the day part in
+ * force. A look that names a preset changes everything (the preset's
+ * defaults plus its knobs); one without a preset — "Playlist's own" with
+ * a category filter, Dhivehi-first or day parts on it — changes only what
+ * it says, and the playlist's own auto-menu settings stand for the rest.
+ * A day part swaps in its categories and, when it names one, its preset.
+ */
+export function effectiveLayout(bag: SignageLayoutInput, daypart: SignageDaypart | null = null): Partial<SignageLayout> | null {
+  const merged: { [K in keyof SignageLayout]?: unknown } = { ...(bag ?? {}) };
+  if (daypart) {
+    merged.category_ids = daypart.category_ids;
+    if (daypart.preset) merged.preset = daypart.preset;
+  }
+  if (isLayoutPreset(merged.preset)) return resolveLayout(merged);
+
+  const out: Partial<SignageLayout> = {};
+  if (Array.isArray(merged.category_ids)) {
+    out.category_ids = (merged.category_ids as unknown[]).map(Number).filter((n) => Number.isFinite(n) && n > 0);
+  }
+  if (typeof merged.dhivehi_first === 'boolean') out.dhivehi_first = merged.dhivehi_first;
+  return Object.keys(out).length > 0 ? out : null;
 }
 
 /**
@@ -116,33 +151,26 @@ export function resolveLayout(...layers: SignageLayoutInput[]): SignageLayout {
  * count and thumbnail switch so a price board is dense everywhere, not
  * only on its category slides. Hand-designed slides are left alone.
  */
-export function applyLayoutToSlides(slides: SignageSlide[], layout: SignageLayout | null | undefined): SignageSlide[] {
+export function applyLayoutToSlides(slides: SignageSlide[], layout: Partial<SignageLayout> | null | undefined): SignageSlide[] {
   if (!layout) return slides;
+  const knobs: Record<string, unknown> = {};
+  for (const key of ['preset', 'columns', 'rows_per_slide', 'show_thumbs', 'showcase_cap', 'card_style', 'category_ids'] as const) {
+    if (layout[key] !== undefined) knobs[key] = layout[key];
+  }
+  const listStyle: Record<string, unknown> = {};
+  if (layout.columns !== undefined) listStyle.columns = layout.columns;
+  if (layout.show_thumbs !== undefined) listStyle.showThumbs = layout.show_thumbs;
+
   return slides.map((slide) => {
     if (slide.template_origin === 'auto_menu' && slide.elements?.[0]) {
       const [first, ...rest] = slide.elements;
-      return {
-        ...slide,
-        elements: [{
-          ...first,
-          binding: {
-            ...(first.binding ?? {}),
-            preset: layout.preset,
-            columns: layout.columns,
-            rows_per_slide: layout.rows_per_slide,
-            show_thumbs: layout.show_thumbs,
-            showcase_cap: layout.showcase_cap,
-            card_style: layout.card_style,
-            category_ids: layout.category_ids,
-          },
-        }, ...rest],
-      };
+      return { ...slide, elements: [{ ...first, binding: { ...(first.binding ?? {}), ...knobs } }, ...rest] };
     }
-    if (String(slide.template_origin ?? '').startsWith('smart:')) {
+    if (Object.keys(listStyle).length > 0 && String(slide.template_origin ?? '').startsWith('smart:')) {
       return {
         ...slide,
         elements: (slide.elements ?? []).map((el) => (el.type === 'menu_list'
-          ? { ...el, style: { ...(el.style ?? {}), columns: layout.columns, showThumbs: layout.show_thumbs } }
+          ? { ...el, style: { ...(el.style ?? {}), ...listStyle } }
           : el)),
       };
     }

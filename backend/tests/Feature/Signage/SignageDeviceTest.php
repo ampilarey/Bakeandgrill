@@ -130,6 +130,12 @@ final class SignageDeviceTest extends TestCase
         }
     }
 
+    public function test_heartbeat_records_whether_the_screen_is_asleep(): void
+    {
+        $this->postJson('/api/signage/heartbeat', ['device_id' => 'tv-night', 'mode' => 'asleep'])->assertOk();
+        $this->assertSame('asleep', SignageDevice::query()->where('device_id', 'tv-night')->firstOrFail()->meta['mode']);
+    }
+
     public function test_approve_assigns_screen_and_is_audited(): void
     {
         $screen = SignageScreen::query()->where('slug', 'default')->firstOrFail();

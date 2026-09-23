@@ -108,6 +108,44 @@ final class SignageLayoutTest extends TestCase
             ->assertJsonPath('data.layout', null);
     }
 
+    public function test_day_parts_and_sleep_are_saved_cleaned_and_checked(): void
+    {
+        Sanctum::actingAs($this->owner(), ['staff']);
+        $screen = SignageScreen::query()->where('slug', 'default')->firstOrFail();
+
+        $res = $this->putJson("/api/admin/signage/screens/{$screen->id}", [
+            'layout' => [
+                'dayparts' => [
+                    ['id' => 'bf', 'label' => 'Breakfast', 'category_ids' => ['4'], 'preset' => '', 'schedule' => ['windows' => [['start' => '06:00', 'end' => '10:59']]]],
+                    ['id' => 'x', 'label' => '   ', 'category_ids' => [5]],
+                    ['id' => 'lunch', 'label' => 'Lunch', 'category_ids' => [5], 'preset' => 'photo_grid', 'schedule' => ['days' => [1, 2], 'windows' => [['start' => '11:00', 'end' => '14:59']]]],
+                ],
+                'sleep' => ['enabled' => true, 'off' => '23:00', 'on' => '06:45', 'days' => []],
+            ],
+        ])->assertOk();
+
+        $layout = $res->json('data.layout');
+        $this->assertCount(2, $layout['dayparts'], 'a day part with no label is dropped');
+        $this->assertSame([4], $layout['dayparts'][0]['category_ids']);
+        $this->assertArrayNotHasKey('preset', $layout['dayparts'][0], 'an empty preset means "keep the look"');
+        $this->assertSame('photo_grid', $layout['dayparts'][1]['preset']);
+        $this->assertSame(['enabled' => true, 'off' => '23:00', 'on' => '06:45', 'days' => []], $layout['sleep']);
+        $this->assertArrayNotHasKey('preset', $layout, 'day parts do not force a preset on the look');
+
+        // Reaches the board through the resolver.
+        $cfg = app(SignageResolver::class)->resolveFresh('default', Carbon::now(), null, 'v2');
+        $this->assertSame('Breakfast', $cfg['layout']['dayparts'][0]['label']);
+        $this->assertTrue($cfg['layout']['sleep']['enabled']);
+
+        // A blank sleep goes away; a bad time or preset is refused.
+        $this->putJson("/api/admin/signage/screens/{$screen->id}", ['layout' => ['sleep' => ['enabled' => false, 'off' => '', 'on' => '']]])
+            ->assertOk()->assertJsonPath('data.layout', null);
+        $this->putJson("/api/admin/signage/screens/{$screen->id}", ['layout' => ['sleep' => ['enabled' => true, 'off' => '11pm', 'on' => '06:45']]])
+            ->assertStatus(422);
+        $this->putJson("/api/admin/signage/screens/{$screen->id}", ['layout' => ['dayparts' => [['label' => 'X', 'preset' => 'neon']]]])
+            ->assertStatus(422);
+    }
+
     public function test_an_unknown_preset_or_column_count_is_refused(): void
     {
         Sanctum::actingAs($this->owner(), ['staff']);

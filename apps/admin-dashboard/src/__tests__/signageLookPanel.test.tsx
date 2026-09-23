@@ -61,6 +61,39 @@ describe('LookPanel', () => {
     expect(call.theme).toMatchObject({ primary: '#c0392b', font_display: 'Georgia, serif', font_body: '' });
   });
 
+  it('saves day parts and sleep without forcing a preset', () => {
+    const onSave = vi.fn();
+    render(<LookPanel kind="screen" layout={null} theme={null} categories={cats} saving={false} onSave={onSave} />);
+
+    fireEvent.click(screen.getByTestId('signage-look-toggle'));
+    fireEvent.click(screen.getByTestId('signage-look-daypart-add'));
+    fireEvent.change(screen.getByTestId('signage-look-daypart-0-label'), { target: { value: 'Breakfast' } });
+    fireEvent.change(screen.getByTestId('signage-look-daypart-0-end'), { target: { value: '10:59' } });
+    fireEvent.click(screen.getByTestId('signage-look-daypart-0-cat-4'));
+    fireEvent.click(screen.getByLabelText('day 5'));
+    fireEvent.change(screen.getByTestId('signage-look-daypart-0-preset'), { target: { value: 'photo_grid' } });
+
+    fireEvent.click(screen.getByTestId('signage-look-sleep-on'));
+    fireEvent.change(screen.getByTestId('signage-look-sleep-off'), { target: { value: '22:30' } });
+    fireEvent.click(screen.getByTestId('signage-look-save'));
+
+    const { layout } = onSave.mock.calls[0][0];
+    expect(layout.preset).toBeUndefined();
+    expect(layout.dayparts).toHaveLength(1);
+    expect(layout.dayparts[0]).toMatchObject({ label: 'Breakfast', category_ids: [4], preset: 'photo_grid', schedule: { days: [5], windows: [{ start: '06:00', end: '10:59' }] } });
+    expect(layout.sleep).toMatchObject({ enabled: true, off: '22:30', on: '06:45' });
+    expect(screen.getByText(/1 day part · sleeps 22:30–06:45/)).toBeTruthy();
+  });
+
+  it('drops an unnamed day part and a switched-off sleep', () => {
+    const onSave = vi.fn();
+    render(<LookPanel kind="screen" layout={null} theme={null} categories={[]} saving={false} onSave={onSave} />);
+    fireEvent.click(screen.getByTestId('signage-look-toggle'));
+    fireEvent.click(screen.getByTestId('signage-look-daypart-add'));
+    fireEvent.click(screen.getByTestId('signage-look-save'));
+    expect(onSave).toHaveBeenCalledWith({ layout: null, theme: null });
+  });
+
   it('"Playlist\'s own" clears the look at this level', () => {
     const onSave = vi.fn();
     render(<LookPanel kind="screen" layout={{ preset: 'magazine' }} theme={null} inherited={{ preset: 'price_board' }} inheritedLabel="Dining TVs" categories={[]} saving={false} onSave={onSave} />);
