@@ -1,25 +1,42 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  cancelSocialPost, checkSocialChannel, createSocialChannel, createSocialPost, deleteSocialChannel,
+  cancelSocialPost, checkSocialChannel, createSocialChannel, deleteSocialChannel,
   deleteSocialVideo, fetchSocialAutomation, fetchSocialChannelOptions, fetchSocialChannels,
   fetchSocialPost, fetchSocialPosts, fetchSocialVideos, generateSocialVideo,
   publishSocialPostNow, retrySocialDelivery, testSocialChannel,
   updateSocialAutomation, updateSocialChannel,
   type SocialAutomationConfig, type SocialChannelOption, type SocialChannelRow,
-  type SocialPlatformCaps, type SocialPostRow, type SocialVideoRenditionRow,
+  type SocialPlatformCaps, type SocialPostFilters, type SocialPostRow, type SocialVideoRenditionRow,
 } from '../api';
+import { ItemSearch, type MenuItemSelection } from '../components/ItemSearch';
 import {
-  Badge, Btn, Card, ErrorMsg, Input, Modal, ModalActions, PageHeader, PageShell, Spinner,
+  Badge, Btn, Card, ErrorMsg, Input, Modal, ModalActions, PageHeader, PageShell, Pagination, Select, Spinner,
 } from '../components/SharedUI';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { ComposeModal } from './social/ComposeModal';
+import { PLATFORM_LABELS } from './social/composer';
 
-const PLATFORM_LABELS: Record<string, string> = {
-  facebook: 'Facebook Page',
-  instagram: 'Instagram',
-  telegram: 'Telegram',
-  viber: 'Viber Channel',
+const STATUS_OPTIONS = [
+  { value: '', label: 'All statuses' },
+  { value: 'draft', label: 'Drafts' },
+  { value: 'awaiting_approval', label: 'Awaiting approval' },
+  { value: 'scheduled', label: 'Scheduled' },
+  { value: 'queued', label: 'Queued' },
+  { value: 'published', label: 'Published' },
+  { value: 'partial_failure', label: 'Partly failed' },
+  { value: 'failed', label: 'Failed' },
+  { value: 'cancelled', label: 'Cancelled' },
+];
+
+const SOURCE_LABELS: Record<string, string> = {
+  auto_special: 'Auto · daily special',
+  auto_new_item: 'Auto · new on the menu',
+  auto_featured: "Auto · chef's pick",
+  channel_test: 'Test post',
 };
+
+const EDITABLE = ['draft', 'scheduled', 'awaiting_approval'];
 
 const STATUS_COLORS: Record<string, 'green' | 'gray' | 'red' | 'orange' | 'blue'> = {
   published: 'green',
@@ -50,17 +67,20 @@ export function SocialHubPage() {
   const [channels, setChannels] = useState<SocialChannelRow[]>([]);
   const [platforms, setPlatforms] = useState<Record<string, SocialPlatformCaps>>({});
   const [posts, setPosts] = useState<SocialPostRow[]>([]);
+  const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
+  const [filters, setFilters] = useState<SocialPostFilters>({ page: 1, status: '', include_tests: false });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [composing, setComposing] = useState(false);
+  const [composing, setComposing] = useState<SocialPostRow | 'new' | null>(null);
   const [editingChannel, setEditingChannel] = useState<SocialChannelRow | 'new' | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const postsRes = await fetchSocialPosts();
+      const postsRes = await fetchSocialPosts(filters);
       setPosts(postsRes.posts);
+      setMeta(postsRes.meta);
       if (canChannels) {
         const chRes = await fetchSocialChannels();
         setChannels(chRes.channels);
@@ -71,7 +91,7 @@ export function SocialHubPage() {
     } finally {
       setLoading(false);
     }
-  }, [canChannels]);
+  }, [canChannels, filters]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -81,7 +101,7 @@ export function SocialHubPage() {
         section="Customers & Marketing"
         title="Social Hub"
         subtitle="Post to the business's Facebook, Instagram, Telegram and Viber"
-        action={canCompose ? <Btn onClick={() => setComposing(true)}>+ New post</Btn> : undefined}
+        action={canCompose ? <Btn onClick={() => setComposing('new')}>+ New post</Btn> : undefined}
       />
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
@@ -100,9 +120,17 @@ export function SocialHubPage() {
       </div>
 
       {error && <ErrorMsg message={error} />}
-      {loading ? <Spinner /> : tab === 'posts' ? (
-        <PostList posts={posts} onChanged={load} />
-      ) : tab === 'automation' ? (
+      {tab === 'posts' ? (
+        <PostList
+          posts={posts}
+          meta={meta}
+          loading={loading}
+          filters={filters}
+          onFilters={(patch) => setFilters((f) => ({ ...f, ...patch }))}
+          onChanged={load}
+          onEdit={canCompose ? (p) => setComposing(p) : undefined}
+        />
+      ) : loading ? <Spinner /> : tab === 'automation' ? (
         <AutomationSettings canEdit={can('social.publish')} />
       ) : tab === 'videos' ? (
         <VideoStudio canGenerate={can('social.compose')} />
@@ -116,8 +144,10 @@ export function SocialHubPage() {
 
       {composing && (
         <ComposeModal
-          onClose={() => setComposing(false)}
-          onSaved={() => { setComposing(false); void load(); }}
+          post={composing === 'new' ? null : composing}
+          onClose={() => setComposing(null)}
+          onSaved={() => { setComposing(null); void load(); }}
+          canCompose={canCompose}
           canPublish={can('social.publish')}
           canSchedule={can('social.schedule')}
         />
@@ -139,7 +169,15 @@ export function SocialHubPage() {
   );
 }
 
-function PostList({ posts, onChanged }: { posts: SocialPostRow[]; onChanged: () => void }) {
+function PostList({ posts, meta, loading, filters, onFilters, onChanged, onEdit }: {
+  posts: SocialPostRow[];
+  meta: { current_page: number; last_page: number; total: number };
+  loading: boolean;
+  filters: SocialPostFilters;
+  onFilters: (patch: SocialPostFilters) => void;
+  onChanged: () => void;
+  onEdit?: (post: SocialPostRow) => void;
+}) {
   const { can } = useCurrentUserPermissions();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -151,82 +189,118 @@ function PostList({ posts, onChanged }: { posts: SocialPostRow[]; onChanged: () 
     finally { setBusy(false); }
   };
 
+  const filterBar = (
+    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 12 }}>
+      <Select
+        label="Status"
+        options={STATUS_OPTIONS}
+        value={filters.status ?? ''}
+        onChange={(v) => onFilters({ status: v, page: 1 })}
+        style={{ minWidth: 170 }}
+        aria-label="Filter by status"
+      />
+      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, minHeight: 44, cursor: 'pointer' }}>
+        <input
+          type="checkbox"
+          checked={Boolean(filters.include_tests)}
+          onChange={(e) => onFilters({ include_tests: e.target.checked, page: 1 })}
+        />
+        Show test posts
+      </label>
+      <span style={{ fontSize: 12, color: 'var(--color-text-muted)', minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>
+        {meta.total} post{meta.total === 1 ? '' : 's'}
+      </span>
+    </div>
+  );
+
+  if (loading) {
+    return <>{filterBar}<Spinner /></>;
+  }
+
   if (posts.length === 0) {
     return (
-      <Card style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 13 }}>
-        No posts yet. Compose one to get started.
-      </Card>
+      <>
+        {filterBar}
+        <Card style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 13 }}>
+          {filters.status || filters.include_tests ? 'No posts match these filters.' : 'No posts yet. Compose one to get started.'}
+        </Card>
+      </>
     );
   }
 
   return (
-    <div style={{ display: 'grid', gap: 12 }}>
-      {error && <ErrorMsg message={error} />}
-      {posts.map((post) => (
-        <Card key={post.id} style={{ padding: '14px 16px' }}>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-            {post.snapshot.image_url && (
-              <img
-                src={post.snapshot.image_url}
-                alt=""
-                style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 10, flexShrink: 0 }}
-              />
-            )}
-            <div style={{ flex: '1 1 240px', minWidth: 0 }}>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <Badge label={post.status.replace('_', ' ')} color={STATUS_COLORS[post.status] ?? 'gray'} />
-                {post.scheduled_at && post.status === 'scheduled' && (
+    <div>
+      {filterBar}
+      <div style={{ display: 'grid', gap: 12 }}>
+        {error && <ErrorMsg message={error} />}
+        {posts.map((post) => (
+          <Card key={post.id} style={{ padding: '14px 16px' }}>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+              {post.snapshot.image_url && (
+                <img
+                  src={post.snapshot.image_url}
+                  alt=""
+                  style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 10, flexShrink: 0 }}
+                />
+              )}
+              <div style={{ flex: '1 1 240px', minWidth: 0 }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <Badge label={post.status.replace('_', ' ')} color={STATUS_COLORS[post.status] ?? 'gray'} />
+                  {SOURCE_LABELS[post.source] && <Badge label={SOURCE_LABELS[post.source]} color={post.source === 'channel_test' ? 'gray' : 'purple'} />}
+                  {post.scheduled_at && post.status === 'scheduled' && (
+                    <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                      for {new Date(post.scheduled_at).toLocaleString()}
+                    </span>
+                  )}
                   <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
-                    for {new Date(post.scheduled_at).toLocaleString()}
+                    {post.created_at ? new Date(post.created_at).toLocaleString() : ''}
                   </span>
+                </div>
+                <p style={{
+                  margin: '6px 0 0', fontSize: 13, whiteSpace: 'pre-wrap',
+                  overflowWrap: 'anywhere', color: 'var(--color-text)',
+                }}>
+                  {post.snapshot.caption}
+                </p>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                  {post.deliveries.map((d) => (
+                    <span
+                      key={d.id}
+                      title={d.error_message ?? undefined}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                        fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 999,
+                        border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)',
+                      }}
+                    >
+                      {PLATFORM_LABELS[d.channel?.platform ?? ''] ?? d.channel?.platform} · {d.status}
+                      {d.permalink && (
+                        <a href={d.permalink} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)' }}>
+                          view
+                        </a>
+                      )}
+                      {can('social.publish')
+                        && ['failed', 'unknown', 'skipped'].includes(d.status) && (
+                        <button
+                          onClick={() => { void act(() => retrySocialDelivery(post.id, d.id)); }}
+                          disabled={busy}
+                          style={{
+                            border: 'none', background: 'transparent', cursor: 'pointer',
+                            color: 'var(--color-primary)', font: 'inherit', padding: 0,
+                          }}
+                        >
+                          retry
+                        </button>
+                      )}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap' }}>
+                {onEdit && EDITABLE.includes(post.status) && (
+                  <Btn small variant="secondary" disabled={busy} onClick={() => onEdit(post)}>Edit</Btn>
                 )}
-                <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
-                  {post.created_at ? new Date(post.created_at).toLocaleString() : ''}
-                </span>
-              </div>
-              <p style={{
-                margin: '6px 0 0', fontSize: 13, whiteSpace: 'pre-wrap',
-                overflowWrap: 'anywhere', color: 'var(--color-text)',
-              }}>
-                {post.snapshot.caption}
-              </p>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-                {post.deliveries.map((d) => (
-                  <span
-                    key={d.id}
-                    title={d.error_message ?? undefined}
-                    style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 4,
-                      fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 999,
-                      border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)',
-                    }}
-                  >
-                    {PLATFORM_LABELS[d.channel?.platform ?? ''] ?? d.channel?.platform} · {d.status}
-                    {d.permalink && (
-                      <a href={d.permalink} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)' }}>
-                        view
-                      </a>
-                    )}
-                    {can('social.publish')
-                      && ['failed', 'unknown', 'skipped'].includes(d.status) && (
-                      <button
-                        onClick={() => { void act(() => retrySocialDelivery(post.id, d.id)); }}
-                        disabled={busy}
-                        style={{
-                          border: 'none', background: 'transparent', cursor: 'pointer',
-                          color: 'var(--color-primary)', font: 'inherit', padding: 0,
-                        }}
-                      >
-                        retry
-                      </button>
-                    )}
-                  </span>
-                ))}
-              </div>
-            </div>
-            {can('social.publish') && (
-              <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                {['draft', 'scheduled', 'awaiting_approval'].includes(post.status) && (
+                {can('social.publish') && EDITABLE.includes(post.status) && (
                   <>
                     <Btn small disabled={busy} onClick={() => { void act(() => publishSocialPostNow(post.id)); }}>
                       {post.status === 'awaiting_approval' ? 'Approve & post' : 'Post now'}
@@ -237,10 +311,11 @@ function PostList({ posts, onChanged }: { posts: SocialPostRow[]; onChanged: () 
                   </>
                 )}
               </div>
-            )}
-          </div>
-        </Card>
-      ))}
+            </div>
+          </Card>
+        ))}
+      </div>
+      <Pagination page={meta.current_page} totalPages={meta.last_page} onChange={(p) => onFilters({ page: p })} />
     </div>
   );
 }
@@ -392,7 +467,7 @@ const FORMAT_LABELS: Record<string, string> = {
 };
 
 function VideoStudio({ canGenerate }: { canGenerate: boolean }) {
-  const [itemId, setItemId] = useState('');
+  const [pick, setPick] = useState<MenuItemSelection | null>(null);
   const [loadedItemId, setLoadedItemId] = useState<number | null>(null);
   const [rendererAvailable, setRendererAvailable] = useState(true);
   const [hasPhotos, setHasPhotos] = useState(true);
@@ -440,16 +515,17 @@ function VideoStudio({ canGenerate }: { canGenerate: boolean }) {
           closing card with name and price). Renders run on their own background queue.
           Download the vertical format to upload to TikTok manually.
         </p>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          <Input
-            label="Menu item id"
-            value={itemId}
-            onChange={(v: string) => setItemId(v.replace(/[^0-9]/g, ''))}
-            placeholder="e.g. 12"
-            style={{ maxWidth: 140 }}
-          />
-          <Btn disabled={busy || itemId === ''} onClick={() => { void load(Number(itemId)); }}>Load</Btn>
-        </div>
+        <ItemSearch
+          kind="menu"
+          value={pick}
+          onChange={(sel) => {
+            setPick(sel);
+            if (sel) void load(sel.id); else setLoadedItemId(null);
+          }}
+          resultsPlacement="inline"
+          browseByCategory
+          placeholder="Search the menu for an item…"
+        />
       </Card>
 
       {error && <ErrorMsg message={error} />}
@@ -705,155 +781,6 @@ export async function waitForTestOutcome(
     if (i < attempts - 1) await sleep(delayMs);
   }
   return 'Test post is still queued — is the queue worker running? It will show under Posts (tick "Show test posts").';
-}
-
-function ComposeModal({ onClose, onSaved, canPublish, canSchedule }: {
-  onClose: () => void;
-  onSaved: () => void;
-  canPublish: boolean;
-  canSchedule: boolean;
-}) {
-  const [channels, setChannels] = useState<SocialChannelOption[] | null>(null);
-  const [platforms, setPlatforms] = useState<Record<string, SocialPlatformCaps>>({});
-  const [selected, setSelected] = useState<number[]>([]);
-  const [caption, setCaption] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
-  const [itemId, setItemId] = useState('');
-  const [scheduledAt, setScheduledAt] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const { can } = useCurrentUserPermissions();
-
-  useEffect(() => {
-    // The picker endpoint needs only social.view (no credential data), so
-    // managers can compose without channel-management rights.
-    fetchSocialChannelOptions()
-      .then((res) => {
-        setChannels(res.channels);
-        setPlatforms(res.platforms);
-      })
-      .catch(() => setChannels([]));
-  }, []);
-
-  const needsImage = selected.some((id) => {
-    const ch = (channels ?? []).find((c) => c.id === id);
-    return ch ? platforms[ch.platform]?.requires_photo : false;
-  });
-
-  const submit = async (action: 'draft' | 'schedule' | 'now') => {
-    setSaving(true);
-    setError('');
-    try {
-      await createSocialPost({
-        caption,
-        image_url: imageUrl || null,
-        item_id: itemId ? Number(itemId) : null,
-        channel_ids: selected,
-        action,
-        // The browser's local wall-clock, sent with its offset so the server
-        // schedules the same instant whatever zone the phone is set to.
-        scheduled_at: action === 'schedule' && scheduledAt ? new Date(scheduledAt).toISOString() : null,
-      });
-      onSaved();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const disabled = saving || caption.trim() === '' || selected.length === 0
-    || (needsImage && imageUrl.trim() === '');
-
-  return (
-    <Modal
-      title="New social post"
-      onClose={onClose}
-      maxWidth={560}
-      footer={(
-        <ModalActions>
-          <Btn variant="secondary" onClick={onClose} disabled={saving}>Close</Btn>
-          {can('social.compose') && (
-            <Btn variant="secondary" disabled={disabled} onClick={() => { void submit('draft'); }}>Save draft</Btn>
-          )}
-          {canSchedule && (
-            <Btn variant="secondary" disabled={disabled || !scheduledAt} onClick={() => { void submit('schedule'); }}>
-              Schedule
-            </Btn>
-          )}
-          {canPublish && (
-            <Btn disabled={disabled} onClick={() => { void submit('now'); }}>Post now</Btn>
-          )}
-        </ModalActions>
-      )}
-    >
-      {channels === null ? <Spinner /> : (
-        <div style={{ display: 'grid', gap: 12 }}>
-          {error && <ErrorMsg message={error} />}
-
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Channels</div>
-            {channels.length === 0 ? (
-              <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: 0 }}>
-                No enabled channels. An owner can connect one under the Channels tab.
-              </p>
-            ) : (
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                {channels.map((c) => (
-                  <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={selected.includes(c.id)}
-                      onChange={(e) => setSelected((s) => (
-                        e.target.checked ? [...s, c.id] : s.filter((x) => x !== c.id)
-                      ))}
-                    />
-                    {PLATFORM_LABELS[c.platform] ?? c.platform} — {c.name}
-                  </label>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Caption</div>
-            <textarea
-              value={caption}
-              onChange={(e) => setCaption(e.target.value)}
-              rows={4}
-              maxLength={2200}
-              style={{
-                width: '100%', padding: 10, borderRadius: 10, fontFamily: 'inherit', fontSize: 13,
-                border: '1.5px solid var(--color-border)', background: 'var(--color-surface)',
-                color: 'var(--color-text)', resize: 'vertical',
-              }}
-            />
-          </div>
-
-          <Input
-            label={needsImage ? 'Image URL (required for Instagram)' : 'Image URL (optional)'}
-            value={imageUrl}
-            onChange={(v: string) => setImageUrl(v)}
-            placeholder="https://bakeandgrill.mv/storage/…"
-          />
-          <Input
-            label="Link to menu item id (optional — freezes price + adds the item photo)"
-            value={itemId}
-            onChange={(v: string) => setItemId(v.replace(/[^0-9]/g, ''))}
-            placeholder="e.g. 12"
-          />
-          {canSchedule && (
-            <Input
-              label="Schedule for (local time)"
-              type="datetime-local"
-              value={scheduledAt}
-              onChange={(v: string) => setScheduledAt(v)}
-            />
-          )}
-        </div>
-      )}
-    </Modal>
-  );
 }
 
 function ChannelModal({ channel, platforms, onClose, onSaved }: {

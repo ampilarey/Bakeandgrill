@@ -32,11 +32,13 @@ if (routes_domain_section_is('social', 'admin') && !routes_domain_loaded('social
 
     Route::middleware('permission:social.view')->prefix('admin/social')->group(function () {
         Route::get('/channel-options', [SocialPostController::class, 'channelOptions']);
+        Route::get('/item-preview', [SocialPostController::class, 'itemPreview']);
         Route::get('/posts', [SocialPostController::class, 'index']);
         Route::get('/posts/{id}', [SocialPostController::class, 'show']);
         // Finer slugs (compose/schedule/publish) are enforced in-controller
         // because one endpoint serves draft/schedule/now.
         Route::post('/posts', [SocialPostController::class, 'store']);
+        Route::patch('/posts/{id}', [SocialPostController::class, 'update']);
         Route::post('/posts/{id}/publish', [SocialPostController::class, 'publishNow']);
         Route::post('/posts/{id}/cancel', [SocialPostController::class, 'cancel']);
         Route::post('/posts/{id}/deliveries/{deliveryId}/retry', [SocialPostController::class, 'retryDelivery']);

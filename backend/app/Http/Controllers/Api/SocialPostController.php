@@ -148,6 +148,123 @@ class SocialPostController extends Controller
         return response()->json(['post' => $this->payload($post)]);
     }
 
+    /**
+     * What linking an item to a post would freeze: its shareable photo (or
+     * none — the site logo is never offered as a post image), effective
+     * price, names and durable link. The composer shows this as the user
+     * picks, so the preview is what the platforms will get.
+     */
+    public function itemPreview(Request $request): JsonResponse
+    {
+        $data = $request->validate(['item_id' => ['required', 'integer', 'exists:items,id']]);
+        $item = Item::with(['photos', 'category:id,name'])->findOrFail((int) $data['item_id']);
+        $previews = app(SocialPreviewImage::class);
+        $preview = $previews->forItem($item);
+        $hasRealPhoto = $preview['url'] !== $previews->siteFallback();
+        $resolved = app(EffectivePriceService::class)->resolveUnitPrice($item->id, (float) $item->base_price, $item);
+
+        return response()->json(['item' => [
+            'id' => $item->id,
+            'name' => (string) $item->name,
+            'name_dv' => trim((string) ($item->name_dv ?? '')) ?: null,
+            'category' => $item->category?->name,
+            'price' => round((float) $resolved->unitPrice, 2),
+            'base_price' => round((float) $item->base_price, 2),
+            'image_url' => $hasRealPhoto ? $preview['url'] : null,
+            'link_url' => url('/menu/' . $item->id),
+            'is_sellable' => (bool) $item->is_active && (bool) $item->is_available,
+        ]]);
+    }
+
+    /**
+     * Edit a post that has not gone out: draft, scheduled, or an automation
+     * draft awaiting approval. The snapshot is rebuilt (price re-frozen)
+     * from the merged input. Automation posts keep their item and channels
+     * — only the words and picture can change — so their stale checks and
+     * per-day dedupe keys still mean what they say.
+     */
+    public function update(Request $request, SocialDriverRegistry $drivers, int $id): JsonResponse
+    {
+        $this->requirePermission($request, 'social.compose');
+        $post = SocialPost::with('deliveries')->findOrFail($id);
+        if (!in_array($post->status, [SocialPost::STATUS_DRAFT, SocialPost::STATUS_SCHEDULED, SocialPost::STATUS_AWAITING_APPROVAL], true)) {
+            return response()->json(['message' => 'Only draft, scheduled or awaiting-approval posts can be edited.'], 422);
+        }
+
+        $data = $request->validate([
+            'caption' => ['sometimes', 'required', 'string', 'max:10000'],
+            'image_url' => ['sometimes', 'nullable', 'string', 'max:500', 'url'],
+            'item_id' => ['sometimes', 'nullable', 'integer', 'exists:items,id'],
+            'channel_ids' => ['sometimes', 'array', 'min:1'],
+            'channel_ids.*' => ['integer', 'exists:social_channels,id'],
+            'action' => ['sometimes', Rule::in(['draft', 'schedule'])],
+            'scheduled_at' => ['nullable', 'date', 'after:now'],
+        ]);
+
+        $automated = $post->source !== 'manual';
+        $old = $post->snapshot ?? [];
+        $merged = [
+            'caption' => array_key_exists('caption', $data) ? (string) $data['caption'] : (string) ($old['caption'] ?? ''),
+            'image_url' => array_key_exists('image_url', $data) ? $data['image_url'] : ($old['image_url'] ?? null),
+            'item_id' => $automated || !array_key_exists('item_id', $data) ? ($old['item_id'] ?? null) : $data['item_id'],
+        ];
+        $snapshot = $this->buildSnapshot($merged);
+        if ($automated) {
+            // Keep what the automation knew (special id, offer end) so the
+            // pre-publish stale check still applies.
+            $snapshot = array_merge($old, $snapshot);
+        }
+
+        // Channels: manual posts may change them while nothing has gone out.
+        if (!$automated && array_key_exists('channel_ids', $data)) {
+            $wanted = array_values(array_unique(array_map('intval', $data['channel_ids'])));
+            foreach ($post->deliveries as $delivery) {
+                if ($delivery->status === SocialPostDelivery::STATUS_SCHEDULED && !in_array($delivery->social_channel_id, $wanted, true)) {
+                    $delivery->delete();
+                }
+            }
+            $have = $post->deliveries()->pluck('social_channel_id')->all();
+            foreach ($wanted as $channelId) {
+                if (!in_array($channelId, $have, true)) {
+                    SocialPostDelivery::create([
+                        'social_post_id' => $post->id,
+                        'social_channel_id' => $channelId,
+                        'status' => SocialPostDelivery::STATUS_SCHEDULED,
+                    ]);
+                }
+            }
+        }
+        $channels = SocialChannel::query()->whereIn('id', $post->deliveries()->pluck('social_channel_id'))->get();
+        if ($problem = $this->capabilityProblem($channels, $snapshot, $drivers)) {
+            return response()->json(['message' => $problem], 422);
+        }
+
+        $status = $post->status;
+        $scheduledAt = $post->scheduled_at;
+        $action = $data['action'] ?? null;
+        if ($status !== SocialPost::STATUS_AWAITING_APPROVAL) {
+            if ($action === 'schedule' || ($action === null && $status === SocialPost::STATUS_SCHEDULED && !empty($data['scheduled_at']))) {
+                if (empty($data['scheduled_at']) && $scheduledAt === null) {
+                    return response()->json(['message' => 'Choose a time to schedule for.'], 422);
+                }
+                $this->requirePermission($request, 'social.schedule');
+                $status = SocialPost::STATUS_SCHEDULED;
+                $scheduledAt = !empty($data['scheduled_at']) ? $this->localTime((string) $data['scheduled_at']) : $scheduledAt;
+            } elseif ($action === 'draft') {
+                $status = SocialPost::STATUS_DRAFT;
+                $scheduledAt = null;
+            }
+        }
+
+        $post->forceFill([
+            'snapshot' => $snapshot,
+            'status' => $status,
+            'scheduled_at' => $scheduledAt,
+        ])->save();
+
+        return response()->json(['post' => $this->payload($post->fresh(['deliveries.channel']))]);
+    }
+
     /** GET  /admin/social/automation — daily-special automation settings. */
     public function automationSettings(SocialAutomationSettings $settings): JsonResponse
     {
@@ -336,6 +453,7 @@ class SocialPostController extends Controller
             'status' => $post->status,
             'snapshot' => $post->snapshot,
             'source' => $post->source,
+            'source_ref' => $post->source_ref,
             'business_date' => $post->business_date?->toDateString(),
             'scheduled_at' => $post->scheduled_at?->toIso8601String(),
             'published_at' => $post->published_at?->toIso8601String(),

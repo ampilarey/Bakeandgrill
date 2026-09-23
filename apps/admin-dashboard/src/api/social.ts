@@ -60,11 +60,30 @@ export interface SocialPostRow {
     price: number | null;
   };
   source: string;
+  source_ref: string | null;
   business_date: string | null;
   scheduled_at: string | null;
   published_at: string | null;
   created_at: string | null;
   deliveries: SocialDeliveryRow[];
+}
+
+/** What linking a menu item freezes into a post: photo, price, names, durable link. */
+export interface SocialItemPreview {
+  id: number;
+  name: string;
+  name_dv: string | null;
+  category: string | null;
+  price: number;
+  base_price: number;
+  /** The item's shareable photo, or null when it has none (never the site logo). */
+  image_url: string | null;
+  link_url: string;
+  is_sellable: boolean;
+}
+
+export async function fetchSocialItemPreview(itemId: number): Promise<{ item: SocialItemPreview }> {
+  return req(`/admin/social/item-preview?item_id=${itemId}`);
 }
 
 export async function fetchSocialChannels(): Promise<{
@@ -155,6 +174,18 @@ export async function createSocialPost(data: {
   scheduled_at?: string | null;
 }): Promise<{ post: SocialPostRow }> {
   return req('/admin/social/posts', { method: 'POST', body: JSON.stringify(data) });
+}
+
+/** Edit a draft / scheduled / awaiting-approval post. Automation posts keep their item and channels. */
+export async function updateSocialPost(id: number, data: {
+  caption?: string;
+  image_url?: string | null;
+  item_id?: number | null;
+  channel_ids?: number[];
+  action?: 'draft' | 'schedule';
+  scheduled_at?: string | null;
+}): Promise<{ post: SocialPostRow }> {
+  return req(`/admin/social/posts/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
 
 export async function publishSocialPostNow(id: number): Promise<{ post: SocialPostRow }> {
