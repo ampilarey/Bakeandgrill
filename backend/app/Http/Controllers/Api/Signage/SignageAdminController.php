@@ -8,6 +8,7 @@ use App\Domains\PrayerTimes\Actions\GetIslandCollection;
 use App\Domains\Signage\Services\SignageBannerNormalizer;
 use App\Domains\Signage\Services\SignageCache;
 use App\Domains\Signage\Services\SignageEmergencyNormalizer;
+use App\Domains\Signage\Services\SignageLayout;
 use App\Domains\Signage\Services\SignageTemplateFactory;
 use App\Http\Controllers\Controller;
 use App\Models\SignageCampaign;
@@ -110,7 +111,12 @@ final class SignageAdminController extends Controller
             'orientation' => 'nullable|string|in:landscape,portrait',
             'refresh_seconds' => 'nullable|integer|min:15|max:3600',
             'store_id' => 'nullable|integer',
+            ...SignageLayout::rules(),
         ]);
+        // validated() drops an empty array, and an empty look means "clear it".
+        if ($request->has('layout')) {
+            $data['layout'] = SignageLayout::clean($request->input('layout'));
+        }
         $row = SignageGroup::create($data);
         $this->touch($request, 'signage.group.created', $row->id, [], $row->toArray());
 
@@ -128,7 +134,12 @@ final class SignageAdminController extends Controller
             'orientation' => 'nullable|string|in:landscape,portrait',
             'refresh_seconds' => 'nullable|integer|min:15|max:3600',
             'store_id' => 'nullable|integer',
+            ...SignageLayout::rules(),
         ]);
+        // validated() drops an empty array, and an empty look means "clear it".
+        if ($request->has('layout')) {
+            $data['layout'] = SignageLayout::clean($request->input('layout'));
+        }
         $row->fill($data)->save();
         $this->touch($request, 'signage.group.updated', $row->id, $old, $row->toArray());
 
@@ -161,9 +172,14 @@ final class SignageAdminController extends Controller
             'overrides' => 'nullable|array',
             'is_default' => 'sometimes|boolean',
             'store_id' => 'nullable|integer',
+            ...SignageLayout::rules(),
         ]);
+        // validated() drops an empty array, and an empty look means "clear it".
+        if ($request->has('layout')) {
+            $data['layout'] = SignageLayout::clean($request->input('layout'));
+        }
         $data['slug'] = $data['slug'] ?? Str::slug($data['name']);
-        if (! empty($data['is_default'])) {
+        if (!empty($data['is_default'])) {
             SignageScreen::query()->where('is_default', true)->update(['is_default' => false]);
         }
         $row = SignageScreen::create($data);
@@ -188,8 +204,13 @@ final class SignageAdminController extends Controller
             'overrides' => 'nullable|array',
             'is_default' => 'sometimes|boolean',
             'store_id' => 'nullable|integer',
+            ...SignageLayout::rules(),
         ]);
-        if (! empty($data['is_default'])) {
+        // validated() drops an empty array, and an empty look means "clear it".
+        if ($request->has('layout')) {
+            $data['layout'] = SignageLayout::clean($request->input('layout'));
+        }
+        if (!empty($data['is_default'])) {
             SignageScreen::query()->where('is_default', true)->where('id', '!=', $row->id)->update(['is_default' => false]);
         }
         $row->fill($data)->save();
@@ -277,24 +298,24 @@ final class SignageAdminController extends Controller
         $mediaTypes = implode(',', SignageEmergencyNormalizer::MEDIA_TYPES);
         $icons = implode(',', SignageEmergencyNormalizer::ICONS);
         $data = $request->validate([
-            'mode' => 'sometimes|string|in:'.$modes,
+            'mode' => 'sometimes|string|in:' . $modes,
             'entries' => 'sometimes|array',
             'entries.*.id' => 'nullable|string|max:80',
-            'entries.*.mode' => 'required_with:entries|string|in:'.implode(',', array_filter(
+            'entries.*.mode' => 'required_with:entries|string|in:' . implode(',', array_filter(
                 SignageEmergencyNormalizer::MODES,
-                fn (string $m) => $m !== 'none'
+                fn (string $m) => $m !== 'none',
             )),
             'entries.*.priority' => 'nullable|integer|min:0|max:9999',
             'entries.*.is_active' => 'nullable|boolean',
-            'entries.*.layout' => 'nullable|string|in:'.$layouts,
+            'entries.*.layout' => 'nullable|string|in:' . $layouts,
             'entries.*.title' => 'nullable|string|max:200',
             'entries.*.body' => 'nullable|string|max:500',
             'entries.*.title_dv' => 'nullable|string|max:200',
             'entries.*.body_dv' => 'nullable|string|max:500',
             'entries.*.reopen_at' => 'nullable|string|max:40',
-            'entries.*.media_type' => 'nullable|string|in:'.$mediaTypes,
+            'entries.*.media_type' => 'nullable|string|in:' . $mediaTypes,
             'entries.*.media_url' => 'nullable|string|max:500',
-            'entries.*.icon' => 'nullable|string|in:'.$icons,
+            'entries.*.icon' => 'nullable|string|in:' . $icons,
             'entries.*.schedule' => 'nullable|array',
             'entries.*.schedule.date_start' => 'nullable|date',
             'entries.*.schedule.date_end' => 'nullable|date',
@@ -305,14 +326,14 @@ final class SignageAdminController extends Controller
             'entries.*.schedule.windows.*.end' => 'nullable|date_format:H:i',
         ]);
 
-        if (! isset($data['mode']) && ! isset($data['entries'])) {
+        if (!isset($data['mode']) && !isset($data['entries'])) {
             return response()->json(['message' => 'Provide mode and/or entries.'], 422);
         }
 
         // Fire alarm must never accept image/video — enforce in validation, not convention.
         if (isset($data['entries']) && is_array($data['entries'])) {
             foreach ($data['entries'] as $i => $entry) {
-                if (! is_array($entry)) {
+                if (!is_array($entry)) {
                     continue;
                 }
                 $entryMode = (string) ($entry['mode'] ?? '');
@@ -339,7 +360,7 @@ final class SignageAdminController extends Controller
         if (isset($data['entries'])) {
             $normalized = SignageEmergencyNormalizer::normalize(
                 (string) ($current['manual'] ?? 'none'),
-                ['entries' => $data['entries']]
+                ['entries' => $data['entries']],
             );
             SiteSetting::set('signage_emergency_entries', ['entries' => $normalized['entries']]);
             $current['entries'] = $normalized['entries'];
@@ -396,7 +417,7 @@ final class SignageAdminController extends Controller
             'banners.*.fields' => 'nullable|array',
             'banners.*.fields.*' => 'string|in:date,time,next_prayer,countdown,all_prayers',
             'banners.*.custom_text' => 'nullable|string|max:500',
-            'banners.*.speed_seconds' => 'nullable|integer|min:'.SignageBannerNormalizer::SPEED_MIN.'|max:'.SignageBannerNormalizer::SPEED_MAX,
+            'banners.*.speed_seconds' => 'nullable|integer|min:' . SignageBannerNormalizer::SPEED_MIN . '|max:' . SignageBannerNormalizer::SPEED_MAX,
             'banners.*.duration_seconds' => 'nullable|integer|min:5|max:600',
             'banners.*.repeat_count' => 'nullable|integer|min:1|max:20',
             'banners.*.font_scale' => 'nullable|numeric|min:0.5|max:3',
@@ -421,7 +442,7 @@ final class SignageAdminController extends Controller
             'position' => 'nullable|string|in:top,bottom',
             'fields' => 'nullable|array',
             'fields.*' => 'string|in:date,time,next_prayer,countdown,all_prayers',
-            'speed_seconds' => 'nullable|integer|min:'.SignageBannerNormalizer::SPEED_MIN.'|max:'.SignageBannerNormalizer::SPEED_MAX,
+            'speed_seconds' => 'nullable|integer|min:' . SignageBannerNormalizer::SPEED_MIN . '|max:' . SignageBannerNormalizer::SPEED_MAX,
         ]);
         $old = $this->bannerConfig();
 
@@ -501,7 +522,7 @@ final class SignageAdminController extends Controller
         $cfg = is_string($raw) ? (json_decode($raw, true) ?: []) : (is_array($raw) ? $raw : []);
         $islandId = (int) SiteSetting::get(
             'signage_prayer_island_id',
-            (string) PrayerTimeHelper::MALE_ISLAND_FALLBACK_ID
+            (string) PrayerTimeHelper::MALE_ISLAND_FALLBACK_ID,
         );
         if ($islandId <= 0) {
             $islandId = PrayerTimeHelper::MALE_ISLAND_FALLBACK_ID;

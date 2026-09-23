@@ -11,10 +11,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class SignageGroup extends Model
 {
     protected $fillable = [
-        'store_id', 'name', 'playlist_id', 'theme', 'orientation', 'refresh_seconds',
+        'store_id', 'name', 'playlist_id', 'theme', 'orientation', 'refresh_seconds', 'layout',
     ];
 
     protected $casts = [
+        'layout' => 'array',
         'theme' => 'array',
         'store_id' => 'integer',
         'refresh_seconds' => 'integer',

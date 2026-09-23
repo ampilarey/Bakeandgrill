@@ -240,6 +240,77 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Photo grid look (per-TV looks, 2026-09-23). */
+.signage-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-radius: 2vmin;
+  overflow: hidden;
+  box-shadow: 0 1vmin 3vmin rgba(0, 0, 0, 0.4);
+}
+
+.signage-tile-photo {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  object-fit: cover;
+}
+
+.signage-tile-photo--none {
+  background: rgba(255, 248, 240, 0.06);
+}
+
+.signage-tile-band {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6em;
+  padding: 0.45em 0.7em;
+  background: rgba(12, 8, 4, 0.72);
+}
+
+.signage-tile-name {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45em;
+  min-width: 0;
+}
+
+.signage-tile-name-en {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.signage-tile-dv {
+  font-size: 0.78em;
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.signage-tile-price {
+  flex: 0 0 auto;
+  font-weight: 800;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.signage-tile-was {
+  font-size: 0.66em;
+  opacity: 0.7;
+  margin-right: 0.4em;
+}
+
+.signage-card-name-main {
+  display: block;
+}
+
 /* Pause banner / logo hold animations while the board is paused. */
 .signage-page.signage-paused .signage-banner-track,
 .signage-page.signage-paused .signage-banner-logo-hold {

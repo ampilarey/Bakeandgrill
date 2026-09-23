@@ -11,10 +11,11 @@ class SignageScreen extends Model
 {
     protected $fillable = [
         'store_id', 'name', 'slug', 'group_id', 'playlist_id', 'orientation',
-        'resolution', 'refresh_seconds', 'fallback', 'overrides', 'is_default',
+        'resolution', 'refresh_seconds', 'fallback', 'overrides', 'is_default', 'layout',
     ];
 
     protected $casts = [
+        'layout' => 'array',
         'fallback' => 'array',
         'overrides' => 'array',
         'is_default' => 'boolean',

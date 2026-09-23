@@ -120,6 +120,8 @@ final class SignageResolver
             'banner' => $this->bannerConfig(),
             'bestsellers' => $this->bestsellers(8),
             'menu_new_days' => (int) SiteSetting::get('menu_new_days', 30),
+            // The screen's look: group under screen; null keeps the playlist's own.
+            'layout' => SignageLayout::merge($group?->layout, $screen?->layout),
             'templates' => SignageTemplateFactory::templateCatalog(),
             'server_time' => $now->toIso8601String(),
         ];

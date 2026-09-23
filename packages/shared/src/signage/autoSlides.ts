@@ -125,6 +125,7 @@ function showcaseSlide(
   categoryName: string | null,
   source: SignageSlide,
   seconds: number,
+  cardStyle: 'split' | 'stack',
 ): SignageSlide {
   return {
     id: `auto-sc-${item.id}`,
@@ -141,7 +142,7 @@ function showcaseSlide(
       el(`auto-sc-${item.id}-card`, 'item_card', 5, 7, 90, 82, {
         binding: { type: 'item', item_id: item.id },
         style: {
-          layout: 'split',
+          layout: cardStyle,
           fontSize: 4.5,
           color: '#FFF8F0',
           showDescription: true,
@@ -158,6 +159,12 @@ function showcaseSlide(
   };
 }
 
+type CategoryLook = {
+  preset: string;
+  columns: number;
+  showThumbs: boolean;
+};
+
 function categorySlide(
   key: string,
   title: string,
@@ -166,8 +173,9 @@ function categorySlide(
   rows: MenuItemLite[],
   source: SignageSlide,
   seconds: number,
-  showThumbs: boolean,
+  look: CategoryLook,
 ): SignageSlide {
+  const { showThumbs, columns } = look;
   const elements: SignageElement[] = [];
   if (parentName) {
     elements.push(el(`auto-cat-${key}-parent`, 'text', 4, 3, 70, 4, {
@@ -184,12 +192,35 @@ function categorySlide(
     el(`auto-cat-${key}-rule`, 'shape', 4, 17, 7, 0.7, {
       style: { fill: 'var(--signage-primary, #D4813A)', borderRadius: 4 },
     }),
-    el(`auto-cat-${key}-list`, 'menu_list', 4, 20, 92, 76, {
-      binding: { type: 'ids', item_ids: rows.map((r) => r.id), limit: rows.length },
-      style: { fontSize: 2.8, color: '#FFF8F0', columns: 2, showThumbs },
-    }),
-    el(`auto-cat-${key}-logo`, 'logo', 86, 3, 10, 9),
   );
+  const ids = { type: 'ids', item_ids: rows.map((r) => r.id), limit: rows.length };
+  if (look.preset === 'photo_grid') {
+    // Tiles: a photo with the name and price under it.
+    elements.push(el(`auto-cat-${key}-tiles`, 'menu_tiles', 4, 20, 92, 76, {
+      binding: ids,
+      style: { fontSize: 2.6, color: '#FFF8F0', columns },
+    }));
+  } else if (look.preset === 'magazine') {
+    // One large photo — the first row that has one — beside a single column.
+    const hero = rows.find((r) => r.image_url);
+    if (hero) {
+      elements.push(el(`auto-cat-${key}-hero`, 'image', 4, 20, 40, 76, {
+        binding: { url: hero.image_url },
+        style: { objectFit: 'cover', borderRadius: 24 },
+        animation: { emphasis: 'ken-burns', duration: 14000 },
+      }));
+    }
+    elements.push(el(`auto-cat-${key}-list`, 'menu_list', hero ? 48 : 4, 20, hero ? 48 : 92, 76, {
+      binding: ids,
+      style: { fontSize: 2.8, color: '#FFF8F0', columns, showThumbs },
+    }));
+  } else {
+    elements.push(el(`auto-cat-${key}-list`, 'menu_list', 4, 20, 92, 76, {
+      binding: ids,
+      style: { fontSize: 2.8, color: '#FFF8F0', columns, showThumbs },
+    }));
+  }
+  elements.push(el(`auto-cat-${key}-logo`, 'logo', 86, 3, 10, 9));
 
   return {
     id: `auto-cat-${key}`,
@@ -202,6 +233,14 @@ function categorySlide(
     template_origin: `${AUTO_MENU_ORIGIN}:category`,
     elements,
   };
+}
+
+/** Item is in one of `ids`, directly or through its category's parent. */
+function inCategories(item: MenuItemLite, ids: number[], categories: SignageCategoryLite[]): boolean {
+  if (item.category_id == null) return false;
+  if (ids.includes(item.category_id)) return true;
+  const parent = categories.find((c) => c.id === item.category_id)?.parent_id;
+  return parent != null && ids.includes(parent);
 }
 
 /**
@@ -234,8 +273,20 @@ export function expandAutoSlides(
   );
   // Thumbnails are on unless switched off — a row with its photo is the board.
   const showThumbs = binding.show_thumbs !== false;
+  const preset = typeof binding.preset === 'string' ? binding.preset : 'classic';
+  const columns = Math.min(4, Math.max(1, Number(binding.columns ?? 2) || 2));
+  const cardStyle: 'split' | 'stack' = binding.card_style === 'stack' ? 'stack' : 'split';
+  const onlyCategories = Array.isArray(binding.category_ids)
+    ? (binding.category_ids as unknown[]).map(Number).filter((n) => Number.isFinite(n) && n > 0)
+    : [];
+  const look: CategoryLook = { preset, columns, showThumbs };
 
-  const visible = items.filter(isOnSignage).filter((i) => !isSoldOutOnSignage(i));
+  const visible = items
+    .filter(isOnSignage)
+    .filter((i) => !isSoldOutOnSignage(i))
+    // A screen may show part of the menu — the drinks counter, say. A
+    // parent category takes its children along.
+    .filter((i) => onlyCategories.length === 0 || inCategories(i, onlyCategories, categories));
   const byCategory = new Map(categories.map((c) => [c.id, c]));
 
   // Showcase: everything with a reason, then photographed items taking turns
@@ -250,6 +301,7 @@ export function expandAutoSlides(
     item.category_id != null ? (byCategory.get(item.category_id)?.name ?? null) : null,
     slide,
     showcaseSeconds,
+    cardStyle,
   ));
 
   // Every visible item is listed under its category, in the admin's order.
@@ -273,7 +325,7 @@ export function expandAutoSlides(
       const rows = group.rows.slice(p * rowsPerSlide, (p + 1) * rowsPerSlide);
       const title = pages > 1 ? `${group.title} (${p + 1}/${pages})` : group.title;
       categorySlides.push(
-        categorySlide(`${group.key}-${p}`, title, group.titleDv, group.parent, rows, slide, categorySeconds, showThumbs),
+        categorySlide(`${group.key}-${p}`, title, group.titleDv, group.parent, rows, slide, categorySeconds, look),
       );
     }
   }

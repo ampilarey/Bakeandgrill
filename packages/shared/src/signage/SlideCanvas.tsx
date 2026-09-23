@@ -34,6 +34,34 @@ function DvName({ text, className, style }: { text?: string | null; className: s
   return <span lang="dv" dir="rtl" className={className} style={style}>{dv}</span>;
 }
 
+/**
+ * The two names of an item in the order the screen wants them: English
+ * first as standard, Dhivehi first for a screen set that way in its look.
+ */
+function ItemName({ item, config, enClass, dvClass, dvStyle }: {
+  item: MenuItemLite;
+  config: SignageConfig;
+  enClass: string;
+  dvClass: string;
+  dvStyle?: CSSProperties;
+}) {
+  const dv = item.name_dv?.trim();
+  if (config.layout?.dhivehi_first && dv) {
+    return (
+      <>
+        <span lang="dv" dir="rtl" className={enClass} data-testid="signage-name-dv-first">{dv}</span>
+        <span className={dvClass} style={dvStyle}>{item.name}</span>
+      </>
+    );
+  }
+  return (
+    <>
+      <span className={enClass}>{item.name}</span>
+      <DvName text={item.name_dv} className={dvClass} style={dvStyle} />
+    </>
+  );
+}
+
 /** How wide the brand mark sits across the code — the same as the printed codes. */
 const QR_SIZE = 300;
 const QR_LOGO_RATIO = 0.26;
@@ -356,14 +384,64 @@ function SignageEl({
                   </span>
                 ) : null}
                 <span className="signage-row-name">
-                  <span className="signage-row-name-en">{item.name}</span>
-                  <DvName text={item.name_dv} className="signage-row-dv" />
+                  <ItemName item={item} config={config} enClass="signage-row-name-en" dvClass="signage-row-dv" />
                 </span>
                 <span className="signage-row-leader" aria-hidden="true" />
                 {special && was > now ? (
                   <span className="signage-row-was" data-testid="signage-row-was" style={{ color: theme.muted }}>{formatPrice(was)}</span>
                 ) : null}
                 <span className="signage-row-price" style={{ color: theme.primary }}>{formatPrice(now)}</span>
+              </div>
+            );
+          })}
+        </div>
+      );
+      break;
+    }
+    case 'menu_tiles': {
+      // Photo grid look: a tile per item, photo on top, name and price under.
+      const list = resolveBoundItems(el, items, config);
+      const cols = Math.min(4, Math.max(1, Number(style.columns ?? 3) || 3));
+      const tileRows = Math.max(1, Math.ceil(list.length / cols));
+      body = (
+        <div
+          className="signage-tiles"
+          data-testid="signage-tiles"
+          data-rows={list.length}
+          style={{
+            display: 'grid',
+            gridTemplateColumns: `repeat(${cols}, 1fr)`,
+            gridTemplateRows: `repeat(${tileRows}, minmax(0, 1fr))`,
+            gap: '2vmin',
+            width: '100%',
+            height: '100%',
+          }}
+        >
+          {list.map((item) => {
+            const special = item.special ?? null;
+            const now = Number(special?.effective_price ?? item.base_price);
+            const was = Number(special?.original_price ?? 0);
+            const photo = item.image_url ?? item.thumb_url ?? null;
+            return (
+              <div key={item.id} className="signage-tile" style={{ background: theme.surface || 'rgba(255,255,255,0.05)' }}>
+                {photo ? (
+                  <PictureImg
+                    src={photo}
+                    webpSrc={item.image_webp_url ?? item.thumb_webp_url}
+                    alt=""
+                    className="signage-tile-photo"
+                    onError={(e) => { (e.target as HTMLImageElement).style.visibility = 'hidden'; }}
+                  />
+                ) : <div className="signage-tile-photo signage-tile-photo--none" />}
+                <div className="signage-tile-band">
+                  <span className="signage-tile-name">
+                    <ItemName item={item} config={config} enClass="signage-tile-name-en" dvClass="signage-tile-dv" />
+                  </span>
+                  <span className="signage-tile-price" style={{ color: theme.primary }}>
+                    {special && was > now ? <s className="signage-tile-was">{formatPrice(was)}</s> : null}
+                    {formatPrice(now)}
+                  </span>
+                </div>
               </div>
             );
           })}
@@ -392,8 +470,9 @@ function SignageEl({
         <>
           {eyebrow ? <div className="signage-card-eyebrow" style={{ color: theme.primary }}>{eyebrow}</div> : null}
           {pill}
-          <div className="signage-card-name" style={{ fontFamily: theme.font_display || 'var(--font-display)' }}>{item.name}</div>
-          <DvName text={item.name_dv} className="signage-card-dv" style={{ color: theme.muted }} />
+          <div className="signage-card-name" style={{ fontFamily: theme.font_display || 'var(--font-display)' }}>
+            <ItemName item={item} config={config} enClass="signage-card-name-main" dvClass="signage-card-dv" dvStyle={{ color: theme.muted }} />
+          </div>
           {style.showDescription && item.short_description ? (
             <div className="signage-card-desc" style={{ color: theme.muted }}>{item.short_description}</div>
           ) : null}

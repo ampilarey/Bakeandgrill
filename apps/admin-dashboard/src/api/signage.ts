@@ -98,11 +98,24 @@ export type SignagePlaylist = {
   store_id?: number | null;
 };
 
+/** A screen's or group's look — see packages/shared/src/signage/layout.ts. */
+export type SignageLayoutBag = {
+  preset?: string;
+  columns?: number;
+  rows_per_slide?: number;
+  show_thumbs?: boolean;
+  showcase_cap?: number;
+  card_style?: 'split' | 'stack';
+  category_ids?: number[];
+  dhivehi_first?: boolean;
+};
+
 export type SignageGroup = {
   id: number;
   name: string;
   playlist_id: number | null;
   theme: Record<string, unknown> | null;
+  layout?: SignageLayoutBag | null;
   orientation: string;
   refresh_seconds: number;
   playlist?: { id: number; name: string } | null;
@@ -118,6 +131,8 @@ export type SignageScreen = {
   resolution: string | null;
   refresh_seconds: number | null;
   is_default: boolean;
+  overrides?: Record<string, unknown> | null;
+  layout?: SignageLayoutBag | null;
   group?: { id: number; name: string } | null;
   playlist?: { id: number; name: string } | null;
 };

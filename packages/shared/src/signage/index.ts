@@ -31,6 +31,14 @@ export {
 } from './autoSlides';
 
 export { interpolate, tidyInterpolated, buildWeightedRotation } from './interpolate';
+export {
+  LAYOUT_PRESETS,
+  LAYOUT_PRESET_KEYS,
+  applyLayoutToSlides,
+  isLayoutPreset,
+  resolveLayout,
+} from './layout';
+export type { SignageLayout, SignageLayoutInput, SignageLayoutPreset } from './layout';
 export { resolveBoundItems, formatPrice, slideHasContent, pruneEmptySlides } from './bindMenu';
 export { SlideCanvas } from './SlideCanvas';
 export type { SlideCanvasProps } from './SlideCanvas';

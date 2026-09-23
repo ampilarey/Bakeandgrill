@@ -628,6 +628,39 @@ describe('SignagePage', () => {
   });
 });
 
+describe('SignagePage — per-screen look (2026-09-23)', () => {
+  it('saves a screen look with its theme under overrides and reloads the preview', async () => {
+    vi.spyOn(api, 'getSignageOverview').mockResolvedValue(mockOverview);
+    vi.spyOn(api, 'fetchSignageDevices').mockResolvedValue({ data: [] } as never);
+    vi.spyOn(api, 'fetchAdminCategories').mockResolvedValue({ data: [
+      { id: 20, name: 'Drinks', parent_id: null },
+      { id: 8, name: 'Hot Drinks', parent_id: 20 },
+    ] } as never);
+    const update = vi.spyOn(api, 'updateSignageScreen').mockResolvedValue({
+      data: { ...mockOverview.screens[0], layout: { preset: 'price_board' }, overrides: { theme: { primary: '#c0392b' } } },
+    } as never);
+
+    renderWithRouter(<SignagePage />);
+    await screen.findByTestId('signage-screen-default');
+
+    const frameBefore = screen.getByTestId('signage-preview-frame-default');
+    fireEvent.click(screen.getByTestId('signage-look-screen-100-toggle'));
+    fireEvent.click(screen.getByTestId('signage-look-screen-100-preset-price_board'));
+    fireEvent.click(await screen.findByTestId('signage-look-screen-100-cat-20'));
+    fireEvent.click(screen.getByTestId('signage-look-screen-100-theme-on'));
+    fireEvent.click(screen.getByTestId('signage-look-screen-100-save'));
+
+    await waitFor(() => expect(update).toHaveBeenCalledTimes(1));
+    const [id, body] = update.mock.calls[0];
+    expect(id).toBe(100);
+    expect(body.layout).toMatchObject({ preset: 'price_board', columns: 3, showcase_cap: 0, category_ids: [20] });
+    expect((body.overrides as { theme: { primary: string } }).theme.primary).toBe('#D4813A');
+
+    // The preview iframe is remounted so the TV's new look shows on the page.
+    await waitFor(() => expect(screen.getByTestId('signage-preview-frame-default')).not.toBe(frameBefore));
+  });
+});
+
 describe('SignagePage mobile footer clearance', () => {
   beforeEach(() => {
     vi.clearAllMocks();

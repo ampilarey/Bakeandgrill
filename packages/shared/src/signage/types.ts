@@ -177,6 +177,17 @@ export type SignageConfig = {
   }>;
   menu_new_days: number;
   server_time?: string;
+  /** The screen's look (group → screen), already merged by the server. See layout.ts. */
+  layout?: {
+    preset?: string;
+    columns?: number;
+    rows_per_slide?: number;
+    show_thumbs?: boolean;
+    showcase_cap?: number;
+    card_style?: 'split' | 'stack' | string;
+    category_ids?: number[];
+    dhivehi_first?: boolean;
+  } | null;
 };
 
 export type MenuItemLite = {

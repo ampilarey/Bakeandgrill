@@ -11,6 +11,8 @@ import {
   buildWeightedRotation,
   expandPlaylist,
   pruneEmptySlides,
+  applyLayoutToSlides,
+  resolveLayout,
   brandCardSlide,
   SignageBanner,
   shouldShowBanner,
@@ -116,6 +118,7 @@ function mergeLiveFields(prev: SignageConfig, next: SignageConfig): SignageConfi
     banner: next.banner,
     source: next.source,
     theme: next.theme,
+    layout: next.layout,
     refresh_seconds: next.refresh_seconds,
     server_time: next.server_time,
   };
@@ -233,7 +236,9 @@ export function SignagePage() {
   // slide is empty does not depend on the loop, so the count stays fixed.
   const playable = (loop: number): SignageSlide[] => {
     if (!config) return [];
-    const base = hasAutoMenu ? expandPlaylist(config.slides ?? [], items, categories, loop) : (config.slides ?? []);
+    // The screen's look, when one is set in admin, overrides the playlist's own knobs.
+    const looked = config.layout ? applyLayoutToSlides(config.slides ?? [], resolveLayout(config.layout)) : (config.slides ?? []);
+    const base = hasAutoMenu ? expandPlaylist(looked, items, categories, loop) : looked;
     return pruneEmptySlides(base, items, config);
   };
 

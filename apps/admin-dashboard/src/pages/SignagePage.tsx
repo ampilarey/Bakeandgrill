@@ -26,6 +26,9 @@ import {
   type SignageOverview,
   type SignagePlaylist,
   type SignageScreen,
+  fetchAdminCategories,
+  type MenuCategory,
+  updateSignageScreen,
 } from '../api';
 import {
   BANNER_REPEAT_SLIDER,
@@ -44,6 +47,7 @@ import { BannerAppearanceEditor } from './signage/BannerAppearanceEditor';
 import { BannerLivePreview } from './signage/BannerLivePreview';
 import { nearestPresetValue } from './signage/bannerAppearanceUx';
 import { SignageDesigner, type DesignerSlide } from './signage/SignageDesigner';
+import { LookPanel, type LookSave } from './signage/LookPanel';
 
 const BANNER_FIELD_OPTS = [
   { value: 'date', label: 'Date' },
@@ -207,7 +211,7 @@ export function boardPixelSize(
   return { width, height };
 }
 
-function SignageScreenPreview({ screen, url }: { screen: SignageScreen; url: string }) {
+function SignageScreenPreview({ screen, url, reloadKey = 0 }: { screen: SignageScreen; url: string; reloadKey?: number }) {
   const { width: boardW, height: boardH } = boardPixelSize(screen.resolution, screen.orientation);
   const boxRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(() => 240 / boardH);
@@ -252,6 +256,7 @@ function SignageScreenPreview({ screen, url }: { screen: SignageScreen; url: str
       }}
     >
       <iframe
+        key={reloadKey}
         title={`Preview ${screen.name}`}
         src={previewSrc}
         data-testid={`signage-preview-frame-${screen.slug}`}
@@ -303,6 +308,11 @@ export function SignagePage() {
   const [addingSlide, setAddingSlide] = useState(false);
 
   const [groupDrafts, setGroupDrafts] = useState<Record<number, number | ''>>({});
+  // Per-TV looks (2026-09-23): the menu's categories for the picker, and a
+  // counter per screen that reloads its preview after a look is saved.
+  const [menuCategories, setMenuCategories] = useState<MenuCategory[]>([]);
+  const [lookSaving, setLookSaving] = useState<string | null>(null);
+  const [previewKeys, setPreviewKeys] = useState<Record<number, number>>({});
   const [groupSaving, setGroupSaving] = useState<number | null>(null);
 
   const [emergencyMode, setEmergencyMode] = useState('none');
@@ -398,6 +408,50 @@ export function SignagePage() {
   }, [applyOverview, selectedPlaylistId, toast]);
 
   useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.resolve()
+      .then(() => fetchAdminCategories())
+      .then((res) => { if (!cancelled) setMenuCategories(res?.data ?? []); })
+      .catch(() => { /* the look panel just hides its category picker */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  const onSaveScreenLook = async (screen: SignageScreen, next: LookSave) => {
+    setLookSaving(`screen-${screen.id}`);
+    try {
+      const overrides = { ...(screen.overrides ?? {}) };
+      if (next.theme) overrides.theme = next.theme; else delete overrides.theme;
+      const res = await updateSignageScreen(screen.id, { layout: next.layout, overrides });
+      setOverview((prev) => prev ? { ...prev, screens: prev.screens.map((sc) => (sc.id === screen.id ? { ...sc, ...res.data } : sc)) } : prev);
+      setPreviewKeys((k) => ({ ...k, [screen.id]: (k[screen.id] ?? 0) + 1 }));
+      toast.success(`Look saved for "${screen.name}".`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not save the look');
+    } finally {
+      setLookSaving(null);
+    }
+  };
+
+  const onSaveGroupLook = async (group: SignageGroup, next: LookSave) => {
+    setLookSaving(`group-${group.id}`);
+    try {
+      const res = await updateSignageGroup(group.id, { layout: next.layout, theme: next.theme });
+      setOverview((prev) => prev ? { ...prev, groups: prev.groups.map((g) => (g.id === group.id ? { ...g, ...res.data } : g)) } : prev);
+      // Every screen in the group shows the change.
+      setPreviewKeys((k) => {
+        const out = { ...k };
+        for (const sc of overview?.screens ?? []) if (sc.group_id === group.id) out[sc.id] = (out[sc.id] ?? 0) + 1;
+        return out;
+      });
+      toast.success(`Look saved for "${group.name}".`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not save the look');
+    } finally {
+      setLookSaving(null);
+    }
+  };
 
   useEffect(() => {
     if (tab !== 'banner') return;
@@ -791,7 +845,18 @@ export function SignagePage() {
             <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Scan to open on TV</span>
           </div>
         </div>
-        <SignageScreenPreview screen={screen} url={url} />
+        <SignageScreenPreview screen={screen} url={url} reloadKey={previewKeys[screen.id] ?? 0} />
+        <LookPanel
+          kind="screen"
+          testId={`signage-look-screen-${screen.id}`}
+          layout={screen.layout}
+          theme={(screen.overrides?.theme as Record<string, string> | undefined) ?? null}
+          inherited={groups.find((g) => g.id === screen.group_id)?.layout ?? null}
+          inheritedLabel={screen.group?.name}
+          categories={menuCategories}
+          saving={lookSaving === `screen-${screen.id}`}
+          onSave={(next) => onSaveScreenLook(screen, next)}
+        />
       </Card>
       </div>
     );
@@ -973,6 +1038,15 @@ export function SignagePage() {
                         <Save size={16} /> {groupSaving === group.id ? 'Saving…' : 'Save'}
                       </Btn>
                     </div>
+                    <LookPanel
+                      kind="group"
+                      testId={`signage-look-group-${group.id}`}
+                      layout={group.layout}
+                      theme={(group.theme as Record<string, string> | null) ?? null}
+                      categories={menuCategories}
+                      saving={lookSaving === `group-${group.id}`}
+                      onSave={(next) => onSaveGroupLook(group, next)}
+                    />
                   </Card>
                   </div>
                 ))
