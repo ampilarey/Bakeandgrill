@@ -56,11 +56,15 @@ class SocialPostDelivery extends Model
         'error_message',
         'attempts',
         'published_at',
+        'insights',
+        'insights_at',
     ];
 
     protected $casts = [
         'attempts' => 'array',
         'published_at' => 'datetime',
+        'insights' => 'array',
+        'insights_at' => 'datetime',
     ];
 
     public function post(): BelongsTo

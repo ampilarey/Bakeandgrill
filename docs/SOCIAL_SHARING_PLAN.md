@@ -287,6 +287,75 @@ ffmpeg foundation.
 | **4** | Video renderer — only after the cPanel ffmpeg benchmark passes; second worker in deploy; TikTok download follows | nothing new |
 | **5** | Viber Channel driver (webhook + super-admin token); X only if owner accepts current API pricing with a spend cap | Viber channel token/webhook; X budget decision |
 
+## Audit fixes (2026-09-24)
+
+An audit of the shipped hub found fourteen gaps; all were fixed in three
+commits the same day. What changed, for whoever maintains this next:
+
+**Reliability**
+- `social:check-channels` (daily 09:15) asks each enabled channel's platform
+  whether the credentials still work and when the token expires (Meta
+  `debug_token`; Telegram `getChat`; Viber `get_account_info`). The result
+  lives in `social_channels.health` and shows on the Channels tab as a pill,
+  with a "Check now" button. One SMS per new problem (token inside its last
+  week, or a failed check); repeats only when the problem changes.
+- The publish job's `failed()` hook (retries exhausted on a transient error)
+  now records the attempt, marks the delivery and sends the same rate-limited
+  alert as a hard failure. Before, it was silent.
+- Caption limits are per platform and declared by each driver
+  (`caption_max`, `caption_max_photo`): Telegram 1024 on a photo / 4096 text,
+  Instagram 2200, Viber 7000. The store and update endpoints refuse a caption
+  the chosen channels would cut; the composer shows the tightest limit.
+- Schedule times: the composer sends ISO 8601 with the browser offset and the
+  controller normalises to the app zone. (Eloquent stores an offset string's
+  wall-clock unconverted — a phone set to Dubai scheduled an hour out.)
+- The retry-count mismatch the audit listed (job `tries=3` vs the social
+  worker `--tries=1`) was not real: publish jobs run on the default queue;
+  the `social` queue's single try is for video renders, on purpose.
+
+**Composer** (`apps/admin-dashboard/src/pages/social/`)
+- Menu item search (`ItemSearch`), media library (`MediaPicker`), pasted URL.
+  `GET /admin/social/item-preview` returns what linking an item freezes (photo
+  or none — never the site logo, effective price, names, `/menu/{id}` link).
+- A per-platform preview pane (`PostPreview`): page name, caption folded
+  where Facebook/Instagram fold it, the photo in the platform's crop, the
+  Facebook link card when there is a link and no photo.
+- `PATCH /admin/social/posts/{id}` edits draft / scheduled / awaiting-approval
+  posts; the snapshot is rebuilt (price re-frozen). Automation posts keep
+  their item and channels so stale checks and dedupe keys still apply.
+- Posts tab: pagination, status filter, "Show test posts" (channel test posts
+  are hidden by default: `source=channel_test`), automation badges, Edit.
+  The Channels tab's "Test post" watches its own delivery and reports the
+  outcome in place.
+
+**Automations** (`SocialAutomationSettings` kinds: `special`, `new_item`,
+`featured`; settings keys `social_auto_{kind}_*`; shared `AutoPostDrafter`)
+- *New on the menu* (`NewItemAutoPoster`, `auto_new_item`): one recent,
+  sellable, photographed item per day, oldest first, each announced once
+  (`source_ref item:{id}`); `max_age_days` (default 14).
+- *Chef's pick* (`FeaturedItemAutoPoster`, `auto_featured`): on chosen
+  weekdays (`days`), one `is_featured` item, least recently posted first.
+  Pre-publish stale check also skips an item no longer featured.
+- Both draft for approval by default (`unattended` off), never post twice a
+  day, and skip photo-required channels without a real photo.
+- `social:run-automations` fires each kind at its own time; `--force` runs all.
+
+**Insights**
+- `SocialDriverInterface::insights()`; Facebook (likes/comments/shares) and
+  Instagram (likes/comments) implement it; Telegram and Viber return null.
+  Stored in `social_post_deliveries.insights` + `insights_at`.
+- `social:refresh-insights` (daily 09:30) refreshes last month's deliveries;
+  `POST /admin/social/posts/{id}/insights` refreshes one post ("Refresh
+  stats" on the Posts tab).
+
+**Tests:** `tests/Feature/Social/{SocialChannelHealthTest, SocialComposerTest,
+SocialAutomationsTest, SocialInsightsTest}.php` and the admin
+`SocialHubPage.test.tsx` / `social.composer.test.ts`, which the page did not
+have before.
+
+Still unbuilt, on purpose: TikTok/WhatsApp/X posting (no usable API or the
+pricing decision in phase 5), weekly-menu and opening-hours automations.
+
 ## Owner setup checklist (Phase 2+, exact steps provided when reached)
 
 1. **Meta (connection preflight, not just a token):** create the developer

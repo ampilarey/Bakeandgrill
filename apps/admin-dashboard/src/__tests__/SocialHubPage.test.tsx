@@ -26,6 +26,13 @@ const options: api.SocialChannelOption[] = [
   { id: 2, platform: 'telegram', name: 'BG News' },
 ];
 
+const automationBase: api.SocialAutomationConfig = { enabled: false, time: '11:00', channel_ids: [], template: 'T', unattended: false, days: [0, 1, 2, 3, 4, 5, 6], max_age_days: 14 };
+const automations: Record<api.SocialAutomationKind, api.SocialAutomationConfig> = {
+  special: { ...automationBase },
+  new_item: { ...automationBase, time: '16:00', max_age_days: 14 },
+  featured: { ...automationBase, time: '12:00', days: [5] },
+};
+
 function channel(over: Partial<api.SocialChannelRow>): api.SocialChannelRow {
   return {
     id: 1, platform: 'facebook', name: 'Main Page', remote_account_id: null, is_enabled: true, is_test_channel: false,
@@ -39,7 +46,7 @@ function post(over: Partial<api.SocialPostRow>): api.SocialPostRow {
     id: 1, status: 'draft', source: 'manual', source_ref: null, business_date: '2026-09-24',
     scheduled_at: null, published_at: null, created_at: '2026-09-24T08:00:00+05:00',
     snapshot: { caption: 'Fresh masroshi today', image_url: null, link_url: null, item_id: null, price: null },
-    deliveries: [{ id: 11, status: 'scheduled', channel: { id: 1, platform: 'facebook', name: 'Main Page' }, permalink: null, error_class: null, error_message: null, attempts: [], published_at: null }],
+    deliveries: [{ id: 11, status: 'scheduled', channel: { id: 1, platform: 'facebook', name: 'Main Page' }, permalink: null, error_class: null, error_message: null, attempts: [], published_at: null, insights: null, insights_at: null }],
     ...over,
   };
 }
@@ -52,7 +59,9 @@ beforeEach(() => {
   vi.spyOn(api, 'fetchSocialPosts').mockImplementation(async (f) => ((typeof f === 'object' && f.page === 2) ? pageTwo : pageOne));
   vi.spyOn(api, 'fetchSocialChannels').mockResolvedValue({ channels: [channel({})], platforms });
   vi.spyOn(api, 'fetchSocialChannelOptions').mockResolvedValue({ channels: options, platforms });
-  vi.spyOn(api, 'fetchSocialAutomation').mockResolvedValue({ automation: { enabled: false, time: '11:00', channel_ids: [], template: '', unattended: false } });
+  vi.spyOn(api, 'fetchSocialAutomation').mockResolvedValue({ automation: automations.special, automations });
+  vi.spyOn(api, 'updateSocialAutomation').mockImplementation(async (data) => ({ automation: automations.special, automations: { ...automations, [data.kind ?? 'special']: { ...automations[data.kind ?? 'special'], ...data } } }));
+  vi.spyOn(api, 'refreshSocialInsights').mockResolvedValue({ post: post({}) });
   vi.spyOn(api, 'fetchAdminCategories').mockResolvedValue({ data: [] } as never);
   vi.spyOn(api, 'fetchAdminItems').mockResolvedValue({ data: [{ id: 7, name: 'Masroshi', base_price: 45, category: { id: 1, name: 'Hedhikaa' } }] } as never);
   vi.spyOn(api, 'fetchSocialItemPreview').mockResolvedValue({ item: {
@@ -199,6 +208,49 @@ describe('SocialHubPage — composer', () => {
   });
 });
 
+describe('SocialHubPage — automations and insights', () => {
+  it('shows the three automations and saves each under its own kind', async () => {
+    renderWithRouter(<SocialHubPage />);
+    await screen.findByText('Fresh masroshi today');
+    fireEvent.click(screen.getByText('Automation'));
+
+    const featured = within(await screen.findByTestId('automation-featured'));
+    expect(screen.getByTestId('automation-special')).toBeInTheDocument();
+    expect(screen.getByTestId('automation-new_item')).toBeInTheDocument();
+    expect(featured.getByText('Fri')).toHaveAttribute('aria-pressed', 'true');
+    expect(featured.getByText('Mon')).toHaveAttribute('aria-pressed', 'false');
+
+    fireEvent.click(featured.getByText('Mon'));
+    fireEvent.click(featured.getByLabelText('Enabled'));
+    fireEvent.click(featured.getByText("Save chef's pick"));
+    await waitFor(() => expect(api.updateSocialAutomation).toHaveBeenCalledWith(expect.objectContaining({
+      kind: 'featured', enabled: true, days: [1, 5],
+    })));
+    expect(await featured.findByText('Saved.')).toBeInTheDocument();
+
+    const newItem = within(screen.getByTestId('automation-new_item'));
+    fireEvent.change(newItem.getByLabelText('Counts as new for (days)'), { target: { value: '30' } });
+    fireEvent.click(newItem.getByText('Save new on the menu'));
+    await waitFor(() => expect(api.updateSocialAutomation).toHaveBeenCalledWith(expect.objectContaining({ kind: 'new_item', max_age_days: 30 })));
+  });
+
+  it('shows engagement numbers on published deliveries and can refresh them', async () => {
+    vi.mocked(api.fetchSocialPosts).mockResolvedValue({
+      posts: [post({
+        id: 4, status: 'published',
+        deliveries: [{ id: 41, status: 'published', channel: { id: 1, platform: 'facebook', name: 'Main Page' }, permalink: 'https://facebook.com/1', error_class: null, error_message: null, attempts: [], published_at: '2026-09-23T10:00:00+05:00', insights: { likes: 12, comments: 3, shares: 2 }, insights_at: '2026-09-24T09:30:00+05:00' }],
+      })],
+      meta: { current_page: 1, last_page: 1, total: 1 },
+    });
+    renderWithRouter(<SocialHubPage />);
+    await screen.findByText('Fresh masroshi today');
+    expect(screen.getByTestId('delivery-insights')).toHaveTextContent('♥ 12 · 💬 3 · ↗ 2');
+
+    fireEvent.click(screen.getByText('Refresh stats'));
+    await waitFor(() => expect(api.refreshSocialInsights).toHaveBeenCalledWith(4));
+  });
+});
+
 describe('SocialHubPage — channels', () => {
   it('shows the health pill and can check now', async () => {
     vi.mocked(api.fetchSocialChannels).mockResolvedValue({
@@ -225,7 +277,7 @@ describe('SocialHubPage — channels', () => {
 describe('waitForTestOutcome', () => {
   const sleep = async () => {};
   const delivered = (status: string, extra: Partial<api.SocialDeliveryRow> = {}) => ({
-    post: post({ id: 9, deliveries: [{ id: 1, status, channel: null, permalink: null, error_class: null, error_message: null, attempts: [], published_at: null, ...extra }] }),
+    post: post({ id: 9, deliveries: [{ id: 1, status, channel: null, permalink: null, error_class: null, error_message: null, attempts: [], published_at: null, insights: null, insights_at: null, ...extra }] }),
   });
 
   it('reports a published test post with its link', async () => {

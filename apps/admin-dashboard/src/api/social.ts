@@ -47,6 +47,9 @@ export interface SocialDeliveryRow {
   error_message: string | null;
   attempts: { at: string; outcome: string; error?: string }[];
   published_at: string | null;
+  /** Likes, comments, shares as the platform reports them (Facebook and Instagram only). */
+  insights: Record<string, number> | null;
+  insights_at: string | null;
 }
 
 export interface SocialPostRow {
@@ -196,6 +199,11 @@ export async function cancelSocialPost(id: number): Promise<{ post: SocialPostRo
   return req(`/admin/social/posts/${id}/cancel`, { method: 'POST', body: JSON.stringify({}) });
 }
 
+/** Fetch fresh likes/comments/shares for one post's published deliveries. */
+export async function refreshSocialInsights(postId: number): Promise<{ post: SocialPostRow }> {
+  return req(`/admin/social/posts/${postId}/insights`, { method: 'POST', body: JSON.stringify({}) });
+}
+
 export async function retrySocialDelivery(postId: number, deliveryId: number): Promise<void> {
   await req(`/admin/social/posts/${postId}/deliveries/${deliveryId}/retry`, {
     method: 'POST',
@@ -203,7 +211,11 @@ export async function retrySocialDelivery(postId: number, deliveryId: number): P
   });
 }
 
-// ── Daily-special automation ─────────────────────────────────────────────────
+// ── Automations ──────────────────────────────────────────────────────────────
+// `special` is the daily special; `new_item` announces recent photographed
+// items once each; `featured` rotates the chef's picks on chosen weekdays.
+
+export type SocialAutomationKind = 'special' | 'new_item' | 'featured';
 
 export interface SocialAutomationConfig {
   enabled: boolean;
@@ -212,15 +224,22 @@ export interface SocialAutomationConfig {
   template: string;
   /** Pilot gate: false = drafts await human approval before posting. */
   unattended: boolean;
+  /** Chef's pick only: weekdays it may post on (0 = Sunday … 6 = Saturday). */
+  days: number[];
+  /** New on the menu only: how many days an item counts as new. */
+  max_age_days: number;
 }
 
-export async function fetchSocialAutomation(): Promise<{ automation: SocialAutomationConfig }> {
+export async function fetchSocialAutomation(): Promise<{
+  automation: SocialAutomationConfig;
+  automations: Record<SocialAutomationKind, SocialAutomationConfig>;
+}> {
   return req('/admin/social/automation');
 }
 
 export async function updateSocialAutomation(
-  data: Partial<SocialAutomationConfig>,
-): Promise<{ automation: SocialAutomationConfig }> {
+  data: Partial<SocialAutomationConfig> & { kind?: SocialAutomationKind },
+): Promise<{ automation: SocialAutomationConfig; automations: Record<SocialAutomationKind, SocialAutomationConfig> }> {
   return req('/admin/social/automation', { method: 'PUT', body: JSON.stringify(data) });
 }
 

@@ -175,7 +175,7 @@ class SocialPublisher
      */
     private function staleReasonForAutomatedPost(SocialPost $post): ?string
     {
-        if ($post->source !== 'auto_special') {
+        if (!str_starts_with((string) $post->source, 'auto_')) {
             return null;
         }
 
@@ -183,6 +183,10 @@ class SocialPublisher
         $item = !empty($snapshot['item_id']) ? \App\Models\Item::find((int) $snapshot['item_id']) : null;
         if ($item === null || !$item->is_active || !$item->is_available) {
             return 'Item is no longer sellable.';
+        }
+
+        if ($post->source === FeaturedItemAutoPoster::SOURCE && !$item->is_featured) {
+            return "Item is no longer a chef's pick.";
         }
 
         if (!empty($snapshot['special_id'])) {

@@ -192,6 +192,13 @@ Schedule::command('social:check-channels')
     ->onFailure($alertOnFailure('social:check-channels'))
     ->after($trackSuccess('social:check-channels'));
 
+// Social Hub: daily engagement numbers for last month's Facebook/Instagram posts
+Schedule::command('social:refresh-insights')
+    ->dailyAt('09:30')
+    ->withoutOverlapping()
+    ->onFailure($alertOnFailure('social:refresh-insights'))
+    ->after($trackSuccess('social:refresh-insights'));
+
 // Content Studio: apply due scheduled publishes
 Schedule::command('content:publish-scheduled')
     ->everyMinute()

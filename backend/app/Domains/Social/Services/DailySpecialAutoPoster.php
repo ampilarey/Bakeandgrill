@@ -5,13 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Social\Services;
 
 use App\Models\DailySpecial;
-use App\Models\Item;
-use App\Models\SocialChannel;
 use App\Models\SocialPost;
-use App\Models\SocialPostDelivery;
-use App\Services\EffectivePriceService;
-use App\Support\SocialPreviewImage;
-use Illuminate\Support\Facades\Log;
 
 /**
  * The daily-special automation (plan §2c). At the configured time it drafts
@@ -29,8 +23,7 @@ class DailySpecialAutoPoster
 {
     public function __construct(
         private readonly SocialAutomationSettings $settings,
-        private readonly SocialPublisher $publisher,
-        private readonly SocialPreviewImage $previews,
+        private readonly AutoPostDrafter $drafter,
     ) {}
 
     public const SOURCE = 'auto_special';
@@ -43,19 +36,16 @@ class DailySpecialAutoPoster
     /** Create today's automation post if due and not already created. */
     public function run(): ?SocialPost
     {
-        $config = $this->settings->all();
+        $config = $this->settings->forKind('special');
         if (!$config['enabled'] || $config['channel_ids'] === []) {
             return null;
         }
 
-        $businessDate = now(config('app.timezone', 'Indian/Maldives'))->toDateString();
+        $businessDate = $this->drafter->businessDate();
 
         // One automation post per day: if any delivery already carries
         // today's dedupe key, the work is done — whatever happened since.
-        $alreadyPosted = SocialPostDelivery::query()
-            ->where('dedupe_key', 'like', $this->dedupePrefix($businessDate) . ':%')
-            ->exists();
-        if ($alreadyPosted) {
+        if ($this->drafter->alreadyDrafted($this->dedupePrefix($businessDate))) {
             return null;
         }
 
@@ -65,64 +55,25 @@ class DailySpecialAutoPoster
         }
 
         $item = $special->item;
-        $preview = $this->previews->forItem($item);
-        $hasRealPhoto = $preview['url'] !== $this->previews->siteFallback();
-
-        $channels = SocialChannel::query()
-            ->whereIn('id', $config['channel_ids'])
-            ->where('is_enabled', true)
-            ->get();
-        $registry = app(SocialDriverRegistry::class);
-        $usable = $channels->filter(function (SocialChannel $channel) use ($registry, $hasRealPhoto) {
-            $caps = $registry->for($channel->platform)->capabilities();
-
-            // Never feed a placeholder to a photo-required platform.
-            return $hasRealPhoto || !$caps['requires_photo'];
-        });
-        if ($usable->isEmpty()) {
-            Log::info('social: auto-special skipped — no usable channels', ['special_id' => $special->id]);
-
-            return null;
-        }
-
-        $price = $this->effectivePrice($item);
-        $snapshot = [
-            'caption' => $this->renderCaption($config['template'], $special, $item, $price),
-            'image_url' => $hasRealPhoto ? $preview['url'] : null,
-            'image_fingerprint' => $hasRealPhoto ? sha1($preview['url']) : null,
-            'link_url' => url('/menu/' . $item->id),
-            'item_id' => $item->id,
-            'special_id' => $special->id,
-            'price' => $price,
-            'offer_end_date' => $special->end_date?->toDateString(),
-        ];
-
-        $post = SocialPost::create([
-            'status' => $config['unattended'] ? SocialPost::STATUS_QUEUED : SocialPost::STATUS_AWAITING_APPROVAL,
-            'snapshot' => $snapshot,
-            'source' => self::SOURCE,
-            'source_ref' => 'special:' . $special->id,
-            'business_date' => $businessDate,
+        $price = $this->drafter->effectivePrice($item);
+        $caption = $this->drafter->renderCaption($config['template'], $item, $price, [
+            '{badge}' => trim((string) ($special->badge_label ?? '')),
+            '{description}' => trim((string) ($special->description ?? '')),
         ]);
 
-        if ($config['unattended']) {
-            $this->publisher->dispatch($post, $usable->pluck('id')->all(), $this->dedupePrefix($businessDate));
-        } else {
-            // Approval mode (the pilot gate): freeze channel choice + dedupe
-            // keys now; a social.publish holder approves via publishNow.
-            foreach ($usable as $channel) {
-                SocialPostDelivery::firstOrCreate(
-                    ['dedupe_key' => $this->dedupePrefix($businessDate) . ':' . $channel->id],
-                    [
-                        'social_post_id' => $post->id,
-                        'social_channel_id' => $channel->id,
-                        'status' => SocialPostDelivery::STATUS_SCHEDULED,
-                    ],
-                );
-            }
-        }
-
-        return $post;
+        return $this->drafter->draft(
+            $config,
+            $item,
+            $caption,
+            self::SOURCE,
+            'special:' . $special->id,
+            $this->dedupePrefix($businessDate),
+            $businessDate,
+            [
+                'special_id' => $special->id,
+                'offer_end_date' => $special->end_date?->toDateString(),
+            ],
+        );
     }
 
     /**
@@ -149,34 +100,9 @@ class DailySpecialAutoPoster
             return null;
         }
 
-        $withPhoto = $candidates->filter(
-            fn (DailySpecial $s) => $this->previews->forItem($s->item)['url'] !== $this->previews->siteFallback(),
-        )->values();
+        $withPhoto = $candidates->filter(fn (DailySpecial $s) => $this->drafter->hasRealPhoto($s->item))->values();
         $pool = $withPhoto->isNotEmpty() ? $withPhoto : $candidates;
 
         return $pool[now(config('app.timezone', 'Indian/Maldives'))->dayOfYear % $pool->count()];
-    }
-
-    private function effectivePrice(Item $item): float
-    {
-        $resolved = app(EffectivePriceService::class)
-            ->resolveUnitPrice($item->id, (float) $item->base_price, $item);
-
-        return round((float) $resolved->unitPrice, 2);
-    }
-
-    private function renderCaption(string $template, DailySpecial $special, Item $item, float $price): string
-    {
-        $caption = strtr($template, [
-            '{item}' => (string) $item->name,
-            '{name_dv}' => trim((string) ($item->name_dv ?? '')),
-            '{price}' => number_format($price, 2),
-            '{badge}' => trim((string) ($special->badge_label ?? '')),
-            '{description}' => trim((string) ($special->description ?? '')),
-            '{link}' => url('/menu/' . $item->id),
-        ]);
-
-        // Collapse blank lines left by empty variables.
-        return trim((string) preg_replace("/\n{3,}/", "\n\n", (string) preg_replace('/^[ \t]+$/m', '', $caption)));
     }
 }

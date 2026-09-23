@@ -3,9 +3,9 @@ import {
   cancelSocialPost, checkSocialChannel, createSocialChannel, deleteSocialChannel,
   deleteSocialVideo, fetchSocialAutomation, fetchSocialChannelOptions, fetchSocialChannels,
   fetchSocialPost, fetchSocialPosts, fetchSocialVideos, generateSocialVideo,
-  publishSocialPostNow, retrySocialDelivery, testSocialChannel,
+  publishSocialPostNow, refreshSocialInsights, retrySocialDelivery, testSocialChannel,
   updateSocialAutomation, updateSocialChannel,
-  type SocialAutomationConfig, type SocialChannelOption, type SocialChannelRow,
+  type SocialAutomationConfig, type SocialAutomationKind, type SocialChannelOption, type SocialChannelRow,
   type SocialPlatformCaps, type SocialPostFilters, type SocialPostRow, type SocialVideoRenditionRow,
 } from '../api';
 import { ItemSearch, type MenuItemSelection } from '../components/ItemSearch';
@@ -274,6 +274,15 @@ function PostList({ posts, meta, loading, filters, onFilters, onChanged, onEdit 
                       }}
                     >
                       {PLATFORM_LABELS[d.channel?.platform ?? ''] ?? d.channel?.platform} · {d.status}
+                      {d.insights && (
+                        <span
+                          data-testid="delivery-insights"
+                          title={d.insights_at ? `As of ${new Date(d.insights_at).toLocaleString()}` : undefined}
+                          style={{ fontWeight: 500, color: 'var(--color-text-muted)' }}
+                        >
+                          · ♥ {d.insights.likes ?? 0} · 💬 {d.insights.comments ?? 0}{typeof d.insights.shares === 'number' ? ` · ↗ ${d.insights.shares}` : ''}
+                        </span>
+                      )}
                       {d.permalink && (
                         <a href={d.permalink} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)' }}>
                           view
@@ -297,6 +306,12 @@ function PostList({ posts, meta, loading, filters, onFilters, onChanged, onEdit 
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap' }}>
+                {['published', 'partial_failure'].includes(post.status)
+                  && post.deliveries.some((d) => d.status === 'published' && ['facebook', 'instagram'].includes(d.channel?.platform ?? '')) && (
+                  <Btn small variant="secondary" disabled={busy} title="Fetch likes, comments and shares from the platform" onClick={() => { void act(() => refreshSocialInsights(post.id)); }}>
+                    Refresh stats
+                  </Btn>
+                )}
                 {onEdit && EDITABLE.includes(post.status) && (
                   <Btn small variant="secondary" disabled={busy} onClick={() => onEdit(post)}>Edit</Btn>
                 )}
@@ -320,32 +335,84 @@ function PostList({ posts, meta, loading, filters, onFilters, onChanged, onEdit 
   );
 }
 
+const AUTOMATION_KINDS: { kind: SocialAutomationKind; title: string; blurb: string; variables: string }[] = [
+  {
+    kind: 'special',
+    title: 'Daily special',
+    blurb: 'Each day at the chosen time, one post advertising an active special. Nothing is posted when no special is active. Items without a real photo skip Instagram and post caption-only elsewhere.',
+    variables: '{item} {name_dv} {price} {badge} {description} {link}',
+  },
+  {
+    kind: 'new_item',
+    title: 'New on the menu',
+    blurb: 'Each day at the chosen time, one item that joined the menu recently and has a real photo, oldest first, each announced once. An item without a photo waits until it has one.',
+    variables: '{item} {name_dv} {price} {description} {category} {link}',
+  },
+  {
+    kind: 'featured',
+    title: "Chef's pick",
+    blurb: "On the chosen weekdays, one of the items marked as a Chef's pick (the same ones the website, order app and TV board show), rotating so the one posted longest ago goes next.",
+    variables: '{item} {name_dv} {price} {description} {category} {link}',
+  },
+];
+
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
 function AutomationSettings({ canEdit }: { canEdit: boolean }) {
-  const [config, setConfig] = useState<SocialAutomationConfig | null>(null);
+  const [configs, setConfigs] = useState<Record<SocialAutomationKind, SocialAutomationConfig> | null>(null);
   const [options, setOptions] = useState<SocialChannelOption[]>([]);
-  const [saving, setSaving] = useState(false);
-  const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
     Promise.all([fetchSocialAutomation(), fetchSocialChannelOptions()])
       .then(([auto, ch]) => {
-        setConfig(auto.automation);
+        setConfigs(auto.automations);
         setOptions(ch.channels);
       })
       .catch((e: Error) => setError(e.message));
   }, []);
 
   if (error) return <ErrorMsg message={error} />;
-  if (config === null) return <Spinner />;
+  if (configs === null) return <Spinner />;
+
+  return (
+    <div style={{ display: 'grid', gap: 14, maxWidth: 680 }}>
+      {AUTOMATION_KINDS.map((meta) => (
+        <AutomationCard
+          key={meta.kind}
+          meta={meta}
+          config={configs[meta.kind]}
+          options={options}
+          canEdit={canEdit}
+          onSaved={(all) => setConfigs(all)}
+        />
+      ))}
+    </div>
+  );
+}
+
+function AutomationCard({ meta, config: initial, options, canEdit, onSaved }: {
+  meta: typeof AUTOMATION_KINDS[number];
+  config: SocialAutomationConfig;
+  options: SocialChannelOption[];
+  canEdit: boolean;
+  onSaved: (all: Record<SocialAutomationKind, SocialAutomationConfig>) => void;
+}) {
+  const [config, setConfig] = useState<SocialAutomationConfig>(initial);
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [error, setError] = useState('');
+
+  const set = (patch: Partial<SocialAutomationConfig>) => setConfig((c) => ({ ...c, ...patch }));
 
   const save = async () => {
     setSaving(true);
     setNotice('');
     setError('');
     try {
-      const res = await updateSocialAutomation(config);
-      setConfig(res.automation);
+      const res = await updateSocialAutomation({ kind: meta.kind, ...config });
+      setConfig(res.automations[meta.kind]);
+      onSaved(res.automations);
       setNotice('Saved.');
     } catch (e) {
       setError((e as Error).message);
@@ -354,19 +421,16 @@ function AutomationSettings({ canEdit }: { canEdit: boolean }) {
     }
   };
 
-  const set = (patch: Partial<SocialAutomationConfig>) =>
-    setConfig((c) => (c ? { ...c, ...patch } : c));
-
   return (
-    <Card style={{ padding: '16px 18px', maxWidth: 620 }}>
-      <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Daily-special auto post</div>
-      <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 14px', lineHeight: 1.5 }}>
-        Each day at the chosen time, one post advertising an active special is drafted
-        for the selected channels. Nothing is posted when no special is active. Items
-        without a real photo skip Instagram and post caption-only elsewhere.
-      </p>
+    <Card style={{ padding: '16px 18px' }} data-testid={`automation-${meta.kind}`}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+        <div style={{ fontWeight: 700, fontSize: 14 }}>{meta.title}</div>
+        <Badge label={config.enabled ? 'On' : 'Off'} color={config.enabled ? 'green' : 'gray'} />
+      </div>
+      <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 14px', lineHeight: 1.5 }}>{meta.blurb}</p>
 
       <div style={{ display: 'grid', gap: 12 }}>
+        {error && <ErrorMsg message={error} />}
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: canEdit ? 'pointer' : 'default' }}>
           <input
             type="checkbox"
@@ -377,14 +441,57 @@ function AutomationSettings({ canEdit }: { canEdit: boolean }) {
           Enabled
         </label>
 
-        <Input
-          label="Post time (Maldives local)"
-          type="time"
-          value={config.time}
-          disabled={!canEdit}
-          onChange={(v: string) => set({ time: v })}
-          style={{ maxWidth: 160 }}
-        />
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <Input
+            label="Post time (Maldives local)"
+            id={`auto-${meta.kind}-time`}
+            type="time"
+            value={config.time}
+            disabled={!canEdit}
+            onChange={(v: string) => set({ time: v })}
+            style={{ maxWidth: 160 }}
+          />
+          {meta.kind === 'new_item' && (
+            <Input
+              label="Counts as new for (days)"
+              id={`auto-${meta.kind}-age`}
+              type="number"
+              min={1}
+              max={90}
+              value={String(config.max_age_days)}
+              disabled={!canEdit}
+              onChange={(v: string) => set({ max_age_days: Math.max(1, Math.min(90, Number(v) || 1)) })}
+              style={{ maxWidth: 160 }}
+            />
+          )}
+        </div>
+
+        {meta.kind === 'featured' && (
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Days</div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {WEEKDAYS.map((label, day) => {
+                const on = config.days.includes(day);
+                return (
+                  <button
+                    key={day}
+                    type="button"
+                    disabled={!canEdit}
+                    aria-pressed={on}
+                    onClick={() => set({ days: on ? config.days.filter((d) => d !== day) : [...config.days, day].sort() })}
+                    style={{
+                      minHeight: 36, padding: '0 12px', borderRadius: 999, cursor: canEdit ? 'pointer' : 'default', fontFamily: 'inherit', fontSize: 12,
+                      fontWeight: on ? 700 : 500, border: on ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
+                      background: on ? 'var(--color-warning-bg)' : 'var(--color-bg)', color: 'var(--color-text)',
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <div>
           <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Channels</div>
@@ -415,19 +522,20 @@ function AutomationSettings({ canEdit }: { canEdit: boolean }) {
           <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
             Caption template
             <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>
-              {' '}— variables: {'{item} {name_dv} {price} {badge} {description} {link}'}
+              {' '}— variables: {meta.variables}
             </span>
           </div>
           <textarea
             value={config.template}
             disabled={!canEdit}
+            aria-label={`${meta.title} caption template`}
             onChange={(e) => set({ template: e.target.value })}
             rows={4}
             maxLength={2200}
             style={{
               width: '100%', padding: 10, borderRadius: 10, fontFamily: 'inherit', fontSize: 13,
               border: '1.5px solid var(--color-border)', background: 'var(--color-surface)',
-              color: 'var(--color-text)', resize: 'vertical',
+              color: 'var(--color-text)', resize: 'vertical', boxSizing: 'border-box',
             }}
           />
         </div>
@@ -443,7 +551,7 @@ function AutomationSettings({ canEdit }: { canEdit: boolean }) {
           <span>
             Post without approval (unattended)
             <span style={{ display: 'block', fontSize: 12, color: 'var(--color-text-muted)' }}>
-              Off = each day's post waits in the Posts tab for someone to approve. Turn on
+              Off = each post waits in the Posts tab for someone to approve. Turn on
               only after approved posts have run cleanly for a while.
             </span>
           </span>
@@ -451,7 +559,7 @@ function AutomationSettings({ canEdit }: { canEdit: boolean }) {
 
         {canEdit && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Btn onClick={() => { void save(); }} disabled={saving}>{saving ? 'Saving…' : 'Save settings'}</Btn>
+            <Btn onClick={() => { void save(); }} disabled={saving}>{saving ? 'Saving…' : `Save ${meta.title.toLowerCase()}`}</Btn>
             {notice && <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>{notice}</span>}
           </div>
         )}

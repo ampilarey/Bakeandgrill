@@ -8,6 +8,7 @@ use App\Domains\Permissions\Services\PermissionService;
 use App\Domains\Social\Jobs\PublishSocialDeliveryJob;
 use App\Domains\Social\Services\SocialAutomationSettings;
 use App\Domains\Social\Services\SocialDriverRegistry;
+use App\Domains\Social\Services\SocialInsightsRefresher;
 use App\Domains\Social\Services\SocialPublisher;
 use App\Models\Item;
 use App\Models\SocialChannel;
@@ -265,31 +266,58 @@ class SocialPostController extends Controller
         return response()->json(['post' => $this->payload($post->fresh(['deliveries.channel']))]);
     }
 
-    /** GET  /admin/social/automation — daily-special automation settings. */
+    /**
+     * GET /admin/social/automation — every automation's settings.
+     * `automation` is the daily special (the original shape); `automations`
+     * carries all three kinds.
+     */
     public function automationSettings(SocialAutomationSettings $settings): JsonResponse
     {
-        return response()->json(['automation' => $settings->all()]);
+        return response()->json([
+            'automation' => $settings->forKind('special'),
+            'automations' => $settings->allKinds(),
+        ]);
     }
 
     /**
      * PUT /admin/social/automation. social.publish holders configure it —
      * these settings decide what gets posted publicly. `unattended` is the
      * pilot gate: leave it off until approved posts have run cleanly.
+     * `kind` picks the automation (default: the daily special).
      */
     public function updateAutomationSettings(Request $request, SocialAutomationSettings $settings): JsonResponse
     {
         $this->requirePermission($request, 'social.publish');
 
         $data = $request->validate([
+            'kind' => ['sometimes', Rule::in(SocialAutomationSettings::KINDS)],
             'enabled' => ['sometimes', 'boolean'],
             'time' => ['sometimes', 'date_format:H:i'],
             'channel_ids' => ['sometimes', 'array'],
             'channel_ids.*' => ['integer', 'exists:social_channels,id'],
             'template' => ['sometimes', 'string', 'max:2200'],
             'unattended' => ['sometimes', 'boolean'],
+            'days' => ['sometimes', 'array'],
+            'days.*' => ['integer', 'between:0,6'],
+            'max_age_days' => ['sometimes', 'integer', 'between:1,90'],
         ]);
 
-        return response()->json(['automation' => $settings->update($data)]);
+        $kind = (string) ($data['kind'] ?? 'special');
+        $settings->update($data, $kind);
+
+        return response()->json([
+            'automation' => $settings->forKind('special'),
+            'automations' => $settings->allKinds(),
+        ]);
+    }
+
+    /** Fetch fresh likes/comments/shares for one post's published deliveries. */
+    public function refreshInsights(SocialInsightsRefresher $refresher, int $id): JsonResponse
+    {
+        $post = SocialPost::findOrFail($id);
+        $refresher->refreshPost($post);
+
+        return response()->json(['post' => $this->payload($post->fresh(['deliveries.channel']))]);
     }
 
     /** Publish (or approve) a draft/scheduled/awaiting-approval post now. */
@@ -471,6 +499,8 @@ class SocialPostController extends Controller
                 'error_message' => $d->error_message,
                 'attempts' => $d->attempts ?? [],
                 'published_at' => $d->published_at?->toIso8601String(),
+                'insights' => $d->insights,
+                'insights_at' => $d->insights_at?->toIso8601String(),
             ])->values(),
         ];
     }
