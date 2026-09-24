@@ -78,15 +78,44 @@ class AnnouncementTemplates
     }
 
     /** "tomorrow at 7:00 AM" / "Monday at 7:00 AM", or '' when that day is closed or unknown. */
-    private function openingLine(Carbon $day): string
+    public function openingLine(Carbon $day): string
     {
         $row = $this->hours->getHoursForDisplay()[$day->dayOfWeek] ?? null;
         if (!is_array($row) || !empty($row['closed']) || empty($row['open'])) {
             return '';
         }
+        if (isset($this->hours->closures()[$day->toDateString()])) {
+            return '';
+        }
         $when = $day->isTomorrow() ? 'tomorrow' : ($day->isToday() ? 'today' : self::DAYS[$day->dayOfWeek]);
 
         return $when . ' at ' . $this->timeLabel((string) $row['open']);
+    }
+
+    /** "Back Saturday at 7:00 AM." for the first open day within a week after $closedDay, or ''. */
+    public function backLine(Carbon $closedDay): string
+    {
+        for ($i = 1; $i <= 7; $i++) {
+            $line = $this->openingLine($closedDay->copy()->addDays($i));
+            if ($line !== '') {
+                return 'Back ' . $line . '.';
+            }
+        }
+
+        return '';
+    }
+
+    /** "today" / "tomorrow" / "on Friday 26 September", relative to $now. */
+    public function dayLabel(Carbon $day, Carbon $now): string
+    {
+        if ($day->isSameDay($now)) {
+            return 'today';
+        }
+        if ($day->isSameDay($now->copy()->addDay())) {
+            return 'tomorrow';
+        }
+
+        return 'on ' . $day->format('l j F');
     }
 
     private function closeToday(Carbon $now): ?string
@@ -97,7 +126,7 @@ class AnnouncementTemplates
     }
 
     /** Collapse identical consecutive days: "Sat–Thu 7:00 AM–10:00 PM, Fri 2:00 PM–10:00 PM". */
-    private function hoursSummary(): string
+    public function hoursSummary(): string
     {
         $rows = $this->hours->getHoursForDisplay();
         $short = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];

@@ -41,6 +41,7 @@ const SOURCE_LABELS: Record<string, string> = {
   auto_featured: "Auto · chef's pick",
   auto_weekly: "Auto · this week's specials",
   auto_stock: 'Auto · back in stock',
+  auto_hours: 'Auto · opening hours',
   channel_test: 'Test post',
 };
 
@@ -474,6 +475,13 @@ const AUTOMATION_KINDS: { kind: SocialAutomationKind; title: string; blurb: stri
     variables: '{item} {name_dv} {price} {description} {category} {link}',
     eventDriven: true,
   },
+  {
+    kind: 'hours',
+    title: 'Opening hours & closures',
+    blurb: 'When a closure is added to the schedule or the weekly hours change, a post saying so, worked out from the same hours the website shows, and the same line on the TV board. Closures already behind us, or taken off, are not news.',
+    variables: '{day} {reason} {back} {link}',
+    eventDriven: true,
+  },
 ];
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -671,6 +679,17 @@ function AutomationCard({ meta, config: initial, options, canEdit, hint, onSaved
               </label>
             </>
           )}
+          {meta.kind === 'hours' && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, minHeight: 44, cursor: canEdit ? 'pointer' : 'default' }}>
+              <input
+                type="checkbox"
+                checked={config.signage}
+                disabled={!canEdit}
+                onChange={(e) => set({ signage: e.target.checked })}
+              />
+              Also put it on the TV board
+            </label>
+          )}
           {meta.kind === 'new_item' && (
             <Input
               label="Counts as new for (days)"
@@ -740,7 +759,7 @@ function AutomationCard({ meta, config: initial, options, canEdit, hint, onSaved
 
         <div>
           <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
-            Caption template
+            {meta.kind === 'hours' ? 'Closure caption' : 'Caption template'}
             <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>
               {' '}— variables: {meta.variables}
             </span>
@@ -759,6 +778,29 @@ function AutomationCard({ meta, config: initial, options, canEdit, hint, onSaved
             }}
           />
         </div>
+        {meta.kind === 'hours' && (
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
+              Changed-hours caption
+              <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>
+                {' '}— variables: {'{hours} {ramadan} {link}'}
+              </span>
+            </div>
+            <textarea
+              value={config.template_hours}
+              disabled={!canEdit}
+              aria-label="Opening hours changed-hours caption template"
+              onChange={(e) => set({ template_hours: e.target.value })}
+              rows={3}
+              maxLength={2200}
+              style={{
+                width: '100%', padding: 10, borderRadius: 10, fontFamily: 'inherit', fontSize: 13,
+                border: '1.5px solid var(--color-border)', background: 'var(--color-surface)',
+                color: 'var(--color-text)', resize: 'vertical', boxSizing: 'border-box',
+              }}
+            />
+          </div>
+        )}
 
         <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, cursor: canEdit ? 'pointer' : 'default' }}>
           <input

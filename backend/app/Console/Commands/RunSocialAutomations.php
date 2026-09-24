@@ -7,6 +7,7 @@ namespace App\Console\Commands;
 use App\Domains\Social\Services\DailySpecialAutoPoster;
 use App\Domains\Social\Services\FeaturedItemAutoPoster;
 use App\Domains\Social\Services\NewItemAutoPoster;
+use App\Domains\Social\Services\OpeningHoursAutoPoster;
 use App\Domains\Social\Services\SocialAutomationSettings;
 use App\Domains\Social\Services\WeeklyMenuAutoPoster;
 use Illuminate\Console\Command;
@@ -28,6 +29,7 @@ class RunSocialAutomations extends Command
         NewItemAutoPoster $newItem,
         FeaturedItemAutoPoster $featured,
         WeeklyMenuAutoPoster $weekly,
+        OpeningHoursAutoPoster $hours,
     ): int {
         $localTime = now(config('app.timezone', 'Indian/Maldives'))->format('H:i');
         // Back in stock is event-driven (ItemObserver), not on the clock.
@@ -43,6 +45,12 @@ class RunSocialAutomations extends Command
             if ($post !== null) {
                 $this->info("Automation {$kind}: post {$post->id} created ({$post->status}).");
             }
+        }
+
+        // Opening hours watches for a change on every tick, whatever the time.
+        $post = $hours->run();
+        if ($post !== null) {
+            $this->info("Automation hours: post {$post->id} created ({$post->status}).");
         }
 
         return self::SUCCESS;

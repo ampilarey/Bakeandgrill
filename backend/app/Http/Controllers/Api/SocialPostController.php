@@ -367,6 +367,8 @@ class SocialPostController extends Controller
             'max_age_days' => ['sometimes', 'integer', 'between:1,90'],
             'featured_only' => ['sometimes', 'boolean'],
             'min_out_hours' => ['sometimes', 'integer', 'between:0,168'],
+            'template_hours' => ['sometimes', 'string', 'max:2200'],
+            'signage' => ['sometimes', 'boolean'],
         ]);
 
         $kind = (string) ($data['kind'] ?? 'special');

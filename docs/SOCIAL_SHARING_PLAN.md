@@ -354,8 +354,8 @@ SocialAutomationsTest, SocialInsightsTest}.php` and the admin
 have before.
 
 Still unbuilt, on purpose: TikTok/WhatsApp/X posting (no usable API or the
-pricing decision in phase 5) and an opening-hours automation. The weekly
-menu automation landed in the shortlist below.
+pricing decision in phase 5). The weekly menu and opening-hours automations
+landed in the shortlist below.
 
 ## Owner's shortlist (2026-09-24)
 
@@ -455,13 +455,37 @@ this next.
   environment guard, so TEST can rehearse an automation against a real
   channel row. Badges on the Channels and Posts tabs.
 
+**H. Opening hours and closures** (`OpeningHoursAutoPoster`, kind `hours`,
+`SocialHoursAutomationTest`; the last item of the original plan)
+- Hours and closures are written through the generic site-settings
+  endpoint, so nothing hooks a controller: on every `social:run-automations`
+  tick the poster fingerprints `business_hours_json` + `business_closures_json`
+  into `social_auto_hours_seen` and acts on a difference. First sight
+  records and posts nothing; a disabled automation keeps the fingerprint
+  current so switching it on does not dig up old changes.
+- A closure added for today or a future day → the closure caption
+  (`template`, variables `{day} {reason} {back} {link}`; "We're closed on
+  Saturday 26 September (Staff outing). Back Sunday at 7:00 AM.") and a
+  warning notice on the TV board until the end of that day. Past or removed
+  closures are not news.
+- Weekly hours changed → the changed-hours caption (`template_hours`,
+  variables `{hours} {ramadan} {link}`, the week collapsed into runs) and an
+  info notice for a week; when the hours read as Ramadan hours the caption
+  opens "Ramadan Kareem!" and the notice celebrates.
+- `signage` (default on) puts the TV line up even when no channel is
+  chosen; the post is drafted for approval like every other automation.
+  `AnnouncementTemplates` gained public `openingLine()`, `backLine()`,
+  `dayLabel()` and `hoursSummary()` so the composer's templates and the
+  automation say the same thing.
+
 **Commands and schedule** (`routes/console.php`): `social:publish-due` and
 `social:run-automations` every minute; `social:check-channels` 09:15;
 `social:refresh-insights` 09:30; `social:sync-comments` hourly at :20;
 `social:weekly-digest` Monday 09:20.
 
 **Settings keys added:** `social_rules_min_gap_minutes`, `social_rules_max_per_day`,
-`social_approval_sms`, `social_weekly_digest`, `social_auto_{weekly,stock}_*`.
+`social_approval_sms`, `social_weekly_digest`, `social_auto_{weekly,stock,hours}_*`,
+`social_auto_hours_seen`.
 
 **Web routes added:** `GET /social/meta/callback` (public, throttled);
 `GET /social/approve/{post}`, `POST …/approve`, `POST …/reject` (signed,

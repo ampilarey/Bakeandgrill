@@ -83,6 +83,7 @@ class SocialPostApproval
             'auto_featured' => "a chef's pick",
             'auto_weekly' => "the week's specials",
             'auto_stock' => 'a back-in-stock dish',
+            'auto_hours' => 'opening hours',
             default => 'a post',
         };
         try {

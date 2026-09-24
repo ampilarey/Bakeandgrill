@@ -342,7 +342,7 @@ export async function retrySocialDelivery(postId: number, deliveryId: number): P
 // `special` is the daily special; `new_item` announces recent photographed
 // items once each; `featured` rotates the chef's picks on chosen weekdays.
 
-export type SocialAutomationKind = 'special' | 'new_item' | 'featured' | 'weekly' | 'stock';
+export type SocialAutomationKind = 'special' | 'new_item' | 'featured' | 'weekly' | 'stock' | 'hours';
 
 export interface SocialAutomationConfig {
   enabled: boolean;
@@ -358,6 +358,9 @@ export interface SocialAutomationConfig {
   /** Back in stock only: only chef's picks, and how long it must have been gone. */
   featured_only: boolean;
   min_out_hours: number;
+  /** Opening hours only: the changed-hours caption (`template` is the closure one), and a TV notice too. */
+  template_hours: string;
+  signage: boolean;
 }
 
 export async function fetchSocialAutomation(): Promise<{

@@ -32,13 +32,14 @@ const options: api.SocialChannelOption[] = [
   { id: 2, platform: 'telegram', name: 'BG News', language: 'both' },
 ];
 
-const automationBase: api.SocialAutomationConfig = { enabled: false, time: '11:00', channel_ids: [], template: 'T', unattended: false, days: [0, 1, 2, 3, 4, 5, 6], max_age_days: 14, featured_only: true, min_out_hours: 4 };
+const automationBase: api.SocialAutomationConfig = { enabled: false, time: '11:00', channel_ids: [], template: 'T', unattended: false, days: [0, 1, 2, 3, 4, 5, 6], max_age_days: 14, featured_only: true, min_out_hours: 4, template_hours: 'H', signage: true };
 const automations: Record<api.SocialAutomationKind, api.SocialAutomationConfig> = {
   special: { ...automationBase },
   new_item: { ...automationBase, time: '16:00', max_age_days: 14 },
   featured: { ...automationBase, time: '12:00', days: [5] },
   weekly: { ...automationBase, time: '09:00', days: [0] },
   stock: { ...automationBase },
+  hours: { ...automationBase },
 };
 
 function channel(over: Partial<api.SocialChannelRow>): api.SocialChannelRow {
@@ -278,6 +279,14 @@ describe('SocialHubPage — automations and insights', () => {
     fireEvent.click(stock.getByText('Save back in stock'));
     await waitFor(() => expect(api.updateSocialAutomation).toHaveBeenCalledWith(expect.objectContaining({ kind: 'stock', min_out_hours: 12, featured_only: false })));
     expect(screen.getByTestId('automation-weekly')).toHaveTextContent("This week's specials");
+
+    // Opening hours: no time of day, two captions, and the TV board switch.
+    const hours = within(screen.getByTestId('automation-hours'));
+    expect(hours.queryByLabelText('Post time (Maldives local)')).toBeNull();
+    fireEvent.change(hours.getByLabelText('Opening hours changed-hours caption template'), { target: { value: 'Hours: {hours}' } });
+    fireEvent.click(hours.getByLabelText('Also put it on the TV board'));
+    fireEvent.click(hours.getByText('Save opening hours & closures'));
+    await waitFor(() => expect(api.updateSocialAutomation).toHaveBeenCalledWith(expect.objectContaining({ kind: 'hours', template_hours: 'Hours: {hours}', signage: false })));
   });
 
   it('counts the Dhivehi caption against a channel that posts both languages', async () => {

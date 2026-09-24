@@ -16,6 +16,7 @@ use App\Models\SiteSetting;
  *  - featured  chef's pick, on chosen weekdays
  *  - weekly    the week's specials as one card, on chosen weekdays
  *  - stock     back in stock — event-driven, no time of day
+ *  - hours     opening hours changed or a closure was added — event-driven
  *
  * `unattended` is the pilot gate: off means the automation only DRAFTS a
  * post (awaiting approval); a human with social.publish sends it. Turn it
@@ -23,10 +24,10 @@ use App\Models\SiteSetting;
  */
 class SocialAutomationSettings
 {
-    public const KINDS = ['special', 'new_item', 'featured', 'weekly', 'stock'];
+    public const KINDS = ['special', 'new_item', 'featured', 'weekly', 'stock', 'hours'];
 
     /** Kinds that fire when something happens rather than at a time of day. */
-    public const EVENT_DRIVEN = ['stock'];
+    public const EVENT_DRIVEN = ['stock', 'hours'];
 
     public const TEMPLATE_DEFAULT = "Today's special: {item} — MVR {price}\n{badge}\nOrder now: {link}";
 
@@ -38,6 +39,11 @@ class SocialAutomationSettings
 
     public const STOCK_TEMPLATE_DEFAULT = "{item} is back! — MVR {price}\nOrder now: {link}";
 
+    /** Opening hours: the closure post (`template`) and the changed-hours post (`template_hours`). */
+    public const HOURS_TEMPLATE_DEFAULT = "We're closed {day} {reason}. {back}\nOur hours: {link}";
+
+    public const HOURS_WEEK_TEMPLATE_DEFAULT = "{ramadan}Our opening hours: {hours}.\nOrder ahead: {link}";
+
     /** @var array<string, array{time: string, template: string, days: list<int>}> */
     private const DEFAULTS = [
         'special' => ['time' => '11:00', 'template' => self::TEMPLATE_DEFAULT, 'days' => [0, 1, 2, 3, 4, 5, 6]],
@@ -45,6 +51,7 @@ class SocialAutomationSettings
         'featured' => ['time' => '12:00', 'template' => self::FEATURED_TEMPLATE_DEFAULT, 'days' => [0, 1, 2, 3, 4, 5, 6]],
         'weekly' => ['time' => '09:00', 'template' => self::WEEKLY_TEMPLATE_DEFAULT, 'days' => [0]],
         'stock' => ['time' => '00:00', 'template' => self::STOCK_TEMPLATE_DEFAULT, 'days' => [0, 1, 2, 3, 4, 5, 6]],
+        'hours' => ['time' => '00:00', 'template' => self::HOURS_TEMPLATE_DEFAULT, 'days' => [0, 1, 2, 3, 4, 5, 6]],
     ];
 
     /** The daily special's settings — the original shape, kept for callers that predate kinds. */
@@ -54,7 +61,7 @@ class SocialAutomationSettings
     }
 
     /**
-     * @return array{enabled: bool, time: string, channel_ids: list<int>, template: string, unattended: bool, days: list<int>, max_age_days: int, featured_only: bool, min_out_hours: int}
+     * @return array{enabled: bool, time: string, channel_ids: list<int>, template: string, unattended: bool, days: list<int>, max_age_days: int, featured_only: bool, min_out_hours: int, template_hours: string, signage: bool}
      */
     public function forKind(string $kind): array
     {
@@ -76,6 +83,9 @@ class SocialAutomationSettings
             // Back in stock only: only chef's picks, and how long it must have been gone.
             'featured_only' => filter_var(SiteSetting::get($prefix . 'featured_only', '1'), FILTER_VALIDATE_BOOLEAN),
             'min_out_hours' => max(0, min(168, (int) SiteSetting::get($prefix . 'min_out_hours', '4'))),
+            // Opening hours only: the changed-hours caption, and whether the TV board gets a notice too.
+            'template_hours' => (string) SiteSetting::get($prefix . 'template_hours', self::HOURS_WEEK_TEMPLATE_DEFAULT),
+            'signage' => filter_var(SiteSetting::get($prefix . 'signage', '1'), FILTER_VALIDATE_BOOLEAN),
         ];
     }
 
@@ -125,6 +135,12 @@ class SocialAutomationSettings
         }
         if (array_key_exists('min_out_hours', $input)) {
             SiteSetting::set($prefix . 'min_out_hours', (string) max(0, min(168, (int) $input['min_out_hours'])));
+        }
+        if (array_key_exists('template_hours', $input)) {
+            SiteSetting::set($prefix . 'template_hours', (string) $input['template_hours']);
+        }
+        if (array_key_exists('signage', $input)) {
+            SiteSetting::set($prefix . 'signage', filter_var($input['signage'], FILTER_VALIDATE_BOOLEAN) ? '1' : '0');
         }
         SiteSetting::bust();
 
