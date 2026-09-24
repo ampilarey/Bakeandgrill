@@ -7,8 +7,10 @@ namespace App\Domains\Notifications\Services;
 use App\Domains\Customers\Services\CustomerSegmentationService;
 use App\Domains\Customers\Support\CustomerPaidOrderQuery;
 use App\Domains\Marketing\Services\ItemAffinityService;
+use App\Domains\Notifications\Exceptions\BulkSmsCapExceeded;
 use App\Domains\Notifications\Jobs\SendSmsCampaignRecipientJob;
 use App\Domains\Notifications\Support\SmsAudienceCriteria;
+use App\Domains\Notifications\Support\SmsDeliveryRules;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Item;
@@ -84,6 +86,7 @@ class BulkSmsService
         return [
             'recipient_count' => $count,
             'audience_summary' => SmsAudienceCriteria::describe($this->effectiveCriteria($criteria)),
+            'daily_cap' => SmsDeliveryRules::bulkCapStatus($count),
             'message_preview' => mb_substr($message, 0, 160),
             'per_message' => $estimateA['per_message'],
             'total_segments' => $totalSegments,
@@ -114,6 +117,12 @@ class BulkSmsService
 
         if ($customers->isEmpty()) {
             throw new \RuntimeException('No eligible recipients found for this campaign.');
+        }
+
+        // One daily recipient cap across every campaign and blast (SMS audit, 2026-09-24).
+        $capReason = SmsDeliveryRules::bulkCapReason($customers->count());
+        if ($capReason !== null) {
+            throw new BulkSmsCapExceeded($capReason);
         }
 
         // Pre-flight spend ceiling (SmsService also enforces per-message).

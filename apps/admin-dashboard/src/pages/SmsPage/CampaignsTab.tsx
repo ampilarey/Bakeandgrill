@@ -15,6 +15,7 @@ import { AudienceBuilder, criteriaIsEmpty } from './AudienceBuilder';
 type PreviewResult = {
   recipient_count: number;
   audience_summary?: string;
+  daily_cap?: { cap: number; used_24h: number; remaining: number | null; blocked: boolean };
   total_cost_mvr: string;
   ab_test_enabled?: boolean;
   ab_split?: { variant_a: number; variant_b: number };
@@ -401,6 +402,13 @@ export function CampaignsTab({ prefill }: { prefill?: CampaignPrefill } = {}) {
                 {preview.recipient_count} recipients · Est. MVR {preview.total_cost_mvr}
               </p>
               {preview.audience_summary && <p style={{ fontSize: 13, color: 'var(--color-text)', marginBottom: 4 }}>{preview.audience_summary}</p>}
+              {preview.daily_cap && preview.daily_cap.cap > 0 && (
+                <p data-testid="campaign-daily-cap" style={{ fontSize: 12, color: preview.daily_cap.blocked ? 'var(--color-danger)' : 'var(--color-text-secondary)', fontWeight: preview.daily_cap.blocked ? 600 : 400, marginBottom: 4 }}>
+                  {preview.daily_cap.blocked
+                    ? `Over the daily bulk cap: ${preview.daily_cap.used_24h.toLocaleString()} recipients queued in the last 24 hours, ${preview.daily_cap.remaining?.toLocaleString() ?? 0} left of ${preview.daily_cap.cap.toLocaleString()}. Narrow the audience, wait, or raise the cap in the Control Center.`
+                    : `Daily bulk cap: ${preview.daily_cap.used_24h.toLocaleString()} used in the last 24 hours, ${preview.daily_cap.remaining?.toLocaleString() ?? 0} left of ${preview.daily_cap.cap.toLocaleString()}.`}
+                </p>
+              )}
               {preview.ab_split && (
                 <p style={{ fontSize: 13, color: 'var(--color-text)', marginBottom: 4 }}>
                   Split → A: {preview.ab_split.variant_a} · B: {preview.ab_split.variant_b}

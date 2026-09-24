@@ -149,7 +149,7 @@ function mockControlCenter(overrides?: {
     campaign_queue: overrides?.queue ?? queueFixture,
     permission_options: permissionOptions,
     types: overrides?.types ?? typesFixture,
-    delivery_rules: { quiet_hours_enabled: false, quiet_hours_start: '22:00', quiet_hours_end: '08:00', quiet_hours_alerts: false, marketing_daily_cap: 1, log_retention_days: 365, marketing_opt_out_line: 'Stop: {url}' },
+    delivery_rules: { quiet_hours_enabled: false, quiet_hours_start: '22:00', quiet_hours_end: '08:00', quiet_hours_alerts: false, marketing_daily_cap: 1, bulk_daily_recipient_cap: 5000, log_retention_days: 365, marketing_opt_out_line: 'Stop: {url}' },
     quiet_now: false,
     deferred_count: 0,
     recipient_modes: ['owners_managers', 'owner_only', 'business_phone', 'staff', 'custom'],
@@ -401,10 +401,11 @@ describe('SmsControlCenterPage', () => {
     fireEvent.click(screen.getByLabelText(/^Quiet hours$/i));
     fireEvent.change(screen.getByLabelText(/^Until$/i), { target: { value: '07:30' } });
     fireEvent.change(screen.getByLabelText(/Marketing texts per number per day/i), { target: { value: '2' } });
+    fireEvent.change(screen.getByLabelText(/Campaign recipients per day/i), { target: { value: '2500' } });
     fireEvent.click(screen.getByRole('button', { name: /Save rules/i }));
     await waitFor(() => expect(api.updateSmsDeliveryRules).toHaveBeenCalledWith({
       quiet_hours_enabled: true, quiet_hours_start: '22:00', quiet_hours_end: '07:30', quiet_hours_alerts: false, marketing_daily_cap: 2,
-      log_retention_days: 365, marketing_opt_out_line: 'Stop: {url}',
+      bulk_daily_recipient_cap: 2500, log_retention_days: 365, marketing_opt_out_line: 'Stop: {url}',
     }));
     expect(await screen.findByText(/Quiet hours 22:00–07:30/)).toBeTruthy();
     expect(screen.getByText(/Marketing cap: 2 a day per number/)).toBeTruthy();

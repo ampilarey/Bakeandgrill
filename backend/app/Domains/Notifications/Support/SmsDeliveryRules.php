@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Domains\Notifications\Support;
 
 use App\Models\SiteSetting;
+use App\Models\SmsCampaignRecipient;
 use App\Models\SmsLog;
+use App\Models\SmsPromotionRecipient;
 use Carbon\Carbon;
 
 /**
@@ -38,7 +40,20 @@ final class SmsDeliveryRules
 
     public const OPT_OUT_LINE_DEFAULT = 'Stop: {url}';
 
-    /** @return array{quiet_hours_enabled: bool, quiet_hours_start: string, quiet_hours_end: string, quiet_hours_alerts: bool, marketing_daily_cap: int, log_retention_days: int, marketing_opt_out_line: string} */
+    /**
+     * One bulk system (SMS audit, 2026-09-24): the old Promotions blast
+     * refused to add more than N recipients in a rolling day, but only
+     * counted its own blasts; campaigns had no such net. Now one cap counts
+     * every campaign and blast recipient queued in the last 24 hours.
+     */
+    public const BULK_CAP = 'sms_bulk_daily_recipient_cap';
+
+    public static function bulkCapDefault(): int
+    {
+        return max(0, (int) config('services.dhiraagu.daily_recipient_cap', 5000));
+    }
+
+    /** @return array{quiet_hours_enabled: bool, quiet_hours_start: string, quiet_hours_end: string, quiet_hours_alerts: bool, marketing_daily_cap: int, bulk_daily_recipient_cap: int, log_retention_days: int, marketing_opt_out_line: string} */
     public static function all(): array
     {
         return [
@@ -47,6 +62,8 @@ final class SmsDeliveryRules
             'quiet_hours_end' => self::time(SiteSetting::get(self::QUIET_END, '08:00'), '08:00'),
             'quiet_hours_alerts' => SmsTypeRegistry::settingIsTruthy(SiteSetting::get(self::QUIET_ALERTS, '0'), false),
             'marketing_daily_cap' => max(0, (int) SiteSetting::get(self::MARKETING_CAP, '1')),
+            // Recipients any campaign or blast may add in a rolling day, all together; 0 = no cap.
+            'bulk_daily_recipient_cap' => max(0, (int) SiteSetting::get(self::BULK_CAP, (string) self::bulkCapDefault())),
             // How long sms_logs rows are kept; 0 keeps them forever.
             'log_retention_days' => max(0, (int) SiteSetting::get(self::LOG_RETENTION, '365')),
             // Appended to every marketing text; {url} becomes the short unsubscribe link. Empty = none.
@@ -71,6 +88,9 @@ final class SmsDeliveryRules
         }
         if (array_key_exists('marketing_daily_cap', $input)) {
             SiteSetting::set(self::MARKETING_CAP, (string) max(0, min(50, (int) $input['marketing_daily_cap'])));
+        }
+        if (array_key_exists('bulk_daily_recipient_cap', $input)) {
+            SiteSetting::set(self::BULK_CAP, (string) max(0, min(1000000, (int) $input['bulk_daily_recipient_cap'])));
         }
         if (array_key_exists('marketing_opt_out_line', $input)) {
             // SiteSetting::get() reads an empty value as "unset", so "no line" is stored as the word off.
@@ -161,6 +181,47 @@ final class SmsDeliveryRules
         return $sentToday >= $cap
             ? "Marketing cap: this number already had {$sentToday} marketing text" . ($sentToday === 1 ? '' : 's') . ' in the last day (cap ' . $cap . ').'
             : null;
+    }
+
+    /** Campaign and blast recipients queued in the last 24 hours, together. */
+    public static function bulkRecipientsLast24h(): int
+    {
+        $since = now()->subDay();
+
+        return (int) SmsCampaignRecipient::query()->where('created_at', '>=', $since)->count()
+            + (int) SmsPromotionRecipient::query()->where('created_at', '>=', $since)->count();
+    }
+
+    /**
+     * @return array{cap: int, used_24h: int, remaining: int|null, blocked: bool}
+     */
+    public static function bulkCapStatus(int $adding = 0): array
+    {
+        $cap = self::all()['bulk_daily_recipient_cap'];
+        $used = self::bulkRecipientsLast24h();
+
+        return [
+            'cap' => $cap,
+            'used_24h' => $used,
+            'remaining' => $cap > 0 ? max(0, $cap - $used) : null,
+            'blocked' => $cap > 0 && $used + $adding > $cap,
+        ];
+    }
+
+    /** Why one more send of $adding recipients is refused, or null. */
+    public static function bulkCapReason(int $adding): ?string
+    {
+        $status = self::bulkCapStatus($adding);
+        if (!$status['blocked']) {
+            return null;
+        }
+
+        return sprintf(
+            'Daily bulk cap: %s recipients were queued in the last 24 hours, this send adds %s, the cap is %s. Wait, narrow the audience, or raise the cap in the Control Center.',
+            number_format($status['used_24h']),
+            number_format($adding),
+            number_format($status['cap']),
+        );
     }
 
     public static function optOutLine(): string

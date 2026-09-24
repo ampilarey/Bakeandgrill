@@ -484,3 +484,19 @@ the signed-in user's phone or a typed number; both variants when A/B is on.
 Logged as `staff_campaign_test` (staff category, so it never counts against a
 customer's marketing cap). The admin form has a "Send at" field, so a scheduled
 campaign can be created from the UI as well as the API.
+
+### B.7 One bulk system
+Promotions (`/sms/promotions`) were a second blast system beside Campaigns
+with five presets, no A/B, no scheduling, no test send, and a 5,000/24h
+recipient cap that only counted its own blasts. `POST /sms/promotions/preview`
+and `/send` now answer 410 with `moved_to: /admin/sms/campaigns`; the list and
+show endpoints stay for history, and the admin tab is "Past blasts" with a
+button to Campaigns. The log type `marketing_promotion` is labelled "SMS blast
+(old system)". The cap moved to `SmsDeliveryRules`: `sms_bulk_daily_recipient_cap`
+(default `services.dhiraagu.daily_recipient_cap`, 5,000; 0 = off), edited with
+the other delivery rules, counting every campaign recipient and every old blast
+recipient queued in the last 24 hours. `BulkSmsService::dispatch` refuses with
+`BulkSmsCapExceeded` (the send endpoint answers 429 with the reason); an empty
+audience or a blown budget answers 422 instead of a 500. The campaign preview
+carries `daily_cap` (`cap`, `used_24h`, `remaining`, `blocked`) so the form warns
+before the send is attempted.

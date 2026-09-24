@@ -38,7 +38,7 @@ const SMS_SECTIONS: { id: string; label: string; tabs: SmsTabDef[] }[] = [
     label: 'Marketing',
     tabs: [
       { id: 'campaigns' as Tab, label: 'Campaigns' },
-      { id: 'promotions' as Tab, label: 'Promotions', icon: <Zap size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} /> },
+      { id: 'promotions' as Tab, label: 'Past blasts', icon: <Zap size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} /> },
       { id: 'contacts' as Tab, label: 'Contacts & Groups', icon: <Users size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} /> },
       { id: 'scheduled' as Tab, label: 'Scheduled', icon: <Clock size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} /> },
     ],
@@ -161,7 +161,7 @@ export function SmsPage() {
       {tab === 'automations' && <AutomationsTab />}
       {tab === 'logs'        && <LogsTab />}
       {tab === 'campaigns'   && <CampaignsTab prefill={campaignPrefill} />}
-      {tab === 'promotions'  && <PromotionsTab />}
+      {tab === 'promotions'  && <PromotionsTab onGoToCampaigns={() => selectTab('campaigns')} />}
       {tab === 'contacts'    && <ContactsTab />}
       {tab === 'templates'   && <TemplatesTab />}
       {tab === 'scheduled'   && <ScheduledTab />}

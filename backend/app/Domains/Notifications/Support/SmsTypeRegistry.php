@@ -153,7 +153,7 @@ final class SmsTypeRegistry
 
             // Marketing
             self::def('marketing_campaign', 'Bulk campaign', 'marketing', true, true, null, 'sms_marketing_campaigns_enabled', 'sms.campaigns.send', false, 'Campaign audience', true),
-            self::def('marketing_promotion', 'SMS promotion', 'marketing', true, true, null, 'sms_marketing_promotions_enabled', 'sms.campaigns.send', false, 'Promotion audience', true),
+            self::def('marketing_promotion', 'SMS blast (old system)', 'marketing', true, true, null, 'sms_marketing_promotions_enabled', 'sms.campaigns.send', false, 'Promotion audience', true),
             self::def('admin_direct', 'Admin direct SMS', 'marketing', true, true, null, 'sms_marketing_campaigns_enabled', 'sms.campaigns.send', false, 'Selected customer', true),
             self::def('marketing_abandoned_cart', 'Abandoned cart', 'marketing', true, true, null, 'marketing_abandoned_cart_enabled', 'sms.campaigns.send', false, 'Customers with abandoned carts', false),
             self::def('marketing_birthday', 'Birthday offer', 'marketing', true, true, null, 'marketing_birthday_enabled', 'sms.campaigns.send', false, 'Customers with birthday today', false),

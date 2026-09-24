@@ -37,6 +37,7 @@ beforeEach(() => {
   vi.spyOn(api, 'fetchAdminCategories').mockResolvedValue({ data: categories });
   vi.spyOn(api, 'previewSmsCampaign').mockResolvedValue({
     recipient_count: 7, total_cost_mvr: '1.75', audience_summary: 'Likes Chicken burger in the last 90 days · Spent MVR 500+',
+    daily_cap: { cap: 5000, used_24h: 4996, remaining: 4, blocked: true },
     sample_recipients: [{ name: 'Aisha', phone: '+9607000001', tier: 'gold' }],
   });
   vi.spyOn(api, 'createSmsCampaign').mockResolvedValue({ campaign: { id: 9 } as api.SmsCampaign });
@@ -80,6 +81,7 @@ describe('SMS CampaignsTab — purchase-based targeting', () => {
     expect(box).toHaveTextContent('7 recipients');
     expect(box).toHaveTextContent('Likes Chicken burger in the last 90 days · Spent MVR 500+');
     expect(box).toHaveTextContent('e.g. Aisha');
+    expect(screen.getByTestId('campaign-daily-cap')).toHaveTextContent('Over the daily bulk cap: 4,996 recipients queued in the last 24 hours, 4 left of 5,000.');
 
     // Removing a chip drops the key entirely.
     fireEvent.click(screen.getByLabelText('Remove Bakery'));

@@ -332,6 +332,8 @@ export async function previewSmsCampaign(data: {
 }): Promise<{
   recipient_count: number;
   audience_summary?: string;
+  /** The shared daily bulk cap: how much of it this send would use. */
+  daily_cap?: { cap: number; used_24h: number; remaining: number | null; blocked: boolean };
   total_cost_mvr: string;
   ab_test_enabled?: boolean;
   ab_split?: { variant_a: number; variant_b: number };
@@ -394,45 +396,26 @@ export async function cancelSmsCampaign(id: number): Promise<void> {
   await req(`/admin/sms/campaigns/${id}/cancel`, { method: 'POST' });
 }
 
-// ── SMS Promotions ────────────────────────────────────────────────────────────
+// ── SMS blasts (history only) ─────────────────────────────────────────────────
+// SMS audit, 2026-09-24: sending moved to Campaigns; POST /sms/promotions/*
+// answers 410. The list stays so past blasts can still be seen.
 
 export interface SmsPromotion {
   id: number;
-  name: string;
+  name: string | null;
   message: string;
-  promotion_code: string | null;
-  trigger_type: string;
-  trigger_config: Record<string, unknown> | null;
-  is_active: boolean;
-  total_sent: number;
-  total_cost_mvr: string;
+  status?: string;
+  recipient_count?: number;
+  recipients_count?: number;
   created_at: string;
 }
 
-// Backend routes: GET /sms/promotions, GET /sms/promotions/{id},
-// POST /sms/promotions/preview, POST /sms/promotions/send
-// Note: PATCH/DELETE/per-id-send do not exist on the backend.
-export async function fetchSmsPromotions(): Promise<{ promotions: SmsPromotion[] }> {
+export async function fetchSmsPromotions(): Promise<{ promotions: { data?: SmsPromotion[] } | SmsPromotion[] }> {
   return req('/sms/promotions');
 }
 
 export async function getSmsPromotion(id: number): Promise<{ promotion: SmsPromotion }> {
   return req(`/sms/promotions/${id}`);
-}
-
-export async function previewSmsPromotion(data: {
-  message: string;
-  filters?: Record<string, unknown>;
-}): Promise<{ estimate?: { recipient_count: number; cost_mvr: number; total_cost_mvr: number }; recipient_count?: number }> {
-  return req('/sms/promotions/preview', { method: 'POST', body: JSON.stringify(data) });
-}
-
-export async function sendSmsPromotion(data: {
-  message: string;
-  name?: string;
-  filters?: Record<string, unknown>;
-}): Promise<{ promotion: SmsPromotion }> {
-  return req('/sms/promotions/send', { method: 'POST', body: JSON.stringify(data) });
 }
 
 // ── Marketing automation (birthday + abandoned cart) ────────────────────────

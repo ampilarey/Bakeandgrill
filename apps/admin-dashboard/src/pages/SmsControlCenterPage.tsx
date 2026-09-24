@@ -43,6 +43,7 @@ const DEFAULT_RULES: SmsDeliveryRules = {
   quiet_hours_end: '08:00',
   quiet_hours_alerts: false,
   marketing_daily_cap: 1,
+  bulk_daily_recipient_cap: 5000,
   log_retention_days: 365,
   marketing_opt_out_line: 'Stop: {url}',
 };
@@ -293,6 +294,7 @@ export function SmsControlCenterPage() {
             {quietNow && <span style={{ color: 'var(--color-warning-strong)', fontWeight: 600 }}> · Quiet now</span>}
             {deferredCount > 0 && <> · {deferredCount} waiting</>}
             {' · '}Marketing cap: {rules.marketing_daily_cap === 0 ? 'off' : `${rules.marketing_daily_cap} a day per number`}
+            {' · '}Bulk cap: {!rules.bulk_daily_recipient_cap ? 'off' : `${rules.bulk_daily_recipient_cap.toLocaleString()} campaign recipients a day`}
           </p>
           <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--color-text-muted)' }}>
             Login codes, order and payment texts are never held. The cap counts every marketing text to one number in a rolling day, whatever sends it.
@@ -331,6 +333,17 @@ export function SmsControlCenterPage() {
                   max={50}
                   value={rulesDraft.marketing_daily_cap}
                   onChange={(e) => setRulesDraft((d) => ({ ...d, marketing_daily_cap: Math.max(0, Math.min(50, Number(e.target.value) || 0)) }))}
+                  style={inputStyle}
+                />
+              </label>
+              <label style={fieldLabel}>
+                Campaign recipients per day, all campaigns (0 = no cap)
+                <input
+                  type="number"
+                  min={0}
+                  max={1000000}
+                  value={rulesDraft.bulk_daily_recipient_cap ?? 5000}
+                  onChange={(e) => setRulesDraft((d) => ({ ...d, bulk_daily_recipient_cap: Math.max(0, Math.min(1000000, Number(e.target.value) || 0)) }))}
                   style={inputStyle}
                 />
               </label>

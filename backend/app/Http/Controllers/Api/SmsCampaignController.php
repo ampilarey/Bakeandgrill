@@ -397,7 +397,14 @@ class SmsCampaignController extends Controller
             ], 422);
         }
 
-        $campaign = $this->bulkSms->dispatch($campaign);
+        try {
+            $campaign = $this->bulkSms->dispatch($campaign);
+        } catch (\App\Domains\Notifications\Exceptions\BulkSmsCapExceeded $e) {
+            return response()->json(['message' => $e->getMessage()], 429);
+        } catch (\RuntimeException $e) {
+            // Empty audience, blown budget: a reason the owner can act on, not a 500.
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
 
         return response()->json([
             'message' => "Campaign dispatched to {$campaign->total_recipients} recipients.",
