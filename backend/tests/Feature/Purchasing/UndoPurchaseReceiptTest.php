@@ -224,8 +224,12 @@ class UndoPurchaseReceiptTest extends TestCase
 
         $warnings = $this->undo($po)->assertOk()->json('warnings');
 
-        $this->assertSame(1, TaxLedgerEntry::where('source_type', 'purchase')
-            ->where('source_id', $po->id)->count());
+        // GST audit, 2026-09-26: the filed row stays, and the claim comes off
+        // as a correction in the next open period instead of staying claimed.
+        $rows = TaxLedgerEntry::where('source_type', 'purchase')->where('source_id', $po->id)->get();
+        $this->assertCount(2, $rows);
+        $this->assertSame((int) $entry->tax_laar, (int) $entry->fresh()->tax_laar);
+        $this->assertSame(0, (int) $rows->sum('tax_laar'));
         $this->assertNotEmpty(array_filter($warnings, fn ($w) => str_contains($w, 'already filed')));
     }
 

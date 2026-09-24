@@ -10,7 +10,6 @@ use App\Domains\Gst\Enums\GstTaxablePeriod;
 use App\Domains\Orders\Services\OrderFeeTaxCalculator;
 use App\Models\GstSetting;
 use App\Support\ResilientCache;
-use Illuminate\Support\Facades\Cache;
 
 class GstSettingsService
 {
@@ -123,6 +122,8 @@ class GstSettingsService
             'next_invoice_sequence' => (int) $s->next_invoice_sequence,
             'next_credit_note_sequence' => (int) $s->next_credit_note_sequence,
             'lock_after_export' => (bool) $s->lock_after_export,
+            'filing_due_day' => (int) ($s->filing_due_day ?? 28),
+            'filing_reminder_days' => (int) ($s->filing_reminder_days ?? 3),
             'legal_default_note' => 'Maldives GST Act treats invoice basis as the default accounting basis unless MIRA approves another method.',
             'hybrid_note' => 'Hybrid mode posts POS sales when payment is confirmed and B2B tax invoices on invoice issue date.',
         ];
@@ -145,6 +146,8 @@ class GstSettingsService
             'next_invoice_sequence' => 1,
             'next_credit_note_sequence' => 1,
             'lock_after_export' => false,
+            'filing_due_day' => 28,
+            'filing_reminder_days' => 3,
         ];
     }
 }

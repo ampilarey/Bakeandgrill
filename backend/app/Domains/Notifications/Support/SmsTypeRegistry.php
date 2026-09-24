@@ -89,6 +89,7 @@ final class SmsTypeRegistry
         'owner_trade_billing_due' => 'owners_managers',
         'owner_late_payment' => 'owners_managers',
         'owner_order_unstarted' => 'business_phone',
+        'owner_gst_filing_due' => 'owners_managers',
     ];
 
     public const RECIPIENT_MODES = ['owners_managers', 'owner_only', 'business_phone', 'staff', 'custom'];
@@ -209,6 +210,8 @@ final class SmsTypeRegistry
             // order, and a paid order the kitchen has not started.
             self::def('owner_late_payment', 'Owner: payment arrived after the order was cancelled', 'staff', true, false, null, 'sms_owner_late_payment_enabled', null, false, 'Owners & managers', false),
             self::def('owner_order_unstarted', 'Owner: paid online order not started', 'staff', true, false, null, 'sms_owner_order_unstarted_enabled', null, false, 'Business phone (also needs the minutes set in Settings → Notifications)', false),
+            // GST audit, 2026-09-26: a return due with the period still open.
+            self::def('owner_gst_filing_due', 'Owner: GST return due', 'staff', true, false, null, 'sms_owner_gst_filing_due_enabled', null, false, 'Owners & managers (days ahead set on the GST page)', false),
 
             // SMS audit, 2026-09-24: the twenty-six paths that still sent under
             // the old category labels ("system", "transactional",

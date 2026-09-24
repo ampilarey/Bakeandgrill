@@ -6,7 +6,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Domains\Finance\Services\NonStockPurchaseExpenseService;
 use App\Domains\Gst\Services\GstLedgerPoster;
-use App\Domains\Gst\Services\GstPeriodService;
 use App\Domains\Gst\Services\PurchaseGstService;
 use App\Domains\Inventory\Services\PurchaseEditPolicy;
 use App\Domains\Inventory\Services\RestockIntelligenceService;
@@ -16,7 +15,6 @@ use App\Models\Purchase;
 use App\Models\PurchaseItem;
 use App\Models\StockMovement;
 use App\Models\SupplierPriceHistory;
-use App\Models\TaxLedgerEntry;
 use App\Services\AuditLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -249,22 +247,14 @@ class PurchaseWorkflowController extends Controller
         });
 
         /*
-         * Input tax was claimed on receipt, so it comes off with the receipt —
-         * unless the period is filed, when removing it would falsify a return
-         * already sent to MIRA. Then it stays, and the caller hears about it.
+         * Input tax was claimed on receipt, so it comes off with the receipt.
+         * A filed period is never edited: the claim stays in that return and
+         * comes off as a correction in the next open one (GST audit,
+         * 2026-09-26; it used to stay claimed with only a warning).
          */
-        $entry = TaxLedgerEntry::where('source_type', 'purchase')
-            ->where('source_id', $purchase->id)
-            ->first();
-
-        if ($entry !== null) {
-            if (app(GstPeriodService::class)->isLocked((string) $entry->period_key)) {
-                $warnings[] = 'The GST for ' . $entry->period_key
-                    . ' is already filed, so the input tax on this order was left in place.'
-                    . ' Adjust it in the next return.';
-            } else {
-                $entry->delete();
-            }
+        foreach (app(GstLedgerPoster::class)->withdrawPurchaseInput($purchase) as $correctionPeriod) {
+            $warnings[] = 'The GST for this order was already filed, so the input tax comes off in '
+                . $correctionPeriod . ' as a correction.';
         }
 
         // The order's worth just changed; an invoice raised from it did not.

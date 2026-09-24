@@ -34,22 +34,51 @@ class FinanceReportController extends Controller
     {
         [$from, $to] = $this->parseRange($request);
 
-        // Revenue: completed / partially-refunded sales in the period (gross — before refunds)
-        $revenue = Order::whereBetween('created_at', [$from, $to])
-            ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+        /*
+         * GST audit, 2026-09-26. Gross is every sale made in the period,
+         * including one later refunded in full. Leaving `refunded` orders out
+         * while still subtracting their refunds took them off twice. A sale is
+         * dated when it was paid, falling back to when it was placed.
+         */
+        $saleStatuses = [...ReportMoneySql::SALE_STATUSES, 'refunded'];
+        $saleDate = 'COALESCE(orders.paid_at, orders.created_at)';
+        $revenue = Order::query()
+            ->whereRaw("{$saleDate} >= ?", [$from])
+            ->whereRaw("{$saleDate} <= ?", [$to])
+            ->whereIn('status', $saleStatuses)
             ->selectRaw('COUNT(*) as orders')
             ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_TOTAL_LAAR) . ' as total')
             ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_TAX_LAAR) . ' as tax')
             ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_DISCOUNT_LAAR) . ' as discount')
             ->first();
 
-        // Refunds in the period — must subtract from gross or P&L overstates
-        // by the entire refund amount. Excludes refunds marked rejected/pending
-        // because those money is still with the merchant.
-        $refundsTotal = (float) Refund::whereBetween('created_at', [$from, $to])
-            ->whereIn('status', ['approved', 'processed', 'completed'])
+        /*
+         * Refunds in the period, on sales. A refund of a payment that arrived
+         * after its order was cancelled is not a sale being reversed: that
+         * order was never in revenue, so its refund stays out too.
+         *
+         * A refund hands back the GST inside it as well. That share is taken
+         * off the tax line, not off income, or the tax is removed twice.
+         */
+        $refundRow = Refund::query()
+            ->join('orders', 'orders.id', '=', 'refunds.order_id')
+            ->whereBetween('refunds.created_at', [$from, $to])
+            ->whereIn('refunds.status', ['approved', 'processed', 'completed'])
+            ->whereIn('orders.status', $saleStatuses)
             ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::REFUND_AMOUNT_LAAR) . ' as total')
-            ->value('total');
+            ->selectRaw(ReportMoneySql::sumLaarAsMvr(
+                'ROUND(' . ReportMoneySql::REFUND_AMOUNT_LAAR . ' * ' . ReportMoneySql::ORDER_TAX_LAAR
+                . ' / NULLIF(' . ReportMoneySql::ORDER_TOTAL_LAAR . ', 0))',
+            ) . ' as tax')
+            ->first();
+        $refundsTotal = (float) ($refundRow->total ?? 0);
+        $refundTax = (float) ($refundRow->tax ?? 0);
+
+        // Shop credit written off in the period: sold, counted, never paid.
+        $badDebts = round(abs((int) DB::table('customer_credit_ledger')
+            ->where('method', 'writeoff')
+            ->whereBetween('created_at', [$from, $to])
+            ->sum('amount_laar')) / 100, 2);
 
         /*
          * COGS: the value of what actually arrived, not what was ordered.
@@ -99,7 +128,7 @@ class FinanceReportController extends Controller
          * in cafe" — nothing offsets it on the cost side either, so it has to
          * come out of revenue before any profit is claimed.
          */
-        $netRevenue = round($grossRevenue - $outputTax - $refundsTotal, 2);
+        $netRevenue = round($grossRevenue - $outputTax - ($refundsTotal - $refundTax), 2);
         $wholesaleNet = round($wholesaleRevenue - (float) $wholesale['tax'], 2);
         // Retail keys stay order/purchase based; combined profit includes wholesale channel.
         $combinedNet = round($netRevenue + $wholesaleNet, 2);
@@ -120,7 +149,7 @@ class FinanceReportController extends Controller
          * again counted the same money twice. It stays in the payload as an
          * information line: worth watching, already paid for.
          */
-        $operatingProfit = round($grossProfit - $opexTotal, 2);
+        $operatingProfit = round($grossProfit - $opexTotal - $badDebts, 2);
 
         return response()->json([
             'from' => $from->toDateString(),
@@ -128,6 +157,7 @@ class FinanceReportController extends Controller
             'revenue' => [
                 'gross' => $grossRevenue,
                 'refunds' => $refundsTotal,
+                'refund_tax' => $refundTax,
                 'tax' => $outputTax,
                 'discounts' => (float) ($revenue->discount ?? 0),
                 'net' => $netRevenue,
@@ -150,6 +180,7 @@ class FinanceReportController extends Controller
                     'total' => (float) $e->total,
                 ]),
             ],
+            'bad_debts' => $badDebts,
             'waste_cost' => (float) $wasteCost,
             'wholesale_waste_cost' => $wholesaleWaste,
             'payment_processing_fees' => $paymentProcessingFees,

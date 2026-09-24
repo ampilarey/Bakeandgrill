@@ -266,6 +266,8 @@ export type PnLReport = {
     gross: number;
     tax: number;
     refunds?: number;
+    /** The GST inside those refunds; already out of the tax line's MIRA figure. */
+    refund_tax?: number;
     discounts?: number;
     net: number;
     orders: number;
@@ -287,6 +289,8 @@ export type PnLReport = {
   gross_margin_pct: number;
   expenses: { total: number; by_category: { category: string; icon: string; total: number }[] };
   waste_cost: number;
+  /** Shop credit written off in the period; subtracted from operating profit. */
+  bad_debts?: number;
   payment_processing_fees?: number;
   payment_commission?: PaymentCommissionSummary;
   operating_profit: number;

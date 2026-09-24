@@ -14,6 +14,7 @@ import {
 } from '../api/gst';
 import { getInvoices, type Invoice } from '../api/finance';
 import { today } from '../utils/dateHelpers';
+import { ApiRequestError } from '@shared/api';
 
 const mvr = (laar: number) => `MVR ${(laar / 100).toFixed(2)}`;
 const mvrFromDecimal = (amount: number) => `MVR ${Number(amount).toFixed(2)}`;
@@ -55,6 +56,11 @@ export default function GstPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [messageTone, setMessageTone] = useState<'ok' | 'err'>('ok');
+  // Locking is filing: open warnings come back first, and locking anyway
+  // needs a reason on record (GST audit, 2026-09-26).
+  const [lockPrompt, setLockPrompt] = useState<{ message: string; warnings: GstSummary['warnings'] } | null>(null);
+  const [lockReason, setLockReason] = useState('');
+  const [locking, setLocking] = useState(false);
 
   const showMessage = (text: string, tone: 'ok' | 'err' = 'ok') => {
     setMessage(text);
@@ -110,6 +116,26 @@ export default function GstPage() {
       }).catch(() => setLedger([]));
     }
   }, [tab, period, ledgerPage]);
+
+  const lockPeriod = async (reason?: string) => {
+    setLocking(true);
+    try {
+      await lockGstPeriod(period, reason);
+      setLockPrompt(null);
+      setLockReason('');
+      showMessage('Period locked.');
+      loadDashboard();
+    } catch (e) {
+      const body = e instanceof ApiRequestError ? e.body as { needs_reason?: boolean; message?: string; warnings?: GstSummary['warnings'] } | undefined : undefined;
+      if (body?.needs_reason) {
+        setLockPrompt({ message: body.message ?? 'This period has warnings.', warnings: body.warnings ?? [] });
+      } else {
+        showMessage((e as Error).message || 'Failed to lock period.', 'err');
+      }
+    } finally {
+      setLocking(false);
+    }
+  };
 
   const runExport = async (fn: () => Promise<void>) => {
     try {
@@ -255,18 +281,39 @@ export default function GstPage() {
             <Button onClick={() => void runExport(() => downloadGstInputXlsx(period))}>Input Tax Statement (XLSX)</Button>
             <Button onClick={() => void runExport(() => downloadGstLedgerCsv(period))}>Ledger CSV</Button>
             {!summary.locked && (
-              <Button variant="secondary" onClick={async () => {
-                try {
-                  await lockGstPeriod(period);
-                  showMessage('Period locked.');
-                } catch (e) {
-                  showMessage((e as Error).message || 'Failed to lock period.', 'err');
-                }
-              }}>
+              <Button variant="secondary" disabled={locking} onClick={() => void lockPeriod()}>
                 Lock period
               </Button>
             )}
           </div>
+
+          {lockPrompt && !summary.locked && (
+            <div style={{ marginTop: 16 }} data-testid="gst-lock-prompt">
+              <Card className="border-[#FCD34D]">
+                <strong>{lockPrompt.message}</strong>
+                <ul style={{ margin: '8px 0 0', paddingLeft: 20, fontSize: 13 }}>
+                  {lockPrompt.warnings.slice(0, 10).map((w, i) => <li key={i}>{w.message}</li>)}
+                  {lockPrompt.warnings.length > 10 && <li>…and {lockPrompt.warnings.length - 10} more</li>}
+                </ul>
+                <label style={{ fontSize: 13, display: 'block', marginTop: 12 }}>
+                  Why lock anyway? This is kept with the period.
+                  <textarea
+                    value={lockReason}
+                    onChange={(e) => setLockReason(e.target.value)}
+                    rows={2}
+                    maxLength={500}
+                    style={{ display: 'block', width: '100%', marginTop: 4, padding: 8, borderRadius: 6, border: '1px solid var(--color-border)' }}
+                  />
+                </label>
+                <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                  <Button disabled={locking || lockReason.trim().length < 5} onClick={() => void lockPeriod(lockReason.trim())}>
+                    Lock anyway
+                  </Button>
+                  <Button variant="secondary" onClick={() => { setLockPrompt(null); setLockReason(''); }}>Cancel</Button>
+                </div>
+              </Card>
+            </div>
+          )}
 
           <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 12, maxWidth: 720 }}>
             Output Tax Statement export is mandatory only when MIRA requires it — for example when annual total income for the previous tax year&apos;s taxable periods reaches the MIRA threshold.
@@ -547,7 +594,29 @@ export default function GstPage() {
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <input type="checkbox" checked={settings.lock_after_export} onChange={(e) => setSettings({ ...settings, lock_after_export: e.target.checked })} />
-              Lock period after export
+              Lock period after export (not while it has warnings)
+            </label>
+            <label style={{ fontSize: 13 }}>
+              Return due on day
+              <input
+                type="number" min={1} max={28}
+                aria-label="Return due on day"
+                value={settings.filing_due_day ?? 28}
+                onChange={(e) => setSettings({ ...settings, filing_due_day: Math.min(28, Math.max(1, parseInt(e.target.value, 10) || 28)) })}
+                style={{ display: 'block', width: '100%', marginTop: 4, padding: 8 }}
+              />
+              <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Of the month after the period ends.</span>
+            </label>
+            <label style={{ fontSize: 13 }}>
+              Remind owners, days before
+              <input
+                type="number" min={0} max={14}
+                aria-label="Remind owners, days before"
+                value={settings.filing_reminder_days ?? 3}
+                onChange={(e) => setSettings({ ...settings, filing_reminder_days: Math.min(14, Math.max(0, parseInt(e.target.value, 10) || 0)) })}
+                style={{ display: 'block', width: '100%', marginTop: 4, padding: 8 }}
+              />
+              <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>A text then, on the day and the day after, while the period is not locked. 0 turns it off.</span>
             </label>
           </div>
           <Button onClick={saveSettings} disabled={saving} style={{ marginTop: 16 }}>{saving ? 'Saving…' : 'Save settings'}</Button>

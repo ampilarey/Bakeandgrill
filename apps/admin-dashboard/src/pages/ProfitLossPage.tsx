@@ -103,13 +103,17 @@ export function ProfitLossPage() {
                   <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', marginBottom: 20, margin: '0 0 20px' }}>P&L Breakdown</p>
                   {[
                     { label: 'Takings incl. GST',      value: pnl.revenue.gross,                 color: 'var(--color-success)' },
-                    { label: 'GST for MIRA',           value: -(pnl.revenue.tax ?? 0),           color: 'var(--color-text-muted)' },
+                    // A refund hands its GST back too, so MIRA is owed the
+                    // tax net of refunds and the refund row carries the rest.
+                    { label: 'GST for MIRA',           value: -((pnl.revenue.tax ?? 0) - (pnl.revenue.refund_tax ?? 0)), color: 'var(--color-text-muted)' },
                     { label: 'Refunds',                value: -(pnl.revenue.refunds ?? 0),       color: 'var(--color-warning)' },
                     { label: 'Wholesale Revenue',      value: (pnl.revenue.wholesale ?? 0) - (pnl.revenue.wholesale_tax ?? 0), color: 'var(--color-success)' },
                     // Every ingredient bought, retail and wholesale alike —
                     // the shop's cost is what it bought, not a per-dish sum.
                     { label: 'Ingredients bought',     value: -pnl.cogs,                         color: 'var(--color-danger)' },
                     { label: 'Operating Expenses',     value: -pnl.expenses.total,               color: '#f97316' },
+                    // Shop credit written off: sold and counted, never paid.
+                    { label: 'Bad debts written off',  value: -(pnl.bad_debts ?? 0),             color: 'var(--color-danger)' },
                     // Recipe-priced cost of the goods on trade invoices. Those
                     // ingredients are inside "bought" already — shown to be
                     // compared, not subtracted a second time.

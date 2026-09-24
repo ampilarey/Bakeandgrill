@@ -19,6 +19,10 @@ export interface GstSettings {
   next_invoice_sequence: number;
   next_credit_note_sequence: number;
   lock_after_export: boolean;
+  /** Day of the month the return is due, in the month after the period ends. */
+  filing_due_day?: number;
+  /** Days ahead to text the owners while the period is unlocked; 0 = off. */
+  filing_reminder_days?: number;
   legal_default_note?: string;
   hybrid_note?: string;
 }
@@ -87,8 +91,15 @@ export async function getGstToClaim(period: string): Promise<GstToClaim> {
   return req(`/reports/finance/gst/to-claim?period=${encodeURIComponent(period)}`);
 }
 
-export async function lockGstPeriod(period: string): Promise<{ message: string }> {
-  return req(`/reports/finance/gst/periods/${encodeURIComponent(period)}/lock`, { method: 'POST' });
+/**
+ * Lock (file) a period. With open warnings the server answers 422 with
+ * `needs_reason` and the warnings; send again with a reason to lock anyway.
+ */
+export async function lockGstPeriod(period: string, reason?: string): Promise<{ message: string }> {
+  return req(`/reports/finance/gst/periods/${encodeURIComponent(period)}/lock`, {
+    method: 'POST',
+    body: JSON.stringify(reason ? { reason } : {}),
+  });
 }
 
 export async function downloadGstExport(path: string, period: string, filename: string): Promise<void> {

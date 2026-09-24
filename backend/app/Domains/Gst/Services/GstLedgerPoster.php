@@ -221,12 +221,23 @@ class GstLedgerPoster
             return null;
         }
 
+        // GST audit, 2026-09-26: a system refund returns a payment that
+        // arrived after its order was cancelled (LatePaymentService). No sale
+        // was made and no output tax was declared, so there is nothing to
+        // reverse. Posting it would cut output tax for money never taxed.
+        if ($refund->initiated_by === 'system') {
+            return null;
+        }
+
         $order = $refund->order;
         if (!$order) {
             return null;
         }
 
-        $refundDate = Carbon::parse($refund->processed_at ?? $refund->updated_at ?? now());
+        // refunds has no processed_at column; it always fell through to
+        // updated_at, which moves whenever the refund is touched (marking it
+        // paid out, say) and could drag the GST into another period.
+        $refundDate = Carbon::parse($refund->approved_at ?? $refund->updated_at ?? now());
         $orderTaxLaar = (int) ($order->tax_laar ?? round((float) $order->tax_amount * 100));
         $orderTotalLaar = (int) ($order->total_laar ?? round((float) $order->total * 100));
 
@@ -471,6 +482,11 @@ class GstLedgerPoster
                 'to' => $nextPeriod,
             ]);
 
+            // GST audit, 2026-09-26: the order's tax was already declared in
+            // the filed period, under other transactions. This row only
+            // records that a tax invoice was issued later. It used to carry
+            // the invoice's full figures as a positive adjustment, which
+            // declared the same tax a second time.
             return $this->upsertEntry([
                 'period_key' => $nextPeriod,
                 'source_type' => LedgerSourceType::Invoice->value,
@@ -482,14 +498,19 @@ class GstLedgerPoster
                 'customer_tin' => $invoice->customer_tin,
                 'document_no' => $invoice->invoice_number,
                 'document_date' => Carbon::parse($invoice->issue_date)->toDateString(),
-                'taxable_value_laar' => (int) ($invoice->subtotal_laar ?? round((float) $invoice->subtotal * 100)),
-                'tax_laar' => (int) ($invoice->tax_laar ?? round((float) $invoice->tax_amount * 100)),
-                'total_laar' => (int) ($invoice->total_laar ?? round((float) $invoice->total * 100)),
+                'taxable_value_laar' => 0,
+                'tax_laar' => 0,
+                'total_laar' => 0,
                 'rate_bp' => (int) ($invoice->tax_rate_bp ?: $this->settings->defaultTaxRateBp()),
                 'invoice_basis_date' => Carbon::parse($invoice->issue_date)->toDateString(),
                 'is_tax_invoice' => true,
                 'is_claimable' => false,
-                'metadata' => ['reclassified_from_order' => $existing->source_id],
+                'metadata' => [
+                    'reclassified_from_order' => $existing->source_id,
+                    'declared_in_period' => $existing->period_key,
+                    'invoice_tax_laar' => (int) ($invoice->tax_laar ?? round((float) $invoice->tax_amount * 100)),
+                    'invoice_total_laar' => (int) ($invoice->total_laar ?? round((float) $invoice->total * 100)),
+                ],
                 'created_by' => $userId,
             ]);
         }
@@ -585,6 +606,144 @@ class GstLedgerPoster
             'document_no' => $data['document_no'],
         ];
 
+        /*
+         * GST audit, 2026-09-26: a row in a locked (filed) period is never
+         * edited or moved. A second delivery on a purchase, or an edited
+         * invoice, used to re-post the whole document over the filed row —
+         * moving it into the next open period, where it was claimed or
+         * declared again. Now the filed row stays as filed and the change is
+         * posted as a correction in the next open period: only the
+         * difference between the new figures and what was filed.
+         */
+        $existing = TaxLedgerEntry::query()->where($keys)->first();
+        if ($existing !== null && $this->periods->isLocked((string) $existing->period_key)) {
+            return $this->postCorrection($existing, $data);
+        }
+
         return TaxLedgerEntry::query()->updateOrCreate($keys, $data);
+    }
+
+    public const CORRECTION_SUFFIX = ' (correction ';
+
+    /**
+     * The filed row plus any corrections already in locked periods are what
+     * MIRA has been told. The open correction carries the rest; when there is
+     * nothing left to correct it is removed.
+     *
+     * @param array<string, mixed> $data
+     */
+    private function postCorrection(TaxLedgerEntry $filed, array $data): TaxLedgerEntry
+    {
+        $baseDoc = (string) $filed->document_no;
+        $family = TaxLedgerEntry::query()
+            ->where('source_type', $filed->source_type)
+            ->where('source_id', $filed->source_id)
+            ->where('direction', $filed->direction)
+            ->where('tax_code', $filed->tax_code)
+            ->where('document_no', 'like', $baseDoc . self::CORRECTION_SUFFIX . '%')
+            ->get();
+
+        $filedSums = ['taxable_value_laar' => (int) $filed->taxable_value_laar, 'tax_laar' => (int) $filed->tax_laar, 'total_laar' => (int) $filed->total_laar];
+        foreach ($family as $row) {
+            if ($this->periods->isLocked((string) $row->period_key)) {
+                foreach ($filedSums as $k => $v) {
+                    $filedSums[$k] = $v + (int) $row->{$k};
+                }
+            }
+        }
+
+        $delta = [
+            'taxable_value_laar' => (int) ($data['taxable_value_laar'] ?? 0) - $filedSums['taxable_value_laar'],
+            'tax_laar' => (int) ($data['tax_laar'] ?? 0) - $filedSums['tax_laar'],
+            'total_laar' => (int) ($data['total_laar'] ?? 0) - $filedSums['total_laar'],
+        ];
+
+        $openPeriod = $this->periods->nextOpenPeriodKey((string) $filed->period_key);
+        $open = $family->first(fn (TaxLedgerEntry $row) => !$this->periods->isLocked((string) $row->period_key));
+
+        if ($delta['taxable_value_laar'] === 0 && $delta['tax_laar'] === 0 && $delta['total_laar'] === 0) {
+            $open?->delete();
+
+            return $filed;
+        }
+
+        $values = array_merge($data, $delta, [
+            'period_key' => $open?->period_key ?? $openPeriod,
+            'document_no' => $open?->document_no ?? $this->correctionDocumentNo($baseDoc, $openPeriod),
+            'metadata' => array_merge((array) ($data['metadata'] ?? []), [
+                'correction_of' => $filed->id,
+                'filed_period' => $filed->period_key,
+            ]),
+        ]);
+
+        Log::info('GST change to a locked period posted as a correction', [
+            'source_type' => $filed->source_type,
+            'source_id' => $filed->source_id,
+            'filed_period' => $filed->period_key,
+            'correction_period' => $values['period_key'],
+            'tax_delta_laar' => $delta['tax_laar'],
+        ]);
+
+        if ($open !== null) {
+            $open->update($values);
+
+            return $open->fresh();
+        }
+
+        return TaxLedgerEntry::query()->create($values);
+    }
+
+    /**
+     * Take a purchase's input tax back off, as when its receipt is undone.
+     *
+     * An open period just loses the row. A filed period keeps it and the
+     * reversal is posted as a correction in the next open period. Returns the
+     * periods that were corrected that way, so the caller can say so.
+     *
+     * @return list<string>
+     */
+    public function withdrawPurchaseInput(Purchase $purchase): array
+    {
+        $rows = TaxLedgerEntry::query()
+            ->where('source_type', LedgerSourceType::Purchase->value)
+            ->where('source_id', $purchase->id)
+            ->get();
+
+        $isCorrection = fn (TaxLedgerEntry $row) => str_contains((string) $row->document_no, self::CORRECTION_SUFFIX);
+        $corrected = [];
+
+        foreach ($rows->reject($isCorrection) as $base) {
+            if ($this->periods->isLocked((string) $base->period_key)) {
+                $data = $base->only($base->getFillable());
+                $data['taxable_value_laar'] = 0;
+                $data['tax_laar'] = 0;
+                $data['total_laar'] = 0;
+                $row = $this->postCorrection($base, $data);
+                if ($row->id !== $base->id) {
+                    $corrected[] = (string) $row->period_key;
+                }
+
+                continue;
+            }
+
+            $base->delete();
+        }
+
+        // A correction whose own row was just deleted has nothing left to
+        // correct. Corrections to a filed row were rewritten above.
+        $rows->filter($isCorrection)
+            ->reject(fn (TaxLedgerEntry $row) => $this->periods->isLocked((string) $row->period_key))
+            ->reject(fn (TaxLedgerEntry $row) => TaxLedgerEntry::query()->whereKey($row->metadata['correction_of'] ?? 0)->exists())
+            ->each(fn (TaxLedgerEntry $row) => $row->delete());
+
+        return array_values(array_unique($corrected));
+    }
+
+    /** document_no is varchar(64); a long supplier invoice number is cut to fit. */
+    private function correctionDocumentNo(string $baseDoc, string $period): string
+    {
+        $suffix = self::CORRECTION_SUFFIX . $period . ')';
+
+        return mb_substr($baseDoc, 0, 64 - mb_strlen($suffix)) . $suffix;
     }
 }

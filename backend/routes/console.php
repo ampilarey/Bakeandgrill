@@ -278,6 +278,14 @@ Schedule::command('orders:cancel-stale')
     ->onFailure($alertOnFailure('orders:cancel-stale'))
     ->after($trackSuccess('orders:cancel-stale'));
 
+// GST: text the owners when a return is due and the period is still not
+// locked (GST audit, 2026-09-26)
+Schedule::command('gst:filing-reminder')
+    ->dailyAt('09:00')
+    ->withoutOverlapping()
+    ->onFailure($alertOnFailure('gst:filing-reminder'))
+    ->after($trackSuccess('gst:filing-reminder'));
+
 // Orders: text the owners about a paid pickup / dine-in order nobody has
 // started (checkout audit, 2026-09-26)
 Schedule::command('orders:alert-unstarted')

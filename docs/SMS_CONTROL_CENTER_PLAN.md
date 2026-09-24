@@ -716,3 +716,41 @@ and the slot check and order insert run under one lock per slot.
 customer delivery orders on the food before the fee; the fee preview returns
 `min_order_mvr`, `below_minimum`, `short_by_laar` and checkout shows how much more
 is needed. Till orders are not bound by it.
+
+## Appendix G — GST audit follow-up (2026-09-26)
+
+### G.1 Filed periods stay as filed
+A ledger row in a locked period is never edited or moved. When a document is
+re-posted (a second delivery on a purchase, an edited figure), `GstLedgerPoster`
+leaves the filed row alone and posts only the difference as a correction in the
+next open period (`document_no` "… (correction YYYY-MM)", metadata `correction_of`,
+`filed_period`). A correction that goes back to zero before its own period is
+filed is removed. Undoing a purchase receipt in a filed period reverses the claim
+the same way (`withdrawPurchaseInput`) instead of leaving it claimed.
+
+A tax invoice raised for an order whose period is filed records a zero-value
+adjustment (the tax was already declared under other transactions); it used to
+declare the tax a second time. System refunds (a payment returned because it
+arrived after its order was cancelled) post no GST. Refund GST is dated by
+`approved_at`; there is no `processed_at` column.
+
+### G.2 Profit and loss
+Gross sales include orders later refunded in full, dated by payment
+(`paid_at`, else `created_at`). Only refunds on sales count, and the GST inside
+them (`refund_tax`) comes off the tax line, not income. Written-off shop credit
+is `bad_debts` and comes off operating profit. A wholesale invoice voided by a
+full credit note stays in its month; the credit note comes off in its own.
+
+### G.3 Locking and the filing reminder
+`POST /reports/finance/gst/periods/{period}/lock` answers 422 with `needs_reason`
+and the warnings when the period has any, other than catalogue-wide
+`item_rate_drift`; send `reason` (5+ characters) to lock anyway. It is stored in
+`gst_period_locks.lock_note` and the audit log. New warning `unposted_refund`.
+Lock-after-export now locks once, keeps the carried-forward input tax, and does
+not lock a period with warnings.
+
+`gst:filing-reminder` (daily 09:00) texts `owner_gst_filing_due` (owners and
+managers) about the last finished period while it is unlocked: `filing_reminder_days`
+before the due date (default 3, 0 = off), on the day, and the day after. The due
+date is `filing_due_day` (default 28) of the month after the period ends. Both
+are on GST → Settings.

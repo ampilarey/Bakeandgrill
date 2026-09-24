@@ -9,6 +9,7 @@ use App\Models\Invoice;
 use App\Models\Item;
 use App\Models\Order;
 use App\Models\Purchase;
+use App\Models\Refund;
 use App\Models\TaxLedgerEntry;
 use Illuminate\Support\Facades\DB;
 
@@ -20,6 +21,26 @@ class GstReconciliationService
         private readonly GstTaxCalculator $tax = new GstTaxCalculator,
     ) {}
 
+    /**
+     * Warnings about the catalogue rather than the period's figures. They
+     * show on every period until the item is fixed, so they do not hold up a
+     * lock (a custom catering line priced at 0% would otherwise ask for a
+     * reason every month).
+     */
+    public const ADVISORY_TYPES = ['item_rate_drift'];
+
+    /**
+     * @param list<array{type: string, message: string, reference?: string}> $warnings
+     * @return list<array{type: string, message: string, reference?: string}>
+     */
+    public static function blocking(array $warnings): array
+    {
+        return array_values(array_filter(
+            $warnings,
+            fn (array $w) => !in_array($w['type'], self::ADVISORY_TYPES, true),
+        ));
+    }
+
     /** @return list<array{type: string, message: string, reference?: string}> */
     public function warnings(string $period): array
     {
@@ -27,9 +48,13 @@ class GstReconciliationService
         $start = $this->periods->periodStartDate($period);
         $end = $this->periods->periodEndDate($period);
 
+        // A sale refunded in full was still a sale, and its output tax was
+        // posted when it was paid: check it like any other.
+        $saleStatuses = [...ReportMoneySql::SALE_STATUSES, 'refunded'];
+
         $paidOrders = Order::query()
             ->whereBetween('paid_at', [$start, $end])
-            ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+            ->whereIn('status', $saleStatuses)
             ->get();
 
         foreach ($paidOrders as $order) {
@@ -79,6 +104,31 @@ class GstReconciliationService
                 ];
             }
         }
+
+        /*
+         * GST audit, 2026-09-26: a refund on a taxed sale gives back GST.
+         * With no ledger entry the return declares tax that was handed back.
+         * A system refund returns a late payment on a cancelled order and
+         * never carried tax, so it is not expected to post.
+         */
+        Refund::query()
+            ->join('orders', 'orders.id', '=', 'refunds.order_id')
+            ->whereIn('refunds.status', ['approved', 'processed', 'completed'])
+            ->where('refunds.initiated_by', '!=', 'system')
+            ->whereRaw('COALESCE(refunds.approved_at, refunds.updated_at) BETWEEN ? AND ?', [$start, $end])
+            ->whereRaw(ReportMoneySql::ORDER_TAX_LAAR . ' > 0')
+            ->whereNotExists(fn ($q) => $q->selectRaw('1')->from('tax_ledger_entries as t')
+                ->where('t.source_type', 'refund')
+                ->whereColumn('t.source_id', 'refunds.id'))
+            ->limit(20)
+            ->get(['refunds.id', 'orders.order_number'])
+            ->each(function ($r) use (&$warnings) {
+                $warnings[] = [
+                    'type' => 'unposted_refund',
+                    'message' => "Refund #{$r->id} on order #{$r->order_number} has no GST entry, so its tax is still declared.",
+                    'reference' => 'refund:' . $r->id,
+                ];
+            });
 
         $defaultRate = $this->settings->defaultTaxRatePercent();
         Item::query()
@@ -149,7 +199,7 @@ class GstReconciliationService
 
         $orderSales = Order::query()
             ->whereBetween('paid_at', [$start, $end])
-            ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+            ->whereIn('status', $saleStatuses)
             ->sum(DB::raw('COALESCE(subtotal_laar, ROUND(subtotal * 100))'));
 
         if ($ledgerSales > 0 && abs($ledgerSales - (int) $orderSales) > 100) {

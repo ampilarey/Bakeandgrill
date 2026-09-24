@@ -44,6 +44,9 @@ class UpdateGstSettingsRequest extends FormRequest
             'next_invoice_sequence' => ['sometimes', 'integer', 'min:1'],
             'next_credit_note_sequence' => ['sometimes', 'integer', 'min:1'],
             'lock_after_export' => ['sometimes', 'boolean'],
+            // GST audit, 2026-09-26: the monthly filing reminder.
+            'filing_due_day' => ['sometimes', 'integer', 'min:1', 'max:28'],
+            'filing_reminder_days' => ['sometimes', 'integer', 'min:0', 'max:14'],
         ];
     }
 }

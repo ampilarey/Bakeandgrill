@@ -32,7 +32,7 @@ class GstPeriodService
         return GstPeriodLock::query()->where('period_key', $periodKey)->exists();
     }
 
-    public function lock(string $periodKey, int $userId, int $carryForwardInputLaar = 0): GstPeriodLock
+    public function lock(string $periodKey, int $userId, int $carryForwardInputLaar = 0, ?string $note = null): GstPeriodLock
     {
         return GstPeriodLock::query()->updateOrCreate(
             ['period_key' => $periodKey],
@@ -40,6 +40,7 @@ class GstPeriodService
                 'locked_at' => now(),
                 'locked_by' => $userId,
                 'carry_forward_input_laar' => $carryForwardInputLaar,
+                'lock_note' => $note,
             ],
         );
     }

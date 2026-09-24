@@ -14,6 +14,7 @@ class GstPeriodLock extends Model
         'locked_at',
         'locked_by',
         'carry_forward_input_laar',
+        'lock_note',
     ];
 
     protected $casts = [

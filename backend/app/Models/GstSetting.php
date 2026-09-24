@@ -26,6 +26,8 @@ class GstSetting extends Model
         'next_invoice_sequence',
         'next_credit_note_sequence',
         'lock_after_export',
+        'filing_due_day',
+        'filing_reminder_days',
     ];
 
     protected $casts = [
@@ -35,5 +37,7 @@ class GstSetting extends Model
         'next_invoice_sequence' => 'integer',
         'next_credit_note_sequence' => 'integer',
         'lock_after_export' => 'boolean',
+        'filing_due_day' => 'integer',
+        'filing_reminder_days' => 'integer',
     ];
 }

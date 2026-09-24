@@ -8,6 +8,7 @@ use App\Domains\Gst\Services\GstSettingsService;
 use App\Domains\Permissions\PermissionCatalogSync;
 use App\Domains\Reporting\Services\ReportsService;
 use App\Domains\Trade\Services\TradeAnalyticsService;
+use App\Domains\Trade\Services\WholesaleChannelAggregator;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\GstSetting;
@@ -205,6 +206,45 @@ class TradeReportsStageFTest extends TestCase
         $this->customer->update(['credit_balance_laar' => $revenueLaar]);
 
         return $invoice;
+    }
+
+    #[Test]
+    public function a_full_credit_note_takes_the_sale_off_once(): void
+    {
+        // GST audit, 2026-09-26: the credit note voids its invoice. Dropping
+        // the void invoice and subtracting the credit note as well left the
+        // month's wholesale revenue negative by the invoice's value.
+        $invoice = $this->tradeInvoiceWithCogs(qtySold: 4, qtyWaste: 0, qtyMissing: 0, unitPrice: 5000);
+        Invoice::create([
+            'invoice_number' => 'CN-F-1',
+            'type' => 'credit_note',
+            'status' => 'sent',
+            'is_tax_invoice' => true,
+            'parent_invoice_id' => $invoice->id,
+            'customer_id' => $this->customer->id,
+            'trade_account_id' => $this->account->id,
+            'subtotal_laar' => $invoice->subtotal_laar,
+            'tax_laar' => $invoice->tax_laar,
+            'total_laar' => $invoice->total_laar,
+            'subtotal' => $invoice->subtotal,
+            'tax_amount' => 0,
+            'total' => $invoice->total,
+            'issue_date' => now()->toDateString(),
+            'due_date' => now()->toDateString(),
+        ]);
+        $invoice->update(['status' => 'void']);
+
+        $from = now()->startOfDay();
+        $to = now()->endOfDay();
+        $summary = app(WholesaleChannelAggregator::class)->summary($from, $to);
+        $this->assertSame(0, $summary['revenue_laar']);
+        $this->assertSame(0, $summary['tax_laar']);
+        $this->assertEqualsWithDelta(0.0, array_sum(app(WholesaleChannelAggregator::class)->revenueByDay($from, $to)), 0.001);
+
+        // A void invoice with no credit note behind it still counts for nothing.
+        $other = $this->tradeInvoiceWithCogs(qtySold: 2, qtyWaste: 0, qtyMissing: 0, unitPrice: 5000);
+        $other->update(['status' => 'void']);
+        $this->assertSame(0, app(WholesaleChannelAggregator::class)->summary($from, $to)['revenue_laar']);
     }
 
     #[Test]

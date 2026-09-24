@@ -21,7 +21,7 @@ final class WholesaleChannelAggregator
 
     public function recognizesOnPayment(): bool
     {
-        return $this->gst->shouldPostOrderOnPayment() && ! $this->gst->shouldPostOnTaxInvoice();
+        return $this->gst->shouldPostOrderOnPayment() && !$this->gst->shouldPostOnTaxInvoice();
     }
 
     /**
@@ -32,6 +32,28 @@ final class WholesaleChannelAggregator
     {
         return $q->whereDate('i.issue_date', '>=', $from->toDateString())
             ->whereDate('i.issue_date', '<=', $to->toDateString());
+    }
+
+    /**
+     * A live invoice or credit note, or a sale invoice voided by a full
+     * credit note.
+     *
+     * GST audit, 2026-09-26: a full credit note voids its invoice. Dropping
+     * the voided invoice and also subtracting the credit note took the sale
+     * off twice, so a month with a credit note showed wholesale revenue short
+     * by the invoice's value. The invoice stays in the month it was issued
+     * and the credit note comes off in its own month, as it does for GST.
+     */
+    private function recognisedOrCredited(Builder $w): Builder
+    {
+        return $w->whereNotIn('i.status', ['void', 'cancelled', 'draft'])
+            ->orWhere(fn (Builder $v) => $v->where('i.type', 'sale')
+                ->where('i.status', 'void')
+                ->whereExists(fn (Builder $cn) => $cn->selectRaw('1')
+                    ->from('invoices as cn')
+                    ->whereColumn('cn.parent_invoice_id', 'i.id')
+                    ->where('cn.type', 'credit_note')
+                    ->whereNotIn('cn.status', ['void', 'cancelled', 'draft'])));
     }
 
     /**
@@ -65,7 +87,7 @@ final class WholesaleChannelAggregator
                 DB::table('invoices as i')
                     ->whereNotNull('i.trade_account_id')
                     ->whereIn('i.type', ['sale', 'credit_note'])
-                    ->whereNotIn('i.status', ['void', 'cancelled', 'draft']),
+                    ->where(fn (Builder $w) => $this->recognisedOrCredited($w)),
                 $from,
                 $to,
             )
@@ -203,7 +225,7 @@ final class WholesaleChannelAggregator
                 DB::table('invoices as i')
                     ->whereNotNull('i.trade_account_id')
                     ->whereIn('i.type', ['sale', 'credit_note'])
-                    ->whereNotIn('i.status', ['void', 'cancelled', 'draft']),
+                    ->where(fn (Builder $w) => $this->recognisedOrCredited($w)),
                 $from,
                 $to,
             )

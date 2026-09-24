@@ -73,16 +73,42 @@ class GstReportController extends Controller
             return response()->json(['message' => 'Period already locked.'], 422);
         }
 
+        $validated = $request->validate([
+            'reason' => ['nullable', 'string', 'max:500'],
+        ]);
+        $reason = trim((string) ($validated['reason'] ?? ''));
+
+        /*
+         * GST audit, 2026-09-26: locking is filing. A period with open
+         * reconciliation warnings (an order with no GST entry, a refund whose
+         * tax is still declared) used to lock without a word. Now the
+         * warnings come back first, and locking anyway needs a reason on
+         * record.
+         */
+        $warnings = GstReconciliationService::blocking($this->reconciliation->warnings($period));
+        if ($warnings !== [] && mb_strlen($reason) < 5) {
+            return response()->json([
+                'message' => count($warnings) === 1
+                    ? 'This period has 1 warning. Fix it, or give a reason to lock anyway.'
+                    : 'This period has ' . count($warnings) . ' warnings. Fix them, or give a reason to lock anyway.',
+                'needs_reason' => true,
+                'warnings' => $warnings,
+            ], 422);
+        }
+
         $summary = $this->reports->summary($period);
         $lock = $this->periods->lock(
             $period,
             (int) $request->user()->id,
             (int) $summary['excess_input_carry_forward_laar'],
+            $reason !== '' ? $reason : null,
         );
 
         $this->audit->log('gst.period.locked', 'GstPeriodLock', $lock->id, [], [
             'period_key' => $period,
             'carry_forward_input_laar' => $lock->carry_forward_input_laar,
+            'lock_note' => $lock->lock_note,
+            'open_warnings' => count($warnings),
         ], [], $request);
 
         return response()->json(['message' => 'Period locked.', 'lock' => $lock]);
@@ -131,8 +157,26 @@ class GstReportController extends Controller
         $path = $this->exports->outputStatementXlsx($period);
         $this->auditExport($request, $period, 'output-statement.xlsx');
 
-        if ($this->settings->get()->lock_after_export) {
-            $this->periods->lock($period, (int) $request->user()->id);
+        /*
+         * GST audit, 2026-09-26: this re-locked on every export, writing the
+         * carried-forward input tax back to 0 each time, and it locked past
+         * open warnings. Now it locks once, carries the excess forward, and a
+         * period with warnings waits for a lock by hand with a reason.
+         */
+        if ($this->settings->get()->lock_after_export
+            && !$this->periods->isLocked($period)
+            && GstReconciliationService::blocking($this->reconciliation->warnings($period)) === []) {
+            $lock = $this->periods->lock(
+                $period,
+                (int) $request->user()->id,
+                (int) $this->reports->summary($period)['excess_input_carry_forward_laar'],
+                'Locked on export',
+            );
+            $this->audit->log('gst.period.locked', 'GstPeriodLock', $lock->id, [], [
+                'period_key' => $period,
+                'carry_forward_input_laar' => $lock->carry_forward_input_laar,
+                'lock_note' => $lock->lock_note,
+            ], [], $request);
         }
 
         return response()->download($path)->deleteFileAfterSend();
