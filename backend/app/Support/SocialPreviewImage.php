@@ -67,6 +67,33 @@ final class SocialPreviewImage
         return $file === null ? null : app(SocialCardImage::class)->url($file);
     }
 
+    /**
+     * Every shareable photo of the item, primary first, as the 1200x630
+     * cards where we host them — for a carousel post. Never the site
+     * fallback.
+     *
+     * @return list<string>
+     */
+    public function galleryFor(Item $item, int $max = 10): array
+    {
+        $out = [];
+        foreach ($this->candidates($item) as $candidate) {
+            $url = PublicMediaUrl::absolute($candidate['url']);
+            if ($url === null || !$this->isShareableRaster($url) || !$this->resolves($url)) {
+                continue;
+            }
+            $final = $this->card($url) ?? $url;
+            if (!in_array($final, $out, true)) {
+                $out[] = $final;
+            }
+            if (count($out) >= $max) {
+                break;
+            }
+        }
+
+        return $out;
+    }
+
     public function siteFallback(): string
     {
         foreach ([

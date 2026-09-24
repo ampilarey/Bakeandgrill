@@ -21,10 +21,10 @@ vi.mock('../hooks/usePermissions', () => ({
 }));
 
 const platforms: Record<string, api.SocialPlatformCaps> = {
-  facebook: { text: true, photo: true, requires_photo: false, caption_max: 63206, caption_max_photo: 63206, credentials: ['page_id', 'access_token'] },
-  instagram: { text: false, photo: true, requires_photo: true, caption_max: 2200, caption_max_photo: 2200, credentials: ['ig_user_id', 'access_token'] },
-  telegram: { text: true, photo: true, requires_photo: false, caption_max: 4096, caption_max_photo: 1024, credentials: ['bot_token', 'chat_id'] },
-  viber: { text: true, photo: true, requires_photo: false, caption_max: 7000, caption_max_photo: 7000, credentials: ['auth_token', 'sender_id'] },
+  facebook: { text: true, photo: true, requires_photo: false, caption_max: 63206, caption_max_photo: 63206, video: true, carousel: true, credentials: ['page_id', 'access_token'] },
+  instagram: { text: false, photo: true, requires_photo: true, caption_max: 2200, caption_max_photo: 2200, video: true, carousel: true, credentials: ['ig_user_id', 'access_token'] },
+  telegram: { text: true, photo: true, requires_photo: false, caption_max: 4096, caption_max_photo: 1024, video: true, carousel: true, credentials: ['bot_token', 'chat_id'] },
+  viber: { text: true, photo: true, requires_photo: false, caption_max: 7000, caption_max_photo: 7000, video: true, carousel: false, credentials: ['auth_token', 'sender_id'] },
 };
 
 const options: api.SocialChannelOption[] = [
@@ -86,6 +86,8 @@ beforeEach(() => {
   vi.spyOn(api, 'fetchSocialItemPreview').mockResolvedValue({ item: {
     id: 7, name: 'Masroshi', name_dv: 'މަސްރޮށި', category: 'Hedhikaa', price: 45, base_price: 45,
     image_url: 'https://bakeandgrill.mv/storage/masroshi.jpg', link_url: 'https://bakeandgrill.mv/menu/7', is_sellable: true,
+    gallery: ['https://bakeandgrill.mv/storage/masroshi.jpg', 'https://bakeandgrill.mv/storage/masroshi-2.jpg', 'https://bakeandgrill.mv/storage/masroshi-3.jpg'],
+    videos: [{ format: 'vertical', url: 'https://bakeandgrill.mv/storage/social-videos/m.mp4', poster_url: 'https://bakeandgrill.mv/storage/social-videos/m.jpg', bytes: 2400000, width: 720, height: 1280 }],
   } });
   vi.spyOn(api, 'createSocialPost').mockResolvedValue({ post: post({}) });
   vi.spyOn(api, 'updateSocialPost').mockResolvedValue({ post: post({}) });
@@ -222,7 +224,7 @@ describe('SocialHubPage — composer', () => {
     expect(screen.getByLabelText('Facebook Page — Main Page')).toBeDisabled();
 
     fireEvent.click(screen.getByText('Save & approve'));
-    await waitFor(() => expect(api.updateSocialPost).toHaveBeenCalledWith(5, { caption: 'Fresh masroshi today', caption_dv: null, image_url: null }));
+    await waitFor(() => expect(api.updateSocialPost).toHaveBeenCalledWith(5, { caption: 'Fresh masroshi today', caption_dv: null, image_url: null, media: null }));
     expect(api.publishSocialPostNow).toHaveBeenCalledWith(5);
   });
 });
@@ -316,6 +318,54 @@ describe('SocialHubPage — channels', () => {
 
     fireEvent.click(screen.getAllByText('Check now')[0]);
     await waitFor(() => expect(api.checkSocialChannel).toHaveBeenCalledWith(1));
+  });
+});
+
+describe('SocialHubPage — photos and video', () => {
+  async function composerWithItem() {
+    await openComposer();
+    fireEvent.click(screen.getByLabelText('Facebook Page — Main Page'));
+    fireEvent.change(screen.getByPlaceholderText('Search the menu…'), { target: { value: 'mas' } });
+    fireEvent.click(await screen.findByText('Masroshi', {}, { timeout: 2000 }));
+    await waitFor(() => expect(api.fetchSocialItemPreview).toHaveBeenCalledWith(7));
+  }
+
+  it("builds a carousel from the item's gallery and sends the photos in order", async () => {
+    await composerWithItem();
+    fireEvent.click(screen.getByRole('radio', { name: 'Photos' }));
+    expect(footer().getByText('Post now')).toBeDisabled();
+    fireEvent.click(screen.getByText("Add Masroshi's photos (3)"));
+    expect(screen.getByTestId('carousel-strip').querySelectorAll('img')).toHaveLength(3);
+    fireEvent.click(screen.getByLabelText('Remove photo 2'));
+    expect(screen.getByTestId('preview-carousel-pill')).toHaveTextContent('1/2');
+
+    fireEvent.click(footer().getByText('Post now'));
+    await waitFor(() => expect(api.createSocialPost).toHaveBeenCalledWith(expect.objectContaining({
+      image_url: null,
+      media: { type: 'carousel', images: ['https://bakeandgrill.mv/storage/masroshi.jpg', 'https://bakeandgrill.mv/storage/masroshi-3.jpg'] },
+    })));
+  });
+
+  it('posts a rendered clip as a video with its poster and size, and refuses a channel that cannot take one', async () => {
+    vi.mocked(api.fetchSocialChannelOptions).mockResolvedValue({
+      channels: [...options, { id: 9, platform: 'facebook', name: 'No-video test', language: 'both' }],
+      platforms: { ...platforms, facebook: { ...platforms.facebook, video: false } },
+    });
+    await composerWithItem();
+    fireEvent.click(screen.getByRole('radio', { name: 'Video' }));
+    fireEvent.click(screen.getByText('vertical 720×1280'));
+    expect(screen.getByTestId('preview-video-badge')).toBeInTheDocument();
+    expect(screen.getByText(/Facebook cannot take a video/)).toBeInTheDocument();
+    expect(footer().getByText('Post now')).toBeDisabled();
+
+    fireEvent.click(screen.getByLabelText('Facebook Page — Main Page'));
+    fireEvent.click(screen.getByLabelText('Telegram — BG News'));
+    expect(footer().getByText('Post now')).not.toBeDisabled();
+    fireEvent.click(footer().getByText('Post now'));
+    await waitFor(() => expect(api.createSocialPost).toHaveBeenCalledWith(expect.objectContaining({
+      channel_ids: [2],
+      media: { type: 'video', video_url: 'https://bakeandgrill.mv/storage/social-videos/m.mp4', video_poster_url: 'https://bakeandgrill.mv/storage/social-videos/m.jpg', video_bytes: 2400000 },
+    })));
   });
 });
 

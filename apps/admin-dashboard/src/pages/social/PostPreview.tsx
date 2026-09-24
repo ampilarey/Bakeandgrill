@@ -8,12 +8,16 @@ import { FOLD_AT, PLATFORM_SHORT } from './composer';
  * photo. A sketch, not the platform's CSS — enough to catch a caption
  * that reads badly or a photo that crops the food out.
  */
-export function PostPreview({ platform, channelName, caption, imageUrl, linkUrl }: {
+export function PostPreview({ platform, channelName, caption, imageUrl, linkUrl, imageCount = 1, video = false }: {
   platform: string;
   channelName: string;
   caption: string;
   imageUrl: string | null;
   linkUrl: string | null;
+  /** More than one means a carousel: the first photo with a "1/N" pill. */
+  imageCount?: number;
+  /** The image is a video's poster: a play badge over it. */
+  video?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const foldAt = FOLD_AT[platform];
@@ -45,8 +49,30 @@ export function PostPreview({ platform, channelName, caption, imageUrl, linkUrl 
   );
 
   const imageNode = imageUrl ? (
-    <div style={{ width: '100%', aspectRatio: aspect, background: 'var(--color-bg)', overflow: 'hidden' }}>
+    <div style={{ width: '100%', aspectRatio: video && platform === 'instagram' ? '9 / 16' : aspect, background: 'var(--color-bg)', overflow: 'hidden', position: 'relative' }}>
       <img src={imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+      {video && (
+        <span
+          data-testid="preview-video-badge"
+          style={{
+            position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 44, color: 'var(--color-surface)', textShadow: '0 2px 12px rgba(0,0,0,0.6)', pointerEvents: 'none',
+          }}
+        >
+          ▶
+        </span>
+      )}
+      {imageCount > 1 && (
+        <span
+          data-testid="preview-carousel-pill"
+          style={{
+            position: 'absolute', top: 8, right: 8, borderRadius: 999, padding: '2px 8px', fontSize: 11, fontWeight: 700,
+            background: 'rgba(0,0,0,0.6)', color: 'var(--color-surface)',
+          }}
+        >
+          1/{imageCount}
+        </span>
+      )}
     </div>
   ) : platform === 'facebook' && linkUrl ? (
     <div style={{ borderTop: '1px solid var(--color-border)', borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg)', padding: '10px 12px' }}>

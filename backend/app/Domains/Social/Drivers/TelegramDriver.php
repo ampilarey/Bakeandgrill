@@ -25,7 +25,7 @@ class TelegramDriver implements SocialDriverInterface
     public function capabilities(): array
     {
         // Bot API: 4096 characters for a message, 1024 for a photo caption.
-        return ['text' => true, 'photo' => true, 'requires_photo' => false, 'caption_max' => 4096, 'caption_max_photo' => 1024];
+        return ['text' => true, 'photo' => true, 'requires_photo' => false, 'caption_max' => 4096, 'caption_max_photo' => 1024, 'video' => true, 'carousel' => true];
     }
 
     public function checkHealth(SocialChannel $channel): ChannelHealth
@@ -68,11 +68,26 @@ class TelegramDriver implements SocialDriverInterface
             throw SocialPublishException::auth('Telegram channel is missing bot_token or chat_id.');
         }
 
-        $image = $post->imageUrl();
-        $params = $image !== null
-            ? ['chat_id' => $chatId, 'photo' => $image, 'caption' => $post->captionFor($channel)]
-            : ['chat_id' => $chatId, 'text' => $post->captionFor($channel)];
-        $method = $image !== null ? 'sendPhoto' : 'sendMessage';
+        $images = $post->images();
+        $caption = $post->captionFor($channel);
+        if (($video = $post->videoUrl()) !== null) {
+            $method = 'sendVideo';
+            $params = ['chat_id' => $chatId, 'video' => $video, 'caption' => $caption, 'supports_streaming' => 'true'];
+        } elseif (count($images) > 1) {
+            // An album: the caption rides on the first photo.
+            $method = 'sendMediaGroup';
+            $media = [];
+            foreach (array_slice($images, 0, 10) as $i => $url) {
+                $media[] = $i === 0 ? ['type' => 'photo', 'media' => $url, 'caption' => $caption] : ['type' => 'photo', 'media' => $url];
+            }
+            $params = ['chat_id' => $chatId, 'media' => json_encode($media)];
+        } elseif ($images !== []) {
+            $method = 'sendPhoto';
+            $params = ['chat_id' => $chatId, 'photo' => $images[0], 'caption' => $caption];
+        } else {
+            $method = 'sendMessage';
+            $params = ['chat_id' => $chatId, 'text' => $caption];
+        }
 
         try {
             $response = Http::asForm()->timeout(20)
@@ -85,7 +100,8 @@ class TelegramDriver implements SocialDriverInterface
             $this->throwTelegramError($response);
         }
 
-        $messageId = (string) ($response->json('result.message_id') ?? '');
+        // sendMediaGroup answers with an array of messages; the album is the first.
+        $messageId = (string) ($response->json('result.message_id') ?? $response->json('result.0.message_id') ?? '');
         if ($messageId === '') {
             throw SocialPublishException::unknown('Telegram accepted the request but returned no message id.');
         }
@@ -122,7 +138,7 @@ class TelegramDriver implements SocialDriverInterface
 
     private function permalinkFor(Response $response, string $messageId): ?string
     {
-        $username = trim((string) ($response->json('result.chat.username') ?? ''));
+        $username = trim((string) ($response->json('result.chat.username') ?? $response->json('result.0.chat.username') ?? ''));
 
         return $username !== '' ? "https://t.me/{$username}/{$messageId}" : null;
     }

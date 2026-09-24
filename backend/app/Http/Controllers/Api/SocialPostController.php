@@ -94,6 +94,13 @@ class SocialPostController extends Controller
             'caption' => ['required', 'string', 'max:10000'],
             'caption_dv' => ['nullable', 'string', 'max:10000'],
             'image_url' => ['nullable', 'string', 'max:500', 'url'],
+            'media' => ['sometimes', 'nullable', 'array'],
+            'media.type' => ['required_with:media', Rule::in(['photo', 'carousel', 'video'])],
+            'media.images' => ['sometimes', 'array', 'max:10'],
+            'media.images.*' => ['string', 'url', 'max:500'],
+            'media.video_url' => ['nullable', 'string', 'url', 'max:500'],
+            'media.video_poster_url' => ['nullable', 'string', 'url', 'max:500'],
+            'media.video_bytes' => ['nullable', 'integer', 'min:0'],
             'item_id' => ['nullable', 'integer', 'exists:items,id'],
             'channel_ids' => ['required', 'array', 'min:1'],
             'channel_ids.*' => ['integer', 'exists:social_channels,id'],
@@ -200,6 +207,21 @@ class SocialPostController extends Controller
                 'end_date' => $special->end_date?->toDateString(),
                 'is_active' => $special->isCurrentlyActive(),
             ] : null,
+            // For a carousel: every shareable photo; for a video: the ready renditions.
+            'gallery' => $hasRealPhoto ? $previews->galleryFor($item) : [],
+            'videos' => \App\Models\SocialVideoRendition::query()
+                ->where('item_id', $item->id)
+                ->where('status', \App\Models\SocialVideoRendition::STATUS_READY)
+                ->orderBy('format')
+                ->get()
+                ->map(fn (\App\Models\SocialVideoRendition $r) => [
+                    'format' => $r->format,
+                    'url' => $r->url(),
+                    'poster_url' => $r->posterUrl(),
+                    'bytes' => (int) $r->bytes,
+                    'width' => $r->width,
+                    'height' => $r->height,
+                ])->values(),
         ]]);
     }
 
@@ -222,6 +244,14 @@ class SocialPostController extends Controller
             'caption' => ['sometimes', 'required', 'string', 'max:10000'],
             'caption_dv' => ['sometimes', 'nullable', 'string', 'max:10000'],
             'image_url' => ['sometimes', 'nullable', 'string', 'max:500', 'url'],
+            'media' => ['sometimes', 'nullable', 'array'],
+            'media.type' => ['required_with:media', Rule::in(['photo', 'carousel', 'video'])],
+            'media.images' => ['sometimes', 'array', 'max:10'],
+            'media.images.*' => ['string', 'url', 'max:500'],
+            'media.video_url' => ['nullable', 'string', 'url', 'max:500'],
+            'media.video_poster_url' => ['nullable', 'string', 'url', 'max:500'],
+            'media.video_bytes' => ['nullable', 'integer', 'min:0'],
+
             'item_id' => ['sometimes', 'nullable', 'integer', 'exists:items,id'],
             'channel_ids' => ['sometimes', 'array', 'min:1'],
             'channel_ids.*' => ['integer', 'exists:social_channels,id'],
@@ -235,6 +265,13 @@ class SocialPostController extends Controller
             'caption' => array_key_exists('caption', $data) ? (string) $data['caption'] : (string) ($old['caption'] ?? ''),
             'caption_dv' => array_key_exists('caption_dv', $data) ? (string) ($data['caption_dv'] ?? '') : (string) ($old['caption_dv'] ?? ''),
             'image_url' => array_key_exists('image_url', $data) ? $data['image_url'] : ($old['image_url'] ?? null),
+            'media' => array_key_exists('media', $data) ? $data['media'] : (isset($old['video_url']) || isset($old['images']) ? [
+                'type' => !empty($old['video_url']) ? 'video' : 'carousel',
+                'images' => $old['images'] ?? [],
+                'video_url' => $old['video_url'] ?? null,
+                'video_poster_url' => $old['video_poster_url'] ?? null,
+                'video_bytes' => $old['video_bytes'] ?? null,
+            ] : null),
             'item_id' => $automated || !array_key_exists('item_id', $data) ? ($old['item_id'] ?? null) : $data['item_id'],
         ];
         $snapshot = $this->buildSnapshot($merged);
@@ -425,15 +462,20 @@ class SocialPostController extends Controller
      */
     private function capabilityProblem($channels, array $snapshot, SocialDriverRegistry $drivers): ?string
     {
-        $hasImage = !empty($snapshot['image_url']);
         $probe = new SocialPost(['snapshot' => $snapshot]);
+        $hasVideo = $probe->videoUrl() !== null;
+        $hasImage = !empty($snapshot['image_url']) || $hasVideo;
 
         $needsPhoto = [];
+        $noVideo = [];
         $tooLong = [];
         foreach ($channels as $channel) {
             $caps = $drivers->for($channel->platform)->capabilities();
             if (!$hasImage && $caps['requires_photo']) {
                 $needsPhoto[] = $channel->name;
+            }
+            if ($hasVideo && empty($caps['video'])) {
+                $noVideo[] = $channel->name;
             }
             // Measured as the channel will receive it: its language setting
             // decides whether the Dhivehi rides along under the English.
@@ -446,6 +488,9 @@ class SocialPostController extends Controller
 
         if ($needsPhoto !== []) {
             return 'These channels require an image: ' . implode(', ', $needsPhoto);
+        }
+        if ($noVideo !== []) {
+            return 'These channels cannot take a video: ' . implode(', ', $noVideo);
         }
         if ($tooLong !== []) {
             return 'The caption is too long for ' . implode(', ', $tooLong) . '.';
@@ -467,6 +512,30 @@ class SocialPostController extends Controller
             'item_id' => null,
             'price' => null,
         ];
+
+        // Media beyond one photo (owner's shortlist, 2026-09-24): a carousel
+        // of photos, or a video with its poster. `image_url` stays the
+        // representative picture — the first photo, or the poster — so the
+        // list, the link preview and Instagram's cover all have one.
+        $media = is_array($data['media'] ?? null) ? $data['media'] : null;
+        if ($media !== null && ($media['type'] ?? 'photo') === 'video' && !empty($media['video_url'])) {
+            $snapshot['video_url'] = (string) $media['video_url'];
+            $snapshot['video_poster_url'] = !empty($media['video_poster_url']) ? (string) $media['video_poster_url'] : null;
+            $snapshot['video_bytes'] = (int) ($media['video_bytes'] ?? 0);
+            if (empty($snapshot['image_url']) && $snapshot['video_poster_url'] !== null) {
+                $snapshot['image_url'] = $snapshot['video_poster_url'];
+                $snapshot['image_fingerprint'] = sha1($snapshot['video_poster_url']);
+            }
+        } elseif ($media !== null && ($media['type'] ?? 'photo') === 'carousel') {
+            $images = array_values(array_unique(array_filter(array_map(fn ($u) => trim((string) $u), $media['images'] ?? []), fn (string $u) => $u !== '')));
+            if (count($images) > 1) {
+                $snapshot['images'] = array_slice($images, 0, 10);
+            }
+            if ($images !== []) {
+                $snapshot['image_url'] = $images[0];
+                $snapshot['image_fingerprint'] = sha1($images[0]);
+            }
+        }
 
         if (!empty($data['item_id'])) {
             $item = Item::with('photos')->find((int) $data['item_id']);
@@ -514,6 +583,7 @@ class SocialPostController extends Controller
             'id' => $post->id,
             'status' => $post->status,
             'snapshot' => $post->snapshot,
+            'media_type' => $post->mediaType(),
             'source' => $post->source,
             'source_ref' => $post->source_ref,
             'business_date' => $post->business_date?->toDateString(),

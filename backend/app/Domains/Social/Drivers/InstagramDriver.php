@@ -28,7 +28,7 @@ class InstagramDriver implements SocialDriverInterface
 
     public function capabilities(): array
     {
-        return ['text' => false, 'photo' => true, 'requires_photo' => true, 'caption_max' => 2200, 'caption_max_photo' => 2200];
+        return ['text' => false, 'photo' => true, 'requires_photo' => true, 'caption_max' => 2200, 'caption_max_photo' => 2200, 'video' => true, 'carousel' => true];
     }
 
     public function checkHealth(SocialChannel $channel): ChannelHealth
@@ -75,20 +75,46 @@ class InstagramDriver implements SocialDriverInterface
             throw SocialPublishException::auth('Instagram channel is missing ig_user_id or access_token.');
         }
 
-        $image = $post->imageUrl();
-        if ($image === null) {
-            throw SocialPublishException::validation('Instagram posts require an image.');
+        $images = $post->images();
+        $video = $post->videoUrl();
+        if ($images === [] && $video === null) {
+            throw SocialPublishException::validation('Instagram posts require an image or a video.');
         }
 
         // Re-use a container from an interrupted earlier attempt when one
         // exists — creating a second container risks a duplicate post.
         $containerId = trim((string) $delivery->provider_container_id);
         if ($containerId === '') {
-            $create = $this->graphPost("/{$igUserId}/media", [
-                'image_url' => $image,
-                'caption' => $post->captionFor($channel),
-                'access_token' => $token,
-            ]);
+            if ($video !== null) {
+                // A Reel from a public video URL; the poster is its cover.
+                $params = ['media_type' => 'REELS', 'video_url' => $video, 'caption' => $post->captionFor($channel), 'access_token' => $token];
+                if (($cover = $post->videoPosterUrl()) !== null) {
+                    $params['cover_url'] = $cover;
+                }
+            } elseif (count($images) > 1) {
+                // Carousel: one child container per photo, then the parent.
+                $children = [];
+                foreach (array_slice($images, 0, 10) as $url) {
+                    $child = $this->graphPost("/{$igUserId}/media", [
+                        'image_url' => $url,
+                        'is_carousel_item' => 'true',
+                        'access_token' => $token,
+                    ]);
+                    if (!$child->successful()) {
+                        $this->throwGraphError($child);
+                    }
+                    $childId = (string) ($child->json('id') ?? '');
+                    if ($childId === '') {
+                        throw SocialPublishException::unknown('Instagram returned no container id for a carousel photo.');
+                    }
+                    $this->waitUntilContainerReady($childId, $token);
+                    $children[] = $childId;
+                }
+                $params = ['media_type' => 'CAROUSEL', 'children' => implode(',', $children), 'caption' => $post->captionFor($channel), 'access_token' => $token];
+            } else {
+                $params = ['image_url' => $images[0], 'caption' => $post->captionFor($channel), 'access_token' => $token];
+            }
+            $create = $this->graphPost("/{$igUserId}/media", $params);
             if (!$create->successful()) {
                 $this->throwGraphError($create);
             }

@@ -37,7 +37,7 @@ class ViberChannelDriver implements SocialDriverInterface
 
     public function capabilities(): array
     {
-        return ['text' => true, 'photo' => true, 'requires_photo' => false, 'caption_max' => 7000, 'caption_max_photo' => 7000];
+        return ['text' => true, 'photo' => true, 'requires_photo' => false, 'caption_max' => 7000, 'caption_max_photo' => 7000, 'video' => true, 'carousel' => false];
     }
 
     public function checkHealth(SocialChannel $channel): ChannelHealth
@@ -81,10 +81,20 @@ class ViberChannelDriver implements SocialDriverInterface
 
         $this->ensureWebhook($channel, $token);
 
-        $image = $post->imageUrl();
-        $payload = $image !== null
-            ? ['from' => $sender, 'type' => 'picture', 'text' => $post->captionFor($channel), 'media' => $image]
-            : ['from' => $sender, 'type' => 'text', 'text' => $post->captionFor($channel)];
+        $images = $post->images();
+        $caption = $post->captionFor($channel);
+        if (($video = $post->videoUrl()) !== null) {
+            // Viber wants the byte size up front; the poster becomes the thumbnail.
+            $payload = ['from' => $sender, 'type' => 'video', 'media' => $video, 'size' => max(1, $post->videoBytes()), 'text' => $caption];
+            if (($poster = $post->videoPosterUrl()) !== null) {
+                $payload['thumbnail'] = $poster;
+            }
+        } elseif ($images !== []) {
+            // No albums on Viber: the first photo carries the post.
+            $payload = ['from' => $sender, 'type' => 'picture', 'text' => $caption, 'media' => $images[0]];
+        } else {
+            $payload = ['from' => $sender, 'type' => 'text', 'text' => $caption];
+        }
 
         $response = $this->call('/post', $token, $payload);
         $this->assertOk($response);

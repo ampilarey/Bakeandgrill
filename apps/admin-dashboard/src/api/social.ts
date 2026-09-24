@@ -11,6 +11,9 @@ export interface SocialPlatformCaps {
   /** Caption limit for a text post, and the (sometimes tighter) one with a photo. */
   caption_max: number;
   caption_max_photo: number;
+  /** Whether the platform takes a video post and a multi-photo post. */
+  video?: boolean;
+  carousel?: boolean;
   credentials: string[];
 }
 
@@ -61,10 +64,17 @@ export interface SocialPostRow {
     caption: string;
     caption_dv?: string | null;
     image_url: string | null;
+    /** A carousel's photos (two or more) when the post is one. */
+    images?: string[] | null;
+    video_url?: string | null;
+    video_poster_url?: string | null;
+    video_bytes?: number | null;
     link_url: string | null;
     item_id: number | null;
     price: number | null;
   };
+  /** video | carousel | photo | text, derived by the server from the snapshot. */
+  media_type?: string;
   source: string;
   source_ref: string | null;
   business_date: string | null;
@@ -88,6 +98,28 @@ export interface SocialItemPreview {
   is_sellable: boolean;
   /** Present when the preview was asked for by special: the offer's badge and last day. */
   special?: { id: number; badge_label: string | null; end_date: string | null; is_active: boolean } | null;
+  /** Every shareable photo of the item (for a carousel), primary first. */
+  gallery?: string[];
+  /** Ready video renditions of the item (for a video post). */
+  videos?: SocialItemVideo[];
+}
+
+export interface SocialItemVideo {
+  format: string;
+  url: string | null;
+  poster_url: string | null;
+  bytes: number;
+  width: number | null;
+  height: number | null;
+}
+
+/** What the composer sends beyond one photo: a carousel of photos or a video. */
+export interface SocialPostMedia {
+  type: 'photo' | 'carousel' | 'video';
+  images?: string[];
+  video_url?: string | null;
+  video_poster_url?: string | null;
+  video_bytes?: number | null;
 }
 
 export async function fetchSocialItemPreview(
@@ -251,6 +283,7 @@ export async function createSocialPost(data: {
   caption: string;
   caption_dv?: string | null;
   image_url?: string | null;
+  media?: SocialPostMedia | null;
   item_id?: number | null;
   channel_ids: number[];
   action: 'draft' | 'schedule' | 'now';
@@ -266,6 +299,7 @@ export async function updateSocialPost(id: number, data: {
   caption?: string;
   caption_dv?: string | null;
   image_url?: string | null;
+  media?: SocialPostMedia | null;
   item_id?: number | null;
   channel_ids?: number[];
   action?: 'draft' | 'schedule';

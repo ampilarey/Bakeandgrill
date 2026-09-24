@@ -341,6 +341,8 @@ function PostList({ posts, meta, loading, filters, onFilters, onChanged, onEdit 
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                   <Badge label={post.status.replace('_', ' ')} color={STATUS_COLORS[post.status] ?? 'gray'} />
                   {SOURCE_LABELS[post.source] && <Badge label={SOURCE_LABELS[post.source]} color={post.source === 'channel_test' ? 'gray' : 'purple'} />}
+                  {post.media_type === 'video' && <Badge label="▶ Video" color="teal" />}
+                  {post.media_type === 'carousel' && <Badge label={`${post.snapshot.images?.length ?? 0} photos`} color="teal" />}
                   {post.scheduled_at && post.status === 'scheduled' && (
                     <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
                       for {new Date(post.scheduled_at).toLocaleString()}

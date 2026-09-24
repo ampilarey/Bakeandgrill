@@ -23,7 +23,11 @@ interface SocialDriverInterface
      * `caption_max_photo` the (sometimes tighter) limit when a photo is
      * attached — the composer and the store endpoint both check them.
      *
-     * @return array{text: bool, photo: bool, requires_photo: bool, caption_max: int, caption_max_photo: int}
+     * `video` and `carousel` say whether the platform takes a video post
+     * and a multi-photo post; a driver without carousel posts the first
+     * photo instead, a driver without video is refused at compose time.
+     *
+     * @return array{text: bool, photo: bool, requires_photo: bool, caption_max: int, caption_max_photo: int, video: bool, carousel: bool}
      */
     public function capabilities(): array;
 

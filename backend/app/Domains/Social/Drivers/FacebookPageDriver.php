@@ -24,7 +24,7 @@ class FacebookPageDriver implements SocialDriverInterface
 
     public function capabilities(): array
     {
-        return ['text' => true, 'photo' => true, 'requires_photo' => false, 'caption_max' => 63206, 'caption_max_photo' => 63206];
+        return ['text' => true, 'photo' => true, 'requires_photo' => false, 'caption_max' => 63206, 'caption_max_photo' => 63206, 'video' => true, 'carousel' => true];
     }
 
     public function checkHealth(SocialChannel $channel): ChannelHealth
@@ -72,10 +72,37 @@ class FacebookPageDriver implements SocialDriverInterface
             throw SocialPublishException::auth('Facebook channel is missing page_id or access_token.');
         }
 
-        $image = $post->imageUrl();
-        if ($image !== null) {
+        $images = $post->images();
+        if (($video = $post->videoUrl()) !== null) {
+            // A video by public URL; Facebook fetches and encodes it.
+            $response = $this->graphPost("/{$pageId}/videos", [
+                'file_url' => $video,
+                'description' => $post->captionFor($channel),
+                'access_token' => $token,
+            ]);
+        } elseif (count($images) > 1) {
+            // Multi-photo post: each photo uploaded unpublished, then one feed
+            // post that attaches them all.
+            $attached = [];
+            foreach ($images as $url) {
+                $photo = $this->graphPost("/{$pageId}/photos", [
+                    'url' => $url,
+                    'published' => 'false',
+                    'access_token' => $token,
+                ]);
+                if (!$photo->successful()) {
+                    $this->throwGraphError($photo);
+                }
+                $attached[] = ['media_fbid' => (string) $photo->json('id')];
+            }
+            $response = $this->graphPost("/{$pageId}/feed", [
+                'message' => $post->captionFor($channel),
+                'attached_media' => json_encode($attached),
+                'access_token' => $token,
+            ]);
+        } elseif ($images !== []) {
             $response = $this->graphPost("/{$pageId}/photos", [
-                'url' => $image,
+                'url' => $images[0],
                 'message' => $post->captionFor($channel),
                 'access_token' => $token,
             ]);

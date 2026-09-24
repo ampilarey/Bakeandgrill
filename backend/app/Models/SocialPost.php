@@ -90,6 +90,56 @@ class SocialPost extends Model
         return $url !== '' ? $url : null;
     }
 
+    /**
+     * Every photo of the post: the carousel's list, or the one photo.
+     *
+     * @return list<string>
+     */
+    public function images(): array
+    {
+        $list = ($this->snapshot ?? [])['images'] ?? null;
+        if (is_array($list)) {
+            $urls = array_values(array_filter(array_map(fn ($u) => trim((string) $u), $list), fn (string $u) => $u !== ''));
+            if ($urls !== []) {
+                return $urls;
+            }
+        }
+        $one = $this->imageUrl();
+
+        return $one !== null ? [$one] : [];
+    }
+
+    public function videoUrl(): ?string
+    {
+        $url = trim((string) (($this->snapshot ?? [])['video_url'] ?? ''));
+
+        return $url !== '' ? $url : null;
+    }
+
+    /** The video's cover frame, else the post's photo. */
+    public function videoPosterUrl(): ?string
+    {
+        $url = trim((string) (($this->snapshot ?? [])['video_poster_url'] ?? ''));
+
+        return $url !== '' ? $url : $this->imageUrl();
+    }
+
+    public function videoBytes(): int
+    {
+        return max(0, (int) (($this->snapshot ?? [])['video_bytes'] ?? 0));
+    }
+
+    /** video | carousel | photo | text */
+    public function mediaType(): string
+    {
+        if ($this->videoUrl() !== null) {
+            return 'video';
+        }
+        $images = $this->images();
+
+        return count($images) > 1 ? 'carousel' : ($images !== [] ? 'photo' : 'text');
+    }
+
     /** Roll the post state up from its deliveries after each delivery settles. */
     public function refreshStatusFromDeliveries(): void
     {
