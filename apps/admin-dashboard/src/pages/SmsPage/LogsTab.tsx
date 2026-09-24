@@ -1,45 +1,94 @@
-import { useEffect, useState } from 'react';
-import { fetchSmsLogs, fetchSmsLogStats, type SmsLog } from '../../api';
+import { useCallback, useEffect, useState } from 'react';
 import {
-  Badge, Btn, EmptyState, Select, Spinner, StatCard, TableCard, TD, statColor,
+  exportSmsLogs, fetchSmsLogs, type SmsLog, type SmsLogFilters, type SmsLogTotals, type SmsLogTypeOption,
+} from '../../api';
+import {
+  Badge, Btn, DateInput, EmptyState, Pagination, Select, Spinner, StatCard, TableCard, TD, statColor,
 } from '../../components/SharedUI';
-import { SortFilterHead, useSortFilter } from '../../components/TableControls';
+
+/**
+ * Every SMS the system tried to send (SMS audit, 2026-09-24). The old
+ * type dropdown offered names nothing was stored under; this one lists
+ * the real types, filters by category and status, searches number,
+ * customer and message, takes a date range, totals up the filter and
+ * exports it as CSV.
+ */
+const CATEGORY_LABELS: Record<string, string> = {
+  auth: 'Login codes', transactional: 'Orders & payments', staff: 'Staff & owner alerts', marketing: 'Marketing', system: 'System',
+};
+
+const STATUS_OPTIONS = [
+  { value: '', label: 'All statuses' },
+  { value: 'sent', label: 'Sent' },
+  { value: 'failed', label: 'Failed' },
+  { value: 'deferred', label: 'Held (quiet hours)' },
+  { value: 'suppressed', label: 'Suppressed (opt-out / cap)' },
+  { value: 'disabled', label: 'Blocked (switch / budget)' },
+  { value: 'queued', label: 'Queued' },
+  { value: 'demo', label: 'Demo' },
+];
+
+const EMPTY_FILTERS: SmsLogFilters = { type: '', category: '', status: '', q: '', from: '', to: '' };
 
 export function LogsTab() {
   const [logs, setLogs] = useState<SmsLog[]>([]);
-  const logCtl = useSortFilter(logs, [
-    { key: 'to', label: 'To', get: (l) => l.to },
-    { key: 'type', label: 'Type', kind: 'select', get: (l) => l.type },
-    { key: 'status', label: 'Status', kind: 'select', get: (l) => l.status },
-    { key: 'message', label: 'Message', get: (l) => [l.message, l.error_message].filter(Boolean).join(' ') },
-    { key: 'segments', label: 'Segments', kind: 'number', get: (l) => l.segments },
-    { key: 'cost', label: 'Cost', kind: 'number', get: (l) => Number(l.cost_estimate_mvr) },
-    { key: 'sent', label: 'Sent At', get: (l) => l.sent_at },
-  ], 'sms-logs');
-  const [stats, setStats] = useState<{ total: number; sent: number; failed: number } | null>(null);
+  const [totals, setTotals] = useState<SmsLogTotals | null>(null);
+  const [types, setTypes] = useState<SmsLogTypeOption[]>([]);
+  const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
+  const [page, setPage] = useState(1);
+  const [draft, setDraft] = useState<SmsLogFilters>(EMPTY_FILTERS);
+  const [filters, setFilters] = useState<SmsLogFilters>(EMPTY_FILTERS);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [loadError, setLoadError] = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setLoadError('');
     try {
-      const [logsRes, statsRes] = await Promise.all([
-        fetchSmsLogs({ type: typeFilter || undefined, status: statusFilter || undefined }),
-        fetchSmsLogStats(),
-      ]);
-      setLogs(logsRes.data ?? []);
-      setStats(statsRes);
+      const res = await fetchSmsLogs({ ...filters, page, per_page: 50 });
+      setLogs(res.data ?? []);
+      setTotals(res.totals);
+      setTypes(res.types ?? []);
+      setMeta({ current_page: res.current_page, last_page: res.last_page, total: res.total });
     } catch (e) {
       setLoadError((e as Error).message);
     } finally {
       setLoading(false);
     }
+  }, [filters, page]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const apply = () => { setPage(1); setFilters(draft); };
+  const reset = () => { setDraft(EMPTY_FILTERS); setPage(1); setFilters(EMPTY_FILTERS); };
+
+  const doExport = async () => {
+    setExporting(true);
+    setLoadError('');
+    try {
+      const blob = await exportSmsLogs(filters);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `sms-log-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setLoadError((e as Error).message);
+    } finally {
+      setExporting(false);
+    }
   };
 
-  useEffect(() => { void load(); }, [typeFilter, statusFilter]);
+  const typeOptions = [
+    { value: '', label: 'All types' },
+    ...[...types].sort((a, b) => a.category.localeCompare(b.category) || a.label.localeCompare(b.label))
+      .filter((t) => !draft.category || t.category === draft.category)
+      .map((t) => ({ value: t.key, label: `${t.label}` })),
+  ];
 
   return (
     <>
@@ -48,58 +97,80 @@ export function LogsTab() {
           {loadError}
         </div>
       )}
-      {stats && (
-        <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
-          <StatCard label="Total SMS" value={stats.total.toLocaleString()} accent="var(--color-primary)" />
-          <StatCard label="Sent"      value={stats.sent.toLocaleString()}  accent="var(--color-success)" />
-          <StatCard label="Failed"    value={stats.failed.toLocaleString()} accent="var(--color-danger)" />
+      {totals && (
+        <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 20 }} data-testid="sms-log-totals">
+          <StatCard label="Texts (this filter)" value={totals.count.toLocaleString()} accent="var(--color-primary)" />
+          <StatCard label="Sent" value={(totals.by_status.sent ?? 0).toLocaleString()} accent="var(--color-success)" />
+          <StatCard label="Failed / blocked" value={((totals.by_status.failed ?? 0) + (totals.by_status.disabled ?? 0) + (totals.by_status.suppressed ?? 0)).toLocaleString()} accent="var(--color-danger)" />
+          <StatCard label="Cost" value={`MVR ${totals.cost_mvr.toFixed(2)}`} sub={`${totals.segments.toLocaleString()} segments`} accent="var(--color-warning)" />
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
-        <Select value={typeFilter} onChange={setTypeFilter} options={[
-          { value: '', label: 'All Types' },
-          { value: 'otp', label: 'OTP' },
-          { value: 'promotion', label: 'Promotion' },
-          { value: 'campaign', label: 'Campaign' },
-          { value: 'transactional', label: 'Transactional' },
-        ]} style={{ width: 160 }} />
-        <Select value={statusFilter} onChange={setStatusFilter} options={[
-          { value: '', label: 'All Statuses' },
-          { value: 'sent', label: 'Sent' },
-          { value: 'failed', label: 'Failed' },
-          { value: 'demo', label: 'Demo' },
-        ]} style={{ width: 140 }} />
-        <Btn variant="secondary" onClick={load}>↻ Refresh</Btn>
+      <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+        <input
+          type="search"
+          aria-label="Search SMS log"
+          placeholder="Number, customer or words in the text"
+          value={draft.q ?? ''}
+          onChange={(e) => setDraft((d) => ({ ...d, q: e.target.value }))}
+          onKeyDown={(e) => { if (e.key === 'Enter') apply(); }}
+          style={{ minHeight: 44, padding: '0 12px', borderRadius: 10, border: '1.5px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontFamily: 'inherit', fontSize: 13, flex: '1 1 220px' }}
+        />
+        <Select aria-label="Category" value={draft.category ?? ''} onChange={(v) => setDraft((d) => ({ ...d, category: v, type: '' }))} options={[
+          { value: '', label: 'All categories' },
+          ...Object.entries(CATEGORY_LABELS).map(([value, label]) => ({ value, label })),
+        ]} style={{ width: 190 }} />
+        <Select aria-label="Type" value={draft.type ?? ''} onChange={(v) => setDraft((d) => ({ ...d, type: v }))} options={typeOptions} style={{ width: 220 }} />
+        <Select aria-label="Status" value={draft.status ?? ''} onChange={(v) => setDraft((d) => ({ ...d, status: v }))} options={STATUS_OPTIONS} style={{ width: 200 }} />
+        <DateInput label="From" value={draft.from ?? ''} onChange={(v) => setDraft((d) => ({ ...d, from: v }))} />
+        <DateInput label="To" value={draft.to ?? ''} onChange={(v) => setDraft((d) => ({ ...d, to: v }))} />
+        <Btn onClick={apply}>Filter</Btn>
+        <Btn variant="secondary" onClick={reset}>Clear</Btn>
+        <Btn variant="secondary" onClick={() => { void doExport(); }} disabled={exporting || !totals || totals.count === 0}>
+          {exporting ? 'Exporting…' : 'Export CSV'}
+        </Btn>
       </div>
 
       {loading && logs.length === 0 ? <Spinner /> : logs.length === 0 ? (
-        <TableCard><EmptyState message="No SMS logs found." /></TableCard>
+        <TableCard><EmptyState message="No SMS match this filter." /></TableCard>
       ) : (
         <TableCard>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <SortFilterHead controls={logCtl} allRows={logs} />
+            <thead>
+              <tr>
+                {['When', 'To', 'Type', 'Status', 'Message', 'Seg.', 'Cost'].map((h) => (
+                  <th key={h} style={{ ...TD, textAlign: 'left', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-muted)' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
             <tbody>
-              {logCtl.rows.map((l) => (
-                <tr key={l.id}>
-                  <td style={{ ...TD, fontWeight: 600 }}>{l.to}</td>
-                  <td style={TD}><Badge label={l.type} color="blue" /></td>
+              {logs.map((l) => (
+                <tr key={l.id} data-testid={`sms-log-${l.id}`}>
+                  <td style={{ ...TD, color: 'var(--color-text-muted)', fontSize: 11, whiteSpace: 'nowrap' }}>
+                    {new Date(l.sent_at ?? l.created_at).toLocaleString()}
+                  </td>
+                  <td style={{ ...TD, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                    {l.to}
+                    {l.customer_name && <span style={{ display: 'block', fontWeight: 400, fontSize: 11, color: 'var(--color-text-muted)' }}>{l.customer_name}</span>}
+                  </td>
+                  <td style={TD}>
+                    <Badge label={l.type_label ?? l.type} color="blue" />
+                    {l.category && <span style={{ display: 'block', fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>{CATEGORY_LABELS[l.category] ?? l.category}</span>}
+                  </td>
                   <td style={TD}><Badge label={l.status} color={statColor(l.status)} /></td>
-                  <td style={{ ...TD, color: 'var(--color-text-secondary)', maxWidth: 200 }}>
-                    <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <td style={{ ...TD, color: 'var(--color-text-secondary)', maxWidth: 320 }}>
+                    <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={l.message}>
                       {l.message}
                     </span>
                     {l.error_message && <span style={{ color: 'var(--color-danger)', fontSize: 11 }}>{l.error_message}</span>}
                   </td>
                   <td style={{ ...TD, color: 'var(--color-text-secondary)', textAlign: 'center' }}>{l.segments}</td>
-                  <td style={{ ...TD, color: 'var(--color-primary)', fontWeight: 600 }}>MVR {l.cost_estimate_mvr}</td>
-                  <td style={{ ...TD, color: 'var(--color-text-muted)', fontSize: 11, whiteSpace: 'nowrap' }}>
-                    {l.sent_at ? new Date(l.sent_at).toLocaleString() : '—'}
-                  </td>
+                  <td style={{ ...TD, color: 'var(--color-primary)', fontWeight: 600, whiteSpace: 'nowrap' }}>MVR {l.cost_estimate_mvr}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+          <Pagination page={meta.current_page} totalPages={meta.last_page} onChange={setPage} />
         </TableCard>
       )}
     </>

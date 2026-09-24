@@ -421,3 +421,16 @@ window, marketing texts (and owner alerts when `alerts` is on) are logged as
 same gate once the window ends and marks campaign / promotion recipients sent.
 Always-on auth types are never held. The cap counts every marketing-category
 row to one number in a rolling day; the suppressed row names the cap.
+
+### B.4 The log (`GET /admin/sms/logs`, `/logs/export`)
+Filters: `type` (a registry key, or an old alias such as `otp`; both find the
+rows stored under either name), `category`, `status` (incl. `deferred`), `q`
+(number, customer name, words in the text), `campaign_id`, `reference_type`,
+`from` / `to` dates. The page carries `totals` (count, segments, cost, by
+status) for the whole filter and `types` for the dropdown. `/logs/export`
+streams the same filter as CSV, newest first, up to 50,000 rows. Retention:
+`sms_log_retention_days` (default 365; 0 keeps everything), enforced nightly by
+`sms:prune-logs`. Draft campaigns with a `scheduled_at` are started by
+`sms:dispatch-scheduled` (every minute) exactly as "Send now" would; a start
+that fails (empty audience, budget) clears the time and notes the reason on the
+campaign rather than retrying every minute.

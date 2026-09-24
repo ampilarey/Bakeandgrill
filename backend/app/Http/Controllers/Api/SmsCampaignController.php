@@ -11,6 +11,7 @@ use App\Models\SmsCampaign;
 use App\Models\SmsLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Admin endpoints for SMS campaigns and log viewing.
@@ -24,53 +25,171 @@ class SmsCampaignController extends Controller
 
     /**
      * GET /api/admin/sms/logs
-     * Full audit log of every SMS sent (OTP, promo, campaign, transactional).
+     * Every SMS the system tried to send (SMS audit, 2026-09-24): filter
+     * by the real type or its category, status, campaign, a date range, and
+     * a search over number, customer name and message; totals for the
+     * filter come with the page.
      */
     public function logs(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'type' => 'nullable|in:otp,promotion,campaign,transactional',
-            'status' => 'nullable|in:queued,sent,failed,demo,suppressed,disabled',
-            'phone' => 'nullable|string',
-            'customer_id' => 'nullable|integer',
-            'days' => 'nullable|integer|min:1|max:365',
-            'per_page' => 'nullable|integer|min:10|max:200',
-        ]);
+        $validated = $this->validateLogFilters($request);
+        $query = $this->logQuery($validated)->with('customer:id,name,phone');
 
-        $query = SmsLog::with('customer')
-            ->orderByDesc('created_at');
+        $totals = (clone $query)->selectRaw('COUNT(*) as count, COALESCE(SUM(segments), 0) as segments, COALESCE(SUM(cost_estimate_mvr), 0) as cost_mvr')->first();
+        $byStatus = (clone $query)->selectRaw('status, COUNT(*) as count')->groupBy('status')->pluck('count', 'status');
 
-        if (!empty($validated['type'])) {
-            $query->ofType($validated['type']);
-        }
-
-        if (!empty($validated['status'])) {
-            $query->where('status', $validated['status']);
-        }
-
-        if (!empty($validated['phone'])) {
-            $query->byPhone($validated['phone']);
-        }
-
-        if (!empty($validated['customer_id'])) {
-            $query->where('customer_id', $validated['customer_id']);
-        }
-
-        if (!empty($validated['days'])) {
-            $query->recent((int) $validated['days']);
-        }
-
-        $logs = $query->paginate($validated['per_page'] ?? 50);
+        $logs = $query->orderByDesc('id')->paginate((int) ($validated['per_page'] ?? 50));
 
         $logs->getCollection()->transform(function (SmsLog $log) {
             if (SmsTypeRegistry::shouldRedactBody((string) $log->type)) {
                 $log->message = '[redacted]';
             }
+            $entry = SmsTypeRegistry::resolve((string) $log->type);
+            $log->setAttribute('type_label', $entry['label'] ?? $log->type);
+            $log->setAttribute('category', $entry['category'] ?? null);
+            $log->setAttribute('customer_name', $log->customer?->name);
 
             return $log;
         });
 
-        return response()->json($logs);
+        $payload = $logs->toArray();
+        $payload['totals'] = [
+            'count' => (int) ($totals->count ?? 0),
+            'segments' => (int) ($totals->segments ?? 0),
+            'cost_mvr' => round((float) ($totals->cost_mvr ?? 0), 2),
+            'by_status' => $byStatus->map(fn ($n) => (int) $n)->all(),
+        ];
+        $payload['types'] = collect(SmsTypeRegistry::all())
+            ->map(fn (array $t) => ['key' => $t['key'], 'label' => $t['label'], 'category' => $t['category']])
+            ->values()
+            ->all();
+
+        return response()->json($payload);
+    }
+
+    /**
+     * GET /api/admin/sms/logs/export — the same filter as CSV, newest first, up to 50,000 rows.
+     */
+    public function exportLogs(Request $request): StreamedResponse
+    {
+        $validated = $this->validateLogFilters($request);
+        $query = $this->logQuery($validated)->with('customer:id,name')->orderByDesc('id');
+        $name = 'sms-log-' . now()->format('Ymd-Hi') . '.csv';
+
+        return response()->streamDownload(function () use ($query): void {
+            $out = fopen('php://output', 'w');
+            fputcsv($out, ['Sent at', 'Created at', 'To', 'Customer', 'Type', 'Category', 'Status', 'Segments', 'Cost MVR', 'Reference', 'Message', 'Note']);
+            $rows = 0;
+            foreach ($query->cursor() as $log) {
+                $entry = SmsTypeRegistry::resolve((string) $log->type);
+                fputcsv($out, [
+                    $log->sent_at?->toDateTimeString() ?? '',
+                    $log->created_at?->toDateTimeString() ?? '',
+                    $log->to,
+                    $log->customer?->name ?? '',
+                    $entry['label'] ?? $log->type,
+                    $entry['category'] ?? '',
+                    $log->status,
+                    $log->segments,
+                    number_format((float) $log->cost_estimate_mvr, 2, '.', ''),
+                    trim(($log->reference_type ?? '') . ' ' . ($log->reference_id ?? '')),
+                    SmsTypeRegistry::shouldRedactBody((string) $log->type) ? '[redacted]' : $log->message,
+                    $log->error_message ?? '',
+                ]);
+                if (++$rows >= 50000) {
+                    break;
+                }
+            }
+            fclose($out);
+        }, $name, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    /** @return array<string, mixed> */
+    private function validateLogFilters(Request $request): array
+    {
+        return $request->validate([
+            'type' => 'nullable|string|max:60',
+            'category' => 'nullable|in:auth,transactional,marketing,staff,system',
+            'status' => 'nullable|in:queued,sent,failed,demo,suppressed,disabled,deferred',
+            'phone' => 'nullable|string|max:30',
+            'q' => 'nullable|string|max:120',
+            'customer_id' => 'nullable|integer',
+            'campaign_id' => 'nullable|integer',
+            'reference_type' => 'nullable|string|max:60',
+            'from' => 'nullable|date',
+            'to' => 'nullable|date',
+            'days' => 'nullable|integer|min:1|max:365',
+            'per_page' => 'nullable|integer|min:10|max:200',
+        ]);
+    }
+
+    /** @param array<string, mixed> $f */
+    private function logQuery(array $f): \Illuminate\Database\Eloquent\Builder
+    {
+        $query = SmsLog::query();
+
+        if (!empty($f['type'])) {
+            // A registry key, or one of its legacy aliases (otp → auth_customer_otp).
+            $keys = [$f['type']];
+            $resolved = SmsTypeRegistry::resolve((string) $f['type']);
+            if ($resolved !== null) {
+                $keys[] = $resolved['key'];
+            }
+            foreach (['otp' => 'auth_customer_otp', 'staff_password_reset' => 'auth_staff_password_reset', 'campaign' => 'marketing_campaign', 'promotion' => 'marketing_promotion', 'scheduled' => 'sms_scheduled'] as $alias => $key) {
+                if (in_array($key, $keys, true)) {
+                    $keys[] = $alias;
+                }
+            }
+            $query->whereIn('type', array_values(array_unique($keys)));
+        }
+        if (!empty($f['category'])) {
+            $keys = [];
+            foreach (SmsTypeRegistry::all() as $entry) {
+                if ($entry['category'] === $f['category']) {
+                    $keys[] = $entry['key'];
+                }
+            }
+            $keys[] = $f['category']; // legacy rows stored under the category name
+            $query->whereIn('type', $keys);
+        }
+        if (!empty($f['status'])) {
+            $query->where('status', $f['status']);
+        }
+        if (!empty($f['phone'])) {
+            $query->byPhone($f['phone']);
+        }
+        if (!empty($f['customer_id'])) {
+            $query->where('customer_id', $f['customer_id']);
+        }
+        if (!empty($f['campaign_id'])) {
+            $query->where('campaign_id', $f['campaign_id']);
+        }
+        if (!empty($f['reference_type'])) {
+            $query->where('reference_type', $f['reference_type']);
+        }
+        if (!empty($f['q'])) {
+            $q = trim((string) $f['q']);
+            $digits = preg_replace('/\D+/', '', $q) ?? '';
+            $query->where(function ($w) use ($q, $digits): void {
+                $w->where('message', 'like', '%' . $q . '%')
+                    ->orWhere('error_message', 'like', '%' . $q . '%')
+                    ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', '%' . $q . '%'));
+                if (strlen($digits) >= 4) {
+                    $w->orWhere('to', 'like', '%' . $digits . '%');
+                }
+            });
+        }
+        if (!empty($f['from'])) {
+            $query->where('created_at', '>=', \Carbon\Carbon::parse((string) $f['from'])->startOfDay());
+        }
+        if (!empty($f['to'])) {
+            $query->where('created_at', '<=', \Carbon\Carbon::parse((string) $f['to'])->endOfDay());
+        }
+        if (!empty($f['days']) && empty($f['from'])) {
+            $query->recent((int) $f['days']);
+        }
+
+        return $query;
     }
 
     /**

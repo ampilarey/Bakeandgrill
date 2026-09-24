@@ -286,6 +286,12 @@ Schedule::command('marketing:send-abandoned-cart-reminders')
     ->onFailure($alertOnFailure('marketing:send-abandoned-cart-reminders'))
     ->after($trackSuccess('marketing:send-abandoned-cart-reminders'));
 
+Schedule::command('sms:prune-logs')
+    ->dailyAt('03:40')
+    ->withoutOverlapping()
+    ->onFailure($alertOnFailure('sms:prune-logs'))
+    ->after($trackSuccess('sms:prune-logs'));
+
 Schedule::command('marketing:prune-abandoned-carts')
     ->dailyAt('03:30')
     ->withoutOverlapping()

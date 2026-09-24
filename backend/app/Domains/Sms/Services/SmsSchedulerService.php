@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Sms\Services;
 
+use App\Domains\Notifications\Services\BulkSmsService;
 use App\Domains\Sms\Jobs\SendScheduledSmsJob;
+use App\Models\SmsCampaign;
 use App\Models\SmsScheduledMessage;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -12,6 +14,40 @@ use Illuminate\Support\Facades\Log;
 
 class SmsSchedulerService
 {
+    /**
+     * Draft campaigns given a send time never fired (SMS audit, 2026-09-24):
+     * nothing read `scheduled_at`. Each due one is dispatched exactly as
+     * "Send now" would, so the same audience, budget and gate apply.
+     *
+     * @return int campaigns started
+     */
+    public function dispatchDueCampaigns(Carbon $now): int
+    {
+        $started = 0;
+        $ids = SmsCampaign::query()
+            ->where('status', 'draft')
+            ->whereNotNull('scheduled_at')
+            ->where('scheduled_at', '<=', $now)
+            ->pluck('id');
+
+        foreach ($ids as $id) {
+            try {
+                $campaign = SmsCampaign::find($id);
+                if ($campaign === null || !$campaign->canStart()) {
+                    continue;
+                }
+                app(BulkSmsService::class)->dispatch($campaign);
+                $started++;
+            } catch (\Throwable $e) {
+                Log::error('SmsSchedulerService: scheduled campaign could not start', ['campaign_id' => $id, 'error' => $e->getMessage()]);
+                // Do not retry every minute: an empty audience or a blown budget needs a person.
+                SmsCampaign::whereKey($id)->update(['scheduled_at' => null, 'notes' => trim(((string) (SmsCampaign::find($id)?->notes ?? '')) . "\nScheduled send failed: " . $e->getMessage())]);
+            }
+        }
+
+        return $started;
+    }
+
     /**
      * Find all due scheduled messages and dispatch their send jobs.
      * Updates next_send_at for recurring messages and marks one-time messages as completed.

@@ -1,4 +1,4 @@
-import { req } from './client';
+import { req, requestBlob } from './client';
 
 // ── Promotions ────────────────────────────────────────────────────────────────
 
@@ -175,6 +175,12 @@ export type SmsLog = {
   error_message?: string | null;
   sent_at?: string | null;
   created_at: string;
+  type_label?: string;
+  category?: string | null;
+  customer_name?: string | null;
+  campaign_id?: number | null;
+  reference_type?: string | null;
+  reference_id?: string | null;
 };
 
 export type SmsCampaign = {
@@ -195,16 +201,51 @@ export type SmsCampaign = {
   completed_at?: string | null;
 };
 
-export async function fetchSmsLogs(params?: {
+export type SmsLogFilters = {
   type?: string;
+  category?: string;
   status?: string;
+  q?: string;
+  campaign_id?: number;
+  from?: string;
+  to?: string;
   page?: number;
-}): Promise<{ data: SmsLog[]; meta?: { total: number } }> {
+  per_page?: number;
+};
+
+export type SmsLogTotals = {
+  count: number;
+  segments: number;
+  cost_mvr: number;
+  by_status: Record<string, number>;
+};
+
+export type SmsLogTypeOption = { key: string; label: string; category: string };
+
+function smsLogQuery(params?: SmsLogFilters): URLSearchParams {
   const qs = new URLSearchParams();
-  if (params?.type)   qs.set('type', params.type);
-  if (params?.status) qs.set('status', params.status);
-  if (params?.page)   qs.set('page', String(params.page));
-  return req(`/admin/sms/logs?${qs}`);
+  if (!params) return qs;
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== null && v !== '') qs.set(k, String(v));
+  }
+  return qs;
+}
+
+/** SMS audit, 2026-09-24: filters on what is really stored, with totals for the filter. */
+export async function fetchSmsLogs(params?: SmsLogFilters): Promise<{
+  data: SmsLog[];
+  total: number;
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  totals: SmsLogTotals;
+  types: SmsLogTypeOption[];
+}> {
+  return req(`/admin/sms/logs?${smsLogQuery(params)}`);
+}
+
+export async function exportSmsLogs(params?: SmsLogFilters): Promise<Blob> {
+  return requestBlob(`/admin/sms/logs/export?${smsLogQuery(params)}`);
 }
 
 export async function fetchSmsLogStats(): Promise<{

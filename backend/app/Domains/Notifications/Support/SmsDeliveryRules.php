@@ -32,7 +32,9 @@ final class SmsDeliveryRules
 
     public const MARKETING_CAP = 'sms_marketing_daily_cap';
 
-    /** @return array{quiet_hours_enabled: bool, quiet_hours_start: string, quiet_hours_end: string, quiet_hours_alerts: bool, marketing_daily_cap: int} */
+    public const LOG_RETENTION = 'sms_log_retention_days';
+
+    /** @return array{quiet_hours_enabled: bool, quiet_hours_start: string, quiet_hours_end: string, quiet_hours_alerts: bool, marketing_daily_cap: int, log_retention_days: int} */
     public static function all(): array
     {
         return [
@@ -41,6 +43,8 @@ final class SmsDeliveryRules
             'quiet_hours_end' => self::time(SiteSetting::get(self::QUIET_END, '08:00'), '08:00'),
             'quiet_hours_alerts' => SmsTypeRegistry::settingIsTruthy(SiteSetting::get(self::QUIET_ALERTS, '0'), false),
             'marketing_daily_cap' => max(0, (int) SiteSetting::get(self::MARKETING_CAP, '1')),
+            // How long sms_logs rows are kept; 0 keeps them forever.
+            'log_retention_days' => max(0, (int) SiteSetting::get(self::LOG_RETENTION, '365')),
         ];
     }
 
@@ -61,6 +65,9 @@ final class SmsDeliveryRules
         }
         if (array_key_exists('marketing_daily_cap', $input)) {
             SiteSetting::set(self::MARKETING_CAP, (string) max(0, min(50, (int) $input['marketing_daily_cap'])));
+        }
+        if (array_key_exists('log_retention_days', $input)) {
+            SiteSetting::set(self::LOG_RETENTION, (string) max(0, min(3650, (int) $input['log_retention_days'])));
         }
         SiteSetting::bust();
 

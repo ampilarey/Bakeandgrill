@@ -22,6 +22,11 @@ class DispatchScheduledSmsCommand extends Command
             $this->info("Dispatched {$dispatched} scheduled SMS message(s).");
         }
 
+        $campaigns = $scheduler->dispatchDueCampaigns(Carbon::now());
+        if ($campaigns > 0) {
+            $this->info("Started {$campaigns} scheduled campaign(s).");
+        }
+
         return self::SUCCESS;
     }
 }

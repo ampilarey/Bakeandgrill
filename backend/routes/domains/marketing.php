@@ -176,6 +176,7 @@ if (routes_domain_section_is('marketing', 'sms_admin') && !routes_domain_loaded(
         Route::middleware('permission:sms.logs.view')->group(function () {
             Route::get('/logs', [App\Http\Controllers\Api\SmsCampaignController::class, 'logs']);
             Route::get('/logs/stats', [App\Http\Controllers\Api\SmsCampaignController::class, 'logStats']);
+            Route::get('/logs/export', [App\Http\Controllers\Api\SmsCampaignController::class, 'exportLogs']);
             Route::get('/staff-logs', [App\Http\Controllers\Api\StaffNotificationLogController::class, 'index']);
             Route::post('/staff-logs/{id}/resend', [App\Http\Controllers\Api\StaffNotificationLogController::class, 'resend']);
         });

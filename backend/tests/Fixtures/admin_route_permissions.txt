@@ -153,10 +153,10 @@ backend/routes/domains/marketing.php:169:sms.settings.manage
 backend/routes/domains/marketing.php:171:sms.settings.manage
 backend/routes/domains/marketing.php:173:sms.settings.manage
 backend/routes/domains/marketing.php:176:sms.logs.view
-backend/routes/domains/marketing.php:184:sms.campaigns.send
-backend/routes/domains/marketing.php:194:sms.contacts.manage
-backend/routes/domains/marketing.php:209:sms.templates.edit
-backend/routes/domains/marketing.php:218:sms.scheduled.manage
+backend/routes/domains/marketing.php:185:sms.campaigns.send
+backend/routes/domains/marketing.php:195:sms.contacts.manage
+backend/routes/domains/marketing.php:210:sms.templates.edit
+backend/routes/domains/marketing.php:219:sms.scheduled.manage
 backend/routes/domains/marketing.php:23:sms.campaigns.send
 backend/routes/domains/marketing.php:25:sms.campaigns.send
 backend/routes/domains/marketing.php:27:sms.campaigns.send
