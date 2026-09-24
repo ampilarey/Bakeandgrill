@@ -63,6 +63,7 @@ const STATUS_COLORS: Record<string, 'green' | 'gray' | 'red' | 'orange' | 'blue'
   skipped: 'orange',
   failed: 'red',
   cancelled: 'gray',
+  dry_run: 'gray',
 };
 
 /**
@@ -344,6 +345,7 @@ function PostList({ posts, meta, loading, filters, onFilters, onChanged, onEdit 
               <div style={{ flex: '1 1 240px', minWidth: 0 }}>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                   <Badge label={post.status.replace('_', ' ')} color={STATUS_COLORS[post.status] ?? 'gray'} />
+                  {post.dry_run && <Badge label="Dry run — nothing sent" color="gray" />}
                   {SOURCE_LABELS[post.source] && <Badge label={SOURCE_LABELS[post.source]} color={post.source === 'channel_test' ? 'gray' : 'purple'} />}
                   {post.media_type === 'video' && <Badge label="▶ Video" color="teal" />}
                   {post.media_type === 'carousel' && <Badge label={`${post.snapshot.images?.length ?? 0} photos`} color="teal" />}
@@ -1018,6 +1020,7 @@ function ChannelList({ channels, metaAvailable, metaError, onDismissError, onEdi
             </div>
             <Badge label={c.is_enabled ? 'Enabled' : 'Disabled'} color={c.is_enabled ? 'green' : 'gray'} />
             {c.is_test_channel && <Badge label="Test channel" color="orange" />}
+            {c.dry_run && <Badge label="Dry run" color="gray" />}
             {c.recent_failures > 0 && <Badge label={`${c.recent_failures} recent failures`} color="red" />}
             <ChannelHealthBadge channel={c} />
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -1256,6 +1259,7 @@ function ChannelModal({ channel, platforms, onClose, onSaved }: {
   const [creds, setCreds] = useState<Record<string, string>>({});
   const [isEnabled, setIsEnabled] = useState(channel?.is_enabled ?? false);
   const [isTest, setIsTest] = useState(channel?.is_test_channel ?? false);
+  const [dryRun, setDryRun] = useState(channel?.dry_run ?? false);
   const [language, setLanguage] = useState<'both' | 'en' | 'dv'>(channel?.language ?? 'both');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -1272,6 +1276,7 @@ function ChannelModal({ channel, platforms, onClose, onSaved }: {
           name,
           is_enabled: isEnabled,
           is_test_channel: isTest,
+          dry_run: dryRun,
           language,
           // Rotation is all-or-nothing: only send credentials when every
           // key is (re-)entered, otherwise keep the stored ones.
@@ -1279,7 +1284,7 @@ function ChannelModal({ channel, platforms, onClose, onSaved }: {
         });
       } else {
         await createSocialChannel({
-          platform, name, credentials: creds, is_enabled: isEnabled, is_test_channel: isTest, language,
+          platform, name, credentials: creds, is_enabled: isEnabled, is_test_channel: isTest, dry_run: dryRun, language,
         });
       }
       onSaved();
@@ -1355,6 +1360,10 @@ function ChannelModal({ channel, platforms, onClose, onSaved }: {
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
           <input type="checkbox" checked={isTest} onChange={(e) => setIsTest(e.target.checked)} />
           Test channel (a non-production server may only post to test channels)
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+          <input type="checkbox" checked={dryRun} onChange={(e) => setDryRun(e.target.checked)} />
+          Dry run (record what would be posted, send nothing — for rehearsing automations)
         </label>
         <Select
           label="Language"

@@ -102,7 +102,26 @@ class SocialPublisher
             SocialPostDelivery::STATUS_PUBLISHED,
             SocialPostDelivery::STATUS_CANCELLED,
             SocialPostDelivery::STATUS_SKIPPED,
+            SocialPostDelivery::STATUS_DRY_RUN,
         ], true)) {
+            return;
+        }
+
+        // Dry run (owner's shortlist, 2026-09-24): say what would have gone
+        // out, send nothing. Checked before the environment guard so a TEST
+        // box can rehearse an automation against a real channel row too.
+        if ($channel->dry_run) {
+            $would = \Illuminate\Support\Str::limit($post->captionFor($channel, $delivery), 120);
+            $delivery->recordAttempt('dry_run', $would);
+            $delivery->forceFill([
+                'status' => SocialPostDelivery::STATUS_DRY_RUN,
+                'error_class' => null,
+                'error_message' => 'Dry run — would have posted' . ($post->mediaType() !== 'text' ? ' (' . $post->mediaType() . ')' : '') . ': ' . $would,
+                'published_at' => now(),
+            ])->save();
+            $post->refreshStatusFromDeliveries();
+            Log::info('social: dry run', ['delivery_id' => $delivery->id, 'channel_id' => $channel->id, 'caption' => $would]);
+
             return;
         }
 

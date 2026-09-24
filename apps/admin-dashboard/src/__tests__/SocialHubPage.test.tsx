@@ -43,7 +43,7 @@ const automations: Record<api.SocialAutomationKind, api.SocialAutomationConfig> 
 
 function channel(over: Partial<api.SocialChannelRow>): api.SocialChannelRow {
   return {
-    id: 1, platform: 'facebook', name: 'Main Page', remote_account_id: null, is_enabled: true, is_test_channel: false, language: 'both',
+    id: 1, platform: 'facebook', name: 'Main Page', remote_account_id: null, is_enabled: true, is_test_channel: false, dry_run: false, language: 'both',
     last_published_at: null, credential_summary: { page_id: '••••1111' }, has_credentials: true, recent_failures: 0,
     health: null, ...over,
   };
@@ -507,6 +507,29 @@ describe('SocialHubPage — Connect with Facebook', () => {
       state: 'S1', page_id: '111', facebook: true, instagram: true, is_test_channel: true,
     }));
     await waitFor(() => expect(api.fetchSocialChannels).toHaveBeenCalledTimes(2));
+  });
+
+  it('marks dry-run channels and posts, and saves the dry-run switch from the channel dialog', async () => {
+    vi.mocked(api.fetchSocialChannels).mockResolvedValue({
+      channels: [channel({ dry_run: true })], platforms, meta_connect: { available: false, redirect_uri: '' },
+    });
+    vi.mocked(api.fetchSocialPosts).mockResolvedValue({
+      posts: [post({ id: 7, status: 'published', dry_run: true, deliveries: [{ id: 71, status: 'dry_run', channel: { id: 1, platform: 'facebook', name: 'Main Page' }, permalink: null, error_class: null, error_message: 'Dry run — would have posted: Fresh masroshi today', attempts: [], published_at: '2026-09-24T09:00:00+05:00', insights: null, insights_at: null }] })],
+      meta: { current_page: 1, last_page: 1, total: 1 },
+    });
+    const update = vi.spyOn(api, 'updateSocialChannel').mockResolvedValue({ channel: channel({ dry_run: false }) });
+    renderWithRouter(<SocialHubPage />);
+    await screen.findByText('Fresh masroshi today');
+    expect(screen.getByText('Dry run — nothing sent')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Channels'));
+    expect(await screen.findByText('Dry run')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Edit'));
+    const box = await screen.findByLabelText(/Dry run \(record what would be posted/);
+    expect(box).toBeChecked();
+    fireEvent.click(box);
+    fireEvent.click(footer().getByText('Save'));
+    await waitFor(() => expect(update).toHaveBeenCalledWith(1, expect.objectContaining({ dry_run: false, is_test_channel: false })));
   });
 
   it('shows why Facebook refused and lets the owner dismiss it', async () => {

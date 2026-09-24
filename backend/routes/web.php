@@ -31,6 +31,18 @@ Route::get('/social/meta/callback', [App\Http\Controllers\Api\SocialMetaConnectC
     ->middleware('throttle:30,1')
     ->name('social.meta.callback');
 
+// Social Hub: approve or reject a drafted post from the phone (owner,
+// 2026-09-24). The SMS link is signed and good for a day; each button is
+// its own signed action. No admin login on the phone.
+Route::middleware(['signed', 'throttle:30,1'])->group(function () {
+    Route::get('/social/approve/{post}', [App\Http\Controllers\SocialApprovalPageController::class, 'show'])
+        ->whereNumber('post')->name('social.approve.show');
+    Route::post('/social/approve/{post}/approve', [App\Http\Controllers\SocialApprovalPageController::class, 'approve'])
+        ->whereNumber('post')->name('social.approve.approve');
+    Route::post('/social/approve/{post}/reject', [App\Http\Controllers\SocialApprovalPageController::class, 'reject'])
+        ->whereNumber('post')->name('social.approve.reject');
+});
+
 // Prayer Times standalone page
 use App\Http\Controllers\PrayerTimesWebController;
 

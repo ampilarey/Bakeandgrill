@@ -32,6 +32,9 @@ class SocialPostDelivery extends Model
 
     public const STATUS_UNKNOWN = 'unknown';
 
+    /** The channel was in dry-run mode: logged what would have gone out, sent nothing. */
+    public const STATUS_DRY_RUN = 'dry_run';
+
     public const ERROR_AUTH = 'auth';
 
     public const ERROR_VALIDATION = 'validation';

@@ -400,13 +400,7 @@ class SocialPostController extends Controller
             return response()->json(['message' => 'Only draft, scheduled or awaiting-approval posts can be published.'], 422);
         }
 
-        $post->forceFill(['status' => SocialPost::STATUS_QUEUED, 'scheduled_at' => null])->save();
-        foreach ($post->deliveries as $delivery) {
-            if ($delivery->status === SocialPostDelivery::STATUS_SCHEDULED) {
-                $delivery->forceFill(['status' => SocialPostDelivery::STATUS_QUEUED])->save();
-                PublishSocialDeliveryJob::dispatch($delivery->id);
-            }
-        }
+        app(\App\Domains\Social\Services\SocialPostApproval::class)->approve($post);
 
         return response()->json(['post' => $this->payload($post->fresh(['deliveries.channel']))]);
     }
@@ -584,6 +578,7 @@ class SocialPostController extends Controller
             'status' => $post->status,
             'snapshot' => $post->snapshot,
             'media_type' => $post->mediaType(),
+            'dry_run' => $post->deliveries->isNotEmpty() && $post->deliveries->every(fn (SocialPostDelivery $d) => $d->status === SocialPostDelivery::STATUS_DRY_RUN),
             'source' => $post->source,
             'source_ref' => $post->source_ref,
             'business_date' => $post->business_date?->toDateString(),

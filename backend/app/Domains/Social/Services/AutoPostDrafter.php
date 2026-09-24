@@ -177,6 +177,11 @@ class AutoPostDrafter
                     ],
                 );
             }
+            if (!$config['unattended']) {
+                // A draft nobody notices is a post that never goes out:
+                // one SMS with a signed approve/reject link.
+                app(SocialPostApproval::class)->notify($post);
+            }
         }
 
         return $post;

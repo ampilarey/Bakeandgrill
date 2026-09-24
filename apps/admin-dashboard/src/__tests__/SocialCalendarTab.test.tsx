@@ -16,11 +16,11 @@ beforeEach(() => {
     posts: [entry({ id: 1 }), entry({ id: 2, status: 'published', caption: 'Went out', date: '2026-09-22', time: '09:15', at: '2026-09-22T09:15:00+05:00' })],
     drafts: [entry({ id: 3, status: 'draft', caption: 'Some day', date: null, time: null, at: null })],
     slots: [{ kind: 'featured', date: '2026-09-25', time: '12:30' }],
-    rules: { min_gap_minutes: 0, max_per_day: 0 },
+    rules: { min_gap_minutes: 0, max_per_day: 0, approval_sms: true, weekly_digest: true },
     best_times: { sample: 2, enough: false, top_hours: [], hours: [], weekdays: [] },
   });
   vi.spyOn(api, 'moveSocialPost').mockResolvedValue({ post: entry({ id: 3, status: 'scheduled', date: '2026-09-28', time: '11:00' }), warning: null });
-  vi.spyOn(api, 'updateSocialRules').mockResolvedValue({ rules: { min_gap_minutes: 240, max_per_day: 0 } });
+  vi.spyOn(api, 'updateSocialRules').mockResolvedValue({ rules: { min_gap_minutes: 240, max_per_day: 0, approval_sms: true, weekly_digest: false } });
   vi.spyOn(api, 'fetchSocialPost').mockResolvedValue({ post: {
     id: 1, status: 'scheduled', source: 'manual', source_ref: null, business_date: null, scheduled_at: '2026-09-25T18:00:00+05:00',
     published_at: null, created_at: null, snapshot: { caption: 'Friday post', image_url: null, link_url: null, item_id: null, price: null }, deliveries: [],
@@ -96,5 +96,22 @@ describe('CalendarTab', () => {
 
     fireEvent.click(screen.getByTestId('cal-post-1'));
     await waitFor(() => expect(onEdit).toHaveBeenCalledWith(expect.objectContaining({ id: 1 })));
+  });
+
+  it('turns the approval SMS and Monday digest on and off from the rules card', async () => {
+    render(<CalendarTab canSchedule canEditRules />);
+    await screen.findByTestId('cal-post-1');
+    const digest = screen.getByLabelText('Monday digest SMS of the social week');
+    expect(digest).toBeChecked();
+    fireEvent.click(digest);
+    await waitFor(() => expect(api.updateSocialRules).toHaveBeenCalledWith({ weekly_digest: false }));
+    expect(screen.getByLabelText('Monday digest SMS of the social week')).not.toBeChecked();
+    expect(screen.getByLabelText(/SMS me an approve\/reject link/)).toBeChecked();
+  });
+
+  it('greys the switches out without the rules permission', async () => {
+    render(<CalendarTab canSchedule canEditRules={false} />);
+    await screen.findByTestId('cal-post-1');
+    expect(screen.getByLabelText('Monday digest SMS of the social week')).toBeDisabled();
   });
 });

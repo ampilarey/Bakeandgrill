@@ -206,6 +206,12 @@ Schedule::command('social:sync-comments')
     ->onFailure($alertOnFailure('social:sync-comments'))
     ->after($trackSuccess('social:sync-comments'));
 
+// Social Hub: the week in one SMS, Monday morning (on by default; silent when empty)
+Schedule::command('social:weekly-digest')
+    ->weeklyOn(1, '09:20')
+    ->onFailure($alertOnFailure('social:weekly-digest'))
+    ->after($trackSuccess('social:weekly-digest'));
+
 // Content Studio: apply due scheduled publishes
 Schedule::command('content:publish-scheduled')
     ->everyMinute()

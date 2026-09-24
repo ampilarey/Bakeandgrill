@@ -166,7 +166,9 @@ class SocialPost extends Model
             return;
         }
 
-        $published = $states->filter(fn ($s) => $s === SocialPostDelivery::STATUS_PUBLISHED)->count();
+        // A dry run is the post "going out" as far as the post's own state
+        // goes — the delivery chip says dry run; the post is done, not failed.
+        $published = $states->filter(fn ($s) => in_array($s, [SocialPostDelivery::STATUS_PUBLISHED, SocialPostDelivery::STATUS_DRY_RUN], true))->count();
         $pending = $states->filter(fn ($s) => in_array($s, [
             SocialPostDelivery::STATUS_QUEUED,
             SocialPostDelivery::STATUS_PROCESSING,

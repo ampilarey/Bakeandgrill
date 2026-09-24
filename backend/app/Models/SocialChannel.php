@@ -31,6 +31,7 @@ class SocialChannel extends Model
         'is_enabled',
         'is_test_channel',
         'language',
+        'dry_run',
         'last_published_at',
         'health',
     ];
@@ -41,6 +42,7 @@ class SocialChannel extends Model
         'credentials' => 'encrypted:array',
         'is_enabled' => 'boolean',
         'is_test_channel' => 'boolean',
+        'dry_run' => 'boolean',
         'last_published_at' => 'datetime',
         'health' => 'array',
     ];

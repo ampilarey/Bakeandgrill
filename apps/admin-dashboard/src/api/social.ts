@@ -34,6 +34,8 @@ export interface SocialChannelRow {
   remote_account_id: string | null;
   is_enabled: boolean;
   is_test_channel: boolean;
+  /** Says what it would have posted and sends nothing (a rehearsal). */
+  dry_run: boolean;
   /** Which caption(s) it posts: both (English then Dhivehi), en, or dv. */
   language: 'both' | 'en' | 'dv';
   last_published_at: string | null;
@@ -79,6 +81,8 @@ export interface SocialPostRow {
   };
   /** video | carousel | photo | text, derived by the server from the snapshot. */
   media_type?: string;
+  /** True when every delivery was a dry run: nothing actually went out. */
+  dry_run?: boolean;
   source: string;
   source_ref: string | null;
   business_date: string | null;
@@ -229,6 +233,7 @@ export async function createSocialChannel(data: {
   credentials: Record<string, string>;
   is_enabled?: boolean;
   is_test_channel?: boolean;
+  dry_run?: boolean;
   language?: 'both' | 'en' | 'dv';
 }): Promise<{ channel: SocialChannelRow }> {
   return req('/admin/social/channels', { method: 'POST', body: JSON.stringify(data) });
@@ -239,6 +244,7 @@ export async function updateSocialChannel(id: number, data: {
   credentials?: Record<string, string>;
   is_enabled?: boolean;
   is_test_channel?: boolean;
+  dry_run?: boolean;
   language?: 'both' | 'en' | 'dv';
 }): Promise<{ channel: SocialChannelRow }> {
   return req(`/admin/social/channels/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
@@ -433,6 +439,10 @@ export interface SocialPostingRulesConfig {
   min_gap_minutes: number;
   /** 0 = off. */
   max_per_day: number;
+  /** Text the business phone a signed approve/reject link when an automation drafts a post. */
+  approval_sms: boolean;
+  /** Monday morning summary of the social week, to the owners' phones. */
+  weekly_digest: boolean;
 }
 
 export interface SocialBestTimesReport {

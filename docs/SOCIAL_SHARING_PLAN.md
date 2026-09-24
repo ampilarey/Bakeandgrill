@@ -354,7 +354,118 @@ SocialAutomationsTest, SocialInsightsTest}.php` and the admin
 have before.
 
 Still unbuilt, on purpose: TikTok/WhatsApp/X posting (no usable API or the
-pricing decision in phase 5), weekly-menu and opening-hours automations.
+pricing decision in phase 5) and an opening-hours automation. The weekly
+menu automation landed in the shortlist below.
+
+## Owner's shortlist (2026-09-24)
+
+After the audit the owner asked for new features and enhancements and then
+said "start all one after another"; seventeen landed in seven commits the
+same day, the signage tie-in first. Grouped as built, for whoever maintains
+this next.
+
+**A. Connect with Facebook** (`MetaConnectService`, `SocialMetaConnectController`)
+- OAuth in place of pasted tokens: `GET /admin/social/meta/connect` returns the
+  dialog URL; Facebook returns to the public `GET /social/meta/callback`,
+  which exchanges the code for a long-lived user token, lists the Pages and
+  parks them in the cache for ten minutes under the `state`; admin then
+  opens `/social?meta_connect=<state>`, shows the Pages (`meta/pending`) and
+  creates the Facebook and linked Instagram channels (`meta/finish`).
+- Needs `SOCIAL_META_APP_ID` / `SOCIAL_META_APP_SECRET` in `.env`
+  (`config/social.php`) and `{APP_URL}/social/meta/callback` as a valid
+  redirect URI on the Meta app. Without them the Channels tab keeps the
+  manual credential form and says why.
+
+**B. Announcements and the TV board** (`AnnouncementTemplates`,
+`SocialAnnouncementController`, `POST /admin/social/announcements`)
+- One text ("Closed Friday for prayers", "Ramadan hours", free text, with
+  Dhivehi) goes to the chosen channels *and* the signage quick-notice line
+  in one go; the reply lists which channels were skipped and why.
+  `signage.manage` is checked in-controller only when a notice is asked for.
+- Share buttons on the Menu page (`/social?compose=item:ID`) and Specials
+  page (`/social?compose=special:ID`) open the composer pre-filled.
+
+**C. Calendar, spacing rules, best times** (`SocialCalendarController`,
+`SocialPostingRules`, `SocialBestTimes`; `pages/social/CalendarTab.tsx`)
+- A month view of scheduled, published and automation slots; drag a draft
+  onto a day to schedule it (`POST /admin/social/posts/{id}/move`).
+- Rules (`site_settings`): `social_rules_min_gap_minutes`, `social_rules_max_per_day`.
+  `conflict()` explains a clash in words; `nextFreeSlot()` rounds up to the
+  quarter hour. Automations and "Post now" move to the next free slot
+  instead of breaking a rule.
+- `SocialBestTimes` ranks hours and weekdays by insights once there are
+  five posts with stats; the composer and calendar show the hint.
+
+**D. Back in stock, weekly menu card, Dhivehi**
+- *Back in stock* (`BackInStockAutoPoster`, kind `stock`, event-driven from
+  `ItemObserver::updated`): an item marked unavailable for at least a day
+  and then available again is announced once. `EVENT_DRIVEN` kinds have no
+  time-of-day.
+- *Weekly menu* (`WeeklyMenuAutoPoster`, kind `weekly`, `WeeklyMenuCard`
+  GD renderer): on a chosen weekday, one branded card of the week's
+  specials, drawn in the brand fonts, posted as a photo.
+- Captions carry an optional `caption_dv`; each channel has a `language`
+  (`both` / `en` / `dv`) and `SocialPost::captionFor()` picks the text.
+  Migration `2026_09_24_120000_social_channel_language`.
+
+**E. Video and carousel** (`SocialMediaKindsTest`)
+- The composer accepts a video (with poster) or two to ten photos; drivers
+  declare `video` / `carousel` capabilities and the store endpoint refuses a
+  channel that cannot take the media. Facebook and Instagram post reels and
+  carousels through their two-step container flow; Telegram sends a video
+  or media group; Viber gets the first photo with the caption.
+
+**F. Engagement** (`SocialEngagementTest`; migration
+`2026_09_24_130000_social_comments_links_shares`)
+- *Comment inbox*: `social:sync-comments` (hourly at :20) pulls comments on
+  the last two weeks' Facebook and Instagram posts into `social_comments`;
+  ones that read like an order (a Maldivian mobile number, "how much",
+  "deliver", the Dhivehi for price or bring) are flagged and the business
+  phone gets one SMS an hour at most. Reply as the page, mark read.
+- *Links that count*: every post's link goes out as `?s=<delivery id>`;
+  `RecordSocialVisit` (web group) counts a hit once per visitor per hour in
+  `social_link_visits` and leaves the `bg_social` cookie for a week;
+  `OrderCreationService` stamps `orders.social_delivery_id` from it. The
+  Posts tab shows visits and orders beside each delivery.
+- *What customers share*: the website and order-app Share buttons report
+  each share to the public, throttled `POST /api/share-events`
+  (`item_share_events`); "Most shared by customers" opens the Automation
+  tab with "Make a chef's pick" beside each dish.
+
+**G. Approval on the phone, Monday digest, dry run**
+(`SocialApprovalDigestDryRunTest`; migration
+`2026_09_24_140000_social_channel_dry_run`)
+- *Approval by SMS* (`SocialPostApproval`, `SocialApprovalPageController`,
+  `resources/views/social-approve.blade.php`): when an automation drafts a
+  post for approval, the business phone gets one text with a signed link,
+  good for 24 hours, to `/social/approve/{post}`. The page shows the post
+  and channels with Approve and Reject; each button is its own signed POST,
+  so the page reloads and re-shares safely, and a decided post says so.
+  The admin "Post now" on a draft uses the same service. Off switch:
+  `social_approval_sms` (rules card on the Calendar tab).
+- *Monday digest* (`social:weekly-digest`, Monday 09:20): one text to every
+  owner and manager with a phone (or the business phone): posts sent by
+  platform, the best post by likes + visits + orders, link visits and
+  orders, unread comments, drafts waiting, and any channel whose token is
+  about to expire. Silent when there is nothing to say. Off switch:
+  `social_weekly_digest`; `--force` sends regardless.
+- *Dry run* (`social_channels.dry_run`): a channel that records
+  "Dry run — would have posted (photo): …" on the delivery (`status
+  dry_run`, counted as done) and sends nothing. Checked before the
+  environment guard, so TEST can rehearse an automation against a real
+  channel row. Badges on the Channels and Posts tabs.
+
+**Commands and schedule** (`routes/console.php`): `social:publish-due` and
+`social:run-automations` every minute; `social:check-channels` 09:15;
+`social:refresh-insights` 09:30; `social:sync-comments` hourly at :20;
+`social:weekly-digest` Monday 09:20.
+
+**Settings keys added:** `social_rules_min_gap_minutes`, `social_rules_max_per_day`,
+`social_approval_sms`, `social_weekly_digest`, `social_auto_{weekly,stock}_*`.
+
+**Web routes added:** `GET /social/meta/callback` (public, throttled);
+`GET /social/approve/{post}`, `POST …/approve`, `POST …/reject` (signed,
+30/min); `POST /api/share-events` (public, throttled, CSRF-exempt).
 
 ## Owner setup checklist (Phase 2+, exact steps provided when reached)
 

@@ -113,6 +113,8 @@ class SocialCalendarController extends Controller
         $data = $request->validate([
             'min_gap_minutes' => ['sometimes', 'integer', 'between:0,1440'],
             'max_per_day' => ['sometimes', 'integer', 'between:0,20'],
+            'approval_sms' => ['sometimes', 'boolean'],
+            'weekly_digest' => ['sometimes', 'boolean'],
         ]);
 
         return response()->json(['rules' => $rules->update($data)]);

@@ -174,6 +174,26 @@ export function CalendarTab({ canSchedule, canEditRules, onEdit }: {
           {hint ?? (bestTimes ? `Best-time hints appear after ${Math.max(0, 5 - bestTimes.sample)} more posts with stats.` : '')}
           {rules && (rules.min_gap_minutes > 0 || rules.max_per_day > 0) && ' Automations and "Post now" are moved to the next free slot when a rule would be broken.'}
         </span>
+        <div style={{ flexBasis: '100%', display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={rules?.approval_sms ?? true}
+              disabled={!canEditRules || rules === null}
+              onChange={(e) => { void saveRules({ approval_sms: e.target.checked }); }}
+            />
+            SMS me an approve/reject link when an automation drafts a post
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={rules?.weekly_digest ?? true}
+              disabled={!canEditRules || rules === null}
+              onChange={(e) => { void saveRules({ weekly_digest: e.target.checked }); }}
+            />
+            Monday digest SMS of the social week
+          </label>
+        </div>
       </Card>
 
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>
