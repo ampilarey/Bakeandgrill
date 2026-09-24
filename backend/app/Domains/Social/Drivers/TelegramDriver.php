@@ -50,6 +50,16 @@ class TelegramDriver implements SocialDriverInterface
         return ChannelHealth::ok('Connected; bot tokens do not expire.', null, $title !== '' ? $title : null);
     }
 
+    public function comments(SocialChannel $channel, SocialPostDelivery $delivery): ?array
+    {
+        return null; // the Bot API cannot read a channel's comments
+    }
+
+    public function reply(SocialChannel $channel, string $commentId, string $message): string
+    {
+        throw SocialPublishException::validation('Replies are not possible on this platform.');
+    }
+
     public function insights(SocialChannel $channel, SocialPostDelivery $delivery): ?array
     {
         return null; // the Bot API exposes no view or reaction counts for channel posts
@@ -69,7 +79,7 @@ class TelegramDriver implements SocialDriverInterface
         }
 
         $images = $post->images();
-        $caption = $post->captionFor($channel);
+        $caption = $post->captionFor($channel, $delivery);
         if (($video = $post->videoUrl()) !== null) {
             $method = 'sendVideo';
             $params = ['chat_id' => $chatId, 'video' => $video, 'caption' => $caption, 'supports_streaming' => 'true'];

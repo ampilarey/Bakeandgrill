@@ -47,6 +47,20 @@ interface SocialDriverInterface
     public function insights(SocialChannel $channel, SocialPostDelivery $delivery): ?array;
 
     /**
+     * Comments on a published delivery, newest first, or null when the
+     * platform offers none through its API (Telegram, Viber).
+     *
+     * @return list<array{id: string, author: ?string, text: string, posted_at: ?string}>|null
+     */
+    public function comments(SocialChannel $channel, SocialPostDelivery $delivery): ?array;
+
+    /**
+     * Reply to a comment as the page. Returns the reply's id. Throws a
+     * SocialPublishException when the platform refuses.
+     */
+    public function reply(SocialChannel $channel, string $commentId, string $message): string;
+
+    /**
      * Which credential keys a channel of this platform must carry.
      *
      * @return list<string>

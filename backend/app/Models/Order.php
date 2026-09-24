@@ -22,6 +22,7 @@ class Order extends Model
         'tracking_token',
         'offline_id',
         'idempotency_key',
+        'social_delivery_id',
         'offline_local_number',
         'type',
         'status',

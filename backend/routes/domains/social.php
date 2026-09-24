@@ -50,6 +50,14 @@ if (routes_domain_section_is('social', 'admin') && !routes_domain_loaded('social
         Route::get('/rules', [App\Http\Controllers\Api\SocialCalendarController::class, 'rules']);
         Route::put('/rules', [App\Http\Controllers\Api\SocialCalendarController::class, 'updateRules']);
         Route::get('/best-times', [App\Http\Controllers\Api\SocialCalendarController::class, 'bestTimes']);
+        // Comment inbox: list/sync/read with social.view; reply checks social.publish.
+        Route::get('/comments', [App\Http\Controllers\Api\SocialCommentController::class, 'index']);
+        Route::post('/comments/sync', [App\Http\Controllers\Api\SocialCommentController::class, 'sync']);
+        Route::post('/comments/read-all', [App\Http\Controllers\Api\SocialCommentController::class, 'markAllRead']);
+        Route::post('/comments/{id}/read', [App\Http\Controllers\Api\SocialCommentController::class, 'markRead']);
+        Route::post('/comments/{id}/reply', [App\Http\Controllers\Api\SocialCommentController::class, 'reply']);
+        // What customers share most (website and order app Share buttons).
+        Route::get('/shares/top', [App\Http\Controllers\Api\ShareEventController::class, 'top']);
         // Announcements: one text to the channels and the TV board's notice
         // line. Compose/schedule/publish and signage.manage checked in-controller.
         Route::get('/announcements/templates', [App\Http\Controllers\Api\SocialAnnouncementController::class, 'templates']);

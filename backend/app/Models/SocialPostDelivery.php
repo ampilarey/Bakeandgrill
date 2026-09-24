@@ -77,6 +77,22 @@ class SocialPostDelivery extends Model
         return $this->belongsTo(SocialChannel::class, 'social_channel_id');
     }
 
+    public function comments(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(SocialComment::class, 'social_post_delivery_id');
+    }
+
+    public function visits(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(SocialLinkVisit::class, 'social_post_delivery_id');
+    }
+
+    /** Web orders placed after following this delivery's tracked link. */
+    public function orders(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Order::class, 'social_delivery_id');
+    }
+
     public function recordAttempt(string $outcome, ?string $error = null): void
     {
         $attempts = $this->attempts ?? [];

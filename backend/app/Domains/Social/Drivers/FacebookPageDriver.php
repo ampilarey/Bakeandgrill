@@ -77,7 +77,7 @@ class FacebookPageDriver implements SocialDriverInterface
             // A video by public URL; Facebook fetches and encodes it.
             $response = $this->graphPost("/{$pageId}/videos", [
                 'file_url' => $video,
-                'description' => $post->captionFor($channel),
+                'description' => $post->captionFor($channel, $delivery),
                 'access_token' => $token,
             ]);
         } elseif (count($images) > 1) {
@@ -96,19 +96,19 @@ class FacebookPageDriver implements SocialDriverInterface
                 $attached[] = ['media_fbid' => (string) $photo->json('id')];
             }
             $response = $this->graphPost("/{$pageId}/feed", [
-                'message' => $post->captionFor($channel),
+                'message' => $post->captionFor($channel, $delivery),
                 'attached_media' => json_encode($attached),
                 'access_token' => $token,
             ]);
         } elseif ($images !== []) {
             $response = $this->graphPost("/{$pageId}/photos", [
                 'url' => $images[0],
-                'message' => $post->captionFor($channel),
+                'message' => $post->captionFor($channel, $delivery),
                 'access_token' => $token,
             ]);
         } else {
             $response = $this->graphPost("/{$pageId}/feed", [
-                'message' => $post->captionFor($channel),
+                'message' => $post->captionFor($channel, $delivery),
                 'access_token' => $token,
             ]);
         }
@@ -123,6 +123,43 @@ class FacebookPageDriver implements SocialDriverInterface
         }
 
         return new PublishResult($id, 'https://www.facebook.com/' . $id);
+    }
+
+    public function comments(SocialChannel $channel, SocialPostDelivery $delivery): ?array
+    {
+        $id = trim((string) $delivery->provider_post_id);
+        if ($id === '') {
+            return null;
+        }
+        $json = $this->graphGetQuiet('/' . $id . '/comments', [
+            'fields' => 'id,from{name},message,created_time',
+            'order' => 'reverse_chronological',
+            'limit' => 50,
+            'access_token' => $channel->credential('access_token'),
+        ]);
+        if ($json === null) {
+            return null;
+        }
+
+        return array_values(array_map(fn (array $c) => [
+            'id' => (string) ($c['id'] ?? ''),
+            'author' => $c['from']['name'] ?? null,
+            'text' => (string) ($c['message'] ?? ''),
+            'posted_at' => $c['created_time'] ?? null,
+        ], array_filter($json['data'] ?? [], fn ($c) => is_array($c) && !empty($c['id']))));
+    }
+
+    public function reply(SocialChannel $channel, string $commentId, string $message): string
+    {
+        $response = $this->graphPost('/' . $commentId . '/comments', [
+            'message' => $message,
+            'access_token' => $channel->credential('access_token'),
+        ]);
+        if (!$response->successful()) {
+            $this->throwGraphError($response);
+        }
+
+        return (string) ($response->json('id') ?? '');
     }
 
     public function reconcile(SocialChannel $channel, SocialPostDelivery $delivery): ?PublishResult

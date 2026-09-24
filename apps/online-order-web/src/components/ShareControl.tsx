@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { API_BASE_URL } from '../api';
 
 export type ShareControlProps = {
   url: string;
@@ -6,14 +7,35 @@ export type ShareControlProps = {
   text?: string;
   /** Accessible name when a page carries several Share buttons ("Share Drinks"). */
   ariaLabel?: string;
+  /** What this is, so the share can be counted (owner, 2026-09-24). Nothing personal is sent. */
+  itemId?: number;
+  categoryId?: number;
 };
+
+export type ShareChannel = 'native' | 'copy' | 'whatsapp' | 'telegram' | 'viber' | 'facebook' | 'x';
+
+/** Fire-and-forget beacon to /api/share-events; counting never breaks sharing. */
+export function reportShare(channel: ShareChannel, ref: { itemId?: number; categoryId?: number }): void {
+  if (!ref.itemId && !ref.categoryId) return;
+  try {
+    void fetch(`${API_BASE_URL}/share-events`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ item_id: ref.itemId ?? null, category_id: ref.categoryId ?? null, channel, surface: 'order' }),
+      keepalive: true,
+      credentials: 'same-origin',
+    }).catch(() => {});
+  } catch {
+    // nothing
+  }
+}
 
 /**
  * Native share on a user click; otherwise a popover with Copy link
  * (Clipboard API, then a select-and-copy field) and encoded intent URLs.
- * No share counting in this phase.
+ * Each share is reported once so the Social Hub can show what gets shared.
  */
-export function ShareControl({ url, title, text, ariaLabel }: ShareControlProps) {
+export function ShareControl({ url, title, text, ariaLabel, itemId, categoryId }: ShareControlProps) {
   const shareText = text ?? title;
   const popoverId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -76,10 +98,11 @@ export function ShareControl({ url, title, text, ariaLabel }: ShareControlProps)
   const encodedUrl = encodeURIComponent(url);
   const encodedText = encodeURIComponent(shareText);
 
+  const ref = { itemId, categoryId };
   const onOpen = () => {
     const payload = { title, text: shareText, url };
     if (typeof navigator.share === 'function') {
-      navigator.share(payload).catch(() => {});
+      navigator.share(payload).then(() => reportShare('native', ref)).catch(() => {});
       return;
     }
     setOpen((was) => !was);
@@ -98,6 +121,7 @@ export function ShareControl({ url, title, text, ariaLabel }: ShareControlProps)
       try {
         await navigator.clipboard.writeText(url);
         setStatus('Link copied');
+        reportShare('copy', ref);
         return;
       } catch {
         showSelectFallback();
@@ -162,25 +186,25 @@ export function ShareControl({ url, title, text, ariaLabel }: ShareControlProps)
         ) : null}
         <ul className="share-intents">
           <li>
-            <a href={`https://wa.me/?text=${encodedText}%20${encodedUrl}`} rel="noopener noreferrer" target="_blank">
+            <a href={`https://wa.me/?text=${encodedText}%20${encodedUrl}`} rel="noopener noreferrer" target="_blank" onClick={() => reportShare('whatsapp', ref)}>
               WhatsApp
             </a>
           </li>
           <li>
-            <a href={`https://t.me/share/url?url=${encodedUrl}&text=${encodedText}`} rel="noopener noreferrer" target="_blank">
+            <a href={`https://t.me/share/url?url=${encodedUrl}&text=${encodedText}`} rel="noopener noreferrer" target="_blank" onClick={() => reportShare('telegram', ref)}>
               Telegram
             </a>
           </li>
           <li>
-            <a href={`viber://forward?text=${encodedText}%20${encodedUrl}`}>Viber</a>
+            <a href={`viber://forward?text=${encodedText}%20${encodedUrl}`} onClick={() => reportShare('viber', ref)}>Viber</a>
           </li>
           <li>
-            <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`} rel="noopener noreferrer" target="_blank">
+            <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`} rel="noopener noreferrer" target="_blank" onClick={() => reportShare('facebook', ref)}>
               Facebook
             </a>
           </li>
           <li>
-            <a href={`https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedText}`} rel="noopener noreferrer" target="_blank">
+            <a href={`https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedText}`} rel="noopener noreferrer" target="_blank" onClick={() => reportShare('x', ref)}>
               X
             </a>
           </li>

@@ -81,6 +81,22 @@ beforeEach(() => {
   vi.spyOn(api, 'fetchSocialAutomation').mockResolvedValue({ automation: automations.special, automations });
   vi.spyOn(api, 'updateSocialAutomation').mockImplementation(async (data) => ({ automation: automations.special, automations: { ...automations, [data.kind ?? 'special']: { ...automations[data.kind ?? 'special'], ...data } } }));
   vi.spyOn(api, 'refreshSocialInsights').mockResolvedValue({ post: post({}) });
+  vi.spyOn(api, 'fetchSocialTopShares').mockResolvedValue({ days: 30, total: 5, items: [
+    { item_id: 7, name: 'Masroshi', is_featured: false, image_url: null, shares: 4 },
+    { item_id: 8, name: 'Bajiya', is_featured: true, image_url: null, shares: 1 },
+  ], categories: [{ category_id: 1, name: 'Hedhikaa', shares: 2 }] });
+  vi.spyOn(api, 'updateItem').mockResolvedValue({ item: { id: 7, name: 'Masroshi', base_price: 45 } as never });
+  vi.spyOn(api, 'fetchSocialComments').mockResolvedValue({
+    comments: [
+      { id: 1, author: 'Aisha', text: 'How much for 10? 7771234', posted_at: '2026-09-24T08:00:00+05:00', flagged: true, read_at: null, replied_at: null, reply_text: null, platform: 'facebook', channel_name: 'Main Page', permalink: 'https://facebook.com/1', post_id: 1, post_caption: 'Fresh masroshi today', can_reply: true },
+      { id: 2, author: '@ibrahim', text: 'Looks great!', posted_at: '2026-09-24T07:00:00+05:00', flagged: false, read_at: '2026-09-24T09:00:00+05:00', replied_at: null, reply_text: null, platform: 'instagram', channel_name: 'IG', permalink: null, post_id: 1, post_caption: 'Fresh masroshi today', can_reply: true },
+    ],
+    meta: { current_page: 1, last_page: 1, total: 2 },
+    unread: 1,
+  });
+  vi.spyOn(api, 'replySocialComment').mockResolvedValue({ comment: { id: 1, author: 'Aisha', text: 'x', posted_at: null, flagged: true, read_at: '2026-09-24T10:00:00+05:00', replied_at: '2026-09-24T10:00:00+05:00', reply_text: 'MVR 120', platform: 'facebook', channel_name: 'Main Page', permalink: null, post_id: 1, post_caption: '', can_reply: true } });
+  vi.spyOn(api, 'markSocialCommentRead').mockResolvedValue({ comment: {} as never });
+  vi.spyOn(api, 'syncSocialComments').mockResolvedValue({ new: 3, unread: 4 });
   vi.spyOn(api, 'fetchAdminCategories').mockResolvedValue({ data: [] } as never);
   vi.spyOn(api, 'fetchAdminItems').mockResolvedValue({ data: [{ id: 7, name: 'Masroshi', base_price: 45, category: { id: 1, name: 'Hedhikaa' } }] } as never);
   vi.spyOn(api, 'fetchSocialItemPreview').mockResolvedValue({ item: {
@@ -408,6 +424,48 @@ describe('SocialHubPage — share and announcements', () => {
       signage: expect.objectContaining({ enabled: true, look: 'warning' }),
     })));
     expect(await screen.findByRole('status')).toHaveTextContent('Posted to the channels. Up on the TV board.');
+  });
+});
+
+describe('SocialHubPage — comments and shares', () => {
+  it('lists comments with the order flag, replies as the page, and checks for new ones', async () => {
+    renderWithRouter(<SocialHubPage />);
+    await screen.findByText('Fresh masroshi today');
+    fireEvent.click(screen.getByText('Comments'));
+    expect(await screen.findByTestId('comments-unread')).toHaveTextContent('1 unread');
+    const flagged = within(screen.getByTestId('comment-1'));
+    expect(flagged.getByText('Wants to order?')).toBeInTheDocument();
+    expect(within(screen.getByTestId('comment-2')).queryByText('Wants to order?')).toBeNull();
+
+    fireEvent.click(flagged.getByText('Reply'));
+    fireEvent.change(screen.getByLabelText('Reply to Aisha'), { target: { value: 'MVR 120 for 10' } });
+    fireEvent.click(screen.getByText('Send'));
+    await waitFor(() => expect(api.replySocialComment).toHaveBeenCalledWith(1, 'MVR 120 for 10'));
+    expect(await screen.findByRole('status')).toHaveTextContent('Reply posted.');
+
+    fireEvent.click(screen.getByText('Check for new comments'));
+    await waitFor(() => expect(api.syncSocialComments).toHaveBeenCalled());
+    expect(await screen.findByText('3 new comments.')).toBeInTheDocument();
+  });
+
+  it('shows visits and orders that came through a post, and the most shared dishes', async () => {
+    vi.mocked(api.fetchSocialPosts).mockResolvedValue({
+      posts: [post({
+        id: 4, status: 'published',
+        deliveries: [{ id: 41, status: 'published', channel: { id: 1, platform: 'facebook', name: 'Main Page' }, permalink: null, error_class: null, error_message: null, attempts: [], published_at: null, insights: null, insights_at: null, visits: 12, orders: 3, comments: 2 }],
+      })],
+      meta: { current_page: 1, last_page: 1, total: 1 },
+    });
+    renderWithRouter(<SocialHubPage />);
+    await screen.findByText('Fresh masroshi today');
+    expect(screen.getByTestId('delivery-traffic')).toHaveTextContent('↗ 12 visits · 🛒 3 orders');
+
+    fireEvent.click(screen.getByText('Automation'));
+    const shared = within(await screen.findByTestId('most-shared'));
+    expect(shared.getByText('Masroshi')).toBeInTheDocument();
+    expect(within(screen.getByTestId('shared-item-8')).getByText("Chef's pick")).toBeInTheDocument();
+    fireEvent.click(within(screen.getByTestId('shared-item-7')).getByText("Make a chef's pick"));
+    await waitFor(() => expect(api.updateItem).toHaveBeenCalledWith(7, { is_featured: true }));
   });
 });
 

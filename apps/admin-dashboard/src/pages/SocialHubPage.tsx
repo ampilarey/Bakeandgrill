@@ -3,11 +3,11 @@ import { useSearchParams } from 'react-router-dom';
 import {
   cancelSocialPost, checkSocialChannel, createSocialChannel, deleteSocialChannel,
   deleteSocialVideo, fetchMetaPending, fetchSocialAutomation, fetchSocialBestTimes, fetchSocialChannelOptions, fetchSocialChannels,
-  fetchSocialPost, fetchSocialPosts, fetchSocialVideos, finishMetaConnect, generateSocialVideo,
+  fetchSocialPost, fetchSocialPosts, fetchSocialTopShares, fetchSocialVideos, finishMetaConnect, generateSocialVideo,
   publishSocialPostNow, refreshSocialInsights, retrySocialDelivery, testSocialChannel,
   updateSocialAutomation, updateSocialChannel,
-  startMetaConnect,
-  type MetaPendingPage, type SocialAutomationConfig, type SocialAutomationKind, type SocialChannelOption, type SocialChannelRow,
+  startMetaConnect, updateItem,
+  type MetaPendingPage, type SocialSharesReport, type SocialAutomationConfig, type SocialAutomationKind, type SocialChannelOption, type SocialChannelRow,
   type SocialPlatformCaps, type SocialPostFilters, type SocialPostRow, type SocialVideoRenditionRow,
 } from '../api';
 import { ItemSearch, type MenuItemSelection } from '../components/ItemSearch';
@@ -18,6 +18,7 @@ import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { AnnouncementModal } from './social/AnnouncementModal';
 import { CalendarTab } from './social/CalendarTab';
+import { CommentsTab } from './social/CommentsTab';
 import { ComposeModal } from './social/ComposeModal';
 import { PLATFORM_LABELS, bestTimesHint, navigateTo } from './social/composer';
 
@@ -76,7 +77,7 @@ export function SocialHubPage() {
   const canCompose = can('social.compose');
   const canChannels = can('social.channels.manage');
 
-  const [tab, setTab] = useState<'posts' | 'calendar' | 'automation' | 'videos' | 'channels'>('posts');
+  const [tab, setTab] = useState<'posts' | 'calendar' | 'comments' | 'automation' | 'videos' | 'channels'>('posts');
   const [channels, setChannels] = useState<SocialChannelRow[]>([]);
   const [platforms, setPlatforms] = useState<Record<string, SocialPlatformCaps>>({});
   const [posts, setPosts] = useState<SocialPostRow[]>([]);
@@ -163,6 +164,7 @@ export function SocialHubPage() {
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
         <Btn small variant={tab === 'posts' ? 'primary' : 'secondary'} onClick={() => setTab('posts')}>Posts</Btn>
         <Btn small variant={tab === 'calendar' ? 'primary' : 'secondary'} onClick={() => setTab('calendar')}>Calendar</Btn>
+        <Btn small variant={tab === 'comments' ? 'primary' : 'secondary'} onClick={() => setTab('comments')}>Comments</Btn>
         <Btn small variant={tab === 'automation' ? 'primary' : 'secondary'} onClick={() => setTab('automation')}>
           Automation
         </Btn>
@@ -196,6 +198,8 @@ export function SocialHubPage() {
           canEditRules={can('social.publish')}
           onEdit={canCompose ? (p) => setComposing(p) : undefined}
         />
+      ) : tab === 'comments' ? (
+        <CommentsTab canReply={can('social.publish')} />
       ) : loading ? <Spinner /> : tab === 'automation' ? (
         <AutomationSettings canEdit={can('social.publish')} />
       ) : tab === 'videos' ? (
@@ -370,6 +374,11 @@ function PostList({ posts, meta, loading, filters, onFilters, onChanged, onEdit 
                       }}
                     >
                       {PLATFORM_LABELS[d.channel?.platform ?? ''] ?? d.channel?.platform} · {d.status}
+                      {((d.visits ?? 0) > 0 || (d.orders ?? 0) > 0) && (
+                        <span data-testid="delivery-traffic" title="Visits through this post's link, and web orders that followed" style={{ fontWeight: 500, color: 'var(--color-text-muted)' }}>
+                          · ↗ {d.visits ?? 0} visit{d.visits === 1 ? '' : 's'}{(d.orders ?? 0) > 0 ? ` · 🛒 ${d.orders} order${d.orders === 1 ? '' : 's'}` : ''}
+                        </span>
+                      )}
                       {d.insights && (
                         <span
                           data-testid="delivery-insights"
@@ -489,6 +498,7 @@ function AutomationSettings({ canEdit }: { canEdit: boolean }) {
 
   return (
     <div style={{ display: 'grid', gap: 14, maxWidth: 680 }}>
+      <MostSharedCard canEdit={canEdit} />
       {AUTOMATION_KINDS.map((meta) => (
         <AutomationCard
           key={meta.kind}
@@ -501,6 +511,72 @@ function AutomationSettings({ canEdit }: { canEdit: boolean }) {
         />
       ))}
     </div>
+  );
+}
+
+/**
+ * What customers pass on (owner's shortlist, 2026-09-24): the Share
+ * buttons on the website and order app report each share, and the most
+ * shared dishes are offered to the chef's-pick rotation in one tap.
+ */
+function MostSharedCard({ canEdit }: { canEdit: boolean }) {
+  const [report, setReport] = useState<SocialSharesReport | null>(null);
+  const [busy, setBusy] = useState<number | null>(null);
+  const [error, setError] = useState('');
+
+  const load = useCallback(() => {
+    fetchSocialTopShares(30).then(setReport).catch((e: Error) => setError(e.message));
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const feature = async (itemId: number) => {
+    setBusy(itemId);
+    setError('');
+    try {
+      await updateItem(itemId, { is_featured: true });
+      load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  if (report === null && !error) return null;
+
+  return (
+    <Card style={{ padding: '16px 18px' }} data-testid="most-shared">
+      <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Most shared by customers</div>
+      <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 10px', lineHeight: 1.5 }}>
+        Every Share button on the website and order app reports here. Last 30 days: {report?.total ?? 0} share{report?.total === 1 ? '' : 's'}.
+        A dish people pass on is a good chef's pick.
+      </p>
+      {error && <ErrorMsg message={error} />}
+      {report && report.items.length === 0 ? (
+        <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: 0 }}>Nothing shared yet.</p>
+      ) : (
+        <div style={{ display: 'grid', gap: 6 }}>
+          {report?.items.map((it) => (
+            <div key={it.item_id} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }} data-testid={`shared-item-${it.item_id}`}>
+              {it.image_url && <img src={it.image_url} alt="" style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover' }} />}
+              <span style={{ flex: '1 1 160px', fontSize: 13 }}>
+                <strong>{it.name}</strong> <span style={{ color: 'var(--color-text-muted)' }}>· {it.shares} share{it.shares === 1 ? '' : 's'}</span>
+              </span>
+              {it.is_featured ? (
+                <Badge label="Chef's pick" color="green" />
+              ) : canEdit ? (
+                <Btn small variant="secondary" disabled={busy === it.item_id} onClick={() => { void feature(it.item_id); }}>Make a chef's pick</Btn>
+              ) : null}
+            </div>
+          ))}
+          {report && report.categories.length > 0 && (
+            <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
+              Categories: {report.categories.map((c) => `${c.name} (${c.shares})`).join(', ')}
+            </p>
+          )}
+        </div>
+      )}
+    </Card>
   );
 }
 

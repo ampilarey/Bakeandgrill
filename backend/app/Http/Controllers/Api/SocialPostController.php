@@ -61,7 +61,7 @@ class SocialPostController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = SocialPost::query()
-            ->with(['deliveries.channel:id,platform,name'])
+            ->with(['deliveries' => fn ($q) => $q->withCount(['visits', 'orders', 'comments'])->with('channel:id,platform,name')])
             ->orderByDesc('id');
 
         if (!$request->boolean('include_tests')) {
@@ -605,6 +605,10 @@ class SocialPostController extends Controller
                 'published_at' => $d->published_at?->toIso8601String(),
                 'insights' => $d->insights,
                 'insights_at' => $d->insights_at?->toIso8601String(),
+                // Tracked-link visits and the web orders that followed them.
+                'visits' => (int) ($d->visits_count ?? $d->visits()->count()),
+                'orders' => (int) ($d->orders_count ?? $d->orders()->count()),
+                'comments' => (int) ($d->comments_count ?? $d->comments()->count()),
             ])->values(),
         ];
     }

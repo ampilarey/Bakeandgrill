@@ -166,6 +166,9 @@ class OrderCreationService
                 'order_number' => $this->generateOrderNumber(),
                 'type' => $payload['type'],
                 'status' => $initialStatus,
+                // The social post this order came from, when the customer
+                // arrived through a tracked link (RecordSocialVisit's cookie).
+                'social_delivery_id' => $this->socialDeliveryFromCookie(),
                 // `payment_status` is computed by OrderPaymentController::addPayments
                 // whenever payments are applied. At create time everything
                 // starts as unpaid (the migration default also handles
@@ -287,6 +290,22 @@ class OrderCreationService
      * Snapshot unit prices from catering_request_lines are authoritative —
      * never re-resolve catalog prices, skip stock/86/channel checks, no kitchen print.
      */
+    /** The delivery id left by a tracked social link, when it still exists. */
+    private function socialDeliveryFromCookie(): ?int
+    {
+        try {
+            $raw = request()?->cookie(\App\Http\Middleware\RecordSocialVisit::COOKIE);
+            if (!is_string($raw) || !ctype_digit($raw)) {
+                return null;
+            }
+            $id = (int) $raw;
+
+            return $id > 0 && \App\Models\SocialPostDelivery::query()->whereKey($id)->exists() ? $id : null;
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
     public function createFromCateringQuote(CateringRequest $request): Order
     {
         $request->loadMissing('lines');

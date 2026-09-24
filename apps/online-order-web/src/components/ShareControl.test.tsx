@@ -8,6 +8,33 @@ describe('ShareControl', () => {
     vi.unstubAllGlobals();
   });
 
+  it('reports a copy as a share of the item, and nothing when it has no id', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('navigator', { ...navigator, share: undefined, clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } });
+
+    const first = render(<ShareControl url={CANONICAL} title="Grill Plate" itemId={11} />);
+    fireEvent.click(screen.getByTestId('share-open'));
+    fireEvent.click(screen.getByTestId('share-copy'));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toMatch(/\/share-events$/);
+    expect(JSON.parse(String(init.body))).toEqual({ item_id: 11, category_id: null, channel: 'copy', surface: 'order' });
+    expect(init.keepalive).toBe(true);
+
+    fireEvent.click(screen.getByRole('link', { name: 'WhatsApp' }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(JSON.parse(String((fetchMock.mock.calls[1] as [string, RequestInit])[1].body))).toMatchObject({ channel: 'whatsapp' });
+
+    first.unmount();
+    fetchMock.mockClear();
+    render(<ShareControl url={CANONICAL} title="No id" />);
+    fireEvent.click(screen.getByTestId('share-open'));
+    fireEvent.click(screen.getByTestId('share-copy'));
+    await waitFor(() => expect(screen.getByText('Link copied')).toBeInTheDocument());
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('shares the canonical menu URL, never an /order path', () => {
     vi.stubGlobal('navigator', {
       ...navigator,

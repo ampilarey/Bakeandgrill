@@ -199,6 +199,13 @@ Schedule::command('social:refresh-insights')
     ->onFailure($alertOnFailure('social:refresh-insights'))
     ->after($trackSuccess('social:refresh-insights'));
 
+// Social Hub: hourly comment pull for the inbox (flagged ones SMS once an hour at most)
+Schedule::command('social:sync-comments')
+    ->hourlyAt(20)
+    ->withoutOverlapping()
+    ->onFailure($alertOnFailure('social:sync-comments'))
+    ->after($trackSuccess('social:sync-comments'));
+
 // Content Studio: apply due scheduled publishes
 Schedule::command('content:publish-scheduled')
     ->everyMinute()

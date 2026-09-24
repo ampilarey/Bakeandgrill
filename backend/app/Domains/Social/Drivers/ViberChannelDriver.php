@@ -61,6 +61,16 @@ class ViberChannelDriver implements SocialDriverInterface
         return ChannelHealth::ok('Connected; Viber tokens do not expire.', null, $name !== '' ? $name : null);
     }
 
+    public function comments(SocialChannel $channel, SocialPostDelivery $delivery): ?array
+    {
+        return null; // the Channels API has no comments
+    }
+
+    public function reply(SocialChannel $channel, string $commentId, string $message): string
+    {
+        throw SocialPublishException::validation('Replies are not possible on this platform.');
+    }
+
     public function insights(SocialChannel $channel, SocialPostDelivery $delivery): ?array
     {
         return null; // the Channels Post API offers no per-post statistics
@@ -82,7 +92,7 @@ class ViberChannelDriver implements SocialDriverInterface
         $this->ensureWebhook($channel, $token);
 
         $images = $post->images();
-        $caption = $post->captionFor($channel);
+        $caption = $post->captionFor($channel, $delivery);
         if (($video = $post->videoUrl()) !== null) {
             // Viber wants the byte size up front; the poster becomes the thumbnail.
             $payload = ['from' => $sender, 'type' => 'video', 'media' => $video, 'size' => max(1, $post->videoBytes()), 'text' => $caption];

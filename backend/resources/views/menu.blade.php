@@ -937,6 +937,7 @@ body.menu-sheet-open { overflow: hidden; }
             'shareText' => 'See our ' . $text . ' menu at Bake & Grill',
             'shareId' => 'share-cat-' . $key,
             'shareLabel' => 'Share ' . $text,
+            'shareCategoryId' => is_numeric($key) ? (int) $key : null,
         ];
     };
     $menuBundles = $menuBundles ?? [];

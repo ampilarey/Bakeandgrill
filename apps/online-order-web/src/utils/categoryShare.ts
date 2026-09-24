@@ -29,5 +29,6 @@ export function categoryShareProps(category: CategoryRef) {
     title: `${category.name} – Bake & Grill menu`,
     text: `See our ${category.name} menu at Bake & Grill`,
     ariaLabel: `Share ${category.name}`,
+    categoryId: category.id,
   };
 }

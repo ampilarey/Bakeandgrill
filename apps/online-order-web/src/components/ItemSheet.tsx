@@ -418,6 +418,7 @@ export function ItemSheet({
               url={publicMenuItemUrl(item.id)}
               title={item.name}
               text={`${item.name} at Bake & Grill`}
+              itemId={item.id}
             />
           </div>
 

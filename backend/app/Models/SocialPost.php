@@ -71,16 +71,34 @@ class SocialPost extends Model
      * then the Dhivehi under it), English only, or Dhivehi only — falling
      * back to English when no Dhivehi was written.
      */
-    public function captionFor(SocialChannel $channel): string
+    public function captionFor(SocialChannel $channel, ?SocialPostDelivery $delivery = null): string
     {
         $en = $this->caption();
         $dv = $this->captionDv();
 
-        return match ($channel->language ?? 'both') {
+        $caption = match ($channel->language ?? 'both') {
             'en' => $en,
             'dv' => $dv !== '' ? $dv : $en,
             default => $dv !== '' ? ($en !== '' ? $en . "\n\n" . $dv : $dv) : $en,
         };
+
+        return $delivery !== null ? $this->withTrackedLink($caption, $delivery) : $caption;
+    }
+
+    /**
+     * The post's link, tagged with the delivery (?s=<id>) wherever it
+     * appears in the caption, so a visit and an order can be traced back
+     * to the post and the channel it came from.
+     */
+    public function withTrackedLink(string $caption, SocialPostDelivery $delivery): string
+    {
+        $link = trim((string) (($this->snapshot ?? [])['link_url'] ?? ''));
+        if ($link === '' || !str_contains($caption, $link)) {
+            return $caption;
+        }
+        $tagged = $link . (str_contains($link, '?') ? '&' : '?') . 's=' . $delivery->id;
+
+        return str_replace($link, $tagged, $caption);
     }
 
     public function imageUrl(): ?string

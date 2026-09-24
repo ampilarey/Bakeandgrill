@@ -10,6 +10,10 @@
     $shareEncodedUrl = rawurlencode($shareUrl);
     $shareEncodedText = rawurlencode($shareText);
     $shareId = $shareId ?? 'share-'.substr(sha1($shareUrl), 0, 8);
+    // Which item or category this is (owner, 2026-09-24): a share is reported
+    // to /api/share-events so the Social Hub can show what customers pass on.
+    $shareItemId = isset($shareItemId) && is_numeric($shareItemId) ? (int) $shareItemId : null;
+    $shareCategoryId = isset($shareCategoryId) && is_numeric($shareCategoryId) ? (int) $shareCategoryId : null;
 @endphp
 <div class="share-control" data-share-root>
     <button type="button"
@@ -30,7 +34,9 @@
          data-share-popover
          data-share-url="{{ $shareUrl }}"
          data-share-title="{{ $shareTitle }}"
-         data-share-text="{{ $shareText }}">
+         data-share-text="{{ $shareText }}"
+         @if($shareItemId) data-share-item="{{ $shareItemId }}" @endif
+         @if($shareCategoryId) data-share-category="{{ $shareCategoryId }}" @endif>
         <button type="button" class="share-copy" data-share-copy data-testid="share-copy">Copy link</button>
         <label class="share-fallback-label" hidden data-share-fallback-wrap>
             Link
@@ -38,11 +44,11 @@
         </label>
         <p class="share-copy-status" data-share-status hidden></p>
         <ul class="share-intents">
-            <li><a href="https://wa.me/?text={{ $shareEncodedText }}%20{{ $shareEncodedUrl }}" rel="noopener noreferrer" target="_blank">WhatsApp</a></li>
-            <li><a href="https://t.me/share/url?url={{ $shareEncodedUrl }}&amp;text={{ $shareEncodedText }}" rel="noopener noreferrer" target="_blank">Telegram</a></li>
-            <li><a href="viber://forward?text={{ $shareEncodedText }}%20{{ $shareEncodedUrl }}">Viber</a></li>
-            <li><a href="https://www.facebook.com/sharer/sharer.php?u={{ $shareEncodedUrl }}" rel="noopener noreferrer" target="_blank">Facebook</a></li>
-            <li><a href="https://twitter.com/intent/tweet?url={{ $shareEncodedUrl }}&amp;text={{ $shareEncodedText }}" rel="noopener noreferrer" target="_blank">X</a></li>
+            <li><a href="https://wa.me/?text={{ $shareEncodedText }}%20{{ $shareEncodedUrl }}" rel="noopener noreferrer" target="_blank" data-share-channel="whatsapp">WhatsApp</a></li>
+            <li><a href="https://t.me/share/url?url={{ $shareEncodedUrl }}&amp;text={{ $shareEncodedText }}" rel="noopener noreferrer" target="_blank" data-share-channel="telegram">Telegram</a></li>
+            <li><a href="viber://forward?text={{ $shareEncodedText }}%20{{ $shareEncodedUrl }}" data-share-channel="viber">Viber</a></li>
+            <li><a href="https://www.facebook.com/sharer/sharer.php?u={{ $shareEncodedUrl }}" rel="noopener noreferrer" target="_blank" data-share-channel="facebook">Facebook</a></li>
+            <li><a href="https://twitter.com/intent/tweet?url={{ $shareEncodedUrl }}&amp;text={{ $shareEncodedText }}" rel="noopener noreferrer" target="_blank" data-share-channel="x">X</a></li>
         </ul>
         <button type="button" class="share-close" data-share-close>Close</button>
     </div>
@@ -92,6 +98,25 @@
         var status = root.querySelector('[data-share-status]');
         if (!openBtn || !pop) return;
 
+        // Tell the Social Hub what was shared (no personal data; fire and forget).
+        function report(channel) {
+            var itemId = pop.getAttribute('data-share-item');
+            var categoryId = pop.getAttribute('data-share-category');
+            if (!itemId && !categoryId) return;
+            try {
+                fetch('/api/share-events', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({ item_id: itemId ? Number(itemId) : null, category_id: categoryId ? Number(categoryId) : null, channel: channel, surface: 'web' }),
+                    keepalive: true,
+                    credentials: 'same-origin'
+                }).catch(function () {});
+            } catch (e) { /* counting never breaks sharing */ }
+        }
+        pop.querySelectorAll('[data-share-channel]').forEach(function (a) {
+            a.addEventListener('click', function () { report(a.getAttribute('data-share-channel')); });
+        });
+
         function focusables() {
             return Array.prototype.slice.call(pop.querySelectorAll('button, a, input')).filter(function (el) {
                 return !el.hidden && el.offsetParent !== null;
@@ -112,7 +137,7 @@
             var title = pop.getAttribute('data-share-title') || '';
             var text = pop.getAttribute('data-share-text') || title;
             if (navigator.share) {
-                navigator.share({ title: title, text: text, url: url }).catch(function () {});
+                navigator.share({ title: title, text: text, url: url }).then(function () { report('native'); }).catch(function () {});
                 return;
             }
             setOpen(pop.hidden);
@@ -137,6 +162,7 @@
                         status.hidden = false;
                         status.textContent = 'Link copied';
                     }
+                    report('copy');
                 }).catch(showFallback);
             } else {
                 showFallback();

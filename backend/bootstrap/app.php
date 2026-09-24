@@ -47,6 +47,10 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->append(App\Http\Middleware\SecurityHeaders::class);
 
+        // A /menu link from a social post carries ?s=<delivery>: count the
+        // visit and leave a cookie so a later order can be traced to the post.
+        $middleware->web(append: App\Http\Middleware\RecordSocialVisit::class);
+
         // _cauth_revoked: short-lived JS-readable logout signal for the order SPA.
         // Do NOT except XSRF-TOKEN — Sanctum SPAs send it as X-XSRF-TOKEN, which
         // Laravel decrypts. A plain (unencrypted) XSRF cookie makes decrypt() fail
@@ -69,6 +73,9 @@ return Application::configure(basePath: dirname(__DIR__))
             // The complaint box (owner, 2026-09-19): public, no auth, rate
             // limited. A cached /complain page would carry a stale token.
             'api/complaint-box',
+            // The share beacon (owner, 2026-09-24): a guest's fetch from a
+            // cached menu page, no token to hand.
+            'api/share-events',
             'api/invoices/*/complaints',
             'api/invoices/*/complaint-photos',
             // Wall-screen pairing. Same shape as the complaint routes above:

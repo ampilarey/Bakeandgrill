@@ -103,6 +103,7 @@
             'shareTitle' => $iname['text'],
             'shareText' => $iname['text'] . ' at Bake & Grill',
             'shareButtonClass' => 'btn-outline',
+            'shareItemId' => $item->id,
         ])
     </div>
 

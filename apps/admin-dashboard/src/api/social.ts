@@ -55,6 +55,10 @@ export interface SocialDeliveryRow {
   /** Likes, comments, shares as the platform reports them (Facebook and Instagram only). */
   insights: Record<string, number> | null;
   insights_at: string | null;
+  /** Visits through the tagged link, the web orders that followed, and pulled comments. */
+  visits?: number;
+  orders?: number;
+  comments?: number;
 }
 
 export interface SocialPostRow {
@@ -464,4 +468,64 @@ export async function updateSocialRules(data: Partial<SocialPostingRulesConfig>)
 
 export async function fetchSocialBestTimes(): Promise<{ best_times: SocialBestTimesReport }> {
   return req('/admin/social/best-times');
+}
+
+// ── Comment inbox and the share loop ─────────────────────────────────────────
+
+export interface SocialCommentRow {
+  id: number;
+  author: string | null;
+  text: string;
+  posted_at: string | null;
+  /** Reads like somebody wanting to order (phone number, "how much", "deliver"). */
+  flagged: boolean;
+  read_at: string | null;
+  replied_at: string | null;
+  reply_text: string | null;
+  platform: string | null;
+  channel_name: string | null;
+  permalink: string | null;
+  post_id: number | null;
+  post_caption: string;
+  can_reply: boolean;
+}
+
+export async function fetchSocialComments(opts: { page?: number; unread?: boolean; flagged?: boolean } = {}): Promise<{
+  comments: SocialCommentRow[];
+  meta: { current_page: number; last_page: number; total: number };
+  unread: number;
+}> {
+  const qs = new URLSearchParams();
+  if (opts.page && opts.page > 1) qs.set('page', String(opts.page));
+  if (opts.unread) qs.set('unread', '1');
+  if (opts.flagged) qs.set('flagged', '1');
+  const q = qs.toString();
+  return req(`/admin/social/comments${q ? `?${q}` : ''}`);
+}
+
+export async function syncSocialComments(): Promise<{ new: number; unread: number }> {
+  return req('/admin/social/comments/sync', { method: 'POST', body: JSON.stringify({}) });
+}
+
+export async function markSocialCommentRead(id: number, unread = false): Promise<{ comment: SocialCommentRow }> {
+  return req(`/admin/social/comments/${id}/read`, { method: 'POST', body: JSON.stringify({ unread }) });
+}
+
+export async function markAllSocialCommentsRead(): Promise<{ unread: number }> {
+  return req('/admin/social/comments/read-all', { method: 'POST', body: JSON.stringify({}) });
+}
+
+export async function replySocialComment(id: number, message: string): Promise<{ comment: SocialCommentRow }> {
+  return req(`/admin/social/comments/${id}/reply`, { method: 'POST', body: JSON.stringify({ message }) });
+}
+
+export interface SocialSharesReport {
+  days: number;
+  total: number;
+  items: { item_id: number; name: string; is_featured: boolean; image_url: string | null; shares: number }[];
+  categories: { category_id: number; name: string; shares: number }[];
+}
+
+export async function fetchSocialTopShares(days = 30): Promise<SocialSharesReport> {
+  return req(`/admin/social/shares/top?days=${days}`);
 }

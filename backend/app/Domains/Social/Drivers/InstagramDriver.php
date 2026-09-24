@@ -87,7 +87,7 @@ class InstagramDriver implements SocialDriverInterface
         if ($containerId === '') {
             if ($video !== null) {
                 // A Reel from a public video URL; the poster is its cover.
-                $params = ['media_type' => 'REELS', 'video_url' => $video, 'caption' => $post->captionFor($channel), 'access_token' => $token];
+                $params = ['media_type' => 'REELS', 'video_url' => $video, 'caption' => $post->captionFor($channel, $delivery), 'access_token' => $token];
                 if (($cover = $post->videoPosterUrl()) !== null) {
                     $params['cover_url'] = $cover;
                 }
@@ -110,9 +110,9 @@ class InstagramDriver implements SocialDriverInterface
                     $this->waitUntilContainerReady($childId, $token);
                     $children[] = $childId;
                 }
-                $params = ['media_type' => 'CAROUSEL', 'children' => implode(',', $children), 'caption' => $post->captionFor($channel), 'access_token' => $token];
+                $params = ['media_type' => 'CAROUSEL', 'children' => implode(',', $children), 'caption' => $post->captionFor($channel, $delivery), 'access_token' => $token];
             } else {
-                $params = ['image_url' => $images[0], 'caption' => $post->captionFor($channel), 'access_token' => $token];
+                $params = ['image_url' => $images[0], 'caption' => $post->captionFor($channel, $delivery), 'access_token' => $token];
             }
             $create = $this->graphPost("/{$igUserId}/media", $params);
             if (!$create->successful()) {
@@ -141,6 +141,42 @@ class InstagramDriver implements SocialDriverInterface
         }
 
         return new PublishResult($mediaId, $this->permalinkFor($mediaId, $token), $containerId);
+    }
+
+    public function comments(SocialChannel $channel, SocialPostDelivery $delivery): ?array
+    {
+        $id = trim((string) $delivery->provider_post_id);
+        if ($id === '') {
+            return null;
+        }
+        $json = $this->graphGetQuiet('/' . $id . '/comments', [
+            'fields' => 'id,username,text,timestamp',
+            'limit' => 50,
+            'access_token' => $channel->credential('access_token'),
+        ]);
+        if ($json === null) {
+            return null;
+        }
+
+        return array_values(array_map(fn (array $c) => [
+            'id' => (string) ($c['id'] ?? ''),
+            'author' => isset($c['username']) ? '@' . $c['username'] : null,
+            'text' => (string) ($c['text'] ?? ''),
+            'posted_at' => $c['timestamp'] ?? null,
+        ], array_filter($json['data'] ?? [], fn ($c) => is_array($c) && !empty($c['id']))));
+    }
+
+    public function reply(SocialChannel $channel, string $commentId, string $message): string
+    {
+        $response = $this->graphPost('/' . $commentId . '/replies', [
+            'message' => $message,
+            'access_token' => $channel->credential('access_token'),
+        ]);
+        if (!$response->successful()) {
+            $this->throwGraphError($response);
+        }
+
+        return (string) ($response->json('id') ?? '');
     }
 
     public function reconcile(SocialChannel $channel, SocialPostDelivery $delivery): ?PublishResult
