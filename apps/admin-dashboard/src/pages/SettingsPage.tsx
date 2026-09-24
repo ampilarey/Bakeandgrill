@@ -111,6 +111,13 @@ const LIFECYCLE_SMS_CONFIG: NotifConfig[] = [
     emoji: '🛵',
     templateSlugs: ['customer_order_on_the_way'],
   },
+  {
+    key: 'sms_customer_delivered_enabled',
+    label: 'Delivered',
+    desc: 'SMS when the rider marks a delivery order delivered.',
+    emoji: '📦',
+    templateSlugs: ['customer_order_delivered'],
+  },
 ];
 
 function NotificationsSettings() {

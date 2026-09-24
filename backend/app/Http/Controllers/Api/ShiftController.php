@@ -38,8 +38,9 @@ class ShiftController extends Controller
 
         if ($shift) {
             $shift->load('cashMovements.user');
-            $cashIn = $shift->cashMovements->whereIn('type', ['cash_in',  'paid_in'])->sum('amount');
-            $cashOut = $shift->cashMovements->whereIn('type', ['cash_out', 'paid_out'])->sum('amount');
+            $live = $shift->cashMovements->whereNull('voided_at');
+            $cashIn = $live->whereIn('type', ['cash_in',  'paid_in'])->sum('amount');
+            $cashOut = $live->whereIn('type', ['cash_out', 'paid_out'])->sum('amount');
             $shift->setAttribute('total_cash_in', $cashIn);
             $shift->setAttribute('total_cash_out', $cashOut);
             $shift->setAttribute('cash_movements', $shift->cashMovements->values());
@@ -57,9 +58,11 @@ class ShiftController extends Controller
      */
     private function expectedCashFor(Shift $shift): array
     {
-        $cashIn = (float) CashMovement::where('shift_id', $shift->id)
+        // Voided movements never count (ops audit, 2026-09-25): a typo is
+        // struck through with a reason, not balanced by a second entry.
+        $cashIn = (float) CashMovement::where('shift_id', $shift->id)->whereNull('voided_at')
             ->whereIn('type', ['cash_in', 'paid_in'])->sum('amount');
-        $cashOut = (float) CashMovement::where('shift_id', $shift->id)
+        $cashOut = (float) CashMovement::where('shift_id', $shift->id)->whereNull('voided_at')
             ->whereIn('type', ['cash_out', 'paid_out'])->sum('amount');
 
         $cashSalesLaar = (int) Payment::where('method', 'cash')
@@ -465,10 +468,27 @@ class ShiftController extends Controller
         $user = $request->user();
         $canViewAll = app(PermissionService::class)->hasPermission($user, 'shifts.view_all_history');
 
+        // Ops audit, 2026-09-25: a date range, a cashier and a bigger page,
+        // so last month's shifts are reachable once the till is busy.
+        $f = $request->validate([
+            'from' => 'nullable|date',
+            'to' => 'nullable|date',
+            'user_id' => 'nullable|integer',
+            'limit' => 'nullable|integer|min:10|max:500',
+        ]);
         $query = Shift::query()
             ->whereNotNull('closed_at')
             ->orderByDesc('opened_at')
-            ->limit(60);
+            ->limit((int) ($f['limit'] ?? 60));
+        if (!empty($f['from'])) {
+            $query->where('opened_at', '>=', \Carbon\Carbon::parse((string) $f['from'])->startOfDay());
+        }
+        if (!empty($f['to'])) {
+            $query->where('opened_at', '<=', \Carbon\Carbon::parse((string) $f['to'])->endOfDay());
+        }
+        if (!empty($f['user_id']) && $canViewAll) {
+            $query->where('user_id', (int) $f['user_id']);
+        }
 
         if (!$canViewAll) {
             $query->where('user_id', $user?->id);
@@ -512,7 +532,7 @@ class ShiftController extends Controller
 
         $shifts = Shift::query()
             ->whereNull('closed_at')
-            ->with(['user:id,name', 'device:id,name,identifier'])
+            ->with(['user:id,name', 'device:id,name,identifier', 'cashMovements.user:id,name', 'cashMovements.voidedBy:id,name'])
             ->orderByDesc('opened_at')
             ->get();
 
@@ -594,11 +614,22 @@ class ShiftController extends Controller
                 return null;
             }
 
+            // Ops audit, 2026-09-25: the float typed at open is compared with
+            // the last close on this till, so cash that went missing between
+            // shifts is seen at the start of the next one, not at its end.
+            $previousClose = $deviceId
+                ? Shift::where('device_id', $deviceId)->whereNotNull('closed_at')->orderByDesc('closed_at')->first()
+                : null;
+            $openingCash = round((float) $request->input('opening_cash'), 2);
+            $expectedFloat = $previousClose ? round((float) $previousClose->closing_cash, 2) : null;
+
             return Shift::create([
                 'user_id' => $userId,
                 'device_id' => $deviceId,
                 'opened_at' => now(),
-                'opening_cash' => $request->input('opening_cash'),
+                'opening_cash' => $openingCash,
+                'opening_float_expected' => $expectedFloat,
+                'opening_float_variance' => $expectedFloat === null ? null : round($openingCash - $expectedFloat, 2),
                 'notes' => $request->input('notes'),
             ]);
         });
@@ -606,6 +637,8 @@ class ShiftController extends Controller
         if ($shift === null) {
             return response()->json(['message' => 'Shift already open.'], 422);
         }
+
+        $floatCheck = $this->floatCheck($shift, $request->user()?->name ?? 'Unknown');
 
         app(AuditLogService::class)->log(
             'shift.opened',
@@ -624,7 +657,46 @@ class ShiftController extends Controller
             openingCash: (float) ($shift->opening_cash ?? 0),
         )));
 
-        return response()->json(['shift' => $shift], 201);
+        return response()->json(['shift' => $shift, 'float_check' => $floatCheck], 201);
+    }
+
+    /**
+     * @return array{expected: float|null, variance: float|null, message: string|null}
+     */
+    private function floatCheck(Shift $shift, string $userName): array
+    {
+        $expected = $shift->opening_float_expected === null ? null : (float) $shift->opening_float_expected;
+        $variance = $shift->opening_float_variance === null ? null : (float) $shift->opening_float_variance;
+        $message = null;
+        if ($expected !== null && $variance !== null && abs($variance) >= 0.01) {
+            $message = sprintf(
+                'The last close on this till left MVR %s in the drawer; you opened with MVR %s (%s MVR %s).',
+                number_format($expected, 2),
+                number_format((float) $shift->opening_cash, 2),
+                $variance < 0 ? 'short' : 'over',
+                number_format(abs($variance), 2),
+            );
+            $threshold = (float) (app(\App\Domains\Operations\Services\OpsAlertsService::class)->settings()['shift_variance_alert_mvr'] ?? 0);
+            if ($threshold > 0 && abs($variance) >= $threshold) {
+                try {
+                    $sms = app(\App\Domains\Notifications\Services\SmsService::class);
+                    foreach (\App\Support\OwnerPhones::for('owner_shift_float_mismatch') as $phone) {
+                        $sms->send(new \App\Domains\Notifications\DTOs\SmsMessage(
+                            to: $phone,
+                            message: "Shift #{$shift->id} opened by {$userName}: {$message}",
+                            type: 'owner_shift_float_mismatch',
+                            referenceType: 'shift',
+                            referenceId: (string) $shift->id,
+                            idempotencyKey: 'shift-float:' . $shift->id . ':' . $phone,
+                        ));
+                    }
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('shift.float_alert_failed', ['shift_id' => $shift->id, 'error' => $e->getMessage()]);
+                }
+            }
+        }
+
+        return ['expected' => $expected, 'variance' => $variance, 'message' => $message];
     }
 
     public function close(CloseShiftRequest $request, $id)

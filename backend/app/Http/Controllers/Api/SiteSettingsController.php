@@ -65,6 +65,7 @@ class SiteSettingsController extends Controller
         'sms_customer_preparing_enabled',
         'sms_customer_ready_enabled',
         'sms_customer_on_the_way_enabled',
+        'sms_customer_delivered_enabled',
         'sms_pos_send_bill_enabled',
         'sms_pos_send_pay_link_enabled',
         'sms_pos_fire_to_kitchen_enabled',

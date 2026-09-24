@@ -79,6 +79,7 @@ final class SmsTypeRegistry
         'owner_deposit_payout' => 'owners_managers',
         'owner_shift_left_open' => 'owners_managers',
         'owner_shift_variance' => 'owners_managers',
+        'owner_shift_float_mismatch' => 'owners_managers',
         'owner_complaint_received' => 'owners_managers',
         'owner_complaint_box_received' => 'owners_managers',
         'trade_reconcile_mismatch_owner' => 'owners_managers',
@@ -129,6 +130,7 @@ final class SmsTypeRegistry
             self::def('customer_order_preparing', 'Order preparing', 'transactional', true, false, 'customer_order_preparing', 'sms_customer_preparing_enabled', 'sms.transactional.manage', false, 'The ordering customer', false),
             self::def('customer_order_ready', 'Order ready', 'transactional', true, false, 'customer_order_ready_pickup', 'sms_customer_ready_enabled', 'sms.transactional.manage', false, 'The ordering customer', false),
             self::def('customer_order_on_the_way', 'Order on the way', 'transactional', true, false, 'customer_order_on_the_way', 'sms_customer_on_the_way_enabled', 'sms.transactional.manage', false, 'The ordering customer', false),
+            self::def('customer_order_delivered', 'Order delivered', 'transactional', true, false, 'customer_order_delivered', 'sms_customer_delivered_enabled', 'sms.transactional.manage', false, 'The ordering customer', false),
             self::def('customer_refund_requested', 'Refund requested', 'transactional', true, false, 'customer_refund_requested', 'sms_customer_refund_requested_enabled', 'sms.transactional.manage', false, 'Refund phone (order phone or walk-in add)', false),
             self::def('customer_refund_completed', 'Refund completed', 'transactional', true, false, 'customer_refund_completed', 'sms_customer_refund_completed_enabled', 'sms.transactional.manage', false, 'Refund phone (order phone or walk-in add)', false),
             // Refund audit, 2026-09-25: when part of the refund is owed by card / bank, the customer hears "approved, on its way" first and "completed" once it is marked paid out.
@@ -152,6 +154,7 @@ final class SmsTypeRegistry
             // Ops audit, 2026-09-25: nothing watched a till left open overnight or a close that landed short.
             self::def('owner_shift_left_open', 'Owner: shift left open', 'staff', true, false, null, 'sms_owner_shift_left_open_enabled', null, false, 'Owners & managers (hours set in Settings → Notifications)', false),
             self::def('owner_shift_variance', 'Owner: shift closed with a cash variance', 'staff', true, false, null, 'sms_owner_shift_variance_enabled', null, false, 'Owners & managers (threshold set in Settings → Notifications)', false),
+            self::def('owner_shift_float_mismatch', 'Owner: opening float differs from the last close', 'staff', true, false, null, 'sms_owner_shift_float_mismatch_enabled', null, false, 'Owners & managers (same threshold as the variance alert)', false),
             // Complaints — owner alert never suppressed by customer opt-out; customer ack/resolved honour opt-out.
             self::def('owner_complaint_received', 'Owner: complaint received', 'staff', true, false, 'owner_complaint_received', 'sms_owner_complaint_received_enabled', 'sms.transactional.manage', false, 'Owner phone(s)', false),
             self::def('customer_complaint_acknowledged', 'Complaint acknowledged', 'transactional', true, true, 'customer_complaint_acknowledged', 'sms_customer_complaint_acknowledged_enabled', 'sms.transactional.manage', false, 'Order / receipt customer phone', false),
@@ -435,7 +438,7 @@ final class SmsTypeRegistry
             ],
             'pos_send_bill', 'pos_send_pay_link', 'pos_fire_to_kitchen', 'pos_receipt_resend',
             'customer_payment_confirmed_pos', 'customer_payment_confirmed_online',
-            'customer_completion_receipt', 'customer_order_preparing', 'customer_order_ready',
+            'customer_completion_receipt', 'customer_order_preparing', 'customer_order_ready', 'customer_order_delivered',
             'customer_order_on_the_way' => [
                 'greeting' => 'Hi Aisha!',
                 'amount' => '128.50',

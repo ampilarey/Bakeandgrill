@@ -95,6 +95,16 @@ Schedule::job(App\Jobs\ExpireCateringQuotes::class)
     ->onFailure($alertOnFailure('ExpireCateringQuotes'))
     ->after($trackSuccess('ExpireCateringQuotes'));
 
+// Catering: one nudge the day before a quote expires, and a thank-you the day after an event (ops audit, 2026-09-25)
+Schedule::job(App\Jobs\NudgeExpiringCateringQuotes::class)
+    ->hourly()
+    ->onFailure($alertOnFailure('NudgeExpiringCateringQuotes'))
+    ->after($trackSuccess('NudgeExpiringCateringQuotes'));
+Schedule::job(App\Jobs\SendCateringThankYous::class)
+    ->dailyAt('11:00')
+    ->onFailure($alertOnFailure('SendCateringThankYous'))
+    ->after($trackSuccess('SendCateringThankYous'));
+
 // Catering: day-before reminder for confirmed events
 Schedule::job(App\Jobs\SendCateringEventReminders::class)
     ->dailyAt('09:30')

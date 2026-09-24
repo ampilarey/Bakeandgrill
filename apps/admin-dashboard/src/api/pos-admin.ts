@@ -66,6 +66,24 @@ export type ShiftHistoryRow = {
   notes?: string | null;
   user?: { id: number; name: string };
   device?: { id: number; name: string; identifier?: string };
+  /** Ops audit, 2026-09-25: the last close on this till and how far the typed float was from it. */
+  opening_float_expected?: number | null;
+  opening_float_variance?: number | null;
+  /** Live shifts carry their movements so a typo can be voided from here. */
+  cash_movements?: ShiftCashMovement[];
+};
+
+export type ShiftCashMovement = {
+  id: number;
+  type: string;
+  category?: string | null;
+  amount: number | string;
+  reason?: string | null;
+  created_at: string;
+  user?: { id: number; name: string } | null;
+  voided_at?: string | null;
+  void_reason?: string | null;
+  voided_by?: { id: number; name: string } | null;
 };
 
 export type ShiftSummaryResponse = {
@@ -117,8 +135,19 @@ export async function fetchAuditLogActions(): Promise<{ actions: string[] }> {
   return req('/admin/audit-logs/actions');
 }
 
-export async function fetchShiftHistory(): Promise<{ shifts: ShiftHistoryRow[] }> {
-  return req('/shifts/history');
+export async function fetchShiftHistory(params?: { from?: string; to?: string; user_id?: number; limit?: number }): Promise<{ shifts: ShiftHistoryRow[] }> {
+  const qs = new URLSearchParams();
+  if (params?.from) qs.set('from', params.from);
+  if (params?.to) qs.set('to', params.to);
+  if (params?.user_id) qs.set('user_id', String(params.user_id));
+  if (params?.limit) qs.set('limit', String(params.limit));
+  const q = qs.toString();
+  return req(`/shifts/history${q ? `?${q}` : ''}`);
+}
+
+/** Strike a cash movement through with a reason while the shift is open (ops audit, 2026-09-25). */
+export async function voidCashMovement(shiftId: number, movementId: number, reason: string): Promise<{ movement: ShiftCashMovement }> {
+  return req(`/shifts/${shiftId}/cash-movements/${movementId}/void`, { method: 'POST', body: JSON.stringify({ reason }) });
 }
 
 export async function fetchLiveShifts(): Promise<{ shifts: ShiftHistoryRow[] }> {

@@ -31,6 +31,8 @@ final class CustomerSmsMessageBuilder
 
     public const SLUG_ORDER_ON_THE_WAY = 'customer_order_on_the_way';
 
+    public const SLUG_ORDER_DELIVERED = 'customer_order_delivered';
+
     public function __construct(private readonly SmsTemplateRenderer $renderer) {}
 
     public function build(string $slug, array $variables, string $fallback): string

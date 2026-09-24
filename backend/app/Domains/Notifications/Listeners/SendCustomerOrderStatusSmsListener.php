@@ -50,7 +50,7 @@ final class SendCustomerOrderStatusSmsListener
         $status = $event->data->status;
 
         // Only handle statuses we care about
-        if (!in_array($status, ['in_progress', 'ready', 'on_the_way'], true)) {
+        if (!in_array($status, ['in_progress', 'ready', 'on_the_way', 'delivered'], true)) {
             return;
         }
 
@@ -59,6 +59,7 @@ final class SendCustomerOrderStatusSmsListener
             'in_progress' => 'sms_customer_preparing_enabled',
             'ready' => 'sms_customer_ready_enabled',
             'on_the_way' => 'sms_customer_on_the_way_enabled',
+            'delivered' => 'sms_customer_delivered_enabled',
         };
 
         if (SiteSetting::get($settingKey, 'true') !== 'true') {
@@ -106,6 +107,12 @@ final class SendCustomerOrderStatusSmsListener
                 "#{$orderNum} is on the way. {$trackingUrl}",
                 "order:on_the_way:{$order->id}",
             ],
+            // Ops audit, 2026-09-25: the rider's last tap closes the loop for the customer too.
+            'delivered' => [
+                CustomerSmsMessageBuilder::SLUG_ORDER_DELIVERED,
+                "#{$orderNum} has been delivered. Enjoy! {$trackingUrl}",
+                "order:delivered:{$order->id}",
+            ],
         };
 
         $message = $this->messages->build(
@@ -120,6 +127,7 @@ final class SendCustomerOrderStatusSmsListener
         $typeKey = match ($status) {
             'in_progress' => 'customer_order_preparing',
             'ready' => 'customer_order_ready',
+            'delivered' => 'customer_order_delivered',
             default => 'customer_order_on_the_way',
         };
 

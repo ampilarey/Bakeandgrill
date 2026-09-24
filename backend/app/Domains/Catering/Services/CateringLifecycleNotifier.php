@@ -31,6 +31,37 @@ class CateringLifecycleNotifier
         $this->fanOut($request, $customerMsg, $staffMsg, $baseKey, "Quote expired {$ref} - Bake & Grill");
     }
 
+    /** Ops audit, 2026-09-25: a quote about to expire gets one nudge, the day before. */
+    public function notifyQuoteExpiring(CateringRequest $request): void
+    {
+        $ref = $request->reference ?? ('#' . $request->id);
+        $version = (int) $request->quote_version;
+        $baseKey = 'event:' . $request->id . ':' . $version . ':quote_expiring';
+        $until = $request->quote_expires_at?->timezone(config('app.timezone', 'Indian/Maldives'))->format('D j M g:ia') ?? 'soon';
+        $customerMsg = "Your Bake & Grill quote {$ref} is open until {$until}. Approve it from the link we sent, or reply if you need changes.";
+        $staffMsg = "Quote {$ref} expires {$until} with no answer yet.";
+
+        $this->fanOut($request, $customerMsg, $staffMsg, $baseKey, "Quote {$ref} expires soon - Bake & Grill");
+    }
+
+    /** The day after the event: thanks, and an ask for feedback. Customer only. */
+    public function notifyThankYou(CateringRequest $request): void
+    {
+        if (trim((string) $request->phone) === '') {
+            return;
+        }
+        $ref = $request->reference ?? ('#' . $request->id);
+        $this->sms->send(new SmsMessage(
+            to: (string) $request->phone,
+            message: "Thank you for having Bake & Grill cater {$ref}. We hope it went well - reply to this text or call us with any feedback, and we would love to do the next one.",
+            type: 'catering_lifecycle_customer',
+            customerId: $request->customer_id,
+            referenceType: 'catering_request',
+            referenceId: (string) $request->id,
+            idempotencyKey: 'event:' . $request->id . ':thank_you',
+        ));
+    }
+
     public function notifyCancelled(CateringRequest $request): void
     {
         $ref = $request->reference ?? ('#' . $request->id);

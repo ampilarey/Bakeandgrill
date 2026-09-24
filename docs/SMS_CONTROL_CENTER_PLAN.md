@@ -598,3 +598,18 @@ up with the least waste are joined: `table_id` plus `extra_table_ids` (JSON),
 shown as "Four A + Four B". `reservation_settings.cancel_cutoff_hours`
 (default 2; 0 = any time) stops guests cancelling online inside the cut-off;
 staff cancel through the status endpoint regardless.
+
+### D.5 Catering follow-ups, delivered text, shift history, voids, opening float
+`NudgeExpiringCateringQuotes` (hourly) texts the customer and staff contact once
+when an `awaiting_customer` quote has less than a day left (`quote_nudged_at`);
+`SendCateringThankYous` (daily 11:00) thanks the customer the day after a
+confirmed or completed event (`thank_you_sent_at`). `customer_order_delivered`
+(switch `sms_customer_delivered_enabled`, template seeded) goes out on the
+rider's delivered tap for online types. `GET /shifts/history` takes `from`,
+`to`, `user_id`, `limit` (10–500). `POST /shifts/{id}/cash-movements/{m}/void`
+(reason required, open shift only, own shift or view-all) strikes a movement
+through; voided rows are excluded from expected cash and the live list carries
+them for the admin Shifts page. On open, the typed float is compared with the
+last close on the same device (`opening_float_expected/variance`), returned as
+`float_check`, shown on the Shifts page, and texted to the owners
+(`owner_shift_float_mismatch`) when it reaches the variance threshold.

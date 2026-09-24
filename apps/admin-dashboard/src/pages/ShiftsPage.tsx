@@ -8,7 +8,7 @@ import {
 } from '../components/SharedUI';
 import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import {
-  fetchLiveShifts, fetchShiftHistory, forceCloseShift,
+  fetchLiveShifts, fetchShiftHistory, forceCloseShift, voidCashMovement,
 } from '../api';
 import type { ShiftHistoryRow } from '../api/pos-admin';
 
@@ -43,11 +43,13 @@ function AdminShiftTable({
   rows,
   showForceClose,
   onForceClose,
+  onVoidMovement,
   highlightId,
 }: {
   rows: ShiftHistoryRow[];
   showForceClose?: boolean;
   onForceClose?: (id: number) => void;
+  onVoidMovement?: (shiftId: number, movementId: number) => void;
   highlightId?: number | null;
 }) {
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -74,7 +76,9 @@ function AdminShiftTable({
             const stale = isStaleOpenShift(s.opened_at, s.closed_at);
             const highlighted = highlightId != null && s.id === highlightId;
             const colSpan = 8 + (showForceClose ? 1 : 0);
-            const hasDetail = !!(s.cash_count_breakdown || (s.foreign_currency_held?.length ?? 0) > 0 || s.cash_count_method);
+            const movements = s.cash_movements ?? [];
+            const floatVar = s.opening_float_variance == null ? null : Number(s.opening_float_variance);
+            const hasDetail = !!(s.cash_count_breakdown || (s.foreign_currency_held?.length ?? 0) > 0 || s.cash_count_method || movements.length > 0);
             const expanded = expandedId === s.id;
             const variance = Number(s.variance ?? 0);
             const fx = s.foreign_currency_held ?? [];
@@ -111,7 +115,14 @@ function AdminShiftTable({
               <td style={{ ...TD, fontSize: 12, color: 'var(--color-text-muted)' }}>
                 {s.closed_at ? new Date(s.closed_at).toLocaleString() : stale ? 'Still open — close shift' : '—'}
               </td>
-              <td style={TD}>{formatMVR(s.opening_cash)}</td>
+              <td style={TD}>
+                {formatMVR(s.opening_cash)}
+                {floatVar != null && Math.abs(floatVar) >= 0.01 && (
+                  <div data-testid={`float-variance-${s.id}`} style={{ fontSize: 11, color: 'var(--color-danger)', fontWeight: 600, marginTop: 2 }}>
+                    {floatVar < 0 ? 'Short' : 'Over'} {formatMVR(Math.abs(floatVar))} vs last close {formatMVR(s.opening_float_expected)}
+                  </div>
+                )}
+              </td>
               <td style={TD}>{formatMVR(s.closing_cash)}</td>
               <td style={TD}>
                 {s.variance != null ? (
@@ -147,6 +158,25 @@ function AdminShiftTable({
                           .map((r) => (
                             <div key={r.laari}>{denomLabel(r.laari)} × {r.count} = MVR {((r.laari * r.count) / 100).toFixed(2)}</div>
                           ))}
+                      </div>
+                    )}
+                    {movements.length > 0 && (
+                      <div data-testid={`shift-movements-${s.id}`}>
+                        <div style={{ fontWeight: 700, marginBottom: 4 }}>Cash movements</div>
+                        {movements.map((m) => (
+                          <div key={m.id} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', textDecoration: m.voided_at ? 'line-through' : undefined, color: m.voided_at ? 'var(--color-text-muted)' : undefined }}>
+                            <span>{new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            <span style={{ fontWeight: 600 }}>{m.type.replace(/_/g, ' ')}</span>
+                            <span>{formatMVR(Number(m.amount))}</span>
+                            <span>{m.reason ?? ''}</span>
+                            {m.user?.name && <span>· {m.user.name}</span>}
+                            {m.voided_at
+                              ? <span style={{ textDecoration: 'none' }}>voided{m.voided_by?.name ? ` by ${m.voided_by.name}` : ''}{m.void_reason ? `: ${m.void_reason}` : ''}</span>
+                              : (!s.closed_at && onVoidMovement && (
+                                <Btn small variant="ghost" onClick={(e) => { e.stopPropagation(); onVoidMovement(s.id, m.id); }} aria-label={`Void movement ${m.id}`}>Void</Btn>
+                              ))}
+                          </div>
+                        ))}
                       </div>
                     )}
                     {fx.length > 0 && (
@@ -192,6 +222,23 @@ export default function ShiftsPage() {
   const [forceTarget, setForceTarget] = useState<number | null>(null);
   const [forceNotes, setForceNotes] = useState('');
   const [forceSaving, setForceSaving] = useState(false);
+  const [voidTarget, setVoidTarget] = useState<{ shiftId: number; movementId: number } | null>(null);
+  const [voidReason, setVoidReason] = useState('');
+  const [voidSaving, setVoidSaving] = useState(false);
+  const [historyFrom, setHistoryFrom] = useState('');
+  const [historyTo, setHistoryTo] = useState('');
+
+  const handleVoid = async () => {
+    if (!voidTarget || voidReason.trim().length < 3) return;
+    setVoidSaving(true); setError('');
+    try {
+      await voidCashMovement(voidTarget.shiftId, voidTarget.movementId, voidReason.trim());
+      setVoidTarget(null);
+      setVoidReason('');
+      await loadLive();
+    } catch (e) { setError((e as Error).message); }
+    finally { setVoidSaving(false); }
+  };
 
   const loadLive = async () => {
     setAdminLoading(true); setError('');
@@ -205,7 +252,7 @@ export default function ShiftsPage() {
   const loadHistory = async () => {
     setAdminLoading(true); setError('');
     try {
-      const res = await fetchShiftHistory();
+      const res = await fetchShiftHistory({ from: historyFrom || undefined, to: historyTo || undefined, limit: 200 });
       setHistoryShifts(res.shifts ?? []);
     } catch (e) { setError((e as Error).message); }
     finally { setAdminLoading(false); }
@@ -291,19 +338,51 @@ export default function ShiftsPage() {
                   showForceClose
                   highlightId={focusShiftId}
                   onForceClose={(id) => { setForceTarget(id); setForceNotes(''); }}
+                  onVoidMovement={(shiftId, movementId) => { setVoidTarget({ shiftId, movementId }); setVoidReason(''); }}
                 />
               </>
             )
           )}
 
           {tab === 'history' && (
-            adminLoading ? (
-              <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>Loading…</div>
-            ) : (
-              <AdminShiftTable rows={historyShifts} highlightId={focusShiftId} />
-            )
+            <>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 12 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  From
+                  <input type="date" aria-label="Shift history from" value={historyFrom} onChange={(e) => setHistoryFrom(e.target.value)} style={{ ...S.input, width: 170 }} />
+                </label>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  To
+                  <input type="date" aria-label="Shift history to" value={historyTo} onChange={(e) => setHistoryTo(e.target.value)} style={{ ...S.input, width: 170 }} />
+                </label>
+                <Btn small variant="secondary" onClick={() => void loadHistory()}>Apply</Btn>
+                {(historyFrom || historyTo) && <Btn small variant="ghost" onClick={() => { setHistoryFrom(''); setHistoryTo(''); }}>Clear</Btn>}
+                <span style={{ fontSize: 12, color: 'var(--color-text-muted)', alignSelf: 'center' }}>Latest 200 shifts in the range; leave both empty for the most recent.</span>
+              </div>
+              {adminLoading ? (
+                <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>Loading…</div>
+              ) : (
+                <AdminShiftTable rows={historyShifts} highlightId={focusShiftId} />
+              )}
+            </>
           )}
         </>
+      )}
+
+      {voidTarget && (
+        <Modal title="Void cash movement" onClose={() => setVoidTarget(null)} maxWidth={420}>
+          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 16 }}>
+            The movement stays on record, struck through with your reason, and stops counting towards the expected cash.
+          </p>
+          <label>
+            <span style={S.label}>Reason</span>
+            <textarea aria-label="Void reason" value={voidReason} onChange={(e) => setVoidReason(e.target.value)} rows={3} style={{ ...S.input, resize: 'vertical' }} placeholder="e.g. entered 150 instead of 15" />
+          </label>
+          <ModalActions>
+            <Btn variant="secondary" onClick={() => setVoidTarget(null)}>Cancel</Btn>
+            <Btn variant="danger" onClick={() => void handleVoid()} disabled={voidSaving || voidReason.trim().length < 3}>{voidSaving ? 'Voiding…' : 'Void movement'}</Btn>
+          </ModalActions>
+        </Modal>
       )}
 
       {forceTarget && (

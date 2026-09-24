@@ -149,6 +149,8 @@ if (routes_domain_section_is('orders', 'pos_ops') && !routes_domain_loaded('orde
         ->middleware(['permission:pos.close_shift', 'device.active', 'throttle:pos-shift']);
     Route::post('/shifts/{id}/force-close', [App\Http\Controllers\Api\ShiftController::class, 'forceClose'])
         ->middleware(['permission:shifts.view_all_history', 'throttle:pos-shift']);
+    Route::post('/shifts/{id}/cash-movements/{movementId}/void', [App\Http\Controllers\Api\CashMovementController::class, 'void'])
+        ->middleware(['permission.any:pos.close_shift,shifts.view_all_history', 'throttle:pos-shift']);
     Route::post('/shifts/{id}/cash-movements', [App\Http\Controllers\Api\CashMovementController::class, 'store'])
         ->middleware(['permission:payments.cash_in_out', 'device.active', 'throttle:30,1']);
 }
