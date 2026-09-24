@@ -23,6 +23,8 @@ export type Reservation = {
   status: ReservationStatus;
   notes: string | null;
   table: { id: number; name: string } | null;
+  /** Tables joined to `table` for a large party. */
+  extra_tables?: { id: number; name: string }[];
   /** Prepaid dine-in: booking is backed by a paid online order. */
   order_id?: number | null;
   order_number?: string | null;
@@ -38,6 +40,8 @@ export type ReservationSettings = {
   advance_booking_days: number;
   buffer_minutes_between: number;
   auto_cancel_minutes: number;
+  /** Guests may cancel online only this many hours before the slot; 0 = any time (reservation audit, 2026-09-25). */
+  cancel_cutoff_hours?: number;
   opening_time: string;
   closing_time: string;
 };

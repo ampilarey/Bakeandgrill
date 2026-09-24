@@ -14,6 +14,7 @@ class ReservationSetting extends Model
         'advance_booking_days',
         'buffer_minutes_between',
         'auto_cancel_minutes',
+        'cancel_cutoff_hours',
         'opening_time',
         'closing_time',
     ];
@@ -24,6 +25,7 @@ class ReservationSetting extends Model
         'advance_booking_days' => 'integer',
         'buffer_minutes_between' => 'integer',
         'auto_cancel_minutes' => 'integer',
+        'cancel_cutoff_hours' => 'integer',
     ];
 
     public static function current(): self
@@ -34,6 +36,7 @@ class ReservationSetting extends Model
             'advance_booking_days' => 30,
             'buffer_minutes_between' => 15,
             'auto_cancel_minutes' => 15,
+            'cancel_cutoff_hours' => 2,
             'opening_time' => '09:00',
             'closing_time' => '22:00',
         ]);

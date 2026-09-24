@@ -245,6 +245,15 @@ class ReservationService
             abort(422, 'Cannot cancel a completed or no-show reservation.');
         }
 
+        // Guests cancel online only up to the owner's cut-off (reservation audit, 2026-09-25); staff can always cancel.
+        if (!$isStaff) {
+            $cutoff = (int) ReservationSetting::current()->cancel_cutoff_hours;
+            $startsAt = Carbon::parse($reservation->date->toDateString() . ' ' . $this->normalizeTimeSlot((string) $reservation->time_slot));
+            if ($cutoff > 0 && $startsAt->lte(now()->addHours($cutoff))) {
+                abort(422, "Online cancellation closes {$cutoff} hour" . ($cutoff === 1 ? '' : 's') . ' before the booking. Please call us to cancel.');
+            }
+        }
+
         // Use repository directly so customer/staff cancel works from any
         // cancellable status without requiring the staff transition map.
         $this->reservations->updateStatus($id, 'cancelled');
@@ -304,19 +313,32 @@ class ReservationService
     public function remainingCapacityForSlot(string $timeSlot, Collection $existing, ?int $totalCapacity = null): int
     {
         $totalCapacity ??= $this->totalActiveTableCapacity();
-        $normalized = $this->normalizeTimeSlot($timeSlot);
+        [$start, $end] = $this->candidateWindow($timeSlot);
 
+        // Reservation audit, 2026-09-25: a booking occupies its whole
+        // duration, not just its starting slot, so a two-hour table at 19:00
+        // still counts against 20:00.
         $bookedPartySize = $existing
-            ->filter(function (Reservation $r) use ($normalized): bool {
-                if (in_array($r->status, ['cancelled', 'no_show'], true)) {
-                    return false;
-                }
-
-                return $this->normalizeTimeSlot((string) $r->time_slot) === $normalized;
-            })
+            ->filter(fn (Reservation $r): bool => !in_array($r->status, ['cancelled', 'no_show'], true) && $this->overlapsWindow($r, $start, $end))
             ->sum('party_size');
 
         return max(0, $totalCapacity - (int) $bookedPartySize);
+    }
+
+    /** @return array{0:int,1:int} minutes since midnight for a new booking starting at $timeSlot */
+    private function candidateWindow(string $timeSlot): array
+    {
+        $parts = explode(':', $this->normalizeTimeSlot($timeSlot));
+        $start = ((int) $parts[0]) * 60 + (int) $parts[1];
+
+        return [$start, $start + max(15, (int) ReservationSetting::current()->slot_duration_minutes)];
+    }
+
+    private function overlapsWindow(Reservation $r, int $start, int $end): bool
+    {
+        [$rStart, $rEnd] = $r->windowMinutes();
+
+        return $rStart < $end && $rEnd > $start;
     }
 
     public function totalActiveTableCapacity(): int
@@ -359,29 +381,53 @@ class ReservationService
     /**
      * @param Collection<int, Reservation>|null $existing
      */
+    /**
+     * The smallest free table that fits; failing that, the two free tables
+     * whose seats together fit with the least waste (reservation audit,
+     * 2026-09-25: a party of eight with only four-seaters used to be booked
+     * with no table at all). "Free" means no live booking overlapping this
+     * one's window holds the table.
+     */
     private function tryAssignTable(Reservation $reservation, ?Collection $existing = null): void
     {
-        $tables = RestaurantTable::where('is_active', true)
-            ->where('capacity', '>=', $reservation->party_size)
-            ->orderBy('capacity')
-            ->get();
-
         $existing ??= $this->reservations->forDate($reservation->date->toDateString());
-        $slot = $this->normalizeTimeSlot((string) $reservation->time_slot);
+        [$start, $end] = $reservation->windowMinutes();
 
-        foreach ($tables as $table) {
-            $hasConflict = $existing->contains(
-                fn (Reservation $r) => $r->id !== $reservation->id &&
-                $r->table_id === $table->id &&
-                $this->normalizeTimeSlot((string) $r->time_slot) === $slot &&
-                !in_array($r->status, ['cancelled', 'no_show'], true),
-            );
-
-            if (!$hasConflict) {
-                $reservation->update(['table_id' => $table->id]);
-
-                return;
+        $taken = [];
+        foreach ($existing as $r) {
+            if ($r->id === $reservation->id || in_array($r->status, ['cancelled', 'no_show'], true) || !$this->overlapsWindow($r, $start, $end)) {
+                continue;
             }
+            foreach ($r->allTableIds() as $id) {
+                $taken[$id] = true;
+            }
+        }
+
+        $free = RestaurantTable::where('is_active', true)
+            ->orderBy('capacity')
+            ->get()
+            ->reject(fn (RestaurantTable $t) => isset($taken[$t->id]))
+            ->values();
+
+        $single = $free->first(fn (RestaurantTable $t) => (int) $t->capacity >= (int) $reservation->party_size);
+        if ($single) {
+            $reservation->update(['table_id' => $single->id, 'extra_table_ids' => null]);
+
+            return;
+        }
+
+        $best = null;
+        $n = $free->count();
+        for ($i = 0; $i < $n; $i++) {
+            for ($j = $i + 1; $j < $n; $j++) {
+                $sum = (int) $free[$i]->capacity + (int) $free[$j]->capacity;
+                if ($sum >= (int) $reservation->party_size && ($best === null || $sum < $best['sum'])) {
+                    $best = ['sum' => $sum, 'ids' => [$free[$i]->id, $free[$j]->id]];
+                }
+            }
+        }
+        if ($best !== null) {
+            $reservation->update(['table_id' => $best['ids'][0], 'extra_table_ids' => [$best['ids'][1]]]);
         }
     }
 }

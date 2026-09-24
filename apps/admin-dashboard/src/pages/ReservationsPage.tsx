@@ -248,7 +248,7 @@ function ReservationsList() {
                   <td style={{ ...TD, textAlign: 'center', fontWeight: 700 }}>{r.party_size}</td>
                   <td style={{ ...TD, whiteSpace: 'nowrap' }}>{r.date}</td>
                   <td style={{ ...TD, whiteSpace: 'nowrap' }}>{r.time_slot}</td>
-                  <td style={TD}>{r.table?.name ?? '—'}</td>
+                  <td style={TD}>{r.table ? [r.table.name, ...(r.extra_tables ?? []).map((t) => t.name)].join(' + ') : '—'}</td>
                   <td style={TD}>
                     <Badge label={(r.status ?? '').split('_').join(' ')} color={STATUS_COLOR[r.status ?? ''] ?? 'gray'} />
                   </td>
@@ -325,6 +325,7 @@ const DEFAULT_SETTINGS: ReservationSettings = {
   advance_booking_days: 30,
   buffer_minutes_between: 15,
   auto_cancel_minutes: 15,
+  cancel_cutoff_hours: 2,
   opening_time: '09:00',
   closing_time: '22:00',
 };
@@ -356,7 +357,7 @@ function ReservationSettingsTab() {
   const handleSave = async () => {
     const numFields: (keyof ReservationSettings)[] = [
       'max_party_size', 'advance_booking_days', 'slot_duration_minutes',
-      'buffer_minutes_between', 'auto_cancel_minutes',
+      'buffer_minutes_between', 'auto_cancel_minutes', 'cancel_cutoff_hours',
     ];
     for (const f of numFields) {
       const v = form[f] as number;
@@ -377,6 +378,7 @@ function ReservationSettingsTab() {
         advance_booking_days: form.advance_booking_days,
         buffer_minutes_between: form.buffer_minutes_between,
         auto_cancel_minutes: form.auto_cancel_minutes,
+        cancel_cutoff_hours: form.cancel_cutoff_hours ?? 2,
         opening_time: form.opening_time.slice(0, 5),
         closing_time: form.closing_time.slice(0, 5),
       });
@@ -418,6 +420,16 @@ function ReservationSettingsTab() {
               style={inputStyle}
               value={form.max_party_size}
               onChange={(e) => set('max_party_size', Number(e.target.value))}
+            />
+          </div>
+          <div style={fieldStyle}>
+            <label style={labelStyle}>Online cancel cut-off (hours before, 0 = any time)</label>
+            <input
+              type="number" min={0} max={168}
+              aria-label="Online cancel cut-off hours"
+              style={inputStyle}
+              value={form.cancel_cutoff_hours ?? 2}
+              onChange={(e) => set('cancel_cutoff_hours', Number(e.target.value))}
             />
           </div>
           <div style={fieldStyle}>

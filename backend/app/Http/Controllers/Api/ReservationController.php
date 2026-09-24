@@ -266,6 +266,7 @@ class ReservationController extends Controller
             'advance_booking_days' => ['sometimes', 'integer', 'min:1', 'max:365'],
             'buffer_minutes_between' => ['sometimes', 'integer', 'min:0', 'max:120'],
             'auto_cancel_minutes' => ['sometimes', 'integer', 'min:5', 'max:120'],
+            'cancel_cutoff_hours' => ['sometimes', 'integer', 'min:0', 'max:168'],
             'opening_time' => ['sometimes', 'date_format:H:i'],
             'closing_time' => ['sometimes', 'date_format:H:i', 'after:opening_time'],
         ]);
@@ -295,6 +296,7 @@ class ReservationController extends Controller
             'advance_booking_days' => (int) $s->advance_booking_days,
             'buffer_minutes_between' => (int) $s->buffer_minutes_between,
             'auto_cancel_minutes' => (int) $s->auto_cancel_minutes,
+            'cancel_cutoff_hours' => (int) ($s->cancel_cutoff_hours ?? 0),
             'opening_time' => substr((string) ($s->opening_time ?? '09:00'), 0, 5),
             'closing_time' => substr((string) ($s->closing_time ?? '22:00'), 0, 5),
         ];
@@ -313,6 +315,10 @@ class ReservationController extends Controller
             'status' => $r->status,
             'notes' => $r->notes,
             'table' => $r->table ? ['id' => $r->table->id, 'name' => $r->table->name] : null,
+            // Tables joined for a large party (reservation audit, 2026-09-25).
+            'extra_tables' => !empty($r->extra_table_ids)
+                ? \App\Models\RestaurantTable::whereIn('id', (array) $r->extra_table_ids)->get(['id', 'name'])->map(fn ($t) => ['id' => $t->id, 'name' => $t->name])->values()->all()
+                : [],
             // Prepaid dine-in: booking is backed by a paid online order.
             'order_id' => $r->order_id,
             'order_number' => $r->order_id ? $r->order?->order_number : null,

@@ -588,3 +588,13 @@ different wording for a guest's own cancellation. `POST /admin/reservations`
 (permission `reservations.manage`) takes a booking by phone: same capacity
 check as the public form, confirmed on the spot (one text, not two), linked to
 the customer whose number matches; the Reservations page has "+ New booking".
+
+### D.4 Reservations: duration, joined tables, cancel cut-off
+Capacity and table conflicts now use each booking's window
+(`time_slot` to `time_slot + duration_minutes`) against the new booking's
+window (`slot_duration_minutes`), so a 60-minute table at 19:00 still counts
+at 19:30. When no single free table fits, the two free tables whose seats add
+up with the least waste are joined: `table_id` plus `extra_table_ids` (JSON),
+shown as "Four A + Four B". `reservation_settings.cancel_cutoff_hours`
+(default 2; 0 = any time) stops guests cancelling online inside the cut-off;
+staff cancel through the status endpoint regardless.
