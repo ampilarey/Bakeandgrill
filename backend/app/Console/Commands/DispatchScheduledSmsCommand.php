@@ -27,6 +27,11 @@ class DispatchScheduledSmsCommand extends Command
             $this->info("Started {$campaigns} scheduled campaign(s).");
         }
 
+        $recurring = $scheduler->runDueCampaignSchedules(Carbon::now());
+        if ($recurring > 0) {
+            $this->info("Ran {$recurring} recurring campaign(s).");
+        }
+
         return self::SUCCESS;
     }
 }

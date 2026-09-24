@@ -238,6 +238,8 @@ export type SmsCampaign = {
   status: string;
   target_criteria?: SmsAudienceCriteria | null;
   audience_summary?: string;
+  /** Did it work: reached recipients who placed a paid order within the window. Null until started. */
+  results?: { window_days: number; buyers: number; orders: number; revenue_mvr: number; buyer_rate: number; reached: number; complete: boolean } | null;
   total_recipients: number;
   sent_count: number;
   failed_count: number;
@@ -370,6 +372,63 @@ export async function testSendSmsCampaign(data: { message: string; message_varia
   results: Array<{ variant: string; status: string; to: string; message: string; error?: string | null }>;
 }> {
   return req('/admin/sms/campaigns/test-send', { method: 'POST', body: JSON.stringify(data) });
+}
+
+// ── Recurring campaigns ───────────────────────────────────────────────────────
+
+export type SmsCampaignSchedule = {
+  id: number;
+  name: string;
+  message: string;
+  recipe_key?: string | null;
+  target_criteria: SmsAudienceCriteria;
+  audience_summary: string;
+  frequency: 'daily' | 'weekly' | 'monthly';
+  days_of_week?: string[] | null;
+  day_of_month?: number | null;
+  send_time: string;
+  schedule_summary: string;
+  cooldown_days: number;
+  is_active: boolean;
+  next_run_at?: string | null;
+  last_run_at?: string | null;
+  runs_count: number;
+  campaigns_count: number;
+  last_campaign?: { id: number; status: string; total_recipients: number; results: SmsCampaign['results']; notes?: string | null } | null;
+};
+
+export type SmsCampaignSchedulePayload = {
+  name: string;
+  message: string;
+  recipe_key?: string | null;
+  frequency: 'daily' | 'weekly' | 'monthly';
+  days_of_week?: string[];
+  day_of_month?: number;
+  send_time: string;
+  cooldown_days?: number;
+  is_active?: boolean;
+  target_criteria?: SmsAudienceCriteria;
+};
+
+export async function fetchSmsCampaignSchedules(): Promise<{ schedules: SmsCampaignSchedule[] }> {
+  return req('/admin/sms/campaign-schedules');
+}
+
+export async function createSmsCampaignSchedule(data: SmsCampaignSchedulePayload): Promise<{ schedule: SmsCampaignSchedule }> {
+  return req('/admin/sms/campaign-schedules', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function updateSmsCampaignSchedule(id: number, data: Partial<SmsCampaignSchedulePayload>): Promise<{ schedule: SmsCampaignSchedule }> {
+  return req(`/admin/sms/campaign-schedules/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function deleteSmsCampaignSchedule(id: number): Promise<void> {
+  await req(`/admin/sms/campaign-schedules/${id}`, { method: 'DELETE' });
+}
+
+/** Run a recurring campaign now, outside its timetable. 422 when nobody is due a text. */
+export async function runSmsCampaignSchedule(id: number): Promise<{ campaign: SmsCampaign; message: string }> {
+  return req(`/admin/sms/campaign-schedules/${id}/run`, { method: 'POST' });
 }
 
 export async function fetchSmsAudiences(): Promise<{ audiences: SmsAudience[]; order_types: Record<string, string> }> {

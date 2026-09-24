@@ -194,6 +194,12 @@ if (routes_domain_section_is('marketing', 'sms_admin') && !routes_domain_loaded(
             Route::post('/audiences', [App\Http\Controllers\Api\SmsAudienceController::class, 'store']);
             Route::patch('/audiences/{audience}', [App\Http\Controllers\Api\SmsAudienceController::class, 'update']);
             Route::delete('/audiences/{audience}', [App\Http\Controllers\Api\SmsAudienceController::class, 'destroy']);
+            // Recurring campaigns
+            Route::get('/campaign-schedules', [App\Http\Controllers\Api\SmsCampaignScheduleController::class, 'index']);
+            Route::post('/campaign-schedules', [App\Http\Controllers\Api\SmsCampaignScheduleController::class, 'store']);
+            Route::patch('/campaign-schedules/{schedule}', [App\Http\Controllers\Api\SmsCampaignScheduleController::class, 'update']);
+            Route::delete('/campaign-schedules/{schedule}', [App\Http\Controllers\Api\SmsCampaignScheduleController::class, 'destroy']);
+            Route::post('/campaign-schedules/{schedule}/run', [App\Http\Controllers\Api\SmsCampaignScheduleController::class, 'run']);
             Route::get('/campaigns/{campaign}', [App\Http\Controllers\Api\SmsCampaignController::class, 'show']);
             Route::post('/campaigns/{campaign}/send', [App\Http\Controllers\Api\SmsCampaignController::class, 'send']);
             Route::post('/campaigns/{campaign}/cancel', [App\Http\Controllers\Api\SmsCampaignController::class, 'cancel']);

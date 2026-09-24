@@ -7,6 +7,7 @@ namespace App\Domains\Sms\Services;
 use App\Domains\Notifications\Services\BulkSmsService;
 use App\Domains\Sms\Jobs\SendScheduledSmsJob;
 use App\Models\SmsCampaign;
+use App\Models\SmsCampaignSchedule;
 use App\Models\SmsScheduledMessage;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -46,6 +47,73 @@ class SmsSchedulerService
         }
 
         return $started;
+    }
+
+    /**
+     * Recurring campaigns (SMS audit follow-up, 2026-09-24): each due
+     * schedule becomes one ordinary campaign, built from the schedule's
+     * criteria plus its cooldown, and sent through the same gate as "Send
+     * now". The row is advanced before the send so two overlapping ticks
+     * cannot both run it; a run with nobody to text is recorded as a
+     * cancelled campaign so the owner can see the schedule fired.
+     */
+    public function runDueCampaignSchedules(Carbon $now): int
+    {
+        $ran = 0;
+        $ids = SmsCampaignSchedule::query()
+            ->where('is_active', true)
+            ->whereNotNull('next_run_at')
+            ->where('next_run_at', '<=', $now)
+            ->pluck('id');
+
+        foreach ($ids as $id) {
+            $schedule = null;
+            DB::transaction(function () use ($id, $now, &$schedule): void {
+                $locked = SmsCampaignSchedule::lockForUpdate()->find($id);
+                if ($locked === null || !$locked->is_active || $locked->next_run_at === null || $locked->next_run_at->gt($now)) {
+                    return;
+                }
+                $locked->update([
+                    'last_run_at' => $now,
+                    'next_run_at' => $locked->computeNextRunAt($now),
+                    'runs_count' => $locked->runs_count + 1,
+                ]);
+                $schedule = $locked;
+            });
+            if ($schedule === null) {
+                continue;
+            }
+            $this->runSchedule($schedule, $now);
+            $ran++;
+        }
+
+        return $ran;
+    }
+
+    /** Create and send one run of a schedule. Returns the campaign. */
+    public function runSchedule(SmsCampaignSchedule $schedule, ?Carbon $now = null): SmsCampaign
+    {
+        $now = $now ?? Carbon::now();
+        $campaign = SmsCampaign::create([
+            'name' => $schedule->name . ' · ' . $now->copy()->setTimezone(config('app.timezone', 'Indian/Maldives'))->format('j M'),
+            'message' => $schedule->message,
+            'target_criteria' => array_merge(
+                (array) ($schedule->target_criteria ?? []),
+                ['schedule_id' => $schedule->id, 'cooldown_days' => max(1, (int) $schedule->cooldown_days)],
+            ),
+            'status' => 'draft',
+            'created_by' => $schedule->created_by,
+            'schedule_id' => $schedule->id,
+        ]);
+
+        try {
+            return app(BulkSmsService::class)->dispatch($campaign);
+        } catch (\Throwable $e) {
+            Log::info('SmsSchedulerService: recurring campaign run did not send', ['schedule_id' => $schedule->id, 'campaign_id' => $campaign->id, 'reason' => $e->getMessage()]);
+            $campaign->update(['status' => 'cancelled', 'completed_at' => $now, 'notes' => 'Recurring run skipped: ' . $e->getMessage()]);
+
+            return $campaign->fresh();
+        }
     }
 
     /**

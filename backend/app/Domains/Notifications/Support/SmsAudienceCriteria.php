@@ -49,6 +49,8 @@ final class SmsAudienceCriteria
         'audience_id', 'segment', 'tier', 'last_order_days', 'opted_in', 'has_loyalty',
         'bought_item_ids', 'bought_category_ids', 'not_bought_item_ids', 'likes_item_id',
         'order_types', 'window_days', 'min_spend_mvr', 'min_orders', 'dormant_days', 'birthday_month',
+        // Set by a recurring campaign's run: skip anyone this schedule texted in the last N days.
+        'schedule_id', 'cooldown_days',
     ];
 
     /**
@@ -81,6 +83,8 @@ final class SmsAudienceCriteria
             "{$field}.min_orders" => 'nullable|integer|min:1|max:100000',
             "{$field}.dormant_days" => 'nullable|integer|min:1|max:3650',
             "{$field}.birthday_month" => 'nullable|integer|min:1|max:12',
+            "{$field}.schedule_id" => 'nullable|integer|exists:sms_campaign_schedules,id',
+            "{$field}.cooldown_days" => 'nullable|integer|min:1|max:3650',
         ];
     }
 
@@ -175,6 +179,9 @@ final class SmsAudienceCriteria
         }
         if (!empty($c['has_loyalty'])) {
             $parts[] = 'Loyalty members';
+        }
+        if (!empty($c['schedule_id']) && !empty($c['cooldown_days'])) {
+            $parts[] = 'Not texted by this schedule in ' . $c['cooldown_days'] . ' days';
         }
         if (array_key_exists('opted_in', $c) && $c['opted_in'] === false) {
             $parts[] = 'Including opted-out';

@@ -31,6 +31,7 @@ class SmsCampaign extends Model
         'started_at',
         'completed_at',
         'created_by',
+        'schedule_id',
     ];
 
     protected $casts = [
@@ -51,6 +52,12 @@ class SmsCampaign extends Model
     public function recipients(): HasMany
     {
         return $this->hasMany(SmsCampaignRecipient::class, 'campaign_id');
+    }
+
+    /** The recurring campaign this run came from, if any. */
+    public function schedule(): BelongsTo
+    {
+        return $this->belongsTo(SmsCampaignSchedule::class, 'schedule_id');
     }
 
     public function logs(): HasMany
@@ -111,6 +118,43 @@ class SmsCampaign extends Model
         }
 
         return $stats;
+    }
+
+    /**
+     * Did it work? Recipients who placed a paid order in the days after the
+     * send, the orders they placed and what those took (SMS audit follow-up,
+     * 2026-09-24). Null before the campaign has started. A paid order is one
+     * with paid_at set that was not cancelled or refunded, the CRM's
+     * definition. `complete` says whether the window has closed, so a figure
+     * from yesterday's campaign is read as "so far".
+     *
+     * @return array{window_days: int, buyers: int, orders: int, revenue_mvr: float, buyer_rate: float, reached: int, complete: bool}|null
+     */
+    public function results(int $windowDays = 7): ?array
+    {
+        if ($this->started_at === null) {
+            return null;
+        }
+        $from = $this->started_at;
+        $to = $this->started_at->copy()->addDays($windowDays);
+        $reached = (int) $this->recipients()->whereNotNull('customer_id')->whereIn('status', ['sent'])->count();
+
+        $row = \App\Domains\Customers\Support\CustomerPaidOrderQuery::base()
+            ->whereIn('customer_id', $this->recipients()->whereNotNull('customer_id')->where('status', 'sent')->select('customer_id'))
+            ->whereBetween('paid_at', [$from, $to])
+            ->selectRaw('COUNT(DISTINCT customer_id) as buyers, COUNT(*) as orders, COALESCE(SUM(total), 0) as revenue')
+            ->first();
+        $buyers = (int) ($row->buyers ?? 0);
+
+        return [
+            'window_days' => $windowDays,
+            'buyers' => $buyers,
+            'orders' => (int) ($row->orders ?? 0),
+            'revenue_mvr' => round((float) ($row->revenue ?? 0), 2),
+            'buyer_rate' => $reached > 0 ? round($buyers / $reached * 100, 1) : 0.0,
+            'reached' => $reached,
+            'complete' => now()->gt($to),
+        ];
     }
 
     // ── State Helpers ─────────────────────────────────────────────────────────

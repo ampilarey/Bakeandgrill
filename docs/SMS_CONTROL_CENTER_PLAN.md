@@ -500,3 +500,25 @@ recipient queued in the last 24 hours. `BulkSmsService::dispatch` refuses with
 audience or a blown budget answers 422 instead of a 500. The campaign preview
 carries `daily_cap` (`cap`, `used_24h`, `remaining`, `blocked`) so the form warns
 before the send is attempted.
+
+### B.8 Campaign results and recurring campaigns
+`SmsCampaign::results()` (on index/show as `results`): reached recipients (text
+sent, with a customer id) who placed a paid, unrefunded order within seven days
+of `started_at`, their order count, revenue and buyer rate, plus `complete` for
+whether the window has closed. The Campaigns table shows it per row and "View
+log" opens Audit Logs narrowed to that campaign (`?tab=logs&campaign_id=`).
+
+Recurring campaigns: `sms_campaign_schedules` (name, message, target_criteria,
+recipe_key, frequency daily|weekly|monthly, days_of_week, day_of_month,
+send_time, cooldown_days, is_active, next_run_at, last_run_at, runs_count) at
+`/admin/sms/campaign-schedules` (index, store, update, destroy, `{id}/run`).
+`sms:dispatch-scheduled` calls `SmsSchedulerService::runDueCampaignSchedules`
+every minute: each due schedule is advanced under a row lock, then one ordinary
+`SmsCampaign` with `schedule_id` is created from the schedule's criteria plus
+`schedule_id` + `cooldown_days` (a criteria pair `BulkSmsService` honours by
+excluding anyone this schedule texted inside the cooldown) and dispatched
+through the normal gate. A run with nobody due is stored as a cancelled campaign
+with the reason in its notes, so the owner can see it fired. Deleting a schedule
+leaves its past campaigns, unlinked. In the admin form "Repeat" turns the same
+audience and text into a schedule; the Recurring campaigns table shows the next
+run, the last run's send count and results, and offers Pause, Run now, Delete.

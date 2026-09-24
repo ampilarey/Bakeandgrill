@@ -317,6 +317,20 @@ class BulkSmsService
             $query->whereIn('customers.id', $stats);
         }
 
+        // A recurring campaign's cooldown: nobody hears the same recipe twice inside N days.
+        if (!empty($criteria['schedule_id']) && !empty($criteria['cooldown_days'])) {
+            $scheduleId = (int) $criteria['schedule_id'];
+            $since = now()->subDays((int) $criteria['cooldown_days'])->toDateTimeString();
+            $query->whereNotExists(function (QueryBuilder $sub) use ($scheduleId, $since): void {
+                $sub->select(DB::raw(1))
+                    ->from('sms_campaign_recipients')
+                    ->join('sms_campaigns', 'sms_campaigns.id', '=', 'sms_campaign_recipients.campaign_id')
+                    ->whereColumn('sms_campaign_recipients.customer_id', 'customers.id')
+                    ->where('sms_campaigns.schedule_id', $scheduleId)
+                    ->where('sms_campaign_recipients.created_at', '>=', $since);
+            });
+        }
+
         if (!empty($criteria['birthday_month'])) {
             $query->whereNotNull('date_of_birth')->whereMonth('date_of_birth', (int) $criteria['birthday_month']);
         }

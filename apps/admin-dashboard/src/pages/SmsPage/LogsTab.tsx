@@ -30,14 +30,15 @@ const STATUS_OPTIONS = [
 
 const EMPTY_FILTERS: SmsLogFilters = { type: '', category: '', status: '', q: '', from: '', to: '' };
 
-export function LogsTab() {
+/** `initialFilters`: a campaign row's "View log" opens the tab already narrowed to that campaign. */
+export function LogsTab({ initialFilters }: { initialFilters?: Partial<SmsLogFilters> } = {}) {
   const [logs, setLogs] = useState<SmsLog[]>([]);
   const [totals, setTotals] = useState<SmsLogTotals | null>(null);
   const [types, setTypes] = useState<SmsLogTypeOption[]>([]);
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
   const [page, setPage] = useState(1);
-  const [draft, setDraft] = useState<SmsLogFilters>(EMPTY_FILTERS);
-  const [filters, setFilters] = useState<SmsLogFilters>(EMPTY_FILTERS);
+  const [draft, setDraft] = useState<SmsLogFilters>({ ...EMPTY_FILTERS, ...initialFilters });
+  const [filters, setFilters] = useState<SmsLogFilters>({ ...EMPTY_FILTERS, ...initialFilters });
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [loadError, setLoadError] = useState('');
@@ -95,6 +96,12 @@ export function LogsTab() {
       {loadError && (
         <div style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger-strong)', padding: '10px 14px', borderRadius: 8, marginBottom: 16, fontSize: '0.875rem' }}>
           {loadError}
+        </div>
+      )}
+      {filters.campaign_id && (
+        <div data-testid="sms-log-campaign-chip" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, fontSize: 13, color: 'var(--color-text-secondary)' }}>
+          Showing texts from campaign #{filters.campaign_id}
+          <Btn small variant="ghost" onClick={reset}>Show all</Btn>
         </div>
       )}
       {totals && (

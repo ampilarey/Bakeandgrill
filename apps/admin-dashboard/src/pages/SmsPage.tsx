@@ -116,7 +116,9 @@ export function SmsPage() {
     message: searchParams.get('message') || '',
   }), [searchParams]);
 
-  const selectTab = (next: Tab) => {
+  const logCampaignId = Number(searchParams.get('campaign_id')) || undefined;
+
+  const selectTab = (next: Tab, extra?: Record<string, string>) => {
     setTab(next);
     const nextParams = new URLSearchParams(searchParams);
     nextParams.set('tab', next);
@@ -125,6 +127,8 @@ export function SmsPage() {
       nextParams.delete('segment');
       nextParams.delete('message');
     }
+    if (next !== 'logs') nextParams.delete('campaign_id');
+    for (const [k, v] of Object.entries(extra ?? {})) nextParams.set(k, v);
     setSearchParams(nextParams, { replace: true });
   };
 
@@ -159,8 +163,8 @@ export function SmsPage() {
 
       {tab === 'recipients'  && <RecipientsTab />}
       {tab === 'automations' && <AutomationsTab />}
-      {tab === 'logs'        && <LogsTab />}
-      {tab === 'campaigns'   && <CampaignsTab prefill={campaignPrefill} />}
+      {tab === 'logs'        && <LogsTab key={logCampaignId ?? 'all'} initialFilters={logCampaignId ? { campaign_id: logCampaignId } : undefined} />}
+      {tab === 'campaigns'   && <CampaignsTab prefill={campaignPrefill} onViewLog={(id) => selectTab('logs', { campaign_id: String(id) })} />}
       {tab === 'promotions'  && <PromotionsTab onGoToCampaigns={() => selectTab('campaigns')} />}
       {tab === 'contacts'    && <ContactsTab />}
       {tab === 'templates'   && <TemplatesTab />}

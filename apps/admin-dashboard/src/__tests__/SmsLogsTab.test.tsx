@@ -53,6 +53,16 @@ describe('SMS LogsTab', () => {
     })));
   });
 
+  it('opens narrowed to a campaign and widens again on Show all', async () => {
+    render(<LogsTab initialFilters={{ campaign_id: 6 }} />);
+    await screen.findByTestId('sms-log-1');
+    expect(api.fetchSmsLogs).toHaveBeenLastCalledWith(expect.objectContaining({ campaign_id: 6 }));
+    expect(screen.getByTestId('sms-log-campaign-chip')).toHaveTextContent('campaign #6');
+    fireEvent.click(screen.getByText('Show all'));
+    await waitFor(() => expect(api.fetchSmsLogs).toHaveBeenLastCalledWith(expect.not.objectContaining({ campaign_id: 6 })));
+    expect(screen.queryByTestId('sms-log-campaign-chip')).toBeNull();
+  });
+
   it('exports the current filter as CSV', async () => {
     const createUrl = vi.fn(() => 'blob:x');
     const revoke = vi.fn();

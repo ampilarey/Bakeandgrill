@@ -229,6 +229,7 @@ class SmsCampaignController extends Controller
             $campaign->setAttribute('audience_summary', SmsAudienceCriteria::describe(
                 $this->bulkSms->effectiveCriteria((array) ($campaign->target_criteria ?? [])),
             ));
+            $campaign->setAttribute('results', $campaign->results());
 
             return $campaign;
         });
@@ -381,6 +382,7 @@ class SmsCampaignController extends Controller
         $campaign->setAttribute('audience_summary', SmsAudienceCriteria::describe(
             $this->bulkSms->effectiveCriteria((array) ($campaign->target_criteria ?? [])),
         ));
+        $campaign->setAttribute('results', $campaign->results());
 
         return response()->json(['campaign' => $campaign]);
     }

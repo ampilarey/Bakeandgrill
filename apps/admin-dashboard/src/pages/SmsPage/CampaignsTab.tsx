@@ -3,10 +3,11 @@ import {
   fetchSmsCampaigns, previewSmsCampaign, createSmsCampaign,
   sendSmsCampaign, cancelSmsCampaign, testSendSmsCampaign,
   fetchSmsCampaignRecipes, fetchSmsAudiences, createSmsAudience, deleteSmsAudience, fetchAdminCategories,
-  type SmsCampaign, type SmsAudience, type SmsAudienceCriteria, type SmsCampaignRecipe, type MenuCategory,
+  fetchSmsCampaignSchedules, createSmsCampaignSchedule, updateSmsCampaignSchedule, deleteSmsCampaignSchedule, runSmsCampaignSchedule,
+  type SmsCampaign, type SmsAudience, type SmsAudienceCriteria, type SmsCampaignRecipe, type MenuCategory, type SmsCampaignSchedule,
 } from '../../api';
 import {
-  Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input, Spinner, TableCard, TD, statColor, useConfirmDialog,
+  Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input, Spinner, TableCard, TD, TH, statColor, useConfirmDialog,
 } from '../../components/SharedUI';
 import { SortFilterHead, useSortFilter } from '../../components/TableControls';
 import { smsCharCount } from '../../utils/smsCharCount';
@@ -30,12 +31,15 @@ type CampaignPrefill = {
 
 const DEFAULT_CRITERIA: SmsAudienceCriteria = {};
 
+type Repeat = 'off' | 'daily' | 'weekly' | 'monthly';
+const WEEKDAYS: Array<[string, string]> = [['mon', 'Mon'], ['tue', 'Tue'], ['wed', 'Wed'], ['thu', 'Thu'], ['fri', 'Fri'], ['sat', 'Sat'], ['sun', 'Sun']];
+
 /*
  * SMS audit, 2026-09-24: a campaign is built from what customers bought
  * (AudienceBuilder), can start from a recipe or a saved audience, can be
  * saved as an audience, and can be sent to the signed-in user first.
  */
-export function CampaignsTab({ prefill }: { prefill?: CampaignPrefill } = {}) {
+export function CampaignsTab({ prefill, onViewLog }: { prefill?: CampaignPrefill; onViewLog?: (campaignId: number) => void } = {}) {
   const [campaigns, setCampaigns] = useState<SmsCampaign[]>([]);
   const campaignCtl = useSortFilter(campaigns, [
     { key: 'name', label: 'Name', get: (c) => c.name },
@@ -43,7 +47,7 @@ export function CampaignsTab({ prefill }: { prefill?: CampaignPrefill } = {}) {
     { key: 'status', label: 'Status', kind: 'select', get: (c) => c.status },
     { key: 'recipients', label: 'Recipients', kind: 'number', get: (c) => c.total_recipients },
     { key: 'sent', label: 'Sent', kind: 'number', get: (c) => c.sent_count },
-    { key: 'results', label: 'A/B' },
+    { key: 'results', label: 'Results', get: (c) => c.results?.buyers ?? null, kind: 'number' },
     { key: 'cost', label: 'Cost', kind: 'number', get: (c) => (c.total_cost_mvr == null ? null : Number(c.total_cost_mvr)) },
     { key: 'created', label: 'Created', get: (c) => c.created_at },
     { key: 'actions', label: '' },
@@ -60,6 +64,15 @@ export function CampaignsTab({ prefill }: { prefill?: CampaignPrefill } = {}) {
   const [orderTypes, setOrderTypes] = useState<Record<string, string>>({});
   const [audiences, setAudiences] = useState<SmsAudience[]>([]);
   const [categories, setCategories] = useState<MenuCategory[]>([]);
+  const [schedules, setSchedules] = useState<SmsCampaignSchedule[]>([]);
+  const [scheduleBusy, setScheduleBusy] = useState<number | null>(null);
+
+  // Recurring (SMS audit follow-up, 2026-09-24): the same form, on a timetable.
+  const [repeat, setRepeat] = useState<Repeat>('off');
+  const [repeatDays, setRepeatDays] = useState<string[]>(['mon']);
+  const [repeatDayOfMonth, setRepeatDayOfMonth] = useState(1);
+  const [repeatTime, setRepeatTime] = useState('10:00');
+  const [cooldownDays, setCooldownDays] = useState(30);
 
   const [name, setName] = useState('');
   const [message, setMessage] = useState('');
@@ -92,6 +105,20 @@ export function CampaignsTab({ prefill }: { prefill?: CampaignPrefill } = {}) {
     setPreview(null);
     setNamingAudience(false);
     setAudienceName('');
+    setRepeat('off');
+    setRepeatDays(['mon']);
+    setRepeatDayOfMonth(1);
+    setRepeatTime('10:00');
+    setCooldownDays(30);
+  };
+
+  const loadSchedules = async () => {
+    try {
+      const res = await fetchSmsCampaignSchedules();
+      setSchedules(res.schedules ?? []);
+    } catch (e) {
+      setError((e as Error).message);
+    }
   };
 
   const load = async () => {
@@ -119,7 +146,7 @@ export function CampaignsTab({ prefill }: { prefill?: CampaignPrefill } = {}) {
     }
   };
 
-  useEffect(() => { void load(); void loadBuilder(); }, []);
+  useEffect(() => { void load(); void loadBuilder(); void loadSchedules(); }, []);
 
   useEffect(() => {
     if (!prefill?.create && !prefill?.segment && !prefill?.message) return;
@@ -176,6 +203,23 @@ export function CampaignsTab({ prefill }: { prefill?: CampaignPrefill } = {}) {
     if (!name || !message || (abEnabled && !messageB) || recipeNeeds) return;
     setSaving(true);
     try {
+      if (repeat !== 'off') {
+        const res = await createSmsCampaignSchedule({
+          name,
+          message,
+          recipe_key: recipeKey || null,
+          frequency: repeat,
+          ...(repeat === 'weekly' ? { days_of_week: repeatDays } : {}),
+          ...(repeat === 'monthly' ? { day_of_month: repeatDayOfMonth } : {}),
+          send_time: repeatTime,
+          cooldown_days: cooldownDays,
+          target_criteria: criteria,
+        });
+        resetForm();
+        setSchedules((prev) => [...prev, res.schedule].sort((a, b) => a.name.localeCompare(b.name)));
+        flash(`Recurring campaign "${res.schedule.name}" saved: ${res.schedule.schedule_summary}.`);
+        return;
+      }
       await createSmsCampaign({
         name,
         ...buildPayload(),
@@ -232,6 +276,47 @@ export function CampaignsTab({ prefill }: { prefill?: CampaignPrefill } = {}) {
           await deleteSmsAudience(a.id);
           setAudiences((prev) => prev.filter((x) => x.id !== a.id));
           if (criteria.audience_id === a.id) setCriteria(({ audience_id: _gone, ...rest }) => { void _gone; return rest; });
+        } catch (e) { setError((e as Error).message); }
+      },
+    });
+  };
+
+  const toggleSchedule = async (sc: SmsCampaignSchedule) => {
+    setScheduleBusy(sc.id);
+    try {
+      const res = await updateSmsCampaignSchedule(sc.id, { is_active: !sc.is_active });
+      setSchedules((prev) => prev.map((x) => (x.id === sc.id ? res.schedule : x)));
+    } catch (e) { setError((e as Error).message); }
+    finally { setScheduleBusy(null); }
+  };
+
+  const runSchedule = (sc: SmsCampaignSchedule) => {
+    ask({
+      title: 'Run now',
+      message: `Send "${sc.name}" now to everyone currently in its audience (${sc.audience_summary})? Anyone texted by it in the last ${sc.cooldown_days} days is skipped.`,
+      confirmLabel: 'Run now',
+      onConfirm: async () => {
+        setScheduleBusy(sc.id);
+        try {
+          const res = await runSmsCampaignSchedule(sc.id);
+          flash(res.message);
+          await Promise.all([load(), loadSchedules()]);
+        } catch (e) { setError((e as Error).message); }
+        finally { setScheduleBusy(null); }
+      },
+    });
+  };
+
+  const removeSchedule = (sc: SmsCampaignSchedule) => {
+    ask({
+      title: 'Delete recurring campaign',
+      message: `Stop "${sc.name}" for good? Past runs stay in the campaign list.`,
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        try {
+          await deleteSmsCampaignSchedule(sc.id);
+          setSchedules((prev) => prev.filter((x) => x.id !== sc.id));
         } catch (e) { setError((e as Error).message); }
       },
     });
@@ -336,10 +421,12 @@ export function CampaignsTab({ prefill }: { prefill?: CampaignPrefill } = {}) {
             {recipeNeeds && <p data-testid="recipe-needs" style={{ fontSize: 12, color: 'var(--color-warning)', margin: '10px 0 0', fontWeight: 600 }}>{recipeNeeds}</p>}
           </div>
 
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
-            <input type="checkbox" checked={abEnabled} onChange={(e) => { setAbEnabled(e.target.checked); setPreview(null); }} />
-            A/B test two message variants
-          </label>
+          {repeat === 'off' && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
+              <input type="checkbox" checked={abEnabled} onChange={(e) => { setAbEnabled(e.target.checked); setPreview(null); }} />
+              A/B test two message variants
+            </label>
+          )}
 
           <div style={{ marginBottom: 12 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
@@ -390,10 +477,57 @@ export function CampaignsTab({ prefill }: { prefill?: CampaignPrefill } = {}) {
             </>
           )}
 
-          <div style={{ marginBottom: 14, maxWidth: 320 }}>
-            <label style={labelStyle}>Send at (optional)</label>
-            <input type="datetime-local" aria-label="Send at" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }} />
-            <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '4px 0 0' }}>Leave empty to send by hand from the list. A scheduled draft goes out on its own at that time.</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, marginBottom: 14 }}>
+            <div>
+              <label style={labelStyle}>Repeat</label>
+              <select aria-label="Repeat" value={repeat} onChange={(e) => setRepeat(e.target.value as Repeat)} style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)' }}>
+                <option value="off">Send once</option>
+                <option value="daily">Every day</option>
+                <option value="weekly">Every week</option>
+                <option value="monthly">Every month</option>
+              </select>
+            </div>
+            {repeat === 'off' && (
+              <div>
+                <label style={labelStyle}>Send at (optional)</label>
+                <input type="datetime-local" aria-label="Send at" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }} />
+                <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '4px 0 0' }}>Leave empty to send by hand from the list.</p>
+              </div>
+            )}
+            {repeat === 'weekly' && (
+              <div>
+                <label style={labelStyle}>On</label>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', paddingTop: 6 }}>
+                  {WEEKDAYS.map(([k, l]) => (
+                    <label key={k} style={{ fontSize: 13, display: 'flex', gap: 4, alignItems: 'center' }}>
+                      <input type="checkbox" aria-label={`Repeat on ${l}`} checked={repeatDays.includes(k)} onChange={() => setRepeatDays((d) => (d.includes(k) ? d.filter((x) => x !== k) : [...d, k]))} />
+                      {l}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+            {repeat === 'monthly' && (
+              <div>
+                <label style={labelStyle}>Day of month</label>
+                <input type="number" aria-label="Day of month" min={1} max={31} value={repeatDayOfMonth} onChange={(e) => setRepeatDayOfMonth(Math.max(1, Math.min(31, Number(e.target.value) || 1)))} style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }} />
+              </div>
+            )}
+            {repeat !== 'off' && (
+              <>
+                <div>
+                  <label style={labelStyle}>At</label>
+                  <input type="time" aria-label="Repeat time" value={repeatTime} onChange={(e) => setRepeatTime(e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Skip anyone texted by this in the last (days)</label>
+                  <input type="number" aria-label="Cooldown days" min={1} max={3650} value={cooldownDays} onChange={(e) => setCooldownDays(Math.max(1, Math.min(3650, Number(e.target.value) || 1)))} style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }} />
+                </div>
+                <p style={{ gridColumn: '1 / -1', fontSize: 11, color: 'var(--color-text-muted)', margin: 0 }}>
+                  Each run is an ordinary campaign built from this audience on the day, minus anyone it texted inside the cooldown. Quiet hours, the per-number cap and the daily bulk cap all still apply.
+                </p>
+              </>
+            )}
           </div>
 
           {preview && (
@@ -430,11 +564,57 @@ export function CampaignsTab({ prefill }: { prefill?: CampaignPrefill } = {}) {
               {testing ? 'Sending…' : 'Send a test to me'}
             </Btn>
             <Btn onClick={handleCreate} disabled={saving || !name || !message || (abEnabled && !messageB) || !!recipeNeeds}>
-              {saving ? 'Creating…' : scheduledAt ? 'Schedule' : 'Create Draft'}
+              {saving ? 'Creating…' : repeat !== 'off' ? 'Create recurring campaign' : scheduledAt ? 'Schedule' : 'Create Draft'}
             </Btn>
             <Btn variant="ghost" onClick={resetForm}>Cancel</Btn>
           </div>
         </Card>
+      )}
+
+      {schedules.length > 0 && (
+        <TableCard>
+          <div style={{ padding: '12px 16px 0', fontWeight: 700, fontSize: 14 }}>Recurring campaigns</div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginTop: 8 }}>
+            <thead>
+              <tr>
+                <th style={TH}>Name</th>
+                <th style={TH}>Audience</th>
+                <th style={TH}>When</th>
+                <th style={TH}>Next run</th>
+                <th style={TH}>Last run</th>
+                <th style={TH}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {schedules.map((sc) => (
+                <tr key={sc.id} data-testid={`schedule-${sc.id}`}>
+                  <td style={{ ...TD, fontWeight: 600 }}>
+                    {sc.name}
+                    {!sc.is_active && <Badge label="paused" color="gray" />}
+                  </td>
+                  <td style={{ ...TD, fontSize: 12, color: 'var(--color-text-secondary)', maxWidth: 240 }}>{sc.audience_summary}<div style={{ color: 'var(--color-text-muted)' }}>Cooldown {sc.cooldown_days} days</div></td>
+                  <td style={{ ...TD, fontSize: 12 }}>{sc.schedule_summary}</td>
+                  <td style={{ ...TD, fontSize: 12, color: 'var(--color-text-secondary)' }}>{sc.is_active && sc.next_run_at ? new Date(sc.next_run_at).toLocaleString() : '—'}</td>
+                  <td style={{ ...TD, fontSize: 12, color: 'var(--color-text-secondary)' }}>
+                    {sc.last_campaign ? (
+                      <div>
+                        <div>{sc.last_run_at ? new Date(sc.last_run_at).toLocaleDateString() : ''} · {sc.last_campaign.status === 'cancelled' ? 'nobody due' : `${sc.last_campaign.total_recipients} sent`}</div>
+                        {sc.last_campaign.results && <div>{sc.last_campaign.results.buyers} bought · MVR {sc.last_campaign.results.revenue_mvr.toFixed(2)}</div>}
+                      </div>
+                    ) : `Not yet (${sc.runs_count} runs)`}
+                  </td>
+                  <td style={TD}>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <Btn small variant="secondary" onClick={() => runSchedule(sc)} disabled={scheduleBusy === sc.id} aria-label={`Run ${sc.name} now`}>Run now</Btn>
+                      <Btn small variant="ghost" onClick={() => void toggleSchedule(sc)} disabled={scheduleBusy === sc.id} aria-label={`${sc.is_active ? 'Pause' : 'Resume'} ${sc.name}`}>{sc.is_active ? 'Pause' : 'Resume'}</Btn>
+                      <Btn small variant="danger" onClick={() => removeSchedule(sc)} aria-label={`Delete ${sc.name}`}>Delete</Btn>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </TableCard>
       )}
 
       {loading && campaigns.length === 0 ? <Spinner /> : campaigns.length === 0 ? (
@@ -459,13 +639,20 @@ export function CampaignsTab({ prefill }: { prefill?: CampaignPrefill } = {}) {
                     <span style={{ color: 'var(--color-success)', fontWeight: 600 }}>{c.sent_count}</span>
                     {c.failed_count > 0 && <span style={{ color: 'var(--color-danger)', marginLeft: 4 }}>/ {c.failed_count} failed</span>}
                   </td>
-                  <td style={{ ...TD, fontSize: 12, color: 'var(--color-text-secondary)' }}>
-                    {c.ab_test_enabled && c.ab_stats ? (
-                      <div>
-                        <div>A: {c.ab_stats.a.sent} sent ({c.ab_stats.a.delivery_rate}%)</div>
-                        <div>B: {c.ab_stats.b.sent} sent ({c.ab_stats.b.delivery_rate}%)</div>
+                  <td style={{ ...TD, fontSize: 12, color: 'var(--color-text-secondary)' }} data-testid={`campaign-results-${c.id}`}>
+                    {c.results ? (
+                      <div title={`${c.results.buyers} of ${c.results.reached} reached customers placed a paid order within ${c.results.window_days} days of the send`}>
+                        <div style={{ fontWeight: 600, color: c.results.buyers > 0 ? 'var(--color-success-strong)' : 'var(--color-text-secondary)' }}>
+                          {c.results.buyers} bought ({c.results.buyer_rate}%){c.results.complete ? '' : ' so far'}
+                        </div>
+                        <div>{c.results.orders} order{c.results.orders === 1 ? '' : 's'} · MVR {c.results.revenue_mvr.toFixed(2)}</div>
                       </div>
-                    ) : c.ab_test_enabled ? `${c.ab_split_percent ?? 50}/${100 - (c.ab_split_percent ?? 50)}` : '—'}
+                    ) : '—'}
+                    {c.ab_test_enabled && c.ab_stats && (
+                      <div style={{ marginTop: 4, color: 'var(--color-text-muted)' }}>
+                        A {c.ab_stats.a.sent} sent ({c.ab_stats.a.delivery_rate}%) · B {c.ab_stats.b.sent} sent ({c.ab_stats.b.delivery_rate}%)
+                      </div>
+                    )}
                   </td>
                   <td style={{ ...TD, color: 'var(--color-primary)', fontWeight: 600 }}>MVR {c.total_cost_mvr ?? '—'}</td>
                   <td style={{ ...TD, color: 'var(--color-text-muted)', fontSize: 12 }}>{new Date(c.created_at).toLocaleDateString()}</td>
@@ -480,6 +667,9 @@ export function CampaignsTab({ prefill }: { prefill?: CampaignPrefill } = {}) {
                             {actionId === c.id ? 'Sending…' : 'Send'}
                           </Btn>
                         </>
+                      )}
+                      {c.status !== 'draft' && onViewLog && (
+                        <Btn small variant="ghost" onClick={() => onViewLog(c.id)} aria-label={`View the log for ${c.name}`}>View log</Btn>
                       )}
                       {['draft', 'sending', 'running'].includes(c.status) && (
                         <Btn small variant="danger" onClick={() => handleCancel(c.id)} disabled={actionId === c.id}>
