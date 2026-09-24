@@ -10,12 +10,16 @@ use App\Models\InventoryItem;
 use App\Models\InventoryReorderAlert;
 use App\Models\SiteSetting;
 use App\Models\User;
+use App\Support\OwnerPhones;
 use Illuminate\Console\Command;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class CheckReorderPoints extends Command
 {
+    /** An open alert is mentioned again in the digest after this long. */
+    public const REMIND_DAYS = 7;
+
     protected $signature = 'inventory:check-reorder';
 
     protected $description = 'Create reorder alerts for raw inventory items at or below their reorder point';
@@ -30,8 +34,6 @@ class CheckReorderPoints extends Command
             ->get();
 
         $created = 0;
-        /** @var list<string> $notifyNames */
-        $notifyNames = [];
 
         foreach ($items as $item) {
             // Permanently excluded from Restock Plan — no new alerts / SMS.
@@ -60,12 +62,6 @@ class CheckReorderPoints extends Command
             ]);
             $created++;
             $this->line("  Alert created: {$item->name} (stock: {$item->current_stock} {$item->unit}, reorder at: {$item->reorder_point})");
-
-            $snoozeUntil = $item->restock_snoozed_until;
-            $isSnoozed = $snoozeUntil !== null && $snoozeUntil->copy()->startOfDay()->gte($today);
-            if (!$isSnoozed) {
-                $notifyNames[] = (string) $item->name;
-            }
         }
 
         $resolved = 0;
@@ -88,8 +84,28 @@ class CheckReorderPoints extends Command
             $this->info("Created {$created} new reorder alert(s). {$items->count()} item(s) at or below reorder point. Resolved {$resolved}.");
         }
 
-        if ($notifyNames !== []) {
-            $this->maybeSendReorderSms($sms, $notifyNames);
+        // The digest names every open alert the owner has not heard about
+        // yet, or not for a week: a new one, one whose snooze has ended, one
+        // still open after seven days (audit, 2026-09-24). Excluded items
+        // never have an alert; snoozed ones wait for the snooze to end.
+        $due = InventoryReorderAlert::query()
+            ->with('inventoryItem')
+            ->whereNull('resolved_at')
+            ->where(fn ($q) => $q->whereNull('notified_at')->orWhere('notified_at', '<', now()->subDays(self::REMIND_DAYS)))
+            ->get()
+            ->filter(function (InventoryReorderAlert $alert) use ($today): bool {
+                $item = $alert->inventoryItem;
+                if (!$item || $item->restock_excluded) {
+                    return false;
+                }
+                $snoozeUntil = $item->restock_snoozed_until;
+
+                return $snoozeUntil === null || $snoozeUntil->copy()->startOfDay()->lt($today);
+            })
+            ->values();
+
+        if ($due->isNotEmpty() && $this->maybeSendReorderSms($sms, $due->map(fn (InventoryReorderAlert $a) => (string) $a->inventoryItem?->name)->all())) {
+            InventoryReorderAlert::query()->whereIn('id', $due->pluck('id'))->update(['notified_at' => now()]);
         }
 
         if ($created > 0) {
@@ -134,11 +150,12 @@ class CheckReorderPoints extends Command
 
     /**
      * @param list<string> $itemNames
+     * @return bool true when a text went out (so the alerts can be stamped)
      */
-    private function maybeSendReorderSms(SmsService $sms, array $itemNames): void
+    private function maybeSendReorderSms(SmsService $sms, array $itemNames): bool
     {
         if (!filter_var(SiteSetting::get('ops_inventory_reorder_alert_sms', '0'), FILTER_VALIDATE_BOOLEAN)) {
-            return;
+            return false;
         }
 
         $count = count($itemNames);
@@ -151,28 +168,12 @@ class CheckReorderPoints extends Command
             . ($preview !== '' ? " ({$preview})" : '')
             . '. Check Forecasts → Restock.';
 
-        $phones = User::query()
-            ->where('is_active', true)
-            ->whereHas('role', fn ($q) => $q->whereIn('slug', ['owner', 'manager']))
-            ->whereNotNull('phone')
-            ->where('phone', '!=', '')
-            ->pluck('phone')
-            ->map(fn ($p) => trim((string) $p))
-            ->filter()
-            ->unique()
-            ->values();
-
-        if ($phones->isEmpty()) {
-            $fallback = trim((string) SiteSetting::get('business_phone', ''));
-            if ($fallback !== '') {
-                $phones = collect([$fallback]);
-            }
-        }
+        $phones = OwnerPhones::all();
 
         if ($phones->isEmpty()) {
             $this->warn('Reorder SMS enabled but no owner/manager phone or business_phone set.');
 
-            return;
+            return false;
         }
 
         $dateKey = now()->toDateString();
@@ -195,5 +196,7 @@ class CheckReorderPoints extends Command
         }
 
         $this->info('Reorder alert SMS sent to ' . $phones->count() . ' recipient(s).');
+
+        return true;
     }
 }

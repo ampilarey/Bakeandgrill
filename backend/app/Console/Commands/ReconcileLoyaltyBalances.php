@@ -25,10 +25,13 @@ class ReconcileLoyaltyBalances extends Command
         $mismatches = [];
 
         foreach ($accounts as $account) {
-            $ledgerSum = LoyaltyLedger::where('customer_id', $account->customer_id)
+            // MySQL hands SUM() back as a string; compared strictly to the
+            // integer balance every account read as drift and was
+            // "fixed" nightly to the value it already had (audit, 2026-09-24).
+            $ledgerSum = (int) LoyaltyLedger::where('customer_id', $account->customer_id)
                 ->sum('points');
 
-            if ($ledgerSum !== $account->points_balance) {
+            if ($ledgerSum !== (int) $account->points_balance) {
                 $mismatches[] = [
                     'customer_id' => $account->customer_id,
                     'balance' => $account->points_balance,

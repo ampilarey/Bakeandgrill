@@ -20,7 +20,7 @@ import type {
   CustomerCreditSummary, CustomerCreditInvoice,
   CustomerDepositSummary, CustomerDepositTransaction,
 } from '../api';
-import type { LoyaltyAccount, LoyaltyTierProgress } from '@shared/types';
+import type { LoyaltyAccount } from '@shared/types';
 import { AuthBlock } from '../components/AuthBlock';
 import { PrayerBar } from '../components/PrayerBar';
 import { PageHeader } from '../components/shell/PageHeader';
@@ -29,7 +29,7 @@ import { ProfileSection } from './AccountPage/ProfileSection';
 import { OrderHistorySection } from './AccountPage/OrderHistorySection';
 import { AccountSettingsBlock, AccountMoreBlock } from './AccountPage/AccountChromeBlocks';
 import {
-  SectionCard, TIER_COLOR, btnStyle, inputStyle, statusBadge,
+  SectionCard, btnStyle, inputStyle, statusBadge,
 } from './AccountPage/accountShared';
 import { useAccountAddresses } from './AccountPage/useAccountAddresses';
 import { useAccountProfile } from './AccountPage/useAccountProfile';
@@ -42,7 +42,6 @@ type PanelId =
   | 'favourites'
   | 'preorders'
   | 'reviews'
-  | 'loyalty'
   | 'referrals'
   | 'credit'
   | 'deposit';
@@ -62,7 +61,6 @@ export function AccountPage() {
   const push = usePushNotifications(isAuthenticated);
 
   const [loyalty, setLoyalty] = useState<LoyaltyAccount | null>(null);
-  const [loyaltyTierProgress, setLoyaltyTierProgress] = useState<LoyaltyTierProgress | null>(null);
   const [loyaltyError, setLoyaltyError] = useState('');
 
   // Reservations
@@ -123,10 +121,7 @@ export function AccountPage() {
   useEffect(() => {
     if (!authReady || !isAuthenticated) return;
     getLoyaltyAccount()
-      .then(({ account, tier_progress }) => {
-        setLoyalty(account);
-        if (tier_progress) setLoyaltyTierProgress(tier_progress);
-      })
+      .then(({ account }) => setLoyalty(account))
       .catch((e: Error) => setLoyaltyError(e.message || t('account.err_loyalty')));
   }, [isAuthenticated, authReady]);
 
@@ -252,21 +247,6 @@ export function AccountPage() {
         <PageHeader title={t('account.title')} />
         <div style={{ padding: '0 var(--page-gutter)', display: 'flex', flexDirection: 'column', gap: 20 }}>
           <AuthBlock onSuccess={handleAuthSuccess} />
-          {/* The till scans this to attach the account to a counter order.
-              Owner, 2026-09-02. The code carries the phone number the
-              account is registered under; nothing more. */}
-          {isAuthenticated && customer?.phone && (
-            <SectionCard title={t('account.my_code')}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }} data-testid="account-my-code">
-                <div style={{ padding: 10, background: '#fff', borderRadius: 12, border: '1px solid var(--color-border, #E8E0D8)' }}>
-                  <QRCodeSVG value={`BG-C-${customer.phone}`} size={132} />
-                </div>
-                <p style={{ margin: 0, flex: '1 1 160px', fontSize: 14, lineHeight: 1.5, color: 'var(--color-text-secondary, #6B5D4F)' }}>
-                  {t('account.my_code_hint')}
-                </p>
-              </div>
-            </SectionCard>
-          )}
           <SectionCard title={t('account.prayer_times')}>
             <div style={{ overflow: 'visible' }}>
               <PrayerBar />
@@ -288,7 +268,6 @@ export function AccountPage() {
       favourites:   t('account.favourites'),
       preorders:    t('account.preorders'),
       reviews:      t('account.reviews'),
-      loyalty:      t('account.loyalty'),
       referrals:    t('account.referrals'),
       credit:       t('account.credit'),
       deposit:      t('account.deposit'),
@@ -581,138 +560,6 @@ export function AccountPage() {
                   </div>
                 )}
               </SectionCard>
-            </>
-          )}
-
-          {panel === 'loyalty' && (
-            <>
-              {loyaltyError && <p style={{ color: 'var(--color-error, #dc2626)', fontSize: 13 }}>{loyaltyError}</p>}
-              {loyalty ? (
-                <>
-                  <div style={{
-                    background: TIER_COLOR[loyalty.tier]?.bg ?? '#FEF3E2',
-                    border: `2px solid ${TIER_COLOR[loyalty.tier]?.border ?? '#FCD34D'}`,
-                    borderRadius: 18, padding: '24px 20px', textAlign: 'center',
-                  }}>
-                    <div style={{ fontSize: 40, marginBottom: 8 }}>
-                      {loyalty.tier === 'gold' ? '🥇' : loyalty.tier === 'silver' ? '🥈' : loyalty.tier === 'platinum' ? '💎' : '🥉'}
-                    </div>
-                    <p style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: TIER_COLOR[loyalty.tier]?.text ?? '#92400E', margin: '0 0 4px' }}>
-                      {t('account.loyalty_member').replace('{tier}', loyalty.tier)}
-                    </p>
-                    <p style={{ fontSize: 36, fontWeight: 900, color: TIER_COLOR[loyalty.tier]?.text ?? '#92400E', margin: '0 0 4px' }}>
-                      {t('account.loyalty_pts').replace('{n}', loyalty.points_balance.toLocaleString())}
-                    </p>
-                    <p style={{ fontSize: 13, color: TIER_COLOR[loyalty.tier]?.text ?? '#92400E', opacity: 0.7, margin: 0 }}>
-                      {loyalty.lifetime_points != null ? t('account.loyalty_lifetime').replace('{n}', loyalty.lifetime_points.toLocaleString()) : ''}
-                    </p>
-                  </div>
-
-                  {(() => {
-                    if (loyaltyTierProgress?.enabled) {
-                      if (loyaltyTierProgress.at_max_tier) {
-                        return (
-                          <div style={{ textAlign: 'center', padding: '0.75rem', background: 'var(--color-surface-alt)', borderRadius: 12, fontSize: 13, color: 'var(--tier-platinum-text)', fontWeight: 600 }}>
-                            💎 {t('account.loyalty_top').replace('{tier}', loyaltyTierProgress.current_tier_name)}
-                          </div>
-                        );
-                      }
-                      if (loyaltyTierProgress.next_tier_name) {
-                        const progress = (loyaltyTierProgress.progress_percent ?? 0) / 100;
-                        const ptsLeft = loyaltyTierProgress.points_to_next ?? 0;
-                        return (
-                          <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 14, padding: '16px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                              <span style={{ fontSize: 13, fontWeight: 700 }}>{loyaltyTierProgress.current_tier_name}</span>
-                              <span style={{ fontSize: 13, fontWeight: 700, color: TIER_COLOR[loyaltyTierProgress.next_tier ?? '']?.text ?? '#92400E' }}>
-                                {loyaltyTierProgress.next_tier_name}
-                              </span>
-                            </div>
-                            <div style={{ height: 10, background: 'var(--color-border)', borderRadius: 999, overflow: 'hidden', marginBottom: 8 }}>
-                              <div style={{ height: '100%', width: `${(progress * 100).toFixed(1)}%`, background: TIER_COLOR[loyalty.tier]?.border ?? '#FCD34D', borderRadius: 999, transition: 'width 0.4s ease' }} />
-                            </div>
-                            <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0, textAlign: 'center' }}>
-                              {ptsLeft > 0
-                                ? t('account.loyalty_to_reach').replace('{n}', ptsLeft.toLocaleString()).replace('{tier}', loyaltyTierProgress.next_tier_name)
-                                : t('account.loyalty_top').replace('{tier}', loyaltyTierProgress.next_tier_name)}
-                            </p>
-                          </div>
-                        );
-                      }
-                    }
-
-                    const TIERS = [
-                      { key: 'bronze',   label: t('account.tier.bronze'),   threshold: 0,     next: 1000,  icon: '🥉' },
-                      { key: 'silver',   label: t('account.tier.silver'),   threshold: 1000,  next: 5000,  icon: '🥈' },
-                      { key: 'gold',     label: t('account.tier.gold'),     threshold: 5000,  next: 15000, icon: '🥇' },
-                      { key: 'platinum', label: t('account.tier.platinum'), threshold: 15000, next: null,  icon: '💎' },
-                    ];
-                    const lifePoints = loyalty.lifetime_points ?? 0;
-                    const currentIdx = TIERS.findIndex((tier) => tier.key === loyalty.tier);
-                    const current = TIERS[currentIdx] ?? TIERS[0];
-                    const nextTier = TIERS[currentIdx + 1];
-                    if (!nextTier) {
-                      return (
-                        <div style={{ textAlign: 'center', padding: '0.75rem', background: 'var(--color-surface-alt)', borderRadius: 12, fontSize: 13, color: 'var(--tier-platinum-text)', fontWeight: 600 }}>
-                          💎 {t('account.loyalty_top').replace('{tier}', t('account.tier.platinum'))}
-                        </div>
-                      );
-                    }
-                    const progress = Math.min(1, Math.max(0, (lifePoints - current.threshold) / (nextTier.threshold - current.threshold)));
-                    const ptsLeft = nextTier.threshold - lifePoints;
-                    return (
-                      <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 14, padding: '16px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                          <span style={{ fontSize: 13, fontWeight: 700 }}>{current.icon} {current.label}</span>
-                          <span style={{ fontSize: 13, fontWeight: 700, color: TIER_COLOR[nextTier.key]?.text ?? '#92400E' }}>{nextTier.icon} {nextTier.label}</span>
-                        </div>
-                        <div style={{ height: 10, background: 'var(--color-border)', borderRadius: 999, overflow: 'hidden', marginBottom: 8 }}>
-                          <div style={{ height: '100%', width: `${(progress * 100).toFixed(1)}%`, background: TIER_COLOR[loyalty.tier]?.border ?? '#FCD34D', borderRadius: 999, transition: 'width 0.4s ease' }} />
-                        </div>
-                        <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0, textAlign: 'center' }}>
-                          {ptsLeft > 0
-                            ? t('account.loyalty_to_reach').replace('{n}', ptsLeft.toLocaleString()).replace('{tier}', nextTier.label)
-                            : t('account.loyalty_top').replace('{tier}', nextTier.label)}
-                        </p>
-                      </div>
-                    );
-                  })()}
-
-                  <SectionCard title={t('account.loyalty_earn_title')}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                      {[
-                        { icon: '🛒', label: t('account.loyalty_earn_spend'), detail: t('account.loyalty_earn_spend_d') },
-                        { icon: '🎂', label: t('account.loyalty_earn_bday'), detail: t('account.loyalty_earn_bday_d') },
-                        { icon: '🎁', label: t('account.loyalty_earn_ref'), detail: t('account.loyalty_earn_ref_d') },
-                      ].map((row) => (
-                        <div key={row.label} style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-                          <span style={{ fontSize: 26, flexShrink: 0 }}>{row.icon}</span>
-                          <div>
-                            <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-dark)', margin: '0 0 2px' }}>{row.label}</p>
-                            <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>{row.detail}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </SectionCard>
-
-                  <SectionCard title={t('account.loyalty_redeem_title')}>
-                    <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 10px' }}>
-                      {t('account.loyalty_redeem_blurb').replace('{rate}', t('account.loyalty_redeem_rate'))}
-                    </p>
-                    {loyalty.points_balance >= 100 && (
-                      <div style={{ background: 'var(--color-success-bg, #DCFCE7)', borderRadius: 10, padding: '12px 16px', fontSize: 13, color: 'var(--color-success, #15803D)', fontWeight: 600 }}>
-                        🎉 {t('account.loyalty_redeem_up_to').replace('{amount}', Math.floor(loyalty.points_balance / 100).toFixed(2))}
-                      </div>
-                    )}
-                  </SectionCard>
-                </>
-              ) : (
-                <div style={{ textAlign: 'center', padding: '48px 0' }}>
-                  <p style={{ fontSize: 36, margin: '0 0 8px' }}>⭐</p>
-                  <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>{t('account.loyalty_empty')}</p>
-                </div>
-              )}
             </>
           )}
 
@@ -1070,6 +917,24 @@ export function AccountPage() {
         <SectionCard title={t('account.profile')}>
           {hubRow('👤', t('account.profile'), () => setPanel('profile'), true)}
         </SectionCard>
+
+        {/* The till scans this to attach the account to a counter order.
+            Owner, 2026-09-02. The code carries the phone number the
+            account is registered under; nothing more. (It sat in the
+            signed-out branch until the 2026-09-24 audit, so nobody ever
+            saw it.) */}
+        {customer?.phone && (
+          <SectionCard title={t('account.my_code')}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }} data-testid="account-my-code">
+              <div style={{ padding: 10, background: '#fff', borderRadius: 12, border: '1px solid var(--color-border, #E8E0D8)' }}>
+                <QRCodeSVG value={`BG-C-${customer.phone}`} size={132} />
+              </div>
+              <p style={{ margin: 0, flex: '1 1 160px', fontSize: 14, lineHeight: 1.5, color: 'var(--color-text-secondary, #6B5D4F)' }}>
+                {t('account.my_code_hint')}
+              </p>
+            </div>
+          </SectionCard>
+        )}
 
         {/* Prayer times — single mount */}
         <SectionCard title={t('account.prayer_times')}>

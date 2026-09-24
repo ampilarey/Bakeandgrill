@@ -50,11 +50,13 @@ class EloquentLoyaltyAccountRepository implements LoyaltyAccountRepositoryInterf
             DB::table('loyalty_accounts')
                 ->where('customer_id', $customerId)
                 ->increment('lifetime_points', $addLifetime);
+            LoyaltyAccount::mirrorCustomer($customerId);
 
             return;
         }
 
         DB::table('loyalty_accounts')->where('customer_id', $customerId)->update(['points_balance' => $balance]);
+        LoyaltyAccount::mirrorCustomer($customerId);
     }
 
     public function decrementPointsHeld(int $customerId, int $points): void

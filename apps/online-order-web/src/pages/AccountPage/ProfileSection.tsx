@@ -4,6 +4,7 @@ import {
   FieldRow, SectionCard, TIER_COLOR, alertStyle, btnStyle, inputStyle,
 } from './accountShared';
 import type { useAccountProfile } from './useAccountProfile';
+import { loyaltyAvailablePoints } from '../../utils/loyalty';
 
 type ProfileSectionProps = {
   profile: ReturnType<typeof useAccountProfile>;
@@ -40,8 +41,8 @@ export function ProfileSection({ profile, loyalty, loyaltyError }: ProfileSectio
           borderRadius: 14,
         }}>
           <span style={{ fontSize: 22 }}>⭐</span>
-          <span style={{ fontSize: 14, fontWeight: 700, color: TIER_COLOR[loyalty.tier]?.text ?? '#92400E' }}>
-            {t('account.loyalty_pts').replace('{n}', loyalty.points_balance.toLocaleString())}
+          <span style={{ fontSize: 14, fontWeight: 700, color: TIER_COLOR[loyalty.tier]?.text ?? '#92400E' }} data-testid="profile-loyalty-points">
+            {t('account.loyalty_pts').replace('{n}', loyaltyAvailablePoints(loyalty).toLocaleString())}
           </span>
           <span style={{ fontSize: 12, color: TIER_COLOR[loyalty.tier]?.text ?? '#92400E', opacity: 0.75, textTransform: 'capitalize' }}>
             {t('account.profile_member').replace('{tier}', loyalty.tier)}

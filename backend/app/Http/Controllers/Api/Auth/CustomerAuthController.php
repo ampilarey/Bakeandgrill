@@ -176,16 +176,21 @@ class CustomerAuthController extends Controller
             }
         }
 
-        $key = 'otp-request:login:' . $phone;
+        // A reset code asked for here costs the same SMS as one asked for
+        // through /forgot-password, so it shares that route's tighter
+        // budget (5 per half hour) rather than the login one (audit, 2026-09-24).
+        [$key, $max, $decay] = $purpose === 'reset_password'
+            ? ['otp-request:reset:' . $phone, 5, 1800]
+            : ['otp-request:login:' . $phone, 20, 300];
 
-        if (RateLimiter::tooManyAttempts($key, 20)) {
+        if (RateLimiter::tooManyAttempts($key, $max)) {
             $seconds = RateLimiter::availableIn($key);
             throw ValidationException::withMessages([
                 'phone' => ['Too many OTP requests. Please try again in ' . ceil($seconds / 60) . ' minutes.'],
             ]);
         }
 
-        RateLimiter::hit($key, 300);
+        RateLimiter::hit($key, $decay);
 
         $otpCode = $this->otpService->issue($phone, $purpose, $channel, $email);
 

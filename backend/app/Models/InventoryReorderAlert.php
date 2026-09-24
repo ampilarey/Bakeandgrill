@@ -14,6 +14,7 @@ class InventoryReorderAlert extends Model
         'current_stock',
         'reorder_point',
         'resolved_at',
+        'notified_at',
     ];
 
     protected $casts = [
@@ -21,6 +22,7 @@ class InventoryReorderAlert extends Model
         'current_stock' => 'float',
         'reorder_point' => 'float',
         'resolved_at' => 'datetime',
+        'notified_at' => 'datetime',
     ];
 
     public function inventoryItem(): BelongsTo

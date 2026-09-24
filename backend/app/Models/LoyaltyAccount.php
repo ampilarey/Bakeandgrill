@@ -25,6 +25,33 @@ class LoyaltyAccount extends Model
         'lifetime_points' => 'integer',
     ];
 
+    /**
+     * The customers table carries a copy of the balance and tier
+     * (`loyalty_points`, `tier`) that the admin customer list, the POS
+     * search and the login payload read. It was written once at sign-up
+     * and never again (audit, 2026-09-24), so those screens showed zero
+     * and bronze for everyone. Every save of the account now copies the
+     * two values across; the repository's raw updates call it too.
+     */
+    protected static function booted(): void
+    {
+        static::saved(function (LoyaltyAccount $account): void {
+            $account->mirrorToCustomer();
+        });
+    }
+
+    public function mirrorToCustomer(): void
+    {
+        Customer::withTrashed()
+            ->whereKey($this->customer_id)
+            ->update(['loyalty_points' => (int) $this->points_balance, 'tier' => (string) $this->tier]);
+    }
+
+    public static function mirrorCustomer(int $customerId): void
+    {
+        static::query()->where('customer_id', $customerId)->first()?->mirrorToCustomer();
+    }
+
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);

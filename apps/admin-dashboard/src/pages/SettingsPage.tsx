@@ -299,11 +299,11 @@ function NotificationsSettings() {
             </button>
             <span>
               <span style={{ display: 'block', fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>
-                Inventory reorder SMS
+                Stock alert SMS
               </span>
               <span style={{ display: 'block', fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2, lineHeight: 1.45 }}>
-                Daily digest to owners/managers when inventory hits reorder point (skips snoozed SKUs).
-                Falls back to business phone if staff have no phone.
+                Morning text to owners/managers when inventory hits its reorder point (again when a snooze ends, and weekly while it stays low)
+                and when stock on hand expires within a week. Falls back to the business phone if staff have no phone.
               </span>
             </span>
           </label>
