@@ -206,6 +206,8 @@ export async function updateDeliveryCapacity(
 export interface DeliveryFeeSettings {
   default_fee: number;
   free_threshold: number;
+  /** Smallest food order we deliver, before the fee; 0 = no minimum (checkout audit, 2026-09-26). */
+  min_order?: number;
   /** Customer-facing delivery promise, e.g. "30–45 min". */
   delivery_time: string;
   zone_fees: Record<string, number>;
@@ -223,6 +225,7 @@ export async function getDeliveryFeeSettings(): Promise<{ settings: DeliveryFeeS
 export async function updateDeliveryFeeSettings(payload: {
   default_fee: number;
   free_threshold: number;
+  min_order?: number;
   delivery_time?: string;
   zone_fees: Record<string, number>;
   restrict_to_zone_fees?: boolean;
@@ -308,6 +311,8 @@ export type OpsAlertsSettings = {
   shift_open_alert_hours?: number;
   /** A close whose cash variance is this much or more texts the owners; 0 = off. */
   shift_variance_alert_mvr?: number;
+  /** Checkout audit, 2026-09-26: a paid pickup / dine-in order not started after this many minutes texts the owners; 0 = off. */
+  unstarted_order_alert_minutes?: number;
   delivery_delay_alert_sms: boolean;
   inventory_reorder_alert_sms: boolean;
 };

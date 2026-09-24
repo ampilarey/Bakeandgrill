@@ -28,6 +28,7 @@ import {
   applyReferralToOrder,
   removeReferralFromOrder,
   fetchCustomerAddresses,
+  cancelCustomerOrder,
   type CustomerAddress,
   type LoyaltyAccount,
 } from "../api";
@@ -61,11 +62,16 @@ import {
 } from '../utils/checkoutDeliveryAddress';
 import {
   CHECKOUT_PENDING_ORDER_KEY,
+  attemptFor,
+  checkoutSignature,
   clearCheckoutPendingOrderId,
   dueLaarFromOrder,
   isPendingOrderReusable,
   isZeroBalanceApiError,
+  newCheckoutKey,
+  readCheckoutAttempt,
   readCheckoutPendingOrderId,
+  writeCheckoutAttempt,
   writeCheckoutPendingOrderId,
 } from '../utils/checkoutPendingOrder';
 
@@ -421,6 +427,8 @@ export function useCheckout() {
   const [smallOrderFeeLabel, setSmallOrderFeeLabel] = useState('Small order fee');
   const [errors, setErrors]           = useState<Record<string, string>>({});
   const [isPlacing, setIsPlacing]     = useState(false);
+  // Checkout audit, 2026-09-26: the delivery minimum from the fee preview.
+  const [deliveryMinimum, setDeliveryMinimum] = useState<{ minMvr: number; shortByLaar: number }>({ minMvr: 0, shortByLaar: 0 });
   const [globalError, setGlobalError] = useState("");
 
   const hasMounted = useRef(false);
@@ -606,7 +614,13 @@ export function useCheckout() {
     const timer = window.setTimeout(() => {
       fetchDeliveryFeePreview(island, discountedSubtotalLaar)
         .then((preview) => {
-          if (!cancelled) setDeliveryFee(preview.fee_laar);
+          if (!cancelled) {
+            setDeliveryFee(preview.fee_laar);
+            setDeliveryMinimum({
+              minMvr: Number(preview.min_order_mvr ?? 0),
+              shortByLaar: preview.below_minimum ? Number(preview.short_by_laar ?? 0) : 0,
+            });
+          }
         })
         .catch(() => {
           if (!cancelled) {
@@ -1027,6 +1041,10 @@ export function useCheckout() {
     if (!isAuthenticated) { setGlobalError('Please sign in to continue.'); return; }
     if (isPlacing) return; // prevent double-submission
     if (orderType === "delivery" && !validateDelivery()) return;
+    if (orderType === "delivery" && deliveryMinimum.shortByLaar > 0) {
+      setGlobalError(`Delivery orders start at MVR ${deliveryMinimum.minMvr.toFixed(2)}. Add MVR ${(deliveryMinimum.shortByLaar / 100).toFixed(2)} more, or choose pickup.`);
+      return;
+    }
 
     setIsPlacing(true);
     setGlobalError("");
@@ -1036,23 +1054,59 @@ export function useCheckout() {
     try {
       let orderId: number | null = null;
 
-      // Resume only when the stored order still owes money (BML retry).
-      // A paid kitchen-pending order from a prior checkout must NOT be reused —
-      // that is the reorder → "Nothing to pay" collision.
+      /*
+       * Checkout audit, 2026-09-26: what this attempt is for. Reusing the
+       * unpaid order from a previous attempt is only safe when the cart, order
+       * type, time and address are the same — otherwise the customer would pay
+       * for the old cart. A changed cart drops the old unpaid order and starts
+       * a new one; the key makes a retried request return the same order.
+       */
+      const signature = checkoutSignature({
+        orderType: tableSession.token ? 'table' : orderType,
+        collectOn,
+        pickupSlotAt: orderType === 'delivery' ? null : (pickupSlotAt ?? null),
+        partySize,
+        tableToken: tableSession.token ?? null,
+        address: orderType === 'delivery'
+          ? { line1: delivery.address_line1, line2: delivery.address_line2, island: delivery.island }
+          : null,
+        items: cart.map((item) => ({
+          id: item.id,
+          quantity: item.quantity,
+          variantId: (item as CartItem & { variantId?: number | null }).variantId ?? null,
+          packagingOptionId: item.packagingOptionId ?? null,
+          modifierIds: item.modifiers?.map((m) => m.id),
+          children: childrenFromCartItem(item) ?? null,
+        })),
+      });
+      const chosen = attemptFor(signature, readCheckoutAttempt());
+      let attempt = chosen.attempt;
+
+      // Resume only when the stored order still owes money (BML retry) and is
+      // for exactly this cart.
       if (pendingOrderId) {
         try {
           const { order: existing } = await getOrderDetail(pendingOrderId);
-          if (isPendingOrderReusable(existing)) {
+          if (chosen.changed) {
+            // The cart changed since that order was made: let it go now so it
+            // stops holding a pickup slot and stock.
+            if (existing.status === 'payment_pending') {
+              await cancelCustomerOrder(pendingOrderId).catch(() => undefined);
+            }
+            setPendingOrderId(null);
+          } else if (isPendingOrderReusable(existing)) {
             orderId = pendingOrderId;
           } else {
             setPendingOrderId(null);
+            attempt = { signature, key: newCheckoutKey() };
           }
         } catch {
           setPendingOrderId(null);
         }
       }
+      writeCheckoutAttempt(attempt);
 
-      if (orderId == null) {
+      const createOrder = async (key: string): Promise<{ id: number; status: string }> => {
         if (orderType === "delivery") {
           const res = await createDeliveryOrder({
             items: cart.map((item) => ({
@@ -1074,8 +1128,9 @@ export function useCheckout() {
             customer_notes: notes || undefined,
             collect_on: collectOn,
             reward_claims: rewardClaimsFromCart(cart),
+            idempotency_key: key,
           });
-          orderId = res.order.id;
+          return { id: res.order.id, status: String((res.order as { status?: string }).status ?? '') };
         } else if (tableSession.token) {
           /*
            * Scanned the QR on the table.
@@ -1098,8 +1153,9 @@ export function useCheckout() {
             customer_notes: notes || undefined,
             collect_on: "today",
             reward_claims: rewardClaimsFromCart(cart),
+            idempotency_key: key,
           });
-          orderId = res.order.id;
+          return { id: res.order.id, status: String((res.order as { status?: string }).status ?? '') };
         } else if (orderType === "dine_in") {
           // Prepaid dine-in: pay now, table held, pickup_slot_at = arrival time.
           const res = await createCustomerOrder({
@@ -1116,8 +1172,9 @@ export function useCheckout() {
             party_size: partySize,
             collect_on: "today",
             reward_claims: rewardClaimsFromCart(cart),
+            idempotency_key: key,
           });
-          orderId = res.order.id;
+          return { id: res.order.id, status: String((res.order as { status?: string }).status ?? '') };
         } else {
           const res = await createCustomerOrder({
             items: cart.map((item) => ({
@@ -1131,12 +1188,24 @@ export function useCheckout() {
             type: "online_pickup",
             customer_notes: notes || undefined,
             reward_claims: rewardClaimsFromCart(cart),
+            idempotency_key: key,
             // Pickup slots are same-day only — skip when collecting tomorrow.
             pickup_slot_at: collectOn === 'today' ? (pickupSlotAt ?? undefined) : undefined,
             collect_on: collectOn,
           });
-          orderId = res.order.id;
+          return { id: res.order.id, status: String((res.order as { status?: string }).status ?? '') };
         }
+      };
+
+      if (orderId == null) {
+        let created = await createOrder(attempt.key);
+        if (created.status === 'cancelled') {
+          // The key belonged to an order that has since been cancelled: start afresh.
+          attempt = { signature, key: newCheckoutKey() };
+          writeCheckoutAttempt(attempt);
+          created = await createOrder(attempt.key);
+        }
+        orderId = created.id;
       }
 
       setPendingOrderId(orderId);
@@ -1245,6 +1314,7 @@ export function useCheckout() {
         giftCardAttachedOrderId = null;
         await completeZeroBalanceOrder(orderId);
         setPendingOrderId(null);
+        writeCheckoutAttempt(null);
         try {
           const historyKey = 'bakegrill_order_history';
           const existing = JSON.parse(localStorage.getItem(historyKey) ?? '[]');
@@ -1273,6 +1343,7 @@ export function useCheckout() {
           giftCardAttachedOrderId = null;
           await completeZeroBalanceOrder(orderId);
           setPendingOrderId(null);
+          writeCheckoutAttempt(null);
           navigate(`/orders/${orderId}`);
           setIsPlacing(false);
           return;
@@ -1348,7 +1419,7 @@ export function useCheckout() {
     savedAddresses, selectedAddressId, setSelectedAddressId, applySavedAddress, markAddressAsNew,
     saveAddress, setSaveAddress, addressLabel, setAddressLabel, usingAutoDefaultAddress,
     promoCode, setPromoCode, promoApplied, setPromoApplied, promoError, promoLoading,
-    useLoyalty, setUseLoyalty, deliveryFee, errors, isPlacing, globalError,
+    useLoyalty, setUseLoyalty, deliveryFee, deliveryMinimum, errors, isPlacing, globalError,
     subtotalLaar, discountedSubtotalLaar, taxLaar, deliveryFeeLaar, promoDelta, loyaltyDelta, referralDelta,
     serviceChargeLaar, serviceChargeLabel: serviceChargePreview.label,
     packagingFeeLaar, packagingFeeLabel, smallOrderFeeLaar, smallOrderFeeLabel,

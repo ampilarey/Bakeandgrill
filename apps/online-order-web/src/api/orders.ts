@@ -57,6 +57,8 @@ export type DeliveryOrderPayload = {
   collect_on?: 'today' | 'tomorrow';
   fulfil_date?: string;
   reward_claims?: Array<{ promotion_id: number; item_id: number }>;
+  /** One per checkout attempt: a retried request returns the same order (checkout audit, 2026-09-26). */
+  idempotency_key?: string;
 };
 
 export interface ReorderPayload {
@@ -113,6 +115,8 @@ export async function createCustomerOrder(
      */
     table_token?: string;
     reward_claims?: Array<{ promotion_id: number; item_id: number }>;
+    /** One per checkout attempt: a retried request returns the same order (checkout audit, 2026-09-26). */
+    idempotency_key?: string;
   },
 ): Promise<{ order: Order }> {
   return request<{ order: Order }>(ENDPOINTS.CUSTOMER_ORDERS, {

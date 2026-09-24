@@ -37,6 +37,7 @@ class DeliverySettingsService
         return [
             'default_fee' => $this->defaultFee(),
             'free_threshold' => $this->freeThreshold(),
+            'min_order' => $this->minOrder(),
             'delivery_time' => $this->deliveryTime(),
             'fee_taxable' => $this->feeTaxable(),
             'zone_fees' => $zoneFees,
@@ -88,6 +89,18 @@ class DeliverySettingsService
         }
 
         return max(0.0, (float) config('delivery.free_threshold', 200.00));
+    }
+
+    /**
+     * Smallest food order (before the delivery fee) we will deliver, in MVR.
+     * 0 = no minimum. Checkout audit, 2026-09-26: a single drink could be
+     * ordered for delivery.
+     */
+    public function minOrder(): float
+    {
+        $raw = SiteSetting::get('delivery_min_order');
+
+        return $raw !== null && $raw !== '' ? max(0.0, round((float) $raw, 2)) : 0.0;
     }
 
     /**
@@ -181,6 +194,9 @@ class DeliverySettingsService
 
         SiteSetting::set('delivery_default_fee', (string) max(0, (float) $data['default_fee']));
         SiteSetting::set('delivery_free_threshold', (string) max(0, (float) $data['free_threshold']));
+        if (array_key_exists('min_order', $data)) {
+            SiteSetting::set('delivery_min_order', (string) max(0, round((float) ($data['min_order'] ?? 0), 2)));
+        }
         if (array_key_exists('delivery_time', $data)) {
             SiteSetting::set('delivery_time', trim((string) ($data['delivery_time'] ?? '')));
         }
@@ -229,11 +245,13 @@ class DeliverySettingsService
             [
                 'default_fee' => $before['default_fee'],
                 'free_threshold' => $before['free_threshold'],
+                'min_order' => $before['min_order'],
                 'fee_taxable' => $before['fee_taxable'],
             ],
             [
                 'default_fee' => $after['default_fee'],
                 'free_threshold' => $after['free_threshold'],
+                'min_order' => $after['min_order'],
                 'fee_taxable' => $after['fee_taxable'],
             ],
         );

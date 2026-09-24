@@ -517,6 +517,67 @@ class RefundWorkflowService
     }
 
     /**
+     * Checkout audit, 2026-09-26: a bank payment confirmed for an order the
+     * system had already cancelled, and which could not be brought back. The
+     * whole payment is owed back by card: an approved refund with the amount
+     * as external tender, so it lands under Refunds → Owed and in the daily
+     * summary. No stock, GST or loyalty is reversed — none was ever applied,
+     * because the order never reached paid. Idempotent per payment.
+     */
+    public function recordLatePaymentRefund(Order $order, \App\Models\Payment $payment): Refund
+    {
+        $marker = 'Payment #' . $payment->id . ' arrived after the order was cancelled';
+        $existing = Refund::where('order_id', $order->id)->where('reason', $marker)->first();
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $amountLaar = (int) ($payment->amount_laar ?? round((float) $payment->amount * 100));
+        $order->loadMissing('customer');
+
+        $refund = Refund::create([
+            'order_id' => $order->id,
+            'user_id' => null,
+            'approved_by' => null,
+            'shift_id' => null,
+            'customer_id' => $order->customer_id,
+            'initiated_by' => 'system',
+            'amount' => round($amountLaar / 100, 2),
+            'drawer_cash_out_laar' => 0,
+            'tender_breakdown' => self::storedBreakdown(['external_tender_laar' => $amountLaar]),
+            'external_tender_laar' => $amountLaar,
+            'status' => 'approved',
+            'reason' => $marker,
+            'reason_category' => 'order_cancelled',
+            'requested_at' => now(),
+            'approved_at' => now(),
+            'no_customer_contact' => false,
+            'refund_phone' => $this->resolveOrderContactPhone($order) ?? $order->customer?->phone,
+            'phone_added_at_refund' => false,
+            'otp_owner_override' => false,
+            'otp_verified_at' => null,
+            'otp_code_hash' => null,
+        ]);
+
+        app(AuditLogService::class)->log(
+            'refund.late_payment_recorded',
+            'Refund',
+            $refund->id,
+            [],
+            $refund->toArray(),
+            ['order_id' => $order->id, 'payment_id' => $payment->id],
+        );
+
+        return $refund;
+    }
+
+    /** Tell the customer their money is on its way back (same text as any card refund). */
+    public function notifyLatePaymentRefund(Refund $refund): void
+    {
+        $this->notifyAfterApproval($refund->fresh(['order.customer']) ?? $refund);
+    }
+
+    /**
      * Full refund for a customer cancelling their own unstarted order.
      * Auto-approves immediately — no staff shift, OTP, or two-person approval.
      *

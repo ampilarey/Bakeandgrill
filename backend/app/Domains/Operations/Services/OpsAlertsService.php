@@ -26,6 +26,10 @@ final class OpsAlertsService
             'shift_open_alert_hours' => max(0, min(72, (int) SiteSetting::get('ops_shift_open_alert_hours', '14'))),
             // A close whose cash variance is this much or more texts the owners; 0 = off.
             'shift_variance_alert_mvr' => max(0.0, round((float) SiteSetting::get('ops_shift_variance_alert_mvr', '50'), 2)),
+            // Checkout audit, 2026-09-26: a paid pickup / dine-in order still
+            // not started this many minutes after payment (or this long before
+            // its pickup time) texts the owners; 0 = off.
+            'unstarted_order_alert_minutes' => max(0, min(120, (int) SiteSetting::get('ops_unstarted_order_alert_minutes', '10'))),
         ];
     }
 
@@ -53,6 +57,10 @@ final class OpsAlertsService
         }
         if (array_key_exists('shift_variance_alert_mvr', $input)) {
             SiteSetting::set('ops_shift_variance_alert_mvr', number_format(max(0.0, (float) $input['shift_variance_alert_mvr']), 2, '.', ''));
+            SiteSetting::bust();
+        }
+        if (array_key_exists('unstarted_order_alert_minutes', $input)) {
+            SiteSetting::set('ops_unstarted_order_alert_minutes', (string) max(0, min(120, (int) $input['unstarted_order_alert_minutes'])));
             SiteSetting::bust();
         }
 

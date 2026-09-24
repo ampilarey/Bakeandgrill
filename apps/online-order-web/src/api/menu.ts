@@ -213,6 +213,10 @@ export type DeliveryFeePreview = {
   fee_mvr: number;
   free_threshold_mvr: number;
   qualifies_free: boolean;
+  /** Delivery minimum on the food, before the fee (0 = none). Checkout audit, 2026-09-26. */
+  min_order_mvr?: number;
+  below_minimum?: boolean;
+  short_by_laar?: number;
 };
 
 export async function fetchDeliveryFeePreview(

@@ -23,6 +23,7 @@ class OpsAlertsController extends Controller
             'inventory_reorder_alert_sms' => 'sometimes|boolean',
             'shift_open_alert_hours' => 'sometimes|integer|min:0|max:72',
             'shift_variance_alert_mvr' => 'sometimes|numeric|min:0|max:1000000',
+            'unstarted_order_alert_minutes' => 'sometimes|integer|min:0|max:120',
         ]);
 
         return response()->json([

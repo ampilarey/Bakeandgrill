@@ -43,7 +43,33 @@ class CancelStaleOrders extends Command
             return self::SUCCESS;
         }
 
+        $cancelled = 0;
+        $payments = app(\App\Domains\Payments\Services\PaymentService::class);
+        // How long to keep waiting when the bank's status API cannot be reached.
+        $unknownMaxMinutes = (int) config('ordering.payment_unknown_max_minutes', 180);
+
         foreach ($stale as $staleOrder) {
+            /*
+             * Checkout audit, 2026-09-26: ask the bank before cancelling. A
+             * missed webhook used to mean a paid order was cancelled here and
+             * the customer charged for nothing. Paid → it is settled now and
+             * goes to the kitchen. Could not ask → try again next run, up to
+             * three hours, rather than guess.
+             */
+            try {
+                $state = $payments->pendingBmlState($staleOrder);
+            } catch (\Throwable $e) {
+                report($e);
+                $state = 'unknown';
+            }
+            if ($state === 'paid') {
+                continue;
+            }
+            if ($state === 'unknown' && $staleOrder->created_at->gt(now()->subMinutes($unknownMaxMinutes))) {
+                continue;
+            }
+
+            $cancelled++;
             DB::transaction(function () use ($staleOrder, $ttl): void {
                 // Row-lock the order inside the transaction to prevent a concurrent
                 // cron run from cancelling the same order twice.
@@ -53,7 +79,10 @@ class CancelStaleOrders extends Command
                     return; // Already processed by a concurrent run
                 }
 
-                app(\App\Services\OrderStatusTransitionService::class)->transition($order, 'cancelled');
+                app(\App\Services\OrderStatusTransitionService::class)->transition($order, 'cancelled', [
+                    'cancellation_reason' => \App\Domains\Orders\Support\SystemCancelReasons::UNPAID_TIMEOUT,
+                    'cancelled_at' => now(),
+                ]);
 
                 // Release prepared stock reservations (belt-and-suspenders —
                 // OrderCancelled listener also fires, but inline release ensures
@@ -84,7 +113,7 @@ class CancelStaleOrders extends Command
             });
         }
 
-        $this->info("Cancelled {$stale->count()} stale order(s).");
+        $this->info("Cancelled {$cancelled} stale order(s).");
 
         return self::SUCCESS;
     }

@@ -99,12 +99,14 @@ class Order extends Model
         'picked_up_at',
         'delivered_at',
         'pickup_slot_at',
+        'unstarted_alerted_at',
         'fulfil_date',
         'proof_of_delivery_path',
         'store_id',
     ];
 
-    protected $hidden = [];
+    // Internal alert stamp (checkout audit, 2026-09-26) — not part of the order API.
+    protected $hidden = ['unstarted_alerted_at'];
 
     protected $casts = [
         // FK integer columns — MySQL PDO returns these as strings without explicit casts
@@ -130,6 +132,7 @@ class Order extends Model
         'picked_up_at' => 'datetime',
         'delivered_at' => 'datetime',
         'pickup_slot_at' => 'datetime',
+        'unstarted_alerted_at' => 'datetime',
         'fulfil_date' => 'date',
         // Scalars
         'tax_inclusive' => 'boolean',

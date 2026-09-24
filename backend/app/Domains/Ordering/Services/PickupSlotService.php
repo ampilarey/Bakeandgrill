@@ -7,12 +7,14 @@ namespace App\Domains\Ordering\Services;
 use App\Models\Order;
 use App\Models\SiteSetting;
 use App\Services\OnlineOrderingGateService;
-use Carbon\Carbon;
 use App\Support\ResilientCache;
-use Illuminate\Support\Facades\Cache;
+use Carbon\Carbon;
 
 final class PickupSlotService
 {
+    /** How long an unpaid order keeps its pickup slot. */
+    public const UNPAID_HOLD_MINUTES = 10;
+
     public function __construct(
         private OnlineOrderingGateService $gate,
     ) {}
@@ -40,9 +42,17 @@ final class PickupSlotService
             return [];
         }
 
+        // Checkout audit, 2026-09-26: an unpaid order used to hold its slot
+        // for the whole 30-minute payment window. It holds it for 10 minutes
+        // now — long enough to pay, short enough that an abandoned checkout
+        // does not keep a paying customer out.
         $booked = Order::query()
             ->whereDate('pickup_slot_at', $parsed->toDateString())
             ->whereNotIn('status', ['cancelled'])
+            ->where(function ($q): void {
+                $q->where('status', '!=', 'payment_pending')
+                    ->orWhere('created_at', '>=', now()->subMinutes(self::UNPAID_HOLD_MINUTES));
+            })
             ->whereNotNull('pickup_slot_at')
             ->selectRaw('pickup_slot_at, COUNT(*) as cnt')
             ->groupBy('pickup_slot_at')

@@ -202,8 +202,25 @@ class DeliveryOrderController extends Controller
             }
         }
 
-        $order = DB::transaction(function () use ($payload, $staffUser, $delivery): Order {
+        $order = DB::transaction(function () use ($payload, $staffUser, $delivery, $isCustomer): Order {
             $order = $this->orderCreation->createFromPayload($payload, $staffUser);
+
+            // Checkout audit, 2026-09-26: the delivery minimum, on the food
+            // before the fee. Staff ringing a delivery at the till are not
+            // bound by it. Thrown inside the transaction so nothing is kept.
+            if ($isCustomer) {
+                $minLaar = (int) round(app(\App\Domains\Delivery\Services\DeliverySettingsService::class)->minOrder() * 100);
+                $foodLaar = EffectiveDiscount::discountedSubtotalLaarFromOrder($order);
+                if ($minLaar > 0 && $foodLaar < $minLaar) {
+                    throw ValidationException::withMessages([
+                        'items' => [sprintf(
+                            'Delivery orders start at MVR %s. Add MVR %s more, or choose pickup.',
+                            number_format($minLaar / 100, 2, '.', ''),
+                            number_format(($minLaar - $foodLaar) / 100, 2, '.', ''),
+                        )],
+                    ]);
+                }
+            }
 
             // Free-delivery threshold uses discounted merchandise, not raw subtotal.
             $feeLaar = $this->feeCalculator->calculateLaar(

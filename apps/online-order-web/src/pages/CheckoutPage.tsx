@@ -210,7 +210,7 @@ export function CheckoutPage() {
     promoCode, setPromoCode, promoApplied,
     promoError, promoLoading,
     useLoyalty, setUseLoyalty,
-    deliveryFee, errors, isPlacing, globalError,
+    deliveryFee, deliveryMinimum, errors, isPlacing, globalError,
     subtotalLaar, discountedSubtotalLaar, taxLaar, deliveryFeeLaar, promoDelta, loyaltyDelta, referralDelta,
     serviceChargeLaar, serviceChargeLabel, totalLaar, amountDueLaar,
     packagingFeeLaar, packagingFeeLabel, smallOrderFeeLaar, smallOrderFeeLabel,
@@ -702,6 +702,11 @@ export function CheckoutPage() {
           )}
           {' '}· {t('checkout.estimated').replace('{eta}', deliveryEta)}
         </div>
+        {deliveryMinimum.shortByLaar > 0 && (
+          <p data-testid="delivery-minimum" role="status" style={{ margin: '0 0 10px', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-error, #dc2626)', lineHeight: 1.45 }}>
+            Delivery orders start at MVR {deliveryMinimum.minMvr.toFixed(2)}. Add MVR {(deliveryMinimum.shortByLaar / 100).toFixed(2)} more, or choose pickup.
+          </p>
+        )}
         <p style={{ margin: '0 0 14px', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
           {qualifiesFree
             ? t('checkout.free_qualifies').replace('{n}', freeThreshold.toFixed(0))

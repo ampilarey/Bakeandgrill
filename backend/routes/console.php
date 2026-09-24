@@ -278,6 +278,14 @@ Schedule::command('orders:cancel-stale')
     ->onFailure($alertOnFailure('orders:cancel-stale'))
     ->after($trackSuccess('orders:cancel-stale'));
 
+// Orders: text the owners about a paid pickup / dine-in order nobody has
+// started (checkout audit, 2026-09-26)
+Schedule::command('orders:alert-unstarted')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->onFailure($alertOnFailure('orders:alert-unstarted'))
+    ->after($trackSuccess('orders:alert-unstarted'));
+
 /*
  * Orders: close yesterday's paid tickets nobody bumped (owner, 2026-09-09 —
  * the display was carrying four days of paid dine-in tickets, and until they

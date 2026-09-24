@@ -21,6 +21,7 @@ class UpdateDeliverySettingsRequest extends FormRequest
         return [
             'default_fee' => ['required', 'numeric', 'min:0', 'max:9999'],
             'free_threshold' => ['required', 'numeric', 'min:0', 'max:99999'],
+            'min_order' => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:99999'],
             'delivery_time' => ['sometimes', 'nullable', 'string', 'max:80'],
             'fee_taxable' => ['sometimes', 'boolean'],
             'zone_fees' => ['required', 'array'],

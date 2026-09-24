@@ -31,6 +31,10 @@ class StoreCustomerOrderRequest extends FormRequest
              */
             'table_token' => 'nullable|string|size:24|alpha_num',
             'print' => 'sometimes|boolean',
+            // One key per checkout attempt: a retried or double-sent request
+            // returns the order already made instead of a second one
+            // (checkout audit, 2026-09-26).
+            'idempotency_key' => 'nullable|string|max:40|regex:/^[A-Za-z0-9_-]+$/',
             'notes' => 'nullable|string|max:500',
             'customer_notes' => 'nullable|string|max:500',
             'items' => 'required|array|min:1|max:50',

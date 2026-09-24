@@ -385,10 +385,24 @@ class PaymentService
      */
     public function reconcilePendingBmlPayment(Order $order): bool
     {
+        return $this->pendingBmlState($order) === 'paid';
+    }
+
+    /**
+     * Ask BML about the order's in-flight payment and settle it when confirmed.
+     *
+     * Checkout audit, 2026-09-26: the unpaid-order cleanup must know the
+     * difference between "the bank says not paid" and "we could not ask the
+     * bank" before it cancels anything.
+     *
+     * @return 'paid'|'unpaid'|'unknown' unknown = the status API could not be reached
+     */
+    public function pendingBmlState(Order $order): string
+    {
         $order->refresh();
 
         if ($this->orderLooksPaid($order)) {
-            return true;
+            return 'paid';
         }
 
         $payment = Payment::query()
@@ -399,7 +413,7 @@ class PaymentService
             ->first();
 
         if (!$payment) {
-            return false;
+            return 'unpaid';
         }
 
         $transactionId = (string) $payment->provider_transaction_id;
@@ -414,7 +428,7 @@ class PaymentService
                 'error' => $e->getMessage(),
             ]);
 
-            return false;
+            return 'unknown';
         }
 
         $apiState = strtoupper((string) ($fetched['state'] ?? $fetched['status'] ?? ''));
@@ -426,7 +440,7 @@ class PaymentService
                 'api_state' => $apiState !== '' ? $apiState : null,
             ]);
 
-            return false;
+            return 'unpaid';
         }
 
         Log::info('BML reconcile: confirming payment from gateway status', [
@@ -444,7 +458,7 @@ class PaymentService
 
         $order->refresh();
 
-        return $this->orderLooksPaid($order);
+        return $this->orderLooksPaid($order) ? 'paid' : 'unpaid';
     }
 
     private function orderLooksPaid(Order $order): bool
@@ -845,6 +859,30 @@ class PaymentService
                 return;
             }
 
+            /*
+             * Checkout audit, 2026-09-26: the bank confirmed a payment for an
+             * order that was already cancelled — the unpaid cleanup got there
+             * first. This used to throw (cancelled → paid is not a legal
+             * move), every webhook retry failed, and the customer was charged
+             * for nothing. Now: bring the order back when that is safe, or
+             * take the payment and refund it through the Refunds "owed" list.
+             */
+            if ($order->status === 'cancelled') {
+                $late = app(LatePaymentService::class);
+                if ($late->canRevive($order)) {
+                    $late->revive($order);
+                    $order->refresh();
+                } else {
+                    $sm->transition('confirmed', ['gateway_response' => $payload]);
+                    $locked->refresh();
+                    $this->paymentCommission->applyToPayment($locked);
+                    $this->attributeGatewayPaymentToOpenShift($locked);
+                    $late->refundStrandedPayment($order, $locked);
+
+                    return;
+                }
+            }
+
             // Advance status via state machine — single validated transition path.
             $sm->transition('confirmed', ['gateway_response' => $payload]);
 
@@ -986,7 +1024,10 @@ class PaymentService
                 return; // Already cancelled or progressed — nothing to do
             }
 
-            $this->orders->updateStatus($order->id, 'cancelled');
+            $this->orders->updateStatus($order->id, 'cancelled', [
+                'cancellation_reason' => \App\Domains\Orders\Support\SystemCancelReasons::PAYMENT_FAILED,
+                'cancelled_at' => now(),
+            ]);
 
             Log::info('BML: Order cancelled due to payment failure', [
                 'order_id' => $order->id,

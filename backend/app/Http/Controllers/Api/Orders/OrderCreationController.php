@@ -329,6 +329,22 @@ class OrderCreationController extends Controller
         $payload['type'] = $payload['type'] ?? 'online_pickup';
 
         /*
+         * Checkout audit, 2026-09-26: a lost response followed by a second tap
+         * used to make a second order, which held a pickup slot and reserved
+         * stock for half an hour. The app sends one key per checkout attempt;
+         * namespaced by customer so it can never match anybody else's order.
+         */
+        unset($payload['idempotency_key']);
+        $clientKey = $request->validated()['idempotency_key'] ?? null;
+        if (is_string($clientKey) && $clientKey !== '') {
+            $payload['idempotency_key'] = 'web:' . $customer->id . ':' . $clientKey;
+            $existing = Order::where('idempotency_key', $payload['idempotency_key'])->first();
+            if ($existing !== null) {
+                return response()->json(['order' => $existing->load(['items.modifiers'])], 200);
+            }
+        }
+
+        /*
          * Scanned the QR on the table.
          *
          * The token decides the table — never a client-supplied id — so a
@@ -424,11 +440,56 @@ class OrderCreationController extends Controller
             );
         }
 
+        // Checkout audit, 2026-09-26: two customers taking the last place in
+        // a slot at the same moment both got it. The check and the insert
+        // now happen under one lock per slot.
+        $slotLock = null;
         if (!empty($payload['pickup_slot_at'])) {
-            app(\App\Domains\Ordering\Services\PickupSlotService::class)
-                ->assertSlotAvailable($payload['pickup_slot_at']);
+            $slotLock = \Illuminate\Support\Facades\Cache::lock(
+                'pickup-slot:' . \Carbon\Carbon::parse((string) $payload['pickup_slot_at'])->format('YmdHi'),
+                15,
+            );
+            try {
+                $slotLock->block(5);
+            } catch (\Illuminate\Contracts\Cache\LockTimeoutException) {
+                abort(429, 'That pickup time is busy right now. Please try again in a moment.');
+            }
+            try {
+                app(\App\Domains\Ordering\Services\PickupSlotService::class)
+                    ->assertSlotAvailable($payload['pickup_slot_at']);
+            } catch (\Throwable $e) {
+                $slotLock->release();
+                throw $e;
+            }
         }
 
+        try {
+            $order = $this->createCustomerOrder($payload, $seatedTable, $customer);
+        } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+            // The same checkout attempt raced itself: return the order it made.
+            $key = $payload['idempotency_key'] ?? null;
+            $existing = $key !== null ? Order::where('idempotency_key', $key)->first() : null;
+            if ($existing === null) {
+                throw $e;
+            }
+
+            return response()->json(['order' => $existing->load(['items.modifiers'])], 200);
+        } finally {
+            $slotLock?->release();
+        }
+
+        $customer->update(['last_order_at' => now()]);
+
+        app(AuditLogService::class)->log('order.created', 'Order', $order->id, [], $order->toArray(), ['source' => 'customer'], $request);
+
+        return response()->json(['order' => $order], 201);
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    private function createCustomerOrder(array $payload, ?RestaurantTable $seatedTable, Customer $customer): Order
+    {
         if ($seatedTable !== null) {
             /*
              * Already sitting down, so there is nothing to reserve.
@@ -470,11 +531,7 @@ class OrderCreationController extends Controller
             $order = app(OrderCreationService::class)->createFromPayload($payload, null);
         }
 
-        $customer->update(['last_order_at' => now()]);
-
-        app(AuditLogService::class)->log('order.created', 'Order', $order->id, [], $order->toArray(), ['source' => 'customer'], $request);
-
-        return response()->json(['order' => $order], 201);
+        return $order;
     }
 
     public function sync(StoreOrderBatchRequest $request): JsonResponse

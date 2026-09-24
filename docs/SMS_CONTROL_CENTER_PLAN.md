@@ -673,3 +673,46 @@ are 7–90 days like customer terms. Shops list shows "Delivers today" from
 invoice chosen stays on that shop's invoices; a card payment needs a reference
 when `pos_card_reference_required` is on. Settings → Credit accounts has the
 three chasing intervals.
+
+## Appendix F — Checkout audit follow-up (2026-09-26)
+
+### F.1 The unpaid cleanup asks the bank first
+`orders:cancel-stale` calls `PaymentService::pendingBmlState()` before cancelling
+a `payment_pending` order: `paid` settles it and sends it to the kitchen;
+`unknown` (status API unreachable) waits until `ordering.payment_unknown_max_minutes`
+(180) before cancelling anyway. System cancels carry
+`SystemCancelReasons::UNPAID_TIMEOUT` / `PAYMENT_FAILED` and `cancelled_at`.
+
+### F.2 A payment that lands on a cancelled order
+`confirmPaymentOnce` no longer throws on a cancelled order. `LatePaymentService`
+brings it back (query update to `payment_pending`, promo draft restored, then the
+normal paid path) when it was a system cancel of a pickup or delivery order in the
+last two hours, with no loyalty points, no refund, and ordering open (or a later
+fulfil date). Otherwise the payment is confirmed and
+`RefundWorkflowService::recordLatePaymentRefund()` records an approved
+`initiated_by = system` refund owed back by card (Refunds → Owed, daily summary);
+the customer gets `customer_refund_on_its_way` and the owners
+`owner_late_payment`. A person's cancel is never undone.
+
+### F.3 Same cart or a new order
+The order app fingerprints each checkout attempt (cart lines, modifiers, order
+type, pickup time, party size, table, delivery address) in sessionStorage with a
+key. The unpaid order is reused only for the same fingerprint; a changed cart
+cancels the old unpaid order and creates a new one. `POST /customer/orders` takes
+`idempotency_key` (namespaced `web:{customer}:{key}`) and returns the existing
+order (200) on a retry; delivery orders already honoured the key.
+
+### F.4 Kitchen and slots
+`orders:alert-unstarted` (every 5 minutes) texts `owner_order_unstarted`
+(business phone by default) once per order (`orders.unstarted_alerted_at`) when a
+paid online pickup or dine-in order is still `pending`
+`ops_unstarted_order_alert_minutes` (10, 0 = off, Settings → Notifications) after
+payment, or that long before its pickup time. Unpaid orders hold a pickup slot for
+`PickupSlotService::UNPAID_HOLD_MINUTES` (10) instead of the full payment window,
+and the slot check and order insert run under one lock per slot.
+
+### F.5 Delivery minimum
+`delivery_min_order` (MVR, 0 = none; Ordering Control → Delivery) is enforced on
+customer delivery orders on the food before the fee; the fee preview returns
+`min_order_mvr`, `below_minimum`, `short_by_laar` and checkout shows how much more
+is needed. Till orders are not bound by it.

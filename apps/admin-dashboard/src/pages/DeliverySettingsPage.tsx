@@ -36,6 +36,7 @@ export default function DeliverySettingsPage() {
   const [feeSettings, setFeeSettings] = useState<DeliveryFeeSettings | null>(null);
   const [defaultFee, setDefaultFee] = useState('30');
   const [freeThreshold, setFreeThreshold] = useState('200');
+  const [minOrder, setMinOrder] = useState('0');
   const [deliveryTime, setDeliveryTime] = useState('');
   const [zoneRows, setZoneRows] = useState<ZoneFeeRow[]>([]);
   const [restrictZones, setRestrictZones] = useState(false);
@@ -58,6 +59,7 @@ export default function DeliverySettingsPage() {
         setOpsAlerts(opsRes.settings);
         setDefaultFee(String(feeRes.settings.default_fee));
         setFreeThreshold(String(feeRes.settings.free_threshold));
+        setMinOrder(String(feeRes.settings.min_order ?? 0));
         setDeliveryTime(String(feeRes.settings.delivery_time ?? ''));
         setRestrictZones(feeRes.settings.zones_enforced);
         setFeeTaxable(feeRes.settings.fee_taxable !== false);
@@ -107,6 +109,7 @@ export default function DeliverySettingsPage() {
       const res = await updateDeliveryFeeSettings({
         default_fee: parseFloat(defaultFee) || 0,
         free_threshold: parseFloat(freeThreshold) || 0,
+        min_order: Math.max(0, parseFloat(minOrder) || 0),
         delivery_time: deliveryTime.trim(),
         zone_fees: zoneFees,
         restrict_to_zone_fees: restrictZones,
@@ -289,6 +292,23 @@ export default function DeliverySettingsPage() {
             />
             <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
               Authoritative free-delivery threshold for checkout, invoices, receipts, Website and Order App messaging. Content & Branding cannot edit a separate copy.
+            </p>
+          </div>
+
+          <div>
+            <label style={S.label} htmlFor="delivery-min-order">Minimum order for delivery (MVR)</label>
+            <input
+              id="delivery-min-order"
+              data-testid="delivery-min-order"
+              type="number"
+              min={0}
+              step="0.01"
+              value={minOrder}
+              onChange={(e) => setMinOrder(e.target.value)}
+              style={S.input}
+            />
+            <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+              The food total, before the delivery fee, that an online delivery order must reach. Checkout tells the customer how much more to add. 0 means no minimum. Orders rung at the till are not affected.
             </p>
           </div>
 
