@@ -196,6 +196,10 @@ final class SmsTypeRegistry
             self::def('staff_low_stock_menu', 'Staff: menu item low stock', 'staff', true, false, null, 'staff_sms_low_stock_enabled', 'sms.transactional.manage', false, 'Owners & managers', false),
             self::def('staff_schedule_assigned', 'Staff: shift assigned', 'staff', true, false, 'schedule_assigned', 'staff_sms_schedule_assigned_enabled', 'sms.transactional.manage', false, 'The rostered staff member', false),
             self::def('staff_notification', 'Staff: other order alerts', 'staff', true, false, null, 'staff_sms_other_enabled', 'sms.transactional.manage', false, 'Assigned / on-shift staff (or fallback)', false),
+            // "Send a test to me" on a campaign: the exact text, opt-out line
+            // included, to the signed-in staff member. Staff category, so it
+            // never counts against a customer's marketing cap.
+            self::def('staff_campaign_test', 'Campaign test to staff', 'staff', true, false, null, 'sms_marketing_campaigns_enabled', 'sms.campaigns.send', false, 'The signed-in staff member', true),
 
             // Owner alerts — recipients are chosen in the Control Center
             // (owners & managers, owner only, business phone, named staff,

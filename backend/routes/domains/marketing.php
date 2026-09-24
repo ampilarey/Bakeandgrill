@@ -186,6 +186,14 @@ if (routes_domain_section_is('marketing', 'sms_admin') && !routes_domain_loaded(
             Route::get('/campaigns', [App\Http\Controllers\Api\SmsCampaignController::class, 'index']);
             Route::post('/campaigns', [App\Http\Controllers\Api\SmsCampaignController::class, 'store']);
             Route::post('/campaigns/preview', [App\Http\Controllers\Api\SmsCampaignController::class, 'preview']);
+            // Purchase-based targeting (SMS audit, 2026-09-24): recipes, a test to me, saved audiences.
+            Route::get('/campaigns/recipes', [App\Http\Controllers\Api\SmsCampaignController::class, 'recipes']);
+            Route::post('/campaigns/test-send', [App\Http\Controllers\Api\SmsCampaignController::class, 'testSend'])
+                ->middleware('throttle:20,10');
+            Route::get('/audiences', [App\Http\Controllers\Api\SmsAudienceController::class, 'index']);
+            Route::post('/audiences', [App\Http\Controllers\Api\SmsAudienceController::class, 'store']);
+            Route::patch('/audiences/{audience}', [App\Http\Controllers\Api\SmsAudienceController::class, 'update']);
+            Route::delete('/audiences/{audience}', [App\Http\Controllers\Api\SmsAudienceController::class, 'destroy']);
             Route::get('/campaigns/{campaign}', [App\Http\Controllers\Api\SmsCampaignController::class, 'show']);
             Route::post('/campaigns/{campaign}/send', [App\Http\Controllers\Api\SmsCampaignController::class, 'send']);
             Route::post('/campaigns/{campaign}/cancel', [App\Http\Controllers\Api\SmsCampaignController::class, 'cancel']);

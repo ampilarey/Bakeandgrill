@@ -4,7 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\BulkSmsService;
+use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Notifications\Support\SmsAudienceCriteria;
+use App\Domains\Notifications\Support\SmsCampaignRecipes;
+use App\Domains\Notifications\Support\SmsDeliveryRules;
 use App\Domains\Notifications\Support\SmsTypeRegistry;
 use App\Http\Controllers\Controller;
 use App\Models\SmsCampaign;
@@ -221,11 +226,78 @@ class SmsCampaignController extends Controller
             if ($campaign->ab_test_enabled) {
                 $campaign->setAttribute('ab_stats', $campaign->computeAbStats());
             }
+            $campaign->setAttribute('audience_summary', SmsAudienceCriteria::describe(
+                $this->bulkSms->effectiveCriteria((array) ($campaign->target_criteria ?? [])),
+            ));
 
             return $campaign;
         });
 
         return response()->json($campaigns);
+    }
+
+    /**
+     * GET /api/admin/sms/campaigns/recipes
+     * Ready-made audiences + texts to start a campaign from (SMS audit, 2026-09-24).
+     */
+    public function recipes(): JsonResponse
+    {
+        return response()->json([
+            'recipes' => SmsCampaignRecipes::all(),
+            'order_types' => SmsAudienceCriteria::ORDER_TYPES,
+            'segments' => collect(\App\Domains\Customers\Services\CustomerSegmentationService::SEGMENTS)
+                ->map(fn (string $label, string $slug) => ['slug' => $slug, 'label' => $label])
+                ->values()
+                ->all(),
+        ]);
+    }
+
+    /**
+     * POST /api/admin/sms/campaigns/test-send
+     * "Send a test to me": the exact text (opt-out line included, {name}
+     * filled in) to the signed-in staff member's phone, or to a number they
+     * typed. Logged under `staff_campaign_test`, so it never counts against
+     * a customer's marketing cap.
+     */
+    public function testSend(Request $request, SmsService $sms): JsonResponse
+    {
+        $validated = $request->validate([
+            'message' => 'required|string|max:1600',
+            'message_variant_b' => 'nullable|string|max:1600',
+            'phone' => 'nullable|string|max:30',
+        ]);
+        $user = $request->user();
+        $to = trim((string) ($validated['phone'] ?? ''));
+        if ($to === '') {
+            $to = trim((string) ($user?->phone ?? ''));
+        }
+        if ($to === '') {
+            return response()->json(['message' => 'Your staff account has no phone number. Add one under Staff, or type a number to send the test to.'], 422);
+        }
+
+        $marketing = SmsTypeRegistry::resolve('marketing_campaign') ?? ['category' => 'marketing'];
+        $logs = [];
+        foreach (array_filter(['a' => $validated['message'], 'b' => $validated['message_variant_b'] ?? null]) as $variant => $body) {
+            $text = SmsDeliveryRules::withOptOutLine(BulkSmsService::personalise((string) $body, $user?->name), $marketing);
+            $log = $sms->send(new SmsMessage(
+                to: $to,
+                message: $text,
+                type: 'staff_campaign_test',
+                referenceType: 'campaign_test',
+                referenceId: $variant,
+                actingUserId: $user?->id,
+            ));
+            $logs[] = ['variant' => $variant, 'status' => $log->status, 'to' => $log->to, 'message' => $log->message, 'error' => $log->error_message];
+        }
+        $failed = array_filter($logs, fn ($l) => !in_array($l['status'], ['sent', 'demo', 'queued'], true));
+
+        return response()->json([
+            'ok' => $failed === [],
+            'message' => $failed === []
+                ? 'Test sent to ' . $to . '.'
+                : 'Test not sent: ' . (reset($failed)['error'] ?: reset($failed)['status']),
+            'results' => $logs,
+        ], $failed === [] ? 200 : 422);
     }
 
     /**
@@ -239,13 +311,7 @@ class SmsCampaignController extends Controller
             'message_variant_b' => 'nullable|string|max:1600',
             'ab_test_enabled' => 'nullable|boolean',
             'ab_split_percent' => 'nullable|integer|min:1|max:99',
-            'target_criteria' => 'nullable|array',
-            'target_criteria.segment' => 'nullable|string|in:' . implode(',', array_keys(\App\Domains\Customers\Services\CustomerSegmentationService::SEGMENTS)),
-            'target_criteria.tier' => 'nullable|array',
-            'target_criteria.tier.*' => 'in:bronze,silver,gold,platinum',
-            'target_criteria.last_order_days' => 'nullable|integer|min:1',
-            'target_criteria.opted_in' => 'nullable|boolean',
-            'target_criteria.has_loyalty' => 'nullable|boolean',
+            ...SmsAudienceCriteria::rules('target_criteria'),
         ]);
 
         $abEnabled = (bool) ($validated['ab_test_enabled'] ?? false);
@@ -255,7 +321,7 @@ class SmsCampaignController extends Controller
 
         $preview = $this->bulkSms->preview(
             $validated['message'],
-            $validated['target_criteria'] ?? [],
+            SmsAudienceCriteria::clean($validated['target_criteria'] ?? []),
             $abEnabled,
             $validated['message_variant_b'] ?? null,
             (int) ($validated['ab_split_percent'] ?? 50),
@@ -277,13 +343,7 @@ class SmsCampaignController extends Controller
             'ab_test_enabled' => 'nullable|boolean',
             'ab_split_percent' => 'nullable|integer|min:1|max:99',
             'notes' => 'nullable|string|max:500',
-            'target_criteria' => 'nullable|array',
-            'target_criteria.segment' => 'nullable|string|in:' . implode(',', array_keys(\App\Domains\Customers\Services\CustomerSegmentationService::SEGMENTS)),
-            'target_criteria.tier' => 'nullable|array',
-            'target_criteria.tier.*' => 'in:bronze,silver,gold,platinum',
-            'target_criteria.last_order_days' => 'nullable|integer|min:1',
-            'target_criteria.opted_in' => 'nullable|boolean',
-            'target_criteria.has_loyalty' => 'nullable|boolean',
+            ...SmsAudienceCriteria::rules('target_criteria'),
             'scheduled_at' => 'nullable|date|after:now',
         ]);
 
@@ -299,7 +359,7 @@ class SmsCampaignController extends Controller
             'message_variant_b' => $abEnabled ? ($validated['message_variant_b'] ?? null) : null,
             'ab_split_percent' => (int) ($validated['ab_split_percent'] ?? 50),
             'notes' => $validated['notes'] ?? null,
-            'target_criteria' => $validated['target_criteria'] ?? [],
+            'target_criteria' => SmsAudienceCriteria::clean($validated['target_criteria'] ?? []),
             'status' => 'draft',
             'scheduled_at' => $validated['scheduled_at'] ?? null,
             'created_by' => $request->user()?->id,
@@ -318,6 +378,9 @@ class SmsCampaignController extends Controller
         if ($campaign->ab_test_enabled) {
             $campaign->setAttribute('ab_stats', $campaign->computeAbStats());
         }
+        $campaign->setAttribute('audience_summary', SmsAudienceCriteria::describe(
+            $this->bulkSms->effectiveCriteria((array) ($campaign->target_criteria ?? [])),
+        ));
 
         return response()->json(['campaign' => $campaign]);
     }

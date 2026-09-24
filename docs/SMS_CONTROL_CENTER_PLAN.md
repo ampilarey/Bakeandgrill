@@ -450,3 +450,37 @@ added when the text already carries the link. `customers.sms_opt_out_source`
 records `web_form | order_app | admin | api`; opting back in clears
 `sms_opt_out_at`. Inbound STOP handling still needs a reply number from
 Dhiraagu and is not built.
+
+### B.6 Purchase-based targeting, saved audiences, recipes, a test to me
+`SmsAudienceCriteria` is the one list of what a campaign audience can be built
+from, validated by `rules()` and stored by `clean()`. On top of the old
+`segment / tier / last_order_days / has_loyalty`: `bought_item_ids`,
+`bought_category_ids` (a parent covers its children), `not_bought_item_ids`
+(all time), `likes_item_id` (the item plus its top affinity pairs from
+`item_pair_stats` with lift > 1), `order_types`, `window_days` (default 90; the
+window for bought / likes / order types), `min_spend_mvr` and `min_orders` (paid
+totals, all time), `dormant_days`, `birthday_month`, and `audience_id`. "Bought"
+is always a paid, unrefunded order (`CustomerPaidOrderQuery`). Every key
+intersects; opted-out numbers are never included. `BulkSmsService::audienceQuery`
+builds it with EXISTS sub-queries, so it composes with the CRM segment lookup.
+`describe()` gives the one-line summary shown on every campaign row and preview.
+
+Saved audiences: `sms_audiences` (`name`, `criteria`), CRUD at
+`/admin/sms/audiences`, each returned with its live count. A campaign whose
+criteria carry `audience_id` uses the saved criteria as the base and its own
+keys on top, resolved when it sends, so a scheduled campaign follows an edited
+audience; deleting the audience leaves the campaign's own keys.
+
+Recipes (`SmsCampaignRecipes`, `GET /admin/sms/campaigns/recipes`): we-miss-you,
+win-back, new dish for fans of an item, category regulars, weekend push,
+delivery regulars, top spenders, birthday month, never ordered. Each is a
+criteria set plus a text; one that `needs` an item or category waits for the
+picker. `{name}` in any campaign text becomes the customer's first name (or
+"there") when it goes out.
+
+"Send a test to me" (`POST /admin/sms/campaigns/test-send`): the exact text,
+`{name}` filled with the staff member's name and the opt-out line appended, to
+the signed-in user's phone or a typed number; both variants when A/B is on.
+Logged as `staff_campaign_test` (staff category, so it never counts against a
+customer's marketing cap). The admin form has a "Send at" field, so a scheduled
+campaign can be created from the UI as well as the API.

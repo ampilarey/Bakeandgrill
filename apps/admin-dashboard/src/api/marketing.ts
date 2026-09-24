@@ -183,6 +183,50 @@ export type SmsLog = {
   reference_id?: string | null;
 };
 
+/**
+ * What a campaign audience is built from (SMS audit, 2026-09-24). Every key
+ * intersects; "bought" means a paid, unrefunded order. The window (default
+ * 90 days) applies to bought items / categories, likes and order types.
+ */
+export type SmsAudienceCriteria = {
+  audience_id?: number | null;
+  segment?: string;
+  tier?: string[];
+  last_order_days?: number;
+  opted_in?: boolean;
+  has_loyalty?: boolean;
+  bought_item_ids?: number[];
+  bought_category_ids?: number[];
+  not_bought_item_ids?: number[];
+  likes_item_id?: number | null;
+  order_types?: string[];
+  window_days?: number;
+  min_spend_mvr?: number;
+  min_orders?: number;
+  dormant_days?: number;
+  birthday_month?: number;
+};
+
+export type SmsAudience = {
+  id: number;
+  name: string;
+  description?: string | null;
+  criteria: SmsAudienceCriteria;
+  summary: string;
+  count: number;
+  created_by_name?: string | null;
+  updated_at?: string | null;
+};
+
+export type SmsCampaignRecipe = {
+  key: string;
+  label: string;
+  description: string;
+  needs: 'item' | 'category' | null;
+  criteria: SmsAudienceCriteria;
+  message: string;
+};
+
 export type SmsCampaign = {
   id: number;
   name: string;
@@ -192,10 +236,13 @@ export type SmsCampaign = {
   ab_split_percent?: number;
   ab_stats?: Record<'a' | 'b', { sent: number; failed: number; pending: number; delivery_rate: number }>;
   status: string;
+  target_criteria?: SmsAudienceCriteria | null;
+  audience_summary?: string;
   total_recipients: number;
   sent_count: number;
   failed_count: number;
   total_cost_mvr: string;
+  scheduled_at?: string | null;
   created_at: string;
   started_at?: string | null;
   completed_at?: string | null;
@@ -281,9 +328,10 @@ export async function previewSmsCampaign(data: {
   message_variant_b?: string;
   ab_test_enabled?: boolean;
   ab_split_percent?: number;
-  target_criteria?: Record<string, unknown>;
+  target_criteria?: SmsAudienceCriteria;
 }): Promise<{
   recipient_count: number;
+  audience_summary?: string;
   total_cost_mvr: string;
   ab_test_enabled?: boolean;
   ab_split?: { variant_a: number; variant_b: number };
@@ -298,9 +346,44 @@ export async function createSmsCampaign(data: {
   message_variant_b?: string;
   ab_test_enabled?: boolean;
   ab_split_percent?: number;
-  target_criteria?: Record<string, unknown>;
+  target_criteria?: SmsAudienceCriteria;
+  scheduled_at?: string | null;
 }): Promise<{ campaign: SmsCampaign }> {
   return req('/admin/sms/campaigns', { method: 'POST', body: JSON.stringify(data) });
+}
+
+/** Ready-made audiences + texts, plus the pick-lists the builder needs. */
+export async function fetchSmsCampaignRecipes(): Promise<{
+  recipes: SmsCampaignRecipe[];
+  order_types: Record<string, string>;
+  segments: Array<{ slug: string; label: string }>;
+}> {
+  return req('/admin/sms/campaigns/recipes');
+}
+
+/** "Send a test to me": the exact text to the signed-in staff member (or a typed number). */
+export async function testSendSmsCampaign(data: { message: string; message_variant_b?: string; phone?: string }): Promise<{
+  ok: boolean;
+  message: string;
+  results: Array<{ variant: string; status: string; to: string; message: string; error?: string | null }>;
+}> {
+  return req('/admin/sms/campaigns/test-send', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function fetchSmsAudiences(): Promise<{ audiences: SmsAudience[]; order_types: Record<string, string> }> {
+  return req('/admin/sms/audiences');
+}
+
+export async function createSmsAudience(data: { name: string; description?: string; criteria: SmsAudienceCriteria }): Promise<{ audience: SmsAudience }> {
+  return req('/admin/sms/audiences', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function updateSmsAudience(id: number, data: { name?: string; description?: string; criteria?: SmsAudienceCriteria }): Promise<{ audience: SmsAudience }> {
+  return req(`/admin/sms/audiences/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function deleteSmsAudience(id: number): Promise<void> {
+  await req(`/admin/sms/audiences/${id}`, { method: 'DELETE' });
 }
 
 export async function sendSmsCampaign(id: number): Promise<void> {

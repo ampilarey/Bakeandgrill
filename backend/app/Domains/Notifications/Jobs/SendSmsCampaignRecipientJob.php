@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Notifications\Jobs;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
+use App\Domains\Notifications\Services\BulkSmsService;
 use App\Domains\Notifications\Services\SmsService;
 use App\Models\SmsCampaign;
 use App\Models\SmsCampaignRecipient;
@@ -54,7 +55,10 @@ class SendSmsCampaignRecipientJob implements ShouldQueue
         }
 
         try {
-            $body = $campaign->messageForVariant($this->recipient->variant ?? 'a');
+            $body = BulkSmsService::personalise(
+                $campaign->messageForVariant($this->recipient->variant ?? 'a'),
+                $this->recipient->name,
+            );
 
             $log = $smsService->send(new SmsMessage(
                 to: $this->recipient->phone,
