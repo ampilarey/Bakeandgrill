@@ -114,7 +114,7 @@
             <li>Order confirmation messages</li>
             <li>Promotional offers (you can opt out anytime)</li>
         </ul>
-        <p><strong>Opt-Out:</strong> To stop receiving promotional SMS, reply STOP to any promotional message or contact us at {{ $privacyPhone }}.</p>
+        <p><strong>Opt-Out:</strong> To stop receiving promotional SMS, visit <a href="{{ url('/sms/preferences') }}">{{ preg_replace('#^https?://#', '', url('/sms')) }}</a> (the link at the end of every promotional text), switch promotional SMS off under Account → Settings in the order app, or contact us at {{ $privacyPhone }}.</p>
 
         <h2>Card Payment Security</h2>
         <p>All card payments are processed exclusively through the <strong>Bank of Maldives (BML) BankConnect</strong> secure payment page. Bake &amp; Grill does <strong>not</strong> store, view, process, or retain any payment card details (card numbers, CVV, expiry) on our servers. Card data is handled entirely by BML using SSL/TLS encryption.</p>

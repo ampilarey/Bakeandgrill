@@ -314,6 +314,10 @@ export type SmsDeliveryRules = {
   quiet_hours_end: string;
   quiet_hours_alerts: boolean;
   marketing_daily_cap: number;
+  /** Days sms_logs rows are kept; 0 keeps them forever. */
+  log_retention_days?: number;
+  /** Appended to every marketing text; {url} becomes the short unsubscribe link. Empty = none. */
+  marketing_opt_out_line?: string;
 };
 
 export type SmsStaffOption = { id: number; name: string; phone: string; role: string | null };

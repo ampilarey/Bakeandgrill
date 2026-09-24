@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { AccountPage } from './AccountPage';
 
@@ -20,8 +20,12 @@ vi.mock('../context/AuthContext', () => ({
   }),
 }));
 
+// A stable `t`: the profile hook re-fetches when it changes, as the real
+// provider's does not, and a fresh function per render would reset the
+// customer after every state change.
+const t = (k: string) => (k === 'account.loyalty_pts' ? '{n} pts' : k);
 vi.mock('../context/LanguageContext', () => ({
-  useLanguage: () => ({ t: (k: string) => (k === 'account.loyalty_pts' ? '{n} pts' : k), lang: 'en', setLang: vi.fn() }),
+  useLanguage: () => ({ t, lang: 'en', setLang: vi.fn() }),
 }));
 
 vi.mock('../hooks/usePushNotifications', () => ({
@@ -36,6 +40,7 @@ vi.mock('../api', async () => {
   return {
     ...actual,
     getCustomerMe: vi.fn(),
+    updateCustomerProfile: vi.fn(),
     getLoyaltyAccount: vi.fn(),
     getMyReservations: vi.fn().mockResolvedValue([]),
     getMyFavourites: vi.fn().mockResolvedValue([]),
@@ -48,13 +53,16 @@ vi.mock('../api', async () => {
   };
 });
 
-import { getCustomerMe, getLoyaltyAccount } from '../api';
+import { getCustomerMe, getLoyaltyAccount, updateCustomerProfile } from '../api';
 
 describe('Account page — my code and points', () => {
   beforeEach(() => {
     vi.mocked(getCustomerMe).mockResolvedValue({
-      customer: { id: 1, phone: '+9607700001', name: 'Aisha', is_profile_complete: true, has_trade_account: false },
+      customer: { id: 1, phone: '+9607700001', name: 'Aisha', is_profile_complete: true, has_trade_account: false, sms_opt_out: false },
       has_trade_account: false,
+    });
+    vi.mocked(updateCustomerProfile).mockResolvedValue({
+      customer: { id: 1, phone: '+9607700001', name: 'Aisha', is_profile_complete: true, has_trade_account: false, sms_opt_out: true },
     });
     vi.mocked(getLoyaltyAccount).mockResolvedValue({
       account: { points_balance: 500, points_held: 120, available_points: 380, lifetime_points: 900, tier: 'silver' },
@@ -69,6 +77,16 @@ describe('Account page — my code and points', () => {
     const card = await screen.findByTestId('account-my-code');
     expect(card.querySelector('svg')).not.toBeNull();
     expect(screen.getByText('account.my_code_hint')).toBeInTheDocument();
+  });
+
+  it('switches promotional SMS off from Settings and links to the preferences page', async () => {
+    render(<MemoryRouter><AccountPage /></MemoryRouter>);
+    const toggle = await screen.findByTestId('promo-sms-toggle');
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(toggle);
+    await waitFor(() => expect(updateCustomerProfile).toHaveBeenCalledWith({ sms_opt_out: true }));
+    await waitFor(() => expect(screen.getByTestId('promo-sms-toggle')).toHaveAttribute('aria-pressed', 'false'));
+    expect(screen.getByTestId('account-link-leave-/sms/preferences')).toBeInTheDocument();
   });
 
   it('shows spendable points on the profile card, not the balance with holds in it', async () => {

@@ -396,7 +396,7 @@ class CustomerCreditTest extends TestCase
 
         $this->assertDatabaseHas('sms_logs', [
             'customer_id' => $this->customer->id,
-            'type' => 'transactional',
+            'type' => 'credit_payment_reminder',
             'idempotency_key' => "credit:reminder:{$invoice->id}:due_today:{$dueDate}",
         ]);
 

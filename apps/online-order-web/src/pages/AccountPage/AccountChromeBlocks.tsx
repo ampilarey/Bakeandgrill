@@ -43,8 +43,14 @@ type PushProps = {
   onToggle: () => void;
 };
 
-/** Settings group: dark mode, optional push notifications row. */
-export function AccountSettingsBlock({ push }: { push?: PushProps }) {
+type PromoSmsProps = {
+  enabled: boolean;
+  saving: boolean;
+  onToggle: () => void;
+};
+
+/** Settings group: dark mode, optional push notifications row, promotional SMS. */
+export function AccountSettingsBlock({ push, promoSms }: { push?: PushProps; promoSms?: PromoSmsProps }) {
   const { t, lang, setLang } = useLanguage();
   const { settings } = useSiteSettingsContext();
   const { darkMode, setDarkMode } = useTheme();
@@ -55,7 +61,7 @@ export function AccountSettingsBlock({ push }: { push?: PushProps }) {
       <div
         style={{
           ...linkRowStyle,
-          borderBottom: languageSwitcherEnabled || push?.supported
+          borderBottom: languageSwitcherEnabled || push?.supported || promoSms
             ? '1px solid var(--color-border)'
             : 'none',
         }}
@@ -87,7 +93,7 @@ export function AccountSettingsBlock({ push }: { push?: PushProps }) {
         <div
           style={{
             ...linkRowStyle,
-            borderBottom: push?.supported ? '1px solid var(--color-border)' : 'none',
+            borderBottom: push?.supported || promoSms ? '1px solid var(--color-border)' : 'none',
           }}
         >
           <span>{t('account.language')}</span>
@@ -135,7 +141,7 @@ export function AccountSettingsBlock({ push }: { push?: PushProps }) {
       ) : null}
 
       {push?.supported && (
-        <div style={{ ...linkRowStyle, borderBottom: 'none' }}>
+        <div style={{ ...linkRowStyle, borderBottom: promoSms ? '1px solid var(--color-border)' : 'none' }}>
           <span>{t('account.push_notifications')}</span>
           <button
             type="button"
@@ -157,6 +163,37 @@ export function AccountSettingsBlock({ push }: { push?: PushProps }) {
             }}
           >
             {push.subscribed ? t('common.on') : t('common.off')}
+          </button>
+        </div>
+      )}
+      {promoSms && (
+        <div style={{ ...linkRowStyle, borderBottom: 'none' }}>
+          <span>
+            {t('account.promo_sms')}
+            <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 400, color: 'var(--color-text-muted)' }}>{t('account.promo_sms_hint')}</span>
+          </span>
+          <button
+            type="button"
+            onClick={promoSms.onToggle}
+            disabled={promoSms.saving}
+            aria-pressed={promoSms.enabled}
+            aria-label={t('account.promo_sms')}
+            data-testid="promo-sms-toggle"
+            style={{
+              minWidth: 52,
+              minHeight: 44,
+              borderRadius: 999,
+              border: '1.5px solid var(--color-border)',
+              background: promoSms.enabled ? 'var(--color-primary)' : 'var(--color-surface-alt)',
+              color: promoSms.enabled ? '#fff' : 'var(--color-text-muted)',
+              fontWeight: 700,
+              fontSize: '0.75rem',
+              cursor: promoSms.saving ? 'not-allowed' : 'pointer',
+              fontFamily: 'inherit',
+              opacity: promoSms.saving ? 0.6 : 1,
+            }}
+          >
+            {promoSms.enabled ? t('common.on') : t('common.off')}
           </button>
         </div>
       )}
@@ -202,6 +239,8 @@ export function AccountMoreBlock() {
   for (const { to, key } of MORE_LINKS) {
     pushLink(t(key), to, 'spa');
   }
+  // The unsubscribe page lives on the website (SMS audit, 2026-09-24).
+  pushLink(t('account.link_sms_prefs'), '/sms/preferences', 'leave');
   for (const l of legal) {
     const url = (l.url ?? '#').trim() || '#';
     const label = (l.label ?? '').trim() || url;

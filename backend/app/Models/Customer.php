@@ -39,6 +39,7 @@ class Customer extends Model implements AuthenticatableContract
         'last_order_at',
         'sms_opt_out',
         'sms_opt_out_at',
+        'sms_opt_out_source',
         'internal_notes',
         // Delivery address fields
         'delivery_address',

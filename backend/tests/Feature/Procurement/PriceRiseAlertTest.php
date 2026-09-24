@@ -48,7 +48,7 @@ class PriceRiseAlertTest extends TestCase
 
         Artisan::call('purchasing:price-rise-alert');
 
-        $this->assertDatabaseHas('sms_logs', ['to' => '+9607771234', 'type' => 'system', 'reference_type' => 'price_rise_alert']);
+        $this->assertDatabaseHas('sms_logs', ['to' => '+9607771234', 'type' => 'owner_price_rise', 'reference_type' => 'price_rise_alert']);
         $body = (string) SmsLog::query()->where('reference_type', 'price_rise_alert')->value('message');
         $this->assertStringContainsString('Flour +20% (10.00→12.00/kg)', $body);
         $this->assertStringNotContainsString('Eggs', $body);

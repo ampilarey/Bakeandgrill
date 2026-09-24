@@ -999,7 +999,10 @@ export function AccountPage() {
         </SectionCard>
 
         {/* Settings */}
-        <AccountSettingsBlock push={pushToggle} />
+        <AccountSettingsBlock
+          push={pushToggle}
+          promoSms={customer ? { enabled: !customer.sms_opt_out, saving: profile.savingPromoSms, onToggle: () => void profile.handleTogglePromoSms() } : undefined}
+        />
 
         {/* More */}
         <AccountMoreBlock />

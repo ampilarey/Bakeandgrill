@@ -149,7 +149,7 @@ function mockControlCenter(overrides?: {
     campaign_queue: overrides?.queue ?? queueFixture,
     permission_options: permissionOptions,
     types: overrides?.types ?? typesFixture,
-    delivery_rules: { quiet_hours_enabled: false, quiet_hours_start: '22:00', quiet_hours_end: '08:00', quiet_hours_alerts: false, marketing_daily_cap: 1 },
+    delivery_rules: { quiet_hours_enabled: false, quiet_hours_start: '22:00', quiet_hours_end: '08:00', quiet_hours_alerts: false, marketing_daily_cap: 1, log_retention_days: 365, marketing_opt_out_line: 'Stop: {url}' },
     quiet_now: false,
     deferred_count: 0,
     recipient_modes: ['owners_managers', 'owner_only', 'business_phone', 'staff', 'custom'],
@@ -257,7 +257,7 @@ describe('SmsControlCenterPage', () => {
   it('saves wording via updateSmsType with body', async () => {
     renderWithRouter(<SmsControlCenterPage />);
     await expandType('Gift card delivery');
-    const textarea = screen.getByRole('textbox');
+    const textarea = screen.getByRole('textbox', { name: /Gift card delivery wording/i });
     fireEvent.change(textarea, { target: { value: 'Gift card {{amount}} - shop now' } });
     fireEvent.click(screen.getByRole('button', { name: /Save message/i }));
 
@@ -271,7 +271,7 @@ describe('SmsControlCenterPage', () => {
   it('warns when wording forces Unicode/UCS-2 encoding', async () => {
     renderWithRouter(<SmsControlCenterPage />);
     await expandType('Gift card delivery');
-    const textarea = screen.getByRole('textbox');
+    const textarea = screen.getByRole('textbox', { name: /Gift card delivery wording/i });
     fireEvent.change(textarea, { target: { value: 'Gift card {{amount}} — shop now' } });
 
     expect(await screen.findByText(/Unicode encoding \(UCS-2\)/i)).toBeTruthy();
@@ -282,7 +282,7 @@ describe('SmsControlCenterPage', () => {
   it('updates segment/cost preview from the API after Preview', async () => {
     renderWithRouter(<SmsControlCenterPage />);
     await expandType('Gift card delivery');
-    const textarea = screen.getByRole('textbox');
+    const textarea = screen.getByRole('textbox', { name: /Gift card delivery wording/i });
 
     // Client-side estimate updates as the wording changes (before Preview).
     fireEvent.change(textarea, {
@@ -404,6 +404,7 @@ describe('SmsControlCenterPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /Save rules/i }));
     await waitFor(() => expect(api.updateSmsDeliveryRules).toHaveBeenCalledWith({
       quiet_hours_enabled: true, quiet_hours_start: '22:00', quiet_hours_end: '07:30', quiet_hours_alerts: false, marketing_daily_cap: 2,
+      log_retention_days: 365, marketing_opt_out_line: 'Stop: {url}',
     }));
     expect(await screen.findByText(/Quiet hours 22:00–07:30/)).toBeTruthy();
     expect(screen.getByText(/Marketing cap: 2 a day per number/)).toBeTruthy();
@@ -450,7 +451,7 @@ describe('SmsControlCenterPage', () => {
     expect(api.updateSmsType).not.toHaveBeenCalled();
 
     await expandType('Gift card delivery');
-    const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+    const textarea = screen.getByRole('textbox', { name: /Gift card delivery wording/i }) as HTMLTextAreaElement;
     expect(textarea.disabled).toBe(true);
 
     const select = screen.getByLabelText(/Who can send/i) as HTMLSelectElement;

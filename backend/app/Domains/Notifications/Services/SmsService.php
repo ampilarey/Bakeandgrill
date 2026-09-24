@@ -34,8 +34,15 @@ class SmsService
 
     public function send(SmsMessage $sms): SmsLog
     {
-        $estimate = $this->estimate($sms->message);
         $registryEntry = SmsTypeRegistry::resolve($sms->type);
+        // Every marketing text ends with the unsubscribe link (SMS audit, 2026-09-24).
+        if ($registryEntry !== null) {
+            $withLine = SmsDeliveryRules::withOptOutLine($sms->message, $registryEntry);
+            if ($withLine !== $sms->message) {
+                $sms = new SmsMessage($sms->to, $withLine, $sms->type, $sms->customerId, $sms->campaignId, $sms->referenceType, $sms->referenceId, $sms->idempotencyKey, $sms->actingUserId);
+            }
+        }
+        $estimate = $this->estimate($sms->message);
 
         try {
             $normalized = $this->normalizePhone($sms->to);

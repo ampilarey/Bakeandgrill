@@ -109,6 +109,11 @@ class AdminCustomerController extends Controller
             'billing_address' => ['sometimes', 'nullable', 'string'],
         ]);
 
+        if (array_key_exists('sms_opt_out', $validated) && (bool) $validated['sms_opt_out'] !== (bool) $customer->sms_opt_out) {
+            $validated['sms_opt_out_at'] = $validated['sms_opt_out'] ? now() : null;
+            $validated['sms_opt_out_source'] = 'admin';
+        }
+
         $customer->update($validated);
 
         return response()->json(['customer' => $this->format($customer->fresh())]);

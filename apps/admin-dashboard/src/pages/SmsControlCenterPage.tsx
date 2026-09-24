@@ -43,6 +43,8 @@ const DEFAULT_RULES: SmsDeliveryRules = {
   quiet_hours_end: '08:00',
   quiet_hours_alerts: false,
   marketing_daily_cap: 1,
+  log_retention_days: 365,
+  marketing_opt_out_line: 'Stop: {url}',
 };
 
 const KILL_SWITCH_WARNING =
@@ -329,6 +331,27 @@ export function SmsControlCenterPage() {
                   max={50}
                   value={rulesDraft.marketing_daily_cap}
                   onChange={(e) => setRulesDraft((d) => ({ ...d, marketing_daily_cap: Math.max(0, Math.min(50, Number(e.target.value) || 0)) }))}
+                  style={inputStyle}
+                />
+              </label>
+              <label style={{ ...fieldLabel, flex: '1 1 220px' }}>
+                Unsubscribe line on marketing texts ({'{url}'} = the short link)
+                <input
+                  value={rulesDraft.marketing_opt_out_line ?? ''}
+                  maxLength={80}
+                  onChange={(e) => setRulesDraft((d) => ({ ...d, marketing_opt_out_line: e.target.value }))}
+                  placeholder="Empty = no line"
+                  style={inputStyle}
+                />
+              </label>
+              <label style={fieldLabel}>
+                Keep the log for (days, 0 = forever)
+                <input
+                  type="number"
+                  min={0}
+                  max={3650}
+                  value={rulesDraft.log_retention_days ?? 365}
+                  onChange={(e) => setRulesDraft((d) => ({ ...d, log_retention_days: Math.max(0, Math.min(3650, Number(e.target.value) || 0)) }))}
                   style={inputStyle}
                 />
               </label>
@@ -649,6 +672,7 @@ function TypeEditor({
         <>
           <textarea
             value={displayBody}
+            aria-label={`${row.label} wording`}
             onChange={(e) => {
               setBody(e.target.value);
               setPreview(null);

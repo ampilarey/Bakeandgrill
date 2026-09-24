@@ -12,6 +12,8 @@ export type Customer = {
   is_active?: boolean;
   /** Stage E — wholesale shop login has an active trade account. */
   has_trade_account?: boolean;
+  /** True when the customer has stopped promotional SMS (order, payment and login texts still send). */
+  sms_opt_out?: boolean;
 };
 
 export type StaffUser = {

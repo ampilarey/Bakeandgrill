@@ -59,6 +59,12 @@ Route::get('/sitemap.xml', [App\Http\Controllers\SitemapController::class, 'inde
 // branded maintenance view (503) when the `marketing_site` service key is off.
 Route::middleware(['content.locale', 'service.banner'])->group(function () {
     Route::get('/', [HomeController::class, 'index'])->name('home');
+    // Unsubscribe from promotional SMS (SMS audit, 2026-09-24). `/sms` is the
+    // short form printed at the end of every marketing text.
+    Route::get('/sms', fn () => redirect()->route('sms.preferences'))->name('sms.short');
+    Route::get('/sms/preferences', [App\Http\Controllers\SmsPreferencesPageController::class, 'show'])->name('sms.preferences');
+    Route::post('/sms/preferences', [App\Http\Controllers\SmsPreferencesPageController::class, 'optOut'])
+        ->middleware('throttle:10,10')->name('sms.preferences.opt-out');
     Route::get('/contact', [HomeController::class, 'contact'])->name('contact');
     // The complaint box: staff, food and service complaints from anybody,
     // with or without an order (owner, 2026-09-19). Posts to /api/complaint-box.

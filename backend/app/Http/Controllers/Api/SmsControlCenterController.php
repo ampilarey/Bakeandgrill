@@ -226,6 +226,7 @@ class SmsControlCenterController extends Controller
             'quiet_hours_alerts' => 'sometimes|boolean',
             'marketing_daily_cap' => 'sometimes|integer|min:0|max:50',
             'log_retention_days' => 'sometimes|integer|min:0|max:3650',
+            'marketing_opt_out_line' => 'sometimes|nullable|string|max:80',
         ]);
         if ($validated === []) {
             return response()->json(['message' => 'Provide at least one rule.'], 422);

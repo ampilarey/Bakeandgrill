@@ -34,7 +34,11 @@ final class SmsDeliveryRules
 
     public const LOG_RETENTION = 'sms_log_retention_days';
 
-    /** @return array{quiet_hours_enabled: bool, quiet_hours_start: string, quiet_hours_end: string, quiet_hours_alerts: bool, marketing_daily_cap: int, log_retention_days: int} */
+    public const OPT_OUT_LINE = 'sms_marketing_opt_out_line';
+
+    public const OPT_OUT_LINE_DEFAULT = 'Stop: {url}';
+
+    /** @return array{quiet_hours_enabled: bool, quiet_hours_start: string, quiet_hours_end: string, quiet_hours_alerts: bool, marketing_daily_cap: int, log_retention_days: int, marketing_opt_out_line: string} */
     public static function all(): array
     {
         return [
@@ -45,6 +49,8 @@ final class SmsDeliveryRules
             'marketing_daily_cap' => max(0, (int) SiteSetting::get(self::MARKETING_CAP, '1')),
             // How long sms_logs rows are kept; 0 keeps them forever.
             'log_retention_days' => max(0, (int) SiteSetting::get(self::LOG_RETENTION, '365')),
+            // Appended to every marketing text; {url} becomes the short unsubscribe link. Empty = none.
+            'marketing_opt_out_line' => self::optOutLine(),
         ];
     }
 
@@ -65,6 +71,11 @@ final class SmsDeliveryRules
         }
         if (array_key_exists('marketing_daily_cap', $input)) {
             SiteSetting::set(self::MARKETING_CAP, (string) max(0, min(50, (int) $input['marketing_daily_cap'])));
+        }
+        if (array_key_exists('marketing_opt_out_line', $input)) {
+            // SiteSetting::get() reads an empty value as "unset", so "no line" is stored as the word off.
+            $line = mb_substr(trim((string) ($input['marketing_opt_out_line'] ?? '')), 0, 80);
+            SiteSetting::set(self::OPT_OUT_LINE, $line === '' ? 'off' : $line);
         }
         if (array_key_exists('log_retention_days', $input)) {
             SiteSetting::set(self::LOG_RETENTION, (string) max(0, min(3650, (int) $input['log_retention_days'])));
@@ -150,6 +161,44 @@ final class SmsDeliveryRules
         return $sentToday >= $cap
             ? "Marketing cap: this number already had {$sentToday} marketing text" . ($sentToday === 1 ? '' : 's') . ' in the last day (cap ' . $cap . ').'
             : null;
+    }
+
+    public static function optOutLine(): string
+    {
+        $raw = SiteSetting::get(self::OPT_OUT_LINE, null);
+        if ($raw === null) {
+            return self::OPT_OUT_LINE_DEFAULT;
+        }
+        $line = trim((string) $raw);
+
+        return in_array(mb_strtolower($line), ['off', 'none', '-'], true) ? '' : $line;
+    }
+
+    /** The short unsubscribe address as printed in a text: no scheme, no trailing slash. */
+    public static function optOutUrl(): string
+    {
+        return (string) preg_replace('#^https?://#', '', rtrim(url('/sms'), '/'));
+    }
+
+    /**
+     * A marketing text with the unsubscribe line on the end, unless it is
+     * already there or the owner switched the line off.
+     */
+    public static function withOptOutLine(string $message, array $entry): string
+    {
+        if (($entry['category'] ?? '') !== 'marketing' || !empty($entry['always_on'])) {
+            return $message;
+        }
+        $line = self::optOutLine();
+        if ($line === '') {
+            return $message;
+        }
+        $url = self::optOutUrl();
+        if (str_contains($message, $url)) {
+            return $message;
+        }
+
+        return rtrim($message) . "\n" . str_replace('{url}', $url, $line);
     }
 
     private static function time(mixed $raw, string $default): string

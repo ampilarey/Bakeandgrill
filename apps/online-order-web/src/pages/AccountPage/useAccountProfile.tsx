@@ -52,6 +52,21 @@ export function useAccountProfile(isAuthenticated: boolean, authReady: boolean) 
     }
   };
 
+  /** Promotional SMS on or off (SMS audit, 2026-09-24). Order and login texts are unaffected. */
+  const [savingPromoSms, setSavingPromoSms] = useState(false);
+  const handleTogglePromoSms = async () => {
+    if (!isAuthenticated || !customer) return;
+    setSavingPromoSms(true);
+    try {
+      const res = await updateCustomerProfile({ sms_opt_out: !customer.sms_opt_out });
+      setCustomer((c) => (c ? { ...c, ...res.customer } : res.customer));
+    } catch (e) {
+      setProfileMsg({ type: 'error', text: (e as Error).message || t('account.profile_err_save') });
+    } finally {
+      setSavingPromoSms(false);
+    }
+  };
+
   const handleChangePassword = async () => {
     if (!isAuthenticated) return;
     if (!pwForm.current_password || !pwForm.new_password) {
@@ -95,5 +110,7 @@ export function useAccountProfile(isAuthenticated: boolean, authReady: boolean) 
     pwMsg,
     handleSaveProfile,
     handleChangePassword,
+    savingPromoSms,
+    handleTogglePromoSms,
   };
 }

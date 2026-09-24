@@ -326,6 +326,7 @@ class CustomerController extends Controller
                 'preferred_language' => $customer->preferred_language,
                 'last_order_at' => $customer->last_order_at,
                 'has_trade_account' => $hasTradeAccount,
+                'sms_opt_out' => (bool) $customer->sms_opt_out,
             ],
             'has_trade_account' => $hasTradeAccount,
             'credit' => $customer->credit_enabled
@@ -531,7 +532,7 @@ class CustomerController extends Controller
         $looksPaid = $order->paid_at !== null
             || $order->payment_status === 'paid'
             || in_array($order->status, ['paid', 'completed'], true);
-        if (! $looksPaid) {
+        if (!$looksPaid) {
             try {
                 app(\App\Domains\Payments\Services\PaymentService::class)
                     ->reconcilePendingBmlPayment($order);
@@ -630,7 +631,7 @@ class CustomerController extends Controller
     {
         $customer = $request->user();
 
-        if (! $customer instanceof Customer) {
+        if (!$customer instanceof Customer) {
             return response()->json(['message' => 'Forbidden — customer access only.'], 403);
         }
 
@@ -687,7 +688,14 @@ class CustomerController extends Controller
             'email' => 'sometimes|email|max:255',
             'preferred_language' => 'sometimes|in:en,dv,ar',
             'date_of_birth' => 'sometimes|nullable|date|before:today|after:1900-01-01',
+            // Promotional SMS on or off, from Account → Settings (SMS audit, 2026-09-24).
+            'sms_opt_out' => 'sometimes|boolean',
         ]);
+
+        if (array_key_exists('sms_opt_out', $validated) && (bool) $validated['sms_opt_out'] !== (bool) $customer->sms_opt_out) {
+            $validated['sms_opt_out_at'] = $validated['sms_opt_out'] ? now() : null;
+            $validated['sms_opt_out_source'] = 'order_app';
+        }
 
         $customer->update($validated);
         $customer->refresh();
@@ -704,6 +712,7 @@ class CustomerController extends Controller
                 'tier' => $customer->tier,
                 'preferred_language' => $customer->preferred_language,
                 'is_profile_complete' => $customer->is_profile_complete,
+                'sms_opt_out' => (bool) $customer->sms_opt_out,
             ],
         ]);
     }
@@ -731,7 +740,7 @@ class CustomerController extends Controller
     {
         // Always return 200 regardless of whether the phone is registered — prevents phone enumeration
         Customer::where('phone', $request->validated()['phone'])
-            ->update(['sms_opt_out' => true, 'sms_opt_out_at' => now()]);
+            ->update(['sms_opt_out' => true, 'sms_opt_out_at' => now(), 'sms_opt_out_source' => 'api']);
 
         return response()->json(['message' => 'If this number is registered, you have been opted out.']);
     }

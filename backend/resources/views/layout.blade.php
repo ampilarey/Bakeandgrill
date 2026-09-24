@@ -143,6 +143,12 @@
             ['label' => 'Refund Policy', 'url' => '/refund'],
         ];
     }
+    // The unsubscribe link is always in the footer, whatever the owner
+    // configured (SMS audit, 2026-09-24): a promotional text has to be
+    // stoppable from the site it points at.
+    if (!collect($footerLegalLinks)->contains(fn ($l) => str_contains((string) $l['url'], '/sms'))) {
+        $footerLegalLinks[] = ['label' => 'SMS preferences', 'url' => '/sms/preferences'];
+    }
 @endphp
 <!DOCTYPE html>
 <html lang="{{ $contentLocale }}" dir="{{ $contentDir }}">

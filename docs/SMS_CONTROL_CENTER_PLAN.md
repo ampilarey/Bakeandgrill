@@ -434,3 +434,19 @@ streams the same filter as CSV, newest first, up to 50,000 rows. Retention:
 `sms:dispatch-scheduled` (every minute) exactly as "Send now" would; a start
 that fails (empty audience, budget) clears the time and notes the reason on the
 campaign rather than retrying every minute.
+
+### B.5 Unsubscribe (`/sms`, `/sms/preferences`)
+The privacy page said "reply STOP" while nothing read replies. Now: a public
+page (`SmsPreferencesPageController`, view `sms-preferences`) takes a number and
+opts it out with the same answer whether the number is known or not; `/sms` is
+the short form. The site footer always carries an "SMS preferences" link
+(`layout.blade.php`, added after the owner's `footer_links`), the order app
+links to it under Account → More and has a "Promotional SMS" switch under
+Account → Settings (`PATCH /customer/profile` with `sms_opt_out`). Every
+marketing-category text ends with `sms_marketing_opt_out_line` (default
+`Stop: {url}`; the word `off` stored means no line, because an empty setting
+reads as unset) with `{url}` = the short link without scheme; the line is not
+added when the text already carries the link. `customers.sms_opt_out_source`
+records `web_form | order_app | admin | api`; opting back in clears
+`sms_opt_out_at`. Inbound STOP handling still needs a reply number from
+Dhiraagu and is not built.
