@@ -754,3 +754,42 @@ managers) about the last finished period while it is unlocked: `filing_reminder_
 before the due date (default 3, 0 = off), on the day, and the day after. The due
 date is `filing_due_day` (default 28) of the month after the period ends. Both
 are on GST → Settings.
+
+## Appendix H — Kitchen audit follow-up (2026-09-26)
+
+### H.1 Lanes from the kitchen's own timestamps
+The order status carries payment as well as cooking, so a ticket paid at the
+till mid-cook read `paid` and the kitchen screen put it back under Pending with
+the start button and the new-order chime. `orders.kitchen_started_at` and
+`orders.ready_at` are stamped by `OrderObserver` on the first move to
+`in_progress` and `ready` (and `cancelled_at` on every cancel).
+`App\Domains\KitchenDisplay\Support\KitchenBoard` is the one set of rules the
+kitchen screen, the wall board and the stream share: `lane()` (new, cooking,
+ready, cancelled), `clockAt()` (fired, else paid for an online order, else
+placed; a booked pickup starts its lead time before the slot), and `visible()`
+(fire holds, counter-only orders, a ticket ready and then paid is off the
+board, pickups booked for later today wait until
+`kitchen_scheduled_pickup_lead_minutes`, default 30, Kitchen Production →
+settings). A cancelled ticket the kitchen had shows flagged for three minutes.
+
+The wall board (`/board`) uses the same rules and lanes, newest 60 oldest
+first. It used to list "confirmed" and "preparing", which nothing sets, and
+miss `in_progress`, `paid` and `partial`.
+
+### H.2 Kitchen printing
+`PrintJobService::enqueueKitchen()` keys a requested reprint by the second, so
+each reprint prints (it used to print once per order and reason). Add-ons print
+only lines with no `order_items.kitchen_sent_at`, headed ADDED. An edit prints
+the difference, headed CHANGED, with removed lines as `VOID: …`. A cancel of an
+order the kitchen had prints `CANCEL: …` lines headed CANCELLED - DO NOT MAKE.
+The chit now carries the size, the line note, platter picks indented, bundle
+contents, the table or ticket name, the pickup time and the customer's note;
+`print-proxy/src/tickets.ts` renders them. VOID and CANCEL are also in the line
+name so a proxy that has not been updated still prints them as such.
+
+### H.3 Smaller
+`POST /kds/items/{id}/86` takes `available` and sets it (no body still
+toggles). New lines on a ticket the kitchen had finished clear its done and
+ready stamps and move a `ready` order back to `in_progress`. The late alarm
+covers Cooking as well as Pending. The kitchen stream signals every order
+change, so a completed or cancelled ticket drops at once.

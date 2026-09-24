@@ -33,6 +33,8 @@ trait SnapshotHelper
         'hold_key',
         'created_at',
         'updated_at',
+        // Kitchen audit, 2026-09-26: when a ticket's kitchen clock started.
+        'kitchen_clock_at',
         'deleted_at',
         'processed_at',
         'sent_at',

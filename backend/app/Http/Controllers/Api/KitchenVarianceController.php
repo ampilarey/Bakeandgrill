@@ -50,6 +50,7 @@ class KitchenVarianceController extends Controller
             'kitchen_manager_verification_for_prepared_stock' => ['sometimes', 'boolean'],
             'kitchen_allow_staff_prepared_stock_batches' => ['sometimes', 'boolean'],
             'kitchen_photo_required_for_reject_waste' => ['sometimes', 'boolean'],
+            'kitchen_scheduled_pickup_lead_minutes' => ['sometimes', 'integer', 'min:5', 'max:240'],
         ]);
 
         return response()->json(['settings' => KitchenHandoverSettings::update($validated)]);

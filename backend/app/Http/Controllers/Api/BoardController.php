@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\KitchenDisplay\Support\KitchenBoard;
 use App\Models\BoardPairing;
 use App\Models\Order;
 use App\Models\User;
@@ -261,21 +262,26 @@ class BoardController extends Controller
      */
     public function orders(Request $request): JsonResponse
     {
-        $orders = Order::query()
-            ->with([
-                'items:id,order_id,item_name,quantity',
-                'table:id,name',
-                'user:id,name',
-            ])
-            ->whereIn('status', ['pending', 'confirmed', 'preparing', 'ready'])
-            ->where('type', '!=', 'gift_card')
-            // Same hold as the KDS: nothing shows before staff fire it.
-            ->where(function ($q) {
-                $q->whereNull('fulfil_date')->orWhereNotNull('fired_at');
-            })
-            ->orderBy('created_at')
+        /*
+         * Kitchen audit, 2026-09-26: the board listed pending, "confirmed",
+         * "preparing" and ready. The last two are not statuses anything sets
+         * and in_progress, paid and partial were missing, so a ticket
+         * vanished while it was cooking and one paid at the till never
+         * appeared. It also skipped the kitchen's holds and took the 60
+         * oldest, so a backlog pushed today's orders off. It now shows what
+         * the kitchen screen shows, newest 60, oldest first.
+         */
+        $query = Order::query()->with([
+            'items:id,order_id,item_id,item_name,quantity',
+            'table:id,name',
+            'user:id,name',
+        ]);
+        $orders = KitchenBoard::visible($query)
+            ->orderByDesc('created_at')
             ->limit(60)
-            ->get();
+            ->get()
+            ->reverse()
+            ->values();
 
         return response()->json([
             'generated_at' => now()->toIso8601String(),
@@ -284,6 +290,9 @@ class BoardController extends Controller
                     'id' => $order->id,
                     'order_number' => $order->order_number,
                     'status' => $order->status,
+                    // new | cooking | ready — the column the screen puts it in.
+                    'lane' => KitchenBoard::lane($order),
+                    'pickup_slot_at' => $order->pickup_slot_at?->toIso8601String(),
                     'type' => $order->type,
                     'is_customer_placed' => $order->isCustomerPlaced(),
                     'placed_by' => $order->user?->name,

@@ -8,17 +8,12 @@ use App\Domains\Realtime\DTOs\StreamEvent;
 use App\Models\Order;
 
 /**
- * Fetches KDS-relevant orders (pending/in_progress/paid/preparing) changed since cursor.
+ * Order changes since the cursor, as refetch signals for the kitchen screen.
+ * The screen reloads its list (KitchenBoard rules) on each event; the payload
+ * is a summary, never the source of truth.
  */
 class KdsStreamProvider
 {
-    // Defer to KdsController::KDS_STATUSES so REST + SSE always agree.
-    // Previously this list was authored independently and drifted:
-    // REST had 'ready' but no 'preparing'; SSE had 'preparing' but no
-    // 'ready'. Tickets would either flicker between the two delivery
-    // mechanisms or disappear entirely on the kitchen display.
-    private const KDS_STATUSES = \App\Http\Controllers\Api\KdsController::KDS_STATUSES;
-
     public function __construct(private OrderStreamProvider $orderStreamProvider) {}
 
     /**
@@ -28,8 +23,14 @@ class KdsStreamProvider
     {
         [$since, $sinceId] = $this->orderStreamProvider->parseCursor($cursor);
 
+        /*
+         * Kitchen audit, 2026-09-26: every order change, not only those still
+         * in a kitchen status. The screen refetches on any event, and a
+         * cancelled or completed order never produced one, so it sat on the
+         * board until the next minute's poll.
+         */
         $orders = Order::with(['items.modifiers'])
-            ->whereIn('status', self::KDS_STATUSES)
+            ->where('type', '!=', 'gift_card')
             ->where(function ($q) use ($since, $sinceId): void {
                 $q->where('updated_at', '>', $since)
                     ->orWhere(function ($q2) use ($since, $sinceId): void {

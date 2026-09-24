@@ -357,10 +357,31 @@ class OrderCreationService
         });
     }
 
+    /**
+     * New lines on a ticket the kitchen had finished put it back in Cooking
+     * (kitchen audit, 2026-09-26). A ready order stayed in the Ready column
+     * with its new, uncooked lines, and one that was ready and then paid was
+     * off the board altogether.
+     */
+    private function reopenForKitchen(Order $order): void
+    {
+        $order->refresh();
+        if ($order->kitchen_done_at === null && $order->ready_at === null && $order->status !== 'ready') {
+            return;
+        }
+
+        $changes = ['kitchen_done_at' => null, 'kitchen_done_by' => null, 'ready_at' => null];
+        if ($order->status === 'ready') {
+            $changes['status'] = 'in_progress';
+        }
+        $order->update($changes);
+    }
+
     public function addItemsToOrder(Order $order, array $items, bool $print = true): Order
     {
         $updated = DB::transaction(function () use ($order, $items): Order {
             $this->addOrderItems($order, $items);
+            $this->reopenForKitchen($order);
 
             return $this->calculator->recalculateAndPersist($order);
         });
@@ -376,8 +397,9 @@ class OrderCreationService
         if ($print && !in_array($updated->type, ['online_pickup', 'delivery'], true)) {
             DB::afterCommit(function () use ($updated): void {
                 try {
+                    // Only the new lines, headed ADDED (kitchen audit, 2026-09-26).
                     app(PrintJobService::class)
-                        ->enqueueKitchen($updated->fresh(['items.modifiers']), 'addItems');
+                        ->enqueueKitchenAdded($updated->fresh(['items.modifiers']));
                 } catch (\Throwable $e) {
                     logger()->warning('addItemsToOrder: kitchen print enqueue failed', [
                         'order_id' => $updated->id,
@@ -429,6 +451,13 @@ class OrderCreationService
         ?object $user = null,
         ?string $effectiveType = null,
     ): Order {
+        // What the kitchen already had, to print only the difference
+        // (kitchen audit, 2026-09-26): an edit used to reprint the whole
+        // order with nothing to say what was new or taken off.
+        $kitchenKnew = $reprintKitchen
+            ? $order->items()->with('modifiers')->whereNotNull('kitchen_sent_at')->get()
+            : collect();
+
         $updated = DB::transaction(function () use ($order, $items, $user, $effectiveType): Order {
             // Restore POS-deducted stock BEFORE soft-deleting the old lines,
             // otherwise the subsequent addOrderItems re-deducts and we leak
@@ -545,7 +574,7 @@ class OrderCreationService
         // Sync open invoices + kitchen reprint after commit so both see
         // the final persisted lines/totals (never a mid-transaction empty
         // items relation that could rewrite the bill to MVR 0).
-        DB::afterCommit(function () use ($updated, $reprintKitchen): void {
+        DB::afterCommit(function () use ($updated, $reprintKitchen, $kitchenKnew): void {
             $fresh = $updated->fresh(['items.modifiers']);
             if ($fresh === null) {
                 return;
@@ -564,8 +593,13 @@ class OrderCreationService
             // Fresh type so delivery → dine_in/takeaway still reprints.
             if ($reprintKitchen && !in_array((string) $fresh->type, ['online_pickup', 'delivery'], true)) {
                 try {
-                    app(PrintJobService::class)
-                        ->enqueueKitchen($fresh, 'replaceItems');
+                    $printer = app(PrintJobService::class);
+                    if ($kitchenKnew->isEmpty()) {
+                        $printer->enqueueKitchen($fresh, 'replaceItems');
+                    } else {
+                        [$added, $voided] = $printer->diffLines($kitchenKnew, $fresh->items);
+                        $printer->enqueueKitchenChanged($fresh, $added, $voided);
+                    }
                 } catch (\Throwable $e) {
                     logger()->warning('replaceOrderItems: kitchen reprint enqueue failed', [
                         'order_id' => $fresh->id,

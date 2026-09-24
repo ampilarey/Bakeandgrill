@@ -62,6 +62,20 @@ export type KdsOrder = {
   kitchen_done_by?: { id: number; name: string } | null;
   kitchen_handover_status?: string | null;
   pos_received_at?: string | null;
+  /**
+   * Kitchen audit, 2026-09-26: the column, from the kitchen's own timestamps.
+   * The status alone cannot say it: a ticket paid at the till mid-cook reads
+   * `paid`. Older servers leave it out and the screen falls back to status.
+   */
+  kitchen_lane?: "new" | "cooking" | "ready" | "cancelled";
+  /** When the kitchen's clock started: fired, paid online, or the slot's lead time. */
+  kitchen_clock_at?: string | null;
+  kitchen_started_at?: string | null;
+  /** A pickup booked for a time. */
+  pickup_slot_at?: string | null;
+  fired_at?: string | null;
+  /** Set on a ticket cancelled in the last few minutes, shown flagged. */
+  cancelled_at?: string | null;
   items: KdsOrderItem[];
 };
 
@@ -182,10 +196,14 @@ export async function fetchMe(token: string): Promise<KdsStaffUser> {
   return data.user;
 }
 
-export async function fetchKdsOrders(token: string): Promise<KdsOrder[]> {
-  const data = await request<{ orders: KdsOrder[] }>(ENDPOINTS.KDS_ORDERS, {
+export async function fetchKdsOrders(
+  token: string,
+  onMeta?: (meta: { laterToday: number }) => void,
+): Promise<KdsOrder[]> {
+  const data = await request<{ orders: KdsOrder[]; later_today?: number }>(ENDPOINTS.KDS_ORDERS, {
     headers: authHeaders(token),
   });
+  onMeta?.({ laterToday: Number(data.later_today ?? 0) });
   return data.orders ?? [];
 }
 
@@ -331,10 +349,16 @@ export async function recallOrder(token: string, orderId: number): Promise<void>
   });
 }
 
-export async function markItem86(token: string, itemId: number): Promise<{ is_available: boolean }> {
+/**
+ * Set an item sold out (available = false) or back on (true). The state is
+ * sent, not a toggle, so a double tap or two screens at once cannot quietly
+ * flip it back (kitchen audit, 2026-09-26).
+ */
+export async function markItem86(token: string, itemId: number, available?: boolean): Promise<{ is_available: boolean }> {
   const data = await request<{ item: { is_available: boolean } }>(`/kds/items/${itemId}/86`, {
     method: 'POST',
     headers: authHeaders(token),
+    body: JSON.stringify(available === undefined ? {} : { available }),
   });
   return { is_available: !!data.item?.is_available };
 }

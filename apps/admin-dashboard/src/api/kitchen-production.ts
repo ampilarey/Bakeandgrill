@@ -6,6 +6,8 @@ export type KitchenHandoverSettings = {
   kitchen_manager_verification_for_prepared_stock: boolean;
   kitchen_allow_staff_prepared_stock_batches: boolean;
   kitchen_photo_required_for_reject_waste: boolean;
+  /** Minutes before a scheduled pickup that it reaches the kitchen screen (5–240). */
+  kitchen_scheduled_pickup_lead_minutes?: number;
 };
 
 export type KitchenProductionBatch = {

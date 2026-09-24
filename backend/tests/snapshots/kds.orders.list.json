@@ -14,6 +14,12 @@
             "kitchen_done_at": null,
             "kitchen_done_by": null,
             "kitchen_handover_status": null,
+            "kitchen_lane": "new",
+            "kitchen_clock_at": "__VOLATILE__",
+            "kitchen_started_at": null,
+            "pickup_slot_at": null,
+            "fired_at": null,
+            "cancelled_at": null,
             "pos_received_at": null,
             "items": [
                 {
@@ -36,5 +42,6 @@
                 }
             ]
         }
-    ]
+    ],
+    "later_today": 0
 }

@@ -35,6 +35,11 @@ const injectedControlBytes = (ticket: string): number => {
   const withoutBuilderCommands = ticket
     .split('\x1B@\n').join('')
     .split('\x1DVA0').join('')
+    // The builder's own emphasis: bold and double size, on and off.
+    .split('\x1BE\x01').join('')
+    .split('\x1BE\x00').join('')
+    .split('\x1B!\x30').join('')
+    .split('\x1B!\x00').join('')
     .split('\n').join('');
   return (withoutBuilderCommands.match(/[\u0000-\u001F\u007F-\u009F]/g) ?? []).length;
 };
@@ -103,4 +108,54 @@ test('receipt prints no QR without a link, or with one that is not a URL', () =>
   const bad = hostilePayload();
   bad.receipt_url = `${GS}(k not a url`;
   assert.ok(!buildReceiptTicket(bad).includes('Scan for your receipt'));
+});
+
+// Kitchen audit, 2026-09-26: what the kitchen screen showed and paper did not.
+test('kitchen chit carries heading, table, pickup time, size, line note, bundle and customer note', () => {
+  const ticket = buildKitchenTicket({
+    printer_name: 'kitchen',
+    type: 'kitchen',
+    order: {
+      id: 7,
+      order_number: 'BG-7',
+      type: 'online_pickup',
+      heading: 'ADDED',
+      table: 'T4',
+      pickup_at: '19:00',
+      customer_notes: 'Ring when ready',
+      items: [
+        { item_name: 'Burger', quantity: 2, variant_name: 'Large', notes: 'No onions',
+          bundle_contents: [{ name: 'Fries', quantity: 2 }] },
+        { item_name: 'Samosa', quantity: 1, is_child: true },
+        { item_name: 'VOID: Tea', quantity: 1, void: true },
+      ],
+    },
+  });
+
+  assert.ok(ticket.includes('ADDED'));
+  assert.ok(ticket.includes('Table: T4'));
+  assert.ok(ticket.includes('FOR 19:00'));
+  assert.ok(ticket.includes('2x Burger (Large)'));
+  assert.ok(ticket.includes('>> No onions'));
+  assert.ok(ticket.includes('> 2x Fries'));
+  assert.ok(ticket.includes('   > 1x Samosa'));
+  assert.ok(ticket.includes('1x VOID: Tea'));
+  assert.ok(ticket.includes('Customer: Ring when ready'));
+});
+
+test('new kitchen fields are sanitised too', () => {
+  const ticket = buildKitchenTicket({
+    printer_name: 'kitchen',
+    type: 'kitchen',
+    order: {
+      id: 8,
+      order_number: 'BG-8',
+      type: 'takeaway',
+      heading: `CHANGED${ESC}p`,
+      table: `T${GS}VA0`,
+      customer_notes: `hi${ESC}@`,
+      items: [{ item_name: 'Tea', quantity: 1, variant_name: `L${ESC}p`, notes: `x${GS}V`, bundle_contents: [{ name: `F${ESC}`, quantity: 1 }] }],
+    },
+  });
+  assert.equal(injectedControlBytes(ticket), 0);
 });

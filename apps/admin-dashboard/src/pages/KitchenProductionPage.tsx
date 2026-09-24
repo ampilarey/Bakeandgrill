@@ -82,7 +82,9 @@ const VARIANCE_COLOR: Record<string, string> = {
   over: 'blue',
 };
 
-const SETTINGS_META: Record<keyof KitchenHandoverSettings, { label: string; hint: string }> = {
+type HandoverToggleKey = Exclude<keyof KitchenHandoverSettings, 'kitchen_scheduled_pickup_lead_minutes'>;
+
+const SETTINGS_META: Record<HandoverToggleKey, { label: string; hint: string }> = {
   kitchen_require_pos_receiving_before_ready: {
     label: 'Require POS receive before ready',
     hint: 'Kitchen cannot mark an order ready until the counter has received the batch.',
@@ -757,7 +759,7 @@ export default function KitchenProductionPage({ tab: forcedTab }: { tab?: TabId 
               boxShadow: '0 1px 2px rgba(28,20,8,0.05)',
               overflow: 'hidden',
             }}>
-              {(Object.keys(SETTINGS_META) as Array<keyof KitchenHandoverSettings>).map((key, idx, arr) => {
+              {(Object.keys(SETTINGS_META) as HandoverToggleKey[]).map((key, idx, arr) => {
                 const meta = SETTINGS_META[key];
                 return (
                   <div
@@ -786,6 +788,33 @@ export default function KitchenProductionPage({ tab: forcedTab }: { tab?: TabId 
                   </div>
                 );
               })}
+              {/* Kitchen audit, 2026-09-26: a pickup booked for later today
+                  waits off the kitchen screen until this long before its slot. */}
+              <div style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16,
+                padding: '16px 18px', borderTop: '1px solid var(--color-border-light)',
+              }}>
+                <div style={{ minWidth: 0 }}>
+                  <label htmlFor="kitchen-lead-minutes" style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>
+                    Scheduled pickups reach the kitchen (minutes before)
+                  </label>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                    A pickup booked for later today stays off the kitchen screen until then, and its timer starts then. 5 to 240.
+                  </div>
+                </div>
+                <input
+                  id="kitchen-lead-minutes"
+                  type="number"
+                  min={5}
+                  max={240}
+                  value={settings.kitchen_scheduled_pickup_lead_minutes ?? 30}
+                  onChange={(e) => {
+                    const n = Math.min(240, Math.max(5, parseInt(e.target.value, 10) || 30));
+                    setSettings((s) => (s ? { ...s, kitchen_scheduled_pickup_lead_minutes: n } : s));
+                  }}
+                  style={{ width: 90, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)' }}
+                />
+              </div>
             </div>
             <div style={{ marginTop: 16 }}>
               <Btn onClick={() => void saveSettings()} disabled={settingsBusy}>

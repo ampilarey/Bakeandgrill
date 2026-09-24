@@ -8,6 +8,14 @@ export type PrintPayload = {
     type: string;
     created_at?: string | null;
     notes?: string | null;
+    /** ADDED / CHANGED / REPRINT / CANCELLED - DO NOT MAKE, printed large. */
+    heading?: string | null;
+    /** Table or ticket name. */
+    table?: string | null;
+    /** Pickup time, HH:MM, for a booked pickup. */
+    pickup_at?: string | null;
+    /** What the customer typed on an online order. */
+    customer_notes?: string | null;
     subtotal?: number;
     tax_amount?: number;
     discount_amount?: number;
@@ -16,8 +24,17 @@ export type PrintPayload = {
       item_name: string;
       quantity: number;
       unit_price?: number;
+      variant_name?: string | null;
       packaging_option_name?: string | null;
+      /** The cashier's per-line instruction: "no onions", "well done". */
+      notes?: string | null;
+      /** A platter's pick, printed indented under its platter. */
+      is_child?: boolean;
+      /** A line to stop making (its name already starts VOID: or CANCEL:). */
+      void?: boolean;
       modifiers?: Array<{ modifier_name: string }>;
+      /** What a fixed bundle is made of. */
+      bundle_contents?: Array<{ name: string; quantity: number }> | null;
     }>;
     payments?: Array<{
       method: string;
@@ -68,14 +85,35 @@ export const sanitizePrintText = (value: unknown): string => {
   return String(value).replace(/[\u0000-\u001F\u007F-\u009F]/g, ' ');
 };
 
+const BIG_ON = '\x1B!\x30';   // double height and width
+const BIG_OFF = '\x1B!\x00';
+const BOLD_ON = '\x1BE\x01';
+const BOLD_OFF = '\x1BE\x00';
+
+/**
+ * The kitchen chit. Kitchen audit, 2026-09-26: it printed dish and
+ * modifiers only, so the size, the cashier's "no onions", the table, the
+ * pickup time, the customer's note and a bundle's contents were on the
+ * screen and not on paper; and nothing said whether a chit was the order,
+ * an add-on, a change or a cancellation.
+ */
 export const buildKitchenTicket = (payload: PrintPayload): string => {
   const s = sanitizePrintText;
   const lines: string[] = [];
   lines.push('\x1B@\n');
+  if (payload.order.heading) {
+    lines.push(`${BIG_ON}${s(payload.order.heading)}${BIG_OFF}\n`);
+  }
   lines.push('BAKE & GRILL\n');
   lines.push(`${s(payload.type || 'KITCHEN').toUpperCase()} TICKET\n`);
-  lines.push(`Order: ${s(payload.order.order_number)}\n`);
+  lines.push(`${BOLD_ON}Order: ${s(payload.order.order_number)}${BOLD_OFF}\n`);
   lines.push(`Type: ${s(payload.order.type)}\n`);
+  if (payload.order.table) {
+    lines.push(`${BOLD_ON}Table: ${s(payload.order.table)}${BOLD_OFF}\n`);
+  }
+  if (payload.order.pickup_at) {
+    lines.push(`${BIG_ON}FOR ${s(payload.order.pickup_at)}${BIG_OFF}\n`);
+  }
   if (payload.order.created_at) {
     const timeStr = new Date(payload.order.created_at).toLocaleTimeString('en-US', {
       timeZone: 'Indian/Maldives',
@@ -87,14 +125,27 @@ export const buildKitchenTicket = (payload: PrintPayload): string => {
   }
   lines.push('-----------------------------\n');
   payload.order.items.forEach(item => {
-    lines.push(`${item.quantity}x ${s(item.item_name)}\n`);
+    const indent = item.is_child ? '   > ' : '';
+    const size = item.variant_name ? ` (${s(item.variant_name)})` : '';
+    const text = `${indent}${item.quantity}x ${s(item.item_name)}${size}`;
+    lines.push(item.void ? `${BOLD_ON}${text}${BOLD_OFF}\n` : `${text}\n`);
     if (item.packaging_option_name) {
       lines.push(`  - ${s(item.packaging_option_name)}\n`);
     }
     if (item.modifiers && item.modifiers.length > 0) {
       lines.push(`  - ${item.modifiers.map(m => s(m.modifier_name)).join(', ')}\n`);
     }
+    (item.bundle_contents ?? []).forEach(row => {
+      lines.push(`    > ${row.quantity}x ${s(row.name)}\n`);
+    });
+    if (item.notes) {
+      lines.push(`  ${BOLD_ON}>> ${s(item.notes)}${BOLD_OFF}\n`);
+    }
   });
+  if (payload.order.customer_notes) {
+    lines.push('-----------------------------\n');
+    lines.push(`${BOLD_ON}Customer: ${s(payload.order.customer_notes)}${BOLD_OFF}\n`);
+  }
   if (payload.order.notes) {
     lines.push('-----------------------------\n');
     lines.push(`Notes: ${s(payload.order.notes)}\n`);

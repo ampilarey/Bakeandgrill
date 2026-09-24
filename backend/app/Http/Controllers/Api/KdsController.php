@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\KitchenDisplay\Support\KitchenBoard;
 use App\Domains\Orders\DTOs\OrderCompletedData;
 use App\Domains\Orders\Events\OrderCompleted;
 use App\Http\Controllers\Controller;
@@ -40,7 +41,7 @@ class KdsController extends Controller
      *               POS flows; SSE used to use this exclusively
      * 'ready'     — cooked, waiting for pickup/delivery handoff
      */
-    public const KDS_STATUSES = ['pending', 'in_progress', 'paid', 'partial', 'preparing', 'ready'];
+    public const KDS_STATUSES = KitchenBoard::STATUSES;
 
     public function index(Request $request): JsonResponse
     {
@@ -53,64 +54,29 @@ class KdsController extends Controller
             $statuses = $allowed;
         }
 
-        $orders = Order::with([
+        $query = Order::with([
             'items.modifiers',
             'items.item:id,menu_group_id,prep_time_minutes,is_available,is_combo',
             'items.item.recipe:id,item_id,instructions',
             'table:id,name,location',
             'kitchenDoneBy:id,name',
-        ])
-            ->whereIn('status', $statuses)
-            ->where('type', '!=', 'gift_card')
-            // Catering stays off KDS until an appointed staff fires it from POS Events.
-            ->where(function ($q) {
-                $q->where('type', '!=', 'catering')
-                    ->orWhereNotNull('fired_at');
-            })
-            // Collect-tomorrow orders reuse the same hold: stay off KDS until fired.
-            ->where(function ($q) {
-                $q->whereNull('fulfil_date')
-                    ->orWhereNotNull('fired_at');
-            })
-            // Prepaid dine-in (customer-created, user_id null) stays off KDS until
-            // staff fire it ahead of the arrival time. Staff dine_in unaffected.
-            ->where(function ($q) {
-                $q->where('type', '!=', 'dine_in')
-                    ->orWhereNotNull('fired_at')
-                    ->orWhereNotNull('user_id');
-            })
-            /*
-             * Nothing to make, nothing to show. Owner, 2026-09-09: "this page
-             * should show only the items that are active orders" — on a board
-             * of 77 counter sales that were paid at the till and never cooked.
-             *
-             * Order creation no longer fires those, but this is what clears
-             * the ones already sitting there, and it is the same shape as the
-             * four holds above: an order reaches the kitchen when the kitchen
-             * has work on it.
-             */
-            ->when(MenuGroup::counterGroupIds() !== [], function ($query) {
-                $counterGroups = MenuGroup::counterGroupIds();
-                // Hidden only when every line is a known counter good. An
-                // order with no lines, or a line whose catalog row has since
-                // gone, still shows — a ticket that should not be there is a
-                // far smaller problem than a dish nobody is told to cook.
-                $query->where(function ($q) use ($counterGroups) {
-                    $q->whereDoesntHave('items')
-                        ->orWhereHas('items', function ($line) use ($counterGroups) {
-                            $line->whereDoesntHave('item')
-                                ->orWhereHas('item', function ($item) use ($counterGroups) {
-                                    $item->whereNull('menu_group_id')
-                                        ->orWhereNotIn('menu_group_id', $counterGroups);
-                                });
-                        });
-                });
-            })
-            ->orderBy('created_at')
+        ]);
+
+        // Shared with the wall board and the stream (KitchenBoard): the
+        // status list, the fire holds, counter-only orders, scheduled
+        // pickups before their lead time, and tickets served then paid.
+        KitchenBoard::visible($query, withRecentlyCancelled: true)
+            ->where(fn ($q) => $q->whereIn('status', $statuses)->orWhere('status', 'cancelled'));
+
+        $orders = $query->orderBy('created_at')
             ->get()
             ->map(fn (Order $order) => $this->formatKitchenOrder($order));
 
-        return response()->json(['orders' => $orders]);
+        return response()->json([
+            'orders' => $orders,
+            // Pickups booked for later today, not on the board yet.
+            'later_today' => KitchenBoard::laterTodayCount(),
+        ]);
     }
 
     public function menuGroups(): JsonResponse
@@ -125,10 +91,24 @@ class KdsController extends Controller
 
     public function toggleItemAvailability(Request $request, int $itemId): JsonResponse
     {
+        // Kitchen audit, 2026-09-26: the screen sends the state it wants, so
+        // a double tap or two screens at once cannot flip it back. With no
+        // state given it still toggles, for an older screen.
+        $validated = $request->validate(['available' => ['sometimes', 'boolean']]);
         $item = Item::findOrFail($itemId);
         $wasAvailable = (bool) $item->is_available;
-        $item->update(['is_available' => !$wasAvailable]);
+        $target = array_key_exists('available', $validated) ? (bool) $validated['available'] : !$wasAvailable;
+        if ($target !== $wasAvailable) {
+            $item->update(['is_available' => $target]);
+        }
         $nowAvailable = (bool) $item->is_available;
+
+        if ($target === $wasAvailable) {
+            return response()->json([
+                'message' => $nowAvailable ? 'Item is already on the menu' : 'Item is already sold out',
+                'item' => ['id' => $item->id, 'is_available' => $nowAvailable],
+            ]);
+        }
 
         app(AuditLogService::class)->log(
             $nowAvailable ? 'item.un86' : 'item.86',
@@ -227,6 +207,15 @@ class KdsController extends Controller
                 'name' => $order->kitchenDoneBy->name,
             ] : null,
             'kitchen_handover_status' => $order->kitchen_handover_status,
+            // Kitchen audit, 2026-09-26: where the ticket sits and when its
+            // clock started, from the kitchen's own timestamps rather than a
+            // status that payment also rewrites.
+            'kitchen_lane' => KitchenBoard::lane($order),
+            'kitchen_clock_at' => KitchenBoard::clockAt($order)->toIso8601String(),
+            'kitchen_started_at' => $order->kitchen_started_at?->toIso8601String(),
+            'pickup_slot_at' => $order->pickup_slot_at?->toIso8601String(),
+            'fired_at' => $order->fired_at?->toIso8601String(),
+            'cancelled_at' => $order->status === 'cancelled' ? $order->cancelled_at?->toIso8601String() : null,
             'pos_received_at' => $order->pos_received_at?->toIso8601String(),
             'items' => $order->items->map(function ($line) {
                 return [
@@ -294,6 +283,22 @@ class KdsController extends Controller
         }
 
         return mb_strlen($text) > 1200 ? mb_substr($text, 0, 1200) . '…' : $text;
+    }
+
+    /**
+     * The same, for the paper ticket (PrintJobService).
+     *
+     * @return list<array{name: string, quantity: int}>|null
+     */
+    public static function bundleContents(OrderItem $line): ?array
+    {
+        $line->loadMissing([
+            'item.comboItems.item:id,name',
+            'item.comboItems.variant:id,name',
+            'item.platterGroups:id,item_id',
+        ]);
+
+        return self::bundleContentsFor($line);
     }
 
     private static function bundleContentsFor(OrderItem $line): ?array

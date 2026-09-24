@@ -10,6 +10,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Services\OrderStatusMachine;
 use App\Support\DeferAfterResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -58,6 +59,21 @@ class OrderObserver
             return false;
         }
 
+        // Kitchen audit, 2026-09-26: the status is also rewritten by payment
+        // (a cooking ticket paid at the till reads `paid`), so the kitchen's
+        // own facts are stamped once, here, where every transition passes.
+        if ($next === 'in_progress' && $order->kitchen_started_at === null) {
+            $order->kitchen_started_at = now();
+        }
+        if ($next === 'ready' && $order->ready_at === null) {
+            $order->ready_at = now();
+        }
+        // Every path to cancelled, not only the customer and payment ones,
+        // so the kitchen screen can show a cancelled ticket for a moment.
+        if ($next === 'cancelled' && $order->cancelled_at === null) {
+            $order->cancelled_at = now();
+        }
+
         return true;
     }
 
@@ -79,6 +95,23 @@ class OrderObserver
                     'to' => $order->status,
                 ]);
             }
+        }
+
+        // Kitchen audit, 2026-09-26: a cancelled order the kitchen already
+        // had prints a CANCELLED slip. It used to vanish from the screen and
+        // nothing printed, so a cook could finish it.
+        if ($order->status === 'cancelled' && $previous !== 'cancelled') {
+            $orderId = (int) $order->id;
+            DB::afterCommit(static function () use ($orderId): void {
+                try {
+                    $fresh = Order::find($orderId);
+                    if ($fresh !== null) {
+                        app(\App\Domains\Printing\Services\PrintJobService::class)->enqueueKitchenCancelled($fresh);
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('Kitchen cancel slip failed', ['order_id' => $orderId, 'error' => $e->getMessage()]);
+                }
+            });
         }
 
         $data = new OrderStatusChangedData(

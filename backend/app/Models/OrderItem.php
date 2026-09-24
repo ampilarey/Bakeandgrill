@@ -35,7 +35,11 @@ class OrderItem extends Model
         'status',
         'kitchen_produced_qty',
         'kitchen_received_qty',
+        'kitchen_sent_at',
     ];
+
+    // Kitchen print bookkeeping; not part of the order JSON contract.
+    protected $hidden = ['kitchen_sent_at'];
 
     protected $casts = [
         'order_id' => 'integer',
@@ -52,6 +56,7 @@ class OrderItem extends Model
         'total_price' => 'decimal:2',
         'packaging_fee' => 'decimal:2',
         'tax_rate' => 'decimal:2',
+        'kitchen_sent_at' => 'datetime',
     ];
 
     public function order(): BelongsTo

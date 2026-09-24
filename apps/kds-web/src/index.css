@@ -393,6 +393,29 @@ button {
 .kds-tag--late { background: rgba(244, 84, 76, 0.2); color: #ffb0ab; }
 .kds-tag--type { background: rgba(253, 250, 244, 0.12); color: var(--kds-ink); }
 .kds-tag--done { background: rgba(53, 196, 106, 0.18); color: #8bf0b0; }
+/* Kitchen audit, 2026-09-26 */
+.kds-tag--slot { background: rgba(240, 145, 63, 0.2); color: #ffd2a6; font-weight: 700; }
+.kds-ticket--cancelled { border-left-color: var(--kds-late); opacity: 0.85; }
+.kds-ticket--cancelled .kds-lines { text-decoration: line-through; text-decoration-color: var(--kds-late); }
+.kds-cancelled {
+  background: var(--kds-late);
+  color: #fff;
+  font-weight: 800;
+  font-size: var(--kds-meta);
+  letter-spacing: 0.04em;
+  padding: 6px 10px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  text-align: center;
+}
+.kds-later {
+  font-size: var(--kds-small);
+  color: var(--kds-ink-dim);
+  border: 1px solid var(--kds-card-edge);
+  border-radius: 999px;
+  padding: 4px 10px;
+  white-space: nowrap;
+}
 /* The island keeps its own case: "MALE" in capitals reads as something
    else entirely. */
 .kds-tag--delivery { background: rgba(240, 145, 63, 0.18); color: #ffc793; text-transform: none; }

@@ -100,13 +100,17 @@ class Order extends Model
         'delivered_at',
         'pickup_slot_at',
         'unstarted_alerted_at',
+        'kitchen_started_at',
+        'ready_at',
         'fulfil_date',
         'proof_of_delivery_path',
         'store_id',
     ];
 
     // Internal alert stamp (checkout audit, 2026-09-26) — not part of the order API.
-    protected $hidden = ['unstarted_alerted_at'];
+    // Kitchen bookkeeping; the kitchen screen reads them through its own
+    // payload, and leaving them out keeps the order JSON contract unchanged.
+    protected $hidden = ['unstarted_alerted_at', 'kitchen_started_at', 'ready_at'];
 
     protected $casts = [
         // FK integer columns — MySQL PDO returns these as strings without explicit casts
@@ -133,6 +137,8 @@ class Order extends Model
         'delivered_at' => 'datetime',
         'pickup_slot_at' => 'datetime',
         'unstarted_alerted_at' => 'datetime',
+        'kitchen_started_at' => 'datetime',
+        'ready_at' => 'datetime',
         'fulfil_date' => 'date',
         // Scalars
         'tax_inclusive' => 'boolean',

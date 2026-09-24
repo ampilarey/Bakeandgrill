@@ -98,7 +98,13 @@ class SseStreamTest extends TestCase
         $this->assertContains($order->id, $ids);
     }
 
-    public function test_kds_stream_provider_only_fetches_active_statuses(): void
+    /**
+     * Kitchen audit, 2026-09-26: every order change is a signal, including a
+     * ticket leaving the board. The screen reloads its list on each event, so
+     * a completed or cancelled order now drops at once instead of lingering
+     * until the next poll. Gift cards never reach the kitchen and stay out.
+     */
+    public function test_kds_stream_signals_orders_leaving_the_board_too(): void
     {
         $pending = Order::create([
             'order_number' => 'KDS-P-001', 'type' => 'takeaway',
@@ -112,12 +118,19 @@ class SseStreamTest extends TestCase
             'discount_amount' => 0, 'total' => 50,
         ]);
 
+        $giftCard = Order::create([
+            'order_number' => 'KDS-G-001', 'type' => 'gift_card',
+            'status' => 'paid', 'subtotal' => 50, 'tax_amount' => 0,
+            'discount_amount' => 0, 'total' => 50,
+        ]);
+
         $provider = app(KdsStreamProvider::class);
         $events = $provider->fetchSince(now()->subSeconds(10)->toIso8601String());
 
         $ids = array_column(array_map(fn ($e) => json_decode($e->data, true), $events), 'id');
         $this->assertContains($pending->id, $ids);
-        $this->assertNotContains($completed->id, $ids);
+        $this->assertContains($completed->id, $ids);
+        $this->assertNotContains($giftCard->id, $ids);
     }
 
     public function test_order_status_stream_forbidden_for_other_customer(): void

@@ -573,10 +573,11 @@
 
     /* ── Rendering ───────────────────────────────────────────────── */
 
-    var STATUS_LABEL = {
-        pending: 'New',
-        confirmed: 'Confirmed',
-        preparing: 'Making',
+    // Kitchen audit, 2026-09-26: the column comes from the server's lane,
+    // not the status, which payment also rewrites.
+    var LANE_LABEL = {
+        'new': 'New',
+        cooking: 'Making',
         ready: 'Ready'
     };
 
@@ -629,8 +630,14 @@
             online ? 'tag tag--online' : 'tag tag--staff',
             online ? 'Online' : (order.placed_by ? 'Till · ' + order.placed_by : 'Till')
         ));
-        var status = String(order.status || '');
-        tags.appendChild(el('span', 'tag tag--' + status, STATUS_LABEL[status] || status));
+        var lane = String(order.lane || 'new');
+        tags.appendChild(el('span', 'tag tag--' + (lane === 'cooking' ? 'preparing' : lane === 'new' ? 'pending' : lane), LANE_LABEL[lane] || lane));
+        if (order.pickup_slot_at) {
+            var slot = new Date(order.pickup_slot_at);
+            if (isFinite(slot.getTime())) {
+                tags.appendChild(el('span', 'tag tag--type', 'For ' + slot.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })));
+            }
+        }
         var type = String(order.type || '');
         if (type) {
             tags.appendChild(el('span', 'tag tag--type', TYPE_LABEL[type] || type.replace(/_/g, ' ')));

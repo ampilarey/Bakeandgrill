@@ -65,11 +65,18 @@ class PrintJobIdempotencyTest extends TestCase
             'total_laar' => 1000,
         ]);
 
+        // Kitchen audit, 2026-09-26: a reprint asked for twice prints twice
+        // (the second used to find the first job and print nothing). Only a
+        // double tap inside the same second collapses.
+        \Illuminate\Support\Carbon::setTestNow('2026-09-26 12:00:00');
         $service = app(PrintJobService::class);
         $service->enqueueKitchen($order, 'resume_reprint');
         $service->enqueueKitchen($order->fresh(), 'resume_reprint');
+        $this->assertSame(1, PrintJob::where('printer_id', $printer->id)->where('idempotency_key', 'like', '%:resume_reprint:%')->count());
 
-        $key = 'kitchen:' . $order->id . ':' . $printer->id . ':resume_reprint';
-        $this->assertSame(1, PrintJob::where('idempotency_key', $key)->count());
+        \Illuminate\Support\Carbon::setTestNow('2026-09-26 12:00:05');
+        $service->enqueueKitchen($order->fresh(), 'resume_reprint');
+        $this->assertSame(2, PrintJob::where('printer_id', $printer->id)->where('idempotency_key', 'like', '%:resume_reprint:%')->count());
+        \Illuminate\Support\Carbon::setTestNow();
     }
 }

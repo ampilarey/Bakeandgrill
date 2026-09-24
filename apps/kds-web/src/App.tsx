@@ -43,6 +43,22 @@ const formatTime = (iso: string) =>
   new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
 /**
+ * The column. Kitchen audit, 2026-09-26: from the server's lane, which reads
+ * the kitchen's own timestamps; the status alone put a ticket paid mid-cook
+ * back under Pending with the start button and the new-order chime.
+ */
+function laneOf(order: KdsOrder): "new" | "cooking" | "ready" | "cancelled" {
+  if (order.kitchen_lane) return order.kitchen_lane;
+  if (order.status === "cancelled") return "cancelled";
+  if (order.status === "ready") return "ready";
+  if (["in_progress", "preparing"].includes(order.status)) return "cooking";
+  return "new";
+}
+
+/** When the ticket's clock started: fired, paid online, or a slot's lead time. */
+const clockOf = (order: KdsOrder): string => order.kitchen_clock_at || order.created_at;
+
+/**
  * Where the food is going, as the ticket's first tag. Delivery keeps its own
  * island tag below; the rest were not on the ticket at all, so a cook could
  * not tell a takeaway bag from a plate for table four.
@@ -120,6 +136,8 @@ function App() {
   // stay out; the rest sit behind "More". Desktop shows everything.
   const [moreOpen, setMoreOpen] = useState(false);
   const [activity, setActivity] = useState<KdsActivityRow[]>([]);
+  // Pickups booked for later today, held off the board until their lead time.
+  const [laterToday, setLaterToday] = useState(0);
 
   const prevPendingIdsRef = useRef<Set<number>>(new Set());
   const isFirstLoadRef = useRef(true);
@@ -151,7 +169,7 @@ function App() {
   const load = useCallback(async (authToken: string) => {
     try {
       const [data, groups, activityRows] = await Promise.all([
-        fetchKdsOrders(authToken),
+        fetchKdsOrders(authToken, (meta) => setLaterToday(meta.laterToday)),
         fetchKdsMenuGroups(authToken).catch(() => [] as KdsMenuGroup[]),
         fetchKdsActivity(authToken).catch(() => [] as KdsActivityRow[]),
       ]);
@@ -160,9 +178,7 @@ function App() {
       setActivity(activityRows);
       setErrorMessage("");
 
-      const pendingLike = data.filter((o) =>
-        ["pending", "paid", "partial"].includes(o.status),
-      );
+      const pendingLike = data.filter((o) => laneOf(o) === "new");
       const newIds = pendingLike
         .filter((o) => !prevPendingIdsRef.current.has(o.id))
         .map((o) => o.id);
@@ -175,9 +191,11 @@ function App() {
       }
       isFirstLoadRef.current = false;
 
-      for (const order of pendingLike) {
+      // Late alarm for tickets still being cooked as well as those not yet
+      // started (kitchen audit, 2026-09-26: a stuck Cooking ticket never sounded).
+      for (const order of data.filter((o) => ["new", "cooking"].includes(laneOf(o)))) {
         const target = ticketPrepTarget(order);
-        if (isLateTicket(order.created_at, target) && !lateAlertedRef.current.has(order.id)) {
+        if (isLateTicket(clockOf(order), target) && !lateAlertedRef.current.has(order.id)) {
           lateAlertedRef.current.add(order.id);
           playLateAlert();
         }
@@ -206,9 +224,20 @@ function App() {
     void load(token);
   }, [token, load]);
 
+  // Every order change now sends an event, so a burst (a payment touching
+  // several rows) is folded into one reload.
+  const sseReloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleSseEvent = useCallback(() => {
-    if (token) void load(token);
+    if (!token) return;
+    if (sseReloadTimer.current) clearTimeout(sseReloadTimer.current);
+    sseReloadTimer.current = setTimeout(() => {
+      sseReloadTimer.current = null;
+      void load(token);
+    }, 300);
   }, [token, load]);
+  useEffect(() => () => {
+    if (sseReloadTimer.current) clearTimeout(sseReloadTimer.current);
+  }, []);
 
   const { connected: sseConnected } = useKdsSse({
     token,
@@ -238,30 +267,37 @@ function App() {
     );
   }, [orders, stationFilter]);
 
+  // A cancelled ticket stays a few minutes, flagged, in the lane where the
+  // cook last saw it: Cooking once started, Pending before.
   const pendingOrders = useMemo(
-    () => filteredOrders.filter((o) => ["pending", "paid", "partial"].includes(o.status)),
+    () => filteredOrders.filter((o) => laneOf(o) === "new"
+      || (laneOf(o) === "cancelled" && !o.kitchen_started_at)),
     [filteredOrders],
   );
   const inProgressOrders = useMemo(
-    () => filteredOrders.filter((o) => ["in_progress", "preparing"].includes(o.status)),
+    () => filteredOrders.filter((o) => laneOf(o) === "cooking"
+      || (laneOf(o) === "cancelled" && !!o.kitchen_started_at)),
     [filteredOrders],
   );
   const readyOrders = useMemo(
-    () => filteredOrders.filter((o) => o.status === "ready"),
+    () => filteredOrders.filter((o) => laneOf(o) === "ready"),
     [filteredOrders],
   );
 
-  const avgWait = (items: KdsOrder[]) =>
-    items.length
-      ? Math.round(items.reduce((sum, t) => sum + minutesSince(t.created_at), 0) / items.length)
+  const avgWait = (items: KdsOrder[]) => {
+    const live = items.filter((t) => laneOf(t) !== "cancelled");
+    return live.length
+      ? Math.round(live.reduce((sum, t) => sum + minutesSince(clockOf(t)), 0) / live.length)
       : 0;
+  };
 
   void clockTick;
 
   const handle86 = (itemId: number, currentlyAvailable: boolean) => {
     if (!token) return;
     setEightySixing(itemId);
-    markItem86(token, itemId)
+    // The state the button showed, not a toggle.
+    markItem86(token, itemId, !currentlyAvailable)
       .then(() => void load(token))
       .catch((err: unknown) => setErrorMessage(failureMessage(
         err,
@@ -510,18 +546,27 @@ function App() {
 
   const renderTicket = (order: KdsOrder) => {
     const prepTarget = ticketPrepTarget(order);
-    const overdue = minutesSince(order.created_at) >= prepTarget
+    const lane = laneOf(order);
+    const cancelled = lane === "cancelled";
+    const clock = clockOf(order);
+    const overdue = !cancelled && minutesSince(clock) >= prepTarget
       && !["ready", "completed"].includes(order.status);
-    const cooking = ["in_progress", "preparing"].includes(order.status);
+    const cooking = lane === "cooking";
 
     return (
       <article
         key={order.id}
-        className="kds-ticket"
-        data-urgency={urgencyLevel(order.created_at)}
+        className={cancelled ? "kds-ticket kds-ticket--cancelled" : "kds-ticket"}
+        data-urgency={cancelled ? "cancelled" : urgencyLevel(clock)}
         data-overdue={overdue ? "true" : "false"}
+        data-lane={lane}
         data-testid="kds-ticket"
       >
+        {cancelled && (
+          <div className="kds-cancelled" role="alert" data-testid="kds-cancelled">
+            CANCELLED — stop, do not make
+          </div>
+        )}
         <div className="kds-ticket-head">
           <div className="kds-ticket-ref">
             <div className="kds-ticket-number">#{order.order_number}</div>
@@ -534,12 +579,17 @@ function App() {
                 <span className="kds-tag kds-tag--delivery">🛵 {order.delivery_island || "Delivery"}</span>
               )}
               {order.table_number && <span className="kds-tag">Table {order.table_number}</span>}
+              {order.pickup_slot_at && (
+                <span className="kds-tag kds-tag--slot" data-testid="kds-pickup-time">
+                  For {formatTime(order.pickup_slot_at)}
+                </span>
+              )}
               {order.kitchen_done_at && <span className="kds-tag kds-tag--done">Kitchen done</span>}
             </div>
           </div>
           <div className="kds-timer">
-            <div className="kds-timer-value">{elapsed(order.created_at)}</div>
-            <div className="kds-timer-at">{formatTime(order.created_at)}</div>
+            <div className="kds-timer-value">{cancelled ? "—" : elapsed(clock)}</div>
+            <div className="kds-timer-at">{formatTime(clock)}</div>
           </div>
         </div>
 
@@ -627,8 +677,8 @@ function App() {
           ))}
         </div>
 
-        <div className="kds-actions">
-          {["pending", "paid", "partial"].includes(order.status) && canStart && (
+        {!cancelled && <div className="kds-actions">
+          {lane === "new" && canStart && (
             <button type="button" className="kds-action kds-action--start" onClick={() => handleStart(order.id)}>
               Start cooking
             </button>
@@ -667,13 +717,13 @@ function App() {
               )}
             </>
           )}
-        </div>
+        </div>}
       </article>
     );
   };
 
   const overPrepTarget = [...pendingOrders, ...inProgressOrders]
-    .filter((t) => minutesSince(t.created_at) >= ticketPrepTarget(t)).length;
+    .filter((t) => laneOf(t) !== "cancelled" && minutesSince(clockOf(t)) >= ticketPrepTarget(t)).length;
 
   return (
     <div className="kds-shell">
@@ -713,6 +763,12 @@ function App() {
             <span className="kds-vital-label">over target</span>
           </span>
         </div>
+
+        {laterToday > 0 && (
+          <span className="kds-later" data-testid="kds-later-today" title="Pickups booked for later today. Each one comes onto the board before its time.">
+            {laterToday} later today
+          </span>
+        )}
 
         <div className="kds-topbar-spacer" />
 

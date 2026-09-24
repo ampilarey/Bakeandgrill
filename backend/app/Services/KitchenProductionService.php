@@ -123,7 +123,11 @@ class KitchenProductionService
     public function markOrderKitchenDone(Order $order, User $user, ?Request $request = null): Order
     {
         return DB::transaction(function () use ($order, $user, $request) {
-            if (!in_array($order->status, ['in_progress', 'preparing'], true)) {
+            // A ticket paid at the till mid-cook reads `paid` but is still
+            // cooking (kitchen audit, 2026-09-26): the start stamp decides.
+            $cooking = in_array($order->status, ['in_progress', 'preparing'], true)
+                || (in_array($order->status, ['paid', 'partial'], true) && $order->kitchen_started_at !== null);
+            if (!$cooking) {
                 throw ValidationException::withMessages(['order' => ['Only in-progress orders can be marked kitchen done.']]);
             }
 
