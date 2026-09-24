@@ -90,7 +90,7 @@ class SocialChannelController extends Controller
             'is_enabled' => false,
             'credentials' => null,
         ])->save();
-        if (! $channel->deliveries()->exists()) {
+        if (!$channel->deliveries()->exists()) {
             $channel->delete();
         }
 
@@ -112,7 +112,7 @@ class SocialChannelController extends Controller
                 'image_url' => $request->string('image_url')->toString() ?: null,
             ],
             'source' => 'channel_test',
-            'source_ref' => 'channel:'.$channel->id,
+            'source_ref' => 'channel:' . $channel->id,
             'business_date' => now(config('app.timezone', 'Indian/Maldives'))->toDateString(),
             'created_by' => $request->user()?->id,
         ]);
@@ -151,7 +151,7 @@ class SocialChannelController extends Controller
             fn (string $key) => trim((string) ($credentials[$key] ?? '')) === '',
         ));
         if ($missing !== []) {
-            abort(422, 'Missing credentials for '.$platform.': '.implode(', ', $missing));
+            abort(422, 'Missing credentials for ' . $platform . ': ' . implode(', ', $missing));
         }
     }
 

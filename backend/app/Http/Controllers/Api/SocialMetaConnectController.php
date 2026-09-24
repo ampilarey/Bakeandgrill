@@ -41,16 +41,16 @@ class SocialMetaConnectController extends Controller
         if ($state === '' || $code === '') {
             $reason = (string) ($request->query('error_description') ?: $request->query('error') ?: 'Facebook sent no code back.');
 
-            return redirect()->to($admin.'?meta_error='.rawurlencode($reason));
+            return redirect()->to($admin . '?meta_error=' . rawurlencode($reason));
         }
 
         try {
             $this->meta->handleCallback($state, $code);
         } catch (RuntimeException $e) {
-            return redirect()->to($admin.'?meta_error='.rawurlencode($e->getMessage()));
+            return redirect()->to($admin . '?meta_error=' . rawurlencode($e->getMessage()));
         }
 
-        return redirect()->to($admin.'?meta_connect='.rawurlencode($state));
+        return redirect()->to($admin . '?meta_connect=' . rawurlencode($state));
     }
 
     public function pending(Request $request): JsonResponse

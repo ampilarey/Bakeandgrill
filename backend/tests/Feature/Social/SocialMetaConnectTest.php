@@ -60,12 +60,12 @@ class SocialMetaConnectTest extends TestCase
         $this->assertSame(40, strlen($state));
 
         // Facebook sends the browser back: the public route stores the pages and bounces to admin.
-        $back = $this->get('/social/meta/callback?state='.$state.'&code=CODE-1');
-        $back->assertRedirect(url('/admin/social').'?meta_connect='.$state);
+        $back = $this->get('/social/meta/callback?state=' . $state . '&code=CODE-1');
+        $back->assertRedirect(url('/admin/social') . '?meta_connect=' . $state);
         Http::assertSent(fn ($r) => str_contains($r->url(), 'oauth/access_token') && str_contains($r->url(), 'code=CODE-1'));
         Http::assertSent(fn ($r) => str_contains($r->url(), 'fb_exchange_token=USER-TOKEN-LONG'));
 
-        $pending = $this->getJson('/api/admin/social/meta/pending?state='.$state)->assertOk();
+        $pending = $this->getJson('/api/admin/social/meta/pending?state=' . $state)->assertOk();
         $this->assertCount(2, $pending->json('pages'));
         $this->assertSame('bakeandgrill.mv', $pending->json('pages.0.instagram.username'));
         $this->assertNull($pending->json('pages.1.instagram'));
@@ -91,7 +91,7 @@ class SocialMetaConnectTest extends TestCase
         $this->assertSame('@bakeandgrill.mv', $ig->name);
 
         // The state is spent.
-        $this->getJson('/api/admin/social/meta/pending?state='.$state)->assertStatus(422);
+        $this->getJson('/api/admin/social/meta/pending?state=' . $state)->assertStatus(422);
     }
 
     public function test_reconnecting_a_known_page_replaces_the_token_in_place(): void
@@ -103,9 +103,9 @@ class SocialMetaConnectTest extends TestCase
         ]);
         Sanctum::actingAs($this->makeOwner(), ['staff']);
         $state = $this->stateFromRedirect($this->getJson('/api/admin/social/meta/connect')->json('redirect_url'));
-        $this->get('/social/meta/callback?state='.$state.'&code=C');
+        $this->get('/social/meta/callback?state=' . $state . '&code=C');
 
-        $this->assertTrue($this->getJson('/api/admin/social/meta/pending?state='.$state)->json('pages.0.already.facebook'));
+        $this->assertTrue($this->getJson('/api/admin/social/meta/pending?state=' . $state)->json('pages.0.already.facebook'));
         $this->postJson('/api/admin/social/meta/finish', ['state' => $state, 'page_id' => '111', 'facebook' => true])->assertOk();
 
         $this->assertSame(1, SocialChannel::where('platform', 'facebook')->count());
@@ -122,17 +122,17 @@ class SocialMetaConnectTest extends TestCase
         $state = $this->stateFromRedirect($this->getJson('/api/admin/social/meta/connect')->json('redirect_url'));
 
         // The user said no on Facebook's side.
-        $this->get('/social/meta/callback?error=access_denied&error_description=Permissions+error&state='.$state)
-            ->assertRedirect(url('/admin/social').'?meta_error='.rawurlencode('Permissions error'));
+        $this->get('/social/meta/callback?error=access_denied&error_description=Permissions+error&state=' . $state)
+            ->assertRedirect(url('/admin/social') . '?meta_error=' . rawurlencode('Permissions error'));
 
         // An unknown state cannot be completed.
         $this->get('/social/meta/callback?state=nope&code=C')
-            ->assertRedirect(url('/admin/social').'?meta_error='.rawurlencode('This connect link has expired. Start again from the Channels tab.'));
+            ->assertRedirect(url('/admin/social') . '?meta_error=' . rawurlencode('This connect link has expired. Start again from the Channels tab.'));
 
         // Another owner cannot finish this user's session.
-        $this->get('/social/meta/callback?state='.$state.'&code=C');
+        $this->get('/social/meta/callback?state=' . $state . '&code=C');
         Sanctum::actingAs($this->makeOwner(['email' => 'other@test.com']), ['staff']);
-        $this->getJson('/api/admin/social/meta/pending?state='.$state)->assertStatus(422);
+        $this->getJson('/api/admin/social/meta/pending?state=' . $state)->assertStatus(422);
         $this->postJson('/api/admin/social/meta/finish', ['state' => $state, 'page_id' => '111'])->assertStatus(422);
         $this->assertSame(0, SocialChannel::count());
     }

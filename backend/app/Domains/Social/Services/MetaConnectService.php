@@ -49,7 +49,7 @@ class MetaConnectService
         $state = Str::random(40);
         Cache::put($this->stateKey($state), ['user_id' => $userId, 'pages' => null], self::STATE_TTL);
 
-        return 'https://www.facebook.com/'.config('social.graph_version', 'v21.0').'/dialog/oauth?'.http_build_query([
+        return 'https://www.facebook.com/' . config('social.graph_version', 'v21.0') . '/dialog/oauth?' . http_build_query([
             'client_id' => config('social.meta_app_id'),
             'redirect_uri' => $this->redirectUri(),
             'state' => $state,
@@ -65,7 +65,7 @@ class MetaConnectService
     public function handleCallback(string $state, string $code): void
     {
         $entry = Cache::get($this->stateKey($state));
-        if (! is_array($entry)) {
+        if (!is_array($entry)) {
             throw new RuntimeException('This connect link has expired. Start again from the Channels tab.');
         }
 
@@ -98,15 +98,15 @@ class MetaConnectService
             }
             $pages[] = [
                 'page_id' => (string) $page['id'],
-                'name' => (string) ($page['name'] ?? 'Page '.$page['id']),
+                'name' => (string) ($page['name'] ?? 'Page ' . $page['id']),
                 'access_token' => (string) $page['access_token'],
-                'instagram' => ! empty($page['instagram_business_account']['id']) ? [
+                'instagram' => !empty($page['instagram_business_account']['id']) ? [
                     'ig_user_id' => (string) $page['instagram_business_account']['id'],
                     'username' => (string) ($page['instagram_business_account']['username'] ?? ''),
                 ] : null,
                 'already' => [
                     'facebook' => SocialChannel::query()->where('platform', 'facebook')->where('remote_account_id', (string) $page['id'])->exists(),
-                    'instagram' => ! empty($page['instagram_business_account']['id'])
+                    'instagram' => !empty($page['instagram_business_account']['id'])
                         && SocialChannel::query()->where('platform', 'instagram')->where('remote_account_id', (string) $page['instagram_business_account']['id'])->exists(),
                 ],
             ];
@@ -160,7 +160,7 @@ class MetaConnectService
             if (empty($page['instagram'])) {
                 throw new RuntimeException('That Page has no Instagram business account linked to it.');
             }
-            $label = $page['instagram']['username'] !== '' ? '@'.$page['instagram']['username'] : $page['name'].' (Instagram)';
+            $label = $page['instagram']['username'] !== '' ? '@' . $page['instagram']['username'] : $page['name'] . ' (Instagram)';
             $out[] = $this->upsert('instagram', $page['instagram']['ig_user_id'], $label, [
                 'ig_user_id' => $page['instagram']['ig_user_id'],
                 'access_token' => $page['access_token'],
@@ -197,7 +197,7 @@ class MetaConnectService
     private function entryFor(string $state, int $userId): array
     {
         $entry = Cache::get($this->stateKey($state));
-        if (! is_array($entry) || (int) ($entry['user_id'] ?? 0) !== $userId) {
+        if (!is_array($entry) || (int) ($entry['user_id'] ?? 0) !== $userId) {
             throw new RuntimeException('This connect session has expired or belongs to another user. Start again.');
         }
         if (empty($entry['pages'])) {
@@ -208,19 +208,19 @@ class MetaConnectService
     }
 
     /**
-     * @param  array<string, mixed>  $params
+     * @param array<string, mixed> $params
      * @return array<string, mixed>
      */
     private function graphGet(string $path, array $params): array
     {
         try {
-            $response = Http::timeout(20)->get('https://graph.facebook.com/'.config('social.graph_version', 'v21.0').$path, $params);
+            $response = Http::timeout(20)->get('https://graph.facebook.com/' . config('social.graph_version', 'v21.0') . $path, $params);
         } catch (ConnectionException $e) {
-            throw new RuntimeException('Could not reach Facebook: '.$e->getMessage());
+            throw new RuntimeException('Could not reach Facebook: ' . $e->getMessage());
         }
-        if (! $response->successful() || ! is_array($response->json())) {
-            $message = (string) ($response->json('error.message') ?? ('HTTP '.$response->status()));
-            throw new RuntimeException('Facebook refused: '.$message);
+        if (!$response->successful() || !is_array($response->json())) {
+            $message = (string) ($response->json('error.message') ?? ('HTTP ' . $response->status()));
+            throw new RuntimeException('Facebook refused: ' . $message);
         }
 
         return $response->json();
@@ -228,13 +228,13 @@ class MetaConnectService
 
     private function assertAvailable(): void
     {
-        if (! $this->available()) {
+        if (!$this->available()) {
             throw new RuntimeException('Connect with Facebook is not set up on this server (SOCIAL_META_APP_ID / SOCIAL_META_APP_SECRET).');
         }
     }
 
     private function stateKey(string $state): string
     {
-        return 'social-meta-connect:'.$state;
+        return 'social-meta-connect:' . $state;
     }
 }
