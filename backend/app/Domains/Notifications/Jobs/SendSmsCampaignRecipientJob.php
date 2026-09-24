@@ -69,6 +69,10 @@ class SendSmsCampaignRecipientJob implements ShouldQueue
 
             if (in_array($log->status, ['sent', 'demo'], true)) {
                 $this->recipient->markSent($log);
+            } elseif ($log->status === 'deferred') {
+                // Quiet hours: the row stays pending; sms:release-deferred
+                // sends it when the window ends and marks it then.
+                Log::info('SendSmsCampaignRecipientJob: held by quiet hours', ['recipient_id' => $this->recipient->id]);
             } else {
                 $this->recipient->markFailed($log->error_message ?? 'Gateway error', $log);
             }

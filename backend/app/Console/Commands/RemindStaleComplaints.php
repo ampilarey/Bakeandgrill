@@ -68,7 +68,7 @@ class RemindStaleComplaints extends Command
         $message = 'Bake & Grill: ' . $stale->count() . ' complaint' . ($stale->count() === 1 ? '' : 's')
             . " unread for over {$days} day" . ($days === 1 ? '' : 's') . ": {$lines}{$more}. Open Customers → Complaint Box.";
 
-        $phones = OwnerPhones::all();
+        $phones = OwnerPhones::for('owner_complaint_stale');
         if ($phones->isEmpty()) {
             $this->warn('Stale complaint SMS enabled but no owner/manager phone or business_phone set.');
 
@@ -81,7 +81,7 @@ class RemindStaleComplaints extends Command
                 $sms->send(new SmsMessage(
                     to: $phone,
                     message: $message,
-                    type: 'system',
+                    type: 'owner_complaint_stale',
                     referenceType: 'complaint_stale_reminder',
                     referenceId: $dayKey,
                     idempotencyKey: 'complaint-stale:' . $dayKey . ':' . $phone,

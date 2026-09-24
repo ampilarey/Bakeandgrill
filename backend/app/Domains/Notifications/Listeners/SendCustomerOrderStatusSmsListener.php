@@ -117,11 +117,17 @@ final class SendCustomerOrderStatusSmsListener
             $fallback,
         );
 
+        $typeKey = match ($status) {
+            'in_progress' => 'customer_order_preparing',
+            'ready' => 'customer_order_ready',
+            default => 'customer_order_on_the_way',
+        };
+
         try {
             $this->sms->send(new SmsMessage(
                 to: $phone,
                 message: $message,
-                type: 'transactional',
+                type: $typeKey,
                 customerId: $order->customer_id,
                 referenceType: 'order',
                 referenceId: (string) $order->id,

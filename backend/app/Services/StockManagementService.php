@@ -663,7 +663,7 @@ class StockManagementService
                     $smsService->send(new \App\Domains\Notifications\DTOs\SmsMessage(
                         to: $user->phone,
                         message: $message,
-                        type: 'transactional',
+                        type: 'staff_low_stock_menu',
                     ));
                 } catch (\Exception $e) {
                     \Log::error('Failed to send low stock SMS', [
@@ -803,7 +803,7 @@ class StockManagementService
                     $smsService->send(new \App\Domains\Notifications\DTOs\SmsMessage(
                         to: $user->phone,
                         message: $message,
-                        type: 'transactional',
+                        type: 'staff_low_stock_menu',
                     ));
                 } catch (\Exception $e) {
                     \Log::error('Failed to send variant low stock SMS', [

@@ -51,7 +51,7 @@ class SendPriceRiseAlert extends Command
         $more = count($rises) > 3 ? ' +' . (count($rises) - 3) . ' more' : '';
         $message = 'Bake & Grill price rises: ' . implode('; ', $lines) . $more . '. See Purchasing → Price changes.';
 
-        $phones = OwnerPhones::all();
+        $phones = OwnerPhones::for('owner_price_rise');
         if ($phones->isEmpty()) {
             $this->warn('Price rise SMS enabled but no owner/manager phone or business_phone set.');
 
@@ -64,7 +64,7 @@ class SendPriceRiseAlert extends Command
                 $sms->send(new SmsMessage(
                     to: $phone,
                     message: $message,
-                    type: 'system',
+                    type: 'owner_price_rise',
                     referenceType: 'price_rise_alert',
                     referenceId: $weekKey,
                     idempotencyKey: 'price-rise-alert:' . $weekKey . ':' . $phone,

@@ -63,7 +63,7 @@ class SendComplaintWeeklySummary extends Command
             . '.' . $staff
             . " Still open: {$open}. See Customers → Complaint Box.";
 
-        $phones = OwnerPhones::all();
+        $phones = OwnerPhones::for('owner_complaint_digest');
         if ($phones->isEmpty()) {
             $this->warn('Weekly complaint SMS enabled but no owner/manager phone or business_phone set.');
 
@@ -76,7 +76,7 @@ class SendComplaintWeeklySummary extends Command
                 $sms->send(new SmsMessage(
                     to: $phone,
                     message: $message,
-                    type: 'system',
+                    type: 'owner_complaint_digest',
                     referenceType: 'complaint_weekly_summary',
                     referenceId: $weekKey,
                     idempotencyKey: 'complaint-weekly:' . $weekKey . ':' . $phone,

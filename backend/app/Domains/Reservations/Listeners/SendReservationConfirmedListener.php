@@ -33,7 +33,7 @@ class SendReservationConfirmedListener implements ShouldQueue
             $this->sms->send(new SmsMessage(
                 to: $res->customer_phone,
                 message: "Reservation confirmed for {$res->party_size} on {$date} at {$time}. Ref #{$res->id}.",
-                type: 'transactional',
+                type: 'reservation_confirmed',
                 customerId: $res->customer_id,
                 referenceType: 'reservation',
                 referenceId: (string) $res->id,

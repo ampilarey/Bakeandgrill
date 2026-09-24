@@ -7,6 +7,7 @@ namespace App\Domains\Notifications\Services;
 use App\Domains\Notifications\Contracts\SmsProviderInterface;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Support\SmsBudgetGate;
+use App\Domains\Notifications\Support\SmsDeliveryRules;
 use App\Domains\Notifications\Support\SmsTypeRegistry;
 use App\Domains\Permissions\Services\PermissionService;
 use App\Models\Customer;
@@ -194,6 +195,33 @@ class SmsService
             }
         }
 
+        // 6. Marketing cap: one number, N marketing texts a day, whatever sends them.
+        if ($registryEntry !== null) {
+            $capReason = SmsDeliveryRules::marketingCapReason($normalized, $registryEntry);
+            if ($capReason !== null && !($existing !== null && $existing->status === 'deferred')) {
+                if ($existing !== null) {
+                    $existing->update(['status' => 'suppressed', 'error_message' => $capReason, 'message' => $this->messageForLog($sms), 'to' => $normalized, 'cost_estimate_mvr' => 0]);
+
+                    return $existing->fresh();
+                }
+
+                return $this->rowWithStatus($sms, $normalized, $estimate, 'suppressed', $capReason);
+            }
+        }
+
+        // 7. Quiet hours: hold marketing (and, if chosen, owner alerts) until
+        //    the window ends; sms:release-deferred sends them then.
+        if ($registryEntry !== null && SmsDeliveryRules::heldInQuietHours($registryEntry) && SmsDeliveryRules::inQuietHours()) {
+            $reason = 'Quiet hours: will send at ' . SmsDeliveryRules::quietHoursEndAt()->format('H:i') . '.';
+            if ($existing !== null) {
+                $existing->update(['status' => 'deferred', 'error_message' => $reason, 'message' => $this->messageForLog($sms), 'to' => $normalized, 'cost_estimate_mvr' => $estimate['cost_mvr']]);
+
+                return $existing->fresh();
+            }
+
+            return $this->rowWithStatus($sms, $normalized, $estimate, 'deferred', $reason, $estimate['cost_mvr']);
+        }
+
         // Only treat a carrier-confirmed send as final — allow retries after failed/demo/queued.
         if ($existing !== null && $existing->status === 'sent') {
             Log::info('SMS: Duplicate send prevented (already sent)', ['key' => $sms->idempotencyKey]);
@@ -302,14 +330,20 @@ class SmsService
     /** @param array{encoding: string, segments: int, cost_mvr: float} $estimate */
     private function disabledLog(SmsMessage $sms, string $normalized, array $estimate, string $reason): SmsLog
     {
+        return $this->rowWithStatus($sms, $normalized, $estimate, 'disabled', $reason);
+    }
+
+    /** @param array{encoding: string, segments: int, cost_mvr: float} $estimate */
+    private function rowWithStatus(SmsMessage $sms, string $normalized, array $estimate, string $status, string $reason, float $cost = 0.0): SmsLog
+    {
         return SmsLog::create([
             'message' => $this->messageForLog($sms),
             'to' => $normalized,
             'type' => $sms->type,
-            'status' => 'disabled',
+            'status' => $status,
             'encoding' => $estimate['encoding'],
             'segments' => $estimate['segments'],
-            'cost_estimate_mvr' => 0,
+            'cost_estimate_mvr' => $cost,
             'provider' => 'dhiraagu',
             'customer_id' => $sms->customerId,
             'campaign_id' => $sms->campaignId,

@@ -52,12 +52,44 @@ final class SmsTypeRegistry
     /** Sentinel for system-initiated types (no manual staff send). */
     public const SYSTEM_SEND_PERMISSION = '__system__';
 
+    public const RECIPIENTS_SETTING_PREFIX = 'sms_type_recipients.';
+
+    /**
+     * Types whose recipients the owner chooses in the Control Center, with
+     * where each goes when nothing is chosen. Types not listed here decide
+     * their recipient in code (the ordering customer, the rostered staff
+     * member) and cannot be redirected.
+     *
+     * @var array<string, 'owners_managers'|'business_phone'>
+     */
+    public const RECIPIENT_DEFAULTS = [
+        'owner_stock_reorder' => 'owners_managers',
+        'owner_stock_expiry' => 'owners_managers',
+        'owner_price_rise' => 'owners_managers',
+        'owner_delivery_delays' => 'business_phone',
+        'owner_device_approval' => 'business_phone',
+        'owner_signage_devices' => 'business_phone',
+        'owner_complaint_stale' => 'owners_managers',
+        'owner_complaint_digest' => 'owners_managers',
+        'owner_social_channel' => 'business_phone',
+        'owner_social_approval' => 'business_phone',
+        'owner_social_comments' => 'business_phone',
+        'owner_social_digest' => 'owners_managers',
+        'owner_daily_refund_summary' => 'owners_managers',
+        'owner_complaint_received' => 'owners_managers',
+        'owner_complaint_box_received' => 'owners_managers',
+        'trade_reconcile_mismatch_owner' => 'owners_managers',
+    ];
+
+    public const RECIPIENT_MODES = ['owners_managers', 'owner_only', 'business_phone', 'staff', 'custom'];
+
     /** @var array<string, string> Legacy SmsMessage.type → registry key */
     private const TYPE_ALIASES = [
         'otp' => 'auth_customer_otp',
         'staff_password_reset' => 'auth_staff_password_reset',
         'campaign' => 'marketing_campaign',
         'promotion' => 'marketing_promotion',
+        'scheduled' => 'sms_scheduled',
     ];
 
     /**
@@ -126,6 +158,7 @@ final class SmsTypeRegistry
             self::def('marketing_abandoned_cart', 'Abandoned cart', 'marketing', true, true, null, 'marketing_abandoned_cart_enabled', 'sms.campaigns.send', false, 'Customers with abandoned carts', false),
             self::def('marketing_birthday', 'Birthday offer', 'marketing', true, true, null, 'marketing_birthday_enabled', 'sms.campaigns.send', false, 'Customers with birthday today', false),
             self::def('marketing_tier_milestone', 'Tier milestone', 'marketing', true, true, null, 'marketing_tier_milestone_enabled', 'sms.campaigns.send', false, 'Loyalty members hitting a tier', false),
+            self::def('sms_scheduled', 'Scheduled / recurring message', 'marketing', true, true, null, 'sms_scheduled_enabled', null, false, 'The contact or group chosen on the message', false),
 
             // Catering (shared enabled toggle)
             self::def('catering_request_received', 'Catering request received', 'transactional', true, false, 'catering_request_received', 'sms_catering_enabled', 'sms.transactional.manage', false, 'The event contact', false),
@@ -142,6 +175,44 @@ final class SmsTypeRegistry
             // registry marks suppressible so SmsService also honours opt-out.
             self::def('trade_dispatch_shop', 'Wholesale dispatch (shop)', 'transactional', true, true, 'trade_dispatch_shop', null, 'trade.dispatch', false, 'Shop contact / customer phone', true),
             self::def('trade_reconcile_mismatch_owner', 'Wholesale reconcile mismatch (owner)', 'staff', true, false, 'trade_reconcile_mismatch_owner', null, 'trade.reconcile', false, 'Owner phone(s)', false),
+
+            // SMS audit, 2026-09-24: the twenty-six paths that still sent under
+            // the old category labels ("system", "transactional",
+            // "staff_notification") and so had no switch, no cost line and no
+            // recipient choice in the Control Center. Each is its own type now.
+
+            // Customer transactional (message set in code; no template)
+            self::def('customer_order_confirmed', 'Order confirmed (at creation)', 'transactional', true, false, null, 'sms_customer_order_confirmed_enabled', 'sms.transactional.manage', false, 'The ordering customer', false),
+            self::def('reservation_received', 'Reservation request received', 'transactional', true, false, null, 'sms_reservation_enabled', 'sms.transactional.manage', false, 'The reservation phone', false),
+            self::def('reservation_confirmed', 'Reservation confirmed', 'transactional', true, false, null, 'sms_reservation_enabled', 'sms.transactional.manage', false, 'The reservation phone', false),
+            self::def('catering_quote_customer', 'Catering quote sent (customer)', 'transactional', true, false, null, 'sms_catering_enabled', 'sms.transactional.manage', false, 'The event contact', false),
+            self::def('catering_quote_staff', 'Catering quote sent (staff)', 'staff', true, false, null, 'sms_catering_enabled', 'sms.transactional.manage', false, 'Catering / ops staff', false),
+            self::def('catering_lifecycle_customer', 'Catering reminder / change (customer)', 'transactional', true, false, null, 'sms_catering_enabled', 'sms.transactional.manage', false, 'The event contact', false),
+            self::def('catering_lifecycle_staff', 'Catering reminder / change (staff)', 'staff', true, false, null, 'sms_catering_enabled', 'sms.transactional.manage', false, 'Catering / ops staff', false),
+            self::def('invoice_send', 'Invoice link', 'transactional', true, false, null, 'sms_invoice_send_enabled', 'sms.transactional.manage', false, 'The number staff typed', true),
+            self::def('credit_payment_reminder', 'Credit payment reminder', 'transactional', true, false, null, 'sms_credit_reminder_enabled', 'sms.transactional.manage', false, 'Credit customers with invoices due (their own reminder switch applies too)', false),
+
+            // Staff
+            self::def('staff_low_stock_menu', 'Staff: menu item low stock', 'staff', true, false, null, 'staff_sms_low_stock_enabled', 'sms.transactional.manage', false, 'Owners & managers', false),
+            self::def('staff_schedule_assigned', 'Staff: shift assigned', 'staff', true, false, 'schedule_assigned', 'staff_sms_schedule_assigned_enabled', 'sms.transactional.manage', false, 'The rostered staff member', false),
+            self::def('staff_notification', 'Staff: other order alerts', 'staff', true, false, null, 'staff_sms_other_enabled', 'sms.transactional.manage', false, 'Assigned / on-shift staff (or fallback)', false),
+
+            // Owner alerts — recipients are chosen in the Control Center
+            // (owners & managers, owner only, business phone, named staff,
+            // or typed numbers). Some also have an older on/off switch on the
+            // Settings page; both must be on.
+            self::def('owner_stock_reorder', 'Owner: stock at reorder point', 'staff', true, false, null, 'sms_owner_stock_reorder_enabled', null, false, 'Owners & managers (also needs "Stock alert SMS" in Settings)', false),
+            self::def('owner_stock_expiry', 'Owner: stock expiring', 'staff', true, false, null, 'sms_owner_stock_expiry_enabled', null, false, 'Owners & managers (also needs "Stock alert SMS" in Settings)', false),
+            self::def('owner_price_rise', 'Owner: supplier price rises', 'staff', true, false, null, 'sms_owner_price_rise_enabled', null, false, 'Owners & managers (also needs the price-rise switch in Settings)', false),
+            self::def('owner_delivery_delays', 'Owner: deliveries past ETA', 'staff', true, false, null, 'sms_owner_delivery_delays_enabled', null, false, 'Business phone (also needs the delivery-delay switch in Settings)', false),
+            self::def('owner_device_approval', 'Owner: POS device waiting for approval', 'staff', true, false, null, 'sms_owner_device_approval_enabled', null, false, 'Business phone', false),
+            self::def('owner_signage_devices', 'Owner: TV screen offline or stuck', 'staff', true, false, null, 'sms_owner_signage_devices_enabled', null, false, 'Business phone (also needs the TV alert switch in Signage)', false),
+            self::def('owner_complaint_stale', 'Owner: complaints unread for days', 'staff', true, false, null, 'sms_owner_complaint_stale_enabled', null, false, 'Owners & managers', false),
+            self::def('owner_complaint_digest', 'Owner: weekly complaint summary', 'staff', true, false, null, 'sms_owner_complaint_digest_enabled', null, false, 'Owners & managers', false),
+            self::def('owner_social_channel', 'Owner: social channel failing or token expiring', 'staff', true, false, null, 'sms_owner_social_channel_enabled', null, false, 'Business phone', false),
+            self::def('owner_social_approval', 'Owner: social post waiting for approval', 'staff', true, false, null, 'sms_owner_social_approval_enabled', null, false, 'Business phone (also the Social Hub approval-SMS switch)', false),
+            self::def('owner_social_comments', 'Owner: social comments that look like orders', 'staff', true, false, null, 'sms_owner_social_comments_enabled', null, false, 'Business phone', false),
+            self::def('owner_social_digest', 'Owner: weekly social digest', 'staff', true, false, null, 'sms_owner_social_digest_enabled', null, false, 'Owners & managers (also the Social Hub digest switch)', false),
         ];
 
         $defs = [];
@@ -277,6 +348,44 @@ final class SmsTypeRegistry
     public static function isSuppressible(array $entry): bool
     {
         return (bool) ($entry['suppressible'] ?? true);
+    }
+
+    /** Null when the type's recipient is decided in code. */
+    public static function defaultRecipientMode(string $typeKey): ?string
+    {
+        return self::RECIPIENT_DEFAULTS[$typeKey] ?? null;
+    }
+
+    /**
+     * The owner's recipient choice for a type, or null when none was made.
+     *
+     * @return array{mode: string, user_ids: list<int>, phones: list<string>}|null
+     */
+    public static function recipientOverride(string $typeKey): ?array
+    {
+        $raw = SiteSetting::get(self::RECIPIENTS_SETTING_PREFIX . $typeKey, null);
+        $data = is_string($raw) ? json_decode($raw, true) : (is_array($raw) ? $raw : null);
+        if (!is_array($data) || !in_array($data['mode'] ?? null, self::RECIPIENT_MODES, true)) {
+            return null;
+        }
+
+        return [
+            'mode' => (string) $data['mode'],
+            'user_ids' => array_values(array_unique(array_map('intval', (array) ($data['user_ids'] ?? [])))),
+            'phones' => array_values(array_unique(array_filter(array_map(fn ($p) => trim((string) $p), (array) ($data['phones'] ?? []))))),
+        ];
+    }
+
+    /** @param array{mode: string, user_ids?: list<int>, phones?: list<string>}|null $choice null clears the choice */
+    public static function setRecipientOverride(string $typeKey, ?array $choice): void
+    {
+        $key = self::RECIPIENTS_SETTING_PREFIX . $typeKey;
+        SiteSetting::set($key, $choice === null ? '' : json_encode([
+            'mode' => $choice['mode'],
+            'user_ids' => array_values(array_map('intval', $choice['user_ids'] ?? [])),
+            'phones' => array_values($choice['phones'] ?? []),
+        ]));
+        SiteSetting::bust();
     }
 
     public static function shouldRedactBody(string $type): bool

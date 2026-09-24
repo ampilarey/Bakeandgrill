@@ -382,3 +382,42 @@ Run backend: `cd backend && php artisan test`. Run frontend from **repo root** (
 
 > Confirm each `enabled_setting`/`template_slug` against the code before wiring — the audit lists the
 > exact source files. Where a slug is marked "(existing)", find the real slug in the seeder/builder.
+
+## Appendix B — SMS audit follow-up (2026-09-24)
+
+The owner asked for every SMS to be controlled from admin, a say in who receives
+what and when, a filterable log, bulk and promotional sending with purchase-based
+targeting, and a footer unsubscribe. Built in three commits; this appendix is the
+record for whoever maintains it next.
+
+### B.1 Every sender registered (`SmsTypeRegistry`)
+Twenty-six paths still sent under category labels and bypassed the per-type
+switches. Each is a registry key now: `customer_order_confirmed`,
+`reservation_received/confirmed`, `catering_quote_customer/staff`,
+`catering_lifecycle_customer/staff`, `invoice_send`, `credit_payment_reminder`,
+`staff_low_stock_menu`, `staff_schedule_assigned`, `staff_notification`,
+`sms_scheduled`, and the owner alerts `owner_stock_reorder`, `owner_stock_expiry`,
+`owner_price_rise`, `owner_delivery_delays`, `owner_device_approval`,
+`owner_signage_devices`, `owner_complaint_stale`, `owner_complaint_digest`,
+`owner_social_channel`, `owner_social_approval`, `owner_social_comments`,
+`owner_social_digest`. `SmsDeliveryRulesTest::test_every_sms_type_string_in_the_code_is_a_registered_type`
+walks `app/` and fails on any sender that uses an unregistered type.
+
+### B.2 Recipients (`OwnerPhones::for($typeKey)`)
+Owner alerts (`SmsTypeRegistry::RECIPIENT_DEFAULTS`) carry a default (owners &
+managers, or the business phone) and an owner's choice stored in
+`sms_type_recipients.<key>` as `{mode, user_ids, phones}` with modes
+`owners_managers | owner_only | business_phone | staff | custom`. A choice that
+resolves to nobody falls back to the owners. Set from the Control Center
+(`PATCH /admin/sms/types/{key}` with `recipients`); the resolved numbers are
+returned and shown. Types whose recipient is decided in code (the customer, the
+rostered staff member) refuse a recipient choice.
+
+### B.3 Quiet hours and the marketing cap (`SmsDeliveryRules`)
+Settings `sms_quiet_hours_enabled/start/end/alerts` and `sms_marketing_daily_cap`
+(default 1; 0 = off), edited at `PATCH /admin/sms/delivery-rules`. Inside the
+window, marketing texts (and owner alerts when `alerts` is on) are logged as
+`deferred`; `sms:release-deferred` (every five minutes) re-sends them through the
+same gate once the window ends and marks campaign / promotion recipients sent.
+Always-on auth types are never held. The cap counts every marketing-category
+row to one number in a rolling day; the suppressed row names the cap.

@@ -7,9 +7,9 @@ namespace App\Domains\Social\Services;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
 use App\Domains\Social\Drivers\SocialPublishException;
-use App\Models\SiteSetting;
 use App\Models\SocialComment;
 use App\Models\SocialPostDelivery;
+use App\Support\OwnerPhones;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -100,17 +100,15 @@ class SocialCommentSync
         if (!Cache::add('social-comment-alert', 1, 3600)) {
             return;
         }
-        $phone = trim((string) SiteSetting::get('business_phone', ''));
-        if ($phone === '') {
-            return;
-        }
         try {
-            app(SmsService::class)->send(new SmsMessage(
-                to: $phone,
-                message: "Social: {$count} new comment" . ($count === 1 ? '' : 's') . ' on your posts look like someone wants to order. Reply from Admin → Social Hub → Comments.',
-                type: 'system',
-                idempotencyKey: 'social-comments:' . now()->format('Y-m-d-H'),
-            ));
+            foreach (OwnerPhones::for('owner_social_comments') as $phone) {
+                app(SmsService::class)->send(new SmsMessage(
+                    to: $phone,
+                    message: "Social: {$count} new comment" . ($count === 1 ? '' : 's') . ' on your posts look like someone wants to order. Reply from Admin → Social Hub → Comments.',
+                    type: 'owner_social_comments',
+                    idempotencyKey: 'social-comments:' . now()->format('Y-m-d-H') . ':' . $phone,
+                ));
+            }
         } catch (Throwable $e) {
             Log::warning('social: comment alert SMS could not be sent', ['error' => $e->getMessage()]);
         }

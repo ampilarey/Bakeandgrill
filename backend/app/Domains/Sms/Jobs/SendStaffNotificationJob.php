@@ -6,6 +6,7 @@ namespace App\Domains\Sms\Jobs;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Notifications\Support\SmsTypeRegistry;
 use App\Models\StaffNotificationLog;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -65,7 +66,7 @@ class SendStaffNotificationJob implements ShouldQueue
             $smsLog = $smsService->send(new SmsMessage(
                 to: $this->phone,
                 message: $this->message,
-                type: 'staff_notification',
+                type: SmsTypeRegistry::get('staff_' . $this->eventType) !== null ? 'staff_' . $this->eventType : 'staff_notification',
                 referenceType: 'order',
                 referenceId: (string) $this->orderId,
                 idempotencyKey: $idempotencyKey . ':sms',

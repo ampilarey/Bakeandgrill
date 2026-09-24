@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Domains\Notifications\Services\SmsService;
 use App\Domains\Notifications\Support\SmsBudgetGate;
+use App\Domains\Notifications\Support\SmsDeliveryRules;
 use App\Domains\Notifications\Support\SmsTypeRegistry;
 use App\Domains\Permissions\Services\PermissionService;
 use App\Domains\Sms\Services\SmsTemplateRenderer;
@@ -17,7 +18,9 @@ use App\Models\SmsCampaign;
 use App\Models\SmsCampaignRecipient;
 use App\Models\SmsLog;
 use App\Models\SmsTemplate;
+use App\Models\User;
 use App\Services\AuditLogService;
+use App\Support\OwnerPhones;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -137,7 +140,14 @@ class SmsControlCenterController extends Controller
             $permSlug = SmsTypeRegistry::effectiveSendPermission($entry);
             $systemOnly = $permSlug === null;
 
+            $defaultMode = SmsTypeRegistry::defaultRecipientMode($key);
+            $recipientChoice = $defaultMode !== null ? SmsTypeRegistry::recipientOverride($key) : null;
+
             $types[] = [
+                'recipients_configurable' => $defaultMode !== null,
+                'default_recipient_mode' => $defaultMode,
+                'recipients_config' => $defaultMode === null ? null : ($recipientChoice ?? ['mode' => $defaultMode, 'user_ids' => [], 'phones' => []]),
+                'recipients_resolved' => $defaultMode === null ? [] : OwnerPhones::for($key)->values()->all(),
                 'key' => $key,
                 'label' => $entry['label'],
                 'category' => $entry['category'],
@@ -178,14 +188,53 @@ class SmsControlCenterController extends Controller
                 ->all(),
         );
 
+        $staffOptions = User::query()
+            ->where('is_active', true)
+            ->whereNotNull('phone')
+            ->where('phone', '!=', '')
+            ->with('role:id,name,slug')
+            ->orderBy('name')
+            ->get(['id', 'name', 'phone', 'role_id'])
+            ->map(fn (User $u) => ['id' => $u->id, 'name' => $u->name, 'phone' => $u->phone, 'role' => $u->role?->name])
+            ->values()
+            ->all();
+
         return response()->json([
             'global_kill_switch' => SmsTypeRegistry::isGlobalKillSwitchOn(),
             'demo_mode' => $this->isDemoMode(),
             'budget' => SmsBudgetGate::usageSnapshot(),
+            'delivery_rules' => SmsDeliveryRules::all(),
+            'quiet_now' => SmsDeliveryRules::inQuietHours(),
+            'deferred_count' => (int) SmsLog::query()->where('status', 'deferred')->count(),
             'campaign_queue' => $this->campaignQueueHealth(),
             'permission_options' => $permissionOptions,
+            'recipient_modes' => SmsTypeRegistry::RECIPIENT_MODES,
+            'staff_options' => $staffOptions,
             'types' => $types,
         ]);
+    }
+
+    /**
+     * PATCH /api/admin/sms/delivery-rules — quiet hours and the per-customer marketing cap.
+     */
+    public function updateDeliveryRules(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'quiet_hours_enabled' => 'sometimes|boolean',
+            'quiet_hours_start' => ['sometimes', 'string', 'regex:/^([01]\d|2[0-3]):[0-5]\d$/'],
+            'quiet_hours_end' => ['sometimes', 'string', 'regex:/^([01]\d|2[0-3]):[0-5]\d$/'],
+            'quiet_hours_alerts' => 'sometimes|boolean',
+            'marketing_daily_cap' => 'sometimes|integer|min:0|max:50',
+        ]);
+        if ($validated === []) {
+            return response()->json(['message' => 'Provide at least one rule.'], 422);
+        }
+
+        $old = SmsDeliveryRules::all();
+        $new = SmsDeliveryRules::update($validated);
+        $this->audit->log('sms.delivery_rules.updated', 'SiteSetting', null, $old, $new, [], $request);
+
+        return response()->json(['delivery_rules' => $new, 'quiet_now' => SmsDeliveryRules::inQuietHours()]);
     }
 
     /**
@@ -213,13 +262,40 @@ class SmsControlCenterController extends Controller
                     '',
                 ]),
             ],
+            'recipients' => 'sometimes|nullable|array',
+            'recipients.mode' => ['required_with:recipients', Rule::in(SmsTypeRegistry::RECIPIENT_MODES)],
+            'recipients.user_ids' => 'sometimes|array|max:20',
+            'recipients.user_ids.*' => 'integer|exists:users,id',
+            'recipients.phones' => 'sometimes|array|max:10',
+            'recipients.phones.*' => ['string', new \App\Rules\MaldivesPhone],
         ]);
 
         if ($validated === []) {
-            return response()->json(['message' => 'Provide enabled, body, and/or send_permission.'], 422);
+            return response()->json(['message' => 'Provide enabled, body, send_permission and/or recipients.'], 422);
         }
 
         $response = ['key' => $key];
+
+        if (array_key_exists('recipients', $validated)) {
+            if (SmsTypeRegistry::defaultRecipientMode($key) === null) {
+                return response()->json(['message' => 'This SMS type decides its recipient in code (the customer, the rostered staff member) and cannot be redirected.'], 422);
+            }
+            $choice = $validated['recipients'];
+            if (is_array($choice)) {
+                if ($choice['mode'] === 'staff' && empty($choice['user_ids'])) {
+                    return response()->json(['message' => 'Pick at least one staff member.'], 422);
+                }
+                if ($choice['mode'] === 'custom' && empty($choice['phones'])) {
+                    return response()->json(['message' => 'Type at least one phone number.'], 422);
+                }
+                $choice['phones'] = array_map(fn ($p) => \App\Rules\MaldivesPhone::normalize((string) $p), $choice['phones'] ?? []);
+            }
+            $old = SmsTypeRegistry::recipientOverride($key);
+            SmsTypeRegistry::setRecipientOverride($key, is_array($choice) ? $choice : null);
+            $this->audit->log('sms.type.recipients.updated', 'SiteSetting', null, ['recipients' => $old, 'type' => $key], ['recipients' => $choice, 'type' => $key], ['sms_type' => $key], $request);
+            $response['recipients_config'] = SmsTypeRegistry::recipientOverride($key) ?? ['mode' => SmsTypeRegistry::defaultRecipientMode($key), 'user_ids' => [], 'phones' => []];
+            $response['recipients_resolved'] = OwnerPhones::for($key)->values()->all();
+        }
 
         if (array_key_exists('enabled', $validated)) {
             if (!empty($entry['always_on'])) {

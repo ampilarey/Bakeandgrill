@@ -8,6 +8,7 @@ use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
 use App\Domains\Operations\Services\OpsAlertsService;
 use App\Models\SiteSetting;
+use App\Support\OwnerPhones;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -44,14 +45,13 @@ class AlertDeliveryDelays extends Command
         }
 
         if (filter_var(SiteSetting::get('ops_delivery_delay_alert_sms', '0'), FILTER_VALIDATE_BOOLEAN)) {
-            $phone = trim((string) SiteSetting::get('business_phone', ''));
-            if ($phone !== '') {
-                $count = $delayed->count();
+            $count = $delayed->count();
+            foreach (OwnerPhones::for('owner_delivery_delays') as $phone) {
                 $sms->send(new SmsMessage(
                     to: $phone,
                     message: "Bake & Grill: {$count} delivery order(s) are past ETA. Check admin dashboard.",
-                    type: 'system',
-                    idempotencyKey: 'delivery-delay-alert:' . now()->format('Y-m-d-H'),
+                    type: 'owner_delivery_delays',
+                    idempotencyKey: 'delivery-delay-alert:' . now()->format('Y-m-d-H') . ':' . $phone,
                 ));
             }
         }

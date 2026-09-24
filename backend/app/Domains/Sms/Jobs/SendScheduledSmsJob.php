@@ -87,7 +87,7 @@ class SendScheduledSmsJob implements ShouldQueue
                 $smsService->send(new SmsMessage(
                     to: $phone,
                     message: $body,
-                    type: 'scheduled',
+                    type: 'sms_scheduled',
                     referenceType: 'sms_scheduled_message',
                     referenceId: (string) $this->scheduledMessageId,
                     idempotencyKey: $idempotencyKey,

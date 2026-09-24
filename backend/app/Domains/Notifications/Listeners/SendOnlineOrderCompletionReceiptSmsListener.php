@@ -80,7 +80,7 @@ final class SendOnlineOrderCompletionReceiptSmsListener
             $this->sms->send(new SmsMessage(
                 to: $phone,
                 message: $message,
-                type: 'transactional',
+                type: 'customer_completion_receipt',
                 customerId: $order->customer_id,
                 referenceType: 'order',
                 referenceId: (string) $order->id,

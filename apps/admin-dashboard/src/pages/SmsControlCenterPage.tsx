@@ -6,10 +6,14 @@ import {
   updateSmsGlobalKillSwitch,
   updateSmsType,
   updateSmsBudget,
+  updateSmsDeliveryRules,
   previewSmsType,
   type SmsBudgetSnapshot,
   type SmsCampaignQueueHealth,
   type SmsControlCenterType,
+  type SmsDeliveryRules,
+  type SmsRecipientMode,
+  type SmsStaffOption,
 } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
@@ -23,6 +27,22 @@ const CATEGORY_LABELS: Record<string, string> = {
   staff: 'Staff',
   marketing: 'Marketing',
   system: 'System',
+};
+
+const RECIPIENT_MODE_LABELS: Record<SmsRecipientMode, string> = {
+  owners_managers: 'Owners & managers',
+  owner_only: 'Owner only',
+  business_phone: 'Business phone',
+  staff: 'Named staff',
+  custom: 'Typed numbers',
+};
+
+const DEFAULT_RULES: SmsDeliveryRules = {
+  quiet_hours_enabled: false,
+  quiet_hours_start: '22:00',
+  quiet_hours_end: '08:00',
+  quiet_hours_alerts: false,
+  marketing_daily_cap: 1,
 };
 
 const KILL_SWITCH_WARNING =
@@ -50,6 +70,12 @@ export function SmsControlCenterPage() {
   const [killPending, setKillPending] = useState(false);
   const [budgetDraft, setBudgetDraft] = useState({ monthly: '', campaign: '' });
   const [budgetSaving, setBudgetSaving] = useState(false);
+  const [rules, setRules] = useState<SmsDeliveryRules>(DEFAULT_RULES);
+  const [rulesDraft, setRulesDraft] = useState<SmsDeliveryRules>(DEFAULT_RULES);
+  const [rulesSaving, setRulesSaving] = useState(false);
+  const [quietNow, setQuietNow] = useState(false);
+  const [deferredCount, setDeferredCount] = useState(0);
+  const [staffOptions, setStaffOptions] = useState<SmsStaffOption[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -62,6 +88,11 @@ export function SmsControlCenterPage() {
       setBudget(res.budget);
       setQueue(res.campaign_queue);
       setPermissionOptions(res.permission_options ?? []);
+      setRules(res.delivery_rules ?? DEFAULT_RULES);
+      setRulesDraft(res.delivery_rules ?? DEFAULT_RULES);
+      setQuietNow(!!res.quiet_now);
+      setDeferredCount(res.deferred_count ?? 0);
+      setStaffOptions(res.staff_options ?? []);
       setBudgetDraft({
         monthly: res.budget?.monthly_segment_ceiling != null ? String(res.budget.monthly_segment_ceiling) : '',
         campaign: res.budget?.per_campaign_segment_ceiling != null ? String(res.budget.per_campaign_segment_ceiling) : '',
@@ -118,6 +149,22 @@ export function SmsControlCenterPage() {
       setError((e as Error).message);
     } finally {
       setBudgetSaving(false);
+    }
+  };
+
+  const saveRules = async () => {
+    if (!canManageSettings) return;
+    setRulesSaving(true);
+    setError('');
+    try {
+      const res = await updateSmsDeliveryRules(rulesDraft);
+      setRules(res.delivery_rules);
+      setRulesDraft(res.delivery_rules);
+      setQuietNow(res.quiet_now);
+    } catch (e: unknown) {
+      setError((e as Error).message);
+    } finally {
+      setRulesSaving(false);
     }
   };
 
@@ -234,6 +281,65 @@ export function SmsControlCenterPage() {
         </section>
       )}
 
+      {!loading && (
+        <section style={panelStyle} data-testid="delivery-rules">
+          <h2 style={sectionTitle}>Delivery rules</h2>
+          <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--color-text-secondary)' }}>
+            {rules.quiet_hours_enabled
+              ? `Quiet hours ${rules.quiet_hours_start}–${rules.quiet_hours_end}: marketing texts${rules.quiet_hours_alerts ? ' and owner alerts' : ''} wait until the window ends.`
+              : 'Quiet hours off: texts go out whenever they are triggered.'}
+            {quietNow && <span style={{ color: 'var(--color-warning-strong)', fontWeight: 600 }}> · Quiet now</span>}
+            {deferredCount > 0 && <> · {deferredCount} waiting</>}
+            {' · '}Marketing cap: {rules.marketing_daily_cap === 0 ? 'off' : `${rules.marketing_daily_cap} a day per number`}
+          </p>
+          <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--color-text-muted)' }}>
+            Login codes, order and payment texts are never held. The cap counts every marketing text to one number in a rolling day, whatever sends it.
+          </p>
+          {canManageSettings && (
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              <label style={{ ...fieldLabel, flexDirection: 'row', alignItems: 'center', minWidth: 0 }}>
+                <input
+                  type="checkbox"
+                  checked={rulesDraft.quiet_hours_enabled}
+                  onChange={(e) => setRulesDraft((d) => ({ ...d, quiet_hours_enabled: e.target.checked }))}
+                />
+                Quiet hours
+              </label>
+              <label style={fieldLabel}>
+                From
+                <input type="time" value={rulesDraft.quiet_hours_start} onChange={(e) => setRulesDraft((d) => ({ ...d, quiet_hours_start: e.target.value }))} style={inputStyle} />
+              </label>
+              <label style={fieldLabel}>
+                Until
+                <input type="time" value={rulesDraft.quiet_hours_end} onChange={(e) => setRulesDraft((d) => ({ ...d, quiet_hours_end: e.target.value }))} style={inputStyle} />
+              </label>
+              <label style={{ ...fieldLabel, flexDirection: 'row', alignItems: 'center', minWidth: 0 }}>
+                <input
+                  type="checkbox"
+                  checked={rulesDraft.quiet_hours_alerts}
+                  onChange={(e) => setRulesDraft((d) => ({ ...d, quiet_hours_alerts: e.target.checked }))}
+                />
+                Hold owner alerts too
+              </label>
+              <label style={fieldLabel}>
+                Marketing texts per number per day
+                <input
+                  type="number"
+                  min={0}
+                  max={50}
+                  value={rulesDraft.marketing_daily_cap}
+                  onChange={(e) => setRulesDraft((d) => ({ ...d, marketing_daily_cap: Math.max(0, Math.min(50, Number(e.target.value) || 0)) }))}
+                  style={inputStyle}
+                />
+              </label>
+              <Btn variant="secondary" onClick={() => void saveRules()} disabled={rulesSaving}>
+                {rulesSaving ? 'Saving…' : 'Save rules'}
+              </Btn>
+            </div>
+          )}
+        </section>
+      )}
+
       {!loading && queue && (
         <section style={panelStyle}>
           <h2 style={sectionTitle}>Campaign queue health</h2>
@@ -280,6 +386,7 @@ export function SmsControlCenterPage() {
                   canToggle={canManageSettings && !row.always_on}
                   canEdit={canEditTemplates && canManageSettings}
                   permissionOptions={permissionOptions}
+                  staffOptions={staffOptions}
                   onUpdated={(patch) => {
                     setTypes((prev) => prev.map((t) => (t.key === row.key ? { ...t, ...patch } : t)));
                   }}
@@ -326,6 +433,7 @@ function TypeRow({
   canToggle,
   canEdit,
   permissionOptions,
+  staffOptions,
   onUpdated,
   onError,
 }: {
@@ -337,6 +445,7 @@ function TypeRow({
   canToggle: boolean;
   canEdit: boolean;
   permissionOptions: Array<{ slug: string; name: string }>;
+  staffOptions: SmsStaffOption[];
   onUpdated: (patch: Partial<SmsControlCenterType>) => void;
   onError: (msg: string) => void;
 }) {
@@ -357,6 +466,9 @@ function TypeRow({
           </div>
           <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-secondary)' }}>
             Recipients: {row.recipients || '—'}
+            {row.recipients_configurable && row.recipients_config && (
+              <> · now: {RECIPIENT_MODE_LABELS[row.recipients_config.mode]}{row.recipients_resolved && row.recipients_resolved.length > 0 ? ` (${row.recipients_resolved.join(', ')})` : ''}</>
+            )}
           </p>
           <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
             Who can send: {row.send_permission_label}
@@ -413,6 +525,7 @@ function TypeRow({
           row={row}
           disabled={!canEdit}
           permissionOptions={permissionOptions}
+          staffOptions={staffOptions}
           onUpdated={onUpdated}
           onError={onError}
         />
@@ -425,12 +538,14 @@ function TypeEditor({
   row,
   disabled,
   permissionOptions,
+  staffOptions,
   onUpdated,
   onError,
 }: {
   row: SmsControlCenterType;
   disabled: boolean;
   permissionOptions: Array<{ slug: string; name: string }>;
+  staffOptions: SmsStaffOption[];
   onUpdated: (patch: Partial<SmsControlCenterType>) => void;
   onError: (msg: string) => void;
 }) {
@@ -511,6 +626,9 @@ function TypeEditor({
 
   return (
     <div style={{ borderTop: '1px solid var(--color-border-light)', marginTop: 12, paddingTop: 12 }}>
+      {row.recipients_configurable && (
+        <RecipientsEditor row={row} disabled={disabled} staffOptions={staffOptions} onUpdated={onUpdated} onError={onError} />
+      )}
       <label style={{ ...fieldLabel, marginBottom: 12 }}>
         Who can send
         <select
@@ -635,6 +753,102 @@ function TypeEditor({
           {preview}
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Who an owner alert goes to (SMS audit, 2026-09-24). Saved on change;
+ * the resolved numbers show so the owner can see who will actually get it.
+ */
+function RecipientsEditor({ row, disabled, staffOptions, onUpdated, onError }: {
+  row: SmsControlCenterType;
+  disabled: boolean;
+  staffOptions: SmsStaffOption[];
+  onUpdated: (patch: Partial<SmsControlCenterType>) => void;
+  onError: (msg: string) => void;
+}) {
+  const initial = row.recipients_config ?? { mode: row.default_recipient_mode ?? 'owners_managers', user_ids: [], phones: [] };
+  const [mode, setMode] = useState<SmsRecipientMode>(initial.mode);
+  const [userIds, setUserIds] = useState<number[]>(initial.user_ids);
+  const [phones, setPhones] = useState(initial.phones.join(', '));
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    const cfg = row.recipients_config ?? { mode: row.default_recipient_mode ?? 'owners_managers', user_ids: [], phones: [] };
+    setMode(cfg.mode);
+    setUserIds(cfg.user_ids);
+    setPhones(cfg.phones.join(', '));
+  }, [row.key, row.recipients_config, row.default_recipient_mode]);
+
+  const save = async (next: { mode: SmsRecipientMode; user_ids: number[]; phones: string[] }) => {
+    if (disabled) return;
+    setSaving(true);
+    setErr('');
+    try {
+      const res = await updateSmsType(row.key, { recipients: next });
+      onUpdated({ recipients_config: res.recipients_config, recipients_resolved: res.recipients_resolved });
+    } catch (e: unknown) {
+      const msg = (e as Error).message;
+      setErr(msg);
+      onError(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const changeMode = (next: SmsRecipientMode) => {
+    setMode(next);
+    if (next !== 'staff' && next !== 'custom') void save({ mode: next, user_ids: [], phones: [] });
+  };
+
+  const toggleStaff = (id: number) => {
+    const next = userIds.includes(id) ? userIds.filter((u) => u !== id) : [...userIds, id];
+    setUserIds(next);
+    if (next.length > 0) void save({ mode: 'staff', user_ids: next, phones: [] });
+  };
+
+  const savePhones = () => {
+    const list = phones.split(/[,\s]+/).map((p) => p.trim()).filter(Boolean);
+    if (list.length === 0) { setErr('Type at least one phone number.'); return; }
+    void save({ mode: 'custom', user_ids: [], phones: list });
+  };
+
+  return (
+    <div style={{ marginBottom: 12 }} data-testid={`recipients-${row.key}`}>
+      <label style={fieldLabel}>
+        Who receives it
+        <select value={mode} disabled={disabled || saving} onChange={(e) => changeMode(e.target.value as SmsRecipientMode)} style={inputStyle}>
+          {(Object.keys(RECIPIENT_MODE_LABELS) as SmsRecipientMode[]).map((m) => (
+            <option key={m} value={m}>{RECIPIENT_MODE_LABELS[m]}{m === row.default_recipient_mode ? ' (default)' : ''}</option>
+          ))}
+        </select>
+      </label>
+      {mode === 'staff' && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 8 }}>
+          {staffOptions.length === 0 && <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>No staff with a phone number on file.</span>}
+          {staffOptions.map((s) => (
+            <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+              <input type="checkbox" checked={userIds.includes(s.id)} disabled={disabled || saving} onChange={() => toggleStaff(s.id)} />
+              {s.name}{s.role ? ` (${s.role})` : ''}
+            </label>
+          ))}
+        </div>
+      )}
+      {mode === 'custom' && (
+        <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <label style={{ ...fieldLabel, flex: '1 1 240px' }}>
+            Numbers, separated by commas
+            <input value={phones} disabled={disabled || saving} onChange={(e) => setPhones(e.target.value)} placeholder="7771234, 9601234" style={inputStyle} />
+          </label>
+          <button type="button" onClick={savePhones} disabled={disabled || saving} style={primaryBtn}>{saving ? 'Saving…' : 'Save numbers'}</button>
+        </div>
+      )}
+      {row.recipients_resolved && row.recipients_resolved.length > 0 && (
+        <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>Goes to: {row.recipients_resolved.join(', ')}</p>
+      )}
+      {err && <p style={{ color: 'var(--color-danger-strong)', fontSize: 12, margin: '6px 0 0' }}>{err}</p>}
     </div>
   );
 }

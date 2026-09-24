@@ -168,7 +168,7 @@ class CheckReorderPoints extends Command
             . ($preview !== '' ? " ({$preview})" : '')
             . '. Check Forecasts → Restock.';
 
-        $phones = OwnerPhones::all();
+        $phones = OwnerPhones::for('owner_stock_reorder');
 
         if ($phones->isEmpty()) {
             $this->warn('Reorder SMS enabled but no owner/manager phone or business_phone set.');
@@ -182,7 +182,7 @@ class CheckReorderPoints extends Command
                 $sms->send(new SmsMessage(
                     to: $phone,
                     message: $message,
-                    type: 'system',
+                    type: 'owner_stock_reorder',
                     referenceType: 'inventory_reorder_alert',
                     referenceId: $dateKey,
                     idempotencyKey: 'inventory-reorder-digest:' . $dateKey . ':' . $phone,

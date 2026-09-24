@@ -73,6 +73,25 @@ const typesFixture: api.SmsControlCenterType[] = [
     template: null,
     last_30_days: { count: 0, cost_mvr: 0 },
   },
+  {
+    key: 'owner_stock_reorder',
+    label: 'Owner: stock at reorder point',
+    category: 'staff',
+    enabled: true,
+    always_on: false,
+    suppressible: false,
+    recipients: 'Owners & managers',
+    user_initiated: false,
+    send_permission: null,
+    send_permission_label: 'System-initiated — no manual sending',
+    roles_with_permission: ['System'],
+    template: null,
+    last_30_days: { count: 4, cost_mvr: 1 },
+    recipients_configurable: true,
+    default_recipient_mode: 'owners_managers',
+    recipients_config: { mode: 'owners_managers', user_ids: [], phones: [] },
+    recipients_resolved: ['9607770001'],
+  },
 ];
 
 const budgetFixture: api.SmsBudgetSnapshot = {
@@ -130,6 +149,11 @@ function mockControlCenter(overrides?: {
     campaign_queue: overrides?.queue ?? queueFixture,
     permission_options: permissionOptions,
     types: overrides?.types ?? typesFixture,
+    delivery_rules: { quiet_hours_enabled: false, quiet_hours_start: '22:00', quiet_hours_end: '08:00', quiet_hours_alerts: false, marketing_daily_cap: 1 },
+    quiet_now: false,
+    deferred_count: 0,
+    recipient_modes: ['owners_managers', 'owner_only', 'business_phone', 'staff', 'custom'],
+    staff_options: [{ id: 5, name: 'Ali', phone: '9607770002', role: 'Manager' }],
   });
 }
 
@@ -145,7 +169,7 @@ function grantAllManagePerms() {
   });
 }
 
-const TYPE_ORDER = ['Customer login OTP', 'Gift card delivery', 'Bulk campaign'] as const;
+const TYPE_ORDER = ['Customer login OTP', 'Gift card delivery', 'Owner: stock at reorder point', 'Bulk campaign'] as const;
 
 /** Expand a type card. Only one editor is open at a time, so queries can use screen. */
 async function expandType(label: (typeof TYPE_ORDER)[number]): Promise<void> {
@@ -178,6 +202,10 @@ describe('SmsControlCenterPage', () => {
     });
     vi.spyOn(api, 'updateSmsGlobalKillSwitch').mockResolvedValue({ global_kill_switch: true });
     vi.spyOn(api, 'updateSmsBudget').mockResolvedValue({ budget: budgetFixture });
+    vi.spyOn(api, 'updateSmsDeliveryRules').mockResolvedValue({
+      delivery_rules: { quiet_hours_enabled: true, quiet_hours_start: '22:00', quiet_hours_end: '07:30', quiet_hours_alerts: false, marketing_daily_cap: 2 },
+      quiet_now: false,
+    });
     vi.spyOn(api, 'previewSmsType').mockResolvedValue({
       preview: 'Gift card MVR 100.00 - shop now',
       estimate: { encoding: 'gsm7', length: 32, segments: 2, cost_mvr: 0.5 },
@@ -304,7 +332,7 @@ describe('SmsControlCenterPage', () => {
     renderWithRouter(<SmsControlCenterPage />);
     await screen.findByText('Customer login OTP');
 
-    expect(screen.getByText(/System-initiated — no manual sending/)).toBeTruthy();
+    expect(screen.getAllByText(/System-initiated — no manual sending/).length).toBeGreaterThan(0);
     expect(screen.queryByLabelText('Toggle Customer login OTP')).toBeNull();
 
     // Expand OTP — permission select currently still renders (admin can re-assign).
@@ -364,6 +392,41 @@ describe('SmsControlCenterPage', () => {
     expect(screen.getByText(/Failed queue jobs \(24h\): 1/)).toBeTruthy();
     expect(screen.getByText(/#9 Weekend blast/)).toBeTruthy();
     expect(screen.getByText(/Stalled sends usually mean/i)).toBeTruthy();
+  });
+
+  it('saves quiet hours and the marketing cap', async () => {
+    renderWithRouter(<SmsControlCenterPage />);
+    await screen.findByText(/Delivery rules/i);
+    expect(screen.getByText(/Quiet hours off/)).toBeTruthy();
+    fireEvent.click(screen.getByLabelText(/^Quiet hours$/i));
+    fireEvent.change(screen.getByLabelText(/^Until$/i), { target: { value: '07:30' } });
+    fireEvent.change(screen.getByLabelText(/Marketing texts per number per day/i), { target: { value: '2' } });
+    fireEvent.click(screen.getByRole('button', { name: /Save rules/i }));
+    await waitFor(() => expect(api.updateSmsDeliveryRules).toHaveBeenCalledWith({
+      quiet_hours_enabled: true, quiet_hours_start: '22:00', quiet_hours_end: '07:30', quiet_hours_alerts: false, marketing_daily_cap: 2,
+    }));
+    expect(await screen.findByText(/Quiet hours 22:00–07:30/)).toBeTruthy();
+    expect(screen.getByText(/Marketing cap: 2 a day per number/)).toBeTruthy();
+  });
+
+  it('lets the owner choose who gets an owner alert, and only for owner alerts', async () => {
+    vi.mocked(api.updateSmsType).mockResolvedValue({
+      key: 'owner_stock_reorder',
+      recipients_config: { mode: 'staff', user_ids: [5], phones: [] },
+      recipients_resolved: ['9607770002'],
+    });
+    renderWithRouter(<SmsControlCenterPage />);
+    await expandType('Gift card delivery');
+    expect(screen.queryByLabelText(/Who receives it/i)).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /Hide controls/i }));
+    await expandType('Owner: stock at reorder point');
+    const select = screen.getByLabelText(/Who receives it/i) as HTMLSelectElement;
+    expect(select.value).toBe('owners_managers');
+    fireEvent.change(select, { target: { value: 'staff' } });
+    fireEvent.click(screen.getByLabelText(/Ali \(Manager\)/));
+    await waitFor(() => expect(api.updateSmsType).toHaveBeenCalledWith('owner_stock_reorder', { recipients: { mode: 'staff', user_ids: [5], phones: [] } }));
+    expect(await screen.findByText(/Goes to: 9607770002/)).toBeTruthy();
   });
 
   it('logs-only users cannot change wording, permission, budget, or toggles', async () => {

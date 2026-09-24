@@ -820,7 +820,7 @@ class InvoiceController extends Controller
         app(SmsService::class)->send(new SmsMessage(
             to: $phone,
             message: 'Bill #' . $invoice->invoice_number . ' - MVR ' . number_format((float) $invoice->total, 2) . '. View: ' . $link,
-            type: 'transactional',
+            type: 'invoice_send',
             referenceType: 'invoice',
             referenceId: (string) $invoice->id,
             idempotencyKey: 'invoice:send:' . $invoice->id . ':' . $phone . ':' . (int) $invoice->total_laar,

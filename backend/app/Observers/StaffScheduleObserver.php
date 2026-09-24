@@ -76,7 +76,7 @@ class StaffScheduleObserver
             app(SmsService::class)->send(new SmsMessage(
                 to: $user->phone,
                 message: $message,
-                type: 'staff_notification',
+                type: 'staff_schedule_assigned',
                 referenceType: 'staff_schedule',
                 referenceId: (string) $schedule->id,
                 idempotencyKey: 'schedule-assigned:' . $schedule->id . ':' . $schedule->updated_at?->timestamp,

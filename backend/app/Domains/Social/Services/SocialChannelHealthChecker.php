@@ -7,8 +7,8 @@ namespace App\Domains\Social\Services;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
 use App\Domains\Social\Drivers\ChannelHealth;
-use App\Models\SiteSetting;
 use App\Models\SocialChannel;
+use App\Support\OwnerPhones;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -99,19 +99,17 @@ class SocialChannelHealthChecker
             : "Social: {$label} token expires in {$daysLeft} day" . ($daysLeft === 1 ? '' : 's') . '. Reconnect it in Admin → Social Hub → Channels before posts start failing.';
         Log::warning('social: channel health alert', ['channel_id' => $channel->id, 'status' => $status, 'message' => $health->message]);
 
-        $phone = trim((string) SiteSetting::get('business_phone', ''));
-        if ($phone === '') {
-            return;
-        }
         try {
-            app(SmsService::class)->send(new SmsMessage(
-                to: $phone,
-                message: mb_substr($text, 0, 300),
-                type: 'system',
-                referenceType: 'social_channel',
-                referenceId: (string) $channel->id,
-                idempotencyKey: 'social-health:' . $channel->id . ':' . $key,
-            ));
+            foreach (OwnerPhones::for('owner_social_channel') as $phone) {
+                app(SmsService::class)->send(new SmsMessage(
+                    to: $phone,
+                    message: mb_substr($text, 0, 300),
+                    type: 'owner_social_channel',
+                    referenceType: 'social_channel',
+                    referenceId: (string) $channel->id,
+                    idempotencyKey: 'social-health:' . $channel->id . ':' . $key . ':' . $phone,
+                ));
+            }
         } catch (Throwable $e) {
             Log::warning('social: health alert SMS could not be sent', ['channel_id' => $channel->id, 'error' => $e->getMessage()]);
         }

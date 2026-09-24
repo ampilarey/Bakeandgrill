@@ -254,6 +254,13 @@ Schedule::command('sms:dispatch-scheduled')
     ->onFailure($alertOnFailure('sms:dispatch-scheduled'))
     ->after($trackSuccess('sms:dispatch-scheduled'));
 
+// SMS: send what quiet hours held back, once the window ends
+Schedule::command('sms:release-deferred')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->onFailure($alertOnFailure('sms:release-deferred'))
+    ->after($trackSuccess('sms:release-deferred'));
+
 // Payments: alert if any BML webhooks are stuck in failed status (potential missed payments)
 Schedule::command('webhooks:check-failed --hours=1')
     ->everyFifteenMinutes()

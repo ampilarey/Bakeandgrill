@@ -293,7 +293,30 @@ export type SmsControlCenterType = {
   code_fallback_note?: string | null;
   sample_variables?: Record<string, string>;
   last_30_days: { count: number; cost_mvr: number };
+  /** Owner alerts: the owner picks who gets them; other types decide in code. */
+  recipients_configurable?: boolean;
+  default_recipient_mode?: SmsRecipientMode | null;
+  recipients_config?: SmsRecipientsConfig | null;
+  recipients_resolved?: string[];
 };
+
+export type SmsRecipientMode = 'owners_managers' | 'owner_only' | 'business_phone' | 'staff' | 'custom';
+
+export type SmsRecipientsConfig = {
+  mode: SmsRecipientMode;
+  user_ids: number[];
+  phones: string[];
+};
+
+export type SmsDeliveryRules = {
+  quiet_hours_enabled: boolean;
+  quiet_hours_start: string;
+  quiet_hours_end: string;
+  quiet_hours_alerts: boolean;
+  marketing_daily_cap: number;
+};
+
+export type SmsStaffOption = { id: number; name: string; phone: string; role: string | null };
 
 export type SmsBudgetSnapshot = {
   monthly_segment_ceiling: number | null;
@@ -328,12 +351,18 @@ export type SmsControlCenterResponse = {
   campaign_queue: SmsCampaignQueueHealth;
   permission_options: Array<{ slug: string; name: string }>;
   types: SmsControlCenterType[];
+  delivery_rules?: SmsDeliveryRules;
+  quiet_now?: boolean;
+  deferred_count?: number;
+  recipient_modes?: SmsRecipientMode[];
+  staff_options?: SmsStaffOption[];
 };
 
 export type SmsTypeUpdatePayload = {
   enabled?: boolean;
   body?: string;
   send_permission?: string | null;
+  recipients?: SmsRecipientsConfig | { mode: SmsRecipientMode; user_ids?: number[]; phones?: string[] } | null;
 };
 
 export async function getSmsControlCenter(): Promise<SmsControlCenterResponse> {
@@ -350,6 +379,8 @@ export async function updateSmsType(
   send_permission_label?: string;
   template?: SmsControlCenterType['template'];
   estimate?: { encoding: string; segments: number; cost_mvr: number; length: number };
+  recipients_config?: SmsRecipientsConfig;
+  recipients_resolved?: string[];
 }> {
   const body = typeof payload === 'boolean' ? { enabled: payload } : payload;
   return req(`/admin/sms/types/${encodeURIComponent(key)}`, {
@@ -380,6 +411,10 @@ export async function updateSmsBudget(payload: {
     method: 'PATCH',
     body: JSON.stringify(payload),
   });
+}
+
+export async function updateSmsDeliveryRules(payload: Partial<SmsDeliveryRules>): Promise<{ delivery_rules: SmsDeliveryRules; quiet_now: boolean }> {
+  return req('/admin/sms/delivery-rules', { method: 'PATCH', body: JSON.stringify(payload) });
 }
 
 export async function updateSmsGlobalKillSwitch(enabled: boolean): Promise<{ global_kill_switch: boolean }> {

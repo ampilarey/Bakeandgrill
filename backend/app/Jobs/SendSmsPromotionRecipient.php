@@ -61,6 +61,11 @@ class SendSmsPromotionRecipient implements ShouldQueue
 
         $sent = in_array($log->status, ['sent', 'demo'], true);
 
+        if ($log->status === 'deferred') {
+            // Quiet hours: leave the recipient queued; sms:release-deferred finishes it.
+            return;
+        }
+
         if ($sent) {
             $recipient->update(['status' => 'sent', 'sent_at' => now()]);
             $promotion->increment('sent_count');

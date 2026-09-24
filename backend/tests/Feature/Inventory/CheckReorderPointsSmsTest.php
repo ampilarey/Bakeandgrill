@@ -36,7 +36,7 @@ class CheckReorderPointsSmsTest extends TestCase
         $this->assertSame(1, InventoryReorderAlert::query()->whereNull('resolved_at')->count());
         $this->assertDatabaseHas('sms_logs', [
             'to' => '+9607771234',
-            'type' => 'system',
+            'type' => 'owner_stock_reorder',
             'reference_type' => 'inventory_reorder_alert',
         ]);
         $body = SmsLog::query()->where('reference_type', 'inventory_reorder_alert')->value('message');

@@ -9,6 +9,7 @@ use App\Domains\Notifications\Services\SmsService;
 use App\Domains\Signage\Services\SignageDeviceHealth;
 use App\Models\SignageDevice;
 use App\Models\SiteSetting;
+use App\Support\OwnerPhones;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -28,7 +29,6 @@ class CheckSignageDevices extends Command
     {
         $now = now();
         $smsOn = filter_var(SiteSetting::get('signage_device_alert_sms', '1'), FILTER_VALIDATE_BOOLEAN);
-        $phone = trim((string) SiteSetting::get('business_phone', ''));
         $alerts = [];
 
         foreach (SignageDevice::query()->where('approved', true)->with('screen:id,name,slug')->get() as $device) {
@@ -75,13 +75,15 @@ class CheckSignageDevices extends Command
             $this->line($line);
         }
 
-        if ($smsOn && $phone !== '') {
-            $sms->send(new SmsMessage(
-                to: $phone,
-                message: 'Bake & Grill TV: ' . implode('; ', array_slice($alerts, 0, 3)) . '. Check Admin → TV Signage → Devices.',
-                type: 'system',
-                idempotencyKey: 'signage-device-alert:' . md5(implode('|', $alerts)) . ':' . $now->format('Y-m-d-H'),
-            ));
+        if ($smsOn) {
+            foreach (OwnerPhones::for('owner_signage_devices') as $phone) {
+                $sms->send(new SmsMessage(
+                    to: $phone,
+                    message: 'Bake & Grill TV: ' . implode('; ', array_slice($alerts, 0, 3)) . '. Check Admin → TV Signage → Devices.',
+                    type: 'owner_signage_devices',
+                    idempotencyKey: 'signage-device-alert:' . md5(implode('|', $alerts)) . ':' . $now->format('Y-m-d-H') . ':' . $phone,
+                ));
+            }
         }
 
         return self::SUCCESS;

@@ -66,7 +66,7 @@ class CheckExpiringInventory extends Command
             return;
         }
 
-        $phones = OwnerPhones::all();
+        $phones = OwnerPhones::for('owner_stock_expiry');
         if ($phones->isEmpty()) {
             $this->warn('Stock alert SMS enabled but no owner/manager phone or business_phone set.');
 
@@ -89,7 +89,7 @@ class CheckExpiringInventory extends Command
                 $sms->send(new SmsMessage(
                     to: $phone,
                     message: $message,
-                    type: 'system',
+                    type: 'owner_stock_expiry',
                     referenceType: 'inventory_expiry_alert',
                     referenceId: $dateKey,
                     idempotencyKey: 'inventory-expiry-digest:' . $dateKey . ':' . $phone,

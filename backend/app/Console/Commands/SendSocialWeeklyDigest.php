@@ -99,7 +99,7 @@ class SendSocialWeeklyDigest extends Command
 
         $message = 'Bake & Grill social, last 7 days: ' . implode('. ', $parts) . '. See Social Hub.';
 
-        $phones = OwnerPhones::all();
+        $phones = OwnerPhones::for('owner_social_digest');
         if ($phones->isEmpty()) {
             $this->warn('Weekly social digest enabled but no owner/manager phone or business_phone set.');
 
@@ -112,7 +112,7 @@ class SendSocialWeeklyDigest extends Command
                 $sms->send(new SmsMessage(
                     to: $phone,
                     message: mb_substr($message, 0, 480),
-                    type: 'system',
+                    type: 'owner_social_digest',
                     referenceType: 'social_weekly_digest',
                     referenceId: $weekKey,
                     idempotencyKey: 'social-weekly:' . $weekKey . ':' . $phone,

@@ -52,7 +52,7 @@ class SendCateringRequestStaffSmsListener
                 $this->sms->send(new SmsMessage(
                     to: (string) $target['phone'],
                     message: $message,
-                    type: 'transactional',
+                    type: 'catering_request_staff',
                     referenceType: 'catering_request',
                     referenceId: (string) $req->id,
                     idempotencyKey: 'catering_request_notify:' . $req->id . ':' . $i,

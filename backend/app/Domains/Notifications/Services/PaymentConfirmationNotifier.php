@@ -113,6 +113,7 @@ class PaymentConfirmationNotifier
                 ],
                 $fallback,
             );
+            $typeKey = 'customer_payment_confirmed_online';
         } else {
             // POS dine-in / takeaway: customer is at the counter. The
             // receipt link is the only useful SMS — no order-confirmed
@@ -128,13 +129,14 @@ class PaymentConfirmationNotifier
                 ],
                 $fallback,
             );
+            $typeKey = 'customer_payment_confirmed_pos';
         }
 
         try {
             $this->sms->send(new SmsMessage(
                 to: $phone,
                 message: $message,
-                type: 'transactional',
+                type: $typeKey,
                 customerId: $order->customer_id,
                 referenceType: 'order',
                 referenceId: (string) $order->id,

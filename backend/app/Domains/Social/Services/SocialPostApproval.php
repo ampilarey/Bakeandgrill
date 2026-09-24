@@ -7,9 +7,9 @@ namespace App\Domains\Social\Services;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
 use App\Domains\Social\Jobs\PublishSocialDeliveryJob;
-use App\Models\SiteSetting;
 use App\Models\SocialPost;
 use App\Models\SocialPostDelivery;
+use App\Support\OwnerPhones;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
@@ -73,10 +73,6 @@ class SocialPostApproval
         if (!app(SocialPostingRules::class)->all()['approval_sms']) {
             return;
         }
-        $phone = trim((string) SiteSetting::get('business_phone', ''));
-        if ($phone === '') {
-            return;
-        }
         $what = match ($post->source) {
             'auto_special' => "today's special",
             'auto_new_item' => 'a new dish',
@@ -87,14 +83,16 @@ class SocialPostApproval
             default => 'a post',
         };
         try {
-            app(SmsService::class)->send(new SmsMessage(
-                to: $phone,
-                message: 'Social: a post about ' . $what . ' is waiting for approval: "' . Str::limit($post->caption(), 60) . '" Approve or reject: ' . $this->link($post),
-                type: 'system',
-                referenceType: 'social_post',
-                referenceId: (string) $post->id,
-                idempotencyKey: 'social-approval:' . $post->id,
-            ));
+            foreach (OwnerPhones::for('owner_social_approval') as $phone) {
+                app(SmsService::class)->send(new SmsMessage(
+                    to: $phone,
+                    message: 'Social: a post about ' . $what . ' is waiting for approval: "' . Str::limit($post->caption(), 60) . '" Approve or reject: ' . $this->link($post),
+                    type: 'owner_social_approval',
+                    referenceType: 'social_post',
+                    referenceId: (string) $post->id,
+                    idempotencyKey: 'social-approval:' . $post->id . ':' . $phone,
+                ));
+            }
         } catch (Throwable $e) {
             Log::warning('social: approval SMS could not be sent', ['post_id' => $post->id, 'error' => $e->getMessage()]);
         }

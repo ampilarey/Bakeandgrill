@@ -601,7 +601,7 @@ class CateringQuoteService
             $this->sms->send(new SmsMessage(
                 to: (string) $request->phone,
                 message: $customerMsg,
-                type: 'transactional',
+                type: 'catering_quote_customer',
                 customerId: $request->customer_id,
                 referenceType: 'catering_request',
                 referenceId: (string) $request->id,
@@ -627,7 +627,7 @@ class CateringQuoteService
                 $this->sms->send(new SmsMessage(
                     to: (string) $target['phone'],
                     message: $staffMsg,
-                    type: 'transactional',
+                    type: 'catering_quote_staff',
                     referenceType: 'catering_request',
                     referenceId: (string) $request->id,
                     idempotencyKey: $baseKey . ':staff_sms:' . $i,

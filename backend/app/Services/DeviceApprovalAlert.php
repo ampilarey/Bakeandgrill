@@ -7,8 +7,8 @@ namespace App\Services;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
 use App\Models\Device;
-use App\Models\SiteSetting;
 use App\Models\User;
+use App\Support\OwnerPhones;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
@@ -30,22 +30,20 @@ final class DeviceApprovalAlert
             return; // already alerted recently
         }
 
-        $phone = trim((string) SiteSetting::get('business_phone', ''));
-        if ($phone === '') {
-            return;
-        }
-
         $who = $firstUser !== null ? ' (first login: ' . $firstUser->name . ')' : '';
 
         try {
-            app(SmsService::class)->send(new SmsMessage(
-                to: $phone,
-                message: 'New POS device "' . $device->name . '" is waiting for approval'
-                    . $who . '. Approve it in Admin -> Settings -> Devices.',
-                type: 'system',
-                referenceType: 'device',
-                referenceId: (string) $device->id,
-            ));
+            foreach (OwnerPhones::for('owner_device_approval') as $phone) {
+                app(SmsService::class)->send(new SmsMessage(
+                    to: $phone,
+                    message: 'New POS device "' . $device->name . '" is waiting for approval'
+                        . $who . '. Approve it in Admin -> Settings -> Devices.',
+                    type: 'owner_device_approval',
+                    referenceType: 'device',
+                    referenceId: (string) $device->id,
+                    idempotencyKey: 'device-approval:' . $device->id . ':' . now()->format('Y-m-d-H') . ':' . $phone,
+                ));
+            }
         } catch (\Throwable $e) {
             Log::warning('device approval alert SMS could not be sent', [
                 'device_id' => $device->id,

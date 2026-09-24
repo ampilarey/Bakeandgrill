@@ -8,10 +8,10 @@ use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
 use App\Domains\Social\Drivers\SocialPublishException;
 use App\Domains\Social\Jobs\PublishSocialDeliveryJob;
-use App\Models\SiteSetting;
 use App\Models\SocialChannel;
 use App\Models\SocialPost;
 use App\Models\SocialPostDelivery;
+use App\Support\OwnerPhones;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -288,19 +288,17 @@ class SocialPublisher
             return; // already alerted within the interval
         }
 
-        $phone = trim((string) SiteSetting::get('business_phone', ''));
-        if ($phone === '') {
-            return;
-        }
-
         try {
-            app(SmsService::class)->send(new SmsMessage(
-                to: $phone,
-                message: "Social post to {$channel->platform} channel \"{$channel->name}\" failed ({$reason}). Check Social Hub in admin.",
-                type: 'system',
-                referenceType: 'social_channel',
-                referenceId: (string) $channel->id,
-            ));
+            foreach (OwnerPhones::for('owner_social_channel') as $phone) {
+                app(SmsService::class)->send(new SmsMessage(
+                    to: $phone,
+                    message: "Social post to {$channel->platform} channel \"{$channel->name}\" failed ({$reason}). Check Social Hub in admin.",
+                    type: 'owner_social_channel',
+                    referenceType: 'social_channel',
+                    referenceId: (string) $channel->id,
+                    idempotencyKey: 'social-failure:' . $channel->id . ':' . now()->format('Y-m-d-H') . ':' . $phone,
+                ));
+            }
         } catch (Throwable $smsError) {
             Log::warning('social: failure alert SMS could not be sent', [
                 'channel_id' => $channel->id,
