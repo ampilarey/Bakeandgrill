@@ -248,6 +248,8 @@ export async function createSocialPost(data: {
   channel_ids: number[];
   action: 'draft' | 'schedule' | 'now';
   scheduled_at?: string | null;
+  /** Post now even when the spacing rules object (the server answers 409 with next_free_at otherwise). */
+  force?: boolean;
 }): Promise<{ post: SocialPostRow }> {
   return req('/admin/social/posts', { method: 'POST', body: JSON.stringify(data) });
 }
@@ -354,4 +356,67 @@ export async function generateSocialVideo(
 
 export async function deleteSocialVideo(renditionId: number): Promise<void> {
   await req(`/admin/social/videos/${renditionId}`, { method: 'DELETE' });
+}
+
+// ── Calendar, posting rules, best times ──────────────────────────────────────
+
+export interface SocialCalendarEntry {
+  id: number;
+  status: string;
+  source: string;
+  caption: string;
+  image_url: string | null;
+  at: string | null;
+  /** Maldives-local day and time the post went (or will go) out. */
+  date: string | null;
+  time: string | null;
+  platforms: string[];
+}
+
+export interface SocialCalendarSlot {
+  kind: SocialAutomationKind;
+  date: string;
+  time: string;
+}
+
+export interface SocialPostingRulesConfig {
+  /** 0 = off. */
+  min_gap_minutes: number;
+  /** 0 = off. */
+  max_per_day: number;
+}
+
+export interface SocialBestTimesReport {
+  sample: number;
+  enough: boolean;
+  top_hours: number[];
+  hours: { hour: number; avg: number; count: number }[];
+  weekdays: { day: number; avg: number; count: number }[];
+}
+
+export async function fetchSocialCalendar(from: string, to: string): Promise<{
+  posts: SocialCalendarEntry[];
+  drafts: SocialCalendarEntry[];
+  slots: SocialCalendarSlot[];
+  rules: SocialPostingRulesConfig;
+  best_times: SocialBestTimesReport;
+}> {
+  return req(`/admin/social/calendar?from=${from}&to=${to}`);
+}
+
+/** Move a scheduled post (or schedule a draft) to a day, keeping its time unless given. */
+export async function moveSocialPost(id: number, date: string, time?: string): Promise<{ post: SocialCalendarEntry; warning: string | null }> {
+  return req(`/admin/social/posts/${id}/move`, { method: 'POST', body: JSON.stringify({ date, ...(time ? { time } : {}) }) });
+}
+
+export async function fetchSocialRules(): Promise<{ rules: SocialPostingRulesConfig }> {
+  return req('/admin/social/rules');
+}
+
+export async function updateSocialRules(data: Partial<SocialPostingRulesConfig>): Promise<{ rules: SocialPostingRulesConfig }> {
+  return req('/admin/social/rules', { method: 'PUT', body: JSON.stringify(data) });
+}
+
+export async function fetchSocialBestTimes(): Promise<{ best_times: SocialBestTimesReport }> {
+  return req('/admin/social/best-times');
 }

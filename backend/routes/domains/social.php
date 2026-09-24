@@ -43,6 +43,13 @@ if (routes_domain_section_is('social', 'admin') && !routes_domain_loaded('social
         Route::post('/posts/{id}/cancel', [SocialPostController::class, 'cancel']);
         Route::post('/posts/{id}/deliveries/{deliveryId}/retry', [SocialPostController::class, 'retryDelivery']);
         Route::post('/posts/{id}/insights', [SocialPostController::class, 'refreshInsights']);
+        // Calendar, posting rules and best times. move/updateRules check
+        // social.schedule / social.publish in-controller.
+        Route::get('/calendar', [App\Http\Controllers\Api\SocialCalendarController::class, 'calendar']);
+        Route::post('/posts/{id}/move', [App\Http\Controllers\Api\SocialCalendarController::class, 'move']);
+        Route::get('/rules', [App\Http\Controllers\Api\SocialCalendarController::class, 'rules']);
+        Route::put('/rules', [App\Http\Controllers\Api\SocialCalendarController::class, 'updateRules']);
+        Route::get('/best-times', [App\Http\Controllers\Api\SocialCalendarController::class, 'bestTimes']);
         // Announcements: one text to the channels and the TV board's notice
         // line. Compose/schedule/publish and signage.manage checked in-controller.
         Route::get('/announcements/templates', [App\Http\Controllers\Api\SocialAnnouncementController::class, 'templates']);

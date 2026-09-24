@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   cancelSocialPost, checkSocialChannel, createSocialChannel, deleteSocialChannel,
-  deleteSocialVideo, fetchMetaPending, fetchSocialAutomation, fetchSocialChannelOptions, fetchSocialChannels,
+  deleteSocialVideo, fetchMetaPending, fetchSocialAutomation, fetchSocialBestTimes, fetchSocialChannelOptions, fetchSocialChannels,
   fetchSocialPost, fetchSocialPosts, fetchSocialVideos, finishMetaConnect, generateSocialVideo,
   publishSocialPostNow, refreshSocialInsights, retrySocialDelivery, testSocialChannel,
   updateSocialAutomation, updateSocialChannel,
@@ -17,8 +17,9 @@ import {
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { AnnouncementModal } from './social/AnnouncementModal';
+import { CalendarTab } from './social/CalendarTab';
 import { ComposeModal } from './social/ComposeModal';
-import { PLATFORM_LABELS, navigateTo } from './social/composer';
+import { PLATFORM_LABELS, bestTimesHint, navigateTo } from './social/composer';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All statuses' },
@@ -67,7 +68,7 @@ export function SocialHubPage() {
   const canCompose = can('social.compose');
   const canChannels = can('social.channels.manage');
 
-  const [tab, setTab] = useState<'posts' | 'automation' | 'videos' | 'channels'>('posts');
+  const [tab, setTab] = useState<'posts' | 'calendar' | 'automation' | 'videos' | 'channels'>('posts');
   const [channels, setChannels] = useState<SocialChannelRow[]>([]);
   const [platforms, setPlatforms] = useState<Record<string, SocialPlatformCaps>>({});
   const [posts, setPosts] = useState<SocialPostRow[]>([]);
@@ -153,6 +154,7 @@ export function SocialHubPage() {
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
         <Btn small variant={tab === 'posts' ? 'primary' : 'secondary'} onClick={() => setTab('posts')}>Posts</Btn>
+        <Btn small variant={tab === 'calendar' ? 'primary' : 'secondary'} onClick={() => setTab('calendar')}>Calendar</Btn>
         <Btn small variant={tab === 'automation' ? 'primary' : 'secondary'} onClick={() => setTab('automation')}>
           Automation
         </Btn>
@@ -178,6 +180,12 @@ export function SocialHubPage() {
           filters={filters}
           onFilters={(patch) => setFilters((f) => ({ ...f, ...patch }))}
           onChanged={load}
+          onEdit={canCompose ? (p) => setComposing(p) : undefined}
+        />
+      ) : tab === 'calendar' ? (
+        <CalendarTab
+          canSchedule={can('social.schedule')}
+          canEditRules={can('social.publish')}
           onEdit={canCompose ? (p) => setComposing(p) : undefined}
         />
       ) : loading ? <Spinner /> : tab === 'automation' ? (
@@ -439,6 +447,7 @@ const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 function AutomationSettings({ canEdit }: { canEdit: boolean }) {
   const [configs, setConfigs] = useState<Record<SocialAutomationKind, SocialAutomationConfig> | null>(null);
   const [options, setOptions] = useState<SocialChannelOption[]>([]);
+  const [hint, setHint] = useState<string | null>(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -448,6 +457,8 @@ function AutomationSettings({ canEdit }: { canEdit: boolean }) {
         setOptions(ch.channels);
       })
       .catch((e: Error) => setError(e.message));
+    // The best-times line is a nice-to-have: silence on failure.
+    fetchSocialBestTimes().then((r) => setHint(bestTimesHint(r.best_times))).catch(() => {});
   }, []);
 
   if (error) return <ErrorMsg message={error} />;
@@ -462,6 +473,7 @@ function AutomationSettings({ canEdit }: { canEdit: boolean }) {
           config={configs[meta.kind]}
           options={options}
           canEdit={canEdit}
+          hint={hint}
           onSaved={(all) => setConfigs(all)}
         />
       ))}
@@ -469,11 +481,13 @@ function AutomationSettings({ canEdit }: { canEdit: boolean }) {
   );
 }
 
-function AutomationCard({ meta, config: initial, options, canEdit, onSaved }: {
+function AutomationCard({ meta, config: initial, options, canEdit, hint, onSaved }: {
   meta: typeof AUTOMATION_KINDS[number];
   config: SocialAutomationConfig;
   options: SocialChannelOption[];
   canEdit: boolean;
+  /** "Your posts do best around …", from the stored insights; null until there is enough data. */
+  hint?: string | null;
   onSaved: (all: Record<SocialAutomationKind, SocialAutomationConfig>) => void;
 }) {
   const [config, setConfig] = useState<SocialAutomationConfig>(initial);
@@ -519,6 +533,7 @@ function AutomationCard({ meta, config: initial, options, canEdit, onSaved }: {
           Enabled
         </label>
 
+        {hint && <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }} data-testid={`best-times-${meta.kind}`}>{hint}</p>}
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <Input
             label="Post time (Maldives local)"

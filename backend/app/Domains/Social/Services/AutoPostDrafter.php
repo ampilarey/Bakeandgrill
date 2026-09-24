@@ -107,15 +107,28 @@ class AutoPostDrafter
             'price' => $this->effectivePrice($item),
         ], $snapshotExtra);
 
+        // Spacing rules: an unattended automation that would land too close
+        // to another post is scheduled for the next free slot instead.
+        $slot = null;
+        if ($config['unattended']) {
+            $rules = app(SocialPostingRules::class);
+            if ($rules->conflict(now()) !== null) {
+                $slot = $rules->nextFreeSlot(now());
+            }
+        }
+
         $post = SocialPost::create([
-            'status' => $config['unattended'] ? SocialPost::STATUS_QUEUED : SocialPost::STATUS_AWAITING_APPROVAL,
+            'status' => $config['unattended']
+                ? ($slot !== null ? SocialPost::STATUS_SCHEDULED : SocialPost::STATUS_QUEUED)
+                : SocialPost::STATUS_AWAITING_APPROVAL,
             'snapshot' => $snapshot,
             'source' => $source,
             'source_ref' => $sourceRef,
             'business_date' => $businessDate,
+            'scheduled_at' => $slot,
         ]);
 
-        if ($config['unattended']) {
+        if ($config['unattended'] && $slot === null) {
             $this->publisher->dispatch($post, $usable->pluck('id')->all(), $dedupePrefix);
         } else {
             // Approval mode (the pilot gate): freeze channel choice + dedupe

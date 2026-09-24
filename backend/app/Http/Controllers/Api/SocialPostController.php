@@ -111,6 +111,18 @@ class SocialPostController extends Controller
             return response()->json(['message' => $problem], 422);
         }
 
+        // Spacing rules: "Post now" too close to another post is offered the
+        // next free slot instead; `force` says post anyway.
+        if ($data['action'] === 'now' && !$request->boolean('force')) {
+            $rules = app(\App\Domains\Social\Services\SocialPostingRules::class);
+            if (($why = $rules->conflict(now())) !== null) {
+                return response()->json([
+                    'message' => $why,
+                    'next_free_at' => $rules->nextFreeSlot(now())?->toIso8601String(),
+                ], 409);
+            }
+        }
+
         $post = SocialPost::create([
             'status' => match ($data['action']) {
                 'now' => SocialPost::STATUS_QUEUED,

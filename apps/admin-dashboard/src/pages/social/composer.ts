@@ -93,3 +93,11 @@ export const FOLD_AT: Record<string, number> = { facebook: 125, instagram: 125 }
 export function navigateTo(url: string): void {
   window.location.href = url;
 }
+
+/** "12:00 and 20:00" from the best-times report, or null when there is not enough data. */
+export function bestTimesHint(report: { enough: boolean; top_hours: number[]; sample: number } | null | undefined): string | null {
+  if (!report || !report.enough || report.top_hours.length === 0) return null;
+  const label = (h: number) => `${String(h).padStart(2, '0')}:00`;
+  const hours = report.top_hours.map(label);
+  return `Your posts do best around ${hours.join(' and ')} (based on ${report.sample} posts).`;
+}

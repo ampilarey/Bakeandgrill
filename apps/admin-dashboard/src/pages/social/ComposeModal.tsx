@@ -6,6 +6,7 @@ import {
 import { ItemSearch } from '../../components/ItemSearch';
 import { MediaPicker } from '../../components/MediaPicker';
 import { Btn, ErrorMsg, Input, Modal, ModalActions, Spinner } from '../../components/SharedUI';
+import { ApiRequestError } from '@shared/api';
 import { PostPreview } from './PostPreview';
 import {
   PLATFORM_LABELS, PLATFORM_SHORT, captionLength, fromLocalDateTimeInput, platformsNeedingImage,
@@ -51,6 +52,8 @@ export function ComposeModal({ post, initial, onClose, onSaved, canCompose, canP
   const [previewPlatform, setPreviewPlatform] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  /** The spacing rules objected to "Post now": the reason and the next free slot. */
+  const [slotOffer, setSlotOffer] = useState<{ message: string; nextFreeAt: string | null } | null>(null);
 
   useEffect(() => {
     // The picker endpoint needs only social.view (no credential data), so
@@ -129,11 +132,12 @@ export function ComposeModal({ post, initial, onClose, onSaved, canCompose, canP
 
   const insert = (text: string) => setCaption((c) => (c.trim() === '' ? text : `${c.replace(/\s+$/, '')} ${text}`));
 
-  const submit = async (action: Action) => {
+  const submit = async (action: Action, opts: { force?: boolean; scheduleIso?: string } = {}) => {
     setSaving(true);
     setError('');
+    setSlotOffer(null);
     try {
-      const scheduleIso = fromLocalDateTimeInput(scheduledAt);
+      const scheduleIso = opts.scheduleIso ?? fromLocalDateTimeInput(scheduledAt);
       if (editing) {
         const patchAction = awaitingApproval || action === 'now' || action === 'save'
           ? (editing.status === 'scheduled' && !awaitingApproval ? 'schedule' : undefined)
@@ -154,11 +158,17 @@ export function ComposeModal({ post, initial, onClose, onSaved, canCompose, canP
           channel_ids: selected,
           action: action === 'save' ? 'draft' : action,
           scheduled_at: action === 'schedule' ? scheduleIso : null,
+          ...(opts.force ? { force: true } : {}),
         });
       }
       onSaved();
     } catch (e) {
-      setError((e as Error).message);
+      if (e instanceof ApiRequestError && e.status === 409) {
+        const body = (e.body ?? {}) as { message?: string; next_free_at?: string | null };
+        setSlotOffer({ message: body.message ?? e.message, nextFreeAt: body.next_free_at ?? null });
+      } else {
+        setError((e as Error).message);
+      }
     } finally {
       setSaving(false);
     }
@@ -212,6 +222,19 @@ export function ComposeModal({ post, initial, onClose, onSaved, canCompose, canP
         <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'flex-start' }}>
           <div style={{ flex: '1 1 340px', minWidth: 0, display: 'grid', gap: 14 }}>
             {error && <ErrorMsg message={error} />}
+            {slotOffer && (
+              <div role="alert" style={{ border: '1px solid var(--color-warning)', background: 'var(--color-warning-bg)', borderRadius: 10, padding: '10px 12px', display: 'grid', gap: 8 }}>
+                <span style={{ fontSize: 13, color: 'var(--color-text)' }}>{slotOffer.message}</span>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {slotOffer.nextFreeAt && canSchedule && (
+                    <Btn small onClick={() => { void submit('schedule', { scheduleIso: slotOffer.nextFreeAt ?? undefined }); }}>
+                      Schedule for {new Date(slotOffer.nextFreeAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </Btn>
+                  )}
+                  <Btn small variant="secondary" onClick={() => { void submit('now', { force: true }); }}>Post anyway</Btn>
+                </div>
+              </div>
+            )}
             {automated && (
               <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
                 An automation drafted this post. Its item and channels stay as the automation
