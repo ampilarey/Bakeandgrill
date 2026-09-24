@@ -76,6 +76,7 @@ final class SmsTypeRegistry
         'owner_social_comments' => 'business_phone',
         'owner_social_digest' => 'owners_managers',
         'owner_daily_refund_summary' => 'owners_managers',
+        'owner_deposit_payout' => 'owners_managers',
         'owner_complaint_received' => 'owners_managers',
         'owner_complaint_box_received' => 'owners_managers',
         'trade_reconcile_mismatch_owner' => 'owners_managers',
@@ -128,6 +129,9 @@ final class SmsTypeRegistry
             self::def('customer_order_on_the_way', 'Order on the way', 'transactional', true, false, 'customer_order_on_the_way', 'sms_customer_on_the_way_enabled', 'sms.transactional.manage', false, 'The ordering customer', false),
             self::def('customer_refund_requested', 'Refund requested', 'transactional', true, false, 'customer_refund_requested', 'sms_customer_refund_requested_enabled', 'sms.transactional.manage', false, 'Refund phone (order phone or walk-in add)', false),
             self::def('customer_refund_completed', 'Refund completed', 'transactional', true, false, 'customer_refund_completed', 'sms_customer_refund_completed_enabled', 'sms.transactional.manage', false, 'Refund phone (order phone or walk-in add)', false),
+            // Refund audit, 2026-09-25: when part of the refund is owed by card / bank, the customer hears "approved, on its way" first and "completed" once it is marked paid out.
+            self::def('customer_refund_on_its_way', 'Refund approved, on its way', 'transactional', true, false, 'customer_refund_on_its_way', 'sms_customer_refund_on_its_way_enabled', 'sms.transactional.manage', false, 'Refund phone (order phone or walk-in add)', false),
+            self::def('customer_refund_rejected', 'Refund not approved', 'transactional', true, false, 'customer_refund_rejected', 'sms_customer_refund_rejected_enabled', 'sms.transactional.manage', false, 'Refund phone (order phone or walk-in add)', false),
             self::def('customer_refund_otp', 'Refund verification OTP', 'system', true, false, 'customer_refund_otp', null, 'sms.transactional.manage', true, 'Refund phone — customer reads code to cashier', true),
             self::def('pos_send_bill', 'POS send bill', 'transactional', true, false, 'customer_send_bill', 'sms_pos_send_bill_enabled', 'orders.send_sms_bill', false, 'The ordering customer', true),
             self::def('pos_send_pay_link', 'POS payment link', 'transactional', true, false, 'customer_send_pay_link', 'sms_pos_send_pay_link_enabled', 'orders.send_payment_link', false, 'The ordering customer', true),
@@ -142,6 +146,7 @@ final class SmsTypeRegistry
             self::def('staff_new_customer', 'Staff: new customer', 'staff', true, false, 'customer_new', 'staff_sms_new_customer_enabled', 'sms.transactional.manage', false, 'Configured staff recipients', false),
             self::def('staff_refund_requested', 'Staff: refund awaiting approval', 'staff', true, false, 'staff_refund_requested', 'sms_staff_refund_requested_enabled', 'sms.transactional.manage', false, 'Staff with orders.refund', false),
             self::def('owner_daily_refund_summary', 'Owner: daily refund summary', 'staff', true, false, 'owner_daily_refund_summary', 'sms_owner_daily_refund_summary_enabled', 'sms.transactional.manage', false, 'Owner phone(s)', false),
+            self::def('owner_deposit_payout', 'Owner: customer deposit paid out', 'staff', true, false, null, 'sms_owner_deposit_payout_enabled', null, false, 'Owners & managers', false),
             // Complaints — owner alert never suppressed by customer opt-out; customer ack/resolved honour opt-out.
             self::def('owner_complaint_received', 'Owner: complaint received', 'staff', true, false, 'owner_complaint_received', 'sms_owner_complaint_received_enabled', 'sms.transactional.manage', false, 'Owner phone(s)', false),
             self::def('customer_complaint_acknowledged', 'Complaint acknowledged', 'transactional', true, true, 'customer_complaint_acknowledged', 'sms_customer_complaint_acknowledged_enabled', 'sms.transactional.manage', false, 'Order / receipt customer phone', false),

@@ -10,22 +10,38 @@ import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import { OrderSearch, type OrderSearchSelection } from '../components/OrderSearch';
 import { useToast } from '../components/ui';
 import {
-  fetchAdminRefunds, issueRefund, approveRefund, rejectRefund, resendRefundOtp,
-  REFUND_REASON_CATEGORIES, type AdminRefund, type RefundReasonCategory,
+  fetchAdminRefunds, issueRefund, approveRefund, rejectRefund, resendRefundOtp, markRefundPaidOut,
+  REFUND_REASON_CATEGORIES, REFUND_PAYOUT_METHODS, type AdminRefund, type RefundReasonCategory, type RefundTenderBreakdown,
 } from '../api';
 import { fmt } from '../utils/fmt';
 
 const STATUS_COLOR: Record<string, string> = {
-  pending: 'orange', approved: 'green', processed: 'green', rejected: 'red', cancelled: 'gray',
+  pending: 'orange', approved: 'green', rejected: 'red', cancelled: 'gray',
 };
 
+// Refund audit, 2026-09-25: "processed" was offered but never written; "owed"
+// is the approved refunds whose card / online share is still to be returned.
 const STATUS_OPTIONS = [
   { value: '', label: 'All statuses' },
   { value: 'pending', label: 'Pending' },
   { value: 'approved', label: 'Approved' },
-  { value: 'processed', label: 'Processed' },
+  { value: 'owed', label: 'Owed to customer (card / bank)' },
   { value: 'rejected', label: 'Rejected' },
 ];
+
+const mvrL = (laar: number | null | undefined) => `MVR ${((laar ?? 0) / 100).toFixed(2)}`;
+
+/** "Drawer MVR 20.00 · Card/online MVR 30.00 · Credit MVR 5.00", the non-zero parts only. */
+function breakdownLine(b: RefundTenderBreakdown | null | undefined): string {
+  if (!b) return '';
+  const parts: string[] = [];
+  if (b.drawer_cash_out_laar > 0) parts.push(`Drawer ${mvrL(b.drawer_cash_out_laar)}`);
+  if (b.external_tender_laar > 0) parts.push(`Card/online ${mvrL(b.external_tender_laar)}`);
+  if (b.credit_reversed_laar > 0) parts.push(`Credit ${mvrL(b.credit_reversed_laar)}`);
+  if (b.wallet_reversed_laar > 0) parts.push(`Wallet ${mvrL(b.wallet_reversed_laar)}`);
+  if (b.gift_reversed_laar > 0) parts.push(`Gift card ${mvrL(b.gift_reversed_laar)}`);
+  return parts.join(' · ');
+}
 
 const CATEGORY_LABEL: Record<string, string> = Object.fromEntries(
   REFUND_REASON_CATEGORIES.map((c) => [c.value, c.label]),
@@ -61,6 +77,17 @@ export default function RefundsPage() {
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [search, setSearch] = useState('');
+  const [searchApplied, setSearchApplied] = useState('');
+  const [owedCount, setOwedCount] = useState(0);
+  const [owedTotal, setOwedTotal] = useState(0);
+
+  const [paidOutOpen, setPaidOutOpen] = useState<AdminRefund | null>(null);
+  const [paidOutMethod, setPaidOutMethod] = useState('bank_transfer');
+  const [paidOutRef, setPaidOutRef] = useState('');
+  const [paidOutBusy, setPaidOutBusy] = useState(false);
 
   const [issueOpen, setIssueOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<OrderSearchSelection | null>(null);
@@ -83,18 +110,46 @@ export default function RefundsPage() {
   const load = async () => {
     setLoading(true); setError('');
     try {
-      const res = await fetchAdminRefunds({ page, status: statusFilter || undefined });
+      const res = await fetchAdminRefunds({
+        page,
+        status: statusFilter && statusFilter !== 'owed' ? statusFilter : undefined,
+        owed: statusFilter === 'owed' || undefined,
+        from: fromDate || undefined,
+        to: toDate || undefined,
+        q: searchApplied || undefined,
+      });
       setRefunds(res.refunds?.data ?? []);
       setTotal(res.refunds?.total ?? 0);
       setLastPage(res.refunds?.last_page ?? 1);
       setApprovedTotal(res.meta?.approved_amount_total ?? 0);
       setPendingCount(res.meta?.pending_count ?? 0);
       setPhoneAddedPending(res.meta?.phone_added_pending ?? 0);
+      setOwedCount(res.meta?.external_owed_count ?? 0);
+      setOwedTotal(res.meta?.external_owed_total ?? 0);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };
 
-  useEffect(() => { void load(); }, [page, statusFilter]);
+  useEffect(() => { void load(); }, [page, statusFilter, fromDate, toDate, searchApplied]);
+
+  const filtersActive = !!(statusFilter || fromDate || toDate || searchApplied);
+  const clearFilters = () => { setStatusFilter(''); setFromDate(''); setToDate(''); setSearch(''); setSearchApplied(''); setPage(1); };
+
+  const submitPaidOut = async () => {
+    if (!paidOutOpen) return;
+    setPaidOutBusy(true);
+    try {
+      const res = await markRefundPaidOut(paidOutOpen.id, { method: paidOutMethod, ...(paidOutRef.trim() ? { reference: paidOutRef.trim() } : {}) });
+      setPaidOutOpen(null);
+      setPaidOutRef('');
+      toast.success(res.message ?? 'Marked paid out.');
+      void load();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setPaidOutBusy(false);
+    }
+  };
 
   const resetIssueForm = () => {
     setSelectedOrder(null);
@@ -215,18 +270,31 @@ export default function RefundsPage() {
         <StatCard label="Total Refunded" value={`MVR ${approvedTotal.toFixed(2)}`} accent="var(--color-danger)" />
         <StatCard label="Awaiting approval" value={String(pendingCount)} accent="var(--color-warning)" />
         <StatCard label="Phone added (pending)" value={String(phoneAddedPending)} accent="var(--color-danger)" />
+        <StatCard label="Owed by card / bank" value={`MVR ${owedTotal.toFixed(2)}`} sub={owedCount > 0 ? `${owedCount} refund${owedCount === 1 ? '' : 's'} not yet sent back` : 'Nothing outstanding'} accent={owedCount > 0 ? 'var(--color-danger)' : 'var(--color-success)'} />
       </div>
 
       <div style={{ marginBottom: 20, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <select
+          aria-label="Refund status"
           value={statusFilter}
           onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
           style={{ height: 36, padding: '0 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)', cursor: 'pointer' }}
         >
           {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
-        {statusFilter && (
-          <Btn variant="ghost" onClick={() => { setStatusFilter(''); setPage(1); }}>Clear filters</Btn>
+        <input type="date" aria-label="From date" value={fromDate} onChange={e => { setFromDate(e.target.value); setPage(1); }} style={{ height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit' }} />
+        <input type="date" aria-label="To date" value={toDate} onChange={e => { setToDate(e.target.value); setPage(1); }} style={{ height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit' }} />
+        <input
+          aria-label="Search refunds"
+          placeholder="Order no., phone, reason, reference"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') { setSearchApplied(search.trim()); setPage(1); } }}
+          style={{ height: 36, padding: '0 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', minWidth: 220 }}
+        />
+        <Btn variant="secondary" small onClick={() => { setSearchApplied(search.trim()); setPage(1); }}>Search</Btn>
+        {filtersActive && (
+          <Btn variant="ghost" onClick={clearFilters}>Clear filters</Btn>
         )}
       </div>
 
@@ -234,7 +302,7 @@ export default function RefundsPage() {
         {loading ? (
           <TableSkeleton rows={6} cols={9} />
         ) : refunds.length === 0 ? (
-          <TableStateBar isEmpty emptyMessage="No refunds found." filterActive={!!statusFilter} onClearFilters={() => { setStatusFilter(''); setPage(1); }} />
+          <TableStateBar isEmpty emptyMessage="No refunds found." filterActive={filtersActive} onClearFilters={clearFilters} />
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <SortFilterHead controls={refundCtl} allRows={refunds} />
@@ -260,7 +328,20 @@ export default function RefundsPage() {
                       {flags?.otp_owner_override || r.otp_owner_override ? ' · OTP OVERRIDE' : ''}
                     </div>
                   </td>
-                  <td style={{ ...TD, fontWeight: 700, color: 'var(--color-danger)' }}>MVR {parseFloat(String(r.amount ?? 0)).toFixed(2)}</td>
+                  <td style={{ ...TD, fontWeight: 700, color: 'var(--color-danger)' }} data-testid={`refund-amount-${r.id}`}>
+                    MVR {parseFloat(String(r.amount ?? 0)).toFixed(2)}
+                    {breakdownLine(r.tender_breakdown) && (
+                      <div style={{ fontSize: 11, fontWeight: 400, color: 'var(--color-text-secondary)', marginTop: 2 }}>{breakdownLine(r.tender_breakdown)}</div>
+                    )}
+                    {r.owed_externally && (
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-danger)', marginTop: 2 }}>OWED: {mvrL(r.external_tender_laar)} not yet sent back</div>
+                    )}
+                    {r.paid_out_at && (
+                      <div style={{ fontSize: 11, fontWeight: 400, color: 'var(--color-success-strong)', marginTop: 2 }}>
+                        Paid out {new Date(r.paid_out_at).toLocaleDateString()} via {(r.paid_out_method ?? '').replace(/_/g, ' ')}{r.paid_out_reference ? ` (${r.paid_out_reference})` : ''}{r.paid_out_by?.name ? ` by ${r.paid_out_by.name}` : ''}
+                      </div>
+                    )}
+                  </td>
                   <td style={{ ...TD, color: 'var(--color-text-secondary)', fontSize: 13 }}>
                     {r.reason_category && (
                       <div style={{ fontWeight: 600, marginBottom: 2 }}>
@@ -296,6 +377,9 @@ export default function RefundsPage() {
                         <Btn small variant="secondary" onClick={() => { setApproveOpen(r); setApproveOtp(''); setOwnerOverride(false); }}>Approve</Btn>
                         <Btn small variant="danger" onClick={() => { setRejectOpen(r); setRejectionReason(''); }}>Reject</Btn>
                       </div>
+                    )}
+                    {canApprove && r.owed_externally && (
+                      <Btn small onClick={() => { setPaidOutOpen(r); setPaidOutMethod('bank_transfer'); setPaidOutRef(''); }} aria-label={`Mark refund ${r.id} paid out`}>Mark paid out</Btn>
                     )}
                   </td>
                 </tr>
@@ -370,6 +454,16 @@ export default function RefundsPage() {
               {approveOpen.order ? `#${approveOpen.order.order_number}` : `order #${approveOpen.order_id}`}.
             </p>
             <div style={{ fontSize: 12, padding: 10, borderRadius: 8, background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+              {approveOpen.tender_breakdown && (
+                <div data-testid="approve-breakdown" style={{ marginBottom: 6 }}>
+                  <strong>Where the money comes from:</strong> {breakdownLine(approveOpen.tender_breakdown) || 'nothing to pay'}
+                  {(approveOpen.tender_breakdown.external_tender_laar ?? 0) > 0 && (
+                    <div style={{ color: 'var(--color-warning-strong, var(--color-warning))', fontWeight: 600, marginTop: 2 }}>
+                      The card / online part is not returned by approving. Send it back by bank transfer or terminal reversal, then mark it paid out.
+                    </div>
+                  )}
+                </div>
+              )}
               <div><strong>Phone:</strong> {approveOpen.phone_flags?.refund_phone ?? approveOpen.refund_phone ?? '—'}</div>
               {approveOpen.phone_flags?.phone_added_at_refund && <div style={{ color: 'var(--color-danger)', fontWeight: 700 }}>Number was added at refund time</div>}
               {approveOpen.phone_flags?.has_prior_order_history === false && <div style={{ color: 'var(--color-danger)', fontWeight: 700 }}>No prior order history for this number</div>}
@@ -436,6 +530,31 @@ export default function RefundsPage() {
             <Btn variant="danger" disabled={rejectBusy || !rejectionReason.trim()} onClick={() => void submitReject()}>
               {rejectBusy ? '…' : 'Reject'}
             </Btn>
+          </ModalActions>
+        </Modal>
+      )}
+
+      {paidOutOpen && (
+        <Modal title="Mark refund paid out" onClose={() => setPaidOutOpen(null)} maxWidth={440}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)' }}>
+              {mvrL(paidOutOpen.external_tender_laar)} of the refund on {paidOutOpen.order ? `#${paidOutOpen.order.order_number}` : `order #${paidOutOpen.order_id}`} was paid by card or online.
+              Record how it was returned. The customer is then texted that the refund is complete.
+            </p>
+            <label>
+              <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>How was it returned? *</span>
+              <select aria-label="Payout method" value={paidOutMethod} onChange={e => setPaidOutMethod(e.target.value)} style={{ width: '100%', height: 40, padding: '0 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', boxSizing: 'border-box' }}>
+                {REFUND_PAYOUT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+              </select>
+            </label>
+            <label>
+              <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Reference (transfer or reversal number)</span>
+              <input aria-label="Payout reference" value={paidOutRef} onChange={e => setPaidOutRef(e.target.value)} placeholder="e.g. BML transfer ref" style={{ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+            </label>
+          </div>
+          <ModalActions>
+            <Btn variant="secondary" onClick={() => setPaidOutOpen(null)}>Cancel</Btn>
+            <Btn disabled={paidOutBusy} onClick={() => void submitPaidOut()}>{paidOutBusy ? '…' : 'Mark paid out'}</Btn>
           </ModalActions>
         </Modal>
       )}

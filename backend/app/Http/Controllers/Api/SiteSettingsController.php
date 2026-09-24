@@ -40,6 +40,9 @@ class SiteSettingsController extends Controller
     public const WRITABLE_KEYS = [
         // Settings → Stock Corrections
         'stock_variance_reason_mvr',
+        // Settings → Refunds & payouts (refund audit, 2026-09-25)
+        'pos_card_reference_required',
+        'deposit_payout_owner_threshold_mvr',
         // Settings → Credit Accounts
         'credit_accounts_mode',
         'credit_limit_max_mvr',

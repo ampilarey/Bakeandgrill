@@ -1821,7 +1821,15 @@ export async function getVoidsByReasonReport(params: { from: string; to: string 
 export interface RefundsByReasonReport {
   from: string;
   to: string;
-  rows: { reason: string; refunds_count: number; amount: number }[];
+  /** Grouped by reason category (refund audit, 2026-09-25); `reason` is the category label, `top_reasons` the free text behind it. */
+  rows: {
+    reason: string;
+    category?: string;
+    refunds_count: number;
+    amount: number;
+    owed_externally?: number;
+    top_reasons?: { reason: string; refunds_count: number; amount: number }[];
+  }[];
 }
 
 export async function getRefundsByReasonReport(params: { from: string; to: string }): Promise<RefundsByReasonReport> {

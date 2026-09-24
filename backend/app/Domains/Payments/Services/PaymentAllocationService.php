@@ -113,6 +113,17 @@ final class PaymentAllocationService
      */
     public function assertTenderPermissions(User $collector, array $payments, PermissionService $permissions): void
     {
+        // Refund audit, 2026-09-25: with the switch on, a card sale must carry
+        // the slip / approval reference, or it cannot be matched to the terminal
+        // at settlement or refunded against the right transaction.
+        if (filter_var(\App\Models\SiteSetting::get('pos_card_reference_required', '0'), FILTER_VALIDATE_BOOLEAN)) {
+            foreach ($payments as $row) {
+                if (in_array((string) ($row['method'] ?? ''), ['card', 'card_pos'], true) && trim((string) ($row['reference_number'] ?? '')) === '') {
+                    abort(422, 'Enter the card slip or approval reference for card payments.');
+                }
+            }
+        }
+
         $tenderMethods = collect($payments)->pluck('method')->unique()->values();
         if ($tenderMethods->count() > 1) {
             if (!$permissions->hasPermission($collector, 'payments.split')) {

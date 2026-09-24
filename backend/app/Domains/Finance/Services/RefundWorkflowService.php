@@ -185,12 +185,17 @@ class RefundWorkflowService
                 : $breakdown['default_drawer_cash_out_laar'];
             $drawerLaar = max(0, min($drawerLaar, $amountLaar - $nonCashFloor));
 
+            $breakdown['drawer_cash_out_laar'] = $drawerLaar;
+            $breakdown['cash_refund_override'] = $cashOverride;
+
             $refund = Refund::create([
                 'order_id' => $locked->id,
                 'user_id' => $requester->id,
                 'shift_id' => $shiftId,
                 'amount' => $amount,
                 'drawer_cash_out_laar' => $drawerLaar,
+                'tender_breakdown' => self::storedBreakdown($breakdown),
+                'external_tender_laar' => (int) ($breakdown['external_tender_laar'] ?? 0),
                 'status' => 'pending',
                 'reason' => $reason,
                 'reason_category' => $category,
@@ -199,9 +204,6 @@ class RefundWorkflowService
                 'refund_phone' => $phoneResolution['phone'],
                 'phone_added_at_refund' => $phoneResolution['phone_added_at_refund'],
             ]);
-
-            $breakdown['drawer_cash_out_laar'] = $drawerLaar;
-            $breakdown['cash_refund_override'] = $cashOverride;
 
             return [$refund, $breakdown];
         });
@@ -408,6 +410,10 @@ class RefundWorkflowService
                 // the moment to record which one. Falls back to the requesting
                 // shift when the approver has no shift context.
                 'drawer_shift_id' => $drawerShiftId ?? $lockedRefund->shift_id,
+                // What was approved, as approved: the approver's screen and the
+                // owed list read this, not a recomputation months later.
+                'tender_breakdown' => self::storedBreakdown($breakdown),
+                'external_tender_laar' => (int) ($breakdown['external_tender_laar'] ?? 0),
             ]);
 
             return [$lockedRefund->fresh(), $order->fresh(), $thisRefundRatio, $breakdown];
@@ -430,9 +436,84 @@ class RefundWorkflowService
 
         $refund->load('order.customer');
         event(new OrderRefunded(OrderRefundedData::fromRefund($refund, $refundRatio)));
-        $this->notifications->notifyCustomerCompleted($refund);
+        $this->notifyAfterApproval($refund);
 
         return $refund->fresh(['order', 'user', 'approver']);
+    }
+
+    /**
+     * "Completed" only when nothing is owed outside the drawer. A card or
+     * online share is not back with the customer until someone marks it
+     * paid out (refund audit, 2026-09-25).
+     */
+    private function notifyAfterApproval(Refund $refund): void
+    {
+        if ((int) $refund->external_tender_laar > 0) {
+            $this->notifications->notifyCustomerOnItsWay($refund);
+
+            return;
+        }
+        $this->notifications->notifyCustomerCompleted($refund);
+    }
+
+    /**
+     * Record that the card / online / bank share of an approved refund was
+     * returned to the customer, and tell them.
+     */
+    public function markPaidOut(Refund $refund, User $actor, string $method, ?string $reference, ?Request $request = null): Refund
+    {
+        $updated = DB::transaction(function () use ($refund, $actor, $method, $reference) {
+            $locked = Refund::where('id', $refund->id)->lockForUpdate()->firstOrFail();
+            if (!in_array($locked->status, ['approved', 'processed'], true)) {
+                abort(422, 'Only an approved refund can be marked paid out.');
+            }
+            if ((int) $locked->external_tender_laar <= 0) {
+                abort(422, 'This refund was paid from the drawer; there is nothing to pay out separately.');
+            }
+            if ($locked->paid_out_at !== null) {
+                abort(422, 'This refund was already marked paid out on ' . $locked->paid_out_at->format('j M Y H:i') . '.');
+            }
+            $locked->update([
+                'paid_out_at' => now(),
+                'paid_out_method' => $method,
+                'paid_out_reference' => $reference !== null && trim($reference) !== '' ? mb_substr(trim($reference), 0, 120) : null,
+                'paid_out_by' => $actor->id,
+            ]);
+
+            return $locked->fresh();
+        });
+
+        app(AuditLogService::class)->log(
+            'refund.paid_out',
+            'Refund',
+            $updated->id,
+            [],
+            ['paid_out_method' => $method, 'paid_out_reference' => $updated->paid_out_reference, 'external_tender_laar' => $updated->external_tender_laar],
+            ['order_id' => $updated->order_id, 'paid_out_by' => $actor->id],
+            $request,
+        );
+
+        $updated->load('order.customer');
+        $this->notifications->notifyCustomerCompleted($updated);
+
+        return $updated->fresh(['order', 'user', 'approver', 'paidOutBy']);
+    }
+
+    /**
+     * The laari figures of a breakdown, for storage.
+     *
+     * @param array<string, mixed> $breakdown
+     * @return array<string, int|bool>
+     */
+    public static function storedBreakdown(array $breakdown): array
+    {
+        $out = [];
+        foreach (['credit_reversed_laar', 'gift_reversed_laar', 'wallet_reversed_laar', 'external_tender_laar', 'drawer_cash_out_laar'] as $k) {
+            $out[$k] = (int) ($breakdown[$k] ?? 0);
+        }
+        $out['cash_refund_override'] = (bool) ($breakdown['cash_refund_override'] ?? false);
+
+        return $out;
     }
 
     /**
@@ -481,6 +562,8 @@ class RefundWorkflowService
 
             // Online self-cancel: never pull cash from a staff drawer.
             $drawerLaar = 0;
+            $breakdown = $this->drawerCash->breakdown($locked, $amountLaar, $caps['paid_laar'], $caps['order_total_laar']);
+            $breakdown['drawer_cash_out_laar'] = 0;
 
             $refund = Refund::create([
                 'order_id' => $locked->id,
@@ -491,6 +574,8 @@ class RefundWorkflowService
                 'initiated_by' => 'customer',
                 'amount' => $amount,
                 'drawer_cash_out_laar' => $drawerLaar,
+                'tender_breakdown' => self::storedBreakdown($breakdown),
+                'external_tender_laar' => (int) ($breakdown['external_tender_laar'] ?? 0),
                 'status' => 'pending',
                 'reason' => 'Customer cancelled before kitchen started',
                 'reason_category' => 'order_cancelled',
@@ -563,7 +648,7 @@ class RefundWorkflowService
 
         $refund->load('order.customer');
         event(new OrderRefunded(OrderRefundedData::fromRefund($refund, $refundRatio)));
-        $this->notifications->notifyCustomerCompleted($refund);
+        $this->notifyAfterApproval($refund);
 
         return [
             'refund' => $refund->fresh(['order', 'user', 'approver', 'customer']),
@@ -602,6 +687,13 @@ class RefundWorkflowService
         });
 
         $fresh = $refund->fresh(['order', 'user', 'approver']);
+
+        // The customer heard "a refund has been requested"; they hear the answer too (refund audit, 2026-09-25).
+        try {
+            $this->notifications->notifyCustomerRejected($fresh->load('order.customer'));
+        } catch (\Throwable $e) {
+            Log::warning('refund.rejected_sms_failed', ['refund_id' => $fresh->id, 'error' => $e->getMessage()]);
+        }
 
         /*
          * A complaint linked to this refund stopped asking for a refund review

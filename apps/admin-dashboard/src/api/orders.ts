@@ -223,25 +223,62 @@ export interface AdminRefund {
   phone_flags?: RefundPhoneFlags;
   requested_at?: string | null;
   approved_at?: string | null;
-  processed_at?: string | null;
   created_at: string;
   user?: { id: number; name: string };
   approver?: { id: number; name: string } | null;
+  /** Refund audit, 2026-09-25: what was approved, in laari, and the card / online share still to be returned. */
+  tender_breakdown?: RefundTenderBreakdown | null;
+  drawer_cash_out_laar?: number | null;
+  external_tender_laar?: number;
+  owed_externally?: boolean;
+  paid_out_at?: string | null;
+  paid_out_method?: string | null;
+  paid_out_reference?: string | null;
+  paid_out_by?: { id: number; name: string } | null;
 }
 
-export async function fetchAdminRefunds(params?: { page?: number; status?: string }): Promise<{
+export type RefundTenderBreakdown = {
+  credit_reversed_laar: number;
+  gift_reversed_laar: number;
+  wallet_reversed_laar: number;
+  external_tender_laar: number;
+  drawer_cash_out_laar: number;
+  cash_refund_override?: boolean;
+};
+
+export type RefundListFilters = { page?: number; status?: string; owed?: boolean; from?: string; to?: string; q?: string };
+
+export async function fetchAdminRefunds(params?: RefundListFilters): Promise<{
   refunds: { data: AdminRefund[]; current_page: number; last_page: number; total: number };
   meta?: {
     approved_amount_total?: number;
     pending_count?: number;
     phone_added_pending?: number;
     otp_override_pending?: number;
+    external_owed_count?: number;
+    external_owed_total?: number;
   };
 }> {
   const qs = new URLSearchParams();
   if (params?.page) qs.set('page', String(params.page));
   if (params?.status) qs.set('status', params.status);
+  if (params?.owed) qs.set('owed', '1');
+  if (params?.from) qs.set('from', params.from);
+  if (params?.to) qs.set('to', params.to);
+  if (params?.q) qs.set('q', params.q);
   return req(`/refunds?${qs}`);
+}
+
+export const REFUND_PAYOUT_METHODS = [
+  { value: 'bank_transfer', label: 'Bank transfer' },
+  { value: 'card_terminal', label: 'Card terminal reversal' },
+  { value: 'cash', label: 'Cash handed over' },
+  { value: 'other', label: 'Other' },
+] as const;
+
+/** The card / online share of an approved refund was returned to the customer. */
+export async function markRefundPaidOut(id: number, data: { method: string; reference?: string }): Promise<{ refund: AdminRefund; message?: string }> {
+  return req(`/refunds/${id}/paid-out`, { method: 'POST', body: JSON.stringify(data) });
 }
 
 export async function issueRefund(

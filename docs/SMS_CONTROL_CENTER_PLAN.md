@@ -522,3 +522,39 @@ with the reason in its notes, so the owner can see it fired. Deleting a schedule
 leaves its past campaigns, unlinked. In the admin form "Repeat" turns the same
 audience and text into a schedule; the Recurring campaigns table shows the next
 run, the last run's send count and results, and offers Pause, Run now, Delete.
+
+## Appendix C — Refund audit follow-up (2026-09-25)
+
+### C.1 External refunds are tracked until paid out
+No gateway refund path exists: a refund on an order paid by card, BML or bank
+was approved and the customer told "processed" while nothing moved. Each refund
+now stores `tender_breakdown` (credit / gift / wallet / external / drawer, in
+laari, as approved) and `external_tender_laar`. On approval the customer gets
+`customer_refund_on_its_way` when that share is above zero, otherwise
+`customer_refund_completed` as before. `POST /refunds/{id}/paid-out` (method
+`bank_transfer|card_terminal|cash|other`, optional reference; permission
+`orders.refund`, no device) stamps `paid_out_at/method/reference/by`, audits
+`refund.paid_out` and sends the completed text. `GET /refunds?owed=1` lists what
+is still owed; `meta.external_owed_count/total` and the owner's daily summary
+carry the same figure. Customer self-cancels of online orders are owed the same
+way. Refunds approved before this change have `external_tender_laar` 0 and are
+not listed as owed. A rejection now sends `customer_refund_rejected`.
+
+### C.2 Approver sees the breakdown; list filters; report by category
+The list and show endpoints return the stored breakdown and `owed_externally`;
+the admin approve dialog shows where the money comes from and warns that the
+card / online part is not returned by approving. The list takes `from`, `to`,
+`q` (order number, phone, reason text, payout reference); `status=processed`
+is refused, since nothing ever wrote it. `/reports/refunds-by-reason` groups
+approved refunds by `reason_category` with the top free-text reasons and the
+amount still owed per category; pending and rejected requests no longer count
+as refunded money.
+
+### C.3 Deposit payouts and card references
+`deposit_payout_owner_threshold_mvr` (default 500): a non-owner cannot pay out
+a customer deposit above it. Every payout texts the owners
+(`owner_deposit_payout`, recipients set in the Control Center) and yesterday's
+payouts appear in the daily refund summary. `pos_card_reference_required`
+(default off): with it on, a card row without `reference_number` is refused at
+settlement. Both are on Settings → Charges & fees. Approving a refund whose
+drawer share is zero no longer needs an open shift.

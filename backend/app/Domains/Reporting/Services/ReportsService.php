@@ -735,23 +735,49 @@ class ReportsService
      *
      * @return array{from: string, to: string, rows: list<array{reason: string, refunds_count: int, amount: float}>}
      */
+    /**
+     * Refund audit, 2026-09-25: grouped by the reason category (wrong item,
+     * quality, cancelled, duplicate charge, other), which is what the form
+     * collects for this; the free text is shown as detail. Only approved
+     * refunds count, so "Total Refunded" is money that left, not requests.
+     */
     public function refundsByReason(Carbon $from, Carbon $to): array
     {
-        $rows = Refund::query()
+        $labels = [
+            'wrong_item' => 'Wrong item',
+            'quality_complaint' => 'Quality complaint',
+            'order_cancelled' => 'Order cancelled',
+            'duplicate_charge' => 'Duplicate charge',
+            'other' => 'Other',
+        ];
+        $refunds = Refund::query()
             ->whereBetween('created_at', [$from, $to])
-            ->select('reason', DB::raw('COUNT(*) as refunds_count'), DB::raw('COALESCE(SUM(amount),0) as amount'))
-            ->groupBy('reason')
-            ->orderByDesc('amount')
-            ->get();
+            ->whereIn('status', ['approved', 'processed'])
+            ->get(['id', 'reason', 'reason_category', 'amount', 'external_tender_laar', 'paid_out_at']);
+
+        $rows = $refunds->groupBy(fn (Refund $r) => (string) ($r->reason_category ?: 'other'))
+            ->map(function ($group, string $category) use ($labels) {
+                $reasons = $group->groupBy(fn (Refund $r) => trim((string) $r->reason) ?: 'unspecified')
+                    ->map(fn ($g, string $text) => ['reason' => $text, 'refunds_count' => $g->count(), 'amount' => round((float) $g->sum('amount'), 2)])
+                    ->sortByDesc('amount')->take(5)->values()->all();
+
+                return [
+                    'category' => $category,
+                    'reason' => $labels[$category] ?? ucfirst(str_replace('_', ' ', $category)),
+                    'refunds_count' => $group->count(),
+                    'amount' => round((float) $group->sum('amount'), 2),
+                    'owed_externally' => round(((int) $group->filter(fn (Refund $r) => $r->isOwedExternally())->sum('external_tender_laar')) / 100, 2),
+                    'top_reasons' => $reasons,
+                ];
+            })
+            ->sortByDesc('amount')
+            ->values()
+            ->all();
 
         return [
             'from' => $from->toDateString(),
             'to' => $to->toDateString(),
-            'rows' => $rows->map(fn ($row) => [
-                'reason' => (string) ($row->reason ?: 'unspecified'),
-                'refunds_count' => (int) $row->refunds_count,
-                'amount' => round((float) $row->amount, 2),
-            ])->values()->all(),
+            'rows' => $rows,
         ];
     }
 

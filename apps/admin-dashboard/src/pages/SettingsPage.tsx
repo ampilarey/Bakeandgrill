@@ -5,6 +5,7 @@ import { PermissionsSettings } from './SettingsPage/PermissionsSettingsSubPage';
 import { ServiceChargeSettings } from './SettingsPage/ServiceChargeSettings';
 import { PaymentCommissionSettings } from './SettingsPage/PaymentCommissionSettings';
 import { CreditAccountSettings } from './SettingsPage/CreditAccountSettings';
+import { RefundPayoutSettings } from './SettingsPage/RefundPayoutSettings';
 import { CurrencyPhotosSettings } from './SettingsPage/CurrencyPhotosSubPage';
 import {
   getSiteSettings, updateSiteSettings,
@@ -326,6 +327,7 @@ function ChargesSettings() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 720 }}>
       <ServiceChargeSettings />
       <PaymentCommissionSettings />
+      <RefundPayoutSettings />
     </div>
   );
 }
@@ -358,7 +360,7 @@ export const SETTINGS_TABS: HubTab[] = [
   { id: 'business', label: 'Business', permissions: ['website.manage'], desc: 'The business record on invoices, receipts, signage and SMS', render: () => <BusinessDetailsPage /> },
   { id: 'ordering', label: 'Ordering', permissions: ['settings.update'], desc: 'Online, pickup, delivery, pre-order and feature gates', render: () => <OnlineOrderingPage /> },
   { id: 'delivery', label: 'Delivery', permissions: ['settings.update'], desc: 'Delivery areas, fees and timing', render: () => <DeliverySettingsPage /> },
-  { id: 'charges', label: 'Charges & fees', permissions: ['settings.update'], desc: 'Service charge and payment commission', render: () => <ChargesSettings /> },
+  { id: 'charges', label: 'Charges & fees', permissions: ['settings.update'], desc: 'Service charge, payment commission, refunds and payouts', render: () => <ChargesSettings /> },
   { id: 'credit', label: 'Credit accounts', permissions: ['settings.update'], desc: 'Approval ceiling, payment terms, and whether credit is open', render: () => <CreditAccountSettings /> },
   { id: 'notifications', label: 'Notifications', permissions: ANY_ADMIN, desc: 'Customer SMS alerts for order status changes', render: () => <NotificationsSettings /> },
   { id: 'currency', label: 'Currency photos', permissions: ['website.manage'], desc: 'Note & coin photos shown on the POS cash count', render: () => <CurrencyPhotosSettings /> },

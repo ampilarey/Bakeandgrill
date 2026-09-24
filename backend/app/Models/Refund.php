@@ -19,6 +19,12 @@ class Refund extends Model
         'drawer_shift_id',
         'amount',
         'drawer_cash_out_laar',
+        'tender_breakdown',
+        'external_tender_laar',
+        'paid_out_at',
+        'paid_out_method',
+        'paid_out_reference',
+        'paid_out_by',
         'status',
         'reason',
         'reason_category',
@@ -49,6 +55,10 @@ class Refund extends Model
         'drawer_shift_id' => 'integer',
         'amount' => 'decimal:2',
         'drawer_cash_out_laar' => 'integer',
+        'tender_breakdown' => 'array',
+        'external_tender_laar' => 'integer',
+        'paid_out_at' => 'datetime',
+        'paid_out_by' => 'integer',
         'requested_at' => 'datetime',
         'approved_at' => 'datetime',
         'no_customer_contact' => 'boolean',
@@ -95,5 +105,29 @@ class Refund extends Model
     public function shift(): BelongsTo
     {
         return $this->belongsTo(Shift::class);
+    }
+
+    public function paidOutBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'paid_out_by');
+    }
+
+    /**
+     * Approved, with a card / online / bank share that nobody has yet
+     * recorded as returned to the customer (refund audit, 2026-09-25).
+     */
+    public function isOwedExternally(): bool
+    {
+        return in_array($this->status, ['approved', 'processed'], true)
+            && (int) $this->external_tender_laar > 0
+            && $this->paid_out_at === null;
+    }
+
+    /** @param \Illuminate\Database\Eloquent\Builder<self> $query */
+    public function scopeOwedExternally($query)
+    {
+        return $query->whereIn('status', ['approved', 'processed'])
+            ->where('external_tender_laar', '>', 0)
+            ->whereNull('paid_out_at');
     }
 }

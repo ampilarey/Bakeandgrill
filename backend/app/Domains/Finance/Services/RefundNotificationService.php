@@ -44,7 +44,7 @@ class RefundNotificationService
             return MaldivesPhone::normalize($stored);
         }
         $order = $refund->order;
-        if (! $order) {
+        if (!$order) {
             return null;
         }
 
@@ -55,7 +55,7 @@ class RefundNotificationService
     {
         $order = $refund->order;
         $phone = $this->resolveRefundPhone($refund);
-        if (! $order || $phone === null) {
+        if (!$order || $phone === null) {
             return;
         }
 
@@ -70,7 +70,7 @@ class RefundNotificationService
             customerId: $order->customer_id,
             referenceType: 'refund',
             referenceId: (string) $refund->id,
-            idempotencyKey: 'refund-requested:'.$refund->id,
+            idempotencyKey: 'refund-requested:' . $refund->id,
         ));
     }
 
@@ -78,7 +78,7 @@ class RefundNotificationService
     {
         $order = $refund->order;
         $phone = $this->resolveRefundPhone($refund);
-        if (! $order || $phone === null) {
+        if (!$order || $phone === null) {
             return;
         }
 
@@ -93,7 +93,57 @@ class RefundNotificationService
             customerId: $order->customer_id,
             referenceType: 'refund',
             referenceId: (string) $refund->id,
-            idempotencyKey: 'refund-completed:'.$refund->id,
+            idempotencyKey: 'refund-completed:' . $refund->id,
+        ));
+    }
+
+    /**
+     * Refund audit, 2026-09-25: approved, but part of it is owed by card /
+     * online / bank and has not been sent yet.
+     */
+    public function notifyCustomerOnItsWay(Refund $refund): void
+    {
+        $order = $refund->order;
+        $phone = $this->resolveRefundPhone($refund);
+        if (!$order || $phone === null) {
+            return;
+        }
+        $amount = number_format((float) $refund->amount, 2);
+        $body = $this->renderTemplate('customer_refund_on_its_way', [
+            'order_number' => $order->order_number ?? (string) $order->id,
+            'amount' => $amount,
+        ], "Bake & Grill: your refund of MVR {$amount} on order {$order->order_number} is approved. The part paid by card or online is being returned to you and we will message you when it is sent.");
+
+        $this->sms->send(new SmsMessage(
+            to: $phone,
+            message: $body,
+            type: 'customer_refund_on_its_way',
+            customerId: $order->customer_id,
+            referenceType: 'refund',
+            referenceId: (string) $refund->id,
+            idempotencyKey: 'refund-on-its-way:' . $refund->id,
+        ));
+    }
+
+    public function notifyCustomerRejected(Refund $refund): void
+    {
+        $order = $refund->order;
+        $phone = $this->resolveRefundPhone($refund);
+        if (!$order || $phone === null) {
+            return;
+        }
+        $body = $this->renderTemplate('customer_refund_rejected', [
+            'order_number' => $order->order_number ?? (string) $order->id,
+        ], "Bake & Grill: the refund requested on order {$order->order_number} was not approved. Please contact us if you have questions.");
+
+        $this->sms->send(new SmsMessage(
+            to: $phone,
+            message: $body,
+            type: 'customer_refund_rejected',
+            customerId: $order->customer_id,
+            referenceType: 'refund',
+            referenceId: (string) $refund->id,
+            idempotencyKey: 'refund-rejected:' . $refund->id,
         ));
     }
 
@@ -136,10 +186,10 @@ class RefundNotificationService
             customerId: $order?->customer_id,
             referenceType: 'refund',
             referenceId: (string) $refund->id,
-            idempotencyKey: 'refund-otp:'.$refund->id.':'.$issued['expires_at']->timestamp,
+            idempotencyKey: 'refund-otp:' . $refund->id . ':' . $issued['expires_at']->timestamp,
         ));
 
-        if (! in_array($log->status, ['sent', 'demo', 'queued'], true)) {
+        if (!in_array($log->status, ['sent', 'demo', 'queued'], true)) {
             abort(422, 'Could not send the verification SMS. An owner can override if the customer has no local SIM.');
         }
 
@@ -183,7 +233,7 @@ class RefundNotificationService
                     type: 'staff_refund_requested',
                     referenceType: 'refund',
                     referenceId: (string) $refund->id,
-                    idempotencyKey: 'refund-approver:'.$refund->id.':'.$approver->id,
+                    idempotencyKey: 'refund-approver:' . $refund->id . ':' . $approver->id,
                 ));
             } catch (\Throwable $e) {
                 Log::warning('RefundNotificationService: approver SMS failed', [
@@ -201,7 +251,7 @@ class RefundNotificationService
         $template = SmsTemplate::query()->where('slug', $slug)->first();
         $body = $template?->body ?: $fallback;
         foreach ($vars as $key => $value) {
-            $body = str_replace('{{'.$key.'}}', $value, $body);
+            $body = str_replace('{{' . $key . '}}', $value, $body);
         }
 
         return $body;

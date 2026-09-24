@@ -80,6 +80,9 @@ if (routes_domain_section_is('orders', 'core') && !routes_domain_loaded('orders.
         ->middleware(['permission:orders.refund', 'device.active', 'throttle:10,1']);
     Route::post('/refunds/{id}/resend-otp', [App\Http\Controllers\Api\RefundController::class, 'resendOtp'])
         ->middleware(['permission:orders.refund', 'device.active', 'throttle:10,1']);
+    // The card / online share was returned to the customer (refund audit, 2026-09-25). No device: this is done from the admin, often from the bank app.
+    Route::post('/refunds/{id}/paid-out', [App\Http\Controllers\Api\RefundController::class, 'markPaidOut'])
+        ->middleware(['permission:orders.refund', 'throttle:30,1']);
 }
 
 if (routes_domain_section_is('orders', 'pos_ops') && !routes_domain_loaded('orders.pos_ops')) {

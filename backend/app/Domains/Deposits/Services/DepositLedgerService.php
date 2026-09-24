@@ -13,11 +13,13 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Refund;
 use App\Models\Shift;
+use App\Models\SiteSetting;
 use App\Models\User;
 use App\Services\AuditLogService;
 use App\Services\ShiftAccessService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 final class DepositLedgerService
 {
@@ -328,7 +330,16 @@ final class DepositLedgerService
             abort(422, 'Payout amount must be greater than zero.');
         }
 
-        return DB::transaction(function () use ($customer, $amountLaar, $method, $actor, $reference, $notes, $request) {
+        // Refund audit, 2026-09-25: a payout is money out with none of the
+        // refund flow's second approver or OTP, so above the owner's
+        // threshold only an owner may do it, and every payout texts the
+        // owners afterwards.
+        $thresholdLaar = (int) round(((float) SiteSetting::get('deposit_payout_owner_threshold_mvr', '500')) * 100);
+        if ($thresholdLaar > 0 && $amountLaar > $thresholdLaar && ($actor->role?->slug ?? '') !== 'owner') {
+            abort(422, sprintf('Deposit payouts above MVR %s need an owner. Ask an owner to record this one.', number_format($thresholdLaar / 100, 2)));
+        }
+
+        $ledger = DB::transaction(function () use ($customer, $amountLaar, $method, $actor, $reference, $notes, $request) {
             $account = CustomerDepositAccount::lockForUpdate()
                 ->where('customer_id', $customer->id)
                 ->first();
@@ -400,6 +411,39 @@ final class DepositLedgerService
 
             return $ledger;
         });
+
+        $this->alertOwnersOfPayout($customer, $ledger, $amountLaar, $method, $actor);
+
+        return $ledger;
+    }
+
+    private function alertOwnersOfPayout(Customer $customer, CustomerDepositLedger $ledger, int $amountLaar, string $method, User $actor): void
+    {
+        try {
+            $sms = app(\App\Domains\Notifications\Services\SmsService::class);
+            $body = sprintf(
+                'Deposit payout: MVR %s %s to %s by %s. Balance now MVR %s.',
+                number_format($amountLaar / 100, 2),
+                str_replace('_', ' ', $method),
+                $customer->name ?: $customer->phone,
+                $actor->name,
+                number_format(((int) $ledger->balance_after_laar) / 100, 2),
+            );
+            foreach (\App\Support\OwnerPhones::for('owner_deposit_payout') as $phone) {
+                $sms->send(new \App\Domains\Notifications\DTOs\SmsMessage(
+                    to: $phone,
+                    message: $body,
+                    type: 'owner_deposit_payout',
+                    customerId: $customer->id,
+                    referenceType: 'deposit_payout',
+                    referenceId: (string) $ledger->id,
+                    idempotencyKey: 'deposit-payout:' . $ledger->id . ':' . $phone,
+                    actingUserId: $actor->id,
+                ));
+            }
+        } catch (\Throwable $e) {
+            Log::warning('deposit.payout_owner_sms_failed', ['ledger_id' => $ledger->id, 'error' => $e->getMessage()]);
+        }
     }
 
     /**

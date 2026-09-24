@@ -7,12 +7,13 @@ namespace App\Console\Commands;
 use App\Domains\Finance\Services\RefundWorkflowService;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
+use App\Models\CustomerDepositLedger;
 use App\Models\Refund;
 use App\Models\Role;
 use App\Models\Shift;
+use App\Models\SiteSetting;
 use App\Models\SmsTemplate;
 use App\Models\User;
-use App\Models\SiteSetting;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 
@@ -61,11 +62,23 @@ class SendDailyRefundSummaryCommand extends Command
                 $overrides,
             ),
         ];
+
+        // Refund audit, 2026-09-25: what is still owed by card / bank, whatever day it was approved,
+        // and yesterday's customer deposit payouts, which leave the drawer with far fewer checks.
+        $owed = Refund::query()->owedExternally();
+        $owedCount = (int) (clone $owed)->count();
+        if ($owedCount > 0) {
+            $lines[] = sprintf('STILL OWED by card/bank: %d refund%s, MVR %s. Mark them paid out in Refunds.', $owedCount, $owedCount === 1 ? '' : 's', number_format(((int) $owed->sum('external_tender_laar')) / 100, 2));
+        }
+        $payouts = CustomerDepositLedger::query()->where('type', 'payout')->whereBetween('created_at', [$day, $end])->get();
+        if ($payouts->isNotEmpty()) {
+            $lines[] = sprintf('Deposit payouts: %d, MVR %s.', $payouts->count(), number_format(abs((int) $payouts->sum('amount_laar')) / 100, 2));
+        }
         foreach ($refunds->take(12) as $r) {
             $flags = $workflow->phoneFlags($r);
             $customerInitiated = ($r->initiated_by ?? 'staff') === 'customer';
             $req = $customerInitiated
-                ? ('CUSTOMER'.($r->customer?->name ? ':'.$r->customer->name : ''))
+                ? ('CUSTOMER' . ($r->customer?->name ? ':' . $r->customer->name : ''))
                 : ($r->user?->name ?? '—');
             $apr = $customerInitiated
                 ? 'self'
@@ -77,16 +90,16 @@ class SendDailyRefundSummaryCommand extends Command
             if ($flags['phone_added_at_refund']) {
                 $flagBits[] = 'ADDED';
             }
-            if (! $flags['has_prior_order_history']) {
+            if (!$flags['has_prior_order_history']) {
                 $flagBits[] = 'NO-HISTORY';
             }
             if ($flags['refunds_last_90_days'] > 0) {
-                $flagBits[] = 'RPT'.$flags['refunds_last_90_days'];
+                $flagBits[] = 'RPT' . $flags['refunds_last_90_days'];
             }
             if ($flags['otp_owner_override']) {
                 $flagBits[] = 'OTP-OVERRIDE';
             }
-            $flag = $flagBits !== [] ? ' ['.implode(',', $flagBits).']' : '';
+            $flag = $flagBits !== [] ? ' [' . implode(',', $flagBits) . ']' : '';
             $lines[] = sprintf(
                 '#%d %s MVR %s phone:%s req:%s appr:%s%s',
                 $r->id,
@@ -125,7 +138,7 @@ class SendDailyRefundSummaryCommand extends Command
             }
         }
         if ($fxBits !== []) {
-            $lines[] = 'Foreign currency held: '.implode('; ', $fxBits);
+            $lines[] = 'Foreign currency held: ' . implode('; ', $fxBits);
         }
 
         $detail = implode("\n", $lines);
@@ -139,7 +152,13 @@ class SendDailyRefundSummaryCommand extends Command
             $smsBody,
         );
         if ($fxBits !== []) {
-            $smsBody .= ' FX held: '.count($fxBits).' note(s).';
+            $smsBody .= ' FX held: ' . count($fxBits) . ' note(s).';
+        }
+        if ($owedCount > 0) {
+            $smsBody .= sprintf(' OWED by card/bank: %d refund%s, MVR %s - mark paid out in Refunds.', $owedCount, $owedCount === 1 ? '' : 's', number_format(((int) $owed->sum('external_tender_laar')) / 100, 2));
+        }
+        if ($payouts->isNotEmpty()) {
+            $smsBody .= sprintf(' Deposit payouts: %d, MVR %s.', $payouts->count(), number_format(abs((int) $payouts->sum('amount_laar')) / 100, 2));
         }
 
         $ownerRole = Role::query()->where('slug', 'owner')->first();
@@ -159,7 +178,7 @@ class SendDailyRefundSummaryCommand extends Command
                 type: 'owner_daily_refund_summary',
                 referenceType: 'refund_daily_summary',
                 referenceId: $day->toDateString(),
-                idempotencyKey: 'refund-daily:'.$day->toDateString().':'.$owner->id,
+                idempotencyKey: 'refund-daily:' . $day->toDateString() . ':' . $owner->id,
             ));
             $sent++;
         }

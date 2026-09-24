@@ -966,13 +966,22 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                   <th style={S.th}>Reason</th>
                   <th style={S.th}>Count</th>
                   <th style={{ ...S.th, textAlign: 'right' }}>Amount</th>
+                  <th style={{ ...S.th, textAlign: 'right' }}>Still owed by card/bank</th>
                 </tr></thead>
                 <tbody>
                   {(refundsReport.rows ?? []).map((row) => (
-                    <tr key={row.reason}>
-                      <td style={{ ...S.td, fontWeight: 600, textTransform: 'capitalize' }}>{row.reason.replace(/_/g, ' ')}</td>
+                    <tr key={row.category ?? row.reason} data-testid={`refund-reason-${row.category ?? row.reason}`}>
+                      <td style={{ ...S.td, fontWeight: 600 }}>
+                        {row.reason.replace(/_/g, ' ')}
+                        {row.top_reasons && row.top_reasons.length > 0 && (
+                          <div style={{ fontWeight: 400, fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>
+                            {row.top_reasons.map((t) => `${t.reason} (${t.refunds_count})`).join(' · ')}
+                          </div>
+                        )}
+                      </td>
                       <td style={S.td}>{row.refunds_count}</td>
                       <td style={{ ...S.td, textAlign: 'right', fontWeight: 700 }}>{mvr(row.amount)}</td>
+                      <td style={{ ...S.td, textAlign: 'right', color: (row.owed_externally ?? 0) > 0 ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>{mvr(row.owed_externally ?? 0)}</td>
                     </tr>
                   ))}
                 </tbody>
