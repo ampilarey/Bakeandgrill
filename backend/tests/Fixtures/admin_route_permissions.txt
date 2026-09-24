@@ -221,7 +221,7 @@ backend/routes/domains/reporting.php:68:customers.analytics
 backend/routes/domains/reservations.php:31:reservations.manage
 backend/routes/domains/signage.php:17:signage.manage
 backend/routes/domains/social.php:33:social.view
-backend/routes/domains/social.php:57:social.channels.manage
+backend/routes/domains/social.php:61:social.channels.manage
 backend/routes/domains/staff.php:100:settings.update
 backend/routes/domains/staff.php:106:reports.financial
 backend/routes/domains/staff.php:108:settings.update

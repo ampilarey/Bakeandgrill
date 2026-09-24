@@ -157,8 +157,14 @@ class SocialPostController extends Controller
      */
     public function itemPreview(Request $request): JsonResponse
     {
-        $data = $request->validate(['item_id' => ['required', 'integer', 'exists:items,id']]);
-        $item = Item::with(['photos', 'category:id,name'])->findOrFail((int) $data['item_id']);
+        $data = $request->validate([
+            'item_id' => ['required_without:special_id', 'nullable', 'integer', 'exists:items,id'],
+            'special_id' => ['required_without:item_id', 'nullable', 'integer', 'exists:daily_specials,id'],
+        ]);
+        // "Share" on a special (owner's shortlist): the composer opens on the
+        // special's item, with the badge and the offer's last day to hand.
+        $special = !empty($data['special_id']) ? \App\Models\DailySpecial::findOrFail((int) $data['special_id']) : null;
+        $item = Item::with(['photos', 'category:id,name'])->findOrFail((int) ($special?->item_id ?? $data['item_id']));
         $previews = app(SocialPreviewImage::class);
         $preview = $previews->forItem($item);
         $hasRealPhoto = $preview['url'] !== $previews->siteFallback();
@@ -174,6 +180,12 @@ class SocialPostController extends Controller
             'image_url' => $hasRealPhoto ? $preview['url'] : null,
             'link_url' => url('/menu/' . $item->id),
             'is_sellable' => (bool) $item->is_active && (bool) $item->is_available,
+            'special' => $special ? [
+                'id' => $special->id,
+                'badge_label' => trim((string) ($special->badge_label ?? '')) ?: null,
+                'end_date' => $special->end_date?->toDateString(),
+                'is_active' => $special->isCurrentlyActive(),
+            ] : null,
         ]]);
     }
 

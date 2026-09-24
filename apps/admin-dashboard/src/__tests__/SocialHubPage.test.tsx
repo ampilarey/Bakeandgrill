@@ -70,6 +70,11 @@ beforeEach(() => {
     { page_id: '222', name: 'Side Project', instagram: null, already: { facebook: false, instagram: false } },
   ] });
   vi.spyOn(api, 'finishMetaConnect').mockResolvedValue({ channel_ids: [5, 6] });
+  vi.spyOn(api, 'fetchAnnouncementTemplates').mockResolvedValue({ templates: [
+    { key: 'closed_today', label: 'Closed today', text: "We're closed today. Back tomorrow at 7:00 AM.", look: 'warning', minutes: 600 },
+    { key: 'custom', label: 'Write your own', text: '', look: 'info', minutes: 1440 },
+  ] });
+  vi.spyOn(api, 'createAnnouncement').mockResolvedValue({ post_id: 9, post_status: 'queued', notice: { id: 'n-1' }, skipped_channels: [] });
   vi.spyOn(api, 'fetchSocialChannelOptions').mockResolvedValue({ channels: options, platforms });
   vi.spyOn(api, 'fetchSocialAutomation').mockResolvedValue({ automation: automations.special, automations });
   vi.spyOn(api, 'updateSocialAutomation').mockImplementation(async (data) => ({ automation: automations.special, automations: { ...automations, [data.kind ?? 'special']: { ...automations[data.kind ?? 'special'], ...data } } }));
@@ -284,6 +289,48 @@ describe('SocialHubPage — channels', () => {
 
     fireEvent.click(screen.getAllByText('Check now')[0]);
     await waitFor(() => expect(api.checkSocialChannel).toHaveBeenCalledWith(1));
+  });
+});
+
+describe('SocialHubPage — share and announcements', () => {
+  it('opens the composer on the item when arriving with ?compose=item:7', async () => {
+    renderWithRouter(<SocialHubPage />, { route: '/?compose=item:7' });
+    await screen.findByText('New social post');
+    await waitFor(() => expect(api.fetchSocialItemPreview).toHaveBeenCalledWith({ item_id: 7 }));
+    await waitFor(() => expect((screen.getByLabelText('Caption') as HTMLTextAreaElement).value).toContain('Masroshi'));
+  });
+
+  it('opens the composer on a special with its badge in the caption', async () => {
+    vi.mocked(api.fetchSocialItemPreview).mockResolvedValue({ item: {
+      id: 7, name: 'Masroshi', name_dv: null, category: null, price: 40, base_price: 50,
+      image_url: null, link_url: 'https://bakeandgrill.mv/menu/7', is_sellable: true,
+      special: { id: 3, badge_label: 'Today only', end_date: '2026-09-26', is_active: true },
+    } });
+    renderWithRouter(<SocialHubPage />, { route: '/?compose=special:3' });
+    await screen.findByText('New social post');
+    await waitFor(() => expect(api.fetchSocialItemPreview).toHaveBeenCalledWith({ special_id: 3 }));
+    await waitFor(() => expect((screen.getByLabelText('Caption') as HTMLTextAreaElement).value).toMatch(/^Today only: Masroshi — MVR 40\.00 Until /));
+  });
+
+  it('an announcement goes to the text channels and the TV board in one go', async () => {
+    renderWithRouter(<SocialHubPage />);
+    await screen.findByText('Fresh masroshi today');
+    fireEvent.click(screen.getByText('Announcement'));
+    fireEvent.click(await screen.findByText('Closed today'));
+    expect((screen.getByLabelText('Announcement') as HTMLTextAreaElement).value).toContain("We're closed today");
+    expect(screen.getByLabelText('Also show on the TV board')).toBeChecked();
+    fireEvent.change(screen.getByLabelText('Announcement in Dhivehi'), { target: { value: 'މިއަދު ބަންދު' } });
+
+    fireEvent.click(footer().getByText('Post & show on TV'));
+    await waitFor(() => expect(api.createAnnouncement).toHaveBeenCalledWith(expect.objectContaining({
+      text: "We're closed today. Back tomorrow at 7:00 AM.",
+      text_dv: 'މިއަދު ބަންދު',
+      template: 'closed_today',
+      channel_ids: [1, 2],
+      action: 'now',
+      signage: expect.objectContaining({ enabled: true, look: 'warning' }),
+    })));
+    expect(await screen.findByRole('status')).toHaveTextContent('Posted to the channels. Up on the TV board.');
   });
 });
 

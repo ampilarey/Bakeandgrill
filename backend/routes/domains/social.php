@@ -43,6 +43,10 @@ if (routes_domain_section_is('social', 'admin') && !routes_domain_loaded('social
         Route::post('/posts/{id}/cancel', [SocialPostController::class, 'cancel']);
         Route::post('/posts/{id}/deliveries/{deliveryId}/retry', [SocialPostController::class, 'retryDelivery']);
         Route::post('/posts/{id}/insights', [SocialPostController::class, 'refreshInsights']);
+        // Announcements: one text to the channels and the TV board's notice
+        // line. Compose/schedule/publish and signage.manage checked in-controller.
+        Route::get('/announcements/templates', [App\Http\Controllers\Api\SocialAnnouncementController::class, 'templates']);
+        Route::post('/announcements', [App\Http\Controllers\Api\SocialAnnouncementController::class, 'store']);
         // Automation settings: read with social.view; writes check
         // social.publish in-controller (they decide what auto-publishes).
         Route::get('/automation', [SocialPostController::class, 'automationSettings']);

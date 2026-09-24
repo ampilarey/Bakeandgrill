@@ -9,7 +9,9 @@ import { ItemSearch, type MenuItemSelection } from '../components/ItemSearch';
 import { useToast } from '../components/ui';
 import { ApiRequestError } from '@shared/api';
 import { today } from '../utils/dateHelpers';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Share2, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useCurrentUserPermissions } from '../hooks/usePermissions';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -290,6 +292,10 @@ function apiErrorMessage(e: unknown): string {
 }
 
 export default function SpecialsPage() {
+  const navigate = useNavigate();
+  const { can } = useCurrentUserPermissions();
+  const canShare = can('social.compose');
+  const share = (id: number) => navigate(`/social?compose=special:${id}`);
   usePageTitle('Daily Specials');
   const { state: dlg, ask: askConfirm, close: closeDlg } = useConfirmDialog();
   const toast = useToast();
@@ -722,6 +728,9 @@ export default function SpecialsPage() {
                   <td style={TD}><Badge color={s.is_active ? 'green' : 'gray'}>{s.is_active ? 'Active' : 'Inactive'}</Badge></td>
                   <td style={TD}>{s.sold_count}</td>
                   <td style={TD}>
+                    {canShare && (
+                      <Btn small variant="secondary" onClick={() => share(s.id)} style={{ marginRight: 6 }} aria-label="Share special to social" title="Post this special to social"><Share2 size={12} /></Btn>
+                    )}
                     <Btn small variant="secondary" onClick={() => void openEdit(s)} style={{ marginRight: 6 }}><Pencil size={12} /></Btn>
                     <Btn small variant="danger" onClick={() => handleDelete(s.id)}><Trash2 size={12} /></Btn>
                   </td>
@@ -754,6 +763,9 @@ export default function SpecialsPage() {
                 </div>
               </div>
               <div className="specials-mobile-card-actions">
+                {canShare && (
+                  <Btn small variant="secondary" onClick={() => share(s.id)} aria-label="Share special to social"><Share2 size={14} /></Btn>
+                )}
                 <Btn small variant="secondary" onClick={() => void openEdit(s)} aria-label="Edit special"><Pencil size={14} /></Btn>
                 <Btn small variant="danger" onClick={() => handleDelete(s.id)} aria-label="Delete special"><Trash2 size={14} /></Btn>
               </div>

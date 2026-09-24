@@ -74,9 +74,15 @@ export function fromLocalDateTimeInput(value: string): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
-/** A starter caption for a linked item: name (and Dhivehi), price, link. */
+/** A starter caption for a linked item: name (and Dhivehi), price, link; the offer's badge and last day when shared from a special. */
 export function suggestCaption(item: SocialItemPreview): string {
   const name = item.name_dv ? `${item.name} · ${item.name_dv}` : item.name;
+  const special = item.special;
+  if (special) {
+    const badge = special.badge_label ? `${special.badge_label}: ` : 'Special: ';
+    const until = special.end_date ? ` Until ${new Date(`${special.end_date}T00:00:00`).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}.` : '';
+    return `${badge}${name} — MVR ${item.price.toFixed(2)}${until}\nOrder now: ${item.link_url}`;
+  }
   return `${name} — MVR ${item.price.toFixed(2)}\nOrder now: ${item.link_url}`;
 }
 

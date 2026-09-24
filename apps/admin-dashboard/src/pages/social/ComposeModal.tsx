@@ -22,8 +22,10 @@ type Action = 'draft' | 'schedule' | 'now' | 'save';
  * tightest limit among the chosen channels. The same modal edits a post
  * that has not gone out yet.
  */
-export function ComposeModal({ post, onClose, onSaved, canCompose, canPublish, canSchedule }: {
+export function ComposeModal({ post, initial, onClose, onSaved, canCompose, canPublish, canSchedule }: {
   post?: SocialPostRow | null;
+  /** "Share" from the menu or a special: open on this item, caption suggested. */
+  initial?: { itemId?: number; specialId?: number } | null;
   onClose: () => void;
   onSaved: () => void;
   canCompose: boolean;
@@ -42,7 +44,7 @@ export function ComposeModal({ post, onClose, onSaved, canCompose, canPublish, c
   const [caption, setCaption] = useState(editing?.snapshot.caption ?? '');
   const [imageUrl, setImageUrl] = useState(editing?.snapshot.image_url ?? '');
   const [item, setItem] = useState<SocialItemPreview | null>(null);
-  const [itemLoading, setItemLoading] = useState(Boolean(editing?.snapshot.item_id));
+  const [itemLoading, setItemLoading] = useState(Boolean(editing?.snapshot.item_id || initial?.itemId || initial?.specialId));
   const [pickerOpen, setPickerOpen] = useState(false);
   const [showUrl, setShowUrl] = useState(false);
   const [scheduledAt, setScheduledAt] = useState(toLocalDateTimeInput(editing?.scheduled_at));
@@ -57,6 +59,20 @@ export function ComposeModal({ post, onClose, onSaved, canCompose, canPublish, c
       .then((res) => { setChannels(res.channels); setPlatforms(res.platforms); })
       .catch(() => setChannels([]));
   }, []);
+
+  useEffect(() => {
+    if (editing || !(initial?.itemId || initial?.specialId)) return;
+    let cancelled = false;
+    fetchSocialItemPreview(initial.specialId ? { special_id: initial.specialId } : { item_id: initial.itemId })
+      .then(({ item: loaded }) => {
+        if (cancelled) return;
+        setItem(loaded);
+        setCaption((c) => (c.trim() === '' ? suggestCaption(loaded) : c));
+      })
+      .catch((e: Error) => { if (!cancelled) setError(e.message); })
+      .finally(() => { if (!cancelled) setItemLoading(false); });
+    return () => { cancelled = true; };
+  }, [editing, initial]);
 
   useEffect(() => {
     const id = editing?.snapshot.item_id;

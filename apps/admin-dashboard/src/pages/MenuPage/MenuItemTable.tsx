@@ -42,6 +42,8 @@ type MenuItemTableProps = {
   onDeleteItem: (id: number) => void;
   onBarcodeLabel: (itemId: number) => void;
   onViewRecipe: (itemId: number) => void;
+  /** Opens the Social Hub composer on this item. Absent without social.compose. */
+  onShareItem?: (itemId: number) => void;
 };
 
 const PER_PAGE_OPTIONS = [10, 25, 50, 100];
@@ -157,11 +159,18 @@ type ActionProps = {
   onDeleteItem: (id: number) => void;
   onBarcodeLabel: (itemId: number) => void;
   onViewRecipe: (itemId: number) => void;
+  /** Opens the Social Hub composer on this item (owner's shortlist, 2026-09-24). Absent without social.compose. */
+  onShareItem?: (itemId: number) => void;
 };
 
-function ItemActions({ item, canManage, canSeeCost, onEditItem, onDeleteItem, onBarcodeLabel, onViewRecipe }: ActionProps) {
+function ItemActions({ item, canManage, canSeeCost, onEditItem, onDeleteItem, onBarcodeLabel, onViewRecipe, onShareItem }: ActionProps) {
   return (
     <div className="menu-item-actions">
+      {onShareItem && (
+        <Btn small variant="secondary" onClick={() => onShareItem(item.id)} aria-label={`Share ${item.name} to social`} title="Post this item to Facebook, Instagram, Telegram or Viber">
+          <span aria-hidden="true">↗</span> Share
+        </Btn>
+      )}
       {canManage && (
         <>
           <Btn small variant="secondary" onClick={() => onEditItem(item)} aria-label={`Edit ${item.name}`}>Edit</Btn>
@@ -264,13 +273,14 @@ export function MenuItemTable({
   onDeleteItem,
   onBarcodeLabel,
   onViewRecipe,
+  onShareItem,
 }: MenuItemTableProps) {
   const isMobile = useIsMobile();
   const defaultMenuGroups = menuGroups.length ? menuGroups : [{ id: 1, name: 'Default', slug: 'default', sort_order: 0, is_active: true }];
 
   const visibleItems = cateringOnly ? items.filter(isCateringItem) : items;
 
-  const actionProps = { canManage, canSeeCost, onEditItem, onDeleteItem, onBarcodeLabel, onViewRecipe };
+  const actionProps = { canManage, canSeeCost, onEditItem, onDeleteItem, onBarcodeLabel, onViewRecipe, onShareItem };
 
   // Owner, 2026-09-03: "when I click Item, it changes from A–Z to Z–A".
   // A header click steps asc → desc → back to the menu order; columns with

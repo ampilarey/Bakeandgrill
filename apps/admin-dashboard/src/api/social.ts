@@ -83,10 +83,52 @@ export interface SocialItemPreview {
   image_url: string | null;
   link_url: string;
   is_sellable: boolean;
+  /** Present when the preview was asked for by special: the offer's badge and last day. */
+  special?: { id: number; badge_label: string | null; end_date: string | null; is_active: boolean } | null;
 }
 
-export async function fetchSocialItemPreview(itemId: number): Promise<{ item: SocialItemPreview }> {
-  return req(`/admin/social/item-preview?item_id=${itemId}`);
+export async function fetchSocialItemPreview(
+  ref: number | { item_id?: number; special_id?: number },
+): Promise<{ item: SocialItemPreview }> {
+  const q = typeof ref === 'number'
+    ? `item_id=${ref}`
+    : ref.special_id ? `special_id=${ref.special_id}` : `item_id=${ref.item_id ?? 0}`;
+  return req(`/admin/social/item-preview?${q}`);
+}
+
+// ── Announcements: one text to the channels and the TV board ─────────────────
+
+export interface AnnouncementTemplate {
+  key: string;
+  label: string;
+  text: string;
+  look: string;
+  /** Suggested time on the TV board, in minutes (0 = until removed). */
+  minutes: number;
+}
+
+export async function fetchAnnouncementTemplates(): Promise<{ templates: AnnouncementTemplate[] }> {
+  return req('/admin/social/announcements/templates');
+}
+
+export async function createAnnouncement(data: {
+  text: string;
+  text_dv?: string;
+  template?: string | null;
+  channel_ids: number[];
+  action: 'draft' | 'schedule' | 'now';
+  scheduled_at?: string | null;
+  signage: {
+    enabled: boolean;
+    text?: string;
+    text_dv?: string;
+    look?: string;
+    show?: string;
+    seconds?: number;
+    minutes?: number;
+  };
+}): Promise<{ post_id: number | null; post_status: string | null; notice: unknown; skipped_channels: string[] }> {
+  return req('/admin/social/announcements', { method: 'POST', body: JSON.stringify(data) });
 }
 
 export async function fetchSocialChannels(): Promise<{

@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { MenuCategory } from '../api';
+import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
   Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input, Modal, ModalActions, PageHeader, PageShell, Spinner,
 } from '../components/SharedUI';
@@ -222,6 +224,9 @@ function CategoryFormModal({
 }
 
 export function MenuPage() {
+  const navigate = useNavigate();
+  const { can } = useCurrentUserPermissions();
+  const canShare = can('social.compose');
   usePageTitle('Menu');
   const m = useMenuPage();
   const [quickEdit, setQuickEdit] = useState(false);
@@ -365,6 +370,7 @@ export function MenuPage() {
           onDeleteItem={m.handleDeleteItem}
           onBarcodeLabel={m.handleBarcodeLabel}
           onViewRecipe={m.handleViewRecipe}
+          onShareItem={canShare ? (id) => navigate(`/social?compose=item:${id}`) : undefined}
         />
       )}
 

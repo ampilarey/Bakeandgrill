@@ -16,6 +16,7 @@ import {
 } from '../components/SharedUI';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { AnnouncementModal } from './social/AnnouncementModal';
 import { ComposeModal } from './social/ComposeModal';
 import { PLATFORM_LABELS, navigateTo } from './social/composer';
 
@@ -32,6 +33,7 @@ const STATUS_OPTIONS = [
 ];
 
 const SOURCE_LABELS: Record<string, string> = {
+  announcement: 'Announcement',
   auto_special: 'Auto · daily special',
   auto_new_item: 'Auto · new on the menu',
   auto_featured: "Auto · chef's pick",
@@ -76,9 +78,29 @@ export function SocialHubPage() {
   const [composing, setComposing] = useState<SocialPostRow | 'new' | null>(null);
   const [editingChannel, setEditingChannel] = useState<SocialChannelRow | 'new' | null>(null);
   const [metaAvailable, setMetaAvailable] = useState(false);
+  const [announcing, setAnnouncing] = useState(false);
+  const [notice, setNotice] = useState('');
   const [searchParams, setSearchParams] = useSearchParams();
   const metaState = searchParams.get('meta_connect');
   const metaError = searchParams.get('meta_error');
+  // "Share" from the menu (?compose=item:12) or a special (?compose=special:3).
+  const composeParam = searchParams.get('compose');
+  const composeInitial = (() => {
+    const m = /^(item|special):(\d+)$/.exec(composeParam ?? '');
+    if (!m) return null;
+    return m[1] === 'item' ? { itemId: Number(m[2]) } : { specialId: Number(m[2]) };
+  })();
+  const clearComposeParam = useCallback(() => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('compose');
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+  useEffect(() => {
+    if (composeInitial && canCompose) setComposing('new');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [composeParam, canCompose]);
   const clearMetaParams = useCallback(() => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
@@ -121,7 +143,12 @@ export function SocialHubPage() {
         section="Customers & Marketing"
         title="Social Hub"
         subtitle="Post to the business's Facebook, Instagram, Telegram and Viber"
-        action={canCompose ? <Btn onClick={() => setComposing('new')}>+ New post</Btn> : undefined}
+        action={canCompose ? (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Btn variant="secondary" onClick={() => setAnnouncing(true)} title="A closure, new hours or a greeting: to the channels and the TV board at once">Announcement</Btn>
+            <Btn onClick={() => setComposing('new')}>+ New post</Btn>
+          </div>
+        ) : undefined}
       />
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
@@ -140,6 +167,9 @@ export function SocialHubPage() {
       </div>
 
       {error && <ErrorMsg message={error} />}
+      {notice && (
+        <p role="status" style={{ fontSize: 13, color: 'var(--color-success-strong)', margin: '0 0 12px' }}>{notice}</p>
+      )}
       {tab === 'posts' ? (
         <PostList
           posts={posts}
@@ -165,11 +195,22 @@ export function SocialHubPage() {
         />
       )}
 
+      {announcing && (
+        <AnnouncementModal
+          onClose={() => setAnnouncing(false)}
+          onSaved={(message) => { setAnnouncing(false); setNotice(message); void load(); }}
+          canCompose={canCompose}
+          canSchedule={can('social.schedule')}
+          canPublish={can('social.publish')}
+          canSignage={can('signage.manage')}
+        />
+      )}
       {composing && (
         <ComposeModal
           post={composing === 'new' ? null : composing}
-          onClose={() => setComposing(null)}
-          onSaved={() => { setComposing(null); void load(); }}
+          initial={composing === 'new' ? composeInitial : null}
+          onClose={() => { setComposing(null); clearComposeParam(); }}
+          onSaved={() => { setComposing(null); clearComposeParam(); void load(); }}
           canCompose={canCompose}
           canPublish={can('social.publish')}
           canSchedule={can('social.schedule')}
