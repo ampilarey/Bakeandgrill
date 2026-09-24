@@ -19,6 +19,7 @@ class Invoice extends Model
         'order_id', 'purchase_id', 'customer_id', 'trade_account_id', 'supplier_id', 'created_by',
         'recipient_name', 'recipient_phone', 'recipient_email', 'recipient_address', 'customer_tin',
         'subtotal_laar', 'tax_laar', 'discount_laar', 'total_laar', 'amount_paid_laar',
+        'credited_laar', 'written_off_laar', 'overdue_alert_stage',
         'subtotal', 'tax_amount', 'discount_amount', 'total',
         'tax_rate_bp', 'issue_date', 'gst_period_key', 'gst_ledger_date', 'due_date', 'paid_at',
         'payment_method', 'payment_reference',
@@ -87,7 +88,7 @@ class Invoice extends Model
 
         $issueKey = $this->issue_date->format('Y-m');
 
-        return ! str_starts_with((string) $this->gst_period_key, $issueKey);
+        return !str_starts_with((string) $this->gst_period_key, $issueKey);
     }
 
     public function supplier(): BelongsTo
@@ -110,11 +111,28 @@ class Invoice extends Model
         return $this->hasMany(Invoice::class, 'parent_invoice_id');
     }
 
+    /**
+     * SQL for "still has a balance": what was billed, less what was paid,
+     * credited by a partial credit note, or written off. Wholesale audit,
+     * 2026-09-26: every open-invoice query must use this, or a write-off
+     * keeps showing as debt.
+     */
+    public const OPEN_BALANCE_SQL = 'total_laar > amount_paid_laar + credited_laar + written_off_laar';
+
     public function balanceDueLaar(): int
     {
+        if (in_array((string) $this->status, ['void', 'cancelled'], true)) {
+            return 0;
+        }
+
         $total = (int) ($this->total_laar ?? round((float) $this->total * 100));
 
-        return max(0, $total - (int) ($this->amount_paid_laar ?? 0));
+        return max(0, $total - (int) ($this->amount_paid_laar ?? 0) - (int) ($this->credited_laar ?? 0) - (int) ($this->written_off_laar ?? 0));
+    }
+
+    public function isWrittenOff(): bool
+    {
+        return (int) ($this->written_off_laar ?? 0) > 0 && $this->balanceDueLaar() === 0;
     }
 
     public function isOnCreditAccount(): bool
@@ -149,6 +167,10 @@ class Invoice extends Model
 
     public function displayStatusLabel(): string
     {
+        if ($this->isWrittenOff()) {
+            return 'WRITTEN OFF';
+        }
+
         if ($this->status === 'paid') {
             return 'PAID';
         }

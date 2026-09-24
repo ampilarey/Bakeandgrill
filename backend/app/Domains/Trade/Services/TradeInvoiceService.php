@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace App\Domains\Trade\Services;
 
 use App\Domains\Credit\Services\CreditLedgerService;
+use App\Domains\Credit\Services\CreditPolicy;
 use App\Domains\Gst\Services\GstInvoiceSequenceService;
 use App\Domains\Gst\Services\GstLedgerPoster;
 use App\Domains\Gst\Services\GstSettingsService;
 use App\Domains\Shared\ValueObjects\Money;
 use App\Models\Customer;
-use App\Models\CustomerCreditLedger;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\TaxLedgerEntry;
@@ -37,10 +37,11 @@ final class TradeInvoiceService
         private readonly GstInvoiceSequenceService $gstSequence,
         private readonly GstSettingsService $gstSettings,
         private readonly AuditLogService $audit,
+        private readonly TradeSmsNotifier $sms,
     ) {}
 
     /**
-     * @param  list<int>  $deliveryIds
+     * @param list<int> $deliveryIds
      */
     public function raise(
         TradeAccount $account,
@@ -66,11 +67,18 @@ final class TradeInvoiceService
 
         // Payment / hybrid basis needs the payment-path poster. If that is
         // unavailable we refuse — never silently skip output tax.
-        if ($this->gstPoster->shouldPostOrderOnPayment() && ! $this->gstPoster->canPostTradeInvoiceOnPayment()) {
+        if ($this->gstPoster->shouldPostOrderOnPayment() && !$this->gstPoster->canPostTradeInvoiceOnPayment()) {
             abort(422, 'Cannot raise a wholesale invoice: GST is on payment basis and trade-invoice payment posting is not available. Fix GST settings or contact support.');
         }
 
-        return DB::transaction(function () use ($account, $deliveryIds, $actor, $idempotencyKey, $notes, $customer) {
+        // Closed credit mode stops new wholesale invoices as well as till
+        // charges (wholesale audit, 2026-09-26). Checked here so nothing is
+        // written before the refusal.
+        if (!CreditPolicy::acceptsNewCharges()) {
+            abort(422, CreditPolicy::closedWholesaleMessage());
+        }
+
+        $invoice = DB::transaction(function () use ($account, $deliveryIds, $actor, $idempotencyKey, $notes, $customer) {
             $again = Invoice::where('idempotency_key', $idempotencyKey)->lockForUpdate()->first();
             if ($again) {
                 return $again->load(['items', 'customer', 'tradeAccount']);
@@ -132,8 +140,8 @@ final class TradeInvoiceService
                 'tax_rate_bp' => $taxRateBp,
                 'issue_date' => $issueDate,
                 'due_date' => $dueDate,
-                'notes' => trim(($notes ? $notes."\n" : '').'Wholesale consignment — charged to customer credit account.'),
-                'terms' => 'Payment due within '.$termsDays.' days.',
+                'notes' => trim(($notes ? $notes . "\n" : '') . 'Wholesale consignment — charged to customer credit account.'),
+                'terms' => 'Payment due within ' . $termsDays . ' days.',
             ]);
 
             foreach ($built['invoice_items'] as $row) {
@@ -162,7 +170,7 @@ final class TradeInvoiceService
                 $customer->fresh(),
                 $invoice,
                 $actor,
-                'trade:invoice:charge:'.$idempotencyKey,
+                'trade:invoice:charge:' . $idempotencyKey,
             );
 
             // Invoice-basis / hybrid: post GST now. Payment-basis posts on payment.
@@ -190,6 +198,23 @@ final class TradeInvoiceService
 
             return $invoice->fresh(['items', 'customer', 'tradeAccount']);
         });
+
+        // The shop hears about the invoice the moment it exists, not three
+        // days before it is due (wholesale audit, 2026-09-26). After commit,
+        // so a firm-sale dispatch that rolls back sends nothing.
+        $invoiceId = $invoice->id;
+        DB::afterCommit(function () use ($invoiceId): void {
+            try {
+                $fresh = Invoice::with('tradeAccount.customer')->find($invoiceId);
+                if ($fresh !== null) {
+                    $this->sms->sendInvoiceRaisedToShop($fresh);
+                }
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        });
+
+        return $invoice;
     }
 
     /**
@@ -226,17 +251,26 @@ final class TradeInvoiceService
             $account,
             [$delivery->id],
             $actor,
-            'trade:firm-sale:'.$delivery->id.':'.$delivery->idempotency_key,
+            'trade:firm-sale:' . $delivery->id . ':' . $delivery->idempotency_key,
             'Firm sale — invoiced at dispatch.',
         );
     }
 
+    /**
+     * Close a mismatch. Wholesale audit, 2026-09-26: the decision sets the
+     * billed quantity too. `$lineDecisions` is line id → sold quantity to
+     * bill (the shop's figure, ours, or another); what was sent and not
+     * returned and not sold becomes missing, and follows the missing policy.
+     *
+     * @param array<int, int> $lineDecisions
+     */
     public function resolveMismatch(
         TradeDelivery $delivery,
         User $actor,
         string $decisionNotes,
+        array $lineDecisions = [],
     ): TradeDelivery {
-        if (! $delivery->has_mismatch) {
+        if (!$delivery->has_mismatch) {
             abort(422, 'This delivery is not flagged as a mismatch.');
         }
         if ($delivery->mismatch_resolved_at !== null) {
@@ -250,10 +284,33 @@ final class TradeInvoiceService
             ]);
         }
 
-        return DB::transaction(function () use ($delivery, $actor, $notes) {
-            $locked = TradeDelivery::lockForUpdate()->findOrFail($delivery->id);
+        return DB::transaction(function () use ($delivery, $actor, $notes, $lineDecisions) {
+            $locked = TradeDelivery::lockForUpdate()->with('lines.item')->findOrFail($delivery->id);
             if ($locked->mismatch_resolved_at !== null) {
                 return $locked;
+            }
+
+            $changes = [];
+            foreach ($lineDecisions as $lineId => $soldQty) {
+                $line = $locked->lines->firstWhere('id', (int) $lineId);
+                if ($line === null) {
+                    throw ValidationException::withMessages(['lines' => ["Line {$lineId} is not on this delivery."]]);
+                }
+                if ($this->exposure->allocatedQty($line->id) > 0) {
+                    abort(422, sprintf('"%s" is already on an invoice; credit-note it before changing the quantity.', $line->item?->name ?? 'Item'));
+                }
+                $notReturned = (int) $line->qty_sent - (int) $line->qty_returned_good - (int) $line->qty_returned_waste;
+                $sold = (int) $soldQty;
+                if ($sold < 0 || $sold > $notReturned) {
+                    throw ValidationException::withMessages([
+                        'lines' => [sprintf('"%s": sold must be between 0 and %d (sent %d, returned %d).', $line->item?->name ?? 'Item', $notReturned, $line->qty_sent, $notReturned === 0 ? $line->qty_sent : (int) $line->qty_sent - $notReturned)],
+                    ]);
+                }
+                if ($sold === (int) $line->qty_sold) {
+                    continue;
+                }
+                $changes[] = ['line_id' => $line->id, 'item' => $line->item?->name, 'from' => (int) $line->qty_sold, 'to' => $sold];
+                $line->update(['qty_sold' => $sold, 'qty_missing' => $notReturned - $sold]);
             }
 
             $locked->update([
@@ -267,7 +324,45 @@ final class TradeInvoiceService
                 'TradeDelivery',
                 $locked->id,
                 ['has_mismatch' => true],
-                ['resolved_by' => $actor->id, 'decision' => $notes],
+                ['resolved_by' => $actor->id, 'decision' => $notes, 'quantities' => $changes],
+            );
+
+            return $locked->fresh(['lines.item', 'tradeAccount.customer']);
+        });
+    }
+
+    /**
+     * Charge missing stock on a delivery whose account policy would not
+     * (dispute, or our loss). The counterpart of waiving.
+     */
+    public function chargeMissing(TradeDelivery $delivery, User $actor, string $reason): TradeDelivery
+    {
+        $reason = trim($reason);
+        if ($reason === '') {
+            throw ValidationException::withMessages([
+                'reason' => ['Type a reason for charging the missing quantity.'],
+            ]);
+        }
+
+        return DB::transaction(function () use ($delivery, $actor, $reason) {
+            $locked = TradeDelivery::lockForUpdate()->findOrFail($delivery->id);
+            if ($locked->status === TradeDelivery::STATUS_INVOICED) {
+                abort(422, 'This delivery is already invoiced.');
+            }
+
+            $locked->update([
+                'missing_charge_forced' => true,
+                'missing_force_reason' => $reason,
+                'missing_forced_by' => $actor->id,
+                'missing_charge_waived' => false,
+            ]);
+
+            $this->audit->log(
+                'trade.delivery.missing_charged',
+                'TradeDelivery',
+                $locked->id,
+                [],
+                ['reason' => $reason, 'by' => $actor->id],
             );
 
             return $locked->fresh(['lines.item', 'tradeAccount.customer']);
@@ -296,6 +391,7 @@ final class TradeInvoiceService
                 'missing_charge_waived' => true,
                 'missing_waive_reason' => $reason,
                 'missing_waived_by' => $actor->id,
+                'missing_charge_forced' => false,
             ]);
 
             $this->audit->log(
@@ -311,15 +407,27 @@ final class TradeInvoiceService
     }
 
     /**
-     * Credit note for a trade invoice: reverse allocations + reverse ledger charge + GST.
+     * Credit note for a trade invoice.
+     *
+     * Full (no amount, or the whole uncredited total): reverse allocations,
+     * put the deliveries back to reconciled, reverse the ledger charge,
+     * post GST, void the parent. Anything the shop had already paid stays
+     * on their account as credit in hand and settles the next invoice.
+     *
+     * Partial (an amount below the uncredited total): the parent stays,
+     * its balance drops by the amount, and the goods stay billed.
+     * Wholesale audit, 2026-09-26.
      */
-    public function createCreditNote(Invoice $parent, User $actor, string $reason): Invoice
+    public function createCreditNote(Invoice $parent, User $actor, string $reason, ?int $amountLaar = null): Invoice
     {
         if ($parent->trade_account_id === null) {
             abort(422, 'Not a wholesale trade invoice.');
         }
         if ($parent->type !== 'sale') {
             abort(422, 'Only a sale invoice can be credited.');
+        }
+        if (in_array((string) $parent->status, ['void', 'cancelled'], true)) {
+            abort(422, 'This invoice is already void.');
         }
 
         $reason = trim($reason);
@@ -329,12 +437,25 @@ final class TradeInvoiceService
             ]);
         }
 
-        return DB::transaction(function () use ($parent, $actor, $reason) {
+        return DB::transaction(function () use ($parent, $actor, $reason, $amountLaar) {
             $parent = Invoice::lockForUpdate()->with('items')->findOrFail($parent->id);
+
+            $uncredited = (int) $parent->total_laar - (int) $parent->credited_laar;
+            $amountLaar = $amountLaar ?? $uncredited;
+            if ($amountLaar <= 0 || $amountLaar > $uncredited) {
+                throw ValidationException::withMessages([
+                    'amount_laar' => [sprintf('Credit between MVR 0.01 and MVR %.2f (what is left on this invoice).', $uncredited / 100)],
+                ]);
+            }
+            $partial = $amountLaar < $uncredited;
+
+            $taxRateBp = (int) ($parent->tax_rate_bp ?: $this->gstSettings->defaultTaxRateBp());
+            $taxLaar = (new Money($amountLaar))->extractTax($taxRateBp)->amountLaar;
+            $subtotalLaar = $amountLaar - $taxLaar;
 
             $cn = Invoice::create([
                 'invoice_number' => $this->gstSequence->nextCreditNoteNumber(),
-                'idempotency_key' => 'trade:cn:'.$parent->id.':'.uniqid(),
+                'idempotency_key' => 'trade:cn:' . $parent->id . ':' . uniqid(),
                 'type' => 'credit_note',
                 'status' => 'sent',
                 'is_tax_invoice' => (bool) $parent->is_tax_invoice,
@@ -346,58 +467,75 @@ final class TradeInvoiceService
                 'recipient_name' => $parent->recipient_name,
                 'recipient_phone' => $parent->recipient_phone,
                 'recipient_address' => $parent->recipient_address,
-                'subtotal' => $parent->subtotal,
-                'subtotal_laar' => $parent->subtotal_laar,
-                'tax_amount' => $parent->tax_amount,
-                'tax_laar' => $parent->tax_laar,
-                'discount_amount' => $parent->discount_amount,
-                'discount_laar' => $parent->discount_laar,
-                'total' => $parent->total,
-                'total_laar' => $parent->total_laar,
-                'tax_rate_bp' => $parent->tax_rate_bp,
+                'subtotal' => round($subtotalLaar / 100, 2),
+                'subtotal_laar' => $subtotalLaar,
+                'tax_amount' => round($taxLaar / 100, 2),
+                'tax_laar' => $taxLaar,
+                'discount_amount' => 0,
+                'discount_laar' => 0,
+                'total' => round($amountLaar / 100, 2),
+                'total_laar' => $amountLaar,
+                'tax_rate_bp' => $taxRateBp,
                 'issue_date' => now()->toDateString(),
-                'notes' => "Credit note for {$parent->invoice_number}",
+                'notes' => ($partial ? 'Partial credit note against ' : 'Credit note for ') . $parent->invoice_number,
                 'credit_note_reason' => $reason,
             ]);
 
-            foreach ($parent->items as $item) {
-                $cn->items()->create($item->only([
-                    'item_id', 'inventory_item_id', 'description',
-                    'quantity', 'unit', 'unit_price', 'unit_price_laar',
-                    'total', 'total_laar', 'tax_rate_bp',
-                ]));
+            if (!$partial && (int) $parent->credited_laar === 0) {
+                foreach ($parent->items as $item) {
+                    $cn->items()->create($item->only([
+                        'item_id', 'inventory_item_id', 'description',
+                        'quantity', 'unit', 'unit_price', 'unit_price_laar',
+                        'total', 'total_laar', 'tax_rate_bp',
+                    ]));
+                }
+            } else {
+                $cn->items()->create([
+                    'description' => 'Credit against ' . $parent->invoice_number . ': ' . $reason,
+                    'quantity' => 1,
+                    'unit' => 'ea',
+                    'unit_price' => round($amountLaar / 100, 2),
+                    'unit_price_laar' => $amountLaar,
+                    'total' => round($amountLaar / 100, 2),
+                    'total_laar' => $amountLaar,
+                    'tax_rate_bp' => $taxRateBp,
+                ]);
             }
 
-            $allocs = TradeInvoiceAllocation::where('invoice_id', $parent->id)->get();
-            $deliveryIds = TradeDeliveryLine::whereIn('id', $allocs->pluck('trade_delivery_line_id'))
-                ->pluck('trade_delivery_id')
-                ->unique();
+            if (!$partial) {
+                $allocs = TradeInvoiceAllocation::where('invoice_id', $parent->id)->get();
+                $deliveryIds = TradeDeliveryLine::whereIn('id', $allocs->pluck('trade_delivery_line_id'))
+                    ->pluck('trade_delivery_id')
+                    ->unique();
 
-            TradeInvoiceAllocation::where('invoice_id', $parent->id)->delete();
+                TradeInvoiceAllocation::where('invoice_id', $parent->id)->delete();
 
-            foreach ($deliveryIds as $deliveryId) {
-                $delivery = TradeDelivery::lockForUpdate()->find($deliveryId);
-                if ($delivery && $delivery->status === TradeDelivery::STATUS_INVOICED) {
-                    $delivery->update([
-                        'status' => TradeDelivery::STATUS_RECONCILED,
-                        'invoiced_at' => null,
-                    ]);
+                foreach ($deliveryIds as $deliveryId) {
+                    $delivery = TradeDelivery::lockForUpdate()->find($deliveryId);
+                    if ($delivery && in_array($delivery->status, [TradeDelivery::STATUS_INVOICED, TradeDelivery::STATUS_SETTLED], true)) {
+                        $delivery->update([
+                            'status' => TradeDelivery::STATUS_RECONCILED,
+                            'invoiced_at' => null,
+                        ]);
+                    }
                 }
             }
 
-            $this->ledger->reverseTradeInvoiceCharge($parent, $cn, $actor);
+            $this->ledger->reverseTradeInvoiceCharge($parent, $cn, $actor, $amountLaar, $partial);
 
             $entry = $this->gstPoster->postCreditNote($cn->fresh(), $actor->id);
             $this->stampGstPeriod($cn, $entry, $cn->issue_date?->toDateString() ?? now()->toDateString());
 
-            $parent->update(['status' => 'void']);
+            if (!$partial) {
+                $parent->update(['status' => 'void']);
+            }
 
             $this->audit->log(
                 'trade.invoice.credit_note',
                 'Invoice',
                 $cn->id,
                 [],
-                ['parent_invoice_id' => $parent->id, 'reason' => $reason],
+                ['parent_invoice_id' => $parent->id, 'reason' => $reason, 'amount_laar' => $amountLaar, 'partial' => $partial],
             );
 
             return $cn->fresh(['items', 'customer']);
@@ -407,7 +545,7 @@ final class TradeInvoiceService
     /**
      * Preview totals for ready-to-invoice UI (no writes).
      *
-     * @param  list<int>  $deliveryIds
+     * @param list<int> $deliveryIds
      * @return array{total_laar: int, sold_laar: int, missing_laar: int, blocked: list<array<string, mixed>>, lines: list<array<string, mixed>>}
      */
     public function preview(TradeAccount $account, array $deliveryIds): array
@@ -467,7 +605,8 @@ final class TradeInvoiceService
         }
 
         if ($account->missing_policy === TradeAccount::MISSING_DISPUTE
-            && ! $delivery->missing_charge_waived
+            && !$delivery->missing_charge_waived
+            && !$delivery->missing_charge_forced
             && $delivery->lines->sum('qty_missing') > 0) {
             abort(422, sprintf(
                 'Delivery %s has missing quantity under dispute policy. Resolve or waive before invoicing.',
@@ -477,7 +616,7 @@ final class TradeInvoiceService
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, TradeDelivery>  $deliveries
+     * @param \Illuminate\Support\Collection<int, TradeDelivery> $deliveries
      * @return array{total_laar: int, sold_laar: int, missing_laar: int, invoice_items: list<array<string, mixed>>, allocations: list<array<string, mixed>>}
      */
     private function buildLinesAndAllocations($deliveries, TradeAccount $account): array
@@ -497,7 +636,7 @@ final class TradeInvoiceService
                 $allocated = $this->exposure->allocatedQty($line->id);
                 $soldUnalloc = max(0, (int) $line->qty_sold - $this->allocatedKindQty($line->id, TradeInvoiceAllocation::KIND_SOLD));
                 $missingChargeable = 0;
-                if ($account->missing_policy === TradeAccount::MISSING_CHARGE && ! $delivery->missing_charge_waived) {
+                if ($delivery->missingIsChargeable($account)) {
                     $missingChargeable = max(0, (int) $line->qty_missing - $this->allocatedKindQty($line->id, TradeInvoiceAllocation::KIND_MISSING));
                 }
 
@@ -511,7 +650,7 @@ final class TradeInvoiceService
                 $price = (int) $line->unit_price_laar;
                 $name = $line->item?->name ?? 'Item';
                 if ($line->variant) {
-                    $name .= ' ('.$line->variant->name.')';
+                    $name .= ' (' . $line->variant->name . ')';
                 }
 
                 if ($soldUnalloc > 0) {
@@ -520,11 +659,11 @@ final class TradeInvoiceService
                         $amount = $qty * $price;
                         $soldLaar += $amount;
                         $already += $qty;
-                        $key = 'sold:'.$line->item_id.':'.$price;
-                        if (! isset($agg[$key])) {
+                        $key = 'sold:' . $line->item_id . ':' . $price;
+                        if (!isset($agg[$key])) {
                             $agg[$key] = [
                                 'item_id' => $line->item_id,
-                                'description' => 'Sold: '.$name,
+                                'description' => 'Sold: ' . $name,
                                 'quantity' => 0,
                                 'unit_price_laar' => $price,
                                 'total_laar' => 0,
@@ -548,11 +687,11 @@ final class TradeInvoiceService
                     if ($qty > 0) {
                         $amount = $qty * $price;
                         $missingLaar += $amount;
-                        $key = 'missing:'.$line->item_id.':'.$price;
-                        if (! isset($agg[$key])) {
+                        $key = 'missing:' . $line->item_id . ':' . $price;
+                        if (!isset($agg[$key])) {
                             $agg[$key] = [
                                 'item_id' => $line->item_id,
-                                'description' => 'Not returned: '.$name,
+                                'description' => 'Not returned: ' . $name,
                                 'quantity' => 0,
                                 'unit_price_laar' => $price,
                                 'total_laar' => 0,
@@ -645,7 +784,7 @@ final class TradeInvoiceService
         }
 
         $ledgerDate = strlen($periodKey) >= 7
-            ? $periodKey.'-01'
+            ? $periodKey . '-01'
             : $issueDate;
 
         // If redirected, period_key month differs from issue month — keep both.

@@ -613,3 +613,63 @@ them for the admin Shifts page. On open, the typed float is compared with the
 last close on the same device (`opening_float_expected/variance`), returned as
 `float_check`, shown on the Shifts page, and texted to the owners
 (`owner_shift_float_mismatch`) when it reaches the variance threshold.
+
+## Appendix E — Wholesale audit follow-up (2026-09-26)
+
+### E.1 Credit notes that keep the shop's money
+`credit_balance_laar` and the ledger's `balance_after_laar` are signed now. A
+full credit note (`POST /admin/trade-invoices/{id}/credit-note`, no amount)
+reverses what is left uncredited; if the shop had paid, the balance goes below
+zero and that is "credit in hand" (`credit_in_hand_laar` on the exposure, the
+admin statement, the customer statement and the credit summary). The next
+wholesale invoice is settled from it first (`payment_method = credit_in_hand`).
+An `amount_laar` below what is left is a partial credit note: the parent stays,
+`invoices.credited_laar` rises, goods stay billed. `Invoice::OPEN_BALANCE_SQL`
+and `balanceDueLaar()` subtract `credited_laar` and `written_off_laar`; a void
+or cancelled invoice has no balance. The admin statement has a Credit note
+button (full or partial, with the paid amount explained).
+
+### E.2 Chasing
+`credit:send-payment-reminders` texts three days before, on the day, three
+days after, then every `credit_overdue_reminder_every_days` (default 7, 0 =
+off) while unpaid; blocked accounts keep being reminded; the texts are the
+templates `credit_reminder_upcoming`, `credit_reminder_due_today`,
+`credit_reminder_overdue`. `trade:alert-overdue` (daily 09:05) texts the owners
+(`owner_trade_overdue`) once when a wholesale invoice passes 30 and again at 60
+days (`invoices.overdue_alert_stage`). `trade:send-statements` (1st, 10:00)
+texts every shop with a balance (`trade_statement_shop`, template). A raised
+invoice texts the shop at once (`trade_invoice_raised_shop`, template, after
+commit).
+
+### E.3 Deactivation and write-off
+Deactivating a shop that owes or holds stock returns 422 with `needs_force`;
+`force: true` closes it. A deactivated shop still reads its statement and
+deliveries and can pay online; it cannot report sales. A write-off
+(`invoice_ids` optional) applies to open invoices oldest first
+(`written_off_laar`, status `paid`, `payment_method = writeoff`, label
+"WRITTEN OFF"), so the ageing report and statements stop showing it.
+
+### E.4 Mismatch and missing stock
+`resolve-mismatch` takes `lines[{line_id, sold_qty}]`: the chosen sold
+quantity is billed and the remainder becomes missing under the policy; the
+ready-to-invoice rows carry `lines` with both counts. `POST
+/trade/deliveries/{id}/charge-missing` (`missing_charge_forced`) bills missing
+stock under the dispute or write-off policy; waiving clears it.
+
+### E.5 Stock at the shop, billing cycle, closed mode, terms
+`trade:chase-unreconciled` (daily 10:30): a shop that has not reported on a
+delivery past `expected_return_at` or older than
+`trade_unreconciled_nudge_days` (3) is texted once
+(`trade_report_reminder_shop`, `sales_nudged_at`); deliveries older than
+`trade_unreconciled_alert_days` (7) reach the owners once
+(`owner_trade_unreconciled`, `unreconciled_alerted_at`). A shop's sales report
+texts the owners (`owner_trade_sales_reported`). `trade:billing-reminder`
+(daily 09:15) lists shops due an invoice under their `billing_cycle`
+(`owner_trade_billing_due`, `billing_reminded_at`). Closed credit mode refuses
+dispatch on account and new invoices (repayments still work). Account terms
+are 7–90 days like customer terms. Shops list shows "Delivers today" from
+`delivery_days`. Statement payments record which invoices they covered
+(`customer_credit_ledger.applied_invoices`) and a wholesale payment with no
+invoice chosen stays on that shop's invoices; a card payment needs a reference
+when `pos_card_reference_required` is on. Settings → Credit accounts has the
+three chasing intervals.

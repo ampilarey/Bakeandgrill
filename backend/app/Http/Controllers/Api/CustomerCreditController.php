@@ -204,6 +204,8 @@ class CustomerCreditController extends Controller
             'amount_laar' => ['nullable', 'integer', 'min:1'],
             'amount_mvr' => ['nullable', 'numeric', 'min:0.01'],
             'reason' => ['required', 'string', 'min:5', 'max:1000'],
+            'invoice_ids' => ['nullable', 'array'],
+            'invoice_ids.*' => ['integer', 'exists:invoices,id'],
         ]);
 
         $amountLaar = isset($validated['amount_laar'])
@@ -216,6 +218,7 @@ class CustomerCreditController extends Controller
             $actor,
             (string) $validated['reason'],
             $request,
+            isset($validated['invoice_ids']) ? array_map('intval', $validated['invoice_ids']) : null,
         );
 
         $customer->refresh();

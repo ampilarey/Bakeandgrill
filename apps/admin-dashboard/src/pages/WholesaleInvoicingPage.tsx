@@ -14,6 +14,7 @@ import {
   raiseTradeInvoice,
   resolveMismatch,
   waiveMissing,
+  chargeMissing,
   generateInvoicePdf,
   sendInvoiceToCustomer,
   type TradeAccount,
@@ -59,8 +60,13 @@ export default function WholesaleInvoicingPage() {
 
   const [resolveTarget, setResolveTarget] = useState<ReadyToInvoiceDelivery | null>(null);
   const [resolveText, setResolveText] = useState('');
+  // Wholesale audit, 2026-09-26: the decision sets the billed quantity per
+  // mismatched line — the shop's figure, ours, or another.
+  const [resolveQty, setResolveQty] = useState<Record<number, string>>({});
   const [waiveTarget, setWaiveTarget] = useState<ReadyToInvoiceDelivery | null>(null);
   const [waiveReason, setWaiveReason] = useState('');
+  const [chargeTarget, setChargeTarget] = useState<ReadyToInvoiceDelivery | null>(null);
+  const [chargeReason, setChargeReason] = useState('');
 
   usePageTitle(account?.shop_name ? `Invoice — ${account.shop_name}` : 'Wholesale invoicing');
 
@@ -170,14 +176,50 @@ export default function WholesaleInvoicingPage() {
     }
   };
 
+  const openResolve = (d: ReadyToInvoiceDelivery) => {
+    setResolveTarget(d);
+    setResolveText('');
+    const initial: Record<number, string> = {};
+    (d.lines ?? []).filter((l) => l.mismatch).forEach((l) => { initial[l.id] = String(l.qty_sold); });
+    setResolveQty(initial);
+  };
+
   const handleResolve = async () => {
     if (!resolveTarget || !resolveText.trim()) return;
+    const lines = (resolveTarget.lines ?? [])
+      .filter((l) => l.mismatch && resolveQty[l.id] !== undefined)
+      .map((l) => ({ line_id: l.id, sold_qty: Number(resolveQty[l.id]) }));
+    for (const l of resolveTarget.lines ?? []) {
+      if (!l.mismatch) continue;
+      const max = l.qty_sent - l.counted_return_qty;
+      const n = Number(resolveQty[l.id]);
+      if (!Number.isInteger(n) || n < 0 || n > max) {
+        setError(`${l.item_name}: sold must be a whole number between 0 and ${max}.`);
+        return;
+      }
+    }
     setSaving(true);
     setError('');
     try {
-      await resolveMismatch(resolveTarget.id, { decision: resolveText.trim() });
+      await resolveMismatch(resolveTarget.id, { decision: resolveText.trim(), lines });
       setResolveTarget(null);
       setResolveText('');
+      if (accountId) await loadDeliveries(accountId);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCharge = async () => {
+    if (!chargeTarget || !chargeReason.trim()) return;
+    setSaving(true);
+    setError('');
+    try {
+      await chargeMissing(chargeTarget.id, { reason: chargeReason.trim() });
+      setChargeTarget(null);
+      setChargeReason('');
       if (accountId) await loadDeliveries(accountId);
     } catch (e) {
       setError((e as Error).message);
@@ -330,7 +372,7 @@ export default function WholesaleInvoicingPage() {
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
             <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
-              Only reconciled deliveries with nothing left blocking appear here. Mismatches must be resolved; disputed missing stock can be waived.
+              Only reconciled deliveries with nothing left blocking appear here. Mismatches must be resolved; disputed missing stock can be charged or waived.
             </p>
             {canInvoice && selectableIds.length > 0 && (
               <Btn variant="secondary" onClick={toggleAll}>
@@ -383,7 +425,7 @@ export default function WholesaleInvoicingPage() {
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
                             <Badge color="orange">Mismatch — blocked</Badge>
                             {canInvoice && (
-                              <Btn variant="secondary" onClick={() => { setResolveTarget(d); setResolveText(''); }}>
+                              <Btn variant="secondary" onClick={() => openResolve(d)} aria-label={`Resolve ${d.delivery_number}`}>
                                 Resolve
                               </Btn>
                             )}
@@ -392,13 +434,27 @@ export default function WholesaleInvoicingPage() {
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
                             <Badge color="red">Missing stock — needs decision</Badge>
                             {canInvoice && (
-                              <Btn variant="secondary" onClick={() => { setWaiveTarget(d); setWaiveReason(''); }}>
-                                Waive charge
-                              </Btn>
+                              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                <Btn variant="secondary" onClick={() => { setChargeTarget(d); setChargeReason(''); }} aria-label={`Charge missing ${d.delivery_number}`}>
+                                  Charge them
+                                </Btn>
+                                <Btn variant="secondary" onClick={() => { setWaiveTarget(d); setWaiveReason(''); }} aria-label={`Waive missing ${d.delivery_number}`}>
+                                  Waive charge
+                                </Btn>
+                              </div>
                             )}
                           </div>
                         ) : (
-                          <Badge color="green">Ready</Badge>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
+                            <Badge color="green">Ready</Badge>
+                            {d.missing_charge_forced && <Badge color="orange">Missing charged</Badge>}
+                            {d.missing_charge_waived && <Badge color="gray">Missing waived</Badge>}
+                            {canInvoice && d.missing_qty > 0 && !d.missing_charge_forced && d.missing_policy === 'write_off' && (
+                              <Btn variant="secondary" small onClick={() => { setChargeTarget(d); setChargeReason(''); }} aria-label={`Charge missing ${d.delivery_number}`}>
+                                Charge the {d.missing_qty} missing
+                              </Btn>
+                            )}
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -482,20 +538,75 @@ export default function WholesaleInvoicingPage() {
       )}
 
       {resolveTarget && (
-        <Modal title={`Resolve mismatch — ${resolveTarget.delivery_number}`} onClose={() => setResolveTarget(null)}>
+        <Modal title={`Resolve mismatch — ${resolveTarget.delivery_number}`} onClose={() => setResolveTarget(null)} maxWidth={560}>
           <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
-            The shop&apos;s reported sold count and what we counted on return disagree. Write what you decided — e.g. accept the shop count or accept our count.
+            The shop&apos;s reported sold count and what we counted on return disagree. Pick the quantity to bill for each line — whatever was sent and neither returned nor sold is treated as missing under this shop&apos;s policy.
           </p>
+          {(resolveTarget.lines ?? []).filter((l) => l.mismatch).map((l) => {
+            const ours = l.qty_sent - l.counted_return_qty;
+            const shop = l.reported_sold_qty ?? ours;
+            const current = resolveQty[l.id] ?? String(l.qty_sold);
+            return (
+              <div key={l.id} data-testid={`resolve-line-${l.id}`} style={{ marginBottom: 12, padding: '10px 12px', border: '1px solid var(--color-border)', borderRadius: 8 }}>
+                <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>
+                  {l.item_name} <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>— sent {l.qty_sent}, {l.counted_return_qty} came back</span>
+                </div>
+                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 13 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, minHeight: 36, cursor: 'pointer' }}>
+                    <input type="radio" name={`resolve-${l.id}`} checked={current === String(shop)} onChange={() => setResolveQty((p) => ({ ...p, [l.id]: String(shop) }))} />
+                    Shop says {shop}
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, minHeight: 36, cursor: 'pointer' }}>
+                    <input type="radio" name={`resolve-${l.id}`} checked={current === String(ours)} onChange={() => setResolveQty((p) => ({ ...p, [l.id]: String(ours) }))} />
+                    We count {ours}
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, minHeight: 36 }}>
+                    Bill
+                    <Input
+                      type="number"
+                      min={0}
+                      max={ours}
+                      value={current}
+                      onChange={(v) => setResolveQty((p) => ({ ...p, [l.id]: v }))}
+                      aria-label={`Bill sold quantity for ${l.item_name}`}
+                      style={{ width: 80 }}
+                    />
+                  </label>
+                </div>
+              </div>
+            );
+          })}
           <textarea
             value={resolveText}
             onChange={(e) => setResolveText(e.target.value)}
-            rows={4}
+            rows={3}
             style={textareaStyle}
             placeholder="Decision and notes…"
+            aria-label="Mismatch decision"
           />
           <ModalActions>
             <Btn variant="secondary" onClick={() => setResolveTarget(null)}>Cancel</Btn>
             <Btn onClick={() => void handleResolve()} disabled={saving || !resolveText.trim()}>Save decision</Btn>
+          </ModalActions>
+        </Modal>
+      )}
+
+      {chargeTarget && (
+        <Modal title={`Charge missing stock — ${chargeTarget.delivery_number}`} onClose={() => setChargeTarget(null)}>
+          <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
+            Bill the shop for the {chargeTarget.missing_qty} that did not come back, at the stamped price, on this delivery only.
+          </p>
+          <textarea
+            value={chargeReason}
+            onChange={(e) => setChargeReason(e.target.value)}
+            rows={3}
+            style={textareaStyle}
+            placeholder="Reason for charging…"
+            aria-label="Charge reason"
+          />
+          <ModalActions>
+            <Btn variant="secondary" onClick={() => setChargeTarget(null)}>Cancel</Btn>
+            <Btn onClick={() => void handleCharge()} disabled={saving || !chargeReason.trim()}>Charge missing stock</Btn>
           </ModalActions>
         </Modal>
       )}

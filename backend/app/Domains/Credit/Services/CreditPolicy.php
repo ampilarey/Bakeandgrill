@@ -91,4 +91,13 @@ final class CreditPolicy
             ? 'Credit accounts are closed — no new charges. Take another tender.'
             : 'Credit accounts are not accepting new customers.';
     }
+
+    /**
+     * The same refusal for the wholesale side (audit, 2026-09-26): closed
+     * mode stops dispatch on account and new invoices, not just the till.
+     */
+    public static function closedWholesaleMessage(): string
+    {
+        return 'Credit accounts are closed — no new wholesale charges. Reopen credit in Settings → Credit accounts, or take payment up front.';
+    }
 }

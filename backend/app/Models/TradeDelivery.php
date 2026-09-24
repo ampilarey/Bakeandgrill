@@ -43,10 +43,15 @@ class TradeDelivery extends Model
         'missing_charge_waived',
         'missing_waive_reason',
         'missing_waived_by',
+        'missing_charge_forced',
+        'missing_force_reason',
+        'missing_forced_by',
         'self_reconciled',
         'reported_by',
         'reported_by_customer_id',
         'reported_at',
+        'sales_nudged_at',
+        'unreconciled_alerted_at',
         'credit_override_reason',
         'credit_override_by',
     ];
@@ -58,17 +63,37 @@ class TradeDelivery extends Model
             'expected_return_at' => 'datetime',
             'reconciled_at' => 'datetime',
             'reported_at' => 'datetime',
+            'sales_nudged_at' => 'datetime',
+            'unreconciled_alerted_at' => 'datetime',
             'invoiced_at' => 'datetime',
             'mismatch_resolved_at' => 'datetime',
             'has_mismatch' => 'boolean',
             'self_reconciled' => 'boolean',
             'missing_charge_waived' => 'boolean',
+            'missing_charge_forced' => 'boolean',
         ];
     }
 
     public function mismatchIsBlocking(): bool
     {
         return (bool) $this->has_mismatch && $this->mismatch_resolved_at === null;
+    }
+
+    /**
+     * Whether missing stock on this delivery is billed: the account's policy
+     * says charge, or the owner forced the charge on this delivery; never
+     * when it was waived.
+     */
+    public function missingIsChargeable(?TradeAccount $account): bool
+    {
+        if ($this->missing_charge_waived) {
+            return false;
+        }
+        if ($this->missing_charge_forced) {
+            return true;
+        }
+
+        return ($account?->missing_policy ?? TradeAccount::MISSING_CHARGE) === TradeAccount::MISSING_CHARGE;
     }
 
     public function tradeAccount(): BelongsTo

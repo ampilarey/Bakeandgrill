@@ -49,8 +49,24 @@ class TradeInvoiceController extends Controller
             }
 
             $missingBlocking = $account->missing_policy === TradeAccount::MISSING_DISPUTE
-                && ! $d->missing_charge_waived
+                && !$d->missing_charge_waived
+                && !$d->missing_charge_forced
                 && $missingQty > 0;
+
+            // Wholesale audit, 2026-09-26: the resolve screen shows both
+            // counts per line so the decision can set the billed quantity.
+            $lines = $d->lines->map(fn ($line) => [
+                'id' => $line->id,
+                'item_name' => $line->item?->name ?? 'Item',
+                'qty_sent' => (int) $line->qty_sent,
+                'counted_return_qty' => (int) ($line->counted_return_qty ?? 0),
+                'reported_sold_qty' => $line->reported_sold_qty !== null ? (int) $line->reported_sold_qty : null,
+                'qty_sold' => (int) $line->qty_sold,
+                'qty_missing' => (int) $line->qty_missing,
+                'unit_price_laar' => (int) $line->unit_price_laar,
+                'mismatch' => $line->reported_sold_qty !== null
+                    && (int) $line->reported_sold_qty !== (int) $line->qty_sent - (int) ($line->counted_return_qty ?? 0),
+            ])->values();
 
             return [
                 'id' => $d->id,
@@ -63,8 +79,12 @@ class TradeInvoiceController extends Controller
                 'mismatch_blocking' => $d->mismatchIsBlocking(),
                 'missing_qty' => $missingQty,
                 'missing_blocking' => $missingBlocking,
+                'missing_policy' => $account->missing_policy,
+                'missing_charge_waived' => (bool) $d->missing_charge_waived,
+                'missing_charge_forced' => (bool) $d->missing_charge_forced,
                 'self_reconciled' => (bool) $d->self_reconciled,
                 'lines_count' => $d->lines->count(),
+                'lines' => $lines,
             ];
         })->filter(fn (array $row) => $row['invoiceable_laar'] > 0 || $row['mismatch_blocking'] || $row['missing_blocking'])
             ->values();
@@ -112,15 +132,43 @@ class TradeInvoiceController extends Controller
         $delivery = TradeDelivery::findOrFail($id);
         $validated = $request->validate([
             'decision' => ['required', 'string', 'max:2000'],
+            'lines' => ['nullable', 'array'],
+            'lines.*.line_id' => ['required', 'integer'],
+            'lines.*.sold_qty' => ['required', 'integer', 'min:0'],
         ]);
 
-        $delivery = $this->invoices->resolveMismatch($delivery, $request->user(), $validated['decision']);
+        $decisions = [];
+        foreach ($validated['lines'] ?? [] as $row) {
+            $decisions[(int) $row['line_id']] = (int) $row['sold_qty'];
+        }
+
+        $delivery = $this->invoices->resolveMismatch($delivery, $request->user(), $validated['decision'], $decisions);
 
         return response()->json([
             'delivery' => [
                 'id' => $delivery->id,
                 'delivery_number' => $delivery->delivery_number,
                 'mismatch_blocking' => $delivery->mismatchIsBlocking(),
+                'lines' => $delivery->lines->map(fn ($l) => ['id' => $l->id, 'qty_sold' => (int) $l->qty_sold, 'qty_missing' => (int) $l->qty_missing])->values(),
+            ],
+        ]);
+    }
+
+    public function chargeMissing(Request $request, int $id): JsonResponse
+    {
+        $delivery = TradeDelivery::findOrFail($id);
+        $validated = $request->validate([
+            'reason' => ['required', 'string', 'max:500'],
+        ]);
+
+        $delivery = $this->invoices->chargeMissing($delivery, $request->user(), $validated['reason']);
+
+        return response()->json([
+            'delivery' => [
+                'id' => $delivery->id,
+                'delivery_number' => $delivery->delivery_number,
+                'missing_blocking' => false,
+                'missing_charge_forced' => true,
             ],
         ]);
     }
@@ -169,32 +217,46 @@ class TradeInvoiceController extends Controller
                 'due_date' => $inv->due_date?->toDateString(),
                 'total_laar' => (int) $inv->total_laar,
                 'amount_paid_laar' => (int) ($inv->amount_paid_laar ?? 0),
+                'credited_laar' => (int) ($inv->credited_laar ?? 0),
+                'written_off_laar' => (int) ($inv->written_off_laar ?? 0),
                 'balance_laar' => $balance,
                 'status' => $inv->status,
+                'display_status' => $inv->displayStatusLabel(),
                 'is_overdue' => $overdue,
+                'can_credit' => !in_array($inv->status, ['void', 'cancelled'], true) && (int) $inv->total_laar - (int) $inv->credited_laar > 0,
                 'gst_period_key' => $inv->gst_period_key,
                 'gst_period_differs_from_issue' => $inv->gstPeriodDiffersFromIssue(),
             ];
         });
+
+        $ledger = CustomerCreditLedger::query()
+            ->where('customer_id', $customer->id)
+            ->orderBy('id')
+            ->get();
+
+        // A payment may have covered several invoices; the ledger row it
+        // wrote remembers which (wholesale audit, 2026-09-26).
+        $appliedByPayment = $ledger->whereNotNull('payment_id')->keyBy('payment_id');
 
         $paymentRows = Payment::query()
             ->whereIn('invoice_id', $invoices->pluck('id'))
             ->whereIn('status', ['confirmed', 'paid', 'completed'])
             ->orderByDesc('processed_at')
             ->get()
-            ->map(fn (Payment $p) => [
-                'id' => $p->id,
-                'amount_laar' => (int) $p->amount_laar,
-                'method' => $p->method,
-                'processed_at' => $p->processed_at?->toIso8601String() ?? $p->created_at?->toIso8601String(),
-                'reference_number' => $p->reference_number,
-                'invoice_ids' => [$p->invoice_id],
-            ]);
+            ->map(function (Payment $p) use ($appliedByPayment) {
+                $applied = $appliedByPayment->get($p->id)?->applied_invoices ?? [];
+                $ids = array_values(array_unique(array_map(fn ($a) => (int) $a['invoice_id'], $applied)));
 
-        $ledger = CustomerCreditLedger::query()
-            ->where('customer_id', $customer->id)
-            ->orderBy('id')
-            ->get();
+                return [
+                    'id' => $p->id,
+                    'amount_laar' => (int) $p->amount_laar,
+                    'method' => $p->method,
+                    'processed_at' => $p->processed_at?->toIso8601String() ?? $p->created_at?->toIso8601String(),
+                    'reference_number' => $p->reference_number,
+                    'invoice_ids' => $ids !== [] ? $ids : [$p->invoice_id],
+                    'applied' => $applied,
+                ];
+            });
 
         $running = 0;
         $entries = $ledger->map(function (CustomerCreditLedger $row) use (&$running) {
@@ -203,10 +265,11 @@ class TradeInvoiceController extends Controller
             $credit = $row->amount_laar < 0 ? (int) abs($row->amount_laar) : 0;
 
             return [
-                'id' => 'ledger-'.$row->id,
-                'type' => match ($row->type) {
-                    'charge' => 'invoice',
-                    'payment' => 'payment',
+                'id' => 'ledger-' . $row->id,
+                'type' => match (true) {
+                    $row->type === 'charge' => 'invoice',
+                    $row->type === 'payment' => 'payment',
+                    $row->method === 'credit_note' => 'credit_note',
                     default => 'adjustment',
                 },
                 'date' => $row->created_at?->toDateString(),
@@ -225,8 +288,10 @@ class TradeInvoiceController extends Controller
             'statement' => [
                 'exposure' => $exposure->toArray(),
                 'balance_owed_laar' => $exposure->balanceOwedLaar,
+                'credit_in_hand_laar' => $exposure->creditInHandLaar,
                 'holding_unbilled_laar' => $exposure->holdingUnbilledLaar,
                 'overdue_laar' => $overdueLaar,
+                'account_active' => (bool) $account->is_active,
                 'invoices' => $invoiceRows->values(),
                 'payments' => $paymentRows->values(),
                 'entries' => $entries->values(),
@@ -241,7 +306,7 @@ class TradeInvoiceController extends Controller
         abort_if($customer === null, 422, 'Trade account has no customer.');
 
         $validated = $request->validate([
-            'customer_id' => ['required', 'integer', 'in:'.$customer->id],
+            'customer_id' => ['required', 'integer', 'in:' . $customer->id],
             'amount_laar' => ['required', 'integer', 'min:1'],
             'method' => ['required', 'in:cash,card,bank_transfer'],
             'idempotency_key' => ['required', 'string', 'max:120'],
@@ -278,9 +343,15 @@ class TradeInvoiceController extends Controller
         $invoice = Invoice::findOrFail($id);
         $validated = $request->validate([
             'credit_note_reason' => ['required', 'string', 'max:500'],
+            'amount_laar' => ['nullable', 'integer', 'min:1'],
         ]);
 
-        $cn = $this->invoices->createCreditNote($invoice, $request->user(), $validated['credit_note_reason']);
+        $cn = $this->invoices->createCreditNote(
+            $invoice,
+            $request->user(),
+            $validated['credit_note_reason'],
+            isset($validated['amount_laar']) ? (int) $validated['amount_laar'] : null,
+        );
 
         return response()->json([
             'credit_note' => $this->formatInvoice($cn),
@@ -298,7 +369,10 @@ class TradeInvoiceController extends Controller
             'total_laar' => (int) $invoice->total_laar,
             'total' => (float) $invoice->total,
             'amount_paid_laar' => (int) ($invoice->amount_paid_laar ?? 0),
+            'credited_laar' => (int) ($invoice->credited_laar ?? 0),
+            'written_off_laar' => (int) ($invoice->written_off_laar ?? 0),
             'balance_laar' => $invoice->balanceDueLaar(),
+            'display_status' => $invoice->displayStatusLabel(),
             'issue_date' => $invoice->issue_date?->toDateString(),
             'due_date' => $invoice->due_date?->toDateString(),
             'gst_period_key' => $invoice->gst_period_key,

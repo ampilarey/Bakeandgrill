@@ -153,6 +153,29 @@ Schedule::command('credit:send-payment-reminders')
     ->onFailure($alertOnFailure('credit:send-payment-reminders'))
     ->after($trackSuccess('credit:send-payment-reminders'));
 
+// Wholesale chasing (audit, 2026-09-26): owners hear about money 30/60 days
+// late, shops are nudged to report sales, stale deliveries reach the owners,
+// billing cycles prompt an invoice, and every shop gets a monthly statement.
+Schedule::command('trade:alert-overdue')
+    ->dailyAt('09:05')
+    ->onFailure($alertOnFailure('trade:alert-overdue'))
+    ->after($trackSuccess('trade:alert-overdue'));
+
+Schedule::command('trade:billing-reminder')
+    ->dailyAt('09:15')
+    ->onFailure($alertOnFailure('trade:billing-reminder'))
+    ->after($trackSuccess('trade:billing-reminder'));
+
+Schedule::command('trade:chase-unreconciled')
+    ->dailyAt('10:30')
+    ->onFailure($alertOnFailure('trade:chase-unreconciled'))
+    ->after($trackSuccess('trade:chase-unreconciled'));
+
+Schedule::command('trade:send-statements')
+    ->monthlyOn(1, '10:00')
+    ->onFailure($alertOnFailure('trade:send-statements'))
+    ->after($trackSuccess('trade:send-statements'));
+
 // Refunds: owner daily summary (deterrent — who asked, who approved, no-contact)
 Schedule::command('refunds:send-daily-summary')
     ->dailyAt('08:45')

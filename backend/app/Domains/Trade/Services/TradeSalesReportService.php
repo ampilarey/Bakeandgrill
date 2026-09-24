@@ -18,8 +18,10 @@ use Illuminate\Validation\ValidationException;
  */
 final class TradeSalesReportService
 {
+    public function __construct(private readonly TradeSmsNotifier $sms) {}
+
     /**
-     * @param  list<array{line_id: int, sold_qty: int}>  $lines
+     * @param list<array{line_id: int, sold_qty: int}> $lines
      */
     public function report(
         Customer $customer,
@@ -37,7 +39,7 @@ final class TradeSalesReportService
 
         $account = $this->requireTradeAccount($customer);
 
-        return DB::transaction(function () use ($customer, $account, $deliveryId, $lines, $idempotencyKey) {
+        $delivery = DB::transaction(function () use ($customer, $account, $deliveryId, $lines, $idempotencyKey) {
             $again = TradeSalesReportSubmission::query()
                 ->where('idempotency_key', $idempotencyKey)
                 ->lockForUpdate()
@@ -111,6 +113,15 @@ final class TradeSalesReportService
 
             return $delivery->fresh(['lines.item']);
         });
+
+        // Wholesale audit, 2026-09-26: staff hear that the shop has reported.
+        try {
+            $this->sms->sendSalesReportedToOwners($delivery);
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
+        return $delivery;
     }
 
     public function requireTradeAccount(Customer $customer): TradeAccount
@@ -127,11 +138,14 @@ final class TradeSalesReportService
         return $account;
     }
 
+    /**
+     * Read access does not need an active account: a shop that was
+     * deactivated with money owing can still see what it is for.
+     */
     public function findOwnDelivery(Customer $customer, int $deliveryId): ?TradeDelivery
     {
         $account = TradeAccount::query()
             ->where('customer_id', $customer->id)
-            ->where('is_active', true)
             ->first();
 
         if ($account === null) {

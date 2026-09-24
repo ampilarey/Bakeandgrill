@@ -16,7 +16,6 @@ use Illuminate\Support\Facades\DB;
  */
 final class TradeAnalyticsService
 {
-
     /**
      * @return list<array<string, mixed>>
      */
@@ -213,8 +212,8 @@ final class TradeAnalyticsService
             ->whereNotNull('trade_account_id')
             ->where('type', 'sale')
             ->whereNotIn('status', ['paid', 'void', 'cancelled', 'draft'])
-            ->whereRaw('total_laar > COALESCE(amount_paid_laar, 0)')
-            ->get(['id', 'trade_account_id', 'due_date', 'total_laar', 'amount_paid_laar']);
+            ->whereRaw(Invoice::OPEN_BALANCE_SQL)
+            ->get(['id', 'trade_account_id', 'status', 'due_date', 'total_laar', 'amount_paid_laar', 'credited_laar', 'written_off_laar']);
 
         $byAccount = [];
         foreach ($invoices as $inv) {
@@ -225,7 +224,7 @@ final class TradeAnalyticsService
                 'days_31_60_laar' => 0,
                 'days_60_plus_laar' => 0,
             ];
-            $balance = max(0, (int) $inv->total_laar - (int) ($inv->amount_paid_laar ?? 0));
+            $balance = $inv->balanceDueLaar();
             if ($balance <= 0) {
                 continue;
             }
@@ -269,11 +268,13 @@ final class TradeAnalyticsService
                         ELSE
                             CASE WHEN ((l.qty_sold + CASE
                                 WHEN d.missing_charge_waived = 1 THEN 0
+                                WHEN d.missing_charge_forced = 1 THEN l.qty_missing
                                 WHEN a.missing_policy = ? THEN 0
                                 ELSE l.qty_missing
                             END) - COALESCE(alloc.qty, 0)) > 0
                                 THEN ((l.qty_sold + CASE
                                     WHEN d.missing_charge_waived = 1 THEN 0
+                                    WHEN d.missing_charge_forced = 1 THEN l.qty_missing
                                     WHEN a.missing_policy = ? THEN 0
                                     ELSE l.qty_missing
                                 END) - COALESCE(alloc.qty, 0)) * l.unit_price_laar
@@ -302,10 +303,11 @@ final class TradeAnalyticsService
                 'days_31_60_laar' => 0,
                 'days_60_plus_laar' => 0,
             ];
-            $balanceOwed = (int) ($account->customer?->credit_balance_laar ?? 0);
+            $rawBalance = (int) ($account->customer?->credit_balance_laar ?? 0);
+            $balanceOwed = max(0, $rawBalance);
             $holding = (int) ($holdingRows[$account->id] ?? 0);
             $limit = (int) ($account->customer?->credit_limit_laar ?? 0);
-            $exposure = $balanceOwed + $holding;
+            $exposure = $rawBalance + $holding;
             $outstanding = $buckets['current_laar'] + $buckets['days_1_30_laar']
                 + $buckets['days_31_60_laar'] + $buckets['days_60_plus_laar'];
             if ($outstanding === 0 && $exposure === 0) {
@@ -314,6 +316,7 @@ final class TradeAnalyticsService
             $out[] = [
                 'trade_account_id' => $account->id,
                 'shop_name' => $account->shop_name,
+                'credit_in_hand_laar' => max(0, -$rawBalance),
                 'current_laar' => $buckets['current_laar'],
                 'days_1_30_laar' => $buckets['days_1_30_laar'],
                 'days_31_60_laar' => $buckets['days_31_60_laar'],

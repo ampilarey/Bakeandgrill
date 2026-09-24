@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Trade\Services\TradeCreditExposureService;
 use App\Domains\Trade\Services\TradePriceResolver;
 use App\Models\Customer;
 use App\Models\Item;
@@ -23,6 +24,7 @@ class TradeAccountController extends Controller
 {
     public function __construct(
         private readonly TradePriceResolver $priceResolver,
+        private readonly TradeCreditExposureService $exposure,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -109,11 +111,32 @@ class TradeAccountController extends Controller
         ]);
     }
 
-    public function deactivate(int $id): JsonResponse
+    public function deactivate(Request $request, int $id): JsonResponse
     {
         $account = TradeAccount::with([
             'customer:id,name,phone,credit_enabled,credit_status,credit_limit_laar,credit_balance_laar,credit_payment_terms_days',
         ])->findOrFail($id);
+
+        // Wholesale audit, 2026-09-26: a shop that still owes money, or
+        // still holds our stock, is not closed by accident. The owner can
+        // insist; the shop keeps read-only access to its statement and can
+        // still pay online.
+        if ($account->customer && !$request->boolean('force')) {
+            $exposure = $this->exposure->forCustomer($account->customer);
+            if ($exposure->balanceOwedLaar > 0 || $exposure->holdingUnbilledLaar > 0) {
+                return response()->json([
+                    'message' => sprintf(
+                        '%s still owes MVR %s and holds MVR %s of our stock. Collect it first, or deactivate anyway — they keep read-only access to the statement and can still pay.',
+                        $account->shop_name,
+                        number_format($exposure->balanceOwedLaar / 100, 2, '.', ','),
+                        number_format($exposure->holdingUnbilledLaar / 100, 2, '.', ','),
+                    ),
+                    'needs_force' => true,
+                    'balance_owed_laar' => $exposure->balanceOwedLaar,
+                    'holding_unbilled_laar' => $exposure->holdingUnbilledLaar,
+                ], 422);
+            }
+        }
 
         $account->update(['is_active' => false]);
 
@@ -255,7 +278,8 @@ class TradeAccountController extends Controller
             'contact_phone' => ['nullable', 'string', 'max:40'],
             'settlement_mode' => ['sometimes', Rule::in(['sale_or_return', 'firm_sale'])],
             'billing_cycle' => ['sometimes', Rule::in(['weekly', 'fortnightly', 'monthly', 'per_delivery'])],
-            'payment_terms_days' => ['nullable', 'integer', 'min:0', 'max:365'],
+            // Same 7–90 day range as the customer's credit terms (audit, 2026-09-26).
+            'payment_terms_days' => ['nullable', 'integer', 'min:7', 'max:90'],
             'missing_policy' => ['sometimes', Rule::in(['charge', 'write_off', 'dispute'])],
             'default_discount_bp' => ['nullable', 'integer', 'min:0', 'max:10000'],
             'delivery_days' => ['nullable', 'array'],
@@ -295,6 +319,7 @@ class TradeAccountController extends Controller
             'missing_policy' => $account->missing_policy,
             'default_discount_bp' => $account->default_discount_bp,
             'delivery_days' => $account->delivery_days,
+            'delivers_today' => in_array(strtolower(now()->format('l')), $account->delivery_days ?? [], true),
             'is_active' => (bool) $account->is_active,
             'notes' => $account->notes,
             'created_at' => $account->created_at?->toIso8601String(),
@@ -306,13 +331,14 @@ class TradeAccountController extends Controller
                 'credit_enabled' => (bool) $customer->credit_enabled,
                 'credit_status' => $customer->credit_status,
                 'credit_limit_laar' => $customer->credit_limit_laar,
-                'credit_balance_laar' => $customer->credit_balance_laar,
+                'credit_balance_laar' => max(0, (int) $customer->credit_balance_laar),
+                'credit_in_hand_laar' => max(0, -(int) $customer->credit_balance_laar),
                 'credit_payment_terms_days' => $customer->credit_payment_terms_days,
             ] : null,
         ];
 
         if ($detailed) {
-            $payload['credit_warning'] = $customer && ! $customer->credit_enabled
+            $payload['credit_warning'] = $customer && !$customer->credit_enabled
                 ? 'Credit is not enabled for this customer. Dispatching to this shop on account will not be possible until credit is approved.'
                 : null;
         }

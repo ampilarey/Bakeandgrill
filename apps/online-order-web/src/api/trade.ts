@@ -36,7 +36,11 @@ export type TradeStatementInvoice = {
 
 export type TradeStatement = {
   balance_owed_mvr: number;
+  /** A paid invoice was credit-noted: this comes off the next invoice. */
+  credit_in_hand_mvr?: number;
   overdue_mvr: number;
+  /** False once the account is closed: statement and payment still work, sales cannot be reported. */
+  account_active?: boolean;
   invoices: TradeStatementInvoice[];
   payments: Array<{
     id: number;

@@ -61,6 +61,9 @@ final class CreditEligibilityService
             'status' => $customer->credit_status ?? 'blocked',
             'limit_laar' => (int) ($customer->credit_limit_laar ?? 0),
             'balance_laar' => (int) ($customer->credit_balance_laar ?? 0),
+            // Below zero means the customer is in credit (a paid invoice was
+            // credit-noted); the next charge is settled from this first.
+            'credit_in_hand_laar' => max(0, -(int) ($customer->credit_balance_laar ?? 0)),
             'available_laar' => $available,
             'can_charge' => $canCharge,
             'credit_notes' => $customer->credit_notes,
@@ -83,7 +86,7 @@ final class CreditEligibilityService
             ->where('customer_id', $customer->id)
             ->where('type', 'sale')
             ->whereIn('status', ['sent', 'overdue'])
-            ->whereRaw('total_laar > amount_paid_laar')
+            ->whereRaw(Invoice::OPEN_BALANCE_SQL)
             ->whereNotNull('due_date')
             ->orderBy('due_date')
             ->value('due_date');

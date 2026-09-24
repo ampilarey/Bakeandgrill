@@ -150,11 +150,27 @@ export default function WholesaleAccountPage() {
     if (!account) return;
     if (!window.confirm(`Deactivate ${account.shop_name}? You can still see the history later.`)) return;
     setSaving(true);
+    setError('');
     try {
       const res = await deactivateTradeAccount(account.id);
       setAccount(res.trade_account);
     } catch (e) {
-      setError((e as Error).message);
+      // Wholesale audit, 2026-09-26: a shop that still owes, or still
+      // holds our stock, is not closed by accident. Say so, then let the
+      // owner insist.
+      const payload = (e as { body?: { needs_force?: boolean; message?: string } }).body;
+      if (payload?.needs_force) {
+        if (window.confirm(`${payload.message ?? 'This shop still owes money.'}\n\nDeactivate anyway?`)) {
+          try {
+            const res = await deactivateTradeAccount(account.id, true);
+            setAccount(res.trade_account);
+          } catch (e2) {
+            setError((e2 as Error).message);
+          }
+        }
+      } else {
+        setError((e as Error).message);
+      }
     } finally {
       setSaving(false);
     }
@@ -357,12 +373,16 @@ export default function WholesaleAccountPage() {
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </select>
+            <p style={helpStyle}>
+              When this comes round and there are reconciled deliveries not yet invoiced, the owners get a text.
+            </p>
           </Field>
 
           <Field label="Payment due (days)">
             <Input
               type="number"
-              min={0}
+              min={7}
+              max={90}
               placeholder={`Same as customer (${account.customer?.credit_payment_terms_days ?? 30})`}
               value={account.payment_terms_days ?? ''}
               disabled={!canManageAccounts}
@@ -376,7 +396,7 @@ export default function WholesaleAccountPage() {
             />
             <p style={helpStyle}>
               Currently using {account.resolved_payment_terms_days} days
-              {account.payment_terms_days == null ? ' (from the customer record)' : ''}.
+              {account.payment_terms_days == null ? ' (from the customer record)' : ''}. Between 7 and 90 days, the same range as customer credit.
             </p>
           </Field>
 
@@ -420,6 +440,7 @@ export default function WholesaleAccountPage() {
           </Field>
 
           <Field label="Usual delivery days">
+            <p style={{ ...helpStyle, margin: '0 0 8px' }}>Shops due today are flagged in the Shops list.</p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {WEEKDAYS.map((day) => {
                 const on = (account.delivery_days ?? []).includes(day);
@@ -495,6 +516,9 @@ export default function WholesaleAccountPage() {
                   <Row label="Status" value={account.customer.credit_status ?? '—'} />
                   <Row label="Limit" value={formatMvrFromLaar(account.customer.credit_limit_laar)} />
                   <Row label="Balance owed" value={formatMvrFromLaar(account.customer.credit_balance_laar)} />
+                  {(account.customer.credit_in_hand_laar ?? 0) > 0 && (
+                    <Row label="In credit (comes off the next invoice)" value={formatMvrFromLaar(account.customer.credit_in_hand_laar)} />
+                  )}
                 </dl>
                 <p style={{ ...helpStyle, marginTop: 12 }}>
                   Change credit limit and status on the customer page — not here.

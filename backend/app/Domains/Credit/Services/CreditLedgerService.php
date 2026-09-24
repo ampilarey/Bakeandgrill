@@ -412,12 +412,30 @@ final class CreditLedgerService
         // (balance + unbilled holding). Invoicing moves value from holding into
         // balance — re-checking available credit would double-count and refuse
         // legitimate invoices when headroom was tied up in consigned stock.
+        // The house-wide "closed" mode does apply (wholesale audit, 2026-09-26).
+        if (!CreditPolicy::acceptsNewCharges()) {
+            abort(422, CreditPolicy::closedWholesaleMessage());
+        }
         if (!$locked->credit_enabled || ($locked->credit_status ?? '') !== 'active') {
             abort(422, 'Customer credit must be enabled and active to invoice on account.');
         }
 
-        $newBalance = (int) $locked->credit_balance_laar + $amountLaar;
+        $before = (int) $locked->credit_balance_laar;
+        $newBalance = $before + $amountLaar;
         $locked->update(['credit_balance_laar' => $newBalance]);
+
+        // Credit in hand (a paid invoice that was later credit-noted) pays
+        // the next invoice first, so the shop is not asked for money it
+        // has already handed over.
+        $fromCredit = $before < 0 ? min(-$before, $amountLaar) : 0;
+        if ($fromCredit > 0) {
+            $invoice->update(array_merge(
+                ['amount_paid_laar' => (int) $invoice->amount_paid_laar + $fromCredit],
+                $fromCredit >= $amountLaar
+                    ? ['status' => 'paid', 'paid_at' => now(), 'payment_method' => 'credit_in_hand', 'payment_reference' => null]
+                    : [],
+            ));
+        }
 
         $ledger = CustomerCreditLedger::create([
             'customer_id' => $locked->id,
@@ -429,8 +447,10 @@ final class CreditLedgerService
             'payment_id' => null,
             'method' => 'house_account',
             'recorded_by' => $actor->id,
-            'notes' => 'Wholesale invoice ' . $invoice->invoice_number,
+            'notes' => 'Wholesale invoice ' . $invoice->invoice_number
+                . ($fromCredit > 0 ? sprintf(' (MVR %.2f settled from credit in hand)', $fromCredit / 100) : ''),
             'idempotency_key' => $idempotencyKey,
+            'applied_invoices' => $fromCredit > 0 ? [['invoice_id' => $invoice->id, 'amount_laar' => $fromCredit]] : null,
         ]);
 
         $this->audit->log(
@@ -450,11 +470,18 @@ final class CreditLedgerService
 
     /**
      * Reverse a trade invoice charge when a credit note is raised.
+     *
+     * The balance is not clamped at zero any more (wholesale audit,
+     * 2026-09-26): crediting an invoice the shop already paid leaves them
+     * in credit, and the next invoice is settled from that first. A partial
+     * credit note reduces the parent's balance instead of voiding it.
      */
     public function reverseTradeInvoiceCharge(
         Invoice $parentInvoice,
         Invoice $creditNote,
         User $actor,
+        ?int $amountLaar = null,
+        bool $partial = false,
     ): CustomerCreditLedger {
         $key = 'trade:cn:reverse:' . $creditNote->id;
         $existing = CustomerCreditLedger::where('idempotency_key', $key)->first();
@@ -463,15 +490,16 @@ final class CreditLedgerService
         }
 
         $customer = Customer::lockForUpdate()->findOrFail($parentInvoice->customer_id);
-        $amountLaar = (int) $parentInvoice->total_laar;
-        $newBalance = max(0, (int) $customer->credit_balance_laar - $amountLaar);
+        $amountLaar = $amountLaar ?? ((int) $parentInvoice->total_laar - (int) $parentInvoice->credited_laar);
+        $newBalance = (int) $customer->credit_balance_laar - $amountLaar;
         $customer->update(['credit_balance_laar' => $newBalance]);
 
-        // Reduce amount_paid tracking / reopen voided parent is handled by caller.
-        $parentInvoice->update([
-            'amount_paid_laar' => 0,
-            'paid_at' => null,
-        ]);
+        if ($partial) {
+            $parentInvoice->update(['credited_laar' => (int) $parentInvoice->credited_laar + $amountLaar]);
+            if ($parentInvoice->fresh()->balanceDueLaar() === 0 && $parentInvoice->status !== 'paid') {
+                $parentInvoice->update(['status' => 'paid', 'paid_at' => now(), 'payment_method' => 'credit_note']);
+            }
+        }
 
         $ledger = CustomerCreditLedger::create([
             'customer_id' => $customer->id,
@@ -481,7 +509,8 @@ final class CreditLedgerService
             'invoice_id' => $creditNote->id,
             'method' => 'credit_note',
             'recorded_by' => $actor->id,
-            'notes' => 'Credit note ' . $creditNote->invoice_number . ' reversing ' . $parentInvoice->invoice_number,
+            'notes' => 'Credit note ' . $creditNote->invoice_number . ($partial ? ' against ' : ' reversing ') . $parentInvoice->invoice_number
+                . ($newBalance < 0 ? sprintf(' (shop now in credit MVR %.2f)', -$newBalance / 100) : ''),
             'idempotency_key' => $key,
         ]);
 
@@ -513,6 +542,7 @@ final class CreditLedgerService
         ?string $reference = null,
         ?string $notes = null,
         ?Request $request = null,
+        ?int $tradeAccountId = null,
     ): CustomerCreditLedger {
         $allowedMethods = ['cash', 'card', 'bank_transfer'];
         if (!in_array($method, $allowedMethods, true)) {
@@ -523,14 +553,14 @@ final class CreditLedgerService
             abort(422, 'Repayment amount must be greater than zero.');
         }
 
-        return DB::transaction(function () use ($customer, $amountLaar, $method, $actor, $invoiceIds, $reference, $notes, $request) {
+        return DB::transaction(function () use ($customer, $amountLaar, $method, $actor, $invoiceIds, $reference, $notes, $request, $tradeAccountId) {
             $locked = Customer::lockForUpdate()->findOrFail($customer->id);
             $balance = (int) $locked->credit_balance_laar;
 
             if ($amountLaar > $balance) {
                 abort(422, sprintf(
                     'Repayment exceeds outstanding balance (MVR %.2f).',
-                    $balance / 100,
+                    max(0, $balance) / 100,
                 ));
             }
 
@@ -550,7 +580,7 @@ final class CreditLedgerService
             $newBalance = $balance - $amountLaar;
             $locked->update(['credit_balance_laar' => $newBalance]);
 
-            $this->applyRepaymentToInvoices($locked, $amountLaar, $method, $reference, $invoiceIds);
+            $applied = $this->applyRepaymentToInvoices($locked, $amountLaar, $method, $reference, $invoiceIds, $tradeAccountId);
 
             if ($method === 'cash' && $shift !== null) {
                 CashMovement::create([
@@ -574,6 +604,7 @@ final class CreditLedgerService
                 'method' => $method,
                 'recorded_by' => $actor->id,
                 'notes' => $notes ?? $reference,
+                'applied_invoices' => $applied !== [] ? $applied : null,
             ]);
 
             $this->audit->log(
@@ -623,6 +654,12 @@ final class CreditLedgerService
      * Uncollectable balance is zeroed out via an `adjustment` ledger row
      * with a negative amount. NEVER writes a CashMovement (this money was
      * never received). Balance is clamped at zero.
+     *
+     * Wholesale audit, 2026-09-26: the amount is also applied to the open
+     * invoices it covers (oldest first, or the ones named), so they stop
+     * showing as debt on the ageing report and both statements.
+     *
+     * @param list<int>|null $invoiceIds
      */
     public function writeOff(
         Customer $customer,
@@ -630,6 +667,7 @@ final class CreditLedgerService
         User $actor,
         string $reason,
         ?Request $request = null,
+        ?array $invoiceIds = null,
     ): CustomerCreditLedger {
         if ($amountLaar <= 0) {
             abort(422, 'Write-off amount must be greater than zero.');
@@ -640,19 +678,39 @@ final class CreditLedgerService
             abort(422, 'A reason (5+ chars) is required for a write-off.');
         }
 
-        return DB::transaction(function () use ($customer, $amountLaar, $actor, $trimmedReason, $request) {
+        return DB::transaction(function () use ($customer, $amountLaar, $actor, $trimmedReason, $request, $invoiceIds) {
             $locked = Customer::lockForUpdate()->findOrFail($customer->id);
             $balance = (int) $locked->credit_balance_laar;
 
             if ($amountLaar > $balance) {
                 abort(422, sprintf(
                     'Write-off exceeds outstanding balance (MVR %.2f).',
-                    $balance / 100,
+                    max(0, $balance) / 100,
                 ));
             }
 
             $newBalance = max(0, $balance - $amountLaar);
             $locked->update(['credit_balance_laar' => $newBalance]);
+
+            $applied = [];
+            $remaining = $amountLaar;
+            foreach ($this->openCreditInvoicesQuery($locked->id, $invoiceIds)->get() as $invoice) {
+                if ($remaining <= 0) {
+                    break;
+                }
+                $due = $invoice->balanceDueLaar();
+                if ($due <= 0) {
+                    continue;
+                }
+                $apply = min($remaining, $due);
+                $updates = ['written_off_laar' => (int) $invoice->written_off_laar + $apply];
+                if ($apply >= $due) {
+                    $updates += ['status' => 'paid', 'paid_at' => now(), 'payment_method' => 'writeoff', 'payment_reference' => null];
+                }
+                $invoice->update($updates);
+                $applied[] = ['invoice_id' => $invoice->id, 'amount_laar' => $apply];
+                $remaining -= $apply;
+            }
 
             $ledger = CustomerCreditLedger::create([
                 'customer_id' => $locked->id,
@@ -662,6 +720,7 @@ final class CreditLedgerService
                 'method' => 'writeoff',
                 'recorded_by' => $actor->id,
                 'notes' => 'Write-off: ' . $trimmedReason,
+                'applied_invoices' => $applied !== [] ? $applied : null,
             ]);
 
             $this->audit->log(
@@ -741,6 +800,7 @@ final class CreditLedgerService
 
     /**
      * @param list<int>|null $invoiceIds
+     * @return list<array{invoice_id: int, amount_laar: int}> what went where
      */
     private function applyRepaymentToInvoices(
         Customer $customer,
@@ -748,11 +808,13 @@ final class CreditLedgerService
         string $method,
         ?string $reference,
         ?array $invoiceIds,
-    ): void {
+        ?int $tradeAccountId = null,
+    ): array {
         $remaining = $amountLaar;
+        $applied = [];
 
         /** @var Collection<int, Invoice> $invoices */
-        $invoices = $this->openCreditInvoicesQuery($customer->id, $invoiceIds)->get();
+        $invoices = $this->openCreditInvoicesQuery($customer->id, $invoiceIds, $tradeAccountId)->get();
 
         foreach ($invoices as $invoice) {
             if ($remaining <= 0) {
@@ -768,7 +830,7 @@ final class CreditLedgerService
             $newPaid = (int) $invoice->amount_paid_laar + $apply;
             $updates = ['amount_paid_laar' => $newPaid];
 
-            if ($newPaid >= (int) $invoice->total_laar) {
+            if ($apply >= $due) {
                 $updates['status'] = 'paid';
                 $updates['paid_at'] = now();
                 $updates['payment_method'] = $method;
@@ -776,27 +838,34 @@ final class CreditLedgerService
             }
 
             $invoice->update($updates);
+            $applied[] = ['invoice_id' => $invoice->id, 'amount_laar' => $apply];
             $remaining -= $apply;
         }
+
+        return $applied;
     }
 
     /**
+     * Open sale invoices, oldest first. A wholesale payment names its trade
+     * account so it never lands on the same customer's till credit invoice
+     * (wholesale audit, 2026-09-26).
+     *
      * @param list<int>|null $invoiceIds
      */
-    private function openCreditInvoicesQuery(int $customerId, ?array $invoiceIds)
+    private function openCreditInvoicesQuery(int $customerId, ?array $invoiceIds, ?int $tradeAccountId = null)
     {
         $query = Invoice::query()
             ->where('customer_id', $customerId)
             ->where('type', 'sale')
             ->whereIn('status', ['sent', 'overdue'])
-            ->whereRaw('total_laar > amount_paid_laar');
+            ->whereRaw(Invoice::OPEN_BALANCE_SQL);
 
         if ($invoiceIds !== null && $invoiceIds !== []) {
-            $query->whereIn('id', $invoiceIds)->orderBy('issue_date');
-        } else {
-            $query->orderBy('issue_date');
+            $query->whereIn('id', $invoiceIds);
+        } elseif ($tradeAccountId !== null) {
+            $query->where('trade_account_id', $tradeAccountId);
         }
 
-        return $query;
+        return $query->orderBy('issue_date')->orderBy('id');
     }
 }

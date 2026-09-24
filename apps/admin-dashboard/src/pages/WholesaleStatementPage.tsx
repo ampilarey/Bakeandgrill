@@ -9,6 +9,7 @@ import {
   fetchTradeAccount,
   fetchTradeStatement,
   recordTradePayment,
+  createTradeCreditNote,
   generateInvoicePdf,
   type TradeAccount,
   type TradeStatement,
@@ -31,6 +32,7 @@ export default function WholesaleStatementPage() {
   const navigate = useNavigate();
   const { can } = useCurrentUserPermissions();
   const canRepay = can('customers.credit.repay');
+  const canCredit = can('trade.invoice');
 
   const [account, setAccount] = useState<TradeAccount | null>(null);
   const [statement, setStatement] = useState<TradeStatement | null>(null);
@@ -45,6 +47,13 @@ export default function WholesaleStatementPage() {
   const [payReference, setPayReference] = useState('');
   const [payNotes, setPayNotes] = useState('');
   const [payInvoices, setPayInvoices] = useState<number[]>([]);
+
+  // Wholesale audit, 2026-09-26: credit notes from the statement, full or partial.
+  const [creditTarget, setCreditTarget] = useState<TradeStatementInvoice | null>(null);
+  const [creditReason, setCreditReason] = useState('');
+  const [creditMode, setCreditMode] = useState<'full' | 'partial'>('full');
+  const [creditAmount, setCreditAmount] = useState('');
+  const [creditNotice, setCreditNotice] = useState('');
 
   usePageTitle(account?.shop_name ? `Statement — ${account.shop_name}` : 'Trade statement');
 
@@ -118,6 +127,49 @@ export default function WholesaleStatementPage() {
     }
   };
 
+  const openCreditModal = (inv: TradeStatementInvoice) => {
+    setCreditTarget(inv);
+    setCreditReason('');
+    setCreditMode('full');
+    setCreditAmount('');
+    setCreditNotice('');
+  };
+
+  const creditLeftLaar = creditTarget ? creditTarget.total_laar - (creditTarget.credited_laar ?? 0) : 0;
+
+  const handleCreditNote = async () => {
+    if (!creditTarget || !canCredit || !creditReason.trim()) return;
+    let amountLaar: number | undefined;
+    if (creditMode === 'partial') {
+      const mvrAmt = Number(creditAmount);
+      amountLaar = Math.round(mvrAmt * 100);
+      if (!Number.isFinite(mvrAmt) || amountLaar <= 0 || amountLaar >= creditLeftLaar) {
+        setError(`Enter an amount above zero and below ${mvr(creditLeftLaar)} — or credit the whole invoice.`);
+        return;
+      }
+    }
+    setSaving(true);
+    setError('');
+    try {
+      const res = await createTradeCreditNote(creditTarget.id, {
+        credit_note_reason: creditReason.trim(),
+        amount_laar: amountLaar,
+      });
+      const paid = creditTarget.amount_paid_laar;
+      setCreditNotice(
+        amountLaar === undefined && paid > 0
+          ? `Credit note ${res.credit_note.invoice_number} raised. The shop had paid ${mvr(paid)}; that stays on their account as credit and comes off the next invoice.`
+          : `Credit note ${res.credit_note.invoice_number} raised for ${mvr(res.credit_note.total_laar)}.`,
+      );
+      setCreditTarget(null);
+      await load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handlePdf = async (invoiceId: number) => {
     setPdfLoadingId(invoiceId);
     try {
@@ -182,6 +234,16 @@ export default function WholesaleStatementPage() {
       />
 
       {error && <ErrorMsg message={error} />}
+      {creditNotice && (
+        <div data-testid="credit-note-notice" style={{ marginBottom: 12, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--color-success)', fontSize: 13, color: 'var(--color-text)' }}>
+          {creditNotice}
+        </div>
+      )}
+      {statement.account_active === false && (
+        <div style={{ marginBottom: 12, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, color: 'var(--color-text-secondary)' }}>
+          This account is deactivated. The shop can still see this statement and pay online; nothing new can be dispatched.
+        </div>
+      )}
 
       <div
         data-responsive-grid
@@ -193,6 +255,9 @@ export default function WholesaleStatementPage() {
         }}
       >
         <SummaryCard label="Owes us" value={mvr(statement.balance_owed_laar)} highlight />
+        {(statement.credit_in_hand_laar ?? 0) > 0 && (
+          <SummaryCard label="In credit (comes off next invoice)" value={mvr(statement.credit_in_hand_laar)} />
+        )}
         <SummaryCard label="Holding our stock (unbilled)" value={mvr(statement.holding_unbilled_laar)} />
         <SummaryCard label="Total exposure" value={mvr(exposure.exposure_laar)} />
         <SummaryCard label="Overdue" value={mvr(statement.overdue_laar)} warn={statement.overdue_laar > 0} />
@@ -229,12 +294,22 @@ export default function WholesaleStatementPage() {
                 <td style={tdStyle}>{inv.issue_date}</td>
                 <td style={tdStyle}>{inv.due_date ?? '—'}</td>
                 <td style={tdStyle}>{mvr(inv.total_laar)}</td>
-                <td style={tdStyle}>{mvr(inv.amount_paid_laar)}</td>
+                <td style={tdStyle}>
+                  {mvr(inv.amount_paid_laar)}
+                  {(inv.credited_laar ?? 0) > 0 && (
+                    <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>credited {mvr(inv.credited_laar)}</div>
+                  )}
+                  {(inv.written_off_laar ?? 0) > 0 && (
+                    <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>written off {mvr(inv.written_off_laar)}</div>
+                  )}
+                </td>
                 <td style={tdStyle}>{mvr(inv.balance_laar)}</td>
                 <td style={tdStyle}>
-                  {inv.is_overdue ? <Badge color="red">Overdue</Badge> : (
-                    <Badge color={inv.balance_laar <= 0 ? 'green' : 'orange'}>{inv.status}</Badge>
-                  )}
+                  {inv.status === 'void' ? <Badge color="gray">Credit-noted</Badge>
+                    : (inv.written_off_laar ?? 0) > 0 && inv.balance_laar <= 0 ? <Badge color="gray">Written off</Badge>
+                      : inv.is_overdue ? <Badge color="red">Overdue</Badge> : (
+                        <Badge color={inv.balance_laar <= 0 ? 'green' : 'orange'}>{inv.status}</Badge>
+                      )}
                 </td>
                 <td style={{ ...tdStyle, textAlign: 'right' }}>
                   <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
@@ -243,6 +318,9 @@ export default function WholesaleStatementPage() {
                     </Btn>
                     {canRepay && inv.balance_laar > 0 && (
                       <Btn variant="secondary" onClick={() => openPayModal(inv)}>Pay</Btn>
+                    )}
+                    {canCredit && inv.can_credit !== false && inv.status !== 'void' && (
+                      <Btn variant="secondary" onClick={() => openCreditModal(inv)} aria-label={`Credit note ${inv.invoice_number}`}>Credit note</Btn>
                     )}
                   </div>
                 </td>
@@ -274,7 +352,10 @@ export default function WholesaleStatementPage() {
                 <td style={tdStyle}>{methodLabel(p.method)}</td>
                 <td style={tdStyle}>{p.reference_number ?? '—'}</td>
                 <td style={tdStyle}>
-                  {p.invoice_ids.length > 0 ? p.invoice_ids.map((iid) => {
+                  {p.applied && p.applied.length > 0 ? p.applied.map((a) => {
+                    const inv = statement.invoices.find((i) => i.id === a.invoice_id);
+                    return `${inv?.invoice_number ?? `#${a.invoice_id}`} ${mvr(a.amount_laar)}`;
+                  }).join(', ') : p.invoice_ids.length > 0 ? p.invoice_ids.map((iid) => {
                     const inv = statement.invoices.find((i) => i.id === iid);
                     return inv?.invoice_number ?? `#${iid}`;
                   }).join(', ') : 'Open balance'}
@@ -312,6 +393,52 @@ export default function WholesaleStatementPage() {
             </table>
           </TableCard>
         </>
+      )}
+
+      {creditTarget && (
+        <Modal title={`Credit note — ${creditTarget.invoice_number}`} onClose={() => setCreditTarget(null)}>
+          <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
+            Crediting the whole invoice voids it and frees its deliveries to be invoiced again.
+            {creditTarget.amount_paid_laar > 0 && (
+              <> The shop has paid <strong>{mvr(creditTarget.amount_paid_laar)}</strong> on it; that stays on their account as credit and comes off the next invoice.</>
+            )}
+            {' '}A partial credit note only reduces what is left to pay.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 36, fontSize: 13, cursor: 'pointer' }}>
+                <input type="radio" name="credit-mode" checked={creditMode === 'full'} onChange={() => setCreditMode('full')} />
+                Credit everything left ({mvr(creditLeftLaar)})
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 36, fontSize: 13, cursor: 'pointer' }}>
+                <input type="radio" name="credit-mode" checked={creditMode === 'partial'} onChange={() => setCreditMode('partial')} />
+                Credit part of it
+              </label>
+            </div>
+            {creditMode === 'partial' && (
+              <div>
+                <label style={labelStyle} htmlFor="credit-amount">Amount (MVR)</label>
+                <Input id="credit-amount" type="number" min={0.01} step="0.01" value={creditAmount} onChange={setCreditAmount} aria-label="Credit amount MVR" />
+              </div>
+            )}
+            <div>
+              <label style={labelStyle} htmlFor="credit-reason">Reason</label>
+              <textarea
+                id="credit-reason"
+                aria-label="Credit note reason"
+                value={creditReason}
+                onChange={(e) => setCreditReason(e.target.value)}
+                rows={2}
+                style={textareaStyle}
+                placeholder="Why this invoice is being credited"
+              />
+            </div>
+          </div>
+          <ModalActions>
+            <Btn variant="secondary" onClick={() => setCreditTarget(null)}>Cancel</Btn>
+            <Btn onClick={() => void handleCreditNote()} disabled={saving || !creditReason.trim()}>Raise credit note</Btn>
+          </ModalActions>
+        </Modal>
       )}
 
       {payOpen && (

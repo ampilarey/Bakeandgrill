@@ -83,6 +83,10 @@ final class SmsTypeRegistry
         'owner_complaint_received' => 'owners_managers',
         'owner_complaint_box_received' => 'owners_managers',
         'trade_reconcile_mismatch_owner' => 'owners_managers',
+        'owner_trade_overdue' => 'owners_managers',
+        'owner_trade_unreconciled' => 'owners_managers',
+        'owner_trade_sales_reported' => 'owners_managers',
+        'owner_trade_billing_due' => 'owners_managers',
     ];
 
     public const RECIPIENT_MODES = ['owners_managers', 'owner_only', 'business_phone', 'staff', 'custom'];
@@ -188,6 +192,17 @@ final class SmsTypeRegistry
             // registry marks suppressible so SmsService also honours opt-out.
             self::def('trade_dispatch_shop', 'Wholesale dispatch (shop)', 'transactional', true, true, 'trade_dispatch_shop', null, 'trade.dispatch', false, 'Shop contact / customer phone', true),
             self::def('trade_reconcile_mismatch_owner', 'Wholesale reconcile mismatch (owner)', 'staff', true, false, 'trade_reconcile_mismatch_owner', null, 'trade.reconcile', false, 'Owner phone(s)', false),
+            // Wholesale audit, 2026-09-26: the shop hears about each invoice
+            // and gets a monthly statement; a shop that has not reported
+            // sales is nudged once; the owners hear about overdue money,
+            // stale stock, a shop's sales report and billing that is due.
+            self::def('trade_invoice_raised_shop', 'Wholesale invoice raised (shop)', 'transactional', true, false, 'trade_invoice_raised_shop', 'sms_trade_invoice_raised_enabled', null, false, 'Shop contact / customer phone', false),
+            self::def('trade_statement_shop', 'Wholesale monthly statement (shop)', 'transactional', true, false, 'trade_statement_shop', 'sms_trade_statement_enabled', null, false, 'Every shop with a balance, on the 1st', false),
+            self::def('trade_report_reminder_shop', 'Wholesale sales report reminder (shop)', 'transactional', true, true, 'trade_report_reminder_shop', 'sms_trade_report_reminder_enabled', null, false, 'Shops with a delivery past its expected return', false),
+            self::def('owner_trade_overdue', 'Owner: wholesale invoice 30 / 60 days overdue', 'staff', true, false, null, 'sms_owner_trade_overdue_enabled', null, false, 'Owners & managers', false),
+            self::def('owner_trade_unreconciled', 'Owner: wholesale stock not reconciled', 'staff', true, false, null, 'sms_owner_trade_unreconciled_enabled', null, false, 'Owners & managers', false),
+            self::def('owner_trade_sales_reported', 'Owner: a shop reported its sales', 'staff', true, false, null, 'sms_owner_trade_sales_reported_enabled', null, false, 'Owners & managers', false),
+            self::def('owner_trade_billing_due', 'Owner: shops due an invoice', 'staff', true, false, null, 'sms_owner_trade_billing_enabled', null, false, 'Owners & managers', false),
 
             // SMS audit, 2026-09-24: the twenty-six paths that still sent under
             // the old category labels ("system", "transactional",

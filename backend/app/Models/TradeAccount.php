@@ -39,6 +39,7 @@ class TradeAccount extends Model
         'missing_policy',
         'default_discount_bp',
         'delivery_days',
+        'billing_reminded_at',
         'is_active',
         'notes',
     ];
@@ -49,8 +50,20 @@ class TradeAccount extends Model
             'payment_terms_days' => 'integer',
             'default_discount_bp' => 'integer',
             'delivery_days' => 'array',
+            'billing_reminded_at' => 'datetime',
             'is_active' => 'boolean',
         ];
+    }
+
+    /** Days between invoices for this account's billing cycle (0 = after every delivery). */
+    public function billingCycleDays(): int
+    {
+        return match ($this->billing_cycle) {
+            self::BILLING_WEEKLY => 7,
+            self::BILLING_FORTNIGHTLY => 14,
+            self::BILLING_MONTHLY => 30,
+            default => 0,
+        };
     }
 
     public function customer(): BelongsTo
@@ -70,16 +83,15 @@ class TradeAccount extends Model
 
     /**
      * Days until payment is due. When unset on the account, use the
-     * customer's credit payment terms (default 30).
+     * customer's credit payment terms (default 30). Held to the same 7–90
+     * day range the customer's terms allow (wholesale audit, 2026-09-26).
      */
     public function resolvedPaymentTermsDays(): int
     {
-        if ($this->payment_terms_days !== null) {
-            return (int) $this->payment_terms_days;
-        }
+        $days = $this->payment_terms_days !== null
+            ? (int) $this->payment_terms_days
+            : (int) ($this->customer?->credit_payment_terms_days ?? 30);
 
-        $fromCustomer = $this->customer?->credit_payment_terms_days;
-
-        return $fromCustomer !== null ? (int) $fromCustomer : 30;
+        return max(7, min(90, $days));
     }
 }

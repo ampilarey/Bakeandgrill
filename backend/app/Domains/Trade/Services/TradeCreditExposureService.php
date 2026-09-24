@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Trade\Services;
 
+use App\Domains\Credit\Services\CreditPolicy;
 use App\Domains\Trade\DTOs\TradeCreditExposure;
 use App\Models\Customer;
 use App\Models\TradeAccount;
@@ -31,12 +32,13 @@ final class TradeCreditExposureService
         $limit = (int) ($customer->credit_limit_laar ?? 0);
 
         return new TradeCreditExposure(
-            balanceOwedLaar: $balance,
+            balanceOwedLaar: max(0, $balance),
             holdingUnbilledLaar: $holding,
             exposureLaar: $balance + $holding,
             creditLimitLaar: $limit,
             creditEnabled: (bool) $customer->credit_enabled,
             creditStatus: (string) ($customer->credit_status ?? 'active'),
+            creditInHandLaar: max(0, -$balance),
         );
     }
 
@@ -53,16 +55,21 @@ final class TradeCreditExposureService
     ): TradeCreditExposure {
         $exposure = $this->forCustomer($customer);
 
-        if (! $exposure->creditEnabled) {
+        // Closed mode reaches the van as well as the till (wholesale audit, 2026-09-26).
+        if (!CreditPolicy::acceptsNewCharges()) {
+            abort(422, CreditPolicy::closedWholesaleMessage());
+        }
+
+        if (!$exposure->creditEnabled) {
             abort(422, 'Credit is not enabled for this customer. Approve credit before dispatching on account.');
         }
 
         if ($exposure->creditStatus !== 'active') {
-            abort(422, 'Customer credit is '.$exposure->creditStatus.'. Dispatch on account is blocked.');
+            abort(422, 'Customer credit is ' . $exposure->creditStatus . '. Dispatch on account is blocked.');
         }
 
         $projected = $exposure->exposureLaar + $thisDeliveryValueLaar;
-        if ($projected > $exposure->creditLimitLaar && ! $ownerOverride) {
+        if ($projected > $exposure->creditLimitLaar && !$ownerOverride) {
             abort(422, sprintf(
                 'This delivery would put exposure over the credit limit. Owes MVR %s, holding MVR %s of our stock, limit MVR %s, this delivery MVR %s.',
                 number_format($exposure->balanceOwedLaar / 100, 2, '.', ''),
@@ -135,6 +142,9 @@ final class TradeCreditExposureService
         if ($delivery && $delivery->missing_charge_waived) {
             return 0;
         }
+        if ($delivery && $delivery->missing_charge_forced) {
+            return $missing;
+        }
 
         $policy = $account?->missing_policy ?? TradeAccount::MISSING_CHARGE;
         if ($policy === TradeAccount::MISSING_WRITE_OFF) {
@@ -149,16 +159,12 @@ final class TradeCreditExposureService
     public function invoiceableQty(TradeDeliveryLine $line, ?TradeAccount $account): int
     {
         $sold = (int) $line->qty_sold;
-        $missing = 0;
-        $policy = $account?->missing_policy ?? TradeAccount::MISSING_CHARGE;
         $delivery = $line->delivery;
+        $chargeable = $delivery
+            ? $delivery->missingIsChargeable($account)
+            : ($account?->missing_policy ?? TradeAccount::MISSING_CHARGE) === TradeAccount::MISSING_CHARGE;
 
-        if ($policy === TradeAccount::MISSING_CHARGE
-            && (! $delivery || ! $delivery->missing_charge_waived)) {
-            $missing = (int) $line->qty_missing;
-        }
-
-        return $sold + $missing;
+        return $sold + ($chargeable ? (int) $line->qty_missing : 0);
     }
 
     public function allocatedQty(int $deliveryLineId): int

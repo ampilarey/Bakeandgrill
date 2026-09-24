@@ -44,6 +44,8 @@ export type TradeDelivery = {
 
 export type TradeExposure = {
   balance_owed_laar: number;
+  /** Below-zero balance: a paid invoice was credit-noted; settles the next invoice first. */
+  credit_in_hand_laar?: number;
   holding_unbilled_laar: number;
   exposure_laar: number;
   credit_limit_laar: number;

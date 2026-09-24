@@ -97,5 +97,6 @@ Route::middleware(['auth:sanctum', 'staff.token'])->prefix('trade/deliveries')->
     Route::middleware('permission:trade.invoice')->group(function () {
         Route::post('/{id}/resolve-mismatch', [TradeInvoiceController::class, 'resolveMismatch'])->whereNumber('id');
         Route::post('/{id}/waive-missing', [TradeInvoiceController::class, 'waiveMissing'])->whereNumber('id');
+        Route::post('/{id}/charge-missing', [TradeInvoiceController::class, 'chargeMissing'])->whereNumber('id');
     });
 });

@@ -47,6 +47,10 @@ class SiteSettingsController extends Controller
         'credit_accounts_mode',
         'credit_limit_max_mvr',
         'credit_payment_terms_default_days',
+        // Settings → Credit Accounts, chasing (wholesale audit, 2026-09-26)
+        'credit_overdue_reminder_every_days',
+        'trade_unreconciled_nudge_days',
+        'trade_unreconciled_alert_days',
         // Ordering Control: pickup slots, business hours, catering
         'pickup_slots_enabled',
         'pickup_slot_minutes',

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Domains\Payments\Services\PaymentService;
+use App\Domains\System\Services\ServiceAvailabilityService;
 use App\Domains\Trade\Services\TradeSalesReportService;
 use App\Models\Customer;
 use App\Models\CustomerCreditLedger;
@@ -13,7 +14,6 @@ use App\Models\Payment;
 use App\Models\TradeAccount;
 use App\Models\TradeDelivery;
 use App\Models\TradeDeliveryLine;
-use App\Domains\System\Services\ServiceAvailabilityService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -35,7 +35,7 @@ class CustomerTradeController extends Controller
     public function deliveries(Request $request): JsonResponse
     {
         $customer = $this->customer($request);
-        $account = $this->tradeAccountOrNull($customer);
+        $account = $this->tradeAccountOrNull($customer, activeOnly: false);
         if ($account === null) {
             return response()->json([
                 'data' => [],
@@ -103,12 +103,16 @@ class CustomerTradeController extends Controller
     public function statement(Request $request): JsonResponse
     {
         $customer = $this->customer($request);
-        $account = $this->tradeAccountOrNull($customer);
+        // A deactivated shop still sees what it owes and can pay it
+        // (wholesale audit, 2026-09-26).
+        $account = $this->tradeAccountOrNull($customer, activeOnly: false);
         if ($account === null) {
             return response()->json([
                 'statement' => [
                     'balance_owed_mvr' => 0,
+                    'credit_in_hand_mvr' => 0,
                     'overdue_mvr' => 0,
+                    'account_active' => false,
                     'invoices' => [],
                     'payments' => [],
                     'entries' => [],
@@ -136,10 +140,11 @@ class CustomerTradeController extends Controller
                 'due_date' => $inv->due_date?->toDateString(),
                 'total_mvr' => round(((int) $inv->total_laar) / 100, 2),
                 'amount_paid_mvr' => round(((int) ($inv->amount_paid_laar ?? 0)) / 100, 2),
+                'credited_mvr' => round(((int) ($inv->credited_laar ?? 0)) / 100, 2),
                 'outstanding_mvr' => round($balance / 100, 2),
                 'status' => $this->invoiceStatusLabel($inv, $overdue),
                 'is_overdue' => $overdue,
-                'can_pay' => $balance > 0 && ! in_array($inv->status, ['paid', 'void', 'cancelled'], true),
+                'can_pay' => $balance > 0 && !in_array($inv->status, ['paid', 'void', 'cancelled'], true),
             ];
         });
 
@@ -179,12 +184,15 @@ class CustomerTradeController extends Controller
         });
 
         $overdueMvr = round($invoiceRows->where('is_overdue', true)->sum(fn ($r) => (float) $r['outstanding_mvr']), 2);
-        $balanceOwedMvr = round(((int) $customer->credit_balance_laar) / 100, 2);
+        $rawBalance = (int) $customer->credit_balance_laar;
+        $balanceOwedMvr = round(max(0, $rawBalance) / 100, 2);
 
         return response()->json([
             'statement' => [
                 'balance_owed_mvr' => $balanceOwedMvr,
+                'credit_in_hand_mvr' => round(max(0, -$rawBalance) / 100, 2),
                 'overdue_mvr' => $overdueMvr,
+                'account_active' => (bool) $account->is_active,
                 'invoices' => $invoiceRows->values(),
                 'payments' => $paymentRows->values(),
                 'entries' => $entries->values(),
@@ -276,24 +284,24 @@ class CustomerTradeController extends Controller
     private function customer(Request $request): Customer
     {
         $customer = $request->user();
-        if (! $customer instanceof Customer) {
+        if (!$customer instanceof Customer) {
             abort(403, 'Forbidden — customer access only.');
         }
 
         return $customer;
     }
 
-    private function tradeAccountOrNull(Customer $customer): ?TradeAccount
+    private function tradeAccountOrNull(Customer $customer, bool $activeOnly = true): ?TradeAccount
     {
         return TradeAccount::query()
             ->where('customer_id', $customer->id)
-            ->where('is_active', true)
+            ->when($activeOnly, fn ($q) => $q->where('is_active', true))
             ->first();
     }
 
     private function ownInvoice(Customer $customer, int $invoiceId): ?Invoice
     {
-        $account = $this->tradeAccountOrNull($customer);
+        $account = $this->tradeAccountOrNull($customer, activeOnly: false);
         if ($account === null) {
             return null;
         }
@@ -321,7 +329,10 @@ class CustomerTradeController extends Controller
                 ?? $delivery->created_at?->toDateString(),
             'status' => $this->deliveryStatusLabel($delivery->status),
             'sales_reported' => $salesReported,
-            'can_report_sales' => $delivery->status === TradeDelivery::STATUS_DISPATCHED,
+            'can_report_sales' => $delivery->status === TradeDelivery::STATUS_DISPATCHED
+                && (bool) ($delivery->relationLoaded('tradeAccount')
+                    ? $delivery->tradeAccount?->is_active
+                    : TradeAccount::whereKey($delivery->trade_account_id)->value('is_active')),
             'reported_at' => $delivery->reported_at?->toIso8601String(),
             'lines' => $delivery->lines->map(function (TradeDeliveryLine $line) {
                 return [

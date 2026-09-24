@@ -96,12 +96,23 @@ export function TradeStatementPage() {
 
         {statement && !loading && (
           <>
+            {statement.account_active === false && (
+              <p style={S.notice} data-testid="statement-inactive">
+                This trade account is closed. You can still see your invoices here and pay what is left.
+              </p>
+            )}
+
             <div style={S.hero} data-testid="statement-balance">
               <div style={S.heroLabel}>You owe</div>
               <div style={S.heroAmount}>{mvr(statement.balance_owed_mvr)}</div>
               {statement.overdue_mvr > 0 && (
                 <div style={S.overdue}>
                   Overdue: {mvr(statement.overdue_mvr)}
+                </div>
+              )}
+              {(statement.credit_in_hand_mvr ?? 0) > 0 && (
+                <div style={S.credit} data-testid="statement-credit">
+                  In credit: {mvr(statement.credit_in_hand_mvr ?? 0)} — this comes off your next invoice.
                 </div>
               )}
             </div>
@@ -196,6 +207,16 @@ const S: Record<string, CSSProperties> = {
   heroLabel: { fontSize: 13, color: 'var(--color-text-muted)', fontWeight: 600 },
   heroAmount: { fontSize: 28, fontWeight: 800, letterSpacing: '-0.02em', marginTop: 4 },
   overdue: { marginTop: 8, color: 'var(--color-error, #dc2626)', fontWeight: 700, fontSize: 14 },
+  credit: { marginTop: 8, color: 'var(--color-success, #16a34a)', fontWeight: 700, fontSize: 14 },
+  notice: {
+    margin: 0,
+    padding: '10px 14px',
+    borderRadius: 12,
+    background: 'var(--color-surface)',
+    border: '1px solid var(--color-border)',
+    fontSize: 13,
+    color: 'var(--color-text-secondary)',
+  },
   h2: { fontSize: 15, fontWeight: 800, margin: '8px 0 0' },
   card: {
     background: 'var(--color-surface)',

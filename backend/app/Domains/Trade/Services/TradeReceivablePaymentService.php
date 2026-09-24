@@ -10,6 +10,7 @@ use App\Models\Customer;
 use App\Models\CustomerCreditLedger;
 use App\Models\Invoice;
 use App\Models\Payment;
+use App\Models\SiteSetting;
 use App\Models\TradeDelivery;
 use App\Models\User;
 use App\Services\AuditLogService;
@@ -30,7 +31,7 @@ final class TradeReceivablePaymentService
     ) {}
 
     /**
-     * @param  list<int>|null  $invoiceIds
+     * @param list<int>|null $invoiceIds
      */
     public function record(
         Customer $customer,
@@ -54,8 +55,15 @@ final class TradeReceivablePaymentService
         }
 
         $allowed = ['cash', 'card', 'bank_transfer', 'bml_connect'];
-        if (! in_array($method, $allowed, true)) {
+        if (!in_array($method, $allowed, true)) {
             abort(422, 'Invalid payment method.');
+        }
+
+        // The till's card-reference rule applies to a card payment recorded
+        // on the statement too (wholesale audit, 2026-09-26).
+        if ($method === 'card' && trim((string) $reference) === ''
+            && filter_var(SiteSetting::get('pos_card_reference_required', '0'), FILTER_VALIDATE_BOOLEAN)) {
+            throw ValidationException::withMessages(['reference' => ['Type the card terminal reference for this payment.']]);
         }
 
         return DB::transaction(function () use ($customer, $amountLaar, $method, $actor, $idempotencyKey, $invoiceIds, $reference, $notes) {
@@ -90,6 +98,8 @@ final class TradeReceivablePaymentService
             ]);
 
             // Ledger repayment also applies amount_paid_laar on invoices + cash_movements.
+            // Scoped to this shop's invoices so it never lands on the same
+            // customer's till credit invoice.
             $ledgerMethod = $method === 'bml_connect' ? 'card' : $method;
             $ledger = $this->ledger->recordRepayment(
                 $lockedCustomer,
@@ -99,6 +109,8 @@ final class TradeReceivablePaymentService
                 $invoiceIds,
                 $reference,
                 $notes ?? 'Wholesale invoice repayment',
+                null,
+                (int) $primaryInvoice->trade_account_id,
             );
 
             // Link ledger row to this payment for idempotency / audit.
@@ -108,7 +120,7 @@ final class TradeReceivablePaymentService
 
             $this->gstPoster->postTradeInvoiceOnPayment($payment->fresh(['invoice']), $actor->id);
 
-            $this->markDeliveriesSettledIfPaid($invoiceIds ?? [$primaryInvoice->id]);
+            $this->markDeliveriesSettledIfPaid(array_column($ledger->applied_invoices ?? [], 'invoice_id') ?: [$primaryInvoice->id]);
 
             $this->audit->log(
                 'trade.invoice.payment',
@@ -146,7 +158,7 @@ final class TradeReceivablePaymentService
             $invoice = Invoice::lockForUpdate()->findOrFail($locked->invoice_id);
             $customer = Customer::lockForUpdate()->findOrFail($invoice->customer_id);
 
-            if (! in_array((string) $locked->status, ['confirmed', 'paid', 'completed'], true)) {
+            if (!in_array((string) $locked->status, ['confirmed', 'paid', 'completed'], true)) {
                 $locked->update(['status' => 'confirmed', 'processed_at' => now()]);
             }
 
@@ -162,7 +174,7 @@ final class TradeReceivablePaymentService
                 $systemActor,
                 [$invoice->id],
                 $locked->provider_transaction_id,
-                'BML payment for wholesale invoice '.$invoice->invoice_number,
+                'BML payment for wholesale invoice ' . $invoice->invoice_number,
             );
             $ledger->update(['payment_id' => $locked->id]);
 
@@ -172,7 +184,7 @@ final class TradeReceivablePaymentService
     }
 
     /**
-     * @param  list<int>|null  $invoiceIds
+     * @param list<int>|null $invoiceIds
      */
     private function resolvePrimaryInvoice(int $customerId, ?array $invoiceIds): ?Invoice
     {
@@ -181,7 +193,7 @@ final class TradeReceivablePaymentService
             ->where('type', 'sale')
             ->whereNotNull('trade_account_id')
             ->whereIn('status', ['sent', 'overdue'])
-            ->whereRaw('total_laar > amount_paid_laar')
+            ->whereRaw(Invoice::OPEN_BALANCE_SQL)
             ->orderBy('issue_date');
 
         if ($invoiceIds !== null && $invoiceIds !== []) {
@@ -192,7 +204,7 @@ final class TradeReceivablePaymentService
     }
 
     /**
-     * @param  list<int>  $invoiceIds
+     * @param list<int> $invoiceIds
      */
     private function markDeliveriesSettledIfPaid(array $invoiceIds): void
     {

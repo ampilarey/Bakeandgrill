@@ -13,6 +13,7 @@ export type TradeAccountCustomer = {
   credit_status: string | null;
   credit_limit_laar: number | null;
   credit_balance_laar: number | null;
+  credit_in_hand_laar?: number;
   credit_payment_terms_days?: number | null;
 };
 
@@ -29,6 +30,7 @@ export type TradeAccount = {
   missing_policy: TradeMissingPolicy;
   default_discount_bp: number | null;
   delivery_days: string[] | null;
+  delivers_today?: boolean;
   is_active: boolean;
   notes: string | null;
   credit_warning?: string | null;
@@ -106,8 +108,12 @@ export async function updateTradeAccount(
   return req(`/admin/trade-accounts/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
 
-export async function deactivateTradeAccount(id: number): Promise<{ trade_account: TradeAccount }> {
-  return req(`/admin/trade-accounts/${id}/deactivate`, { method: 'POST' });
+/**
+ * Refused with `needs_force` while the shop owes money or holds stock
+ * (wholesale audit, 2026-09-26); `force` closes it anyway.
+ */
+export async function deactivateTradeAccount(id: number, force = false): Promise<{ trade_account: TradeAccount }> {
+  return req(`/admin/trade-accounts/${id}/deactivate`, { method: 'POST', body: JSON.stringify({ force }) });
 }
 
 export async function fetchTradePrices(accountId: number): Promise<{ data: TradePriceEntry[] }> {

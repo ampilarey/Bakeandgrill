@@ -14,6 +14,7 @@ class CustomerCreditLedger extends Model
     protected $casts = [
         'amount_laar' => 'integer',
         'balance_after_laar' => 'integer',
+        'applied_invoices' => 'array',
     ];
 
     protected $fillable = [
@@ -30,6 +31,7 @@ class CustomerCreditLedger extends Model
         'recorded_by',
         'notes',
         'idempotency_key',
+        'applied_invoices',
     ];
 
     public function customer(): BelongsTo

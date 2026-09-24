@@ -1,6 +1,18 @@
 import { req } from './client';
 import type { TradeExposure } from './tradeDeliveries';
 
+export type ReadyToInvoiceLine = {
+  id: number;
+  item_name: string;
+  qty_sent: number;
+  counted_return_qty: number;
+  reported_sold_qty: number | null;
+  qty_sold: number;
+  qty_missing: number;
+  unit_price_laar: number;
+  mismatch: boolean;
+};
+
 export type ReadyToInvoiceDelivery = {
   id: number;
   delivery_number: string;
@@ -12,8 +24,12 @@ export type ReadyToInvoiceDelivery = {
   mismatch_blocking: boolean;
   missing_qty: number;
   missing_blocking: boolean;
+  missing_policy?: 'charge' | 'write_off' | 'dispute';
+  missing_charge_waived?: boolean;
+  missing_charge_forced?: boolean;
   self_reconciled?: boolean;
   lines_count?: number;
+  lines?: ReadyToInvoiceLine[];
 };
 
 export type TradeInvoicePreview = {
@@ -64,9 +80,13 @@ export type TradeStatementInvoice = {
   due_date: string | null;
   total_laar: number;
   amount_paid_laar: number;
+  credited_laar?: number;
+  written_off_laar?: number;
   balance_laar: number;
   status: string;
+  display_status?: string;
   is_overdue: boolean;
+  can_credit?: boolean;
 };
 
 export type TradeStatementPayment = {
@@ -76,6 +96,7 @@ export type TradeStatementPayment = {
   processed_at: string;
   reference_number: string | null;
   invoice_ids: number[];
+  applied?: Array<{ invoice_id: number; amount_laar: number }>;
   notes?: string | null;
 };
 
@@ -94,8 +115,10 @@ export type TradeStatementEntry = {
 export type TradeStatement = {
   exposure: TradeExposure;
   balance_owed_laar: number;
+  credit_in_hand_laar?: number;
   holding_unbilled_laar: number;
   overdue_laar: number;
+  account_active?: boolean;
   invoices: TradeStatementInvoice[];
   payments: TradeStatementPayment[];
   entries?: TradeStatementEntry[];
@@ -131,11 +154,25 @@ export async function raiseTradeInvoice(
   });
 }
 
+/**
+ * Wholesale audit, 2026-09-26: the decision can carry a sold quantity per
+ * mismatched line, which becomes what is billed.
+ */
 export async function resolveMismatch(
   deliveryId: number,
-  data: { decision: string },
+  data: { decision: string; lines?: Array<{ line_id: number; sold_qty: number }> },
 ): Promise<{ delivery: { id: number; delivery_number: string; mismatch_blocking: boolean } }> {
   return req(`/trade/deliveries/${deliveryId}/resolve-mismatch`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function chargeMissing(
+  deliveryId: number,
+  data: { reason: string },
+): Promise<{ delivery: { id: number; delivery_number: string; missing_blocking: boolean } }> {
+  return req(`/trade/deliveries/${deliveryId}/charge-missing`, {
     method: 'POST',
     body: JSON.stringify(data),
   });
@@ -173,9 +210,10 @@ export async function recordTradePayment(
   });
 }
 
+/** No amount = credit everything left on the invoice (voids it); an amount below that is a partial credit note. */
 export async function createTradeCreditNote(
   invoiceId: number,
-  data: { credit_note_reason: string },
+  data: { credit_note_reason: string; amount_laar?: number },
 ): Promise<{ credit_note: TradeInvoice; invoice: TradeInvoice }> {
   return req(`/admin/trade-invoices/${invoiceId}/credit-note`, {
     method: 'POST',

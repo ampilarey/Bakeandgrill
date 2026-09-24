@@ -108,14 +108,18 @@ class CustomerCreditService
      * finance-only action — permission-gated (customers.credit.writeoff)
      * and audited separately. NEVER writes a CashMovement.
      */
+    /**
+     * @param list<int>|null $invoiceIds
+     */
     public function writeOff(
         Customer $customer,
         int $amountLaar,
         User $actor,
         string $reason,
         ?Request $request = null,
+        ?array $invoiceIds = null,
     ): CustomerCreditLedger {
-        return $this->ledger->writeOff($customer, $amountLaar, $actor, $reason, $request);
+        return $this->ledger->writeOff($customer, $amountLaar, $actor, $reason, $request, $invoiceIds);
     }
 
     public function updatePaymentTerms(
@@ -172,6 +176,7 @@ class CustomerCreditService
         ?string $reference = null,
         ?string $notes = null,
         ?Request $request = null,
+        ?int $tradeAccountId = null,
     ): CustomerCreditLedger {
         return $this->ledger->recordRepayment(
             $customer,
@@ -182,6 +187,7 @@ class CustomerCreditService
             $reference,
             $notes,
             $request,
+            $tradeAccountId,
         );
     }
 
