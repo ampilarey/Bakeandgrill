@@ -92,8 +92,39 @@ export async function fetchSocialItemPreview(itemId: number): Promise<{ item: So
 export async function fetchSocialChannels(): Promise<{
   channels: SocialChannelRow[];
   platforms: Record<string, SocialPlatformCaps>;
+  /** "Connect with Facebook" is offered when the server has a Meta app configured. */
+  meta_connect: { available: boolean; redirect_uri: string };
 }> {
   return req('/admin/social/channels');
+}
+
+// ── Connect with Facebook ────────────────────────────────────────────────────
+// start → the browser goes to Facebook → comes back to /admin/social?meta_connect=STATE
+// → pending lists the Pages → finish creates (or refreshes) the channels.
+
+export interface MetaPendingPage {
+  page_id: string;
+  name: string;
+  instagram: { ig_user_id: string; username: string } | null;
+  already: { facebook: boolean; instagram: boolean };
+}
+
+export async function startMetaConnect(): Promise<{ redirect_url: string }> {
+  return req('/admin/social/meta/connect');
+}
+
+export async function fetchMetaPending(state: string): Promise<{ pages: MetaPendingPage[] }> {
+  return req(`/admin/social/meta/pending?state=${encodeURIComponent(state)}`);
+}
+
+export async function finishMetaConnect(data: {
+  state: string;
+  page_id: string;
+  facebook: boolean;
+  instagram: boolean;
+  is_test_channel: boolean;
+}): Promise<{ channel_ids: number[] }> {
+  return req('/admin/social/meta/finish', { method: 'POST', body: JSON.stringify(data) });
 }
 
 /** Composer picker: enabled channels, names + capabilities only (social.view). */

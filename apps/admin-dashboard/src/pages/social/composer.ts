@@ -82,3 +82,8 @@ export function suggestCaption(item: SocialItemPreview): string {
 
 /** Facebook and Instagram fold long captions behind "See more" at about this length. */
 export const FOLD_AT: Record<string, number> = { facebook: 125, instagram: 125 };
+
+/** Full-page navigation (Facebook's login dialog cannot live inside the SPA). Wrapped so tests can stub it. */
+export function navigateTo(url: string): void {
+  window.location.href = url;
+}

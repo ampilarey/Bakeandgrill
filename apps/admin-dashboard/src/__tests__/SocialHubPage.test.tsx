@@ -6,6 +6,12 @@ import * as api from '../api';
 
 const mockCan = vi.fn((_slug: string) => true);
 
+vi.mock('../pages/social/composer', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../pages/social/composer')>()),
+  navigateTo: vi.fn(),
+}));
+import { navigateTo } from '../pages/social/composer';
+
 vi.mock('../hooks/usePermissions', () => ({
   useCurrentUserPermissions: () => ({
     can: (slug: string) => mockCan(slug),
@@ -57,7 +63,13 @@ const pageTwo = { posts: [post({ id: 3, snapshot: { caption: 'Older post', image
 beforeEach(() => {
   mockCan.mockImplementation(() => true);
   vi.spyOn(api, 'fetchSocialPosts').mockImplementation(async (f) => ((typeof f === 'object' && f.page === 2) ? pageTwo : pageOne));
-  vi.spyOn(api, 'fetchSocialChannels').mockResolvedValue({ channels: [channel({})], platforms });
+  vi.spyOn(api, 'fetchSocialChannels').mockResolvedValue({ channels: [channel({})], platforms, meta_connect: { available: false, redirect_uri: 'https://bakeandgrill.mv/social/meta/callback' } });
+  vi.spyOn(api, 'startMetaConnect').mockResolvedValue({ redirect_url: 'https://www.facebook.com/v21.0/dialog/oauth?state=S1' });
+  vi.spyOn(api, 'fetchMetaPending').mockResolvedValue({ pages: [
+    { page_id: '111', name: 'Bake & Grill', instagram: { ig_user_id: '999', username: 'bakeandgrill.mv' }, already: { facebook: false, instagram: false } },
+    { page_id: '222', name: 'Side Project', instagram: null, already: { facebook: false, instagram: false } },
+  ] });
+  vi.spyOn(api, 'finishMetaConnect').mockResolvedValue({ channel_ids: [5, 6] });
   vi.spyOn(api, 'fetchSocialChannelOptions').mockResolvedValue({ channels: options, platforms });
   vi.spyOn(api, 'fetchSocialAutomation').mockResolvedValue({ automation: automations.special, automations });
   vi.spyOn(api, 'updateSocialAutomation').mockImplementation(async (data) => ({ automation: automations.special, automations: { ...automations, [data.kind ?? 'special']: { ...automations[data.kind ?? 'special'], ...data } } }));
@@ -260,6 +272,7 @@ describe('SocialHubPage — channels', () => {
         channel({ id: 3, name: 'TG', platform: 'telegram', health: { status: 'ok', message: 'Connected.', account_label: 'BG News', checked_at: '2026-09-24T09:15:00+05:00', token_expires_at: null, token_days_left: null } }),
       ],
       platforms,
+      meta_connect: { available: false, redirect_uri: '' },
     });
     renderWithRouter(<SocialHubPage />);
     await screen.findByText('Fresh masroshi today');
@@ -271,6 +284,54 @@ describe('SocialHubPage — channels', () => {
 
     fireEvent.click(screen.getAllByText('Check now')[0]);
     await waitFor(() => expect(api.checkSocialChannel).toHaveBeenCalledWith(1));
+  });
+});
+
+describe('SocialHubPage — Connect with Facebook', () => {
+  it('hides the button without a Meta app and sends the browser to Facebook with one', async () => {
+    renderWithRouter(<SocialHubPage />);
+    await screen.findByText('Fresh masroshi today');
+    fireEvent.click(screen.getByText('Channels'));
+    expect(await screen.findByText(/needs SOCIAL_META_APP_ID/)).toBeInTheDocument();
+    expect(screen.queryByText('Connect with Facebook')).toBeNull();
+  });
+
+  it('offers Connect and Reconnect when available and navigates to the dialog', async () => {
+    vi.mocked(api.fetchSocialChannels).mockResolvedValue({
+      channels: [channel({ platform: 'facebook' }), channel({ id: 2, platform: 'telegram', name: 'TG' })],
+      platforms, meta_connect: { available: true, redirect_uri: '' },
+    });
+    renderWithRouter(<SocialHubPage />);
+    await screen.findByText('Fresh masroshi today');
+    fireEvent.click(screen.getByText('Channels'));
+    expect(screen.getAllByText('Reconnect')).toHaveLength(1);
+
+    fireEvent.click(await screen.findByText('Connect with Facebook'));
+    await waitFor(() => expect(navigateTo).toHaveBeenCalledWith('https://www.facebook.com/v21.0/dialog/oauth?state=S1'));
+  });
+
+  it('back from Facebook, lists the Pages and connects the chosen one with its Instagram account', async () => {
+    renderWithRouter(<SocialHubPage />, { route: '/?meta_connect=S1' });
+    await screen.findByText('Facebook Page — Bake & Grill');
+    expect(api.fetchMetaPending).toHaveBeenCalledWith('S1');
+    expect(screen.getByText('Instagram — @bakeandgrill.mv')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Page'), { target: { value: '222' } });
+    expect(screen.getByText(/no business account is linked/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Page'), { target: { value: '111' } });
+    fireEvent.click(screen.getByLabelText(/Test channel/));
+    fireEvent.click(footer().getByText('Connect'));
+    await waitFor(() => expect(api.finishMetaConnect).toHaveBeenCalledWith({
+      state: 'S1', page_id: '111', facebook: true, instagram: true, is_test_channel: true,
+    }));
+    await waitFor(() => expect(api.fetchSocialChannels).toHaveBeenCalledTimes(2));
+  });
+
+  it('shows why Facebook refused and lets the owner dismiss it', async () => {
+    renderWithRouter(<SocialHubPage />, { route: '/?meta_error=Permissions%20error' });
+    expect(await screen.findByText('Facebook connect failed: Permissions error')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Dismiss'));
+    await waitFor(() => expect(screen.queryByText(/Facebook connect failed/)).toBeNull());
   });
 });
 

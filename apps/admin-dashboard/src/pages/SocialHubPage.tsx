@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   cancelSocialPost, checkSocialChannel, createSocialChannel, deleteSocialChannel,
-  deleteSocialVideo, fetchSocialAutomation, fetchSocialChannelOptions, fetchSocialChannels,
-  fetchSocialPost, fetchSocialPosts, fetchSocialVideos, generateSocialVideo,
+  deleteSocialVideo, fetchMetaPending, fetchSocialAutomation, fetchSocialChannelOptions, fetchSocialChannels,
+  fetchSocialPost, fetchSocialPosts, fetchSocialVideos, finishMetaConnect, generateSocialVideo,
   publishSocialPostNow, refreshSocialInsights, retrySocialDelivery, testSocialChannel,
   updateSocialAutomation, updateSocialChannel,
-  type SocialAutomationConfig, type SocialAutomationKind, type SocialChannelOption, type SocialChannelRow,
+  startMetaConnect,
+  type MetaPendingPage, type SocialAutomationConfig, type SocialAutomationKind, type SocialChannelOption, type SocialChannelRow,
   type SocialPlatformCaps, type SocialPostFilters, type SocialPostRow, type SocialVideoRenditionRow,
 } from '../api';
 import { ItemSearch, type MenuItemSelection } from '../components/ItemSearch';
@@ -15,7 +17,7 @@ import {
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { ComposeModal } from './social/ComposeModal';
-import { PLATFORM_LABELS } from './social/composer';
+import { PLATFORM_LABELS, navigateTo } from './social/composer';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All statuses' },
@@ -73,6 +75,23 @@ export function SocialHubPage() {
   const [error, setError] = useState('');
   const [composing, setComposing] = useState<SocialPostRow | 'new' | null>(null);
   const [editingChannel, setEditingChannel] = useState<SocialChannelRow | 'new' | null>(null);
+  const [metaAvailable, setMetaAvailable] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const metaState = searchParams.get('meta_connect');
+  const metaError = searchParams.get('meta_error');
+  const clearMetaParams = useCallback(() => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('meta_connect');
+      next.delete('meta_error');
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  // Back from Facebook: the Channels tab is where the result belongs.
+  useEffect(() => {
+    if (metaState || metaError) setTab('channels');
+  }, [metaState, metaError]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -85,6 +104,7 @@ export function SocialHubPage() {
         const chRes = await fetchSocialChannels();
         setChannels(chRes.channels);
         setPlatforms(chRes.platforms);
+        setMetaAvailable(Boolean(chRes.meta_connect?.available));
       }
     } catch (e) {
       setError((e as Error).message);
@@ -137,6 +157,9 @@ export function SocialHubPage() {
       ) : (
         <ChannelList
           channels={channels}
+          metaAvailable={metaAvailable}
+          metaError={metaError}
+          onDismissError={clearMetaParams}
           onEdit={setEditingChannel}
           onChanged={load}
         />
@@ -161,9 +184,23 @@ export function SocialHubPage() {
         />
       )}
       {tab === 'channels' && canChannels && !loading && (
-        <div style={{ marginTop: 12 }}>
-          <Btn variant="secondary" onClick={() => setEditingChannel('new')}>+ Connect channel</Btn>
+        <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          {metaAvailable ? (
+            <ConnectWithFacebookButton label="Connect with Facebook" />
+          ) : (
+            <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+              One-click Facebook/Instagram connect needs SOCIAL_META_APP_ID and SOCIAL_META_APP_SECRET on the server.
+            </span>
+          )}
+          <Btn variant="secondary" onClick={() => setEditingChannel('new')}>+ Connect with a token</Btn>
         </div>
+      )}
+      {metaState && canChannels && (
+        <MetaPagesModal
+          state={metaState}
+          onClose={clearMetaParams}
+          onSaved={() => { clearMetaParams(); void load(); }}
+        />
       )}
     </PageShell>
   );
@@ -725,13 +762,23 @@ function VideoStudio({ canGenerate }: { canGenerate: boolean }) {
   );
 }
 
-function ChannelList({ channels, onEdit, onChanged }: {
+function ChannelList({ channels, metaAvailable, metaError, onDismissError, onEdit, onChanged }: {
   channels: SocialChannelRow[];
+  metaAvailable: boolean;
+  metaError: string | null;
+  onDismissError: () => void;
   onEdit: (c: SocialChannelRow) => void;
   onChanged: () => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
+
+  const errorBanner = metaError && (
+    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+      <ErrorMsg message={`Facebook connect failed: ${metaError}`} />
+      <Btn small variant="secondary" onClick={onDismissError}>Dismiss</Btn>
+    </div>
+  );
 
   const act = async (fn: () => Promise<unknown>, doneMsg: string) => {
     setBusy(true);
@@ -762,14 +809,19 @@ function ChannelList({ channels, onEdit, onChanged }: {
 
   if (channels.length === 0) {
     return (
-      <Card style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 13 }}>
-        No channels connected yet.
-      </Card>
+      <div style={{ display: 'grid', gap: 12 }}>
+        {errorBanner}
+        <Card style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 13 }}>
+          No channels connected yet.
+          {metaAvailable && ' Use "Connect with Facebook" below to add the Page and its Instagram account in one go.'}
+        </Card>
+      </div>
     );
   }
 
   return (
     <div style={{ display: 'grid', gap: 12 }}>
+      {errorBanner}
       {notice && <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: 0 }}>{notice}</p>}
       {channels.map((c) => (
         <Card key={c.id} style={{ padding: '14px 16px' }}>
@@ -788,6 +840,9 @@ function ChannelList({ channels, onEdit, onChanged }: {
             {c.recent_failures > 0 && <Badge label={`${c.recent_failures} recent failures`} color="red" />}
             <ChannelHealthBadge channel={c} />
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {metaAvailable && ['facebook', 'instagram'].includes(c.platform) && (
+                <ConnectWithFacebookButton label="Reconnect" small />
+              )}
               <Btn small variant="secondary" disabled={busy} onClick={() => onEdit(c)}>Edit</Btn>
               <Btn
                 small
@@ -831,6 +886,123 @@ function ChannelList({ channels, onEdit, onChanged }: {
  * expires in N days", red with the platform's reason. Nothing until the
  * daily check (or "Check now") has run once.
  */
+/** Sends the browser to Facebook's login dialog; the page comes back with ?meta_connect=STATE. */
+function ConnectWithFacebookButton({ label, small }: { label: string; small?: boolean }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const go = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      const { redirect_url } = await startMetaConnect();
+      navigateTo(redirect_url);
+    } catch (e) {
+      setError((e as Error).message);
+      setBusy(false);
+    }
+  };
+  return (
+    <>
+      <Btn small={small} disabled={busy} onClick={() => { void go(); }} title="Log in to Facebook and pick the Page">
+        {busy ? 'Opening Facebook…' : label}
+      </Btn>
+      {error && <span style={{ fontSize: 12, color: 'var(--color-danger)' }}>{error}</span>}
+    </>
+  );
+}
+
+/**
+ * After Facebook: which Page (and its Instagram account) to connect. A
+ * Page already connected is offered as a reconnect, which swaps the token
+ * in place.
+ */
+function MetaPagesModal({ state, onClose, onSaved }: { state: string; onClose: () => void; onSaved: () => void }) {
+  const [pages, setPages] = useState<MetaPendingPage[] | null>(null);
+  const [pageId, setPageId] = useState('');
+  const [facebook, setFacebook] = useState(true);
+  const [instagram, setInstagram] = useState(true);
+  const [isTest, setIsTest] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetchMetaPending(state)
+      .then((res) => {
+        setPages(res.pages);
+        setPageId(res.pages[0]?.page_id ?? '');
+      })
+      .catch((e: Error) => { setError(e.message); setPages([]); });
+  }, [state]);
+
+  const page = (pages ?? []).find((p) => p.page_id === pageId) ?? null;
+
+  const finish = async () => {
+    if (!page) return;
+    setSaving(true);
+    setError('');
+    try {
+      await finishMetaConnect({ state, page_id: page.page_id, facebook, instagram: instagram && page.instagram !== null, is_test_channel: isTest });
+      onSaved();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal
+      title="Connect with Facebook"
+      onClose={onClose}
+      maxWidth={480}
+      footer={(
+        <ModalActions>
+          <Btn variant="secondary" onClick={onClose} disabled={saving}>Cancel</Btn>
+          <Btn disabled={saving || !page || (!facebook && !(instagram && page.instagram))} onClick={() => { void finish(); }}>
+            {saving ? 'Connecting…' : 'Connect'}
+          </Btn>
+        </ModalActions>
+      )}
+    >
+      {pages === null ? <Spinner /> : (
+        <div style={{ display: 'grid', gap: 12 }}>
+          {error && <ErrorMsg message={error} />}
+          {pages.length === 0 && !error && (
+            <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: 0 }}>That login manages no Pages.</p>
+          )}
+          {pages.length > 1 && (
+            <Select
+              label="Page"
+              aria-label="Page"
+              options={pages.map((p) => ({ value: p.page_id, label: p.name }))}
+              value={pageId}
+              onChange={setPageId}
+            />
+          )}
+          {page && (
+            <>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                <input type="checkbox" checked={facebook} onChange={(e) => setFacebook(e.target.checked)} />
+                Facebook Page — {page.name}{page.already.facebook && ' (already connected: token will be refreshed)'}
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: page.instagram ? 'pointer' : 'default', opacity: page.instagram ? 1 : 0.6 }}>
+                <input type="checkbox" checked={instagram && page.instagram !== null} disabled={!page.instagram} onChange={(e) => setInstagram(e.target.checked)} />
+                {page.instagram
+                  ? <>Instagram — @{page.instagram.username || page.instagram.ig_user_id}{page.already.instagram && ' (already connected: token will be refreshed)'}</>
+                  : 'Instagram — no business account is linked to this Page'}
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                <input type="checkbox" checked={isTest} onChange={(e) => setIsTest(e.target.checked)} />
+                Test channel (a non-production server may only post to test channels)
+              </label>
+            </>
+          )}
+        </div>
+      )}
+    </Modal>
+  );
+}
+
 function ChannelHealthBadge({ channel }: { channel: SocialChannelRow }) {
   const h = channel.health;
   if (!h) return null;

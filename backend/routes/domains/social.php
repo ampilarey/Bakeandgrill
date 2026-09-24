@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-require __DIR__ . '/_helpers.php';
+require __DIR__.'/_helpers.php';
 
 use App\Http\Controllers\Api\SocialChannelController;
 use App\Http\Controllers\Api\SocialPostController;
@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Route;
 | channel management (credentials that post as the business) is owner-only.
 */
 
-if (routes_domain_section_is('social', 'public') && !routes_domain_loaded('social.public')) {
+if (routes_domain_section_is('social', 'public') && ! routes_domain_loaded('social.public')) {
     routes_domain_mark_loaded('social.public');
 
     // Viber webhook: Viber requires one registered before its post API works.
@@ -27,7 +27,7 @@ if (routes_domain_section_is('social', 'public') && !routes_domain_loaded('socia
         ->middleware('throttle:60,1');
 }
 
-if (routes_domain_section_is('social', 'admin') && !routes_domain_loaded('social.admin')) {
+if (routes_domain_section_is('social', 'admin') && ! routes_domain_loaded('social.admin')) {
     routes_domain_mark_loaded('social.admin');
 
     Route::middleware('permission:social.view')->prefix('admin/social')->group(function () {
@@ -61,5 +61,11 @@ if (routes_domain_section_is('social', 'admin') && !routes_domain_loaded('social
         Route::delete('/channels/{id}', [SocialChannelController::class, 'destroy']);
         Route::post('/channels/{id}/test', [SocialChannelController::class, 'testPost']);
         Route::post('/channels/{id}/check', [SocialChannelController::class, 'check']);
+        // "Connect with Facebook": start returns the dialog URL; the browser
+        // comes back to the web route /social/meta/callback; the admin app
+        // then lists the Pages (pending) and creates channels (finish).
+        Route::get('/meta/connect', [App\Http\Controllers\Api\SocialMetaConnectController::class, 'start']);
+        Route::get('/meta/pending', [App\Http\Controllers\Api\SocialMetaConnectController::class, 'pending']);
+        Route::post('/meta/finish', [App\Http\Controllers\Api\SocialMetaConnectController::class, 'finish']);
     });
 }

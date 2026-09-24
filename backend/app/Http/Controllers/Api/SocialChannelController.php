@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Social\Services\MetaConnectService;
 use App\Domains\Social\Services\SocialChannelHealthChecker;
 use App\Domains\Social\Services\SocialDriverRegistry;
 use App\Domains\Social\Services\SocialPublisher;
@@ -24,12 +25,16 @@ class SocialChannelController extends Controller
 {
     public function __construct(private readonly SocialDriverRegistry $drivers) {}
 
-    public function index(): JsonResponse
+    public function index(MetaConnectService $meta): JsonResponse
     {
         return response()->json([
             'channels' => SocialChannel::query()->orderBy('platform')->orderBy('name')->get()
                 ->map(fn (SocialChannel $c) => $this->payload($c))->values(),
             'platforms' => $this->drivers->capabilities(),
+            'meta_connect' => [
+                'available' => $meta->available(),
+                'redirect_uri' => $meta->redirectUri(),
+            ],
         ]);
     }
 
@@ -85,7 +90,7 @@ class SocialChannelController extends Controller
             'is_enabled' => false,
             'credentials' => null,
         ])->save();
-        if (!$channel->deliveries()->exists()) {
+        if (! $channel->deliveries()->exists()) {
             $channel->delete();
         }
 
@@ -107,7 +112,7 @@ class SocialChannelController extends Controller
                 'image_url' => $request->string('image_url')->toString() ?: null,
             ],
             'source' => 'channel_test',
-            'source_ref' => 'channel:' . $channel->id,
+            'source_ref' => 'channel:'.$channel->id,
             'business_date' => now(config('app.timezone', 'Indian/Maldives'))->toDateString(),
             'created_by' => $request->user()?->id,
         ]);
@@ -146,7 +151,7 @@ class SocialChannelController extends Controller
             fn (string $key) => trim((string) ($credentials[$key] ?? '')) === '',
         ));
         if ($missing !== []) {
-            abort(422, 'Missing credentials for ' . $platform . ': ' . implode(', ', $missing));
+            abort(422, 'Missing credentials for '.$platform.': '.implode(', ', $missing));
         }
     }
 
