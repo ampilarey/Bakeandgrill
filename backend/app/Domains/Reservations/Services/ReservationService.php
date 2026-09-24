@@ -6,6 +6,7 @@ namespace App\Domains\Reservations\Services;
 
 use App\Domains\Reservations\DTOs\CreateReservationData;
 use App\Domains\Reservations\DTOs\ReservationSlotData;
+use App\Domains\Reservations\Events\ReservationCancelled;
 use App\Domains\Reservations\Events\ReservationConfirmed;
 use App\Domains\Reservations\Events\ReservationCreated;
 use App\Domains\Reservations\Repositories\ReservationRepositoryInterface;
@@ -174,7 +175,7 @@ class ReservationService
                 'time_slot' => $data->timeSlot,
                 'duration_minutes' => ReservationSetting::current()->slot_duration_minutes,
                 'notes' => $data->notes,
-                'status' => 'pending',
+                'status' => $data->confirmed ? 'confirmed' : 'pending',
                 'tracking_token' => Str::random(32),
             ]);
 
@@ -183,7 +184,11 @@ class ReservationService
             return $reservation->fresh(['table', 'customer']) ?? $reservation;
         });
 
-        ReservationCreated::dispatch($reservation);
+        if ($data->confirmed) {
+            ReservationConfirmed::dispatch($reservation);
+        } else {
+            ReservationCreated::dispatch($reservation);
+        }
 
         return $reservation;
     }
@@ -216,6 +221,9 @@ class ReservationService
         if ($status === 'confirmed' && $from !== 'confirmed' && $fresh) {
             ReservationConfirmed::dispatch($fresh);
         }
+        if ($status === 'cancelled' && $fresh) {
+            ReservationCancelled::dispatch($fresh, 'staff');
+        }
 
         return $fresh ?? $reservation;
     }
@@ -240,6 +248,37 @@ class ReservationService
         // Use repository directly so customer/staff cancel works from any
         // cancellable status without requiring the staff transition map.
         $this->reservations->updateStatus($id, 'cancelled');
+        if ($reservation->status !== 'cancelled') {
+            $fresh = $reservation->fresh(['table', 'customer']);
+            if ($fresh) {
+                ReservationCancelled::dispatch($fresh, $isStaff ? 'staff' : 'customer');
+            }
+        }
+    }
+
+    /**
+     * Staff taking a booking by phone (ops audit, 2026-09-25): the same
+     * capacity check as the public form, confirmed on the spot, linked to
+     * the customer record when the number is known.
+     */
+    public function createForStaff(CreateReservationData $data): Reservation
+    {
+        $customerId = $data->customerId;
+        if ($customerId === null) {
+            $normalized = \App\Rules\MaldivesPhone::normalize($data->customerPhone);
+            $customerId = \App\Models\Customer::query()->where('phone', $normalized)->value('id');
+        }
+
+        return $this->create(new CreateReservationData(
+            customerName: $data->customerName,
+            customerPhone: $data->customerPhone,
+            partySize: $data->partySize,
+            date: $data->date,
+            timeSlot: $data->timeSlot,
+            notes: $data->notes,
+            customerId: $customerId !== null ? (int) $customerId : null,
+            confirmed: $data->confirmed,
+        ));
     }
 
     public function markNoShows(int $minutesGrace): int

@@ -77,6 +77,8 @@ final class SmsTypeRegistry
         'owner_social_digest' => 'owners_managers',
         'owner_daily_refund_summary' => 'owners_managers',
         'owner_deposit_payout' => 'owners_managers',
+        'owner_shift_left_open' => 'owners_managers',
+        'owner_shift_variance' => 'owners_managers',
         'owner_complaint_received' => 'owners_managers',
         'owner_complaint_box_received' => 'owners_managers',
         'trade_reconcile_mismatch_owner' => 'owners_managers',
@@ -147,6 +149,9 @@ final class SmsTypeRegistry
             self::def('staff_refund_requested', 'Staff: refund awaiting approval', 'staff', true, false, 'staff_refund_requested', 'sms_staff_refund_requested_enabled', 'sms.transactional.manage', false, 'Staff with orders.refund', false),
             self::def('owner_daily_refund_summary', 'Owner: daily refund summary', 'staff', true, false, 'owner_daily_refund_summary', 'sms_owner_daily_refund_summary_enabled', 'sms.transactional.manage', false, 'Owner phone(s)', false),
             self::def('owner_deposit_payout', 'Owner: customer deposit paid out', 'staff', true, false, null, 'sms_owner_deposit_payout_enabled', null, false, 'Owners & managers', false),
+            // Ops audit, 2026-09-25: nothing watched a till left open overnight or a close that landed short.
+            self::def('owner_shift_left_open', 'Owner: shift left open', 'staff', true, false, null, 'sms_owner_shift_left_open_enabled', null, false, 'Owners & managers (hours set in Settings → Notifications)', false),
+            self::def('owner_shift_variance', 'Owner: shift closed with a cash variance', 'staff', true, false, null, 'sms_owner_shift_variance_enabled', null, false, 'Owners & managers (threshold set in Settings → Notifications)', false),
             // Complaints — owner alert never suppressed by customer opt-out; customer ack/resolved honour opt-out.
             self::def('owner_complaint_received', 'Owner: complaint received', 'staff', true, false, 'owner_complaint_received', 'sms_owner_complaint_received_enabled', 'sms.transactional.manage', false, 'Owner phone(s)', false),
             self::def('customer_complaint_acknowledged', 'Complaint acknowledged', 'transactional', true, true, 'customer_complaint_acknowledged', 'sms_customer_complaint_acknowledged_enabled', 'sms.transactional.manage', false, 'Order / receipt customer phone', false),
@@ -190,6 +195,9 @@ final class SmsTypeRegistry
             self::def('customer_order_confirmed', 'Order confirmed (at creation)', 'transactional', true, false, null, 'sms_customer_order_confirmed_enabled', 'sms.transactional.manage', false, 'The ordering customer', false),
             self::def('reservation_received', 'Reservation request received', 'transactional', true, false, null, 'sms_reservation_enabled', 'sms.transactional.manage', false, 'The reservation phone', false),
             self::def('reservation_confirmed', 'Reservation confirmed', 'transactional', true, false, null, 'sms_reservation_enabled', 'sms.transactional.manage', false, 'The reservation phone', false),
+            // Ops audit, 2026-09-25: a guest who booked a week ago heard nothing until they arrived.
+            self::def('reservation_reminder', 'Reservation reminder (day before)', 'transactional', true, false, null, 'sms_reservation_enabled', 'sms.transactional.manage', false, 'The reservation phone', false),
+            self::def('reservation_cancelled', 'Reservation cancelled', 'transactional', true, false, null, 'sms_reservation_enabled', 'sms.transactional.manage', false, 'The reservation phone', false),
             self::def('catering_quote_customer', 'Catering quote sent (customer)', 'transactional', true, false, null, 'sms_catering_enabled', 'sms.transactional.manage', false, 'The event contact', false),
             self::def('catering_quote_staff', 'Catering quote sent (staff)', 'staff', true, false, null, 'sms_catering_enabled', 'sms.transactional.manage', false, 'Catering / ops staff', false),
             self::def('catering_lifecycle_customer', 'Catering reminder / change (customer)', 'transactional', true, false, null, 'sms_catering_enabled', 'sms.transactional.manage', false, 'The event contact', false),

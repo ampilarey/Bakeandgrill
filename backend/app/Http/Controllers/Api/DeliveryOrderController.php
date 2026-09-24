@@ -223,7 +223,10 @@ class DeliveryOrderController extends Controller
             // delivery_fee_laar and adds it on top of the item grand total.
             $order = $this->calculator->recalculateAndPersist($order->fresh());
 
-            return $order->load(['items.modifiers']);
+            // A promise the tracking page and the delay alert can hold us to (ops audit, 2026-09-25).
+            app(\App\Domains\Delivery\Services\DeliveryEtaStamper::class)->stampIfMissing($order);
+
+            return $order->fresh()->load(['items.modifiers']);
         });
 
         $customerId = $order->customer_id;

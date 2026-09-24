@@ -558,3 +558,33 @@ payouts appear in the daily refund summary. `pos_card_reference_required`
 (default off): with it on, a card row without `reference_number` is refused at
 settlement. Both are on Settings → Charges & fees. Approving a refund whose
 drawer share is zero no longer needs an open shift.
+
+## Appendix D — Ops audit follow-up (2026-09-25)
+
+### D.1 Delivery ETA
+`DeliveryEtaStamper` sets `delivery_eta_at` on every delivery order from the
+promised delivery time setting (`delivery_time`, e.g. "30-45 min" reads as
+45; default 45) at creation (`DeliveryOrderController::store`) and again on
+the `out_for_delivery` transition if still empty. A customer's `desired_eta`
+is kept. The tracking page and the delay alert now have a promise to measure
+against instead of relying on the kitchen's wait estimate alone.
+
+### D.2 Shift alerts
+`shifts:alert-open` (hourly): shifts open longer than
+`ops_shift_open_alert_hours` (default 14; 0 off) text the owners once a day
+(`owner_shift_left_open`). `AlertOwnerOnShiftVarianceListener` on
+`ShiftClosed`: a close whose |variance| is at least
+`ops_shift_variance_alert_mvr` (default 50; 0 off) texts the owners
+(`owner_shift_variance`) with the direction and both figures. Both thresholds
+are edited on Settings → Notifications → Shift alerts via `/admin/ops/alerts`;
+recipients follow the Control Center.
+
+### D.3 Reservation texts and staff bookings
+`reservations:send-reminders` (daily 10:00) texts tomorrow's pending and
+confirmed bookings made before today (`reservation_reminder`, idempotent per
+booking). `ReservationCancelled` (dispatched from `updateStatus('cancelled')`
+and `cancel()`, carrying who cancelled) sends `reservation_cancelled` with
+different wording for a guest's own cancellation. `POST /admin/reservations`
+(permission `reservations.manage`) takes a booking by phone: same capacity
+check as the public form, confirmed on the spot (one text, not two), linked to
+the customer whose number matches; the Reservations page has "+ New booking".

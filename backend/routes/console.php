@@ -77,6 +77,18 @@ Schedule::job(App\Jobs\AutoCancelNoShowReservations::class)
     ->onFailure($alertOnFailure('AutoCancelNoShowReservations'))
     ->after($trackSuccess('AutoCancelNoShowReservations'));
 
+// Reservations: day-before reminder texts (ops audit, 2026-09-25)
+Schedule::command('reservations:send-reminders')
+    ->dailyAt('10:00')
+    ->onFailure($alertOnFailure('reservations:send-reminders'))
+    ->after($trackSuccess('reservations:send-reminders'));
+
+// Shifts: text the owners about a till left open too long (ops audit, 2026-09-25)
+Schedule::command('shifts:alert-open')
+    ->hourly()
+    ->onFailure($alertOnFailure('shifts:alert-open'))
+    ->after($trackSuccess('shifts:alert-open'));
+
 // Catering: expire awaiting_customer quotes past quote_expires_at
 Schedule::job(App\Jobs\ExpireCateringQuotes::class)
     ->hourly()

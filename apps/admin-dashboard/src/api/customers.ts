@@ -586,6 +586,20 @@ export async function seatReservation(id: number, tableId?: number): Promise<{ r
   });
 }
 
+/** Staff booking taken by phone (ops audit, 2026-09-25): confirmed on the spot, linked to the customer by number. */
+export async function createAdminReservation(data: {
+  customer_name: string;
+  customer_phone: string;
+  party_size: number;
+  date: string;
+  time_slot: string;
+  notes?: string;
+  customer_id?: number;
+  confirmed?: boolean;
+}): Promise<{ reservation: AdminReservation }> {
+  return req('/admin/reservations', { method: 'POST', body: JSON.stringify(data) });
+}
+
 export async function getReservationSettings(): Promise<{ settings: ReservationSettings }> {
   return req('/admin/reservations/settings');
 }

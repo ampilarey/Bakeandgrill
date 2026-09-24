@@ -87,6 +87,35 @@ class ReservationController extends Controller
         return response()->json(['reservation' => $this->format($reservation)], 201);
     }
 
+    // ── Staff: create a booking by phone (ops audit, 2026-09-25) ─────────────
+
+    public function adminStore(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'customer_name' => ['required', 'string', 'max:120'],
+            'customer_phone' => ['required', 'string', 'max:20', new \App\Rules\MaldivesPhone],
+            'party_size' => ['required', 'integer', 'min:1', 'max:200'],
+            'date' => ['required', 'date', 'after_or_equal:today'],
+            'time_slot' => ['required', 'string', 'regex:/^\d{2}:\d{2}$/'],
+            'notes' => ['nullable', 'string', 'max:500'],
+            'customer_id' => ['nullable', 'integer', 'exists:customers,id'],
+            'confirmed' => ['nullable', 'boolean'],
+        ]);
+
+        $reservation = $this->service->createForStaff(new CreateReservationData(
+            customerName: $validated['customer_name'],
+            customerPhone: \App\Rules\MaldivesPhone::normalize($validated['customer_phone']),
+            partySize: (int) $validated['party_size'],
+            date: $validated['date'],
+            timeSlot: $validated['time_slot'] . ':00',
+            notes: $validated['notes'] ?? null,
+            customerId: isset($validated['customer_id']) ? (int) $validated['customer_id'] : null,
+            confirmed: (bool) ($validated['confirmed'] ?? true),
+        ));
+
+        return response()->json(['reservation' => $this->format($reservation)], 201);
+    }
+
     // ── List reservations ────────────────────────────────────────────────────
 
     public function index(Request $request): JsonResponse

@@ -16,6 +16,7 @@ import {
   type OpsAlertsSettings,
 } from '../api';
 import { SmsNotificationRow } from './SettingsPage/SmsNotificationRow';
+import { Btn } from '../components/SharedUI';
 
 /** Legacy ?tab= values from before the settings hub — redirect to the tab's path. */
 const LEGACY_TAB_REDIRECTS: Record<string, string> = {
@@ -138,6 +139,30 @@ function NotificationsSettings() {
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
+
+  const [shiftDraft, setShiftDraft] = useState({ hours: '14', variance: '50' });
+  useEffect(() => {
+    if (opsAlerts) {
+      setShiftDraft({ hours: String(opsAlerts.shift_open_alert_hours ?? 14), variance: String(opsAlerts.shift_variance_alert_mvr ?? 50) });
+    }
+  }, [opsAlerts]);
+
+  const saveShiftAlerts = async () => {
+    if (opsSaving) return;
+    setOpsSaving(true);
+    setError('');
+    try {
+      const res = await updateOpsAlertsSettings({
+        shift_open_alert_hours: Math.max(0, Math.min(72, Number(shiftDraft.hours) || 0)),
+        shift_variance_alert_mvr: Math.max(0, Number(shiftDraft.variance) || 0),
+      });
+      setOpsAlerts(res.settings);
+    } catch (e: unknown) {
+      setError((e as Error).message);
+    } finally {
+      setOpsSaving(false);
+    }
+  };
 
   const toggleInventoryReorderAlert = async () => {
     if (!opsAlerts || opsSaving) return;
@@ -308,6 +333,42 @@ function NotificationsSettings() {
               </span>
             </span>
           </label>
+        )}
+      </div>
+
+      <div style={{ marginBottom: 28 }}>
+        <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 4px' }}>Shift alerts</h3>
+        <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 14px' }}>
+          Owners and managers are texted when a till is left open too long, and when a close lands short or over by more than this. 0 switches either off. Who receives them is set in SMS → Control Center.
+        </p>
+        {!loading && opsAlerts && (
+          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+              Shift open longer than (hours)
+              <input
+                type="number"
+                aria-label="Shift open alert hours"
+                min={0}
+                max={72}
+                value={shiftDraft.hours}
+                onChange={(e) => setShiftDraft((d) => ({ ...d, hours: e.target.value }))}
+                style={{ width: 160, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }}
+              />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+              Cash variance of at least (MVR)
+              <input
+                type="number"
+                aria-label="Shift variance alert MVR"
+                min={0}
+                step={1}
+                value={shiftDraft.variance}
+                onChange={(e) => setShiftDraft((d) => ({ ...d, variance: e.target.value }))}
+                style={{ width: 160, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }}
+              />
+            </label>
+            <Btn variant="secondary" onClick={() => void saveShiftAlerts()} disabled={opsSaving}>{opsSaving ? 'Saving…' : 'Save shift alerts'}</Btn>
+          </div>
         )}
       </div>
 

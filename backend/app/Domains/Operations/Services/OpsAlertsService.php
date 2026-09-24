@@ -22,6 +22,10 @@ final class OpsAlertsService
         return [
             'delivery_delay_alert_sms' => $this->bool('ops_delivery_delay_alert_sms', false),
             'inventory_reorder_alert_sms' => $this->bool('ops_inventory_reorder_alert_sms', false),
+            // Ops audit, 2026-09-25: a shift open longer than this texts the owners; 0 = off.
+            'shift_open_alert_hours' => max(0, min(72, (int) SiteSetting::get('ops_shift_open_alert_hours', '14'))),
+            // A close whose cash variance is this much or more texts the owners; 0 = off.
+            'shift_variance_alert_mvr' => max(0.0, round((float) SiteSetting::get('ops_shift_variance_alert_mvr', '50'), 2)),
         ];
     }
 
@@ -41,6 +45,14 @@ final class OpsAlertsService
                 'ops_inventory_reorder_alert_sms',
                 filter_var($input['inventory_reorder_alert_sms'], FILTER_VALIDATE_BOOLEAN) ? '1' : '0',
             );
+            SiteSetting::bust();
+        }
+        if (array_key_exists('shift_open_alert_hours', $input)) {
+            SiteSetting::set('ops_shift_open_alert_hours', (string) max(0, min(72, (int) $input['shift_open_alert_hours'])));
+            SiteSetting::bust();
+        }
+        if (array_key_exists('shift_variance_alert_mvr', $input)) {
+            SiteSetting::set('ops_shift_variance_alert_mvr', number_format(max(0.0, (float) $input['shift_variance_alert_mvr']), 2, '.', ''));
             SiteSetting::bust();
         }
 

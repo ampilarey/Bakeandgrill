@@ -14,5 +14,7 @@ readonly class CreateReservationData
         public string $timeSlot,
         public ?string $notes = null,
         public ?int $customerId = null,
+        /** Staff booking taken by phone: confirmed on the spot, one text instead of "received" then "confirmed". */
+        public bool $confirmed = false,
     ) {}
 }

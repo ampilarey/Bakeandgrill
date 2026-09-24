@@ -30,6 +30,7 @@ Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
 // Staff: manage reservation status + settings
 Route::middleware(['auth:sanctum', 'staff.token', 'permission:reservations.manage'])->prefix('admin/reservations')->group(function () {
     Route::get('/', [ReservationController::class, 'index']);
+    Route::post('/', [ReservationController::class, 'adminStore']);
     Route::patch('/{id}/status', [ReservationController::class, 'updateStatus']);
     Route::post('/{id}/seat', [ReservationController::class, 'seat']);
     Route::get('/settings', [ReservationController::class, 'getSettings']);

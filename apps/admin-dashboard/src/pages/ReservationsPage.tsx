@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import {
-  getReservations, updateReservationStatus, seatReservation,
+  getReservations, updateReservationStatus, seatReservation, createAdminReservation,
   getReservationSettings, updateReservationSettings,
   type AdminReservation, type ReservationSettings,
 } from '../api';
 import {
-  Badge, Btn, DateInput, EmptyState, ErrorMsg, PageHeader, PageShell, Pagination, Spinner, TableCard, TD,
+  Badge, Btn, DateInput, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Pagination, Spinner, TableCard, TD,
 } from '../components/SharedUI';
 import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -89,6 +89,43 @@ function ReservationsList() {
   const [total, setTotal] = useState(0);
   const [confirmAction, setConfirmAction] = useState<{ id: number; status: string } | null>(null);
 
+  // Staff booking by phone (ops audit, 2026-09-25): before this, a caller's booking had to be typed into the public form.
+  const [newOpen, setNewOpen] = useState(false);
+  const [newForm, setNewForm] = useState({ customer_name: '', customer_phone: '', party_size: '2', date: '', time_slot: '19:00', notes: '' });
+  const [newSaving, setNewSaving] = useState(false);
+  const [newError, setNewError] = useState('');
+  const [newDone, setNewDone] = useState('');
+
+  const submitNew = async () => {
+    const party = Number(newForm.party_size);
+    if (!newForm.customer_name.trim() || !newForm.customer_phone.trim() || !newForm.date || !newForm.time_slot || !party || party < 1) {
+      setNewError('Name, phone, party size, date and time are all needed.');
+      return;
+    }
+    setNewSaving(true);
+    setNewError('');
+    try {
+      const res = await createAdminReservation({
+        customer_name: newForm.customer_name.trim(),
+        customer_phone: newForm.customer_phone.trim(),
+        party_size: party,
+        date: newForm.date,
+        time_slot: newForm.time_slot,
+        ...(newForm.notes.trim() ? { notes: newForm.notes.trim() } : {}),
+        confirmed: true,
+      });
+      setNewOpen(false);
+      setNewForm({ customer_name: '', customer_phone: '', party_size: '2', date: '', time_slot: '19:00', notes: '' });
+      setNewDone(`Booked ${res.reservation.customer_name}, ${res.reservation.party_size} on ${res.reservation.date} at ${res.reservation.time_slot}${res.reservation.table ? ` (${res.reservation.table.name})` : ''}. The guest has been texted.`);
+      window.setTimeout(() => setNewDone(''), 6000);
+      void load();
+    } catch (e) {
+      setNewError((e as Error).message);
+    } finally {
+      setNewSaving(false);
+    }
+  };
+
   const load = async () => {
     setLoading(true); setError('');
     try {
@@ -144,7 +181,10 @@ function ReservationsList() {
         </div>
       )}
 
+      {newDone && <div role="status" data-testid="booking-done" style={{ background: 'var(--color-success-bg)', color: 'var(--color-success-strong)', borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 13 }}>{newDone}</div>}
+
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20, alignItems: 'flex-end' }}>
+        <Btn onClick={() => { setNewError(''); setNewOpen(true); }}>+ New booking</Btn>
         <DateInput value={dateFilter} onChange={(v) => { setDateFilter(v); setPage(1); }} label="Date" />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <label style={labelStyle}>Status</label>
@@ -232,6 +272,45 @@ function ReservationsList() {
           </table>
           <Pagination page={page} totalPages={lastPage} onChange={setPage} />
         </TableCard>
+      )}
+
+      {newOpen && (
+        <Modal title="New booking (by phone)" onClose={() => setNewOpen(false)} maxWidth={480}>
+          {newError && <p style={{ color: 'var(--color-danger)', marginBottom: 12, fontSize: 13 }}>{newError}</p>}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <label style={{ gridColumn: '1 / -1' }}>
+              <span style={labelStyle}>Guest name</span>
+              <input aria-label="Guest name" value={newForm.customer_name} onChange={(e) => setNewForm((f) => ({ ...f, customer_name: e.target.value }))} style={inputStyle} />
+            </label>
+            <label>
+              <span style={labelStyle}>Phone</span>
+              <input aria-label="Guest phone" inputMode="tel" placeholder="7XXXXXX" value={newForm.customer_phone} onChange={(e) => setNewForm((f) => ({ ...f, customer_phone: e.target.value }))} style={inputStyle} />
+            </label>
+            <label>
+              <span style={labelStyle}>Party size</span>
+              <input aria-label="Party size" type="number" min={1} max={200} value={newForm.party_size} onChange={(e) => setNewForm((f) => ({ ...f, party_size: e.target.value }))} style={inputStyle} />
+            </label>
+            <label>
+              <span style={labelStyle}>Date</span>
+              <input aria-label="Booking date" type="date" value={newForm.date} onChange={(e) => setNewForm((f) => ({ ...f, date: e.target.value }))} style={inputStyle} />
+            </label>
+            <label>
+              <span style={labelStyle}>Time</span>
+              <input aria-label="Booking time" type="time" value={newForm.time_slot} onChange={(e) => setNewForm((f) => ({ ...f, time_slot: e.target.value }))} style={inputStyle} />
+            </label>
+            <label style={{ gridColumn: '1 / -1' }}>
+              <span style={labelStyle}>Notes</span>
+              <input aria-label="Booking notes" value={newForm.notes} onChange={(e) => setNewForm((f) => ({ ...f, notes: e.target.value }))} style={inputStyle} placeholder="Birthday, high chair, window seat…" />
+            </label>
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '10px 0 0' }}>
+            Confirmed on the spot and texted to the guest. Same table capacity check as the website; linked to the customer record when the number is known.
+          </p>
+          <ModalActions>
+            <Btn variant="secondary" onClick={() => setNewOpen(false)}>Cancel</Btn>
+            <Btn onClick={() => void submitNew()} disabled={newSaving}>{newSaving ? 'Booking…' : 'Book table'}</Btn>
+          </ModalActions>
+        </Modal>
       )}
     </>
   );

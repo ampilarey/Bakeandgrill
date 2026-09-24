@@ -304,6 +304,10 @@ export async function updatePackagingFeeSettings(
 }
 
 export type OpsAlertsSettings = {
+  /** Ops audit, 2026-09-25: a shift open longer than this texts the owners; 0 = off. */
+  shift_open_alert_hours?: number;
+  /** A close whose cash variance is this much or more texts the owners; 0 = off. */
+  shift_variance_alert_mvr?: number;
   delivery_delay_alert_sms: boolean;
   inventory_reorder_alert_sms: boolean;
 };

@@ -120,6 +120,9 @@ class DomainEventServiceProvider extends EventServiceProvider
         ReservationConfirmed::class => [
             SendReservationConfirmedListener::class,
         ],
+        \App\Domains\Reservations\Events\ReservationCancelled::class => [
+            \App\Domains\Reservations\Listeners\SendReservationCancelledListener::class,
+        ],
 
         OrderRefunded::class => [
             RestoreInventoryOnRefundListener::class,
@@ -153,6 +156,7 @@ class DomainEventServiceProvider extends EventServiceProvider
 
         ShiftClosed::class => [
             DispatchWebhookOnDomainEvent::class,
+            \App\Domains\Shifts\Listeners\AlertOwnerOnShiftVarianceListener::class,
         ],
 
         CustomerCreated::class => [
