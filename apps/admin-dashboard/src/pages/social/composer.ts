@@ -41,6 +41,41 @@ export function tightestCaptionLimit(
   return best;
 }
 
+export type ChannelLanguage = 'both' | 'en' | 'dv';
+
+/** The caption a channel receives, by its language setting (mirrors SocialPost::captionFor). */
+export function captionForLanguage(en: string, dv: string, language: ChannelLanguage | undefined): string {
+  const d = dv.trim();
+  if (language === 'en') return en;
+  if (language === 'dv') return d !== '' ? d : en;
+  return d !== '' ? (en !== '' ? `${en}\n\n${d}` : d) : en;
+}
+
+/**
+ * The channel whose limit the caption is closest to (or over), measured
+ * as that channel will receive it. Null when nothing is selected.
+ */
+export function tightestForChannels(
+  channels: { platform: string; name: string; language?: ChannelLanguage }[],
+  platforms: Record<string, SocialPlatformCaps>,
+  hasImage: boolean,
+  en: string,
+  dv: string,
+): { name: string; platform: string; language: ChannelLanguage; limit: number; length: number } | null {
+  let worst: { name: string; platform: string; language: ChannelLanguage; limit: number; length: number } | null = null;
+  for (const c of channels) {
+    const caps = platforms[c.platform];
+    if (!caps) continue;
+    const limit = hasImage ? caps.caption_max_photo : caps.caption_max;
+    if (!limit || limit <= 0) continue;
+    const language = c.language ?? 'both';
+    const length = captionLength(captionForLanguage(en, dv, language));
+    const room = limit - length;
+    if (worst === null || room < worst.limit - worst.length) worst = { name: c.name, platform: c.platform, language, limit, length };
+  }
+  return worst;
+}
+
 /** Selected platforms that cannot post without a photo. */
 export function platformsNeedingImage(
   selectedPlatforms: string[],

@@ -31,6 +31,8 @@ export interface SocialChannelRow {
   remote_account_id: string | null;
   is_enabled: boolean;
   is_test_channel: boolean;
+  /** Which caption(s) it posts: both (English then Dhivehi), en, or dv. */
+  language: 'both' | 'en' | 'dv';
   last_published_at: string | null;
   credential_summary: Record<string, string>;
   has_credentials: boolean;
@@ -57,6 +59,7 @@ export interface SocialPostRow {
   status: string;
   snapshot: {
     caption: string;
+    caption_dv?: string | null;
     image_url: string | null;
     link_url: string | null;
     item_id: number | null;
@@ -174,6 +177,7 @@ export interface SocialChannelOption {
   id: number;
   platform: string;
   name: string;
+  language?: 'both' | 'en' | 'dv';
 }
 
 export async function fetchSocialChannelOptions(): Promise<{
@@ -189,6 +193,7 @@ export async function createSocialChannel(data: {
   credentials: Record<string, string>;
   is_enabled?: boolean;
   is_test_channel?: boolean;
+  language?: 'both' | 'en' | 'dv';
 }): Promise<{ channel: SocialChannelRow }> {
   return req('/admin/social/channels', { method: 'POST', body: JSON.stringify(data) });
 }
@@ -198,6 +203,7 @@ export async function updateSocialChannel(id: number, data: {
   credentials?: Record<string, string>;
   is_enabled?: boolean;
   is_test_channel?: boolean;
+  language?: 'both' | 'en' | 'dv';
 }): Promise<{ channel: SocialChannelRow }> {
   return req(`/admin/social/channels/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
@@ -243,6 +249,7 @@ export async function fetchSocialPost(id: number): Promise<{ post: SocialPostRow
 
 export async function createSocialPost(data: {
   caption: string;
+  caption_dv?: string | null;
   image_url?: string | null;
   item_id?: number | null;
   channel_ids: number[];
@@ -257,6 +264,7 @@ export async function createSocialPost(data: {
 /** Edit a draft / scheduled / awaiting-approval post. Automation posts keep their item and channels. */
 export async function updateSocialPost(id: number, data: {
   caption?: string;
+  caption_dv?: string | null;
   image_url?: string | null;
   item_id?: number | null;
   channel_ids?: number[];
@@ -290,7 +298,7 @@ export async function retrySocialDelivery(postId: number, deliveryId: number): P
 // `special` is the daily special; `new_item` announces recent photographed
 // items once each; `featured` rotates the chef's picks on chosen weekdays.
 
-export type SocialAutomationKind = 'special' | 'new_item' | 'featured';
+export type SocialAutomationKind = 'special' | 'new_item' | 'featured' | 'weekly' | 'stock';
 
 export interface SocialAutomationConfig {
   enabled: boolean;
@@ -303,6 +311,9 @@ export interface SocialAutomationConfig {
   days: number[];
   /** New on the menu only: how many days an item counts as new. */
   max_age_days: number;
+  /** Back in stock only: only chef's picks, and how long it must have been gone. */
+  featured_only: boolean;
+  min_out_hours: number;
 }
 
 export async function fetchSocialAutomation(): Promise<{

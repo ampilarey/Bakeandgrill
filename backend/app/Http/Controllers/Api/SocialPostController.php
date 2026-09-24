@@ -42,11 +42,12 @@ class SocialPostController extends Controller
             'channels' => SocialChannel::query()
                 ->where('is_enabled', true)
                 ->orderBy('platform')->orderBy('name')
-                ->get(['id', 'platform', 'name'])
+                ->get(['id', 'platform', 'name', 'language'])
                 ->map(fn (SocialChannel $c) => [
                     'id' => $c->id,
                     'platform' => $c->platform,
                     'name' => $c->name,
+                    'language' => $c->language ?? 'both',
                 ])->values(),
             'platforms' => $drivers->capabilities(),
         ]);
@@ -91,6 +92,7 @@ class SocialPostController extends Controller
     {
         $data = $request->validate([
             'caption' => ['required', 'string', 'max:10000'],
+            'caption_dv' => ['nullable', 'string', 'max:10000'],
             'image_url' => ['nullable', 'string', 'max:500', 'url'],
             'item_id' => ['nullable', 'integer', 'exists:items,id'],
             'channel_ids' => ['required', 'array', 'min:1'],
@@ -218,6 +220,7 @@ class SocialPostController extends Controller
 
         $data = $request->validate([
             'caption' => ['sometimes', 'required', 'string', 'max:10000'],
+            'caption_dv' => ['sometimes', 'nullable', 'string', 'max:10000'],
             'image_url' => ['sometimes', 'nullable', 'string', 'max:500', 'url'],
             'item_id' => ['sometimes', 'nullable', 'integer', 'exists:items,id'],
             'channel_ids' => ['sometimes', 'array', 'min:1'],
@@ -230,6 +233,7 @@ class SocialPostController extends Controller
         $old = $post->snapshot ?? [];
         $merged = [
             'caption' => array_key_exists('caption', $data) ? (string) $data['caption'] : (string) ($old['caption'] ?? ''),
+            'caption_dv' => array_key_exists('caption_dv', $data) ? (string) ($data['caption_dv'] ?? '') : (string) ($old['caption_dv'] ?? ''),
             'image_url' => array_key_exists('image_url', $data) ? $data['image_url'] : ($old['image_url'] ?? null),
             'item_id' => $automated || !array_key_exists('item_id', $data) ? ($old['item_id'] ?? null) : $data['item_id'],
         ];
@@ -324,6 +328,8 @@ class SocialPostController extends Controller
             'days' => ['sometimes', 'array'],
             'days.*' => ['integer', 'between:0,6'],
             'max_age_days' => ['sometimes', 'integer', 'between:1,90'],
+            'featured_only' => ['sometimes', 'boolean'],
+            'min_out_hours' => ['sometimes', 'integer', 'between:0,168'],
         ]);
 
         $kind = (string) ($data['kind'] ?? 'special');
@@ -420,7 +426,7 @@ class SocialPostController extends Controller
     private function capabilityProblem($channels, array $snapshot, SocialDriverRegistry $drivers): ?string
     {
         $hasImage = !empty($snapshot['image_url']);
-        $length = mb_strlen((string) ($snapshot['caption'] ?? ''));
+        $probe = new SocialPost(['snapshot' => $snapshot]);
 
         $needsPhoto = [];
         $tooLong = [];
@@ -429,6 +435,9 @@ class SocialPostController extends Controller
             if (!$hasImage && $caps['requires_photo']) {
                 $needsPhoto[] = $channel->name;
             }
+            // Measured as the channel will receive it: its language setting
+            // decides whether the Dhivehi rides along under the English.
+            $length = mb_strlen($probe->captionFor($channel));
             $limit = (int) ($hasImage ? $caps['caption_max_photo'] : $caps['caption_max']);
             if ($limit > 0 && $length > $limit) {
                 $tooLong[] = "{$channel->name} ({$limit})";
@@ -439,7 +448,7 @@ class SocialPostController extends Controller
             return 'These channels require an image: ' . implode(', ', $needsPhoto);
         }
         if ($tooLong !== []) {
-            return "The caption is {$length} characters; too long for " . implode(', ', $tooLong) . '.';
+            return 'The caption is too long for ' . implode(', ', $tooLong) . '.';
         }
 
         return null;
@@ -451,6 +460,7 @@ class SocialPostController extends Controller
     {
         $snapshot = [
             'caption' => (string) $data['caption'],
+            'caption_dv' => trim((string) ($data['caption_dv'] ?? '')),
             'image_url' => $data['image_url'] ?? null,
             'image_fingerprint' => !empty($data['image_url']) ? sha1((string) $data['image_url']) : null,
             'link_url' => null,

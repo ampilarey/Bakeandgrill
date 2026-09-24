@@ -83,8 +83,8 @@ class ViberChannelDriver implements SocialDriverInterface
 
         $image = $post->imageUrl();
         $payload = $image !== null
-            ? ['from' => $sender, 'type' => 'picture', 'text' => $post->caption(), 'media' => $image]
-            : ['from' => $sender, 'type' => 'text', 'text' => $post->caption()];
+            ? ['from' => $sender, 'type' => 'picture', 'text' => $post->captionFor($channel), 'media' => $image]
+            : ['from' => $sender, 'type' => 'text', 'text' => $post->captionFor($channel)];
 
         $response = $this->call('/post', $token, $payload);
         $this->assertOk($response);

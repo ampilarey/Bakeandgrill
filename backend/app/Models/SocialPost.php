@@ -61,6 +61,28 @@ class SocialPost extends Model
         return (string) (($this->snapshot ?? [])['caption'] ?? '');
     }
 
+    public function captionDv(): string
+    {
+        return trim((string) (($this->snapshot ?? [])['caption_dv'] ?? ''));
+    }
+
+    /**
+     * The caption a channel gets, by its language setting: both (English,
+     * then the Dhivehi under it), English only, or Dhivehi only — falling
+     * back to English when no Dhivehi was written.
+     */
+    public function captionFor(SocialChannel $channel): string
+    {
+        $en = $this->caption();
+        $dv = $this->captionDv();
+
+        return match ($channel->language ?? 'both') {
+            'en' => $en,
+            'dv' => $dv !== '' ? $dv : $en,
+            default => $dv !== '' ? ($en !== '' ? $en . "\n\n" . $dv : $dv) : $en,
+        };
+    }
+
     public function imageUrl(): ?string
     {
         $url = trim((string) (($this->snapshot ?? [])['image_url'] ?? ''));

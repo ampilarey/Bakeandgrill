@@ -48,6 +48,7 @@ class SocialChannelController extends Controller
             'remote_account_id' => ['nullable', 'string', 'max:100'],
             'is_enabled' => ['sometimes', 'boolean'],
             'is_test_channel' => ['sometimes', 'boolean'],
+            'language' => ['sometimes', Rule::in(SocialChannel::LANGUAGES)],
         ]);
 
         $this->assertRequiredCredentials($data['platform'], $data['credentials']);
@@ -70,6 +71,7 @@ class SocialChannelController extends Controller
             'remote_account_id' => ['sometimes', 'nullable', 'string', 'max:100'],
             'is_enabled' => ['sometimes', 'boolean'],
             'is_test_channel' => ['sometimes', 'boolean'],
+            'language' => ['sometimes', Rule::in(SocialChannel::LANGUAGES)],
         ]);
 
         if (array_key_exists('credentials', $data)) {
@@ -165,6 +167,7 @@ class SocialChannelController extends Controller
             'remote_account_id' => $channel->remote_account_id,
             'is_enabled' => $channel->is_enabled,
             'is_test_channel' => $channel->is_test_channel,
+            'language' => $channel->language ?? 'both',
             'last_published_at' => $channel->last_published_at?->toIso8601String(),
             // Masked: which keys exist + last 4 chars. Never the values.
             'credential_summary' => $channel->credentialSummary(),

@@ -6,7 +6,7 @@ import {
 import { Btn, Card, ErrorMsg, Select, Spinner } from '../../components/SharedUI';
 import { PLATFORM_SHORT, bestTimesHint } from './composer';
 
-const KIND_LABELS: Record<string, string> = { special: 'Daily special', new_item: 'New on the menu', featured: "Chef's pick" };
+const KIND_LABELS: Record<string, string> = { special: 'Daily special', new_item: 'New on the menu', featured: "Chef's pick", weekly: "Week's specials", stock: 'Back in stock' };
 const STATUS_TONE: Record<string, string> = {
   published: 'var(--color-success-bg)', partial_failure: 'var(--color-warning-bg)', failed: 'var(--color-danger-bg)',
   scheduled: 'var(--color-bg)', queued: 'var(--color-bg)', processing: 'var(--color-bg)', cancelled: 'var(--color-bg)',

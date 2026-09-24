@@ -20,6 +20,9 @@ class SocialChannel extends Model
 {
     public const PLATFORMS = ['facebook', 'instagram', 'telegram', 'viber'];
 
+    /** Which caption(s) this channel posts: English and Dhivehi, English only, or Dhivehi only. */
+    public const LANGUAGES = ['both', 'en', 'dv'];
+
     protected $fillable = [
         'platform',
         'name',
@@ -27,6 +30,7 @@ class SocialChannel extends Model
         'remote_account_id',
         'is_enabled',
         'is_test_channel',
+        'language',
         'last_published_at',
         'health',
     ];

@@ -8,6 +8,7 @@ use App\Domains\Social\Services\DailySpecialAutoPoster;
 use App\Domains\Social\Services\FeaturedItemAutoPoster;
 use App\Domains\Social\Services\NewItemAutoPoster;
 use App\Domains\Social\Services\SocialAutomationSettings;
+use App\Domains\Social\Services\WeeklyMenuAutoPoster;
 use Illuminate\Console\Command;
 
 /**
@@ -19,16 +20,18 @@ class RunSocialAutomations extends Command
 {
     protected $signature = 'social:run-automations {--force : Run every automation regardless of the configured time}';
 
-    protected $description = 'Run due social automations (daily special, new on the menu, chef\'s pick)';
+    protected $description = 'Run due social automations (daily special, new on the menu, chef\'s pick, weekly card)';
 
     public function handle(
         SocialAutomationSettings $settings,
         DailySpecialAutoPoster $special,
         NewItemAutoPoster $newItem,
         FeaturedItemAutoPoster $featured,
+        WeeklyMenuAutoPoster $weekly,
     ): int {
         $localTime = now(config('app.timezone', 'Indian/Maldives'))->format('H:i');
-        $posters = ['special' => $special, 'new_item' => $newItem, 'featured' => $featured];
+        // Back in stock is event-driven (ItemObserver), not on the clock.
+        $posters = ['special' => $special, 'new_item' => $newItem, 'featured' => $featured, 'weekly' => $weekly];
 
         foreach ($posters as $kind => $poster) {
             $config = $settings->forKind($kind);

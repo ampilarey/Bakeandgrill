@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-  captionLength, fromLocalDateTimeInput, platformsNeedingImage, suggestCaption,
-  tightestCaptionLimit, toLocalDateTimeInput,
+  captionForLanguage, captionLength, fromLocalDateTimeInput, platformsNeedingImage, suggestCaption,
+  tightestCaptionLimit, tightestForChannels, toLocalDateTimeInput,
 } from '../pages/social/composer';
 import type { SocialPlatformCaps } from '../api';
 
@@ -19,6 +19,25 @@ describe('composer helpers', () => {
     expect(tightestCaptionLimit(['facebook', 'instagram', 'viber'], caps, true)).toEqual({ limit: 2200, platform: 'instagram' });
     expect(tightestCaptionLimit([], caps, true)).toBeNull();
     expect(tightestCaptionLimit(['unknown'], caps, true)).toBeNull();
+  });
+
+  it('builds the caption a channel receives by its language', () => {
+    expect(captionForLanguage('EN', 'DV', 'both')).toBe('EN\n\nDV');
+    expect(captionForLanguage('EN', 'DV', 'en')).toBe('EN');
+    expect(captionForLanguage('EN', 'DV', 'dv')).toBe('DV');
+    expect(captionForLanguage('EN', '', 'dv')).toBe('EN');
+    expect(captionForLanguage('EN', '  ', undefined)).toBe('EN');
+  });
+
+  it('finds the channel with the least room, measured in its own language', () => {
+    const channels = [
+      { platform: 'telegram', name: 'TG en', language: 'en' as const },
+      { platform: 'telegram', name: 'TG both', language: 'both' as const },
+      { platform: 'facebook', name: 'FB', language: 'both' as const },
+    ];
+    const worst = tightestForChannels(channels, caps, true, 'a'.repeat(600), 'މ'.repeat(500));
+    expect(worst).toEqual({ name: 'TG both', platform: 'telegram', language: 'both', limit: 1024, length: 1102 });
+    expect(tightestForChannels([], caps, true, 'x', '')).toBeNull();
   });
 
   it('knows which selected platforms cannot post without a photo', () => {

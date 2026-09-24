@@ -180,7 +180,10 @@ class SocialPublisher
         }
 
         $snapshot = $post->snapshot ?? [];
-        $item = !empty($snapshot['item_id']) ? \App\Models\Item::find((int) $snapshot['item_id']) : null;
+        if (empty($snapshot['item_id'])) {
+            return null; // the weekly card has no single item to revalidate
+        }
+        $item = \App\Models\Item::find((int) $snapshot['item_id']);
         if ($item === null || !$item->is_active || !$item->is_available) {
             return 'Item is no longer sellable.';
         }

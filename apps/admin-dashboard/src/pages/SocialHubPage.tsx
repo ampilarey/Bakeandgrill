@@ -38,8 +38,16 @@ const SOURCE_LABELS: Record<string, string> = {
   auto_special: 'Auto · daily special',
   auto_new_item: 'Auto · new on the menu',
   auto_featured: "Auto · chef's pick",
+  auto_weekly: "Auto · this week's specials",
+  auto_stock: 'Auto · back in stock',
   channel_test: 'Test post',
 };
+
+const LANGUAGE_OPTIONS = [
+  { value: 'both', label: 'English, then Dhivehi under it' },
+  { value: 'en', label: 'English only' },
+  { value: 'dv', label: 'Dhivehi only (English when none written)' },
+];
 
 const EDITABLE = ['draft', 'scheduled', 'awaiting_approval'];
 
@@ -421,7 +429,7 @@ function PostList({ posts, meta, loading, filters, onFilters, onChanged, onEdit 
   );
 }
 
-const AUTOMATION_KINDS: { kind: SocialAutomationKind; title: string; blurb: string; variables: string }[] = [
+const AUTOMATION_KINDS: { kind: SocialAutomationKind; title: string; blurb: string; variables: string; eventDriven?: boolean }[] = [
   {
     kind: 'special',
     title: 'Daily special',
@@ -439,6 +447,19 @@ const AUTOMATION_KINDS: { kind: SocialAutomationKind; title: string; blurb: stri
     title: "Chef's pick",
     blurb: "On the chosen weekdays, one of the items marked as a Chef's pick (the same ones the website, order app and TV board show), rotating so the one posted longest ago goes next.",
     variables: '{item} {name_dv} {price} {description} {category} {link}',
+  },
+  {
+    kind: 'weekly',
+    title: "This week's specials",
+    blurb: 'On the chosen weekdays, one post with a generated picture listing the specials running in the next seven days: dish, price and days. Nothing posts in a week without specials. The picture means Instagram can take it.',
+    variables: '{specials} {week} {link}',
+  },
+  {
+    kind: 'stock',
+    title: 'Back in stock',
+    blurb: "When an item goes unavailable and comes back, a post saying so. Only chef's picks unless you untick that, only after it was gone for the hours below (a short snooze is not news), and once per item per day.",
+    variables: '{item} {name_dv} {price} {description} {category} {link}',
+    eventDriven: true,
   },
 ];
 
@@ -533,17 +554,43 @@ function AutomationCard({ meta, config: initial, options, canEdit, hint, onSaved
           Enabled
         </label>
 
-        {hint && <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }} data-testid={`best-times-${meta.kind}`}>{hint}</p>}
+        {hint && !meta.eventDriven && <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }} data-testid={`best-times-${meta.kind}`}>{hint}</p>}
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <Input
-            label="Post time (Maldives local)"
-            id={`auto-${meta.kind}-time`}
-            type="time"
-            value={config.time}
-            disabled={!canEdit}
-            onChange={(v: string) => set({ time: v })}
-            style={{ maxWidth: 160 }}
-          />
+          {!meta.eventDriven && (
+            <Input
+              label="Post time (Maldives local)"
+              id={`auto-${meta.kind}-time`}
+              type="time"
+              value={config.time}
+              disabled={!canEdit}
+              onChange={(v: string) => set({ time: v })}
+              style={{ maxWidth: 160 }}
+            />
+          )}
+          {meta.kind === 'stock' && (
+            <>
+              <Input
+                label="Only after gone for (hours)"
+                id={`auto-${meta.kind}-hours`}
+                type="number"
+                min={0}
+                max={168}
+                value={String(config.min_out_hours)}
+                disabled={!canEdit}
+                onChange={(v: string) => set({ min_out_hours: Math.max(0, Math.min(168, Number(v) || 0)) })}
+                style={{ maxWidth: 160 }}
+              />
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, minHeight: 44, cursor: canEdit ? 'pointer' : 'default' }}>
+                <input
+                  type="checkbox"
+                  checked={config.featured_only}
+                  disabled={!canEdit}
+                  onChange={(e) => set({ featured_only: e.target.checked })}
+                />
+                Chef's picks only
+              </label>
+            </>
+          )}
           {meta.kind === 'new_item' && (
             <Input
               label="Counts as new for (days)"
@@ -559,7 +606,7 @@ function AutomationCard({ meta, config: initial, options, canEdit, hint, onSaved
           )}
         </div>
 
-        {meta.kind === 'featured' && (
+        {(meta.kind === 'featured' || meta.kind === 'weekly') && (
           <div>
             <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Days</div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -1131,6 +1178,7 @@ function ChannelModal({ channel, platforms, onClose, onSaved }: {
   const [creds, setCreds] = useState<Record<string, string>>({});
   const [isEnabled, setIsEnabled] = useState(channel?.is_enabled ?? false);
   const [isTest, setIsTest] = useState(channel?.is_test_channel ?? false);
+  const [language, setLanguage] = useState<'both' | 'en' | 'dv'>(channel?.language ?? 'both');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -1146,13 +1194,14 @@ function ChannelModal({ channel, platforms, onClose, onSaved }: {
           name,
           is_enabled: isEnabled,
           is_test_channel: isTest,
+          language,
           // Rotation is all-or-nothing: only send credentials when every
           // key is (re-)entered, otherwise keep the stored ones.
           ...(credsFilled ? { credentials: creds } : {}),
         });
       } else {
         await createSocialChannel({
-          platform, name, credentials: creds, is_enabled: isEnabled, is_test_channel: isTest,
+          platform, name, credentials: creds, is_enabled: isEnabled, is_test_channel: isTest, language,
         });
       }
       onSaved();
@@ -1229,6 +1278,13 @@ function ChannelModal({ channel, platforms, onClose, onSaved }: {
           <input type="checkbox" checked={isTest} onChange={(e) => setIsTest(e.target.checked)} />
           Test channel (a non-production server may only post to test channels)
         </label>
+        <Select
+          label="Language"
+          aria-label="Language"
+          options={LANGUAGE_OPTIONS}
+          value={language}
+          onChange={(v) => setLanguage(v as 'both' | 'en' | 'dv')}
+        />
       </div>
     </Modal>
   );

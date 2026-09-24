@@ -9,8 +9,8 @@ import { Btn, ErrorMsg, Input, Modal, ModalActions, Spinner } from '../../compon
 import { ApiRequestError } from '@shared/api';
 import { PostPreview } from './PostPreview';
 import {
-  PLATFORM_LABELS, PLATFORM_SHORT, captionLength, fromLocalDateTimeInput, platformsNeedingImage,
-  suggestCaption, tightestCaptionLimit, toLocalDateTimeInput,
+  PLATFORM_LABELS, PLATFORM_SHORT, captionForLanguage, fromLocalDateTimeInput, platformsNeedingImage,
+  suggestCaption, tightestForChannels, toLocalDateTimeInput,
 } from './composer';
 
 type Action = 'draft' | 'schedule' | 'now' | 'save';
@@ -43,6 +43,7 @@ export function ComposeModal({ post, initial, onClose, onSaved, canCompose, canP
     () => (editing?.deliveries ?? []).map((d) => d.channel?.id).filter((id): id is number => typeof id === 'number'),
   );
   const [caption, setCaption] = useState(editing?.snapshot.caption ?? '');
+  const [captionDv, setCaptionDv] = useState(editing?.snapshot.caption_dv ?? '');
   const [imageUrl, setImageUrl] = useState(editing?.snapshot.image_url ?? '');
   const [item, setItem] = useState<SocialItemPreview | null>(null);
   const [itemLoading, setItemLoading] = useState(Boolean(editing?.snapshot.item_id || initial?.itemId || initial?.specialId));
@@ -111,8 +112,11 @@ export function ComposeModal({ post, initial, onClose, onSaved, canCompose, canP
 
   const effectiveImage = imageUrl.trim() !== '' ? imageUrl.trim() : (item?.image_url ?? null);
   const needImage = platformsNeedingImage(selectedPlatforms, platforms);
-  const limit = tightestCaptionLimit(selectedPlatforms, platforms, effectiveImage !== null);
-  const length = captionLength(caption);
+  const selectedChannels = (channels ?? []).filter((c) => selected.includes(c.id));
+  // Measured as each channel will receive it: its language setting decides
+  // whether the Dhivehi rides along under the English.
+  const limit = tightestForChannels(selectedChannels, platforms, effectiveImage !== null, caption, captionDv);
+  const length = limit?.length ?? captionForLanguage(caption, captionDv, 'both').length;
   const over = limit !== null && length > limit.limit;
   const linkUrl = item?.link_url ?? editing?.snapshot.link_url ?? null;
 
@@ -144,6 +148,7 @@ export function ComposeModal({ post, initial, onClose, onSaved, canCompose, canP
           : action;
         await updateSocialPost(editing.id, {
           caption,
+          caption_dv: captionDv.trim() || null,
           image_url: imageUrl.trim() || null,
           ...(automated ? {} : { item_id: item?.id ?? null, channel_ids: selected }),
           ...(patchAction ? { action: patchAction } : {}),
@@ -153,6 +158,7 @@ export function ComposeModal({ post, initial, onClose, onSaved, canCompose, canP
       } else {
         await createSocialPost({
           caption,
+          caption_dv: captionDv.trim() || null,
           image_url: imageUrl.trim() || null,
           item_id: item?.id ?? null,
           channel_ids: selected,
@@ -320,7 +326,7 @@ export function ComposeModal({ post, initial, onClose, onSaved, canCompose, canP
                   data-testid="caption-counter"
                   style={{ fontSize: 12, color: over ? 'var(--color-danger)' : 'var(--color-text-muted)', fontWeight: over ? 700 : 400 }}
                 >
-                  {limit ? `${length} / ${limit.limit} (${PLATFORM_SHORT[limit.platform] ?? limit.platform}${effectiveImage && platforms[limit.platform]?.caption_max_photo !== platforms[limit.platform]?.caption_max ? ' with photo' : ''})` : `${length} characters`}
+                  {limit ? `${length} / ${limit.limit} (${PLATFORM_SHORT[limit.platform] ?? limit.platform}${effectiveImage && platforms[limit.platform]?.caption_max_photo !== platforms[limit.platform]?.caption_max ? ' with photo' : ''}${limit.language === 'both' && captionDv.trim() !== '' ? ', both languages' : ''})` : `${length} characters`}
                 </span>
               </div>
               <textarea
@@ -339,6 +345,23 @@ export function ComposeModal({ post, initial, onClose, onSaved, canCompose, canP
                   {PLATFORM_SHORT[limit.platform] ?? limit.platform} cuts captions at {limit.limit} characters.
                 </p>
               )}
+              <div style={{ marginTop: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
+                  ދިވެހި <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>(optional; each channel's language setting decides whether it goes under the English, alone, or not at all)</span>
+                </div>
+                <textarea
+                  value={captionDv}
+                  onChange={(e) => setCaptionDv(e.target.value)}
+                  rows={3}
+                  dir="rtl"
+                  aria-label="Caption in Dhivehi"
+                  style={{
+                    width: '100%', padding: 10, borderRadius: 10, fontFamily: 'inherit', fontSize: 14,
+                    border: '1.5px solid var(--color-border)', background: 'var(--color-surface)',
+                    color: 'var(--color-text)', resize: 'vertical', boxSizing: 'border-box',
+                  }}
+                />
+              </div>
             </div>
 
             <div>
@@ -412,7 +435,7 @@ export function ComposeModal({ post, initial, onClose, onSaved, canCompose, canP
               <PostPreview
                 platform={previewPlatform}
                 channelName={previewChannel.name}
-                caption={caption}
+                caption={captionForLanguage(caption, captionDv, previewChannel.language)}
                 imageUrl={effectiveImage}
                 linkUrl={linkUrl}
               />

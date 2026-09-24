@@ -151,11 +151,11 @@ class SocialCalendarController extends Controller
     {
         $out = [];
         foreach ($automations->allKinds() as $kind => $config) {
-            if (!$config['enabled'] || $config['channel_ids'] === []) {
+            if (!$config['enabled'] || $config['channel_ids'] === [] || in_array($kind, SocialAutomationSettings::EVENT_DRIVEN, true)) {
                 continue;
             }
             foreach (CarbonPeriod::create($from->copy()->setTimezone($tz)->startOfDay(), '1 day', $to->copy()->setTimezone($tz)) as $day) {
-                if ($kind === 'featured' && !in_array((int) $day->dayOfWeek, $config['days'], true)) {
+                if (in_array($kind, ['featured', 'weekly'], true) && !in_array((int) $day->dayOfWeek, $config['days'], true)) {
                     continue;
                 }
                 $out[] = ['kind' => $kind, 'date' => $day->toDateString(), 'time' => $config['time']];

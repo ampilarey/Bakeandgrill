@@ -28,20 +28,22 @@ const platforms: Record<string, api.SocialPlatformCaps> = {
 };
 
 const options: api.SocialChannelOption[] = [
-  { id: 1, platform: 'facebook', name: 'Main Page' },
-  { id: 2, platform: 'telegram', name: 'BG News' },
+  { id: 1, platform: 'facebook', name: 'Main Page', language: 'both' },
+  { id: 2, platform: 'telegram', name: 'BG News', language: 'both' },
 ];
 
-const automationBase: api.SocialAutomationConfig = { enabled: false, time: '11:00', channel_ids: [], template: 'T', unattended: false, days: [0, 1, 2, 3, 4, 5, 6], max_age_days: 14 };
+const automationBase: api.SocialAutomationConfig = { enabled: false, time: '11:00', channel_ids: [], template: 'T', unattended: false, days: [0, 1, 2, 3, 4, 5, 6], max_age_days: 14, featured_only: true, min_out_hours: 4 };
 const automations: Record<api.SocialAutomationKind, api.SocialAutomationConfig> = {
   special: { ...automationBase },
   new_item: { ...automationBase, time: '16:00', max_age_days: 14 },
   featured: { ...automationBase, time: '12:00', days: [5] },
+  weekly: { ...automationBase, time: '09:00', days: [0] },
+  stock: { ...automationBase },
 };
 
 function channel(over: Partial<api.SocialChannelRow>): api.SocialChannelRow {
   return {
-    id: 1, platform: 'facebook', name: 'Main Page', remote_account_id: null, is_enabled: true, is_test_channel: false,
+    id: 1, platform: 'facebook', name: 'Main Page', remote_account_id: null, is_enabled: true, is_test_channel: false, language: 'both',
     last_published_at: null, credential_summary: { page_id: '••••1111' }, has_credentials: true, recent_failures: 0,
     health: null, ...over,
   };
@@ -220,7 +222,7 @@ describe('SocialHubPage — composer', () => {
     expect(screen.getByLabelText('Facebook Page — Main Page')).toBeDisabled();
 
     fireEvent.click(screen.getByText('Save & approve'));
-    await waitFor(() => expect(api.updateSocialPost).toHaveBeenCalledWith(5, { caption: 'Fresh masroshi today', image_url: null }));
+    await waitFor(() => expect(api.updateSocialPost).toHaveBeenCalledWith(5, { caption: 'Fresh masroshi today', caption_dv: null, image_url: null }));
     expect(api.publishSocialPostNow).toHaveBeenCalledWith(5);
   });
 });
@@ -249,6 +251,31 @@ describe('SocialHubPage — automations and insights', () => {
     fireEvent.change(newItem.getByLabelText('Counts as new for (days)'), { target: { value: '30' } });
     fireEvent.click(newItem.getByText('Save new on the menu'));
     await waitFor(() => expect(api.updateSocialAutomation).toHaveBeenCalledWith(expect.objectContaining({ kind: 'new_item', max_age_days: 30 })));
+
+    // Back in stock has no time of day; it has the hours-gone and picks-only knobs.
+    const stock = within(screen.getByTestId('automation-stock'));
+    expect(stock.queryByLabelText('Post time (Maldives local)')).toBeNull();
+    fireEvent.change(stock.getByLabelText('Only after gone for (hours)'), { target: { value: '12' } });
+    fireEvent.click(stock.getByLabelText("Chef's picks only"));
+    fireEvent.click(stock.getByText('Save back in stock'));
+    await waitFor(() => expect(api.updateSocialAutomation).toHaveBeenCalledWith(expect.objectContaining({ kind: 'stock', min_out_hours: 12, featured_only: false })));
+    expect(screen.getByTestId('automation-weekly')).toHaveTextContent("This week's specials");
+  });
+
+  it('counts the Dhivehi caption against a channel that posts both languages', async () => {
+    await openComposer();
+    fireEvent.click(screen.getByLabelText('Telegram — BG News'));
+    fireEvent.click(screen.getByText('Paste a URL'));
+    fireEvent.change(screen.getByLabelText('Image URL'), { target: { value: 'https://bakeandgrill.mv/storage/x.jpg' } });
+    fireEvent.change(screen.getByLabelText('Caption'), { target: { value: 'a'.repeat(600) } });
+    expect(screen.getByTestId('caption-counter')).toHaveTextContent('600 / 1024 (Telegram with photo)');
+    fireEvent.change(screen.getByLabelText('Caption in Dhivehi'), { target: { value: 'މ'.repeat(500) } });
+    expect(screen.getByTestId('caption-counter')).toHaveTextContent('1102 / 1024 (Telegram with photo, both languages)');
+    expect(footer().getByText('Post now')).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText('Caption in Dhivehi'), { target: { value: 'ތާޒާ' } });
+    fireEvent.click(footer().getByText('Post now'));
+    await waitFor(() => expect(api.createSocialPost).toHaveBeenCalledWith(expect.objectContaining({ caption_dv: 'ތާޒާ' })));
   });
 
   it('shows engagement numbers on published deliveries and can refresh them', async () => {

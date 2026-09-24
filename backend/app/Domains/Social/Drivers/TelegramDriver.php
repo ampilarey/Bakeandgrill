@@ -70,8 +70,8 @@ class TelegramDriver implements SocialDriverInterface
 
         $image = $post->imageUrl();
         $params = $image !== null
-            ? ['chat_id' => $chatId, 'photo' => $image, 'caption' => $post->caption()]
-            : ['chat_id' => $chatId, 'text' => $post->caption()];
+            ? ['chat_id' => $chatId, 'photo' => $image, 'caption' => $post->captionFor($channel)]
+            : ['chat_id' => $chatId, 'text' => $post->captionFor($channel)];
         $method = $image !== null ? 'sendPhoto' : 'sendMessage';
 
         try {

@@ -94,7 +94,8 @@ class SocialAnnouncementTest extends TestCase
         $post = SocialPost::findOrFail($res->json('post_id'));
         $this->assertSame('announcement', $post->source);
         $this->assertSame('closed_today', $post->source_ref);
-        $this->assertSame("We're closed today (Eid). Back tomorrow at 7:00 AM.\nމިއަދު ބަންދު", $post->snapshot['caption']);
+        $this->assertSame("We're closed today (Eid). Back tomorrow at 7:00 AM.", $post->snapshot['caption']);
+        $this->assertSame('މިއަދު ބަންދު', $post->snapshot['caption_dv'], 'kept apart so each channel takes its own language');
         $this->assertSame(SocialPostDelivery::STATUS_PUBLISHED, SocialPostDelivery::firstOrFail()->status);
         $this->assertSame(1, SocialPostDelivery::count(), 'no Instagram delivery');
 

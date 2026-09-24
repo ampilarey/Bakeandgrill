@@ -73,7 +73,6 @@ class SocialAnnouncementController extends Controller
 
         $text = trim((string) $data['text']);
         $textDv = trim((string) ($data['text_dv'] ?? ''));
-        $caption = $textDv !== '' ? $text . "\n" . $textDv : $text;
 
         $post = null;
         $skipped = [];
@@ -91,9 +90,11 @@ class SocialAnnouncementController extends Controller
             if ($usable->isEmpty()) {
                 return response()->json(['message' => 'None of those channels can take a text-only post: ' . implode(', ', $skipped)], 422);
             }
+            $snapshot = ['caption' => $text, 'caption_dv' => $textDv, 'image_url' => null, 'image_fingerprint' => null, 'link_url' => url('/hours'), 'item_id' => null, 'price' => null];
+            $probe = new SocialPost(['snapshot' => $snapshot]);
             foreach ($usable as $c) {
                 $limit = (int) $drivers->for($c->platform)->capabilities()['caption_max'];
-                if ($limit > 0 && mb_strlen($caption) > $limit) {
+                if ($limit > 0 && mb_strlen($probe->captionFor($c)) > $limit) {
                     return response()->json(['message' => "The announcement is too long for {$c->name} ({$limit} characters)."], 422);
                 }
             }
@@ -104,7 +105,7 @@ class SocialAnnouncementController extends Controller
                     'schedule' => SocialPost::STATUS_SCHEDULED,
                     default => SocialPost::STATUS_DRAFT,
                 },
-                'snapshot' => ['caption' => $caption, 'image_url' => null, 'image_fingerprint' => null, 'link_url' => url('/hours'), 'item_id' => null, 'price' => null],
+                'snapshot' => $snapshot,
                 'source' => 'announcement',
                 'source_ref' => $data['template'] ?? null,
                 'business_date' => now(config('app.timezone', 'Indian/Maldives'))->toDateString(),

@@ -83,28 +83,62 @@ class AutoPostDrafter
         $preview = $this->previews->forItem($item);
         $hasRealPhoto = $preview['url'] !== $this->previews->siteFallback();
 
+        return $this->draftWith(
+            $config,
+            $caption,
+            $hasRealPhoto ? $preview['url'] : null,
+            url('/menu/' . $item->id),
+            $source,
+            $sourceRef,
+            $dedupePrefix,
+            $businessDate,
+            ['item_id' => $item->id, 'price' => $this->effectivePrice($item)] + $snapshotExtra,
+        );
+    }
+
+    /**
+     * The same, for a post that is not about one item (the weekly card):
+     * an explicit image and link, whatever extra the snapshot should carry.
+     *
+     * @param array{channel_ids: list<int>, unattended: bool} $config
+     * @param array<string, mixed> $snapshotExtra
+     */
+    public function draftWith(
+        array $config,
+        string $caption,
+        ?string $imageUrl,
+        string $linkUrl,
+        string $source,
+        string $sourceRef,
+        string $dedupePrefix,
+        string $businessDate,
+        array $snapshotExtra = [],
+    ): ?SocialPost {
+        $hasImage = $imageUrl !== null && $imageUrl !== '';
+
         $channels = SocialChannel::query()
             ->whereIn('id', $config['channel_ids'])
             ->where('is_enabled', true)
             ->get();
-        $usable = $channels->filter(function (SocialChannel $channel) use ($hasRealPhoto) {
+        $usable = $channels->filter(function (SocialChannel $channel) use ($hasImage) {
             $caps = $this->drivers->for($channel->platform)->capabilities();
 
-            return $hasRealPhoto || !$caps['requires_photo'];
+            // Never feed a placeholder to a photo-required platform.
+            return $hasImage || !$caps['requires_photo'];
         });
         if ($usable->isEmpty()) {
-            Log::info("social: {$source} skipped — no usable channels", ['item_id' => $item->id]);
+            Log::info("social: {$source} skipped — no usable channels", ['source_ref' => $sourceRef]);
 
             return null;
         }
 
         $snapshot = array_merge([
             'caption' => $caption,
-            'image_url' => $hasRealPhoto ? $preview['url'] : null,
-            'image_fingerprint' => $hasRealPhoto ? sha1($preview['url']) : null,
-            'link_url' => url('/menu/' . $item->id),
-            'item_id' => $item->id,
-            'price' => $this->effectivePrice($item),
+            'image_url' => $hasImage ? $imageUrl : null,
+            'image_fingerprint' => $hasImage ? sha1((string) $imageUrl) : null,
+            'link_url' => $linkUrl,
+            'item_id' => null,
+            'price' => null,
         ], $snapshotExtra);
 
         // Spacing rules: an unattended automation that would land too close

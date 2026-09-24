@@ -76,12 +76,12 @@ class FacebookPageDriver implements SocialDriverInterface
         if ($image !== null) {
             $response = $this->graphPost("/{$pageId}/photos", [
                 'url' => $image,
-                'message' => $post->caption(),
+                'message' => $post->captionFor($channel),
                 'access_token' => $token,
             ]);
         } else {
             $response = $this->graphPost("/{$pageId}/feed", [
-                'message' => $post->caption(),
+                'message' => $post->captionFor($channel),
                 'access_token' => $token,
             ]);
         }

@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Observers;
 
+use App\Domains\Social\Services\BackInStockAutoPoster;
 use App\Models\Item;
 use App\Support\MediaFileCleaner;
+use Illuminate\Support\Facades\Log;
 
 /**
  * On item soft-delete: remove owned main-image files and delete gallery
@@ -16,6 +18,23 @@ use App\Support\MediaFileCleaner;
  */
 class ItemObserver
 {
+    /**
+     * Sold out / back in stock (owner's shortlist, 2026-09-24): the social
+     * automation watches availability flips. It must never break the save
+     * that caused it, so anything it throws is logged and swallowed.
+     */
+    public function updated(Item $item): void
+    {
+        if (!$item->wasChanged('is_available')) {
+            return;
+        }
+        try {
+            app(BackInStockAutoPoster::class)->itemChanged($item);
+        } catch (\Throwable $e) {
+            Log::warning('social: back-in-stock hook failed', ['item_id' => $item->id, 'error' => $e->getMessage()]);
+        }
+    }
+
     public function deleting(Item $item): void
     {
         $mainUrls = array_filter([

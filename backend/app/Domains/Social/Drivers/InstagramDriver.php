@@ -86,7 +86,7 @@ class InstagramDriver implements SocialDriverInterface
         if ($containerId === '') {
             $create = $this->graphPost("/{$igUserId}/media", [
                 'image_url' => $image,
-                'caption' => $post->caption(),
+                'caption' => $post->captionFor($channel),
                 'access_token' => $token,
             ]);
             if (!$create->successful()) {
