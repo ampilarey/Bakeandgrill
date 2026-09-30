@@ -144,7 +144,13 @@ function ImageCropModalBody({
           position: 'relative',
           width: '100%',
           height: cropperHeight,
-          background: 'var(--color-text)',
+          // A checked grey, the usual sign for "no picture here", rather than
+          // near-black, which read as black bars in the photo (owner,
+          // 2026-09-30). Nothing outside the frame is saved.
+          backgroundColor: 'var(--color-border-light)',
+          backgroundImage: 'linear-gradient(45deg, var(--color-border) 25%, transparent 25%), linear-gradient(-45deg, var(--color-border) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, var(--color-border) 75%), linear-gradient(-45deg, transparent 75%, var(--color-border) 75%)',
+          backgroundSize: '20px 20px',
+          backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0',
           borderRadius: 12,
           overflow: 'hidden',
         }}>

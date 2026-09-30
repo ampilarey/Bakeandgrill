@@ -72,6 +72,13 @@ function drawScaled(img: HTMLImageElement, maxEdge: number): HTMLCanvasElement {
   canvas.height = height;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Canvas is not supported in this browser.');
+  // Owner, 2026-09-30: a PNG with a see-through background came out with
+  // black around the dish. JPEG has no transparency, and a canvas with
+  // nothing painted under the photo is transparent black, so every clear
+  // pixel became black in the crop source and in the saved master. White
+  // first, as the final crop and the upload step already do.
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, width, height);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(img, 0, 0, width, height);
