@@ -39,7 +39,7 @@
             width: 44px;
             height: 44px;
             border: 3px solid #EDE4D4;
-            border-top-color: #D4813A;
+            border-top-color: #B74B0C;
             border-radius: 50%;
             animation: spin 0.85s linear infinite;
             margin: 0 auto 1rem;

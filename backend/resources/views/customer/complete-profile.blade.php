@@ -10,7 +10,7 @@
         align-items: center;
         justify-content: center;
         padding: 3rem 2rem;
-        background: linear-gradient(135deg, rgba(212, 129, 58, 0.08), rgba(184, 168, 144, 0.08));
+        background: linear-gradient(135deg, rgba(183, 75, 12, 0.08), rgba(184, 168, 144, 0.08));
     }
 
     .setup-card {
@@ -70,7 +70,7 @@
     .form-group input:focus {
         outline: none;
         border-color: var(--amber);
-        box-shadow: 0 0 0 4px rgba(212, 129, 58, 0.12);
+        box-shadow: 0 0 0 4px rgba(183, 75, 12, 0.12);
     }
 
     .form-group .hint {
@@ -90,14 +90,14 @@
         font-size: 1.1rem;
         cursor: pointer;
         transition: all 0.2s;
-        box-shadow: 0 4px 12px rgba(212, 129, 58, 0.3);
+        box-shadow: 0 4px 12px rgba(183, 75, 12, 0.3);
         font-family: inherit;
     }
 
     .btn-submit:hover {
         background: var(--amber-hover);
         transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(212, 129, 58, 0.4);
+        box-shadow: 0 6px 20px rgba(183, 75, 12, 0.4);
     }
 
     .alert {

@@ -169,7 +169,7 @@ export function ExpensesPanel({ onClose }: Props) {
           onClick={() => { setShowAdd(true); setError(""); }}
           style={{
             minHeight: 44, padding: "0 14px", borderRadius: 10, border: "none",
-            background: "#D4813A", color: "#fff", fontWeight: 700, cursor: "pointer",
+            background: "#B74B0C", color: "#fff", fontWeight: 700, cursor: "pointer",
             fontFamily: "inherit", fontSize: 13,
           }}
         >
@@ -374,7 +374,7 @@ export function ExpensesPanel({ onClose }: Props) {
                 onClick={() => void handleAdd()}
                 style={{
                   flex: 1, minHeight: 44, borderRadius: 10, border: "none",
-                  background: "#D4813A", color: "#fff", fontWeight: 700, cursor: "pointer",
+                  background: "#B74B0C", color: "#fff", fontWeight: 700, cursor: "pointer",
                   opacity: saving ? 0.6 : 1,
                 }}
               >

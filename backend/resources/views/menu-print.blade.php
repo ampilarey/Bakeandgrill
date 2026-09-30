@@ -149,8 +149,8 @@
         .toolbar__group a { min-height: 34px; padding: 0.3rem 0.65rem; }
 
         .toolbar a.is-on {
-            border-color: #d4813a;
-            background: #d4813a;
+            border-color: #b74b0c;
+            background: #b74b0c;
             color: #fff;
         }
 
@@ -181,8 +181,8 @@
         .toolbar a.toolbar__booklet { background: #fff; color: #1c1408; }
 
         .toolbar__print {
-            border-color: #d4813a;
-            background: #d4813a;
+            border-color: #b74b0c;
+            background: #b74b0c;
             color: #fff;
         }
 
@@ -274,7 +274,7 @@
         .rule-mark {
             margin: 8px 0 3px;
             text-align: center;
-            color: #d4813a;
+            color: #b74b0c;
             font-size: 13px;
             line-height: 1;
             letter-spacing: 4px;
@@ -304,7 +304,7 @@
             margin: 16px 0 8px;
             padding: 3px 8px;
             background: #f4efe8;
-            border-left: 4px solid #d4813a;
+            border-left: 4px solid #b74b0c;
             font-size: 1rem;
             text-transform: uppercase;
             letter-spacing: 0.1em;
@@ -345,7 +345,7 @@
 
         .row td.row__name { font-weight: 700; white-space: nowrap; }
 
-        .row__star { color: #d4813a; font-size: 0.85em; }
+        .row__star { color: #b74b0c; font-size: 0.85em; }
 
         /* The dot leader is a cell with a dotted underline: flexbox would look
            the same in a browser and collapse in dompdf. */

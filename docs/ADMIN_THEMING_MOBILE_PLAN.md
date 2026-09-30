@@ -102,7 +102,7 @@ The literals are highly concentrated. Ten values account for **2,200 of 3,188
 | `#6b5d4f` | 490 | `--color-text-secondary` |
 | `#9c8e7e` | 471 | `--color-text-muted` |
 | `#e8e0d8` | 372 | `--color-border` |
-| `#d4813a` | 288 | `--color-primary` |
+| `#b74b0c` (was `#d4813a` until 2026-09-30, see `docs/brand/PALETTE.md`) | 288 | `--color-primary` |
 | `#1c1408` | 237 | `--color-text` |
 | `#ef4444` | 126 | `--color-danger` |
 | `#f8f6f3` | 79 | `--color-bg` |

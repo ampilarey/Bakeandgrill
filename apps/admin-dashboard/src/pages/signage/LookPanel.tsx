@@ -61,7 +61,7 @@ function newDaypart(): SignageDaypartBag {
 }
 
 const DEFAULT_THEME: Required<Pick<LookTheme, 'primary' | 'background' | 'text' | 'muted'>> = {
-  primary: '#D4813A',
+  primary: '#C56F3D',
   background: '#1C1408',
   text: '#FFF8F0',
   muted: '#C4B5A5',
@@ -85,7 +85,7 @@ function hexOr(v: unknown, fallback: string): string {
 function PresetSketch({ preset }: { preset: SignageLayoutPreset }) {
   const line = (w: string): CSSProperties => ({ height: 2, width: w, background: 'currentColor', opacity: 0.55, borderRadius: 1 });
   const block = (w: string, h: string): CSSProperties => ({ width: w, height: h, background: 'currentColor', opacity: 0.85, borderRadius: 2 });
-  const box: CSSProperties = { width: 64, height: 36, display: 'flex', gap: 3, padding: 4, boxSizing: 'border-box', background: '#1C1408', color: '#D4813A', borderRadius: 6 };
+  const box: CSSProperties = { width: 64, height: 36, display: 'flex', gap: 3, padding: 4, boxSizing: 'border-box', background: '#1C1408', color: '#C56F3D', borderRadius: 6 };
   switch (preset) {
     case 'photo_grid':
       return (
@@ -479,7 +479,7 @@ function presetBtn(active: boolean): CSSProperties {
     minHeight: 44,
     borderRadius: 12,
     cursor: 'pointer',
-    background: active ? 'var(--color-primary-bg, rgba(212,129,58,0.12))' : 'var(--color-surface)',
+    background: active ? 'var(--color-primary-bg, rgba(183,75,12,0.12))' : 'var(--color-surface)',
     border: active ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
     color: 'var(--color-text)',
     fontFamily: 'inherit',

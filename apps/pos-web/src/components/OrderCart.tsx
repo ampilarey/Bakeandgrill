@@ -526,7 +526,7 @@ export function OrderCart(p: Props) {
                   height: 20,
                   padding: "0 6px",
                   borderRadius: 999,
-                  background: p.openTicketsCritical ? "#B91C1C" : "#D4813A",
+                  background: p.openTicketsCritical ? "#B91C1C" : "#B74B0C",
                   color: "#fff",
                   fontSize: 11,
                   fontWeight: 800,
@@ -689,7 +689,7 @@ export function OrderCart(p: Props) {
                 title={p.openTicketsCritical ? "One or more tickets are critically aged" : undefined}
                 style={{
                   marginLeft: 6, padding: '1px 7px', borderRadius: 999,
-                  background: p.openTicketsCritical ? '#B91C1C' : '#D4813A',
+                  background: p.openTicketsCritical ? '#B91C1C' : '#B74B0C',
                   color: '#fff', fontSize: 11, fontWeight: 800,
                 }}
               >{p.openTicketsCount > 99 ? '99+' : p.openTicketsCount}</span>
@@ -819,7 +819,7 @@ export function OrderCart(p: Props) {
                 }}
                 style={{
                   flex: 1, minHeight: 40, borderRadius: 8, border: 'none',
-                  background: C.primary ?? '#D4813A', color: '#fff',
+                  background: C.primary ?? '#B74B0C', color: '#fff',
                   fontWeight: 700, fontSize: 13, cursor: 'pointer',
                 }}
               >

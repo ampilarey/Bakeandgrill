@@ -59,7 +59,7 @@ class HeroSlidePresentationParityTest extends TestCase
 
         // Mobile opacity formula shared with order-app heroMediaOpacityMobile()
         $opacity = 0.45 + 0.55 * $resolved['photo'];
-        if (isset($slide['dim']) && ! isset($slide['photo_brightness'])) {
+        if (isset($slide['dim']) && !isset($slide['photo_brightness'])) {
             $legacy = 1 - 0.55 * (((float) $slide['dim']) / 100);
             $this->assertEqualsWithDelta($legacy, $opacity, 0.0001);
         }
@@ -159,7 +159,7 @@ class HeroSlidePresentationParityTest extends TestCase
         $this->assertEqualsWithDelta(0.8, $php['scrim'], 0.0001);
         $this->assertSame('middle', $php['text_position']);
         $this->assertSame('rgba(28,20,8,0.6)', $php['elements']['title']['css']);
-        $this->assertSame('rgba(212,129,58,0.22)', $php['elements']['eyebrow']['css']);
+        $this->assertSame('rgba(183,75,12,0.22)', $php['elements']['eyebrow']['css']);
         $this->assertNull($php['elements']['subtitle']['css']);
         $this->assertNull($php['elements']['cta1']['css']);
         $this->assertNull($php['elements']['cta2']['css']);

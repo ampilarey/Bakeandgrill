@@ -261,11 +261,12 @@
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
         :root {
-            --amber:        #D4813A;
-            --amber-hover:  #B86820;
-            --amber-light:  #FEF3E8;
-            --amber-glow:   rgba(212, 129, 58, 0.22);
-            --amber-contrast: #1C1408;
+            --amber:        #B74B0C;
+            --amber-hover:  #A1420B;
+            --amber-light:  #F9F1EC;
+            --amber-glow:   rgba(183, 75, 12, 0.22);
+            --amber-contrast: #FFFDF9;
+            --amber-on-dark: #C56F3D;
             --dark:         #1C1408;
             --surface:      #FFFFFF;
             --bg:           #FFFDF9;
@@ -292,11 +293,12 @@
         }
 
         [data-theme="dark"] {
-            --amber:        #e09242;
-            --amber-hover:  #c97a2a;
-            --amber-light:  rgba(224,146,66,0.15);
-            --amber-glow:   rgba(224,146,66,0.22);
+            --amber:        #c56f3d;
+            --amber-hover:  #ad6236;
+            --amber-light:  rgba(197,111,61,0.15);
+            --amber-glow:   rgba(197,111,61,0.22);
             --amber-contrast: #1C1408;
+            --amber-on-dark: #c56f3d;
             --dark:         #f5e6cc;
             --surface:      #231809;
             --bg:           #1a1208;
@@ -682,7 +684,7 @@
         .hdr-order:hover {
             background: var(--amber-hover);
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(212, 129, 58, 0.4);
+            box-shadow: 0 6px 20px rgba(183, 75, 12, 0.4);
         }
         .site-header .dark-toggle {
             width: 44px;
@@ -1174,15 +1176,15 @@
             margin-top: 1rem;
             min-height: 48px;
             padding: 0.75rem 1.35rem;
-            background: var(--amber, #D4813A);
+            background: var(--amber, #B74B0C);
             color: #fff !important;
             border-radius: 12px;
             font-weight: 800;
             font-size: 0.95rem;
             text-decoration: none !important;
-            box-shadow: 0 6px 18px rgba(212, 129, 58, 0.35);
+            box-shadow: 0 6px 18px rgba(183, 75, 12, 0.35);
         }
-        .footer-order-cta:hover { background: var(--amber-hover, #c06f2a); color: #fff !important; }
+        .footer-order-cta:hover { background: var(--amber-hover, #a1420b); color: #fff !important; }
         .footer-thanks {
             margin: 1rem 0 0;
             color: rgba(255,255,255,0.55);
@@ -1209,7 +1211,7 @@
             font-weight: 700;
         }
         .footer-hours-today-tag {
-            color: var(--amber, #D4813A);
+            color: var(--amber-on-dark, #C56F3D);
             font-weight: 700;
             font-size: 0.72rem;
             margin-left: 0.35rem;
@@ -1220,7 +1222,7 @@
             margin-top: 0.75rem;
             padding: 0.55rem 0.7rem;
             border-radius: 8px;
-            background: rgba(212, 129, 58, 0.18);
+            background: rgba(183, 75, 12, 0.18);
             color: #fde5d4;
             font-size: 0.78rem;
             line-height: 1.4;
@@ -1433,7 +1435,7 @@
         }
         .prayer-banner-cell.is-next {
             background: var(--amber-light);
-            border-color: rgba(212, 129, 58, 0.35);
+            border-color: rgba(183, 75, 12, 0.35);
         }
         .prayer-banner-cell-name {
             font-size: 0.7rem;

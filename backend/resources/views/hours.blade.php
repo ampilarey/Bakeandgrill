@@ -92,7 +92,7 @@
     font-size: 0.65rem; font-weight: 700;
     text-transform: uppercase; letter-spacing: 0.07em;
     color: var(--amber);
-    background: rgba(212,129,58,0.12);
+    background: rgba(183,75,12,0.12);
     padding: 0.2rem 0.5rem;
     border-radius: 6px;
 }
@@ -115,7 +115,7 @@
 .order-cta-block {
     margin-top: 2rem;
     background: var(--amber-light);
-    border: 1px solid rgba(212,129,58,0.25);
+    border: 1px solid rgba(183,75,12,0.25);
     border-radius: 16px;
     padding: 1.75rem;
     text-align: center;

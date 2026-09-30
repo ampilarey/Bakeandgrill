@@ -54,7 +54,7 @@ export function Button({
         padding: variant === 'primary' ? '0.85rem 1.5rem' : '0.7rem 1.5rem',
         borderRadius: 'var(--radius-lg)',
         fontFamily: 'inherit',
-        /* Primary: white on #D4813A needs ≥18px bold for AA large-text (AMBER_CONTRAST_AUDIT.md) */
+        /* Primary: white on the brand rust #B74B0C is 5.2:1, AA at any size; the size is for the thumb. */
         fontSize: variant === 'primary' ? '1.125rem' : '0.9375rem',
         fontWeight: variant === 'primary' ? 700 : 600,
         cursor: isDisabled ? 'not-allowed' : 'pointer',

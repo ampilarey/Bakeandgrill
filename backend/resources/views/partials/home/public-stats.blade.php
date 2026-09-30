@@ -28,7 +28,7 @@
 .stats-strip-item { display: flex; flex-direction: column; gap: 0.15rem; min-width: 8rem; }
 .stats-strip-value {
     font-size: 2rem; font-weight: 800; letter-spacing: -0.03em;
-    color: var(--amber, #D4813A); font-variant-numeric: tabular-nums;
+    color: var(--amber, #B74B0C); font-variant-numeric: tabular-nums;
 }
 .stats-strip-label { font-size: 0.85rem; font-weight: 600; color: var(--muted, #6b5d4f); }
 </style>

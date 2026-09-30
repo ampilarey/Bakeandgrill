@@ -16,7 +16,7 @@
         * { box-sizing: border-box; }
         body { margin: 0; font-family: "Plus Jakarta Sans", -apple-system, "Segoe UI", sans-serif; color: #1C1408; background: #F8F6F3; }
         .sheet { max-width: 440px; margin: 24px auto; background: #fff; border: 1px solid #E8E0D8; border-radius: 20px; padding: 32px 28px 24px; text-align: center; }
-        .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #D4813A; margin: 0 0 8px; }
+        .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #B74B0C; margin: 0 0 8px; }
         h1 { font-size: 30px; letter-spacing: -0.03em; margin: 0 0 8px; line-height: 1.1; }
         p { color: #6B5D4F; font-size: 15px; line-height: 1.5; margin: 0 0 18px; }
         .qr { position: relative; width: 260px; height: 260px; margin: 0 auto 14px; }
@@ -24,7 +24,7 @@
         .url { font-weight: 700; font-size: 18px; color: #1C1408; word-break: break-all; margin-bottom: 6px; }
         .small { font-size: 12px; color: #9C8E7E; }
         .actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
-        .print, .download { min-height: 44px; padding: 0 20px; border: none; border-radius: 10px; background: #D4813A; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+        .print, .download { min-height: 44px; padding: 0 20px; border: none; border-radius: 10px; background: #B74B0C; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
         .download { background: #fff; color: #1C1408; border: 1.5px solid #E8E0D8; }
         .hint { font-size: 12px; color: #9C8E7E; margin-top: 10px; }
         @media print {
@@ -111,7 +111,7 @@
             ctx.textBaseline = 'alphabetic';
 
             var y = 110;
-            ctx.fillStyle = '#D4813A';
+            ctx.fillStyle = '#B74B0C';
             ctx.font = 'bold 26px ' + FONT;
             ctx.fillText(TEXT.eyebrow.split('').join('\u200A'), W / 2, y);
             y += 74;

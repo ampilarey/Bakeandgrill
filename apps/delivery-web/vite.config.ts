@@ -13,7 +13,7 @@ export default defineConfig({
         name: 'Bake & Grill Driver',
         short_name: 'Driver',
         description: 'Delivery driver app for Bake & Grill',
-        theme_color: '#D4813A',
+        theme_color: '#B74B0C',
         background_color: '#1C1408',
         display: 'standalone',
         orientation: 'portrait',

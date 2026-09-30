@@ -142,7 +142,7 @@ export function nearestPresetValue(
 export function themeSwatches(theme: Record<string, string | undefined>): ThemeSwatch[] {
   const bg = theme.background || '#1C1408';
   const surface = theme.surface || '#2A2118';
-  const primary = theme.primary || '#D4813A';
+  const primary = theme.primary || '#C56F3D';
   const text = theme.text || '#FFF8F0';
   const muted = theme.muted || '#C4B5A5';
   return [

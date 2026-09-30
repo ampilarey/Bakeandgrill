@@ -416,7 +416,7 @@ export default function DeliverySettingsPage() {
 
       <div className="oc-card" style={{
         padding: '12px 16px', background: 'var(--color-warning-bg)',
-        border: '1px solid rgba(212,129,58,0.3)', borderRadius: 10,
+        border: '1px solid rgba(183,75,12,0.3)', borderRadius: 10,
         marginBottom: '1.25rem',
       }}>
         <p style={{ ...S.sectionTitle, marginBottom: 8 }}>Operations alerts</p>
@@ -440,7 +440,7 @@ export default function DeliverySettingsPage() {
 
       <div style={{
         padding: '12px 16px', background: 'var(--color-warning-bg)',
-        border: '1px solid rgba(212,129,58,0.3)', borderRadius: 10,
+        border: '1px solid rgba(183,75,12,0.3)', borderRadius: 10,
       }}>
         <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
           When delivery is off or outside schedule, the order app shows an amber <strong>Pickup only</strong> pill at checkout.

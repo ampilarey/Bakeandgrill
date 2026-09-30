@@ -139,8 +139,8 @@ final class SignageNotices
     {
         [$background, $eyebrow, $accent, $text] = match ($notice['look']) {
             'warning' => [['type' => 'solid', 'value' => '#7A1F1F', 'opacity' => 1], 'Please note', '#FFD3A8', '#FFF8F0'],
-            'celebrate' => [['type' => 'gradient', 'value' => 'linear-gradient(135deg,#B8651F,#D4813A 55%,#F2B266)', 'opacity' => 1], 'Today', '#FFF8F0', '#1C1408'],
-            default => [['type' => 'solid', 'value' => '#1C1408', 'opacity' => 1], 'Notice', '#D4813A', '#FFF8F0'],
+            'celebrate' => [['type' => 'gradient', 'value' => 'linear-gradient(135deg,#8F3A09,#C56F3D 55%,#E8A984)', 'opacity' => 1], 'Today', '#FFF8F0', '#1C1408'],
+            default => [['type' => 'solid', 'value' => '#1C1408', 'opacity' => 1], 'Notice', '#C56F3D', '#FFF8F0'],
         };
 
         return [
@@ -183,7 +183,7 @@ final class SignageNotices
     {
         $bg = match ($notice['look']) {
             'warning' => 'rgba(122, 31, 31, 0.92)',
-            'celebrate' => 'rgba(212, 129, 58, 0.92)',
+            'celebrate' => 'rgba(183, 75, 12, 0.92)',
             default => 'rgba(12, 8, 4, 0.82)',
         };
         $text = $notice['text'] . ($notice['text_dv'] !== '' ? '   ·   ' . $notice['text_dv'] : '');

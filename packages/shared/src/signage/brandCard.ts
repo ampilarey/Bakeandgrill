@@ -59,7 +59,7 @@ export function brandCardSlide(overrides: Partial<SignageSlide> = {}): SignageSl
         h: 8,
         z: 3,
         text: '{{business_website}}',
-        style: { fontSize: 2.8, fontWeight: 500, color: '#D4813A', textAlign: 'center' },
+        style: { fontSize: 2.8, fontWeight: 500, color: '#C56F3D', textAlign: 'center' },
         animation: { entrance: 'fade', duration: 700, delay: 200 },
         binding: {},
       },

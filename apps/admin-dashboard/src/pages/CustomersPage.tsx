@@ -464,7 +464,7 @@ export function CustomersPage() {
           )}
         >
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-              <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'rgba(212,129,58,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 17, color: 'var(--color-primary)', flexShrink: 0 }}>
+              <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'rgba(183,75,12,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 17, color: 'var(--color-primary)', flexShrink: 0 }}>
                 {(detail?.customer.name ?? selected.name ?? '?').charAt(0).toUpperCase()}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>

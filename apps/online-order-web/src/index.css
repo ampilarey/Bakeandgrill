@@ -12,11 +12,12 @@
   --color-surface-alt:   #FEF3E8;
   --color-text:          #2A1E0C;
   --color-text-muted:    #8B7355;
-  --color-primary:       #D4813A;
-  --color-primary-hover: #B86820;
-  --color-primary-light: #FEF3E8;
-  --color-primary-glow:  rgba(212, 129, 58, 0.22);
-  --color-primary-contrast: #1C1408;
+  --color-primary:       #B74B0C;
+  --color-primary-hover: #A1420B;
+  --color-primary-light: #F9F1EC;
+  --color-primary-glow:  rgba(183, 75, 12, 0.22);
+  --color-primary-contrast: #FFFDF9;
+  --color-primary-on-dark: #C56F3D;
   --color-border:        #EDE4D4;
   --color-success:       #16a34a;
   --color-success-bg:    #D6F0E2;
@@ -134,11 +135,12 @@ img.brand-logo--dark { display: none; }
   --color-text:          #e8d5b5;
   --color-text-muted:    #9c8060;
   --color-border:        #3a2a12;
-  --color-primary:       #e09242;
-  --color-primary-hover: #c97a2a;
-  --color-primary-light: rgba(224, 146, 66, 0.15);
-  --color-primary-glow:  rgba(224, 146, 66, 0.22);
+  --color-primary:       #c56f3d;
+  --color-primary-hover: #ad6236;
+  --color-primary-light: rgba(197, 111, 61, 0.15);
+  --color-primary-glow:  rgba(197, 111, 61, 0.22);
   --color-primary-contrast: #1C1408;
+  --color-primary-on-dark: #c56f3d;
   --color-dark:          #f5e6cc;
   --color-footer-bg:     #0e0a04;
   --color-header-bg:     rgba(26, 18, 8, 0.92);
@@ -166,7 +168,7 @@ img.brand-logo--dark { display: none; }
   --tier-platinum-bg:     #EFF6FF; --tier-platinum-text: #1D4ED8; --tier-platinum-border: #BFDBFE;
 }
 [data-theme="dark"] {
-  --tier-bronze-bg:       rgba(224,146,66,0.15);  --tier-bronze-text:   #e09242; --tier-bronze-border:   rgba(224,146,66,0.4);
+  --tier-bronze-bg:       rgba(197,111,61,0.15);  --tier-bronze-text:   #c56f3d; --tier-bronze-border:   rgba(197,111,61,0.4);
   --tier-silver-bg:       rgba(148,163,184,0.12); --tier-silver-text:   #94a3b8; --tier-silver-border:   rgba(148,163,184,0.35);
   --tier-gold-bg:         rgba(250,204,21,0.12);  --tier-gold-text:     #facc15; --tier-gold-border:     rgba(250,204,21,0.4);
   --tier-platinum-bg:     rgba(96,165,250,0.12);  --tier-platinum-text: #60a5fa; --tier-platinum-border: rgba(96,165,250,0.4);
@@ -393,8 +395,8 @@ img.brand-logo--dark { display: none; }
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  background: rgba(212, 129, 58, 0.22);
-  border: 1px solid rgba(212, 129, 58, 0.4);
+  background: rgba(183, 75, 12, 0.22);
+  border: 1px solid rgba(183, 75, 12, 0.4);
   border-radius: 999px;
   padding: 0.3rem 0.875rem;
   font-size: 0.65rem;
@@ -670,7 +672,7 @@ img.brand-logo--dark { display: none; }
 }
 .home-promo-hero__dot.is-active {
   width: 24px;
-  background: var(--color-primary, #d4813a);
+  background: var(--color-primary, #b74b0c);
 }
 .home-promo-hero__btn {
   /* Phones: hidden — swipe + dots only; desktop shows via min-width 769 */
@@ -827,8 +829,8 @@ img.brand-logo--dark { display: none; }
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  background: rgba(212, 129, 58, 0.15);
-  border: 1px solid rgba(212, 129, 58, 0.35);
+  background: rgba(183, 75, 12, 0.15);
+  border: 1px solid rgba(183, 75, 12, 0.35);
   color: var(--color-primary-hover);
   padding: 0.3rem 0.875rem;
   border-radius: 999px;
@@ -878,7 +880,7 @@ img.brand-logo--dark { display: none; }
   font-weight: 700;
   font-size: 0.975rem;
   text-decoration: none;
-  box-shadow: 0 4px 18px rgba(212, 129, 58, 0.4);
+  box-shadow: 0 4px 18px rgba(183, 75, 12, 0.4);
   transition: transform 0.2s, box-shadow 0.2s;
   border: none;
   cursor: pointer;
@@ -887,7 +889,7 @@ img.brand-logo--dark { display: none; }
 .home-banner-cta-primary:hover {
   background: var(--color-primary-hover);
   transform: translateY(-2px);
-  box-shadow: 0 6px 24px rgba(212, 129, 58, 0.5);
+  box-shadow: 0 6px 24px rgba(183, 75, 12, 0.5);
 }
 .home-banner-cta-secondary {
   display: inline-flex;
@@ -1678,13 +1680,13 @@ textarea.field-input {
   margin-top: 1rem;
   min-height: 48px;
   padding: 0.75rem 1.35rem;
-  background: var(--color-primary, #D4813A);
+  background: var(--color-primary, #B74B0C);
   color: #fff !important;
   border-radius: 12px;
   font-weight: 800;
   font-size: 0.95rem;
   text-decoration: none !important;
-  box-shadow: 0 6px 18px rgba(212, 129, 58, 0.35);
+  box-shadow: 0 6px 18px rgba(183, 75, 12, 0.35);
 }
 .order-site-footer .footer-order-cta:hover {
   filter: brightness(0.95);
@@ -1709,7 +1711,7 @@ textarea.field-input {
   font-weight: 700;
 }
 .order-site-footer .footer-hours-today-tag {
-  color: var(--color-primary, #D4813A);
+  color: var(--color-primary-on-dark, #C56F3D);
   font-weight: 700;
   font-size: 0.72rem;
   margin-left: 0.35rem;
@@ -4521,7 +4523,7 @@ textarea.field-input {
   background: var(--color-primary);
   color: #fff;
   font-family: inherit;
-  /* AA large-text rule: white on #D4813A needs ≥18.66px bold — see AMBER_CONTRAST_AUDIT.md */
+  /* White on the brand rust #B74B0C is 5.2:1, so any size passes AA; the size is for the thumb, not the audit. */
   font-size: 1.125rem;
   font-weight: 700;
   cursor: pointer;

@@ -44,7 +44,7 @@ class WeeklyMenuCard
             $img = imagecreatetruecolor(self::WIDTH, self::HEIGHT);
             $bg = imagecolorallocate($img, 28, 20, 8);
             $cream = imagecolorallocate($img, 255, 248, 240);
-            $accent = imagecolorallocate($img, 212, 129, 58);
+            $accent = imagecolorallocate($img, 183, 75, 12);
             $muted = imagecolorallocate($img, 201, 184, 166);
             imagefilledrectangle($img, 0, 0, self::WIDTH, self::HEIGHT, $bg);
             imagefilledrectangle($img, 0, 0, 14, self::HEIGHT, $accent);

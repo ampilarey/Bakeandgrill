@@ -140,7 +140,7 @@ export function TwoFactorCard() {
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
       <div style={{
         width: 44, height: 44, borderRadius: '50%',
-        background: status?.enabled ? 'var(--color-success-bg)' : 'rgba(212,129,58,0.15)',
+        background: status?.enabled ? 'var(--color-success-bg)' : 'rgba(183,75,12,0.15)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         color: status?.enabled ? 'var(--color-success-strong)' : 'var(--color-primary)',
       }}>

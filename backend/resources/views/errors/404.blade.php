@@ -12,7 +12,7 @@
         justify-content: center;
         text-align: center;
         padding: 3rem 2rem;
-        background: linear-gradient(135deg, rgba(212, 129, 58, 0.06), rgba(184, 168, 144, 0.06));
+        background: linear-gradient(135deg, rgba(183, 75, 12, 0.06), rgba(184, 168, 144, 0.06));
     }
     .error-code {
         font-size: 6rem;

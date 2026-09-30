@@ -11,7 +11,7 @@
             <td align="center">
                 <table width="100%" cellpadding="0" cellspacing="0" style="max-width:480px; background:#ffffff; border-radius:12px; overflow:hidden;">
                     <tr>
-                        <td style="background:#D4813A; padding:24px; text-align:center;">
+                        <td style="background:#B74B0C; padding:24px; text-align:center;">
                             <p style="margin:0; font-size:20px; font-weight:700; color:#ffffff;">Bake &amp; Grill</p>
                         </td>
                     </tr>

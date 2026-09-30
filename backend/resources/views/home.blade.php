@@ -142,8 +142,8 @@
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
-    background: rgba(212, 129, 58, 0.22);
-    border: 1px solid rgba(212, 129, 58, 0.4);
+    background: rgba(183, 75, 12, 0.22);
+    border: 1px solid rgba(183, 75, 12, 0.4);
     color: #F0A96A;
     padding: 0.3rem 0.875rem;
     border-radius: 999px;
@@ -370,12 +370,12 @@
     font-weight: 700;
     font-size: 0.875rem;
     transition: all 0.2s;
-    box-shadow: 0 4px 18px rgba(212,129,58,0.4);
+    box-shadow: 0 4px 18px rgba(183,75,12,0.4);
 }
 .banner-cta-primary:hover {
     background: var(--amber-hover);
     transform: translateY(-2px);
-    box-shadow: 0 6px 24px rgba(212,129,58,0.5);
+    box-shadow: 0 6px 24px rgba(183,75,12,0.5);
 }
 .banner-cta-secondary {
     display: inline-flex;
@@ -933,7 +933,7 @@
 .cat-card:hover {
     transform: translateY(-5px);
     box-shadow: 0 16px 40px rgba(28,20,8,0.12);
-    border-color: rgba(212,129,58,0.4);
+    border-color: rgba(183,75,12,0.4);
 }
 .cat-img {
     height: 180px;
@@ -1002,7 +1002,7 @@
     transition: all 0.25s;
 }
 .product-card:hover {
-    border-color: rgba(212,129,58,0.35);
+    border-color: rgba(183,75,12,0.35);
     box-shadow: 0 14px 42px rgba(28,20,8,0.1);
     transform: translateY(-4px);
 }
@@ -1072,7 +1072,7 @@
     aspect-ratio: 1 / 1;
     border-radius: 50%;
     overflow: hidden; /* tall placeholder logo must not stretch the box into an oval */
-    background: linear-gradient(145deg, rgba(212,129,58,0.18), #F7E4C8 55%, rgba(253,221,180,0.65));
+    background: linear-gradient(145deg, rgba(183,75,12,0.18), #F7E4C8 55%, rgba(253,221,180,0.65));
 }
 /* Real product photos only — do not apply cover-fill to the brand logo inside the placeholder. */
 .special-card .product-img--circle > img {
@@ -1270,7 +1270,7 @@
     transition: all 0.2s;
 }
 .loc-card:hover {
-    border-color: rgba(212,129,58,0.3);
+    border-color: rgba(183,75,12,0.3);
     box-shadow: 0 12px 40px rgba(28,20,8,0.08);
     transform: translateY(-3px);
 }

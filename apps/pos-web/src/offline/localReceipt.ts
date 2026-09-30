@@ -3,7 +3,7 @@ import type { OfflineOrderRecord } from "./db";
 const BRAND = {
   name: "Bake & Grill",
   tagline: "Fresh grills & baked favorites",
-  primary: "#D4813A",
+  primary: "#B74B0C",
   dark: "#1C1408",
   bg: "#FFFDF9",
   border: "#EDE4D4",

@@ -215,7 +215,7 @@
             <div style="font-size:13px;line-height:1.5;color:#6B5D4F;">
                 <strong style="display:block;color:#1C1408;">Not happy with our staff, food or service?</strong>
                 Scan to tell the owner directly — anonymously, or leave your number and we will message you back.
-                <a href="{{ $complaintUrl }}" style="color:#D4813A;font-weight:700;">Make a complaint</a>
+                <a href="{{ $complaintUrl }}" style="color:#B74B0C;font-weight:700;">Make a complaint</a>
             </div>
         </div>
 

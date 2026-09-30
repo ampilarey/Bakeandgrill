@@ -307,7 +307,7 @@ export function SaveTicketModal({
           }}>Cancel</button>
           <button onClick={submit} disabled={busy} style={{
             flex: 1, padding: "12px 18px", borderRadius: 10,
-            border: "none", background: fireToKitchen ? "#047857" : "#D4813A", color: "#fff",
+            border: "none", background: fireToKitchen ? "#047857" : "#B74B0C", color: "#fff",
             fontWeight: 700, fontSize: 14, cursor: "pointer",
           }}>{busy ? "Saving…" : fireToKitchen ? "Save & Fire" : "Save ticket"}</button>
         </div>

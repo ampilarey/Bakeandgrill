@@ -1271,7 +1271,7 @@ export function MenuPage() {
               padding: '10px 14px',
               borderRadius: 10,
               background: 'var(--color-primary-light, #FFF7ED)',
-              border: '1px solid var(--color-primary, #D4813A)',
+              border: '1px solid var(--color-primary, #B74B0C)',
               fontSize: '0.875rem',
               color: 'var(--color-text)',
             }}

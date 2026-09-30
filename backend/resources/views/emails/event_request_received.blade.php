@@ -13,7 +13,7 @@
                 <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,0.07);">
 
                     <tr>
-                        <td style="background:#D4813A; padding:28px 32px; text-align:center;">
+                        <td style="background:#B74B0C; padding:28px 32px; text-align:center;">
                             <p style="margin:0; font-size:22px; font-weight:700; color:#ffffff; letter-spacing:0.3px;">
                                 Bake &amp; Grill
                             </p>

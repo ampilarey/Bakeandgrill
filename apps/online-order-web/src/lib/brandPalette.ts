@@ -2,6 +2,9 @@
 
 const DARK_TEXT = '#1C1408';
 const LIGHT_TEXT = '#FFFDF9';
+/** The dark-theme page background; the accent must read as text on it. */
+const DARK_SURFACE = '#1A1208';
+const MIN_CONTRAST_ON_DARK = 4.5;
 
 export type BrandTokens = {
   primary: string;
@@ -9,6 +12,8 @@ export type BrandTokens = {
   light: string;
   glow: string;
   contrast: string;
+  /** The accent for a dark strip (footer) whatever the theme: same as darkPrimary. */
+  onDark: string;
   darkPrimary: string;
   darkHover: string;
   darkLight: string;
@@ -93,17 +98,34 @@ function contrastOn(rgb: { r: number; g: number; b: number }): string {
   return contrastRatio(rgb, DARK_TEXT) >= contrastRatio(rgb, LIGHT_TEXT) ? DARK_TEXT : LIGHT_TEXT;
 }
 
+/**
+ * The accent lightened in tenths until it reads as text on the dark page.
+ * Mirrors BrandPalette::forDarkSurface: the brand rust needs two tenths
+ * (#C56F3D); the old amber stops after one, where it always was.
+ */
+export function forDarkSurface(rgb: { r: number; g: number; b: number }) {
+  const surface = hexToRgb(DARK_SURFACE);
+  let amount = 0.1;
+  let candidate = lighten(rgb, amount);
+  while (amount < 0.9 && contrastRatio(surface, rgbToHex(candidate)) < MIN_CONTRAST_ON_DARK) {
+    amount += 0.1;
+    candidate = lighten(rgb, amount);
+  }
+  return candidate;
+}
+
 export function deriveBrandPalette(raw: string | null | undefined): BrandTokens | null {
   const hex = normalizeHex(raw);
   if (!hex) return null;
   const rgb = hexToRgb(hex);
-  const darkRgb = lighten(rgb, 0.1);
+  const darkRgb = forDarkSurface(rgb);
   return {
     primary: hex,
     hover: rgbToHex(darken(rgb, 0.12)),
     light: rgbToHex(mixWithWhite(rgb, 0.92)),
     glow: rgba(rgb, 0.22),
     contrast: contrastOn(rgb),
+    onDark: rgbToHex(darkRgb),
     darkPrimary: rgbToHex(darkRgb),
     darkHover: rgbToHex(darken(darkRgb, 0.12)),
     darkLight: rgba(darkRgb, 0.15),
@@ -123,6 +145,7 @@ export function applyBrandPalette(tokens: BrandTokens | null): () => void {
     ['--color-primary-light', tokens.light],
     ['--color-primary-glow', tokens.glow],
     ['--color-primary-contrast', tokens.contrast],
+    ['--color-primary-on-dark', tokens.onDark],
     ['--brand-dark-primary', tokens.darkPrimary],
     ['--brand-dark-hover', tokens.darkHover],
     ['--brand-dark-light', tokens.darkLight],
@@ -142,6 +165,7 @@ export function applyBrandPalette(tokens: BrandTokens | null): () => void {
     --color-primary-light:${tokens.darkLight};
     --color-primary-glow:${tokens.darkGlow};
     --color-primary-contrast:${tokens.darkContrast};
+    --color-primary-on-dark:${tokens.onDark};
   }`;
   document.head.appendChild(style);
 

@@ -68,7 +68,7 @@ describe('expansion with a badged item', () => {
 });
 
 describe('renderer', () => {
-  const theme = { primary: '#D4813A', background: '#1C1408', text: '#FFF8F0', muted: '#C4B5A5' };
+  const theme = { primary: '#C56F3D', background: '#1C1408', text: '#FFF8F0', muted: '#C4B5A5' };
 
   it('shows the pill on a row and on a tile', () => {
     const items = [{ ...soldOut(2), sold_out_badge: true, image_url: '/2.jpg' }];

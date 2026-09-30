@@ -108,7 +108,7 @@ export function LockScreen({ cashierName, onUnlock, onSwitchUser }: Props) {
         }}>
           {pin.length === 0 ? <span style={{ color: "#94A3B8", fontSize: 13 }}>•••• ••</span> :
             Array.from({ length: pin.length }).map((_, i) => (
-              <div key={i} style={{ width: 12, height: 12, borderRadius: "50%", background: "#D4813A" }} />
+              <div key={i} style={{ width: 12, height: 12, borderRadius: "50%", background: "#B74B0C" }} />
             ))
           }
         </div>

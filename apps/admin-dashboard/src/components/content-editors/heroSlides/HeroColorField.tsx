@@ -13,7 +13,8 @@ import type { CSSProperties } from 'react';
 export const HERO_QUICK_COLORS: ReadonlyArray<{ hex: string; label: string }> = [
   { hex: '#1c1408', label: 'Dark' },
   { hex: '#2d1a0a', label: 'Brand dark' },
-  { hex: '#d4813a', label: 'Amber' },
+  { hex: '#b74b0c', label: 'Rust' },
+  { hex: '#ca7d1c', label: 'Amber' },
   { hex: '#f5a623', label: 'Gold' },
   { hex: '#ffffff', label: 'White' },
   { hex: '#000000', label: 'Black' },

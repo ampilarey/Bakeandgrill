@@ -413,7 +413,7 @@ function FieldEditor({
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
           <input
             type="color"
-            value={/^#[0-9a-f]{6}$/i.test(value) ? value : '#d4813a'}
+            value={/^#[0-9a-f]{6}$/i.test(value) ? value : '#b74b0c'}
             onChange={(e) => onChange(e.target.value)}
             aria-label={`${field.label} colour picker`}
             data-testid={`business-color-${field.key}`}

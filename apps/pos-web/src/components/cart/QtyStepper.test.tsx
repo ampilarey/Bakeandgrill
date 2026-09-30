@@ -82,7 +82,7 @@ describe("QtyStepper", () => {
   it("− is quiet grey above 1 and + is always the brand orange", () => {
     renderPill(3);
     expect(screen.getByRole("button", { name: "Decrease quantity Masroshi" })).toHaveStyle({ background: "#FFFFFF" });
-    expect(screen.getByRole("button", { name: "Increase quantity Masroshi" })).toHaveStyle({ background: "#D4813A" });
+    expect(screen.getByRole("button", { name: "Increase quantity Masroshi" })).toHaveStyle({ background: "#B74B0C" });
   });
 
   it("does nothing on a resumed ticket", () => {

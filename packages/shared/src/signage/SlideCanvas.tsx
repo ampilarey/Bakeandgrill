@@ -246,7 +246,7 @@ function SignageEl({
     }
     case 'icon': {
       const name = String(el.binding?.icon ?? el.binding?.name ?? 'megaphone');
-      const color = String(style.color || theme.primary || '#D4813A');
+      const color = String(style.color || theme.primary || '#C56F3D');
       body = (
         <div
           className="signage-emergency-icon"
@@ -546,7 +546,7 @@ export function SlideCanvas({
         overflow: 'hidden',
         color: theme.text || '#FFF8F0',
         fontFamily: theme.font_body || 'var(--font-ui)',
-        ['--signage-primary' as string]: theme.primary || '#D4813A',
+        ['--signage-primary' as string]: theme.primary || '#C56F3D',
         ...bgStyle(slide, theme),
       }}
     >

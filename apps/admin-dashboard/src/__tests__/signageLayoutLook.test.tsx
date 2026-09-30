@@ -127,7 +127,7 @@ describe('expansion under a look', () => {
 });
 
 describe('renderer', () => {
-  const theme = { primary: '#D4813A', background: '#1C1408', text: '#FFF8F0', muted: '#C4B5A5' };
+  const theme = { primary: '#C56F3D', background: '#1C1408', text: '#FFF8F0', muted: '#C4B5A5' };
 
   it('draws photo tiles with name and price', () => {
     const slide: SignageSlide = {

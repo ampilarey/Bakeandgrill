@@ -13,7 +13,7 @@
                 <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,0.07);">
 
                     <tr>
-                        <td style="background:#D4813A; padding:28px 32px; text-align:center;">
+                        <td style="background:#B74B0C; padding:28px 32px; text-align:center;">
                             <p style="margin:0; font-size:22px; font-weight:700; color:#ffffff; letter-spacing:0.3px;">
                                 Bake &amp; Grill
                             </p>
@@ -30,7 +30,7 @@
                                 You've received a gift card
                             </p>
                             @if (!empty($senderFromLine))
-                            <p style="margin:0 0 12px; font-size:15px; font-weight:600; color:#D4813A;">
+                            <p style="margin:0 0 12px; font-size:15px; font-weight:600; color:#B74B0C;">
                                 {{ $senderFromLine }}
                             </p>
                             @endif
@@ -63,7 +63,7 @@
                                         <p style="margin:0 0 8px; font-size:12px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.5px;">
                                             Gift card code
                                         </p>
-                                        <p style="margin:0; font-family:Consolas, Monaco, monospace; font-size:22px; font-weight:700; letter-spacing:0.12em; color:#D4813A;">
+                                        <p style="margin:0; font-family:Consolas, Monaco, monospace; font-size:22px; font-weight:700; letter-spacing:0.12em; color:#B74B0C;">
                                             {{ strtoupper($plainCode) }}
                                         </p>
                                     </td>
@@ -73,7 +73,7 @@
                             <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
                                 <tr>
                                     <td style="font-size:13px; color:#64748b; padding:6px 0;">Value</td>
-                                    <td style="font-size:15px; font-weight:700; color:#D4813A; text-align:right; padding:6px 0;">
+                                    <td style="font-size:15px; font-weight:700; color:#B74B0C; text-align:right; padding:6px 0;">
                                         MVR {{ number_format((float) $card->initial_balance, 2) }}
                                     </td>
                                 </tr>
@@ -91,7 +91,7 @@
                                 <tr>
                                     <td align="center">
                                         <a href="{{ $redeemUrl }}"
-                                           style="display:inline-block; background:#D4813A; color:#ffffff; text-decoration:none; font-size:14px; font-weight:700; padding:14px 28px; border-radius:8px;">
+                                           style="display:inline-block; background:#B74B0C; color:#ffffff; text-decoration:none; font-size:14px; font-weight:700; padding:14px 28px; border-radius:8px;">
                                             Redeem online
                                         </a>
                                     </td>

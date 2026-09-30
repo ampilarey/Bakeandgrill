@@ -54,13 +54,32 @@ class BrandPaletteTest extends TestCase
         }
     }
 
-    public function test_current_brand_colour_keeps_hardcoded_amber_contrast(): void
+    public function test_the_old_amber_keeps_its_dark_text_and_its_dark_theme_shade(): void
     {
         $palette = BrandPalette::from('#D4813A');
         $this->assertNotNull($palette);
-        // Choosing the site's existing brand colour must NOT change how it looks.
+        // Choosing the old brand colour must NOT change how it looks.
         $this->assertSame('#1C1408', $palette['light']['amber_contrast']);
         $this->assertSame(BrandPalette::DARK_TEXT, $palette['light']['amber_contrast']);
         $this->assertStringContainsString('--amber-contrast: #1C1408', $palette['css']);
+        // One tenth lighter is already readable, so the dark theme stays where it was.
+        $this->assertSame('#D88E4E', $palette['dark']['amber']);
+    }
+
+    public function test_the_brand_rust_gets_cream_text_and_a_lighter_shade_for_dark_surfaces(): void
+    {
+        // Owner, 2026-09-30: the logo's rust as the accent. Cream text wins on
+        // it (5.2:1 against 3.5:1 for dark text), and on the dark page it has
+        // to be lightened two tenths before prices and links pass AA.
+        $palette = BrandPalette::from('#B74B0C');
+        $this->assertNotNull($palette);
+        $this->assertSame(BrandPalette::LIGHT_TEXT, $palette['light']['amber_contrast']);
+        $this->assertSame('#C56F3D', $palette['dark']['amber']);
+        $this->assertSame('#C56F3D', $palette['light']['amber_on_dark'], 'a dark strip on the light theme uses the same lighter shade');
+        $this->assertStringContainsString('--amber-on-dark: #C56F3D', $palette['css']);
+
+        $surface = ['r' => 0x1A, 'g' => 0x12, 'b' => 0x08];
+        $this->assertGreaterThanOrEqual(4.5, BrandPalette::contrastRatio($surface, $palette['dark']['amber']));
+        $this->assertLessThan(4.5, BrandPalette::contrastRatio($surface, '#B74B0C'), 'the plain rust would not have passed');
     }
 }

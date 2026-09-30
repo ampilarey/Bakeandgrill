@@ -178,14 +178,14 @@ function Item({ item, active, onClick, onLongPress }: {
         background: active ? "#1E293B" : "transparent", color: item.disabled ? "#475569" : "#fff",
         border: "none", cursor: item.disabled ? "not-allowed" : "pointer",
         fontSize: 14, fontWeight: 600,
-        borderLeft: `3px solid ${active ? "#D4813A" : "transparent"}`,
+        borderLeft: `3px solid ${active ? "#B74B0C" : "transparent"}`,
       }}
     >
       <span style={{ fontSize: 18, width: 24, textAlign: "center" }}>{item.icon}</span>
       <span style={{ flex: 1 }}>{item.label}</span>
       {item.badge && (
         <span style={{
-          background: item.badgeCritical ? "#B91C1C" : "#D4813A", color: "#fff",
+          background: item.badgeCritical ? "#B91C1C" : "#B74B0C", color: "#fff",
           fontSize: 11, fontWeight: 800, padding: "2px 8px", borderRadius: 999,
         }}>{item.badge}</span>
       )}

@@ -18,7 +18,7 @@ import { cardBadge, fitListFontSize } from '@shared/signage/SlideCanvas';
  */
 
 const config = parityConfig('landscape');
-const theme = { primary: '#D4813A', background: '#1C1408', text: '#FFF8F0', muted: '#C4B5A5' };
+const theme = { primary: '#C56F3D', background: '#1C1408', text: '#FFF8F0', muted: '#C4B5A5' };
 
 function item(id: number, over: Partial<MenuItemLite> = {}): MenuItemLite {
   return { id, name: `Item ${id}`, base_price: 10 + id, category_id: 1, ...over };

@@ -46,13 +46,18 @@ class BrandKitWiringTest extends TestCase
         $this->assertGreaterThanOrEqual(
             2,
             substr_count($fallback, '/storage/site/logo-light.png'),
-            'When logo_dark is empty, dark slots fall back to logo'
+            'When logo_dark is empty, dark slots fall back to logo',
         );
         $this->assertStringNotContainsString('/storage/site/logo-dark.png', $fallback);
     }
 
     public function test_primary_color_emits_overrides_only_when_valid(): void
     {
+        // The rust is seeded since 2026-09-30; an install with the setting
+        // cleared must fall back to the stylesheet's own defaults.
+        SiteSetting::set('primary_color', '', 'shared');
+        SiteSetting::bust();
+        Cache::flush();
         $plain = $this->get('/')->assertOk()->getContent();
         $this->assertStringNotContainsString('id="brand-palette"', $plain);
 

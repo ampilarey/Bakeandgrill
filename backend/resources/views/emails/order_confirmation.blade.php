@@ -14,7 +14,7 @@
 
                     {{-- Header --}}
                     <tr>
-                        <td style="background:#D4813A; padding:28px 32px; text-align:center;">
+                        <td style="background:#B74B0C; padding:28px 32px; text-align:center;">
                             <p style="margin:0; font-size:22px; font-weight:700; color:#ffffff; letter-spacing:0.3px;">
                                 Bake &amp; Grill
                             </p>
@@ -93,7 +93,7 @@
                             <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
                                 <tr>
                                     <td style="font-size:15px; font-weight:700; color:#0f172a; padding-top:4px;">Total</td>
-                                    <td style="font-size:15px; font-weight:700; color:#D4813A; text-align:right; padding-top:4px;">
+                                    <td style="font-size:15px; font-weight:700; color:#B74B0C; text-align:right; padding-top:4px;">
                                         MVR {{ number_format($order->total, 2) }}
                                     </td>
                                 </tr>
@@ -104,7 +104,7 @@
                                 <tr>
                                     <td align="center">
                                         <a href="{{ $trackingUrl }}"
-                                           style="display:inline-block; background:#D4813A; color:#ffffff; font-size:15px; font-weight:700; text-decoration:none; padding:14px 32px; border-radius:8px;">
+                                           style="display:inline-block; background:#B74B0C; color:#ffffff; font-size:15px; font-weight:700; text-decoration:none; padding:14px 32px; border-radius:8px;">
                                             Track your order →
                                         </a>
                                     </td>
@@ -126,9 +126,9 @@
                         <td style="background:#f1f5f9; padding:20px 32px; text-align:center; border-top:1px solid #e2e8f0;">
                             <p style="margin:0 0 6px; font-size:13px; color:#64748b;">
                                 Questions? Contact us on
-                                <a href="https://wa.me/9609120011" style="color:#D4813A; text-decoration:none;">WhatsApp</a>
+                                <a href="https://wa.me/9609120011" style="color:#B74B0C; text-decoration:none;">WhatsApp</a>
                                 or call
-                                <a href="tel:+9609120011" style="color:#D4813A; text-decoration:none;">+960 912 0011</a>
+                                <a href="tel:+9609120011" style="color:#B74B0C; text-decoration:none;">+960 912 0011</a>
                             </p>
                             <p style="margin:0; font-size:12px; color:#94a3b8;">
                                 Bake &amp; Grill · Malé, Maldives

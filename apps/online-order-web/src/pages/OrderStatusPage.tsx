@@ -69,7 +69,7 @@ function DriverTracker({ orderId, authenticated }: { orderId: number; authentica
 
   return (
     <div style={{
-      background: 'linear-gradient(135deg, #D4813A, #B5681F)',
+      background: 'linear-gradient(135deg, #B74B0C, #8F3A09)',
       borderRadius: '1rem', padding: '1rem', color: 'white',
     }}>
       <p style={{ fontSize: 'var(--text-sm)', fontWeight: 700, margin: '0 0 0.5rem', opacity: 0.85 }}>🚀 {t('track.driver.title')}</p>

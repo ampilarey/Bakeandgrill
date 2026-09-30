@@ -684,7 +684,7 @@ describe('SignagePage — per-screen look (2026-09-23)', () => {
     const [id, body] = update.mock.calls[0];
     expect(id).toBe(100);
     expect(body.layout).toMatchObject({ preset: 'price_board', columns: 3, showcase_cap: 0, category_ids: [20] });
-    expect((body.overrides as { theme: { primary: string } }).theme.primary).toBe('#D4813A');
+    expect((body.overrides as { theme: { primary: string } }).theme.primary).toBe('#C56F3D');
 
     // The preview iframe is remounted so the TV's new look shows on the page.
     await waitFor(() => expect(screen.getByTestId('signage-preview-frame-default')).not.toBe(frameBefore));

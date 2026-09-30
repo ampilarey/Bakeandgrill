@@ -65,14 +65,19 @@ The website palette is a **hand-tuned set of four related tokens per theme**, no
 
 | Token | Light | Dark |
 |---|---|---|
-| `--amber` | `#D4813A` | `#e09242` |
-| `--amber-hover` | `#B86820` | `#c97a2a` |
-| `--amber-light` | `#FEF3E8` | `rgba(224,146,66,0.15)` |
-| `--amber-glow` | `rgba(212,129,58,0.22)` | `rgba(224,146,66,0.22)` |
+| `--amber` | `#B74B0C` | `#C56F3D` |
+| `--amber-hover` | `#A1420B` | `#AD6236` |
+| `--amber-light` | `#F9F1EC` | `rgba(197,111,61,0.15)` |
+| `--amber-glow` | `rgba(183,75,12,0.22)` | `rgba(197,111,61,0.22)` |
+| `--amber-on-dark` | `#C56F3D` | `#C56F3D` |
+
+(Values as of 2026-09-30, when the accent became the logo's rust; the table used to
+read `#D4813A` / `#e09242`. The canonical palette is `docs/brand/PALETTE.md`.)
 
 **Do not flat-replace all four with the same colour** — that destroys the design. Instead **derive** them from `primary_color`, preserving the existing relationships:
 
-- `--amber` = the chosen colour (dark theme: a ~10% lightened variant, mirroring `#D4813A → #e09242`)
+- `--amber` = the chosen colour (dark theme: lightened in tenths until it reads at 4.5:1 on the dark page, `#1A1208`; the rust needs two tenths, the old amber stopped after one)
+- `--amber-on-dark` = that dark-theme shade in both themes, for a dark strip on the light page (the footer)
 - `--amber-hover` = ~12% darkened (dark theme: ~12% darkened from its own base)
 - `--amber-light` = mix with white ~92% (dark theme: the colour at ~15% alpha)
 - `--amber-glow` = the colour at 22% alpha

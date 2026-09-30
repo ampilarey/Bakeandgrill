@@ -24,7 +24,7 @@ class SiteSettingsSeeder extends Seeder
             ['key' => 'logo',             'type' => 'image',    'group' => 'Branding', 'label' => 'Logo (Light)',      'description' => 'Used on light backgrounds', 'value' => null, 'is_public' => true],
             ['key' => 'logo_dark',        'type' => 'image',    'group' => 'Branding', 'label' => 'Logo (Dark)',       'description' => 'Used on dark backgrounds', 'value' => null, 'is_public' => true],
             ['key' => 'favicon',          'type' => 'image',    'group' => 'Branding', 'label' => 'Favicon',           'description' => '.ico or .png, 32x32px recommended', 'value' => null, 'is_public' => true],
-            ['key' => 'primary_color',    'type' => 'color',    'group' => 'Branding', 'label' => 'Primary Color',     'description' => 'Main brand color', 'value' => '#D4813A', 'is_public' => true],
+            ['key' => 'primary_color',    'type' => 'color',    'group' => 'Branding', 'label' => 'Primary Color',     'description' => 'Main brand color', 'value' => '#B74B0C', 'is_public' => true],
             ['key' => 'secondary_color',  'type' => 'color',    'group' => 'Branding', 'label' => 'Secondary Color',   'description' => 'Dark/accent color', 'value' => '#1C1408', 'is_public' => true],
             ['key' => 'accent_color',     'type' => 'color',    'group' => 'Branding', 'label' => 'Accent Color',      'description' => 'Subtle background tint', 'value' => '#F5E6D3', 'is_public' => true],
 

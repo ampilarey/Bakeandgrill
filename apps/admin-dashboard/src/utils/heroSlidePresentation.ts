@@ -12,7 +12,7 @@ export type HeroBgToken = 'none' | 'dark' | 'light' | 'amber' | 'brand_dark' | '
 export const HERO_BG_TOKEN_RGB: Record<'dark' | 'light' | 'amber' | 'brand_dark', string> = {
   dark: '28,20,8',
   light: '255,255,255',
-  amber: '212,129,58',
+  amber: '183,75,12',
   brand_dark: '45,26,10',
 };
 

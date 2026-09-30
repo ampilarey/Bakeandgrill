@@ -145,9 +145,10 @@ All tokens live in `src/index.css` `:root` / `[data-theme="dark"]`; Tailwind con
 
 | Token | Light | Dark theme | Use |
 |---|---|---|---|
-| `--color-primary` | `#D4813A` | (existing dark variant) | CTAs, active nav, accents, rail indicator |
-| `--color-primary-hover` | `#B86820` | | pressed/hover |
-| `--color-primary-light` | `#FEF3E8` | | chip fills, selected backgrounds |
+| `--color-primary` | `#B74B0C` (was `#D4813A` until 2026-09-30) | `#C56F3D` | CTAs, active nav, accents, rail indicator |
+| `--color-primary-hover` | `#A1420B` | `#AD6236` | pressed/hover |
+| `--color-primary-light` | `#F9F1EC` | `rgba(197,111,61,0.15)` | chip fills, selected backgrounds |
+| `--color-primary-on-dark` | `#C56F3D` | `#C56F3D` | accent text on the always-dark footer |
 | `--color-bg` | `#FFFDF9` | | app background |
 | `--color-surface` / `-alt` | `#FFFFFF` / `#FEF3E8` | | cards, sheets |
 | `--color-text` / `-muted` | `#2A1E0C` / `#8B7355` | | primary/secondary text |

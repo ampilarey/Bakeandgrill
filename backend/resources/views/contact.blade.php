@@ -76,7 +76,7 @@
     transition: all 0.2s;
 }
 .contact-card:hover {
-    border-color: rgba(212,129,58,0.3);
+    border-color: rgba(183,75,12,0.3);
     box-shadow: 0 8px 24px rgba(28,20,8,0.07);
     transform: translateY(-2px);
 }

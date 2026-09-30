@@ -23,7 +23,7 @@ final class DocumentBrandView
         return [
             'brandSiteName' => $brandSiteName,
             'brandTagline' => SiteSetting::get('site_tagline', 'Fresh grills & baked favorites'),
-            'brandPrimary' => SiteSetting::get('primary_color', '#D4813A'),
+            'brandPrimary' => SiteSetting::get('primary_color', '#B74B0C'),
             'brandDark' => SiteSetting::get('secondary_color', '#1C1408'),
             'brandPhone' => SiteSetting::get('business_phone', config('business.phone')),
             'brandEmail' => SiteSetting::get('business_email', config('business.email')),

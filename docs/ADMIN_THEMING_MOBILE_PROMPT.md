@@ -46,7 +46,7 @@ Then apply case-insensitive replacement of exactly these ten mappings:
   #6b5d4f → var(--color-text-secondary)
   #9c8e7e → var(--color-text-muted)
   #e8e0d8 → var(--color-border)
-  #d4813a → var(--color-primary)
+  #b74b0c → var(--color-primary)   (the accent; #d4813a in older code is the same role)
   #1c1408 → var(--color-text)
   #ef4444 → var(--color-danger)
   #f8f6f3 → var(--color-bg)

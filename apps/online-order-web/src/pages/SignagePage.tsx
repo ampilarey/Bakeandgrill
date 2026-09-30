@@ -638,7 +638,7 @@ export function SignagePage() {
   const isLoading = !config && !offline && !bootError;
   const showIdleBrand = Boolean(config && !currentSlide && !black);
   const showBootError = bootError && !config && !black;
-  const bootTheme = { primary: '#D4813A', background: '#0d0a07', text: '#FFF8F0' };
+  const bootTheme = { primary: '#C56F3D', background: '#0d0a07', text: '#FFF8F0' };
   const bootStubConfig = useMemo((): SignageConfig => ({
     screen: { id: 0, name: 'boot', slug: screen, group_id: null },
     playlist_id: null,

@@ -44,7 +44,7 @@ const EMPHASES = ['', 'pulse', 'ken-burns', 'float', 'shine', 'count-up'];
 const TRANSITIONS = ['fade', 'slide', 'zoom', 'dissolve', 'flip', 'push', 'cube', 'wipe'];
 
 const PREVIEW_THEME: SignageTheme = {
-  primary: '#D4813A',
+  primary: '#C56F3D',
   background: '#1C1408',
   surface: '#2A2118',
   text: '#FFF8F0',
@@ -459,7 +459,7 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
             ) : null}
 
             {/* Safe zone guide */}
-            <div style={{ position: 'absolute', inset: '5%', border: '1px dashed rgba(212,129,58,.45)', pointerEvents: 'none', zIndex: 2000 }} data-testid="signage-safe-zone" />
+            <div style={{ position: 'absolute', inset: '5%', border: '1px dashed rgba(183,75,12,.45)', pointerEvents: 'none', zIndex: 2000 }} data-testid="signage-safe-zone" />
 
             {/* Interaction overlay — desktop only (mobile uses layers + XYWH) */}
             {(!isMobile && !isAuto ? elements : []).map((el) => (

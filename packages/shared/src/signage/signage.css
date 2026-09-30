@@ -34,7 +34,7 @@
   pointer-events: none;
   background:
     radial-gradient(ellipse 70% 55% at 12% 0%, rgba(255, 248, 240, 0.07), transparent 60%),
-    radial-gradient(ellipse 60% 50% at 100% 100%, color-mix(in srgb, var(--signage-primary, #d4813a) 16%, transparent), transparent 55%);
+    radial-gradient(ellipse 60% 50% at 100% 100%, color-mix(in srgb, var(--signage-primary, #c56f3d) 16%, transparent), transparent 55%);
 }
 
 .signage-menu-row {
@@ -637,7 +637,7 @@
 }
 
 .signage-banner-prayer-next {
-  color: var(--signage-banner-accent, #d4813a);
+  color: var(--signage-banner-accent, #c56f3d);
   font-weight: 800;
 }
 

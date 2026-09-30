@@ -12,7 +12,7 @@ const config = {
   orientation: 'landscape',
   resolution: '1920x1080',
   refresh_seconds: 120,
-  theme: { primary: '#D4813A', background: '#1C1408', text: '#fff' },
+  theme: { primary: '#C56F3D', background: '#1C1408', text: '#fff' },
   slides: [
     {
       id: 's1',

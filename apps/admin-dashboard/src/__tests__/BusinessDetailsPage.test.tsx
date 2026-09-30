@@ -61,7 +61,7 @@ function mockResponse(overrides: Partial<BusinessDetailsResponse> = {}): Busines
     field('business_viber', 'viber://chat?number=9609120011'),
     field('site_tagline', 'Fresh daily'),
     field('logo', '/images/logo.png'),
-    field('primary_color', '#d4813a'),
+    field('primary_color', '#b74b0c'),
   ];
 
   return {

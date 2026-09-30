@@ -654,7 +654,7 @@ export function DashboardPage() {
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
                 fontSize: 12, fontWeight: 700, color: 'var(--color-primary)',
-                background: 'rgba(212,129,58,0.1)', border: '1px solid rgba(212,129,58,0.3)',
+                background: 'rgba(183,75,12,0.1)', border: '1px solid rgba(183,75,12,0.3)',
                 borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontFamily: 'inherit',
               }}
             >
@@ -672,7 +672,7 @@ export function DashboardPage() {
             {summaryDate !== today() && (
               <button
                 onClick={() => setSummaryDate(today())}
-                style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-primary)', background: 'rgba(212,129,58,0.1)', border: '1px solid rgba(212,129,58,0.3)', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
+                style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-primary)', background: 'rgba(183,75,12,0.1)', border: '1px solid rgba(183,75,12,0.3)', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 ← Today
               </button>

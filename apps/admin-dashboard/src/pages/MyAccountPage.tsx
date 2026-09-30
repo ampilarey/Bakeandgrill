@@ -88,7 +88,7 @@ export function MyAccountPage() {
       <Card>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
           <div style={{
-            width: 44, height: 44, borderRadius: '50%', background: 'rgba(212,129,58,0.15)',
+            width: 44, height: 44, borderRadius: '50%', background: 'rgba(183,75,12,0.15)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)',
           }}>
             <UserCircle size={26} />

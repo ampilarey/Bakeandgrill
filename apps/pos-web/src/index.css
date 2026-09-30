@@ -457,9 +457,9 @@ html, body, #root {
   color: #334155;
 }
 .pos-charge-quick-btn.is-selected {
-  border-color: #D4813A;
+  border-color: #B74B0C;
   background: #FFF7ED;
-  box-shadow: 0 0 0 2px rgba(212, 129, 58, 0.28);
+  box-shadow: 0 0 0 2px rgba(183, 75, 12, 0.28);
 }
 .pos-charge-quick-btn--exact {
   background: #0F172A;
@@ -470,8 +470,8 @@ html, body, #root {
 }
 .pos-charge-quick-btn--exact.is-selected {
   background: #0F172A;
-  border-color: #D4813A;
-  box-shadow: 0 0 0 2px rgba(212, 129, 58, 0.35);
+  border-color: #B74B0C;
+  box-shadow: 0 0 0 2px rgba(183, 75, 12, 0.35);
 }
 .pos-charge-quick-btn-label {
   overflow: hidden;
@@ -531,7 +531,7 @@ html, body, #root {
  * tabbing through the form do — and it makes accessibility audits
  * pass. */
 :focus-visible {
-  outline: 2px solid #D4813A;
+  outline: 2px solid #B74B0C;
   outline-offset: 2px;
 }
 
@@ -923,7 +923,7 @@ html, body, #root {
     text-overflow: ellipsis;
   }
   .pos-charge-tender-btn--active {
-    box-shadow: 0 0 0 2px rgba(212, 129, 58, 0.45);
+    box-shadow: 0 0 0 2px rgba(183, 75, 12, 0.45);
   }
   .pos-charge-confirm-label {
     display: flex;
@@ -961,7 +961,7 @@ html, body, #root {
     flex-shrink: 0;
     gap: 8px;
     background:
-      radial-gradient(120% 80% at 100% 0%, rgba(212, 129, 58, 0.22), transparent 55%),
+      radial-gradient(120% 80% at 100% 0%, rgba(183, 75, 12, 0.22), transparent 55%),
       #0F172A !important;
   }
   /* Received (warm) | Subtotal/GST (cool) — same row on phones. */
@@ -1489,7 +1489,7 @@ html, body, #root {
 .close-shift-method-link {
   border: none;
   background: transparent;
-  color: #D4813A;
+  color: #B74B0C;
   font-size: 13px;
   font-weight: 700;
   font-family: inherit;
@@ -1653,7 +1653,7 @@ html, body, #root {
 /* Same accent-filled primary as the POS Charge / save buttons. */
 .close-shift-btn--primary {
   border: none;
-  background: #D4813A;
+  background: #B74B0C;
   color: #fff;
 }
 
@@ -1808,8 +1808,8 @@ html, body, #root {
 }
 
 .close-shift-denom-row.is-selected {
-  border-color: #D4813A;
-  box-shadow: 0 0 0 2px rgba(212, 129, 58, 0.30), 0 4px 14px rgba(212, 129, 58, 0.18);
+  border-color: #B74B0C;
+  box-shadow: 0 0 0 2px rgba(183, 75, 12, 0.30), 0 4px 14px rgba(183, 75, 12, 0.18);
 }
 
 .close-shift-denom-row.has-count:not(.is-selected) {
@@ -1916,7 +1916,7 @@ html, body, #root {
 }
 
 .close-shift-denom-row.has-count .close-shift-denom-row__count {
-  color: #D4813A;
+  color: #B74B0C;
 }
 
 .close-shift-stepper-btn {
@@ -2010,7 +2010,7 @@ html, body, #root {
 
 /* Money is counted inside the (closed) More overlay — make that loud. */
 .close-shift-link-btn--counted {
-  border-color: #D4813A;
+  border-color: #B74B0C;
   background: #FFF7ED;
   color: #9A5B22;
 }

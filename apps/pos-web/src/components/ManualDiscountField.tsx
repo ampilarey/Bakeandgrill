@@ -147,7 +147,7 @@ export function ManualDiscountField({
               style={{
                 minHeight: 30, padding: "0 10px", border: "none", fontFamily: "inherit",
                 fontSize: 12, fontWeight: 700, cursor: disabled ? "default" : "pointer",
-                background: mode === m ? "#D4813A" : "#fff",
+                background: mode === m ? "#B74B0C" : "#fff",
                 color: mode === m ? "#fff" : textColor,
                 opacity: disabled ? 0.5 : 1,
               }}
@@ -241,9 +241,9 @@ export function ManualDiscountField({
               onClick={() => pickChip(v)}
               style={{
                 minHeight: 30, padding: "0 10px", borderRadius: 999,
-                border: `1px solid ${on ? "#D4813A" : borderColor}`,
+                border: `1px solid ${on ? "#B74B0C" : borderColor}`,
                 background: on ? "#FEF3E8" : "#fff",
-                color: on ? "#B86820" : textColor,
+                color: on ? "#A1420B" : textColor,
                 fontSize: 12, fontWeight: 700, fontFamily: "inherit",
                 cursor: disabled ? "default" : "pointer",
                 opacity: disabled ? 0.5 : 1,
@@ -281,9 +281,9 @@ export function ManualDiscountField({
                   style={{
                     padding: "6px 10px",
                     borderRadius: 999,
-                    border: `1px solid ${selected ? "#D4813A" : borderColor}`,
+                    border: `1px solid ${selected ? "#B74B0C" : borderColor}`,
                     background: selected ? "#FEF3E8" : "#fff",
-                    color: selected ? "#B86820" : textColor,
+                    color: selected ? "#A1420B" : textColor,
                     fontSize: 11,
                     fontWeight: 600,
                     cursor: disabled ? "default" : "pointer",

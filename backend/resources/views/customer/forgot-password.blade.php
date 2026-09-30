@@ -10,7 +10,7 @@
         align-items: center;
         justify-content: center;
         padding: 3rem 2rem;
-        background: linear-gradient(135deg, rgba(212, 129, 58, 0.08), rgba(184, 168, 144, 0.08));
+        background: linear-gradient(135deg, rgba(183, 75, 12, 0.08), rgba(184, 168, 144, 0.08));
     }
     .login-card {
         background: white;
@@ -29,13 +29,13 @@
         width: 100%; padding: 0.9rem 1.1rem; border: 2px solid var(--border);
         border-radius: 12px; font-size: 1rem; transition: all 0.2s; box-sizing: border-box; font-family: inherit;
     }
-    .form-group input:focus { outline: none; border-color: var(--amber); box-shadow: 0 0 0 4px rgba(212,129,58,0.12); }
+    .form-group input:focus { outline: none; border-color: var(--amber); box-shadow: 0 0 0 4px rgba(183,75,12,0.12); }
     .btn-submit {
         width: 100%; padding: 1.15rem; background: var(--amber); color: white; border: none;
         border-radius: 999px; font-weight: 600; font-size: 1.1rem; cursor: pointer;
-        transition: all 0.2s; box-shadow: 0 4px 12px rgba(212,129,58,0.3); font-family: inherit;
+        transition: all 0.2s; box-shadow: 0 4px 12px rgba(183,75,12,0.3); font-family: inherit;
     }
-    .btn-submit:hover { background: var(--amber-hover); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(212,129,58,0.4); }
+    .btn-submit:hover { background: var(--amber-hover); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(183,75,12,0.4); }
     .alert { padding: 1rem 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; font-size: 0.95rem; }
     .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
     .alert-info  { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }

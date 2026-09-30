@@ -37,12 +37,12 @@ export const palette = {
   inkText: '#F8FAFC',
   inkMuted: '#94A3B8',
 
-  // Brand — bake & grill orange (already in use as accent, we just
-  // commit to it as THE brand color)
-  primary: '#D4813A',
-  primaryDark: '#B86820',
-  primaryLight: '#FBD9B8',
-  primaryBg: '#FEF3E8',
+  // Brand — the rust from the logo (owner, 2026-09-30; the amber before it
+  // was not a colour the mark contains). Tints are white mixes of the same.
+  primary: '#B74B0C',
+  primaryDark: '#A1420B',
+  primaryLight: '#DFAE92',
+  primaryBg: '#F9F1EC',
 
   // States
   success: '#10B981',
@@ -100,7 +100,7 @@ export const shadow = {
   l: '0 8px 24px rgba(15, 23, 42, 0.12)',
   xl: '0 12px 32px rgba(15, 23, 42, 0.18)',
   /** Focused brand glow — for primary CTAs / focused inputs. */
-  brand: '0 0 0 3px rgba(212, 129, 58, 0.22)',
+  brand: '0 0 0 3px rgba(183, 75, 12, 0.22)',
 } as const;
 
 // ── Type ramp ──────────────────────────────────────────────────────────

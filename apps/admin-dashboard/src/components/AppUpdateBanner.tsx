@@ -18,7 +18,7 @@ export function AppUpdateBanner() {
       data-testid="admin-update-banner"
       style={{
         display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
-        padding: '8px 14px', background: 'var(--color-primary-bg, rgba(212,129,58,0.12))',
+        padding: '8px 14px', background: 'var(--color-primary-bg, rgba(183,75,12,0.12))',
         borderBottom: '1px solid var(--color-primary)', fontSize: 13,
       }}
     >

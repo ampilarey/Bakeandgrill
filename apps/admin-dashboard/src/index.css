@@ -5,10 +5,10 @@
 ════════════════════════════════════════════════════════════ */
 :root {
   /* Brand */
-  --color-primary:       #D4813A;
-  --color-primary-light: #E8A66A;
-  --color-primary-dark:  #B5692E;
-  --color-primary-glow:  rgba(212, 129, 58, 0.2);
+  --color-primary:       #B74B0C;
+  --color-primary-light: #CD8155;
+  --color-primary-dark:  #A1420B;
+  --color-primary-glow:  rgba(183, 75, 12, 0.2);
 
   /* Neutrals */
   --color-bg:            #F8F6F3;
@@ -25,8 +25,8 @@
   /* Sidebar */
   --color-sidebar-bg:    #1C1408;
   --color-sidebar-text:  #C4B5A3;
-  --color-sidebar-active:#D4813A;
-  --color-sidebar-hover: rgba(212, 129, 58, 0.1);
+  --color-sidebar-active:#C56F3D;
+  --color-sidebar-hover: rgba(197, 111, 61, 0.12);
 
   /* Status */
   --color-success:       #22C55E;
@@ -84,7 +84,7 @@ a { text-decoration: none; color: inherit; }
 /* Tailwind custom theme extension */
 @theme {
   --color-brand:      var(--color-primary);
-  --color-brand-dark: #B5692E;
+  --color-brand-dark: #A1420B;
   --color-brand-bg:   var(--color-bg);
   --color-sidebar:    var(--color-text);
 }
@@ -212,7 +212,7 @@ a { text-decoration: none; color: inherit; }
 }
 
 .admin-nav-group-header--active {
-  color: rgba(212, 129, 58, 0.85);
+  color: rgba(183, 75, 12, 0.85);
 }
 
 .admin-nav-group-icon {
@@ -274,12 +274,12 @@ a { text-decoration: none; color: inherit; }
 
 .admin-nav-item:hover {
   color: var(--color-primary-light);
-  background: rgba(212, 129, 58, 0.08);
+  background: rgba(183, 75, 12, 0.08);
 }
 
 .admin-nav-item--active {
   color: var(--color-sidebar-active);
-  background: rgba(212, 129, 58, 0.14);
+  background: rgba(183, 75, 12, 0.14);
   font-weight: 600;
 }
 
@@ -356,7 +356,7 @@ a { text-decoration: none; color: inherit; }
 }
 
 .admin-sidebar-footer-btn:hover {
-  background: rgba(212, 129, 58, 0.1);
+  background: rgba(183, 75, 12, 0.1);
   color: var(--color-primary-light);
 }
 
@@ -436,8 +436,8 @@ a { text-decoration: none; color: inherit; }
 }
 
 .admin-mobile-drawer-tile--active {
-  border-color: rgba(212, 129, 58, 0.35);
-  background: rgba(212, 129, 58, 0.08);
+  border-color: rgba(183, 75, 12, 0.35);
+  background: rgba(183, 75, 12, 0.08);
   color: var(--color-primary);
 }
 
@@ -1386,6 +1386,12 @@ a { text-decoration: none; color: inherit; }
 /* ── Dark Mode ───────────────────────────────────────────────── */
 [data-theme="dark"] {
   --color-bg:            #0F0D0A;
+  /* The brand rust is 3.6:1 on this ground; the lighter shade the website uses on its dark theme reads. */
+  --color-primary:       #C56F3D;
+  --color-primary-light: #D98F6A;
+  --color-primary-dark:  #B74B0C;
+  --color-primary-glow:  rgba(197, 111, 61, 0.2);
+
   --color-surface:       #1C1910;
   --color-surface-hover: #252118;
   --color-border:        #2E2920;
@@ -1397,8 +1403,8 @@ a { text-decoration: none; color: inherit; }
 
   --color-sidebar-bg:    #0A0907;
   --color-sidebar-text:  #A09080;
-  --color-sidebar-active:#D4813A;
-  --color-sidebar-hover: rgba(212, 129, 58, 0.15);
+  --color-sidebar-active:#C56F3D;
+  --color-sidebar-hover: rgba(197, 111, 61, 0.15);
 
   /* Status chips — tinted surfaces + light strong text (pair ≥4.5:1) */
   --color-danger-bg:     #3F1518;
@@ -1666,7 +1672,7 @@ a { text-decoration: none; color: inherit; }
 
 .admin-shell-section-tab--active {
   color: var(--color-primary);
-  background: rgba(212, 129, 58, 0.1);
+  background: rgba(183, 75, 12, 0.1);
 }
 
 .admin-shell-topbar-actions {
@@ -1801,7 +1807,7 @@ a { text-decoration: none; color: inherit; }
 
 .admin-shell-icon-btn--active {
   color: var(--color-primary);
-  background: rgba(212, 129, 58, 0.08);
+  background: rgba(183, 75, 12, 0.08);
 }
 
 .admin-shell-icon-btn--tiny {
@@ -1866,7 +1872,7 @@ a { text-decoration: none; color: inherit; }
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: rgba(212, 129, 58, 0.12);
+  background: rgba(183, 75, 12, 0.12);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1994,7 +2000,7 @@ a { text-decoration: none; color: inherit; }
   height: 32px;
   font-size: 13px;
   padding: 0;
-  background: rgba(212, 129, 58, 0.14);
+  background: rgba(183, 75, 12, 0.14);
 }
 .admin-shell-mobile-top .admin-shell-avatar::before {
   content: '';
@@ -3183,8 +3189,8 @@ work area is a single column that
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  background: rgba(212, 129, 58, 0.22);
-  border: 1px solid rgba(212, 129, 58, 0.4);
+  background: rgba(183, 75, 12, 0.22);
+  border: 1px solid rgba(183, 75, 12, 0.4);
   color: #f0a96a;
   padding: 0.2rem 0.6rem;
   border-radius: 999px;
@@ -3363,7 +3369,7 @@ work area is a single column that
   background: var(--color-primary);
   color: #fff;
   font-weight: 700;
-  box-shadow: 0 4px 18px rgba(212, 129, 58, 0.4);
+  box-shadow: 0 4px 18px rgba(183, 75, 12, 0.4);
 }
 .hero-preview .banner-cta-secondary {
   background: rgba(255, 255, 255, 0.1);
@@ -4460,7 +4466,7 @@ work area is a single column that
 }
 .specials-page .specials-day-chip.is-active {
   border-color: var(--color-primary);
-  background: rgba(212, 129, 58, 0.12);
+  background: rgba(183, 75, 12, 0.12);
   color: var(--color-primary);
 }
 

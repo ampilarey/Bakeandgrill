@@ -318,7 +318,7 @@ export function PhotosTab({ itemId }: { itemId: number }) {
                     title="Edit / re-crop"
                     disabled={uploading}
                     onClick={() => void openCropperFromExisting(ph)}
-                    style={{ flex: '1 1 100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '6px', background: '#FEF3E8', border: '1px solid #F0D9C0', borderRadius: 6, cursor: uploading ? 'not-allowed' : 'pointer', fontSize: 11, fontWeight: 700, color: '#B86820' }}
+                    style={{ flex: '1 1 100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '6px', background: '#FEF3E8', border: '1px solid #F0D9C0', borderRadius: 6, cursor: uploading ? 'not-allowed' : 'pointer', fontSize: 11, fontWeight: 700, color: '#A1420B' }}
                   >
                     <Crop size={12} /> Edit crop
                   </button>

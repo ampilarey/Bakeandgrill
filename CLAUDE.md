@@ -42,7 +42,7 @@ Canonical mappings from `docs/ADMIN_THEMING_MOBILE_PLAN.md` §1.4 (case-insensit
 | `#6b5d4f` | `var(--color-text-secondary)` |
 | `#9c8e7e` | `var(--color-text-muted)` |
 | `#e8e0d8` | `var(--color-border)` |
-| `#d4813a` | `var(--color-primary)` |
+| `#b74b0c` | `var(--color-primary)` (the logo's rust; was `#d4813a` until 2026-09-30) |
 | `#1c1408` | `var(--color-text)` |
 | `#ef4444` | `var(--color-danger)` |
 | `#f8f6f3` | `var(--color-bg)` |
@@ -53,6 +53,13 @@ Canonical mappings from `docs/ADMIN_THEMING_MOBILE_PLAN.md` §1.4 (case-insensit
 These variables are defined on `:root` in `apps/admin-dashboard/src/index.css` and
 already flip correctly under `[data-theme="dark"]`. Do not invent parallel hex
 literals for the same roles.
+
+## Brand colours
+
+The accent everywhere is the rust from the logo, `#B74B0C`; on a dark surface it is
+the lightened `#C56F3D`. The full palette, the derivation rule and where each token
+lives are in `docs/brand/PALETTE.md`. The old amber `#D4813A` is not a brand colour
+any more; do not reintroduce it.
 
 To regenerate the hex-in-style baseline after migrating a page:
 

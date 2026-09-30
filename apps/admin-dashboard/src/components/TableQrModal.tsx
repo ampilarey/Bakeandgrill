@@ -16,7 +16,7 @@ import { fetchTableQr, rotateTableQr, type RestaurantTable, type TableQr } from 
 const INK = '#1C1408';
 const INK_MUTED = '#6B5D4F';
 const PAPER = '#FFFFFF';
-const ACCENT = '#D4813A';
+const ACCENT = '#B74B0C';
 
 type CardSize = {
   label: string;

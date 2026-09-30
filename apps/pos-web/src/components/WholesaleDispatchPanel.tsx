@@ -235,7 +235,7 @@ const footer: React.CSSProperties = {
 };
 const primaryBtn: React.CSSProperties = {
   minHeight: 48, padding: '0 20px', borderRadius: 12, border: 'none',
-  background: '#d4813a', color: '#fff', fontWeight: 700, fontSize: 15, cursor: 'pointer',
+  background: '#b74b0c', color: '#fff', fontWeight: 700, fontSize: 15, cursor: 'pointer',
 };
 const errBox: React.CSSProperties = {
   padding: 12, borderRadius: 10, background: '#fef2f2', color: '#991b1b', marginBottom: 10, fontSize: 13,

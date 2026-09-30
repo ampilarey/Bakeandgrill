@@ -894,7 +894,7 @@ export function SignagePage() {
     return {
       background: typeof t.background === 'string' ? t.background : '#1C1408',
       surface: typeof t.surface === 'string' ? t.surface : '#2A2118',
-      primary: typeof t.primary === 'string' ? t.primary : '#D4813A',
+      primary: typeof t.primary === 'string' ? t.primary : '#C56F3D',
       text: typeof t.text === 'string' ? t.text : '#FFF8F0',
       muted: typeof t.muted === 'string' ? t.muted : '#C4B5A5',
     };

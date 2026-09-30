@@ -79,7 +79,7 @@
       '<p style="font-size:1.1rem;font-weight:600">Cleared.</p>'
       + '<p style="color:#6b5d4f">Build <code>' + BUILD + '</code></p>'
       + '<p style="margin-top:1.5rem"><a href="/order/menu" style="display:inline-block;'
-      + 'background:#d4813a;color:#fff;text-decoration:none;padding:.75rem 1.5rem;'
+      + 'background:#b74b0c;color:#fff;text-decoration:none;padding:.75rem 1.5rem;'
       + 'border-radius:8px;font-weight:600">Open the menu</a></p>'
       + '<p style="color:#9c8e7e;font-size:.875rem;margin-top:2rem">If the menu is still '
       + 'missing something after this, the build number above is what to report.</p>',

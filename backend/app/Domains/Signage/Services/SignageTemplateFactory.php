@@ -82,7 +82,7 @@ final class SignageTemplateFactory
             'hero' => [
                 self::el('text', 6, 28, 88, 14, [
                     'text' => (string) ($fields['eyebrow'] ?? 'Bake & Grill'),
-                    'style' => ['fontSize' => 3.2, 'fontWeight' => 700, 'color' => '#D4813A', 'letterSpacing' => 0.12, 'textTransform' => 'uppercase'],
+                    'style' => ['fontSize' => 3.2, 'fontWeight' => 700, 'color' => '#C56F3D', 'letterSpacing' => 0.12, 'textTransform' => 'uppercase'],
                     'animation' => ['entrance' => 'fade', 'duration' => 700, 'delay' => 100],
                 ]),
                 self::el('text', 6, 40, 88, 18, [
@@ -115,7 +115,7 @@ final class SignageTemplateFactory
             ],
             'promotion' => [
                 self::el('shape', 0, 0, 100, 100, [
-                    'style' => ['fill' => 'linear-gradient(135deg,#D4813A,#8B4513)', 'opacity' => 1],
+                    'style' => ['fill' => 'linear-gradient(135deg,#C56F3D,#8B4513)', 'opacity' => 1],
                 ]),
                 self::el('text', 8, 30, 84, 16, [
                     'text' => (string) ($fields['title'] ?? '{{promotion_name}}'),
@@ -144,7 +144,7 @@ final class SignageTemplateFactory
             'notice' => [
                 self::el('text', 8, 30, 84, 14, [
                     'text' => (string) ($fields['title'] ?? 'Notice'),
-                    'style' => ['fontSize' => 6, 'fontWeight' => 800, 'color' => '#D4813A', 'textAlign' => 'center'],
+                    'style' => ['fontSize' => 6, 'fontWeight' => 800, 'color' => '#C56F3D', 'textAlign' => 'center'],
                 ]),
                 self::el('text', 10, 48, 80, 20, [
                     'text' => (string) ($fields['body'] ?? ''),
@@ -229,7 +229,7 @@ final class SignageTemplateFactory
                     'style' => [
                         'fontSize' => 2.8,
                         'fontWeight' => 500,
-                        'color' => '#D4813A',
+                        'color' => '#C56F3D',
                         'textAlign' => 'center',
                     ],
                     'animation' => ['entrance' => 'fade', 'duration' => 700, 'delay' => 200],
@@ -416,7 +416,7 @@ final class SignageTemplateFactory
             }
             $elements[] = self::el('text', 38, 28, 56, 14, [
                 'text' => $title,
-                'style' => ['fontSize' => 5.5, 'fontWeight' => 800, 'color' => '#D4813A'],
+                'style' => ['fontSize' => 5.5, 'fontWeight' => 800, 'color' => '#C56F3D'],
             ]);
             $elements[] = self::el('text', 38, 46, 56, 22, [
                 'text' => $body,
@@ -428,7 +428,7 @@ final class SignageTemplateFactory
             }
             $elements[] = self::el('text', 8, 22, 84, 14, [
                 'text' => $title,
-                'style' => ['fontSize' => 6, 'fontWeight' => 800, 'color' => '#D4813A', 'textAlign' => 'center'],
+                'style' => ['fontSize' => 6, 'fontWeight' => 800, 'color' => '#C56F3D', 'textAlign' => 'center'],
             ]);
             if ($body !== '') {
                 $elements[] = self::el('text', 10, 38, 80, 12, [
@@ -452,7 +452,7 @@ final class SignageTemplateFactory
             }
             $elements[] = self::el('text', 8, 30, 84, 14, [
                 'text' => $title,
-                'style' => ['fontSize' => 6, 'fontWeight' => 800, 'color' => '#D4813A', 'textAlign' => 'center'],
+                'style' => ['fontSize' => 6, 'fontWeight' => 800, 'color' => '#C56F3D', 'textAlign' => 'center'],
             ]);
             if ($body !== '') {
                 $elements[] = self::el('text', 10, 48, 80, 20, [
@@ -473,7 +473,7 @@ final class SignageTemplateFactory
                 'style' => [
                     'fontSize' => 4.5,
                     'fontWeight' => 700,
-                    'color' => '#D4813A',
+                    'color' => '#C56F3D',
                     'textAlign' => 'center',
                     'lang' => 'dv',
                     'dir' => 'rtl',
@@ -530,7 +530,7 @@ final class SignageTemplateFactory
             return [
                 'type' => 'icon',
                 'extra' => [
-                    'style' => ['color' => $isFireAlarm ? '#FFFFFF' : '#D4813A'],
+                    'style' => ['color' => $isFireAlarm ? '#FFFFFF' : '#C56F3D'],
                     'binding' => ['icon' => $icon, 'testId' => 'emergency-media-icon'],
                 ],
             ];

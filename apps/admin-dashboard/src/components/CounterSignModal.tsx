@@ -50,7 +50,7 @@ export function CounterSignModal({ onClose }: { onClose: () => void }) {
       </p>
       <div ref={printRef} data-testid="counter-sign">
         <div className="sign" style={{ textAlign: 'center', padding: 24, border: '1px solid var(--color-border)', borderRadius: 16, background: '#fff' }}>
-          <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#D4813A' }}>Bake &amp; Grill</div>
+          <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#B74B0C' }}>Bake &amp; Grill</div>
           <div style={{ fontSize: 30, fontWeight: 900, lineHeight: 1.1, margin: '10px 0 6px', color: '#1C1408' }}>Earn points on every order</div>
           <div style={{ fontSize: 15, color: '#6B5D4F', lineHeight: 1.5, margin: '0 0 18px' }}>
             Open your account in our app and show your code to the cashier.

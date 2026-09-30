@@ -9,7 +9,7 @@ import {
 } from '@shared/signage';
 import '@shared/signage/signage.css';
 
-const THEME: SignageTheme = { primary: '#D4813A', text: '#FFF8F0', muted: '#C4B5A5' };
+const THEME: SignageTheme = { primary: '#C56F3D', text: '#FFF8F0', muted: '#C4B5A5' };
 
 const DISCOUNTED: MenuItemLite = {
   id: 1,

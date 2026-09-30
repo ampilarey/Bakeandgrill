@@ -170,7 +170,7 @@ export function KitchenProductionPanel({
               border: "none",
               // The board behind the tabs is near-black, so the chosen tab
               // is the orange the rest of the screen uses, not black on black.
-              background: tab === t ? "#D4813A" : "#EDE4D4",
+              background: tab === t ? "#B74B0C" : "#EDE4D4",
               color: tab === t ? "#fff" : "#2A1E0C",
               fontWeight: 700,
               cursor: "pointer",
@@ -208,7 +208,7 @@ export function KitchenProductionPanel({
                 data-testid={`kds-plan-task-${task.id}`}
                 style={{
                   background: "#fff",
-                  border: mine && !done ? "2px solid #D4813A" : "1px solid #EDE4D4",
+                  border: mine && !done ? "2px solid #B74B0C" : "1px solid #EDE4D4",
                   borderRadius: 12,
                   padding: 14,
                   opacity: done ? 0.7 : 1,
@@ -252,7 +252,7 @@ export function KitchenProductionPanel({
                       type="button"
                       disabled={busy}
                       onClick={() => void sendTask(task)}
-                      style={{ padding: "10px 14px", borderRadius: 8, border: "none", background: "#D4813A", color: "#fff", fontWeight: 700, cursor: "pointer" }}
+                      style={{ padding: "10px 14px", borderRadius: 8, border: "none", background: "#B74B0C", color: "#fff", fontWeight: 700, cursor: "pointer" }}
                     >
                       {busy ? "Sending…" : "Send to counter"}
                     </button>
@@ -363,7 +363,7 @@ export function KitchenProductionPanel({
                 type="button"
                 disabled={busyKey === "prepared"}
                 onClick={() => void submitPrepared()}
-                style={{ width: "100%", padding: 12, borderRadius: 8, border: "none", background: "#D4813A", color: "#fff", fontWeight: 700, cursor: "pointer" }}
+                style={{ width: "100%", padding: 12, borderRadius: 8, border: "none", background: "#B74B0C", color: "#fff", fontWeight: 700, cursor: "pointer" }}
               >
                 {busyKey === "prepared" ? "Submitting…" : "Submit batch to counter"}
               </button>

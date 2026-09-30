@@ -1188,7 +1188,7 @@ export function OrdersPage() {
                           style={{
                             fontSize: 11, fontWeight: 700, padding: '4px 8px',
                             borderRadius: 7, border: '1px solid var(--color-primary)',
-                            background: quickActing === o.id ? 'var(--color-bg)' : 'rgba(212,129,58,0.1)',
+                            background: quickActing === o.id ? 'var(--color-bg)' : 'rgba(183,75,12,0.1)',
                             color: 'var(--color-primary)', cursor: 'pointer', whiteSpace: 'nowrap',
                             opacity: quickActing === o.id ? 0.6 : 1,
                           }}

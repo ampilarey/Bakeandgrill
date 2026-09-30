@@ -22,9 +22,9 @@
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         :root {
-            --amber: #D4813A;
-            --amber-hover: #B86820;
-            --amber-light: #FEF3E8;
+            --amber: #B74B0C;
+            --amber-hover: #A1420B;
+            --amber-light: #F9F1EC;
             --dark: #1C1408;
             --surface: #FFFFFF;
             --bg: #FFFDF9;
@@ -40,9 +40,9 @@
             --danger-text: #8C1C0E;
         }
         [data-theme="dark"] {
-            --amber: #e09242;
-            --amber-hover: #c97a2a;
-            --amber-light: rgba(224,146,66,0.15);
+            --amber: #c56f3d;
+            --amber-hover: #ad6236;
+            --amber-light: rgba(197,111,61,0.15);
             --dark: #f5e6cc;
             --surface: #231809;
             --bg: #1a1208;
@@ -536,7 +536,7 @@
             min-width: 44px;
             min-height: 44px;
         }
-        .doc-star.is-on { color: var(--accent, #d4813a); }
+        .doc-star.is-on { color: var(--accent, #b74b0c); }
         .doc-review-invite {
             margin-top: 0.85rem;
             padding: 0.85rem 0 0;
@@ -590,7 +590,7 @@
                 print-color-adjust: exact;
             }
             .doc-print-footer { display: block !important; }
-            .doc-totals .grand { color: #D4813A; }
+            .doc-totals .grand { color: #B74B0C; }
         }
     </style>
     @endverbatim

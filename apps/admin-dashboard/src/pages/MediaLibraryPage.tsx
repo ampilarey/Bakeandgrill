@@ -225,7 +225,7 @@ function AssetCard({
         borderRadius: 10, padding: 0, background: checked || detailSelected ? 'var(--color-warning-bg)' : 'var(--color-bg)',
         textAlign: 'left', overflow: 'hidden',
         position: 'relative',
-        boxShadow: detailSelected || checked ? '0 0 0 2px rgba(212,129,58,0.2)' : 'none',
+        boxShadow: detailSelected || checked ? '0 0 0 2px rgba(183,75,12,0.2)' : 'none',
       }}
     >
       {canManage && (

@@ -180,7 +180,7 @@ function categorySlide(
   if (parentName) {
     elements.push(el(`auto-cat-${key}-parent`, 'text', 4, 3, 70, 4, {
       text: parentName,
-      style: { fontSize: 2.1, fontWeight: 700, color: '#D4813A', letterSpacing: 0.14, textTransform: 'uppercase' },
+      style: { fontSize: 2.1, fontWeight: 700, color: '#C56F3D', letterSpacing: 0.14, textTransform: 'uppercase' },
     }));
   }
   elements.push(
@@ -190,7 +190,7 @@ function categorySlide(
       style: { fontSize: 5, fontWeight: 800, color: '#FFF8F0', fontFamily: 'display' },
     }),
     el(`auto-cat-${key}-rule`, 'shape', 4, 17, 7, 0.7, {
-      style: { fill: 'var(--signage-primary, #D4813A)', borderRadius: 4 },
+      style: { fill: 'var(--signage-primary, #C56F3D)', borderRadius: 4 },
     }),
   );
   const ids = { type: 'ids', item_ids: rows.map((r) => r.id), limit: rows.length };

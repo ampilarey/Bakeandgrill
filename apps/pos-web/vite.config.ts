@@ -21,7 +21,7 @@ export default defineConfig({
         display: 'standalone',
         display_override: ['standalone', 'minimal-ui', 'browser'],
         background_color: '#0F172A',
-        theme_color: '#D4813A',
+        theme_color: '#B74B0C',
         orientation: 'any',
         lang: 'en',
         dir: 'ltr',

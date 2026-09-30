@@ -158,7 +158,7 @@ export function WholesaleReconcilePanel({ onClose }: Props) {
                   type="button"
                   style={{
                     ...choiceBtn,
-                    borderColor: line.return_action === 'accept_to_stock' ? '#d4813a' : '#d6cfc4',
+                    borderColor: line.return_action === 'accept_to_stock' ? '#b74b0c' : '#d6cfc4',
                     background: line.return_action === 'accept_to_stock' ? '#fff7ed' : '#fff',
                   }}
                   onClick={() => setLines((p) => p.map((l) => l.line_id === line.line_id ? { ...l, return_action: 'accept_to_stock' } : l))}
@@ -169,7 +169,7 @@ export function WholesaleReconcilePanel({ onClose }: Props) {
                   type="button"
                   style={{
                     ...choiceBtn,
-                    borderColor: line.return_action === 'reject_to_waste' ? '#d4813a' : '#d6cfc4',
+                    borderColor: line.return_action === 'reject_to_waste' ? '#b74b0c' : '#d6cfc4',
                     background: line.return_action === 'reject_to_waste' ? '#fff7ed' : '#fff',
                   }}
                   onClick={() => setLines((p) => p.map((l) => l.line_id === line.line_id ? { ...l, return_action: 'reject_to_waste' } : l))}
@@ -227,7 +227,7 @@ const footer: React.CSSProperties = {
 };
 const primaryBtn: React.CSSProperties = {
   minHeight: 48, padding: '0 20px', borderRadius: 12, border: 'none',
-  background: '#d4813a', color: '#fff', fontWeight: 700, fontSize: 15, cursor: 'pointer',
+  background: '#b74b0c', color: '#fff', fontWeight: 700, fontSize: 15, cursor: 'pointer',
 };
 const errBox: React.CSSProperties = {
   padding: 12, borderRadius: 10, background: '#fef2f2', color: '#991b1b', marginBottom: 10, fontSize: 13,

@@ -56,7 +56,7 @@ export const BG_SWATCHES: Array<{ id: HeroBgToken; label: string; color: string 
   { id: 'none', label: 'None', color: 'transparent' },
   { id: 'dark', label: 'Dark', color: '#1c1408' },
   { id: 'light', label: 'Light', color: '#ffffff' },
-  { id: 'amber', label: 'Amber', color: '#d4813a' },
+  { id: 'amber', label: 'Rust', color: '#b74b0c' },
   { id: 'brand_dark', label: 'Brand dark', color: '#2d1a0a' },
   // Frosted white wash + blur — matches default secondary CTA look at strength 10
   { id: 'glass', label: 'Glass', color: 'rgba(255,255,255,0.35)' },

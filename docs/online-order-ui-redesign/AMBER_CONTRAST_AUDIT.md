@@ -3,6 +3,13 @@
 **Date:** 2026-07-18  
 **Spec:** REDESIGN_PLAN §8.1 / §26
 
+> **Superseded 2026-09-30.** The accent is now the logo's rust `#B74B0C`
+> (`docs/brand/PALETTE.md`). White on it is 5.2:1 and the rust as text on white
+> is 5.2:1, so the large-text rule below is no longer needed; the primary
+> button keeps its 18px bold label for the thumb, not for contrast. On dark
+> surfaces the accent is `#C56F3D` (5.0:1 on `#1A1208`). The figures below
+> describe the old amber and are kept for the record.
+
 ## Finding
 
 | Pair | Approx contrast | AA normal text (4.5:1) | AA large text (3:1) |

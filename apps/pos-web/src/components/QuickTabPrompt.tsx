@@ -31,8 +31,8 @@ const field: React.CSSProperties = {
 const label: React.CSSProperties = { display: "block", fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 4 };
 const button = (tone: "primary" | "plain" | "danger"): React.CSSProperties => ({
   minHeight: 44, borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: "pointer", padding: "0 14px",
-  background: tone === "primary" ? "#D4813A" : tone === "danger" ? "#FEE2E2" : "#F8FAFC",
-  border: `1px solid ${tone === "primary" ? "#B86820" : tone === "danger" ? "#FCA5A5" : "#CBD5E1"}`,
+  background: tone === "primary" ? "#B74B0C" : tone === "danger" ? "#FEE2E2" : "#F8FAFC",
+  border: `1px solid ${tone === "primary" ? "#A1420B" : tone === "danger" ? "#FCA5A5" : "#CBD5E1"}`,
   color: tone === "primary" ? "#fff" : tone === "danger" ? "#B91C1C" : "#0F172A",
   textAlign: "left",
 });

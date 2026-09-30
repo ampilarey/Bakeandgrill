@@ -212,7 +212,7 @@ function MenuItemTile({
           style={{
             position: 'absolute', top: 6, right: 6, zIndex: 2,
             width: 22, height: 22, borderRadius: 999,
-            background: 'rgba(255,255,255,0.92)', color: '#D4813A',
+            background: 'rgba(255,255,255,0.92)', color: '#B74B0C',
             fontSize: 13, lineHeight: '22px', textAlign: 'center',
             boxShadow: '0 1px 2px rgba(15,23,42,0.18)',
           }}
@@ -406,8 +406,8 @@ function CategoryPill({
       style={{
         padding: subtle || muted ? '6px 12px' : '8px 16px',
         borderRadius: muted ? 10 : 999,
-        border: `1px solid ${active ? '#B86820' : inactiveBorder}`,
-        background: active ? '#D4813A' : inactiveBg,
+        border: `1px solid ${active ? '#A1420B' : inactiveBorder}`,
+        background: active ? '#B74B0C' : inactiveBg,
         color: active ? '#FFFFFF' : inactiveColor,
         fontSize: subtle || muted ? 11 : 13,
         fontWeight: muted ? 600 : 700,
@@ -420,7 +420,7 @@ function CategoryPill({
         // rather than squeeze its label (owner, 2026-09-03).
         flexShrink: 0,
         minHeight: subtle || muted ? 30 : 36,
-        boxShadow: active ? '0 1px 3px rgba(212,129,58,0.35)' : 'none',
+        boxShadow: active ? '0 1px 3px rgba(183,75,12,0.35)' : 'none',
         transition: 'background 0.12s, box-shadow 0.12s',
         opacity: muted && !active ? 0.92 : 1,
       }}
@@ -469,8 +469,8 @@ function QuickTabPill({
       style={{
         padding: '8px 16px',
         borderRadius: 999,
-        border: `1px ${shared ? 'dashed' : 'solid'} ${active ? '#B86820' : '#E2E8F0'}`,
-        background: active ? '#D4813A' : '#FFF7ED',
+        border: `1px ${shared ? 'dashed' : 'solid'} ${active ? '#A1420B' : '#E2E8F0'}`,
+        background: active ? '#B74B0C' : '#FFF7ED',
         color: active ? '#FFFFFF' : '#9A3412',
         fontSize: 13,
         fontWeight: 700,
@@ -481,7 +481,7 @@ function QuickTabPill({
         gap: 4,
         flexShrink: 0,
         minHeight: 36,
-        boxShadow: active ? '0 1px 3px rgba(212,129,58,0.35)' : 'none',
+        boxShadow: active ? '0 1px 3px rgba(183,75,12,0.35)' : 'none',
         transition: 'background 0.12s, box-shadow 0.12s',
       }}
     >
@@ -498,8 +498,8 @@ const C = {
   muted: '#64748B',
   subtle: '#94A3B8',
   bg: '#F8FAFC',
-  primary: '#D4813A',
-  primaryDark: '#B86820',
+  primary: '#B74B0C',
+  primaryDark: '#A1420B',
 };
 
 /**

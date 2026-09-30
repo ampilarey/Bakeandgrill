@@ -828,7 +828,7 @@ export default function SpecialsPage() {
             </div>
           )}
           {conflictSpecialId && !editing && !formError && (
-            <div style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 10, background: '#FEF3E8', border: '1px solid rgba(212,129,58,0.35)' }}>
+            <div style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 10, background: '#FEF3E8', border: '1px solid rgba(183,75,12,0.35)' }}>
               <p style={{ margin: '0 0 8px', fontSize: 13, color: '#9A3412', lineHeight: 1.45 }}>
                 This item already has a discount for these dates. Set pricing for each variant below, then add it to the existing discount.
               </p>

@@ -18,7 +18,7 @@ const COLOR = {
   border: "#E2E8F0",
   text: "#0F172A",
   muted: "#64748B",
-  primary: "#D4813A",
+  primary: "#B74B0C",
   accent: "#FEF3C7",
   accentBorder: "#FCD34D",
 };

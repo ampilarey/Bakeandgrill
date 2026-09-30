@@ -14,11 +14,17 @@ final class BrandPalette
 
     public const LIGHT_TEXT = '#FFFDF9';
 
+    /** The dark-theme page background (layout.blade.php, order app). The signage black is darker still. */
+    public const DARK_SURFACE = '#1A1208';
+
+    /** WCAG AA for normal text. */
+    public const MIN_CONTRAST_ON_DARK = 4.5;
+
     /**
      * @return array{
      *   hex: string,
-     *   light: array{amber: string, amber_hover: string, amber_light: string, amber_glow: string, amber_contrast: string},
-     *   dark: array{amber: string, amber_hover: string, amber_light: string, amber_glow: string, amber_contrast: string},
+     *   light: array{amber: string, amber_hover: string, amber_light: string, amber_glow: string, amber_contrast: string, amber_on_dark: string},
+     *   dark: array{amber: string, amber_hover: string, amber_light: string, amber_glow: string, amber_contrast: string, amber_on_dark: string},
      *   css: string
      * }|null
      */
@@ -36,7 +42,7 @@ final class BrandPalette
         $lightGlow = self::rgba($rgb, 0.22);
         $lightContrast = self::contrastOn($rgb);
 
-        $darkRgb = self::lighten($rgb, 0.10);
+        $darkRgb = self::forDarkSurface($rgb);
         $darkAmber = self::rgbToHex($darkRgb);
         $darkHover = self::rgbToHex(self::darken($darkRgb, 0.12));
         $darkTint = self::rgba($darkRgb, 0.15);
@@ -49,6 +55,7 @@ final class BrandPalette
             'amber_light' => $lightTint,
             'amber_glow' => $lightGlow,
             'amber_contrast' => $lightContrast,
+            'amber_on_dark' => $darkAmber,
         ];
         $dark = [
             'amber' => $darkAmber,
@@ -56,6 +63,7 @@ final class BrandPalette
             'amber_light' => $darkTint,
             'amber_glow' => $darkGlow,
             'amber_contrast' => $darkContrast,
+            'amber_on_dark' => $darkAmber,
         ];
 
         $css = self::toCss($light, $dark);
@@ -79,7 +87,7 @@ final class BrandPalette
             return null;
         }
 
-        if (! preg_match('/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/', $value)) {
+        if (!preg_match('/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/', $value)) {
             return null;
         }
 
@@ -94,12 +102,13 @@ final class BrandPalette
     }
 
     /**
-     * @param  array{r: int, g: int, b: int}  $rgb
+     * @param array{r: int, g: int, b: int} $rgb
      */
     public static function relativeLuminance(array $rgb): float
     {
         $channels = array_map(static function (int $c): float {
             $s = $c / 255;
+
             return $s <= 0.03928 ? $s / 12.92 : (($s + 0.055) / 1.055) ** 2.4;
         }, [$rgb['r'], $rgb['g'], $rgb['b']]);
 
@@ -110,7 +119,7 @@ final class BrandPalette
      * WCAG contrast ratio between a background RGB and a foreground hex.
      * (L1 + 0.05) / (L2 + 0.05) where L1 is the lighter luminance.
      *
-     * @param  array{r: int, g: int, b: int}  $rgb
+     * @param array{r: int, g: int, b: int} $rgb
      */
     public static function contrastRatio(array $rgb, string $hex): float
     {
@@ -130,15 +139,41 @@ final class BrandPalette
 
     /**
      * Pick the foreground with the higher WCAG contrast against the background.
-     * Matches #1C1408 on #D4813A (dark text wins AA; light text fails).
+     * On the brand rust #B74B0C cream text wins; on the old amber #D4813A dark
+     * text did.
      *
-     * @param  array{r: int, g: int, b: int}  $rgb
+     * @param array{r: int, g: int, b: int} $rgb
      */
     public static function contrastOn(array $rgb): string
     {
         return self::contrastRatio($rgb, self::DARK_TEXT) >= self::contrastRatio($rgb, self::LIGHT_TEXT)
             ? self::DARK_TEXT
             : self::LIGHT_TEXT;
+    }
+
+    /**
+     * The accent as it should appear on a dark surface: the same colour,
+     * lightened in tenths until it reads as text on the dark page.
+     *
+     * The brand rust is 3.6:1 on the dark background, which fails for prices
+     * and links; a fixed tenth of lightening (the old rule) got it to 4.2:1.
+     * Two tenths clears 4.5:1 at #C56F3D. A colour that already reads gets
+     * the first tenth only, so the old amber still lands where it used to.
+     *
+     * @param array{r: int, g: int, b: int} $rgb
+     * @return array{r: int, g: int, b: int}
+     */
+    public static function forDarkSurface(array $rgb): array
+    {
+        $surface = self::hexToRgb(self::DARK_SURFACE);
+        $amount = 0.10;
+        $candidate = self::lighten($rgb, $amount);
+        while ($amount < 0.9 && self::contrastRatio($surface, self::rgbToHex($candidate)) < self::MIN_CONTRAST_ON_DARK) {
+            $amount += 0.10;
+            $candidate = self::lighten($rgb, $amount);
+        }
+
+        return $candidate;
     }
 
     /**
@@ -154,7 +189,7 @@ final class BrandPalette
     }
 
     /**
-     * @param  array{r: int, g: int, b: int}  $rgb
+     * @param array{r: int, g: int, b: int} $rgb
      */
     private static function rgbToHex(array $rgb): string
     {
@@ -162,7 +197,7 @@ final class BrandPalette
     }
 
     /**
-     * @param  array{r: int, g: int, b: int}  $rgb
+     * @param array{r: int, g: int, b: int} $rgb
      * @return array{r: int, g: int, b: int}
      */
     private static function darken(array $rgb, float $amount): array
@@ -177,7 +212,7 @@ final class BrandPalette
     }
 
     /**
-     * @param  array{r: int, g: int, b: int}  $rgb
+     * @param array{r: int, g: int, b: int} $rgb
      * @return array{r: int, g: int, b: int}
      */
     private static function lighten(array $rgb, float $amount): array
@@ -190,7 +225,7 @@ final class BrandPalette
     }
 
     /**
-     * @param  array{r: int, g: int, b: int}  $rgb
+     * @param array{r: int, g: int, b: int} $rgb
      * @return array{r: int, g: int, b: int}
      */
     private static function mixWithWhite(array $rgb, float $whiteAmount): array
@@ -205,7 +240,7 @@ final class BrandPalette
     }
 
     /**
-     * @param  array{r: int, g: int, b: int}  $rgb
+     * @param array{r: int, g: int, b: int} $rgb
      */
     private static function rgba(array $rgb, float $alpha): string
     {
@@ -215,8 +250,8 @@ final class BrandPalette
     }
 
     /**
-     * @param  array{amber: string, amber_hover: string, amber_light: string, amber_glow: string, amber_contrast: string}  $light
-     * @param  array{amber: string, amber_hover: string, amber_light: string, amber_glow: string, amber_contrast: string}  $dark
+     * @param array{amber: string, amber_hover: string, amber_light: string, amber_glow: string, amber_contrast: string, amber_on_dark: string} $light
+     * @param array{amber: string, amber_hover: string, amber_light: string, amber_glow: string, amber_contrast: string, amber_on_dark: string} $dark
      */
     private static function toCss(array $light, array $dark): string
     {
@@ -227,6 +262,7 @@ final class BrandPalette
             --amber-light: {$light['amber_light']};
             --amber-glow: {$light['amber_glow']};
             --amber-contrast: {$light['amber_contrast']};
+            --amber-on-dark: {$light['amber_on_dark']};
         }
         [data-theme="dark"] {
             --amber: {$dark['amber']};
@@ -234,6 +270,7 @@ final class BrandPalette
             --amber-light: {$dark['amber_light']};
             --amber-glow: {$dark['amber_glow']};
             --amber-contrast: {$dark['amber_contrast']};
+            --amber-on-dark: {$dark['amber_on_dark']};
         }
 CSS;
     }

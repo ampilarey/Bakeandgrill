@@ -9,7 +9,7 @@ import type {
 
 /** Canonical sample used by parity tests in order + admin apps. */
 export const PARITY_THEME: SignageTheme = {
-  primary: '#D4813A',
+  primary: '#C56F3D',
   background: '#1C1408',
   surface: '#2A2118',
   text: '#FFF8F0',

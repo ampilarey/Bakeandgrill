@@ -21,7 +21,7 @@ final class HeroSlides
     private const BG_TOKEN_RGB = [
         'dark' => '28,20,8',
         'light' => '255,255,255',
-        'amber' => '212,129,58',
+        'amber' => '183,75,12',
         'brand_dark' => '45,26,10',
     ];
 
@@ -76,24 +76,22 @@ final class HeroSlides
 
     /**
      * Per-slide visibility. Absent `showing` means visible so legacy slides stay live.
-     *
-     * @param  mixed  $slide
      */
     public static function isSlideShowing(mixed $slide): bool
     {
-        if (! is_array($slide)) {
+        if (!is_array($slide)) {
             return false;
         }
 
         // Explicit false only — null/missing/true all mean Showing.
-        return ! array_key_exists('showing', $slide) || $slide['showing'] !== false;
+        return !array_key_exists('showing', $slide) || $slide['showing'] !== false;
     }
 
     /**
      * Optional show_from / show_until window in the restaurant timezone.
      * Both empty = always. Evaluated with config('app.timezone').
      *
-     * @param  array<string, mixed>  $slide
+     * @param array<string, mixed> $slide
      */
     public static function isSlideInScheduleWindow(array $slide, ?DateTimeInterface $now = null): bool
     {
@@ -125,19 +123,18 @@ final class HeroSlides
         return true;
     }
 
-    /** @param mixed $slide */
     public static function isRenderableSlide(mixed $slide): bool
     {
-        if (! is_array($slide)) {
+        if (!is_array($slide)) {
             return false;
         }
 
         // Manual Hidden wins over any dates.
-        if (! self::isSlideShowing($slide)) {
+        if (!self::isSlideShowing($slide)) {
             return false;
         }
 
-        if (! self::isSlideInScheduleWindow($slide)) {
+        if (!self::isSlideInScheduleWindow($slide)) {
             return false;
         }
 
@@ -152,7 +149,7 @@ final class HeroSlides
      * Resolve photo / scrim / text position / per-element panels for public rendering.
      * Lockstep with order-app resolveHeroSlidePresentation().
      *
-     * @param  array<string, mixed>  $slide
+     * @param array<string, mixed> $slide
      * @return array{
      *   photo: float,
      *   scrim: float,
@@ -215,14 +212,14 @@ final class HeroSlides
         // silently (2026-08-17). 'auto' is the behaviour they first approved:
         // the shade steps back only when it would nest inside a panel.
         $mode = strtolower(trim((string) ($slide['copy_scrim_mode'] ?? 'auto')));
-        if (! in_array($mode, ['auto', 'always', 'off'], true)) {
+        if (!in_array($mode, ['auto', 'always', 'off'], true)) {
             $mode = 'auto';
         }
 
         $copyScrim = match ($mode) {
             'off' => false,
             'always' => true,
-            default => ! $panelled,
+            default => !$panelled,
         };
 
         return [
@@ -279,7 +276,7 @@ final class HeroSlides
 
                     continue;
                 }
-                $out .= '<span class="hero-word" style="--hero-word-i: '.$i.';">'.$chunk.'</span>';
+                $out .= '<span class="hero-word" style="--hero-word-i: ' . $i . ';">' . $chunk . '</span>';
                 $i++;
             }
         }
@@ -306,7 +303,7 @@ final class HeroSlides
      * under prefers-reduced-motion in the stylesheet, which is where that
      * belongs — a viewer's accessibility setting is not the owner's to override.
      *
-     * @param  array<string, mixed>  $slide
+     * @param array<string, mixed> $slide
      * @return array{text: string, delay_step: int, box: string, photo: string, speed: string}
      */
     public static function resolveMotion(array $slide): array
@@ -363,7 +360,7 @@ final class HeroSlides
      * set the slide-wide one keeps behaving exactly as it did, and the
      * slide-wide control still works as a way to set everything at once.
      *
-     * @param  array<string, mixed>  $slide
+     * @param array<string, mixed> $slide
      * @return array{text: string, box: string, align: string}
      */
     public static function resolveElementMotion(array $slide, string $key): array
@@ -412,7 +409,7 @@ final class HeroSlides
      * the renderer leaves the stylesheet default alone, which is what keeps
      * existing slides looking exactly as they do.
      *
-     * @param  array<string, mixed>  $slide
+     * @param array<string, mixed> $slide
      * @return array{
      *     text_color: ?string, em_color: ?string,
      *     outline: bool, outline_color: ?string, outline_width: ?string,
@@ -467,7 +464,7 @@ final class HeroSlides
      * and a slide that has never been styled renders byte-for-byte as before.
      * Lockstep with heroElementStyleVars() in heroSlidePresentation.ts.
      *
-     * @param  array<string, mixed>  $slide
+     * @param array<string, mixed> $slide
      * @return array<string, string>
      */
     public static function elementStyleVars(array $slide, string $key): array
@@ -479,7 +476,7 @@ final class HeroSlides
         // A second colour turns the flat fill into a gradient.
         if ($bg['css'] !== null && $bg['css'] !== 'transparent') {
             $vars['--hero-el-bg'] = $st['bg_color2'] !== null
-                ? 'linear-gradient('.$st['bg_angle'].'deg, '.$bg['css'].', '.$st['bg_color2'].')'
+                ? 'linear-gradient(' . $st['bg_angle'] . 'deg, ' . $bg['css'] . ', ' . $st['bg_color2'] . ')'
                 : $bg['css'];
         }
 
@@ -514,7 +511,7 @@ final class HeroSlides
     {
         $out = [];
         foreach (self::elementStyleVars($slide, $key) as $k => $v) {
-            $out[] = $k.': '.$v.';';
+            $out[] = $k . ': ' . $v . ';';
         }
 
         return implode(' ', $out);
@@ -556,11 +553,11 @@ final class HeroSlides
     {
         $n = self::numberOrNull($raw);
         if ($n === null) {
-            return $default === null ? null : self::trimFloat($default).'em';
+            return $default === null ? null : self::trimFloat($default) . 'em';
         }
         $v = $min + (self::clamp100($n) / 100.0) * ($max - $min);
 
-        return self::trimFloat($v).'em';
+        return self::trimFloat($v) . 'em';
     }
 
     /** 0–100 slider → a px length, or the default when unset. */
@@ -568,11 +565,11 @@ final class HeroSlides
     {
         $n = self::numberOrNull($raw);
         if ($n === null) {
-            return $default === null ? null : self::trimFloat($default).'px';
+            return $default === null ? null : self::trimFloat($default) . 'px';
         }
         $v = $min + (self::clamp100($n) / 100.0) * ($max - $min);
 
-        return self::trimFloat($v).'px';
+        return self::trimFloat($v) . 'px';
     }
 
     /** Percentage stored 50–200 → a unitless CSS multiplier. */
@@ -609,7 +606,7 @@ final class HeroSlides
 
     private static function numberOrNull(mixed $raw): ?float
     {
-        if ($raw === null || $raw === '' || ! is_numeric($raw)) {
+        if ($raw === null || $raw === '' || !is_numeric($raw)) {
             return null;
         }
 
@@ -647,7 +644,7 @@ final class HeroSlides
      *   glass, no flag       → hug   (the single panel it has always drawn)
      *   solid, no flag       → outline (letter outline + halo, no box)
      *
-     * @param  array<string, mixed>  $slide
+     * @param array<string, mixed> $slide
      */
     private static function resolveElementShape(array $slide, string $key, string $token, bool $fullWidth): string
     {
@@ -668,7 +665,7 @@ final class HeroSlides
     }
 
     /**
-     * @param  array<string, mixed>  $slide
+     * @param array<string, mixed> $slide
      * @return array{token: ?string, strength: ?int, full_width: bool, shape: string, css: ?string}
      */
     public static function resolveElementBackground(array $slide, string $key): array
@@ -705,7 +702,7 @@ final class HeroSlides
                 'strength' => $strength,
                 'full_width' => $fullWidth,
                 'shape' => $shape,
-                'css' => 'rgba(255,255,255,'.$alpha.')',
+                'css' => 'rgba(255,255,255,' . $alpha . ')',
             ];
         }
 
@@ -738,14 +735,14 @@ final class HeroSlides
     {
         $raw = ltrim(trim($hex), '#');
         if (preg_match('/^[0-9a-f]{3}$/i', $raw) === 1) {
-            $raw = $raw[0].$raw[0].$raw[1].$raw[1].$raw[2].$raw[2];
+            $raw = $raw[0] . $raw[0] . $raw[1] . $raw[1] . $raw[2] . $raw[2];
         }
         if (preg_match('/^[0-9a-f]{6}$/i', $raw) !== 1) {
             return null;
         }
         $n = hexdec($raw);
 
-        return (($n >> 16) & 255).','.(($n >> 8) & 255).','.($n & 255);
+        return (($n >> 16) & 255) . ',' . (($n >> 8) & 255) . ',' . ($n & 255);
     }
 
     private static function parseShowBound(string $raw, string $edge, string $tz): ?Carbon
@@ -770,7 +767,7 @@ final class HeroSlides
 
     private static function clamp100(float $n): int
     {
-        if (! is_finite($n)) {
+        if (!is_finite($n)) {
             return 100;
         }
 
@@ -838,17 +835,17 @@ final class HeroSlides
             return [$raw, true];
         }
 
-        if (! is_string($raw) || $raw === '') {
+        if (!is_string($raw) || $raw === '') {
             return [[], false];
         }
 
         $decoded = json_decode($raw, true);
-        if (json_last_error() !== JSON_ERROR_NONE || ! is_array($decoded)) {
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
             return [[], false];
         }
 
         // List of slides (incl. empty). Associative objects are not the array format.
-        if ($decoded !== [] && ! array_is_list($decoded)) {
+        if ($decoded !== [] && !array_is_list($decoded)) {
             return [[], false];
         }
 
@@ -862,7 +859,7 @@ final class HeroSlides
         if (is_array($raw)) {
             return $raw;
         }
-        if (! is_string($raw) || $raw === '') {
+        if (!is_string($raw) || $raw === '') {
             return [];
         }
         $decoded = json_decode($raw, true);

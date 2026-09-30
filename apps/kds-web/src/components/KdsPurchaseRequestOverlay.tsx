@@ -270,7 +270,7 @@ export function KdsPurchaseRequestOverlay({ token, mode, onClose }: Props) {
               type="button"
               disabled={busy || lines.length === 0}
               onClick={() => void submitRequest()}
-              style={{ width: "100%", padding: 14, borderRadius: 8, border: "none", background: "#D4813A", color: "#fff", fontWeight: 700, fontSize: 15, cursor: busy || lines.length === 0 ? "not-allowed" : "pointer", opacity: busy || lines.length === 0 ? 0.5 : 1 }}
+              style={{ width: "100%", padding: 14, borderRadius: 8, border: "none", background: "#B74B0C", color: "#fff", fontWeight: 700, fontSize: 15, cursor: busy || lines.length === 0 ? "not-allowed" : "pointer", opacity: busy || lines.length === 0 ? 0.5 : 1 }}
             >
               {busy ? "Sending…" : lines.length > 1 ? `Send ${lines.length} items` : "Send request"}
             </button>
@@ -372,7 +372,7 @@ export function KdsPurchaseRequestOverlay({ token, mode, onClose }: Props) {
                                   style={{
                                     display: "flex", flexDirection: "column", alignItems: "center", gap: 2, padding: 4,
                                     borderRadius: 8, background: "#fff", cursor: "pointer",
-                                    border: on ? "2px solid #D4813A" : "1px solid #EDE4D4",
+                                    border: on ? "2px solid #B74B0C" : "1px solid #EDE4D4",
                                   }}
                                 >
                                   <img src={p.url ?? undefined} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 6 }} />

@@ -37,7 +37,7 @@ const C = {
   border: "#E2E8F0",
   border2: "#CBD5E1",
   bg: "#F8FAFC",
-  primary: "#D4813A",
+  primary: "#B74B0C",
   danger: "#B91C1C",
 };
 

@@ -162,7 +162,7 @@ export function NotePickerModal({ options, initialSelected, itemLabel, onCancel,
                       cursor: "pointer",
                       minHeight: 44,
                       transition: "background 0.12s, transform 60ms ease",
-                      boxShadow: active ? "0 2px 8px rgba(212,129,58,0.25)" : "none",
+                      boxShadow: active ? "0 2px 8px rgba(183,75,12,0.25)" : "none",
                     }}
                     onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.97)")}
                     onMouseUp={(e) => (e.currentTarget.style.transform = "")}

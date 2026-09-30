@@ -31,6 +31,7 @@ final class SignageBoardLayoutDefaultsMigrationTest extends TestCase
         // RefreshDatabase already ran the migration over the seeded row; put
         // the seeded values back and run it again to see what it does.
         $playlist = SignagePlaylist::query()->firstOrFail();
+        $primaryBefore = $playlist->theme['primary'];
         $slides = $playlist->slides;
         foreach ($slides as &$slide) {
             if (($slide['template_origin'] ?? '') === 'auto_menu') {
@@ -49,7 +50,7 @@ final class SignageBoardLayoutDefaultsMigrationTest extends TestCase
         $fresh = SignagePlaylist::query()->findOrFail($playlist->id);
         $this->assertSame('', $fresh->theme['font_display']);
         $this->assertSame('', $fresh->theme['font_body']);
-        $this->assertSame('#D4813A', $fresh->theme['primary'], 'the rest of the theme is untouched');
+        $this->assertSame($primaryBefore, $fresh->theme['primary'], 'the rest of the theme is untouched');
 
         $auto = collect($fresh->slides)->firstWhere('template_origin', 'auto_menu');
         $this->assertNotNull($auto);

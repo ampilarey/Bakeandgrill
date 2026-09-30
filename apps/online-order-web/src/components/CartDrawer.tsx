@@ -240,7 +240,7 @@ export function CartDrawer({
                   background: 'var(--color-primary-light, #FEF3E8)',
                   borderRadius: 10,
                   textDecoration: 'none',
-                  border: '1px solid rgba(212,129,58,0.25)',
+                  border: '1px solid rgba(183,75,12,0.25)',
                 }}
               >
                 Ordering for a future event? Use Event ordering for quotes, deposits and scheduling →

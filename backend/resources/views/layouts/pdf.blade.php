@@ -43,7 +43,7 @@
                 @if ($brandEmail){{ $brandEmail }}@endif
             </div>
         @endif
-        <div style="margin-top:6px; color:#D4813A;">Thank you for choosing {{ $brandSiteName }}</div>
+        <div style="margin-top:6px; color:#B74B0C;">Thank you for choosing {{ $brandSiteName }}</div>
     </div>
 </div>
 </body>
