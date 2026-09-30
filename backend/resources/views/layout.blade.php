@@ -267,6 +267,9 @@
             --amber-glow:   rgba(183, 75, 12, 0.22);
             --amber-contrast: #FFFDF9;
             --amber-on-dark: #C56F3D;
+            /* The small logo sits in a cream well with a rust-tinted ring (owner, 2026-09-30: the circle was "unnoticeable"). */
+            --logo-well:    #F3EAE1;
+            --logo-ring:    rgba(183, 75, 12, 0.32);
             --dark:         #1C1408;
             --surface:      #FFFFFF;
             --bg:           #FFFDF9;
@@ -299,6 +302,8 @@
             --amber-glow:   rgba(197,111,61,0.22);
             --amber-contrast: #1C1408;
             --amber-on-dark: #c56f3d;
+            --logo-well:    #2a1e0e;
+            --logo-ring:    rgba(197, 111, 61, 0.45);
             --dark:         #f5e6cc;
             --surface:      #231809;
             --bg:           #1a1208;
@@ -882,6 +887,19 @@
             display: block;
             background: var(--surface);
         }
+        /* Header and Home-tab logos: a visible cream disc with a faint rust ring, so the
+           see-through light logo reads as a badge rather than loose artwork. */
+        .site-logo img,
+        .mob-logo img,
+        .mob-nav-brand-logo {
+            border-radius: 50%;
+            background: var(--logo-well);
+            box-shadow: 0 0 0 1.5px var(--logo-ring);
+            padding: 3px;
+            box-sizing: border-box;
+            object-fit: contain;
+        }
+        .mob-nav-brand-logo { padding: 2px; }
         .mob-nav-label {
             display: block;
             font-size: 0.6875rem;

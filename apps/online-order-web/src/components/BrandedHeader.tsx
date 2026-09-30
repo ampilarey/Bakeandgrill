@@ -79,7 +79,6 @@ export function BrandedHeader({ rightSlot, onBack, backLabel }: Props) {
               width={38}
               height={38}
               className="order-header-brand-logo"
-              style={{ borderRadius: '9px', objectFit: 'cover' }}
               fetchPriority="high"
               decoding="async"
             />

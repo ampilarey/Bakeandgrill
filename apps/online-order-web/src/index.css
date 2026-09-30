@@ -18,6 +18,9 @@
   --color-primary-glow:  rgba(183, 75, 12, 0.22);
   --color-primary-contrast: #FFFDF9;
   --color-primary-on-dark: #C56F3D;
+  /* Small logo well + ring (header, Home tab); matches layout.blade.php --logo-well/--logo-ring */
+  --color-logo-well:     #F3EAE1;
+  --color-logo-ring:     rgba(183, 75, 12, 0.32);
   --color-border:        #EDE4D4;
   --color-success:       #16a34a;
   --color-success-bg:    #D6F0E2;
@@ -141,6 +144,8 @@ img.brand-logo--dark { display: none; }
   --color-primary-glow:  rgba(197, 111, 61, 0.22);
   --color-primary-contrast: #1C1408;
   --color-primary-on-dark: #c56f3d;
+  --color-logo-well:     #2a1e0e;
+  --color-logo-ring:     rgba(197, 111, 61, 0.45);
   --color-dark:          #f5e6cc;
   --color-footer-bg:     #0e0a04;
   --color-header-bg:     rgba(26, 18, 8, 0.92);
@@ -199,7 +204,6 @@ img.brand-logo--dark { display: none; }
   .order-header-brand-logo {
     width: 32px !important;
     height: 32px !important;
-    border-radius: 7px !important;
   }
 
   /* Wordmark: 1.2rem → 1.05rem (Blade .mob-logo) */
@@ -2891,9 +2895,23 @@ textarea.field-input {
   width: 24px;
   height: 24px;
   object-fit: contain;
-  border-radius: 6px;
+  border-radius: 50%;
   display: block;
-  background: var(--color-surface);
+  background: var(--color-logo-well);
+  box-shadow: 0 0 0 1.5px var(--color-logo-ring);
+  padding: 2px;
+  box-sizing: border-box;
+}
+
+/* Header logo: the same cream disc and rust ring as the Home tab (owner,
+   2026-09-30: the circle behind the see-through logo was "unnoticeable"). */
+.order-header-brand-logo {
+  border-radius: 50%;
+  object-fit: contain;
+  background: var(--color-logo-well);
+  box-shadow: 0 0 0 1.5px var(--color-logo-ring);
+  padding: 3px;
+  box-sizing: border-box;
 }
 
 .bottom-nav__badge {
