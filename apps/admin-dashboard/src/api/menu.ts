@@ -560,6 +560,14 @@ export async function uploadItemPhoto(
   return req(`/items/${itemId}/photos`, { method: 'POST', body: form });
 }
 
+/**
+ * Add a Media Library photo to an item's gallery. The gallery row points at
+ * the library's files; nothing is uploaded or copied.
+ */
+export async function addItemPhotoFromLibrary(itemId: number, mediaId: number): Promise<{ photo: ItemPhoto }> {
+  return req(`/items/${itemId}/photos`, { method: 'POST', body: JSON.stringify({ media_id: mediaId }) });
+}
+
 export async function updateItemPhoto(
   itemId: number,
   photoId: number,

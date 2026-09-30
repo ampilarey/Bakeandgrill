@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Crop, Star, Trash2, Upload } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Crop, Images, Star, Trash2, Upload } from 'lucide-react';
 import { getItemPhotos, uploadItemPhoto, updateItemPhoto, deleteItemPhoto, reorderItemPhotos, uploadItemVideo, type ItemPhoto } from '../../api';
+import { addItemPhotoFromLibrary } from '../../api/menu';
+import { MediaPicker } from '../../components/MediaPicker';
+import type { MediaAsset } from '../../api/media';
 import { ImageCropModal } from './ImageCropModal';
 import { prepareImageForCrop, prepareUploadFromFile, resolveMediaUrl, revokeCropSrc } from './mediaUrl';
 import { MENU_VIDEO_LIMITS, prepareVideoClip } from './videoClip';
@@ -14,6 +17,7 @@ export function PhotosTab({ itemId }: { itemId: number }) {
   const [cropName, setCropName] = useState('item-photo.jpg');
   const [replacingPhoto, setReplacingPhoto] = useState<ItemPhoto | null>(null);
   const [pendingMaster, setPendingMaster] = useState<File | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLInputElement>(null);
 
@@ -159,6 +163,20 @@ export function PhotosTab({ itemId }: { itemId: number }) {
     } catch (e) { setError((e as Error).message); }
   };
 
+  // Owner, 2026-09-30: "there is no option to pic from the library".
+  const addFromLibrary = async (asset: MediaAsset) => {
+    setError('');
+    setUploading(true);
+    try {
+      await addItemPhotoFromLibrary(itemId, asset.id);
+      await load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   if (loading) return <div style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 14 }}>Loading photos…</div>;
 
   return (
@@ -179,6 +197,29 @@ export function PhotosTab({ itemId }: { itemId: number }) {
         <Upload size={15} />
         {uploading && !cropSrc ? 'Preparing…' : 'Upload & crop photo'}
       </button>
+      <button
+        type="button"
+        onClick={() => setPickerOpen(true)}
+        disabled={uploading}
+        data-testid="gallery-pick-from-library-btn"
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          padding: '10px 16px', background: 'var(--color-bg)', border: '2px dashed var(--color-border)',
+          borderRadius: 10, cursor: uploading ? 'not-allowed' : 'pointer',
+          fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)',
+        }}
+      >
+        <Images size={15} />
+        Pick from Library
+      </button>
+      <MediaPicker
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        mediaType="image"
+        collection="menu-items"
+        title="Pick a gallery photo"
+        onPick={(asset: MediaAsset) => { void addFromLibrary(asset); }}
+      />
       <button
         type="button"
         onClick={() => videoRef.current?.click()}
@@ -230,7 +271,7 @@ export function PhotosTab({ itemId }: { itemId: number }) {
 
       {photos.length === 0 ? (
         <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '20px 0', fontSize: 13 }}>
-          No photos yet. Upload one above.
+          No photos yet. Upload one or pick from the library above.
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 12 }}>

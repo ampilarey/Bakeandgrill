@@ -37,6 +37,9 @@ class ItemPhotoController extends Controller
         if ($request->input('media_type') === 'video') {
             return $this->storeVideo($request, $itemId);
         }
+        if ($request->filled('media_id')) {
+            return $this->storeFromLibrary($request, $itemId);
+        }
 
         $item = Item::findOrFail($itemId);
 
@@ -119,6 +122,48 @@ class ItemPhotoController extends Controller
             'thumb_webp_url' => $thumbWebpUrl,
             'alt_text' => $validated['alt_text'] ?? null,
             'sort_order' => $maxOrder + 1,
+            'is_primary' => (bool) ($validated['is_primary'] ?? false),
+            'media_type' => 'image',
+        ]);
+
+        return response()->json(['photo' => $photo], 201);
+    }
+
+    /**
+     * A gallery photo taken from the Media Library (owner, 2026-09-30: "there
+     * is no option to pic from the library" on the Photos tab). Nothing is
+     * copied: the photo points at the library's own files, so the library
+     * lists it as a use, a replace there updates it here, and removing it
+     * from the gallery leaves the library file alone (MediaFileCleaner skips
+     * anything a library row still references).
+     */
+    private function storeFromLibrary(Request $request, int $itemId): JsonResponse
+    {
+        $item = Item::findOrFail($itemId);
+        $validated = $request->validate([
+            'media_id' => ['required', 'integer', 'exists:media_assets,id'],
+            'alt_text' => ['nullable', 'string', 'max:200'],
+            'is_primary' => ['sometimes', 'boolean'],
+        ]);
+
+        $media = \App\Models\Media::findOrFail((int) $validated['media_id']);
+        if (($media->media_type ?? 'image') !== 'image' || $media->url === '') {
+            throw ValidationException::withMessages(['media_id' => ['Pick a photo, not a video or file.']]);
+        }
+
+        if ($validated['is_primary'] ?? false) {
+            $item->photos()->update(['is_primary' => false]);
+        }
+
+        $photo = ItemPhoto::create([
+            'item_id' => $item->id,
+            'url' => $media->url,
+            'original_url' => $media->original_url,
+            'thumb_url' => $media->thumb_url,
+            'image_webp_url' => $media->image_webp_url,
+            'thumb_webp_url' => $media->thumb_webp_url,
+            'alt_text' => $validated['alt_text'] ?? $media->alt_text,
+            'sort_order' => ($item->photos()->max('sort_order') ?? 0) + 1,
             'is_primary' => (bool) ($validated['is_primary'] ?? false),
             'media_type' => 'image',
         ]);
