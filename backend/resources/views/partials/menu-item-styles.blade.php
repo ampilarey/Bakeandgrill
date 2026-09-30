@@ -45,7 +45,9 @@
 }
 .menu-item-hero {
     position: relative;
-    aspect-ratio: 16 / 10;
+    /* The 4:3 the photo is saved in, so all of it shows (owner, 2026-09-30:
+       at 16/10 the top and bottom were cut off). */
+    aspect-ratio: 4 / 3;
     border-radius: 16px;
     overflow: hidden;
     background: var(--amber-light);

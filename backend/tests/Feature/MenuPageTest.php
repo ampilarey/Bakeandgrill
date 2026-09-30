@@ -1408,6 +1408,19 @@ class MenuPageTest extends TestCase
         );
     }
 
+    /**
+     * Owner, 2026-09-30: "when clicked it doesn't shows full pic". Photos are
+     * saved 4:3; a 16/10 hero cut the top and bottom off every one of them.
+     */
+    public function test_the_item_page_hero_is_the_same_shape_as_the_saved_photo(): void
+    {
+        $item = $this->item($this->category('Hedhika'), 'Boakiba', 10.0, ['image_url' => '/storage/menu/a.jpg']);
+
+        $detail = $this->get('/menu/' . $item->id)->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('#\.menu-item-hero\s*\{[^}]*aspect-ratio:\s*4\s*/\s*3#', $detail);
+    }
+
     /** The middleware serves English unless the owner has switched Dhivehi on. */
     private function enableDhivehi(): void
     {

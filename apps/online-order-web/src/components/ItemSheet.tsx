@@ -433,7 +433,10 @@ export function ItemSheet({
               <MenuImageSlider
                 slides={slides}
                 alt={item.name}
-                aspectRatio="16 / 10"
+                // The same 4:3 the photo is saved in, so all of it shows.
+                // Owner, 2026-09-30: at 16/10 the top and bottom of a photo
+                // were cut off the moment an item was opened.
+                aspectRatio="4 / 3"
                 sizes="(max-width: 640px) 100vw, 640px"
                 // An item with no photo falls back to the site logo. Cropping
                 // that to 16/10 cut the flame off the top and the wordmark off
@@ -442,7 +445,7 @@ export function ItemSheet({
               />
             ) : (
               <div style={{
-                aspectRatio: '16 / 10',
+                aspectRatio: '4 / 3',
                 background: 'linear-gradient(135deg, var(--color-primary-light), var(--color-surface-alt))',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: '2.75rem', opacity: 0.45,
