@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { ServiceChargePublicConfig } from "@shared/utils/serviceCharge";
 import { serviceChargeTaxLaarByBuckets } from "@shared/utils/serviceCharge";
 import {
+  withDeliveryFee,
   cartGrandTotalMvr,
   cartPackagingFeeMvr,
   cartServiceChargeMvr,
@@ -220,5 +221,21 @@ describe("posCartTotals", () => {
       orderType: "takeaway",
     });
     expect(taxInclusive).toBe((1000 + 100) / 100); // 11.00
+  });
+});
+
+// Owner, 2026-09-30: "Cart is empty but it show 20 rufiya".
+
+describe("withDeliveryFee", () => {
+  it("adds the fee to a delivery with food in the cart", () => {
+    expect(withDeliveryFee(80, 2, "Delivery", 20)).toBe(100);
+  });
+
+  it("is zero for an empty cart, whatever the fee", () => {
+    expect(withDeliveryFee(0, 0, "Delivery", 20)).toBe(0);
+  });
+
+  it("leaves other order types alone", () => {
+    expect(withDeliveryFee(80, 2, "Takeaway", 20)).toBe(80);
   });
 });

@@ -196,3 +196,20 @@ export function cartGrandTotalMvr(
   const taxForTotal = taxInclusive ? 0 : taxMvr;
   return Math.round((discountedSubtotal + serviceChargeMvr + taxForTotal + packagingFeeMvr) * 100) / 100;
 }
+
+/**
+ * What Charge collects for a delivery: the cart plus the fee estimate, but
+ * only once there is something in the cart. A fee on its own is not a sale
+ * (owner, 2026-09-30: "Cart is empty but it show 20 rufiya").
+ */
+export function withDeliveryFee(
+  cartTotal: number,
+  itemCount: number,
+  orderType: string,
+  deliveryFeeEst: number,
+): number {
+  if (orderType !== "Delivery" || !(deliveryFeeEst > 0) || itemCount <= 0) {
+    return cartTotal;
+  }
+  return Math.round((cartTotal + deliveryFeeEst) * 100) / 100;
+}

@@ -6,6 +6,7 @@ import type { StaffLoginResponse } from "@shared/types";
 import { fetchCurrencyImages, getApiBaseUrl, fetchTables, setAuthToken, staffLogin, staffPasswordLogin, selfRegisterDevice, selfDeviceStatus, fetchPosQuickNotes, pingAuth, fetchMe, fetchActiveOrdersBadgeSample, fetchCustomerSummary, updateOrderCustomer, fetchCustomerAddresses, previewDeliveryFeeMvr, fetchPublicSiteSettings, fetchKitchenHandoverSettings, recordCountAttempt, DEFAULT_POS_SMS_NOTIFICATIONS, DEFAULT_POS_DISCOUNT_CONTROLS, type PosCustomer, type PosCustomerAddress, type PosSmsNotifications, type PosDiscountControls, type KitchenHandoverSettings } from "../api";
 import { ticketStage } from "../utils/openTicketUtils";
 import { ticketAgeAnchor, ticketAgeLevel } from "../utils/ticketAging";
+import { withDeliveryFee } from "../utils/posCartTotals";
 import { countPendingOfflineOrders, getOfflineOrderSyncCounts, initOfflineDb, cacheStaffSessionFromUser, ensureCachedStaffSession } from "../offline/db";
 import { evaluateOfflineGate, type OfflineGateResult } from "../offline/offlineGate";
 import { startSyncEnginePolling } from "../offline/syncEngine";
@@ -687,10 +688,9 @@ export function usePosApp() {
       }
       return cart.cartTotal;
     }
-    if (orderType === "Delivery" && deliveryFeeEst > 0) {
-      return Math.round((cart.cartTotal + deliveryFeeEst) * 100) / 100;
-    }
-    return cart.cartTotal;
+    // A delivery fee on its own is not a sale: with Delivery selected and
+    // nothing in the cart, the bar used to show the fee as the total.
+    return withDeliveryFee(cart.cartTotal, cart.cartItems.length, orderType, deliveryFeeEst);
   }, [
     order.pendingPaymentForOrderId,
     order.pendingPaymentTotalDue,
@@ -700,6 +700,7 @@ export function usePosApp() {
     orderType,
     deliveryFeeEst,
     cart.cartTotal,
+    cart.cartItems.length,
     cart.appliedGiftCard?.discount,
   ]);
 
