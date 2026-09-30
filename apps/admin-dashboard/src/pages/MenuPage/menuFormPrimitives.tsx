@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Crop, Images, Upload } from 'lucide-react';
+import { Crop, Images, Trash2, Upload } from 'lucide-react';
 import { uploadMenuImage } from '../../api';
 import { Input } from '../../components/SharedUI';
 import { MediaPicker } from '../../components/MediaPicker';
@@ -219,6 +219,31 @@ export function ImageUploadField({
           >
             <Crop size={14} />
             Edit / re-crop
+          </button>
+        )}
+        {/* Owner, 2026-09-30: "i have added a photo to menu item. but no way
+            to remove this". Clears the photo and every size made from it; the
+            change applies when the item or category is saved, so closing
+            without saving keeps the photo. */}
+        {value.trim() && (
+          <button
+            type="button"
+            onClick={() => {
+              onChange({ url: '', original_url: '', thumb_url: '', image_webp_url: '', thumb_webp_url: '' });
+              setUploadError('');
+              setPreviewKey((k) => k + 1);
+            }}
+            disabled={uploading}
+            data-testid="remove-image-btn"
+            style={{
+              flexShrink: 0, padding: '8px 14px', background: 'var(--color-bg)',
+              border: '1px solid var(--color-border)', borderRadius: 8, cursor: uploading ? 'not-allowed' : 'pointer',
+              fontSize: 13, fontWeight: 600, color: 'var(--color-danger-strong)', whiteSpace: 'nowrap',
+              display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 44,
+            }}
+          >
+            <Trash2 size={14} />
+            Remove photo
           </button>
         )}
         <button
