@@ -59,21 +59,23 @@ class SpecialsDisplayConsistencyTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/class="price-sale"[^>]*>\s*MVR\s*\d/', $html);
         $this->assertDoesNotMatchRegularExpression('/class="price-was"[^>]*>\s*MVR\s*\d/', $html);
 
-        // Offers cards use brand placeholder — not the food emoji — when no image.
+        // Offers cards with no photo show the default item photo (the cream
+        // brand tile, seeded 2026-09-30), never the food emoji. With no default
+        // set they fall back to the brand placeholder.
         $offersChunk = preg_match('/id="offers".*?<\/section>/s', $html, $m) ? $m[0] : '';
         $this->assertNotSame('', $offersChunk);
-        $this->assertStringContainsString('product-img-placeholder--brand', $offersChunk);
+        $this->assertStringContainsString('data-default-item-image="1"', $offersChunk);
         $this->assertStringNotContainsString('🍽️', $offersChunk);
 
         // Badge is a sibling of the circular image (not nested inside overflow:hidden).
         $this->assertMatchesRegularExpression(
-            '/product-img--circle">\s*(?:<img[\s\S]*?<\/div>|<div class="product-img-placeholder[\s\S]*?<\/div>\s*)<\/div>\s*<div class="special-badge-stack"/',
-            $offersChunk
+            '/product-img--circle">\s*(?:<img[^>]*>\s*|<div class="product-img-placeholder[\s\S]*?<\/div>\s*)<\/div>\s*<div class="special-badge-stack"/',
+            $offersChunk,
         );
         $this->assertStringContainsString('20% OFF', $offersChunk);
         $this->assertStringContainsString(
             '.special-card .special-badge-stack',
-            $html
+            $html,
         );
         // Placeholder logo is capped so a tall brand mark cannot oval the circle.
         $this->assertStringContainsString('max-height: 56%', $html);

@@ -28,6 +28,13 @@ class MediaUrl implements ValidationRule
         if (str_starts_with($value, '/storage/') && strlen($value) > strlen('/storage/')) {
             return;
         }
+        // Brand files shipped with the site (owner, 2026-09-30: the light logo
+        // and the no-photo tile live in public/brand). Same-origin, static,
+        // never uploaded, so they are as safe as /storage/ and must survive
+        // a later save of the Branding form.
+        if (preg_match('#^/(brand|images)/[A-Za-z0-9._/-]+\.(png|jpe?g|webp|svg|gif)$#i', $value) === 1) {
+            return;
+        }
 
         if (filter_var($value, FILTER_VALIDATE_URL) !== false
             && (str_starts_with($value, 'http://') || str_starts_with($value, 'https://'))) {

@@ -60,13 +60,10 @@ class PrintableMenuTest extends TestCase
 
     private function setLogo(string $value): void
     {
-        \App\Models\SiteSetting::updateOrCreate(['key' => 'logo'], [
-            'value' => $value,
-            'type' => 'text',
-            'group' => 'Branding',
-            'label' => 'logo',
-            'is_public' => true,
-        ]);
+        // The logo is seeded per scope since 2026-09-30; the print sheet reads
+        // the shared record through content(), so that is the row to change.
+        \App\Models\SiteSetting::set('logo', $value, 'shared');
+        \App\Models\SiteSetting::bust();
     }
 
     public function test_the_print_page_lists_the_menu(): void
