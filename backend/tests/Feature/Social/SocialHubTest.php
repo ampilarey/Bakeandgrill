@@ -319,13 +319,16 @@ class SocialHubTest extends TestCase
 
         Http::fake([
             '*/CONTAINER-9*' => Http::response(['status_code' => 'PUBLISHED'], 200),
+            // Reconcile reads the account's recent media to find the post.
+            '*/999888/media*' => Http::response(['data' => []], 200),
         ]);
 
         app(\App\Domains\Social\Services\SocialPublisher::class)->deliver($delivery);
 
         $this->assertSame(SocialPostDelivery::STATUS_PUBLISHED, $delivery->fresh()->status);
         Http::assertNotSent(fn ($request) => str_contains($request->url(), '/media_publish'));
-        Http::assertNotSent(fn ($request) => str_ends_with(parse_url($request->url(), PHP_URL_PATH) ?? '', '/999888/media'));
+        // No new container: reading the media list (GET) is fine, creating one (POST) is not.
+        Http::assertNotSent(fn ($request) => $request->method() === 'POST' && str_ends_with(parse_url($request->url(), PHP_URL_PATH) ?? '', '/999888/media'));
     }
 
     // ── Idempotency ─────────────────────────────────────────────────────────

@@ -125,7 +125,7 @@ class InstagramDriver implements SocialDriverInterface
             $delivery->forceFill(['provider_container_id' => $containerId])->save();
         }
 
-        $this->waitUntilContainerReady($containerId, $token);
+        $this->waitUntilContainerReady($containerId, $token, $video !== null);
 
         $publish = $this->graphPost("/{$igUserId}/media_publish", [
             'creation_id' => $containerId,
@@ -199,16 +199,35 @@ class InstagramDriver implements SocialDriverInterface
         }
 
         if ((string) $status->json('status_code') === 'PUBLISHED') {
+            // The container is not the post. Find the media it became so
+            // likes and comments can be read later (Social Hub audit,
+            // 2026-10-01): the newest media with this post's caption.
+            $post = $delivery->post;
+            $caption = $post !== null ? trim($post->captionFor($channel, $delivery)) : '';
+            $recent = $this->graphGetQuiet('/' . $channel->credential('ig_user_id') . '/media', [
+                'fields' => 'id,caption,permalink,timestamp',
+                'limit' => 20,
+                'access_token' => $token,
+            ]);
+            foreach (($recent['data'] ?? []) as $media) {
+                if (is_array($media) && !empty($media['id']) && trim((string) ($media['caption'] ?? '')) === $caption && $caption !== '') {
+                    return new PublishResult((string) $media['id'], isset($media['permalink']) ? (string) $media['permalink'] : null, $containerId);
+                }
+            }
+
             return new PublishResult($containerId, null, $containerId);
         }
 
         return null;
     }
 
-    private function waitUntilContainerReady(string $containerId, string $token): void
+    private function waitUntilContainerReady(string $containerId, string $token, bool $video = false): void
     {
-        $attempts = max(1, (int) config('social.ig_poll_attempts', 10));
-        $delay = max(0, (int) config('social.ig_poll_delay', 2));
+        // A Reel takes Instagram far longer to process than a photo
+        // (Social Hub audit, 2026-10-01): three waits of twenty seconds
+        // spread over six minutes were not enough, and good videos failed.
+        $attempts = max(1, (int) config($video ? 'social.ig_video_poll_attempts' : 'social.ig_poll_attempts', $video ? 30 : 10));
+        $delay = max(0, (int) config($video ? 'social.ig_video_poll_delay' : 'social.ig_poll_delay', $video ? 5 : 2));
 
         for ($i = 0; $i < $attempts; $i++) {
             $status = $this->graphGet('/' . $containerId, [

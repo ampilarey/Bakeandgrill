@@ -260,6 +260,13 @@ Schedule::command('social:sync-comments')
     ->onFailure($alertOnFailure('social:sync-comments'))
     ->after($trackSuccess('social:sync-comments'));
 
+// Social Hub audit, 2026-10-01: tracked-link visits are kept for 180 days.
+Schedule::command('social:prune-visits')
+    ->weeklyOn(0, '04:30')
+    ->withoutOverlapping()
+    ->onFailure($alertOnFailure('social:prune-visits'))
+    ->after($trackSuccess('social:prune-visits'));
+
 // Social Hub: the week in one SMS, Monday morning (on by default; silent when empty)
 Schedule::command('social:weekly-digest')
     ->weeklyOn(1, '09:20')

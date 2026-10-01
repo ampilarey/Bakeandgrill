@@ -27,7 +27,13 @@ class PublishSocialDeliveryJob implements ShouldQueue
     /** @var list<int> */
     public array $backoff = [60, 300];
 
-    public int $timeout = 120;
+    /**
+     * Long enough for a ten-photo Instagram carousel or a Reel that
+     * Instagram takes its time to process (Social Hub audit, 2026-10-01).
+     * The old two minutes could be hit mid-carousel, and the worker then
+     * killed the job with the delivery left "processing" for ever.
+     */
+    public int $timeout = 600;
 
     public function __construct(public readonly int $deliveryId) {}
 
@@ -48,7 +54,29 @@ class PublishSocialDeliveryJob implements ShouldQueue
         // the 2026-09-24 audit this path was silent: a channel timing out
         // three times in a row told nobody.
         $delivery = SocialPostDelivery::find($this->deliveryId);
-        if ($delivery === null || $delivery->status !== SocialPostDelivery::STATUS_QUEUED) {
+        if ($delivery === null) {
+            return;
+        }
+
+        if ($delivery->status === SocialPostDelivery::STATUS_PROCESSING) {
+            // The worker was stopped (timeout, restart) with the request
+            // possibly already at the platform: unknown, not failed, so the
+            // next attempt reconciles before posting again.
+            $delivery->recordAttempt('unknown', 'Worker stopped mid-publish.');
+            $delivery->forceFill([
+                'status' => SocialPostDelivery::STATUS_UNKNOWN,
+                'error_class' => SocialPostDelivery::ERROR_UNKNOWN,
+                'error_message' => 'The worker stopped while publishing. Retry to check whether it went out.',
+            ])->save();
+            $delivery->post?->refreshStatusFromDeliveries();
+            if ($delivery->channel !== null) {
+                app(SocialPublisher::class)->alertFailure($delivery->channel, 'stopped mid-publish');
+            }
+
+            return;
+        }
+
+        if ($delivery->status !== SocialPostDelivery::STATUS_QUEUED) {
             return;
         }
 

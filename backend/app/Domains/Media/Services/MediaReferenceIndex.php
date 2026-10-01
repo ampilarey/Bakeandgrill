@@ -40,6 +40,7 @@ final class MediaReferenceIndex
         'purchase_request_attachments' => ['file_path'],
         'purchase_receipts' => ['file_path'],
         'expenses' => ['receipt_path'],
+        'social_video_renditions' => ['path', 'poster_path'],
     ];
 
     /** @var array<string, list<string>> table => text or JSON columns with URLs inside */
@@ -54,6 +55,9 @@ final class MediaReferenceIndex
         'page_layout_drafts' => ['payload'],
         'content_drafts' => ['value'],
         'content_revisions' => ['value'],
+        // A drafted, scheduled or awaiting-approval post names the picture
+        // it will go out with (Social Hub audit, 2026-10-01).
+        'social_posts' => ['snapshot'],
     ];
 
     /**

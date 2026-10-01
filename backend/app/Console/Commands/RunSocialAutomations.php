@@ -31,13 +31,19 @@ class RunSocialAutomations extends Command
         WeeklyMenuAutoPoster $weekly,
         OpeningHoursAutoPoster $hours,
     ): int {
-        $localTime = now(config('app.timezone', 'Indian/Maldives'))->format('H:i');
+        $now = now(config('app.timezone', 'Indian/Maldives'));
         // Back in stock is event-driven (ItemObserver), not on the clock.
         $posters = ['special' => $special, 'new_item' => $newItem, 'featured' => $featured, 'weekly' => $weekly];
 
         foreach ($posters as $kind => $poster) {
             $config = $settings->forKind($kind);
-            if (!$this->option('force') && $localTime !== $config['time']) {
+            // Due once the set time has passed, for a few hours after it
+            // (Social Hub audit, 2026-10-01). It used to fire only when the
+            // once-a-minute check landed on the exact minute, so a slow
+            // previous run or a missed cron beat lost the whole day's post.
+            // Each poster drafts at most once per business day, so a later
+            // tick cannot post twice.
+            if (!$this->option('force') && !self::due($now, (string) $config['time'])) {
                 continue;
             }
 
@@ -54,5 +60,18 @@ class RunSocialAutomations extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    public const GRACE_MINUTES = 180;
+
+    /** Within the grace window after the configured local time, today. */
+    public static function due(\Carbon\CarbonInterface $now, string $time): bool
+    {
+        if (!preg_match('/^(\d{1,2}):(\d{2})$/', $time, $m)) {
+            return false;
+        }
+        $start = $now->copy()->setTime((int) $m[1], (int) $m[2], 0);
+
+        return $now->gte($start) && $now->lt($start->copy()->addMinutes(self::GRACE_MINUTES));
     }
 }

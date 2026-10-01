@@ -161,8 +161,10 @@ class SocialPublisher
         $driver = $this->drivers->for($channel->platform);
 
         // An unknown outcome reconciles before any new attempt — the
-        // provider may already show the post (plan §2c).
-        if ($delivery->status === SocialPostDelivery::STATUS_UNKNOWN) {
+        // provider may already show the post (plan §2c). A delivery still
+        // marked "processing" is one a stopped worker left behind: same
+        // treatment (Social Hub audit, 2026-10-01).
+        if (in_array($delivery->status, [SocialPostDelivery::STATUS_UNKNOWN, SocialPostDelivery::STATUS_PROCESSING], true)) {
             $confirmed = $driver->reconcile($channel, $delivery);
             if ($confirmed !== null) {
                 $this->markPublished($delivery, $post, $channel, $confirmed->providerPostId, $confirmed->permalink);

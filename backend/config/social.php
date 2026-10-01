@@ -20,6 +20,9 @@ return [
     // Instagram container polling: attempts × delay (seconds).
     'ig_poll_attempts' => (int) env('SOCIAL_IG_POLL_ATTEMPTS', 10),
     'ig_poll_delay' => (int) env('SOCIAL_IG_POLL_DELAY', 2),
+    // Reels: Instagram processes video for minutes, not seconds.
+    'ig_video_poll_attempts' => (int) env('SOCIAL_IG_VIDEO_POLL_ATTEMPTS', 30),
+    'ig_video_poll_delay' => (int) env('SOCIAL_IG_VIDEO_POLL_DELAY', 5),
 
     // At most one failure alert SMS per channel per this many seconds.
     'alert_interval' => (int) env('SOCIAL_ALERT_INTERVAL', 3600),

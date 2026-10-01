@@ -19,12 +19,17 @@ final readonly class ChannelHealth
 
     public const ERROR = 'error';
 
+    /** A health note is shown in the admin and sent by SMS: never a token. */
+    public string $message;
+
     public function __construct(
         public string $status,
-        public string $message,
+        string $message,
         public ?CarbonInterface $tokenExpiresAt = null,
         public ?string $accountLabel = null,
-    ) {}
+    ) {
+        $this->message = \App\Domains\Social\Support\SafeErrorText::strip($message);
+    }
 
     public static function ok(string $message, ?CarbonInterface $expires = null, ?string $label = null): self
     {

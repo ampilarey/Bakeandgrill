@@ -42,7 +42,7 @@ class PruneUnreferencedMedia extends Command
         'item-photos', 'item_photos', 'content', 'site', 'library',
         'inventory-photos', 'brand-photos', 'delivery-proofs',
         'kitchen-production', 'kitchen-receiving', 'purchase-requests', 'purchase-receipts', 'expense-receipts',
-        'social-cards',
+        'social-cards', 'social-videos',
     ];
 
     /** Rebuilt on demand, so they are only ever a cache. */
@@ -77,8 +77,10 @@ class PruneUnreferencedMedia extends Command
                 if (basename($path) === '.htaccess' || basename($path) === '.gitignore') {
                     continue;
                 }
+                // A cache file is rebuilt on demand, but a scheduled social
+                // post may still point at one: anything referenced stays.
                 $isCache = $this->isCache($path);
-                if (!$isCache && isset($referenced[$path])) {
+                if (isset($referenced[$path])) {
                     $skipped++;
 
                     continue;

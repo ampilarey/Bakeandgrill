@@ -19,7 +19,9 @@ class SocialPublishException extends RuntimeException
         public readonly string $errorClass,
         string $message,
     ) {
-        parent::__construct($message);
+        // Every driver error ends up stored on the delivery and shown in
+        // the hub, so strip addresses and tokens here, once.
+        parent::__construct(\App\Domains\Social\Support\SafeErrorText::strip($message));
     }
 
     public static function auth(string $message): self

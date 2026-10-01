@@ -96,13 +96,19 @@ class SocialPostDelivery extends Model
         return $this->hasMany(Order::class, 'social_delivery_id');
     }
 
+    /** Never a token or secret in what the hub shows (SafeErrorText). */
+    public function setErrorMessageAttribute(?string $value): void
+    {
+        $this->attributes['error_message'] = $value === null ? null : \App\Domains\Social\Support\SafeErrorText::strip($value);
+    }
+
     public function recordAttempt(string $outcome, ?string $error = null): void
     {
         $attempts = $this->attempts ?? [];
         $attempts[] = array_filter([
             'at' => now()->toIso8601String(),
             'outcome' => $outcome,
-            'error' => $error,
+            'error' => $error !== null ? \App\Domains\Social\Support\SafeErrorText::strip($error) : null,
         ], fn ($v) => $v !== null);
         $this->attempts = $attempts;
     }

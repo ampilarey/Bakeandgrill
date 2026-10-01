@@ -216,7 +216,7 @@ class MetaConnectService
         try {
             $response = Http::timeout(20)->get('https://graph.facebook.com/' . config('social.graph_version', 'v21.0') . $path, $params);
         } catch (ConnectionException $e) {
-            throw new RuntimeException('Could not reach Facebook: ' . $e->getMessage());
+            throw new RuntimeException('Could not reach Facebook: ' . \App\Domains\Social\Support\SafeErrorText::strip($e->getMessage()));
         }
         if (!$response->successful() || !is_array($response->json())) {
             $message = (string) ($response->json('error.message') ?? ('HTTP ' . $response->status()));

@@ -158,6 +158,7 @@ class SchedulerRunTracker
             'backup:run',
             'backup:monitor',
             'ops:watch-queue-worker',
+            'social:prune-visits',
             'scheduler:heartbeat',
         ];
     }
