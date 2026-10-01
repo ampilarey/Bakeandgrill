@@ -51,6 +51,16 @@ Route::get('/prayer-times', [PrayerTimesWebController::class, 'index'])->name('p
 // sitemap.xml — deliberately outside the service.banner group. A crawler
 // asking for the sitemap during a maintenance window should get the sitemap,
 // not the branded 503 page rendered as XML.
+// robots.txt is generated (website audit, 2026-10-01): the TEST site must say
+// "index nothing", and the live one keeps crawlers off the token pages. The
+// old static public/robots.txt would be served by the web server first, so it
+// is gone.
+Route::get('/robots.txt', fn (Illuminate\Http\Request $request) => response(
+    App\Support\SearchVisibility::robotsTxt($request),
+    200,
+    ['Content-Type' => 'text/plain; charset=UTF-8', 'Cache-Control' => 'public, max-age=3600'],
+))->name('robots');
+
 Route::get('/sitemap.xml', [App\Http\Controllers\SitemapController::class, 'index'])
     ->name('sitemap');
 

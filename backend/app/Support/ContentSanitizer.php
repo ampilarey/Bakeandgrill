@@ -32,6 +32,11 @@ final class ContentSanitizer
         $clean = str_ireplace(['<b>', '</b>'], ['<strong>', '</strong>'], $clean);
         $clean = str_ireplace(['<i>', '</i>'], ['<em>', '</em>'], $clean);
 
+        // Every other allowed tag loses its attributes (website audit,
+        // 2026-10-01): a `style` on a <p> could lay a full-screen box over
+        // the page, and nothing in these blocks needs one.
+        $clean = preg_replace('#<(br|em|strong|p|ul|ol|li)\b[^>]*?(/?)>#iu', '<$1$2>', $clean) ?? $clean;
+
         // Restrict <a> to http(s)/mailto/relative and drop other attributes.
         $clean = preg_replace_callback(
             '#<a\s+([^>]*?)>#iu',

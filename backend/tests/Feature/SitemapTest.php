@@ -117,7 +117,7 @@ class SitemapTest extends TestCase
     public function test_robots_txt_points_at_the_sitemap(): void
     {
         // A sitemap nothing references is a sitemap nothing reads.
-        $robots = (string) file_get_contents(public_path('robots.txt'));
+        $robots = (string) $this->get('https://bakeandgrill.mv/robots.txt')->assertOk()->getContent();
 
         $this->assertStringContainsString('Sitemap: https://bakeandgrill.mv/sitemap.xml', $robots);
     }

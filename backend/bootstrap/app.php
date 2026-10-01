@@ -46,6 +46,7 @@ return Application::configure(basePath: dirname(__DIR__))
         );
 
         $middleware->append(App\Http\Middleware\SecurityHeaders::class);
+        $middleware->append(App\Http\Middleware\SearchEngineDirectives::class);
 
         // A /menu link from a social post carries ?s=<delivery>: count the
         // visit and leave a cookie so a later order can be traced to the post.
