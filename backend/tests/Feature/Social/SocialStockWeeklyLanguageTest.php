@@ -120,6 +120,12 @@ class SocialStockWeeklyLanguageTest extends TestCase
         DailySpecial::create(['item_id' => $a->id, 'badge_label' => 'Weekend', 'special_price' => 40, 'start_date' => '2026-09-25', 'end_date' => '2026-10-10', 'is_active' => true, 'days_of_week' => [5, 6]]);
         DailySpecial::create(['item_id' => $b->id, 'discount_pct' => 10, 'start_date' => '2026-09-29', 'end_date' => '2026-10-01', 'is_active' => true]);
         DailySpecial::create(['item_id' => $b->id, 'special_price' => 1, 'start_date' => '2026-11-01', 'end_date' => '2026-11-05', 'is_active' => true]);
+        // Pricing audit, 2026-10-01: a dish sold in sizes has base price 0 and
+        // posted as "MVR 0.00"; it now reads from its cheapest discounted size.
+        $c = Item::factory()->create(['name' => 'Iced tea', 'base_price' => 0, 'has_variants' => true]);
+        \App\Models\Variant::create(['item_id' => $c->id, 'name' => 'Small', 'price' => 20, 'is_active' => true, 'sort_order' => 1]);
+        \App\Models\Variant::create(['item_id' => $c->id, 'name' => 'Large', 'price' => 30, 'is_active' => true, 'sort_order' => 2]);
+        DailySpecial::create(['item_id' => $c->id, 'discount_pct' => 50, 'start_date' => '2026-09-27', 'end_date' => '2026-10-03', 'is_active' => true]);
 
         $post = app(WeeklyMenuAutoPoster::class)->run();
 
@@ -129,6 +135,8 @@ class SocialStockWeeklyLanguageTest extends TestCase
         $this->assertStringContainsString('• Masroshi — MVR 40.00 (Fri–Sat)', $caption);
         $this->assertStringContainsString('• Kulhi Boakibaa — MVR 27.00 (Tue 29–Thu 1)', $caption);
         $this->assertStringNotContainsString('MVR 1.00', $caption, 'November is not this week');
+        $this->assertStringContainsString('• Iced tea — From MVR 10.00', $caption);
+        $this->assertStringNotContainsString('MVR 0.00', $caption);
         $this->assertNotNull($post->snapshot['image_url']);
         $this->assertStringContainsString('social-cards/weekly-2026-09-27.jpg', $post->snapshot['image_url']);
         Storage::disk('public')->assertExists('social-cards/weekly-2026-09-27.jpg');

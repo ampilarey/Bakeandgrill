@@ -91,6 +91,8 @@ const TRANSLATIONS: Translations = {
   "menu.clear_filters": "Clear filters",
   "menu.toast_prune_one": "{n} cart item removed for this order mode.",
   "menu.toast_prune_many": "{n} cart items removed for this order mode.",
+  "cart.toast_price_changed_one": "Price updated: {name} is now MVR {now} (was MVR {was}).",
+  "cart.toast_price_changed_many": "Prices updated on {n} items in your cart. Please check the total.",
   "menu.toast_delivery_fallback": "No delivery items right now — showing pickup menu instead.",
   "cart.edit": "Edit",
   "common.cancel": "Cancel",

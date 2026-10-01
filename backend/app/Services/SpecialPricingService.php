@@ -220,9 +220,7 @@ class SpecialPricingService
             'original_price' => $catalogPrice,
             'effective_price' => $effectivePrice,
             'end_date' => $special->end_date?->toDateString(),
-            'ends_at' => $special->end_date
-                ? $special->end_date->copy()->endOfDay()->toIso8601String()
-                : null,
+            'ends_at' => $special->endsAt()?->toIso8601String(),
         ];
     }
 

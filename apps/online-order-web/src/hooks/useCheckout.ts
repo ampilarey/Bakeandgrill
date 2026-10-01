@@ -3,7 +3,7 @@ import { useTableSession } from './useTableSession';
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchItems, fetchDeliveryFeePreview, fetchCheckoutFeesPreview, fetchGstBootstrap, getOrderDay, setOrderDay, type SalesChannel } from "../api/menu";
-import { useCart } from "../context/CartContext";
+import { useCart, type CartPriceChange } from "../context/CartContext";
 import { useOrderMode } from "../context/OrderModeContext";
 import {
   applyPromoCode,
@@ -434,6 +434,9 @@ export function useCheckout() {
   const hasMounted = useRef(false);
   const channelPruneSkipFirst = useRef(true);
   const [lastChannelPrune, setLastChannelPrune] = useState<{ count: number; at: number } | null>(null);
+  // Pricing audit, 2026-10-01: lines whose price moved when the cart was
+  // re-priced from the menu, so checkout can say so.
+  const [lastPriceChange, setLastPriceChange] = useState<{ changes: CartPriceChange[]; at: number } | null>(null);
 
   // Channel persistence lives in OrderModeContext (setMode → setSalesChannel).
   // fetchItems may emit sales_channel_change on delivery→pickup fallback; context
@@ -451,8 +454,11 @@ export function useCheckout() {
         const ids = new Set((res.data ?? []).map((i) => i.id));
         const removedCount = readCart().filter((entry) => !ids.has(entry.id)).length;
         pruneCartToAllowedItemIds(ids);
-        refreshPricesFromMenu(res.data ?? []);
+        const priceChanges = refreshPricesFromMenu(res.data ?? []) ?? [];
         bumpCart();
+        if (priceChanges.length > 0) {
+          setLastPriceChange({ changes: priceChanges, at: Date.now() });
+        }
         // Toast on mode switch only — not the initial checkout mount.
         if (channelPruneSkipFirst.current) {
           channelPruneSkipFirst.current = false;
@@ -1413,6 +1419,7 @@ export function useCheckout() {
     cart, isAuthenticated, customerName, loyaltyAccount, loyaltyTierProgress, loyaltyRedeemPoints, loyaltyRates, loyaltyProgramMessage, earnPreviewPoints,
     orderType, setOrderType, pickupSlotAt, setPickupSlotAt,
     lastChannelPrune,
+    lastPriceChange,
     collectOn, setCollectOn, allowsTomorrow, cartForcesTomorrow,
     partySize, setPartySize,
     delivery, setDelivery, notes, setNotes,

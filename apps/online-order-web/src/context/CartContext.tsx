@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Item, Modifier } from '../api';
 import type { PlatterSelection, Variant } from '@shared/types';
 import { platterSelectionsKey, surchargeTotal } from '../utils/platterRules';
@@ -23,6 +23,9 @@ export type CartEntry = {
   /** Structured platter child picks — never stored as notes. */
   platterSelections?: PlatterSelection[];
 };
+
+/** A cart line whose price moved when the cart was re-priced from the menu. */
+export type CartPriceChange = { name: string; was: number; now: number };
 
 export type UpdateEntryInput = {
   quantity: number;
@@ -55,7 +58,8 @@ interface CartContextValue {
   updateEntry: (index: number, data: UpdateEntryInput) => void;
   clearCart: () => void;
   pruneCartToAllowedItemIds: (allowedIds: Set<number>) => void;
-  refreshPricesFromMenu: (items: Item[]) => void;
+  /** Re-prices the cart from fresh menu items; returns the lines whose price moved. */
+  refreshPricesFromMenu: (items: Item[]) => CartPriceChange[];
 }
 
 /** Stable key for merge identity (item + variant + mods + packaging + platter picks). */
@@ -194,7 +198,11 @@ function saveCart(cart: CartEntry[]): void {
 export function CartProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<CartEntry[]>(loadCart);
 
-  useEffect(() => { saveCart(cart); }, [cart]);
+  const cartRef = useRef(cart);
+  useEffect(() => {
+    cartRef.current = cart;
+    saveCart(cart);
+  }, [cart]);
 
   // Clear in-memory cart when payment redirects away and removes it from localStorage
   useEffect(() => {
@@ -381,8 +389,26 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setCart((prev) => prev.filter((e) => allowedIds.has(e.item.id)));
   }, []);
 
-  const refreshPricesFromMenu = useCallback((items: Item[]) => {
+  const refreshPricesFromMenu = useCallback((items: Item[]): CartPriceChange[] => {
     const byId = new Map(items.map((i) => [i.id, i]));
+    // Pricing audit, 2026-10-01: say which lines moved, so checkout can tell
+    // the customer instead of the total quietly changing under them.
+    const changes: CartPriceChange[] = [];
+    for (const entry of cartRef.current) {
+      const fresh = byId.get(entry.item.id);
+      if (!fresh) continue;
+      const was = entry.variantPrice != null ? Number(entry.variantPrice) : Number(entry.item.base_price);
+      const now = priceSnapshot(fresh, entry.variantId
+        ? fresh.variants?.find((v) => v.id === entry.variantId) ?? null
+        : null).unitPrice;
+      if (Number.isFinite(was) && Number.isFinite(now) && Math.abs(now - was) >= 0.005) {
+        changes.push({
+          name: entry.variantName ? `${fresh.name} (${entry.variantName})` : fresh.name,
+          was,
+          now,
+        });
+      }
+    }
     setCart((prev) =>
       prev.map((entry) => {
         const fresh = byId.get(entry.item.id);
@@ -408,6 +434,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         };
       }),
     );
+    return changes;
   }, []);
 
   const cartTotal = useMemo(

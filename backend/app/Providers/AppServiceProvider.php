@@ -7,6 +7,7 @@ namespace App\Providers;
 use App\Domains\Content\ContentResolver;
 use App\Domains\Notifications\Contracts\SmsProviderInterface;
 use App\Domains\Notifications\Providers\DhiraaguSmsProvider;
+use App\Domains\System\Services\QueueWorkerHeartbeat;
 use App\Models\Category;
 use App\Models\Item;
 use App\Models\ItemPhoto;
@@ -17,7 +18,6 @@ use App\Observers\ItemObserver;
 use App\Observers\ItemPhotoObserver;
 use App\Observers\OrderObserver;
 use App\Observers\StaffScheduleObserver;
-use App\Domains\System\Services\QueueWorkerHeartbeat;
 use App\Support\BmlSignatureGuard;
 use App\Support\DocumentBrandView;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -67,7 +67,7 @@ class AppServiceProvider extends ServiceProvider
         // (mistyped opening float, shared office IP) without locking cashiers out.
         RateLimiter::for('pos-shift', function (Request $request) {
             $key = $request->user()?->id
-                ? 'user:'.$request->user()->id
+                ? 'user:' . $request->user()->id
                 : (string) $request->ip();
 
             return Limit::perMinute(60)->by($key)->response(function () {
@@ -82,8 +82,8 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('public-order-track', function (Request $request) {
             $token = (string) $request->route('token');
             $key = $token !== ''
-                ? 'track:'.$token
-                : 'track-ip:'.$request->ip();
+                ? 'track:' . $token
+                : 'track-ip:' . $request->ip();
 
             return Limit::perMinute(120)->by($key)->response(function () {
                 return response()->json([
@@ -95,6 +95,11 @@ class AppServiceProvider extends ServiceProvider
         Order::observe(OrderObserver::class);
         StaffSchedule::observe(StaffScheduleObserver::class);
         Item::observe(ItemObserver::class);
+        // Every change to what a customer pays, from any screen (2026-10-01).
+        Item::observe(\App\Observers\PriceAuditObserver::class);
+        \App\Models\Variant::observe(\App\Observers\PriceAuditObserver::class);
+        \App\Models\DailySpecial::observe(\App\Observers\PriceAuditObserver::class);
+        \App\Models\Promotion::observe(\App\Observers\PriceAuditObserver::class);
         ItemPhoto::observe(ItemPhotoObserver::class);
         Category::observe(CategoryObserver::class);
 

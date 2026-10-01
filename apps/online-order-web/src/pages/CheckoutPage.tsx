@@ -34,6 +34,7 @@ import {
   formatTomorrowDateLabel,
 } from '../utils/collectOn';
 import { isDeliveryBlocked, isPickupBlocked } from '../utils/fulfilmentAvailability';
+import { cartPriceChangeMessage } from '../utils/cartPriceChange';
 import {
   formatDeliveryDestination,
   resolveDestinationLabel,
@@ -202,6 +203,7 @@ export function CheckoutPage() {
     cart, isAuthenticated, customerName, loyaltyAccount, loyaltyTierProgress, loyaltyRedeemPoints, loyaltyRates, loyaltyProgramMessage, earnPreviewPoints,
     orderType, setOrderType, pickupSlotAt, setPickupSlotAt,
     lastChannelPrune,
+    lastPriceChange,
     collectOn, setCollectOn, allowsTomorrow, cartForcesTomorrow,
     partySize, setPartySize,
     delivery, setDelivery, notes, setNotes,
@@ -333,6 +335,15 @@ export function CheckoutPage() {
     const pruneKey = lastChannelPrune.count === 1 ? 'menu.toast_prune_one' : 'menu.toast_prune_many';
     showToast(t(pruneKey).replace('{n}', String(lastChannelPrune.count)));
   }, [lastChannelPrune, showToast, t]);
+
+  // Say when a price in the cart moved since it was added.
+  const lastPriceChangeAt = useRef<number | null>(null);
+  useEffect(() => {
+    if (!lastPriceChange || lastPriceChange.at === lastPriceChangeAt.current) return;
+    lastPriceChangeAt.current = lastPriceChange.at;
+    const message = cartPriceChangeMessage(lastPriceChange.changes, t);
+    if (message) showToast(message);
+  }, [lastPriceChange, showToast, t]);
 
   // Default Today when open, Tomorrow when closed, cart forces tomorrow,
   // or the customer already picked Tomorrow on the menu.

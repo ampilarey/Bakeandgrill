@@ -46,6 +46,7 @@ import {
 import { formatTomorrowDateLabel } from '../utils/collectOn';
 import { consumePendingPlatterReorder } from '../utils/applyReorderToCart';
 import { itemSortPrice } from '../utils/money';
+import { cartPriceChangeMessage } from '../utils/cartPriceChange';
 const MENU_VIEW_KEY = 'bg-menu-view';
 /**
  * The "Other" section's id in the scroll-spy and the rail: dishes with no
@@ -334,7 +335,8 @@ export function MenuPage() {
         setCateringListing(cateringIts.data ?? []);
         // Refresh cart item snapshots (allow_pre_order, prices, etc.) so a
         // stale localStorage cart still unlocks "collect tomorrow" when closed.
-        refreshPricesFromMenu(loadedItems);
+        const priceMessage = cartPriceChangeMessage(refreshPricesFromMenu(loadedItems) ?? [], t);
+        if (priceMessage) showToast(priceMessage);
         const allowedIds = new Set(loadedItems.map((item) => item.id));
         const removedCount = cartRef.current.filter((entry) => !allowedIds.has(entry.item.id)).length;
         if (removedCount > 0) {

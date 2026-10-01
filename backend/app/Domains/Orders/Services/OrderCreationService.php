@@ -764,15 +764,14 @@ class OrderCreationService
 
             // Always resolve price server-side — client unit_price is ignored (offline sync totals are validated separately).
             $pricing = $this->effectivePricing->resolveUnitPrice($itemModel->id, $catalogPrice, $itemModel, $variantId);
-            $unitPrice = $pricing->unitPrice;
-            $originalUnitPrice = $pricing->hasDiscount() ? $pricing->originalPrice : null;
-            $dailySpecialId = $pricing->specialId;
-
-            if ($dailySpecialId !== null && !$this->specialPricing->canAllocateSpecialQuantity($dailySpecialId, (int) ceil($quantity), $order->id)) {
-                $unitPrice = $catalogPrice;
-                $originalUnitPrice = null;
-                $dailySpecialId = null;
-            }
+            [$unitPrice, $originalUnitPrice, $dailySpecialId, $promotionId] = $this->settleLinePrice(
+                $order,
+                $itemModel,
+                $catalogPrice,
+                $variantId ? (int) $variantId : null,
+                (float) $quantity,
+                $pricing,
+            );
 
             $variantName = $variant?->name;
 
@@ -877,6 +876,7 @@ class OrderCreationService
                 'unit_price' => $unitPrice,
                 'original_unit_price' => $originalUnitPrice,
                 'daily_special_id' => $dailySpecialId,
+                'promotion_id' => $promotionId,
                 'total_price' => 0,
                 'tax_rate' => (float) $itemModel->tax_rate,
                 'tax_code' => $itemModel->tax_code ?? 'standard_8',
@@ -1105,6 +1105,74 @@ class OrderCreationService
         }
 
         return $subtotal;
+    }
+
+    /**
+     * The price a line is actually sold at, and what gave it.
+     *
+     * EffectivePriceService says what the menu advertises. The order also has
+     * to respect what the menu cannot see: a special's quantity cap, and an
+     * automatic promotion's use limits, budget and margin floor (pricing
+     * audit, 2026-10-01). Every candidate — as advertised, the special alone,
+     * the promotion alone — is tried cheapest first, and the first one whose
+     * rules pass wins; with none, the line is sold at the catalogue price.
+     * Before this a special whose cap was reached fell straight back to full
+     * price even when a promotion would have been cheaper, and a promotion's
+     * limits were never asked at all.
+     *
+     * @return array{0: float, 1: ?float, 2: ?int, 3: ?int} unit price, original price, special id, promotion id
+     */
+    private function settleLinePrice(
+        Order $order,
+        Item $item,
+        float $catalogPrice,
+        ?int $variantId,
+        float $quantity,
+        \App\Services\EffectivePriceResult $pricing,
+    ): array {
+        $gate = app(\App\Domains\Promotions\Services\InLinePromotionGate::class);
+        $floor = $gate->floorUnitPrice($item);
+        $withFloor = static fn (float $price): float => $floor === null ? $price : min($catalogPrice, max($price, $floor));
+
+        $candidates = [[
+            $pricing->promoId !== null ? $withFloor($pricing->unitPrice) : $pricing->unitPrice,
+            $pricing->specialId,
+            $pricing->promoId,
+        ]];
+
+        $special = $this->specialPricing->resolveUnitPrice($item->id, $catalogPrice, $item, $variantId);
+        if ($special->hasDiscount()) {
+            $candidates[] = [$special->unitPrice, $special->dailySpecialId, null];
+        }
+
+        $promo = app(\App\Domains\Promotions\Services\AutoPromotionPricing::class)
+            ->resolveForItem($item->id, $catalogPrice, $item);
+        if ($promo['promotion'] !== null) {
+            $candidates[] = [$withFloor((float) $promo['unit_price']), null, (int) $promo['promotion']->id];
+        }
+
+        usort($candidates, static fn (array $a, array $b): int => $a[0] <=> $b[0]);
+
+        foreach ($candidates as [$unit, $specialId, $promotionId]) {
+            $unit = round((float) $unit, 2);
+            if ($unit >= $catalogPrice) {
+                continue;
+            }
+            if ($promotionId !== null) {
+                $promotion = \App\Models\Promotion::query()->find($promotionId);
+                if ($promotion === null || !$gate->allows($promotion, $order, ($catalogPrice - $unit) * $quantity)) {
+                    continue;
+                }
+            }
+            if ($specialId !== null
+                && !$this->specialPricing->canAllocateSpecialQuantity($specialId, (int) ceil($quantity), $order->id)) {
+                continue;
+            }
+
+            return [$unit, $catalogPrice, $specialId, $promotionId];
+        }
+
+        return [$catalogPrice, null, null, null];
     }
 
     private function resolveCustomCateringPlaceholder(): Item

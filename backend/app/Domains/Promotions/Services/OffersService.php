@@ -65,7 +65,9 @@ class OffersService
                 'effective_price' => $sp['effective_price'] ?? null,
                 'original_price' => $sp['original_price'] ?? null,
                 'image_url' => $sp['item_image'] ?? null,
-                'ends_at' => $sp['end_date'] ?? $sp['ends_at'] ?? null,
+                // The real finishing moment, not the bare end date (which reads
+                // as midnight at the start of the last day).
+                'ends_at' => $sp['ends_at'] ?? $sp['end_date'] ?? null,
                 'target' => [
                     'type' => 'item',
                     'item_id' => $itemId ?: null,

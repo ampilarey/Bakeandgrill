@@ -171,6 +171,12 @@ class Promotion extends Model
             return false;
         }
 
+        // A budget that is fully spent ends the offer, so the menus stop
+        // advertising a discount the order would no longer give (2026-10-01).
+        if ($this->budget_laar !== null && (int) ($this->spent_laar ?? 0) >= (int) $this->budget_laar) {
+            return false;
+        }
+
         if (!$this->matchesScheduleWindow($now)) {
             return false;
         }

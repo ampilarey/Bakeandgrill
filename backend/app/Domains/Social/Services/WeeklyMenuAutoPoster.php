@@ -52,7 +52,7 @@ class WeeklyMenuAutoPoster
 
         $weekEnd = $today->copy()->addDays(6);
         $specials = DailySpecial::query()
-            ->with('item')
+            ->with(['item.variants', 'variantOverrides'])
             ->where('is_active', true)
             ->whereDate('start_date', '<=', $weekEnd->toDateString())
             ->whereDate('end_date', '>=', $today->toDateString())
@@ -67,7 +67,7 @@ class WeeklyMenuAutoPoster
         $lines = $specials->map(fn (DailySpecial $s) => [
             'name' => (string) $s->item->name,
             'name_dv' => trim((string) ($s->item->name_dv ?? '')) ?: null,
-            'price' => 'MVR ' . number_format($s->getEffectivePriceFor((float) $s->item->base_price), 2),
+            'price' => $this->priceLabel($s),
             'when' => $this->whenLabel($s, $today, $weekEnd),
             'badge' => trim((string) ($s->badge_label ?? '')) ?: null,
         ])->all();
@@ -98,6 +98,37 @@ class WeeklyMenuAutoPoster
             $businessDate,
             ['special_ids' => $specials->pluck('id')->all()],
         );
+    }
+
+    /**
+     * The price the special sells at, worked out the way the menu and the
+     * till work it out (pricing audit, 2026-10-01, finding 2).
+     *
+     * This used to do its own sum on the item's base price, which is 0 for a
+     * dish sold in sizes, so a special on one posted as "MVR 0.00", and it
+     * ignored size overrides and bundle prices. A dish with sizes now reads
+     * "From" its cheapest discounted size.
+     */
+    private function priceLabel(DailySpecial $special): string
+    {
+        $pricing = app(\App\Services\SpecialPricingService::class);
+        $item = $special->item;
+        $rows = $pricing->expandSpecialForDisplay($special);
+
+        if (count($rows) === 1 && $rows[0]['variant_id'] === null && $item !== null) {
+            $catalog = app(\App\Domains\Menu\Services\BundlePricingService::class)
+                ->catalogPriceFor($item, (float) $item->base_price);
+
+            return 'MVR ' . number_format($pricing->effectivePriceForSpecial($special, $catalog, $item), 2);
+        }
+
+        if ($rows === []) {
+            return 'MVR ' . number_format((float) ($item?->base_price ?? 0), 2);
+        }
+
+        $cheapest = min(array_map(static fn (array $r): float => (float) $r['effective_price'], $rows));
+
+        return (count($rows) > 1 ? 'From ' : '') . 'MVR ' . number_format($cheapest, 2);
     }
 
     /** "Mon–Thu", "Fri", "all week", or the date range when it starts later. */

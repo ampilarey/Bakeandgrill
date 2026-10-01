@@ -138,4 +138,32 @@ describe('CartContext.refreshPricesFromMenu', () => {
 
     expect(result.current.cart[0].item.allow_pre_order).toBe(true);
   });
+
+  it('reports the lines whose price moved, and only those', () => {
+    const { result } = renderHook(() => useCart(), { wrapper });
+    const tea = { id: 2, name: 'Milk tea', base_price: 30, has_variants: false, is_available: true } as Item;
+    act(() => {
+      result.current.addItem(baseItem, 1, [], large);
+      result.current.addItem(tea, 2, [], null);
+    });
+
+    let changes: ReturnType<typeof result.current.refreshPricesFromMenu> = [];
+    act(() => {
+      changes = result.current.refreshPricesFromMenu([
+        { ...baseItem, variants: [regular, { ...large, price: 130, effective_price: 130 }] } as Item,
+        tea,
+      ]);
+    });
+
+    expect(changes).toEqual([{ name: 'Chicken Grill (Large)', was: 120, now: 130 }]);
+    expect(result.current.cart[0].variantPrice).toBe(130);
+
+    act(() => {
+      changes = result.current.refreshPricesFromMenu([
+        { ...baseItem, variants: [regular, { ...large, price: 130, effective_price: 130 }] } as Item,
+        tea,
+      ]);
+    });
+    expect(changes).toEqual([]);
+  });
 });

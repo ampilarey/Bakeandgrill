@@ -87,6 +87,8 @@ class DomainEventServiceProvider extends EventServiceProvider
             DispatchReceiptPrintListener::class,
             DispatchKitchenPrintListener::class, // online orders: kitchen print fires here after payment confirmed
             ConsumePromoRedemptionsListener::class,
+            // Automatic item/category promotions priced into the lines (2026-10-01).
+            \App\Domains\Promotions\Listeners\RecordInLinePromotionRedemptionsListener::class,
             ConsumeLoyaltyHoldListener::class,
             IncrementDailySpecialSoldCountListener::class,
             RecordReferralRedemptionListener::class,
