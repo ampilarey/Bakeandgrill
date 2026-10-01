@@ -1,4 +1,0 @@
-User-agent: *
-Disallow:
-
-Sitemap: https://bakeandgrill.mv/sitemap.xml

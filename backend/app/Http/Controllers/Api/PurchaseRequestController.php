@@ -424,7 +424,8 @@ class PurchaseRequestController extends Controller
         /** @var User $user */
         $user = $request->user();
         $file = $request->file('file');
-        $path = $file->store('purchase-requests/' . $pr->id, 'public');
+        $stored = app(\App\Services\MenuImageProcessor::class)->storeAttachment($file, 'purchase-requests/' . $pr->id);
+        $path = $stored['path'];
 
         $attachment = PurchaseRequestAttachment::create([
             'purchase_request_id' => $pr->id,
@@ -433,8 +434,8 @@ class PurchaseRequestController extends Controller
             'type' => $validated['type'],
             'file_path' => $path,
             'original_filename' => $file->getClientOriginalName(),
-            'mime_type' => $file->getClientMimeType(),
-            'size' => $file->getSize(),
+            'mime_type' => $stored['mime'],
+            'size' => $stored['size'],
         ]);
 
         app(\App\Services\AuditLogService::class)->log(

@@ -156,6 +156,39 @@ class MenuImageProcessor
     }
 
     /**
+     * A staff or driver attachment: a photo is re-encoded (location and other
+     * camera metadata stripped, longest edge capped), anything else (a PDF)
+     * is kept as uploaded under a sniffed extension (media audit, 2026-10-01).
+     *
+     * Delivery proofs, purchase receipts and kitchen photos were stored
+     * exactly as the phone took them: several megabytes each on a shared
+     * host, and with the GPS position of wherever the picture was taken,
+     * which for a delivery proof is the customer's door, behind a public link.
+     *
+     * @return array{path: string, mime: string, size: int}
+     */
+    public function storeAttachment(UploadedFile $file, string $directory, int $maxEdge = 2000): array
+    {
+        $mime = strtolower((string) ($file->getMimeType() ?: ''));
+        if (str_starts_with($mime, 'image/')) {
+            $path = $this->storeFit($file, $directory, $maxEdge);
+
+            return [
+                'path' => $path,
+                'mime' => 'image/jpeg',
+                'size' => (int) (\Illuminate\Support\Facades\Storage::disk('public')->size($path) ?: 0),
+            ];
+        }
+
+        $path = $file->store(trim($directory, '/'), 'public');
+        if (!is_string($path) || $path === '') {
+            throw new RuntimeException('Could not save the file.');
+        }
+
+        return ['path' => $path, 'mime' => $mime, 'size' => (int) $file->getSize()];
+    }
+
+    /**
      * Extensions this may write. Everything here lands under
      * `storage/app/public`, which `storage:link` exposes inside the docroot —
      * and the web server executes PHP there (verified on the live host,

@@ -128,15 +128,16 @@ class KitchenReceivingController extends Controller
                 ->firstOrFail();
         }
 
-        $path = $request->file('file')->store('kitchen-receiving/' . $batch->id, 'public');
+        $stored = app(\App\Services\MenuImageProcessor::class)->storeAttachment($request->file('file'), 'kitchen-receiving/' . $batch->id);
+        $path = $stored['path'];
         $attachment = $batch->attachments()->create([
             'kitchen_production_item_id' => $itemId,
             'uploaded_by' => $request->user()->id,
             'type' => $validated['type'],
             'file_path' => $path,
             'original_filename' => $request->file('file')->getClientOriginalName(),
-            'mime_type' => $request->file('file')->getClientMimeType(),
-            'size' => $request->file('file')->getSize(),
+            'mime_type' => $stored['mime'],
+            'size' => $stored['size'],
         ]);
 
         return response()->json(['attachment' => ['id' => $attachment->id, 'url' => Storage::disk('public')->url($path)]], 201);
