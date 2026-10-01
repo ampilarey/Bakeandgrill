@@ -545,6 +545,9 @@ export interface ItemPhoto {
   thumb_webp_url?: string | null;
   media_type?: 'image' | 'video';
   poster_url?: string | null;
+  /** A clip still converting on the server, or one that failed (media audit, 2026-10-01). */
+  processing_status?: 'processing' | 'failed' | null;
+  processing_error?: string | null;
   sort_order: number;
   is_primary: boolean;
   created_at: string;

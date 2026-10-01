@@ -78,11 +78,15 @@ class MediaLibraryController extends Controller
         $perPage = (int) ($validated['per_page'] ?? 25);
         $page = $query->paginate($perPage);
 
-        $items = collect($page->items())->map(function (Media $m) {
-            $usage = $this->usage->for($m);
-
+        // Media audit, 2026-10-01: usage used to be worked out for every
+        // tile on every page (six searches across items, photos, settings,
+        // signage and page blocks per tile). The admin asks for it on demand
+        // through usageCounts(); a caller that still wants it inline passes
+        // with_usage=1.
+        $withUsage = $request->boolean('with_usage');
+        $items = collect($page->items())->map(function (Media $m) use ($withUsage) {
             return array_merge($m->toArray(), [
-                'usage_count' => count($usage),
+                'usage_count' => $withUsage ? count($this->usage->for($m)) : null,
             ]);
         });
 
@@ -244,6 +248,22 @@ class MediaLibraryController extends Controller
         $this->audit->log('media.reconciled', 'Media', null, [], $result, [], $request);
 
         return response()->json($result);
+    }
+
+    /** GET /api/admin/media/usage-counts?ids[]=1&ids[]=2 — how many places each asset is used. */
+    public function usageCounts(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1|max:100',
+            'ids.*' => 'integer',
+        ]);
+
+        $counts = [];
+        foreach (Media::query()->whereIn('id', $validated['ids'])->get() as $media) {
+            $counts[(int) $media->id] = count($this->usage->for($media));
+        }
+
+        return response()->json(['counts' => $counts]);
     }
 
     public function usage(Media $media): JsonResponse

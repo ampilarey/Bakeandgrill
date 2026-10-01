@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import {
   assignMediaCollections, bulkDeleteMedia, createMediaCollection, deleteMedia, deleteMediaCollection,
-  editMedia, getMedia, getMediaCollections, getMediaUsage, reconcileMedia, replaceMediaFile,
+  editMedia, getMedia, getMediaCollections, getMediaUsage, getMediaUsageCounts, reconcileMedia, replaceMediaFile,
   restoreMedia, updateMedia, updateMediaCollection, uploadMedia, useMediaAs,
   type MediaAsset, type MediaCollection, type MediaEditOp,
   type MediaEditResult, type MediaPaginationMeta, type MediaType, type MediaUsageItem,
@@ -874,6 +874,13 @@ export function MediaLibraryPage() {
 
   const openDetail = (asset: MediaAsset) => {
     setSelected(asset);
+    if (asset.usage_count == null) {
+      void getMediaUsageCounts([asset.id]).then((counts) => {
+        const n = counts[asset.id] ?? 0;
+        setSelected((cur) => (cur && cur.id === asset.id ? { ...cur, usage_count: n } : cur));
+        setAssets((prev) => prev.map((a) => (a.id === asset.id ? { ...a, usage_count: n } : a)));
+      }).catch(() => undefined);
+    }
     setDetailTitle(asset.title || '');
     setDetailAlt(asset.alt_text || '');
     setDetailTags(asset.tags || []);
@@ -1152,7 +1159,20 @@ export function MediaLibraryPage() {
   const clearChecked = () => setCheckedIds([]);
 
   const checkedAssets = assets.filter((a) => checkedIds.includes(a.id));
-  const checkedInUseCount = checkedAssets.filter((a) => a.usage_count > 0).length;
+  const checkedInUseCount = checkedAssets.filter((a) => (a.usage_count ?? 0) > 0).length;
+
+  // Usage is worked out on demand (media audit, 2026-10-01). Before a delete
+  // is confirmed, fetch it for anything the list has not asked about yet.
+  useEffect(() => {
+    if (!deleteTargets) return;
+    const unknown = deleteTargets.filter((a) => a.usage_count == null).map((a) => a.id);
+    if (unknown.length === 0) return;
+    void getMediaUsageCounts(unknown).then((counts) => {
+      const apply = (a: MediaAsset): MediaAsset => (a.usage_count == null && counts[a.id] != null ? { ...a, usage_count: counts[a.id] } : a);
+      setDeleteTargets((cur) => (cur ? cur.map(apply) : cur));
+      setAssets((prev) => prev.map(apply));
+    }).catch(() => undefined);
+  }, [deleteTargets]);
 
   const openBulkDelete = () => {
     if (checkedAssets.length === 0) return;
@@ -1590,7 +1610,7 @@ export function MediaLibraryPage() {
               <div>{selected.mime_type} · {fmtBytes(selected.file_size)}</div>
               {selected.width && selected.height && <div>{selected.width} × {selected.height} px</div>}
               <div>Source: {selected.source}</div>
-              <div>Used in {selected.usage_count} place{selected.usage_count === 1 ? '' : 's'}</div>
+              <div>{selected.usage_count == null ? 'Checking where it is used…' : `Used in ${selected.usage_count} place${selected.usage_count === 1 ? '' : 's'}`}</div>
             </div>
 
             {/* Copy URL + Export */}
@@ -2005,22 +2025,23 @@ export function MediaLibraryPage() {
             {deleteTargets.length === 1 ? (
               <>
                 Delete <strong>{deleteTargets[0].title || deleteTargets[0].url.split('/').pop()}</strong>?
-                {deleteTargets[0].usage_count > 0 && (
+                {deleteTargets[0].usage_count == null && <span> Checking where it is used…</span>}
+                {(deleteTargets[0].usage_count ?? 0) > 0 && (
                   <span style={{ color: 'var(--color-danger-strong)' }}> This asset is used in {deleteTargets[0].usage_count} place{deleteTargets[0].usage_count === 1 ? '' : 's'}.</span>
                 )}
               </>
             ) : (
               <>
                 Permanently delete <strong>{deleteTargets.length}</strong> selected files from the library and disk.
-                {deleteTargets.some((a) => a.usage_count > 0) && (
+                {deleteTargets.some((a) => (a.usage_count ?? 0) > 0) && (
                   <span style={{ color: 'var(--color-danger-strong)' }}>
-                    {' '}{deleteTargets.filter((a) => a.usage_count > 0).length} of them are still in use.
+                    {' '}{deleteTargets.filter((a) => (a.usage_count ?? 0) > 0).length} of them are still in use.
                   </span>
                 )}
               </>
             )}
           </p>
-          {deleteTargets.some((a) => a.usage_count > 0) && (
+          {deleteTargets.some((a) => (a.usage_count ?? 0) > 0) && (
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', marginBottom: 12 }}>
               <input type="checkbox" checked={forceDelete} onChange={(e) => setForceDelete(e.target.checked)} />
               Force delete (removes despite active references)
@@ -2032,7 +2053,7 @@ export function MediaLibraryPage() {
             <Btn
               variant="danger"
               onClick={() => void confirmDelete()}
-              disabled={deleting || (deleteTargets.some((a) => a.usage_count > 0) && !forceDelete)}
+              disabled={deleting || (deleteTargets.some((a) => (a.usage_count ?? 0) > 0) && !forceDelete)}
             >
               {deleting ? 'Deleting…' : deleteTargets.length === 1 ? 'Delete' : `Delete ${deleteTargets.length}`}
             </Btn>

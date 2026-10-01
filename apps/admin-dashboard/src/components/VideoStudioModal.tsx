@@ -4,7 +4,7 @@ import { Modal, Button } from './ui';
 import {
   getVideoStudioCapabilities,
   probeVideo,
-  processVideo,
+  exportVideoAndWait,
   type VideoAspect,
   type VideoProcessResult,
 } from '../api';
@@ -83,14 +83,15 @@ export function VideoStudioModal({ open, onClose, sourceUrl, mediaId, onExported
     setBusy(true);
     setError('');
     try {
-      const result = await processVideo({
+      const result = await exportVideoAndWait({
         ...(mediaId ? { media_id: mediaId } : { source_url: sourceUrl }),
         trim_start: trimStart,
         trim_end: trimEnd,
         aspect,
         poster_at: posterAt,
         register_library: true,
-      });
+      }, (status) => setError(status === 'queued' ? 'Waiting for the server to start the export…' : 'Exporting on the server… this can take a few minutes for a long clip.'));
+      setError('');
       onExported(result);
       onClose();
     } catch (err) {

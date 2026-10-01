@@ -21,12 +21,20 @@ class ItemPhoto extends Model
         'is_primary',
         'media_type',
         'poster_url',
+        'processing_status',
+        'processing_error',
     ];
 
     protected $casts = [
         'sort_order' => 'integer',
         'is_primary' => 'boolean',
     ];
+
+    /** Still converting, or failed: not something a customer should be shown. */
+    public function isReady(): bool
+    {
+        return $this->processing_status === null;
+    }
 
     public function isVideo(): bool
     {

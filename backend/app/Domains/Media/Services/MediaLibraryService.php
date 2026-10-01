@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Media\Services;
 
+use App\Domains\Media\Jobs\ConvertUploadedVideo;
 use App\Models\ItemPhoto;
 use App\Models\Media;
 use App\Models\User;
@@ -217,13 +218,44 @@ final class MediaLibraryService
         });
 
         $thumbsFixed = $this->backfillMissingThumbs();
+        $removed = $this->forgetMissingFiles();
 
         return [
             'scanned' => $scanned,
             'created' => $created,
             'skipped' => $skipped,
             'thumbs_fixed' => $thumbsFixed,
+            'removed' => $removed,
         ];
+    }
+
+    /**
+     * Drop library rows whose file is gone (media audit, 2026-10-01). Nothing
+     * removed them before, so a file deleted by the prune or by hand left a
+     * broken tile in the Media Library for good. Rows younger than an hour
+     * are left alone: an upload may still be writing its file.
+     */
+    public function forgetMissingFiles(): int
+    {
+        $disk = Storage::disk('public');
+        $removed = 0;
+
+        Media::query()
+            ->where('created_at', '<', now()->subHour())
+            ->orderBy('id')
+            ->chunkById(200, function ($rows) use ($disk, &$removed): void {
+                foreach ($rows as $row) {
+                    $path = ltrim((string) $row->path, '/');
+                    if ($path === '' || $disk->exists($path)) {
+                        continue;
+                    }
+                    $this->purgeDiskFiles($row);
+                    $row->delete();
+                    $removed++;
+                }
+            });
+
+        return $removed;
     }
 
     /**
@@ -308,7 +340,7 @@ final class MediaLibraryService
     /**
      * Store one uploaded file into the library (with checksum dedupe).
      *
-     * @param  list<int>  $collectionIds
+     * @param list<int> $collectionIds
      * @return array{asset: Media, deduped: bool}
      */
     public function storeUpload(
@@ -461,13 +493,18 @@ final class MediaLibraryService
 
         $dir = 'library/video';
         $path = $this->images->storeRaw($file, $dir, $ext);
-        try {
-            $safe = $this->videos->ensureWebSafe(Storage::disk('public')->path($path));
-        } catch (\Throwable $e) {
-            abort(422, $e->getMessage());
+        // Converted on the worker (media audit, 2026-10-01); see
+        // ConvertUploadedVideo. Without ffmpeg only an .mp4 can be trusted.
+        $needsConversion = true;
+        if (!$this->videos->available()) {
+            if ($ext !== 'mp4') {
+                Storage::disk('public')->delete($path);
+                Media::query()->where('path', $path)->delete();
+                abort(422, VideoProcessor::WEB_UNSAFE_MESSAGE);
+            }
+            $needsConversion = false;
         }
-        $path = $safe['relative_path'];
-        $absolute = $safe['absolute_path'];
+        $absolute = Storage::disk('public')->path($path);
         // Frame extract from video isn't available under GD — use a generic poster instead of failing.
         $thumbUrl = $this->genericVideoPosterThumb() ?: null;
 
@@ -475,8 +512,9 @@ final class MediaLibraryService
             'disk' => 'public',
             'path' => $path,
             'media_type' => 'video',
-            'mime_type' => $safe['mime'],
+            'mime_type' => $ext === 'mp4' ? 'video/mp4' : ($ext === 'webm' ? 'video/webm' : 'video/quicktime'),
             'file_size' => (int) (@filesize($absolute) ?: 0),
+            'processing_status' => $needsConversion ? ConvertUploadedVideo::PROCESSING : null,
             'thumb_url' => $thumbUrl,
             'title' => $title ?: pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME),
             'alt_text' => $altText,
@@ -485,15 +523,21 @@ final class MediaLibraryService
             'uploaded_by' => $uploader?->id,
         ];
 
-        // storeRaw may have already catalogued the path (and ensureWebSafe remaps it).
+        // storeRaw may have already catalogued the path.
         $existing = Media::query()->where('path', $path)->first();
         if ($existing) {
             $existing->fill($attributes)->save();
-
-            return $existing->fresh();
+            $row = $existing->fresh();
+        } else {
+            $row = Media::create($attributes);
         }
 
-        return Media::create($attributes);
+        if ($needsConversion) {
+            ConvertUploadedVideo::start('media', (int) $row->id);
+            $row = $row->fresh();
+        }
+
+        return $row;
     }
 
     /**
@@ -520,7 +564,7 @@ final class MediaLibraryService
         if ($binary === '') {
             return '';
         }
-        $relative = 'library/video/posters/' . \Illuminate\Support\Str::uuid()->toString() . '.jpg';
+        $relative = 'library/video/posters/' . Str::uuid()->toString() . '.jpg';
         Storage::disk('public')->put($relative, $binary);
 
         return '/storage/' . $relative;

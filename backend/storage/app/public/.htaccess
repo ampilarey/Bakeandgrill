@@ -1,0 +1,14 @@
+# Uploaded pictures and clips (media audit, 2026-10-01).
+#
+# Every file here has a random name that is never reused: a replaced or
+# re-edited picture always gets a new name and every reference is rewritten.
+# So a browser may keep a copy for a year without ever showing a stale one.
+# Before this, nothing said how long to keep them, and every menu visit
+# re-checked every thumbnail with the server.
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresDefault "access plus 1 year"
+</IfModule>
+<IfModule mod_headers.c>
+    Header set Cache-Control "public, max-age=31536000, immutable"
+</IfModule>

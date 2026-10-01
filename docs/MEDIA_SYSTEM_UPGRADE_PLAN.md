@@ -27,7 +27,7 @@ The media system is in good shape. This plan adds to it; it does not replace it.
 | De-duplication | **Built** — `MediaLibraryService` hashes with sha256 and reuses an existing asset on match. |
 | Three image sizes | **Built** — thumbnail **400×300** q80, public crop **1200×900** q82 (4:3), master capped at **3200px** q90. Category banners are **1400×600** q82. All from `MenuImageProcessor` / `config/menu_media.php`. |
 | Masters kept separately | **Built** — `image_original_url` on items and categories points at the full-frame master in `menu-masters/`. Customers never download it; it exists for admin re-crop. |
-| Orphan cleanup | **Built** — `media:prune-unreferenced --days=7`, scheduled. It already collects `thumb_url` across items, item_photos and categories. |
+| Orphan cleanup | **Built** — `media:prune-unreferenced --days=7`, weekly. Since 2026-10-01 it scans every folder the app writes and checks the one reference index (`MediaReferenceIndex`: items, gallery, categories, Media Library rows and edit versions, site settings JSON, page blocks, signage, attachments, delivery proofs), removes the library row with a file, and expires delivery proofs after `--proof-days` (90). Folders it does not know are left alone and named in the output. |
 | Cataloguing backfill | **Built** — `media:backfill`, idempotent. Use it as the model for any new backfill. |
 | Lazy loading | **Built** — `loading="lazy"` on menu images, category rail, sliders. |
 | iPhone HEIC handling | **Built** — `prepareUpload.ts` converts HEIC/HEIF → JPEG. Note there are **two copies**: `apps/admin-dashboard/src/utils/prepareUpload.ts` and `apps/pos-web/src/utils/prepareUpload.ts`. |

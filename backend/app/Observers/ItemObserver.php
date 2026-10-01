@@ -52,7 +52,7 @@ class ItemObserver
         }
 
         // Soft-delete does not cascade; delete photos so their observers run.
-        foreach ($item->photos()->get() as $photo) {
+        foreach ($item->allPhotos()->get() as $photo) {
             $photo->delete();
         }
     }

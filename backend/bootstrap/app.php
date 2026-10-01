@@ -47,6 +47,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->append(App\Http\Middleware\SecurityHeaders::class);
         $middleware->append(App\Http\Middleware\SearchEngineDirectives::class);
+        $middleware->append(App\Http\Middleware\RejectOversizedUploads::class);
 
         // A /menu link from a social post carries ?s=<delivery>: count the
         // visit and leave a cookie so a later order can be traced to the post.
@@ -130,6 +131,19 @@ return Application::configure(basePath: dirname(__DIR__))
         });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // Media audit, 2026-10-01: a request PHP dropped for being over
+        // post_max_size says what the limit is, instead of "the photo field
+        // is required" or a bare "POST data is too large".
+        $exceptions->render(function (Illuminate\Http\Exceptions\PostTooLargeException $e, Illuminate\Http\Request $request) {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return App\Http\Middleware\RejectOversizedUploads::tooLarge(
+                    App\Http\Middleware\RejectOversizedUploads::bytes((string) ini_get('post_max_size')),
+                );
+            }
+
+            return null;
+        });
+
         // Sentry captures exceptions automatically via its Laravel integration.
         // The explicit log call below is kept as a secondary record for local log files.
         $exceptions->report(function (Throwable $e): void {

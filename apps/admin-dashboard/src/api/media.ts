@@ -24,7 +24,11 @@ export interface MediaAsset {
   tags: string[];
   source: string;
   collections: MediaCollection[];
-  usage_count: number;
+  /** null until asked for (getMediaUsageCounts): worked out on demand, not per tile. */
+  usage_count: number | null;
+  /** A clip still converting on the server, or one that failed (media audit, 2026-10-01). */
+  processing_status?: 'processing' | 'failed' | null;
+  processing_error?: string | null;
   original_url: string | null;
   /** Used to cache-bust previews after in-place replace edits. */
   checksum?: string | null;
@@ -166,6 +170,16 @@ export async function reconcileMedia(): Promise<{
   return req('/admin/media/reconcile', { method: 'POST', body: '{}' });
 }
 
+/** How many places each asset is used, for a handful of ids at a time. */
+export async function getMediaUsageCounts(ids: number[]): Promise<Record<number, number>> {
+  if (ids.length === 0) return {};
+  const qs = ids.slice(0, 100).map((id) => `ids[]=${id}`).join('&');
+  const res = await req<{ counts: Record<string, number> }>(`/admin/media/usage-counts?${qs}`);
+  const out: Record<number, number> = {};
+  Object.entries(res.counts ?? {}).forEach(([k, v]) => { out[Number(k)] = Number(v); });
+  return out;
+}
+
 export async function getMediaUsage(id: number): Promise<{ data: MediaUsageItem[] }> {
   return req(`/admin/media/${id}/usage`);
 }
@@ -229,6 +243,15 @@ export async function probeVideo(input: {
   });
 }
 
+export type VideoJobState =
+  | { status: 'queued' | 'running'; job_id: string }
+  | (VideoProcessResult & { status: 'done'; job_id: string });
+
+/**
+ * Starts an export. The server answers with the finished clip when it could
+ * do it at once, or with a job to poll (media audit, 2026-10-01: exports run
+ * on the worker so a long clip is no longer cut off by the request limit).
+ */
 export async function processVideo(input: {
   source_url?: string;
   media_id?: number;
@@ -237,11 +260,35 @@ export async function processVideo(input: {
   aspect?: VideoAspect;
   poster_at?: number;
   register_library?: boolean;
-}): Promise<VideoProcessResult> {
+}): Promise<VideoJobState> {
   return req('/admin/media/video/process', {
     method: 'POST',
     body: JSON.stringify(input),
   });
+}
+
+export async function getVideoJob(jobId: string): Promise<VideoJobState> {
+  return req(`/admin/media/video/jobs/${encodeURIComponent(jobId)}`);
+}
+
+/** Starts an export and waits for it, polling every couple of seconds. */
+export async function exportVideoAndWait(
+  input: Parameters<typeof processVideo>[0],
+  onStatus?: (status: 'queued' | 'running') => void,
+  pollMs = 2000,
+  maxWaitMs = 15 * 60 * 1000,
+): Promise<VideoProcessResult> {
+  let state = await processVideo(input);
+  const started = Date.now();
+  while (state.status !== 'done') {
+    onStatus?.(state.status);
+    if (Date.now() - started > maxWaitMs) {
+      throw new Error('The export is taking too long. Check the media library in a few minutes.');
+    }
+    await new Promise((r) => setTimeout(r, pollMs));
+    state = await getVideoJob(state.job_id);
+  }
+  return state;
 }
 
 export async function restoreMedia(id: number): Promise<{ asset: MediaAsset }> {

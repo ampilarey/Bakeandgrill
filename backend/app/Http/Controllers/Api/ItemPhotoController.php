@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Media\Jobs\ConvertUploadedVideo;
 use App\Domains\Media\Services\VideoProcessor;
 use App\Http\Requests\StoreItemVideoRequest;
 use App\Models\Item;
@@ -27,7 +28,9 @@ class ItemPhotoController extends Controller
     public function index(int $itemId): JsonResponse
     {
         $item = Item::findOrFail($itemId);
-        $photos = $item->photos()->get();
+        // Staff see clips that are still converting (and ones that failed,
+        // with the reason); customers only get finished ones.
+        $photos = $item->allPhotos()->get();
 
         return response()->json(['photos' => $photos]);
     }
@@ -202,8 +205,18 @@ class ItemPhotoController extends Controller
                 "item-photos/{$itemId}/video",
                 $ext,
             );
-            $safe = $this->videos->ensureWebSafe(Storage::disk('public')->path($videoRel));
-            $videoRel = $safe['relative_path'];
+            // Converted in the background (media audit, 2026-10-01). Only
+            // what can be settled without ffmpeg is settled here: with no
+            // ffmpeg, an .mp4 is trusted and anything else is refused now
+            // rather than left converting for ever.
+            $needsConversion = true;
+            if (!$this->videos->available()) {
+                if ($ext !== 'mp4') {
+                    Storage::disk('public')->delete($videoRel);
+                    throw new \RuntimeException(VideoProcessor::WEB_UNSAFE_MESSAGE);
+                }
+                $needsConversion = false;
+            }
             $posterPair = $this->processor->storeProcessedPair($poster, "item-photos/{$itemId}/posters");
             $thumbPair = $this->processor->storeThumbnailPair($poster, "item-photos/{$itemId}/thumbs");
             $posterRel = $posterPair['path'];
@@ -232,7 +245,13 @@ class ItemPhotoController extends Controller
             'alt_text' => $validated['alt_text'] ?? null,
             'sort_order' => $maxOrder + 1,
             'is_primary' => (bool) ($validated['is_primary'] ?? false),
+            'processing_status' => $needsConversion ? ConvertUploadedVideo::PROCESSING : null,
         ]);
+
+        if ($needsConversion) {
+            ConvertUploadedVideo::start('item_photo', (int) $photo->id);
+            $photo = $photo->fresh();
+        }
 
         return response()->json(['photo' => $photo], 201);
     }

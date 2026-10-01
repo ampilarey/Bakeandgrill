@@ -31,4 +31,8 @@ return [
 
     'ffmpeg_disabled' => (bool) env('FFMPEG_DISABLED', false),
 
+    // Media audit, 2026-10-01: how many previous versions an edited or
+    // replaced library picture keeps. Older copies are deleted.
+    'max_versions' => (int) env('MEDIA_MAX_VERSIONS', 5),
+
 ];

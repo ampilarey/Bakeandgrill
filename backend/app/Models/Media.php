@@ -33,6 +33,8 @@ class Media extends Model
         'source',
         'checksum',
         'uploaded_by',
+        'processing_status',
+        'processing_error',
     ];
 
     protected $casts = [

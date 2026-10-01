@@ -136,11 +136,16 @@ if (routes_domain_section_is('staff', 'admin') && !routes_domain_loaded('staff.a
             ->middleware('permission:media.manage');
         Route::post('/bulk-delete', [App\Http\Controllers\Api\MediaLibraryController::class, 'bulkDestroy'])
             ->middleware('permission:media.manage');
+        // Media audit, 2026-10-01: usage on demand instead of per tile.
+        Route::get('/usage-counts', [App\Http\Controllers\Api\MediaLibraryController::class, 'usageCounts'])
+            ->middleware('permission:media.view');
 
         // Video studio (must be before /{media} routes). Permission checked in controller.
         Route::get('/video/capabilities', [App\Http\Controllers\Api\VideoStudioController::class, 'capabilities']);
         Route::post('/video/probe', [App\Http\Controllers\Api\VideoStudioController::class, 'probe']);
         Route::post('/video/process', [App\Http\Controllers\Api\VideoStudioController::class, 'process']);
+        Route::get('/video/jobs/{job}', [App\Http\Controllers\Api\VideoStudioController::class, 'job'])
+            ->where('job', '[A-Za-z0-9]{20,64}');
 
         Route::get('/collections', [App\Http\Controllers\Api\MediaCollectionController::class, 'index'])
             ->middleware('permission:media.view');

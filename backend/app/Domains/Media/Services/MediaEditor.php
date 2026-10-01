@@ -29,7 +29,7 @@ final class MediaEditor
     ) {}
 
     /**
-     * @param  array<string, mixed>  $params
+     * @param array<string, mixed> $params
      * @return array{asset: Media, updated_references: int, mode: string}
      */
     public function edit(
@@ -164,7 +164,7 @@ final class MediaEditor
             // Best-effort
         }
         $thumbDisk = MediaFileCleaner::storagePathFromUrl(
-            is_string($asset->thumb_url) ? $asset->thumb_url : null
+            is_string($asset->thumb_url) ? $asset->thumb_url : null,
         );
         if (is_string($thumbDisk) && $thumbDisk !== '') {
             try {
@@ -433,7 +433,7 @@ final class MediaEditor
     }
 
     /**
-     * @param  array<string, mixed>  $params
+     * @param array<string, mixed> $params
      * @return array{contents: string, ext: string, mime: string, width: int, height: int}
      */
     private function applyOp(Media $asset, string $op, array $params): array
@@ -463,7 +463,7 @@ final class MediaEditor
     private function resolveSourcePath(Media $asset, bool $preferMaster): string
     {
         if ($preferMaster && $asset->original_url) {
-            $master = \App\Support\MediaFileCleaner::storagePathFromUrl($asset->original_url);
+            $master = MediaFileCleaner::storagePathFromUrl($asset->original_url);
             if ($master && Storage::disk('public')->exists($master)) {
                 return $master;
             }
@@ -556,8 +556,8 @@ final class MediaEditor
      * Flip and/or rotate. Both can be applied in one call (flip first, then rotate).
      * Free angles expand the canvas; fill is white for JPEG, transparent for PNG/WebP.
      *
-     * @param  \GdImage|resource  $image
-     * @param  array<string, mixed>  $params
+     * @param \GdImage|resource $image
+     * @param array<string, mixed> $params
      */
     private function opRotate($image, array $params, Media $asset): array
     {
@@ -599,7 +599,7 @@ final class MediaEditor
             $didSomething = true;
         }
 
-        if (! $didSomething) {
+        if (!$didSomething) {
             imagedestroy($image);
             abort(422, 'Provide flip=horizontal|vertical|both and/or degrees (1–359).');
         }
@@ -608,7 +608,7 @@ final class MediaEditor
     }
 
     /**
-     * @param  array<string, mixed>  $params
+     * @param array<string, mixed> $params
      */
     private function outputFormatForAsset(Media $asset, array $params): string
     {
@@ -668,7 +668,7 @@ final class MediaEditor
     }
 
     /**
-     * @param  \GdImage|resource  $image
+     * @param \GdImage|resource $image
      * @return array{contents: string, ext: string, mime: string, width: int, height: int}
      */
     private function encode($image, string $format, int $quality): array
@@ -733,6 +733,34 @@ final class MediaEditor
             'height' => $asset->height,
             'created_at' => now(),
         ]);
+
+        $this->trimVersions($asset);
+    }
+
+    /**
+     * Keep only the newest few versions (media audit, 2026-10-01). Every
+     * crop, rotate or replace copied the whole previous file and nothing
+     * ever removed a copy, so a picture edited often carried its entire
+     * history on disk.
+     */
+    private function trimVersions(Media $asset): void
+    {
+        $keep = max(1, (int) config('media.max_versions', 5));
+        $stale = MediaAssetVersion::query()
+            ->where('media_asset_id', $asset->id)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->skip($keep)
+            ->take(1000)
+            ->get();
+
+        foreach ($stale as $version) {
+            $path = ltrim((string) $version->path, '/');
+            if ($path !== '' && Storage::disk('public')->exists($path)) {
+                Storage::disk('public')->delete($path);
+            }
+            $version->delete();
+        }
     }
 
     private function writeThumbnailForPath(Media $asset, string $contents, string $ext): void
@@ -742,7 +770,7 @@ final class MediaEditor
             return;
         }
         file_put_contents($tmp, $contents);
-        $uploaded = new \Illuminate\Http\UploadedFile($tmp, 'thumb.' . $ext, $asset->mime_type, null, true);
+        $uploaded = new UploadedFile($tmp, 'thumb.' . $ext, $asset->mime_type, null, true);
         try {
             $dir = 'library/images/thumbs';
             $thumb = $this->images->storeThumbnailPair($uploaded, $dir);

@@ -153,6 +153,14 @@ function Gallery({ itemId }: { itemId: number }) {
 
   useEffect(() => { void load(); }, [itemId]);
 
+  // A clip converts on the server; look again every few seconds until it is done.
+  const converting = photos.some((p) => p.processing_status === 'processing');
+  useEffect(() => {
+    if (!converting) return undefined;
+    const t = window.setTimeout(() => { void load(); }, 3000);
+    return () => window.clearTimeout(t);
+  }, [converting, photos]);
+
   const closeCropper = () => {
     setCropSrc((prev) => {
       revokeCropSrc(prev);
@@ -403,7 +411,12 @@ function Gallery({ itemId }: { itemId: number }) {
               />
               {ph.media_type === 'video' && (
                 <div style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(28,20,8,0.75)', color: '#fff', borderRadius: 6, padding: '2px 6px', fontSize: 10, fontWeight: 700 }}>
-                  ▶ Video
+                  {ph.processing_status === 'processing' ? 'Converting…' : ph.processing_status === 'failed' ? 'Failed' : '▶ Video'}
+                </div>
+              )}
+              {ph.processing_status === 'failed' && (
+                <div style={{ padding: '4px 6px 0', fontSize: 10, color: 'var(--color-danger)' }} title={ph.processing_error ?? ''}>
+                  {ph.processing_error || 'The clip could not be converted.'} Remove it and upload an MP4.
                 </div>
               )}
               {ph.is_primary && (

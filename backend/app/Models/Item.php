@@ -192,7 +192,17 @@ class Item extends Model
         return $this->platterGroups()->exists();
     }
 
+    /**
+     * Gallery photos and clips ready to show. A clip still converting in the
+     * background, or one that failed, is left out (media audit, 2026-10-01);
+     * staff screens use allPhotos().
+     */
     public function photos(): HasMany
+    {
+        return $this->hasMany(ItemPhoto::class)->whereNull('processing_status')->orderBy('sort_order');
+    }
+
+    public function allPhotos(): HasMany
     {
         return $this->hasMany(ItemPhoto::class)->orderBy('sort_order');
     }

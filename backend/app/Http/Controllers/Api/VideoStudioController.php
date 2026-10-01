@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Media\Jobs\ExportStudioVideo;
 use App\Domains\Media\Services\MediaLibraryService;
 use App\Domains\Media\Services\VideoProcessor;
 use App\Http\Controllers\Controller;
@@ -11,7 +12,7 @@ use App\Models\Media;
 use App\Services\AuditLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 class VideoStudioController extends Controller
 {
@@ -35,7 +36,7 @@ class VideoStudioController extends Controller
     public function probe(Request $request): JsonResponse
     {
         $this->authorizeStudio($request);
-        if (! $this->processor->available()) {
+        if (!$this->processor->available()) {
             return response()->json(['message' => 'FFmpeg is not installed on this server.'], 503);
         }
 
@@ -57,7 +58,7 @@ class VideoStudioController extends Controller
     public function process(Request $request): JsonResponse
     {
         $this->authorizeStudio($request);
-        if (! $this->processor->available()) {
+        if (!$this->processor->available()) {
             return response()->json(['message' => 'FFmpeg is not installed on this server. Ask hosting to install ffmpeg + ffprobe.'], 503);
         }
 
@@ -78,40 +79,36 @@ class VideoStudioController extends Controller
 
         try {
             $absolute = $this->resolveSource($data);
-            $result = $this->processor->process($absolute, [
+        } catch (\Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        // Exported on the worker (media audit, 2026-10-01). The admin polls
+        // job(); when the queue is synchronous the export has already
+        // finished by the time dispatch returns, and the result goes back
+        // at once as it always did.
+        $jobId = Str::random(32);
+        ExportStudioVideo::queue($jobId);
+        ExportStudioVideo::dispatch(
+            $jobId,
+            $absolute,
+            [
                 'trim_start' => $data['trim_start'] ?? 0,
                 'trim_end' => $data['trim_end'] ?? null,
                 'aspect' => $data['aspect'] ?? 'original',
                 'crop' => $data['crop'] ?? null,
                 'poster_at' => $data['poster_at'] ?? null,
-            ]);
-        } catch (\Throwable $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
-        }
-
-        $mediaId = null;
-        if (($data['register_library'] ?? true) && Schema::hasTable('media_assets')) {
-            try {
-                $registered = $this->library->registerPath(
-                    $result['path'],
-                    'studio',
-                    $request->user(),
-                    null,
-                    $result['poster_url'],
-                    null,
-                );
-                $mediaId = $registered->id ?? null;
-            } catch (\Throwable) {
-                // best-effort
-            }
-        }
+            ],
+            (bool) ($data['register_library'] ?? true),
+            $request->user()?->id,
+        );
 
         $this->audit->log(
             action: 'media.video_studio.export',
             modelType: Media::class,
-            modelId: $mediaId,
+            modelId: null,
             oldValues: ['source' => $data['source_url'] ?? $data['media_id'] ?? null],
-            newValues: ['url' => $result['url'], 'poster_url' => $result['poster_url']],
+            newValues: ['job_id' => $jobId],
             meta: [
                 'aspect' => $data['aspect'] ?? 'original',
                 'trim_start' => $data['trim_start'] ?? 0,
@@ -120,42 +117,57 @@ class VideoStudioController extends Controller
             request: $request,
         );
 
-        return response()->json([
-            'url' => $result['url'],
-            'poster_url' => $result['poster_url'],
-            'duration' => $result['duration'],
-            'width' => $result['width'],
-            'height' => $result['height'],
-            'media_id' => $mediaId,
-        ], 201);
+        return $this->jobResponse($jobId, 201);
+    }
+
+    /** GET /api/admin/media/video/jobs/{job} — where an export has got to. */
+    public function job(Request $request, string $job): JsonResponse
+    {
+        $this->authorizeStudio($request, viewOnly: true);
+
+        return $this->jobResponse($job, 200);
+    }
+
+    private function jobResponse(string $jobId, int $doneStatus): JsonResponse
+    {
+        $state = ExportStudioVideo::status($jobId);
+        if ($state === null) {
+            return response()->json(['message' => 'That export has expired or never existed.'], 404);
+        }
+
+        return match ($state['status']) {
+            'done' => response()->json(array_merge($state['result'], ['status' => 'done', 'job_id' => $jobId]), $doneStatus),
+            'failed' => response()->json(['message' => $state['error'] ?? 'Export failed.', 'status' => 'failed', 'job_id' => $jobId], 422),
+            default => response()->json(['status' => $state['status'], 'job_id' => $jobId], 202),
+        };
     }
 
     private function authorizeStudio(Request $request, bool $viewOnly = false): void
     {
         $user = $request->user();
-        if (! $user) {
+        if (!$user) {
             abort(403);
         }
         $ok = $user->hasPermission('media.manage')
             || $user->hasPermission('website.manage')
             || ($viewOnly && $user->hasPermission('media.view'));
-        if (! $ok) {
+        if (!$ok) {
             abort(403, 'Missing media.manage or website.manage permission.');
         }
     }
 
     /**
-     * @param  array<string, mixed>  $data
+     * @param array<string, mixed> $data
      */
     private function resolveSource(array $data): string
     {
-        if (! empty($data['media_id'])) {
+        if (!empty($data['media_id'])) {
             $media = Media::query()->findOrFail((int) $data['media_id']);
             if ($media->media_type !== 'video') {
                 throw new \InvalidArgumentException('Selected media is not a video.');
             }
 
-            return $this->processor->resolvePublicPath($media->url ?: ('/storage/'.$media->path));
+            return $this->processor->resolvePublicPath($media->url ?: ('/storage/' . $media->path));
         }
 
         return $this->processor->resolvePublicPath((string) $data['source_url']);
