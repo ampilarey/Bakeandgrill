@@ -175,15 +175,15 @@ class TradeReportsController extends Controller
     }
 
     /**
-     * @param  list<string>  $headers
-     * @param  list<array<string, mixed>>  $rows
+     * @param list<string> $headers
+     * @param list<array<string, mixed>> $rows
      */
     private function csvResponse(string $name, array $headers, array $rows): Response
     {
         $escape = static function ($v): string {
-            $s = $v === null ? '' : (string) $v;
+            $s = \App\Support\CsvCell::safe($v);
             if (str_contains($s, ',') || str_contains($s, '"') || str_contains($s, "\n")) {
-                return '"'.str_replace('"', '""', $s).'"';
+                return '"' . str_replace('"', '""', $s) . '"';
             }
 
             return $s;
@@ -197,9 +197,9 @@ class TradeReportsController extends Controller
             ));
         }
 
-        return response(implode("\n", $lines)."\n", 200, [
+        return response(implode("\n", $lines) . "\n", 200, [
             'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="'.$name.'-'.now()->toDateString().'.csv"',
+            'Content-Disposition' => 'attachment; filename="' . $name . '-' . now()->toDateString() . '.csv"',
         ]);
     }
 }

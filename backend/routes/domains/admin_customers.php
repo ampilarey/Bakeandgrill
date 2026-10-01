@@ -58,6 +58,8 @@ Route::middleware(['auth:sanctum', 'staff.token', 'permission:customers.manage']
     Route::patch('/{id}/phone', [App\Http\Controllers\Api\AdminCustomerController::class, 'changePhone']);
     Route::post('/{id}/merge', [App\Http\Controllers\Api\AdminCustomerController::class, 'merge']);
     Route::delete('/{id}', [App\Http\Controllers\Api\AdminCustomerController::class, 'destroy']);
+    // Data protection audit, 2026-10-01: erase personal data on request (owner only, checked in the controller).
+    Route::post('/{id}/erase', [App\Http\Controllers\Api\AdminCustomerController::class, 'erase']);
 
     Route::middleware('permission:customers.credit.manage')->group(function () {
         Route::get('/{id}/credit', [App\Http\Controllers\Api\CustomerCreditController::class, 'show']);

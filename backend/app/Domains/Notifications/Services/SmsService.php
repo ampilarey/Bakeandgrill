@@ -331,7 +331,25 @@ class SmsService
             return '[otp redacted]';
         }
 
-        return $sms->message;
+        return self::maskSecretsForLog($sms->message);
+    }
+
+    /**
+     * A gift card text carries the full code and a link that shows it, and
+     * either one is money (security audit, 2026-10-01). The log and its CSV
+     * export are open to anyone with SMS rights, so the log keeps the last
+     * four characters and drops the link token. The customer's copy is
+     * untouched.
+     */
+    public static function maskSecretsForLog(string $message): string
+    {
+        $message = preg_replace_callback(
+            '/\b([A-Z0-9]{4})-([A-Z0-9]{4})-([A-Z0-9]{4})-([A-Z0-9]{4})\b/',
+            static fn (array $m): string => '****-****-****-' . $m[4],
+            $message,
+        ) ?? $message;
+
+        return preg_replace('#(/gift-cards/v/)[A-Za-z0-9]{16,}#', '$1[hidden]', $message) ?? $message;
     }
 
     /** @param array{encoding: string, segments: int, cost_mvr: float} $estimate */

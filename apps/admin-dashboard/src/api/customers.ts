@@ -281,6 +281,14 @@ export async function deleteAdminCustomer(id: number): Promise<void> {
   await req(`/admin/customers/${id}`, { method: 'DELETE' });
 }
 
+/**
+ * Erase a customer's personal data on request (owner only, cannot be undone).
+ * With check, only reports what would stop it.
+ */
+export async function eraseAdminCustomer(id: number, check = false): Promise<{ message?: string; blockers?: string[] }> {
+  return req(`/admin/customers/${id}/erase${check ? '?check=1' : ''}`, { method: 'POST' });
+}
+
 export async function changeAdminCustomerPhone(
   id: number,
   phone: string,

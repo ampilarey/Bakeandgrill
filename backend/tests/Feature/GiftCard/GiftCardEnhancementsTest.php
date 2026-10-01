@@ -131,7 +131,10 @@ class GiftCardEnhancementsTest extends TestCase
         ]);
 
         $body = SmsLog::query()->where('reference_type', 'gift_card')->latest('id')->value('message');
-        $this->assertStringContainsString($code, (string) $body);
+        // The customer's text carries the code; the log keeps only its last
+        // four (security audit, 2026-10-01).
+        $this->assertStringNotContainsString($code, (string) $body);
+        $this->assertStringContainsString('****-****-****-' . substr((string) $code, -4), (string) $body);
         $this->assertStringContainsString('MVR 75.00', (string) $body);
         $this->assertStringContainsString('Happy birthday!', (string) $body);
     }

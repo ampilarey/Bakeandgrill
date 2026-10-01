@@ -87,7 +87,7 @@ class SmsCampaignController extends Controller
             $rows = 0;
             foreach ($query->cursor() as $log) {
                 $entry = SmsTypeRegistry::resolve((string) $log->type);
-                fputcsv($out, [
+                fputcsv($out, \App\Support\CsvCell::row([
                     $log->sent_at?->toDateTimeString() ?? '',
                     $log->created_at?->toDateTimeString() ?? '',
                     $log->to,
@@ -98,9 +98,9 @@ class SmsCampaignController extends Controller
                     $log->segments,
                     number_format((float) $log->cost_estimate_mvr, 2, '.', ''),
                     trim(($log->reference_type ?? '') . ' ' . ($log->reference_id ?? '')),
-                    SmsTypeRegistry::shouldRedactBody((string) $log->type) ? '[redacted]' : $log->message,
+                    SmsTypeRegistry::shouldRedactBody((string) $log->type) ? '[redacted]' : SmsService::maskSecretsForLog((string) $log->message),
                     $log->error_message ?? '',
-                ]);
+                ]));
                 if (++$rows >= 50000) {
                     break;
                 }

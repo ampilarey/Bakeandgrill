@@ -33,6 +33,12 @@
     RewriteCond %{HTTP:x-xsrf-token} .
     RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
 
+    # Uploads are files, never programs or pages (security audit, 2026-10-01).
+    # The upload code already picks safe extensions; this is the second lock,
+    # for anything that ever reaches /storage by another route: the host runs
+    # PHP there, and an .html or .svg would run script on this site's origin.
+    RewriteRule ^storage/.*\.(php[0-9]?|phtml|phar|pht|cgi|pl|py|sh|s?html?|svg|xml)$ - [F,NC,L]
+
     # Redirect Trailing Slashes If Not A Folder...
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_URI} (.+)/$

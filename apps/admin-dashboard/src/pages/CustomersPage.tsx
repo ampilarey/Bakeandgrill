@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
-  fetchAdminCustomers, getAdminCustomer, updateAdminCustomer, deleteAdminCustomer,
+  fetchAdminCustomers, getAdminCustomer, updateAdminCustomer, deleteAdminCustomer, eraseAdminCustomer,
   changeAdminCustomerPhone, mergeAdminCustomers,
   fetchCustomerGrowthSummary, fetchCustomerSegments,
   type AdminCustomer, type Order, type CustomerSegmentMeta,
@@ -15,6 +15,7 @@ import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import { CustomerCreditSection } from '../components/CustomerCreditSection';
 import { Customer360Drawer, BADGE_MAP } from '../components/Customer360Drawer';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { RecordCard, RecordCardList } from '../components/RecordCard';
 
@@ -80,6 +81,8 @@ export function CustomersPage() {
   const [mergeError, setMergeError] = useState('');
 
   const { state: dlg, ask, close: closeDlg } = useConfirmDialog();
+  const { user: me } = useCurrentUserPermissions();
+  const isOwner = me?.role === 'owner';
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = async (s: string, p: number, segment: string, active: typeof activeFilter) => {
@@ -287,6 +290,31 @@ export function CustomersPage() {
     });
   };
 
+  // Data protection audit, 2026-10-01: the privacy page promises deletion on request.
+  const handleErase = async (c: AdminCustomer) => {
+    try {
+      const { blockers = [] } = await eraseAdminCustomer(c.id, true);
+      if (blockers.length > 0) {
+        setError(`Cannot erase ${c.name ?? c.phone} yet: ${blockers.join(' ')}`);
+        return;
+      }
+    } catch (e) { setError((e as Error).message); return; }
+    ask({
+      title: 'Erase personal data',
+      message: `Erase ${c.name ?? c.phone}'s name, phone, email, birthday, saved addresses and the delivery details on their past orders? Orders and payments are kept by number and amount. This cannot be undone.`,
+      confirmLabel: 'Erase',
+      danger: true,
+      onConfirm: async () => {
+        try {
+          await eraseAdminCustomer(c.id);
+          setCustomers((prev) => prev.filter((x) => x.id !== c.id));
+          setMeta((m) => ({ ...m, total: m.total - 1 }));
+          closeDetail();
+        } catch (e) { setError((e as Error).message); }
+      },
+    });
+  };
+
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '8px 10px', border: '1.5px solid var(--color-border)',
     borderRadius: 8, fontSize: 13, fontFamily: 'inherit', outline: 'none',
@@ -452,6 +480,9 @@ export function CustomersPage() {
                   <Btn variant="secondary" onClick={() => setEditing(true)}>Edit</Btn>
                   <Btn variant="secondary" onClick={() => detail && setView360Id(detail.customer.id)}>View Customer 360</Btn>
                   <Btn variant="danger" onClick={() => detail && handleDelete(detail.customer)}>Deactivate</Btn>
+                  {isOwner && (
+                    <Btn variant="danger" onClick={() => detail && void handleErase(detail.customer)}>Erase personal data</Btn>
+                  )}
                   <Btn onClick={closeDetail}>Close</Btn>
                 </>
               ) : (

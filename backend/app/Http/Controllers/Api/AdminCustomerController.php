@@ -168,12 +168,35 @@ class AdminCustomerController extends Controller
      * DELETE /admin/customers/{id}
      * Soft-delete the customer. Past orders remain linked.
      */
-    public function destroy(int $id): JsonResponse
+    public function destroy(Request $request, int $id): JsonResponse
     {
         $customer = Customer::findOrFail($id);
         $customer->delete(); // SoftDeletes — sets deleted_at
+        $customer->tokens()->delete();
+
+        app(\App\Services\AuditLogService::class)->log('customer.deactivated', 'Customer', $id, [], [], [], $request);
 
         return response()->json(['message' => 'Customer deactivated.']);
+    }
+
+    /**
+     * POST /api/admin/customers/{id}/erase — erase their personal data on
+     * request (privacy page promise). Owner only, and cannot be undone. With
+     * ?check=1 it only reports what would stop it.
+     */
+    public function erase(Request $request, int $id, \App\Domains\Customers\Services\CustomerErasureService $erasure): JsonResponse
+    {
+        $actor = $request->user();
+        abort_unless($actor instanceof \App\Models\User && $actor->role?->slug === 'owner', 403, 'Only an owner can erase a customer\'s personal data.');
+
+        $customer = Customer::findOrFail($id);
+        if ($request->boolean('check')) {
+            return response()->json(['blockers' => $erasure->blockers($customer)]);
+        }
+
+        $erasure->erase($customer, $actor, $request);
+
+        return response()->json(['message' => 'Personal data erased. Orders and payments are kept by number and amount only.']);
     }
 
     private function format(Customer $c): array
