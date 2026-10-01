@@ -22,6 +22,21 @@ for both menu page." So the POS payload carries the cut-out URLs but no backdrop
 The opened item (item page, item sheet, offers, signage, social cards) never uses
 the cut-out. Items without one look exactly as before.
 
+## Where it is edited
+
+Every picture of an item is on the item editor's **Photos & video** tab (owner,
+2026-10-01: "move pic in edit page to picture button page"). The tab opens with a
+"which picture shows where" table, then three numbered sections, each with a
+"Shows on" line:
+
+1. **Main photo** (part of the item form, saved with Save Item): POS tile and
+   sheet, signage, offers, social cards, and the menu cards when nothing else exists.
+2. **Thumbnail cut-out**: the two menu pages' cards over a circle; POS tile without.
+3. **Gallery photos and video**: the slideshow on the opened item; the starred
+   photo is the card photo when there is no cut-out and the shared-link picture.
+
+A new item shows the tab too, with sections 2 and 3 waiting until it is saved.
+
 ## The circle (backdrop)
 
 A backdrop is a **colour** and a **strength** (0 to 100, the circle's opacity). Each

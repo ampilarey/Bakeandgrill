@@ -15,7 +15,7 @@ import {
 import { ImageCropModal } from './ImageCropModal';
 import { prepareImageForCrop, prepareUploadFromFile, resolveMediaUrl, revokeCropSrc } from './mediaUrl';
 
-type ImageUrls = {
+export type ImageUrls = {
   url: string;
   original_url: string;
   thumb_url?: string;

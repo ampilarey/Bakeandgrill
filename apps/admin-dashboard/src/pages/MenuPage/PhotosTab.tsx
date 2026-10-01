@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight, Crop, Images, Star, Trash2, Upload } from 'lucide-react';
 import { getItemPhotos, uploadItemPhoto, updateItemPhoto, deleteItemPhoto, reorderItemPhotos, uploadItemVideo, type ItemPhoto } from '../../api';
 import { addItemPhotoFromLibrary } from '../../api/menu';
@@ -6,10 +6,126 @@ import { MediaPicker } from '../../components/MediaPicker';
 import type { MediaAsset } from '../../api/media';
 import { ImageCropModal } from './ImageCropModal';
 import { CutoutSlot } from './CutoutSlot';
+import { ImageUploadField, type ImageUrls } from './menuFormPrimitives';
 import { prepareImageForCrop, prepareUploadFromFile, resolveMediaUrl, revokeCropSrc } from './mediaUrl';
 import { MENU_VIDEO_LIMITS, prepareVideoClip } from './videoClip';
 
-export function PhotosTab({ itemId }: { itemId: number }) {
+/**
+ * Every picture of an item on one tab, each section saying where it shows
+ * (owner, 2026-10-01: "make it clear which pic is for pos and which is for
+ * menu and where more pic and video is shown and how is shown").
+ *
+ *   1. Main photo        the item's one plain photo: POS, signage, offers,
+ *                        and the menu cards when nothing below exists
+ *   2. Thumbnail cut-out the see-through PNG for the two menu pages' cards
+ *                        (over a circle) and the POS tile (no circle)
+ *   3. Gallery & video   what a customer sees after opening the item
+ */
+export function PhotosTab({
+  itemId,
+  mainPhoto,
+  onMainPhotoChange,
+}: {
+  /** Absent for an item that is not saved yet: only the main photo can be set. */
+  itemId?: number;
+  mainPhoto?: { image_url: string; image_original_url: string };
+  onMainPhotoChange?: (next: ImageUrls) => void;
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <WhereEachShows />
+
+      {mainPhoto && onMainPhotoChange && (
+        <PictureSection
+          number={1}
+          title="Main photo"
+          shows="POS tile and its item sheet, TV signage, offers and specials, social cards. Also the menu cards and shared links when there is no cut-out or gallery photo. Saved with the item (Save Item)."
+          testId="photos-main-section"
+        >
+          <ImageUploadField
+            value={mainPhoto.image_url}
+            originalValue={mainPhoto.image_original_url}
+            onChange={onMainPhotoChange}
+          />
+        </PictureSection>
+      )}
+
+      <PictureSection
+        number={2}
+        title="Thumbnail cut-out"
+        shows="Website menu cards and order app menu cards, floating over a circle. POS tile, with no circle. Never on the opened item."
+        testId="photos-cutout-section"
+      >
+        {itemId ? <CutoutSlot itemId={itemId} /> : <SaveFirst what="a cut-out" />}
+      </PictureSection>
+
+      <PictureSection
+        number={3}
+        title="Gallery photos and video"
+        shows="The slideshow a customer sees after tapping the item on the website or in the order app, in this order. The starred photo is also the card photo when there is no cut-out, and the picture a shared link shows. Not used on the POS or signage."
+        testId="photos-gallery-section"
+      >
+        {itemId ? <Gallery itemId={itemId} /> : <SaveFirst what="gallery photos and video" />}
+      </PictureSection>
+    </div>
+  );
+}
+
+function WhereEachShows() {
+  const row = (surface: string, picture: string) => (
+    <tr key={surface}>
+      <td style={{ padding: '4px 8px 4px 0', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{surface}</td>
+      <td style={{ padding: '4px 0', color: 'var(--color-text)' }}>{picture}</td>
+    </tr>
+  );
+  return (
+    <div style={{ border: '1px solid var(--color-border)', borderRadius: 12, padding: '10px 12px', background: 'var(--color-surface)' }} data-testid="photos-where-table">
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text)', marginBottom: 4 }}>Which picture shows where</div>
+      <table style={{ fontSize: 12, borderCollapse: 'collapse', width: '100%' }}>
+        <tbody>
+          {row('Menu card (website, order app)', 'Cut-out over a circle. Otherwise the starred gallery photo. Otherwise the main photo.')}
+          {row('Opened item (website, order app)', 'Gallery photos and video as a slideshow. Otherwise the main photo.')}
+          {row('POS tile', 'Cut-out on the tile colour, no circle. Otherwise the main photo.')}
+          {row('TV signage, offers, social cards', 'Main photo.')}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function PictureSection({ number, title, shows, testId, children }: {
+  number: number;
+  title: string;
+  shows: string;
+  testId: string;
+  children: ReactNode;
+}) {
+  return (
+    <section data-testid={testId} style={{ border: '1px solid var(--color-border)', borderRadius: 12, padding: 12, background: 'var(--color-bg)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>
+          <span style={{ display: 'inline-flex', width: 22, height: 22, borderRadius: 999, background: 'var(--color-primary)', color: 'white', fontSize: 12, alignItems: 'center', justifyContent: 'center', marginRight: 8 }}>{number}</span>
+          {title}
+        </div>
+        <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.45 }}>
+          <strong>Shows on:</strong> {shows}
+        </p>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function SaveFirst({ what }: { what: string }) {
+  return (
+    <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-muted)' }} data-testid="photos-save-first">
+      Save the item first, then come back here to add {what}.
+    </p>
+  );
+}
+
+/** Section 3: the gallery and video, exactly as before, now under its own heading. */
+function Gallery({ itemId }: { itemId: number }) {
   const [photos, setPhotos] = useState<ItemPhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -181,42 +297,54 @@ export function PhotosTab({ itemId }: { itemId: number }) {
   if (loading) return <div style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 14 }}>Loading photos…</div>;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {error && <div style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger-strong)', padding: '8px 12px', borderRadius: 8, fontSize: 13 }}>{error}</div>}
 
-      {/* Owner, 2026-10-01: the ZUS-style see-through thumbnail, cards only. */}
-      <CutoutSlot itemId={itemId} />
-
-      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)', marginTop: 4 }}>Photos and video</div>
-      <button
-        type="button"
-        onClick={() => fileRef.current?.click()}
-        disabled={uploading}
-        style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          padding: '10px 16px', background: 'var(--color-border-light)', border: '2px dashed #cbd5e1',
-          borderRadius: 10, cursor: uploading ? 'not-allowed' : 'pointer',
-          fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)',
-        }}
-      >
-        <Upload size={15} />
-        {uploading && !cropSrc ? 'Preparing…' : 'Upload & crop photo'}
-      </button>
-      <button
-        type="button"
-        onClick={() => setPickerOpen(true)}
-        disabled={uploading}
-        data-testid="gallery-pick-from-library-btn"
-        style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          padding: '10px 16px', background: 'var(--color-bg)', border: '2px dashed var(--color-border)',
-          borderRadius: 10, cursor: uploading ? 'not-allowed' : 'pointer',
-          fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)',
-        }}
-      >
-        <Images size={15} />
-        Pick from Library
-      </button>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          disabled={uploading}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            padding: '10px 16px', background: 'var(--color-border-light)', border: '2px dashed #cbd5e1',
+            borderRadius: 10, cursor: uploading ? 'not-allowed' : 'pointer',
+            fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)',
+          }}
+        >
+          <Upload size={15} />
+          {uploading && !cropSrc ? 'Preparing…' : 'Upload & crop photo'}
+        </button>
+        <button
+          type="button"
+          onClick={() => setPickerOpen(true)}
+          disabled={uploading}
+          data-testid="gallery-pick-from-library-btn"
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            padding: '10px 16px', background: 'var(--color-surface)', border: '2px dashed var(--color-border)',
+            borderRadius: 10, cursor: uploading ? 'not-allowed' : 'pointer',
+            fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)',
+          }}
+        >
+          <Images size={15} />
+          Pick from Library
+        </button>
+        <button
+          type="button"
+          onClick={() => videoRef.current?.click()}
+          disabled={uploading}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            padding: '10px 16px', background: '#EEF6FF', border: '2px dashed #bfdbfe',
+            borderRadius: 10, cursor: uploading ? 'not-allowed' : 'pointer',
+            fontSize: 13, fontWeight: 600, color: '#1e40af',
+          }}
+        >
+          <Upload size={15} />
+          Add video clip (≤{MENU_VIDEO_LIMITS.maxSeconds}s)
+        </button>
+      </div>
       <MediaPicker
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
@@ -225,22 +353,8 @@ export function PhotosTab({ itemId }: { itemId: number }) {
         title="Pick a gallery photo"
         onPick={(asset: MediaAsset) => { void addFromLibrary(asset); }}
       />
-      <button
-        type="button"
-        onClick={() => videoRef.current?.click()}
-        disabled={uploading}
-        style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          padding: '10px 16px', background: '#EEF6FF', border: '2px dashed #bfdbfe',
-          borderRadius: 10, cursor: uploading ? 'not-allowed' : 'pointer',
-          fontSize: 13, fontWeight: 600, color: '#1e40af',
-        }}
-      >
-        <Upload size={15} />
-        Add video clip (≤{MENU_VIDEO_LIMITS.maxSeconds}s)
-      </button>
       <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>
-        Photos: 1200×900 crop. Videos play muted in the item sheet only (cards show the poster). Max {(MENU_VIDEO_LIMITS.maxBytes / (1024 * 1024)).toFixed(0)} MB.
+        Photos are cropped 4:3 at 1200×900; the full original is kept for re-cropping. A video plays muted in the opened item only and the cards show its poster. Max {(MENU_VIDEO_LIMITS.maxBytes / (1024 * 1024)).toFixed(0)} MB.
       </p>
       <input
         ref={fileRef}
@@ -276,7 +390,7 @@ export function PhotosTab({ itemId }: { itemId: number }) {
 
       {photos.length === 0 ? (
         <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '20px 0', fontSize: 13 }}>
-          No photos yet. Upload one or pick from the library above.
+          No gallery photos yet. Upload one or pick from the library above.
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 12 }}>
@@ -349,7 +463,7 @@ export function PhotosTab({ itemId }: { itemId: number }) {
                 {!ph.is_primary && (
                   <button
                     type="button"
-                    title="Set as primary"
+                    title="Set as primary (card photo, first slide, shared-link picture)"
                     onClick={() => void setPrimary(ph.id)}
                     style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px', background: 'var(--color-warning-bg)', border: '1px solid #fcd34d', borderRadius: 6, cursor: 'pointer' }}
                   >

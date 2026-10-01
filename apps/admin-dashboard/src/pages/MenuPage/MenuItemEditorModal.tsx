@@ -4,7 +4,7 @@ import { useGstBootstrap } from '../../hooks/useGstBootstrap';
 import { Btn, ErrorMsg, Input, Modal, ModalActions } from '../../components/SharedUI';
 import { ItemSearch, type MenuItemSelection } from '../../components/ItemSearch';
 import { ChildSizeSelect, sizeOptionsFromSelection } from './ChildSizeSelect';
-import { Field, FormTextarea, ImageUploadField } from './menuFormPrimitives';
+import { Field, FormTextarea } from './menuFormPrimitives';
 import {
   emptyPackagingOptionRow, emptyPlatterGroupRow, emptyVariantRow, SALES_CHANNELS,
   type ItemForm, type PlatterGroupRow, type VariantRow,
@@ -657,7 +657,7 @@ function VariantsEditor({
  * is always in reach.
  */
 type SectionId =
-  | 'basics' | 'pricing' | 'card' | 'details' | 'selling' | 'photo' | 'stock' | 'packaging' | 'addons' | 'bundle' | 'signage' | 'featured';
+  | 'basics' | 'pricing' | 'card' | 'details' | 'selling' | 'stock' | 'packaging' | 'addons' | 'bundle' | 'signage' | 'featured';
 
 const SECTIONS: Array<{ id: SectionId; label: string }> = [
   { id: 'basics', label: 'Basics' },
@@ -665,7 +665,6 @@ const SECTIONS: Array<{ id: SectionId; label: string }> = [
   { id: 'card', label: 'Menu card' },
   { id: 'details', label: 'Details' },
   { id: 'selling', label: 'Where sold' },
-  { id: 'photo', label: 'Photo' },
   { id: 'stock', label: 'Stock' },
   { id: 'packaging', label: 'Packaging' },
   { id: 'addons', label: 'Add-ons' },
@@ -842,7 +841,9 @@ export function MenuItemEditorModal({
   // form is. A validation message lands there too — next to the button that
   // produced it, rather than at the top of a form the person has just
   // scrolled to the bottom of.
-  const footer = activeTab === 'details' ? (
+  // The main photo lives on the Photos tab since 2026-10-01 and is part of the
+  // form, so Save has to be in reach on both tabs.
+  const footer = (
     <div data-testid="mie-footer">
       {error && <ErrorMsg message={error} />}
       <ModalActions>
@@ -850,10 +851,6 @@ export function MenuItemEditorModal({
         <Btn onClick={handleSave} disabled={loading}>{loading ? 'Saving…' : 'Save Item'}</Btn>
       </ModalActions>
     </div>
-  ) : (
-    <ModalActions>
-      <Btn variant="ghost" onClick={onClose}>Close</Btn>
-    </ModalActions>
   );
 
   return (
@@ -868,12 +865,13 @@ export function MenuItemEditorModal({
     // that has the room.
     <Modal title={title} onClose={onClose} maxWidth={1040} footer={footer}>
 
-      {itemId && (
-        <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--color-border)', marginBottom: 12 }}>
-          <button type="button" style={tabStyle(activeTab === 'details')} onClick={() => setActiveTab('details')}>Details</button>
-          <button type="button" style={tabStyle(activeTab === 'photos')} onClick={() => setActiveTab('photos')}>Photos</button>
-        </div>
-      )}
+      {/* Owner, 2026-10-01: every picture of the item lives on one tab, each
+          labelled with where it shows. A new item gets the tab too, for its
+          main photo; the cut-out and gallery wait until it is saved. */}
+      <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--color-border)', marginBottom: 12 }}>
+        <button type="button" style={tabStyle(activeTab === 'details')} onClick={() => setActiveTab('details')}>Details</button>
+        <button type="button" style={tabStyle(activeTab === 'photos')} onClick={() => setActiveTab('photos')} data-testid="mie-tab-photos">Photos &amp; video</button>
+      </div>
 
       {activeTab === 'details' && (
         <div className="mie">
@@ -1266,20 +1264,6 @@ export function MenuItemEditorModal({
             )}
           </Section>
 
-          <Section id="photo" title="Photo" register={register}>
-            <ImageUploadField
-              value={form.image_url}
-              originalValue={form.image_original_url}
-              onChange={({ url, original_url, thumb_url, image_webp_url, thumb_webp_url }) => {
-                set('image_url', url);
-                set('image_original_url', original_url);
-                set('thumb_url', thumb_url ?? '');
-                set('image_webp_url', image_webp_url ?? '');
-                set('thumb_webp_url', thumb_webp_url ?? '');
-              }}
-            />
-          </Section>
-
           {!form.has_variants && (
             <Section
               id="stock"
@@ -1660,8 +1644,18 @@ export function MenuItemEditorModal({
         </div>
       )}
 
-      {activeTab === 'photos' && itemId && (
-        <PhotosTab itemId={itemId} />
+      {activeTab === 'photos' && (
+        <PhotosTab
+          itemId={itemId}
+          mainPhoto={{ image_url: form.image_url, image_original_url: form.image_original_url }}
+          onMainPhotoChange={({ url, original_url, thumb_url, image_webp_url, thumb_webp_url }) => {
+            set('image_url', url);
+            set('image_original_url', original_url);
+            set('thumb_url', thumb_url ?? '');
+            set('image_webp_url', image_webp_url ?? '');
+            set('thumb_webp_url', thumb_webp_url ?? '');
+          }}
+        />
       )}
     </Modal>
   );
