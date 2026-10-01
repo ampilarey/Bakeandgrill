@@ -60,11 +60,17 @@ class CategoryController extends Controller
         $data = $request->only([
             'name', 'name_dv', 'description', 'sort_order', 'is_active',
             'image_url', 'image_original_url', 'thumb_url', 'image_webp_url', 'thumb_webp_url', 'parent_id',
+            'cutout_backdrop',
         ]);
         foreach (['image_url', 'image_original_url', 'thumb_url', 'image_webp_url', 'thumb_webp_url'] as $field) {
             if (array_key_exists($field, $data) && $data[$field] === '') {
                 $data[$field] = null;
             }
+        }
+        if (array_key_exists('cutout_backdrop', $data)) {
+            // The circle behind cut-out thumbnails for every item in here;
+            // null passes the parent's (or the menu default) through.
+            $data['cutout_backdrop'] = \App\Domains\Catalog\Support\CutoutBackdrop::normalize($data['cutout_backdrop']);
         }
         $validated = validator($data, [
             'name' => 'required|string|max:255',
@@ -77,6 +83,7 @@ class CategoryController extends Controller
             'thumb_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
             'image_webp_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
             'thumb_webp_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
+            'cutout_backdrop' => ['sometimes', 'nullable', 'array'],
             'parent_id' => 'nullable|integer|exists:categories,id',
         ])->validate();
 
@@ -119,11 +126,17 @@ class CategoryController extends Controller
         $data = $request->only([
             'name', 'name_dv', 'description', 'sort_order', 'is_active',
             'image_url', 'image_original_url', 'thumb_url', 'image_webp_url', 'thumb_webp_url', 'parent_id',
+            'cutout_backdrop',
         ]);
         foreach (['image_url', 'image_original_url', 'thumb_url', 'image_webp_url', 'thumb_webp_url'] as $field) {
             if (array_key_exists($field, $data) && $data[$field] === '') {
                 $data[$field] = null;
             }
+        }
+        if (array_key_exists('cutout_backdrop', $data)) {
+            // The circle behind cut-out thumbnails for every item in here;
+            // null passes the parent's (or the menu default) through.
+            $data['cutout_backdrop'] = \App\Domains\Catalog\Support\CutoutBackdrop::normalize($data['cutout_backdrop']);
         }
         $validated = validator($data, [
             'name' => 'sometimes|string|max:255',
@@ -136,6 +149,7 @@ class CategoryController extends Controller
             'thumb_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
             'image_webp_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
             'thumb_webp_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
+            'cutout_backdrop' => ['sometimes', 'nullable', 'array'],
             'parent_id' => 'nullable|integer|exists:categories,id',
         ])->validate();
 

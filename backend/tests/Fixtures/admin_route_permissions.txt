@@ -11,12 +11,12 @@ backend/routes/domains/admin_customers.php:86:customers.deposit.freeze
 backend/routes/domains/admin_customers.php:90:customers.deposit.receive
 backend/routes/domains/admin_customers.php:94:customers.deposit.adjust
 backend/routes/domains/admin_customers.php:98:customers.deposit.refund
-backend/routes/domains/catalog.php:122:customers.manage
+backend/routes/domains/catalog.php:104:menu.manage
+backend/routes/domains/catalog.php:127:customers.manage
 backend/routes/domains/catalog.php:43:menu.manage
 backend/routes/domains/catalog.php:70:menu.manage
 backend/routes/domains/catalog.php:81:recipes.manage
 backend/routes/domains/catalog.php:89:menu.manage
-backend/routes/domains/catalog.php:99:menu.manage
 backend/routes/domains/complaints.php:14:complaints.view
 backend/routes/domains/complaints.php:16:complaints.view
 backend/routes/domains/complaints.php:19:complaints.manage

@@ -91,6 +91,11 @@ if (routes_domain_section_is('catalog', 'main') && !routes_domain_loaded('catalo
         Route::post('/items/{itemId}/photos/reorder', [App\Http\Controllers\Api\ItemPhotoController::class, 'reorder']);
         Route::patch('/items/{itemId}/photos/{photoId}', [App\Http\Controllers\Api\ItemPhotoController::class, 'update']);
         Route::delete('/items/{itemId}/photos/{photoId}', [App\Http\Controllers\Api\ItemPhotoController::class, 'destroy']);
+        // Cut-out thumbnail (see-through PNG over a circle) and its backdrop.
+        Route::get('/items/{itemId}/cutout', [App\Http\Controllers\Api\ItemCutoutController::class, 'show']);
+        Route::post('/items/{itemId}/cutout', [App\Http\Controllers\Api\ItemCutoutController::class, 'store']);
+        Route::patch('/items/{itemId}/cutout/backdrop', [App\Http\Controllers\Api\ItemCutoutController::class, 'updateBackdrop']);
+        Route::delete('/items/{itemId}/cutout', [App\Http\Controllers\Api\ItemCutoutController::class, 'destroy']);
     });
 
     Route::get('/specials', [App\Http\Controllers\Api\DailySpecialController::class, 'active']);

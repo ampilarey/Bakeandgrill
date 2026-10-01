@@ -72,6 +72,10 @@ class UpdateItemRequest extends FormRequest
             'thumb_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
             'image_webp_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
             'thumb_webp_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
+            // The circle behind the cut-out thumbnail; null inherits the category's.
+            'cutout_backdrop' => ['sometimes', 'nullable', 'array'],
+            'cutout_backdrop.color' => ['nullable', 'string', 'max:9'],
+            'cutout_backdrop.strength' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'base_price' => 'sometimes|numeric|min:0',
             'price_note' => 'nullable|string|max:40',
             'packaging_fee' => 'sometimes|numeric|min:0|max:500',

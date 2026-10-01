@@ -1301,6 +1301,36 @@ return [
             'validate' => 'nullable|integer|min:1|max:365',
             'default' => '30',
         ],
+        // The circle behind cut-out thumbnails on the small cards (owner,
+        // 2026-10-01, after the ZUS screenshots). This is the menu-wide
+        // default; a category, subcategory or item can override either value.
+        // Scoped to the website only because that is the one surface that
+        // reads the setting by name (CutoutBackdrop, server side); the order
+        // app and the POS receive the resolved circle inside each item.
+        'menu_cutout_backdrop_color' => [
+            'label' => 'Thumbnail circle colour',
+            'group' => 'Menu',
+            'type' => 'color',
+            'apps' => ['website'],
+            'shareable' => true,
+            'public' => true,
+            'rich' => false,
+            'description' => 'The circle drawn behind a cut-out thumbnail (a PNG with the background removed) on menu cards and POS tiles. A category or an item can set its own.',
+            'validate' => 'nullable|string|regex:/^#[0-9a-fA-F]{6}$/',
+            'default' => '#F3EAE1',
+        ],
+        'menu_cutout_backdrop_strength' => [
+            'label' => 'Thumbnail circle strength (%)',
+            'group' => 'Menu',
+            'type' => 'text',
+            'apps' => ['website'],
+            'shareable' => true,
+            'public' => true,
+            'rich' => false,
+            'description' => 'How solid the circle is: 100 paints it fully, 40 leaves a faint tint, 0 hides it.',
+            'validate' => 'nullable|integer|min:0|max:100',
+            'default' => '100',
+        ],
         'maps_embed_url' => [
             'label' => 'Google Maps embed URL',
             'group' => 'Contact page',

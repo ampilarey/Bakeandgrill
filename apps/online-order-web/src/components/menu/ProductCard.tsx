@@ -3,11 +3,11 @@
  * Whole card (except heart) opens the existing item detail sheet.
  */
 import { useMemo } from 'react';
-import { cardDescriptionPreview } from '@shared/utils';
+import { cardDescriptionPreview, cutoutBackdropVars, hasCutout } from '@shared/utils';
 import type { Item, Variant } from '../../api';
 import { useLanguage } from '../../context/LanguageContext';
 import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
-import { buildItemSlides } from '../../utils/itemMedia';
+import { buildItemSlides, resolveMediaUrl } from '../../utils/itemMedia';
 import {
   endOfTomorrow,
   isItemOrderableForDay,
@@ -152,6 +152,8 @@ export function ProductCard({
 
   const priceNote = (item.price_note || '').trim();
   const logoSrc = s.logo || '/logo.png';
+  const cutoutSrc = hasCutout(item) ? resolveMediaUrl(item.cutout_url) : null;
+  const cutoutWebp = cutoutSrc ? resolveMediaUrl(item.cutout_webp_url) : null;
   const fromPrefix = priceNote || (showFromPrice ? 'From' : '');
 
   // Dimmed cards stay clickable — customers can always read the details;
@@ -197,19 +199,37 @@ export function ProductCard({
     >
       <div className={`menu-card-media-circle${isList ? ' menu-card-media-circle--list' : ''}`}>
         <div
-          className="menu-card-media-circle__frame"
+          className={`menu-card-media-circle__frame${cutoutSrc ? ' menu-card-media-circle__frame--cutout' : ''}`}
           data-testid="menu-card-media-frame"
+          data-cutout={cutoutSrc ? '1' : undefined}
+          style={cutoutSrc ? (cutoutBackdropVars(item.cutout_backdrop) as React.CSSProperties) : undefined}
         >
-          <MenuImageSlider
-            slides={slides}
-            alt={mediaAlt}
-            posterOnly
-            aspectRatio="1 / 1"
-            logoSrc={logoSrc}
-            showDots={false}
-            className="menu-card-media-circle__slider"
-            sizes="(max-width: 640px) 28vw, 140px"
-          />
+          {cutoutSrc ? (
+            // The ZUS look (owner, 2026-10-01): the dish, background removed,
+            // over a circle the frame draws. Cards only; the sheet shows the photos.
+            <picture>
+              {cutoutWebp ? <source srcSet={cutoutWebp} type="image/webp" /> : null}
+              <img
+                src={cutoutSrc}
+                alt={mediaAlt}
+                className="menu-card-cutout"
+                loading="lazy"
+                decoding="async"
+                data-testid="menu-card-cutout"
+              />
+            </picture>
+          ) : (
+            <MenuImageSlider
+              slides={slides}
+              alt={mediaAlt}
+              posterOnly
+              aspectRatio="1 / 1"
+              logoSrc={logoSrc}
+              showDots={false}
+              className="menu-card-media-circle__slider"
+              sizes="(max-width: 640px) 28vw, 140px"
+            />
+          )}
         </div>
         {unavailLabel && (
           <div className="menu-card-unavail-overlay">

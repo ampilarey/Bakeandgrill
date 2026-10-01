@@ -21,6 +21,7 @@ vi.mock('../../context/SiteSettingsContext', () => ({
 
 vi.mock('../../utils/itemMedia', () => ({
   buildItemSlides: () => [],
+  resolveMediaUrl: (u: string | null) => u,
 }));
 
 vi.mock('./MenuImageSlider', () => ({

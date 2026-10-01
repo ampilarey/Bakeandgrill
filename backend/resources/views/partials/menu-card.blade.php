@@ -10,6 +10,12 @@
     $chosen = $menuPhotos[$item->id] ?? ['url' => null, 'webp' => null];
     $photo = $chosen['url'] ?? null;
     $webp  = $chosen['webp'] ?? null;
+    // A cut-out (see-through PNG) floats over a circle the card draws, the
+    // way the ZUS app does it (owner, 2026-10-01). Cards only: the item page
+    // keeps the photos.
+    $cutout = $chosen['cutout'] ?? null;
+    $cutoutWebp = $chosen['cutout_webp'] ?? null;
+    $backdrop = $chosen['backdrop'] ?? null;
     $isNew = isset($menuNewItemIds[$item->id]);
     $soldOut = $menuSoldOut[$item->id] ?? null;
     $bundle = $menuBundles[$item->id] ?? null;
@@ -56,8 +62,15 @@
          @if($soldOut) data-sold-out="1" @endif>
     <a class="menu-card-link" href="/menu/{{ $item->id }}">
         <div class="menu-card-circle">
-            <div class="menu-card-circle-photo">
-                @if($photo)
+            <div class="menu-card-circle-photo{{ $cutout ? ' menu-card-circle-photo--cutout' : '' }}"
+                 @if($cutout) style="--cutout-color: {{ $backdrop['color'] ?? '#F3EAE1' }}; --cutout-alpha: {{ number_format(($backdrop['strength'] ?? 100) / 100, 2, '.', '') }};" @endif>
+                @if($cutout)
+                    <picture>
+                        @if($cutoutWebp)<source srcset="{{ $cutoutWebp }}" type="image/webp">@endif
+                        <img src="{{ $cutout }}" alt="{{ $iname['text'] }}"
+                             loading="lazy" width="132" height="132" data-cutout="1">
+                    </picture>
+                @elseif($photo)
                     <picture>
                         @if($webp)<source srcset="{{ $webp }}" type="image/webp">@endif
                         <img src="{{ $photo }}" alt="{{ $iname['text'] }}"

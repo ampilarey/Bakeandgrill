@@ -31,6 +31,8 @@ final class ContentScopeMismatch
         // (Delivery Settings) — one value for both apps, so they cannot drift.
         'delivery_time',
         'menu_new_days',
+        'menu_cutout_backdrop_color',
+        'menu_cutout_backdrop_strength',
         // Brand assets (6) — still independently scoped per surface
         'logo',
         'logo_dark',
@@ -54,7 +56,7 @@ final class ContentScopeMismatch
     {
         $out = [];
         foreach (self::KEYS as $key) {
-            if (! ContentRegistry::has($key)) {
+            if (!ContentRegistry::has($key)) {
                 continue;
             }
 

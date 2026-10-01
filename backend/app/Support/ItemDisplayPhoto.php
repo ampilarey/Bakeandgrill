@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Domains\Catalog\Support\CutoutBackdrop;
 use App\Models\Item;
 use App\Models\ItemPhoto;
 use Illuminate\Support\Collection;
@@ -24,7 +25,12 @@ use Illuminate\Support\Collection;
  * Extracted from MenuPageController so the offer pages show the same picture
  * the item page does, rather than a second copy that could drift.
  *
- * @phpstan-type DisplayPhoto array{url: ?string, webp: ?string, full: ?string, placeholder: bool}
+ * `cutout` is the see-through thumbnail for the small cards (owner,
+ * 2026-10-01, after the ZUS screenshots), with `backdrop` the circle the card
+ * draws behind it; both null when the item has none, and the card then shows
+ * `url` as before. An opened item never uses the cut-out.
+ *
+ * @phpstan-type DisplayPhoto array{url: ?string, webp: ?string, full: ?string, placeholder: bool, cutout: ?string, cutout_webp: ?string, backdrop: ?array{color: string, strength: int, source: string}}
  */
 final class ItemDisplayPhoto
 {
@@ -47,6 +53,20 @@ final class ItemDisplayPhoto
      * @return DisplayPhoto
      */
     public function forItem(Item $item, ?string $default = null): array
+    {
+        $cutout = PublicMediaUrl::absolute($item->cutout_url ?? null);
+
+        return $this->photo($item, $default) + [
+            'cutout' => $cutout,
+            'cutout_webp' => $cutout ? PublicMediaUrl::absolute($item->cutout_webp_url ?? null) : null,
+            'backdrop' => $cutout ? app(CutoutBackdrop::class)->resolve($item) : null,
+        ];
+    }
+
+    /**
+     * @return array{url: ?string, webp: ?string, full: ?string, placeholder: bool}
+     */
+    private function photo(Item $item, ?string $default = null): array
     {
         $default ??= $this->siteDefault();
 

@@ -110,6 +110,8 @@ export const WEBSITE_HUB_GROUP_BY_KEY: Record<string, string> = {
   "menu_other_banner_image": "Menu page",
   "menu_events_banner_image": "Menu page",
   "menu_featured_title": "Menu page",
+  "menu_cutout_backdrop_color": "Menu page",
+  "menu_cutout_backdrop_strength": "Menu page",
   "meta_description": "Everywhere",
   "meta_keywords": "Everywhere",
   "meta_title": "Everywhere",

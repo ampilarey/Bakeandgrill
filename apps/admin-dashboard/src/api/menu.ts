@@ -1,5 +1,6 @@
 import { downloadBlob } from '@shared/api';
 import { req, requestBlob } from './client';
+import type { CutoutBackdrop, CutoutBackdropEffective } from './cutout';
 
 export type MenuCategory = {
   id: number;
@@ -11,6 +12,8 @@ export type MenuCategory = {
   thumb_url?: string | null;
   image_webp_url?: string | null;
   thumb_webp_url?: string | null;
+  /** The circle behind cut-out thumbnails for items in here; null follows the parent or the menu default. */
+  cutout_backdrop?: CutoutBackdrop | null;
   sort_order?: number | null;
   is_active: boolean;
   parent_id?: number | null;
@@ -78,6 +81,11 @@ export type MenuItem = {
   thumb_url?: string | null;
   image_webp_url?: string | null;
   thumb_webp_url?: string | null;
+  /** See-through cut-out for the small cards (null = cards use the photo). */
+  cutout_url?: string | null;
+  cutout_webp_url?: string | null;
+  /** The circle the card draws behind the cut-out, already resolved. */
+  cutout_backdrop?: CutoutBackdropEffective | null;
   base_price: number;
   packaging_fee?: number;
   packaging_fee_mode?: 'per_unit' | 'per_line';
@@ -327,6 +335,7 @@ export async function createCategory(data: {
   thumb_url?: string | null;
   image_webp_url?: string | null;
   thumb_webp_url?: string | null;
+  cutout_backdrop?: CutoutBackdrop | null;
   sort_order?: number | null;
   parent_id?: number | null;
 }): Promise<{ category: MenuCategory }> {
@@ -344,6 +353,7 @@ export async function updateCategory(
     thumb_url: string | null;
     image_webp_url: string | null;
     thumb_webp_url: string | null;
+    cutout_backdrop: CutoutBackdrop | null;
     sort_order: number | null;
     is_active: boolean;
     parent_id: number | null;

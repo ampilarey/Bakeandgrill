@@ -312,9 +312,15 @@ These come from `SurfaceCatalog` / live `page_blocks` placement. **Three footers
 
 - **Route:** GET /menu → 301 /order/menu
 - **Template / component:** (no website blade — Order App owns Menu)
-- **Notes:** No website Menu page renderer. `menu_new_days` stays under website reads_nowhere (no Blade `content()`); Order App reads it on `/order/view` via settings context.
+- **Notes:** No website Menu page renderer. `menu_new_days` stays under website reads_nowhere (no Blade `content()`); Order App reads it on `/order/view` via settings context. The two thumbnail-circle keys (2026-10-01) are read server side by `CutoutBackdrop`; the order app and the POS get the resolved circle inside each item, so they are website-scoped only.
 
-_No registry keys uniquely assigned to this page bucket._
+| Order | Key | Label | Config `group` | Renders in |
+|---|---|---|---|---|
+| 1 | `menu_other_banner_image` | Banner photo: Other section | Menu | backend/resources/views/menu.blade.php |
+| 2 | `menu_events_banner_image` | Banner photo: Event & catering menu | Menu | backend/resources/views/menu.blade.php |
+| 3 | `menu_featured_title` | Featured items heading | Menu | backend/resources/views/menu.blade.php |
+| 4 | `menu_cutout_backdrop_color` | Thumbnail circle colour | Menu | backend/resources/views/partials/menu-card.blade.php via `CutoutBackdrop` |
+| 5 | `menu_cutout_backdrop_strength` | Thumbnail circle strength (%) | Menu | backend/resources/views/partials/menu-card.blade.php via `CutoutBackdrop` |
 
 ### 2.events_catering — Events & Catering
 

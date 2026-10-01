@@ -5,6 +5,7 @@ import { addItemPhotoFromLibrary } from '../../api/menu';
 import { MediaPicker } from '../../components/MediaPicker';
 import type { MediaAsset } from '../../api/media';
 import { ImageCropModal } from './ImageCropModal';
+import { CutoutSlot } from './CutoutSlot';
 import { prepareImageForCrop, prepareUploadFromFile, resolveMediaUrl, revokeCropSrc } from './mediaUrl';
 import { MENU_VIDEO_LIMITS, prepareVideoClip } from './videoClip';
 
@@ -183,6 +184,10 @@ export function PhotosTab({ itemId }: { itemId: number }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {error && <div style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger-strong)', padding: '8px 12px', borderRadius: 8, fontSize: 13 }}>{error}</div>}
 
+      {/* Owner, 2026-10-01: the ZUS-style see-through thumbnail, cards only. */}
+      <CutoutSlot itemId={itemId} />
+
+      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)', marginTop: 4 }}>Photos and video</div>
       <button
         type="button"
         onClick={() => fileRef.current?.click()}

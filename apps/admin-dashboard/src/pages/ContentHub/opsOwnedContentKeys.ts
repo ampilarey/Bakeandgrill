@@ -41,6 +41,9 @@ export const OPS_OWNED_CONTENT_KEYS = new Set([
   'menu_other_banner_image',
   'menu_events_banner_image',
   'menu_featured_title',
+  // The circle behind cut-out thumbnails (2026-10-01): menu-wide default.
+  'menu_cutout_backdrop_color',
+  'menu_cutout_backdrop_strength',
   'complaint_prompt_text',
 ]);
 

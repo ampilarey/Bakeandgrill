@@ -56,6 +56,17 @@ export type Category = {
 
 export type SpiceLevel = 'none' | 'mild' | 'medium' | 'hot' | 'extra_hot';
 
+/**
+ * The circle behind a cut-out thumbnail, already resolved by the server
+ * (item → category → parent → menu default). `strength` is the circle's
+ * opacity in percent.
+ */
+export type CutoutBackdrop = {
+  color: string;
+  strength: number;
+  source?: 'default' | 'parent' | 'category' | 'item';
+};
+
 export type MenuItem = {
   id: number;
   name: string;
@@ -81,6 +92,15 @@ export type MenuItem = {
   thumb_url?: string | null;
   image_webp_url?: string | null;
   thumb_webp_url?: string | null;
+  /**
+   * See-through cut-out for the small cards (owner, 2026-10-01, after the
+   * ZUS app): the dish with its background removed, floated over a circle
+   * the card draws from `cutout_backdrop`. Cards only; an opened item shows
+   * the photos. Null means the card shows the photo as before.
+   */
+  cutout_url?: string | null;
+  cutout_webp_url?: string | null;
+  cutout_backdrop?: CutoutBackdrop | null;
   /** Extra gallery photos (public menu). Combined with image_url for slideshows. */
   photos?: Array<{
     id: number;

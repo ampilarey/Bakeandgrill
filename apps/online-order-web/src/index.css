@@ -3263,6 +3263,39 @@ textarea.field-input {
   border-radius: 0;
 }
 
+/* Cut-out thumbnail (owner, 2026-10-01, after the ZUS app): the dish with
+   its background removed floats over a circle the card draws. The circle is
+   a little smaller than the frame so the dish can overhang it; its colour
+   and strength come from the item, its category, or the menu default
+   (--cutout-color / --cutout-alpha set on the frame). */
+.menu-card-media-circle__frame--cutout {
+  background: transparent;
+  overflow: visible;
+}
+.menu-card-media-circle__frame--cutout::before {
+  content: '';
+  position: absolute;
+  inset: 7%;
+  border-radius: 50%;
+  background: var(--cutout-color, #F3EAE1);
+  opacity: var(--cutout-alpha, 1);
+}
+.menu-card-cutout {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 0;
+  filter: drop-shadow(0 6px 10px rgba(28, 20, 8, 0.18));
+}
+.menu-card-media-circle__frame--cutout img.menu-card-cutout {
+  border-radius: 0;
+  object-fit: contain;
+}
+.menu-card-article.unavailable .menu-card-cutout { filter: none; }
+
 .menu-card-image-badges--circle {
   top: 0.25rem;
   left: 50%;

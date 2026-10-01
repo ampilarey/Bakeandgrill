@@ -241,8 +241,9 @@ class ItemController extends Controller
             : [];
 
         $bundlePricing = app(\App\Domains\Menu\Services\BundlePricingService::class);
+        $backdrops = app(\App\Domains\Catalog\Support\CutoutBackdrop::class);
 
-        $transformed = $items->through(function ($item) use ($isAdmin, $canSeeCost, $isPosView, $availability, $channel, $specialPricing, $effectivePricing, $tomorrowRemainingMap, $newItemIds, $bundlePricing) {
+        $transformed = $items->through(function ($item) use ($isAdmin, $canSeeCost, $isPosView, $availability, $channel, $specialPricing, $effectivePricing, $tomorrowRemainingMap, $newItemIds, $bundlePricing, $backdrops) {
             $includeAvailability = !$isAdmin || $isPosView;
             $includeAdminExtras = $isAdmin && !$isPosView;
             $includeCost = $canSeeCost && !$isPosView;
@@ -270,6 +271,12 @@ class ItemController extends Controller
                 'short_description_dv' => $item->short_description_dv,
                 'sku' => $item->sku,
                 'image_url' => $item->display_image_url,
+                // The see-through thumbnail for the small cards and the circle
+                // behind it, resolved item → category → parent → default.
+                // Cards fall back to the photo when there is no cut-out.
+                'cutout_url' => $item->cutout_url ?? null,
+                'cutout_webp_url' => $item->cutout_webp_url ?? null,
+                'cutout_backdrop' => $backdrops->resolve($item),
                 /*
                  * A discounted fixed bundle is priced from its contents, so
                  * that is the price every surface must show — otherwise the
@@ -853,6 +860,9 @@ class ItemController extends Controller
         $oldImageWebpUrl = $item->getAttribute('image_webp_url');
         $oldThumbWebpUrl = $item->getAttribute('thumb_webp_url');
         $stockBefore = (int) $item->stock_quantity;
+        if (array_key_exists('cutout_backdrop', $data)) {
+            $data['cutout_backdrop'] = \App\Domains\Catalog\Support\CutoutBackdrop::normalize($data['cutout_backdrop']);
+        }
 
         $item->update($data);
 

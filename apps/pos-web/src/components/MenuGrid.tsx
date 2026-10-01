@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Category, Item, Modifier, PlatterSelection, Variant } from "../types";
-import { isPlatterSelectionValid, platterPickHint, surchargeTotal } from "@shared/utils";
+import { cutoutBackdropVars, hasCutout, isPlatterSelectionValid, platterPickHint, surchargeTotal } from "@shared/utils";
 import { PosPlatterPicker } from "./PosPlatterPicker";
 import type { PosQuickLayout, PosQuickLayoutSource, PosQuickTab } from "../api";
 import { effectiveItemPrice, originalItemPrice } from "../hooks/useCart";
@@ -141,7 +141,12 @@ function MenuItemTile({
     return qty;
   })();
   const [imgFailed, setImgFailed] = useState(false);
-  const imgSrc = item.image_url && !imgFailed ? item.image_url : null;
+  // A cut-out (see-through PNG) floats over a circle the tile draws, the way
+  // the ZUS app does it (owner, 2026-10-01); otherwise the photo fills the
+  // tile as before.
+  const cutoutSrc = hasCutout(item) && !imgFailed ? item.cutout_url : null;
+  const imgSrc = !cutoutSrc && item.image_url && !imgFailed ? item.image_url : null;
+  const cutoutVars = cutoutSrc ? cutoutBackdropVars(item.cutout_backdrop) : null;
 
   return (
     <button
@@ -178,7 +183,43 @@ function MenuItemTile({
       onFocus={(e) => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(15,23,42,0.10)'; }}
       onBlur={(e) => { e.currentTarget.style.boxShadow = '0 1px 2px rgba(15,23,42,0.06)'; }}
     >
-      {imgSrc ? (
+      {cutoutSrc ? (
+        <div
+          data-testid="pos-tile-cutout"
+          data-color={cutoutVars?.['--cutout-color']}
+          data-alpha={cutoutVars?.['--cutout-alpha']}
+          style={{ position: 'absolute', inset: 0 }}
+        >
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              // Leave the bottom clear for the name strip, and a margin so
+              // the dish can overhang the circle.
+              inset: '8% 10% 30%',
+              borderRadius: '50%',
+              background: cutoutVars?.['--cutout-color'],
+              opacity: Number(cutoutVars?.['--cutout-alpha'] ?? 1),
+            }}
+          />
+          <img
+            src={cutoutSrc}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            onError={() => setImgFailed(true)}
+            style={{
+              position: 'absolute',
+              inset: '2% 4% 26%',
+              width: '92%',
+              height: '72%',
+              objectFit: 'contain',
+              display: 'block',
+              filter: 'drop-shadow(0 5px 8px rgba(15,23,42,0.18))',
+            }}
+          />
+        </div>
+      ) : imgSrc ? (
         <img
           src={imgSrc}
           alt=""

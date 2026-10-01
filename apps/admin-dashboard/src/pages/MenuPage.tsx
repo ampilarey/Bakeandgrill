@@ -6,6 +6,7 @@ import {
   Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input, Modal, ModalActions, PageHeader, PageShell, Spinner,
 } from '../components/SharedUI';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { CutoutBackdropField } from '../components/CutoutBackdropField';
 import { CategoryList } from './MenuPage/CategoryList';
 import { Field, FormTextarea, ImageUploadField } from './MenuPage/menuFormPrimitives';
 import { MenuItemEditorModal } from './MenuPage/MenuItemEditorModal';
@@ -203,6 +204,37 @@ function CategoryFormModal({
           </p>
         </div>
 
+        {/* Owner, 2026-10-01: the circle behind cut-out thumbnails, per category or subcategory. */}
+        <div
+          style={{
+            padding: 12,
+            borderRadius: 12,
+            border: '1px solid var(--color-border)',
+            background: 'var(--color-bg)',
+          }}
+          data-testid="category-cutout-backdrop"
+        >
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text)', marginBottom: 4 }}>
+            Thumbnail circle
+          </div>
+          <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.4 }}>
+            The circle behind cut-out thumbnails for every item in this category, on menu cards and POS tiles.
+            An item can still set its own.
+          </p>
+          <CutoutBackdropField
+            value={form.cutout_backdrop}
+            onChange={(v) => set('cutout_backdrop', v)}
+            inheritLabel={form.parent_id ? 'the parent category' : 'the menu default (Business Details → Menu)'}
+            inherited={form.parent_id
+              ? (() => {
+                const parent = categories.find((c) => String(c.id) === form.parent_id);
+                const b = parent?.cutout_backdrop;
+                return b && (b.color || b.strength != null) ? { color: b.color ?? '#F3EAE1', strength: b.strength ?? 100 } : null;
+              })()
+              : null}
+          />
+        </div>
+
         <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <Field label="Sort Order">
             <Input value={form.sort_order} onChange={(v) => set('sort_order', v)} type="number" placeholder="0" />
@@ -396,6 +428,7 @@ export function MenuPage() {
             sort_order: m.editingCat.sort_order != null ? String(m.editingCat.sort_order) : '',
             is_active: m.editingCat.is_active,
             parent_id: m.editingCat.parent_id != null ? String(m.editingCat.parent_id) : '',
+            cutout_backdrop: m.editingCat.cutout_backdrop ?? null,
           }}
           title={`Edit: ${m.editingCat.name}`}
           onSave={m.handleUpdateCat}

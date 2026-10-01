@@ -9,6 +9,7 @@ import {
   type MenuCategory, type MenuItem, type BarcodeLabel, type ItemWithRecipe,
   type MenuGroupRow, type SnoozeUntil,
 } from '../../api';
+import { type CutoutBackdrop, normalizeBackdrop } from '../../api/cutout';
 import { useConfirmDialog } from '../../components/SharedUI';
 import { useCurrentUserPermissions } from '../../hooks/usePermissions';
 import { emptyItemForm, formToPayload, itemToForm, type ItemForm } from './menuItemForm';
@@ -19,6 +20,8 @@ export type CatForm = {
   image_webp_url: string; thumb_webp_url: string;
   sort_order: string; is_active: boolean;
   parent_id: string;
+  /** The circle behind cut-out thumbnails in this category; null follows the level above. */
+  cutout_backdrop: CutoutBackdrop | null;
 };
 
 export const EMPTY_CAT: CatForm = {
@@ -26,6 +29,7 @@ export const EMPTY_CAT: CatForm = {
   image_url: '', image_original_url: '', thumb_url: '',
   image_webp_url: '', thumb_webp_url: '',
   sort_order: '', is_active: true, parent_id: '',
+  cutout_backdrop: null,
 };
 
 export type View = 'categories' | 'items';
@@ -123,6 +127,7 @@ export function useMenuPage() {
         thumb_url: form.thumb_url.trim() || null,
         image_webp_url: form.image_webp_url.trim() || null,
         thumb_webp_url: form.thumb_webp_url.trim() || null,
+        cutout_backdrop: normalizeBackdrop(form.cutout_backdrop),
         sort_order: form.sort_order !== '' ? parseInt(form.sort_order) : null,
         parent_id: form.parent_id !== '' ? parseInt(form.parent_id) : null,
       });
@@ -142,6 +147,7 @@ export function useMenuPage() {
         thumb_url: form.thumb_url.trim() || null,
         image_webp_url: form.image_webp_url.trim() || null,
         thumb_webp_url: form.thumb_webp_url.trim() || null,
+        cutout_backdrop: normalizeBackdrop(form.cutout_backdrop),
         sort_order: form.sort_order !== '' ? parseInt(form.sort_order) : null,
         is_active: form.is_active,
         parent_id: form.parent_id !== '' ? parseInt(form.parent_id) : null,

@@ -578,6 +578,32 @@ html.js .menu-fav { display: inline-flex; }
    letterboxed with the circle's background showing above and below it. */
 .menu-card-circle-photo picture { display: block; width: 100%; height: 100%; }
 .menu-card-circle-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Cut-out thumbnail (owner, 2026-10-01, after the ZUS app): the dish, with
+   its background removed, floats over a circle the card draws. The circle is
+   drawn a little smaller than the box so the dish can overhang it, and its
+   colour and strength come from the item, its category, or the menu default
+   (--cutout-color / --cutout-alpha on the element). */
+.menu-card-circle-photo--cutout {
+    background: transparent;
+    overflow: visible;
+    position: relative;
+}
+.menu-card-circle-photo--cutout::before {
+    content: '';
+    position: absolute;
+    inset: 7%;
+    border-radius: 50%;
+    background: var(--cutout-color, #F3EAE1);
+    opacity: var(--cutout-alpha, 1);
+    z-index: 0;
+}
+.menu-card-circle-photo--cutout picture { position: relative; z-index: 1; }
+.menu-card-circle-photo--cutout img {
+    object-fit: contain;
+    border-radius: 0;
+    filter: drop-shadow(0 6px 10px rgba(28, 20, 8, 0.18));
+}
+.menu-card--sold-out .menu-card-circle-photo--cutout img { filter: none; }
 
 .menu-card-body {
     display: flex; flex-direction: column; align-items: center;

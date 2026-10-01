@@ -34,6 +34,9 @@ class Item extends Model
         'thumb_url',
         'image_webp_url',
         'thumb_webp_url',
+        'cutout_url',
+        'cutout_webp_url',
+        'cutout_backdrop',
         'base_price',
         'wholesale_price_laar',
         'price_note',
@@ -245,6 +248,7 @@ class Item extends Model
     protected $casts = [
         'category_id' => 'integer',
         'menu_group_id' => 'integer',
+        'cutout_backdrop' => 'array',
         'is_active' => 'boolean',
         'is_available' => 'boolean',
         'snoozed_until' => 'datetime',

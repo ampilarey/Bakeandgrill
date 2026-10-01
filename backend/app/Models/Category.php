@@ -26,6 +26,7 @@ class Category extends Model
         'thumb_url',
         'image_webp_url',
         'thumb_webp_url',
+        'cutout_backdrop',
     ];
 
     public function parent(): BelongsTo
@@ -42,6 +43,7 @@ class Category extends Model
         'parent_id' => 'integer',
         'sort_order' => 'integer',
         'is_active' => 'boolean',
+        'cutout_backdrop' => 'array',
     ];
 
     public function items(): HasMany

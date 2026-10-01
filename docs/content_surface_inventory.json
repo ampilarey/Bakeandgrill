@@ -2,7 +2,7 @@
     "generated_for_commit": "a377ebc37",
     "audited_at": "2026-08-13",
     "website": {
-        "page_count_keys": 157,
+        "page_count_keys": 159,
         "pages": {
             "everywhere": {
                 "title": "Everywhere (layout chrome)",
@@ -379,13 +379,17 @@
                 "keys": [
                     "menu_other_banner_image",
                     "menu_events_banner_image",
-                    "menu_featured_title"
+                    "menu_featured_title",
+                    "menu_cutout_backdrop_color",
+                    "menu_cutout_backdrop_strength"
                 ],
-                "notes": "No website Menu page renderer. menu_new_days is listed under reads_nowhere for website.",
+                "notes": "No website Menu page renderer. menu_new_days is listed under reads_nowhere for website. The two thumbnail-circle keys (2026-10-01) are read server side; the order app and POS get the resolved circle inside each item.",
                 "renderers": {
                     "menu_other_banner_image": "backend/resources/views/menu.blade.php",
                     "menu_events_banner_image": "backend/resources/views/menu.blade.php",
-                    "menu_featured_title": "backend/resources/views/menu.blade.php"
+                    "menu_featured_title": "backend/resources/views/menu.blade.php",
+                    "menu_cutout_backdrop_color": "backend/resources/views/partials/menu-card.blade.php via App\\Domains\\Catalog\\Support\\CutoutBackdrop",
+                    "menu_cutout_backdrop_strength": "backend/resources/views/partials/menu-card.blade.php via App\\Domains\\Catalog\\Support\\CutoutBackdrop"
                 }
             },
             "events_catering": {
@@ -1510,6 +1514,20 @@
                 "label": "Complaint invitation line",
                 "group": "Everywhere",
                 "renderer": "menu.blade.php + menu-print.blade.php + layout site_footer chrome"
+            },
+            "menu_cutout_backdrop_color": {
+                "page": "menu",
+                "order": 4,
+                "label": "Thumbnail circle colour",
+                "group": "Menu",
+                "renderer": "backend/resources/views/partials/menu-card.blade.php via App\\Domains\\Catalog\\Support\\CutoutBackdrop"
+            },
+            "menu_cutout_backdrop_strength": {
+                "page": "menu",
+                "order": 5,
+                "label": "Thumbnail circle strength (%)",
+                "group": "Menu",
+                "renderer": "backend/resources/views/partials/menu-card.blade.php via App\\Domains\\Catalog\\Support\\CutoutBackdrop"
             }
         }
     },
