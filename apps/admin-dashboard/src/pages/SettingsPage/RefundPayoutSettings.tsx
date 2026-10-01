@@ -11,6 +11,8 @@ import { getSiteSettings, updateSiteSettings } from '../../api';
  *  - the deposit payout amount above which only an owner may pay a
  *    customer's wallet balance out (payouts skip the refund flow's second
  *    approver and OTP).
+ * Gift card audit, 2026-10-01: the amount above which a complimentary gift
+ * card needs an owner.
  */
 
 const FIELD: React.CSSProperties = {
@@ -32,6 +34,7 @@ const HINT: React.CSSProperties = {
 export function RefundPayoutSettings() {
   const [cardRef, setCardRef] = useState(false);
   const [threshold, setThreshold] = useState('500');
+  const [compThreshold, setCompThreshold] = useState('500');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -48,6 +51,7 @@ export function RefundPayoutSettings() {
         });
         setCardRef(['1', 'true', 'on', 'yes'].includes(String(map.pos_card_reference_required ?? '0').toLowerCase()));
         setThreshold(map.deposit_payout_owner_threshold_mvr ?? '500');
+        setCompThreshold(map.gift_card_comp_owner_threshold_mvr ?? '500');
       })
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
@@ -59,6 +63,11 @@ export function RefundPayoutSettings() {
       setError('The payout threshold must be a number, zero or more. Zero means every payout needs an owner.');
       return;
     }
+    const comp = Number(compThreshold);
+    if (!Number.isFinite(comp) || comp < 0) {
+      setError('The gift card threshold must be a number, zero or more. Zero means no limit.');
+      return;
+    }
     setSaving(true);
     setError('');
     setSaved(false);
@@ -66,6 +75,7 @@ export function RefundPayoutSettings() {
       await updateSiteSettings({
         pos_card_reference_required: cardRef ? '1' : '0',
         deposit_payout_owner_threshold_mvr: String(n),
+        gift_card_comp_owner_threshold_mvr: String(comp),
       });
       setSaved(true);
       window.setTimeout(() => setSaved(false), 2500);
@@ -92,9 +102,14 @@ export function RefundPayoutSettings() {
           </div>
         </div>
         <div>
-          <label style={LABEL} htmlFor="deposit-payout-threshold">Deposit payouts above this need an owner (MVR)</label>
+          <label style={LABEL} htmlFor="deposit-payout-threshold">Deposit payouts above this in a day need an owner (MVR)</label>
           <input id="deposit-payout-threshold" data-testid="deposit-payout-threshold" value={threshold} onChange={(e) => setThreshold(e.target.value)} inputMode="decimal" style={FIELD} />
-          <p style={HINT}>Paying a customer's wallet balance out has no second approver or customer code, unlike an order refund. Managers can pay out up to this amount; above it an owner records the payout. Every payout texts the owners, and yesterday's payouts are in the daily refund summary.</p>
+          <p style={HINT}>Paying a customer's wallet balance out has no second approver or customer code, unlike an order refund. Managers can pay out up to this amount in any 24 hours; above it an owner records the payout. Every payout texts the owners, and yesterday's payouts are in the daily refund summary.</p>
+        </div>
+        <div>
+          <label style={LABEL} htmlFor="gift-card-comp-threshold">Complimentary gift cards above this need an owner (MVR)</label>
+          <input id="gift-card-comp-threshold" data-testid="gift-card-comp-threshold" value={compThreshold} onChange={(e) => setCompThreshold(e.target.value)} inputMode="decimal" style={FIELD} />
+          <p style={HINT}>A gift card issued or topped up in the admin panel says how it was paid for. Cash goes into the open drawer. A free card is value given away, so above this amount only an owner can issue one. Zero means no limit.</p>
         </div>
         {error && <p style={{ margin: 0, color: 'var(--color-danger)', fontSize: 13 }}>{error}</p>}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

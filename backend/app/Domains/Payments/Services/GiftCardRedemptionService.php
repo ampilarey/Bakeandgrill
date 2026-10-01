@@ -19,6 +19,9 @@ final class GiftCardRedemptionService
      * Unpaid / unpaid-through-kitchen statuses that soft-reserve gift card balance.
      * Includes in_progress / ready / preparing so firing to KDS does not free the hold.
      */
+    /** Days a refund reopens an expired card for. */
+    public const REFUND_GRACE_DAYS = 30;
+
     public const RESERVING_STATUSES = [
         'pending',
         'payment_pending',
@@ -121,7 +124,7 @@ final class GiftCardRedemptionService
         }
 
         $giftCard = GiftCard::where('id', $order->gift_card_id)
-            ->where('status', 'active')
+            ->whereIn('status', ['active', 'expired'])
             ->lockForUpdate()
             ->first();
 
@@ -129,11 +132,22 @@ final class GiftCardRedemptionService
             throw new \RuntimeException('Gift card is no longer available for redemption.');
         }
 
-        // Re-check expiry at payment time (card may have expired after apply).
-        if ($giftCard->expires_at && $giftCard->expires_at->isPast()) {
-            $giftCard->update(['status' => 'expired']);
+        // Re-check expiry at payment time. A card that was good when the
+        // order was placed still pays for it (gift card audit, 2026-10-01):
+        // the amount has been held for this order since then, and a customer
+        // who applied it at 23:50 and finished paying at 00:05 had already
+        // paid the gateway for the rest. Failing here rolled that payment
+        // confirmation back.
+        if ($giftCard->isExpired() || $giftCard->status === 'expired') {
+            $validWhenOrdered = $giftCard->expires_at === null
+                || ($order->created_at !== null && $order->created_at->lte($giftCard->expires_at->copy()->endOfDay()));
+            if (!$validWhenOrdered) {
+                if ($giftCard->status === 'active') {
+                    $giftCard->update(['status' => 'expired']);
+                }
 
-            throw new \RuntimeException('Gift card expired before payment.');
+                throw new \RuntimeException('Gift card expired before payment.');
+            }
         }
 
         // Re-check idempotency after lock — concurrent payment + listener paths.
@@ -162,7 +176,7 @@ final class GiftCardRedemptionService
 
         $giftCard->update([
             'current_balance' => $newBalanceMvr,
-            'status' => $newBalanceLaar <= 0 ? 'depleted' : 'active',
+            'status' => $newBalanceLaar <= 0 ? 'depleted' : ($giftCard->isExpired() ? 'expired' : 'active'),
         ]);
 
         GiftCardTransaction::create([
@@ -242,13 +256,29 @@ final class GiftCardRedemptionService
             if ($status === 'depleted' && $newBalanceMvr > 0) {
                 $status = 'active';
             }
-            if ($giftCard->expires_at && $giftCard->expires_at->isPast()) {
-                $status = 'expired';
+
+            // A refund put back on a card that has since expired could never
+            // be spent, and the refund counted it as returned, so the customer
+            // got nothing (gift card audit, 2026-10-01). The card reopens for
+            // REFUND_GRACE_DAYS so the money can be used.
+            $expiresAt = $giftCard->expires_at;
+            if ($giftCard->isExpired() || $status === 'expired') {
+                $expiresAt = now()->addDays(self::REFUND_GRACE_DAYS)->startOfDay();
+                $status = 'active';
+                app(AuditLogService::class)->log(
+                    'gift_card.reopened_for_refund',
+                    'GiftCard',
+                    $giftCard->id,
+                    ['expires_at' => $giftCard->expires_at?->toDateString(), 'status' => $giftCard->status],
+                    ['expires_at' => $expiresAt->toDateString(), 'status' => $status],
+                    ['order_id' => $order->id, 'refund_id' => $refundId, 'restored' => $restoreMvr],
+                );
             }
 
             $giftCard->update([
                 'current_balance' => $newBalanceMvr,
                 'status' => $status,
+                'expires_at' => $expiresAt,
             ]);
 
             GiftCardTransaction::create([

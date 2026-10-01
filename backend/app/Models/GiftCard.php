@@ -54,6 +54,18 @@ class GiftCard extends Model
         return $this->hasMany(GiftCardTransaction::class);
     }
 
+    /**
+     * Expiry is a date, and a card is good for the whole of that day (gift
+     * card audit, 2026-10-01). Comparing the date itself with now() read it as
+     * midnight at the start of the day, so a card "valid until 5 October"
+     * stopped working when 5 October began, and setting today's date to
+     * extend one expired it on the spot.
+     */
+    public function isExpired(): bool
+    {
+        return $this->expires_at !== null && $this->expires_at->copy()->endOfDay()->isPast();
+    }
+
     public function balanceLaar(): int
     {
         return (int) round((float) $this->current_balance * 100);

@@ -393,11 +393,16 @@ export interface GiftCard {
   created_at?: string;
 }
 
+/** How an admin-issued card or top-up was paid for (gift card audit, 2026-10-01). */
+export type GiftCardPaidBy = 'cash' | 'card' | 'bank_transfer' | 'complimentary';
+
 export interface GiftCardTransaction {
   id: number;
-  type: 'load' | 'redeem' | 'refund';
+  type: 'load' | 'redeem' | 'refund' | 'void';
   amount: number;
   balance_after: number;
+  paid_by?: GiftCardPaidBy | null;
+  reference?: string | null;
   order_id: number | null;
   created_at: string | null;
 }
@@ -424,6 +429,8 @@ export type GiftCardEmailResult = {
 
 export async function issueGiftCard(data: {
   amount: number;
+  paid_by: GiftCardPaidBy;
+  reference?: string | null;
   customer_id?: number | null;
   expires_at?: string | null;
   send_sms?: boolean;
@@ -469,10 +476,12 @@ export async function cancelGiftCard(id: number): Promise<{ gift_card: GiftCard 
 export async function topUpGiftCard(
   id: number,
   amount: number,
+  paidBy: GiftCardPaidBy,
+  reference?: string | null,
 ): Promise<{ gift_card: GiftCard }> {
   return req(`/admin/gift-cards/${id}/top-up`, {
     method: 'POST',
-    body: JSON.stringify({ amount }),
+    body: JSON.stringify({ amount, paid_by: paidBy, reference: reference || null }),
   });
 }
 

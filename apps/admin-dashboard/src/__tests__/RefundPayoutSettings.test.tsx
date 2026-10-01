@@ -12,6 +12,7 @@ beforeEach(() => {
       general: [
         { key: 'pos_card_reference_required', value: '0', type: 'boolean', label: 'x', description: null },
         { key: 'deposit_payout_owner_threshold_mvr', value: '500', type: 'number', label: 'y', description: null },
+        { key: 'gift_card_comp_owner_threshold_mvr', value: '300', type: 'number', label: 'z', description: null },
       ],
     },
   });
@@ -29,6 +30,7 @@ describe('RefundPayoutSettings', () => {
     await waitFor(() => expect(api.updateSiteSettings).toHaveBeenCalledWith({
       pos_card_reference_required: '1',
       deposit_payout_owner_threshold_mvr: '250',
+      gift_card_comp_owner_threshold_mvr: '300',
     }));
     expect(await screen.findByText('Saved.')).toBeInTheDocument();
   });

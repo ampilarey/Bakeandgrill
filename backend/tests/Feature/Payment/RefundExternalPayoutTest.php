@@ -263,7 +263,7 @@ class RefundExternalPayoutTest extends TestCase
         $this->postJson("/api/admin/customers/{$this->customer->id}/deposit/top-up", ['amount_mvr' => 1000, 'method' => 'cash', 'reference' => 'TOP'])->assertCreated();
 
         $this->postJson("/api/admin/customers/{$this->customer->id}/deposit/refund", ['amount_mvr' => 600, 'method' => 'cash', 'reason' => 'Wants it back'])
-            ->assertStatus(422)->assertJsonFragment(['message' => 'Deposit payouts above MVR 500.00 need an owner. Ask an owner to record this one.']);
+            ->assertStatus(422)->assertJsonFragment(['message' => 'Deposit payouts above MVR 500.00 in a day need an owner. Ask an owner to record this one.']);
         $this->sentSms = [];
         $this->postJson("/api/admin/customers/{$this->customer->id}/deposit/refund", ['amount_mvr' => 200, 'method' => 'cash', 'reason' => 'Small one'])->assertCreated();
         $alert = collect($this->sentSms)->where('type', 'owner_deposit_payout')->values();

@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api;
 use App\Domains\Orders\Services\OrderTotalsCalculator;
 use App\Domains\Payments\Services\GiftCardCodeService;
 use App\Domains\Payments\Services\GiftCardEmailDelivery;
+use App\Domains\Payments\Services\GiftCardFunding;
 use App\Domains\Payments\Services\GiftCardIssueService;
 use App\Domains\Payments\Services\GiftCardPurchaseDeliveryWindow;
 use App\Domains\Payments\Services\GiftCardPurchaseFulfillmentService;
@@ -41,6 +42,7 @@ class GiftCardController extends Controller
         private readonly GiftCardPurchaseService $giftCardPurchase,
         private readonly GiftCardPurchaseDeliveryWindow $deliveryWindow,
         private readonly AuditLogService $audit,
+        private readonly GiftCardFunding $funding,
     ) {}
 
     // ── Public: check balance ─────────────────────────────────────────────────
@@ -103,7 +105,7 @@ class GiftCardController extends Controller
             return response()->json(['error' => 'Invalid or unavailable gift card.'], 404);
         }
 
-        $isExpired = $card->expires_at && $card->expires_at->isPast();
+        $isExpired = $card->isExpired();
         if ($isExpired && $card->status === 'active') {
             $card->update(['status' => 'expired']);
         }
@@ -150,7 +152,7 @@ class GiftCardController extends Controller
                 return response()->json(['message' => 'Invalid or unavailable gift card.'], 422);
             }
 
-            if ($card->expires_at && $card->expires_at->isPast()) {
+            if ($card->isExpired()) {
                 $card->update(['status' => 'expired']);
 
                 return response()->json([
@@ -259,7 +261,7 @@ class GiftCardController extends Controller
             if (!$card) {
                 return response()->json(['message' => 'Invalid or unavailable gift card.'], 422);
             }
-            if ($card->expires_at && $card->expires_at->isPast()) {
+            if ($card->isExpired()) {
                 $card->update(['status' => 'expired']);
 
                 return response()->json([
@@ -378,15 +380,29 @@ class GiftCardController extends Controller
                 'max:200',
             ],
             'email_note' => ['nullable', 'string', 'max:500'],
+            // How it was paid for (gift card audit, 2026-10-01). Left out by
+            // older callers, which is read as complimentary.
+            'paid_by' => ['sometimes', 'string', Rule::in(GiftCardFunding::METHODS)],
+            'reference' => ['nullable', 'string', 'max:100'],
         ]);
+        $paidBy = $validated['paid_by'] ?? 'complimentary';
 
         try {
-            $issued = $this->giftCardIssue->issue([
-                'amount' => $validated['amount'],
-                'issued_to_customer_id' => $validated['customer_id'] ?? null,
-                'purchased_by_customer_id' => null,
-                'expires_at' => $validated['expires_at'] ?? null,
-            ]);
+            $issued = DB::transaction(function () use ($request, $validated, $paidBy): array {
+                $this->funding->record($request->user(), $paidBy, (float) $validated['amount'], 'Gift card sold');
+
+                return $this->giftCardIssue->issue([
+                    'amount' => $validated['amount'],
+                    'issued_to_customer_id' => $validated['customer_id'] ?? null,
+                    'purchased_by_customer_id' => null,
+                    'expires_at' => $validated['expires_at'] ?? null,
+                    'paid_by' => $paidBy,
+                    'reference' => $validated['reference'] ?? null,
+                    'user_id' => $request->user()?->id,
+                ]);
+            });
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            throw $e; // a refusal from GiftCardFunding, not a code clash
         } catch (\RuntimeException) {
             return response()->json(['message' => 'Could not generate a unique gift card code. Please try again.'], 500);
         }
@@ -403,6 +419,7 @@ class GiftCardController extends Controller
                 'initial_balance' => (float) $card->initial_balance,
                 'issued_to_customer_id' => $card->issued_to_customer_id,
                 'expires_at' => $card->expires_at?->toDateString(),
+                'paid_by' => $paidBy,
             ],
             ['masked_code' => $card->masked_code],
             $request,
@@ -1091,9 +1108,12 @@ class GiftCardController extends Controller
     {
         $validated = $request->validate([
             'amount' => ['required', 'numeric', 'min:1', 'max:5000'],
+            'paid_by' => ['sometimes', 'string', Rule::in(GiftCardFunding::METHODS)],
+            'reference' => ['nullable', 'string', 'max:100'],
         ]);
+        $paidBy = $validated['paid_by'] ?? 'complimentary';
 
-        return DB::transaction(function () use ($request, $validated, $id): JsonResponse {
+        return DB::transaction(function () use ($request, $validated, $id, $paidBy): JsonResponse {
             /** @var GiftCard|null $card */
             $card = GiftCard::query()->lockForUpdate()->find($id);
             if (!$card) {
@@ -1105,12 +1125,13 @@ class GiftCardController extends Controller
             }
 
             $amount = round((float) $validated['amount'], 2);
+            $this->funding->record($request->user(), $paidBy, $amount, 'Gift card top-up ' . $card->masked_code);
             $newBalance = round((float) $card->current_balance + $amount, 2);
             $newInitial = round((float) $card->initial_balance + $amount, 2);
 
             $status = $card->status;
             if ($status === 'depleted' || $status === 'expired') {
-                $stillExpired = $card->expires_at && $card->expires_at->isPast();
+                $stillExpired = $card->isExpired();
                 $status = $stillExpired ? 'expired' : 'active';
             }
 
@@ -1124,6 +1145,9 @@ class GiftCardController extends Controller
                 'gift_card_id' => $card->id,
                 'amount' => $amount,
                 'type' => 'load',
+                'paid_by' => $paidBy,
+                'reference' => $validated['reference'] ?? null,
+                'user_id' => $request->user()?->id,
                 'balance_after' => $newBalance,
             ]);
 
@@ -1132,7 +1156,7 @@ class GiftCardController extends Controller
                 'GiftCard',
                 $card->id,
                 [],
-                ['amount' => $amount, 'balance_after' => $newBalance, 'status' => $status],
+                ['amount' => $amount, 'balance_after' => $newBalance, 'status' => $status, 'paid_by' => $paidBy],
                 ['masked_code' => $card->masked_code],
                 $request,
             );
@@ -1201,6 +1225,8 @@ class GiftCardController extends Controller
                 'type' => $t->type,
                 'amount' => (float) $t->amount,
                 'balance_after' => (float) $t->balance_after,
+                'paid_by' => $t->paid_by,
+                'reference' => $t->reference,
                 'order_id' => $t->order_id,
                 'created_at' => $t->created_at?->toIso8601String(),
             ]);

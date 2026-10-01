@@ -139,7 +139,7 @@ class OfflineOrderRewardsService
             if (!$card) {
                 throw new \RuntimeException('Invalid or unavailable gift card.');
             }
-            if ($card->expires_at && $card->expires_at->isPast()) {
+            if ($card->isExpired()) {
                 $card->update(['status' => 'expired']);
                 throw new \RuntimeException('This gift card has expired.');
             }

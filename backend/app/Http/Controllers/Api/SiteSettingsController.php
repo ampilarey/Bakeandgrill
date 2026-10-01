@@ -43,6 +43,8 @@ class SiteSettingsController extends Controller
         // Settings → Refunds & payouts (refund audit, 2026-09-25)
         'pos_card_reference_required',
         'deposit_payout_owner_threshold_mvr',
+        // Gift card audit, 2026-10-01: complimentary cards above this need an owner.
+        'gift_card_comp_owner_threshold_mvr',
         // Settings → Credit Accounts
         'credit_accounts_mode',
         'credit_limit_max_mvr',

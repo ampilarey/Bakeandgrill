@@ -335,8 +335,22 @@ final class DepositLedgerService
         // threshold only an owner may do it, and every payout texts the
         // owners afterwards.
         $thresholdLaar = (int) round(((float) SiteSetting::get('deposit_payout_owner_threshold_mvr', '500')) * 100);
-        if ($thresholdLaar > 0 && $amountLaar > $thresholdLaar && ($actor->role?->slug ?? '') !== 'owner') {
-            abort(422, sprintf('Deposit payouts above MVR %s need an owner. Ask an owner to record this one.', number_format($thresholdLaar / 100, 2)));
+        // Counted over the last 24 hours, not per payout (deposit audit,
+        // 2026-10-01): two payouts of MVR 450 used to get under a MVR 500
+        // limit that one payout of 900 could not.
+        if ($thresholdLaar > 0 && ($actor->role?->slug ?? '') !== 'owner') {
+            $recentLaar = (int) abs((int) CustomerDepositLedger::query()
+                ->where('type', 'payout')
+                ->where('actor_user_id', $actor->id)
+                ->where('created_at', '>=', now()->subDay())
+                ->sum('amount_laar'));
+            if ($recentLaar + $amountLaar > $thresholdLaar) {
+                abort(422, sprintf(
+                    'Deposit payouts above MVR %s in a day need an owner%s. Ask an owner to record this one.',
+                    number_format($thresholdLaar / 100, 2),
+                    $recentLaar > 0 ? sprintf(' (you have paid out MVR %s in the last 24 hours)', number_format($recentLaar / 100, 2)) : '',
+                ));
+            }
         }
 
         $ledger = DB::transaction(function () use ($customer, $amountLaar, $method, $actor, $reference, $notes, $request) {

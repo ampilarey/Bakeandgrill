@@ -20,6 +20,7 @@ import {
   type GiftCardTransaction,
   type GiftCardSmsResult,
   type GiftCardEmailResult,
+  type GiftCardPaidBy,
 } from '../api';
 import { Gift, Search, Copy, Check } from 'lucide-react';
 import { PrintCardModal, type PrintCardData } from '../components/PrintCardModal';
@@ -38,6 +39,52 @@ const STATUS_LABEL: Record<string, string> = {
   expired: 'Expired',
   cancelled: 'Cancelled',
 };
+
+const PAID_BY_LABEL: Record<GiftCardPaidBy, string> = {
+  cash: 'Cash',
+  card: 'Card',
+  bank_transfer: 'Bank transfer',
+  complimentary: 'Complimentary (free)',
+};
+
+const PAID_FIELD: React.CSSProperties = {
+  width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10,
+  fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)',
+};
+
+/**
+ * How a card or top-up was paid for (gift card audit, 2026-10-01). Cash goes
+ * into the open drawer; a free card above the owner limit needs an owner.
+ */
+function PaidByFields({ paidBy, onPaidBy, reference, onReference }: {
+  paidBy: GiftCardPaidBy | '';
+  onPaidBy: (v: GiftCardPaidBy | '') => void;
+  reference: string;
+  onReference: (v: string) => void;
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, margin: '12px 0' }}>
+      <label>
+        <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Paid by *</span>
+        <select data-testid="gift-card-paid-by" value={paidBy} onChange={(e) => onPaidBy(e.target.value as GiftCardPaidBy | '')} style={PAID_FIELD}>
+          <option value="">Choose…</option>
+          {(Object.keys(PAID_BY_LABEL) as GiftCardPaidBy[]).map((k) => (
+            <option key={k} value={k}>{PAID_BY_LABEL[k]}</option>
+          ))}
+        </select>
+      </label>
+      {paidBy === 'cash' && (
+        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>Recorded as cash in on your open shift.</p>
+      )}
+      {(paidBy === 'card' || paidBy === 'bank_transfer') && (
+        <label>
+          <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Slip or transfer reference</span>
+          <input value={reference} onChange={(e) => onReference(e.target.value)} maxLength={100} style={PAID_FIELD} />
+        </label>
+      )}
+    </div>
+  );
+}
 
 export default function GiftCardsPage() {
   usePageTitle('Gift Cards');
@@ -66,6 +113,8 @@ export default function GiftCardsPage() {
   const [amount, setAmount] = useState('');
   const [customerId, setCustomerId] = useState<number | null>(null);
   const [expiresAt, setExpiresAt] = useState('');
+  const [paidBy, setPaidBy] = useState<GiftCardPaidBy | ''>('');
+  const [paidRef, setPaidRef] = useState('');
   const [sendSms, setSendSms] = useState(false);
   const [recipientPhone, setRecipientPhone] = useState('');
   const [sendEmail, setSendEmail] = useState(false);
@@ -103,6 +152,8 @@ export default function GiftCardsPage() {
 
   const [topUpCard, setTopUpCard] = useState<GiftCard | null>(null);
   const [topUpAmount, setTopUpAmount] = useState('');
+  const [topUpPaidBy, setTopUpPaidBy] = useState<GiftCardPaidBy | ''>('');
+  const [topUpRef, setTopUpRef] = useState('');
   const [topUpError, setTopUpError] = useState('');
   const [topUpSaving, setTopUpSaving] = useState(false);
 
@@ -138,6 +189,8 @@ export default function GiftCardsPage() {
     setAmount('');
     setCustomerId(null);
     setExpiresAt('');
+    setPaidBy('');
+    setPaidRef('');
     setSendSms(false);
     setRecipientPhone('');
     setSendEmail(false);
@@ -149,6 +202,10 @@ export default function GiftCardsPage() {
     const amt = parseFloat(amount);
     if (!amount || isNaN(amt) || amt < 1 || amt > 5000) {
       setIssueError('Enter an amount between MVR 1 and 5000.');
+      return;
+    }
+    if (!paidBy) {
+      setIssueError('Choose how the card was paid for.');
       return;
     }
     if (sendSms && !customerId && !recipientPhone.trim()) {
@@ -166,6 +223,8 @@ export default function GiftCardsPage() {
     try {
       const res = await issueGiftCard({
         amount: amt,
+        paid_by: paidBy,
+        reference: paidRef.trim() || null,
         customer_id: customerId,
         expires_at: expiresAt || null,
         send_sms: sendSms,
@@ -280,10 +339,16 @@ export default function GiftCardsPage() {
       setTopUpError('Enter an amount between MVR 1 and 5000.');
       return;
     }
+    if (!topUpPaidBy) {
+      setTopUpError('Choose how the top-up was paid for.');
+      return;
+    }
     setTopUpSaving(true);
     setTopUpError('');
     try {
-      await topUpGiftCard(topUpCard.id, amt);
+      await topUpGiftCard(topUpCard.id, amt, topUpPaidBy, topUpRef.trim() || null);
+      setTopUpPaidBy('');
+      setTopUpRef('');
       setTopUpCard(null);
       void load();
       if (ledgerCard?.id === topUpCard.id) void openLedger(topUpCard);
@@ -484,6 +549,7 @@ export default function GiftCardsPage() {
             onChange={setTopUpAmount}
             placeholder="e.g. 100"
           />
+          <PaidByFields paidBy={topUpPaidBy} onPaidBy={setTopUpPaidBy} reference={topUpRef} onReference={setTopUpRef} />
           <ModalActions>
             <Btn variant="secondary" onClick={() => setTopUpCard(null)}>Cancel</Btn>
             <Btn onClick={() => void handleTopUp()} disabled={topUpSaving}>
@@ -542,7 +608,7 @@ export default function GiftCardsPage() {
                 {ledgerRows.map(row => (
                   <tr key={row.id}>
                     <td style={TD}>{row.created_at ? new Date(row.created_at).toLocaleString() : '—'}</td>
-                    <td style={TD}>{row.type}</td>
+                    <td style={TD}>{row.type}{row.paid_by ? ` · ${PAID_BY_LABEL[row.paid_by]}` : ''}{row.reference ? ` (${row.reference})` : ''}</td>
                     <td style={{ ...TD, color: row.amount < 0 ? 'var(--color-danger-strong)' : 'var(--color-success-strong)', fontWeight: 600 }}>
                       {row.amount < 0 ? '−' : '+'}MVR {Math.abs(row.amount).toFixed(2)}
                     </td>
@@ -669,6 +735,7 @@ export default function GiftCardsPage() {
                   <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Amount (MVR) *</span>
                   <Input type="number" min="1" max="5000" step="0.01" placeholder="50.00" value={amount} onChange={setAmount} />
                 </label>
+                <PaidByFields paidBy={paidBy} onPaidBy={setPaidBy} reference={paidRef} onReference={setPaidRef} />
                 <label>
                   <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Customer (optional)</span>
                   <CustomerSearch

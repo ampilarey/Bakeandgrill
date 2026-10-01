@@ -24,6 +24,9 @@ final class GiftCardIssueService
      *   issued_to_customer_id?: int|null,
      *   purchased_by_customer_id?: int|null,
      *   expires_at?: string|\DateTimeInterface|null,
+     *   paid_by?: string|null,
+     *   reference?: string|null,
+     *   user_id?: int|null,
      * }  $data
      * @return array{card: GiftCard, plain: string}
      */
@@ -46,6 +49,9 @@ final class GiftCardIssueService
             'gift_card_id' => $card->id,
             'amount' => $data['amount'],
             'type' => 'load',
+            'paid_by' => $data['paid_by'] ?? null,
+            'reference' => $data['reference'] ?? null,
+            'user_id' => $data['user_id'] ?? null,
             'balance_after' => $data['amount'],
         ]);
 
