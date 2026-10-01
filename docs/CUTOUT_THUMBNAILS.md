@@ -10,11 +10,14 @@ pic only ... I add png without background of the item."
 A second picture per item, a **cut-out**: the dish with its background removed,
 kept see-through. The small cards float it over a circle the app draws:
 
-| Surface | Where | Falls back to |
-|---|---|---|
-| Website menu | `partials/menu-card.blade.php` | the card photo |
-| Order app menu | `components/menu/ProductCard.tsx` | the photo slider |
-| POS tiles | `components/MenuGrid.tsx` | the photo fill |
+| Surface | Where | Circle | Falls back to |
+|---|---|---|---|
+| Website menu | `partials/menu-card.blade.php` | yes | the card photo |
+| Order app menu | `components/menu/ProductCard.tsx` | yes | the photo slider |
+| POS tiles | `components/MenuGrid.tsx` | no, the cut-out sits on the tile's own colour | the photo fill |
+
+Owner, after seeing it on the till: "Pos should render without circle. Circle is
+for both menu page." So the POS payload carries the cut-out URLs but no backdrop.
 
 The opened item (item page, item sheet, offers, signage, social cards) never uses
 the cut-out. Items without one look exactly as before.
@@ -58,9 +61,9 @@ PATCH  /api/categories/{id}              cutout_backdrop in the body
 
 ## Rendering
 
-Both React apps set `--cutout-color` and `--cutout-alpha` on the circle frame via
+The order app sets `--cutout-color` and `--cutout-alpha` on the circle frame via
 `cutoutBackdropVars()` from `packages/shared/src/utils/cutout.ts`; the website
-blade sets the same two properties inline. The circle is drawn as a `::before`
+blade sets the same two properties inline. The POS only uses `hasCutout()`. The circle is drawn as a `::before`
 inset 7% so the dish can overhang it; the image is `object-fit: contain` with a
 soft drop shadow.
 

@@ -13,9 +13,10 @@ use Illuminate\Support\Facades\Schema;
  * for the thumbnail pic only ... I add png without background of the item."
  *
  * A second picture per item: a cut-out with a see-through background, shown
- * on the small cards (website menu, order app menu, POS tiles) over a circle
- * the app draws. The circle's colour and strength come from a backdrop that
- * can be set for the whole menu, a category, a subcategory, or one item.
+ * on the small cards (website menu, order app menu, POS tiles). The two menu
+ * pages draw a circle behind it; the POS shows it on the tile's own colour.
+ * The circle's colour and strength come from a backdrop that can be set for
+ * the whole menu, a category, a subcategory, or one item.
  */
 return new class extends Migration
 {

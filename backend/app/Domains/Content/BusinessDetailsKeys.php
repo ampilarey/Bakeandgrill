@@ -148,8 +148,8 @@ final class BusinessDetailsKeys
         'menu_other_banner_image' => ['Website menu "Other" banner', 'Order App menu "Other" banner'],
         'menu_events_banner_image' => ['Website menu "Event & catering" banner', 'Order App menu "Event & catering" banner'],
         'menu_featured_title' => ['Website menu featured strip', 'Order App menu featured strip'],
-        'menu_cutout_backdrop_color' => ['Website menu cards', 'Order App menu cards', 'POS tiles'],
-        'menu_cutout_backdrop_strength' => ['Website menu cards', 'Order App menu cards', 'POS tiles'],
+        'menu_cutout_backdrop_color' => ['Website menu cards', 'Order App menu cards'],
+        'menu_cutout_backdrop_strength' => ['Website menu cards', 'Order App menu cards'],
         'complaint_prompt_text' => ['Website menu foot and footer', 'Printed menu', 'Order App footer and order status'],
     ];
 

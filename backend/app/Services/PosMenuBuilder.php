@@ -189,11 +189,11 @@ class PosMenuBuilder
                 // scanning while the connection was down did nothing.
                 'barcode' => $item->barcode,
                 'image_url' => $item->display_image_url,
-                // See-through thumbnail for the tile, over a circle the POS
-                // draws from cutout_backdrop; the tile keeps the photo otherwise.
+                // See-through thumbnail for the tile, drawn on the tile's own
+                // colour with no circle (owner, 2026-10-01: the circle is for
+                // the two menu pages). The tile keeps the photo otherwise.
                 'cutout_url' => $item->cutout_url ?? null,
                 'cutout_webp_url' => $item->cutout_webp_url ?? null,
-                'cutout_backdrop' => app(\App\Domains\Catalog\Support\CutoutBackdrop::class)->resolve($item),
                 'base_price' => $item->base_price,
                 'packaging_fee' => (float) ($item->packaging_fee ?? 0),
                 'packaging_fee_mode' => (string) ($item->packaging_fee_mode ?? 'per_unit'),

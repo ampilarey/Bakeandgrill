@@ -93,7 +93,7 @@ export function CutoutSlot({ itemId }: { itemId: number }) {
         <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>Thumbnail cut-out</div>
       </div>
       <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.45 }}>
-        A PNG of the dish with the background removed. Menu cards and POS tiles float it over a circle;
+        A PNG of the dish with the background removed. Menu cards float it over a circle and POS tiles show it on their own;
         the opened item keeps showing the photos below. Without a cut-out the cards use the main photo as now.
       </p>
       {error && <div style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger-strong)', padding: '8px 12px', borderRadius: 8, fontSize: 13 }}>{error}</div>}

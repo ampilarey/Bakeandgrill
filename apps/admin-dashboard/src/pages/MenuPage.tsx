@@ -218,7 +218,7 @@ function CategoryFormModal({
             Thumbnail circle
           </div>
           <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.4 }}>
-            The circle behind cut-out thumbnails for every item in this category, on menu cards and POS tiles.
+            The circle behind cut-out thumbnails for every item in this category, on the website and order app menu cards. The POS shows cut-outs without a circle.
             An item can still set its own.
           </p>
           <CutoutBackdropField

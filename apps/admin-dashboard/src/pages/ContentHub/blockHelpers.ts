@@ -41,7 +41,7 @@ const KEY_HELPERS: Record<string, string> = {
   menu_events_banner_image: 'Banner photo over the “Event & catering menu” section.',
   complaint_prompt_text: 'Short line beside every “Make a complaint” link: menu foot, printed menu, both footers, order status.',
   menu_featured_title: 'Heading over the items ticked “Featured”, shown ahead of the categories on both menus.',
-  menu_cutout_backdrop_color: 'The circle drawn behind a cut-out thumbnail on menu cards and POS tiles. A category or an item can set its own.',
+  menu_cutout_backdrop_color: 'The circle drawn behind a cut-out thumbnail on the website menu and the order app menu cards (the POS shows the cut-out on its own, with no circle). A category or an item can set its own.',
   menu_cutout_backdrop_strength: 'How solid that circle is: 100 paints it fully, 40 leaves a faint tint, 0 hides it.',
   language_switcher_enabled: 'Show the EN / ދވ language toggle on the website and order app. Off by default.',
   announcement_enabled: 'Show or hide the announcement banner.',

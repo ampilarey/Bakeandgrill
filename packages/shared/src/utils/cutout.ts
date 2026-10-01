@@ -3,7 +3,7 @@ import type { CutoutBackdrop } from '../types/product';
 /**
  * The CSS custom properties a card sets on its circle frame so the
  * stylesheet can draw the backdrop behind a cut-out thumbnail. One place for
- * the order app and the POS, so the two cannot drift.
+ * the order app; the POS shows the cut-out with no circle.
  */
 export function cutoutBackdropVars(backdrop: CutoutBackdrop | null | undefined): Record<string, string> {
   const color = backdrop?.color && /^#[0-9a-fA-F]{6}$/.test(backdrop.color) ? backdrop.color : '#F3EAE1';
