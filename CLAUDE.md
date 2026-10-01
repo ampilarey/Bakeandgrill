@@ -20,7 +20,9 @@ cd /home/bakeandgrill/public_html && ./scripts/full-deploy.sh production
 ```
 
 That one script is the whole deploy: `git pull`, `composer install --no-dev`,
-`app:verify-production-config`, `migrate --force`, `storage:link`, `config:cache`,
+`app:verify-production-config`, a database-only `backup:run` when migrations are
+pending (production; the deploy stops if it fails, `SKIP_PREDEPLOY_BACKUP=1` to
+override), `migrate --force`, `storage:link`, `config:cache`,
 `route:cache`, `view:clear`, `queue:restart`, queue-worker keepalive, deploy stamp,
 and `post-deploy-smoke.sh production`. There is nothing to run before or after it.
 

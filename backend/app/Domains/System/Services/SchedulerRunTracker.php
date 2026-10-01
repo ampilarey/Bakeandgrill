@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Domains\System\Services;
 
 use App\Support\ResilientCache;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -158,6 +157,7 @@ class SchedulerRunTracker
             'backup:clean',
             'backup:run',
             'backup:monitor',
+            'ops:watch-queue-worker',
             'scheduler:heartbeat',
         ];
     }

@@ -58,6 +58,19 @@ fi
 echo "Verifying Redis isolation..."
 php artisan app:verify-redis-isolation
 
+# A restore point before the schema changes (operations audit, 2026-10-01).
+# The nightly backup runs at 01:30, so a migration that went wrong in the
+# afternoon could only be undone to last night, losing the day's orders.
+# Production only, only when there is something to migrate, database only.
+# If the backup fails the deploy stops here, before anything has changed;
+# SKIP_PREDEPLOY_BACKUP=1 overrides that when you know why.
+if [[ "$ENV" == "production" || "$ENV" == "prod" ]] && [[ "${SKIP_PREDEPLOY_BACKUP:-0}" != "1" ]]; then
+  if php artisan migrate:status --no-ansi 2>/dev/null | grep -q "Pending"; then
+    echo "Pending migrations: taking a database backup first..."
+    php artisan backup:run --only-db --disable-notifications
+  fi
+fi
+
 php artisan migrate --force
 
 # Role permissions are rows; the catalog that defines them is code. Until this

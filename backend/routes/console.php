@@ -43,6 +43,15 @@ $alertOnFailure = function (string $command): Closure {
         if (app()->bound('sentry')) {
             \Sentry\captureMessage($msg, Sentry\Severity::error());
         }
+        // Operations audit, 2026-10-01: the owner hears about it too, once a
+        // day per task. A failed backup used to reach nobody.
+        App\Support\OwnerOpsAlert::send(
+            'task-failed:' . $command,
+            str_starts_with($command, 'backup:')
+                ? "Bake & Grill: the nightly backup task '{$command}' failed. Until it runs, there is no fresh backup. Check storage/logs/laravel.log on the server."
+                : "Bake & Grill: the scheduled task '{$command}' failed. Check storage/logs/laravel.log on the server.",
+            1440,
+        );
     };
 };
 
@@ -407,6 +416,13 @@ Schedule::command('backup:monitor')
     ->withoutOverlapping()
     ->onFailure($alertOnFailure('backup:monitor'))
     ->after($trackSuccess('backup:monitor'));
+
+// Operations audit, 2026-10-01: text the owner when the queue worker goes quiet.
+Schedule::command('ops:watch-queue-worker')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->onFailure($alertOnFailure('ops:watch-queue-worker'))
+    ->after($trackSuccess('ops:watch-queue-worker'));
 
 // External dead-man's switch — pings HEALTHCHECK_URL when configured
 Schedule::command('scheduler:heartbeat')

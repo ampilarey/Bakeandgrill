@@ -29,6 +29,9 @@ return [
                  */
                 'include' => [
                     storage_path('app/public'),
+                    // Operations audit, 2026-10-01: private uploads too —
+                    // complaint photos, purchase receipts. They were left out.
+                    storage_path('app/private'),
                 ],
 
                 /*

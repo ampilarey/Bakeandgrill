@@ -1,6 +1,10 @@
 # Database Backup & Restore Runbook
 
-Bake & Grill uses [spatie/laravel-backup](https://github.com/spatie/laravel-backup) for nightly database dumps plus uploaded files under `storage/app/public`.
+Bake & Grill uses [spatie/laravel-backup](https://github.com/spatie/laravel-backup) for nightly database dumps plus uploaded files under `storage/app/public` and `storage/app/private` (complaint photos, purchase receipts; added 2026-10-01).
+
+`scripts/full-deploy.sh production` also takes a database-only backup before running migrations, whenever there are migrations pending, and stops the deploy if that backup fails (`SKIP_PREDEPLOY_BACKUP=1` overrides).
+
+**Keep `APP_KEY` somewhere off the server.** Several columns are encrypted with it (two-factor secrets, gift card delivery codes). A database restored without the same `APP_KEY` cannot read them.
 
 Production runs **MySQL/MariaDB** (see CLAUDE.md). This runbook said PostgreSQL and gave `pg_restore` commands until 2026-08-23 — worth knowing if you followed an older copy.
 
@@ -102,3 +106,5 @@ php artisan test --filter=Health
 ## Failure alerts
 
 Failed or unhealthy backups send mail to `BACKUP_NOTIFICATION_EMAIL` and log via Sentry (`routes/console.php` `onFailure` handlers).
+
+Since 2026-10-01 a failed scheduled task, backups included, also texts the owner (SMS type `owner_ops_alert`, owner phones, at most once a day per task), and `ops:watch-queue-worker` (every five minutes, from cron) texts the owner when the queue worker has not run for ten minutes.

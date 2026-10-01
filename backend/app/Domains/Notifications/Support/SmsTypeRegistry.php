@@ -92,6 +92,7 @@ final class SmsTypeRegistry
         'owner_gst_filing_due' => 'owners_managers',
         // Owner only: the alert may be about a manager's account.
         'owner_staff_login_locked' => 'owner_only',
+        'owner_ops_alert' => 'owner_only',
     ];
 
     public const RECIPIENT_MODES = ['owners_managers', 'owner_only', 'business_phone', 'staff', 'custom'];
@@ -216,6 +217,8 @@ final class SmsTypeRegistry
             self::def('owner_gst_filing_due', 'Owner: GST return due', 'staff', true, false, null, 'sms_owner_gst_filing_due_enabled', null, false, 'Owners & managers (days ahead set on the GST page)', false),
             // Staff audit, 2026-10-01: an account locked by repeated wrong sign-ins.
             self::def('owner_staff_login_locked', 'Owner: staff sign-in locked after repeated wrong attempts', 'staff', true, false, null, 'sms_owner_staff_login_locked_enabled', null, false, 'Owner phone(s)', false),
+            // Operations audit, 2026-10-01: a scheduled task (backups included) failed, or the queue worker stopped.
+            self::def('owner_ops_alert', 'Owner: backup or background task failed', 'staff', true, false, null, 'sms_owner_ops_alert_enabled', null, false, 'Owner phone(s)', false),
 
             // SMS audit, 2026-09-24: the twenty-six paths that still sent under
             // the old category labels ("system", "transactional",
