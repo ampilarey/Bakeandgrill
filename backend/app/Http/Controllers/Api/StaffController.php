@@ -8,9 +8,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\Role;
 use App\Models\User;
-use App\Services\AuditLogService;
-use Illuminate\Http\JsonResponse;
 use App\Rules\StrongStaffPin;
+use App\Services\AuditLogService;
+use App\Services\StaffAccountLock;
+use App\Services\StaffHistory;
+use App\Services\StaffSessions;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -19,7 +22,23 @@ use Illuminate\Validation\Rule;
 
 class StaffController extends Controller
 {
-    public function __construct(private readonly AuditLogService $audit) {}
+    public function __construct(
+        private readonly AuditLogService $audit,
+        private readonly StaffSessions $sessions,
+    ) {}
+
+    /**
+     * Seniority, highest first. A non-owner may only manage, and only hand
+     * out, roles below their own (staff audit, 2026-10-01): before, a manager
+     * could reset another manager's PIN or second factor and sign in as them,
+     * or make anyone a manager.
+     */
+    private const ROLE_RANK = ['owner' => 3, 'manager' => 2, 'staff' => 1, 'kitchen_staff' => 1];
+
+    private static function rank(?string $slug): int
+    {
+        return self::ROLE_RANK[$slug ?? ''] ?? 0;
+    }
 
     // ─── Internal authorization guard (defense-in-depth) ─────────────────────
     private function authorizePermission(Request $request, string $permission): void
@@ -65,6 +84,13 @@ class StaffController extends Controller
         if ($this->isOwnerAccount($target)) {
             abort(403, 'Only an owner can manage owner accounts.');
         }
+
+        // Your own name and phone are yours to edit; other accounts must sit
+        // below you.
+        $actor->loadMissing('role');
+        if ($actor->id !== $target->id && self::rank($target->role?->slug) >= self::rank($actor->role?->slug)) {
+            abort(403, 'Only an owner can manage an account at your level or above.');
+        }
     }
 
     private function assertCanAssignRole(User $actor, int $roleId, bool $isSelf): void
@@ -79,6 +105,12 @@ class StaffController extends Controller
 
         if ($this->roleIdIsOwner($roleId)) {
             abort(403, 'Only an owner can assign the owner role.');
+        }
+
+        $actor->loadMissing('role');
+        $slug = Role::whereKey($roleId)->value('slug');
+        if (self::rank($slug) >= self::rank($actor->role?->slug)) {
+            abort(403, 'Only an owner can give someone a role at your level or above.');
         }
     }
 
@@ -169,12 +201,13 @@ class StaffController extends Controller
             'email' => 'required|email|unique:users,email',
             'phone' => 'nullable|string|max:20',
             'role_id' => 'required|exists:roles,id',
-            'pin' => ['required', 'digits_between:4,8', new StrongStaffPin()],
+            'pin' => ['required', 'digits_between:4,8', new StrongStaffPin],
         ]);
 
         if (!$this->actorIsOwner($actor) && $this->roleIdIsOwner((int) $validated['role_id'])) {
             abort(403, 'Only an owner can create owner accounts.');
         }
+        $this->assertCanAssignRole($actor, (int) $validated['role_id'], false);
 
         $user = User::create([
             'name' => $validated['name'],
@@ -187,6 +220,10 @@ class StaffController extends Controller
         ]);
 
         $user->load('role');
+
+        $this->audit->log('staff.created', 'User', $user->id, [], [
+            'name' => $user->name, 'email' => $user->email, 'phone' => $user->phone, 'role' => $user->role?->slug,
+        ], [], $request);
 
         return response()->json(['staff' => $this->formatUser($user)], 201);
     }
@@ -264,9 +301,10 @@ class StaffController extends Controller
             $user->unsetRelation('role');
             $user->load('role');
 
-            // Deactivate → revoke only this staff user's Sanctum tokens (same txn).
+            // Deactivate → end every sign-in this account has, admin browsers
+            // included (same txn).
             if (array_key_exists('is_active', $validated) && !$user->is_active) {
-                $user->tokens()->delete();
+                $this->sessions->endAll($user);
             }
 
             if ($tracked !== []) {
@@ -296,7 +334,7 @@ class StaffController extends Controller
         $actor = $request->user();
 
         $validated = $request->validate([
-            'pin' => ['required', 'digits_between:4,8', new StrongStaffPin()],
+            'pin' => ['required', 'digits_between:4,8', new StrongStaffPin],
         ]);
 
         DB::transaction(function () use ($actor, $id, $validated, $request): void {
@@ -304,8 +342,10 @@ class StaffController extends Controller
             $this->assertCanManageTarget($actor, $user);
 
             $user->update(['pin_hash' => Hash::make($validated['pin'])]);
-            // PIN reset invalidates existing sessions for this staff user only.
-            $user->tokens()->delete();
+            // PIN reset ends every sign-in this staff user has, admin
+            // browsers included, and lifts a lockout.
+            $this->sessions->endAll($user);
+            app(StaffAccountLock::class)->clear($user);
 
             $this->audit->log('staff.pin_reset', 'User', $user->id, [], ['reset_by' => $request->user()?->id], [], $request);
         });
@@ -342,8 +382,8 @@ class StaffController extends Controller
         $twoFactor->disable($user, $actor, $request);
 
         // A lost phone may be a lost phone in someone else's hands, so cut the
-        // account's other sessions at the same time.
-        $user->tokens()->delete();
+        // account's other sessions at the same time — admin browsers too.
+        $this->sessions->endAll($user);
 
         return response()->json([
             'message' => 'Two-factor reset. They can sign in with their password and set up a new phone.',
@@ -351,18 +391,28 @@ class StaffController extends Controller
         ]);
     }
 
-    /** DELETE /api/admin/staff/{id} */
-    public function destroy(Request $request, int $id): JsonResponse
+    /**
+     * DELETE /api/admin/staff/{id}
+     *
+     * Deletes an account nobody ever used. One with anything on record is
+     * archived instead (StaffHistory): switched off, PIN cleared, every
+     * sign-in ended, and kept so the records it is on still say who.
+     */
+    public function destroy(Request $request, int $id, StaffHistory $history): JsonResponse
     {
         $this->authorizePermission($request, 'staff.delete');
 
         /** @var User $actor */
         $actor = $request->user();
 
-        return DB::transaction(function () use ($actor, $id): JsonResponse {
+        if ($actor->id === $id) {
+            abort(422, 'You cannot remove your own account.');
+        }
+
+        return DB::transaction(function () use ($actor, $id, $history, $request): JsonResponse {
             $preTarget = User::with('role')->findOrFail($id);
 
-            // Lock active Owners first (id order) when deleting an active Owner.
+            // Lock active Owners first (id order) when removing an active Owner.
             if ($preTarget->role?->slug === 'owner' && $preTarget->is_active) {
                 $activeOwners = $this->lockActiveOwners();
                 $user = $activeOwners->firstWhere('id', $id) ?? User::with('role')->lockForUpdate()->findOrFail($id);
@@ -378,9 +428,25 @@ class StaffController extends Controller
                 $this->assertCanManageTarget($actor, $user);
             }
 
-            $user->delete();
+            $snapshot = ['name' => $user->name, 'email' => $user->email, 'phone' => $user->phone, 'role' => $user->role?->slug];
 
-            return response()->json(['message' => 'Staff member removed.']);
+            if ($history->hasHistory($user)) {
+                $user->forceFill(['is_active' => false, 'pin_hash' => null])->save();
+                $this->sessions->endAll($user);
+                $this->audit->log('staff.archived', 'User', $user->id, $snapshot, ['is_active' => false], [], $request);
+
+                return response()->json([
+                    'message' => "{$user->name} has records on file (sales, cash, hours or stock), so the account is archived rather than deleted: switched off, PIN cleared and signed out everywhere.",
+                    'archived' => true,
+                    'staff' => $this->formatUser($user->fresh()->load('role')),
+                ]);
+            }
+
+            $this->sessions->endAll($user);
+            $user->delete();
+            $this->audit->log('staff.deleted', 'User', $id, $snapshot, [], [], $request);
+
+            return response()->json(['message' => 'Staff member removed.', 'archived' => false]);
         });
     }
 }

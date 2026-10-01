@@ -52,8 +52,12 @@ export async function resetStaffTwoFactor(id: number): Promise<{ message: string
   return req(`/admin/staff/${id}/two-factor`, { method: 'DELETE' });
 }
 
-export async function deleteStaff(id: number): Promise<void> {
-  await req(`/admin/staff/${id}`, { method: 'DELETE' });
+/**
+ * Deletes an account nobody used; one with records on file is archived
+ * instead (switched off, PIN cleared, signed out) and `archived` is true.
+ */
+export async function deleteStaff(id: number): Promise<{ message: string; archived?: boolean }> {
+  return req(`/admin/staff/${id}`, { method: 'DELETE' });
 }
 
 export async function getAllPermissions(): Promise<{ permissions: Record<string, { id: number; slug: string; name: string }[]> }> {

@@ -745,13 +745,13 @@ export function StaffPage() {
   const handleDelete = (member: StaffMember) => {
     askConfirm({
       title: 'Remove Staff Member',
-      message: `Remove ${member.name}? This cannot be undone.`,
+      message: `Remove ${member.name}? If they have sales, cash, hours or stock on record, the account is archived instead: switched off and kept so those records still show who.`,
       confirmLabel: 'Remove',
       danger: true,
       onConfirm: async () => {
         try {
-          await deleteStaff(member.id);
-          toast.success('Staff removed.');
+          const res = await deleteStaff(member.id);
+          toast.success(res?.archived ? res.message : 'Staff removed.');
           await load();
         } catch (e) { setError((e as Error).message); }
       },

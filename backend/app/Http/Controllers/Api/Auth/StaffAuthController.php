@@ -10,7 +10,9 @@ use App\Domains\Notifications\Services\SmsService;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\AuditLogService;
+use App\Services\StaffAccountLock;
 use App\Services\StaffAuthRateLimit;
+use App\Services\StaffSessions;
 use App\Services\StaffUserLookup;
 use App\Services\TwoFactorService;
 use Illuminate\Auth\SessionGuard;
@@ -26,7 +28,21 @@ use Laravel\Sanctum\TransientToken;
 
 class StaffAuthController extends Controller
 {
-    public function __construct(private readonly AuditLogService $audit) {}
+    public function __construct(
+        private readonly AuditLogService $audit,
+        private readonly StaffAccountLock $accountLock,
+    ) {}
+
+    /**
+     * The account-wide daily ceiling (StaffAccountLock): checked once the
+     * account is known, before any credential is compared.
+     */
+    private function rejectIfAccountLocked(Request $request, User $user, string $field, string $identityKey): void
+    {
+        if ($this->accountLock->isLocked($user)) {
+            $this->rejectLockedOut($request, $field, $this->accountLock->availableIn($user), $identityKey);
+        }
+    }
 
     /**
      * Record a rejected sign-in, then fail with a message that says nothing
@@ -47,6 +63,10 @@ class StaffAuthController extends Controller
         string $identityKey,
         ?User $user = null,
     ): never {
+        if ($user !== null) {
+            $this->accountLock->recordFailure($user);
+        }
+
         $this->audit->log(
             action: 'auth.staff_login_failed',
             modelType: User::class,
@@ -131,6 +151,9 @@ class StaffAuthController extends Controller
         }
 
         $user = $this->findActiveStaffByUsername($request->username);
+        if ($user) {
+            $this->rejectIfAccountLocked($request, $user, 'pin', $identityKey);
+        }
 
         if (!$user) {
             RateLimiter::hit($rateKey, 600);
@@ -154,6 +177,7 @@ class StaffAuthController extends Controller
 
         RateLimiter::clear($rateKey);
         RateLimiter::clear($acctKey);
+        $this->accountLock->clear($user);
 
         if ($forAdmin) {
             return $this->issueAdminStaffSession($request, $user, 'pin');
@@ -182,6 +206,9 @@ class StaffAuthController extends Controller
         }
 
         $user = $this->findActiveStaffByUsername($request->username);
+        if ($user) {
+            $this->rejectIfAccountLocked($request, $user, 'password', $identityKey);
+        }
 
         if (!$user || !$this->verifyStaffPassword($user, $request->password)) {
             RateLimiter::hit($rateKey, 600);
@@ -196,6 +223,7 @@ class StaffAuthController extends Controller
         }
 
         RateLimiter::clear($rateKey);
+        $this->accountLock->clear($user);
 
         return $this->issuePosStaffToken($user, 'password', $request->input('device_identifier'));
     }
@@ -226,6 +254,8 @@ class StaffAuthController extends Controller
             $this->rejectSignIn($request, 'phone', 'Invalid mobile/email or password.', 'unknown_identity', $identityKey);
         }
 
+        $this->rejectIfAccountLocked($request, $user, 'phone', $identityKey);
+
         if (!$this->staffHasAdminPassword($user)) {
             RateLimiter::hit($rateKey, 600);
             // Same wording again — "no admin password is set" confirmed the
@@ -239,6 +269,7 @@ class StaffAuthController extends Controller
         }
 
         RateLimiter::clear($rateKey);
+        $this->accountLock->clear($user);
 
         return $this->issueAdminStaffSession($request, $user, 'phone');
     }
@@ -329,7 +360,10 @@ class StaffAuthController extends Controller
         Cache::forget($cacheKey);
         Cache::forget($attemptKey);
 
-        $user->tokens()->where('name', 'like', 'staff-%')->delete();
+        // A reset is what someone does when the password got out, so every
+        // sign-in on the old one ends: tills and admin browsers alike.
+        app(StaffSessions::class)->endAll($user);
+        $this->accountLock->clear($user);
 
         return response()->json(['message' => 'Password updated. Please log in with your new password.']);
     }
@@ -386,8 +420,8 @@ class StaffAuthController extends Controller
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
-        $revoked = $user->tokens()->count();
-        $user->tokens()->delete();
+        // Admin browsers too, not just tills (staff audit, 2026-10-01).
+        $revoked = app(StaffSessions::class)->endAll($user);
 
         $this->audit->log(
             action: 'auth.staff_tokens_revoked',
