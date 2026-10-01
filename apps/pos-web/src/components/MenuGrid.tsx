@@ -183,7 +183,22 @@ function MenuItemTile({
       onBlur={(e) => { e.currentTarget.style.boxShadow = '0 1px 2px rgba(15,23,42,0.06)'; }}
     >
       {cutoutSrc ? (
-        <div data-testid="pos-tile-cutout" style={{ position: 'absolute', inset: 0 }}>
+        // In the tile's own column, above the name, not layered under it:
+        // it takes whatever height the name and price leave, so a name on
+        // two lines shrinks the picture instead of overlapping it (owner,
+        // 2026-10-01, mobile POS: "Photo with the name if the name has two
+        // line").
+        <div
+          data-testid="pos-tile-cutout"
+          style={{
+            flexGrow: 1,
+            flexShrink: 1,
+            flexBasis: 0,
+            minHeight: 0,
+            position: 'relative',
+            margin: '8px 10px 0',
+          }}
+        >
           <img
             src={cutoutSrc}
             alt=""
@@ -192,11 +207,9 @@ function MenuItemTile({
             onError={() => setImgFailed(true)}
             style={{
               position: 'absolute',
-              // The bottom is left clear for the name strip.
-              top: '4%',
-              left: '6%',
-              width: '88%',
-              height: '66%',
+              inset: 0,
+              width: '100%',
+              height: '100%',
               objectFit: 'contain',
               display: 'block',
               filter: 'drop-shadow(0 5px 8px rgba(15,23,42,0.18))',
@@ -252,21 +265,25 @@ function MenuItemTile({
           marginTop: 'auto',
           position: 'relative',
           zIndex: 1,
-          padding: imgSrc ? '28px 10px 10px 12px' : '12px 12px 10px 14px',
+          padding: imgSrc ? '28px 10px 10px 12px' : cutoutSrc ? '6px 10px 8px 12px' : '12px 12px 10px 14px',
           background: imgSrc
             ? 'linear-gradient(to top, rgba(15,23,42,0.92) 0%, rgba(15,23,42,0.55) 55%, transparent 100%)'
             : 'transparent',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'flex-end',
-          gap: 4,
-          flex: 1,
-          minHeight: 0,
+          gap: cutoutSrc ? 2 : 4,
+          // With a cut-out the caption takes only the height its text needs
+          // and the picture gets the rest. Growing as well, the two split the
+          // tile in half and a tall name spilled upward over the dish.
+          ...(cutoutSrc ? { flex: '0 0 auto' } : { flex: 1, minHeight: 0 }),
         }}
       >
         <span style={{
           fontSize: 14, fontWeight: 700, lineHeight: 1.2,
           color: imgSrc ? '#FFFFFF' : '#0F172A',
+          // Full name even under a cut-out: at the till a cut name is worse
+          // than a smaller picture, and the picture shrinks to make room.
           display: '-webkit-box', WebkitLineClamp: 3,
           WebkitBoxOrient: 'vertical', overflow: 'hidden',
         }}>

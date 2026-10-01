@@ -51,6 +51,13 @@ describe("MenuGrid cut-out tiles", () => {
     // One element only: the image. No circle is drawn on the POS.
     expect(tile.children).toHaveLength(1);
     expect(tile.firstElementChild?.tagName).toBe("IMG");
+    // In the tile's column above the name, not layered under it, so a
+    // two-line name shrinks the picture instead of overlapping it.
+    expect(tile.style.flexGrow).toBe("1");
+    expect(tile.style.flexBasis).toBe("0px");
+    expect(tile.style.minHeight).toBe("0px");
+    expect(tile.getAttribute("style")).not.toMatch(/inset/);
+    expect(tile.nextElementSibling).toHaveTextContent("Da Hong Pao");
     expect(screen.getAllByTestId("pos-tile-cutout")).toHaveLength(1);
     expect(screen.getByRole("button", { name: /Croissant/ }).querySelector("img")).toHaveAttribute("src", "/storage/menu/croissant.jpg");
   });
