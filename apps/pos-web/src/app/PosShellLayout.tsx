@@ -65,6 +65,9 @@ const ShiftHistoryPanel = lazy(() =>
 const SalesReportPanel = lazy(() =>
   import('../components/SalesReportPanel').then((m) => ({ default: m.SalesReportPanel })),
 );
+const CustomersPanel = lazy(() =>
+  import('../components/CustomersPanel').then((m) => ({ default: m.CustomersPanel })),
+);
 const ExpensesPanel = lazy(() =>
   import('../components/ExpensesPanel').then((m) => ({ default: m.ExpensesPanel })),
 );
@@ -146,6 +149,7 @@ export function PosShellLayout() {
     isLoggedIn, isLocked, pane, setPane, drawerOpen, setDrawerOpen, cashierName, staffRole, deviceId,
     shift, shiftOpen, canEnterPosShell, canOpenShift, canCloseShift, canRingSales, canHoldResume,
     canViewActiveOrders, canViewReceipts, canViewShiftHistory, canViewAllShifts, canViewReports, canManageExpenses,
+    canViewCustomers, customerPerms,
     canAccessOps, canVoidOrders, canManageEvents, canTradeDispatch, canTradeReconcile,
     canManageOrderStatus, canSendBill, canSendPayLink, canRequestRefund, canApproveRefund, canCreatePurchaseRequest,
     canStockCount, canPostStockCount,
@@ -895,6 +899,18 @@ export function PosShellLayout() {
               canViewShiftHistory ? () => setPane("shift_history") : undefined
             }
           />
+          </Suspense>
+        )}
+
+        {pane === 'customers' && canViewCustomers && (
+          <Suspense fallback={<PaneFallback />}>
+            <CustomersPanel
+              {...customerPerms}
+              onStartOrder={canRingSales && shiftOpen
+                ? (c) => { void handleAttachCustomer(c); setPane('sales'); }
+                : undefined}
+              onClose={() => setPane(canRingSales && shiftOpen ? "sales" : canAccessOps ? "ops" : "shift")}
+            />
           </Suspense>
         )}
 

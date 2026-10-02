@@ -13,4 +13,5 @@ export type Pane =
   | "to_receive"
   | "kitchen_receiving"
   | "wholesale_dispatch"
-  | "wholesale_reconcile";
+  | "wholesale_reconcile"
+  | "customers";

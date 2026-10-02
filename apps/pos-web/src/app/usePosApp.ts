@@ -79,6 +79,17 @@ export function usePosApp() {
     || hasPosPermission(staffPermissions, "reports.sales");
   /** Owner + anyone granted finance.expenses (same gate as Admin → Expenses). */
   const canManageExpenses = hasPosPermission(staffPermissions, "finance.expenses");
+  // Customers pane (owner, 2026-10-02): lookup sees and searches; manage edits all.
+  const canLookupCustomers = hasPosPermission(staffPermissions, "customers.lookup");
+  const canManageCustomers = hasPosPermission(staffPermissions, "customers.manage");
+  const customerPerms = useMemo(() => ({
+    canManage: canManageCustomers,
+    canCreate: hasPosPermission(staffPermissions, "customers.create"),
+    canCreditRepay: hasPosPermission(staffPermissions, "customers.credit.repay"),
+    canDepositReceive: hasPosPermission(staffPermissions, "customers.deposit.receive"),
+    canSendSms: hasPosPermission(staffPermissions, "sms.campaigns.send"),
+  }), [staffPermissions, canManageCustomers]);
+  const canViewCustomers = canLookupCustomers || canManageCustomers;
   const canCashInOut = hasPosPermission(staffPermissions, "payments.cash_in_out");
   const canLockScreen = hasPosPermission(staffPermissions, "pos.lock_screen");
   const canOpsInventory = hasPosPermission(staffPermissions, "inventory.manage");
@@ -1242,6 +1253,7 @@ export function usePosApp() {
     if (canViewShiftHistory) main.push({ id: "shift_history", label: "Shift History", icon: "📚", group: "main" });
     if (canViewReports) main.push({ id: "sales_report", label: "Sales reports", icon: "📊", group: "main" });
     if (canAccessOps) main.push({ id: "ops", label: "Operations", icon: "🛠", group: "main" });
+    if (canViewCustomers) main.push({ id: "customers", label: "Customers", icon: "👥", group: "main" });
     if (canManageExpenses) main.push({ id: "expenses", label: "Expenses", icon: "💸", group: "main" });
     if (canCreatePurchaseRequest) main.push({ id: "request_item", label: "Request items", icon: "🛒", group: "main" });
     if (canViewOwnPurchaseRequests) main.push({ id: "my_requests", label: "My requests", icon: "📋", group: "main" });
@@ -1268,7 +1280,7 @@ export function usePosApp() {
     return [...main, ...user];
   }, [
     canRingSales, canViewReceipts, canViewActiveOrders, canViewShiftHistory, canViewReports, canAccessOps,
-    canManageExpenses, canCreatePurchaseRequest, canViewOwnPurchaseRequests, canBuyAssigned, canReceiveDeliveries, canKitchenReceive,
+    canManageExpenses, canViewCustomers, canCreatePurchaseRequest, canViewOwnPurchaseRequests, canBuyAssigned, canReceiveDeliveries, canKitchenReceive,
     canTradeDispatch, canTradeReconcile,
     canLockScreen, canOpenShift, canCloseShift, shiftOpen, openTicketsCount, openTicketsCritical,
   ]);
@@ -1283,6 +1295,7 @@ export function usePosApp() {
     sales_report: canViewReports,
     ops: canAccessOps,
     expenses: canManageExpenses,
+    customers: canViewCustomers,
     my_requests: canViewOwnPurchaseRequests,
     buying_list: canBuyAssigned,
     to_receive: canReceiveDeliveries,
@@ -1291,7 +1304,7 @@ export function usePosApp() {
     wholesale_reconcile: canTradeReconcile,
   }), [
     canRingSales, canViewReceipts, canViewActiveOrders, canViewShiftHistory, canViewReports,
-    canAccessOps, canManageExpenses, canOpenShift, canCloseShift, shiftOpen,
+    canAccessOps, canManageExpenses, canViewCustomers, canOpenShift, canCloseShift, shiftOpen,
     canViewOwnPurchaseRequests, canBuyAssigned, canReceiveDeliveries, canKitchenReceive,
     canTradeDispatch, canTradeReconcile,
   ]);
@@ -1315,6 +1328,7 @@ export function usePosApp() {
     isLoggedIn, username, setUsername, pin, setPin, cashierName, staffRole, staffPermissions,
     canVoidOrders, canOpenShift, canCloseShift, canRingSales, canHoldResume,
     canViewActiveOrders, canViewReceipts, canViewShiftHistory, canViewAllShifts, canViewReports, canManageExpenses,
+    canViewCustomers, customerPerms,
     canCashInOut, canLockScreen,
     canOpsInventory, canOpsPreparedStock,
     canUseCredit, canUseWallet, canPayCash, canPayCard, canPaySplit, canApplyDiscount,
