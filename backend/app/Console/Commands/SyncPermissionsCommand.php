@@ -6,6 +6,7 @@ namespace App\Console\Commands;
 
 use App\Domains\Permissions\PermissionCatalog;
 use App\Domains\Permissions\PermissionCatalogSync;
+use App\Domains\Permissions\RolePermissionCustomisations;
 use App\Models\Permission;
 use App\Models\Role;
 use Illuminate\Console\Command;
@@ -43,6 +44,14 @@ class SyncPermissionsCommand extends Command
 
         $missingRows = $this->missingPermissionRows();
         $drift = $this->roleDrift();
+
+        $custom = 0;
+        foreach (self::ROLES as $slug) {
+            $custom += count(RolePermissionCustomisations::for($slug));
+        }
+        if ($custom > 0) {
+            $this->line("{$custom} owner customisation(s) to the stock roles are kept on top of the catalog.");
+        }
 
         if ($missingRows === [] && $drift === []) {
             $this->info('Nothing to do — every role already holds exactly what the catalog says.');
@@ -82,7 +91,7 @@ class SyncPermissionsCommand extends Command
             return self::FAILURE;
         }
 
-        $this->info('Synced. Every role now holds exactly what the catalog says.');
+        $this->info('Synced. Every role now holds what the catalog says plus the owner\'s own changes to it.');
         $this->line('Per-user overrides were not touched.');
 
         return self::SUCCESS;
@@ -112,7 +121,9 @@ class SyncPermissionsCommand extends Command
                 continue;
             }
 
-            $expected = collect(PermissionCatalog::slugsForRole($slug))->unique();
+            // The catalog plus the owner's own changes to the role: those are
+            // not drift, they are decisions (permissions audit, 2026-10-02).
+            $expected = collect(RolePermissionCustomisations::expectedSlugs($slug))->unique();
             $stored = $role->permissions()->pluck('slug');
 
             $add = $expected->diff($stored)->sort()->values()->all();

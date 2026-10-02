@@ -68,12 +68,19 @@ function PermissionGroupList({
                     gap: 12,
                     padding: '8px 10px',
                     borderRadius: 8,
-                    background: isModified ? '#FFF8F3' : 'transparent',
+                    background: isModified || (roleMode && p.customised) ? '#FFF8F3' : 'transparent',
                   }}
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                       <span style={{ fontSize: 14, color: 'var(--color-text)' }}>{p.name}</span>
+                      {roleMode && p.customised && (
+                        // Changed from the catalog default by the owner; kept
+                        // through deploys (permissions audit, 2026-10-02).
+                        <span title={`Your change — the default for this role is ${p.role_default ? 'allow' : 'deny'}`} data-testid={`role-custom-${p.slug}`}>
+                          <Badge variant="brand" className="text-[10px]">custom</Badge>
+                        </span>
+                      )}
                       {!roleMode && (
                         <>
                           <Badge variant={p.source === 'override' || isModified ? 'brand' : 'neutral'} className="text-[10px]">

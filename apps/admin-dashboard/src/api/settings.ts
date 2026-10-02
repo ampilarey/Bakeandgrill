@@ -333,6 +333,8 @@ export interface PermissionItem {
   slug: string;
   name: string;
   group: string;
+  /** Role editor: the owner changed this away from the catalog default (kept through deploys). */
+  customised?: boolean;
   granted: boolean;
   role_default?: boolean;
   override_mode?: 'inherit' | 'allow' | 'deny';

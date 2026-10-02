@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Permissions\Services;
 
 use App\Domains\Permissions\PermissionCatalog;
+use App\Domains\Permissions\RolePermissionCustomisations;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
@@ -133,20 +134,33 @@ class PermissionService
 
         $role = Role::where('slug', $roleSlug)->firstOrFail();
         $rolePermSlugs = $role->permissions()->pluck('slug')->flip();
+        $catalog = array_fill_keys(PermissionCatalog::slugsForRole($roleSlug), true);
 
+        // `customised`: the owner changed this one away from the catalog
+        // default (permissions audit, 2026-10-02), so the admin can show it.
         return $all->map(fn (Permission $p) => [
             'slug' => $p->slug,
             'name' => $p->name,
             'group' => $p->group,
             'granted' => $rolePermSlugs->has($p->slug),
+            'role_default' => isset($catalog[$p->slug]),
+            'customised' => $rolePermSlugs->has($p->slug) !== isset($catalog[$p->slug]),
         ])->all();
     }
 
-    public function syncRolePermissions(string $roleSlug, array $permissions): void
+    /**
+     * @param array<string, bool> $permissions the full slug => granted map
+     * @param int|null $setBy who decided, for the customisation record
+     */
+    public function syncRolePermissions(string $roleSlug, array $permissions, ?int $setBy = null): void
     {
         if ($roleSlug === 'owner') {
             return;
         }
+
+        // Remember how this differs from the catalog, so the deploy-time
+        // sync keeps it (permissions audit, 2026-10-02).
+        RolePermissionCustomisations::recordFrom($roleSlug, $permissions, $setBy);
 
         $role = Role::where('slug', $roleSlug)->firstOrFail();
         $grantIds = [];

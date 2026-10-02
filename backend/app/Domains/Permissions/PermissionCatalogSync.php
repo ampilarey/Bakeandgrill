@@ -9,6 +9,15 @@ use App\Models\Role;
 
 final class PermissionCatalogSync
 {
+    /** @var list<string> */
+    public const ROLES = ['owner', 'manager', 'staff', 'kitchen_staff'];
+
+    /**
+     * Bring the permission rows and the four stock roles in line with the
+     * catalog. The owner's own changes to a role (RolePermissionCustomisations)
+     * are applied on top, so a sync never undoes them (permissions audit,
+     * 2026-10-02: it used to, on every deploy).
+     */
     public static function sync(): void
     {
         foreach (PermissionCatalog::definitions() as $perm) {
@@ -22,32 +31,13 @@ final class PermissionCatalogSync
             );
         }
 
-        $owner = Role::where('slug', 'owner')->first();
-        if ($owner) {
-            $owner->permissions()->sync(
-                Permission::whereIn('slug', PermissionCatalog::ownerSlugs())->pluck('id'),
-            );
-        }
-
-        $manager = Role::where('slug', 'manager')->first();
-        if ($manager) {
-            $manager->permissions()->sync(
-                Permission::whereIn('slug', PermissionCatalog::managerSlugs())->pluck('id'),
-            );
-        }
-
-        $staff = Role::where('slug', 'staff')->first();
-        if ($staff) {
-            $staff->permissions()->sync(
-                Permission::whereIn('slug', PermissionCatalog::staffSlugs())->pluck('id'),
-            );
-        }
-
-        $kitchenStaff = Role::where('slug', 'kitchen_staff')->first();
-        if ($kitchenStaff) {
-            $kitchenStaff->permissions()->sync(
-                Permission::whereIn('slug', PermissionCatalog::kitchenStaffSlugs())->pluck('id'),
-            );
+        foreach (self::ROLES as $slug) {
+            $role = Role::where('slug', $slug)->first();
+            if ($role) {
+                $role->permissions()->sync(
+                    Permission::whereIn('slug', RolePermissionCustomisations::expectedSlugs($slug))->pluck('id'),
+                );
+            }
         }
     }
 }

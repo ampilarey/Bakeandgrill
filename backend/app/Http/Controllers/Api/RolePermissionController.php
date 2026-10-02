@@ -71,7 +71,7 @@ class RolePermissionController extends Controller
             collect($oldPermissions)->pluck('granted', 'slug')->all(),
             $validated['permissions'],
         );
-        $this->permissions->syncRolePermissions($slug, $merged);
+        $this->permissions->syncRolePermissions($slug, $merged, $actor?->id);
 
         $this->audit->log(
             'role.permissions.updated',
