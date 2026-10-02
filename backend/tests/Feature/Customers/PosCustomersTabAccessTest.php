@@ -52,6 +52,25 @@ class PosCustomersTabAccessTest extends TestCase
         ])->assertOk()->assertJsonPath('customer.internal_notes', 'Allergic to nuts')->assertJsonPath('customer.sms_opt_out', true);
     }
 
+    public function test_the_customers_tab_permission_is_off_by_default_for_everyone_but_the_owner(): void
+    {
+        // Owner, 2026-10-02: "by default it should be off".
+        $service = app(\App\Domains\Permissions\Services\PermissionService::class);
+        $this->assertTrue($service->hasPermission($this->makeOwner(), 'pos.customers_tab'));
+        $this->assertFalse($service->hasPermission($this->makeManager(), 'pos.customers_tab'));
+        $this->assertFalse($service->hasPermission($this->makeStaff('staff'), 'pos.customers_tab'));
+        $this->assertFalse($service->hasPermission($this->makeStaff('kitchen_staff'), 'pos.customers_tab'));
+
+        // The owner can switch it on for a role, and a deploy keeps it on.
+        $this->app['auth']->forgetGuards();
+        Sanctum::actingAs($this->makeOwner(['phone' => '+9607770002']), ['staff']);
+        $this->putJson('/api/roles/manager/permissions', ['permissions' => ['pos.customers_tab' => true]])->assertOk();
+        PermissionCatalogSync::sync();
+        $manager = $this->makeManager(['phone' => '+9607770003']);
+        $this->assertTrue($service->hasPermission($manager, 'pos.customers_tab'));
+        $this->assertContains('pos.customers_tab', $this->getJson('/api/permissions')->assertOk()->json('permissions.POS.*.slug') ?? []);
+    }
+
     public function test_a_cashier_gets_lookup_but_not_the_management_endpoints(): void
     {
         $aisha = Customer::create(['name' => 'Aisha', 'phone' => '+9607771234']);

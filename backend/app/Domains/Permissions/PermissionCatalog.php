@@ -112,6 +112,10 @@ final class PermissionCatalog
             ['group' => 'POS', 'slug' => 'pos.open_shift', 'name' => 'Open shift'],
             ['group' => 'POS', 'slug' => 'pos.close_shift', 'name' => 'Close shift'],
             ['group' => 'POS', 'slug' => 'pos.lock_screen', 'name' => 'Lock screen / switch user'],
+            // Owner, 2026-10-02: the POS Customers tab lists every customer with
+            // their phone. Off by default for every role but owner; switch it on
+            // per role or per person in Settings → Permissions.
+            ['group' => 'POS', 'slug' => 'pos.customers_tab', 'name' => 'Customers tab in POS', 'description' => 'Browse and manage all customers from the till. What they can change still follows the Customers permissions.'],
             ['group' => 'POS', 'slug' => 'pos.time_clock', 'name' => 'Use time clock'],
             ['group' => 'POS', 'slug' => 'pos.ring_sales', 'name' => 'Ring sales'],
             ['group' => 'POS', 'slug' => 'pos.hold_resume', 'name' => 'Hold & resume tickets'],
@@ -339,6 +343,8 @@ final class PermissionCatalog
         return [
             'complaints.manage',
             'complaints.view',
+            // Off by default for managers too (owner, 2026-10-02).
+            'pos.customers_tab',
             // Audit 2026-09-03 (F2): customers.credit.repay moved to managers
             // on the owner's say-so — see managerSlugs(). Writing a balance OFF
             // is money out with no cash trail, and stays here.

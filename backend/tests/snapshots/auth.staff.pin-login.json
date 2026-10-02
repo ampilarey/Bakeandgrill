@@ -106,6 +106,7 @@
             "pos.access",
             "pos.active_orders",
             "pos.close_shift",
+            "pos.customers_tab",
             "pos.hold_resume",
             "pos.lock_screen",
             "pos.manage_order_status",
