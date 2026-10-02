@@ -18,7 +18,7 @@ import { useCart }          from "../hooks/useCart";
 import { useOrderCreation } from "../hooks/useOrderCreation";
 import { useOps }           from "../hooks/useOps";
 import { useShift }         from "../hooks/useShift";
-import { hasPosPermission } from "../hooks/usePosPermissions";
+import { canSeeCustomersTab, hasPosPermission } from "../hooks/usePosPermissions";
 import { useIdleLock, resolveIdleLockMinutes } from "../hooks/useIdleLock";
 import { makeCartKey }       from "../hooks/useCart";
 import {
@@ -79,8 +79,11 @@ export function usePosApp() {
     || hasPosPermission(staffPermissions, "reports.sales");
   /** Owner + anyone granted finance.expenses (same gate as Admin → Expenses). */
   const canManageExpenses = hasPosPermission(staffPermissions, "finance.expenses");
-  // Customers pane (owner, 2026-10-02): lookup sees and searches; manage edits all.
-  const canLookupCustomers = hasPosPermission(staffPermissions, "customers.lookup");
+  // Customers pane (owner, 2026-10-02): owners and managers only. Every
+  // cashier holds customers.lookup so they can attach a customer at the
+  // cart, and the owner did not want them browsing the customer list
+  // ("other cashiers also see the customers"). The cart's picker is
+  // unaffected; a cashier given "Manage customers" gets the tab.
   const canManageCustomers = hasPosPermission(staffPermissions, "customers.manage");
   const customerPerms = useMemo(() => ({
     canManage: canManageCustomers,
@@ -89,7 +92,7 @@ export function usePosApp() {
     canDepositReceive: hasPosPermission(staffPermissions, "customers.deposit.receive"),
     canSendSms: hasPosPermission(staffPermissions, "sms.campaigns.send"),
   }), [staffPermissions, canManageCustomers]);
-  const canViewCustomers = canLookupCustomers || canManageCustomers;
+  const canViewCustomers = canSeeCustomersTab(staffPermissions);
   const canCashInOut = hasPosPermission(staffPermissions, "payments.cash_in_out");
   const canLockScreen = hasPosPermission(staffPermissions, "pos.lock_screen");
   const canOpsInventory = hasPosPermission(staffPermissions, "inventory.manage");

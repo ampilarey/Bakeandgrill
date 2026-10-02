@@ -34,3 +34,13 @@ export function hasPosPermission(permissions: string[], slug: string): boolean {
   }
   return false;
 }
+
+/**
+ * The POS Customers tab: owners and managers only (owner, 2026-10-02:
+ * "other cashiers also see the customers"). Every cashier holds
+ * customers.lookup for the cart's customer picker, so lookup must not
+ * open the list of every customer.
+ */
+export function canSeeCustomersTab(permissions: string[]): boolean {
+  return hasPosPermission(permissions, "customers.manage");
+}
