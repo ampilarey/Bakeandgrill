@@ -66,6 +66,9 @@ export type ShiftHistoryRow = {
   notes?: string | null;
   user?: { id: number; name: string };
   device?: { id: number; name: string; identifier?: string };
+  /** Shift history audit, 2026-10-02: set when a manager force-closed it (never counted). */
+  force_closed_at?: string | null;
+  force_closer?: { id: number; name: string } | null;
   /** Ops audit, 2026-09-25: the last close on this till and how far the typed float was from it. */
   opening_float_expected?: number | null;
   opening_float_variance?: number | null;

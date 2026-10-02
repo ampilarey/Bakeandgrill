@@ -125,7 +125,9 @@ function AdminShiftTable({
               </td>
               <td style={TD}>{formatMVR(s.closing_cash)}</td>
               <td style={TD}>
-                {s.variance != null ? (
+                {s.force_closed_at ? (
+                  <Badge color="yellow">Force-closed{s.force_closer?.name ? ` by ${s.force_closer.name}` : ''} · not counted</Badge>
+                ) : s.variance != null ? (
                   <Badge color={Math.abs(s.variance) < 0.01 ? 'green' : 'red'}>{formatMVR(s.variance)}</Badge>
                 ) : '—'}
                 {fxSummary && Math.abs(variance) >= 0.01 && (

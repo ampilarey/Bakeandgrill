@@ -39,26 +39,62 @@ export type ForeignCurrencyHeld = {
   accepted_mvr: number;
 };
 
-export async function getShiftHistory(): Promise<{
-  shifts: Array<{
-    id: number;
-    user_id: number;
-    device_id: number | null;
-    opened_at: string;
-    closed_at: string | null;
-    opening_cash: number;
-    closing_cash: number;
-    /** Absent for cashiers — the server strips the drawer reconciliation. */
-    expected_cash?: number | null;
-    variance?: number | null;
-    cash_count_method?: "denominations" | "plain_total" | null;
-    cash_count_breakdown?: Record<string, number> | null;
-    foreign_currency_held?: ForeignCurrencyHeld[] | null;
-    notes: string | null;
-  }>;
-}> {
-  return request(`/shifts/history`);
+export type ShiftHistoryRow = {
+  id: number;
+  user_id: number;
+  device_id: number | null;
+  opened_at: string;
+  closed_at: string | null;
+  opening_cash: number;
+  closing_cash: number;
+  /** Absent for cashiers — the server strips the drawer reconciliation. */
+  expected_cash?: number | null;
+  variance?: number | null;
+  cash_count_method?: "denominations" | "plain_total" | null;
+  cash_count_breakdown?: Record<string, number> | null;
+  foreign_currency_held?: ForeignCurrencyHeld[] | null;
+  notes: string | null;
+  /** Who ran it and on which till (shift history audit, 2026-10-02). */
+  user?: { id: number; name: string } | null;
+  device?: { id: number; name: string; identifier?: string } | null;
+  /** Set when a manager force-closed it: the drawer was never counted. */
+  force_closed_at?: string | null;
+  force_closer?: { id: number; name: string } | null;
+  /** The last close on this till and how far the typed float was from it. */
+  opening_float_expected?: number | null;
+  opening_float_variance?: number | null;
+};
+
+export type ShiftHistoryParams = { from?: string; to?: string; user_id?: number; limit?: number };
+
+export async function getShiftHistory(params?: ShiftHistoryParams): Promise<{ shifts: ShiftHistoryRow[] }> {
+  const qs = new URLSearchParams();
+  if (params?.from) qs.set("from", params.from);
+  if (params?.to) qs.set("to", params.to);
+  if (params?.user_id) qs.set("user_id", String(params.user_id));
+  if (params?.limit) qs.set("limit", String(params.limit));
+  const q = qs.toString();
+  return request(`/shifts/history${q ? `?${q}` : ""}`);
 }
+
+/** Every shift open right now, on any till (owners and managers only). */
+export async function getLiveShifts(): Promise<{ shifts: ShiftHistoryRow[] }> {
+  return request(`/shifts/live`);
+}
+
+export async function forceCloseShift(shiftId: number, notes?: string): Promise<{ message: string }> {
+  return request(`/shifts/${shiftId}/force-close`, {
+    method: "POST",
+    body: JSON.stringify({ notes: notes ?? "Force closed from the till" }),
+  });
+}
+
+/** The 409 body when another cashier's shift is open on this till. */
+export type OpenShiftConflict = {
+  message: string;
+  open_shift: { id: number; user_id: number; user_name: string | null; opened_at: string | null };
+  can_override: boolean;
+};
 
 export async function getTimeClockStatus(): Promise<{
   clocked_in: boolean;
@@ -93,6 +129,8 @@ export async function openShift(payload: {
   opening_cash: number;
   device_id?: number | null;
   notes?: string;
+  /** Manager: open over another cashier's shift on this till. */
+  override?: boolean;
 }): Promise<{ shift: { id: number } }> {
   return request("/shifts/open", { method: "POST", body: JSON.stringify(payload) });
 }

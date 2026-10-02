@@ -495,7 +495,7 @@ class ShiftController extends Controller
         }
 
         $shifts = $query
-            ->with(['user:id,name', 'device:id,name,identifier', 'cashCountAttempts'])
+            ->with(['user:id,name', 'device:id,name,identifier', 'forceCloser:id,name', 'cashCountAttempts'])
             ->get();
 
         // Cashiers reviewing their own past shifts must not see the expected
@@ -569,6 +569,8 @@ class ShiftController extends Controller
                 'expected_cash' => $expectedCash,
                 'variance' => 0,
                 'notes' => trim(($validated['notes'] ?? '') . ' [Force closed by ' . ($actor->name ?? 'admin') . ']'),
+                'force_closed_at' => now(),
+                'force_closed_by' => $actor->id,
             ]);
 
             return $shift;
@@ -603,7 +605,11 @@ class ShiftController extends Controller
             }
         }
 
-        $shift = DB::transaction(function () use ($userId, $request, $deviceId) {
+        $override = $request->boolean('override');
+        $canOverride = app(PermissionService::class)->hasPermission($request->user(), 'shifts.view_all_history');
+        $overrode = null;
+
+        $shift = DB::transaction(function () use ($userId, $request, $deviceId, $override, $canOverride, &$overrode) {
             // Lock any existing open shift row for this user to prevent double-open race
             $existing = Shift::where('user_id', $userId)
                 ->whereNull('closed_at')
@@ -612,6 +618,23 @@ class ShiftController extends Controller
 
             if ($existing) {
                 return null;
+            }
+
+            // One drawer, one open shift (shift history audit, 2026-10-02).
+            // Shifts used to overlap on the same till for days, so nobody's
+            // count meant anything. A manager may still open over a shift
+            // the other cashier walked away from; it is recorded on both.
+            if ($deviceId) {
+                $onTill = Shift::where('device_id', $deviceId)
+                    ->whereNull('closed_at')
+                    ->where('user_id', '!=', $userId)
+                    ->with('user:id,name')
+                    ->lockForUpdate()
+                    ->first();
+                if ($onTill && (!$override || !$canOverride)) {
+                    return $onTill;
+                }
+                $overrode = $onTill;
             }
 
             // Ops audit, 2026-09-25: the float typed at open is compared with
@@ -630,12 +653,47 @@ class ShiftController extends Controller
                 'opening_cash' => $openingCash,
                 'opening_float_expected' => $expectedFloat,
                 'opening_float_variance' => $expectedFloat === null ? null : round($openingCash - $expectedFloat, 2),
-                'notes' => $request->input('notes'),
+                'notes' => trim((string) $request->input('notes') . ($overrode !== null
+                    ? ' [Opened over ' . ($overrode->user?->name ?? 'another cashier') . "'s open shift #{$overrode->id}]"
+                    : '')) ?: null,
             ]);
         });
 
         if ($shift === null) {
             return response()->json(['message' => 'Shift already open.'], 422);
+        }
+
+        if ($shift->user_id !== $userId) {
+            // Someone else's shift is open on this till.
+            $who = $shift->user?->name ?? 'Another cashier';
+            $since = $shift->opened_at?->timezone(config('app.timezone', 'Indian/Maldives'))->format('D j M, H:i');
+
+            return response()->json([
+                'message' => "{$who} has shift #{$shift->id} open on this till since {$since}. "
+                    . ($canOverride
+                        ? 'Ask them to close it, or open anyway as a manager.'
+                        : 'Ask them to close it, or ask a manager to force-close it.'),
+                'open_shift' => [
+                    'id' => $shift->id,
+                    'user_id' => $shift->user_id,
+                    'user_name' => $shift->user?->name,
+                    'opened_at' => $shift->opened_at?->toIso8601String(),
+                ],
+                'can_override' => $canOverride,
+            ], 409);
+        }
+
+        if ($overrode !== null) {
+            $overrode->update(['notes' => trim((string) $overrode->notes . ' [' . ($request->user()?->name ?? 'A manager') . " opened shift #{$shift->id} over this one]")]);
+            app(AuditLogService::class)->log(
+                'shift.opened_over',
+                'Shift',
+                $overrode->id,
+                [],
+                ['opened_shift_id' => $shift->id],
+                ['by' => $userId],
+                $request,
+            );
         }
 
         $floatCheck = $this->floatCheck($shift, $request->user()?->name ?? 'Unknown');

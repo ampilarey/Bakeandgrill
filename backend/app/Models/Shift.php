@@ -25,9 +25,13 @@ class Shift extends Model
         'cash_count_breakdown',
         'foreign_currency_held',
         'notes',
+        'force_closed_at',
+        'force_closed_by',
     ];
 
     protected $casts = [
+        'force_closed_at' => 'datetime',
+        'force_closed_by' => 'integer',
         'user_id' => 'integer',
         'device_id' => 'integer',
         'opening_cash' => 'decimal:2',
@@ -50,6 +54,12 @@ class Shift extends Model
     public function device(): BelongsTo
     {
         return $this->belongsTo(Device::class);
+    }
+
+    /** The manager or owner who force-closed this shift, when it was not counted. */
+    public function forceCloser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'force_closed_by');
     }
 
     public function cashMovements(): HasMany

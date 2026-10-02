@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { getShiftHistory } from "../api";
+import type { OpenShiftConflict } from "../api/shifts";
 import { z } from "../theme";
 import { CashInput } from "./CashInput";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 
 type Props = {
-  onConfirm: (openingCash: number, notes?: string) => Promise<void>;
+  /** `override` is set when a manager opens over another cashier's shift on this till. */
+  onConfirm: (openingCash: number, notes?: string, override?: boolean) => Promise<void>;
   onCancel?: () => void;
   busy?: boolean;
   /**
@@ -54,6 +56,10 @@ export function OpenShiftModal({ onConfirm, onCancel, busy, suggestedOpeningCash
   const [err, setErr] = useState("");
   const [hint, setHint] = useState<string>("");
   const [warning, setWarning] = useState<string>("");
+  // Another cashier's shift is open on this till (shift history audit,
+  // 2026-10-02): the server refuses with 409 and says whether this
+  // person may open over it.
+  const [conflict, setConflict] = useState<OpenShiftConflict | null>(null);
 
   useEffect(() => {
     if (suggestedOpeningCash != null) return;
@@ -84,7 +90,7 @@ export function OpenShiftModal({ onConfirm, onCancel, busy, suggestedOpeningCash
     return () => { cancelled = true; };
   }, [suggestedOpeningCash]);
 
-  const submit = async () => {
+  const submit = async (override = false) => {
     const trimmed = openingCash.trim();
     if (trimmed === "") {
       setErr("Enter the cash you counted in the drawer. Tap 0 if the drawer is empty.");
@@ -96,8 +102,16 @@ export function OpenShiftModal({ onConfirm, onCancel, busy, suggestedOpeningCash
       return;
     }
     try {
-      await onConfirm(n, notes.trim() || undefined);
+      setConflict(null);
+      if (override) await onConfirm(n, notes.trim() || undefined, true);
+      else await onConfirm(n, notes.trim() || undefined);
     } catch (e) {
+      const body = (e as { status?: number; body?: unknown }).body;
+      if ((e as { status?: number }).status === 409 && body && typeof body === "object" && "open_shift" in body) {
+        setConflict(body as OpenShiftConflict);
+        setErr("");
+        return;
+      }
       setErr((e as Error).message || "Could not open shift.");
     }
   };
@@ -140,13 +154,28 @@ export function OpenShiftModal({ onConfirm, onCancel, busy, suggestedOpeningCash
           />
         </Field>
         {err && <div style={errorBox}>{err}</div>}
+        {conflict && (
+          <div data-testid="open-shift-conflict" style={{
+            marginTop: 12, padding: "10px 12px", borderRadius: 8,
+            background: "#FEF3C7", color: "#92400E", fontSize: 13, lineHeight: 1.45,
+            border: "1px solid #FCD34D",
+          }}>
+            {conflict.message}
+          </div>
+        )}
         <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
           {onCancel && (
             <button onClick={onCancel} disabled={busy} style={secondary}>Cancel</button>
           )}
-          <button onClick={submit} disabled={busy} style={primary}>
-            {busy ? "Opening…" : "Open shift"}
-          </button>
+          {conflict?.can_override ? (
+            <button onClick={() => void submit(true)} disabled={busy} style={{ ...primary, background: "#B45309" }}>
+              {busy ? "Opening…" : "Open anyway (manager)"}
+            </button>
+          ) : (
+            <button onClick={() => void submit()} disabled={busy} style={primary}>
+              {busy ? "Opening…" : "Open shift"}
+            </button>
+          )}
         </div>
       </Card>
     </Overlay>

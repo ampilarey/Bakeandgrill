@@ -19,6 +19,8 @@ class OpenShiftRequest extends FormRequest
             'opening_cash' => 'required|numeric|min:0',
             'device_id' => 'nullable|integer|exists:devices,id',
             'notes' => 'nullable|string',
+            // A manager opening over another cashier's shift on the same till.
+            'override' => 'nullable|boolean',
         ];
     }
 }

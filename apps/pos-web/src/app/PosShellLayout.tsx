@@ -1,4 +1,6 @@
-import { lazy, Suspense, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { getLiveShifts } from '../api';
+import type { ShiftHistoryRow } from '../api/shifts';
 import { makeCartKey } from '../hooks/useCart';
 import { MenuGrid } from '../components/MenuGrid';
 import { OrderCart } from '../components/OrderCart';
@@ -124,12 +126,26 @@ function offlineOrderToCartItems(order: OfflineOrderRecord): CartItem[] {
   }));
 }
 
+/** "Aisha is on shift on Till 1 since 09:15" (or a count when several are). */
+export function describeOthersOnShift(rows: ShiftHistoryRow[]): string {
+  if (rows.length === 1) {
+    const s = rows[0];
+    const since = (() => {
+      try { return new Date(s.opened_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }); }
+      catch { return ''; }
+    })();
+    return `${s.user?.name ?? 'Another cashier'} is on shift${s.device?.name ? ` on ${s.device.name}` : ''}${since ? ` since ${since}` : ''}`;
+  }
+  const names = rows.map((s) => s.user?.name ?? 'someone').join(', ');
+  return `${rows.length} shifts are open (${names})`;
+}
+
 export function PosShellLayout() {
   const app = usePosAppContext();
   const {
     isLoggedIn, isLocked, pane, setPane, drawerOpen, setDrawerOpen, cashierName, staffRole, deviceId,
     shift, shiftOpen, canEnterPosShell, canOpenShift, canCloseShift, canRingSales, canHoldResume,
-    canViewActiveOrders, canViewReceipts, canViewShiftHistory, canViewReports, canManageExpenses,
+    canViewActiveOrders, canViewReceipts, canViewShiftHistory, canViewAllShifts, canViewReports, canManageExpenses,
     canAccessOps, canVoidOrders, canManageEvents, canTradeDispatch, canTradeReconcile,
     canManageOrderStatus, canSendBill, canSendPayLink, canRequestRefund, canApproveRefund, canCreatePurchaseRequest,
     canStockCount, canPostStockCount,
@@ -157,6 +173,25 @@ export function PosShellLayout() {
     cartSide, setCartSide, isOnline,
     onlineOrderWatcher,
   } = app;
+
+  // ── Who else is on shift ────────────────────────────────────────────────
+  // Shift history audit, 2026-10-02: the "No open shift" banner only knew
+  // about the signed-in person's shift, so an owner saw it while a cashier
+  // was mid-shift on another till. Owners and managers now see who is on.
+  const [othersOnShift, setOthersOnShift] = useState<ShiftHistoryRow[]>([]);
+  const [liveTick, setLiveTick] = useState(0);
+  useEffect(() => {
+    if (!isLoggedIn || shiftOpen || !canViewAllShifts) { setOthersOnShift([]); return; }
+    let cancelled = false;
+    const load = () => {
+      getLiveShifts()
+        .then((res) => { if (!cancelled) setOthersOnShift(res.shifts ?? []); })
+        .catch(() => { /* the banner just stays generic */ });
+    };
+    load();
+    const timer = window.setInterval(load, 60_000);
+    return () => { cancelled = true; window.clearInterval(timer); };
+  }, [isLoggedIn, shiftOpen, canViewAllShifts, liveTick]);
 
   // ── Scanning ────────────────────────────────────────────────────────────
   // Owner, 2026-09-02: a gun, the camera or the search box hand the till a
@@ -422,7 +457,11 @@ export function PosShellLayout() {
           background: '#FEF3C7', color: '#92400E', fontSize: 13, fontWeight: 600,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
         }}>
-          <span>No open shift — ordering is disabled until you open a shift.</span>
+          <span data-testid="no-shift-banner">
+            {othersOnShift.length > 0
+              ? `${describeOthersOnShift(othersOnShift)} — you have no shift of your own, so ordering is disabled until you open one.`
+              : 'No open shift — ordering is disabled until you open a shift.'}
+          </span>
           <button
             type="button"
             onClick={() => setShowOpenShift(true)}
@@ -838,6 +877,8 @@ export function PosShellLayout() {
           <Suspense fallback={<PaneFallback />}>
             <ShiftHistoryPanel
               staffRole={staffRole}
+              canViewAll={canViewAllShifts}
+              onShiftsChanged={() => { void shift.refresh(); setLiveTick((t) => t + 1); }}
               onClose={() => setPane(canAccessOps ? "ops" : "shift")}
             />
           </Suspense>

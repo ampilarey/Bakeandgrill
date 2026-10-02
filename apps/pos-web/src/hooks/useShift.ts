@@ -340,11 +340,12 @@ export function useShift(isLoggedIn: boolean, deviceApproved: boolean, deviceIde
     };
   }, [current, refreshSummary, refresh]);
 
-  const open = useCallback(async (openingCash: number, notes?: string, deviceDbId?: number | null) => {
+  const open = useCallback(async (openingCash: number, notes?: string, deviceDbId?: number | null, override?: boolean) => {
     const res = await openShift({
       opening_cash: openingCash,
       notes,
       ...(deviceDbId ? { device_id: deviceDbId } : {}),
+      ...(override ? { override: true } : {}),
     });
     await refresh();
     return res.shift;

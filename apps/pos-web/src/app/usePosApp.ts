@@ -72,6 +72,8 @@ export function usePosApp() {
   const canViewActiveOrders = hasPosPermission(staffPermissions, "pos.active_orders");
   const canViewReceipts = hasPosPermission(staffPermissions, "orders.receipts");
   const canViewShiftHistory = hasPosPermission(staffPermissions, "shifts.view_own_history");
+  /** Owners and managers: every cashier's shifts, the live list and force-close. */
+  const canViewAllShifts = hasPosPermission(staffPermissions, "shifts.view_all_history");
   const canViewReports = hasPosPermission(staffPermissions, "reports.view")
     || hasPosPermission(staffPermissions, "reports.basic")
     || hasPosPermission(staffPermissions, "reports.sales");
@@ -1065,9 +1067,9 @@ export function usePosApp() {
     return () => document.removeEventListener("visibilitychange", tryPing);
   }, [isLoggedIn]);
 
-  const handleOpenShift = async (openingCash: number, notes?: string) => {
+  const handleOpenShift = async (openingCash: number, notes?: string, override?: boolean) => {
     setOpenShiftBusy(true);
-    try { await shift.open(openingCash, notes, deviceDbId); setShowOpenShift(false); }
+    try { await shift.open(openingCash, notes, deviceDbId, override); setShowOpenShift(false); }
     finally { setOpenShiftBusy(false); }
   };
   const handleCloseShift = async (payload: {
@@ -1312,7 +1314,7 @@ export function usePosApp() {
   return {
     isLoggedIn, username, setUsername, pin, setPin, cashierName, staffRole, staffPermissions,
     canVoidOrders, canOpenShift, canCloseShift, canRingSales, canHoldResume,
-    canViewActiveOrders, canViewReceipts, canViewShiftHistory, canViewReports, canManageExpenses,
+    canViewActiveOrders, canViewReceipts, canViewShiftHistory, canViewAllShifts, canViewReports, canManageExpenses,
     canCashInOut, canLockScreen,
     canOpsInventory, canOpsPreparedStock,
     canUseCredit, canUseWallet, canPayCash, canPayCard, canPaySplit, canApplyDiscount,

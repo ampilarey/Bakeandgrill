@@ -45,6 +45,31 @@ describe("OpenShiftModal", () => {
     });
   });
 
+  it("shows who has the till and offers a manager override on a 409", async () => {
+    // Shift history audit, 2026-10-02: one drawer, one open shift.
+    mockHistory.mockResolvedValue({ shifts: [] });
+    const conflict = Object.assign(new Error("Aisha has shift #12 open on this till since Thu 2 Oct, 09:15. Ask them to close it, or open anyway as a manager."), {
+      status: 409,
+      body: {
+        message: "Aisha has shift #12 open on this till since Thu 2 Oct, 09:15. Ask them to close it, or open anyway as a manager.",
+        open_shift: { id: 12, user_id: 4, user_name: "Aisha", opened_at: "2026-10-02T04:15:00+00:00" },
+        can_override: true,
+      },
+    });
+    const onConfirm = vi.fn().mockRejectedValueOnce(conflict).mockResolvedValueOnce(undefined);
+    const user = userEvent.setup();
+
+    render(<OpenShiftModal onConfirm={onConfirm} />);
+
+    await user.click(screen.getByRole("button", { name: "Digit 0" }));
+    await user.click(screen.getByRole("button", { name: "Open shift" }));
+
+    expect((await screen.findByTestId("open-shift-conflict")).textContent).toMatch(/Aisha has shift #12 open/);
+    await user.click(screen.getByRole("button", { name: "Open anyway (manager)" }));
+
+    await waitFor(() => expect(onConfirm).toHaveBeenLastCalledWith(0, undefined, true));
+  });
+
   it("leaves the field empty and warns when the last close is stale", async () => {
     const closedAt = new Date(Date.now() - 40 * 24 * 3600 * 1000).toISOString();
     mockHistory.mockResolvedValue({
