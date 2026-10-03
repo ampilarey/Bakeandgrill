@@ -241,6 +241,9 @@ final class SmsTypeRegistry
             self::def('catering_lifecycle_customer', 'Catering reminder / change (customer)', 'transactional', true, false, null, 'sms_catering_enabled', 'sms.transactional.manage', false, 'The event contact', false),
             self::def('catering_lifecycle_staff', 'Catering reminder / change (staff)', 'staff', true, false, null, 'sms_catering_enabled', 'sms.transactional.manage', false, 'Catering / ops staff', false),
             self::def('invoice_send', 'Invoice link', 'transactional', true, false, null, 'sms_invoice_send_enabled', 'sms.transactional.manage', false, 'The number staff typed', true),
+            // Owner, 2026-10-03: "add account approved, and any changes to the credit amount notified".
+            self::def('customer_credit_approved', 'Credit account approved', 'transactional', true, false, 'customer_credit_approved', 'sms_customer_credit_approved_enabled', 'sms.transactional.manage', false, 'The customer whose credit account was opened or reopened', false),
+            self::def('customer_credit_limit_changed', 'Credit limit changed', 'transactional', true, false, 'customer_credit_limit_changed', 'sms_customer_credit_limit_changed_enabled', 'sms.transactional.manage', false, 'The customer whose credit limit went up or down', false),
             self::def('credit_payment_reminder', 'Credit payment reminder', 'transactional', true, false, null, 'sms_credit_reminder_enabled', 'sms.transactional.manage', false, 'Credit customers with invoices due (their own reminder switch applies too)', false),
 
             // Staff

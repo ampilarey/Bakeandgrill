@@ -24,6 +24,7 @@ final class CreditLedgerService
         private readonly CreditEligibilityService $eligibility,
         private readonly AuditLogService $audit,
         private readonly ShiftAccessService $shifts,
+        private readonly CreditAccountNotifier $notifier,
     ) {}
 
     /**
@@ -88,6 +89,8 @@ final class CreditLedgerService
         return DB::transaction(function () use ($customer, $limitLaar, $actor, $notes, $request, $termsDays, $reason, $exceededMax) {
             $locked = Customer::lockForUpdate()->findOrFail($customer->id);
             $old = $this->eligibility->creditSummary($locked);
+            $wasEnabled = (bool) $locked->credit_enabled;
+            $oldLimitLaar = (int) $locked->credit_limit_laar;
 
             $locked->update([
                 'credit_enabled' => true,
@@ -116,6 +119,13 @@ final class CreditLedgerService
                 ], fn ($v) => $v !== null),
                 $request,
             );
+
+            // Owner, 2026-10-03: the customer hears that the account is open,
+            // or, on a re-approval of an open account, that the limit moved.
+            $fresh = $locked->fresh();
+            DB::afterCommit(fn () => $wasEnabled
+                ? $this->notifier->limitChanged($fresh, $oldLimitLaar)
+                : $this->notifier->approved($fresh));
 
             return $locked->fresh(['creditApprovedBy:id,name']);
         });
@@ -180,6 +190,7 @@ final class CreditLedgerService
             }
 
             $old = $this->eligibility->creditSummary($locked);
+            $oldLimitLaar = (int) $locked->credit_limit_laar;
             $locked->update(['credit_limit_laar' => $limitLaar]);
 
             $this->audit->log(
@@ -195,6 +206,13 @@ final class CreditLedgerService
                 ], fn ($v) => $v !== null && $v !== false),
                 $request,
             );
+
+            // Owner, 2026-10-03: "any changes to the credit amount notified".
+            // Only for an open account; a blocked one hears when it reopens.
+            if ($locked->credit_enabled) {
+                $fresh = $locked->fresh();
+                DB::afterCommit(fn () => $this->notifier->limitChanged($fresh, $oldLimitLaar));
+            }
 
             return $locked->fresh(['creditApprovedBy:id,name']);
         });
@@ -285,6 +303,7 @@ final class CreditLedgerService
             $locked = Customer::lockForUpdate()->findOrFail($customer->id);
             $old = $this->eligibility->creditSummary($locked);
 
+            $wasEnabled = (bool) $locked->credit_enabled;
             $updates = ['credit_status' => $status];
             if ($status === 'blocked') {
                 $updates['credit_enabled'] = false;
@@ -303,6 +322,12 @@ final class CreditLedgerService
                 ['status' => $status],
                 $request,
             );
+
+            // A blocked account turned back on is, to the customer, approved again.
+            $fresh = $locked->fresh();
+            if (!$wasEnabled && $fresh->credit_enabled) {
+                DB::afterCommit(fn () => $this->notifier->approved($fresh));
+            }
 
             return $locked->fresh(['creditApprovedBy:id,name']);
         });
