@@ -25,11 +25,15 @@
         /* Owner, 2026-10-03: "enhance the complaint QR print layout with branding,
            like a header or footer". Rust band with the logo on top, dark band
            with how else to reach us at the bottom. */
-        .brand { background: #B74B0C; color: #fff; padding: 22px 24px 18px; position: relative; }
-        .brand::after { content: ""; position: absolute; left: 0; right: 0; bottom: -6px; height: 6px; background: repeating-linear-gradient(90deg, #B74B0C 0 12px, transparent 12px 18px); }
-        .brand__logo { width: 76px; height: 76px; border-radius: 50%; object-fit: cover; background: #fff; border: 3px solid #fff; box-shadow: 0 4px 14px rgba(0,0,0,0.18); display: block; margin: 0 auto 10px; }
-        .brand__name { font-size: 22px; font-weight: 800; letter-spacing: -0.01em; margin: 0; line-height: 1.15; color: #fff; }
-        .brand__tagline { font-size: 13px; opacity: 0.9; margin: 4px 0 0; color: #fff; line-height: 1.35; }
+        /* Owner, 2026-10-03: the first branded version had a full rust band on
+           top and a dark band below — "header is too big and too much colour
+           is costly to print". Now ink-light: a compact white strip with a small
+           logo beside the name and a thin rust rule, and a plain-text footer
+           above a hairline. Colour is only in thin lines and small accents. */
+        .brand { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 16px 24px 12px; margin: 0 24px; border-bottom: 2px solid #B74B0C; text-align: left; }
+        .brand__logo { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; display: block; flex: none; }
+        .brand__name { font-size: 18px; font-weight: 800; letter-spacing: -0.01em; margin: 0; line-height: 1.15; color: #1C1408; }
+        .brand__tagline { font-size: 12px; margin: 2px 0 0; color: #6B5D4F; line-height: 1.3; }
         .content { padding: 26px 28px 20px; }
         .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #B74B0C; margin: 0 0 8px; }
         h1 { font-size: 30px; letter-spacing: -0.03em; margin: 0 0 8px; line-height: 1.1; }
@@ -38,10 +42,10 @@
         .qr img.code { width: 100%; height: 100%; display: block; }
         .url { font-weight: 700; font-size: 17px; color: #1C1408; word-break: break-all; margin-bottom: 6px; }
         .small { font-size: 12px; color: #9C8E7E; }
-        .foot { background: #1C1408; color: #fff; padding: 14px 20px 16px; }
+        .foot { margin: 0 24px; padding: 10px 0 14px; border-top: 1px solid #E8E0D8; color: #1C1408; }
         .foot__line { font-size: 13px; font-weight: 700; letter-spacing: 0.01em; }
-        .foot__address { font-size: 11.5px; color: #D9CFC3; margin-top: 4px; }
-        .foot__thanks { font-size: 11px; color: #C56F3D; margin-top: 6px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+        .foot__address { font-size: 11.5px; color: #6B5D4F; margin-top: 4px; }
+        .foot__thanks { font-size: 11px; color: #B74B0C; margin-top: 5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
         .actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 16px auto 0; max-width: 440px; }
         .print, .download { min-height: 44px; padding: 0 20px; border: none; border-radius: 10px; background: #B74B0C; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
         .download { background: #fff; color: #1C1408; border: 1.5px solid #E8E0D8; }
@@ -52,14 +56,14 @@
             .sheet { border: none; border-radius: 0; margin: 0; max-width: none; width: 148mm; height: 209mm; display: flex; flex-direction: column; }
             /* Measured to fit one A5 sheet (148 x 210 mm) with the footer on it. */
             .sheet { overflow: hidden; }
-            .brand { padding: 7mm 10mm 5mm; flex: none; }
-            .brand__logo { width: 20mm; height: 20mm; margin-bottom: 2mm; }
-            .brand__name { font-size: 24px; }
+            .brand { padding: 7mm 0 3mm; margin: 0 12mm; flex: none; }
+            .brand__logo { width: 13mm; height: 13mm; }
+            .brand__name { font-size: 20px; }
             .content { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; justify-content: center; padding: 6mm 12mm 4mm; }
             h1 { font-size: 27px; }
             p { font-size: 14px; margin-bottom: 4mm; }
-            .qr { width: 72mm; height: 72mm; margin-bottom: 3mm; }
-            .foot { padding: 4mm 10mm 5mm; flex: none; }
+            .qr { width: 88mm; height: 88mm; margin-bottom: 3mm; }
+            .foot { padding: 3mm 0 7mm; margin: 0 12mm; flex: none; }
             .foot__line { font-size: 14px; }
             .actions, .hint { display: none; }
         }
@@ -71,10 +75,12 @@
             @if ($logo)
                 <img class="brand__logo" src="{{ $logo }}" alt="{{ $siteName }} logo">
             @endif
-            <p class="brand__name">{{ $siteName }}</p>
-            @if ($tagline !== '')
-                <p class="brand__tagline">{{ $tagline }}</p>
-            @endif
+            <div>
+                <p class="brand__name">{{ $siteName }}</p>
+                @if ($tagline !== '')
+                    <p class="brand__tagline">{{ $tagline }}</p>
+                @endif
+            </div>
         </header>
         <div class="content">
             <p class="eyebrow">Complaint box</p>
@@ -153,67 +159,68 @@
             return lines;
         }
 
-        // Owner, 2026-10-03: the image carries the same branded header and
-        // footer as the printed card — rust band with the logo, dark band
-        // with the phone, website, Instagram and address.
+        // Owner, 2026-10-03: same ink-light look as the printed card — a
+        // compact header (small logo beside the name, thin rust rule) and a
+        // plain-text footer above a hairline. No filled colour bands.
         function makePng() {
-            var W = 1200, pad = 90, qrSize = 760, logoSize = 220;
+            var W = 1200, pad = 90, qrSize = 800, logoSize = 120;
             var measure = document.createElement('canvas').getContext('2d');
             measure.font = '34px ' + FONT;
             var bodyLines = wrap(measure, TEXT.body, W - pad * 2);
-            measure.font = 'bold 36px ' + FONT;
+            measure.font = 'bold 34px ' + FONT;
             var contactLines = TEXT.contacts ? wrap(measure, TEXT.contacts, W - pad * 2) : [];
 
-            var headerH = 70 + (LOGO ? logoSize + 34 : 0) + 64 + (TEXT.tagline ? 50 : 0) + 50;
-            var bodyH = 90 + 84 + bodyLines.length * 46 + 40 + qrSize + 60 + 60 + 44 + 70;
-            var footH = 56 + contactLines.length * 48 + (TEXT.address ? 44 : 0) + 50 + 46;
-            var H = headerH + 14 + bodyH + footH;
+            var headerH = 60 + Math.max(LOGO ? logoSize : 0, TEXT.tagline ? 96 : 60) + 36;
+            var bodyH = 90 + 84 + bodyLines.length * 46 + 40 + qrSize + 60 + 60 + 44 + 60;
+            var footH = 40 + contactLines.length * 46 + (TEXT.address ? 42 : 0) + 44 + 60;
+            var H = headerH + bodyH + footH;
 
             var canvas = document.createElement('canvas');
             canvas.width = W; canvas.height = H;
             var ctx = canvas.getContext('2d');
             ctx.fillStyle = '#fff';
             ctx.fillRect(0, 0, W, H);
-            ctx.textAlign = 'center';
             ctx.textBaseline = 'alphabetic';
-
-            // Header band, then a dashed rust edge like the printed card.
-            ctx.fillStyle = RUST;
-            ctx.fillRect(0, 0, W, headerH);
-            for (var x = 0; x < W; x += 36) ctx.fillRect(x, headerH, 24, 14);
 
             var waits = [load(codeImg.src)];
             if (LOGO) waits.push(load(LOGO).catch(function () { return null; }));
 
             return Promise.all(waits).then(function (imgs) {
                 var qr = imgs[0], logo = imgs[1] || null;
-                var y = 70;
+
+                // Header: logo and name side by side, centred as a group.
+                ctx.font = '800 50px ' + FONT;
+                var nameW = ctx.measureText(TEXT.name).width;
+                ctx.font = '30px ' + FONT;
+                var tagW = TEXT.tagline ? ctx.measureText(TEXT.tagline).width : 0;
+                var gap = 30, textW = Math.max(nameW, tagW);
+                var groupW = (logo ? logoSize + gap : 0) + textW;
+                var gx = (W - groupW) / 2, midY = 60 + Math.max(logo ? logoSize : 0, TEXT.tagline ? 96 : 60) / 2;
                 if (logo) {
-                    var cx = W / 2, cy = y + logoSize / 2, r = logoSize / 2;
+                    var cx = gx + logoSize / 2, r = logoSize / 2;
                     ctx.save();
-                    ctx.fillStyle = '#fff';
-                    ctx.beginPath(); ctx.arc(cx, cy, r + 9, 0, Math.PI * 2); ctx.fill();
-                    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.clip();
-                    // Cover-fit the logo into the circle.
+                    ctx.beginPath(); ctx.arc(cx, midY, r, 0, Math.PI * 2); ctx.clip();
                     var s = Math.max(logoSize / logo.width, logoSize / logo.height);
                     var dw = logo.width * s, dh = logo.height * s;
-                    ctx.drawImage(logo, cx - dw / 2, cy - dh / 2, dw, dh);
+                    ctx.drawImage(logo, cx - dw / 2, midY - dh / 2, dw, dh);
                     ctx.restore();
-                    y += logoSize + 34;
+                    gx += logoSize + gap;
                 }
-                y += 50;
-                ctx.fillStyle = '#fff';
-                ctx.font = '800 60px ' + FONT;
-                ctx.fillText(TEXT.name, W / 2, y);
+                ctx.textAlign = 'left';
+                ctx.fillStyle = INK;
+                ctx.font = '800 50px ' + FONT;
+                ctx.fillText(TEXT.name, gx, TEXT.tagline ? midY - 4 : midY + 17);
                 if (TEXT.tagline) {
-                    y += 50;
-                    ctx.globalAlpha = 0.9;
-                    ctx.font = '32px ' + FONT;
-                    ctx.fillText(TEXT.tagline, W / 2, y);
-                    ctx.globalAlpha = 1;
+                    ctx.fillStyle = '#6B5D4F';
+                    ctx.font = '30px ' + FONT;
+                    ctx.fillText(TEXT.tagline, gx, midY + 38);
                 }
+                // Thin rust rule under the header.
+                ctx.fillStyle = RUST;
+                ctx.fillRect(pad, headerH - 6, W - pad * 2, 5);
 
-                y = headerH + 14 + 90;
+                ctx.textAlign = 'center';
+                var y = headerH + 90;
                 ctx.fillStyle = RUST;
                 ctx.font = 'bold 26px ' + FONT;
                 ctx.fillText(TEXT.eyebrow.split('').join(' '), W / 2, y);
@@ -241,22 +248,22 @@
                 ctx.font = '28px ' + FONT;
                 ctx.fillText(TEXT.note, W / 2, y);
 
-                // Footer band.
+                // Footer: a hairline, then plain text.
                 var fy = H - footH;
+                ctx.fillStyle = '#E8E0D8';
+                ctx.fillRect(pad, fy, W - pad * 2, 3);
+                y = fy + 40 + 30;
                 ctx.fillStyle = INK;
-                ctx.fillRect(0, fy, W, footH);
-                y = fy + 56 + 18;
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 36px ' + FONT;
-                contactLines.forEach(function (l) { ctx.fillText(l, W / 2, y); y += 48; });
+                ctx.font = 'bold 34px ' + FONT;
+                contactLines.forEach(function (l) { ctx.fillText(l, W / 2, y); y += 46; });
                 if (TEXT.address) {
-                    ctx.fillStyle = '#D9CFC3';
+                    ctx.fillStyle = '#6B5D4F';
                     ctx.font = '28px ' + FONT;
                     ctx.fillText(TEXT.address, W / 2, y);
-                    y += 44;
+                    y += 42;
                 }
-                y += 14;
-                ctx.fillStyle = '#C56F3D';
+                y += 4;
+                ctx.fillStyle = RUST;
                 ctx.font = 'bold 24px ' + FONT;
                 ctx.fillText(TEXT.thanks.split('').join(' '), W / 2, y);
 
