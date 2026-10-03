@@ -305,11 +305,23 @@ class OrderCreationController extends Controller
             return response()->json(['message' => 'Forbidden - staff access only'], 403);
         }
 
+        // Owner, 2026-10-03: "in POS Smith shows as a cashier" — Smith is
+        // kitchen staff. The picker is headed "Cashier", so it lists who can
+        // ring a sale, plus anyone who already has (a cashier since moved to
+        // another role still has receipts to find). Not every active login.
+        $permissions = app(PermissionService::class);
+        $cashiers = \App\Models\User::query()
+            ->with('role')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'role_id'])
+            ->filter(fn (\App\Models\User $u) => $permissions->hasPermission($u, 'pos.ring_sales')
+                || Order::where('user_id', $u->id)->exists())
+            ->map(fn (\App\Models\User $u) => ['id' => $u->id, 'name' => $u->name])
+            ->values();
+
         return response()->json([
-            'cashiers' => \App\Models\User::query()
-                ->where('is_active', true)
-                ->orderBy('name')
-                ->get(['id', 'name']),
+            'cashiers' => $cashiers,
             'tills' => \App\Models\Device::query()
                 ->where('type', 'pos')
                 ->orderBy('name')

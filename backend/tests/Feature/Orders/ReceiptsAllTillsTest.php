@@ -102,9 +102,14 @@ class ReceiptsAllTillsTest extends TestCase
         $this->getJson('/api/orders/receipt-filters')->assertForbidden();
     }
 
-    public function test_the_filters_endpoint_lists_active_staff_and_pos_tills(): void
+    public function test_the_filters_endpoint_lists_who_can_ring_sales_and_pos_tills(): void
     {
         $this->makeStaff('staff', ['name' => 'Gone', 'is_active' => false, 'phone' => '+9607770013']);
+        // Owner, 2026-10-03: "in POS Smith shows as a cashier" — he is kitchen staff.
+        $this->makeKitchenStaff(['name' => 'Smith', 'phone' => '+9607770015']);
+        // Kitchen staff now, but rang sales before the role changed: still findable.
+        $moved = $this->makeKitchenStaff(['name' => 'Moved', 'phone' => '+9607770016']);
+        Order::factory()->create(['user_id' => $moved->id, 'status' => 'completed', 'payment_status' => 'paid']);
         Sanctum::actingAs($this->makeOwner(['name' => 'Ahmed', 'phone' => '+9607770014']), ['staff']);
 
         $res = $this->getJson('/api/orders/receipt-filters')->assertOk();
@@ -112,7 +117,10 @@ class ReceiptsAllTillsTest extends TestCase
         $this->assertContains('Hassan', $names);
         $this->assertContains('Aisha', $names);
         $this->assertContains('Ahmed', $names);
+        $this->assertContains('Moved', $names);
+        $this->assertNotContains('Smith', $names, 'kitchen staff cannot ring a sale');
         $this->assertNotContains('Gone', $names);
+        $this->assertSame(['id', 'name'], array_keys($res->json('cashiers.0')), 'no role or other fields leak');
 
         $tills = array_column($res->json('tills'), 'name');
         $this->assertSame(['Back till', 'Front till'], $tills, 'POS devices only, by name');
