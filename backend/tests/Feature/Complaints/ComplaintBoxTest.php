@@ -321,4 +321,51 @@ class ComplaintBoxTest extends TestCase
         $this->get('/complain/poster')->assertOk()
             ->assertSee('<div class="foot__line">+960 777 1234  ·  bakeandgrill.mv</div>', false);
     }
+
+    /**
+     * Owner, 2026-10-03: "Add option to download different sizes. Like A4,
+     * A5, 2 posters in 1 A4, 4, 6, 9, etc."
+     */
+    public function test_every_size_prints_the_right_number_of_cards_and_downloads_as_a_pdf(): void
+    {
+        $dump = getenv('POSTER_SHEET_DUMP');
+        $page = $this->get('/complain/poster')->assertOk();
+        foreach (\App\Http\Controllers\ComplaintBoxPageController::LAYOUTS as $key => $layout) {
+            $page->assertSee('data-testid="poster-size-' . $key . '"', false)
+                ->assertSee('/complain/poster/sheet.pdf?layout=' . $key, false);
+
+            $cards = $layout['cols'] * $layout['rows'];
+            $sheet = $this->get('/complain/poster/sheet?layout=' . $key)->assertOk()
+                ->assertSee('data-cards="' . $cards . '"', false)
+                ->assertSee('size: ' . $layout['paper'] . ' ' . $layout['orient'], false);
+            $html = (string) $sheet->getContent();
+            $this->assertSame($cards, substr_count($html, 'class="qr"'), "{$key}: one code per card");
+            $this->assertSame($cards, substr_count($html, 'Not happy? Tell the owner.'));
+
+            $pdf = $this->get('/complain/poster/sheet.pdf?layout=' . $key)->assertOk();
+            $this->assertStringStartsWith('application/pdf', (string) $pdf->headers->get('content-type'));
+            $this->assertStringContainsString('complaint-qr-' . $key . '.pdf', (string) $pdf->headers->get('content-disposition'));
+            $this->assertStringStartsWith('%PDF', (string) $pdf->getContent());
+            if ($dump) {
+                @mkdir($dump, 0777, true);
+                file_put_contents("{$dump}/{$key}.pdf", $pdf->getContent());
+                file_put_contents("{$dump}/{$key}.html", $html);
+            }
+        }
+    }
+
+    public function test_small_cards_keep_the_code_and_the_address_and_drop_the_extras(): void
+    {
+        $nine = (string) $this->get('/complain/poster/sheet?layout=a4-9')->getContent();
+        $this->assertStringContainsString('bakeandgrill.mv/complain', $nine);
+        $this->assertStringNotContainsString('scan and tell us', $nine, 'no body text on a small table card');
+        $this->assertStringContainsString('cut on the dashed lines', $nine);
+
+        $a4 = (string) $this->get('/complain/poster/sheet?layout=a4')->getContent();
+        $this->assertStringContainsString('scan and tell us', $a4);
+        $this->assertStringContainsString('THANK YOU FOR HELPING US DO BETTER', $a4);
+
+        // An unknown size falls back to A5 rather than failing.
+        $this->get('/complain/poster/sheet?layout=poster-wall')->assertOk()->assertSee('size: a5 portrait', false);
+    }
 }

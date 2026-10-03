@@ -80,6 +80,9 @@ Route::middleware(['content.locale', 'service.banner'])->group(function () {
     // with or without an order (owner, 2026-09-19). Posts to /api/complaint-box.
     Route::get('/complain', [App\Http\Controllers\ComplaintBoxPageController::class, 'show'])->name('complain');
     Route::get('/complain/poster', [App\Http\Controllers\ComplaintBoxPageController::class, 'poster'])->name('complain.poster');
+    // Owner, 2026-10-03: the poster in other sizes, and several to an A4 sheet.
+    Route::get('/complain/poster/sheet', [App\Http\Controllers\ComplaintBoxPageController::class, 'sheet'])->name('complain.poster.sheet');
+    Route::get('/complain/poster/sheet.pdf', [App\Http\Controllers\ComplaintBoxPageController::class, 'sheetPdf'])->middleware('throttle:20,1')->name('complain.poster.pdf');
     Route::get('/hours', [HomeController::class, 'hours'])->name('hours');
     Route::get('/terms', [HomeController::class, 'terms'])->name('terms');
     Route::get('/refund', [HomeController::class, 'refund'])->name('refund');

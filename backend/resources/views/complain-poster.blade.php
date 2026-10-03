@@ -54,7 +54,23 @@
         .print, .download { min-height: 44px; padding: 0 20px; border: none; border-radius: 10px; background: #B74B0C; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
         .download { background: #fff; color: #1C1408; border: 1.5px solid #E8E0D8; }
         .hint { font-size: 12px; color: #9C8E7E; margin: 10px auto 24px; max-width: 440px; text-align: center; padding: 0 16px; }
+        .sizes { max-width: 640px; margin: 0 auto 32px; padding: 0 16px; text-align: center; }
+        .sizes h2 { font-size: 20px; margin: 8px 0 4px; color: #1C1408; }
+        .sizes__intro { font-size: 13px; color: #6B5D4F; margin: 0 0 14px; }
+        .sizes__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 10px; }
+        .size { background: #fff; border: 1px solid #E8E0D8; border-radius: 14px; padding: 12px 10px; }
+        .size__pic { height: 64px; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; }
+        .size__sheet { display: grid; gap: 2px; padding: 3px; background: #fff; border: 1.5px solid #CBB8A7; border-radius: 3px; }
+        .size__sheet--portrait { width: 42px; height: 60px; }
+        .size__sheet--landscape { width: 60px; height: 42px; }
+        .size__sheet i { display: block; background: #FBF1EA; border-top: 2px solid #B74B0C; border-radius: 1px; }
+        .size__label { font-weight: 800; font-size: 14px; color: #1C1408; }
+        .size__hint { font-size: 12px; color: #9C8E7E; margin: 2px 0 10px; }
+        .size__actions { display: flex; gap: 6px; }
+        .size__actions a { flex: 1; min-height: 38px; display: inline-flex; align-items: center; justify-content: center; border-radius: 9px; font-weight: 700; font-size: 13px; text-decoration: none; background: #B74B0C; color: #fff; }
+        .size__actions a.is-pdf { background: #fff; color: #1C1408; border: 1.5px solid #E8E0D8; }
         @media print {
+            .sizes { display: none; }
             body { background: #fff; }
             /* The card fills the A5 sheet edge to edge: header at the top, footer at the bottom. */
             .sheet { border: none; border-radius: 0; margin: 0; max-width: none; width: 148mm; height: 209mm; display: flex; flex-direction: column; }
@@ -114,6 +130,31 @@
         <button type="button" class="download" data-download>Download QR image</button>
     </div>
     <p class="hint">The image is a 1200 px wide PNG of this whole card — logo, heading, the code and your contact details — ready for a print shop.</p>
+    {{-- Owner, 2026-10-03: "Add option to download different sizes. Like A4,
+         A5, 2 posters in 1 A4, 4, 6, 9, etc." --}}
+    @if (!empty($layouts))
+        <section class="sizes" data-testid="poster-sizes">
+            <h2>Other sizes</h2>
+            <p class="sizes__intro">One poster on a bigger or smaller sheet, or several on one A4 to cut into table cards.</p>
+            <div class="sizes__grid">
+                @foreach ($layouts as $key => $l)
+                    <div class="size" data-testid="poster-size-{{ $key }}">
+                        <div class="size__pic" aria-hidden="true">
+                            <span class="size__sheet size__sheet--{{ $l['orient'] }}" style="grid-template-columns: repeat({{ $l['cols'] }}, 1fr); grid-template-rows: repeat({{ $l['rows'] }}, 1fr);">
+                                @for ($i = 0; $i < $l['cols'] * $l['rows']; $i++)<i></i>@endfor
+                            </span>
+                        </div>
+                        <div class="size__label">{{ $l['label'] }}</div>
+                        <div class="size__hint">{{ $l['hint'] }}</div>
+                        <div class="size__actions">
+                            <a href="/complain/poster/sheet?layout={{ $key }}&amp;print=1" target="_blank" rel="noopener">Print</a>
+                            <a href="/complain/poster/sheet.pdf?layout={{ $key }}" class="is-pdf">PDF</a>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </section>
+    @endif
     {{-- Owner, 2026-09-19: "where i can download the qr code to past in the
          wall". The SVG code and the logo are both data: URIs on this page, so
          the browser can draw them on a canvas and hand back a PNG without a

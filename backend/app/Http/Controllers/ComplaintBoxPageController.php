@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\ComplaintBoxEntry;
+use App\Support\BrandMark;
 use App\Support\ComplaintBoxLink;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\View\View;
 
 /**
@@ -59,7 +62,82 @@ class ComplaintBoxPageController extends Controller
             'logo' => ComplaintBoxLink::logo(),
             'tagline' => trim((string) content('site_tagline', '')),
             'contacts' => self::posterContacts(),
+            'layouts' => self::LAYOUTS,
         ]);
+    }
+
+    /**
+     * Owner, 2026-10-03: "Add option to download different sizes. Like A4,
+     * A5, 2 posters in 1 A4, 4, 6, 9, etc." One card on a sheet of any size,
+     * or several on one A4 to cut apart. Each entry: the paper, its
+     * orientation, and how many columns and rows of cards it holds.
+     *
+     * @var array<string, array{label: string, hint: string, paper: string, orient: string, cols: int, rows: int}>
+     */
+    public const LAYOUTS = [
+        'a3' => ['label' => 'A3 poster', 'hint' => '1 large poster', 'paper' => 'a3', 'orient' => 'portrait', 'cols' => 1, 'rows' => 1],
+        'a4' => ['label' => 'A4', 'hint' => '1 per sheet', 'paper' => 'a4', 'orient' => 'portrait', 'cols' => 1, 'rows' => 1],
+        'a5' => ['label' => 'A5', 'hint' => '1 per sheet', 'paper' => 'a5', 'orient' => 'portrait', 'cols' => 1, 'rows' => 1],
+        'a6' => ['label' => 'A6', 'hint' => '1 per sheet', 'paper' => 'a6', 'orient' => 'portrait', 'cols' => 1, 'rows' => 1],
+        'a4-2' => ['label' => '2 on A4', 'hint' => 'A5 size each', 'paper' => 'a4', 'orient' => 'landscape', 'cols' => 2, 'rows' => 1],
+        'a4-4' => ['label' => '4 on A4', 'hint' => 'A6 size each', 'paper' => 'a4', 'orient' => 'portrait', 'cols' => 2, 'rows' => 2],
+        'a4-6' => ['label' => '6 on A4', 'hint' => 'table cards', 'paper' => 'a4', 'orient' => 'landscape', 'cols' => 3, 'rows' => 2],
+        'a4-9' => ['label' => '9 on A4', 'hint' => 'small table cards', 'paper' => 'a4', 'orient' => 'portrait', 'cols' => 3, 'rows' => 3],
+    ];
+
+    /** Sheet sizes in mm, portrait. */
+    private const PAPER_MM = ['a3' => [297, 420], 'a4' => [210, 297], 'a5' => [148, 210], 'a6' => [105, 148]];
+
+    /** Unprintable edge most office printers leave; the cards sit inside it. */
+    private const MARGIN_MM = 6;
+
+    /** The chosen layout as a printable sheet; ?print=1 opens the print dialog. */
+    public function sheet(Request $request): View
+    {
+        return view('complain-poster-sheet', $this->sheetData($request) + ['forPdf' => false, 'autoPrint' => $request->boolean('print')]);
+    }
+
+    /** The same sheet as a PDF download. */
+    public function sheetPdf(Request $request): Response
+    {
+        $data = $this->sheetData($request) + ['forPdf' => true, 'autoPrint' => false];
+
+        return Pdf::loadView('complain-poster-sheet', $data)
+            ->setPaper($data['layout']['paper'], $data['layout']['orient'])
+            ->download('complaint-qr-' . $data['layoutKey'] . '.pdf');
+    }
+
+    /** @return array<string, mixed> */
+    private function sheetData(Request $request): array
+    {
+        $key = (string) $request->query('layout', 'a5');
+        $layout = self::LAYOUTS[$key] ?? self::LAYOUTS[$key = 'a5'];
+        [$w, $h] = self::PAPER_MM[$layout['paper']];
+        if ($layout['orient'] === 'landscape') {
+            [$w, $h] = [$h, $w];
+        }
+        // A millimetre of slack each way: the dashed cut lines add their own
+        // width, and without it the last line spills onto a second page.
+        $cardW = round(($w - 2 * self::MARGIN_MM - 1) / $layout['cols'], 2);
+        $cardH = round(($h - 2 * self::MARGIN_MM - 1) / $layout['rows'], 2);
+        $url = ComplaintBoxLink::url('poster');
+
+        return [
+            'layoutKey' => $key,
+            'layout' => $layout,
+            'sheetMm' => [$w, $h],
+            'marginMm' => self::MARGIN_MM,
+            'cardMm' => [$cardW, $cardH],
+            // Text and sizes scale with the card against the A5 card the design was made at.
+            'scale' => round(min($cardW / 136, $cardH / 198), 3),
+            'url' => $url,
+            'qr' => ComplaintBoxLink::qr($url, 480, 0.33, '#5A260A'),
+            // A PNG the PDF renderer can draw (the stored logo may be WebP).
+            'logo' => BrandMark::dataUri(240),
+            'siteName' => (string) content('site_name', 'Bake & Grill'),
+            'tagline' => trim((string) content('site_tagline', '')),
+            'contacts' => self::posterContacts(),
+        ];
     }
 
     /**
