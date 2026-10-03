@@ -63,6 +63,9 @@ export type ShiftHistoryRow = {
   /** The last close on this till and how far the typed float was from it. */
   opening_float_expected?: number | null;
   opening_float_variance?: number | null;
+  /** How the float was counted at open, and the notes when counted one by one. */
+  opening_count_method?: "denominations" | "plain_total" | null;
+  opening_count_breakdown?: Record<string, number> | null;
 };
 
 export type ShiftHistoryParams = { from?: string; to?: string; user_id?: number; limit?: number };
@@ -126,7 +129,12 @@ export async function getCurrentShift(): Promise<{
 }
 
 export async function openShift(payload: {
+  /** The float. On the note-by-note path the server totals the notes itself. */
   opening_cash: number;
+  /** Owner, 2026-10-03: the float counted like the close — note by note, or a plain total. */
+  opening_count_method?: "denominations" | "plain_total";
+  /** denomination (laari) → count, when counted note by note. */
+  opening_denominations?: Record<string, number>;
   device_id?: number | null;
   notes?: string;
   /** Manager: open over another cashier's shift on this till. */

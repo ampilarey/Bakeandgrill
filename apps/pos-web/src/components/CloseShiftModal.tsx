@@ -729,7 +729,7 @@ function StepperBtn({ label, onStep, children, className = "close-shift-stepper-
 }
 
 /** Compact line total: "1500" not "MVR 1500.00"; decimals only when real (0.25, 12.5). */
-function compactMvr(laari: number): string {
+export function compactMvr(laari: number): string {
   const mvr = fromLaari(laari);
   if (Number.isInteger(mvr)) return String(mvr);
   return mvr.toFixed(2).replace(/0$/, "");
@@ -745,7 +745,7 @@ function absoluteMediaUrl(path: string): string {
   }
 }
 
-function DenomSection({
+export function DenomSection({
   title,
   faces,
   counts,

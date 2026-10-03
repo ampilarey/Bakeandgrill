@@ -39,6 +39,7 @@ import {
 } from "../orderTypes";
 
 import type { Pane } from "./types";
+import type { OpenShiftConfirmPayload } from "../components/OpenShiftModal";
 import { computePaneAccess } from "./paneAccess";
 
 export function usePosApp() {
@@ -1086,10 +1087,15 @@ export function usePosApp() {
     return () => document.removeEventListener("visibilitychange", tryPing);
   }, [isLoggedIn]);
 
-  const handleOpenShift = async (openingCash: number, notes?: string, override?: boolean) => {
+  const handleOpenShift = async (payload: OpenShiftConfirmPayload) => {
     setOpenShiftBusy(true);
-    try { await shift.open(openingCash, notes, deviceDbId, override); setShowOpenShift(false); }
-    finally { setOpenShiftBusy(false); }
+    try {
+      await shift.open(payload.openingCash, payload.notes, deviceDbId, payload.override, {
+        method: payload.cashCountMethod,
+        denominations: payload.denominations,
+      });
+      setShowOpenShift(false);
+    } finally { setOpenShiftBusy(false); }
   };
   const handleCloseShift = async (payload: {
     closingCash: number;

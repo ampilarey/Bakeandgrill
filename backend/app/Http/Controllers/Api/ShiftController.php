@@ -643,7 +643,8 @@ class ShiftController extends Controller
             $previousClose = $deviceId
                 ? Shift::where('device_id', $deviceId)->whereNotNull('closed_at')->orderByDesc('closed_at')->first()
                 : null;
-            $openingCash = round((float) $request->input('opening_cash'), 2);
+            $count = $request->openingCount();
+            $openingCash = $count['opening_cash'];
             $expectedFloat = $previousClose ? round((float) $previousClose->closing_cash, 2) : null;
 
             return Shift::create([
@@ -653,6 +654,8 @@ class ShiftController extends Controller
                 'opening_cash' => $openingCash,
                 'opening_float_expected' => $expectedFloat,
                 'opening_float_variance' => $expectedFloat === null ? null : round($openingCash - $expectedFloat, 2),
+                'opening_count_method' => $count['method'],
+                'opening_count_breakdown' => $count['breakdown'],
                 'notes' => trim((string) $request->input('notes') . ($overrode !== null
                     ? ' [Opened over ' . ($overrode->user?->name ?? 'another cashier') . "'s open shift #{$overrode->id}]"
                     : '')) ?: null,

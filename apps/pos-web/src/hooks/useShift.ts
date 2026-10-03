@@ -340,10 +340,18 @@ export function useShift(isLoggedIn: boolean, deviceApproved: boolean, deviceIde
     };
   }, [current, refreshSummary, refresh]);
 
-  const open = useCallback(async (openingCash: number, notes?: string, deviceDbId?: number | null, override?: boolean) => {
+  const open = useCallback(async (
+    openingCash: number,
+    notes?: string,
+    deviceDbId?: number | null,
+    override?: boolean,
+    count?: { method: "denominations" | "plain_total"; denominations?: Record<string, number> },
+  ) => {
     const res = await openShift({
       opening_cash: openingCash,
       notes,
+      ...(count ? { opening_count_method: count.method } : {}),
+      ...(count?.method === "denominations" ? { opening_denominations: count.denominations ?? {} } : {}),
       ...(deviceDbId ? { device_id: deviceDbId } : {}),
       ...(override ? { override: true } : {}),
     });
