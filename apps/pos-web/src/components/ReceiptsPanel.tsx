@@ -5,8 +5,7 @@ import {
   getReceiptLink,
   sendReceipt,
   REFUND_REASON_CATEGORIES,
-  type RefundReasonCategory,
-} from "../api";
+  type RefundReasonCategory, correctTender, CORRECTABLE_TENDERS, type CorrectableTender } from "../api";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { posOrderTypeEmoji, posOrderTypeLabel } from "../orderTypeLabels";
 import { palette } from "../theme";
@@ -19,6 +18,8 @@ export type Receipt = Awaited<ReturnType<typeof fetchReceipts>>["data"][number];
 type Props = {
   onClose: () => void;
   shiftId?: number | null;
+  /** Fix any payment's tender; without it a cashier may still fix their own open shift's payments. */
+  canCorrectTender?: boolean;
   defaultScope?: "today" | "shift";
   /** Select this order when the list loads (post-charge redirect). */
   initialOrderId?: number | null;
@@ -144,6 +145,7 @@ export function ReceiptsPanel({
   initialOrderId = null,
   receiptResendEnabled = true,
   canRefund = true,
+  canCorrectTender = false,
 }: Props) {
   const isNarrow = useMediaQuery("(max-width: 760px)");
   const [scope, setScope] = useState<Scope>(defaultScope);
@@ -400,6 +402,8 @@ export function ReceiptsPanel({
                 receipt={selected}
                 receiptResendEnabled={receiptResendEnabled}
                 canRefund={canRefund}
+                canCorrectTender={canCorrectTender}
+                currentShiftId={shiftId ?? null}
                 onBack={isNarrow ? () => setDetailOpen(false) : undefined}
                 onChanged={() => setReloadKey((k) => k + 1)}
               />
@@ -482,15 +486,43 @@ function ReceiptDetail({
   receipt,
   receiptResendEnabled = true,
   canRefund = true,
+  canCorrectTender = false,
+  currentShiftId = null,
   onBack,
   onChanged,
 }: {
   receipt: Receipt;
   receiptResendEnabled?: boolean;
   canRefund?: boolean;
+  canCorrectTender?: boolean;
+  currentShiftId?: number | null;
   onBack?: () => void;
   onChanged?: () => void;
 }) {
+  // Owner, 2026-10-03: a QR rung as card. Fix it here instead of refund + re-ring.
+  const [tenderFixId, setTenderFixId] = useState<number | null>(null);
+  const [tenderFixMethod, setTenderFixMethod] = useState<CorrectableTender | "">("");
+  const [tenderFixReason, setTenderFixReason] = useState("");
+  const [tenderFixBusy, setTenderFixBusy] = useState(false);
+  const [tenderFixErr, setTenderFixErr] = useState("");
+  const canFixPayment = (p: { method: string; shift_id?: number | null; status?: string | null }) =>
+    (CORRECTABLE_TENDERS as readonly string[]).includes(p.method)
+    && (canCorrectTender || (currentShiftId != null && p.shift_id === currentShiftId));
+  const submitTenderFix = async (paymentId: number) => {
+    if (!tenderFixMethod) { setTenderFixErr("Pick the right tender."); return; }
+    if (tenderFixReason.trim().length < 3) { setTenderFixErr("Say why, in a few words."); return; }
+    setTenderFixBusy(true); setTenderFixErr("");
+    try {
+      const res = await correctTender(receipt.id, paymentId, { method: tenderFixMethod, reason: tenderFixReason.trim() });
+      setInfo(res.message);
+      setTenderFixId(null); setTenderFixMethod(""); setTenderFixReason("");
+      onChanged?.();
+    } catch (e) {
+      setTenderFixErr((e as Error).message || "Could not correct the tender.");
+    } finally {
+      setTenderFixBusy(false);
+    }
+  };
   const [link, setLink] = useState<string | null>(null);
   const [phone, setPhone] = useState(receipt.customer?.phone ?? "");
   const [busy, setBusy] = useState<"" | "send" | "refund" | "link" | "print">("");
@@ -694,12 +726,65 @@ function ReceiptDetail({
           <div data-testid="receipt-payments" style={{ marginTop: 10, paddingTop: 8, borderTop: `1px solid ${palette.border}` }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: palette.panelMuted, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Paid by</div>
             {pays.map((p) => (
-              <div key={p.id}>
+              <div key={p.id} data-testid={`receipt-payment-${p.id}`}>
                 <Line label={paymentLabel(p.method)} value={money(p.amount)} />
                 {Number(p.tendered_amount) > 0 && Number(p.change_given) > 0 && (
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: palette.panelMuted, padding: "0 0 2px 12px" }}>
                     <span>Tendered {money(p.tendered_amount)}</span>
                     <span>Change {money(p.change_given)}</span>
+                  </div>
+                )}
+                {p.original_method && p.original_method !== p.method && (
+                  <div style={{ fontSize: 11, color: palette.warnDark, padding: "0 0 2px 12px" }}>
+                    Corrected from {paymentLabel(p.original_method)}
+                  </div>
+                )}
+                {canFixPayment(p) && tenderFixId !== p.id && (
+                  <button
+                    type="button"
+                    onClick={() => { setTenderFixId(p.id); setTenderFixMethod(""); setTenderFixReason(""); setTenderFixErr(""); }}
+                    style={{ ...linkBtn, padding: "2px 0 4px 12px" }}
+                  >
+                    Wrong tender? Fix it
+                  </button>
+                )}
+                {tenderFixId === p.id && (
+                  <div data-testid={`tender-fix-${p.id}`} style={{ margin: "4px 0 8px 12px", padding: 8, borderRadius: 8, background: palette.bgAlt, display: "flex", flexDirection: "column", gap: 6 }}>
+                    <div style={{ fontSize: 11, color: palette.panelMuted }}>
+                      Change how MVR {money(p.amount)} was paid. The amount stays the same.
+                    </div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {CORRECTABLE_TENDERS.filter((m) => m !== p.method).map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setTenderFixMethod(m)}
+                          aria-pressed={tenderFixMethod === m}
+                          style={{
+                            ...secondaryBtn, minHeight: 36,
+                            background: tenderFixMethod === m ? palette.ink : palette.panel,
+                            color: tenderFixMethod === m ? palette.inkText : palette.panelInk,
+                          }}
+                        >
+                          {paymentLabel(m)}
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      value={tenderFixReason}
+                      onChange={(e) => setTenderFixReason(e.target.value)}
+                      placeholder="Why (e.g. customer paid by QR)"
+                      aria-label="Reason for the tender correction"
+                      maxLength={200}
+                      style={input}
+                    />
+                    {tenderFixErr && <div style={{ fontSize: 12, color: palette.dangerDark }}>{tenderFixErr}</div>}
+                    <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                      <button type="button" onClick={() => setTenderFixId(null)} disabled={tenderFixBusy} style={secondaryBtn}>Cancel</button>
+                      <button type="button" onClick={() => void submitTenderFix(p.id)} disabled={tenderFixBusy} style={primaryBtn}>
+                        {tenderFixBusy ? "Saving…" : "Correct tender"}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -906,4 +991,9 @@ const secondaryBtn: React.CSSProperties = {
 const dangerBtn: React.CSSProperties = {
   minHeight: 44, padding: "0 14px", borderRadius: 8, border: "none",
   background: palette.danger, color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit",
+};
+
+const linkBtn: React.CSSProperties = {
+  background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit",
+  fontSize: 12, fontWeight: 700, color: palette.primary, textAlign: "left", minHeight: 32,
 };

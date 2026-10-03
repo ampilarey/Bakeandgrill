@@ -10,6 +10,7 @@ import {
   fetchDeliveryDrivers, assignDeliveryDriver,
   fetchPosStaffOptions, fetchDevices,
   type Order, type DeliveryDriver,
+  correctOrderTender, CORRECTABLE_TENDERS,
 } from '../api';
 import { ADMIN_ORDER_PAYMENT_METHODS } from '../lib/paymentMethods';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -117,6 +118,9 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
   const canHoldResume = can('pos.hold_resume');
   const canSendBill = can('orders.send_sms_bill');
   const canSendPayLink = can('orders.send_payment_link');
+  // Owner, 2026-10-03: a QR rung as card can be put right from here.
+  const canCorrectTender = can('payments.correct_tender');
+  const [tenderFix, setTenderFix] = useState<{ paymentId: number; method: string; reason: string; busy: boolean; err: string } | null>(null);
   const canVoid = can('orders.void');
   const canRecordPayment = can('pos.ring_sales');
   const canReceipts = can('orders.receipts');
@@ -460,6 +464,90 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                 </Btn>
               )}
             </div>
+            )}
+
+            {(order.payments ?? []).length > 0 && (
+              <div data-testid="order-payments" style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 10, padding: 12, marginBottom: 16 }}>
+                <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Paid by</p>
+                {(order.payments ?? []).map((p, i) => {
+                  const settled = ['paid', 'completed', 'confirmed'].includes(String(p.status ?? ''));
+                  const fixable = canCorrectTender && settled && p.id != null && CORRECTABLE_TENDERS.some((t) => t.value === p.method);
+                  const label = CORRECTABLE_TENDERS.find((t) => t.value === p.method)?.label ?? String(p.method ?? '').replace(/_/g, ' ');
+                  // A const so the narrowing survives into the button handlers below.
+                  const fix = tenderFix && tenderFix.paymentId === p.id ? tenderFix : null;
+                  return (
+                    <div key={p.id ?? i} style={{ padding: '4px 0', borderTop: i > 0 ? '1px solid var(--color-border-light)' : 'none' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                        <span>
+                          <strong>{label}</strong>
+                          {!settled && <span style={{ color: 'var(--color-text-muted)' }}> · {String(p.status ?? '')}</span>}
+                          {p.original_method && p.original_method !== p.method && (
+                            <span style={{ display: 'block', fontSize: 11, color: 'var(--color-warning-strong)' }}>
+                              Corrected from {p.original_method.replace(/_/g, ' ')}{p.tender_correction_reason ? ` — ${p.tender_correction_reason}` : ''}
+                            </span>
+                          )}
+                        </span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                          <span>MVR {Number(p.amount ?? 0).toFixed(2)}</span>
+                          {fixable && !fix && (
+                            <Btn small variant="secondary" onClick={() => setTenderFix({ paymentId: p.id!, method: '', reason: '', busy: false, err: '' })}>
+                              Correct tender
+                            </Btn>
+                          )}
+                        </span>
+                      </div>
+                      {fix && (
+                        <div data-testid={`tender-fix-${p.id}`} style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
+                            Change how MVR {Number(p.amount ?? 0).toFixed(2)} was paid. The amount stays the same; the drawer and the tender report follow.
+                          </div>
+                          <select
+                            value={fix.method}
+                            onChange={(e) => setTenderFix((f) => f && { ...f, method: e.target.value })}
+                            aria-label="Correct tender to"
+                            style={{ border: '1px solid var(--color-border)', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit', minHeight: 40 }}
+                          >
+                            <option value="">Paid by…</option>
+                            {CORRECTABLE_TENDERS.filter((t) => t.value !== p.method).map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                          </select>
+                          <input
+                            value={fix.reason}
+                            onChange={(e) => setTenderFix((f) => f && { ...f, reason: e.target.value })}
+                            placeholder="Why (e.g. customer paid by QR, cashier tapped card)"
+                            aria-label="Reason for the tender correction"
+                            maxLength={200}
+                            style={{ border: '1px solid var(--color-border)', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit', minHeight: 40 }}
+                          />
+                          {fix.err && <div style={{ fontSize: 12, color: 'var(--color-danger-strong)' }}>{fix.err}</div>}
+                          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                            <Btn small variant="ghost" onClick={() => setTenderFix(null)} disabled={fix.busy}>Cancel</Btn>
+                            <Btn
+                              small
+                              disabled={fix.busy}
+                              onClick={async () => {
+                                if (!fix.method) { setTenderFix((f) => f && { ...f, err: 'Pick the right tender.' }); return; }
+                                if (fix.reason.trim().length < 3) { setTenderFix((f) => f && { ...f, err: 'Say why, in a few words.' }); return; }
+                                setTenderFix((f) => f && { ...f, busy: true, err: '' });
+                                try {
+                                  const res = await correctOrderTender(order.id, fix.paymentId, { method: fix.method, reason: fix.reason.trim() });
+                                  showToast(res.message);
+                                  setTenderFix(null);
+                                  reload();
+                                  onOrderUpdated();
+                                } catch (e) {
+                                  setTenderFix((f) => f && { ...f, busy: false, err: (e as Error).message });
+                                }
+                              }}
+                            >
+                              {fix.busy ? 'Saving…' : 'Correct tender'}
+                            </Btn>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             )}
 
             {showCancel && (

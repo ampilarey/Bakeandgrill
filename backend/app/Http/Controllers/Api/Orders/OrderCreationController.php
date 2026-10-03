@@ -62,7 +62,7 @@ class OrderCreationController extends Controller
             // scrolling). Relation on Order is `table()`, schema
             // columns are id/name/location.
             'table:id,name,location',
-            'payments:id,order_id,method,amount,amount_laar,tendered_amount,change_given,status,created_at',
+            'payments:id,order_id,shift_id,method,original_method,tender_corrected_at,amount,amount_laar,tendered_amount,change_given,status,created_at',
             'refunds:id,order_id,amount,status,reason_category,created_at',
         ])
             ->orderBy('created_at', 'desc');

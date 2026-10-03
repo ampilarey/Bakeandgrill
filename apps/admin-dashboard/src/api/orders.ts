@@ -42,7 +42,11 @@ export type Order = {
   notes?: string | null;
   paid_at?: string | null;
   /** Present on staff order detail (`GET /orders/{id}`) — used to hide Void when money exists. */
-  payments?: Array<{ id?: number; method?: string; amount?: number; status?: string | null }>;
+  payments?: Array<{
+    id?: number; method?: string; amount?: number; status?: string | null;
+    /** Owner, 2026-10-03: set once a tender was corrected — what it was first rung as. */
+    original_method?: string | null; tender_corrected_at?: string | null; tender_correction_reason?: string | null;
+  }>;
   created_at: string;
   items?: OrderItem[];
   delivery_address_line1?: string | null;
@@ -103,6 +107,23 @@ export async function addOrderPayments(id: number, data: {
   payments: { method: string; amount: number; reference?: string }[];
 }): Promise<{ order: Order }> {
   return req(`/orders/${id}/payments`, { method: 'POST', body: JSON.stringify(data) });
+}
+
+/** Tenders a correction may move between. */
+export const CORRECTABLE_TENDERS = [
+  { value: 'cash', label: 'Cash' },
+  { value: 'card', label: 'Card' },
+  { value: 'qr', label: 'QR' },
+  { value: 'bank_transfer', label: 'Transfer' },
+] as const;
+
+/** Fix a wrong tender after the sale (owner, 2026-10-03). The amount stays; the method changes with a reason. */
+export async function correctOrderTender(
+  orderId: number,
+  paymentId: number,
+  payload: { method: string; reason: string; reference?: string },
+): Promise<{ message: string; order: Order }> {
+  return req(`/orders/${orderId}/payments/${paymentId}/correct-tender`, { method: 'POST', body: JSON.stringify(payload) });
 }
 
 export async function sendOrderBill(

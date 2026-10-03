@@ -94,6 +94,8 @@ export function usePosApp() {
   }), [staffPermissions, canManageCustomers]);
   const canViewCustomers = canSeeCustomersTab(staffPermissions);
   const canCashInOut = hasPosPermission(staffPermissions, "payments.cash_in_out");
+  /** Fix any payment's tender; without it a cashier can still fix their own open shift's (server-checked). */
+  const canCorrectTender = hasPosPermission(staffPermissions, "payments.correct_tender");
   const canLockScreen = hasPosPermission(staffPermissions, "pos.lock_screen");
   const canOpsInventory = hasPosPermission(staffPermissions, "inventory.manage");
   const canOpsPreparedStock = hasPosPermission(staffPermissions, "menu.prepared_stock");
@@ -1331,7 +1333,7 @@ export function usePosApp() {
     isLoggedIn, username, setUsername, pin, setPin, cashierName, staffRole, staffPermissions,
     canVoidOrders, canOpenShift, canCloseShift, canRingSales, canHoldResume,
     canViewActiveOrders, canViewReceipts, canViewShiftHistory, canViewAllShifts, canViewReports, canManageExpenses,
-    canViewCustomers, customerPerms,
+    canViewCustomers, customerPerms, canCorrectTender,
     canCashInOut, canLockScreen,
     canOpsInventory, canOpsPreparedStock,
     canUseCredit, canUseWallet, canPayCash, canPayCard, canPaySplit, canApplyDiscount,

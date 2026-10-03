@@ -13,11 +13,13 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const fetchReceipts = vi.hoisted(() => vi.fn());
+const correctTender = vi.hoisted(() => vi.fn());
 vi.mock("../api", async () => {
   const actual = await vi.importActual<typeof import("../api")>("../api");
   return {
     ...actual,
     fetchReceipts,
+    correctTender,
     getReceiptLink: vi.fn().mockResolvedValue({ link: "https://example.test/r/1" }),
     sendReceipt: vi.fn(),
     createRefund: vi.fn(),
@@ -227,6 +229,56 @@ describe("ReceiptsPanel detail", () => {
     renderPanel({ canRefund: false });
     fireEvent.click(await screen.findByTestId("receipt-row-1"));
     expect(screen.queryByRole("button", { name: /^Refund/ })).toBeNull();
+  });
+});
+
+describe("ReceiptsPanel tender correction", () => {
+  // Owner, 2026-10-03: "for a QR payment he selected card, can the admin correct it?"
+  const cardInMyShift = { ...cardSale, payments: [{ id: 22, method: "card", amount: 100, status: "completed", shift_id: 9 }] };
+
+  it("lets a cashier fix a tender in their own open shift, with a reason", async () => {
+    fetchReceipts.mockResolvedValue({ data: [cardInMyShift] });
+    correctTender.mockResolvedValue({ message: "Tender corrected: card → qr." });
+    renderPanel({ shiftId: 9 });
+    fireEvent.click(await screen.findByTestId("receipt-row-2"));
+
+    fireEvent.click(screen.getByRole("button", { name: /Wrong tender\? Fix it/ }));
+    const form = screen.getByTestId("tender-fix-22");
+    expect(within(form).queryByRole("button", { name: /^Card$/ })).toBeNull();
+    fireEvent.click(within(form).getByRole("button", { name: /^Correct tender$/ }));
+    expect(form).toHaveTextContent("Pick the right tender.");
+
+    fireEvent.click(within(form).getByRole("button", { name: /^QR$/ }));
+    fireEvent.change(within(form).getByLabelText("Reason for the tender correction"), { target: { value: "Customer paid by QR" } });
+    fireEvent.click(within(form).getByRole("button", { name: /^Correct tender$/ }));
+
+    await waitFor(() => expect(correctTender).toHaveBeenCalledWith(2, 22, { method: "qr", reason: "Customer paid by QR" }));
+    await waitFor(() => expect(screen.getByTestId("receipt-detail")).toHaveTextContent("Tender corrected: card → qr."));
+  });
+
+  it("offers it only for the cashier's own open shift unless they hold the permission, and never for a credit payment", async () => {
+    fetchReceipts.mockResolvedValue({ data: [{ ...cardInMyShift, payments: [{ ...cardInMyShift.payments[0], shift_id: 4 }] }] });
+    let view = renderPanel({ shiftId: 9 });
+    fireEvent.click(await screen.findByTestId("receipt-row-2"));
+    expect(screen.queryByRole("button", { name: /Wrong tender/ })).toBeNull();
+    view.unmount();
+
+    view = renderPanel({ shiftId: 9, canCorrectTender: true });
+    fireEvent.click(await screen.findByTestId("receipt-row-2"));
+    expect(screen.getByRole("button", { name: /Wrong tender/ })).toBeTruthy();
+    view.unmount();
+
+    fetchReceipts.mockResolvedValue({ data: [{ ...cardInMyShift, payments: [{ id: 23, method: "house_account", amount: 100, status: "completed", shift_id: 9 }] }] });
+    renderPanel({ shiftId: 9, canCorrectTender: true });
+    fireEvent.click(await screen.findByTestId("receipt-row-2"));
+    expect(screen.queryByRole("button", { name: /Wrong tender/ })).toBeNull();
+  });
+
+  it("shows what a corrected payment was first rung as", async () => {
+    fetchReceipts.mockResolvedValue({ data: [{ ...cardInMyShift, payments: [{ id: 22, method: "qr", original_method: "card", amount: 100, status: "completed", shift_id: 9 }] }] });
+    renderPanel({ shiftId: 9 });
+    fireEvent.click(await screen.findByTestId("receipt-row-2"));
+    expect(screen.getByTestId("receipt-payments")).toHaveTextContent("Corrected from Card");
   });
 });
 

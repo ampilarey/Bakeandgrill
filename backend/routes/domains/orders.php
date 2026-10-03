@@ -48,6 +48,10 @@ if (routes_domain_section_is('orders', 'core') && !routes_domain_loaded('orders.
         ->middleware(['permission:pos.hold_resume', 'device.active', 'throttle:10,1']);
     Route::post('/orders/{id}/split', [App\Http\Controllers\Api\Orders\OrderItemController::class, 'split'])
         ->middleware(['permission:pos.hold_resume', 'device.active', 'throttle:10,1']);
+    // Owner, 2026-10-03: fix a wrong tender after the sale. The controller lets
+    // a cashier without the permission fix only their own open shift's payments.
+    Route::post('/orders/{id}/payments/{paymentId}/correct-tender', [App\Http\Controllers\Api\Orders\OrderPaymentController::class, 'correctTender'])
+        ->middleware(['permission.any:payments.correct_tender,pos.ring_sales', 'throttle:30,1']);
     Route::post('/orders/{id}/payments', [App\Http\Controllers\Api\Orders\OrderPaymentController::class, 'addPayments'])
         ->middleware(['permission:pos.ring_sales', 'device.active', 'throttle:20,1']);
     Route::post('/orders/{id}/send-bill', [App\Http\Controllers\Api\Orders\OrderPaymentController::class, 'sendBill'])

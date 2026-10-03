@@ -97,6 +97,7 @@
             "payments.cash",
             "payments.cash_in_out",
             "payments.cash_manage",
+            "payments.correct_tender",
             "payments.credit",
             "payments.deposit",
             "payments.split",

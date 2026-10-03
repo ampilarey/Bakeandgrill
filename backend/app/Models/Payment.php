@@ -16,6 +16,10 @@ class Payment extends Model
         'collected_by_user_id',
         'shift_id',
         'method',
+        'original_method',
+        'tender_corrected_at',
+        'tender_corrected_by',
+        'tender_correction_reason',
         'gateway',
         'currency',
         'amount',
@@ -46,6 +50,8 @@ class Payment extends Model
         'commission_rate_bp' => 'integer',
         'gateway_response' => 'array',
         'processed_at' => 'datetime',
+        'tender_corrected_at' => 'datetime',
+        'tender_corrected_by' => 'integer',
     ];
 
     public function order(): BelongsTo

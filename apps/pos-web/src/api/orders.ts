@@ -582,6 +582,11 @@ export async function fetchReceipts(params: {
       change_given?: number | null;
       status?: string | null;
       created_at?: string | null;
+      /** The shift it was taken in; a cashier may correct a tender in their own open shift. */
+      shift_id?: number | null;
+      /** Set once a tender was corrected (owner, 2026-10-03): what it was first rung as. */
+      original_method?: string | null;
+      tender_corrected_at?: string | null;
     }>;
     refunds?: Array<{
       id: number;
@@ -734,5 +739,24 @@ export async function updateOrderCustomer(
   return request(`/orders/${orderId}/customer`, {
     method: "PATCH",
     body: JSON.stringify({ customer_id: customerId }),
+  });
+}
+
+/** Tenders a correction may move between (the ones without a ledger of their own). */
+export const CORRECTABLE_TENDERS = ["cash", "card", "qr", "digital_wallet"] as const;
+export type CorrectableTender = (typeof CORRECTABLE_TENDERS)[number];
+
+/**
+ * Fix a wrong tender after the sale (owner, 2026-10-03: "for a QR payment he
+ * selected card"). The amount stays; the method changes with a reason.
+ */
+export async function correctTender(
+  orderId: number,
+  paymentId: number,
+  payload: { method: CorrectableTender; reason: string; reference?: string },
+): Promise<{ message: string }> {
+  return request(`/orders/${orderId}/payments/${paymentId}/correct-tender`, {
+    method: "POST",
+    body: JSON.stringify(payload),
   });
 }

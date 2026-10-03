@@ -140,6 +140,8 @@ final class PermissionCatalog
             ['group' => 'Payments', 'slug' => 'payments.cash', 'name' => 'Take cash payments'],
             ['group' => 'Payments', 'slug' => 'payments.card', 'name' => 'Take card payments'],
             ['group' => 'Payments', 'slug' => 'payments.split', 'name' => 'Split tender payments'],
+            // Owner, 2026-10-03: a QR rung as card. A cashier may fix a payment in their own open shift without this.
+            ['group' => 'Payments', 'slug' => 'payments.correct_tender', 'name' => 'Correct a recorded tender', 'description' => 'Change the payment method on a paid order (cash, card, QR, transfer) after the sale, with a reason'],
             ['group' => 'Payments', 'slug' => 'payments.cash_manage', 'name' => 'Manage cash drawer'],
             ['group' => 'Payments', 'slug' => 'payments.cash_in_out', 'name' => 'Cash in / cash out'],
             ['group' => 'Payments', 'slug' => 'payments.credit', 'name' => 'Charge to customer credit account', 'description' => 'Use Credit Account tender at POS for approved customers'],
@@ -345,6 +347,8 @@ final class PermissionCatalog
             'complaints.view',
             // Off by default for managers too (owner, 2026-10-02).
             'pos.customers_tab',
+            // Owner-only by default (2026-10-03): it rewrites what the drawer and the tender report say.
+            'payments.correct_tender',
             // Audit 2026-09-03 (F2): customers.credit.repay moved to managers
             // on the owner's say-so — see managerSlugs(). Writing a balance OFF
             // is money out with no cash trail, and stays here.

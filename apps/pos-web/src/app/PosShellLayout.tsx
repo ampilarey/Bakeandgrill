@@ -150,7 +150,7 @@ export function PosShellLayout() {
     isLoggedIn, isLocked, pane, setPane, drawerOpen, setDrawerOpen, cashierName, staffRole, deviceId,
     shift, shiftOpen, canEnterPosShell, canOpenShift, canCloseShift, canRingSales, canHoldResume,
     canViewActiveOrders, canViewReceipts, canViewShiftHistory, canViewAllShifts, canViewReports, canManageExpenses,
-    canViewCustomers, customerPerms,
+    canViewCustomers, customerPerms, canCorrectTender,
     canAccessOps, canVoidOrders, canManageEvents, canTradeDispatch, canTradeReconcile,
     canManageOrderStatus, canSendBill, canSendPayLink, canRequestRefund, canApproveRefund, canCreatePurchaseRequest,
     canStockCount, canPostStockCount,
@@ -807,6 +807,7 @@ export function PosShellLayout() {
             initialOrderId={receiptsFocusOrderId}
             receiptResendEnabled={smsNotifications.receipt_resend}
             canRefund={canRequestRefund && shiftOpen}
+            canCorrectTender={canCorrectTender}
           />
           </Suspense>
         )}

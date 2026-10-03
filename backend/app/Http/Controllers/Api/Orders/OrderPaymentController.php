@@ -405,4 +405,91 @@ class OrderPaymentController extends Controller
 
         return round(max(0, $lineFloor), 2);
     }
+
+    /** Tenders a correction may move between: the ones with no ledger of their own. */
+    public const CORRECTABLE_TENDERS = ['cash', 'card', 'qr', 'digital_wallet', 'bank_transfer'];
+
+    /**
+     * POST /orders/{id}/payments/{paymentId}/correct-tender
+     *
+     * Owner, 2026-10-03: "for a QR payment he selected card, can the admin
+     * correct it?" The amount stays; only the method changes, with a reason.
+     * Anyone with payments.correct_tender may fix any payment; a cashier may
+     * fix a payment taken in their own shift while it is still open. Cash in
+     * or out of the picture moves the open shift's expected drawer with it
+     * (expected cash is summed from payments by method); a closed shift
+     * keeps its counted figures and gets a note instead.
+     */
+    public function correctTender(Request $request, int $id, int $paymentId): JsonResponse
+    {
+        $validated = $request->validate([
+            'method' => ['required', 'string', 'in:' . implode(',', self::CORRECTABLE_TENDERS)],
+            'reason' => ['required', 'string', 'min:3', 'max:200'],
+            'reference' => ['nullable', 'string', 'max:100'],
+        ]);
+        $user = $request->user();
+
+        $order = Order::findOrFail($id);
+        $payment = $order->payments()->whereKey($paymentId)->firstOrFail();
+
+        if (!in_array($payment->status, ['paid', 'completed', 'confirmed'], true)) {
+            return response()->json(['message' => 'Only a settled payment can be corrected.'], 422);
+        }
+        if (!in_array($payment->method, self::CORRECTABLE_TENDERS, true)) {
+            return response()->json(['message' => 'This payment was taken from a credit account, a deposit or a gift card and has its own ledger; it cannot be re-tendered.'], 422);
+        }
+        if ($payment->method === $validated['method']) {
+            return response()->json(['message' => 'The payment is already recorded as that tender.'], 422);
+        }
+
+        $permissions = app(\App\Domains\Permissions\Services\PermissionService::class);
+        if (!$permissions->hasPermission($user, 'payments.correct_tender')) {
+            $ownOpenShift = $payment->shift_id !== null
+                && \App\Models\Shift::query()->whereKey($payment->shift_id)->where('user_id', $user->id)->whereNull('closed_at')->exists();
+            if (!$ownOpenShift) {
+                return response()->json(['message' => 'You can only correct a payment taken in your own open shift. Ask a manager or the owner.'], 403);
+            }
+        }
+
+        $from = $payment->method;
+        $payment->forceFill([
+            'method' => $validated['method'],
+            'original_method' => $payment->original_method ?? $from,
+            'tender_corrected_at' => now(),
+            'tender_corrected_by' => $user->id,
+            'tender_correction_reason' => $validated['reason'],
+            'reference_number' => ($validated['reference'] ?? null) !== null && $validated['reference'] !== ''
+                ? $validated['reference']
+                : $payment->reference_number,
+        ])->save();
+
+        // A closed shift was counted against the old tender; say so on it.
+        $shift = $payment->shift_id ? \App\Models\Shift::find($payment->shift_id) : null;
+        if ($shift !== null && $shift->closed_at !== null && ($from === 'cash' || $validated['method'] === 'cash')) {
+            $shift->update(['notes' => trim((string) $shift->notes . sprintf(
+                ' [Tender corrected after close: order #%s MVR %s %s → %s by %s]',
+                $order->order_number,
+                number_format((float) $payment->amount, 2),
+                $from,
+                $validated['method'],
+                $user->name ?? 'staff',
+            ))]);
+        }
+
+        app(AuditLogService::class)->log(
+            'payment.tender_corrected',
+            'Payment',
+            $payment->id,
+            ['method' => $from],
+            ['method' => $validated['method'], 'reason' => $validated['reason']],
+            ['order_id' => $order->id, 'order_number' => $order->order_number, 'amount' => (float) $payment->amount, 'shift_id' => $payment->shift_id],
+            $request,
+        );
+
+        return response()->json([
+            'message' => sprintf('Tender corrected: %s → %s.', $from, $validated['method']),
+            'payment' => $payment->fresh(),
+            'order' => $order->fresh('payments'),
+        ]);
+    }
 }
