@@ -1,5 +1,6 @@
 import { useLongPress } from "../hooks/useLongPress";
 import type { Pane } from "../app/types";
+import { hasPaneIcon, PaneIcon } from "./PaneIcon";
 
 export type ShortcutTarget = { id: Pane; label: string; icon: string };
 
@@ -62,7 +63,12 @@ function ShortcutButton({
       onClick={clickGuard(() => onSelect(item.id))}
       {...handlers}
     >
-      <span aria-hidden="true" className="pos-topbar-shortcut-icon">{item.icon}</span>
+      {/* A line icon in the button's own colour, so it reads on the pale
+          resting button and on the "you are here" one alike; the emoji is
+          only a fallback for a pane without one. */}
+      <span aria-hidden="true" className="pos-topbar-shortcut-icon">
+        {hasPaneIcon(item.id) ? <PaneIcon name={item.id} size={18} /> : item.icon}
+      </span>
       <span className="pos-topbar-shortcut-label">{item.label}</span>
     </button>
   );

@@ -30,6 +30,7 @@ import type { CartItem } from '../types';
 import { usePosAppContext } from './PosAppProvider';
 import { paneTitle, Banner, NoticeBanner, shouldShowStatusBanner } from './posUiHelpers';
 import { HeaderShortcuts, type ShortcutTarget } from '../components/HeaderShortcuts';
+import { PaneIcon } from '../components/PaneIcon';
 import { ShortcutPrompt, type ShortcutPromptState } from '../components/ShortcutPrompt';
 import { useHeaderShortcuts, isPane, MAX_HEADER_SHORTCUTS } from '../hooks/useHeaderShortcuts';
 import { useScanWedge } from '../hooks/useScanWedge';
@@ -436,8 +437,7 @@ export function PosShellLayout() {
             onClick={lockScreen}
             aria-label="Lock screen"
             title="Lock screen (Ctrl/Cmd+L)"
-            style={{ fontSize: 15 }}
-          >🔒</button>
+          ><PaneIcon name="lock" size={20} /></button>
           )}
 
           {offlineQueueCount > 0 && (

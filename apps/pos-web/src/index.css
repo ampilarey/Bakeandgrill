@@ -165,12 +165,20 @@ html, body, #root {
   user-select: none;
   -webkit-user-select: none;
 }
+/* "You are here": the brand rust on its own tint. It used to be near-black,
+ * which swallowed a dark emoji whole on a phone (owner, 2026-10-03). */
 .pos-topbar-shortcut.is-active {
-  background: #0F172A;
-  border-color: #0F172A;
-  color: #fff;
+  background: #F9F1EC;
+  border-color: #B74B0C;
+  color: #B74B0C;
 }
-.pos-topbar-shortcut-icon { font-size: 15px; line-height: 1; }
+.pos-topbar-shortcut-icon {
+  font-size: 15px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
 
 /* Phone only — an iPad in portrait is 834px and has room for the words.
  * Below this the header cannot carry labels beside the title and the status
@@ -179,11 +187,15 @@ html, body, #root {
 @media (max-width: 640px) {
   .pos-topbar-shortcut-label { display: none; }
   .pos-topbar-shortcut {
-    padding: 6px 10px;
+    padding: 0;
+    width: 40px;
     min-width: 40px;
+    height: 40px;
+    min-height: 40px;
     justify-content: center;
   }
   .pos-topbar-shortcut-icon { font-size: 17px; }
+  .pos-topbar-shortcut-icon svg { width: 20px; height: 20px; }
 }
 
 .pos-header-btn {
@@ -202,6 +214,7 @@ html, body, #root {
 }
 .pos-header-btn--lock {
   border: 1px solid #E2E8F0;
+  color: #334155;
 }
 .pos-status-pill {
   display: inline-flex;
