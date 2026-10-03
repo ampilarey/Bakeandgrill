@@ -271,6 +271,17 @@ function NotificationsSettings() {
     <div style={{ maxWidth: 720 }}>
       {error && <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, marginBottom: 12 }}>{error}</p>}
 
+      {/* SMS settings audit, 2026-10-03: the same switches exist in three
+          places; this names the one list that has all of them. */}
+      <p data-testid="sms-control-center-link" style={{
+        margin: '0 0 18px', padding: '10px 12px', borderRadius: 8, fontSize: 13,
+        background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)',
+      }}>
+        Every text the system sends, with its switch, wording, recipients and a "send me a test", is in one list under{' '}
+        <Link to="/sms?tab=control-center" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>SMS → Control Center</Link>.
+        The switches below are the customer ones from that list.
+      </p>
+
       {renderSection(
         'Payment & Receipt SMS',
         'Automatic customer SMS when payment is received or an online order completes.',

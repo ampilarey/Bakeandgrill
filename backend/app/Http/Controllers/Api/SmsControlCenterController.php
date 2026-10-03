@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
 use App\Domains\Notifications\Support\SmsBudgetGate;
 use App\Domains\Notifications\Support\SmsDeliveryRules;
@@ -99,6 +100,13 @@ class SmsControlCenterController extends Controller
         $types = [];
         foreach (SmsTypeRegistry::all() as $entry) {
             $key = $entry['key'];
+            if ($key === SmsTypeRegistry::SETTINGS_TEST_TYPE) {
+                continue; // the "Send me a test" carrier, not a row of its own
+            }
+            // "Owners & managers (also needs the stock alert switch in Settings)":
+            // the part in brackets is a second switch or threshold elsewhere,
+            // which the row shows as its own line with a link (SMS audit, 2026-10-03).
+            [$recipientsPlain, $alsoNeeds] = self::splitAlsoNeeds((string) $entry['recipients']);
             $aliasHits = array_keys(array_filter(
                 [
                     'otp' => 'auth_customer_otp',
@@ -154,7 +162,8 @@ class SmsControlCenterController extends Controller
                 'enabled' => SmsTypeRegistry::isTypeEnabled($entry),
                 'always_on' => (bool) $entry['always_on'],
                 'suppressible' => (bool) $entry['suppressible'],
-                'recipients' => $entry['recipients'],
+                'recipients' => $recipientsPlain,
+                'also_needs' => $alsoNeeds,
                 'user_initiated' => (bool) ($entry['user_initiated'] ?? false),
                 'send_permission' => $permSlug,
                 'send_permission_label' => $systemOnly
@@ -199,9 +208,24 @@ class SmsControlCenterController extends Controller
             ->values()
             ->all();
 
+        $ownerPhones = User::query()
+            ->where('is_active', true)
+            ->whereHas('role', fn ($q) => $q->where('slug', 'owner'))
+            ->whereNotNull('phone')->where('phone', '!=', '')
+            ->orderBy('name')
+            ->get(['name', 'phone'])
+            ->map(fn (User $u) => ['name' => $u->name, 'phone' => $u->phone])
+            ->values()
+            ->all();
+
         return response()->json([
             'global_kill_switch' => SmsTypeRegistry::isGlobalKillSwitchOn(),
             'demo_mode' => $this->isDemoMode(),
+            // Where "Business phone" and "Owner only" alerts actually land, so the
+            // owner can see at a glance that the numbers are right (SMS audit, 2026-10-03).
+            'business_phone' => trim((string) SiteSetting::get('business_phone', '')) ?: null,
+            'owner_phones' => $ownerPhones,
+            'my_phone' => trim((string) ($user->phone ?? '')) ?: null,
             'budget' => SmsBudgetGate::usageSnapshot(),
             'delivery_rules' => SmsDeliveryRules::all(),
             'quiet_now' => SmsDeliveryRules::inQuietHours(),
@@ -436,6 +460,78 @@ class SmsControlCenterController extends Controller
             'estimate' => $this->sms->estimate($estimateSource),
             'sample_variables' => $vars,
         ]);
+    }
+
+    /**
+     * POST /api/admin/sms/types/{key}/test — send this type's wording, with sample
+     * values, to the signed-in person (or a typed number), so the owner can see a
+     * text arrive before relying on it (SMS audit, 2026-10-03).
+     */
+    public function testType(Request $request, string $key): JsonResponse
+    {
+        $entry = SmsTypeRegistry::get($key);
+        if ($entry === null || $key === SmsTypeRegistry::SETTINGS_TEST_TYPE) {
+            return response()->json(['message' => 'Unknown SMS type.'], 404);
+        }
+
+        $validated = $request->validate([
+            'phone' => 'nullable|string|max:30',
+            'body' => 'nullable|string|max:1000',
+        ]);
+        $user = $request->user();
+        $to = trim((string) ($validated['phone'] ?? ''));
+        if ($to === '') {
+            $to = trim((string) ($user?->phone ?? ''));
+        }
+        if ($to === '') {
+            return response()->json(['message' => 'Your staff account has no phone number. Add one under Staff, or type a number to send the test to.'], 422);
+        }
+
+        $body = trim((string) ($validated['body'] ?? ''));
+        if ($body === '' && !empty($entry['template_slug'])) {
+            $body = (string) (SmsTemplate::query()->where('slug', $entry['template_slug'])->value('body') ?? '');
+        }
+        $text = $body !== ''
+            ? $this->renderer->renderRaw($body, SmsTypeRegistry::sampleVariables($key))
+            : 'Test from Bake & Grill: this number would receive "' . $entry['label'] . '" texts. The real text is written by the system when it happens.';
+        $text = '[TEST] ' . $text;
+
+        $log = $this->sms->send(new SmsMessage(
+            to: $to,
+            message: $text,
+            type: SmsTypeRegistry::SETTINGS_TEST_TYPE,
+            referenceType: 'sms_type_test',
+            referenceId: $key,
+            actingUserId: $user?->id,
+        ));
+        $ok = in_array($log->status, ['sent', 'demo', 'queued'], true);
+
+        return response()->json([
+            'ok' => $ok,
+            'message' => $ok
+                ? ($log->status === 'demo' ? 'Demo mode: the test was logged but not sent.' : 'Test sent to ' . $to . '.')
+                : 'Test not sent: ' . ($log->error_message ?: $log->status),
+            'to' => $to,
+            'status' => $log->status,
+            'text' => $text,
+        ], $ok ? 200 : 422);
+    }
+
+    /**
+     * @return array{0: string, 1: string|null} plain recipients, and the second switch or threshold named in brackets
+     */
+    public static function splitAlsoNeeds(string $recipients): array
+    {
+        if (preg_match('/^(.*?)\s*\((?:also needs?|also the|also|their own|hours|threshold|days|same|[^)]*?set in)[^)]*\)\s*$/i', $recipients, $m) === 1) {
+            preg_match('/\((.*)\)\s*$/', $recipients, $inner);
+            $note = trim((string) ($inner[1] ?? ''));
+            $note = preg_replace('/^also needs?\s+/i', '', $note) ?? $note;
+            $note = preg_replace('/^also\s+/i', '', $note) ?? $note;
+
+            return [trim($m[1]), ucfirst($note)];
+        }
+
+        return [$recipients, null];
     }
 
     /**

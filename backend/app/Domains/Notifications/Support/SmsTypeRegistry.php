@@ -30,6 +30,9 @@ final class SmsTypeRegistry
 {
     public const GLOBAL_KILL_SWITCH = 'sms_global_kill_switch';
 
+    /** The type a Control Center "Send me a test" goes out as (hidden from the list). */
+    public const SETTINGS_TEST_TYPE = 'staff_settings_test';
+
     public const SEND_PERMISSION_SETTING_PREFIX = 'sms_type_send_permission.';
 
     /**
@@ -196,8 +199,9 @@ final class SmsTypeRegistry
 
             // Wholesale consignment (Stage B+C) — shop dispatch respects sms_opt_out in TradeSmsNotifier;
             // registry marks suppressible so SmsService also honours opt-out.
-            self::def('trade_dispatch_shop', 'Wholesale dispatch (shop)', 'transactional', true, true, 'trade_dispatch_shop', null, 'trade.dispatch', false, 'Shop contact / customer phone', true),
-            self::def('trade_reconcile_mismatch_owner', 'Wholesale reconcile mismatch (owner)', 'staff', true, false, 'trade_reconcile_mismatch_owner', null, 'trade.reconcile', false, 'Owner phone(s)', false),
+            // SMS audit, 2026-10-03: these two had no switch, so the owner could not turn them off without the kill switch.
+            self::def('trade_dispatch_shop', 'Wholesale dispatch (shop)', 'transactional', true, true, 'trade_dispatch_shop', 'sms_trade_dispatch_enabled', 'trade.dispatch', false, 'Shop contact / customer phone', true),
+            self::def('trade_reconcile_mismatch_owner', 'Wholesale reconcile mismatch (owner)', 'staff', true, false, 'trade_reconcile_mismatch_owner', 'sms_owner_trade_reconcile_mismatch_enabled', 'trade.reconcile', false, 'Owner phone(s)', false),
             // Wholesale audit, 2026-09-26: the shop hears about each invoice
             // and gets a monthly statement; a shop that has not reported
             // sales is nudged once; the owners hear about overdue money,
@@ -247,6 +251,9 @@ final class SmsTypeRegistry
             // included, to the signed-in staff member. Staff category, so it
             // never counts against a customer's marketing cap.
             self::def('staff_campaign_test', 'Campaign test to staff', 'staff', true, false, null, 'sms_marketing_campaigns_enabled', 'sms.campaigns.send', false, 'The signed-in staff member', true),
+            // SMS audit, 2026-10-03: "Send me a test" on any Control Center row. Always on so the
+            // owner can prove a phone receives texts at all; only the kill switch stops it.
+            self::def(self::SETTINGS_TEST_TYPE, 'Test message from the Control Center', 'staff', true, false, null, null, 'sms.settings.manage', true, 'The signed-in staff member', true),
 
             // Owner alerts — recipients are chosen in the Control Center
             // (owners & managers, owner only, business phone, named staff,

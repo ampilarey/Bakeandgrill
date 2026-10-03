@@ -6146,3 +6146,160 @@ work area is a single column that
   margin-left: auto;
   border-color: transparent;
 }
+
+/* ── SMS Control Center (SMS settings audit, 2026-10-03) ─────────────────────
+ * Mobile first: the overview tiles stack, the search and chips stay pinned
+ * while the long list scrolls, and every control is thumb-sized. */
+.sms-cc-overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.sms-cc-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0 10px;
+  margin-bottom: 8px;
+  background: var(--color-bg);
+}
+.sms-cc-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+}
+.sms-cc-search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  color: var(--color-text);
+}
+.sms-cc-chips {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.sms-cc-chips::-webkit-scrollbar { display: none; }
+.sms-cc-chip {
+  flex-shrink: 0;
+  min-height: 36px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.sms-cc-chip small { font-weight: 500; opacity: 0.7; margin-left: 2px; }
+.sms-cc-chip.is-on {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+.sms-cc-status {
+  flex-shrink: 0;
+  min-height: 36px;
+  margin-left: auto;
+  padding: 4px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 13px;
+}
+.sms-cc-row {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.sms-cc-row.is-off { background: var(--color-bg); }
+.sms-cc-row-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.sms-cc-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.sms-cc-switch {
+  position: relative;
+  width: 50px;
+  height: 30px;
+  border-radius: 15px;
+  border: none;
+  background: var(--color-border);
+  padding: 0;
+  transition: background 0.15s;
+}
+.sms-cc-switch.is-on { background: var(--color-primary); }
+.sms-cc-switch-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-surface);
+  transition: left 0.15s;
+}
+.sms-cc-switch.is-on .sms-cc-switch-knob { left: 23px; }
+.sms-cc-edit {
+  min-height: 40px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-primary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.sms-cc-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+}
+@media (max-width: 767px) {
+  .sms-cc-overview { grid-template-columns: 1fr 1fr; }
+  .sms-cc-row-main { flex-direction: column; }
+  .sms-cc-row-actions {
+    width: 100%;
+    justify-content: flex-end;
+    padding-top: 8px;
+    border-top: 1px solid var(--color-border-light);
+  }
+  .sms-cc-fields > label { flex: 1 1 100%; min-width: 0 !important; }
+}
+@media (max-width: 479px) {
+  .sms-cc-overview { grid-template-columns: 1fr; }
+}

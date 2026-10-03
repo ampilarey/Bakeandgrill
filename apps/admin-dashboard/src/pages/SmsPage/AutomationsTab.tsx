@@ -134,7 +134,10 @@ export function AutomationsTab() {
       <div style={{ marginBottom: 28 }}>
         <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Event Triggers</h3>
         <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 16 }}>
-          Enable or disable SMS notifications for each event. Staff routing is configured per-staff in the Staff page.
+          Enable or disable SMS notifications for each event. Who gets them is set per person under Recipients.
+          {' '}These switches are the same ones under{' '}
+          <Link to="/sms?tab=control-center" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>Control Center</Link>,
+          where every text, its wording and its recipients live in one list.
         </p>
 
         {actionError && (

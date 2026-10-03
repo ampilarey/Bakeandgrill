@@ -431,6 +431,68 @@ describe('SmsControlCenterPage', () => {
     expect(await screen.findByText(/Goes to: 9607770002/)).toBeTruthy();
   });
 
+  // SMS settings audit, 2026-10-03 ────────────────────────────────────────
+
+  it('opens with the phones owner alerts go to, and warns when the business phone is missing', async () => {
+    vi.spyOn(api, 'getSmsControlCenter').mockResolvedValue({
+      global_kill_switch: false, demo_mode: false, budget: budgetFixture, campaign_queue: queueFixture,
+      permission_options: permissionOptions, types: typesFixture, quiet_now: false, deferred_count: 3,
+      recipient_modes: ['owners_managers', 'owner_only', 'business_phone', 'staff', 'custom'], staff_options: [],
+      business_phone: null, owner_phones: [{ name: 'Ahmed', phone: '+9607770001' }], my_phone: '+9607770001',
+    });
+    renderWithRouter(<SmsControlCenterPage />);
+    const overview = await screen.findByTestId('sms-overview');
+    expect(overview.textContent).toMatch(/Business phone/);
+    expect(overview.textContent).toMatch(/Not set/);
+    expect(overview.textContent).toMatch(/Set it in Business details/);
+    expect(overview.textContent).toMatch(/Ahmed: \+9607770001/);
+    expect(overview.textContent).toMatch(/3 waiting for quiet hours to end/);
+    expect(overview.textContent).toMatch(/12 segments · MVR 3\.00/);
+  });
+
+  it('search and the category chips narrow the list', async () => {
+    renderWithRouter(<SmsControlCenterPage />);
+    await screen.findByText('Gift card delivery');
+
+    fireEvent.change(screen.getByLabelText('Search SMS types'), { target: { value: 'stock' } });
+    expect(screen.queryByText('Gift card delivery')).toBeNull();
+    expect(screen.getByText('Owner: stock at reorder point')).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText('Search SMS types'), { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Marketing/ }));
+    expect(screen.getByText('Bulk campaign')).toBeTruthy();
+    expect(screen.queryByText('Gift card delivery')).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Auth' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /^All/ }));
+    fireEvent.change(screen.getByLabelText('Show'), { target: { value: 'off' } });
+    expect(screen.getByText(/Nothing matches/)).toBeTruthy();
+  });
+
+  it('shows what else a type needs, with a link to the right page', async () => {
+    mockControlCenter({
+      types: typesFixture.map((t) => (t.key === 'owner_stock_reorder' ? { ...t, also_needs: '"Stock alert SMS" in Settings' } : t)),
+    });
+    renderWithRouter(<SmsControlCenterPage />);
+    const line = await screen.findByTestId('also-needs-owner_stock_reorder');
+    expect(line.textContent).toMatch(/Also needs: "Stock alert SMS" in Settings/);
+    expect(screen.getByRole('link', { name: /Open Settings → Notifications/ })).toHaveAttribute('href', '/settings/notifications');
+  });
+
+  it('sends the wording to my phone as a test', async () => {
+    vi.spyOn(api, 'testSmsType').mockResolvedValue({ ok: true, message: 'Test sent to +9607770001.', to: '+9607770001', status: 'sent', text: '[TEST] Gift card MVR 100.00' });
+    renderWithRouter(<SmsControlCenterPage />);
+    await expandType('Gift card delivery');
+    fireEvent.click(screen.getByRole('button', { name: /Send me a test/i }));
+    await waitFor(() => expect(api.testSmsType).toHaveBeenCalledWith('giftcard_delivery', {}));
+    expect((await screen.findByTestId('test-result-giftcard_delivery')).textContent).toMatch(/Test sent to \+9607770001/);
+
+    // An unsaved draft is what gets sent, so the owner can try wording first.
+    fireEvent.change(screen.getByRole('textbox', { name: /Gift card delivery wording/i }), { target: { value: 'Try {{amount}}' } });
+    fireEvent.click(screen.getByRole('button', { name: /Send me a test/i }));
+    await waitFor(() => expect(api.testSmsType).toHaveBeenLastCalledWith('giftcard_delivery', { body: 'Try {{amount}}' }));
+  });
+
   it('logs-only users cannot change wording, permission, budget, or toggles', async () => {
     mockUser.role = 'manager';
     mockCan.mockImplementation((slug?: string) => slug === 'sms.logs.view');

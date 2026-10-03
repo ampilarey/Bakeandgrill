@@ -165,6 +165,9 @@ if (routes_domain_section_is('marketing', 'sms_admin') && !routes_domain_loaded(
             ->middleware('permission:sms.settings.manage');
         Route::post('/types/{key}/preview', [App\Http\Controllers\Api\SmsControlCenterController::class, 'previewType'])
             ->middleware('permission:sms.settings.manage');
+        // "Send me a test" on a Control Center row (SMS audit, 2026-10-03).
+        Route::post('/types/{key}/test', [App\Http\Controllers\Api\SmsControlCenterController::class, 'testType'])
+            ->middleware(['permission:sms.settings.manage', 'throttle:10,1']);
         Route::patch('/budget', [App\Http\Controllers\Api\SmsControlCenterController::class, 'updateBudget'])
             ->middleware('permission:sms.settings.manage');
         Route::patch('/delivery-rules', [App\Http\Controllers\Api\SmsControlCenterController::class, 'updateDeliveryRules'])

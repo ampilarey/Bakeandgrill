@@ -279,6 +279,8 @@ export type SmsControlCenterType = {
   always_on: boolean;
   suppressible: boolean;
   recipients: string;
+  /** A second switch or threshold elsewhere that this type also depends on (SMS audit, 2026-10-03). */
+  also_needs?: string | null;
   user_initiated: boolean;
   send_permission: string | null;
   send_permission_label: string;
@@ -353,6 +355,11 @@ export type SmsCampaignQueueHealth = {
 export type SmsControlCenterResponse = {
   global_kill_switch: boolean;
   demo_mode: boolean;
+  /** Where "Business phone" alerts land; null when not set (SMS audit, 2026-10-03). */
+  business_phone?: string | null;
+  owner_phones?: Array<{ name: string; phone: string }>;
+  /** The signed-in person's phone, where "Send me a test" goes. */
+  my_phone?: string | null;
   budget: SmsBudgetSnapshot;
   campaign_queue: SmsCampaignQueueHealth;
   permission_options: Array<{ slug: string; name: string }>;
@@ -392,6 +399,17 @@ export async function updateSmsType(
   return req(`/admin/sms/types/${encodeURIComponent(key)}`, {
     method: 'PATCH',
     body: JSON.stringify(body),
+  });
+}
+
+/** Send this type's wording, with sample values, to me (or a typed number). */
+export async function testSmsType(
+  key: string,
+  payload: { phone?: string; body?: string } = {},
+): Promise<{ ok: boolean; message: string; to: string; status: string; text: string }> {
+  return req(`/admin/sms/types/${encodeURIComponent(key)}/test`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
   });
 }
 
