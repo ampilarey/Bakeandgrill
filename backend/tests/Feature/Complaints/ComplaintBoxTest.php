@@ -6,6 +6,7 @@ namespace Tests\Feature\Complaints;
 
 use App\Domains\Permissions\PermissionCatalogSync;
 use App\Models\ComplaintBoxEntry;
+use App\Models\SiteSetting;
 use App\Models\SmsLog;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -270,5 +271,50 @@ class ComplaintBoxTest extends TestCase
 
         $search = $this->getJson('/api/complaint-box?search=cold&status=all')->assertOk();
         $this->assertCount(1, $search->json('entries.data'));
+    }
+
+    /**
+     * Owner, 2026-10-03: "enhance the complaint QR print layout with
+     * branding, like a header or footer." The poster carries the logo, name
+     * and tagline on top and how else to reach the business underneath.
+     */
+    public function test_the_poster_has_a_branded_header_and_a_contact_footer(): void
+    {
+        SiteSetting::set('site_name', 'Bake & Grill');
+        SiteSetting::set('site_tagline', 'Fresh from our oven');
+        SiteSetting::set('business_phone', '+960 777 1234');
+        SiteSetting::set('business_website', 'https://www.bakeandgrill.mv/');
+        SiteSetting::set('social_instagram', 'https://instagram.com/bakeandgrill/');
+        SiteSetting::set('business_address_line1', 'Majeedhee Magu');
+        SiteSetting::set('business_address_city', 'Malé');
+        \Illuminate\Support\Facades\Cache::flush();
+
+        $res = $this->get('/complain/poster')->assertOk();
+        $html = (string) $res->getContent();
+        if ($dump = getenv('POSTER_DUMP')) {
+            file_put_contents($dump, $html);
+        }
+
+        $res->assertSee('data-testid="poster-brand"', false)
+            ->assertSee('class="brand__logo"', false)
+            ->assertSee('Fresh from our oven')
+            ->assertSee('data-testid="poster-foot"', false)
+            ->assertSee('+960 777 1234  ·  bakeandgrill.mv  ·  @bakeandgrill')
+            ->assertSee('Majeedhee Magu, Malé')
+            ->assertSee('Thank you for helping us do better');
+        // The download image is built from the same details.
+        $this->assertStringContainsString('"+960 777 1234  \u00b7  bakeandgrill.mv  \u00b7  @bakeandgrill"', $html);
+    }
+
+    public function test_a_half_filled_profile_prints_no_empty_labels(): void
+    {
+        SiteSetting::set('business_phone', '+960 777 1234');
+        SiteSetting::set('social_instagram', '');
+        SiteSetting::set('business_website', 'bakeandgrill.mv');
+        \Illuminate\Support\Facades\Cache::flush();
+
+        // No Instagram: the line stops at the website, with no dangling separator.
+        $this->get('/complain/poster')->assertOk()
+            ->assertSee('<div class="foot__line">+960 777 1234  ·  bakeandgrill.mv</div>', false);
     }
 }
