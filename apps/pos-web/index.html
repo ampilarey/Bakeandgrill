@@ -17,13 +17,24 @@
          scope keeps the install separate from the customer order app
          (which lives under /order/). -->
     <link rel="manifest" href="/pos/manifest.webmanifest" />
-    <meta name="theme-color" content="#B74B0C" />
+    <!-- On an iPhone home-screen app this is the status bar's colour.
+         White, to run into the white top bar below it (the manifest keeps
+         the rust for Android's toolbar). -->
+    <meta name="theme-color" content="#FFFFFF" />
 
     <!-- iOS standalone hints. Without these the home-screen icon
          opens in a basic Safari shell with the URL bar at the top,
          which makes the cashier think the install "didn't work". -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- "default", not "black-translucent" (owner, 2026-10-03: "there is a
+         frost on the top of the POS, half clear"). Translucent put the page
+         underneath the status bar, and the newer iOS lays a soft frost over
+         anything that scrolls under it, so the menu button, title and
+         shortcuts sat in the blur. With "default" the page starts below the
+         status bar and nothing of ours is under the frost. iOS reads this
+         when the app is added to the Home Screen, so an already-installed
+         POS must be removed and added again to pick it up. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="B&G POS" />
     <meta name="mobile-web-app-capable" content="yes" />
 
