@@ -355,26 +355,58 @@ class ComplaintBoxTest extends TestCase
         }
     }
 
-    public function test_small_cards_keep_the_code_and_the_address_and_drop_the_extras(): void
+    /**
+     * Owner, 2026-10-03: "keep the same poster, with the same header and
+     * footer, without any change, even at 12 or 9 per page."
+     */
+    public function test_every_layout_carries_the_whole_header_and_footer_on_every_card(): void
     {
-        $nine = (string) $this->get('/complain/poster/sheet?layout=a4-9')->getContent();
-        $this->assertStringContainsString('bakeandgrill.mv/complain', $nine);
-        $this->assertStringNotContainsString('scan and tell us', $nine, 'no body text on a small table card');
-        $this->assertStringContainsString('cut on the dashed lines', $nine);
+        SiteSetting::set('site_name', 'Bake & Grill');
+        SiteSetting::set('site_tagline', 'Fresh Baked, Fire Grilled');
+        SiteSetting::set('business_phone', '+960 777 1234');
+        SiteSetting::set('business_website', 'https://www.bakeandgrill.mv/');
+        SiteSetting::set('social_instagram', 'https://instagram.com/bakeandgrill/');
+        SiteSetting::set('business_address_line1', 'Majeedhee Magu');
+        SiteSetting::set('business_address_city', 'Malé');
+        \Illuminate\Support\Facades\Cache::flush();
 
+        $page = $this->get('/complain/poster')->assertOk();
+        foreach (\App\Http\Controllers\ComplaintBoxPageController::LAYOUTS as $key => $layout) {
+            // Offered only because it fits with these (long) details.
+            $page->assertSee('data-testid="poster-size-' . $key . '"', false);
+            $html = (string) $this->get('/complain/poster/sheet?layout=' . $key)->assertOk()->getContent();
+            $cards = $layout['cols'] * $layout['rows'];
+            foreach ([
+                '<div class="name">Bake &amp; Grill</div>',
+                '<div class="tagline">Fresh Baked, Fire Grilled</div>',
+                '<div class="contact">+960 777 1234  ·  bakeandgrill.mv  ·  @bakeandgrill</div>',
+                '<div class="address">Majeedhee Magu, Malé</div>',
+                '<div class="thanks">THANK YOU FOR HELPING US DO BETTER</div>',
+                '<td class="ft">',
+            ] as $needle) {
+                $this->assertSame($cards, substr_count($html, $needle), "{$key}: {$needle} on every card");
+            }
+            $this->assertSame($cards, substr_count($html, '<img src="data:image/png'), "{$key}: logo on every card");
+        }
+
+        // Only the middle gives way on a small card.
+        $six = (string) $this->get('/complain/poster/sheet?layout=a4-6')->getContent();
+        $this->assertStringNotContainsString('scan and tell us', $six, 'no body text on a table card');
+        $this->assertStringContainsString('cut on the dashed lines', $six);
         $a4 = (string) $this->get('/complain/poster/sheet?layout=a4')->getContent();
         $this->assertStringContainsString('scan and tell us', $a4);
-        $this->assertStringContainsString('THANK YOU FOR HELPING US DO BETTER', $a4);
 
-        // An unknown size falls back to A5 rather than failing.
+        // An unknown size falls back to A5 rather than failing; so does a
+        // size the card no longer fits at.
         $this->get('/complain/poster/sheet?layout=poster-wall')->assertOk()->assertSee('size: a5 portrait', false);
+        $this->get('/complain/poster/sheet?layout=a4-12')->assertOk()->assertSee('size: a5 portrait', false);
     }
 
     /**
      * Owner, 2026-10-03: "Font size should be 12, or 10 at the minimum, so the
      * maximum number of stickers on one page should align with this."
      */
-    public function test_every_layout_keeps_type_at_10pt_or_more_and_12_is_the_most_an_a4_holds(): void
+    public function test_every_layout_keeps_type_at_10pt_or_more_and_6_is_the_most_an_a4_holds(): void
     {
         foreach (array_keys(\App\Http\Controllers\ComplaintBoxPageController::LAYOUTS) as $key) {
             $html = (string) $this->get('/complain/poster/sheet?layout=' . $key)->assertOk()->getContent();
@@ -389,11 +421,20 @@ class ComplaintBoxTest extends TestCase
             $this->assertGreaterThanOrEqual(28.0, (float) $q[1], "{$key}: code");
         }
 
-        $text = ['name' => 'Bake & Grill', 'tagline' => '', 'url' => 'bakeandgrill.mv/complain', 'contact' => '+960 912 0011', 'address' => ''];
-        // 12 on A4 (3 x 4) fits; 16 (4 x 4) and 15 (3 x 5) cannot at these sizes.
-        $this->assertTrue(\App\Support\PosterCardSpec::for(65.4, 70.8, $text)['fits']);
-        $this->assertFalse(\App\Support\PosterCardSpec::for(49.0, 70.8, $text)['fits']);
-        $this->assertFalse(\App\Support\PosterCardSpec::for(65.4, 56.5, $text)['fits']);
-        $this->assertArrayNotHasKey('a4-16', \App\Http\Controllers\ComplaintBoxPageController::LAYOUTS);
+        $text = [
+            'name' => 'Bake & Grill', 'tagline' => 'Fresh Baked, Fire Grilled', 'url' => 'bakeandgrill.mv/complain',
+            'contact' => '+960 777 1234  ·  bakeandgrill.mv  ·  @bakeandgrill', 'address' => 'Majeedhee Magu, Malé',
+        ];
+        // 6 on A4 (3 x 2 landscape) fits with the whole header and footer;
+        // 8 (4 x 2), 9 (3 x 3) and 12 (3 x 4) cannot at these sizes.
+        $spec = fn (float $w, float $h) => \App\Support\PosterCardSpec::for($w, $h, $text);
+        $six = $spec(94.0, 98.1);
+        $this->assertTrue($six['fits']);
+        $this->assertTrue($six['show']['tagline'] && $six['show']['contact'] && $six['show']['address'] && $six['show']['thanks']);
+        $this->assertFalse($spec(69.9, 98.1)['fits']);
+        $this->assertFalse($spec(65.4, 94.3)['fits']);
+        $this->assertFalse($spec(65.4, 70.8)['fits']);
+        $this->assertArrayNotHasKey('a4-9', \App\Http\Controllers\ComplaintBoxPageController::LAYOUTS);
+        $this->assertArrayNotHasKey('a4-12', \App\Http\Controllers\ComplaintBoxPageController::LAYOUTS);
     }
 }

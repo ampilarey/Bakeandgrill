@@ -9,7 +9,9 @@
      * Then: "I need the exact layout to be printed … font size should be 12, or
      * 10 at the minimum." Every size here comes from PosterCardSpec, which
      * works the card out from its real text with type never under 10pt, so
-     * what prints is exactly what was measured.
+     * what prints is exactly what was measured. The header and the footer are
+     * the same on every layout ("keep the same poster, with the same header
+     * and footer, without any change"); only the middle gives way.
      */
     [$cardW, $cardH] = $cardMm;
     [$sheetW, $sheetH] = $sheetMm;
@@ -43,8 +45,8 @@
         .hd table { margin: 0 auto; }
         .hd img { width: {{ $spec['logoMm'] }}mm; height: {{ $spec['logoMm'] }}mm; display: block; }
         .hd .gap { width: 3mm; }
-        .name { font-size: {{ $pt['name'] }}pt; font-weight: bold; color: #B74B0C; line-height: 1.15; text-align: left; white-space: nowrap; }
-        .tagline { font-size: {{ $pt['tagline'] }}pt; color: #7A5A43; line-height: 1.3; text-align: left; white-space: nowrap; }
+        .name { font-size: {{ $pt['name'] }}pt; font-weight: bold; color: #B74B0C; line-height: 1.15; text-align: left; }
+        .tagline { font-size: {{ $pt['tagline'] }}pt; color: #7A5A43; line-height: 1.3; text-align: left; }
         .bd { height: {{ $spec['bodyH'] }}mm; text-align: center; vertical-align: middle; padding: 0 {{ $spec['padX'] }}mm; }
         .eyebrow { font-size: {{ $pt['eyebrow'] }}pt; font-weight: bold; letter-spacing: 0.08em; color: #B74B0C; margin: 0 0 1.5mm; line-height: 1.3; }
         .title { font-size: {{ $pt['title'] }}pt; font-weight: bold; color: #B74B0C; line-height: 1.2; margin: 0 0 2mm; }

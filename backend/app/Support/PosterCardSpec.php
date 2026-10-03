@@ -14,12 +14,16 @@ namespace App\Support;
  * So type never goes below 10pt (the web address 11pt, the heading 12pt),
  * and the layout is worked out from the real text, line by line, rather than
  * by shrinking everything to fit. Larger cards scale the type up from those
- * floors. When the card is too small for everything, extras go in a fixed
- * order (body text, the "goes straight to" note, the address, the eyebrow,
- * the tagline, the thank-you line, and on a sticker the contact line) and the
- * code takes what is left. The name, the heading, the code and the web
- * address always stay; a card that cannot hold those at these sizes, with the
- * code at least 28 mm, is not offered at all.
+ * floors.
+ *
+ * Then: "keep the same poster, with the same header and footer, without any
+ * change, even at 12 or 9 per page." The header (logo, name, tagline) and the
+ * footer (contact line, address, thank-you line) are on every card, whatever
+ * its size; only the middle gives way on a small card, in a fixed order (the
+ * body text, the "goes straight to" note, then the eyebrow), and the code
+ * takes what is left. The heading, the code and the web address always stay.
+ * A card that cannot hold all that at these sizes, with the code at least
+ * 28 mm, does not fit, and that layout is not offered.
  *
  * Widths are estimated with DejaVu Sans proportions (the PDF's font, and the
  * widest of the fonts the page uses), so the browser never wraps a line the
@@ -84,26 +88,18 @@ final class PosterCardSpec
             'eyebrow' => true, 'tagline' => $text['tagline'] !== '', 'thanks' => true,
             'contact' => $text['contact'] !== '',
         ];
-        // The contact line goes last of all, and only on sticker-sized cards
-        // where keeping it would push the code under the minimum.
-        $dropOrder = ['body', 'note', 'address', 'eyebrow', 'tagline', 'thanks', 'contact'];
+        // Only the middle of the card gives way; the header and footer never do.
+        $dropOrder = ['body', 'note', 'eyebrow'];
 
         $logoMm = round(min(22, max(9, $cardH * 0.075)), 2);
         $gapMm = round(max(2, 2.5 * $s), 2);
 
         while (true) {
-            $headText = self::lineMm($pt['name'], 1.15) + ($show['tagline'] ? self::lineMm($pt['tagline'], 1.3) : 0);
+            // The name and tagline sit beside the logo and wrap there if long.
+            $headTextW = $innerW - ($hasLogo ? $logoMm + 3 : 0);
+            $headText = self::blockMm($text['name'], $pt['name'], $headTextW, true, 1.15)
+                + ($show['tagline'] ? self::blockMm($text['tagline'], $pt['tagline'], $headTextW, false, 1.3) : 0);
             $headH = round(max($hasLogo ? $logoMm : 0, $headText) + 2 * max(2.5, 3 * $s), 2);
-            $headW = ($hasLogo ? $logoMm + 3 : 0) + max(
-                self::textW($text['name'], $pt['name'], true),
-                $show['tagline'] ? self::textW($text['tagline'], $pt['tagline']) : 0,
-            );
-            // A tagline wider than the card goes before anything else.
-            if ($show['tagline'] && $headW > $innerW) {
-                $show['tagline'] = false;
-
-                continue;
-            }
 
             $footH = 0.0;
             if ($show['contact'] || $show['address'] || $show['thanks']) {
@@ -136,11 +132,14 @@ final class PosterCardSpec
             'logoMm' => $logoMm,
             'gapMm' => $gapMm,
             'headH' => round($headH, 2),
+            'headTextMm' => round($headTextW, 2),
             'footH' => round($footH, 2),
             'bodyH' => round($bodyH, 2),
             'qrMm' => round(max(0, $qr), 2),
             // The address on the card is one unbreakable word; it has to fit across.
-            'fits' => $qr >= self::MIN_QR_MM && self::textW($text['url'], $pt['url'], true) <= $innerW,
+            'fits' => $qr >= self::MIN_QR_MM
+                && self::textW($text['url'], $pt['url'], true) <= $innerW
+                && self::longestWordW($text['name'], $pt['name'], true) <= $headTextW,
             'rule' => round(max(0.6, 0.9 * $s), 2),
             'minPt' => min($pt),
         ];
@@ -158,6 +157,11 @@ final class PosterCardSpec
         }
 
         return false;
+    }
+
+    private static function longestWordW(string $s, float $pt, bool $bold): float
+    {
+        return max(array_map(fn (string $w) => self::textW($w, $pt, $bold), preg_split('/\s+/u', trim($s)) ?: ['']));
     }
 
     private static function lineMm(float $pt, float $leading = 1.3): float

@@ -63,7 +63,7 @@ class ComplaintBoxPageController extends Controller
             'logo' => ComplaintBoxLink::logo(),
             'tagline' => trim((string) content('site_tagline', '')),
             'contacts' => self::posterContacts(),
-            'layouts' => self::LAYOUTS,
+            'layouts' => array_filter(self::LAYOUTS, fn (array $l, string $key) => self::card($key)['spec']['fits'], ARRAY_FILTER_USE_BOTH),
         ]);
     }
 
@@ -82,14 +82,13 @@ class ComplaintBoxPageController extends Controller
         'a6' => ['label' => 'A6', 'hint' => '1 per sheet', 'paper' => 'a6', 'orient' => 'portrait', 'cols' => 1, 'rows' => 1],
         'a4-2' => ['label' => '2 on A4', 'hint' => 'A5 size each', 'paper' => 'a4', 'orient' => 'landscape', 'cols' => 2, 'rows' => 1],
         'a4-4' => ['label' => '4 on A4', 'hint' => 'A6 size each', 'paper' => 'a4', 'orient' => 'portrait', 'cols' => 2, 'rows' => 2],
-        'a4-6' => ['label' => '6 on A4', 'hint' => 'table cards', 'paper' => 'a4', 'orient' => 'landscape', 'cols' => 3, 'rows' => 2],
-        'a4-9' => ['label' => '9 on A4', 'hint' => 'small table cards', 'paper' => 'a4', 'orient' => 'portrait', 'cols' => 3, 'rows' => 3],
-        // Owner, 2026-10-03: "you added up to 9 per A4? I need more", then
-        // "20 is too much — font size should be 12, or 10 at the minimum, so
-        // the maximum number of stickers on one page should align with this."
-        // At 10pt type and a 28mm code, 12 is the most an A4 holds (see
-        // PosterCardSpec); 15, 16 and 20 cannot keep the type that large.
-        'a4-12' => ['label' => '12 on A4', 'hint' => 'stickers, the most at 10pt', 'paper' => 'a4', 'orient' => 'portrait', 'cols' => 3, 'rows' => 4],
+        'a4-6' => ['label' => '6 on A4', 'hint' => 'table cards, the most per A4', 'paper' => 'a4', 'orient' => 'landscape', 'cols' => 3, 'rows' => 2],
+        // Owner, 2026-10-03: "20 is too much — font size should be 12, or 10
+        // at the minimum", then "keep the same poster, with the same header
+        // and footer, without any change, even at 12 or 9 per page". With the
+        // whole header and footer on every card and nothing under 10pt, six
+        // is the most an A4 holds (see PosterCardSpec); at 9 or 12 the header
+        // and footer alone leave no room for a code that scans.
     ];
 
     /** Sheet sizes in mm, portrait. */
@@ -118,29 +117,22 @@ class ComplaintBoxPageController extends Controller
     private function sheetData(Request $request): array
     {
         $key = (string) $request->query('layout', 'a5');
-        $layout = self::LAYOUTS[$key] ?? self::LAYOUTS[$key = 'a5'];
-        [$w, $h] = self::PAPER_MM[$layout['paper']];
-        if ($layout['orient'] === 'landscape') {
-            [$w, $h] = [$h, $w];
+        // An unknown size, or one the card does not fit at with today's
+        // details (a long address, say), falls back to A5 rather than failing.
+        if (!isset(self::LAYOUTS[$key]) || !self::card($key)['spec']['fits']) {
+            $key = 'a5';
         }
-        // Slack for the dashed cut lines, which add their own width per row
-        // and column; without it the last line spills onto a second page.
-        $slack = fn (int $n): float => 0.5 + 0.3 * ($n + 1);
-        $cardW = round(($w - 2 * self::MARGIN_MM - $slack($layout['cols'])) / $layout['cols'], 2);
-        $cardH = round(($h - 2 * self::MARGIN_MM - $slack($layout['rows'])) / $layout['rows'], 2);
+        $card = self::card($key);
+        [$w, $h] = $card['sheetMm'];
+        [$cardW, $cardH] = $card['cardMm'];
+        $layout = self::LAYOUTS[$key];
+        $spec = $card['spec'];
         $url = ComplaintBoxLink::url('poster');
-        $logo = BrandMark::dataUri(240);
-        $siteName = (string) content('site_name', 'Bake & Grill');
-        $tagline = trim((string) content('site_tagline', ''));
-        $contacts = self::posterContacts();
-        $displayUrl = (string) preg_replace('#^https?://#', '', (string) preg_replace('#\?.*$#', '', $url));
-        $spec = PosterCardSpec::for($cardW, $cardH, [
-            'name' => $siteName,
-            'tagline' => $tagline,
-            'url' => $displayUrl,
-            'contact' => implode('  ·  ', $contacts['line']),
-            'address' => $contacts['address'],
-        ], $logo !== null);
+        $logo = $card['logo'];
+        $siteName = $card['siteName'];
+        $tagline = $card['tagline'];
+        $contacts = $card['contacts'];
+        $displayUrl = $card['displayUrl'];
 
         return [
             'spec' => $spec,
@@ -152,11 +144,54 @@ class ComplaintBoxPageController extends Controller
             'cardMm' => [$cardW, $cardH],
             'url' => $url,
             'qr' => ComplaintBoxLink::qr($url, 480, 0.33, '#5A260A'),
-            // A PNG the PDF renderer can draw (the stored logo may be WebP).
             'logo' => $logo,
             'siteName' => $siteName,
             'tagline' => $tagline,
             'contacts' => $contacts,
+        ];
+    }
+
+    /**
+     * One layout's sheet and card size, and how the card lays out at that size
+     * with the business details as they are today.
+     *
+     * @return array{sheetMm: array{float, float}, cardMm: array{float, float}, spec: array<string, mixed>, logo: ?string, siteName: string, tagline: string, contacts: array{line: list<string>, address: string}, displayUrl: string}
+     */
+    private static function card(string $key): array
+    {
+        $layout = self::LAYOUTS[$key];
+        [$w, $h] = self::PAPER_MM[$layout['paper']];
+        if ($layout['orient'] === 'landscape') {
+            [$w, $h] = [$h, $w];
+        }
+        // Slack for the dashed cut lines, which add their own width per row
+        // and column; without it the last line spills onto a second page.
+        $slack = fn (int $n): float => 0.5 + 0.3 * ($n + 1);
+        $cardW = round(($w - 2 * self::MARGIN_MM - $slack($layout['cols'])) / $layout['cols'], 2);
+        $cardH = round(($h - 2 * self::MARGIN_MM - $slack($layout['rows'])) / $layout['rows'], 2);
+        $url = ComplaintBoxLink::url('poster');
+        // A PNG the PDF renderer can draw (the stored logo may be WebP).
+        $logo = BrandMark::dataUri(240);
+        $siteName = (string) content('site_name', 'Bake & Grill');
+        $tagline = trim((string) content('site_tagline', ''));
+        $contacts = self::posterContacts();
+        $displayUrl = (string) preg_replace('#^https?://#', '', (string) preg_replace('#\?.*$#', '', $url));
+
+        return [
+            'sheetMm' => [$w, $h],
+            'cardMm' => [$cardW, $cardH],
+            'spec' => PosterCardSpec::for($cardW, $cardH, [
+                'name' => $siteName,
+                'tagline' => $tagline,
+                'url' => $displayUrl,
+                'contact' => implode('  ·  ', $contacts['line']),
+                'address' => $contacts['address'],
+            ], $logo !== null),
+            'logo' => $logo,
+            'siteName' => $siteName,
+            'tagline' => $tagline,
+            'contacts' => $contacts,
+            'displayUrl' => $displayUrl,
         ];
     }
 
