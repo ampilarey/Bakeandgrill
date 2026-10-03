@@ -79,14 +79,11 @@ html, body, #root {
   background: #FFFFFF;
   border-bottom: 1px solid #E2E8F0;
   padding: 10px 16px;
-  /* iOS 26 frosts whatever sits under the status bar and about 40pt below it
-   * (owner, 2026-10-03), with a see-through status bar and with a plain one
-   * alike. The page sits under the bar only in the see-through case, where
-   * env() carries the bar's height; in the plain case the page starts below
-   * the bar and --pos-status-bar (iosStandaloneInsets.ts) carries it. Either
-   * way the top bar clears the 40pt band: min(height × 10, 40px) is 0 with no
-   * status bar and 40px with any real one. Desktop and Android: 10px. */
-  padding-top: max(10px, calc(env(safe-area-inset-top, 0px) + min((env(safe-area-inset-top, 0px) + var(--pos-status-bar, 0px)) * 10, 40px)));
+  /* iOS 26 frosts the top ~40pt of a Home Screen app and nothing in the app
+   * can switch that off. A clearance below the frost was tried and taken
+   * out the same day (owner, 2026-10-03: "too much empty space; use the
+   * maximum screen space even though frost is there"). */
+  padding-top: max(10px, env(safe-area-inset-top, 0px));
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -739,7 +736,7 @@ html, body, #root {
   .pos-topbar-chip { display: none; }
   .pos-topbar {
     padding: 8px 10px;
-    padding-top: max(8px, calc(env(safe-area-inset-top, 0px) + min((env(safe-area-inset-top, 0px) + var(--pos-status-bar, 0px)) * 10, 40px)));
+    padding-top: max(8px, env(safe-area-inset-top, 0px));
     gap: 8px;
   }
   .pos-topbar-right { gap: 6px; }
