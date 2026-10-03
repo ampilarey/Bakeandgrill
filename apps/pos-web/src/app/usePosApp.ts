@@ -94,8 +94,10 @@ export function usePosApp() {
   }), [staffPermissions, canManageCustomers]);
   const canViewCustomers = canSeeCustomersTab(staffPermissions);
   const canCashInOut = hasPosPermission(staffPermissions, "payments.cash_in_out");
-  /** Fix any payment's tender; without it a cashier can still fix their own open shift's (server-checked). */
+  /** Fix a recorded tender. Owner-only by default; the owner grants it to a role or a person. */
   const canCorrectTender = hasPosPermission(staffPermissions, "payments.correct_tender");
+  /** Receipts from every till and cashier, live and paid (owner, 2026-10-03). */
+  const canViewAllTills = hasPosPermission(staffPermissions, "pos.view_all_station_orders");
   const canLockScreen = hasPosPermission(staffPermissions, "pos.lock_screen");
   const canOpsInventory = hasPosPermission(staffPermissions, "inventory.manage");
   const canOpsPreparedStock = hasPosPermission(staffPermissions, "menu.prepared_stock");
@@ -1333,7 +1335,7 @@ export function usePosApp() {
     isLoggedIn, username, setUsername, pin, setPin, cashierName, staffRole, staffPermissions,
     canVoidOrders, canOpenShift, canCloseShift, canRingSales, canHoldResume,
     canViewActiveOrders, canViewReceipts, canViewShiftHistory, canViewAllShifts, canViewReports, canManageExpenses,
-    canViewCustomers, customerPerms, canCorrectTender,
+    canViewCustomers, customerPerms, canCorrectTender, canViewAllTills,
     canCashInOut, canLockScreen,
     canOpsInventory, canOpsPreparedStock,
     canUseCredit, canUseWallet, canPayCash, canPayCard, canPaySplit, canApplyDiscount,

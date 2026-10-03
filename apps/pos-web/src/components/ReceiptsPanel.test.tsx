@@ -13,12 +13,14 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const fetchReceipts = vi.hoisted(() => vi.fn());
+const fetchReceiptFilters = vi.hoisted(() => vi.fn());
 const correctTender = vi.hoisted(() => vi.fn());
 vi.mock("../api", async () => {
   const actual = await vi.importActual<typeof import("../api")>("../api");
   return {
     ...actual,
     fetchReceipts,
+    fetchReceiptFilters,
     correctTender,
     getReceiptLink: vi.fn().mockResolvedValue({ link: "https://example.test/r/1" }),
     sendReceipt: vi.fn(),
@@ -65,6 +67,11 @@ beforeEach(() => {
   matchMedia.narrow = false;
   fetchReceipts.mockReset();
   fetchReceipts.mockResolvedValue({ data: [cardSale, cashSale] });
+  fetchReceiptFilters.mockReset();
+  fetchReceiptFilters.mockResolvedValue({
+    cashiers: [{ id: 3, name: "Ariya" }, { id: 4, name: "Hassan" }, { id: 7, name: "Zara" }],
+    tills: [{ id: 1, name: "Front till" }, { id: 2, name: "Back till" }],
+  });
 });
 
 describe("paymentLabel / receiptState", () => {
@@ -236,10 +243,10 @@ describe("ReceiptsPanel tender correction", () => {
   // Owner, 2026-10-03: "for a QR payment he selected card, can the admin correct it?"
   const cardInMyShift = { ...cardSale, payments: [{ id: 22, method: "card", amount: 100, status: "completed", shift_id: 9 }] };
 
-  it("lets a cashier fix a tender in their own open shift, with a reason", async () => {
+  it("lets someone with the permission fix a tender, with a reason", async () => {
     fetchReceipts.mockResolvedValue({ data: [cardInMyShift] });
     correctTender.mockResolvedValue({ message: "Tender corrected: card → qr." });
-    renderPanel({ shiftId: 9 });
+    renderPanel({ shiftId: 9, canCorrectTender: true });
     fireEvent.click(await screen.findByTestId("receipt-row-2"));
 
     fireEvent.click(screen.getByRole("button", { name: /Wrong tender\? Fix it/ }));
@@ -256,8 +263,9 @@ describe("ReceiptsPanel tender correction", () => {
     await waitFor(() => expect(screen.getByTestId("receipt-detail")).toHaveTextContent("Tender corrected: card → qr."));
   });
 
-  it("offers it only for the cashier's own open shift unless they hold the permission, and never for a credit payment", async () => {
-    fetchReceipts.mockResolvedValue({ data: [{ ...cardInMyShift, payments: [{ ...cardInMyShift.payments[0], shift_id: 4 }] }] });
+  it("offers it only with the permission, not for a cashier's own shift, and never for a credit payment", async () => {
+    // Owner, 2026-10-03: "add this to admin only".
+    fetchReceipts.mockResolvedValue({ data: [cardInMyShift] });
     let view = renderPanel({ shiftId: 9 });
     fireEvent.click(await screen.findByTestId("receipt-row-2"));
     expect(screen.queryByRole("button", { name: /Wrong tender/ })).toBeNull();
@@ -279,6 +287,78 @@ describe("ReceiptsPanel tender correction", () => {
     renderPanel({ shiftId: 9 });
     fireEvent.click(await screen.findByTestId("receipt-row-2"));
     expect(screen.getByTestId("receipt-payments")).toHaveTextContent("Corrected from Card");
+  });
+});
+
+describe("ReceiptsPanel all tills", () => {
+  // Owner, 2026-10-03: "add admin POS to view all receipts, live and paid
+  // ones also, with filtering option."
+  const liveOrder = {
+    ...cashSale, id: 5, order_number: "BG-105", status: "preparing", payment_status: "unpaid",
+    user: { id: 4, name: "Hassan" }, device: { id: 2, name: "Back till" }, payments: [],
+  };
+  const paidOnFront = { ...cardSale, device: { id: 1, name: "Front till" } };
+
+  it("is not offered to a cashier, and their pane asks the server for their own receipts only", async () => {
+    renderPanel();
+    await screen.findByTestId("receipt-row-1");
+    expect(screen.queryByRole("group", { name: "Whose receipts" })).toBeNull();
+    expect(screen.queryByTestId("all-tills-filters")).toBeNull();
+    expect(fetchReceiptFilters).not.toHaveBeenCalled();
+    expect(fetchReceipts).toHaveBeenLastCalledWith(expect.not.objectContaining({ user_id: expect.anything() }));
+  });
+
+  it("opens on every till for the owner, naming the cashier and till on each row and flagging live orders", async () => {
+    fetchReceipts.mockResolvedValue({ data: [liveOrder, paidOnFront] });
+    renderPanel({ canViewAllTills: true });
+
+    const live = await screen.findByTestId("receipt-row-5");
+    expect(screen.getByText("Every till and cashier — live and paid")).toBeTruthy();
+    expect(screen.getByTestId("receipt-staff-5")).toHaveTextContent("by Hassan · Back till");
+    expect(live).toHaveTextContent("Live · preparing");
+    expect(live).toHaveTextContent("Unpaid");
+    expect(screen.getByTestId("receipt-staff-2")).toHaveTextContent("by Ariya · Front till");
+    expect(screen.getByTestId("receipt-row-2")).not.toHaveTextContent("Live");
+
+    // The pickers list everyone the server knows, not only who sold today.
+    await waitFor(() => expect(within(screen.getByLabelText("Cashier")).getAllByRole("option")).toHaveLength(4));
+    expect(screen.getByLabelText("Cashier")).toHaveTextContent("Zara");
+    expect(within(screen.getByLabelText("Till")).getAllByRole("option")).toHaveLength(3);
+  });
+
+  it("filters by live or paid, cashier, till and a date range, and can switch back to mine", async () => {
+    fetchReceipts.mockResolvedValue({ data: [liveOrder, paidOnFront] });
+    renderPanel({ canViewAllTills: true });
+    await screen.findByTestId("receipt-row-5");
+
+    fireEvent.click(screen.getByRole("button", { name: "Live" }));
+    await waitFor(() => expect(fetchReceipts).toHaveBeenLastCalledWith(expect.objectContaining({ unpaid_only: true })));
+    fireEvent.click(screen.getByRole("button", { name: "Paid" }));
+    await waitFor(() => expect(fetchReceipts).toHaveBeenLastCalledWith(expect.objectContaining({ paid_only: true })));
+    expect(fetchReceipts).toHaveBeenLastCalledWith(expect.not.objectContaining({ unpaid_only: expect.anything() }));
+    fireEvent.click(screen.getByRole("button", { name: "Refunded" }));
+    await waitFor(() => expect(fetchReceipts).toHaveBeenLastCalledWith(expect.objectContaining({ status: "refunded" })));
+
+    fireEvent.change(screen.getByLabelText("Cashier"), { target: { value: "4" } });
+    await waitFor(() => expect(fetchReceipts).toHaveBeenLastCalledWith(expect.objectContaining({ user_id: 4 })));
+    fireEvent.change(screen.getByLabelText("Till"), { target: { value: "2" } });
+    await waitFor(() => expect(fetchReceipts).toHaveBeenLastCalledWith(expect.objectContaining({ user_id: 4, device_id: 2 })));
+
+    fireEvent.click(screen.getByRole("button", { name: "Dates" }));
+    fireEvent.change(screen.getByLabelText("From date"), { target: { value: "2026-09-01" } });
+    fireEvent.change(screen.getByLabelText("To date"), { target: { value: "2026-09-30" } });
+    await waitFor(() => expect(fetchReceipts).toHaveBeenLastCalledWith(expect.objectContaining({ date_from: "2026-09-01", date_to: "2026-09-30" })));
+    expect(fetchReceipts).toHaveBeenLastCalledWith(expect.not.objectContaining({ date: expect.anything() }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+    await waitFor(() => expect(fetchReceipts).toHaveBeenLastCalledWith(expect.not.objectContaining({ user_id: expect.anything() })));
+
+    // Back to my own receipts: the narrowing goes with it, and "Dates" is not a cashier scope.
+    fireEvent.click(screen.getByRole("button", { name: "Mine" }));
+    await waitFor(() => expect(fetchReceipts).toHaveBeenLastCalledWith(expect.objectContaining({ date: expect.any(String) })));
+    expect(fetchReceipts).toHaveBeenLastCalledWith(expect.not.objectContaining({ date_from: expect.anything() }));
+    expect(screen.queryByTestId("all-tills-filters")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Dates" })).toBeNull();
   });
 });
 

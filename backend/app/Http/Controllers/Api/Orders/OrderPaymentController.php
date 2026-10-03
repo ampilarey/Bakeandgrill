@@ -414,11 +414,11 @@ class OrderPaymentController extends Controller
      *
      * Owner, 2026-10-03: "for a QR payment he selected card, can the admin
      * correct it?" The amount stays; only the method changes, with a reason.
-     * Anyone with payments.correct_tender may fix any payment; a cashier may
-     * fix a payment taken in their own shift while it is still open. Cash in
-     * or out of the picture moves the open shift's expected drawer with it
-     * (expected cash is summed from payments by method); a closed shift
-     * keeps its counted figures and gets a note instead.
+     * Only someone holding payments.correct_tender may do it (the owner
+     * first asked for a cashier own-shift path, then: "add this to admin
+     * only"). Cash in or out of the picture moves the open shift's expected
+     * drawer with it (expected cash is summed from payments by method); a
+     * closed shift keeps its counted figures and gets a note instead.
      */
     public function correctTender(Request $request, int $id, int $paymentId): JsonResponse
     {
@@ -440,15 +440,6 @@ class OrderPaymentController extends Controller
         }
         if ($payment->method === $validated['method']) {
             return response()->json(['message' => 'The payment is already recorded as that tender.'], 422);
-        }
-
-        $permissions = app(\App\Domains\Permissions\Services\PermissionService::class);
-        if (!$permissions->hasPermission($user, 'payments.correct_tender')) {
-            $ownOpenShift = $payment->shift_id !== null
-                && \App\Models\Shift::query()->whereKey($payment->shift_id)->where('user_id', $user->id)->whereNull('closed_at')->exists();
-            if (!$ownOpenShift) {
-                return response()->json(['message' => 'You can only correct a payment taken in your own open shift. Ask a manager or the owner.'], 403);
-            }
         }
 
         $from = $payment->method;

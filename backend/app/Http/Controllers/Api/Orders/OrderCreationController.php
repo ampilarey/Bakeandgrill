@@ -176,6 +176,14 @@ class OrderCreationController extends Controller
                 ->whereNotIn('status', ['cancelled', 'refunded', 'completed']);
         }
 
+        // The other half of the till's "All tills" view (owner, 2026-10-03:
+        // "view all receipts, live and paid ones, with filtering"): settled
+        // sales only, so a refunded or cancelled order is not counted as paid.
+        if ($request->filled('paid_only') && $request->boolean('paid_only')) {
+            $query->where('payment_status', 'paid')
+                ->whereNotIn('status', ['cancelled', 'refunded']);
+        }
+
         // Unified Open Tickets feed for the POS — anything the cashier
         // still has work to do on. Two buckets:
         //   1. Classic held tickets (parked, kitchen never saw them).
@@ -271,6 +279,30 @@ class OrderCreationController extends Controller
         });
 
         return response()->json($orders);
+    }
+
+    /**
+     * GET /api/orders/receipt-filters — who and where to narrow the "All
+     * tills" receipts view by. Every active staff member and every POS
+     * device, so a cashier who has not sold yet today is still in the list.
+     * Route-gated on pos.view_all_station_orders.
+     */
+    public function receiptFilters(Request $request): JsonResponse
+    {
+        if (!$request->user()?->tokenCan('staff')) {
+            return response()->json(['message' => 'Forbidden - staff access only'], 403);
+        }
+
+        return response()->json([
+            'cashiers' => \App\Models\User::query()
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get(['id', 'name']),
+            'tills' => \App\Models\Device::query()
+                ->where('type', 'pos')
+                ->orderBy('name')
+                ->get(['id', 'name', 'identifier', 'is_active']),
+        ]);
     }
 
     public function store(StoreOrderRequest $request): JsonResponse

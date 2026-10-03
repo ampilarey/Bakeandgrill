@@ -93,28 +93,30 @@ class CorrectTenderTest extends TestCase
         $this->assertSame(150.0, (float) $this->shift->fresh()->expected_cash, 'a counted shift is not rewritten');
     }
 
-    public function test_a_cashier_may_fix_only_their_own_open_shift(): void
+    public function test_cashiers_and_managers_cannot_correct_without_the_permission_and_a_grant_opens_it(): void
     {
         [$order, $payment] = $this->paidOrder('card');
+
+        // Owner, 2026-10-03: "add this to admin only" — not even the cashier's own open shift.
         Sanctum::actingAs($this->cashier, ['staff']);
+        $this->postJson("/api/orders/{$order->id}/payments/{$payment->id}/correct-tender", ['method' => 'qr', 'reason' => 'Wrong button'])->assertForbidden();
+
+        $manager = $this->makeManager(['phone' => '+9607770009']);
+        $this->app['auth']->forgetGuards();
+        Sanctum::actingAs($manager, ['staff']);
+        $this->postJson("/api/orders/{$order->id}/payments/{$payment->id}/correct-tender", ['method' => 'qr', 'reason' => 'Wrong button'])->assertForbidden();
+
+        // The owner grants it to the Manager role; the grant survives a deploy.
+        $this->app['auth']->forgetGuards();
+        Sanctum::actingAs($this->makeOwner(['phone' => '+9607770008']), ['staff']);
+        $this->putJson('/api/roles/manager/permissions', ['permissions' => ['payments.correct_tender' => true]])->assertOk();
+        PermissionCatalogSync::sync();
+
+        $this->app['auth']->forgetGuards();
+        Sanctum::actingAs($manager->fresh(), ['staff']);
+        $manager->fresh()->unsetRelation('role');
         $this->postJson("/api/orders/{$order->id}/payments/{$payment->id}/correct-tender", ['method' => 'qr', 'reason' => 'Wrong button'])->assertOk();
-
-        // Someone else's shift: no.
-        $other = $this->makeStaff('staff', ['name' => 'Aisha', 'email' => 'aisha@test.com']);
-        $this->app['auth']->forgetGuards();
-        Sanctum::actingAs($other, ['staff']);
-        $this->postJson("/api/orders/{$order->id}/payments/{$payment->id}/correct-tender", ['method' => 'card', 'reason' => 'Wrong button'])->assertForbidden();
-
-        // Own shift, but closed: no.
-        $this->shift->update(['closed_at' => now()]);
-        $this->app['auth']->forgetGuards();
-        Sanctum::actingAs($this->cashier, ['staff']);
-        $this->postJson("/api/orders/{$order->id}/payments/{$payment->id}/correct-tender", ['method' => 'card', 'reason' => 'Wrong button'])->assertForbidden();
-
-        // A manager has no such permission by default either; the owner can grant it.
-        $this->app['auth']->forgetGuards();
-        Sanctum::actingAs($this->makeManager(), ['staff']);
-        $this->postJson("/api/orders/{$order->id}/payments/{$payment->id}/correct-tender", ['method' => 'card', 'reason' => 'Wrong button'])->assertForbidden();
+        $this->assertSame('qr', $payment->fresh()->method);
     }
 
     public function test_only_plain_tenders_on_settled_payments_can_be_corrected(): void

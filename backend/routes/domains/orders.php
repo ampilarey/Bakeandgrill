@@ -25,6 +25,8 @@ if (routes_domain_section_is('orders', 'core') && !routes_domain_loaded('orders.
         ->middleware(['permission:pos.ring_sales', 'device.active', 'service.available:pos_sales']);
     Route::post('/orders/sync', [App\Http\Controllers\Api\Orders\OrderCreationController::class, 'sync'])
         ->middleware(['permission:pos.ring_sales', 'device.active', 'service.available:pos_sales']);
+    Route::get('/orders/receipt-filters', [App\Http\Controllers\Api\Orders\OrderCreationController::class, 'receiptFilters'])
+        ->middleware('permission:pos.view_all_station_orders');
     Route::get('/orders/{id}', [App\Http\Controllers\Api\Orders\OrderCreationController::class, 'show']);
     Route::post('/orders/{id}/hold', [App\Http\Controllers\Api\Orders\OrderStatusController::class, 'hold'])
         ->middleware(['permission:pos.hold_resume', 'device.active', 'throttle:20,1']);
@@ -48,10 +50,10 @@ if (routes_domain_section_is('orders', 'core') && !routes_domain_loaded('orders.
         ->middleware(['permission:pos.hold_resume', 'device.active', 'throttle:10,1']);
     Route::post('/orders/{id}/split', [App\Http\Controllers\Api\Orders\OrderItemController::class, 'split'])
         ->middleware(['permission:pos.hold_resume', 'device.active', 'throttle:10,1']);
-    // Owner, 2026-10-03: fix a wrong tender after the sale. The controller lets
-    // a cashier without the permission fix only their own open shift's payments.
+    // Owner, 2026-10-03: fix a wrong tender after the sale. Owner-only by
+    // default; grant "Correct a recorded tender" to a role or person for more.
     Route::post('/orders/{id}/payments/{paymentId}/correct-tender', [App\Http\Controllers\Api\Orders\OrderPaymentController::class, 'correctTender'])
-        ->middleware(['permission.any:payments.correct_tender,pos.ring_sales', 'throttle:30,1']);
+        ->middleware(['permission:payments.correct_tender', 'throttle:30,1']);
     Route::post('/orders/{id}/payments', [App\Http\Controllers\Api\Orders\OrderPaymentController::class, 'addPayments'])
         ->middleware(['permission:pos.ring_sales', 'device.active', 'throttle:20,1']);
     Route::post('/orders/{id}/send-bill', [App\Http\Controllers\Api\Orders\OrderPaymentController::class, 'sendBill'])

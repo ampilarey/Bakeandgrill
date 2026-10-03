@@ -514,6 +514,13 @@ export async function fetchReceipts(params: {
   active_only?: boolean;
   /** Manager view — surface anything cooking with a balance. */
   unpaid_only?: boolean;
+  /** Settled sales only: paid, and not cancelled or refunded. The "Paid"
+   *  half of the till's All tills view (owner, 2026-10-03). */
+  paid_only?: boolean;
+  /** Narrow to one cashier or one till. Needs pos.view_all_station_orders;
+   *  a cashier asking for another cashier is refused. */
+  user_id?: number;
+  device_id?: number;
   /** Active orders created by the logged-in cashier only. */
   created_by_me?: boolean;
   /** Active orders from the online ordering app (pickup + delivery). */
@@ -582,7 +589,7 @@ export async function fetchReceipts(params: {
       change_given?: number | null;
       status?: string | null;
       created_at?: string | null;
-      /** The shift it was taken in; a cashier may correct a tender in their own open shift. */
+      /** The shift it was taken in. */
       shift_id?: number | null;
       /** Set once a tender was corrected (owner, 2026-10-03): what it was first rung as. */
       original_method?: string | null;
@@ -628,6 +635,18 @@ export async function fetchReceipts(params: {
     qs.set(k, typeof v === "boolean" ? (v ? "1" : "0") : String(v));
   });
   return request(`/orders?${qs.toString()}`);
+}
+
+/**
+ * Who and where the All tills receipts view can be narrowed by: every
+ * active staff member and every POS device. Owners and managers only
+ * (pos.view_all_station_orders).
+ */
+export async function fetchReceiptFilters(): Promise<{
+  cashiers: Array<{ id: number; name: string }>;
+  tills: Array<{ id: number; name: string | null; identifier?: string | null; is_active?: boolean }>;
+}> {
+  return request(`/orders/receipt-filters`);
 }
 
 /** Venue-wide active order count — matches OpenTicketsPanel default scope. */

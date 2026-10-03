@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   createRefund,
+  fetchReceiptFilters,
   fetchReceipts,
   getReceiptLink,
   sendReceipt,
@@ -18,8 +19,14 @@ export type Receipt = Awaited<ReturnType<typeof fetchReceipts>>["data"][number];
 type Props = {
   onClose: () => void;
   shiftId?: number | null;
-  /** Fix any payment's tender; without it a cashier may still fix their own open shift's payments. */
+  /** "Correct a recorded tender" permission: owner by default, or whoever the owner grants it to. */
   canCorrectTender?: boolean;
+  /**
+   * pos.view_all_station_orders: the "All tills" view — every cashier's
+   * receipts, live and paid, with cashier, till, state and date filters.
+   * Owner, 2026-10-03.
+   */
+  canViewAllTills?: boolean;
   defaultScope?: "today" | "shift";
   /** Select this order when the list loads (post-charge redirect). */
   initialOrderId?: number | null;
@@ -27,10 +34,25 @@ type Props = {
   canRefund?: boolean;
 };
 
-type Scope = "today" | "shift" | "all";
+type Scope = "today" | "shift" | "range" | "all";
 type PayFilter = "all" | "cash" | "card" | "transfer" | "other";
+/** Where the money stands, as the server filters it (All tills view). */
+type StateFilter = "all" | "live" | "paid" | "refunded" | "cancelled";
 
-const SCOPE_LABEL: Record<Scope, string> = { today: "Today", shift: "This shift", all: "All" };
+const SCOPE_LABEL: Record<Scope, string> = { today: "Today", shift: "This shift", range: "Dates", all: "All" };
+const STATE_LABEL: Record<StateFilter, string> = { all: "All", live: "Live", paid: "Paid", refunded: "Refunded", cancelled: "Cancelled" };
+
+/** Still in progress and not yet (fully) paid: the "live" half of the All tills view. */
+export function isLiveReceipt(r: Receipt): boolean {
+  const status = (r.status ?? "").toLowerCase();
+  if (["cancelled", "refunded", "completed"].includes(status)) return false;
+  const ps = (r.payment_status ?? "").toLowerCase();
+  return ps === "unpaid" || ps === "partial";
+}
+
+function statusWord(status: string | null | undefined): string {
+  return (status ?? "").replace(/_/g, " ");
+}
 
 /** How a payment method reads on the pane. */
 export function paymentLabel(method: string | null | undefined): string {
@@ -137,6 +159,13 @@ function formatDay(iso: string | null | undefined): string {
  *
  * On a phone it is one pane at a time: the list, then the receipt with a
  * Back button, instead of both squeezed into a column.
+ *
+ * Owner, 2026-10-03: "add admin POS to view all receipts, live and paid
+ * ones also, with filtering option." Whoever may view all station orders
+ * gets a Mine / All tills switch. All tills lists every cashier's orders,
+ * each row naming who rang it and on which till, and can be narrowed to
+ * live (cooking, not yet paid), paid, refunded or cancelled, to one
+ * cashier, one till, or a date range. A cashier's pane is unchanged.
  */
 export function ReceiptsPanel({
   onClose,
@@ -146,12 +175,22 @@ export function ReceiptsPanel({
   receiptResendEnabled = true,
   canRefund = true,
   canCorrectTender = false,
+  canViewAllTills = false,
 }: Props) {
   const isNarrow = useMediaQuery("(max-width: 760px)");
   const [scope, setScope] = useState<Scope>(defaultScope);
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
   const [payFilter, setPayFilter] = useState<PayFilter>("all");
+  // All tills view: whose receipts, where the money stands, and the narrowing.
+  const [who, setWho] = useState<"mine" | "all">(canViewAllTills ? "all" : "mine");
+  const allTills = canViewAllTills && who === "all";
+  const [stateFilter, setStateFilter] = useState<StateFilter>("all");
+  const [cashierId, setCashierId] = useState<number | "">("");
+  const [tillId, setTillId] = useState<number | "">("");
+  const [rangeFrom, setRangeFrom] = useState(() => localDateYmd());
+  const [rangeTo, setRangeTo] = useState(() => localDateYmd());
+  const [filterOptions, setFilterOptions] = useState<Awaited<ReturnType<typeof fetchReceiptFilters>> | null>(null);
   const [items, setItems] = useState<Receipt[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
@@ -173,11 +212,28 @@ export function ReceiptsPanel({
     return () => clearTimeout(id);
   }, [q]);
 
+  // The cashier and till pickers list everyone, not just who has sold so
+  // far today; loaded once the All tills view is first shown.
+  useEffect(() => {
+    if (!allTills || filterOptions) return;
+    let cancelled = false;
+    void fetchReceiptFilters()
+      .then((res) => { if (!cancelled) setFilterOptions(res); })
+      .catch(() => { /* the pickers fall back to whoever is in the loaded rows */ });
+    return () => { cancelled = true; };
+  }, [allTills, filterOptions]);
+
   const queryParams = (page: number) => ({
     // Recompute on each fetch so a POS left open past midnight stays correct,
     // and use local calendar date (not UTC) for Maldives overnight shifts.
     ...(scope === "today" ? { date: localDateYmd() } : {}),
     ...(scope === "shift" && shiftId ? { shift_id: shiftId } : {}),
+    ...(scope === "range" && allTills ? { ...(rangeFrom ? { date_from: rangeFrom } : {}), ...(rangeTo ? { date_to: rangeTo } : {}) } : {}),
+    ...(allTills && stateFilter === "live" ? { unpaid_only: true } : {}),
+    ...(allTills && stateFilter === "paid" ? { paid_only: true } : {}),
+    ...(allTills && (stateFilter === "refunded" || stateFilter === "cancelled") ? { status: stateFilter } : {}),
+    ...(allTills && cashierId !== "" ? { user_id: cashierId } : {}),
+    ...(allTills && tillId !== "" ? { device_id: tillId } : {}),
     ...(debouncedQ ? { q: debouncedQ } : {}),
     per_page: PAGE_SIZE,
     page,
@@ -209,7 +265,7 @@ export function ReceiptsPanel({
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scope, debouncedQ, shiftId, initialOrderId, reloadKey]);
+  }, [scope, debouncedQ, shiftId, initialOrderId, reloadKey, allTills, stateFilter, cashierId, tillId, rangeFrom, rangeTo]);
 
   const hasMore = serverTotal != null ? items.length < serverTotal : items.length >= PAGE_SIZE * lastPage;
 
@@ -260,11 +316,54 @@ export function ReceiptsPanel({
   const showList = !isNarrow || !detailOpen || !selected;
   const showDetail = !isNarrow || (detailOpen && !!selected);
 
+  // Picker options: the server's full lists, or whoever is in the loaded
+  // rows when that call failed.
+  const cashierOptions = useMemo(() => {
+    if (filterOptions) return filterOptions.cashiers;
+    const seen = new Map<number, string>();
+    for (const r of items) if (r.user?.id && r.user.name) seen.set(r.user.id, r.user.name);
+    return [...seen].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [filterOptions, items]);
+  const tillOptions = useMemo(() => {
+    if (filterOptions) return filterOptions.tills.map((t) => ({ id: t.id, name: t.name || t.identifier || `Till ${t.id}` }));
+    const seen = new Map<number, string>();
+    for (const r of items) if (r.device?.id) seen.set(r.device.id, r.device.name || r.device.identifier || `Till ${r.device.id}`);
+    return [...seen].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [filterOptions, items]);
+  const narrowed = allTills && (stateFilter !== "all" || cashierId !== "" || tillId !== "");
+
+  const segment = (on: boolean, disabled = false): React.CSSProperties => ({
+    padding: "0 12px", minHeight: 36, fontSize: 12, fontWeight: 700,
+    borderRadius: 8, border: "none", cursor: disabled ? "not-allowed" : "pointer",
+    background: on ? palette.panel : "transparent",
+    color: on ? palette.panelInk : palette.panelMuted,
+    boxShadow: on ? "0 1px 2px rgba(15,23,42,0.08)" : "none",
+    opacity: disabled ? 0.5 : 1, whiteSpace: "nowrap", fontFamily: "inherit",
+  });
+  const filterInput: React.CSSProperties = {
+    minHeight: 36, padding: "0 8px", borderRadius: 10, border: `1px solid ${palette.borderStrong}`,
+    fontSize: 12, background: palette.panel, color: palette.panelInk, fontFamily: "inherit", boxSizing: "border-box",
+  };
+  const scopes: readonly Scope[] = allTills ? ["today", "shift", "range", "all"] : ["today", "shift", "all"];
+
   const scopeBar = (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        {canViewAllTills && (
+          <div role="group" aria-label="Whose receipts" style={{ display: "flex", background: palette.bgAlt, borderRadius: 10, padding: 3 }}>
+            {(["mine", "all"] as const).map((w) => (
+              <button
+                key={w}
+                type="button"
+                aria-pressed={who === w}
+                onClick={() => { setWho(w); setSelectedId(null); if (w === "mine" && scope === "range") setScope("today"); }}
+                style={segment(who === w)}
+              >{w === "mine" ? "Mine" : "All tills"}</button>
+            ))}
+          </div>
+        )}
         <div role="group" aria-label="Which receipts" style={{ display: "flex", background: palette.bgAlt, borderRadius: 10, padding: 3 }}>
-          {(["today", "shift", "all"] as const).map((s) => {
+          {scopes.map((s) => {
             const disabled = s === "shift" && !shiftId;
             const on = scope === s;
             return (
@@ -274,18 +373,18 @@ export function ReceiptsPanel({
                 aria-pressed={on}
                 onClick={() => setScope(s)}
                 disabled={disabled}
-                style={{
-                  padding: "0 12px", minHeight: 36, fontSize: 12, fontWeight: 700,
-                  borderRadius: 8, border: "none", cursor: disabled ? "not-allowed" : "pointer",
-                  background: on ? palette.panel : "transparent",
-                  color: on ? palette.panelInk : palette.panelMuted,
-                  boxShadow: on ? "0 1px 2px rgba(15,23,42,0.08)" : "none",
-                  opacity: disabled ? 0.5 : 1, whiteSpace: "nowrap",
-                }}
+                style={segment(on, disabled)}
               >{SCOPE_LABEL[s]}</button>
             );
           })}
         </div>
+        {allTills && scope === "range" && (
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <input type="date" value={rangeFrom} max={rangeTo || undefined} onChange={(e) => setRangeFrom(e.target.value)} aria-label="From date" style={filterInput} />
+            <span style={{ fontSize: 12, color: palette.panelMuted }}>to</span>
+            <input type="date" value={rangeTo} min={rangeFrom || undefined} onChange={(e) => setRangeTo(e.target.value)} aria-label="To date" style={filterInput} />
+          </div>
+        )}
         <div style={{ position: "relative", flex: "1 1 180px", minWidth: 160 }}>
           <input
             value={q}
@@ -312,6 +411,42 @@ export function ReceiptsPanel({
           )}
         </div>
       </div>
+      {allTills && (
+        <div data-testid="all-tills-filters" style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+          <div role="group" aria-label="Where the money stands" style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+            {(["all", "live", "paid", "refunded", "cancelled"] as const).map((f) => {
+              const on = stateFilter === f;
+              return (
+                <button
+                  key={f}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => { setStateFilter(f); setSelectedId(null); }}
+                  style={{
+                    minHeight: 32, padding: "0 10px", borderRadius: 999, fontSize: 12, fontWeight: 700, fontFamily: "inherit",
+                    border: `1px solid ${on ? palette.ink : palette.border}`,
+                    background: on ? palette.ink : palette.panel,
+                    color: on ? palette.inkText : palette.panelInk, cursor: "pointer",
+                  }}
+                >{STATE_LABEL[f]}</button>
+              );
+            })}
+          </div>
+          <select value={cashierId} onChange={(e) => { setCashierId(e.target.value === "" ? "" : Number(e.target.value)); setSelectedId(null); }} aria-label="Cashier" style={{ ...filterInput, maxWidth: 160 }}>
+            <option value="">All cashiers</option>
+            {cashierOptions.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <select value={tillId} onChange={(e) => { setTillId(e.target.value === "" ? "" : Number(e.target.value)); setSelectedId(null); }} aria-label="Till" style={{ ...filterInput, maxWidth: 160 }}>
+            <option value="">All tills</option>
+            {tillOptions.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </select>
+          {narrowed && (
+            <button type="button" onClick={() => { setStateFilter("all"); setCashierId(""); setTillId(""); }} style={{ ...linkBtn, minHeight: 32 }}>
+              Clear filters
+            </button>
+          )}
+        </div>
+      )}
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
         {(["all", "cash", "card", "transfer", "other"] as const).map((f) => {
           if (f !== "all" && payCounts[f] === 0) return null;
@@ -347,7 +482,7 @@ export function ReceiptsPanel({
   return (
     <PanelShell
       title="Receipts"
-      subtitle="Your sales — every device you've logged in on"
+      subtitle={allTills ? "Every till and cashier — live and paid" : "Your sales — every device you've logged in on"}
       onClose={onClose}
       toolbar={showList ? scopeBar : undefined}
     >
@@ -366,13 +501,16 @@ export function ReceiptsPanel({
               <EmptyState
                 emoji="🧾"
                 title="No receipts"
-                body={debouncedQ || payFilter !== "all" ? "Try a different search or filter." : "Receipts will appear here as you ring up sales."}
+                body={debouncedQ || payFilter !== "all" || narrowed || scope === "range"
+                  ? "Try a different search or filter."
+                  : allTills ? "Receipts from every till will appear here." : "Receipts will appear here as you ring up sales."}
               />
             )}
             {visible.map((r) => (
               <ReceiptRow
                 key={r.id}
                 receipt={r}
+                showStaff={allTills}
                 selected={selectedId === r.id && !isNarrow}
                 onClick={() => { setSelectedId(r.id); setDetailOpen(true); }}
               />
@@ -403,7 +541,6 @@ export function ReceiptsPanel({
                 receiptResendEnabled={receiptResendEnabled}
                 canRefund={canRefund}
                 canCorrectTender={canCorrectTender}
-                currentShiftId={shiftId ?? null}
                 onBack={isNarrow ? () => setDetailOpen(false) : undefined}
                 onChanged={() => setReloadKey((k) => k + 1)}
               />
@@ -431,10 +568,15 @@ function Chip({ children, tone = "muted", title }: { children: React.ReactNode; 
   );
 }
 
-function ReceiptRow({ receipt: r, selected, onClick }: { receipt: Receipt; selected: boolean; onClick: () => void }) {
+function ReceiptRow({ receipt: r, showStaff = false, selected, onClick }: { receipt: Receipt; showStaff?: boolean; selected: boolean; onClick: () => void }) {
   const state = receiptState(r);
   const pays = settledPayments(r);
   const who = r.customer?.name?.trim() || r.table?.name || (r.type === "dine_in" ? "Walk-in" : "");
+  // All tills view: who rang it and where, and what a live order is up to.
+  const staff = showStaff
+    ? [r.user?.name ? `by ${r.user.name}` : (r.is_customer_placed ? "online" : null), r.device?.name].filter(Boolean).join(" · ")
+    : "";
+  const live = showStaff && isLiveReceipt(r);
   return (
     <button
       type="button"
@@ -475,9 +617,15 @@ function ReceiptRow({ receipt: r, selected, onClick }: { receipt: Receipt; selec
             <Chip key={p.id} title={money(p.amount)}>{paymentLabel(p.method)}</Chip>
           ))}
           {pays.length > 2 && <Chip>+{pays.length - 2}</Chip>}
+          {live && <Chip tone="warn" title="Still in progress, not yet paid">Live · {statusWord(r.status)}</Chip>}
           <Chip tone={state.tone}>{state.label}</Chip>
         </span>
       </div>
+      {staff && (
+        <div data-testid={`receipt-staff-${r.id}`} style={{ fontSize: 11, color: palette.panelSubtle, marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {staff}
+        </div>
+      )}
     </button>
   );
 }
@@ -487,7 +635,6 @@ function ReceiptDetail({
   receiptResendEnabled = true,
   canRefund = true,
   canCorrectTender = false,
-  currentShiftId = null,
   onBack,
   onChanged,
 }: {
@@ -495,7 +642,6 @@ function ReceiptDetail({
   receiptResendEnabled?: boolean;
   canRefund?: boolean;
   canCorrectTender?: boolean;
-  currentShiftId?: number | null;
   onBack?: () => void;
   onChanged?: () => void;
 }) {
@@ -505,9 +651,10 @@ function ReceiptDetail({
   const [tenderFixReason, setTenderFixReason] = useState("");
   const [tenderFixBusy, setTenderFixBusy] = useState(false);
   const [tenderFixErr, setTenderFixErr] = useState("");
-  const canFixPayment = (p: { method: string; shift_id?: number | null; status?: string | null }) =>
-    (CORRECTABLE_TENDERS as readonly string[]).includes(p.method)
-    && (canCorrectTender || (currentShiftId != null && p.shift_id === currentShiftId));
+  // Owner, 2026-10-03: "add this to admin only" — the permission alone decides;
+  // a cashier's own open shift does not. The server enforces the same.
+  const canFixPayment = (p: { method: string; status?: string | null }) =>
+    canCorrectTender && (CORRECTABLE_TENDERS as readonly string[]).includes(p.method);
   const submitTenderFix = async (paymentId: number) => {
     if (!tenderFixMethod) { setTenderFixErr("Pick the right tender."); return; }
     if (tenderFixReason.trim().length < 3) { setTenderFixErr("Say why, in a few words."); return; }
@@ -647,6 +794,7 @@ function ReceiptDetail({
     typeLabel,
     receipt.table?.name ? `Table ${receipt.table.name}` : null,
     receipt.user?.name ? `by ${receipt.user.name}` : null,
+    receipt.device?.name ?? null,
   ].filter(Boolean).join(" · ");
 
   const lines: Array<{ label: string; value: number; tone?: "minus" }> = [];
