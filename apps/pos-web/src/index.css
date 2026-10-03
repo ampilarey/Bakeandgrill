@@ -79,7 +79,13 @@ html, body, #root {
   background: #FFFFFF;
   border-bottom: 1px solid #E2E8F0;
   padding: 10px 16px;
-  padding-top: max(10px, env(safe-area-inset-top, 0px));
+  /* iOS 26 frosts whatever sits under the status bar and about 40pt below it
+   * (owner, 2026-10-03). The app now asks for an opaque status bar, which
+   * puts the page below it and makes this inset 0. A till still running an
+   * older Home Screen install keeps the translucent bar, so when the inset
+   * is not 0 the bar also clears those 40pt: min(inset × 10, 40px) is 0 at
+   * inset 0 and 40px at any real inset. */
+  padding-top: max(10px, calc(env(safe-area-inset-top, 0px) + min(env(safe-area-inset-top, 0px) * 10, 40px)));
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -732,7 +738,7 @@ html, body, #root {
   .pos-topbar-chip { display: none; }
   .pos-topbar {
     padding: 8px 10px;
-    padding-top: max(8px, env(safe-area-inset-top, 0px));
+    padding-top: max(8px, calc(env(safe-area-inset-top, 0px) + min(env(safe-area-inset-top, 0px) * 10, 40px)));
     gap: 8px;
   }
   .pos-topbar-right { gap: 6px; }
