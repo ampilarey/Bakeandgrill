@@ -369,4 +369,31 @@ class ComplaintBoxTest extends TestCase
         // An unknown size falls back to A5 rather than failing.
         $this->get('/complain/poster/sheet?layout=poster-wall')->assertOk()->assertSee('size: a5 portrait', false);
     }
+
+    /**
+     * Owner, 2026-10-03: "Font size should be 12, or 10 at the minimum, so the
+     * maximum number of stickers on one page should align with this."
+     */
+    public function test_every_layout_keeps_type_at_10pt_or_more_and_12_is_the_most_an_a4_holds(): void
+    {
+        foreach (array_keys(\App\Http\Controllers\ComplaintBoxPageController::LAYOUTS) as $key) {
+            $html = (string) $this->get('/complain/poster/sheet?layout=' . $key)->assertOk()->getContent();
+            preg_match_all('/font-size:\s*([0-9.]+)pt/', $html, $m);
+            $this->assertNotEmpty($m[1], $key);
+            $this->assertGreaterThanOrEqual(10.0, min(array_map('floatval', $m[1])), "{$key}: nothing printed under 10pt");
+            preg_match('/\.url \{ font-size: ([0-9.]+)pt/', $html, $u);
+            preg_match('/\.title \{ font-size: ([0-9.]+)pt/', $html, $t);
+            preg_match('/\.qr \{ width: ([0-9.]+)mm/', $html, $q);
+            $this->assertGreaterThanOrEqual(11.0, (float) $u[1], "{$key}: web address");
+            $this->assertGreaterThanOrEqual(12.0, (float) $t[1], "{$key}: heading");
+            $this->assertGreaterThanOrEqual(28.0, (float) $q[1], "{$key}: code");
+        }
+
+        $text = ['name' => 'Bake & Grill', 'tagline' => '', 'url' => 'bakeandgrill.mv/complain', 'contact' => '+960 912 0011', 'address' => ''];
+        // 12 on A4 (3 x 4) fits; 16 (4 x 4) and 15 (3 x 5) cannot at these sizes.
+        $this->assertTrue(\App\Support\PosterCardSpec::for(65.4, 70.8, $text)['fits']);
+        $this->assertFalse(\App\Support\PosterCardSpec::for(49.0, 70.8, $text)['fits']);
+        $this->assertFalse(\App\Support\PosterCardSpec::for(65.4, 56.5, $text)['fits']);
+        $this->assertArrayNotHasKey('a4-16', \App\Http\Controllers\ComplaintBoxPageController::LAYOUTS);
+    }
 }

@@ -161,7 +161,12 @@
          round trip and without tainting the canvas. --}}
     <script nonce="{{ csp_nonce() }}">
     (function () {
-        document.querySelector('[data-print]').addEventListener('click', function () { window.print(); });
+        // Owner, 2026-10-03: "font size should be 12, or 10 at the minimum" —
+        // printing goes through the A5 sheet, laid out by PosterCardSpec with
+        // nothing under 10pt, rather than this on-screen card.
+        document.querySelector('[data-print]').addEventListener('click', function () {
+            window.open('/complain/poster/sheet?layout=a5&print=1', '_blank', 'noopener');
+        });
 
         var codeImg = document.querySelector('.qr img.code');
         var btn = document.querySelector('[data-download]');
@@ -217,7 +222,7 @@
 
             var headerH = 60 + Math.max(LOGO ? logoSize : 0, TEXT.tagline ? 96 : 60) + 36;
             var bodyH = 90 + 84 + bodyLines.length * 46 + 40 + qrSize + 60 + 60 + 44 + 60;
-            var footH = 40 + contactLines.length * 46 + (TEXT.address ? 42 : 0) + 44 + 60;
+            var footH = 40 + contactLines.length * 46 + (TEXT.address ? 44 : 0) + 50 + 60;
             var H = headerH + bodyH + footH;
 
             var canvas = document.createElement('canvas');
@@ -269,7 +274,7 @@
                 ctx.textAlign = 'center';
                 var y = headerH + 90;
                 ctx.fillStyle = RUST;
-                ctx.font = 'bold 26px ' + FONT;
+                ctx.font = 'bold 30px ' + FONT;
                 ctx.fillText(TEXT.eyebrow.split('').join(' '), W / 2, y);
                 y += 74;
                 ctx.fillStyle = RUST;
@@ -292,7 +297,7 @@
                 ctx.fillText(TEXT.url, W / 2, y);
                 y += 50;
                 ctx.fillStyle = '#9C8E7E';
-                ctx.font = '28px ' + FONT;
+                ctx.font = '30px ' + FONT;
                 ctx.fillText(TEXT.note, W / 2, y);
 
                 // Footer: a hairline, then plain text.
@@ -307,13 +312,13 @@
                 contactLines.forEach(function (l) { ctx.fillText(l, W / 2, y); y += 46; });
                 if (TEXT.address) {
                     ctx.fillStyle = SOFT;
-                    ctx.font = '28px ' + FONT;
+                    ctx.font = '30px ' + FONT;
                     ctx.fillText(TEXT.address, W / 2, y);
                     y += 42;
                 }
                 y += 4;
                 ctx.fillStyle = RUST;
-                ctx.font = 'bold 24px ' + FONT;
+                ctx.font = 'bold 30px ' + FONT;
                 ctx.fillText(TEXT.thanks.split('').join(' '), W / 2, y);
 
                 return new Promise(function (resolve) { canvas.toBlob(resolve, 'image/png'); });
