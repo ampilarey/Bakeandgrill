@@ -17,9 +17,12 @@
     [$sheetW, $sheetH] = $sheetMm;
     $pt = $spec['pt'];
     $show = $spec['show'];
+    $sp = $spec['sp'];
     $multi = ($layout['cols'] * $layout['rows']) > 1;
     $contactLine = implode('  ·  ', $contacts['line']);
-    $font = $forPdf ? '"DejaVu Sans", sans-serif' : '"DejaVu Sans", Verdana, "Plus Jakarta Sans", -apple-system, "Segoe UI", sans-serif';
+    // The PDF's own font, served to the browser too (public/fonts), so a sheet
+    // printed from the browser lines up exactly with the PDF and the measuring.
+    $font = $forPdf ? '"DejaVu Sans", sans-serif' : '"Sheet DejaVu Sans", "DejaVu Sans", Verdana, sans-serif';
     $cards = $layout['cols'] * $layout['rows'];
     $hasFoot = $spec['footH'] > 0;
     $padY = max(2.5, round($spec['padX'] * 0.6, 2));
@@ -30,12 +33,20 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex">
+    @if (!$forPdf)
+        <link rel="preload" href="/fonts/dejavu-sans-400.woff2" as="font" type="font/woff2" crossorigin>
+        <link rel="preload" href="/fonts/dejavu-sans-700.woff2" as="font" type="font/woff2" crossorigin>
+    @endif
     <title>Complaint QR – {{ $layout['label'] }} – {{ $siteName }}</title>
     <style>
+        @if (!$forPdf)
+            @font-face { font-family: "Sheet DejaVu Sans"; src: url("/fonts/dejavu-sans-400.woff2") format("woff2"); font-weight: 400; font-display: block; }
+            @font-face { font-family: "Sheet DejaVu Sans"; src: url("/fonts/dejavu-sans-700.woff2") format("woff2"); font-weight: 700; font-display: block; }
+        @endif
         @page { size: {{ $layout['paper'] }} {{ $layout['orient'] }}; margin: {{ $marginMm }}mm; }
         * { box-sizing: border-box; }
         html, body { margin: 0; padding: 0; }
-        body { font-family: {!! $font !!}; color: #5A260A; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        body { font-family: {!! $font !!}; font-kerning: none; color: #5A260A; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         table { border-collapse: collapse; border-spacing: 0; }
         td { padding: 0; }
         .grid { width: {{ $cardW * $layout['cols'] }}mm; table-layout: fixed; }
@@ -44,20 +55,20 @@
         .hd { height: {{ $spec['headH'] }}mm; background: #FBF1EA; border-bottom: {{ $spec['rule'] }}mm solid #B74B0C; text-align: center; vertical-align: middle; padding: 0 {{ $spec['padX'] }}mm; }
         .hd table { margin: 0 auto; }
         .hd img { width: {{ $spec['logoMm'] }}mm; height: {{ $spec['logoMm'] }}mm; display: block; }
-        .hd .gap { width: 3mm; }
+        .hd .gap { width: {{ $sp['logo'] }}mm; }
         .name { font-size: {{ $pt['name'] }}pt; font-weight: bold; color: #B74B0C; line-height: 1.15; text-align: left; }
         .tagline { font-size: {{ $pt['tagline'] }}pt; color: #7A5A43; line-height: 1.3; text-align: left; }
         .bd { height: {{ $spec['bodyH'] }}mm; text-align: center; vertical-align: middle; padding: 0 {{ $spec['padX'] }}mm; }
-        .eyebrow { font-size: {{ $pt['eyebrow'] }}pt; font-weight: bold; letter-spacing: 0.08em; color: #B74B0C; margin: 0 0 1.5mm; line-height: 1.3; }
-        .title { font-size: {{ $pt['title'] }}pt; font-weight: bold; color: #B74B0C; line-height: 1.2; margin: 0 0 2mm; }
-        .body { font-size: {{ $pt['body'] }}pt; color: #7A5A43; line-height: 1.35; margin: 0 0 3mm; }
-        .qr { width: {{ $spec['qrMm'] }}mm; height: {{ $spec['qrMm'] }}mm; display: block; margin: 0 auto 3mm; }
+        .eyebrow { font-size: {{ $pt['eyebrow'] }}pt; font-weight: bold; letter-spacing: 0.08em; color: #B74B0C; margin: 0 0 {{ $sp['eyebrow'] }}mm; line-height: 1.3; }
+        .title { font-size: {{ $pt['title'] }}pt; font-weight: bold; color: #B74B0C; line-height: 1.2; margin: 0 0 {{ $sp['title'] }}mm; }
+        .body { font-size: {{ $pt['body'] }}pt; color: #7A5A43; line-height: 1.35; margin: 0 0 {{ $sp['body'] }}mm; }
+        .qr { width: {{ $spec['qrMm'] }}mm; height: {{ $spec['qrMm'] }}mm; display: block; margin: 0 auto {{ $sp['qr'] }}mm; }
         .url { font-size: {{ $pt['url'] }}pt; font-weight: bold; color: #5A260A; line-height: 1.3; white-space: nowrap; }
-        .note { font-size: {{ $pt['note'] }}pt; color: #8A7A6A; margin-top: 1mm; line-height: 1.3; }
+        .note { font-size: {{ $pt['note'] }}pt; color: #8A7A6A; margin-top: {{ $sp['note'] }}mm; line-height: 1.3; }
         .ft { height: {{ $spec['footH'] }}mm; background: #FBF1EA; border-top: {{ $spec['rule'] }}mm solid #B74B0C; text-align: center; vertical-align: middle; padding: 0 {{ $spec['padX'] }}mm; }
         .contact { font-size: {{ $pt['contact'] }}pt; font-weight: bold; color: #5A260A; line-height: 1.3; }
-        .address { font-size: {{ $pt['address'] }}pt; color: #7A5A43; margin-top: 0.8mm; line-height: 1.3; }
-        .thanks { font-size: {{ $pt['thanks'] }}pt; font-weight: bold; letter-spacing: 0.04em; color: #B74B0C; margin-top: 0.8mm; line-height: 1.3; }
+        .address { font-size: {{ $pt['address'] }}pt; color: #7A5A43; margin-top: {{ $sp['foot'] }}mm; line-height: 1.3; }
+        .thanks { font-size: {{ $pt['thanks'] }}pt; font-weight: bold; letter-spacing: 0.04em; color: #B74B0C; margin-top: {{ $sp['foot'] }}mm; line-height: 1.3; white-space: nowrap; }
         @if (!$forPdf)
             /* On screen: the sheet at its real size on a grey desk, with the buttons above it. */
             @media screen {
@@ -112,7 +123,7 @@
                                 <tr><td class="ft">
                                     @if ($show['contact'])<div class="contact">{{ $contactLine }}</div>@endif
                                     @if ($show['address'])<div class="address">{{ $contacts['address'] }}</div>@endif
-                                    @if ($show['thanks'])<div class="thanks">{{ \App\Support\PosterCardSpec::THANKS }}</div>@endif
+                                    @if ($show['thanks'])<div class="thanks">@if ($spec['thanksLines'] > 1){{ \App\Support\PosterCardSpec::THANKS_SPLIT[0] }}<br>{{ \App\Support\PosterCardSpec::THANKS_SPLIT[1] }}@else{{ \App\Support\PosterCardSpec::THANKS }}@endif</div>@endif
                                 </td></tr>
                             @endif
                         </table>
@@ -124,9 +135,16 @@
     @if (!$forPdf)
         </div>
         <script nonce="{{ csp_nonce() }}">
-            document.querySelector('[data-print]').addEventListener('click', function () { window.print(); });
+            // Print only once the sheet's font has loaded, or the page lays out
+            // in a fallback font and no longer matches the PDF.
+            function printWhenReady() {
+                var f = document.fonts;
+                var ready = f ? Promise.all([f.load('400 10pt "Sheet DejaVu Sans"'), f.load('700 10pt "Sheet DejaVu Sans"')]).catch(function () {}) : Promise.resolve();
+                ready.then(function () { setTimeout(function () { window.print(); }, 300); });
+            }
+            document.querySelector('[data-print]').addEventListener('click', printWhenReady);
             @if ($autoPrint)
-                window.addEventListener('load', function () { setTimeout(function () { window.print(); }, 300); });
+                window.addEventListener('load', printWhenReady);
             @endif
         </script>
     @endif

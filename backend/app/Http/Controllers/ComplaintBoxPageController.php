@@ -73,7 +73,7 @@ class ComplaintBoxPageController extends Controller
      * or several on one A4 to cut apart. Each entry: the paper, its
      * orientation, and how many columns and rows of cards it holds.
      *
-     * @var array<string, array{label: string, hint: string, paper: string, orient: string, cols: int, rows: int}>
+     * @var array<string, array{label: string, hint: string, paper: string, orient: string, cols: int, rows: int, whole?: bool}>
      */
     public const LAYOUTS = [
         'a3' => ['label' => 'A3 poster', 'hint' => '1 large poster', 'paper' => 'a3', 'orient' => 'portrait', 'cols' => 1, 'rows' => 1],
@@ -82,13 +82,16 @@ class ComplaintBoxPageController extends Controller
         'a6' => ['label' => 'A6', 'hint' => '1 per sheet', 'paper' => 'a6', 'orient' => 'portrait', 'cols' => 1, 'rows' => 1],
         'a4-2' => ['label' => '2 on A4', 'hint' => 'A5 size each', 'paper' => 'a4', 'orient' => 'landscape', 'cols' => 2, 'rows' => 1],
         'a4-4' => ['label' => '4 on A4', 'hint' => 'A6 size each', 'paper' => 'a4', 'orient' => 'portrait', 'cols' => 2, 'rows' => 2],
-        'a4-6' => ['label' => '6 on A4', 'hint' => 'table cards, the most per A4', 'paper' => 'a4', 'orient' => 'landscape', 'cols' => 3, 'rows' => 2],
+        'a4-6' => ['label' => '6 on A4', 'hint' => 'table cards', 'paper' => 'a4', 'orient' => 'landscape', 'cols' => 3, 'rows' => 2],
         // Owner, 2026-10-03: "20 is too much — font size should be 12, or 10
         // at the minimum", then "keep the same poster, with the same header
         // and footer, without any change, even at 12 or 9 per page". With the
         // whole header and footer on every card and nothing under 10pt, six
-        // is the most an A4 holds (see PosterCardSpec); at 9 or 12 the header
-        // and footer alone leave no room for a code that scans.
+        // is the most an A4 holds (see PosterCardSpec). Then: "Make 9 and 12
+        // per page also, without changing anything" — so these two carry the
+        // same card as the 6-up and let the type go under 10pt to fit it.
+        'a4-9' => ['label' => '9 on A4', 'hint' => 'small table cards, smaller text', 'paper' => 'a4', 'orient' => 'portrait', 'cols' => 3, 'rows' => 3, 'whole' => true],
+        'a4-12' => ['label' => '12 on A4', 'hint' => 'stickers, smallest text', 'paper' => 'a4', 'orient' => 'portrait', 'cols' => 3, 'rows' => 4, 'whole' => true],
     ];
 
     /** Sheet sizes in mm, portrait. */
@@ -176,17 +179,20 @@ class ComplaintBoxPageController extends Controller
         $tagline = trim((string) content('site_tagline', ''));
         $contacts = self::posterContacts();
         $displayUrl = (string) preg_replace('#^https?://#', '', (string) preg_replace('#\?.*$#', '', $url));
+        $text = [
+            'name' => $siteName,
+            'tagline' => $tagline,
+            'url' => $displayUrl,
+            'contact' => implode('  ·  ', $contacts['line']),
+            'address' => $contacts['address'],
+        ];
 
         return [
             'sheetMm' => [$w, $h],
             'cardMm' => [$cardW, $cardH],
-            'spec' => PosterCardSpec::for($cardW, $cardH, [
-                'name' => $siteName,
-                'tagline' => $tagline,
-                'url' => $displayUrl,
-                'contact' => implode('  ·  ', $contacts['line']),
-                'address' => $contacts['address'],
-            ], $logo !== null),
+            'spec' => ($layout['whole'] ?? false)
+                ? PosterCardSpec::whole($cardW, $cardH, $text, $logo !== null)
+                : PosterCardSpec::for($cardW, $cardH, $text, $logo !== null),
             'logo' => $logo,
             'siteName' => $siteName,
             'tagline' => $tagline,

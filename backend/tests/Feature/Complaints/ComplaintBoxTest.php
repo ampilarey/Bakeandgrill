@@ -381,12 +381,13 @@ class ComplaintBoxTest extends TestCase
                 '<div class="tagline">Fresh Baked, Fire Grilled</div>',
                 '<div class="contact">+960 777 1234  ·  bakeandgrill.mv  ·  @bakeandgrill</div>',
                 '<div class="address">Majeedhee Magu, Malé</div>',
-                '<div class="thanks">THANK YOU FOR HELPING US DO BETTER</div>',
                 '<td class="ft">',
             ] as $needle) {
                 $this->assertSame($cards, substr_count($html, $needle), "{$key}: {$needle} on every card");
             }
             $this->assertSame($cards, substr_count($html, '<img src="data:image/png'), "{$key}: logo on every card");
+            // On one line, or split evenly in two where it does not fit across.
+            $this->assertSame($cards, preg_match_all('#<div class="thanks">(THANK YOU FOR HELPING US DO BETTER|THANK YOU FOR HELPING<br>US DO BETTER)</div>#', $html), "{$key}: thank-you line on every card");
         }
 
         // Only the middle gives way on a small card.
@@ -397,9 +398,9 @@ class ComplaintBoxTest extends TestCase
         $this->assertStringContainsString('scan and tell us', $a4);
 
         // An unknown size falls back to A5 rather than failing; so does a
-        // size the card no longer fits at.
+        // size that was offered once and is not any more.
         $this->get('/complain/poster/sheet?layout=poster-wall')->assertOk()->assertSee('size: a5 portrait', false);
-        $this->get('/complain/poster/sheet?layout=a4-12')->assertOk()->assertSee('size: a5 portrait', false);
+        $this->get('/complain/poster/sheet?layout=a4-20')->assertOk()->assertSee('size: a5 portrait', false);
     }
 
     /**
@@ -408,7 +409,10 @@ class ComplaintBoxTest extends TestCase
      */
     public function test_every_layout_keeps_type_at_10pt_or_more_and_6_is_the_most_an_a4_holds(): void
     {
-        foreach (array_keys(\App\Http\Controllers\ComplaintBoxPageController::LAYOUTS) as $key) {
+        foreach (\App\Http\Controllers\ComplaintBoxPageController::LAYOUTS as $key => $layout) {
+            if ($layout['whole'] ?? false) {
+                continue; // 9 and 12 on A4, below
+            }
             $html = (string) $this->get('/complain/poster/sheet?layout=' . $key)->assertOk()->getContent();
             preg_match_all('/font-size:\s*([0-9.]+)pt/', $html, $m);
             $this->assertNotEmpty($m[1], $key);
@@ -434,7 +438,30 @@ class ComplaintBoxTest extends TestCase
         $this->assertFalse($spec(69.9, 98.1)['fits']);
         $this->assertFalse($spec(65.4, 94.3)['fits']);
         $this->assertFalse($spec(65.4, 70.8)['fits']);
-        $this->assertArrayNotHasKey('a4-9', \App\Http\Controllers\ComplaintBoxPageController::LAYOUTS);
-        $this->assertArrayNotHasKey('a4-12', \App\Http\Controllers\ComplaintBoxPageController::LAYOUTS);
+    }
+
+    /**
+     * Owner, 2026-10-03: "Make 9 and 12 per page also, without changing
+     * anything."
+     */
+    public function test_9_and_12_on_a4_carry_the_same_card_as_6_with_smaller_type(): void
+    {
+        $six = (string) $this->get('/complain/poster/sheet?layout=a4-6')->getContent();
+        foreach (['a4-9' => 9, 'a4-12' => 12] as $key => $cards) {
+            $html = (string) $this->get('/complain/poster/sheet?layout=' . $key)->assertOk()
+                ->assertSee('data-cards="' . $cards . '"', false)->getContent();
+            foreach (['eyebrow', 'title', 'qr', 'url', 'note', 'name', 'tagline', 'contact', 'address', 'thanks'] as $part) {
+                $this->assertSame(substr_count($six, 'class="' . $part . '"') / 6, substr_count($html, 'class="' . $part . '"') / $cards, "{$key}: {$part} as on the 6-up card");
+            }
+            $this->assertStringNotContainsString('scan and tell us', $html);
+
+            preg_match('/\.qr \{ width: ([0-9.]+)mm/', $html, $q);
+            $this->assertGreaterThanOrEqual(28.0, (float) $q[1], "{$key}: the code still scans");
+            preg_match_all('/font-size:\s*([0-9.]+)pt/', $html, $m);
+            $smallest = min(array_map('floatval', $m[1]));
+            $this->assertGreaterThanOrEqual(5.0, $smallest, $key);
+            // The page says how small the type is before anyone prints it.
+            $this->assertStringContainsString('smallest text ' . rtrim(rtrim(number_format($smallest, 1), '0'), '.') . ' pt', $html);
+        }
     }
 }
