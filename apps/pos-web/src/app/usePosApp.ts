@@ -39,6 +39,7 @@ import {
 } from "../orderTypes";
 
 import type { Pane } from "./types";
+import { computePaneAccess } from "./paneAccess";
 
 export function usePosApp() {
   // ── Auth ────────────────────────────────────────────────────────────────────
@@ -1241,11 +1242,23 @@ export function usePosApp() {
     return () => window.removeEventListener("keydown", onKey);
   }, [isLoggedIn, isLocked, lockScreen, canLockScreen]);
 
+  const paneAllowed = useMemo(() => computePaneAccess({
+    shiftOpen, canRingSales, canViewReceipts, canViewActiveOrders, canOpenShift, canCloseShift,
+    canViewShiftHistory, canViewReports, canAccessOps, canManageExpenses, canViewCustomers,
+    canViewOwnPurchaseRequests, canBuyAssigned, canReceiveDeliveries, canKitchenReceive,
+    canTradeDispatch, canTradeReconcile,
+  }), [
+    shiftOpen, canRingSales, canViewReceipts, canViewActiveOrders, canOpenShift, canCloseShift,
+    canViewShiftHistory, canViewReports, canAccessOps, canManageExpenses, canViewCustomers,
+    canViewOwnPurchaseRequests, canBuyAssigned, canReceiveDeliveries, canKitchenReceive,
+    canTradeDispatch, canTradeReconcile,
+  ]);
+
   const drawerItems = useMemo(() => {
     const main: Array<{ id: string; label: string; icon: string; group: "main"; badge?: string; badgeCritical?: boolean; disabled?: boolean }> = [];
-    if (canRingSales && shiftOpen) main.push({ id: "sales", label: "Sales", icon: "🛒", group: "main" });
-    if (canViewReceipts && shiftOpen) main.push({ id: "receipts", label: "Receipts", icon: "🧾", group: "main" });
-    if (canViewActiveOrders && shiftOpen) {
+    if (paneAllowed.sales) main.push({ id: "sales", label: "Sales", icon: "🛒", group: "main" });
+    if (paneAllowed.receipts) main.push({ id: "receipts", label: "Receipts", icon: "🧾", group: "main" });
+    if (paneAllowed.open_tickets) {
       main.push({
         id: "open_tickets", label: "Active Orders", icon: "🎫", group: "main",
         badge: openTicketsCount > 0 ? String(openTicketsCount) : undefined,
@@ -1266,7 +1279,7 @@ export function usePosApp() {
     if (canViewOwnPurchaseRequests) main.push({ id: "my_requests", label: "My requests", icon: "📋", group: "main" });
     if (canBuyAssigned) main.push({ id: "buying_list", label: "Buying list", icon: "✅", group: "main" });
     if (canReceiveDeliveries) main.push({ id: "to_receive", label: "To receive", icon: "📥", group: "main" });
-    if (canKitchenReceive && shiftOpen) main.push({ id: "kitchen_receiving", label: "Kitchen receive", icon: "🍳", group: "main" });
+    if (paneAllowed.kitchen_receiving) main.push({ id: "kitchen_receiving", label: "Kitchen receive", icon: "🍳", group: "main" });
     if (canTradeDispatch) main.push({ id: "wholesale_dispatch", label: "Send to shop", icon: "📦", group: "main" });
     if (canTradeReconcile) main.push({ id: "wholesale_reconcile", label: "Shop returns", icon: "↩️", group: "main" });
 
@@ -1286,35 +1299,12 @@ export function usePosApp() {
     user.push({ id: "logout", label: "Log out", icon: "↩", group: "user" });
     return [...main, ...user];
   }, [
-    canRingSales, canViewReceipts, canViewActiveOrders, canViewShiftHistory, canViewReports, canAccessOps,
-    canManageExpenses, canViewCustomers, canCreatePurchaseRequest, canViewOwnPurchaseRequests, canBuyAssigned, canReceiveDeliveries, canKitchenReceive,
+    paneAllowed, canViewShiftHistory, canViewReports, canAccessOps,
+    canManageExpenses, canViewCustomers, canCreatePurchaseRequest, canViewOwnPurchaseRequests, canBuyAssigned, canReceiveDeliveries,
     canTradeDispatch, canTradeReconcile,
     canLockScreen, canOpenShift, canCloseShift, shiftOpen, openTicketsCount, openTicketsCritical,
   ]);
 
-  const paneAllowed = useMemo((): Record<Pane, boolean> => ({
-    sales: canRingSales && shiftOpen,
-    receipts: canViewReceipts && shiftOpen,
-    open_tickets: canViewActiveOrders && shiftOpen,
-    events: true,
-    shift: shiftOpen || canOpenShift || canCloseShift,
-    shift_history: canViewShiftHistory,
-    sales_report: canViewReports,
-    ops: canAccessOps,
-    expenses: canManageExpenses,
-    customers: canViewCustomers,
-    my_requests: canViewOwnPurchaseRequests,
-    buying_list: canBuyAssigned,
-    to_receive: canReceiveDeliveries,
-    kitchen_receiving: canKitchenReceive && shiftOpen,
-    wholesale_dispatch: canTradeDispatch,
-    wholesale_reconcile: canTradeReconcile,
-  }), [
-    canRingSales, canViewReceipts, canViewActiveOrders, canViewShiftHistory, canViewReports,
-    canAccessOps, canManageExpenses, canViewCustomers, canOpenShift, canCloseShift, shiftOpen,
-    canViewOwnPurchaseRequests, canBuyAssigned, canReceiveDeliveries, canKitchenReceive,
-    canTradeDispatch, canTradeReconcile,
-  ]);
 
   /*
    * Move off a pane the cashier can no longer use — but only once the shift

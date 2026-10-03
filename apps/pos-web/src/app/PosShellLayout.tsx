@@ -895,7 +895,7 @@ export function PosShellLayout() {
             <SalesReportPanel
             onClose={() => setPane(canRingSales && shiftOpen ? "sales" : canAccessOps ? "ops" : "shift")}
             onOpenReceipts={
-              canViewReceipts && shiftOpen ? () => setPane("receipts") : undefined
+              canViewReceipts ? () => setPane("receipts") : undefined
             }
             onOpenShiftHistory={
               canViewShiftHistory ? () => setPane("shift_history") : undefined
