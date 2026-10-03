@@ -6,8 +6,10 @@ namespace App\Support;
 
 use BaconQrCode\Common\ErrorCorrectionLevel;
 use BaconQrCode\Encoder\Encoder;
+use BaconQrCode\Renderer\Color\Rgb;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
+use BaconQrCode\Renderer\RendererStyle\Fill;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
 
@@ -49,9 +51,10 @@ final class QrSvg
         bool $withLogoSpace = false,
         ?string $logo = null,
         float $logoRatio = self::LOGO_RATIO,
+        ?string $color = null,
     ): string {
         $mark = self::embeddable($logo);
-        $renderer = new ImageRenderer(new RendererStyle($size, 1), new SvgImageBackEnd);
+        $renderer = new ImageRenderer(new RendererStyle($size, 1, null, null, self::fill($color)), new SvgImageBackEnd);
 
         $svg = (new Writer($renderer))->writeString(
             $text,
@@ -69,7 +72,7 @@ final class QrSvg
      * 300dpi print has pixels to spare without carrying the 1080px masthead
      * inside every code.
      */
-    public static function branded(string $text, int $size = 160, float $logoRatio = self::LOGO_RATIO): string
+    public static function branded(string $text, int $size = 160, float $logoRatio = self::LOGO_RATIO, ?string $color = null): string
     {
         return self::dataUri(
             $text,
@@ -77,7 +80,30 @@ final class QrSvg
             withLogoSpace: true,
             logo: BrandMark::dataUri((int) round($size * $logoRatio * 2)),
             logoRatio: $logoRatio,
+            color: $color,
         );
+    }
+
+    /**
+     * Modules in a brand colour instead of black (owner, 2026-10-03: the
+     * complaint poster "too much black"). Only a dark colour is accepted —
+     * a scanner needs dark on light — so anything lighter than the cut-off
+     * falls back to black rather than printing a code nobody can read.
+     */
+    private static function fill(?string $color): ?Fill
+    {
+        if ($color === null || !preg_match('/^#?([0-9a-f]{6})$/i', $color, $m)) {
+            return null;
+        }
+        [$r, $g, $b] = array_map('hexdec', str_split($m[1], 2));
+        $lum = fn (int $c): float => ($v = $c / 255) <= 0.03928 ? $v / 12.92 : (($v + 0.055) / 1.055) ** 2.4;
+        $luminance = 0.2126 * $lum($r) + 0.7152 * $lum($g) + 0.0722 * $lum($b);
+        // Contrast with white of at least 7:1.
+        if ((1.05 / ($luminance + 0.05)) < 7.0) {
+            return null;
+        }
+
+        return Fill::uniformColor(new Rgb(255, 255, 255), new Rgb($r, $g, $b));
     }
 
     /** `data:` URI for an <img>, which dompdf renders the same as a browser. */
@@ -87,8 +113,9 @@ final class QrSvg
         bool $withLogoSpace = false,
         ?string $logo = null,
         float $logoRatio = self::LOGO_RATIO,
+        ?string $color = null,
     ): string {
-        return 'data:image/svg+xml;base64,' . base64_encode(self::svg($text, $size, $withLogoSpace, $logo, $logoRatio));
+        return 'data:image/svg+xml;base64,' . base64_encode(self::svg($text, $size, $withLogoSpace, $logo, $logoRatio, $color));
     }
 
     /**

@@ -114,11 +114,15 @@ class ComplaintBoxTest extends TestCase
         // The code on the page is byte-for-byte the code for the live address,
         // logo and all, at the size it has had on the wall since 2026-09-19.
         preg_match('#data:image/svg\+xml;base64,[A-Za-z0-9+/=]+#', $res->getContent(), $m);
+        // Owner, 2026-10-03: drawn in deep brand brown rather than black.
         $this->assertSame(
-            \App\Support\ComplaintBoxLink::qr('https://bakeandgrill.mv/complain?from=poster', 480, 0.33),
+            \App\Support\ComplaintBoxLink::qr('https://bakeandgrill.mv/complain?from=poster', 480, 0.33, '#5A260A'),
             $m[0],
         );
-        $this->assertStringContainsString('<image ', base64_decode(substr($m[0], 26)));
+        $svg = base64_decode(substr($m[0], 26));
+        $this->assertStringContainsString('<image ', $svg);
+        $this->assertStringContainsString('fill="#5a260a"', $svg);
+        $this->assertStringNotContainsString('fill="#000000"', $svg);
     }
 
     public function test_an_anonymous_complaint_reaches_the_owner_by_sms_and_nobody_else(): void

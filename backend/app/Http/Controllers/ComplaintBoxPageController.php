@@ -49,7 +49,9 @@ class ComplaintBoxPageController extends Controller
             // A third of the width, as it has been on the wall since
             // 2026-09-19 ("make the logo inside the qr code bigger") — the
             // mark is inside the code's SVG now rather than laid over it.
-            'qr' => ComplaintBoxLink::qr($url, 480, 0.33),
+            // Deep brand brown rather than black (owner, 2026-10-03: "too much
+            // black"); 11:1 against white, so it scans like a black code.
+            'qr' => ComplaintBoxLink::qr($url, 480, 0.33, '#5A260A'),
             'siteName' => (string) content('site_name', 'Bake & Grill'),
             // Owner, 2026-10-03: "enhance the complaint QR print layout with
             // branding, like a header or footer". The header carries the logo,

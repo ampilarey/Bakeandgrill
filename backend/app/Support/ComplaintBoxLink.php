@@ -43,9 +43,9 @@ final class ComplaintBoxLink
      * be a second picture the view laid on top, so only two of the five
      * places that print this code ever showed it. It is inside the SVG now.
      */
-    public static function qr(string $url, int $size = 200, float $logoRatio = QrSvg::LOGO_RATIO): string
+    public static function qr(string $url, int $size = 200, float $logoRatio = QrSvg::LOGO_RATIO, ?string $color = null): string
     {
-        return QrSvg::branded($url, $size, $logoRatio);
+        return QrSvg::branded($url, $size, $logoRatio, $color);
     }
 
     /**

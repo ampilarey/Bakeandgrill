@@ -30,21 +30,25 @@
            is costly to print". Now ink-light: a compact white strip with a small
            logo beside the name and a thin rust rule, and a plain-text footer
            above a hairline. Colour is only in thin lines and small accents. */
-        .brand { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 16px 24px 12px; margin: 0 24px; border-bottom: 2px solid #B74B0C; text-align: left; }
+        /* Owner, 2026-10-03, third pass: "too much black — a little or average
+           colour is OK for printing". So: the code and the text in brand browns
+           rather than black, the header and footer on a pale warm tint (light on
+           ink) edged with a rust rule, and the name and heading in rust. */
+        .brand { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 14px 24px 12px; background: #FBF1EA; border-bottom: 3px solid #B74B0C; text-align: left; }
         .brand__logo { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; display: block; flex: none; }
-        .brand__name { font-size: 18px; font-weight: 800; letter-spacing: -0.01em; margin: 0; line-height: 1.15; color: #1C1408; }
-        .brand__tagline { font-size: 12px; margin: 2px 0 0; color: #6B5D4F; line-height: 1.3; }
+        .brand__name { font-size: 18px; font-weight: 800; letter-spacing: -0.01em; margin: 0; line-height: 1.15; color: #B74B0C; }
+        .brand__tagline { font-size: 12px; margin: 2px 0 0; color: #7A5A43; line-height: 1.3; }
         .content { padding: 26px 28px 20px; }
         .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #B74B0C; margin: 0 0 8px; }
-        h1 { font-size: 30px; letter-spacing: -0.03em; margin: 0 0 8px; line-height: 1.1; }
-        p { color: #6B5D4F; font-size: 15px; line-height: 1.5; margin: 0 0 18px; }
-        .qr { position: relative; width: 248px; height: 248px; margin: 0 auto 12px; padding: 10px; border: 2px solid #F0EBE5; border-radius: 18px; }
+        h1 { font-size: 30px; letter-spacing: -0.03em; margin: 0 0 8px; line-height: 1.1; color: #B74B0C; }
+        p { color: #7A5A43; font-size: 15px; line-height: 1.5; margin: 0 0 18px; }
+        .qr { position: relative; width: 248px; height: 248px; margin: 0 auto 12px; padding: 10px; border: 2px solid #E9C3A8; border-radius: 18px; }
         .qr img.code { width: 100%; height: 100%; display: block; }
-        .url { font-weight: 700; font-size: 17px; color: #1C1408; word-break: break-all; margin-bottom: 6px; }
+        .url { font-weight: 700; font-size: 17px; color: #5A260A; word-break: break-all; margin-bottom: 6px; }
         .small { font-size: 12px; color: #9C8E7E; }
-        .foot { margin: 0 24px; padding: 10px 0 14px; border-top: 1px solid #E8E0D8; color: #1C1408; }
+        .foot { padding: 10px 20px 14px; background: #FBF1EA; border-top: 3px solid #B74B0C; color: #5A260A; }
         .foot__line { font-size: 13px; font-weight: 700; letter-spacing: 0.01em; }
-        .foot__address { font-size: 11.5px; color: #6B5D4F; margin-top: 4px; }
+        .foot__address { font-size: 11.5px; color: #7A5A43; margin-top: 4px; }
         .foot__thanks { font-size: 11px; color: #B74B0C; margin-top: 5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
         .actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 16px auto 0; max-width: 440px; }
         .print, .download { min-height: 44px; padding: 0 20px; border: none; border-radius: 10px; background: #B74B0C; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
@@ -56,14 +60,14 @@
             .sheet { border: none; border-radius: 0; margin: 0; max-width: none; width: 148mm; height: 209mm; display: flex; flex-direction: column; }
             /* Measured to fit one A5 sheet (148 x 210 mm) with the footer on it. */
             .sheet { overflow: hidden; }
-            .brand { padding: 7mm 0 3mm; margin: 0 12mm; flex: none; }
+            .brand { padding: 6mm 12mm 4mm; flex: none; }
             .brand__logo { width: 13mm; height: 13mm; }
             .brand__name { font-size: 20px; }
             .content { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; justify-content: center; padding: 6mm 12mm 4mm; }
             h1 { font-size: 27px; }
             p { font-size: 14px; margin-bottom: 4mm; }
             .qr { width: 88mm; height: 88mm; margin-bottom: 3mm; }
-            .foot { padding: 3mm 0 7mm; margin: 0 12mm; flex: none; }
+            .foot { padding: 4mm 12mm 6mm; flex: none; }
             .foot__line { font-size: 14px; }
             .actions, .hint { display: none; }
         }
@@ -147,7 +151,7 @@
         };
         var LOGO = @json($canvasLogo);
         var FONT = '"Plus Jakarta Sans", "Segoe UI", Helvetica, Arial, sans-serif';
-        var RUST = '#B74B0C', INK = '#1C1408';
+        var RUST = '#B74B0C', INK = '#5A260A', TINT = '#FBF1EA', SOFT = '#7A5A43';
 
         function wrap(ctx, text, maxWidth) {
             var words = text.split(' '), lines = [], line = '';
@@ -159,9 +163,9 @@
             return lines;
         }
 
-        // Owner, 2026-10-03: same ink-light look as the printed card — a
-        // compact header (small logo beside the name, thin rust rule) and a
-        // plain-text footer above a hairline. No filled colour bands.
+        // Owner, 2026-10-03: same look as the printed card — pale warm tint
+        // header and footer edged in rust, name and heading in rust, text and
+        // code in brand brown rather than black.
         function makePng() {
             var W = 1200, pad = 90, qrSize = 800, logoSize = 120;
             var measure = document.createElement('canvas').getContext('2d');
@@ -187,6 +191,10 @@
 
             return Promise.all(waits).then(function (imgs) {
                 var qr = imgs[0], logo = imgs[1] || null;
+                ctx.fillStyle = TINT;
+                ctx.fillRect(0, 0, W, headerH);
+                ctx.fillStyle = RUST;
+                ctx.fillRect(0, headerH - 8, W, 8);
 
                 // Header: logo and name side by side, centred as a group.
                 ctx.font = '800 50px ' + FONT;
@@ -207,17 +215,15 @@
                     gx += logoSize + gap;
                 }
                 ctx.textAlign = 'left';
-                ctx.fillStyle = INK;
+                ctx.fillStyle = RUST;
                 ctx.font = '800 50px ' + FONT;
                 ctx.fillText(TEXT.name, gx, TEXT.tagline ? midY - 4 : midY + 17);
                 if (TEXT.tagline) {
-                    ctx.fillStyle = '#6B5D4F';
+                    ctx.fillStyle = SOFT;
                     ctx.font = '30px ' + FONT;
                     ctx.fillText(TEXT.tagline, gx, midY + 38);
                 }
-                // Thin rust rule under the header.
-                ctx.fillStyle = RUST;
-                ctx.fillRect(pad, headerH - 6, W - pad * 2, 5);
+                // Rust rule under the header.
 
                 ctx.textAlign = 'center';
                 var y = headerH + 90;
@@ -225,17 +231,17 @@
                 ctx.font = 'bold 26px ' + FONT;
                 ctx.fillText(TEXT.eyebrow.split('').join(' '), W / 2, y);
                 y += 74;
-                ctx.fillStyle = INK;
+                ctx.fillStyle = RUST;
                 ctx.font = 'bold 64px ' + FONT;
                 ctx.fillText(TEXT.title, W / 2, y);
                 y += 58;
-                ctx.fillStyle = '#6B5D4F';
+                ctx.fillStyle = SOFT;
                 ctx.font = '34px ' + FONT;
                 bodyLines.forEach(function (l) { ctx.fillText(l, W / 2, y); y += 46; });
                 y += 10;
 
                 var qx = (W - qrSize) / 2;
-                ctx.strokeStyle = '#F0EBE5';
+                ctx.strokeStyle = '#E9C3A8';
                 ctx.lineWidth = 6;
                 ctx.strokeRect(qx - 24, y - 24, qrSize + 48, qrSize + 48);
                 ctx.drawImage(qr, qx, y, qrSize, qrSize);
@@ -250,14 +256,16 @@
 
                 // Footer: a hairline, then plain text.
                 var fy = H - footH;
-                ctx.fillStyle = '#E8E0D8';
-                ctx.fillRect(pad, fy, W - pad * 2, 3);
+                ctx.fillStyle = TINT;
+                ctx.fillRect(0, fy, W, footH);
+                ctx.fillStyle = RUST;
+                ctx.fillRect(0, fy, W, 8);
                 y = fy + 40 + 30;
                 ctx.fillStyle = INK;
                 ctx.font = 'bold 34px ' + FONT;
                 contactLines.forEach(function (l) { ctx.fillText(l, W / 2, y); y += 46; });
                 if (TEXT.address) {
-                    ctx.fillStyle = '#6B5D4F';
+                    ctx.fillStyle = SOFT;
                     ctx.font = '28px ' + FONT;
                     ctx.fillText(TEXT.address, W / 2, y);
                     y += 42;
