@@ -2360,6 +2360,14 @@ html, body, #root {
     border-radius: 10px;
   }
 
+  /* Owner, 2026-10-03: "coins are too big". On a phone the coin plate took
+   * the full cell width, about twice the height of a note, so every coin
+   * row stood twice as tall as a note row. Cap it near a note's height. */
+  .close-shift-denom-photo--coin {
+    width: min(100%, 60px);
+    height: auto;
+  }
+
 
 
   .close-shift-denom-row__meta {
