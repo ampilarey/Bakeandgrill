@@ -1890,9 +1890,14 @@ html, body, #root {
   background: transparent;
 }
 
+/* Owner, 2026-10-03: "coins are too big". A coin used to fill the cell's
+ * height, and on every layout but landscape tablets that cell is taller
+ * than a note, so coins came out up to twice a note's height. Now a coin
+ * is exactly as tall as a note in the same cell: the note is 7/15 of the
+ * cell's width tall, so the coin is 7/15 of the width across. */
 .close-shift-denom-photo--coin {
-  width: auto;
-  height: 100%;
+  width: calc(100% * 7 / 15);
+  height: auto;
   max-width: 100%;
   aspect-ratio: 1;
   align-self: center;
@@ -2360,14 +2365,6 @@ html, body, #root {
     border-radius: 10px;
   }
 
-  /* Owner, 2026-10-03: "coins are too big". On a phone the coin plate took
-   * the full cell width, about twice the height of a note, so every coin
-   * row stood twice as tall as a note row. Cap it near a note's height. */
-  .close-shift-denom-photo--coin {
-    width: min(100%, 60px);
-    height: auto;
-  }
-
 
 
   .close-shift-denom-row__meta {
@@ -2763,6 +2760,12 @@ html, body, #root {
     height: 100%;
     max-width: 100%;
     max-height: none;
+  }
+
+  /* …and the coin from the same height, so it matches the note. */
+  .close-shift-denom-photo--coin {
+    width: auto;
+    height: 100%;
   }
 
   .close-shift-denom-row__meta {
