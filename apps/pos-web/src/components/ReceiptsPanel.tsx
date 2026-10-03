@@ -178,7 +178,12 @@ export function ReceiptsPanel({
   canViewAllTills = false,
 }: Props) {
   const isNarrow = useMediaQuery("(max-width: 760px)");
-  const [scope, setScope] = useState<Scope>(defaultScope);
+  // Owner, 2026-10-03: a cashier sees the open shift's receipts and nothing
+  // else ("when a new shift is opened he should see new shift receipts
+  // only"); the server scopes them the same way. Scopes are for whoever may
+  // view all tills.
+  const canPickScope = canViewAllTills;
+  const [scope, setScope] = useState<Scope>(canPickScope ? defaultScope : "shift");
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
   const [payFilter, setPayFilter] = useState<PayFilter>("all");
@@ -227,7 +232,7 @@ export function ReceiptsPanel({
     // Recompute on each fetch so a POS left open past midnight stays correct,
     // and use local calendar date (not UTC) for Maldives overnight shifts.
     ...(scope === "today" ? { date: localDateYmd() } : {}),
-    ...(scope === "shift" && shiftId ? { shift_id: shiftId } : {}),
+    ...(scope === "shift" ? (shiftId ? { shift_id: shiftId } : { current_shift: true }) : {}),
     ...(scope === "range" && allTills ? { ...(rangeFrom ? { date_from: rangeFrom } : {}), ...(rangeTo ? { date_to: rangeTo } : {}) } : {}),
     ...(allTills && stateFilter === "live" ? { unpaid_only: true } : {}),
     ...(allTills && stateFilter === "paid" ? { paid_only: true } : {}),
@@ -362,7 +367,7 @@ export function ReceiptsPanel({
             ))}
           </div>
         )}
-        <div role="group" aria-label="Which receipts" style={{ display: "flex", background: palette.bgAlt, borderRadius: 10, padding: 3 }}>
+        {canPickScope && <div role="group" aria-label="Which receipts" style={{ display: "flex", background: palette.bgAlt, borderRadius: 10, padding: 3 }}>
           {scopes.map((s) => {
             const disabled = s === "shift" && !shiftId;
             const on = scope === s;
@@ -377,7 +382,7 @@ export function ReceiptsPanel({
               >{SCOPE_LABEL[s]}</button>
             );
           })}
-        </div>
+        </div>}
         {allTills && scope === "range" && (
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             <input type="date" value={rangeFrom} max={rangeTo || undefined} onChange={(e) => setRangeFrom(e.target.value)} aria-label="From date" style={filterInput} />
@@ -482,7 +487,9 @@ export function ReceiptsPanel({
   return (
     <PanelShell
       title="Receipts"
-      subtitle={allTills ? "Every till and cashier — live and paid" : "Your sales — every device you've logged in on"}
+      subtitle={allTills
+        ? "Every till and cashier — live and paid"
+        : canPickScope ? "Your sales — every device you've logged in on" : "Your sales this shift"}
       onClose={onClose}
       toolbar={showList ? scopeBar : undefined}
     >

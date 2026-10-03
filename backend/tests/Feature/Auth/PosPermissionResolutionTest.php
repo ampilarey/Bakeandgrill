@@ -192,8 +192,10 @@ class PosPermissionResolutionTest extends TestCase
             'pin_hash' => Hash::make('1234'), 'is_active' => true,
         ]);
 
-        $mine = Order::factory()->paid()->create(['user_id' => $this->staff->id]);
-        $theirs = Order::factory()->paid()->create(['user_id' => $other->id]);
+        // Owner, 2026-10-03: a cashier's receipts are their open shift's only.
+        $shift = \App\Models\Shift::create(['user_id' => $this->staff->id, 'opened_at' => now()->subHour(), 'opening_cash' => 0]);
+        $mine = Order::factory()->paid()->create(['user_id' => $this->staff->id, 'shift_id' => $shift->id]);
+        $theirs = Order::factory()->paid()->create(['user_id' => $other->id, 'shift_id' => $shift->id]);
 
         Sanctum::actingAs($this->staff, ['staff']);
 

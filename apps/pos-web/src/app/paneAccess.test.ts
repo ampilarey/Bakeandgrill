@@ -3,7 +3,7 @@ import { computePaneAccess, type PaneAccessFlags } from "./paneAccess";
 
 const none: PaneAccessFlags = {
   shiftOpen: false,
-  canRingSales: false, canViewReceipts: false, canViewActiveOrders: false,
+  canRingSales: false, canViewReceipts: false, canViewAllTills: false, canViewActiveOrders: false,
   canOpenShift: false, canCloseShift: false, canViewShiftHistory: false, canViewReports: false,
   canAccessOps: false, canManageExpenses: false, canViewCustomers: false,
   canViewOwnPurchaseRequests: false, canBuyAssigned: false, canReceiveDeliveries: false,
@@ -11,14 +11,21 @@ const none: PaneAccessFlags = {
 };
 
 describe("computePaneAccess", () => {
-  it("opens Receipts on the permission alone, with no shift open", () => {
+  it("opens Receipts without a shift for whoever may view all tills", () => {
     // Owner, 2026-10-03: "admin POS doesn't show receipts. He should be able
     // to see without opening the shifts."
-    const owner = computePaneAccess({ ...none, canViewReceipts: true, canAccessOps: true, canRingSales: true, canViewActiveOrders: true });
+    const owner = computePaneAccess({ ...none, canViewReceipts: true, canViewAllTills: true, canAccessOps: true, canRingSales: true, canViewActiveOrders: true });
     expect(owner.receipts).toBe(true);
     expect(owner.sales).toBe(false);
     expect(owner.open_tickets).toBe(false);
     expect(owner.ops).toBe(true);
+  });
+
+  it("shows a cashier Receipts only while their shift is open", () => {
+    // Owner, 2026-10-03: "if the shift is closed he should not see the receipts".
+    const cashier = { ...none, canViewReceipts: true, canRingSales: true };
+    expect(computePaneAccess(cashier).receipts).toBe(false);
+    expect(computePaneAccess({ ...cashier, shiftOpen: true }).receipts).toBe(true);
   });
 
   it("keeps the panes that take money or move tickets behind an open shift", () => {

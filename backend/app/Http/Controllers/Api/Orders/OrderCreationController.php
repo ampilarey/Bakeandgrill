@@ -243,6 +243,18 @@ class OrderCreationController extends Controller
         // Cashier scope for receipts/history only — active orders are venue-wide.
         if (!$canViewAllStations && !($request->filled('active_only') && $request->boolean('active_only'))) {
             $query->where('user_id', $cashierId);
+
+            // Owner, 2026-10-03: "if the shift is closed he should not see the
+            // receipts, and when a new shift is opened he should see new shift
+            // receipts only." So a cashier's receipts are their open shift's,
+            // full stop; with no shift open there are none. Their parked and
+            // open tickets are not receipts and still carry over a shift.
+            $ticketFeed = ($request->filled('held_only') && $request->boolean('held_only'))
+                || ($request->filled('open_only') && $request->boolean('open_only'));
+            if (!$ticketFeed) {
+                $openShiftId = \App\Models\Shift::where('user_id', $cashierId)->whereNull('closed_at')->value('id');
+                $openShiftId === null ? $query->whereRaw('1 = 0') : $query->where('shift_id', $openShiftId);
+            }
         }
 
         // Receipt search: order number, ticket name, customer phone, customer name.

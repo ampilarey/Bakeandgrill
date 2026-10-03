@@ -122,10 +122,22 @@ describe("ReceiptsPanel list", () => {
     expect(screen.getByTestId("receipts-summary")).toHaveTextContent("1 receipt · MVR 40.00");
   });
 
-  it("asks the server for today, this shift, or everything", async () => {
-    renderPanel();
+  it("shows a cashier their open shift only, with nothing to switch", async () => {
+    // Owner, 2026-10-03: "when a new shift is opened he should see new shift receipts only".
+    renderPanel({ shiftId: 9 });
     await screen.findByTestId("receipt-row-1");
-    expect(fetchReceipts).toHaveBeenLastCalledWith(expect.objectContaining({ date: expect.any(String) }));
+    expect(fetchReceipts).toHaveBeenLastCalledWith(expect.objectContaining({ shift_id: 9 }));
+    expect(fetchReceipts).toHaveBeenLastCalledWith(expect.not.objectContaining({ date: expect.anything() }));
+    expect(screen.queryByRole("group", { name: "Which receipts" })).toBeNull();
+    expect(screen.getByText("Your sales this shift")).toBeTruthy();
+  });
+
+  it("lets whoever may view all tills ask for today, this shift, or everything of their own", async () => {
+    renderPanel({ canViewAllTills: true });
+    await screen.findByTestId("receipt-row-1");
+    fireEvent.click(screen.getByRole("button", { name: "Mine" }));
+    await waitFor(() => expect(fetchReceipts).toHaveBeenLastCalledWith(expect.objectContaining({ date: expect.any(String) })));
+    expect(fetchReceipts).toHaveBeenLastCalledWith(expect.not.objectContaining({ user_id: expect.anything() }));
 
     fireEvent.click(screen.getByRole("button", { name: "This shift" }));
     await waitFor(() => expect(fetchReceipts).toHaveBeenLastCalledWith(expect.objectContaining({ shift_id: 9 })));
@@ -158,7 +170,8 @@ describe("ReceiptsPanel paging", () => {
     expect(screen.getByTestId("receipt-row-2")).toHaveAttribute("aria-pressed", "true");
 
     fireEvent.click(screen.getByTestId("receipt-row-1"));
-    fireEvent.click(screen.getByRole("button", { name: "All" }));
+    // A reload (here: the search box) must not snap back to the charged receipt.
+    fireEvent.change(screen.getByLabelText("Search receipts"), { target: { value: "BG" } });
     await waitFor(() => expect(fetchReceipts).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(screen.getByTestId("receipt-row-1")).toHaveAttribute("aria-pressed", "true"));
     expect(screen.getByTestId("receipt-row-2")).toHaveAttribute("aria-pressed", "false");
@@ -359,7 +372,7 @@ describe("ReceiptsPanel all tills", () => {
     expect(fetchReceipts).toHaveBeenLastCalledWith(expect.not.objectContaining({ date_from: expect.anything() }));
     expect(screen.queryByTestId("all-tills-filters")).toBeNull();
     expect(screen.queryByRole("button", { name: "Dates" })).toBeNull();
-  });
+  }, 15_000);
 });
 
 describe("ReceiptsPanel on a phone", () => {

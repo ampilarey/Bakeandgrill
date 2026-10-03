@@ -7,6 +7,7 @@ namespace Tests\Feature\Orders;
 use App\Domains\Permissions\PermissionCatalogSync;
 use App\Models\Device;
 use App\Models\Order;
+use App\Models\Shift;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -74,15 +75,29 @@ class ReceiptsAllTillsTest extends TestCase
         $this->assertSame('Back till', $row['device']['name'], 'and its till');
     }
 
-    public function test_a_cashier_still_sees_only_their_own_and_cannot_use_the_filters_endpoint(): void
+    public function test_a_cashier_sees_only_their_open_shift_and_cannot_use_the_filters_endpoint(): void
     {
+        // Owner, 2026-10-03: "if the shift is closed he should not see the
+        // receipts, and when a new shift is opened he should see new shift
+        // receipts only."
         Sanctum::actingAs($this->hassan, ['staff']);
+        $this->assertSame([], $this->numbers([]), 'no shift open: no receipts');
 
-        $this->assertSame(['H-LIVE', 'H-PAID'], $this->numbers([]));
-        $this->assertSame(['H-PAID'], $this->numbers(['paid_only' => 1]));
+        $old = Shift::create(['user_id' => $this->hassan->id, 'device_id' => $this->front->id, 'opened_at' => now()->subDay(), 'closed_at' => now()->subDay()->addHours(8), 'opening_cash' => 100]);
+        Order::where('order_number', 'H-PAID')->update(['shift_id' => $old->id]);
+        Order::factory()->create(['order_number' => 'H-HELD', 'user_id' => $this->hassan->id, 'shift_id' => $old->id, 'status' => 'held', 'payment_status' => 'unpaid']);
+        $shift = Shift::create(['user_id' => $this->hassan->id, 'device_id' => $this->front->id, 'opened_at' => now()->subHour(), 'opening_cash' => 100]);
+        Order::where('order_number', 'H-LIVE')->update(['shift_id' => $shift->id]);
+        Order::factory()->create(['order_number' => 'H-NEW', 'user_id' => $this->hassan->id, 'shift_id' => $shift->id, 'status' => 'completed', 'payment_status' => 'paid', 'paid_at' => now()]);
+
+        $this->assertSame(['H-LIVE', 'H-NEW'], $this->numbers([]), 'the open shift only');
+        $this->assertSame(['H-NEW'], $this->numbers(['paid_only' => 1]));
+        $this->assertSame([], $this->numbers(['date' => now()->subDay()->toDateString()]), 'a date cannot reach past the open shift');
+        $this->assertSame([], $this->numbers(['shift_id' => $old->id]), 'nor can naming the closed shift');
+        $this->assertSame(['H-HELD'], $this->numbers(['held_only' => 1]), 'a parked ticket from an earlier shift is still theirs to resume');
         // Asking for another cashier is refused; asking for a till is ignored.
         $this->getJson('/api/orders?user_id=' . $this->aisha->id)->assertForbidden();
-        $this->assertSame(['H-LIVE', 'H-PAID'], $this->numbers(['device_id' => $this->back->id]));
+        $this->assertSame(['H-LIVE', 'H-NEW'], $this->numbers(['device_id' => $this->back->id]));
 
         $this->getJson('/api/orders/receipt-filters')->assertForbidden();
     }

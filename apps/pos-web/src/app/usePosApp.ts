@@ -1243,12 +1243,12 @@ export function usePosApp() {
   }, [isLoggedIn, isLocked, lockScreen, canLockScreen]);
 
   const paneAllowed = useMemo(() => computePaneAccess({
-    shiftOpen, canRingSales, canViewReceipts, canViewActiveOrders, canOpenShift, canCloseShift,
+    shiftOpen, canRingSales, canViewReceipts, canViewAllTills, canViewActiveOrders, canOpenShift, canCloseShift,
     canViewShiftHistory, canViewReports, canAccessOps, canManageExpenses, canViewCustomers,
     canViewOwnPurchaseRequests, canBuyAssigned, canReceiveDeliveries, canKitchenReceive,
     canTradeDispatch, canTradeReconcile,
   }), [
-    shiftOpen, canRingSales, canViewReceipts, canViewActiveOrders, canOpenShift, canCloseShift,
+    shiftOpen, canRingSales, canViewReceipts, canViewAllTills, canViewActiveOrders, canOpenShift, canCloseShift,
     canViewShiftHistory, canViewReports, canAccessOps, canManageExpenses, canViewCustomers,
     canViewOwnPurchaseRequests, canBuyAssigned, canReceiveDeliveries, canKitchenReceive,
     canTradeDispatch, canTradeReconcile,
