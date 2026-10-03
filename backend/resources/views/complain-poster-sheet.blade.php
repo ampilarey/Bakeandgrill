@@ -14,13 +14,18 @@
     [$cardW, $cardH] = $cardMm;
     [$sheetW, $sheetH] = $sheetMm;
     $s = (float) $scale;
-    $pt = fn (float $base, float $min = 5.5): float => max($min, round($base * $s, 2));
+    // Owner, 2026-10-03, "I need more" than 9 a sheet: at 20 and up a card is
+    // sticker-sized, so it gets a compact design — name strip, short heading,
+    // the code and the address, no footer — and type may go down to 4.2pt.
+    $tiny = $s < 0.32;
+    $minPt = $tiny ? 4.2 : 5.5;
+    $pt = fn (float $base, ?float $min = null): float => max($min ?? $minPt, round($base * $s, 2));
     $full = $s >= 0.7;      // room for everything
     $mid = $s >= 0.55;      // room for the eyebrow and the thank-you line
     $multi = ($layout['cols'] * $layout['rows']) > 1;
 
-    $headH = round($cardH * 0.14, 2);
-    $footH = round($cardH * ($full ? 0.13 : 0.12), 2);
+    $headH = round($cardH * ($tiny ? 0.15 : 0.14), 2);
+    $footH = $tiny ? 0 : round($cardH * ($full ? 0.13 : 0.12), 2);
     $bodyH = round($cardH - $headH - $footH, 2);
     $line = fn (float $points, float $leading = 1.3): float => $points * 0.3528 * $leading;
     $textH = ($mid ? $line($pt(7.5)) + 1.5 * $s : 0)
@@ -28,8 +33,9 @@
         + ($full ? 2 * $line($pt(9.5), 1.35) + 2 * $s : 0)
         + $line($pt(11)) + 1 * $s
         + ($full ? $line($pt(8)) : 0)
-        + 10 * $s + 4;
-    $qrMm = round(max(18, min($cardW * 0.72, $bodyH - $textH)), 2);
+        + ($tiny ? 3 : 10 * $s + 4);
+    $qrMm = round(max(16, min($cardW * ($tiny ? 0.78 : 0.72), $bodyH - $textH)), 2);
+    $title = $tiny ? 'Not happy? Scan & tell us.' : 'Not happy? Tell the owner.';
     $logoMm = round($headH * 0.6, 2);
 
     $displayUrl = preg_replace('#^https?://#', '', preg_replace('#\?.*$#', '', $url));
@@ -58,9 +64,9 @@
         .hd table { margin: 0 auto; }
         .hd img { width: {{ $logoMm }}mm; height: {{ $logoMm }}mm; display: block; }
         .hd .gap { width: {{ round(3 * $s, 2) }}mm; }
-        .name { font-size: {{ $pt(15) }}pt; font-weight: bold; color: #B74B0C; line-height: 1.15; text-align: left; white-space: nowrap; }
+        .name { font-size: {{ $pt(15, $tiny ? 5 : null) }}pt; font-weight: bold; color: #B74B0C; line-height: 1.15; text-align: left; white-space: nowrap; }
         .tagline { font-size: {{ $pt(9) }}pt; color: #7A5A43; line-height: 1.3; text-align: left; white-space: nowrap; }
-        .bd { height: {{ $bodyH }}mm; text-align: center; vertical-align: middle; padding: 0 {{ round(6 * $s, 2) }}mm; }
+        .bd { height: {{ $bodyH }}mm; text-align: center; vertical-align: middle; padding: 0 {{ $tiny ? 1 : round(6 * $s, 2) }}mm; }
         .eyebrow { font-size: {{ $pt(7.5) }}pt; font-weight: bold; letter-spacing: 0.12em; color: #B74B0C; margin: 0 0 {{ round(1.5 * $s, 2) }}mm; }
         .title { font-size: {{ $pt(19) }}pt; font-weight: bold; color: #B74B0C; line-height: 1.2; margin: 0 0 {{ round(1.5 * $s, 2) }}mm; }
         .body { font-size: {{ $pt(9.5) }}pt; color: #7A5A43; line-height: 1.35; margin: 0 0 {{ round(3 * $s, 2) }}mm; }
@@ -117,7 +123,7 @@
                             </td></tr>
                             <tr><td class="bd">
                                 @if ($mid)<div class="eyebrow">COMPLAINT BOX</div>@endif
-                                <div class="title">Not happy? Tell the owner.</div>
+                                <div class="title">{{ $title }}</div>
                                 @if ($full)
                                     <div class="body">Staff, food, service, cleanliness — scan and tell us. Anonymous if you like, or leave your number and we will message you back.</div>
                                 @endif
@@ -125,11 +131,13 @@
                                 <div class="url">{{ $displayUrl }}</div>
                                 @if ($full)<div class="note">Goes straight to the owner's phone.</div>@endif
                             </td></tr>
-                            <tr><td class="ft">
-                                @if ($contactLine !== '')<div class="contact">{{ $contactLine }}</div>@endif
-                                @if ($full && $contacts['address'] !== '')<div class="address">{{ $contacts['address'] }}</div>@endif
-                                @if ($mid)<div class="thanks">THANK YOU FOR HELPING US DO BETTER</div>@endif
-                            </td></tr>
+                            @if (!$tiny)
+                                <tr><td class="ft">
+                                    @if ($contactLine !== '')<div class="contact">{{ $contactLine }}</div>@endif
+                                    @if ($full && $contacts['address'] !== '')<div class="address">{{ $contacts['address'] }}</div>@endif
+                                    @if ($mid)<div class="thanks">THANK YOU FOR HELPING US DO BETTER</div>@endif
+                                </td></tr>
+                            @endif
                         </table>
                     </td>
                 @endfor

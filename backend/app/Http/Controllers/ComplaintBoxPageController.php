@@ -83,6 +83,13 @@ class ComplaintBoxPageController extends Controller
         'a4-4' => ['label' => '4 on A4', 'hint' => 'A6 size each', 'paper' => 'a4', 'orient' => 'portrait', 'cols' => 2, 'rows' => 2],
         'a4-6' => ['label' => '6 on A4', 'hint' => 'table cards', 'paper' => 'a4', 'orient' => 'landscape', 'cols' => 3, 'rows' => 2],
         'a4-9' => ['label' => '9 on A4', 'hint' => 'small table cards', 'paper' => 'a4', 'orient' => 'portrait', 'cols' => 3, 'rows' => 3],
+        // Owner, 2026-10-03: "you added up to 9 per A4? I need more."
+        'a4-12' => ['label' => '12 on A4', 'hint' => 'counter cards', 'paper' => 'a4', 'orient' => 'portrait', 'cols' => 3, 'rows' => 4],
+        'a4-16' => ['label' => '16 on A4', 'hint' => 'small cards', 'paper' => 'a4', 'orient' => 'portrait', 'cols' => 4, 'rows' => 4],
+        'a4-20' => ['label' => '20 on A4', 'hint' => 'stickers', 'paper' => 'a4', 'orient' => 'portrait', 'cols' => 4, 'rows' => 5],
+        'a4-24' => ['label' => '24 on A4', 'hint' => 'stickers', 'paper' => 'a4', 'orient' => 'portrait', 'cols' => 4, 'rows' => 6],
+        'a4-30' => ['label' => '30 on A4', 'hint' => 'small stickers', 'paper' => 'a4', 'orient' => 'portrait', 'cols' => 5, 'rows' => 6],
+        'a4-40' => ['label' => '40 on A4', 'hint' => 'mini stickers', 'paper' => 'a4', 'orient' => 'portrait', 'cols' => 5, 'rows' => 8],
     ];
 
     /** Sheet sizes in mm, portrait. */
@@ -116,10 +123,11 @@ class ComplaintBoxPageController extends Controller
         if ($layout['orient'] === 'landscape') {
             [$w, $h] = [$h, $w];
         }
-        // A millimetre of slack each way: the dashed cut lines add their own
-        // width, and without it the last line spills onto a second page.
-        $cardW = round(($w - 2 * self::MARGIN_MM - 1) / $layout['cols'], 2);
-        $cardH = round(($h - 2 * self::MARGIN_MM - 1) / $layout['rows'], 2);
+        // Slack for the dashed cut lines, which add their own width per row
+        // and column; without it the last line spills onto a second page.
+        $slack = fn (int $n): float => 0.5 + 0.3 * ($n + 1);
+        $cardW = round(($w - 2 * self::MARGIN_MM - $slack($layout['cols'])) / $layout['cols'], 2);
+        $cardH = round(($h - 2 * self::MARGIN_MM - $slack($layout['rows'])) / $layout['rows'], 2);
         $url = ComplaintBoxLink::url('poster');
 
         return [

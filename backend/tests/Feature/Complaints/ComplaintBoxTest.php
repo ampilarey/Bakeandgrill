@@ -340,7 +340,8 @@ class ComplaintBoxTest extends TestCase
                 ->assertSee('size: ' . $layout['paper'] . ' ' . $layout['orient'], false);
             $html = (string) $sheet->getContent();
             $this->assertSame($cards, substr_count($html, 'class="qr"'), "{$key}: one code per card");
-            $this->assertSame($cards, substr_count($html, 'Not happy? Tell the owner.'));
+            $this->assertSame($cards, substr_count($html, 'class="title"'));
+            $this->assertSame($cards, substr_count($html, 'bakeandgrill.mv/complain</div>'), "{$key}: every card shows the address");
 
             $pdf = $this->get('/complain/poster/sheet.pdf?layout=' . $key)->assertOk();
             $this->assertStringStartsWith('application/pdf', (string) $pdf->headers->get('content-type'));

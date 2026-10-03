@@ -60,10 +60,10 @@
         .sizes__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 10px; }
         .size { background: #fff; border: 1px solid #E8E0D8; border-radius: 14px; padding: 12px 10px; }
         .size__pic { height: 64px; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; }
-        .size__sheet { display: grid; gap: 2px; padding: 3px; background: #fff; border: 1.5px solid #CBB8A7; border-radius: 3px; }
+        .size__sheet { display: grid; gap: 1.5px; padding: 3px; background: #fff; border: 1.5px solid #CBB8A7; border-radius: 3px; }
         .size__sheet--portrait { width: 42px; height: 60px; }
         .size__sheet--landscape { width: 60px; height: 42px; }
-        .size__sheet i { display: block; background: #FBF1EA; border-top: 2px solid #B74B0C; border-radius: 1px; }
+        .size__sheet i { display: block; background: #FBF1EA; border-top: 2px solid #B74B0C; border-radius: 1px; min-height: 0; }
         .size__label { font-weight: 800; font-size: 14px; color: #1C1408; }
         .size__hint { font-size: 12px; color: #9C8E7E; margin: 2px 0 10px; }
         .size__actions { display: flex; gap: 6px; }
