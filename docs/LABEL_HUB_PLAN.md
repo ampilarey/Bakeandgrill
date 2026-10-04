@@ -52,8 +52,10 @@ What the system already has that the hub reuses:
 ### Phase 1 (build first, ship as one merge or three)
 
 1. **Label data on menu items** (migration, API, item editor tab).
-2. **Pack stickers, English and Dhivehi**, 4 per A4, from item data, with optional
-   filled-in dates, batch and quantity.
+2. **Pack stickers, English and Dhivehi**, from item data, with optional
+   filled-in dates, batch and quantity, on every label stock listed in 5.1 (plain
+   A4 with cut lines, pre-cut sheets, single-label pages for label printers,
+   custom size).
 3. **Box label**, blank template or filled from a wholesale delivery.
 4. **Labels hub page** in Admin, with permissions, print and PDF.
 5. **Print buttons** on a kitchen production batch and on a wholesale delivery.
@@ -62,7 +64,6 @@ What the system already has that the hub reuses:
 
 ### Phase 2
 
-- More sheet sizes (A5 2-up, 8-up, 65 × 71 mm 12-up, roll label sizes).
 - Barcode on the sticker (Code 128 from `Item.barcode`).
 - Allergen icons drawn from `Item.allergens`.
 - Price labels and shelf tags for the counter fridge.
@@ -89,11 +90,13 @@ Add to `PermissionCatalog`:
 ```
 
 - `SATISFIED_BY`: `'labels.print' => ['labels.manage']`.
-- Role defaults: owner has everything; give `labels.print` to the manager role and
-  the kitchen role by default; `labels.manage` to manager. Follow the file's existing
-  structure for defaults and the owner-only list; `PermissionCatalogSync::sync()`
-  runs on deploy and picks the new slugs up. Respect
-  `RolePermissionCustomisations` (do not overwrite owner changes).
+- Role defaults (owner, 2026-10-04: "by default admin only, but option to give
+  permission to any staff"): both slugs go in the owner-only list, so no stock role
+  gets them. The owner grants them per role or per staff member in Staff →
+  Permissions, which already supports that; nothing new is needed there except the
+  cheat-sheet entries. `PermissionCatalogSync::sync()` runs on deploy and picks the
+  new slugs up. Respect `RolePermissionCustomisations` (do not overwrite owner
+  changes).
 - Add both to `apps/admin-dashboard/src/components/permissionsCheatSheet.ts`.
 
 ---
@@ -106,9 +109,10 @@ Add to `PermissionCatalog`:
 
 | Column | Type | Meaning |
 |---|---|---|
-| `label_ingredients` | text, nullable | English ingredient line as printed, e.g. "Flour, salt, oil, …" |
-| `label_ingredients_dv` | text, nullable | Dhivehi ingredient line |
-| `label_shelf_life_days` | unsigned small int, nullable | Frozen shelf life; EXP = MFG + this. Null means dates are left blank for handwriting |
+| `label_ingredients_source` | string(8), default `auto` | `auto`: from the item's recipe when it has one, else the manual line; `recipe`: always from the recipe; `manual`: always the manual line (owner, 2026-10-04: "add option to include manual ingredients if recipe is not there in the item") |
+| `label_ingredients` | text, nullable | Manual English ingredient line as printed, e.g. "Flour, salt, oil, …" |
+| `label_ingredients_dv` | text, nullable | Manual Dhivehi ingredient line |
+| `label_shelf_life_days` | unsigned small int, nullable | Shelf life in days for the storage mode (owner: "add option to add life"); EXP = MFG + this. Null means dates are left blank for handwriting |
 | `label_storage` | string(16), default `frozen` | `frozen`, `chilled`, `ambient`. Picks the storage strip text |
 | `label_pack_qty` | unsigned small int, nullable | Default pieces per pack printed in "QTY: __ PCS"; null leaves it blank |
 | `label_title_media_id` | FK media, nullable | Hand-lettered product name PNG (transparent). Null falls back to typed name |
@@ -116,8 +120,33 @@ Add to `PermissionCatalog`:
 | `label_enabled` | boolean, default false | Shows in the Labels hub product list. Set true by the import command for the 9 products |
 
 Keep `Item::$fillable` and `StoreItemRequest`/`UpdateItemRequest` validation in step
-(`label_storage` in `['frozen','chilled','ambient']`, shelf life 1 to 730, ingredients
-max 500 chars). Add the fields to the item API resource used by the admin editor.
+(`label_storage` in `['frozen','chilled','ambient']`, `label_ingredients_source` in
+`['auto','recipe','manual']`, shelf life 1 to 730, ingredients max 500 chars). Add the
+fields to the item API resource used by the admin editor.
+
+**Ingredients from the recipe.** `Item::recipe()` (HasOne `Recipe`) has
+`recipeItems` → `inventoryItem`. `LabelCatalog` builds the recipe line as follows:
+
+1. Take the recipe rows with `variant_id` null (shared by every size); if the item
+   has no such rows, take the rows of the default variant.
+2. Convert each quantity to grams or millilitres with the inventory item's unit
+   where possible; rows that cannot be converted keep their raw quantity for
+   ordering only.
+3. Sort by quantity descending (food labels list ingredients heaviest first), then
+   by name.
+4. Print `InventoryItem.name` (and `name_dv` when the inventory item has one; add
+   `name_dv` to `inventory_items` in the same migration if it does not exist, check
+   first). Join with ", ". Collapse duplicates. Drop inventory items flagged as
+   packaging or non-food: add a boolean `is_label_ingredient` (default true) to
+   `inventory_items` so the owner can untick cling film, boxes and labels
+   themselves; the Inventory item editor gets the tick box.
+5. If the recipe line is empty, fall back to the manual line regardless of the
+   source setting, and the hub shows "no recipe, using manual ingredients" next to
+   the product.
+
+The item's Label tab shows the resolved line read-only when the source is `recipe`
+or `auto`-with-recipe, with a "use manual instead" switch, so the owner can see what
+will print before printing.
 
 ### 4.2 Migration: `label_prints` (print log)
 
@@ -125,7 +154,8 @@ max 500 chars). Add the fields to the item API resource used by the admin editor
 |---|---|
 | `id` | |
 | `kind` | string(24): `sticker_en`, `sticker_dv`, `box_label` |
-| `layout` | string(24): `a4-4` (Phase 2 adds more) |
+| `layout` | string(24): a key from `StickerSheetSpec` (or `single-custom`) |
+| `label_w_mm`, `label_h_mm` | decimal(6,2) nullable, for `single-custom` |
 | `item_id` | FK nullable |
 | `kitchen_production_item_id` | FK nullable |
 | `trade_delivery_id` | FK nullable |
@@ -177,9 +207,30 @@ the way `BrandMark::dataUri()` does (dompdf cannot fetch; everything is inline).
 
 **`StickerSheetSpec`**
 Pure layout numbers for the sticker, in mm, from section 6.1. One method
-`for(string $layout): array` returning sheet size, card size, and every box's
-position so the Blade view has no arithmetic. Phase 1 has only `a4-4`; keep the
-shape so Phase 2 adds layouts by adding entries.
+`for(string $layout, ?array $custom = null): array` returning sheet size, label
+size, the grid, and every box's position so the Blade view has no arithmetic. The
+design is drawn at 105 × 148.5 mm; for any other label size every measurement is
+multiplied by `s = min(labelW / 105, labelH / 148.5)` and the design is centred in
+the label, the same idea as `PosterCardSpec`. Owner, 2026-10-04, on which label
+stock to support: "add all options", so Phase 1 ships all of these:
+
+| Layout key | Sheet | Labels | Notes |
+|---|---|---|---|
+| `a4-4` | A4 portrait | 2 × 2, 105 × 148.5 | Plain paper, dashed cut lines at the centre lines (today's design) |
+| `a4-4-precut` | A4 portrait | 2 × 2 | Pre-cut 4-up sheets: no cut lines; label origin and gutter come from settings (`label_precut_margin_top`, `_left`, `_gutter`, default 0/0/0, in mm) so the owner can nudge to the sheet they buy |
+| `a4-2` | A4 landscape (297 × 210) | 2 × 1, 105 × 148.5 side by side | Cut lines; wastes the strip either side, for when only two are needed |
+| `a4-8` | A4 portrait | 2 × 4, 105 × 74.25 | Half-height labels, design scaled by 0.5 |
+| `a4-12` | A4 portrait | 3 × 4, about 65 × 71 | Same grid as the complaint QR sheet, scaled |
+| `single-105x148` | one label per page, 105 × 148.5 | 1 | Label printers that take A6 sheets |
+| `single-100x150` | 100 × 150 | 1 | Thermal 4 × 6 inch label printers |
+| `single-76x127` | 76 × 127 | 1 | 3 × 5 inch |
+| `single-custom` | `w` × `h` from the request, 40–210 × 40–297 | 1 | Anything else; the hub has width and height fields and remembers the last values |
+
+For single-label layouts the `@page` size is the label itself with zero margin, so
+the printer driver's "actual size" prints it 1:1. The sheet page states the label
+size and the scale ("design at 95 %") above the paper. Every layout must pass the
+one-page test and the smallest type must stay readable: refuse (422) a label whose
+scale would take the footer address under 4.5 pt, and say which size would work.
 
 **`StickerSheetData`**
 Builds the view model for a request: which products, how many pages each, the
@@ -361,7 +412,7 @@ All positions measured from the sticker's own top-left; pad = 5 mm; inner width
 | "B A K E   &   G R I L L" | x 34, baseline 12.5 from top | PJS 700, 7.5 pt, PRIMARY, letter-spaced as shown |
 | "FROZEN" / "HEDHIKA" | x 34, baselines 20.5 and 28 | PJS 800, 19 pt, DARK (from `label_header_line`) |
 | Rule under header words | x 34, y 30.5, w 14, h 1 | PRIMARY |
-| Product title | centred, top at 36.5 (3.5 below panel), fitted in 72 × 15 mm | hand-lettering PNG; fallback typed name PJS 800, 20 pt, PRIMARY |
+| Product title | centred, top at 36.5 (3.5 below panel), fitted in 72 × 15 mm | hand-lettering PNG when the item has one; otherwise the typed name in DM Serif Display Italic, PRIMARY, sized to fit the 72 × 15 mm box (start at 24 pt, shrink until it fits on one line, never under 14 pt; two lines if still too long). Decision 2026-10-04: typed names are allowed for new products, lettering is optional |
 | Food photo | centred, 2.5 below title, fitted in 62 × 28 mm | cut-out PNG; fallback `cutout_url`; fallback brand mark fitted in 40 × 24 mm, centred in the 28 mm band |
 | "I N G R E D I E N T S" | centred, 5 mm below photo | PJS 700, 7.3 pt, PRIMARY |
 | Ingredients paragraph | centred, width 85 mm, starts 2 mm below the label | PJS 400, 7.6 pt, leading 10 pt, TEXT; if empty, two guide lines 5 mm apart in SOFT |
@@ -438,10 +489,10 @@ PDF file name `box-label-{delivery_number}.pdf`.
 
 | Tab | Permission | Content |
 |---|---|---|
-| Pack stickers | labels.print | Product list (name, Dhivehi name, shelf life, storage, art present). Pick products, pages per product, language EN/DV, "Fill in dates" switch with MFG date (today), EXP (computed, editable), batch code, qty. Buttons: Print, Download PDF. Shows the summary returned by the API ("3 products · 12 stickers · EXP 18 Dec 2026") before opening the sheet. |
+| Pack stickers | labels.print | Product list (name, Dhivehi name, shelf life, storage, ingredients source and the resolved line, art present). Pick products, copies per product, language EN/DV, label stock (the layouts in 5.1, with width and height fields for custom, and the pre-cut offsets link to Settings), "Fill in dates" switch with MFG date (today), EXP (computed from shelf life, editable), batch code, qty. Buttons: Print, Download PDF. Shows the summary returned by the API ("3 products · 12 stickers on 3 sheets · EXP 18 Dec 2026") before opening the sheet. |
 | Box labels | labels.print | Pick a wholesale delivery (search by shop, recent first) or "Blank template". Boat, pick-up point, date window, PO fields. Print / PDF. |
 | History | labels.print | The print log with filters, who/when/what. |
-| Settings | labels.manage | Storage lines (EN/DV), header line, box strip, landmark; a table of label-enabled items with inline edit of shelf life and storage, and a link to each item's Label tab. |
+| Settings | labels.manage | Storage lines (EN/DV), header line, box strip, landmark, pre-cut sheet offsets; a table of label-enabled items with inline edit of shelf life, storage and ingredients source, and a link to each item's Label tab. |
 
 - All print buttons call the `/url` endpoint, then `window.open(url, '_blank', 'noopener')`
   for Print (the sheet auto-opens the dialog with `?print=1`) and set
@@ -452,9 +503,10 @@ PDF file name `box-label-{delivery_number}.pdf`.
 ### 7.2 Item editor
 
 `MenuItemEditorModal.tsx` gains a third top-level tab **Label** next to Details and
-Photos & video (visible with `labels.manage`): enabled switch, ingredients EN and DV
-(textarea, Thaana input right-to-left), shelf life days, storage select, default pack
-qty, title art picker and photo picker (both `MediaPicker`, PNG with transparency
+Photos & video (visible with `labels.manage`): enabled switch, ingredients source
+(auto / recipe / manual) with the resolved recipe line shown read-only when it
+applies, manual ingredients EN and DV (textarea, Thaana input right-to-left), shelf
+life days, storage select, default pack qty, title art picker and photo picker (both `MediaPicker`, PNG with transparency
 recommended), and a live preview of the sticker: an `<iframe>` of the signed browser
 sheet called with `?preview=1&items[]=id&pages=1`, which hides the print bar and
 shows one sticker scaled to fit. Keep this simple; the preview is a nicety, the print
@@ -480,7 +532,12 @@ Backend (`tests/Feature/Labels/`):
   manage satisfies print, API routes 403 without them, signed routes 403 when the
   signature is missing or expired.
 - `StickerSheetTest`: 1 product × 2 pages → 8 `class="sticker"`, one page per 4;
-  dates blank by default; `fill=1` prints `DD / MM / YYYY` and EXP = MFG + shelf life;
+  every layout key renders the right count per page and the right `@page` size, a
+  custom 80 × 120 label scales by 0.762 and keeps the design centred, a 40 × 40 label
+  is refused with the message naming a workable size; ingredients come from the
+  recipe heaviest-first and skip unticked inventory items, fall back to the manual
+  line without a recipe, and the `manual` source ignores the recipe; dates blank by
+  default; `fill=1` prints `DD / MM / YYYY` and EXP = MFG + shelf life;
   EXP before MFG → 422; a production item fills batch and expiry; PDF download
   headers and `%PDF`; the Dhivehi sheet contains the reversed strings from
   `ThaanaVisual` in the PDF path and the original in the browser path; fallback title
@@ -534,14 +591,23 @@ Estimate: steps 1–3 two days, step 4 one day, step 5 half a day.
 
 ---
 
-## 11. Open questions for the owner (do not block step 1 on these)
+## 11. Owner's decisions (2026-10-04) and what is still open
 
-1. Masroshi ingredients: confirm whether flour belongs in the list.
-2. Shelf life in days (frozen) per product; until given, dates print blank.
-3. Label stock: plain A4 cut by hand (assumed), pre-cut 4-up sheets, or a label
-   printer and roll size (Phase 2 sizes depend on this).
-4. Whether new products may use a typed name instead of hand lettering (the plan
-   assumes yes, with the lettering as an optional upload).
-5. Who should hold `labels.print` by default besides manager and kitchen.
-6. Dhivehi wording proofread by a native speaker before the DV sheet is used with
+Decided:
+
+| Question | Answer | Where it landed |
+|---|---|---|
+| Ingredients | From the item's recipe; a manual line when the item has no recipe (or when the owner prefers it) | 4.1, `label_ingredients_source` |
+| Shelf life | An option per product, set in Admin; dates blank until set | 4.1, Label tab, Settings tab |
+| Label stock | All of them: plain A4 with cut lines, pre-cut sheets, single-label pages for label printers, custom sizes | 5.1 layouts |
+| Typed names for new products | Yes, lettering is optional | 6.1 title row |
+| Who can print | Nobody by default except the owner; grantable to any role or staff member | 3 |
+
+Still open (do not block on these):
+
+1. Masroshi ingredients: confirm whether flour belongs in the list. Once the recipe
+   is entered in Inventory the label follows the recipe anyway.
+2. Shelf life in days per product (the owner enters these in Admin after step 4).
+3. Dhivehi wording proofread by a native speaker before the DV sheet is used with
    customers.
+4. Which label printer, if any, so the single-label presets can be checked on it.
