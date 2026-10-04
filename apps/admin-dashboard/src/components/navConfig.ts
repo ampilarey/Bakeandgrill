@@ -347,6 +347,7 @@ export const PERM_ALIASES: Record<string, string[]> = {
   'sms.campaigns.send': ['integrations.sms', 'sms_marketing.manage'],
   'sms.transactional.manage': ['integrations.sms', 'sms_marketing.manage'],
   'media.view': ['website.manage', 'menu.manage'],
+  'labels.print': ['labels.manage'],
   'media.manage': ['website.manage'],
   'webhooks.manage': ['integrations.webhooks'],
   'xero.manage': ['integrations.xero'],

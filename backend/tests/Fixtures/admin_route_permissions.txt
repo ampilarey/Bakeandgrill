@@ -143,6 +143,17 @@ backend/routes/domains/kitchen.php:91:kitchen.variance.review
 backend/routes/domains/kitchen.php:94:kitchen.production.reports
 backend/routes/domains/kitchen.php:96:kitchen.production.reports
 backend/routes/domains/kitchen.php:98:kitchen.production.reports
+backend/routes/domains/labels.php:14:labels.print
+backend/routes/domains/labels.php:16:labels.print
+backend/routes/domains/labels.php:19:labels.manage
+backend/routes/domains/labels.php:22:labels.print
+backend/routes/domains/labels.php:24:labels.print
+backend/routes/domains/labels.php:26:labels.print
+backend/routes/domains/labels.php:28:labels.print
+backend/routes/domains/labels.php:30:labels.manage
+backend/routes/domains/labels.php:32:labels.print
+backend/routes/domains/labels.php:34:labels.print
+backend/routes/domains/labels.php:37:labels.print
 backend/routes/domains/loyalty.php:34:loyalty.manage
 backend/routes/domains/marketing.php:115:promotions.discount_cards
 backend/routes/domains/marketing.php:123:discounts.settings.manage

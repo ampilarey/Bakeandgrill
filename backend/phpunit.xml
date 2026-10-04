@@ -41,6 +41,5 @@
              (POS_REQUIRE_DEVICE_HEADER=true on TEST); tests that need it set
              it themselves. Left to the .env, 194 tests failed with 428. -->
         <env name="POS_REQUIRE_DEVICE_HEADER" value="false" force="true"/>
-        <env name="POS_STRICT_DEVICE_APPROVAL" value="false" force="true"/>
     </php>
 </phpunit>

@@ -83,6 +83,9 @@
       "website.manage",
       "menu.manage"
     ],
+    "labels.print": [
+      "labels.manage"
+    ],
     "media.manage": [
       "website.manage"
     ],
