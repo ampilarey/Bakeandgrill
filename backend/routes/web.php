@@ -96,7 +96,7 @@ Route::middleware(['content.locale', 'service.banner'])->group(function () {
 
 // Label Hub sheets (owner, 2026-10-04). Signed links from /api/labels/*/url,
 // issued only to staff with labels.print; see LabelSheetController.
-Route::middleware(['signed:relative', 'throttle:60,1'])->prefix('labels')->group(function () {
+Route::middleware(['signed:relative', 'throttle:120,1'])->prefix('labels')->group(function () {
     Route::get('/stickers', [App\Http\Controllers\Labels\LabelSheetController::class, 'stickers'])->name('labels.stickers');
     Route::get('/stickers.pdf', [App\Http\Controllers\Labels\LabelSheetController::class, 'stickersPdf'])->name('labels.stickers.pdf');
     Route::get('/box', [App\Http\Controllers\Labels\LabelSheetController::class, 'box'])->name('labels.box');

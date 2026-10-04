@@ -63,7 +63,7 @@ export type LabelType = {
 
 export type LabelTypePayload = Partial<Omit<LabelType, 'id' | 'brand_name' | 'items_count' | 'defaults'>>;
 
-export type LabelLayout = { key: string; label: string; hint: string; per_page: number; w: number; h: number; compact: boolean; shape: 'rect' | 'circle' };
+export type LabelLayout = { key: string; label: string; hint: string; per_page: number; w: number; h: number; page_w: number; page_h: number; compact: boolean; shape: 'rect' | 'circle' };
 
 export type StickerRequest = {
   items: { id: number; copies: number }[];
@@ -94,7 +94,15 @@ export type StickerSummary = {
   products: { id: number; name: string; copies: number; mfg: string | null; exp: string | null; shelf_life_days: number | null; ingredients_from: string }[];
 };
 
-export type SheetLinks = { url: string; view_url: string; pdf_url: string; expires_in_minutes: number; job?: { id: number; name: string } };
+export type SheetLinks = {
+  url: string;
+  /** A preview only: the first sticker alone, at its own size. */
+  one_url?: string | null;
+  view_url: string;
+  pdf_url: string;
+  expires_in_minutes: number;
+  job?: { id: number; name: string };
+};
 
 /** A saved label (v2 point 10): a prepared print kept with its request. */
 export type LabelJob = {
@@ -117,6 +125,8 @@ export type BoxRequest = BoxFields & {
   /** article: the shop's own name for the line; empty prints the usual one. */
   lines?: { id: number; qty: number; article?: string }[];
   articles?: boolean;
+  /** A look only: nothing is logged or saved. */
+  preview?: boolean;
 };
 
 /** A box label line as the server fills it: the shop's article name, and the usual one to fall back on. */

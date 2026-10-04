@@ -7,6 +7,7 @@
      * @var list<array<string, mixed>> $pieces  @var bool $forPdf  @var bool $autoPrint  @var string $pdfUrl  @var string $title
      */
     $dv = false;
+    $preview = $preview ?? false;
 @endphp
 <!DOCTYPE html>
 <html lang="en">
@@ -38,13 +39,18 @@
                 .bar .primary { background: #B74B0C; border-color: #B74B0C; color: #fff; }
                 .bar .what { margin-left: auto; color: #6B5D4F; font-size: 13px; }
                 .page { margin: 0 auto; background: #fff; box-shadow: 0 6px 24px rgba(0,0,0,0.15); }
+                @if ($preview)
+                    html, body { background: transparent; overflow: hidden; }
+                    body { padding: 0; }
+                    .page { box-shadow: none; margin: 0; transform-origin: 0 0; }
+                @endif
             }
             @media print { .bar { display: none; } }
         @endunless
     </style>
 </head>
 <body>
-    @unless ($forPdf)
+    @if (!$forPdf && !$preview)
         <div class="bar">
             <button type="button" class="primary" data-print>Print</button>
             @if ($pdfUrl !== '')
@@ -53,11 +59,20 @@
             <a href="{{ $pdfUrl }}" data-testid="labels-pdf">Download PDF</a>
             <span class="what">Box label · A4 · print at actual size · on a phone, print the PDF</span>
         </div>
-    @endunless
+    @endif
     <div class="page" data-testid="labels-page">
         @include('labels.partials.pieces', ['pieces' => $pieces, 'ox' => 0, 'oy' => 0, 's' => 1.0])
     </div>
-    @unless ($forPdf)
+    @if ($preview)
+        <script nonce="{{ csp_nonce() }}">
+            (function () {
+                var page = document.querySelector('.page');
+                function fit() { page.style.transform = 'scale(' + (document.documentElement.clientWidth / page.offsetWidth) + ')'; }
+                fit();
+                window.addEventListener('resize', fit);
+            })();
+        </script>
+    @elseif (!$forPdf)
         <script nonce="{{ csp_nonce() }}">
             (function () {
                 function printWhenReady() {
@@ -71,6 +86,6 @@
                 @endif
             })();
         </script>
-    @endunless
+    @endif
 </body>
 </html>

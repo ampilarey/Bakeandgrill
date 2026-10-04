@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Printer, FileDown, AlertTriangle, Search, Bookmark } from 'lucide-react';
+import { Printer, FileDown, AlertTriangle, Search, Bookmark, Eye } from 'lucide-react';
 import {
   downloadLabelSheet, fetchLabelJob, fetchLabelLayouts, fetchLabelProducts, fetchLabelTypes, openLabelSheet, printsViaPdf, renameLabelJob, stickerLinks,
   type LabelLayout, type LabelProduct, type LabelType, type SheetLinks, type StickerSummary,
 } from '../../api';
 import { Button } from '../ui';
 import { QtyStepper } from './QtyStepper';
+import { SheetPreview } from './SheetPreview';
 
 /*
  * Pack stickers: pick products, how many, the language, the label stock and
@@ -58,6 +59,14 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
   const [result, setResult] = useState<(SheetLinks & { summary: StickerSummary }) | null>(null);
   const [query, setQuery] = useState('');
   const summaryRef = useRef<HTMLElement>(null);
+  // The live preview (owner, 2026-10-05: "There is no preview in labels"):
+  // one sticker or the first page, redrawn as the form changes.
+  const [previewMode, setPreviewMode] = useState<'one' | 'sheet'>('one');
+  const [previewItem, setPreviewItem] = useState<number | null>(null);
+  const [preview, setPreview] = useState<{ one: string | null; sheet: string; summary: StickerSummary } | null>(null);
+  const [previewBusy, setPreviewBusy] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const previewSeq = useRef(0);
   // v2 point 10: ?job=ID opens a saved label back in this form.
   const [params] = useSearchParams();
   const jobParam = fixedItems ? null : params.get('job');
@@ -117,17 +126,54 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
 
   const toggle = (id: number) => setPicked((p) => (p[id] ? Object.fromEntries(Object.entries(p).filter(([k]) => Number(k) !== id)) : { ...p, [id]: perPage }));
 
+  const request = (first: number | null = null) => {
+    const ordered = first != null && items.some((i) => i.id === first) ? [...items.filter((i) => i.id === first), ...items.filter((i) => i.id !== first)] : items;
+    return {
+      items: ordered, lang, layout,
+      w: layout === 'single-custom' ? customW : layout === 'single-round-custom' ? customD : null,
+      h: layout === 'single-custom' ? customH : null,
+      rounded: current?.shape !== 'circle' && rounded,
+      fill, mfg: fill ? mfg : null, exp: fill && exp ? exp : null,
+      batch: batch || null, qty: qty ? Number(qty) : null, pi: productionItemId, type: asType,
+    };
+  };
+
+  // Redraw the preview half a second after the last change; a reply that
+  // arrives after a newer request is ignored.
+  const previewKey = JSON.stringify([request(previewItem), previewItem]);
+  useEffect(() => {
+    if (items.length === 0) { setPreview(null); setPreviewError(null); setPreviewBusy(false); return; }
+    const seq = ++previewSeq.current;
+    setPreviewBusy(true);
+    const timer = setTimeout(async () => {
+      try {
+        const r = await stickerLinks({ ...request(previewItem), preview: true });
+        if (seq !== previewSeq.current) return;
+        setPreview({ one: r.one_url ?? null, sheet: r.url, summary: r.summary });
+        setPreviewError(null);
+      } catch (e) {
+        if (seq !== previewSeq.current) return;
+        setPreviewError(e instanceof Error ? e.message : 'Could not draw the preview.');
+      } finally {
+        if (seq === previewSeq.current) setPreviewBusy(false);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [previewKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const previewed = items.find((i) => i.id === previewItem) ? previewItem : (items[0]?.id ?? null);
+  const previewName = (id: number | null) => fixedItems?.find((i) => i.id === id)?.name ?? products.find((p) => p.id === id)?.name ?? '';
+  const stickerW = layout === 'single-custom' ? customW : layout === 'single-round-custom' ? customD : (current?.w ?? 105);
+  const stickerH = layout === 'single-custom' ? customH : layout === 'single-round-custom' ? customD : (current?.h ?? 148.5);
+  const pageW = layout.startsWith('single') ? stickerW : (current?.page_w ?? 210);
+  const pageH = layout.startsWith('single') ? stickerH : (current?.page_h ?? 297);
+  const previewRatio = previewMode === 'one' ? stickerW / stickerH : pageW / pageH;
+  const previewUrl = preview ? (previewMode === 'one' ? preview.one : preview.sheet) : null;
+
   const prepare = async () => {
     setBusy(true); setError(null); setResult(null);
     try {
-      const r = await stickerLinks({
-        items, lang, layout,
-        w: layout === 'single-custom' ? customW : layout === 'single-round-custom' ? customD : null,
-        h: layout === 'single-custom' ? customH : null,
-        rounded: current?.shape !== 'circle' && rounded,
-        fill, mfg: fill ? mfg : null, exp: fill && exp ? exp : null,
-        batch: batch || null, qty: qty ? Number(qty) : null, pi: productionItemId, type: asType,
-      });
+      const r = await stickerLinks(request());
       remember(LAST_LAYOUT_KEY, layout);
       setResult(r);
       // On a phone the summary lands below the fold; bring it up.
@@ -139,8 +185,39 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
     }
   };
 
+  const previewPane = (
+    <aside className="space-y-2 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-4 self-start min-w-0" data-testid="sticker-preview-pane">
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 className="text-sm font-bold text-[var(--color-text)] inline-flex items-center gap-1.5"><Eye size={16} className="text-[var(--color-primary)]" /> Preview</h3>
+        <div className="ml-auto inline-flex rounded-lg border border-[var(--color-border)] overflow-hidden" role="group" aria-label="What to preview">
+          {(['one', 'sheet'] as const).map((m) => (
+            <button key={m} type="button" onClick={() => setPreviewMode(m)} aria-pressed={previewMode === m} className={['px-3 h-9 min-w-[64px] text-xs font-semibold', previewMode === m ? 'bg-[var(--color-primary)] text-white' : 'bg-white text-[var(--color-text)]'].join(' ')}>
+              {m === 'one' ? 'Sticker' : 'Sheet'}
+            </button>
+          ))}
+        </div>
+      </div>
+      {items.length > 1 && (
+        <select value={previewed ?? ''} onChange={(e) => setPreviewItem(Number(e.target.value))} className={`${fieldClass} !h-9 !min-h-0`} aria-label="Product to preview">
+          {items.map((i) => <option key={i.id} value={i.id}>{previewName(i.id)}</option>)}
+        </select>
+      )}
+      <div className={previewMode === 'one' && current?.shape !== 'circle' ? 'max-w-[320px] mx-auto lg:mx-0' : previewMode === 'one' ? 'max-w-[280px] mx-auto lg:mx-0' : 'max-w-[320px] mx-auto lg:mx-0'}>
+        <SheetPreview url={previewUrl} ratio={previewRatio} busy={previewBusy} round={previewMode === 'one' && current?.shape === 'circle'} title={previewMode === 'one' ? 'Sticker preview' : 'Sheet preview'} empty={items.length === 0 ? 'Pick a product to see its sticker here.' : 'Drawing…'} />
+      </div>
+      {previewError ? (
+        <p role="alert" className="text-xs text-[var(--color-danger)] flex items-start gap-1.5"><AlertTriangle size={14} className="mt-0.5 shrink-0" /> {previewError}</p>
+      ) : preview ? (
+        <p className="text-xs text-[var(--color-text-muted)]">
+          {previewMode === 'one' ? `${previewName(previewed)} · ${lang === 'dv' ? 'Dhivehi' : 'English'} · ${Math.round(stickerW)} × ${Math.round(stickerH)} mm` : `Page 1 of ${preview.summary.pages} · ${preview.summary.stickers} ${preview.summary.stickers === 1 ? 'sticker' : 'stickers'}`} · {current?.label ?? layout}. Updates as you change things; the print is the same.
+        </p>
+      ) : null}
+    </aside>
+  );
+
   return (
-    <div className="space-y-5" data-testid="sticker-print-panel">
+    <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:grid-rows-[auto_auto] lg:gap-x-6 lg:gap-y-5" data-testid="sticker-print-panel">
+    <div className="space-y-5 min-w-0 lg:col-start-1 lg:row-start-1">
       {editing && (
         <p className="flex flex-wrap items-center gap-2 text-sm text-[var(--color-text-secondary)] p-3 rounded-lg bg-[var(--color-bg)]" data-testid="sticker-editing">
           <Bookmark size={16} className="shrink-0 text-[var(--color-primary)]" />
@@ -273,7 +350,11 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
           <div><label className={labelClass} htmlFor="label-qty">Pieces per pack (optional)</label><input id="label-qty" type="number" inputMode="numeric" min={1} max={9999} value={qty} onChange={(e) => setQty(e.target.value)} className={fieldClass} /></div>
         </div>
       </section>
+    </div>
 
+    {previewPane}
+
+    <div className="space-y-5 min-w-0 lg:col-start-1 lg:row-start-2">
       {error && (
         <div role="alert" className="flex items-start gap-2 p-3 rounded-lg border border-[var(--color-danger)] text-sm text-[var(--color-danger)] bg-white">
           <AlertTriangle size={16} className="mt-0.5 shrink-0" /> {error}
@@ -317,6 +398,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 }

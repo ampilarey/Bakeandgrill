@@ -133,7 +133,7 @@ final class StickerSheet
         $production = $req['pi'] ? KitchenProductionItem::query()->find($req['pi']) : null;
 
         /** @var Collection<int, Item> $items */
-        $items = Item::query()->whereIn('id', array_column($req['items'], 'id'))->get()->keyBy('id');
+        $items = Item::query()->with('labelType.brand')->whereIn('id', array_column($req['items'], 'id'))->get()->keyBy('id');
         $common = $this->common();
 
         $stickers = [];
@@ -176,7 +176,7 @@ final class StickerSheet
     {
         $sheet = StickerLayouts::resolve($req['layout'], $req['w'], $req['h'], LabelSettings::precut());
         $production = $req['pi'] ? KitchenProductionItem::query()->find($req['pi']) : null;
-        $items = Item::query()->whereIn('id', array_column($req['items'], 'id'))->get()->keyBy('id');
+        $items = Item::query()->with('labelType.brand')->whereIn('id', array_column($req['items'], 'id'))->get()->keyBy('id');
         $products = [];
         $total = 0;
         foreach ($req['items'] as $row) {

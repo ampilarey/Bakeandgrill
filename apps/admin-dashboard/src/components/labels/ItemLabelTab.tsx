@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ImagePlus, X, RefreshCw } from 'lucide-react';
 import { fetchLabelItem, fetchLabelTypes, stickerLinks, updateItemLabel, type IngredientsSource, type LabelProduct, type LabelStorage, type LabelType } from '../../api';
+import { SheetPreview } from './SheetPreview';
 import { MediaPicker } from '../MediaPicker';
 import { Button } from '../ui';
 
@@ -81,7 +82,7 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
   const refreshPreview = async (l: 'en' | 'dv' = lang) => {
     try {
       const r = await stickerLinks({ items: [{ id: itemId, copies: 1 }], layout: 'single-105x148', lang: l, preview: true });
-      setPreview(`${window.location.origin}${r.url}`);
+      setPreview(r.one_url ?? r.url);
     } catch {
       setPreview(null);
     }
@@ -236,9 +237,7 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
           </div>
         </div>
         {preview ? (
-          <div className="rounded-lg border border-[var(--color-border)] overflow-hidden bg-white" style={{ width: 300, height: 424 }}>
-            <iframe title="Sticker preview" src={preview} style={{ width: 397, height: 561, border: 0, transform: 'scale(0.756)', transformOrigin: '0 0' }} />
-          </div>
+          <SheetPreview url={preview} ratio={105 / 148.5} title="Sticker preview" />
         ) : (
           <p className="text-xs text-[var(--color-text-muted)]">The preview needs the Print labels permission.</p>
         )}

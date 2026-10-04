@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Printer, FileDown, AlertTriangle, X, ChevronUp, Save, CheckCircle2, Bookmark } from 'lucide-react';
+import { Printer, FileDown, AlertTriangle, X, ChevronUp, Save, CheckCircle2, Bookmark, Eye } from 'lucide-react';
 import {
   boxLabelLinks, downloadLabelSheet, fetchDeliveryBoxLabel, fetchLabelJob, fetchLabelProducts, fetchLabelShops, fetchShopBoxLabel,
   fetchTradeDeliveries, openLabelSheet, renameLabelJob, saveShopBoxLabel,
@@ -9,6 +9,7 @@ import {
 } from '../../api';
 import { Button } from '../ui';
 import { QtyStepper } from './QtyStepper';
+import { SheetPreview } from './SheetPreview';
 
 /*
  * The A4 box label. Owner, 2026-10-04: "Cant u add all in one place?" — a
@@ -48,6 +49,11 @@ export function BoxLabelPanel({ deliveryId = null }: Props) {
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SheetLinks | null>(null);
+  // The live preview (owner, 2026-10-05: "There is no preview in labels").
+  const [preview, setPreview] = useState<string | null>(null);
+  const [previewBusy, setPreviewBusy] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const previewSeq = useRef(0);
   // v2 point 10: ?job=ID opens a saved box label back in this form.
   const [params] = useSearchParams();
   const jobParam = deliveryId == null ? params.get('job') : null;
@@ -112,10 +118,34 @@ export function BoxLabelPanel({ deliveryId = null }: Props) {
   const setLine = (i: number, patch: Partial<Line>) => setLines((s) => s.map((x, j) => (j === i ? { ...x, ...patch } : x)));
   const shopName = shops.find((s) => s.id === shopId)?.shop_name ?? (fields.customer || 'this shop');
 
+  const request = () => ({ ...fields, delivery, lines: lines.map(({ id, qty, article }) => ({ id, qty, article })) });
+
+  // Redraw the preview half a second after the last change (a blank label is
+  // worth seeing too); a reply that arrives after a newer request is ignored.
+  const previewKey = JSON.stringify(request());
+  useEffect(() => {
+    const seq = ++previewSeq.current;
+    setPreviewBusy(true);
+    const timer = setTimeout(async () => {
+      try {
+        const r = await boxLabelLinks({ ...request(), preview: true });
+        if (seq !== previewSeq.current) return;
+        setPreview(r.url);
+        setPreviewError(null);
+      } catch (e) {
+        if (seq !== previewSeq.current) return;
+        setPreviewError(e instanceof Error ? e.message : 'Could not draw the preview.');
+      } finally {
+        if (seq === previewSeq.current) setPreviewBusy(false);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [previewKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const prepare = async () => {
     setBusy(true); setError(null); setResult(null);
     try {
-      setResult(await boxLabelLinks({ ...fields, delivery, lines: lines.map(({ id, qty, article }) => ({ id, qty, article })) }));
+      setResult(await boxLabelLinks(request()));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not prepare the box label.');
     } finally {
@@ -148,8 +178,23 @@ export function BoxLabelPanel({ deliveryId = null }: Props) {
 
   const shownDeliveries = shopId ? deliveries.filter((d) => d.trade_account_id === shopId) : deliveries;
 
+  const previewPane = (
+    <aside className="space-y-2 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-4 self-start min-w-0" data-testid="box-preview-pane">
+      <h3 className="text-sm font-bold text-[var(--color-text)] inline-flex items-center gap-1.5"><Eye size={16} className="text-[var(--color-primary)]" /> Preview</h3>
+      <div className="max-w-[320px] mx-auto lg:mx-0">
+        <SheetPreview url={preview} ratio={210 / 297} busy={previewBusy} title="Box label preview" empty="Drawing…" />
+      </div>
+      {previewError ? (
+        <p role="alert" className="text-xs text-[var(--color-danger)] flex items-start gap-1.5"><AlertTriangle size={14} className="mt-0.5 shrink-0" /> {previewError}</p>
+      ) : (
+        <p className="text-xs text-[var(--color-text-muted)]">A4 · updates as you change things; the print is the same.</p>
+      )}
+    </aside>
+  );
+
   return (
-    <div className="space-y-5" data-testid="box-label-panel">
+    <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:grid-rows-[auto_auto] lg:gap-x-6 lg:gap-y-5" data-testid="box-label-panel">
+    <div className="space-y-5 min-w-0 lg:col-start-1 lg:row-start-1">
       {editing && (
         <p className="flex flex-wrap items-center gap-2 text-sm text-[var(--color-text-secondary)] p-3 rounded-lg bg-[var(--color-bg)]" data-testid="box-editing">
           <Bookmark size={16} className="shrink-0 text-[var(--color-primary)]" />
@@ -260,7 +305,11 @@ export function BoxLabelPanel({ deliveryId = null }: Props) {
         )}
         <p className="text-xs text-[var(--color-text-muted)] mt-2">A quantity of 0 leaves a line to write the count by hand; three spare rows are always added. Under each item, type the shop's own article name (BAJIYAA, H -GULHA); left empty, the usual name prints.</p>
       </section>
+    </div>
 
+    {previewPane}
+
+    <div className="space-y-5 min-w-0 lg:col-start-1 lg:row-start-2">
       {shopId != null && (
         <section className="flex flex-wrap items-center gap-3 p-3 rounded-xl border border-dashed border-[var(--color-border)]">
           <Button variant="secondary" icon={<Save size={16} />} onClick={saveForShop} loading={saving} data-testid="box-save-shop">Save for {shopName}</Button>
@@ -299,6 +348,7 @@ export function BoxLabelPanel({ deliveryId = null }: Props) {
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 }

@@ -91,7 +91,8 @@ Admin → Labels prints pack stickers (English and Dhivehi; A4 sheets, label-pri
 sizes, round stickers) and A4 box labels, server-drawn with dompdf. Label types
 (Frozen Hedhika…) carry the wording, brands (Bake & Grill, Amma…) the logo; every
 sticker shares one header and footer with the complaints QR; every prepared print is
-a saved label that can be reprinted or edited. Owner-only until `labels.print` /
+a saved label that can be reprinted or edited; a live preview (one sticker or the
+first page, the box label) redraws beside the form as it changes. Owner-only until `labels.print` /
 `labels.manage` are granted. Two renderer facts the views depend on: dompdf's baseline
 rule differs from browsers (`LabelText::PDF_BASELINE_K`), and dompdf needs Thaana in
 visual order (`App\Support\ThaanaVisual`, PDF path only; the menu PDF uses it too).

@@ -12,6 +12,19 @@
     $pageH = $sheet['page_h'];
     $s = $sheet['scale'];
     $preview = $preview ?? false;
+    $one = $one ?? false;
+    // A preview shows the first page only; the hub's live preview shows the
+    // first sticker alone, on a page its own size, scaled to fit its frame.
+    if ($preview) {
+        $pages = array_slice($pages, 0, 1);
+    }
+    if ($one && $pages !== [] && $sheet['slots'] !== []) {
+        $slot = $sheet['slots'][0];
+        $pages = [[0 => $pages[0][array_key_first($pages[0])] ?? []]];
+        $sheet['slots'] = [['x' => 0.0, 'y' => 0.0, 'w' => $slot['w'], 'h' => $slot['h']]];
+        $pageW = $slot['w'];
+        $pageH = $slot['h'];
+    }
 @endphp
 <!DOCTYPE html>
 <html lang="{{ $dv ? 'dv' : 'en' }}">
@@ -46,8 +59,9 @@
                 .bar .what { margin-left: auto; color: #6B5D4F; font-size: 13px; }
                 .page { margin: 0 auto 16px; background: #fff; box-shadow: 0 6px 24px rgba(0,0,0,0.15); }
                 @if ($preview)
-                    body { padding: 0; background: transparent; }
-                    .page { box-shadow: none; margin: 0; }
+                    html, body { background: transparent; overflow: hidden; }
+                    body { padding: 0; }
+                    .page { box-shadow: none; margin: 0; transform-origin: 0 0; }
                 @endif
             }
             @media print { .bar { display: none; } }
@@ -78,7 +92,17 @@
             @endforeach
         </div>
     @endforeach
-    @unless ($forPdf)
+    @if ($preview)
+        <script nonce="{{ csp_nonce() }}">
+            // Fit the page to the frame it is shown in (the hub sizes the frame to the page's shape).
+            (function () {
+                var page = document.querySelector('.page');
+                function fit() { page.style.transform = 'scale(' + (document.documentElement.clientWidth / page.offsetWidth) + ')'; }
+                fit();
+                window.addEventListener('resize', fit);
+            })();
+        </script>
+    @elseif (!$forPdf)
         <script nonce="{{ csp_nonce() }}">
             (function () {
                 function printWhenReady() {
@@ -93,6 +117,6 @@
                 @endif
             })();
         </script>
-    @endunless
+    @endif
 </body>
 </html>

@@ -332,6 +332,22 @@ class StickerSheetTest extends TestCase
         $this->assertSame('SAMEORIGIN', $sheet->headers->get('X-Frame-Options'));
         $this->assertStringContainsString("frame-ancestors 'self'", (string) $sheet->headers->get('Content-Security-Policy'));
 
+        // The hub's live preview (owner: "There is no preview in labels"): the
+        // sheet link shows the first page only, with no print bar; the one-sticker
+        // link shows the first sticker alone on a page its own size.
+        $many = $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $this->bajiya->id, 'copies' => 9]], 'layout' => 'a4-4', 'preview' => true])->assertOk();
+        $this->assertSame(0, LabelPrint::query()->count());
+        $html = (string) $this->get($many->json('url'))->assertOk()->getContent();
+        $this->assertSame(1, substr_count($html, 'data-testid="labels-page"'));
+        $this->assertSame(4, substr_count($html, 'data-testid="sticker"'));
+        $this->assertStringNotContainsString('data-print', $html);
+        $this->assertStringContainsString('width: 210mm; height: 297mm', $html);
+        $one = (string) $this->get($many->json('one_url'))->assertOk()->getContent();
+        $this->assertSame(1, substr_count($one, 'data-testid="sticker"'));
+        $this->assertStringContainsString('width: 105mm; height: 148.5mm', $one);
+        $this->assertStringContainsString('scale(', $one);
+        $this->assertNull($this->postJson('/api/labels/stickers/url', ['items' => [['id' => $this->bajiya->id, 'copies' => 1]]])->assertOk()->json('one_url'));
+
         Sanctum::actingAs($this->makeManager(), ['staff']);
         $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $this->bajiya->id, 'copies' => 1]]])->assertForbidden();
     }

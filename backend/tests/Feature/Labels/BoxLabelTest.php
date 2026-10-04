@@ -9,6 +9,7 @@ use App\Models\Customer;
 use App\Models\Item;
 use App\Models\KitchenProductionBatch;
 use App\Models\KitchenProductionItem;
+use App\Models\LabelJob;
 use App\Models\LabelPrint;
 use App\Models\TradeAccount;
 use App\Models\TradeDelivery;
@@ -235,5 +236,17 @@ class BoxLabelTest extends TestCase
         @mkdir($dir, 0777, true);
         file_put_contents("{$dir}/{$name}.html", $html);
         file_put_contents("{$dir}/{$name}.pdf", $pdf);
+    }
+
+    public function test_a_box_preview_logs_nothing_and_saves_nothing(): void
+    {
+        $before = [LabelPrint::query()->count(), LabelJob::query()->count()];
+        $res = $this->postJson('/api/labels/box/url', ['customer' => 'NH Kuda Rah', 'storage' => 'chilled', 'preview' => true])->assertOk()->assertJsonMissingPath('job');
+        $this->assertSame($before, [LabelPrint::query()->count(), LabelJob::query()->count()]);
+        $this->assertStringContainsString('preview=1', $res->json('url'));
+        $html = (string) $this->get($res->json('url'))->assertOk()->getContent();
+        $this->assertStringContainsString('NH Kuda Rah', $html);
+        $this->assertStringNotContainsString('data-print', $html);
+        $this->assertStringContainsString('scale(', $html);
     }
 }

@@ -34,13 +34,15 @@ class LabelSheetController extends Controller
             'forPdf' => false,
             'autoPrint' => $request->boolean('print'),
             'preview' => $request->boolean('preview'),
+            // The hub's live preview shows the first sticker alone, at its own size.
+            'one' => $request->boolean('preview') && $request->boolean('one'),
             'pdfUrl' => self::link('labels.stickers.pdf', $this->query($request)),
         ]);
     }
 
     public function stickersPdf(Request $request): Response
     {
-        $data = $this->stickerData($request) + ['forPdf' => true, 'autoPrint' => false, 'preview' => false, 'pdfUrl' => ''];
+        $data = $this->stickerData($request) + ['forPdf' => true, 'autoPrint' => false, 'preview' => false, 'one' => false, 'pdfUrl' => ''];
         $sheet = $data['sheet'];
         $pt = 72 / 25.4;
         $name = 'labels-' . (count($data['summary']) === 1 ? \Illuminate\Support\Str::slug($data['summary'][0]['name']) : 'stickers') . '-' . now()->format('Y-m-d') . '.pdf';
@@ -60,6 +62,7 @@ class LabelSheetController extends Controller
             'title' => 'Box label' . ($req['fields']['customer'] !== '' ? ' – ' . $req['fields']['customer'] : ''),
             'forPdf' => false,
             'autoPrint' => $request->boolean('print'),
+            'preview' => $request->boolean('preview'),
             'pdfUrl' => self::link('labels.box.pdf', $request->only(self::BOX_QUERY)),
         ]);
     }
@@ -69,7 +72,7 @@ class LabelSheetController extends Controller
         $req = $this->boxRequest($request);
         $name = 'box-label-' . ($req['delivery'] ? (TradeDelivery::query()->whereKey($req['delivery'])->value('delivery_number') ?: $req['delivery']) : ($req['fields']['customer'] !== '' ? \Illuminate\Support\Str::slug($req['fields']['customer']) : 'blank')) . '.pdf';
 
-        return Pdf::loadView('labels.box', ['pieces' => BoxLabel::pieces($req), 'title' => 'Box label', 'forPdf' => true, 'autoPrint' => false, 'pdfUrl' => ''])
+        return Pdf::loadView('labels.box', ['pieces' => BoxLabel::pieces($req), 'title' => 'Box label', 'forPdf' => true, 'autoPrint' => false, 'preview' => false, 'pdfUrl' => ''])
             ->setPaper('a4', 'portrait')
             ->setOption('isRemoteEnabled', false)
             ->download($name);

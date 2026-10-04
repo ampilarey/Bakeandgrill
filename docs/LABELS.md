@@ -73,9 +73,14 @@ Dates print as `04 / 10 / 2026` or `4 Oct 2026` (Labels → Settings → Dates).
 
 **Pack stickers** (Labels → Pack stickers): tick products and how many of each (− and +
 move a whole sheet), the language, the label stock, **Print as** (one type for the
-whole sheet, optional), and whether to fill the dates. Press **Prepare**: the page
-lists what will print with each product's expiry, and the print is saved. Then
-**Print** or **Download PDF**. Print at actual size (100 %). **On a phone or tablet,
+whole sheet, optional), and whether to fill the dates. The **Preview** beside the form
+(below it on a phone) redraws half a second after every change: **Sticker** shows one
+sticker at its own shape, **Sheet** the first page as it will come out of the printer,
+and with several products picked a list chooses which one to look at. A request the
+server would refuse (an expiry already past, too many stickers) shows its reason under
+the preview before anything is prepared. Press **Prepare**: the page lists what will
+print with each product's expiry, and the print is saved. Then **Print** or
+**Download PDF**. Print at actual size (100 %). **On a phone or tablet,
 Print opens the PDF** (Share → Print): a phone's own web print adds margins the sheet
 has no room for.
 
@@ -99,8 +104,9 @@ the limits.
 with the batch number, the batch's own expiry (which wins over shelf life) and made-on
 date filled in.
 
-**Box labels** (Labels → Box labels, or "Box label" on a wholesale delivery). Each
-shop's box label is kept in one place, with the shop:
+**Box labels** (Labels → Box labels, or "Box label" on a wholesale delivery). The
+same live preview sits beside the form, so the label is seen filled in before it is
+prepared. Each shop's box label is kept in one place, with the shop:
 
 1. Pick the **Shop**. Its saved box label fills everything in: deliver-to name, Attn,
    role and phone, boat, pick-up point, delivery window, handling (frozen / chilled /
@@ -135,7 +141,8 @@ beneath.
 | Box label | `App\Domains\Labels\BoxLabel`; a shop's saved label in `trade_accounts.box_label` |
 | Brand logos, lettering, cut-outs | `App\Domains\Labels\LabelMedia::storePng`: kept as the PNG uploaded, never re-encoded |
 | QR | `App\Support\QrSvg::dataUri(ComplaintBoxLink::url('label'))`, bare |
-| Sheets | `resources/views/labels/*.blade.php`, signed routes `/labels/stickers`, `/labels/box` (+ `.pdf`), links last 30 minutes, same-origin framing allowed for the item preview |
+| Sheets | `resources/views/labels/*.blade.php`, signed routes `/labels/stickers`, `/labels/box` (+ `.pdf`), links last 30 minutes, same-origin framing allowed for the previews. `preview=1` draws the first page with no print bar, scaled to its frame; `one=1` with it draws the first sticker alone on a page its own size (`one_url` from the API) |
+| Live preview | `apps/admin-dashboard/src/components/labels/SheetPreview.tsx`: a frame the page's shape (width ÷ height) around the preview link; the panels ask the API with `preview: true` half a second after the last change, which logs and saves nothing |
 | API | `routes/domains/labels.php`, `App\Http\Controllers\Api\LabelsController` |
 | Fonts for the PDF | `public/fonts/pdf` (TTF) and the matching WOFF2 in `public/fonts` for the browser |
 

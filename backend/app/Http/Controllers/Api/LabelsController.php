@@ -50,6 +50,8 @@ class LabelsController extends Controller
             'per_page' => $l['cols'] * $l['rows'],
             'w' => $l['w'],
             'h' => $l['h'],
+            'page_w' => $l['page'][0] ?? $l['w'],
+            'page_h' => $l['page'][1] ?? $l['h'],
             'shape' => $l['shape'] ?? 'rect',
             'compact' => ($l['shape'] ?? 'rect') === 'rect' && $key !== 'single-custom' && min($l['w'] / StickerLayouts::DESIGN_W, $l['h'] / StickerLayouts::DESIGN_H) < StickerLayouts::FULL_MIN_SCALE,
         ])->values()]);
@@ -146,6 +148,8 @@ class LabelsController extends Controller
 
         return [
             'url' => LabelSheetController::link('labels.stickers', $query + ($preview ? ['preview' => 1] : ['print' => 1])),
+            // The hub's live preview: the first sticker on its own, at its own size.
+            'one_url' => $preview ? LabelSheetController::link('labels.stickers', $query + ['preview' => 1, 'one' => 1]) : null,
             'view_url' => LabelSheetController::link('labels.stickers', $query),
             'pdf_url' => LabelSheetController::link('labels.stickers.pdf', $query),
             'expires_in_minutes' => LabelSheetController::LINK_MINUTES,
@@ -163,6 +167,7 @@ class LabelsController extends Controller
             'lines.*.qty' => 'nullable|integer|min:0|max:99999',
             'lines.*.article' => 'nullable|string|max:' . BoxLabel::ARTICLE_MAX,
             'articles' => 'sometimes|boolean',
+            'preview' => 'sometimes|boolean',
         ];
         foreach (BoxLabel::FIELDS as $key) {
             $rules[$key] = $key === 'storage' ? ['nullable', Rule::in(LabelSettings::STORAGES)] : 'nullable|string|max:' . BoxLabel::limit($key);
@@ -180,8 +185,12 @@ class LabelsController extends Controller
         } catch (InvalidArgumentException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
-        $out = $this->boxLinks($req, $request->user()?->id);
-        $out['job'] = $this->rememberJob('box', $data, $out['summary'], $request->user()?->id);
+        $preview = $request->boolean('preview');
+        unset($data['preview']);
+        $out = $this->boxLinks($req, $request->user()?->id, $preview);
+        if (!$preview) {
+            $out['job'] = $this->rememberJob('box', $data, $out['summary'], $request->user()?->id);
+        }
 
         return response()->json($out);
     }
@@ -190,7 +199,7 @@ class LabelsController extends Controller
      * @param array<string, mixed> $req from BoxLabel::normalise()
      * @return array<string, mixed>
      */
-    private function boxLinks(array $req, ?int $userId): array
+    private function boxLinks(array $req, ?int $userId, bool $preview = false): array
     {
         $query = array_merge(
             array_filter($req['fields'], fn ($v) => $v !== ''),
@@ -201,7 +210,8 @@ class LabelsController extends Controller
                 'articles' => $req['articles'] ? null : 0,
             ],
         );
-        LabelPrint::create([
+        if (!$preview) {
+            LabelPrint::create([
             'kind' => 'box_label',
             'layout' => 'a4',
             'trade_delivery_id' => $req['delivery'],
@@ -209,11 +219,12 @@ class LabelsController extends Controller
             'details' => ['fields' => array_filter($req['fields'], fn ($v) => $v !== ''), 'lines' => array_map(fn ($l) => array_filter($l, fn ($v) => $v !== ''), $req['lines'])],
             'printed_by' => $userId,
             'output' => 'print',
-        ]);
+            ]);
+        }
         $names = Item::query()->whereIn('id', array_column($req['lines'], 'id'))->pluck('name', 'id');
 
         return [
-            'url' => LabelSheetController::link('labels.box', $query + ['print' => 1]),
+            'url' => LabelSheetController::link('labels.box', $query + ($preview ? ['preview' => 1] : ['print' => 1])),
             'view_url' => LabelSheetController::link('labels.box', $query),
             'pdf_url' => LabelSheetController::link('labels.box.pdf', $query),
             'expires_in_minutes' => LabelSheetController::LINK_MINUTES,

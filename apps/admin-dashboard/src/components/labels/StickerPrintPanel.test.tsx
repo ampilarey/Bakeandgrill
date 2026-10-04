@@ -22,6 +22,10 @@ vi.mock('../../api', () => ({
 
 import { StickerPrintPanel } from './StickerPrintPanel';
 
+/** The prepare call (the live preview calls the same API with preview: true). */
+const prepared = () => stickerLinks.mock.calls.map((c) => c[0] as Record<string, unknown>).find((b) => !b.preview);
+const previews = () => stickerLinks.mock.calls.map((c) => c[0] as Record<string, unknown>).filter((b) => b.preview);
+
 const product = (id: number, name: string, extra = {}) => ({
   id, name, name_dv: null, label_enabled: true, label_ingredients_source: 'manual', label_ingredients: 'Flour', label_ingredients_dv: null,
   label_shelf_life_days: 90, label_storage: 'frozen', label_pack_qty: null, label_title_media_id: null, label_title_url: null,
@@ -65,8 +69,8 @@ describe('StickerPrintPanel', () => {
     fireEvent.click(screen.getByText('Fill in the dates'));
     fireEvent.click(screen.getByTestId('sticker-prepare'));
 
-    await waitFor(() => expect(stickerLinks).toHaveBeenCalled());
-    expect(stickerLinks.mock.calls[0][0]).toMatchObject({ items: [{ id: 1, copies: 4 }], lang: 'en', layout: 'a4-4', fill: true, rounded: false });
+    await waitFor(() => expect(prepared()).toBeTruthy());
+    expect(prepared()).toMatchObject({ items: [{ id: 1, copies: 4 }], lang: 'en', layout: 'a4-4', fill: true, rounded: false });
     const summary = await screen.findByTestId('sticker-summary');
     expect(summary).toHaveTextContent('4 stickers on 1 page');
     expect(summary).toHaveTextContent('EXP 2027-01-02');
@@ -85,7 +89,7 @@ describe('StickerPrintPanel', () => {
     expect(fetchLabelProducts).not.toHaveBeenCalled();
     fireEvent.click(await screen.findByTestId('sticker-prepare'));
     expect(await screen.findByRole('alert')).toHaveTextContent('The expiry date has already passed.');
-    expect(stickerLinks.mock.calls[0][0]).toMatchObject({ pi: 9, batch: 'KP-77', exp: '2020-01-01', items: [{ id: 1, copies: 4 }] });
+    expect(prepared()).toMatchObject({ pi: 9, batch: 'KP-77', exp: '2020-01-01', items: [{ id: 1, copies: 4 }] });
   });
 
   it('lets a production line print more than one sheet', async () => {
@@ -94,7 +98,42 @@ describe('StickerPrintPanel', () => {
     await waitFor(() => expect(fetchLabelLayouts).toHaveBeenCalled());
     fireEvent.click(await screen.findByLabelText('How many Bajiya stickers: more'));
     fireEvent.click(screen.getByTestId('sticker-prepare'));
-    await waitFor(() => expect(stickerLinks).toHaveBeenCalled());
-    expect(stickerLinks.mock.calls[0][0]).toMatchObject({ items: [{ id: 1, copies: 8 }] });
+    await waitFor(() => expect(prepared()).toBeTruthy());
+    expect(prepared()).toMatchObject({ items: [{ id: 1, copies: 8 }] });
+  });
+
+  it('draws a live preview of one sticker or the sheet, for the chosen product, as the form changes', async () => {
+    stickerLinks.mockResolvedValue({
+      url: '/labels/stickers?preview=1&signature=p', one_url: '/labels/stickers?preview=1&one=1&signature=p', view_url: '/labels/stickers?signature=p', pdf_url: '/labels/stickers.pdf?signature=p', expires_in_minutes: 30,
+      summary: { layout: 'a4-4', label: '4 on A4', design: 'full', stickers: 8, pages: 2, per_page: 4, products: [] },
+    });
+    render(<MemoryRouter><StickerPrintPanel /></MemoryRouter>);
+    await screen.findByText(/Keeps 90 days/);
+    // Nothing picked: no request, a hint in the frame.
+    expect(screen.getByTestId('sheet-preview')).toHaveTextContent('Pick a product');
+    expect(screen.queryByTitle('Sticker preview')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Print Bajiya'));
+    fireEvent.click(screen.getByLabelText('Print Patties'));
+    await waitFor(() => expect(previews().length).toBeGreaterThan(0), { timeout: 2000 });
+    // One request for the two clicks (half a second apart they collapse), the picked product first.
+    expect(previews()[0]).toMatchObject({ preview: true, items: [{ id: 1, copies: 4 }, { id: 2, copies: 4 }] });
+    const frame = await screen.findByTitle('Sticker preview');
+    expect(frame).toHaveAttribute('src', expect.stringContaining('one=1'));
+    expect(screen.getByTestId('sticker-preview-pane')).toHaveTextContent('Bajiya · English · 105 × 149 mm');
+
+    // Another product in front, then the whole sheet.
+    fireEvent.change(screen.getByLabelText('Product to preview'), { target: { value: '2' } });
+    await waitFor(() => expect(previews().length).toBe(2), { timeout: 2000 });
+    expect(previews()[1]).toMatchObject({ items: [{ id: 2, copies: 4 }, { id: 1, copies: 4 }] });
+    fireEvent.click(screen.getByRole('button', { name: 'Sheet' }));
+    expect(screen.getByTitle('Sheet preview')).toHaveAttribute('src', expect.not.stringContaining('one=1'));
+    expect(screen.getByTestId('sticker-preview-pane')).toHaveTextContent('Page 1 of 2 · 8 stickers');
+
+    // A refused request shows its reason by the preview, not as the page's error.
+    stickerLinks.mockRejectedValue(new Error('The expiry date has already passed.'));
+    fireEvent.click(screen.getByText('Fill in the dates'));
+    fireEvent.change(screen.getByLabelText('Expiry'), { target: { value: '2020-01-01' } });
+    expect(await screen.findByRole('alert', {}, { timeout: 2000 })).toHaveTextContent('The expiry date has already passed.');
   });
 });

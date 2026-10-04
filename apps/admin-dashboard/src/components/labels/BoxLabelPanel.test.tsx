@@ -76,8 +76,12 @@ describe('BoxLabelPanel', () => {
     // Printing sends each line's article name.
     boxLabelLinks.mockResolvedValue({ url: '/x', view_url: '/x', pdf_url: '/x.pdf', expires_in_minutes: 30 });
     fireEvent.click(screen.getByTestId('box-prepare'));
-    await waitFor(() => expect(boxLabelLinks).toHaveBeenCalled());
-    expect(boxLabelLinks.mock.calls[0][0].lines[1]).toEqual({ id: 2, qty: 0, article: 'FROZEN - SHORT EAT - BAJIYAA-PIECE' });
+    const prepared = () => boxLabelLinks.mock.calls.map((c) => c[0]).find((b) => !b.preview);
+    await waitFor(() => expect(prepared()).toBeTruthy());
+    expect(prepared().lines[1]).toEqual({ id: 2, qty: 0, article: 'FROZEN - SHORT EAT - BAJIYAA-PIECE' });
+    // The live preview asked for the same label, as a preview, and framed it.
+    await waitFor(() => expect(boxLabelLinks.mock.calls.some((c) => c[0].preview)).toBe(true), { timeout: 2000 });
+    expect(await screen.findByTitle('Box label preview')).toHaveAttribute('src', expect.stringContaining('/x'));
   });
 
   it('opened from a delivery fills from it, shop and all', async () => {

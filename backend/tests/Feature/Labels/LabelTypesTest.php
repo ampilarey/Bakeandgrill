@@ -97,10 +97,18 @@ class LabelTypesTest extends TestCase
         // The item's sticker takes the brand's name.
         $item = $this->makeItem(false, 0, ['name' => 'Lime Pickle', 'label_enabled' => true, 'label_storage' => 'ambient', 'label_type_id' => $type['id']]);
         $this->getJson("/api/labels/items/{$item->id}")->assertOk()->assertJsonPath('data.defaults.brand', 'Amma')->assertJsonPath('data.defaults.how_to_use', 'Serve with rice. Keep the lid closed.');
+        // And its sheet prints with the type (the hub's live preview found the
+        // sheet reading the item's type without loading it, a 500 outside production).
+        $other = $this->makeItem(false, 0, ['name' => 'Mango Pickle', 'label_enabled' => true, 'label_type_id' => $type['id']]);
+        $links = $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $item->id, 'copies' => 1], ['id' => $other->id, 'copies' => 1]], 'layout' => 'a4-4', 'preview' => true])->assertOk();
+        $sheet = (string) $this->get($links->json('one_url'))->assertOk()->getContent();
+        $this->assertStringContainsString('Serve with rice', $sheet);
+        $this->assertStringContainsString('A M M A', $sheet);
 
         // A type in use cannot go; empty it first.
         $this->deleteJson("/api/labels/types/{$type['id']}")->assertUnprocessable();
         $item->forceFill(['label_type_id' => null])->save();
+        $other->forceFill(['label_type_id' => null])->save();
         $this->deleteJson("/api/labels/types/{$type['id']}")->assertOk();
 
         // Brands: a PNG logo is kept as uploaded; the main brand stays.
