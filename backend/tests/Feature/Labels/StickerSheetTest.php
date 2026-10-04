@@ -138,6 +138,7 @@ class StickerSheetTest extends TestCase
             $pdf = $this->get($res->json('pdf_url'))->assertOk();
             $this->assertStringStartsWith('%PDF', (string) $pdf->getContent(), $key);
             $this->assertSame(1, preg_match_all('#/Type\s*/Page[^s]#', (string) $pdf->getContent()), "{$key}: one page");
+            $this->dump("stock-{$key}", $html, (string) $pdf->getContent());
             $this->dump($key, $html, (string) $pdf->getContent());
         }
 

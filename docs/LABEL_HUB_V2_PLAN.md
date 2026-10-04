@@ -1,5 +1,7 @@
 # Label Hub v2
 
+**Built 2026-10-05**, steps 1 to 5; the guide is `docs/LABELS.md`.
+
 Owner, 2026-10-04, after the first week with the Label Hub: "Still im not happy
 with the label hub. This is what i need to do:" ten points, listed below with
 what each becomes. The first build (`docs/LABEL_HUB_PLAN.md`, `docs/LABELS.md`)

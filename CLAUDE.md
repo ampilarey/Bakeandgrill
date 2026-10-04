@@ -87,14 +87,17 @@ cookie-less.
 
 ## Labels (pack stickers, box labels)
 
-Admin → Labels prints the frozen short-eat pack stickers (English and Dhivehi, any
-label stock) and A4 box labels, server-drawn with dompdf from item, production-batch
-and wholesale-delivery data. Owner-only until `labels.print` / `labels.manage` are
-granted. Two renderer facts the views depend on: dompdf's baseline rule differs from
-browsers (`LabelText::PDF_BASELINE_K`), and dompdf needs Thaana in visual order
-(`App\Support\ThaanaVisual`, PDF path only; the menu PDF uses it too). How to use it
-and where everything lives: `docs/LABELS.md`; design and decisions:
-`docs/LABEL_HUB_PLAN.md`.
+Admin → Labels prints pack stickers (English and Dhivehi; A4 sheets, label-printer
+sizes, round stickers) and A4 box labels, server-drawn with dompdf. Label types
+(Frozen Hedhika…) carry the wording, brands (Bake & Grill, Amma…) the logo; every
+sticker shares one header and footer with the complaints QR; every prepared print is
+a saved label that can be reprinted or edited. Owner-only until `labels.print` /
+`labels.manage` are granted. Two renderer facts the views depend on: dompdf's baseline
+rule differs from browsers (`LabelText::PDF_BASELINE_K`), and dompdf needs Thaana in
+visual order (`App\Support\ThaanaVisual`, PDF path only; the menu PDF uses it too).
+Phones print the PDF, not the web sheet (iOS adds margins). How to use it and where
+everything lives: `docs/LABELS.md`; design and decisions: `docs/LABEL_HUB_PLAN.md`
+and `docs/LABEL_HUB_V2_PLAN.md`.
 
 ## TEST and production share one Redis
 
