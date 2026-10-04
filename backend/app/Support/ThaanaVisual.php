@@ -20,8 +20,9 @@ use FontLib\Font;
  * A simplified bidi for an RTL paragraph: Thaana and its punctuation run right
  * to left, Latin letters and digits keep their own left-to-right order inside
  * it ("-18°C", "bakeandgrill.mv"), and spaces and punctuation take the
- * direction of what is either side of them. A consonant keeps its fili (vowel
- * mark) after it, as a grapheme cluster, so the mark still sits on its letter.
+ * direction of what is either side of them. Within a cluster the fili (vowel
+ * mark) goes before its consonant, which is where an unshaped renderer has to
+ * meet it to set it over the letter (checked against Pillow with RAQM).
  *
  * Only the PDF path should call it. Browsers order Thaana themselves and would
  * reverse it a second time.
@@ -85,8 +86,13 @@ final class ThaanaVisual
                 $out .= implode('', $run['chars']);
                 continue;
             }
+            // Code point by code point, so each fili lands just before its
+            // consonant: Faruma's marks have no advance and are drawn from the
+            // pen position, which in a right-to-left font is the letter's left
+            // edge. In cluster order (letter, then mark) dompdf set every mark
+            // beside its letter instead of over it.
             foreach (array_reverse($run['chars']) as $c) {
-                $out .= self::MIRROR[$c] ?? $c;
+                $out .= self::MIRROR[$c] ?? implode('', array_reverse(mb_str_split($c)));
             }
         }
 

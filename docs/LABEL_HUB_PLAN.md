@@ -229,8 +229,15 @@ stock to support: "add all options", so Phase 1 ships all of these:
 For single-label layouts the `@page` size is the label itself with zero margin, so
 the printer driver's "actual size" prints it 1:1. The sheet page states the label
 size and the scale ("design at 95 %") above the paper. Every layout must pass the
-one-page test and the smallest type must stay readable: refuse (422) a label whose
-scale would take the footer address under 4.5 pt, and say which size would work.
+one-page test.
+
+As built (2026-10-04): scaling the full design below 0.7 would take the
+ingredient line under about 5.3 pt (8 and 12 to an A4 would print it at 3.8 pt), so
+labels smaller than that get a compact "mini" sticker instead: header band with the
+flame and the name, ingredients, the product photo when there is room, MFG/EXP,
+batch and quantity, the storage strip and a slim footer, with fixed type no smaller
+than 5.5 pt. 8 on A4 is 99 × 70.5 mm and 12 on A4 is 66 × 72 mm, inside a 6 mm
+margin. Custom sizes run from 50 × 45 mm to A4; smaller is refused with a message.
 
 **`StickerSheetData`**
 Builds the view model for a request: which products, how many pages each, the

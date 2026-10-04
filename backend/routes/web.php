@@ -94,6 +94,13 @@ Route::middleware(['content.locale', 'service.banner'])->group(function () {
     Route::get('/privacy', [HomeController::class, 'privacy'])->name('privacy');
 });
 
+// Label Hub sheets (owner, 2026-10-04). Signed links from /api/labels/*/url,
+// issued only to staff with labels.print; see LabelSheetController.
+Route::middleware(['signed:relative', 'throttle:60,1'])->prefix('labels')->group(function () {
+    Route::get('/stickers', [App\Http\Controllers\Labels\LabelSheetController::class, 'stickers'])->name('labels.stickers');
+    Route::get('/stickers.pdf', [App\Http\Controllers\Labels\LabelSheetController::class, 'stickersPdf'])->name('labels.stickers.pdf');
+});
+
 // Staff-signed Content Studio website preview (draft overlay; never listed publicly).
 Route::get('/admin/preview/website/home', [App\Http\Controllers\ContentWebsitePreviewController::class, 'home'])
     ->name('content.preview.website')

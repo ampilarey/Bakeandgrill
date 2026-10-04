@@ -5,12 +5,18 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Domains\Labels\LabelIngredients;
+use App\Domains\Labels\LabelSettings;
+use App\Domains\Labels\StickerLayouts;
+use App\Domains\Labels\StickerSheet;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Labels\LabelSheetController;
 use App\Models\Item;
+use App\Models\LabelPrint;
 use App\Models\Media;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use InvalidArgumentException;
 
 /**
  * Label Hub (owner, 2026-10-04; docs/LABEL_HUB_PLAN.md): what each item prints
@@ -18,7 +24,142 @@ use Illuminate\Validation\Rule;
  */
 class LabelsController extends Controller
 {
-    public function __construct(private readonly LabelIngredients $ingredients) {}
+    public function __construct(
+        private readonly LabelIngredients $ingredients,
+        private readonly StickerSheet $stickers,
+    ) {}
+
+    /** Label stock the hub offers, for its size picker. */
+    public function layouts(): JsonResponse
+    {
+        return response()->json(['data' => collect(StickerLayouts::LAYOUTS)->map(fn ($l, $key) => [
+            'key' => $key,
+            'label' => $l['label'],
+            'hint' => $l['hint'],
+            'per_page' => $l['cols'] * $l['rows'],
+            'w' => $l['w'],
+            'h' => $l['h'],
+            'compact' => $key !== 'single-custom' && min($l['w'] / StickerLayouts::DESIGN_W, $l['h'] / StickerLayouts::DESIGN_H) < StickerLayouts::FULL_MIN_SCALE,
+        ])->values()]);
+    }
+
+    /**
+     * Signed links to a sheet of pack stickers, after checking the request
+     * (dates, sizes, counts) and writing the print log.
+     */
+    public function stickersUrl(Request $request): JsonResponse
+    {
+        $request->validate([
+            'items' => 'required|array|min:1|max:60',
+            'items.*.id' => 'required|integer|exists:items,id',
+            'items.*.copies' => 'required|integer|min:1|max:' . StickerSheet::MAX_STICKERS,
+            'lang' => 'sometimes|in:en,dv',
+            'layout' => ['sometimes', Rule::in(array_keys(StickerLayouts::LAYOUTS))],
+            'w' => 'nullable|numeric',
+            'h' => 'nullable|numeric',
+            'fill' => 'sometimes|boolean',
+            'mfg' => 'nullable|date_format:Y-m-d',
+            'exp' => 'nullable|date_format:Y-m-d',
+            'batch' => 'nullable|string|max:30',
+            'qty' => 'nullable|integer|min:1|max:9999',
+            'pi' => 'nullable|integer|exists:kitchen_production_items,id',
+            'preview' => 'sometimes|boolean',
+        ]);
+        try {
+            $req = StickerSheet::normalise($request->all());
+        } catch (InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        $summary = $this->stickers->summary($req);
+        $query = [
+            'items' => StickerSheet::itemsParam($req['items']),
+            'lang' => $req['lang'],
+            'layout' => $req['layout'],
+            'w' => $req['w'],
+            'h' => $req['h'],
+            'fill' => $req['fill'] ? 1 : null,
+            'mfg' => $req['mfg'],
+            'exp' => $req['exp'],
+            'batch' => $req['batch'],
+            'qty' => $req['qty'],
+            'pi' => $req['pi'],
+        ];
+
+        // A preview in the item editor prints nothing, so it is not logged.
+        if (!$request->boolean('preview')) {
+            foreach ($summary['products'] as $p) {
+                LabelPrint::create([
+                    'kind' => $req['lang'] === 'dv' ? 'sticker_dv' : 'sticker_en',
+                    'layout' => $req['layout'],
+                    'label_w_mm' => $req['w'],
+                    'label_h_mm' => $req['h'],
+                    'item_id' => $p['id'],
+                    'kitchen_production_item_id' => $req['pi'],
+                    'copies' => $p['copies'],
+                    'mfg_date' => $p['mfg'],
+                    'exp_date' => $p['exp'],
+                    'batch_code' => $req['batch'] !== '' ? $req['batch'] : null,
+                    'pack_qty' => $req['qty'] !== '' ? (int) $req['qty'] : null,
+                    'printed_by' => $request->user()?->id,
+                    'output' => 'print',
+                ]);
+            }
+        }
+
+        return response()->json([
+            'url' => LabelSheetController::link('labels.stickers', $query + ($request->boolean('preview') ? ['preview' => 1] : ['print' => 1])),
+            'view_url' => LabelSheetController::link('labels.stickers', $query),
+            'pdf_url' => LabelSheetController::link('labels.stickers.pdf', $query),
+            'expires_in_minutes' => LabelSheetController::LINK_MINUTES,
+            'summary' => $summary,
+        ]);
+    }
+
+    /** The print log, newest first. */
+    public function prints(Request $request): JsonResponse
+    {
+        $rows = LabelPrint::query()
+            ->with(['item:id,name', 'printer:id,name', 'delivery:id,delivery_number'])
+            ->when($request->filled('kind'), fn ($q) => $q->where('kind', $request->string('kind')))
+            ->when($request->filled('item_id'), fn ($q) => $q->where('item_id', $request->integer('item_id')))
+            ->when($request->filled('from'), fn ($q) => $q->whereDate('created_at', '>=', $request->string('from')))
+            ->when($request->filled('to'), fn ($q) => $q->whereDate('created_at', '<=', $request->string('to')))
+            ->orderByDesc('id')
+            ->paginate(min(100, max(10, $request->integer('per_page', 30))));
+
+        return response()->json($rows->through(fn (LabelPrint $p) => [
+            'id' => $p->id,
+            'kind' => $p->kind,
+            'layout' => $p->layout,
+            'item' => $p->item?->name,
+            'delivery' => $p->delivery?->delivery_number,
+            'copies' => $p->copies,
+            'mfg_date' => $p->mfg_date?->toDateString(),
+            'exp_date' => $p->exp_date?->toDateString(),
+            'batch_code' => $p->batch_code,
+            'pack_qty' => $p->pack_qty,
+            'details' => $p->details,
+            'printed_by' => $p->printer?->name,
+            'created_at' => $p->created_at?->toIso8601String(),
+        ]));
+    }
+
+    public function settings(): JsonResponse
+    {
+        return response()->json(['data' => LabelSettings::all(), 'defaults' => LabelSettings::DEFAULTS]);
+    }
+
+    public function updateSettings(Request $request): JsonResponse
+    {
+        $rules = [];
+        foreach (array_keys(LabelSettings::DEFAULTS) as $key) {
+            $rules[$key] = str_starts_with($key, 'label_precut_') ? 'sometimes|nullable|numeric|between:-20,20' : 'sometimes|nullable|string|max:200';
+        }
+        LabelSettings::save($request->validate($rules));
+
+        return response()->json(['data' => LabelSettings::all()]);
+    }
 
     /**
      * Items for the hub: the ones switched on for labels first, then the rest

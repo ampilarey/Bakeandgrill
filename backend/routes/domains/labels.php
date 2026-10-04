@@ -18,3 +18,13 @@ Route::get('/labels/items/{item}', [LabelsController::class, 'show'])
 Route::put('/items/{item}/label', [LabelsController::class, 'updateItem'])
     ->middleware('permission:labels.manage')
     ->whereNumber('item');
+Route::get('/labels/layouts', [LabelsController::class, 'layouts'])
+    ->middleware('permission:labels.print');
+Route::post('/labels/stickers/url', [LabelsController::class, 'stickersUrl'])
+    ->middleware(['permission:labels.print', 'throttle:60,1']);
+Route::get('/labels/prints', [LabelsController::class, 'prints'])
+    ->middleware('permission:labels.print');
+Route::get('/labels/settings', [LabelsController::class, 'settings'])
+    ->middleware('permission:labels.print');
+Route::put('/labels/settings', [LabelsController::class, 'updateSettings'])
+    ->middleware('permission:labels.manage');

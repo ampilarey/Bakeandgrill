@@ -13,10 +13,10 @@ use Tests\TestCase;
  */
 class ThaanaVisualTest extends TestCase
 {
-    public function test_a_word_is_reversed_by_letter_keeping_each_fili_on_its_letter(): void
+    public function test_a_word_is_reversed_with_each_fili_just_before_its_letter(): void
     {
-        // މާލެ = މ ާ ލ ެ ; visual left-to-right: ލެ then މާ.
-        $this->assertSame("\u{078D}\u{07AC}\u{0789}\u{07A7}", ThaanaVisual::order("\u{0789}\u{07A7}\u{078D}\u{07AC}"));
+        // މާލެ = މ ާ ލ ެ ; visual left-to-right: ެ ލ ާ މ (mark, then its letter).
+        $this->assertSame("\u{07AC}\u{078D}\u{07A7}\u{0789}", ThaanaVisual::order("\u{0789}\u{07A7}\u{078D}\u{07AC}"));
     }
 
     public function test_words_come_out_in_reverse_order_with_punctuation_on_its_word(): void
