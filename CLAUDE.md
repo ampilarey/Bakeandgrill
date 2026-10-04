@@ -85,6 +85,17 @@ That pair is a deploy dependency (CI, TEST, production). The CSS override route
 `GET /css/dhivehi-font.css` is registered outside the `web` group so it stays
 cookie-less.
 
+## Labels (pack stickers, box labels)
+
+Admin → Labels prints the frozen short-eat pack stickers (English and Dhivehi, any
+label stock) and A4 box labels, server-drawn with dompdf from item, production-batch
+and wholesale-delivery data. Owner-only until `labels.print` / `labels.manage` are
+granted. Two renderer facts the views depend on: dompdf's baseline rule differs from
+browsers (`LabelText::PDF_BASELINE_K`), and dompdf needs Thaana in visual order
+(`App\Support\ThaanaVisual`, PDF path only; the menu PDF uses it too). How to use it
+and where everything lives: `docs/LABELS.md`; design and decisions:
+`docs/LABEL_HUB_PLAN.md`.
+
 ## TEST and production share one Redis
 
 The Redis socket is per cPanel *account* (`REDIS_PATH=/home/bakeandgrill/.redis/redis.sock`),

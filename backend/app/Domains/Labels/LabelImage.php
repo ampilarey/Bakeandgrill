@@ -30,6 +30,13 @@ final class LabelImage
         if ($media === null || $media->media_type !== 'image') {
             return null;
         }
+        // The library keeps a JPEG copy for the website and the original as
+        // uploaded; a label wants the original, or a transparent PNG (the
+        // hand lettering, a cut-out) prints in a white box.
+        $original = self::fromPublicUrl($media->original_url ?? null, $maxPx);
+        if ($original !== null) {
+            return $original;
+        }
         try {
             $path = Storage::disk($media->disk ?: 'public')->path($media->path);
         } catch (\Throwable) {
@@ -114,13 +121,25 @@ final class LabelImage
         $w = imagesx($img);
         $h = imagesy($img);
         $step = max(1, (int) floor(max($w, $h) / 400));
+        // Transparent margins are background; so is white, when the picture
+        // has no transparency at its corners (a JPEG from the media library,
+        // which flattens uploads onto white).
+        $corners = [imagecolorat($img, 0, 0), imagecolorat($img, $w - 1, 0), imagecolorat($img, 0, $h - 1), imagecolorat($img, $w - 1, $h - 1)];
+        $opaqueCorners = count(array_filter($corners, fn (int $c) => (($c >> 24) & 0x7F) < 120)) === 4;
+        $isBackground = function (int $c) use ($opaqueCorners): bool {
+            if ((($c >> 24) & 0x7F) >= 120) {
+                return true;
+            }
+
+            return $opaqueCorners && (($c >> 16) & 0xFF) > 245 && (($c >> 8) & 0xFF) > 245 && ($c & 0xFF) > 245;
+        };
         $minX = $w;
         $minY = $h;
         $maxX = -1;
         $maxY = -1;
         for ($y = 0; $y < $h; $y += $step) {
             for ($x = 0; $x < $w; $x += $step) {
-                if (((imagecolorat($img, $x, $y) >> 24) & 0x7F) < 120) {
+                if (!$isBackground(imagecolorat($img, $x, $y))) {
                     $minX = min($minX, $x);
                     $maxX = max($maxX, $x);
                     $minY = min($minY, $y);

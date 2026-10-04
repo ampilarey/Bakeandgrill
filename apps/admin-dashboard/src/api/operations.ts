@@ -29,6 +29,8 @@ export interface InventoryItem {
   is_active: boolean;
   /** Whether the floor may ask for this item from the POS request list. */
   requestable: boolean;
+  /** Listed in a recipe's ingredient line on pack stickers (off for packaging). */
+  is_label_ingredient: boolean;
   /** Bought with GST that comes back: 800 = 8%. null = nothing to claim. */
   gst_rate_bp: number | null;
   last_counted_at: string | null;
@@ -79,6 +81,7 @@ type BackendInventoryRow = {
   inventory_category_id?: number | null;
   is_active: boolean;
   requestable?: boolean;
+  is_label_ingredient?: boolean;
   gst_rate_bp?: number | string | null;
   last_counted_at?: string | null;
   created_at: string;
@@ -110,6 +113,7 @@ function mapInventoryRow(row: BackendInventoryRow): InventoryItem {
     // Absent on older payloads; an item nobody has ruled out is requestable,
     // which is also the column default.
     requestable: row.requestable ?? true,
+    is_label_ingredient: row.is_label_ingredient ?? true,
     gst_rate_bp: row.gst_rate_bp != null && Number(row.gst_rate_bp) > 0 ? Number(row.gst_rate_bp) : null,
     last_counted_at: row.last_counted_at ?? null,
     created_at: row.created_at,
@@ -982,6 +986,7 @@ export async function updateInventoryItem(
     notes: string | null;
     is_active: boolean;
     requestable: boolean;
+    is_label_ingredient: boolean;
     gst_rate_bp: number;
   }>,
 ): Promise<{ item: InventoryItem }> {

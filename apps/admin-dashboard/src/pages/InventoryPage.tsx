@@ -827,6 +827,22 @@ export default function InventoryPage() {
           🛒
         </Btn>
       )}
+      {canManage && (
+        // Label Hub: packaging stays off a recipe's ingredient line on pack stickers.
+        <Btn
+          small
+          variant="secondary"
+          disabled={togglingLabel[item.id]}
+          onClick={() => void toggleLabelIngredient(item)}
+          title={item.is_label_ingredient
+            ? 'Listed as an ingredient on pack stickers — click if it is packaging, not food'
+            : 'Left off pack-sticker ingredients — click to list it'}
+          aria-label={item.is_label_ingredient ? `Take ${item.name} off sticker ingredients` : `List ${item.name} in sticker ingredients`}
+          style={{ opacity: item.is_label_ingredient ? 1 : 0.45 }}
+        >
+          🏷
+        </Btn>
+      )}
       {canManage && <Btn small variant="secondary" onClick={() => openEdit(item)} title="Edit this item">✏️</Btn>}
       <Btn small variant="secondary" onClick={() => void openLedger(item)} title="Stock movements">📜</Btn>
       {/* Said in full, because "Price history" undersold a panel that also
@@ -863,6 +879,22 @@ export default function InventoryPage() {
       setError((e as Error).message);
     } finally {
       setTogglingRequestable((s) => ({ ...s, [item.id]: false }));
+    }
+  };
+
+  const [togglingLabel, setTogglingLabel] = useState<Record<number, boolean>>({});
+
+  const toggleLabelIngredient = async (item: InventoryItem) => {
+    const next = !item.is_label_ingredient;
+    setTogglingLabel((s) => ({ ...s, [item.id]: true }));
+    setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, is_label_ingredient: next } : i)));
+    try {
+      await updateInventoryItem(item.id, { is_label_ingredient: next });
+    } catch (e) {
+      setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, is_label_ingredient: item.is_label_ingredient } : i)));
+      setError((e as Error).message);
+    } finally {
+      setTogglingLabel((s) => ({ ...s, [item.id]: false }));
     }
   };
 

@@ -1,5 +1,8 @@
 # Label Hub: implementation plan
 
+> **Status, 2026-10-04: built** (steps 1 to 5 merged). How to use it: `docs/LABELS.md`.
+> Where the build differs from this plan it says so inline ("As built").
+
 Owner, 2026-10-04: "I want to print labels like this [the frozen short-eat stickers
 and box labels], think of other useful features, and this should be accessible to
 all staff who have the authority."
