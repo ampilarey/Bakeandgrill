@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { Tags } from 'lucide-react';
 import {
   PageHeader,
   PageShell,
@@ -17,6 +18,7 @@ import { Tabs, TabList, Tab } from '../components/ui/Tabs';
 import { Toggle } from '../components/ui/Toggle';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
+import { ProductionStickersModal } from '../components/labels/LabelModals';
 import {
   fetchKitchenHandoverSettings,
   updateKitchenHandoverSettings,
@@ -149,6 +151,10 @@ function SectionTitle({ children, action }: { children: ReactNode; action?: Reac
 }
 
 function BatchMeta({ batch }: { batch: KitchenProductionBatch }) {
+  // Label Hub: stickers for a line, with its batch and expiry filled in.
+  const { can } = useCurrentUserPermissions();
+  const canLabel = can('labels.print') || can('labels.manage');
+  const [stickersFor, setStickersFor] = useState<number | null>(null);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -197,10 +203,22 @@ function BatchMeta({ batch }: { batch: KitchenProductionBatch }) {
               }}
             >
               {item.name} × {item.expected_receive_qty}{item.unit ? ` ${item.unit}` : ''}
+              {canLabel && item.item_id ? (
+                <button
+                  type="button"
+                  onClick={() => setStickersFor(item.id)}
+                  aria-label={`Print stickers for ${item.name}`}
+                  title="Print stickers"
+                  style={{ marginLeft: 6, border: 0, background: 'transparent', color: 'var(--color-primary)', cursor: 'pointer', padding: 0, verticalAlign: 'middle' }}
+                >
+                  <Tags size={14} />
+                </button>
+              ) : null}
             </span>
           ))}
         </div>
       )}
+      {stickersFor != null && <ProductionStickersModal productionItemId={stickersFor} onClose={() => setStickersFor(null)} />}
       {batch.notes ? (
         <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>{batch.notes}</p>
       ) : null}

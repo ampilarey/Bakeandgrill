@@ -8,7 +8,7 @@ import {
   Boxes, LayoutGrid, Wallet, Clock, Monitor, Share2,
   Link, ShoppingBag, Zap,
   ConciergeBell, Wrench, ClipboardCheck, HeartPulse, UserCircle, Utensils,
-  LayoutTemplate, Shield, UserCog, Images, Tv, Store,
+  LayoutTemplate, Shield, UserCog, Images, Tv, Store, Tags,
 } from 'lucide-react';
 import type { StaffUser } from '../api';
 
@@ -110,6 +110,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/purchasing',            icon: Package,       label: 'Purchasing',      permissions: ['purchase_requests.view_all', 'suppliers.purchases', 'purchase_requests.create', 'suppliers.view', 'reports.financial', 'settings.update'], description: 'Requests, orders, suppliers, spend reports & buying settings' },
       // Delivery settings: Settings → Delivery tab only. Not listed again here.
       { to: '/wholesale', icon: Store, label: 'Wholesale', permission: 'trade.view', description: 'Shops, deliveries, invoicing & reports' },
+      // Owner, 2026-10-04: "a label making hub … accessible to all staff who have the authority".
+      { to: '/labels', icon: Tags, label: 'Labels', permissions: ['labels.print', 'labels.manage'], description: 'Pack stickers & box labels' },
     ],
   },
   {

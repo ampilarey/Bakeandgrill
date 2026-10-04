@@ -17,6 +17,7 @@ import { CUSTOMERS_HUB_PERMISSIONS } from './pages/CustomersHub';
 import { PROMOTIONS_HUB_PERMISSIONS } from './pages/PromotionsHub';
 import { FINANCE_HUB_PERMISSIONS } from './pages/FinanceHub';
 import { WHOLESALE_HUB_PERMISSIONS } from './pages/WholesaleHub';
+import { LABELS_HUB_PERMISSIONS } from './pages/LabelsHub';
 
 const OrdersPage              = lazyWithRetry(() => import('./pages/OrdersPage').then((m) => ({ default: m.OrdersPage })));
 const KDSPage                 = lazyWithRetry(() => import('./pages/KDSPage').then((m) => ({ default: m.KDSPage })));
@@ -36,6 +37,7 @@ const CustomersHub            = lazyWithRetry(() => import('./pages/CustomersHub
 const PromotionsHub           = lazyWithRetry(() => import('./pages/PromotionsHub').then((m) => ({ default: m.PromotionsHub })));
 const FinanceHub              = lazyWithRetry(() => import('./pages/FinanceHub').then((m) => ({ default: m.FinanceHub })));
 const WholesaleHub            = lazyWithRetry(() => import('./pages/WholesaleHub').then((m) => ({ default: m.WholesaleHub })));
+const LabelsHub               = lazyWithRetry(() => import('./pages/LabelsHub').then((m) => ({ default: m.LabelsHub })));
 const WebhooksPage            = lazyWithRetry(() => import('./pages/WebhooksPage').then((m) => ({ default: m.WebhooksPage })));
 const DashboardPage           = lazyWithRetry(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
 const TestChecklistPage       = lazyWithRetry(() => import('./pages/TestChecklistPage'));
@@ -405,6 +407,14 @@ export default function App() {
                     <SettingsPage />
                   </PermissionGuard>
                 } />
+                {/* Labels (owner, 2026-10-04): pack stickers and box labels. */}
+                {['labels', 'labels/stickers', 'labels/box', 'labels/history', 'labels/settings'].map((path) => (
+                  <Route key={path} path={path} element={
+                    <PermissionGuard user={user} permissions={LABELS_HUB_PERMISSIONS}>
+                      <LabelsHub />
+                    </PermissionGuard>
+                  } />
+                ))}
                 {/* Wholesale hub — the per-account pages below stay their own routes. */}
                 {['wholesale', 'wholesale/shops', 'wholesale/deliveries', 'wholesale/deliveries/:id', 'wholesale/invoicing', 'wholesale/reports'].map((path) => (
                   <Route key={path} path={path} element={

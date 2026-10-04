@@ -19,7 +19,7 @@ const labelsOf = (groupId: string) =>
 describe('admin route audit', () => {
   it('puts each sidebar entry with the work it belongs to', () => {
     expect(labelsOf('monitor')).toEqual(['Dashboard', 'Orders', 'Kitchen Display', 'Tables', 'Reservations', 'Delivery Orders', 'Kitchen']);
-    expect(labelsOf('manage')).toEqual(['Menu Items', 'Daily Specials', 'Add-ons', 'Inventory', 'Purchasing', 'Wholesale']);
+    expect(labelsOf('manage')).toEqual(['Menu Items', 'Daily Specials', 'Add-ons', 'Inventory', 'Purchasing', 'Wholesale', 'Labels']);
     expect(labelsOf('customers-marketing')).toEqual([
       'Customers', 'Events & Catering', 'Loyalty', 'Promotions', 'SMS & Messaging', 'Social Hub', 'TV Signage',
       'Website Content', 'Order App Content', 'Media Library',

@@ -5,6 +5,8 @@ import {
   PageHeader, PageShell, TableCard, Badge, Btn, EmptyState, Spinner, ErrorMsg, Input,
 } from '../components/SharedUI';
 import { SortFilterHead, useSortFilter } from '../components/TableControls';
+import { DeliveryBoxLabelModal } from '../components/labels/LabelModals';
+import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
   fetchTradeDeliveries,
   fetchTradeDelivery,
@@ -32,6 +34,10 @@ export default function WholesaleDeliveriesPage() {
 function DeliveryList() {
   usePageTitle('Wholesale deliveries');
   const [rows, setRows] = useState<TradeDelivery[]>([]);
+  // Label Hub: the box label for a delivery (owner, 2026-10-04).
+  const { can } = useCurrentUserPermissions();
+  const canLabel = can('labels.print') || can('labels.manage');
+  const [boxFor, setBoxFor] = useState<number | null>(null);
   const deliveryCtl = useSortFilter(rows, [
     { key: 'delivery', label: 'Delivery', get: (d) => d.delivery_number },
     { key: 'shop', label: 'Shop', get: (d) => d.shop_name },
@@ -120,6 +126,11 @@ function DeliveryList() {
                     <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
                       {d.dispatched_at ? new Date(d.dispatched_at).toLocaleString() : '—'}
                     </div>
+                    {canLabel && (
+                      <button type="button" onClick={() => setBoxFor(d.id)} style={{ marginTop: 4, border: 0, background: 'transparent', color: 'var(--color-primary)', fontSize: 12, fontWeight: 600, padding: 0, cursor: 'pointer', minHeight: 24 }}>
+                        Box label
+                      </button>
+                    )}
                   </td>
                   <td style={tdStyle}>{d.shop_name ?? '—'}</td>
                   <td style={tdStyle}><Badge color={statusColor(d.status)}>{STATUS_LABEL[d.status] ?? d.status}</Badge></td>
@@ -135,6 +146,7 @@ function DeliveryList() {
           </table>
         </TableCard>
       )}
+      {boxFor != null && <DeliveryBoxLabelModal deliveryId={boxFor} onClose={() => setBoxFor(null)} />}
     </PageShell>
   );
 }
@@ -142,6 +154,9 @@ function DeliveryList() {
 function DeliveryDetail({ id }: { id: number }) {
   usePageTitle('Delivery');
   const [delivery, setDelivery] = useState<TradeDelivery | null>(null);
+  const { can } = useCurrentUserPermissions();
+  const canLabel = can('labels.print') || can('labels.manage');
+  const [boxOpen, setBoxOpen] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -172,6 +187,12 @@ function DeliveryDetail({ id }: { id: number }) {
         title={delivery.delivery_number}
         subtitle={`${delivery.shop_name ?? 'Shop'} · ${STATUS_LABEL[delivery.status] ?? delivery.status}`}
       />
+      {canLabel && (
+        <div style={{ marginBottom: 12 }}>
+          <Btn variant="secondary" onClick={() => setBoxOpen(true)}>Print box label</Btn>
+        </div>
+      )}
+      {boxOpen && <DeliveryBoxLabelModal deliveryId={delivery.id} onClose={() => setBoxOpen(false)} />}
       {error && <ErrorMsg message={error} />}
       {(delivery.has_mismatch || delivery.self_reconciled) && (
         <div style={{ marginBottom: 16, padding: 12, border: '1px solid var(--color-warning)', borderRadius: 8, fontSize: 13 }}>

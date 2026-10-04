@@ -100,6 +100,8 @@ export const COMMON_PERMISSION_SLUGS: CommonSlugRow[] = [
   { slug: 'website.manage', gates: 'Website CMS and system health', typical: 'Owner' },
   { slug: 'roles_permissions.manage', gates: 'Edit role defaults & user overrides', typical: 'Owner' },
   { slug: 'trade.view', gates: 'View wholesale shops, prices and deliveries', typical: 'Owner' },
+  { slug: 'labels.print', gates: 'Print pack stickers and box labels (Labels page, production batches, wholesale deliveries)', typical: 'Owner; grant to kitchen or managers as needed' },
+  { slug: 'labels.manage', gates: 'Label settings: products on labels, ingredients, shelf life, pictures, wording', typical: 'Owner' },
   { slug: 'trade.manage_accounts', gates: 'Create and edit wholesale shop terms', typical: 'Owner' },
   { slug: 'trade.manage_prices', gates: 'Edit per-shop wholesale prices', typical: 'Owner' },
   { slug: 'trade.dispatch', gates: 'Dispatch consignment deliveries to shops', typical: 'Owner' },

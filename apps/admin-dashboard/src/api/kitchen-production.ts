@@ -22,6 +22,7 @@ export type KitchenProductionBatch = {
   notes?: string | null;
   items: Array<{
     id: number;
+    item_id?: number | null;
     name: string;
     produced_qty: number;
     expected_receive_qty: number;

@@ -10,6 +10,8 @@ import {
   type ItemForm, type PlatterGroupRow, type VariantRow,
 } from './menuItemForm';
 import { PhotosTab } from './PhotosTab';
+import { ItemLabelTab } from '../../components/labels/ItemLabelTab';
+import { useCurrentUserPermissions } from '../../hooks/usePermissions';
 import { TagChipField, parseTagsCsv, tagsToCsv } from './TagChipField';
 import { ItemSnoozeControls, type ItemSnoozeControlsHandle } from './ItemSnoozeControls';
 import type { SnoozeUntil } from '../../api';
@@ -719,7 +721,10 @@ export function MenuItemEditorModal({
     opts?: { until_date?: string; unavailable_reason_note?: string | null },
   ) => Promise<{ is_available?: boolean; snoozed_until?: string | null; unavailable_reason_note?: string | null } | void>;
 }) {
-  const [activeTab, setActiveTab] = useState<'details' | 'photos'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'photos' | 'label'>('details');
+  // Label Hub (owner, 2026-10-04): a saved item's label settings, for whoever may change them.
+  const { can } = useCurrentUserPermissions();
+  const showLabelTab = itemId != null && can('labels.manage');
   const [form, setForm] = useState<ItemForm>(initial);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -871,6 +876,9 @@ export function MenuItemEditorModal({
       <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--color-border)', marginBottom: 12 }}>
         <button type="button" style={tabStyle(activeTab === 'details')} onClick={() => setActiveTab('details')}>Details</button>
         <button type="button" style={tabStyle(activeTab === 'photos')} onClick={() => setActiveTab('photos')} data-testid="mie-tab-photos">Photos &amp; video</button>
+        {showLabelTab && (
+          <button type="button" style={tabStyle(activeTab === 'label')} onClick={() => setActiveTab('label')} data-testid="mie-tab-label">Label</button>
+        )}
       </div>
 
       {activeTab === 'details' && (
@@ -1643,6 +1651,8 @@ export function MenuItemEditorModal({
           </Section>
         </div>
       )}
+
+      {activeTab === 'label' && showLabelTab && itemId != null && <ItemLabelTab itemId={itemId} />}
 
       {activeTab === 'photos' && (
         <PhotosTab
