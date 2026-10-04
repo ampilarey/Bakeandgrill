@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Labels\BoxLabel;
 use App\Domains\Labels\LabelIngredients;
 use App\Domains\Labels\LabelSettings;
 use App\Domains\Labels\StickerLayouts;
@@ -11,8 +12,10 @@ use App\Domains\Labels\StickerSheet;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Labels\LabelSheetController;
 use App\Models\Item;
+use App\Models\KitchenProductionItem;
 use App\Models\LabelPrint;
 use App\Models\Media;
+use App\Models\TradeDelivery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -114,6 +117,86 @@ class LabelsController extends Controller
             'expires_in_minutes' => LabelSheetController::LINK_MINUTES,
             'summary' => $summary,
         ]);
+    }
+
+    /** Signed links to a box label, after checking it and writing the print log. */
+    public function boxUrl(Request $request): JsonResponse
+    {
+        $rules = [
+            'delivery' => 'nullable|integer|exists:trade_deliveries,id',
+            'lines' => 'sometimes|array|max:16',
+            'lines.*.id' => 'required|integer|exists:items,id',
+            'lines.*.qty' => 'nullable|integer|min:0|max:99999',
+            'articles' => 'sometimes|boolean',
+        ];
+        foreach (BoxLabel::FIELDS as $key) {
+            $rules[$key] = 'nullable|string|max:' . ($key === 'customer' ? 40 : 60);
+        }
+        $data = $request->validate($rules);
+        try {
+            $req = BoxLabel::normalise($data);
+        } catch (InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        $query = array_merge(
+            array_filter($req['fields'], fn ($v) => $v !== ''),
+            [
+                'delivery' => $req['delivery'],
+                'lines' => implode(',', array_map(fn ($l) => $l['id'] . ':' . $l['qty'], $req['lines'])),
+                'articles' => $req['articles'] ? null : 0,
+            ],
+        );
+        LabelPrint::create([
+            'kind' => 'box_label',
+            'layout' => 'a4',
+            'trade_delivery_id' => $req['delivery'],
+            'copies' => 1,
+            'details' => ['fields' => array_filter($req['fields'], fn ($v) => $v !== ''), 'lines' => $req['lines']],
+            'printed_by' => $request->user()?->id,
+            'output' => 'print',
+        ]);
+
+        return response()->json([
+            'url' => LabelSheetController::link('labels.box', $query + ['print' => 1]),
+            'view_url' => LabelSheetController::link('labels.box', $query),
+            'pdf_url' => LabelSheetController::link('labels.box.pdf', $query),
+            'expires_in_minutes' => LabelSheetController::LINK_MINUTES,
+        ]);
+    }
+
+    /**
+     * What a wholesale delivery fills in on a box label, for the dialog to
+     * show and change before printing. Boat, pick-up point and window are not
+     * on the delivery; the dialog remembers the last ones per shop.
+     */
+    public function deliveryBoxLabel(TradeDelivery $delivery): JsonResponse
+    {
+        $prefill = BoxLabel::fromDelivery($delivery);
+        $names = Item::query()->whereIn('id', array_column($prefill['lines'], 'id'))->pluck('name', 'id');
+
+        return response()->json(['data' => [
+            'delivery' => $delivery->id,
+            'delivery_number' => $delivery->delivery_number,
+            'trade_account_id' => $delivery->trade_account_id,
+            'fields' => $prefill['fields'],
+            'lines' => array_map(fn ($l) => $l + ['name' => $names[$l['id']] ?? ''], $prefill['lines']),
+        ]]);
+    }
+
+    /** What a production line fills in on its stickers: item, batch, expiry and quantity. */
+    public function productionStickers(KitchenProductionItem $productionItem): JsonResponse
+    {
+        $item = $productionItem->item_id ? Item::query()->find($productionItem->item_id) : null;
+
+        return response()->json(['data' => [
+            'pi' => $productionItem->id,
+            'item' => $item ? ['id' => $item->id, 'name' => $item->name, 'label_enabled' => (bool) $item->label_enabled, 'label_shelf_life_days' => $item->label_shelf_life_days] : null,
+            'batch' => (string) ($productionItem->batch_code ?: $productionItem->batch?->batch_no ?: ''),
+            'exp' => $productionItem->expires_at?->toDateString(),
+            'mfg' => ($productionItem->batch?->submitted_at ?? $productionItem->created_at)?->toDateString(),
+            'qty' => (int) round((float) $productionItem->produced_qty),
+        ]]);
     }
 
     /** The print log, newest first. */

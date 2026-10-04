@@ -99,6 +99,8 @@ Route::middleware(['content.locale', 'service.banner'])->group(function () {
 Route::middleware(['signed:relative', 'throttle:60,1'])->prefix('labels')->group(function () {
     Route::get('/stickers', [App\Http\Controllers\Labels\LabelSheetController::class, 'stickers'])->name('labels.stickers');
     Route::get('/stickers.pdf', [App\Http\Controllers\Labels\LabelSheetController::class, 'stickersPdf'])->name('labels.stickers.pdf');
+    Route::get('/box', [App\Http\Controllers\Labels\LabelSheetController::class, 'box'])->name('labels.box');
+    Route::get('/box.pdf', [App\Http\Controllers\Labels\LabelSheetController::class, 'boxPdf'])->name('labels.box.pdf');
 });
 
 // Staff-signed Content Studio website preview (draft overlay; never listed publicly).

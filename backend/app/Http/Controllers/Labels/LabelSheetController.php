@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Labels;
 
+use App\Domains\Labels\BoxLabel;
 use App\Domains\Labels\StickerSheet;
 use App\Http\Controllers\Controller;
+use App\Models\TradeDelivery;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -47,6 +49,43 @@ class LabelSheetController extends Controller
             ->setPaper([0, 0, $sheet['page_w'] * $pt, $sheet['page_h'] * $pt])
             ->setOption('isRemoteEnabled', false)
             ->download($name);
+    }
+
+    public function box(Request $request): View
+    {
+        $req = $this->boxRequest($request);
+
+        return view('labels.box', [
+            'pieces' => BoxLabel::pieces($req),
+            'title' => 'Box label' . ($req['fields']['customer'] !== '' ? ' – ' . $req['fields']['customer'] : ''),
+            'forPdf' => false,
+            'autoPrint' => $request->boolean('print'),
+            'pdfUrl' => self::link('labels.box.pdf', $request->only(self::BOX_QUERY)),
+        ]);
+    }
+
+    public function boxPdf(Request $request): Response
+    {
+        $req = $this->boxRequest($request);
+        $name = 'box-label-' . ($req['delivery'] ? (TradeDelivery::query()->whereKey($req['delivery'])->value('delivery_number') ?: $req['delivery']) : ($req['fields']['customer'] !== '' ? \Illuminate\Support\Str::slug($req['fields']['customer']) : 'blank')) . '.pdf';
+
+        return Pdf::loadView('labels.box', ['pieces' => BoxLabel::pieces($req), 'title' => 'Box label', 'forPdf' => true, 'autoPrint' => false, 'pdfUrl' => ''])
+            ->setPaper('a4', 'portrait')
+            ->setOption('isRemoteEnabled', false)
+            ->download($name);
+    }
+
+    /** Query keys a box label link carries. */
+    public const BOX_QUERY = ['delivery', 'lines', 'articles', 'customer', 'attn', 'contact', 'boat', 'boat2', 'pickup', 'pickup2', 'when', 'when2', 'po', 'box', 'of'];
+
+    /** @return array<string, mixed> */
+    private function boxRequest(Request $request): array
+    {
+        try {
+            return BoxLabel::normalise($request->only(self::BOX_QUERY));
+        } catch (InvalidArgumentException $e) {
+            abort(422, $e->getMessage());
+        }
     }
 
     /** A signed link to one of the sheet routes, for $minutes. */

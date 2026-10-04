@@ -28,3 +28,11 @@ Route::get('/labels/settings', [LabelsController::class, 'settings'])
     ->middleware('permission:labels.print');
 Route::put('/labels/settings', [LabelsController::class, 'updateSettings'])
     ->middleware('permission:labels.manage');
+Route::post('/labels/box/url', [LabelsController::class, 'boxUrl'])
+    ->middleware(['permission:labels.print', 'throttle:60,1']);
+Route::get('/labels/deliveries/{delivery}/box-label', [LabelsController::class, 'deliveryBoxLabel'])
+    ->middleware('permission:labels.print')
+    ->whereNumber('delivery');
+Route::get('/labels/production-items/{productionItem}', [LabelsController::class, 'productionStickers'])
+    ->middleware('permission:labels.print')
+    ->whereNumber('productionItem');

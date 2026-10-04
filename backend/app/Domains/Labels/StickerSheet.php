@@ -302,6 +302,31 @@ final class StickerSheet
         return array_map(fn ($id, $copies) => ['id' => (int) $id, 'copies' => $copies], array_keys($merged), $merged);
     }
 
+    /**
+     * The same, keeping a zero count (a box label line whose quantity is
+     * written in by hand).
+     *
+     * @return list<array{id: int, copies: int}>
+     */
+    public static function parseItemsAllowZero(mixed $raw): array
+    {
+        $rows = [];
+        if (is_string($raw)) {
+            foreach (array_filter(explode(',', $raw)) as $part) {
+                [$id, $n] = array_pad(explode(':', $part, 2), 2, '0');
+                $rows[] = ['id' => (int) $id, 'copies' => max(0, (int) $n)];
+            }
+        } elseif (is_array($raw)) {
+            foreach ($raw as $row) {
+                if (is_array($row)) {
+                    $rows[] = ['id' => (int) ($row['id'] ?? 0), 'copies' => max(0, (int) ($row['qty'] ?? $row['copies'] ?? 0))];
+                }
+            }
+        }
+
+        return array_values(array_filter($rows, fn ($r) => $r['id'] > 0));
+    }
+
     /** @param list<array{id: int, copies: int}> $items */
     public static function itemsParam(array $items): string
     {
