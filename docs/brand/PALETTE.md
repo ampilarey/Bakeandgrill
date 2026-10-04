@@ -70,3 +70,12 @@ chosen themself was left alone.
 Logo and stamp files are in this folder and, for the ones the site serves, in
 `backend/public/brand/`. Downloadable packs: `/brand/bake-and-grill-logo-pack.zip`
 and `/brand/bake-and-grill-stamp-pack.zip`.
+
+## Amma
+
+The Amma sub-brand (home-made lines, Rihaakuru first) prints a round badge: a cream
+disc with a rust ring and dotted inner ring, a dark cooking pot with steam, "Amma" in
+the brand serif italic, "އަންމާ" in Faruma and HOME-MADE spaced beneath. The source is
+`docs/brand/amma-logo.html` (render it 1080 × 1080 with a transparent background in
+Chromium to regenerate `backend/public/brand/amma-logo.png`). Labels use it for the
+Amma brand until a logo is uploaded under Labels → Types & brands.

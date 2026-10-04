@@ -42,6 +42,9 @@ class LabelTypesTest extends TestCase
         $this->assertSame(['Bake & Grill', 'Amma'], array_column($brands, 'name'));
         $this->assertTrue($brands[0]['is_default']);
         $this->assertSame('/brand/logo-light.png', $brands[0]['logo_url']);
+        // Amma's badge ships in the brand pack, so it prints before anyone uploads a logo.
+        $this->assertSame('/brand/amma-logo.png', $brands[1]['logo_url']);
+        $this->assertNotSame(app(\App\Domains\Labels\LabelTypes::class)->brand(LabelBrand::query()->where('name', 'Amma')->first())['logo'], app(\App\Domains\Labels\LabelTypes::class)->brand(null)['logo']);
     }
 
     public function test_an_item_picks_a_type_and_its_sticker_takes_the_wording_and_shelf_life(): void

@@ -19,7 +19,7 @@ to one person):
 | Piece | What it is | Where |
 |---|---|---|
 | **Label type** | What kind of food a label is for: Frozen Hedhika, Chilled Hedhika, Fresh Hedhika to start. Carries the heading, storage and its line, the date-box wording (MFG DATE / PACKED ON, EXP DATE / BEST BEFORE / USE BY), a use-within line, how-to-use, a note, a shelf life, whether the QR prints, and the brand | Labels → Types & brands |
-| **Brand** | Who the label is from. Bake & Grill is the main brand (details from Business Details); a brand under it, like Amma, has its own name, tagline and PNG logo, and its footer says "by Bake & Grill" | Labels → Types & brands |
+| **Brand** | Who the label is from. Bake & Grill is the main brand (details from Business Details); a brand under it, like Amma, has its own name, tagline and PNG logo, and its footer says "by Bake & Grill". With no logo uploaded, a brand prints the badge shipped in `public/brand/<name>-logo.png` when there is one (Amma's is there, drawn from `docs/brand/amma-logo.html`), else the main logo | Labels → Types & brands |
 | **Item's label** | Picks a type; its own ingredients, shelf life, pieces per pack, pictures; and any wording that should differ from the type's | Menu Items → item → Label |
 | **Saved label** | Every print prepared, kept with its settings to print again, download, change, copy, rename | Labels → Saved labels |
 
@@ -86,7 +86,7 @@ has no room for.
 | 12 on A4 | 66 × 72 mm | Compact, as above |
 | Label printer 105 × 148, 100 × 150, 76 × 127 mm | one per page | Full |
 | Custom | 50 × 45 mm to A4 | Full down to 0.7 of its size, else compact |
-| Round 50 mm (20 on A4), round 70 mm (8 on A4), label-printer round 50 / 70 mm, custom round 40 to 200 mm | circles | Round: everything centred, each row no wider than the circle; the QR and a batch line from 68 mm |
+| Round 50 mm (20 on A4), round 70 mm (8 on A4), label-printer round 50 / 70 mm, custom round 40 to 200 mm | circles | Round: everything centred, each row no wider than the circle; from 68 mm the brand logo on the left, the QR on the right and a batch line |
 
 **Rounded corners** rounds a rectangle's cut line. Cut lines are dashed; round
 stickers have dashed circles.

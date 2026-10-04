@@ -73,6 +73,12 @@ final class LabelTypes
         $contact = LabelSettings::contact();
         $isDefault = $brand === null || $brand->is_default;
         $logo = !$isDefault && $brand->logo_media_id ? LabelImage::fromMedia($brand->logo_media_id, 600) : null;
+        // A brand with no uploaded logo uses one shipped in the brand pack
+        // when there is one (public/brand/<name>-logo.png, e.g. Amma), else
+        // the main logo.
+        if ($logo === null && !$isDefault) {
+            $logo = LabelImage::fromPublic('brand/' . self::slug($brand->name) . '-logo.png', 600);
+        }
         $logo ??= LabelImage::fromPublic('brand/logo-light.png', 500);
 
         return $this->brands[$key] = [
@@ -87,6 +93,11 @@ final class LabelTypes
             // A sub-brand's footer says who it is by.
             'parent' => $isDefault ? '' : $contact['name'],
         ];
+    }
+
+    private static function slug(string $name): string
+    {
+        return trim((string) preg_replace('/[^a-z0-9]+/', '-', mb_strtolower($name)), '-');
     }
 
     /** @return array<string, mixed> */
@@ -134,7 +145,7 @@ final class LabelTypes
             'tagline' => $brand->is_default ? ($brand->tagline ?: $contact['tagline']) : $brand->tagline,
             'tagline_dv' => $brand->tagline_dv,
             'logo_media_id' => $brand->logo_media_id,
-            'logo_url' => $brand->logo?->original_url ?? $brand->logo?->url ?? ($brand->is_default ? '/brand/logo-light.png' : null),
+            'logo_url' => $brand->logo?->original_url ?? $brand->logo?->url ?? ($brand->is_default ? '/brand/logo-light.png' : (is_file(public_path('brand/' . self::slug($brand->name) . '-logo.png')) ? '/brand/' . self::slug($brand->name) . '-logo.png' : null)),
             'is_default' => (bool) $brand->is_default,
             'sort' => $brand->sort,
             'types_count' => $brand->types_count ?? null,

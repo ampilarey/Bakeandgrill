@@ -242,7 +242,14 @@ final class StickerDesign
         $tx = 8 + $mw + 2.5;
         $nameX = $X($tx, 50);
         $p[] = ['t' => 'text', 'x' => $nameX, 'base' => 133.5, 'w' => 50, 'align' => $A('l'), 'font' => 'ds', 'pt' => LabelText::fitPt($brand['name'], 'ds', 40, 12.5, 8), 'color' => self::CREAM, 'text' => $brand['name']];
-        $p[] = ['t' => 'text', 'x' => $nameX, 'base' => 137.2, 'w' => 50, 'align' => $A('l'), 'font' => 'dsi', 'pt' => 7.8, 'color' => self::ON_DARK, 'text' => $brand['tagline'] !== '' ? $brand['tagline'] : ($brand['parent'] !== '' ? 'by ' . $brand['parent'] : '')];
+        // The tagline (Dhivehi one on a Dhivehi sticker when the brand has
+        // it) shares its line with the ways-to-reach-you text under the
+        // phone, so each keeps to its own half: 34 mm for the tagline, the
+        // phone's width for the ways line.
+        $tagline = $dv && $brand['tagline_dv'] !== '' ? $brand['tagline_dv'] : $brand['tagline'];
+        $tagline = $tagline !== '' ? $tagline : ($brand['parent'] !== '' ? 'by ' . $brand['parent'] : '');
+        $tagFont = $dv && $brand['tagline_dv'] !== '' ? 'dv' : 'dsi';
+        $p[] = ['t' => 'text', 'x' => $nameX, 'base' => 137.2, 'w' => 50, 'align' => $A('l'), 'font' => $tagFont, 'pt' => LabelText::fitPt($tagline, $tagFont, 34, $tagFont === 'dv' ? 8 : 7.8, 5.5), 'color' => self::ON_DARK, 'text' => $tagline] + ($tagFont === 'dv' ? ['bold' => 0.4] : []);
         $by = $brand['parent'] !== '' && $brand['tagline'] !== '' ? 'by ' . $brand['parent'] . '  ·  ' : '';
         // The address line stops where the website (right-aligned, ~27 mm)
         // begins; with the QR that edge is 12 mm further left. Too long at
@@ -269,9 +276,10 @@ final class StickerDesign
         }
         $rightX = $X($qr > 0 ? 34.5 : 46.5, 50);
         $p[] = ['t' => 'text', 'x' => $rightX, 'base' => 133.5, 'w' => 50, 'align' => $A('r'), 'font' => 'j8', 'pt' => 10.5, 'color' => self::CREAM, 'text' => $c['phone']];
+        $waysW = max(22.0, LabelText::widthMm($c['phone'], 10.5, 'j8'));
         $p[] = $dv
-            ? ['t' => 'text', 'x' => $rightX, 'base' => 137.2, 'w' => 50, 'align' => 'l', 'font' => 'dv', 'pt' => 8, 'color' => self::ON_DARK, 'text' => $d['ways_dv'], 'bold' => 0.5]
-            : ['t' => 'text', 'x' => $rightX, 'base' => 137, 'w' => 50, 'align' => 'r', 'font' => 'j7', 'pt' => 5.6, 'color' => self::ON_DARK, 'text' => $d['ways']];
+            ? ['t' => 'text', 'x' => $rightX, 'base' => 137.2, 'w' => $waysW, 'align' => 'l', 'font' => 'dv', 'pt' => LabelText::fitPt($d['ways_dv'], 'dv', $waysW, 8, 5.5), 'color' => self::ON_DARK, 'text' => $d['ways_dv'], 'bold' => 0.5]
+            : ['t' => 'text', 'x' => $rightX, 'base' => 137, 'w' => 50, 'align' => 'r', 'font' => 'j7', 'pt' => LabelText::fitPt($d['ways'], 'j7', $waysW, 5.6, 4), 'color' => self::ON_DARK, 'text' => $d['ways']];
         $p[] = ['t' => 'text', 'x' => $rightX, 'base' => 140.8, 'w' => 50, 'align' => $A('r'), 'font' => 'dsi', 'pt' => 10, 'color' => self::CREAM, 'text' => $c['website']];
 
         return $p;
@@ -496,20 +504,28 @@ final class StickerDesign
         $nf = $dv && $d['name_dv'] !== '' ? 'dv' : 'dsi';
         $p[] = $text($y + ($nf === 'dv' ? 0.5 * $f : 0), $w, $nf, LabelText::fitPt($name, $nf, $w, 12.5 * $f, 7), self::PRIMARY, $name, $nf === 'dv' ? 0.7 : 0.0);
 
-        // Ingredients (or the picture) between the name and the dates; the
-        // QR sits to the right of them on a big circle.
+        // Ingredients (or the picture) between the name and the dates; on a
+        // big circle the brand logo sits to their left and the QR to their
+        // right, so the round sticker carries the same branding as the rest.
         $top = 19.8 * $k;
         $zoneH = 9.2 * $k;
         $qr = $big && $d['show_qr'] && $d['qr'] ? 9.5 : 0.0;
+        $logo = $big && $brand['logo'] ? 11.0 : 0.0;
         $ing = $dv ? $d['ingredients_dv'] : $d['ingredients_en'];
-        $zw = $chord($top + $zoneH / 2) - ($qr > 0 ? $qr + 3 : 0);
-        $zx = ($D - $chord($top + $zoneH / 2)) / 2;
+        $full = $chord($top + $zoneH / 2);
+        $zx = ($D - $full) / 2;
+        if ($logo > 0) {
+            [$lw, $lh] = self::fit($brand['logo_ratio'], $logo, $logo);
+            $p[] = ['t' => 'img', 'x' => $zx + 0.5 + ($logo - $lw) / 2, 'y' => $top + ($zoneH - $lh) / 2, 'w' => $lw, 'h' => $lh, 'src' => $brand['logo']];
+            $zx += $logo + 2.5;
+        }
         if ($qr > 0) {
-            $qx = $zx + $chord($top + $zoneH / 2) - $qr - 0.5;
+            $qx = ($D + $full) / 2 - $qr - 0.5;
             $qy = $top + ($zoneH - $qr) / 2;
             $p[] = ['t' => 'rect', 'x' => $qx - 0.6, 'y' => $qy - 0.6, 'w' => $qr + 1.2, 'h' => $qr + 1.2, 'fill' => self::CREAM, 'stroke' => self::SOFT, 'sw' => 0.2, 'r' => 0.8];
             $p[] = ['t' => 'img', 'x' => $qx, 'y' => $qy, 'w' => $qr, 'h' => $qr, 'src' => $d['qr']];
         }
+        $zw = ($D + $full) / 2 - ($qr > 0 ? $qr + 3 : 0) - $zx;
         if ($ing !== '') {
             $lf = $dv ? 'dv' : 'j4';
             $lpt = $dv ? 6.4 * $f : 4.7 * $f;
