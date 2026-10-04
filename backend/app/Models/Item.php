@@ -78,6 +78,7 @@ class Item extends Model
         'label_ingredients_dv',
         'label_shelf_life_days',
         'label_storage',
+        'label_type_id',
         'label_pack_qty',
         'label_heading',
         'label_heading_dv',
@@ -85,6 +86,8 @@ class Item extends Model
         'label_storage_line_dv',
         'label_note',
         'label_note_dv',
+        'label_how_to_use',
+        'label_how_to_use_dv',
         'label_pack_unit',
         'label_title_media_id',
         'label_photo_media_id',
@@ -106,6 +109,7 @@ class Item extends Model
         'label_ingredients_dv',
         'label_shelf_life_days',
         'label_storage',
+        'label_type_id',
         'label_pack_qty',
         'label_heading',
         'label_heading_dv',
@@ -113,6 +117,8 @@ class Item extends Model
         'label_storage_line_dv',
         'label_note',
         'label_note_dv',
+        'label_how_to_use',
+        'label_how_to_use_dv',
         'label_pack_unit',
         'label_title_media_id',
         'label_photo_media_id',
@@ -190,6 +196,12 @@ class Item extends Model
     public function activePackagingOptions(): HasMany
     {
         return $this->packagingOptions()->where('is_active', true);
+    }
+
+    /** Label Hub v2: the kind of food the label is for (docs/LABEL_HUB_V2_PLAN.md). */
+    public function labelType(): BelongsTo
+    {
+        return $this->belongsTo(LabelType::class, 'label_type_id');
     }
 
     public function recipe(): HasOne

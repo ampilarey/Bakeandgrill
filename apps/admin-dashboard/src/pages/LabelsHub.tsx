@@ -3,6 +3,7 @@ import { Search } from 'lucide-react';
 import { HubPage, hubPermissions, type HubTab } from '../components/HubPage';
 import { StickerPrintPanel } from '../components/labels/StickerPrintPanel';
 import { BoxLabelPanel } from '../components/labels/BoxLabelPanel';
+import { TypesAndBrands } from '../components/labels/TypesAndBrands';
 import { Button, Card, useToast } from '../components/ui';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -347,9 +348,15 @@ function SettingsTabWithPermission() {
   return <SettingsTab canManage={can('labels.manage')} />;
 }
 
+function TypesTabWithPermission() {
+  const { can } = useCurrentUserPermissions();
+  return <TypesAndBrands canManage={can('labels.manage')} />;
+}
+
 export const LABELS_TABS: HubTab[] = [
   { id: 'stickers', label: 'Pack stickers', permissions: ['labels.print', 'labels.manage'], desc: 'Stickers for frozen packs, in English or Dhivehi, on any label stock', render: () => <Card padding="sm" className="labels-sticky"><StickerPrintPanel /></Card> },
   { id: 'box', label: 'Box labels', permissions: ['labels.print', 'labels.manage'], desc: 'A4 label for a delivery box, blank or from a wholesale delivery', render: () => <Card padding="sm" className="labels-sticky"><BoxLabelPanel /></Card> },
+  { id: 'types', label: 'Types & brands', permissions: ['labels.print', 'labels.manage'], desc: 'Kinds of food a label is for, with their wording, and the brands they are from', render: () => <TypesTabWithPermission /> },
   { id: 'history', label: 'History', permissions: ['labels.print', 'labels.manage'], desc: 'Every sheet printed, by whom, with its dates and batch', render: () => <HistoryTab /> },
   { id: 'settings', label: 'Settings', permissions: ['labels.print', 'labels.manage'], desc: 'Which products print, shelf life, storage and the label wording', render: () => <SettingsTabWithPermission /> },
 ];

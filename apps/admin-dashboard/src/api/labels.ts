@@ -29,7 +29,12 @@ export type LabelProduct = {
   label_note: string | null;
   label_note_dv: string | null;
   label_pack_unit: string | null;
-  defaults: { heading: string; heading_dv: string; storage_line: string; storage_line_dv: string; unit: string };
+  label_type_id: number | null;
+  label_type_name: string | null;
+  label_how_to_use: string | null;
+  label_how_to_use_dv: string | null;
+  /** What prints when the item's own box is empty: its type's wording, else the storage defaults. */
+  defaults: { heading: string; heading_dv: string; storage_line: string; storage_line_dv: string; how_to_use: string; how_to_use_dv: string; note: string; note_dv: string; shelf_life_days: number | null; brand: string; unit: string };
   label_title_media_id: number | null;
   label_title_url: string | null;
   label_photo_media_id: number | null;
@@ -39,6 +44,24 @@ export type LabelProduct = {
   has_recipe: boolean;
   ingredients: { en: string; dv: string; from: 'recipe' | 'manual' | 'none'; recipe_en: string; recipe_dv: string };
 };
+
+/** Label Hub v2: who the label is from. The default brand is the business itself. */
+export type LabelBrand = {
+  id: number; name: string; name_dv: string | null; tagline: string | null; tagline_dv: string | null;
+  logo_media_id: number | null; logo_url: string | null; is_default: boolean; sort: number; types_count: number | null;
+};
+
+/** Label Hub v2: what kind of food the label is for, with its wording. */
+export type LabelType = {
+  id: number; brand_id: number | null; brand_name: string | null; name: string;
+  heading: string; heading_dv: string | null; storage: LabelStorage; storage_line: string | null; storage_line_dv: string | null;
+  use_within: string | null; use_within_dv: string | null; mfg_label: string; exp_label: string;
+  how_to_use: string | null; how_to_use_dv: string | null; note: string | null; note_dv: string | null;
+  shelf_life_days: number | null; show_qr: boolean; is_active: boolean; sort: number; items_count: number | null;
+  defaults: { storage_line: string; storage_line_dv: string };
+};
+
+export type LabelTypePayload = Partial<Omit<LabelType, 'id' | 'brand_name' | 'items_count' | 'defaults'>>;
 
 export type LabelLayout = { key: string; label: string; hint: string; per_page: number; w: number; h: number; compact: boolean };
 
@@ -54,6 +77,8 @@ export type StickerRequest = {
   batch?: string | null;
   qty?: number | null;
   pi?: number | null;
+  /** Print the whole sheet as this label type. */
+  type?: number | null;
   preview?: boolean;
 };
 
@@ -159,6 +184,45 @@ export function fetchLabelPrints(params: { page?: number; kind?: string } = {}) 
   if (params.page) qs.set('page', String(params.page));
   if (params.kind) qs.set('kind', params.kind);
   return req<{ data: LabelPrintRow[]; current_page: number; last_page: number; total: number }>(`/labels/prints${qs.toString() ? `?${qs}` : ''}`);
+}
+
+export function fetchLabelTypes() {
+  return req<{ data: LabelType[] }>('/labels/types');
+}
+
+export function createLabelType(body: LabelTypePayload) {
+  return req<{ data: LabelType }>('/labels/types', { method: 'POST', body: JSON.stringify(body) });
+}
+
+export function updateLabelType(id: number, body: LabelTypePayload) {
+  return req<{ data: LabelType }>(`/labels/types/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+}
+
+export function deleteLabelType(id: number) {
+  return req<{ ok: true }>(`/labels/types/${id}`, { method: 'DELETE' });
+}
+
+export function fetchLabelBrands() {
+  return req<{ data: LabelBrand[] }>('/labels/brands');
+}
+
+export function createLabelBrand(body: Partial<Pick<LabelBrand, 'name' | 'name_dv' | 'tagline' | 'tagline_dv' | 'sort'>>) {
+  return req<{ data: LabelBrand }>('/labels/brands', { method: 'POST', body: JSON.stringify(body) });
+}
+
+export function updateLabelBrand(id: number, body: Partial<Pick<LabelBrand, 'name' | 'name_dv' | 'tagline' | 'tagline_dv' | 'sort' | 'logo_media_id'>>) {
+  return req<{ data: LabelBrand }>(`/labels/brands/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+}
+
+/** A PNG with a clear background, kept exactly as uploaded. */
+export function uploadLabelBrandLogo(id: number, file: File) {
+  const form = new FormData();
+  form.append('file', file);
+  return req<{ data: LabelBrand }>(`/labels/brands/${id}/logo`, { method: 'POST', body: form });
+}
+
+export function deleteLabelBrand(id: number) {
+  return req<{ ok: true }>(`/labels/brands/${id}`, { method: 'DELETE' });
 }
 
 export function fetchLabelSettings() {

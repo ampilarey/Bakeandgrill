@@ -9,6 +9,7 @@ const downloadLabelSheet = vi.fn();
 
 vi.mock('../../api', () => ({
   fetchLabelLayouts: (...a: unknown[]) => fetchLabelLayouts(...a),
+  fetchLabelTypes: () => Promise.resolve({ data: [] }),
   fetchLabelProducts: (...a: unknown[]) => fetchLabelProducts(...a),
   stickerLinks: (...a: unknown[]) => stickerLinks(...a),
   openLabelSheet: (...a: unknown[]) => openLabelSheet(...a),
@@ -23,7 +24,8 @@ const product = (id: number, name: string, extra = {}) => ({
   label_shelf_life_days: 90, label_storage: 'frozen', label_pack_qty: null, label_title_media_id: null, label_title_url: null,
   label_photo_media_id: null, label_photo_url: null, cutout_url: null, allergens: [], has_recipe: false,
   label_heading: null, label_heading_dv: null, label_storage_line: null, label_storage_line_dv: null, label_note: null, label_note_dv: null, label_pack_unit: null,
-  defaults: { heading: 'FROZEN HEDHIKA', heading_dv: '', storage_line: 'KEEP FROZEN', storage_line_dv: '', unit: 'PCS' },
+  label_type_id: null, label_type_name: null, label_how_to_use: null, label_how_to_use_dv: null,
+  defaults: { heading: 'FROZEN HEDHIKA', heading_dv: '', storage_line: 'KEEP FROZEN', storage_line_dv: '', how_to_use: '', how_to_use_dv: '', note: '', note_dv: '', shelf_life_days: null, brand: 'Bake & Grill', unit: 'PCS' },
   ingredients: { en: 'Flour', dv: '', from: 'manual', recipe_en: '', recipe_dv: '' }, ...extra,
 });
 

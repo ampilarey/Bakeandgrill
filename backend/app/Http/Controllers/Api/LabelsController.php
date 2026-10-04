@@ -6,14 +6,18 @@ namespace App\Http\Controllers\Api;
 
 use App\Domains\Labels\BoxLabel;
 use App\Domains\Labels\LabelIngredients;
+use App\Domains\Labels\LabelMedia;
 use App\Domains\Labels\LabelSettings;
+use App\Domains\Labels\LabelTypes;
 use App\Domains\Labels\StickerLayouts;
 use App\Domains\Labels\StickerSheet;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Labels\LabelSheetController;
 use App\Models\Item;
 use App\Models\KitchenProductionItem;
+use App\Models\LabelBrand;
 use App\Models\LabelPrint;
+use App\Models\LabelType;
 use App\Models\Media;
 use App\Models\TradeAccount;
 use App\Models\TradeDelivery;
@@ -31,6 +35,7 @@ class LabelsController extends Controller
     public function __construct(
         private readonly LabelIngredients $ingredients,
         private readonly StickerSheet $stickers,
+        private readonly LabelTypes $types,
     ) {}
 
     /** Label stock the hub offers, for its size picker. */
@@ -67,6 +72,7 @@ class LabelsController extends Controller
             'batch' => 'nullable|string|max:30',
             'qty' => 'nullable|integer|min:1|max:9999',
             'pi' => 'nullable|integer|exists:kitchen_production_items,id',
+            'type' => 'nullable|integer|exists:label_types,id',
             'preview' => 'sometimes|boolean',
         ]);
         try {
@@ -88,6 +94,7 @@ class LabelsController extends Controller
             'batch' => $req['batch'],
             'qty' => $req['qty'],
             'pi' => $req['pi'],
+            'type' => $req['type'],
         ];
 
         // A preview in the item editor prints nothing, so it is not logged.
@@ -309,7 +316,7 @@ class LabelsController extends Controller
         $items = Item::query()
             ->where('is_active', true)
             ->when(!$request->boolean('all'), fn ($q) => $q->where('label_enabled', true))
-            ->with(['recipe:id,item_id'])
+            ->with(['recipe:id,item_id', 'labelType.brand'])
             ->orderByDesc('label_enabled')
             ->orderBy('name')
             ->get();
@@ -331,6 +338,9 @@ class LabelsController extends Controller
             'label_ingredients_dv' => 'sometimes|nullable|string|max:500',
             'label_shelf_life_days' => 'sometimes|nullable|integer|min:1|max:730',
             'label_storage' => ['sometimes', Rule::in(LabelSettings::STORAGES)],
+            'label_type_id' => 'sometimes|nullable|integer|exists:label_types,id',
+            'label_how_to_use' => 'sometimes|nullable|string|max:200',
+            'label_how_to_use_dv' => 'sometimes|nullable|string|max:200',
             'label_pack_qty' => 'sometimes|nullable|integer|min:1|max:999',
             'label_heading' => 'sometimes|nullable|string|max:40',
             'label_heading_dv' => 'sometimes|nullable|string|max:40',
@@ -353,10 +363,142 @@ class LabelsController extends Controller
         return response()->json(['data' => $this->present($item->refresh())]);
     }
 
+    // ---- Label types and brands (v2 points 3 and 6) ----
+
+    public function types(): JsonResponse
+    {
+        $rows = LabelType::query()->with('brand')->withCount('items')->orderBy('sort')->orderBy('id')->get();
+
+        return response()->json(['data' => $rows->map(fn (LabelType $t) => LabelTypes::presentType($t))->values()]);
+    }
+
+    public function storeType(Request $request): JsonResponse
+    {
+        $type = new LabelType(['sort' => (int) LabelType::query()->max('sort') + 1]);
+        $type->fill($this->typeData($request, $type))->save();
+
+        return response()->json(['data' => LabelTypes::presentType($type->load('brand'))], 201);
+    }
+
+    public function updateType(Request $request, LabelType $type): JsonResponse
+    {
+        $type->fill($this->typeData($request, $type))->save();
+
+        return response()->json(['data' => LabelTypes::presentType($type->load('brand'))]);
+    }
+
+    public function destroyType(LabelType $type): JsonResponse
+    {
+        if (LabelType::query()->count() <= 1) {
+            return response()->json(['message' => 'Keep at least one label type.'], 422);
+        }
+        $n = $type->items()->count();
+        if ($n > 0) {
+            return response()->json(['message' => "{$n} " . ($n === 1 ? 'item uses' : 'items use') . ' this type. Move them to another type first.'], 422);
+        }
+        $type->delete();
+
+        return response()->json(['ok' => true]);
+    }
+
+    /** @return array<string, mixed> */
+    private function typeData(Request $request, LabelType $type): array
+    {
+        $exists = $type->exists ? 'sometimes' : 'required';
+
+        return $request->validate([
+            'name' => "{$exists}|string|max:60",
+            'heading' => "{$exists}|string|max:40",
+            'heading_dv' => 'sometimes|nullable|string|max:40',
+            'brand_id' => 'sometimes|nullable|integer|exists:label_brands,id',
+            'storage' => ['sometimes', Rule::in(LabelType::STORAGES)],
+            'storage_line' => 'sometimes|nullable|string|max:160',
+            'storage_line_dv' => 'sometimes|nullable|string|max:160',
+            'use_within' => 'sometimes|nullable|string|max:80',
+            'use_within_dv' => 'sometimes|nullable|string|max:80',
+            'mfg_label' => 'sometimes|nullable|string|max:20',
+            'exp_label' => 'sometimes|nullable|string|max:20',
+            'how_to_use' => 'sometimes|nullable|string|max:200',
+            'how_to_use_dv' => 'sometimes|nullable|string|max:200',
+            'note' => 'sometimes|nullable|string|max:120',
+            'note_dv' => 'sometimes|nullable|string|max:120',
+            'shelf_life_days' => 'sometimes|nullable|integer|min:1|max:730',
+            'show_qr' => 'sometimes|boolean',
+            'is_active' => 'sometimes|boolean',
+            'sort' => 'sometimes|integer|min:0|max:999',
+        ]);
+    }
+
+    public function brands(): JsonResponse
+    {
+        $rows = LabelBrand::query()->with('logo')->withCount('types')->orderBy('sort')->orderBy('id')->get();
+
+        return response()->json(['data' => $rows->map(fn (LabelBrand $b) => LabelTypes::presentBrand($b))->values()]);
+    }
+
+    public function storeBrand(Request $request): JsonResponse
+    {
+        $brand = new LabelBrand(['sort' => (int) LabelBrand::query()->max('sort') + 1]);
+        $brand->fill($this->brandData($request, $brand))->save();
+
+        return response()->json(['data' => LabelTypes::presentBrand($brand->load('logo'))], 201);
+    }
+
+    public function updateBrand(Request $request, LabelBrand $brand): JsonResponse
+    {
+        $brand->fill($this->brandData($request, $brand))->save();
+
+        return response()->json(['data' => LabelTypes::presentBrand($brand->load('logo'))]);
+    }
+
+    /** The logo as the PNG uploaded (LabelMedia); the library's own path would flatten it onto white. */
+    public function brandLogo(Request $request, LabelBrand $brand): JsonResponse
+    {
+        $request->validate(['file' => 'required|file|max:4096']);
+        try {
+            $media = LabelMedia::storePng((string) file_get_contents($request->file('file')->getRealPath()), "{$brand->name} logo");
+        } catch (InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage(), 'errors' => ['file' => [$e->getMessage()]]], 422);
+        }
+        $brand->forceFill(['logo_media_id' => $media->id])->save();
+
+        return response()->json(['data' => LabelTypes::presentBrand($brand->load('logo'))]);
+    }
+
+    public function destroyBrand(LabelBrand $brand): JsonResponse
+    {
+        if ($brand->is_default) {
+            return response()->json(['message' => 'The main brand cannot be removed.'], 422);
+        }
+        $n = $brand->types()->count();
+        if ($n > 0) {
+            return response()->json(['message' => "{$n} label " . ($n === 1 ? 'type uses' : 'types use') . ' this brand. Move them to another brand first.'], 422);
+        }
+        $brand->delete();
+
+        return response()->json(['ok' => true]);
+    }
+
+    /** @return array<string, mixed> */
+    private function brandData(Request $request, LabelBrand $brand): array
+    {
+        return $request->validate([
+            'name' => ($brand->exists ? 'sometimes' : 'required') . '|string|max:60',
+            'name_dv' => 'sometimes|nullable|string|max:60',
+            'tagline' => 'sometimes|nullable|string|max:80',
+            'tagline_dv' => 'sometimes|nullable|string|max:80',
+            'logo_media_id' => 'sometimes|nullable|integer|exists:media_assets,id',
+            'sort' => 'sometimes|integer|min:0|max:999',
+        ]);
+    }
+
     /** @return array<string, mixed> */
     private function present(Item $item): array
     {
         $lines = $this->ingredients->forItem($item);
+        // Defaults as the type gives them, so the item's own boxes stay empty.
+        $bare = (clone $item)->forceFill(['label_heading' => null, 'label_heading_dv' => null, 'label_storage_line' => null, 'label_storage_line_dv' => null, 'label_note' => null, 'label_note_dv' => null, 'label_how_to_use' => null, 'label_how_to_use_dv' => null, 'label_shelf_life_days' => null]);
+        $w = $this->types->forItem($bare);
         $media = Media::query()->whereIn('id', array_filter([$item->label_title_media_id, $item->label_photo_media_id]))->get()->keyBy('id');
 
         return [
@@ -377,12 +519,22 @@ class LabelsController extends Controller
             'label_note' => $item->label_note,
             'label_note_dv' => $item->label_note_dv,
             'label_pack_unit' => $item->label_pack_unit,
-            // What prints when the item's own wording is empty: the defaults for its storage.
+            'label_type_id' => $item->label_type_id,
+            'label_type_name' => $item->label_type_id ? $item->labelType?->name : null,
+            'label_how_to_use' => $item->label_how_to_use,
+            'label_how_to_use_dv' => $item->label_how_to_use_dv,
+            // What prints when the item's own wording is empty: its type's wording, else the defaults for its storage.
             'defaults' => [
-                'heading' => LabelSettings::headingLine((string) $item->label_storage, false),
-                'heading_dv' => LabelSettings::headingLine((string) $item->label_storage, true),
-                'storage_line' => LabelSettings::storageLine((string) $item->label_storage, false),
-                'storage_line_dv' => LabelSettings::storageLine((string) $item->label_storage, true),
+                'heading' => $w['heading'],
+                'heading_dv' => $w['heading_dv'],
+                'storage_line' => $w['storage_en'],
+                'storage_line_dv' => $w['storage_dv'],
+                'how_to_use' => $w['how_to_use'],
+                'how_to_use_dv' => $w['how_to_use_dv'],
+                'note' => $w['note'],
+                'note_dv' => $w['note_dv'],
+                'shelf_life_days' => $w['shelf_life_days'],
+                'brand' => $w['brand']['name'],
                 'unit' => 'PCS',
             ],
             'label_title_media_id' => $item->label_title_media_id,

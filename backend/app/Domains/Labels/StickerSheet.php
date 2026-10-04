@@ -6,6 +6,7 @@ namespace App\Domains\Labels;
 
 use App\Models\Item;
 use App\Models\KitchenProductionItem;
+use App\Models\LabelType;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use InvalidArgumentException;
@@ -23,7 +24,21 @@ final class StickerSheet
 {
     public const MAX_STICKERS = 400;
 
-    public function __construct(private readonly LabelIngredients $ingredients) {}
+    /** @var array<int, ?LabelType> */
+    private array $asTypes = [];
+
+    public function __construct(private readonly LabelIngredients $ingredients, private readonly LabelTypes $types) {}
+
+    /** The label type a sheet is printed "as", when the request names one. */
+    private function asType(array $req): ?LabelType
+    {
+        $id = (int) ($req['type'] ?? 0);
+        if ($id <= 0) {
+            return null;
+        }
+
+        return $this->asTypes[$id] ??= LabelType::query()->with('brand')->find($id);
+    }
 
     /**
      * Check and tidy a request. Throws InvalidArgumentException with a message
@@ -96,6 +111,8 @@ final class StickerSheet
             'batch' => $batch,
             'qty' => $qty,
             'pi' => isset($in['pi']) && $in['pi'] !== '' ? (int) $in['pi'] : null,
+            // Print the whole sheet "as" a label type (v2 point 3); the items' own wording still wins.
+            'type' => isset($in['type']) && $in['type'] !== '' ? (int) $in['type'] : null,
         ];
     }
 
@@ -203,8 +220,9 @@ final class StickerSheet
         if ($production && $production->expires_at && (int) $production->item_id === (int) $item->id) {
             return [$mfg, CarbonImmutable::parse($production->expires_at)->toDateString()];
         }
-        if ($item->label_shelf_life_days) {
-            return [$mfg, CarbonImmutable::parse($mfg)->addDays((int) $item->label_shelf_life_days)->toDateString()];
+        $life = $this->types->forItem($item, $this->asType($req))['shelf_life_days'];
+        if ($life) {
+            return [$mfg, CarbonImmutable::parse($mfg)->addDays((int) $life)->toDateString()];
         }
 
         return [$mfg, null];
@@ -229,6 +247,7 @@ final class StickerSheet
             $batch = (string) ($production->batch_code ?? '');
         }
         $qty = $req['qty'] !== '' ? $req['qty'] : ($item->label_pack_qty ? (string) $item->label_pack_qty : '');
+        $w = $this->types->forItem($item, $this->asType($req));
 
         return $common + [
             'name' => (string) $item->name,
@@ -246,13 +265,22 @@ final class StickerSheet
             'batch' => $batch,
             'qty' => $qty,
             'unit' => trim((string) $item->label_pack_unit) !== '' ? mb_strtoupper(trim((string) $item->label_pack_unit)) : 'PCS',
-            // The item's own wording, else the default for its storage.
-            'header_line' => trim((string) $item->label_heading) ?: LabelSettings::headingLine((string) $item->label_storage, false),
-            'header_line_dv' => trim((string) $item->label_heading_dv) ?: LabelSettings::headingLine((string) $item->label_storage, true),
-            'storage_en' => trim((string) $item->label_storage_line) ?: LabelSettings::storageLine((string) $item->label_storage, false),
-            'storage_dv' => trim((string) $item->label_storage_line_dv) ?: LabelSettings::storageLine((string) $item->label_storage, true),
-            'note' => trim((string) $item->label_note),
-            'note_dv' => trim((string) $item->label_note_dv),
+            // Wording from the item, its label type, or the per-storage defaults (LabelTypes).
+            'header_line' => $w['heading'],
+            'header_line_dv' => $w['heading_dv'],
+            'storage_en' => $w['storage_en'],
+            'storage_dv' => $w['storage_dv'],
+            'note' => $w['note'],
+            'note_dv' => $w['note_dv'],
+            'how_to_use' => $w['how_to_use'],
+            'how_to_use_dv' => $w['how_to_use_dv'],
+            'use_within' => $w['use_within'],
+            'use_within_dv' => $w['use_within_dv'],
+            'mfg_label' => $w['mfg_label'],
+            'exp_label' => $w['exp_label'],
+            'show_qr' => $w['show_qr'],
+            'brand' => $w['brand'],
+            'type_name' => $w['type_name'],
         ];
     }
 

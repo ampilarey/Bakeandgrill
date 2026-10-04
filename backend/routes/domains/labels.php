@@ -33,6 +33,29 @@ Route::post('/labels/box/url', [LabelsController::class, 'boxUrl'])
 Route::get('/labels/deliveries/{delivery}/box-label', [LabelsController::class, 'deliveryBoxLabel'])
     ->middleware('permission:labels.print')
     ->whereNumber('delivery');
+Route::get('/labels/types', [LabelsController::class, 'types'])
+    ->middleware('permission:labels.print');
+Route::post('/labels/types', [LabelsController::class, 'storeType'])
+    ->middleware('permission:labels.manage');
+Route::put('/labels/types/{type}', [LabelsController::class, 'updateType'])
+    ->middleware('permission:labels.manage')
+    ->whereNumber('type');
+Route::delete('/labels/types/{type}', [LabelsController::class, 'destroyType'])
+    ->middleware('permission:labels.manage')
+    ->whereNumber('type');
+Route::get('/labels/brands', [LabelsController::class, 'brands'])
+    ->middleware('permission:labels.print');
+Route::post('/labels/brands', [LabelsController::class, 'storeBrand'])
+    ->middleware('permission:labels.manage');
+Route::put('/labels/brands/{brand}', [LabelsController::class, 'updateBrand'])
+    ->middleware('permission:labels.manage')
+    ->whereNumber('brand');
+Route::post('/labels/brands/{brand}/logo', [LabelsController::class, 'brandLogo'])
+    ->middleware('permission:labels.manage')
+    ->whereNumber('brand');
+Route::delete('/labels/brands/{brand}', [LabelsController::class, 'destroyBrand'])
+    ->middleware('permission:labels.manage')
+    ->whereNumber('brand');
 Route::get('/labels/shops', [LabelsController::class, 'shops'])
     ->middleware('permission:labels.print');
 Route::get('/labels/shops/{tradeAccount}/box-label', [LabelsController::class, 'shopBoxLabel'])

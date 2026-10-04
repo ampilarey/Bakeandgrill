@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ImagePlus, X, RefreshCw } from 'lucide-react';
-import { fetchLabelItem, stickerLinks, updateItemLabel, type IngredientsSource, type LabelProduct, type LabelStorage } from '../../api';
+import { fetchLabelItem, fetchLabelTypes, stickerLinks, updateItemLabel, type IngredientsSource, type LabelProduct, type LabelStorage, type LabelType } from '../../api';
 import { MediaPicker } from '../MediaPicker';
 import { Button } from '../ui';
 
@@ -27,6 +27,9 @@ type Draft = {
   label_note: string;
   label_note_dv: string;
   label_pack_unit: string;
+  label_type_id: number | null;
+  label_how_to_use: string;
+  label_how_to_use_dv: string;
   label_title_media_id: number | null;
   label_title_url: string | null;
   label_photo_media_id: number | null;
@@ -48,6 +51,9 @@ const toDraft = (p: LabelProduct): Draft => ({
   label_note: p.label_note ?? '',
   label_note_dv: p.label_note_dv ?? '',
   label_pack_unit: p.label_pack_unit ?? '',
+  label_type_id: p.label_type_id,
+  label_how_to_use: p.label_how_to_use ?? '',
+  label_how_to_use_dv: p.label_how_to_use_dv ?? '',
   label_title_media_id: p.label_title_media_id,
   label_title_url: p.label_title_url,
   label_photo_media_id: p.label_photo_media_id,
@@ -65,6 +71,8 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
   const [message, setMessage] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [lang, setLang] = useState<'en' | 'dv'>('en');
+  const [types, setTypes] = useState<LabelType[]>([]);
+  useEffect(() => { fetchLabelTypes().then((r) => setTypes(r.data.filter((t) => t.is_active || t.id === product?.label_type_id))).catch(() => setTypes([])); }, [product?.label_type_id]);
 
   useEffect(() => {
     fetchLabelItem(itemId).then((r) => { setProduct(r.data); setDraft(toDraft(r.data)); }).catch(() => setMessage('Could not load the label settings.'));
@@ -102,6 +110,9 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
         label_note: draft.label_note.trim() || null,
         label_note_dv: draft.label_note_dv.trim() || null,
         label_pack_unit: draft.label_pack_unit.trim() || null,
+        label_type_id: draft.label_type_id,
+        label_how_to_use: draft.label_how_to_use.trim() || null,
+        label_how_to_use_dv: draft.label_how_to_use_dv.trim() || null,
         label_title_media_id: draft.label_title_media_id,
         label_photo_media_id: draft.label_photo_media_id,
       });
@@ -143,6 +154,16 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
           <span className="text-sm font-semibold text-[var(--color-text)]">Print pack stickers for this item</span>
         </label>
 
+        {/* v2 point 3: "frozen hedika is a type of food so that label should be easily selected". */}
+        <div>
+          <label className={labelClass} htmlFor="lbl-type">Label type</label>
+          <select id="lbl-type" value={draft.label_type_id ?? ''} onChange={(e) => { const t = types.find((x) => x.id === Number(e.target.value)); set('label_type_id', t ? t.id : null); if (t) set('label_storage', t.storage); }} className={fieldClass}>
+            <option value="">No type: the usual wording for its storage</option>
+            {types.map((t) => <option key={t.id} value={t.id}>{t.name}{t.brand_name && t.brand_name !== product.defaults.brand ? ` · ${t.brand_name}` : ''}</option>)}
+          </select>
+          <p className="text-xs text-[var(--color-text-muted)] mt-1">Brings the heading, storage, dates wording, shelf life, how-to-use and brand ({product.defaults.brand}). Anything typed below prints instead. Types are managed on Labels → Types &amp; brands.</p>
+        </div>
+
         <div>
           <label className={labelClass} htmlFor="lbl-source">Ingredients</label>
           <select id="lbl-source" value={draft.label_ingredients_source} onChange={(e) => set('label_ingredients_source', e.target.value as IngredientsSource)} className={fieldClass}>
@@ -166,7 +187,7 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
         </div>
 
         <div className="grid gap-3 sm:grid-cols-3">
-          <div><label className={labelClass} htmlFor="lbl-life">Shelf life (days)</label><input id="lbl-life" type="number" min={1} max={730} value={draft.label_shelf_life_days} onChange={(e) => set('label_shelf_life_days', e.target.value)} className={fieldClass} placeholder="Blank: write by hand" /></div>
+          <div><label className={labelClass} htmlFor="lbl-life">Shelf life (days)</label><input id="lbl-life" type="number" min={1} max={730} value={draft.label_shelf_life_days} onChange={(e) => set('label_shelf_life_days', e.target.value)} className={fieldClass} placeholder={product.defaults.shelf_life_days ? `${product.defaults.shelf_life_days} from the type` : 'Blank: write by hand'} /></div>
           <div>
             <label className={labelClass} htmlFor="lbl-storage">Storage</label>
             <select id="lbl-storage" value={draft.label_storage} onChange={(e) => set('label_storage', e.target.value as LabelStorage)} className={fieldClass}>
@@ -187,14 +208,16 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
             <div><label className={labelClass} htmlFor="lbl-heading-dv">Heading (Dhivehi)</label><input id="lbl-heading-dv" dir="rtl" maxLength={40} value={draft.label_heading_dv} onChange={(e) => set('label_heading_dv', e.target.value)} className={fieldClass} placeholder={product.defaults.heading_dv} /></div>
             <div><label className={labelClass} htmlFor="lbl-storage-line">Storage line (strip above the footer)</label><input id="lbl-storage-line" maxLength={160} value={draft.label_storage_line} onChange={(e) => set('label_storage_line', e.target.value)} className={fieldClass} placeholder={product.defaults.storage_line} /></div>
             <div><label className={labelClass} htmlFor="lbl-storage-line-dv">Storage line (Dhivehi)</label><input id="lbl-storage-line-dv" dir="rtl" maxLength={160} value={draft.label_storage_line_dv} onChange={(e) => set('label_storage_line_dv', e.target.value)} className={fieldClass} placeholder={product.defaults.storage_line_dv} /></div>
-            <div><label className={labelClass} htmlFor="lbl-note">Note under the ingredients</label><input id="lbl-note" maxLength={120} value={draft.label_note} onChange={(e) => set('label_note', e.target.value)} className={fieldClass} placeholder="Contains egg and gluten · Best served warm" /></div>
-            <div><label className={labelClass} htmlFor="lbl-note-dv">Note (Dhivehi)</label><input id="lbl-note-dv" dir="rtl" maxLength={120} value={draft.label_note_dv} onChange={(e) => set('label_note_dv', e.target.value)} className={fieldClass} /></div>
+            <div><label className={labelClass} htmlFor="lbl-note">Note under the ingredients</label><input id="lbl-note" maxLength={120} value={draft.label_note} onChange={(e) => set('label_note', e.target.value)} className={fieldClass} placeholder={product.defaults.note || 'Contains egg and gluten'} /></div>
+            <div><label className={labelClass} htmlFor="lbl-note-dv">Note (Dhivehi)</label><input id="lbl-note-dv" dir="rtl" maxLength={120} value={draft.label_note_dv} onChange={(e) => set('label_note_dv', e.target.value)} className={fieldClass} placeholder={product.defaults.note_dv} /></div>
+            <div><label className={labelClass} htmlFor="lbl-use">How to use</label><textarea id="lbl-use" rows={2} maxLength={200} value={draft.label_how_to_use} onChange={(e) => set('label_how_to_use', e.target.value)} className="w-full min-h-[44px] px-3 py-2 rounded-lg border border-[var(--color-border)] text-sm resize-y" placeholder={product.defaults.how_to_use || 'Thaw 10 min. Deep fry 4–5 min until golden.'} /></div>
+            <div><label className={labelClass} htmlFor="lbl-use-dv">How to use (Dhivehi)</label><textarea id="lbl-use-dv" dir="rtl" rows={2} maxLength={200} value={draft.label_how_to_use_dv} onChange={(e) => set('label_how_to_use_dv', e.target.value)} className="w-full min-h-[44px] px-3 py-2 rounded-lg border border-[var(--color-border)] text-sm resize-y" placeholder={product.defaults.how_to_use_dv} /></div>
             <div><label className={labelClass} htmlFor="lbl-unit">Unit after the quantity</label><input id="lbl-unit" maxLength={10} value={draft.label_pack_unit} onChange={(e) => set('label_pack_unit', e.target.value)} className={fieldClass} placeholder={product.defaults.unit} /><p className="text-xs text-[var(--color-text-muted)] mt-1">PCS, SLICES, PACK, G…</p></div>
           </div>
         </fieldset>
 
         {pictureSlot('title', 'Hand-lettered name', 'A PNG with a clear background. Without one, the name is typed in the brand font.')}
-        {pictureSlot('photo', 'Food photo', 'A cut-out PNG. Without one, the item\'s cut-out from Photos is used, then the flame.')}
+        {pictureSlot('photo', 'Food photo (labels only)', product.cutout_url ? 'Without one, the item\'s cut-out from the Photos tab prints, the same picture the menu cards use.' : 'Without one, the flame prints. Add a background-less PNG as the item\'s cut-out on the Photos tab and it is used here, on the menu cards and the POS.')}
 
         <div className="flex flex-wrap items-center gap-3">
           <Button onClick={save} loading={saving} className="w-full sm:w-auto justify-center">Save label settings</Button>

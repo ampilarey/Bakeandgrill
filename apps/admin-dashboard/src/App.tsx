@@ -408,7 +408,7 @@ export default function App() {
                   </PermissionGuard>
                 } />
                 {/* Labels (owner, 2026-10-04): pack stickers and box labels. */}
-                {['labels', 'labels/stickers', 'labels/box', 'labels/history', 'labels/settings'].map((path) => (
+                {['labels', 'labels/stickers', 'labels/box', 'labels/types', 'labels/history', 'labels/settings'].map((path) => (
                   <Route key={path} path={path} element={
                     <PermissionGuard user={user} permissions={LABELS_HUB_PERMISSIONS}>
                       <LabelsHub />

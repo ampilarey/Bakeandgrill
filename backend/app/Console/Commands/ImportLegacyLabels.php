@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Domains\Labels\LabelMedia;
 use App\Models\Item;
+use App\Models\LabelType;
 use App\Models\Media;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 /**
  * One-off: bring the owner's frozen short-eat stickers into the Label Hub.
@@ -75,6 +75,8 @@ class ImportLegacyLabels extends Command
                 'label_enabled' => true,
                 'label_storage' => 'frozen',
                 'label_ingredients_source' => $item->label_ingredients_source ?: 'auto',
+                // v2: the frozen short eats are the Frozen Hedhika type.
+                'label_type_id' => $item->label_type_id ?: LabelType::query()->where('storage', 'frozen')->orderBy('sort')->value('id'),
             ];
             if (trim((string) $item->label_ingredients) === '' || $force) {
                 $changes['label_ingredients'] = $ingredients;
@@ -120,33 +122,8 @@ class ImportLegacyLabels extends Command
         return self::SUCCESS;
     }
 
-    /**
-     * Into the media library as the PNG it is. The library's upload path
-     * re-encodes pictures as JPEG on white, and the lettering and cut-outs
-     * are transparent PNGs; kept as they are they trim and print cleanly.
-     */
     private function storePng(string $path, string $title): Media
     {
-        $bytes = (string) file_get_contents($path);
-        $checksum = hash('sha256', $bytes);
-        if ($existing = Media::query()->where('checksum', $checksum)->first()) {
-            return $existing;
-        }
-        $relative = 'library/labels/' . Str::uuid() . '.png';
-        Storage::disk('public')->put($relative, $bytes);
-        [$w, $h] = @getimagesizefromstring($bytes) ?: [null, null];
-
-        return Media::query()->create([
-            'disk' => 'public',
-            'path' => $relative,
-            'media_type' => 'image',
-            'mime_type' => 'image/png',
-            'file_size' => strlen($bytes),
-            'width' => $w,
-            'height' => $h,
-            'title' => $title,
-            'source' => 'labels',
-            'checksum' => $checksum,
-        ]);
+        return LabelMedia::storePng((string) file_get_contents($path), $title);
     }
 }

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Printer, FileDown, AlertTriangle, Search } from 'lucide-react';
 import {
-  downloadLabelSheet, fetchLabelLayouts, fetchLabelProducts, openLabelSheet, printsViaPdf, stickerLinks,
-  type LabelLayout, type LabelProduct, type SheetLinks, type StickerSummary,
+  downloadLabelSheet, fetchLabelLayouts, fetchLabelProducts, fetchLabelTypes, openLabelSheet, printsViaPdf, stickerLinks,
+  type LabelLayout, type LabelProduct, type LabelType, type SheetLinks, type StickerSummary,
 } from '../../api';
 import { Button } from '../ui';
 import { QtyStepper } from './QtyStepper';
@@ -38,6 +38,8 @@ const labelClass = 'block text-xs font-semibold text-[var(--color-text-secondary
 export function StickerPrintPanel({ fixedItems, productionItemId = null, defaults }: Props) {
   const [products, setProducts] = useState<LabelProduct[]>([]);
   const [layouts, setLayouts] = useState<LabelLayout[]>([]);
+  const [types, setTypes] = useState<LabelType[]>([]);
+  const [asType, setAsType] = useState<number | null>(null);
   const [picked, setPicked] = useState<Record<number, number>>({});
   const [lang, setLang] = useState<'en' | 'dv'>('en');
   const [layout, setLayout] = useState(() => remembered(LAST_LAYOUT_KEY, 'a4-4'));
@@ -56,6 +58,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
 
   useEffect(() => {
     fetchLabelLayouts().then((r) => setLayouts(r.data)).catch(() => setLayouts([]));
+    fetchLabelTypes().then((r) => setTypes(r.data.filter((t) => t.is_active))).catch(() => setTypes([]));
     if (!fixedItems) fetchLabelProducts().then((r) => setProducts(r.data)).catch(() => setProducts([]));
   }, [fixedItems]);
 
@@ -83,7 +86,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
         w: layout === 'single-custom' ? customW : null,
         h: layout === 'single-custom' ? customH : null,
         fill, mfg: fill ? mfg : null, exp: fill && exp ? exp : null,
-        batch: batch || null, qty: qty ? Number(qty) : null, pi: productionItemId,
+        batch: batch || null, qty: qty ? Number(qty) : null, pi: productionItemId, type: asType,
       });
       remember(LAST_LAYOUT_KEY, layout);
       setResult(r);
@@ -168,6 +171,16 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
           </select>
           {current ? <p className="text-xs text-[var(--color-text-muted)] mt-1">{current.hint}</p> : null}
         </div>
+        {types.length > 0 && (
+          <div>
+            <label className={labelClass} htmlFor="label-as-type">Print as</label>
+            <select id="label-as-type" value={asType ?? ''} onChange={(e) => setAsType(e.target.value ? Number(e.target.value) : null)} className={fieldClass}>
+              <option value="">Each product's own label type</option>
+              {types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+            <p className="text-xs text-[var(--color-text-muted)] mt-1">One type for the whole sheet: its heading, dates wording, how-to-use and brand. A product's own typed wording still prints.</p>
+          </div>
+        )}
         {layout === 'single-custom' && (
           <div className="grid grid-cols-2 gap-2 sm:col-span-2">
             <div><label className={labelClass} htmlFor="label-w">Width (mm)</label><input id="label-w" type="number" min={50} max={210} value={customW} onChange={(e) => setCustomW(Number(e.target.value))} className={fieldClass} /></div>
