@@ -48,6 +48,12 @@ describe('StickerPrintPanel', () => {
 
     fireEvent.click(screen.getByLabelText('Print Bajiya'));
     expect(screen.getByLabelText('How many Bajiya stickers')).toHaveValue(4);
+    // − and + move a whole sheet; a typed count snaps to the next sheet.
+    fireEvent.click(screen.getByLabelText('How many Bajiya stickers: more'));
+    expect(screen.getByLabelText('How many Bajiya stickers')).toHaveValue(8);
+    fireEvent.change(screen.getByLabelText('How many Bajiya stickers'), { target: { value: '6' } });
+    fireEvent.click(screen.getByLabelText('How many Bajiya stickers: fewer'));
+    expect(screen.getByLabelText('How many Bajiya stickers')).toHaveValue(4);
     fireEvent.click(screen.getByText('Fill in the dates'));
     fireEvent.click(screen.getByTestId('sticker-prepare'));
 
@@ -71,6 +77,16 @@ describe('StickerPrintPanel', () => {
     expect(fetchLabelProducts).not.toHaveBeenCalled();
     fireEvent.click(await screen.findByTestId('sticker-prepare'));
     expect(await screen.findByRole('alert')).toHaveTextContent('The expiry date has already passed.');
-    expect(stickerLinks.mock.calls[0][0]).toMatchObject({ pi: 9, batch: 'KP-77', exp: '2020-01-01' });
+    expect(stickerLinks.mock.calls[0][0]).toMatchObject({ pi: 9, batch: 'KP-77', exp: '2020-01-01', items: [{ id: 1, copies: 4 }] });
+  });
+
+  it('lets a production line print more than one sheet', async () => {
+    stickerLinks.mockRejectedValue(new Error('x'));
+    render(<StickerPrintPanel fixedItems={[{ id: 1, name: 'Bajiya' }]} productionItemId={9} />);
+    await waitFor(() => expect(fetchLabelLayouts).toHaveBeenCalled());
+    fireEvent.click(await screen.findByLabelText('How many Bajiya stickers: more'));
+    fireEvent.click(screen.getByTestId('sticker-prepare'));
+    await waitFor(() => expect(stickerLinks).toHaveBeenCalled());
+    expect(stickerLinks.mock.calls[0][0]).toMatchObject({ items: [{ id: 1, copies: 8 }] });
   });
 });

@@ -43,6 +43,12 @@ class SecurityHeaders
             return true;
         }
 
+        // A menu item's Label tab shows its sticker in a same-origin iframe.
+        // The sheets are signed links; framing stays same-origin only.
+        if ($request->routeIs('labels.stickers', 'labels.box')) {
+            return true;
+        }
+
         // Admin TV Signage screen preview iframe — public read-only board, same-origin only.
         if ($request->is('order/tv') || $request->is('order/tv/*')) {
             return true;

@@ -172,8 +172,13 @@ class StickerSheetTest extends TestCase
 
     public function test_preview_links_are_not_logged_and_need_the_permission(): void
     {
-        $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $this->bajiya->id, 'copies' => 1]], 'preview' => true])->assertOk();
+        $res = $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $this->bajiya->id, 'copies' => 1]], 'preview' => true])->assertOk();
         $this->assertSame(0, LabelPrint::query()->count());
+
+        // The item's Label tab frames the sheet; a DENY header left a broken page there.
+        $sheet = $this->get($res->json('view_url'))->assertOk();
+        $this->assertSame('SAMEORIGIN', $sheet->headers->get('X-Frame-Options'));
+        $this->assertStringContainsString("frame-ancestors 'self'", (string) $sheet->headers->get('Content-Security-Policy'));
 
         Sanctum::actingAs($this->makeManager(), ['staff']);
         $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $this->bajiya->id, 'copies' => 1]]])->assertForbidden();

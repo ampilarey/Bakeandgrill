@@ -6303,3 +6303,27 @@ work area is a single column that
 @media (max-width: 479px) {
   .sms-cc-overview { grid-template-columns: 1fr; }
 }
+
+/*
+ * Labels (2026-10-04, owner: "enhance the mobile view of label page"). On a
+ * phone the Prepare / Print row stays in reach above the tab bar instead of
+ * at the foot of a long form, and its buttons share the width. Only in the
+ * Labels page's own cards (.labels-sticky, padding "sm"): inside a modal
+ * (production line, delivery) the sheet already ends at the buttons.
+ */
+@media (max-width: 767px) {
+  .labels-sticky .labels-actions {
+    position: sticky;
+    bottom: var(--admin-tabbar-h, 56px);
+    z-index: var(--z-overlay);
+    margin: 0 -16px -16px;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+    background: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+    border-radius: 0 0 14px 14px;
+  }
+  .labels-actions .labels-actions-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .labels-actions .labels-actions-row > button { justify-content: center; width: 100%; }
+  .labels-actions .labels-actions-row > button:only-child,
+  .labels-actions .labels-actions-row > button.labels-actions-wide { grid-column: 1 / -1; }
+}

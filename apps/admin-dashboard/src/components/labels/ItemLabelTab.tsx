@@ -102,7 +102,7 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
     return (
       <div>
         <span className={labelClass}>{label}</span>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="w-24 h-16 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] flex items-center justify-center overflow-hidden">
             {url ? <img src={url} alt="" className="max-w-full max-h-full object-contain" /> : <span className="text-xs text-[var(--color-text-muted)] text-center px-1">{slot === 'title' ? 'Typed name' : 'Cut-out or flame'}</span>}
           </div>
@@ -158,20 +158,20 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
         {pictureSlot('title', 'Hand-lettered name', 'A PNG with a clear background. Without one, the name is typed in the brand font.')}
         {pictureSlot('photo', 'Food photo', 'A cut-out PNG. Without one, the item\'s cut-out from Photos is used, then the flame.')}
 
-        <div className="flex items-center gap-3">
-          <Button onClick={save} loading={saving}>Save label settings</Button>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button onClick={save} loading={saving} className="w-full sm:w-auto justify-center">Save label settings</Button>
           {message && <span className="text-sm text-[var(--color-text-secondary)]" role="status">{message}</span>}
         </div>
       </div>
 
-      <div className="lg:w-[300px]">
+      <div className="lg:w-[300px] w-[300px] max-w-full mx-auto lg:mx-0">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-semibold text-[var(--color-text-secondary)]">Preview (saved settings)</span>
           <div className="flex gap-1">
             {(['en', 'dv'] as const).map((l) => (
-              <button key={l} type="button" onClick={() => { setLang(l); void refreshPreview(l); }} className={['px-2 h-8 rounded-md text-xs font-semibold border', lang === l ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]' : 'bg-white border-[var(--color-border)]'].join(' ')}>{l === 'en' ? 'EN' : 'ދިވެހި'}</button>
+              <button key={l} type="button" onClick={() => { setLang(l); void refreshPreview(l); }} className={['px-3 h-10 min-w-[44px] rounded-md text-xs font-semibold border', lang === l ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]' : 'bg-white border-[var(--color-border)]'].join(' ')}>{l === 'en' ? 'EN' : 'ދިވެހި'}</button>
             ))}
-            <button type="button" onClick={() => void refreshPreview()} className="w-8 h-8 inline-flex items-center justify-center rounded-md border border-[var(--color-border)]" aria-label="Refresh preview"><RefreshCw size={14} /></button>
+            <button type="button" onClick={() => void refreshPreview()} className="w-10 h-10 inline-flex items-center justify-center rounded-md border border-[var(--color-border)]" aria-label="Refresh preview"><RefreshCw size={14} /></button>
           </div>
         </div>
         {preview ? (
