@@ -1775,7 +1775,15 @@ a { text-decoration: none; color: inherit; }
 .admin-shell-main {
   flex: 1;
   padding: 24px;
-  overflow-x: hidden;
+  /*
+   * clip, not hidden. Both stop a wide table widening the page, but hidden
+   * makes <main> a scroll container, and a position: sticky bar inside it
+   * then measures against <main>'s box rather than the screen: it never
+   * followed the scroll, and at the end of the page it was held one tab-bar
+   * height above its own place, over the last field (owner, 2026-10-04:
+   * "cannot see pieces per pack"). clip creates no scroll container.
+   */
+  overflow-x: clip;
 }
 
 .admin-shell-main--mobile {
@@ -6317,11 +6325,12 @@ work area is a single column that
     bottom: var(--admin-tabbar-h, 56px);
     z-index: var(--z-overlay);
     margin: 0 -16px -16px;
-    padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+    padding: 10px 16px;
     background: var(--color-surface);
     border-top: 1px solid var(--color-border);
     border-radius: 0 0 14px 14px;
   }
+
   .labels-actions .labels-actions-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .labels-actions .labels-actions-row > button { justify-content: center; width: 100%; }
   .labels-actions .labels-actions-row > button:only-child,
