@@ -108,6 +108,7 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
 
     require __DIR__ . '/domains/finance.php';
     require __DIR__ . '/domains/complaints.php';
+    require __DIR__ . '/domains/labels.php';
 
     $GLOBALS['routes_sections']['kitchen'] = 'production';
     require __DIR__ . '/domains/kitchen.php';

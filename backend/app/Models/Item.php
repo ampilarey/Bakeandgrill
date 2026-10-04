@@ -70,6 +70,17 @@ class Item extends Model
         'show_on_signage',
         'is_signage_promoted',
         'is_featured',
+        // Label Hub (docs/LABEL_HUB_PLAN.md). Written only through
+        // PUT /api/items/{item}/label, which needs labels.manage.
+        'label_enabled',
+        'label_ingredients_source',
+        'label_ingredients',
+        'label_ingredients_dv',
+        'label_shelf_life_days',
+        'label_storage',
+        'label_pack_qty',
+        'label_title_media_id',
+        'label_photo_media_id',
     ];
 
     /**
@@ -80,6 +91,17 @@ class Item extends Model
      */
     protected $hidden = [
         'wholesale_price_laar',
+        // Label Hub settings are read through /api/labels, never the menu
+        // payloads every app and customer sees.
+        'label_enabled',
+        'label_ingredients_source',
+        'label_ingredients',
+        'label_ingredients_dv',
+        'label_shelf_life_days',
+        'label_storage',
+        'label_pack_qty',
+        'label_title_media_id',
+        'label_photo_media_id',
     ];
 
     public function category(): BelongsTo
@@ -285,6 +307,11 @@ class Item extends Model
         'show_on_signage' => 'boolean',
         'is_signage_promoted' => 'boolean',
         'is_featured' => 'boolean',
+        'label_enabled' => 'boolean',
+        'label_shelf_life_days' => 'integer',
+        'label_pack_qty' => 'integer',
+        'label_title_media_id' => 'integer',
+        'label_photo_media_id' => 'integer',
     ];
 
     /** True when the item is configured to require a variant selection. */

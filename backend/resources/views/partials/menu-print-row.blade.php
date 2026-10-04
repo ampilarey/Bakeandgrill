@@ -21,6 +21,9 @@
     $money = static fn ($n) => number_format((float) $n, 2);
     $withDetails = $printStyle === 'full';
     $dv = trim((string) ($item->name_dv ?? ''));
+    // dompdf draws characters in stored order, so Thaana came out mirrored in
+    // the PDF; it gets visual order there. Browsers order it themselves.
+    $dvShown = ($forPdf ?? false) ? \App\Support\ThaanaVisual::order($dv) : $dv;
     $description = trim((string) ($item->short_description ?: $item->description ?: ''));
     $tags = collect($item->dietary_tags ?? [])
         ->map(fn ($t) => trim((string) $t))
@@ -45,7 +48,7 @@
             @if ($showDhivehi && $dv !== '')
                 {{-- Beside the name, not on a line of its own: a Dhivehi name
                      alone on the right margin reads as a separate entry. --}}
-                <td class="row__dv">{{ $dv }}</td>
+                <td class="row__dv">{{ $dvShown }}</td>
             @endif
             <td class="row__dots"></td>
             @if (!$hasSizes && $price)

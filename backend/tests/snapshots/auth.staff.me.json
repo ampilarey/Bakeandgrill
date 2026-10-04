@@ -75,6 +75,8 @@
             "kitchen.receiving.request_remake",
             "kitchen.receiving.view",
             "kitchen.variance.review",
+            "labels.manage",
+            "labels.print",
             "loyalty.manage",
             "loyalty.redeem",
             "loyalty.view",

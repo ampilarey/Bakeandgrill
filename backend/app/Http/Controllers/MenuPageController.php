@@ -620,18 +620,7 @@ class MenuPageController extends Controller
      */
     private function dhivehiFontFile(): ?string
     {
-        $custom = trim((string) content(\App\Domains\Content\DhivehiFont::CONTENT_KEY, ''));
-        if ($custom !== '' && \App\Domains\Content\DhivehiFont::isSafePublicUrl($custom)
-            && preg_match('/\.(ttf|otf)$/', $custom)) {
-            $file = public_path(ltrim($custom, '/'));
-            if (is_file($file) && is_readable($file)) {
-                return $file;
-            }
-        }
-
-        $shipped = public_path('fonts/a_faruma.ttf');
-
-        return is_file($shipped) ? $shipped : null;
+        return \App\Domains\Content\DhivehiFont::pdfFile();
     }
 
     /**

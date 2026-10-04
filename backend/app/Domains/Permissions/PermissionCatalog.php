@@ -40,6 +40,7 @@ final class PermissionCatalog
         'sms.campaigns.send' => ['integrations.sms', 'sms_marketing.manage'],
         'sms.transactional.manage' => ['integrations.sms', 'sms_marketing.manage'],
         'media.view' => ['website.manage', 'menu.manage'],
+        'labels.print' => ['labels.manage'],
         'media.manage' => ['website.manage'],
         'webhooks.manage' => ['integrations.webhooks'],
         'xero.manage' => ['integrations.xero'],
@@ -253,6 +254,10 @@ final class PermissionCatalog
             ['group' => 'Menu', 'slug' => 'menu.manage', 'name' => 'Manage menu'],
             ['group' => 'Menu', 'slug' => 'recipes.manage', 'name' => 'Recipes & item costing', 'description' => 'Record item recipes and see cost price, margin and profit. Owner-only by default — it exposes what each dish costs to make.'],
             ['group' => 'Menu', 'slug' => 'menu.prepared_stock', 'name' => 'Adjust prepared menu stock at POS', 'description' => 'Add or remove ready-made menu item counts from the POS Operations panel'],
+            // Label Hub (owner, 2026-10-04): "by default admin only, but option
+            // to give permission to any staff". Both are owner-only below.
+            ['group' => 'Labels', 'slug' => 'labels.print', 'name' => 'Print labels', 'description' => 'Print pack stickers and box labels from the Labels page, a production batch or a wholesale delivery'],
+            ['group' => 'Labels', 'slug' => 'labels.manage', 'name' => 'Manage label settings', 'description' => 'Edit ingredients, shelf life, storage line and label pictures on items, and the label wording'],
             ['group' => 'Media', 'slug' => 'media.view', 'name' => 'View media library', 'description' => 'Browse the Media Library and pick assets'],
             ['group' => 'Media', 'slug' => 'media.manage', 'name' => 'Manage media library', 'description' => 'Upload, edit, delete, and reconcile media'],
 
@@ -345,6 +350,8 @@ final class PermissionCatalog
         return [
             'complaints.manage',
             'complaints.view',
+            'labels.manage',
+            'labels.print',
             // Off by default for managers too (owner, 2026-10-02).
             'pos.customers_tab',
             // Owner-only by default (2026-10-03): it rewrites what the drawer and the tender report say.

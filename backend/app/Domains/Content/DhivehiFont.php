@@ -101,6 +101,29 @@ final class DhivehiFont
 CSS;
     }
 
+    /**
+     * The Thaana font file on disk for the PDF renderer, or null.
+     *
+     * The PDF's own fonts have no Thaana. The owner's uploaded font is used
+     * when it is a TTF or OTF on disk; a WOFF2 (what the upload converts to
+     * when it can) is not something dompdf reads, and the shipped A_Faruma
+     * covers it then. Used by the menu PDF and the Label Hub.
+     */
+    public static function pdfFile(): ?string
+    {
+        $custom = trim((string) content(self::CONTENT_KEY, ''));
+        if ($custom !== '' && self::isSafePublicUrl($custom) && preg_match('/\.(ttf|otf)$/', $custom)) {
+            $file = public_path(ltrim($custom, '/'));
+            if (is_file($file) && is_readable($file)) {
+                return $file;
+            }
+        }
+
+        $shipped = public_path('fonts/a_faruma.ttf');
+
+        return is_file($shipped) ? $shipped : null;
+    }
+
     public static function isSafePublicUrl(string $url): bool
     {
         return (bool) preg_match('#^/storage/fonts/[a-f0-9]{64}\.(woff2|woff|ttf|otf)$#', $url);

@@ -16,6 +16,10 @@ class InventoryItem extends Model
         'unit_cost', 'last_purchase_price', 'gst_rate_bp', 'expiry_date', 'is_active', 'requestable',
         'inventory_category_id', 'preferred_supplier_id', 'storage_location', 'notes',
         'photo_path',
+        // Label Hub: off for cling film, boxes and the like, so a recipe's
+        // ingredient line on a pack sticker lists food only.
+        'is_label_ingredient',
+        'name_dv',
     ];
 
     /** The item's own picture rides on every payload the model is serialised into. */
@@ -33,6 +37,7 @@ class InventoryItem extends Model
         'restock_excluded' => 'boolean',
         'is_active' => 'boolean',
         'requestable' => 'boolean',
+        'is_label_ingredient' => 'boolean',
         'current_stock' => 'float',
         'unit_cost' => 'decimal:4',
         // Owner, 2026-09-07: some items are bought with GST that comes back.

@@ -379,6 +379,10 @@
             white-space: nowrap;
             font-family: 'BakeDhivehi', 'A_Faruma', 'MV Faseyha', 'DejaVu Sans', serif;
         }
+@if ($forPdf)
+        /* The PDF gets Thaana already in visual order (ThaanaVisual). */
+        .row td.row__dv { direction: ltr; }
+@endif
 
         .row__desc {
             margin: 1px 0 0;
