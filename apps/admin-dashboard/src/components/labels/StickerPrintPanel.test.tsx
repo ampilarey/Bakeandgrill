@@ -12,6 +12,7 @@ vi.mock('../../api', () => ({
   fetchLabelProducts: (...a: unknown[]) => fetchLabelProducts(...a),
   stickerLinks: (...a: unknown[]) => stickerLinks(...a),
   openLabelSheet: (...a: unknown[]) => openLabelSheet(...a),
+  printsViaPdf: () => false,
   downloadLabelSheet: (...a: unknown[]) => downloadLabelSheet(...a),
 }));
 
@@ -66,7 +67,7 @@ describe('StickerPrintPanel', () => {
     expect(summary).toHaveTextContent('EXP 2027-01-02');
 
     fireEvent.click(screen.getByRole('button', { name: 'Print' }));
-    expect(openLabelSheet).toHaveBeenCalledWith('/labels/stickers?print=1&signature=x');
+    expect(openLabelSheet).toHaveBeenCalledWith('/labels/stickers?print=1&signature=x', '/labels/stickers.pdf?signature=x');
     fireEvent.click(screen.getByRole('button', { name: 'Download PDF' }));
     expect(downloadLabelSheet).toHaveBeenCalledWith('/labels/stickers.pdf?signature=x');
   });

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Printer, FileDown, AlertTriangle, Search } from 'lucide-react';
 import {
-  downloadLabelSheet, fetchLabelLayouts, fetchLabelProducts, openLabelSheet, stickerLinks,
+  downloadLabelSheet, fetchLabelLayouts, fetchLabelProducts, openLabelSheet, printsViaPdf, stickerLinks,
   type LabelLayout, type LabelProduct, type SheetLinks, type StickerSummary,
 } from '../../api';
 import { Button } from '../ui';
@@ -219,10 +219,10 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
               </li>
             ))}
           </ul>
-          <p className="text-xs text-[var(--color-text-muted)]">Print at actual size (100%). These links work for {result.expires_in_minutes} minutes.</p>
+          <p className="text-xs text-[var(--color-text-muted)]">{printsViaPdf() ? 'Print opens the PDF: use Share → Print, and keep the scale at 100%, not "fit".' : 'Print at actual size (100%).'} These links work for {result.expires_in_minutes} minutes.</p>
           <div className="labels-actions">
             <div className="labels-actions-row flex flex-wrap gap-2">
-              <Button icon={<Printer size={16} />} onClick={() => openLabelSheet(result.url)}>Print</Button>
+              <Button icon={<Printer size={16} />} onClick={() => openLabelSheet(result.url, result.pdf_url)}>Print</Button>
               <Button variant="secondary" icon={<FileDown size={16} />} onClick={() => downloadLabelSheet(result.pdf_url)} aria-label="Download PDF"><span className="sm:hidden">PDF</span><span className="hidden sm:inline">Download PDF</span></Button>
               <Button variant="ghost" className="labels-actions-wide" onClick={() => setResult(null)}>Change</Button>
             </div>

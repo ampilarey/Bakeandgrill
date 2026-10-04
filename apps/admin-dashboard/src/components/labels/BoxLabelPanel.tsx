@@ -3,6 +3,7 @@ import { Printer, FileDown, AlertTriangle, X, ChevronUp, Save, CheckCircle2 } fr
 import {
   boxLabelLinks, downloadLabelSheet, fetchDeliveryBoxLabel, fetchLabelProducts, fetchLabelShops, fetchShopBoxLabel,
   fetchTradeDeliveries, openLabelSheet, saveShopBoxLabel,
+  printsViaPdf,
   type BoxFields, type BoxPrefill, type LabelProduct, type LabelShop, type LabelStorage, type SheetLinks, type TradeDelivery,
 } from '../../api';
 import { Button } from '../ui';
@@ -237,10 +238,10 @@ export function BoxLabelPanel({ deliveryId = null }: Props) {
 
       {result ? (
         <section className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] space-y-3">
-          <p className="text-xs text-[var(--color-text-muted)]">Print on A4 at actual size (100%). These links work for {result.expires_in_minutes} minutes.</p>
+          <p className="text-xs text-[var(--color-text-muted)]">{printsViaPdf() ? 'Print opens the PDF: use Share → Print on A4, and keep the scale at 100%, not "fit".' : 'Print on A4 at actual size (100%).'} These links work for {result.expires_in_minutes} minutes.</p>
           <div className="labels-actions">
             <div className="labels-actions-row flex flex-wrap gap-2">
-              <Button icon={<Printer size={16} />} onClick={() => openLabelSheet(result.url)}>Print</Button>
+              <Button icon={<Printer size={16} />} onClick={() => openLabelSheet(result.url, result.pdf_url)}>Print</Button>
               <Button variant="secondary" icon={<FileDown size={16} />} onClick={() => downloadLabelSheet(result.pdf_url)} aria-label="Download PDF"><span className="sm:hidden">PDF</span><span className="hidden sm:inline">Download PDF</span></Button>
               <Button variant="ghost" className="labels-actions-wide" onClick={() => setResult(null)}>Change</Button>
             </div>

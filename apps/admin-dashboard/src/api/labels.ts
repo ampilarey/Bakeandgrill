@@ -170,8 +170,23 @@ export function saveLabelSettings(body: LabelSettingsMap) {
 }
 
 /** Open a signed sheet link (relative to this site) in a new tab. */
-export function openLabelSheet(url: string) {
-  window.open(`${window.location.origin}${url}`, '_blank', 'noopener');
+/**
+ * Owner, 2026-10-04: "Its not printing the correct amount in the A4" from
+ * an iPhone. A phone's print dialog does not keep the sheet's exact page
+ * size: iOS adds its own paper margins, so the last row of stickers spills
+ * onto a second page. Phones and tablets print the PDF instead, which the
+ * OS prints at true size.
+ */
+export function printsViaPdf(ua: string = navigator.userAgent, touchPoints: number = navigator.maxTouchPoints ?? 0): boolean {
+  if (/iPhone|iPad|iPod|Android/i.test(ua)) return true;
+  // iPadOS reports itself as a Mac; the touch screen gives it away.
+  return /Macintosh/.test(ua) && touchPoints > 1;
+}
+
+/** Open the sheet to print: the web sheet with its print dialog, or the PDF on a phone or tablet. */
+export function openLabelSheet(url: string, pdfUrl?: string) {
+  const target = pdfUrl && printsViaPdf() ? pdfUrl : url;
+  window.open(`${window.location.origin}${target}`, '_blank', 'noopener');
 }
 
 /** Download a signed PDF link. */

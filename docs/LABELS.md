@@ -53,7 +53,10 @@ in the old project, so set it afterwards in Labels → Settings.
 **Pack stickers** (Labels → Pack stickers): tick products and how many of each, the
 language, the label stock, and whether to fill the dates. Press **Prepare**: the page
 lists what will print with each product's expiry. Then **Print** (opens the sheet and
-the print dialog) or **Download PDF**. Print at actual size (100 %).
+the print dialog) or **Download PDF**. Print at actual size (100 %). **On a phone or
+tablet, Print opens the PDF instead** (Share → Print): a phone's own web print adds
+paper margins the sheet has no room for, and pushed the last row of stickers onto
+a second page.
 
 | Label stock | Size | Notes |
 |---|---|---|

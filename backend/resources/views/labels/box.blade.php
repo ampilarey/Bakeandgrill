@@ -47,8 +47,11 @@
     @unless ($forPdf)
         <div class="bar">
             <button type="button" class="primary" data-print>Print</button>
+            @if ($pdfUrl !== '')
+                <a href="{{ $pdfUrl }}">PDF</a>
+            @endif
             <a href="{{ $pdfUrl }}" data-testid="labels-pdf">Download PDF</a>
-            <span class="what">Box label · A4 · print at actual size</span>
+            <span class="what">Box label · A4 · print at actual size · on a phone, print the PDF</span>
         </div>
     @endunless
     <div class="page" data-testid="labels-page">

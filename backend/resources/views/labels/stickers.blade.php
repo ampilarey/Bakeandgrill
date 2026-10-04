@@ -58,8 +58,11 @@
     @if (!$forPdf && !$preview)
         <div class="bar">
             <button type="button" class="primary" data-print>Print</button>
+            @if ($pdfUrl !== '')
+                <a href="{{ $pdfUrl }}">PDF</a>
+            @endif
             <a href="{{ $pdfUrl }}" data-testid="labels-pdf">Download PDF</a>
-            <span class="what">{{ $sheet['label'] }} · {{ $stickerCount }} {{ $stickerCount === 1 ? 'sticker' : 'stickers' }} on {{ count($pages) }} {{ count($pages) === 1 ? 'page' : 'pages' }}@if ($sheet['design'] === 'full' && $s < 0.999) · design at {{ round($s * 100) }}%@endif @if ($sheet['design'] === 'mini') · compact sticker @endif · print at actual size</span>
+            <span class="what">{{ $sheet['label'] }} · {{ $stickerCount }} {{ $stickerCount === 1 ? 'sticker' : 'stickers' }} on {{ count($pages) }} {{ count($pages) === 1 ? 'page' : 'pages' }}@if ($sheet['design'] === 'full' && $s < 0.999) · design at {{ round($s * 100) }}%@endif @if ($sheet['design'] === 'mini') · compact sticker @endif · print at actual size · on a phone, print the PDF</span>
         </div>
     @endif
     @foreach ($pages as $pi => $page)

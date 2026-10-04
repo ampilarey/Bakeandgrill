@@ -18,6 +18,7 @@ vi.mock('../../api', () => ({
   fetchLabelProducts: (...a: unknown[]) => fetchLabelProducts(...a),
   boxLabelLinks: (...a: unknown[]) => boxLabelLinks(...a),
   openLabelSheet: vi.fn(),
+  printsViaPdf: () => false,
   downloadLabelSheet: vi.fn(),
 }));
 
