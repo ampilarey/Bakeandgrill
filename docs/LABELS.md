@@ -21,7 +21,9 @@ to one person):
 3. **Ingredients**: "From the recipe" lists the recipe's inventory items heaviest
    first; "Typed in" uses the lines below; the default uses the recipe when there is
    one. Inventory items that are not food (cling film, boxes) are left off with the
-   🏷 button on their row in Inventory (dimmed means left off).
+   🏷 button on their row in Inventory (dimmed means left off). Ingredients can also be
+   typed on Labels → Settings, in the box under each product. With no ingredients at
+   all the sticker leaves the heading off and the picture takes the room.
 4. **Shelf life (days)**: expiry = made-on date + this. Empty means the date boxes
    print blank for writing by hand.
 5. Storage (frozen, chilled, room temperature), pieces per pack.
@@ -70,9 +72,9 @@ a second page.
 
 Down to 0.7 of its size the full design is scaled to fit; smaller labels get the
 compact sticker (same information, fixed type no smaller than 5.5 pt, photo when there
-is room). On labels 64 mm or taller (8 and 12 on A4) the compact header carries the
-full logo, the brand line and the heading like the original; the smallest labels keep
-the flame alone.
+is room). On labels 64 mm or taller (8 and 12 on A4) the compact sticker carries the
+full logo, the brand line and the heading at the top and the address and website in
+the footer, like the original; the smallest labels keep the flame and the phone alone.
 
 Refused with a message: an expiry before the made-on date, an expiry already past, a
 made-on date more than a week ahead, more than 400 stickers at once, a custom size

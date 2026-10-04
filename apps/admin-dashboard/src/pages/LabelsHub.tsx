@@ -178,7 +178,7 @@ function SettingsTab({ canManage }: { canManage: boolean }) {
   };
   useEffect(load, []);
 
-  const saveItem = async (p: LabelProduct, patch: Partial<{ label_enabled: boolean; label_shelf_life_days: number | null; label_storage: LabelStorage; label_ingredients_source: IngredientsSource }>) => {
+  const saveItem = async (p: LabelProduct, patch: Partial<{ label_enabled: boolean; label_shelf_life_days: number | null; label_storage: LabelStorage; label_ingredients_source: IngredientsSource; label_ingredients: string | null }>) => {
     try {
       const r = await updateItemLabel(p.id, patch);
       setProducts((s) => s.map((x) => (x.id === p.id ? r.data : x)));
@@ -229,6 +229,21 @@ function SettingsTab({ canManage }: { canManage: boolean }) {
     </select>
   );
   const small = 'block text-xs font-semibold text-[var(--color-text-secondary)] mb-1';
+  // Owner, 2026-10-04: "how to manually enter ingredients". Typed here as well
+  // as on the item's Label tab, so a product can be finished without leaving
+  // this page. Saved when the box loses focus.
+  const ingredientsBox = (p: LabelProduct) => (
+    <textarea
+      rows={2}
+      maxLength={500}
+      defaultValue={p.label_ingredients ?? ''}
+      disabled={!canManage}
+      placeholder={p.ingredients.from === 'recipe' ? 'Printing from the recipe; type here to use instead' : 'Flour, salt, oil, onion, smoked tuna'}
+      onBlur={(e) => { const v = e.target.value.trim(); if (v !== (p.label_ingredients ?? '')) saveItem(p, { label_ingredients: v || null }); }}
+      className="w-full min-h-[44px] px-3 py-2 rounded-lg border border-[var(--color-border)] bg-white text-sm resize-y"
+      aria-label={`${p.name} ingredients`}
+    />
+  );
 
   return (
     <div className="space-y-5">
@@ -252,11 +267,12 @@ function SettingsTab({ canManage }: { canManage: boolean }) {
                   <span className="pt-0.5">{enabledBox(p)}</span>
                   <span className="flex-1 min-w-0">
                     <span className="block text-sm font-semibold text-[var(--color-text)]">{p.name}{p.name_dv ? <span className="ml-2 font-normal text-[var(--color-text-muted)]" dir="rtl">{p.name_dv}</span> : null}</span>
-                    <span className="block text-xs text-[var(--color-text-muted)] line-clamp-2">{p.ingredients.en || 'No ingredients yet'}</span>
+                    <span className="block text-xs text-[var(--color-text-muted)] line-clamp-2">{p.ingredients.from === 'recipe' ? `From the recipe: ${p.ingredients.en}` : (p.ingredients.en || 'No ingredients yet: the sticker leaves them off')}</span>
                   </span>
                 </label>
                 {p.label_enabled && (
                   <div className="grid grid-cols-2 gap-2 mt-3 pl-8">
+                    <div className="col-span-2"><span className={small}>Ingredients (typed)</span>{ingredientsBox(p)}</div>
                     <div><span className={small}>Shelf life (days)</span>{shelfBox(p, 'w-full')}</div>
                     <div><span className={small}>Storage</span>{storageSelect(p, 'w-full')}</div>
                     <div className="col-span-2"><span className={small}>Ingredients from</span>{sourceSelect(p, 'w-full')}</div>
@@ -281,7 +297,7 @@ function SettingsTab({ canManage }: { canManage: boolean }) {
                 {shown.map((p) => (
                   <tr key={p.id} className="border-b border-[var(--color-border-light)]">
                     <td className="px-4 py-2">{enabledBox(p)}</td>
-                    <td className="px-4 py-2">{p.name}<span className="block text-xs text-[var(--color-text-muted)] truncate max-w-[280px]">{p.ingredients.en || 'No ingredients yet'}</span></td>
+                    <td className="px-4 py-2 min-w-[280px]">{p.name}{p.ingredients.from === 'recipe' && <span className="block text-xs text-[var(--color-text-muted)] truncate max-w-[280px]">From the recipe: {p.ingredients.en}</span>}{p.label_enabled && <div className="mt-1">{ingredientsBox(p)}</div>}</td>
                     <td className="px-4 py-2">{shelfBox(p, 'w-24')}</td>
                     <td className="px-4 py-2">{storageSelect(p)}</td>
                     <td className="px-4 py-2">{sourceSelect(p)}</td>

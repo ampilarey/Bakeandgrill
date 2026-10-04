@@ -116,18 +116,18 @@ final class StickerDesign
         $ingBase = $foodBottom + 5;
         $note = $dv ? $d['note_dv'] : $d['note'];
         $noteH = $note !== '' ? ($dv ? 4.6 : 3.6) : 0.0;
-        if ($dv) {
+        $lines = [];
+        if ($dv && $d['ingredients_dv'] !== '') {
             $p[] = ['t' => 'text', 'x' => 5, 'base' => $ingBase, 'w' => 95, 'align' => 'c', 'font' => 'dv', 'pt' => 11, 'color' => self::PRIMARY, 'text' => 'ހިމެނޭ ތަކެތި', 'bold' => 0.6];
-            $lines = $d['ingredients_dv'] !== '' ? array_slice(LabelText::wrap($d['ingredients_dv'], 9.6, 93, 'dv'), 0, $note !== '' ? 3 : 4) : [];
+            $lines = array_slice(LabelText::wrap($d['ingredients_dv'], 9.6, 93, 'dv'), 0, $note !== '' ? 3 : 4);
             foreach ($lines as $i => $line) {
                 $p[] = ['t' => 'text', 'x' => 5, 'base' => $ingBase + 5.3 + $i * 4.4, 'w' => 95, 'align' => 'c', 'font' => 'dv', 'pt' => 9.6, 'color' => self::TEXT, 'text' => $line, 'bold' => 0.5];
             }
-        } else {
+        } elseif (!$dv && $d['ingredients_en'] !== '') {
             $p[] = ['t' => 'text', 'x' => 5, 'base' => $ingBase, 'w' => 95, 'align' => 'c', 'font' => 'j7', 'pt' => 7.3, 'color' => self::PRIMARY, 'text' => self::spaced('INGREDIENTS')];
             // Broken into lines here, not by the renderer, so the browser and
             // the PDF print the same lines; a long list steps the size down.
-            $lines = [];
-            if ($d['ingredients_en'] !== '') {
+            {
                 $room = max(1, (int) floor((99.5 - 1 - $noteH - ($ingBase + 4.68)) / 3.528) + 1);
                 for ($pt = 7.6; $pt >= 6.2; $pt -= 0.2) {
                     $lines = LabelText::wrap($d['ingredients_en'], $pt, 85, 'j4');
@@ -139,11 +139,6 @@ final class StickerDesign
                 foreach (array_slice($lines, 0, $room) as $i => $line) {
                     $p[] = ['t' => 'text', 'x' => 5, 'base' => $ingBase + 4.68 + $i * $lead, 'w' => 95, 'align' => 'c', 'font' => 'j4', 'pt' => round($pt, 2), 'color' => self::TEXT, 'text' => $line];
                 }
-            }
-        }
-        if (!$lines) {
-            foreach ([0, 1] as $k) {
-                $p[] = ['t' => 'line', 'x' => 11, 'y' => $ingBase + 6 + $k * 5, 'w' => 83, 'color' => self::SOFT, 'sw' => 0.21];
             }
         }
         if ($note !== '') {
@@ -281,12 +276,21 @@ final class StickerDesign
 
         // Footer and storage strip from the bottom up, so the ingredients get
         // whatever height the label has between them.
+        // Owner, 2026-10-04: "There is no website." A tall label gets the
+        // two-line footer of the original: name and address, phone and website.
         $c = $d['contact'];
-        $fh = 6.0;
+        $fh = $tall ? 9.6 : 6.0;
         $fy = $h - $pad - $fh;
         $p[] = ['t' => 'rect', 'x' => $pad, 'y' => $fy, 'w' => $iw, 'h' => $fh, 'fill' => self::DARK, 'r' => 1.5];
         $p[] = ['t' => 'text', 'x' => $X($pad + 2, $iw / 2), 'base' => $fy + 4.1, 'w' => $iw / 2, 'align' => $A('l'), 'font' => 'ds', 'pt' => 8.5, 'color' => self::CREAM, 'text' => $c['name']];
         $p[] = ['t' => 'text', 'x' => $X($pad + $iw / 2 - 2, $iw / 2), 'base' => $fy + 4.1, 'w' => $iw / 2, 'align' => $A('r'), 'font' => 'j8', 'pt' => 7.5, 'color' => self::CREAM, 'text' => $c['phone']];
+        if ($tall) {
+            $addr = $dv ? trim($d['address_dv'] . ($d['landmark_dv'] !== '' ? '  ·  ' . $d['landmark_dv'] : '')) : trim($c['address'] . ($c['landmark'] !== '' ? '  ·  ' . $c['landmark'] : ''));
+            $p[] = $dv
+                ? ['t' => 'text', 'x' => $X($pad + 2, $iw * 0.55), 'base' => $fy + 8.2, 'w' => $iw * 0.55, 'align' => 'r', 'font' => 'dv', 'pt' => 6.5, 'color' => self::SOFT, 'text' => $addr, 'bold' => 0.4]
+                : ['t' => 'text', 'x' => $pad + 2, 'base' => $fy + 8, 'w' => $iw * 0.55, 'align' => 'l', 'font' => 'j4', 'pt' => LabelText::fitPt($addr, 'j4', $iw * 0.55 - 2, 5.2, 4.2), 'color' => self::SOFT, 'text' => $addr];
+            $p[] = ['t' => 'text', 'x' => $X($pad + $iw * 0.5 - 2, $iw * 0.5), 'base' => $fy + 8.1, 'w' => $iw * 0.5, 'align' => $A('r'), 'font' => 'dsi', 'pt' => 7, 'color' => self::CREAM, 'text' => $c['website']];
+        }
 
         $sy = $fy - 1.5 - 4.6;
         $p[] = ['t' => 'rect', 'x' => $pad, 'y' => $sy, 'w' => $iw, 'h' => 4.6, 'fill' => self::PRIMARY, 'r' => 1.2];
@@ -322,20 +326,23 @@ final class StickerDesign
 
         // Ingredients fill what is left between the header and the dates,
         // then the photo takes any room still spare.
+        // Owner, 2026-10-04: "If ingredients are not entered don't show it":
+        // no heading without a list, and the picture takes the room.
         $top = $pad + $hb + 3.4;
         $room = $dy - 1.5 - $top;
-        $usedTo = $top + 1;
-        if ($dv) {
+        $usedTo = $top - 2.4;
+        $has = ($dv ? $d['ingredients_dv'] : $d['ingredients_en']) !== '';
+        if ($dv && $has) {
             $p[] = ['t' => 'text', 'x' => $pad, 'base' => $top + 1, 'w' => $iw, 'align' => 'c', 'font' => 'dv', 'pt' => 7.5, 'color' => self::PRIMARY, 'text' => 'ހިމެނޭ ތަކެތި'];
-            $lines = $d['ingredients_dv'] !== '' ? LabelText::wrap($d['ingredients_dv'], 7.5, $iw - 2, 'dv') : [];
+            $lines = LabelText::wrap($d['ingredients_dv'], 7.5, $iw - 2, 'dv');
             $max = max(0, (int) floor(($room - 3.4) / 3.5));
             foreach (array_slice($lines, 0, $max) as $i => $line) {
                 $p[] = ['t' => 'text', 'x' => $pad, 'base' => $top + 4.6 + $i * 3.5, 'w' => $iw, 'align' => 'c', 'font' => 'dv', 'pt' => 7.5, 'color' => self::TEXT, 'text' => $line, 'bold' => 0.4];
                 $usedTo = $top + 4.6 + $i * 3.5 + 1.2;
             }
-        } else {
+        } elseif ($has) {
             $p[] = ['t' => 'text', 'x' => $pad, 'base' => $top + 0.6, 'w' => $iw, 'align' => 'c', 'font' => 'j7', 'pt' => 5.5, 'color' => self::PRIMARY, 'text' => self::spaced('INGREDIENTS')];
-            if ($d['ingredients_en'] !== '') {
+            {
                 $pt = self::paraFit($d['ingredients_en'], $iw - 2, $room - 2.2, 6.2, 5.5);
                 $lead = $pt * 1.28 * LabelText::PT;
                 $max = max(1, (int) floor(($room - 2.2) / $lead));
@@ -347,9 +354,11 @@ final class StickerDesign
         }
 
         $spare = $dy - 1.5 - ($usedTo + 1.5);
-        if ($d['photo'] && $spare >= 9) {
-            [$fw, $fh] = self::fit($d['photo_ratio'], $iw * 0.7, min($spare, 30));
-            $p[] = ['t' => 'img', 'x' => ($w - $fw) / 2, 'y' => $usedTo + 1.5 + ($spare - $fh) / 2, 'w' => $fw, 'h' => $fh, 'src' => $d['photo']];
+        $pic = $d['photo'] ?: $d['mark'];
+        $picRatio = $d['photo'] ? $d['photo_ratio'] : $d['mark_ratio'];
+        if ($pic && $spare >= 9) {
+            [$fw, $fh] = self::fit($picRatio, $iw * 0.7, min($spare, $d['photo'] ? 30 : 22));
+            $p[] = ['t' => 'img', 'x' => ($w - $fw) / 2, 'y' => $usedTo + 1.5 + ($spare - $fh) / 2, 'w' => $fw, 'h' => $fh, 'src' => $pic];
         }
 
         return $p;

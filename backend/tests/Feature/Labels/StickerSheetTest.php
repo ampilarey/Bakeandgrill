@@ -207,11 +207,26 @@ class StickerSheetTest extends TestCase
         $this->assertStringContainsString('ބިސް ހިމެނޭ', $html);
         $this->dump('chilled-note', $html, (string) $this->get($dv->json('pdf_url'))->getContent());
 
-        // The compact sticker takes the unit and heading too.
+        // The compact sticker takes the unit and heading too, with the full
+        // header and the two-line footer ("There is no website").
         $res = $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $cake->id, 'copies' => 1]], 'layout' => 'a4-12'])->assertOk();
         $html = (string) $this->get($res->json('view_url'))->getContent();
         $this->assertStringContainsString('BAKERY CAKE', $html);
         $this->assertStringContainsString('QTY: 1 SLICE', $html);
+        $this->assertStringContainsString('B A K E   &amp;   G R I L L', $html);
+        $this->assertStringContainsString('bakeandgrill.mv', $html);
+        $this->assertStringContainsString('Kalaafaanu Hingun', $html);
+
+        // "If ingredients are not entered don't show it": no heading, no blank
+        // lines, on the full and the compact sticker, in both languages.
+        $plain = $this->makeItem(false, 0, ['name' => 'Mini Burger', 'label_enabled' => true, 'label_storage' => 'ambient', 'label_ingredients_source' => 'manual']);
+        foreach ([['a4-4', 'en'], ['a4-8', 'en'], ['a4-4', 'dv'], ['a4-8', 'dv']] as [$layout, $lang]) {
+            $res = $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $plain->id, 'copies' => 1]], 'layout' => $layout, 'lang' => $lang])->assertOk();
+            $html = (string) $this->get($res->json('view_url'))->getContent();
+            $this->assertStringNotContainsString('I N G R E D I E N T S', $html, "$layout $lang");
+            $this->assertStringNotContainsString('ހިމެނޭ ތަކެތި', $html, "$layout $lang");
+            $this->assertStringContainsString('Mini Burger', $html);
+        }
     }
 
     public function test_preview_links_are_not_logged_and_need_the_permission(): void
