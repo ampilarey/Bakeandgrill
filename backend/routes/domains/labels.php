@@ -33,6 +33,14 @@ Route::post('/labels/box/url', [LabelsController::class, 'boxUrl'])
 Route::get('/labels/deliveries/{delivery}/box-label', [LabelsController::class, 'deliveryBoxLabel'])
     ->middleware('permission:labels.print')
     ->whereNumber('delivery');
+Route::get('/labels/shops', [LabelsController::class, 'shops'])
+    ->middleware('permission:labels.print');
+Route::get('/labels/shops/{tradeAccount}/box-label', [LabelsController::class, 'shopBoxLabel'])
+    ->middleware('permission:labels.print')
+    ->whereNumber('tradeAccount');
+Route::put('/labels/shops/{tradeAccount}/box-label', [LabelsController::class, 'saveShopBoxLabel'])
+    ->middleware('permission:labels.print')
+    ->whereNumber('tradeAccount');
 Route::get('/labels/production-items/{productionItem}', [LabelsController::class, 'productionStickers'])
     ->middleware('permission:labels.print')
     ->whereNumber('productionItem');

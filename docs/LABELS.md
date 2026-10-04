@@ -70,11 +70,27 @@ smaller than 50 × 45 mm.
 with the batch number, the batch's own expiry (which wins over shelf life) and made-on
 date filled in.
 
-**Box labels** (Labels → Box labels, or "Box label" on a wholesale delivery): blank, or
-filled from a delivery with the shop, contact, date and a line per item sent. Every
-field can be changed; a quantity of 0 leaves a line to write on; three spare rows are
-always added; up to 16 lines. Boat, pick-up point and delivery window are remembered
-per shop on that device.
+**Box labels** (Labels → Box labels, or "Box label" on a wholesale delivery). Each
+shop's box label is kept in one place, with the shop:
+
+1. Pick the **Shop**. Its saved box label fills everything in: deliver-to name,
+   Attn, role and phone, boat, pick-up point, delivery window, and its own item
+   list in its order with its **article names** (the names the shop checks boxes
+   against, such as "FROZEN - SHORT EAT - BAJIYAA-PIECE").
+2. Optionally pick a **Delivery**: its date and the quantities sent go on top. Items
+   on the shop's list that were not sent stay as lines to write on; items sent that
+   are not on the list are added at the end.
+3. Change anything. Under each item, type the shop's article name; left empty,
+   "FROZEN - SHORT EAT - NAME-PIECE" prints.
+4. **Save for (shop)** keeps the name, contact, boat, pick-up point, window and the
+   item list with article names for next time, on every device. The date, PO and
+   box numbers are not kept. A ✓ next to a shop means it has a saved box label.
+
+A quantity of 0 leaves a line to write the count on; three spare rows are always
+added; up to 16 lines. "No shop" gives a blank label to fill by hand or type in.
+Saved per shop in `trade_accounts.box_label` (JSON, read only by the Labels API;
+`App\Domains\Labels\BoxLabel::fromAccount` / `saveForAccount`); anyone with
+`labels.print` can save it.
 
 ## Where things live
 

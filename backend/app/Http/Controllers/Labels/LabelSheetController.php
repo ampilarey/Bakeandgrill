@@ -76,7 +76,7 @@ class LabelSheetController extends Controller
     }
 
     /** Query keys a box label link carries. */
-    public const BOX_QUERY = ['delivery', 'lines', 'articles', 'customer', 'attn', 'contact', 'boat', 'boat2', 'pickup', 'pickup2', 'when', 'when2', 'po', 'box', 'of'];
+    public const BOX_QUERY = ['delivery', 'lines', 'arts', 'articles', 'customer', 'attn', 'contact', 'boat', 'boat2', 'pickup', 'pickup2', 'when', 'when2', 'po', 'box', 'of'];
 
     /** @return array<string, mixed> */
     private function boxRequest(Request $request): array

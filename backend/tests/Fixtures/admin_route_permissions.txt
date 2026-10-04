@@ -154,6 +154,9 @@ backend/routes/domains/labels.php:30:labels.manage
 backend/routes/domains/labels.php:32:labels.print
 backend/routes/domains/labels.php:34:labels.print
 backend/routes/domains/labels.php:37:labels.print
+backend/routes/domains/labels.php:39:labels.print
+backend/routes/domains/labels.php:42:labels.print
+backend/routes/domains/labels.php:45:labels.print
 backend/routes/domains/loyalty.php:34:loyalty.manage
 backend/routes/domains/marketing.php:115:promotions.discount_cards
 backend/routes/domains/marketing.php:123:discounts.settings.manage

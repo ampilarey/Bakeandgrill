@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Labels;
 
 use App\Models\Item;
+use App\Models\TradeAccount;
 use App\Models\TradeDelivery;
 use Carbon\CarbonImmutable;
 use InvalidArgumentException;
@@ -31,9 +32,46 @@ final class BoxLabel
     /** Fields a box label takes, all optional. */
     public const FIELDS = ['customer', 'attn', 'contact', 'boat', 'boat2', 'pickup', 'pickup2', 'when', 'when2', 'po', 'box', 'of'];
 
+    /** The fields a shop keeps from one delivery to the next (not the date, PO or box numbers). */
+    public const SHOP_FIELDS = ['customer', 'attn', 'contact', 'boat', 'boat2', 'pickup', 'pickup2', 'when2'];
+
+    public const ARTICLE_MAX = 60;
+
+    /** The article name printed when a shop has none of its own for an item. */
+    public static function defaultArticle(string $itemName): string
+    {
+        return 'FROZEN - SHORT EAT - ' . mb_strtoupper($itemName) . '-PIECE';
+    }
+
+    /**
+     * A line's own article names, in line order, for the signed sheet link:
+     * base64url JSON, so commas and colons in a name cannot break the list.
+     *
+     * @param list<string> $articles
+     */
+    public static function encodeArticles(array $articles): ?string
+    {
+        if (array_filter($articles, fn ($a) => $a !== '') === []) {
+            return null;
+        }
+
+        return rtrim(strtr(base64_encode((string) json_encode(array_values($articles), JSON_UNESCAPED_UNICODE)), '+/', '-_'), '=');
+    }
+
+    /** @return list<string> */
+    public static function decodeArticles(mixed $raw): array
+    {
+        if (!is_string($raw) || $raw === '') {
+            return [];
+        }
+        $list = json_decode((string) base64_decode(strtr($raw, '-_', '+/'), true), true);
+
+        return is_array($list) ? array_values(array_map(fn ($a) => is_string($a) ? $a : '', $list)) : [];
+    }
+
     /**
      * @param array<string, mixed> $in
-     * @return array{delivery: ?int, lines: list<array{id: int, qty: int}>, fields: array<string, string>, articles: bool}
+     * @return array{delivery: ?int, lines: list<array{id: int, qty: int, article: string}>, fields: array<string, string>, articles: bool}
      */
     public static function normalise(array $in): array
     {
@@ -41,9 +79,13 @@ final class BoxLabel
         foreach (self::FIELDS as $key) {
             $fields[$key] = mb_substr(trim((string) ($in[$key] ?? '')), 0, $key === 'customer' ? 40 : 60);
         }
+        // A line's article name comes with it from the API, or as the
+        // separate `arts` list on a signed sheet link.
+        $raw = $in['lines'] ?? [];
+        $given = is_array($raw) ? array_values(array_map(fn ($r) => is_array($r) ? (string) ($r['article'] ?? '') : '', array_filter($raw, fn ($r) => is_array($r) && (int) ($r['id'] ?? 0) > 0))) : self::decodeArticles($in['arts'] ?? null);
         $lines = [];
-        foreach (StickerSheet::parseItemsAllowZero($in['lines'] ?? []) as $row) {
-            $lines[] = ['id' => $row['id'], 'qty' => $row['copies']];
+        foreach (StickerSheet::parseItemsAllowZero($raw) as $i => $row) {
+            $lines[] = ['id' => $row['id'], 'qty' => $row['copies'], 'article' => mb_substr(trim($given[$i] ?? ''), 0, self::ARTICLE_MAX)];
         }
         if (count($lines) > 16) {
             throw new InvalidArgumentException('A box label lists up to 16 lines; split the order across boxes.');
@@ -58,33 +100,91 @@ final class BoxLabel
     }
 
     /**
-     * What a wholesale delivery fills in: the shop, its contact, the date, and
-     * a line per item sent (quantities included).
+     * What a shop's saved box label fills in: who it goes to (its saved name
+     * and contact, else the account's), the boat, pick-up point and window,
+     * and its own item list in its order with its article names, quantities
+     * left for writing in.
      *
-     * @return array{fields: array<string, string>, lines: list<array{id: int, qty: int}>}
+     * @return array{fields: array<string, string>, lines: list<array{id: int, qty: int, article: string}>, saved: bool}
+     */
+    public static function fromAccount(TradeAccount $account): array
+    {
+        $saved = is_array($account->box_label) ? $account->box_label : [];
+        $f = is_array($saved['fields'] ?? null) ? $saved['fields'] : [];
+        $fields = array_fill_keys(self::FIELDS, '');
+        foreach (self::SHOP_FIELDS as $key) {
+            $fields[$key] = (string) ($f[$key] ?? '');
+        }
+        $fields['customer'] = $fields['customer'] !== '' ? $fields['customer'] : (string) $account->shop_name;
+        $fields['attn'] = $fields['attn'] !== '' ? $fields['attn'] : (string) ($account->contact_name ?? '');
+        $fields['contact'] = $fields['contact'] !== '' ? $fields['contact'] : (string) ($account->contact_phone ?? '');
+        $lines = [];
+        foreach (is_array($saved['items'] ?? null) ? $saved['items'] : [] as $row) {
+            if (is_array($row) && (int) ($row['id'] ?? 0) > 0) {
+                $lines[] = ['id' => (int) $row['id'], 'qty' => 0, 'article' => (string) ($row['article'] ?? '')];
+            }
+        }
+
+        return ['fields' => $fields, 'lines' => $lines, 'saved' => $saved !== []];
+    }
+
+    /**
+     * Keep what a label was printed with as the shop's box label for next
+     * time: the lasting fields and the item list with its article names.
+     *
+     * @param array<string, mixed> $fields
+     * @param list<array{id: int, article?: string}> $items
+     */
+    public static function saveForAccount(TradeAccount $account, array $fields, array $items): void
+    {
+        $keep = [];
+        foreach (self::SHOP_FIELDS as $key) {
+            $keep[$key] = mb_substr(trim((string) ($fields[$key] ?? '')), 0, $key === 'customer' ? 40 : 60);
+        }
+        $list = [];
+        $seen = [];
+        foreach ($items as $row) {
+            $id = (int) ($row['id'] ?? 0);
+            if ($id > 0 && !isset($seen[$id])) {
+                $seen[$id] = true;
+                $list[] = ['id' => $id, 'article' => mb_substr(trim((string) ($row['article'] ?? '')), 0, self::ARTICLE_MAX)];
+            }
+        }
+        $account->forceFill(['box_label' => ['fields' => $keep, 'items' => array_slice($list, 0, 16)]])->save();
+    }
+
+    /**
+     * What a wholesale delivery fills in: the shop's saved box label, the
+     * date, and the quantities sent. The shop's own items come first in its
+     * order (a line it did not get this time stays, for writing in); items
+     * sent that are not on its list follow.
+     *
+     * @return array{fields: array<string, string>, lines: list<array{id: int, qty: int, article: string}>, saved: bool}
      */
     public static function fromDelivery(TradeDelivery $delivery): array
     {
         $delivery->loadMissing(['tradeAccount', 'lines']);
         $account = $delivery->tradeAccount;
+        $base = $account ? self::fromAccount($account) : ['fields' => array_fill_keys(self::FIELDS, ''), 'lines' => [], 'saved' => false];
         $when = $delivery->dispatched_at ? CarbonImmutable::parse($delivery->dispatched_at) : CarbonImmutable::today();
-        $lines = [];
+        $sent = [];
         foreach ($delivery->lines as $line) {
             if ($line->item_id) {
-                $lines[(int) $line->item_id] = ($lines[(int) $line->item_id] ?? 0) + (int) round((float) $line->qty_sent);
+                $sent[(int) $line->item_id] = ($sent[(int) $line->item_id] ?? 0) + (int) round((float) $line->qty_sent);
             }
         }
+        $lines = [];
+        foreach ($base['lines'] as $line) {
+            $lines[] = ['qty' => $sent[$line['id']] ?? 0] + $line;
+            unset($sent[$line['id']]);
+        }
+        foreach ($sent as $id => $qty) {
+            $lines[] = ['id' => (int) $id, 'qty' => (int) $qty, 'article' => ''];
+        }
+        $fields = $base['fields'];
+        $fields['when'] = $when->format('D, j M Y');
 
-        return [
-            'fields' => [
-                'customer' => (string) ($account?->shop_name ?? ''),
-                'attn' => (string) ($account?->contact_name ?? ''),
-                'contact' => (string) ($account?->contact_phone ?? ''),
-                'when' => $when->format('D, j M Y'),
-                'po' => '',
-            ],
-            'lines' => array_map(fn ($id, $qty) => ['id' => (int) $id, 'qty' => (int) $qty], array_keys($lines), $lines),
-        ];
+        return ['fields' => $fields, 'lines' => array_slice($lines, 0, 16), 'saved' => $base['saved']];
     }
 
     /**
@@ -100,7 +200,7 @@ final class BoxLabel
         $lines = [];
         foreach ($req['lines'] as $row) {
             if ($item = $items->get($row['id'])) {
-                $lines[] = ['name' => (string) $item->name, 'article' => 'FROZEN - SHORT EAT - ' . mb_strtoupper((string) $item->name) . '-PIECE', 'qty' => $row['qty']];
+                $lines[] = ['name' => (string) $item->name, 'article' => ($row['article'] ?? '') !== '' ? $row['article'] : self::defaultArticle((string) $item->name), 'qty' => $row['qty']];
             }
         }
         $articles = $req['articles'] && $lines !== [];

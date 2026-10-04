@@ -15,6 +15,7 @@ use App\Models\Item;
 use App\Models\KitchenProductionItem;
 use App\Models\LabelPrint;
 use App\Models\Media;
+use App\Models\TradeAccount;
 use App\Models\TradeDelivery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -127,6 +128,7 @@ class LabelsController extends Controller
             'lines' => 'sometimes|array|max:16',
             'lines.*.id' => 'required|integer|exists:items,id',
             'lines.*.qty' => 'nullable|integer|min:0|max:99999',
+            'lines.*.article' => 'nullable|string|max:' . BoxLabel::ARTICLE_MAX,
             'articles' => 'sometimes|boolean',
         ];
         foreach (BoxLabel::FIELDS as $key) {
@@ -144,6 +146,7 @@ class LabelsController extends Controller
             [
                 'delivery' => $req['delivery'],
                 'lines' => implode(',', array_map(fn ($l) => $l['id'] . ':' . $l['qty'], $req['lines'])),
+                'arts' => BoxLabel::encodeArticles(array_column($req['lines'], 'article')),
                 'articles' => $req['articles'] ? null : 0,
             ],
         );
@@ -152,7 +155,7 @@ class LabelsController extends Controller
             'layout' => 'a4',
             'trade_delivery_id' => $req['delivery'],
             'copies' => 1,
-            'details' => ['fields' => array_filter($req['fields'], fn ($v) => $v !== ''), 'lines' => $req['lines']],
+            'details' => ['fields' => array_filter($req['fields'], fn ($v) => $v !== ''), 'lines' => array_map(fn ($l) => array_filter($l, fn ($v) => $v !== ''), $req['lines'])],
             'printed_by' => $request->user()?->id,
             'output' => 'print',
         ]);
@@ -166,22 +169,75 @@ class LabelsController extends Controller
     }
 
     /**
-     * What a wholesale delivery fills in on a box label, for the dialog to
-     * show and change before printing. Boat, pick-up point and window are not
-     * on the delivery; the dialog remembers the last ones per shop.
+     * What a wholesale delivery fills in on a box label, for the panel to
+     * show and change before printing: the shop's saved box label, the date
+     * and the quantities sent.
      */
     public function deliveryBoxLabel(TradeDelivery $delivery): JsonResponse
     {
         $prefill = BoxLabel::fromDelivery($delivery);
-        $names = Item::query()->whereIn('id', array_column($prefill['lines'], 'id'))->pluck('name', 'id');
 
         return response()->json(['data' => [
             'delivery' => $delivery->id,
             'delivery_number' => $delivery->delivery_number,
             'trade_account_id' => $delivery->trade_account_id,
+            'saved' => $prefill['saved'],
             'fields' => $prefill['fields'],
-            'lines' => array_map(fn ($l) => $l + ['name' => $names[$l['id']] ?? ''], $prefill['lines']),
+            'lines' => $this->namedLines($prefill['lines']),
         ]]);
+    }
+
+    /** Shops for the box label's "Shop" list (Labels users need not see Wholesale). */
+    public function shops(): JsonResponse
+    {
+        $rows = TradeAccount::query()->where('is_active', true)->orderBy('shop_name')->get(['id', 'shop_name', 'box_label']);
+
+        return response()->json(['data' => $rows->map(fn (TradeAccount $a) => [
+            'id' => $a->id,
+            'shop_name' => $a->shop_name,
+            'saved' => is_array($a->box_label) && $a->box_label !== [],
+        ])->values()]);
+    }
+
+    /** A shop's box label, all in one place: who, how it travels, and its items with their article names. */
+    public function shopBoxLabel(TradeAccount $tradeAccount): JsonResponse
+    {
+        $prefill = BoxLabel::fromAccount($tradeAccount);
+
+        return response()->json(['data' => [
+            'trade_account_id' => $tradeAccount->id,
+            'saved' => $prefill['saved'],
+            'fields' => $prefill['fields'],
+            'lines' => $this->namedLines($prefill['lines']),
+        ]]);
+    }
+
+    /** Keep the label as this shop's box label for next time. */
+    public function saveShopBoxLabel(Request $request, TradeAccount $tradeAccount): JsonResponse
+    {
+        $rules = [
+            'items' => 'present|array|max:16',
+            'items.*.id' => 'required|integer|exists:items,id',
+            'items.*.article' => 'nullable|string|max:' . BoxLabel::ARTICLE_MAX,
+        ];
+        foreach (BoxLabel::SHOP_FIELDS as $key) {
+            $rules[$key] = 'nullable|string|max:' . ($key === 'customer' ? 40 : 60);
+        }
+        $data = $request->validate($rules);
+        BoxLabel::saveForAccount($tradeAccount, $data, $data['items']);
+
+        return $this->shopBoxLabel($tradeAccount->refresh());
+    }
+
+    /**
+     * @param list<array{id: int, qty: int, article: string}> $lines
+     * @return list<array<string, mixed>>
+     */
+    private function namedLines(array $lines): array
+    {
+        $names = Item::query()->whereIn('id', array_column($lines, 'id'))->pluck('name', 'id');
+
+        return array_values(array_map(fn ($l) => $l + ['name' => (string) $names[$l['id']], 'default_article' => BoxLabel::defaultArticle((string) $names[$l['id']])], array_filter($lines, fn ($l) => isset($names[$l['id']]))));
     }
 
     /** What a production line fills in on its stickers: item, batch, expiry and quantity. */

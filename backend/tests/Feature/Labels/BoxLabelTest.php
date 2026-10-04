@@ -90,6 +90,69 @@ class BoxLabelTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('#f-j8[^>]*>\d+</div>#', $html);
     }
 
+    public function test_a_shop_keeps_its_whole_box_label_in_one_place(): void
+    {
+        // Owner, 2026-10-04: "Cant u add all in one place?" — the shop's
+        // contact, boat, pick-up, window, its items in its order and its own
+        // article names, saved once and filled in every time.
+        [$delivery, $bajiya, $patties] = $this->delivery();
+        $masroshi = $this->makeItem(false, 0, ['name' => 'Masroshi']);
+        $shop = $delivery->trade_account_id;
+
+        $this->getJson('/api/labels/shops')->assertOk()
+            ->assertJsonPath('data.0.shop_name', 'NH Kuda Rah')
+            ->assertJsonPath('data.0.saved', false);
+        // Not saved yet: the account's own name and contact, no items.
+        $this->getJson("/api/labels/shops/{$shop}/box-label")->assertOk()
+            ->assertJsonPath('data.fields.customer', 'NH Kuda Rah')
+            ->assertJsonPath('data.fields.contact', '+960 911 9368')
+            ->assertJsonCount(0, 'data.lines');
+
+        $this->putJson("/api/labels/shops/{$shop}/box-label", [
+            'customer' => 'NH Kuda Rah', 'attn' => 'Adam Firash Ali Hameed',
+            'contact' => 'Central Purchasing Coordinator · +960 911 9368',
+            'boat' => 'MGH 14', 'boat2' => 'Seamaster 17', 'pickup' => 'T Jetty', 'pickup2' => 'Malé', 'when2' => '8:00 AM – 2:00 PM',
+            'when' => 'ignored', 'po' => 'ignored',
+            'items' => [
+                ['id' => $masroshi->id, 'article' => 'FROZEN - SHORT EAT - MASROSHI-PIECE'],
+                ['id' => $bajiya->id, 'article' => 'FROZEN - SHORT EAT - BAJIYAA-PIECE'],
+                ['id' => $patties->id, 'article' => ''],
+            ],
+        ])->assertOk()
+            ->assertJsonPath('data.saved', true)
+            ->assertJsonPath('data.fields.boat', 'MGH 14')
+            ->assertJsonPath('data.fields.when', '')
+            ->assertJsonPath('data.lines.1.article', 'FROZEN - SHORT EAT - BAJIYAA-PIECE')
+            ->assertJsonPath('data.lines.2.default_article', 'FROZEN - SHORT EAT - PATTIES-PIECE');
+        $this->assertArrayNotHasKey('box_label', TradeAccount::query()->find($shop)->toArray(), 'Wholesale payloads unchanged');
+
+        // A delivery fills from it: the shop's order, today's quantities, a
+        // line it did not get stays for writing in.
+        $prefill = $this->getJson("/api/labels/deliveries/{$delivery->id}/box-label")->assertOk()
+            ->assertJsonPath('data.saved', true)
+            ->assertJsonPath('data.fields.pickup', 'T Jetty')
+            ->assertJsonPath('data.fields.when', now()->format('D, j M Y'))
+            ->json('data');
+        $this->assertSame([[$masroshi->id, 0], [$bajiya->id, 40], [$patties->id, 25]], array_map(fn ($l) => [$l['id'], $l['qty']], $prefill['lines']));
+
+        // The shop's article names print; an empty one prints the usual name.
+        $res = $this->postJson('/api/labels/box/url', $prefill['fields'] + ['delivery' => $delivery->id, 'lines' => $prefill['lines']])->assertOk();
+        $html = (string) $this->get($res->json('view_url'))->assertOk()->getContent();
+        foreach (['MGH 14', 'Seamaster 17', '8:00 AM – 2:00 PM', 'FROZEN - SHORT EAT - BAJIYAA-PIECE', 'FROZEN - SHORT EAT - MASROSHI-PIECE', 'FROZEN - SHORT EAT - PATTIES-PIECE'] as $needle) {
+            $this->assertStringContainsString($needle, $html, $needle);
+        }
+        $this->get($res->json('pdf_url'))->assertOk();
+        // A name with commas and colons survives the link.
+        $odd = 'H -GULHA: 10, PCS';
+        $res = $this->postJson('/api/labels/box/url', ['lines' => [['id' => $bajiya->id, 'qty' => 0, 'article' => $odd]]])->assertOk();
+        $this->assertStringContainsString($odd, (string) $this->get($res->json('view_url'))->getContent());
+
+        $this->putJson("/api/labels/shops/{$shop}/box-label", ['items' => [['id' => 999999]]])->assertUnprocessable();
+        Sanctum::actingAs($this->makeManager(), ['staff']);
+        $this->getJson('/api/labels/shops')->assertForbidden();
+        $this->putJson("/api/labels/shops/{$shop}/box-label", ['items' => []])->assertForbidden();
+    }
+
     public function test_too_many_lines_are_refused_and_the_permission_is_needed(): void
     {
         $lines = [];

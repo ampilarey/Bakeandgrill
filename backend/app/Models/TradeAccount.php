@@ -42,7 +42,11 @@ class TradeAccount extends Model
         'billing_reminded_at',
         'is_active',
         'notes',
+        'box_label',
     ];
+
+    /** The box label setup is read through the Labels API only. */
+    protected $hidden = ['box_label'];
 
     protected function casts(): array
     {
@@ -52,6 +56,7 @@ class TradeAccount extends Model
             'delivery_days' => 'array',
             'billing_reminded_at' => 'datetime',
             'is_active' => 'boolean',
+            'box_label' => 'array',
         ];
     }
 

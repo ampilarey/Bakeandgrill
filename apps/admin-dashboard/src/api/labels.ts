@@ -68,9 +68,17 @@ export type BoxFields = {
 
 export type BoxRequest = BoxFields & {
   delivery?: number | null;
-  lines?: { id: number; qty: number }[];
+  /** article: the shop's own name for the line; empty prints the usual one. */
+  lines?: { id: number; qty: number; article?: string }[];
   articles?: boolean;
 };
+
+/** A box label line as the server fills it: the shop's article name, and the usual one to fall back on. */
+export type BoxLine = { id: number; qty: number; name: string; article: string; default_article: string };
+
+export type BoxPrefill = { trade_account_id: number; saved: boolean; fields: BoxFields; lines: BoxLine[] };
+
+export type LabelShop = { id: number; shop_name: string; saved: boolean };
 
 export type LabelPrintRow = {
   id: number;
@@ -115,7 +123,20 @@ export function boxLabelLinks(body: BoxRequest) {
 }
 
 export function fetchDeliveryBoxLabel(deliveryId: number) {
-  return req<{ data: { delivery: number; delivery_number: string; trade_account_id: number; fields: BoxFields; lines: { id: number; qty: number; name: string }[] } }>(`/labels/deliveries/${deliveryId}/box-label`);
+  return req<{ data: BoxPrefill & { delivery: number; delivery_number: string } }>(`/labels/deliveries/${deliveryId}/box-label`);
+}
+
+export function fetchLabelShops() {
+  return req<{ data: LabelShop[] }>('/labels/shops');
+}
+
+export function fetchShopBoxLabel(accountId: number) {
+  return req<{ data: BoxPrefill }>(`/labels/shops/${accountId}/box-label`);
+}
+
+/** Keep the label as the shop's box label: who, boat, pick-up, window, and its items with their article names. */
+export function saveShopBoxLabel(accountId: number, body: BoxFields & { items: { id: number; article?: string }[] }) {
+  return req<{ data: BoxPrefill }>(`/labels/shops/${accountId}/box-label`, { method: 'PUT', body: JSON.stringify(body) });
 }
 
 export function fetchProductionStickers(productionItemId: number) {
