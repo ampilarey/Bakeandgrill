@@ -136,7 +136,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
               {shown.length === 0 && <p className="px-3 py-4 text-sm text-[var(--color-text-muted)] bg-white">No product matches “{query}”.</p>}
             </div>
           )}
-          {items.length > 0 && <p className="text-xs text-[var(--color-text-muted)] mt-1">− and + move a whole sheet ({perPage} on {current?.label ?? 'this stock'}); type in the box for any number.</p>}
+          {items.length > 0 && <p className="text-xs text-[var(--color-text-muted)] mt-1">The number is how many stickers of that product. {perPage} fit on one sheet of {current?.label ?? 'this stock'}; − and + add or take away a whole sheet, or type any number.</p>}
         </section>
       )}
 

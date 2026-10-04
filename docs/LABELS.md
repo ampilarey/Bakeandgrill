@@ -70,7 +70,9 @@ a second page.
 
 Down to 0.7 of its size the full design is scaled to fit; smaller labels get the
 compact sticker (same information, fixed type no smaller than 5.5 pt, photo when there
-is room).
+is room). On labels 64 mm or taller (8 and 12 on A4) the compact header carries the
+full logo, the brand line and the heading like the original; the smallest labels keep
+the flame alone.
 
 Refused with a message: an expiry before the made-on date, an expiry already past, a
 made-on date more than a week ahead, more than 400 stickers at once, a custom size

@@ -246,23 +246,37 @@ final class StickerDesign
         $X = fn (float $x, float $bw = 0.0): float => $dv ? $w - $x - $bw : $x;
         $A = fn (string $align): string => $dv ? ['l' => 'r', 'r' => 'l', 'c' => 'c'][$align] : $align;
 
-        // Header band: flame, "FROZEN HEDHIKA" and the product name.
-        $hb = 13.0;
+        // Header band. Owner, 2026-10-04, on the 8-on-A4 sticker: "There is
+        // no header and logo in the printed one. Check the previous format."
+        // When the label is tall enough the band carries the full logo and
+        // the brand line above the heading, like the original; the smallest
+        // labels keep the flame alone.
+        $hb = min(19.0, max(13.0, round($h * 0.25, 1)));
+        $tall = $hb >= 16.0;
         $p[] = ['t' => 'rect', 'x' => $pad, 'y' => $pad, 'w' => $iw, 'h' => $hb, 'fill' => self::TINT, 'r' => 2];
-        [$mw, $mh] = self::fit($d['mark_ratio'], 9, 10);
-        if ($d['mark']) {
-            $p[] = ['t' => 'img', 'x' => $X($pad + 1.8, $mw), 'y' => $pad + ($hb - $mh) / 2, 'w' => $mw, 'h' => $mh, 'src' => $d['mark']];
+        $art = $tall && $d['logo'] ? $d['logo'] : $d['mark'];
+        [$mw, $mh] = self::fit($tall && $d['logo'] ? $d['logo_ratio'] : $d['mark_ratio'], $tall ? $hb - 2 : 9, $tall ? $hb - 2 : 10);
+        if ($art) {
+            $p[] = ['t' => 'img', 'x' => $X($pad + 1.8, $mw), 'y' => $pad + ($hb - $mh) / 2, 'w' => $mw, 'h' => $mh, 'src' => $art];
         }
         $tx = $pad + 1.8 + $mw + 2;
         $tw = $iw - ($tx - $pad) - 1.5;
+        $headBase = $tall ? $pad + 8.2 : $pad + 4.4;
+        $nameBase = $tall ? $pad + $hb - 2.6 : $pad + 10.6;
         if ($dv) {
-            $p[] = ['t' => 'text', 'x' => $X($tx, $tw), 'base' => $pad + 4.6, 'w' => $tw, 'align' => 'r', 'font' => 'dv', 'pt' => 8, 'color' => self::DARK, 'text' => $d['header_line_dv'], 'bold' => 0.6];
+            if ($tall) {
+                $p[] = ['t' => 'text', 'x' => $X($tx, $tw), 'base' => $pad + 3.8, 'w' => $tw, 'align' => 'r', 'font' => 'dv', 'pt' => 6.5, 'color' => self::PRIMARY, 'text' => $d['brand_line_dv'], 'bold' => 0.5];
+            }
+            $p[] = ['t' => 'text', 'x' => $X($tx, $tw), 'base' => $headBase + ($tall ? 0.6 : 0.2), 'w' => $tw, 'align' => 'r', 'font' => 'dv', 'pt' => $tall ? 9 : 8, 'color' => self::DARK, 'text' => $d['header_line_dv'], 'bold' => 0.6];
             $name = $d['name_dv'] !== '' ? $d['name_dv'] : $d['name'];
             $font = $d['name_dv'] !== '' ? 'dv' : 'dsi';
-            $p[] = ['t' => 'text', 'x' => $X($tx, $tw), 'base' => $pad + 10.8, 'w' => $tw, 'align' => 'r', 'font' => $font, 'pt' => LabelText::fitPt($name, $font, $tw, 16, 9), 'color' => self::PRIMARY, 'text' => $name, 'bold' => $font === 'dv' ? 0.7 : 0];
+            $p[] = ['t' => 'text', 'x' => $X($tx, $tw), 'base' => $nameBase + 0.2, 'w' => $tw, 'align' => 'r', 'font' => $font, 'pt' => LabelText::fitPt($name, $font, $tw, 16, 9), 'color' => self::PRIMARY, 'text' => $name, 'bold' => $font === 'dv' ? 0.7 : 0];
         } else {
-            $p[] = ['t' => 'text', 'x' => $tx, 'base' => $pad + 4.4, 'w' => $tw, 'align' => 'l', 'font' => 'j8', 'pt' => 6.5, 'color' => self::DARK, 'text' => $d['header_line'], 'ls' => 0.04];
-            $p[] = ['t' => 'text', 'x' => $tx, 'base' => $pad + 10.6, 'w' => $tw, 'align' => 'l', 'font' => 'dsi', 'pt' => LabelText::fitPt($d['name'], 'dsi', $tw, 16, 9), 'color' => self::PRIMARY, 'text' => $d['name']];
+            if ($tall) {
+                $p[] = ['t' => 'text', 'x' => $tx, 'base' => $pad + 3.6, 'w' => $tw, 'align' => 'l', 'font' => 'j7', 'pt' => 5, 'color' => self::PRIMARY, 'text' => self::spaced(mb_strtoupper($d['contact']['name']))];
+            }
+            $p[] = ['t' => 'text', 'x' => $tx, 'base' => $headBase, 'w' => $tw, 'align' => 'l', 'font' => 'j8', 'pt' => $tall ? LabelText::fitPt($d['header_line'], 'j8', $tw, 8.5, 6) : 6.5, 'color' => self::DARK, 'text' => $d['header_line'], 'ls' => 0.04];
+            $p[] = ['t' => 'text', 'x' => $tx, 'base' => $nameBase, 'w' => $tw, 'align' => 'l', 'font' => 'dsi', 'pt' => LabelText::fitPt($d['name'], 'dsi', $tw, 16, 9), 'color' => self::PRIMARY, 'text' => $d['name']];
         }
 
         // Footer and storage strip from the bottom up, so the ingredients get
