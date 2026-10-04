@@ -7,6 +7,8 @@ namespace Tests\Feature\Labels;
 use App\Domains\Labels\StickerLayouts;
 use App\Domains\Permissions\PermissionCatalogSync;
 use App\Models\Item;
+use App\Models\LabelBrand;
+use App\Models\LabelType;
 use App\Models\LabelPrint;
 use App\Models\Media;
 use App\Models\SiteSetting;
@@ -227,6 +229,48 @@ class StickerSheetTest extends TestCase
             $this->assertStringNotContainsString('ހިމެނޭ ތަކެތި', $html, "$layout $lang");
             $this->assertStringContainsString('Mini Burger', $html);
         }
+    }
+
+    public function test_every_sticker_carries_the_brand_header_the_qr_footer_how_to_use_and_the_type_dates(): void
+    {
+        // v2 points 1, 4, 6, 8 (docs/LABEL_HUB_V2_PLAN.md).
+        $amma = LabelBrand::query()->where('name', 'Amma')->firstOrFail();
+        $type = LabelType::query()->create([
+            'brand_id' => $amma->id, 'name' => 'Amma Pickles', 'heading' => 'AMMA ACHAARU', 'storage' => 'ambient',
+            'mfg_label' => 'PACKED ON', 'exp_label' => 'BEST BEFORE', 'use_within' => 'Use within a month of opening',
+            'how_to_use' => 'Serve with rice or roshi. Keep the lid closed and use a dry spoon.', 'shelf_life_days' => 180, 'show_qr' => true,
+        ]);
+        $pickle = $this->makeItem(false, 0, ['name' => 'Lime Pickle', 'label_enabled' => true, 'label_storage' => 'ambient', 'label_type_id' => $type->id, 'label_ingredients_source' => 'manual', 'label_ingredients' => 'Lime, salt, chilli, oil']);
+
+        foreach (['a4-4', 'a4-8'] as $layout) {
+            $res = $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $pickle->id, 'copies' => 1]], 'layout' => $layout, 'fill' => true, 'mfg' => '2026-10-04'])->assertOk();
+            $html = (string) $this->get($res->json('view_url'))->assertOk()->getContent();
+            foreach (['Amma', 'A M M A', 'by Bake &amp; Grill', 'data:image/svg+xml', 'PACKED ON', 'BEST BEFORE', 'Use within a month of opening', $layout === 'a4-4' ? 'H O W   T O   U S E' : 'HOW TO USE: Serve', 'Serve with rice', 'bakeandgrill.mv', '+960 912 0011'] as $needle) {
+                $this->assertStringContainsString($needle, $html, "$layout: $needle");
+            }
+            $this->assertStringContainsString('04 / 10 / 2026', $html, "$layout mfg");
+            $this->assertStringContainsString('02 / 04 / 2027', $html, "$layout expiry 180 days from the type");
+            $this->assertSame(1, preg_match_all('#/Type\\s*/Page[^s]#', (string) $this->get($res->json('pdf_url'))->assertOk()->getContent()), "$layout one page");
+            $this->dump("amma-{$layout}", $html, (string) $this->get($res->json('pdf_url'))->getContent());
+        }
+
+        // The QR can be switched off per type; the date style is a setting.
+        $type->forceFill(['show_qr' => false])->save();
+        SiteSetting::set('label_date_style', 'text');
+        \Illuminate\Support\Facades\Cache::flush();
+        $res = $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $pickle->id, 'copies' => 1]], 'fill' => true, 'mfg' => '2026-10-04'])->assertOk();
+        $html = (string) $this->get($res->json('view_url'))->getContent();
+        $this->assertStringNotContainsString('data:image/svg+xml', $html);
+        $this->assertStringContainsString('4 Oct 2026', $html);
+        $this->assertStringContainsString('2 Apr 2027', $html);
+
+        // The main brand's sticker: Bake & Grill header, the QR, no "by" line.
+        $res = $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $this->bajiya->id, 'copies' => 1]]])->assertOk();
+        $html = (string) $this->get($res->json('view_url'))->getContent();
+        $this->assertStringContainsString('B A K E   &amp;   G R I L L', $html);
+        $this->assertStringContainsString('data:image/svg+xml', $html);
+        $this->assertStringNotContainsString('by Bake', $html);
+        $this->assertStringContainsString('MFG DATE', $html);
     }
 
     public function test_preview_links_are_not_logged_and_need_the_permission(): void

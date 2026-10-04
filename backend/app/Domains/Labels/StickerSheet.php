@@ -7,6 +7,8 @@ namespace App\Domains\Labels;
 use App\Models\Item;
 use App\Models\KitchenProductionItem;
 use App\Models\LabelType;
+use App\Support\ComplaintBoxLink;
+use App\Support\QrSvg;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use InvalidArgumentException;
@@ -258,8 +260,8 @@ final class StickerSheet
             'photo_ratio' => LabelImage::ratio($photo),
             'ingredients_en' => $lines['en'],
             'ingredients_dv' => $lines['dv'],
-            'mfg' => $mfg ? CarbonImmutable::parse($mfg)->format('d / m / Y') : null,
-            'exp' => $exp ? CarbonImmutable::parse($exp)->format('d / m / Y') : null,
+            'mfg' => LabelSettings::formatDate($mfg),
+            'exp' => LabelSettings::formatDate($exp),
             'mfg_iso' => $mfg,
             'exp_iso' => $exp,
             'batch' => $batch,
@@ -296,6 +298,9 @@ final class StickerSheet
             'mark' => $mark,
             'mark_ratio' => LabelImage::ratio($mark),
             'contact' => LabelSettings::contact(),
+            // v2 point 1: the complaints QR, the same code as the receipts and
+            // the poster, bare (no logo: it prints at 8 to 12 mm).
+            'qr' => QrSvg::dataUri(ComplaintBoxLink::url('label'), 160),
             'brand_line_dv' => LabelSettings::get('label_brand_line_dv'),
             'ways' => LabelSettings::get('label_contact_ways'),
             'ways_dv' => LabelSettings::get('label_contact_ways_dv'),

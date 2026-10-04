@@ -111,30 +111,6 @@ type Wording = { key: string; label: string; dv?: boolean };
 /** Settings → Wording, in groups. The frozen keys kept their original names. */
 const WORDING_GROUPS: { title: string; hint?: string; rows: Wording[] }[] = [
   {
-    title: 'Sticker heading',
-    hint: 'Top of the pack sticker, by the product\'s storage. An item can print its own heading instead (Menu Items → item → Label).',
-    rows: [
-      { key: 'label_header_line', label: 'Frozen items' },
-      { key: 'label_header_line_dv', label: 'Frozen items (Dhivehi)', dv: true },
-      { key: 'label_header_line_chilled', label: 'Chilled items' },
-      { key: 'label_header_line_chilled_dv', label: 'Chilled items (Dhivehi)', dv: true },
-      { key: 'label_header_line_ambient', label: 'Room-temperature items' },
-      { key: 'label_header_line_ambient_dv', label: 'Room-temperature items (Dhivehi)', dv: true },
-    ],
-  },
-  {
-    title: 'Sticker storage line',
-    hint: 'The strip above the footer, by storage. An item can print its own line instead.',
-    rows: [
-      { key: 'label_storage_frozen', label: 'Frozen' },
-      { key: 'label_storage_frozen_dv', label: 'Frozen (Dhivehi)', dv: true },
-      { key: 'label_storage_chilled', label: 'Chilled' },
-      { key: 'label_storage_chilled_dv', label: 'Chilled (Dhivehi)', dv: true },
-      { key: 'label_storage_ambient', label: 'Room temperature' },
-      { key: 'label_storage_ambient_dv', label: 'Room temperature (Dhivehi)', dv: true },
-    ],
-  },
-  {
     title: 'Sticker footer',
     rows: [
       { key: 'label_brand_line_dv', label: 'Brand line above the heading (Dhivehi)', dv: true },
@@ -329,6 +305,14 @@ function SettingsTab({ canManage }: { canManage: boolean }) {
               </div>
             </div>
           ))}
+        </div>
+        <h4 className="text-sm font-bold text-[var(--color-text)] mt-5 mb-1">Dates</h4>
+        <div className="max-w-xs">
+          <label className="block text-xs font-semibold text-[var(--color-text-secondary)] mb-1" htmlFor="label_date_style">How dates print</label>
+          <select id="label_date_style" value={settings.label_date_style ?? 'dmy'} disabled={!canManage} onChange={(e) => setSettings((s) => ({ ...s, label_date_style: e.target.value }))} className={input}>
+            <option value="dmy">04 / 10 / 2026</option>
+            <option value="text">4 Oct 2026</option>
+          </select>
         </div>
         <h4 className="text-sm font-bold text-[var(--color-text)] mt-5 mb-1">Pre-cut sheet position</h4>
         <p className="text-xs text-[var(--color-text-muted)] mb-2">If stickers on ready-cut sheets print off the cut, move them here in millimetres: down and right are positive, gap is the space between labels.</p>

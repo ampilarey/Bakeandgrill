@@ -59,20 +59,22 @@ final class StickerDesign
         $A = fn (string $align): string => $dv ? ['l' => 'r', 'r' => 'l', 'c' => 'c'][$align] : $align;
 
         // Header panel, logo, brand line, the heading ("FROZEN HEDHIKA", or the item's own) and its rule.
+        // v2 point 6: the header is the brand's (Bake & Grill, or Amma with its own logo).
+        $brand = $d['brand'];
         $p[] = ['t' => 'rect', 'x' => 5, 'y' => 5, 'w' => 95, 'h' => 28, 'fill' => self::TINT, 'r' => 3];
-        [$lw, $lh] = self::fit($d['logo_ratio'], 24, 24);
-        if ($d['logo']) {
-            $p[] = ['t' => 'img', 'x' => $X(8, $lw), 'y' => 5 + (28 - $lh) / 2, 'w' => $lw, 'h' => $lh, 'src' => $d['logo']];
+        [$lw, $lh] = self::fit($brand['logo_ratio'], 24, 24);
+        if ($brand['logo']) {
+            $p[] = ['t' => 'img', 'x' => $X(8, $lw), 'y' => 5 + (28 - $lh) / 2, 'w' => $lw, 'h' => $lh, 'src' => $brand['logo']];
         }
         $headX = $X(34, 62);
         if ($dv) {
             [$top, $bottom] = self::twoWords($d['header_line_dv']);
-            $p[] = ['t' => 'text', 'x' => $headX, 'base' => 11.5, 'w' => 62, 'align' => 'r', 'font' => 'dv', 'pt' => 9, 'color' => self::PRIMARY, 'text' => $d['brand_line_dv'], 'bold' => 0.6];
+            $p[] = ['t' => 'text', 'x' => $headX, 'base' => 11.5, 'w' => 62, 'align' => 'r', 'font' => 'dv', 'pt' => 9, 'color' => self::PRIMARY, 'text' => $brand['name_dv'], 'bold' => 0.6];
             $p[] = ['t' => 'text', 'x' => $headX, 'base' => 19.5, 'w' => 62, 'align' => 'r', 'font' => 'dv', 'pt' => 19, 'color' => self::DARK, 'text' => $top, 'bold' => 0.7];
             $p[] = ['t' => 'text', 'x' => $headX, 'base' => 26.5, 'w' => 62, 'align' => 'r', 'font' => 'dv', 'pt' => 19, 'color' => self::DARK, 'text' => $bottom, 'bold' => 0.7];
         } else {
             [$top, $bottom] = self::twoWords($d['header_line']);
-            $p[] = ['t' => 'text', 'x' => $headX, 'base' => 12.5, 'w' => 62, 'align' => 'l', 'font' => 'j7', 'pt' => 7.5, 'color' => self::PRIMARY, 'text' => self::spaced(mb_strtoupper($d['contact']['name']))];
+            $p[] = ['t' => 'text', 'x' => $headX, 'base' => 12.5, 'w' => 62, 'align' => 'l', 'font' => 'j7', 'pt' => LabelText::fitPt(self::spaced(mb_strtoupper($brand['name'])), 'j7', 61, 7.5, 5), 'color' => self::PRIMARY, 'text' => self::spaced(mb_strtoupper($brand['name']))];
             $p[] = ['t' => 'text', 'x' => $headX, 'base' => 20.5, 'w' => 62, 'align' => 'l', 'font' => 'j8', 'pt' => self::fitHeader($top), 'color' => self::DARK, 'text' => $top];
             $p[] = ['t' => 'text', 'x' => $headX, 'base' => 28, 'w' => 62, 'align' => 'l', 'font' => 'j8', 'pt' => self::fitHeader($bottom), 'color' => self::DARK, 'text' => $bottom];
         }
@@ -116,10 +118,16 @@ final class StickerDesign
         $ingBase = $foodBottom + 5;
         $note = $dv ? $d['note_dv'] : $d['note'];
         $noteH = $note !== '' ? ($dv ? 4.6 : 3.6) : 0.0;
+        // v2 point 8: HOW TO USE, up to two lines, above the note.
+        $how = $dv ? $d['how_to_use_dv'] : $d['how_to_use'];
+        $howLines = $how !== '' ? array_slice(LabelText::wrap($how, $dv ? 8.2 : 6.6, 90, $dv ? 'dv' : 'j4'), 0, 2) : [];
+        $howLead = $dv ? 3.9 : 3.1;
+        $howH = $howLines !== [] ? 2.9 + $howLead * count($howLines) + 0.8 : 0.0;
+        $blockTop = 99.5 - 1 - $noteH - $howH;
         $lines = [];
         if ($dv && $d['ingredients_dv'] !== '') {
             $p[] = ['t' => 'text', 'x' => 5, 'base' => $ingBase, 'w' => 95, 'align' => 'c', 'font' => 'dv', 'pt' => 11, 'color' => self::PRIMARY, 'text' => 'ހިމެނޭ ތަކެތި', 'bold' => 0.6];
-            $lines = array_slice(LabelText::wrap($d['ingredients_dv'], 9.6, 93, 'dv'), 0, $note !== '' ? 3 : 4);
+            $lines = array_slice(LabelText::wrap($d['ingredients_dv'], 9.6, 93, 'dv'), 0, max(1, (int) floor(($blockTop - ($ingBase + 5.3)) / 4.4) + 1));
             foreach ($lines as $i => $line) {
                 $p[] = ['t' => 'text', 'x' => 5, 'base' => $ingBase + 5.3 + $i * 4.4, 'w' => 95, 'align' => 'c', 'font' => 'dv', 'pt' => 9.6, 'color' => self::TEXT, 'text' => $line, 'bold' => 0.5];
             }
@@ -128,7 +136,7 @@ final class StickerDesign
             // Broken into lines here, not by the renderer, so the browser and
             // the PDF print the same lines; a long list steps the size down.
             {
-                $room = max(1, (int) floor((99.5 - 1 - $noteH - ($ingBase + 4.68)) / 3.528) + 1);
+                $room = max(1, (int) floor(($blockTop - ($ingBase + 4.68)) / 3.528) + 1);
                 for ($pt = 7.6; $pt >= 6.2; $pt -= 0.2) {
                     $lines = LabelText::wrap($d['ingredients_en'], $pt, 85, 'j4');
                     if (count($lines) <= $room) {
@@ -141,27 +149,46 @@ final class StickerDesign
                 }
             }
         }
+        if ($howLines !== []) {
+            $p[] = $dv
+                ? ['t' => 'text', 'x' => 5, 'base' => $blockTop + 2.9, 'w' => 95, 'align' => 'c', 'font' => 'dv', 'pt' => 8.6, 'color' => self::PRIMARY, 'text' => 'ބޭނުންކުރާނެ ގޮތް', 'bold' => 0.6]
+                : ['t' => 'text', 'x' => 5, 'base' => $blockTop + 2.6, 'w' => 95, 'align' => 'c', 'font' => 'j7', 'pt' => 6.3, 'color' => self::PRIMARY, 'text' => self::spaced('HOW TO USE')];
+            foreach ($howLines as $i => $line) {
+                $p[] = $dv
+                    ? ['t' => 'text', 'x' => 5, 'base' => $blockTop + 2.9 + $howLead * ($i + 1), 'w' => 95, 'align' => 'c', 'font' => 'dv', 'pt' => 8.2, 'color' => self::TEXT, 'text' => $line, 'bold' => 0.4]
+                    : ['t' => 'text', 'x' => 5, 'base' => $blockTop + 2.6 + $howLead * ($i + 1), 'w' => 95, 'align' => 'c', 'font' => 'j4', 'pt' => 6.6, 'color' => self::TEXT, 'text' => $line];
+            }
+        }
         if ($note !== '') {
             $p[] = $dv
                 ? ['t' => 'text', 'x' => 5, 'base' => 97.6, 'w' => 95, 'align' => 'c', 'font' => 'dv', 'pt' => LabelText::fitPt($note, 'dv', 92, 8.6, 6.5), 'color' => self::PRIMARY, 'text' => $note, 'bold' => 0.6]
                 : ['t' => 'text', 'x' => 5, 'base' => 97.4, 'w' => 95, 'align' => 'c', 'font' => 'j7', 'pt' => LabelText::fitPt($note, 'j7', 92, 6.6, 5), 'color' => self::PRIMARY, 'text' => $note];
         }
 
-        // MFG and EXP boxes (Dhivehi: made-on on the right).
+        // MFG and EXP boxes (Dhivehi: made-on on the right), worded by the
+        // label type (v2 point 4), with its use-within line beneath.
+        $within = $dv ? $d['use_within_dv'] : $d['use_within'];
+        $boxH = $within !== '' ? 12.4 : 14.0;
         $boxes = $dv
             ? [['ހެދި ތާރީޚު', self::DARK, $d['mfg']], ['ހަމަވާ ތާރީޚު', self::PRIMARY, $d['exp']]]
-            : [['MFG DATE', self::DARK, $d['mfg']], ['EXP DATE', self::PRIMARY, $d['exp']]];
+            : [[$d['mfg_label'], self::DARK, $d['mfg']], [$d['exp_label'], self::PRIMARY, $d['exp']]];
         foreach ($boxes as $i => [$label, $colour, $date]) {
             $bx = $X(5 + $i * 49.5, 45.5);
             $strip = $dv ? 5.6 : 5.2;
-            $p[] = ['t' => 'rect', 'x' => $bx, 'y' => 99.5, 'w' => 45.5, 'h' => 14, 'fill' => self::CREAM, 'stroke' => $colour, 'sw' => 0.42, 'r' => 2];
+            $p[] = ['t' => 'rect', 'x' => $bx, 'y' => 99.5, 'w' => 45.5, 'h' => $boxH, 'fill' => self::CREAM, 'stroke' => $colour, 'sw' => 0.42, 'r' => 2];
             $p[] = ['t' => 'rect', 'x' => $bx, 'y' => 99.5, 'w' => 45.5, 'h' => $strip, 'fill' => $colour, 'r' => 2, 'rb' => 0];
             $p[] = $dv
                 ? ['t' => 'text', 'x' => $bx, 'base' => 99.5 + 4.2, 'w' => 45.5, 'align' => 'c', 'font' => 'dv', 'pt' => 10.5, 'color' => self::CREAM, 'text' => $label, 'bold' => 0.6]
                 : ['t' => 'text', 'x' => $bx, 'base' => 99.5 + 3.8, 'w' => 45.5, 'align' => 'c', 'font' => 'j7', 'pt' => 8, 'color' => self::CREAM, 'text' => $label];
+            $dateBase = 99.5 + $boxH - 3.1;
             $p[] = $date
-                ? ['t' => 'text', 'x' => $bx, 'base' => 110.9, 'w' => 45.5, 'align' => 'c', 'font' => 'j7', 'pt' => 12, 'color' => self::TEXT, 'text' => $date]
-                : ['t' => 'text', 'x' => $bx, 'base' => 110.9, 'w' => 45.5, 'align' => 'c', 'font' => 'j4', 'pt' => 13, 'color' => self::SOFT, 'text' => '__ /__ /____'];
+                ? ['t' => 'text', 'x' => $bx, 'base' => $dateBase, 'w' => 45.5, 'align' => 'c', 'font' => 'j7', 'pt' => LabelText::fitPt($date, 'j7', 42, 12, 8), 'color' => self::TEXT, 'text' => $date]
+                : ['t' => 'text', 'x' => $bx, 'base' => $dateBase, 'w' => 45.5, 'align' => 'c', 'font' => 'j4', 'pt' => 13, 'color' => self::SOFT, 'text' => '__ /__ /____'];
+        }
+        if ($within !== '') {
+            $p[] = $dv
+                ? ['t' => 'text', 'x' => 5, 'base' => 99.5 + $boxH + 3.2, 'w' => 95, 'align' => 'c', 'font' => 'dv', 'pt' => 7.8, 'color' => self::PRIMARY, 'text' => $within, 'bold' => 0.6]
+                : ['t' => 'text', 'x' => 5, 'base' => 99.5 + $boxH + 2.8, 'w' => 95, 'align' => 'c', 'font' => 'j7', 'pt' => LabelText::fitPt($within, 'j7', 92, 6.4, 5), 'color' => self::PRIMARY, 'text' => $within];
         }
 
         // Batch and quantity.
@@ -199,25 +226,48 @@ final class StickerDesign
             $p[] = ['t' => 'text', 'x' => 5, 'base' => 124.1, 'w' => 95, 'align' => 'c', 'font' => 'j7', 'pt' => LabelText::fitPt($msg, 'j7', 92, 6.8, 5), 'color' => self::CREAM, 'text' => $msg];
         }
 
-        // Dark footer.
+        // Dark footer: the brand, who it is by, the contact details and the
+        // complaints QR (v2 point 1), the same on every size.
         $c = $d['contact'];
         $p[] = ['t' => 'rect', 'x' => 5, 'y' => 128, 'w' => 95, 'h' => 15.5, 'fill' => self::DARK, 'r' => 2.5];
         [$mw, $mh] = self::fit($d['mark_ratio'], 10, 10.5);
         if ($d['mark']) {
             $p[] = ['t' => 'img', 'x' => $X(8, $mw), 'y' => 128 + (15.5 - $mh) / 2, 'w' => $mw, 'h' => $mh, 'src' => $d['mark']];
         }
+        $qr = $d['show_qr'] && $d['qr'] ? 11.5 : 0.0;
+        if ($qr > 0) {
+            $p[] = ['t' => 'rect', 'x' => $X(86.5, 12.5), 'y' => 129.5, 'w' => 12.5, 'h' => 12.5, 'fill' => self::CREAM, 'r' => 1];
+            $p[] = ['t' => 'img', 'x' => $X(87, $qr), 'y' => 130, 'w' => $qr, 'h' => $qr, 'src' => $d['qr']];
+        }
         $tx = 8 + $mw + 2.5;
         $nameX = $X($tx, 50);
-        $p[] = ['t' => 'text', 'x' => $nameX, 'base' => 133.5, 'w' => 50, 'align' => $A('l'), 'font' => 'ds', 'pt' => 12.5, 'color' => self::CREAM, 'text' => $c['name']];
-        $p[] = ['t' => 'text', 'x' => $nameX, 'base' => 137.2, 'w' => 50, 'align' => $A('l'), 'font' => 'dsi', 'pt' => 7.8, 'color' => self::ON_DARK, 'text' => $c['tagline']];
+        $p[] = ['t' => 'text', 'x' => $nameX, 'base' => 133.5, 'w' => 50, 'align' => $A('l'), 'font' => 'ds', 'pt' => LabelText::fitPt($brand['name'], 'ds', 40, 12.5, 8), 'color' => self::CREAM, 'text' => $brand['name']];
+        $p[] = ['t' => 'text', 'x' => $nameX, 'base' => 137.2, 'w' => 50, 'align' => $A('l'), 'font' => 'dsi', 'pt' => 7.8, 'color' => self::ON_DARK, 'text' => $brand['tagline'] !== '' ? $brand['tagline'] : ($brand['parent'] !== '' ? 'by ' . $brand['parent'] : '')];
+        $by = $brand['parent'] !== '' && $brand['tagline'] !== '' ? 'by ' . $brand['parent'] . '  ·  ' : '';
+        // The address line stops where the website (right-aligned, ~27 mm)
+        // begins; with the QR that edge is 12 mm further left. Too long at
+        // the smallest size, it drops the landmark, then the "by" line.
+        $addrW = ($qr > 0 ? 84.5 : 96.5) - 28 - $tx;
         if ($dv) {
-            $addr = trim($d['address_dv'] . ($d['landmark_dv'] !== '' ? '  •  ' . $d['landmark_dv'] : ''));
-            $p[] = ['t' => 'text', 'x' => $nameX - 10, 'base' => 141, 'w' => 60, 'align' => 'r', 'font' => 'dv', 'pt' => 8, 'color' => self::SOFT, 'text' => $addr, 'bold' => 0.4];
+            $full = trim($d['address_dv'] . ($d['landmark_dv'] !== '' ? '  •  ' . $d['landmark_dv'] : ''));
+            $addr = LabelText::widthMm($full, 7, 'dv') <= $addrW ? $full : trim($d['address_dv']);
+            $p[] = ['t' => 'text', 'x' => $X($tx, $addrW), 'base' => 141, 'w' => $addrW, 'align' => 'r', 'font' => 'dv', 'pt' => LabelText::fitPt($addr, 'dv', $addrW, 8, 6.5), 'color' => self::SOFT, 'text' => $addr, 'bold' => 0.4];
         } else {
-            $addr = trim($c['address'] . ($c['landmark'] !== '' ? '  ·  ' . $c['landmark'] : ''));
-            $p[] = ['t' => 'text', 'x' => $nameX, 'base' => 140.8, 'w' => 52, 'align' => 'l', 'font' => 'j4', 'pt' => 5.4, 'color' => self::SOFT, 'text' => $addr];
+            $candidates = [
+                $by . trim($c['address'] . ($c['landmark'] !== '' ? '  ·  ' . $c['landmark'] : '')),
+                $by . trim($c['address']),
+                trim($c['address']),
+            ];
+            $addr = $candidates[0];
+            foreach ($candidates as $try) {
+                if (LabelText::widthMm($try, 4.4, 'j4') <= $addrW) {
+                    $addr = $try;
+                    break;
+                }
+            }
+            $p[] = ['t' => 'text', 'x' => $nameX, 'base' => 140.8, 'w' => $addrW, 'align' => 'l', 'font' => 'j4', 'pt' => LabelText::fitPt($addr, 'j4', $addrW, 5.4, 4.2), 'color' => self::SOFT, 'text' => $addr];
         }
-        $rightX = $X(46.5, 50);
+        $rightX = $X($qr > 0 ? 34.5 : 46.5, 50);
         $p[] = ['t' => 'text', 'x' => $rightX, 'base' => 133.5, 'w' => 50, 'align' => $A('r'), 'font' => 'j8', 'pt' => 10.5, 'color' => self::CREAM, 'text' => $c['phone']];
         $p[] = $dv
             ? ['t' => 'text', 'x' => $rightX, 'base' => 137.2, 'w' => 50, 'align' => 'l', 'font' => 'dv', 'pt' => 8, 'color' => self::ON_DARK, 'text' => $d['ways_dv'], 'bold' => 0.5]
@@ -249,8 +299,9 @@ final class StickerDesign
         $hb = min(19.0, max(13.0, round($h * 0.25, 1)));
         $tall = $hb >= 16.0;
         $p[] = ['t' => 'rect', 'x' => $pad, 'y' => $pad, 'w' => $iw, 'h' => $hb, 'fill' => self::TINT, 'r' => 2];
-        $art = $tall && $d['logo'] ? $d['logo'] : $d['mark'];
-        [$mw, $mh] = self::fit($tall && $d['logo'] ? $d['logo_ratio'] : $d['mark_ratio'], $tall ? $hb - 2 : 9, $tall ? $hb - 2 : 10);
+        $brand = $d['brand'];
+        $art = $tall && $brand['logo'] ? $brand['logo'] : $d['mark'];
+        [$mw, $mh] = self::fit($tall && $brand['logo'] ? $brand['logo_ratio'] : $d['mark_ratio'], $tall ? $hb - 2 : 9, $tall ? $hb - 2 : 10);
         if ($art) {
             $p[] = ['t' => 'img', 'x' => $X($pad + 1.8, $mw), 'y' => $pad + ($hb - $mh) / 2, 'w' => $mw, 'h' => $mh, 'src' => $art];
         }
@@ -260,7 +311,7 @@ final class StickerDesign
         $nameBase = $tall ? $pad + $hb - 2.6 : $pad + 10.6;
         if ($dv) {
             if ($tall) {
-                $p[] = ['t' => 'text', 'x' => $X($tx, $tw), 'base' => $pad + 3.8, 'w' => $tw, 'align' => 'r', 'font' => 'dv', 'pt' => 6.5, 'color' => self::PRIMARY, 'text' => $d['brand_line_dv'], 'bold' => 0.5];
+                $p[] = ['t' => 'text', 'x' => $X($tx, $tw), 'base' => $pad + 3.8, 'w' => $tw, 'align' => 'r', 'font' => 'dv', 'pt' => 6.5, 'color' => self::PRIMARY, 'text' => $brand['name_dv'], 'bold' => 0.5];
             }
             $p[] = ['t' => 'text', 'x' => $X($tx, $tw), 'base' => $headBase + ($tall ? 0.6 : 0.2), 'w' => $tw, 'align' => 'r', 'font' => 'dv', 'pt' => $tall ? 9 : 8, 'color' => self::DARK, 'text' => $d['header_line_dv'], 'bold' => 0.6];
             $name = $d['name_dv'] !== '' ? $d['name_dv'] : $d['name'];
@@ -268,7 +319,7 @@ final class StickerDesign
             $p[] = ['t' => 'text', 'x' => $X($tx, $tw), 'base' => $nameBase + 0.2, 'w' => $tw, 'align' => 'r', 'font' => $font, 'pt' => LabelText::fitPt($name, $font, $tw, 16, 9), 'color' => self::PRIMARY, 'text' => $name, 'bold' => $font === 'dv' ? 0.7 : 0];
         } else {
             if ($tall) {
-                $p[] = ['t' => 'text', 'x' => $tx, 'base' => $pad + 3.6, 'w' => $tw, 'align' => 'l', 'font' => 'j7', 'pt' => 5, 'color' => self::PRIMARY, 'text' => self::spaced(mb_strtoupper($d['contact']['name']))];
+                $p[] = ['t' => 'text', 'x' => $tx, 'base' => $pad + 3.6, 'w' => $tw, 'align' => 'l', 'font' => 'j7', 'pt' => LabelText::fitPt(self::spaced(mb_strtoupper($brand['name'])), 'j7', $tw, 5, 3.8), 'color' => self::PRIMARY, 'text' => self::spaced(mb_strtoupper($brand['name']))];
             }
             $p[] = ['t' => 'text', 'x' => $tx, 'base' => $headBase, 'w' => $tw, 'align' => 'l', 'font' => 'j8', 'pt' => $tall ? LabelText::fitPt($d['header_line'], 'j8', $tw, 8.5, 6) : 6.5, 'color' => self::DARK, 'text' => $d['header_line'], 'ls' => 0.04];
             $p[] = ['t' => 'text', 'x' => $tx, 'base' => $nameBase, 'w' => $tw, 'align' => 'l', 'font' => 'dsi', 'pt' => LabelText::fitPt($d['name'], 'dsi', $tw, 16, 9), 'color' => self::PRIMARY, 'text' => $d['name']];
@@ -282,14 +333,22 @@ final class StickerDesign
         $fh = $tall ? 9.6 : 6.0;
         $fy = $h - $pad - $fh;
         $p[] = ['t' => 'rect', 'x' => $pad, 'y' => $fy, 'w' => $iw, 'h' => $fh, 'fill' => self::DARK, 'r' => 1.5];
-        $p[] = ['t' => 'text', 'x' => $X($pad + 2, $iw / 2), 'base' => $fy + 4.1, 'w' => $iw / 2, 'align' => $A('l'), 'font' => 'ds', 'pt' => 8.5, 'color' => self::CREAM, 'text' => $c['name']];
-        $p[] = ['t' => 'text', 'x' => $X($pad + $iw / 2 - 2, $iw / 2), 'base' => $fy + 4.1, 'w' => $iw / 2, 'align' => $A('r'), 'font' => 'j8', 'pt' => 7.5, 'color' => self::CREAM, 'text' => $c['phone']];
+        // The complaints QR at the end of a tall footer (v2 point 1); the right-hand text moves over.
+        $qr = $tall && $d['show_qr'] && $d['qr'] ? $fh - 1.6 : 0.0;
+        $rshift = $qr > 0 ? $qr + 2.4 : 0.0;
+        if ($qr > 0) {
+            $p[] = ['t' => 'rect', 'x' => $X($pad + $iw - 0.8 - $qr - 0.8, $qr + 1.6), 'y' => $fy + 0.4, 'w' => $qr + 1.6, 'h' => $qr + 1.6, 'fill' => self::CREAM, 'r' => 0.8];
+            $p[] = ['t' => 'img', 'x' => $X($pad + $iw - 0.8 - $qr, $qr), 'y' => $fy + 0.8, 'w' => $qr, 'h' => $qr, 'src' => $d['qr']];
+        }
+        $p[] = ['t' => 'text', 'x' => $X($pad + 2, $iw / 2), 'base' => $fy + 4.1, 'w' => $iw / 2, 'align' => $A('l'), 'font' => 'ds', 'pt' => LabelText::fitPt($brand['name'], 'ds', $iw / 2 - 2, 8.5, 6), 'color' => self::CREAM, 'text' => $brand['name']];
+        $p[] = ['t' => 'text', 'x' => $X($pad + $iw / 2 - 2, $iw / 2 - $rshift), 'base' => $fy + 4.1, 'w' => $iw / 2 - $rshift, 'align' => $A('r'), 'font' => 'j8', 'pt' => 7.5, 'color' => self::CREAM, 'text' => $c['phone']];
         if ($tall) {
-            $addr = $dv ? trim($d['address_dv'] . ($d['landmark_dv'] !== '' ? '  ·  ' . $d['landmark_dv'] : '')) : trim($c['address'] . ($c['landmark'] !== '' ? '  ·  ' . $c['landmark'] : ''));
+            $by = $brand['parent'] !== '' ? 'by ' . $brand['parent'] . '  ·  ' : '';
+            $addr = $dv ? trim($d['address_dv'] . ($d['landmark_dv'] !== '' ? '  ·  ' . $d['landmark_dv'] : '')) : $by . trim($c['address'] . ($c['landmark'] !== '' ? '  ·  ' . $c['landmark'] : ''));
             $p[] = $dv
                 ? ['t' => 'text', 'x' => $X($pad + 2, $iw * 0.55), 'base' => $fy + 8.2, 'w' => $iw * 0.55, 'align' => 'r', 'font' => 'dv', 'pt' => 6.5, 'color' => self::SOFT, 'text' => $addr, 'bold' => 0.4]
-                : ['t' => 'text', 'x' => $pad + 2, 'base' => $fy + 8, 'w' => $iw * 0.55, 'align' => 'l', 'font' => 'j4', 'pt' => LabelText::fitPt($addr, 'j4', $iw * 0.55 - 2, 5.2, 4.2), 'color' => self::SOFT, 'text' => $addr];
-            $p[] = ['t' => 'text', 'x' => $X($pad + $iw * 0.5 - 2, $iw * 0.5), 'base' => $fy + 8.1, 'w' => $iw * 0.5, 'align' => $A('r'), 'font' => 'dsi', 'pt' => 7, 'color' => self::CREAM, 'text' => $c['website']];
+                : ['t' => 'text', 'x' => $pad + 2, 'base' => $fy + 8, 'w' => $iw * 0.55, 'align' => 'l', 'font' => 'j4', 'pt' => LabelText::fitPt($addr, 'j4', $iw * 0.55 - 2, 5.2, 4.0), 'color' => self::SOFT, 'text' => $addr];
+            $p[] = ['t' => 'text', 'x' => $X($pad + $iw * 0.5 - 2, $iw * 0.5 - $rshift), 'base' => $fy + 8.1, 'w' => $iw * 0.5 - $rshift, 'align' => $A('r'), 'font' => 'dsi', 'pt' => 7, 'color' => self::CREAM, 'text' => $c['website']];
         }
 
         $sy = $fy - 1.5 - 4.6;
@@ -310,16 +369,24 @@ final class StickerDesign
 
         // Dates.
         $dh = 9.0;
-        $dy = $by - 2.6 - $dh;
+        // v2 point 4: a use-within line under the date boxes when the label is tall enough.
+        $within = $tall ? ($dv ? $d['use_within_dv'] : $d['use_within']) : '';
+        $withinH = $within !== '' ? 2.8 : 0.0;
+        $dy = $by - 2.6 - $dh - $withinH;
         $dw = ($iw - 2.5) / 2;
+        if ($within !== '') {
+            $p[] = $dv
+                ? ['t' => 'text', 'x' => $pad, 'base' => $dy + $dh + 2.6, 'w' => $iw, 'align' => 'c', 'font' => 'dv', 'pt' => 6.8, 'color' => self::PRIMARY, 'text' => $within, 'bold' => 0.5]
+                : ['t' => 'text', 'x' => $pad, 'base' => $dy + $dh + 2.3, 'w' => $iw, 'align' => 'c', 'font' => 'j7', 'pt' => LabelText::fitPt($within, 'j7', $iw - 2, 5.2, 4.2), 'color' => self::PRIMARY, 'text' => $within];
+        }
         $boxes = $dv
             ? [['ހެދި', self::DARK, $d['mfg']], ['ހަމަވާ', self::PRIMARY, $d['exp']]]
-            : [['MFG', self::DARK, $d['mfg']], ['EXP', self::PRIMARY, $d['exp']]];
+            : [[$d['mfg_label'], self::DARK, $d['mfg']], [$d['exp_label'], self::PRIMARY, $d['exp']]];
         foreach ($boxes as $i => [$label, $colour, $date]) {
             $bx = $X($pad + $i * ($dw + 2.5), $dw);
             $p[] = ['t' => 'rect', 'x' => $bx, 'y' => $dy, 'w' => $dw, 'h' => $dh, 'fill' => self::CREAM, 'stroke' => $colour, 'sw' => 0.35, 'r' => 1.4];
             $p[] = ['t' => 'rect', 'x' => $bx, 'y' => $dy, 'w' => $dw, 'h' => 3.4, 'fill' => $colour, 'r' => 1.4, 'rb' => 0];
-            $p[] = ['t' => 'text', 'x' => $bx, 'base' => $dy + 2.55, 'w' => $dw, 'align' => 'c', 'font' => $dv ? 'dv' : 'j7', 'pt' => $dv ? 7 : 5.8, 'color' => self::CREAM, 'text' => $label];
+            $p[] = ['t' => 'text', 'x' => $bx, 'base' => $dy + 2.55, 'w' => $dw, 'align' => 'c', 'font' => $dv ? 'dv' : 'j7', 'pt' => $dv ? 7 : LabelText::fitPt($label, 'j7', $dw - 2, 5.8, 4.2), 'color' => self::CREAM, 'text' => $label];
             $dateText = $date ?: '__ /__ /____';
             $p[] = ['t' => 'text', 'x' => $bx, 'base' => $dy + 7.6, 'w' => $dw, 'align' => 'c', 'font' => $date ? 'j7' : 'j4', 'pt' => LabelText::fitPt($dateText, $date ? 'j7' : 'j4', $dw - 2, 9, 6), 'color' => $date ? self::TEXT : self::SOFT, 'text' => $dateText];
         }
@@ -351,6 +418,29 @@ final class StickerDesign
                     $usedTo = $top + 3.2 + $i * $lead + 0.8;
                 }
             }
+        }
+
+        // v2 point 8: HOW TO USE under the ingredients when there is room for it.
+        $how = $dv ? $d['how_to_use_dv'] : $d['how_to_use'];
+        $roomNow = $dy - 1.5 - ($usedTo + 1.5);
+        if ($how !== '' && $roomNow >= 6.5) {
+            $hf = $dv ? 'dv' : 'j4';
+            $hpt = $dv ? 7 : 5.3;
+            $maxLines = $roomNow >= 9.5 ? 2 : 1;
+            $lines = array_slice(LabelText::wrap($how, $hpt, $iw - 2, $hf), 0, $maxLines);
+            $p[] = $dv
+                ? ['t' => 'text', 'x' => $pad, 'base' => $usedTo + 3.3, 'w' => $iw, 'align' => 'c', 'font' => 'dv', 'pt' => 6.5, 'color' => self::PRIMARY, 'text' => 'ބޭނުންކުރާނެ ގޮތް', 'bold' => 0.5]
+                : ['t' => 'text', 'x' => $pad, 'base' => $usedTo + 3.1, 'w' => $iw, 'align' => 'c', 'font' => 'j7', 'pt' => 4.8, 'color' => self::PRIMARY, 'text' => self::spaced('HOW TO USE')];
+            foreach ($lines as $i => $line) {
+                $p[] = ['t' => 'text', 'x' => $pad, 'base' => $usedTo + 3.1 + 2.7 * ($i + 1) + ($dv ? 0.4 : 0), 'w' => $iw, 'align' => 'c', 'font' => $hf, 'pt' => $hpt, 'color' => self::TEXT, 'text' => $line, 'bold' => $dv ? 0.4 : 0];
+            }
+            $usedTo += 3.1 + 2.7 * count($lines) + 0.6;
+        } elseif ($how !== '' && $roomNow >= 3.2) {
+            // A tight label (99 x 70 with the two-line footer) gets it on one line.
+            $line = ($dv ? 'ބޭނުންކުރާނެ ގޮތް: ' : 'HOW TO USE: ') . $how;
+            $hf = $dv ? 'dv' : 'j5';
+            $p[] = ['t' => 'text', 'x' => $pad, 'base' => $usedTo + 2.9, 'w' => $iw, 'align' => 'c', 'font' => $hf, 'pt' => LabelText::fitPt($line, $hf, $iw - 2, $dv ? 6.8 : 5.2, 4.2), 'color' => self::TEXT, 'text' => $line, 'bold' => $dv ? 0.4 : 0];
+            $usedTo += 3.3;
         }
 
         $spare = $dy - 1.5 - ($usedTo + 1.5);

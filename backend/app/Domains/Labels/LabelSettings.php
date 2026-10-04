@@ -51,6 +51,8 @@ final class LabelSettings
         'label_box_strip' => 'KEEP FROZEN AT -18°C  •  FOOD ITEMS  •  HANDLE WITH CARE  •  THIS SIDE UP',
         'label_box_strip_chilled' => 'KEEP REFRIGERATED AT 0–4°C  •  FOOD ITEMS  •  HANDLE WITH CARE  •  THIS SIDE UP',
         'label_box_strip_ambient' => 'FOOD ITEMS  •  KEEP COOL AND DRY  •  HANDLE WITH CARE  •  THIS SIDE UP',
+        // v2 point 4: how dates print, "04 / 10 / 2026" or "4 Oct 2026".
+        'label_date_style' => 'dmy',
         'label_precut_top' => '0',
         'label_precut_left' => '0',
         'label_precut_gutter' => '0',
@@ -126,6 +128,17 @@ final class LabelSettings
         $storage = self::storage($storage);
 
         return [self::get('label_box_badge_' . $storage), self::get('label_box_badge_' . $storage . '_2')];
+    }
+
+    /** A date as the sticker prints it, in the style from Settings. */
+    public static function formatDate(?string $iso): ?string
+    {
+        if ($iso === null || $iso === '') {
+            return null;
+        }
+        $d = \Carbon\CarbonImmutable::parse($iso);
+
+        return self::get('label_date_style') === 'text' ? $d->format('j M Y') : $d->format('d / m / Y');
     }
 
     /** @return array{top: float, left: float, gutter: float} */
