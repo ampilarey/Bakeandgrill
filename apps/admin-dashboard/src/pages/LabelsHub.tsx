@@ -105,21 +105,62 @@ function HistoryTab() {
   );
 }
 
-const WORDING: { key: string; label: string; dv?: boolean }[] = [
-  { key: 'label_header_line', label: 'Sticker heading' },
-  { key: 'label_header_line_dv', label: 'Sticker heading (Dhivehi)', dv: true },
-  { key: 'label_storage_frozen', label: 'Storage line: frozen' },
-  { key: 'label_storage_frozen_dv', label: 'Storage line: frozen (Dhivehi)', dv: true },
-  { key: 'label_storage_chilled', label: 'Storage line: chilled' },
-  { key: 'label_storage_chilled_dv', label: 'Storage line: chilled (Dhivehi)', dv: true },
-  { key: 'label_storage_ambient', label: 'Storage line: room temperature' },
-  { key: 'label_storage_ambient_dv', label: 'Storage line: room temperature (Dhivehi)', dv: true },
-  { key: 'label_contact_ways', label: 'Footer: ways to reach you' },
-  { key: 'label_contact_ways_dv', label: 'Footer: ways to reach you (Dhivehi)', dv: true },
-  { key: 'label_address_dv', label: 'Footer address (Dhivehi)', dv: true },
-  { key: 'label_landmark_dv', label: 'Footer landmark (Dhivehi)', dv: true },
-  { key: 'label_box_heading', label: 'Box label: heading under the name' },
-  { key: 'label_box_strip', label: 'Box label: handling strip' },
+type Wording = { key: string; label: string; dv?: boolean };
+
+/** Settings → Wording, in groups. The frozen keys kept their original names. */
+const WORDING_GROUPS: { title: string; hint?: string; rows: Wording[] }[] = [
+  {
+    title: 'Sticker heading',
+    hint: 'Top of the pack sticker, by the product\'s storage. An item can print its own heading instead (Menu Items → item → Label).',
+    rows: [
+      { key: 'label_header_line', label: 'Frozen items' },
+      { key: 'label_header_line_dv', label: 'Frozen items (Dhivehi)', dv: true },
+      { key: 'label_header_line_chilled', label: 'Chilled items' },
+      { key: 'label_header_line_chilled_dv', label: 'Chilled items (Dhivehi)', dv: true },
+      { key: 'label_header_line_ambient', label: 'Room-temperature items' },
+      { key: 'label_header_line_ambient_dv', label: 'Room-temperature items (Dhivehi)', dv: true },
+    ],
+  },
+  {
+    title: 'Sticker storage line',
+    hint: 'The strip above the footer, by storage. An item can print its own line instead.',
+    rows: [
+      { key: 'label_storage_frozen', label: 'Frozen' },
+      { key: 'label_storage_frozen_dv', label: 'Frozen (Dhivehi)', dv: true },
+      { key: 'label_storage_chilled', label: 'Chilled' },
+      { key: 'label_storage_chilled_dv', label: 'Chilled (Dhivehi)', dv: true },
+      { key: 'label_storage_ambient', label: 'Room temperature' },
+      { key: 'label_storage_ambient_dv', label: 'Room temperature (Dhivehi)', dv: true },
+    ],
+  },
+  {
+    title: 'Sticker footer',
+    rows: [
+      { key: 'label_brand_line_dv', label: 'Brand line above the heading (Dhivehi)', dv: true },
+      { key: 'label_contact_ways', label: 'Ways to reach you' },
+      { key: 'label_contact_ways_dv', label: 'Ways to reach you (Dhivehi)', dv: true },
+      { key: 'label_address_dv', label: 'Address (Dhivehi)', dv: true },
+      { key: 'label_landmark_dv', label: 'Landmark (Dhivehi)', dv: true },
+    ],
+  },
+  {
+    title: 'Box label',
+    hint: 'By the "Keep it" choice on the box label. A shop\'s saved label can carry its own heading and strip.',
+    rows: [
+      { key: 'label_box_heading', label: 'Heading under the name: frozen' },
+      { key: 'label_box_heading_chilled', label: 'Heading: chilled' },
+      { key: 'label_box_heading_ambient', label: 'Heading: room temperature' },
+      { key: 'label_box_badge_frozen', label: 'Badge, small line: frozen' },
+      { key: 'label_box_badge_frozen_2', label: 'Badge, big line: frozen' },
+      { key: 'label_box_badge_chilled', label: 'Badge, small line: chilled' },
+      { key: 'label_box_badge_chilled_2', label: 'Badge, big line: chilled' },
+      { key: 'label_box_badge_ambient', label: 'Badge, small line: room temperature' },
+      { key: 'label_box_badge_ambient_2', label: 'Badge, big line: room temperature' },
+      { key: 'label_box_strip', label: 'Handling strip: frozen' },
+      { key: 'label_box_strip_chilled', label: 'Handling strip: chilled' },
+      { key: 'label_box_strip_ambient', label: 'Handling strip: room temperature' },
+    ],
+  },
 ];
 
 function SettingsTab({ canManage }: { canManage: boolean }) {
@@ -256,11 +297,19 @@ function SettingsTab({ canManage }: { canManage: boolean }) {
       </Card>
 
       <Card className="labels-sticky" padding="sm" header={<div><h3 className="font-bold text-[var(--color-text)]">Wording</h3><p className="text-xs text-[var(--color-text-muted)] mt-1">Phone, website, address and tagline come from Business Details. Empty a box to go back to the original wording.</p></div>}>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {WORDING.map((w) => (
-            <div key={w.key}>
-              <label className="block text-xs font-semibold text-[var(--color-text-secondary)] mb-1" htmlFor={w.key}>{w.label}</label>
-              <textarea id={w.key} rows={2} dir={w.dv ? 'rtl' : undefined} value={settings[w.key] ?? ''} disabled={!canManage} onChange={(e) => setSettings((s) => ({ ...s, [w.key]: e.target.value }))} className="w-full min-h-[44px] px-3 py-2 rounded-lg border border-[var(--color-border)] bg-white text-sm resize-y" />
+        <div className="space-y-5">
+          {WORDING_GROUPS.map((g) => (
+            <div key={g.title}>
+              <h4 className="text-sm font-bold text-[var(--color-text)]">{g.title}</h4>
+              {g.hint && <p className="text-xs text-[var(--color-text-muted)] mb-2">{g.hint}</p>}
+              <div className="grid gap-3 sm:grid-cols-2 mt-2">
+                {g.rows.map((w) => (
+                  <div key={w.key}>
+                    <label className="block text-xs font-semibold text-[var(--color-text-secondary)] mb-1" htmlFor={w.key}>{w.label}</label>
+                    <textarea id={w.key} rows={w.key.includes('badge') ? 1 : 2} dir={w.dv ? 'rtl' : undefined} value={settings[w.key] ?? ''} disabled={!canManage} onChange={(e) => setSettings((s) => ({ ...s, [w.key]: e.target.value }))} className="w-full min-h-[44px] px-3 py-2 rounded-lg border border-[var(--color-border)] bg-white text-sm resize-y" />
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>

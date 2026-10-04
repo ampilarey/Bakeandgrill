@@ -21,6 +21,15 @@ export type LabelProduct = {
   label_shelf_life_days: number | null;
   label_storage: LabelStorage;
   label_pack_qty: number | null;
+  /** The item's own wording; null prints the default for its storage (in `defaults`). */
+  label_heading: string | null;
+  label_heading_dv: string | null;
+  label_storage_line: string | null;
+  label_storage_line_dv: string | null;
+  label_note: string | null;
+  label_note_dv: string | null;
+  label_pack_unit: string | null;
+  defaults: { heading: string; heading_dv: string; storage_line: string; storage_line_dv: string; unit: string };
   label_title_media_id: number | null;
   label_title_url: string | null;
   label_photo_media_id: number | null;
@@ -64,6 +73,8 @@ export type BoxFields = {
   customer?: string; attn?: string; contact?: string;
   boat?: string; boat2?: string; pickup?: string; pickup2?: string; when?: string; when2?: string;
   po?: string; box?: string; of?: string;
+  /** Picks the badge and the default heading and strip; heading and strip override them. */
+  storage?: LabelStorage; heading?: string; strip?: string;
 };
 
 export type BoxRequest = BoxFields & {

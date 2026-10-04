@@ -25,10 +25,17 @@ to one person):
 4. **Shelf life (days)**: expiry = made-on date + this. Empty means the date boxes
    print blank for writing by hand.
 5. Storage (frozen, chilled, room temperature), pieces per pack.
-6. **Hand-lettered name** and **food photo**: optional, from the media library. A
+6. **Wording on this sticker**: the heading at the top ("FROZEN HEDHIKA"), the
+   storage strip, a note under the ingredients (allergens, "best served warm") and
+   the unit after the quantity (PCS, SLICE, PACK). Each can be typed in English and
+   Dhivehi. Left empty, the usual wording for the item's storage prints (frozen,
+   chilled or room temperature; shown in grey, changed in Labels → Settings), so a
+   chilled cake no longer says FROZEN HEDHIKA. The note takes one ingredients line
+   on the full sticker and is left off the compact one.
+7. **Hand-lettered name** and **food photo**: optional, from the media library. A
    transparent PNG works best. Without lettering the name is typed in the brand serif;
    without a photo the item's cut-out is used, then the flame.
-7. The preview on the right shows the sticker from the saved settings, in English or
+8. The preview on the right shows the sticker from the saved settings, in English or
    Dhivehi.
 
 The nine original products are brought in once with:
@@ -80,7 +87,9 @@ shop's box label is kept in one place, with the shop:
 2. Optionally pick a **Delivery**: its date and the quantities sent go on top. Items
    on the shop's list that were not sent stay as lines to write on; items sent that
    are not on the list are added at the end.
-3. Change anything. Under each item, type the shop's article name; left empty,
+3. Change anything. **Keep it** (frozen, chilled, room temperature) sets the badge
+   in the corner and the usual heading and handling strip; type a heading or strip
+   to print your own. Under each item, type the shop's article name; left empty,
    "FROZEN - SHORT EAT - NAME-PIECE" prints.
 4. **Save for (shop)** keeps the name, contact, boat, pick-up point, window and the
    item list with article names for next time, on every device. The date, PO and
@@ -96,7 +105,8 @@ Saved per shop in `trade_accounts.box_label` (JSON, read only by the Labels API;
 
 | What | Where |
 |---|---|
-| Wording (heading, storage lines, box strip, Dhivehi footer lines) | Labels → Settings, stored as site settings with the original wording as defaults (`App\Domains\Labels\LabelSettings`) |
+| Usual wording per storage type (sticker heading and storage line; box heading, badge and strip; Dhivehi footer lines) | Labels → Settings, stored as site settings with the original wording as defaults (`App\Domains\Labels\LabelSettings`; the frozen keys kept their first names, `label_header_line`, `label_box_heading`, `label_box_strip`) |
+| An item's own wording | `items.label_heading`, `label_storage_line`, `label_note`, `label_pack_unit` (+ `_dv`), on the item's Label tab |
 | Phone, website, address, landmark, tagline | Business Details (same as receipts) |
 | Print log | Labels → History (`label_prints`); written when a link is issued, never edited |
 | Sticker design | `App\Domains\Labels\StickerDesign` (pieces in mm from the original scripts) |

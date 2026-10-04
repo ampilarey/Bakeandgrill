@@ -132,7 +132,7 @@ class LabelsController extends Controller
             'articles' => 'sometimes|boolean',
         ];
         foreach (BoxLabel::FIELDS as $key) {
-            $rules[$key] = 'nullable|string|max:' . ($key === 'customer' ? 40 : 60);
+            $rules[$key] = $key === 'storage' ? ['nullable', Rule::in(LabelSettings::STORAGES)] : 'nullable|string|max:' . BoxLabel::limit($key);
         }
         $data = $request->validate($rules);
         try {
@@ -221,7 +221,7 @@ class LabelsController extends Controller
             'items.*.article' => 'nullable|string|max:' . BoxLabel::ARTICLE_MAX,
         ];
         foreach (BoxLabel::SHOP_FIELDS as $key) {
-            $rules[$key] = 'nullable|string|max:' . ($key === 'customer' ? 40 : 60);
+            $rules[$key] = $key === 'storage' ? ['nullable', Rule::in(LabelSettings::STORAGES)] : 'nullable|string|max:' . BoxLabel::limit($key);
         }
         $data = $request->validate($rules);
         BoxLabel::saveForAccount($tradeAccount, $data, $data['items']);
@@ -330,8 +330,15 @@ class LabelsController extends Controller
             'label_ingredients' => 'sometimes|nullable|string|max:500',
             'label_ingredients_dv' => 'sometimes|nullable|string|max:500',
             'label_shelf_life_days' => 'sometimes|nullable|integer|min:1|max:730',
-            'label_storage' => ['sometimes', Rule::in(['frozen', 'chilled', 'ambient'])],
+            'label_storage' => ['sometimes', Rule::in(LabelSettings::STORAGES)],
             'label_pack_qty' => 'sometimes|nullable|integer|min:1|max:999',
+            'label_heading' => 'sometimes|nullable|string|max:40',
+            'label_heading_dv' => 'sometimes|nullable|string|max:40',
+            'label_storage_line' => 'sometimes|nullable|string|max:160',
+            'label_storage_line_dv' => 'sometimes|nullable|string|max:160',
+            'label_note' => 'sometimes|nullable|string|max:120',
+            'label_note_dv' => 'sometimes|nullable|string|max:120',
+            'label_pack_unit' => 'sometimes|nullable|string|max:10',
             'label_title_media_id' => 'sometimes|nullable|integer|exists:media_assets,id',
             'label_photo_media_id' => 'sometimes|nullable|integer|exists:media_assets,id',
         ]);
@@ -363,6 +370,21 @@ class LabelsController extends Controller
             'label_shelf_life_days' => $item->label_shelf_life_days,
             'label_storage' => $item->label_storage ?: 'frozen',
             'label_pack_qty' => $item->label_pack_qty,
+            'label_heading' => $item->label_heading,
+            'label_heading_dv' => $item->label_heading_dv,
+            'label_storage_line' => $item->label_storage_line,
+            'label_storage_line_dv' => $item->label_storage_line_dv,
+            'label_note' => $item->label_note,
+            'label_note_dv' => $item->label_note_dv,
+            'label_pack_unit' => $item->label_pack_unit,
+            // What prints when the item's own wording is empty: the defaults for its storage.
+            'defaults' => [
+                'heading' => LabelSettings::headingLine((string) $item->label_storage, false),
+                'heading_dv' => LabelSettings::headingLine((string) $item->label_storage, true),
+                'storage_line' => LabelSettings::storageLine((string) $item->label_storage, false),
+                'storage_line_dv' => LabelSettings::storageLine((string) $item->label_storage, true),
+                'unit' => 'PCS',
+            ],
             'label_title_media_id' => $item->label_title_media_id,
             'label_title_url' => $media->get($item->label_title_media_id)?->url,
             'label_photo_media_id' => $item->label_photo_media_id,

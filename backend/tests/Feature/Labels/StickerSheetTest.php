@@ -170,6 +170,50 @@ class StickerSheetTest extends TestCase
         $this->dump('typed-name', $html, (string) $this->get($res->json('pdf_url'))->getContent());
     }
 
+    public function test_each_item_prints_its_own_heading_storage_line_note_and_unit(): void
+    {
+        // Owner, 2026-10-04: "it says frozen hedhika even though its not a
+        // frozen hedhika". A chilled cake gets the chilled heading and line by
+        // default; its own wording wins over both; the note sits under the
+        // ingredients and the unit follows the quantity.
+        $cake = $this->makeItem(false, 0, [
+            'name' => 'Chocolate Cake', 'label_enabled' => true, 'label_storage' => 'chilled', 'label_ingredients_source' => 'manual',
+            'label_ingredients' => 'Flour, sugar, eggs, butter, cocoa', 'label_pack_qty' => 1,
+        ]);
+        $res = $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $cake->id, 'copies' => 1]]])->assertOk();
+        $html = (string) $this->get($res->json('view_url'))->getContent();
+        $this->assertStringContainsString('CHILLED', $html);
+        $this->assertStringNotContainsString('FROZEN HEDHIKA', $html);
+        $this->assertStringContainsString('KEEP REFRIGERATED AT 0–4°C', $html);
+        $this->assertStringContainsString('QTY: 1 PCS', $html);
+
+        $cake->forceFill([
+            'label_heading' => 'BAKERY CAKE', 'label_storage_line' => 'KEEP CHILLED  •  BEST WITHIN 3 DAYS',
+            'label_note' => 'CONTAINS EGG, GLUTEN AND DAIRY', 'label_pack_unit' => 'slice',
+            'label_heading_dv' => 'ކޭކު', 'label_note_dv' => 'ބިސް ހިމެނޭ',
+        ])->save();
+        $res = $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $cake->id, 'copies' => 1]]])->assertOk();
+        $html = (string) $this->get($res->json('view_url'))->getContent();
+        foreach (['BAKERY', 'CAKE', 'KEEP CHILLED  •  BEST WITHIN 3 DAYS', 'CONTAINS EGG, GLUTEN AND DAIRY', 'QTY: 1 SLICE'] as $needle) {
+            $this->assertStringContainsString($needle, $html, $needle);
+        }
+        $this->assertStringNotContainsString('CHILLED HEDHIKA', $html);
+        $this->assertStringNotContainsString('KEEP REFRIGERATED', $html);
+        $this->assertSame(1, preg_match_all('#/Type\s*/Page[^s]#', (string) $this->get($res->json('pdf_url'))->assertOk()->getContent()), 'still one page with the note');
+
+        $dv = $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $cake->id, 'copies' => 1]], 'lang' => 'dv'])->assertOk();
+        $html = (string) $this->get($dv->json('view_url'))->getContent();
+        $this->assertStringContainsString('ކޭކު', $html);
+        $this->assertStringContainsString('ބިސް ހިމެނޭ', $html);
+        $this->dump('chilled-note', $html, (string) $this->get($dv->json('pdf_url'))->getContent());
+
+        // The compact sticker takes the unit and heading too.
+        $res = $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $cake->id, 'copies' => 1]], 'layout' => 'a4-12'])->assertOk();
+        $html = (string) $this->get($res->json('view_url'))->getContent();
+        $this->assertStringContainsString('BAKERY CAKE', $html);
+        $this->assertStringContainsString('QTY: 1 SLICE', $html);
+    }
+
     public function test_preview_links_are_not_logged_and_need_the_permission(): void
     {
         $res = $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $this->bajiya->id, 'copies' => 1]], 'preview' => true])->assertOk();

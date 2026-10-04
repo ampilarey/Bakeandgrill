@@ -29,11 +29,23 @@ final class BoxLabel
 
     private const IW = 186.0;
 
-    /** Fields a box label takes, all optional. */
-    public const FIELDS = ['customer', 'attn', 'contact', 'boat', 'boat2', 'pickup', 'pickup2', 'when', 'when2', 'po', 'box', 'of'];
+    /**
+     * Fields a box label takes, all optional. `storage` picks the badge and
+     * the default heading and strip (frozen, chilled, ambient); `heading` and
+     * `strip` are the shop's own wording when given.
+     */
+    public const FIELDS = ['customer', 'attn', 'contact', 'boat', 'boat2', 'pickup', 'pickup2', 'when', 'when2', 'po', 'box', 'of', 'storage', 'heading', 'strip'];
 
     /** The fields a shop keeps from one delivery to the next (not the date, PO or box numbers). */
-    public const SHOP_FIELDS = ['customer', 'attn', 'contact', 'boat', 'boat2', 'pickup', 'pickup2', 'when2'];
+    public const SHOP_FIELDS = ['customer', 'attn', 'contact', 'boat', 'boat2', 'pickup', 'pickup2', 'when2', 'storage', 'heading', 'strip'];
+
+    /** @var array<string, int> Longest value per field; the rest take 60. */
+    public const LIMITS = ['customer' => 40, 'strip' => 120, 'heading' => 60, 'storage' => 8];
+
+    public static function limit(string $key): int
+    {
+        return self::LIMITS[$key] ?? 60;
+    }
 
     public const ARTICLE_MAX = 60;
 
@@ -77,8 +89,9 @@ final class BoxLabel
     {
         $fields = [];
         foreach (self::FIELDS as $key) {
-            $fields[$key] = mb_substr(trim((string) ($in[$key] ?? '')), 0, $key === 'customer' ? 40 : 60);
+            $fields[$key] = mb_substr(trim((string) ($in[$key] ?? '')), 0, self::limit($key));
         }
+        $fields['storage'] = LabelSettings::storage($fields['storage']);
         // A line's article name comes with it from the API, or as the
         // separate `arts` list on a signed sheet link.
         $raw = $in['lines'] ?? [];
@@ -115,6 +128,7 @@ final class BoxLabel
         foreach (self::SHOP_FIELDS as $key) {
             $fields[$key] = (string) ($f[$key] ?? '');
         }
+        $fields['storage'] = LabelSettings::storage($fields['storage']);
         $fields['customer'] = $fields['customer'] !== '' ? $fields['customer'] : (string) $account->shop_name;
         $fields['attn'] = $fields['attn'] !== '' ? $fields['attn'] : (string) ($account->contact_name ?? '');
         $fields['contact'] = $fields['contact'] !== '' ? $fields['contact'] : (string) ($account->contact_phone ?? '');
@@ -139,8 +153,9 @@ final class BoxLabel
     {
         $keep = [];
         foreach (self::SHOP_FIELDS as $key) {
-            $keep[$key] = mb_substr(trim((string) ($fields[$key] ?? '')), 0, $key === 'customer' ? 40 : 60);
+            $keep[$key] = mb_substr(trim((string) ($fields[$key] ?? '')), 0, self::limit($key));
         }
+        $keep['storage'] = LabelSettings::storage($keep['storage']);
         $list = [];
         $seen = [];
         foreach ($items as $row) {
@@ -165,7 +180,7 @@ final class BoxLabel
     {
         $delivery->loadMissing(['tradeAccount', 'lines']);
         $account = $delivery->tradeAccount;
-        $base = $account ? self::fromAccount($account) : ['fields' => array_fill_keys(self::FIELDS, ''), 'lines' => [], 'saved' => false];
+        $base = $account ? self::fromAccount($account) : ['fields' => ['storage' => 'frozen'] + array_fill_keys(self::FIELDS, ''), 'lines' => [], 'saved' => false];
         $when = $delivery->dispatched_at ? CarbonImmutable::parse($delivery->dispatched_at) : CarbonImmutable::today();
         $sent = [];
         foreach ($delivery->lines as $line) {
@@ -221,10 +236,12 @@ final class BoxLabel
         }
         $p[] = $text($L + 38, 27, 95, 'l', 'ds', 28, $D, $c['name']);
         $p[] = $text($L + 38, 34.5, 95, 'l', 'dsi', 13, $P, $c['tagline']);
-        $p[] = $text($L + 38, 40.5, 95, 'l', 'j5', 8.5, StickerDesign::MUTED, LabelSettings::get('label_box_heading'));
+        $heading = $f['heading'] !== '' ? $f['heading'] : LabelSettings::boxHeading($f['storage']);
+        $p[] = $text($L + 38, 40.5, 95, 'l', 'j5', LabelText::fitPt($heading, 'j5', 93, 8.5, 6), StickerDesign::MUTED, $heading);
+        [$badge, $badge2] = LabelSettings::boxBadge($f['storage']);
         $p[] = ['t' => 'rect', 'x' => $R - 50, 'y' => 18, 'w' => 44, 'h' => 22, 'fill' => $P, 'r' => 3];
-        $p[] = $text($R - 50, 25, 44, 'c', 'j8', 11, StickerDesign::CREAM, 'KEEP FROZEN');
-        $p[] = $text($R - 50, 34.5, 44, 'c', 'j8', 20, StickerDesign::CREAM, '-18°C');
+        $p[] = $text($R - 50, 25, 44, 'c', 'j8', LabelText::fitPt($badge, 'j8', 40, 11, 7), StickerDesign::CREAM, $badge);
+        $p[] = $text($R - 50, 34.5, 44, 'c', 'j8', LabelText::fitPt($badge2, 'j8', 40, 20, 10), StickerDesign::CREAM, $badge2);
 
         // Deliver to.
         $p[] = $text($L, 57, 80, 'l', 'j7', 10, $P, 'D E L I V E R   T O');
@@ -323,7 +340,7 @@ final class BoxLabel
             : $p[] = $line($cols[2] + 2, $cols[2] + 18, $y + 7, $D, 0.35);
 
         // Handling strip and footer.
-        $strip = LabelSettings::get('label_box_strip');
+        $strip = $f['strip'] !== '' ? $f['strip'] : LabelSettings::boxStrip($f['storage']);
         $p[] = ['t' => 'rect', 'x' => $L, 'y' => 246, 'w' => $IW, 'h' => 10, 'fill' => $P, 'r' => 2.5];
         $p[] = $text($L, 252.4, $IW, 'c', 'j8', LabelText::fitPt($strip, 'j8', $IW - 8, 11, 7), StickerDesign::CREAM, $strip);
         $p[] = ['t' => 'rect', 'x' => $L, 'y' => 261, 'w' => $IW, 'h' => 24, 'fill' => $D, 'r' => 4];

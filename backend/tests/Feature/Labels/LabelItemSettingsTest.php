@@ -71,6 +71,15 @@ class LabelItemSettingsTest extends TestCase
             ->assertJsonPath('data.ingredients.en', 'Flour, salt, oil, onion, smoked tuna')
             ->assertJsonPath('data.ingredients.from', 'manual');
 
+        // The item's own wording, with the defaults for its storage alongside.
+        $this->putJson("/api/items/{$item->id}/label", ['label_storage' => 'chilled', 'label_heading' => 'FRESH BAJIYA', 'label_note' => 'CONTAINS FISH', 'label_pack_unit' => 'pack'])->assertOk()
+            ->assertJsonPath('data.label_heading', 'FRESH BAJIYA')
+            ->assertJsonPath('data.label_note', 'CONTAINS FISH')
+            ->assertJsonPath('data.defaults.heading', 'CHILLED HEDHIKA')
+            ->assertJsonPath('data.defaults.storage_line', 'KEEP REFRIGERATED AT 0–4°C  •  CONSUME WITHIN 2 DAYS OF OPENING');
+        $this->putJson("/api/items/{$item->id}/label", ['label_heading' => str_repeat('x', 41)])->assertUnprocessable();
+        $this->putJson("/api/items/{$item->id}/label", ['label_heading' => null, 'label_storage' => 'frozen'])->assertOk()->assertJsonPath('data.defaults.heading', 'FROZEN HEDHIKA');
+
         $this->putJson("/api/items/{$item->id}/label", ['label_shelf_life_days' => 0])->assertUnprocessable();
         $this->putJson("/api/items/{$item->id}/label", ['label_storage' => 'warm'])->assertUnprocessable();
         $this->putJson("/api/items/{$item->id}/label", ['label_ingredients_source' => 'guess'])->assertUnprocessable();

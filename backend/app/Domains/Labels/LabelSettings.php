@@ -15,9 +15,16 @@ use App\Models\SiteSetting;
 final class LabelSettings
 {
     /** @var array<string, string> */
+    public const STORAGES = ['frozen', 'chilled', 'ambient'];
+
     public const DEFAULTS = [
+        // Sticker heading per storage (an item can carry its own instead).
         'label_header_line' => 'FROZEN HEDHIKA',
         'label_header_line_dv' => 'ފްރޯޒަން ހެދިކާ',
+        'label_header_line_chilled' => 'CHILLED HEDHIKA',
+        'label_header_line_chilled_dv' => 'ފިނިކުރި ހެދިކާ',
+        'label_header_line_ambient' => 'FRESH HEDHIKA',
+        'label_header_line_ambient_dv' => 'ތާޒާ ހެދިކާ',
         'label_brand_line_dv' => 'ބޭކް އެންޑް ގްރިލް',
         'label_storage_frozen' => 'KEEP FROZEN AT -18°C OR BELOW  •  DO NOT REFREEZE ONCE THAWED',
         'label_storage_frozen_dv' => '-18°C ނުވަތަ އެއަށްވުރެ ފިނިކޮށް ބަހައްޓަވާ  •  ފިނި ފިލުމަށްފަހު އަލުން ފްރީޒް ނުކުރައްވާ',
@@ -29,8 +36,21 @@ final class LabelSettings
         'label_contact_ways_dv' => 'ގުޅުއްވާ  •  ވަޓްސްއެޕް  •  ވައިބަރ',
         'label_landmark_dv' => 'ހ. ސަހަރާ ކައިރި',
         'label_address_dv' => 'ކަލާފާނު ހިނގުން، މާލެ',
-        'label_box_strip' => 'KEEP FROZEN AT -18°C  •  FOOD ITEMS  •  HANDLE WITH CARE  •  THIS SIDE UP',
+        // Box label per storage: heading under the name, the badge (two
+        // lines) and the handling strip. A shop's label can override the
+        // heading and strip.
         'label_box_heading' => 'FROZEN SHORT EATS · HEDHIKA',
+        'label_box_heading_chilled' => 'CHILLED SHORT EATS · HEDHIKA',
+        'label_box_heading_ambient' => 'FRESH SHORT EATS · HEDHIKA',
+        'label_box_badge_frozen' => 'KEEP FROZEN',
+        'label_box_badge_frozen_2' => '-18°C',
+        'label_box_badge_chilled' => 'KEEP CHILLED',
+        'label_box_badge_chilled_2' => '0–4°C',
+        'label_box_badge_ambient' => 'KEEP COOL',
+        'label_box_badge_ambient_2' => '& DRY',
+        'label_box_strip' => 'KEEP FROZEN AT -18°C  •  FOOD ITEMS  •  HANDLE WITH CARE  •  THIS SIDE UP',
+        'label_box_strip_chilled' => 'KEEP REFRIGERATED AT 0–4°C  •  FOOD ITEMS  •  HANDLE WITH CARE  •  THIS SIDE UP',
+        'label_box_strip_ambient' => 'FOOD ITEMS  •  KEEP COOL AND DRY  •  HANDLE WITH CARE  •  THIS SIDE UP',
         'label_precut_top' => '0',
         'label_precut_left' => '0',
         'label_precut_gutter' => '0',
@@ -68,11 +88,44 @@ final class LabelSettings
         }
     }
 
+    public static function storage(string $storage): string
+    {
+        return in_array($storage, self::STORAGES, true) ? $storage : 'frozen';
+    }
+
     public static function storageLine(string $storage, bool $dhivehi): string
     {
-        $storage = in_array($storage, ['frozen', 'chilled', 'ambient'], true) ? $storage : 'frozen';
+        return self::get('label_storage_' . self::storage($storage) . ($dhivehi ? '_dv' : ''));
+    }
 
-        return self::get('label_storage_' . $storage . ($dhivehi ? '_dv' : ''));
+    /** The sticker heading for a storage type ("FROZEN HEDHIKA"); the frozen keys kept their old names. */
+    public static function headingLine(string $storage, bool $dhivehi): string
+    {
+        $storage = self::storage($storage);
+
+        return self::get('label_header_line' . ($storage === 'frozen' ? '' : '_' . $storage) . ($dhivehi ? '_dv' : ''));
+    }
+
+    public static function boxHeading(string $storage): string
+    {
+        $storage = self::storage($storage);
+
+        return self::get('label_box_heading' . ($storage === 'frozen' ? '' : '_' . $storage));
+    }
+
+    public static function boxStrip(string $storage): string
+    {
+        $storage = self::storage($storage);
+
+        return self::get('label_box_strip' . ($storage === 'frozen' ? '' : '_' . $storage));
+    }
+
+    /** @return array{0: string, 1: string} The badge's small and big lines. */
+    public static function boxBadge(string $storage): array
+    {
+        $storage = self::storage($storage);
+
+        return [self::get('label_box_badge_' . $storage), self::get('label_box_badge_' . $storage . '_2')];
     }
 
     /** @return array{top: float, left: float, gutter: float} */

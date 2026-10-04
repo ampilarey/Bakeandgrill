@@ -58,7 +58,7 @@ final class StickerDesign
         $X = fn (float $x, float $w = 0.0): float => $dv ? $W - $x - $w : $x;
         $A = fn (string $align): string => $dv ? ['l' => 'r', 'r' => 'l', 'c' => 'c'][$align] : $align;
 
-        // Header panel, logo, brand line, "FROZEN HEDHIKA" and its rule.
+        // Header panel, logo, brand line, the heading ("FROZEN HEDHIKA", or the item's own) and its rule.
         $p[] = ['t' => 'rect', 'x' => 5, 'y' => 5, 'w' => 95, 'h' => 28, 'fill' => self::TINT, 'r' => 3];
         [$lw, $lh] = self::fit($d['logo_ratio'], 24, 24);
         if ($d['logo']) {
@@ -112,11 +112,13 @@ final class StickerDesign
             $foodBottom = $foodTop + $band;
         }
 
-        // Ingredients.
+        // Ingredients, and the item's note (allergen, serving tip) under them.
         $ingBase = $foodBottom + 5;
+        $note = $dv ? $d['note_dv'] : $d['note'];
+        $noteH = $note !== '' ? ($dv ? 4.6 : 3.6) : 0.0;
         if ($dv) {
             $p[] = ['t' => 'text', 'x' => 5, 'base' => $ingBase, 'w' => 95, 'align' => 'c', 'font' => 'dv', 'pt' => 11, 'color' => self::PRIMARY, 'text' => 'ހިމެނޭ ތަކެތި', 'bold' => 0.6];
-            $lines = $d['ingredients_dv'] !== '' ? array_slice(LabelText::wrap($d['ingredients_dv'], 9.6, 93, 'dv'), 0, 4) : [];
+            $lines = $d['ingredients_dv'] !== '' ? array_slice(LabelText::wrap($d['ingredients_dv'], 9.6, 93, 'dv'), 0, $note !== '' ? 3 : 4) : [];
             foreach ($lines as $i => $line) {
                 $p[] = ['t' => 'text', 'x' => 5, 'base' => $ingBase + 5.3 + $i * 4.4, 'w' => 95, 'align' => 'c', 'font' => 'dv', 'pt' => 9.6, 'color' => self::TEXT, 'text' => $line, 'bold' => 0.5];
             }
@@ -126,7 +128,7 @@ final class StickerDesign
             // the PDF print the same lines; a long list steps the size down.
             $lines = [];
             if ($d['ingredients_en'] !== '') {
-                $room = max(1, (int) floor((99.5 - 1 - ($ingBase + 4.68)) / 3.528) + 1);
+                $room = max(1, (int) floor((99.5 - 1 - $noteH - ($ingBase + 4.68)) / 3.528) + 1);
                 for ($pt = 7.6; $pt >= 6.2; $pt -= 0.2) {
                     $lines = LabelText::wrap($d['ingredients_en'], $pt, 85, 'j4');
                     if (count($lines) <= $room) {
@@ -143,6 +145,11 @@ final class StickerDesign
             foreach ([0, 1] as $k) {
                 $p[] = ['t' => 'line', 'x' => 11, 'y' => $ingBase + 6 + $k * 5, 'w' => 83, 'color' => self::SOFT, 'sw' => 0.21];
             }
+        }
+        if ($note !== '') {
+            $p[] = $dv
+                ? ['t' => 'text', 'x' => 5, 'base' => 97.6, 'w' => 95, 'align' => 'c', 'font' => 'dv', 'pt' => LabelText::fitPt($note, 'dv', 92, 8.6, 6.5), 'color' => self::PRIMARY, 'text' => $note, 'bold' => 0.6]
+                : ['t' => 'text', 'x' => 5, 'base' => 97.4, 'w' => 95, 'align' => 'c', 'font' => 'j7', 'pt' => LabelText::fitPt($note, 'j7', 92, 6.6, 5), 'color' => self::PRIMARY, 'text' => $note];
         }
 
         // MFG and EXP boxes (Dhivehi: made-on on the right).
@@ -184,7 +191,7 @@ final class StickerDesign
             $p[] = ['t' => 'text', 'x' => 22 + $wp, 'base' => 117.8, 'w' => 20, 'align' => 'l', 'font' => 'dv', 'pt' => 9.5, 'color' => self::TEXT, 'text' => $qtyLabel, 'bold' => 0.6];
         } else {
             $p[] = ['t' => 'text', 'x' => 6, 'base' => 117.5, 'w' => 50, 'align' => 'l', 'font' => 'j5', 'pt' => 7.2, 'color' => self::TEXT, 'text' => 'BATCH NO: ' . ($d['batch'] !== '' ? $d['batch'] : '____________')];
-            $p[] = ['t' => 'text', 'x' => 49, 'base' => 117.5, 'w' => 50, 'align' => 'r', 'font' => 'j5', 'pt' => 7.2, 'color' => self::TEXT, 'text' => 'QTY: ' . ($d['qty'] !== '' ? $d['qty'] : '______') . ' PCS'];
+            $p[] = ['t' => 'text', 'x' => 49, 'base' => 117.5, 'w' => 50, 'align' => 'r', 'font' => 'j5', 'pt' => 7.2, 'color' => self::TEXT, 'text' => 'QTY: ' . ($d['qty'] !== '' ? $d['qty'] : '______') . ' ' . $d['unit']];
         }
 
         // Storage strip.
@@ -280,7 +287,7 @@ final class StickerDesign
             $p[] = ['t' => 'text', 'x' => $pad + 1, 'base' => $by, 'w' => $iw - 2, 'align' => 'l', 'font' => 'dv', 'pt' => 7.5, 'color' => self::TEXT, 'text' => 'އަދަދު: ' . ($d['qty'] !== '' ? $d['qty'] : '........')];
         } else {
             $p[] = ['t' => 'text', 'x' => $pad + 1, 'base' => $by, 'w' => $iw - 2, 'align' => 'l', 'font' => 'j5', 'pt' => 5.8, 'color' => self::TEXT, 'text' => 'BATCH: ' . ($d['batch'] !== '' ? $d['batch'] : '__________')];
-            $p[] = ['t' => 'text', 'x' => $pad + 1, 'base' => $by, 'w' => $iw - 2, 'align' => 'r', 'font' => 'j5', 'pt' => 5.8, 'color' => self::TEXT, 'text' => 'QTY: ' . ($d['qty'] !== '' ? $d['qty'] : '____') . ' PCS'];
+            $p[] = ['t' => 'text', 'x' => $pad + 1, 'base' => $by, 'w' => $iw - 2, 'align' => 'r', 'font' => 'j5', 'pt' => 5.8, 'color' => self::TEXT, 'text' => 'QTY: ' . ($d['qty'] !== '' ? $d['qty'] : '____') . ' ' . $d['unit']];
         }
 
         // Dates.

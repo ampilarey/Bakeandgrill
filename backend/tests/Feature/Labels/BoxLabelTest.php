@@ -153,6 +153,34 @@ class BoxLabelTest extends TestCase
         $this->putJson("/api/labels/shops/{$shop}/box-label", ['items' => []])->assertForbidden();
     }
 
+    public function test_a_box_label_can_be_chilled_or_room_temperature_with_its_own_heading_and_strip(): void
+    {
+        $res = $this->postJson('/api/labels/box/url', ['storage' => 'chilled', 'customer' => 'Cafe One'])->assertOk();
+        $html = (string) $this->get($res->json('view_url'))->assertOk()->getContent();
+        foreach (['KEEP CHILLED', '0–4°C', 'CHILLED SHORT EATS · HEDHIKA', 'KEEP REFRIGERATED AT 0–4°C'] as $needle) {
+            $this->assertStringContainsString($needle, $html, $needle);
+        }
+        $this->assertStringNotContainsString('KEEP FROZEN', $html);
+
+        $res = $this->postJson('/api/labels/box/url', ['storage' => 'ambient', 'heading' => 'BAKERY · CAKES AND BREAD', 'strip' => 'FRAGILE  •  THIS SIDE UP  •  DO NOT STACK'])->assertOk();
+        $html = (string) $this->get($res->json('view_url'))->getContent();
+        foreach (['KEEP COOL', '&amp; DRY', 'BAKERY · CAKES AND BREAD', 'FRAGILE  •  THIS SIDE UP  •  DO NOT STACK'] as $needle) {
+            $this->assertStringContainsString($needle, $html, $needle);
+        }
+        $this->assertStringNotContainsString('FRESH SHORT EATS', $html);
+        $this->postJson('/api/labels/box/url', ['storage' => 'warm'])->assertUnprocessable();
+
+        // Saved with the shop, and back on its label.
+        [$delivery] = $this->delivery();
+        $shop = $delivery->trade_account_id;
+        $this->putJson("/api/labels/shops/{$shop}/box-label", ['items' => [], 'storage' => 'chilled', 'heading' => 'CHILLED CAKES'])->assertOk()
+            ->assertJsonPath('data.fields.storage', 'chilled')
+            ->assertJsonPath('data.fields.heading', 'CHILLED CAKES');
+        $this->getJson("/api/labels/deliveries/{$delivery->id}/box-label")->assertOk()->assertJsonPath('data.fields.storage', 'chilled');
+        // A blank label is frozen, as before.
+        $this->assertStringContainsString('KEEP FROZEN', (string) $this->get($this->postJson('/api/labels/box/url', [])->json('view_url'))->getContent());
+    }
+
     public function test_too_many_lines_are_refused_and_the_permission_is_needed(): void
     {
         $lines = [];

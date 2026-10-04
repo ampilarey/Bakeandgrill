@@ -20,6 +20,13 @@ type Draft = {
   label_shelf_life_days: string;
   label_storage: LabelStorage;
   label_pack_qty: string;
+  label_heading: string;
+  label_heading_dv: string;
+  label_storage_line: string;
+  label_storage_line_dv: string;
+  label_note: string;
+  label_note_dv: string;
+  label_pack_unit: string;
   label_title_media_id: number | null;
   label_title_url: string | null;
   label_photo_media_id: number | null;
@@ -34,6 +41,13 @@ const toDraft = (p: LabelProduct): Draft => ({
   label_shelf_life_days: p.label_shelf_life_days ? String(p.label_shelf_life_days) : '',
   label_storage: p.label_storage,
   label_pack_qty: p.label_pack_qty ? String(p.label_pack_qty) : '',
+  label_heading: p.label_heading ?? '',
+  label_heading_dv: p.label_heading_dv ?? '',
+  label_storage_line: p.label_storage_line ?? '',
+  label_storage_line_dv: p.label_storage_line_dv ?? '',
+  label_note: p.label_note ?? '',
+  label_note_dv: p.label_note_dv ?? '',
+  label_pack_unit: p.label_pack_unit ?? '',
   label_title_media_id: p.label_title_media_id,
   label_title_url: p.label_title_url,
   label_photo_media_id: p.label_photo_media_id,
@@ -81,6 +95,13 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
         label_shelf_life_days: draft.label_shelf_life_days ? Number(draft.label_shelf_life_days) : null,
         label_storage: draft.label_storage,
         label_pack_qty: draft.label_pack_qty ? Number(draft.label_pack_qty) : null,
+        label_heading: draft.label_heading.trim() || null,
+        label_heading_dv: draft.label_heading_dv.trim() || null,
+        label_storage_line: draft.label_storage_line.trim() || null,
+        label_storage_line_dv: draft.label_storage_line_dv.trim() || null,
+        label_note: draft.label_note.trim() || null,
+        label_note_dv: draft.label_note_dv.trim() || null,
+        label_pack_unit: draft.label_pack_unit.trim() || null,
         label_title_media_id: draft.label_title_media_id,
         label_photo_media_id: draft.label_photo_media_id,
       });
@@ -154,6 +175,23 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
           </div>
           <div><label className={labelClass} htmlFor="lbl-pack">Pieces per pack</label><input id="lbl-pack" type="number" min={1} max={999} value={draft.label_pack_qty} onChange={(e) => set('label_pack_qty', e.target.value)} className={fieldClass} placeholder="Blank: write by hand" /></div>
         </div>
+
+        {/* Owner, 2026-10-04: "it says frozen hedhika even though its not a
+            frozen hedhika". The wording that was one setting for every
+            product; empty prints the default for the storage picked above. */}
+        <fieldset className="rounded-xl border border-[var(--color-border)] p-3 space-y-3">
+          <legend className="px-1 text-sm font-bold text-[var(--color-text)]">Wording on this sticker</legend>
+          <p className="text-xs text-[var(--color-text-muted)]">Leave a box empty to print the usual wording for {({ frozen: 'frozen', chilled: 'chilled', ambient: 'room-temperature' } as const)[draft.label_storage]} items, shown in grey. Change the usual wording in Labels → Settings.</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div><label className={labelClass} htmlFor="lbl-heading">Heading (top of the sticker)</label><input id="lbl-heading" maxLength={40} value={draft.label_heading} onChange={(e) => set('label_heading', e.target.value)} className={fieldClass} placeholder={product.defaults.heading} /></div>
+            <div><label className={labelClass} htmlFor="lbl-heading-dv">Heading (Dhivehi)</label><input id="lbl-heading-dv" dir="rtl" maxLength={40} value={draft.label_heading_dv} onChange={(e) => set('label_heading_dv', e.target.value)} className={fieldClass} placeholder={product.defaults.heading_dv} /></div>
+            <div><label className={labelClass} htmlFor="lbl-storage-line">Storage line (strip above the footer)</label><input id="lbl-storage-line" maxLength={160} value={draft.label_storage_line} onChange={(e) => set('label_storage_line', e.target.value)} className={fieldClass} placeholder={product.defaults.storage_line} /></div>
+            <div><label className={labelClass} htmlFor="lbl-storage-line-dv">Storage line (Dhivehi)</label><input id="lbl-storage-line-dv" dir="rtl" maxLength={160} value={draft.label_storage_line_dv} onChange={(e) => set('label_storage_line_dv', e.target.value)} className={fieldClass} placeholder={product.defaults.storage_line_dv} /></div>
+            <div><label className={labelClass} htmlFor="lbl-note">Note under the ingredients</label><input id="lbl-note" maxLength={120} value={draft.label_note} onChange={(e) => set('label_note', e.target.value)} className={fieldClass} placeholder="Contains egg and gluten · Best served warm" /></div>
+            <div><label className={labelClass} htmlFor="lbl-note-dv">Note (Dhivehi)</label><input id="lbl-note-dv" dir="rtl" maxLength={120} value={draft.label_note_dv} onChange={(e) => set('label_note_dv', e.target.value)} className={fieldClass} /></div>
+            <div><label className={labelClass} htmlFor="lbl-unit">Unit after the quantity</label><input id="lbl-unit" maxLength={10} value={draft.label_pack_unit} onChange={(e) => set('label_pack_unit', e.target.value)} className={fieldClass} placeholder={product.defaults.unit} /><p className="text-xs text-[var(--color-text-muted)] mt-1">PCS, SLICES, PACK, G…</p></div>
+          </div>
+        </fieldset>
 
         {pictureSlot('title', 'Hand-lettered name', 'A PNG with a clear background. Without one, the name is typed in the brand font.')}
         {pictureSlot('photo', 'Food photo', 'A cut-out PNG. Without one, the item\'s cut-out from Photos is used, then the flame.')}

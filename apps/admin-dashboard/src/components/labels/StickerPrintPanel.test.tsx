@@ -21,6 +21,8 @@ const product = (id: number, name: string, extra = {}) => ({
   id, name, name_dv: null, label_enabled: true, label_ingredients_source: 'manual', label_ingredients: 'Flour', label_ingredients_dv: null,
   label_shelf_life_days: 90, label_storage: 'frozen', label_pack_qty: null, label_title_media_id: null, label_title_url: null,
   label_photo_media_id: null, label_photo_url: null, cutout_url: null, allergens: [], has_recipe: false,
+  label_heading: null, label_heading_dv: null, label_storage_line: null, label_storage_line_dv: null, label_note: null, label_note_dv: null, label_pack_unit: null,
+  defaults: { heading: 'FROZEN HEDHIKA', heading_dv: '', storage_line: 'KEEP FROZEN', storage_line_dv: '', unit: 'PCS' },
   ingredients: { en: 'Flour', dv: '', from: 'manual', recipe_en: '', recipe_dv: '' }, ...extra,
 });
 

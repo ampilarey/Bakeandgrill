@@ -3,7 +3,7 @@ import { Printer, FileDown, AlertTriangle, X, ChevronUp, Save, CheckCircle2 } fr
 import {
   boxLabelLinks, downloadLabelSheet, fetchDeliveryBoxLabel, fetchLabelProducts, fetchLabelShops, fetchShopBoxLabel,
   fetchTradeDeliveries, openLabelSheet, saveShopBoxLabel,
-  type BoxFields, type BoxPrefill, type LabelProduct, type LabelShop, type SheetLinks, type TradeDelivery,
+  type BoxFields, type BoxPrefill, type LabelProduct, type LabelShop, type LabelStorage, type SheetLinks, type TradeDelivery,
 } from '../../api';
 import { Button } from '../ui';
 import { QtyStepper } from './QtyStepper';
@@ -93,8 +93,8 @@ export function BoxLabelPanel({ deliveryId = null }: Props) {
     if (!shopId) return;
     setSaving(true); setError(null); setNotice(null);
     try {
-      const { customer, attn, contact, boat, boat2, pickup, pickup2, when2 } = fields;
-      const r = await saveShopBoxLabel(shopId, { customer, attn, contact, boat, boat2, pickup, pickup2, when2, items: lines.map(({ id, article }) => ({ id, article })) });
+      const { customer, attn, contact, boat, boat2, pickup, pickup2, when2, storage, heading: h, strip } = fields;
+      const r = await saveShopBoxLabel(shopId, { customer, attn, contact, boat, boat2, pickup, pickup2, when2, storage, heading: h, strip, items: lines.map(({ id, article }) => ({ id, article })) });
       setSaved(r.data.saved);
       setShops((s) => s.map((x) => (x.id === shopId ? { ...x, saved: true } : x)));
       setNotice(`Saved. Next time pick ${shopName} and all of this fills in, with the quantities left for you.`);
@@ -162,6 +162,23 @@ export function BoxLabelPanel({ deliveryId = null }: Props) {
       </section>
 
       <section>
+        <h3 className={heading}>Handling</h3>
+        <div className="grid gap-3 sm:grid-cols-[180px_1fr]">
+          <div>
+            <label className={labelClass} htmlFor="box-storage">Keep it</label>
+            <select id="box-storage" value={fields.storage ?? 'frozen'} onChange={(e) => setFields((f) => ({ ...f, storage: e.target.value as LabelStorage }))} className={fieldClass}>
+              <option value="frozen">Frozen (-18°C)</option>
+              <option value="chilled">Chilled (0–4°C)</option>
+              <option value="ambient">Room temperature</option>
+            </select>
+            <p className="text-xs text-[var(--color-text-muted)] mt-1">Sets the badge, and the usual heading and strip.</p>
+          </div>
+          {input('heading', 'Heading under the name', 'Usual wording for this choice')}
+          <div className="sm:col-span-2">{input('strip', 'Handling strip (bottom)', 'Usual wording for this choice')}</div>
+        </div>
+      </section>
+
+      <section>
         <h3 className={heading}>This box</h3>
         <div className="grid gap-3 grid-cols-[1fr_72px_72px] sm:grid-cols-[1fr_120px_120px]">
           {input('po', 'PO number')}
@@ -207,7 +224,7 @@ export function BoxLabelPanel({ deliveryId = null }: Props) {
       {shopId != null && (
         <section className="flex flex-wrap items-center gap-3 p-3 rounded-xl border border-dashed border-[var(--color-border)]">
           <Button variant="secondary" icon={<Save size={16} />} onClick={saveForShop} loading={saving} data-testid="box-save-shop">Save for {shopName}</Button>
-          <span className="text-xs text-[var(--color-text-muted)] flex-1 min-w-[180px]">Keeps the name, contact, boat, pick-up point, window and the item list with article names. Not the date, PO or box numbers.</span>
+          <span className="text-xs text-[var(--color-text-muted)] flex-1 min-w-[180px]">Keeps the name, contact, boat, pick-up point, window, handling wording and the item list with article names. Not the date, PO or box numbers.</span>
         </section>
       )}
       {notice && <p role="status" className="flex items-start gap-2 text-sm text-[var(--color-success)]"><CheckCircle2 size={16} className="mt-0.5 shrink-0" />{notice}</p>}

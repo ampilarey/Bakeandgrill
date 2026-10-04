@@ -245,8 +245,14 @@ final class StickerSheet
             'exp_iso' => $exp,
             'batch' => $batch,
             'qty' => $qty,
-            'storage_en' => LabelSettings::storageLine((string) $item->label_storage, false),
-            'storage_dv' => LabelSettings::storageLine((string) $item->label_storage, true),
+            'unit' => trim((string) $item->label_pack_unit) !== '' ? mb_strtoupper(trim((string) $item->label_pack_unit)) : 'PCS',
+            // The item's own wording, else the default for its storage.
+            'header_line' => trim((string) $item->label_heading) ?: LabelSettings::headingLine((string) $item->label_storage, false),
+            'header_line_dv' => trim((string) $item->label_heading_dv) ?: LabelSettings::headingLine((string) $item->label_storage, true),
+            'storage_en' => trim((string) $item->label_storage_line) ?: LabelSettings::storageLine((string) $item->label_storage, false),
+            'storage_dv' => trim((string) $item->label_storage_line_dv) ?: LabelSettings::storageLine((string) $item->label_storage, true),
+            'note' => trim((string) $item->label_note),
+            'note_dv' => trim((string) $item->label_note_dv),
         ];
     }
 
@@ -262,8 +268,6 @@ final class StickerSheet
             'mark' => $mark,
             'mark_ratio' => LabelImage::ratio($mark),
             'contact' => LabelSettings::contact(),
-            'header_line' => LabelSettings::get('label_header_line'),
-            'header_line_dv' => LabelSettings::get('label_header_line_dv'),
             'brand_line_dv' => LabelSettings::get('label_brand_line_dv'),
             'ways' => LabelSettings::get('label_contact_ways'),
             'ways_dv' => LabelSettings::get('label_contact_ways_dv'),
