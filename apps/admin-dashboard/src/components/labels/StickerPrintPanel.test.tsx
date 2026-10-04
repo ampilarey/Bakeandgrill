@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 
 const fetchLabelLayouts = vi.fn();
 const fetchLabelProducts = vi.fn();
@@ -14,6 +15,8 @@ vi.mock('../../api', () => ({
   stickerLinks: (...a: unknown[]) => stickerLinks(...a),
   openLabelSheet: (...a: unknown[]) => openLabelSheet(...a),
   printsViaPdf: () => false,
+  fetchLabelJob: vi.fn(),
+  renameLabelJob: vi.fn(),
   downloadLabelSheet: (...a: unknown[]) => downloadLabelSheet(...a),
 }));
 
@@ -45,7 +48,7 @@ describe('StickerPrintPanel', () => {
       url: '/labels/stickers?print=1&signature=x', view_url: '/labels/stickers?signature=x', pdf_url: '/labels/stickers.pdf?signature=x', expires_in_minutes: 30,
       summary: { layout: 'a4-4', label: '4 on A4', design: 'full', stickers: 4, pages: 1, per_page: 4, products: [{ id: 1, name: 'Bajiya', copies: 4, mfg: '2026-10-04', exp: '2027-01-02', shelf_life_days: 90, ingredients_from: 'manual' }] },
     });
-    render(<StickerPrintPanel />);
+    render(<MemoryRouter><StickerPrintPanel /></MemoryRouter>);
 
     expect(await screen.findByText(/Keeps 90 days/)).toBeInTheDocument();
     expect(screen.getByText(/No shelf life set, dates print blank/)).toBeInTheDocument();
@@ -76,7 +79,7 @@ describe('StickerPrintPanel', () => {
 
   it('shows the server\'s reason when a sheet is refused', async () => {
     stickerLinks.mockRejectedValue(new Error('The expiry date has already passed.'));
-    render(<StickerPrintPanel fixedItems={[{ id: 1, name: 'Bajiya' }]} productionItemId={9} defaults={{ batch: 'KP-77', exp: '2020-01-01', fill: true }} />);
+    render(<MemoryRouter><StickerPrintPanel fixedItems={[{ id: 1, name: 'Bajiya' }]} productionItemId={9} defaults={{ batch: 'KP-77', exp: '2020-01-01', fill: true }} /></MemoryRouter>);
     await waitFor(() => expect(fetchLabelLayouts).toHaveBeenCalled());
     // A production line prints its own item: no product chooser.
     expect(fetchLabelProducts).not.toHaveBeenCalled();
@@ -87,7 +90,7 @@ describe('StickerPrintPanel', () => {
 
   it('lets a production line print more than one sheet', async () => {
     stickerLinks.mockRejectedValue(new Error('x'));
-    render(<StickerPrintPanel fixedItems={[{ id: 1, name: 'Bajiya' }]} productionItemId={9} />);
+    render(<MemoryRouter><StickerPrintPanel fixedItems={[{ id: 1, name: 'Bajiya' }]} productionItemId={9} /></MemoryRouter>);
     await waitFor(() => expect(fetchLabelLayouts).toHaveBeenCalled());
     fireEvent.click(await screen.findByLabelText('How many Bajiya stickers: more'));
     fireEvent.click(screen.getByTestId('sticker-prepare'));

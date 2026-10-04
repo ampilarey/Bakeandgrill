@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Printer, FileDown, AlertTriangle, X, ChevronUp, Save, CheckCircle2 } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Printer, FileDown, AlertTriangle, X, ChevronUp, Save, CheckCircle2, Bookmark } from 'lucide-react';
 import {
-  boxLabelLinks, downloadLabelSheet, fetchDeliveryBoxLabel, fetchLabelProducts, fetchLabelShops, fetchShopBoxLabel,
-  fetchTradeDeliveries, openLabelSheet, saveShopBoxLabel,
+  boxLabelLinks, downloadLabelSheet, fetchDeliveryBoxLabel, fetchLabelJob, fetchLabelProducts, fetchLabelShops, fetchShopBoxLabel,
+  fetchTradeDeliveries, openLabelSheet, renameLabelJob, saveShopBoxLabel,
   printsViaPdf,
   type BoxFields, type BoxPrefill, type LabelProduct, type LabelShop, type LabelStorage, type SheetLinks, type TradeDelivery,
 } from '../../api';
@@ -47,6 +48,38 @@ export function BoxLabelPanel({ deliveryId = null }: Props) {
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SheetLinks | null>(null);
+  // v2 point 10: ?job=ID opens a saved box label back in this form.
+  const [params] = useSearchParams();
+  const jobParam = deliveryId == null ? params.get('job') : null;
+  const [editing, setEditing] = useState<{ id: number; name: string } | null>(null);
+  useEffect(() => {
+    if (!jobParam) return;
+    Promise.all([fetchLabelJob(Number(jobParam)), fetchLabelProducts(true)]).then(([r, prods]) => {
+      const q = r.data.request as Record<string, unknown>;
+      const f: BoxFields = {};
+      for (const k of ['customer', 'attn', 'contact', 'boat', 'boat2', 'pickup', 'pickup2', 'when', 'when2', 'po', 'box', 'of', 'heading', 'strip'] as const) {
+        if (typeof q[k] === 'string') f[k] = q[k] as string;
+      }
+      if (q.storage === 'frozen' || q.storage === 'chilled' || q.storage === 'ambient') f.storage = q.storage;
+      setFields(f);
+      const names = new Map(prods.data.map((p) => [p.id, p.name]));
+      const ls = Array.isArray(q.lines) ? (q.lines as { id: number; qty?: number; article?: string }[]) : [];
+      setLines(ls.filter((l) => names.has(Number(l.id))).map((l) => ({ id: Number(l.id), qty: Number(l.qty ?? 0), name: names.get(Number(l.id)) ?? '', article: l.article ?? '', default_article: defaultArticle(names.get(Number(l.id)) ?? '') })));
+      setDelivery(q.delivery ? Number(q.delivery) : null);
+      setEditing({ id: r.data.id, name: r.data.name });
+    }).catch(() => setError('That saved label could not be opened.'));
+  }, [jobParam]);
+
+  const rename = async (job: { id: number; name: string }) => {
+    const name = window.prompt('Name for this saved label', job.name);
+    if (!name || name.trim() === '' || name.trim() === job.name) return;
+    try {
+      const r = await renameLabelJob(job.id, name.trim());
+      setResult((s) => (s && s.job?.id === job.id ? { ...s, job: { id: job.id, name: r.data.name } } : s));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not rename it.');
+    }
+  };
 
   useEffect(() => {
     fetchLabelShops().then((r) => setShops(r.data)).catch(() => setShops([]));
@@ -63,7 +96,7 @@ export function BoxLabelPanel({ deliveryId = null }: Props) {
   };
 
   useEffect(() => {
-    if (!delivery) return;
+    if (!delivery || jobParam) return;
     setError(null); setNotice(null);
     fetchDeliveryBoxLabel(delivery).then((r) => apply(r.data)).catch((e) => setError(e instanceof Error ? e.message : 'Could not read that delivery.'));
   }, [delivery]);
@@ -117,6 +150,12 @@ export function BoxLabelPanel({ deliveryId = null }: Props) {
 
   return (
     <div className="space-y-5" data-testid="box-label-panel">
+      {editing && (
+        <p className="flex flex-wrap items-center gap-2 text-sm text-[var(--color-text-secondary)] p-3 rounded-lg bg-[var(--color-bg)]" data-testid="box-editing">
+          <Bookmark size={16} className="shrink-0 text-[var(--color-primary)]" />
+          <span>Opened from saved label <strong className="text-[var(--color-text)]">{editing.name}</strong>. Change anything and press Prepare.</span>
+        </p>
+      )}
       <section className="grid gap-3 sm:grid-cols-2">
         <div>
           <label className={labelClass} htmlFor="box-shop">Shop</label>
@@ -238,6 +277,12 @@ export function BoxLabelPanel({ deliveryId = null }: Props) {
 
       {result ? (
         <section className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] space-y-3">
+          {result.job && (
+            <p className="text-xs text-[var(--color-text-secondary)]">
+              Saved as <strong>{result.job.name}</strong> on the Saved labels tab.{' '}
+              <button type="button" className="underline text-[var(--color-primary)]" onClick={() => rename(result.job!)}>Rename</button>
+            </p>
+          )}
           <p className="text-xs text-[var(--color-text-muted)]">{printsViaPdf() ? 'Print opens the PDF: use Share → Print on A4, and keep the scale at 100%, not "fit".' : 'Print on A4 at actual size (100%).'} These links work for {result.expires_in_minutes} minutes.</p>
           <div className="labels-actions">
             <div className="labels-actions-row flex flex-wrap gap-2">

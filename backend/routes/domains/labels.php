@@ -22,6 +22,23 @@ Route::get('/labels/layouts', [LabelsController::class, 'layouts'])
     ->middleware('permission:labels.print');
 Route::post('/labels/stickers/url', [LabelsController::class, 'stickersUrl'])
     ->middleware(['permission:labels.print', 'throttle:60,1']);
+Route::get('/labels/jobs', [LabelsController::class, 'jobs'])
+    ->middleware('permission:labels.print');
+Route::get('/labels/jobs/{job}', [LabelsController::class, 'job'])
+    ->middleware('permission:labels.print')
+    ->whereNumber('job');
+Route::put('/labels/jobs/{job}', [LabelsController::class, 'updateJob'])
+    ->middleware('permission:labels.print')
+    ->whereNumber('job');
+Route::post('/labels/jobs/{job}/print', [LabelsController::class, 'printJob'])
+    ->middleware(['permission:labels.print', 'throttle:60,1'])
+    ->whereNumber('job');
+Route::post('/labels/jobs/{job}/duplicate', [LabelsController::class, 'duplicateJob'])
+    ->middleware('permission:labels.print')
+    ->whereNumber('job');
+Route::delete('/labels/jobs/{job}', [LabelsController::class, 'destroyJob'])
+    ->middleware('permission:labels.print')
+    ->whereNumber('job');
 Route::get('/labels/prints', [LabelsController::class, 'prints'])
     ->middleware('permission:labels.print');
 Route::get('/labels/settings', [LabelsController::class, 'settings'])

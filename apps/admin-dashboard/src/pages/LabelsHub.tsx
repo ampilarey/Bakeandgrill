@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Search, Printer, FileDown, Pencil, Copy, Trash2, Tag } from 'lucide-react';
 import { HubPage, hubPermissions, type HubTab } from '../components/HubPage';
 import { StickerPrintPanel } from '../components/labels/StickerPrintPanel';
 import { BoxLabelPanel } from '../components/labels/BoxLabelPanel';
@@ -8,8 +9,9 @@ import { Button, Card, useToast } from '../components/ui';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { useIsMobile } from '../hooks/useIsMobile';
 import {
-  fetchLabelLayouts, fetchLabelPrints, fetchLabelProducts, fetchLabelSettings, saveLabelSettings, updateItemLabel,
-  type LabelPrintRow, type LabelProduct, type LabelSettingsMap, type LabelStorage, type IngredientsSource,
+  deleteLabelJob, downloadLabelSheet, duplicateLabelJob, fetchLabelJobs, fetchLabelLayouts, fetchLabelPrints, fetchLabelProducts, fetchLabelSettings,
+  openLabelSheet, printLabelJob, renameLabelJob, saveLabelSettings, updateItemLabel,
+  type LabelJob, type LabelPrintRow, type LabelProduct, type LabelSettingsMap, type LabelStorage, type IngredientsSource, type StickerSummary,
 } from '../api';
 
 /*
@@ -20,6 +22,102 @@ import {
  */
 
 const KIND: Record<LabelPrintRow['kind'], string> = { sticker_en: 'Stickers', sticker_dv: 'Stickers (ދިވެހި)', box_label: 'Box label' };
+
+/*
+ * Saved labels (v2 point 10; owner: "created labels must be saved,
+ * redownloaded, reprinted, reedited"). Every prepared print is kept with
+ * its request; from here it prints again, downloads, opens back in the
+ * form, is copied, renamed or removed. The print log sits beneath.
+ */
+function jobLine(j: LabelJob): string {
+  if (!j.summary) return j.kind === 'box' ? 'Box label' : 'Stickers';
+  if (j.kind === 'box') {
+    const b = j.summary as { customer: string; lines: { name: string; qty: number }[] };
+    return `Box label · ${b.customer || 'blank'} · ${b.lines.length} ${b.lines.length === 1 ? 'line' : 'lines'}`;
+  }
+  const st = j.summary as StickerSummary;
+  return `${st.stickers} ${st.stickers === 1 ? 'sticker' : 'stickers'} · ${st.label} · ${st.products.map((p) => `${p.name} ×${p.copies}`).join(', ')}`;
+}
+
+function SavedLabelsTab() {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [rows, setRows] = useState<LabelJob[]>([]);
+  const [page, setPage] = useState(1);
+  const [last, setLast] = useState(1);
+  const [q, setQ] = useState('');
+  const [busy, setBusy] = useState<number | null>(null);
+  const load = () => fetchLabelJobs({ page, q: q.trim() || undefined }).then((r) => { setRows(r.data); setLast(r.last_page); }).catch(() => setRows([]));
+  useEffect(() => { void load(); }, [page, q]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const print = async (j: LabelJob, pdf: boolean) => {
+    setBusy(j.id);
+    try {
+      const r = await printLabelJob(j.id);
+      if (pdf) downloadLabelSheet(r.pdf_url); else openLabelSheet(r.url, r.pdf_url);
+      void load();
+    } catch (e) {
+      toast('error', e instanceof Error ? e.message : 'Could not print it.');
+    } finally {
+      setBusy(null);
+    }
+  };
+  const edit = (j: LabelJob) => navigate(`/labels/${j.kind === 'box' ? 'box' : 'stickers'}?job=${j.id}`);
+  const copy = async (j: LabelJob) => {
+    try { const r = await duplicateLabelJob(j.id); edit(r.data); } catch (e) { toast('error', e instanceof Error ? e.message : 'Could not copy it.'); }
+  };
+  const rename = async (j: LabelJob) => {
+    const name = window.prompt('Name for this saved label', j.name);
+    if (!name || !name.trim() || name.trim() === j.name) return;
+    try { await renameLabelJob(j.id, name.trim()); void load(); } catch (e) { toast('error', e instanceof Error ? e.message : 'Could not rename it.'); }
+  };
+  const remove = async (j: LabelJob) => {
+    if (!window.confirm(`Remove the saved label "${j.name}"? Prints already made are kept in the log.`)) return;
+    try { await deleteLabelJob(j.id); void load(); } catch (e) { toast('error', e instanceof Error ? e.message : 'Could not remove it.'); }
+  };
+  const btn = 'w-11 h-11 inline-flex items-center justify-center rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] disabled:opacity-40';
+
+  return (
+    <div className="space-y-5">
+      <Card padding="none" header={<div className="flex flex-wrap items-center gap-3"><div className="flex-1 min-w-[160px]"><h3 className="font-bold text-[var(--color-text)]">Saved labels</h3><p className="text-xs text-[var(--color-text-muted)] mt-1">Every label you prepare is kept here. Print it again (stickers get today's date), download the PDF, open it to change, copy, rename or remove.</p></div>
+        <div className="relative w-full sm:w-64"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] pointer-events-none" /><input type="search" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} placeholder="Find a saved label" aria-label="Find a saved label" className="h-10 min-h-[44px] pl-9 pr-3 rounded-lg border border-[var(--color-border)] bg-white text-sm w-full" /></div></div>}>
+        <ul className="divide-y divide-[var(--color-border-light)]" data-testid="saved-labels">
+          {rows.map((j) => (
+            <li key={j.id} className="px-4 py-3">
+              <div className="flex items-start gap-3">
+                <Tag size={16} className="mt-1 shrink-0 text-[var(--color-primary)]" />
+                <div className="flex-1 min-w-0">
+                  <button type="button" onClick={() => rename(j)} className="text-left text-sm font-semibold text-[var(--color-text)] hover:underline" title="Rename">{j.name}</button>
+                  <div className="text-xs text-[var(--color-text-secondary)]">{jobLine(j)}</div>
+                  <div className="text-xs text-[var(--color-text-muted)]">{j.print_count ? `Printed ${j.print_count} ${j.print_count === 1 ? 'time' : 'times'}${j.last_printed_at ? `, last ${when(j.last_printed_at)}` : ''}` : 'Not printed yet'}{j.created_by ? ` · ${j.created_by}` : ''}</div>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-1 mt-1 pl-7">
+                <Button size="sm" icon={<Printer size={14} />} loading={busy === j.id} onClick={() => print(j, false)} aria-label={`Print ${j.name}`}>Print</Button>
+                <button type="button" className={btn} onClick={() => print(j, true)} aria-label={`Download PDF of ${j.name}`}><FileDown size={16} /></button>
+                <button type="button" className={btn} onClick={() => edit(j)} aria-label={`Edit ${j.name}`}><Pencil size={16} /></button>
+                <button type="button" className={btn} onClick={() => copy(j)} aria-label={`Copy ${j.name}`}><Copy size={16} /></button>
+                <button type="button" className={btn} onClick={() => remove(j)} aria-label={`Remove ${j.name}`}><Trash2 size={16} /></button>
+              </div>
+            </li>
+          ))}
+          {rows.length === 0 && <li className="px-4 py-8 text-center text-sm text-[var(--color-text-muted)]">{q ? 'No saved label matches.' : 'Nothing saved yet: prepare a label on Pack stickers or Box labels and it lands here.'}</li>}
+        </ul>
+        {last > 1 && (
+          <div className="flex items-center justify-between gap-2 px-4 py-3 border-t border-[var(--color-border-light)]">
+            <Button variant="secondary" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Newer</Button>
+            <span className="text-xs text-[var(--color-text-muted)]">Page {page} of {last}</span>
+            <Button variant="secondary" disabled={page >= last} onClick={() => setPage((p) => p + 1)}>Older</Button>
+          </div>
+        )}
+      </Card>
+      <details className="group">
+        <summary className="cursor-pointer text-sm font-semibold text-[var(--color-text-secondary)] py-2">Print log: every sheet printed, by whom, with its dates and batch</summary>
+        <div className="mt-2"><HistoryTab /></div>
+      </details>
+    </div>
+  );
+}
 
 const when = (iso: string) => new Date(iso).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 
@@ -341,12 +439,12 @@ export const LABELS_TABS: HubTab[] = [
   { id: 'stickers', label: 'Pack stickers', permissions: ['labels.print', 'labels.manage'], desc: 'Stickers for frozen packs, in English or Dhivehi, on any label stock', render: () => <Card padding="sm" className="labels-sticky"><StickerPrintPanel /></Card> },
   { id: 'box', label: 'Box labels', permissions: ['labels.print', 'labels.manage'], desc: 'A4 label for a delivery box, blank or from a wholesale delivery', render: () => <Card padding="sm" className="labels-sticky"><BoxLabelPanel /></Card> },
   { id: 'types', label: 'Types & brands', permissions: ['labels.print', 'labels.manage'], desc: 'Kinds of food a label is for, with their wording, and the brands they are from', render: () => <TypesTabWithPermission /> },
-  { id: 'history', label: 'History', permissions: ['labels.print', 'labels.manage'], desc: 'Every sheet printed, by whom, with its dates and batch', render: () => <HistoryTab /> },
+  { id: 'saved', label: 'Saved labels', permissions: ['labels.print', 'labels.manage'], desc: 'Every label prepared, to print again, download, change, copy or rename; the print log beneath', render: () => <SavedLabelsTab /> },
   { id: 'settings', label: 'Settings', permissions: ['labels.print', 'labels.manage'], desc: 'Which products print, shelf life, storage and the label wording', render: () => <SettingsTabWithPermission /> },
 ];
 
 export const LABELS_HUB_PERMISSIONS = hubPermissions(LABELS_TABS);
 
 export function LabelsHub() {
-  return <HubPage base="/labels" section="Manage" title="Labels" tabs={LABELS_TABS} />;
+  return <HubPage base="/labels" section="Manage" title="Labels" tabs={LABELS_TABS} aliases={{ history: 'saved' }} />;
 }

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Printer, FileDown, AlertTriangle, Search } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Printer, FileDown, AlertTriangle, Search, Bookmark } from 'lucide-react';
 import {
-  downloadLabelSheet, fetchLabelLayouts, fetchLabelProducts, fetchLabelTypes, openLabelSheet, printsViaPdf, stickerLinks,
+  downloadLabelSheet, fetchLabelJob, fetchLabelLayouts, fetchLabelProducts, fetchLabelTypes, openLabelSheet, printsViaPdf, renameLabelJob, stickerLinks,
   type LabelLayout, type LabelProduct, type LabelType, type SheetLinks, type StickerSummary,
 } from '../../api';
 import { Button } from '../ui';
@@ -57,6 +58,42 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
   const [result, setResult] = useState<(SheetLinks & { summary: StickerSummary }) | null>(null);
   const [query, setQuery] = useState('');
   const summaryRef = useRef<HTMLElement>(null);
+  // v2 point 10: ?job=ID opens a saved label back in this form.
+  const [params] = useSearchParams();
+  const jobParam = fixedItems ? null : params.get('job');
+  const [editing, setEditing] = useState<{ id: number; name: string } | null>(null);
+  useEffect(() => {
+    if (!jobParam) return;
+    fetchLabelJob(Number(jobParam)).then((r) => {
+      const q = r.data.request as Record<string, unknown>;
+      const items = Array.isArray(q.items) ? (q.items as { id: number; copies: number }[]) : [];
+      setPicked(Object.fromEntries(items.map((i) => [Number(i.id), Number(i.copies)])));
+      if (q.lang === 'dv' || q.lang === 'en') setLang(q.lang);
+      if (typeof q.layout === 'string') setLayout(q.layout);
+      if (q.layout === 'single-custom') { if (q.w) setCustomW(Number(q.w)); if (q.h) setCustomH(Number(q.h)); }
+      if (q.layout === 'single-round-custom' && q.w) setCustomD(Number(q.w));
+      setFill(Boolean(q.fill));
+      if (typeof q.mfg === 'string' && q.mfg) setMfg(q.mfg);
+      setExp(typeof q.exp === 'string' ? q.exp : '');
+      setBatch(typeof q.batch === 'string' ? q.batch : '');
+      setQty(q.qty != null && q.qty !== '' ? String(q.qty) : '');
+      setAsType(q.type ? Number(q.type) : null);
+      setRounded(Boolean(q.rounded));
+      setEditing({ id: r.data.id, name: r.data.name });
+    }).catch(() => setError('That saved label could not be opened.'));
+  }, [jobParam]);
+
+  const rename = async (job: { id: number; name: string }) => {
+    const name = window.prompt('Name for this saved label', job.name);
+    if (!name || name.trim() === '' || name.trim() === job.name) return;
+    try {
+      const r = await renameLabelJob(job.id, name.trim());
+      setEditing((e) => (e && e.id === job.id ? { ...e, name: r.data.name } : e));
+      setResult((s) => (s && s.job?.id === job.id ? { ...s, job: { id: job.id, name: r.data.name } } : s));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not rename it.');
+    }
+  };
 
   useEffect(() => {
     fetchLabelLayouts().then((r) => setLayouts(r.data)).catch(() => setLayouts([]));
@@ -104,6 +141,12 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
 
   return (
     <div className="space-y-5" data-testid="sticker-print-panel">
+      {editing && (
+        <p className="flex flex-wrap items-center gap-2 text-sm text-[var(--color-text-secondary)] p-3 rounded-lg bg-[var(--color-bg)]" data-testid="sticker-editing">
+          <Bookmark size={16} className="shrink-0 text-[var(--color-primary)]" />
+          <span>Opened from saved label <strong className="text-[var(--color-text)]">{editing.name}</strong>. Change anything and press Prepare; the same settings go back to the same saved label, different ones make a new one.</span>
+        </p>
+      )}
       {!fixedItems && (
         <section>
           <div className="flex items-center justify-between gap-2 mb-2">
@@ -250,6 +293,12 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
               </li>
             ))}
           </ul>
+          {result.job && (
+            <p className="text-xs text-[var(--color-text-secondary)]">
+              Saved as <strong>{result.job.name}</strong> on the Saved labels tab, to print again or change later.{' '}
+              <button type="button" className="underline text-[var(--color-primary)]" onClick={() => rename(result.job!)}>Rename</button>
+            </p>
+          )}
           <p className="text-xs text-[var(--color-text-muted)]">{printsViaPdf() ? 'Print opens the PDF: use Share → Print, and keep the scale at 100%, not "fit".' : 'Print at actual size (100%).'} These links work for {result.expires_in_minutes} minutes.</p>
           <div className="labels-actions">
             <div className="labels-actions-row flex flex-wrap gap-2">

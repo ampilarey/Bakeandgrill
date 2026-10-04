@@ -94,7 +94,15 @@ export type StickerSummary = {
   products: { id: number; name: string; copies: number; mfg: string | null; exp: string | null; shelf_life_days: number | null; ingredients_from: string }[];
 };
 
-export type SheetLinks = { url: string; view_url: string; pdf_url: string; expires_in_minutes: number };
+export type SheetLinks = { url: string; view_url: string; pdf_url: string; expires_in_minutes: number; job?: { id: number; name: string } };
+
+/** A saved label (v2 point 10): a prepared print kept with its request. */
+export type LabelJob = {
+  id: number; kind: 'stickers' | 'box'; name: string;
+  summary: (StickerSummary | { label: string; customer: string; when: string; lines: { name: string; qty: number }[] }) | null;
+  print_count: number; last_printed_at: string | null; created_at: string; created_by: string | null;
+};
+export type LabelJobFull = LabelJob & { request: Record<string, unknown> };
 
 export type BoxFields = {
   customer?: string; attn?: string; contact?: string;
@@ -179,6 +187,35 @@ export function saveShopBoxLabel(accountId: number, body: BoxFields & { items: {
 
 export function fetchProductionStickers(productionItemId: number) {
   return req<{ data: { pi: number; item: { id: number; name: string; label_enabled: boolean; label_shelf_life_days: number | null } | null; batch: string; exp: string | null; mfg: string | null; qty: number } }>(`/labels/production-items/${productionItemId}`);
+}
+
+export function fetchLabelJobs(params: { page?: number; kind?: string; q?: string } = {}) {
+  const qs = new URLSearchParams();
+  if (params.page) qs.set('page', String(params.page));
+  if (params.kind) qs.set('kind', params.kind);
+  if (params.q) qs.set('q', params.q);
+  return req<{ data: LabelJob[]; current_page: number; last_page: number; total: number }>(`/labels/jobs${qs.toString() ? `?${qs}` : ''}`);
+}
+
+export function fetchLabelJob(id: number) {
+  return req<{ data: LabelJobFull }>(`/labels/jobs/${id}`);
+}
+
+export function renameLabelJob(id: number, name: string) {
+  return req<{ data: LabelJob }>(`/labels/jobs/${id}`, { method: 'PUT', body: JSON.stringify({ name }) });
+}
+
+/** Print a saved label again: stickers with dates get today's made-on date. */
+export function printLabelJob(id: number) {
+  return req<SheetLinks & { summary: unknown }>(`/labels/jobs/${id}/print`, { method: 'POST' });
+}
+
+export function duplicateLabelJob(id: number) {
+  return req<{ data: LabelJobFull }>(`/labels/jobs/${id}/duplicate`, { method: 'POST' });
+}
+
+export function deleteLabelJob(id: number) {
+  return req<{ ok: true }>(`/labels/jobs/${id}`, { method: 'DELETE' });
 }
 
 export function fetchLabelPrints(params: { page?: number; kind?: string } = {}) {

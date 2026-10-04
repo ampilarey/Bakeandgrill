@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 
 const fetchLabelShops = vi.fn();
 const fetchShopBoxLabel = vi.fn();
@@ -19,6 +20,8 @@ vi.mock('../../api', () => ({
   boxLabelLinks: (...a: unknown[]) => boxLabelLinks(...a),
   openLabelSheet: vi.fn(),
   printsViaPdf: () => false,
+  fetchLabelJob: vi.fn(),
+  renameLabelJob: vi.fn(),
   downloadLabelSheet: vi.fn(),
 }));
 
@@ -44,7 +47,7 @@ describe('BoxLabelPanel', () => {
   });
 
   it('fills the whole label from the shop and saves changes back to it', async () => {
-    render(<BoxLabelPanel />);
+    render(<MemoryRouter><BoxLabelPanel /></MemoryRouter>);
     await screen.findByRole('option', { name: 'NH Kuda Rah ✓' });
     fireEvent.change(screen.getByLabelText('Shop'), { target: { value: '7' } });
 
@@ -79,7 +82,7 @@ describe('BoxLabelPanel', () => {
 
   it('opened from a delivery fills from it, shop and all', async () => {
     fetchDeliveryBoxLabel.mockResolvedValue({ data: { ...prefill, delivery: 5, delivery_number: 'TD-5', lines: [{ ...prefill.lines[1], qty: 40 }] } });
-    render(<BoxLabelPanel deliveryId={5} />);
+    render(<MemoryRouter><BoxLabelPanel deliveryId={5} /></MemoryRouter>);
     expect(await screen.findByDisplayValue('Seamaster 17')).toBeInTheDocument();
     expect(screen.getByLabelText('Quantity of Bajiya (0 to write by hand)')).toHaveValue(40);
     expect(screen.queryByLabelText(/Delivery \(optional/)).not.toBeInTheDocument();

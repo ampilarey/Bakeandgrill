@@ -16,6 +16,7 @@ use App\Http\Controllers\Labels\LabelSheetController;
 use App\Models\Item;
 use App\Models\KitchenProductionItem;
 use App\Models\LabelBrand;
+use App\Models\LabelJob;
 use App\Models\LabelPrint;
 use App\Models\LabelType;
 use App\Models\Media;
@@ -23,6 +24,7 @@ use App\Models\TradeAccount;
 use App\Models\TradeDelivery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 use InvalidArgumentException;
 
@@ -53,36 +55,58 @@ class LabelsController extends Controller
         ])->values()]);
     }
 
+    public const STICKER_RULES = [
+        'items' => 'required|array|min:1|max:60',
+        'items.*.id' => 'required|integer|exists:items,id',
+        'items.*.copies' => 'required|integer|min:1|max:' . StickerSheet::MAX_STICKERS,
+        'lang' => 'sometimes|in:en,dv',
+        'w' => 'nullable|numeric',
+        'h' => 'nullable|numeric',
+        'fill' => 'sometimes|boolean',
+        'mfg' => 'nullable|date_format:Y-m-d',
+        'exp' => 'nullable|date_format:Y-m-d',
+        'batch' => 'nullable|string|max:30',
+        'qty' => 'nullable|integer|min:1|max:9999',
+        'pi' => 'nullable|integer|exists:kitchen_production_items,id',
+        'type' => 'nullable|integer|exists:label_types,id',
+        'rounded' => 'sometimes|boolean',
+        'preview' => 'sometimes|boolean',
+    ];
+
+    /** The sticker request keys a saved label keeps. */
+    private const STICKER_KEYS = ['items', 'lang', 'layout', 'w', 'h', 'fill', 'mfg', 'exp', 'batch', 'qty', 'pi', 'type', 'rounded'];
+
     /**
      * Signed links to a sheet of pack stickers, after checking the request
-     * (dates, sizes, counts) and writing the print log.
+     * (dates, sizes, counts), writing the print log and saving the label
+     * (v2 point 10) so it can be printed again or edited.
      */
     public function stickersUrl(Request $request): JsonResponse
     {
-        $request->validate([
-            'items' => 'required|array|min:1|max:60',
-            'items.*.id' => 'required|integer|exists:items,id',
-            'items.*.copies' => 'required|integer|min:1|max:' . StickerSheet::MAX_STICKERS,
-            'lang' => 'sometimes|in:en,dv',
-            'layout' => ['sometimes', Rule::in(array_keys(StickerLayouts::LAYOUTS))],
-            'w' => 'nullable|numeric',
-            'h' => 'nullable|numeric',
-            'fill' => 'sometimes|boolean',
-            'mfg' => 'nullable|date_format:Y-m-d',
-            'exp' => 'nullable|date_format:Y-m-d',
-            'batch' => 'nullable|string|max:30',
-            'qty' => 'nullable|integer|min:1|max:9999',
-            'pi' => 'nullable|integer|exists:kitchen_production_items,id',
-            'type' => 'nullable|integer|exists:label_types,id',
-            'rounded' => 'sometimes|boolean',
-            'preview' => 'sometimes|boolean',
-        ]);
+        $request->validate(self::STICKER_RULES + ['layout' => ['sometimes', Rule::in(array_keys(StickerLayouts::LAYOUTS))]]);
         try {
             $req = StickerSheet::normalise($request->all());
         } catch (InvalidArgumentException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
+        $preview = $request->boolean('preview');
+        $out = $this->stickerLinks($req, $request->user()?->id, $preview);
+        if (!$preview) {
+            $out['job'] = $this->rememberJob('stickers', array_intersect_key($request->all(), array_flip(self::STICKER_KEYS)), $out['summary'], $request->user()?->id);
+        }
 
+        return response()->json($out);
+    }
+
+    /**
+     * The links for a normalised sticker request, and the print log entries
+     * unless it is a preview (which prints nothing).
+     *
+     * @param array<string, mixed> $req from StickerSheet::normalise()
+     * @return array<string, mixed>
+     */
+    private function stickerLinks(array $req, ?int $userId, bool $preview = false): array
+    {
         $summary = $this->stickers->summary($req);
         $query = [
             'items' => StickerSheet::itemsParam($req['items']),
@@ -100,8 +124,7 @@ class LabelsController extends Controller
             'rounded' => $req['rounded'] ? 1 : null,
         ];
 
-        // A preview in the item editor prints nothing, so it is not logged.
-        if (!$request->boolean('preview')) {
+        if (!$preview) {
             foreach ($summary['products'] as $p) {
                 LabelPrint::create([
                     'kind' => $req['lang'] === 'dv' ? 'sticker_dv' : 'sticker_en',
@@ -115,23 +138,23 @@ class LabelsController extends Controller
                     'exp_date' => $p['exp'],
                     'batch_code' => $req['batch'] !== '' ? $req['batch'] : null,
                     'pack_qty' => $req['qty'] !== '' ? (int) $req['qty'] : null,
-                    'printed_by' => $request->user()?->id,
+                    'printed_by' => $userId,
                     'output' => 'print',
                 ]);
             }
         }
 
-        return response()->json([
-            'url' => LabelSheetController::link('labels.stickers', $query + ($request->boolean('preview') ? ['preview' => 1] : ['print' => 1])),
+        return [
+            'url' => LabelSheetController::link('labels.stickers', $query + ($preview ? ['preview' => 1] : ['print' => 1])),
             'view_url' => LabelSheetController::link('labels.stickers', $query),
             'pdf_url' => LabelSheetController::link('labels.stickers.pdf', $query),
             'expires_in_minutes' => LabelSheetController::LINK_MINUTES,
             'summary' => $summary,
-        ]);
+        ];
     }
 
-    /** Signed links to a box label, after checking it and writing the print log. */
-    public function boxUrl(Request $request): JsonResponse
+    /** @return array<string, mixed> */
+    public static function boxRules(): array
     {
         $rules = [
             'delivery' => 'nullable|integer|exists:trade_deliveries,id',
@@ -144,13 +167,31 @@ class LabelsController extends Controller
         foreach (BoxLabel::FIELDS as $key) {
             $rules[$key] = $key === 'storage' ? ['nullable', Rule::in(LabelSettings::STORAGES)] : 'nullable|string|max:' . BoxLabel::limit($key);
         }
-        $data = $request->validate($rules);
+
+        return $rules;
+    }
+
+    /** Signed links to a box label, after checking it, writing the print log and saving the label. */
+    public function boxUrl(Request $request): JsonResponse
+    {
+        $data = $request->validate(self::boxRules());
         try {
             $req = BoxLabel::normalise($data);
         } catch (InvalidArgumentException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
+        $out = $this->boxLinks($req, $request->user()?->id);
+        $out['job'] = $this->rememberJob('box', $data, $out['summary'], $request->user()?->id);
 
+        return response()->json($out);
+    }
+
+    /**
+     * @param array<string, mixed> $req from BoxLabel::normalise()
+     * @return array<string, mixed>
+     */
+    private function boxLinks(array $req, ?int $userId): array
+    {
         $query = array_merge(
             array_filter($req['fields'], fn ($v) => $v !== ''),
             [
@@ -166,16 +207,158 @@ class LabelsController extends Controller
             'trade_delivery_id' => $req['delivery'],
             'copies' => 1,
             'details' => ['fields' => array_filter($req['fields'], fn ($v) => $v !== ''), 'lines' => array_map(fn ($l) => array_filter($l, fn ($v) => $v !== ''), $req['lines'])],
-            'printed_by' => $request->user()?->id,
+            'printed_by' => $userId,
             'output' => 'print',
         ]);
+        $names = Item::query()->whereIn('id', array_column($req['lines'], 'id'))->pluck('name', 'id');
 
-        return response()->json([
+        return [
             'url' => LabelSheetController::link('labels.box', $query + ['print' => 1]),
             'view_url' => LabelSheetController::link('labels.box', $query),
             'pdf_url' => LabelSheetController::link('labels.box.pdf', $query),
             'expires_in_minutes' => LabelSheetController::LINK_MINUTES,
-        ]);
+            'summary' => [
+                'label' => 'Box label',
+                'customer' => $req['fields']['customer'],
+                'when' => $req['fields']['when'],
+                'lines' => array_values(array_map(fn ($l) => ['name' => (string) ($names[$l['id']] ?? ''), 'qty' => $l['qty']], $req['lines'])),
+            ],
+        ];
+    }
+
+    // ---- Saved labels (v2 point 10) ----
+
+    /**
+     * Keep a prepared print as a saved label. The same request prepared
+     * again is the same label printed again, not a second copy.
+     *
+     * @param array<string, mixed> $request the request as sent (not normalised), so it can be edited
+     * @param array<string, mixed> $summary
+     * @return array{id: int, name: string}
+     */
+    private function rememberJob(string $kind, array $request, array $summary, ?int $userId): array
+    {
+        $hash = LabelJob::hashOf($kind, $request);
+        $job = LabelJob::query()->where('request_hash', $hash)->first();
+        if ($job === null) {
+            $job = LabelJob::query()->create([
+                'kind' => $kind,
+                'name' => $this->jobName($kind, $summary),
+                'request' => $request,
+                'summary' => $summary,
+                'request_hash' => $hash,
+                'created_by' => $userId,
+            ]);
+        }
+        $job->forceFill(['print_count' => $job->print_count + 1, 'last_printed_at' => now(), 'summary' => $summary])->save();
+
+        return ['id' => $job->id, 'name' => $job->name];
+    }
+
+    /** @param array<string, mixed> $summary */
+    private function jobName(string $kind, array $summary): string
+    {
+        if ($kind === 'box') {
+            $who = trim((string) ($summary['customer'] ?? '')) ?: 'blank';
+
+            return mb_substr('Box label · ' . $who . ' · ' . now()->format('j M'), 0, 80);
+        }
+        $parts = array_map(fn ($p) => $p['name'] . ' ×' . $p['copies'], array_slice($summary['products'] ?? [], 0, 3));
+        $more = count($summary['products'] ?? []) - 3;
+        $name = implode(', ', $parts) . ($more > 0 ? " +{$more}" : '') . ' · ' . ($summary['label'] ?? '') . ' · ' . now()->format('j M');
+
+        return mb_substr($name, 0, 80);
+    }
+
+    public function jobs(Request $request): JsonResponse
+    {
+        $rows = LabelJob::query()
+            ->with('creator:id,name')
+            ->when($request->filled('kind'), fn ($q) => $q->where('kind', $request->string('kind')))
+            ->when($request->filled('q'), fn ($q) => $q->where('name', 'like', '%' . $request->string('q') . '%'))
+            ->orderByDesc('last_printed_at')
+            ->paginate(min(100, max(10, $request->integer('per_page', 30))));
+
+        return response()->json($rows->through(fn (LabelJob $j) => $this->presentJob($j)));
+    }
+
+    public function job(LabelJob $job): JsonResponse
+    {
+        return response()->json(['data' => $this->presentJob($job->load('creator:id,name')) + ['request' => $job->request]]);
+    }
+
+    public function updateJob(Request $request, LabelJob $job): JsonResponse
+    {
+        $data = $request->validate(['name' => 'required|string|max:80']);
+        $job->forceFill(['name' => trim($data['name'])])->save();
+
+        return response()->json(['data' => $this->presentJob($job->load('creator:id,name'))]);
+    }
+
+    public function duplicateJob(LabelJob $job): JsonResponse
+    {
+        $copy = $job->replicate(['print_count', 'last_printed_at']);
+        $copy->forceFill(['name' => mb_substr($job->name . ' (copy)', 0, 80), 'request_hash' => LabelJob::hashOf($job->kind, $job->request + ['copy' => $job->id . ':' . microtime(true)]), 'print_count' => 0, 'last_printed_at' => null, 'created_by' => request()->user()?->id])->save();
+
+        return response()->json(['data' => $this->presentJob($copy->load('creator:id,name')) + ['request' => $copy->request]], 201);
+    }
+
+    public function destroyJob(LabelJob $job): JsonResponse
+    {
+        $job->delete();
+
+        return response()->json(['ok' => true]);
+    }
+
+    /**
+     * Print a saved label again. Stickers with dates filled are printed
+     * with today's made-on date (and the expiry worked out from it) unless
+     * the saved expiry is still ahead; a label is a new batch, not the old
+     * one. Edit the label to print it with other dates.
+     */
+    public function printJob(Request $request, LabelJob $job): JsonResponse
+    {
+        $data = $job->request;
+        if ($job->kind === 'stickers') {
+            if (!empty($data['fill'])) {
+                $data['mfg'] = Carbon::today()->toDateString();
+                if (!empty($data['exp']) && Carbon::parse($data['exp'])->lessThan(Carbon::today())) {
+                    $data['exp'] = null;
+                }
+            }
+            try {
+                $req = StickerSheet::normalise($data);
+            } catch (InvalidArgumentException $e) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+            $out = $this->stickerLinks($req, $request->user()?->id);
+        } else {
+            try {
+                $req = BoxLabel::normalise($data);
+            } catch (InvalidArgumentException $e) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+            $out = $this->boxLinks($req, $request->user()?->id);
+        }
+        $job->forceFill(['print_count' => $job->print_count + 1, 'last_printed_at' => now(), 'summary' => $out['summary']])->save();
+        $out['job'] = ['id' => $job->id, 'name' => $job->name];
+
+        return response()->json($out);
+    }
+
+    /** @return array<string, mixed> */
+    private function presentJob(LabelJob $job): array
+    {
+        return [
+            'id' => $job->id,
+            'kind' => $job->kind,
+            'name' => $job->name,
+            'summary' => $job->summary,
+            'print_count' => $job->print_count,
+            'last_printed_at' => $job->last_printed_at?->toIso8601String(),
+            'created_at' => $job->created_at?->toIso8601String(),
+            'created_by' => $job->creator?->name,
+        ];
     }
 
     /**
