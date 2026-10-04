@@ -124,12 +124,15 @@ class StickerSheetTest extends TestCase
             if ($key === 'single-custom') {
                 $body += ['w' => 80, 'h' => 120];
             }
+            if ($key === 'single-round-custom') {
+                $body += ['w' => 60];
+            }
             $res = $this->postJson('/api/labels/stickers/url', $body)->assertOk();
             $html = (string) $this->get($res->json('view_url'))->assertOk()->getContent();
             $perPage = $layout['cols'] * $layout['rows'];
             $this->assertSame($perPage, substr_count($html, 'data-testid="sticker"'), $key);
             $this->assertSame(1, substr_count($html, 'data-testid="labels-page"'), $key);
-            [$pw, $ph] = $key === 'single-custom' ? [80, 120] : $layout['page'];
+            [$pw, $ph] = $key === 'single-custom' ? [80, 120] : ($key === 'single-round-custom' ? [60, 60] : $layout['page']);
             $this->assertStringContainsString('size: ' . rtrim(rtrim(number_format($pw, 3, '.', ''), '0'), '.') . 'mm ' . rtrim(rtrim(number_format($ph, 3, '.', ''), '0'), '.') . 'mm', $html, $key);
 
             $pdf = $this->get($res->json('pdf_url'))->assertOk();
@@ -271,6 +274,51 @@ class StickerSheetTest extends TestCase
         $this->assertStringContainsString('data:image/svg+xml', $html);
         $this->assertStringNotContainsString('by Bake', $html);
         $this->assertStringContainsString('MFG DATE', $html);
+    }
+
+    public function test_round_stickers_and_rounded_corners(): void
+    {
+        // v2 point 2: "different size and shape needed".
+        $one = ['items' => [['id' => $this->bajiya->id, 'copies' => 1]]];
+        $res = $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $this->bajiya->id, 'copies' => 20]], 'layout' => 'a4-round-50', 'fill' => true])->assertOk()
+            ->assertJsonPath('summary.design', 'round')->assertJsonPath('summary.shape', 'circle')->assertJsonPath('summary.pages', 1);
+        $html = (string) $this->get($res->json('view_url'))->assertOk()->getContent();
+        $this->assertSame(20, substr_count($html, 'border-radius:50%'), 'twenty round cut lines');
+        $this->assertStringContainsString('B A K E   &amp;   G R I L L', $html);
+        $this->assertStringContainsString('FROZEN HEDHIKA', $html);
+        $this->assertStringContainsString('EXP DATE:', $html);
+        $this->assertStringNotContainsString('data:image/svg+xml', $html, 'no QR on a 50 mm circle');
+        $pdf = $this->get($res->json('pdf_url'))->assertOk();
+        $this->assertSame(1, preg_match_all('#/Type\\s*/Page[^s]#', (string) $pdf->getContent()));
+        $this->dump('round-50', $html, (string) $pdf->getContent());
+
+        $res = $this->postJson('/api/labels/stickers/url', $one + ['layout' => 'a4-round-70', 'fill' => true, 'batch' => 'KP-9', 'qty' => 10])->assertOk();
+        $html = (string) $this->get($res->json('view_url'))->getContent();
+        $this->assertStringContainsString('data:image/svg+xml', $html, 'the QR fits a 70 mm circle');
+        $this->assertStringContainsString('BATCH: KP-9', $html);
+        $this->dump('round-70', $html, (string) $this->get($res->json('pdf_url'))->getContent());
+        $res = $this->postJson('/api/labels/stickers/url', $one + ['layout' => 'a4-round-70', 'lang' => 'dv', 'fill' => true])->assertOk();
+        $this->dump('round-70-dv', (string) $this->get($res->json('view_url'))->getContent(), (string) $this->get($res->json('pdf_url'))->getContent());
+
+        // Custom diameter, within 40 to 200 mm; a label-printer circle is its own page.
+        $res = $this->postJson('/api/labels/stickers/url', $one + ['layout' => 'single-round-custom', 'w' => 60])->assertOk()->assertJsonPath('summary.label', 'Custom round, 60 mm');
+        $this->assertStringContainsString('size: 60mm 60mm', (string) $this->get($res->json('view_url'))->getContent());
+        $this->postJson('/api/labels/stickers/url', $one + ['layout' => 'single-round-custom', 'w' => 30])->assertUnprocessable();
+        $res = $this->postJson('/api/labels/stickers/url', $one + ['layout' => 'single-round-50'])->assertOk();
+        $this->assertStringContainsString('size: 50mm 50mm', (string) $this->get($res->json('view_url'))->getContent());
+
+        // Rounded corners on a rectangle's cut line; ignored for circles.
+        $res = $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $this->bajiya->id, 'copies' => 8]], 'layout' => 'a4-8', 'rounded' => true])->assertOk();
+        $html = (string) $this->get($res->json('view_url'))->getContent();
+        $this->assertSame(8, substr_count($html, 'border-radius:3mm'));
+        $this->dump('rounded-a4-8', $html, (string) $this->get($res->json('pdf_url'))->getContent());
+        $res = $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $this->bajiya->id, 'copies' => 8]], 'layout' => 'a4-8'])->assertOk();
+        $this->assertStringNotContainsString('border-radius:3mm', (string) $this->get($res->json('view_url'))->getContent());
+
+        $layouts = $this->getJson('/api/labels/layouts')->assertOk()->json('data');
+        $round = array_values(array_filter($layouts, fn ($l) => $l['shape'] === 'circle'));
+        $this->assertCount(5, $round);
+        $this->assertFalse($round[0]['compact']);
     }
 
     public function test_preview_links_are_not_logged_and_need_the_permission(): void

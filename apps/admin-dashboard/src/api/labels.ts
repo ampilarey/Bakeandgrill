@@ -63,7 +63,7 @@ export type LabelType = {
 
 export type LabelTypePayload = Partial<Omit<LabelType, 'id' | 'brand_name' | 'items_count' | 'defaults'>>;
 
-export type LabelLayout = { key: string; label: string; hint: string; per_page: number; w: number; h: number; compact: boolean };
+export type LabelLayout = { key: string; label: string; hint: string; per_page: number; w: number; h: number; compact: boolean; shape: 'rect' | 'circle' };
 
 export type StickerRequest = {
   items: { id: number; copies: number }[];
@@ -79,6 +79,8 @@ export type StickerRequest = {
   pi?: number | null;
   /** Print the whole sheet as this label type. */
   type?: number | null;
+  /** Rounded corners on a rectangle's cut line. */
+  rounded?: boolean;
   preview?: boolean;
 };
 

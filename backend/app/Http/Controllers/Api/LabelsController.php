@@ -48,7 +48,8 @@ class LabelsController extends Controller
             'per_page' => $l['cols'] * $l['rows'],
             'w' => $l['w'],
             'h' => $l['h'],
-            'compact' => $key !== 'single-custom' && min($l['w'] / StickerLayouts::DESIGN_W, $l['h'] / StickerLayouts::DESIGN_H) < StickerLayouts::FULL_MIN_SCALE,
+            'shape' => $l['shape'] ?? 'rect',
+            'compact' => ($l['shape'] ?? 'rect') === 'rect' && $key !== 'single-custom' && min($l['w'] / StickerLayouts::DESIGN_W, $l['h'] / StickerLayouts::DESIGN_H) < StickerLayouts::FULL_MIN_SCALE,
         ])->values()]);
     }
 
@@ -73,6 +74,7 @@ class LabelsController extends Controller
             'qty' => 'nullable|integer|min:1|max:9999',
             'pi' => 'nullable|integer|exists:kitchen_production_items,id',
             'type' => 'nullable|integer|exists:label_types,id',
+            'rounded' => 'sometimes|boolean',
             'preview' => 'sometimes|boolean',
         ]);
         try {
@@ -95,6 +97,7 @@ class LabelsController extends Controller
             'qty' => $req['qty'],
             'pi' => $req['pi'],
             'type' => $req['type'],
+            'rounded' => $req['rounded'] ? 1 : null,
         ];
 
         // A preview in the item editor prints nothing, so it is not logged.

@@ -105,8 +105,10 @@ final class StickerSheet
             'items' => $items,
             'lang' => ($in['lang'] ?? 'en') === 'dv' ? 'dv' : 'en',
             'layout' => $layout,
-            'w' => $layout === 'single-custom' ? $w : null,
+            'w' => in_array($layout, ['single-custom', 'single-round-custom'], true) ? $w : null,
             'h' => $layout === 'single-custom' ? $h : null,
+            // Rounded corners on a rectangle's cut line (v2 point 2).
+            'rounded' => filter_var($in['rounded'] ?? false, FILTER_VALIDATE_BOOL),
             'fill' => $fill,
             'mfg' => $mfg,
             'exp' => $exp,
@@ -142,9 +144,11 @@ final class StickerSheet
                 continue;
             }
             $data = $this->stickerData($item, $req, $common, $production);
-            $pieces = $sheet['design'] === 'full'
-                ? StickerDesign::full($data, $dv)
-                : StickerDesign::mini($data, $dv, $sheet['w'], $sheet['h']);
+            $pieces = match ($sheet['design']) {
+                'full' => StickerDesign::full($data, $dv),
+                'round' => StickerDesign::round($data, $dv, $sheet['w']),
+                default => StickerDesign::mini($data, $dv, $sheet['w'], $sheet['h']),
+            };
             for ($i = 0; $i < $row['copies']; $i++) {
                 $stickers[] = $pieces;
             }
@@ -157,6 +161,7 @@ final class StickerSheet
             'dv' => $dv,
             'summary' => $summary,
             'stickerCount' => count($stickers),
+            'rounded' => $sheet['shape'] === 'rect' && $req['rounded'],
         ];
     }
 
@@ -196,6 +201,7 @@ final class StickerSheet
             'layout' => $sheet['key'],
             'label' => $sheet['label'],
             'design' => $sheet['design'],
+            'shape' => $sheet['shape'],
             'stickers' => $total,
             'pages' => (int) ceil($total / max(1, $sheet['per_page'])),
             'per_page' => $sheet['per_page'],

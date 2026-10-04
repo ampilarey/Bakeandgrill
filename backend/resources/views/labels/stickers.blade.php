@@ -62,14 +62,14 @@
                 <a href="{{ $pdfUrl }}">PDF</a>
             @endif
             <a href="{{ $pdfUrl }}" data-testid="labels-pdf">Download PDF</a>
-            <span class="what">{{ $sheet['label'] }} · {{ $stickerCount }} {{ $stickerCount === 1 ? 'sticker' : 'stickers' }} on {{ count($pages) }} {{ count($pages) === 1 ? 'page' : 'pages' }}@if ($sheet['design'] === 'full' && $s < 0.999) · design at {{ round($s * 100) }}%@endif @if ($sheet['design'] === 'mini') · compact sticker @endif · print at actual size · on a phone, print the PDF</span>
+            <span class="what">{{ $sheet['label'] }} · {{ $stickerCount }} {{ $stickerCount === 1 ? 'sticker' : 'stickers' }} on {{ count($pages) }} {{ count($pages) === 1 ? 'page' : 'pages' }}@if ($sheet['design'] === 'full' && $s < 0.999) · design at {{ round($s * 100) }}%@endif @if ($sheet['design'] === 'mini') · compact sticker @endif @if ($sheet['design'] === 'round') · round sticker @endif · print at actual size · on a phone, print the PDF</span>
         </div>
     @endif
     @foreach ($pages as $pi => $page)
         <div class="page" data-testid="labels-page">
             @foreach ($sheet['slots'] as $si => $slot)
                 @if ($sheet['cut'])
-                    <div class="cut" style="left:{{ $mm($slot['x']) }};top:{{ $mm($slot['y']) }};width:{{ $mm($slot['w']) }};height:{{ $mm($slot['h']) }};"></div>
+                    <div class="cut" style="left:{{ $mm($slot['x']) }};top:{{ $mm($slot['y']) }};width:{{ $mm($slot['w']) }};height:{{ $mm($slot['h']) }};{{ $sheet['shape'] === 'circle' ? 'border-radius:50%;' : ($rounded ?? false ? 'border-radius:3mm;' : '') }}"></div>
                 @endif
                 @if (isset($page[$si]))
                     <div class="sticker" data-testid="sticker"></div>

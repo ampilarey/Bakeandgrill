@@ -48,14 +48,29 @@ final class StickerLayouts
         'single-100x150' => ['label' => 'Label printer, 100 × 150 mm', 'hint' => '4 × 6 inch thermal labels', 'page' => [100.0, 150.0], 'cols' => 1, 'rows' => 1, 'w' => 100.0, 'h' => 150.0, 'cut' => false],
         'single-76x127' => ['label' => 'Label printer, 76 × 127 mm', 'hint' => '3 × 5 inch labels', 'page' => [76.0, 127.0], 'cols' => 1, 'rows' => 1, 'w' => 76.0, 'h' => 127.0, 'cut' => false],
         'single-custom' => ['label' => 'Custom size', 'hint' => 'Any label size from 50 × 45 mm to A4', 'page' => [0.0, 0.0], 'cols' => 1, 'rows' => 1, 'w' => 0.0, 'h' => 0.0, 'cut' => false],
+        // v2 point 2: round stickers, their own centred design (StickerDesign::round).
+        'a4-round-50' => ['label' => 'Round 50 mm, 20 on A4', 'hint' => 'Round stickers 50 mm across; cut on the dashed circles', 'page' => [210.0, 297.0], 'cols' => 4, 'rows' => 5, 'w' => 50.0, 'h' => 50.0, 'cut' => true, 'shape' => 'circle'],
+        'a4-round-70' => ['label' => 'Round 70 mm, 8 on A4', 'hint' => 'Round stickers 70 mm across, with the QR and a batch line', 'page' => [210.0, 297.0], 'cols' => 2, 'rows' => 4, 'w' => 70.0, 'h' => 70.0, 'cut' => true, 'shape' => 'circle'],
+        'single-round-50' => ['label' => 'Label printer, round 50 mm', 'hint' => 'One round sticker per label', 'page' => [50.0, 50.0], 'cols' => 1, 'rows' => 1, 'w' => 50.0, 'h' => 50.0, 'cut' => false, 'shape' => 'circle'],
+        'single-round-70' => ['label' => 'Label printer, round 70 mm', 'hint' => 'One round sticker per label, with the QR', 'page' => [70.0, 70.0], 'cols' => 1, 'rows' => 1, 'w' => 70.0, 'h' => 70.0, 'cut' => false, 'shape' => 'circle'],
+        'single-round-custom' => ['label' => 'Custom round size', 'hint' => 'Any round sticker from 40 to 200 mm across', 'page' => [0.0, 0.0], 'cols' => 1, 'rows' => 1, 'w' => 0.0, 'h' => 0.0, 'cut' => false, 'shape' => 'circle'],
     ];
+
+    public const MIN_ROUND = 40.0;
+
+    public const MAX_ROUND = 200.0;
+
+    public static function shape(string $key): string
+    {
+        return self::LAYOUTS[$key]['shape'] ?? 'rect';
+    }
 
     /**
      * The sheet for a layout: page size, each label's box on the page, and
      * how the design fits a label.
      *
      * @param array{top?: float, left?: float, gutter?: float} $precut
-     * @return array{key: string, label: string, page_w: float, page_h: float, slots: list<array{x: float, y: float, w: float, h: float}>, per_page: int, w: float, h: float, cut: bool, design: 'full'|'mini', scale: float, dx: float, dy: float}
+     * @return array{key: string, label: string, shape: 'rect'|'circle', page_w: float, page_h: float, slots: list<array{x: float, y: float, w: float, h: float}>, per_page: int, w: float, h: float, cut: bool, design: 'full'|'mini'|'round', scale: float, dx: float, dy: float}
      */
     public static function resolve(string $key, ?float $customW = null, ?float $customH = null, array $precut = []): array
     {
@@ -80,6 +95,14 @@ final class StickerLayouts
             }
             [$pageW, $pageH] = [$w, $h];
         }
+        if ($key === 'single-round-custom') {
+            $w = $h = round((float) $customW, 2);
+            if ($w < self::MIN_ROUND || $w > self::MAX_ROUND) {
+                throw new InvalidArgumentException(sprintf('Round stickers can be from %d to %d mm across; %s mm is outside that.', self::MIN_ROUND, self::MAX_ROUND, self::num($w)));
+            }
+            [$pageW, $pageH] = [$w, $h];
+        }
+        $shape = $layout['shape'] ?? 'rect';
 
         $gutter = !empty($layout['precut']) ? max(0.0, (float) ($precut['gutter'] ?? 0)) : 0.0;
         $gridW = $layout['cols'] * $w + ($layout['cols'] - 1) * $gutter;
@@ -96,14 +119,15 @@ final class StickerLayouts
         }
 
         $scale = min($w / self::DESIGN_W, $h / self::DESIGN_H);
-        $design = $scale >= self::FULL_MIN_SCALE ? 'full' : 'mini';
-        if ($design === 'mini') {
+        $design = $shape === 'circle' ? 'round' : ($scale >= self::FULL_MIN_SCALE ? 'full' : 'mini');
+        if ($design !== 'full') {
             $scale = 1.0;
         }
 
         return [
             'key' => $key,
-            'label' => $key === 'single-custom' ? sprintf('Custom, %s × %s mm', self::num($w), self::num($h)) : $layout['label'],
+            'label' => $key === 'single-custom' ? sprintf('Custom, %s × %s mm', self::num($w), self::num($h)) : ($key === 'single-round-custom' ? sprintf('Custom round, %s mm', self::num($w)) : $layout['label']),
+            'shape' => $shape,
             'page_w' => $pageW,
             'page_h' => $pageH,
             'slots' => $slots,

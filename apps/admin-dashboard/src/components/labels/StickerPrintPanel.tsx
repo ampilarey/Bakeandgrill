@@ -45,6 +45,8 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
   const [layout, setLayout] = useState(() => remembered(LAST_LAYOUT_KEY, 'a4-4'));
   const [customW, setCustomW] = useState(80);
   const [customH, setCustomH] = useState(120);
+  const [customD, setCustomD] = useState(60);
+  const [rounded, setRounded] = useState(false);
   const [fill, setFill] = useState(defaults?.fill ?? Boolean(productionItemId));
   const [mfg, setMfg] = useState(defaults?.mfg ?? today());
   const [exp, setExp] = useState(defaults?.exp ?? '');
@@ -83,8 +85,9 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
     try {
       const r = await stickerLinks({
         items, lang, layout,
-        w: layout === 'single-custom' ? customW : null,
+        w: layout === 'single-custom' ? customW : layout === 'single-round-custom' ? customD : null,
         h: layout === 'single-custom' ? customH : null,
+        rounded: current?.shape !== 'circle' && rounded,
         fill, mfg: fill ? mfg : null, exp: fill && exp ? exp : null,
         batch: batch || null, qty: qty ? Number(qty) : null, pi: productionItemId, type: asType,
       });
@@ -167,10 +170,25 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
         <div>
           <label className={labelClass} htmlFor="label-layout">Label stock</label>
           <select id="label-layout" value={layout} onChange={(e) => setLayout(e.target.value)} className={fieldClass}>
-            {layouts.map((l) => <option key={l.key} value={l.key}>{l.label}{l.compact ? ' (compact sticker)' : ''}</option>)}
+            <optgroup label="Rectangles">
+              {layouts.filter((l) => l.shape !== 'circle').map((l) => <option key={l.key} value={l.key}>{l.label}{l.compact ? ' (compact sticker)' : ''}</option>)}
+            </optgroup>
+            <optgroup label="Round">
+              {layouts.filter((l) => l.shape === 'circle').map((l) => <option key={l.key} value={l.key}>{l.label}</option>)}
+            </optgroup>
           </select>
           {current ? <p className="text-xs text-[var(--color-text-muted)] mt-1">{current.hint}</p> : null}
+          {current && current.shape !== 'circle' && (
+            <label className="flex items-center gap-2 min-h-[44px] cursor-pointer">
+              <input type="checkbox" checked={rounded} onChange={(e) => setRounded(e.target.checked)} className="w-5 h-5 accent-[var(--color-primary)]" />
+              <span className="text-sm text-[var(--color-text)]">Rounded corners</span>
+              <span className="text-xs text-[var(--color-text-muted)]">on the cut line</span>
+            </label>
+          )}
         </div>
+        {layout === 'single-round-custom' && (
+          <div className="sm:col-span-2 max-w-[200px]"><label className={labelClass} htmlFor="label-d">Across (mm)</label><input id="label-d" type="number" inputMode="numeric" min={40} max={200} value={customD} onChange={(e) => setCustomD(Number(e.target.value))} className={fieldClass} /></div>
+        )}
         {types.length > 0 && (
           <div>
             <label className={labelClass} htmlFor="label-as-type">Print as</label>

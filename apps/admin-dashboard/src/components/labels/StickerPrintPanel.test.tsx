@@ -34,8 +34,8 @@ describe('StickerPrintPanel', () => {
     [fetchLabelLayouts, fetchLabelProducts, stickerLinks, openLabelSheet, downloadLabelSheet].forEach((f) => f.mockReset());
     try { localStorage.clear(); } catch { /* jsdom */ }
     fetchLabelLayouts.mockResolvedValue({ data: [
-      { key: 'a4-4', label: '4 on A4', hint: 'Plain A4', per_page: 4, w: 105, h: 148.5, compact: false },
-      { key: 'a4-12', label: '12 on A4', hint: 'Compact', per_page: 12, w: 66, h: 72, compact: true },
+      { key: 'a4-4', label: '4 on A4', hint: 'Plain A4', per_page: 4, w: 105, h: 148.5, compact: false, shape: 'rect' },
+      { key: 'a4-12', label: '12 on A4', hint: 'Compact', per_page: 12, w: 66, h: 72, compact: true, shape: 'rect' },
     ] });
     fetchLabelProducts.mockResolvedValue({ data: [product(1, 'Bajiya'), product(2, 'Patties', { label_shelf_life_days: null })] });
   });
@@ -63,7 +63,7 @@ describe('StickerPrintPanel', () => {
     fireEvent.click(screen.getByTestId('sticker-prepare'));
 
     await waitFor(() => expect(stickerLinks).toHaveBeenCalled());
-    expect(stickerLinks.mock.calls[0][0]).toMatchObject({ items: [{ id: 1, copies: 4 }], lang: 'en', layout: 'a4-4', fill: true });
+    expect(stickerLinks.mock.calls[0][0]).toMatchObject({ items: [{ id: 1, copies: 4 }], lang: 'en', layout: 'a4-4', fill: true, rounded: false });
     const summary = await screen.findByTestId('sticker-summary');
     expect(summary).toHaveTextContent('4 stickers on 1 page');
     expect(summary).toHaveTextContent('EXP 2027-01-02');
