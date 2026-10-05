@@ -68,8 +68,15 @@
     <style>
         /* The paper the sheet is laid out for; the browser's print dialog and
            dompdf both read it. The PDF leaves room above and below for the
-           running header and footer, which sit in the margin. */
-        @page { size: {{ $pageSize }}; margin: {{ $forPdf ? '20mm 12mm 18mm' : '10mm 12mm 11mm' }}; }
+           running header and footer, which sit in the margin.
+
+           The browser print asks for no page margin at all and carries its
+           own inside the sheet (see @media print). Owner, 2026-10-05, with a
+           photo of page 2 cut off top and bottom: a print dialog set to
+           "Margins: None" throws the page margin away, and the first and
+           last lines then sat where the printer cannot put ink. Space that
+           is part of the content survives every margin setting. */
+        @page { size: {{ $pageSize }}; margin: {{ $forPdf ? '20mm 12mm 18mm' : '0' }}; }
 
         * { box-sizing: border-box; }
 
@@ -295,7 +302,12 @@
         }
 
         /* ── Sections ────────────────────────────────────────────────── */
-        .section { break-inside: avoid-column; }
+        /* A section may split across columns and pages. Asked to stay whole,
+           a section longer than a column (FOOD on the short list) was carried
+           to the top of the next page, leaving the first page with nothing
+           under the masthead; a heading keeps its first dish (break-after:
+           avoid on .cat) and a dish stays on one line, which is enough. */
+        .section { break-inside: auto; }
         .lead { break-inside: avoid; page-break-inside: avoid; }
 
         .cat {
@@ -590,6 +602,16 @@
             .no-print { display: none !important; }
             .sheet { max-width: none; margin: 0; padding: 0; box-shadow: none; }
             .run--screen { display: table; }
+            /* The page's margins, inside the content: the brand line's cell
+               and the foot line's cell repeat on every page, so each page
+               keeps 11 mm clear at the top and 12 mm at the bottom (where
+               printers leave the most unprintable paper), and 12 mm at the
+               sides, whatever the dialog says. The browser's own header and
+               footer, when left on, land in that space rather than on the
+               menu. */
+            .page > thead > tr > td { padding: 11mm 12mm 0; }
+            .page > tbody > tr > td { padding: 0 12mm; }
+            .page > tfoot > tr > td { padding: 0 12mm 12mm; }
             /* Colour-managed printers otherwise drop the bands and rules. */
             * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
@@ -676,6 +698,7 @@
 
         <p class="toolbar__hint">
             {{ strtoupper($paper) }} {{ $orient }}, {{ $columns }} {{ Str::plural('column', $columns) }}.
+            Print at 100%, not "fit to page"; the sheet keeps its own margins, so any margin setting is fine. The PDF prints the same from any device.
             Booklet: A5 pages on A4 sheets in folding order — print two-sided, flip on the short edge, fold the stack in half.
         </p>
     </div>

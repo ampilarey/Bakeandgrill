@@ -542,6 +542,28 @@ class PrintableMenuTest extends TestCase
             ->assertSee('@page { size: A4 portrait;', false);
     }
 
+    /**
+     * Owner, 2026-10-05, with a photo of a printed page cut off top and
+     * bottom: the print dialog's "Margins: None" threw the page margin away
+     * and the first and last lines landed where the printer cannot print.
+     * The browser print now asks for no page margin and carries its own
+     * inside the repeating header and footer cells; the PDF keeps its page
+     * margins, where its running header lives.
+     */
+    public function test_the_browser_print_carries_its_margins_inside_the_sheet(): void
+    {
+        $this->dish('Mas Huni', 35);
+
+        $this->get('/menu/print')->assertOk()
+            ->assertSee('@page { size: A4 portrait; margin: 0; }', false)
+            ->assertSee('.page > thead > tr > td { padding: 11mm 12mm 0; }', false)
+            ->assertSee('.page > tfoot > tr > td { padding: 0 12mm 12mm; }', false)
+            // A section longer than a column splits rather than jumping to the next page.
+            ->assertSee('.section { break-inside: auto; }', false);
+        $pdf = view('menu-print', array_merge($this->printViewData(), ['forPdf' => true]))->render();
+        $this->assertStringContainsString('margin: 20mm 12mm 18mm', $pdf);
+    }
+
     public function test_switching_the_paper_keeps_the_layout_and_the_language(): void
     {
         $this->dish('Mas Huni', 35);
