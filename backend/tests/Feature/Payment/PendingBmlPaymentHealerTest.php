@@ -146,6 +146,38 @@ class PendingBmlPaymentHealerTest extends TestCase
         $this->assertSame('paid', (string) $invoice->fresh()->status);
     }
 
+    public function test_a_held_ticket_paid_online_comes_off_hold_and_is_paid(): void
+    {
+        // The owner's case: the POS put the ticket on hold, sent the bill, the
+        // customer paid by card. held → paid is not a legal move, so the
+        // confirmation used to roll back every time.
+        $this->order->update(['status' => 'held', 'held_at' => now()]);
+        $this->bankSays('CONFIRMED');
+
+        $this->get('/receipts/' . $this->receipt->token)->assertOk()->assertSee('Payment confirmed');
+
+        $this->assertOrderPaid();
+        $order = $this->order->fresh();
+        $this->assertSame('paid', $order->status);
+        $this->assertNull($order->held_at);
+    }
+
+    public function test_an_order_out_for_delivery_keeps_its_stage_and_is_marked_paid(): void
+    {
+        // pending → out_for_delivery is not a legal move either, so walk the
+        // order there the way dispatch does.
+        $this->order->update(['type' => 'delivery']);
+        $this->order->update(['status' => 'ready']);
+        $this->order->update(['status' => 'out_for_delivery']);
+        $this->assertSame('out_for_delivery', $this->order->fresh()->status);
+        $this->bankSays('CONFIRMED');
+
+        $this->get('/receipts/' . $this->receipt->token)->assertOk();
+
+        $this->assertOrderPaid();
+        $this->assertSame('out_for_delivery', $this->order->fresh()->status);
+    }
+
     public function test_a_bank_outage_leaves_the_page_pending_without_an_error(): void
     {
         $this->bankSays('DOWN');

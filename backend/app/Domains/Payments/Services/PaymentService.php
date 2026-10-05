@@ -955,10 +955,33 @@ class PaymentService
                     $order->status === 'payment_pending' => 'pending',
                     default => 'paid',
                 };
-                $this->orders->updateStatus($order->id, $newStatus, [
-                    'paid_at' => now(),
-                    'payment_status' => 'paid',
-                ]);
+                $paidFields = ['paid_at' => now(), 'payment_status' => 'paid'];
+                $machine = app(\App\Services\OrderStatusMachine::class);
+
+                /*
+                 * Owner, 2026-10-05: a held POS ticket's bill paid online stayed
+                 * "pending" for the customer and unpaid on the POS. The status
+                 * machine lets a held ticket go only to pending or cancelled, so
+                 * held → paid threw here, the transaction rolled back, and the
+                 * webhook, the return URL and every later re-check failed the
+                 * same way. A paid ticket comes off hold first, the way Resume
+                 * does, then goes to paid. An order the machine will not move
+                 * at all (out for delivery, picked up, on the way) keeps its
+                 * stage and only its money state changes.
+                 */
+                if ($order->status === 'held') {
+                    $this->orders->updateStatus($order->id, 'pending', ['held_at' => null]);
+                    $order->refresh();
+                }
+                if ($order->status === $newStatus || $machine->isAllowed((string) $order->status, $newStatus)) {
+                    $this->orders->updateStatus($order->id, $newStatus, $paidFields);
+                } else {
+                    Log::info('BML: order stays in its stage; marking paid only', [
+                        'order_id' => $order->id,
+                        'status' => $order->status,
+                    ]);
+                    Order::whereKey($order->id)->update($paidFields);
+                }
 
                 DB::afterCommit(function () use ($order): void {
                     $freshOrder = $this->orders->findById($order->id);
