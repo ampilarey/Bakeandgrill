@@ -8,64 +8,59 @@
         font-family: DejaVu Sans, Arial, sans-serif;
         font-size: 11px;
         color: {{ $brandDark }};
-        background: #FFFDF9;
+        background: #FFFFFF;
         line-height: 1.45;
     }
     .pdf-page { padding: 28px 32px 24px; }
+    /* Owner, 2026-10-06: the logo's dark lettering vanished on the dark band.
+       It sits in a cream tile with a rust ring, as on the website and the
+       receipt page. Tables, not inline spans: dompdf lays out tables reliably. */
     .pdf-masthead {
         background: {{ $brandDark }};
-        color: #fff;
+        color: #FFFDF9;
         border-radius: 10px;
-        padding: 16px 18px;
+        padding: 14px 18px;
         margin-bottom: 18px;
         border-bottom: 3px solid {{ $brandPrimary }};
     }
-    .pdf-masthead-row {
-        display: table;
-        width: 100%;
-    }
-    .pdf-masthead-brand {
-        display: table-cell;
-        vertical-align: middle;
-    }
+    table.pdf-masthead-row { width: 100%; border-collapse: collapse; }
+    table.pdf-masthead-row td { vertical-align: middle; padding: 0; }
+    td.pdf-masthead-logo-cell { width: 64px; }
     .pdf-masthead-logo {
-        display: inline-block;
-        vertical-align: middle;
-        width: 42px;
-        height: 42px;
-        border-radius: 8px;
-        object-fit: cover;
-        margin-right: 12px;
+        width: 50px;
+        height: 50px;
+        padding: 3px;
+        background: #F7F5F2;
+        border: 2px solid #C56F3D;
+        border-radius: 10px;
     }
+    .pdf-masthead-logo img { width: 50px; height: 50px; border-radius: 7px; }
     .pdf-masthead-name {
-        display: inline-block;
-        vertical-align: middle;
         font-size: 18px;
-        font-weight: 700;
-        letter-spacing: -0.02em;
+        font-weight: bold;
+        color: #FFFDF9;
+        line-height: 1.2;
     }
     .pdf-masthead-tagline {
-        font-size: 9px;
-        color: #F0A96A;
-        margin-top: 2px;
-        letter-spacing: 0.04em;
+        font-size: 8.5px;
+        font-weight: bold;
+        color: #E3C9AE;
+        margin-top: 3px;
+        letter-spacing: 0.06em;
         text-transform: uppercase;
     }
-    .pdf-masthead-meta {
-        display: table-cell;
-        vertical-align: middle;
-        text-align: right;
-    }
+    td.pdf-masthead-meta { text-align: right; }
     .pdf-doc-type {
         font-size: 9px;
-        font-weight: 700;
+        font-weight: bold;
         letter-spacing: 0.1em;
         text-transform: uppercase;
-        color: #F0A96A;
+        color: #C56F3D;
     }
     .pdf-doc-number {
         font-size: 15px;
-        font-weight: 700;
+        font-weight: bold;
+        color: #FFFDF9;
         margin-top: 2px;
     }
     .pdf-status {
@@ -74,13 +69,13 @@
         padding: 3px 10px;
         border-radius: 999px;
         font-size: 9px;
-        font-weight: 700;
+        font-weight: bold;
         letter-spacing: 0.04em;
         text-transform: uppercase;
     }
     .pdf-status--paid { background: #D6F0E2; color: #195C36; }
-    .pdf-status--pending { background: #FEF3E8; color: #92400e; }
-    .pdf-status--sent { background: #eff6ff; color: #1d4ed8; }
+    .pdf-status--pending { background: #FCE4E1; color: #8C1C0E; }
+    .pdf-status--sent { background: #E3ECFB; color: #1d4ed8; }
     .pdf-meta-grid {
         display: table;
         width: 100%;
@@ -94,7 +89,7 @@
     }
     .pdf-meta-label {
         font-size: 8px;
-        font-weight: 700;
+        font-weight: bold;
         letter-spacing: 0.08em;
         text-transform: uppercase;
         color: #8B7355;
@@ -111,7 +106,7 @@
         background: #FEF3E8;
         color: {{ $brandPrimary }};
         font-size: 8px;
-        font-weight: 700;
+        font-weight: bold;
         letter-spacing: 0.06em;
         text-transform: uppercase;
         padding: 8px 10px;
@@ -143,7 +138,7 @@
         color: #5C4A2A;
     }
     .pdf-totals-row span { display: table-cell; }
-    .pdf-totals-row span:last-child { text-align: right; font-weight: 600; }
+    .pdf-totals-row span:last-child { text-align: right; font-weight: bold; }
     .pdf-totals-grand {
         display: table;
         width: 100%;
@@ -151,15 +146,27 @@
         padding-top: 8px;
         border-top: 2px solid {{ $brandPrimary }};
         font-size: 13px;
-        font-weight: 700;
+        font-weight: bold;
         color: {{ $brandPrimary }};
     }
     .pdf-totals-grand span { display: table-cell; }
     .pdf-totals-grand span:last-child { text-align: right; }
-    .pdf-totals-refund { color: #8C1C0E; font-weight: 700; }
+    .pdf-totals-refund { color: #8C1C0E; font-weight: bold; }
+    .pdf-totals-due { color: #8C1C0E; border-top-color: #8C1C0E; }
+    .pdf-pay-online {
+        margin-top: 16px;
+        padding: 10px 14px;
+        border: 2px solid {{ $brandPrimary }};
+        border-radius: 10px;
+        background: #F9F1EC;
+        font-size: 10.5px;
+        color: {{ $brandDark }};
+    }
+    .pdf-pay-online strong { color: {{ $brandPrimary }}; font-size: 12px; }
+    .pdf-pay-online a { color: {{ $brandPrimary }}; font-weight: bold; text-decoration: underline; }
     .pdf-section-title {
         font-size: 8px;
-        font-weight: 700;
+        font-weight: bold;
         letter-spacing: 0.08em;
         text-transform: uppercase;
         color: #8B7355;
@@ -173,11 +180,11 @@
         border-bottom: 1px dashed #EDE4D4;
     }
     .pdf-payments-row span { display: table-cell; }
-    .pdf-payments-row span:last-child { text-align: right; font-weight: 600; }
+    .pdf-payments-row span:last-child { text-align: right; font-weight: bold; }
     .pdf-notes {
         margin-top: 16px;
         padding: 10px 12px;
-        background: #FFFDF9;
+        background: #FBF8F4;
         border: 1px solid #EDE4D4;
         border-radius: 8px;
         font-size: 10px;
@@ -191,5 +198,7 @@
         font-size: 9px;
         color: #8B7355;
     }
-    .pdf-footer strong { color: {{ $brandDark }}; display: block; margin-bottom: 3px; }
+    .pdf-footer strong { color: {{ $brandDark }}; display: block; margin-bottom: 3px; font-size: 10px; }
+    .pdf-footer-logo { width: 30px; height: 30px; border-radius: 7px; margin: 0 auto 5px; }
+    .pdf-footer-thanks { margin-top: 6px; color: {{ $brandPrimary }}; font-weight: bold; }
 </style>

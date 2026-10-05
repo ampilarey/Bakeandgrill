@@ -106,7 +106,7 @@
         @endphp
         @if ($showPay)
             <div class="pdf-payments-row">
-                <span>{{ str_replace('_', ' ', ucfirst($p->method ?? 'Payment')) }}</span>
+                <span>{{ \App\Support\PaymentMethodLabel::for($p->method) }}</span>
                 <span>MVR {{ number_format((float) $p->amount, 2) }}</span>
             </div>
         @endif
@@ -115,7 +115,7 @@
 
 {{-- The receipt's own link as a QR, so the paper brings the order back up
      at the till and reaches feedback and complaints in one scan. --}}
-<table style="width:100%;margin-top:18px;border-top:1px solid #E8E0D8;padding-top:10px;">
+<table style="width:100%;margin-top:18px;border-top:1px solid #EDE4D4;padding-top:10px;">
     <tr>
         <td style="width:110px;vertical-align:middle;">
             <img src="{{ \App\Support\QrSvg::branded(url('/receipts/' . $receipt->token), 100) }}" alt="Receipt QR code" width="96" height="96" style="width:96px;height:96px;">

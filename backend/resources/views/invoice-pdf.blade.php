@@ -88,9 +88,39 @@
     @endif
     <div class="pdf-totals-grand"><span>Total</span><span>MVR {{ number_format((float) $invoice->total, 2) }}</span></div>
     @if ($balanceDueMvr > 0 && $invoice->status !== 'paid')
-        <div class="pdf-totals-grand" style="color:#92400E;"><span>Balance due</span><span>MVR {{ number_format($balanceDueMvr, 2) }}</span></div>
+        <div class="pdf-totals-grand pdf-totals-due"><span>Balance due</span><span>MVR {{ number_format($balanceDueMvr, 2) }}</span></div>
     @endif
 </div>
+
+@php
+    // Paper cannot carry a button, so an unpaid bill says where to pay
+    // (owner, 2026-10-06). The invoice page has the Pay button for every
+    // kind of bill; a PDF link opens it.
+    // Same rule as the page's own Pay button; wholesale shops pay in
+    // their portal, which the page already points them to.
+    $pagePresent = \App\Support\InvoicePagePresenter::present($invoice);
+    $payCta = $pagePresent['pay_cta'] ?? null;
+    $payOnline = $payCta !== null && ($payCta['kind'] ?? '') !== 'trade';
+    $payAmountMvr = $pagePresent['display_balance_mvr'] ?? $balanceDueMvr;
+    $invoicePageUrl = url('/invoices/' . $invoice->token);
+@endphp
+@if ($payOnline)
+    <div class="pdf-pay-online">
+        <table style="width:100%;border-collapse:collapse;">
+            <tr>
+                <td style="width:92px;vertical-align:middle;padding:0;">
+                    <img src="{{ \App\Support\QrSvg::branded($invoicePageUrl, 100) }}" alt="QR code to pay this invoice" width="80" height="80" style="width:80px;height:80px;background:#fff;">
+                </td>
+                <td style="vertical-align:middle;padding:0;">
+                    <strong>Pay MVR {{ number_format((float) $payAmountMvr, 2) }} online</strong><br>
+                    Scan the code with your phone camera and tap Pay, or
+                    <a href="{{ $invoicePageUrl }}">open this invoice online</a>.
+                    Card payments go through Bank of Maldives.
+                </td>
+            </tr>
+        </table>
+    </div>
+@endif
 
 @if ($invoice->notes)
     <div class="pdf-notes"><strong>Notes:</strong> {{ $invoice->notes }}</div>

@@ -9,24 +9,26 @@
 <body>
 <div class="pdf-page">
     <div class="pdf-masthead">
-        <div class="pdf-masthead-row">
-            <div class="pdf-masthead-brand">
+        <table class="pdf-masthead-row">
+            <tr>
                 @if (file_exists($brandLogoPdf))
-                    <img class="pdf-masthead-logo" src="{{ $brandLogoPdf }}" alt="">
+                    <td class="pdf-masthead-logo-cell">
+                        <div class="pdf-masthead-logo"><img src="{{ $brandLogoPdf }}" alt=""></div>
+                    </td>
                 @endif
-                <span>
+                <td>
                     <div class="pdf-masthead-name">{{ $brandSiteName }}</div>
                     <div class="pdf-masthead-tagline">{{ $brandTagline }}</div>
-                </span>
-            </div>
-            <div class="pdf-masthead-meta">
-                <div class="pdf-doc-type">@yield('doc_type', 'Document')</div>
-                <div class="pdf-doc-number">@yield('doc_number', '')</div>
-                @hasSection('doc_status')
-                    <span class="pdf-status pdf-status--@yield('doc_status_class', 'paid')">@yield('doc_status')</span>
-                @endif
-            </div>
-        </div>
+                </td>
+                <td class="pdf-masthead-meta">
+                    <div class="pdf-doc-type">@yield('doc_type', 'Document')</div>
+                    <div class="pdf-doc-number">@yield('doc_number', '')</div>
+                    @hasSection('doc_status')
+                        <span class="pdf-status pdf-status--@yield('doc_status_class', 'paid')">@yield('doc_status')</span>
+                    @endif
+                </td>
+            </tr>
+        </table>
     </div>
 
     @yield('meta')
@@ -34,6 +36,9 @@
     @yield('content')
 
     <div class="pdf-footer">
+        @if (file_exists($brandLogoPdf))
+            <img class="pdf-footer-logo" src="{{ $brandLogoPdf }}" alt="">
+        @endif
         <strong>{{ $brandSiteName }}</strong>
         @if ($brandAddress)<div>{{ $brandAddress }}</div>@endif
         @if ($brandPhone || $brandEmail)
@@ -43,7 +48,7 @@
                 @if ($brandEmail){{ $brandEmail }}@endif
             </div>
         @endif
-        <div style="margin-top:6px; color:#B74B0C;">Thank you for choosing {{ $brandSiteName }}</div>
+        <div class="pdf-footer-thanks">Thank you for choosing {{ $brandSiteName }}</div>
     </div>
 </div>
 </body>

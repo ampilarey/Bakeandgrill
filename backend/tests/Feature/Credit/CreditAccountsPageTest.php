@@ -246,6 +246,25 @@ class CreditAccountsPageTest extends TestCase
             ->assertSee('Pay online');
     }
 
+    public function test_the_invoice_pdf_says_where_to_pay_until_it_is_paid(): void
+    {
+        // Paper cannot carry a button (owner, 2026-10-06): an unpaid bill's
+        // PDF has a pay box with a code and a link to the invoice page.
+        $aisha = $this->account('Aisha', '+9607771111');
+        $invoice = $this->creditInvoice($aisha, 12000, now()->addDays(5)->toDateString());
+
+        $html = view('invoice-pdf', ['invoice' => $invoice->fresh()])->render();
+        $this->assertStringContainsString('class="pdf-pay-online"', $html);
+        $this->assertStringContainsString('Pay MVR 120.00 online', $html);
+        $this->assertStringContainsString(url('/invoices/' . $invoice->token), $html);
+
+        $invoice->update(['status' => 'paid', 'amount_paid_laar' => 12000, 'paid_at' => now()]);
+        $html = view('invoice-pdf', ['invoice' => $invoice->fresh()])->render();
+        $this->assertStringNotContainsString('class="pdf-pay-online"', $html);
+
+        $this->get('/invoices/' . $invoice->token . '/pdf')->assertOk()->assertHeader('content-type', 'application/pdf');
+    }
+
     public function test_pay_button_starts_a_bml_payment_and_returns_to_the_invoice_page(): void
     {
         $aisha = $this->account('Aisha', '+9607771111');
