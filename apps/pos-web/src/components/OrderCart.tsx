@@ -885,6 +885,7 @@ export function OrderCart(p: Props) {
               onAttach={p.onAttachCustomer}
               onDetach={p.onDetachCustomer}
               onOpenChange={setCustomerPickerOpen}
+              ticketLine={p.cartItems.length > 0 ? `${itemCount} ${itemCount === 1 ? "item" : "items"} · MVR ${p.cartTotal.toFixed(2)}` : undefined}
             />
           </div>
         </div>

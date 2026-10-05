@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   fetchRecentCustomers, quickCreateCustomer, searchCustomers,
@@ -23,25 +23,23 @@ function useMediaQuery(query: string): boolean {
 /**
  * Customer Picker — sits at the top of the OrderCart.
  *
- * Redesign goals (May 2026, based on cashier feedback):
- *  1. Tapping the phone field MUST trigger a numeric keypad on tablets,
- *     not the full alphanumeric keyboard. We use `type="tel"` +
- *     `inputMode="tel"` + an always-visible on-screen numpad so the
- *     experience is identical on iPad, Android, and bare POS terminals
- *     that have no virtual keyboard at all.
- *  2. Phone and Name are now visually distinct controls — the cashier
- *     never has to wonder "where do I type the name?". Name only appears
- *     once a phone is typed because a name without a phone can't be
- *     looked up later or messaged.
- *  3. A small "Search by name instead" toggle is provided for the rare
- *     case where the customer doesn't know their phone (e.g. asking a
- *     regular by first name). In that mode the on-screen numpad hides
- *     and a free-text input takes its place.
+ * Redrawn 2026-10-05. Owner: "The way customers are added in pos is
+ * difficult both in ipad and iPhone." The old picker opened inside the
+ * cart: a phone box with its own numpad, a name box that appeared only
+ * after digits, a separate "search by name" mode, and the regulars list
+ * underneath all of that, below the fold on a phone.
  *
- * Why phone-first quick-create: the cashier's primary key is the phone
- * (it's what unlocks SMS). Name is purely cosmetic and optional — the
- * backend won't overwrite an existing customer's name if quick-create
- * is called with one for a phone that already exists.
+ * Now "Add customer" opens a page of its own (CustomerPickerPage): one box
+ * for a name or a phone with the device's own keyboard, the regulars
+ * listed before anything is typed, a chip row for regulars / today / all,
+ * a dashed "save as new" row the moment a valid number has no match, and a
+ * New customer button for the rest. On a phone it fills the screen; on a
+ * tablet it covers everything but the ticket, whichever side the ticket
+ * is on. The chip for an attached customer is unchanged.
+ *
+ * Phone stays the key: it is what unlocks SMS and loyalty. Name is
+ * optional and can be added on the chip afterwards; quick-create never
+ * overwrites a name a customer already has.
  */
 
 type Props = {
@@ -49,8 +47,7 @@ type Props = {
   customer: PosCustomer | null;
   onAttach: (customer: PosCustomer) => void;
   onDetach: () => void;
-  /** Auto-focus the input on mount — useful when the panel was just
-   *  expanded by the cashier clicking "+ Add customer". */
+  /** Open straight away — the cashier just pressed "+ Add customer". */
   autoFocus?: boolean;
   /**
    * Half a row wide, beside the table picker: a short label and no margin
@@ -60,6 +57,8 @@ type Props = {
   /** Told when the picker opens or closes, so a compact row can give it
    *  the full width while it is open. */
   onOpenChange?: (open: boolean) => void;
+  /** What the ticket comes to, shown under the page title ("3 items · MVR 26.00"). */
+  ticketLine?: string;
 };
 
 const C = {
@@ -81,9 +80,7 @@ function isValidPhone(s: string): boolean {
   return isValidMvMobile(s.trim());
 }
 
-type Mode = "phone" | "name";
-
-export function CustomerPicker({ customer, onAttach, onDetach, autoFocus, compact, onOpenChange }: Props) {
+export function CustomerPicker({ customer, onAttach, onDetach, autoFocus, compact, onOpenChange, ticketLine }: Props) {
   const [open, setOpenState] = useState<boolean>(autoFocus ?? false);
   const onOpenChangeRef = useRef(onOpenChange);
   onOpenChangeRef.current = onOpenChange;
@@ -91,169 +88,6 @@ export function CustomerPicker({ customer, onAttach, onDetach, autoFocus, compac
     setOpenState(next);
     onOpenChangeRef.current?.(next);
   }, []);
-  const isSheet = useMediaQuery("(max-width: 840px)");
-  const [mode, setMode] = useState<Mode>("phone");
-
-  const [phone, setPhone] = useState("");
-  const [name, setName] = useState("");
-  const [nameQuery, setNameQuery] = useState("");
-
-  const [results, setResults] = useState<PosCustomer[]>([]);
-  const [recents, setRecents] = useState<PosCustomer[]>([]);
-  const [recentsTotal, setRecentsTotal] = useState<number | null>(null);
-  const [loadingRecents, setLoadingRecents] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const [error, setError] = useState("");
-
-  const phoneRef = useRef<HTMLInputElement>(null);
-  const nameRef = useRef<HTMLInputElement>(null);
-  const wrapRef = useRef<HTMLDivElement>(null);
-
-  const query = mode === "phone" ? phone.trim() : nameQuery.trim();
-  const phoneValid = isValidPhone(phone);
-
-  // ── Recent customers — fetched once when the picker opens ─────────
-  // Backed by /customers/search?q= (empty query → recent list).
-  // Backend now returns up to 50 customers ordered by
-  // COALESCE(last_order_at, created_at) DESC, so brand-new customers
-  // also appear (the old query only showed people who had ordered).
-  // We also surface the total count so the cashier knows when there
-  // are more customers than the 50-row scroll panel can show, and to
-  // type a name/phone to search the rest.
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    setLoadingRecents(true);
-    void (async () => {
-      try {
-        const res = await fetchRecentCustomers();
-        if (!cancelled) {
-          setRecents(res.data ?? []);
-          setRecentsTotal(res.total ?? null);
-        }
-      } catch {
-        if (!cancelled) {
-          setRecents([]);
-          setRecentsTotal(null);
-        }
-      } finally {
-        if (!cancelled) setLoadingRecents(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [open]);
-
-  // ── Debounced search (works for both phone and name) ───────────────
-  useEffect(() => {
-    if (query.length < 2) {
-      setResults([]);
-      return;
-    }
-    let aborted = false;
-    setLoading(true);
-    const handle = window.setTimeout(() => {
-      void (async () => {
-        try {
-          const res = await searchCustomers(query);
-          if (!aborted) setResults(res.data ?? []);
-        } catch {
-          if (!aborted) setResults([]);
-        } finally {
-          if (!aborted) setLoading(false);
-        }
-      })();
-    }, 250);
-    return () => {
-      aborted = true;
-      window.clearTimeout(handle);
-    };
-  }, [query]);
-
-  // ── Click-outside to collapse (inline only — sheet uses backdrop) ──
-  useEffect(() => {
-    if (!open || isSheet) return;
-    const onClick = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
-        // Don't auto-close if the cashier is mid-entry; only collapse
-        // when nothing has been typed yet. Otherwise tapping outside
-        // by accident would wipe their work.
-        if (!phone && !name && !nameQuery) setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
-  }, [open, isSheet, phone, name, nameQuery, setOpen]);
-
-  // ── Focus management ───────────────────────────────────────────────
-  useEffect(() => {
-    if (!open) return;
-    if (mode === "phone") phoneRef.current?.focus();
-    else nameRef.current?.focus();
-  }, [open, mode]);
-
-  // On phones the cart panel is height-capped — scroll the picker into
-  // view when it opens so the numpad and Save button aren't clipped.
-  // Sheet mode portals to body, so scrollIntoView is unnecessary.
-  useEffect(() => {
-    if (!open || isSheet) return;
-    const id = window.requestAnimationFrame(() => {
-      wrapRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-    });
-    return () => window.cancelAnimationFrame(id);
-  }, [open, isSheet]);
-
-  // ── Handlers ───────────────────────────────────────────────────────
-  const reset = () => {
-    setPhone("");
-    setName("");
-    setNameQuery("");
-    setResults([]);
-    setError("");
-    setMode("phone");
-  };
-
-  const handleAttach = (c: PosCustomer) => {
-    onAttach(c);
-    setOpen(false);
-    reset();
-  };
-
-  const handleQuickCreate = async () => {
-    if (!phoneValid) {
-      setError("Enter a valid phone number (at least 7 digits).");
-      return;
-    }
-    setCreating(true);
-    setError("");
-    try {
-      const res = await quickCreateCustomer({
-        phone: phone.trim(),
-        name: name.trim() || undefined,
-      });
-      handleAttach(res.customer);
-    } catch (e) {
-      setError((e as Error).message || "Could not create customer.");
-    } finally {
-      setCreating(false);
-    }
-  };
-
-  // Numpad button press → append/remove from phone input. We update
-  // state directly rather than dispatching synthetic input events so
-  // the input doesn't re-trigger the soft keyboard on every tap.
-  const numpadPress = (key: string) => {
-    setError("");
-    if (key === "back") {
-      setPhone((p) => p.slice(0, -1));
-      return;
-    }
-    if (key === "clear") {
-      setPhone("");
-      return;
-    }
-    setPhone((p) => p + key);
-  };
 
   // ── ATTACHED CHIP ──────────────────────────────────────────────────
   if (customer) {
@@ -271,7 +105,7 @@ export function CustomerPicker({ customer, onAttach, onDetach, autoFocus, compac
   if (!open) {
     return (
       <button
-        onClick={() => { setOpen(true); setMode("phone"); }}
+        onClick={() => setOpen(true)}
         style={{
           width: "100%", display: "flex", alignItems: "center", gap: 8,
           padding: "10px 12px",
@@ -291,280 +125,382 @@ export function CustomerPicker({ customer, onAttach, onDetach, autoFocus, compac
     );
   }
 
-  // ── EXPANDED PICKER ────────────────────────────────────────────────
-  const showCreate = mode === "phone" && phoneValid && !loading && results.length === 0;
-  const closePicker = () => { setOpen(false); reset(); };
+  // ── THE PAGE ───────────────────────────────────────────────────────
+  return (
+    <>
+      <div
+        style={{
+          width: "100%",
+          padding: "10px 12px",
+          marginBottom: compact ? 0 : 10,
+          borderRadius: 8,
+          border: `1px dashed ${C.border2}`,
+          background: C.bg,
+          color: C.muted,
+          fontSize: 13,
+          fontWeight: 600,
+          textAlign: "center",
+          boxSizing: "border-box",
+        }}
+      >
+        Choosing a customer…
+      </div>
+      {typeof document !== "undefined" && createPortal(
+        <CustomerPickerPage
+          ticketLine={ticketLine}
+          onAttach={(c) => { onAttach(c); setOpen(false); }}
+          onClose={() => setOpen(false)}
+        />,
+        document.body,
+      )}
+    </>
+  );
+}
 
-  const panel = (
-    <div
-      ref={wrapRef}
-      className={`pos-customer-picker pos-customer-picker-open${isSheet ? " pos-customer-picker-sheet" : ""}`}
-      style={isSheet ? {
-        background: "#FFFFFF",
-        border: `1px solid ${C.border}`,
-        overflow: "hidden",
-        display: "flex",
-        flexDirection: "column",
-      } : {
-        marginBottom: 10,
-        background: "#FFFFFF",
-        border: `1px solid ${C.border}`,
-        borderRadius: 10,
-        boxShadow: "0 4px 12px rgba(15,23,42,0.06)",
-        overflow: "hidden",
+// ── The page ───────────────────────────────────────────────────────────────
+
+type Filter = "regulars" | "today" | "all";
+
+function isToday(iso: string | null | undefined): boolean {
+  if (!iso) return false;
+  const d = new Date(iso);
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+}
+
+/** Digits only, so "778 1234" and "7781234" compare equal. */
+function digitsOf(s: string | null | undefined): string {
+  return (s ?? "").replace(/\D/g, "");
+}
+
+/**
+ * Regulars: who to show before anything is typed. Most frequent first,
+ * the most recent among equals, so the people who come every day are at
+ * the top of the first screen.
+ */
+export function rankRegulars(customers: PosCustomer[]): PosCustomer[] {
+  return [...customers].sort((a, b) => {
+    const n = (b.orders_count ?? 0) - (a.orders_count ?? 0);
+    if (n !== 0) return n;
+    return (b.last_order_at ?? "").localeCompare(a.last_order_at ?? "");
+  });
+}
+
+export function CustomerPickerPage({ ticketLine, onAttach, onClose }: {
+  ticketLine?: string;
+  onAttach: (c: PosCustomer) => void;
+  onClose: () => void;
+}) {
+  const isNarrow = useMediaQuery("(max-width: 840px)");
+  const [q, setQ] = useState("");
+  const [numeric, setNumeric] = useState(false);
+  const [filter, setFilter] = useState<Filter>("regulars");
+  const [recents, setRecents] = useState<PosCustomer[]>([]);
+  const [total, setTotal] = useState<number | null>(null);
+  const [loadingRecents, setLoadingRecents] = useState(true);
+  const [results, setResults] = useState<PosCustomer[]>([]);
+  const [loading, setLoading] = useState(false);
+  // The new-customer form: null while choosing, else the phone it opened with.
+  const [creating, setCreating] = useState<{ phone: string } | null>(null);
+  const [name, setName] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const phoneRef = useRef<HTMLInputElement>(null);
+
+  // On a tablet the page leaves the ticket showing, whichever side the
+  // cashier keeps it on; on a phone it is the whole screen.
+  const [inset, setInset] = useState<{ left: number; right: number }>({ left: 0, right: 0 });
+  useLayoutEffect(() => {
+    if (isNarrow) { setInset({ left: 0, right: 0 }); return; }
+    const cart = document.querySelector(".pos-cart");
+    if (!cart) { setInset({ left: 0, right: 0 }); return; }
+    const r = cart.getBoundingClientRect();
+    const onLeft = r.left < window.innerWidth / 2;
+    const w = Math.min(Math.max(0, r.width), window.innerWidth * 0.45);
+    setInset(onLeft ? { left: r.left + w, right: 0 } : { left: 0, right: Math.max(0, window.innerWidth - r.right) + w });
+  }, [isNarrow]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetchRecentCustomers();
+        if (!cancelled) { setRecents(res.data ?? []); setTotal(res.total ?? null); }
+      } catch {
+        if (!cancelled) { setRecents([]); setTotal(null); }
+      } finally {
+        if (!cancelled) setLoadingRecents(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const query = q.trim();
+  useEffect(() => {
+    if (query.length < 2) { setResults([]); setLoading(false); return; }
+    let aborted = false;
+    setLoading(true);
+    const handle = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const res = await searchCustomers(query);
+          if (!aborted) setResults(res.data ?? []);
+        } catch {
+          if (!aborted) setResults([]);
+        } finally {
+          if (!aborted) setLoading(false);
+        }
+      })();
+    }, 250);
+    return () => { aborted = true; window.clearTimeout(handle); };
+  }, [query]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { if (creating) setCreating(null); else onClose(); } };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [creating, onClose]);
+
+  useEffect(() => {
+    if (creating) phoneRef.current?.focus();
+    else inputRef.current?.focus();
+  }, [creating]);
+
+  // iPad has no numbers-only keyboard, so digits there come from our own
+  // pad; a phone has one, so it gets the device's keypad.
+  const padOnScreen = numeric && !isNarrow;
+  const typeDigit = (k: string, set: (fn: (p: string) => string) => void) => {
+    setError("");
+    if (k === "back") set((p) => p.slice(0, -1));
+    else if (k === "clear") set(() => "");
+    else set((p) => p + k);
+  };
+
+  const shown: PosCustomer[] = query.length >= 2
+    ? results
+    : filter === "regulars"
+      ? rankRegulars(recents)
+      : filter === "today"
+        ? recents.filter((c) => isToday(c.last_order_at))
+        : recents;
+
+  const queryIsPhone = isValidPhone(query);
+  const exactMatch = queryIsPhone && results.some((c) => digitsOf(c.phone).endsWith(digitsOf(query).slice(-7)));
+  const offerSave = queryIsPhone && !loading && !exactMatch;
+
+  const startCreate = (phone: string) => { setCreating({ phone }); setName(""); setError(""); };
+
+  const save = async () => {
+    const phone = (creating?.phone ?? "").trim();
+    if (!isValidPhone(phone)) { setError("Enter a valid phone number (7 digits)."); return; }
+    setSaving(true); setError("");
+    try {
+      const res = await quickCreateCustomer({ phone, name: name.trim() || undefined });
+      onAttach(res.customer);
+    } catch (e) {
+      setError((e as Error).message || "Could not save the customer.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const chip = (key: Filter, label: string) => (
+    <button
+      key={key}
+      type="button"
+      onClick={() => setFilter(key)}
+      aria-pressed={filter === key}
+      style={{
+        padding: "8px 12px", borderRadius: 999, minHeight: 36,
+        background: filter === key ? C.text : "#fff", color: filter === key ? "#fff" : "#334155",
+        border: `1.5px solid ${filter === key ? C.text : C.border}`, fontSize: 13, fontWeight: 700, cursor: "pointer",
       }}
     >
-      {/* Header */}
-      <div style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "8px 12px", background: C.bg,
-        borderBottom: `1px solid ${C.border}`,
-        flexShrink: 0,
-      }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: C.text, letterSpacing: "0.02em" }}>
-          {mode === "phone" ? "Customer phone" : "Search by name"}
+      {label}
+    </button>
+  );
+
+  const listHint = query.length >= 2
+    ? (loading ? "searching…" : `${results.length} of ${total ?? "?"}`)
+    : filter === "all" && total != null && total > recents.length
+      ? `showing ${recents.length} of ${total} — type to search`
+      : filter === "regulars" ? "most frequent first · tap to attach" : "tap to attach";
+
+  return (
+    <>
+      <button type="button" className="pos-customer-picker-backdrop" aria-label="Close customer picker" onClick={onClose} />
+      <div
+        className="pos-customer-page"
+        role="dialog"
+        aria-modal="true"
+        aria-label={creating ? "New customer" : "Customer"}
+        style={{ left: inset.left, right: inset.right }}
+        data-testid="customer-picker-page"
+      >
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "#fff", borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+          <button
+            type="button"
+            onClick={() => (creating ? setCreating(null) : onClose())}
+            aria-label={creating ? "Back to the customer list" : "Back to the ticket"}
+            style={{ width: 44, height: 44, borderRadius: 12, background: C.bgAlt, border: "none", fontSize: 22, fontWeight: 800, cursor: "pointer", color: C.text }}
+          >
+            ‹
+          </button>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 800, fontSize: 18, color: C.text }}>{creating ? "New customer" : "Customer"}</div>
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
+              {creating ? "Not on the list yet" : `For this ticket${ticketLine ? ` · ${ticketLine}` : ""}`}
+            </div>
+          </div>
         </div>
-        <button
-          onClick={closePicker}
-          style={{
-            background: "transparent", border: "none", color: C.muted,
-            fontSize: 12, fontWeight: 600, cursor: "pointer",
-            padding: "8px 12px", minHeight: 44,
-          }}
-        >
-          Cancel
-        </button>
-      </div>
 
-      {/* Inputs */}
-      <div style={{ padding: 12 }}>
-        {mode === "phone" ? (
-          <>
-            <PhoneField
-              inputRef={phoneRef}
-              value={phone}
-              onChange={(v) => { setPhone(v); setError(""); }}
-              valid={phoneValid}
-            />
-
-            <Numpad onPress={numpadPress} />
-
-            {/* Name field appears once the phone is typed, NOT on first
-                paint — keeps the UI uncluttered until it's relevant. */}
-            {phone.length > 0 && (
-              <div style={{ marginTop: 12 }}>
-                <label style={{
-                  display: "block", fontSize: 11, fontWeight: 700,
-                  color: C.muted, marginBottom: 4, letterSpacing: "0.04em",
-                  textTransform: "uppercase",
-                }}>
-                  Name <span style={{ fontWeight: 500, textTransform: "none" }}>(optional)</span>
-                </label>
+        {creating ? (
+          <div style={{ padding: 14, display: "flex", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
+            <div style={{ flex: "1 1 280px", background: "#fff", border: `1px solid ${C.border}`, borderRadius: 12, padding: 14 }}>
+              <label htmlFor="customer-new-phone" style={{ display: "block", fontSize: 11, fontWeight: 800, color: C.muted, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 4 }}>Phone</label>
+              <div style={{ position: "relative" }}>
                 <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Ahmed"
+                  id="customer-new-phone"
+                  ref={phoneRef}
+                  value={creating.phone}
+                  onChange={(e) => { setCreating({ phone: e.target.value.replace(/[^\d+\s-]/g, "") }); setError(""); }}
+                  type="tel"
+                  inputMode={isNarrow ? "tel" : "none"}
                   autoComplete="off"
-                  style={{
-                    width: "100%", padding: "12px 14px",
-                    borderRadius: 8, border: `1px solid ${C.border2}`,
-                    fontSize: 15, color: C.text,
-                    background: "#FFFFFF", outline: "none",
-                    boxSizing: "border-box",
-                  }}
+                  placeholder="7123456"
+                  style={{ width: "100%", height: 48, border: `1.5px solid ${isValidPhone(creating.phone) ? C.ok : C.border2}`, borderRadius: 10, padding: "0 12px", fontSize: 18, fontWeight: 700, letterSpacing: "0.04em", boxSizing: "border-box", outline: "none", color: C.text }}
                 />
+                {isValidPhone(creating.phone) && <span aria-hidden="true" style={{ position: "absolute", right: 12, top: 12, color: C.ok, fontWeight: 900 }}>✓</span>}
+              </div>
+              <label htmlFor="customer-new-name" style={{ display: "block", fontSize: 11, fontWeight: 800, color: C.muted, textTransform: "uppercase", letterSpacing: "0.04em", margin: "12px 0 4px" }}>
+                Name <span style={{ fontWeight: 500, textTransform: "none" }}>(optional, can add later)</span>
+              </label>
+              <input
+                id="customer-new-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") void save(); }}
+                placeholder="e.g. Ahmed"
+                autoComplete="off"
+                maxLength={120}
+                style={{ width: "100%", height: 48, border: `1.5px solid ${C.border2}`, borderRadius: 10, padding: "0 12px", fontSize: 16, fontWeight: 600, boxSizing: "border-box", outline: "none", color: C.text }}
+              />
+              <button
+                type="button"
+                onClick={() => void save()}
+                disabled={saving}
+                style={{ width: "100%", height: 48, borderRadius: 12, background: saving ? C.subtle : C.primary, color: "#fff", border: "none", fontWeight: 800, fontSize: 15, marginTop: 12, cursor: saving ? "wait" : "pointer" }}
+              >
+                {saving ? "Saving…" : "Save and attach"}
+              </button>
+              {error && <div role="alert" style={{ marginTop: 8, fontSize: 12, color: C.danger }}>{error}</div>}
+              <div style={{ fontSize: 12, color: C.muted, marginTop: 8 }}>Saved to Customers. SMS and loyalty use this phone.</div>
+            </div>
+            {!isNarrow && (
+              <div style={{ width: 230 }}>
+                <Numpad onPress={(k) => typeDigit(k, (fn) => setCreating((c) => ({ phone: fn(c?.phone ?? "") })))} />
+              </div>
+            )}
+          </div>
+        ) : (
+          <>
+            {/* Search */}
+            <div style={{ display: "flex", gap: 8, padding: "12px 14px 0", flexShrink: 0 }}>
+              <div style={{ position: "relative", flex: 1 }}>
+                <input
+                  ref={inputRef}
+                  value={q}
+                  onChange={(e) => { setQ(e.target.value); setError(""); }}
+                  type={numeric ? "tel" : "search"}
+                  inputMode={padOnScreen ? "none" : numeric ? "tel" : "search"}
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="words"
+                  spellCheck={false}
+                  placeholder="Name or phone"
+                  aria-label="Find a customer by name or phone"
+                  style={{ width: "100%", height: 52, border: `2px solid ${queryIsPhone ? C.ok : C.primary}`, borderRadius: 12, padding: "0 14px", fontSize: 18, fontWeight: 600, boxSizing: "border-box", outline: "none", color: C.text, background: "#fff" }}
+                />
+                {queryIsPhone && <span aria-hidden="true" style={{ position: "absolute", right: 14, top: 14, color: C.ok, fontWeight: 900 }}>✓</span>}
+              </div>
+              <button
+                type="button"
+                onClick={() => { setNumeric((n) => !n); window.setTimeout(() => inputRef.current?.focus(), 0); }}
+                aria-pressed={numeric}
+                aria-label={numeric ? "Letters keyboard" : "Numbers keyboard"}
+                style={{ width: 52, height: 52, border: `1.5px solid ${numeric ? C.primary : C.border2}`, borderRadius: 12, background: numeric ? C.primarySoft : "#fff", fontWeight: 800, fontSize: 13, color: numeric ? C.primaryDark : C.muted, cursor: "pointer" }}
+              >
+                {numeric ? "abc" : "123"}
+              </button>
+            </div>
+
+            {query.length < 2 && (
+              <div style={{ display: "flex", gap: 8, padding: "10px 14px 0", flexWrap: "wrap", flexShrink: 0 }} role="group" aria-label="Which customers to show">
+                {chip("regulars", "Regulars")}
+                {chip("today", "Today")}
+                {chip("all", total != null ? `All ${total}` : "All")}
+              </div>
+            )}
+
+            <div style={{ padding: "14px 14px 6px", fontSize: 11, fontWeight: 800, letterSpacing: "0.06em", color: C.muted, textTransform: "uppercase", display: "flex", justifyContent: "space-between", gap: 8, flexShrink: 0 }}>
+              <span>{query.length >= 2 ? "Matches" : filter === "regulars" ? "Regulars" : filter === "today" ? "Ordered today" : "All customers"}</span>
+              <span style={{ fontWeight: 500, letterSpacing: 0, textTransform: "none", color: C.subtle }}>{listHint}</span>
+            </div>
+
+            {/* The list */}
+            <div className="pos-customer-page-list" style={{ flex: "1 1 auto", minHeight: 0, overflow: "auto", padding: "0 14px 90px", WebkitOverflowScrolling: "touch" }} data-testid="customer-picker-list">
+              {offerSave && (
+                <button
+                  type="button"
+                  onClick={() => startCreate(query)}
+                  data-testid="customer-picker-save-new"
+                  style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", border: `2px dashed ${C.primary}`, background: "#FFF7ED", borderRadius: 12, padding: 12, marginBottom: 8, cursor: "pointer", minHeight: 64 }}
+                >
+                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: C.primary, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 18, flexShrink: 0 }}>＋</div>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: 15, color: C.text }}>Save {query} as a new customer</div>
+                    <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>One tap · the name can be added on the ticket afterwards</div>
+                  </div>
+                </button>
+              )}
+              {(loading || (loadingRecents && query.length < 2)) && (
+                <div style={{ padding: 12, fontSize: 12, color: C.muted, textAlign: "center" }}>{loading ? "Searching…" : "Loading customers…"}</div>
+              )}
+              <div className={isNarrow ? undefined : "pos-customer-page-grid"}>
+                {!loading && shown.map((c) => (
+                  <CustomerRow key={c.id} customer={c} onAttach={onAttach} query={query} />
+                ))}
+              </div>
+              {!loading && !loadingRecents && shown.length === 0 && !offerSave && (
+                <div style={{ padding: 16, fontSize: 13, color: C.muted, textAlign: "center" }}>
+                  {query.length >= 2
+                    ? (/^[\d\s+-]+$/.test(query) ? "No customer with that number. Keep typing to 7 digits to save them." : `No customer named “${query}”. Use New customer to add them.`)
+                    : filter === "today" ? "Nobody on the list has ordered today." : "No customers yet. Use New customer to add the first."}
+                </div>
+              )}
+            </div>
+
+            {padOnScreen && (
+              <div style={{ padding: "0 14px 10px", flexShrink: 0, maxWidth: 360, alignSelf: "flex-end" }}>
+                <Numpad onPress={(k) => typeDigit(k, (fn) => setQ((p) => fn(p)))} />
               </div>
             )}
 
             <button
-              onClick={() => { setMode("name"); setPhone(""); setName(""); setError(""); }}
-              style={{
-                marginTop: 12, width: "100%",
-                background: "transparent", border: `1px solid ${C.border}`,
-                borderRadius: 8, color: C.muted, fontSize: 12, fontWeight: 600,
-                padding: "8px 10px", cursor: "pointer", minHeight: 38,
-              }}
+              type="button"
+              onClick={() => startCreate(queryIsPhone ? query : "")}
+              data-testid="customer-picker-new"
+              style={{ position: "absolute", right: 14, bottom: `calc(16px + env(safe-area-inset-bottom, 0px))`, height: 52, padding: "0 20px", borderRadius: 14, background: C.primary, color: "#fff", border: "none", fontWeight: 800, fontSize: 15, display: "flex", alignItems: "center", gap: 8, boxShadow: "0 6px 18px rgba(183,75,12,.35)", cursor: "pointer" }}
             >
-              Search by name instead →
-            </button>
-          </>
-        ) : (
-          <>
-            <input
-              ref={nameRef}
-              value={nameQuery}
-              onChange={(e) => setNameQuery(e.target.value)}
-              placeholder="Type a name…"
-              autoComplete="off"
-              style={{
-                width: "100%", padding: "12px 14px",
-                borderRadius: 8, border: `1px solid ${C.primary}`,
-                fontSize: 15, color: C.text,
-                background: "#FFFFFF", outline: "none",
-                boxSizing: "border-box",
-              }}
-            />
-            <button
-              onClick={() => { setMode("phone"); setNameQuery(""); }}
-              style={{
-                marginTop: 12, width: "100%",
-                background: "transparent", border: `1px solid ${C.border}`,
-                borderRadius: 8, color: C.muted, fontSize: 12, fontWeight: 600,
-                padding: "8px 10px", cursor: "pointer", minHeight: 38,
-              }}
-            >
-              ← Back to phone entry
+              ＋ New customer
             </button>
           </>
         )}
       </div>
-
-      {/* Results / Recent customers / Create CTA
-          Three modes share one scroll panel:
-            • Query typed (≥2 chars) → live search results
-            • No query yet → "Recent customers" list (cashier taps a
-              regular without typing)
-            • Phone looks valid but no match → "Save as new" CTA
-       */}
-      {(loading || loadingRecents || results.length > 0 || recents.length > 0 || showCreate || (query.length >= 2 && !loading)) && (
-        <div
-          className="pos-customer-picker-results"
-          style={{
-          borderTop: `1px solid ${C.border}`,
-          background: C.bg,
-          // Doubled from 260 → 420 so the 50-row customer list is
-          // actually scrollable. Below 420 the list felt cramped and
-          // cashiers were thumb-flicking past regulars.
-          maxHeight: isSheet ? undefined : 420,
-          flex: isSheet ? "1 1 auto" : undefined,
-          minHeight: isSheet ? 0 : undefined,
-          overflow: "auto",
-        }}>
-          {(loading || (loadingRecents && results.length === 0 && query.length < 2)) && (
-            <div style={{ padding: 12, fontSize: 12, color: C.muted, textAlign: "center" }}>
-              {loading ? "Searching…" : "Loading recent customers…"}
-            </div>
-          )}
-
-          {!loading && results.length > 0 && (
-            <SectionHeader label="Matches" />
-          )}
-          {!loading && results.map((c) => (
-            <CustomerRow key={c.id} customer={c} onAttach={handleAttach} />
-          ))}
-
-          {/* Customer list — shown only when nothing is being searched,
-              so we don't double-render rows that already appear in
-              the live results. Header explicitly tells the cashier
-              there may be more in the database so they know to type
-              a name/phone instead of assuming this is everyone. */}
-          {!loading && query.length < 2 && recents.length > 0 && (
-            <>
-              <SectionHeader
-                label="Customers"
-                hint={
-                  recentsTotal != null && recentsTotal > recents.length
-                    ? `Showing ${recents.length} of ${recentsTotal} — type to search`
-                    : `${recents.length} total · tap to attach`
-                }
-              />
-              {recents.map((c) => (
-                <CustomerRow key={c.id} customer={c} onAttach={handleAttach} />
-              ))}
-            </>
-          )}
-
-          {showCreate && (
-            <div style={{
-              padding: 12,
-              borderTop: results.length ? `1px solid ${C.border}` : undefined,
-            }}>
-              <div style={{ fontSize: 11, color: C.muted, marginBottom: 8 }}>
-                No existing customer with this number — save as new?
-              </div>
-              <button
-                onClick={handleQuickCreate}
-                disabled={creating}
-                style={{
-                  width: "100%", padding: "12px 14px",
-                  borderRadius: 8,
-                  background: creating ? C.subtle : C.primary,
-                  color: "#FFFFFF", border: "none",
-                  fontWeight: 700, fontSize: 14,
-                  cursor: creating ? "not-allowed" : "pointer",
-                  minHeight: 44,
-                }}
-              >
-                {creating ? "Saving…" : `Save ${phone.trim()}${name.trim() ? ` — ${name.trim()}` : ""}`}
-              </button>
-              {error && (
-                <div style={{ marginTop: 8, fontSize: 12, color: C.danger }}>{error}</div>
-              )}
-            </div>
-          )}
-
-          {!loading && results.length === 0 && !showCreate && query.length >= 2 && (
-            <div style={{ padding: 12, fontSize: 12, color: C.muted, textAlign: "center" }}>
-              {mode === "phone"
-                ? `Keep typing — at least 7 digits to save as new.`
-                : `No matches for "${query}". Switch to phone entry to save a new customer.`}
-            </div>
-          )}
-
-          {!loading && !loadingRecents && query.length < 2 && recents.length === 0 && (
-            <div style={{ padding: 12, fontSize: 12, color: C.muted, textAlign: "center" }}>
-              No recent customers yet. Type a phone above to add one.
-            </div>
-          )}
-        </div>
-      )}
-
-      {error && !showCreate && (
-        <div style={{ padding: "8px 12px", fontSize: 12, color: C.danger, background: C.bg, flexShrink: 0 }}>
-          {error}
-        </div>
-      )}
-    </div>
+    </>
   );
-
-  if (isSheet) {
-    return (
-      <>
-        <div
-          style={{
-            width: "100%",
-            padding: "10px 12px",
-            marginBottom: compact ? 0 : 10,
-            borderRadius: 8,
-            border: `1px dashed ${C.border2}`,
-            background: C.bg,
-            color: C.muted,
-            fontSize: 13,
-            fontWeight: 600,
-            textAlign: "center",
-            boxSizing: "border-box",
-          }}
-        >
-          Selecting customer…
-        </div>
-        {typeof document !== "undefined" &&
-          createPortal(
-            <>
-              <button
-                type="button"
-                className="pos-customer-picker-backdrop"
-                aria-label="Close customer picker"
-                onClick={closePicker}
-              />
-              {panel}
-            </>,
-            document.body,
-          )}
-      </>
-    );
-  }
-
-  return panel;
 }
 
 // ── Attached chip with inline name edit ────────────────────────────────────
@@ -753,166 +689,70 @@ function AttachedCustomerChip({
 // the same card layout, so we share one component to keep the visual
 // language consistent and the parent JSX readable.
 
-function SectionHeader({ label, hint }: { label: string; hint?: string }) {
-  return (
-    <div style={{
-      padding: "8px 12px 4px", fontSize: 10, fontWeight: 700,
-      color: C.muted, letterSpacing: "0.06em", textTransform: "uppercase",
-      display: "flex", alignItems: "baseline", justifyContent: "space-between",
-      gap: 8, background: C.bg, position: "sticky", top: 0, zIndex: 1,
-    }}>
-      <span>{label}</span>
-      {hint && (
-        <span style={{
-          fontSize: 10, fontWeight: 500, color: C.subtle,
-          letterSpacing: 0, textTransform: "none",
-        }}>
-          {hint}
-        </span>
-      )}
-    </div>
-  );
-}
-
 function CustomerRow({
-  customer, onAttach,
+  customer, onAttach, query = "",
 }: {
   customer: PosCustomer;
   onAttach: (c: PosCustomer) => void;
+  query?: string;
 }) {
+  const today = isToday(customer.last_order_at);
   return (
     <button
       onClick={() => onAttach(customer)}
+      className="pos-customer-page-row"
       style={{
-        display: "flex", alignItems: "center", gap: 10,
-        width: "100%", padding: "10px 12px",
-        background: "transparent", border: "none",
-        borderBottom: `1px solid ${C.border}`,
+        display: "flex", alignItems: "center", gap: 12,
+        width: "100%", padding: 12, marginBottom: 8,
+        background: "#fff", border: `1px solid ${C.border}`, borderRadius: 12,
         cursor: "pointer", textAlign: "left",
-        minHeight: 48,
+        minHeight: 64, boxSizing: "border-box",
       }}
-      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = C.bgAlt; }}
-      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
     >
       <div style={{
-        width: 32, height: 32, borderRadius: "50%",
+        width: 40, height: 40, borderRadius: "50%",
         background: C.primarySoft, color: C.primaryDark,
         border: `1px solid ${C.primary}33`,
         display: "flex", alignItems: "center", justifyContent: "center",
-        fontWeight: 800, fontSize: 13, flexShrink: 0,
+        fontWeight: 800, fontSize: 15, flexShrink: 0,
       }}>
         {(customer.name ?? customer.phone ?? "?").slice(0, 1).toUpperCase()}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
-          fontSize: 14, fontWeight: 700, color: C.text,
+          fontSize: 15, fontWeight: 800, color: customer.name ? C.text : C.muted,
+          fontStyle: customer.name ? "normal" : "italic",
           whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
         }}>
           {customer.name || "(no name)"}
         </div>
-        <div style={{ fontSize: 12, color: C.muted }}>
-          {customer.phone}
+        <div style={{ fontSize: 12, color: C.muted, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          <Highlight text={customer.phone ?? "no phone"} query={query} />
           {typeof customer.orders_count === "number" && customer.orders_count > 0 && (
             <span> · {customer.orders_count} order{customer.orders_count === 1 ? "" : "s"}</span>
           )}
+          {typeof customer.loyalty_points === "number" && customer.loyalty_points > 0 && <span> · {customer.loyalty_points} pts</span>}
         </div>
       </div>
+      {today && (
+        <span style={{ fontSize: 11, fontWeight: 700, color: "#0F766E", background: "#ECFDF5", border: "1px solid #A7F3D0", padding: "3px 8px", borderRadius: 999, whiteSpace: "nowrap", flexShrink: 0 }}>today</span>
+      )}
     </button>
   );
 }
 
-// ── Phone field ────────────────────────────────────────────────────────────
-// iPad note: we DO NOT want the OS soft keyboard to appear — iPad has no
-// numeric-only keyboard variant, so `inputMode="tel"` pops the full
-// alphanumeric layout on top of our numpad. Setting `inputMode="none"`
-// instructs Safari/Chrome to suppress the virtual keyboard entirely
-// while keeping the input fully focusable, accessible, and editable via
-// a hardware keyboard. The on-screen numpad below is the sole touch
-// input path on POS hardware.
-function PhoneField({
-  inputRef, value, onChange, valid,
-}: {
-  inputRef: React.RefObject<HTMLInputElement | null>;
-  value: string;
-  onChange: (v: string) => void;
-  valid: boolean;
-}) {
-  const display = useMemo(() => value, [value]);
-  // Track focus so we can render our own caret hint without depending
-  // on the browser's native caret (which iOS still renders even when
-  // the keyboard is suppressed, but inconsistently).
-  const [focused, setFocused] = useState(false);
-
+/** The digits typed, marked inside a phone number so the match is visible. */
+function Highlight({ text, query }: { text: string; query: string }) {
+  const needle = digitsOf(query);
+  if (needle.length < 2) return <span>{text}</span>;
+  const i = text.indexOf(needle);
+  if (i < 0) return <span>{text}</span>;
   return (
-    <div
-      style={{ position: "relative" }}
-      onClick={() => inputRef.current?.focus()}
-    >
-      <input
-        ref={inputRef}
-        value={display}
-        onChange={(e) => onChange(e.target.value.replace(/[^\d+\s-]/g, ""))}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        type="tel"
-        // inputMode="none" → tell mobile browsers NOT to show a soft
-        // keyboard. Hardware keyboards still work.
-        inputMode="none"
-        autoComplete="off"
-        autoCorrect="off"
-        autoCapitalize="off"
-        spellCheck={false}
-        pattern="[0-9+\s\-]*"
-        placeholder="7123456"
-        aria-label="Customer phone number — use the numpad below"
-        style={{
-          width: "100%", padding: "14px 16px",
-          borderRadius: 8,
-          border: `2px solid ${valid ? C.ok : focused ? C.primary : C.border2}`,
-          fontSize: 22, fontWeight: 700,
-          letterSpacing: "0.06em",
-          color: C.text, background: "#FFFFFF",
-          outline: "none", boxSizing: "border-box",
-          textAlign: "center",
-          fontVariantNumeric: "tabular-nums",
-          caretColor: "transparent",
-          cursor: "pointer",
-          userSelect: "none",
-          WebkitUserSelect: "none",
-        }}
-      />
-      {/* Blinking pseudo-caret so cashier sees the field is active. */}
-      {focused && (
-        <span
-          aria-hidden="true"
-          style={{
-            position: "absolute",
-            top: "50%",
-            transform: "translateY(-50%)",
-            left: `calc(50% + ${Math.max(0, display.length) * 0.45}ch + 4px)`,
-            width: 2,
-            height: 24,
-            background: C.primary,
-            animation: "bg-blink 1s steps(2, start) infinite",
-            pointerEvents: "none",
-          }}
-        />
-      )}
-      {valid && (
-        <span
-          aria-hidden="true"
-          style={{
-            position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)",
-            color: C.ok, fontSize: 18, fontWeight: 900,
-          }}
-        >
-          ✓
-        </span>
-      )}
-      {/* Inject the blink keyframes once — defined locally so we don't
-          pollute the global stylesheet for a tiny POS-only animation. */}
-      <style>{`@keyframes bg-blink { 0%, 49% { opacity: 1 } 50%, 100% { opacity: 0 } }`}</style>
-    </div>
+    <span>
+      {text.slice(0, i)}
+      <mark style={{ background: C.primarySoft, color: C.primaryDark, padding: "0 2px", borderRadius: 3 }}>{text.slice(i, i + needle.length)}</mark>
+      {text.slice(i + needle.length)}
+    </span>
   );
 }
 

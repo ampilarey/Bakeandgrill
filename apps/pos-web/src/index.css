@@ -718,16 +718,6 @@ html, body, #root {
     display: none;
   }
 
-  /* Customer picker needs numpad + list — give the cart more room. */
-  .pos-cart:has(.pos-customer-picker-open) {
-    max-height: min(78vh, calc(100dvh - 96px));
-  }
-  .pos-cart.pos-cart--sheet:has(.pos-customer-picker-open) {
-    max-height: min(92dvh, 720px);
-  }
-  .pos-customer-picker-results {
-    max-height: min(160px, 28vh);
-  }
   .pos-header-btn {
     width: 44px;
     height: 44px;
@@ -1233,7 +1223,34 @@ html, body, #root {
   }
 }
 
-/* Customer picker bottom sheet (narrow / portrait ≤840px). */
+/* The customer page (2026-10-05, owner: "The way customers are added in
+ * pos is difficult both in ipad and iPhone"). A page of its own over the
+ * screen: the whole screen on a phone; on a tablet it leaves the ticket
+ * showing, the component setting left/right to whichever side the ticket
+ * is on. The backdrop below it is the same one the old sheet used. */
+.pos-customer-page {
+  position: fixed;
+  top: 0;
+  bottom: calc(100% - var(--pos-vh, 100dvh));
+  height: var(--pos-vh, 100dvh);
+  z-index: 800;
+  background: #F8FAFC;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: -8px 0 32px rgba(15, 23, 42, 0.18);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-sizing: border-box;
+}
+.pos-customer-page-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 10px;
+  align-content: start;
+}
+.pos-customer-page-row:hover { background: #F1F5F9 !important; }
+
+/* Customer picker backdrop. */
 .pos-customer-picker-backdrop {
   position: fixed;
   inset: 0;
@@ -1244,30 +1261,6 @@ html, body, #root {
   background: rgba(15, 23, 42, 0.45);
   cursor: pointer;
 }
-.pos-customer-picker-sheet {
-  position: fixed;
-  left: 0;
-  right: 0;
-  /* Bottom of the visible screen, not of the layout viewport — see the note
-   * on .pos-cart--sheet. */
-  bottom: calc(100% - var(--pos-vh, 100dvh));
-  z-index: 800;
-  max-height: min(calc(var(--pos-vh, 100dvh) * 0.92), 720px);
-  border-radius: 16px 16px 0 0 !important;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  box-shadow: 0 -8px 32px rgba(15, 23, 42, 0.18);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-.pos-customer-picker-sheet .pos-customer-picker-results {
-  flex: 1 1 auto;
-  min-height: 0;
-  max-height: none !important;
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
 /* Discounts & rewards dialog. Owner, 2026-09-03: "when numbers are entered,
  * size changes. And when gift code is clicked the popup screen [gets] v
  * bigger." Sized to its content, the dialog grew on every digit (the "= MVR
