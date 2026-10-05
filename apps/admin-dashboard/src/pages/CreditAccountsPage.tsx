@@ -16,6 +16,7 @@ import { CustomerCreditSection } from '../components/CustomerCreditSection';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { enteredOn } from '../utils/dateHelpers';
+import { CreditRepaymentsView } from '../components/credit/CreditRepaymentsView';
 
 /*
  * Customers → Credit accounts (owner, 2026-10-05: "Is there any place to
@@ -60,6 +61,8 @@ export function CreditAccountsPage() {
   const canRepay = can('customers.credit.repay');
   const isMobile = useIsMobile();
 
+  // Accounts, or every repayment in a range (owner, 2026-10-06).
+  const [view, setView] = useState<'accounts' | 'repayments'>('accounts');
   const [filter, setFilter] = useState<CreditAccountFilter>('all');
   const [q, setQ] = useState('');
   const [debouncedQ, setDebouncedQ] = useState('');
@@ -194,6 +197,28 @@ export function CreditAccountsPage() {
     <PageShell>
       <PageHeader title="Credit accounts" subtitle="Every customer buying on account: what they owe, how late, and the texts to chase it" />
 
+      <div role="tablist" aria-label="Credit view" style={{ display: 'inline-flex', gap: 4, padding: 4, marginBottom: 14, borderRadius: 12, background: 'var(--color-border-light)' }}>
+        {([['accounts', 'Accounts'], ['repayments', 'Repayments']] as const).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={view === id}
+            onClick={() => setView(id)}
+            style={{
+              padding: '8px 16px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 700,
+              background: view === id ? 'var(--color-surface)' : 'transparent',
+              color: view === id ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+              boxShadow: view === id ? '0 1px 3px rgba(28,20,8,0.12)' : 'none',
+            }}
+          >{label}</button>
+        ))}
+      </div>
+
+      {view === 'repayments' && <CreditRepaymentsView />}
+
+      {view === 'accounts' && (
+        <>
       {totals && isMobile && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 12px', padding: '12px 14px', marginBottom: 12, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 14, fontSize: 13 }}>
           <div><span style={{ color: 'var(--color-text-muted)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>Owed to you</span><div style={{ fontWeight: 800, fontSize: 17 }}>{money(totals.balance_mvr)}</div></div>
@@ -310,6 +335,9 @@ export function CreditAccountsPage() {
       )}
 
       <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+
+        </>
+      )}
 
       {open && (
         <Modal title={open.name} onClose={() => { setOpen(null); void load(); }} maxWidth={560}>

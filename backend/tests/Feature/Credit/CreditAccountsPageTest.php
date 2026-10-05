@@ -12,6 +12,9 @@ use App\Models\Customer;
 use App\Models\CustomerCreditLedger;
 use App\Models\Invoice;
 use App\Models\Payment;
+use App\Models\Permission;
+use App\Models\Role;
+use App\Models\TradeAccount;
 use App\Models\SmsLog;
 use App\Models\User;
 use App\Support\InvoicePagePresenter;
@@ -228,6 +231,122 @@ class CreditAccountsPageTest extends TestCase
         $this->assertStringContainsString('120.00', $log->message);
         $this->assertStringContainsString('/invoices/' . $invoice->token, $log->message);
         $this->assertStringContainsString('online by card', $log->message);
+    }
+
+    // ── Repayments list (owner, 2026-10-06: "Add") ─────────────────────
+
+    private function repayment(Customer $c, int $laar, string $method, string $at, ?int $paymentId = null, ?string $note = null): CustomerCreditLedger
+    {
+        $row = CustomerCreditLedger::create([
+            'customer_id' => $c->id,
+            'type' => 'payment',
+            'amount_laar' => -$laar,
+            'balance_after_laar' => 0,
+            'method' => $method,
+            'payment_id' => $paymentId,
+            'recorded_by' => $paymentId ? null : $this->owner->id,
+            'notes' => $note,
+        ]);
+        CustomerCreditLedger::whereKey($row->id)->update(['created_at' => \Illuminate\Support\Carbon::parse($at, 'Indian/Maldives')->format('Y-m-d H:i:s')]);
+
+        return $row;
+    }
+
+    public function test_repayments_list_a_day_with_totals_per_method_and_what_to_match_at_the_bank(): void
+    {
+        $aisha = $this->account('Aisha', '+9607771111');
+        $hassan = $this->account('Hassan', '+9607772222');
+        $online = Payment::create([
+            'invoice_id' => null, 'method' => 'bml_connect', 'gateway' => 'bml', 'amount' => 30, 'amount_laar' => 3000,
+            'status' => 'confirmed', 'idempotency_key' => 'rep-online-1', 'local_id' => 'REPONLINE1', 'processed_at' => now(),
+        ]);
+        $this->repayment($aisha, 10000, 'cash', '2026-10-06 09:15');
+        $this->repayment($aisha, 4550, 'card', '2026-10-06 12:30', null, 'Slip 4471');
+        $this->repayment($hassan, 20000, 'bank_transfer', '2026-10-06 23:50', null, 'BML ref 99812');
+        $this->repayment($hassan, 3000, 'card', '2026-10-06 18:00', $online->id);
+        // Outside the day, in Male time: 00:10 on the 7th.
+        $this->repayment($hassan, 777, 'cash', '2026-10-07 00:10');
+
+        $res = $this->getJson('/api/admin/customers/credit-repayments?from=2026-10-06&to=2026-10-06')->assertOk();
+
+        $this->assertSame(4, $res->json('totals.count'));
+        $this->assertEquals(375.50, $res->json('totals.total_mvr'));
+        $this->assertEquals(275.50, $res->json('totals.not_cash_mvr'));
+        $by = collect($res->json('totals.by_method'))->keyBy('method');
+        $this->assertEquals(100.00, $by['cash']['total_mvr']);
+        $this->assertEquals(45.50, $by['card']['total_mvr']);
+        $this->assertEquals(200.00, $by['bank_transfer']['total_mvr']);
+        $this->assertEquals(30.00, $by['online']['total_mvr']);
+        $this->assertSame('Online (BML)', $by['online']['label']);
+
+        // Newest first; the gateway row reads as online, not as a machine card.
+        $rows = $res->json('rows');
+        $this->assertSame(['bank_transfer', 'online', 'card', 'cash'], array_column($rows, 'method'));
+        $this->assertSame('2026-10-06 23:50', $rows[0]['at']);
+        $this->assertSame('BML ref 99812', $rows[0]['reference']);
+        $this->assertSame('Online', $rows[1]['recorded_by']);
+    }
+
+    public function test_repayments_filter_by_method_and_search_but_totals_keep_every_method(): void
+    {
+        $aisha = $this->account('Aisha', '+9607771111');
+        $hassan = $this->account('Hassan', '+9607772222');
+        $this->repayment($aisha, 10000, 'cash', '2026-10-06 09:15');
+        $this->repayment($hassan, 20000, 'bank_transfer', '2026-10-06 10:00');
+
+        $res = $this->getJson('/api/admin/customers/credit-repayments?from=2026-10-06&method=bank_transfer')->assertOk();
+        $this->assertSame(['Hassan'], array_column($res->json('rows'), 'customer'));
+        $this->assertSame(2, $res->json('totals.count'));
+
+        $res = $this->getJson('/api/admin/customers/credit-repayments?from=2026-10-06&q=7771111')->assertOk();
+        $this->assertSame(['Aisha'], array_column($res->json('rows'), 'customer'));
+
+        $this->getJson('/api/admin/customers/credit-repayments?from=2026-10-06&to=2026-10-01')->assertStatus(422);
+        $this->getJson('/api/admin/customers/credit-repayments?from=2025-01-01&to=2026-10-06')->assertStatus(422);
+        $this->getJson('/api/admin/customers/credit-repayments?method=cheque')->assertStatus(422);
+    }
+
+    public function test_wholesale_repayments_are_marked_and_writeoffs_and_charges_are_left_out(): void
+    {
+        $shop = $this->account('Corner Shop', '+9607773333');
+        TradeAccount::create(['customer_id' => $shop->id, 'shop_name' => 'Corner Shop', 'is_active' => true]);
+        $this->repayment($shop, 5000, 'bank_transfer', '2026-10-06 11:00');
+        CustomerCreditLedger::create(['customer_id' => $shop->id, 'type' => 'adjustment', 'amount_laar' => -999, 'balance_after_laar' => 0, 'method' => 'writeoff', 'notes' => 'Write-off']);
+        CustomerCreditLedger::create(['customer_id' => $shop->id, 'type' => 'charge', 'amount_laar' => 4000, 'balance_after_laar' => 4000, 'method' => 'house_account']);
+
+        $res = $this->getJson('/api/admin/customers/credit-repayments?from=2026-10-06')->assertOk();
+        $this->assertSame(1, $res->json('totals.count'));
+        $this->assertSame('wholesale', $res->json('rows.0.channel'));
+    }
+
+    public function test_repayments_download_as_a_spreadsheet_with_totals(): void
+    {
+        $aisha = $this->account('=cmd|calc', '+9607771111');
+        $this->repayment($aisha, 4550, 'card', '2026-10-06 12:30', null, 'Slip 4471');
+
+        $res = $this->get('/api/admin/customers/credit-repayments.csv?from=2026-10-06')->assertOk();
+        $this->assertStringContainsString('text/csv', (string) $res->headers->get('content-type'));
+        $this->assertStringContainsString('credit-repayments-2026-10-06.csv', (string) $res->headers->get('content-disposition'));
+        $csv = $res->getContent();
+        $this->assertStringContainsString('"Date and time",Customer,Phone', $csv);
+        $this->assertStringContainsString('"2026-10-06 12:30"', $csv);
+        $this->assertStringContainsString("'=cmd|calc", $csv, 'a formula in a name is neutralised');
+        $this->assertStringContainsString(',+9607771111,', $csv, 'a phone number is left as written');
+        $this->assertStringContainsString('"Card (machine)",45.50', $csv);
+        $this->assertStringContainsString('"All methods",45.50', $csv);
+    }
+
+    public function test_a_manager_who_only_takes_repayments_can_open_the_list_and_staff_cannot(): void
+    {
+        $role = Role::firstOrCreate(['slug' => 'repayer'], ['name' => 'Repayer', 'description' => '', 'is_active' => true]);
+        // Customer access and "take repayments", but not "manage credit".
+        $role->permissions()->sync(Permission::whereIn('slug', ['customers.manage', 'customers.credit.repay'])->pluck('id')->all());
+        Sanctum::actingAs($this->makeStaff('repayer'), ['staff']);
+        $this->getJson('/api/admin/customers/credit-repayments')->assertOk();
+        $this->getJson('/api/admin/customers/credit-accounts')->assertOk();
+
+        Sanctum::actingAs($this->makeStaff('staff'), ['staff']);
+        $this->getJson('/api/admin/customers/credit-repayments')->assertStatus(403);
     }
 
     // ── Paying the invoice online ──────────────────────────────────────

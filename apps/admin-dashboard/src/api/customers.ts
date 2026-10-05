@@ -1,5 +1,5 @@
 import type { Reservation, ReservationSettings as SharedReservationSettings } from '@shared/types';
-import { req } from './client';
+import { req, requestBlob } from './client';
 import type { Order } from './orders';
 
 export interface AdminCustomer {
@@ -696,4 +696,58 @@ export async function sendCreditPayLink(
   customerId: number,
 ): Promise<{ message: string; sms_log: { id: number; status: string } }> {
   return req(`/admin/customers/${customerId}/credit/pay-link`, { method: 'POST', body: '{}' });
+}
+
+// ── Credit repayments list (owner, 2026-10-06: a daily list of repayments by
+// method, for matching card and transfer money against the bank) ───────────
+
+export type CreditRepaymentMethod = 'all' | 'cash' | 'card' | 'bank_transfer' | 'online';
+
+export type CreditRepaymentRow = {
+  id: number;
+  at: string;
+  date: string;
+  customer_id: number;
+  customer: string;
+  phone: string | null;
+  channel: 'retail' | 'wholesale';
+  method: Exclude<CreditRepaymentMethod, 'all'>;
+  method_label: string;
+  amount_mvr: number;
+  balance_after_mvr: number;
+  reference: string | null;
+  invoices: string[];
+  recorded_by: string | null;
+  shift_id: number | null;
+};
+
+export type CreditRepaymentsResponse = {
+  from: string;
+  to: string;
+  method: CreditRepaymentMethod;
+  rows: CreditRepaymentRow[];
+  totals: {
+    count: number;
+    total_mvr: number;
+    not_cash_mvr: number;
+    by_method: { method: Exclude<CreditRepaymentMethod, 'all'>; label: string; count: number; total_mvr: number }[];
+  };
+  truncated: boolean;
+};
+
+export type CreditRepaymentFilters = { from: string; to: string; method?: CreditRepaymentMethod; q?: string };
+
+function creditRepaymentQuery(f: CreditRepaymentFilters): string {
+  const p = new URLSearchParams({ from: f.from, to: f.to });
+  if (f.method && f.method !== 'all') p.set('method', f.method);
+  if (f.q?.trim()) p.set('q', f.q.trim());
+  return p.toString();
+}
+
+export async function fetchCreditRepayments(f: CreditRepaymentFilters): Promise<CreditRepaymentsResponse> {
+  return req(`/admin/customers/credit-repayments?${creditRepaymentQuery(f)}`);
+}
+
+export async function exportCreditRepayments(f: CreditRepaymentFilters): Promise<Blob> {
+  return requestBlob(`/admin/customers/credit-repayments.csv?${creditRepaymentQuery(f)}`);
 }

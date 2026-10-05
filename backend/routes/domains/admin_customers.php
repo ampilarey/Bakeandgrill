@@ -55,8 +55,15 @@ Route::middleware(['auth:sanctum', 'staff.token', 'permission:customers.manage']
 
     // Customers → Credit accounts (owner, 2026-10-05): every account on one
     // page. Before /{id}, which would otherwise swallow the path.
+    // Either credit permission opens the page: a manager who only takes
+    // repayments sees the tab, so the list must load for them too.
     Route::get('/credit-accounts', [App\Http\Controllers\Api\CreditAccountsController::class, 'index'])
-        ->middleware('permission:customers.credit.manage');
+        ->middleware('permission.any:customers.credit.manage,customers.credit.repay');
+    // Every repayment in a range, and as a spreadsheet (owner, 2026-10-06).
+    Route::get('/credit-repayments', [App\Http\Controllers\Api\CreditAccountsController::class, 'repayments'])
+        ->middleware('permission.any:customers.credit.manage,customers.credit.repay');
+    Route::get('/credit-repayments.csv', [App\Http\Controllers\Api\CreditAccountsController::class, 'repaymentsCsv'])
+        ->middleware('permission.any:customers.credit.manage,customers.credit.repay');
     Route::get('/{id}', [App\Http\Controllers\Api\AdminCustomerController::class, 'show']);
     Route::patch('/{id}', [App\Http\Controllers\Api\AdminCustomerController::class, 'update']);
     Route::patch('/{id}/phone', [App\Http\Controllers\Api\AdminCustomerController::class, 'changePhone']);

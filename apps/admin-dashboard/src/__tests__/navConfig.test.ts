@@ -41,7 +41,7 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
   // Label Hub, 2026-10-04: pack stickers and box labels.
   { to: '/labels', permissions: ['labels.print', 'labels.manage'] },
   // Route audit, 2026-09-19: both complaint pages are Customers tabs.
-  { to: '/customers', permissions: ['customers.manage', 'complaints.view'] },
+  { to: '/customers', permissions: ['customers.manage', 'customers.credit.manage', 'customers.credit.repay', 'complaints.view'] },
   { to: '/catering', permissions: ['events.manage', 'customers.manage'] },
   { to: '/loyalty', permission: 'loyalty.manage' },
   { to: '/promotions', permissions: ['promotions.manage', 'promotions.discount_cards', 'discounts.settings.manage'] },

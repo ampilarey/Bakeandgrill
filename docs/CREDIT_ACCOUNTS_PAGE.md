@@ -101,3 +101,30 @@ order, never throwing. It runs:
   customer closed the browser.
 
 Tests: `tests/Feature/Payment/PendingBmlPaymentHealerTest.php`.
+
+## Repayments list (2026-10-06)
+
+Owner: card and transfer repayments touched no cash drawer, so they showed up
+only on each customer's own history, with nothing to match against the bank
+statement. Credit accounts now has an **Accounts / Repayments** switch.
+
+**Repayments** lists every credit repayment in a date range (Today, Yesterday,
+Last 7 days, Last 30 days, or any range up to a year), newest first: when, who,
+method, amount, the slip or transfer reference, the invoices it paid, and who
+recorded it. Tiles across the top give the total received, **Not cash: match to
+bank** (card, transfer and online together), cash, card and transfer, and online.
+Chips filter by method, the search box by name or phone, and **Download CSV**
+gives the same list with totals per method at the foot.
+
+Methods: Cash (into a shift drawer), Card (machine), Bank transfer, and Online
+(BML) for a repayment that came through the pay link. Wholesale shops' repayments
+sit in the same ledger and are marked "wholesale". Days are counted in Malé time,
+whatever clock the device keeps.
+
+Repayments are never sales: the sale was counted on the day of the credit order.
+
+| Piece | File |
+|---|---|
+| List and totals | `backend/app/Domains/Credit/Services/CreditRepaymentsReport.php` |
+| API | `GET /admin/customers/credit-repayments`, `GET /admin/customers/credit-repayments.csv` |
+| Admin view | `apps/admin-dashboard/src/components/credit/CreditRepaymentsView.tsx` |
