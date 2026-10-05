@@ -884,6 +884,8 @@ export interface PurchaseLineEdit {
   quantity: number;
   unit_cost: number;
   purchase_unit_id?: number | null;
+  /** A unit name instead of a pack: kg against an item counted in g, converted through Inventory → Unit Conversions. */
+  unit?: string;
   brand?: string | null;
   /** 800 = 8% GST inside the price, 0 = none. Omit for the item's default. */
   gst_rate_bp?: number;
@@ -978,6 +980,8 @@ export async function createPurchase(data: {
     quantity: number;
     unit_cost: number;
     purchase_unit_id?: number;
+    /** A unit name instead of a pack, converted through Inventory → Unit Conversions. */
+    unit?: string;
     /**
      * Which brand this purchase was. Recorded against the line and carried
      * into price history, so brands can be compared on price without the

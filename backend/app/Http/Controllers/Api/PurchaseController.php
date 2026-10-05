@@ -234,6 +234,7 @@ class PurchaseController extends Controller
                 (float) $line['quantity'],
                 (float) $line['unit_cost'],
                 $line['purchase_unit_id'] ?? null,
+                $line['unit'] ?? null,
             );
 
             $subtotal += $priced['total'];
@@ -527,6 +528,7 @@ class PurchaseController extends Controller
                     (float) $itemPayload['quantity'],
                     (float) $itemPayload['unit_cost'],
                     $itemPayload['purchase_unit_id'] ?? null,
+                    $itemPayload['unit'] ?? null,
                 );
 
                 $lineTotal = $priced['total'];

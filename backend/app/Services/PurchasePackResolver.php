@@ -32,8 +32,30 @@ final class PurchasePackResolver
         float $quantity,
         float $unitCost,
         int|string|null $purchaseUnitId,
+        ?string $unit = null,
     ): array {
         $pack = $this->pack($item, $purchaseUnitId);
+
+        // No pack of the item's own, but a unit name: "kg" against an item
+        // counted in g converts through Inventory → Unit Conversions, the
+        // same table recipes use, so nobody has to say what a kilo holds
+        // (owner, 2026-10-05). Priced exactly like a pack of that size.
+        if ($pack === null && $item !== null && trim((string) $unit) !== '') {
+            $size = $this->conversionSize($item, trim((string) $unit));
+            if ($size !== null) {
+                $total = round($quantity * $unitCost, 2);
+                $baseQuantity = $quantity * $size;
+
+                return [
+                    'quantity' => $baseQuantity,
+                    'unit_cost' => $baseQuantity > 0 ? round($total / $baseQuantity, 6) : 0.0,
+                    'total' => $total,
+                    'pack_name' => trim((string) $unit),
+                    'pack_size' => $size,
+                    'pack_quantity' => $quantity,
+                ];
+            }
+        }
 
         if ($pack === null) {
             // Bought loose, in the item's own unit. Unchanged behaviour, and
@@ -64,6 +86,28 @@ final class PurchasePackResolver
             'pack_size' => $size,
             'pack_quantity' => $quantity,
         ];
+    }
+
+    /**
+     * How many of the item's own unit one of $unit holds, by the global
+     * conversion table; null when $unit is the item's own unit. A unit with
+     * no conversion on file is refused rather than guessed at: a "sack" of
+     * flour counted as one gram would be wrong by a thousand or more.
+     */
+    private function conversionSize(InventoryItem $item, string $unit): ?float
+    {
+        $own = strtolower(trim((string) $item->unit));
+        if ($own === '' || strtolower($unit) === $own) {
+            return null;
+        }
+        $factor = app(UnitConversionService::class)->factor($unit, $own);
+        if ($factor === null || $factor <= 0) {
+            throw ValidationException::withMessages([
+                'items' => ["No conversion from {$unit} to {$item->unit} is on file. Add it under Inventory → Unit Conversions, or say what one {$unit} of {$item->name} holds."],
+            ]);
+        }
+
+        return round($factor, 6);
     }
 
     /**

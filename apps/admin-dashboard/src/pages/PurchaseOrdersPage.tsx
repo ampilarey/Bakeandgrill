@@ -79,6 +79,13 @@ export function lineOpening(
     const box = offered.find((p) => p.id === last.purchase_unit_id);
     if (box) return { pack: box, price: priceOf(box) ?? last.pack_cost };
   }
+  // Last bought by a converted unit ("2 kg" of an item counted in g): the
+  // same unit again, at what a kilo cost.
+  if (lastWasThisBrand && last.purchase_unit_id == null && last.pack_name) {
+    const named = last.pack_name.trim().toLowerCase();
+    const conv = offered.find((p) => p.conversion && p.name.trim().toLowerCase() === named && Number(p.base_units) === Number(last.pack_size));
+    if (conv) return { pack: conv, price: last.pack_cost };
+  }
   const own = key === '' ? undefined : offered.find((p) => p.brand_key === key && p.default_unit_cost != null);
   if (own) return { pack: own, price: priceOf(own) };
   if (lastWasThisBrand && last.purchase_unit_id == null) {
@@ -87,6 +94,35 @@ export function lineOpening(
   const shared = offered.find((p) => (p.brand_key ?? '') === '' && p.default_unit_cost != null);
   if (shared) return { pack: shared, price: priceOf(shared) };
   return null;
+}
+
+/**
+ * The item's own packs, then the units Inventory → Unit Conversions converts
+ * into its own, offered as packs that need no setting up. Owner, 2026-10-05:
+ * "unit conversion is there but when i select kg every time i have to enter
+ * the conversion." A conversion pack has a negative id (never sent: the line
+ * sends the unit name) and no brand, so every brand is offered it; an item's
+ * own pack by the same name comes first and wins by name.
+ */
+export function packsWithConversions(
+  packs: InventoryPurchaseUnit[],
+  conversions: { unit: string; base_units: number }[] | undefined,
+): InventoryPurchaseUnit[] {
+  const names = new Set(packs.map((p) => p.name.trim().toLowerCase()));
+  const extra: InventoryPurchaseUnit[] = [];
+  (conversions ?? []).forEach((c, i) => {
+    const key = c.unit.trim().toLowerCase();
+    if (!key || names.has(key) || !(Number(c.base_units) > 0)) return;
+    names.add(key);
+    extra.push({ id: -(i + 1), name: c.unit, base_units: c.base_units, brand: null, brand_key: '', conversion: true });
+  });
+  return [...packs, ...extra];
+}
+
+/** The pack's id for a line's payload, or the unit name when it is a conversion. */
+export function packPayload(pack: InventoryPurchaseUnit | null): { purchase_unit_id?: number; unit?: string } {
+  if (!pack) return {};
+  return pack.conversion ? { unit: pack.name } : { purchase_unit_id: pack.id };
 }
 
 function editLineBase(line: { quantity: string; purchase_unit_id: string; packs: InventoryPurchaseUnit[] }): number | null {
@@ -550,6 +586,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
     try {
       const res = await getPurchaseUnits(itemId);
       const last = res.last_purchase ?? null;
+      const packs = packsWithConversions(res.purchase_units, res.unit_conversions);
       /*
        * Open on the last purchase's brand. Owner, 2026-09-07: "by default it
        * should be selected the latest." The box and the price then come
@@ -566,7 +603,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
           if (i !== idx || l.selection?.item.id !== itemId) return l;
 
           const brand = l.brand === '' && last?.brand ? last.brand : l.brand;
-          const opening = lineOpening(res.purchase_units, brand, last);
+          const opening = lineOpening(packs, brand, last);
           // Nothing on record yet: the item's own average cost is the best
           // guess left, which is what the line used before any of this.
           const price = opening
@@ -574,7 +611,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
             : (last ? last.unit_cost : l.selection?.item.cost_per_unit ?? null);
           return {
             ...l,
-            packs: res.purchase_units,
+            packs,
             brands: res.brands ?? [],
             brandPhotos: res.brand_photos ?? {},
             last,
@@ -610,7 +647,8 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
     setManualPoError('');
     try {
       await createPurchaseUnit(item.id, { name, base_units: qty });
-      const packs = (await getPurchaseUnits(item.id)).purchase_units;
+      const fresh = await getPurchaseUnits(item.id);
+      const packs = packsWithConversions(fresh.purchase_units, fresh.unit_conversions);
       // The typed word now matches a real pack, so the line prices itself.
       setManualPoForm((f) => ({
         ...f,
@@ -670,12 +708,12 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
           // the stored figures cannot disagree with the preview above.
           quantity: qty,
           unit_cost: cost,
-          ...(linePack(l) ? { purchase_unit_id: linePack(l)!.id } : {}),
+          ...packPayload(linePack(l)),
           ...(l.brand.trim() ? { brand: l.brand.trim() } : {}),
           gst_rate_bp: l.gst ? 800 : 0,
         };
       })
-      .filter(Boolean) as { inventory_item_id: number; name: string; quantity: number; unit_cost: number; purchase_unit_id?: number; gst_rate_bp: number }[];
+      .filter(Boolean) as { inventory_item_id: number; name: string; quantity: number; unit_cost: number; purchase_unit_id?: number; unit?: string; gst_rate_bp: number }[];
     if (lines.length === 0) { setManualPoError('Add at least one valid line item.'); return; }
 
     // A word like "case" with no size behind it cannot be turned into stock or
@@ -913,7 +951,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
       if (itemId) {
         try {
           const res = await getPurchaseUnits(itemId);
-          packs = res.purchase_units ?? [];
+          packs = packsWithConversions(res.purchase_units ?? [], res.unit_conversions);
           baseUnit = res.base_unit || baseUnit;
           base.brands = res.brands ?? [];
         } catch { /* the picker just offers the base unit */ }
@@ -982,7 +1020,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
         inventory_item_id: Number(l.inventory_item_id),
         quantity: parseFloat(l.quantity),
         unit_cost: parseFloat(l.unit_cost) || 0,
-        ...(l.purchase_unit_id ? { purchase_unit_id: Number(l.purchase_unit_id) } : {}),
+        ...packPayload(l.packs.find((p) => String(p.id) === l.purchase_unit_id) ?? null),
         ...(l.brand.trim() ? { brand: l.brand.trim() } : {}),
         gst_rate_bp: l.gst ? 800 : 0,
       }));
@@ -2027,7 +2065,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                       ? `${mvr(line.last.pack_cost)} a ${line.last.pack_name} (${tidyNumber(line.last.pack_size)} ${line.selection.item.unit})`
                       : `${mvr(line.last.unit_cost)} a ${line.selection.item.unit}`}
                     {line.last.brand ? ` · ${line.last.brand}` : ''}
-                    {line.last.pack_name && line.last.purchase_unit_id === null
+                    {line.last.pack_name && line.last.purchase_unit_id === null && !line.packs.some((p) => p.conversion && p.name.trim().toLowerCase() === line.last!.pack_name!.trim().toLowerCase())
                       ? ' — that pack has changed since, so this line is counted loose.'
                       : ''}
                   </p>
@@ -2035,6 +2073,11 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                 {usualPriceNote(line) && (
                   <p data-testid={`manual-po-usual-${idx}`} style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--color-text-muted)' }}>
                     {usualPriceNote(line)}
+                  </p>
+                )}
+                {linePack(line)?.conversion && (
+                  <p data-testid={`manual-po-conversion-note-${idx}`} style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--color-text-muted)' }}>
+                    1 {linePack(line)!.name.toLowerCase()} = {tidyNumber(Number(linePack(line)!.base_units))} {line.selection?.item.unit}, from Inventory → Unit Conversions. Nothing to set up.
                   </p>
                 )}
                 {/* The typed unit is not one this item has been bought by, so

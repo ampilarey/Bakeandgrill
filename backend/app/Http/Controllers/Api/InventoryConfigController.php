@@ -101,6 +101,10 @@ class InventoryConfigController extends Controller
 
         return response()->json([
             'base_unit' => $item->unit,
+            // Units that convert into the item's own through Inventory → Unit
+            // Conversions (kg => 1000 for an item counted in g): the buying
+            // screen treats them as packs that need no setting up.
+            'unit_conversions' => app(\App\Services\UnitConversionService::class)->conversionsTo($item->unit),
             // Brand-specific packs sit alongside the item's shared ones. A
             // pack with an empty brand_key belongs to the item however it is
             // branded, which is what every pack was before brands existed.

@@ -651,6 +651,12 @@ export interface InventoryPurchaseUnit {
   name: string;
   base_units: number | string;
   /**
+   * Not a pack of the item's own but a unit from Inventory → Unit Conversions
+   * (kg against an item counted in g), offered as one so it needs no setting
+   * up. Its id is negative and never sent; the line sends the unit name.
+   */
+  conversion?: boolean;
+  /**
    * Whose box this is. Null means the pack belongs to the item and is offered
    * whichever brand is being bought — which is every pack defined before
    * brands existed. `brand_key` is the folded form used for matching.
@@ -708,6 +714,8 @@ export function brandKey(brand: string | null | undefined): string {
 export async function getPurchaseUnits(itemId: number): Promise<{
   base_unit: string;
   purchase_units: InventoryPurchaseUnit[];
+  /** Units that convert into the item's own through Inventory → Unit Conversions, and what one holds. */
+  unit_conversions?: { unit: string; base_units: number }[];
   /** Brands this item has been bought as, most recent first. */
   brands?: string[];
   /** Keyed by the folded brand, for the ones that have a picture. */

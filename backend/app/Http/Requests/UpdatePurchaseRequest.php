@@ -65,6 +65,8 @@ class UpdatePurchaseRequest extends FormRequest
             'items.*.unit_cost' => 'required_with:items|numeric|min:0',
             'items.*.gst_rate_bp' => 'nullable|integer|min:0|max:10000',
             'items.*.purchase_unit_id' => 'nullable|integer|exists:inventory_purchase_units,id',
+            // A unit name instead of a pack: converted through Unit Conversions.
+            'items.*.unit' => 'nullable|string|max:40',
             'items.*.brand' => 'nullable|string|max:120',
         ];
     }

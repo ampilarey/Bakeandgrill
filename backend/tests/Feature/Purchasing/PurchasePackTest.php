@@ -293,4 +293,56 @@ class PurchasePackTest extends TestCase
         $this->assertSame('piece', $res->json('base_unit'));
         $this->assertCount(1, $res->json('purchase_units'));
     }
+
+    /**
+     * Owner, 2026-10-05: "unit conversion is there but when i select kg every
+     * time i have to enter the conversion." A unit that Inventory → Unit
+     * Conversions already converts into the item's own is a pack that needs
+     * no setting up: the buying screen is told about it, and a line sent
+     * with that unit name is priced through the table.
+     */
+    public function test_a_unit_the_conversion_table_knows_needs_no_pack(): void
+    {
+        Sanctum::actingAs($this->makeOwner(), ['staff']);
+        // g → kg and mg → g are seeded by migration; make sure of them and drop the rest for a known list.
+        \App\Models\UnitConversion::query()->delete();
+        \App\Models\UnitConversion::create(['from_unit' => 'g', 'to_unit' => 'kg', 'factor' => 0.001]);
+        \App\Models\UnitConversion::create(['from_unit' => 'mg', 'to_unit' => 'g', 'factor' => 0.001]);
+        app(\App\Services\UnitConversionService::class)->bustCache();
+        $aji = InventoryItem::create(['name' => 'Ajinomoto', 'sku' => 'AJI-1', 'unit' => 'g', 'current_stock' => 0, 'unit_cost' => 0, 'is_active' => true]);
+
+        // The buying screen learns which units convert, and what one holds.
+        $this->getJson("/api/inventory/{$aji->id}/purchase-units")->assertOk()
+            ->assertJsonPath('unit_conversions', [['unit' => 'kg', 'base_units' => 1000], ['unit' => 'mg', 'base_units' => 0.001]]);
+
+        // 2 kg at MVR 27 a kilo: 2000 g on the shelf at MVR 0.027 each, the line reading "2 kg".
+        $this->postJson('/api/purchases', [
+            'supplier_name_text' => 'Frez', 'purchase_date' => now()->toDateString(), 'status' => 'received',
+            'items' => [['inventory_item_id' => $aji->id, 'quantity' => 2, 'unit_cost' => 27, 'unit' => 'kg']],
+        ])->assertCreated()
+            ->assertJsonPath('purchase.items.0.quantity', '2000.0000')
+            ->assertJsonPath('purchase.items.0.unit_cost', '0.027000')
+            ->assertJsonPath('purchase.items.0.total_cost', '54.00')
+            ->assertJsonPath('purchase.items.0.pack_name', 'kg')
+            ->assertJsonPath('purchase.items.0.pack_size', '1000.000000');
+        $this->assertSame(2000.0, (float) $aji->refresh()->current_stock);
+
+        // The item's own unit is loose, and a unit with no conversion is refused, not guessed.
+        $this->postJson('/api/purchases', [
+            'supplier_name_text' => 'Frez', 'purchase_date' => now()->toDateString(), 'status' => 'received',
+            'items' => [['inventory_item_id' => $aji->id, 'quantity' => 500, 'unit_cost' => 0.02, 'unit' => 'g']],
+        ])->assertCreated()->assertJsonPath('purchase.items.0.pack_name', null)->assertJsonPath('purchase.items.0.quantity', '500.0000');
+        $this->postJson('/api/purchases', [
+            'supplier_name_text' => 'Frez', 'purchase_date' => now()->toDateString(), 'status' => 'received',
+            'items' => [['inventory_item_id' => $aji->id, 'quantity' => 1, 'unit_cost' => 90, 'unit' => 'sack']],
+        ])->assertUnprocessable()->assertJsonFragment(['No conversion from sack to g is on file. Add it under Inventory → Unit Conversions, or say what one sack of Ajinomoto holds.']);
+
+        // A pack of the item's own by the same name still wins over the table.
+        $this->postJson("/api/inventory/{$aji->id}/purchase-units", ['name' => 'kg', 'base_units' => 900])->assertCreated();
+        $pack = \App\Models\InventoryPurchaseUnit::query()->where('inventory_item_id', $aji->id)->firstOrFail();
+        $this->postJson('/api/purchases', [
+            'supplier_name_text' => 'Frez', 'purchase_date' => now()->toDateString(), 'status' => 'received',
+            'items' => [['inventory_item_id' => $aji->id, 'quantity' => 1, 'unit_cost' => 27, 'purchase_unit_id' => $pack->id, 'unit' => 'kg']],
+        ])->assertCreated()->assertJsonPath('purchase.items.0.quantity', '900.0000');
+    }
 }

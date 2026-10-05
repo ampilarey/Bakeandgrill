@@ -71,6 +71,44 @@ final class UnitConversionService
         return null;
     }
 
+    /**
+     * Every unit on file that converts into $unit, with how many of $unit
+     * one of it holds: for an item counted in g, kg => 1000 and mg => 0.001.
+     * The buying screen offers these as ready-made packs, so "kg" on a line
+     * for a gram-counted item needs no typing (owner, 2026-10-05: "unit
+     * conversion is there but when i select kg every time i have to enter
+     * the conversion").
+     *
+     * @return list<array{unit: string, base_units: float}>
+     */
+    public function conversionsTo(?string $unit): array
+    {
+        $to = $this->normalize($unit);
+        if ($to === '') {
+            return [];
+        }
+        $units = [];
+        foreach ($this->factorMap() as $from => $row) {
+            $units[$from] = true;
+            foreach (array_keys($row) as $u) {
+                $units[$u] = true;
+            }
+        }
+        $out = [];
+        foreach (array_keys($units) as $u) {
+            if ($u === $to) {
+                continue;
+            }
+            $f = $this->factor($u, $to);
+            if ($f !== null && $f > 0) {
+                $out[] = ['unit' => $u, 'base_units' => round($f, 6)];
+            }
+        }
+        usort($out, fn ($a, $b) => strcmp($a['unit'], $b['unit']));
+
+        return $out;
+    }
+
     /** @return array<string, array<string, float>> */
     private function factorMap(): array
     {

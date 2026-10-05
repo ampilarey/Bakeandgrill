@@ -319,6 +319,41 @@ describe('Create Manual Purchase Order card', () => {
     expect(screen.getByTestId('manual-po-order-total')).toHaveTextContent('MVR 415.00');
   });
 
+  it('prices a unit the conversion table knows without asking what it holds', async () => {
+    /*
+     * Owner, 2026-10-05: "unit conversion is there but when i select kg every
+     * time i have to enter the conversion." Inventory → Unit Conversions
+     * already says a kilo is a thousand grams; the line takes its word for it.
+     */
+    // Flour is counted in kg; the table knows a tonne and a gram of it.
+    getPurchaseUnits.mockResolvedValue({
+      base_unit: 'kg', purchase_units: [], unit_conversions: [{ unit: 'g', base_units: 0.001 }, { unit: 'tonne', base_units: 1000 }],
+    });
+    await openCard();
+    await nameShop('Frez');
+    fireEvent.click(screen.getByText('pick-flour'));
+    fireEvent.change(await screen.findByLabelText('Unit for item 1'), { target: { value: 'tonne' } });
+
+    // No "1 tonne = ?" box, no pack to define: the cost box is per tonne straight away.
+    expect(await screen.findByText('Price per tonne (MVR)')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Size of one tonne for item 1')).not.toBeInTheDocument();
+    expect(createPurchaseUnit).not.toHaveBeenCalled();
+    expect(screen.getByTestId('manual-po-conversion-note-0')).toHaveTextContent('1 tonne = 1000 kg, from Inventory → Unit Conversions');
+
+    fireEvent.change(screen.getByLabelText('Quantity for item 1'), { target: { value: '2' } });
+    fireEvent.change(screen.getByLabelText('Unit cost for item 1'), { target: { value: '27000' } });
+    const preview = await screen.findByTestId('manual-po-conversion-0');
+    expect(preview).toHaveTextContent('2000 kg');
+    expect(preview).toHaveTextContent('MVR 27');
+
+    fireEvent.click(screen.getByRole('button', { name: /Create PO/i }));
+    await waitFor(() => expect(createPurchase).toHaveBeenCalled());
+    const payload = createPurchase.mock.calls[0][0] as { items: Record<string, unknown>[] };
+    // The unit name goes to the server, which converts through the same table.
+    expect(payload.items[0]).toMatchObject({ quantity: 2, unit_cost: 27000, unit: 'tonne' });
+    expect(payload.items[0]).not.toHaveProperty('purchase_unit_id');
+  });
+
   it('sends the pack to the server rather than converting behind its back', async () => {
     getPurchaseUnits.mockResolvedValue({
       base_unit: 'kg',
