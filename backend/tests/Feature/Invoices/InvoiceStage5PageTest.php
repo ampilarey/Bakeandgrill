@@ -156,7 +156,7 @@ class InvoiceStage5PageTest extends TestCase
 
         $html = $this->get('/invoices/'.$invoice->token)->assertOk()->getContent();
         $this->assertStringContainsString('data-payment-history', $html);
-        $this->assertStringContainsString('cash', $html);
+        $this->assertStringContainsString('Cash', $html);
         $this->assertStringNotContainsString('GW-SECRET-999', $html);
         $this->assertStringNotContainsString('REF-SECRET', $html);
         $this->assertStringNotContainsString('provider_transaction', $html);

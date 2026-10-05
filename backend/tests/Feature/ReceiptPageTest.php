@@ -91,6 +91,28 @@ class ReceiptPageTest extends TestCase
             ->assertSee('doc-table-scroll', false);
     }
 
+    public function test_an_unpaid_receipt_offers_to_pay_online(): void
+    {
+        // Owner, 2026-10-06: the bill's receipt said "Payment pending" with
+        // nothing to tap. It now leads to the same pay page the invoice and
+        // the POS pay link use; the logo sits in a cream well on the dark band.
+        $unpaid = $this->seedOrder();
+        $this->get('/receipts/' . $unpaid->token)
+            ->assertOk()
+            ->assertSee('data-pay-cta="receipt"', false)
+            ->assertSee('/pay/' . $unpaid->token)
+            ->assertSee('doc-masthead-logo', false);
+
+    }
+
+    public function test_a_paid_receipt_has_no_pay_button(): void
+    {
+        $paid = $this->seedOrder(['status' => 'paid', 'paid_at' => now()]);
+        $this->get('/receipts/' . $paid->token)
+            ->assertOk()
+            ->assertDontSee('data-pay-cta="receipt"', false);
+    }
+
     public function test_paid_receipt_page_shows_payment_confirmed_banner(): void
     {
         $receipt = $this->seedOrder([

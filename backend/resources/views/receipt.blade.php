@@ -159,7 +159,7 @@
                     @endphp
                     @if ($showPay)
                         <div class="doc-pay-row">
-                            <span style="text-transform: capitalize">{{ str_replace('_', ' ', $p->method ?? 'Payment') }}</span>
+                            <span>{{ \App\Support\PaymentMethodLabel::for($p->method) }}</span>
                             <span>MVR {{ number_format((float) $p->amount, 2) }}</span>
                         </div>
                     @endif
@@ -167,17 +167,28 @@
             </div>
         @endif
 
-        <div class="doc-qr" data-testid="receipt-qr" style="display:flex;align-items:center;gap:14px;margin:18px 0 6px;padding:12px;border:1px solid var(--border, #E8E0D8);border-radius:12px;background:#fff;">
-            <img src="{{ $receiptQr }}" alt="QR code for this receipt" width="96" height="96" style="width:96px;height:96px;flex-shrink:0;">
-            <div style="font-size:13px;line-height:1.5;color:#6B5D4F;">
-                <strong style="display:block;color:#1C1408;">Scan to open this receipt</strong>
+        <div class="doc-qr" data-testid="receipt-qr">
+            <img src="{{ $receiptQr }}" alt="QR code for this receipt" width="96" height="96">
+            <div class="doc-qr__text">
+                <strong class="doc-qr__title">Scan to open this receipt</strong>
                 Show it at the counter to bring the order up, or scan it later for feedback and a complaint form.
             </div>
         </div>
 
+        @php
+            // A bill with a balance pays from here too (owner, 2026-10-06: the
+            // customer's receipt said "Payment pending" with nothing to tap).
+            // Same pay page the invoice and the POS pay link lead to.
+            $canPayHere = $doc['balance_due'] > 0.009
+                && ! $isPaid
+                && ! in_array((string) ($order->status ?? ''), ['cancelled', 'refunded'], true);
+        @endphp
         <div class="doc-actions">
+            @if ($canPayHere)
+                <a class="doc-btn doc-btn-primary doc-pay-btn" href="{{ url('/pay/' . $receipt->token) }}" data-pay-cta="receipt" style="flex-basis:100%;">Pay MVR {{ number_format($doc['balance_due'], 2) }} online</a>
+            @endif
             @if ($doc['show_pdf'])
-                <a class="doc-btn doc-btn-primary" href="{{ url('/receipts/' . $receipt->token . '/pdf') }}">Download PDF</a>
+                <a class="doc-btn {{ $canPayHere ? '' : 'doc-btn-primary' }}" href="{{ url('/receipts/' . $receipt->token . '/pdf') }}">Download PDF</a>
             @endif
             <button type="button" class="doc-btn doc-btn-print">Print</button>
         </div>
@@ -206,16 +217,16 @@
         @php
             $complaintUrl = \App\Support\ComplaintBoxLink::url('receipt', (string) ($order->order_number ?? ''));
         @endphp
-        <div class="doc-qr doc-complaint-qr" data-testid="receipt-complaint-qr" style="display:flex;align-items:center;gap:14px;margin:10px 0 6px;padding:12px;border:1px solid var(--border, #E8E0D8);border-radius:12px;background:#fff;">
-            <a href="{{ $complaintUrl }}" style="position:relative;display:block;width:96px;height:96px;flex-shrink:0;">
+        <div class="doc-qr doc-complaint-qr" data-testid="receipt-complaint-qr">
+            <a href="{{ $complaintUrl }}" style="display:block;flex-shrink:0;">
                 {{-- The logo is inside the code's SVG (owner, 2026-09-21),
                      so this page no longer lays a second picture on top. --}}
-                <img src="{{ \App\Support\ComplaintBoxLink::qr($complaintUrl, 200) }}" alt="QR code to the complaint form" width="96" height="96" style="width:96px;height:96px;display:block;">
+                <img src="{{ \App\Support\ComplaintBoxLink::qr($complaintUrl, 200) }}" alt="QR code to the complaint form" width="96" height="96">
             </a>
-            <div style="font-size:13px;line-height:1.5;color:#6B5D4F;">
-                <strong style="display:block;color:#1C1408;">Not happy with our staff, food or service?</strong>
+            <div class="doc-qr__text">
+                <strong class="doc-qr__title">Not happy with our staff, food or service?</strong>
                 Scan to tell the owner directly — anonymously, or leave your number and we will message you back.
-                <a href="{{ $complaintUrl }}" style="color:#B74B0C;font-weight:700;">Make a complaint</a>
+                <a href="{{ $complaintUrl }}" class="doc-qr__link">Make a complaint</a>
             </div>
         </div>
 

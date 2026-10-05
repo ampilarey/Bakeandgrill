@@ -160,7 +160,10 @@ class InvoicePagePresenter
             $payments = $invoice->payments;
         }
 
+        // Money that moved, in words a customer uses. Attempts that never
+        // settled (a card page abandoned, a gateway error) are not history.
         return $payments
+            ->filter(fn (Payment $p) => in_array((string) $p->status, ['paid', 'confirmed', 'completed', 'refunded', 'partially_refunded'], true))
             ->sortBy(fn (Payment $p) => $p->processed_at?->timestamp ?? $p->created_at?->timestamp ?? 0)
             ->values()
             ->map(function (Payment $p) {
@@ -170,8 +173,12 @@ class InvoicePagePresenter
 
                 return [
                     'date' => optional($p->processed_at ?? $p->created_at)->format('d M Y') ?? '—',
-                    'method' => (string) ($p->method ?: '—'),
-                    'status' => (string) ($p->status ?: '—'),
+                    'method' => PaymentMethodLabel::for($p->method),
+                    'status' => match ((string) $p->status) {
+                        'refunded' => 'Refunded',
+                        'partially_refunded' => 'Partly refunded',
+                        default => 'Paid',
+                    },
                     'amount_mvr' => $amount,
                 ];
             })

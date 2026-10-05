@@ -111,7 +111,7 @@
                 @if ($invoice->paid_at)
                     <p style="margin:0.25rem 0 0; color:var(--success-text); font-weight:600;">Paid: {{ $invoice->paid_at->format('d M Y') }}</p>
                 @elseif ($onCredit && $balanceDueMvr > 0)
-                    <p style="margin:0.25rem 0 0; color:#92400E; font-weight:600;">Balance due: MVR {{ number_format($balanceDueMvr, 2) }}</p>
+                    <p style="margin:0.25rem 0 0; color:var(--danger-text); font-weight:700;">Balance due: MVR {{ number_format($balanceDueMvr, 2) }}</p>
                 @endif
             </div>
         </div>
@@ -122,24 +122,35 @@
                 <tr>
                     <th>Description</th>
                     <th class="qty">Qty</th>
-                    <th class="amount">Unit</th>
+                    <th class="amount col-unit">Unit</th>
                     <th class="amount">Total</th>
                 </tr>
             </thead>
             <tbody>
                 @forelse ($displayItems as $item)
                     <tr>
-                        @if ($itemsAreOrderLines)
-                            <td>{{ $item->item_name }}{{ $item->variant_name ? ' — '.$item->variant_name : '' }}{{ !empty($item->packaging_option_name) ? ' — '.$item->packaging_option_name : '' }}</td>
-                            <td class="qty">{{ $item->quantity }}</td>
-                            <td class="amount">MVR {{ number_format((float) $item->unit_price, 2) }}</td>
-                            <td class="amount">MVR {{ number_format((float) $item->total_price, 2) }}</td>
-                        @else
-                            <td>{{ $item->description ?? $item->name }}</td>
-                            <td class="qty">{{ $item->quantity ?? 1 }}</td>
-                            <td class="amount">MVR {{ number_format((float) ($item->unit_price ?? $item->amount), 2) }}</td>
-                            <td class="amount">MVR {{ number_format((float) ($item->total ?? ($item->unit_price * ($item->quantity ?? 1))), 2) }}</td>
-                        @endif
+                        @php
+                            // Phones hide the Unit column; the unit price rides
+                            // under the description instead so nothing scrolls away.
+                            if ($itemsAreOrderLines) {
+                                $lineName = $item->item_name.($item->variant_name ? ' — '.$item->variant_name : '').(!empty($item->packaging_option_name) ? ' — '.$item->packaging_option_name : '');
+                                $lineQty = $item->quantity;
+                                $lineUnit = (float) $item->unit_price;
+                                $lineTotal = (float) $item->total_price;
+                            } else {
+                                $lineName = $item->description ?? $item->name;
+                                $lineQty = $item->quantity ?? 1;
+                                $lineUnit = (float) ($item->unit_price ?? $item->amount);
+                                $lineTotal = (float) ($item->total ?? ($item->unit_price * ($item->quantity ?? 1)));
+                            }
+                        @endphp
+                        <td>
+                            <strong>{{ $lineName }}</strong>
+                            <div class="doc-mods doc-unit-inline">{{ $lineQty }} × MVR {{ number_format($lineUnit, 2) }}</div>
+                        </td>
+                        <td class="qty">{{ $lineQty }}</td>
+                        <td class="amount col-unit">MVR {{ number_format($lineUnit, 2) }}</td>
+                        <td class="amount">MVR {{ number_format($lineTotal, 2) }}</td>
                     </tr>
                 @empty
                 @endforelse
@@ -163,7 +174,7 @@
                 </p>
             @endforeach
             @if ($balanceDueMvr > 0 && $invoice->status !== 'paid')
-                <p class="grand" style="color:#92400E;" data-balance-due>
+                <p class="grand" style="color:var(--danger-text);" data-balance-due>
                     <span>Balance due</span><span>MVR {{ number_format($balanceDueMvr, 2) }}</span>
                 </p>
             @elseif (count($page['credit_notes']) > 0 && $balanceDueMvr <= 0 && $invoice->status !== 'paid')

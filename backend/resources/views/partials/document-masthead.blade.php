@@ -1,6 +1,6 @@
 <div class="doc-masthead">
     <div class="doc-masthead-inner">
-        <img src="{{ $brandLogoWeb }}" alt="" width="44" height="44">
+        <span class="doc-masthead-logo"><img src="{{ $brandLogoWeb }}" alt="" width="48" height="48"></span>
         <div class="doc-masthead-text">
             <span class="doc-masthead-name">{{ $brandSiteName }}</span>
             <span class="doc-masthead-tagline">{{ $brandTagline }}</span>

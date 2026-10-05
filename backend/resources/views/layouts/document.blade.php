@@ -25,6 +25,16 @@
             --amber: #B74B0C;
             --amber-hover: #A1420B;
             --amber-light: #F9F1EC;
+            --amber-glow: rgba(183, 75, 12, 0.22);
+            --amber-contrast: #FFFDF9;
+            --amber-on-dark: #C56F3D;
+            /* The small logo sits in a cream well with a rust-tinted ring, as on
+               the website header, so it reads on the dark masthead too (owner,
+               2026-10-06: "Logo is not clear because of the background color"). */
+            --logo-well: #F7F5F2;
+            --logo-ring: rgba(183, 75, 12, 0.32);
+            --btn-border: rgba(183, 75, 12, 0.45);
+            --dark-strip: #1C1408;
             --dark: #1C1408;
             --surface: #FFFFFF;
             --bg: #FFFDF9;
@@ -43,6 +53,12 @@
             --amber: #c56f3d;
             --amber-hover: #ad6236;
             --amber-light: rgba(197,111,61,0.15);
+            --amber-glow: rgba(197,111,61,0.22);
+            --amber-contrast: #1C1408;
+            --logo-well: #F7F5F2;
+            --logo-ring: rgba(197,111,61,0.45);
+            --btn-border: rgba(197,111,61,0.55);
+            --dark-strip: #120C04;
             --dark: #f5e6cc;
             --surface: #231809;
             --bg: #1a1208;
@@ -107,21 +123,25 @@
             text-overflow: ellipsis;
             white-space: nowrap;
         }
-        .doc-brand img { width: 38px; height: 38px; border-radius: 9px; object-fit: cover; }
+        .doc-brand img { width: 38px; height: 38px; border-radius: 9px; object-fit: cover; background: var(--logo-well); box-shadow: 0 0 0 2px var(--logo-ring); }
         .doc-header-links { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
         .doc-link {
+            display: inline-flex;
+            align-items: center;
+            min-height: 40px;
             padding: 0.45rem 0.85rem;
-            border-radius: 8px;
+            border-radius: 10px;
             font-size: 0.875rem;
-            font-weight: 600;
-            color: var(--muted);
+            font-weight: 700;
+            color: var(--text);
             border: 1px solid transparent;
         }
-        .doc-link:hover { color: var(--amber); background: var(--amber-light); }
+        .doc-link:hover { color: var(--amber-hover); background: var(--amber-light); }
         .doc-link-primary {
             background: var(--amber);
-            color: #fff !important;
+            color: var(--amber-contrast) !important;
             border-color: var(--amber);
+            box-shadow: 0 2px 8px var(--amber-glow);
         }
         .doc-link-primary:hover { background: var(--amber-hover); border-color: var(--amber-hover); }
         .doc-main {
@@ -149,8 +169,8 @@
             word-break: break-word;
         }
         .doc-masthead {
-            background: linear-gradient(135deg, #1C1408 0%, #2a1a0a 100%);
-            color: #fff;
+            background: linear-gradient(135deg, var(--dark-strip) 0%, #2a1a0a 100%);
+            color: #FFFDF9;
             padding: 1.125rem 1.25rem;
             border-bottom: 3px solid var(--amber);
         }
@@ -161,12 +181,24 @@
             margin-bottom: 0.875rem;
             min-width: 0;
         }
-        .doc-masthead-inner img {
-            width: 44px;
-            height: 44px;
-            border-radius: 10px;
-            object-fit: cover;
+        .doc-masthead-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 56px;
+            height: 56px;
+            padding: 4px;
+            border-radius: 14px;
+            background: var(--logo-well);
+            box-shadow: 0 0 0 2px var(--logo-ring), 0 2px 10px rgba(0, 0, 0, 0.35);
             flex-shrink: 0;
+        }
+        .doc-masthead-logo img {
+            width: 100%;
+            height: 100%;
+            border-radius: 10px;
+            object-fit: contain;
+            display: block;
         }
         .doc-masthead-text { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; flex: 1; }
         .doc-masthead-name {
@@ -181,7 +213,7 @@
             font-weight: 600;
             letter-spacing: 0.06em;
             text-transform: uppercase;
-            color: #F0A96A;
+            color: #E3C9AE;
         }
         .doc-masthead-doc {
             display: flex;
@@ -195,7 +227,7 @@
             font-weight: 700;
             letter-spacing: 0.08em;
             text-transform: uppercase;
-            color: #F0A96A;
+            color: var(--amber-on-dark);
         }
         .doc-masthead-number {
             font-size: 1.05rem;
@@ -275,8 +307,16 @@
         .doc-table td { padding: 0.625rem 0.5rem; border-bottom: 1px solid var(--border); vertical-align: top; word-break: break-word; overflow-wrap: anywhere; }
         .doc-table tbody tr:nth-child(even) td { background: rgba(254, 243, 232, 0.35); }
         .doc-table .qty { text-align: center; width: 3rem; color: var(--muted); font-weight: 600; white-space: nowrap; }
-        .doc-table .amount { text-align: right; font-weight: 700; white-space: nowrap; width: 5.5rem; }
+        .doc-table .amount { text-align: right; font-weight: 700; white-space: nowrap; width: 6.75rem; }
         .doc-table--wide { min-width: 520px; table-layout: auto; }
+        .doc-unit-inline { display: none; }
+        @media (max-width: 540px) {
+            /* Four money columns do not fit a phone: the unit price moves under
+               the description and the table stays inside the screen. */
+            .doc-table--wide { min-width: 0; table-layout: fixed; }
+            .doc-table .col-unit { display: none; }
+            .doc-unit-inline { display: block; }
+        }
         .doc-mods { font-size: 0.8rem; color: var(--muted); margin-top: 0.25rem; overflow-wrap: anywhere; }
         .doc-totals { margin-top: 1rem; padding-top: 0.75rem; border-top: 2px solid var(--border); }
         .doc-totals p { display: flex; justify-content: space-between; gap: 0.75rem; align-items: baseline; margin: 0.35rem 0; font-size: 0.95rem; }
@@ -350,40 +390,46 @@
             text-align: center;
             line-height: 1.45;
         }
+        /* Every action on a document is a clear button (owner, 2026-10-06: "make
+           buttons clear and visible in all parts"): the one thing to do next is
+           filled rust; everything else is a white button with a rust outline and
+           rust text, never a grey ghost. */
         .doc-btn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-height: 44px;
-            padding: 0 1rem;
-            border-radius: 10px;
-            border: 1px solid var(--border);
+            gap: 0.5rem;
+            min-height: 48px;
+            padding: 0 1.1rem;
+            border-radius: 12px;
+            border: 1.5px solid var(--btn-border);
             font-size: 0.95rem;
-            font-weight: 600;
+            font-weight: 700;
             font-family: inherit;
+            line-height: 1.2;
+            text-align: center;
             cursor: pointer;
             background: var(--surface);
-            color: var(--text);
+            color: var(--amber-hover);
+            text-decoration: none;
+            transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
         }
-        .doc-btn-primary { background: var(--amber); border-color: var(--amber); color: #fff; }
-        .doc-btn-primary:hover { background: var(--amber-hover); border-color: var(--amber-hover); }
-        .doc-btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+        .doc-btn:hover { background: var(--amber-light); border-color: var(--amber); }
+        .doc-btn:focus-visible { outline: none; box-shadow: 0 0 0 4px var(--amber-glow); }
+        .doc-btn-primary { background: var(--amber); border-color: var(--amber); color: var(--amber-contrast); box-shadow: 0 2px 10px var(--amber-glow); }
+        .doc-btn-primary:hover { background: var(--amber-hover); border-color: var(--amber-hover); color: var(--amber-contrast); }
+        .doc-btn-primary:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
+        .doc-btn-primary:disabled:hover { background: var(--amber); border-color: var(--amber); }
+        .doc-btn-quiet { border-color: transparent; background: transparent; color: var(--muted); font-weight: 600; }
+        .doc-btn-quiet:hover { color: var(--amber-hover); background: var(--amber-light); border-color: transparent; }
+        .doc-pay-btn { min-height: 54px; font-size: 1.05rem; border-radius: 14px; }
         .doc-mistake-cta {
             margin-top: 1rem;
             padding-top: 1rem;
             border-top: 1px solid var(--border);
             text-align: center;
         }
-        .doc-mistake-cta__btn {
-            width: 100%;
-            background: var(--surface);
-            color: var(--text);
-            border-color: var(--border);
-        }
-        .doc-mistake-cta__btn:hover {
-            border-color: var(--amber);
-            color: var(--amber-hover, var(--amber));
-        }
+        .doc-mistake-cta__btn { width: 100%; }
         .doc-mistake-cta__hint {
             margin: 0.5rem 0 0;
             font-size: 0.85rem;
@@ -489,6 +535,21 @@
         @media (max-width: 420px) {
             .doc-complaint-cats { grid-template-columns: 1fr; }
         }
+        .doc-qr {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin: 18px 0 6px;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: var(--surface);
+        }
+        .doc-qr + .doc-qr { margin-top: 10px; }
+        .doc-qr img { width: 96px; height: 96px; flex-shrink: 0; display: block; border-radius: 8px; background: #fff; }
+        .doc-qr__text { font-size: 13px; line-height: 1.5; color: var(--muted); min-width: 0; }
+        .doc-qr__title { display: block; color: var(--dark); font-weight: 700; }
+        .doc-qr__link { color: var(--amber); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
         .doc-badge {
             display: inline-block;
             padding: 0.25rem 0.625rem;
@@ -497,11 +558,10 @@
             font-weight: 700;
             letter-spacing: 0.03em;
         }
-        .doc-badge--paid { background: var(--success-bg); color: var(--success-text); }
-        .doc-badge--draft { background: var(--amber-light); color: var(--muted); }
-        .doc-badge--sent { background: #eff6ff; color: #1d4ed8; }
-        .doc-badge--unpaid { background: var(--danger-bg); color: var(--danger-text); }
-        [data-theme="dark"] .doc-badge--sent { background: rgba(96,165,250,0.15); color: #93c5fd; }
+        .doc-badge--paid { background: #D6F0E2; color: #195C36; }
+        .doc-badge--draft { background: #F3EAE1; color: #6B5D4F; }
+        .doc-badge--sent { background: #E3ECFB; color: #1d4ed8; }
+        .doc-badge--unpaid { background: #FCE4E1; color: #8C1C0E; }
         .doc-alert { padding: 0.625rem 0.75rem; border-radius: 10px; margin-bottom: 0.75rem; font-size: 0.9rem; }
         .doc-alert--success { background: var(--success-bg); color: var(--success-text); border: 1px solid #86efac; }
         .doc-alert--error { background: var(--danger-bg); color: var(--danger-text); border: 1px solid #fecaca; }
@@ -554,7 +614,8 @@
             color: var(--muted);
             font-size: 0.85rem;
         }
-        .doc-footer strong { color: var(--text); }
+        .doc-footer strong { color: var(--dark); font-size: 0.95rem; }
+        .doc-footer-logo { width: 40px; height: 40px; border-radius: 10px; margin: 0 auto 0.5rem; display: block; background: var(--logo-well); box-shadow: 0 0 0 2px var(--logo-ring); object-fit: cover; }
         @media (max-width: 540px) {
             .doc-header-inner { padding: 0.625rem 0.875rem; gap: 0.625rem; }
             .doc-brand { font-size: 1rem; }
@@ -567,6 +628,8 @@
             .doc-title { font-size: 1.15rem; }
             .doc-table { font-size: 0.85rem; }
             .doc-table th, .doc-table td { padding: 0.5rem 0.4rem; }
+            .doc-table .amount { width: 6.25rem; }
+            .doc-table .qty { width: 2.5rem; }
             .doc-actions .doc-btn, .doc-actions form { flex: 1 1 100%; }
         }
         @media print {
@@ -618,6 +681,7 @@
     </main>
 
     <footer class="doc-footer">
+        <img class="doc-footer-logo" src="{{ $logoUrl }}" alt="">
         <p><strong>{{ $siteName }}</strong></p>
         @if ($address)<p>{{ $address }}</p>@endif
         @if ($phone)<p>{{ $phone }}</p>@endif
