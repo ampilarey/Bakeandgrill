@@ -100,6 +100,12 @@ class InvoicePageController extends Controller
             && ! in_array($invoice->status, ['paid', 'void', 'cancelled'], true)
             && ! $invoice->isOnCreditAccount()
         ) {
+            // A card payment the bank took but we never heard about (owner,
+            // 2026-10-05): settle it first, then the stale-invoice heal below
+            // sees a paid order.
+            if (app(\App\Domains\Payments\Services\PendingBmlPaymentHealer::class)->heal($invoice->order)) {
+                $invoice->load(['order.items', 'order.payments']);
+            }
             $order = $invoice->order;
             $orderLooksPaid = $order->payment_status === 'paid'
                 || $order->paid_at !== null

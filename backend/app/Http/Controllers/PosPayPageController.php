@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Domains\Payments\Services\PaymentService;
+use App\Domains\Payments\Services\PendingBmlPaymentHealer;
 use App\Models\Receipt;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,6 +27,12 @@ class PosPayPageController extends Controller
         $order = $receipt->order;
         if ($order === null) {
             abort(404);
+        }
+
+        // Owner, 2026-10-05: a customer who already paid by card came back
+        // to a page still asking them to pay. Ask the bank first.
+        if (app(PendingBmlPaymentHealer::class)->heal($order)) {
+            $order->refresh();
         }
 
         if ($this->orderIsFullyPaid($order)) {

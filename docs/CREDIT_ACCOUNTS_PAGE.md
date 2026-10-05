@@ -78,3 +78,26 @@ has a trade account.
 | Templates | migration `2026_10_05_120000_credit_chase_sms_templates` |
 | Admin page | `apps/admin-dashboard/src/pages/CreditAccountsPage.tsx`, tab in `CustomersHub.tsx` |
 | Tests | `backend/tests/Feature/Credit/CreditAccountsPageTest.php`, `apps/admin-dashboard/src/__tests__/CreditAccountsPage.test.tsx` |
+
+## When the bank takes the money but we never hear (2026-10-05)
+
+Owner: a bill sent from the POS and paid online by the customer "payment
+processed but customer sees pending payment and pos also shows unpaid". A BML
+payment normally reaches us two ways, the signed webhook and the return URL, and
+both can miss: the webhook does not always arrive, and the return URL fails
+closed when the status API cannot be asked or does not yet say CONFIRMED. The
+online ordering app already recovered by asking the bank again whenever the
+customer's order page loaded; the pay-link flow had no recovery at all.
+
+`PendingBmlPaymentHealer` is that recovery in one place. It asks the bank's
+status API about an order's in-flight card payment and settles it through the
+normal confirmation path if the bank says CONFIRMED, at most once a minute per
+order, never throwing. It runs:
+
+- on the BML return URL for any order still unpaid, whatever the query string said;
+- when the receipt page, the pay page or the invoice page is opened for an unpaid order;
+- every three minutes as `payments:reconcile-pending-bml`, for card payments
+  between two minutes and 48 hours old, so the POS catches up even if the
+  customer closed the browser.
+
+Tests: `tests/Feature/Payment/PendingBmlPaymentHealerTest.php`.

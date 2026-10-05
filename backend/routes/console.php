@@ -294,6 +294,15 @@ Schedule::command('orders:cancel-stale')
     ->onFailure($alertOnFailure('orders:cancel-stale'))
     ->after($trackSuccess('orders:cancel-stale'));
 
+// Payments: settle card payments the bank confirmed but no webhook or
+// return URL told us about (owner, 2026-10-05: a bill paid online stayed
+// unpaid on the POS). See PendingBmlPaymentHealer.
+Schedule::command('payments:reconcile-pending-bml')
+    ->everyThreeMinutes()
+    ->withoutOverlapping()
+    ->onFailure($alertOnFailure('payments:reconcile-pending-bml'))
+    ->after($trackSuccess('payments:reconcile-pending-bml'));
+
 // GST: text the owners when a return is due and the period is still not
 // locked (GST audit, 2026-09-26)
 Schedule::command('gst:filing-reminder')

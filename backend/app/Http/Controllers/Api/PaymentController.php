@@ -233,6 +233,17 @@ class PaymentController extends Controller
             }
         }
 
+        // Whatever the query string said, if the order still looks unpaid ask
+        // the bank directly before showing the customer anything (owner,
+        // 2026-10-05: a bill paid from a pay link came back "pending"). Same
+        // server-to-server check as above; fails closed and never throws.
+        if ($orderId) {
+            $order = Order::query()->find((int) $orderId);
+            if ($order) {
+                app(\App\Domains\Payments\Services\PendingBmlPaymentHealer::class)->heal($order, force: true);
+            }
+        }
+
         // Back to the credit invoice's own page (owner, 2026-10-05: pay links).
         $invoiceToken = $request->query('invoiceToken');
         if (is_string($invoiceToken) && $invoiceToken !== '') {
@@ -245,13 +256,14 @@ class PaymentController extends Controller
 
         $receiptToken = $request->query('receiptToken');
         if (is_string($receiptToken) && $receiptToken !== '') {
-            $message = $state === 'CONFIRMED'
-                ? 'Payment received — thank you!'
+            $paidNow = isset($order) && $order !== null && $order->fresh()->payment_status === 'paid';
+            $message = $paidNow || $state === 'CONFIRMED'
+                ? ($paidNow ? 'Payment received — thank you!' : 'Payment is being confirmed with the bank. Refresh in a moment.')
                 : 'Payment was not completed. You can try again from the pay link.';
 
             return redirect()
                 ->route('receipts.show', $receiptToken)
-                ->with($state === 'CONFIRMED' ? 'success' : 'error', $message);
+                ->with($paidNow || $state === 'CONFIRMED' ? 'success' : 'error', $message);
         }
 
         $baseUrl = config('frontend.order_status_url');

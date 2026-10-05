@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Domains\Complaints\Services\ComplaintService;
+use App\Domains\Payments\Services\PendingBmlPaymentHealer;
 use App\Http\Requests\ReceiptFeedbackRequest;
 use App\Models\Order;
 use App\Models\Receipt;
@@ -22,6 +23,12 @@ class ReceiptPageController extends Controller
         $receipt = Receipt::with(['order.items.modifiers', 'order.payments', 'order.refunds', 'latestFeedback'])
             ->where('token', $token)
             ->firstOrFail();
+
+        // A card payment the bank took but we never heard about (owner,
+        // 2026-10-05): ask the bank before saying "Payment pending".
+        if ($receipt->order && app(PendingBmlPaymentHealer::class)->heal($receipt->order)) {
+            $receipt->load(['order.items.modifiers', 'order.payments', 'order.refunds']);
+        }
 
         return view('receipt', [
             'receipt' => $receipt,
