@@ -202,6 +202,19 @@ export function TicketRow({
   // both read "🛵 Delivery", with nothing to tell them apart at a glance.
   const originBadge = orderOriginBadge(t.user?.id, isCustomerPlaced, t.user?.name);
 
+  /*
+   * The words on the buttons are the same on a phone and a tablet. Owner,
+   * 2026-10-05, with the two side by side: "For delivery order why ipad and
+   * iPhone shows different things?" The phone used to shorten them (Cook,
+   * Ready, Collected) and add an Open button the tablet did not have, so the
+   * same order looked like two different screens. Now only the layout
+   * follows the width; the words follow the order. The finishing button
+   * says what actually happens: a delivery is Delivered, a pickup is Picked
+   * up, a table or takeaway is Collected.
+   */
+  const doneLabel = t.type === "delivery" ? "Delivered" : t.type === "online_pickup" ? "Picked up" : "Collected";
+  const doneConfirm = t.type === "delivery" ? "Delivered to the customer? Tap to confirm" : `${doneLabel}? Tap to confirm`;
+
   const cardClickHandler = mergeTargetId === null
     ? () => onResume(t)
     : isMergeCandidate
@@ -436,7 +449,7 @@ export function TicketRow({
                 confirmLabel="Fire now? Tap to confirm"
                 grow={isNarrow}
               >
-                {isNarrow ? "Fire" : "Fire to kitchen"}
+                Fire to kitchen
               </ActionButton>
             )}
             {stage === "queued" && canManageOrderStatus && (
@@ -449,7 +462,7 @@ export function TicketRow({
                   confirmLabel="Start cooking on kitchen display?"
                   grow={isNarrow}
                 >
-                  {isNarrow ? "Cook" : "Start cooking"}
+                  Start cooking
                 </ActionButton>
                 <ActionButton
                   onClick={() => handleMarkReady(t)}
@@ -459,7 +472,7 @@ export function TicketRow({
                   confirmLabel="Mark ready and notify customer?"
                   grow={isNarrow}
                 >
-                  {isNarrow ? "Ready" : "Mark ready"}
+                  Mark ready
                 </ActionButton>
               </>
             )}
@@ -494,7 +507,7 @@ export function TicketRow({
                     confirmLabel="Mark ready and notify customer?"
                     grow={isNarrow}
                   >
-                    {isNarrow ? "Ready" : "Mark ready"}
+                    Mark ready
                   </ActionButton>
                 </>
               );
@@ -505,10 +518,10 @@ export function TicketRow({
                 busy={busy}
                 bg="#0F766E"
                 confirm
-                confirmLabel="Confirm collected?"
+                confirmLabel={doneConfirm}
                 grow={isNarrow}
               >
-                {isNarrow ? "Collected" : "Picked up"}
+                {doneLabel}
               </ActionButton>
             )}
             {isUnpaid && (
@@ -530,7 +543,10 @@ export function TicketRow({
                 Charge
               </button>
             )}
-            {isNarrow && mergeTargetId === null && !isUnpaid && (
+            {/* A paid ticket opens on a tap of the card too; the button says
+                so on every size, so the phone and the tablet offer the same
+                things. */}
+            {mergeTargetId === null && !isUnpaid && (
               <button
                 className="pos-ticket-action-btn"
                 type="button"
@@ -544,7 +560,7 @@ export function TicketRow({
                   padding: `${space.s}px ${space.m}px`,
                   minHeight: 44,
                   fontSize: type.bodySm.fontSize,
-                  flex: "1 1 auto",
+                  flex: isNarrow ? "1 1 auto" : undefined,
                 }}
               >
                 Open
