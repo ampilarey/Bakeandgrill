@@ -270,6 +270,26 @@ export function CustomerPickerPage({ ticketLine, onAttach, onClose }: {
     else inputRef.current?.focus();
   }, [creating]);
 
+  /*
+   * Switching between digits and letters. iPadOS only raises its keyboard
+   * for a focus that happens inside the tap itself, and it ignores a
+   * change to a field's inputmode while the field stays focused. So the
+   * box's attributes are changed on the element and it is re-focused
+   * synchronously here, before React re-renders (owner, 2026-10-05: "When
+   * abc is clicked nothing happens"). On a tablet in number mode the box
+   * asks for no keyboard at all; the pad beside the list types into it.
+   */
+  const switchKeyboard = (next: boolean) => {
+    const el = inputRef.current;
+    if (el) {
+      el.setAttribute("type", next ? "tel" : "search");
+      el.setAttribute("inputmode", next ? (isNarrow ? "tel" : "none") : "search");
+      el.blur();
+      el.focus();
+    }
+    setNumeric(next);
+  };
+
   // iPad has no numbers-only keyboard, so digits there come from our own
   // pad, kept beside the list the whole time (owner: "keep the number
   // keypad one side and the customers with mobile number other side");
@@ -433,7 +453,7 @@ export function CustomerPickerPage({ ticketLine, onAttach, onClose }: {
               </div>
               <button
                 type="button"
-                onClick={() => { setNumeric((n) => !n); window.setTimeout(() => inputRef.current?.focus(), 0); }}
+                onClick={() => switchKeyboard(!numeric)}
                 aria-pressed={numeric}
                 aria-label={numeric ? "Letters keyboard" : "Numbers keyboard"}
                 style={{ width: 52, height: 52, border: `1.5px solid ${numeric ? C.primary : C.border2}`, borderRadius: 12, background: numeric ? C.primarySoft : "#fff", fontWeight: 800, fontSize: 13, color: numeric ? C.primaryDark : C.muted, cursor: "pointer" }}

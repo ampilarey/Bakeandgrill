@@ -135,5 +135,10 @@ describe("CustomerPicker page", () => {
     // Letters for a name: the device keyboard comes back.
     fireEvent.click(screen.getByRole("button", { name: "Letters keyboard" }));
     expect(box).toHaveAttribute("inputmode", "search");
+    expect(box).toHaveAttribute("type", "search");
+    expect(box).toHaveFocus();
+    fireEvent.click(screen.getByRole("button", { name: "Numbers keyboard" }));
+    expect(box).toHaveAttribute("inputmode", "none");
+    expect(box).toHaveFocus();
   });
 });
