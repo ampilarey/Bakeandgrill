@@ -24,6 +24,40 @@ class InvoicePageController extends Controller
             ->header('Cache-Control', 'private, max-age=15, must-revalidate');
     }
 
+    /**
+     * POST /invoices/{token}/pay — start a card payment for a customer's
+     * credit invoice and send them to the gateway. The page's Pay button
+     * (InvoicePagePresenter::payCta, kind "credit"). Token-gated like the
+     * page itself; the gateway brings them back here.
+     */
+    public function pay(string $token, \App\Domains\Payments\Services\PaymentService $payments)
+    {
+        $invoice = $this->loadAndHeal($token);
+        if (!\App\Domains\Credit\Services\CreditOnlinePaymentService::isCreditInvoice($invoice) || $invoice->balanceDueLaar() <= 0) {
+            return redirect()->route('invoices.show', $token)->with('error', 'This invoice cannot be paid online.');
+        }
+
+        try {
+            app(\App\Domains\System\Services\ServiceAvailabilityService::class)->assertAvailable('online_payment');
+            $result = $payments->initiateBmlInvoicePayment(
+                $invoice,
+                null,
+                null,
+                route('bml.return', ['invoiceId' => $invoice->id, 'invoiceToken' => $invoice->token]),
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Credit invoice pay link: gateway unavailable', ['invoice_id' => $invoice->id, 'error' => $e->getMessage()]);
+
+            return redirect()->route('invoices.show', $token)->with('error', 'Online payment is not available right now. Please try again shortly.');
+        }
+
+        if (($result['reused'] ?? false) && ($result['payment_url'] ?? '') === '') {
+            return redirect()->route('invoices.show', $token)->with('success', 'This invoice is already paid.');
+        }
+
+        return redirect()->away((string) $result['payment_url']);
+    }
+
     public function pdf(string $token)
     {
         $invoice = $this->loadAndHeal($token);

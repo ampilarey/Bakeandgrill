@@ -228,6 +228,12 @@ Route::get('/invoices/{token}', [InvoicePageController::class, 'show'])
 Route::get('/invoices/{token}/pdf', [InvoicePageController::class, 'pdf'])
     ->withoutMiddleware($publicDocSkipSession)
     ->name('invoices.pdf');
+// Pay a credit invoice online from its page (owner, 2026-10-05). Keeps the
+// session so the page can say what happened; no CSRF, like the pay page.
+Route::post('/invoices/{token}/pay', [InvoicePageController::class, 'pay'])
+    ->withoutMiddleware([Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class])
+    ->middleware('throttle:10,1')
+    ->name('invoices.pay');
 
 // BML Return URL (non-authoritative — redirects to frontend)
 Route::get('/payments/bml/return', [App\Http\Controllers\Api\PaymentController::class, 'bmlReturn'])->name('bml.return');

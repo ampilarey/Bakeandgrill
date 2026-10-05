@@ -14,6 +14,7 @@ import { HubPage, hubPermissions, type HubTab } from '../components/HubPage';
 
 const CustomersPage = lazy(() => import('./CustomersPage').then((m) => ({ default: m.CustomersPage })));
 const CustomerGrowthPage = lazy(() => import('./CustomerGrowthPage').then((m) => ({ default: m.CustomerGrowthPage })));
+const CreditAccountsPage = lazy(() => import('./CreditAccountsPage'));
 const ReferralsPage = lazy(() => import('./ReferralsPage'));
 const ReviewsPage = lazy(() => import('./ReviewsPage'));
 const ComplaintsPage = lazy(() => import('./ComplaintsPage'));
@@ -22,6 +23,8 @@ const ComplaintBoxPage = lazy(() => import('./ComplaintBoxPage'));
 export const CUSTOMERS_TABS: HubTab[] = [
   { id: 'directory', label: 'Directory', permissions: ['customers.manage'], desc: 'Every registered customer', render: () => <CustomersPage /> },
   { id: 'growth', label: 'Growth', permissions: ['customers.manage'], desc: 'Metrics, segments and follow-ups', render: () => <CustomerGrowthPage /> },
+  // Owner, 2026-10-05: "Is there any place to manage credit accounts".
+  { id: 'credit', label: 'Credit accounts', permissions: ['customers.credit.manage', 'customers.credit.repay'], desc: 'Who buys on account, what they owe, reminders and pay links', render: () => <CreditAccountsPage /> },
   { id: 'referrals', label: 'Referrals', permissions: ['customers.manage'], desc: 'The referral programme', render: () => <ReferralsPage /> },
   { id: 'reviews', label: 'Reviews', permissions: ['customers.manage'], desc: 'Ratings to moderate', render: () => <ReviewsPage /> },
   { id: 'complaints', label: 'Order complaints', permissions: ['complaints.view'], desc: 'Problems with a specific receipt or invoice', render: () => <ComplaintsPage /> },

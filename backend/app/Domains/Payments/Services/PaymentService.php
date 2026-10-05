@@ -1149,7 +1149,10 @@ class PaymentService
         ?string $idempotencyKey = null,
         ?string $returnUrl = null,
     ): array {
-        if ($invoice->trade_account_id === null) {
+        // A wholesale trade invoice, or a customer's credit invoice paid from
+        // its pay link (owner, 2026-10-05): the same gateway flow, settled by
+        // the matching ledger in confirmInvoicePaymentOnce().
+        if ($invoice->trade_account_id === null && !\App\Domains\Credit\Services\CreditOnlinePaymentService::isCreditInvoice($invoice)) {
             throw new \InvalidArgumentException('Not a wholesale trade invoice.');
         }
 
@@ -1290,6 +1293,13 @@ class PaymentService
                 ?? \App\Models\User::query()->whereHas('role', fn ($q) => $q->where('slug', 'owner'))->first();
             if ($actor === null) {
                 Log::error('BML: No actor to settle trade invoice payment', ['payment_id' => $locked->id]);
+
+                return;
+            }
+
+            if ($invoice->trade_account_id === null) {
+                app(\App\Domains\Credit\Services\CreditOnlinePaymentService::class)
+                    ->settleConfirmedBmlPayment($locked->fresh(), $actor);
 
                 return;
             }

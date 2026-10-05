@@ -233,6 +233,16 @@ class PaymentController extends Controller
             }
         }
 
+        // Back to the credit invoice's own page (owner, 2026-10-05: pay links).
+        $invoiceToken = $request->query('invoiceToken');
+        if (is_string($invoiceToken) && $invoiceToken !== '') {
+            return redirect()
+                ->route('invoices.show', $invoiceToken)
+                ->with($state === 'CONFIRMED' ? 'success' : 'error', $state === 'CONFIRMED'
+                    ? 'Payment received — thank you!'
+                    : 'Payment was not completed. You can try again from the Pay online button.');
+        }
+
         $receiptToken = $request->query('receiptToken');
         if (is_string($receiptToken) && $receiptToken !== '') {
             $message = $state === 'CONFIRMED'

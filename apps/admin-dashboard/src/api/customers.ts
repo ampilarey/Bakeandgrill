@@ -624,3 +624,76 @@ export async function getReservationSettings(): Promise<{ settings: ReservationS
 export async function updateReservationSettings(data: Partial<ReservationSettings>): Promise<{ settings: ReservationSettings }> {
   return req('/admin/reservations/settings', { method: 'PATCH', body: JSON.stringify(data) });
 }
+
+// ── Credit accounts page (owner, 2026-10-05: "Is there any place to manage
+// credit accounts" → Customers → Credit accounts) ───────────────────────────
+
+export type CreditAccountFilter = 'all' | 'active' | 'on_hold' | 'blocked' | 'overdue' | 'with_balance';
+
+export type CreditAccountRow = {
+  id: number;
+  name: string;
+  phone: string | null;
+  sms_opt_out: boolean;
+  reminder_sms: boolean;
+  enabled: boolean;
+  status: 'active' | 'on_hold' | 'blocked';
+  limit_mvr: number;
+  balance_mvr: number;
+  available_mvr: number;
+  terms_days: number;
+  open_invoices: number;
+  overdue_invoices: number;
+  overdue_mvr: number;
+  oldest_due_date: string | null;
+  last_paid_at: string | null;
+  last_charged_at: string | null;
+  approved_at: string | null;
+};
+
+export type CreditAccountsTotals = {
+  accounts: number;
+  active: number;
+  on_hold: number;
+  blocked: number;
+  with_balance: number;
+  overdue: number;
+  balance_mvr: number;
+  overdue_mvr: number;
+};
+
+export type CreditAccountsResponse = {
+  data: CreditAccountRow[];
+  total: number;
+  page: number;
+  per_page: number;
+  totals: CreditAccountsTotals;
+};
+
+export async function fetchCreditAccounts(
+  filter: CreditAccountFilter = 'all',
+  q = '',
+  page = 1,
+): Promise<CreditAccountsResponse> {
+  const params = new URLSearchParams({ filter, page: String(page) });
+  if (q.trim()) params.set('q', q.trim());
+  return req(`/admin/customers/credit-accounts?${params.toString()}`);
+}
+
+/** Text the customer what they owe: the oldest open invoice, or the balance. A custom message replaces the template. */
+export async function sendCreditReminder(
+  customerId: number,
+  message?: string,
+): Promise<{ message: string; sms_log: { id: number; status: string } }> {
+  return req(`/admin/customers/${customerId}/credit/remind`, {
+    method: 'POST',
+    body: JSON.stringify(message?.trim() ? { message: message.trim() } : {}),
+  });
+}
+
+/** Text a link to pay the oldest open credit invoice online by card. */
+export async function sendCreditPayLink(
+  customerId: number,
+): Promise<{ message: string; sms_log: { id: number; status: string } }> {
+  return req(`/admin/customers/${customerId}/credit/pay-link`, { method: 'POST', body: '{}' });
+}

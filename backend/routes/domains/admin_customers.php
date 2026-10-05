@@ -53,6 +53,10 @@ Route::middleware(['auth:sanctum', 'staff.token', 'permission:customers.manage']
         Route::post('/{id}/send-sms', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'sendSms']);
     });
 
+    // Customers → Credit accounts (owner, 2026-10-05): every account on one
+    // page. Before /{id}, which would otherwise swallow the path.
+    Route::get('/credit-accounts', [App\Http\Controllers\Api\CreditAccountsController::class, 'index'])
+        ->middleware('permission:customers.credit.manage');
     Route::get('/{id}', [App\Http\Controllers\Api\AdminCustomerController::class, 'show']);
     Route::patch('/{id}', [App\Http\Controllers\Api\AdminCustomerController::class, 'update']);
     Route::patch('/{id}/phone', [App\Http\Controllers\Api\AdminCustomerController::class, 'changePhone']);
@@ -62,6 +66,10 @@ Route::middleware(['auth:sanctum', 'staff.token', 'permission:customers.manage']
     Route::post('/{id}/erase', [App\Http\Controllers\Api\AdminCustomerController::class, 'erase']);
 
     Route::middleware('permission:customers.credit.manage')->group(function () {
+        Route::post('/{id}/credit/remind', [App\Http\Controllers\Api\CreditAccountsController::class, 'remind'])
+            ->middleware('throttle:30,1')->whereNumber('id');
+        Route::post('/{id}/credit/pay-link', [App\Http\Controllers\Api\CreditAccountsController::class, 'payLink'])
+            ->middleware('throttle:30,1')->whereNumber('id');
         Route::get('/{id}/credit', [App\Http\Controllers\Api\CustomerCreditController::class, 'show']);
         Route::patch('/{id}/credit', [App\Http\Controllers\Api\CustomerCreditController::class, 'update']);
         Route::get('/{id}/credit/invoices', [App\Http\Controllers\Api\CustomerCreditController::class, 'invoices']);

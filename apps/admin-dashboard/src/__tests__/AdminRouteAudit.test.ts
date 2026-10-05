@@ -40,7 +40,8 @@ describe('admin route audit', () => {
     const tab = (tabs: { id: string; permissions: readonly string[] }[], id: string) => tabs.find((t) => t.id === id);
     expect(tab(CUSTOMERS_TABS, 'complaints')?.permissions).toEqual(['complaints.view']);
     expect(tab(CUSTOMERS_TABS, 'complaint-box')?.permissions).toEqual(['complaints.view']);
-    expect(CUSTOMERS_TABS.map((t) => t.label)).toEqual(['Directory', 'Growth', 'Referrals', 'Reviews', 'Order complaints', 'Complaint box']);
+    expect(CUSTOMERS_TABS.map((t) => t.label)).toEqual(['Directory', 'Growth', 'Credit accounts', 'Referrals', 'Reviews', 'Order complaints', 'Complaint box']);
+    expect(tab(CUSTOMERS_TABS, 'credit')?.permissions).toEqual(['customers.credit.manage', 'customers.credit.repay']);
     expect(tab(FINANCE_TABS, 'gst')?.permissions).toEqual(['reports.financial']);
     expect(tab(FINANCE_TABS, 'refunds')?.permissions).toEqual(['orders.refund']);
     expect(tab(PURCHASING_TABS as unknown as { id: string; permissions: readonly string[] }[], 'reports')?.permissions).toEqual(['reports.financial']);

@@ -80,6 +80,13 @@
     ])
 
     <div class="doc-card-body">
+        @if (session('success'))
+            <div class="doc-alert doc-alert--success">{{ session('success') }}</div>
+        @endif
+        @if (session('error'))
+            <div class="doc-alert doc-alert--error">{{ session('error') }}</div>
+        @endif
+
         <div class="doc-meta-grid">
             @if ($invoice->customer || $invoice->recipient_name)
                 <div>
@@ -223,7 +230,11 @@
         @endif
 
         <div class="doc-actions">
-            @if (!empty($page['pay_cta']))
+            @if (!empty($page['pay_cta']) && $page['pay_cta']['kind'] === 'credit')
+                <form method="post" action="{{ $page['pay_cta']['href'] }}">
+                    <button type="submit" class="doc-btn doc-btn-primary" data-pay-cta="credit" style="cursor:pointer;">{{ $page['pay_cta']['label'] }}</button>
+                </form>
+            @elseif (!empty($page['pay_cta']))
                 <a
                     class="doc-btn doc-btn-primary"
                     href="{{ $page['pay_cta']['href'] }}"

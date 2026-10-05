@@ -290,6 +290,8 @@
         .doc-pay-row span:last-child { flex-shrink: 0; white-space: nowrap; }
         .doc-actions { display: flex; flex-wrap: wrap; gap: 0.625rem; margin-top: 1.25rem; }
         .doc-actions .doc-btn { flex: 1 1 calc(50% - 0.35rem); min-width: 0; }
+        .doc-actions form { flex: 1 1 calc(50% - 0.35rem); min-width: 0; display: flex; margin: 0; }
+        .doc-actions form .doc-btn { flex: 1 1 100%; }
         .doc-progress {
             display: flex;
             justify-content: space-between;
@@ -565,7 +567,7 @@
             .doc-title { font-size: 1.15rem; }
             .doc-table { font-size: 0.85rem; }
             .doc-table th, .doc-table td { padding: 0.5rem 0.4rem; }
-            .doc-actions .doc-btn { flex: 1 1 100%; }
+            .doc-actions .doc-btn, .doc-actions form { flex: 1 1 100%; }
         }
         @media print {
             .doc-header, .doc-footer, .doc-header-links, .doc-actions, .doc-mistake-cta, .doc-feedback, .doc-alert { display: none !important; }

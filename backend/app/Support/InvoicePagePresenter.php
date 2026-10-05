@@ -118,6 +118,16 @@ class InvoicePagePresenter
             ];
         }
 
+        // A customer's credit invoice: pay it online from the page the
+        // reminder and pay-link texts point at (owner, 2026-10-05).
+        if ($invoice->type === 'sale' && $invoice->customer_id && $invoice->isOnCreditAccount()) {
+            return [
+                'kind' => 'credit',
+                'href' => url('/invoices/' . $invoice->token . '/pay'),
+                'label' => 'Pay online',
+            ];
+        }
+
         // Sale invoice against an unpaid order — existing order/receipt pay page.
         if ($invoice->type === 'sale' && $invoice->order_id && $invoice->order) {
             if ($invoice->isOnCreditAccount()) {
