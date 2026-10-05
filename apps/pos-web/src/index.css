@@ -1242,12 +1242,6 @@ html, body, #root {
   padding-bottom: env(safe-area-inset-bottom, 0px);
   box-sizing: border-box;
 }
-.pos-customer-page-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0 10px;
-  align-content: start;
-}
 .pos-customer-page-row:hover { background: #F1F5F9 !important; }
 
 /* Customer picker backdrop. */

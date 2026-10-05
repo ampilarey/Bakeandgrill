@@ -114,4 +114,26 @@ describe("CustomerPicker page", () => {
     expect(rankRegulars(customers).map((c) => c.id)).toEqual([1, 2, 3]);
     expect(rankRegulars([{ ...customers[2], orders_count: 31, last_order_at: "2026-10-04T00:00:00Z" }, customers[0]]).map((c) => c.id)).toEqual([1, 3]);
   });
+
+  it("opens in number mode on a phone, with the pad beside the list on a tablet", async () => {
+    render(<CustomerPicker customer={null} onAttach={() => {}} onDetach={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: /Add customer/ }));
+    const box = await screen.findByLabelText("Find a customer by name or phone");
+    // Numbers first: the switch offers letters, and the box asks for the phone keypad.
+    expect(screen.getByRole("button", { name: "Letters keyboard" })).toBeInTheDocument();
+    expect(box).toHaveAttribute("type", "tel");
+    // jsdom is a wide screen: the pad sits beside the list and types into the box.
+    const pad = screen.getByTestId("customer-picker-pad");
+    expect(pad).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Digit 7" }));
+    fireEvent.click(screen.getByRole("button", { name: "Digit 7" }));
+    fireEvent.click(screen.getByRole("button", { name: "Digit 8" }));
+    expect(box).toHaveValue("778");
+    await waitFor(() => expect(searchCustomers).toHaveBeenCalledWith("778"));
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+    expect(box).toHaveValue("");
+    // Letters for a name: the device keyboard comes back.
+    fireEvent.click(screen.getByRole("button", { name: "Letters keyboard" }));
+    expect(box).toHaveAttribute("inputmode", "search");
+  });
 });

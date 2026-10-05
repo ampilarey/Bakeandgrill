@@ -193,7 +193,10 @@ export function CustomerPickerPage({ ticketLine, onAttach, onClose }: {
 }) {
   const isNarrow = useMediaQuery("(max-width: 840px)");
   const [q, setQ] = useState("");
-  const [numeric, setNumeric] = useState(false);
+  // Numbers first: customers are looked up by phone far more often than
+  // by name (owner, 2026-10-05). A phone gets its own keypad; a tablet
+  // keeps the pad on screen beside the list; "abc" is for a name.
+  const [numeric, setNumeric] = useState(true);
   const [filter, setFilter] = useState<Filter>("regulars");
   const [recents, setRecents] = useState<PosCustomer[]>([]);
   const [total, setTotal] = useState<number | null>(null);
@@ -268,8 +271,10 @@ export function CustomerPickerPage({ ticketLine, onAttach, onClose }: {
   }, [creating]);
 
   // iPad has no numbers-only keyboard, so digits there come from our own
-  // pad; a phone has one, so it gets the device's keypad.
-  const padOnScreen = numeric && !isNarrow;
+  // pad, kept beside the list the whole time (owner: "keep the number
+  // keypad one side and the customers with mobile number other side");
+  // a phone has one, so it gets the device's keypad.
+  const padOnScreen = !isNarrow;
   const typeDigit = (k: string, set: (fn: (p: string) => string) => void) => {
     setError("");
     if (k === "back") set((p) => p.slice(0, -1));
@@ -405,7 +410,8 @@ export function CustomerPickerPage({ ticketLine, onAttach, onClose }: {
             )}
           </div>
         ) : (
-          <>
+          <div style={{ display: "flex", flex: "1 1 auto", minHeight: 0 }}>
+          <div style={{ display: "flex", flexDirection: "column", flex: "1 1 auto", minWidth: 0, minHeight: 0, position: "relative" }}>
             {/* Search */}
             <div style={{ display: "flex", gap: 8, padding: "12px 14px 0", flexShrink: 0 }}>
               <div style={{ position: "relative", flex: 1 }}>
@@ -414,7 +420,7 @@ export function CustomerPickerPage({ ticketLine, onAttach, onClose }: {
                   value={q}
                   onChange={(e) => { setQ(e.target.value); setError(""); }}
                   type={numeric ? "tel" : "search"}
-                  inputMode={padOnScreen ? "none" : numeric ? "tel" : "search"}
+                  inputMode={numeric ? (padOnScreen ? "none" : "tel") : "search"}
                   autoComplete="off"
                   autoCorrect="off"
                   autoCapitalize="words"
@@ -468,7 +474,7 @@ export function CustomerPickerPage({ ticketLine, onAttach, onClose }: {
               {(loading || (loadingRecents && query.length < 2)) && (
                 <div style={{ padding: 12, fontSize: 12, color: C.muted, textAlign: "center" }}>{loading ? "Searching…" : "Loading customers…"}</div>
               )}
-              <div className={isNarrow ? undefined : "pos-customer-page-grid"}>
+              <div>
                 {!loading && shown.map((c) => (
                   <CustomerRow key={c.id} customer={c} onAttach={onAttach} query={query} />
                 ))}
@@ -482,12 +488,6 @@ export function CustomerPickerPage({ ticketLine, onAttach, onClose }: {
               )}
             </div>
 
-            {padOnScreen && (
-              <div style={{ padding: "0 14px 10px", flexShrink: 0, maxWidth: 360, alignSelf: "flex-end" }}>
-                <Numpad onPress={(k) => typeDigit(k, (fn) => setQ((p) => fn(p)))} />
-              </div>
-            )}
-
             <button
               type="button"
               onClick={() => startCreate(queryIsPhone ? query : "")}
@@ -496,7 +496,24 @@ export function CustomerPickerPage({ ticketLine, onAttach, onClose }: {
             >
               ＋ New customer
             </button>
-          </>
+          </div>
+
+          {/* The pad, always there on a tablet: the list on one side, the
+              digits on the other. Clear wipes the box. */}
+          {padOnScreen && (
+            <div style={{ width: 250, flexShrink: 0, padding: "12px 14px 12px 0", display: "flex", flexDirection: "column", gap: 8 }} data-testid="customer-picker-pad">
+              <Numpad onPress={(k) => typeDigit(k, (fn) => setQ((p) => fn(p)))} />
+              <button
+                type="button"
+                onClick={() => { setQ(""); setError(""); inputRef.current?.focus(); }}
+                disabled={q === ""}
+                style={{ height: 44, borderRadius: 10, border: `1px solid ${C.border2}`, background: "#fff", color: q === "" ? C.subtle : C.muted, fontWeight: 700, fontSize: 14, cursor: q === "" ? "default" : "pointer" }}
+              >
+                Clear
+              </button>
+            </div>
+          )}
+          </div>
         )}
       </div>
     </>
@@ -775,7 +792,6 @@ function Numpad({ onPress }: { onPress: (k: string) => void }) {
 
   return (
     <div style={{
-      marginTop: 12,
       display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8,
     }}>
       {rows.flat().map(({ k, label, variant }) => {
