@@ -1206,14 +1206,30 @@ class PaymentService
             throw $e;
         }
 
+        // BmlConnectService::createPayment() answers with payment_url and
+        // transaction_id (the order flow above reads exactly those). This
+        // method read the gateway's raw field names instead, so against the
+        // real gateway every invoice payment came back with an empty link and
+        // no transaction id: the shop portal's Pay button led nowhere, and a
+        // credit customer's Pay online button (owner, 2026-10-05: "500
+        // error") redirected to an empty URL. The raw names stay as a
+        // fallback for anything that hands the raw response through.
+        $transactionId = $result['transaction_id'] ?? $result['transactionId'] ?? $result['id'] ?? null;
+        $paymentUrl = (string) ($result['payment_url'] ?? $result['url'] ?? $result['paymentUrl'] ?? '');
+
         $payment->update([
             'status' => 'initiated',
-            'provider_transaction_id' => $result['transactionId'] ?? $result['id'] ?? null,
+            'provider_transaction_id' => $transactionId !== null && $transactionId !== '' ? (string) $transactionId : null,
             'gateway_response' => $result,
         ]);
 
+        if ($paymentUrl === '') {
+            $payment->update(['status' => 'failed']);
+            throw new \RuntimeException('BML did not return a payment URL.');
+        }
+
         return [
-            'payment_url' => (string) ($result['url'] ?? $result['paymentUrl'] ?? ''),
+            'payment_url' => $paymentUrl,
             'payment_id' => $payment->id,
             'reused' => false,
         ];

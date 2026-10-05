@@ -51,11 +51,17 @@ class InvoicePageController extends Controller
             return redirect()->route('invoices.show', $token)->with('error', 'Online payment is not available right now. Please try again shortly.');
         }
 
-        if (($result['reused'] ?? false) && ($result['payment_url'] ?? '') === '') {
-            return redirect()->route('invoices.show', $token)->with('success', 'This invoice is already paid.');
+        $url = (string) ($result['payment_url'] ?? '');
+        if ($url === '') {
+            // Already settled (the gateway reused a confirmed payment), or the
+            // gateway answered without a link: never redirect to nothing.
+            return redirect()->route('invoices.show', $token)->with(
+                ($result['reused'] ?? false) ? 'success' : 'error',
+                ($result['reused'] ?? false) ? 'This invoice is already paid.' : 'Online payment is not available right now. Please try again shortly.',
+            );
         }
 
-        return redirect()->away((string) $result['payment_url']);
+        return redirect()->away($url);
     }
 
     public function pdf(string $token)

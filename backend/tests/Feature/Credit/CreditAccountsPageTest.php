@@ -257,15 +257,36 @@ class CreditAccountsPageTest extends TestCase
             return $amount === 12000
                 && str_contains((string) $returnUrl, 'invoiceId=' . $invoice->id)
                 && str_contains((string) $returnUrl, 'invoiceToken=' . $invoice->token);
-        })->andReturn(['url' => 'https://bml.test/pay/c1', 'transactionId' => 'txn-c-1', 'id' => 'txn-c-1']);
+        })->andReturn(['payment_url' => 'https://bml.test/pay/c1', 'transaction_id' => 'txn-c-1', 'local_id' => 'BGINV1']);
         $this->app->instance(BmlConnectService::class, $mock);
 
         $this->post('/invoices/' . $invoice->token . '/pay')
             ->assertRedirect('https://bml.test/pay/c1');
 
+        // The gateway client's real answer shape (payment_url, transaction_id):
+        // the first live click answered 500 because the invoice flow read the
+        // raw gateway names and redirected to an empty URL.
         $payment = Payment::where('invoice_id', $invoice->id)->firstOrFail();
         $this->assertSame(12000, (int) $payment->amount_laar);
         $this->assertNull($payment->order_id);
+        $this->assertSame('initiated', (string) $payment->status);
+        $this->assertSame('txn-c-1', $payment->provider_transaction_id);
+    }
+
+    public function test_a_gateway_answer_without_a_link_sends_the_customer_back_with_a_message(): void
+    {
+        $aisha = $this->account('Aisha', '+9607771111');
+        $invoice = $this->creditInvoice($aisha, 12000, now()->addDays(5)->toDateString());
+
+        $mock = Mockery::mock(BmlConnectService::class);
+        $mock->shouldReceive('normalizeLocalId')->andReturnUsing(fn ($v) => (string) $v);
+        $mock->shouldReceive('createPayment')->once()->andReturn(['transaction_id' => 'txn-nolink', 'local_id' => 'X']);
+        $this->app->instance(BmlConnectService::class, $mock);
+
+        $this->post('/invoices/' . $invoice->token . '/pay')
+            ->assertRedirect(route('invoices.show', $invoice->token))
+            ->assertSessionHas('error');
+        $this->assertSame('failed', (string) Payment::where('invoice_id', $invoice->id)->firstOrFail()->status);
     }
 
     public function test_pay_button_refuses_an_ordinary_invoice(): void
@@ -293,13 +314,15 @@ class CreditAccountsPageTest extends TestCase
 
         $mock = Mockery::mock(BmlConnectService::class);
         $mock->shouldReceive('normalizeLocalId')->andReturnUsing(fn ($v) => (string) $v);
-        $mock->shouldReceive('createPayment')->once()->andReturn(['url' => 'https://bml.test/pay/c2', 'transactionId' => 'txn-c-2', 'id' => 'txn-c-2']);
+        $mock->shouldReceive('createPayment')->once()->andReturn(['payment_url' => 'https://bml.test/pay/c2', 'transaction_id' => 'txn-c-2', 'local_id' => 'BGINV2']);
         $mock->shouldReceive('getTransactionStatus')->with('txn-c-2')->andReturn(['state' => 'CONFIRMED', 'transactionId' => 'txn-c-2']);
         $this->app->instance(BmlConnectService::class, $mock);
 
         app(PaymentService::class)->initiateBmlInvoicePayment($invoice);
+        // No hand-patching: the transaction id the gateway gave is what the
+        // return URL is matched against.
         $payment = Payment::where('invoice_id', $invoice->id)->firstOrFail();
-        $payment->update(['status' => 'initiated', 'provider_transaction_id' => 'txn-c-2']);
+        $this->assertSame('txn-c-2', $payment->provider_transaction_id);
 
         // The customer comes back from the gateway: the return URL confirms
         // with BML and lands on the invoice page with a thank-you.
