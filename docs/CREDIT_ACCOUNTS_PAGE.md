@@ -128,3 +128,22 @@ Repayments are never sales: the sale was counted on the day of the credit order.
 | List and totals | `backend/app/Domains/Credit/Services/CreditRepaymentsReport.php` |
 | API | `GET /admin/customers/credit-repayments`, `GET /admin/customers/credit-repayments.csv` |
 | Admin view | `apps/admin-dashboard/src/components/credit/CreditRepaymentsView.tsx` |
+
+## Saved for later (2026-10-06)
+
+Owner: "save for later, we have something to do with credit acc". Offered in the
+conversation and not built yet:
+
+1. **Take repayment on the sale screen.** When a customer is attached to an order,
+   their card on the POS sale screen shows what they owe but says "Collect
+   repayments in Admin → Customers", which is out of date and sends cashiers the
+   wrong way. Put a Take repayment button there (same form as POS → Customers →
+   Record repayment) and drop the stale line (`apps/pos-web/src/components/CustomerRewardsPanel.tsx`).
+2. **Overpayment goes to deposit.** A repayment larger than the balance is refused
+   ("They owe MVR X; enter that or less"). Option: record the balance as the
+   repayment and put the rest into the customer's deposit in one step.
+3. **Cash received by the owner, away from the till.** Cash repayments need an open
+   shift (the drawer count depends on it). Option: an owner-only "cash held by
+   owner" method, recorded outside any drawer but visible in the repayments list.
+4. **Transfer to credit on the POS.** Moving deposit money onto a credit balance is
+   only in Admin (Customers → customer → Deposit → Transfer to credit).
