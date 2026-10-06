@@ -57,8 +57,17 @@ class MailTest extends Command
                 },
             );
         } catch (\Throwable $e) {
-            $this->components->error('The mail server refused it: ' . $e->getMessage());
-            $this->line('  Common causes: wrong password, port 465 needs MAIL_SCHEME=smtps, port 587 needs MAIL_SCHEME=smtp, or the From address is not a mailbox on this domain.');
+            $msg = $e->getMessage();
+            $this->components->error('The mail server refused it: ' . $msg);
+            if (preg_match('/timed out|Connection refused|could not be established/i', $msg)) {
+                // Owner, 2026-10-06: mail.<domain> sat behind Cloudflare's proxy,
+                // which carries web traffic only, so the mail port timed out.
+                $this->line('  The server could not be reached at all, so this is not the password.');
+                $this->line('  If the domain uses Cloudflare, mail.<domain> is probably proxied (orange cloud): use the');
+                $this->line('  server named in the domain\'s MX record as MAIL_HOST instead (for this site: sg-s2.serverpanel.com).');
+            } else {
+                $this->line('  Common causes: wrong password, port 465 needs MAIL_SCHEME=smtps, port 587 needs MAIL_SCHEME=smtp, or the From address is not a mailbox on this domain.');
+            }
 
             return self::FAILURE;
         }

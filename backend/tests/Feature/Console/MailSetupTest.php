@@ -93,6 +93,17 @@ class MailSetupTest extends TestCase
             ->assertFailed();
     }
 
+    public function test_an_unreachable_server_is_not_blamed_on_the_password(): void
+    {
+        $this->smtp();
+        Mail::shouldReceive('raw')->once()->andThrow(new \RuntimeException('Connection could not be established with host "ssl://mail.bakeandgrill.mv:465": stream_socket_client(): Unable to connect (Connection timed out)'));
+
+        $this->artisan('mail:test', ['to' => 'owner@example.org'])
+            ->expectsOutputToContain('not the password')
+            ->expectsOutputToContain('sg-s2.serverpanel.com')
+            ->assertFailed();
+    }
+
     public function test_mail_test_rejects_a_bad_address(): void
     {
         $this->artisan('mail:test', ['to' => 'not-an-address'])->assertFailed();

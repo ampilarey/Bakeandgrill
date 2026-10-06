@@ -28,7 +28,7 @@ code by e-mail never gets it. Production must set `MAIL_MAILER=smtp`.
 
    ```
    MAIL_MAILER=smtp
-   MAIL_HOST=mail.bakeandgrill.mv
+   MAIL_HOST=sg-s2.serverpanel.com
    MAIL_PORT=465
    MAIL_SCHEME=smtps
    MAIL_USERNAME=no-reply@bakeandgrill.mv
@@ -38,8 +38,11 @@ code by e-mail never gets it. Production must set `MAIL_MAILER=smtp`.
    MAIL_TIMEOUT=10
    ```
 
-   cPanel's **Connect Devices** page for the mailbox shows the exact server name and
-   ports if `mail.bakeandgrill.mv` differs. For port 587 use `MAIL_SCHEME=smtp`.
+   **Not `mail.bakeandgrill.mv`.** The domain's DNS is on Cloudflare and that name is
+   proxied (orange cloud), and Cloudflare carries web traffic only, so the mail port
+   times out (found 2026-10-06). The mail server is the one in the domain's MX record,
+   `sg-s2.serverpanel.com` (103.159.65.2), the same machine the site runs on, and its
+   certificate matches that name. For port 587 use `MAIL_SCHEME=smtp`.
 3. Load the settings and send a test:
 
    ```bash
