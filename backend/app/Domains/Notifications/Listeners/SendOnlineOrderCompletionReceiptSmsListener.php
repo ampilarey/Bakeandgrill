@@ -6,6 +6,7 @@ namespace App\Domains\Notifications\Listeners;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\CustomerSmsMessageBuilder;
+use App\Domains\Notifications\Services\SmsEmailCopier;
 use App\Domains\Notifications\Services\SmsService;
 use App\Domains\Notifications\Support\SmsNotificationSettings;
 use App\Domains\Orders\Events\OrderStatusChanged;
@@ -31,7 +32,9 @@ final class SendOnlineOrderCompletionReceiptSmsListener
 
     public function handle(OrderStatusChanged $event): void
     {
-        if (!SmsNotificationSettings::isEnabled(SmsNotificationSettings::COMPLETION_RECEIPT)) {
+        // SMS off (to save cost) still sends the email copy (owner, 2026-10-06).
+        $smsOn = SmsNotificationSettings::isEnabled(SmsNotificationSettings::COMPLETION_RECEIPT);
+        if (!$smsOn && !SmsEmailCopier::wanted('customer_completion_receipt')) {
             return;
         }
 
@@ -85,6 +88,7 @@ final class SendOnlineOrderCompletionReceiptSmsListener
                 referenceType: 'order',
                 referenceId: (string) $order->id,
                 idempotencyKey: 'order:complete:receipt:' . $order->id,
+                emailOnly: !$smsOn,
             ));
         } catch (\Throwable $e) {
             Log::error('SendOnlineOrderCompletionReceiptSmsListener: SMS failed', [

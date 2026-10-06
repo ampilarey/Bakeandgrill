@@ -31,6 +31,8 @@ class SmsCopyMail extends Mailable
         public string $audience,
         public string $phone,
         public ?int $customerId = null,
+        /** False when the SMS was switched off and only this email went. */
+        public bool $smsSent = true,
     ) {}
 
     public function build(): self
@@ -51,6 +53,7 @@ class SmsCopyMail extends Mailable
                 'links' => $links,
                 'maskedPhone' => EmailBrand::maskPhone($this->phone),
                 'unsubscribeUrl' => $this->unsubscribeUrl(),
+                'smsSent' => $this->smsSent,
             ]);
     }
 

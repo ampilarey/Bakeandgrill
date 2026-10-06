@@ -8,6 +8,9 @@ use App\Domains\Notifications\Contracts\SmsProviderInterface;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
 use App\Domains\Notifications\Support\SmsDeliveryRules;
+use App\Domains\Notifications\Support\SmsTypeRegistry;
+use App\Models\SiteSetting;
+use App\Models\SmsLog;
 use App\Mail\SmsCopyMail;
 use App\Models\Customer;
 use App\Models\User;
@@ -202,4 +205,105 @@ class SmsEmailCopyTest extends TestCase
         $this->assertSame('Your gift card from Ali', SmsCopyMail::withoutLinks('Your gift card from Ali: https://bakeandgrill.mv/gift/x'));
         $this->assertSame('Shift open 14 hours. Close it in the POS', SmsCopyMail::withoutLinks('Shift open 14 hours. Close it in the POS: https://bakeandgrill.mv/pos'));
     }
+
+    // ── SMS and email have separate switches (owner, 2026-10-06) ─────────────
+
+    private function provider(int $smsTimes): void
+    {
+        $provider = Mockery::mock(SmsProviderInterface::class);
+        $provider->shouldReceive('send')->times($smsTimes)->andReturn([true, ['ok' => true], null]);
+        $this->app->instance(SmsProviderInterface::class, $provider);
+        $this->app->forgetInstance(SmsService::class);
+    }
+
+    public function test_switching_a_type_sms_off_still_sends_its_email(): void
+    {
+        $c = $this->customer();
+        $this->provider(0);
+        $entry = SmsTypeRegistry::get('customer_order_ready');
+        SiteSetting::set($entry['enabled_setting'], 'false');
+
+        $this->text('7771234', 'Your order is ready to collect.', 'customer_order_ready', $c->id);
+
+        $this->assertSame('disabled', SmsLog::latest('id')->value('status'));
+        Mail::assertSent(SmsCopyMail::class, fn (SmsCopyMail $m) => $m->hasTo('aishath@example.com')
+            && !$m->smsSent
+            && str_contains($m->render(), 'Sent to you by email.'));
+    }
+
+    public function test_switching_a_type_email_off_keeps_its_sms(): void
+    {
+        $c = $this->customer();
+        $this->provider(1);
+        SmsTypeRegistry::setEmailEnabled('customer_order_ready', false);
+
+        $this->text('7771234', 'Your order is ready.', 'customer_order_ready', $c->id);
+
+        $this->assertSame('sent', SmsLog::latest('id')->value('status'));
+        Mail::assertNotSent(SmsCopyMail::class);
+    }
+
+    public function test_both_off_sends_nothing(): void
+    {
+        $c = $this->customer();
+        $this->provider(0);
+        SiteSetting::set(SmsTypeRegistry::get('customer_order_ready')['enabled_setting'], 'false');
+        SmsTypeRegistry::setEmailEnabled('customer_order_ready', false);
+
+        $this->text('7771234', 'Your order is ready.', 'customer_order_ready', $c->id);
+
+        Mail::assertNotSent(SmsCopyMail::class);
+    }
+
+    public function test_the_sms_kill_switch_leaves_email_going(): void
+    {
+        $c = $this->customer();
+        User::factory()->create(['phone' => '+9607820288', 'email' => 'owner@example.com', 'is_active' => true]);
+        $this->provider(0);
+        SiteSetting::set('sms_global_kill_switch', 'true');
+        $this->assertTrue(SmsTypeRegistry::isGlobalKillSwitchOn());
+
+        $this->text('7771234', 'Your order is ready.', 'customer_order_ready', $c->id);
+        $this->text('7820288', 'Shift open for 14 hours.', 'owner_shift_left_open');
+
+        Mail::assertSent(SmsCopyMail::class, 2);
+    }
+
+    public function test_a_caller_whose_own_switch_is_off_can_send_email_only(): void
+    {
+        $c = $this->customer();
+        $this->provider(0);
+
+        app(SmsService::class)->send(new SmsMessage(to: '7771234', message: 'Your order is ready.', type: 'customer_order_ready', customerId: $c->id, emailOnly: true));
+        DeferAfterResponse::flushTestingCallbacks();
+
+        $this->assertStringContainsString('email only', (string) SmsLog::latest('id')->value('error_message'));
+        Mail::assertSent(SmsCopyMail::class, 1);
+    }
+
+    public function test_sms_off_does_not_bypass_a_promotion_opt_out(): void
+    {
+        $c = $this->customer(['sms_opt_out' => true]);
+        $this->provider(0);
+        SiteSetting::set(SmsTypeRegistry::get('marketing_campaign')['enabled_setting'], 'false');
+
+        $this->text('7771234', 'Weekend deal', 'marketing_campaign', $c->id);
+
+        Mail::assertNotSent(SmsCopyMail::class);
+    }
+
+    public function test_a_staff_member_without_permission_gets_neither(): void
+    {
+        $c = $this->customer();
+        $this->provider(0);
+        $cashier = User::factory()->create(['is_active' => true]);
+        $entry = SmsTypeRegistry::get('pos_send_bill');
+        $this->assertNotEmpty(SmsTypeRegistry::effectiveSendPermission($entry), 'pos_send_bill needs a send permission for this test');
+
+        app(SmsService::class)->send(new SmsMessage(to: '7771234', message: 'Bill: https://bakeandgrill.mv/invoices/x', type: 'pos_send_bill', customerId: $c->id, actingUserId: $cashier->id));
+        DeferAfterResponse::flushTestingCallbacks();
+
+        Mail::assertNotSent(SmsCopyMail::class);
+    }
+
 }

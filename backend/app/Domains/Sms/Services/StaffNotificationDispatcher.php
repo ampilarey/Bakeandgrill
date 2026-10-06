@@ -44,8 +44,12 @@ class StaffNotificationDispatcher
         $at = $at ?? Carbon::now();
 
         // Check if this event type is enabled
+        // SMS off for this event (to save cost) still sends the email copy
+        // when that alert's email is on (owner, 2026-10-06).
         $settingKey = self::EVENT_SETTING_MAP[$eventType] ?? null;
-        if ($settingKey && !$this->isEventEnabled($settingKey)) {
+        $smsOn = !$settingKey || $this->isEventEnabled($settingKey);
+        $smsType = \App\Domains\Notifications\Support\SmsTypeRegistry::get('staff_' . $eventType) !== null ? 'staff_' . $eventType : 'staff_notification';
+        if (!$smsOn && !\App\Domains\Notifications\Services\SmsEmailCopier::wanted($smsType)) {
             Log::info('StaffNotificationDispatcher: event disabled', [
                 'event_type' => $eventType,
                 'order_id' => $order->id,
@@ -79,6 +83,7 @@ class StaffNotificationDispatcher
                 recipientType: $recipient['recipient_type'],
                 recipientId: $recipient['recipient_id'],
                 fallbackUsed: $recipient['fallback_used'],
+                emailOnly: !$smsOn,
             );
         }
     }

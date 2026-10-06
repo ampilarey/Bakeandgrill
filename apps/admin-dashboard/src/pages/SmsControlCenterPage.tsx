@@ -89,7 +89,7 @@ function emailCopySummary(r: SmsDeliveryRules): string {
 }
 
 const KILL_SWITCH_WARNING =
-  'This halts ALL outbound SMS, including login OTP codes — customers and staff will not be able to receive verification codes while this is on.';
+  'This halts ALL outbound SMS, including login OTP codes — customers and staff will not be able to receive verification codes by SMS while this is on. Emails keep going: anyone with an email on file still gets their codes and messages by email.';
 
 type StatusFilter = 'all' | 'on' | 'off';
 
@@ -179,6 +179,20 @@ export function SmsControlCenterPage() {
     try {
       const res = await updateSmsType(row.key, { enabled: !row.enabled });
       setTypes((prev) => prev.map((t) => (t.key === row.key ? { ...t, enabled: !!res.enabled } : t)));
+    } catch (e: unknown) {
+      setError((e as Error).message);
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
+  const handleEmailToggle = async (row: SmsControlCenterType) => {
+    if (!canManageSettings || row.has_own_email) return;
+    setSavingKey(row.key);
+    try {
+      const next = !(row.email_enabled ?? true);
+      const res = await updateSmsType(row.key, { email_enabled: next });
+      setTypes((prev) => prev.map((t) => (t.key === row.key ? { ...t, email_enabled: res.email_enabled ?? next } : t)));
     } catch (e: unknown) {
       setError((e as Error).message);
     } finally {
@@ -394,8 +408,10 @@ export function SmsControlCenterPage() {
                   expanded={expandedKey === row.key}
                   onExpand={() => setExpandedKey((k) => (k === row.key ? null : row.key))}
                   onToggle={() => void handleToggle(row)}
+                  onEmailToggle={() => void handleEmailToggle(row)}
                   saving={savingKey === row.key}
                   canToggle={canManageSettings && !row.always_on}
+                  canToggleEmail={canManageSettings}
                   canEdit={canEditTemplates && canManageSettings}
                   canTest={canManageSettings}
                   myPhone={myPhone}
@@ -618,14 +634,16 @@ function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; chi
 }
 
 function TypeRow({
-  row, expanded, onExpand, onToggle, saving, canToggle, canEdit, canTest, myPhone, permissionOptions, staffOptions, onUpdated, onError,
+  row, expanded, onExpand, onToggle, onEmailToggle, saving, canToggle, canToggleEmail, canEdit, canTest, myPhone, permissionOptions, staffOptions, onUpdated, onError,
 }: {
   row: SmsControlCenterType;
   expanded: boolean;
   onExpand: () => void;
   onToggle: () => void;
+  onEmailToggle: () => void;
   saving: boolean;
   canToggle: boolean;
+  canToggleEmail: boolean;
   canEdit: boolean;
   canTest: boolean;
   myPhone: string | null;
@@ -635,7 +653,11 @@ function TypeRow({
   onError: (msg: string) => void;
 }) {
   const systemOnly = row.send_permission == null;
-  const off = !row.enabled && !row.always_on;
+  const smsOff = !row.enabled && !row.always_on;
+  // A type with its own fuller email (sign-in code, order confirmed…) keeps
+  // that email whatever the switches say; a copy follows the Email switch.
+  const emailOn = row.has_own_email ? true : (row.email_enabled ?? true);
+  const off = smsOff && !emailOn;
   const alsoLink = row.also_needs ? linkForAlsoNeeds(row.also_needs) : null;
 
   return (
@@ -648,7 +670,9 @@ function TypeRow({
               ? <span style={badgeStyle('var(--color-border-light)', 'var(--color-info)')}>Always on</span>
               : off
                 ? <span style={badgeStyle('var(--color-border-light)', 'var(--color-text-muted)')}>Off</span>
-                : null}
+                : smsOff
+                  ? <span style={badgeStyle('var(--color-border-light)', 'var(--color-info)')} data-testid={`email-only-${row.key}`}>Email only</span>
+                  : null}
           </div>
           <p style={rowLine}>
             Recipients: {row.recipients || '—'}
@@ -682,21 +706,42 @@ function TypeRow({
               {row.last_30_days.count} / 30d
             </span>
           )}
-          {row.always_on ? (
-            <span style={badgeStyle('var(--color-border-light)', 'var(--color-text-muted)')}>Always on</span>
-          ) : (
-            <button
-              type="button"
-              onClick={onToggle}
-              disabled={!canToggle || saving}
-              aria-label={`Toggle ${row.label}`}
-              aria-pressed={row.enabled}
-              className={`sms-cc-switch${row.enabled ? ' is-on' : ''}`}
-              style={{ cursor: !canToggle || saving ? 'not-allowed' : 'pointer', opacity: !canToggle ? 0.55 : 1 }}
-            >
-              <span className="sms-cc-switch-knob" />
-            </button>
-          )}
+          <div className="sms-cc-channel">
+            <span className="sms-cc-channel-label">SMS</span>
+            {row.always_on ? (
+              <span style={badgeStyle('var(--color-border-light)', 'var(--color-text-muted)')}>Always on</span>
+            ) : (
+              <button
+                type="button"
+                onClick={onToggle}
+                disabled={!canToggle || saving}
+                aria-label={`Toggle ${row.label}`}
+                aria-pressed={row.enabled}
+                className={`sms-cc-switch${row.enabled ? ' is-on' : ''}`}
+                style={{ cursor: !canToggle || saving ? 'not-allowed' : 'pointer', opacity: !canToggle ? 0.55 : 1 }}
+              >
+                <span className="sms-cc-switch-knob" />
+              </button>
+            )}
+          </div>
+          <div className="sms-cc-channel">
+            <span className="sms-cc-channel-label">Email</span>
+            {row.has_own_email ? (
+              <span style={badgeStyle('var(--color-border-light)', 'var(--color-text-muted)')} title="Sends its own email, separate from the SMS">Own email</span>
+            ) : (
+              <button
+                type="button"
+                onClick={onEmailToggle}
+                disabled={!canToggleEmail || saving}
+                aria-label={`Toggle email for ${row.label}`}
+                aria-pressed={emailOn}
+                className={`sms-cc-switch${emailOn ? ' is-on' : ''}`}
+                style={{ cursor: !canToggleEmail || saving ? 'not-allowed' : 'pointer', opacity: !canToggleEmail ? 0.55 : 1 }}
+              >
+                <span className="sms-cc-switch-knob" />
+              </button>
+            )}
+          </div>
           <button type="button" onClick={onExpand} className="sms-cc-edit" aria-expanded={expanded}>
             {expanded ? 'Hide controls' : 'Edit'}
           </button>

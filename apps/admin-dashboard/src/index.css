@@ -6278,6 +6278,20 @@ work area is a single column that
   transition: left 0.15s;
 }
 .sms-cc-switch.is-on .sms-cc-switch-knob { left: 23px; }
+/* SMS and Email switches side by side, each labelled (owner, 2026-10-06). */
+.sms-cc-channel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.sms-cc-channel-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
 .sms-cc-edit {
   min-height: 40px;
   padding: 6px 12px;

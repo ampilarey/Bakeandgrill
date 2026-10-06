@@ -107,7 +107,7 @@ class SmsNotificationSettingsTest extends TestCase
 
         $this->postJson("/api/orders/{$this->order->id}/send-bill", ['phone' => '+9607890123'])
             ->assertStatus(422)
-            ->assertJsonFragment(['message' => 'SMS disabled in Admin → Settings → Notifications.']);
+            ->assertJsonFragment(['message' => \App\Domains\Notifications\Support\SmsNotificationSettings::OFF_NO_EMAIL_MESSAGE]);
 
         $this->assertDatabaseCount('sms_logs', 0);
     }
@@ -131,7 +131,7 @@ class SmsNotificationSettingsTest extends TestCase
 
         $this->postJson("/api/orders/{$this->order->id}/send-pay-link")
             ->assertStatus(422)
-            ->assertJsonFragment(['message' => 'SMS disabled in Admin → Settings → Notifications.']);
+            ->assertJsonFragment(['message' => \App\Domains\Notifications\Support\SmsNotificationSettings::OFF_NO_EMAIL_MESSAGE]);
     }
 
     public function test_receipt_resend_returns_422_when_disabled(): void
@@ -144,7 +144,73 @@ class SmsNotificationSettingsTest extends TestCase
             'recipient' => '+9607890123',
         ])
             ->assertStatus(422)
-            ->assertJsonFragment(['message' => 'SMS disabled in Admin → Settings → Notifications.']);
+            ->assertJsonFragment(['message' => \App\Domains\Notifications\Support\SmsNotificationSettings::OFF_NO_EMAIL_MESSAGE]);
+    }
+
+    /*
+     * Owner, 2026-10-06: "Some times admin turn off some types of sms
+     * notifications to reduce sms cost. But email should not stop."
+     */
+    public function test_send_bill_with_sms_off_goes_by_email_when_the_customer_has_one(): void
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+        $this->customer->forceFill(['email' => 'sms.customer@example.com'])->save();
+        SiteSetting::set('sms_pos_send_bill_enabled', 'false');
+        Sanctum::actingAs($this->staffUser, ['staff']);
+
+        $this->postJson("/api/orders/{$this->order->id}/send-bill", ['phone' => '+9607890123'])
+            ->assertOk()
+            ->assertJsonPath('sent_by', 'email');
+
+        $this->assertDatabaseHas('sms_logs', ['type' => 'pos_send_bill', 'status' => 'disabled']);
+        \Illuminate\Support\Facades\Mail::assertSent(\App\Mail\SmsCopyMail::class, fn ($m) => $m->hasTo('sms.customer@example.com') && !$m->smsSent);
+    }
+
+    public function test_send_pay_link_with_sms_off_goes_by_email_and_the_till_keeps_the_button(): void
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+        $this->customer->forceFill(['email' => 'sms.customer@example.com'])->save();
+        SiteSetting::set('sms_pos_send_pay_link_enabled', 'false');
+        Sanctum::actingAs($this->staffUser, ['staff']);
+
+        $this->postJson("/api/orders/{$this->order->id}/send-pay-link")
+            ->assertOk()
+            ->assertJsonPath('sent_by', 'email');
+        \Illuminate\Support\Facades\Mail::assertSent(\App\Mail\SmsCopyMail::class, fn ($m) => str_contains($m->render(), '>Pay now</a>'));
+
+        $this->assertTrue(\App\Domains\Notifications\Support\SmsNotificationSettings::smsOrEmail('sms_pos_send_pay_link_enabled', 'pos_send_pay_link'));
+        \App\Domains\Notifications\Support\SmsTypeRegistry::setEmailEnabled('pos_send_pay_link', false);
+        $this->assertFalse(\App\Domains\Notifications\Support\SmsNotificationSettings::smsOrEmail('sms_pos_send_pay_link_enabled', 'pos_send_pay_link'));
+    }
+
+    public function test_receipt_resend_with_sms_off_sends_the_receipt_email(): void
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+        $this->customer->forceFill(['email' => 'sms.customer@example.com'])->save();
+        SiteSetting::set('sms_pos_receipt_resend_enabled', 'false');
+        Sanctum::actingAs($this->staffUser, ['staff']);
+
+        $this->postJson("/api/receipts/{$this->order->id}/send", ['channel' => 'sms', 'recipient' => '+9607890123'])
+            ->assertSuccessful();
+        \Illuminate\Support\Facades\Mail::assertSent(\App\Mail\ReceiptMail::class, fn ($m) => $m->hasTo('sms.customer@example.com'));
+    }
+
+    public function test_payment_confirmation_email_still_goes_when_its_sms_is_off(): void
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+        $this->customer->forceFill(['email' => 'sms.customer@example.com'])->save();
+        SiteSetting::set('sms_customer_payment_confirmed_enabled', 'false');
+
+        Sanctum::actingAs($this->staffUser, ['staff']);
+        $this->postJson('/api/shifts/open', ['opening_cash' => 100])->assertCreated();
+        $this->postJson("/api/orders/{$this->order->id}/payments", [
+            'payments' => [['method' => 'cash', 'amount' => 50.00]],
+            'print_receipt' => false,
+        ])->assertOk();
+
+        $this->assertDatabaseMissing('sms_logs', ['idempotency_key' => 'order:paid:confirm:' . $this->order->order_number]);
+        \Illuminate\Support\Facades\Mail::assertSent(\App\Mail\OrderConfirmationMail::class, fn ($m) => $m->hasTo('sms.customer@example.com'));
+        \Illuminate\Support\Facades\Mail::assertNotSent(\App\Mail\SmsCopyMail::class);
     }
 
     public function test_custom_template_body_is_used_for_send_bill(): void

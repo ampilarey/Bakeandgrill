@@ -50,6 +50,8 @@ class DeliveredSmsTest extends TestCase
         SiteSetting::bust();
         $another = Order::factory()->create(['type' => 'delivery', 'status' => 'delivered', 'customer_id' => $customer->id]);
         $this->fire($another);
-        $this->assertSame(1, SmsLog::where('type', 'customer_order_delivered')->count(), 'switch off');
+        // Switched off, no second text goes; the attempt is logged as
+        // disabled because the email copy may still go (owner, 2026-10-06).
+        $this->assertSame(1, SmsLog::where('type', 'customer_order_delivered')->where('status', '!=', 'disabled')->count(), 'switch off');
     }
 }

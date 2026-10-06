@@ -23,5 +23,12 @@ final readonly class SmsMessage
         public ?string $referenceId = null,
         public ?string $idempotencyKey = null,
         public ?int $actingUserId = null,
+        /**
+         * The caller's own switch has this SMS off (owner, 2026-10-06:
+         * "Some times admin turn off some types of sms notifications to
+         * reduce sms cost. But email should not stop"). No text goes; the
+         * email copy still does, if that type's email is on.
+         */
+        public bool $emailOnly = false,
     ) {}
 }

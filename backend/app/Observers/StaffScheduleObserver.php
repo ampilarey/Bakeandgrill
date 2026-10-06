@@ -44,8 +44,9 @@ class StaffScheduleObserver
 
     private function sendScheduleAssignedSms(StaffSchedule $schedule): void
     {
-        $settingEnabled = $this->isSettingEnabled('staff_sms_schedule_assigned_enabled');
-        if (!$settingEnabled) {
+        // SMS off (to save cost) still sends the email copy (owner, 2026-10-06).
+        $smsOn = $this->isSettingEnabled('staff_sms_schedule_assigned_enabled');
+        if (!$smsOn && !\App\Domains\Notifications\Services\SmsEmailCopier::wanted('staff_schedule_assigned')) {
             return;
         }
 
@@ -80,6 +81,7 @@ class StaffScheduleObserver
                 referenceType: 'staff_schedule',
                 referenceId: (string) $schedule->id,
                 idempotencyKey: 'schedule-assigned:' . $schedule->id . ':' . $schedule->updated_at?->timestamp,
+                emailOnly: !$smsOn,
             ));
         } catch (\Throwable $e) {
             Log::error('StaffScheduleObserver: failed to send schedule assigned SMS', [

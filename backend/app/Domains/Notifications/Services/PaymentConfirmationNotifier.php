@@ -43,13 +43,9 @@ class PaymentConfirmationNotifier
             return;
         }
 
-        if (!SmsNotificationSettings::isEnabled(SmsNotificationSettings::PAYMENT_CONFIRMED)) {
-            Log::info('PaymentConfirmationNotifier: payment confirmation SMS disabled', [
-                'order_id' => $order->id,
-            ]);
-
-            return;
-        }
+        // The SMS switch saves SMS cost; it no longer stops the order
+        // confirmation email (owner, 2026-10-06).
+        $smsOn = SmsNotificationSettings::isEnabled(SmsNotificationSettings::PAYMENT_CONFIRMED);
 
         $order->loadMissing(['customer', 'payments']);
 
@@ -57,8 +53,8 @@ class PaymentConfirmationNotifier
         $email = $order->customer?->email;
         $name = $order->customer?->name ?? 'Customer';
 
-        if (!$phone) {
-            Log::warning('PaymentConfirmationNotifier: no recipient phone — SMS skipped', [
+        if (!$phone && !$email) {
+            Log::warning('PaymentConfirmationNotifier: no recipient phone or email', [
                 'order_id' => $order->id,
                 'order_type' => $order->type,
                 'customer_id' => $order->customer_id,
@@ -76,8 +72,8 @@ class PaymentConfirmationNotifier
         }
         $receipt->customer_id = $order->customer_id;
         $receipt->fill([
-            'channel' => 'sms',
-            'recipient' => $phone,
+            'channel' => $phone ? 'sms' : 'email',
+            'recipient' => $phone ?: $email,
         ]);
         if (!$receipt->exists || !$receipt->sent_at) {
             $receipt->sent_at = now();
@@ -132,21 +128,23 @@ class PaymentConfirmationNotifier
             $typeKey = 'customer_payment_confirmed_pos';
         }
 
-        try {
-            $this->sms->send(new SmsMessage(
-                to: $phone,
-                message: $message,
-                type: $typeKey,
-                customerId: $order->customer_id,
-                referenceType: 'order',
-                referenceId: (string) $order->id,
-                idempotencyKey: 'order:paid:confirm:' . $order->order_number,
-            ));
-        } catch (\Throwable $e) {
-            Log::error('PaymentConfirmationNotifier: SMS failed', [
-                'order_id' => $order->id,
-                'error' => $e->getMessage(),
-            ]);
+        if ($phone && $smsOn) {
+            try {
+                $this->sms->send(new SmsMessage(
+                    to: $phone,
+                    message: $message,
+                    type: $typeKey,
+                    customerId: $order->customer_id,
+                    referenceType: 'order',
+                    referenceId: (string) $order->id,
+                    idempotencyKey: 'order:paid:confirm:' . $order->order_number,
+                ));
+            } catch (\Throwable $e) {
+                Log::error('PaymentConfirmationNotifier: SMS failed', [
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         if ($email) {

@@ -39,7 +39,7 @@ class SmsService
         if ($registryEntry !== null) {
             $withLine = SmsDeliveryRules::withOptOutLine($sms->message, $registryEntry);
             if ($withLine !== $sms->message) {
-                $sms = new SmsMessage($sms->to, $withLine, $sms->type, $sms->customerId, $sms->campaignId, $sms->referenceType, $sms->referenceId, $sms->idempotencyKey, $sms->actingUserId);
+                $sms = new SmsMessage($sms->to, $withLine, $sms->type, $sms->customerId, $sms->campaignId, $sms->referenceType, $sms->referenceId, $sms->idempotencyKey, $sms->actingUserId, $sms->emailOnly);
             }
         }
         $estimate = $this->estimate($sms->message);
@@ -78,90 +78,41 @@ class SmsService
             return $existing;
         }
 
-        // 1. Global kill switch — blocks ALL types including OTP.
-        if (SmsTypeRegistry::isGlobalKillSwitchOn()) {
+        // 3 (checked first). User-initiated send_permission — a refusal here
+        //    stops the email as well: it is about who may send, not cost.
+        $permissionReason = $this->permissionRefusal($sms, $registryEntry);
+        if ($permissionReason !== null) {
             if ($existing !== null) {
-                $existing->update([
-                    'status' => 'disabled',
-                    'error_message' => 'All SMS halted by admin master switch.',
-                    'message' => $this->messageForLog($sms),
-                    'to' => $normalized,
-                ]);
+                $existing->update(['status' => 'disabled', 'error_message' => $permissionReason, 'message' => $this->messageForLog($sms), 'to' => $normalized]);
 
                 return $existing->fresh();
             }
 
-            return $this->disabledLog(
-                $sms,
-                $normalized,
-                $estimate,
-                'All SMS halted by admin master switch.',
-            );
+            return $this->disabledLog($sms, $normalized, $estimate, $permissionReason);
+        }
+
+        // The SMS switches below exist to save SMS money, so each stops only
+        // the text: the email still goes (owner, 2026-10-06).
+        // 0. The caller's own switch has this SMS off.
+        if ($sms->emailOnly) {
+            return $this->smsOffEmailOn($sms, $normalized, $estimate, $existing, $registryEntry, 'SMS switched off for this message; sent by email only.');
+        }
+
+        // 1. Global kill switch — blocks ALL texts including OTP.
+        if (SmsTypeRegistry::isGlobalKillSwitchOn()) {
+            return $this->smsOffEmailOn($sms, $normalized, $estimate, $existing, $registryEntry, 'All SMS halted by admin master switch.');
         }
 
         // 2. Per-type enabled (always_on types ignore their toggle).
         if ($registryEntry !== null && !SmsTypeRegistry::isTypeEnabled($registryEntry)) {
-            if ($existing !== null) {
-                $existing->update([
-                    'status' => 'disabled',
-                    'error_message' => 'SMS type disabled in Admin → SMS Control Center.',
-                    'message' => $this->messageForLog($sms),
-                    'to' => $normalized,
-                ]);
-
-                return $existing->fresh();
-            }
-
-            return $this->disabledLog(
-                $sms,
-                $normalized,
-                $estimate,
-                'SMS type disabled in Admin → SMS Control Center.',
-            );
-        }
-
-        // 3. User-initiated send_permission — only when actingUserId is set.
-        //    System paths (OTP, observers, queued jobs) leave it null.
-        if ($sms->actingUserId !== null && $registryEntry !== null) {
-            $perm = SmsTypeRegistry::effectiveSendPermission($registryEntry);
-            if ($perm !== null && $perm !== '') {
-                $actor = User::query()->find($sms->actingUserId);
-                if ($actor === null || !$this->permissions->hasPermission($actor, $perm)) {
-                    $reason = 'Acting user lacks send permission: ' . $perm;
-
-                    if ($existing !== null) {
-                        $existing->update([
-                            'status' => 'disabled',
-                            'error_message' => $reason,
-                            'message' => $this->messageForLog($sms),
-                            'to' => $normalized,
-                        ]);
-
-                        return $existing->fresh();
-                    }
-
-                    return $this->disabledLog($sms, $normalized, $estimate, $reason);
-                }
-            }
+            return $this->smsOffEmailOn($sms, $normalized, $estimate, $existing, $registryEntry, 'SMS type disabled in Admin → SMS Control Center.');
         }
 
         // 4. Spend ceilings — never block always_on auth types.
         $alwaysOn = (bool) ($registryEntry['always_on'] ?? false);
         $budgetReason = SmsBudgetGate::blockReason($estimate, $sms->campaignId, $alwaysOn);
         if ($budgetReason !== null) {
-            if ($existing !== null) {
-                $existing->update([
-                    'status' => 'disabled',
-                    'error_message' => $budgetReason,
-                    'message' => $this->messageForLog($sms),
-                    'to' => $normalized,
-                    'cost_estimate_mvr' => 0,
-                ]);
-
-                return $existing->fresh();
-            }
-
-            return $this->disabledLog($sms, $normalized, $estimate, $budgetReason);
+            return $this->smsOffEmailOn($sms, $normalized, $estimate, $existing, $registryEntry, $budgetReason);
         }
 
         // 5. Marketing-class messages: honour customer opt-out via registry suppressible flag.
@@ -300,6 +251,53 @@ class SmsService
         ]);
 
         return $log->fresh();
+    }
+
+    /** Why the acting staff member may not send this type, or null. System sends (no actor) always may. */
+    private function permissionRefusal(SmsMessage $sms, ?array $registryEntry): ?string
+    {
+        if ($sms->actingUserId === null || $registryEntry === null) {
+            return null;
+        }
+        $perm = SmsTypeRegistry::effectiveSendPermission($registryEntry);
+        if ($perm === null || $perm === '') {
+            return null;
+        }
+        $actor = User::query()->find($sms->actingUserId);
+
+        return ($actor === null || !$this->permissions->hasPermission($actor, $perm))
+            ? 'Acting user lacks send permission: ' . $perm
+            : null;
+    }
+
+    /**
+     * The SMS is off (kill switch, type switch, spend ceiling, or the
+     * caller's own switch): log it as disabled, and send the email copy
+     * if that type's email is on. A promotion still respects the
+     * customer's opt-out and the daily marketing cap.
+     *
+     * @param array{encoding: string, segments: int, cost_mvr: float} $estimate
+     * @param array<string, mixed>|null $registryEntry
+     */
+    private function smsOffEmailOn(SmsMessage $sms, string $normalized, array $estimate, ?SmsLog $existing, ?array $registryEntry, string $reason): SmsLog
+    {
+        if ($existing !== null) {
+            $existing->update(['status' => 'disabled', 'error_message' => $reason, 'message' => $this->messageForLog($sms), 'to' => $normalized, 'cost_estimate_mvr' => 0]);
+            $log = $existing->fresh();
+        } else {
+            $log = $this->disabledLog($sms, $normalized, $estimate, $reason);
+        }
+
+        $suppressible = $registryEntry === null ? true : SmsTypeRegistry::isSuppressible($registryEntry);
+        if ($suppressible && $this->isOptedOut($normalized, $sms->customerId)) {
+            return $log;
+        }
+        if ($registryEntry !== null && SmsDeliveryRules::marketingCapReason($normalized, $registryEntry) !== null) {
+            return $log;
+        }
+        app(SmsEmailCopier::class)->copy($sms, $normalized, $log, $registryEntry, smsSent: false);
+
+        return $log;
     }
 
     /** @param array{encoding: string, segments: int, cost_mvr: float} $estimate */

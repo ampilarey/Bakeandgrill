@@ -28,8 +28,10 @@ class SendDailyRefundSummaryCommand extends Command
 
     public function handle(SmsService $sms, RefundWorkflowService $workflow): int
     {
-        if (SiteSetting::get('sms_owner_daily_refund_summary_enabled', '1') === '0') {
-            $this->info('Daily refund summary SMS disabled.');
+        // SMS off (to save cost) still sends the email copy (owner, 2026-10-06).
+        $smsOn = SiteSetting::get('sms_owner_daily_refund_summary_enabled', '1') !== '0';
+        if (!$smsOn && !\App\Domains\Notifications\Services\SmsEmailCopier::wanted('owner_daily_refund_summary')) {
+            $this->info('Daily refund summary SMS and email both off.');
 
             return self::SUCCESS;
         }
@@ -179,6 +181,7 @@ class SendDailyRefundSummaryCommand extends Command
                 referenceType: 'refund_daily_summary',
                 referenceId: $day->toDateString(),
                 idempotencyKey: 'refund-daily:' . $day->toDateString() . ':' . $owner->id,
+                emailOnly: !$smsOn,
             ));
             $sent++;
         }

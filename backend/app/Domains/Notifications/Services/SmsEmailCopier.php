@@ -6,6 +6,7 @@ namespace App\Domains\Notifications\Services;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Support\SmsDeliveryRules;
+use App\Domains\Notifications\Support\SmsTypeRegistry;
 use App\Mail\SmsCopyMail;
 use App\Models\Customer;
 use App\Models\SmsLog;
@@ -41,15 +42,46 @@ class SmsEmailCopier
         'catering_request_received',    // EventRequestReceivedMail
         'catering_quote_customer',      // EventQuoteSentMail
         'catering_confirmed_customer',  // EventConfirmedMail
+        'customer_payment_confirmed_pos', // OrderConfirmationMail from PaymentConfirmationNotifier
     ];
 
     private const RATE_KEY = 'sms-email-copy:hour';
 
-    /** @param array<string, mixed>|null $registryEntry */
-    public function copy(SmsMessage $sms, string $normalizedPhone, SmsLog $log, ?array $registryEntry): void
+    /**
+     * Whether this type sends an email copy at all: not one with its own
+     * email, its per-type email switch on, and at least one group on.
+     * Callers whose own SMS switch is off use it to decide whether to send
+     * the message "email only" or not at all.
+     */
+    public static function wanted(string $type): bool
+    {
+        if (in_array($type, self::HAS_OWN_EMAIL, true) || !SmsTypeRegistry::isEmailEnabled($type)) {
+            return false;
+        }
+        $rules = SmsDeliveryRules::all();
+
+        return $rules['email_copy_customers'] || $rules['email_copy_staff'] || $rules['email_copy_marketing'];
+    }
+
+    /** Whether a copy of this type to this person could go: wanted, and an address is known. */
+    public function canEmail(string $type, ?int $customerId, string $phone): bool
+    {
+        if (!self::wanted($type)) {
+            return false;
+        }
+        $entry = SmsTypeRegistry::resolve($type);
+
+        return $this->recipient(new SmsMessage(to: $phone, message: '', type: $type, customerId: $customerId), $phone, ($entry['category'] ?? '') === 'staff') !== null;
+    }
+
+    /**
+     * @param array<string, mixed>|null $registryEntry
+     * @param bool $smsSent false when the SMS itself was switched off and this email goes alone
+     */
+    public function copy(SmsMessage $sms, string $normalizedPhone, SmsLog $log, ?array $registryEntry, bool $smsSent = true): void
     {
         try {
-            if (in_array($sms->type, self::HAS_OWN_EMAIL, true)) {
+            if (in_array($sms->type, self::HAS_OWN_EMAIL, true) || !SmsTypeRegistry::isEmailEnabled($sms->type)) {
                 return;
             }
 
@@ -64,9 +96,12 @@ class SmsEmailCopier
             [$email, $audience, $customerId] = $person;
 
             $rules = SmsDeliveryRules::all();
+            // A staff member is never sent "promotions": a scheduled message
+            // to a staff contact (shift reminder) counts as a staff alert.
+            $marketing = $marketing && $audience === 'customer';
             $allowed = match (true) {
-                $marketing => $rules['email_copy_marketing'] && $audience === 'customer',
                 $audience === 'staff' => $rules['email_copy_staff'],
+                $marketing => $rules['email_copy_marketing'],
                 default => $rules['email_copy_customers'],
             };
             if (!$allowed) {
@@ -91,6 +126,7 @@ class SmsEmailCopier
                 audience: $marketing ? 'marketing' : $audience,
                 phone: $normalizedPhone,
                 customerId: $customerId,
+                smsSent: $smsSent,
             );
 
             // After the response (or the job), so a slow mail server never

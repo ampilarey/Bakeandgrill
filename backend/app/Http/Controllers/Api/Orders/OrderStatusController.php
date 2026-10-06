@@ -155,11 +155,13 @@ class OrderStatusController extends Controller
             if ($order->type !== 'online_pickup') {
                 return;
             }
-            if (!SmsNotificationSettings::isEnabled(SmsNotificationSettings::POS_FIRE_TO_KITCHEN)) {
-                return;
-            }
             $phone = $order->customer?->phone;
             if (!$phone) {
+                return;
+            }
+            // SMS off to save cost still sends the email copy (owner, 2026-10-06).
+            $smsOn = SmsNotificationSettings::isEnabled(SmsNotificationSettings::POS_FIRE_TO_KITCHEN);
+            if (!$smsOn && !app(\App\Domains\Notifications\Services\SmsEmailCopier::class)->canEmail('pos_fire_to_kitchen', $order->customer_id, $phone)) {
                 return;
             }
             try {
@@ -222,6 +224,7 @@ class OrderStatusController extends Controller
                     referenceId: (string) $order->id,
                     idempotencyKey: 'order:fired:received:' . $order->id,
                     actingUserId: $request->user()?->id,
+                    emailOnly: !$smsOn,
                 ));
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::warning('fireToKitchen: SMS failed', [

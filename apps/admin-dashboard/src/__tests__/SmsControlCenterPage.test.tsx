@@ -236,6 +236,20 @@ describe('SmsControlCenterPage', () => {
     });
   });
 
+  // Owner, 2026-10-06: SMS off to save cost must not stop the email.
+  it('has a separate Email switch per type and marks SMS-off-email-on rows as Email only', async () => {
+    mockControlCenter({
+      types: typesFixture.map((t) => (t.key === 'owner_stock_reorder' ? { ...t, enabled: false, email_enabled: true } : t)),
+    });
+    renderWithRouter(<SmsControlCenterPage />);
+    await screen.findByText('Gift card delivery');
+    expect(screen.getByTestId('email-only-owner_stock_reorder')).toBeTruthy();
+
+    vi.mocked(api.updateSmsType).mockResolvedValueOnce({ key: 'owner_stock_reorder', email_enabled: false });
+    fireEvent.click(screen.getByLabelText(/Toggle email for/i, { selector: '[aria-label$="' + typesFixture.find((t) => t.key === 'owner_stock_reorder')!.label + '"]' }));
+    await waitFor(() => expect(api.updateSmsType).toHaveBeenCalledWith('owner_stock_reorder', { email_enabled: false }));
+  });
+
   it('shows kill-switch confirm with OTP warning', async () => {
     renderWithRouter(<SmsControlCenterPage />);
     await screen.findByText(/Global kill switch/i);

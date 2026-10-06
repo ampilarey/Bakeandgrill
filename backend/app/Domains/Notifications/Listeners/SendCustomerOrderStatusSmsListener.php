@@ -6,6 +6,7 @@ namespace App\Domains\Notifications\Listeners;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\CustomerSmsMessageBuilder;
+use App\Domains\Notifications\Services\SmsEmailCopier;
 use App\Domains\Notifications\Services\SmsService;
 use App\Domains\Orders\Events\OrderStatusChanged;
 use App\Models\Order;
@@ -62,7 +63,16 @@ final class SendCustomerOrderStatusSmsListener
             'delivered' => 'sms_customer_delivered_enabled',
         };
 
-        if (SiteSetting::get($settingKey, 'true') !== 'true') {
+        // SMS off for this status (to save SMS cost) still sends the email
+        // when that type's email is on (owner, 2026-10-06).
+        $typeKey = match ($status) {
+            'in_progress' => 'customer_order_preparing',
+            'ready' => 'customer_order_ready',
+            'delivered' => 'customer_order_delivered',
+            default => 'customer_order_on_the_way',
+        };
+        $smsOn = SiteSetting::get($settingKey, 'true') === 'true';
+        if (!$smsOn && !SmsEmailCopier::wanted($typeKey)) {
             return;
         }
 
@@ -124,13 +134,6 @@ final class SendCustomerOrderStatusSmsListener
             $fallback,
         );
 
-        $typeKey = match ($status) {
-            'in_progress' => 'customer_order_preparing',
-            'ready' => 'customer_order_ready',
-            'delivered' => 'customer_order_delivered',
-            default => 'customer_order_on_the_way',
-        };
-
         try {
             $this->sms->send(new SmsMessage(
                 to: $phone,
@@ -140,6 +143,7 @@ final class SendCustomerOrderStatusSmsListener
                 referenceType: 'order',
                 referenceId: (string) $order->id,
                 idempotencyKey: $idempotencyKey,
+                emailOnly: !$smsOn,
             ));
         } catch (\Throwable $e) {
             Log::error('SendCustomerOrderStatusSmsListener: SMS failed', [

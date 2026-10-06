@@ -54,9 +54,10 @@ class PosBootstrapController extends Controller
             'pairings' => $menu['pairings'],
             'shift' => $shift,
             'sms_notifications' => [
-                'send_bill' => SmsNotificationSettings::isEnabled(SmsNotificationSettings::POS_SEND_BILL),
-                'send_pay_link' => SmsNotificationSettings::isEnabled(SmsNotificationSettings::POS_SEND_PAY_LINK),
-                'receipt_resend' => SmsNotificationSettings::isEnabled(SmsNotificationSettings::POS_RECEIPT_RESEND),
+                // A button stays when its SMS is off but its email is on.
+                'send_bill' => SmsNotificationSettings::smsOrEmail(SmsNotificationSettings::POS_SEND_BILL, 'pos_send_bill'),
+                'send_pay_link' => SmsNotificationSettings::smsOrEmail(SmsNotificationSettings::POS_SEND_PAY_LINK, 'pos_send_pay_link'),
+                'receipt_resend' => SmsNotificationSettings::smsOrEmail(SmsNotificationSettings::POS_RECEIPT_RESEND, 'pos_receipt_resend'),
             ],
             'discount_controls' => [
                 'manual_enabled' => DiscountSettings::manualEnabled(),

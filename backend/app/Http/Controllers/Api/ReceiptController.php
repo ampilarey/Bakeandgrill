@@ -72,8 +72,15 @@ class ReceiptController extends Controller
             return response()->json(['message' => 'Recipient not available.'], 422);
         }
 
+        // SMS off to save cost: send the receipt by email instead, when the
+        // customer has one (owner, 2026-10-06).
         if ($channel === 'sms' && !SmsNotificationSettings::isEnabled(SmsNotificationSettings::POS_RECEIPT_RESEND)) {
-            return response()->json(['message' => SmsNotificationSettings::DISABLED_MESSAGE], 422);
+            $email = trim((string) ($order->customer?->email ?? ''));
+            if ($email === '' || !\App\Domains\Notifications\Support\SmsTypeRegistry::isEmailEnabled('pos_receipt_resend')) {
+                return response()->json(['message' => SmsNotificationSettings::OFF_NO_EMAIL_MESSAGE], 422);
+            }
+            $channel = 'email';
+            $recipient = $email;
         }
 
         $receipt = Receipt::firstOrNew(['order_id' => $order->id]);

@@ -276,6 +276,10 @@ export type SmsControlCenterType = {
   label: string;
   category: 'auth' | 'transactional' | 'marketing' | 'staff' | 'system';
   enabled: boolean;
+  /** Email copy switch, separate from the SMS switch (owner, 2026-10-06). */
+  email_enabled?: boolean;
+  /** The type already sends its own fuller email (sign-in code, order confirmed…); no copy to switch. */
+  has_own_email?: boolean;
   always_on: boolean;
   suppressible: boolean;
   recipients: string;
@@ -381,6 +385,7 @@ export type SmsControlCenterResponse = {
 
 export type SmsTypeUpdatePayload = {
   enabled?: boolean;
+  email_enabled?: boolean;
   body?: string;
   send_permission?: string | null;
   recipients?: SmsRecipientsConfig | { mode: SmsRecipientMode; user_ids?: number[]; phones?: string[] } | null;
@@ -396,6 +401,7 @@ export async function updateSmsType(
 ): Promise<{
   key: string;
   enabled?: boolean;
+  email_enabled?: boolean;
   send_permission?: string | null;
   send_permission_label?: string;
   template?: SmsControlCenterType['template'];

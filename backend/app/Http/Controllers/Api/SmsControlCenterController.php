@@ -160,6 +160,11 @@ class SmsControlCenterController extends Controller
                 'label' => $entry['label'],
                 'category' => $entry['category'],
                 'enabled' => SmsTypeRegistry::isTypeEnabled($entry),
+                // Separate email switch (owner, 2026-10-06): turning the SMS off to
+                // save cost leaves the email going. Types with their own fuller
+                // email (sign-in code, order confirmed...) have no copy to switch.
+                'email_enabled' => SmsTypeRegistry::isEmailEnabled($key),
+                'has_own_email' => in_array($key, \App\Domains\Notifications\Services\SmsEmailCopier::HAS_OWN_EMAIL, true),
                 'always_on' => (bool) $entry['always_on'],
                 'suppressible' => (bool) $entry['suppressible'],
                 'recipients' => $recipientsPlain,
@@ -282,6 +287,7 @@ class SmsControlCenterController extends Controller
 
         $validated = $request->validate([
             'enabled' => 'sometimes|boolean',
+            'email_enabled' => 'sometimes|boolean',
             'body' => 'sometimes|nullable|string|max:1000',
             'send_permission' => [
                 'sometimes',
@@ -302,7 +308,7 @@ class SmsControlCenterController extends Controller
         ]);
 
         if ($validated === []) {
-            return response()->json(['message' => 'Provide enabled, body, send_permission and/or recipients.'], 422);
+            return response()->json(['message' => 'Provide enabled, email_enabled, body, send_permission and/or recipients.'], 422);
         }
 
         $response = ['key' => $key];
@@ -326,6 +332,13 @@ class SmsControlCenterController extends Controller
             $this->audit->log('sms.type.recipients.updated', 'SiteSetting', null, ['recipients' => $old, 'type' => $key], ['recipients' => $choice, 'type' => $key], ['sms_type' => $key], $request);
             $response['recipients_config'] = SmsTypeRegistry::recipientOverride($key) ?? ['mode' => SmsTypeRegistry::defaultRecipientMode($key), 'user_ids' => [], 'phones' => []];
             $response['recipients_resolved'] = OwnerPhones::for($key)->values()->all();
+        }
+
+        if (array_key_exists('email_enabled', $validated)) {
+            $old = SmsTypeRegistry::isEmailEnabled($key);
+            SmsTypeRegistry::setEmailEnabled($key, (bool) $validated['email_enabled']);
+            $this->audit->log('sms.type.email.updated', 'SiteSetting', null, ['email_enabled' => $old, 'type' => $key], ['email_enabled' => (bool) $validated['email_enabled'], 'type' => $key], ['sms_type' => $key], $request);
+            $response['email_enabled'] = (bool) $validated['email_enabled'];
         }
 
         if (array_key_exists('enabled', $validated)) {

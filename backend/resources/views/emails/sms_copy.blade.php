@@ -38,9 +38,10 @@
 
 @section('footer_note')
     @if ($audience === 'staff')
-        A copy of the alert texted to {{ $maskedPhone ?? 'your phone' }}. Alerts are switched on or off in Admin → SMS → Control Center.
+        {{ $smsSent ? 'A copy of the alert texted to ' . ($maskedPhone ?? 'your phone') . '.' : 'Sent by email only: the SMS for this alert is switched off.' }}
+        Alerts are switched on or off in Admin → SMS → Control Center.
     @else
-        A copy of the text we sent to {{ $maskedPhone ?? 'your phone' }}.
+        {{ $smsSent ? 'A copy of the text we sent to ' . ($maskedPhone ?? 'your phone') . '.' : 'Sent to you by email.' }}
     @endif
     @if ($unsubscribeUrl)
         <br><a href="{{ $unsubscribeUrl }}" style="color:#9C8E7E; text-decoration:underline;">Stop promotional messages (SMS and email)</a>. Order, payment and sign-in messages still come.

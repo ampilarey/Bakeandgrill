@@ -57,6 +57,9 @@ final class SmsTypeRegistry
 
     public const RECIPIENTS_SETTING_PREFIX = 'sms_type_recipients.';
 
+    /** Per-type email switch, independent of the SMS switch (owner, 2026-10-06). */
+    public const EMAIL_SETTING_PREFIX = 'sms_type_email.';
+
     /**
      * Types whose recipients the owner chooses in the Control Center, with
      * where each goes when nothing is chosen. Types not listed here decide
@@ -383,6 +386,18 @@ final class SmsTypeRegistry
     /**
      * Accepts legacy '1'/'0' (staff/marketing) and 'true'/'false' (customer SMS toggles).
      */
+    /** Whether this type's email copy is on; on unless switched off. */
+    public static function isEmailEnabled(string $typeKey): bool
+    {
+        return self::settingIsTruthy(SiteSetting::get(self::EMAIL_SETTING_PREFIX . $typeKey, '1'), true);
+    }
+
+    public static function setEmailEnabled(string $typeKey, bool $on): void
+    {
+        SiteSetting::set(self::EMAIL_SETTING_PREFIX . $typeKey, $on ? '1' : 'off');
+        SiteSetting::bust();
+    }
+
     public static function settingIsTruthy(mixed $value, bool $default = true): bool
     {
         if ($value === null || $value === '') {

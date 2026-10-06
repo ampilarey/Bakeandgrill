@@ -97,6 +97,16 @@ class PosBootstrapTest extends TestCase
 
         Sanctum::actingAs($staff, ['staff']);
 
+        // SMS off but email on (the default): the till keeps the buttons and
+        // sends by email (owner, 2026-10-06).
+        $this->getJson('/api/pos/bootstrap?channel=dine_in')
+            ->assertOk()
+            ->assertJsonPath('sms_notifications.send_bill', true)
+            ->assertJsonPath('sms_notifications.send_pay_link', true);
+
+        // SMS and email both off: the buttons go.
+        \App\Domains\Notifications\Support\SmsTypeRegistry::setEmailEnabled('pos_send_bill', false);
+        \App\Domains\Notifications\Support\SmsTypeRegistry::setEmailEnabled('pos_send_pay_link', false);
         $this->getJson('/api/pos/bootstrap?channel=dine_in')
             ->assertOk()
             ->assertJsonPath('sms_notifications.send_bill', false)

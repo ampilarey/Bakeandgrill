@@ -92,9 +92,36 @@ also goes by email to that person's saved address:
 - Unsubscribing from the email link sets the same opt-out as the SMS page, so
   promotional texts and emails both stop; order, payment and sign-in messages continue.
 
+### SMS and email switches are separate (2026-10-06)
+
+Owner: "Some times admin turn off some types of sms notifications to reduce sms
+cost. But email should not stop." Each row in Admin → SMS → Control Center has two
+switches, **SMS** and **Email**. A row with the SMS off and the email on is marked
+**Email only**.
+
+| What stops | SMS | Email |
+|---|---|---|
+| The type's SMS switch, the global SMS kill switch, the SMS spend ceiling, a feature's own SMS toggle (order status, payment confirmed, completion receipt, POS buttons, staff order alerts, new customer, shift assigned, refund summary) | Yes | **No** |
+| The type's Email switch, or a group switch / the hourly cap in Delivery rules | No | Yes |
+| A customer's promotions opt-out, the daily marketing cap, a staff member without permission to send | Yes | Yes |
+
+- POS: Send bill, Send pay link, Fire to kitchen and Resend receipt send by email when
+  their SMS is off and the customer has an email (the reply says "sent by email"); with no
+  email they say so. The till keeps the buttons while either channel is on.
+- The order confirmation email no longer depends on the payment-confirmed SMS switch,
+  and goes to a customer with an email but no phone.
+- Rows that send their own fuller email (sign-in code, order confirmed, gift card,
+  events) show **Own email**: that email always goes.
+- The kill switch warning now says emails keep going; customers with an email still
+  get sign-in codes by email while SMS is halted.
+- Not covered: shift reminders are scheduled ahead as SMS rows; with their SMS toggle
+  off they are not created, so no email either.
+
 | Piece | File |
 |---|---|
 | Copy rules, recipient lookup, cap | `app/Domains/Notifications/Services/SmsEmailCopier.php` |
+| SMS-off-email-on in the sender | `SmsService::smsOffEmailOn()`, `SmsMessage::$emailOnly` |
+| Per-type email switch | `SmsTypeRegistry::isEmailEnabled()` (`sms_type_email.{type}`) |
 | The email | `app/Mail/SmsCopyMail.php`, `emails/sms_copy(.blade|_text.blade).php` |
 | Settings | `SmsDeliveryRules` (`sms_email_copy_*`), Control Center panel |
 | Unsubscribe | `EmailUnsubscribeController`, `/email/unsubscribe/{customer}` (signed) |

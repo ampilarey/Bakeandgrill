@@ -25,7 +25,9 @@ class SendNewCustomerNotificationListener implements ShouldQueue
 
     public function handle(CustomerCreated $event): void
     {
-        if (!$this->isEnabled()) {
+        // SMS off (to save cost) still sends the email copy (owner, 2026-10-06).
+        $smsOn = $this->isEnabled();
+        if (!$smsOn && !\App\Domains\Notifications\Services\SmsEmailCopier::wanted('staff_new_customer')) {
             return;
         }
 
@@ -61,6 +63,7 @@ class SendNewCustomerNotificationListener implements ShouldQueue
                 recipientType: $recipient['recipient_type'],
                 recipientId: $recipient['recipient_id'],
                 fallbackUsed: false,
+                emailOnly: !$smsOn,
             );
         }
     }

@@ -28,6 +28,18 @@ final class SmsNotificationSettings
 
     public const DISABLED_MESSAGE = 'SMS disabled in Admin → Settings → Notifications.';
 
+    /** SMS off for this (to save cost) and no email to fall back on (owner, 2026-10-06). */
+    public const OFF_NO_EMAIL_MESSAGE = 'SMS is switched off for this, and the customer has no email to send it to.';
+
+    /**
+     * Whether a POS button may send: its SMS is on, or its email copy is on
+     * (the email then goes alone). Used for the till's button visibility.
+     */
+    public static function smsOrEmail(string $key, string $smsType): bool
+    {
+        return self::isEnabled($key) || \App\Domains\Notifications\Services\SmsEmailCopier::wanted($smsType);
+    }
+
     public static function isEnabled(string $key, bool $default = true): bool
     {
         return SiteSetting::get($key, $default ? 'true' : 'false') === 'true';

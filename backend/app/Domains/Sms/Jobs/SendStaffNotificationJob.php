@@ -33,6 +33,8 @@ class SendStaffNotificationJob implements ShouldQueue
         public readonly string $recipientType,
         public readonly ?int $recipientId,
         public readonly bool $fallbackUsed,
+        /** SMS switched off for this alert: send only the email (owner, 2026-10-06). */
+        public readonly bool $emailOnly = false,
     ) {}
 
     public function handle(SmsService $smsService): void
@@ -70,13 +72,16 @@ class SendStaffNotificationJob implements ShouldQueue
                 referenceType: 'order',
                 referenceId: (string) $this->orderId,
                 idempotencyKey: $idempotencyKey . ':sms',
+                // isset(): a job queued before this field existed has no value for it.
+                emailOnly: isset($this->emailOnly) && $this->emailOnly,
             ));
 
             // 'demo' is a successful no-op send (local/staging without real credentials).
             // Treat it the same as 'sent' so ops dashboards don't show false failures.
             $success = in_array($smsLog->status, ['sent', 'demo'], true);
+            $emailOnly = isset($this->emailOnly) && $this->emailOnly;
             $logRecord->update([
-                'status' => $success ? 'sent' : 'failed',
+                'status' => $emailOnly ? 'email_only' : ($success ? 'sent' : 'failed'),
                 'sms_log_id' => $smsLog->id,
                 'sent_at' => $success ? now() : null,
                 'failed_at' => $success ? null : now(),

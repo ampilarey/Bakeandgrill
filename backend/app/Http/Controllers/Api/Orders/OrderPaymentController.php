@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\Orders;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\CustomerSmsMessageBuilder;
+use App\Domains\Notifications\Services\SmsEmailCopier;
 use App\Domains\Notifications\Services\SmsService;
 use App\Domains\Notifications\Support\SmsNotificationSettings;
 use App\Domains\Payments\Actions\SettleOrderPaymentAction;
@@ -82,8 +83,11 @@ class OrderPaymentController extends Controller
             return response()->json(['message' => 'Attach a customer phone before sending a pay link.'], 422);
         }
 
-        if (!SmsNotificationSettings::isEnabled(SmsNotificationSettings::POS_SEND_PAY_LINK)) {
-            return response()->json(['message' => SmsNotificationSettings::DISABLED_MESSAGE], 422);
+        // SMS off to save cost: send the link by email instead, when the
+        // customer has one (owner, 2026-10-06).
+        $smsOn = SmsNotificationSettings::isEnabled(SmsNotificationSettings::POS_SEND_PAY_LINK);
+        if (!$smsOn && !app(SmsEmailCopier::class)->canEmail('pos_send_pay_link', $order->customer_id, $phone)) {
+            return response()->json(['message' => SmsNotificationSettings::OFF_NO_EMAIL_MESSAGE], 422);
         }
 
         // Compute remaining balance via the same helper the rest of the
@@ -135,6 +139,7 @@ class OrderPaymentController extends Controller
                 referenceId: (string) $order->id,
                 idempotencyKey: 'order:' . $idempotencyKey,
                 actingUserId: $request->user()?->id,
+                emailOnly: !$smsOn,
             ));
         } catch (\Throwable $e) {
             Log::error('sendPayLink: SMS failed', [
@@ -163,7 +168,8 @@ class OrderPaymentController extends Controller
         );
 
         return response()->json([
-            'message' => 'Pay link sent.',
+            'message' => $smsOn ? 'Pay link sent.' : 'Pay link sent by email (SMS is switched off).',
+            'sent_by' => $smsOn ? 'sms' : 'email',
             'amount' => $remainingLaar / 100,
             'sent_to' => $phone,
             'pay_page_url' => $payPageUrl,
@@ -313,8 +319,11 @@ class OrderPaymentController extends Controller
         // the "Print bill" silent and prevents accidental double-SMS when
         // the cashier prints first and sends later.
         if (!empty($request->input('phone'))) {
-            if (!SmsNotificationSettings::isEnabled(SmsNotificationSettings::POS_SEND_BILL)) {
-                return response()->json(['message' => SmsNotificationSettings::DISABLED_MESSAGE], 422);
+            // SMS off to save cost: email the bill instead, when the customer
+            // has one (owner, 2026-10-06).
+            $smsOn = SmsNotificationSettings::isEnabled(SmsNotificationSettings::POS_SEND_BILL);
+            if (!$smsOn && !app(SmsEmailCopier::class)->canEmail('pos_send_bill', $order->customer_id, $phone)) {
+                return response()->json(['message' => SmsNotificationSettings::OFF_NO_EMAIL_MESSAGE], 422);
             }
 
             $fallback = 'Bill #' . $invoice->invoice_number . ' - MVR ' . number_format($billTotal, 2) . '. View: ' . $link;
@@ -343,6 +352,7 @@ class OrderPaymentController extends Controller
                 referenceId: (string) $invoice->id,
                 idempotencyKey: $idempotencyKey,
                 actingUserId: $request->user()?->id,
+                emailOnly: !$smsOn,
             ));
 
             $invoice->update([
@@ -363,6 +373,7 @@ class OrderPaymentController extends Controller
             'invoice' => $invoice->fresh('items'),
             'link' => $link,
             'sms_status' => isset($smsLog) ? $smsLog->status : null,
+            'sent_by' => isset($smsLog) ? ($smsOn ? 'sms' : 'email') : null,
             'bill_total' => round($billTotal, 2),
         ]);
     }
