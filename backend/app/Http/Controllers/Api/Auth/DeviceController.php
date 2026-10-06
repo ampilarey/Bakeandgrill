@@ -239,12 +239,31 @@ class DeviceController extends Controller
     /**
      * Delete a device.
      */
-    public function destroy(int $id)
+    public function destroy(int $id, Request $request)
     {
         $device = Device::findOrFail($id);
+        $before = $device->toArray();
+        // Signed out as well (owner, 2026-10-07: "When I delete the pos
+        // device of manager … he refreshed the data, locked and signed in,
+        // but can use the pos"). If it is used again it registers afresh,
+        // waiting for approval under strict approval.
+        $this->revokeTillTokens($device);
         $device->delete();
+        app(AuditLogService::class)->log('device.deleted', 'Device', $id, $before, [], [], $request);
 
         return response()->json(['message' => 'Device deleted.']);
+    }
+
+    /** POS sign-ins made on this till (token name staff-pos-{userId}-{identifier}). */
+    private function revokeTillTokens(Device $device): void
+    {
+        $safeId = preg_replace('/[^A-Za-z0-9\-_]/', '-', (string) $device->identifier) ?? '';
+        $safeId = trim($safeId, '-_');
+        if ($safeId !== '') {
+            PersonalAccessToken::query()
+                ->where('name', 'like', 'staff-pos-%-' . $safeId)
+                ->delete();
+        }
     }
 
     /**
@@ -254,15 +273,7 @@ class DeviceController extends Controller
     {
         $device = Device::findOrFail($id);
         $device->update(['is_active' => false]);
-
-        $safeId = preg_replace('/[^A-Za-z0-9\-_]/', '-', (string) $device->identifier) ?? '';
-        $safeId = trim($safeId, '-_');
-        if ($safeId !== '') {
-            // Token names: staff-pos-{userId}-{sanitizedIdentifier}
-            PersonalAccessToken::query()
-                ->where('name', 'like', 'staff-pos-%-' . $safeId)
-                ->delete();
-        }
+        $this->revokeTillTokens($device);
 
         return response()->json(['device' => $device]);
     }

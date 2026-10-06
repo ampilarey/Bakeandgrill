@@ -233,6 +233,53 @@ class EnsureActiveDeviceTest extends TestCase
     }
 
     /**
+     * Owner, 2026-10-07: "When I delete the pos device of manager from
+     * device list, still his pos was able to use." Deleting signs the till
+     * out, and under strict approval it comes back waiting for approval.
+     */
+    public function test_deleting_a_device_signs_it_out_and_it_returns_waiting_for_approval(): void
+    {
+        config(['pos.require_device_header' => false, 'pos.strict_device_approval' => true]);
+        \Illuminate\Support\Facades\Auth::forgetGuards();
+
+        $ownerRole = Role::firstOrCreate(['slug' => 'owner'], ['name' => 'Owner', 'is_active' => true]);
+        $owner = User::create([
+            'name' => 'Device Owner',
+            'email' => 'device-owner-del@test.local',
+            'password' => Hash::make('password'),
+            'role_id' => $ownerRole->id,
+            'pin_hash' => Hash::make('1234'),
+            'is_active' => true,
+        ]);
+        $device = Device::create(['name' => 'Manager POS', 'identifier' => 'DEL-POS-1', 'type' => 'pos', 'is_active' => true, 'status' => 'approved']);
+        $tokenName = 'staff-pos-' . $this->staff->id . '-DEL-POS-1';
+        $plain = $this->staff->createToken($tokenName, ['staff'])->plainTextToken;
+
+        $ownerToken = $owner->createToken('admin', ['staff'])->plainTextToken;
+        $this->withHeader('Authorization', 'Bearer ' . $ownerToken)
+            ->deleteJson('/api/devices/' . $device->id)
+            ->assertOk();
+
+        $this->assertDatabaseMissing('personal_access_tokens', ['name' => $tokenName]);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'device.deleted', 'model_id' => $device->id, 'user_id' => $owner->id]);
+
+        // The till's old sign-in no longer works.
+        \Illuminate\Support\Facades\Auth::forgetGuards();
+        $this->withHeaders(['Authorization' => 'Bearer ' . $plain, 'X-Device-Identifier' => 'DEL-POS-1'])
+            ->postJson('/api/orders', ['type' => 'takeaway', 'items' => [['item_id' => $this->item->id, 'quantity' => 1]]])
+            ->assertUnauthorized();
+
+        // Signed in again, it is a new till waiting for approval.
+        \Illuminate\Support\Facades\Auth::forgetGuards();
+        $fresh = $this->staff->createToken($tokenName, ['staff'])->plainTextToken;
+        $this->withHeaders(['Authorization' => 'Bearer ' . $fresh, 'X-Device-Identifier' => 'DEL-POS-1'])
+            ->postJson('/api/orders', ['type' => 'takeaway', 'items' => [['item_id' => $this->item->id, 'quantity' => 1]]])
+            ->assertForbidden()
+            ->assertJsonPath('code', 'device_not_approved');
+        $this->assertSame('pending', Device::where('identifier', 'DEL-POS-1')->value('status'));
+    }
+
+    /**
      * Owner, 2026-08-17: "When i login to pos, it says device is not
      * registered but when i refresh it, it opens."
      *

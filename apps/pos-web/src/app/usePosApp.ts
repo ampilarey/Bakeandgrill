@@ -925,14 +925,21 @@ export function usePosApp() {
 
   const checkDeviceStatus = useCallback(async () => {
     try {
-      const status = await selfDeviceStatus(deviceId);
-      // Pending and disabled are different situations: pending is waiting on
-      // the owner (who has been SMS-alerted), disabled was switched off on
-      // purpose. "unregistered"/"unknown" get no banner — the row appears on
-      // the first gated request or self-register.
-      // Not registered yet (or unknown): say nothing either way. Clearing
-      // here let a sign-in's early check undo the lock a later one had set.
+      let status = await selfDeviceStatus(deviceId);
+      // Unregistered: the till was deleted in Admin → Devices (owner,
+      // 2026-10-07: "When I delete the pos device of manager … can use the
+      // pos"), or has not registered yet. Register it now: under strict
+      // approval it comes back waiting for approval, and the lock follows.
+      if (status.status === "unregistered") {
+        const reg = await selfRegisterDevice(deviceId, `POS ${deviceId}`);
+        status = { status: reg.status, is_active: reg.status === "approved", id: reg.device?.id };
+      }
+      // Unknown: say nothing either way. Clearing here let a sign-in's early
+      // check undo the lock a later one had set.
       if (status.status === "unregistered" || status.status === "unknown") return;
+      // Pending and disabled are different situations: pending is waiting on
+      // the owner (who has been alerted), disabled was switched off on
+      // purpose.
       if (status.status === "pending") {
         setDeviceBlockedMessage(
           "This POS device is waiting for owner approval — the owner has been notified. It unlocks by itself once approved, on Telegram or in Admin → Settings → Devices.",
@@ -953,11 +960,18 @@ export function usePosApp() {
   }, [deviceId, persistDeviceDbId]);
 
   // While blocked, re-check every 20s so the till comes alive the moment the
-  // owner approves or re-enables it — no manual refresh needed.
+  // owner approves or re-enables it — no manual refresh needed. While open,
+  // every 60s and whenever the screen comes back, so a till deleted,
+  // disabled or rejected in Admin locks without waiting for a sign-in.
   useEffect(() => {
-    if (!isLoggedIn || !deviceBlockedMessage) return;
-    const timer = window.setInterval(() => { void checkDeviceStatus(); }, 20_000);
-    return () => window.clearInterval(timer);
+    if (!isLoggedIn) return;
+    const timer = window.setInterval(() => { void checkDeviceStatus(); }, deviceBlockedMessage ? 20_000 : 60_000);
+    const onVisible = () => { if (document.visibilityState === "visible") void checkDeviceStatus(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [isLoggedIn, deviceBlockedMessage, checkDeviceStatus]);
 
   // Register this till, THEN ask its status (owner, 2026-10-07: "New pos

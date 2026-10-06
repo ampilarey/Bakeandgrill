@@ -140,7 +140,9 @@ export default function DevicesPage() {
   };
 
   const handleDelete = async (device: Device) => {
-    if (!window.confirm(`Delete "${device.name}"? This cannot be undone.`)) return;
+    // A deleted till is signed out; if it is used again it registers as a
+    // new till waiting for approval (2026-10-07). Reject keeps it out for good.
+    if (!window.confirm(`Delete "${device.name}"?\n\nIt is signed out now. If it is used again it comes back as a new till waiting for your approval. To keep it out for good, reject it when it asks.`)) return;
     setActionLoading(device.id);
     try {
       await deleteDevice(device.id);
