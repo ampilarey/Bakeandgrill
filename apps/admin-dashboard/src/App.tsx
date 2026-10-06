@@ -38,6 +38,7 @@ const PromotionsHub           = lazyWithRetry(() => import('./pages/PromotionsHu
 const FinanceHub              = lazyWithRetry(() => import('./pages/FinanceHub').then((m) => ({ default: m.FinanceHub })));
 const WholesaleHub            = lazyWithRetry(() => import('./pages/WholesaleHub').then((m) => ({ default: m.WholesaleHub })));
 const LabelsHub               = lazyWithRetry(() => import('./pages/LabelsHub').then((m) => ({ default: m.LabelsHub })));
+const TelegramPage            = lazyWithRetry(() => import('./pages/TelegramPage').then((m) => ({ default: m.TelegramPage })));
 const WebhooksPage            = lazyWithRetry(() => import('./pages/WebhooksPage').then((m) => ({ default: m.WebhooksPage })));
 const DashboardPage           = lazyWithRetry(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
 const TestChecklistPage       = lazyWithRetry(() => import('./pages/TestChecklistPage'));
@@ -415,6 +416,12 @@ export default function App() {
                     </PermissionGuard>
                   } />
                 ))}
+                {/* Telegram staff bots (owner, 2026-10-06). */}
+                <Route path="telegram" element={
+                  <PermissionGuard user={user} permissions={['telegram.manage']}>
+                    <TelegramPage />
+                  </PermissionGuard>
+                } />
                 {/* Wholesale hub — the per-account pages below stay their own routes. */}
                 {['wholesale', 'wholesale/shops', 'wholesale/deliveries', 'wholesale/deliveries/:id', 'wholesale/invoicing', 'wholesale/reports'].map((path) => (
                   <Route key={path} path={path} element={

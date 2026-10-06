@@ -258,6 +258,8 @@ final class PermissionCatalog
             // to give permission to any staff". Both are owner-only below.
             ['group' => 'Labels', 'slug' => 'labels.print', 'name' => 'Print labels', 'description' => 'Print pack stickers and box labels from the Labels page, a production batch or a wholesale delivery'],
             ['group' => 'Labels', 'slug' => 'labels.manage', 'name' => 'Manage label settings', 'description' => 'Edit ingredients, shelf life, storage line and label pictures on items, and the label wording'],
+            // Telegram staff bots (owner, 2026-10-06): add bots and link staff. Owner-only below.
+            ['group' => 'Telegram', 'slug' => 'telegram.manage', 'name' => 'Manage Telegram bots', 'description' => 'Add Telegram bots, choose which roles each serves, and link or unlink staff and drivers'],
             ['group' => 'Media', 'slug' => 'media.view', 'name' => 'View media library', 'description' => 'Browse the Media Library and pick assets'],
             ['group' => 'Media', 'slug' => 'media.manage', 'name' => 'Manage media library', 'description' => 'Upload, edit, delete, and reconcile media'],
 
@@ -352,6 +354,7 @@ final class PermissionCatalog
             'complaints.view',
             'labels.manage',
             'labels.print',
+            'telegram.manage',
             // Off by default for managers too (owner, 2026-10-02).
             'pos.customers_tab',
             // Owner-only by default (2026-10-03): it rewrites what the drawer and the tender report say.

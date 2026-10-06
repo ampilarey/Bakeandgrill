@@ -56,7 +56,7 @@ class ShiftController extends Controller
      *
      * @return array{opening:float,cash_in:float,cash_out:float,cash_sales:float,cash_refunds:float,expected:float}
      */
-    private function expectedCashFor(Shift $shift): array
+    public function expectedCashFor(Shift $shift): array
     {
         // Voided movements never count (ops audit, 2026-09-25): a typo is
         // struck through with a reason, not balanced by a second entry.

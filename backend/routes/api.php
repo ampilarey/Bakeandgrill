@@ -32,6 +32,12 @@ Route::get('/health/ready', [App\Http\Controllers\Api\SystemHealthController::cl
 Route::post('/deploy/test-pull', App\Http\Controllers\Api\TestDeployWebhookController::class)
     ->middleware('throttle:10,1');
 
+// Telegram staff bots: Telegram calls this for every message and button
+// press. Each bot's own secret (header) is checked in the controller.
+Route::post('/telegram/webhook/{bot}', [App\Http\Controllers\Api\TelegramWebhookController::class, 'handle'])
+    ->whereNumber('bot')
+    ->middleware('throttle:600,1');
+
 // Public order tracking — no auth required, token in URL acts as shared secret.
 // Named limiter is token-keyed (CGNAT-safe); polling + WhatsApp preview must not 429.
 Route::get('/orders/track/{token}', [OrderTrackingController::class, 'trackByToken'])
@@ -109,6 +115,7 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     require __DIR__ . '/domains/finance.php';
     require __DIR__ . '/domains/complaints.php';
     require __DIR__ . '/domains/labels.php';
+    require __DIR__ . '/domains/telegram.php';
 
     $GLOBALS['routes_sections']['kitchen'] = 'production';
     require __DIR__ . '/domains/kitchen.php';

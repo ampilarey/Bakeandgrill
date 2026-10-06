@@ -10,6 +10,7 @@ use App\Domains\Notifications\Support\SmsBudgetGate;
 use App\Domains\Notifications\Support\SmsDeliveryRules;
 use App\Domains\Notifications\Support\SmsTypeRegistry;
 use App\Domains\Permissions\Services\PermissionService;
+use App\Domains\Telegram\Services\TelegramAlertCopier;
 use App\Models\Customer;
 use App\Models\SmsLog;
 use App\Models\User;
@@ -239,6 +240,21 @@ class SmsService
         // sent after the response and can never affect the SMS.
         app(SmsEmailCopier::class)->copy($sms, $normalized, $log, $registryEntry);
 
+        // Staff and owner alerts on Telegram (owner, 2026-10-06). With
+        // "instead of SMS" on, a linked person gets Telegram only; the SMS
+        // still goes if Telegram cannot be reached.
+        $telegram = app(TelegramAlertCopier::class);
+        if ($telegram->sendInsteadOfSms($sms, $normalized, $log, $registryEntry)) {
+            $log->update([
+                'status' => 'suppressed',
+                'error_message' => 'Sent on Telegram instead of SMS.',
+                'cost_estimate_mvr' => 0,
+            ]);
+
+            return $log->fresh();
+        }
+        $telegram->copy($sms, $normalized, $log, $registryEntry);
+
         [$success, $response, $error] = $this->provider->send($normalized, $sms->message);
 
         $status = $success ? 'sent' : ($response === 'demo' ? 'demo' : 'failed');
@@ -296,6 +312,7 @@ class SmsService
             return $log;
         }
         app(SmsEmailCopier::class)->copy($sms, $normalized, $log, $registryEntry, smsSent: false);
+        app(TelegramAlertCopier::class)->copy($sms, $normalized, $log, $registryEntry);
 
         return $log;
     }

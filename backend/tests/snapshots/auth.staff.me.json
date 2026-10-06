@@ -181,6 +181,7 @@
             "suppliers.manage",
             "suppliers.purchases",
             "suppliers.view",
+            "telegram.manage",
             "trade.dispatch",
             "trade.invoice",
             "trade.manage_accounts",

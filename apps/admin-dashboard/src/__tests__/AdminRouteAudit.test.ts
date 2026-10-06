@@ -25,7 +25,7 @@ describe('admin route audit', () => {
       'Website Content', 'Order App Content', 'Media Library',
     ]);
     expect(labelsOf('analyze')).toEqual(['Reports', 'Analytics', 'Forecasts', 'Finance']);
-    expect(labelsOf('system')).toEqual(['Settings', 'Devices', 'System Health', 'Webhooks', 'Xero']);
+    expect(labelsOf('system')).toEqual(['Settings', 'Telegram', 'Devices', 'System Health', 'Webhooks', 'Xero']);
     expect(labelsOf('team')).toEqual(['Staff', 'Shifts & Cash', 'Time Clock', 'POS Activity', 'My Account']);
   });
 

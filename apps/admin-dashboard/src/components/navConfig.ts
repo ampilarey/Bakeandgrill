@@ -8,7 +8,7 @@ import {
   Boxes, LayoutGrid, Wallet, Clock, Monitor, Share2,
   Link, ShoppingBag, Zap,
   ConciergeBell, Wrench, ClipboardCheck, HeartPulse, UserCircle, Utensils,
-  LayoutTemplate, Shield, UserCog, Images, Tv, Store, Tags,
+  LayoutTemplate, Shield, UserCog, Images, Tv, Store, Tags, Send,
 } from 'lucide-react';
 import type { StaffUser } from '../api';
 
@@ -156,6 +156,8 @@ export const NAV_GROUPS: NavGroup[] = [
       // Every switch not owned by a domain page: business record, ordering,
       // delivery, charges, credit, notifications, currency photos, roles.
       { to: '/settings', icon: Shield, label: 'Settings', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'], description: 'Business, ordering, delivery, fees, credit, notifications & roles' },
+      // Owner, 2026-10-06: staff bots; owner-only until telegram.manage is granted.
+      { to: '/telegram',      icon: Send,        label: 'Telegram',       permission: 'telegram.manage', description: 'Staff bot: alerts, sales, shifts & approvals' },
       { to: '/devices',       icon: Monitor,     label: 'Devices',        permission: 'devices.view',   description: 'POS & KDS devices, and the print queue' },
       { to: '/system-health', icon: HeartPulse,  label: 'System Health',  permissions: ['website.manage', 'service_availability.view'], description: 'Queue, webhooks & alerts, and the maintenance switches' },
       { to: '/webhooks',      icon: Webhook,     label: 'Webhooks',       permission: 'integrations.webhooks', description: 'Outbound integrations' },

@@ -61,6 +61,8 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
   { to: '/settings', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'] },
   // Route audit, 2026-09-19: Print Queue is a Devices tab; Service
   // Availability is a System Health tab.
+  // Telegram staff bots, 2026-10-06.
+  { to: '/telegram', permission: 'telegram.manage' },
   { to: '/devices', permission: 'devices.view' },
   { to: '/webhooks', permission: 'integrations.webhooks' },
   { to: '/xero', permission: 'integrations.xero' },

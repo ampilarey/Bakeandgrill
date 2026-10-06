@@ -100,6 +100,17 @@ Phones print the PDF, not the web sheet (iOS adds margins). How to use it and wh
 everything lives: `docs/LABELS.md`; design and decisions: `docs/LABEL_HUB_PLAN.md`
 and `docs/LABEL_HUB_V2_PLAN.md`.
 
+## Telegram staff bots
+
+Admin → Telegram (owner-only, `telegram.manage`). One bot can serve every role
+(owner, manager, staff, kitchen staff, driver) or each role its own. Staff link
+their own Telegram with a one-time link; staff and owner alerts that go through
+`SmsService` are copied to their chat (`TelegramAlertCopier`), optionally instead
+of the SMS, and the bot's buttons re-check permissions on every press. **TEST
+and production need separate bots**: Telegram sends a bot's updates to one
+webhook only, and adding a bot that points at another site stops with a warning.
+Levels are built one at a time (owner first); see `docs/TELEGRAM_BOTS.md`.
+
 ## TEST and production share one Redis
 
 The Redis socket is per cPanel *account* (`REDIS_PATH=/home/bakeandgrill/.redis/redis.sock`),
