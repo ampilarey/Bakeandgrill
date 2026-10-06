@@ -151,4 +151,69 @@ class EmailCodeFallbackTest extends TestCase
         $this->postJson('/api/auth/customer/otp/verify', ['phone' => '7006000', 'otp' => $sms->json('otp')])
             ->assertOk();
     }
+
+    /*
+     * Owner, 2026-10-06 (screenshot): asked for the reset code by SMS, then
+     * by email too, typed the SMS one and was told "Invalid OTP code".
+     */
+    public function test_the_texted_reset_code_still_works_after_also_asking_for_the_email(): void
+    {
+        $c = $this->customer();
+        $c->forceFill(['password' => bcrypt('old-pass-1')])->save();
+
+        $sms = $this->postJson('/api/auth/customer/forgot-password', ['phone' => '7006000'])->assertOk();
+        $this->postJson('/api/auth/customer/otp/request', ['phone' => '7006000', 'purpose' => 'reset_password', 'channel' => 'email'])
+            ->assertOk();
+
+        $this->postJson('/api/auth/customer/reset-password', [
+            'phone' => '7006000',
+            'otp' => $sms->json('otp'),
+            'password' => 'new-pass-1',
+            'password_confirmation' => 'new-pass-1',
+        ])->assertOk();
+    }
+
+    public function test_either_sign_in_code_works_and_using_one_cancels_both(): void
+    {
+        $this->customer();
+
+        $sms = $this->postJson('/api/auth/customer/otp/request', ['phone' => '7006000'])->assertOk();
+        $mail = $this->postJson('/api/auth/customer/otp/request', ['phone' => '7006000', 'channel' => 'email'])->assertOk();
+
+        $this->postJson('/api/auth/customer/otp/verify', ['phone' => '7006000', 'otp' => $sms->json('otp')])->assertOk();
+
+        $this->assertSame(0, OtpVerification::where('phone', '+9607006000')->whereNull('used_at')->count());
+        auth()->forgetGuards();
+        $this->postJson('/api/auth/customer/otp/verify', ['phone' => '7006000', 'otp' => $mail->json('otp')])
+            ->assertStatus(422)->assertJsonValidationErrors(['otp']);
+    }
+
+    public function test_only_the_two_newest_codes_count(): void
+    {
+        $this->customer();
+
+        $first = $this->postJson('/api/auth/customer/otp/request', ['phone' => '7006000'])->assertOk();
+        $this->postJson('/api/auth/customer/otp/request', ['phone' => '7006000'])->assertOk();
+        $this->postJson('/api/auth/customer/otp/request', ['phone' => '7006000', 'channel' => 'email'])->assertOk();
+
+        $this->postJson('/api/auth/customer/otp/verify', ['phone' => '7006000', 'otp' => $first->json('otp')])
+            ->assertStatus(422);
+    }
+
+    public function test_a_wrong_code_counts_against_both_and_says_how_many_tries_are_left(): void
+    {
+        $this->customer();
+
+        $sms = $this->postJson('/api/auth/customer/otp/request', ['phone' => '7006000'])->assertOk();
+        $mail = $this->postJson('/api/auth/customer/otp/request', ['phone' => '7006000', 'channel' => 'email'])->assertOk();
+        $wrong = collect(['000000', '111111', '222222'])
+            ->first(fn ($c) => $c !== $sms->json('otp') && $c !== $mail->json('otp'));
+
+        $this->postJson('/api/auth/customer/otp/verify', ['phone' => '7006000', 'otp' => $wrong])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.otp.0', 'That code is not right. 4 tries left.');
+
+        $this->assertSame([1, 1], OtpVerification::where('phone', '+9607006000')->orderBy('id')->pluck('attempts')->all());
+    }
+
 }

@@ -67,6 +67,12 @@ function phoneState(digits: string): PhoneState {
   return digits.length === 7 ? "ok" : "typing";
 }
 
+/** A 422 whose complaint is the code itself (`errors.otp`). */
+function isCodeError(e: unknown): boolean {
+  const body = (e as { body?: { errors?: Record<string, unknown> } })?.body;
+  return Boolean(body?.errors && "otp" in body.errors);
+}
+
 // ── Icons (decorative, inline so the card has no extra requests) ─────────────
 
 const Svg = ({ children, size = 18 }: { children: React.ReactNode; size?: number }) => (
@@ -541,6 +547,15 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
       });
       onSuccess(displayName(res.customer));
     } catch (e) {
+      // The reset code is only checked here, one screen after it was typed.
+      // A wrong or expired code goes back to the code boxes, where it can be
+      // fixed or resent, instead of dead-ending on the password screen
+      // (owner, 2026-10-06). The passwords typed so far are kept.
+      if (isCodeError(e)) {
+        setResetOtp("");
+        setHint(null);
+        setStep("forgot_otp");
+      }
       setError((e as Error).message);
     } finally {
       setLoading(false);

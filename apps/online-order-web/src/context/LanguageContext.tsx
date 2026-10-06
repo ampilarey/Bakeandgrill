@@ -382,7 +382,7 @@ const TRANSLATIONS: Translations = {
   "auth.email_instead_to": "Goes to {email}",
   "auth.sms_instead": "Text me the code instead",
   "auth.otp_emailed": "Code emailed to {email}",
-  "auth.emailed_new": "New code emailed. Check your inbox (and spam). The texted code no longer works.",
+  "auth.emailed_new": "Code emailed. Check your inbox (and spam). The texted code still works too.",
   "auth.texted_new": "New code texted to +960 {phone}.",
   "auth.brand_line": "Order ahead, follow it live and collect rewards on every order.",
   "auth.perk_track": "Follow your order live, kitchen to door",

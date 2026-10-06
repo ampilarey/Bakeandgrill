@@ -102,7 +102,18 @@ class CustomerOtpService
     }
 
     /**
-     * Verify the newest unused OTP for the phone and mark it used.
+     * How many live codes one phone may have at once. Two covers the texted
+     * code plus "Email me the code instead" (owner, 2026-10-06: entered the
+     * SMS code after also asking for the email one and was refused). Kept
+     * small: every wrong guess counts against each code it was checked
+     * against, and request rate limits cap how many codes exist at all.
+     */
+    public const LIVE_CODES = 2;
+
+    /**
+     * Verify a code against the newest unused, unexpired OTPs for the phone
+     * (at most LIVE_CODES) and, on a match, mark all of them used so neither
+     * can be replayed.
      *
      * @param  list<string>|null  $allowedPurposes  Only match OTPs issued for
      *         one of these purposes. Null keeps legacy any-purpose behaviour
@@ -114,33 +125,42 @@ class CustomerOtpService
     {
         // Order by `id` (auto-increment, monotonic) rather than `created_at`
         // (second-precision timestamp) so two requests within the same wall-
-        // clock second still resolve to a deterministic newest row.
-        $otpRecord = OtpVerification::where('phone', $phone)
+        // clock second still resolve deterministically.
+        $live = OtpVerification::where('phone', $phone)
             ->whereNull('used_at')
             ->where('expires_at', '>', now())
             ->when($allowedPurposes !== null, fn ($q) => $q->whereIn('purpose', $allowedPurposes))
             ->orderByDesc('id')
-            ->first();
+            ->limit(self::LIVE_CODES)
+            ->get();
 
-        if (!$otpRecord) {
+        if ($live->isEmpty()) {
             throw ValidationException::withMessages([
-                'otp' => ['OTP expired or invalid. Please request a new one.'],
+                'otp' => ['That code has expired. Please ask for a new one.'],
             ]);
         }
 
-        if ($otpRecord->attempts >= self::MAX_ATTEMPTS) {
+        $usable = $live->filter(fn (OtpVerification $row) => $row->attempts < self::MAX_ATTEMPTS);
+        if ($usable->isEmpty()) {
             throw ValidationException::withMessages([
-                'otp' => ['Too many failed attempts. Please request a new OTP.'],
+                'otp' => ['Too many wrong tries. Please ask for a new code.'],
             ]);
         }
 
-        if (!Hash::check($code, $otpRecord->code_hash)) {
-            $otpRecord->increment('attempts');
+        $match = $usable->first(fn (OtpVerification $row) => Hash::check($code, $row->code_hash));
+
+        if ($match === null) {
+            foreach ($usable as $row) {
+                $row->increment('attempts');
+            }
+            $left = self::MAX_ATTEMPTS - (int) $usable->max('attempts');
             throw ValidationException::withMessages([
-                'otp' => ['Invalid OTP code. ' . (self::MAX_ATTEMPTS - $otpRecord->attempts) . ' attempts remaining.'],
+                'otp' => [$left > 0
+                    ? 'That code is not right. ' . $left . ($left === 1 ? ' try' : ' tries') . ' left.'
+                    : 'Too many wrong tries. Please ask for a new code.'],
             ]);
         }
 
-        $otpRecord->update(['used_at' => now()]);
+        OtpVerification::whereIn('id', $live->pluck('id'))->update(['used_at' => now()]);
     }
 }

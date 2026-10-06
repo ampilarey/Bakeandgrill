@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AuthBlock, formatPhone, isValidPhone, normalisePhone } from './AuthBlock';
-import { checkPhone, forgotPassword, passwordLogin, requestOtp } from '../api';
+import { checkPhone, forgotPassword, passwordLogin, requestOtp, resetPassword } from '../api';
 
 vi.mock('../context/LanguageContext', () => ({ useLanguage: () => ({ t: (key: string) => key, lang: 'en' }) }));
 vi.mock('../context/SiteSettingsContext', () => ({
@@ -207,5 +207,64 @@ describe('AuthBlock email the code instead', () => {
     vi.mocked(requestOtp).mockResolvedValueOnce({ channel: 'email', sent_to: 'a•••@g•••.com' });
     fireEvent.click(screen.getByRole('button', { name: /auth\.email_instead/ }));
     await waitFor(() => expect(requestOtp).toHaveBeenLastCalledWith('7771234', 'reset_password', { channel: 'email' }));
+  });
+});
+
+/*
+ * Owner, 2026-10-06 (screenshot): typed the texted reset code, set a new
+ * password, and got "Invalid OTP code" on the password screen with no way
+ * to fix the code. A code error now goes back to the code boxes.
+ */
+describe('AuthBlock reset code error', () => {
+  it('takes the customer back to the code boxes with the message', async () => {
+    vi.mocked(checkPhone).mockResolvedValue({ exists: true, has_password: true } as never);
+    vi.mocked(forgotPassword).mockResolvedValueOnce({});
+    render(<AuthBlock onSuccess={() => {}} />);
+    fireEvent.change(screen.getByLabelText('auth.label_phone_cc'), { target: { value: '7771234' } });
+    fireEvent.click(screen.getByRole('button', { name: /auth\.continue/ }));
+    await waitFor(() => expect(screen.getByText('auth.title_password')).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: 'auth.forgot' }));
+    fireEvent.click(screen.getByRole('button', { name: /auth\.send_reset/ }));
+    await waitFor(() => expect(screen.getByText('auth.title_forgot_otp')).toBeTruthy());
+
+    fireEvent.change(screen.getAllByLabelText('auth.digit_aria')[0], { target: { value: '111111' } });
+    fireEvent.click(screen.getByRole('button', { name: /auth\.continue/ }));
+    expect(screen.getByText('auth.title_new_pass')).toBeTruthy();
+
+    const err = Object.assign(new Error('That code is not right. 4 tries left.'), {
+      status: 422, body: { errors: { otp: ['That code is not right. 4 tries left.'] } },
+    });
+    vi.mocked(resetPassword).mockRejectedValueOnce(err);
+    fireEvent.change(screen.getByLabelText('auth.label_new_password'), { target: { value: 'newpass123' } });
+    fireEvent.change(screen.getByLabelText('auth.label_confirm_password'), { target: { value: 'newpass123' } });
+    fireEvent.click(screen.getByRole('button', { name: /auth\.set_password/ }));
+
+    await waitFor(() => expect(screen.getByText('auth.title_forgot_otp')).toBeTruthy());
+    expect(screen.getByRole('alert').textContent).toContain('4 tries left');
+    expect((screen.getAllByLabelText('auth.digit_aria')[0] as HTMLInputElement).value).toBe('');
+  });
+
+  it('stays on the password screen for a password problem', async () => {
+    vi.mocked(checkPhone).mockResolvedValue({ exists: true, has_password: true } as never);
+    vi.mocked(forgotPassword).mockResolvedValueOnce({});
+    render(<AuthBlock onSuccess={() => {}} />);
+    fireEvent.change(screen.getByLabelText('auth.label_phone_cc'), { target: { value: '7771234' } });
+    fireEvent.click(screen.getByRole('button', { name: /auth\.continue/ }));
+    await waitFor(() => expect(screen.getByText('auth.title_password')).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: 'auth.forgot' }));
+    fireEvent.click(screen.getByRole('button', { name: /auth\.send_reset/ }));
+    await waitFor(() => expect(screen.getByText('auth.title_forgot_otp')).toBeTruthy());
+    fireEvent.change(screen.getAllByLabelText('auth.digit_aria')[0], { target: { value: '111111' } });
+    fireEvent.click(screen.getByRole('button', { name: /auth\.continue/ }));
+
+    vi.mocked(resetPassword).mockRejectedValueOnce(Object.assign(new Error('The password must be at least 6 characters.'), {
+      status: 422, body: { errors: { password: ['The password must be at least 6 characters.'] } },
+    }));
+    fireEvent.change(screen.getByLabelText('auth.label_new_password'), { target: { value: 'abc' } });
+    fireEvent.change(screen.getByLabelText('auth.label_confirm_password'), { target: { value: 'abc' } });
+    fireEvent.click(screen.getByRole('button', { name: /auth\.set_password/ }));
+
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('at least 6'));
+    expect(screen.getByText('auth.title_new_pass')).toBeTruthy();
   });
 });
