@@ -71,6 +71,14 @@ class VerifyProductionConfig extends Command
             $warnings[] = ['ADMIN_TOKEN_TTL_HOURS', 'Using default 24h — set explicitly if you need a different admin token TTL'];
         }
 
+        // Mail (owner, 2026-10-06): a warning, not a block — the site runs
+        // without e-mail, but sign-in codes, order confirmations, gift cards
+        // and catering quotes sent by e-mail are lost. `php artisan mail:test`
+        // sends one to check.
+        foreach (\App\Support\MailStatus::inspect()['problems'] as $problem) {
+            $warnings[] = ['MAIL_*', $problem];
+        }
+
         $this->newLine();
         $this->components->info('Production configuration verification');
 
