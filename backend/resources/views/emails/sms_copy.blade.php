@@ -9,6 +9,9 @@
 @section('title', $heading)
 @section('preheader', \Illuminate\Support\Str::limit(preg_replace('#https?://\S+#', '', $body), 120))
 @section('band', match ($audience) { 'staff' => 'Staff alert', 'marketing' => 'News & offers', default => 'Message' })
+@if ($audience === 'staff')
+    @section('hide_complaint', '1')
+@endif
 
 @section('content')
     @if ($audience === 'staff')

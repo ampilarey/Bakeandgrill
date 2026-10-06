@@ -20,7 +20,15 @@
         ['Total', $money($order->total ?? 0), true],
     ]))])
 
-    @include('emails.partials.button', ['url' => $receiptUrl, 'label' => 'Open your receipt', 'margin' => '0 auto 8px'])
+    @include('emails.partials.button', ['url' => $receiptUrl, 'label' => 'Open your receipt', 'margin' => '0 auto 10px'])
+    @include('emails.partials.button', [
+        'url' => \App\Support\ComplaintBoxLink::url('email', (string) ($order->order_number ?? '')),
+        'label' => 'Report a problem with this order',
+        'variant' => 'outline',
+        'margin' => '0 auto 4px',
+    ])
 @endsection
+
+@section('complaint_order', (string) ($order->order_number ?? ''))
 
 @section('footer_note', 'You are receiving this because a receipt was sent to this address.')

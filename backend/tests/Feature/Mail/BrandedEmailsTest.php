@@ -138,4 +138,49 @@ class BrandedEmailsTest extends TestCase
         $this->assertNull(EmailBrand::maskPhone(null));
         $this->assertNull(EmailBrand::maskPhone('12'));
     }
+
+    /*
+     * Owner, 2026-10-06: "Did u add complain information in the email
+     * layouts?" → option 2: a footer line on every customer email, and a
+     * "Report a problem with this order" button on order and receipt emails.
+     */
+    public function test_customer_emails_carry_the_complaint_box_tagged_via_email(): void
+    {
+        $card = new GiftCard(['initial_balance' => 250]);
+        $html = (new GiftCardMail($card, 'ABCD-1234', 'https://example.test/redeem'))->render();
+
+        $this->assertStringContainsString('Tell us in the complaint box', $html);
+        $this->assertStringContainsString('/complain?from=email', $html);
+    }
+
+    public function test_the_order_email_has_a_report_button_for_that_order(): void
+    {
+        $order = \App\Models\Order::factory()->create(['order_number' => 'BG-7781']);
+        $html = (new \App\Mail\OrderConfirmationMail($order, 'https://example.test/track', 'Aishath'))->render();
+
+        $this->assertStringContainsString('Report a problem with this order', $html);
+        $this->assertSame(2, substr_count($html, '/complain?from=email&amp;order=BG-7781'));
+    }
+
+    public function test_sign_in_codes_and_staff_alerts_have_no_complaint_link(): void
+    {
+        $otp = (new CustomerOtpMail('123456'))->render();
+        $staff = (new \App\Mail\SmsCopyMail('Shift open 14 hours.', 'owner_shift_left_open', 'Owner: shift left open', 'staff', '+9607820288'))->render();
+        $customer = (new \App\Mail\SmsCopyMail('Your order is ready.', 'customer_order_ready', 'Order ready', 'customer', '+9607771234'))->render();
+
+        $this->assertStringNotContainsString('/complain', $otp);
+        $this->assertStringNotContainsString('/complain', $staff);
+        $this->assertStringContainsString('/complain?from=email', $customer);
+    }
+
+    public function test_the_complaint_page_accepts_and_records_via_email(): void
+    {
+        $this->get('/complain?from=email')->assertOk()->assertSee('name="source" value="email"', false);
+
+        $this->postJson('/api/complaint-box', [
+            'categories' => ['food_quality'], 'comment' => 'From the email', 'anonymous' => true, 'source' => 'email',
+        ])->assertCreated();
+        $this->assertDatabaseHas('complaint_box_entries', ['comment' => 'From the email', 'source' => 'email']);
+    }
+
 }

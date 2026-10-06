@@ -4,7 +4,9 @@
   a white card, the business's own contact details in the footer.
 
   Sections: title, preheader (inbox preview line), band (line under the
-  name), content, footer_note (why they got this email).
+  name), content, footer_note (why they got this email), complaint_order
+  (order number for the complaint link), hide_complaint (staff alerts and
+  sign-in codes, where a complaint link does not belong).
   Inline styles throughout: many mail apps drop <style> blocks.
 --}}
 @php
@@ -15,6 +17,11 @@
     $logoSrc = (isset($message) && $message instanceof \Illuminate\Mail\Message && $brand['logoPath'])
         ? $message->embed($brand['logoPath'])
         : $brand['logoUrl'];
+    // Owner, 2026-10-06: the complaint box in every customer email, like the
+    // receipt and the stickers. "via email" in the Complaint Box.
+    $complaintUrl = $__env->hasSection('hide_complaint')
+        ? null
+        : \App\Support\ComplaintBoxLink::url('email', trim($__env->yieldContent('complaint_order')) ?: null);
 @endphp
 <!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
@@ -83,6 +90,9 @@
                             @endif
                             &nbsp;·&nbsp;
                             <a href="{{ $brand['orderUrl'] }}" style="color:{{ $rust }}; font-weight:bold; text-decoration:none;">Order online</a>
+                            @if ($complaintUrl)
+                                <br><span style="display:inline-block; margin-top:8px;">Something not right? <a href="{{ $complaintUrl }}" style="color:{{ $rust }}; font-weight:bold; text-decoration:underline;">Tell us in the complaint box</a>.</span>
+                            @endif
                         </td>
                     </tr>
 

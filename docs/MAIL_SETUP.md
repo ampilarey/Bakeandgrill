@@ -142,6 +142,13 @@ event confirmed) uses one layout, `resources/views/emails/layout.blade.php`:
   `logo`, `primary_color`), so a change there reaches every email;
 - colours kept as designed in dark mode, and a layout that works at phone width.
 
+Complaint box (owner, 2026-10-06): every customer email's contact strip ends with
+"Something not right? Tell us in the complaint box", and the order confirmation and
+receipt emails add a **Report a problem with this order** button carrying the order
+number. The link is `ComplaintBoxLink::url('email', …)` (always the live site) and the
+complaint shows "via email" in the Complaint Box. Sign-in code emails and staff alerts
+have no complaint link (`@section('hide_complaint')`).
+
 The sign-in code email also: puts the code first in the subject
 ("718894 is your Bake & Grill code"), so it can be read from the notification;
 says whether it is for signing in or a password reset; names the account as

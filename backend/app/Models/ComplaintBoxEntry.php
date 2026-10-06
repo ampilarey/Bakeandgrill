@@ -66,7 +66,7 @@ class ComplaintBoxEntry extends Model
      * Where a complaint came in from, shown as "via …" in the Complaint Box.
      * Every surface that offers the form tags itself (owner, 2026-09-21).
      */
-    public const SOURCES = ['web', 'receipt', 'poster', 'menu', 'print', 'order', 'app', 'footer', 'label'];
+    public const SOURCES = ['web', 'receipt', 'poster', 'menu', 'print', 'order', 'app', 'footer', 'label', 'email'];
 
     protected $fillable = [
         'reference_number', 'categories', 'about_staff', 'comment', 'phone', 'is_anonymous',

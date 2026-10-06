@@ -3,6 +3,7 @@
 @section('title', $isReset ? 'Password reset code' : 'Sign-in code')
 @section('preheader', ($isReset ? 'Use ' . $otpCode . ' to set a new password.' : 'Use ' . $otpCode . ' to sign in.') . ' It works for ' . $expiresMinutes . ' minutes. Never share it.')
 @section('band', $isReset ? 'Password reset' : 'Sign in')
+@section('hide_complaint', '1')
 
 @section('content')
     <h1 class="eb-h1" style="margin:0 0 8px; font-family:Arial, Helvetica, sans-serif; font-size:23px; line-height:30px; font-weight:bold; color:#1C1408;">

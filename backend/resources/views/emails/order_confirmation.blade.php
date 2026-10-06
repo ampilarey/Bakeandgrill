@@ -71,8 +71,17 @@
     </table>
 
     @if ($order->customer_notes)
-        <p style="margin:0; padding:12px 14px; background:#FBF6F0; border-radius:12px; font-size:13px; line-height:20px; color:#6B5D4F;"><strong style="color:#1C1408;">Your note:</strong> {{ $order->customer_notes }}</p>
+        <p style="margin:0 0 22px; padding:12px 14px; background:#FBF6F0; border-radius:12px; font-size:13px; line-height:20px; color:#6B5D4F;"><strong style="color:#1C1408;">Your note:</strong> {{ $order->customer_notes }}</p>
     @endif
+
+    @include('emails.partials.button', [
+        'url' => \App\Support\ComplaintBoxLink::url('email', (string) $order->order_number),
+        'label' => 'Report a problem with this order',
+        'variant' => 'outline',
+        'margin' => '4px auto 0',
+    ])
 @endsection
+
+@section('complaint_order', (string) $order->order_number)
 
 @section('footer_note', 'You are receiving this because you placed order #' . $order->order_number . '.')
