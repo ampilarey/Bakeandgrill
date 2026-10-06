@@ -24,6 +24,9 @@
                             <p style="margin:0; font-size:32px; font-weight:800; letter-spacing:8px; text-align:center; color:#0f172a;">
                                 {{ $otpCode }}
                             </p>
+                            <p style="margin:24px 0 0; font-size:13px; color:#64748b;">
+                                If you did not ask for this code, you can ignore this email. Nobody can sign in without it.
+                            </p>
                         </td>
                     </tr>
                 </table>

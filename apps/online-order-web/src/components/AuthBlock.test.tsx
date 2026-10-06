@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AuthBlock, formatPhone, isValidPhone, normalisePhone } from './AuthBlock';
-import { checkPhone, requestOtp } from '../api';
+import { checkPhone, forgotPassword, passwordLogin, requestOtp } from '../api';
 
 vi.mock('../context/LanguageContext', () => ({ useLanguage: () => ({ t: (key: string) => key, lang: 'en' }) }));
 vi.mock('../context/SiteSettingsContext', () => ({
@@ -136,5 +136,76 @@ describe('AuthBlock number step', () => {
     fireEvent.change(first, { target: { value: '482913' } });
     const confirm = screen.getByRole('button', { name: /auth\.confirm/ }) as HTMLButtonElement;
     expect(confirm.disabled).toBe(false);
+  });
+});
+
+/*
+ * Owner, 2026-10-06: "Why there is no email option in login?" → option 1.
+ * The code screen offers the email already on the account, masked, and only
+ * when there is one.
+ */
+describe('AuthBlock email the code instead', () => {
+  beforeEach(() => {
+    vi.mocked(checkPhone).mockReset();
+    vi.mocked(requestOtp).mockReset();
+    vi.mocked(forgotPassword).mockReset();
+    vi.mocked(passwordLogin).mockReset();
+  });
+
+  async function toCodeStep(emailHint?: string) {
+    vi.mocked(checkPhone).mockResolvedValue({ exists: true, has_password: false } as never);
+    vi.mocked(requestOtp).mockResolvedValueOnce({ channel: 'sms', ...(emailHint ? { email_hint: emailHint } : {}) });
+    render(<AuthBlock onSuccess={() => {}} />);
+    fireEvent.change(screen.getByLabelText('auth.label_phone_cc'), { target: { value: '7771234' } });
+    fireEvent.click(screen.getByRole('button', { name: /auth\.continue/ }));
+    await waitFor(() => expect(screen.getByText('auth.title_otp')).toBeTruthy());
+  }
+
+  it('is not offered when the account has no email', async () => {
+    await toCodeStep();
+    expect(screen.queryByText('auth.email_instead')).toBeNull();
+  });
+
+  it('sends the code to the email on the account without ever sending an address', async () => {
+    await toCodeStep('a•••@g•••.com');
+    expect(screen.getByText('auth.email_instead_to')).toBeTruthy();
+
+    vi.mocked(requestOtp).mockResolvedValueOnce({ channel: 'email', sent_to: 'a•••@g•••.com' });
+    fireEvent.click(screen.getByRole('button', { name: /auth\.email_instead/ }));
+
+    await waitFor(() => expect(screen.getByText('auth.emailed_new')).toBeTruthy());
+    expect(requestOtp).toHaveBeenLastCalledWith('7771234', 'register', { channel: 'email' });
+    // The code line now says where it went, masked.
+    expect(screen.getByText('a•••@g•••.com')).toBeTruthy();
+    // And the way back to SMS is offered instead.
+    expect(screen.queryByText('auth.email_instead')).toBeNull();
+    expect(screen.getByRole('button', { name: 'auth.sms_instead' })).toBeTruthy();
+  });
+
+  it('shows the server message when the email cannot be sent, and stays on SMS', async () => {
+    await toCodeStep('a•••@g•••.com');
+    vi.mocked(requestOtp).mockRejectedValueOnce(new Error('We could not send the email just now. Please use the code we texted you.'));
+    fireEvent.click(screen.getByRole('button', { name: /auth\.email_instead/ }));
+
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('could not send the email'));
+    expect(screen.getByText('+960 777 1234')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /auth\.email_instead/ })).toBeTruthy();
+  });
+
+  it('is offered for a password reset code too', async () => {
+    vi.mocked(checkPhone).mockResolvedValue({ exists: true, has_password: true } as never);
+    render(<AuthBlock onSuccess={() => {}} />);
+    fireEvent.change(screen.getByLabelText('auth.label_phone_cc'), { target: { value: '7771234' } });
+    fireEvent.click(screen.getByRole('button', { name: /auth\.continue/ }));
+    await waitFor(() => expect(screen.getByText('auth.title_password')).toBeTruthy());
+
+    fireEvent.click(screen.getByRole('button', { name: 'auth.forgot' }));
+    vi.mocked(forgotPassword).mockResolvedValueOnce({ email_hint: 'a•••@g•••.com' });
+    fireEvent.click(screen.getByRole('button', { name: /auth\.send_reset/ }));
+    await waitFor(() => expect(screen.getByText('auth.title_forgot_otp')).toBeTruthy());
+
+    vi.mocked(requestOtp).mockResolvedValueOnce({ channel: 'email', sent_to: 'a•••@g•••.com' });
+    fireEvent.click(screen.getByRole('button', { name: /auth\.email_instead/ }));
+    await waitFor(() => expect(requestOtp).toHaveBeenLastCalledWith('7771234', 'reset_password', { channel: 'email' }));
   });
 });

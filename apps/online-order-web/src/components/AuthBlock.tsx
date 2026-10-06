@@ -9,6 +9,7 @@ import {
   completeProfile,
   guestSession,
   type AuthCustomer,
+  type OtpSendResult,
 } from "../api";
 import { persistGuestPhone } from "../utils/guestPhone";
 import { useSiteSettingsContext } from "../context/SiteSettingsContext";
@@ -87,6 +88,7 @@ const MaldivesFlag = () => (
 const IconCheck = () => <Svg size={16}><path d="M5 12.5l4.5 4.5L19 7.5" /></Svg>;
 const IconClear = () => <Svg size={18}><path d="M6 6l12 12M18 6L6 18" /></Svg>;
 const IconLock = () => <Svg size={15}><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></Svg>;
+const IconMail = () => <Svg size={18}><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3.5 6.5l8.5 6.5 8.5-6.5" /></Svg>;
 const IconAlert = () => <Svg size={16}><circle cx="12" cy="12" r="9" /><path d="M12 7.5v5.5M12 16.5h.01" /></Svg>;
 const IconTrack = () => <Svg><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7" /><circle cx="7" cy="17.5" r="1.8" /><circle cx="17.5" cy="17.5" r="1.8" /></Svg>;
 const IconStar = () => <Svg><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" /></Svg>;
@@ -328,6 +330,18 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
 
   const phoneOk = isValidPhone(phone);
 
+  // "Email me the code instead": the masked address on the account (from the
+  // server, after it texts a code) and which way the current code went.
+  const [emailHint, setEmailHint] = useState<string | null>(null);
+  const [codeChannel, setCodeChannel] = useState<"sms" | "email">("sms");
+  const [switching, setSwitching] = useState(false);
+
+  /** Remember what the server said about a texted code. */
+  const noteTexted = (r: OtpSendResult) => {
+    setEmailHint(r.email_hint ?? null);
+    setCodeChannel("sms");
+  };
+
   const [resendIn, setResendIn] = useState(0);
   useEffect(() => {
     if (resendIn <= 0) return;
@@ -339,11 +353,34 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
     if (resendIn > 0) return;
     setError(""); setHint(null);
     try {
-      const r = await requestOtp(phone, purpose);
+      // Resend the same way the last code went.
+      const r = await requestOtp(phone, purpose, { channel: codeChannel });
+      if (codeChannel === "sms") noteTexted(r);
       if (import.meta.env.DEV && r.otp) setHint(`Dev OTP: ${r.otp}`);
       else setHint(t("auth.hint_code_sent"));
       setResendIn(30);
     } catch (e) { setError((e as Error).message); }
+  };
+
+  /** Send a fresh code the other way: to the account's email, or back to SMS. */
+  const handleSwitchChannel = async (purpose: "register" | "reset_password") => {
+    if (switching) return;
+    const next = codeChannel === "sms" ? "email" : "sms";
+    setError(""); setHint(null);
+    setSwitching(true);
+    try {
+      const r = await requestOtp(phone, purpose, { channel: next });
+      if (next === "sms") noteTexted(r);
+      else setCodeChannel("email");
+      if (purpose === "register") setOtp(""); else setResetOtp("");
+      setResendIn(30);
+      if (import.meta.env.DEV && r.otp) setHint(`Dev OTP: ${r.otp}`);
+      else setHint(next === "email" ? t("auth.emailed_new") : t("auth.texted_new").replace("{phone}", formatPhone(phone)));
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSwitching(false);
+    }
   };
 
   const go = (s: Step) => {
@@ -363,6 +400,7 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
         go("password");
       } else {
         const r = await requestOtp(phone, "register");
+        noteTexted(r);
         if (import.meta.env.DEV && r.otp) setHint(`Dev OTP: ${r.otp}`);
         go("otp");
       }
@@ -395,6 +433,7 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
             return;
           }
           const r = await requestOtp(phone, "register");
+          noteTexted(r);
           if (import.meta.env.DEV && r.otp) setHint(`Dev OTP: ${r.otp}`);
           else setHint(t("auth.hint_code_sent"));
           go("otp");
@@ -478,6 +517,7 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
     setLoading(true);
     try {
       const r = await forgotPassword(phone);
+      noteTexted(r);
       if (import.meta.env.DEV && r.otp) setHint(`Dev OTP: ${r.otp}`);
       go("forgot_otp");
     } catch (e) {
@@ -508,12 +548,16 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
   };
 
   /** "Code sent to +960 777 1234 · Change" with the number in bold. */
-  const sentTo = (template: string, onChangeNumber?: () => void) => {
-    const [before, after = ""] = template.split("+960 {phone}");
+  const sentTo = (
+    template: string,
+    onChangeNumber?: () => void,
+    to: { token: string; value: string } = { token: "+960 {phone}", value: `+960 ${formatPhone(phone)}` },
+  ) => {
+    const [before, after = ""] = template.split(to.token);
     return (
       <p className="auth__sub">
         {before}
-        <strong>+960 {formatPhone(phone)}</strong>
+        <strong>{to.value}</strong>
         {after}
         {onChangeNumber && (
           <button type="button" className="auth__change" onClick={onChangeNumber}>
@@ -536,6 +580,47 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
         : t("auth.resend")}
     </button>
   );
+
+  /** Where the code went: the phone, or (after a switch) the account's email. */
+  const codeSentTo = (smsTemplate: string, onChangeNumber: () => void) =>
+    codeChannel === "email" && emailHint
+      ? sentTo(t("auth.otp_emailed"), onChangeNumber, { token: "{email}", value: emailHint })
+      : sentTo(smsTemplate, onChangeNumber);
+
+  /**
+   * Owner, 2026-10-06: "Why there is no email option in login?" The code can
+   * go to the email already on the account; only offered when it has one.
+   */
+  const switchChannel = (purpose: "register" | "reset_password") => {
+    if (!emailHint) return null;
+    if (codeChannel === "sms") {
+      return (
+        <button
+          type="button"
+          className="auth__btn auth__btn--outline auth__btn--stacked"
+          onClick={() => void handleSwitchChannel(purpose)}
+          disabled={switching}
+          aria-busy={switching || undefined}
+        >
+          {switching ? <span className="auth__spinner" aria-hidden="true" /> : <IconMail />}
+          <span className="auth__btn-text">
+            {t("auth.email_instead")}
+            <small>{t("auth.email_instead_to").replace("{email}", emailHint)}</small>
+          </span>
+        </button>
+      );
+    }
+    return (
+      <button
+        type="button"
+        className="auth__link"
+        onClick={() => void handleSwitchChannel(purpose)}
+        disabled={switching || resendIn > 0}
+      >
+        {t("auth.sms_instead")}
+      </button>
+    );
+  };
 
   const errorMsg = error ? <Message kind="error">{error}</Message> : null;
   const hintMsg = hint ? <Message kind="hint">{hint}</Message> : null;
@@ -651,15 +736,17 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
       {step === "otp" && (
         <>
           <h2 className="auth__title">{t("auth.title_otp")}</h2>
-          {sentTo(t("auth.otp_sent"), () => { go("phone"); setOtp(""); setHint(null); })}
+          {codeSentTo(t("auth.otp_sent"), () => { go("phone"); setOtp(""); setHint(null); })}
           {errorMsg}
           {hintMsg}
-          <OtpBoxes value={otp} onChange={setOtp} autoFocus />
+          <OtpBoxes key={codeChannel} value={otp} onChange={setOtp} autoFocus />
           <PrimaryButton onClick={handleVerifyOtp} disabled={otp.length < 6} loading={loading}>
             {loading ? t("auth.verifying") : t("auth.confirm")}
           </PrimaryButton>
+          {codeChannel === "sms" && switchChannel("register")}
           <div className="auth__links">
             {resendLink("register")}
+            {codeChannel === "email" && switchChannel("register")}
             <button
               type="button"
               className="auth__link auth__link--muted"
@@ -764,15 +851,17 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
       {step === "forgot_otp" && (
         <>
           <h2 className="auth__title">{t("auth.title_forgot_otp")}</h2>
-          {sentTo(t("auth.reset_sent"), () => { go("forgot_phone"); setResetOtp(""); setHint(null); })}
+          {codeSentTo(t("auth.reset_sent"), () => { go("forgot_phone"); setResetOtp(""); setHint(null); })}
           {errorMsg}
           {hintMsg}
-          <OtpBoxes value={resetOtp} onChange={setResetOtp} autoFocus />
+          <OtpBoxes key={codeChannel} value={resetOtp} onChange={setResetOtp} autoFocus />
           <PrimaryButton onClick={() => go("reset_password")} disabled={resetOtp.length < 6} loading={false}>
             {t("auth.continue")}
           </PrimaryButton>
+          {codeChannel === "sms" && switchChannel("reset_password")}
           <div className="auth__links">
             {resendLink("reset_password")}
+            {codeChannel === "email" && switchChannel("reset_password")}
             <button
               type="button"
               className="auth__link auth__link--muted"

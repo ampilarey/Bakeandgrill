@@ -439,6 +439,24 @@
 }
 
 .auth__btn--outline:hover { background: var(--color-primary-light); }
+.auth__btn--outline:disabled { cursor: default; opacity: 0.7; }
+
+/* Two-line button: action, then where it goes ("Goes to a•••@g•••.com"). */
+.auth__btn--stacked { min-height: 3.6rem; padding-block: 0.45rem; }
+.auth__btn-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.25;
+  text-align: start;
+}
+.auth__btn-text small {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  direction: ltr;
+  unicode-bidi: isolate;
+}
 
 .auth__btn:focus-visible,
 .auth__link:focus-visible,

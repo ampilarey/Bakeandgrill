@@ -6,7 +6,7 @@
 
 | What | Who gets it |
 |---|---|
-| Sign-in code for customers who log in by e-mail | Customer |
+| Sign-in or password reset code, when the customer taps **Email me the code instead** on the code screen (offered only when their account has an email; it goes to that address, shown masked as a•••@g•••.com) | Customer |
 | Order and payment confirmation | Customer, when they gave an e-mail |
 | Gift card delivery | Gift card recipient |
 | Catering: request received, quote, confirmation, reminders | Customer |
@@ -19,6 +19,10 @@ SMS is separate and unaffected.
 The framework's default mailer is `log`: every e-mail is written to a file on the
 server and nothing is sent, with no error anywhere. A customer waiting for a sign-in
 code by e-mail never gets it. Production must set `MAIL_MAILER=smtp`.
+
+When the mail server refuses or times out, the sign-in screen says so ("We could not
+send the email just now. Please use the code we texted you.") and the texted code keeps
+working; the failure is logged as `OTP email could not be sent`.
 
 ## Setting it up on cPanel
 

@@ -42,12 +42,25 @@ export async function passwordLogin(payload: { phone: string; password: string }
   return request<AuthResponse>(ENDPOINTS.CUSTOMER_PASSWORD_LOGIN, { method: 'POST', body: JSON.stringify(payload) });
 }
 
+/**
+ * What the server says after sending a code. `email_hint` (texted codes only)
+ * is the masked address on the account, when it has one; `sent_to` is the
+ * masked address an emailed code went to. Never the full address.
+ */
+export type OtpSendResult = {
+  otp?: string;
+  channel?: 'sms' | 'email';
+  email_hint?: string;
+  sent_to?: string;
+};
+
+/** Without `email`, an emailed code goes to the address already on the account. */
 export async function requestOtp(
   phone: string,
   purpose: 'register' | 'reset_password' = 'register',
   opts?: { channel?: 'sms' | 'email'; email?: string },
-): Promise<{ otp?: string; channel?: string }> {
-  return request<{ otp?: string; channel?: string }>(ENDPOINTS.CUSTOMER_OTP_REQUEST, {
+): Promise<OtpSendResult> {
+  return request<OtpSendResult>(ENDPOINTS.CUSTOMER_OTP_REQUEST, {
     method: 'POST',
     body: JSON.stringify({
       phone,
@@ -72,7 +85,7 @@ export async function checkSession(
   return request(ENDPOINTS.CUSTOMER_SESSION_CHECK, { anonymous: options.anonymous ?? true });
 }
 
-export async function forgotPassword(phone: string): Promise<{ otp?: string }> {
+export async function forgotPassword(phone: string): Promise<OtpSendResult> {
   return request(ENDPOINTS.CUSTOMER_FORGOT_PASSWORD, { method: 'POST', body: JSON.stringify({ phone }) });
 }
 

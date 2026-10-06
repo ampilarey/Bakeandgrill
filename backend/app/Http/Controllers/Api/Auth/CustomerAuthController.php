@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Rules\MaldivesPhone;
 use App\Support\CustomerLoginThrottle;
+use App\Support\EmailMask;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
@@ -23,6 +24,14 @@ class CustomerAuthController extends Controller
     ) {}
 
     // ── Shared helpers ────────────────────────────────────────────────────────
+
+    /** Masked address on this phone's account, or null when it has none. */
+    private function emailHint(string $phone): ?string
+    {
+        $email = Customer::where('phone', $phone)->value('email');
+
+        return is_string($email) && trim($email) !== '' ? EmailMask::mask($email) : null;
+    }
 
     private function normalizePhone(string $phone): string
     {
@@ -142,26 +151,31 @@ class CustomerAuthController extends Controller
         $channel = $request->input('channel', 'sms') === 'email' ? 'email' : 'sms';
         $email = $request->filled('email') ? trim((string) $request->input('email')) : null;
 
-        if ($channel === 'email' && ($email === null || $email === '')) {
-            throw ValidationException::withMessages([
-                'email' => ['An email address is required when requesting an email OTP.'],
-            ]);
-        }
-
         // SECURITY: an email OTP may only be sent to the email already stored
         // on THIS phone's customer account (matching account email — there is
         // no email_verified_at ownership proof). Otherwise anyone knowing a
         // phone number could deliver the OTP to their own inbox and take over
         // the account (2026-08 audit #1). Accounts with no email on file must
         // use SMS.
+        //
+        // The sign-in screen's "Email me the code instead" sends no address
+        // at all: the code goes to the one on file, which the screen only
+        // ever shows masked (owner, 2026-10-06). A supplied address must
+        // still match it exactly.
         if ($channel === 'email') {
             $emailOwner = Customer::where('phone', $phone)->first();
             $storedEmail = $emailOwner?->email ? strtolower(trim($emailOwner->email)) : null;
-            if ($storedEmail === null || $storedEmail !== strtolower((string) $email)) {
+            if ($storedEmail === null || $storedEmail === '') {
+                throw ValidationException::withMessages([
+                    'email' => ['There is no email on this account. Please use the code we texted you.'],
+                ]);
+            }
+            if ($email !== null && $email !== '' && $storedEmail !== strtolower($email)) {
                 throw ValidationException::withMessages([
                     'email' => ['We can only email a code to the address already on this account. Please use SMS instead.'],
                 ]);
             }
+            $email = trim((string) $emailOwner->email);
         }
 
         // Block returning customers with a password from using OTP to "register" —
@@ -203,6 +217,12 @@ class CustomerAuthController extends Controller
             'expires_in' => 600,
             'channel' => $channel,
         ];
+        if ($channel === 'email') {
+            $response['sent_to'] = EmailMask::mask($email);
+        } elseif (($hint = $this->emailHint($phone)) !== null) {
+            // Lets the code screen offer "Email me the code instead".
+            $response['email_hint'] = $hint;
+        }
 
         // Dev convenience only — never in production, never just on APP_DEBUG.
         // Requires an explicit OTP_DEV_RETURN=true to surface the code to the
@@ -357,6 +377,9 @@ class CustomerAuthController extends Controller
             'message' => 'Password reset code sent',
             'expires_in' => 600,
         ];
+        if (($hint = $this->emailHint($phone)) !== null) {
+            $response['email_hint'] = $hint;
+        }
 
         if (app()->environment(['local', 'testing']) && (bool) config('system.otp_dev_return')) {
             $response['otp'] = $otpCode;

@@ -61,7 +61,19 @@ class CustomerOtpService
         ]);
 
         if ($channel === 'email') {
-            Mail::to((string) $email)->send(new CustomerOtpMail($otpCode, self::TTL_MINUTES));
+            try {
+                Mail::to((string) $email)->send(new CustomerOtpMail($otpCode, self::TTL_MINUTES));
+            } catch (\Throwable $e) {
+                // Only the newest code counts, so a row for an email that
+                // never left would cancel the SMS code the customer already
+                // has. Drop it and say so instead of a bare server error.
+                $otpRow->delete();
+                logger()->warning('OTP email could not be sent', ['phone' => $phone, 'error' => $e->getMessage()]);
+
+                throw ValidationException::withMessages([
+                    'email' => ['We could not send the email just now. Please use the code we texted you.'],
+                ]);
+            }
 
             return $otpCode;
         }
