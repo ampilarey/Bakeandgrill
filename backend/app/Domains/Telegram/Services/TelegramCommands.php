@@ -75,7 +75,7 @@ class TelegramCommands
         if ($this->can($user, 'orders.view')) {
             $buttons[] = self::BTN_ORDERS;
         }
-        if ($this->can($user, 'orders.refund')) {
+        if ($this->can($user, 'orders.refund') || $this->can($user, 'devices.approve')) {
             $buttons[] = self::BTN_APPROVALS;
         }
         if ($this->canSoldOut($user)) {
@@ -101,7 +101,7 @@ class TelegramCommands
         $name = T::e($link->displayName());
         $html = "👋 <b>Hi {$name}, you're linked.</b>\n\n"
             . "This chat now gets your Bake &amp; Grill alerts, and the buttons below show today's sales, shifts, open orders and more.\n\n"
-            . "Tap <b>" . self::BTN_HELP . "</b> any time to see what each button does.";
+            . 'Tap <b>' . self::BTN_HELP . '</b> any time to see what each button does.';
         $this->send($link, $html, $user ? ['reply_markup' => $this->menuKeyboard($user)] : []);
     }
 
@@ -353,22 +353,31 @@ class TelegramCommands
 
     public function approvals(TelegramLink $link, User $user): void
     {
-        if (!$this->can($user, 'orders.refund')) {
+        $canRefunds = $this->can($user, 'orders.refund');
+        if (!$canRefunds && !$this->can($user, 'devices.approve')) {
             $this->refuse($link);
 
             return;
         }
 
-        $refunds = Refund::query()->where('status', 'pending')->with(['order:id,order_number,total', 'requester:id,name'])->orderBy('created_at')->limit(10)->get();
-        if ($refunds->isEmpty()) {
+        $refunds = $canRefunds
+            ? Refund::query()->where('status', 'pending')->with(['order:id,order_number,total', 'requester:id,name'])->orderBy('created_at')->limit(10)->get()
+            : collect();
+        // New tills waiting for approval (2026-10-07).
+        $devices = $this->extras()->pendingDevices($user);
+        if ($refunds->isEmpty() && $devices->isEmpty()) {
             $this->send($link, '✅ <b>Nothing waiting for approval.</b>');
 
             return;
         }
 
-        $this->send($link, '✅ <b>Waiting for approval</b> (' . $refunds->count() . ')');
+        $this->send($link, '✅ <b>Waiting for approval</b> (' . ($refunds->count() + $devices->count()) . ')');
         foreach ($refunds as $refund) {
             [$html, $buttons] = $this->refundCard($refund, $user);
+            $this->send($link, $html, [], $buttons);
+        }
+        foreach ($devices as $device) {
+            [$html, $buttons] = $this->extras()->deviceCard($device, $user);
             $this->send($link, $html, [], $buttons);
         }
     }
@@ -475,7 +484,7 @@ class TelegramCommands
     {
         $lines = ['❓ <b>What the buttons do</b>', ''];
         if ($this->can($user, 'reports.view')) {
-            $lines[] = '<b>' . self::BTN_TODAY . "</b>: sales, orders, payments and best sellers so far today, compared with the same day last week. <code>/today 2026-10-05</code> for another day.";
+            $lines[] = '<b>' . self::BTN_TODAY . '</b>: sales, orders, payments and best sellers so far today, compared with the same day last week. <code>/today 2026-10-05</code> for another day.';
         }
         if ($this->can($user, 'shifts.view_all_history')) {
             $lines[] = '<b>' . self::BTN_SHIFTS . '</b>: who is on the till, what they have taken, and the cash that should be in each drawer.';
@@ -483,8 +492,8 @@ class TelegramCommands
         if ($this->can($user, 'orders.view')) {
             $lines[] = '<b>' . self::BTN_ORDERS . '</b>: orders not finished yet, oldest first.';
         }
-        if ($this->can($user, 'orders.refund')) {
-            $lines[] = '<b>' . self::BTN_APPROVALS . '</b>: refunds waiting for a decision, with Approve and Reject buttons.';
+        if ($this->can($user, 'orders.refund') || $this->can($user, 'devices.approve')) {
+            $lines[] = '<b>' . self::BTN_APPROVALS . '</b>: refunds and new tills waiting for a decision, with Approve and Reject buttons.';
         }
         if ($this->canSoldOut($user)) {
             $lines[] = '<b>' . self::BTN_SOLD_OUT . '</b>: what is sold out. Type <code>sold out kottu</code> to mark an item, <code>back on kottu</code> to bring it back. It changes the till, the website, the order app and the TV screens.';

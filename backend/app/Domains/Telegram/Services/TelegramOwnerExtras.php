@@ -15,6 +15,7 @@ use App\Models\AuditLog;
 use App\Models\ComplaintBoxEntry;
 use App\Models\Customer;
 use App\Models\CustomerDepositAccount;
+use App\Models\Device;
 use App\Models\DiscountApproval;
 use App\Models\LoyaltyAccount;
 use App\Models\Order;
@@ -23,6 +24,7 @@ use App\Models\Shift;
 use App\Models\SiteSetting;
 use App\Models\TelegramLink;
 use App\Models\User;
+use App\Services\AuditLogService;
 use App\Services\OpeningHoursService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -161,6 +163,13 @@ class TelegramOwnerExtras
             case 'da':
             case 'dd':
                 $this->discountTap($link, $user, $messageId, (int) $arg, $action === 'da', $answer);
+
+                return true;
+            case 'dv': // approve a till
+            case 'dx': // reject: asks first
+            case 'dy': // reject, confirmed
+            case 'dc': // reject, cancelled
+                $this->deviceTap($link, $user, $messageId, $action, (int) $arg, $answer);
 
                 return true;
         }
@@ -499,15 +508,49 @@ class TelegramOwnerExtras
         }
 
         $done = match ($arg) {
-            'op' => (function () use ($pauseOnline) { $pauseOnline('Paused from Telegram'); return 'Online orders paused.'; })(),
-            'oo' => (function () use ($resumeOnline) { $resumeOnline(); return 'Online orders back on.'; })(),
-            'dp' => (function () use ($availability, $user, $request) { $availability->setState('online_delivery', ['status' => 'operational_pause', 'reason_type' => 'operational_pause', 'internal_note' => 'Paused from Telegram'], $user, $request); return 'Delivery paused.'; })(),
-            'do' => (function () use ($availability, $user, $request) { $availability->setState('online_delivery', ['status' => 'available', 'reason_type' => null], $user, $request); return 'Delivery back on.'; })(),
+            'op' => (function () use ($pauseOnline) {
+                $pauseOnline('Paused from Telegram');
+
+                return 'Online orders paused.';
+            })(),
+            'oo' => (function () use ($resumeOnline) {
+                $resumeOnline();
+
+                return 'Online orders back on.';
+            })(),
+            'dp' => (function () use ($availability, $user, $request) {
+                $availability->setState('online_delivery', ['status' => 'operational_pause', 'reason_type' => 'operational_pause', 'internal_note' => 'Paused from Telegram'], $user, $request);
+
+                return 'Delivery paused.';
+            })(),
+            'do' => (function () use ($availability, $user, $request) {
+                $availability->setState('online_delivery', ['status' => 'available', 'reason_type' => null], $user, $request);
+
+                return 'Delivery back on.';
+            })(),
             // A closed day also stops online orders, and opening again starts them.
-            'ct' => (function () use ($user, $pauseOnline) { $this->setClosure(now(), 'Closed today', $user); $pauseOnline('Closed today (Telegram)'); return 'Closed today. Online orders paused.'; })(),
-            'ot' => (function () use ($user, $resumeOnline) { $this->setClosure(now(), null, $user); $resumeOnline(); return 'Open today. Online orders back on.'; })(),
-            'cm' => (function () use ($user) { $this->setClosure(now()->addDay(), 'Closed', $user); return 'Closed tomorrow.'; })(),
-            'om' => (function () use ($user) { $this->setClosure(now()->addDay(), null, $user); return 'Open tomorrow.'; })(),
+            'ct' => (function () use ($user, $pauseOnline) {
+                $this->setClosure(now(), 'Closed today', $user);
+                $pauseOnline('Closed today (Telegram)');
+
+                return 'Closed today. Online orders paused.';
+            })(),
+            'ot' => (function () use ($user, $resumeOnline) {
+                $this->setClosure(now(), null, $user);
+                $resumeOnline();
+
+                return 'Open today. Online orders back on.';
+            })(),
+            'cm' => (function () use ($user) {
+                $this->setClosure(now()->addDay(), 'Closed', $user);
+
+                return 'Closed tomorrow.';
+            })(),
+            'om' => (function () use ($user) {
+                $this->setClosure(now()->addDay(), null, $user);
+
+                return 'Open tomorrow.';
+            })(),
             default => null,
         };
         if ($done === null) {
@@ -975,6 +1018,118 @@ class TelegramOwnerExtras
         [$html] = $this->discountCard($approval, $user, '', $approve
             ? '✅ <b>Approved</b> by you, ' . now()->format('g:i a') . '. The till applies it now.'
             : '✖ <b>Declined</b> by you, ' . now()->format('g:i a') . '.');
+        $this->client->editMessage($link->bot, $link->chat_id, $messageId, $html);
+    }
+
+    // ── New tills waiting for approval ───────────────────────────────────
+
+    /**
+     * The card the "POS device waiting for approval" alert arrives as
+     * (owner, 2026-10-07: "No button for approval?"), and the same card
+     * under ✅ Approvals. Approve / Reject for whoever may approve devices.
+     *
+     * @return array{0: string, 1: array<int, array<int, array<string, string>>>}
+     */
+    public function deviceCard(Device $device, User $user, ?string $note = null): array
+    {
+        $device->loadMissing(['lastUser:id,name', 'user:id,name']);
+        $who = $device->lastUser?->name ?? $device->user?->name;
+        $lines = [
+            '🖥 <b>' . T::e((string) $device->name) . '</b>',
+            ucfirst(T::e((string) ($device->type ?: 'pos'))) . ' · <code>' . T::e((string) $device->identifier) . '</code>',
+        ];
+        if ($who !== null) {
+            $lines[] = 'Signed in on it: ' . T::e($who);
+        }
+        $lines[] = 'Asked ' . T::agoPhrase($device->created_at);
+
+        if ($note !== null) {
+            $lines[] = '';
+            $lines[] = $note;
+
+            return [implode("\n", $lines), []];
+        }
+        if ($device->status !== 'pending') {
+            $lines[] = '';
+            $lines[] = $device->status === 'approved' ? '✅ <b>Already approved.</b>' : '✖ <b>' . T::e(ucfirst((string) $device->status)) . '.</b>';
+
+            return [implode("\n", $lines), []];
+        }
+
+        $buttons = $this->can($user, 'devices.approve')
+            ? [[T::button('✅ Approve', 'dv:' . $device->id), T::button('✖ Reject', 'dx:' . $device->id)]]
+            : [];
+
+        return [implode("\n", $lines), $buttons];
+    }
+
+    /** @return \Illuminate\Support\Collection<int, Device> */
+    public function pendingDevices(User $user): \Illuminate\Support\Collection
+    {
+        if (!$this->can($user, 'devices.approve')) {
+            return collect();
+        }
+
+        return Device::query()->where('status', 'pending')->orderBy('created_at')->limit(10)->get();
+    }
+
+    private function deviceTap(TelegramLink $link, User $user, int $messageId, string $action, int $id, \Closure $answer): void
+    {
+        if (!$this->can($user, 'devices.approve')) {
+            $answer('Approving tills is not allowed for you.', true);
+
+            return;
+        }
+        $device = Device::find($id);
+        if ($device === null) {
+            $answer('That till no longer exists.', true);
+
+            return;
+        }
+        if ($device->status !== 'pending') {
+            $answer($device->status === 'approved' ? 'Already approved.' : 'Already ' . $device->status . '.', true);
+            [$html] = $this->deviceCard($device, $user);
+            $this->client->editMessage($link->bot, $link->chat_id, $messageId, $html);
+
+            return;
+        }
+
+        if ($action === 'dx') {
+            $answer();
+            [$html] = $this->deviceCard($device, $user, '<b>Reject this till?</b> It can never sign in again; a new till has to be set up instead.');
+            $this->client->editMessage($link->bot, $link->chat_id, $messageId, $html, [[
+                T::button('✖ Yes, reject', 'dy:' . $device->id),
+                T::button('Back', 'dc:' . $device->id),
+            ]]);
+
+            return;
+        }
+        if ($action === 'dc') {
+            $answer();
+            [$html, $buttons] = $this->deviceCard($device, $user);
+            $this->client->editMessage($link->bot, $link->chat_id, $messageId, $html, $buttons);
+
+            return;
+        }
+
+        // The same change and audit as Admin → Settings → Devices.
+        $approve = $action === 'dv';
+        $status = $approve ? 'approved' : 'rejected';
+        $device->update(['status' => $status, 'is_active' => $approve]);
+        app(AuditLogService::class)->log(
+            $approve ? 'device.approved' : 'device.rejected',
+            'Device',
+            $device->id,
+            ['status' => 'pending'],
+            ['status' => $status],
+            ['source' => 'telegram'],
+            $this->c()->requestAs($user),
+        );
+
+        $answer($approve ? 'Approved. The till unlocks within 20 seconds.' : 'Rejected.');
+        [$html] = $this->deviceCard($device, $user, $approve
+            ? '✅ <b>Approved</b> by you, ' . now()->format('g:i a') . '. The till unlocks within 20 seconds.'
+            : '✖ <b>Rejected</b> by you, ' . now()->format('g:i a') . '.');
         $this->client->editMessage($link->bot, $link->chat_id, $messageId, $html);
     }
 }

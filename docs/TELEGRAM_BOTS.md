@@ -39,7 +39,7 @@ permissions allow (for example Open orders, Sold out, Reject a refund).
 | 📊 Today, `/today`, `/today 2026-10-05` | Sales, orders, average, discounts, refunds, by order type, by payment method, best sellers, open shifts. Same figures as Admin → Reports → Daily summary. A past day also shows the change on the same weekday a week before. |
 | 💵 Shifts, `/shifts` | Each open shift: who, which till, since when, takings, float, cash sales, cash in/out, and the cash that should be in the drawer. When none is open, the last close and its difference. |
 | 🧾 Open orders, `/orders` | Orders from the last 24 hours not finished yet, oldest first. |
-| ✅ Approvals, `/approvals` | Refunds waiting, one card each. |
+| ✅ Approvals, `/approvals` | Refunds and new tills waiting, one card each. |
 | 🚫 Sold out, `sold out kottu`, `back on kottu` | Lists what is sold out with "is back" buttons; marks an item sold out or back. Changes the till, website, order app and TV screens; audited as `item.86` / `item.un86` with source `telegram`. |
 | ❓ Help, `/help` | What each button does. |
 | `/stop` | Unlinks the chat. |
@@ -126,6 +126,21 @@ screens, social posts). That number belongs to no staff account, so those
 alerts also go to every linked **owner** on Telegram; the SMS to the shop
 phone is sent as before (2026-10-07).
 
+### New till waiting for approval
+
+Owner, 2026-10-07: "No button for approval?" The "POS device waiting for
+approval" alert arrives as a card (till name, its ID, who signed in on it,
+when) with **Approve** and **Reject**, for anyone with `devices.approve`
+(owner-only by default). Pending tills are also listed under ✅ Approvals.
+
+- **Approve** does what Admin → Settings → Devices does (status `approved`,
+  switched on, audited as `device.approved` with source `telegram`). The
+  till checks every 20 seconds while it waits, so it unlocks by itself.
+- **Reject** asks first ("Yes, reject" / "Back"): a rejected till can never
+  sign in again. Audited as `device.rejected`.
+- A till another owner has already decided shows "Already approved" and
+  changes nothing.
+
 ### Checking why something did not arrive
 
 `php artisan telegram:check` (read-only) lists the bots, who is linked and
@@ -183,7 +198,7 @@ uses it). "Check" shows when a bot has been taken by another site;
 | Tables | `telegram_bots`, `telegram_links`, `telegram_link_codes` (`2026_10_06_120000_create_telegram_bots`) |
 | Bot API | `app/Domains/Telegram/Services/TelegramClient.php` |
 | Linking | `TelegramLinker` |
-| Messages and buttons | `TelegramUpdateHandler`, `TelegramCommands`, `TelegramOwnerExtras` (step 1b) |
+| Messages and buttons | `TelegramUpdateHandler`, `TelegramCommands`, `TelegramOwnerExtras` (step 1b; till approval `deviceCard()`) |
 | Day report | `Listeners/SendDayReportOnLastShiftClose` (on `ShiftClosed`), setting `telegram_day_report_enabled` |
 | Discount by button | `DiscountApprovalService::decide()` / `status()`, migration `2026_10_07_100000_discount_approvals_decided_on_telegram`, POS `useOrderCreation` polling |
 | Alerts | `TelegramAlertCopier` (called from `SmsService`) |

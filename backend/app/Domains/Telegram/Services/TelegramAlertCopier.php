@@ -9,6 +9,7 @@ use App\Domains\Notifications\Support\SmsTypeRegistry;
 use App\Domains\Telegram\Exceptions\TelegramApiException;
 use App\Domains\Telegram\Support\TelegramText as T;
 use App\Models\ComplaintBoxEntry;
+use App\Models\Device;
 use App\Models\DiscountApproval;
 use App\Models\Refund;
 use App\Models\SiteSetting;
@@ -238,6 +239,17 @@ class TelegramAlertCopier
                 [$card, $buttons] = app(TelegramOwnerExtras::class)->complaintCard($complaint);
 
                 return ["🔔 <b>New complaint</b>\n\n" . $card, $buttons];
+            }
+        }
+
+        // A new till waiting for approval: Approve / Reject (owner,
+        // 2026-10-07: "No button for approval?").
+        if ($sms->type === 'owner_device_approval' && $sms->referenceType === 'device' && $link->user !== null) {
+            $device = Device::find((int) $sms->referenceId);
+            if ($device !== null) {
+                [$card, $buttons] = app(TelegramOwnerExtras::class)->deviceCard($device, $link->user);
+
+                return ["🔔 <b>New till waiting for approval</b>\n\n" . $card, $buttons];
             }
         }
 
