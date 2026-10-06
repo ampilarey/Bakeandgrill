@@ -7,6 +7,7 @@ namespace Tests\Feature\Auth;
 use App\Mail\CustomerOtpMail;
 use App\Models\Customer;
 use App\Models\OtpVerification;
+use App\Support\DeferAfterResponse;
 use App\Support\EmailMask;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
@@ -214,6 +215,71 @@ class EmailCodeFallbackTest extends TestCase
             ->assertJsonPath('errors.otp.0', 'That code is not right. 4 tries left.');
 
         $this->assertSame([1, 1], OtpVerification::where('phone', '+9607006000')->orderBy('id')->pluck('attempts')->all());
+    }
+
+    /*
+     * Owner, 2026-10-06: "automatic same otp to mail with sms if there is
+     * email reg in the acc".
+     */
+    public function test_a_texted_sign_in_code_is_also_emailed_the_same_code(): void
+    {
+        $this->customer();
+
+        $res = $this->postJson('/api/auth/customer/otp/request', ['phone' => '7006000'])
+            ->assertOk()
+            ->assertJsonPath('channel', 'sms')
+            ->assertJsonPath('also_emailed_to', 'a•••@g•••.com');
+
+        // Sent after the response (the test client runs that work as each
+        // request ends): exactly one email, to the address on file, with the
+        // SMS code, and still only one code row.
+        Mail::assertSent(CustomerOtpMail::class, 1);
+        Mail::assertSent(CustomerOtpMail::class, fn ($m) => $m->hasTo('aishath@gmail.com') && $m->otpCode === $res->json('otp'));
+        $this->assertSame(1, OtpVerification::where('phone', '+9607006000')->count());
+    }
+
+    public function test_a_reset_code_is_also_emailed(): void
+    {
+        $this->customer();
+
+        $res = $this->postJson('/api/auth/customer/forgot-password', ['phone' => '7006000'])
+            ->assertOk()->assertJsonPath('also_emailed_to', 'a•••@g•••.com');
+        DeferAfterResponse::flushTestingCallbacks();
+
+        Mail::assertSent(CustomerOtpMail::class, fn ($m) => $m->hasTo('aishath@gmail.com') && $m->otpCode === $res->json('otp'));
+    }
+
+    public function test_no_email_on_the_account_means_sms_only(): void
+    {
+        $this->customer(['email' => null]);
+
+        $this->postJson('/api/auth/customer/otp/request', ['phone' => '7006000'])
+            ->assertOk()->assertJsonMissingPath('also_emailed_to');
+        DeferAfterResponse::flushTestingCallbacks();
+
+        Mail::assertNothingSent();
+    }
+
+    public function test_the_website_login_code_is_also_emailed(): void
+    {
+        $this->customer();
+
+        app(\App\Domains\Auth\Services\CustomerOtpService::class)->issue('+9607006000', 'web-login');
+        DeferAfterResponse::flushTestingCallbacks();
+
+        Mail::assertSent(CustomerOtpMail::class, fn ($m) => $m->hasTo('aishath@gmail.com'));
+    }
+
+    public function test_a_failed_email_copy_does_not_affect_the_texted_code(): void
+    {
+        $this->customer();
+
+        $res = $this->postJson('/api/auth/customer/otp/request', ['phone' => '7006000'])->assertOk();
+        Mail::shouldReceive('to')->andThrow(new \RuntimeException('Connection timed out'));
+        DeferAfterResponse::flushTestingCallbacks();
+
+        $this->postJson('/api/auth/customer/otp/verify', ['phone' => '7006000', 'otp' => $res->json('otp')])
+            ->assertOk();
     }
 
 }

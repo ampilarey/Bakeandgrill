@@ -8,7 +8,9 @@ use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\CustomerSmsMessageBuilder;
 use App\Domains\Notifications\Services\SmsService;
 use App\Mail\CustomerOtpMail;
+use App\Models\Customer;
 use App\Models\OtpVerification;
+use App\Support\DeferAfterResponse;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
@@ -98,7 +100,34 @@ class CustomerOtpService
             idempotencyKey: 'otp:' . $purpose . ':' . $phone . ':' . $otpRow->id,
         ));
 
+        // Owner, 2026-10-06: "automatic same otp to mail with sms if there is
+        // email reg in the acc". The SAME code also goes to the email already
+        // on this phone's account (never an address from the request), so the
+        // customer can use whichever arrives first. Sent after the response
+        // so a slow mail server never holds up the SMS step; a failure is
+        // logged and the SMS code is unaffected.
+        $email = $this->accountEmail($phone);
+        if ($email !== null) {
+            $otpRow->forceFill(['email' => $email])->save();
+            DeferAfterResponse::run(function () use ($email, $otpCode, $phone): void {
+                try {
+                    Mail::to($email)->send(new CustomerOtpMail($otpCode, self::TTL_MINUTES));
+                } catch (\Throwable $e) {
+                    logger()->warning('OTP copy by email could not be sent', ['phone' => $phone, 'error' => $e->getMessage()]);
+                }
+            }, 'otp-email-copy');
+        }
+
         return $otpCode;
+    }
+
+    /** The email saved on this phone's customer account, or null. */
+    public function accountEmail(string $phone): ?string
+    {
+        $email = Customer::where('phone', $phone)->value('email');
+        $email = is_string($email) ? trim($email) : '';
+
+        return $email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : null;
     }
 
     /**

@@ -2,7 +2,16 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AuthBlock, formatPhone, isValidPhone, normalisePhone } from './AuthBlock';
 import { checkPhone, forgotPassword, passwordLogin, requestOtp, resetPassword } from '../api';
 
-vi.mock('../context/LanguageContext', () => ({ useLanguage: () => ({ t: (key: string) => key, lang: 'en' }) }));
+// Keys come back as themselves, except the "sent to" lines, which need
+// their {phone} / {email} slots to show where the code went.
+const TEMPLATES: Record<string, string> = {
+  'auth.otp_sent': 'Code sent to +960 {phone}',
+  'auth.otp_sent_both': 'Code sent to +960 {phone} and {email}',
+  'auth.otp_emailed': 'Code emailed to {email}',
+  'auth.reset_sent': 'Reset code sent to +960 {phone}',
+  'auth.reset_sent_both': 'Reset code sent to +960 {phone} and {email}',
+};
+vi.mock('../context/LanguageContext', () => ({ useLanguage: () => ({ t: (key: string) => TEMPLATES[key] ?? key, lang: 'en' }) }));
 vi.mock('../context/SiteSettingsContext', () => ({
   useSiteSettingsContext: () => ({ settings: { logo: '/logo.png', site_name: 'Bake & Grill' }, text: (_k: string, d: string) => d }),
 }));
@@ -266,5 +275,25 @@ describe('AuthBlock reset code error', () => {
 
     await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('at least 6'));
     expect(screen.getByText('auth.title_new_pass')).toBeTruthy();
+  });
+});
+
+/*
+ * Owner, 2026-10-06: "automatic same otp to mail with sms if there is email
+ * reg in the acc". The server now emails the same code with the SMS; the
+ * screen says both places and does not offer a separate email button.
+ */
+describe('AuthBlock code sent to phone and email together', () => {
+  it('names both places and hides the email button', async () => {
+    vi.mocked(checkPhone).mockReset().mockResolvedValue({ exists: true, has_password: false } as never);
+    vi.mocked(requestOtp).mockReset().mockResolvedValueOnce({ channel: 'sms', email_hint: 'a•••@g•••.com', also_emailed_to: 'a•••@g•••.com' });
+    render(<AuthBlock onSuccess={() => {}} />);
+    fireEvent.change(screen.getByLabelText('auth.label_phone_cc'), { target: { value: '7771234' } });
+    fireEvent.click(screen.getByRole('button', { name: /auth\.continue/ }));
+    await waitFor(() => expect(screen.getByText('auth.title_otp')).toBeTruthy());
+
+    const line = screen.getByText((_, el) => el?.classList.contains('auth__sub') ?? false);
+    expect(line.textContent).toContain('Code sent to +960 777 1234 and a•••@g•••.com');
+    expect(screen.queryByText('auth.email_instead')).toBeNull();
   });
 });

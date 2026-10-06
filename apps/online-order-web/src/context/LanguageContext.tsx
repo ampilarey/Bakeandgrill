@@ -382,6 +382,8 @@ const TRANSLATIONS: Translations = {
   "auth.email_instead_to": "Goes to {email}",
   "auth.sms_instead": "Text me the code instead",
   "auth.otp_emailed": "Code emailed to {email}",
+  "auth.otp_sent_both": "Code sent to +960 {phone} and {email}",
+  "auth.reset_sent_both": "Reset code sent to +960 {phone} and {email}",
   "auth.emailed_new": "Code emailed. Check your inbox (and spam). The texted code still works too.",
   "auth.texted_new": "New code texted to +960 {phone}.",
   "auth.brand_line": "Order ahead, follow it live and collect rewards on every order.",

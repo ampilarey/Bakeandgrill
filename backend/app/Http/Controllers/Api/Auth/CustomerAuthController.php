@@ -28,9 +28,7 @@ class CustomerAuthController extends Controller
     /** Masked address on this phone's account, or null when it has none. */
     private function emailHint(string $phone): ?string
     {
-        $email = Customer::where('phone', $phone)->value('email');
-
-        return is_string($email) && trim($email) !== '' ? EmailMask::mask($email) : null;
+        return EmailMask::mask($this->otpService->accountEmail($phone));
     }
 
     private function normalizePhone(string $phone): string
@@ -220,8 +218,9 @@ class CustomerAuthController extends Controller
         if ($channel === 'email') {
             $response['sent_to'] = EmailMask::mask($email);
         } elseif (($hint = $this->emailHint($phone)) !== null) {
-            // Lets the code screen offer "Email me the code instead".
+            // A texted code also went to the account's email (same code).
             $response['email_hint'] = $hint;
+            $response['also_emailed_to'] = $hint;
         }
 
         // Dev convenience only — never in production, never just on APP_DEBUG.
@@ -379,6 +378,7 @@ class CustomerAuthController extends Controller
         ];
         if (($hint = $this->emailHint($phone)) !== null) {
             $response['email_hint'] = $hint;
+            $response['also_emailed_to'] = $hint;
         }
 
         if (app()->environment(['local', 'testing']) && (bool) config('system.otp_dev_return')) {

@@ -340,11 +340,14 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
   // server, after it texts a code) and which way the current code went.
   const [emailHint, setEmailHint] = useState<string | null>(null);
   const [codeChannel, setCodeChannel] = useState<"sms" | "email">("sms");
+  // The server also emailed the same texted code to the account's address.
+  const [alsoEmailed, setAlsoEmailed] = useState(false);
   const [switching, setSwitching] = useState(false);
 
   /** Remember what the server said about a texted code. */
   const noteTexted = (r: OtpSendResult) => {
     setEmailHint(r.email_hint ?? null);
+    setAlsoEmailed(Boolean(r.also_emailed_to));
     setCodeChannel("sms");
   };
 
@@ -563,17 +566,18 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
   };
 
   /** "Code sent to +960 777 1234 · Change" with the number in bold. */
-  const sentTo = (
-    template: string,
-    onChangeNumber?: () => void,
-    to: { token: string; value: string } = { token: "+960 {phone}", value: `+960 ${formatPhone(phone)}` },
-  ) => {
-    const [before, after = ""] = template.split(to.token);
+  const sentTo = (template: string, onChangeNumber?: () => void) => {
+    // "+960 {phone}" and "{email}" become bold; the rest is plain text.
+    const values: Record<string, string> = {
+      "+960 {phone}": `+960 ${formatPhone(phone)}`,
+      "{email}": emailHint ?? "",
+    };
+    const parts = template.split(/(\+960 \{phone\}|\{email\})/);
     return (
       <p className="auth__sub">
-        {before}
-        <strong>{to.value}</strong>
-        {after}
+        {parts.map((part, i) =>
+          part in values ? <strong key={i}>{values[part]}</strong> : <React.Fragment key={i}>{part}</React.Fragment>,
+        )}
         {onChangeNumber && (
           <button type="button" className="auth__change" onClick={onChangeNumber}>
             {t("auth.change")}
@@ -597,17 +601,18 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
   );
 
   /** Where the code went: the phone, or (after a switch) the account's email. */
-  const codeSentTo = (smsTemplate: string, onChangeNumber: () => void) =>
+  const codeSentTo = (smsTemplate: string, bothTemplate: string, onChangeNumber: () => void) =>
     codeChannel === "email" && emailHint
-      ? sentTo(t("auth.otp_emailed"), onChangeNumber, { token: "{email}", value: emailHint })
-      : sentTo(smsTemplate, onChangeNumber);
+      ? sentTo(t("auth.otp_emailed"), onChangeNumber)
+      : sentTo(alsoEmailed && emailHint ? bothTemplate : smsTemplate, onChangeNumber);
 
   /**
    * Owner, 2026-10-06: "Why there is no email option in login?" The code can
    * go to the email already on the account; only offered when it has one.
    */
   const switchChannel = (purpose: "register" | "reset_password") => {
-    if (!emailHint) return null;
+    // Nothing to offer when the code already went to the email as well.
+    if (!emailHint || (alsoEmailed && codeChannel === "sms")) return null;
     if (codeChannel === "sms") {
       return (
         <button
@@ -751,7 +756,7 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
       {step === "otp" && (
         <>
           <h2 className="auth__title">{t("auth.title_otp")}</h2>
-          {codeSentTo(t("auth.otp_sent"), () => { go("phone"); setOtp(""); setHint(null); })}
+          {codeSentTo(t("auth.otp_sent"), t("auth.otp_sent_both"), () => { go("phone"); setOtp(""); setHint(null); })}
           {errorMsg}
           {hintMsg}
           <OtpBoxes key={codeChannel} value={otp} onChange={setOtp} autoFocus />
@@ -866,7 +871,7 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
       {step === "forgot_otp" && (
         <>
           <h2 className="auth__title">{t("auth.title_forgot_otp")}</h2>
-          {codeSentTo(t("auth.reset_sent"), () => { go("forgot_phone"); setResetOtp(""); setHint(null); })}
+          {codeSentTo(t("auth.reset_sent"), t("auth.reset_sent_both"), () => { go("forgot_phone"); setResetOtp(""); setHint(null); })}
           {errorMsg}
           {hintMsg}
           <OtpBoxes key={codeChannel} value={resetOtp} onChange={setResetOtp} autoFocus />

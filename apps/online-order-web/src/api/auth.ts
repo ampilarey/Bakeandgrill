@@ -52,6 +52,8 @@ export type OtpSendResult = {
   channel?: 'sms' | 'email';
   email_hint?: string;
   sent_to?: string;
+  /** The same texted code was also emailed here (masked). */
+  also_emailed_to?: string;
 };
 
 /** Without `email`, an emailed code goes to the address already on the account. */

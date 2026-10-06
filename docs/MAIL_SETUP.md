@@ -6,7 +6,7 @@
 
 | What | Who gets it |
 |---|---|
-| Sign-in or password reset code, when the customer taps **Email me the code instead** on the code screen (offered only when their account has an email; it goes to that address, shown masked as a•••@g•••.com) | Customer |
+| Sign-in or password reset code: every texted code also goes, the same code, to the email saved on the account (order app and website login), and the screen says "Code sent to +960 … and a•••@g•••.com". **Email me the code instead** remains for when that copy could not be sent | Customer |
 | Order and payment confirmation | Customer, when they gave an e-mail |
 | Gift card delivery | Gift card recipient |
 | Catering: request received, quote, confirmation, reminders | Customer |
