@@ -65,19 +65,20 @@ Route::prefix('auth/customer')
         // OTP flow — route throttle is intentionally lenient (IP-based, CGNAT-safe).
         // Real per-phone enforcement is inside CustomerAuthController (20 req / 5 min per phone).
         Route::post('/otp/request', [CustomerAuthController::class, 'requestOtp'])
-            ->middleware('throttle:60,1');
+            ->middleware('throttle:customer-auth');
         Route::post('/otp/verify', [CustomerAuthController::class, 'verifyOtp'])
-            ->middleware('throttle:60,1');
+            ->middleware('throttle:customer-auth');
 
-        // New: check if phone exists and has a password
+        // Does this phone have an account / a password? 10 a minute per IP
+        // and number, 120 per IP (AppServiceProvider, 2026-10-06).
         Route::post('/check-phone', [CustomerAuthController::class, 'checkPhone'])
-            ->middleware('throttle:30,1');
+            ->middleware('throttle:customer-phone-check');
 
         // New: password-based login (no SMS cost for returning customers)
         // Route-level throttle is intentionally lenient — the controller uses a
         // tighter per-phone+IP RateLimiter so shared carrier IPs don't cause false lockouts.
         Route::post('/login', [CustomerAuthController::class, 'passwordLogin'])
-            ->middleware('throttle:30,1');
+            ->middleware('throttle:customer-auth-strict');
 
         // New: check if already authenticated via session cookie
         // React app calls this on mount to auto-login customers from Blade session
@@ -89,15 +90,15 @@ Route::prefix('auth/customer')
 
         // Password reset — controller guards per-phone (5 req / 30 min per phone).
         Route::post('/forgot-password', [CustomerAuthController::class, 'forgotPassword'])
-            ->middleware('throttle:30,1');
+            ->middleware('throttle:customer-auth-strict');
         Route::post('/reset-password', [CustomerAuthController::class, 'resetPassword'])
-            ->middleware('throttle:30,1');
+            ->middleware('throttle:customer-auth-strict');
 
         // Guest checkout — name + phone only (no OTP).
         // Gated by customer_registration overlay (does NOT affect otp/verify/login/check
         // so existing customers can always sign in and track orders).
         Route::post('/guest-session', [CustomerAuthController::class, 'guestSession'])
-            ->middleware(['throttle:30,1', 'service.available:customer_registration']);
+            ->middleware(['throttle:customer-auth-strict', 'service.available:customer_registration']);
     });
 
 // Staff logout — requires a staff Sanctum token

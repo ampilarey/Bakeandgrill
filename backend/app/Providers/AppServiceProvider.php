@@ -92,6 +92,38 @@ class AppServiceProvider extends ServiceProvider
             });
         });
 
+        // Customer sign-in (order app + website). Owner, 2026-10-06: a bare
+        // "Too Many Attempts." on the phone step while testing. Maldivian
+        // mobile networks put many customers behind one public IP, so a
+        // per-IP bucket alone can lock out strangers at a busy hour. The
+        // phone check is now budgeted per IP *and* number, with a generous
+        // IP ceiling against number-scanning; every customer sign-in route
+        // answers a 429 in words, with the wait.
+        $waitMessage = static function (array $headers): \Illuminate\Http\JsonResponse {
+            $seconds = max(1, (int) ($headers['Retry-After'] ?? 60));
+            $wait = $seconds >= 90 ? ceil($seconds / 60) . ' minutes' : $seconds . ' seconds';
+            $message = "Too many tries. Please wait {$wait} and try again.";
+
+            return response()->json(['message' => $message, 'errors' => ['phone' => [$message]]], 429, $headers);
+        };
+        $phoneKey = static fn (Request $request): string => substr(preg_replace('/\D/', '', (string) $request->input('phone')) ?? '', -7);
+
+        RateLimiter::for('customer-phone-check', function (Request $request) use ($waitMessage, $phoneKey) {
+            return [
+                Limit::perMinute(10)->by('phone-check:' . $request->ip() . '|' . $phoneKey($request))
+                    ->response(fn ($request, array $headers) => $waitMessage($headers)),
+                Limit::perMinute(120)->by('phone-check-ip:' . $request->ip())
+                    ->response(fn ($request, array $headers) => $waitMessage($headers)),
+            ];
+        });
+        // Same budgets as before (60 and 30 a minute per IP); only the reply changes.
+        RateLimiter::for('customer-auth', fn (Request $request) => Limit::perMinute(60)
+            ->by('customer-auth:' . $request->ip())
+            ->response(fn ($request, array $headers) => $waitMessage($headers)));
+        RateLimiter::for('customer-auth-strict', fn (Request $request) => Limit::perMinute(30)
+            ->by('customer-auth-strict:' . $request->ip())
+            ->response(fn ($request, array $headers) => $waitMessage($headers)));
+
         Order::observe(OrderObserver::class);
         StaffSchedule::observe(StaffScheduleObserver::class);
         Item::observe(ItemObserver::class);
