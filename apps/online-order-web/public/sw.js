@@ -6,7 +6,8 @@
  *  2. Stale-while-revalidate for hashed Vite build assets
  *  3. Network-first w/ cache fallback for the menu API so customers
  *     can still browse the last-seen menu offline
- *  4. Network-only for everything else (POST/PUT/DELETE, auth, etc.)
+ *  4. Network-only for everything else (POST/PUT/DELETE, auth, the
+ *     /sanctum/ CSRF cookie, any response that is not a static file)
  *  5. Push notifications (existing behaviour, preserved)
  *
  * Bump CACHE_VERSION whenever the install routine changes so old
@@ -103,6 +104,16 @@ function isStaticBuildAsset(url) {
     // Vite emits hashed assets under /order/assets/…
     return url.pathname.startsWith('/order/assets/');
 }
+const SESSION_PATH_PREFIXES = ['/sanctum/', '/broadcasting/', '/customer/', '/login', '/logout'];
+function isSessionRequest(url) {
+    return SESSION_PATH_PREFIXES.some((p) => url.pathname.startsWith(p));
+}
+// Images, fonts and styles. Not scripts or JSON: the hashed bundle has its
+// own rule above, and reset.js / manifest files must always be current.
+const STATIC_FILE_RE = /\.(?:png|jpe?g|gif|webp|avif|svg|ico|woff2?|ttf|otf|eot|css)$/i;
+function isStaticFile(url) {
+    return url.pathname.startsWith('/storage/') || STATIC_FILE_RE.test(url.pathname);
+}
 function isNavigationRequest(req) {
     return req.mode === 'navigate' ||
         (req.method === 'GET' && req.headers.get('accept')?.includes('text/html'));
@@ -129,6 +140,14 @@ self.addEventListener('fetch', (event) => {
     //    customer-specific data.
     if (isApiRequest(url)) return;
 
+    // 3b. Session and CSRF endpoints live outside /api/ and must always reach
+    //     the server. Owner, 2026-10-06: "CSRF token mismatch" on sign-in,
+    //     private mode too. /sanctum/csrf-cookie fell through to the
+    //     catch-all below and was answered from cache after the first visit;
+    //     a cached reply sets no cookie, the app had just cleared the old
+    //     one, so the code request went out with no token and was refused.
+    if (isSessionRequest(url)) return;
+
     // 4. Hashed build assets — stale-while-revalidate (immutable URLs).
     if (isStaticBuildAsset(url)) {
         event.respondWith(staleWhileRevalidate(request, RUNTIME_CACHE));
@@ -145,8 +164,15 @@ self.addEventListener('fetch', (event) => {
     // 5b. Video / range responses — network only (never cache.put 206s).
     if (isVideoRequest(request, url)) return;
 
-    // 6. Everything else (images, fonts) — stale-while-revalidate.
-    event.respondWith(staleWhileRevalidate(request, RUNTIME_CACHE));
+    // 6. Static files (images, fonts, styles) — stale-while-revalidate.
+    //    Only things that are files: a dynamic response caught here is
+    //    served stale to a live page, which is how the sign-in broke.
+    if (isStaticFile(url)) {
+        event.respondWith(staleWhileRevalidate(request, RUNTIME_CACHE));
+        return;
+    }
+
+    // 7. Anything else — straight to the network.
 });
 
 async function networkFirst(request, cacheName) {

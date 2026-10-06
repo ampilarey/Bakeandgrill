@@ -57,7 +57,11 @@ export async function refreshCsrfCookie(apiOrigin: string): Promise<void> {
   if (typeof window === 'undefined') {
     return;
   }
-  await fetch(`${apiOrigin}/sanctum/csrf-cookie`, {
+  // A unique URL each time, so no cache between here and the server can
+  // answer it (owner, 2026-10-06: the order app's service worker served this
+  // from cache, the reply set no cookie, and every code request was refused).
+  // `cache: 'no-store'` alone does not stop a service worker.
+  await fetch(`${apiOrigin}/sanctum/csrf-cookie?_=${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, {
     credentials: 'include',
     cache: 'no-store',
   });
