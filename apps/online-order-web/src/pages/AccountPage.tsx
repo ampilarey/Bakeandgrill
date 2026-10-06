@@ -243,17 +243,21 @@ export function AccountPage() {
 
   if (!isAuthenticated) {
     return (
-      <div style={{ maxWidth: 480, margin: '0 auto', padding: '0 0 2rem', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div className="account-guest">
         <PageHeader title={t('account.title')} />
-        <div style={{ padding: '0 var(--page-gutter)', display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div className="account-guest__body">
           <AuthBlock onSuccess={handleAuthSuccess} />
-          <SectionCard title={t('account.prayer_times')}>
-            <div style={{ overflow: 'visible' }}>
-              <PrayerBar />
+          <div className="account-guest__rest">
+            <div className="account-guest__col">
+              <SectionCard title={t('account.prayer_times')}>
+                <div style={{ overflow: 'visible' }}>
+                  <PrayerBar />
+                </div>
+              </SectionCard>
+              <AccountSettingsBlock />
             </div>
-          </SectionCard>
-          <AccountSettingsBlock />
-          <AccountMoreBlock />
+            <AccountMoreBlock />
+          </div>
         </div>
       </div>
     );

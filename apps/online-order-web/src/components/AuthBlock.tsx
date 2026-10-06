@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   checkPhone,
   requestOtp,
@@ -14,6 +14,7 @@ import { persistGuestPhone } from "../utils/guestPhone";
 import { useSiteSettingsContext } from "../context/SiteSettingsContext";
 import { useLanguage } from "../context/LanguageContext";
 import { brandLogoSrc } from "../lib/brandLogo";
+import "./AuthBlock.css";
 
 type Step =
   | "phone"
@@ -36,17 +37,68 @@ function displayName(customer: AuthCustomer): string {
 }
 
 /**
- * Strip non-digits and remove a leading Maldives country code so the stored
- * value stays as a local 7-digit string. API calls receive the raw value.
+ * Keep the stored value as the local 7-digit number. A pasted or autofilled
+ * "+960 777 1234" / "00960…" loses its country code; a local number that
+ * happens to start with 960 is left alone because it is only 7 digits.
  */
-function normalisePhone(raw: string): string {
-  const digits = raw.replace(/\D/g, "");
-  return digits.startsWith("960") ? digits.slice(3) : digits;
+export function normalisePhone(raw: string): string {
+  let digits = raw.replace(/\D/g, "");
+  if (digits.startsWith("00960") && digits.length > 7) digits = digits.slice(5);
+  else if (digits.startsWith("960") && digits.length > 7) digits = digits.slice(3);
+  return digits.slice(0, 7);
 }
+
+/** "7771234" → "777 1234", the way numbers are written in the Maldives. */
+export function formatPhone(digits: string): string {
+  return digits.length > 3 ? `${digits.slice(0, 3)} ${digits.slice(3)}` : digits;
+}
+
+/** Same rule as the server (MaldivesPhone): 7 digits starting 3, 6, 7 or 9. */
+export function isValidPhone(digits: string): boolean {
+  return /^[3679]\d{6}$/.test(digits);
+}
+
+type PhoneState = "empty" | "typing" | "ok" | "bad";
+
+function phoneState(digits: string): PhoneState {
+  if (!digits) return "empty";
+  if (!/^[3679]/.test(digits)) return "bad";
+  return digits.length === 7 ? "ok" : "typing";
+}
+
+// ── Icons (decorative, inline so the card has no extra requests) ─────────────
+
+const Svg = ({ children, size = 18 }: { children: React.ReactNode; size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    {children}
+  </svg>
+);
+
+const MaldivesFlag = () => (
+  <svg className="auth__flag" viewBox="0 0 30 20" aria-hidden="true">
+    <rect width="30" height="20" fill="#D21034" />
+    <rect x="7.5" y="5" width="15" height="10" fill="#007E3A" />
+    <circle cx="16.2" cy="10" r="3.6" fill="#fff" />
+    <circle cx="17.5" cy="10" r="3.1" fill="#007E3A" />
+  </svg>
+);
+
+const IconCheck = () => <Svg size={16}><path d="M5 12.5l4.5 4.5L19 7.5" /></Svg>;
+const IconClear = () => <Svg size={18}><path d="M6 6l12 12M18 6L6 18" /></Svg>;
+const IconLock = () => <Svg size={15}><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></Svg>;
+const IconAlert = () => <Svg size={16}><circle cx="12" cy="12" r="9" /><path d="M12 7.5v5.5M12 16.5h.01" /></Svg>;
+const IconTrack = () => <Svg><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7" /><circle cx="7" cy="17.5" r="1.8" /><circle cx="17.5" cy="17.5" r="1.8" /></Svg>;
+const IconStar = () => <Svg><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" /></Svg>;
+const IconRepeat = () => <Svg><path d="M17 2.5l3 3-3 3" /><path d="M4 11v-1.5a4 4 0 0 1 4-4h12" /><path d="M7 21.5l-3-3 3-3" /><path d="M20 13v1.5a4 4 0 0 1-4 4H4" /></Svg>;
 
 // ── Shared sub-components ────────────────────────────────────────────────────
 
-/** Phone number field with a fixed +960 Maldives display prefix. */
+/**
+ * Phone number field: Maldives flag and +960 chip, digits shown as "777 1234",
+ * and a status line that says how many digits are left or whether the number
+ * can be used, before the customer presses Continue.
+ */
 function PhoneInput({
   value,
   onChange,
@@ -59,21 +111,77 @@ function PhoneInput({
   autoFocus?: boolean;
 }) {
   const { t } = useLanguage();
+  const inputRef = useRef<HTMLInputElement>(null);
+  // Digits before the caret at the last edit, so the space we insert does
+  // not push the caret to the end when someone corrects a middle digit.
+  const caretDigits = useRef<number | null>(null);
+  const state = phoneState(value);
+
+  useLayoutEffect(() => {
+    const el = inputRef.current;
+    const n = caretDigits.current;
+    caretDigits.current = null;
+    if (!el || n === null || document.activeElement !== el) return;
+    const shown = el.value;
+    let pos = 0;
+    for (let seen = 0; pos < shown.length && seen < n; pos++) {
+      if (/\d/.test(shown[pos])) seen++;
+    }
+    el.setSelectionRange(pos, pos);
+  }, [value]);
+
+  const left = 7 - value.length;
+  const status =
+    state === "ok" ? t("auth.phone_ok")
+    : state === "bad" ? t("auth.phone_bad_prefix")
+    : state === "typing" ? (left === 1 ? t("auth.phone_one_left") : t("auth.phone_left").replace("{n}", String(left)))
+    : t("auth.phone_help");
+
   return (
-    <div style={S.phoneRow}>
-      <span style={S.prefix} aria-hidden="true">+960</span>
-      <input
-        style={S.phoneFieldInner}
-        type="tel"
-        inputMode="numeric"
-        placeholder={t("auth.ph_phone")}
-        value={value}
-        onChange={(e) => onChange(normalisePhone(e.target.value))}
-        onKeyDown={(e) => e.key === "Enter" && onEnter?.()}
-        autoFocus={autoFocus}
-        autoComplete="tel-national"
-      />
-    </div>
+    <>
+      <div className="auth__phone" data-state={state} dir="ltr">
+        <span className="auth__cc" aria-hidden="true">
+          <MaldivesFlag />
+          +960
+        </span>
+        <input
+          ref={inputRef}
+          className="auth__phone-input"
+          type="tel"
+          inputMode="numeric"
+          placeholder={t("auth.ph_phone")}
+          value={formatPhone(value)}
+          onChange={(e) => {
+            const el = e.target;
+            caretDigits.current = el.value.slice(0, el.selectionStart ?? el.value.length).replace(/\D/g, "").length;
+            onChange(normalisePhone(el.value));
+          }}
+          onKeyDown={(e) => e.key === "Enter" && onEnter?.()}
+          autoFocus={autoFocus}
+          autoComplete="tel-national"
+          aria-label={t("auth.label_phone_cc")}
+          aria-invalid={state === "bad" ? true : undefined}
+          aria-describedby="auth-phone-status"
+        />
+        <span className="auth__phone-end">
+          {state === "ok" ? (
+            <span className="auth__phone-ok" aria-hidden="true"><IconCheck /></span>
+          ) : value ? (
+            <button
+              type="button"
+              className="auth__phone-clear"
+              onClick={() => { onChange(""); inputRef.current?.focus(); }}
+              aria-label={t("auth.clear_phone")}
+            >
+              <IconClear />
+            </button>
+          ) : null}
+        </span>
+      </div>
+      <p id="auth-phone-status" className="auth__phone-status" data-state={state} aria-live="polite">
+        {status}
+      </p>
+    </>
   );
 }
 
@@ -91,10 +199,17 @@ function OtpBoxes({
   const refs = useRef<Array<HTMLInputElement | null>>([]);
 
   const handleChange = (i: number, e: React.ChangeEvent<HTMLInputElement>) => {
-    const ch = e.target.value.replace(/\D/g, "").slice(-1);
-    if (!ch) return;
+    const typed = e.target.value.replace(/\D/g, "");
+    if (!typed) return;
+    // iOS fills the whole code into the first box from the SMS suggestion.
+    if (typed.length >= 4) {
+      const code = typed.slice(-6);
+      onChange(code);
+      setTimeout(() => refs.current[Math.min(code.length, 5)]?.focus(), 0);
+      return;
+    }
     const arr = Array.from({ length: 6 }, (_, k) => value[k] ?? "");
-    arr[i] = ch;
+    arr[i] = typed.slice(-1);
     onChange(arr.join(""));
     if (i < 5) refs.current[i + 1]?.focus();
   };
@@ -123,25 +238,61 @@ function OtpBoxes({
   };
 
   return (
-    <div style={S.otpRow}>
+    <div className="auth__otp">
       {Array.from({ length: 6 }, (_, i) => (
         <input
           key={i}
           ref={(el) => { refs.current[i] = el; }}
+          className="auth__otp-box"
           type="text"
           inputMode="numeric"
-          maxLength={1}
+          maxLength={i === 0 ? 6 : 1}
           value={value[i] ?? ""}
           onChange={(e) => handleChange(i, e)}
           onKeyDown={(e) => handleKeyDown(i, e)}
           onPaste={handlePaste}
+          onFocus={(e) => e.target.select()}
           autoFocus={autoFocus && i === 0}
           autoComplete={i === 0 ? "one-time-code" : "off"}
-          style={{ ...S.otpBox, ...(value[i] ? S.otpBoxFilled : undefined) }}
+          data-filled={value[i] ? "true" : "false"}
           aria-label={t("auth.digit_aria").replace("{n}", String(i + 1))}
         />
       ))}
     </div>
+  );
+}
+
+function PrimaryButton({
+  onClick,
+  disabled,
+  loading,
+  children,
+}: {
+  onClick: () => void;
+  disabled: boolean;
+  loading: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      className="auth__btn auth__btn--primary"
+      onClick={onClick}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
+    >
+      {loading && <span className="auth__spinner" aria-hidden="true" />}
+      {children}
+    </button>
+  );
+}
+
+function Message({ kind, children }: { kind: "error" | "hint"; children: React.ReactNode }) {
+  return (
+    <p className={kind === "error" ? "auth__error" : "auth__hint"} role={kind === "error" ? "alert" : "status"}>
+      {kind === "error" ? <IconAlert /> : <IconCheck />}
+      <span>{children}</span>
+    </p>
   );
 }
 
@@ -151,8 +302,8 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
   const { settings, text } = useSiteSettingsContext();
   const { t } = useLanguage();
 
+  // Light logo in both themes: it sits in a cream well (see AuthBlock.css).
   const logoLight = brandLogoSrc(settings, false);
-  const logoDark = brandLogoSrc(settings, true);
   const siteName = settings.site_name || "Bake & Grill";
 
   const [step, setStep]       = useState<Step>("phone");
@@ -174,6 +325,8 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
   const [resetOtp, setResetOtp]     = useState("");
   const [newPwd, setNewPwd]         = useState("");
   const [newPwdConfirm, setNewPwdConfirm] = useState("");
+
+  const phoneOk = isValidPhone(phone);
 
   const [resendIn, setResendIn] = useState(0);
   useEffect(() => {
@@ -200,6 +353,7 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
   };
 
   const handleCheckPhone = async () => {
+    if (!phoneOk || loading) return;
     setError("");
     setLoading(true);
     try {
@@ -221,6 +375,7 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
 
   const handleGuestCheckout = async () => {
     if (!guestName.trim()) { setError(t("auth.err_name_required")); return; }
+    if (!phoneOk || loading) return;
     setError("");
     setLoading(true);
     try {
@@ -258,6 +413,7 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
   };
 
   const handlePasswordLogin = async () => {
+    if (!password || loading) return;
     setError("");
     setLoading(true);
     try {
@@ -276,6 +432,7 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
   };
 
   const handleVerifyOtp = async () => {
+    if (otp.length < 6 || loading) return;
     setError("");
     setLoading(true);
     try {
@@ -294,7 +451,7 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
   };
 
   const handleCompleteProfile = async () => {
-    if (!pendingCustomer) return;
+    if (!pendingCustomer || loading) return;
     if (setupPwd !== setupPwdConfirm) { setError(t("auth.err_password_mismatch")); return; }
 
     setError("");
@@ -316,6 +473,7 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
   };
 
   const handleForgotRequest = async () => {
+    if (!phoneOk || loading) return;
     setError("");
     setLoading(true);
     try {
@@ -330,6 +488,7 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
   };
 
   const handleResetPassword = async () => {
+    if (!newPwd || loading) return;
     if (newPwd !== newPwdConfirm) { setError(t("auth.err_password_mismatch")); return; }
     setError("");
     setLoading(true);
@@ -348,54 +507,95 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
     }
   };
 
-  const logo = (
-    <div style={S.logoWrap}>
-      <img className="brand-logo--light" src={logoLight} alt={siteName} style={S.logo} />
-      <img className="brand-logo--dark" src={logoDark} alt={siteName} style={S.logo} />
-    </div>
+  /** "Code sent to +960 777 1234 · Change" with the number in bold. */
+  const sentTo = (template: string, onChangeNumber?: () => void) => {
+    const [before, after = ""] = template.split("+960 {phone}");
+    return (
+      <p className="auth__sub">
+        {before}
+        <strong>+960 {formatPhone(phone)}</strong>
+        {after}
+        {onChangeNumber && (
+          <button type="button" className="auth__change" onClick={onChangeNumber}>
+            {t("auth.change")}
+          </button>
+        )}
+      </p>
+    );
+  };
+
+  const resendLink = (purpose: "register" | "reset_password") => (
+    <button
+      type="button"
+      className="auth__link"
+      onClick={() => void handleResendOtp(purpose)}
+      disabled={resendIn > 0}
+    >
+      {resendIn > 0
+        ? t("auth.resend_in").replace("{n}", String(resendIn))
+        : t("auth.resend")}
+    </button>
   );
 
+  const errorMsg = error ? <Message kind="error">{error}</Message> : null;
+  const hintMsg = hint ? <Message kind="hint">{hint}</Message> : null;
+
   return (
-    <div style={S.card}>
-      {logo}
+    <section className="auth" data-step={step} aria-label={t("auth.region_label")}>
+      <div className="auth__grid">
+        <div className="auth__brand">
+          <div className="auth__logo-well">
+            <img src={logoLight} alt={siteName} />
+          </div>
+          <div className="auth__brand-text">
+            <p className="auth__brand-name">{siteName}</p>
+            <p className="auth__brand-line">{t("auth.brand_line")}</p>
+          </div>
+          <ul className="auth__perks">
+            <li className="auth__perk"><span className="auth__perk-icon"><IconTrack /></span>{t("auth.perk_track")}</li>
+            <li className="auth__perk"><span className="auth__perk-icon"><IconStar /></span>{t("auth.perk_rewards")}</li>
+            <li className="auth__perk"><span className="auth__perk-icon"><IconRepeat /></span>{t("auth.perk_reorder")}</li>
+          </ul>
+        </div>
+
+        <div className="auth__body">
+          <div className="auth__form">
 
       {step === "phone" && (
         <>
-          <h2 style={S.title}>{t("auth.title_phone")}</h2>
-          <p style={S.sub}>{t("auth.sub_phone")}</p>
-          {error && <p style={S.error}>{error}</p>}
+          <h2 className="auth__title">{t("auth.title_phone")}</h2>
+          <p className="auth__sub">{t("auth.sub_phone")}</p>
+          {errorMsg}
           <PhoneInput
             value={phone}
             onChange={setPhone}
             onEnter={handleCheckPhone}
             autoFocus
           />
-          <button
-            style={{ ...S.primaryBtn, opacity: loading || !phone ? 0.55 : 1 }}
-            onClick={handleCheckPhone}
-            disabled={loading || !phone}
-          >
+          <PrimaryButton onClick={handleCheckPhone} disabled={!phoneOk} loading={loading}>
             {loading ? t("auth.checking") : t("auth.continue")}
-          </button>
+          </PrimaryButton>
           {skipProfileSetup && (
-            <button style={S.ghostBtn} onClick={() => { go("guest"); setError(""); }}>
+            <button type="button" className="auth__btn auth__btn--outline" onClick={() => { go("guest"); setError(""); }}>
               {t("auth.guest_cta")}
             </button>
           )}
-          <p style={S.note}>
-            {text("order_auth_privacy_line", t("auth.privacy_line"))}
+          <p className="auth__note">
+            <IconLock />
+            <span>{text("order_auth_privacy_line", t("auth.privacy_line"))}</span>
           </p>
         </>
       )}
 
       {step === "guest" && (
         <>
-          <h2 style={S.title}>{t("auth.title_guest")}</h2>
-          <p style={S.sub}>{t("auth.sub_guest")}</p>
-          {error && <p style={S.error}>{error}</p>}
-          <label style={S.label}>{t("auth.label_name")}</label>
+          <h2 className="auth__title">{t("auth.title_guest")}</h2>
+          <p className="auth__sub">{t("auth.sub_guest")}</p>
+          {errorMsg}
+          <label className="auth__label" htmlFor="auth-guest-name">{t("auth.label_name")}</label>
           <input
-            style={S.input}
+            id="auth-guest-name"
+            className="auth__input"
             type="text"
             placeholder={t("auth.ph_name")}
             value={guestName}
@@ -403,28 +603,29 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
             autoFocus
             autoComplete="name"
           />
-          <label style={S.label}>{t("auth.label_phone")}</label>
+          <label className="auth__label">{t("auth.label_phone")}</label>
           <PhoneInput value={phone} onChange={setPhone} onEnter={handleGuestCheckout} />
-          <button
-            style={{ ...S.primaryBtn, opacity: loading || !phone || !guestName.trim() ? 0.55 : 1 }}
-            onClick={handleGuestCheckout}
-            disabled={loading || !phone || !guestName.trim()}
-          >
+          <PrimaryButton onClick={handleGuestCheckout} disabled={!phoneOk || !guestName.trim()} loading={loading}>
             {loading ? t("auth.guest_starting") : t("auth.guest_continue")}
-          </button>
-          <button style={S.ghostBtn} onClick={() => { go("phone"); setGuestName(""); }}>
-            {t("auth.back_otp")}
-          </button>
+          </PrimaryButton>
+          <div className="auth__links auth__links--center">
+            <button type="button" className="auth__link" onClick={() => { go("phone"); setGuestName(""); }}>
+              {t("auth.back_otp")}
+            </button>
+          </div>
         </>
       )}
 
       {step === "password" && (
         <>
-          <h2 style={S.title}>{t("auth.title_password")}</h2>
-          <p style={S.sub}>{t("auth.signing_as").replace("{phone}", phone)}</p>
-          {error && <p style={S.error}>{error}</p>}
+          <h2 className="auth__title">{t("auth.title_password")}</h2>
+          {sentTo(t("auth.signing_as"), () => { go("phone"); setPassword(""); })}
+          {errorMsg}
+          {hintMsg}
+          <label className="auth__label" htmlFor="auth-password">{t("auth.label_password")}</label>
           <input
-            style={S.input}
+            id="auth-password"
+            className="auth__input"
             type="password"
             placeholder={t("auth.ph_password")}
             value={password}
@@ -433,62 +634,52 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
             autoFocus
             autoComplete="current-password"
           />
-          <button
-            style={{ ...S.primaryBtn, opacity: loading || !password ? 0.55 : 1 }}
-            onClick={handlePasswordLogin}
-            disabled={loading || !password}
-          >
+          <PrimaryButton onClick={handlePasswordLogin} disabled={!password} loading={loading}>
             {loading ? t("auth.signing_in") : t("auth.sign_in")}
-          </button>
-          <button style={S.ghostBtn} onClick={() => { go("forgot_phone"); setHint(null); }}>
-            {t("auth.forgot")}
-          </button>
-          <button style={S.ghostBtn} onClick={() => { go("phone"); setPassword(""); }}>
-            {t("auth.different_number")}
-          </button>
+          </PrimaryButton>
+          <div className="auth__links">
+            <button type="button" className="auth__link" onClick={() => { go("forgot_phone"); setHint(null); }}>
+              {t("auth.forgot")}
+            </button>
+            <button type="button" className="auth__link auth__link--muted" onClick={() => { go("phone"); setPassword(""); }}>
+              {t("auth.different_number")}
+            </button>
+          </div>
         </>
       )}
 
       {step === "otp" && (
         <>
-          <h2 style={S.title}>{t("auth.title_otp")}</h2>
-          <p style={S.sub}>{t("auth.otp_sent").replace("{phone}", phone)}</p>
-          {error && <p style={S.error}>{error}</p>}
-          {hint && <p style={S.hint}>{hint}</p>}
+          <h2 className="auth__title">{t("auth.title_otp")}</h2>
+          {sentTo(t("auth.otp_sent"), () => { go("phone"); setOtp(""); setHint(null); })}
+          {errorMsg}
+          {hintMsg}
           <OtpBoxes value={otp} onChange={setOtp} autoFocus />
-          <button
-            style={{ ...S.primaryBtn, opacity: loading || otp.length < 6 ? 0.55 : 1 }}
-            onClick={handleVerifyOtp}
-            disabled={loading || otp.length < 6}
-          >
+          <PrimaryButton onClick={handleVerifyOtp} disabled={otp.length < 6} loading={loading}>
             {loading ? t("auth.verifying") : t("auth.confirm")}
-          </button>
-          <button
-            style={{ ...S.ghostBtn, opacity: resendIn > 0 ? 0.55 : 1 }}
-            onClick={() => void handleResendOtp("register")}
-            disabled={resendIn > 0}
-          >
-            {resendIn > 0
-              ? t("auth.resend_in").replace("{n}", String(resendIn))
-              : t("auth.resend")}
-          </button>
-          <button
-            style={S.ghostBtn}
-            onClick={() => { go("phone"); setOtp(""); setHint(null); }}
-          >
-            {t("auth.different_number")}
-          </button>
+          </PrimaryButton>
+          <div className="auth__links">
+            {resendLink("register")}
+            <button
+              type="button"
+              className="auth__link auth__link--muted"
+              onClick={() => { go("phone"); setOtp(""); setHint(null); }}
+            >
+              {t("auth.different_number")}
+            </button>
+          </div>
         </>
       )}
 
       {step === "profile_setup" && (
         <>
-          <h2 style={S.title}>{t("auth.title_profile")}</h2>
-          <p style={S.sub}>{t("auth.sub_profile")}</p>
-          {error && <p style={S.error}>{error}</p>}
-          <label style={S.label}>{t("auth.label_name")}</label>
+          <h2 className="auth__title">{t("auth.title_profile")}</h2>
+          <p className="auth__sub">{t("auth.sub_profile")}</p>
+          {errorMsg}
+          <label className="auth__label" htmlFor="auth-setup-name">{t("auth.label_name")}</label>
           <input
-            style={S.input}
+            id="auth-setup-name"
+            className="auth__input"
             type="text"
             placeholder={t("auth.ph_name")}
             value={setupName}
@@ -496,30 +687,33 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
             autoFocus
             autoComplete="name"
           />
-          <label style={S.label}>
+          <label className="auth__label" htmlFor="auth-setup-email">
             {t("auth.label_email")}{" "}
-            <span style={{ color: "var(--color-text-muted)", fontWeight: 400 }}>{t("auth.optional")}</span>
+            <span className="auth__label-muted">{t("auth.optional")}</span>
           </label>
           <input
-            style={S.input}
+            id="auth-setup-email"
+            className="auth__input"
             type="email"
             placeholder={t("auth.ph_email")}
             value={setupEmail}
             onChange={(e) => setSetupEmail(e.target.value)}
             autoComplete="email"
           />
-          <label style={S.label}>{t("auth.label_password")}</label>
+          <label className="auth__label" htmlFor="auth-setup-pwd">{t("auth.label_password")}</label>
           <input
-            style={S.input}
+            id="auth-setup-pwd"
+            className="auth__input"
             type="password"
             placeholder={t("auth.ph_password_min")}
             value={setupPwd}
             onChange={(e) => setSetupPwd(e.target.value)}
             autoComplete="new-password"
           />
-          <label style={S.label}>{t("auth.label_confirm_password")}</label>
+          <label className="auth__label" htmlFor="auth-setup-pwd2">{t("auth.label_confirm_password")}</label>
           <input
-            style={S.input}
+            id="auth-setup-pwd2"
+            className="auth__input"
             type="password"
             placeholder={t("auth.ph_password_repeat")}
             value={setupPwdConfirm}
@@ -527,92 +721,78 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
             onKeyDown={(e) => e.key === "Enter" && handleCompleteProfile()}
             autoComplete="new-password"
           />
-          <button
-            style={{
-              ...S.primaryBtn,
-              opacity: loading || !setupName.trim() || !setupPwd ? 0.55 : 1,
-            }}
-            onClick={handleCompleteProfile}
-            disabled={loading || !setupName.trim() || !setupPwd}
-          >
+          <PrimaryButton onClick={handleCompleteProfile} disabled={!setupName.trim() || !setupPwd} loading={loading}>
             {loading ? t("auth.saving") : t("auth.create_account")}
-          </button>
-          <button
-            style={{ ...S.ghostBtn, marginTop: "0.25rem" }}
-            onClick={() => {
-              if (!pendingCustomer) return;
-              onSuccess(displayName(pendingCustomer));
-            }}
-          >
-            {t("auth.skip_profile")}
-          </button>
+          </PrimaryButton>
+          <div className="auth__links auth__links--center">
+            <button
+              type="button"
+              className="auth__link auth__link--muted"
+              onClick={() => {
+                if (!pendingCustomer) return;
+                onSuccess(displayName(pendingCustomer));
+              }}
+            >
+              {t("auth.skip_profile")}
+            </button>
+          </div>
         </>
       )}
 
       {step === "forgot_phone" && (
         <>
-          <h2 style={S.title}>{t("auth.title_forgot")}</h2>
-          <p style={S.sub}>{t("auth.sub_forgot")}</p>
-          {error && <p style={S.error}>{error}</p>}
+          <h2 className="auth__title">{t("auth.title_forgot")}</h2>
+          <p className="auth__sub">{t("auth.sub_forgot")}</p>
+          {errorMsg}
           <PhoneInput
             value={phone}
             onChange={setPhone}
             onEnter={handleForgotRequest}
             autoFocus
           />
-          <button
-            style={{ ...S.primaryBtn, opacity: loading || !phone ? 0.55 : 1 }}
-            onClick={handleForgotRequest}
-            disabled={loading || !phone}
-          >
+          <PrimaryButton onClick={handleForgotRequest} disabled={!phoneOk} loading={loading}>
             {loading ? t("auth.sending") : t("auth.send_reset")}
-          </button>
-          <button style={S.ghostBtn} onClick={() => go("password")}>
-            {t("auth.back_pass")}
-          </button>
+          </PrimaryButton>
+          <div className="auth__links auth__links--center">
+            <button type="button" className="auth__link" onClick={() => go("password")}>
+              {t("auth.back_pass")}
+            </button>
+          </div>
         </>
       )}
 
       {step === "forgot_otp" && (
         <>
-          <h2 style={S.title}>{t("auth.title_forgot_otp")}</h2>
-          <p style={S.sub}>{t("auth.reset_sent").replace("{phone}", phone)}</p>
-          {error && <p style={S.error}>{error}</p>}
-          {hint && <p style={S.hint}>{hint}</p>}
+          <h2 className="auth__title">{t("auth.title_forgot_otp")}</h2>
+          {sentTo(t("auth.reset_sent"), () => { go("forgot_phone"); setResetOtp(""); setHint(null); })}
+          {errorMsg}
+          {hintMsg}
           <OtpBoxes value={resetOtp} onChange={setResetOtp} autoFocus />
-          <button
-            style={{ ...S.primaryBtn, opacity: loading || resetOtp.length < 6 ? 0.55 : 1 }}
-            onClick={() => go("reset_password")}
-            disabled={loading || resetOtp.length < 6}
-          >
+          <PrimaryButton onClick={() => go("reset_password")} disabled={resetOtp.length < 6} loading={false}>
             {t("auth.continue")}
-          </button>
-          <button
-            style={{ ...S.ghostBtn, opacity: resendIn > 0 ? 0.55 : 1 }}
-            onClick={() => void handleResendOtp("reset_password")}
-            disabled={resendIn > 0}
-          >
-            {resendIn > 0
-              ? t("auth.resend_in").replace("{n}", String(resendIn))
-              : t("auth.resend")}
-          </button>
-          <button
-            style={S.ghostBtn}
-            onClick={() => { go("forgot_phone"); setResetOtp(""); setHint(null); }}
-          >
-            {t("auth.different_number")}
-          </button>
+          </PrimaryButton>
+          <div className="auth__links">
+            {resendLink("reset_password")}
+            <button
+              type="button"
+              className="auth__link auth__link--muted"
+              onClick={() => { go("forgot_phone"); setResetOtp(""); setHint(null); }}
+            >
+              {t("auth.different_number")}
+            </button>
+          </div>
         </>
       )}
 
       {step === "reset_password" && (
         <>
-          <h2 style={S.title}>{t("auth.title_new_pass")}</h2>
-          <p style={S.sub}>{t("auth.new_pass_for").replace("{phone}", phone)}</p>
-          {error && <p style={S.error}>{error}</p>}
-          <label style={S.label}>{t("auth.label_new_password")}</label>
+          <h2 className="auth__title">{t("auth.title_new_pass")}</h2>
+          {sentTo(t("auth.new_pass_for"))}
+          {errorMsg}
+          <label className="auth__label" htmlFor="auth-new-pwd">{t("auth.label_new_password")}</label>
           <input
-            style={S.input}
+            id="auth-new-pwd"
+            className="auth__input"
             type="password"
             placeholder={t("auth.ph_password_min")}
             value={newPwd}
@@ -620,9 +800,10 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
             autoFocus
             autoComplete="new-password"
           />
-          <label style={S.label}>{t("auth.label_confirm_password")}</label>
+          <label className="auth__label" htmlFor="auth-new-pwd2">{t("auth.label_confirm_password")}</label>
           <input
-            style={S.input}
+            id="auth-new-pwd2"
+            className="auth__input"
             type="password"
             placeholder={t("auth.ph_password_repeat")}
             value={newPwdConfirm}
@@ -630,185 +811,14 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
             onKeyDown={(e) => e.key === "Enter" && handleResetPassword()}
             autoComplete="new-password"
           />
-          <button
-            style={{ ...S.primaryBtn, opacity: loading || !newPwd ? 0.55 : 1 }}
-            onClick={handleResetPassword}
-            disabled={loading || !newPwd}
-          >
+          <PrimaryButton onClick={handleResetPassword} disabled={!newPwd} loading={loading}>
             {loading ? t("auth.saving") : t("auth.set_password")}
-          </button>
+          </PrimaryButton>
         </>
       )}
-    </div>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
-
-const S: Record<string, React.CSSProperties> = {
-  card: {
-    background: "var(--color-surface)",
-    borderRadius: "var(--radius-lg)",
-    padding: "2rem 1.75rem",
-    marginBottom: "1rem",
-    border: "1px solid var(--color-border)",
-    boxShadow: "0 4px 24px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04)",
-  },
-  logoWrap: {
-    display: "flex",
-    justifyContent: "center",
-    marginBottom: "1.5rem",
-    position: "relative",
-  },
-  logo: {
-    height: 48,
-    width: "auto",
-    objectFit: "contain" as const,
-  },
-  title: {
-    fontSize: "1.375rem",
-    fontWeight: 700,
-    color: "var(--color-text)",
-    marginBottom: "0.375rem",
-    lineHeight: 1.3,
-  },
-  sub: {
-    color: "var(--color-text-muted)",
-    fontSize: "0.9rem",
-    lineHeight: 1.6,
-    marginBottom: "1.25rem",
-  },
-  label: {
-    display: "block",
-    fontWeight: 600,
-    fontSize: "0.85rem",
-    color: "var(--color-text)",
-    marginBottom: "0.35rem",
-  },
-  note: {
-    color: "var(--color-text-muted)",
-    fontSize: "0.78rem",
-    textAlign: "center",
-    marginTop: "0.75rem",
-    lineHeight: 1.55,
-  },
-  error: {
-    color: "var(--color-error)",
-    background: "var(--color-error-bg)",
-    border: "1px solid rgba(220,38,38,0.2)",
-    borderRadius: "var(--radius-sm)",
-    padding: "0.5rem 0.75rem",
-    fontSize: "0.85rem",
-    marginBottom: "0.75rem",
-  },
-  hint: {
-    color: "var(--color-success)",
-    background: "var(--color-success-bg)",
-    borderRadius: "var(--radius-sm)",
-    padding: "0.4rem 0.75rem",
-    fontSize: "0.85rem",
-    marginBottom: "0.75rem",
-  },
-  input: {
-    width: "100%",
-    padding: "0 0.875rem",
-    border: "1.5px solid var(--color-border)",
-    borderRadius: "var(--radius-md)",
-    fontSize: "1rem",
-    minHeight: 44,
-    marginBottom: "0.75rem",
-    boxSizing: "border-box",
-    fontFamily: "inherit",
-    color: "var(--color-text)",
-    background: "var(--color-surface)",
-    outline: "none",
-  },
-  // Phone field with inline +960 prefix
-  phoneRow: {
-    display: "flex",
-    alignItems: "stretch",
-    border: "1.5px solid var(--color-border)",
-    borderRadius: "var(--radius-md)",
-    marginBottom: "0.75rem",
-    overflow: "hidden",
-    background: "var(--color-surface)",
-  },
-  prefix: {
-    padding: "0 0.875rem",
-    color: "var(--color-text-muted)",
-    fontWeight: 600,
-    fontSize: "1rem",
-    borderRight: "1.5px solid var(--color-border)",
-    display: "flex",
-    alignItems: "center",
-    whiteSpace: "nowrap",
-    userSelect: "none",
-    flexShrink: 0,
-  },
-  phoneFieldInner: {
-    flex: 1,
-    minWidth: 0,
-    padding: "0 0.875rem",
-    border: "none",
-    borderRadius: 0,
-    fontSize: "1rem",
-    minHeight: 44,
-    boxSizing: "border-box",
-    fontFamily: "inherit",
-    color: "var(--color-text)",
-    background: "transparent",
-    outline: "none",
-  },
-  primaryBtn: {
-    width: "100%",
-    padding: "0 1rem",
-    minHeight: 44,
-    background: "var(--color-primary)",
-    color: "#fff",
-    border: "none",
-    borderRadius: "var(--radius-md)",
-    fontSize: "1rem",
-    fontWeight: 700,
-    cursor: "pointer",
-    fontFamily: "inherit",
-    transition: "background 0.15s",
-  },
-  ghostBtn: {
-    width: "100%",
-    marginTop: "0.625rem",
-    padding: "0 1rem",
-    minHeight: 44,
-    background: "transparent",
-    color: "var(--color-text-muted)",
-    border: "1px solid var(--color-border)",
-    borderRadius: "var(--radius-md)",
-    fontSize: "0.9rem",
-    cursor: "pointer",
-    fontFamily: "inherit",
-  },
-  // OTP digit boxes
-  otpRow: {
-    display: "flex",
-    gap: "0.5rem",
-    marginBottom: "0.75rem",
-  },
-  otpBox: {
-    flex: 1,
-    minWidth: 0,
-    padding: 0,
-    border: "1.5px solid var(--color-border)",
-    borderRadius: "var(--radius-md)",
-    fontSize: "1.375rem",
-    fontWeight: 700,
-    textAlign: "center",
-    minHeight: 52,
-    boxSizing: "border-box",
-    fontFamily: "inherit",
-    color: "var(--color-text)",
-    background: "var(--color-surface)",
-    outline: "none",
-    cursor: "text",
-    caretColor: "var(--color-primary)",
-  },
-  otpBoxFilled: {
-    borderColor: "var(--color-primary)",
-  },
-};

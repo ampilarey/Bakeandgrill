@@ -1,0 +1,547 @@
+/* ════════════════════════════════════════════════════════════
+   CUSTOMER SIGN-IN (AuthBlock)
+
+   One card used on Account, Checkout, Orders, Rewards, Gift cards and
+   Events. Phone first: a rust brand band with the logo in a cream well
+   sits above the form. When the card itself is wide (Account on a
+   computer) the band becomes a brand panel beside the form, so the
+   layout follows the space it is given, not the window.
+════════════════════════════════════════════════════════════ */
+
+.auth {
+  --auth-band-from: #c2581a;
+  --auth-band-to:   #8c3807;
+  --auth-on-band:   #fffdf9;
+  --auth-on-band-muted: rgba(255, 253, 249, 0.82);
+  --auth-field-h:   3.5rem;
+
+  container-type: inline-size;
+  container-name: auth;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2xl);
+  box-shadow: 0 10px 34px rgba(42, 30, 12, 0.09), 0 1px 3px rgba(42, 30, 12, 0.05);
+  overflow: hidden;
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto 1rem;
+}
+
+[data-theme="dark"] .auth {
+  --auth-band-from: #6b2c07;
+  --auth-band-to:   #2c1608;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.35);
+}
+
+.auth__grid {
+  display: grid;
+  /* minmax(0, …): an <input> has a wide natural size; without this it
+     widens the column past the card and autofocus scrolls it sideways. */
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* ── Brand band / panel ─────────────────────────────────────── */
+
+.auth__brand {
+  position: relative;
+  isolation: isolate;
+  /* Phone: one compact row (logo, then name and line) so the number field
+     is on screen without scrolling, even at checkout. */
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 1rem 1.25rem;
+  color: var(--auth-on-band);
+  background:
+    radial-gradient(120% 90% at 85% -10%, rgba(255, 214, 170, 0.28), transparent 55%),
+    radial-gradient(90% 80% at -10% 110%, rgba(0, 0, 0, 0.22), transparent 60%),
+    linear-gradient(150deg, var(--auth-band-from), var(--auth-band-to));
+  overflow: hidden;
+}
+
+/* Soft flame curve in the corner; decorative only. */
+.auth__brand::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  right: -60px;
+  bottom: -90px;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  border: 28px solid rgba(255, 253, 249, 0.07);
+}
+
+.auth__logo-well {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 50%;
+  background: #fffaf3;
+  box-shadow: 0 0 0 3px rgba(255, 253, 249, 0.22), 0 4px 12px rgba(0, 0, 0, 0.22);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+/* The well stays cream in dark mode too: the dark logo file is drawn on a
+   black square, and the light logo on cream is what reads on every device. */
+[data-theme="dark"] .auth__logo-well {
+  box-shadow: 0 0 0 4px rgba(197, 111, 61, 0.35), 0 6px 18px rgba(0, 0, 0, 0.4);
+}
+
+.auth__logo-well img {
+  width: 72%;
+  height: 72%;
+  object-fit: contain;
+}
+
+.auth__brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.auth__brand-name {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+}
+
+.auth__brand-line {
+  margin: 0;
+  max-width: 22rem;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: var(--auth-on-band-muted);
+}
+
+.auth__perks {
+  display: none;
+  list-style: none;
+  margin: 1.75rem 0 0;
+  padding: 0;
+  text-align: start;
+  gap: 0.9rem;
+}
+
+.auth__perk {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.auth__perk-icon {
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.75rem;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 253, 249, 0.16);
+  border: 1px solid rgba(255, 253, 249, 0.22);
+}
+
+.auth__perk-icon svg { width: 1.1rem; height: 1.1rem; }
+
+/* ── Form side ──────────────────────────────────────────────── */
+
+.auth__body {
+  padding: 1.6rem 1.25rem 1.4rem;
+}
+
+.auth__form {
+  width: 100%;
+  max-width: 26rem;
+  margin: 0 auto;
+}
+
+.auth__title {
+  margin: 0 0 0.35rem;
+  font-size: 1.4rem;
+  font-weight: 800;
+  line-height: 1.25;
+  color: var(--color-text);
+}
+
+.auth__sub {
+  margin: 0 0 1.25rem;
+  font-size: 0.925rem;
+  line-height: 1.55;
+  color: var(--color-text-muted);
+}
+
+.auth__sub strong {
+  color: var(--color-text);
+  font-weight: 700;
+  white-space: nowrap;
+  unicode-bidi: isolate;
+  direction: ltr;
+}
+
+.auth__change {
+  margin-inline-start: 0.4rem;
+  padding: 0.15rem 0.1rem;
+  border: none;
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.auth__label {
+  display: block;
+  margin: 0 0 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.auth__label-muted {
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+.auth__input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 3.1rem;
+  margin: 0 0 0.9rem;
+  padding: 0 0.95rem;
+  border: 1.5px solid var(--color-border);
+  border-radius: 0.85rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color var(--duration-micro), box-shadow var(--duration-micro);
+}
+
+.auth__input:focus,
+.auth__phone:focus-within,
+.auth__otp-box:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px var(--color-primary-glow);
+}
+
+/* Phone: flag + country code chip, big spaced digits, live status. */
+.auth__phone {
+  display: flex;
+  align-items: stretch;
+  min-height: var(--auth-field-h);
+  border: 1.5px solid var(--color-border);
+  border-radius: 0.95rem;
+  background: var(--color-surface);
+  overflow: hidden;
+  transition: border-color var(--duration-micro), box-shadow var(--duration-micro);
+}
+
+.auth__phone[data-state="ok"] { border-color: var(--color-success); }
+.auth__phone[data-state="bad"] { border-color: var(--color-error); }
+.auth__phone[data-state="ok"]:focus-within { box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.16); }
+
+.auth__cc {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.85rem 0 0.9rem;
+  background: var(--color-surface-alt);
+  border-inline-end: 1.5px solid var(--color-border);
+  color: var(--color-text);
+  font-weight: 700;
+  font-size: 1.05rem;
+  white-space: nowrap;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.auth__flag {
+  width: 1.5rem;
+  height: 1rem;
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
+  display: block;
+}
+
+.auth__phone-input {
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
+  padding: 0 0.9rem;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+}
+
+.auth__phone-input::placeholder {
+  color: var(--color-text-muted);
+  opacity: 0.55;
+  font-weight: 600;
+}
+
+.auth__phone-end {
+  display: flex;
+  align-items: center;
+  padding-inline-end: 0.55rem;
+}
+
+.auth__phone-ok {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--color-success);
+  color: #fff;
+}
+
+.auth__phone-clear {
+  width: 2.25rem;
+  height: 2.25rem;
+  border: none;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.auth__phone-clear:hover { background: var(--color-primary-light); color: var(--color-text); }
+
+.auth__phone-status {
+  min-height: 1.35rem;
+  margin: 0.45rem 0 0.9rem;
+  padding-inline-start: 0.2rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.auth__phone-status[data-state="ok"] { color: var(--color-success); }
+.auth__phone-status[data-state="bad"] { color: var(--color-error); }
+
+/* OTP: six boxes, filled ones tinted rust. */
+.auth__otp {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+  direction: ltr;
+}
+
+.auth__otp-box {
+  width: 100%;
+  min-width: 0;
+  height: 3.6rem;
+  padding: 0;
+  border: 1.5px solid var(--color-border);
+  border-radius: 0.85rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 1.6rem;
+  font-weight: 800;
+  text-align: center;
+  caret-color: var(--color-primary);
+  outline: none;
+  transition: border-color var(--duration-micro), box-shadow var(--duration-micro), background var(--duration-micro);
+}
+
+.auth__otp-box[data-filled="true"] {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+/* ── Messages ───────────────────────────────────────────────── */
+
+.auth__error,
+.auth__hint {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  margin: 0 0 0.9rem;
+  padding: 0.65rem 0.8rem;
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.auth__error {
+  color: var(--color-error);
+  background: var(--color-error-bg);
+  border: 1px solid rgba(220, 38, 38, 0.22);
+}
+
+.auth__hint {
+  color: var(--color-success);
+  background: var(--color-success-bg);
+  border: 1px solid rgba(22, 163, 74, 0.2);
+}
+
+/* ── Buttons ────────────────────────────────────────────────── */
+
+.auth__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 3.25rem;
+  padding: 0 1.1rem;
+  border-radius: 0.95rem;
+  font: inherit;
+  font-size: 1.025rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background var(--duration-micro), box-shadow var(--duration-micro), transform var(--duration-micro), opacity var(--duration-micro);
+}
+
+.auth__btn--primary {
+  border: none;
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
+  box-shadow: 0 6px 16px var(--color-primary-glow);
+}
+
+.auth__btn--primary:hover:not(:disabled) { background: var(--color-primary-hover); }
+.auth__btn--primary:active:not(:disabled) { transform: translateY(1px); }
+
+.auth__btn--primary:disabled {
+  cursor: not-allowed;
+  box-shadow: none;
+  opacity: 0.45;
+}
+
+.auth__btn--outline {
+  margin-top: 0.7rem;
+  border: 1.5px solid var(--color-primary);
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.auth__btn--outline:hover { background: var(--color-primary-light); }
+
+.auth__btn:focus-visible,
+.auth__link:focus-visible,
+.auth__change:focus-visible,
+.auth__phone-clear:focus-visible {
+  outline: 2.5px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.auth__spinner {
+  width: 1.05rem;
+  height: 1.05rem;
+  border-radius: 50%;
+  border: 2.5px solid currentColor;
+  border-right-color: transparent;
+  animation: auth-spin 0.7s linear infinite;
+}
+
+@keyframes auth-spin { to { transform: rotate(360deg); } }
+
+.auth__links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  margin-top: 0.6rem;
+}
+
+.auth__links--center { justify-content: center; }
+
+.auth__link {
+  min-height: var(--touch-target);
+  padding: 0 0.25rem;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  cursor: pointer;
+}
+
+.auth__link--muted { color: var(--color-text-muted); font-weight: 600; }
+.auth__link:disabled { cursor: default; color: var(--color-text-muted); opacity: 0.8; }
+.auth__link:hover:not(:disabled) { text-decoration: underline; text-underline-offset: 3px; }
+
+.auth__note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  margin: 1.1rem 0 0;
+  padding-top: 1rem;
+  border-top: 1px dashed var(--color-border);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.auth__note svg { flex-shrink: 0; width: 0.95rem; height: 0.95rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .auth__spinner { animation-duration: 1.6s; }
+  .auth__btn, .auth__input, .auth__phone, .auth__otp-box { transition: none; }
+}
+
+/* ── Very narrow cards: keep six code boxes and the +960 chip on one line ── */
+@container auth (max-width: 340px) {
+  .auth__otp { gap: 0.35rem; }
+  .auth__otp-box { height: 3.1rem; font-size: 1.35rem; }
+  .auth__cc { padding: 0 0.6rem; gap: 0.35rem; font-size: 0.95rem; }
+  .auth__phone-input { font-size: 1.2rem; letter-spacing: 0.03em; }
+}
+
+/* ── Wide card: brand panel beside the form ── */
+@container auth (min-width: 680px) {
+  .auth__grid {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    min-height: 31rem;
+  }
+  .auth__brand {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 2.75rem 2.5rem;
+    gap: 0;
+  }
+  .auth__brand-text { gap: 0.5rem; }
+  .auth__brand::after { width: 320px; height: 320px; right: -110px; bottom: -130px; border-width: 40px; }
+  .auth__logo-well {
+    width: 6rem;
+    height: 6rem;
+    margin-bottom: 1.4rem;
+    box-shadow: 0 0 0 4px rgba(255, 253, 249, 0.22), 0 6px 18px rgba(0, 0, 0, 0.22);
+  }
+  .auth__brand-name { font-size: 1.75rem; }
+  .auth__brand-line { font-size: 0.975rem; }
+  .auth__perks { display: grid; }
+  .auth__body {
+    display: flex;
+    align-items: center;
+    padding: 2.75rem 2.75rem;
+  }
+  .auth__title { font-size: 1.65rem; }
+}

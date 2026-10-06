@@ -5509,3 +5509,35 @@ textarea.field-input {
       animation: none !important;
   }
 }
+
+/* ════════════════════════════════════════════════════════════
+   ACCOUNT, SIGNED OUT
+   Phone: one column. Computer: the sign-in card gets the full width so it
+   opens into brand panel + form; the other cards sit in two columns below.
+════════════════════════════════════════════════════════════ */
+.account-guest {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 0 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.account-guest__body,
+.account-guest__rest,
+.account-guest__col {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.account-guest__body { padding: 0 var(--page-gutter); }
+.account-guest__body > .auth { margin-bottom: 0; }
+
+@media (min-width: 900px) {
+  .account-guest { max-width: 1000px; }
+  .account-guest__rest {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+}
