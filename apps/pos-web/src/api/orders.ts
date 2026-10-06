@@ -444,11 +444,24 @@ export async function requestDiscountApproval(
 }
 
 /** Confirm a discount approval OTP and apply the discount. */
+/**
+ * While the code screen is open the till asks whether the approver has
+ * answered on Telegram (owner, 2026-10-07). "granted" means apply now with
+ * no code; "declined" and "expired" end the wait.
+ */
+export async function getDiscountApprovalStatus(
+  orderId: number,
+  approvalId: number,
+): Promise<{ status: "pending" | "granted" | "approved" | "declined" | "expired" | "failed" | string; decided_by_name: string | null }> {
+  return request(`/orders/${orderId}/discount/approval/${approvalId}`);
+}
+
 export async function confirmDiscountApproval(
   orderId: number,
   payload: {
     approval_id: number;
-    code: string;
+    /** Omitted when the approver tapped Approve on Telegram. */
+    code?: string;
     discount_amount?: number;
   },
 ): Promise<{ order: { id: number; total: number; subtotal?: number; tax_amount?: number } }> {

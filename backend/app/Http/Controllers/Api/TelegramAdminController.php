@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Domains\Telegram\Exceptions\TelegramApiException;
+use App\Domains\Telegram\Listeners\SendDayReportOnLastShiftClose;
 use App\Domains\Telegram\Services\TelegramAlertCopier;
 use App\Domains\Telegram\Services\TelegramClient;
 use App\Domains\Telegram\Services\TelegramLinker;
@@ -32,6 +33,13 @@ class TelegramAdminController extends Controller
         ['command' => 'orders', 'description' => 'Orders not finished yet'],
         ['command' => 'approvals', 'description' => 'Refunds waiting for a decision'],
         ['command' => 'soldout', 'description' => 'What is sold out; /soldout kottu to mark one'],
+        ['command' => 'week', 'description' => 'This week so far, against last week'],
+        ['command' => 'month', 'description' => 'This month so far, against last month'],
+        ['command' => 'cashiers', 'description' => 'Sales by cashier today'],
+        ['command' => 'shop', 'description' => 'Pause online orders or delivery; closed days'],
+        ['command' => 'owed', 'description' => 'Refunds still to pay back'],
+        ['command' => 'complaints', 'description' => 'Open complaints, with Reply'],
+        ['command' => 'customer', 'description' => 'Look up a customer: /customer 7820288'],
         ['command' => 'help', 'description' => 'What the buttons do'],
         ['command' => 'stop', 'description' => 'Unlink this chat'],
     ];
@@ -66,6 +74,7 @@ class TelegramAdminController extends Controller
             'settings' => [
                 'alerts_enabled' => TelegramAlertCopier::enabled(),
                 'instead_of_sms' => TelegramAlertCopier::insteadOfSms(),
+                'day_report' => self::dayReportOn(),
             ],
             'webhook_base' => rtrim((string) config('app.url'), '/'),
         ]);
@@ -275,21 +284,30 @@ class TelegramAdminController extends Controller
         $data = $request->validate([
             'alerts_enabled' => 'sometimes|boolean',
             'instead_of_sms' => 'sometimes|boolean',
+            'day_report' => 'sometimes|boolean',
         ]);
-        $before = ['alerts_enabled' => TelegramAlertCopier::enabled(), 'instead_of_sms' => TelegramAlertCopier::insteadOfSms()];
+        $before = ['alerts_enabled' => TelegramAlertCopier::enabled(), 'instead_of_sms' => TelegramAlertCopier::insteadOfSms(), 'day_report' => self::dayReportOn()];
         if (array_key_exists('alerts_enabled', $data)) {
             SiteSetting::set(TelegramAlertCopier::SETTING_ENABLED, $data['alerts_enabled'] ? '1' : '0');
         }
         if (array_key_exists('instead_of_sms', $data)) {
             SiteSetting::set(TelegramAlertCopier::SETTING_INSTEAD_OF_SMS, $data['instead_of_sms'] ? '1' : '0');
         }
-        $after = ['alerts_enabled' => TelegramAlertCopier::enabled(), 'instead_of_sms' => TelegramAlertCopier::insteadOfSms()];
+        if (array_key_exists('day_report', $data)) {
+            SiteSetting::set(SendDayReportOnLastShiftClose::SETTING, $data['day_report'] ? '1' : '0');
+        }
+        $after = ['alerts_enabled' => TelegramAlertCopier::enabled(), 'instead_of_sms' => TelegramAlertCopier::insteadOfSms(), 'day_report' => self::dayReportOn()];
         $this->audit->log('telegram.settings_updated', 'SiteSetting', null, $before, $after, [], $request);
 
         return response()->json(['settings' => $after]);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────
+
+    private static function dayReportOn(): bool
+    {
+        return SendDayReportOnLastShiftClose::enabled();
+    }
 
     /**
      * Check the token, make sure the bot is not serving another site (TEST

@@ -8,6 +8,8 @@ use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Support\SmsTypeRegistry;
 use App\Domains\Telegram\Exceptions\TelegramApiException;
 use App\Domains\Telegram\Support\TelegramText as T;
+use App\Models\ComplaintBoxEntry;
+use App\Models\DiscountApproval;
 use App\Models\Refund;
 use App\Models\SiteSetting;
 use App\Models\SmsLog;
@@ -176,6 +178,25 @@ class TelegramAlertCopier
                 [$card, $buttons] = $this->commands->refundCard($refund, $link->user);
 
                 return ["🔔 <b>Refund waiting for approval</b>\n\n" . $card, $buttons];
+            }
+        }
+
+        // A discount waiting for approval: Approve / Decline buttons, the
+        // code as well for a till not yet updated (owner, 2026-10-07).
+        if ($sms->type === 'discount_approval_otp' && $sms->referenceType === 'discount_approval' && $link->user !== null) {
+            $approval = DiscountApproval::find((int) $sms->referenceId);
+            if ($approval !== null) {
+                return app(TelegramOwnerExtras::class)->discountCard($approval, $link->user, $sms->message);
+            }
+        }
+
+        // A new complaint arrives as the complaint, with Reply / Resolved.
+        if ($sms->type === 'owner_complaint_box_received' && $sms->referenceType === 'complaint_box' && $link->user !== null) {
+            $complaint = ComplaintBoxEntry::find((int) $sms->referenceId);
+            if ($complaint !== null) {
+                [$card, $buttons] = app(TelegramOwnerExtras::class)->complaintCard($complaint);
+
+                return ["🔔 <b>New complaint</b>\n\n" . $card, $buttons];
             }
         }
 

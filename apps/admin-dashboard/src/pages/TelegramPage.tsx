@@ -25,7 +25,7 @@ const ROLE_ORDER: TelegramRole[] = ['owner', 'manager', 'staff', 'kitchen_staff'
 
 /** What each level can do today; later steps fill in the rest. */
 const ROLE_NOTE: Record<TelegramRole, string> = {
-  owner: 'Alerts, Today, Shifts, Open orders, Approvals, Sold out',
+  owner: 'Alerts, Today, Week, Cashiers, Shifts, Open orders, Approvals, Sold out, Shop, Refunds owed, Complaints, Customer',
   manager: 'Alerts, plus what their permissions allow (manager menu next)',
   staff: 'Alerts for now (cashier menu after the manager step)',
   kitchen_staff: 'Alerts for now (kitchen menu in a later step)',
@@ -376,6 +376,13 @@ function SettingsCard({ data, busy, run }: {
           <p className="tg-muted">Linked people get those alerts on Telegram only, which costs nothing. If Telegram cannot be reached, the SMS is sent as before, so nothing is missed.</p>
         </div>
         <Toggle checked={s.instead_of_sms} disabled={busy !== null || !s.alerts_enabled} onChange={(on) => run('s-instead', () => updateTelegramSettings({ instead_of_sms: on }), 'Saved.')} />
+      </div>
+      <div className="tg-setting">
+        <div>
+          <div className="tg-setting__title">Day report when the last shift closes</div>
+          <p className="tg-muted">Sales, payments, best sellers, each shift's drawer and refunds still owed, sent to linked owners once a day.</p>
+        </div>
+        <Toggle checked={s.day_report} disabled={busy !== null} onChange={(on) => run('s-day', () => updateTelegramSettings({ day_report: on }), 'Saved.')} />
       </div>
     </Card>
   );

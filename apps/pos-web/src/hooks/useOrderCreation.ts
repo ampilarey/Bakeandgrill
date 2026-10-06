@@ -5,6 +5,7 @@ import {
   applyPromoToOrder,
   confirmDiscountApproval,
   createDeliveryOrder,
+  getDiscountApprovalStatus,
   createOrder,
   createOrderPayments,
   fireOrderToKitchen,
@@ -53,6 +54,8 @@ type DiscountApprovalUi = {
   error: string;
   busy: boolean;
   resending: boolean;
+  /** Set once the approver declined on Telegram; the screen says who. */
+  declinedBy?: string | null;
 };
 
 const mapOrderType = (type: OrderType): "dine_in" | "takeaway" | "online_pickup" | "delivery" => {
@@ -525,14 +528,14 @@ export function useOrderCreation(params: Params) {
     });
   };
 
-  const confirmDiscountApprovalCode = async (code: string): Promise<void> => {
+  const confirmDiscountApprovalCode = async (code: string | null): Promise<void> => {
     const state = discountApproval;
     if (!state) return;
     setDiscountApproval((s) => (s ? { ...s, busy: true, error: "" } : s));
     try {
       const res = await confirmDiscountApproval(state.orderId, {
         approval_id: state.approvalId,
-        code,
+        ...(code ? { code } : {}),
         discount_amount: state.discountAmount,
       });
       const total = res.order.total != null ? Number(res.order.total) : params.cartTotal;
@@ -563,6 +566,7 @@ export function useOrderCreation(params: Params) {
             resending: false,
             error: "",
             busy: false,
+            declinedBy: undefined,
           }
           : s,
       );
@@ -571,6 +575,43 @@ export function useOrderCreation(params: Params) {
       setDiscountApproval((s) => (s ? { ...s, resending: false, error: msg } : s));
     }
   };
+
+  // Approval by button (owner, 2026-10-07): while the code screen is open,
+  // ask every few seconds whether the approver tapped Approve or Decline on
+  // Telegram. Approve applies the discount with no code; the code still works.
+  const pollOrderId = discountApproval?.orderId ?? null;
+  const pollApprovalId = discountApproval?.approvalId ?? null;
+  const pollPaused = !discountApproval || discountApproval.busy || discountApproval.declinedBy !== undefined;
+  const confirmRef = useRef(confirmDiscountApprovalCode);
+  confirmRef.current = confirmDiscountApprovalCode;
+  useEffect(() => {
+    if (pollOrderId === null || pollApprovalId === null || pollPaused) return;
+    let stopped = false;
+    const tick = async () => {
+      try {
+        const res = await getDiscountApprovalStatus(pollOrderId, pollApprovalId);
+        if (stopped) return;
+        if (res.status === "granted") {
+          stopped = true;
+          await confirmRef.current(null);
+        } else if (res.status === "declined") {
+          stopped = true;
+          const who = res.decided_by_name ?? "The approver";
+          setDiscountApproval((s) => (s ? { ...s, declinedBy: res.decided_by_name, error: `${who} declined this discount.` } : s));
+        } else if (res.status === "expired") {
+          stopped = true;
+          setDiscountApproval((s) => (s ? { ...s, declinedBy: null, error: "The request expired. Tap Resend to ask again." } : s));
+        }
+      } catch {
+        // Offline or a slow network: the code still works; try again next tick.
+      }
+    };
+    const id = window.setInterval(() => void tick(), 2500);
+    return () => {
+      stopped = true;
+      window.clearInterval(id);
+    };
+  }, [pollOrderId, pollApprovalId, pollPaused]);
 
   const cancelDiscountApproval = (): void => {
     setDiscountApproval(null);

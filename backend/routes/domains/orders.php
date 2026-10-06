@@ -65,6 +65,10 @@ if (routes_domain_section_is('orders', 'core') && !routes_domain_loaded('orders.
         ->middleware(['permission:promotions.discounts', 'throttle:5,1']);
     Route::post('/orders/{order}/discount/confirm', [App\Http\Controllers\Api\Orders\DiscountApprovalController::class, 'confirm'])
         ->middleware(['permission:promotions.discounts', 'throttle:10,1']);
+    // The till checks every few seconds whether the approver answered on Telegram.
+    Route::get('/orders/{order}/discount/approval/{approval}', [App\Http\Controllers\Api\Orders\DiscountApprovalController::class, 'status'])
+        ->whereNumber('approval')
+        ->middleware(['permission:promotions.discounts', 'throttle:60,1']);
 
     // Receipts (staff) — orders.receipts; SATISFIED_BY also admits orders.view
     Route::get('/orders/{orderId}/receipt-link', [App\Http\Controllers\Api\ReceiptController::class, 'linkForOrder'])

@@ -24,6 +24,8 @@ class DiscountApproval extends Model
         'attempts',
         'status',
         'approved_by',
+        'decided_by',
+        'decided_at',
     ];
 
     protected $casts = [
@@ -33,6 +35,7 @@ class DiscountApproval extends Model
         'discount_percent' => 'float',
         'attempts' => 'integer',
         'expires_at' => 'datetime',
+        'decided_at' => 'datetime',
     ];
 
     public function order(): BelongsTo

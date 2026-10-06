@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\Orders;
 
 use App\Domains\Orders\Services\DiscountApprovalService;
 use App\Http\Controllers\Controller;
+use App\Models\DiscountApproval;
 use App\Models\Order;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -52,7 +53,8 @@ class DiscountApprovalController extends Controller
     {
         $validated = $request->validate([
             'approval_id' => 'required|integer',
-            'code' => 'required|string|size:4',
+            // No code when the approver tapped Approve on Telegram.
+            'code' => 'nullable|string|size:4',
             'discount_amount' => 'nullable|numeric|min:0',
         ]);
 
@@ -65,10 +67,25 @@ class DiscountApprovalController extends Controller
             $order,
             $user,
             (int) $validated['approval_id'],
-            (string) $validated['code'],
+            isset($validated['code']) ? (string) $validated['code'] : null,
             $request,
         );
 
         return response()->json(['order' => $updated->load(['items.item', 'manualDiscountApprover'])]);
+    }
+
+    /**
+     * GET /api/orders/{order}/discount/approval/{approval}
+     * The till asks while it waits: has the approver tapped Approve or
+     * Decline on Telegram?
+     */
+    public function status(Request $request, Order $order, int $approval): JsonResponse
+    {
+        $row = DiscountApproval::query()->where('id', $approval)->where('order_id', $order->id)->first();
+        if ($row === null) {
+            return response()->json(['message' => 'Not found.'], 404);
+        }
+
+        return response()->json($this->approvals->status($row));
     }
 }

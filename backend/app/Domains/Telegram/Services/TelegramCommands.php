@@ -42,6 +42,12 @@ class TelegramCommands
     public const BTN_ORDERS = '🧾 Open orders';
     public const BTN_APPROVALS = '✅ Approvals';
     public const BTN_SOLD_OUT = '🚫 Sold out';
+    public const BTN_WEEK = '📈 Week';
+    public const BTN_CASHIERS = '👥 Cashiers';
+    public const BTN_SHOP = '🏪 Shop';
+    public const BTN_OWED = '💸 Refunds owed';
+    public const BTN_COMPLAINTS = '💬 Complaints';
+    public const BTN_CUSTOMER = '🔎 Customer';
     public const BTN_HELP = '❓ Help';
 
     /** Orders still being worked on (not unpaid online carts). */
@@ -74,6 +80,10 @@ class TelegramCommands
         }
         if ($this->canSoldOut($user)) {
             $buttons[] = self::BTN_SOLD_OUT;
+        }
+        // Owner step 2 (2026-10-07).
+        foreach ($this->extras()->menuButtons($user) as $button) {
+            $buttons[] = $button;
         }
         $buttons[] = self::BTN_HELP;
 
@@ -159,6 +169,9 @@ class TelegramCommands
 
             return true;
         }
+        if ($this->extras()->handleText($link, $user, $raw, $command)) {
+            return true;
+        }
         if ($raw === self::BTN_HELP || $command === 'help' || $command === 'menu') {
             $this->help($link, $user);
 
@@ -179,6 +192,25 @@ class TelegramCommands
         }
 
         $day = $date !== null ? Carbon::parse($date) : now();
+        $lines = $this->dayReportLines($day);
+
+        if ($day->isToday()) {
+            $open = Shift::query()->whereNull('closed_at')->count();
+            $lines[] = '';
+            $lines[] = $open === 0 ? 'No shift open right now.' : ($open === 1 ? '1 shift open.' : "{$open} shifts open.");
+        }
+
+        $yesterday = $day->copy()->subDay()->toDateString();
+        $this->send($link, implode("\n", $lines), [], [[T::button('◀ ' . Carbon::parse($yesterday)->format('D j M'), 'td:' . $yesterday)]]);
+    }
+
+    /**
+     * The day's figures as message lines: Today, and the end-of-day report.
+     *
+     * @return list<string>
+     */
+    public function dayReportLines(Carbon $day): array
+    {
         $s = $this->dailySummary($day->toDateString());
         $prev = $this->dailySummary($day->copy()->subWeek()->toDateString());
 
@@ -224,14 +256,7 @@ class TelegramCommands
             }
         }
 
-        if ($day->isToday()) {
-            $open = Shift::query()->whereNull('closed_at')->count();
-            $lines[] = '';
-            $lines[] = $open === 0 ? 'No shift open right now.' : ($open === 1 ? '1 shift open.' : "{$open} shifts open.");
-        }
-
-        $yesterday = $day->copy()->subDay()->toDateString();
-        $this->send($link, implode("\n", $lines), [], [[T::button('◀ ' . Carbon::parse($yesterday)->format('D j M'), 'td:' . $yesterday)]]);
+        return $lines;
     }
 
     // ── Shifts ───────────────────────────────────────────────────────────
@@ -356,7 +381,7 @@ class TelegramCommands
         $lines = [
             '↩️ <b>Refund ' . T::mvr($refund->amount) . '</b> on order #' . T::e($orderNo),
             'Order total ' . T::mvr($refund->order?->total ?? 0),
-            'Asked by ' . T::e($refund->requester?->name ?? 'staff') . ', ' . T::ago($refund->created_at) . ' ago',
+            'Asked by ' . T::e($refund->requester?->name ?? 'staff') . ', ' . T::agoPhrase($refund->created_at),
         ];
         if (trim((string) $refund->reason) !== '') {
             $lines[] = 'Reason: ' . T::e((string) $refund->reason);
@@ -464,7 +489,25 @@ class TelegramCommands
         if ($this->canSoldOut($user)) {
             $lines[] = '<b>' . self::BTN_SOLD_OUT . '</b>: what is sold out. Type <code>sold out kottu</code> to mark an item, <code>back on kottu</code> to bring it back. It changes the till, the website, the order app and the TV screens.';
         }
+        if ($this->can($user, 'reports.view')) {
+            $lines[] = '<b>' . self::BTN_WEEK . '</b>: this week so far against the same days last week, best and quietest day. <code>/month</code> for the month.';
+            $lines[] = '<b>' . self::BTN_CASHIERS . '</b>: each cashier\'s sales, orders, discounts and refunds today.';
+        }
+        if ($this->can($user, 'service_availability.manage_public') || $this->can($user, 'settings.update')) {
+            $lines[] = '<b>' . self::BTN_SHOP . '</b>: pause or resume online orders and delivery; mark today or tomorrow closed.';
+        }
+        if ($this->can($user, 'orders.refund')) {
+            $lines[] = '<b>' . self::BTN_OWED . '</b>: card and bank refunds still to pay back, with a button to mark each paid.';
+        }
+        if ($this->can($user, 'complaints.manage')) {
+            $lines[] = '<b>' . self::BTN_COMPLAINTS . '</b>: open complaints, with Reply (texts the customer), Taking it up and Resolved.';
+        }
+        if ($this->can($user, 'customers.lookup') || $this->can($user, 'customers.view')) {
+            $lines[] = '<b>' . self::BTN_CUSTOMER . '</b>: type a phone number or name to see points, orders, credit and deposit.';
+        }
         $lines[] = '';
+        $lines[] = 'Discount requests from the till come with Approve and Decline: tap Approve and the till carries on, no code to read out.';
+        $lines[] = 'When the last shift of the day closes, the day\'s report arrives here.';
         $lines[] = 'Your alerts (refund requests, shifts left open, cash differences, complaints, stock and more) arrive here as well.';
         $lines[] = '<code>/stop</code> unlinks this chat.';
 
@@ -499,11 +542,18 @@ class TelegramCommands
                 'rfc' => $this->callbackRefundCancel($link, $user, $id, $messageId, (int) $arg),
                 'rfr' => $this->callbackRefundReject($link, $user, $id, $messageId, (int) $arg),
                 'sof', 'son' => $this->callbackSoldOut($link, $user, $id, $messageId, (int) $arg, $action === 'son'),
-                default => $this->client->answerCallback($bot, $id, 'This button is no longer used.'),
+                default => $this->extrasCallback($link, $user, $id, $messageId, $action, $arg),
             };
         } catch (Throwable $e) {
             report($e);
             $this->client->answerCallback($bot, $id, 'Something went wrong. Try again in Admin.', true);
+        }
+    }
+
+    private function extrasCallback(TelegramLink $link, User $user, string $callbackId, int $messageId, string $action, string $arg): void
+    {
+        if (!$this->extras()->handleCallback($link, $user, $callbackId, $messageId, $action, $arg)) {
+            $this->client->answerCallback($link->bot, $callbackId, 'This button is no longer used.');
         }
     }
 
@@ -650,7 +700,7 @@ class TelegramCommands
     private function answerAwait(TelegramLink $link, User $user, array $await, string $text): bool
     {
         if (($await['action'] ?? '') !== 'refund_reject') {
-            return false;
+            return $this->extras()->answerAwait($link, $user, $await, $text);
         }
 
         $refund = Refund::find((int) ($await['id'] ?? 0));
@@ -691,6 +741,18 @@ class TelegramCommands
 
     // ── Helpers ──────────────────────────────────────────────────────────
 
+    /** Owner step 2: week and month, cashiers, shop, refunds owed, complaints, customers, discount approvals. */
+    public function extras(): TelegramOwnerExtras
+    {
+        return app(TelegramOwnerExtras::class);
+    }
+
+    /** Ask the person for a reply; their next message answers it (10 minutes). */
+    public function awaitReply(TelegramLink $link, array $await): void
+    {
+        Cache::put($this->awaitKey($link), $await, now()->addMinutes(self::AWAIT_TTL_MINUTES));
+    }
+
     /**
      * @param array<string, mixed> $extra
      * @param array<int, array<int, array<string, string>>>|null $buttons
@@ -700,12 +762,12 @@ class TelegramCommands
         $this->client->sendMessage($link->bot, $link->chat_id, $html, $buttons, $extra);
     }
 
-    private function refuse(TelegramLink $link): void
+    public function refuse(TelegramLink $link): void
     {
         $this->send($link, 'Your account does not have access to that.');
     }
 
-    private function can(User $user, string $permission): bool
+    public function can(User $user, string $permission): bool
     {
         return $this->permissions->hasPermission($user, $permission);
     }
@@ -716,7 +778,7 @@ class TelegramCommands
     }
 
     /** A request carrying this user, so audit logs and services record who acted. */
-    private function requestAs(User $user): Request
+    public function requestAs(User $user): Request
     {
         $request = Request::create('/telegram', 'POST', [], [], [], ['HTTP_USER_AGENT' => 'Telegram bot', 'REMOTE_ADDR' => '127.0.0.1']);
         $request->setUserResolver(fn () => $user);
@@ -724,7 +786,7 @@ class TelegramCommands
         return $request;
     }
 
-    private function awaitKey(TelegramLink $link): string
+    public function awaitKey(TelegramLink $link): string
     {
         return 'telegram:await:' . $link->telegram_bot_id . ':' . $link->chat_id;
     }
@@ -740,7 +802,10 @@ class TelegramCommands
 
     private function isMenuButton(string $text): bool
     {
-        return in_array($text, [self::BTN_TODAY, self::BTN_SHIFTS, self::BTN_ORDERS, self::BTN_APPROVALS, self::BTN_SOLD_OUT, self::BTN_HELP], true);
+        return in_array($text, [
+            self::BTN_TODAY, self::BTN_SHIFTS, self::BTN_ORDERS, self::BTN_APPROVALS, self::BTN_SOLD_OUT, self::BTN_HELP,
+            self::BTN_WEEK, self::BTN_CASHIERS, self::BTN_SHOP, self::BTN_OWED, self::BTN_COMPLAINTS, self::BTN_CUSTOMER,
+        ], true);
     }
 
     private function dateArgument(string $text): ?string
@@ -756,7 +821,7 @@ class TelegramCommands
     }
 
     /** @return array<string, mixed> The same figures as Admin → Reports → Daily summary. */
-    private function dailySummary(string $date): array
+    public function dailySummary(string $date): array
     {
         $request = Request::create('/api/reports/daily-summary', 'GET', ['date' => $date]);
 
@@ -769,7 +834,7 @@ class TelegramCommands
      *
      * @return array<string, float>
      */
-    private function paymentsByMethod(Carbon $day): array
+    public function paymentsByMethod(Carbon $day): array
     {
         return Payment::query()
             ->join('orders', 'orders.id', '=', 'payments.order_id')
@@ -809,7 +874,7 @@ class TelegramCommands
         return ', drawer ' . ($v < 0 ? 'short ' : 'over ') . T::mvr(abs($v)) . '.';
     }
 
-    private function statusLabel(string $status): string
+    public function statusLabel(string $status): string
     {
         return match ($status) {
             'pending' => 'Waiting',
@@ -824,7 +889,7 @@ class TelegramCommands
         };
     }
 
-    private function typeLabel(string $type): string
+    public function typeLabel(string $type): string
     {
         return match ($type) {
             'dine_in' => 'Dine in',
@@ -837,7 +902,7 @@ class TelegramCommands
         };
     }
 
-    private function methodLabel(string $method): string
+    public function methodLabel(string $method): string
     {
         return match ($method) {
             'cash' => 'Cash',

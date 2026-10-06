@@ -18,7 +18,7 @@ final class TelegramText
         return 'MVR ' . number_format((float) $amount, 2);
     }
 
-    /** "2h 15m", "40m": how long ago something happened. */
+    /** "40m", "2h 15m", "3d": how long ago something happened. */
     public static function ago(?\DateTimeInterface $at): string
     {
         if ($at === null) {
@@ -28,10 +28,24 @@ final class TelegramText
         if ($minutes < 60) {
             return $minutes . 'm';
         }
-        $h = intdiv($minutes, 60);
-        $m = $minutes % 60;
+        if ($minutes < 24 * 60) {
+            $h = intdiv($minutes, 60);
+            $m = $minutes % 60;
 
-        return $h . 'h' . ($m > 0 ? ' ' . $m . 'm' : '');
+            return $h . 'h' . ($m > 0 ? ' ' . $m . 'm' : '');
+        }
+
+        return intdiv($minutes, 24 * 60) . 'd';
+    }
+
+    /** "just now", "14m ago", "2d ago". */
+    public static function agoPhrase(?\DateTimeInterface $at): string
+    {
+        if ($at === null) {
+            return '';
+        }
+
+        return (time() - $at->getTimestamp()) < 60 ? 'just now' : self::ago($at) . ' ago';
     }
 
     /** Telegram caps a message at 4096 characters. */

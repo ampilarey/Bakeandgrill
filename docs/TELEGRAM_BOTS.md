@@ -23,6 +23,7 @@ bot. A bot serves the roles ticked on it in Admin → Telegram.
 | Step | Level | Status |
 |---|---|---|
 | 1 | **Owner**: alerts; Today, Shifts, Open orders, Approvals, Sold out | Built |
+| 1b | **Owner, more** (2026-10-07): Week/Month, Cashiers, day report, Shop switches, Refunds owed, Complaints, Customer, discount approval by button | Built |
 | 2 | Manager | Next |
 | 3 | Staff (cashier), plus group feeds (online orders, buying list) | Later |
 | 4 | Kitchen staff | Later |
@@ -58,6 +59,40 @@ permissions allow (for example Open orders, Sold out, Reject a refund).
 
 The "refund waiting for approval" alert arrives as the refund card itself,
 with these buttons.
+
+## Owner buttons, step 1b (2026-10-07)
+
+Owner, on the list of what else the bot could do: "Up to u".
+
+| Button / command | What it does |
+|---|---|
+| 📈 Week, `/week`, `/month` | Sales and orders so far this week (month), against the same days last week (month); per day, best and quietest day, best sellers. Buttons for last week and last month. |
+| 👥 Cashiers, `/cashiers` | Each cashier's sales, orders, average, discounts given and refunds asked today; who is on shift. |
+| 🏪 Shop, `/shop` | Online orders and delivery: taking orders, paused (by whom, when) or closed by the schedule; today's and tomorrow's hours. Buttons: pause / resume online orders (the same keys as Admin's "Pause all online ordering"), pause / resume delivery, closed today / open today, closed tomorrow / open tomorrow. A closed day is a whole-day closure in the same list Admin edits (website, order app and the hours auto-post read it); closed today also pauses online orders and open today resumes them. Needs `service_availability.manage_public` (pausing) or `settings.update` (closed days). Closing early is not offered: closures are whole days. |
+| 💸 Refunds owed, `/owed` | Approved card / bank refunds not yet paid back, with Bank transfer, Card and Cash buttons. Bank and card ask for the reference (or `-`); then `markPaidOut` runs and the customer is told, as in Admin. |
+| 💬 Complaints, `/complaints` | Open complaint-box entries, newest first: Reply (asks for the words, texts the customer through `messageCustomer`, and marks it taken up), Taking it up, Resolved. Owner-only (`complaints.manage`). The new-complaint alert arrives as this card. |
+| 🔎 Customer, `/customer 7820288` | A phone number or a name: tier and points to spend, orders and spend, last visit, credit owed and limit, deposit, the last three orders. Several matches give a choice. |
+
+**Day report:** when the last open shift closes, linked owners get the day's
+report: the Today figures, each shift closed today with its drawer
+difference, and refunds still owed. Once a day; switch in Admin → Telegram
+("Day report when the last shift closes", on by default).
+
+### Discount approval by button
+
+The discount approval code alert arrives as a card (amount, %, order, who
+asked, reason, the code) with **Approve** and **Decline** for the approvers
+the request went to. Approve marks the request `granted`
+(`discount_approvals.decided_by` / `decided_at`). The till, while its code
+screen is open, asks `GET /api/orders/{order}/discount/approval/{id}` every
+2.5 seconds; on `granted` it confirms with no code and the charge carries on;
+on `declined` it shows who declined. The code still works exactly as before,
+and an older till that does not ask simply waits for the code. Confirm
+without a code is refused unless the request is `granted`.
+
+With "Telegram instead of SMS" on, a code that reached the approver on
+Telegram counts as sent (`SmsLog::reachedRecipient()`), so the till does not
+report "could not send".
 
 ## Alerts
 
@@ -131,7 +166,9 @@ uses it). "Check" shows when a bot has been taken by another site;
 | Tables | `telegram_bots`, `telegram_links`, `telegram_link_codes` (`2026_10_06_120000_create_telegram_bots`) |
 | Bot API | `app/Domains/Telegram/Services/TelegramClient.php` |
 | Linking | `TelegramLinker` |
-| Messages and buttons | `TelegramUpdateHandler`, `TelegramCommands` |
+| Messages and buttons | `TelegramUpdateHandler`, `TelegramCommands`, `TelegramOwnerExtras` (step 1b) |
+| Day report | `Listeners/SendDayReportOnLastShiftClose` (on `ShiftClosed`), setting `telegram_day_report_enabled` |
+| Discount by button | `DiscountApprovalService::decide()` / `status()`, migration `2026_10_07_100000_discount_approvals_decided_on_telegram`, POS `useOrderCreation` polling |
 | Alerts | `TelegramAlertCopier` (called from `SmsService`) |
 | Admin API | `TelegramAdminController`, `routes/domains/telegram.php` |
 | Webhook | `TelegramWebhookController`, `routes/api.php` |

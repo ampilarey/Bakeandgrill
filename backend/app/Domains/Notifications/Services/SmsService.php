@@ -247,7 +247,7 @@ class SmsService
         if ($telegram->sendInsteadOfSms($sms, $normalized, $log, $registryEntry)) {
             $log->update([
                 'status' => 'suppressed',
-                'error_message' => 'Sent on Telegram instead of SMS.',
+                'error_message' => SmsLog::SENT_ON_TELEGRAM,
                 'cost_estimate_mvr' => 0,
             ]);
 

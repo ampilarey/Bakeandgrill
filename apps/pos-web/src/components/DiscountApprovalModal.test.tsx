@@ -14,7 +14,7 @@ describe("DiscountApprovalModal", () => {
     );
     expect(screen.getByRole("dialog", { name: "Enter approval code" })).toBeInTheDocument();
     expect(screen.getByText("Enter approval code")).toBeInTheDocument();
-    expect(screen.getByText("Code sent to the manager.")).toBeInTheDocument();
+    expect(screen.getByText(/Sent to the approver. They can tap Approve on Telegram/)).toBeInTheDocument();
   });
 
   it("submits the 4-digit code via Confirm", async () => {

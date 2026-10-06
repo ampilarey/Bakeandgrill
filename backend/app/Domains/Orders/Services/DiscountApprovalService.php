@@ -14,6 +14,7 @@ use App\Models\Order;
 use App\Models\User;
 use App\Services\AuditLogService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * SMS one-time-code approval for manual POS discounts (§3A).
@@ -146,7 +147,8 @@ final class DiscountApprovalService
                 'user_id' => $approver['user_id'],
                 'sms_status' => $log->status,
             ];
-            if (in_array($log->status, ['sent', 'demo', 'queued'], true)) {
+            // Telegram instead of SMS counts: the approver has it.
+            if ($log->reachedRecipient()) {
                 $delivered++;
             }
         }
@@ -178,7 +180,7 @@ final class DiscountApprovalService
         Order $order,
         User $actor,
         int $approvalId,
-        string $code,
+        ?string $code,
         ?Request $request = null,
     ): Order {
         $approval = DiscountApproval::query()
@@ -190,8 +192,18 @@ final class DiscountApprovalService
             abort(422, 'Invalid approval request.');
         }
 
+        // Approved by button on Telegram: no code to check.
+        if ($approval->status === 'granted') {
+            return $this->applyApproval($order, $actor, $approval, $this->decidedApprover($approval), $request);
+        }
+        if ($approval->status === 'declined') {
+            abort(422, 'The approver declined this discount.');
+        }
         if ($approval->status !== 'pending') {
             abort(422, 'This approval code is no longer valid.');
+        }
+        if ($code === null || $code === '') {
+            abort(422, 'Enter the approval code, or wait for the approver to tap Approve.');
         }
 
         // Each approver got their own code, so the one typed in identifies who
@@ -233,6 +245,26 @@ final class DiscountApprovalService
             'approval',
         );
 
+        // The approver whose code was used — not simply the first one on the
+        // list, which is what this credited before and got wrong every time a
+        // second approver answered.
+        $matchedApprover = $approverCodes[$matched] ?? null;
+        if (!is_array($matchedApprover)) {
+            $fallbackApprovers = DiscountSettings::effectiveApprovers();
+            $matchedApprover = $fallbackApprovers[0] ?? null;
+        }
+
+        return $this->applyApproval($order, $actor, $approval, is_array($matchedApprover) ? $matchedApprover : null, $request);
+    }
+
+    /**
+     * The approval is good (a code matched, or the approver tapped Approve
+     * on Telegram): put the discount on the order.
+     *
+     * @param array<string, mixed>|null $matchedApprover
+     */
+    private function applyApproval(Order $order, User $actor, DiscountApproval $approval, ?array $matchedApprover, ?Request $request): Order
+    {
         // Amount binding: optional body discount_amount must match the pending record.
         if ($request !== null && $request->has('discount_amount')) {
             $claimedLaar = max(0, (int) round((float) $request->input('discount_amount') * 100));
@@ -246,7 +278,6 @@ final class DiscountApprovalService
         if ($subtotalLaar <= 0) {
             $subtotalLaar = (int) round((float) $order->items->sum('total_price') * 100);
         }
-
         if ((int) $approval->discount_laar <= 0) {
             abort(422, 'Invalid approval amount.');
         }
@@ -258,14 +289,6 @@ final class DiscountApprovalService
             abort(422, 'Discount amount changed. Request a new approval code.');
         }
 
-        // The approver whose code was used — not simply the first one on the
-        // list, which is what this credited before and got wrong every time a
-        // second approver answered.
-        $matchedApprover = $approverCodes[$matched] ?? null;
-        if (!is_array($matchedApprover)) {
-            $fallbackApprovers = DiscountSettings::effectiveApprovers();
-            $matchedApprover = $fallbackApprovers[0] ?? null;
-        }
         $approvedBy = is_array($matchedApprover) ? ($matchedApprover['user_id'] ?? null) : null;
         $approvedLabel = is_array($matchedApprover)
             ? trim((string) ($matchedApprover['label'] ?? '')) ?: null
@@ -301,5 +324,96 @@ final class DiscountApprovalService
         ]);
 
         return $this->calculator->recalculateAndPersist($order->fresh(['items.item']));
+    }
+
+    // ── Approval by button (Telegram), owner 2026-10-07 ─────────────────
+
+    /** Whether this staff member is one of the approvers the request went to. */
+    public function isApprover(DiscountApproval $approval, User $user): bool
+    {
+        foreach ((array) $approval->approver_codes as $row) {
+            if (is_array($row) && (int) ($row['user_id'] ?? 0) === (int) $user->id) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * An approver taps Approve or Decline on Telegram. Approve marks the
+     * request "granted"; the till sees it and applies the discount with no
+     * code. Returns the fresh row; refuses anything not pending, expired,
+     * or someone who was not asked.
+     */
+    public function decide(DiscountApproval $approval, User $user, bool $approve, ?Request $request = null): DiscountApproval
+    {
+        return DB::transaction(function () use ($approval, $user, $approve, $request): DiscountApproval {
+            $row = DiscountApproval::query()->lockForUpdate()->findOrFail($approval->id);
+            if (!$this->isApprover($row, $user)) {
+                abort(403, 'This request did not go to you.');
+            }
+            if ($row->status !== 'pending') {
+                abort(422, match ($row->status) {
+                    'granted', 'approved' => 'Already approved.',
+                    'declined' => 'Already declined.',
+                    default => 'This request is no longer open.',
+                });
+            }
+            if ($row->expires_at !== null && $row->expires_at->isPast()) {
+                $row->update(['status' => 'expired']);
+                abort(422, 'This request has expired. The till can ask again.');
+            }
+
+            $row->update([
+                'status' => $approve ? 'granted' : 'declined',
+                'decided_by' => $user->id,
+                'decided_at' => now(),
+            ]);
+
+            $this->audit->log(
+                $approve ? 'order.manual_discount.approved_by_button' : 'order.manual_discount.declined_by_button',
+                'DiscountApproval',
+                (int) $row->id,
+                ['status' => 'pending'],
+                ['status' => $row->status, 'decided_by' => $user->id],
+                ['order_id' => $row->order_id, 'discount_laar' => $row->discount_laar, 'via' => 'telegram'],
+                $request,
+            );
+
+            return $row->fresh();
+        });
+    }
+
+    /**
+     * What the till shows while it waits: pending, granted (apply now),
+     * declined, expired, approved (already applied) or failed.
+     *
+     * @return array{status: string, decided_by_name: string|null}
+     */
+    public function status(DiscountApproval $approval): array
+    {
+        $status = (string) $approval->status;
+        if ($status === 'pending' && $approval->expires_at !== null && $approval->expires_at->isPast()) {
+            $status = 'expired';
+        }
+
+        return [
+            'status' => $status,
+            'decided_by_name' => $approval->decided_by ? User::query()->whereKey($approval->decided_by)->value('name') : null,
+        ];
+    }
+
+    /** @return array<string, mixed>|null the approver_codes entry for whoever tapped Approve */
+    private function decidedApprover(DiscountApproval $approval): ?array
+    {
+        foreach ((array) $approval->approver_codes as $row) {
+            if (is_array($row) && (int) ($row['user_id'] ?? 0) === (int) $approval->decided_by) {
+                return $row;
+            }
+        }
+        $name = $approval->decided_by ? User::query()->whereKey($approval->decided_by)->value('name') : null;
+
+        return $approval->decided_by ? ['user_id' => (int) $approval->decided_by, 'label' => $name] : null;
     }
 }

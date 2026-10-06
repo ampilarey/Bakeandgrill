@@ -11,7 +11,9 @@ type Props = {
 };
 
 /**
- * SMS OTP entry for manager discount approval. Reuses the LockScreen
+ * SMS OTP entry for manager discount approval. While it is open the till
+ * also checks whether the approver tapped Approve on Telegram
+ * (useOrderCreation), which applies the discount without a code. Reuses the LockScreen
  * PIN-pad pattern but is fixed at 4 digits (server codes are always 4).
  */
 export function DiscountApprovalModal({
@@ -100,7 +102,12 @@ export function DiscountApprovalModal({
           Enter approval code
         </p>
         <p style={{ ...type.bodySm, color: palette.panelMuted, margin: "0 0 20px" }}>
-          Code sent to the manager.
+          Sent to the approver. They can tap Approve on Telegram, or read you the code.
+          {!error && (
+            <span data-testid="discount-approval-waiting" style={{ display: "block", marginTop: 6, color: palette.panelSubtle }}>
+              Waiting for approval…
+            </span>
+          )}
         </p>
 
         <div
