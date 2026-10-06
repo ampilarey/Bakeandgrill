@@ -64,7 +64,7 @@ class CustomerOtpService
 
         if ($channel === 'email') {
             try {
-                Mail::to((string) $email)->send(new CustomerOtpMail($otpCode, self::TTL_MINUTES));
+                Mail::to((string) $email)->send(new CustomerOtpMail($otpCode, self::TTL_MINUTES, $purpose, $phone));
             } catch (\Throwable $e) {
                 // Only the newest code counts, so a row for an email that
                 // never left would cancel the SMS code the customer already
@@ -109,9 +109,9 @@ class CustomerOtpService
         $email = $this->accountEmail($phone);
         if ($email !== null) {
             $otpRow->forceFill(['email' => $email])->save();
-            DeferAfterResponse::run(function () use ($email, $otpCode, $phone): void {
+            DeferAfterResponse::run(function () use ($email, $otpCode, $phone, $purpose): void {
                 try {
-                    Mail::to($email)->send(new CustomerOtpMail($otpCode, self::TTL_MINUTES));
+                    Mail::to($email)->send(new CustomerOtpMail($otpCode, self::TTL_MINUTES, $purpose, $phone, alsoTexted: true));
                 } catch (\Throwable $e) {
                     logger()->warning('OTP copy by email could not be sent', ['phone' => $phone, 'error' => $e->getMessage()]);
                 }

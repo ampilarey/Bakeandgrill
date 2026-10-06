@@ -31,7 +31,7 @@ class EventQuoteSentMail extends Mailable
     public function content(): Content
     {
         return new Content(
-            markdown: 'emails.event-quote-sent',
+            view: 'emails.event-quote-sent',
             with: [
                 'request' => $this->request,
                 'quoteUrl' => $this->quoteUrl,

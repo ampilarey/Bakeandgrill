@@ -41,7 +41,7 @@ class EventConfirmedMail extends Mailable
                 : 'Bake & Grill (pickup)');
 
         return new Content(
-            markdown: 'emails.event-confirmed',
+            view: 'emails.event-confirmed',
             with: [
                 'request' => $this->request,
                 'paidMvr' => number_format($this->paidLaar / 100, 2),
