@@ -41,6 +41,17 @@ const { request: _coreRequest } = createApiClient({
   credentials: 'include',
 });
 
+/** Fired when the server refuses this till; usePosApp re-checks and locks. */
+export const DEVICE_BLOCKED_EVENT = 'pos_device_blocked';
+
+const DEVICE_BLOCKED_CODES = new Set(['device_not_approved', 'device_rejected', 'device_disabled']);
+
+function isDeviceBlockedCode(e: unknown): boolean {
+  const body = e instanceof ApiRequestError ? e.body : undefined;
+  const code = body && typeof body === 'object' ? (body as { code?: unknown }).code : undefined;
+  return typeof code === 'string' && DEVICE_BLOCKED_CODES.has(code);
+}
+
 function deviceHeaders(): Record<string, string> {
   const deviceId = localStorage.getItem('pos_device_id');
   return deviceId ? { 'X-Device-Identifier': deviceId } : {};
@@ -81,6 +92,12 @@ export async function request<T>(path: string, options: ApiRequestOptions = {}):
       _token = null;
       posToken.clear();
       window.dispatchEvent(new Event('auth_expired'));
+    }
+
+    // The server refused this till (waiting for approval, rejected or
+    // switched off): lock the screen now rather than at the next sign-in.
+    if (status === 403 && isDeviceBlockedCode(e)) {
+      window.dispatchEvent(new Event(DEVICE_BLOCKED_EVENT));
     }
     throw e;
   }

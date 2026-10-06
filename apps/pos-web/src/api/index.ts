@@ -1,4 +1,4 @@
-export { getApiBaseUrl, request, setAuthToken } from "./client";
+export { DEVICE_BLOCKED_EVENT, getApiBaseUrl, request, setAuthToken } from "./client";
 export type { PosOfflineSyncPayload, PosOfflineSyncResponse } from "./offline";
 export { syncOfflineOrders } from "./offline";
 export type { SalesSummary } from "@shared/types";

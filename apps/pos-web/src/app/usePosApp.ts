@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { itemsForCategory } from "../utils/categoryTree";
 import { ApiRequestError } from "@shared/api";
 import type { StaffLoginResponse } from "@shared/types";
-import { fetchCurrencyImages, getApiBaseUrl, fetchTables, setAuthToken, staffLogin, staffPasswordLogin, selfRegisterDevice, selfDeviceStatus, fetchPosQuickNotes, pingAuth, fetchMe, fetchActiveOrdersBadgeSample, fetchCustomerSummary, updateOrderCustomer, fetchCustomerAddresses, previewDeliveryFeeMvr, fetchPublicSiteSettings, fetchKitchenHandoverSettings, recordCountAttempt, DEFAULT_POS_SMS_NOTIFICATIONS, DEFAULT_POS_DISCOUNT_CONTROLS, type PosCustomer, type PosCustomerAddress, type PosSmsNotifications, type PosDiscountControls, type KitchenHandoverSettings } from "../api";
+import { fetchCurrencyImages, getApiBaseUrl, fetchTables, setAuthToken, staffLogin, staffPasswordLogin, selfRegisterDevice, selfDeviceStatus, fetchPosQuickNotes, pingAuth, fetchMe, fetchActiveOrdersBadgeSample, fetchCustomerSummary, updateOrderCustomer, fetchCustomerAddresses, previewDeliveryFeeMvr, DEVICE_BLOCKED_EVENT, fetchPublicSiteSettings, fetchKitchenHandoverSettings, recordCountAttempt, DEFAULT_POS_SMS_NOTIFICATIONS, DEFAULT_POS_DISCOUNT_CONTROLS, type PosCustomer, type PosCustomerAddress, type PosSmsNotifications, type PosDiscountControls, type KitchenHandoverSettings } from "../api";
 import { ticketStage } from "../utils/openTicketUtils";
 import { ticketAgeAnchor, ticketAgeLevel } from "../utils/ticketAging";
 import { withDeliveryFee } from "../utils/posCartTotals";
@@ -930,9 +930,12 @@ export function usePosApp() {
       // the owner (who has been SMS-alerted), disabled was switched off on
       // purpose. "unregistered"/"unknown" get no banner — the row appears on
       // the first gated request or self-register.
+      // Not registered yet (or unknown): say nothing either way. Clearing
+      // here let a sign-in's early check undo the lock a later one had set.
+      if (status.status === "unregistered" || status.status === "unknown") return;
       if (status.status === "pending") {
         setDeviceBlockedMessage(
-          "This POS device is waiting for owner approval — the owner has been notified. Sales unlock as soon as it's approved in Admin → Settings → Devices.",
+          "This POS device is waiting for owner approval — the owner has been notified. It unlocks by itself once approved, on Telegram or in Admin → Settings → Devices.",
         );
       } else if (status.status === "rejected") {
         setDeviceBlockedMessage(
@@ -957,19 +960,32 @@ export function usePosApp() {
     return () => window.clearInterval(timer);
   }, [isLoggedIn, deviceBlockedMessage, checkDeviceStatus]);
 
-  // Fire-and-forget device audit registration — never blocks sales.
+  // Register this till, THEN ask its status (owner, 2026-10-07: "New pos
+  // can be used before approval. If it's locked and opened again it's
+  // locked"). The status check used to run 6s after sign-in, alongside the
+  // registration, so a brand-new till read "unregistered" and stayed open
+  // until the next sign-in. Now a till waiting for approval locks at once.
   useEffect(() => {
     if (!isLoggedIn) return;
-    const handle = window.setTimeout(() => {
-      void selfRegisterDevice(deviceId, `POS ${deviceId}`)
-        .then((res) => {
-          if (res.device?.id) persistDeviceDbId(res.device.id);
-        })
-        .catch(() => { /* optional audit metadata */ });
-      void checkDeviceStatus();
-    }, 6000);
-    return () => window.clearTimeout(handle);
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await selfRegisterDevice(deviceId, `POS ${deviceId}`);
+        if (!cancelled && res.device?.id) persistDeviceDbId(res.device.id);
+      } catch {
+        /* optional audit metadata */
+      }
+      if (!cancelled) await checkDeviceStatus();
+    })();
+    return () => { cancelled = true; };
   }, [isLoggedIn, deviceId, persistDeviceDbId, checkDeviceStatus]);
+
+  // Any request the server refuses because of this till locks the screen.
+  useEffect(() => {
+    const onBlocked = () => { void checkDeviceStatus(); };
+    window.addEventListener(DEVICE_BLOCKED_EVENT, onBlocked);
+    return () => window.removeEventListener(DEVICE_BLOCKED_EVENT, onBlocked);
+  }, [checkDeviceStatus]);
 
   const completeStaffLogin = useCallback((response: StaffLoginResponse) => {
     posToken.set(response.token);
