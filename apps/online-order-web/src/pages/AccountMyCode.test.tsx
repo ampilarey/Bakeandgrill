@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { AccountPage } from './AccountPage';
+import { realName, prettyPhone } from './AccountPage/AccountHub';
 
 /*
  * Audit, 2026-09-24: the "My code" QR the till scans (owner, 2026-09-02)
@@ -92,7 +93,60 @@ describe('Account page — my code and points', () => {
   it('shows spendable points on the profile card, not the balance with holds in it', async () => {
     render(<MemoryRouter><AccountPage /></MemoryRouter>);
     await screen.findByTestId('account-my-code');
-    fireEvent.click(screen.getByText('account.profile', { selector: '.account-row__label' }));
+    fireEvent.click(screen.getByTestId('account-row-profile'));
     expect(await screen.findByTestId('profile-loyalty-points')).toHaveTextContent('380');
+  });
+
+  /*
+   * Owner, 2026-10-06 (screenshot, "Hi, 7820288"): "Enhance the customer
+   * my acc page after login". The card leads with the real name, the
+   * number written out, and spendable points; the code opens full screen.
+   */
+  it('greets by name, never by the phone digits sign-in stores', async () => {
+    render(<MemoryRouter><AccountPage /></MemoryRouter>);
+    const hero = await screen.findByTestId('account-hero');
+    await waitFor(() => expect(hero).toHaveTextContent('Aisha'));
+    expect(hero).toHaveTextContent('+960 770 0001');
+    expect(await screen.findByTestId('account-hero-points')).toHaveTextContent('380');
+  });
+
+  it('asks for an email when the account has none', async () => {
+    vi.mocked(getCustomerMe).mockResolvedValue({
+      customer: { id: 1, phone: '+9607700001', name: '7700001', email: null, is_profile_complete: false, has_trade_account: false, sms_opt_out: false },
+      has_trade_account: false,
+    } as never);
+    render(<MemoryRouter><AccountPage /></MemoryRouter>);
+    expect(await screen.findByTestId('account-profile-nudge')).toHaveTextContent('account.nudge_title_email');
+    // The stored "name" is the phone digits, so the session name is used.
+    expect(screen.getByTestId('account-hero')).toHaveTextContent('Aisha');
+  });
+
+  it('never treats phone digits as a name', () => {
+    expect(realName('7700001', '+960 770 0001', null)).toBeNull();
+    expect(realName('7700001', 'Aisha')).toBe('Aisha');
+    expect(realName('  Aishath Ali ')).toBe('Aishath Ali');
+    expect(prettyPhone('+9607820288')).toBe('+960 782 0288');
+    expect(prettyPhone('7820288')).toBe('+960 782 0288');
+  });
+
+  it('opens the code full screen and closes it with Escape', async () => {
+    render(<MemoryRouter><AccountPage /></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('account-my-code-open'));
+    const full = screen.getByTestId('account-my-code-full');
+    expect(full.querySelector('svg')).not.toBeNull();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByTestId('account-my-code-full')).not.toBeInTheDocument();
+  });
+
+  it('links the complaint box, tagged as from the app', async () => {
+    render(<MemoryRouter><AccountPage /></MemoryRouter>);
+    const row = await screen.findByTestId('account-row-complain');
+    expect(row.getAttribute('href')).toContain('/complain?from=app');
+  });
+
+  it('reaches pre-orders from the hub', async () => {
+    render(<MemoryRouter><AccountPage /></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('account-row-preorders'));
+    expect(await screen.findByText('account.po_title')).toBeInTheDocument();
   });
 });

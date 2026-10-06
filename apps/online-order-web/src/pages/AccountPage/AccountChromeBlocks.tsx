@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { isLanguageSwitcherEnabled } from '../../components/LanguageSwitcherGate';
 import { useLanguage } from '../../context/LanguageContext';
@@ -8,13 +8,15 @@ import { PrayerBar } from '../../components/PrayerBar';
 import { MAIN_WEBSITE_HREF } from '../../utils/mainWebsite';
 import { isExternalHref, shouldLeaveOrderApp, toOrderSpaPath } from '../../utils/footerNav';
 import { SectionCard } from './accountShared';
+import { Icon } from './AccountHub';
 
 export const linkRowStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
   minHeight: 56,
-  padding: '0 0.25rem',
+  gap: '0.75rem',
+  padding: '0.5rem 0.25rem',
   borderBottom: '1px solid var(--color-border)',
   textDecoration: 'none',
   color: 'var(--color-text)',
@@ -36,6 +38,20 @@ function normalizePath(url: string): string {
   return toOrderSpaPath(path);
 }
 
+/**
+ * The signed-in hub (2026-10-06) shows these as its grouped lists: a small
+ * heading above a rounded list. Signed out they stay ordinary cards.
+ */
+export function BlockShell({ title, hub, children }: { title: string; hub?: boolean; children: ReactNode }) {
+  if (!hub) return <SectionCard title={title}>{children}</SectionCard>;
+  return (
+    <section className="acct-group">
+      <h2 className="acct-group__title">{title}</h2>
+      <div className="acct-group__list acct-group__list--pad">{children}</div>
+    </section>
+  );
+}
+
 type PushProps = {
   supported: boolean;
   subscribed: boolean;
@@ -50,14 +66,14 @@ type PromoSmsProps = {
 };
 
 /** Settings group: dark mode, optional push notifications row, promotional SMS. */
-export function AccountSettingsBlock({ push, promoSms }: { push?: PushProps; promoSms?: PromoSmsProps }) {
+export function AccountSettingsBlock({ push, promoSms, hub }: { push?: PushProps; promoSms?: PromoSmsProps; hub?: boolean }) {
   const { t, lang, setLang } = useLanguage();
   const { settings } = useSiteSettingsContext();
   const { darkMode, setDarkMode } = useTheme();
   const languageSwitcherEnabled = isLanguageSwitcherEnabled(settings);
 
   return (
-    <SectionCard title={t('account.settings')}>
+    <BlockShell title={t('account.settings')} hub={hub}>
       <div
         style={{
           ...linkRowStyle,
@@ -197,12 +213,12 @@ export function AccountSettingsBlock({ push, promoSms }: { push?: PushProps; pro
           </button>
         </div>
       )}
-    </SectionCard>
+    </BlockShell>
   );
 }
 
 /** More links group: Hours, Contact, About, legal links, WhatsApp, Viber. */
-export function AccountMoreBlock() {
+export function AccountMoreBlock({ hub, skip = [] }: { hub?: boolean; skip?: string[] } = {}) {
   const { t } = useLanguage();
   const { settings, footerLinks } = useSiteSettingsContext();
 
@@ -229,6 +245,7 @@ export function AccountMoreBlock() {
   }[] = [];
 
   const pushLink = (label: string, url: string, kind: 'leave' | 'spa' | 'external') => {
+    if (skip.includes(url)) return;
     const dedupeKey = kind === 'external' ? url : normalizePath(url);
     if (seen.has(dedupeKey)) return;
     seen.add(dedupeKey);
@@ -257,14 +274,14 @@ export function AccountMoreBlock() {
   }
 
   return (
-    <SectionCard title={t('account.more_links')}>
+    <BlockShell title={t('account.more_links')} hub={hub}>
       {allLinks.map(({ label, url, kind }, i) => {
         const style: CSSProperties = {
           ...linkRowStyle,
           borderBottom: i === allLinks.length - 1 ? 'none' : '1px solid var(--color-border)',
         };
         const chevron = (
-          <span aria-hidden="true" style={{ color: 'var(--color-text-muted)' }}>▸</span>
+          <span aria-hidden="true" style={{ color: 'var(--color-text-muted)' }}><Icon name="chevron" size={16} /></span>
         );
 
         if (kind === 'leave') {
@@ -290,7 +307,7 @@ export function AccountMoreBlock() {
           </a>
         );
       })}
-    </SectionCard>
+    </BlockShell>
   );
 }
 

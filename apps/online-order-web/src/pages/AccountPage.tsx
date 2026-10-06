@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { QRCodeSVG } from 'qrcode.react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -20,19 +19,23 @@ import type {
   CustomerCreditSummary, CustomerCreditInvoice,
   CustomerDepositSummary, CustomerDepositTransaction,
 } from '../api';
-import type { LoyaltyAccount } from '@shared/types';
+import type { LoyaltyAccount, LoyaltyTierProgress } from '@shared/types';
 import { AuthBlock } from '../components/AuthBlock';
 import { PrayerBar } from '../components/PrayerBar';
 import { PageHeader } from '../components/shell/PageHeader';
 import { AddressesSection } from './AccountPage/AddressesSection';
 import { ProfileSection } from './AccountPage/ProfileSection';
 import { OrderHistorySection } from './AccountPage/OrderHistorySection';
-import { AccountSettingsBlock, AccountMoreBlock } from './AccountPage/AccountChromeBlocks';
+import { AccountSettingsBlock, AccountMoreBlock, BlockShell } from './AccountPage/AccountChromeBlocks';
 import {
   SectionCard, btnStyle, inputStyle, statusBadge,
 } from './AccountPage/accountShared';
 import { useAccountAddresses } from './AccountPage/useAccountAddresses';
 import { useAccountProfile } from './AccountPage/useAccountProfile';
+import {
+  AccountHero, Icon, MenuGroup, MyCodeCard, ProfileNudge, QuickActions, realName,
+} from './AccountPage/AccountHub';
+import { complaintUrl } from '../utils/complaintLink';
 import { itemDisplayPrice } from '../utils/money';
 
 type PanelId =
@@ -61,6 +64,7 @@ export function AccountPage() {
   const push = usePushNotifications(isAuthenticated);
 
   const [loyalty, setLoyalty] = useState<LoyaltyAccount | null>(null);
+  const [tierProgress, setTierProgress] = useState<LoyaltyTierProgress | null>(null);
   const [loyaltyError, setLoyaltyError] = useState('');
 
   // Reservations
@@ -121,7 +125,7 @@ export function AccountPage() {
   useEffect(() => {
     if (!authReady || !isAuthenticated) return;
     getLoyaltyAccount()
-      .then(({ account }) => setLoyalty(account))
+      .then(({ account, tier_progress }) => { setLoyalty(account); setTierProgress(tier_progress ?? null); })
       .catch((e: Error) => setLoyaltyError(e.message || t('account.err_loyalty')));
   }, [isAuthenticated, authReady]);
 
@@ -868,169 +872,134 @@ export function AccountPage() {
   }
 
   // ── Hub ──────────────────────────────────────────────────────────────────────
-  const displayName = customerName ?? customer?.name ?? t('account.greeting_fallback');
-
-  const hubRow = (
-    icon: string,
-    label: string,
-    onClick: () => void,
-    last = false,
-  ) => (
-    <button
-      key={label}
-      type="button"
-      className="account-row"
-      onClick={onClick}
-      style={{ borderBottom: last ? 'none' : undefined }}
-    >
-      <span className="account-row__icon">{icon}</span>
-      <span className="account-row__label">{label}</span>
-      <span className="account-row__chevron" aria-hidden="true">›</span>
-    </button>
-  );
-
-  const hubLinkRow = (
-    icon: string,
-    label: string,
-    to: string,
-    last = false,
-  ) => (
-    <Link
-      key={to}
-      to={to}
-      className="account-row"
-      style={{ borderBottom: last ? 'none' : undefined }}
-    >
-      <span className="account-row__icon">{icon}</span>
-      <span className="account-row__label">{label}</span>
-      <span className="account-row__chevron" aria-hidden="true">›</span>
-    </Link>
-  );
+  const name = realName(customer?.name, customerName);
+  const go = (id: PanelId) => () => setPanel(id);
 
   return (
-    <div style={{ maxWidth: 600, margin: '0 auto', padding: '0 0 3rem', display: 'flex', flexDirection: 'column', gap: 0 }}>
+    <div className="acct">
       <PageHeader title={t('account.title')} />
 
-      <div style={{ padding: '0 var(--page-gutter)', display: 'flex', flexDirection: 'column', gap: 20 }}>
-        {/* Greeting */}
-        <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: 0 }}>
-          {t('account.greeting').replace('{name}', displayName)}
-        </p>
-
-        {/* Profile */}
-        <SectionCard title={t('account.profile')}>
-          {hubRow('👤', t('account.profile'), () => setPanel('profile'), true)}
-        </SectionCard>
-
-        {/* The till scans this to attach the account to a counter order.
-            Owner, 2026-09-02. The code carries the phone number the
-            account is registered under; nothing more. (It sat in the
-            signed-out branch until the 2026-09-24 audit, so nobody ever
-            saw it.) */}
-        {customer?.phone && (
-          <SectionCard title={t('account.my_code')}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }} data-testid="account-my-code">
-              <div style={{ padding: 10, background: '#fff', borderRadius: 12, border: '1px solid var(--color-border, #E8E0D8)' }}>
-                <QRCodeSVG value={`BG-C-${customer.phone}`} size={132} />
-              </div>
-              <p style={{ margin: 0, flex: '1 1 160px', fontSize: 14, lineHeight: 1.5, color: 'var(--color-text-secondary, #6B5D4F)' }}>
-                {t('account.my_code_hint')}
-              </p>
-            </div>
-          </SectionCard>
-        )}
-
-        {/* Prayer times — single mount */}
-        <SectionCard title={t('account.prayer_times')}>
-          <div style={{ overflow: 'visible' }}>
-            <PrayerBar />
-          </div>
-        </SectionCard>
-
-        {/* Addresses */}
-        <SectionCard title={t('account.addresses')}>
-          {hubRow('📍', t('account.addresses'), () => setPanel('addresses'), true)}
-        </SectionCard>
-
-        {/* Orders — link + recent list (§21.4) */}
-        <SectionCard title={t('account.orders')}>
-          {hubLinkRow('🧾', t('account.link_orders'), '/order-history')}
-          <div style={{ padding: '4px 4px 8px' }}>
-            <OrderHistorySection />
-          </div>
-        </SectionCard>
-
-        {/* Bookings */}
-        <SectionCard title={t('account.bookings')}>
-          {hubLinkRow('🎉', 'Plan an event', '/events')}
-          {hubLinkRow('📋', 'My events', '/events/mine')}
-          {hubRow('🗓', t('account.link_reservations'), () => setPanel('reservations'), true)}
-        </SectionCard>
-
-        {/* Wholesale shop — only when this customer has a trade account */}
-        {profile.hasTradeAccount && (
-          <SectionCard title="My shop">
-            <Link
-              to="/account/deliveries"
-              className="account-row"
-              data-testid="account-trade-deliveries-link"
-            >
-              <span className="account-row__icon">📦</span>
-              <span className="account-row__label">My deliveries</span>
-              <span className="account-row__chevron" aria-hidden="true">›</span>
-            </Link>
-            <Link
-              to="/account/statement"
-              className="account-row"
-              data-testid="account-trade-statement-link"
-              style={{ borderBottom: 'none' }}
-            >
-              <span className="account-row__icon">📄</span>
-              <span className="account-row__label">Statement &amp; pay</span>
-              <span className="account-row__chevron" aria-hidden="true">›</span>
-            </Link>
-          </SectionCard>
-        )}
-
-        {/* Account extras */}
-        <SectionCard title={t('account.extras')}>
-          {hubLinkRow('⭐', t('account.link_rewards'), '/rewards')}
-          {hubRow('🎁', t('account.referrals'),  () => setPanel('referrals'))}
-          {hubRow('💳', t('account.credit'),     () => setPanel('credit'))}
-          {hubRow('💰', t('account.deposit'),    () => setPanel('deposit'))}
-          {hubRow('❤️', t('account.favourites'), () => setPanel('favourites'))}
-          {hubRow('✍️', t('account.reviews'),    () => setPanel('reviews'), true)}
-        </SectionCard>
-
-        {/* Settings */}
-        <AccountSettingsBlock
-          push={pushToggle}
-          promoSms={customer ? { enabled: !customer.sms_opt_out, saving: profile.savingPromoSms, onToggle: () => void profile.handleTogglePromoSms() } : undefined}
+      <div className="acct__body">
+        <AccountHero
+          name={name}
+          phone={customer?.phone}
+          loyalty={loyalty}
+          tierProgress={tierProgress}
+          onEdit={go('profile')}
         />
 
-        {/* More */}
-        <AccountMoreBlock />
+        {customer && (
+          <ProfileNudge
+            missingName={name === null}
+            missingEmail={!(customer.email ?? '').trim()}
+            onAdd={go('profile')}
+          />
+        )}
 
-        {/* Log out */}
-        <div style={{ paddingTop: 4 }}>
-          <button
-            type="button"
-            onClick={handleLogout}
-            style={{
-              width: '100%',
-              padding: '14px',
-              background: 'transparent',
-              border: '1.5px solid var(--color-error, #dc2626)',
-              borderRadius: 12,
-              fontSize: 15,
-              fontWeight: 700,
-              color: 'var(--color-error, #dc2626)',
-              fontFamily: 'inherit',
-              cursor: 'pointer',
-            }}
-          >
-            {t('account.logout')}
-          </button>
+        <div className="acct__cols">
+          <div className="acct__col">
+            {customer?.phone && (
+              <div style={{ order: 1 }}>
+                <MyCodeCard phone={customer.phone} name={name} />
+              </div>
+            )}
+
+            <div style={{ order: 2 }}>
+              <QuickActions
+                actions={[
+                  { icon: 'repeat', label: t('account.quick_reorder'), to: '/order-history', testId: 'account-quick-reorder' },
+                  { icon: 'star', label: t('account.link_rewards'), to: '/rewards' },
+                  { icon: 'table', label: t('account.quick_table'), to: '/reservations' },
+                  { icon: 'users', label: t('account.quick_refer'), onClick: go('referrals') },
+                ]}
+              />
+            </div>
+
+            <section className="acct-card acct-orders" style={{ order: 3 }}>
+              <OrderHistorySection />
+            </section>
+
+            <div style={{ order: 5 }}>
+              <BlockShell title={t('account.prayer_times')} hub>
+                <div style={{ overflow: 'visible', padding: '0.75rem 0' }}>
+                  <PrayerBar />
+                </div>
+              </BlockShell>
+            </div>
+
+            <div style={{ order: 6 }}>
+              <AccountSettingsBlock
+                hub
+                push={pushToggle}
+                promoSms={customer ? { enabled: !customer.sms_opt_out, saving: profile.savingPromoSms, onToggle: () => void profile.handleTogglePromoSms() } : undefined}
+              />
+            </div>
+
+            <div style={{ order: 7 }}>
+              {/* Rewards and Gift cards are in the groups above. */}
+              <AccountMoreBlock hub skip={['/rewards', '/gift-cards']} />
+            </div>
+
+            <div style={{ order: 8 }}>
+              <button type="button" className="acct-logout" onClick={handleLogout}>
+                <Icon name="logout" size={18} /> {t('account.logout')}
+              </button>
+            </div>
+          </div>
+
+          <div className="acct__col">
+            <div style={{ order: 4, display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <MenuGroup
+                title={t('account.group_you')}
+                items={[
+                  { icon: 'user', label: t('account.profile'), hint: t('account.profile_hint'), onClick: go('profile'), testId: 'account-row-profile' },
+                  { icon: 'pin', label: t('account.addresses'), hint: t('account.addresses_hint'), onClick: go('addresses'), testId: 'account-row-addresses' },
+                  { icon: 'heart', label: t('account.favourites'), onClick: go('favourites'), testId: 'account-row-favourites' },
+                  { icon: 'star', label: t('account.reviews'), onClick: go('reviews'), testId: 'account-row-reviews' },
+                ]}
+              />
+
+              <MenuGroup
+                title={t('account.group_money')}
+                items={[
+                  { icon: 'gift', label: t('account.link_rewards'), hint: t('account.rewards_hint'), to: '/rewards' },
+                  { icon: 'users', label: t('account.referrals'), hint: t('account.referrals_hint'), onClick: go('referrals'), testId: 'account-row-referrals' },
+                  { icon: 'card', label: t('account.link_gift_cards'), to: '/gift-cards' },
+                  { icon: 'doc', label: t('account.credit'), onClick: go('credit'), testId: 'account-row-credit' },
+                  { icon: 'wallet', label: t('account.deposit'), onClick: go('deposit'), testId: 'account-row-deposit' },
+                ]}
+              />
+
+              <MenuGroup
+                title={t('account.bookings')}
+                items={[
+                  { icon: 'calendar', label: t('account.link_reservations'), onClick: go('reservations'), testId: 'account-row-reservations' },
+                  { icon: 'party', label: t('account.plan_event'), to: '/events' },
+                  { icon: 'list', label: t('account.my_events'), to: '/events/mine' },
+                  { icon: 'box', label: t('account.preorders'), onClick: go('preorders'), testId: 'account-row-preorders' },
+                ]}
+              />
+
+              {/* Wholesale shop — only when this customer has a trade account */}
+              {profile.hasTradeAccount && (
+                <MenuGroup
+                  title={t('account.my_shop')}
+                  items={[
+                    { icon: 'box', label: t('account.my_deliveries'), to: '/account/deliveries', testId: 'account-trade-deliveries-link' },
+                    { icon: 'receipt', label: t('account.statement_pay'), to: '/account/statement', testId: 'account-trade-statement-link' },
+                  ]}
+                />
+              )}
+
+              <MenuGroup
+                title={t('account.group_help')}
+                items={[
+                  { icon: 'flag', label: t('account.report_problem'), hint: t('account.report_problem_hint'), href: complaintUrl('app'), testId: 'account-row-complain' },
+                ]}
+              />
+            </div>
+
+          </div>
         </div>
       </div>
     </div>
