@@ -124,13 +124,54 @@ class TelegramAlertCopier
     public function copy(SmsMessage $sms, string $normalizedPhone, SmsLog $log, ?array $entry): void
     {
         $link = $this->target($sms, $normalizedPhone, $entry);
-        if ($link === null || !Cache::add($this->onceKey($log), 1, now()->addDays(2))) {
+        // An alert sent to the shop's business phone (new till waiting for
+        // approval, deliveries past ETA, social posts…) belongs to no staff
+        // account, so it goes to every linked owner instead (2026-10-07).
+        $links = $link !== null ? [$link] : $this->businessPhoneOwners($sms, $normalizedPhone, $entry);
+        if ($links === [] || !Cache::add($this->onceKey($log), 1, now()->addDays(2))) {
             return;
         }
 
-        DeferAfterResponse::run(function () use ($link, $sms, $entry): void {
-            $this->deliver($link, $sms, $entry, timeout: 8);
+        DeferAfterResponse::run(function () use ($links, $sms, $entry): void {
+            foreach ($links as $one) {
+                $this->deliver($one, $sms, $entry, timeout: 8);
+            }
         }, 'telegram-alert');
+    }
+
+    /**
+     * Linked owners, when this staff alert went to the business phone.
+     * The SMS to the shop phone still goes as before.
+     *
+     * @param array<string, mixed>|null $entry
+     * @return list<TelegramLink>
+     */
+    private function businessPhoneOwners(SmsMessage $sms, string $normalizedPhone, ?array $entry): array
+    {
+        try {
+            if (!self::enabled() || !self::isStaffAlert($entry, $sms->type) || $sms->type === 'discount_approval_otp') {
+                return [];
+            }
+            $business = substr(preg_replace('/\D/', '', (string) SiteSetting::get('business_phone', '')) ?? '', -7);
+            $to = substr(preg_replace('/\D/', '', $normalizedPhone) ?? '', -7);
+            if (strlen($business) !== 7 || $business !== $to) {
+                return [];
+            }
+
+            return TelegramLink::query()
+                ->with(['bot', 'user.role'])
+                ->whereNotNull('user_id')
+                ->whereNull('blocked_at')
+                ->get()
+                ->filter(fn (TelegramLink $l) => $l->isUsable() && $l->role() === 'owner')
+                ->unique('user_id')
+                ->values()
+                ->all();
+        } catch (Throwable $e) {
+            Log::warning('telegram alert: business phone lookup failed', ['type' => $sms->type, 'error' => $e->getMessage()]);
+
+            return [];
+        }
     }
 
     /** @param array<string, mixed>|null $entry */

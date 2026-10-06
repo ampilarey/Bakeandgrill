@@ -331,13 +331,33 @@ final class DiscountApprovalService
     /** Whether this staff member is one of the approvers the request went to. */
     public function isApprover(DiscountApproval $approval, User $user): bool
     {
+        return $this->approverRowFor($approval, $user) !== null;
+    }
+
+    /**
+     * The approver_codes entry for this staff member: picked by account, or
+     * (an approver added in Discount controls as a typed number) by their
+     * phone number.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function approverRowFor(DiscountApproval $approval, User $user): ?array
+    {
+        $mine = substr(preg_replace('/\D/', '', (string) $user->phone) ?? '', -7);
         foreach ((array) $approval->approver_codes as $row) {
-            if (is_array($row) && (int) ($row['user_id'] ?? 0) === (int) $user->id) {
-                return true;
+            if (!is_array($row)) {
+                continue;
+            }
+            if ((int) ($row['user_id'] ?? 0) === (int) $user->id) {
+                return $row;
+            }
+            $theirs = substr(preg_replace('/\D/', '', (string) ($row['phone'] ?? '')) ?? '', -7);
+            if (empty($row['user_id']) && strlen($mine) === 7 && $mine === $theirs) {
+                return array_merge($row, ['user_id' => (int) $user->id]);
             }
         }
 
-        return false;
+        return null;
     }
 
     /**
@@ -407,10 +427,9 @@ final class DiscountApprovalService
     /** @return array<string, mixed>|null the approver_codes entry for whoever tapped Approve */
     private function decidedApprover(DiscountApproval $approval): ?array
     {
-        foreach ((array) $approval->approver_codes as $row) {
-            if (is_array($row) && (int) ($row['user_id'] ?? 0) === (int) $approval->decided_by) {
-                return $row;
-            }
+        $decider = $approval->decided_by ? User::query()->find($approval->decided_by) : null;
+        if ($decider !== null && ($row = $this->approverRowFor($approval, $decider)) !== null) {
+            return $row;
         }
         $name = $approval->decided_by ? User::query()->whereKey($approval->decided_by)->value('name') : null;
 

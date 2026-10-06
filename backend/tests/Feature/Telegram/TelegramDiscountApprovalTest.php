@@ -152,6 +152,25 @@ class TelegramDiscountApprovalTest extends TestCase
         $this->assertSame('pending', DiscountApproval::findOrFail($approvalId)->status);
     }
 
+    public function test_an_approver_added_as_a_typed_number_gets_the_buttons(): void
+    {
+        SiteSetting::set(DiscountSettings::APPROVERS, json_encode([
+            ['user_id' => null, 'phone' => '765 4321', 'label' => 'Manager phone'],
+        ]));
+        SiteSetting::bust();
+        $bot = $this->bot();
+        $this->link($bot, $this->manager, '5550002');
+        $order = $this->order();
+        $approvalId = $this->ask($order);
+
+        $card = collect($this->sent('5550002'))->last();
+        $this->assertSame(['da:' . $approvalId, 'dd:' . $approvalId], array_column($card['reply_markup']['inline_keyboard'][0] ?? [], 'callback_data'));
+
+        $this->telegramButton($bot, '5550002', 'da:' . $approvalId)->assertOk();
+        $this->postJson("/api/orders/{$order->id}/discount/confirm", ['approval_id' => $approvalId, 'discount_amount' => 10])->assertOk();
+        $this->assertSame($this->manager->id, (int) $order->fresh()->manual_discount_approved_by);
+    }
+
     public function test_telegram_instead_of_sms_still_counts_as_sent(): void
     {
         SiteSetting::set(TelegramAlertCopier::SETTING_INSTEAD_OF_SMS, '1');

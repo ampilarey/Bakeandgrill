@@ -107,6 +107,27 @@ class TelegramOwnerBotTest extends TestCase
         $this->assertStringContainsString('Backup failed', $this->lastText('5550001'));
     }
 
+    /*
+     * Owner, 2026-10-07: "Why pos approval is not coming to admin bot?" A
+     * new till waiting for approval is texted to the business phone, which
+     * belongs to no staff account; linked owners get it on Telegram now.
+     */
+    public function test_an_alert_to_the_business_phone_reaches_the_linked_owners(): void
+    {
+        SiteSetting::set('business_phone', '+960 330 1234');
+        $owner = $this->staff('owner', '+9607820288');
+        $manager = $this->staff('manager', '+9607001002');
+        $bot = $this->bot();
+        $this->link($bot, $owner, '5550001');
+        $this->link($bot, $manager, '5550002');
+
+        $log = $this->alert('3301234', 'owner_device_approval', 'A new POS device "Front till 2" is waiting for approval.');
+
+        $this->assertSame('sent', $log->status, 'the shop phone still gets its SMS');
+        $this->assertStringContainsString('Front till 2', $this->lastText('5550001'));
+        $this->assertSame([], $this->sent('5550002'), 'owners only');
+    }
+
     public function test_customer_texts_never_go_to_a_staff_telegram(): void
     {
         $owner = $this->staff('owner', '+9607820288');

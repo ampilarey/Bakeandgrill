@@ -118,6 +118,23 @@ Two modes:
 An alert whose SMS is switched off (type switch, kill switch, budget) still
 goes to Telegram, the same rule as email.
 
+### Alerts sent to the business phone
+
+Some owner alerts go to the shop's business phone by default (new till
+waiting for approval, deliveries past ETA, unstarted paid orders, TV
+screens, social posts). That number belongs to no staff account, so those
+alerts also go to every linked **owner** on Telegram; the SMS to the shop
+phone is sent as before (2026-10-07).
+
+### Checking why something did not arrive
+
+`php artisan telegram:check` (read-only) lists the bots, who is linked and
+whether each link works, the alert switches, the business phone, who
+discount requests go to and whether each is linked, and the last staff
+alerts with their SMS status. A discount approver added in Discount
+controls as a typed number gets the Approve buttons when that number is a
+linked staff member's phone.
+
 ## Linking
 
 Admin → Telegram → People → **Link** makes a one-time link
