@@ -411,6 +411,19 @@ describe('SmsControlCenterPage', () => {
     expect(screen.getByText(/Marketing cap: 2 a day per number/)).toBeTruthy();
   });
 
+  // Owner, 2026-10-06: every text also by email, customers and staff alike.
+  it('shows and saves the email copy switches and hourly cap', async () => {
+    renderWithRouter(<SmsControlCenterPage />);
+    await screen.findByText(/Delivery rules/i);
+    expect(screen.getByText(/Email copies: customers, staff and promotions · up to 300 an hour/)).toBeTruthy();
+    fireEvent.click(screen.getByLabelText(/Staff and owner alerts/i));
+    fireEvent.change(screen.getByLabelText(/Emails per hour/i), { target: { value: '120' } });
+    fireEvent.click(screen.getByRole('button', { name: /Save rules/i }));
+    await waitFor(() => expect(api.updateSmsDeliveryRules).toHaveBeenCalledWith(
+      expect.objectContaining({ email_copy_staff: false, email_copy_hourly_cap: 120 }),
+    ));
+  });
+
   it('lets the owner choose who gets an owner alert, and only for owner alerts', async () => {
     vi.mocked(api.updateSmsType).mockResolvedValue({
       key: 'owner_stock_reorder',

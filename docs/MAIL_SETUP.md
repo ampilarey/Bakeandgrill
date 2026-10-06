@@ -63,6 +63,43 @@ working; the failure is logged as `OTP email could not be sent`.
 TEST (`test.bakeandgrill.mv`) has its own `.env` and needs the same lines if TEST
 should send e-mail; it can use the same mailbox.
 
+## Every text also by email (2026-10-06)
+
+Owner: "All. And not customers only. Admin and all staffs too receive email in all
+the scenarios." Every SMS the system sends, to a customer, a staff member or an owner,
+also goes by email to that person's saved address:
+
+| Who | Address used |
+|---|---|
+| Customer texts (orders, payments, refunds, bookings, credit, complaints, events, wholesale shops) | The customer account's email |
+| Staff and owner alerts | The staff account's email (matched by the phone number the alert went to) |
+| Promotions (campaigns, birthday, abandoned cart, tier) | The customer account's email, with a **Stop promotional messages** link and a one-click unsubscribe header |
+
+- The copy follows the SMS rules: a switched-off type, an opted-out customer, the
+  marketing cap and quiet hours stop the email too, because the copy is made only once
+  the text has passed them (`SmsService` → `SmsEmailCopier`).
+- Texts that already have their own email are not copied: sign-in codes, order
+  confirmed, online payment confirmed, gift card delivery, event request, quote and
+  confirmation.
+- Links in the text become buttons ("Pay now", "View invoice", "Track your order",
+  "Open the POS"...). One email per text, however often the SMS is retried.
+- Sent just after the page or job finishes, so a slow mail server never holds anything up.
+- **Cost:** nothing per email; the hosting's mail server sends them. Shared hosting
+  limits how many an hour, so there is a cap (default 300 an hour, all together);
+  promotions may use at most half, so order and staff emails always have room.
+- **Switches:** Admin → SMS → Control Center → Delivery rules → Email copies: customers,
+  staff and owner alerts, promotions, and the hourly cap.
+- Unsubscribing from the email link sets the same opt-out as the SMS page, so
+  promotional texts and emails both stop; order, payment and sign-in messages continue.
+
+| Piece | File |
+|---|---|
+| Copy rules, recipient lookup, cap | `app/Domains/Notifications/Services/SmsEmailCopier.php` |
+| The email | `app/Mail/SmsCopyMail.php`, `emails/sms_copy(.blade|_text.blade).php` |
+| Settings | `SmsDeliveryRules` (`sms_email_copy_*`), Control Center panel |
+| Unsubscribe | `EmailUnsubscribeController`, `/email/unsubscribe/{customer}` (signed) |
+| Tests | `tests/Feature/Sms/SmsEmailCopyTest.php` |
+
 ## How the emails look (2026-10-06)
 
 Owner: "Enhance the email send with branding and other features". Every customer

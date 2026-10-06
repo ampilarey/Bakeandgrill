@@ -69,7 +69,24 @@ const DEFAULT_RULES: SmsDeliveryRules = {
   bulk_daily_recipient_cap: 5000,
   log_retention_days: 365,
   marketing_opt_out_line: 'Stop: {url}',
+  email_copy_customers: true,
+  email_copy_staff: true,
+  email_copy_marketing: true,
+  email_copy_hourly_cap: 300,
 };
+
+/** "customers, staff and promotions · up to 300 an hour" for the rules summary line. */
+function emailCopySummary(r: SmsDeliveryRules): string {
+  const on = [
+    (r.email_copy_customers ?? true) && 'customers',
+    (r.email_copy_staff ?? true) && 'staff',
+    (r.email_copy_marketing ?? true) && 'promotions',
+  ].filter(Boolean) as string[];
+  if (on.length === 0) return 'off';
+  const list = on.length === 1 ? on[0] : `${on.slice(0, -1).join(', ')} and ${on[on.length - 1]}`;
+  const cap = r.email_copy_hourly_cap ?? 300;
+  return `${list}${cap > 0 ? ` · up to ${cap.toLocaleString()} an hour` : ''}`;
+}
 
 const KILL_SWITCH_WARNING =
   'This halts ALL outbound SMS, including login OTP codes — customers and staff will not be able to receive verification codes while this is on.';
@@ -446,6 +463,7 @@ export function SmsControlCenterPage() {
             {deferredCount > 0 && <> · {deferredCount} waiting</>}
             {' · '}Marketing cap: {rules.marketing_daily_cap === 0 ? 'off' : `${rules.marketing_daily_cap} a day per number`}
             {' · '}Bulk cap: {!rules.bulk_daily_recipient_cap ? 'off' : `${rules.bulk_daily_recipient_cap.toLocaleString()} campaign recipients a day`}
+            {' · '}Email copies: {emailCopySummary(rules)}
           </p>
           <p style={panelNote}>
             Login codes, order and payment texts are never held. The cap counts every marketing text to one number in a rolling day, whatever sends it.
@@ -487,6 +505,31 @@ export function SmsControlCenterPage() {
                   <label style={{ ...fieldLabel, flex: '1 1 220px' }}>
                     Unsubscribe line on marketing texts ({'{url}'} = the short link)
                     <input value={rulesDraft.marketing_opt_out_line ?? ''} maxLength={80} onChange={(e) => setRulesDraft((d) => ({ ...d, marketing_opt_out_line: e.target.value }))} placeholder="Empty = no line" style={inputStyle} />
+                  </label>
+                </div>
+              </fieldset>
+              <fieldset style={fieldsetStyle} data-testid="email-copy-rules">
+                <legend style={legendStyle}>Email copies</legend>
+                <p style={{ ...panelNote, margin: '0 0 10px' }}>
+                  Every text that goes out also goes by email to the person's saved address: the customer account for customers,
+                  the staff account for staff and owner alerts. Free to send; the hourly cap protects the mail server, and promotions use at most half of it.
+                </p>
+                <div className="sms-cc-fields">
+                  <label style={{ ...fieldLabel, flexDirection: 'row', alignItems: 'center', minWidth: 0 }}>
+                    <input type="checkbox" checked={rulesDraft.email_copy_customers ?? true} onChange={(e) => setRulesDraft((d) => ({ ...d, email_copy_customers: e.target.checked }))} />
+                    Customers
+                  </label>
+                  <label style={{ ...fieldLabel, flexDirection: 'row', alignItems: 'center', minWidth: 0 }}>
+                    <input type="checkbox" checked={rulesDraft.email_copy_staff ?? true} onChange={(e) => setRulesDraft((d) => ({ ...d, email_copy_staff: e.target.checked }))} />
+                    Staff and owner alerts
+                  </label>
+                  <label style={{ ...fieldLabel, flexDirection: 'row', alignItems: 'center', minWidth: 0 }}>
+                    <input type="checkbox" checked={rulesDraft.email_copy_marketing ?? true} onChange={(e) => setRulesDraft((d) => ({ ...d, email_copy_marketing: e.target.checked }))} />
+                    Promotions (with unsubscribe link)
+                  </label>
+                  <label style={fieldLabel}>
+                    Emails per hour, all together (0 = no cap)
+                    <input type="number" min={0} max={100000} value={rulesDraft.email_copy_hourly_cap ?? 300} onChange={(e) => setRulesDraft((d) => ({ ...d, email_copy_hourly_cap: Math.max(0, Math.min(100000, Number(e.target.value) || 0)) }))} style={inputStyle} />
                   </label>
                 </div>
               </fieldset>

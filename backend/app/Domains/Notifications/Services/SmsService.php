@@ -283,6 +283,11 @@ class SmsService
             }
         }
 
+        // Same text by email to the person's saved address (owner, 2026-10-06).
+        // Here, after every rule above, so the email obeys them too; it is
+        // sent after the response and can never affect the SMS.
+        app(SmsEmailCopier::class)->copy($sms, $normalized, $log, $registryEntry);
+
         [$success, $response, $error] = $this->provider->send($normalized, $sms->message);
 
         $status = $success ? 'sent' : ($response === 'demo' ? 'demo' : 'failed');

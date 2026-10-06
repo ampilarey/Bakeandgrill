@@ -40,6 +40,23 @@ final class SmsDeliveryRules
 
     public const OPT_OUT_LINE_DEFAULT = 'Stop: {url}';
 
+    /*
+     * Email copies (owner, 2026-10-06: "Admin and all staffs too receive
+     * email in all the scenarios"). Every text that passes the rules above
+     * also goes by email to the person's saved address. Email is free on the
+     * hosting but the server sends only so many an hour, so there is a cap;
+     * marketing may use at most half of it.
+     */
+    public const EMAIL_CUSTOMERS = 'sms_email_copy_customers';
+
+    public const EMAIL_STAFF = 'sms_email_copy_staff';
+
+    public const EMAIL_MARKETING = 'sms_email_copy_marketing';
+
+    public const EMAIL_HOURLY_CAP = 'sms_email_copy_hourly_cap';
+
+    public const EMAIL_HOURLY_CAP_DEFAULT = 300;
+
     /**
      * One bulk system (SMS audit, 2026-09-24): the old Promotions blast
      * refused to add more than N recipients in a rolling day, but only
@@ -68,6 +85,11 @@ final class SmsDeliveryRules
             'log_retention_days' => max(0, (int) SiteSetting::get(self::LOG_RETENTION, '365')),
             // Appended to every marketing text; {url} becomes the short unsubscribe link. Empty = none.
             'marketing_opt_out_line' => self::optOutLine(),
+            'email_copy_customers' => SmsTypeRegistry::settingIsTruthy(SiteSetting::get(self::EMAIL_CUSTOMERS, '1'), true),
+            'email_copy_staff' => SmsTypeRegistry::settingIsTruthy(SiteSetting::get(self::EMAIL_STAFF, '1'), true),
+            'email_copy_marketing' => SmsTypeRegistry::settingIsTruthy(SiteSetting::get(self::EMAIL_MARKETING, '1'), true),
+            // Email copies the server may send in an hour, all together; 0 = no cap.
+            'email_copy_hourly_cap' => max(0, (int) SiteSetting::get(self::EMAIL_HOURLY_CAP, (string) self::EMAIL_HOURLY_CAP_DEFAULT)),
         ];
     }
 
@@ -96,6 +118,16 @@ final class SmsDeliveryRules
             // SiteSetting::get() reads an empty value as "unset", so "no line" is stored as the word off.
             $line = mb_substr(trim((string) ($input['marketing_opt_out_line'] ?? '')), 0, 80);
             SiteSetting::set(self::OPT_OUT_LINE, $line === '' ? 'off' : $line);
+        }
+        foreach (['email_copy_customers' => self::EMAIL_CUSTOMERS, 'email_copy_staff' => self::EMAIL_STAFF, 'email_copy_marketing' => self::EMAIL_MARKETING] as $field => $key) {
+            if (array_key_exists($field, $input)) {
+                // Stored as the word off, like the opt-out line, so it never reads as unset.
+                SiteSetting::set($key, filter_var($input[$field], FILTER_VALIDATE_BOOLEAN) ? '1' : 'off');
+            }
+        }
+        if (array_key_exists('email_copy_hourly_cap', $input)) {
+            $cap = max(0, min(100000, (int) $input['email_copy_hourly_cap']));
+            SiteSetting::set(self::EMAIL_HOURLY_CAP, $cap === 0 ? 'off' : (string) $cap);
         }
         if (array_key_exists('log_retention_days', $input)) {
             SiteSetting::set(self::LOG_RETENTION, (string) max(0, min(3650, (int) $input['log_retention_days'])));

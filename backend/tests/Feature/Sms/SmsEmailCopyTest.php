@@ -1,0 +1,205 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Feature\Sms;
+
+use App\Domains\Notifications\Contracts\SmsProviderInterface;
+use App\Domains\Notifications\DTOs\SmsMessage;
+use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Notifications\Support\SmsDeliveryRules;
+use App\Mail\SmsCopyMail;
+use App\Models\Customer;
+use App\Models\User;
+use App\Support\DeferAfterResponse;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\URL;
+use Mockery;
+use Tests\TestCase;
+
+/**
+ * Owner, 2026-10-06: "All. And not customers only. Admin and all staffs too
+ * receive email in all the scenarios." Every text that passes the SMS rules
+ * also goes by email to the person's saved address.
+ */
+class SmsEmailCopyTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $provider = Mockery::mock(SmsProviderInterface::class);
+        $provider->shouldReceive('send')->andReturn([true, ['ok' => true], null]);
+        $this->app->instance(SmsProviderInterface::class, $provider);
+        Mail::fake();
+    }
+
+    private function text(string $to, string $message, string $type, ?int $customerId = null, ?string $key = null): void
+    {
+        app(SmsService::class)->send(new SmsMessage(
+            to: $to, message: $message, type: $type, customerId: $customerId, idempotencyKey: $key,
+        ));
+        DeferAfterResponse::flushTestingCallbacks();
+    }
+
+    private function customer(array $attrs = []): Customer
+    {
+        return Customer::create(array_merge([
+            'phone' => '+9607771234', 'name' => 'Aishath Ali', 'email' => 'aishath@example.com',
+            'loyalty_points' => 0, 'tier' => 'bronze',
+        ], $attrs));
+    }
+
+    public function test_a_customer_text_is_copied_to_the_customer_email_with_its_link_as_a_button(): void
+    {
+        $c = $this->customer();
+        $this->text('7771234', 'Your order #A12 is ready to collect. Track: https://bakeandgrill.mv/order/orders/12', 'customer_order_ready', $c->id);
+
+        Mail::assertSent(SmsCopyMail::class, function (SmsCopyMail $m) {
+            $html = $m->render();
+
+            return $m->hasTo('aishath@example.com')
+                && $m->subject === 'Your order #A12 is ready to collect'
+                && str_contains($html, 'Hi Aishath,')
+                && str_contains($html, '>Track your order</a>')
+                && str_contains($html, 'A copy of the text we sent to +960 777 ••34')
+                && $m->unsubscribeUrl() === null;
+        });
+    }
+
+    public function test_a_staff_alert_goes_to_the_staff_account_email(): void
+    {
+        $owner = User::factory()->create(['phone' => '+9607820288', 'email' => 'owner@example.com', 'is_active' => true]);
+
+        $this->text('7820288', 'Shift #4 has been open for 14 hours. Close it in the POS.', 'owner_shift_left_open');
+
+        Mail::assertSent(SmsCopyMail::class, function (SmsCopyMail $m) use ($owner) {
+            $html = $m->render();
+
+            return $m->hasTo($owner->email)
+                && $m->subject === 'Alert: Shift left open'
+                && str_contains($html, 'Staff alert')
+                && str_contains($html, 'For the team');
+        });
+    }
+
+    public function test_promotions_carry_a_working_unsubscribe_and_an_opted_out_customer_gets_neither(): void
+    {
+        $c = $this->customer();
+        $this->text('7771234', 'Weekend deal: 20% off grills. Order: https://bakeandgrill.mv/order', 'marketing_campaign', $c->id);
+
+        $url = null;
+        Mail::assertSent(SmsCopyMail::class, function (SmsCopyMail $m) use (&$url) {
+            $url = $m->unsubscribeUrl();
+            $html = $m->render();
+
+            return $url !== null
+                && ($m->headers()->text['List-Unsubscribe'] ?? null) === '<' . $url . '>'
+                && str_contains($html, 'Stop promotional messages (SMS and email)')
+                // The SMS's own "Stop: …/sms" line is not repeated in the email.
+                && !str_contains($html, '/sms</a>');
+        });
+
+        // One-click unsubscribe, as a mail app sends it.
+        $this->post($url, ['List-Unsubscribe' => 'One-Click'])->assertNoContent();
+        $this->assertTrue((bool) $c->fresh()->sms_opt_out);
+        $this->assertSame('email_link', $c->fresh()->sms_opt_out_source);
+
+        Mail::fake();
+        $this->travel(2)->days();
+        $this->text('7771234', 'Another deal', 'marketing_campaign', $c->id);
+        Mail::assertNothingSent();
+    }
+
+    public function test_the_unsubscribe_page_needs_the_signed_link_and_a_press(): void
+    {
+        $c = $this->customer();
+        $url = URL::signedRoute('email.unsubscribe', ['customer' => $c->id]);
+
+        $this->get(route('email.unsubscribe', ['customer' => $c->id]))->assertForbidden();
+        $this->get($url)->assertOk()->assertSee('Stop promotional messages');
+        $this->assertFalse((bool) $c->fresh()->sms_opt_out, 'opening the link alone must not unsubscribe');
+
+        $this->post($url)->assertOk()->assertSee('email-unsub-done', false);
+        $this->assertTrue((bool) $c->fresh()->sms_opt_out);
+    }
+
+    public function test_texts_that_already_have_their_own_email_are_not_copied(): void
+    {
+        $c = $this->customer();
+        $this->text('7771234', '#A12 confirmed. Track: https://bakeandgrill.mv/order/orders/12', 'customer_order_confirmed', $c->id);
+
+        Mail::assertNotSent(SmsCopyMail::class);
+    }
+
+    public function test_each_switch_turns_its_group_off(): void
+    {
+        $c = $this->customer();
+        User::factory()->create(['phone' => '+9607820288', 'email' => 'owner@example.com', 'is_active' => true]);
+        SmsDeliveryRules::update(['email_copy_customers' => false, 'email_copy_staff' => false]);
+
+        $this->text('7771234', 'Your order is ready.', 'customer_order_ready', $c->id);
+        $this->text('7820288', 'Shift open for 14 hours.', 'owner_shift_left_open');
+        Mail::assertNotSent(SmsCopyMail::class);
+
+        SmsDeliveryRules::update(['email_copy_staff' => true]);
+        $this->text('7820288', 'Shift open for 15 hours.', 'owner_shift_left_open', key: 'shift-15');
+        Mail::assertSent(SmsCopyMail::class, 1);
+    }
+
+    public function test_a_retried_text_is_emailed_once(): void
+    {
+        $c = $this->customer();
+        // The provider fails the first time; the caller retries with the same key.
+        $provider = Mockery::mock(SmsProviderInterface::class);
+        $provider->shouldReceive('send')->once()->andReturn([false, ['err' => 1], 'timeout']);
+        $provider->shouldReceive('send')->once()->andReturn([true, ['ok' => true], null]);
+        $this->app->instance(SmsProviderInterface::class, $provider);
+        $this->app->forgetInstance(SmsService::class);
+
+        $this->text('7771234', 'Your order is ready.', 'customer_order_ready', $c->id, 'order:ready:12');
+        $this->text('7771234', 'Your order is ready.', 'customer_order_ready', $c->id, 'order:ready:12');
+
+        Mail::assertSent(SmsCopyMail::class, 1);
+    }
+
+    public function test_the_hourly_cap_holds_and_promotions_get_half(): void
+    {
+        SmsDeliveryRules::update(['email_copy_hourly_cap' => 4, 'marketing_daily_cap' => 0]);
+        foreach (range(1, 6) as $i) {
+            $c = $this->customer(['phone' => '+96077700' . str_pad((string) $i, 2, '0', STR_PAD_LEFT), 'email' => "c{$i}@example.com"]);
+            $this->text($c->phone, "Deal {$i}", 'marketing_campaign', $c->id);
+        }
+        Mail::assertSent(SmsCopyMail::class, 2);
+
+        // Order texts still have room in the hour.
+        $c = $this->customer(['phone' => '+9607779999', 'email' => 'order@example.com']);
+        $this->text($c->phone, 'Your order is ready.', 'customer_order_ready', $c->id);
+        Mail::assertSent(SmsCopyMail::class, 3);
+    }
+
+    public function test_nobody_with_an_email_means_no_email(): void
+    {
+        $c = $this->customer(['email' => null]);
+        $this->text('7771234', 'Your order is ready.', 'customer_order_ready', $c->id);
+        $this->text('7000001', 'Shift open.', 'owner_shift_left_open');
+
+        Mail::assertNotSent(SmsCopyMail::class);
+    }
+
+    public function test_link_labels_say_what_the_link_opens(): void
+    {
+        $this->assertSame('Pay now', SmsCopyMail::linkLabel('https://bakeandgrill.mv/pay/abc'));
+        $this->assertSame('View invoice', SmsCopyMail::linkLabel('https://bakeandgrill.mv/invoices/abc'));
+        $this->assertSame('View receipt', SmsCopyMail::linkLabel('https://bakeandgrill.mv/receipts/abc'));
+        $this->assertSame('View your booking', SmsCopyMail::linkLabel('https://bakeandgrill.mv/reservations/abc'));
+        $this->assertSame('Open link', SmsCopyMail::linkLabel('https://example.com/x'));
+        $this->assertSame('Weekend deal', SmsCopyMail::withoutOptOutLine("Weekend deal\nStop: bakeandgrill.mv/sms"));
+        // Links become buttons: "Track:" goes with its link, other words stay.
+        $this->assertSame('Ready to collect.', SmsCopyMail::withoutLinks('Ready to collect. Track: https://bakeandgrill.mv/order/orders/1'));
+        $this->assertSame('Your gift card from Ali', SmsCopyMail::withoutLinks('Your gift card from Ali: https://bakeandgrill.mv/gift/x'));
+        $this->assertSame('Shift open 14 hours. Close it in the POS', SmsCopyMail::withoutLinks('Shift open 14 hours. Close it in the POS: https://bakeandgrill.mv/pos'));
+    }
+}

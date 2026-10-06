@@ -75,6 +75,13 @@ Route::middleware(['content.locale', 'service.banner'])->group(function () {
     Route::get('/sms/preferences', [App\Http\Controllers\SmsPreferencesPageController::class, 'show'])->name('sms.preferences');
     Route::post('/sms/preferences', [App\Http\Controllers\SmsPreferencesPageController::class, 'optOut'])
         ->middleware('throttle:10,10')->name('sms.preferences.opt-out');
+    // Stop promotions from the link in a promotional email (owner, 2026-10-06).
+    // Signed: the link is the authority. POST is CSRF-exempt (bootstrap/app.php)
+    // for the one-click unsubscribe that mail apps send.
+    Route::get('/email/unsubscribe/{customer}', [App\Http\Controllers\EmailUnsubscribeController::class, 'show'])
+        ->middleware('signed')->name('email.unsubscribe');
+    Route::post('/email/unsubscribe/{customer}', [App\Http\Controllers\EmailUnsubscribeController::class, 'store'])
+        ->middleware(['signed', 'throttle:20,1'])->name('email.unsubscribe.store');
     Route::get('/contact', [HomeController::class, 'contact'])->name('contact');
     // The complaint box: staff, food and service complaints from anybody,
     // with or without an order (owner, 2026-09-19). Posts to /api/complaint-box.

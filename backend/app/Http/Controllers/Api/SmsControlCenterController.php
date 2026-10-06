@@ -252,6 +252,10 @@ class SmsControlCenterController extends Controller
             'bulk_daily_recipient_cap' => 'sometimes|integer|min:0|max:1000000',
             'log_retention_days' => 'sometimes|integer|min:0|max:3650',
             'marketing_opt_out_line' => 'sometimes|nullable|string|max:80',
+            'email_copy_customers' => 'sometimes|boolean',
+            'email_copy_staff' => 'sometimes|boolean',
+            'email_copy_marketing' => 'sometimes|boolean',
+            'email_copy_hourly_cap' => 'sometimes|integer|min:0|max:100000',
         ]);
         if ($validated === []) {
             return response()->json(['message' => 'Provide at least one rule.'], 422);

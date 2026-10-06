@@ -322,6 +322,14 @@ export type SmsDeliveryRules = {
   log_retention_days?: number;
   /** Appended to every marketing text; {url} becomes the short unsubscribe link. Empty = none. */
   marketing_opt_out_line?: string;
+  /** Email copy of each text to the customer's saved address. */
+  email_copy_customers?: boolean;
+  /** Email copy of each staff / owner alert to the staff account's address. */
+  email_copy_staff?: boolean;
+  /** Email copy of promotional texts (with an unsubscribe link). */
+  email_copy_marketing?: boolean;
+  /** Email copies the server may send in an hour, all together; 0 = no cap. Promotions use at most half. */
+  email_copy_hourly_cap?: number;
 };
 
 export type SmsStaffOption = { id: number; name: string; phone: string; role: string | null };
