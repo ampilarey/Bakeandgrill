@@ -4,13 +4,14 @@
 .bgl .bgl-t{fill:#1C1408}
 [data-theme="dark"] .bgl .bgl-t{fill:#FFFDF9}
 .bgl .bgl-f{transform-box:fill-box;transform-origin:50% 100%;animation-timing-function:ease-in-out;animation-iteration-count:infinite}
-.bgl .bgl-main{animation-name:bgl-main;animation-duration:2.4s}
-.bgl .bgl-ol{animation-name:bgl-ol;animation-duration:2.9s}
-.bgl .bgl-or{animation-name:bgl-or;animation-duration:3.3s;animation-delay:-1.3s}
-.bgl .bgl-in{animation-name:bgl-in;animation-duration:1.6s}
-@keyframes bgl-main{0%,100%{transform:skewX(0) scaleY(1)}25%{transform:skewX(-3deg) scaleY(1.035)}50%{transform:skewX(.5deg) scaleY(.965)}75%{transform:skewX(3deg) scaleY(1.04)}}
-@keyframes bgl-ol{0%,100%{transform:skewX(0) scaleY(1)}35%{transform:skewX(3.5deg) scaleY(1.03)}70%{transform:skewX(-2.5deg) scaleY(.97)}}
-@keyframes bgl-or{0%,100%{transform:skewX(0) scaleY(1)}35%{transform:skewX(-3.5deg) scaleY(1.03)}70%{transform:skewX(2.5deg) scaleY(.97)}}
-@keyframes bgl-in{0%,100%{transform:scaleY(1);opacity:1}35%{transform:scaleY(1.06);opacity:.88}70%{transform:scaleY(.95);opacity:1}}
-@media (prefers-reduced-motion:reduce){.bgl .bgl-f{animation:none}}
+.bgl .bgl-main{animation-name:bgl-main;animation-duration:3.1s}
+.bgl .bgl-ol{animation-name:bgl-ol;animation-duration:2.3s;animation-delay:-.7s}
+.bgl .bgl-or{animation-name:bgl-or;animation-duration:2.7s;animation-delay:-1.9s}
+.bgl .bgl-in{animation-name:bgl-in;animation-duration:1.3s}
+@keyframes bgl-main{0%,100%{transform:skewX(0) scale(1,1)}13%{transform:skewX(-2deg) scale(.99,1.04)}29%{transform:skewX(1deg) scale(1.01,.97)}41%{transform:skewX(-1deg) scale(.985,1.05)}58%{transform:skewX(2.5deg) scale(1.01,.98)}72%{transform:skewX(-.5deg) scale(.99,1.03)}86%{transform:skewX(1.5deg) scale(1.005,.985)}}
+@keyframes bgl-ol{0%,100%{transform:skewX(0) scaleY(1)}21%{transform:skewX(3deg) scaleY(1.05)}38%{transform:skewX(-1deg) scaleY(.96)}63%{transform:skewX(2deg) scaleY(1.03)}81%{transform:skewX(-2.5deg) scaleY(.98)}}
+@keyframes bgl-or{0%,100%{transform:skewX(0) scaleY(1)}17%{transform:skewX(-3deg) scaleY(1.04)}44%{transform:skewX(1.5deg) scaleY(.97)}66%{transform:skewX(-2deg) scaleY(1.05)}88%{transform:skewX(2deg) scaleY(.99)}}
+@keyframes bgl-in{0%,100%{transform:scale(1,1);opacity:1}18%{transform:scale(.98,1.07);opacity:.9}37%{transform:scale(1.01,.96);opacity:1}55%{transform:scale(.99,1.05);opacity:.86}76%{transform:scale(1.01,.98);opacity:.97}}
+@media (prefers-reduced-motion:reduce){.bgl .bgl-f{animation:none}.bgl .bgl-fx{filter:none}}
 .bgl.bgl--still .bgl-f{animation:none}
+.bgl.bgl--still .bgl-fx{filter:none}

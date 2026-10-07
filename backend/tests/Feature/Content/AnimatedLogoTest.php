@@ -40,7 +40,11 @@ class AnimatedLogoTest extends TestCase
         $this->assertStringContainsString('id="bgl-drop-d"', $html);
         $this->assertStringContainsString('id="bgl-drop-m"', $html);
         $this->assertSame(1, substr_count($html, '@keyframes bgl-main'));
-        $this->assertStringContainsString('@media (prefers-reduced-motion:reduce){.bgl .bgl-f{animation:none}}', $html);
+        $this->assertStringContainsString('@media (prefers-reduced-motion:reduce){.bgl .bgl-f{animation:none}.bgl .bgl-fx{filter:none}}', $html);
+        // Real fire (2026-10-07): a rising ripple and a glow, per copy.
+        $this->assertStringContainsString('<filter id="bgl-fire-d"', $html);
+        $this->assertStringContainsString('filter="url(#bgl-fire-m)"', $html);
+        $this->assertStringContainsString('<feDisplacementMap', $html);
         $this->assertStringContainsString('[data-theme="dark"] .bgl .bgl-t{fill:#FFFDF9}', $html);
     }
 
@@ -69,6 +73,7 @@ class AnimatedLogoTest extends TestCase
                 $this->assertStringContainsString('id="' . $id . '"', $svg);
             }
             $this->assertStringContainsString('fill="' . $text . '"', $svg);
+            $this->assertStringContainsString('<feTurbulence', $svg, 'the fire runs in the standalone file too');
             $this->assertNotFalse(simplexml_load_string($svg), $file . ' is well-formed');
             $this->assertStringNotContainsString('stop-color="' . $text . '"', $svg, 'the "&" has no lettering-coloured top');
         }

@@ -1,13 +1,14 @@
 import { useId } from 'react';
 import './AnimatedLogo.css';
-import { AMP_STOPS, DROP_STOPS, MAIN, OUTER, PATHS } from './animatedLogoShapes';
+import { AMP_STOPS, DROP_STOPS, FIRE_FILTER, MAIN, OUTER, PATHS } from './animatedLogoShapes';
 
 /**
- * The Bake & Grill logo drawn as shapes, with the flames moving gently
- * (owner, 2026-10-07). Sits on the same 1080 canvas as brand/logo-light.png, so
- * it takes the image's place without moving anything. The lettering follows
- * the theme (dark text, cream on [data-theme="dark"]) unless `variant` fixes it;
- * the flames hold still under prefers-reduced-motion or `animate={false}`.
+ * The Bake & Grill logo drawn as shapes, with the flames moving like real fire
+ * and glowing (owner, 2026-10-07). Sits on the same 1080 canvas as
+ * brand/logo-light.png, so it takes the image's place without moving anything.
+ * The lettering follows the theme (dark text, cream on [data-theme="dark"])
+ * unless `variant` fixes it; the flames hold still, without the ripple and glow,
+ * under prefers-reduced-motion or `animate={false}`.
  */
 export function AnimatedLogo({
   size = 40,
@@ -48,17 +49,21 @@ export function AnimatedLogo({
           ))}
         </linearGradient>
       </defs>
-      <g className="bgl-f bgl-ol" fill={OUTER}>
-        <path d={PATHS.flame_outer_left} />
-      </g>
-      <g className="bgl-f bgl-or" fill={OUTER}>
-        <path d={PATHS.flame_outer_right} />
-      </g>
-      <g className="bgl-f bgl-main" fill={MAIN}>
-        <path d={PATHS.flame_main} />
-      </g>
-      <g className="bgl-f bgl-in" fill={`url(#bgl-drop${uid})`}>
-        <path d={PATHS.flame_inner} />
+      {/* A constant from the generator: an SVG filter with SMIL is easiest kept as markup. */}
+      <defs dangerouslySetInnerHTML={{ __html: FIRE_FILTER.replace('{id}', `bgl-fire${uid}`) }} />
+      <g className="bgl-fx" filter={`url(#bgl-fire${uid})`}>
+        <g className="bgl-f bgl-ol" fill={OUTER}>
+          <path d={PATHS.flame_outer_left} />
+        </g>
+        <g className="bgl-f bgl-or" fill={OUTER}>
+          <path d={PATHS.flame_outer_right} />
+        </g>
+        <g className="bgl-f bgl-main" fill={MAIN}>
+          <path d={PATHS.flame_main} />
+        </g>
+        <g className="bgl-f bgl-in" fill={`url(#bgl-drop${uid})`}>
+          <path d={PATHS.flame_inner} />
+        </g>
       </g>
       <g {...textProps}>
         <path d={PATHS.text_bg} />
@@ -72,4 +77,3 @@ export function AnimatedLogo({
     </svg>
   );
 }
-

@@ -198,16 +198,42 @@ CSS = """
 .bgl .bgl-t{fill:#1C1408}
 [data-theme="dark"] .bgl .bgl-t{fill:#FFFDF9}
 .bgl .bgl-f{transform-box:fill-box;transform-origin:50% 100%;animation-timing-function:ease-in-out;animation-iteration-count:infinite}
-.bgl .bgl-main{animation-name:bgl-main;animation-duration:2.4s}
-.bgl .bgl-ol{animation-name:bgl-ol;animation-duration:2.9s}
-.bgl .bgl-or{animation-name:bgl-or;animation-duration:3.3s;animation-delay:-1.3s}
-.bgl .bgl-in{animation-name:bgl-in;animation-duration:1.6s}
-@keyframes bgl-main{0%,100%{transform:skewX(0) scaleY(1)}25%{transform:skewX(-3deg) scaleY(1.035)}50%{transform:skewX(.5deg) scaleY(.965)}75%{transform:skewX(3deg) scaleY(1.04)}}
-@keyframes bgl-ol{0%,100%{transform:skewX(0) scaleY(1)}35%{transform:skewX(3.5deg) scaleY(1.03)}70%{transform:skewX(-2.5deg) scaleY(.97)}}
-@keyframes bgl-or{0%,100%{transform:skewX(0) scaleY(1)}35%{transform:skewX(-3.5deg) scaleY(1.03)}70%{transform:skewX(2.5deg) scaleY(.97)}}
-@keyframes bgl-in{0%,100%{transform:scaleY(1);opacity:1}35%{transform:scaleY(1.06);opacity:.88}70%{transform:scaleY(.95);opacity:1}}
-@media (prefers-reduced-motion:reduce){.bgl .bgl-f{animation:none}}
+.bgl .bgl-main{animation-name:bgl-main;animation-duration:3.1s}
+.bgl .bgl-ol{animation-name:bgl-ol;animation-duration:2.3s;animation-delay:-.7s}
+.bgl .bgl-or{animation-name:bgl-or;animation-duration:2.7s;animation-delay:-1.9s}
+.bgl .bgl-in{animation-name:bgl-in;animation-duration:1.3s}
+@keyframes bgl-main{0%,100%{transform:skewX(0) scale(1,1)}13%{transform:skewX(-2deg) scale(.99,1.04)}29%{transform:skewX(1deg) scale(1.01,.97)}41%{transform:skewX(-1deg) scale(.985,1.05)}58%{transform:skewX(2.5deg) scale(1.01,.98)}72%{transform:skewX(-.5deg) scale(.99,1.03)}86%{transform:skewX(1.5deg) scale(1.005,.985)}}
+@keyframes bgl-ol{0%,100%{transform:skewX(0) scaleY(1)}21%{transform:skewX(3deg) scaleY(1.05)}38%{transform:skewX(-1deg) scaleY(.96)}63%{transform:skewX(2deg) scaleY(1.03)}81%{transform:skewX(-2.5deg) scaleY(.98)}}
+@keyframes bgl-or{0%,100%{transform:skewX(0) scaleY(1)}17%{transform:skewX(-3deg) scaleY(1.04)}44%{transform:skewX(1.5deg) scaleY(.97)}66%{transform:skewX(-2deg) scaleY(1.05)}88%{transform:skewX(2deg) scaleY(.99)}}
+@keyframes bgl-in{0%,100%{transform:scale(1,1);opacity:1}18%{transform:scale(.98,1.07);opacity:.9}37%{transform:scale(1.01,.96);opacity:1}55%{transform:scale(.99,1.05);opacity:.86}76%{transform:scale(1.01,.98);opacity:.97}}
+@media (prefers-reduced-motion:reduce){.bgl .bgl-f{animation:none}.bgl .bgl-fx{filter:none}}
 """.strip()
+
+# Real fire (owner, 2026-10-07: "appear like a real flame ... make it glow"): a slowly
+# changing noise ripples the flames sideways (more than up and down), the ripple
+# strength flares and settles, and a warm halo, the flames' own shape blurred,
+# breathes behind them. SVG filters with SMIL, so they also run in an <img> and in
+# the standalone files. Reduced motion drops the filter (CSS above).
+FIRE = (
+    '<filter id="{id}" filterUnits="userSpaceOnUse" x="120" y="0" width="840" height="1240" color-interpolation-filters="sRGB">'
+    # one seamless tile of noise, repeated, sliding upward: ripples rise like heat
+    '<feTurbulence type="fractalNoise" baseFrequency="0.006 0.0125" numOctaves="1" seed="4" stitchTiles="stitch" x="120" y="0" width="840" height="240" result="n0"/>'
+    '<feTile in="n0" result="n1"/>'
+    '<feOffset in="n1" dy="0" result="n">'
+    '<animate attributeName="dy" from="0" to="-240" dur="1.7s" repeatCount="indefinite"/>'
+    '</feOffset>'
+    '<feColorMatrix in="n" type="matrix" values="1 0 0 0 0  0 .35 0 0 .325  0 0 1 0 0  0 0 0 0 1" result="m"/>'
+    '<feDisplacementMap in="SourceGraphic" in2="m" scale="30" xChannelSelector="R" yChannelSelector="G" result="d">'
+    '<animate attributeName="scale" dur="2.9s" values="26;40;22;36;30;26" keyTimes="0;.2;.45;.65;.85;1" calcMode="spline" keySplines=".4 0 .6 1;.4 0 .6 1;.4 0 .6 1;.4 0 .6 1;.4 0 .6 1" repeatCount="indefinite"/>'
+    '</feDisplacementMap>'
+    '<feGaussianBlur in="d" stdDeviation="2.6" result="fire"/>'
+    '<feGaussianBlur in="fire" stdDeviation="34" result="b"/>'
+    '<feColorMatrix in="b" type="matrix" values="0 0 0 0 1  0 0 0 0 .56  0 0 0 0 .12  0 0 0 .8 0" result="glow">'
+    '<animate attributeName="values" dur="2.3s" values="0 0 0 0 1  0 0 0 0 .56  0 0 0 0 .12  0 0 0 .55 0;0 0 0 0 1  0 0 0 0 .6  0 0 0 0 .15  0 0 0 .95 0;0 0 0 0 1  0 0 0 0 .54  0 0 0 0 .1  0 0 0 .65 0;0 0 0 0 1  0 0 0 0 .62  0 0 0 0 .16  0 0 0 1 0;0 0 0 0 1  0 0 0 0 .56  0 0 0 0 .12  0 0 0 .55 0" repeatCount="indefinite"/>'
+    '</feColorMatrix>'
+    '<feMerge><feMergeNode in="glow"/><feMergeNode in="fire"/></feMerge>'
+    '</filter>'
+)
 
 def body(uid, ids=False, text_fill=None):
     """The layers. uid makes gradient ids unique per copy on a page."""
@@ -220,11 +246,14 @@ def body(uid, ids=False, text_fill=None):
         '<defs>'
         f'<linearGradient id="{gid("drop")}" gradientUnits="userSpaceOnUse" x1="0" y1="{dy0}" x2="0" y2="{dy1}">{ds}</linearGradient>'
         f'<linearGradient id="{gid("amp")}" gradientUnits="userSpaceOnUse" x1="0" y1="{ay0}" x2="0" y2="{ay1}">{as_}</linearGradient>'
+        + FIRE.format(id=gid('fire')) +
         '</defs>'
+        f'<g class="bgl-fx" filter="url(#{gid("fire")})">'
         f'<g class="bgl-f bgl-ol"{idattr("flame-outer-left")} fill="{b["OUTER"]}"><path d="{P["flame-outer-left"]}"/></g>'
         f'<g class="bgl-f bgl-or"{idattr("flame-outer-right")} fill="{b["OUTER"]}"><path d="{P["flame-outer-right"]}"/></g>'
         f'<g class="bgl-f bgl-main"{idattr("flame-main")} fill="{b["MAIN"]}"><path d="{P["flame-main"]}"/></g>'
         f'<g class="bgl-f bgl-in"{idattr("flame-inner")} fill="url(#{gid("drop")})"><path d="{P["flame-inner"]}"/></g>'
+        '</g>'
         f'<g {tcls}{idattr("text-bg")}><path d="{P["text-bg"]}"/></g>'
         f'<g{idattr("text-amp")} fill="url(#{gid("amp")})"><path d="{P["text-amp"]}"/></g>'
         f'<g {tcls}{idattr("text-cafe")}><path d="{P["text-cafe"]}"/></g>'
@@ -268,12 +297,14 @@ ts = (
     f"export const DROP_STOPS: ReadonlyArray<readonly [number, string]> = {_stops(ds)};\n"
     "/** The ampersand's gold: [offset, colour] over y 784 to 915. */\n"
     f"export const AMP_STOPS: ReadonlyArray<readonly [number, string]> = {_stops(as_)};\n"
+    "/** The fire: rising ripple, flare and glow (SVG filter + SMIL). `{id}` is replaced per copy. */\n"
+    f"export const FIRE_FILTER =\n  '{FIRE}';\n"
     "export const PATHS = {\n"
     + ''.join(f"  {k.replace('-', '_')}: '{P[k]}',\n" for k in ['flame-outer-left', 'flame-outer-right', 'flame-main', 'flame-inner', 'text-bg', 'text-amp', 'text-cafe'])
     + "} as const;\n"
 )
 open(os.path.join(ROOT, 'apps/online-order-web/src/components/animatedLogoShapes.ts'), 'w').write(ts)
 css = ("/* The logo with moving flames (AnimatedLogo.tsx). Same rules as the website's\n"
-       "   partials/animated-logo.blade.php; generated by scripts/brand-animated-logo.py. */\n" + CSS + "\n.bgl.bgl--still .bgl-f{animation:none}\n")
+       "   partials/animated-logo.blade.php; generated by scripts/brand-animated-logo.py. */\n" + CSS + "\n.bgl.bgl--still .bgl-f{animation:none}\n.bgl.bgl--still .bgl-fx{filter:none}\n")
 open(os.path.join(ROOT, 'apps/online-order-web/src/components/AnimatedLogo.css'), 'w').write(css)
 print('order app shapes', len(ts), 'bytes')

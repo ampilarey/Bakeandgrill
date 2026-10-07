@@ -68,9 +68,10 @@ chosen themself was left alone.
 ## Files
 
 Logo and stamp files are in this folder and, for the ones the site serves, in
-`backend/public/brand/`. Downloadable packs: `/brand/bake-and-grill-logo-pack.zip`
-(the logos, app icons, link preview, no-photo tile and the two moving logos) and
-`/brand/bake-and-grill-stamp-pack.zip`.
+`backend/public/brand/`. The downloadable packs (`bake-and-grill-logo-pack.zip`,
+`bake-and-grill-animated-logo-pack.zip`, `bake-and-grill-stamp-pack.zip`) sit in
+`backend/public/brand/` (the two logo packs written by `scripts/brand-packs.py`) and are
+handed to the owner; they are not in git (`.gitignore` keeps out `*.zip`), so the live site does not serve them.
 
 `logo-light.png` is the master. Owner, 2026-10-07: the "&" had a dark strip across its
 top, where the gold fill stopped short of the letter (in the dark logo it was cream).
@@ -95,14 +96,20 @@ by `scripts/brand-icons.py` (run it, then copy the output where the table says).
 | `brand/logo-light-cream.png` | the light logo on a cream (#F8F6F3) square | `backend/public/brand/`, `docs/brand/` |
 | `brand/default-item-image.png` | cream 4:3 tile, the logo in a soft circle: menu items with no photo | `backend/public/brand/`, `docs/brand/` |
 | `logo.svg` (site root) | the trimmed light logo as a picture inside an SVG | `backend/public/` |
+| `brand/profile-picture-1080.png` | the logo on cream inside a round crop: social profile pictures | `backend/public/brand/` |
 | `brand/og-default.png` | 1200 × 630 cream card: link previews | `SocialPreviewImage` fallback, order app `og:image` |
 
 ### The logo with moving flames (2026-10-07)
 
 The website header (desktop and phone) and the order app's top bar draw the logo as
-shapes, and the four flames sway gently on a loop; the lettering stays still and follows
-the theme (`#1C1408`, cream `#FFFDF9` in dark mode). The flames hold still for visitors
-who ask their device for less motion. It stands in for the standard logo only: once
+shapes, and the flames burn like real fire: each sways and stretches on its own uneven
+rhythm, a soft ripple rises through them, and a warm glow breathes around them (owner,
+2026-10-07: "make the flames appear like a real flame and make it glow"). The ripple and
+glow are one SVG filter (`feTurbulence` tiled and sliding upward, `feDisplacementMap`,
+a blurred copy for the glow) animated with SMIL, so they also run in the standalone
+files. The lettering stays still and follows the theme (`#1C1408`, cream `#FFFDF9` in
+dark mode). For visitors who ask their device for less motion the flames hold still and
+the filter is dropped. It stands in for the standard logo only: once
 Admin has an uploaded logo of its own, the header shows that picture as before
 (`$animatedLogo` in `layout.blade.php`, `isStandardLogo()` in the order app).
 
@@ -114,6 +121,14 @@ Admin has an uploaded logo of its own, the header shows that picture as before
 
 All of them are traced from `logo-light.png` by `scripts/brand-animated-logo.py` (needs
 `potrace`, OpenCV, numpy); run it again if the logo PNG changes, then rebuild the order app.
+
+Social media cannot play SVG, so `scripts/brand-animated-logo-video.mjs <dir>` (Chromium
+via Playwright, ffmpeg with libx264 and libvpx-vp9) renders 10-second clips that loop
+without a jump: square and 9:16 story MP4s on cream and on dark brown, a 480 px GIF and
+a see-through VP9 WebM. `scripts/brand-packs.py <dir>` then writes
+`bake-and-grill-animated-logo-pack.zip` (those clips, the SVGs and the still
+`profile-picture-1080.png`, since profile pictures must be still) and refreshes
+`bake-and-grill-logo-pack.zip`. The clips live only in the zip.
 
 POS and KDS show their own `icon-192.png` (`/pos/…`, `/kds/…`) on the sign-in screens;
 the KDS accent is the dark-surface rust `#C56F3D`. The migration

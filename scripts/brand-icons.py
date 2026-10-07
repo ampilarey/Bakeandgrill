@@ -63,6 +63,9 @@ save(Image.open(f'{SRC}/logo-light.png').convert('RGBA'), 'logo.png')
 
 # Link previews (WhatsApp, Facebook…): 1200x630 cream card.
 save(place((1200, 630), light, 0.78, CREAM), 'og-default.png', opaque=True)
+# Profile pictures (Facebook, Instagram, WhatsApp, Telegram crop to a circle):
+# 1080 square, the whole logo inside the circle.
+save(place((1080, 1080), light, 0.64, CREAM), 'profile-picture-1080.png', opaque=True)
 
 # The light logo on a cream square, and the stand-in tile for menu items with no
 # photo (cream 4:3, the logo in a soft circle). Same geometry as the first build
