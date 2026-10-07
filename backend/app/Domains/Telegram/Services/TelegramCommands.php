@@ -266,12 +266,13 @@ class TelegramCommands
             }
         }
 
-        $top = collect($s['top_items'] ?? [])->take(5);
-        if ($top->isNotEmpty()) {
+        // With each item's sizes (2026-10-07), so Water shows Small and Large.
+        $top = $this->extras()->topItems($day->copy()->startOfDay(), $day->copy()->endOfDay());
+        if ($top !== []) {
             $lines[] = '';
             $lines[] = '<b>Best sellers</b>';
             foreach ($top as $i => $r) {
-                $lines[] = ($i + 1) . '. ' . T::e((string) ($r['name'] ?? '')) . ' × ' . (int) round((float) ($r['qty'] ?? 0));
+                $lines[] = TelegramOwnerExtras::bestSellerLine($i + 1, $r);
             }
         }
 
@@ -976,6 +977,7 @@ class TelegramCommands
         return match ($method) {
             'cash' => 'Cash',
             'card' => 'Card',
+            'qr', 'qr_code', 'bml_qr' => 'QR',
             'bml', 'bml_gateway', 'bml_connect' => 'BML online',
             'stripe' => 'Card online',
             'wallet' => 'Deposit',

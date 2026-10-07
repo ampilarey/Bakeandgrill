@@ -38,7 +38,7 @@ feed and Driver first, then Manager).
 
 | Button / command | What it does |
 |---|---|
-| 📊 Today, `/today`, `/today 2026-10-05` | Sales, orders, average, discounts, refunds, by order type, by payment method, best sellers, open shifts. Same figures as Admin → Reports → Daily summary. A past day also shows the change on the same weekday a week before. |
+| 📊 Today, `/today`, `/today 2026-10-05` | Sales, orders, average, discounts, refunds, by order type, by payment method, best sellers (each with its sizes, e.g. "Water × 56 (Small 40, Large 16)", since 2026-10-07; removed lines do not count), open shifts. Same figures as Admin → Reports → Daily summary. A past day also shows the change on the same weekday a week before. |
 | 💵 Shifts, `/shifts` | Each open shift: who, which till, since when, takings, float, cash sales, cash in/out, and the cash that should be in the drawer. When none is open, the last close and its difference. |
 | 🧾 Open orders, `/orders` | Orders from the last 24 hours not finished yet, oldest first. |
 | ✅ Approvals, `/approvals` | Refunds and new tills waiting, one card each. |

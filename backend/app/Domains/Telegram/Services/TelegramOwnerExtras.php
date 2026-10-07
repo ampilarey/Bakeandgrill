@@ -234,7 +234,7 @@ class TelegramOwnerExtras
             $lines[] = '';
             $lines[] = '<b>Best sellers</b>';
             foreach ($top as $i => $r) {
-                $lines[] = ($i + 1) . '. ' . T::e($r['name']) . ' × ' . $r['qty'];
+                $lines[] = self::bestSellerLine($i + 1, $r);
             }
         }
 
@@ -282,21 +282,65 @@ class TelegramOwnerExtras
     }
 
     /** @return list<array{name: string, qty: int}> */
-    private function topItems(Carbon $from, Carbon $to): array
+    /**
+     * Best sellers by item, each with its sizes (owner, 2026-10-07: "Why
+     * variants are not showing. For example water has small and large").
+     * Ranked by the item's total, as Admin's report ranks them; the split
+     * by variant follows: "Water × 56 (Small 40, Large 16)".
+     *
+     * @return list<array{name: string, qty: int, variants: list<array{name: string, qty: int}>}>
+     */
+    public function topItems(Carbon $from, Carbon $to, int $limit = 5): array
     {
-        return DB::table('order_items')
+        $base = fn () => DB::table('order_items')
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
-            ->join('items', 'items.id', '=', 'order_items.item_id')
             ->whereNull('orders.deleted_at')
+            ->whereNull('order_items.deleted_at')
             ->whereBetween('orders.created_at', [$from, $to])
-            ->whereIn('orders.status', ReportMoneySql::SALE_STATUSES)
-            ->selectRaw('items.name as name, SUM(order_items.quantity) as qty')
+            ->whereIn('orders.status', ReportMoneySql::SALE_STATUSES);
+
+        $top = $base()
+            ->join('items', 'items.id', '=', 'order_items.item_id')
+            ->selectRaw('items.id as id, items.name as name, SUM(order_items.quantity) as qty')
             ->groupBy('items.id', 'items.name')
             ->orderByDesc('qty')
-            ->limit(5)
+            ->limit($limit)
+            ->get();
+        if ($top->isEmpty()) {
+            return [];
+        }
+
+        $sizes = $base()
+            ->whereIn('order_items.item_id', $top->pluck('id')->all())
+            ->whereNotNull('order_items.variant_name')
+            ->where('order_items.variant_name', '!=', '')
+            ->selectRaw('order_items.item_id as item_id, order_items.variant_name as variant, SUM(order_items.quantity) as qty')
+            ->groupBy('order_items.item_id', 'order_items.variant_name')
+            ->orderByDesc('qty')
             ->get()
-            ->map(fn ($r) => ['name' => (string) $r->name, 'qty' => (int) round((float) $r->qty)])
-            ->all();
+            ->groupBy('item_id');
+
+        return $top->map(function ($r) use ($sizes): array {
+            $qty = (int) round((float) $r->qty);
+            $variants = collect($sizes->get($r->id, []))
+                ->map(fn ($v) => ['name' => (string) $v->variant, 'qty' => (int) round((float) $v->qty)])
+                ->values();
+            $sized = $variants->sum('qty');
+            // Lines sold before the item had sizes carry none: shown as "other".
+            if ($variants->isNotEmpty() && $sized < $qty) {
+                $variants->push(['name' => 'other', 'qty' => $qty - $sized]);
+            }
+
+            return ['name' => (string) $r->name, 'qty' => $qty, 'variants' => $variants->count() > 1 || ($variants->count() === 1 && $variants[0]['name'] !== 'other') ? $variants->all() : []];
+        })->all();
+    }
+
+    /** "3. Water × 56 (Small 40, Large 16)". */
+    public static function bestSellerLine(int $rank, array $r): string
+    {
+        $split = $r['variants'] === [] ? '' : ' (' . implode(', ', array_map(fn (array $v) => T::e($v['name']) . ' ' . $v['qty'], $r['variants'])) . ')';
+
+        return $rank . '. ' . T::e($r['name']) . ' × ' . $r['qty'] . $split;
     }
 
     private function change(float $now, float $before, string $label): string
