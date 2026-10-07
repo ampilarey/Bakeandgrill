@@ -112,6 +112,7 @@ const TRANSLATIONS: Translations = {
   "menu.controls_on": "on",
   "menu.results": "Results",
   "menu.choose_mode_short": "Choose",
+  "menu.add_short": "Add",
   "menu.not_for_mode": "{name} isn't available for {mode}. Choose another dish or order type.",
   "menu.all_sections": "All",
   "menu.sections_count": "{n} sections",

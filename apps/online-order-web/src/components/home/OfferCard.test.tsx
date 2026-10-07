@@ -42,8 +42,7 @@ describe('OfferCard', () => {
     expect(slider.getAttribute('data-has-media')).toBe('0');
     expect(slider.getAttribute('data-logo')).toBe('/logo.png');
     expect(screen.getByTestId('offer-card-media-frame').style.aspectRatio.replace(/\s/g, '')).toMatch(/1\/1|1/);
-    expect(screen.getByTestId('offer-card-price-row').textContent).toMatch(/9\.00\/-/);
-    expect(screen.getByTestId('offer-card-price-row').textContent).not.toMatch(/MVR/i);
+    expect(screen.getByTestId('offer-card-price-row').textContent).toMatch(/MVR 9\.00/);
   });
 
   it('uses default item image (cover slide) when offer has no image', () => {

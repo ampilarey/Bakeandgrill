@@ -3,13 +3,16 @@ export function laarToMvr(laar: number): string {
   return Number.isFinite(laar) ? (laar / 100).toFixed(2) : '0.00';
 }
 
-/** Menu / offers card price: "12.50/-" (no MVR prefix). */
+/**
+ * Menu, offers, cart and sheet price: "MVR 12.50". It read "12.50/-" while
+ * the website said "MVR 12.50" (owner, 2026-10-07: one way, both places).
+ */
 export function formatCardPrice(n: number): string {
-  return `${Number(n).toFixed(2)}/-`;
+  return `MVR ${Number(n).toFixed(2)}`;
 }
 
 /**
- * Savings chip for discounted unit prices — prefer "X% OFF", else "Save N/-".
+ * Savings chip for discounted unit prices — prefer "X% OFF", else "Save MVR N".
  * Presentation only; callers pass already-computed original vs sale.
  */
 export function formatSavingsLabel(original: number, sale: number): string | null {

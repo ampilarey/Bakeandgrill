@@ -22,10 +22,18 @@ export function menuImageUrl(url: string | null | undefined): string | null {
 }
 
 /** A section's banner colour when it has no photo, the same on the website. */
+/**
+ * From the brand's rust and browns only (owner, 2026-10-07: purple, blue and
+ * green banners were picked from the category number). The website's $tint
+ * uses the same six pairs.
+ */
+const TINTS: Array<[string, string]> = [
+  ['#9A3F0A', '#4A220C'], ['#B74B0C', '#5E2A0E'], ['#8A4B1F', '#3E2412'],
+  ['#A85A1E', '#4F2810'], ['#7C3A12', '#33190A'], ['#B0602A', '#5A2E12'],
+];
 export function menuTint(id: number): string {
-  const hues = [18, 28, 38, 160, 200, 280];
-  const h = hues[Math.abs(id) % hues.length];
-  return `linear-gradient(135deg, hsl(${h} 48% 42%) 0%, hsl(${(h + 28) % 360} 42% 28%) 100%)`;
+  const [a, b] = TINTS[Math.abs(id) % TINTS.length];
+  return `linear-gradient(135deg, ${a} 0%, ${b} 100%)`;
 }
 export const FEATURED_TINT = 'linear-gradient(135deg, hsl(38 72% 48%) 0%, hsl(24 70% 34%) 100%)';
 

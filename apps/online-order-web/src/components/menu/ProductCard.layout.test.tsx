@@ -63,7 +63,7 @@ describe('ProductCard ZUS compact layout', () => {
     langRef.current = 'en';
   });
 
-  it('floats without card chrome; media frame is square 1/1; price uses /- without MVR', async () => {
+  it('floats without card chrome; media frame is square 1/1; price reads MVR, as on the website', async () => {
     const user = userEvent.setup();
     const onSelectItem = vi.fn();
     const { container } = render(
@@ -85,15 +85,14 @@ describe('ProductCard ZUS compact layout', () => {
     // Square → circle: aspect-ratio 1/1 on slider; frame size is CSS aspect-ratio 1/1
     expect(screen.getByTestId('slider')).toHaveAttribute('data-aspect', '1 / 1');
 
-    expect(screen.getByTestId('menu-card-price-row').textContent).toMatch(/100\.00\/-/);
-    expect(container.textContent).not.toMatch(/MVR/);
+    expect(screen.getByTestId('menu-card-price-row').textContent).toMatch(/MVR 100\.00/);
 
     expect(container.querySelector('.card-add-btn')).toBeNull();
     await user.click(card);
     expect(onSelectItem).toHaveBeenCalledWith(baseItem, 1);
   });
 
-  it('renders From N/- for variant items and struck was price as N/-', () => {
+  it('renders From MVR N for variant items and struck was price as MVR N', () => {
     const { container } = render(
       <ProductCard
         item={{
@@ -116,8 +115,7 @@ describe('ProductCard ZUS compact layout', () => {
       />,
     );
 
-    expect(container.textContent).toMatch(/From\s+13\.20\/-/);
-    expect(container.textContent).not.toMatch(/MVR/);
+    expect(container.textContent).toMatch(/From\s+MVR 13\.20/);
   });
 
   it('uses card_name / short_description / price_note when set', () => {
@@ -136,7 +134,7 @@ describe('ProductCard ZUS compact layout', () => {
 
     expect(container.querySelector('.menu-card-name')?.textContent).toBe('Short Burger');
     expect(container.querySelector('.menu-card-desc')?.textContent).toBe('Smoky & juicy');
-    expect(screen.getByTestId('menu-card-price-row').textContent).toMatch(/from\s+100\.00\/-/i);
+    expect(screen.getByTestId('menu-card-price-row').textContent).toMatch(/from\s+MVR 100\.00/i);
   });
 
   it('falls back to name + truncated description when card fields empty', () => {

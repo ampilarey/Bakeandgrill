@@ -195,7 +195,7 @@ describe('browse while ordering gate is closed', () => {
     await waitFor(() => {
       expect(document.querySelector('.float-cart-fab')).toBeTruthy();
     });
-    expect(screen.getByText('85/-')).toBeTruthy();
+    expect(screen.getByText('MVR 85')).toBeTruthy();
 
     await user.click(document.querySelector('.float-cart-fab') as HTMLElement);
 

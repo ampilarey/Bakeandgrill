@@ -74,7 +74,7 @@ describe('FloatingCartBar regression', () => {
     await waitFor(() => {
       expect(document.querySelector('.float-cart-fab')).toBeTruthy();
     });
-    expect(screen.getByText('100/-')).toBeTruthy();
+    expect(screen.getByText('MVR 100')).toBeTruthy();
   });
 
   it('is hidden when cart is empty', async () => {

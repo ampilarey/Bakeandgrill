@@ -1038,8 +1038,13 @@ export function MenuPage() {
         isNew={item.is_new === true}
         onSelectItem={(it, qty) => handleSelectItem(it, qty)}
         onAddToCart={(it, qty, variant, packagingOptionId) => {
-          addItem(it, qty, [], variant ?? null, packagingOptionId);
-          showToast(variant ? `${it.name} (${variant.name}) added` : `${it.name} added to cart`);
+          // The card's quick "+": the same once-only question as the sheet's Add.
+          const run = () => {
+            addItem(it, qty, [], variant ?? null, packagingOptionId);
+            showToast(variant ? `${it.name} (${variant.name}) added` : `${it.name} added to cart`);
+          };
+          if (!modeConfirmed) { setModeAsk({ item: it, run }); return; }
+          run();
         }}
         isFavourite={favouriteIds.has(item.id)}
         onToggleFavourite={handleToggleFavourite}

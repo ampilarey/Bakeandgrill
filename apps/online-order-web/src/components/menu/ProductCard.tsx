@@ -8,12 +8,14 @@ import type { Item, Variant } from '../../api';
 import { useLanguage } from '../../context/LanguageContext';
 import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
 import { buildItemSlides, resolveMediaUrl } from '../../utils/itemMedia';
+import { isStandardItemTile } from '../../lib/brandLogo';
 import {
   endOfTomorrow,
   isItemOrderableForDay,
   itemLowStockLabel,
   itemNoticeLabel,
   itemTomorrowLowLabel,
+  itemMinOrderQty,
   itemUnavailableLabel,
   needsMoreNoticeThan,
 } from '../../utils/itemAvailability';
@@ -52,14 +54,13 @@ const SPICE_MAP: Record<string, { label: string; icon: string }> = {
 export function ProductCard({
   item,
   onSelectItem,
-  onAddToCart: _onAddToCart,
+  onAddToCart,
   isFavourite = false,
   onToggleFavourite,
   layout = 'grid',
   isNew = false,
   orderDay = 'today',
 }: ProductCardProps) {
-  void _onAddToCart;
   const { t, lang } = useLanguage();
   const { settings: s } = useSiteSettingsContext();
   const isList = layout === 'list';
@@ -162,6 +163,27 @@ export function ProductCard({
     onSelectItem(item, 1);
   };
 
+  // A dish with nothing to choose goes straight in from the card (owner,
+  // 2026-10-07: "+" like other food apps). Sizes, extras, platters, packaging
+  // or a minimum quantity open the sheet first, as a tap on the card does.
+  const needsChoices = activeVariants.length > 0
+    || (item.modifiers?.length ?? 0) > 0
+    || item.is_platter === true
+    || (item.packaging_options?.length ?? 0) > 0
+    || itemMinOrderQty(item) > 1;
+  const quickAdd = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (needsChoices) onSelectItem(item, 1);
+    else onAddToCart(item, 1);
+  };
+
+  // No photo and the standard stand-in: a quiet cream circle with the faded
+  // flame instead of the full logo, so a category of them does not read as a
+  // wall of logos (owner, 2026-10-07). A stand-in the owner uploaded is shown.
+  const quietTile = !cutoutSrc && slides.length > 0
+    && slides.every((sl) => sl.isPlaceholder === true)
+    && isStandardItemTile(slides[0].url);
+
   const badge = !isUnavailable && (isNew || (onSale && saleBadgeLabel) || spice)
     ? (
       <div className="menu-card-image-badges menu-card-image-badges--circle">
@@ -218,6 +240,10 @@ export function ProductCard({
                 data-testid="menu-card-cutout"
               />
             </picture>
+          ) : quietTile ? (
+            <span className="menu-card-quiet" role="img" aria-label={mediaAlt} data-testid="menu-card-quiet">
+              <img src={resolveMediaUrl('/brand/flame-mark.svg') ?? '/brand/flame-mark.svg'} alt="" width={53} height={50} loading="lazy" />
+            </span>
           ) : (
             <MenuImageSlider
               slides={slides}
@@ -254,6 +280,20 @@ export function ProductCard({
           </button>
         )}
         {badge}
+        {!isUnavailable && (
+          <button
+            type="button"
+            className="menu-card-add"
+            data-testid="menu-card-add"
+            aria-label={`${t('menu.add_short')} ${displayName}`}
+            onClick={quickAdd}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" aria-hidden="true">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </button>
+        )}
       </div>
 
       <div className="menu-card-body menu-card-body--zus">

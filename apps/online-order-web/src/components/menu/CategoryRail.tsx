@@ -5,12 +5,6 @@ import type { Category } from '../../api';
 import { useLanguage } from '../../context/LanguageContext';
 import { PictureImg } from './PictureImg';
 
-function tintFromId(id: number): string {
-  const hues = [18, 32, 48, 160, 200, 280];
-  const h = hues[id % hues.length];
-  return `hsl(${h} 55% 88%)`;
-}
-
 function resolve(url: string | null | undefined): string | null {
   if (!url) return null;
   return url.startsWith('http') ? url : `${API_ORIGIN}${url.startsWith('/') ? '' : '/'}${url}`;
@@ -70,20 +64,10 @@ function RailThumb({ category, size, className }: { category: Category; size: nu
       />
     );
   }
+  // Cream with the letter in rust, like every tile without a photo (owner,
+  // 2026-10-07: the pastel tiles picked from the id were not brand colours).
   return (
-    <span
-      className={className}
-      aria-hidden="true"
-      style={{
-        background: tintFromId(category.id),
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontWeight: 800,
-        fontSize: size >= 60 ? '1.1rem' : '0.95rem',
-        color: 'var(--color-dark)',
-      }}
-    >
+    <span className={`${className} cat-rail__thumb--plain`} aria-hidden="true">
       {initial}
     </span>
   );
@@ -224,13 +208,8 @@ export function CategoryRail({
             onClick={onOffersClick}
           >
             <span
-              className="cat-rail__thumb"
+              className="cat-rail__thumb cat-rail__thumb--plain"
               aria-hidden="true"
-              style={{
-                background: 'hsl(18 55% 88%)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontWeight: 800, fontSize: '1.1rem', color: 'var(--color-dark)',
-              }}
             >
               %
             </span>
@@ -249,12 +228,8 @@ export function CategoryRail({
             onClick={onFeaturedClick}
           >
             <span
-              className="cat-rail__thumb"
+              className="cat-rail__thumb cat-rail__thumb--plain"
               aria-hidden="true"
-              style={{
-                background: 'hsl(42 70% 86%)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-dark)',
-              }}
             >
               <Star size={24} strokeWidth={1.5} fill="currentColor" />
             </span>
@@ -292,13 +267,8 @@ export function CategoryRail({
             onClick={onOtherClick}
           >
             <span
-              className="cat-rail__thumb"
+              className="cat-rail__thumb cat-rail__thumb--plain"
               aria-hidden="true"
-              style={{
-                background: 'hsl(48 55% 88%)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontWeight: 800, fontSize: '1.1rem', color: 'var(--color-dark)',
-              }}
             >
               O
             </span>
@@ -318,12 +288,8 @@ export function CategoryRail({
             onClick={onCateringClick}
           >
             <span
-              className="cat-rail__thumb"
+              className="cat-rail__thumb cat-rail__thumb--plain"
               aria-hidden="true"
-              style={{
-                background: 'hsl(32 55% 88%)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-dark)',
-              }}
             >
               <PartyPopper size={24} strokeWidth={2.25} />
             </span>

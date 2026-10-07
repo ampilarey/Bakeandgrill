@@ -67,7 +67,7 @@ const offers: Offer[] = [
 ];
 
 describe('SpecialsCarousel', () => {
-  it('renders N/- prices and circular 1:1 media frames', () => {
+  it('renders MVR N prices and circular 1:1 media frames', () => {
     render(
       <MemoryRouter>
         <SpecialsCarousel offers={offers} apiOrigin="https://example.test" />
@@ -83,9 +83,8 @@ describe('SpecialsCarousel', () => {
     }
 
     const prices = screen.getAllByTestId('specials-carousel-card-price-row');
-    expect(prices[0].textContent).toMatch(/80\.00\/-/);
-    expect(prices[0].textContent).toMatch(/100\.00\/-/);
-    expect(prices[0].textContent).not.toMatch(/MVR/i);
+    expect(prices[0].textContent).toMatch(/MVR 80\.00/);
+    expect(prices[0].textContent).toMatch(/MVR 100\.00/);
   });
 
   it('uses branded placeholder (via slider) when offer has no image', () => {

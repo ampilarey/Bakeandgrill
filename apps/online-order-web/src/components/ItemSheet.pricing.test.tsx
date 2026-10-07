@@ -58,7 +58,7 @@ const saleItem: Item = {
 };
 
 describe('ItemSheet pricing display', () => {
-  it('shows N/- sale/was prices and a % OFF savings badge', () => {
+  it('shows MVR N sale/was prices and a % OFF savings badge', () => {
     render(
       <ItemSheet
         open
@@ -72,9 +72,8 @@ describe('ItemSheet pricing display', () => {
     );
 
     const price = screen.getByTestId('item-sheet-price');
-    expect(price.textContent).toMatch(/80\.00\/-/);
-    expect(price.textContent).toMatch(/100\.00\/-/);
-    expect(price.textContent).not.toMatch(/MVR/i);
+    expect(price.textContent).toMatch(/MVR 80\.00/);
+    expect(price.textContent).toMatch(/MVR 100\.00/);
     expect(screen.getByTestId('item-sheet-savings').textContent).toMatch(/20%\s*OFF|Chef Deal|% OFF/);
   });
 

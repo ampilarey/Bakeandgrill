@@ -137,10 +137,14 @@
     flex-shrink: 0;
 }
 /* Letter fallback only — an <img> is a replaced element and ignores this. */
+/* Cream with the letter or icon in rust: one look for every tile without a
+   photo (owner, 2026-10-07: the pastel tiles were not brand colours). */
 span.menu-rail-thumb {
     display: flex; align-items: center; justify-content: center;
-    font-weight: 800; font-size: 1rem;
-    color: #1C1408;
+    font-weight: 800; font-size: 1.15rem;
+    /* Rust thinned into the surface: cream by day, deep brown at night. */
+    background: color-mix(in srgb, var(--amber) 14%, var(--surface));
+    color: var(--amber);
 }
 .menu-rail-label {
     font-size: 0.75rem; font-weight: 600; line-height: 1.15;
@@ -180,6 +184,13 @@ span.menu-rail-thumb {
 .mh-banner {
     position: relative; height: 88px; border-radius: 14px; overflow: hidden;
     background: var(--amber-light);
+}
+.mh-banner::before {
+    /* A faint scatter of flames; a photo covers it, so it shows only on a
+       section without one. */
+    content: ""; position: absolute; inset: 0;
+    background: url('/brand/flame-pattern.svg') 0 0 / 120px 120px repeat;
+    opacity: 0.12; pointer-events: none;
 }
 .mh-img {
     position: absolute; inset: -6px;
@@ -256,7 +267,7 @@ span.menu-rail-thumb {
     position: relative; z-index: 1; flex: none;
     display: inline-flex; align-items: center; height: 38px; padding: 0 0.9rem;
     border: 1px solid var(--border); border-radius: 999px;
-    background: var(--card, #fff); color: var(--dark);
+    background: var(--surface); color: var(--dark);
     font-size: 0.875rem; font-weight: 700; text-decoration: none; white-space: nowrap;
     -webkit-tap-highlight-color: transparent;
     transition: color 0.24s, background-color 0.24s, border-color 0.24s;
@@ -268,7 +279,7 @@ span.menu-rail-thumb {
 html:not(.js) .mh-chip.is-active { background: var(--amber); }
 .mh-all {
     flex: none; height: 38px; border-radius: 999px;
-    border: 1px solid var(--border); background: var(--card, #fff); color: var(--dark);
+    border: 1px solid var(--border); background: var(--surface); color: var(--dark);
     display: inline-flex; align-items: center; justify-content: center; gap: 0.25rem;
     font: inherit; font-size: 0.875rem; font-weight: 700; cursor: pointer;
     -webkit-tap-highlight-color: transparent;
@@ -295,7 +306,7 @@ html:not(.js) .mh-search { display: none; }
 .mh-sheet {
     position: fixed; z-index: 906; left: 0; right: 0; bottom: 0;
     max-height: 70vh; overflow: auto;
-    background: var(--card, #fff); color: var(--dark);
+    background: var(--surface); color: var(--dark);
     border-radius: 20px 20px 0 0;
     padding: 0.5rem 1rem calc(1.25rem + env(safe-area-inset-bottom, 0px));
     box-shadow: 0 -10px 30px rgba(28,20,8,0.18);
@@ -342,7 +353,7 @@ html:not(.js) .mh-search { display: none; }
 .menu-subcat-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.35rem; }
 .menu-subcat-head .share-popover { bottom: auto; top: calc(100% + 0.4rem); left: auto; right: 0; }
 .menu-subcat-count { margin-inline-start: 0.5rem; font-size: 0.75rem; font-weight: 500; color: var(--muted); }
-.menu-sub-share { width: 34px; height: 34px; border: 1px solid var(--border); background: var(--card, #fff); color: var(--muted); }
+.menu-sub-share { width: 34px; height: 34px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); }
 .menu-subcat-title.is-arrived { animation: mh-arrive 0.9s cubic-bezier(.2,.7,.2,1); }
 @keyframes mh-arrive { 0%, 25% { color: var(--amber); transform: translateX(4px); } 100% { transform: none; } }
 .menu-subcat-block.is-arrived .menu-card { animation: mh-rise 0.42s cubic-bezier(.2,.7,.2,1) both; }
@@ -685,8 +696,8 @@ html.js .menu-fav { display: inline-flex; }
 }
 .menu-card-price {
     margin-top: auto; padding-top: 0.3rem;
-    font-size: 0.9375rem; font-weight: 500;
-    color: var(--muted);
+    font-size: 0.9375rem; font-weight: 700;
+    color: var(--dark);
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
 }
@@ -707,20 +718,21 @@ html.js .menu-fav { display: inline-flex; }
 .menu-card-image-badges--circle { width: max-content; max-width: 46%; }
 .menu-badge-new {
     display: inline-block;
-    background: linear-gradient(135deg, #dc2626 0%, #ea580c 100%);
+    background: var(--amber);
     color: #fff; border: none;
     font-size: 0.68rem; font-weight: 800;
     letter-spacing: 0.03em; text-transform: uppercase;
     padding: 0.24rem 0.5rem; line-height: 1.2;
     border-radius: 999px;
-    box-shadow: 0 2px 8px rgba(220,38,38,0.35);
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--amber) 35%, transparent);
 }
 /* Sold out: the card fades but stays a link, as in the order app. The badge
    sits where New would, and takes its place — a sold-out dish is not news. */
 .menu-badge-soldout {
     display: inline-block;
     background: var(--dark);
-    color: #fff; border: none;
+    /* The page colour, so the pill reads in both themes (--dark is cream at night). */
+    color: var(--bg); border: none;
     font-size: 0.68rem; font-weight: 800;
     letter-spacing: 0.03em; text-transform: uppercase;
     padding: 0.24rem 0.5rem; line-height: 1.2;
@@ -729,6 +741,8 @@ html.js .menu-fav { display: inline-flex; }
     white-space: nowrap;
 }
 .menu-card--sold-out .menu-card-circle-photo { opacity: 0.45; filter: grayscale(0.7); }
+/* The pill sits in the middle of the greyed photo, as in the order app. */
+.menu-card--sold-out .menu-card-image-badges { top: 50%; transform: translate(-50%, -50%); max-width: 90%; }
 .menu-card--sold-out .menu-card-body { opacity: 0.55; }
 .menu-card--sold-out:hover .menu-card-circle { transform: none; }
 /* The event section's one extra: a way into the wizard, above its dishes. */
@@ -769,6 +783,23 @@ html.js .menu-fav { display: inline-flex; }
     font-size: 0.95rem; font-weight: 700; letter-spacing: 0.01em;
     color: var(--dark);
 }
+/* A short rust stroke under each section's name (owner, 2026-10-07). */
+.menu-subcat-title { position: relative; padding-bottom: 0.35rem; }
+.menu-subcat-title::after {
+    content: ""; position: absolute; inset-inline-start: 0; bottom: 0;
+    width: 28px; height: 3px; border-radius: 2px; background: var(--amber);
+}
+/* A dish without a photo: a quiet cream circle with the flame, faded, so a
+   category of them does not read as a wall of logos (owner, 2026-10-07). */
+.menu-card-quiet {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    background: color-mix(in srgb, var(--amber) 14%, var(--surface));
+}
+/* The no-photo tile behind the circle is for a photo that fails to load. */
+.menu-shell .menu-card-circle-photo:has(.menu-card-quiet) { background-image: none; }
+[data-theme="dark"] .menu-card-circle-photo .menu-card-quiet img { opacity: 0.5; }
+.menu-card-circle-photo .menu-card-quiet img { width: 40%; height: auto; object-fit: contain; opacity: 0.32; }
 
 .menu-offers { margin: 1.25rem 0 0.5rem; }
 .menu-offers-title {
@@ -830,7 +861,7 @@ html.js .menu-fav { display: inline-flex; }
     max-height: min(92dvh, 92vh);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    background: var(--card, #fff);
+    background: var(--surface);
     border-radius: 20px 20px 0 0;
     box-shadow: 0 -10px 40px rgba(28,20,8,0.22);
     padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -847,7 +878,7 @@ html.js .menu-fav { display: inline-flex; }
 .menu-sheet-head {
     display: flex; align-items: center;
     padding: 10px 10px 2px;
-    background: var(--card, #fff);
+    background: var(--surface);
 }
 .menu-sheet-grab {
     width: 40px; height: 4px; border-radius: 999px;
@@ -940,16 +971,21 @@ body.menu-sheet-open { overflow: hidden; }
         return str_starts_with($path, 'images/cafe/') ? url($path) : $raw;
     };
 
-    /** Categories without art still get a distinct band rather than a grey box. */
+    /*
+     * A category without a photo still gets a distinct banner, from the brand's
+     * own rust and browns (owner, 2026-10-07: purple, blue and green ones were
+     * picked from the category number and are not brand colours). The same
+     * six pairs as the order app's menuTint(). Its rail tile is cream with a
+     * rust letter, like every other tile without a photo.
+     */
     $tint = function ($id) {
-        $hues = [18, 28, 38, 160, 200, 280];
-        $h = $hues[$id % count($hues)];
-        return "linear-gradient(135deg, hsl({$h} 48% 42%) 0%, hsl(" . (($h + 28) % 360) . " 42% 28%) 100%)";
+        $pairs = [['#9A3F0A', '#4A220C'], ['#B74B0C', '#5E2A0E'], ['#8A4B1F', '#3E2412'],
+            ['#A85A1E', '#4F2810'], ['#7C3A12', '#33190A'], ['#B0602A', '#5A2E12']];
+        [$a, $b] = $pairs[abs((int) $id) % count($pairs)];
+
+        return "linear-gradient(135deg, {$a} 0%, {$b} 100%)";
     };
-    $tintSoft = function ($id) {
-        $hues = [18, 32, 48, 160, 200, 280];
-        return 'hsl(' . $hues[$id % count($hues)] . ' 55% 88%)';
-    };
+    $tintSoft = fn ($id) => 'var(--amber-light)';
 
     $defaultItemImage = $mediaUrl(content('default_item_image'));
     $menuOffers = $menuOffers ?? collect();
@@ -1093,7 +1129,7 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                 @if($sec['rail'] === 'featured')
                     <a href="#menu-view-featured" data-testid="menu-featured-pill" data-sec="menu-view-featured"
                        aria-label="{{ $sec['name'] }}, {{ $sec['count'] }} {{ Str::plural('item', $sec['count']) }}">
-                        <span class="menu-rail-thumb" aria-hidden="true" style="background: hsl(42 70% 86%)">
+                        <span class="menu-rail-thumb" aria-hidden="true">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true">
                                 <path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6L2.5 9.4l6.6-.8z"/>
                             </svg>
@@ -1102,7 +1138,7 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                     </a>
                 @elseif($sec['rail'] === 'offers')
                     <a href="#menu-view-offers" data-testid="menu-offers-pill" data-sec="menu-view-offers" aria-label="Offers">
-                        <span class="menu-rail-thumb" aria-hidden="true" style="background: hsl(18 55% 88%)">%</span>
+                        <span class="menu-rail-thumb" aria-hidden="true">%</span>
                         <span class="menu-rail-label">Offers</span>
                     </a>
                 @elseif($sec['rail'] === 'category')
@@ -1129,7 +1165,7 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                class="menu-rail-events" data-testid="cat-rail-events"
                @if($menuCatering->isNotEmpty()) data-sec="cat-events" @endif
                aria-label="{{ $menuCatering->isNotEmpty() ? 'Events, ' . $menuCatering->count() . ' ' . Str::plural('item', $menuCatering->count()) : 'Events' }}">
-                <span class="menu-rail-thumb" aria-hidden="true" style="background: hsl(32 55% 88%)">
+                <span class="menu-rail-thumb" aria-hidden="true">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M5.8 11.3 2 22l10.7-3.79"/>
                         <path d="M4 3h.01"/>

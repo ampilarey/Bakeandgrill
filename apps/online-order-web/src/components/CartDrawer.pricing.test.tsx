@@ -64,7 +64,7 @@ vi.mock('../api', async () => {
 });
 
 describe('CartDrawer pricing display', () => {
-  it('shows N/- line prices and a savings badge when discounted', () => {
+  it('shows MVR N line prices and a savings badge when discounted', () => {
     render(
       <MemoryRouter>
         <CartDrawer />
@@ -72,9 +72,8 @@ describe('CartDrawer pricing display', () => {
     );
 
     const line = screen.getByTestId('cart-line-price');
-    expect(line.textContent).toMatch(/160\.00\/-/);
-    expect(line.textContent).toMatch(/200\.00\/-/);
-    expect(line.textContent).not.toMatch(/MVR/i);
+    expect(line.textContent).toMatch(/MVR 160\.00/);
+    expect(line.textContent).toMatch(/MVR 200\.00/);
     expect(screen.getByTestId('cart-line-savings').textContent).toMatch(/% OFF|Save /);
   });
 });

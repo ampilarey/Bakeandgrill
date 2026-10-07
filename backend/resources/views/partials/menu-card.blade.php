@@ -70,6 +70,10 @@
                         <img src="{{ $cutout }}" alt="{{ $iname['text'] }}"
                              loading="lazy" width="132" height="132" data-cutout="1">
                     </picture>
+                @elseif($chosen['animated_tile'] ?? false)
+                    <span class="menu-card-quiet" role="img" aria-label="{{ $iname['text'] }}">
+                        <img src="/brand/flame-mark.svg" alt="" width="53" height="50" loading="lazy">
+                    </span>
                 @elseif($photo)
                     <picture>
                         @if($webp)<source srcset="{{ $webp }}" type="image/webp">@endif

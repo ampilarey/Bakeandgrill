@@ -105,7 +105,7 @@ describe('OffersRail', () => {
     expect(container.querySelector('.offers-rail-card[style*="border"]')).toBeNull();
   });
 
-  it('shows N/- prices without MVR and branded placeholder when no image', () => {
+  it('shows MVR prices and branded placeholder when no image', () => {
     render(
       <MemoryRouter>
         <OffersRail offers={sampleOffers} apiOrigin="https://example.test" />
@@ -113,11 +113,9 @@ describe('OffersRail', () => {
     );
 
     const priceRows = screen.getAllByTestId('offers-rail-card-price-row');
-    expect(priceRows[0].textContent).toMatch(/80\.00\/-/);
-    expect(priceRows[0].textContent).toMatch(/100\.00\/-/);
-    expect(priceRows[0].textContent).not.toMatch(/MVR/i);
-    expect(priceRows[1].textContent).toMatch(/120\.50\/-/);
-    expect(priceRows[1].textContent).not.toMatch(/MVR/i);
+    expect(priceRows[0].textContent).toMatch(/MVR 80\.00/);
+    expect(priceRows[0].textContent).toMatch(/MVR 100\.00/);
+    expect(priceRows[1].textContent).toMatch(/MVR 120\.50/);
 
     const sliders = screen.getAllByTestId('menu-image-slider');
     const emptyMedia = sliders.filter((el) => el.getAttribute('data-has-media') === '0');

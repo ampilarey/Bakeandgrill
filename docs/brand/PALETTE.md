@@ -95,6 +95,8 @@ by `scripts/brand-icons.py` (run it, then copy the output where the table says).
 | `logo.png` (site root) | the light logo, see-through | fallback when no logo is saved |
 | `brand/logo-light-cream.png` | the light logo on a cream (#F8F6F3) square | `backend/public/brand/`, `docs/brand/` |
 | `brand/default-item-image.png` | cream 4:3 tile, the logo in a soft circle: menu items with no photo | `backend/public/brand/`, `docs/brand/` |
+| `brand/flame-mark.svg` | the flame alone, rust: the menu cards' quiet tile for a dish with no photo (faded on cream) | `backend/public/brand/`, made by `scripts/brand-flame-mark.py` |
+| `brand/flame-pattern.svg` | a 120px tile of small cream flames: the faint pattern on a menu banner without a photo | `backend/public/brand/`, made by `scripts/brand-flame-mark.py` |
 | `logo.svg` (site root) | the trimmed light logo as a picture inside an SVG | `backend/public/` |
 | `brand/profile-picture-1080.png` | the logo on cream inside a round crop: social profile pictures | `backend/public/brand/` |
 | `brand/og-default.png` | 1200 × 630 cream card: link previews | `SocialPreviewImage` fallback, order app `og:image` |
@@ -152,3 +154,12 @@ from three options). The source is `docs/brand/amma-logo.html` (render it 1080 �
 with a transparent background in Chromium to regenerate
 `backend/public/brand/amma-logo.png`). Labels use it for the Amma brand until a logo is
 uploaded under Labels → Types & brands.
+
+## Menu colours (2026-10-07)
+
+Menu banners without a photo use one of six rust-to-brown gradients (`menuTint()` in
+`apps/online-order-web/src/components/menu/MenuHead.tsx`, `$tint` in `menu.blade.php`), never a
+hue picked from the category id. Rail tiles and dish circles without a photo are rust thinned
+into the surface (`color-mix(rust 14%, surface)`), so they are cream by day and deep brown at
+night; the cream `--color-primary-light` stays cream in the order app's dark theme and must not
+be used for these. Badges (New, offers) are solid rust. Prices read "MVR 12.50" everywhere.

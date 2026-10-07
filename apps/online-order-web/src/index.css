@@ -1100,7 +1100,8 @@ a { text-decoration: none; color: inherit; }
   pointer-events: none;
 }
 .badge-sale {
-  background: linear-gradient(135deg, #dc2626 0%, #ea580c 100%);
+  /* Rust, the brand's accent (owner, 2026-10-07); it was red-orange. */
+  background: var(--color-primary);
   color: #fff;
   border: none;
   font-size: 0.68rem;
@@ -1108,7 +1109,7 @@ a { text-decoration: none; color: inherit; }
   letter-spacing: 0.03em;
   text-transform: uppercase;
   padding: 0.24rem 0.5rem;
-  box-shadow: 0 2px 8px rgba(220,38,38,0.35);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-primary) 35%, transparent);
   max-width: 100%;
   line-height: 1.2;
 }
@@ -3401,14 +3402,15 @@ textarea.field-input {
 
 .menu-card-article--zus .menu-card-price,
 .menu-card-article--zus .menu-card-price-sale {
-  font-size: 0.9375rem; /* ~15px — not heavier than the name */
-  font-weight: 500;
-  color: var(--color-text-muted);
+  font-size: 0.9375rem; /* ~15px */
+  /* Easy to find (owner, 2026-10-07): dark and bold, as on the website. */
+  font-weight: 700;
+  color: var(--color-text);
   font-variant-numeric: tabular-nums;
 }
 
 .menu-card-article--zus .menu-card-price-sale {
-  color: #b45309;
+  color: var(--color-primary);
 }
 
 .menu-card-article--zus .menu-card-price-was {
@@ -5843,3 +5845,72 @@ textarea.field-input {
 @media (prefers-reduced-motion: reduce) {
   .rail-order-btn, .menu-sticky-controls.is-dropped, .menu-bar-scrim { transition: none !important; animation: none !important; }
 }
+
+/* ── Menu look, owner 2026-10-07: brand colours only, quieter ───────── */
+/* A faint scatter of flames on a banner without a photo (a photo covers it). */
+.mh-banner::before {
+  content: ""; position: absolute; inset: 0;
+  background: url('/brand/flame-pattern.svg') 0 0 / 120px 120px repeat;
+  opacity: 0.12; pointer-events: none;
+}
+/* Rail tiles without a photo, and Offers / Chef's picks / Other / Events:
+   cream with the letter or icon in rust, one look for all. */
+.cat-rail__thumb--plain {
+  display: flex; align-items: center; justify-content: center;
+  /* Rust thinned into the surface: cream by day, a deep brown at night
+     (--color-primary-light stays cream in the dark theme). */
+  background: color-mix(in srgb, var(--color-primary) 14%, var(--color-surface));
+  color: var(--color-primary);
+  font-weight: 800; font-size: 1.15rem;
+}
+/* A short rust stroke under each section's name. */
+.menu-subcat-title { position: relative; padding-bottom: 0.35rem; }
+.menu-subcat-title::after {
+  content: ""; position: absolute; inset-inline-start: 0; bottom: 0;
+  width: 28px; height: 3px; border-radius: 2px; background: var(--color-primary);
+}
+/* A dish without a photo: a quiet cream circle with the faded flame, so a
+   category of them does not read as a wall of logos. */
+.menu-card-quiet {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--color-primary) 14%, var(--color-surface));
+}
+.menu-card-quiet img { width: 40%; height: auto; opacity: 0.32; }
+[data-theme="dark"] .menu-card-quiet img { opacity: 0.5; }
+/* Sold out, the same as the website: the photo greys out and a dark pill
+   sits on it; the white wash is gone. */
+.menu-card-article--zus.unavailable { opacity: 1; }
+.menu-card-article--zus.unavailable .menu-card-media-circle__frame { opacity: 0.45; filter: grayscale(0.7); }
+.menu-card-article--zus.unavailable .menu-card-body { opacity: 0.55; }
+.menu-card-article--zus .menu-card-unavail-overlay { background: transparent; }
+.menu-card-article--zus .menu-card-unavail-overlay .badge-unavail {
+  background: var(--color-dark, #1C1408); color: #fff; border: 0;
+  font-size: 0.68rem; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase;
+  padding: 0.24rem 0.55rem; border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(28, 20, 8, 0.3);
+}
+[data-theme="dark"] .menu-card-article--zus .menu-card-unavail-overlay .badge-unavail { background: #F5E6CC; color: #1C1408; }
+/* The quick "+" on the photo: a rust circle at its bottom right. A dish with
+   choices opens the sheet from it; the rest go straight into the cart. */
+.menu-card-article--zus .menu-card-add {
+  position: absolute;
+  bottom: -0.1rem;
+  right: max(0px, calc(50% - (var(--menu-circle-size, 132px) / 2) - 0.35rem));
+  z-index: 4;
+  width: 44px; height: 44px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0; background: transparent; color: #fff; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.menu-card-article--zus .menu-card-add::before {
+  content: ''; position: absolute; width: 34px; height: 34px; border-radius: 999px;
+  background: var(--color-primary);
+  box-shadow: 0 4px 10px -3px color-mix(in srgb, var(--color-primary) 70%, transparent);
+  z-index: -1; transition: transform 0.15s ease;
+}
+.menu-card-article--zus .menu-card-add svg { position: relative; }
+.menu-card-article--zus .menu-card-add:active::before { transform: scale(0.9); }
+.menu-card-article--zus .menu-card-add:focus-visible { outline: none; }
+.menu-card-article--zus .menu-card-add:focus-visible::before { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 35%, transparent); }
+.menu-card-article--list .menu-card-add { right: -0.15rem; bottom: -0.25rem; }
