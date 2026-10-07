@@ -9,7 +9,7 @@ describe('applyFavicon', () => {
   it('updates an existing icon link from settings.favicon', () => {
     const existing = document.createElement('link');
     existing.rel = 'icon';
-    existing.href = '/logo.png';
+    existing.href = '/order/favicon-32.png';
     document.head.appendChild(existing);
 
     applyFavicon('/storage/site/favicon.ico');
@@ -19,16 +19,32 @@ describe('applyFavicon', () => {
     expect(link!.getAttribute('href')).toBe('/storage/site/favicon.ico');
   });
 
-  it('falls back to /logo.png when favicon is unset', () => {
+  it('falls back to the flame favicon when favicon is unset', () => {
     applyFavicon(undefined);
     const link = document.head.querySelector<HTMLLinkElement>('link[rel="icon"]');
     expect(link).toBeTruthy();
-    expect(link!.getAttribute('href')).toBe('/logo.png');
+    expect(link!.getAttribute('href')).toBe('/order/favicon-32.png');
 
     applyFavicon('   ');
     expect(document.head.querySelector<HTMLLinkElement>('link[rel="icon"]')!.getAttribute('href')).toBe(
-      '/logo.png',
+      '/order/favicon-32.png',
     );
+  });
+
+  it('updates every icon link, so the .ico cannot win over a custom favicon', () => {
+    for (const [href, sizes] of [['/order/favicon.ico', '48x48'], ['/order/favicon-32.png', '32x32']]) {
+      const l = document.createElement('link');
+      l.rel = 'icon';
+      l.href = href;
+      l.setAttribute('sizes', sizes);
+      document.head.appendChild(l);
+    }
+
+    applyFavicon('/storage/site/our-icon.png');
+
+    const links = Array.from(document.head.querySelectorAll<HTMLLinkElement>('link[rel="icon"]'));
+    expect(links.map((l) => l.getAttribute('href'))).toEqual(['/storage/site/our-icon.png', '/storage/site/our-icon.png']);
+    expect(links.every((l) => !l.hasAttribute('sizes'))).toBe(true);
   });
 
   it('creates a link element when none exists', () => {

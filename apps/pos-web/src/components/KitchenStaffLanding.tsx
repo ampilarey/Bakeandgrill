@@ -68,7 +68,7 @@ export function KitchenStaffLanding({
         }}
       >
         <img
-          src="/logo.png"
+          src="/pos/icon-192.png"
           alt="Bake & Grill"
           style={{ width: 56, height: 56, borderRadius: 12, marginBottom: space.m }}
         />

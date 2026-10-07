@@ -25,7 +25,7 @@ class SocialPreviewImageTest extends TestCase
         $this->assertTrue($svc->isShareableRaster('https://cdn.example.com/no-extension'));
     }
 
-    public function test_a_setting_naming_deleted_media_falls_through_to_the_logo(): void
+    public function test_a_setting_naming_deleted_media_falls_through_to_the_preview_card(): void
     {
         // Owner, 2026-09-01: og_image still named a media file that had been
         // removed, so every share fetched a 404 and showed no picture. A
@@ -36,7 +36,8 @@ class SocialPreviewImageTest extends TestCase
 
         $url = (new SocialPreviewImage)->siteFallback();
 
-        $this->assertSame(asset('logo.png'), $url);
+        // The link-preview card made for it (2026-10-07), not the bare logo.
+        $this->assertSame(asset('brand/og-default.png'), $url);
         $this->assertStringStartsWith('http', $url, 'og:image must be absolute');
     }
 

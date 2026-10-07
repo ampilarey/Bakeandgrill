@@ -98,6 +98,9 @@ final class SocialPreviewImage
     {
         foreach ([
             content('og_image', ''),
+            // A 1200x630 card made for link previews (2026-10-07), before
+            // the no-photo tile and the bare logo.
+            asset('brand/og-default.png'),
             content('default_item_image', ''),
             asset('logo.png'),
         ] as $raw) {

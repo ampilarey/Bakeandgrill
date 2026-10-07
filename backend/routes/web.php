@@ -305,7 +305,7 @@ Route::get('/order/{any}', function () {
 Route::get('/board', function () {
     return response()->view('board', [
         'siteName' => App\Models\SiteSetting::get('site_name', 'Bake & Grill'),
-        'favicon' => App\Models\SiteSetting::get('favicon', App\Models\SiteSetting::get('logo', asset('logo.png'))),
+        'favicon' => App\Models\SiteSetting::get('favicon', '') ?: asset('favicon-32.png'),
     ])->header('Cache-Control', 'no-store, no-cache, must-revalidate')
         ->header('X-Robots-Tag', 'noindex, nofollow');
 })->name('board');

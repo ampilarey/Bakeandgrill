@@ -71,6 +71,28 @@ Logo and stamp files are in this folder and, for the ones the site serves, in
 `backend/public/brand/`. Downloadable packs: `/brand/bake-and-grill-logo-pack.zip`
 and `/brand/bake-and-grill-stamp-pack.zip`.
 
+### App icons and tab icons (2026-10-07)
+
+Owner, 2026-10-07: "in some places it use old logo … Pwa logo." The black-square logo
+is retired everywhere. Every file below is made from `logo-light.png` / `logo-mark.png`
+by `scripts/brand-icons.py` (run it, then copy the output where the table says).
+
+| File | What | Where |
+|---|---|---|
+| `icon-192.png`, `icon-512.png` | the logo on a cream (#F7F5F2) tile, opaque | each app's `public/` (admin names them `favicon-192/512.png`); manifests |
+| `icon-maskable-512.png` | the same with room for Android's circle crop | each app's `public/`; manifests (`purpose: maskable`) |
+| `apple-touch-icon.png` | 180 px tile; iOS paints see-through black, so it is opaque | each app's `public/`, `backend/public/` |
+| `favicon-32.png`, `favicon.ico` | the flame alone (legible at 16 px) | each app's `public/`, `backend/public/` |
+| `brand/logo-dark.png` | the logo with cream lettering, see-through: dark surfaces | `logo_dark` setting: website footer, dark mode, signage |
+| `logo.png` (site root) | the light logo, see-through | fallback when no logo is saved |
+| `brand/og-default.png` | 1200 × 630 cream card: link previews | `SocialPreviewImage` fallback, order app `og:image` |
+
+POS and KDS show their own `icon-192.png` (`/pos/…`, `/kds/…`) on the sign-in screens;
+the KDS accent is the dark-surface rust `#C56F3D`. The migration
+`2026_10_08_120000_brand_icons_no_old_logo.php` moved a saved favicon, logo or preview
+image still naming an old file; `tests/Feature/Content/BrandIconsTest.php` checks every
+manifest icon is a real image of its stated size and every touch icon is opaque.
+
 ## Amma
 
 The Amma sub-brand (home-made lines, Rihaakuru first) prints a rust tile: a rounded

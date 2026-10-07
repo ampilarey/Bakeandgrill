@@ -11,7 +11,7 @@ export default defineConfig({
       injectRegister: false,
       filename: 'sw.js',
       manifestFilename: 'manifest.webmanifest',
-      includeAssets: ['logo.png', 'pos-version.json', 'currency/**/*'],
+      includeAssets: ['logo.png', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png', 'favicon-32.png', 'favicon.ico', 'pos-version.json', 'currency/**/*'],
       manifest: {
         name: 'Bake & Grill — POS',
         short_name: 'B&G POS',
@@ -26,24 +26,9 @@ export default defineConfig({
         lang: 'en',
         dir: 'ltr',
         icons: [
-          {
-            src: '/pos/logo.png',
-            sizes: '192x192',
-            type: 'image/png',
-            purpose: 'any',
-          },
-          {
-            src: '/pos/logo.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any',
-          },
-          {
-            src: '/pos/logo.png',
-            sizes: '1080x1080',
-            type: 'image/png',
-            purpose: 'maskable',
-          },
+          { src: '/pos/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: '/pos/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: '/pos/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
         categories: ['business', 'productivity'],
       },

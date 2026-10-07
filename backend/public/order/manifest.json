@@ -5,7 +5,11 @@
   "start_url": "/order/",
   "scope": "/order/",
   "display": "standalone",
-  "display_override": ["standalone", "minimal-ui", "browser"],
+  "display_override": [
+    "standalone",
+    "minimal-ui",
+    "browser"
+  ],
   "background_color": "#FFFDF9",
   "theme_color": "#B74B0C",
   "orientation": "portrait-primary",
@@ -13,20 +17,20 @@
   "dir": "ltr",
   "icons": [
     {
-      "src": "/logo.png",
+      "src": "/order/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/logo.png",
+      "src": "/order/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/logo.png",
-      "sizes": "192x192",
+      "src": "/order/icon-maskable-512.png",
+      "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
     }
@@ -45,5 +49,9 @@
       "description": "View past orders and receipts"
     }
   ],
-  "categories": ["food", "lifestyle", "shopping"]
+  "categories": [
+    "food",
+    "lifestyle",
+    "shopping"
+  ]
 }

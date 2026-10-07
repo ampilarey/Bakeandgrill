@@ -129,7 +129,7 @@ export function LoginPage({ username, setUsername, pin, setPin, deviceId, authEr
           textAlign: 'center',
         }}>
           <img
-            src="/logo.png"
+            src="/pos/icon-192.png"
             alt="Bake & Grill"
             style={{
               width: 56,

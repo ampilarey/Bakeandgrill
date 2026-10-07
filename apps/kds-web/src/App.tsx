@@ -452,7 +452,7 @@ function App() {
       <div className="kds-signin">
         <div className="kds-signin-card">
           <div style={{ textAlign: "center", marginBottom: 22 }}>
-            <img src="/logo.png" alt="Bake &amp; Grill" style={{ width: 60, height: 60, borderRadius: 14, marginBottom: 10 }} />
+            <img src="/kds/icon-192.png" alt="Bake &amp; Grill" style={{ width: 60, height: 60, borderRadius: 14, marginBottom: 10 }} />
             <p style={{ color: "var(--kds-ink-dim)", fontSize: 15, margin: 0, fontWeight: 700 }}>
               Kitchen Display — sign in
             </p>

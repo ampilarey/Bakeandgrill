@@ -28,7 +28,9 @@
   --kds-ink: #fdfaf4;
   --kds-ink-dim: #b6a992;
   --kds-ink-faint: #8b7f6b;
-  --kds-accent: #f0913f;
+  /* The brand rust lightened for a dark surface (docs/brand/PALETTE.md);
+     was a stand-alone orange until 2026-10-07. Status colours below are not brand. */
+  --kds-accent: #c56f3d;
 
   --kds-ok: #35c46a;
   --kds-warn: #f7a23b;
@@ -287,7 +289,7 @@ button {
 }
 
 .kds-lane-head[data-flash="true"] {
-  background: rgba(240, 145, 63, 0.16);
+  background: rgba(197, 111, 61, 0.16);
 }
 
 .kds-lane-head[data-flash="true"] .kds-lane-title {
@@ -394,7 +396,7 @@ button {
 .kds-tag--type { background: rgba(253, 250, 244, 0.12); color: var(--kds-ink); }
 .kds-tag--done { background: rgba(53, 196, 106, 0.18); color: #8bf0b0; }
 /* Kitchen audit, 2026-09-26 */
-.kds-tag--slot { background: rgba(240, 145, 63, 0.2); color: #ffd2a6; font-weight: 700; }
+.kds-tag--slot { background: rgba(197, 111, 61, 0.2); color: #ffd2a6; font-weight: 700; }
 .kds-ticket--cancelled { border-left-color: var(--kds-late); opacity: 0.85; }
 .kds-ticket--cancelled .kds-lines { text-decoration: line-through; text-decoration-color: var(--kds-late); }
 .kds-cancelled {
@@ -418,7 +420,7 @@ button {
 }
 /* The island keeps its own case: "MALE" in capitals reads as something
    else entirely. */
-.kds-tag--delivery { background: rgba(240, 145, 63, 0.18); color: #ffc793; text-transform: none; }
+.kds-tag--delivery { background: rgba(197, 111, 61, 0.18); color: #ffc793; text-transform: none; }
 
 /* ── Lines ──────────────────────────────────────────────────────────────── */
 
@@ -568,7 +570,7 @@ button {
   font-size: var(--kds-meta);
   font-weight: 600;
   color: #ffc793;
-  background: rgba(240, 145, 63, 0.12);
+  background: rgba(197, 111, 61, 0.12);
   border-radius: 8px;
   padding: 7px 10px;
 }

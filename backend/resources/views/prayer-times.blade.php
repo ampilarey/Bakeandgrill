@@ -10,7 +10,7 @@
     <meta name="description" content="Accurate daily prayer times for all islands of Maldives.">
     <title>Prayer Times — {{ $siteName }}</title>
     <link rel="canonical" href="{{ url('/prayer-times') }}">
-    <link rel="icon" type="image/png" href="{{ content('favicon', asset('logo.png')) }}">
+    <link rel="icon" type="image/png" href="{{ content('favicon', '') ?: asset('favicon-32.png') }}">
 
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}">
     <link rel="stylesheet" href="{{ url('/css/dhivehi-font.css') }}?app=website">

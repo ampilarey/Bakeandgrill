@@ -8,7 +8,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Loading — {{ $siteName }}</title>
-    <link rel="icon" type="image/png" href="{{ content('favicon', $logoUrl) }}">
+    <link rel="icon" type="image/png" href="{{ content('favicon', '') ?: asset('favicon-32.png') }}">
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}">
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }

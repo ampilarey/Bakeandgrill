@@ -3,7 +3,7 @@
     $logoUrl  = \App\Models\SiteSetting::get('logo', asset('logo.png'));
     $phone    = \App\Models\SiteSetting::get('business_phone', '+960 912 0011');
     $address  = \App\Models\SiteSetting::get('business_address', 'Kalaafaanu Hingun, Malé, Maldives');
-    $favicon  = \App\Models\SiteSetting::get('favicon', $logoUrl);
+    $favicon  = \App\Models\SiteSetting::get('favicon', '') ?: asset('favicon-32.png');
     $docWidth = trim($__env->yieldContent('doc_width')) ?: '560px';
 @endphp
 <!DOCTYPE html>

@@ -238,9 +238,12 @@
     <!-- Apply saved theme before first paint to avoid flash -->
     <script nonce="{{ csp_nonce() }}">if(localStorage.getItem('theme')==='dark')document.documentElement.dataset.theme='dark';</script>
 
-    <link rel="icon" type="image/png" href="{{ content('favicon', asset('logo.png')) }}">
+    {{-- Tab: the flame alone reads at 16 px. Home screen: the logo on a cream
+         tile; iOS fills a transparent touch icon with black (owner, 2026-10-07:
+         "in some places it use old logo"). --}}
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ content('favicon', '') ?: asset('favicon-32.png') }}">
     <link rel="alternate icon" href="{{ asset('favicon.ico') }}">
-    <link rel="apple-touch-icon" href="{{ $logoUrl }}">
+    <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}">
     <link rel="stylesheet" href="{{ url('/css/dhivehi-font.css') }}?app=website">
 
