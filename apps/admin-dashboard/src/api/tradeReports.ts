@@ -5,6 +5,8 @@ export type TradeSellThroughRow = {
   trade_account_id: number;
   shop_name: string;
   item_id: number;
+  /** Each size is its own product (2026-10-07). */
+  variant_id?: number | null;
   item_name: string;
   qty_sent: number;
   qty_sold: number;
@@ -18,6 +20,8 @@ export type TradeSuggestedQtyRow = {
   trade_account_id: number;
   shop_name: string;
   item_id: number;
+  /** Each size is its own product (2026-10-07). */
+  variant_id?: number | null;
   item_name: string;
   deliveries_count: number;
   total_sold: number;
@@ -31,6 +35,8 @@ export type TradeWasteRow = {
   trade_account_id: number;
   shop_name: string;
   item_id: number;
+  /** Each size is its own product (2026-10-07). */
+  variant_id?: number | null;
   item_name: string;
   qty_wasted: number;
   waste_cost_laar: number;

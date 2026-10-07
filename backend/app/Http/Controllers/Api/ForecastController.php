@@ -101,8 +101,10 @@ class ForecastController extends Controller
             ->join('items', 'items.id', '=', 'order_items.item_id')
             ->where('orders.status', 'completed')
             ->where('orders.created_at', '>=', now()->subDays($days))
-            ->selectRaw('items.id, items.name, SUM(order_items.quantity) as total_qty, COUNT(DISTINCT DATE(orders.created_at)) as sale_days')
-            ->groupBy('items.id', 'items.name')
+            ->whereNull('order_items.deleted_at')
+            // Each size is its own product (owner, 2026-10-07).
+            ->selectRaw('items.id, order_items.variant_id, items.name, order_items.variant_name as variant_name, SUM(order_items.quantity) as total_qty, COUNT(DISTINCT DATE(orders.created_at)) as sale_days')
+            ->groupBy('items.id', 'items.name', 'order_items.variant_id', 'order_items.variant_name')
             ->orderByDesc('total_qty')
             ->limit($limit)
             ->get();
@@ -112,7 +114,9 @@ class ForecastController extends Controller
             'horizon_days' => $horizon,
             'items' => $sales->map(fn ($r) => [
                 'item_id' => $r->id,
-                'item_name' => $r->name,
+                'variant_id' => $r->variant_id !== null ? (int) $r->variant_id : null,
+                'key' => \App\Domains\Reporting\Support\ProductName::key($r->id, $r->variant_id, $r->variant_name),
+                'item_name' => \App\Domains\Reporting\Support\ProductName::label($r->name, $r->variant_name),
                 'total_qty_sold' => (float) $r->total_qty,
                 'avg_daily_demand' => round((float) $r->total_qty / max($r->sale_days, 1), 2),
                 'projected_demand' => round((float) $r->total_qty / max($r->sale_days, 1) * $horizon, 2),

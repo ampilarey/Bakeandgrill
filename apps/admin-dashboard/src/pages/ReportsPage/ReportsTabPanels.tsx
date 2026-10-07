@@ -148,7 +148,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                 {(breakdown.top_items ?? []).slice(0, 10).map(item => {
                   const max = (breakdown.top_items ?? [])[0]?.revenue ?? 1;
                   return (
-                    <tr key={item.id}>
+                    <tr key={item.key ?? item.id}>
                       <td style={S.td}>{item.name}</td>
                       <td style={{ ...S.td, color: 'var(--color-text-muted)' }}>{item.qty}</td>
                       <td style={S.td}><BarCell value={item.revenue} max={max} /></td>
@@ -176,7 +176,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                   {(breakdown.wholesale_items ?? []).slice(0, 10).map((item) => {
                     const max = (breakdown.wholesale_items ?? [])[0]?.total ?? 1;
                     return (
-                      <tr key={`w-${item.item_id ?? item.item_name}`}>
+                      <tr key={`w-${item.key ?? item.item_id ?? item.item_name}`}>
                         <td style={S.td}>{item.item_name}</td>
                         <td style={{ ...S.td, color: 'var(--color-text-muted)' }}>{item.quantity}</td>
                         <td style={S.td}><BarCell value={item.total} max={max} /></td>
@@ -1200,7 +1200,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
               </tr></thead>
               <tbody>
                 {velocityReport.rows.map((row) => (
-                  <tr key={row.item_id}>
+                  <tr key={row.key ?? row.item_id}>
                     <td style={{ ...S.td, fontWeight: 600 }}>{row.item_name}</td>
                     <td style={S.td}>{row.qty_sold}</td>
                     <td style={S.td}>

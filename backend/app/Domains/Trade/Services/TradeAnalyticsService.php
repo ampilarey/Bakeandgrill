@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Trade\Services;
 
+use App\Domains\Reporting\Support\ProductName;
 use App\Models\Invoice;
 use App\Models\TradeAccount;
 use App\Models\TradeDelivery;
@@ -25,6 +26,9 @@ final class TradeAnalyticsService
             ->join('trade_deliveries as d', 'd.id', '=', 'l.trade_delivery_id')
             ->join('trade_accounts as a', 'a.id', '=', 'd.trade_account_id')
             ->join('items', 'items.id', '=', 'l.item_id')
+            // Each size is its own product (owner, 2026-10-07).
+            ->leftJoin('variants as v', 'v.id', '=', 'l.variant_id')
+            ->selectRaw('l.variant_id as variant_id, MAX(v.name) as variant_name')
             ->whereNotNull('d.reconciled_at')
             ->whereBetween('d.reconciled_at', [$from, $to])
             ->selectRaw('a.id as trade_account_id')
@@ -37,7 +41,7 @@ final class TradeAnalyticsService
             ->selectRaw('SUM(l.qty_returned_waste) as qty_wasted')
             ->selectRaw('SUM(l.qty_missing) as qty_missing')
             ->selectRaw('CASE WHEN SUM(l.qty_sent) > 0 THEN ROUND(100.0 * SUM(l.qty_sold) / SUM(l.qty_sent), 2) ELSE 0 END as sell_through_pct')
-            ->groupBy('a.id', 'a.shop_name', 'items.id', 'items.name')
+            ->groupBy('a.id', 'a.shop_name', 'items.id', 'items.name', 'l.variant_id')
             ->orderBy('sell_through_pct')
             ->orderBy('a.shop_name')
             ->get();
@@ -46,7 +50,8 @@ final class TradeAnalyticsService
             'trade_account_id' => (int) $r->trade_account_id,
             'shop_name' => (string) $r->shop_name,
             'item_id' => (int) $r->item_id,
-            'item_name' => (string) $r->item_name,
+            'variant_id' => $r->variant_id !== null ? (int) $r->variant_id : null,
+            'item_name' => ProductName::label((string) $r->item_name, $r->variant_name),
             'qty_sent' => (int) $r->qty_sent,
             'qty_sold' => (int) $r->qty_sold,
             'qty_returned_good' => (int) $r->qty_returned_good,
@@ -70,6 +75,9 @@ final class TradeAnalyticsService
             ->join('trade_deliveries as d', 'd.id', '=', 'l.trade_delivery_id')
             ->join('trade_accounts as a', 'a.id', '=', 'd.trade_account_id')
             ->join('items', 'items.id', '=', 'l.item_id')
+            // Each size is its own product (owner, 2026-10-07).
+            ->leftJoin('variants as v', 'v.id', '=', 'l.variant_id')
+            ->selectRaw('l.variant_id as variant_id, MAX(v.name) as variant_name')
             ->whereNotNull('d.reconciled_at')
             ->where('d.reconciled_at', '<=', $asOf)
             ->selectRaw('a.id as trade_account_id')
@@ -79,7 +87,7 @@ final class TradeAnalyticsService
             ->selectRaw('COUNT(DISTINCT d.id) as deliveries_count')
             ->selectRaw('SUM(l.qty_sold) as total_sold')
             ->selectRaw('ROUND(1.0 * SUM(l.qty_sold) / COUNT(DISTINCT d.id), 2) as avg_sold')
-            ->groupBy('a.id', 'a.shop_name', 'items.id', 'items.name')
+            ->groupBy('a.id', 'a.shop_name', 'items.id', 'items.name', 'l.variant_id')
             ->orderBy('a.shop_name')
             ->orderBy('items.name')
             ->get();
@@ -93,7 +101,8 @@ final class TradeAnalyticsService
                 'trade_account_id' => (int) $r->trade_account_id,
                 'shop_name' => (string) $r->shop_name,
                 'item_id' => (int) $r->item_id,
-                'item_name' => (string) $r->item_name,
+                'variant_id' => $r->variant_id !== null ? (int) $r->variant_id : null,
+                'item_name' => ProductName::label((string) $r->item_name, $r->variant_name),
                 'deliveries_count' => $count,
                 'total_sold' => (int) $r->total_sold,
                 'average_sold' => $avg,
@@ -119,13 +128,16 @@ final class TradeAnalyticsService
             ->join('trade_deliveries as d', 'd.id', '=', 'l.trade_delivery_id')
             ->join('trade_accounts as a', 'a.id', '=', 'd.trade_account_id')
             ->join('items', 'items.id', '=', 'l.item_id')
+            // Each size is its own product (owner, 2026-10-07).
+            ->leftJoin('variants as v', 'v.id', '=', 'l.variant_id')
+            ->selectRaw('l.variant_id as variant_id, MAX(v.name) as variant_name')
             ->whereNotNull('d.reconciled_at')
             ->whereBetween('d.reconciled_at', [$from, $to])
             ->where('l.qty_returned_waste', '>', 0)
             ->selectRaw('a.id as trade_account_id, a.shop_name, items.id as item_id, items.name as item_name')
             ->selectRaw('SUM(l.qty_returned_waste) as qty_wasted')
             ->selectRaw('SUM(l.qty_returned_waste * l.unit_cost_laar) as waste_cost_laar')
-            ->groupBy('a.id', 'a.shop_name', 'items.id', 'items.name')
+            ->groupBy('a.id', 'a.shop_name', 'items.id', 'items.name', 'l.variant_id')
             ->orderByDesc('waste_cost_laar')
             ->get();
 
@@ -133,7 +145,8 @@ final class TradeAnalyticsService
             'trade_account_id' => (int) $r->trade_account_id,
             'shop_name' => (string) $r->shop_name,
             'item_id' => (int) $r->item_id,
-            'item_name' => (string) $r->item_name,
+            'variant_id' => $r->variant_id !== null ? (int) $r->variant_id : null,
+            'item_name' => ProductName::label((string) $r->item_name, $r->variant_name),
             'qty_wasted' => (int) $r->qty_wasted,
             'waste_cost_laar' => (int) $r->waste_cost_laar,
             'waste_cost' => round(((int) $r->waste_cost_laar) / 100, 2),

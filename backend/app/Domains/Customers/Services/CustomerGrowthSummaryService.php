@@ -99,14 +99,17 @@ final class CustomerGrowthSummaryService
             ->where('orders.customer_id', $customerId)
             ->whereNotNull('orders.paid_at')
             ->whereNotIn('orders.status', CustomerPaidOrderQuery::EXCLUDED_STATUSES)
-            ->select('items.id as item_id', 'items.name', DB::raw('SUM(order_items.quantity) as quantity'))
-            ->groupBy('items.id', 'items.name')
+            ->whereNull('order_items.deleted_at')
+            // Each size is its own product (owner, 2026-10-07).
+            ->select('items.id as item_id', 'order_items.variant_id', 'items.name', 'order_items.variant_name', DB::raw('SUM(order_items.quantity) as quantity'))
+            ->groupBy('items.id', 'items.name', 'order_items.variant_id', 'order_items.variant_name')
             ->orderByDesc('quantity')
             ->limit(3)
             ->get()
             ->map(fn ($r) => [
                 'item_id' => (int) $r->item_id,
-                'name' => $r->name,
+                'variant_id' => $r->variant_id !== null ? (int) $r->variant_id : null,
+                'name' => \App\Domains\Reporting\Support\ProductName::label($r->name, $r->variant_name),
                 'quantity' => (int) $r->quantity,
             ])
             ->all();

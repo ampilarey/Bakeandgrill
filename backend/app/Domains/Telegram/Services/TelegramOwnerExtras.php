@@ -8,6 +8,7 @@ use App\Domains\Complaints\Services\ComplaintBoxService;
 use App\Domains\Finance\Services\RefundWorkflowService;
 use App\Domains\Orders\Services\DiscountApprovalService;
 use App\Domains\Permissions\Services\PermissionService;
+use App\Domains\Reporting\Support\ProductName;
 use App\Domains\Reporting\Support\ReportMoneySql;
 use App\Domains\System\Services\ServiceAvailabilityService;
 use App\Domains\Telegram\Support\TelegramText as T;
@@ -283,64 +284,34 @@ class TelegramOwnerExtras
 
     /** @return list<array{name: string, qty: int}> */
     /**
-     * Best sellers by item, each with its sizes (owner, 2026-10-07: "Why
-     * variants are not showing. For example water has small and large").
-     * Ranked by the item's total, as Admin's report ranks them; the split
-     * by variant follows: "Water × 56 (Small 40, Large 16)".
+     * Best sellers, each size its own product (owner, 2026-10-07: "Why
+     * variants are not showing", then "In all other places also variant
+     * should treat as a separate product"): "Water (Small) × 40".
      *
-     * @return list<array{name: string, qty: int, variants: list<array{name: string, qty: int}>}>
+     * @return list<array{name: string, qty: int}>
      */
     public function topItems(Carbon $from, Carbon $to, int $limit = 5): array
     {
-        $base = fn () => DB::table('order_items')
+        return DB::table('order_items')
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
+            ->join('items', 'items.id', '=', 'order_items.item_id')
             ->whereNull('orders.deleted_at')
             ->whereNull('order_items.deleted_at')
             ->whereBetween('orders.created_at', [$from, $to])
-            ->whereIn('orders.status', ReportMoneySql::SALE_STATUSES);
-
-        $top = $base()
-            ->join('items', 'items.id', '=', 'order_items.item_id')
-            ->selectRaw('items.id as id, items.name as name, SUM(order_items.quantity) as qty')
-            ->groupBy('items.id', 'items.name')
+            ->whereIn('orders.status', ReportMoneySql::SALE_STATUSES)
+            ->selectRaw('items.id as id, order_items.variant_id as variant_id, items.name as name, order_items.variant_name as variant_name, SUM(order_items.quantity) as qty')
+            ->groupBy('items.id', 'items.name', 'order_items.variant_id', 'order_items.variant_name')
             ->orderByDesc('qty')
             ->limit($limit)
-            ->get();
-        if ($top->isEmpty()) {
-            return [];
-        }
-
-        $sizes = $base()
-            ->whereIn('order_items.item_id', $top->pluck('id')->all())
-            ->whereNotNull('order_items.variant_name')
-            ->where('order_items.variant_name', '!=', '')
-            ->selectRaw('order_items.item_id as item_id, order_items.variant_name as variant, SUM(order_items.quantity) as qty')
-            ->groupBy('order_items.item_id', 'order_items.variant_name')
-            ->orderByDesc('qty')
             ->get()
-            ->groupBy('item_id');
-
-        return $top->map(function ($r) use ($sizes): array {
-            $qty = (int) round((float) $r->qty);
-            $variants = collect($sizes->get($r->id, []))
-                ->map(fn ($v) => ['name' => (string) $v->variant, 'qty' => (int) round((float) $v->qty)])
-                ->values();
-            $sized = $variants->sum('qty');
-            // Lines sold before the item had sizes carry none: shown as "other".
-            if ($variants->isNotEmpty() && $sized < $qty) {
-                $variants->push(['name' => 'other', 'qty' => $qty - $sized]);
-            }
-
-            return ['name' => (string) $r->name, 'qty' => $qty, 'variants' => $variants->count() > 1 || ($variants->count() === 1 && $variants[0]['name'] !== 'other') ? $variants->all() : []];
-        })->all();
+            ->map(fn ($r) => ['name' => ProductName::label((string) $r->name, $r->variant_name), 'qty' => (int) round((float) $r->qty)])
+            ->all();
     }
 
-    /** "3. Water × 56 (Small 40, Large 16)". */
+    /** "3. Water (Small) × 40". */
     public static function bestSellerLine(int $rank, array $r): string
     {
-        $split = $r['variants'] === [] ? '' : ' (' . implode(', ', array_map(fn (array $v) => T::e($v['name']) . ' ' . $v['qty'], $r['variants'])) . ')';
-
-        return $rank . '. ' . T::e($r['name']) . ' × ' . $r['qty'] . $split;
+        return $rank . '. ' . T::e($r['name']) . ' × ' . $r['qty'];
     }
 
     private function change(float $now, float $before, string $label): string

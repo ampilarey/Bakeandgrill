@@ -7,6 +7,7 @@ namespace App\Domains\Reporting\Services;
 use App\Domains\Credit\Services\CreditEligibilityService;
 use App\Domains\Orders\Support\EffectiveDiscount;
 use App\Domains\Payments\Services\PaymentCommissionService;
+use App\Domains\Reporting\Support\ProductName;
 use App\Domains\Reporting\Support\ReportMoneySql;
 use App\Domains\Trade\Services\WholesaleChannelAggregator;
 use App\Models\AuditLog;
@@ -244,17 +245,29 @@ class ReportsService
                 $q2->whereNull('type')->orWhere('type', '!=', 'gift_card');
             });
 
+        // Each size is its own product (owner, 2026-10-07): "Water (Small)".
         $items = OrderItem::select(
             'item_id',
-            'item_name',
+            'variant_id',
+            DB::raw('MAX(item_name) as item_name'),
+            'variant_name',
             DB::raw('SUM(quantity) as quantity'),
             DB::raw('SUM(total_price) as total'),
         )
             ->whereHas('order', $excludeGiftCard)
-            ->groupBy('item_id', 'item_name')
+            ->groupBy('item_id', 'variant_id', 'variant_name')
             ->orderByDesc('total')
             ->limit(min($limit, 500))
-            ->get();
+            ->get()
+            ->map(fn ($row) => [
+                'item_id' => $row->item_id !== null ? (int) $row->item_id : null,
+                'variant_id' => $row->variant_id !== null ? (int) $row->variant_id : null,
+                'key' => ProductName::key($row->item_id, $row->variant_id, $row->variant_name),
+                'item_name' => ProductName::label($row->item_name, $row->variant_name),
+                'variant_name' => $row->variant_name,
+                'quantity' => $row->quantity,
+                'total' => $row->total,
+            ]);
 
         $categories = OrderItem::select(
             'categories.id as category_id',
@@ -292,6 +305,16 @@ class ReportsService
             'from' => $from->toDateString(),
             'to' => $to->toDateString(),
             'items' => $items,
+            // The shape Admin → Reports → Breakdown reads (it read a key that
+            // was never sent, so its retail table stayed empty), 2026-10-07.
+            'top_items' => $items->map(fn (array $i) => [
+                'id' => $i['item_id'],
+                'key' => $i['key'],
+                'variant_id' => $i['variant_id'],
+                'name' => $i['item_name'],
+                'qty' => (float) $i['quantity'],
+                'revenue' => (float) $i['total'],
+            ])->values(),
             'categories' => $categories,
             'employees' => $employees,
             // Stage F — parallel rollup; retail `items` unchanged.
@@ -1142,8 +1165,10 @@ class ReportsService
             ->whereIn('orders.status', ReportMoneySql::SALE_STATUSES)
             ->whereBetween('orders.created_at', [$from, $to])
             ->whereNotNull('order_items.item_id')
-            ->selectRaw('order_items.item_id, order_items.item_name, SUM(order_items.quantity) as qty_sold')
-            ->groupBy('order_items.item_id', 'order_items.item_name')
+            ->whereNull('order_items.deleted_at')
+            // Each size is its own product (owner, 2026-10-07).
+            ->selectRaw('order_items.item_id, order_items.variant_id, MAX(order_items.item_name) as item_name, order_items.variant_name as variant_name, SUM(order_items.quantity) as qty_sold')
+            ->groupBy('order_items.item_id', 'order_items.variant_id', 'order_items.variant_name')
             ->orderByDesc('qty_sold')
             ->limit($limit)
             ->get();
@@ -1162,7 +1187,9 @@ class ReportsService
 
                 return [
                     'item_id' => (int) $row->item_id,
-                    'item_name' => (string) $row->item_name,
+                    'variant_id' => $row->variant_id !== null ? (int) $row->variant_id : null,
+                    'key' => ProductName::key($row->item_id, $row->variant_id, $row->variant_name),
+                    'item_name' => ProductName::label((string) $row->item_name, $row->variant_name),
                     'qty_sold' => $qty,
                     'velocity' => $velocity,
                 ];

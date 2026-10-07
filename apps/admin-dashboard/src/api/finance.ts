@@ -539,8 +539,9 @@ export interface SalesBreakdown {
   by_category: { category: string; revenue: number; orders: number }[];
   by_type: { type: string; revenue: number; orders: number }[];
   by_hour: { hour: number; revenue: number; orders: number }[];
-  top_items: { id: number; name: string; qty: number; revenue: number }[];
-  wholesale_items?: { item_id: number | null; item_name: string; quantity: number; total: number; channel: string }[];
+  /** Each size is its own product (2026-10-07): "Water (Small)"; `key` is unique per product. */
+  top_items: { id: number; key?: string; variant_id?: number | null; name: string; qty: number; revenue: number }[];
+  wholesale_items?: { item_id: number | null; key?: string; variant_id?: number | null; item_name: string; quantity: number; total: number; channel: string }[];
 }
 
 export async function getSalesBreakdown(params: { from: string; to: string }): Promise<SalesBreakdown> {
@@ -1368,6 +1369,9 @@ export type ManagerOverridesReport = {
 
 export type StockVelocityRow = {
   item_id: number;
+  /** Each size is its own product (2026-10-07). */
+  variant_id?: number | null;
+  key?: string;
   item_name: string;
   qty_sold: number;
   velocity: 'fast' | 'slow' | 'normal';

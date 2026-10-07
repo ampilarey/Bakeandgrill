@@ -228,7 +228,7 @@ export function Customer360Drawer({ customerId, onClose }: Props) {
               <div>
                 <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Favourite items</p>
                 {summary.favourite_items.map((i) => (
-                  <p key={i.item_id} style={{ margin: '2px 0', fontSize: 13 }}>{i.name} × {i.quantity}</p>
+                  <p key={`${i.item_id}-${i.variant_id ?? 0}-${i.name}`} style={{ margin: '2px 0', fontSize: 13 }}>{i.name} × {i.quantity}</p>
                 ))}
               </div>
             )}

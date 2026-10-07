@@ -140,20 +140,25 @@ class AnalyticsController extends Controller
         $from = $request->query('from', Carbon::now()->startOfMonth()->toDateString());
         $to = $request->query('to', Carbon::now()->toDateString());
 
+        // Each size is its own product, with its own cost when it has one
+        // (owner, 2026-10-07).
         $items = DB::table('order_items as oi')
             ->join('items as i', 'i.id', '=', 'oi.item_id')
             ->join('orders as o', 'o.id', '=', 'oi.order_id')
+            ->leftJoin('variants as v', 'v.id', '=', 'oi.variant_id')
             ->whereBetween('o.created_at', [$from . ' 00:00:00', $to . ' 23:59:59'])
             ->where('o.status', 'completed')
+            ->whereNull('oi.deleted_at')
             ->selectRaw('
                 i.id,
+                oi.variant_id,
                 i.name,
-                i.cost,
+                oi.variant_name as variant_name,
                 SUM(oi.quantity) as total_qty,
                 SUM(oi.total_price) as total_revenue,
-                SUM(oi.quantity * COALESCE(i.cost, 0)) as total_cost
+                SUM(oi.quantity * COALESCE(v.cost, i.cost, 0)) as total_cost
             ')
-            ->groupBy('i.id', 'i.name', 'i.cost')
+            ->groupBy('i.id', 'i.name', 'oi.variant_id', 'oi.variant_name')
             ->orderByRaw('SUM(oi.total_price) DESC')
             ->limit(50)
             ->get();
@@ -163,7 +168,9 @@ class AnalyticsController extends Controller
             'to' => $to,
             'items' => $items->map(fn ($r) => [
                 'id' => $r->id,
-                'name' => $r->name,
+                'variant_id' => $r->variant_id !== null ? (int) $r->variant_id : null,
+                'key' => \App\Domains\Reporting\Support\ProductName::key($r->id, $r->variant_id, $r->variant_name),
+                'name' => \App\Domains\Reporting\Support\ProductName::label($r->name, $r->variant_name),
                 'total_qty' => (int) $r->total_qty,
                 'total_revenue' => round((float) $r->total_revenue, 2),
                 'total_cost' => round((float) $r->total_cost, 2),

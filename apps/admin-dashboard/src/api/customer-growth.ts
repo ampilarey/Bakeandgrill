@@ -72,7 +72,8 @@ export type CustomerGrowthSummary = {
     last_order_at: string | null;
     days_since_last_order: number | null;
   };
-  favourite_items: Array<{ item_id: number; name: string; quantity: number }>;
+  /** Each size is its own product (2026-10-07): "Water (Small)". */
+  favourite_items: Array<{ item_id: number; variant_id?: number | null; name: string; quantity: number }>;
   most_used_order_type: string | null;
   loyalty: Record<string, unknown>;
   credit: Record<string, unknown> | null;

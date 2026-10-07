@@ -381,13 +381,15 @@ class FinanceReportController extends Controller
             ->get();
 
         // Top items (retail)
+        // Each size is its own product (owner, 2026-10-07).
         $topItems = DB::table('order_items')
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
             ->join('items', 'items.id', '=', 'order_items.item_id')
             ->whereBetween('orders.created_at', [$from, $to])
             ->whereIn('orders.status', ReportMoneySql::SALE_STATUSES)
-            ->selectRaw('items.name, SUM(order_items.quantity) as qty, SUM(order_items.quantity * order_items.unit_price) as revenue')
-            ->groupBy('items.id', 'items.name')
+            ->whereNull('order_items.deleted_at')
+            ->selectRaw('items.id as item_id, order_items.variant_id, items.name, order_items.variant_name as variant_name, SUM(order_items.quantity) as qty, SUM(order_items.quantity * order_items.unit_price) as revenue')
+            ->groupBy('items.id', 'items.name', 'order_items.variant_id', 'order_items.variant_name')
             ->orderByDesc('qty')
             ->limit(10)
             ->get();
@@ -418,7 +420,10 @@ class FinanceReportController extends Controller
                 'revenue' => (float) $r->revenue,
             ]),
             'top_items' => $topItems->map(fn ($r) => [
-                'name' => $r->name,
+                'name' => \App\Domains\Reporting\Support\ProductName::label($r->name, $r->variant_name),
+                'item_id' => (int) $r->item_id,
+                'variant_id' => $r->variant_id !== null ? (int) $r->variant_id : null,
+                'variant_name' => $r->variant_name,
                 'qty' => (float) $r->qty,
                 'revenue' => (float) $r->revenue,
             ]),

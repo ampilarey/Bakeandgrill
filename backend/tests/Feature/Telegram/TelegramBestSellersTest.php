@@ -11,15 +11,15 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Best sellers show each item's sizes (owner, 2026-10-07: "Why variants are
- * not showing. For example water has small and large").
+ * Each size is its own product in best sellers (owner, 2026-10-07: "Why
+ * variants are not showing", "variant should treat as a separate product").
  */
 class TelegramBestSellersTest extends TestCase
 {
     use FakesTelegram;
     use RefreshDatabase;
 
-    public function test_best_sellers_split_by_size(): void
+    public function test_each_size_is_its_own_best_seller(): void
     {
         $this->roles();
         $this->fakeTelegram();
@@ -37,12 +37,12 @@ class TelegramBestSellersTest extends TestCase
 
         $this->telegramText($bot, '5550001', '📊 Today')->assertOk();
         $text = $this->lastText('5550001');
-        $this->assertStringContainsString('1. Water × 56 (Small 40, Large 16)', $text);
-        $this->assertStringContainsString('2. Kottu × 3' . "\n", $text . "\n");
-        $this->assertStringNotContainsString('Kottu × 3 (', $text);
+        $this->assertStringContainsString('1. Water (Small) × 40', $text);
+        $this->assertStringContainsString('2. Water (Large) × 16', $text, 'the removed line of 9 is not counted');
+        $this->assertStringContainsString('3. Kottu × 3', $text);
         $this->assertStringContainsString('Best sellers', $text);
 
         $this->telegramText($bot, '5550001', '/week')->assertOk();
-        $this->assertStringContainsString('1. Water × 56 (Small 40, Large 16)', $this->lastText('5550001'));
+        $this->assertStringContainsString('1. Water (Small) × 40', $this->lastText('5550001'));
     }
 }

@@ -159,6 +159,17 @@ the keys; separate databases are what make a `cache:clear` on one site harmless 
 the other. `app:verify-production-config` cannot catch this — it only sees one
 environment — so it is a convention, not an enforced check.
 
+## Variants are separate products in reports
+
+Owner, 2026-10-07: "variant should treat as a separate product". Every sales
+ranking groups by item **and** variant and names the row "Water (Small)"
+(`App\Domains\Reporting\Support\ProductName`): Admin daily summary and
+breakdown, stock velocity, menu engineering, item forecast, customer
+favourites, wholesale top items and shop analytics, Telegram best sellers.
+Rows carry `variant_id` and a `key` unique per product. Removed (soft-deleted)
+order lines do not count. Waste logs have no variant, so waste stays per item.
+New sales reports follow the same rule.
+
 ## Queue worker vs synchronous SMS
 
 The queue worker (`php artisan queue:work redis`) is only needed for async listeners

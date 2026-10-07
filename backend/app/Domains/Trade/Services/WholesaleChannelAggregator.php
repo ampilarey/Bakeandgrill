@@ -164,6 +164,8 @@ final class WholesaleChannelAggregator
         $q = DB::table('trade_invoice_allocations as a')
             ->join('trade_delivery_lines as l', 'l.id', '=', 'a.trade_delivery_line_id')
             ->join('items', 'items.id', '=', 'l.item_id')
+            // Each size is its own product (owner, 2026-10-07).
+            ->leftJoin('variants as v', 'v.id', '=', 'l.variant_id')
             ->join('invoices as i', 'i.id', '=', 'a.invoice_id')
             ->whereNotNull('i.trade_account_id')
             ->where('i.type', 'sale')
@@ -176,23 +178,25 @@ final class WholesaleChannelAggregator
                     ->whereIn('p.status', ['confirmed', 'paid', 'completed']);
             })
                 ->whereBetween('p.processed_at', [$from, $to])
-                ->selectRaw('items.id as item_id, items.name as item_name')
+                ->selectRaw('items.id as item_id, items.name as item_name, l.variant_id as variant_id, MAX(v.name) as variant_name')
                 ->selectRaw('SUM(CAST(a.qty_invoiced * p.amount_laar AS FLOAT) / NULLIF(i.total_laar, 0)) as quantity')
                 ->selectRaw('SUM(CAST(a.amount_laar * p.amount_laar AS FLOAT) / NULLIF(i.total_laar, 0)) / 100.0 as total');
         } else {
             $this->scopeIssueDate($q, $from, $to)
-                ->selectRaw('items.id as item_id, items.name as item_name')
+                ->selectRaw('items.id as item_id, items.name as item_name, l.variant_id as variant_id, MAX(v.name) as variant_name')
                 ->selectRaw('SUM(a.qty_invoiced) as quantity')
                 ->selectRaw('SUM(a.amount_laar) / 100.0 as total');
         }
 
-        return $q->groupBy('items.id', 'items.name')
+        return $q->groupBy('items.id', 'items.name', 'l.variant_id')
             ->orderByDesc('total')
             ->limit(min($limit, 500))
             ->get()
             ->map(fn ($r) => [
                 'item_id' => $r->item_id !== null ? (int) $r->item_id : null,
-                'item_name' => (string) $r->item_name,
+                'variant_id' => $r->variant_id !== null ? (int) $r->variant_id : null,
+                'key' => \App\Domains\Reporting\Support\ProductName::key($r->item_id, $r->variant_id, $r->variant_name),
+                'item_name' => \App\Domains\Reporting\Support\ProductName::label((string) $r->item_name, $r->variant_name),
                 'quantity' => round((float) $r->quantity, 3),
                 'total' => round((float) $r->total, 2),
                 'channel' => 'wholesale',

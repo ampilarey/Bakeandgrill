@@ -208,7 +208,7 @@ export default function WholesaleReportsPage() {
                       <tr><td colSpan={8}><EmptyState>No reconciled deliveries in this period</EmptyState></td></tr>
                     )}
                     {sellThrough.map((r) => (
-                      <tr key={`${r.trade_account_id}-${r.item_id}`}>
+                      <tr key={`${r.trade_account_id}-${r.item_id}-${r.variant_id ?? 0}`}>
                         <td style={td}>{r.shop_name}</td>
                         <td style={td}>{r.item_name}</td>
                         <td style={td}>{r.qty_sent}</td>
@@ -246,7 +246,7 @@ export default function WholesaleReportsPage() {
                       <tr><td colSpan={6}><EmptyState>No delivery history yet</EmptyState></td></tr>
                     )}
                     {suggested.map((r) => (
-                      <tr key={`${r.trade_account_id}-${r.item_id}`}>
+                      <tr key={`${r.trade_account_id}-${r.item_id}-${r.variant_id ?? 0}`}>
                         <td style={td}>{r.shop_name}</td>
                         <td style={td}>{r.item_name}</td>
                         <td style={td}>{r.deliveries_count}</td>
@@ -282,7 +282,7 @@ export default function WholesaleReportsPage() {
                       <tr><td colSpan={4}><EmptyState>No waste in this period</EmptyState></td></tr>
                     )}
                     {waste.map((r) => (
-                      <tr key={`${r.trade_account_id}-${r.item_id}`}>
+                      <tr key={`${r.trade_account_id}-${r.item_id}-${r.variant_id ?? 0}`}>
                         <td style={td}>{r.shop_name}</td>
                         <td style={td}>{r.item_name}</td>
                         <td style={td}>{r.qty_wasted}</td>
