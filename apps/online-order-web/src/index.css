@@ -6018,3 +6018,15 @@ textarea.field-input {
 @media (min-width: 768px) {
   .cat-rail__list > .cat-rail__item .cat-rail__label { font-size: 0.72rem !important; }
 }
+
+/* The menu's brand row (phone): the Home header's look, but it scrolls away
+   with the page instead of staying pinned (owner, 2026-10-07). */
+.home-phone-header.home-phone-header--static {
+  position: relative;
+  top: auto;
+  z-index: auto;
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  margin: 0 calc(-1 * var(--page-gutter, 16px));
+}

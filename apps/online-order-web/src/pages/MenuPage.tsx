@@ -41,6 +41,7 @@ import {
 } from '../components/menu/MenuHead';
 import { ShareControl } from '../components/ShareControl';
 import { RailOrderButton } from '../components/menu/RailOrderButton';
+import { HomePhoneHeader } from '../components/home/HomePhoneHeader';
 import { OrderModeSheet } from '../components/OrderModeSheet';
 import { categoryShareProps } from '../utils/categoryShare';
 import { FilterChipsRow, type SaleFilter } from '../components/menu/FilterChipsRow';
@@ -193,7 +194,7 @@ export function MenuPage() {
   const { addItem, pruneCartToAllowedItemIds, refreshPricesFromMenu, cart } = useCart();
   const { t } = useLanguage();
   const { showToast } = useToast();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, customerName } = useAuth();
   const { openCartSheet } = useShellNav();
   const { isAvailable: isServiceAvailable, get: getServiceEntry } = useServiceStatusContext();
   const navigate = useNavigate();
@@ -1101,6 +1102,12 @@ export function MenuPage() {
       {/* The page's one heading, for readers and crawlers; the day and mode
           switches above the list are controls, not a title. */}
       <h1 className="sr-only">{menuTitle}</h1>
+      {/* The brand at the top of the menu on a phone, as on the website
+          (owner, 2026-10-07). It scrolls away with the day and order-type
+          bars, so it costs nothing once browsing starts. */}
+      {isPhone && (
+        <HomePhoneHeader customerName={customerName ?? null} isAuthenticated={isAuthenticated} pinned={false} />
+      )}
       {/* ── Menu controls: day and order type ───────────────────────
           Pinned on a computer; on a phone they scroll away and the rail's
           button drops them back down (see dropBar). The spacer keeps the

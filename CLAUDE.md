@@ -183,7 +183,10 @@ Order app: `components/menu/MenuHead.tsx`. Keep the two in step. Shared links
 The button row and search panel float under the banner (`.mh-under`), so a
 section without sub-categories shows no strip and nothing jumps. On phones the
 order app's day and order-type bars are not pinned: they fold into a button at
-the head of the rail (`RailOrderButton`) that drops them back down. The first
+the head of the rail (`RailOrderButton`) that drops them back down. On phones
+the menu opens with a brand row (`HomePhoneHeader pinned={false}`) that scrolls away;
+the website's phone header slides away while scrolling down the menu and returns on
+the way up (`menu-header-away`, which also sets `--menu-sticky` to 0). The first
 Add with no order type chosen asks once (`OrderModeSheet` with `onChosen`) and
 adds the dish in the same tap; the cards' quick "+" goes through the same question
 and opens the sheet instead for a dish with sizes, extras, a platter, packaging or a

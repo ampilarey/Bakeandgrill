@@ -384,6 +384,7 @@ html:not(.js) .mh-search { display: none; }
     .mh-all { height: 36px; padding: 0 0.6rem; }
 }
 @media (prefers-reduced-motion: reduce) {
+    .mh, .menu-rail, .mobile-header { transition: none !important; }
     .mh *, .mh-sheet, .mh-sheet *, .mh-scrim, .menu-rail-pill, .menu-rail-list > a,
     .menu-rail-list > a .menu-rail-thumb { transition: none !important; animation: none !important; }
     .menu-subcat-title.is-arrived, .menu-subcat-block.is-arrived .menu-card { animation: none !important; }
@@ -838,6 +839,13 @@ html.js .menu-fav { display: inline-flex; }
        under it scrolls away — so the rail clears ~64px, not the layout's
        more generous scroll-padding-top. */
     :root { --menu-rail-w: 70px; --menu-sticky: 64px; }
+    /* The site header slides away while scrolling down the menu and comes
+       back on the way up (owner, 2026-10-07), as the order app's brand row
+       scrolls away. The banner and rail follow it up to the top. */
+    .mobile-header { transition: transform 0.3s cubic-bezier(.2,.7,.2,1); }
+    html.menu-header-away .mobile-header { transform: translateY(-100%); }
+    html.menu-header-away { --menu-sticky: 0px; }
+    .mh, .menu-rail { transition: top 0.3s cubic-bezier(.2,.7,.2,1); }
     .menu-shell { gap: 0.5rem; padding: 0 0.75rem 5rem; }
     /* minmax(0, 1fr), not 1fr: a bare 1fr will not shrink below a card's
        own minimum, and two 143px cards plus the gap ran 4px past a 390px
@@ -1961,7 +1969,7 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
     window.addEventListener('scroll', function () {
         if (ticking) return;
         ticking = true;
-        requestAnimationFrame(function () { ticking = false; fitRail(); spy(); });
+        requestAnimationFrame(function () { ticking = false; headerOnScroll(); fitRail(); spy(); });
     }, { passive: true });
     window.addEventListener('resize', function () { state.sub = null; fitRail(); if (state.sec) lightRail(state.sec); syncAll(); spy(); });
 
@@ -1971,10 +1979,35 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
     function targetY(el) {
         return window.scrollY + el.getBoundingClientRect().top - stickyTop() - head.offsetHeight - underH() + 2;
     }
+    // ── Phone: the site header gets out of the way ───────────────────
+    // Down: it slides up and the banner takes its place. Up a little: it
+    // comes back. Near the top of the page it always shows.
+    var phoneMq = window.matchMedia ? window.matchMedia('(max-width: 768px)') : null;
+    var headerAway = false, lastHY = window.scrollY, upTravel = 0;
+    function setHeaderAway(on) {
+        on = !!on && !!phoneMq && phoneMq.matches;
+        if (headerAway === on) return;
+        headerAway = on;
+        root.classList.toggle('menu-header-away', on);
+    }
+    function headerOnScroll() {
+        var y = window.scrollY, dy = y - lastHY;
+        lastHY = y;
+        if (!phoneMq || !phoneMq.matches) { setHeaderAway(false); return; }
+        // A tap is travelling; goTo has already decided.
+        if (state.lock) return;
+        if (y < 120) { upTravel = 0; setHeaderAway(false); return; }
+        if (dy > 4) { upTravel = 0; setHeaderAway(true); }
+        else if (dy < 0) { upTravel -= dy; if (upTravel > 24) setHeaderAway(false); }
+    }
+
     function goTo(el, instant) {
         var sec = el.classList.contains('menu-sec') ? el : el.closest('.menu-sec');
         if (!sec) return;
         var dir = el.getBoundingClientRect().top > line() ? 1 : -1;
+        // Going down the header leaves, going up it returns; decide first so
+        // the landing spot is measured with the header as it will be.
+        setHeaderAway(dir > 0 || (instant && el.getBoundingClientRect().top > 200));
         showSection(sec, dir, instant);
         showSub(el === sec ? (subsOf(sec)[0] || null) : el);
         var y = targetY(el);

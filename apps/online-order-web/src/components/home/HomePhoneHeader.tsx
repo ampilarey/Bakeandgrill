@@ -2,10 +2,17 @@ import { Link } from 'react-router-dom';
 import { useLanguage } from '../../context/LanguageContext';
 import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
 import { MAIN_WEBSITE_HREF } from '../../utils/mainWebsite';
+import { AnimatedLogo } from '../AnimatedLogo';
+import { isStandardLogo } from '../../lib/brandLogo';
 
 type Props = {
   customerName: string | null;
   isAuthenticated: boolean;
+  /**
+   * Pinned to the top (Home). The menu passes false: there it is a brand row
+   * that scrolls away, so browsing keeps the whole screen (owner, 2026-10-07).
+   */
+  pinned?: boolean;
 };
 
 /** True when the label is a Maldives local phone (digits only). */
@@ -18,7 +25,7 @@ function isPhoneLabel(value: string | null): boolean {
  * Sticky phone home header — brand + account only.
  * Welcome copy stays in GreetingHeader so it can scroll away.
  */
-export function HomePhoneHeader({ customerName, isAuthenticated }: Props) {
+export function HomePhoneHeader({ customerName, isAuthenticated, pinned = true }: Props) {
   const { t } = useLanguage();
   const { settings: s } = useSiteSettingsContext();
   const siteName = s.site_name || 'Bake & Grill';
@@ -29,21 +36,27 @@ export function HomePhoneHeader({ customerName, isAuthenticated }: Props) {
       : null;
 
   return (
-    <header className="home-phone-header" data-testid="home-phone-header">
+    <header className={`home-phone-header${pinned ? '' : ' home-phone-header--static'}`} data-testid="home-phone-header">
       <div className="home-phone-header__inner">
         <a
           href={MAIN_WEBSITE_HREF}
           className="home-brand-link"
           aria-label={t('header.website_aria').replace('{name}', siteName)}
         >
-          <img
-            src={logoSrc}
-            alt=""
-            width={36}
-            height={36}
-            className="home-brand-link__logo"
-            decoding="async"
-          />
+          {/* The flaming logo while the standard one is set, as in the
+              computer top bar; an uploaded logo stays as it is. */}
+          {isStandardLogo(s) ? (
+            <AnimatedLogo className="home-brand-link__logo" size={36} label="" />
+          ) : (
+            <img
+              src={logoSrc}
+              alt=""
+              width={36}
+              height={36}
+              className="home-brand-link__logo"
+              decoding="async"
+            />
+          )}
           <span className="home-brand-link__name">{siteName}</span>
         </a>
 
