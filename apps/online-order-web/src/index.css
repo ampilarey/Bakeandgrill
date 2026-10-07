@@ -5679,7 +5679,11 @@ textarea.field-input {
   animation: mh-pop 0.24s var(--mh-ease);
 }
 @keyframes mh-pop { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: none; } }
-.mh-panel { padding: 0 0 0.6rem; }
+/* The first row's top space is the panel's own padding, not a margin that
+   escapes it: the fold measures with the panel clipped, where margins stay
+   inside, and an escaping margin made it overshoot by 8px and snap back. */
+.mh-panel { padding: 0.5rem 0 0.6rem; }
+.mh-panel > :first-child { margin-top: 0; }
 /* An instant switch (first paint, a shared link) does not slide or roll. */
 .mh--still .mh-chips, .mh--still .mh-img, .mh--still .mh-pill, .mh--still .mh-bar { transition: none; }
 

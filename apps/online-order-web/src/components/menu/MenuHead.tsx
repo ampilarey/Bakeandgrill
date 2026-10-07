@@ -395,7 +395,7 @@ export const MenuHead = forwardRef<MenuHeadHandle, Props>(function MenuHead(
   return (
     <div
       ref={headRef}
-      className={`mh${still ? ' mh--still' : ''}${showRow ? ' has-row' : ''}${searchOpen ? ' has-panel' : ''}${room ? ' mh--room' : ''}`}
+      className={`mh${still ? ' mh--still' : ''}${showRow ? ' has-row' : ''}${panelShown ? ' has-panel' : ''}${room ? ' mh--room' : ''}`}
       data-testid="menu-head"
     >
       <div className="mh-banner" style={shownImage ? undefined : { background: override ? undefined : section?.tint }}>

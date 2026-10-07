@@ -2229,26 +2229,63 @@
  * and opacity together, so the content under it glides rather than jumps.
  * The prayer banner and the menu's search panel use it; the order app has the
  * same in utils/fold.ts. Opening: call after the panel is shown. Closing:
- * `done` hides it once folded. Returns a cancel for a change of mind halfway.
+ * `done` hides it once folded. Returns a stop for a change of mind halfway.
+ *
+ * No frame may show the panel full size by mistake (owner: "it hides and
+ * reappears for a millisecond like a flash"). Opening, it is pinned shut by
+ * inline style until the animation is really running, since Safari can paint
+ * a frame before a new animation applies. Closing, the animation holds it
+ * shut after it ends; `done` hides it under that hold, and the hold is only
+ * let go when the next fold starts.
  */
 window.bgFold = function (el, open, done) {
     var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (!el || reduce || typeof el.animate !== 'function') { if (done) done(); return function () {}; }
-    if (el.__foldCancel) el.__foldCancel();
-    var cs = window.getComputedStyle(el);
-    var full = { height: el.offsetHeight + 'px', paddingTop: cs.paddingTop, paddingBottom: cs.paddingBottom, opacity: 1 };
-    var none = { height: '0px', paddingTop: '0px', paddingBottom: '0px', opacity: 0 };
+    if (el.__fold) el.__fold.stop();
+    function pin(on) {
+        el.style.height = on ? '0px' : '';
+        el.style.paddingTop = on ? '0px' : '';
+        el.style.paddingBottom = on ? '0px' : '';
+        el.style.opacity = on ? '0' : '';
+    }
+    var handle = {}, a = null, raf = 0;
+    function mine() { return el.__fold === handle; }
     el.style.overflow = 'hidden';
-    var a = el.animate(open ? [none, full] : [full, none], {
-        duration: open ? 280 : 220,
-        easing: open ? 'cubic-bezier(0.2, 0.8, 0.2, 1)' : 'cubic-bezier(0.4, 0, 0.6, 1)',
-        fill: open ? 'none' : 'forwards'
-    });
-    var over = false;
-    function end() { over = true; el.__foldCancel = null; el.style.overflow = ''; }
-    a.onfinish = function () { end(); if (done) done(); if (!open) a.cancel(); };
-    el.__foldCancel = function () { if (over) return; a.onfinish = null; a.cancel(); end(); };
-    return el.__foldCancel;
+    if (open) pin(true);
+    // Started on the next frame, not now: the tap that asked for it is still
+    // drawing (and, for search, focusing the box), and on a slow phone that
+    // work would eat the first half of the fold, so it would jump.
+    function start() {
+        raf = 0;
+        if (!mine()) return;
+        if (open) pin(false);
+        var cs = window.getComputedStyle(el);
+        var full = { height: el.offsetHeight + 'px', paddingTop: cs.paddingTop, paddingBottom: cs.paddingBottom, opacity: 1 };
+        var shut = { height: '0px', paddingTop: '0px', paddingBottom: '0px', opacity: 0 };
+        if (open) pin(true);
+        a = el.animate(open ? [shut, full] : [full, shut], {
+            duration: open ? 280 : 220,
+            easing: open ? 'cubic-bezier(0.2, 0.8, 0.2, 1)' : 'cubic-bezier(0.4, 0, 0.6, 1)',
+            fill: open ? 'none' : 'forwards'
+        });
+        if (open && a.ready) a.ready.then(function () { if (mine()) pin(false); }, function () {});
+        a.onfinish = function () {
+            if (open && mine()) { pin(false); el.style.overflow = ''; el.__fold = null; }
+            if (done) done();
+        };
+    }
+    raf = window.requestAnimationFrame(start);
+    handle.stop = function () {
+        if (raf) window.cancelAnimationFrame(raf);
+        raf = 0;
+        if (a) { a.onfinish = null; a.cancel(); }
+        if (!mine()) return;
+        pin(false);
+        el.style.overflow = '';
+        el.__fold = null;
+    };
+    el.__fold = handle;
+    return handle.stop;
 };
 (function () {
     'use strict';

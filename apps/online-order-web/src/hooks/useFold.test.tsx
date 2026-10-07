@@ -3,6 +3,8 @@ import { act, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useFold } from './useFold';
 
+const frame = () => act(() => new Promise<void>((r) => requestAnimationFrame(() => r())));
+
 function Panel({ open }: { open: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const shown = useFold(open, ref);
@@ -20,7 +22,7 @@ describe('useFold', () => {
     runs.length = 0;
   });
 
-  it('unfolds on open, and keeps the panel until it has folded shut', () => {
+  it('unfolds on open, and keeps the panel until it has folded shut', async () => {
     HTMLElement.prototype.animate = vi.fn(function (keyframes: Keyframe[]) {
       const run: Fake = { keyframes, onfinish: null, cancel: vi.fn() };
       runs.push(run);
@@ -33,12 +35,14 @@ describe('useFold', () => {
 
     rerender(<Panel open />);
     expect(screen.getByTestId('panel')).toBeInTheDocument();
+    await frame();
     expect(runs).toHaveLength(1);
     expect(runs[0].keyframes[0]).toMatchObject({ height: '0px', opacity: 0 });
 
     rerender(<Panel open={false} />);
     // Still there, folding.
     expect(screen.getByTestId('panel')).toBeInTheDocument();
+    await frame();
     expect(runs).toHaveLength(2);
     expect(runs[1].keyframes[1]).toMatchObject({ height: '0px', opacity: 0 });
 
@@ -46,10 +50,11 @@ describe('useFold', () => {
     expect(screen.queryByTestId('panel')).toBeNull();
   });
 
-  it('does not move on first paint', () => {
+  it('does not move on first paint', async () => {
     const animate = vi.fn();
     HTMLElement.prototype.animate = animate as unknown as typeof HTMLElement.prototype.animate;
     render(<Panel open />);
+    await frame();
     expect(screen.getByTestId('panel')).toBeInTheDocument();
     expect(animate).not.toHaveBeenCalled();
   });
