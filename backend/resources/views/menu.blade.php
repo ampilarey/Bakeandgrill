@@ -122,6 +122,23 @@
 .menu-rail-list > a.is-active { color: #fff; background: var(--amber); box-shadow: 0 6px 14px -6px color-mix(in srgb, var(--amber) 70%, transparent); }
 .menu-rail-list > a.is-active .menu-rail-label { font-weight: 800; }
 .menu-rail-list > a.is-active:hover { color: #fff; }
+/* The tiles slide in one after another when the page opens (owner,
+   2026-10-07), from the side the rail sits on. */
+@keyframes rail-tile-in-left { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: none; } }
+@keyframes rail-tile-in-right { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+.menu-rail-list > a { animation: rail-tile-in-left 0.42s cubic-bezier(.2,.7,.2,1) both; }
+html.rail-right .menu-rail-list > a { animation-name: rail-tile-in-right; }
+.menu-rail-list > a:nth-child(2) { animation-delay: 40ms; }
+.menu-rail-list > a:nth-child(3) { animation-delay: 80ms; }
+.menu-rail-list > a:nth-child(4) { animation-delay: 120ms; }
+.menu-rail-list > a:nth-child(5) { animation-delay: 160ms; }
+.menu-rail-list > a:nth-child(6) { animation-delay: 200ms; }
+.menu-rail-list > a:nth-child(7) { animation-delay: 240ms; }
+.menu-rail-list > a:nth-child(8) { animation-delay: 280ms; }
+.menu-rail-list > a:nth-child(n+9) { animation-delay: 320ms; }
+/* The ring waits for its tile to land. */
+@keyframes rail-ring-in { from { opacity: 0; } to { opacity: 1; } }
+.menu-rail-pill { animation: rail-ring-in 0.25s ease 0.32s backwards; }
 @media (min-width: 769px) { .menu-rail-list > a .menu-rail-label { font-size: 0.72rem; } }
 /* The chosen tile's ring glides from one tile to the next (owner,
    2026-10-07: "some animation ... now just appear"). The script moves it;
@@ -385,6 +402,7 @@ html:not(.js) .mh-search { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
     .mh, .menu-rail, .mobile-header { transition: none !important; }
+    .menu-rail-list > a, .menu-rail-pill { animation: none !important; }
     .mh *, .mh-sheet, .mh-sheet *, .mh-scrim, .menu-rail-pill, .menu-rail-list > a,
     .menu-rail-list > a .menu-rail-thumb { transition: none !important; animation: none !important; }
     .menu-subcat-title.is-arrived, .menu-subcat-block.is-arrived .menu-card { animation: none !important; }

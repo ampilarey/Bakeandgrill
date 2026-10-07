@@ -6030,3 +6030,25 @@ textarea.field-input {
   backdrop-filter: none;
   margin: 0 calc(-1 * var(--page-gutter, 16px));
 }
+
+/* Rail tiles slide in one after another when the menu opens (owner,
+   2026-10-07), from the side the rail sits on. Off for reduced motion. */
+@keyframes rail-tile-in-left { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: none; } }
+@keyframes rail-tile-in-right { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+.cat-rail__list > .cat-rail__item { animation: rail-tile-in-left 0.42s cubic-bezier(.2, .7, .2, 1) both; }
+.menu-columns--rail-right .cat-rail__list > .cat-rail__item { animation-name: rail-tile-in-right; }
+.cat-rail__list > .cat-rail__item:nth-child(2) { animation-delay: 40ms; }
+.cat-rail__list > .cat-rail__item:nth-child(3) { animation-delay: 80ms; }
+.cat-rail__list > .cat-rail__item:nth-child(4) { animation-delay: 120ms; }
+.cat-rail__list > .cat-rail__item:nth-child(5) { animation-delay: 160ms; }
+.cat-rail__list > .cat-rail__item:nth-child(6) { animation-delay: 200ms; }
+.cat-rail__list > .cat-rail__item:nth-child(7) { animation-delay: 240ms; }
+.cat-rail__list > .cat-rail__item:nth-child(8) { animation-delay: 280ms; }
+.cat-rail__list > .cat-rail__item:nth-child(n+9) { animation-delay: 320ms; }
+@media (prefers-reduced-motion: reduce) {
+  .cat-rail__list > .cat-rail__item { animation: none !important; }
+}
+/* The ring waits for its tile to land. */
+@keyframes rail-ring-in { from { opacity: 0; } to { opacity: 1; } }
+.cat-rail__pill { animation: rail-ring-in 0.25s ease 0.32s backwards; }
+@media (prefers-reduced-motion: reduce) { .cat-rail__pill { animation: none !important; } }
