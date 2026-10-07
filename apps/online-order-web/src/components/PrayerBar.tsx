@@ -649,9 +649,9 @@ export function PrayerBar() {
     try { sessionStorage.setItem('pt_banner_expanded', next ? '1' : '0'); } catch { /* ignore */ }
   };
   const toggleExpanded = () => saveExpanded(!expanded);
-  // Owner, 2026-10-07: the opened banner folds away on a tap anywhere else,
-  // like the menu's search panel. The island list is its own layer, so a tap
-  // in it still counts as inside.
+  // Owner, 2026-10-07: the opened banner folds away on a tap or a scroll
+  // anywhere else, like the menu's search panel. The island list is its own
+  // layer, so a tap in it still counts as inside.
   useTapOutside([bannerRef, dropPanelRef], expanded, () => saveExpanded(false));
 
   // Only when offline — "Showing cached times" while online is noise.

@@ -1746,11 +1746,11 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
         // site header comes back on that scroll and the banner jumps under it.
         if (open && input) { try { input.focus({ preventScroll: true }); } catch (e) { input.focus(); } }
         // Closed from the panel: focus back on the button that opened it.
-        // Closed by a tap elsewhere: that tap decides where focus goes.
+        // Closed by a touch elsewhere: that touch decides where focus goes.
         if (!open && !keep && panel.contains(document.activeElement)) { try { searchToggle.focus({ preventScroll: true }); } catch (e) { searchToggle.focus(); } }
         if (!open && keep && document.activeElement === input) input.blur();
         // The button and the ✕ empty the search, so a panel closed on purpose
-        // never leaves the menu filtered; a tap elsewhere (keep) leaves the
+        // never leaves the menu filtered; a touch elsewhere (keep) leaves the
         // results, since that tap is usually on one of them.
         if (!open && !keep && input && input.value) { input.value = ''; apply(); }
         if (window.__mhRefresh) window.__mhRefresh();
@@ -1760,22 +1760,27 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
             openSearch(panel.hidden);
         });
     }
-    // Owner, 2026-10-07: "it should be hidden on any click outside the box".
-    // A tap, not a touch: a finger that scrolls the results ends in
-    // pointercancel and leaves the panel open.
-    var tapStart = null;
+    // Owner, 2026-10-07: "it should be hidden on any click outside the box",
+    // and when a finger touches the page to scroll. A tap closes on lift (by
+    // then it has picked what it landed on); a scroll as it starts, which is
+    // the browser's pointercancel. A wheel outside counts as a scroll.
+    var armed = null;
+    function outsideSearch(t) {
+        return !(t && t.nodeType === 1 && (panel.contains(t) || searchToggle.contains(t)));
+    }
     document.addEventListener('pointerdown', function (e) {
-        var t = e.target;
-        var inside = t && t.closest && (panel.contains(t) || searchToggle.contains(t));
-        tapStart = panel && !panel.hidden && !inside ? { x: e.clientX, y: e.clientY, id: e.pointerId } : null;
+        armed = panel && !panel.hidden && outsideSearch(e.target) ? e.pointerId : null;
     }, true);
-    document.addEventListener('pointercancel', function () { tapStart = null; }, true);
-    document.addEventListener('pointerup', function (e) {
-        var st = tapStart; tapStart = null;
-        if (!st || st.id !== e.pointerId || panel.hidden) return;
-        if (Math.abs(e.clientX - st.x) + Math.abs(e.clientY - st.y) > 12) return;
-        openSearch(false, true);
-    }, true);
+    function endOutside(e) {
+        if (armed === null || armed !== e.pointerId) return;
+        armed = null;
+        if (!panel.hidden) openSearch(false, true);
+    }
+    document.addEventListener('pointerup', endOutside, true);
+    document.addEventListener('pointercancel', endOutside, true);
+    document.addEventListener('wheel', function (e) {
+        if (panel && !panel.hidden && outsideSearch(e.target)) openSearch(false, true);
+    }, { capture: true, passive: true });
     if (searchClose) searchClose.addEventListener('click', function () { openSearch(false); });
 
     if (input) {

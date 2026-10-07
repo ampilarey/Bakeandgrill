@@ -2540,24 +2540,28 @@
             if (dropOpen) { closeDropdown(); return; }
             if (expanded) toggleExpanded();
         });
-        // Owner, 2026-10-07: the opened banner folds away on a tap anywhere
-        // else. A tap, not a touch: a finger that scrolls the page ends in
-        // pointercancel and leaves it open. The island list counts as inside.
-        var tapStart = null;
+        // Owner, 2026-10-07: the opened banner folds away on a tap or a
+        // scroll anywhere else. A tap folds it on lift, so the page does not
+        // move under the finger first; a scroll as it starts (pointercancel).
+        // The island list counts as inside.
+        var ptArmed = null;
         function insideBanner(t) {
             if (!t || !t.closest) return false;
             return !!(t.closest('[data-pt-banner]') || t.closest('#hptPanel'));
         }
         document.addEventListener('pointerdown', function(e){
-            tapStart = expanded && !insideBanner(e.target) ? { x: e.clientX, y: e.clientY, id: e.pointerId } : null;
+            ptArmed = expanded && !insideBanner(e.target) ? e.pointerId : null;
         }, true);
-        document.addEventListener('pointercancel', function(){ tapStart = null; }, true);
-        document.addEventListener('pointerup', function(e){
-            var st = tapStart; tapStart = null;
-            if (!st || st.id !== e.pointerId || !expanded) return;
-            if (Math.abs(e.clientX - st.x) + Math.abs(e.clientY - st.y) > 12) return;
-            toggleExpanded();
-        }, true);
+        function ptEnd(e) {
+            if (ptArmed === null || ptArmed !== e.pointerId) return;
+            ptArmed = null;
+            if (expanded) toggleExpanded();
+        }
+        document.addEventListener('pointerup', ptEnd, true);
+        document.addEventListener('pointercancel', ptEnd, true);
+        document.addEventListener('wheel', function(e){
+            if (expanded && !insideBanner(e.target)) toggleExpanded();
+        }, { capture: true, passive: true });
     }
 
     function init() {

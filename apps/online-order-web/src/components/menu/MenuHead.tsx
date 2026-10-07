@@ -67,7 +67,7 @@ type Props = {
   /** A search or filter is on, so the search button stays lit. */
   searchActive: boolean;
   onSearchToggle: () => void;
-  /** A tap anywhere outside the open panel and its button closes it. */
+  /** A tap or a scroll anywhere outside the open panel and its button closes it. */
   onSearchClose?: () => void;
   /** The search panel (box, sort, filters, layout), shown under the buttons. */
   children?: ReactNode;
@@ -132,8 +132,8 @@ export const MenuHead = forwardRef<MenuHeadHandle, Props>(function MenuHead(
   const headRef = useRef<HTMLDivElement>(null);
   const searchBtnRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  // Owner, 2026-10-07: "it should be hidden on any click outside the box".
-  // What was typed stays, so a tap on a dish in the results keeps them.
+  // Owner, 2026-10-07: "it should be hidden on any click outside the box",
+  // and on a touch to scroll. What was typed stays, so the results do too.
   useTapOutside([searchBtnRef, panelRef], searchOpen && !!onSearchClose, () => onSearchClose?.());
   const rowRefs = useRef(new Map<string, HTMLElement>());
   const allBtnRef = useRef<HTMLButtonElement>(null);

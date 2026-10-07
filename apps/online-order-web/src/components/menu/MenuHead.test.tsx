@@ -85,28 +85,34 @@ describe('MenuHead', () => {
     expect(screen.queryByTestId('menu-controls')).toBeNull();
   });
 
-  it('closes the open search panel on a tap anywhere outside it', () => {
-    // Owner, 2026-10-07: "it should be hidden on any click outside the box".
+  it('closes the open search panel on a tap or a scroll anywhere outside it', () => {
+    // Owner, 2026-10-07: "it should be hidden on any click outside the box",
+    // and "when i touch to scroll".
     const onSearchClose = vi.fn();
     render(
       <>{page()}<p>Dish</p><MenuHead sections={sections} searchOpen searchActive={false} onSearchToggle={() => {}} onSearchClose={onSearchClose}><input data-testid="q" /></MenuHead></>,
     );
-    const tap = (el: Element, moveTo?: number) => {
-      fireEvent.pointerDown(el, { pointerId: 1, clientX: 10, clientY: 10 });
-      fireEvent.pointerUp(el, { pointerId: 1, clientX: 10, clientY: moveTo ?? 10 });
+    const dish = screen.getByText('Dish');
+    const tap = (el: Element) => {
+      fireEvent.pointerDown(el, { pointerId: 1 });
+      fireEvent.pointerUp(el, { pointerId: 1 });
     };
     // Inside the panel, or on its own button: stays open.
     tap(screen.getByTestId('q'));
     tap(screen.getByTestId('menu-controls-toggle'));
+    fireEvent.wheel(screen.getByTestId('q'));
     expect(onSearchClose).not.toHaveBeenCalled();
-    // A finger that scrolls the page is reading, not dismissing.
-    fireEvent.pointerDown(screen.getByText('Dish'), { pointerId: 1 });
-    fireEvent.pointerCancel(screen.getByText('Dish'), { pointerId: 1 });
-    fireEvent.pointerUp(screen.getByText('Dish'), { pointerId: 1 });
-    tap(screen.getByText('Dish'), 200);
+    // A tap outside closes it on lift, not on touch.
+    fireEvent.pointerDown(dish, { pointerId: 1 });
     expect(onSearchClose).not.toHaveBeenCalled();
-    // A tap anywhere else closes it.
-    tap(screen.getByText('Dish'));
+    fireEvent.pointerUp(dish, { pointerId: 1 });
     expect(onSearchClose).toHaveBeenCalledTimes(1);
+    // A finger that starts scrolling the page closes it as the scroll starts.
+    fireEvent.pointerDown(dish, { pointerId: 2 });
+    fireEvent.pointerCancel(dish, { pointerId: 2 });
+    expect(onSearchClose).toHaveBeenCalledTimes(2);
+    // So does a mouse wheel.
+    fireEvent.wheel(dish);
+    expect(onSearchClose).toHaveBeenCalledTimes(3);
   });
 });

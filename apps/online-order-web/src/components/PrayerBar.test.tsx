@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PrayerBar } from './PrayerBar';
 import { LanguageProvider } from '../context/LanguageContext';
@@ -99,7 +99,7 @@ describe('PrayerBar island picker', () => {
     });
   }, 15000);
 
-  it('folds the opened banner away on a tap anywhere else', async () => {
+  it('folds the opened banner away on a tap or a scroll anywhere else', async () => {
     // Owner, 2026-10-07: like the menu's search panel, it should not need
     // the same button again to close.
     const user = userEvent.setup();
@@ -126,6 +126,13 @@ describe('PrayerBar island picker', () => {
     await user.click(screen.getByText('Outside'));
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
     expect(sessionStorage.getItem('pt_banner_expanded')).toBe('0');
+
+    // A finger that touches the page to scroll folds it too.
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.pointerDown(screen.getByText('Outside'), { pointerId: 9 });
+    fireEvent.pointerCancel(screen.getByText('Outside'), { pointerId: 9 });
+    await waitFor(() => expect(toggle).toHaveAttribute('aria-expanded', 'false'));
   }, 15000);
 
   it('picks an island from the keyboard', async () => {

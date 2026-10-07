@@ -1,14 +1,14 @@
 import { useEffect, useRef, type RefObject } from 'react';
 
 /**
- * Calls `onOutside` when the customer taps anywhere outside `refs` while
- * `active` (owner, 2026-10-07: an open search panel or prayer banner "should
- * be hidden on any click outside the box").
+ * Calls `onOutside` when the customer touches the page anywhere outside
+ * `refs` while `active`: a tap, or a finger (or wheel) that starts scrolling
+ * (owner, 2026-10-07: an open search panel or prayer banner "should be hidden
+ * on any click outside the box", and "when i touch to scroll" too).
  *
- * A tap, not a touch: a finger that starts outside and scrolls the page is
- * reading the menu, not dismissing anything. Touch scrolling ends in
- * `pointercancel`, so only a lift without one counts; a mouse that dragged
- * further than a tap is ignored the same way.
+ * A tap closes on lift, not on touch: closing can move the page (the prayer
+ * banner shrinks), and by then the tap has already picked what it landed on.
+ * A scroll closes as it starts, which is the browser's `pointercancel`.
  */
 export function useTapOutside(
   refs: ReadonlyArray<RefObject<HTMLElement | null>>,
@@ -22,27 +22,29 @@ export function useTapOutside(
 
   useEffect(() => {
     if (!active) return;
-    let start: { x: number; y: number; id: number } | null = null;
+    let armed: number | null = null;
     const inside = (target: EventTarget | null) =>
       target instanceof Node && refsRef.current.some((r) => r.current?.contains(target));
     const onDown = (e: PointerEvent) => {
-      start = inside(e.target) ? null : { x: e.clientX, y: e.clientY, id: e.pointerId };
+      armed = inside(e.target) ? null : e.pointerId;
     };
-    const onCancel = () => { start = null; };
-    const onUp = (e: PointerEvent) => {
-      const s = start;
-      start = null;
-      if (!s || s.id !== e.pointerId) return;
-      if (Math.hypot(e.clientX - s.x, e.clientY - s.y) > 10) return;
+    const onEnd = (e: PointerEvent) => {
+      if (armed === null || armed !== e.pointerId) return;
+      armed = null;
       latest.current();
     };
+    const onWheel = (e: WheelEvent) => {
+      if (!inside(e.target)) latest.current();
+    };
     document.addEventListener('pointerdown', onDown, true);
-    document.addEventListener('pointercancel', onCancel, true);
-    document.addEventListener('pointerup', onUp, true);
+    document.addEventListener('pointerup', onEnd, true);
+    document.addEventListener('pointercancel', onEnd, true);
+    document.addEventListener('wheel', onWheel, { capture: true, passive: true });
     return () => {
       document.removeEventListener('pointerdown', onDown, true);
-      document.removeEventListener('pointercancel', onCancel, true);
-      document.removeEventListener('pointerup', onUp, true);
+      document.removeEventListener('pointerup', onEnd, true);
+      document.removeEventListener('pointercancel', onEnd, true);
+      document.removeEventListener('wheel', onWheel, { capture: true } as EventListenerOptions);
     };
   }, [active]);
 }
