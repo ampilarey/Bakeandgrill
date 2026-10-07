@@ -275,15 +275,14 @@ export function MenuPage() {
       return false;
     }
   });
-  const toggleControls = () => {
-    setControlsOpen((open) => {
-      const next = !open;
-      try {
-        localStorage.setItem(CONTROLS_KEY, next ? '1' : '0');
-      } catch { /* ignore */ }
-      return next;
-    });
+  const setControls = (next: boolean) => {
+    setControlsOpen(next);
+    try {
+      localStorage.setItem(CONTROLS_KEY, next ? '1' : '0');
+    } catch { /* ignore */ }
   };
+  const toggleControls = () => setControls(!controlsOpen);
+  const closeControls = () => setControls(false);
 
   // The floating cart button and back-to-top live in the shell, not here, so
   // the rail side is published on <html> for them to read (owner, 2026-09-03:
@@ -1320,6 +1319,7 @@ export function MenuPage() {
             searchOpen={controlsOpen}
             searchActive={filtersActive}
             onSearchToggle={toggleControls}
+            onSearchClose={closeControls}
           >
             {/*
               * Owner, 2026-09-05: "when serach bar is clicked, page layout gose

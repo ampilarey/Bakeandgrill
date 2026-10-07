@@ -2540,6 +2540,24 @@
             if (dropOpen) { closeDropdown(); return; }
             if (expanded) toggleExpanded();
         });
+        // Owner, 2026-10-07: the opened banner folds away on a tap anywhere
+        // else. A tap, not a touch: a finger that scrolls the page ends in
+        // pointercancel and leaves it open. The island list counts as inside.
+        var tapStart = null;
+        function insideBanner(t) {
+            if (!t || !t.closest) return false;
+            return !!(t.closest('[data-pt-banner]') || t.closest('#hptPanel'));
+        }
+        document.addEventListener('pointerdown', function(e){
+            tapStart = expanded && !insideBanner(e.target) ? { x: e.clientX, y: e.clientY, id: e.pointerId } : null;
+        }, true);
+        document.addEventListener('pointercancel', function(){ tapStart = null; }, true);
+        document.addEventListener('pointerup', function(e){
+            var st = tapStart; tapStart = null;
+            if (!st || st.id !== e.pointerId || !expanded) return;
+            if (Math.abs(e.clientX - st.x) + Math.abs(e.clientY - st.y) > 12) return;
+            toggleExpanded();
+        }, true);
     }
 
     function init() {

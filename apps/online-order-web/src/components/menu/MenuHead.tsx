@@ -13,6 +13,7 @@ import { ChevronDown, Search, X } from 'lucide-react';
 import { ShareControl, type ShareControlProps } from '../ShareControl';
 import { useLanguage } from '../../context/LanguageContext';
 import { API_ORIGIN } from '../../api';
+import { useTapOutside } from '../../hooks/useTapOutside';
 
 /** An uploaded path made absolute against the API's origin. */
 export function menuImageUrl(url: string | null | undefined): string | null {
@@ -66,6 +67,8 @@ type Props = {
   /** A search or filter is on, so the search button stays lit. */
   searchActive: boolean;
   onSearchToggle: () => void;
+  /** A tap anywhere outside the open panel and its button closes it. */
+  onSearchClose?: () => void;
   /** The search panel (box, sort, filters, layout), shown under the buttons. */
   children?: ReactNode;
 };
@@ -122,11 +125,16 @@ function itemsLabel(n: number): string {
  * does the same in plain script (`menu.blade.php`).
  */
 export const MenuHead = forwardRef<MenuHeadHandle, Props>(function MenuHead(
-  { sections, override = null, onSectionChange, searchOpen, searchActive, onSearchToggle, children },
+  { sections, override = null, onSectionChange, searchOpen, searchActive, onSearchToggle, onSearchClose, children },
   ref,
 ) {
   const { t } = useLanguage();
   const headRef = useRef<HTMLDivElement>(null);
+  const searchBtnRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  // Owner, 2026-10-07: "it should be hidden on any click outside the box".
+  // What was typed stays, so a tap on a dish in the results keeps them.
+  useTapOutside([searchBtnRef, panelRef], searchOpen && !!onSearchClose, () => onSearchClose?.());
   const rowRefs = useRef(new Map<string, HTMLElement>());
   const allBtnRef = useRef<HTMLButtonElement>(null);
   const sectionsRef = useRef(sections);
@@ -408,6 +416,7 @@ export const MenuHead = forwardRef<MenuHeadHandle, Props>(function MenuHead(
         <div className="mh-actions">
           <button
             type="button"
+            ref={searchBtnRef}
             className="mh-search"
             data-testid="menu-controls-toggle"
             aria-label={t('menu.controls_toggle')}
@@ -478,7 +487,7 @@ export const MenuHead = forwardRef<MenuHeadHandle, Props>(function MenuHead(
         )}
       </div>
       {searchOpen && (
-        <div className="mh-panel" id="menu-controls" data-testid="menu-controls">
+        <div ref={panelRef} className="mh-panel" id="menu-controls" data-testid="menu-controls">
           {children}
         </div>
       )}

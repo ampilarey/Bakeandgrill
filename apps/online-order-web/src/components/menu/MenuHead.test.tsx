@@ -84,4 +84,29 @@ describe('MenuHead', () => {
     rerender(<>{page()}<MenuHead sections={sections} searchOpen={false} searchActive={false} onSearchToggle={onSearchToggle} /></>);
     expect(screen.queryByTestId('menu-controls')).toBeNull();
   });
+
+  it('closes the open search panel on a tap anywhere outside it', () => {
+    // Owner, 2026-10-07: "it should be hidden on any click outside the box".
+    const onSearchClose = vi.fn();
+    render(
+      <>{page()}<p>Dish</p><MenuHead sections={sections} searchOpen searchActive={false} onSearchToggle={() => {}} onSearchClose={onSearchClose}><input data-testid="q" /></MenuHead></>,
+    );
+    const tap = (el: Element, moveTo?: number) => {
+      fireEvent.pointerDown(el, { pointerId: 1, clientX: 10, clientY: 10 });
+      fireEvent.pointerUp(el, { pointerId: 1, clientX: 10, clientY: moveTo ?? 10 });
+    };
+    // Inside the panel, or on its own button: stays open.
+    tap(screen.getByTestId('q'));
+    tap(screen.getByTestId('menu-controls-toggle'));
+    expect(onSearchClose).not.toHaveBeenCalled();
+    // A finger that scrolls the page is reading, not dismissing.
+    fireEvent.pointerDown(screen.getByText('Dish'), { pointerId: 1 });
+    fireEvent.pointerCancel(screen.getByText('Dish'), { pointerId: 1 });
+    fireEvent.pointerUp(screen.getByText('Dish'), { pointerId: 1 });
+    tap(screen.getByText('Dish'), 200);
+    expect(onSearchClose).not.toHaveBeenCalled();
+    // A tap anywhere else closes it.
+    tap(screen.getByText('Dish'));
+    expect(onSearchClose).toHaveBeenCalledTimes(1);
+  });
 });

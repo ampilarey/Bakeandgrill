@@ -309,8 +309,8 @@ html:not(.js) .mh-chip.is-active { background: var(--amber); }
 .mh-all[hidden] { display: none; }
 .mh-all.is-new { animation: mh-pop 0.24s var(--mh-ease); }
 @keyframes mh-pop { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: none; } }
-.mh-search { width: 38px; height: 38px; padding: 0; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.mh-search[aria-expanded="true"] { background: #fff; border-color: #fff; color: var(--amber); }
+.mh-search { width: 38px; height: 38px; padding: 0; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.mh-search[aria-expanded="true"], .mh-search.is-on { background: #fff; border-color: #fff; color: var(--amber); }
 /* Search needs the script, so does its button. */
 html:not(.js) .mh-search { display: none; }
 .mh-panel { padding: 0 0 0.6rem; }
@@ -529,7 +529,8 @@ html.rail-right .menu-rail-side .menu-rail-side__icon { transform: scaleX(-1); }
     background: var(--bg);
     color: var(--dark);
     font: inherit;
-    font-size: 0.9rem;
+    /* 16px: a phone zooms the whole page into any smaller field it focuses. */
+    font-size: 16px;
 }
 .menu-search input:focus-visible {
     outline: 2px solid var(--amber);
@@ -1735,17 +1736,23 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
     // field, Grid/List, rail side, Print, sort and filters, out of the way
     // of the food until asked for.
     var panel = document.getElementById('menuSearchPanel');
-    function openSearch(open) {
+    function openSearch(open, keep) {
         if (!panel || !searchToggle) return;
         panel.hidden = !open;
         var mh = document.querySelector('[data-mh]');
         if (mh) mh.classList.toggle('has-panel', open);
         searchToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-        if (open && input) input.focus();
-        // Closing gives focus back to the button that opened it and empties
-        // the search, so a closed panel never leaves the menu filtered.
-        if (!open && document.activeElement !== document.body) searchToggle.focus();
-        if (!open && input && input.value) { input.value = ''; apply(); }
+        // Without preventScroll the phone scrolls the field into view, the
+        // site header comes back on that scroll and the banner jumps under it.
+        if (open && input) { try { input.focus({ preventScroll: true }); } catch (e) { input.focus(); } }
+        // Closed from the panel: focus back on the button that opened it.
+        // Closed by a tap elsewhere: that tap decides where focus goes.
+        if (!open && !keep && panel.contains(document.activeElement)) { try { searchToggle.focus({ preventScroll: true }); } catch (e) { searchToggle.focus(); } }
+        if (!open && keep && document.activeElement === input) input.blur();
+        // The button and the ✕ empty the search, so a panel closed on purpose
+        // never leaves the menu filtered; a tap elsewhere (keep) leaves the
+        // results, since that tap is usually on one of them.
+        if (!open && !keep && input && input.value) { input.value = ''; apply(); }
         if (window.__mhRefresh) window.__mhRefresh();
     }
     if (searchToggle) {
@@ -1753,6 +1760,22 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
             openSearch(panel.hidden);
         });
     }
+    // Owner, 2026-10-07: "it should be hidden on any click outside the box".
+    // A tap, not a touch: a finger that scrolls the results ends in
+    // pointercancel and leaves the panel open.
+    var tapStart = null;
+    document.addEventListener('pointerdown', function (e) {
+        var t = e.target;
+        var inside = t && t.closest && (panel.contains(t) || searchToggle.contains(t));
+        tapStart = panel && !panel.hidden && !inside ? { x: e.clientX, y: e.clientY, id: e.pointerId } : null;
+    }, true);
+    document.addEventListener('pointercancel', function () { tapStart = null; }, true);
+    document.addEventListener('pointerup', function (e) {
+        var st = tapStart; tapStart = null;
+        if (!st || st.id !== e.pointerId || panel.hidden) return;
+        if (Math.abs(e.clientX - st.x) + Math.abs(e.clientY - st.y) > 12) return;
+        openSearch(false, true);
+    }, true);
     if (searchClose) searchClose.addEventListener('click', function () { openSearch(false); });
 
     if (input) {
@@ -2014,6 +2037,9 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
         if (!phoneMq || !phoneMq.matches) { setHeaderAway(false); return; }
         // A tap is travelling; goTo has already decided.
         if (state.lock) return;
+        // Typing: the keyboard opening scrolls the page, which is not the
+        // customer scrolling, so the header stays as it is.
+        if (document.activeElement && document.activeElement.id === 'menuSearch') return;
         if (y < 120) { upTravel = 0; setHeaderAway(false); return; }
         if (dy > 4) { upTravel = 0; setHeaderAway(true); }
         else if (dy < 0) { upTravel -= dy; if (upTravel > 24) setHeaderAway(false); }

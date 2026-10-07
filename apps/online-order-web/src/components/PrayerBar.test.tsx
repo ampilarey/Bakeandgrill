@@ -99,6 +99,35 @@ describe('PrayerBar island picker', () => {
     });
   }, 15000);
 
+  it('folds the opened banner away on a tap anywhere else', async () => {
+    // Owner, 2026-10-07: like the menu's search panel, it should not need
+    // the same button again to close.
+    const user = userEvent.setup();
+    render(
+      <LanguageProvider>
+        <p>Outside</p>
+        <PrayerBar />
+      </LanguageProvider>,
+    );
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Malé/i })).toBeTruthy();
+    }, { timeout: 10000 });
+
+    const toggle = screen.getByRole('button', { name: /Dhuhr|Fajr|Asr|Maghrib|Isha|Sunrise|Prayer Times/i });
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+
+    // The island list is a layer of its own; a tap in it is still inside.
+    await user.click(await screen.findByRole('button', { name: /Change island/i }, { timeout: 10000 }));
+    await screen.findByRole('listbox');
+    await user.click(document.querySelector('.order-hpt-search-input') as HTMLElement);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+
+    await user.click(screen.getByText('Outside'));
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(sessionStorage.getItem('pt_banner_expanded')).toBe('0');
+  }, 15000);
+
   it('picks an island from the keyboard', async () => {
     // The panel calls itself a listbox, but the islands inside it were plain
     // divs with an onClick — so somebody tabbing through the page could open
