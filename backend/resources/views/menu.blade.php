@@ -1736,11 +1736,26 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
     // field, Grid/List, rail side, Print, sort and filters, out of the way
     // of the food until asked for.
     var panel = document.getElementById('menuSearchPanel');
+    var searchIsOpen = false;
     function openSearch(open, keep) {
         if (!panel || !searchToggle) return;
-        panel.hidden = !open;
+        searchIsOpen = open;
         var mh = document.querySelector('[data-mh]');
-        if (mh) mh.classList.toggle('has-panel', open);
+        // It folds open and shut rather than appearing and vanishing at once
+        // (owner, 2026-10-07: "it hides suddenly. Cant u animate").
+        if (open) {
+            panel.hidden = false;
+            if (mh) mh.classList.add('has-panel');
+            if (window.bgFold) window.bgFold(panel, true);
+        } else if (!panel.hidden) {
+            var shut = function () {
+                if (searchIsOpen) return;
+                panel.hidden = true;
+                if (mh) mh.classList.remove('has-panel');
+                if (window.__mhRefresh) window.__mhRefresh();
+            };
+            if (window.bgFold) window.bgFold(panel, false, shut); else shut();
+        }
         searchToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
         // Without preventScroll the phone scrolls the field into view, the
         // site header comes back on that scroll and the banner jumps under it.
@@ -1757,7 +1772,7 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
     }
     if (searchToggle) {
         searchToggle.addEventListener('click', function () {
-            openSearch(panel.hidden);
+            openSearch(!searchIsOpen);
         });
     }
     // Owner, 2026-10-07: "it should be hidden on any click outside the box",
@@ -1769,17 +1784,17 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
         return !(t && t.nodeType === 1 && (panel.contains(t) || searchToggle.contains(t)));
     }
     document.addEventListener('pointerdown', function (e) {
-        armed = panel && !panel.hidden && outsideSearch(e.target) ? e.pointerId : null;
+        armed = panel && searchIsOpen && outsideSearch(e.target) ? e.pointerId : null;
     }, true);
     function endOutside(e) {
         if (armed === null || armed !== e.pointerId) return;
         armed = null;
-        if (!panel.hidden) openSearch(false, true);
+        if (searchIsOpen) openSearch(false, true);
     }
     document.addEventListener('pointerup', endOutside, true);
     document.addEventListener('pointercancel', endOutside, true);
     document.addEventListener('wheel', function (e) {
-        if (panel && !panel.hidden && outsideSearch(e.target)) openSearch(false, true);
+        if (panel && searchIsOpen && outsideSearch(e.target)) openSearch(false, true);
     }, { capture: true, passive: true });
     if (searchClose) searchClose.addEventListener('click', function () { openSearch(false); });
 

@@ -1444,6 +1444,11 @@
             color: var(--muted);
             font-size: 0.75rem;
             padding-right: 0.2rem;
+            transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        .prayer-banner.is-expanded .prayer-banner-chevron { transform: rotate(180deg); }
+        @media (prefers-reduced-motion: reduce) {
+            .prayer-banner-chevron { transition: none; }
         }
         .prayer-banner-panel {
             border-top: 1px solid var(--border);
@@ -2218,6 +2223,33 @@
 </div>
 
 <script nonce="{{ csp_nonce() }}">
+/*
+ * Folds a panel open or shut instead of it appearing and vanishing at once
+ * (owner, 2026-10-07: "it hides suddenly. Cant u animate"). Height, padding
+ * and opacity together, so the content under it glides rather than jumps.
+ * The prayer banner and the menu's search panel use it; the order app has the
+ * same in utils/fold.ts. Opening: call after the panel is shown. Closing:
+ * `done` hides it once folded. Returns a cancel for a change of mind halfway.
+ */
+window.bgFold = function (el, open, done) {
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!el || reduce || typeof el.animate !== 'function') { if (done) done(); return function () {}; }
+    if (el.__foldCancel) el.__foldCancel();
+    var cs = window.getComputedStyle(el);
+    var full = { height: el.offsetHeight + 'px', paddingTop: cs.paddingTop, paddingBottom: cs.paddingBottom, opacity: 1 };
+    var none = { height: '0px', paddingTop: '0px', paddingBottom: '0px', opacity: 0 };
+    el.style.overflow = 'hidden';
+    var a = el.animate(open ? [none, full] : [full, none], {
+        duration: open ? 280 : 220,
+        easing: open ? 'cubic-bezier(0.2, 0.8, 0.2, 1)' : 'cubic-bezier(0.4, 0, 0.6, 1)',
+        fill: open ? 'none' : 'forwards'
+    });
+    var over = false;
+    function end() { over = true; el.__foldCancel = null; el.style.overflow = ''; }
+    a.onfinish = function () { end(); if (done) done(); if (!open) a.cancel(); };
+    el.__foldCancel = function () { if (over) return; a.onfinish = null; a.cancel(); end(); };
+    return el.__foldCancel;
+};
 (function () {
     'use strict';
 
@@ -2344,14 +2376,15 @@
         });
     }
 
-    function setExpandedUI(root, isOpen) {
+    function setExpandedUI(root, isOpen, animate) {
         root.classList.toggle('is-expanded', isOpen);
         var btn = root.querySelector('[data-pt-expand]');
         var panel = root.querySelector('[data-pt-panel]');
-        var chev = root.querySelector('[data-pt-chevron]');
         if (btn) btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-        setHidden(panel, !isOpen);
-        if (chev) chev.textContent = isOpen ? '⌃' : '▾';
+        if (!animate || !panel || !window.bgFold) { setHidden(panel, !isOpen); return; }
+        // Folds rather than appearing and vanishing at once; the chevron turns.
+        if (isOpen) { setHidden(panel, false); window.bgFold(panel, true); }
+        else if (!panel.hidden) window.bgFold(panel, false, function () { setHidden(panel, true); });
     }
 
     function tick() {
@@ -2512,8 +2545,9 @@
     function toggleExpanded() {
         expanded = !expanded;
         try { sessionStorage.setItem('pt_banner_expanded', expanded ? '1' : '0'); } catch(e) {}
-        eachBanner(function(root) { setExpandedUI(root, expanded); });
+        // Painted before it opens, so the fold measures the full grid.
         tick();
+        eachBanner(function(root) { setExpandedUI(root, expanded, true); });
     }
 
     function wireEvents() {

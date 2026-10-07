@@ -4941,6 +4941,12 @@ textarea.field-input {
   color: var(--color-text-muted);
   font-size: 0.75rem;
   padding-right: 0.2rem;
+  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+/* Turns with the fold instead of swapping for another arrow. */
+.prayer-banner.is-expanded .prayer-banner-chevron { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) {
+  .prayer-banner-chevron { transition: none; }
 }
 
 .prayer-banner-caption {

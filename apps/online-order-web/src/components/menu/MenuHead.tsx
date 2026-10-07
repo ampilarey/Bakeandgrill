@@ -14,6 +14,7 @@ import { ShareControl, type ShareControlProps } from '../ShareControl';
 import { useLanguage } from '../../context/LanguageContext';
 import { API_ORIGIN } from '../../api';
 import { useTapOutside } from '../../hooks/useTapOutside';
+import { useFold } from '../../hooks/useFold';
 
 /** An uploaded path made absolute against the API's origin. */
 export function menuImageUrl(url: string | null | undefined): string | null {
@@ -135,6 +136,8 @@ export const MenuHead = forwardRef<MenuHeadHandle, Props>(function MenuHead(
   // Owner, 2026-10-07: "it should be hidden on any click outside the box",
   // and on a touch to scroll. What was typed stays, so the results do too.
   useTapOutside([searchBtnRef, panelRef], searchOpen && !!onSearchClose, () => onSearchClose?.());
+  // It folds open and shut rather than appearing and vanishing at once.
+  const panelShown = useFold(searchOpen, panelRef);
   const rowRefs = useRef(new Map<string, HTMLElement>());
   const allBtnRef = useRef<HTMLButtonElement>(null);
   const sectionsRef = useRef(sections);
@@ -486,7 +489,7 @@ export const MenuHead = forwardRef<MenuHeadHandle, Props>(function MenuHead(
           </button>
         )}
       </div>
-      {searchOpen && (
+      {panelShown && (
         <div ref={panelRef} className="mh-panel" id="menu-controls" data-testid="menu-controls">
           {children}
         </div>

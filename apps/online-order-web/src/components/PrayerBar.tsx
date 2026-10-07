@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { API_BASE_URL } from '../api/client';
 import { useLanguage } from '../context/LanguageContext';
 import { useTapOutside } from '../hooks/useTapOutside';
+import { useFold } from '../hooks/useFold';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -243,6 +244,7 @@ export function PrayerBar() {
   const dropTriggerRef = useRef<HTMLElement | null>(null);
   const dropPanelRef = useRef<HTMLDivElement | null>(null);
   const bannerRef = useRef<HTMLElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
   const ignoreOutsideClickRef = useRef(false);
 
   useEffect(() => {
@@ -653,6 +655,8 @@ export function PrayerBar() {
   // anywhere else, like the menu's search panel. The island list is its own
   // layer, so a tap in it still counts as inside.
   useTapOutside([bannerRef, dropPanelRef], expanded, () => saveExpanded(false));
+  // The times fold open and shut rather than appearing and vanishing at once.
+  const panelShown = useFold(expanded, panelRef);
 
   // Only when offline — "Showing cached times" while online is noise.
   const showOfflineCaption = offline || servedFromCache;
@@ -703,7 +707,7 @@ export function PrayerBar() {
                       )}
                     </span>
                   </span>
-                  <span className="prayer-banner-chevron" aria-hidden>{expanded ? '⌃' : '▾'}</span>
+                  <span className="prayer-banner-chevron" aria-hidden>▾</span>
                 </button>
                 <button
                   type="button"
@@ -721,8 +725,9 @@ export function PrayerBar() {
               )}
 
               <div
+                ref={panelRef}
                 className="prayer-banner-panel"
-                hidden={!expanded}
+                hidden={!panelShown}
               >
                 <div className="prayer-banner-grid" role="list">
                   {PRAYERS.map((key) => {
