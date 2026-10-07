@@ -202,6 +202,14 @@
     };
 
     window.__shareInit();
+    // This script prints with the first control on the page, so any control
+    // further down is not there yet when it runs. On the menu that left the
+    // sub-category Shares and every banner Share but the first doing nothing
+    // (owner, 2026-10-07: "This button does nothing"). Bind the rest once the
+    // page is in.
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', window.__shareInit);
+    }
 })();
 </script>
 @endonce

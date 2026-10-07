@@ -300,6 +300,15 @@ class MenuPageTest extends TestCase
         $this->assertStringContainsString('aria-label="Share Cold Drinks"', $html);
         // The share styles and script travel once, not once per category.
         $this->assertSame(1, substr_count($html, 'window.__shareInit = function'));
+        // The script prints with the first control, so it binds the ones
+        // further down the page once it has loaded (owner, 2026-10-07: the
+        // sub-category Share "does nothing").
+        $this->assertStringContainsString("document.addEventListener('DOMContentLoaded', window.__shareInit);", $html);
+        $this->assertLessThan(
+            strpos($html, 'aria-label="Share Cold Drinks"'),
+            strpos($html, 'window.__shareInit = function'),
+            'the sub-category Share comes after the script, which is the case the late bind covers',
+        );
         // Icons, not words: the banner's Share and the label's.
         $this->assertStringContainsString('mh-share-btn', $html);
         $this->assertStringContainsString('menu-sub-share', $html);
