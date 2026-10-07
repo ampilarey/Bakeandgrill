@@ -32,6 +32,9 @@ final class SmsDeliveryRules
 
     public const QUIET_ALERTS = 'sms_quiet_hours_alerts';
 
+    /** Alerts that go even in quiet hours: someone is waiting on them now. */
+    public const NEVER_HELD = ['owner_device_approval'];
+
     public const MARKETING_CAP = 'sms_marketing_daily_cap';
 
     public const LOG_RETENTION = 'sms_log_retention_days';
@@ -141,6 +144,10 @@ final class SmsDeliveryRules
     public static function heldInQuietHours(array $entry): bool
     {
         if (!empty($entry['always_on'])) {
+            return false;
+        }
+        // Someone is standing at the till waiting for it (2026-10-07).
+        if (in_array((string) ($entry['key'] ?? ''), self::NEVER_HELD, true)) {
             return false;
         }
         $rules = self::all();

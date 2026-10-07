@@ -26,7 +26,10 @@ final class DeviceApprovalAlert
 
     public static function send(Device $device, ?User $firstUser): void
     {
-        if (!Cache::add('device-approval-alert:' . $device->identifier, 1, self::INTERVAL_SECONDS)) {
+        // Keyed by the device row, not its identifier: a till deleted in
+        // Admin and used again is a new row and alerts again (owner,
+        // 2026-10-07: "Notifications didn't come to telegram").
+        if (!Cache::add('device-approval-alert:' . $device->id, 1, self::INTERVAL_SECONDS)) {
             return; // already alerted recently
         }
 

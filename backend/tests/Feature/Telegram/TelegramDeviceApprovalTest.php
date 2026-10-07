@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Tests\Feature\Telegram;
 
 use App\Domains\Notifications\Contracts\SmsProviderInterface;
+use App\Domains\Notifications\Support\SmsDeliveryRules;
 use App\Models\AuditLog;
 use App\Models\Device;
 use App\Models\SiteSetting;
+use App\Models\SmsLog;
 use App\Services\DeviceApprovalAlert;
 use App\Support\DeferAfterResponse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -146,5 +148,55 @@ class TelegramDeviceApprovalTest extends TestCase
         $card = end($sent);
         $this->assertStringContainsString('POS front 2', $card['text']);
         $this->assertSame(['dv:' . $device->id, 'dx:' . $device->id], array_column($card['reply_markup']['inline_keyboard'][0], 'callback_data'));
+    }
+
+    /*
+     * Owner, 2026-10-07: "Notifications didn't come to telegram", for a till
+     * deleted in Admin and used again. The 6-hour limit was keyed by the
+     * till's identifier, which survives a delete.
+     */
+    public function test_a_deleted_till_used_again_alerts_again(): void
+    {
+        $owner = $this->staff('owner', '+9607820288');
+        $this->link($this->bot(), $owner, '5550001');
+
+        $first = $this->pendingTill();
+        DeviceApprovalAlert::send($first, null);
+        DeferAfterResponse::flushTestingCallbacks();
+        $this->assertCount(1, $this->sent('5550001'));
+
+        $first->delete();
+        $again = $this->pendingTill();
+        DeviceApprovalAlert::send($again, null);
+        DeferAfterResponse::flushTestingCallbacks();
+
+        $this->assertCount(2, $this->sent('5550001'));
+        $this->assertSame('dv:' . $again->id, collect($this->sent('5550001'))->last()['reply_markup']['inline_keyboard'][0][0]['callback_data']);
+
+        // The same row is still limited, so a till retrying does not spam.
+        DeviceApprovalAlert::send($again, null);
+        DeferAfterResponse::flushTestingCallbacks();
+        $this->assertCount(2, $this->sent('5550001'));
+    }
+
+    public function test_quiet_hours_holding_owner_alerts_does_not_hold_a_till_waiting(): void
+    {
+        SiteSetting::set(SmsDeliveryRules::QUIET_ENABLED, '1');
+        SiteSetting::set(SmsDeliveryRules::QUIET_START, '00:00');
+        SiteSetting::set(SmsDeliveryRules::QUIET_END, '23:59');
+        SiteSetting::set(SmsDeliveryRules::QUIET_ALERTS, '1');
+        SiteSetting::bust();
+        $owner = $this->staff('owner', '+9607820288');
+        $this->link($this->bot(), $owner, '5550001');
+
+        DeviceApprovalAlert::send($this->pendingTill(), null);
+        DeferAfterResponse::flushTestingCallbacks();
+
+        $this->assertStringContainsString('New till waiting for approval', $this->lastText('5550001'));
+        $this->assertSame('sent', SmsLog::query()->where('type', 'owner_device_approval')->latest('id')->value('status'));
+
+        // Other owner alerts are still held.
+        $log = app(\App\Domains\Notifications\Services\SmsService::class)->send(new \App\Domains\Notifications\DTOs\SmsMessage(to: '7820288', message: 'Shift left open.', type: 'owner_shift_left_open'));
+        $this->assertSame('deferred', $log->status);
     }
 }

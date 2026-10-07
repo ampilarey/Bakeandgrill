@@ -473,7 +473,7 @@ export function SmsControlCenterPage() {
           <h3 style={sectionTitle}>Delivery rules</h3>
           <p style={panelLead}>
             {rules.quiet_hours_enabled
-              ? `Quiet hours ${rules.quiet_hours_start}–${rules.quiet_hours_end}: marketing texts${rules.quiet_hours_alerts ? ' and owner alerts' : ''} wait until the window ends.`
+              ? `Quiet hours ${rules.quiet_hours_start}–${rules.quiet_hours_end}: marketing texts${rules.quiet_hours_alerts ? ' and owner alerts (except a new till waiting for approval)' : ''} wait until the window ends.`
               : 'Quiet hours off: texts go out whenever they are triggered.'}
             {quietNow && <span style={{ color: 'var(--color-warning-strong)', fontWeight: 600 }}> · Quiet now</span>}
             {deferredCount > 0 && <> · {deferredCount} waiting</>}
@@ -503,7 +503,7 @@ export function SmsControlCenterPage() {
                   </label>
                   <label style={{ ...fieldLabel, flexDirection: 'row', alignItems: 'center', minWidth: 0 }}>
                     <input type="checkbox" checked={rulesDraft.quiet_hours_alerts} onChange={(e) => setRulesDraft((d) => ({ ...d, quiet_hours_alerts: e.target.checked }))} />
-                    Hold owner alerts too
+                    Hold owner alerts too (a new till waiting for approval still goes)
                   </label>
                 </div>
               </fieldset>

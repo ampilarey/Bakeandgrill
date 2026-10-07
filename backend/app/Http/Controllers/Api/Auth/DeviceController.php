@@ -111,16 +111,24 @@ class DeviceController extends Controller
             ]);
         }
 
-        $device = Device::create([
-            'name' => $data['name'],
-            'identifier' => $data['identifier'],
-            'type' => $data['type'] ?? 'pos',
-            'last_user_id' => $staffId,
-            'ip_address' => $request->ip(),
-            'is_active' => !$strict,
-            'status' => $strict ? 'pending' : 'approved',
-            'last_seen_at' => now(),
-        ]);
+        try {
+            $device = Device::create([
+                'name' => $data['name'],
+                'identifier' => $data['identifier'],
+                'type' => $data['type'] ?? 'pos',
+                'last_user_id' => $staffId,
+                'ip_address' => $request->ip(),
+                'is_active' => !$strict,
+                'status' => $strict ? 'pending' : 'approved',
+                'last_seen_at' => now(),
+            ]);
+        } catch (\Illuminate\Database\UniqueConstraintViolationException) {
+            // The till sent two registrations at once (sign-in and its status
+            // check); the other one created the row and alerted the owner.
+            $device = Device::where('identifier', $data['identifier'])->firstOrFail();
+
+            return response()->json(['device' => $device, 'status' => $device->status]);
+        }
 
         app(AuditLogService::class)->log('device.self_registered', 'Device', $device->id, [], $device->toArray(), [], $request);
 
