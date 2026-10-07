@@ -128,6 +128,12 @@ class AppServiceProvider extends ServiceProvider
         // The buying list on Telegram follows each request (2026-10-07).
         \App\Models\PurchaseRequest::observe(\App\Observers\PurchaseRequestTelegramObserver::class);
         \App\Models\PurchaseRequestItem::updated(static fn (\App\Models\PurchaseRequestItem $item) => app(\App\Observers\PurchaseRequestTelegramObserver::class)->itemUpdated($item));
+        // A job on the production plan given to someone reaches them on Telegram (2026-10-07).
+        \App\Models\ProductionPlanRecord::saved(static function (\App\Models\ProductionPlanRecord $record): void {
+            if ($record->assigned_to !== null && ($record->wasRecentlyCreated || $record->wasChanged(['assigned_to', 'planned_qty', 'due_time']))) {
+                \App\Domains\Telegram\Services\TelegramKitchenDesk::queueJobs((int) $record->assigned_to, \Illuminate\Support\Carbon::parse($record->plan_date)->toDateString());
+            }
+        });
         StaffSchedule::observe(StaffScheduleObserver::class);
         Item::observe(ItemObserver::class);
         // Every change to what a customer pays, from any screen (2026-10-01).

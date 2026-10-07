@@ -111,13 +111,14 @@ their own Telegram with a one-time link; staff and owner alerts that go through
 buttons re-check permissions on every press. **TEST
 and production need separate bots**: Telegram sends a bot's updates to one
 webhook only, and adding a bot that points at another site stops with a warning.
-Built: owner, manager and cashier (menus follow permissions), drivers (a message
+Built: owner, manager, cashier and kitchen (menus follow permissions; the kitchen
+gets the prep list with Made, the board read only and check-in), drivers (a message
 per delivery, Picked up / On the way / Delivered), the buying list (add by
 typing, Approve / Reject, the buyer ticks items off with the price paid) and
 shop-group feeds (`/feed@<bot>` online orders, `/feed@<bot> buying` the buying
 list; buttons checked against whoever presses; cards follow the order or
-request). No shift figures for cashiers: the close count is blind. Kitchen menu
-next; see `docs/TELEGRAM_BOTS.md`.
+request). No shift figures for cashiers: the close count is blind. Every level is
+built; see `docs/TELEGRAM_BOTS.md`.
 
 ## Alert channels per role and person
 

@@ -89,6 +89,10 @@ class TelegramCommands
         foreach ($this->cashier()->menuButtons($user) as $button) {
             $buttons[] = $button;
         }
+        // Kitchen level (2026-10-07): prep list, kitchen board, check in.
+        foreach ($this->kitchen()->menuButtons($user) as $button) {
+            $buttons[] = $button;
+        }
         $buttons[] = self::BTN_HELP;
 
         $rows = array_map(
@@ -175,6 +179,9 @@ class TelegramCommands
             return true;
         }
         if ($this->cashier()->handleText($link, $user, $raw, $command)) {
+            return true;
+        }
+        if ($this->kitchen()->handleText($link, $user, $raw, $command)) {
             return true;
         }
         if ($raw === self::BTN_HELP || $command === 'help' || $command === 'menu') {
@@ -522,6 +529,9 @@ class TelegramCommands
         foreach ($this->cashier()->helpLines($user) as $line) {
             $lines[] = $line;
         }
+        foreach ($this->kitchen()->helpLines($user) as $line) {
+            $lines[] = $line;
+        }
         $lines[] = '';
         if ($this->can($user, 'promotions.discount_override') || $this->permissions->isOwner($user)) {
             $lines[] = 'Discount requests from the till come with Approve and Decline: tap Approve and the till carries on, no code to read out.';
@@ -565,6 +575,7 @@ class TelegramCommands
                 'sof', 'son' => $this->callbackSoldOut($link, $user, $id, $messageId, (int) $arg, $action === 'son'),
                 'gp' => $this->cashier()->orderTap($link, $user, $id, $messageId, $arg),
                 'bl' => app(TelegramBuyingList::class)->privateTap($link, $user, $id, $messageId, $arg),
+                'kp', 'kc' => $this->kitchen()->handleCallback($link, $user, $id, $messageId, $action, $arg),
                 default => $this->extrasCallback($link, $user, $id, $messageId, $action, $arg),
             };
         } catch (Throwable $e) {
@@ -724,7 +735,8 @@ class TelegramCommands
     {
         if (($await['action'] ?? '') !== 'refund_reject') {
             return $this->extras()->answerAwait($link, $user, $await, $text)
-                || app(TelegramBuyingList::class)->answerAwait($link, $user, $await, $text);
+                || app(TelegramBuyingList::class)->answerAwait($link, $user, $await, $text)
+                || $this->kitchen()->answerAwait($link, $user, $await, $text);
         }
 
         $refund = Refund::find((int) ($await['id'] ?? 0));
@@ -775,6 +787,12 @@ class TelegramCommands
     public function cashier(): TelegramCashierDesk
     {
         return app(TelegramCashierDesk::class);
+    }
+
+    /** Kitchen level (2026-10-07): prep list, kitchen board, check in. */
+    public function kitchen(): TelegramKitchenDesk
+    {
+        return app(TelegramKitchenDesk::class);
     }
 
     /** Ask the person for a reply; their next message answers it (10 minutes). */
@@ -836,6 +854,7 @@ class TelegramCommands
             self::BTN_TODAY, self::BTN_SHIFTS, self::BTN_ORDERS, self::BTN_APPROVALS, self::BTN_SOLD_OUT, self::BTN_HELP,
             self::BTN_WEEK, self::BTN_CASHIERS, self::BTN_SHOP, self::BTN_OWED, self::BTN_COMPLAINTS, self::BTN_CUSTOMER,
             TelegramCashierDesk::BTN_ONLINE, TelegramBuyingList::BTN,
+            TelegramKitchenDesk::BTN_PREP, TelegramKitchenDesk::BTN_QUEUE, TelegramKitchenDesk::BTN_CHECKIN,
         ], true);
     }
 

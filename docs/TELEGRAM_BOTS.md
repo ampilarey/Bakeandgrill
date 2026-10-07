@@ -28,7 +28,7 @@ bot. A bot serves the roles ticked on it in Admin → Telegram.
 | 3 | **Driver**: a message per delivery, My deliveries, Picked up / On the way / Delivered (2026-10-07) | Built |
 | 4 | **Manager** (2026-10-07): menu, help, day report and shop-phone alerts follow their permissions | Built |
 | 5 | **Cashier** and **buying list** (2026-10-07): Online orders, Buying list, group feed for the buying list | Built |
-| 6 | Kitchen staff | Next |
+| 6 | **Kitchen staff** (2026-10-07): Prep list with Made, Kitchen board, To check in, jobs message when a plan is saved | Built |
 
 Owner, 2026-10-07, on the list of what the bot could do next: "Do it" (group
 feed and Driver first, then Manager).
@@ -319,6 +319,22 @@ The same purchase requests as Admin → Buying list, with the same rules
   `/stopfeed@<bot> buying` stops it. Admin → Telegram → Groups has a tick
   box per feed (Online orders, Buying list).
 
+## Kitchen staff (step 6)
+
+Owner, 2026-10-07: "Next". A cook's menu follows their permissions; beyond
+alerts and the Buying list:
+
+| Button / command | What it does | Needs |
+|---|---|---|
+| 📋 Prep list, `/prep`, `/prep tomorrow` | The production plan's jobs for the day, the person's own first: what, how many left, by when, for whom, the recipe's method. **✅ Made 40** sends all that is left to the counter; **✏️ Other amount** asks how many. Each Made is a prepared-stock batch for the counter, exactly as on the kitchen screen (`ProductionTasks::made`). Today's jobs only take Made. | `kitchen.production.create` or `.plan` to see; `.create` and `.submit` to press Made |
+| 🍳 Kitchen, `/kitchen` | What is on the kitchen board now (the same orders as the screen): to start, cooking, ready, later today, and the oldest wait; each ticket with its wait and item count. Read only: Start and Done stay on the kitchen screen, whose routes need an approved device. | `kds.view` |
+| 📦 To check in, `/checkin` | Bought buying-list items waiting at the back door, with **✅ Received** (`PurchaseRequestVerificationService`: stock in, request closed when all is in). Nobody checks in what they bought themselves; the button is not shown to them and the service refuses it. | `purchase_requests.receive` |
+
+**Your jobs:** when a plan is saved with a person on a job (Admin →
+Production plan), they get "Your jobs for tomorrow" with each job, how many
+and by when; once per person and day each time the plan is saved, and again
+when their jobs change.
+
 ## Security
 
 - Webhook: `POST /api/telegram/webhook/{bot}`, outside the staff-token group,
@@ -342,6 +358,7 @@ The same purchase requests as Admin → Buying list, with the same rules
 | Drivers | `TelegramDriverDesk`, called from `OrderObserver` when the driver changes |
 | Card text | `Support/TelegramOrderText` (items, customer, address, cash to collect) |
 | Cashier menu | `TelegramCashierDesk` (Online orders) |
+| Kitchen menu | `TelegramKitchenDesk`; jobs message from `ProductionPlanRecord::saved` (`AppServiceProvider`) |
 | Buying list | `TelegramBuyingList`, `Observers/PurchaseRequestTelegramObserver`; table `telegram_messages` (`2026_10_09_120000_create_telegram_messages`) |
 | Bot API | `app/Domains/Telegram/Services/TelegramClient.php` |
 | Linking | `TelegramLinker` |

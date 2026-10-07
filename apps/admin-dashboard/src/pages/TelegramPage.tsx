@@ -36,7 +36,7 @@ const ROLE_NOTE: Record<TelegramRole, string> = {
   owner: 'Alerts, Today, Week, Cashiers, Shifts, Open orders, Approvals, Sold out, Shop, Refunds owed, Complaints, Customer, day report',
   manager: 'Alerts and the buttons their permissions allow; the day report with Reports access',
   staff: 'Alerts, Online orders with Start / Ready, Buying list (add, buy), Open orders, Sold out, as their permissions allow',
-  kitchen_staff: 'Alerts and the Buying list (kitchen menu later)',
+  kitchen_staff: 'Alerts, Prep list with Made, Kitchen board, To check in, Buying list, as their permissions allow',
   driver: 'A message for each delivery given to them; My deliveries with Picked up, On the way, Delivered',
 };
 
