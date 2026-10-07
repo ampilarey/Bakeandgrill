@@ -472,6 +472,36 @@ function SettingsCard({ data, busy, run }: {
         </div>
         <Toggle checked={s.day_report} disabled={busy !== null} onChange={(on) => run('s-day', () => updateTelegramSettings({ day_report: on }), 'Saved.')} />
       </div>
+      <div className="tg-setting">
+        <div>
+          <div className="tg-setting__title">Order cancelled at the till</div>
+          <p className="tg-muted">Who cancelled it, the total, the reason, and whether money had been paid. Telegram only, to linked owners and managers who can see reports.</p>
+        </div>
+        <Toggle checked={s.alert_voids ?? true} disabled={busy !== null} onChange={(on) => run('s-voids', () => updateTelegramSettings({ alert_voids: on }), 'Saved.')} />
+      </div>
+      <div className="tg-setting">
+        <div>
+          <div className="tg-setting__title">Cash taken out of a drawer</div>
+          <p className="tg-muted">Cash out and paid out, with who, how much and why; and when one is struck through. Telegram only, same people.</p>
+          <label className="tg-inline-field">
+            From MVR{' '}
+            <input
+              type="number"
+              min={0}
+              step={1}
+              defaultValue={s.alert_cash_min ?? 0}
+              disabled={busy !== null || !(s.alert_cash ?? true)}
+              aria-label="Cash alert from amount"
+              onBlur={(e) => {
+                const v = Math.max(0, Number(e.target.value) || 0);
+                if (v !== (s.alert_cash_min ?? 0)) void run('s-cash-min', () => updateTelegramSettings({ alert_cash_min: v }), 'Saved.');
+              }}
+            />
+            <span className="tg-muted"> (0 = every one)</span>
+          </label>
+        </div>
+        <Toggle checked={s.alert_cash ?? true} disabled={busy !== null} onChange={(on) => run('s-cash', () => updateTelegramSettings({ alert_cash: on }), 'Saved.')} />
+      </div>
     </Card>
   );
 }

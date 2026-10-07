@@ -128,6 +128,17 @@ class AppServiceProvider extends ServiceProvider
         // The buying list on Telegram follows each request (2026-10-07).
         \App\Models\PurchaseRequest::observe(\App\Observers\PurchaseRequestTelegramObserver::class);
         \App\Models\PurchaseRequestItem::updated(static fn (\App\Models\PurchaseRequestItem $item) => app(\App\Observers\PurchaseRequestTelegramObserver::class)->itemUpdated($item));
+        // Cash taken out of a drawer reaches the owner on Telegram (2026-10-07).
+        \App\Models\CashMovement::created(static function (\App\Models\CashMovement $m): void {
+            $id = (int) $m->id;
+            \App\Support\DeferAfterResponse::run(static fn () => app(\App\Domains\Telegram\Services\TelegramOwnerTools::class)->cashMoved($id), 'telegram-cash');
+        });
+        \App\Models\CashMovement::updated(static function (\App\Models\CashMovement $m): void {
+            if ($m->wasChanged('voided_at') && $m->voided_at !== null) {
+                $id = (int) $m->id;
+                \App\Support\DeferAfterResponse::run(static fn () => app(\App\Domains\Telegram\Services\TelegramOwnerTools::class)->cashMoved($id, voided: true), 'telegram-cash');
+            }
+        });
         // A job on the production plan given to someone reaches them on Telegram (2026-10-07).
         \App\Models\ProductionPlanRecord::saved(static function (\App\Models\ProductionPlanRecord $record): void {
             if ($record->assigned_to !== null && ($record->wasRecentlyCreated || $record->wasChanged(['assigned_to', 'planned_qty', 'due_time']))) {

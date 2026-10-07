@@ -93,6 +93,10 @@ class TelegramCommands
         foreach ($this->kitchen()->menuButtons($user) as $button) {
             $buttons[] = $button;
         }
+        // Owner tools behind one button (2026-10-07).
+        foreach ($this->tools()->menuButtons($user) as $button) {
+            $buttons[] = $button;
+        }
         $buttons[] = self::BTN_HELP;
 
         $rows = array_map(
@@ -182,6 +186,9 @@ class TelegramCommands
             return true;
         }
         if ($this->kitchen()->handleText($link, $user, $raw, $command)) {
+            return true;
+        }
+        if ($this->tools()->handleText($link, $user, $raw, $command)) {
             return true;
         }
         if ($raw === self::BTN_HELP || $command === 'help' || $command === 'menu') {
@@ -532,6 +539,9 @@ class TelegramCommands
         foreach ($this->kitchen()->helpLines($user) as $line) {
             $lines[] = $line;
         }
+        foreach ($this->tools()->helpLines($user) as $line) {
+            $lines[] = $line;
+        }
         $lines[] = '';
         if ($this->can($user, 'promotions.discount_override') || $this->permissions->isOwner($user)) {
             $lines[] = 'Discount requests from the till come with Approve and Decline: tap Approve and the till carries on, no code to read out.';
@@ -586,7 +596,8 @@ class TelegramCommands
 
     private function extrasCallback(TelegramLink $link, User $user, string $callbackId, int $messageId, string $action, string $arg): void
     {
-        if (!$this->extras()->handleCallback($link, $user, $callbackId, $messageId, $action, $arg)) {
+        if (!$this->extras()->handleCallback($link, $user, $callbackId, $messageId, $action, $arg)
+            && !$this->tools()->handleCallback($link, $user, $callbackId, $messageId, $action, $arg)) {
             $this->client->answerCallback($link->bot, $callbackId, 'This button is no longer used.');
         }
     }
@@ -736,7 +747,8 @@ class TelegramCommands
         if (($await['action'] ?? '') !== 'refund_reject') {
             return $this->extras()->answerAwait($link, $user, $await, $text)
                 || app(TelegramBuyingList::class)->answerAwait($link, $user, $await, $text)
-                || $this->kitchen()->answerAwait($link, $user, $await, $text);
+                || $this->kitchen()->answerAwait($link, $user, $await, $text)
+                || $this->tools()->answerAwait($link, $user, $await, $text);
         }
 
         $refund = Refund::find((int) ($await['id'] ?? 0));
@@ -787,6 +799,12 @@ class TelegramCommands
     public function cashier(): TelegramCashierDesk
     {
         return app(TelegramCashierDesk::class);
+    }
+
+    /** Owner tools (2026-10-07): who's working, low stock, find an order, message staff. */
+    public function tools(): TelegramOwnerTools
+    {
+        return app(TelegramOwnerTools::class);
     }
 
     /** Kitchen level (2026-10-07): prep list, kitchen board, check in. */
@@ -855,6 +873,7 @@ class TelegramCommands
             self::BTN_WEEK, self::BTN_CASHIERS, self::BTN_SHOP, self::BTN_OWED, self::BTN_COMPLAINTS, self::BTN_CUSTOMER,
             TelegramCashierDesk::BTN_ONLINE, TelegramBuyingList::BTN,
             TelegramKitchenDesk::BTN_PREP, TelegramKitchenDesk::BTN_QUEUE, TelegramKitchenDesk::BTN_CHECKIN,
+            TelegramOwnerTools::BTN_MORE,
         ], true);
     }
 

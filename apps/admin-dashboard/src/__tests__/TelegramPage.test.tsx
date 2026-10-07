@@ -72,9 +72,14 @@ describe('TelegramPage', () => {
     const link = await screen.findByRole('link', { name: /Who gets alerts, and how/ });
     expect(link).toHaveAttribute('href', '/sms?tab=control-center#channels');
     const switches = screen.getAllByRole('switch');
-    // Bot on/off, alerts, day report.
-    fireEvent.click(switches[switches.length - 1]);
+    // Bot on/off, alerts, day report, cancelled orders, cash out.
+    fireEvent.click(switches[switches.length - 3]);
     await waitFor(() => expect(api.updateTelegramSettings).toHaveBeenCalledWith({ day_report: false }));
+    fireEvent.click(switches[switches.length - 2]);
+    await waitFor(() => expect(api.updateTelegramSettings).toHaveBeenCalledWith({ alert_voids: false }));
+    fireEvent.change(screen.getByLabelText('Cash alert from amount'), { target: { value: '500' } });
+    fireEvent.blur(screen.getByLabelText('Cash alert from amount'));
+    await waitFor(() => expect(api.updateTelegramSettings).toHaveBeenCalledWith({ alert_cash_min: 500 }));
   });
 
   it('shows how to add a group when there is none', async () => {

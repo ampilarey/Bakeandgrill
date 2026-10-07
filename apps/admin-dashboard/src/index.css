@@ -6389,6 +6389,8 @@ work area is a single column that
 .tg-setting { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--color-border-light); }
 .tg-setting:last-child { border-bottom: none; padding-bottom: 0; }
 .tg-setting__title { font-weight: 700; font-size: 0.875rem; color: var(--color-text); }
+.tg-inline-field { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 0.8125rem; color: var(--color-text-secondary); }
+.tg-inline-field input { width: 90px; padding: 4px 8px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); color: var(--color-text); font: inherit; }
 .tg-people { list-style: none; margin: 0; padding: 0; }
 .tg-person { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--color-border-light); }
 .tg-person:last-child { border-bottom: none; }

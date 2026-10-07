@@ -9,6 +9,7 @@ use App\Domains\Telegram\Listeners\SendDayReportOnLastShiftClose;
 use App\Domains\Telegram\Services\TelegramAlertCopier;
 use App\Domains\Telegram\Services\TelegramClient;
 use App\Domains\Telegram\Services\TelegramLinker;
+use App\Domains\Telegram\Services\TelegramOwnerTools;
 use App\Http\Controllers\Controller;
 use App\Models\DeliveryDriver;
 use App\Models\SiteSetting;
@@ -46,6 +47,8 @@ class TelegramAdminController extends Controller
         ['command' => 'prep', 'description' => 'Today\'s prep list, with Made'],
         ['command' => 'kitchen', 'description' => 'What is on the kitchen board now'],
         ['command' => 'checkin', 'description' => 'Bought items to check in'],
+        ['command' => 'more', 'description' => 'Who\'s working, low stock, find an order, message staff'],
+        ['command' => 'order', 'description' => 'Find an order: /order 1042'],
         ['command' => 'deliveries', 'description' => 'Drivers: your deliveries'],
         ['command' => 'help', 'description' => 'What the buttons do'],
         ['command' => 'stop', 'description' => 'Unlink this chat'],
@@ -86,10 +89,7 @@ class TelegramAdminController extends Controller
             'roles' => array_map(fn (string $r) => ['key' => $r, 'label' => $this->roleLabel($r)], TelegramBot::ROLES),
             'groups' => TelegramGroup::query()->with(['bot:id,name,username', 'addedBy:id,name'])->orderBy('id')->get()
                 ->map(fn (TelegramGroup $g) => $this->groupJson($g))->values(),
-            'settings' => [
-                'alerts_enabled' => TelegramAlertCopier::enabled(),
-                'day_report' => self::dayReportOn(),
-            ],
+            'settings' => self::settingsJson(),
             'webhook_base' => rtrim((string) config('app.url'), '/'),
         ]);
     }
@@ -354,21 +354,47 @@ class TelegramAdminController extends Controller
         $data = $request->validate([
             'alerts_enabled' => 'sometimes|boolean',
             'day_report' => 'sometimes|boolean',
+            'alert_voids' => 'sometimes|boolean',
+            'alert_cash' => 'sometimes|boolean',
+            'alert_cash_min' => 'sometimes|numeric|min:0|max:100000',
         ]);
-        $before = ['alerts_enabled' => TelegramAlertCopier::enabled(), 'day_report' => self::dayReportOn()];
+        $before = self::settingsJson();
         if (array_key_exists('alerts_enabled', $data)) {
             SiteSetting::set(TelegramAlertCopier::SETTING_ENABLED, $data['alerts_enabled'] ? '1' : '0');
         }
         if (array_key_exists('day_report', $data)) {
             SiteSetting::set(SendDayReportOnLastShiftClose::SETTING, $data['day_report'] ? '1' : '0');
         }
-        $after = ['alerts_enabled' => TelegramAlertCopier::enabled(), 'day_report' => self::dayReportOn()];
+        // Telegram-only alerts (2026-10-07).
+        if (array_key_exists('alert_voids', $data)) {
+            SiteSetting::set(TelegramOwnerTools::SETTING_VOIDS, $data['alert_voids'] ? '1' : '0');
+        }
+        if (array_key_exists('alert_cash', $data)) {
+            SiteSetting::set(TelegramOwnerTools::SETTING_CASH, $data['alert_cash'] ? '1' : '0');
+        }
+        if (array_key_exists('alert_cash_min', $data)) {
+            SiteSetting::set(TelegramOwnerTools::SETTING_CASH_MIN, (string) round((float) $data['alert_cash_min'], 2));
+        }
+        SiteSetting::bust();
+        $after = self::settingsJson();
         $this->audit->log('telegram.settings_updated', 'SiteSetting', null, $before, $after, [], $request);
 
         return response()->json(['settings' => $after]);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────
+
+    /** @return array<string, mixed> */
+    private static function settingsJson(): array
+    {
+        return [
+            'alerts_enabled' => TelegramAlertCopier::enabled(),
+            'day_report' => self::dayReportOn(),
+            'alert_voids' => TelegramOwnerTools::voidsOn(),
+            'alert_cash' => TelegramOwnerTools::cashOn(),
+            'alert_cash_min' => TelegramOwnerTools::cashMin(),
+        ];
+    }
 
     private static function dayReportOn(): bool
     {

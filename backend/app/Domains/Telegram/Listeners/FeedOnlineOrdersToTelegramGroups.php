@@ -40,6 +40,10 @@ class FeedOnlineOrdersToTelegramGroups
             }
 
             // OrderStatusChanged already runs after the response.
+            // An order cancelled at the till reaches the owner (2026-10-07).
+            if ($event->data->status === 'cancelled') {
+                app(\App\Domains\Telegram\Services\TelegramOwnerTools::class)->orderCancelled($orderId);
+            }
             if (TelegramGroupPost::query()->where('order_id', $orderId)->exists()) {
                 app(TelegramGroupFeed::class)->refresh($orderId);
             }

@@ -40,7 +40,14 @@ export type TelegramPerson = {
   links: TelegramPersonLink[];
 };
 
-export type TelegramSettings = { alerts_enabled: boolean; day_report: boolean };
+export type TelegramSettings = {
+  alerts_enabled: boolean;
+  day_report: boolean;
+  /** Telegram-only alerts (2026-10-07); missing from an older server. */
+  alert_voids?: boolean;
+  alert_cash?: boolean;
+  alert_cash_min?: number;
+};
 
 /** A shop group the bot posts online orders to (2026-10-07). */
 export type TelegramGroup = {

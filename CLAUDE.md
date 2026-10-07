@@ -117,8 +117,10 @@ per delivery, Picked up / On the way / Delivered), the buying list (add by
 typing, Approve / Reject, the buyer ticks items off with the price paid) and
 shop-group feeds (`/feed@<bot>` online orders, `/feed@<bot> buying` the buying
 list; buttons checked against whoever presses; cards follow the order or
-request). No shift figures for cashiers: the close count is blind. Every level is
-built; see `docs/TELEGRAM_BOTS.md`.
+request). No shift figures for cashiers: the close count is blind. Owner extras
+behind 🧰 More (who's working, low stock, find an order, message staff) and two
+Telegram-only alerts (order cancelled at the till, cash out). See
+`docs/TELEGRAM_BOTS.md`.
 
 ## Alert channels per role and person
 

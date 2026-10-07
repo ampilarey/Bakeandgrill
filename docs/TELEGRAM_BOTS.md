@@ -29,6 +29,7 @@ bot. A bot serves the roles ticked on it in Admin → Telegram.
 | 4 | **Manager** (2026-10-07): menu, help, day report and shop-phone alerts follow their permissions | Built |
 | 5 | **Cashier** and **buying list** (2026-10-07): Online orders, Buying list, group feed for the buying list | Built |
 | 6 | **Kitchen staff** (2026-10-07): Prep list with Made, Kitchen board, To check in, jobs message when a plan is saved | Built |
+| 7 | **More for the owner** (2026-10-07): Who's working, Low stock, Find an order, Message staff; cancelled-order and cash-out alerts | Built |
 
 Owner, 2026-10-07, on the list of what the bot could do next: "Do it" (group
 feed and Driver first, then Manager).
@@ -335,6 +336,29 @@ Production plan), they get "Your jobs for tomorrow" with each job, how many
 and by when; once per person and day each time the plan is saved, and again
 when their jobs change.
 
+## More for the owner (step 7)
+
+Owner, 2026-10-07: "Next". Behind one **🧰 More** button so the menu stays
+short; each tool shows only to those with its permission.
+
+| Tool / command | What it does | Needs |
+|---|---|---|
+| 👷 Who's working, `/working` | Clocked in on the time clock (since when, break) and on a till (which till, since when) | `staff.view` |
+| 📉 Low stock, `/lowstock` | Stock items at or under their reorder point, out-of-stock first, with "🛒 on the list" for those already on an open buying-list line. **➕ item** or **Add all** puts them on the buying list (its reorder quantity, else up to the reorder point), skipping what is already there; approvers get it as usual. | `inventory.view`; `purchase_requests.create` to add |
+| 🔍 Find an order, `/order 1042` | The whole order by number (or its last digits): type, status, who rang it up or online, items, total, paid and how, customer, address and driver, why it was cancelled | `orders.view` |
+| 📣 Message staff, `/tell kitchen Gas comes at 3` | A note "From Ahmed" to everyone, managers, cashiers, kitchen, drivers, or one person by first name; the buttons ask who, then the words. Says who it reached. Audited `telegram.message_staff`. | `telegram.manage` |
+
+**Two Telegram-only alerts** (Admin → Telegram → Alerts, both on by
+default), to linked owners and managers who can see reports, the same people
+as the day report:
+
+- **Order cancelled at the till**: who cancelled it, total, items, the
+  reason, and whether money had been paid ("check it was refunded").
+  Only orders cancelled by a staff member, not a customer's unpaid cart.
+- **Cash taken out of a drawer**: every cash out and paid out from the
+  amount set (0 = every one), with who, how much, why and which till; and
+  when one is struck through. Money put in is not reported.
+
 ## Security
 
 - Webhook: `POST /api/telegram/webhook/{bot}`, outside the staff-token group,
@@ -358,6 +382,7 @@ when their jobs change.
 | Drivers | `TelegramDriverDesk`, called from `OrderObserver` when the driver changes |
 | Card text | `Support/TelegramOrderText` (items, customer, address, cash to collect) |
 | Cashier menu | `TelegramCashierDesk` (Online orders) |
+| Owner tools | `TelegramOwnerTools`; alerts from `CashMovement` created/updated (`AppServiceProvider`) and `OrderStatusChanged` (`FeedOnlineOrdersToTelegramGroups`); settings `telegram_alert_voids`, `telegram_alert_cash`, `telegram_alert_cash_min` |
 | Kitchen menu | `TelegramKitchenDesk`; jobs message from `ProductionPlanRecord::saved` (`AppServiceProvider`) |
 | Buying list | `TelegramBuyingList`, `Observers/PurchaseRequestTelegramObserver`; table `telegram_messages` (`2026_10_09_120000_create_telegram_messages`) |
 | Bot API | `app/Domains/Telegram/Services/TelegramClient.php` |
