@@ -10,6 +10,8 @@ import { useActiveOrder } from '../../hooks/useActiveOrder';
 import { MAIN_WEBSITE_HREF } from '../../utils/mainWebsite';
 import { chromeEnabled } from '../../utils/surfaceBlocks';
 import { SHELL_NAV_TABS } from './navTabs';
+import { AnimatedLogo } from '../AnimatedLogo';
+import { isStandardLogo } from '../../lib/brandLogo';
 
 /** Local phone digits only (AuthContext stores 7-digit local when available). */
 function localPhoneDigits(value: string | null): string | null {
@@ -83,14 +85,18 @@ export function TopNav() {
           className="top-nav__brand"
           aria-label={t('header.website_aria').replace('{name}', siteName)}
         >
-          <img
-            className="top-nav__logo"
-            src={logoSrc}
-            alt=""
-            width={40}
-            height={40}
-            decoding="async"
-          />
+          {isStandardLogo(s) ? (
+            <AnimatedLogo className="top-nav__logo" label="" />
+          ) : (
+            <img
+              className="top-nav__logo"
+              src={logoSrc}
+              alt=""
+              width={40}
+              height={40}
+              decoding="async"
+            />
+          )}
           <span className="top-nav__brand-name">{siteName}</span>
         </a>
 

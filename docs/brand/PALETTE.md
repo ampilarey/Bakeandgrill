@@ -87,6 +87,24 @@ by `scripts/brand-icons.py` (run it, then copy the output where the table says).
 | `logo.png` (site root) | the light logo, see-through | fallback when no logo is saved |
 | `brand/og-default.png` | 1200 × 630 cream card: link previews | `SocialPreviewImage` fallback, order app `og:image` |
 
+### The logo with moving flames (2026-10-07)
+
+The website header (desktop and phone) and the order app's top bar draw the logo as
+shapes, and the four flames sway gently on a loop; the lettering stays still and follows
+the theme (`#1C1408`, cream `#FFFDF9` in dark mode). The flames hold still for visitors
+who ask their device for less motion. It stands in for the standard logo only: once
+Admin has an uploaded logo of its own, the header shows that picture as before
+(`$animatedLogo` in `layout.blade.php`, `isStandardLogo()` in the order app).
+
+| File | What |
+|---|---|
+| `brand/logo-animated.svg`, `brand/logo-animated-dark.svg` | standalone, animated, layers `flame-outer-left`, `flame-outer-right`, `flame-main`, `flame-inner`, `text-bg`, `text-amp`, `text-cafe` |
+| `resources/views/partials/animated-logo.blade.php` | the website header's inline copy |
+| `apps/online-order-web/src/components/AnimatedLogo.tsx` (+ `animatedLogoShapes.ts`, `AnimatedLogo.css`) | the order app's |
+
+All of them are traced from `logo-light.png` by `scripts/brand-animated-logo.py` (needs
+`potrace`, OpenCV, numpy); run it again if the logo PNG changes, then rebuild the order app.
+
 POS and KDS show their own `icon-192.png` (`/pos/…`, `/kds/…`) on the sign-in screens;
 the KDS accent is the dark-surface rust `#C56F3D`. The migration
 `2026_10_08_120000_brand_icons_no_old_logo.php` moved a saved favicon, logo or preview

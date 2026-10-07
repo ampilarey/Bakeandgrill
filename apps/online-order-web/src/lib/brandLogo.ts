@@ -9,3 +9,20 @@ export function brandLogoSrc(
   if (light) return light;
   return '/logo.png';
 }
+
+/** Whether Admin still uses the standard logo, so the drawn one can stand in for it. */
+export function isStandardLogo(settings: { logo?: string | null; logo_dark?: string | null }): boolean {
+  const path = (v: string | null | undefined) => {
+    const s = (v ?? '').trim();
+    if (s === '') return '';
+    try {
+      return new URL(s, 'https://x.invalid').pathname;
+    } catch {
+      return s;
+    }
+  };
+  return (
+    ['', '/logo.png', '/brand/logo-light.png', '/brand/logo-light-cream.png'].includes(path(settings.logo)) &&
+    ['', '/brand/logo-dark.png'].includes(path(settings.logo_dark))
+  );
+}

@@ -8,6 +8,10 @@ const authState = vi.hoisted(() => ({
   customerName: '7123456' as string | null,
 }));
 
+const settingsState = vi.hoisted(() => ({
+  settings: { site_name: 'Bake & Grill', logo: '/logo.png' } as Record<string, string>,
+}));
+
 const pageBlocksState = vi.hoisted(() => ({
   blocks: [] as PageBlockRow[],
   loading: true,
@@ -28,9 +32,7 @@ vi.mock('../../context/ShellNavContext', () => ({
 }));
 
 vi.mock('../../context/SiteSettingsContext', () => ({
-  useSiteSettingsContext: () => ({
-    settings: { site_name: 'Bake & Grill', logo: '/logo.png' },
-  }),
+  useSiteSettingsContext: () => ({ settings: settingsState.settings }),
 }));
 
 vi.mock('../../context/PageBlocksContext', () => ({
@@ -131,5 +133,18 @@ describe('TopNav prayer bar gating', () => {
     mount();
 
     expect(screen.getByTestId('prayer-bar')).toBeTruthy();
+  });
+
+  it('draws the logo with moving flames while the standard logo is set, else shows the upload', () => {
+    const { container, unmount } = mount();
+    expect(container.querySelector('.top-nav__brand svg.bgl')).not.toBeNull();
+    expect(container.querySelector('.top-nav__brand img')).toBeNull();
+    unmount();
+
+    settingsState.settings = { site_name: 'Bake & Grill', logo: '/storage/media/own-logo.png' };
+    const second = mount();
+    expect(second.container.querySelector('.top-nav__brand svg.bgl')).toBeNull();
+    expect(second.container.querySelector('.top-nav__brand img')?.getAttribute('src')).toBe('/storage/media/own-logo.png');
+    settingsState.settings = { site_name: 'Bake & Grill', logo: '/logo.png' };
   });
 });

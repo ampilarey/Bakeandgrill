@@ -50,6 +50,10 @@
     $logoUrl     = content('logo',              asset('logo.png'));
     $logoDarkRaw = trim((string) content('logo_dark', ''));
     $logoDarkUrl = $logoDarkRaw !== '' ? $logoDarkRaw : $logoUrl;
+    // The header draws the logo with moving flames (owner, 2026-10-07) while Admin
+    // keeps the standard logo; an uploaded logo of their own shows as before.
+    $animatedLogo = in_array(parse_url($logoUrl, PHP_URL_PATH), ['/logo.png', '/brand/logo-light.png', '/brand/logo-light-cream.png'], true)
+        && in_array($logoDarkRaw === '' ? '' : parse_url($logoDarkRaw, PHP_URL_PATH), ['', '/brand/logo-dark.png'], true);
     $brandPalette = \App\Domains\Content\BrandPalette::from(content('primary_color', ''));
     $phone       = content('business_phone',   '+960 912 0011');
     $email       = content('business_email',   'admin@bakeandgrill.mv');
@@ -405,7 +409,8 @@
             min-height: 48px;
             padding-block: 0.25rem;
         }
-        .site-header.scrolled .site-logo img { width: 32px; height: 32px; }
+        .site-header.scrolled .site-logo img,
+        .site-header.scrolled .site-logo .bgl { width: 32px; height: 32px; }
 
         /* ─── Announcement Banner ─────────────────────────────────── */
         .site-announcement {
@@ -463,7 +468,8 @@
             flex-shrink: 0;
             letter-spacing: -0.02em;
         }
-        .site-logo img { width: 38px; height: 38px; border-radius: 9px; }
+        .site-logo img,
+        .site-logo .bgl { width: 38px; height: 38px; border-radius: 9px; flex-shrink: 0; }
         /* img. prefix beats .mob-nav-brand-logo { display:block } (same 0,1,0 otherwise) */
         img.brand-logo--dark { display: none; }
         [data-theme="dark"] img.brand-logo--light { display: none; }
@@ -548,7 +554,8 @@
                 font-size: 1.28rem;
                 gap: 0.7rem;
             }
-            .site-logo img {
+            .site-logo img,
+            .site-logo .bgl {
                 width: 42px;
                 height: 42px;
                 border-radius: 10px;
@@ -733,12 +740,14 @@
             padding-top: max(0.4rem, env(safe-area-inset-top));
             box-shadow: 0 2px 12px rgba(28, 20, 8, 0.06);
         }
-        .mobile-header.scrolled .mob-logo img { width: 28px; height: 28px; }
+        .mobile-header.scrolled .mob-logo img,
+        .mobile-header.scrolled .mob-logo .bgl { width: 28px; height: 28px; }
         .mobile-header.scrolled .mob-logo { font-size: 0.95rem; }
         @media (prefers-reduced-motion: reduce) {
             .mobile-header,
             .site-header.scrolled .header-inner,
-            .site-header.scrolled .site-logo img { transition: none; }
+            .site-header.scrolled .site-logo img,
+            .site-header.scrolled .site-logo .bgl { transition: none; }
         }
         .mob-hdr-row {
             display: flex;
@@ -754,7 +763,8 @@
             color: var(--dark);
             letter-spacing: -0.02em;
         }
-        .mob-logo img { width: 32px; height: 32px; border-radius: 7px; }
+        .mob-logo img,
+        .mob-logo .bgl { width: 32px; height: 32px; border-radius: 7px; flex-shrink: 0; }
         .mob-hdr-btns { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
         /* Logged-in chip: local phone + person icon (no name). */
         .mob-hdr-account {
@@ -894,6 +904,8 @@
            see-through light logo reads as a badge rather than loose artwork. */
         .site-logo img,
         .mob-logo img,
+        .site-logo .bgl,
+        .mob-logo .bgl,
         .mob-nav-brand-logo {
             border-radius: 50%;
             background: var(--logo-well);
@@ -1774,8 +1786,12 @@
 <header class="site-header">
     <div class="header-inner">
         <a href="/" class="site-logo">
-            <img class="brand-logo--light" src="{{ $logoUrl }}" alt="{{ $siteName }}">
-            <img class="brand-logo--dark" src="{{ $logoDarkUrl }}" alt="{{ $siteName }}">
+            @if ($animatedLogo)
+                @include('partials.animated-logo', ['alogoId' => '-d', 'alogoLabel' => $siteName])
+            @else
+                <img class="brand-logo--light" src="{{ $logoUrl }}" alt="{{ $siteName }}">
+                <img class="brand-logo--dark" src="{{ $logoDarkUrl }}" alt="{{ $siteName }}">
+            @endif
             <span>{{ $siteName }}</span>
         </a>
         {{-- Desktop nav: discovery links. Prayer sits in-row like order-app TopNav. --}}
@@ -1877,8 +1893,12 @@
 <div class="mobile-header">
     <div class="mob-hdr-row">
         <a href="/" class="mob-logo">
-            <img class="brand-logo--light" src="{{ $logoUrl }}" alt="{{ $siteName }}">
-            <img class="brand-logo--dark" src="{{ $logoDarkUrl }}" alt="{{ $siteName }}">
+            @if ($animatedLogo)
+                @include('partials.animated-logo', ['alogoId' => '-m', 'alogoLabel' => $siteName])
+            @else
+                <img class="brand-logo--light" src="{{ $logoUrl }}" alt="{{ $siteName }}">
+                <img class="brand-logo--dark" src="{{ $logoDarkUrl }}" alt="{{ $siteName }}">
+            @endif
             <span>{{ $siteName }}</span>
         </a>
         <div class="mob-hdr-btns">
