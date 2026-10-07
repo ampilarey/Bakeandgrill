@@ -137,7 +137,9 @@
     </div>
 
     <div class="offer-hero{{ $photoIsPlaceholder ? ' offer-hero--placeholder' : '' }}">
-        @if($photoUrl)
+        @if($photo['animated_tile'] ?? false)
+            @include('partials.animated-item-tile', ['tileLabel' => $socialImage['alt'] ?? $headline])
+        @elseif($photoUrl)
             <picture>
                 @if($photoWebp)<source srcset="{{ $photoWebp }}" type="image/webp">@endif
                 <img src="{{ $photoUrl }}" alt="{{ $socialImage['alt'] ?? $headline }}" loading="eager" decoding="async">

@@ -1,0 +1,28 @@
+/* The no-photo tile with the moving logo (AnimatedItemTile.tsx). Same geometry as
+   brand/default-item-image.png and the website's partials/animated-item-tile. */
+.bgl-tile {
+  position: absolute;
+  inset: 0;
+  background: #f8f6f3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.bgl-tile::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  height: 88.9%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #f1e7dc;
+  transform: translate(-50%, -50%);
+}
+.bgl-tile .bgl {
+  position: relative;
+  height: 69.8%;
+  width: auto;
+  aspect-ratio: 1;
+}

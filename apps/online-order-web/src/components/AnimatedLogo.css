@@ -3,6 +3,7 @@
 .bgl{overflow:visible}
 .bgl .bgl-t{fill:#1C1408}
 [data-theme="dark"] .bgl .bgl-t{fill:#FFFDF9}
+[data-theme="dark"] .bgl.bgl--light .bgl-t{fill:#1C1408}
 .bgl .bgl-f{transform-box:fill-box;transform-origin:50% 100%;animation-timing-function:ease-in-out;animation-iteration-count:infinite}
 .bgl .bgl-main{animation-name:bgl-main;animation-duration:3.1s}
 .bgl .bgl-ol{animation-name:bgl-ol;animation-duration:2.3s;animation-delay:-.7s}

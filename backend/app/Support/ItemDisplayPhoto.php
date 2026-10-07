@@ -25,15 +25,22 @@ use Illuminate\Support\Collection;
  * Extracted from MenuPageController so the offer pages show the same picture
  * the item page does, rather than a second copy that could drift.
  *
+ * `animated_tile` (owner, 2026-10-07): the stand-in is the standard no-photo tile,
+ * so an opened item can draw it with the moving logo instead (cards keep the
+ * still picture). False for a stand-in uploaded in Admin, which shows as is.
+ *
  * `cutout` is the see-through thumbnail for the small cards (owner,
  * 2026-10-01, after the ZUS screenshots), with `backdrop` the circle the card
  * draws behind it; both null when the item has none, and the card then shows
  * `url` as before. An opened item never uses the cut-out.
  *
- * @phpstan-type DisplayPhoto array{url: ?string, webp: ?string, full: ?string, placeholder: bool, cutout: ?string, cutout_webp: ?string, backdrop: ?array{color: string, strength: int, source: string}}
+ * @phpstan-type DisplayPhoto array{url: ?string, webp: ?string, full: ?string, placeholder: bool, animated_tile: bool, cutout: ?string, cutout_webp: ?string, backdrop: ?array{color: string, strength: int, source: string}}
  */
 final class ItemDisplayPhoto
 {
+    /** The no-photo tile shipped with the site (scripts/brand-icons.py). */
+    public const STANDARD_TILE = '/brand/default-item-image.png';
+
     /**
      * @param Collection<int, Item> $items
      * @return array<int, DisplayPhoto>
@@ -56,7 +63,10 @@ final class ItemDisplayPhoto
     {
         $cutout = PublicMediaUrl::absolute($item->cutout_url ?? null);
 
-        return $this->photo($item, $default) + [
+        $photo = $this->photo($item, $default);
+
+        return $photo + [
+            'animated_tile' => $photo['placeholder'] && parse_url((string) $photo['url'], PHP_URL_PATH) === self::STANDARD_TILE,
             'cutout' => $cutout,
             'cutout_webp' => $cutout ? PublicMediaUrl::absolute($item->cutout_webp_url ?? null) : null,
             'backdrop' => $cutout ? app(CutoutBackdrop::class)->resolve($item) : null,

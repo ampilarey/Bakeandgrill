@@ -118,6 +118,13 @@ Admin has an uploaded logo of its own, the header shows that picture as before
 | `brand/logo-animated.svg`, `brand/logo-animated-dark.svg` | standalone, animated, layers `flame-outer-left`, `flame-outer-right`, `flame-main`, `flame-inner`, `text-bg`, `text-amp`, `text-cafe` |
 | `resources/views/partials/animated-logo.blade.php` | the website header's inline copy |
 | `apps/online-order-web/src/components/AnimatedLogo.tsx` (+ `animatedLogoShapes.ts`, `AnimatedLogo.css`) | the order app's |
+| `resources/views/partials/animated-item-tile.blade.php`, `apps/online-order-web/src/components/AnimatedItemTile.tsx` | an opened item with no photo: the no-photo tile drawn with the moving logo |
+
+An opened item with no photo (website item page, its pop-up sheet and offer page; the
+order app's item sheet) shows the no-photo tile with the moving logo, lettering always
+dark on the cream (owner, 2026-10-07, "option 1"). Menu cards and rails keep the still
+`default-item-image.png`: only one moving copy is ever on screen. A no-photo picture
+uploaded in Admin shows as before (`ItemDisplayPhoto::animated_tile`, `isStandardItemTile()`).
 
 All of them are traced from `logo-light.png` by `scripts/brand-animated-logo.py` (needs
 `potrace`, OpenCV, numpy); run it again if the logo PNG changes, then rebuild the order app.

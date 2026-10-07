@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { brandLogoSrc, isStandardLogo } from './brandLogo';
+import { brandLogoSrc, isStandardItemTile, isStandardLogo } from './brandLogo';
 
 describe('brandLogoSrc', () => {
   it('uses logo_dark in dark mode and falls back to logo', () => {
@@ -19,5 +19,15 @@ describe('isStandardLogo', () => {
     expect(isStandardLogo({ logo: '/logo.png', logo_dark: '' })).toBe(true);
     expect(isStandardLogo({ logo: '/storage/media/our-new-logo.png' })).toBe(false);
     expect(isStandardLogo({ logo: '/brand/logo-light.png', logo_dark: '/storage/media/dark.png' })).toBe(false);
+  });
+});
+
+describe('isStandardItemTile', () => {
+  it('is true only for the shipped no-photo tile', () => {
+    expect(isStandardItemTile('/brand/default-item-image.png')).toBe(true);
+    expect(isStandardItemTile('https://bakeandgrill.mv/brand/default-item-image.png?v=3')).toBe(true);
+    expect(isStandardItemTile('/storage/site/our-tile.png')).toBe(false);
+    expect(isStandardItemTile('')).toBe(false);
+    expect(isStandardItemTile(null)).toBe(false);
   });
 });

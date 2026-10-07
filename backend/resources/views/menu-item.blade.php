@@ -108,7 +108,9 @@
     </div>
 
     <div class="menu-item-hero @if($photo && $photoIsPlaceholder)menu-item-hero--placeholder @endif">
-        @if($photo)
+        @if($chosen['animated_tile'] ?? false)
+            @include('partials.animated-item-tile', ['tileLabel' => $iname['text']])
+        @elseif($photo)
             <picture>
                 @if($webp)<source srcset="{{ $webp }}" type="image/webp">@endif
                 <img src="{{ $photo }}" alt="{{ $iname['text'] }}" width="640" height="400">

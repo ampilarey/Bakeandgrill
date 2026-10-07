@@ -659,6 +659,34 @@ class MenuPageTest extends TestCase
         );
     }
 
+    /** Owner, 2026-10-07 ("option 1"): the opened item draws the no-photo tile with the moving logo; the cards stay still. */
+    public function test_an_opened_item_with_no_photo_shows_the_moving_logo_tile(): void
+    {
+        $cat = $this->category('Drinks');
+        $item = $this->item($cat, 'Coke', 15);
+        SiteSetting::set('default_item_image', '/brand/default-item-image.png', 'shared');
+        SiteSetting::bust();
+
+        $html = $this->get('/menu/' . $item->id)->assertOk()->getContent();
+        $this->assertMatchesRegularExpression('#<div class="bgl-tile">\s*(?:<style>.*?</style>\s*)?<svg class="bgl bgl--light"[^>]*aria-label="Coke"#s', $html);
+        $this->assertStringContainsString('[data-theme="dark"] .bgl.bgl--light .bgl-t{fill:#1C1408}', $html, 'dark lettering on the cream tile in dark mode');
+        $this->assertStringContainsString('id="bgl-fire-tile"', $html);
+
+        // The sheet the menu grid opens is the same page body.
+        $sheet = $this->get('/menu/' . $item->id, ['X-Menu-Sheet' => '1'])->assertOk()->getContent();
+        $this->assertStringContainsString('<div class="bgl-tile">', $sheet);
+
+        // The cards keep the still picture.
+        $this->assertStringNotContainsString('bgl-tile', $this->get('/menu')->assertOk()->getContent());
+
+        // A stand-in uploaded in Admin shows as before.
+        SiteSetting::set('default_item_image', '/storage/site/default_item.jpg', 'shared');
+        SiteSetting::bust();
+        $custom = $this->get('/menu/' . $item->id)->assertOk()->getContent();
+        $this->assertStringNotContainsString('<div class="bgl-tile">', $custom);
+        $this->assertStringContainsString('/storage/site/default_item.jpg', $custom);
+    }
+
     public function test_a_real_photo_still_fills_the_item_hero(): void
     {
         // The complement, so the fix cannot quietly letterbox every photo.

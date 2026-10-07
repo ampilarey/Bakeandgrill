@@ -28,6 +28,8 @@ import {
   surchargeTotal,
 } from '../utils/platterRules';
 import { MenuImageSlider } from './menu/MenuImageSlider';
+import { AnimatedItemTile } from './AnimatedItemTile';
+import { isStandardItemTile } from '../lib/brandLogo';
 import { PlatterPicker } from './PlatterPicker';
 import { ShareControl } from './ShareControl';
 import { publicMenuItemUrl } from '../utils/publicMenuItemUrl';
@@ -429,7 +431,9 @@ export function ItemSheet({
             borderRadius: 16,
             overflow: 'hidden',
           }}>
-            {slides.length > 0 ? (
+            {slides.length === 1 && slides[0].isPlaceholder && isStandardItemTile(siteSettings.default_item_image) ? (
+              <AnimatedItemTile label={item.name} />
+            ) : slides.length > 0 ? (
               <MenuImageSlider
                 slides={slides}
                 alt={item.name}
