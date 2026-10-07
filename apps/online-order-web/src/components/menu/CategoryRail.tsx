@@ -140,8 +140,9 @@ export function CategoryRail({
     const el = activeRef.current;
     if (!pill) return;
     if (!el) { pill.classList.remove('is-on'); return; }
-    pill.style.transform = `translateY(${el.offsetTop}px)`;
-    pill.style.height = `${el.offsetHeight}px`;
+    // A ring a few pixels outside the chosen tile, which itself fills rust.
+    pill.style.transform = `translateY(${el.offsetTop - 3}px)`;
+    pill.style.height = `${el.offsetHeight + 6}px`;
     pill.classList.add('is-on');
   });
 

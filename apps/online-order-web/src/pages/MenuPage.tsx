@@ -1125,7 +1125,7 @@ export function MenuPage() {
           background: isPhone ? 'var(--color-bg)' : 'color-mix(in srgb, var(--color-bg) 92%, transparent)',
           backdropFilter: isPhone ? undefined : 'blur(14px)',
           WebkitBackdropFilter: isPhone ? undefined : 'blur(14px)',
-          padding: '0.75rem 0',
+          padding: isPhone ? '0.5rem 0' : '0.75rem 0',
           borderBottom: '1px solid var(--color-border)',
         }}
       >
@@ -1165,18 +1165,21 @@ export function MenuPage() {
             {([
               {
                 id: 'pickup' as const,
+                icon: '🥡',
                 label: t('mode.pickup'),
                 blocked: pickupBlocked,
                 blockedReason: t('modeSheet.pickup_unavailable'),
               },
               {
                 id: 'delivery' as const,
+                icon: '🛵',
                 label: t('mode.delivery'),
                 blocked: deliveryBlocked,
                 blockedReason: getServiceEntry('online_delivery')?.public_message?.trim() || gateMessage || t('modeSheet.delivery_unavailable'),
               },
               {
                 id: 'dine_in' as const,
+                icon: '🍽️',
                 label: t('mode.eat_here'),
                 blocked: !dineInAvailable,
                 blockedReason: day === 'tomorrow' ? t('modeSheet.eat_here_tomorrow') : t('modeSheet.eat_here_unavailable'),
@@ -1201,6 +1204,7 @@ export function MenuPage() {
                   data-blocked={opt.blocked ? 'true' : undefined}
                   className={`mode-switch__btn${active ? ' is-active' : ''}${opt.blocked ? ' is-blocked' : ''}`}
                 >
+                  <span className="mode-switch__icon" aria-hidden="true">{opt.icon}</span>
                   {opt.label}
                 </button>
               );
@@ -1211,12 +1215,12 @@ export function MenuPage() {
             <div
               role="status"
               style={{
-                padding: '0.4rem 0.85rem',
+                padding: '0.3rem 0.65rem',
                 borderRadius: 999,
                 background: 'var(--color-primary-light)',
                 color: 'var(--color-primary)',
                 border: '1px solid var(--color-border)',
-                fontSize: '0.8rem',
+                fontSize: '0.72rem',
                 fontWeight: 800,
                 whiteSpace: 'nowrap',
               }}

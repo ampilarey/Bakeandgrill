@@ -32,9 +32,12 @@ export function RailOrderButton({ visible, unset, mode, modeLabel, dayLabel, cho
       aria-label={unset ? `${chooseLabel}, ${dayLabel}` : `${modeLabel}, ${dayLabel}. Change`}
       onClick={onOpen}
     >
-      <span className="rail-order-btn__icon" aria-hidden="true">{unset ? '?' : ICONS[mode]}</span>
+      <span className="rail-order-btn__badge" aria-hidden="true">{unset ? '?' : ICONS[mode]}</span>
       <span className="rail-order-btn__mode">{unset ? chooseLabel : modeLabel}</span>
-      <span className="rail-order-btn__day">{dayLabel}</span>
+      <span className="rail-order-btn__day">
+        {dayLabel}
+        <svg viewBox="0 0 12 12" width="8" height="8" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+      </span>
     </button>
   );
 }

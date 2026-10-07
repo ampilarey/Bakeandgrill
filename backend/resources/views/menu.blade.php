@@ -79,7 +79,7 @@
 }
 /* ZUS-style entries (owner, 2026-09-03): photo over a short label, air
    between entries, no boxes. Active = brand colour + left bar only. */
-.menu-rail-list { display: flex; flex-direction: column; gap: 8px; padding: 0 4px; }
+.menu-rail-list { display: flex; flex-direction: column; gap: 7px; padding: 0 4px; }
 /* Owner, 2026-09-03: "make the cat photo in rail maximum bigger without
    changing the rail size". No side padding on an entry: the photo takes the
    panel's inner width (92px rail → 64px photo, 52px for a sub-category;
@@ -99,32 +99,36 @@
    name. Offers, Chef's picks and Events are tiles of the same shape. */
 .menu-rail-list { position: relative; }
 .menu-rail-list > a {
-    position: relative;
+    position: relative; z-index: 1;
     display: flex; flex-direction: column;
-    gap: 0.3rem;
-    padding: 0 0 0.45rem;
-    border: 1px solid var(--border);
+    gap: 4px;
+    padding: 3px 3px 5px;
+    border: 0;
     border-radius: 14px;
     overflow: hidden;
-    color: var(--text);
-    /* A shade off the page, in both themes: the border colour thinned into the surface. */
-    background: color-mix(in srgb, var(--border) 30%, var(--surface));
+    color: var(--dark);
+    /* A soft card (owner, 2026-10-07: "enhance the buttons on the rail ...
+       little smaller"): a rounded photo inset over a small bold name. */
+    background: var(--surface);
+    box-shadow: 0 1px 2px rgba(28, 20, 8, 0.06), 0 4px 10px -6px rgba(28, 20, 8, 0.2);
     transition: color 0.3s ease, background-color 0.3s ease;
 }
 .menu-rail-list > a .menu-rail-thumb {
-    width: 100%; height: auto; aspect-ratio: 5 / 4;
-    border-radius: 0;
-    transition: transform 0.32s cubic-bezier(.2,.7,.2,1);
+    width: 100%; height: auto; aspect-ratio: 4 / 3;
+    border-radius: 11px;
 }
-.menu-rail-list > a .menu-rail-label { font-weight: 700; padding: 0 3px; }
-.menu-rail-list > a.is-active { color: var(--amber); background: var(--amber-light); }
+.menu-rail-list > a .menu-rail-label { font-size: 0.66rem; font-weight: 700; padding: 0 2px; }
+/* The chosen tile fills rust, its name in white; the ring glides to it. */
+.menu-rail-list > a.is-active { color: #fff; background: var(--amber); box-shadow: 0 6px 14px -6px color-mix(in srgb, var(--amber) 70%, transparent); }
 .menu-rail-list > a.is-active .menu-rail-label { font-weight: 800; }
+.menu-rail-list > a.is-active:hover { color: #fff; }
+@media (min-width: 769px) { .menu-rail-list > a .menu-rail-label { font-size: 0.72rem; } }
 /* The chosen tile's ring glides from one tile to the next (owner,
    2026-10-07: "some animation ... now just appear"). The script moves it;
    without the script the tile's own colour still marks it. */
 .menu-rail-pill {
-    position: absolute; left: 4px; right: 4px; top: 0; height: 0;
-    border: 2.5px solid var(--amber); border-radius: 14px;
+    position: absolute; left: 0; right: 0; top: 0; height: 0;
+    border: 2px solid var(--amber); border-radius: 17px;
     pointer-events: none; z-index: 2; opacity: 0;
     transition: transform 0.32s cubic-bezier(.2,.7,.2,1), height 0.32s cubic-bezier(.2,.7,.2,1), opacity 0.2s ease;
 }
@@ -833,7 +837,7 @@ html.js .menu-fav { display: inline-flex; }
     /* The mobile header is the only sticky chrome — the order status bar
        under it scrolls away — so the rail clears ~64px, not the layout's
        more generous scroll-padding-top. */
-    :root { --menu-rail-w: 76px; --menu-sticky: 64px; }
+    :root { --menu-rail-w: 70px; --menu-sticky: 64px; }
     .menu-shell { gap: 0.5rem; padding: 0 0.75rem 5rem; }
     /* minmax(0, 1fr), not 1fr: a bare 1fr will not shrink below a card's
        own minimum, and two 143px cards plus the gap ran 4px past a 390px
@@ -1827,8 +1831,9 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
         });
         if (railPill) {
             if (on && !on.hidden) {
-                railPill.style.transform = 'translateY(' + on.offsetTop + 'px)';
-                railPill.style.height = on.offsetHeight + 'px';
+                // A ring a few pixels outside the chosen tile.
+                railPill.style.transform = 'translateY(' + (on.offsetTop - 3) + 'px)';
+                railPill.style.height = (on.offsetHeight + 6) + 'px';
                 railPill.classList.add('is-on');
             } else {
                 railPill.classList.remove('is-on');

@@ -5797,31 +5797,53 @@ textarea.field-input {
 }
 
 /* ── Phone: the day and order type, folded into a button on the rail ──── */
+/* Owner, 2026-10-07: "enhance the ? button when minimizing". A small card:
+   the choice in a round badge, its name, and the day with an arrow that says
+   it opens. Before a choice: rust, with a white "?" badge that pulses twice. */
 .rail-order-btn {
-  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
   width: calc(100% - 6px); margin: 0 3px; padding: 0;
-  border: 1.5px solid var(--color-primary); border-radius: 12px; overflow: hidden;
+  border: 1.5px solid color-mix(in srgb, var(--color-primary) 55%, transparent);
+  border-radius: 14px; overflow: hidden;
   background: var(--color-surface); color: var(--color-text);
   font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent;
   max-height: 0; opacity: 0; visibility: hidden;
-  box-shadow: 0 6px 14px -6px rgba(28, 20, 8, 0.35);
+  box-shadow: 0 6px 14px -8px rgba(28, 20, 8, 0.45);
   transition: max-height 0.3s cubic-bezier(.2, .7, .2, 1), opacity 0.2s ease, margin 0.3s ease, padding 0.3s ease, visibility 0s linear 0.3s;
 }
 .rail-order-btn.is-on {
-  max-height: 90px; opacity: 1; visibility: visible;
-  padding: 0.4rem 0 0.35rem; margin: 0.45rem 3px 0.35rem;
+  max-height: 80px; opacity: 1; visibility: visible;
+  padding: 0.35rem 0 0.3rem; margin: 0.4rem 3px 0.35rem;
   transition: max-height 0.3s cubic-bezier(.2, .7, .2, 1), opacity 0.2s ease, margin 0.3s ease, padding 0.3s ease, visibility 0s;
 }
-.rail-order-btn__icon { font-size: 1.3rem; line-height: 1.2; }
-.rail-order-btn__mode { font-size: 0.7rem; font-weight: 800; }
-.rail-order-btn__day { font-size: 0.62rem; font-weight: 600; color: var(--color-text-muted); }
-/* Nothing chosen yet: rust, and a pulse twice to catch the eye. */
-.rail-order-btn.is-unset { background: var(--color-primary); color: #fff; }
+.rail-order-btn:active { transform: scale(0.97); }
+.rail-order-btn__badge {
+  width: 26px; height: 26px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--color-primary) 14%, var(--color-surface));
+  font-size: 0.9rem; line-height: 1;
+}
+.rail-order-btn__mode { font-size: 0.66rem; font-weight: 800; color: var(--color-primary); line-height: 1.1; }
+.rail-order-btn__day {
+  display: inline-flex; align-items: center; gap: 2px;
+  font-size: 0.58rem; font-weight: 600; color: var(--color-text-muted); line-height: 1.1;
+}
+.rail-order-btn.is-unset {
+  border-color: transparent;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--color-primary) 80%, #fff) 0%, var(--color-primary) 55%, color-mix(in srgb, var(--color-primary) 75%, #000) 100%);
+  color: #fff;
+}
+.rail-order-btn.is-unset .rail-order-btn__badge {
+  background: #fff; color: var(--color-primary);
+  font-weight: 900; font-size: 0.95rem;
+}
+.rail-order-btn.is-unset .rail-order-btn__mode { color: #fff; }
 .rail-order-btn.is-unset .rail-order-btn__day { color: #ffe3d0; }
-.rail-order-btn.is-unset.is-on { animation: rail-order-pulse 1.6s ease 2; }
+.rail-order-btn.is-unset.is-on .rail-order-btn__badge { animation: rail-order-pulse 1.6s ease 2; }
 @keyframes rail-order-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 55%, transparent); }
-  50% { box-shadow: 0 0 0 8px transparent; }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); }
+  50% { box-shadow: 0 0 0 6px rgba(255, 255, 255, 0); }
 }
 /* The full bar, dropped down over the dishes from the button. */
 .menu-sticky-controls.is-dropped {
@@ -5914,3 +5936,85 @@ textarea.field-input {
 .menu-card-article--zus .menu-card-add:focus-visible { outline: none; }
 .menu-card-article--zus .menu-card-add:focus-visible::before { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 35%, transparent); }
 .menu-card-article--list .menu-card-add { right: -0.15rem; bottom: -0.25rem; }
+
+/* ── Compact day and order-type bars (owner, 2026-10-07: "little smaller to
+   save space") ───────────────────────────────────────────────────────────
+   One line each: pill-shaped, 38px tall instead of 48 and 44, the date beside
+   the day rather than under it, and a small icon on each order type. */
+.menu-top-row { gap: 0.5rem; }
+.order-day-toggle,
+.mode-switch {
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 1px 2px rgba(28, 20, 8, 0.05);
+}
+.order-day-toggle__btn {
+  min-height: 34px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  line-height: 1;
+}
+.order-day-toggle__label { font-size: 0.82rem; }
+.order-day-toggle__date { font-size: 0.68rem; }
+.order-day-toggle__date::before { content: '·'; margin-inline-end: 0.35rem; opacity: 0.7; }
+.mode-switch__btn {
+  min-height: 34px;
+  border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.3rem;
+  font-size: 0.76rem;
+}
+.mode-switch__icon { font-size: 0.9rem; line-height: 1; }
+.mode-switch__btn:not(.is-active) .mode-switch__icon { filter: grayscale(0.4); opacity: 0.8; }
+.order-day-toggle__btn.is-active,
+.mode-switch__btn.is-active {
+  box-shadow: 0 3px 8px -3px color-mix(in srgb, var(--color-primary) 70%, transparent);
+}
+.mode-switch--unset {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+@media (min-width: 768px) {
+  .order-day-toggle__label { font-size: 0.86rem; }
+  .order-day-toggle__date { font-size: 0.72rem; }
+}
+
+/* ── Rail tiles, compact (owner, 2026-10-07: "enhance the buttons on the rail
+   ... little smaller to save space") ────────────────────────────────────────
+   A narrower rail on a phone; each tile a rounded photo inset in a soft card
+   over a small bold name, no taller than its content. The chosen tile fills
+   rust with its name in white, and the ring glides to it from the last. */
+@media (max-width: 767px) {
+  :root { --cat-rail-width: 70px; --cat-rail-item-height: 0px; }
+}
+.cat-rail__list { gap: 7px; }
+.cat-rail__list > .cat-rail__item {
+  min-height: 0 !important;
+  padding: 3px 3px 5px !important;
+  gap: 4px !important;
+  border: 0;
+  border-radius: 14px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: 0 1px 2px rgba(28, 20, 8, 0.06), 0 4px 10px -6px rgba(28, 20, 8, 0.2);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+.cat-rail__list > .cat-rail__item .cat-rail__thumb {
+  width: 100% !important; height: auto !important;
+  aspect-ratio: 4 / 3; border-radius: 11px !important;
+  outline: 0 !important; box-shadow: none !important;
+}
+.cat-rail__list > .cat-rail__item .cat-rail__label {
+  font-size: 0.66rem !important; font-weight: 700; line-height: 1.15; padding: 0 2px;
+}
+.cat-rail__list > .cat-rail__item.is-active { background: var(--color-primary); color: #fff; box-shadow: 0 6px 14px -6px color-mix(in srgb, var(--color-primary) 70%, transparent); }
+.cat-rail__list > .cat-rail__item.is-active .cat-rail__label { color: #fff; font-weight: 800; }
+.cat-rail__pill { left: 0; right: 0; border-width: 2px; border-radius: 17px; }
+@media (min-width: 768px) {
+  .cat-rail__list > .cat-rail__item .cat-rail__label { font-size: 0.72rem !important; }
+}
