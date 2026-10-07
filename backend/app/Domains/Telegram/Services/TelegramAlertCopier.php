@@ -108,6 +108,8 @@ class TelegramAlertCopier
         }
 
         if ($this->deliver($link, $sms, $entry, timeout: 5)) {
+            Cache::put(self::resultKey($log), $link->displayName() . ' ✓ (instead of SMS)', now()->addDays(7));
+
             return true;
         }
         // Not delivered: let a later copy try again, and send the SMS.
@@ -133,11 +135,14 @@ class TelegramAlertCopier
             return;
         }
 
-        DeferAfterResponse::run(function () use ($links, $sms, $entry): void {
+        DeferAfterResponse::run(function () use ($links, $sms, $entry, $log): void {
+            $results = [];
             foreach ($links as $one) {
-                $this->deliver($one, $sms, $entry, timeout: 8);
+                $results[] = $one->displayName() . ($this->deliver($one, $sms, $entry, timeout: 8) ? ' ✓' : ' ✗');
             }
-        }, 'telegram-alert');
+            // What happened, for telegram:check.
+            Cache::put(self::resultKey($log), implode(', ', $results), now()->addDays(7));
+        }, 'telegram-alert', always: true);
     }
 
     /**
@@ -262,6 +267,12 @@ class TelegramAlertCopier
         $body = (string) preg_replace('/^\s*Bake\s*(&|and)\s*Grill\s*:\s*/iu', '', trim($sms->message));
 
         return [T::clip($title . T::e($body)), []];
+    }
+
+    /** Who the Telegram copy of this SMS reached (✓) or failed to reach (✗). */
+    public static function resultKey(SmsLog $log): string
+    {
+        return 'telegram-alert:result:' . $log->id;
     }
 
     private function onceKey(SmsLog $log): string

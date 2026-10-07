@@ -6,6 +6,7 @@ namespace Tests\Feature\Telegram;
 
 use App\Domains\Notifications\Contracts\SmsProviderInterface;
 use App\Domains\Notifications\Support\SmsDeliveryRules;
+use App\Domains\Telegram\Services\TelegramAlertCopier;
 use App\Models\AuditLog;
 use App\Models\Device;
 use App\Models\SiteSetting;
@@ -13,6 +14,8 @@ use App\Models\SmsLog;
 use App\Services\DeviceApprovalAlert;
 use App\Support\DeferAfterResponse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Defer\DeferredCallbackCollection;
+use Illuminate\Support\Facades\Cache;
 use Mockery;
 use Tests\TestCase;
 
@@ -198,5 +201,34 @@ class TelegramDeviceApprovalTest extends TestCase
         // Other owner alerts are still held.
         $log = app(\App\Domains\Notifications\Services\SmsService::class)->send(new \App\Domains\Notifications\DTOs\SmsMessage(to: '7820288', message: 'Shift left open.', type: 'owner_shift_left_open'));
         $this->assertSame('deferred', $log->status);
+    }
+
+    /*
+     * The real cause behind "Notifications didn't come to telegram": a new
+     * till's first request is refused (403, waiting for approval), and
+     * Laravel skips after-response work on an error response unless it is
+     * marked "always". The SMS went; the Telegram copy was dropped.
+     */
+    public function test_the_telegram_copy_survives_the_refused_request_that_raised_it(): void
+    {
+        $owner = $this->staff('owner', '+9607820288', 'Owner');
+        $this->link($this->bot(['owner']), $owner, '5550001');
+        // The business phone belongs to an unlinked staff account, as in production.
+        $this->staff('staff', '+9603301234', 'Bake & Grill');
+
+        $this->app['env'] = 'production';
+        try {
+            DeviceApprovalAlert::send($this->pendingTill(), null);
+        } finally {
+            $this->app['env'] = 'testing';
+        }
+        $this->assertSame([], $this->sent('5550001'), 'nothing before the response');
+
+        // What InvokeDeferredCallbacks does after a 403.
+        app(DeferredCallbackCollection::class)->invokeWhen(fn ($callback) => 403 < 400 || $callback->always);
+
+        $this->assertStringContainsString('New till waiting for approval', $this->lastText('5550001'));
+        $log = SmsLog::query()->where('type', 'owner_device_approval')->latest('id')->firstOrFail();
+        $this->assertSame('Owner ✓', Cache::get(TelegramAlertCopier::resultKey($log)));
     }
 }

@@ -141,12 +141,23 @@ when) with **Approve** and **Reject**, for anyone with `devices.approve`
 - A till another owner has already decided shows "Already approved" and
   changes nothing.
 
+### Copies go even when the request was refused
+
+The Telegram (and email) copy of an alert is sent after the response. Laravel
+skips after-response work when the response is an error, and a new till's
+first request is refused (403, waiting for approval), so the SMS went and the
+Telegram copy was dropped (owner, 2026-10-07: "Notifications didn't come to
+telegram"). `DeferAfterResponse::run(..., always: true)` marks both copies to
+run on any response.
+
 ### Checking why something did not arrive
 
 `php artisan telegram:check` (read-only) lists the bots, who is linked and
 whether each link works, the alert switches, the business phone, who
 discount requests go to and whether each is linked, and the last staff
-alerts with their SMS status. A discount approver added in Discount
+alerts with their SMS status and, since 2026-10-07, where the Telegram copy
+actually went (`→ Owner ✓`, or `✗` when Telegram refused it). An alert to
+the business phone shows "goes to linked owners". A discount approver added in Discount
 controls as a typed number gets the Approve buttons when that number is a
 linked staff member's phone.
 

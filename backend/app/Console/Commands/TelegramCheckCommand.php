@@ -14,6 +14,7 @@ use App\Models\TelegramBot;
 use App\Models\TelegramLink;
 use App\Models\User;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * php artisan telegram:check: why did (or didn't) an alert reach Telegram?
@@ -60,10 +61,15 @@ class TelegramCheckCommand extends Command
         }
 
         $this->line('<info>Last staff alerts</info>');
+        $business = substr(preg_replace('/\D/', '', (string) SiteSetting::get('business_phone', '')) ?? '', -7);
         $types = ['discount_approval_otp', 'owner_device_approval', 'staff_refund_requested', 'owner_complaint_box_received', 'owner_shift_variance', 'owner_shift_left_open'];
         foreach (SmsLog::query()->whereIn('type', $types)->latest('id')->limit(12)->get() as $log) {
             $link = $linker->linkForPhone((string) $log->to);
-            $this->line(sprintf('  %s  %s  to %s  %s%s  Telegram: %s', $log->created_at?->format('d M H:i'), $log->type, $log->to, $log->status, $log->error_message ? ' (' . $log->error_message . ')' : '', $link ? 'linked' : 'no link for this number'));
+            $toBusiness = strlen($business) === 7 && substr(preg_replace('/\D/', '', (string) $log->to) ?? '', -7) === $business;
+            $who = $link ? 'linked' : ($toBusiness && $log->type !== 'discount_approval_otp' ? 'business phone: goes to linked owners' : 'no link for this number');
+            // What actually happened, recorded since 2026-10-07.
+            $result = Cache::get(TelegramAlertCopier::resultKey($log));
+            $this->line(sprintf('  %s  %s  to %s  %s%s  Telegram: %s%s', $log->created_at?->format('d M H:i'), $log->type, $log->to, $log->status, $log->error_message ? ' (' . $log->error_message . ')' : '', $who, $result !== null ? ' → ' . $result : ''));
         }
 
         return self::SUCCESS;

@@ -20,7 +20,14 @@ final class DeferAfterResponse
     /** @var list<array{0: callable, 1: string}> */
     private static array $testingCallbacks = [];
 
-    public static function run(callable $callback, string $context = 'deferred'): void
+    /**
+     * @param bool $always run even when the response is an error. Laravel's
+     *                     defer() skips its callbacks on any 4xx/5xx response; a copy of an
+     *                     SMS that has already gone must not be dropped because the request
+     *                     that triggered it was refused (owner, 2026-10-07: a new till's 403
+     *                     "waiting for approval" dropped the alert's Telegram copy).
+     */
+    public static function run(callable $callback, string $context = 'deferred', bool $always = false): void
     {
         // PHPUnit keeps one PHP process for the whole suite; native defer() would not
         // run until shutdown. Queue callbacks so contract tests can flush explicitly
@@ -37,7 +44,10 @@ final class DeferAfterResponse
         };
 
         if (\function_exists('defer')) {
-            defer($wrapped);
+            $deferred = defer($wrapped);
+            if ($always) {
+                $deferred->always();
+            }
 
             return;
         }

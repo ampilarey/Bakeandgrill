@@ -137,7 +137,7 @@ class SmsEmailCopier
                 } catch (Throwable $e) {
                     Log::warning('sms email copy: send failed', ['log_id' => $log->id, 'error' => $e->getMessage()]);
                 }
-            }, 'sms-email-copy');
+            }, 'sms-email-copy', always: true);
         } catch (Throwable $e) {
             // Never let the email copy affect the SMS.
             Log::warning('sms email copy: skipped after an error', ['type' => $sms->type, 'error' => $e->getMessage()]);
