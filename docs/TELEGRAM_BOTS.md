@@ -27,8 +27,8 @@ bot. A bot serves the roles ticked on it in Admin → Telegram.
 | 2 | **Online orders group feed** (2026-10-07) | Built |
 | 3 | **Driver**: a message per delivery, My deliveries, Picked up / On the way / Delivered (2026-10-07) | Built |
 | 4 | **Manager** (2026-10-07): menu, help, day report and shop-phone alerts follow their permissions | Built |
-| 5 | Staff (cashier), buying list feed | Later |
-| 6 | Kitchen staff | Later |
+| 5 | **Cashier** and **buying list** (2026-10-07): Online orders, Buying list, group feed for the buying list | Built |
+| 6 | Kitchen staff | Next |
 
 Owner, 2026-10-07, on the list of what the bot could do next: "Do it" (group
 feed and Driver first, then Manager).
@@ -275,6 +275,50 @@ permissions in Admin → Staff as before.
 - Refund **Approve** stays owner-only (it uses the owner override); managers
   approve refunds at the till.
 
+## Cashiers (step 5)
+
+Owner, 2026-10-07: "Next". A cashier's menu follows their permissions, like
+everyone else's. Beyond alerts, Open orders and Sold out:
+
+| Button / command | What it does | Needs |
+|---|---|---|
+| 📥 Online orders, `/online` | Today's paid online orders not with a driver or collected yet, oldest first, each as the group card with Start / Ready / Collected; the card then says who pressed | `pos.manage_order_status` |
+| 🛒 Buying list, `/buying` | See below | any purchase request permission |
+
+There is **no "my shift"** button: the cash count at close is blind, so the
+bot never tells a cashier what the drawer should hold or what the shift
+took (shift history is manager territory, 2026-09-01).
+
+## Buying list (step 5)
+
+The same purchase requests as Admin → Buying list, with the same rules
+(`PurchaseRequestService`):
+
+- **Adding.** Tap 🛒 Buying list and type what is needed, or start with
+  `need`: `5 kg onions, 2 l milk, tissue`. Commas, semicolons or new lines
+  separate items; quantity and unit are optional (1 piece); `urgent` marks
+  it urgent. A name that matches a stock item exactly is linked to it.
+  Source `telegram`. Needs `purchase_requests.create` (cashiers and kitchen
+  staff have it).
+- **Approving.** Everyone linked with `purchase_requests.approve` gets the
+  new request (from Telegram, Admin or the till) with **Approve** and
+  **Reject**; Reject asks the reason. The person who asked is told the
+  decision. The person who asked never approves their own unless they are
+  an owner or manager (the service's rule). An auto-approved request (under
+  the Admin threshold) skips this.
+- **Buying.** Whoever is sent to buy (Admin assigns) gets the list with
+  **✅ … bought** and **✖ Not there** per item. Bought asks what was paid in
+  total (`120`, `45.50`, or `-` for no bill) and records the unit price, so
+  price history and the expense see it. Needs `purchase_requests.buy`.
+- **Cards follow the request.** Every card sent (approvers', buyer's,
+  requester's, group's) is kept in `telegram_messages` and redrawn on any
+  change of status, buyer or item, from any screen.
+- **In a group.** `/feed@<bot> buying` (owner) makes a group follow the
+  buying list: each new request with Approve and Reject (Reject in a group
+  records no reason), pressed by linked staff with the permission.
+  `/stopfeed@<bot> buying` stops it. Admin → Telegram → Groups has a tick
+  box per feed (Online orders, Buying list).
+
 ## Security
 
 - Webhook: `POST /api/telegram/webhook/{bot}`, outside the staff-token group,
@@ -297,6 +341,8 @@ permissions in Admin → Staff as before.
 | Group feed | `TelegramGroupFeed`, `Listeners/FeedOnlineOrdersToTelegramGroups` (on `OrderPaid` and `OrderStatusChanged`) |
 | Drivers | `TelegramDriverDesk`, called from `OrderObserver` when the driver changes |
 | Card text | `Support/TelegramOrderText` (items, customer, address, cash to collect) |
+| Cashier menu | `TelegramCashierDesk` (Online orders) |
+| Buying list | `TelegramBuyingList`, `Observers/PurchaseRequestTelegramObserver`; table `telegram_messages` (`2026_10_09_120000_create_telegram_messages`) |
 | Bot API | `app/Domains/Telegram/Services/TelegramClient.php` |
 | Linking | `TelegramLinker` |
 | Messages and buttons | `TelegramUpdateHandler`, `TelegramCommands`, `TelegramOwnerExtras` (step 1b; till approval `deviceCard()`) |

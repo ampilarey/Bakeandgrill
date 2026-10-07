@@ -85,6 +85,10 @@ class TelegramCommands
         foreach ($this->extras()->menuButtons($user) as $button) {
             $buttons[] = $button;
         }
+        // Cashier level (2026-10-07): online orders, buying list.
+        foreach ($this->cashier()->menuButtons($user) as $button) {
+            $buttons[] = $button;
+        }
         $buttons[] = self::BTN_HELP;
 
         $rows = array_map(
@@ -168,6 +172,9 @@ class TelegramCommands
             return true;
         }
         if ($this->extras()->handleText($link, $user, $raw, $command)) {
+            return true;
+        }
+        if ($this->cashier()->handleText($link, $user, $raw, $command)) {
             return true;
         }
         if ($raw === self::BTN_HELP || $command === 'help' || $command === 'menu') {
@@ -512,6 +519,9 @@ class TelegramCommands
         if ($this->can($user, 'customers.lookup') || $this->can($user, 'customers.view')) {
             $lines[] = '<b>' . self::BTN_CUSTOMER . '</b>: type a phone number or name to see points, orders, credit and deposit.';
         }
+        foreach ($this->cashier()->helpLines($user) as $line) {
+            $lines[] = $line;
+        }
         $lines[] = '';
         if ($this->can($user, 'promotions.discount_override') || $this->permissions->isOwner($user)) {
             $lines[] = 'Discount requests from the till come with Approve and Decline: tap Approve and the till carries on, no code to read out.';
@@ -553,6 +563,8 @@ class TelegramCommands
                 'rfc' => $this->callbackRefundCancel($link, $user, $id, $messageId, (int) $arg),
                 'rfr' => $this->callbackRefundReject($link, $user, $id, $messageId, (int) $arg),
                 'sof', 'son' => $this->callbackSoldOut($link, $user, $id, $messageId, (int) $arg, $action === 'son'),
+                'gp' => $this->cashier()->orderTap($link, $user, $id, $messageId, $arg),
+                'bl' => app(TelegramBuyingList::class)->privateTap($link, $user, $id, $messageId, $arg),
                 default => $this->extrasCallback($link, $user, $id, $messageId, $action, $arg),
             };
         } catch (Throwable $e) {
@@ -711,7 +723,8 @@ class TelegramCommands
     private function answerAwait(TelegramLink $link, User $user, array $await, string $text): bool
     {
         if (($await['action'] ?? '') !== 'refund_reject') {
-            return $this->extras()->answerAwait($link, $user, $await, $text);
+            return $this->extras()->answerAwait($link, $user, $await, $text)
+                || app(TelegramBuyingList::class)->answerAwait($link, $user, $await, $text);
         }
 
         $refund = Refund::find((int) ($await['id'] ?? 0));
@@ -756,6 +769,12 @@ class TelegramCommands
     public function extras(): TelegramOwnerExtras
     {
         return app(TelegramOwnerExtras::class);
+    }
+
+    /** Cashier level (2026-10-07): online orders, buying list. */
+    public function cashier(): TelegramCashierDesk
+    {
+        return app(TelegramCashierDesk::class);
     }
 
     /** Ask the person for a reply; their next message answers it (10 minutes). */
@@ -816,6 +835,7 @@ class TelegramCommands
         return in_array($text, [
             self::BTN_TODAY, self::BTN_SHIFTS, self::BTN_ORDERS, self::BTN_APPROVALS, self::BTN_SOLD_OUT, self::BTN_HELP,
             self::BTN_WEEK, self::BTN_CASHIERS, self::BTN_SHOP, self::BTN_OWED, self::BTN_COMPLAINTS, self::BTN_CUSTOMER,
+            TelegramCashierDesk::BTN_ONLINE, TelegramBuyingList::BTN,
         ], true);
     }
 

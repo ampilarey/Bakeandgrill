@@ -103,5 +103,9 @@ describe('TelegramPage', () => {
     // Bot switch, group switch, alerts, day report.
     fireEvent.click(screen.getAllByRole('switch')[1]);
     await waitFor(() => expect(api.updateTelegramGroup).toHaveBeenCalledWith(4, { is_enabled: false }));
+
+    // Follow the buying list too.
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Buying list' }));
+    await waitFor(() => expect(api.updateTelegramGroup).toHaveBeenCalledWith(4, { feeds: ['online_orders', 'buying_list'] }));
   });
 });

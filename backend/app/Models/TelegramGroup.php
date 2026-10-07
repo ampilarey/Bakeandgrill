@@ -13,7 +13,9 @@ class TelegramGroup extends Model
 {
     public const FEED_ONLINE_ORDERS = 'online_orders';
 
-    public const FEEDS = [self::FEED_ONLINE_ORDERS];
+    public const FEED_BUYING_LIST = 'buying_list';
+
+    public const FEEDS = [self::FEED_ONLINE_ORDERS, self::FEED_BUYING_LIST];
 
     protected $fillable = [
         'telegram_bot_id',

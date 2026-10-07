@@ -75,7 +75,7 @@ class TelegramGroupFeed
         }
 
         $text = trim((string) ($message['text'] ?? ''));
-        if (!preg_match('/^\/(feed|stopfeed)(?:@(\w+))?\s*$/i', $text, $m)) {
+        if (!preg_match('/^\/(feed|stopfeed)(?:@(\w+))?(?:\s+(orders|buying))?\s*$/i', $text, $m)) {
             return; // the bot keeps quiet in groups
         }
         if (($m[2] ?? '') !== '' && strcasecmp($m[2], (string) $bot->username) !== 0) {
@@ -93,15 +93,38 @@ class TelegramGroupFeed
         $group = TelegramGroup::query()->firstOrNew(['telegram_bot_id' => $bot->id, 'chat_id' => $chatId]);
         $before = $group->exists ? ['is_enabled' => $group->is_enabled, 'feeds' => $group->feeds] : [];
 
+        // "/feed" is online orders; "/feed buying" the buying list (2026-10-07).
+        $feed = strtolower($m[3] ?? '') === 'buying' ? TelegramGroup::FEED_BUYING_LIST : TelegramGroup::FEED_ONLINE_ORDERS;
+        $feedName = $feed === TelegramGroup::FEED_BUYING_LIST ? 'the buying list' : 'online orders';
+
         if (strtolower($m[1]) === 'stopfeed') {
             if (!$group->exists) {
-                $this->say($bot, $chatId, 'This group gets no orders.');
+                $this->say($bot, $chatId, 'This group gets no feed.');
 
                 return;
             }
-            $group->forceFill(['is_enabled' => false, 'title' => $title ?? $group->title])->save();
+            $left = ($m[3] ?? '') === '' ? [] : array_values(array_diff((array) $group->feeds, [$feed]));
+            $group->forceFill(['feeds' => $left, 'is_enabled' => $left !== [], 'title' => $title ?? $group->title])->save();
             $this->audit('telegram.group_stopped', $group, $before, $user);
-            $this->say($bot, $chatId, '⏸ Online orders stopped for this group. Send /feed to start them again.');
+            $this->say($bot, $chatId, ($m[3] ?? '') === ''
+                ? '⏸ Nothing more is posted in this group. Send /feed to start online orders again.'
+                : '⏸ ' . ucfirst($feedName) . ' stopped for this group.');
+
+            return;
+        }
+
+        if ($feed === TelegramGroup::FEED_BUYING_LIST) {
+            $group->forceFill([
+                'title' => $title ?? $group->title,
+                'feeds' => array_values(array_unique(array_merge((array) ($group->feeds ?? []), [$feed]))),
+                'is_enabled' => true,
+                'added_by' => $group->added_by ?? $user->id,
+                'last_error' => null,
+            ])->save();
+            $this->audit('telegram.group_feed_on', $group, $before, $user);
+            $this->say($bot, $chatId, "✅ <b>This group now follows the buying list.</b>\n\n"
+                . "Each new request arrives here with <b>Approve</b> and <b>Reject</b> for those allowed to decide, and the card follows it until it is bought.\n\n"
+                . 'Stop it with /stopfeed buying.');
 
             return;
         }
@@ -127,8 +150,8 @@ class TelegramGroupFeed
             return;
         }
         $command = '/feed' . ($bot->username ? '@' . $bot->username : '');
-        $this->say($bot, $chatId, "👋 Hi. I can post every paid online order here, with Start and Ready buttons.\n\n"
-            . 'The owner turns it on by sending <code>' . T::e($command) . '</code> in this group.');
+        $this->say($bot, $chatId, "👋 Hi. I can post every paid online order here, with Start and Ready buttons, and the buying list with Approve and Reject.\n\n"
+            . 'The owner turns them on by sending <code>' . T::e($command) . '</code> (online orders) or <code>' . T::e($command) . ' buying</code> (buying list) in this group.');
     }
 
     // ── Posting an order ─────────────────────────────────────────────────
@@ -285,6 +308,12 @@ class TelegramGroupFeed
         [$prefix, $step, $orderId] = array_pad(explode(':', (string) ($callback['data'] ?? ''), 3), 3, '');
 
         $group = TelegramGroup::query()->with('bot')->where('telegram_bot_id', $bot->id)->where('chat_id', $chatId)->first();
+        // A buying list card (2026-10-07).
+        if ($prefix === 'gb' && $group !== null && $group->is_enabled) {
+            app(TelegramBuyingList::class)->groupTap($bot, $callback, $this->staffFor((string) ($callback['from']['id'] ?? '')));
+
+            return;
+        }
         if ($prefix !== 'gp' || !isset(self::STEP_STATUS[$step]) || $group === null || !$group->is_enabled) {
             $this->client->answerCallback($bot, $callbackId, 'This group is not set up for orders.', true);
 

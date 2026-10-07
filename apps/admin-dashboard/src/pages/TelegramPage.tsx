@@ -25,12 +25,18 @@ import { useToast } from '../components/ui';
 
 const ROLE_ORDER: TelegramRole[] = ['owner', 'manager', 'staff', 'kitchen_staff', 'driver'];
 
+/** What a shop group can follow. */
+const FEEDS: { key: string; label: string }[] = [
+  { key: 'online_orders', label: 'Online orders' },
+  { key: 'buying_list', label: 'Buying list' },
+];
+
 /** What each level can do today; later steps fill in the rest. */
 const ROLE_NOTE: Record<TelegramRole, string> = {
   owner: 'Alerts, Today, Week, Cashiers, Shifts, Open orders, Approvals, Sold out, Shop, Refunds owed, Complaints, Customer, day report',
   manager: 'Alerts and the buttons their permissions allow; the day report with Reports access',
-  staff: 'Alerts, and Start / Ready on order cards in a shop group (cashier menu later)',
-  kitchen_staff: 'Alerts, and Start / Ready on order cards in a shop group (kitchen menu later)',
+  staff: 'Alerts, Online orders with Start / Ready, Buying list (add, buy), Open orders, Sold out, as their permissions allow',
+  kitchen_staff: 'Alerts and the Buying list (kitchen menu later)',
   driver: 'A message for each delivery given to them; My deliveries with Picked up, On the way, Delivered',
 };
 
@@ -372,14 +378,14 @@ export function GroupsCard({ data, busy, run, onAsk }: {
       <div className="tg-card-head">
         <div>
           <h2 className="tg-h2">Groups</h2>
-          <p className="tg-muted">Online orders posted in a shop group, each with Start and Ready (and Collected for a pickup). The card says who pressed what, and follows the order when it moves on at the till or with the driver.</p>
+          <p className="tg-muted">A shop group can follow online orders (each with Start and Ready, and Collected for a pickup) and the buying list (each request with Approve and Reject). Cards say who pressed what and follow the order or request wherever it moves on.</p>
         </div>
       </div>
 
       {groups.length === 0 ? (
         <ol className="tg-steps" data-testid="tg-groups-empty">
           <li>In Telegram, make a group for the shop (or use the one you have) and add <b>{bot?.username ? `@${bot.username}` : 'the bot'}</b> to it.</li>
-          <li>From your own linked Telegram, send <code>{command}</code> in that group.</li>
+          <li>From your own linked Telegram, send <code>{command}</code> in that group for online orders, or <code>{command} buying</code> for the buying list.</li>
           <li>It appears here. Staff who press the buttons need their own Telegram linked and the right to update orders.</li>
         </ol>
       ) : groups.map((g) => (
@@ -388,23 +394,42 @@ export function GroupsCard({ data, busy, run, onAsk }: {
             <div>
               <div className="tg-bot__name" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Users size={15} aria-hidden />{g.title}</div>
               <div className="tg-muted">
-                Online orders{g.bot ? ` · ${g.bot.name}` : ''}{g.added_by ? ` · added by ${g.added_by}` : ''}
-                {g.last_posted_at ? ` · last order ${when(g.last_posted_at)}` : ''}
+                {g.bot ? g.bot.name : 'No bot'}{g.added_by ? ` · added by ${g.added_by}` : ''}
+                {g.last_posted_at ? ` · last post ${when(g.last_posted_at)}` : ''}
               </div>
             </div>
             <Toggle
               checked={g.is_enabled}
               disabled={busy !== null}
               label={g.is_enabled ? 'On' : 'Off'}
-              onChange={(on) => run(`group-${g.id}`, () => updateTelegramGroup(g.id, { is_enabled: on }), on ? 'Orders will be posted there again.' : 'Paused. No orders go to that group.')}
+              onChange={(on) => run(`group-${g.id}`, () => updateTelegramGroup(g.id, { is_enabled: on }), on ? 'Posting there again.' : 'Paused. Nothing is posted in that group.')}
             />
+          </div>
+          <div className="tg-roles" role="group" aria-label={`What ${g.title} follows`}>
+            {FEEDS.map((f) => {
+              const on = g.feeds.includes(f.key);
+              return (
+                <label key={f.key} className={`tg-role${on ? ' tg-role--on' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={on}
+                    disabled={busy !== null}
+                    onChange={() => {
+                      const feeds = on ? g.feeds.filter((x) => x !== f.key) : [...g.feeds, f.key];
+                      void run(`group-feeds-${g.id}`, () => updateTelegramGroup(g.id, { feeds }), 'Saved.');
+                    }}
+                  />
+                  {f.label}
+                </label>
+              );
+            })}
           </div>
           {g.last_error && <div className="tg-warn"><AlertTriangle size={14} /> {g.last_error}</div>}
           <div className="tg-bot__actions">
             <Btn small variant="secondary" disabled={busy !== null || !g.is_enabled} onClick={() => run(`group-test-${g.id}`, () => testTelegramGroup(g.id), 'Test sent to the group.')}><Send size={14} /> Send a test</Btn>
             <Btn small variant="ghost" disabled={busy !== null} onClick={() => onAsk({
               title: 'Remove this group?',
-              message: `No more orders go to ${g.title}, and the bot leaves the group. Send ${command} there again to bring it back.`,
+              message: `Nothing more is posted in ${g.title}, and the bot leaves the group. Send ${command} there again to bring it back.`,
               confirmLabel: 'Remove',
               danger: true,
               onConfirm: () => run(`group-remove-${g.id}`, () => removeTelegramGroup(g.id), 'Group removed.'),

@@ -125,6 +125,9 @@ class AppServiceProvider extends ServiceProvider
             ->response(fn ($request, array $headers) => $waitMessage($headers)));
 
         Order::observe(OrderObserver::class);
+        // The buying list on Telegram follows each request (2026-10-07).
+        \App\Models\PurchaseRequest::observe(\App\Observers\PurchaseRequestTelegramObserver::class);
+        \App\Models\PurchaseRequestItem::updated(static fn (\App\Models\PurchaseRequestItem $item) => app(\App\Observers\PurchaseRequestTelegramObserver::class)->itemUpdated($item));
         StaffSchedule::observe(StaffScheduleObserver::class);
         Item::observe(ItemObserver::class);
         // Every change to what a customer pays, from any screen (2026-10-01).

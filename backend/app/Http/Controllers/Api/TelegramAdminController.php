@@ -41,6 +41,8 @@ class TelegramAdminController extends Controller
         ['command' => 'owed', 'description' => 'Refunds still to pay back'],
         ['command' => 'complaints', 'description' => 'Open complaints, with Reply'],
         ['command' => 'customer', 'description' => 'Look up a customer: /customer 7820288'],
+        ['command' => 'online', 'description' => 'Online orders waiting, with Start and Ready'],
+        ['command' => 'buying', 'description' => 'Buying list: add, approve, buy'],
         ['command' => 'deliveries', 'description' => 'Drivers: your deliveries'],
         ['command' => 'help', 'description' => 'What the buttons do'],
         ['command' => 'stop', 'description' => 'Unlink this chat'],
@@ -48,8 +50,8 @@ class TelegramAdminController extends Controller
 
     /** In a shop group (online orders feed). */
     private const GROUP_COMMANDS = [
-        ['command' => 'feed', 'description' => 'Post online orders in this group (owner)'],
-        ['command' => 'stopfeed', 'description' => 'Stop posting online orders here (owner)'],
+        ['command' => 'feed', 'description' => 'Online orders here; "/feed buying" for the buying list (owner)'],
+        ['command' => 'stopfeed', 'description' => 'Stop posting here; "/stopfeed buying" for the buying list (owner)'],
     ];
 
     public function __construct(
@@ -318,7 +320,7 @@ class TelegramAdminController extends Controller
     {
         $group = TelegramGroup::query()->with('bot')->findOrFail($id);
         try {
-            $this->client->sendMessage($group->bot, $group->chat_id, '🔔 Test from Admin → Telegram. Online orders will arrive in this group.');
+            $this->client->sendMessage($group->bot, $group->chat_id, '🔔 Test from Admin → Telegram. What this group follows will arrive here.');
         } catch (TelegramApiException $e) {
             $group->forceFill(['last_error' => mb_substr($e->getMessage(), 0, 500)])->save();
 
@@ -333,7 +335,7 @@ class TelegramAdminController extends Controller
     {
         $group = TelegramGroup::query()->with('bot')->findOrFail($id);
         try {
-            $this->client->sendMessage($group->bot, $group->chat_id, 'Online orders are switched off for this group, so I am leaving. Bye.');
+            $this->client->sendMessage($group->bot, $group->chat_id, 'This group was removed in Admin → Telegram, so I am leaving. Bye.');
             $this->client->call($group->bot, 'leaveChat', ['chat_id' => $group->chat_id]);
         } catch (TelegramApiException) {
             // Already removed from the group; forget it regardless.
