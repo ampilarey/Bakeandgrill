@@ -69,7 +69,14 @@ chosen themself was left alone.
 
 Logo and stamp files are in this folder and, for the ones the site serves, in
 `backend/public/brand/`. Downloadable packs: `/brand/bake-and-grill-logo-pack.zip`
-and `/brand/bake-and-grill-stamp-pack.zip`.
+(the logos, app icons, link preview, no-photo tile and the two moving logos) and
+`/brand/bake-and-grill-stamp-pack.zip`.
+
+`logo-light.png` is the master. Owner, 2026-10-07: the "&" had a dark strip across its
+top, where the gold fill stopped short of the letter (in the dark logo it was cream).
+It was a flaw in the original artwork; the gold now runs to the top in the master and
+in everything made from it (`AnimatedLogoTest` checks the pixels). The stamps are one
+colour and never showed it.
 
 ### App icons and tab icons (2026-10-07)
 
@@ -85,6 +92,9 @@ by `scripts/brand-icons.py` (run it, then copy the output where the table says).
 | `favicon-32.png`, `favicon.ico` | the flame alone (legible at 16 px) | each app's `public/`, `backend/public/` |
 | `brand/logo-dark.png` | the logo with cream lettering, see-through: dark surfaces | `logo_dark` setting: website footer, dark mode, signage |
 | `logo.png` (site root) | the light logo, see-through | fallback when no logo is saved |
+| `brand/logo-light-cream.png` | the light logo on a cream (#F8F6F3) square | `backend/public/brand/`, `docs/brand/` |
+| `brand/default-item-image.png` | cream 4:3 tile, the logo in a soft circle: menu items with no photo | `backend/public/brand/`, `docs/brand/` |
+| `logo.svg` (site root) | the trimmed light logo as a picture inside an SVG | `backend/public/` |
 | `brand/og-default.png` | 1200 × 630 cream card: link previews | `SocialPreviewImage` fallback, order app `og:image` |
 
 ### The logo with moving flames (2026-10-07)

@@ -70,6 +70,20 @@ class AnimatedLogoTest extends TestCase
             }
             $this->assertStringContainsString('fill="' . $text . '"', $svg);
             $this->assertNotFalse(simplexml_load_string($svg), $file . ' is well-formed');
+            $this->assertStringNotContainsString('stop-color="' . $text . '"', $svg, 'the "&" has no lettering-coloured top');
+        }
+    }
+
+    /** Owner, 2026-10-07: the dark strip across the top of the "&" was a flaw; the gold runs to the top. */
+    public function test_the_top_of_the_ampersand_is_gold_in_the_logo_files(): void
+    {
+        foreach (['brand/logo-light.png', 'brand/logo-dark.png', 'logo.png'] as $file) {
+            $img = imagecreatefrompng(public_path($file));
+            foreach ([[520, 788], [535, 786], [545, 795]] as [$x, $y]) {
+                $c = imagecolorsforindex($img, imagecolorat($img, $x, $y));
+                $this->assertGreaterThan(200, $c['red'], "{$file} at {$x},{$y}");
+                $this->assertGreaterThan(180, $c['blue'], "{$file} at {$x},{$y} is pale gold, not lettering");
+            }
         }
     }
 }

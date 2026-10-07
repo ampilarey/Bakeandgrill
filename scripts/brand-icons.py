@@ -63,4 +63,35 @@ save(Image.open(f'{SRC}/logo-light.png').convert('RGBA'), 'logo.png')
 
 # Link previews (WhatsApp, Facebook…): 1200x630 cream card.
 save(place((1200, 630), light, 0.78, CREAM), 'og-default.png', opaque=True)
+
+# The light logo on a cream square, and the stand-in tile for menu items with no
+# photo (cream 4:3, the logo in a soft circle). Same geometry as the first build
+# (2026-09-30); remade here so a change to logo-light.png reaches them too.
+PAGE = (248, 246, 243, 255)           # #F8F6F3
+def bounds(im):
+    return im.getchannel('A').point(lambda v: 255 if v > 8 else 0).getbbox()
+def on_square(size, scale, bg):
+    x0, y0, x1, y1 = bounds(full)
+    w, h = x1 - x0, y1 - y0
+    s = size * scale / max(w, h)
+    lg = full.crop((x0, y0, x1, y1)).resize((round(w * s), round(h * s)), Image.LANCZOS)
+    c = Image.new('RGBA', (size, size), bg)
+    c.alpha_composite(lg, (round((size - w * s) / 2), round((size - h * s) / 2)))
+    return c
+full = Image.open(f'{SRC}/logo-light.png').convert('RGBA')
+save(on_square(1080, 0.78, PAGE), 'logo-light-cream.png', opaque=True)
+from PIL import ImageDraw
+tile = Image.new('RGBA', (1200, 900), PAGE)
+ImageDraw.Draw(tile).ellipse((200, 50, 1000, 850), fill=(0xF1, 0xE7, 0xDC, 255))
+tile.alpha_composite(on_square(900, 0.6, (0, 0, 0, 0)), (150, 0))
+save(tile, 'default-item-image.png', opaque=True)
+
+# logo.svg (site root): the light logo, trimmed, as a picture inside an SVG.
+import base64, io
+buf = io.BytesIO()
+light.resize((326, 512), Image.LANCZOS).save(buf, 'PNG', optimize=True)
+with open(os.path.join(OUT, 'logo.svg'), 'w') as f:
+    f.write('<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="326" height="512" viewBox="0 0 326 512">'
+            '<title>Bake &amp; Grill</title><image width="326" height="512" href="data:image/png;base64,'
+            + base64.b64encode(buf.getvalue()).decode() + '"/></svg>\n')
 print('done')

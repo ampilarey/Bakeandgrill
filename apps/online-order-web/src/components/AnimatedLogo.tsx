@@ -1,6 +1,6 @@
 import { useId } from 'react';
 import './AnimatedLogo.css';
-import { AMP_STOPS, AMP_TOP, DROP_STOPS, MAIN, OUTER, PATHS } from './animatedLogoShapes';
+import { AMP_STOPS, DROP_STOPS, MAIN, OUTER, PATHS } from './animatedLogoShapes';
 
 /**
  * The Bake & Grill logo drawn as shapes, with the flames moving gently
@@ -26,7 +26,6 @@ export function AnimatedLogo({
   const uid = useId().replace(/:/g, '');
   const text = variant === 'light' ? '#1C1408' : variant === 'dark' ? '#FFFDF9' : undefined;
   const textProps = text ? { fill: text } : { className: 'bgl-t' };
-  const ampTop = text ? { stopColor: text } : { className: 'bgl-at' };
   const classes = ['bgl', animate ? '' : 'bgl--still', className].filter(Boolean).join(' ');
 
   return (
@@ -44,8 +43,6 @@ export function AnimatedLogo({
           ))}
         </linearGradient>
         <linearGradient id={`bgl-amp${uid}`} gradientUnits="userSpaceOnUse" x1="0" y1="784" x2="0" y2="915">
-          <stop offset={0} {...ampTop} />
-          <stop offset={AMP_TOP} {...ampTop} />
           {AMP_STOPS.map(([o, c]) => (
             <stop key={o} offset={o} stopColor={c} />
           ))}
