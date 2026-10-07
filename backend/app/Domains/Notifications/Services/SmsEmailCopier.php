@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Notifications\Services;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
+use App\Domains\Notifications\Support\NotificationChannels;
 use App\Domains\Notifications\Support\SmsDeliveryRules;
 use App\Domains\Notifications\Support\SmsTypeRegistry;
 use App\Mail\SmsCopyMail;
@@ -77,21 +78,34 @@ class SmsEmailCopier
     /**
      * @param array<string, mixed>|null $registryEntry
      * @param bool $smsSent false when the SMS itself was switched off and this email goes alone
+     * @param User|null $staff the staff member a staff alert is for (SmsService
+     *                         resolves it); their channels decide whether email is one
+     * @return bool whether an email was sent on its way
      */
-    public function copy(SmsMessage $sms, string $normalizedPhone, SmsLog $log, ?array $registryEntry, bool $smsSent = true): void
+    public function copy(SmsMessage $sms, string $normalizedPhone, SmsLog $log, ?array $registryEntry, bool $smsSent = true, ?User $staff = null): bool
     {
         try {
             if (in_array($sms->type, self::HAS_OWN_EMAIL, true) || !SmsTypeRegistry::isEmailEnabled($sms->type)) {
-                return;
+                return false;
             }
 
             $category = (string) ($registryEntry['category'] ?? $sms->type);
             $marketing = $category === 'marketing';
             $staffAlert = $category === 'staff';
 
-            $person = $this->recipient($sms, $normalizedPhone, $staffAlert);
+            // A staff alert for a known person: Admin's channels for them
+            // decide (2026-10-07), and it goes to their own address.
+            if ($staff !== null) {
+                $email = $this->clean($staff->email);
+                if ($email === null || !NotificationChannels::allows($staff, NotificationChannels::EMAIL)) {
+                    return false;
+                }
+                $person = [$email, 'staff', null];
+            } else {
+                $person = $this->recipient($sms, $normalizedPhone, $staffAlert);
+            }
             if ($person === null) {
-                return;
+                return false;
             }
             [$email, $audience, $customerId] = $person;
 
@@ -105,18 +119,18 @@ class SmsEmailCopier
                 default => $rules['email_copy_customers'],
             };
             if (!$allowed) {
-                return;
+                return false;
             }
 
             // One copy per log row: a retried or released SMS reuses its row.
             if (!Cache::add('sms-email-copy:log:' . $log->id, 1, now()->addDays(2))) {
-                return;
+                return true;
             }
 
             if (!$this->withinHourlyCap((int) $rules['email_copy_hourly_cap'], $marketing)) {
                 Log::info('sms email copy: hourly cap reached, skipped', ['type' => $sms->type, 'log_id' => $log->id]);
 
-                return;
+                return false;
             }
 
             $mail = new SmsCopyMail(
@@ -138,9 +152,13 @@ class SmsEmailCopier
                     Log::warning('sms email copy: send failed', ['log_id' => $log->id, 'error' => $e->getMessage()]);
                 }
             }, 'sms-email-copy', always: true);
+
+            return true;
         } catch (Throwable $e) {
             // Never let the email copy affect the SMS.
             Log::warning('sms email copy: skipped after an error', ['type' => $sms->type, 'error' => $e->getMessage()]);
+
+            return false;
         }
     }
 

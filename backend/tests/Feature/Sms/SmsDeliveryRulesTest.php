@@ -118,9 +118,14 @@ class SmsDeliveryRulesTest extends TestCase
         SmsTypeRegistry::setRecipientOverride('owner_device_approval', ['mode' => 'owners_managers']);
         $this->assertEquals(['9607770001', '9607770002'], OwnerPhones::for('owner_device_approval')->all());
 
-        // A choice that resolves to nobody falls back to the owners rather than going silent.
+        // Someone chosen who has no phone still gets it, by email or
+        // Telegram (2026-10-07): addressed as "user:{id}".
         $cashier->update(['phone' => null]);
         SmsTypeRegistry::setRecipientOverride('owner_stock_reorder', ['mode' => 'staff', 'user_ids' => [$cashier->id]]);
+        $this->assertEquals(['user:' . $cashier->id], OwnerPhones::for('owner_stock_reorder')->all());
+
+        // A choice that resolves to nobody falls back to the owners rather than going silent.
+        $cashier->update(['is_active' => false]);
         $this->assertEquals(['9607770001', '9607770002'], OwnerPhones::for('owner_stock_reorder')->all());
         unset($owner);
     }

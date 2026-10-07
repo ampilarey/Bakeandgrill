@@ -7,6 +7,7 @@ namespace Tests\Feature\Telegram;
 use App\Domains\Notifications\Contracts\SmsProviderInterface;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Notifications\Support\NotificationChannels;
 use App\Domains\Telegram\Services\TelegramAlertCopier;
 use App\Models\AuditLog;
 use App\Models\Device;
@@ -74,16 +75,16 @@ class TelegramOwnerBotTest extends TestCase
         $this->assertStringContainsString('Shift #4 has been open for 14 hours', $text);
     }
 
-    public function test_instead_of_sms_sends_telegram_only_and_falls_back_to_sms_when_telegram_is_down(): void
+    public function test_owners_on_telegram_only_get_no_sms_and_the_sms_goes_when_telegram_is_down(): void
     {
-        SiteSetting::set(TelegramAlertCopier::SETTING_INSTEAD_OF_SMS, '1');
+        NotificationChannels::setRoles(['owner' => [NotificationChannels::TELEGRAM]]);
         $owner = $this->staff('owner', '+9607820288');
         $bot = $this->bot();
         $this->link($bot, $owner, '5550001');
 
         $log = $this->alert('7820288', 'owner_complaint_received', 'New complaint on order 1042.');
         $this->assertSame('suppressed', $log->status);
-        $this->assertSame('Sent on Telegram instead of SMS.', $log->error_message);
+        $this->assertSame(SmsLog::SENT_ON_TELEGRAM, $log->error_message);
         $this->assertSame(0.0, (float) $log->cost_estimate_mvr);
         $this->assertSame([], $this->smsSentTo);
         $this->assertCount(1, $this->sent('5550001'));
@@ -92,6 +93,7 @@ class TelegramOwnerBotTest extends TestCase
         $log = $this->alert('7820288', 'owner_complaint_received', 'New complaint on order 1043.');
         $this->assertSame('sent', $log->status);
         $this->assertSame(['+9607820288'], $this->smsSentTo, 'nothing is lost when Telegram cannot be reached');
+        $this->assertSame(SmsService::SMS_FALLBACK_NOTE, $log->error_message);
     }
 
     public function test_an_alert_still_reaches_telegram_when_its_sms_is_switched_off(): void
@@ -170,8 +172,11 @@ class TelegramOwnerBotTest extends TestCase
         $refund = Refund::create(['order_id' => $order->id, 'user_id' => $cashier->id, 'amount' => 80, 'status' => 'pending', 'reason' => 'Cold food', 'drawer_cash_out_laar' => 0]);
 
         app(SmsService::class)->send(new SmsMessage(
-            to: '7820288', message: 'Refund request on BG-1042 for MVR 80.00 needs approval.', type: 'staff_refund_requested',
-            referenceType: 'refund', referenceId: (string) $refund->id,
+            to: '7820288',
+            message: 'Refund request on BG-1042 for MVR 80.00 needs approval.',
+            type: 'staff_refund_requested',
+            referenceType: 'refund',
+            referenceId: (string) $refund->id,
         ));
         DeferAfterResponse::flushTestingCallbacks();
 

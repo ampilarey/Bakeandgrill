@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Domains\Notifications\Support\NotificationChannels;
 use App\Domains\Orders\Support\DiscountSettings;
 use App\Domains\Telegram\Listeners\SendDayReportOnLastShiftClose;
 use App\Domains\Telegram\Services\TelegramAlertCopier;
@@ -45,7 +46,13 @@ class TelegramCheckCommand extends Command
 
         $this->line('<info>Settings</info>');
         $this->line('  Alerts on Telegram: ' . (TelegramAlertCopier::enabled() ? 'on' : 'OFF'));
-        $this->line('  Telegram instead of SMS: ' . (TelegramAlertCopier::insteadOfSms() ? 'on' : 'off'));
+        // Who gets alerts by what (Admin → SMS Control Center, 2026-10-07).
+        foreach (NotificationChannels::roles() as $slug => $channels) {
+            $this->line('  Channels for ' . $slug . ': ' . ($channels === [] ? 'NONE' : implode(', ', $channels)));
+        }
+        foreach (User::query()->whereNotNull('notify_channels')->where('is_active', true)->get() as $u) {
+            $this->line('  Channels for ' . $u->name . ' (own choice): ' . implode(', ', NotificationChannels::forUser($u)));
+        }
         $this->line('  Day report: ' . (SendDayReportOnLastShiftClose::enabled() ? 'on' : 'off'));
         $this->line('  Business phone: ' . (SiteSetting::get('business_phone') ?: '(none)'));
 

@@ -73,7 +73,6 @@ class TelegramAdminController extends Controller
             'roles' => array_map(fn (string $r) => ['key' => $r, 'label' => $this->roleLabel($r)], TelegramBot::ROLES),
             'settings' => [
                 'alerts_enabled' => TelegramAlertCopier::enabled(),
-                'instead_of_sms' => TelegramAlertCopier::insteadOfSms(),
                 'day_report' => self::dayReportOn(),
             ],
             'webhook_base' => rtrim((string) config('app.url'), '/'),
@@ -283,20 +282,16 @@ class TelegramAdminController extends Controller
     {
         $data = $request->validate([
             'alerts_enabled' => 'sometimes|boolean',
-            'instead_of_sms' => 'sometimes|boolean',
             'day_report' => 'sometimes|boolean',
         ]);
-        $before = ['alerts_enabled' => TelegramAlertCopier::enabled(), 'instead_of_sms' => TelegramAlertCopier::insteadOfSms(), 'day_report' => self::dayReportOn()];
+        $before = ['alerts_enabled' => TelegramAlertCopier::enabled(), 'day_report' => self::dayReportOn()];
         if (array_key_exists('alerts_enabled', $data)) {
             SiteSetting::set(TelegramAlertCopier::SETTING_ENABLED, $data['alerts_enabled'] ? '1' : '0');
-        }
-        if (array_key_exists('instead_of_sms', $data)) {
-            SiteSetting::set(TelegramAlertCopier::SETTING_INSTEAD_OF_SMS, $data['instead_of_sms'] ? '1' : '0');
         }
         if (array_key_exists('day_report', $data)) {
             SiteSetting::set(SendDayReportOnLastShiftClose::SETTING, $data['day_report'] ? '1' : '0');
         }
-        $after = ['alerts_enabled' => TelegramAlertCopier::enabled(), 'instead_of_sms' => TelegramAlertCopier::insteadOfSms(), 'day_report' => self::dayReportOn()];
+        $after = ['alerts_enabled' => TelegramAlertCopier::enabled(), 'day_report' => self::dayReportOn()];
         $this->audit->log('telegram.settings_updated', 'SiteSetting', null, $before, $after, [], $request);
 
         return response()->json(['settings' => $after]);

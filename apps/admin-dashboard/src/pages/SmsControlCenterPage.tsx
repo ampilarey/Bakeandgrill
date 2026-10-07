@@ -19,6 +19,7 @@ import {
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { PageHeader, PageShell, Btn, Modal } from '../components/SharedUI';
+import { NotifyChannelsPanel } from '../components/NotifyChannelsPanel';
 import { nonGsm7Characters, smsCharCount } from '../utils/smsCharCount';
 
 /**
@@ -193,6 +194,20 @@ export function SmsControlCenterPage() {
       const next = !(row.email_enabled ?? true);
       const res = await updateSmsType(row.key, { email_enabled: next });
       setTypes((prev) => prev.map((t) => (t.key === row.key ? { ...t, email_enabled: res.email_enabled ?? next } : t)));
+    } catch (e: unknown) {
+      setError((e as Error).message);
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
+  const handleTelegramToggle = async (row: SmsControlCenterType) => {
+    if (!canManageSettings || !row.telegram_applies) return;
+    setSavingKey(row.key);
+    try {
+      const next = !(row.telegram_enabled ?? true);
+      const res = await updateSmsType(row.key, { telegram_enabled: next });
+      setTypes((prev) => prev.map((t) => (t.key === row.key ? { ...t, telegram_enabled: res.telegram_enabled ?? next } : t)));
     } catch (e: unknown) {
       setError((e as Error).message);
     } finally {
@@ -409,6 +424,7 @@ export function SmsControlCenterPage() {
                   onExpand={() => setExpandedKey((k) => (k === row.key ? null : row.key))}
                   onToggle={() => void handleToggle(row)}
                   onEmailToggle={() => void handleEmailToggle(row)}
+                  onTelegramToggle={() => void handleTelegramToggle(row)}
                   saving={savingKey === row.key}
                   canToggle={canManageSettings && !row.always_on}
                   canToggleEmail={canManageSettings}
@@ -426,6 +442,10 @@ export function SmsControlCenterPage() {
             </div>
           </section>
         ))
+      )}
+
+      {!loading && (
+        <NotifyChannelsPanel canManage={canManageSettings} emailToStaffOn={rules.email_copy_staff ?? true} onError={setError} />
       )}
 
       {!loading && (
@@ -634,13 +654,14 @@ function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; chi
 }
 
 function TypeRow({
-  row, expanded, onExpand, onToggle, onEmailToggle, saving, canToggle, canToggleEmail, canEdit, canTest, myPhone, permissionOptions, staffOptions, onUpdated, onError,
+  row, expanded, onExpand, onToggle, onEmailToggle, onTelegramToggle, saving, canToggle, canToggleEmail, canEdit, canTest, myPhone, permissionOptions, staffOptions, onUpdated, onError,
 }: {
   row: SmsControlCenterType;
   expanded: boolean;
   onExpand: () => void;
   onToggle: () => void;
   onEmailToggle: () => void;
+  onTelegramToggle: () => void;
   saving: boolean;
   canToggle: boolean;
   canToggleEmail: boolean;
@@ -657,7 +678,8 @@ function TypeRow({
   // A type with its own fuller email (sign-in code, order confirmed…) keeps
   // that email whatever the switches say; a copy follows the Email switch.
   const emailOn = row.has_own_email ? true : (row.email_enabled ?? true);
-  const off = smsOff && !emailOn;
+  const telegramOn = !!row.telegram_applies && (row.telegram_enabled ?? true);
+  const off = smsOff && !emailOn && !telegramOn;
   const alsoLink = row.also_needs ? linkForAlsoNeeds(row.also_needs) : null;
 
   return (
@@ -671,7 +693,7 @@ function TypeRow({
               : off
                 ? <span style={badgeStyle('var(--color-border-light)', 'var(--color-text-muted)')}>Off</span>
                 : smsOff
-                  ? <span style={badgeStyle('var(--color-border-light)', 'var(--color-info)')} data-testid={`email-only-${row.key}`}>Email only</span>
+                  ? <span style={badgeStyle('var(--color-border-light)', 'var(--color-info)')} data-testid={`email-only-${row.key}`}>{[emailOn && 'Email', telegramOn && 'Telegram'].filter(Boolean).join(' + ')} only</span>
                   : null}
           </div>
           <p style={rowLine}>
@@ -742,6 +764,22 @@ function TypeRow({
               </button>
             )}
           </div>
+          {row.telegram_applies && (
+            <div className="sms-cc-channel">
+              <span className="sms-cc-channel-label">Telegram</span>
+              <button
+                type="button"
+                onClick={onTelegramToggle}
+                disabled={!canToggleEmail || saving}
+                aria-label={`Toggle Telegram for ${row.label}`}
+                aria-pressed={telegramOn}
+                className={`sms-cc-switch${telegramOn ? ' is-on' : ''}`}
+                style={{ cursor: !canToggleEmail || saving ? 'not-allowed' : 'pointer', opacity: !canToggleEmail ? 0.55 : 1 }}
+              >
+                <span className="sms-cc-switch-knob" />
+              </button>
+            </div>
+          )}
           <button type="button" onClick={onExpand} className="sms-cc-edit" aria-expanded={expanded}>
             {expanded ? 'Hide controls' : 'Edit'}
           </button>

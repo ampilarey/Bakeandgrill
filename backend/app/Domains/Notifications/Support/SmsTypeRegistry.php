@@ -60,6 +60,9 @@ final class SmsTypeRegistry
     /** Per-type email switch, independent of the SMS switch (owner, 2026-10-06). */
     public const EMAIL_SETTING_PREFIX = 'sms_type_email.';
 
+    /** Per-type Telegram switch for staff and owner alerts (2026-10-07). */
+    public const TELEGRAM_SETTING_PREFIX = 'sms_type_telegram.';
+
     /**
      * Types whose recipients the owner chooses in the Control Center, with
      * where each goes when nothing is chosen. Types not listed here decide
@@ -395,6 +398,18 @@ final class SmsTypeRegistry
     public static function setEmailEnabled(string $typeKey, bool $on): void
     {
         SiteSetting::set(self::EMAIL_SETTING_PREFIX . $typeKey, $on ? '1' : 'off');
+        SiteSetting::bust();
+    }
+
+    /** Whether this staff alert goes to Telegram; on unless switched off. */
+    public static function isTelegramEnabled(string $typeKey): bool
+    {
+        return self::settingIsTruthy(SiteSetting::get(self::TELEGRAM_SETTING_PREFIX . $typeKey, '1'), true);
+    }
+
+    public static function setTelegramEnabled(string $typeKey, bool $on): void
+    {
+        SiteSetting::set(self::TELEGRAM_SETTING_PREFIX . $typeKey, $on ? '1' : 'off');
         SiteSetting::bust();
     }
 

@@ -155,7 +155,7 @@ class SmsControlCenterController extends Controller
                 'recipients_configurable' => $defaultMode !== null,
                 'default_recipient_mode' => $defaultMode,
                 'recipients_config' => $defaultMode === null ? null : ($recipientChoice ?? ['mode' => $defaultMode, 'user_ids' => [], 'phones' => []]),
-                'recipients_resolved' => $defaultMode === null ? [] : OwnerPhones::for($key)->values()->all(),
+                'recipients_resolved' => $defaultMode === null ? [] : OwnerPhones::describe(OwnerPhones::for($key)),
                 'key' => $key,
                 'label' => $entry['label'],
                 'category' => $entry['category'],
@@ -165,6 +165,10 @@ class SmsControlCenterController extends Controller
                 // email (sign-in code, order confirmed...) have no copy to switch.
                 'email_enabled' => SmsTypeRegistry::isEmailEnabled($key),
                 'has_own_email' => in_array($key, \App\Domains\Notifications\Services\SmsEmailCopier::HAS_OWN_EMAIL, true),
+                // Telegram switch per staff alert (2026-10-07); who gets it
+                // by which channel is set per role and person.
+                'telegram_applies' => \App\Domains\Telegram\Services\TelegramAlertCopier::isStaffAlert($entry, $key),
+                'telegram_enabled' => SmsTypeRegistry::isTelegramEnabled($key),
                 'always_on' => (bool) $entry['always_on'],
                 'suppressible' => (bool) $entry['suppressible'],
                 'recipients' => $recipientsPlain,
@@ -288,6 +292,7 @@ class SmsControlCenterController extends Controller
         $validated = $request->validate([
             'enabled' => 'sometimes|boolean',
             'email_enabled' => 'sometimes|boolean',
+            'telegram_enabled' => 'sometimes|boolean',
             'body' => 'sometimes|nullable|string|max:1000',
             'send_permission' => [
                 'sometimes',
@@ -308,7 +313,7 @@ class SmsControlCenterController extends Controller
         ]);
 
         if ($validated === []) {
-            return response()->json(['message' => 'Provide enabled, email_enabled, body, send_permission and/or recipients.'], 422);
+            return response()->json(['message' => 'Provide enabled, email_enabled, telegram_enabled, body, send_permission and/or recipients.'], 422);
         }
 
         $response = ['key' => $key];
@@ -331,7 +336,7 @@ class SmsControlCenterController extends Controller
             SmsTypeRegistry::setRecipientOverride($key, is_array($choice) ? $choice : null);
             $this->audit->log('sms.type.recipients.updated', 'SiteSetting', null, ['recipients' => $old, 'type' => $key], ['recipients' => $choice, 'type' => $key], ['sms_type' => $key], $request);
             $response['recipients_config'] = SmsTypeRegistry::recipientOverride($key) ?? ['mode' => SmsTypeRegistry::defaultRecipientMode($key), 'user_ids' => [], 'phones' => []];
-            $response['recipients_resolved'] = OwnerPhones::for($key)->values()->all();
+            $response['recipients_resolved'] = OwnerPhones::describe(OwnerPhones::for($key));
         }
 
         if (array_key_exists('email_enabled', $validated)) {
@@ -339,6 +344,13 @@ class SmsControlCenterController extends Controller
             SmsTypeRegistry::setEmailEnabled($key, (bool) $validated['email_enabled']);
             $this->audit->log('sms.type.email.updated', 'SiteSetting', null, ['email_enabled' => $old, 'type' => $key], ['email_enabled' => (bool) $validated['email_enabled'], 'type' => $key], ['sms_type' => $key], $request);
             $response['email_enabled'] = (bool) $validated['email_enabled'];
+        }
+
+        if (array_key_exists('telegram_enabled', $validated)) {
+            $old = SmsTypeRegistry::isTelegramEnabled($key);
+            SmsTypeRegistry::setTelegramEnabled($key, (bool) $validated['telegram_enabled']);
+            $this->audit->log('sms.type.telegram.updated', 'SiteSetting', null, ['telegram_enabled' => $old, 'type' => $key], ['telegram_enabled' => (bool) $validated['telegram_enabled'], 'type' => $key], ['sms_type' => $key], $request);
+            $response['telegram_enabled'] = (bool) $validated['telegram_enabled'];
         }
 
         if (array_key_exists('enabled', $validated)) {

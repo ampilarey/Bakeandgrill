@@ -179,10 +179,9 @@ class TelegramBotSetupTest extends TestCase
 
         $this->getJson('/api/admin/telegram')->assertOk()
             ->assertJsonPath('settings.alerts_enabled', true)
-            ->assertJsonPath('settings.instead_of_sms', false)
             ->assertJsonPath('bots.0.linked_count', 1);
 
-        $this->putJson('/api/admin/telegram/settings', ['instead_of_sms' => true])->assertOk()->assertJsonPath('settings.instead_of_sms', true);
+        $this->putJson('/api/admin/telegram/settings', ['alerts_enabled' => false])->assertOk()->assertJsonPath('settings.alerts_enabled', false);
         $this->deleteJson('/api/admin/telegram/links/' . $link->id)->assertOk();
         $this->assertSame(0, TelegramLink::count());
         $this->assertStringContainsString('unlinked', $this->lastText('5550001'));

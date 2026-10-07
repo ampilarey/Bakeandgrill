@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Telegram;
 
 use App\Domains\Notifications\Contracts\SmsProviderInterface;
+use App\Domains\Notifications\Support\NotificationChannels;
 use App\Domains\Orders\Support\DiscountSettings;
-use App\Domains\Telegram\Services\TelegramAlertCopier;
 use App\Models\Category;
 use App\Models\Device;
 use App\Models\DiscountApproval;
@@ -171,9 +171,9 @@ class TelegramDiscountApprovalTest extends TestCase
         $this->assertSame($this->manager->id, (int) $order->fresh()->manual_discount_approved_by);
     }
 
-    public function test_telegram_instead_of_sms_still_counts_as_sent(): void
+    public function test_an_approver_on_telegram_only_still_counts_as_sent(): void
     {
-        SiteSetting::set(TelegramAlertCopier::SETTING_INSTEAD_OF_SMS, '1');
+        NotificationChannels::setUser($this->manager, [NotificationChannels::TELEGRAM]);
         $bot = $this->bot();
         $this->link($bot, $this->manager, '5550002');
         $order = $this->order();

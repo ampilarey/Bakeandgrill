@@ -6,12 +6,14 @@ namespace App\Domains\Notifications\Services;
 
 use App\Domains\Notifications\Contracts\SmsProviderInterface;
 use App\Domains\Notifications\DTOs\SmsMessage;
+use App\Domains\Notifications\Support\NotificationChannels;
 use App\Domains\Notifications\Support\SmsBudgetGate;
 use App\Domains\Notifications\Support\SmsDeliveryRules;
 use App\Domains\Notifications\Support\SmsTypeRegistry;
 use App\Domains\Permissions\Services\PermissionService;
 use App\Domains\Telegram\Services\TelegramAlertCopier;
 use App\Models\Customer;
+use App\Models\SiteSetting;
 use App\Models\SmsLog;
 use App\Models\User;
 use App\Rules\MaldivesPhone;
@@ -45,8 +47,18 @@ class SmsService
         }
         $estimate = $this->estimate($sms->message);
 
+        // Staff and owner alerts go to people, by the channels Admin chose
+        // for them (owner, 2026-10-07: "admin decides in which channel
+        // notifications goes to a specific role or person"). "user:{id}" is
+        // a staff member with no phone: email and Telegram only.
+        $staff = $this->staffFor($sms, $registryEntry);
+        $phoneless = NotificationChannels::isToken($sms->to);
+        if ($phoneless && $staff === null) {
+            return $this->rowWithStatus($sms, substr($sms->to, 0, 20), $estimate, 'failed', 'Staff member not found or switched off.');
+        }
+
         try {
-            $normalized = $this->normalizePhone($sms->to);
+            $normalized = $phoneless ? $sms->to : $this->normalizePhone($sms->to);
         } catch (\InvalidArgumentException $e) {
             return SmsLog::create([
                 'message' => $this->messageForLog($sms),
@@ -96,24 +108,24 @@ class SmsService
         // the text: the email still goes (owner, 2026-10-06).
         // 0. The caller's own switch has this SMS off.
         if ($sms->emailOnly) {
-            return $this->smsOffEmailOn($sms, $normalized, $estimate, $existing, $registryEntry, 'SMS switched off for this message; sent by email only.');
+            return $this->smsOffEmailOn($sms, $normalized, $estimate, $existing, $registryEntry, 'SMS switched off for this message; sent by email only.', $staff);
         }
 
         // 1. Global kill switch — blocks ALL texts including OTP.
         if (SmsTypeRegistry::isGlobalKillSwitchOn()) {
-            return $this->smsOffEmailOn($sms, $normalized, $estimate, $existing, $registryEntry, 'All SMS halted by admin master switch.');
+            return $this->smsOffEmailOn($sms, $normalized, $estimate, $existing, $registryEntry, 'All SMS halted by admin master switch.', $staff);
         }
 
         // 2. Per-type enabled (always_on types ignore their toggle).
         if ($registryEntry !== null && !SmsTypeRegistry::isTypeEnabled($registryEntry)) {
-            return $this->smsOffEmailOn($sms, $normalized, $estimate, $existing, $registryEntry, 'SMS type disabled in Admin → SMS Control Center.');
+            return $this->smsOffEmailOn($sms, $normalized, $estimate, $existing, $registryEntry, 'SMS type disabled in Admin → SMS Control Center.', $staff);
         }
 
         // 4. Spend ceilings — never block always_on auth types.
         $alwaysOn = (bool) ($registryEntry['always_on'] ?? false);
         $budgetReason = SmsBudgetGate::blockReason($estimate, $sms->campaignId, $alwaysOn);
         if ($budgetReason !== null) {
-            return $this->smsOffEmailOn($sms, $normalized, $estimate, $existing, $registryEntry, $budgetReason);
+            return $this->smsOffEmailOn($sms, $normalized, $estimate, $existing, $registryEntry, $budgetReason, $staff);
         }
 
         // 5. Marketing-class messages: honour customer opt-out via registry suppressible flag.
@@ -188,6 +200,18 @@ class SmsService
             return $existing;
         }
 
+        // A person whose channels leave SMS out (or who has no phone): email
+        // and Telegram now, and the SMS only when neither reached them.
+        $smsFallback = false;
+        if ($staff !== null && ($phoneless || !NotificationChannels::allows($staff, NotificationChannels::SMS))) {
+            [$otherLog, $done] = $this->sendByOtherChannels($sms, $normalized, $estimate, $existing, $registryEntry, $staff, $phoneless);
+            if ($done) {
+                return $otherLog;
+            }
+            $existing = $otherLog;
+            $smsFallback = true;
+        }
+
         if ($existing !== null) {
             $log = $this->refreshSmsLogForRetry($existing, $sms, $normalized, $estimate);
         } else {
@@ -235,25 +259,12 @@ class SmsService
             }
         }
 
-        // Same text by email to the person's saved address (owner, 2026-10-06).
-        // Here, after every rule above, so the email obeys them too; it is
-        // sent after the response and can never affect the SMS.
-        app(SmsEmailCopier::class)->copy($sms, $normalized, $log, $registryEntry);
-
-        // Staff and owner alerts on Telegram (owner, 2026-10-06). With
-        // "instead of SMS" on, a linked person gets Telegram only; the SMS
-        // still goes if Telegram cannot be reached.
-        $telegram = app(TelegramAlertCopier::class);
-        if ($telegram->sendInsteadOfSms($sms, $normalized, $log, $registryEntry)) {
-            $log->update([
-                'status' => 'suppressed',
-                'error_message' => SmsLog::SENT_ON_TELEGRAM,
-                'cost_estimate_mvr' => 0,
-            ]);
-
-            return $log->fresh();
-        }
-        $telegram->copy($sms, $normalized, $log, $registryEntry);
+        // Same text by email to the person's saved address (owner, 2026-10-06),
+        // and to their Telegram: here, after every rule above, so both obey
+        // them too; sent after the response, they never affect the SMS. For
+        // a staff member their channels decide (2026-10-07).
+        app(SmsEmailCopier::class)->copy($sms, $normalized, $log, $registryEntry, staff: $staff);
+        app(TelegramAlertCopier::class)->copy($sms, $normalized, $log, $registryEntry, $staff);
 
         [$success, $response, $error] = $this->provider->send($normalized, $sms->message);
 
@@ -262,7 +273,7 @@ class SmsService
         $log->update([
             'status' => $status,
             'gateway_response' => is_array($response) ? $response : ['raw' => $response],
-            'error_message' => $error,
+            'error_message' => $error ?? ($smsFallback ? self::SMS_FALLBACK_NOTE : null),
             'sent_at' => $success ? now() : null,
         ]);
 
@@ -295,7 +306,7 @@ class SmsService
      * @param array{encoding: string, segments: int, cost_mvr: float} $estimate
      * @param array<string, mixed>|null $registryEntry
      */
-    private function smsOffEmailOn(SmsMessage $sms, string $normalized, array $estimate, ?SmsLog $existing, ?array $registryEntry, string $reason): SmsLog
+    private function smsOffEmailOn(SmsMessage $sms, string $normalized, array $estimate, ?SmsLog $existing, ?array $registryEntry, string $reason, ?User $staff = null): SmsLog
     {
         if ($existing !== null) {
             $existing->update(['status' => 'disabled', 'error_message' => $reason, 'message' => $this->messageForLog($sms), 'to' => $normalized, 'cost_estimate_mvr' => 0]);
@@ -311,10 +322,70 @@ class SmsService
         if ($registryEntry !== null && SmsDeliveryRules::marketingCapReason($normalized, $registryEntry) !== null) {
             return $log;
         }
-        app(SmsEmailCopier::class)->copy($sms, $normalized, $log, $registryEntry, smsSent: false);
-        app(TelegramAlertCopier::class)->copy($sms, $normalized, $log, $registryEntry);
+        app(SmsEmailCopier::class)->copy($sms, $normalized, $log, $registryEntry, smsSent: false, staff: $staff);
+        app(TelegramAlertCopier::class)->copy($sms, $normalized, $log, $registryEntry, $staff);
 
         return $log;
+    }
+
+    public const SMS_FALLBACK_NOTE = 'Email and Telegram did not reach them, so the SMS was sent.';
+
+    /**
+     * The staff member a staff alert is addressed to, or null (customers,
+     * typed numbers, the shop's business phone: that number is the shop,
+     * not a person, and its alerts reach owners on Telegram by their own
+     * channels).
+     *
+     * @param array<string, mixed>|null $registryEntry
+     */
+    private function staffFor(SmsMessage $sms, ?array $registryEntry): ?User
+    {
+        if (!TelegramAlertCopier::isStaffAlert($registryEntry, $sms->type)) {
+            return null;
+        }
+        if (!NotificationChannels::isToken($sms->to)) {
+            $business = substr(preg_replace('/\D/', '', (string) SiteSetting::get('business_phone', '')) ?? '', -7);
+            if (strlen($business) === 7 && $business === substr(preg_replace('/\D/', '', $sms->to) ?? '', -7)) {
+                return null;
+            }
+        }
+
+        return NotificationChannels::personFor($sms->to);
+    }
+
+    /**
+     * Email and Telegram for a person whose channels leave SMS out. Returns
+     * the log row and whether it is finished: false means nothing reached
+     * them and they have a phone, so the caller sends the SMS on this row.
+     *
+     * @param array{encoding: string, segments: int, cost_mvr: float} $estimate
+     * @param array<string, mixed>|null $registryEntry
+     * @return array{0: SmsLog, 1: bool}
+     */
+    private function sendByOtherChannels(SmsMessage $sms, string $normalized, array $estimate, ?SmsLog $existing, ?array $registryEntry, User $staff, bool $phoneless): array
+    {
+        $why = $phoneless ? 'No phone on file.' : 'Admin\'s channels for this person leave SMS out.';
+        if ($existing !== null) {
+            $existing->update(['status' => 'suppressed', 'error_message' => $why, 'message' => $this->messageForLog($sms), 'to' => $normalized, 'cost_estimate_mvr' => 0]);
+            $log = $existing->fresh();
+        } else {
+            $log = $this->rowWithStatus($sms, $normalized, $estimate, 'suppressed', $why);
+        }
+
+        $onTelegram = app(TelegramAlertCopier::class)->sendNow($sms, $normalized, $log, $registryEntry, $staff);
+        $byEmail = app(SmsEmailCopier::class)->copy($sms, $normalized, $log, $registryEntry, smsSent: false, staff: $staff);
+        if ($onTelegram || $byEmail) {
+            $log->update(['error_message' => $onTelegram ? SmsLog::SENT_ON_TELEGRAM : SmsLog::SENT_BY_EMAIL]);
+
+            return [$log->fresh(), true];
+        }
+        if ($phoneless) {
+            $log->update(['status' => 'failed', 'error_message' => 'Could not reach ' . $staff->name . ': no phone, no email saved, and Telegram not linked (or switched off for them).']);
+
+            return [$log->fresh(), true];
+        }
+
+        return [$log, false];
     }
 
     /** @param array{encoding: string, segments: int, cost_mvr: float} $estimate */

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Telegram\Services;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
+use App\Domains\Notifications\Support\NotificationChannels;
 use App\Domains\Notifications\Support\SmsTypeRegistry;
 use App\Domains\Telegram\Exceptions\TelegramApiException;
 use App\Domains\Telegram\Support\TelegramText as T;
@@ -16,6 +17,7 @@ use App\Models\SiteSetting;
 use App\Models\SmsLog;
 use App\Models\TelegramBot;
 use App\Models\TelegramLink;
+use App\Models\User;
 use App\Support\DeferAfterResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -26,21 +28,22 @@ use Throwable;
  *
  * SmsService calls this for every text it handles. When the text is a
  * staff alert (any "Staff" or "Owner" type in the SMS Control Center, or a
- * discount approval code) and the number belongs to a staff member who has
- * linked Telegram, the same message goes to their Telegram chat: free, and
- * with buttons where the alert has something to decide.
+ * discount approval code) for a staff member who has linked Telegram, the
+ * same message goes to their Telegram chat: free, and with buttons where
+ * the alert has something to decide.
  *
- * Two modes, set in Admin → Telegram:
- *  - alongside SMS (default): the text goes as before, Telegram is a copy;
- *  - instead of SMS: a linked person gets Telegram only, and the SMS is
- *    sent after all if Telegram cannot be reached, so nothing is lost.
+ * Since 2026-10-07 Admin decides who gets what by which channel
+ * (NotificationChannels): the type's Telegram switch, and the person's
+ * channels (their own, else their role's). A person whose channels leave
+ * SMS out gets Telegram straight away (sendNow) and the SMS only if
+ * nothing else reached them; that replaced the single "instead of SMS"
+ * switch.
  *
  * It never affects the SMS: any failure here is logged and ignored.
  */
 class TelegramAlertCopier
 {
     public const SETTING_ENABLED = 'telegram_alerts_enabled';
-    public const SETTING_INSTEAD_OF_SMS = 'telegram_alerts_instead_of_sms';
 
     /** Staff-facing types outside the "staff" category. */
     private const EXTRA_TYPES = ['discount_approval_otp'];
@@ -56,11 +59,6 @@ class TelegramAlertCopier
         return SmsTypeRegistry::settingIsTruthy(SiteSetting::get(self::SETTING_ENABLED), true);
     }
 
-    public static function insteadOfSms(): bool
-    {
-        return SmsTypeRegistry::settingIsTruthy(SiteSetting::get(self::SETTING_INSTEAD_OF_SMS), false);
-    }
-
     /** @param array<string, mixed>|null $entry */
     public static function isStaffAlert(?array $entry, string $type): bool
     {
@@ -68,19 +66,29 @@ class TelegramAlertCopier
             || in_array((string) ($entry['key'] ?? ''), self::EXTRA_TYPES, true);
     }
 
+    /** Telegram on for this alert type at all: the master switch and the type's own. */
+    public static function typeWanted(?array $entry, string $type): bool
+    {
+        return self::enabled() && self::isStaffAlert($entry, $type)
+            && SmsTypeRegistry::isTelegramEnabled((string) ($entry['key'] ?? $type));
+    }
+
     /**
      * The linked chat this alert should reach, or null.
      *
      * @param array<string, mixed>|null $entry
      */
-    public function target(SmsMessage $sms, string $normalizedPhone, ?array $entry): ?TelegramLink
+    public function target(SmsMessage $sms, string $normalizedPhone, ?array $entry, ?User $staff = null): ?TelegramLink
     {
         try {
-            if (!self::enabled() || !self::isStaffAlert($entry, $sms->type)) {
+            if (!self::typeWanted($entry, $sms->type)) {
                 return null;
             }
             if (!TelegramBot::query()->where('is_enabled', true)->exists()) {
                 return null;
+            }
+            if ($staff !== null) {
+                return NotificationChannels::allows($staff, NotificationChannels::TELEGRAM) ? $this->linker->linkForUser($staff) : null;
             }
 
             return $this->linker->linkForPhone($normalizedPhone);
@@ -92,28 +100,26 @@ class TelegramAlertCopier
     }
 
     /**
-     * "Instead of SMS" mode: send now and say whether it arrived. The
-     * caller sends the SMS when this returns false.
+     * Send now and say whether it arrived: for a person whose channels
+     * leave SMS out. The caller sends the SMS when nothing reached them.
      *
      * @param array<string, mixed>|null $entry
      */
-    public function sendInsteadOfSms(SmsMessage $sms, string $normalizedPhone, SmsLog $log, ?array $entry): bool
+    public function sendNow(SmsMessage $sms, string $normalizedPhone, SmsLog $log, ?array $entry, User $staff): bool
     {
-        if (!self::insteadOfSms()) {
-            return false;
-        }
-        $link = $this->target($sms, $normalizedPhone, $entry);
+        $link = $this->target($sms, $normalizedPhone, $entry, $staff);
         if ($link === null || !Cache::add($this->onceKey($log), 1, now()->addDays(2))) {
             return false;
         }
 
         if ($this->deliver($link, $sms, $entry, timeout: 5)) {
-            Cache::put(self::resultKey($log), $link->displayName() . ' ✓ (instead of SMS)', now()->addDays(7));
+            Cache::put(self::resultKey($log), $link->displayName() . ' ✓', now()->addDays(7));
 
             return true;
         }
-        // Not delivered: let a later copy try again, and send the SMS.
+        // Not delivered: let a later copy try again.
         Cache::forget($this->onceKey($log));
+        Cache::put(self::resultKey($log), $link->displayName() . ' ✗', now()->addDays(7));
 
         return false;
     }
@@ -124,12 +130,12 @@ class TelegramAlertCopier
      *
      * @param array<string, mixed>|null $entry
      */
-    public function copy(SmsMessage $sms, string $normalizedPhone, SmsLog $log, ?array $entry): void
+    public function copy(SmsMessage $sms, string $normalizedPhone, SmsLog $log, ?array $entry, ?User $staff = null): void
     {
-        $link = $this->target($sms, $normalizedPhone, $entry);
+        $link = $this->target($sms, $normalizedPhone, $entry, $staff);
         // An alert sent to the shop's business phone (new till waiting for
-        // approval, deliveries past ETA, social posts…) belongs to no staff
-        // account, so it goes to every linked owner instead (2026-10-07).
+        // approval, deliveries past ETA, social posts…) goes to every linked
+        // owner as well (2026-10-07), by their channels.
         $links = $link !== null ? [$link] : $this->businessPhoneOwners($sms, $normalizedPhone, $entry);
         if ($links === [] || !Cache::add($this->onceKey($log), 1, now()->addDays(2))) {
             return;
@@ -155,7 +161,7 @@ class TelegramAlertCopier
     private function businessPhoneOwners(SmsMessage $sms, string $normalizedPhone, ?array $entry): array
     {
         try {
-            if (!self::enabled() || !self::isStaffAlert($entry, $sms->type) || $sms->type === 'discount_approval_otp') {
+            if (!self::typeWanted($entry, $sms->type) || $sms->type === 'discount_approval_otp') {
                 return [];
             }
             $business = substr(preg_replace('/\D/', '', (string) SiteSetting::get('business_phone', '')) ?? '', -7);
@@ -169,7 +175,8 @@ class TelegramAlertCopier
                 ->whereNotNull('user_id')
                 ->whereNull('blocked_at')
                 ->get()
-                ->filter(fn (TelegramLink $l) => $l->isUsable() && $l->role() === 'owner')
+                ->filter(fn (TelegramLink $l) => $l->isUsable() && $l->role() === 'owner'
+                    && NotificationChannels::allows($l->user, NotificationChannels::TELEGRAM))
                 ->unique('user_id')
                 ->values()
                 ->all();

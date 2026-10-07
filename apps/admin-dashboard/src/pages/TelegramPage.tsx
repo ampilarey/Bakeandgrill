@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { Bot, CheckCircle2, Copy, Link2, RefreshCw, Send, Trash2, Unlink, AlertTriangle } from 'lucide-react';
 import { ApiRequestError } from '@shared/api';
@@ -372,10 +373,9 @@ function SettingsCard({ data, busy, run }: {
       </div>
       <div className="tg-setting">
         <div>
-          <div className="tg-setting__title">Telegram instead of SMS</div>
-          <p className="tg-muted">Linked people get those alerts on Telegram only, which costs nothing. If Telegram cannot be reached, the SMS is sent as before, so nothing is missed.</p>
+          <div className="tg-setting__title">Who gets alerts by Telegram, SMS or email</div>
+          <p className="tg-muted">Set per role and per person in <Link to="/sms?tab=control-center#channels">SMS Control Center → Who gets alerts, and how</Link>. Someone on Telegram only gets no SMS; if Telegram cannot reach them, the SMS is sent, so nothing is missed.</p>
         </div>
-        <Toggle checked={s.instead_of_sms} disabled={busy !== null || !s.alerts_enabled} onChange={(on) => run('s-instead', () => updateTelegramSettings({ instead_of_sms: on }), 'Saved.')} />
       </div>
       <div className="tg-setting">
         <div>

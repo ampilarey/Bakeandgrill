@@ -76,13 +76,16 @@ class SmsLog extends Model
         return $query->where('created_at', '>=', now()->subDays($days));
     }
 
-    /** Text held back because it went to the person's Telegram instead (Admin → Telegram). */
+    /** Text held back because it went to the person's Telegram instead (their channels in Admin). */
     public const SENT_ON_TELEGRAM = 'Sent on Telegram instead of SMS.';
+
+    /** Text held back because it went to the person's email instead (their channels in Admin). */
+    public const SENT_BY_EMAIL = 'Sent by email instead of SMS.';
 
     /** Reached the person: sent, a demo send, queued, or delivered on Telegram instead. */
     public function reachedRecipient(): bool
     {
         return in_array($this->status, ['sent', 'demo', 'queued'], true)
-            || ($this->status === 'suppressed' && $this->error_message === self::SENT_ON_TELEGRAM);
+            || ($this->status === 'suppressed' && in_array($this->error_message, [self::SENT_ON_TELEGRAM, self::SENT_BY_EMAIL], true));
     }
 }

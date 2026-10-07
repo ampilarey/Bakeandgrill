@@ -280,6 +280,10 @@ export type SmsControlCenterType = {
   email_enabled?: boolean;
   /** The type already sends its own fuller email (sign-in code, order confirmed…); no copy to switch. */
   has_own_email?: boolean;
+  /** A staff or owner alert, so it can go to Telegram (2026-10-07). */
+  telegram_applies?: boolean;
+  /** Telegram switch for this alert type. */
+  telegram_enabled?: boolean;
   always_on: boolean;
   suppressible: boolean;
   recipients: string;
@@ -386,6 +390,7 @@ export type SmsControlCenterResponse = {
 export type SmsTypeUpdatePayload = {
   enabled?: boolean;
   email_enabled?: boolean;
+  telegram_enabled?: boolean;
   body?: string;
   send_permission?: string | null;
   recipients?: SmsRecipientsConfig | { mode: SmsRecipientMode; user_ids?: number[]; phones?: string[] } | null;
@@ -402,6 +407,7 @@ export async function updateSmsType(
   key: string;
   enabled?: boolean;
   email_enabled?: boolean;
+  telegram_enabled?: boolean;
   send_permission?: string | null;
   send_permission_label?: string;
   template?: SmsControlCenterType['template'];
@@ -462,3 +468,36 @@ export async function updateSmsGlobalKillSwitch(enabled: boolean): Promise<{ glo
   });
 }
 
+// ── Who gets alerts, and how (2026-10-07) ─────────────────────────────────────
+
+export type NotifyChannel = 'sms' | 'email' | 'telegram';
+
+export type NotifyRole = { key: string; label: string; channels: NotifyChannel[] };
+
+export type NotifyPerson = {
+  id: number;
+  name: string;
+  role: string | null;
+  role_label: string | null;
+  phone: string | null;
+  email: string | null;
+  telegram_linked: boolean;
+  /** null = follows the role */
+  own_channels: NotifyChannel[] | null;
+  /** What applies now: own channels, else the role's. */
+  channels: NotifyChannel[];
+};
+
+export type NotifyChannelsResponse = { channels: NotifyChannel[]; roles: NotifyRole[]; people: NotifyPerson[] };
+
+export async function getNotifyChannels(): Promise<NotifyChannelsResponse> {
+  return req('/admin/sms/channels');
+}
+
+export async function updateNotifyRoles(roles: Record<string, NotifyChannel[]>): Promise<{ roles: Record<string, NotifyChannel[]> }> {
+  return req('/admin/sms/channels/roles', { method: 'PUT', body: JSON.stringify({ roles }) });
+}
+
+export async function updateNotifyPerson(userId: number, channels: NotifyChannel[] | null): Promise<{ person: NotifyPerson }> {
+  return req(`/admin/sms/channels/people/${userId}`, { method: 'PUT', body: JSON.stringify({ channels }) });
+}

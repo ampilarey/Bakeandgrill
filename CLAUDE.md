@@ -105,11 +105,21 @@ and `docs/LABEL_HUB_V2_PLAN.md`.
 Admin → Telegram (owner-only, `telegram.manage`). One bot can serve every role
 (owner, manager, staff, kitchen staff, driver) or each role its own. Staff link
 their own Telegram with a one-time link; staff and owner alerts that go through
-`SmsService` are copied to their chat (`TelegramAlertCopier`), optionally instead
-of the SMS, and the bot's buttons re-check permissions on every press. **TEST
+`SmsService` are copied to their chat (`TelegramAlertCopier`), and the bot's
+buttons re-check permissions on every press. **TEST
 and production need separate bots**: Telegram sends a bot's updates to one
 webhook only, and adding a bot that points at another site stops with a warning.
 Levels are built one at a time (owner first); see `docs/TELEGRAM_BOTS.md`.
+
+## Alert channels per role and person
+
+Staff and owner alerts go to **people**, by channel (SMS, Email, Telegram): the
+alert type's switch, the person's channels (their own, else their role's, set in
+Admin → SMS Control Center → Who gets alerts, and how) and whether they can be
+reached that way. Staff without a phone are addressed as `user:{id}` and get
+email / Telegram; when nothing reaches someone who has a phone, the SMS goes.
+Customers are untouched. See `docs/NOTIFICATION_CHANNELS.md`
+(`NotificationChannels`, `SmsService::sendByOtherChannels`).
 
 ## TEST and production share one Redis
 

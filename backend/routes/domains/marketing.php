@@ -174,6 +174,13 @@ if (routes_domain_section_is('marketing', 'sms_admin') && !routes_domain_loaded(
             ->middleware('permission:sms.settings.manage');
         Route::patch('/global-kill-switch', [App\Http\Controllers\Api\SmsControlCenterController::class, 'updateGlobalKillSwitch'])
             ->middleware('permission:sms.settings.manage');
+        // Who gets alerts by which channel, per role and person (2026-10-07).
+        Route::get('/channels', [App\Http\Controllers\Api\NotificationChannelsController::class, 'index'])
+            ->middleware('permission:sms.settings.manage');
+        Route::put('/channels/roles', [App\Http\Controllers\Api\NotificationChannelsController::class, 'updateRoles'])
+            ->middleware('permission:sms.settings.manage');
+        Route::put('/channels/people/{user}', [App\Http\Controllers\Api\NotificationChannelsController::class, 'updatePerson'])
+            ->middleware('permission:sms.settings.manage');
 
         // Full SMS audit log (OTP + promo + campaign + transactional)
         Route::middleware('permission:sms.logs.view')->group(function () {

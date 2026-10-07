@@ -40,7 +40,7 @@ export type TelegramPerson = {
   links: TelegramPersonLink[];
 };
 
-export type TelegramSettings = { alerts_enabled: boolean; instead_of_sms: boolean; day_report: boolean };
+export type TelegramSettings = { alerts_enabled: boolean; day_report: boolean };
 
 export type TelegramOverview = {
   bots: TelegramBot[];

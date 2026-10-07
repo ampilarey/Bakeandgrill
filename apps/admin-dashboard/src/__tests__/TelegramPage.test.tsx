@@ -35,7 +35,7 @@ const overview: api.TelegramOverview = {
     { key: 'owner', label: 'Owner' }, { key: 'manager', label: 'Manager' }, { key: 'staff', label: 'Staff (cashier)' },
     { key: 'kitchen_staff', label: 'Kitchen staff' }, { key: 'driver', label: 'Driver' },
   ],
-  settings: { alerts_enabled: true, instead_of_sms: false, day_report: true },
+  settings: { alerts_enabled: true, day_report: true },
   webhook_base: 'https://bakeandgrill.mv',
 };
 
@@ -45,7 +45,7 @@ describe('TelegramPage', () => {
   beforeEach(() => {
     vi.mocked(api.fetchTelegram).mockResolvedValue(overview);
     vi.mocked(api.makeTelegramLink).mockResolvedValue({ url: 'https://t.me/BakeGrillStaffBot?start=abc123', expires_at: '2026-10-06T11:00:00Z', minutes: 60, bot_username: 'BakeGrillStaffBot' });
-    vi.mocked(api.updateTelegramSettings).mockResolvedValue({ settings: { alerts_enabled: true, instead_of_sms: true, day_report: true } });
+    vi.mocked(api.updateTelegramSettings).mockResolvedValue({ settings: { alerts_enabled: true, day_report: true } });
   });
 
   it('shows the bot, who is linked and who is not', async () => {
@@ -65,12 +65,13 @@ describe('TelegramPage', () => {
     expect(screen.getByText(/Works once, for 60 minutes, and only for Mariyam/)).toBeInTheDocument();
   });
 
-  it('turns on Telegram instead of SMS', async () => {
+  it('points to the channel settings and switches the day report', async () => {
     renderPage();
-    await screen.findByText('Telegram instead of SMS');
+    const link = await screen.findByRole('link', { name: /Who gets alerts, and how/ });
+    expect(link).toHaveAttribute('href', '/sms?tab=control-center#channels');
     const switches = screen.getAllByRole('switch');
-    // Bot on/off, alerts, instead of SMS, day report.
-    fireEvent.click(switches[switches.length - 2]);
-    await waitFor(() => expect(api.updateTelegramSettings).toHaveBeenCalledWith({ instead_of_sms: true }));
+    // Bot on/off, alerts, day report.
+    fireEvent.click(switches[switches.length - 1]);
+    await waitFor(() => expect(api.updateTelegramSettings).toHaveBeenCalledWith({ day_report: false }));
   });
 });

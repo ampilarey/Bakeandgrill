@@ -61,6 +61,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'notify_channels' => 'array',
             'password' => 'hashed',
             'last_login_at' => 'datetime',
             'is_active' => 'boolean',

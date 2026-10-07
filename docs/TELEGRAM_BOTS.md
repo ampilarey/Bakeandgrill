@@ -90,9 +90,9 @@ on `declined` it shows who declined. The code still works exactly as before,
 and an older till that does not ask simply waits for the code. Confirm
 without a code is refused unless the request is `granted`.
 
-With "Telegram instead of SMS" on, a code that reached the approver on
-Telegram counts as sent (`SmsLog::reachedRecipient()`), so the till does not
-report "could not send".
+For an approver whose channels leave SMS out, a code that reached them on
+Telegram (or by email) counts as sent (`SmsLog::reachedRecipient()`), so the
+till does not report "could not send".
 
 ## Alerts
 
@@ -101,19 +101,19 @@ the email copy. A text reaches Telegram when:
 
 1. Admin → Telegram → "Staff and owner alerts on Telegram" is on (default on);
 2. its type is in the `staff` category of `SmsTypeRegistry`, or is
-   `discount_approval_otp`;
-3. the number belongs to an active staff member with a usable link (an
-   enabled bot that serves their role, not blocked).
+   `discount_approval_otp`, and its Telegram switch in the Control Center is on;
+3. the person's channels include Telegram (Admin → SMS Control Center → Who
+   gets alerts, and how; see `docs/NOTIFICATION_CHANNELS.md`);
+4. they are an active staff member with a usable link (an enabled bot that
+   serves their role, not blocked).
 
 Customer texts never go to Telegram, even to a staff member's number.
 
-Two modes:
-
-- **Alongside SMS** (default): the SMS goes as before; Telegram is a copy,
-  sent after the response.
-- **Instead of SMS**: a linked person gets Telegram only. The SMS log row is
-  `suppressed`, "Sent on Telegram instead of SMS.", cost 0. If Telegram
-  cannot be reached (5-second limit) the SMS is sent as before.
+A person whose channels include SMS gets Telegram as a copy, sent after the
+response. A person whose channels leave SMS out gets Telegram at once; the
+SMS log row is `suppressed`, "Sent on Telegram instead of SMS.", cost 0, and
+if neither Telegram (5-second limit) nor email reached them the SMS is sent.
+This replaced the single "Telegram instead of SMS" switch (2026-10-07).
 
 An alert whose SMS is switched off (type switch, kill switch, budget) still
 goes to Telegram, the same rule as email.
@@ -216,5 +216,5 @@ uses it). "Check" shows when a bot has been taken by another site;
 | Admin API | `TelegramAdminController`, `routes/domains/telegram.php` |
 | Webhook | `TelegramWebhookController`, `routes/api.php` |
 | Admin page | `apps/admin-dashboard/src/pages/TelegramPage.tsx` |
-| Settings keys | `telegram_alerts_enabled`, `telegram_alerts_instead_of_sms` |
+| Settings keys | `telegram_alerts_enabled`; channels: `notify_channels_roles`, `sms_type_telegram.{type}`, `users.notify_channels` |
 | Tests | `backend/tests/Feature/Telegram/*` |

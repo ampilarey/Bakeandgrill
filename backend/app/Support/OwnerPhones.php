@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Domains\Notifications\Support\NotificationChannels;
 use App\Domains\Notifications\Support\SmsTypeRegistry;
 use App\Models\SiteSetting;
 use App\Models\User;
@@ -20,6 +21,10 @@ use Illuminate\Support\Collection;
  * elsewhere in the Control Center: owner only, the business phone, named
  * staff, or typed numbers. `for($typeKey)` honours that choice and falls
  * back to the type's default.
+ *
+ * A staff member with no phone is returned as "user:{id}" (2026-10-07):
+ * SmsService sends them no SMS but their email and Telegram, by the
+ * channels Admin chose for them (NotificationChannels).
  */
 final class OwnerPhones
 {
@@ -60,16 +65,10 @@ final class OwnerPhones
     /** @param list<string> $slugs @return Collection<int, string> */
     private static function byRoles(array $slugs): Collection
     {
-        $phones = User::query()
+        $phones = self::addresses(User::query()
             ->where('is_active', true)
             ->whereHas('role', fn ($q) => $q->whereIn('slug', $slugs))
-            ->whereNotNull('phone')
-            ->where('phone', '!=', '')
-            ->pluck('phone')
-            ->map(fn ($p) => trim((string) $p))
-            ->filter()
-            ->unique()
-            ->values();
+            ->get(['id', 'phone']));
 
         return $phones->isEmpty() ? self::businessPhone() : $phones;
     }
@@ -81,16 +80,42 @@ final class OwnerPhones
             return collect();
         }
 
-        return User::query()
+        return self::addresses(User::query()
             ->whereIn('id', $ids)
             ->where('is_active', true)
-            ->whereNotNull('phone')
-            ->where('phone', '!=', '')
-            ->pluck('phone')
-            ->map(fn ($p) => trim((string) $p))
-            ->filter()
+            ->get(['id', 'phone']));
+    }
+
+    /**
+     * Each person's phone, or "user:{id}" for one without.
+     *
+     * @param Collection<int, User> $users
+     * @return Collection<int, string>
+     */
+    private static function addresses(Collection $users): Collection
+    {
+        return $users
+            ->map(fn (User $u) => trim((string) $u->phone) !== '' ? trim((string) $u->phone) : NotificationChannels::token($u))
             ->unique()
             ->values();
+    }
+
+    /**
+     * For showing in Admin: a "user:{id}" address as the person's name.
+     *
+     * @param Collection<int, string> $addresses
+     * @return list<string>
+     */
+    public static function describe(Collection $addresses): array
+    {
+        return $addresses->map(function (string $a): string {
+            if (!NotificationChannels::isToken($a)) {
+                return $a;
+            }
+            $user = NotificationChannels::personFor($a);
+
+            return $user !== null ? $user->name . ' (no phone: email / Telegram)' : $a;
+        })->values()->all();
     }
 
     /** @return Collection<int, string> */
