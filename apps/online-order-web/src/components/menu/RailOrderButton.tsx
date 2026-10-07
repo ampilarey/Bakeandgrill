@@ -1,0 +1,40 @@
+import type { OrderMode } from '../../context/OrderModeContext';
+
+const ICONS: Record<OrderMode, string> = { pickup: '🥡', delivery: '🛵', dine_in: '🍽️' };
+
+type Props = {
+  /** Shown once the day and mode bar has scrolled off the top. */
+  visible: boolean;
+  /** Nothing chosen yet: it asks instead of showing a choice. */
+  unset: boolean;
+  mode: OrderMode;
+  modeLabel: string;
+  dayLabel: string;
+  chooseLabel: string;
+  onOpen: () => void;
+};
+
+/**
+ * The day and order type, folded into a button at the head of the category
+ * rail once the full bar has scrolled away (owner, 2026-10-07: "Minimize not
+ * to a strip. But a small button floats on top"). On a phone the bar took a
+ * fifth of the screen on every scroll; this keeps the choice in view for the
+ * width of the rail. A tap drops the full bar back down over the dishes.
+ */
+export function RailOrderButton({ visible, unset, mode, modeLabel, dayLabel, chooseLabel, onOpen }: Props) {
+  return (
+    <button
+      type="button"
+      className={`rail-order-btn${visible ? ' is-on' : ''}${unset ? ' is-unset' : ''}`}
+      data-testid="rail-order-btn"
+      aria-hidden={!visible || undefined}
+      tabIndex={visible ? 0 : -1}
+      aria-label={unset ? `${chooseLabel}, ${dayLabel}` : `${modeLabel}, ${dayLabel}. Change`}
+      onClick={onOpen}
+    >
+      <span className="rail-order-btn__icon" aria-hidden="true">{unset ? '?' : ICONS[mode]}</span>
+      <span className="rail-order-btn__mode">{unset ? chooseLabel : modeLabel}</span>
+      <span className="rail-order-btn__day">{dayLabel}</span>
+    </button>
+  );
+}

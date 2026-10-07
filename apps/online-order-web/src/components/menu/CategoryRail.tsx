@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
 import { PartyPopper, Star } from 'lucide-react';
 import { API_ORIGIN } from '../../api';
 import type { Category } from '../../api';
@@ -42,6 +42,8 @@ type Props = {
   otherActive?: boolean;
   otherCount?: number;
   onOtherClick?: () => void;
+  /** Pinned above the tiles: the phone's day and order-type button. */
+  headSlot?: ReactNode;
 };
 
 /**
@@ -118,6 +120,7 @@ export function CategoryRail({
   otherActive = false,
   otherCount = 0,
   onOtherClick,
+  headSlot,
 }: Props) {
   const { t } = useLanguage();
   const activeRef = useRef<HTMLButtonElement>(null);
@@ -201,6 +204,7 @@ export function CategoryRail({
         pointerEvents: dimmed ? 'none' : 'auto',
       }}
     >
+      {headSlot}
       {/* The sticky nav does not scroll itself: iOS Safari will not take a
           touch-scroll on an element that is both sticky and the scroller. */}
       <div

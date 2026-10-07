@@ -58,6 +58,12 @@ describe('MenuHead', () => {
     expect(head.querySelector('.mh-title')).toHaveTextContent('Drinks');
     expect(within(head).queryByRole('button', { name: /Share/ })).toBeNull();
     expect(rows[0]).not.toHaveClass('is-on');
+    // Owner, 2026-10-07: no empty strip under the banner when a section has
+    // no buttons; room at the top only because the first section has some.
+    expect(head).not.toHaveClass('has-row');
+    expect(head).toHaveClass('mh--room');
+    act(() => ref.current?.goTo('sec-1', true));
+    expect(head).toHaveClass('has-row');
     scrollTo.mockRestore();
   });
 

@@ -221,7 +221,15 @@ span.menu-rail-thumb {
 /* The banner clips its photo; the popover has to open outside it. */
 .mh-banner:has(.share-popover:not([hidden])) { overflow: visible; }
 
-.mh-bar { display: flex; align-items: center; gap: 0.5rem; height: 56px; }
+.mh { --mh-bar-h: 56px; }
+.mh--room { margin-bottom: calc(0.25rem + var(--mh-bar-h)); }
+.mh-under { position: absolute; left: 0; right: 0; top: 100%; background: var(--bg); }
+.mh.has-row .mh-under, .mh.has-panel .mh-under { box-shadow: 0 10px 12px -12px rgba(28, 20, 8, 0.35); }
+.mh-bar {
+    display: flex; align-items: center; gap: 0.5rem; height: var(--mh-bar-h); overflow: hidden;
+    transition: height 0.3s var(--mh-ease), opacity 0.24s ease;
+}
+.mh:not(.has-row) .mh-bar { height: 0; opacity: 0; pointer-events: none; }
 .mh-rows { position: relative; flex: 1; min-width: 0; height: 100%; }
 .mh-chips {
     position: absolute; inset: 0;
@@ -354,7 +362,8 @@ html:not(.js) .mh-search { display: none; }
     .mh-title span { font-size: 1.15rem; line-height: 1.6rem; }
     .mh-count { font-size: 0.72rem; }
     .mh-share-btn, .mh-search { width: 34px; height: 34px; }
-    .mh-bar { height: 52px; gap: 0.4rem; }
+    .mh { --mh-bar-h: 52px; }
+    .mh-bar { gap: 0.4rem; }
     .mh-chip { height: 36px; padding: 0 0.75rem; font-size: 0.8125rem; }
     .mh-pill { height: 36px; margin-top: -18px; }
     .mh-all { height: 36px; padding: 0 0.6rem; }
@@ -1145,7 +1154,7 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
              cross-fades, the name rolls, the buttons slide across. Drawn here
              for the first section so it reads right before any script runs. --}}
         @if($firstSec)
-        <div class="mh" data-mh data-testid="menu-head">
+        <div class="mh{{ $firstSec['subs'] !== [] ? ' has-row mh--room' : '' }}" data-mh data-testid="menu-head">
             <div class="mh-banner" @if(! $firstSec['image']) style="background: {{ $firstSec['tint'] }}" @endif>
                 <div class="mh-img is-on" @if($firstSec['image']) style="background-image: url('{{ $firstSec['image'] }}')" @endif></div>
                 <div class="mh-img"></div>
@@ -1173,6 +1182,10 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                 </div>
                 </div>
             </div>
+            {{-- The buttons and the search panel hang under the banner and float
+                 over the dishes, so a section without sub-categories shows no
+                 empty strip and nothing jumps as the row comes and goes. --}}
+            <div class="mh-under">
             <div class="mh-bar">
                 <div class="mh-rows">
                     @foreach($secs as $si => $sec)
@@ -1260,6 +1273,7 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                     </div>{{-- /.menu-filter-rows --}}
                 </div>
             </div>
+            </div>{{-- /.mh-under --}}
         </div>
         @endif
 
@@ -1658,6 +1672,8 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
     function openSearch(open) {
         if (!panel || !searchToggle) return;
         panel.hidden = !open;
+        var mh = document.querySelector('[data-mh]');
+        if (mh) mh.classList.toggle('has-panel', open);
         searchToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
         if (open && input) input.focus();
         // Closing gives focus back to the button that opened it and empties
@@ -1727,7 +1743,10 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
 
     function stickyTop() { return parseFloat(getComputedStyle(root).getPropertyValue('--menu-sticky')) || 0; }
     // The line just under the pinned banner: whatever crosses it is "in view".
-    function line() { return stickyTop() + head.offsetHeight + 12; }
+    // The button row floats under the banner (it does not push the list), so
+    // it counts towards the line only while it is showing.
+    function underH() { return head.classList.contains('has-row') ? (parseFloat(getComputedStyle(head).getPropertyValue('--mh-bar-h')) || 0) : 0; }
+    function line() { return stickyTop() + head.offsetHeight + underH() + 12; }
     function sections() {
         return Array.prototype.slice.call(document.querySelectorAll('.menu-sec')).filter(function (s) { return !s.hidden; });
     }
@@ -1799,8 +1818,14 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
         span.textContent = sec.getAttribute('data-mh-name') || '';
         if (sec.getAttribute('data-mh-dv')) span.setAttribute('lang', 'dv');
         title.appendChild(span);
-        title.style.width = span.offsetWidth + 'px';
+        // A fixed width only while the names roll, so the box glides between
+        // them; left on, it kept the width measured before the brand font
+        // loaded and clipped the name ("Breakfas").
+        clearTimeout(title.__w);
+        title.style.width = '';
         if (!first && !instant && !reduce && span.animate) {
+            title.style.width = span.offsetWidth + 'px';
+            title.__w = setTimeout(function () { title.style.width = ''; }, 360);
             var d = dir < 0 ? -1 : 1, opt = { duration: 320, easing: ease };
             span.animate([{ transform: 'translateY(' + (100 * d) + '%)', opacity: 0 }, { transform: 'none', opacity: 1 }], opt);
             Array.prototype.forEach.call(old, function (o) {
@@ -1814,6 +1839,10 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
         count.textContent = n + (n === 1 ? ' item' : ' items');
 
         head.querySelectorAll('.mh-share').forEach(function (sh) { sh.hidden = sh.getAttribute('data-sec') !== sec.id; });
+        // No sub-categories, no row: the banner sits straight on the dishes
+        // (owner, 2026-10-07: "if there is no sub category, still there is a
+        // white strip under the banner").
+        head.classList.toggle('has-row', !!chipsFor(sec.id));
         head.querySelectorAll('.mh-chips').forEach(function (row) {
             var on = row.getAttribute('data-sec') === sec.id;
             var wasOn = row.classList.contains('is-on');
@@ -1899,7 +1928,7 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
     // A tap switches everything to the target at once, the page glides
     // there, and on arrival the label flashes and the first dishes rise.
     function targetY(el) {
-        return window.scrollY + el.getBoundingClientRect().top - stickyTop() - head.offsetHeight + 2;
+        return window.scrollY + el.getBoundingClientRect().top - stickyTop() - head.offsetHeight - underH() + 2;
     }
     function goTo(el, instant) {
         var sec = el.classList.contains('menu-sec') ? el : el.closest('.menu-sec');

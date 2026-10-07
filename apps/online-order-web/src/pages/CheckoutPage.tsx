@@ -565,7 +565,9 @@ export function CheckoutPage() {
         <button
           type="button"
           data-testid="collect-day-change"
-          onClick={() => navigate('/')}
+          // The day buttons are at the top of the menu (owner, 2026-10-07:
+          // this went to the home page, where there are none).
+          onClick={() => navigate('/menu')}
           style={{
             border: 'none',
             background: 'none',

@@ -20,6 +20,12 @@ type Props = {
   dineInAvailable?: boolean;
   /** API collect-tomorrow date for the context line. */
   tomorrowDate?: string | null;
+  /**
+   * Called with the choice instead of `onClose`, for a caller that does
+   * something with it (the menu's first Add adds the dish in the same tap).
+   * `onClose` then means "dismissed without choosing".
+   */
+  onChosen?: (mode: OrderMode) => void;
 };
 
 /**
@@ -35,6 +41,7 @@ export function OrderModeSheet({
   pickupBlocked = false,
   dineInAvailable = false,
   tomorrowDate,
+  onChosen,
 }: Props) {
   const { t } = useLanguage();
   const { mode, setMode, modeConfirmed } = useOrderMode();
@@ -45,7 +52,7 @@ export function OrderModeSheet({
 
   const choose = (next: OrderMode) => {
     setMode(next);
-    onClose();
+    if (onChosen) onChosen(next); else onClose();
   };
 
   const options: Array<{

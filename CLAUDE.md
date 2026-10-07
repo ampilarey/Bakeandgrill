@@ -177,6 +177,13 @@ Order app: `components/menu/MenuHead.tsx`. Keep the two in step. Shared links
 (`data-menu-start`), with a preview built from its photo or a dish photo
 (`MenuPageController::sharedLink`).
 
+The button row and search panel float under the banner (`.mh-under`), so a
+section without sub-categories shows no strip and nothing jumps. On phones the
+order app's day and order-type bars are not pinned: they fold into a button at
+the head of the rail (`RailOrderButton`) that drops them back down. The first
+Add with no order type chosen asks once (`OrderModeSheet` with `onChosen`) and
+adds the dish in the same tap.
+
 ## Variants are separate products in reports
 
 Owner, 2026-10-07: "variant should treat as a separate product". Every sales

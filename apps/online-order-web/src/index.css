@@ -5559,7 +5559,18 @@ textarea.field-input {
   margin-bottom: 0.25rem;
   box-shadow: 0 10px 12px -12px rgba(28, 20, 8, 0.35);
   --mh-ease: cubic-bezier(.2, .7, .2, 1);
+  --mh-bar-h: 54px;
 }
+/* The button row and the search panel hang under the banner and float over
+   the dishes rather than pushing them down (owner, 2026-10-07: "if there is no
+   sub category, still there is a white strip under the banner"). A section
+   without sub-categories shows no row at all, and the list never jumps as the
+   row comes and goes. Room is kept under the banner only at the top of the
+   page, and only when the first section has a row. */
+.mh--room { margin-bottom: calc(0.25rem + var(--mh-bar-h)); }
+.mh-under { position: absolute; left: 0; right: 0; top: 100%; background: var(--color-bg); }
+.mh.has-row .mh-under, .mh.has-panel .mh-under { box-shadow: 0 10px 12px -12px rgba(28, 20, 8, 0.35); }
+.mh:not(.has-row) .mh-bar { height: 0; opacity: 0; pointer-events: none; }
 .mh-banner {
   position: relative; height: 76px; border-radius: 14px; overflow: hidden;
   background: var(--color-primary-light);
@@ -5613,7 +5624,10 @@ textarea.field-input {
 /* The banner clips its photo; the popover has to open outside it. */
 .mh-banner:has(.share-popover:not([hidden])) { overflow: visible; }
 
-.mh-bar { display: flex; align-items: center; gap: 0.5rem; height: 54px; }
+.mh-bar {
+  display: flex; align-items: center; gap: 0.5rem; height: var(--mh-bar-h); overflow: hidden;
+  transition: height 0.3s var(--mh-ease), opacity 0.24s ease;
+}
 .mh-rows { position: relative; flex: 1; min-width: 0; height: 100%; }
 .mh-chips {
   position: absolute; inset: 0;
@@ -5659,7 +5673,7 @@ textarea.field-input {
 @keyframes mh-pop { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: none; } }
 .mh-panel { padding: 0 0 0.6rem; }
 /* An instant switch (first paint, a shared link) does not slide or roll. */
-.mh--still .mh-chips, .mh--still .mh-img, .mh--still .mh-pill { transition: none; }
+.mh--still .mh-chips, .mh--still .mh-img, .mh--still .mh-pill, .mh--still .mh-bar { transition: none; }
 
 /* The All panel: a sheet from the bottom on a phone, a dropdown on a computer. */
 .mh-scrim {
@@ -5707,7 +5721,7 @@ textarea.field-input {
   .mh-title { height: 2rem; }
   .mh-title > span { font-size: 1.5rem; line-height: 2rem; }
   .mh-search, .mh .share-control-btn.mh-share-btn { width: 38px; height: 38px; }
-  .mh-bar { height: 56px; }
+  .mh { --mh-bar-h: 56px; }
   .mh-chip { height: 38px; padding: 0 0.9rem; font-size: 0.875rem; }
   .mh-pill { height: 38px; margin-top: -19px; }
   .mh-all { height: 38px; padding: 0 0.75rem; }
@@ -5728,7 +5742,8 @@ textarea.field-input {
   .mh-title > span { font-size: 1.15rem; line-height: 1.6rem; }
   .mh-count { font-size: 0.72rem; }
   .mh-search, .mh .share-control-btn.mh-share-btn { width: 34px; height: 34px; }
-  .mh-bar { height: 52px; gap: 0.4rem; }
+  .mh { --mh-bar-h: 52px; }
+  .mh-bar { gap: 0.4rem; }
 }
 
 /* Sections land under the pinned bar and banner. */
@@ -5777,4 +5792,54 @@ textarea.field-input {
 @media (prefers-reduced-motion: reduce) {
   .mh *, .mh-sheet, .mh-sheet *, .mh-scrim, .cat-rail__pill { transition: none !important; animation: none !important; }
   .menu-subcat-title.is-arrived, .menu-subcategory.is-arrived .menu-item-anim { animation: none !important; }
+}
+
+/* ── Phone: the day and order type, folded into a button on the rail ──── */
+.rail-order-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  width: calc(100% - 6px); margin: 0 3px; padding: 0;
+  border: 1.5px solid var(--color-primary); border-radius: 12px; overflow: hidden;
+  background: var(--color-surface); color: var(--color-text);
+  font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  max-height: 0; opacity: 0; visibility: hidden;
+  box-shadow: 0 6px 14px -6px rgba(28, 20, 8, 0.35);
+  transition: max-height 0.3s cubic-bezier(.2, .7, .2, 1), opacity 0.2s ease, margin 0.3s ease, padding 0.3s ease, visibility 0s linear 0.3s;
+}
+.rail-order-btn.is-on {
+  max-height: 90px; opacity: 1; visibility: visible;
+  padding: 0.4rem 0 0.35rem; margin: 0.45rem 3px 0.35rem;
+  transition: max-height 0.3s cubic-bezier(.2, .7, .2, 1), opacity 0.2s ease, margin 0.3s ease, padding 0.3s ease, visibility 0s;
+}
+.rail-order-btn__icon { font-size: 1.3rem; line-height: 1.2; }
+.rail-order-btn__mode { font-size: 0.7rem; font-weight: 800; }
+.rail-order-btn__day { font-size: 0.62rem; font-weight: 600; color: var(--color-text-muted); }
+/* Nothing chosen yet: rust, and a pulse twice to catch the eye. */
+.rail-order-btn.is-unset { background: var(--color-primary); color: #fff; }
+.rail-order-btn.is-unset .rail-order-btn__day { color: #ffe3d0; }
+.rail-order-btn.is-unset.is-on { animation: rail-order-pulse 1.6s ease 2; }
+@keyframes rail-order-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 55%, transparent); }
+  50% { box-shadow: 0 0 0 8px transparent; }
+}
+/* The full bar, dropped down over the dishes from the button. */
+.menu-sticky-controls.is-dropped {
+  position: fixed; top: 0; left: 0; right: 0; z-index: var(--z-modal, 400);
+  padding: 0.75rem var(--page-gutter, 16px);
+  background: var(--color-bg);
+  border-radius: 0 0 18px 18px;
+  box-shadow: 0 12px 30px rgba(28, 20, 8, 0.25);
+  animation: menu-bar-down 0.32s cubic-bezier(.2, .7, .2, 1);
+}
+.menu-sticky-controls.is-dropped.is-lifting { animation: menu-bar-up 0.28s ease forwards; }
+@keyframes menu-bar-down { from { transform: translateY(-100%); } to { transform: none; } }
+@keyframes menu-bar-up { from { transform: none; } to { transform: translateY(-100%); } }
+.menu-bar-scrim {
+  position: fixed; inset: 0; z-index: calc(var(--z-modal, 400) - 1);
+  background: rgba(28, 20, 8, 0.35);
+  animation: menu-bar-fade 0.3s ease both;
+}
+.menu-bar-scrim.is-leaving { animation: menu-bar-fade 0.28s ease reverse both; }
+@keyframes menu-bar-fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .rail-order-btn, .menu-sticky-controls.is-dropped, .menu-bar-scrim { transition: none !important; animation: none !important; }
 }

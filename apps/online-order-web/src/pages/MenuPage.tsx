@@ -26,7 +26,7 @@ import { OrderDayToggle } from '../components/OrderDayToggle';
 import { DaySwitchConfirmSheet } from '../components/DaySwitchConfirmSheet';
 import { useOrderDay, type OrderDay } from '../context/OrderDayContext';
 import { isItemAvailableNow, itemMinOrderQty } from '../utils/itemAvailability';
-import { useOrderMode } from '../context/OrderModeContext';
+import { useOrderMode, modeToChannel, type OrderMode } from '../context/OrderModeContext';
 import { useServiceStatusContext } from '../context/ServiceStatusContext';
 import { isDeliveryBlocked, isPickupBlocked } from '../utils/fulfilmentAvailability';
 import { CategoryRail } from '../components/menu/CategoryRail';
@@ -40,6 +40,8 @@ import {
   type MenuHeadSub,
 } from '../components/menu/MenuHead';
 import { ShareControl } from '../components/ShareControl';
+import { RailOrderButton } from '../components/menu/RailOrderButton';
+import { OrderModeSheet } from '../components/OrderModeSheet';
 import { categoryShareProps } from '../utils/categoryShare';
 import { FilterChipsRow, type SaleFilter } from '../components/menu/FilterChipsRow';
 import { MenuQuickFilters } from '../components/menu/MenuQuickFilters';
@@ -49,7 +51,7 @@ import {
   isMenuCateringItem,
   mergeCateringSectionItems,
 } from '../utils/menuCatering';
-import { formatTomorrowDateLabel } from '../utils/collectOn';
+import { collectDayPrimaryLabel, formatTomorrowDateLabel } from '../utils/collectOn';
 import { consumePendingPlatterReorder } from '../utils/applyReorderToCart';
 import { itemSortPrice } from '../utils/money';
 import { cartPriceChangeMessage } from '../utils/cartPriceChange';
@@ -111,6 +113,20 @@ function isPercentDiscountItem(item: Item): boolean {
 
 function isFixedSpecialItem(item: Item): boolean {
   return isItemOnSale(item) && !isPercentDiscountItem(item);
+}
+
+const PHONE_QUERY = '(max-width: 767px)';
+
+function isPhoneWidth(): boolean {
+  return typeof window !== 'undefined'
+    && typeof window.matchMedia === 'function'
+    && !!window.matchMedia(PHONE_QUERY)?.matches;
+}
+
+function prefersReducedMotion(): boolean {
+  return typeof window !== 'undefined'
+    && typeof window.matchMedia === 'function'
+    && !!window.matchMedia('(prefers-reduced-motion: reduce)')?.matches;
 }
 
 function itemCountLabel(n: number): string {
@@ -294,6 +310,58 @@ export function MenuPage() {
   const menuStickyRef = useRef<HTMLDivElement | null>(null);
   const headRef = useRef<MenuHeadHandle | null>(null);
 
+  // Owner, 2026-10-07: on a phone the day and mode bars stayed pinned and,
+  // with the menu banner, took over a third of the screen. On a phone they
+  // now scroll away with the page and fold into a button at the head of the
+  // rail; a tap drops them back down over the dishes. Computers keep them
+  // pinned: there is room.
+  const [isPhone, setIsPhone] = useState(() => isPhoneWidth());
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+    const mq = window.matchMedia(PHONE_QUERY);
+    if (!mq || typeof mq.addEventListener !== 'function') return;
+    const on = () => setIsPhone(mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  const [barAway, setBarAway] = useState(false);
+  const [barDropped, setBarDropped] = useState(false);
+  const [barLifting, setBarLifting] = useState(false);
+  const [barSpace, setBarSpace] = useState(0);
+  const barDroppedRef = useRef(false);
+  barDroppedRef.current = barDropped;
+  const dropBar = () => {
+    const el = menuStickyRef.current;
+    if (!el || barDroppedRef.current) return;
+    setBarSpace(el.offsetHeight);
+    setBarLifting(false);
+    setBarDropped(true);
+  };
+  const liftBar = useCallback(() => {
+    if (!barDroppedRef.current) return;
+    setBarLifting(true);
+    window.setTimeout(() => {
+      setBarDropped(false);
+      setBarLifting(false);
+    }, prefersReducedMotion() ? 0 : 280);
+  }, []);
+  /** After a choice in the dropped bar, let the tap register, then roll it up. */
+  const liftSoon = () => { if (barDroppedRef.current) window.setTimeout(liftBar, 450); };
+  useEffect(() => {
+    if (!barDropped) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') liftBar(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [barDropped, liftBar]);
+
+  /**
+   * Owner, 2026-10-07: "If he didn't choose pickup or anything first, when he
+   * clicked add to cart button a pop up appears and ask him to select." Asked
+   * once: the choice is remembered on the device. The dish goes in with the
+   * same tap; closing without choosing still adds it, and checkout asks then.
+   */
+  const [modeAsk, setModeAsk] = useState<{ item: Item; run: () => void } | null>(null);
+
   // Back to top visibility — throttled with requestAnimationFrame
   useEffect(() => {
     let rafId: number | null = null;
@@ -442,7 +510,9 @@ export function MenuPage() {
     fetchOrderingEligibility()
       .then((elig) => setEligibilityAccepting(elig.delivery.accepting))
       .catch(() => setEligibilityAccepting(null));
-    const onChannel = () => loadMenu();
+    // A new order type refreshes in place: the spinner used to replace the
+    // list and drop the customer back at the top (owner, 2026-10-07).
+    const onChannel = () => loadMenu(true);
     window.addEventListener('sales_channel_change', onChannel);
     return () => window.removeEventListener('sales_channel_change', onChannel);
   }, []);
@@ -570,6 +640,7 @@ export function MenuPage() {
     pruneCartToAllowedItemIds(new Set(allowed.map((i) => i.id)));
     setDay(target);
     setDaySwitchConfirm(null);
+    liftSoon();
     if (target === 'tomorrow') {
       showToast(t('menu.tomorrow_note').replace('{date}', formatTomorrowDateLabel(collectTomorrowDate)));
     }
@@ -760,6 +831,12 @@ export function MenuPage() {
     const apply = () => {
       const h = Math.ceil(el.getBoundingClientRect().height);
       if (!Number.isFinite(h) || h <= 0) return;
+      // On a phone the bar is not pinned; the banner pins at the very top.
+      if (isPhoneWidth()) {
+        document.documentElement.style.setProperty('--menu-top-nav', '0px');
+        document.documentElement.style.setProperty('--menu-sticky-offset', '0px');
+        return;
+      }
       // On a computer the app's own top nav is pinned too; the day and mode
       // bar used to stick at 0 and slide under it, half hidden. It pins
       // under the nav now, and the banner under both.
@@ -780,7 +857,27 @@ export function MenuPage() {
       document.documentElement.style.removeProperty('--menu-sticky-offset');
       document.documentElement.style.removeProperty('--menu-top-nav');
     };
-  }, [loading, deliveryFallback, waitMinutes]);
+  }, [loading, deliveryFallback, waitMinutes, isPhone]);
+
+  // On a phone, the button at the head of the rail shows once the bar has
+  // scrolled off the top, and goes again when the bar is back in view.
+  useEffect(() => {
+    if (!isPhone) { setBarAway(false); return; }
+    let raf = 0;
+    const check = () => {
+      raf = 0;
+      const el = menuStickyRef.current;
+      if (!el || barDroppedRef.current) return;
+      setBarAway(el.getBoundingClientRect().bottom < 0);
+    };
+    const onScroll = () => { if (!raf) raf = window.requestAnimationFrame(check); };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    check();
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (raf) window.cancelAnimationFrame(raf);
+    };
+  }, [isPhone, loading, barDropped]);
 
   // The pinned banner's sections, in page order (owner, 2026-10-07: "keep
   // the main category in the rail and sub category below the banner"). Each
@@ -882,19 +979,52 @@ export function MenuPage() {
     platterSelections?: import('@shared/types').PlatterSelection[],
   ) => {
     if (!selectedItem) return;
-    addItem(
-      selectedItem,
-      selectedQty,
-      selectedModifiers,
-      variant ?? null,
-      packagingOptionId,
-      { platterSelections: platterSelections ?? [] },
-    );
-    const label = variant ? `${selectedItem.name} (${variant.name})` : selectedItem.name;
-    showToast(`${label} added to cart`);
-    setSelectedItem(null);
-    setSelectedQty(1);
-    setSelectedModifiers([]);
+    const item = selectedItem;
+    const qty = selectedQty;
+    const modifiers = selectedModifiers;
+    const run = () => {
+      addItem(
+        item,
+        qty,
+        modifiers,
+        variant ?? null,
+        packagingOptionId,
+        { platterSelections: platterSelections ?? [] },
+      );
+      const label = variant ? `${item.name} (${variant.name})` : item.name;
+      showToast(`${label} added to cart`);
+      setSelectedItem(null);
+      setSelectedQty(1);
+      setSelectedModifiers([]);
+    };
+    if (!modeConfirmed) { setModeAsk({ item, run }); return; }
+    run();
+  };
+
+  /**
+   * The order type chosen from the first-Add question. Pickup carries the
+   * whole menu; for delivery or eat-here the dish is checked against that
+   * menu first, so nothing goes in only to be taken out again at checkout.
+   */
+  const handleModeChosen = async (next: OrderMode) => {
+    const ask = modeAsk;
+    setModeAsk(null);
+    if (!ask) return;
+    if (next !== 'pickup') {
+      try {
+        const channel = modeToChannel(next);
+        const res = await fetchItems(channel);
+        const sold = res.channelUsed === channel && res.data.some((i) => i.id === ask.item.id);
+        if (!sold) {
+          const where = next === 'delivery' ? t('mode.delivery') : t('mode.eat_here');
+          showToast(t('menu.not_for_mode').replace('{name}', ask.item.name).replace('{mode}', where.toLowerCase()), 'info');
+          return;
+        }
+      } catch {
+        // Could not check: add it; checkout re-checks the cart anyway.
+      }
+    }
+    ask.run();
   };
 
   const renderProductCard = (item: Item) => (
@@ -966,17 +1096,30 @@ export function MenuPage() {
       {/* The page's one heading, for readers and crawlers; the day and mode
           switches above the list are controls, not a title. */}
       <h1 className="sr-only">{menuTitle}</h1>
-      {/* ── Sticky menu controls ─────────────────────────────────── */}
+      {/* ── Menu controls: day and order type ───────────────────────
+          Pinned on a computer; on a phone they scroll away and the rail's
+          button drops them back down (see dropBar). The spacer keeps the
+          page from jumping while they hang over it. */}
+      {barDropped && <div aria-hidden="true" style={{ height: barSpace }} />}
+      {barDropped && (
+        <div
+          className={`menu-bar-scrim${barLifting ? ' is-leaving' : ''}`}
+          data-testid="menu-bar-scrim"
+          onClick={liftBar}
+          aria-hidden="true"
+        />
+      )}
       <div
         ref={menuStickyRef}
-        className="menu-sticky-controls"
-        style={{
-          position: 'sticky',
-          top: 'var(--menu-top-nav, 0px)',
+        className={`menu-sticky-controls${barDropped ? ' is-dropped' : ''}${barLifting ? ' is-lifting' : ''}`}
+        data-testid="menu-sticky-controls"
+        style={barDropped ? undefined : {
+          position: isPhone ? 'relative' : 'sticky',
+          top: isPhone ? undefined : 'var(--menu-top-nav, 0px)',
           zIndex: 20,
-          background: 'color-mix(in srgb, var(--color-bg) 92%, transparent)',
-          backdropFilter: 'blur(14px)',
-          WebkitBackdropFilter: 'blur(14px)',
+          background: isPhone ? 'var(--color-bg)' : 'color-mix(in srgb, var(--color-bg) 92%, transparent)',
+          backdropFilter: isPhone ? undefined : 'blur(14px)',
+          WebkitBackdropFilter: isPhone ? undefined : 'blur(14px)',
           padding: '0.75rem 0',
           borderBottom: '1px solid var(--color-border)',
         }}
@@ -994,6 +1137,7 @@ export function MenuPage() {
                 return false;
               }}
               onDaySelect={(next) => {
+                liftSoon();
                 if (next === 'tomorrow') {
                   showToast(t('menu.tomorrow_note').replace('{date}', formatTomorrowDateLabel(collectTomorrowDate)));
                 }
@@ -1045,6 +1189,7 @@ export function MenuPage() {
                   onClick={() => {
                     if (opt.blocked) { showToast(opt.blockedReason, 'info'); return; }
                     setMode(opt.id);
+                    liftSoon();
                   }}
                   aria-pressed={active}
                   aria-disabled={opt.blocked || undefined}
@@ -1100,6 +1245,17 @@ export function MenuPage() {
         style={{ display: 'flex', gap: '1.25rem', alignItems: 'flex-start', position: 'relative' }}
       >
         <CategoryRail
+          headSlot={isPhone ? (
+            <RailOrderButton
+              visible={barAway && !barDropped}
+              unset={!modeConfirmed}
+              mode={mode}
+              modeLabel={mode === 'delivery' ? t('mode.delivery') : mode === 'dine_in' ? t('mode.eat_here') : t('mode.pickup')}
+              dayLabel={day === 'tomorrow' ? collectDayPrimaryLabel(collectTomorrowDate, t('day.tomorrow')) : t('day.today')}
+              chooseLabel={t('menu.choose_mode_short')}
+              onOpen={dropBar}
+            />
+          ) : undefined}
           categories={railCategories}
           activeCategoryId={activeCategoryId}
           onSelect={handleSelectCategory}
@@ -1402,6 +1558,22 @@ export function MenuPage() {
           onToggleFavourite={handleToggleFavourite}
         />
       )}
+
+      <OrderModeSheet
+        open={modeAsk !== null}
+        onClose={() => {
+          // Closed without choosing: the tap still counts; checkout asks.
+          const ask = modeAsk;
+          setModeAsk(null);
+          ask?.run();
+        }}
+        onChosen={(next) => { void handleModeChosen(next); }}
+        deliveryBlockedToday={deliveryBlocked}
+        deliveryBlockedReason={getServiceEntry('online_delivery')?.public_message?.trim() || gateMessage || null}
+        pickupBlocked={pickupBlocked}
+        dineInAvailable={dineInAvailable}
+        tomorrowDate={collectTomorrowDate}
+      />
 
       <DaySwitchConfirmSheet
         open={daySwitchConfirm !== null}

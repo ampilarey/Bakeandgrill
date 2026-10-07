@@ -79,6 +79,20 @@ function stickyTop(): number {
   return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--menu-sticky-offset')) || 0;
 }
 
+/**
+ * Height of the button row under the banner. The row floats over the list
+ * (it does not push it), so a section without sub-categories shows no empty
+ * strip and the dishes never jump when the row comes or goes.
+ */
+function barHeight(head: HTMLElement): number {
+  return parseFloat(getComputedStyle(head).getPropertyValue('--mh-bar-h')) || 0;
+}
+
+/** A section shows the button row when it has two or more sub-categories. */
+function hasRow(section: MenuHeadSection | null | undefined): boolean {
+  return !!section && section.subs.length > 1;
+}
+
 function itemsLabel(n: number): string {
   return `${n} ${n === 1 ? 'item' : 'items'}`;
 }
@@ -223,7 +237,8 @@ export const MenuHead = forwardRef<MenuHeadHandle, Props>(function MenuHead(
     if (lockRef.current || override) return;
     const head = headRef.current;
     if (!head) return;
-    const line = stickyTop() + head.offsetHeight + 12;
+    const current = sectionsRef.current.find((x) => x.key === activeRef.current.key);
+    const line = stickyTop() + head.offsetHeight + (hasRow(current) ? barHeight(head) : 0) + 12;
     const found = sectionsRef.current
       .map((s) => ({ s, el: document.getElementById(s.domId) }))
       .filter((x): x is { s: MenuHeadSection; el: HTMLElement } => x.el !== null);
@@ -267,7 +282,7 @@ export const MenuHead = forwardRef<MenuHeadHandle, Props>(function MenuHead(
     const head = headRef.current;
     if (!head) return undefined;
     const root = document.documentElement;
-    const apply = () => root.style.setProperty('--menu-head-height', `${Math.ceil(head.getBoundingClientRect().height)}px`);
+    const apply = () => root.style.setProperty('--menu-head-height', `${Math.ceil(head.getBoundingClientRect().height + barHeight(head))}px`);
     apply();
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(apply) : null;
     ro?.observe(head);
@@ -283,11 +298,12 @@ export const MenuHead = forwardRef<MenuHeadHandle, Props>(function MenuHead(
     const head = headRef.current;
     const sec = sectionsRef.current.find((s) => s.domId === domId || s.subs.some((b) => b.domId === domId));
     if (!el || !head || !sec) return;
-    const line = stickyTop() + head.offsetHeight + 12;
+    const under = hasRow(sec) ? barHeight(head) : 0;
+    const line = stickyTop() + head.offsetHeight + under + 12;
     const dir: 1 | -1 = el.getBoundingClientRect().top > line ? 1 : -1;
     const quiet = instant || reduceMotion();
     choose(sec.key, sec.domId === domId ? (sec.subs[0]?.domId ?? null) : domId, dir, quiet);
-    const y = Math.max(0, window.scrollY + el.getBoundingClientRect().top - stickyTop() - head.offsetHeight + 2);
+    const y = Math.max(0, window.scrollY + el.getBoundingClientRect().top - stickyTop() - head.offsetHeight - under + 2);
     if (quiet) {
       window.scrollTo(0, y);
       lastY.current = window.scrollY;
@@ -351,10 +367,18 @@ export const MenuHead = forwardRef<MenuHeadHandle, Props>(function MenuHead(
   }, [allOpen, closeAll]);
 
   const chipRows = sections.filter((s) => s.subs.length > 1);
+  const showRow = !override && hasRow(section);
+  // Room for the row under the banner at the top of the page, only when the
+  // first section has one; further down the row floats over the dishes.
+  const room = !override && hasRow(sections[0]);
   const allSubs = section?.subs ?? [];
 
   return (
-    <div ref={headRef} className={`mh${still ? ' mh--still' : ''}`} data-testid="menu-head">
+    <div
+      ref={headRef}
+      className={`mh${still ? ' mh--still' : ''}${showRow ? ' has-row' : ''}${searchOpen ? ' has-panel' : ''}${room ? ' mh--room' : ''}`}
+      data-testid="menu-head"
+    >
       <div className="mh-banner" style={shownImage ? undefined : { background: override ? undefined : section?.tint }}>
         {layers.map((url, i) => (
           <div
@@ -393,7 +417,8 @@ export const MenuHead = forwardRef<MenuHeadHandle, Props>(function MenuHead(
           )}
         </div>
       </div>
-      <div className="mh-bar">
+      <div className="mh-under">
+      <div className="mh-bar" aria-hidden={!showRow || undefined}>
         <div className="mh-rows">
           {!override && chipRows.map((s) => {
             const on = s.key === section?.key;
@@ -449,6 +474,7 @@ export const MenuHead = forwardRef<MenuHeadHandle, Props>(function MenuHead(
           {children}
         </div>
       )}
+      </div>
       {allOpen && typeof document !== 'undefined' && createPortal(
         <>
           <div className={`mh-scrim${allIn ? ' is-open' : ''}`} onClick={closeAll} aria-hidden="true" />
