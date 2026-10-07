@@ -79,6 +79,17 @@ class OrderObserver
 
     public function updated(Order $order): void
     {
+        // A delivery given to a driver reaches them on Telegram (2026-10-07),
+        // whichever screen assigned it.
+        if ($order->wasChanged('delivery_driver_id')) {
+            $orderId = (int) $order->id;
+            $previousDriver = $order->getOriginal('delivery_driver_id');
+            DeferAfterResponse::run(
+                static fn () => app(\App\Domains\Telegram\Services\TelegramDriverDesk::class)->assigned($orderId, $previousDriver !== null ? (int) $previousDriver : null),
+                'telegram-driver-assigned',
+            );
+        }
+
         if (!$order->wasChanged('status')) {
             return;
         }

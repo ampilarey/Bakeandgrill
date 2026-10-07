@@ -6,14 +6,14 @@ namespace App\Domains\Telegram\Services;
 
 use App\Domains\Telegram\Exceptions\TelegramApiException;
 use App\Models\TelegramBot;
-use App\Models\TelegramLink;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 
 /**
- * One update from Telegram: a message or a button press. Only private
- * chats are handled in this step. A chat that is not linked learns nothing
- * about the business beyond how to link.
+ * One update from Telegram: a message or a button press. Private chats are
+ * people (staff and drivers); groups take the online orders feed
+ * (TelegramGroupFeed). A chat that is not linked learns nothing about the
+ * business beyond how to link.
  */
 class TelegramUpdateHandler
 {
@@ -21,6 +21,8 @@ class TelegramUpdateHandler
         private readonly TelegramClient $client,
         private readonly TelegramLinker $linker,
         private readonly TelegramCommands $commands,
+        private readonly TelegramGroupFeed $groups,
+        private readonly TelegramDriverDesk $drivers,
     ) {}
 
     /** @param array<string, mixed> $update */
@@ -43,8 +45,14 @@ class TelegramUpdateHandler
     /** @param array<string, mixed> $message */
     private function handleMessage(TelegramBot $bot, array $message): void
     {
-        if (($message['chat']['type'] ?? '') !== 'private') {
-            return; // groups come in a later step
+        $chatType = (string) ($message['chat']['type'] ?? '');
+        if (in_array($chatType, ['group', 'supergroup'], true)) {
+            $this->groups->handleMessage($bot, $message);
+
+            return;
+        }
+        if ($chatType !== 'private') {
+            return; // channels are not used
         }
         $chatId = (string) ($message['chat']['id'] ?? '');
         $text = trim((string) ($message['text'] ?? ''));
@@ -74,7 +82,7 @@ class TelegramUpdateHandler
 
                     return;
                 }
-                $this->commands->welcome($link);
+                $link->delivery_driver_id !== null ? $this->drivers->welcome($link) : $this->commands->welcome($link);
 
                 return;
             }
@@ -101,8 +109,13 @@ class TelegramUpdateHandler
             return;
         }
 
+        if ($link->delivery_driver_id !== null) {
+            $this->drivers->handleText($link, $text);
+
+            return;
+        }
         if ($text === '' || !$this->commands->handleText($link, $text)) {
-            $this->commands->help($link, $link->user ?? throw new \LogicException('driver'));
+            $this->commands->help($link, $link->user ?? throw new \LogicException('no user'));
         }
     }
 
@@ -111,6 +124,12 @@ class TelegramUpdateHandler
     {
         $chatId = (string) ($callback['message']['chat']['id'] ?? '');
         $fromId = (string) ($callback['from']['id'] ?? '');
+        // A button on an order card in a shop group: the presser is checked there.
+        if (in_array((string) ($callback['message']['chat']['type'] ?? ''), ['group', 'supergroup'], true)) {
+            $this->groups->handleCallback($bot, $callback);
+
+            return;
+        }
         $link = $chatId !== '' ? $this->linker->findByChat($bot, $chatId) : null;
 
         // In a private chat the chat id is the person's id; anything else is not ours.
@@ -121,6 +140,11 @@ class TelegramUpdateHandler
         }
         $link->forceFill(['last_seen_at' => now()])->save();
 
+        if ($link->delivery_driver_id !== null) {
+            $this->drivers->handleCallback($link, $callback);
+
+            return;
+        }
         $this->commands->handleCallback($link, $callback);
     }
 }

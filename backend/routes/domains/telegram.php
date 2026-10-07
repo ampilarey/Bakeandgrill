@@ -21,5 +21,8 @@ Route::middleware('permission:telegram.manage')->prefix('admin/telegram')->group
     Route::post('/links/code', [TelegramAdminController::class, 'linkCode'])->middleware('throttle:60,1');
     Route::post('/links/{id}/test', [TelegramAdminController::class, 'testLink'])->whereNumber('id')->middleware('throttle:30,1');
     Route::delete('/links/{id}', [TelegramAdminController::class, 'unlink'])->whereNumber('id');
+    Route::patch('/groups/{id}', [TelegramAdminController::class, 'updateGroup'])->whereNumber('id');
+    Route::post('/groups/{id}/test', [TelegramAdminController::class, 'testGroup'])->whereNumber('id')->middleware('throttle:30,1');
+    Route::delete('/groups/{id}', [TelegramAdminController::class, 'destroyGroup'])->whereNumber('id');
     Route::put('/settings', [TelegramAdminController::class, 'updateSettings']);
 });

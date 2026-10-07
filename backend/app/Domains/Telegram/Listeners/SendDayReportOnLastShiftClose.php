@@ -21,7 +21,8 @@ use Throwable;
 /**
  * The day's report on Telegram as soon as the last shift of the day closes
  * (owner, 2026-10-07): sales, payments, best sellers, each shift's drawer
- * and refunds still owed. Once a day, to every linked owner. Switch:
+ * and refunds still owed. Once a day, to every linked owner, and to linked
+ * managers who can see reports (manager level, 2026-10-07). Switch:
  * Admin → Telegram → "Day report when the last shift closes".
  */
 class SendDayReportOnLastShiftClose
@@ -33,6 +34,15 @@ class SendDayReportOnLastShiftClose
         return SmsTypeRegistry::settingIsTruthy(SiteSetting::get(self::SETTING), true);
     }
 
+    /** Owners, and managers who hold reports.view. */
+    public static function receives(TelegramLink $link): bool
+    {
+        $permissions = app(PermissionService::class);
+
+        return $permissions->isOwner($link->user)
+            || ($link->role() === 'manager' && $permissions->hasPermission($link->user, 'reports.view'));
+    }
+
     public function handle(ShiftClosed $event): void
     {
         try {
@@ -42,14 +52,14 @@ class SendDayReportOnLastShiftClose
             if (Shift::query()->whereNull('closed_at')->exists()) {
                 return; // someone is still on a till
             }
-            $owners = TelegramLink::query()
+            $people = TelegramLink::query()
                 ->with(['bot', 'user.role'])
                 ->whereNotNull('user_id')
                 ->whereNull('blocked_at')
                 ->get()
-                ->filter(fn (TelegramLink $l) => $l->isUsable() && $l->user !== null && app(PermissionService::class)->isOwner($l->user))
+                ->filter(fn (TelegramLink $l) => $l->isUsable() && $l->user !== null && self::receives($l))
                 ->unique('user_id');
-            if ($owners->isEmpty()) {
+            if ($people->isEmpty()) {
                 return;
             }
             // Once a day: a shift reopened and closed again does not repeat it.
@@ -57,9 +67,9 @@ class SendDayReportOnLastShiftClose
                 return;
             }
 
-            DeferAfterResponse::run(function () use ($owners): void {
+            DeferAfterResponse::run(function () use ($people): void {
                 $html = app(TelegramOwnerExtras::class)->endOfDayHtml();
-                foreach ($owners as $link) {
+                foreach ($people as $link) {
                     try {
                         app(TelegramClient::class)->sendMessage($link->bot, $link->chat_id, $html);
                     } catch (TelegramApiException $e) {

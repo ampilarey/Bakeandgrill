@@ -152,7 +152,8 @@ class TelegramAlertCopier
     }
 
     /**
-     * Linked owners, when this staff alert went to the business phone.
+     * Linked owners (and managers, for the alerts they can act on), when
+     * this staff alert went to the business phone.
      * The SMS to the shop phone still goes as before.
      *
      * @param array<string, mixed>|null $entry
@@ -175,7 +176,7 @@ class TelegramAlertCopier
                 ->whereNotNull('user_id')
                 ->whereNull('blocked_at')
                 ->get()
-                ->filter(fn (TelegramLink $l) => $l->isUsable() && $l->role() === 'owner'
+                ->filter(fn (TelegramLink $l) => $l->isUsable() && self::takesBusinessPhoneAlert($l, $sms->type)
                     && NotificationChannels::allows($l->user, NotificationChannels::TELEGRAM))
                 ->unique('user_id')
                 ->values()
@@ -185,6 +186,27 @@ class TelegramAlertCopier
 
             return [];
         }
+    }
+
+    /**
+     * Shop-phone alerts a manager also gets on Telegram (manager level,
+     * 2026-10-07), each for the permission that lets them act on it.
+     */
+    private const MANAGER_BUSINESS_PHONE_ALERTS = [
+        'owner_device_approval' => 'devices.approve',
+        'owner_delivery_delays' => 'orders.view',
+        'owner_order_unstarted' => 'orders.view',
+    ];
+
+    /** Owners get every shop-phone alert; managers the ones they can act on. */
+    public static function takesBusinessPhoneAlert(TelegramLink $link, string $type): bool
+    {
+        return match ($link->role()) {
+            'owner' => true,
+            'manager' => isset(self::MANAGER_BUSINESS_PHONE_ALERTS[$type]) && $link->user !== null
+                && app(\App\Domains\Permissions\Services\PermissionService::class)->hasPermission($link->user, self::MANAGER_BUSINESS_PHONE_ALERTS[$type]),
+            default => false,
+        };
     }
 
     /** @param array<string, mixed>|null $entry */

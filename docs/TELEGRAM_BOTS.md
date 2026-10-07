@@ -24,13 +24,14 @@ bot. A bot serves the roles ticked on it in Admin → Telegram.
 |---|---|---|
 | 1 | **Owner**: alerts; Today, Shifts, Open orders, Approvals, Sold out | Built |
 | 1b | **Owner, more** (2026-10-07): Week/Month, Cashiers, day report, Shop switches, Refunds owed, Complaints, Customer, discount approval by button | Built |
-| 2 | Manager | Next |
-| 3 | Staff (cashier), plus group feeds (online orders, buying list) | Later |
-| 4 | Kitchen staff | Later |
-| 5 | Driver | Later (linking works already) |
+| 2 | **Online orders group feed** (2026-10-07) | Built |
+| 3 | **Driver**: a message per delivery, My deliveries, Picked up / On the way / Delivered (2026-10-07) | Built |
+| 4 | **Manager** (2026-10-07): menu, help, day report and shop-phone alerts follow their permissions | Built |
+| 5 | Staff (cashier), buying list feed | Later |
+| 6 | Kitchen staff | Later |
 
-A manager linked today already gets alerts and whatever buttons their
-permissions allow (for example Open orders, Sold out, Reject a refund).
+Owner, 2026-10-07, on the list of what the bot could do next: "Do it" (group
+feed and Driver first, then Manager).
 
 ## Owner buttons (step 1)
 
@@ -73,8 +74,8 @@ Owner, on the list of what else the bot could do: "Up to u".
 | 💬 Complaints, `/complaints` | Open complaint-box entries, newest first: Reply (asks for the words, texts the customer through `messageCustomer`, and marks it taken up), Taking it up, Resolved. Owner-only (`complaints.manage`). The new-complaint alert arrives as this card. |
 | 🔎 Customer, `/customer 7820288` | A phone number or a name: tier and points to spend, orders and spend, last visit, credit owed and limit, deposit, the last three orders. Several matches give a choice. |
 
-**Day report:** when the last open shift closes, linked owners get the day's
-report: the Today figures, each shift closed today with its drawer
+**Day report:** when the last open shift closes, linked owners (and
+managers with `reports.view`, since step 4) get the day's report: the Today figures, each shift closed today with its drawer
 difference, and refunds still owed. Once a day; switch in Admin → Telegram
 ("Day report when the last shift closes", on by default).
 
@@ -123,7 +124,8 @@ goes to Telegram, the same rule as email.
 Some owner alerts go to the shop's business phone by default (new till
 waiting for approval, deliveries past ETA, unstarted paid orders, TV
 screens, social posts). That number belongs to no staff account, so those
-alerts also go to every linked **owner** on Telegram; the SMS to the shop
+alerts also go to every linked **owner** on Telegram, and to linked
+managers for the ones they can act on (see Managers); the SMS to the shop
 phone is sent as before (2026-10-07).
 
 ### New till waiting for approval
@@ -190,23 +192,111 @@ with a warning; "Move it here" takes it over (only when that site no longer
 uses it). "Check" shows when a bot has been taken by another site;
 "Reconnect" brings it back.
 
+## Online orders in a shop group (step 2)
+
+Each paid online order (pickup, delivery, dine-in ordered ahead; placed by a
+customer, not rung up at the till) is posted to the shop's Telegram group
+as a card: order number and type, total and how it was paid, when it was
+placed and when it is wanted, every item with its options and notes, the
+customer's name and phone, the address with the map pin (delivery), and the
+customer's note.
+
+| Button | Does | Same as |
+|---|---|---|
+| 👨‍🍳 Start | Cooking (`in_progress`, `fired_at`) | Till → Start cooking |
+| ✅ Ready | Ready; an online pickup must be paid | Till → Mark ready |
+| 📦 Collected | Done, pickup only; must be paid | Till → Picked up |
+
+- **Who may press.** The person pressing must have linked their own Telegram
+  (any of the shop's bots) and hold `pos.manage_order_status` (or
+  `pos.active_orders`, which includes it). Anyone else gets "Link your own
+  Telegram first" or "Your account cannot change orders" and nothing changes.
+  The order's rules apply as on the till: a cancelled order cannot be marked
+  ready.
+- **Who did it.** The card says "Cooking by Ali", "Ready by Ali". Audited as
+  `order.started` / `order.ready` / `order.completed` with source `telegram`
+  under that person.
+- **The card follows the order.** A move on the till, the kitchen screen or
+  by the driver edits the card (`OrderStatusChanged`): Cooking, Ready (needs
+  a driver / driver Ibrahim), With the driver, On the way, Delivered, Done,
+  Cancelled. Buttons disappear once there is nothing left to press.
+
+**Setting it up:** add the bot to the group, then the owner (anyone with
+`telegram.manage`, from their own linked Telegram) sends
+`/feed@<botusername>` in the group. `/stopfeed` stops it. The bot says how
+when it is added, and otherwise stays quiet in the group. Admin → Telegram →
+Groups lists each group with an on/off switch, "Send a test" and "Remove"
+(the bot leaves the group). A group the bot was removed from is switched off
+with the reason shown; a group that becomes a supergroup keeps its feed.
+
+Telegram's privacy mode means the bot only sees commands addressed to it in
+a group, which is all it needs. `/feed` and `/stopfeed` appear in the
+group's "/" menu after the bot is next connected (Reconnect or Check).
+
+## Drivers (step 3)
+
+A driver linked in Admin → Telegram → People gets:
+
+- **A message the moment a delivery is given to them**, from the delivery
+  screen or anywhere else the driver is set (`OrderObserver`, on
+  `delivery_driver_id`): customer name and phone, address, map pin, the
+  customer's delivery note, items, and **Collect MVR …** or **Paid already:
+  collect nothing**. A delivery taken off them says so.
+- **🛵 My deliveries** (`/deliveries`): every open delivery that is theirs,
+  with the cash to collect in all.
+- **Buttons** on each card, one step at a time, the same moves as the driver
+  app: 📦 Picked up (`picked_up_at`), 🛵 On the way, ✅ Delivered
+  (`delivered_at`; "Hand MVR … to the shop" when there is cash). Audited as
+  `delivery.picked_up` / `delivery.on_the_way` / `delivery.delivered` with
+  source `telegram` and the driver's name.
+- A delivery given to a driver while it was cooking stays "ready" when the
+  kitchen finishes (only the delivery screen dispatches it). On Telegram,
+  Picked up from the counter dispatches it first (`out_for_delivery`, which
+  stamps the promised time), then marks it picked up.
+
+A driver can only move their own deliveries, never skip a step, and sees no
+staff buttons. A driver switched off in Admin gets nothing.
+
+## Managers (step 4)
+
+A manager linked to a bot that serves the Manager role gets the menu and
+help their permissions allow, nothing more; the owner changes a manager's
+permissions in Admin → Staff as before.
+
+- **Day report** when the last shift closes: owners, and managers with
+  `reports.view` (on by default for managers).
+- **Shop-phone alerts** (those sent to the business phone): owners get all
+  of them; a manager gets "new till waiting" when they hold
+  `devices.approve`, and "deliveries past their time" / "paid online order
+  not started" with `orders.view`.
+- **Help** lists only their buttons; the discount line shows only to
+  discount approvers (`promotions.discount_override`), the day report line
+  only with `reports.view`.
+- Refund **Approve** stays owner-only (it uses the owner override); managers
+  approve refunds at the till.
+
 ## Security
 
 - Webhook: `POST /api/telegram/webhook/{bot}`, outside the staff-token group,
   refused (403) without the bot's `X-Telegram-Bot-Api-Secret-Token`, or when
   the bot is off. Each update is acted on once (`update_id` cache), and a
   chat gets at most 20 replies in 10 seconds.
-- Buttons: the callback must come from the linked person in their own
-  private chat; every action re-checks permissions.
+- Buttons in a private chat: the callback must come from the linked person
+  in their own chat; every action re-checks permissions.
+- Buttons in a group: the presser is found by their own private link (their
+  Telegram id is their private chat id) and checked like on the till.
+  Turning a group on needs `telegram.manage`.
 - Bot tokens are encrypted at rest and never returned by the API.
 - Admin → Telegram needs `telegram.manage` (owner-only by default).
-- Groups are ignored in step 1.
 
 ## Where things live
 
 | What | Where |
 |---|---|
-| Tables | `telegram_bots`, `telegram_links`, `telegram_link_codes` (`2026_10_06_120000_create_telegram_bots`) |
+| Tables | `telegram_bots`, `telegram_links`, `telegram_link_codes` (`2026_10_06_120000_create_telegram_bots`); `telegram_groups`, `telegram_group_posts` (`2026_10_09_100000_create_telegram_groups`) |
+| Group feed | `TelegramGroupFeed`, `Listeners/FeedOnlineOrdersToTelegramGroups` (on `OrderPaid` and `OrderStatusChanged`) |
+| Drivers | `TelegramDriverDesk`, called from `OrderObserver` when the driver changes |
+| Card text | `Support/TelegramOrderText` (items, customer, address, cash to collect) |
 | Bot API | `app/Domains/Telegram/Services/TelegramClient.php` |
 | Linking | `TelegramLinker` |
 | Messages and buttons | `TelegramUpdateHandler`, `TelegramCommands`, `TelegramOwnerExtras` (step 1b; till approval `deviceCard()`) |
@@ -215,6 +305,6 @@ uses it). "Check" shows when a bot has been taken by another site;
 | Alerts | `TelegramAlertCopier` (called from `SmsService`) |
 | Admin API | `TelegramAdminController`, `routes/domains/telegram.php` |
 | Webhook | `TelegramWebhookController`, `routes/api.php` |
-| Admin page | `apps/admin-dashboard/src/pages/TelegramPage.tsx` |
+| Admin page | `apps/admin-dashboard/src/pages/TelegramPage.tsx` (Bots, Groups, Alerts, People) |
 | Settings keys | `telegram_alerts_enabled`; channels: `notify_channels_roles`, `sms_type_telegram.{type}`, `users.notify_channels` |
 | Tests | `backend/tests/Feature/Telegram/*` |

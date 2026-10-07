@@ -125,9 +125,15 @@ class TelegramClient
         $this->call($bot, 'deleteWebhook');
     }
 
-    /** The command list shown when someone types "/" in the chat. */
-    public function setCommands(TelegramBot $bot, array $commands): void
+    /**
+     * The command list shown when someone types "/" in the chat; with a
+     * scope ("all_group_chats"), the list shown in groups.
+     */
+    public function setCommands(TelegramBot $bot, array $commands, ?string $scope = null): void
     {
-        $this->call($bot, 'setMyCommands', ['commands' => $commands]);
+        $this->call($bot, 'setMyCommands', array_filter([
+            'commands' => $commands,
+            'scope' => $scope !== null ? ['type' => $scope] : null,
+        ], fn ($v) => $v !== null));
     }
 }

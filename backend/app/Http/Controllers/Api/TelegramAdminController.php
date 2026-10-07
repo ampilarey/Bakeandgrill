@@ -13,6 +13,7 @@ use App\Http\Controllers\Controller;
 use App\Models\DeliveryDriver;
 use App\Models\SiteSetting;
 use App\Models\TelegramBot;
+use App\Models\TelegramGroup;
 use App\Models\TelegramLink;
 use App\Models\User;
 use App\Services\AuditLogService;
@@ -40,8 +41,15 @@ class TelegramAdminController extends Controller
         ['command' => 'owed', 'description' => 'Refunds still to pay back'],
         ['command' => 'complaints', 'description' => 'Open complaints, with Reply'],
         ['command' => 'customer', 'description' => 'Look up a customer: /customer 7820288'],
+        ['command' => 'deliveries', 'description' => 'Drivers: your deliveries'],
         ['command' => 'help', 'description' => 'What the buttons do'],
         ['command' => 'stop', 'description' => 'Unlink this chat'],
+    ];
+
+    /** In a shop group (online orders feed). */
+    private const GROUP_COMMANDS = [
+        ['command' => 'feed', 'description' => 'Post online orders in this group (owner)'],
+        ['command' => 'stopfeed', 'description' => 'Stop posting online orders here (owner)'],
     ];
 
     public function __construct(
@@ -71,6 +79,8 @@ class TelegramAdminController extends Controller
             'bots' => $bots->map(fn (TelegramBot $b) => $this->botJson($b, $links->where('telegram_bot_id', $b->id)->count()))->values(),
             'people' => $people,
             'roles' => array_map(fn (string $r) => ['key' => $r, 'label' => $this->roleLabel($r)], TelegramBot::ROLES),
+            'groups' => TelegramGroup::query()->with(['bot:id,name,username', 'addedBy:id,name'])->orderBy('id')->get()
+                ->map(fn (TelegramGroup $g) => $this->groupJson($g))->values(),
             'settings' => [
                 'alerts_enabled' => TelegramAlertCopier::enabled(),
                 'day_report' => self::dayReportOn(),
@@ -278,6 +288,62 @@ class TelegramAdminController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    // ── Groups (online orders feed, 2026-10-07) ──────────────────────────
+
+    public function updateGroup(Request $request, int $id): JsonResponse
+    {
+        $group = TelegramGroup::query()->with(['bot', 'addedBy:id,name'])->findOrFail($id);
+        $data = $request->validate([
+            'is_enabled' => 'sometimes|boolean',
+            'feeds' => 'sometimes|array',
+            'feeds.*' => ['string', Rule::in(TelegramGroup::FEEDS)],
+        ]);
+        $before = ['is_enabled' => $group->is_enabled, 'feeds' => $group->feeds];
+        if (array_key_exists('is_enabled', $data)) {
+            $group->is_enabled = (bool) $data['is_enabled'];
+            if ($group->is_enabled) {
+                $group->last_error = null;
+            }
+        }
+        if (array_key_exists('feeds', $data)) {
+            $group->feeds = array_values(array_unique($data['feeds']));
+        }
+        $group->save();
+        $this->audit->log('telegram.group_updated', 'TelegramGroup', $group->id, $before, ['is_enabled' => $group->is_enabled, 'feeds' => $group->feeds], [], $request);
+
+        return response()->json(['group' => $this->groupJson($group)]);
+    }
+
+    public function testGroup(Request $request, int $id): JsonResponse
+    {
+        $group = TelegramGroup::query()->with('bot')->findOrFail($id);
+        try {
+            $this->client->sendMessage($group->bot, $group->chat_id, '🔔 Test from Admin → Telegram. Online orders will arrive in this group.');
+        } catch (TelegramApiException $e) {
+            $group->forceFill(['last_error' => mb_substr($e->getMessage(), 0, 500)])->save();
+
+            return response()->json(['message' => 'Telegram would not post there: ' . $this->friendly($e)], 422);
+        }
+        $group->forceFill(['last_error' => null])->save();
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function destroyGroup(Request $request, int $id): JsonResponse
+    {
+        $group = TelegramGroup::query()->with('bot')->findOrFail($id);
+        try {
+            $this->client->sendMessage($group->bot, $group->chat_id, 'Online orders are switched off for this group, so I am leaving. Bye.');
+            $this->client->call($group->bot, 'leaveChat', ['chat_id' => $group->chat_id]);
+        } catch (TelegramApiException) {
+            // Already removed from the group; forget it regardless.
+        }
+        $this->audit->log('telegram.group_removed', 'TelegramGroup', $group->id, ['title' => $group->title, 'chat_id' => $group->chat_id], [], [], $request);
+        $group->delete();
+
+        return response()->json(['ok' => true]);
+    }
+
     public function updateSettings(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -339,6 +405,7 @@ class TelegramAdminController extends Controller
         try {
             $this->client->setWebhook($bot);
             $this->client->setCommands($bot, self::COMMANDS);
+            $this->client->setCommands($bot, self::GROUP_COMMANDS, 'all_group_chats');
         } catch (TelegramApiException $e) {
             $bot->forceFill(['last_error' => $e->getMessage(), 'last_checked_at' => now()])->save();
 
@@ -348,6 +415,22 @@ class TelegramAdminController extends Controller
         $bot->forceFill(['last_checked_at' => now(), 'last_error' => null])->save();
 
         return null;
+    }
+
+    /** @return array<string, mixed> */
+    private function groupJson(TelegramGroup $group): array
+    {
+        return [
+            'id' => $group->id,
+            'title' => $group->title ?: 'Group ' . $group->chat_id,
+            'bot' => $group->bot ? ['id' => $group->bot->id, 'name' => $group->bot->name, 'username' => $group->bot->username] : null,
+            'feeds' => array_values((array) $group->feeds),
+            'is_enabled' => (bool) $group->is_enabled,
+            'added_by' => $group->addedBy?->name,
+            'last_posted_at' => $group->last_posted_at?->toIso8601String(),
+            'last_error' => $group->last_error,
+            'created_at' => $group->created_at?->toIso8601String(),
+        ];
     }
 
     /** @return array<string, mixed> */

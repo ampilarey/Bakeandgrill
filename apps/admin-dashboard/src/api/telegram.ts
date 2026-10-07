@@ -42,8 +42,23 @@ export type TelegramPerson = {
 
 export type TelegramSettings = { alerts_enabled: boolean; day_report: boolean };
 
+/** A shop group the bot posts online orders to (2026-10-07). */
+export type TelegramGroup = {
+  id: number;
+  title: string;
+  bot: { id: number; name: string; username: string | null } | null;
+  feeds: string[];
+  is_enabled: boolean;
+  added_by: string | null;
+  last_posted_at: string | null;
+  last_error: string | null;
+  created_at: string | null;
+};
+
 export type TelegramOverview = {
   bots: TelegramBot[];
+  /** Missing from an older server. */
+  groups?: TelegramGroup[];
   people: TelegramPerson[];
   roles: { key: TelegramRole; label: string }[];
   settings: TelegramSettings;
@@ -88,4 +103,16 @@ export function unlinkTelegram(id: number) {
 
 export function updateTelegramSettings(body: Partial<TelegramSettings>) {
   return req<{ settings: TelegramSettings }>('/admin/telegram/settings', { method: 'PUT', body: JSON.stringify(body) });
+}
+
+export function updateTelegramGroup(id: number, body: { is_enabled?: boolean; feeds?: string[] }) {
+  return req<{ group: TelegramGroup }>(`/admin/telegram/groups/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
+}
+
+export function testTelegramGroup(id: number) {
+  return req<{ ok: boolean }>(`/admin/telegram/groups/${id}/test`, { method: 'POST' });
+}
+
+export function removeTelegramGroup(id: number) {
+  return req<{ ok: boolean }>(`/admin/telegram/groups/${id}`, { method: 'DELETE' });
 }

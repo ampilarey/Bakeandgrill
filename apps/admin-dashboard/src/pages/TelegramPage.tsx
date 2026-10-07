@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { Bot, CheckCircle2, Copy, Link2, RefreshCw, Send, Trash2, Unlink, AlertTriangle } from 'lucide-react';
+import { Bot, CheckCircle2, Copy, Link2, RefreshCw, Send, Trash2, Unlink, AlertTriangle, Users } from 'lucide-react';
 import { ApiRequestError } from '@shared/api';
 import {
   fetchTelegram, addTelegramBot, updateTelegramBot, checkTelegramBot, reconnectTelegramBot,
   removeTelegramBot, makeTelegramLink, testTelegramLink, unlinkTelegram, updateTelegramSettings,
-  type TelegramBot, type TelegramOverview, type TelegramPerson, type TelegramRole,
+  updateTelegramGroup, testTelegramGroup, removeTelegramGroup,
+  type TelegramBot, type TelegramGroup, type TelegramOverview, type TelegramPerson, type TelegramRole,
 } from '../api/telegram';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
@@ -26,11 +27,11 @@ const ROLE_ORDER: TelegramRole[] = ['owner', 'manager', 'staff', 'kitchen_staff'
 
 /** What each level can do today; later steps fill in the rest. */
 const ROLE_NOTE: Record<TelegramRole, string> = {
-  owner: 'Alerts, Today, Week, Cashiers, Shifts, Open orders, Approvals, Sold out, Shop, Refunds owed, Complaints, Customer',
-  manager: 'Alerts, plus what their permissions allow (manager menu next)',
-  staff: 'Alerts for now (cashier menu after the manager step)',
-  kitchen_staff: 'Alerts for now (kitchen menu in a later step)',
-  driver: 'Linking only for now (driver menu in a later step)',
+  owner: 'Alerts, Today, Week, Cashiers, Shifts, Open orders, Approvals, Sold out, Shop, Refunds owed, Complaints, Customer, day report',
+  manager: 'Alerts and the buttons their permissions allow; the day report with Reports access',
+  staff: 'Alerts, and Start / Ready on order cards in a shop group (cashier menu later)',
+  kitchen_staff: 'Alerts, and Start / Ready on order cards in a shop group (kitchen menu later)',
+  driver: 'A message for each delivery given to them; My deliveries with Picked up, On the way, Delivered',
 };
 
 function errorText(e: unknown, fallback: string): string {
@@ -99,12 +100,13 @@ export function TelegramPage() {
       <PageHeader
         title="Telegram"
         section="System"
-        subtitle="Staff alerts and a bot with buttons for today's sales, shifts, approvals and sold-out items."
+        subtitle="Staff alerts, a bot with buttons for sales, shifts and approvals, online orders in a shop group, and deliveries for drivers."
       />
 
       <div className="tg-grid">
         <div className="tg-col">
           <BotsCard data={data} busy={busy} run={run} roleLabel={roleLabel} onAsk={confirm.ask} />
+          <GroupsCard data={data} busy={busy} run={run} onAsk={confirm.ask} />
           <SettingsCard data={data} busy={busy} run={run} />
         </div>
 
@@ -353,6 +355,67 @@ function AddBotForm({ onDone, onCancel, roleLabel }: { onDone: () => void; onCan
   );
 }
 
+// ── Groups ────────────────────────────────────────────────────────────────────
+
+export function GroupsCard({ data, busy, run, onAsk }: {
+  data: TelegramOverview;
+  busy: string | null;
+  run: (key: string, fn: () => Promise<unknown>, ok?: string) => Promise<void>;
+  onAsk: ReturnType<typeof useConfirmDialog>['ask'];
+}) {
+  const groups: TelegramGroup[] = data.groups ?? [];
+  const bot = data.bots.find((b) => b.is_enabled && b.username) ?? null;
+  const command = `/feed${bot?.username ? `@${bot.username}` : ''}`;
+
+  return (
+    <Card>
+      <div className="tg-card-head">
+        <div>
+          <h2 className="tg-h2">Groups</h2>
+          <p className="tg-muted">Online orders posted in a shop group, each with Start and Ready (and Collected for a pickup). The card says who pressed what, and follows the order when it moves on at the till or with the driver.</p>
+        </div>
+      </div>
+
+      {groups.length === 0 ? (
+        <ol className="tg-steps" data-testid="tg-groups-empty">
+          <li>In Telegram, make a group for the shop (or use the one you have) and add <b>{bot?.username ? `@${bot.username}` : 'the bot'}</b> to it.</li>
+          <li>From your own linked Telegram, send <code>{command}</code> in that group.</li>
+          <li>It appears here. Staff who press the buttons need their own Telegram linked and the right to update orders.</li>
+        </ol>
+      ) : groups.map((g) => (
+        <div key={g.id} className="tg-bot" data-testid={`tg-group-${g.id}`}>
+          <div className="tg-bot__top">
+            <div>
+              <div className="tg-bot__name" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Users size={15} aria-hidden />{g.title}</div>
+              <div className="tg-muted">
+                Online orders{g.bot ? ` · ${g.bot.name}` : ''}{g.added_by ? ` · added by ${g.added_by}` : ''}
+                {g.last_posted_at ? ` · last order ${when(g.last_posted_at)}` : ''}
+              </div>
+            </div>
+            <Toggle
+              checked={g.is_enabled}
+              disabled={busy !== null}
+              label={g.is_enabled ? 'On' : 'Off'}
+              onChange={(on) => run(`group-${g.id}`, () => updateTelegramGroup(g.id, { is_enabled: on }), on ? 'Orders will be posted there again.' : 'Paused. No orders go to that group.')}
+            />
+          </div>
+          {g.last_error && <div className="tg-warn"><AlertTriangle size={14} /> {g.last_error}</div>}
+          <div className="tg-bot__actions">
+            <Btn small variant="secondary" disabled={busy !== null || !g.is_enabled} onClick={() => run(`group-test-${g.id}`, () => testTelegramGroup(g.id), 'Test sent to the group.')}><Send size={14} /> Send a test</Btn>
+            <Btn small variant="ghost" disabled={busy !== null} onClick={() => onAsk({
+              title: 'Remove this group?',
+              message: `No more orders go to ${g.title}, and the bot leaves the group. Send ${command} there again to bring it back.`,
+              confirmLabel: 'Remove',
+              danger: true,
+              onConfirm: () => run(`group-remove-${g.id}`, () => removeTelegramGroup(g.id), 'Group removed.'),
+            })}><Trash2 size={14} /> Remove</Btn>
+          </div>
+        </div>
+      ))}
+    </Card>
+  );
+}
+
 // ── Settings ──────────────────────────────────────────────────────────────────
 
 function SettingsCard({ data, busy, run }: {
@@ -380,7 +443,7 @@ function SettingsCard({ data, busy, run }: {
       <div className="tg-setting">
         <div>
           <div className="tg-setting__title">Day report when the last shift closes</div>
-          <p className="tg-muted">Sales, payments, best sellers, each shift's drawer and refunds still owed, sent to linked owners once a day.</p>
+          <p className="tg-muted">Sales, payments, best sellers, each shift's drawer and refunds still owed, sent once a day to linked owners and to linked managers who can see reports.</p>
         </div>
         <Toggle checked={s.day_report} disabled={busy !== null} onChange={(on) => run('s-day', () => updateTelegramSettings({ day_report: on }), 'Saved.')} />
       </div>

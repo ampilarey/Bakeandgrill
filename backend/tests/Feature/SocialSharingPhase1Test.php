@@ -119,9 +119,9 @@ class SocialSharingPhase1Test extends TestCase
 
         $html = $this->get('/menu/' . $item->id)->assertOk()->getContent();
 
-        // Since 2026-09-30 the seeded default item image (the cream brand
-        // tile) sits between og_image and the bare logo in the fallback chain.
-        $this->assertSame(url('brand/default-item-image.png'), $this->meta($html, 'og:image'));
+        // Since 2026-10-07 the 1200x630 link-preview card comes next after
+        // og_image, ahead of the no-photo tile and the bare logo.
+        $this->assertSame(url('brand/og-default.png'), $this->meta($html, 'og:image'));
         $this->assertStringNotContainsString('deleted-by-owner', $html);
     }
 
@@ -136,7 +136,7 @@ class SocialSharingPhase1Test extends TestCase
         foreach (['/', '/menu'] as $path) {
             $image = $this->meta($this->get($path)->assertOk()->getContent(), 'og:image');
             $this->assertStringStartsWith('http', $image, $path . ' og:image must be absolute');
-            $this->assertSame(url('brand/default-item-image.png'), $image, $path);
+            $this->assertSame(url('brand/og-default.png'), $image, $path);
         }
     }
 

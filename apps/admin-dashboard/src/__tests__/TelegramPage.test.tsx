@@ -19,6 +19,8 @@ vi.mock('../api/telegram', async () => {
     makeTelegramLink: vi.fn(),
     updateTelegramSettings: vi.fn(),
     addTelegramBot: vi.fn(),
+    updateTelegramGroup: vi.fn(),
+    testTelegramGroup: vi.fn(),
   };
 });
 
@@ -73,5 +75,33 @@ describe('TelegramPage', () => {
     // Bot on/off, alerts, day report.
     fireEvent.click(switches[switches.length - 1]);
     await waitFor(() => expect(api.updateTelegramSettings).toHaveBeenCalledWith({ day_report: false }));
+  });
+
+  it('shows how to add a group when there is none', async () => {
+    renderPage();
+    const steps = await screen.findByTestId('tg-groups-empty');
+    expect(steps).toHaveTextContent('/feed@BakeGrillStaffBot');
+  });
+
+  it('lists a shop group, pauses it and sends a test', async () => {
+    vi.mocked(api.fetchTelegram).mockResolvedValue({
+      ...overview,
+      groups: [{
+        id: 4, title: 'Bake & Grill kitchen', bot: { id: 1, name: 'Staff bot', username: 'BakeGrillStaffBot' }, feeds: ['online_orders'],
+        is_enabled: true, added_by: 'Ahmed', last_posted_at: null, last_error: null, created_at: '2026-10-07T10:00:00Z',
+      }],
+    });
+    vi.mocked(api.updateTelegramGroup).mockResolvedValue({ group: {} as api.TelegramGroup });
+    vi.mocked(api.testTelegramGroup).mockResolvedValue({ ok: true });
+    renderPage();
+    const card = await screen.findByTestId('tg-group-4');
+    expect(card).toHaveTextContent('Bake & Grill kitchen');
+    expect(card).toHaveTextContent('added by Ahmed');
+
+    fireEvent.click(screen.getByRole('button', { name: /Send a test/ }));
+    await waitFor(() => expect(api.testTelegramGroup).toHaveBeenCalledWith(4));
+    // Bot switch, group switch, alerts, day report.
+    fireEvent.click(screen.getAllByRole('switch')[1]);
+    await waitFor(() => expect(api.updateTelegramGroup).toHaveBeenCalledWith(4, { is_enabled: false }));
   });
 });

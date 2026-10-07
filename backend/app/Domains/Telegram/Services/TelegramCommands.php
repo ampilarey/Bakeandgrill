@@ -100,7 +100,7 @@ class TelegramCommands
         $user = $link->user;
         $name = T::e($link->displayName());
         $html = "👋 <b>Hi {$name}, you're linked.</b>\n\n"
-            . "This chat now gets your Bake &amp; Grill alerts, and the buttons below show today's sales, shifts, open orders and more.\n\n"
+            . "This chat now gets your Bake &amp; Grill alerts, and the buttons below show what your account can see and do.\n\n"
             . 'Tap <b>' . self::BTN_HELP . '</b> any time to see what each button does.';
         $this->send($link, $html, $user ? ['reply_markup' => $this->menuKeyboard($user)] : []);
     }
@@ -112,9 +112,7 @@ class TelegramCommands
     {
         $user = $link->user;
         if ($user === null) {
-            $this->send($link, 'Driver features are coming in a later step.');
-
-            return true;
+            return false; // drivers: TelegramDriverDesk
         }
 
         $raw = trim($text);
@@ -515,8 +513,12 @@ class TelegramCommands
             $lines[] = '<b>' . self::BTN_CUSTOMER . '</b>: type a phone number or name to see points, orders, credit and deposit.';
         }
         $lines[] = '';
-        $lines[] = 'Discount requests from the till come with Approve and Decline: tap Approve and the till carries on, no code to read out.';
-        $lines[] = 'When the last shift of the day closes, the day\'s report arrives here.';
+        if ($this->can($user, 'promotions.discount_override') || $this->permissions->isOwner($user)) {
+            $lines[] = 'Discount requests from the till come with Approve and Decline: tap Approve and the till carries on, no code to read out.';
+        }
+        if ($this->permissions->isOwner($user) || $this->can($user, 'reports.view')) {
+            $lines[] = 'When the last shift of the day closes, the day\'s report arrives here.';
+        }
         $lines[] = 'Your alerts (refund requests, shifts left open, cash differences, complaints, stock and more) arrive here as well.';
         $lines[] = '<code>/stop</code> unlinks this chat.';
 
@@ -536,7 +538,7 @@ class TelegramCommands
         $messageId = (int) ($callback['message']['message_id'] ?? 0);
         $user = $link->user;
         if ($user === null) {
-            $this->client->answerCallback($bot, $id, 'Not available for drivers yet.');
+            $this->client->answerCallback($bot, $id, 'That button is not for drivers.');
 
             return;
         }

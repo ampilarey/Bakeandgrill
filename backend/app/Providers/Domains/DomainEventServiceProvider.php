@@ -95,6 +95,8 @@ class DomainEventServiceProvider extends EventServiceProvider
             SendPaymentConfirmationListener::class,
             PostGstOnOrderPaidListener::class,
             DispatchWebhookOnDomainEvent::class,
+            // Paid online orders posted to Telegram shop groups (2026-10-07).
+            \App\Domains\Telegram\Listeners\FeedOnlineOrdersToTelegramGroups::class,
         ],
 
         OrderCompleted::class => [
@@ -179,6 +181,8 @@ class DomainEventServiceProvider extends EventServiceProvider
             SendCustomerOrderStatusSmsListener::class,
             SendOnlineOrderCompletionReceiptSmsListener::class,
             SendStaffOrderNotificationListener::class,
+            // Online order cards in Telegram groups follow the order (2026-10-07).
+            \App\Domains\Telegram\Listeners\FeedOnlineOrdersToTelegramGroups::class,
         ],
     ];
 }
