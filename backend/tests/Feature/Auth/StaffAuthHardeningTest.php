@@ -154,7 +154,7 @@ class StaffAuthHardeningTest extends TestCase
     /** @dataProvider weakPins */
     public function test_a_guessable_pin_is_refused(string $pin): void
     {
-        $v = Validator::make(['pin' => $pin], ['pin' => [new StrongStaffPin()]]);
+        $v = Validator::make(['pin' => $pin], ['pin' => [new StrongStaffPin]]);
         $this->assertTrue($v->fails(), "{$pin} should not be allowed as a staff PIN");
     }
 
@@ -162,7 +162,7 @@ class StaffAuthHardeningTest extends TestCase
     {
         // The rule must not be so strict that staff cannot choose anything.
         foreach (['8351', '4907', '2648', '739104'] as $pin) {
-            $v = Validator::make(['pin' => $pin], ['pin' => [new StrongStaffPin()]]);
+            $v = Validator::make(['pin' => $pin], ['pin' => [new StrongStaffPin]]);
             $this->assertFalse($v->fails(), "{$pin} is a reasonable PIN and should be allowed");
         }
     }
@@ -184,13 +184,29 @@ class StaffAuthHardeningTest extends TestCase
     public function test_device_approval_is_required_by_default(): void
     {
         // Left off, a correct PIN from any laptop opened a till. This asserts
-        // what the application actually resolves, not what a file says: a
-        // grep of config/pos.php passes just as happily while the running
-        // system has the flag off.
-        $this->assertTrue(
-            (bool) config('pos.strict_device_approval'),
-            'strict device approval must be ON',
-        );
+        // what config/pos.php resolves to when nothing overrides it, not what
+        // a grep of the file says. A developer's own .env may switch it off
+        // while setting up tills; that must not make the shipped default look
+        // wrong (2026-10-07), so the override is cleared while the file is read.
+        $key = 'POS_STRICT_DEVICE_APPROVAL';
+        $saved = [$_ENV[$key] ?? null, $_SERVER[$key] ?? null, getenv($key)];
+        unset($_ENV[$key], $_SERVER[$key]);
+        putenv($key);
+        try {
+            $resolved = (require config_path('pos.php'))['strict_device_approval'];
+        } finally {
+            if ($saved[0] !== null) {
+                $_ENV[$key] = $saved[0];
+            }
+            if ($saved[1] !== null) {
+                $_SERVER[$key] = $saved[1];
+            }
+            if ($saved[2] !== false) {
+                putenv($key . '=' . $saved[2]);
+            }
+        }
+
+        $this->assertTrue((bool) $resolved, 'strict device approval must be ON by default');
     }
 
     public function test_the_env_template_does_not_ship_device_approval_disabled(): void

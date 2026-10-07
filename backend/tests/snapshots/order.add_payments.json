@@ -85,6 +85,7 @@
         "manual_discount_approved_by": null,
         "fulfil_date": null,
         "manual_discount_subtotal_laar": null,
+        "social_delivery_id": null,
         "payments": [
             {
                 "id": "__VOLATILE__",
@@ -110,7 +111,11 @@
                 "commission_channel": null,
                 "tendered_amount": null,
                 "change_given": null,
-                "invoice_id": null
+                "invoice_id": null,
+                "original_method": null,
+                "tender_corrected_at": null,
+                "tender_corrected_by": null,
+                "tender_correction_reason": null
             }
         ]
     },

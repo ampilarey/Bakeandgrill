@@ -16,6 +16,7 @@
             "thumb_url": null,
             "image_webp_url": null,
             "thumb_webp_url": null,
+            "cutout_backdrop": null,
             "items": [
                 {
                     "id": "__VOLATILE__",
@@ -69,7 +70,11 @@
                     "image_webp_url": null,
                     "thumb_webp_url": null,
                     "min_order_qty": null,
-                    "lead_time_hours": null
+                    "lead_time_hours": null,
+                    "is_featured": false,
+                    "cutout_url": null,
+                    "cutout_webp_url": null,
+                    "cutout_backdrop": null
                 }
             ]
         }

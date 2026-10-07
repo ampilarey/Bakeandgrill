@@ -85,6 +85,7 @@
         "manual_discount_approved_by": null,
         "fulfil_date": null,
         "manual_discount_subtotal_laar": null,
+        "social_delivery_id": null,
         "items": [
             {
                 "id": "__VOLATILE__",
@@ -112,6 +113,7 @@
                 "packaging_fee_mode": "per_unit",
                 "packaging_option_name": null,
                 "parent_order_item_id": null,
+                "promotion_id": null,
                 "modifiers": []
             }
         ],

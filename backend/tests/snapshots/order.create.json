@@ -3,6 +3,7 @@
         "order_number": "__VOLATILE__",
         "type": "takeaway",
         "status": "pending",
+        "social_delivery_id": null,
         "payment_status": "unpaid",
         "fired_at": null,
         "restaurant_table_id": null,
@@ -81,6 +82,7 @@
                 "packaging_fee_mode": "per_unit",
                 "packaging_option_name": null,
                 "parent_order_item_id": null,
+                "promotion_id": null,
                 "modifiers": []
             }
         ]

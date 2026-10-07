@@ -77,10 +77,12 @@ class SmsRecurringCampaignTest extends TestCase
     public function test_a_due_schedule_runs_once_and_the_cooldown_skips_recent_recipients(): void
     {
         Sanctum::actingAs($this->makeOwner(), ['staff']);
-        $gasim = $this->dormant('Gasim', '+9607700001', 45);
-        $this->dormant('Rania', '+9607700002', 5); // not dormant
-
+        // Fixed dates: the customers' last orders are counted back from the
+        // first run day, not from the day the test happens to run (it failed
+        // once the real date came within 30 days of the later runs).
         Carbon::setTestNow(Carbon::parse('2026-09-23 09:00', 'Indian/Maldives'));
+        $gasim = $this->dormant('Gasim', '+9607700001', 45);
+        $this->dormant('Rania', '+9607700002', 5); // not dormant yet
         $this->postJson('/api/admin/sms/campaign-schedules', [
             'name' => 'We miss you', 'message' => 'Hi {name}, come back', 'frequency' => 'weekly', 'days_of_week' => ['thu'], 'send_time' => '10:00',
             'cooldown_days' => 30, 'target_criteria' => ['dormant_days' => 30],

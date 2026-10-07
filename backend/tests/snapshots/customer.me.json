@@ -9,7 +9,8 @@
         "tier": "bronze",
         "preferred_language": "en",
         "last_order_at": null,
-        "has_trade_account": false
+        "has_trade_account": false,
+        "sms_opt_out": false
     },
     "has_trade_account": false,
     "credit": null,

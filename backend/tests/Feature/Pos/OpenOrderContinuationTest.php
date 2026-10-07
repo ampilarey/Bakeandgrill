@@ -84,6 +84,9 @@ class OpenOrderContinuationTest extends TestCase
     {
         // Manual approval (owner, 2026-08-31): registration itself must never
         // error or block the login flow, but the till waits for the owner.
+        // Strict approval is the shipped default; set here so a local .env
+        // that turns it off for setting up tills does not change the test.
+        config(['pos.strict_device_approval' => true]);
         Sanctum::actingAs($this->ahmed, ['staff']);
 
         $this->postJson('/api/devices/self-register', [

@@ -12,6 +12,13 @@
             "short_description_dv": null,
             "sku": "GRL-001",
             "image_url": null,
+            "cutout_url": null,
+            "cutout_webp_url": null,
+            "cutout_backdrop": {
+                "color": "#F3EAE1",
+                "strength": 100,
+                "source": "default"
+            },
             "base_price": "30.00",
             "bundle_contents_price": null,
             "price_note": null,
@@ -30,6 +37,7 @@
             "sort_order": 0,
             "show_on_signage": true,
             "is_signage_promoted": false,
+            "is_featured": false,
             "created_at": "__VOLATILE__",
             "category_id": "__VOLATILE__",
             "extra_category_ids": [],
