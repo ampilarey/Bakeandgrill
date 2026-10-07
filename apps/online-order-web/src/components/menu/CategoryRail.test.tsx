@@ -39,113 +39,37 @@ describe('CategoryRail', () => {
     });
   });
 
-  it('lists sub-categories under their parent as smaller tabs that jump on their own', () => {
+  /** Owner, 2026-10-07: "keep the main category in the rail and sub category below the banner". */
+  it('lists main categories only, each a photo tile, with a ring that marks the chosen one', () => {
     const onSelect = vi.fn();
-    const onSelectSubcategory = vi.fn();
-    const { container } = render(
-      <CategoryRail
-        categories={cats}
-        activeCategoryId={2}
-        activeSubcategoryId={21}
-        onSelect={onSelect}
-        onSelectSubcategory={onSelectSubcategory}
-        subcategories={{ 2: [{ id: 21, name: 'Chicken', parent_id: 2 }, { id: 22, name: 'Beef', parent_id: 2 }] }}
-        counts={{ 2: 5, 21: 3, 22: 2 }}
-      />,
-    );
-
-    // Under Grills, not under Breakfast Specials, and after the parent tab.
-    const tabs = Array.from(container.querySelectorAll('[role="tab"]')).map((el) => (
-      el.querySelector('.cat-rail__label, .cat-rail__sub-label')?.textContent?.trim()
-    ));
-    expect(tabs).toEqual(['Breakfast Specials', 'Grills', 'Chicken', 'Beef']);
-
-    const chicken = screen.getByRole('tab', { name: /Chicken/ });
-    expect(chicken).toHaveClass('cat-rail__sub');
-    expect(chicken.getAttribute('aria-selected')).toBe('true');
-    expect(screen.getByRole('tab', { name: /Beef/ }).getAttribute('aria-selected')).toBe('false');
-    // The parent stays lit while one of its sub-categories is in view.
-    expect(screen.getByRole('tab', { name: /Grills/ }).getAttribute('aria-selected')).toBe('true');
-    // A sub-entry has its own, smaller photo (tinted initial here — no image).
-    expect(chicken.querySelector('.cat-rail__thumb--sub')?.textContent).toBe('C');
-
-    screen.getByRole('tab', { name: /Beef/ }).click();
-    expect(onSelectSubcategory).toHaveBeenCalledWith(22, 2);
-    expect(onSelect).not.toHaveBeenCalled();
-  });
-
-  /** Owner, 2026-09-03: "add photos to subcategory also … main category big and subcategory little smaller". */
-  it('gives every entry a photo, one size smaller for a sub-category, and lists sub-categories whether or not the parent is active', () => {
-    const { container } = render(
+    const { container, rerender } = render(
       <CategoryRail
         categories={[
           { id: 1, name: 'Breakfast Specials', sort_order: 1 },
           { id: 2, name: 'Grills', sort_order: 2, image_url: '/media/grills.jpg' },
         ]}
-        activeCategoryId={1}
-        onSelect={() => {}}
-        onSelectSubcategory={() => {}}
-        subcategories={{ 2: [
-          { id: 21, name: 'Chicken', parent_id: 2, image_url: '/media/chicken.jpg' },
-          { id: 22, name: 'Beef', parent_id: 2 },
-        ] }}
-        counts={{ 21: 3 }}
-      />,
-    );
-
-    // Not folded away: Grills is not the active category, its children still show.
-    expect(container.querySelectorAll('[data-testid="cat-rail-sub"]').length).toBe(2);
-
-    // Sizes live in the stylesheet (they fit the rail width per breakpoint);
-    // the intrinsic hints say which is the bigger one.
-    const grillsImg = screen.getByRole('tab', { name: /Grills/ }).querySelector('img');
-    expect(grillsImg?.getAttribute('width')).toBe('64');
-    expect(grillsImg).toHaveClass('cat-rail__thumb');
-    expect(grillsImg).not.toHaveClass('cat-rail__thumb--sub');
-    const chickenImg = screen.getByRole('tab', { name: 'Chicken, 3 items' }).querySelector('img');
-    expect(chickenImg?.getAttribute('src')).toContain('/media/chicken.jpg');
-    expect(chickenImg?.getAttribute('width')).toBe('40');
-    expect(chickenImg).toHaveClass('cat-rail__thumb--sub');
-    // No image → tinted initial, still the smaller size class.
-    const beefThumb = screen.getByRole('tab', { name: /Beef/ }).querySelector('.cat-rail__thumb--sub') as HTMLElement;
-    expect(beefThumb.textContent).toBe('B');
-    // No visible count on a sub-entry; it lives in the accessible name only.
-    expect(screen.getByRole('tab', { name: 'Chicken, 3 items' }).textContent?.trim()).toBe('Chicken');
-  });
-
-  /** Owner, 2026-09-03: "make the selected cat / sub cat more visible." */
-  it('marks the entry in view as chosen and its parent only as containing it', () => {
-    const subs = { 2: [{ id: 21, name: 'Chicken', parent_id: 2 }, { id: 22, name: 'Beef', parent_id: 2 }] };
-    const { rerender } = render(
-      <CategoryRail
-        categories={cats}
         activeCategoryId={2}
-        activeSubcategoryId={21}
-        onSelect={() => {}}
-        onSelectSubcategory={() => {}}
-        subcategories={subs}
+        onSelect={onSelect}
+        counts={{ 2: 5 }}
       />,
     );
 
-    // The sub-category is the chosen one; Grills only contains it.
-    expect(screen.getByRole('tab', { name: /Chicken/ })).toHaveClass('is-active');
-    expect(screen.getByRole('tab', { name: /Chicken/ })).not.toHaveClass('is-within');
-    expect(screen.getByRole('tab', { name: /Grills/ })).toHaveClass('is-active');
-    expect(screen.getByRole('tab', { name: /Grills/ })).toHaveClass('is-within');
+    expect(container.querySelector('.cat-rail__sub')).toBeNull();
+    const grills = screen.getByRole('tab', { name: 'Grills, 5 items' });
+    expect(grills).toHaveClass('is-active');
+    expect(grills.querySelector('img')?.getAttribute('src')).toContain('/media/grills.jpg');
+    // No visible count on the tile; it lives in the accessible name only.
+    expect(grills.textContent?.trim()).toBe('Grills');
+    // No photo → tinted initial.
+    expect(screen.getByRole('tab', { name: /Breakfast/ }).querySelector('.cat-rail__thumb')?.textContent).toBe('B');
+    // The ring sits on the chosen tile.
+    expect(container.querySelector('.cat-rail__pill')).toHaveClass('is-on');
 
-    // With no sub-category in view the parent itself is the chosen one.
-    rerender(
-      <CategoryRail
-        categories={cats}
-        activeCategoryId={2}
-        activeSubcategoryId={null}
-        onSelect={() => {}}
-        onSelectSubcategory={() => {}}
-        subcategories={subs}
-      />,
-    );
-    expect(screen.getByRole('tab', { name: /Grills/ })).toHaveClass('is-active');
-    expect(screen.getByRole('tab', { name: /Grills/ })).not.toHaveClass('is-within');
+    screen.getByRole('tab', { name: /Breakfast/ }).click();
+    expect(onSelect).toHaveBeenCalledWith(1);
+
+    rerender(<CategoryRail categories={cats} activeCategoryId={null} onSelect={() => {}} />);
+    expect(container.querySelector('.cat-rail__pill')).not.toHaveClass('is-on');
   });
 
   it('places Events shortcut after regular categories on the left rail', () => {
@@ -226,9 +150,13 @@ describe('CategoryRail', () => {
     screen.getByRole('tab', { name: 'Favourites' }).click();
     expect(onFeaturedClick).toHaveBeenCalledTimes(1);
 
+    // Lit while its section is the one in view, like any category.
+    rerender(
+      <CategoryRail categories={cats} activeCategoryId={null} onSelect={() => {}} showFeaturedPill featuredActive featuredLabel="Favourites" onFeaturedClick={onFeaturedClick} />,
+    );
+    expect(screen.getByRole('tab', { name: 'Favourites' })).toHaveClass('is-active');
+
     rerender(<CategoryRail categories={cats} activeCategoryId={1} onSelect={() => {}} />);
     expect(container.querySelector('[data-testid="cat-rail-featured"]')).toBeNull();
   });
 });
-
-

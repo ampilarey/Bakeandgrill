@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   fetchCategories,
@@ -30,14 +30,20 @@ import { useOrderMode } from '../context/OrderModeContext';
 import { useServiceStatusContext } from '../context/ServiceStatusContext';
 import { isDeliveryBlocked, isPickupBlocked } from '../utils/fulfilmentAvailability';
 import { CategoryRail } from '../components/menu/CategoryRail';
-import { MenuSectionHeader } from '../components/menu/MenuSectionHeader';
+import {
+  MenuHead,
+  menuImageUrl,
+  menuTint,
+  FEATURED_TINT,
+  type MenuHeadHandle,
+  type MenuHeadSection,
+  type MenuHeadSub,
+} from '../components/menu/MenuHead';
 import { ShareControl } from '../components/ShareControl';
 import { categoryShareProps } from '../utils/categoryShare';
 import { FilterChipsRow, type SaleFilter } from '../components/menu/FilterChipsRow';
 import { MenuQuickFilters } from '../components/menu/MenuQuickFilters';
 import { OffersRail } from '../components/home/OffersRail';
-import { pickActiveSectionId } from '../utils/scrollSpy';
-import { categoryScrollTop } from '../utils/menuScroll';
 import {
   categoryLooksLikeCatering,
   isMenuCateringItem,
@@ -57,6 +63,8 @@ const MENU_VIEW_KEY = 'bg-menu-view';
 export const OTHER_SECTION_ID = -1;
 /** The Event & catering section's id in the scroll-spy, for the same reason. */
 export const EVENTS_SECTION_ID = -2;
+/** Chef's picks, which the rail lights like a category since 2026-10-07. */
+const FEATURED_SECTION_ID = -3;
 
 /**
  * How stale an open menu is allowed to get before it refetches itself. Two
@@ -103,6 +111,10 @@ function isPercentDiscountItem(item: Item): boolean {
 
 function isFixedSpecialItem(item: Item): boolean {
   return isItemOnSale(item) && !isPercentDiscountItem(item);
+}
+
+function itemCountLabel(n: number): string {
+  return `${n} ${n === 1 ? 'item' : 'items'}`;
 }
 
 function slugifyCategoryName(name: string): string {
@@ -184,7 +196,6 @@ export function MenuPage() {
   const [waitMinutes, setWaitMinutes] = useState<number | null>(null);
 
   const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
-  const [activeSubcategoryId, setActiveSubcategoryId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('name');
   const [saleFilter, setSaleFilter] = useState<SaleFilter>('all');
@@ -278,14 +289,10 @@ export function MenuPage() {
   const cartRef = useRef(cart);
   /** When the menu data on screen was last fetched — see the refresh effect. */
   const loadedAtRef = useRef(0);
-  const isProgrammaticScroll = useRef(false);
-  const programmaticScrollTimerRef = useRef<number | null>(null);
-  const sectionVisibilityRef = useRef<Map<number, { id: number; ratio: number; top: number }>>(new Map());
-  /** Sub-category blocks on their own, so the rail can mark the one in view. */
-  const subVisibilityRef = useRef<Map<number, { id: number; parentId: number; ratio: number; top: number }>>(new Map());
-  const pendingCategoryScrollRef = useRef<number | null>(null);
+  /** Where a shared ?category= link should land once the menu is drawn. */
+  const pendingScrollRef = useRef<string | null>(null);
   const menuStickyRef = useRef<HTMLDivElement | null>(null);
-  const [stickyOffset, setStickyOffset] = useState(112);
+  const headRef = useRef<MenuHeadHandle | null>(null);
 
   // Back to top visibility — throttled with requestAnimationFrame
   useEffect(() => {
@@ -484,12 +491,10 @@ export function MenuPage() {
       const match = categories.find(
         (c) => slugifyCategoryName(c.name) === normalizedCategorySlug,
       );
-      const sectionCategoryId = match ? (match.parent_id ?? match.id) : null;
-      setActiveCategoryId(sectionCategoryId);
-      pendingCategoryScrollRef.current = sectionCategoryId;
+      // A sub-category lands on its own label, under its parent's banner.
+      pendingScrollRef.current = match ? `menu-section-${match.id}` : null;
     } else {
-      setActiveCategoryId(null);
-      pendingCategoryScrollRef.current = null;
+      pendingScrollRef.current = null;
     }
 
     if (itemId) {
@@ -755,8 +760,15 @@ export function MenuPage() {
     const apply = () => {
       const h = Math.ceil(el.getBoundingClientRect().height);
       if (!Number.isFinite(h) || h <= 0) return;
-      setStickyOffset(h);
-      document.documentElement.style.setProperty('--menu-sticky-offset', `${h}px`);
+      // On a computer the app's own top nav is pinned too; the day and mode
+      // bar used to stick at 0 and slide under it, half hidden. It pins
+      // under the nav now, and the banner under both.
+      const nav = document.querySelector<HTMLElement>('.top-nav');
+      const navH = nav && getComputedStyle(nav).position === 'sticky' && nav.offsetHeight > 0
+        ? Math.ceil(nav.getBoundingClientRect().height)
+        : 0;
+      document.documentElement.style.setProperty('--menu-top-nav', `${navH}px`);
+      document.documentElement.style.setProperty('--menu-sticky-offset', `${navH + h}px`);
     };
     apply();
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(apply) : null;
@@ -766,47 +778,67 @@ export function MenuPage() {
       ro?.disconnect();
       window.removeEventListener('resize', apply);
       document.documentElement.style.removeProperty('--menu-sticky-offset');
+      document.documentElement.style.removeProperty('--menu-top-nav');
     };
-  }, [loading, deliveryFallback, waitMinutes, filtersActive]);
+  }, [loading, deliveryFallback, waitMinutes]);
 
-  // Only sub-categories that actually have items on this menu — the sections
-  // already drop empty ones, and a rail entry with nothing to scroll to is a
-  // dead tap.
-  const railSubcategories = useMemo(
-    () => Object.fromEntries(
-      sectionedMenu.sections
-        .filter((section) => section.subcategories.length > 0)
-        .map((section) => [section.category.id, section.subcategories.map((block) => block.category)]),
-    ),
-    [sectionedMenu.sections],
-  );
+  // The pinned banner's sections, in page order (owner, 2026-10-07: "keep
+  // the main category in the rail and sub category below the banner"). Each
+  // is a rail entry and a look for the banner (name, photo or tint, count,
+  // Share), and its sub-categories become the row of buttons under it. The
+  // dishes filed on a parent that also has sub-categories come first, under
+  // the parent's own name, as on the website.
+  const headSections = useMemo<MenuHeadSection[]>(() => {
+    const list: MenuHeadSection[] = [];
+    if (featuredItems.length > 0) {
+      list.push({
+        key: 'featured', domId: 'menu-section-featured', name: featuredTitle,
+        count: featuredItems.length, image: null, tint: FEATURED_TINT, share: null, subs: [],
+      });
+    }
+    for (const section of sectionedMenu.sections) {
+      const cat = section.category;
+      const subs: MenuHeadSub[] = [];
+      if (section.directItems.length > 0 && section.subcategories.length > 0) {
+        subs.push({ domId: `menu-section-${cat.id}-items`, name: cat.name, count: section.directItems.length });
+      }
+      for (const block of section.subcategories) {
+        subs.push({ domId: `menu-section-${block.category.id}`, name: block.category.name, count: block.items.length });
+      }
+      list.push({
+        key: `cat-${cat.id}`, domId: `menu-section-${cat.id}`, name: cat.name,
+        count: subs.reduce((n, b) => n + b.count, 0) || section.directItems.length,
+        image: menuImageUrl(cat.image_url), tint: menuTint(cat.id),
+        share: categoryShareProps(cat), subs,
+      });
+    }
+    if (sectionedMenu.other.length > 0) {
+      list.push({
+        key: 'other', domId: 'menu-section-other', name: otherSection.name,
+        count: sectionedMenu.other.length, image: menuImageUrl(otherSection.image_url),
+        tint: menuTint(OTHER_SECTION_ID), share: categoryShareProps(otherSection), subs: [],
+      });
+    }
+    if (sectionedMenu.catering.length > 0) {
+      list.push({
+        key: 'events', domId: 'menu-section-catering', name: eventsSection.name,
+        count: sectionedMenu.catering.length, image: menuImageUrl(eventsSection.image_url),
+        tint: menuTint(EVENTS_SECTION_ID), share: categoryShareProps(eventsSection), subs: [],
+      });
+    }
+    return list;
+  }, [featuredItems, featuredTitle, sectionedMenu, otherSection, eventsSection]);
 
-  const scrollToSectionElement = (domId: string, behavior: ScrollBehavior = 'smooth') => {
-    const section = document.getElementById(domId);
-    if (!section) return;
-    const reduced =
-      typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const stickyH = menuStickyRef.current?.getBoundingClientRect().height ?? stickyOffset;
-    const top = categoryScrollTop(
-      section.getBoundingClientRect().top,
-      window.scrollY,
-      stickyH,
-      4,
-    );
-    window.scrollTo({ top, behavior: reduced ? 'auto' : behavior });
-  };
+  // The banner reports the section in view; the rail lights its entry.
+  const handleSectionChange = useCallback((key: string) => {
+    setCateringRailActive(key === 'events');
+    if (key === 'featured') setActiveCategoryId(FEATURED_SECTION_ID);
+    else if (key === 'other') setActiveCategoryId(OTHER_SECTION_ID);
+    else if (key === 'events') setActiveCategoryId(EVENTS_SECTION_ID);
+    else setActiveCategoryId(Number(key.slice(4)));
+  }, []);
 
-  const scrollToCategorySection = (categoryId: number, behavior: ScrollBehavior = 'smooth') => {
-    scrollToSectionElement(
-      categoryId === OTHER_SECTION_ID ? 'menu-section-other' : `menu-section-${categoryId}`,
-      behavior,
-    );
-  };
-
-  const scrollToCateringSection = (behavior: ScrollBehavior = 'smooth') => {
-    scrollToSectionElement('menu-section-catering', behavior);
-  };
+  const goToSection = (domId: string) => headRef.current?.goTo(domId);
 
   const handleSelectCatering = () => {
     // Left-rail Events shortcut: jump to the on-menu catering block, or open the event wizard.
@@ -814,46 +846,11 @@ export function MenuPage() {
       void navigate('/events');
       return;
     }
-    setCateringRailActive(true);
-    setActiveCategoryId(null);
-    isProgrammaticScroll.current = true;
-    // Wait a tick so the section is expanded before measuring scroll.
-    requestAnimationFrame(() => {
-      scrollToCateringSection();
-    });
-    if (programmaticScrollTimerRef.current !== null) window.clearTimeout(programmaticScrollTimerRef.current);
-    programmaticScrollTimerRef.current = window.setTimeout(() => {
-      isProgrammaticScroll.current = false;
-      programmaticScrollTimerRef.current = null;
-    }, 800);
+    goToSection('menu-section-catering');
   };
 
   const handleSelectCategory = (categoryId: number) => {
-    setCateringRailActive(false);
-    setActiveCategoryId(categoryId);
-    setActiveSubcategoryId(null);
-    isProgrammaticScroll.current = true;
-    scrollToCategorySection(categoryId);
-    if (programmaticScrollTimerRef.current !== null) window.clearTimeout(programmaticScrollTimerRef.current);
-    programmaticScrollTimerRef.current = window.setTimeout(() => {
-      isProgrammaticScroll.current = false;
-      programmaticScrollTimerRef.current = null;
-    }, 500);
-  };
-
-  // A sub-category block carries the same `menu-section-{id}` id as a
-  // section, so the one scroll helper reaches both.
-  const handleSelectSubcategory = (subcategoryId: number, parentId: number) => {
-    setCateringRailActive(false);
-    setActiveCategoryId(parentId);
-    setActiveSubcategoryId(subcategoryId);
-    isProgrammaticScroll.current = true;
-    scrollToCategorySection(subcategoryId);
-    if (programmaticScrollTimerRef.current !== null) window.clearTimeout(programmaticScrollTimerRef.current);
-    programmaticScrollTimerRef.current = window.setTimeout(() => {
-      isProgrammaticScroll.current = false;
-      programmaticScrollTimerRef.current = null;
-    }, 500);
+    goToSection(categoryId === OTHER_SECTION_ID ? 'menu-section-other' : `menu-section-${categoryId}`);
   };
 
   const handleClearFilters = () => {
@@ -862,74 +859,15 @@ export function MenuPage() {
     setDietaryFilter(null);
   };
 
+  // A shared category link opens the menu already there, without the glide.
   useEffect(() => {
-    if (filtersActive || loading || sectionedMenu.sections.length === 0) return;
-    if (typeof IntersectionObserver === 'undefined') return;
-    const headers = Array.from(document.querySelectorAll<HTMLElement>(
-      '.menu-section-header[data-category-id], .menu-subcategory[data-category-id]',
-    ));
-    if (headers.length === 0) return;
-
-    sectionVisibilityRef.current = new Map();
-    subVisibilityRef.current = new Map();
-    const observer = new IntersectionObserver((entries) => {
-      for (const entry of entries) {
-        const el = entry.target as HTMLElement;
-        // Subcategory spy maps to parent rail id (parent_id ?? id)
-        const id = Number(el.dataset.parentCategoryId || el.dataset.categoryId);
-        if (!Number.isFinite(id)) continue;
-        sectionVisibilityRef.current.set(id, {
-          id,
-          ratio: entry.intersectionRatio,
-          top: entry.boundingClientRect.top,
-        });
-        if (el.dataset.parentCategoryId) {
-          const subId = Number(el.dataset.categoryId);
-          if (Number.isFinite(subId)) {
-            subVisibilityRef.current.set(subId, {
-              id: subId,
-              parentId: id,
-              ratio: entry.intersectionRatio,
-              top: entry.boundingClientRect.top,
-            });
-          }
-        }
-      }
-
-      if (isProgrammaticScroll.current) return;
-      const next = pickActiveSectionId(Array.from(sectionVisibilityRef.current.values()), activeCategoryId);
-      if (next !== activeCategoryId) {
-        setCateringRailActive(false);
-        setActiveCategoryId(next);
-      }
-      // The sub-category in view, if any, under the section now active. The
-      // most-visible one wins; nothing in view means the rail marks only the
-      // parent — the category's own items have no sub-entry to light up.
-      const subs = Array.from(subVisibilityRef.current.values())
-        .filter((s) => s.parentId === next && s.ratio > 0)
-        .sort((a, b) => b.ratio - a.ratio || Math.abs(a.top) - Math.abs(b.top));
-      setActiveSubcategoryId(subs.length > 0 ? subs[0].id : null);
-    }, {
-      rootMargin: `-${Math.max(stickyOffset, 1)}px 0px -55% 0px`,
-      threshold: [0, 0.01, 0.25, 0.5, 0.75, 1],
-    });
-
-    headers.forEach((header) => observer.observe(header));
-    return () => observer.disconnect();
-  }, [activeCategoryId, filtersActive, loading, sectionedMenu.sections, stickyOffset]);
-
-  useEffect(() => {
-    if (filtersActive || loading || pendingCategoryScrollRef.current == null) return;
-    const categoryId = pendingCategoryScrollRef.current;
-    pendingCategoryScrollRef.current = null;
+    if (filtersActive || loading || pendingScrollRef.current == null) return;
+    const domId = pendingScrollRef.current;
+    pendingScrollRef.current = null;
     window.setTimeout(() => {
-      requestAnimationFrame(() => scrollToCategorySection(categoryId, 'auto'));
+      requestAnimationFrame(() => headRef.current?.goTo(domId, true));
     }, 0);
-  }, [filtersActive, loading, sectionedMenu.sections]);
-
-  useEffect(() => () => {
-    if (programmaticScrollTimerRef.current !== null) window.clearTimeout(programmaticScrollTimerRef.current);
-  }, []);
+  }, [filtersActive, loading, headSections]);
 
   const handleSelectItem = (item: Item, qty = 1) => { setSelectedItem(item); setSelectedQty(Math.max(qty, itemMinOrderQty(item))); setSelectedModifiers([]); };
   const toggleModifier = (mod: Modifier) => {
@@ -1034,7 +972,7 @@ export function MenuPage() {
         className="menu-sticky-controls"
         style={{
           position: 'sticky',
-          top: 0,
+          top: 'var(--menu-top-nav, 0px)',
           zIndex: 20,
           background: 'color-mix(in srgb, var(--color-bg) 92%, transparent)',
           backdropFilter: 'blur(14px)',
@@ -1118,41 +1056,6 @@ export function MenuPage() {
               );
             })}
           </div>
-          {/* One button for search, sort and layout — everything that used to
-              take two rows above the food (owner, 2026-09-03). */}
-          <button
-            type="button"
-            data-testid="menu-controls-toggle"
-            onClick={toggleControls}
-            aria-expanded={controlsOpen}
-            aria-controls="menu-controls"
-            style={{
-              minWidth: 44,
-              minHeight: 44,
-              padding: '0 0.9rem',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.4rem',
-              border: '1.5px solid var(--color-border)',
-              borderRadius: 'var(--radius-lg)',
-              background: searchQuery.trim() || filtersActive ? 'var(--color-primary-light)' : 'var(--color-surface)',
-              color: searchQuery.trim() || filtersActive ? 'var(--color-primary)' : 'var(--color-text)',
-              fontFamily: 'inherit',
-              fontWeight: 700,
-              fontSize: '0.875rem',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {t('menu.controls_toggle')}
-            {searchQuery.trim()
-              ? ` · "${searchQuery.trim()}"`
-              : filtersActive ? ` · ${t('menu.controls_on')}` : ''}
-            <span aria-hidden="true" style={{ fontSize: '0.7rem', opacity: 0.7 }}>
-              {controlsOpen ? '▾' : '▸'}
-            </span>
-          </button>
           {/* Wait time is status, not a control, so it stays in view. */}
           {waitMinutes !== null && (
             <div
@@ -1172,98 +1075,6 @@ export function MenuPage() {
             </div>
           )}
         </div>
-
-        {controlsOpen && (
-        <div id="menu-controls" data-testid="menu-controls">
-        {/*
-          * Owner, 2026-09-05: "when serach bar is clicked, page layout gose
-          * and new page like". It used to be a button that opened a
-          * full-screen overlay over a portal, hiding the bottom nav — so
-          * tapping search threw away the menu, the category rail and the
-          * chrome, and looked like being taken somewhere else.
-          *
-          * It is a text box now, and the page filters underneath it. The menu
-          * already knew how to do this: `filteredItems` has always narrowed
-          * on `searchQuery`, and the grid already renders that list and its
-          * own empty state. The overlay was the only thing standing in front
-          * of it.
-          */}
-        <div className="menu-search-row">
-          <span className="menu-search-row__icon" aria-hidden="true">🔍</span>
-          <input
-            type="search"
-            data-testid="menu-search-input"
-            className="menu-search-row__input"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={t('menu.search')}
-            aria-label={t('menu.search_aria')}
-            autoComplete="off"
-            enterKeyHint="search"
-          />
-          {searchQuery.trim() !== '' && (
-            <button
-              type="button"
-              data-testid="menu-search-clear"
-              className="menu-search-row__clear"
-              onClick={() => setSearchQuery('')}
-              aria-label={t('menu.clear_search')}
-            >
-              ×
-            </button>
-          )}
-        </div>
-
-        <FilterChipsRow
-          sortBy={sortBy}
-          onSortChange={setSortBy}
-          dietaryFilter={dietaryFilter}
-          onDietaryFilterChange={setDietaryFilter}
-          dietaryOptions={[...availableDietaryFilters]}
-          filtersActive={filtersActive}
-          onClear={handleClearFilters}
-        />
-
-        <div className="menu-view-row">
-          <div className="menu-view-toggle" role="group" aria-label="Menu layout">
-            <button
-              type="button"
-              className={`menu-view-toggle__btn${viewMode === 'grid' ? ' is-active' : ''}`}
-              aria-pressed={viewMode === 'grid'}
-              onClick={() => setMenuView('grid')}
-            >
-              Grid
-            </button>
-            <button
-              type="button"
-              className={`menu-view-toggle__btn${viewMode === 'list' ? ' is-active' : ''}`}
-              aria-pressed={viewMode === 'list'}
-              onClick={() => setMenuView('list')}
-            >
-              List
-            </button>
-          </div>
-          <button
-            type="button"
-            className="menu-rail-side-btn"
-            data-testid="menu-rail-side"
-            aria-pressed={railSide === 'right'}
-            aria-label={railSide === 'right' ? t('menu.rail_side_left') : t('menu.rail_side_right')}
-            title={t('menu.rail_side_title')}
-            onClick={toggleRailSide}
-          >
-            <span className="menu-rail-side-btn__icon" aria-hidden="true">⇆</span>
-          </button>
-          <MenuQuickFilters
-            saleFilter={saleFilter}
-            onChange={setSaleFilter}
-            discountCount={discountCount}
-            specialCount={specialCount}
-            bestsellerCount={bestsellerCount}
-          />
-        </div>
-        </div>
-        )}
 
         {deliveryFallback && (
           <div
@@ -1294,14 +1105,12 @@ export function MenuPage() {
           onSelect={handleSelectCategory}
           dimmed={loading || filtersActive}
           counts={catItemCounts}
-          subcategories={railSubcategories}
-          activeSubcategoryId={activeSubcategoryId}
-          onSelectSubcategory={handleSelectSubcategory}
           showOffersPill={offers.length > 0}
           onOffersClick={() => document.getElementById('offers')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
           showFeaturedPill={featuredItems.length > 0 && !filtersActive}
           featuredLabel={featuredTitle}
-          onFeaturedClick={() => scrollToSectionElement('menu-section-featured')}
+          featuredActive={activeCategoryId === FEATURED_SECTION_ID}
+          onFeaturedClick={() => goToSection('menu-section-featured')}
           showOtherPill={sectionedMenu.other.length > 0}
           otherActive={activeCategoryId === OTHER_SECTION_ID}
           otherCount={sectionedMenu.other.length}
@@ -1327,6 +1136,107 @@ export function MenuPage() {
             subtext={offersSubtext}
             apiOrigin={API_ORIGIN}
           />
+
+          {/* The pinned banner: the section in view, its sub-categories as
+              buttons, Share and the search button; search, sort and layout
+              open under it. */}
+          <MenuHead
+            ref={headRef}
+            sections={loading ? [] : headSections}
+            override={filtersActive ? { name: t('menu.results'), count: filteredItems.length } : null}
+            onSectionChange={handleSectionChange}
+            searchOpen={controlsOpen}
+            searchActive={filtersActive}
+            onSearchToggle={toggleControls}
+          >
+            {/*
+              * Owner, 2026-09-05: "when serach bar is clicked, page layout gose
+              * and new page like". It used to be a button that opened a
+              * full-screen overlay over a portal, hiding the bottom nav — so
+              * tapping search threw away the menu, the category rail and the
+              * chrome, and looked like being taken somewhere else.
+              *
+              * It is a text box now, and the page filters underneath it. The menu
+              * already knew how to do this: `filteredItems` has always narrowed
+              * on `searchQuery`, and the grid already renders that list and its
+              * own empty state. The overlay was the only thing standing in front
+              * of it.
+              */}
+            <div className="menu-search-row">
+              <span className="menu-search-row__icon" aria-hidden="true">🔍</span>
+              <input
+                type="search"
+                data-testid="menu-search-input"
+                className="menu-search-row__input"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={t('menu.search')}
+                aria-label={t('menu.search_aria')}
+                autoComplete="off"
+                enterKeyHint="search"
+              />
+              {searchQuery.trim() !== '' && (
+                <button
+                  type="button"
+                  data-testid="menu-search-clear"
+                  className="menu-search-row__clear"
+                  onClick={() => setSearchQuery('')}
+                  aria-label={t('menu.clear_search')}
+                >
+                  ×
+                </button>
+              )}
+            </div>
+
+            <FilterChipsRow
+              sortBy={sortBy}
+              onSortChange={setSortBy}
+              dietaryFilter={dietaryFilter}
+              onDietaryFilterChange={setDietaryFilter}
+              dietaryOptions={[...availableDietaryFilters]}
+              filtersActive={filtersActive}
+              onClear={handleClearFilters}
+            />
+
+            <div className="menu-view-row">
+              <div className="menu-view-toggle" role="group" aria-label="Menu layout">
+                <button
+                  type="button"
+                  className={`menu-view-toggle__btn${viewMode === 'grid' ? ' is-active' : ''}`}
+                  aria-pressed={viewMode === 'grid'}
+                  onClick={() => setMenuView('grid')}
+                >
+                  Grid
+                </button>
+                <button
+                  type="button"
+                  className={`menu-view-toggle__btn${viewMode === 'list' ? ' is-active' : ''}`}
+                  aria-pressed={viewMode === 'list'}
+                  onClick={() => setMenuView('list')}
+                >
+                  List
+                </button>
+              </div>
+              <button
+                type="button"
+                className="menu-rail-side-btn"
+                data-testid="menu-rail-side"
+                aria-pressed={railSide === 'right'}
+                aria-label={railSide === 'right' ? t('menu.rail_side_left') : t('menu.rail_side_right')}
+                title={t('menu.rail_side_title')}
+                onClick={toggleRailSide}
+              >
+                <span className="menu-rail-side-btn__icon" aria-hidden="true">⇆</span>
+              </button>
+              <MenuQuickFilters
+                saleFilter={saleFilter}
+                onChange={setSaleFilter}
+                discountCount={discountCount}
+                specialCount={specialCount}
+                bestsellerCount={bestsellerCount}
+              />
+            </div>
+          </MenuHead>
 
           {loading && (
             <div className={viewMode === 'list' ? 'menu-list' : 'menu-grid'} style={{ padding: '0 0 1.25rem' }}>
@@ -1370,13 +1280,9 @@ export function MenuPage() {
               data-testid="menu-section-featured"
               className="menu-section menu-section--featured"
               aria-label={featuredTitle}
-              style={{
-                scrollMarginTop: 'calc(var(--menu-sticky-offset, var(--menu-header-height)) + 4px)',
-              }}
             >
-              <div className="menu-subcat-head">
-                <h2 className="menu-subcat-title" data-testid="menu-featured-title">{featuredTitle}</h2>
-              </div>
+              {/* The pinned banner shows the name; this keeps the page outline. */}
+              <h2 className="sr-only" data-testid="menu-featured-title">{featuredTitle}</h2>
               <div className={viewMode === 'list' ? 'menu-list' : 'menu-grid'} style={{ paddingBottom: '1rem' }}>
                 {featuredItems.map(renderProductCard)}
               </div>
@@ -1391,15 +1297,26 @@ export function MenuPage() {
                   id={`menu-section-${section.category.id}`}
                   data-category-id={section.category.id}
                   className={sectionIndex === 0 ? 'menu-section menu-section--first' : 'menu-section'}
-                  style={{
-                    scrollMarginTop: 'calc(var(--menu-sticky-offset, var(--menu-header-height)) + 4px)',
-                  }}
                 >
-                  <MenuSectionHeader
-                    category={section.category}
-                    active={activeCategoryId === section.category.id}
-                  />
-                  {section.directItems.length > 0 && (
+                  <h2 className="sr-only">{section.category.name}</h2>
+                  {section.directItems.length > 0 && section.subcategories.length > 0 && (
+                    <div
+                      id={`menu-section-${section.category.id}-items`}
+                      className="menu-subcategory"
+                      data-testid="menu-subcategory"
+                    >
+                      <div className="menu-subcat-head">
+                        <h3 className="menu-subcat-title" data-testid="menu-subcat-title">
+                          {section.category.name}
+                          <span className="menu-subcat-count">{itemCountLabel(section.directItems.length)}</span>
+                        </h3>
+                      </div>
+                      <div className={viewMode === 'list' ? 'menu-list' : 'menu-grid'}>
+                        {section.directItems.map(renderProductCard)}
+                      </div>
+                    </div>
+                  )}
+                  {section.directItems.length > 0 && section.subcategories.length === 0 && (
                     <div className={viewMode === 'list' ? 'menu-list' : 'menu-grid'} style={{ paddingBottom: '1rem' }}>
                       {section.directItems.map(renderProductCard)}
                     </div>
@@ -1412,16 +1329,15 @@ export function MenuPage() {
                       data-testid="menu-subcategory"
                       data-category-id={sub.category.id}
                       data-parent-category-id={section.category.id}
-                      style={{
-                        scrollMarginTop: 'calc(var(--menu-sticky-offset, var(--menu-header-height)) + 4px)',
-                        paddingBottom: '0.85rem',
-                      }}
                     >
+                      {/* A thin label where each sub-category starts, with its
+                          count and its own Share (owner, 2026-10-07). */}
                       <div className="menu-subcat-head">
                         <h3 className="menu-subcat-title" data-testid="menu-subcat-title">
                           {sub.category.name}
+                          <span className="menu-subcat-count">{itemCountLabel(sub.items.length)}</span>
                         </h3>
-                        <ShareControl {...categoryShareProps(sub.category)} />
+                        <ShareControl {...categoryShareProps(sub.category)} icon buttonClassName="menu-sub-share" />
                       </div>
                       <div className={viewMode === 'list' ? 'menu-list' : 'menu-grid'}>
                         {sub.items.map(renderProductCard)}
@@ -1432,19 +1348,8 @@ export function MenuPage() {
               ))}
 
               {sectionedMenu.other.length > 0 && (
-                <section
-                  id="menu-section-other"
-                  style={{
-                    scrollMarginTop: 'calc(var(--menu-sticky-offset, var(--menu-header-height)) + 4px)',
-                  }}
-                >
-                  {/* Spied like a category header so the rail's Other entry lights up
-                      when this section is the one in view. */}
-                  <MenuSectionHeader
-                    category={otherSection}
-                    active={activeCategoryId === OTHER_SECTION_ID}
-                    testId="menu-section-other-header"
-                  />
+                <section id="menu-section-other" className="menu-section">
+                  <h2 className="sr-only" data-testid="menu-section-other-header">{otherSection.name}</h2>
                   <div className={viewMode === 'list' ? 'menu-list' : 'menu-grid'} style={{ paddingBottom: '1.25rem' }}>
                     {sectionedMenu.other.map(renderProductCard)}
                   </div>
@@ -1455,16 +1360,9 @@ export function MenuPage() {
                 <section
                   id="menu-section-catering"
                   className="menu-section"
-                  style={{
-                    scrollMarginTop: 'calc(var(--menu-sticky-offset, var(--menu-header-height)) + 4px)',
-                    marginBottom: '0.5rem',
-                  }}
+                  style={{ marginBottom: '0.5rem' }}
                 >
-                  <MenuSectionHeader
-                    category={eventsSection}
-                    active={cateringRailActive || activeCategoryId === EVENTS_SECTION_ID}
-                    testId="menu-section-catering-header"
-                  />
+                  <h2 className="sr-only" data-testid="menu-section-catering-header">{eventsSection.name}</h2>
                   <p style={{ margin: '0 0 0.75rem', fontSize: 13, color: 'var(--color-muted, #6B5D4F)' }}>
                     {sectionedMenu.catering.length} item{sectionedMenu.catering.length === 1 ? '' : 's'} · order for today like any other menu item
                     {' · '}

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { PartyPopper, Star } from 'lucide-react';
 import { API_ORIGIN } from '../../api';
 import type { Category } from '../../api';
@@ -26,6 +26,7 @@ type Props = {
   onOffersClick?: () => void;
   /** The owner's hand-picked strip ahead of the categories (2026-09-21). */
   showFeaturedPill?: boolean;
+  featuredActive?: boolean;
   featuredLabel?: string;
   onFeaturedClick?: () => void;
   showCateringPill?: boolean;
@@ -41,10 +42,6 @@ type Props = {
   otherActive?: boolean;
   otherCount?: number;
   onOtherClick?: () => void;
-  /** Sub-categories by parent id, listed under their parent with a smaller photo. */
-  subcategories?: Record<number, Category[]>;
-  activeSubcategoryId?: number | null;
-  onSelectSubcategory?: (id: number, parentId: number) => void;
 };
 
 /**
@@ -91,16 +88,15 @@ function RailThumb({ category, size, className }: { category: Category; size: nu
 }
 
 /**
- * Sticky left category rail — scroll-spy sync via activeCategoryId.
+ * Sticky left category rail — scroll-spy sync via activeCategoryId. Main
+ * categories only since 2026-10-07 (owner: "keep the main category in the
+ * rail and sub category below the banner"); the sub-categories are the
+ * buttons under the menu's pinned banner.
  *
  * A photo over a short label, the way the ZUS app does it (owner,
- * 2026-09-03), the active one marked by the brand colour. Two ranks with
- * two shapes (owner, 2026-09-21: "no much difference between main category
- * and sub"): a category is its panel's header with a flush square photo
- * and a bold name; its sub-categories hang beneath on a guide line, each a
- * small round photo with a lighter name. The shapes live in the stylesheet
- * (`.cat-rail__group`, `.cat-rail__sub`); `size` here is only the image
- * hint.
+ * 2026-09-03): each tile a flush photo over a bold name, the chosen one
+ * tinted and ringed by a brand-colour outline that glides from tile to tile
+ * (`.cat-rail__pill`). `size` here is only the image hint.
  */
 export function CategoryRail({
   categories,
@@ -111,6 +107,7 @@ export function CategoryRail({
   showOffersPill = false,
   onOffersClick,
   showFeaturedPill = false,
+  featuredActive = false,
   featuredLabel = "Chef's picks",
   onFeaturedClick,
   showCateringPill = false,
@@ -121,14 +118,12 @@ export function CategoryRail({
   otherActive = false,
   otherCount = 0,
   onOtherClick,
-  subcategories = {},
-  activeSubcategoryId = null,
-  onSelectSubcategory,
 }: Props) {
   const { t } = useLanguage();
   const activeRef = useRef<HTMLButtonElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const userTouchedAt = useRef(0);
+  const pillRef = useRef<HTMLSpanElement>(null);
 
   // Follow the active entry by scrolling the rail's own scroller only.
   // scrollIntoView used to scroll every ancestor, so it could nudge the page
@@ -148,7 +143,20 @@ export function CategoryRail({
     const target = top < viewTop ? top - 8 : bottom - box.clientHeight + 8;
     if (typeof box.scrollTo === 'function') box.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
     else box.scrollTop = Math.max(0, target);
-  }, [activeCategoryId, activeSubcategoryId, cateringActive, otherActive]);
+  }, [activeCategoryId, cateringActive, otherActive, featuredActive]);
+
+  // The chosen tile's ring glides from one tile to the next (owner,
+  // 2026-10-07: "some animation ... now just appear"). Without it the tile's
+  // own colour still marks it.
+  useLayoutEffect(() => {
+    const pill = pillRef.current;
+    const el = activeRef.current;
+    if (!pill) return;
+    if (!el) { pill.classList.remove('is-on'); return; }
+    pill.style.transform = `translateY(${el.offsetTop}px)`;
+    pill.style.height = `${el.offsetHeight}px`;
+    pill.classList.add('is-on');
+  });
 
   const noteTouch = () => { userTouchedAt.current = Date.now(); };
 
@@ -203,6 +211,7 @@ export function CategoryRail({
         onWheel={noteTouch}
       >
       <div role="tablist" aria-orientation="vertical" className="cat-rail__list">
+        <span ref={pillRef} className="cat-rail__pill" aria-hidden="true" />
         {showOffersPill && onOffersClick && (
           <button
             type="button"
@@ -228,7 +237,9 @@ export function CategoryRail({
           <button
             type="button"
             role="tab"
-            className="cat-rail__item cat-rail__item--featured"
+            ref={featuredActive ? activeRef : undefined}
+            aria-selected={featuredActive}
+            className={`cat-rail__item cat-rail__item--featured${featuredActive ? ' is-active' : ''}`}
             data-testid="cat-rail-featured"
             aria-label={featuredLabel}
             onClick={onFeaturedClick}
@@ -248,46 +259,20 @@ export function CategoryRail({
         )}
         {categories.map((cat) => {
           const active = activeCategoryId === cat.id;
-          const subs = subcategories[cat.id] ?? [];
           return (
-            <div key={cat.id} className="cat-rail__group" role="presentation">
-              <button
-                ref={active && activeSubcategoryId == null ? activeRef : undefined}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                aria-label={(counts[cat.id] ?? 0) > 0 ? `${cat.name}, ${counts[cat.id]} item${counts[cat.id] === 1 ? '' : 's'}` : undefined}
-                // A parent whose sub-category is the one in view is "within",
-                // not chosen: it keeps a soft tint so exactly one entry reads
-                // as selected (owner, 2026-09-03).
-                className={`cat-rail__item${active ? ' is-active' : ''}${active && activeSubcategoryId != null ? ' is-within' : ''}`}
-                onClick={() => onSelect(cat.id)}
-              >
-                <RailThumb category={cat} size={64} className="cat-rail__thumb" />
-                <span className="cat-rail__label">{cat.name}</span>
-              </button>
-              {subs.map((sub) => {
-                const subActive = activeSubcategoryId === sub.id;
-                const count = counts[sub.id] ?? 0;
-                return (
-                  <button
-                    key={sub.id}
-                    ref={subActive ? activeRef : undefined}
-                    type="button"
-                    role="tab"
-                    aria-selected={subActive}
-                    aria-label={count > 0 ? `${sub.name}, ${count} item${count === 1 ? '' : 's'}` : undefined}
-                    className={`cat-rail__item cat-rail__sub${subActive ? ' is-active' : ''}`}
-                    data-testid="cat-rail-sub"
-                    data-parent-category-id={cat.id}
-                    onClick={() => onSelectSubcategory?.(sub.id, cat.id)}
-                  >
-                    <RailThumb category={sub} size={40} className="cat-rail__thumb cat-rail__thumb--sub" />
-                    <span className="cat-rail__label cat-rail__sub-label">{sub.name}</span>
-                  </button>
-                );
-              })}
-            </div>
+            <button
+              key={cat.id}
+              ref={active ? activeRef : undefined}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              aria-label={(counts[cat.id] ?? 0) > 0 ? `${cat.name}, ${counts[cat.id]} item${counts[cat.id] === 1 ? '' : 's'}` : undefined}
+              className={`cat-rail__item${active ? ' is-active' : ''}`}
+              onClick={() => onSelect(cat.id)}
+            >
+              <RailThumb category={cat} size={64} className="cat-rail__thumb" />
+              <span className="cat-rail__label">{cat.name}</span>
+            </button>
           );
         })}
         {/* Dishes with no live category, after the categories and before Events. */}

@@ -133,13 +133,14 @@ vi.mock('../components/menu/ProductCard', () => ({
 }));
 
 vi.mock('../components/menu/CategoryRail', () => ({
-  CategoryRail: (props: { showOtherPill?: boolean; otherCount?: number; otherActive?: boolean; onOtherClick?: () => void }) => (
+  CategoryRail: (props: { showOtherPill?: boolean; otherCount?: number; otherActive?: boolean; onOtherClick?: () => void; onCateringClick?: () => void }) => (
     <div data-testid="category-rail">
       {props.showOtherPill && (
         <button type="button" role="tab" data-testid="cat-rail-other" aria-selected={props.otherActive} onClick={props.onOtherClick}>
           Other, {props.otherCount}
         </button>
       )}
+      <button type="button" role="tab" data-testid="cat-rail-events" onClick={props.onCateringClick}>Events</button>
     </div>
   ),
 }));
@@ -166,32 +167,29 @@ describe('MenuPage — the Other section has a rail entry', () => {
 
     const header = await screen.findByTestId('menu-section-other-header');
     expect(header).toHaveTextContent('Other');
-    // Spied like a category so the rail lights up when it is in view.
-    expect(header.getAttribute('data-category-id')).toBe('-1');
     const section = header.closest('section') as HTMLElement;
     expect(within(section).getByText('Mystery Bun')).toBeInTheDocument();
     expect(within(section).getByText('Orphan Roll')).toBeInTheDocument();
     expect(within(section).queryByText('House Salad')).toBeNull();
-
-    // The section wears a category's banner: the owner's picture, a Share
-    // pill and a tap that opens its own page (owner, 2026-09-21).
-    expect(header.querySelector('.menu-cat-promo__img')?.getAttribute('src')).toContain('/media/other-banner.jpg');
-    expect(within(header).getByRole('button', { name: 'Share Other' })).toBeInTheDocument();
-    expect(within(header).getByRole('link', { name: 'Open the Other menu page' }).getAttribute('href')).toMatch(/\/menu\/c\/other$/);
     const events = screen.getByTestId('menu-section-catering-header');
-    expect(events.querySelector('.menu-cat-promo__img')?.getAttribute('src')).toContain('/media/events-banner.jpg');
-    expect(within(events).getByRole('button', { name: 'Share Event & catering menu' })).toBeInTheDocument();
-    expect(within(events).getByRole('link', { name: 'Open the Event & catering menu menu page' }).getAttribute('href')).toMatch(/\/menu\/c\/events$/);
     expect(within(events.closest('section') as HTMLElement).getByText('Buffet for 20')).toBeInTheDocument();
 
     const tab = screen.getByTestId('cat-rail-other');
     expect(tab).toHaveTextContent('Other, 2');
-    expect(tab.getAttribute('aria-selected')).toBe('false');
 
     const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
     window.matchMedia = vi.fn().mockReturnValue({ matches: false }) as unknown as typeof window.matchMedia;
     tab.click();
     await waitFor(() => expect(screen.getByTestId('cat-rail-other').getAttribute('aria-selected')).toBe('true'), { timeout: 4000 });
+    // The pinned banner wears the section like a category: the owner's
+    // picture, its name and a Share for its own page (owner, 2026-09-21).
+    const head = screen.getByTestId('menu-head');
+    expect(head.querySelector('.mh-img.is-on')?.getAttribute('style')).toContain('/media/other-banner.jpg');
+    expect(within(head).getByRole('button', { name: 'Share Other' })).toBeInTheDocument();
+
+    screen.getByTestId('cat-rail-events').click();
+    await waitFor(() => expect(within(head).getByRole('button', { name: 'Share Event & catering menu' })).toBeInTheDocument());
+    expect(head.querySelector('.mh-img.is-on')?.getAttribute('style')).toContain('/media/events-banner.jpg');
     expect(scrollTo).toHaveBeenCalled();
     scrollTo.mockRestore();
   });

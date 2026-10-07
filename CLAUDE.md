@@ -163,6 +163,20 @@ the keys; separate databases are what make a `cache:clear` on one site harmless 
 the other. `app:verify-production-config` cannot catch this — it only sees one
 environment — so it is a convention, not an enforced check.
 
+## Menu layout (website and order app)
+
+Owner, 2026-10-07. The rail lists main categories only. One banner, pinned
+under the header, shows the section in view (photo, name, count, Share,
+search icon) with its sub-categories as a row of buttons; the list underneath
+is continuous, each sub-category starting at a thin label with its own Share.
+Banner, buttons and rail highlight animate on scroll and tap (transform and
+opacity only, off under reduced motion); an "All" panel appears when the
+buttons do not fit. Website: `.mh` markup and script in `menu.blade.php`.
+Order app: `components/menu/MenuHead.tsx`. Keep the two in step. Shared links
+`/menu/c/{slug}` open the full menu at that category or sub-category
+(`data-menu-start`), with a preview built from its photo or a dish photo
+(`MenuPageController::sharedLink`).
+
 ## Variants are separate products in reports
 
 Owner, 2026-10-07: "variant should treat as a separate product". Every sales

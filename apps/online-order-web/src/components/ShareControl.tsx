@@ -10,6 +10,10 @@ export type ShareControlProps = {
   /** What this is, so the share can be counted (owner, 2026-09-24). Nothing personal is sent. */
   itemId?: number;
   categoryId?: number;
+  /** An icon instead of the word, for tight spots such as the menu banner. */
+  icon?: boolean;
+  /** Extra class on the trigger button. */
+  buttonClassName?: string;
 };
 
 export type ShareChannel = 'native' | 'copy' | 'whatsapp' | 'telegram' | 'viber' | 'facebook' | 'x';
@@ -35,7 +39,7 @@ export function reportShare(channel: ShareChannel, ref: { itemId?: number; categ
  * (Clipboard API, then a select-and-copy field) and encoded intent URLs.
  * Each share is reported once so the Social Hub can show what gets shared.
  */
-export function ShareControl({ url, title, text, ariaLabel, itemId, categoryId }: ShareControlProps) {
+export function ShareControl({ url, title, text, ariaLabel, itemId, categoryId, icon = false, buttonClassName }: ShareControlProps) {
   const shareText = text ?? title;
   const popoverId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -136,15 +140,21 @@ export function ShareControl({ url, title, text, ariaLabel, itemId, categoryId }
       <button
         ref={openBtnRef}
         type="button"
-        className="share-control-btn"
-        aria-label={ariaLabel}
+        className={`share-control-btn${icon ? ' share-control-btn--icon' : ''}${buttonClassName ? ` ${buttonClassName}` : ''}`}
+        aria-label={ariaLabel ?? (icon ? 'Share' : undefined)}
         onClick={onOpen}
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={popoverId}
         data-testid="share-open"
       >
-        Share
+        {icon ? (
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7" />
+            <path d="M16 6l-4-4-4 4" />
+            <path d="M12 2v13" />
+          </svg>
+        ) : 'Share'}
       </button>
       <div
         ref={popoverRef}

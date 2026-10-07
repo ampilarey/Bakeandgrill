@@ -165,21 +165,26 @@ describe('MenuPage subcategory sub-headers', () => {
       expect(screen.getAllByText('House Salad').length).toBeGreaterThan(0);
     });
 
+    // The parent's own dishes first, under its name, then each sub-category.
     const subBlocks = screen.getAllByTestId('menu-subcategory');
-    expect(subBlocks).toHaveLength(2);
-    expect(subBlocks[0]).toHaveAttribute('data-parent-category-id', '1');
+    expect(subBlocks).toHaveLength(3);
+    expect(subBlocks[0].id).toBe('menu-section-1-items');
     expect(subBlocks[1]).toHaveAttribute('data-parent-category-id', '1');
+    expect(subBlocks[2]).toHaveAttribute('data-parent-category-id', '1');
 
+    // A thin label each, with its count; a sub-category has its own Share.
     const titles = screen.getAllByTestId('menu-subcat-title');
-    expect(titles.map((t) => t.textContent)).toEqual(['Chicken', 'Beef']);
+    expect(titles.map((t) => t.firstChild?.textContent)).toEqual(['Grill', 'Chicken', 'Beef']);
+    expect(titles[1].querySelector('.menu-subcat-count')?.textContent).toMatch(/^\d+ items?$/);
+    expect(within(subBlocks[1]).getByRole('button', { name: 'Share Chicken' })).toBeInTheDocument();
+    expect(within(subBlocks[0]).queryByRole('button', { name: /Share/ })).toBeNull();
 
-    // Sub-title is lighter than the parent's banner title (class contract)
-    expect(titles[0].className).toContain('menu-subcat-title');
-    expect(titles[0].className).not.toContain('section-accent');
-    expect(document.querySelector('.menu-cat-promo__title')).toBeTruthy();
-
-    // The parent is named once, on its banner — not again above its items.
-    expect(screen.getAllByText('Grill')).toHaveLength(1);
+    // Under the pinned banner, the same three as buttons (owner, 2026-10-07:
+    // "sub category below the banner").
+    const chips = Array.from(document.querySelectorAll('.mh-chip')).map((c) => c.firstChild?.textContent);
+    expect(chips).toEqual(['Grill', 'Chicken', 'Beef']);
+    // The rail lists the category, not its sub-categories.
+    expect(document.querySelector('.cat-rail__sub')).toBeNull();
   });
 
   /** Owner, 2026-09-03: "can an item be in 2 categories?" — home plus "also show in". */
@@ -197,11 +202,12 @@ describe('MenuPage subcategory sub-headers', () => {
     // card in each block, rendered exactly as its neighbours are.
     const subBlocks = screen.getAllByTestId('menu-subcategory');
     const inBlock = (i: number, name: string) => within(subBlocks[i]).queryAllByText(name).length;
-    expect(inBlock(0, 'Mixed Skewer')).toBeGreaterThan(0);
-    expect(inBlock(0, 'Mixed Skewer')).toBe(inBlock(0, 'Chicken Skewer'));
-    expect(inBlock(1, 'Mixed Skewer')).toBe(inBlock(1, 'Beef Grill'));
+    // Block 0 is the parent's own dishes; Chicken is 1, Beef is 2.
+    expect(inBlock(1, 'Mixed Skewer')).toBeGreaterThan(0);
+    expect(inBlock(1, 'Mixed Skewer')).toBe(inBlock(1, 'Chicken Skewer'));
+    expect(inBlock(2, 'Mixed Skewer')).toBe(inBlock(2, 'Beef Grill'));
     // A home-only item stays in its own block.
-    expect(inBlock(1, 'Chicken Skewer')).toBe(0);
-    expect(inBlock(0, 'Beef Grill')).toBe(0);
+    expect(inBlock(2, 'Chicken Skewer')).toBe(0);
+    expect(inBlock(1, 'Beef Grill')).toBe(0);
   });
 });

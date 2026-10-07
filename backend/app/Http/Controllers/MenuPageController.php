@@ -65,14 +65,15 @@ class MenuPageController extends Controller
     }
 
     /**
-     * One category on its own, for sharing.
+     * A shared category or sub-category link.
      *
-     * Owner, 2026-09-21: "Is there any way that I can share a category in
-     * the menu? When opened only that category shows but option to see full
-     * menu." The same page as /menu — same cards, same sheet, same sold-out
-     * marks — with the other categories, the rail and the offers left out,
-     * a line saying what is being shown, and a way back to everything. A
-     * sub-category shows under its parent's band with its siblings left out.
+     * Owner, 2026-09-21: "Is there any way that I can share a category in the
+     * menu?" These links used to open a page with that category alone. Since
+     * the menu redesign (owner, 2026-10-07: "start based on ur
+     * recommendation") the link opens the whole menu already at that place,
+     * with its button lit, so the person can keep browsing. The address stays
+     * the same, so links shared before still work, and each one still gets
+     * its own title, text and picture in a chat's link preview.
      */
     public function category(string $category): View
     {
@@ -83,9 +84,8 @@ class MenuPageController extends Controller
         if ($row !== null) {
             return $this->renderMenu($row);
         }
-        // The two sections that are not categories share the same page shape
-        // (owner, 2026-09-21: "same type banner as a category and option to
-        // share and open same way"). A real category with either slug wins.
+        // The two sections that are not categories have links of their own too.
+        // A real category with either slug wins.
         if (array_key_exists($category, self::SECTION_NAMES)) {
             return $this->renderMenu(null, $category);
         }
@@ -93,114 +93,41 @@ class MenuPageController extends Controller
         abort(404);
     }
 
-    /** The menu's two sections that are not categories, by the slug of their page. */
+    /** The menu's two sections that are not categories, by the slug of their link. */
     public const SECTION_NAMES = [
         'other' => 'Other',
         'events' => 'Event & catering menu',
     ];
-
-    /**
-     * The pages either side of this one, for "← Shorteats · Fast food →" at
-     * the foot of a category's page. Top-level pages run in menu order —
-     * every parent, Other, Events; a sub-category's page steps through its
-     * siblings. Each side is a Category, 'other', 'events' or null.
-     *
-     * @param Collection<int, array{category: ?Category, items: Collection<int, Item>, subcategories: list<array{category: Category, items: Collection<int, Item>}>}> $railGroups
-     * @return array{prev: Category|string|null, next: Category|string|null}
-     */
-    private function neighbours(Collection $railGroups, bool $hasEvents, ?Category $only, ?string $section): array
-    {
-        if ($only !== null && $only->parent_id !== null) {
-            $parentGroup = $railGroups->first(fn (array $g) => $g['category'] !== null && (int) $g['category']->id === (int) $only->parent_id);
-            $ring = collect($parentGroup['subcategories'] ?? [])->map(fn (array $sub) => $sub['category']);
-            $index = $ring->search(fn (Category $c) => (int) $c->id === (int) $only->id);
-        } else {
-            $ring = $railGroups->map(fn (array $g) => $g['category'] ?? 'other');
-            if ($hasEvents) {
-                $ring->push('events');
-            }
-            $index = $ring->search(fn ($entry) => $section !== null
-                ? $entry === $section
-                : ($entry instanceof Category && (int) $entry->id === (int) $only->id));
-        }
-        if ($index === false) {
-            return ['prev' => null, 'next' => null];
-        }
-        $ring = $ring->values();
-
-        return [
-            'prev' => $index > 0 ? $ring[$index - 1] : null,
-            'next' => $index < $ring->count() - 1 ? $ring[$index + 1] : null,
-        ];
-    }
 
     /** The link a category is shared by: its slug when it has one, else its id. */
     public static function categoryUrl(Category $category): string
     {
         $slug = trim((string) ($category->slug ?? ''));
 
-        return url('/menu/c/' . ($slug !== '' ? $slug : $category->id));
+        return url('/menu/c/'.($slug !== '' ? $slug : $category->id));
     }
 
-    private function renderMenu(?Category $only, ?string $section = null): View
+    /**
+     * @param  Category|null  $start  the category a shared link points at
+     * @param  string|null  $section  'other' or 'events' for those sections' links
+     */
+    private function renderMenu(?Category $start, ?string $section = null): View
     {
         $items = $this->menuItems();
         $categories = $this->activeCategories();
         $offers = collect(app(OffersService::class)->activeOffers());
 
-        // The rail lists the whole menu on every page. On a category's own
-        // page each entry opens that category's page instead of scrolling
-        // (owner, 2026-09-21: "adding rails same as menu? When clicked only
-        // that category shows").
-        [$railCatering, $railRegular] = $items->partition(fn (Item $item) => $this->isCateringItem($item, $categories));
-        $railGroups = $this->groupByParent($railRegular->values(), $categories);
-        $railCateringCount = $railCatering->count();
+        // Hand-picked dishes ahead of the categories (owner, 2026-09-21).
+        $featured = $items->filter(fn (Item $item) => (bool) $item->is_featured)->values();
 
-        // Hand-picked dishes ahead of the categories, on the full menu only
-        // (owner, 2026-09-21: "any specific category to show at the top?").
-        // A category's own page is that category alone, as with offers.
-        $featured = ($section === null && $only === null)
-            ? $items->filter(fn (Item $item) => (bool) $item->is_featured)->values()
-            : collect();
+        // Event and catering dishes get their own section at the end, as in
+        // the order app, and leave their category (a bare "Events" parent
+        // would otherwise be a second copy of the same list).
+        [$catering, $regular] = $items->partition(fn (Item $item) => $this->isCateringItem($item, $categories));
+        $groups = $this->groupByParent($regular->values(), $categories);
 
-        if ($section !== null) {
-            [$catering, $regular] = $items->partition(fn (Item $item) => $this->isCateringItem($item, $categories));
-            if ($section === 'events') {
-                $groups = collect();
-                $items = $catering->values();
-            } else {
-                // The leftover bucket alone: groupByParent's group with no category.
-                $groups = $this->groupByParent($regular->values(), $categories)
-                    ->filter(fn (array $group) => $group['category'] === null)->values();
-                $items = $groups->flatMap(fn (array $group) => $group['items'])->values();
-                $catering = collect();
-            }
-            $offers = collect();
-        } elseif ($only !== null) {
-            // The category and its children, or a sub-category and its parent
-            // (for the band). Nothing else, so an "also show in" placement
-            // elsewhere does not drag another section in.
-            $family = $categories->filter(fn (Category $c) => (int) $c->id === (int) $only->id
-                || (int) $c->parent_id === (int) $only->id);
-            $ids = $family->keys()->map(fn ($id) => (int) $id)->all();
-            $items = $items->filter(fn (Item $item) => in_array((int) $item->category_id, $ids, true)
-                || array_intersect($ids, $item->extraCategoryIds()) !== [])->values();
-            $categories = $categories->filter(fn (Category $c) => in_array((int) $c->id, $ids, true)
-                || ($only->parent_id !== null && (int) $c->id === (int) $only->parent_id));
-            $offers = collect();
-
-            $parentOfOnly = $only->parent_id ? $categories->get((int) $only->parent_id) : null;
-            $isEvents = self::categoryLooksLikeCatering($only->name)
-                || ($parentOfOnly !== null && self::categoryLooksLikeCatering($parentOfOnly->name));
-            $catering = $isEvents ? $items : collect();
-            $groups = $isEvents ? collect() : $this->groupByParent($items, $categories);
-        } else {
-            // Event and catering dishes get their own section at the end, as in
-            // the order app, and leave their category (a bare "Events" parent
-            // would otherwise be a second copy of the same list).
-            [$catering, $regular] = $items->partition(fn (Item $item) => $this->isCateringItem($item, $categories));
-            $groups = $this->groupByParent($regular->values(), $categories);
-        }
+        $photos = $this->displayPhotos($items);
+        [$startAnchor, $share] = $this->sharedLink($start, $section, $groups, $catering, $categories, $photos);
 
         $pricing = app(SpecialPricingService::class);
         $specialsByItemId = $this->indexSpecialsByItem($pricing->activeSpecialsForDisplay());
@@ -209,18 +136,8 @@ class MenuPageController extends Controller
             'menuCategories' => $groups,
             'menuItemCount' => $items->count(),
             'menuCatering' => $catering->values(),
-            'menuOnlyCategory' => $only ?? $section,
-            'menuOnlyCategoryName' => $only?->name ?? ($section !== null ? self::SECTION_NAMES[$section] : null),
-            'menuRailGroups' => $railGroups,
-            'menuRailCateringCount' => $railCateringCount,
-            'menuNeighbours' => ($only !== null || $section !== null)
-                ? $this->neighbours($railGroups, $railCateringCount > 0, $only, $section)
-                : null,
-            'menuRailActive' => [
-                'category' => $only?->id,
-                'parent' => $only?->parent_id,
-                'section' => $section,
-            ],
+            'menuStart' => $startAnchor,
+            'menuShare' => $share,
             'menuCategoryUrls' => $this->activeCategories()->map(fn (Category $c) => self::categoryUrl($c))->all()
                 + ['other' => url('/menu/c/other'), 'events' => url('/menu/c/events')],
             'menuSectionBanners' => [
@@ -235,7 +152,7 @@ class MenuPageController extends Controller
             'menuPriceByItemId' => $this->effectivePrices($items),
             'menuNewItemIds' => app(NewMenuItemService::class)->newItemIds(),
             'menuBundles' => app(BundleSummaryService::class)->forItems($items),
-            'menuPhotos' => $this->displayPhotos($items),
+            'menuPhotos' => $photos,
             'menuDietaryFilters' => $this->dietaryFilters($items),
             'favouriteIds' => $this->favouriteItemIds(),
             // Passed in rather than read from the layout: a child view's
@@ -243,6 +160,114 @@ class MenuPageController extends Controller
             // the layout defines in its own @php block is not in scope here.
             'menuLocale' => $this->menuLocale(),
         ]);
+    }
+
+    /**
+     * Where a shared link lands, and what its link preview says.
+     *
+     * The anchor is the section or sub-category block the page scrolls to on
+     * load. The preview (owner, 2026-10-07, "better previews") is the
+     * category's own photo, or for a sub-category without one a photo of one
+     * of its dishes, then the parent's photo; and a line like "Fast food: 12
+     * dishes from MVR 12.00".
+     *
+     * @param  Collection<int, array{category: ?Category, items: Collection<int, Item>, subcategories: list<array{category: Category, items: Collection<int, Item>}>}>  $groups
+     * @param  array<int, array<string, mixed>>  $photos
+     * @return array{0: ?string, 1: ?array{name: string, description: string, image: ?string}}
+     */
+    private function sharedLink(?Category $start, ?string $section, Collection $groups, Collection $catering, Collection $categories, array $photos): array
+    {
+        if ($start === null && $section === null) {
+            return [null, null];
+        }
+
+        // An Events / Catering category's dishes live in the Event & catering
+        // section, not under their category, so its link lands there.
+        $isEvents = $start !== null
+            && (self::categoryLooksLikeCatering($start->name) || self::categoryLooksLikeCatering($categories->get((int) $start->parent_id)?->name))
+            && ! $groups->contains(fn (array $g) => $this->groupHolds($g, $start));
+        if ($section === 'events' || $isEvents) {
+            $name = $start?->name ?? self::SECTION_NAMES['events'];
+
+            return ['cat-events', $this->previewFor($name, $catering, [content('menu_events_banner_image')], $photos)];
+        }
+        if ($section === 'other') {
+            $group = $groups->first(fn (array $g) => $g['category'] === null);
+
+            return [$group ? 'cat-other' : null, $this->previewFor(self::SECTION_NAMES['other'], $group['items'] ?? collect(), [content('menu_other_banner_image')], $photos)];
+        }
+
+        $parent = $start->parent_id ? $categories->get((int) $start->parent_id) : null;
+        $items = collect();
+        foreach ($groups as $group) {
+            if ($group['category'] !== null && (int) $group['category']->id === (int) $start->id) {
+                $items = $group['items']->concat(collect($group['subcategories'])->flatMap(fn (array $sub) => $sub['items']));
+            }
+            foreach ($group['subcategories'] as $sub) {
+                if ((int) $sub['category']->id === (int) $start->id) {
+                    $items = $sub['items'];
+                }
+            }
+        }
+        $images = $start->parent_id === null
+            ? [$start->image_url]
+            : [$start->image_url, null, $parent?->image_url];
+
+        return ['cat-'.$start->id, $this->previewFor((string) $start->name, $items, $images, $photos, $start->parent_id !== null)];
+    }
+
+    /** @param array{category: ?Category, items: Collection<int, Item>, subcategories: list<array{category: Category, items: Collection<int, Item>}>} $group */
+    private function groupHolds(array $group, Category $category): bool
+    {
+        if ($group['category'] !== null && (int) $group['category']->id === (int) $category->id) {
+            return true;
+        }
+
+        return collect($group['subcategories'])->contains(fn (array $sub) => (int) $sub['category']->id === (int) $category->id);
+    }
+
+    /**
+     * @param  list<?string>  $images  candidates in order; a null slot means "a photo of one of its dishes"
+     * @param  array<int, array<string, mixed>>  $photos
+     * @return array{name: string, description: string, image: ?string}
+     */
+    private function previewFor(string $name, Collection $items, array $images, array $photos, bool $dishFirst = false): array
+    {
+        $previews = app(SocialPreviewImage::class);
+        $dishPhoto = function () use ($items, $photos, $previews): ?string {
+            foreach ($items as $item) {
+                $url = $photos[$item->id]['full'] ?? null;
+                if (($photos[$item->id]['placeholder'] ?? false) || ! is_string($url) || $url === '') {
+                    continue;
+                }
+                if ($previews->isShareableRaster($url)) {
+                    return $url;
+                }
+            }
+
+            return null;
+        };
+        $image = null;
+        foreach ($images as $candidate) {
+            $url = $candidate === null ? $dishPhoto() : \App\Support\PublicMediaUrl::absolute((string) $candidate);
+            if ($url !== null && $url !== '' && $previews->isShareableRaster($url)) {
+                $image = $url;
+                break;
+            }
+        }
+        if ($image === null && ! $dishFirst) {
+            $image = $dishPhoto();
+        }
+
+        $count = $items->count();
+        $prices = $items->map(fn (Item $item) => (float) ($item->displayPriceInfo()['price'] ?? 0))->filter(fn (float $p) => $p > 0);
+        $description = $count > 0
+            ? $name.': '.$count.' '.Str::plural('dish', $count)
+                .($prices->isNotEmpty() ? ' from MVR '.number_format($prices->min(), 2) : '')
+                .'. Freshly made in Malé at Bake & Grill.'
+            : 'The '.$name.(Str::contains(Str::lower($name), 'menu') ? '' : ' menu').' at Bake & Grill, freshly made in Malé.';
+
+        return ['name' => $name, 'description' => $description, 'image' => $image];
     }
 
     /**
@@ -311,7 +336,7 @@ class MenuPageController extends Controller
 
         return response($imposed, 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="' . $data['bookletFilename'] . '"',
+            'Content-Disposition' => 'attachment; filename="'.$data['bookletFilename'].'"',
         ]);
     }
 
@@ -388,7 +413,7 @@ class MenuPageController extends Controller
         $size = $data['paper'] === 'a5' ? 6.5 : 7.5;
         $mm = 72 / 25.4;
         $colour = [0.42, 0.36, 0.31];
-        $left = $data['brand'] . '  ·  ' . $data['menuUrl'] . '  ·  Prices in MVR, may change';
+        $left = $data['brand'].'  ·  '.$data['menuUrl'].'  ·  Prices in MVR, may change';
         $booklet = (bool) ($data['booklet'] ?? false);
 
         $canvas->page_script(function (int $pageNumber, int $pageCount, $canvas) use ($left, $font, $size, $mm, $colour, $metrics, $booklet): void {
@@ -425,9 +450,9 @@ class MenuPageController extends Controller
         $runs = [];
         for ($day = 0; $day < 7; $day++) {
             $row = $hours[$day] ?? null;
-            $text = (!is_array($row) || ($row['closed'] ?? false) || empty($row['open']) || empty($row['close']))
+            $text = (! is_array($row) || ($row['closed'] ?? false) || empty($row['open']) || empty($row['close']))
                 ? 'Closed'
-                : $row['open'] . '–' . $row['close'];
+                : $row['open'].'–'.$row['close'];
             $last = $runs !== [] ? array_key_last($runs) : null;
             if ($last !== null && $runs[$last]['text'] === $text) {
                 $runs[$last]['to'] = $day;
@@ -440,7 +465,7 @@ class MenuPageController extends Controller
         }
 
         return array_map(
-            fn (array $run) => ($run['from'] === $run['to'] ? $names[$run['from']] : $names[$run['from']] . '–' . $names[$run['to']]) . ' ' . $run['text'],
+            fn (array $run) => ($run['from'] === $run['to'] ? $names[$run['from']] : $names[$run['from']].'–'.$names[$run['to']]).' '.$run['text'],
             $runs,
         );
     }
@@ -448,9 +473,9 @@ class MenuPageController extends Controller
     /**
      * Everything both the screen sheet and the PDF need, built once.
      *
-     * @param Collection<int, Item> $items
-     * @param Collection<int, Category> $categories
-     * @param array{style: string, paper: string, orient: string, dv: bool} $options
+     * @param  Collection<int, Item>  $items
+     * @param  Collection<int, Category>  $categories
+     * @param  array{style: string, paper: string, orient: string, dv: bool}  $options
      * @return array<string, mixed>
      */
     private function printData(Collection $items, Collection $categories, array $options): array
@@ -468,7 +493,7 @@ class MenuPageController extends Controller
             'paper' => $options['paper'],
             'orient' => $options['orient'],
             // For @page and the on-screen sheet: "A4 landscape" and its mm.
-            'pageSize' => strtoupper($options['paper']) . ' ' . $options['orient'],
+            'pageSize' => strtoupper($options['paper']).' '.$options['orient'],
             'pageWidthMm' => $this->paperWidthMm($options['paper'], $options['orient']),
             'columns' => $columns,
             // dompdf has no CSS columns, so the PDF's columns are a table with
@@ -532,7 +557,7 @@ class MenuPageController extends Controller
      * roughly the same number of rows. A category is never split, so a
      * heading always sits over its own dishes.
      *
-     * @param Collection<int, array{category: ?Category, items: Collection<int, Item>, subcategories: list<array{category: Category, items: Collection<int, Item>}>}> $groups
+     * @param  Collection<int, array{category: ?Category, items: Collection<int, Item>, subcategories: list<array{category: Category, items: Collection<int, Item>}>}>  $groups
      * @return list<list<array{category: ?Category, items: Collection<int, Item>, subcategories: list<array{category: Category, items: Collection<int, Item>}>}>>
      */
     private function dealAcrossColumns(Collection $groups, int $columns): array
@@ -575,7 +600,7 @@ class MenuPageController extends Controller
      * its right-hand cell. Short rows break wherever they like, so the
      * columns flow down the pages together.
      *
-     * @param list<list<array{category: ?Category, items: Collection<int, Item>, subcategories: list<array{category: Category, items: Collection<int, Item>}>}>> $columnGroups
+     * @param  list<list<array{category: ?Category, items: Collection<int, Item>, subcategories: list<array{category: Category, items: Collection<int, Item>}>}>>  $columnGroups
      * @return list<list<array{kind: string, text?: string, item?: Item}|null>>
      */
     private function columnRows(array $columnGroups): array
@@ -650,7 +675,7 @@ class MenuPageController extends Controller
         $path = parse_url($raw, PHP_URL_PATH) ?: $raw;
         $file = public_path(ltrim((string) $path, '/'));
 
-        if (!is_file($file) || !is_readable($file)) {
+        if (! is_file($file) || ! is_readable($file)) {
             return null;
         }
 
@@ -673,7 +698,7 @@ class MenuPageController extends Controller
             return null;
         }
 
-        return 'data:' . $mime . ';base64,' . base64_encode((string) file_get_contents($file));
+        return 'data:'.$mime.';base64,'.base64_encode((string) file_get_contents($file));
     }
 
     /**
@@ -685,7 +710,7 @@ class MenuPageController extends Controller
      * `effectiveVariantPrices`, the same helper the single-item page uses, so
      * a discounted size cannot print at one price here and another there.
      *
-     * @param Collection<int, Item> $items
+     * @param  Collection<int, Item>  $items
      * @return array<int, list<array{name: string, price: float, was: ?float}>>
      */
     private function variantPrices(Collection $items): array
@@ -693,7 +718,7 @@ class MenuPageController extends Controller
         $out = [];
 
         foreach ($items as $item) {
-            if (!$item->has_variants || !$item->relationLoaded('variants')) {
+            if (! $item->has_variants || ! $item->relationLoaded('variants')) {
                 continue;
             }
 
@@ -701,7 +726,7 @@ class MenuPageController extends Controller
 
             $rows = [];
             foreach ($item->variants->where('is_active', true)->sortBy('sort_order') as $variant) {
-                if (!isset($priced[$variant->id])) {
+                if (! isset($priced[$variant->id])) {
                     continue;
                 }
                 $rows[] = ['name' => (string) $variant->name] + $priced[$variant->id];
@@ -743,7 +768,7 @@ class MenuPageController extends Controller
         // Retired and deleted dishes are simply off. A live one is asked the
         // same question the order app asks — stock, ingredients, the Sold out
         // toggle — so the page never offers what the kitchen cannot make.
-        $verdict = (!$row->trashed() && $row->is_active)
+        $verdict = (! $row->trashed() && $row->is_active)
             ? app(ItemAvailabilityService::class)->checkAnyChannel($row)
             : null;
         $available = $verdict?->allowed ?? false;
@@ -824,7 +849,7 @@ class MenuPageController extends Controller
      * filed under a category — or a sub-category of one — named Catering or
      * Events.
      *
-     * @param Collection<int, Category> $categories
+     * @param  Collection<int, Category>  $categories
      */
     private function isCateringItem(Item $item, Collection $categories): bool
     {
@@ -854,7 +879,7 @@ class MenuPageController extends Controller
      * card wears. The order app's own vocabulary: "Sold out" when the kitchen
      * has run out or switched it off, "Unavailable today" for a snooze.
      *
-     * @param Collection<int, Item> $items
+     * @param  Collection<int, Item>  $items
      * @return array<int, string>
      */
     private function soldOutLabels(Collection $items): array
@@ -864,7 +889,7 @@ class MenuPageController extends Controller
         $out = [];
         foreach ($items as $item) {
             $verdict = $availability->checkAnyChannel($item);
-            if (!$verdict->allowed) {
+            if (! $verdict->allowed) {
                 $out[$item->id] = $this->unavailableLabel($verdict);
             }
         }
@@ -889,7 +914,7 @@ class MenuPageController extends Controller
      */
     private function soldOutSizes(Item $item): array
     {
-        if (!$item->has_variants || $item->trashed()) {
+        if (! $item->has_variants || $item->trashed()) {
             return [];
         }
 
@@ -926,8 +951,8 @@ class MenuPageController extends Controller
      * Mirrors MenuViewPage: the rail lists parents only. A subcategory that
      * used to render as its own top-level section now sits under its parent.
      *
-     * @param Collection<int, Item> $items
-     * @param Collection<int, Category> $categories
+     * @param  Collection<int, Item>  $items
+     * @param  Collection<int, Category>  $categories
      * @return Collection<int, array{category: ?Category, items: Collection<int, Item>, subcategories: list<array{category: Category, items: Collection<int, Item>}>}>
      */
     private function groupByParent(Collection $items, Collection $categories): Collection
@@ -1013,7 +1038,7 @@ class MenuPageController extends Controller
      * No N+1: both underlying resolvers read memoised/cached maps rather than
      * querying per item, and variants are eager-loaded by menuItems().
      *
-     * @param Collection<int, Item> $items
+     * @param  Collection<int, Item>  $items
      * @return array<int, array{price: float, was: float|null, from: bool}>
      */
     private function effectivePrices(Collection $items): array
@@ -1076,7 +1101,7 @@ class MenuPageController extends Controller
     }
 
     /**
-     * @param list<array<string, mixed>> $rows
+     * @param  list<array<string, mixed>>  $rows
      * @return array<int, list<array<string, mixed>>>
      */
     private function indexSpecialsByItem(array $rows): array
@@ -1104,11 +1129,11 @@ class MenuPageController extends Controller
      * results and a 400px thumb is a downgrade on what the schema used to
      * carry.
      *
-     * @param Collection<int, Item> $items
+     * @param  Collection<int, Item>  $items
      * @return array<int, array{url: ?string, webp: ?string, full: ?string, placeholder: bool}>
      */
     /**
-     * @param Collection<int, Item> $items
+     * @param  Collection<int, Item>  $items
      * @return array<int, array{url: ?string, webp: ?string, full: ?string, placeholder: bool}>
      */
     private function displayPhotos(Collection $items): array
@@ -1151,7 +1176,7 @@ class MenuPageController extends Controller
      */
     private function categoryAlternatives(Item $item): Collection
     {
-        if (!$item->category_id) {
+        if (! $item->category_id) {
             return collect();
         }
 
@@ -1186,7 +1211,7 @@ class MenuPageController extends Controller
      * "gluten-free" must collapse to one chip. Same normalisation as
      * normalizeDietaryTag() in apps/online-order-web/src/pages/MenuPage.tsx.
      *
-     * @param Collection<int, Item> $items
+     * @param  Collection<int, Item>  $items
      * @return list<array{slug: string, label: string}>
      */
     private function dietaryFilters(Collection $items): array
@@ -1238,7 +1263,7 @@ class MenuPageController extends Controller
     private function favouriteItemIds(): array
     {
         $customerId = Auth::guard('customer')->id();
-        if (!$customerId) {
+        if (! $customerId) {
             return [];
         }
 

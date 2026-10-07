@@ -178,13 +178,16 @@
     <meta property="og:title" content="@yield('title', e($metaTitle))">
     <meta property="og:description" content="@yield('description', e($metaDesc))">
     @php
-        $pageOgImage = trim($__env->yieldContent('og_image'));
+        // @section('x', $value) has already escaped its value; decode it so
+        // the echo below does not escape it a second time (&amp;amp;).
+        $yieldPlain = fn (string $name) => html_entity_decode(trim($__env->yieldContent($name)), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $pageOgImage = $yieldPlain('og_image');
         $pageOgImage = $pageOgImage !== '' ? $pageOgImage : $ogImage;
-        $pageOgAlt = trim($__env->yieldContent('og_image_alt'));
+        $pageOgAlt = $yieldPlain('og_image_alt');
         $pageOgAlt = $pageOgAlt !== '' ? $pageOgAlt : $siteName;
-        $pageOgUrl = trim($__env->yieldContent('og_url'));
+        $pageOgUrl = $yieldPlain('og_url');
         $pageOgUrl = $pageOgUrl !== '' ? $pageOgUrl : url()->current();
-        $pageTwitterImage = trim($__env->yieldContent('twitter_image'));
+        $pageTwitterImage = $yieldPlain('twitter_image');
         $pageTwitterImage = $pageTwitterImage !== '' ? $pageTwitterImage : $pageOgImage;
     @endphp
     <meta property="og:image" content="{{ $pageOgImage }}">

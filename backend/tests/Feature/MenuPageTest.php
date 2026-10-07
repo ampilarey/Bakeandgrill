@@ -53,7 +53,7 @@ class MenuPageTest extends TestCase
             'category_id' => $category->id,
             'name' => $name,
             'base_price' => $price,
-            'sku' => 'MENU-' . strtoupper(substr(md5($name), 0, 6)),
+            'sku' => 'MENU-'.strtoupper(substr(md5($name), 0, 6)),
             'is_active' => true,
             'is_available' => true,
         ], $attrs));
@@ -118,8 +118,8 @@ class MenuPageTest extends TestCase
 
         $this->get('/menu')
             ->assertOk()
-            ->assertSee('/menu/' . $item->id, false)
-            ->assertDontSee('/order/menu?item=' . $item->id, false);
+            ->assertSee('/menu/'.$item->id, false)
+            ->assertDontSee('/order/menu?item='.$item->id, false);
     }
 
     public function test_a_sold_out_dish_stays_on_the_page_dimmed_and_a_retired_one_does_not(): void
@@ -144,7 +144,7 @@ class MenuPageTest extends TestCase
         $this->assertStringContainsString('menu-card menu-card--sold-out', $html);
         $this->assertStringContainsString('<span class="menu-badge-soldout">Sold out</span>', $html);
         // Still a link: the details are what the customer taps for.
-        $this->assertStringContainsString('href="/menu/' . $soldOut->id . '"', $html);
+        $this->assertStringContainsString('href="/menu/'.$soldOut->id.'"', $html);
         // And the structured data says so rather than advertising it.
         $this->assertStringContainsString('https://schema.org/SoldOut', $html);
     }
@@ -169,13 +169,13 @@ class MenuPageTest extends TestCase
         $this->assertStringContainsString('<span class="menu-badge-soldout">Unavailable today</span>', $html);
 
         // The item page agrees, with the reason rather than a generic line.
-        $page = $this->get('/menu/' . $gone->id)->assertOk();
+        $page = $this->get('/menu/'.$gone->id)->assertOk();
         $page->assertSee('data-testid="item-unavailable"', false);
         $page->assertSee('<p>Sold out</p>', false);
         $page->assertSee('We have run out for now', false);
-        $page->assertDontSee('/order/menu?item=' . $gone->id, false);
+        $page->assertDontSee('/order/menu?item='.$gone->id, false);
 
-        $this->get('/menu/' . $snoozed->id)->assertOk()->assertSee('<p>Unavailable today</p>', false);
+        $this->get('/menu/'.$snoozed->id)->assertOk()->assertSee('<p>Unavailable today</p>', false);
     }
 
     public function test_event_dishes_sit_in_their_own_section_and_the_events_pill_scrolls_to_it(): void
@@ -201,15 +201,15 @@ class MenuPageTest extends TestCase
         $this->assertStringContainsString('Event &amp; catering menu', $html);
         $this->assertStringContainsString('href="/order/events" class="btn-outline" data-testid="menu-events-plan"', $html);
         // The Events category is not a second, ordinary section.
-        $this->assertStringNotContainsString('id="cat-' . $events->id . '"', $html);
+        $this->assertStringNotContainsString('id="cat-'.$events->id.'"', $html);
 
-        preg_match('#<section class="menu-cat-section menu-cat-section--events".*?</section>#s', $html, $section);
+        preg_match('#<section class="menu-sec menu-cat-section menu-cat-section--events".*?</section>#s', $html, $section);
         $this->assertNotEmpty($section, 'the event section must be in the HTML');
         $this->assertStringContainsString('Buffet for 20', $section[0]);
         $this->assertStringContainsString('Party Platter', $section[0]);
         $this->assertStringNotContainsString('Bajiya', $section[0]);
-        $this->assertSame(1, substr_count($html, 'href="/menu/' . $buffet->id . '"'));
-        $this->assertSame(1, substr_count($html, 'href="/menu/' . $platter->id . '"'));
+        $this->assertSame(1, substr_count($html, 'href="/menu/'.$buffet->id.'"'));
+        $this->assertSame(1, substr_count($html, 'href="/menu/'.$platter->id.'"'));
 
         preg_match('#<nav class="menu-rail".*?</nav>#s', $html, $rail);
         $this->assertStringContainsString('href="#cat-events"', $rail[0]);
@@ -228,10 +228,11 @@ class MenuPageTest extends TestCase
         $this->assertNotContains('Events', $names);
     }
 
-    public function test_a_category_can_be_shared_on_its_own_page_with_a_way_back(): void
+    public function test_a_shared_category_link_opens_the_full_menu_at_that_category(): void
     {
-        // Owner, 2026-09-21: "share a category in the menu? When opened only
-        // that category shows but option to see full menu."
+        // Owner, 2026-10-07: shared links open the full menu, positioned at
+        // the category or sub-category, with a preview made from its photo.
+        // (They used to open a page with that category alone.)
         $food = $this->category('Shorteats', 1);
         $drinks = $this->category('Drinks', 2);
         $hot = Category::create(['name' => 'Hot Drinks', 'slug' => 'hot-drinks', 'is_active' => true, 'sort_order' => 1, 'parent_id' => $drinks->id]);
@@ -243,60 +244,48 @@ class MenuPageTest extends TestCase
         $html = $this->get('/menu/c/drinks')->assertOk()->getContent();
 
         $this->assertStringContainsString('<title>Drinks – Menu – Bake &amp; Grill</title>', $html);
-        // Back and Share in one top row, then a hero for the category, then
-        // its sub-categories as chips (owner, 2026-09-21: "the layout of each
-        // category page needs enhancement").
-        $this->assertStringContainsString('data-testid="menu-only-category"', $html);
-        $this->assertStringContainsString('href="/menu" class="menu-only-back"', $html);
-        // The top row stands above the rail and the dishes alike.
-        preg_match('#<div class="menu-only-top-wrap">.*?<div class="menu-shell#s', $html, $top);
-        $this->assertNotEmpty($top);
-        $this->assertStringContainsString('aria-label="Share Drinks"', $top[0]);
-        $this->assertStringContainsString('class="menu-shell menu-shell--single"', $html);
-        preg_match('#<header class="menu-cat-hero".*?</header>#s', $html, $hero);
-        $this->assertNotEmpty($hero, 'the hero must be in the HTML');
-        $this->assertStringContainsString('>Drinks</h2>', $hero[0]);
-        $this->assertStringContainsString('2 dishes', $hero[0]);
-        $this->assertStringContainsString('href="#cat-' . $hot->id . '" class="menu-chip"', $html);
-        $this->assertStringContainsString('href="#cat-' . $cold->id . '" class="menu-chip"', $html);
-        // No band under the hero repeating the name, and the way on at the foot.
-        $this->assertStringNotContainsString('class="menu-cat-band"', $html);
-        $this->assertStringContainsString('data-testid="category-neighbours"', $html);
-        $this->assertStringContainsString('href="http://localhost:8000/menu/c/shorteats" rel="prev"', $html);
-        // The rail stays (owner, 2026-09-21: "adding rails same as menu? When
-        // clicked only that category shows"): every entry opens that
-        // category's own page, and the current one is lit.
-        preg_match('#<nav class="menu-rail".*?</nav>#s', $html, $rail);
-        $this->assertNotEmpty($rail);
-        $this->assertStringContainsString('href="http://localhost:8000/menu/c/shorteats"', $rail[0]);
-        $this->assertStringContainsString('href="http://localhost:8000/menu/c/drinks" class="is-active"', $rail[0]);
-        $this->assertStringContainsString('href="http://localhost:8000/menu/c/hot-drinks"', $rail[0]);
-        $this->assertStringNotContainsString('href="#cat-', $rail[0]);
+        $this->assertStringContainsString('data-menu-start="cat-'.$drinks->id.'"', $html);
+        $this->assertStringContainsString('<meta name="description" content="Drinks: 2 dishes from MVR 10.00. Freshly made in Malé at Bake &amp; Grill.">', $html);
+        // The whole menu is there, not just the category.
+        $this->assertStringContainsString('Bajiya', $html);
         $this->assertStringContainsString('Black Tea', $html);
         $this->assertStringContainsString('Lime Juice', $html);
-        $this->assertStringNotContainsString('Bajiya', $html);
-        $this->assertStringNotContainsString('id="cat-' . $food->id . '"', $html);
+        $this->assertStringContainsString('id="cat-'.$food->id.'"', $html);
+        $this->assertStringNotContainsString('menu-only-category', $html);
+        $this->assertStringNotContainsString('category-neighbours', $html);
+        // The rail is the menu's own: in-page anchors, main categories only.
+        preg_match('#<nav class="menu-rail".*?</nav>#s', $html, $rail);
+        $this->assertStringContainsString('href="#cat-'.$drinks->id.'"', $rail[0]);
+        $this->assertStringNotContainsString('href="#cat-'.$hot->id.'"', $rail[0]);
 
-        // A sub-category: under its parent band, without its siblings.
+        // A sub-category lands on its own label inside its parent.
         $sub = $this->get('/menu/c/cold-drinks')->assertOk()->getContent();
-        preg_match('#<header class="menu-cat-hero".*?</header>#s', $sub, $subHero);
-        $this->assertStringContainsString('>Cold Drinks</h2>', $subHero[0]);
-        $this->assertStringContainsString('Lime Juice', $sub);
-        $this->assertStringNotContainsString('Black Tea', $sub);
-        // Its own title is the hero, so no head row repeats it; siblings are
-        // the way on.
-        $this->assertStringNotContainsString('<h3 class="menu-subcat-title"', $sub);
-        $this->assertStringContainsString('href="http://localhost:8000/menu/c/hot-drinks" rel="prev"', $sub);
-        preg_match('#<nav class="menu-rail".*?</nav>#s', $sub, $subRail);
-        $this->assertStringContainsString('href="http://localhost:8000/menu/c/cold-drinks"' . "\n" . '                       class="menu-rail-sub is-active"', $subRail[0]);
-        $this->assertStringContainsString('href="http://localhost:8000/menu/c/drinks" class="is-active is-within"', $subRail[0]);
+        $this->assertStringContainsString('data-menu-start="cat-'.$cold->id.'"', $sub);
+        $this->assertStringContainsString('<meta name="description" content="Cold Drinks: 1 dish from MVR 25.00.', $sub);
+        $this->assertStringContainsString('Bajiya', $sub);
+
+        // The plain menu has no starting point.
+        $this->assertStringNotContainsString('data-menu-start="', $this->get('/menu')->getContent());
 
         // The id works too, and an unknown category is a real 404.
-        $this->get('/menu/c/' . $drinks->id)->assertOk()->assertSee('Black Tea', false);
+        $this->get('/menu/c/'.$drinks->id)->assertOk()->assertSee('data-menu-start="cat-'.$drinks->id.'"', false);
         $this->get('/menu/c/nothing-here')->assertNotFound();
     }
 
-    public function test_every_category_band_and_sub_title_carries_a_share_button_for_its_own_link(): void
+    public function test_a_shared_link_previews_with_the_category_photo_or_a_dish(): void
+    {
+        $drinks = $this->category('Drinks', 1);
+        $drinks->update(['image_url' => 'https://cdn.example.com/drinks.jpg']);
+        $this->item($drinks, 'Water', 5);
+
+        $html = $this->get('/menu/c/drinks')->assertOk()->getContent();
+        $this->assertStringContainsString('<meta property="og:image" content="https://cdn.example.com/drinks.jpg">', $html);
+        // Escaped once, not twice.
+        $this->assertStringContainsString('<meta property="og:image:alt" content="Drinks at Bake &amp; Grill">', $html);
+        $this->assertStringContainsString('<meta property="og:description" content="Drinks: 1 dish from MVR 5.00.', $html);
+    }
+
+    public function test_the_banner_and_every_sub_label_carry_a_share_button_for_their_own_link(): void
     {
         $drinks = $this->category('Drinks', 2);
         $cold = Category::create(['name' => 'Cold Drinks', 'slug' => 'cold-drinks', 'is_active' => true, 'sort_order' => 2, 'parent_id' => $drinks->id]);
@@ -311,16 +300,12 @@ class MenuPageTest extends TestCase
         $this->assertStringContainsString('aria-label="Share Cold Drinks"', $html);
         // The share styles and script travel once, not once per category.
         $this->assertSame(1, substr_count($html, 'window.__shareInit = function'));
-
-        // The band itself opens the category page (owner, 2026-09-21) — on
-        // the full menu, not on the category's own page.
-        $this->assertStringContainsString('class="menu-cat-band-link" href="http://localhost:8000/menu/c/drinks"', $html);
-        $this->assertStringContainsString('aria-label="Open the Drinks menu page"', $html);
-        $own = $this->get('/menu/c/drinks')->assertOk()->getContent();
-        $this->assertStringNotContainsString('class="menu-cat-band-link"', $own);
+        // Icons, not words: the banner's Share and the label's.
+        $this->assertStringContainsString('mh-share-btn', $html);
+        $this->assertStringContainsString('menu-sub-share', $html);
     }
 
-    public function test_the_other_and_event_sections_get_a_banner_a_share_button_and_a_page_like_a_category(): void
+    public function test_the_other_and_event_sections_get_a_banner_a_share_button_and_a_link_like_a_category(): void
     {
         // Owner, 2026-09-21: "I need same type banner as a category and option
         // to share and open same way and option to add pic in admin to the banner."
@@ -334,44 +319,37 @@ class MenuPageTest extends TestCase
         $this->item($food, 'Bajiya', 5);
         $this->item($events, 'Buffet for 20', 900);
         $retired = $this->category('Retired Category', 3);
-        $orphan = $this->item($retired, 'Orphan Item', 7);
+        $this->item($retired, 'Orphan Item', 7);
         $retired->update(['is_active' => false]);
 
         $html = $this->get('/menu')->assertOk()->getContent();
 
-        // Both bands: the owner's picture, a Share button and a tap-through.
-        $this->assertStringContainsString('<img src="https://cdn.example.com/other.jpg"', $html);
-        $this->assertStringContainsString('<img src="https://cdn.example.com/events.jpg"', $html);
+        // Both sections hand the pinned banner the owner's picture and a Share.
+        $this->assertStringContainsString('data-mh-img="https://cdn.example.com/other.jpg"', $html);
+        $this->assertStringContainsString('data-mh-img="https://cdn.example.com/events.jpg"', $html);
         $this->assertStringContainsString('aria-label="Share Other"', $html);
         $this->assertStringContainsString('data-share-url="http://localhost:8000/menu/c/other"', $html);
-        $this->assertStringContainsString('aria-label="Open the Other menu page"', $html);
         $this->assertStringContainsString('aria-label="Share Event &amp; catering"', $html);
         $this->assertStringContainsString('data-share-url="http://localhost:8000/menu/c/events"', $html);
-        $this->assertStringContainsString('href="http://localhost:8000/menu/c/events"', $html);
 
-        // Each has a page of its own, shaped like a category's.
+        // Each link opens the full menu at its section.
         $other = $this->get('/menu/c/other')->assertOk()->getContent();
         $this->assertStringContainsString('<title>Other – Menu – Bake &amp; Grill</title>', $other);
-        $this->assertStringContainsString('<img src="https://cdn.example.com/other.jpg"', $other);
-        $this->assertStringContainsString('>Other</h2>', $other);
-        $this->assertStringContainsString('Orphan Item', $other);
-        $this->assertStringNotContainsString('Bajiya', $other);
-        $this->assertStringNotContainsString('Buffet for 20', $other);
-        $this->assertStringContainsString('href="/menu/' . $orphan->id . '"', $other);
+        $this->assertStringContainsString('data-menu-start="cat-other"', $other);
+        $this->assertStringContainsString('<meta property="og:image" content="https://cdn.example.com/other.jpg">', $other);
+        $this->assertStringContainsString('Bajiya', $other);
 
         $ev = $this->get('/menu/c/events')->assertOk()->getContent();
-        $this->assertStringContainsString('>Event &amp; catering menu</h2>', $ev);
-        $this->assertStringContainsString('<img src="https://cdn.example.com/events.jpg"', $ev);
-        $this->assertStringContainsString('href="http://localhost:8000/menu/c/other" rel="prev"', $ev);
+        $this->assertStringContainsString('data-menu-start="cat-events"', $ev);
+        $this->assertStringContainsString('<meta property="og:image" content="https://cdn.example.com/events.jpg">', $ev);
         $this->assertStringContainsString('Buffet for 20', $ev);
-        $this->assertStringNotContainsString('Bajiya', $ev);
-        $this->assertStringNotContainsString('Orphan Item', $ev);
-        $this->assertStringContainsString('data-testid="menu-events-plan"', $ev);
-        $this->assertStringNotContainsString('class="menu-cat-band-link"', $ev);
 
-        // A real category with the slug "events" takes the page over.
+        // A real category with the slug "events" names the link; its dishes
+        // live in the Event & catering section, so it still lands there.
         $events->update(['slug' => 'events']);
-        $this->get('/menu/c/events')->assertOk()->assertSee('>Event Platters</h2>', false);
+        $taken = $this->get('/menu/c/events')->assertOk()->getContent();
+        $this->assertStringContainsString('<title>Event Platters – Menu – Bake &amp; Grill</title>', $taken);
+        $this->assertStringContainsString('data-menu-start="cat-events"', $taken);
     }
 
     public function test_a_size_that_has_run_out_is_greyed_on_the_item_page(): void
@@ -387,18 +365,18 @@ class MenuPageTest extends TestCase
             'sort_order' => 1, 'track_stock' => true, 'stock_qty' => 0,
         ]);
 
-        $html = $this->get('/menu/' . $water->id)->assertOk()->getContent();
+        $html = $this->get('/menu/'.$water->id)->assertOk()->getContent();
 
         // The dish itself is on: one size is still there to pick.
         $this->assertStringNotContainsString('data-testid="item-unavailable"', $html);
-        $this->assertStringContainsString('/order/menu?item=' . $water->id, $html);
+        $this->assertStringContainsString('/order/menu?item='.$water->id, $html);
 
         $this->assertMatchesRegularExpression(
-            '/data-variant="' . $large->id . '"[^>]*disabled/s',
+            '/data-variant="'.$large->id.'"[^>]*disabled/s',
             $html,
         );
         $this->assertDoesNotMatchRegularExpression(
-            '/data-variant="' . $small->id . '"[^>]*disabled/s',
+            '/data-variant="'.$small->id.'"[^>]*disabled/s',
             $html,
         );
         $this->assertStringContainsString('Sold out', $html);
@@ -453,7 +431,7 @@ class MenuPageTest extends TestCase
     {
         $html = $this->get('/menu')->assertOk()->getContent();
 
-        $start = strpos($html, '<div class="menu-shell">');
+        $start = strpos($html, '<div class="menu-shell"');
         $end = strpos($html, '<div class="menu-cta">');
         $this->assertNotFalse($start, 'the menu shell must be in the HTML');
         $this->assertNotFalse($end, 'the closing CTA must follow the menu');
@@ -466,7 +444,7 @@ class MenuPageTest extends TestCase
         preg_match(
             // The card carries filter data attributes now, so match the open
             // tag loosely rather than pinning it to `class="menu-card">`.
-            '#<article class="menu-card"[^>]*>(?:(?!</article>).)*href="/menu/' . $itemId . '".*?</article>#s',
+            '#<article class="menu-card"[^>]*>(?:(?!</article>).)*href="/menu/'.$itemId.'".*?</article>#s',
             $html,
             $card,
         );
@@ -490,8 +468,8 @@ class MenuPageTest extends TestCase
         preg_match('#<nav class="menu-rail".*?</nav>#s', $html, $rail);
         $this->assertNotEmpty($rail, 'the category rail must be in the HTML');
 
-        $this->assertStringContainsString('href="#cat-' . $shorteats->id . '"', $rail[0]);
-        $this->assertStringContainsString('href="#cat-' . $drinks->id . '"', $rail[0]);
+        $this->assertStringContainsString('href="#cat-'.$shorteats->id.'"', $rail[0]);
+        $this->assertStringContainsString('href="#cat-'.$drinks->id.'"', $rail[0]);
         // Spoken as "Shorteats 3" without this — the numeral needs a noun.
         $this->assertStringContainsString('aria-label="Shorteats, 2 items"', $rail[0]);
         $this->assertStringContainsString('aria-label="Drinks, 1 item"', $rail[0]);
@@ -519,12 +497,12 @@ class MenuPageTest extends TestCase
 
     public function test_the_rail_spy_skips_hrefs_that_are_not_page_anchors(): void
     {
-        // Without this, IntersectionObserver looks up id="/order/events".
+        // Without this, a tap on the Events link looks up id="/order/events".
         $cat = $this->category('Shorteats');
         $this->item($cat, 'Bajiya', 5);
 
         $html = $this->get('/menu')->assertOk()->getContent();
-        $this->assertStringContainsString("if (href.charAt(0) !== '#') return;", $html);
+        $this->assertStringContainsString("if (!href || href.charAt(0) !== '#') return null;", $html);
     }
 
     public function test_a_category_without_art_never_renders_an_empty_image(): void
@@ -541,9 +519,9 @@ class MenuPageTest extends TestCase
         // problem and would make this assertion fail for the wrong reason.
         $this->assertStringNotContainsString('src=""', $shell);
         $this->assertStringNotContainsString('srcset=""', $shell);
-        // The band is still there, carrying its own tint instead of a photo.
+        // The section still hands the banner a look: its own tint, no photo.
         $this->assertMatchesRegularExpression(
-            '#<header class="menu-cat-band" id="cat-' . $cat->id . '"\s+style="background: linear-gradient#',
+            '#<section class="menu-sec menu-cat-section" id="cat-'.$cat->id.'" data-mh-name="Shorteats" data-mh-count="1" data-mh-tint="linear-gradient[^"]*">#',
             $shell,
         );
     }
@@ -635,7 +613,7 @@ class MenuPageTest extends TestCase
         $item = $this->item($cat, 'Coke', 15);
         SiteSetting::set('default_item_image', '/storage/site/default_item.jpg', 'shared');
 
-        $html = $this->get('/menu/' . $item->id)->assertOk()->getContent();
+        $html = $this->get('/menu/'.$item->id)->assertOk()->getContent();
 
         // Matched on the element, not anywhere in the page: the modifier also
         // appears in the stylesheet, so a bare string search passes with or
@@ -667,13 +645,13 @@ class MenuPageTest extends TestCase
         SiteSetting::set('default_item_image', '/brand/default-item-image.png', 'shared');
         SiteSetting::bust();
 
-        $html = $this->get('/menu/' . $item->id)->assertOk()->getContent();
+        $html = $this->get('/menu/'.$item->id)->assertOk()->getContent();
         $this->assertMatchesRegularExpression('#<div class="bgl-tile">\s*(?:<style>.*?</style>\s*)?<svg class="bgl bgl--light"[^>]*aria-label="Coke"#s', $html);
         $this->assertStringContainsString('[data-theme="dark"] .bgl.bgl--light .bgl-t{fill:#1C1408}', $html, 'dark lettering on the cream tile in dark mode');
         $this->assertStringContainsString('id="bgl-fire-tile"', $html);
 
         // The sheet the menu grid opens is the same page body.
-        $sheet = $this->get('/menu/' . $item->id, ['X-Menu-Sheet' => '1'])->assertOk()->getContent();
+        $sheet = $this->get('/menu/'.$item->id, ['X-Menu-Sheet' => '1'])->assertOk()->getContent();
         $this->assertStringContainsString('<div class="bgl-tile">', $sheet);
 
         // The cards keep the still picture.
@@ -682,7 +660,7 @@ class MenuPageTest extends TestCase
         // A stand-in uploaded in Admin shows as before.
         SiteSetting::set('default_item_image', '/storage/site/default_item.jpg', 'shared');
         SiteSetting::bust();
-        $custom = $this->get('/menu/' . $item->id)->assertOk()->getContent();
+        $custom = $this->get('/menu/'.$item->id)->assertOk()->getContent();
         $this->assertStringNotContainsString('<div class="bgl-tile">', $custom);
         $this->assertStringContainsString('/storage/site/default_item.jpg', $custom);
     }
@@ -697,7 +675,7 @@ class MenuPageTest extends TestCase
         ]);
         SiteSetting::set('default_item_image', '/storage/site/default_item.jpg', 'shared');
 
-        $html = $this->get('/menu/' . $item->id)->assertOk()->getContent();
+        $html = $this->get('/menu/'.$item->id)->assertOk()->getContent();
 
         $this->assertStringContainsString('bajiya-thumb.jpg', $html);
         $this->assertDoesNotMatchRegularExpression(
@@ -717,7 +695,7 @@ class MenuPageTest extends TestCase
         $cat = $this->category('Drinks');
         $item = $this->item($cat, 'Coke', 15);
 
-        $html = $this->get('/menu/' . $item->id)->assertOk()->getContent();
+        $html = $this->get('/menu/'.$item->id)->assertOk()->getContent();
 
         $this->assertStringContainsString('class="btn-primary"', $html);
         $this->assertMatchesRegularExpression(
@@ -794,7 +772,7 @@ class MenuPageTest extends TestCase
             'target_id' => $item->id,
         ]);
 
-        $this->get('/menu/' . $item->id)->assertOk()->assertSee('MVR 5.00', false);
+        $this->get('/menu/'.$item->id)->assertOk()->assertSee('MVR 5.00', false);
     }
 
     public function test_an_undiscounted_item_shows_no_struck_through_price(): void
@@ -828,11 +806,10 @@ class MenuPageTest extends TestCase
         $this->assertMatchesRegularExpression('#<h3 class="menu-card-name"[^>]*>Bajiya</h3>#', $main[0]);
     }
 
-    public function test_a_subcategory_sits_inside_its_parent_and_under_it_in_the_rail(): void
+    public function test_a_subcategory_sits_inside_its_parent_and_is_a_button_under_the_banner(): void
     {
-        // The rail used to list parents only; the owner asked for
-        // sub-categories under them (2026-09-02), as smaller text-only links
-        // that jump to the sub-category's own block.
+        // Owner, 2026-10-07: "keep the main category in the rail and sub
+        // category below the banner ... when scrolled all the items shows".
         $parent = $this->category('Grill', 1);
         $child = Category::create([
             'parent_id' => $parent->id,
@@ -846,35 +823,42 @@ class MenuPageTest extends TestCase
 
         $html = $this->get('/menu')->assertOk()->getContent();
 
+        // The rail: the parent only.
         preg_match('#<nav class="menu-rail".*?</nav>#s', $html, $rail);
-        $this->assertNotEmpty($rail);
         $this->assertStringContainsString('aria-label="Grill, 2 items"', $rail[0]);
-        $this->assertMatchesRegularExpression(
-            '#<a href="\#cat-' . $child->id . '"\s+class="menu-rail-sub"\s+data-parent="cat-' . $parent->id . '"\s+aria-label="Wraps, 1 item"#',
-            $rail[0],
-        );
-        // Under its parent, not before it.
-        $this->assertGreaterThan(
-            strpos($rail[0], 'href="#cat-' . $parent->id . '"'),
-            strpos($rail[0], 'href="#cat-' . $child->id . '"'),
-        );
+        $this->assertStringNotContainsString('#cat-'.$child->id, $rail[0]);
+        $this->assertStringNotContainsString('menu-rail-sub', $rail[0]);
 
+        // Under the banner, a button for the parent's own dishes and one for
+        // the sub-category.
+        preg_match('#<nav class="mh-chips[^"]*" data-sec="cat-'.$parent->id.'".*?</nav>#s', $html, $chips);
+        $this->assertNotEmpty($chips, 'the sub-category buttons must be in the HTML');
+        $this->assertMatchesRegularExpression('#href="\#cat-'.$parent->id.'-items" data-target="cat-'.$parent->id.'-items"\s*>Grill<em>1</em></a>#', $chips[0]);
+        $this->assertMatchesRegularExpression('#href="\#cat-'.$child->id.'" data-target="cat-'.$child->id.'"\s*>Wraps<em>1</em></a>#', $chips[0]);
+
+        // The list: one section, its dishes in labelled blocks.
         preg_match('#<div class="menu-main">.*#s', $html, $main);
         $this->assertMatchesRegularExpression('#<h2[^>]*>\s*Grill\s*</h2>#', $main[0]);
-        $this->assertMatchesRegularExpression('#<h3 class="menu-subcat-title"[^>]*>Wraps</h3>#', $main[0]);
+        $this->assertMatchesRegularExpression('#<h3 class="menu-subcat-title"[^>]*>Wraps<span class="menu-subcat-count">1 item</span></h3>#', $main[0]);
         $this->assertMatchesRegularExpression('#<h4 class="menu-card-name"[^>]*>Chicken Wrap</h4>#', $main[0]);
-
-        // The sub-category block carries the class the rule above its title
-        // hangs off; the category's own items, which sit straight under the
-        // band with no title, do not. Owner, 2026-09-02: "adding a line
-        // before subcategory".
-        $this->assertStringContainsString('<div class="menu-subcat-block">', $main[0]);
-        // …and the block carries the anchor the rail link points at. The
-        // title sits in a head row beside its Share button (2026-09-21).
         $this->assertMatchesRegularExpression(
-            '#<div class="menu-subcat-block menu-subcat-block--titled" id="cat-' . $child->id . '">\s*<div class="menu-subcat-head">\s*<h3 class="menu-subcat-title"#',
+            '#<div class="menu-subcat-block menu-subcat-block--titled" id="cat-'.$child->id.'">\s*(\{\{--.*?--\}\}\s*)?<div class="menu-subcat-head">\s*<h3 class="menu-subcat-title"#s',
             $main[0],
         );
+        $this->assertStringContainsString('id="cat-'.$parent->id.'-items"', $main[0]);
+    }
+
+    public function test_a_category_with_one_block_gets_no_buttons(): void
+    {
+        $cat = $this->category('Drinks', 1);
+        $this->item($cat, 'Water', 5);
+
+        $html = $this->get('/menu')->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('data-sec="cat-'.$cat->id.'" aria-label="Sections of', $html);
+        // The banner is drawn for the first section before any script runs.
+        $this->assertMatchesRegularExpression('#<div class="mh-title"><span\s*>Drinks</span></div>#', $html);
+        $this->assertStringContainsString('<span class="mh-count">1 item</span>', $html);
     }
 
     public function test_an_active_special_shows_the_discounted_price_and_the_original(): void
@@ -938,14 +922,15 @@ class MenuPageTest extends TestCase
         $this->assertStringContainsString('id="menu-view-featured"', $html);
         $this->assertStringContainsString('data-testid="menu-featured-pill"', $html);
         $this->assertStringContainsString('aria-label="Favourites, 1 item"', $html);
-        $this->assertStringContainsString('<h2 class="menu-offers-title">Favourites</h2>', $html);
+        $this->assertStringContainsString('<h2 class="visually-hidden">Favourites</h2>', $html);
+        $this->assertStringContainsString('data-mh-name="Favourites"', $html);
         // The strip comes before the first category, and the dish is in both.
-        $this->assertLessThan(strpos($html, 'id="cat-' . $cat->id . '"'), strpos($html, 'id="menu-view-featured"'));
+        $this->assertLessThan(strpos($html, 'id="cat-'.$cat->id.'"'), strpos($html, 'id="menu-view-featured"'));
         $this->assertSame(2, substr_count($html, '>Bajiya<'));
         $this->assertSame(1, substr_count($html, '>Cutlet<'));
     }
 
-    public function test_the_featured_strip_is_absent_with_nothing_ticked_and_on_a_category_page(): void
+    public function test_the_featured_strip_is_absent_with_nothing_ticked(): void
     {
         $cat = $this->category('Shorteats');
         $this->item($cat, 'Cutlet', 8);
@@ -954,10 +939,10 @@ class MenuPageTest extends TestCase
         $this->assertStringNotContainsString('id="menu-view-featured"', $html);
         $this->assertStringNotContainsString('data-testid="menu-featured-pill"', $html);
 
+        // A shared category link opens the full menu, picks and all.
         $this->item($cat, 'Bajiya', 10, ['is_featured' => true]);
         $html = $this->get('/menu/c/shorteats')->assertOk()->getContent();
-        $this->assertStringNotContainsString('id="menu-view-featured"', $html);
-        $this->assertStringNotContainsString('data-testid="menu-featured-pill"', $html);
+        $this->assertStringContainsString('id="menu-view-featured"', $html);
         $this->assertStringContainsString('Chef&#039;s picks', $this->get('/menu')->getContent());
     }
 
@@ -1023,7 +1008,7 @@ class MenuPageTest extends TestCase
         app(OffersService::class)->bustCache();
 
         $html = $this->get('/menu')->assertOk()->getContent();
-        preg_match('#<section class="menu-offers".*?</section>#s', $html, $offers);
+        preg_match('#<section class="menu-sec menu-offers" id="menu-view-offers".*?</section>#s', $html, $offers);
         $this->assertNotEmpty($offers, 'the offers section must be in the HTML');
 
         $this->assertStringContainsString('gallery-thumb.jpg', $offers[0]);
@@ -1082,7 +1067,7 @@ class MenuPageTest extends TestCase
 
         $many = $this->category('Grill', 2);
         for ($i = 1; $i <= 20; $i++) {
-            $item = $this->item($many, 'New Plate ' . $i, 12);
+            $item = $this->item($many, 'New Plate '.$i, 12);
             $item->forceFill(['created_at' => now()->subDay()->addSeconds($i)])->save();
         }
 
@@ -1103,7 +1088,7 @@ class MenuPageTest extends TestCase
         $card = $this->itemCard($html, $item->id);
 
         $this->assertMatchesRegularExpression(
-            '#<article class="menu-card"[^>]*>\s*<a class="menu-card-link" href="/menu/' . $item->id . '">\s*<div class="menu-card-circle">#',
+            '#<article class="menu-card"[^>]*>\s*<a class="menu-card-link" href="/menu/'.$item->id.'">\s*<div class="menu-card-circle">#',
             $html,
         );
         $this->assertMatchesRegularExpression(
@@ -1111,7 +1096,7 @@ class MenuPageTest extends TestCase
             $html,
         );
         $this->assertMatchesRegularExpression(
-            '#<a class="menu-card-link" href="/menu/' . $item->id . '">.*?</a>\s*<a class="menu-fav"#s',
+            '#<a class="menu-card-link" href="/menu/'.$item->id.'">.*?</a>\s*<a class="menu-fav"#s',
             $card,
         );
     }
@@ -1174,7 +1159,7 @@ class MenuPageTest extends TestCase
     {
         $this->get('/sitemap.xml')
             ->assertOk()
-            ->assertSee('<loc>' . url('/menu') . '</loc>', false);
+            ->assertSee('<loc>'.url('/menu').'</loc>', false);
     }
 
     // ── Edge cases ────────────────────────────────────────────────────────
@@ -1335,17 +1320,15 @@ class MenuPageTest extends TestCase
         $this->assertStringContainsString("'bg-menu-rail-side'", $html);
         $this->assertMatchesRegularExpression('#html\.rail-right \.menu-shell \{ flex-direction: row-reverse; \}#', $html);
 
-        // The field starts collapsed behind the button, as in the order app.
-        $this->assertMatchesRegularExpression('#id="menuSearchWrap"[^>]*hidden#', $html);
-
-        // The field sits in the tools row, between Search and Grid/List, and
-        // the sort/filter chips sit in their own block below — the phone pins
-        // the row and lets the chips scroll. Owner, 2026-09-02.
+        // Search, layout, sort and filters wait behind the search icon on the
+        // banner (owner, 2026-10-07): the panel starts closed, the field
+        // first, then Grid/List, then the chips.
+        $this->assertMatchesRegularExpression('#<div class="mh-actions">\s*<button type="button" class="mh-search" id="menuSearchToggle"#', $html);
+        $this->assertStringContainsString('<div class="mh-panel" id="menuSearchPanel" hidden>', $html);
         $this->assertMatchesRegularExpression(
-            '#<div class="menu-tools">.*id="menuSearchToggle".*id="menuSearchWrap".*class="menu-view-toggle".*</div>\s*(\{\{--.*?--\}\}\s*)?<div class="menu-filter-rows">#s',
+            '#id="menuSearchPanel".*id="menuSearchWrap".*class="menu-view-toggle".*<div class="menu-filter-rows">#s',
             $html,
         );
-        $this->assertMatchesRegularExpression('#\.menu-tools\.is-searching \.menu-tool#', $html);
     }
 
     public function test_cards_sort_by_the_price_they_actually_advertise(): void
@@ -1428,7 +1411,7 @@ class MenuPageTest extends TestCase
             'the <picture> wrapper must be sized, or object-fit has no box to cover',
         );
 
-        $detail = $this->get('/menu/' . $item->id)->assertOk()->getContent();
+        $detail = $this->get('/menu/'.$item->id)->assertOk()->getContent();
         $this->assertMatchesRegularExpression(
             '#\.menu-item-hero picture\s*\{[^}]*height:\s*100%#',
             $detail,
@@ -1444,7 +1427,7 @@ class MenuPageTest extends TestCase
     {
         $item = $this->item($this->category('Hedhika'), 'Boakiba', 10.0, ['image_url' => '/storage/menu/a.jpg']);
 
-        $detail = $this->get('/menu/' . $item->id)->assertOk()->getContent();
+        $detail = $this->get('/menu/'.$item->id)->assertOk()->getContent();
 
         $this->assertMatchesRegularExpression('#\.menu-item-hero\s*\{[^}]*aspect-ratio:\s*4\s*/\s*3#', $detail);
     }
@@ -1514,7 +1497,7 @@ class MenuPageTest extends TestCase
         $item->variants()->create(['name' => 'Box of 6', 'price' => 28, 'is_active' => true, 'sort_order' => 2]);
         $item->variants()->create(['name' => 'Retired size', 'price' => 99, 'is_active' => false, 'sort_order' => 3]);
 
-        $html = $this->get('/menu/' . $item->id)->assertOk()->getContent();
+        $html = $this->get('/menu/'.$item->id)->assertOk()->getContent();
 
         $this->assertStringContainsString('Crispy pastry filled with tuna, onion and chilli — the full text, not a 60-character clamp.', $html);
         $this->assertStringContainsString('Single', $html);
@@ -1527,7 +1510,7 @@ class MenuPageTest extends TestCase
         $this->assertStringContainsString('fish', $html);
         $this->assertStringContainsString('Medium', $html);
         $this->assertStringContainsString('12 min', $html);
-        $this->assertStringContainsString('/order/menu?item=' . $item->id, $html);
+        $this->assertStringContainsString('/order/menu?item='.$item->id, $html);
         $this->assertStringContainsString('Add to order', $html);
         $this->assertStringContainsString('href="/order/menu"', $html);
         $this->assertStringContainsString('View cart', $html);
@@ -1543,18 +1526,18 @@ class MenuPageTest extends TestCase
         $gone = $this->item($cat, 'Sold Out Item', 5, ['is_available' => false]);
         $retired = $this->item($cat, 'Retired Item', 5, ['is_active' => false]);
 
-        $soldOut = $this->get('/menu/' . $gone->id)->assertOk()->getContent();
+        $soldOut = $this->get('/menu/'.$gone->id)->assertOk()->getContent();
         $this->assertStringContainsString('Sold Out Item', $soldOut);
         // The Sold out toggle is how the kitchen 86s a dish, so the page says
         // so — the order app's word, not a generic "unavailable".
         $this->assertStringContainsString('<p>Sold out</p>', $soldOut);
         $this->assertStringContainsString('data-testid="item-unavailable"', $soldOut);
         $this->assertStringContainsString('Cutlet', $soldOut);
-        $this->assertStringContainsString('/menu/' . $alt->id, $soldOut);
+        $this->assertStringContainsString('/menu/'.$alt->id, $soldOut);
         $this->assertDoesNotMatchRegularExpression('#<a[^>]*>Add to order</a>#', $soldOut);
         $this->assertStringContainsString('Today', $soldOut);
 
-        $this->get('/menu/' . $retired->id)
+        $this->get('/menu/'.$retired->id)
             ->assertOk()
             ->assertSee('Retired Item', false)
             ->assertSee('Currently unavailable', false);
@@ -1569,8 +1552,8 @@ class MenuPageTest extends TestCase
 
         $this->get('/sitemap.xml')
             ->assertOk()
-            ->assertSee('<loc>' . url('/menu') . '</loc>', false)
-            ->assertDontSee('/menu/' . $item->id, false);
+            ->assertSee('<loc>'.url('/menu').'</loc>', false)
+            ->assertDontSee('/menu/'.$item->id, false);
     }
 
     public function test_signed_in_favourites_are_filled_on_the_first_paint(): void
@@ -1610,7 +1593,7 @@ class MenuPageTest extends TestCase
 
         $this->actingAs($customer, 'customer');
         $this->get('/menu')->assertOk();
-        $this->postJson('/api/customer/favorites/' . $item->id . '/toggle', [], [
+        $this->postJson('/api/customer/favorites/'.$item->id.'/toggle', [], [
             'X-CSRF-TOKEN' => csrf_token(),
         ])->assertOk()->assertJson(['favorited' => true]);
 

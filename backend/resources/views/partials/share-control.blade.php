@@ -24,7 +24,13 @@
             aria-controls="{{ $shareId }}-popover"
             @if(!empty($shareLabel)) aria-label="{{ $shareLabel }}" @endif
             data-testid="share-open">
-        Share
+        {{-- An icon instead of the word where space is tight (the menu's
+             banner and sub-category labels); the label keeps it named. --}}
+        @if(!empty($shareIconHtml))
+            {!! $shareIconHtml !!}<span class="visually-hidden">Share</span>
+        @else
+            Share
+        @endif
     </button>
     <div id="{{ $shareId }}-popover"
          class="share-popover"
