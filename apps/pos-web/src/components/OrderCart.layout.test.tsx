@@ -194,3 +194,31 @@ describe("The delivery address still folds", () => {
     expect(screen.getByPlaceholderText("Delivery address *")).toBeInTheDocument();
   });
 });
+
+/*
+ * Owner, 2026-10-07: "pick up and delivery turns off for staffs and on for a
+ * specific staff only. I need full control." The cart shows only the types
+ * this person may ring.
+ */
+describe("Order types this person may ring", () => {
+  it("shows only the allowed types", () => {
+    renderCart({ allowedOrderTypes: ["Dine-in", "Takeaway"] });
+    const row = screen.getByTestId("cart-order-types");
+    expect(within(row).getByRole("button", { name: "Dine-in" })).toBeInTheDocument();
+    expect(within(row).getByRole("button", { name: "Takeaway" })).toBeInTheDocument();
+    expect(within(row).queryByRole("button", { name: "Pickup" })).toBeNull();
+    expect(within(row).queryByRole("button", { name: "Delivery" })).toBeNull();
+  });
+
+  it("keeps an existing order's own type on show even when it is off for them", () => {
+    renderCart({ orderType: "Pickup", allowedOrderTypes: ["Dine-in"] });
+    const row = screen.getByTestId("cart-order-types");
+    expect(within(row).getByRole("button", { name: "Pickup" })).toBeInTheDocument();
+    expect(within(row).queryByRole("button", { name: "Delivery" })).toBeNull();
+  });
+
+  it("says so when no type is allowed", () => {
+    renderCart({ allowedOrderTypes: [] });
+    expect(screen.getByTestId("no-order-types")).toHaveTextContent("No order types are allowed for you");
+  });
+});

@@ -18,7 +18,7 @@ import { useCart }          from "../hooks/useCart";
 import { useOrderCreation } from "../hooks/useOrderCreation";
 import { useOps }           from "../hooks/useOps";
 import { useShift }         from "../hooks/useShift";
-import { canSeeCustomersTab, hasPosPermission } from "../hooks/usePosPermissions";
+import { allowedOrderTypes, canSeeCustomersTab, hasPosPermission } from "../hooks/usePosPermissions";
 import { useIdleLock, resolveIdleLockMinutes } from "../hooks/useIdleLock";
 import { makeCartKey }       from "../hooks/useCart";
 import {
@@ -324,6 +324,15 @@ export function usePosApp() {
     cart.setCartItems(result.items);
     setPackagingPickerLines(result.needsPicker.length > 0 ? result.needsPicker : null);
   }, [cart.cartItems, cart.setCartItems, menu.items]);
+
+  // Order types this person may ring (Admin → Roles / staff page, 2026-10-07).
+  const permittedOrderTypes = useMemo(() => allowedOrderTypes(staffPermissions), [staffPermissions]);
+  // A new, empty ticket starts on a type they are allowed; an order already
+  // of another type (resumed, or rung by someone else) is left as it is.
+  useEffect(() => {
+    if (cart.cartItems.length > 0 || permittedOrderTypes.length === 0) return;
+    if (!permittedOrderTypes.includes(orderType)) setOrderType(permittedOrderTypes[0]);
+  }, [permittedOrderTypes, orderType, cart.cartItems.length]);
 
   const handlePackagingReconcileConfirm = useCallback((selections: Record<string, number>) => {
     const menuById = new Map(menu.items.map((i) => [i.id, i]));
@@ -1379,7 +1388,7 @@ export function usePosApp() {
     setShowSaveTicket, showOpenShift, setShowOpenShift, showCloseShift, setShowCloseShift,
     openShiftBusy, openTicketsCount, openTicketsCritical, receiptsFocusOrderId, setReceiptsFocusOrderId,
     deviceBlockedMessage, onlineOrderWatcher,
-    orderType, setOrderType, handleOrderTypeToggle, packagingPickerLines, handlePackagingReconcileConfirm,
+    orderType, setOrderType, handleOrderTypeToggle, permittedOrderTypes, packagingPickerLines, handlePackagingReconcileConfirm,
     deliveryDetails, setDeliveryDetails, customerAddresses,
     selectedDeliveryAddressId, setSelectedDeliveryAddressId, tables, selectedTableId, setSelectedTableId, quickNotes,
     smsNotifications, discountControls, notePickerKey, setNotePickerKey, shift, canUseNonOrderFeatures,

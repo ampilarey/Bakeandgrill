@@ -342,6 +342,9 @@ class OrderCreationController extends Controller
 
         $payload = $request->validated();
 
+        // Order type switches per role and person (2026-10-07).
+        \App\Domains\Orders\Support\PosOrderTypeGate::assert($request->user(), (string) $payload['type']);
+
         // Same shape as offline_id dedup: a retried charge Confirm after a
         // dropped create response must return the first order, not mint #2.
         $idempotencyKey = $payload['idempotency_key'] ?? null;
@@ -627,6 +630,11 @@ class OrderCreationController extends Controller
                     }
                 }
 
+                if (!\App\Domains\Orders\Support\PosOrderTypeGate::allows($user, (string) ($payload['type'] ?? ''))) {
+                    $failed[] = ['index' => $index, 'error' => \App\Domains\Orders\Support\PosOrderTypeGate::message((string) $payload['type'])];
+
+                    continue;
+                }
                 $order = app(OrderCreationService::class)->createFromPayload($payload, $user);
                 app(AuditLogService::class)->log('order.created', 'Order', $order->id, [], $order->toArray(), ['source' => 'sync', 'index' => $index], $request);
                 $processed++;

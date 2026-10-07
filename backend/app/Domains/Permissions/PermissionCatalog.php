@@ -14,6 +14,21 @@ final class PermissionCatalog
      *
      * @var array<string, list<string>>
      */
+    /**
+     * POS order type (backend value) → the permission that allows it.
+     *
+     * @var array<string, string>
+     */
+    public const ORDER_TYPE_PERMISSIONS = [
+        'dine_in' => 'pos.order_type.dine_in',
+        'takeaway' => 'pos.order_type.takeaway',
+        'online_pickup' => 'pos.order_type.pickup',
+        'delivery' => 'pos.order_type.delivery',
+    ];
+
+    /** @var list<string> */
+    public const ORDER_TYPE_SLUGS = ['pos.order_type.dine_in', 'pos.order_type.takeaway', 'pos.order_type.pickup', 'pos.order_type.delivery'];
+
     public const SATISFIED_BY = [
         'devices.approve' => ['devices.manage'],
         'devices.view' => ['devices.manage', 'devices.approve'],
@@ -119,6 +134,13 @@ final class PermissionCatalog
             ['group' => 'POS', 'slug' => 'pos.customers_tab', 'name' => 'Customers tab in POS', 'description' => 'Browse and manage all customers from the till. What they can change still follows the Customers permissions.'],
             ['group' => 'POS', 'slug' => 'pos.time_clock', 'name' => 'Use time clock'],
             ['group' => 'POS', 'slug' => 'pos.ring_sales', 'name' => 'Ring sales'],
+            // One switch per order type (owner, 2026-10-07: "pick up and delivery
+            // turns off for staffs and on for a specific staff only"). Turn a type
+            // off for a role here, then allow it for one person on their page.
+            ['group' => 'POS', 'slug' => 'pos.order_type.dine_in', 'name' => 'Order type: Dine-in', 'description' => 'Ring dine-in orders, or switch an order to dine-in'],
+            ['group' => 'POS', 'slug' => 'pos.order_type.takeaway', 'name' => 'Order type: Takeaway', 'description' => 'Ring takeaway orders, or switch an order to takeaway'],
+            ['group' => 'POS', 'slug' => 'pos.order_type.pickup', 'name' => 'Order type: Pickup', 'description' => 'Ring pickup orders, or switch an order to pickup'],
+            ['group' => 'POS', 'slug' => 'pos.order_type.delivery', 'name' => 'Order type: Delivery', 'description' => 'Ring delivery orders, or switch an order to delivery'],
             ['group' => 'POS', 'slug' => 'pos.hold_resume', 'name' => 'Hold & resume tickets'],
             ['group' => 'POS', 'slug' => 'pos.active_orders', 'name' => 'View active orders'],
             ['group' => 'POS', 'slug' => 'pos.view_this_device_orders', 'name' => 'View this device orders'],
@@ -503,6 +525,7 @@ final class PermissionCatalog
             'pos.manage_order_status',
             'pos.open_shift',
             'pos.ring_sales',
+            ...self::ORDER_TYPE_SLUGS,
             'pos.time_clock',
             'pos.view_all_station_orders',
             'pos.view_this_device_orders',
@@ -619,6 +642,7 @@ final class PermissionCatalog
         return [
             'pos.access', 'pos.open_shift', 'pos.close_shift', 'pos.lock_screen', 'pos.time_clock',
             'pos.ring_sales', 'pos.hold_resume', 'pos.active_orders', 'pos.manage_order_status', 'pos.view_this_device_orders',
+            ...self::ORDER_TYPE_SLUGS,
             'orders.create', 'orders.view', 'orders.update', 'orders.receipts',
             'orders.refund_request',
             'orders.send_sms_bill', 'orders.send_payment_link',

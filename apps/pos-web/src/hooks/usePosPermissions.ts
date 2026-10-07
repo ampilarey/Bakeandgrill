@@ -1,3 +1,4 @@
+import { POS_ORDER_TYPES, type PosOrderType } from "../orderTypes";
 /** Legacy aliases — mirrors PermissionCatalog::SATISFIED_BY for stale cached lists. */
 const POS_PERM_ALIASES: Record<string, string[]> = {
   'pos.open_shift': ['finance.cash_manage', 'payments.cash_manage'],
@@ -45,4 +46,24 @@ export function hasPosPermission(permissions: string[], slug: string): boolean {
  */
 export function canSeeCustomersTab(permissions: string[]): boolean {
   return hasPosPermission(permissions, "pos.customers_tab");
+}
+
+/**
+ * Order types this person may ring (owner, 2026-10-07: "pick up and delivery
+ * turns off for staffs and on for a specific staff only"). One permission per
+ * type, set per role and per person in Admin. A list cached before those
+ * permissions existed names none of them; then every type shows and the
+ * server still decides.
+ */
+export const ORDER_TYPE_PERMISSION: Record<PosOrderType, string> = {
+  "Dine-in": "pos.order_type.dine_in",
+  Takeaway: "pos.order_type.takeaway",
+  Pickup: "pos.order_type.pickup",
+  Delivery: "pos.order_type.delivery",
+};
+
+export function allowedOrderTypes(permissions: string[]): PosOrderType[] {
+  const known = permissions.some((p) => p.startsWith("pos.order_type."));
+  if (!known) return [...POS_ORDER_TYPES];
+  return POS_ORDER_TYPES.filter((t) => permissions.includes(ORDER_TYPE_PERMISSION[t]));
 }

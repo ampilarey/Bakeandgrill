@@ -143,7 +143,7 @@ export function PosShellLayout() {
     canOpsInventory, canOpsPreparedStock,
     canCashInOut, isReachable, offlineQueueCount, offlinePendingCount,
     offlinePendingTotals, showOfflineSyncPanel, setShowOfflineSyncPanel, deviceBlockedMessage,
-    orderType, setOrderType, handleOrderTypeToggle,
+    orderType, setOrderType, handleOrderTypeToggle, permittedOrderTypes,
     packagingPickerLines, handlePackagingReconcileConfirm,
     deliveryDetails, setDeliveryDetails,
     customerAddresses, selectedDeliveryAddressId, setSelectedDeliveryAddressId, applyPosDeliveryAddress, tables,
@@ -552,6 +552,7 @@ export function PosShellLayout() {
               onOpenScanner={(target) => setScanner(target)}
               orderType={orderType}
               setOrderType={handleOrderTypeToggle}
+              allowedOrderTypes={permittedOrderTypes}
               deliveryDetails={deliveryDetails}
               setDeliveryDetails={setDeliveryDetails}
               customerAddresses={customerAddresses}

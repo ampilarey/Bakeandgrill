@@ -134,6 +134,13 @@ class ManagerPermissionAllowlistTest extends TestCase
         'pos.manage_order_status',
         'pos.open_shift',
         'pos.ring_sales',
+        // Owner, 2026-10-07: one switch per order type. Managers could already
+        // ring every type through pos.ring_sales, so they keep all four;
+        // nothing they can do changes.
+        'pos.order_type.delivery',
+        'pos.order_type.dine_in',
+        'pos.order_type.pickup',
+        'pos.order_type.takeaway',
         'pos.time_clock',
         'pos.view_all_station_orders',
         'pos.view_this_device_orders',

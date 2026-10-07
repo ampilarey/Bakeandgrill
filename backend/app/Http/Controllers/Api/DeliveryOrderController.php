@@ -57,6 +57,7 @@ class DeliveryOrderController extends Controller
         // Device checks run via `device.active.staff` middleware on this route.
         $staffShiftId = null;
         if ($isStaff) {
+            \App\Domains\Orders\Support\PosOrderTypeGate::assert($authUser, 'delivery');
             if (!$authUser->hasPermission('pos.ring_sales')) {
                 abort(403, 'You do not have permission to create delivery orders.');
             }

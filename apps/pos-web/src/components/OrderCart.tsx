@@ -63,6 +63,8 @@ export function shouldShowResumedGiftCardChargeHint(opts: {
 type Props = {
   orderType: OrderType;
   setOrderType: (t: OrderType) => void;
+  /** Types this person may ring (Admin, 2026-10-07); all when not given. */
+  allowedOrderTypes?: OrderType[];
   deliveryDetails: PosDeliveryDetails;
   setDeliveryDetails: (d: PosDeliveryDetails) => void;
   customerAddresses?: PosCustomerAddress[];
@@ -218,6 +220,12 @@ const C = {
 export function OrderCart(p: Props) {
   const checkoutDisabled = p.cartItems.length === 0 || p.isSubmitting || p.canRingSales === false
     || !!p.resumedIsPaid;
+  // Only the types this person may ring; the current one stays visible when
+  // an existing order is already that type (2026-10-07).
+  const allowedTypes = p.allowedOrderTypes ?? ORDER_TYPES;
+  const shownOrderTypes = allowedTypes.length === 0
+    ? []
+    : ORDER_TYPES.filter((t) => allowedTypes.includes(t) || t === p.orderType);
   const dineIn = p.orderType === "Dine-in";
   const isDelivery = p.orderType === "Delivery";
   const deliveryFeeEst = isDelivery ? (p.deliveryFeeEst ?? 0) : 0;
@@ -754,7 +762,11 @@ export function OrderCart(p: Props) {
             }}>
               {fulfillmentEmoji} {fulfillmentLabel}
             </div>
-          ) : ORDER_TYPES.map((t) => (
+          ) : shownOrderTypes.length === 0 ? (
+            <div data-testid="no-order-types" style={{ flex: 1, padding: '8px 10px', fontSize: 12, fontWeight: 600, color: C.muted, textAlign: 'center' }}>
+              No order types are allowed for you. Ask the owner to allow one in Admin → Staff.
+            </div>
+          ) : shownOrderTypes.map((t) => (
             <button
               key={t}
               onClick={() => {

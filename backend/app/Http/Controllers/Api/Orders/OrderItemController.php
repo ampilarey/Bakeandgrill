@@ -115,6 +115,10 @@ class OrderItemController extends Controller
             $newType = array_key_exists('type', $validated) && $validated['type'] !== null
                 ? (string) $validated['type']
                 : (string) $order->type;
+            // Switching to another type needs that type's permission (2026-10-07).
+            if ($newType !== $oldType) {
+                \App\Domains\Orders\Support\PosOrderTypeGate::assert($request->user(), $newType);
+            }
 
             // Pass target type + staff user into replace so channel assert
             // uses dine_in/takeaway when leaving delivery (avoids rejecting
@@ -321,10 +325,10 @@ class OrderItemController extends Controller
             // (soon-cancelled) source, breaking the item↔money link. Refuse
             // whenever either ticket already has any confirmed/partial money.
             if ($this->hasSettledMoney($target)) {
-                return ['error' => "Target order has payments — settle or refund before merging."];
+                return ['error' => 'Target order has payments — settle or refund before merging.'];
             }
             if ($this->hasSettledMoney($source)) {
-                return ['error' => "Source order has payments — settle or refund before merging."];
+                return ['error' => 'Source order has payments — settle or refund before merging.'];
             }
 
             // Re-parent items. Modifiers travel with their items
@@ -423,7 +427,7 @@ class OrderItemController extends Controller
             // 2026-08 audit #4: splitting moves items to a fresh unpaid order
             // while payments stay on the source — refuse once money is attached.
             if ($this->hasSettledMoney($source)) {
-                return ['error' => "Order has payments — settle or refund before splitting."];
+                return ['error' => 'Order has payments — settle or refund before splitting.'];
             }
 
             $candidateIds = $source->items->pluck('id')->all();
