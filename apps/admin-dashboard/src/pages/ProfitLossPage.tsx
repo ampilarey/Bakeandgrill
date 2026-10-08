@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getProfitAndLoss, getCashFlow, getDailySummary, type PnLReport } from '../api';
 import {
-  Btn, Card, DateInput, ErrorMsg, PageHeader, PageShell, Spinner, StatCard, TableCard, TD, TH,
+  Btn, Card, DateInput, ErrorMsg, PageHeader, PageShell, Spinner, StatCard, TableCard, TD, TD_NOWRAP, TH,
 } from '../components/SharedUI';
 import { usePageTitle } from '../hooks/usePageTitle';
 
@@ -173,7 +173,7 @@ export function ProfitLossPage() {
                   <tbody>
                     {(cashFlow.days ?? []).filter((d) => d.inflow > 0 || d.outflow > 0 || (d.wholesale_inflow ?? 0) > 0).slice(-14).map((d) => (
                       <tr key={d.date}>
-                        <td style={{ ...TD, textAlign: 'left', color: 'var(--color-text-secondary)' }}>{d.date}</td>
+                        <td style={{ ...TD_NOWRAP, textAlign: 'left', color: 'var(--color-text-secondary)' }}>{d.date}</td>
                         <td style={{ ...TD, textAlign: 'right', color: 'var(--color-success-strong)', fontWeight: 600 }}>+{parseFloat(String(d.inflow ?? 0)).toFixed(2)}</td>
                         <td style={{ ...TD, textAlign: 'right', color: 'var(--color-success-strong)', fontWeight: 600 }}>+{parseFloat(String(d.wholesale_inflow ?? 0)).toFixed(2)}</td>
                         <td style={{ ...TD, textAlign: 'right', color: 'var(--color-danger-strong)', fontWeight: 600 }}>-{parseFloat(String(d.outflow ?? 0)).toFixed(2)}</td>

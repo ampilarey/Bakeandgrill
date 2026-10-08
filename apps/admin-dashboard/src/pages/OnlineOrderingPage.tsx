@@ -46,6 +46,8 @@ import {
   type Schedule,
 } from './OnlineOrderingPage/orderingControlUi';
 
+const SETTINGS_NOT_LOADED = 'The current settings did not load, so Save is off: saving now would replace them with what is shown.';
+
 type PageSection = 'channels' | 'features' | 'slots-fees' | 'events';
 
 const DEFAULT_RAMADAN_BUSINESS_HOURS: Record<string, string> = {
@@ -115,6 +117,11 @@ export default function OnlineOrderingPage() {
   const [pickupMinutes, setPickupMinutes] = useState('30');
   const [pickupCapacity, setPickupCapacity] = useState('8');
   const [pickupSaving, setPickupSaving] = useState(false);
+  // Pickup slots and catering save what these fields show, and the fields hold
+  // defaults until the settings load. If the load fails (a manager could not
+  // read them before 2026-10-08), Save stays off rather than writing defaults
+  // over the real settings.
+  const [siteSettingsLoaded, setSiteSettingsLoaded] = useState(false);
 
   const [cateringNotifyPhone, setCateringNotifyPhone] = useState('');
   const [cateringNotifyEmail, setCateringNotifyEmail] = useState('');
@@ -204,7 +211,9 @@ export default function OnlineOrderingPage() {
       if (reminder !== undefined) {
         setCateringReminderEnabled(reminder === '1' || reminder === 'true');
       }
-    }).finally(() => setScheduleLoading(false));
+      setSiteSettingsLoaded(true);
+    }).catch(() => { /* Save stays off; see siteSettingsLoaded */ })
+      .finally(() => setScheduleLoading(false));
     getPackagingFeeSettings()
       .then(({ settings }) => { setFeeSettings(settings); setFeeError(''); })
       .catch(() => setFeeError('Could not load packaging fee settings.'));
@@ -867,7 +876,10 @@ export default function OnlineOrderingPage() {
             </div>
           </div>
           <div style={{ marginTop: 16 }}>
-            <button type="button" className="oc-btn-block" style={S.btnPrimary} onClick={() => void savePickupSlots()} disabled={pickupSaving}>
+            {!siteSettingsLoaded && !scheduleLoading && (
+              <p style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--color-text-secondary)' }}>{SETTINGS_NOT_LOADED}</p>
+            )}
+            <button type="button" className="oc-btn-block" style={S.btnPrimary} onClick={() => void savePickupSlots()} disabled={pickupSaving || !siteSettingsLoaded}>
               <Save size={14} />
               {pickupSaving ? 'Saving…' : 'Save pickup slots'}
             </button>
@@ -1077,7 +1089,10 @@ export default function OnlineOrderingPage() {
           </label>
         </div>
         <div style={{ marginTop: 16 }}>
-          <button type="button" className="oc-btn-block" style={S.btnPrimary} onClick={() => void saveCateringSettings()} disabled={cateringSaving}>
+          {!siteSettingsLoaded && !scheduleLoading && (
+            <p style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--color-text-secondary)' }}>{SETTINGS_NOT_LOADED}</p>
+          )}
+          <button type="button" className="oc-btn-block" style={S.btnPrimary} onClick={() => void saveCateringSettings()} disabled={cateringSaving || !siteSettingsLoaded}>
             <Save size={14} />
             {cateringSaving ? 'Saving…' : 'Save catering settings'}
           </button>

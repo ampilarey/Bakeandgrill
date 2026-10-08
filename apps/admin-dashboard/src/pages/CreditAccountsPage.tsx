@@ -323,12 +323,12 @@ export function CreditAccountsPage() {
                   </td>
                   <td style={{ ...TD, textAlign: 'right' }}>
                     <span style={{ whiteSpace: 'nowrap' }}>{money(row.limit_mvr)}</span>
-                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{row.terms_days} days · {money(row.available_mvr)} free</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{row.terms_days} days · <span style={{ whiteSpace: 'nowrap' }}>{money(row.available_mvr)} free</span></div>
                   </td>
                   <td style={TD}>{overdueCell(row)}</td>
                   <td style={TD}>
-                    {row.last_paid_at ? enteredOn(row.last_paid_at) : <span style={{ color: 'var(--color-text-muted)' }}>Never</span>}
-                    {row.last_charged_at && <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>charged {enteredOn(row.last_charged_at)}</div>}
+                    {row.last_paid_at ? <span style={{ whiteSpace: 'nowrap' }}>{enteredOn(row.last_paid_at)}</span> : <span style={{ color: 'var(--color-text-muted)' }}>Never</span>}
+                    {row.last_charged_at && <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>charged {enteredOn(row.last_charged_at)}</div>}
                   </td>
                   <td style={{ ...TD, minWidth: 220 }}>{actions(row)}</td>
                 </tr>

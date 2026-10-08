@@ -9,6 +9,7 @@ import {
   type PermissionItem,
 } from '../../api';
 import { Button, Card, Badge, useToast } from '../../components/ui';
+import { useCurrentUserPermissions } from '../../hooks/usePermissions';
 import { COMMON_PERMISSION_SLUGS, ROLE_CHEAT_SHEET } from '../../components/permissionsCheatSheet';
 
 type Tab = 'roles' | 'users';
@@ -152,6 +153,12 @@ function PermissionGroupList({
 
 export function PermissionsSettings({ initialUserId }: { initialUserId?: number | null }) {
   const { success, error } = useToast();
+  // Role defaults and per-person overrides are the owner's
+  // (roles_permissions.manage). A manager opens this tab for the explanation
+  // and the cheat sheet; the editor only failed to load for them and offered a
+  // Save the server refuses (manager walk, 2026-10-08).
+  const { can, loading: meLoading } = useCurrentUserPermissions();
+  const canManage = can('roles_permissions.manage');
   const [tab, setTab] = useState<Tab>(initialUserId ? 'users' : 'roles');
   const [selectedRole, setSelectedRole] = useState('manager');
   const [rolePerms, setRolePerms] = useState<PermissionItem[]>([]);
@@ -168,12 +175,13 @@ export function PermissionsSettings({ initialUserId }: { initialUserId?: number 
   const [savingUser, setSavingUser] = useState(false);
 
   useEffect(() => {
+    if (!canManage) return;
     fetchStaff()
       .then(({ staff: s }) => setStaff(
         s.filter((u) => u.role !== 'owner').map((u) => ({ id: u.id, name: u.name, role: u.role ?? 'staff' })),
       ))
       .catch(() => error('Failed to load staff'));
-  }, []);
+  }, [canManage]);
 
   useEffect(() => {
     if (initialUserId) {
@@ -183,16 +191,16 @@ export function PermissionsSettings({ initialUserId }: { initialUserId?: number 
   }, [initialUserId]);
 
   useEffect(() => {
-    if (tab !== 'roles') return;
+    if (tab !== 'roles' || !canManage) return;
     setLoadingRolePerms(true);
     getRolePermissions(selectedRole)
       .then(({ permissions }) => { setRolePerms(permissions); setRoleChanges({}); })
       .catch(() => error('Failed to load role permissions'))
       .finally(() => setLoadingRolePerms(false));
-  }, [tab, selectedRole]);
+  }, [tab, selectedRole, canManage]);
 
   useEffect(() => {
-    if (tab !== 'users' || !selectedUserId) return;
+    if (tab !== 'users' || !selectedUserId || !canManage) return;
     setLoadingUserPerms(true);
     getUserPermissions(selectedUserId)
       .then(({ permissions, role }) => {
@@ -202,7 +210,7 @@ export function PermissionsSettings({ initialUserId }: { initialUserId?: number 
       })
       .catch(() => error('Failed to load user permissions'))
       .finally(() => setLoadingUserPerms(false));
-  }, [tab, selectedUserId]);
+  }, [tab, selectedUserId, canManage]);
 
   const roleGrouped = rolePerms.reduce<Record<string, PermissionItem[]>>((acc, p) => {
     const granted = roleChanges[p.slug] ?? p.granted;
@@ -324,6 +332,16 @@ export function PermissionsSettings({ initialUserId }: { initialUserId?: number 
         </div>
       </details>
 
+      {!canManage && !meLoading && (
+        <Card>
+          <p data-testid="permissions-owner-only" style={{ margin: 0, fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.55 }}>
+            Only the owner changes role defaults and one person's overrides. Ask the owner if someone needs more or less access.
+          </p>
+        </Card>
+      )}
+
+      {canManage && (
+      <>
       <div style={{ display: 'flex', gap: 8 }}>
         <Button variant={tab === 'roles' ? 'primary' : 'ghost'} size="sm" icon={<Shield size={14} />} onClick={() => setTab('roles')}>
           Role permissions
@@ -438,6 +456,8 @@ export function PermissionsSettings({ initialUserId }: { initialUserId?: number 
             </Card>
           )}
         </>
+      )}
+      </>
       )}
     </div>
   );

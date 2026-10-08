@@ -36,6 +36,8 @@ export function RefundPayoutSettings() {
   const [threshold, setThreshold] = useState('500');
   const [compThreshold, setCompThreshold] = useState('500');
   const [loading, setLoading] = useState(true);
+  // Save stays off until the real values are in (see CreditAccountSettings).
+  const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
@@ -52,6 +54,7 @@ export function RefundPayoutSettings() {
         setCardRef(['1', 'true', 'on', 'yes'].includes(String(map.pos_card_reference_required ?? '0').toLowerCase()));
         setThreshold(map.deposit_payout_owner_threshold_mvr ?? '500');
         setCompThreshold(map.gift_card_comp_owner_threshold_mvr ?? '500');
+        setLoaded(true);
       })
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
@@ -112,8 +115,13 @@ export function RefundPayoutSettings() {
           <p style={HINT}>A gift card issued or topped up in the admin panel says how it was paid for. Cash goes into the open drawer. A free card is value given away, so above this amount only an owner can issue one. Zero means no limit.</p>
         </div>
         {error && <p style={{ margin: 0, color: 'var(--color-danger)', fontSize: 13 }}>{error}</p>}
+        {!loaded && (
+          <p style={{ margin: 0, color: 'var(--color-text-secondary)', fontSize: 13 }}>
+            The current settings did not load, so Save is off: saving now would replace them with what is shown.
+          </p>
+        )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Button onClick={() => void save()} disabled={saving} icon={<Save size={14} />}>{saving ? 'Saving…' : 'Save'}</Button>
+          <Button onClick={() => void save()} disabled={saving || !loaded} icon={<Save size={14} />}>{saving ? 'Saving…' : 'Save'}</Button>
           {saved && <span style={{ fontSize: 13, color: 'var(--color-success)' }}>Saved.</span>}
         </div>
       </div>

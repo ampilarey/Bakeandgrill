@@ -28,7 +28,7 @@ import {
 } from '../api';
 import {
   Badge, Btn, Card, DateInput, ErrorMsg, Input, Modal, ModalActions, PageHeader, PageShell, StatCard, TableCard,
-  TableSkeleton, TD, TH,
+  TableSkeleton, TD, TD_NOWRAP, TH,
 } from '../components/SharedUI';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -214,17 +214,17 @@ function CardQrTab({ from, to, isMobile, onError }: { from: string; to: string; 
                             aria-expanded={openDay === d.date}
                             aria-label={`Details for ${d.date}`}
                             onClick={() => setOpenDay(openDay === d.date ? null : d.date)}
-                            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', color: 'var(--color-primary)', fontWeight: 600 }}
+                            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', color: 'var(--color-primary)', fontWeight: 600, whiteSpace: 'nowrap' }}
                           >
                             {d.date} {openDay === d.date ? '▴' : '▾'}
                           </button>
-                        ) : d.date}
+                        ) : <span style={{ whiteSpace: 'nowrap' }}>{d.date}</span>}
                         {d.payments > 0 ? <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}> · {d.payments} payment{d.payments === 1 ? '' : 's'}</span> : null}
                       </td>
-                      <td style={TD}>{mvr(d.gross_laar)}</td>
-                      <td style={TD}>{d.commission_laar ? `−${mvr(d.commission_laar)}` : '—'}</td>
-                      <td style={{ ...TD, fontWeight: 600 }}>{mvr(d.expected_laar)}</td>
-                      <td style={TD}>
+                      <td style={TD_NOWRAP}>{mvr(d.gross_laar)}</td>
+                      <td style={TD_NOWRAP}>{d.commission_laar ? `−${mvr(d.commission_laar)}` : '—'}</td>
+                      <td style={{ ...TD_NOWRAP, fontWeight: 600 }}>{mvr(d.expected_laar)}</td>
+                      <td style={TD_NOWRAP}>
                         {mvr(d.allocated_laar)}
                         {d.deposits.length > 0 && (
                           <div>
@@ -239,7 +239,7 @@ function CardQrTab({ from, to, isMobile, onError }: { from: string; to: string; 
                           </div>
                         )}
                       </td>
-                      <td style={{ ...TD, color: d.remaining_laar > 0 ? 'var(--color-danger)' : d.over_laar > 0 ? 'var(--color-warning)' : 'var(--color-text-muted)' }}>
+                      <td style={{ ...TD_NOWRAP, color: d.remaining_laar > 0 ? 'var(--color-danger)' : d.over_laar > 0 ? 'var(--color-warning)' : 'var(--color-text-muted)' }}>
                         {d.remaining_laar > 0 ? mvr(d.remaining_laar) : d.over_laar > 0 ? `+${mvr(d.over_laar)}` : '—'}
                       </td>
                       <td style={TD}><StatusBadge status={d.status} /></td>

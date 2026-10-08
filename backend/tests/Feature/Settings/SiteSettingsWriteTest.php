@@ -113,7 +113,7 @@ class SiteSettingsWriteTest extends TestCase
          * call, plus every `key: '...'` entry in a file that calls it with a
          * computed key — and fails naming any key the allowlist lacks.
          */
-        $src = dirname(__DIR__, 3) . '/apps/admin-dashboard/src/pages';
+        $src = dirname(__DIR__, 4) . '/apps/admin-dashboard/src/pages';
         if (!is_dir($src)) {
             $this->markTestSkipped('Admin source not present alongside the backend.');
         }

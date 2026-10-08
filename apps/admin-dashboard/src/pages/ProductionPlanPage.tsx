@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { X } from 'lucide-react';
 import {
   Badge, Btn, Card, DateInput, EmptyState, ErrorMsg, Input, Select, Spinner,
-  StatCard, TableCard, TD, TH,
+  StatCard, TableCard, TD, TD_NOWRAP, TH,
 } from '../components/SharedUI';
 import { Toggle } from '../components/ui/Toggle';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -877,7 +877,7 @@ export function PlanAccuracyTab() {
                 <tbody>
                   {data.records.slice(0, 60).map((r, i) => (
                     <tr key={`${r.date}-${r.slot_start}-${r.name}-${i}`}>
-                      <td style={TD}>{r.weekday} {r.date}</td>
+                      <td style={TD_NOWRAP}>{r.weekday} {r.date}</td>
                       <td style={TD}>{r.slot_label}</td>
                       <td style={TD}>{r.name}</td>
                       <td style={{ ...TD, fontSize: 12 }}>{r.cook ?? '—'}{r.due_time ? ` by ${r.due_time}` : ''}</td>

@@ -131,22 +131,35 @@ function NotificationsSettings() {
   const [saving, setSaving] = useState<string | null>(null);
   const [opsSaving, setOpsSaving] = useState(false);
   const [error, setError] = useState('');
+  // The switches show "on" for a key that did not load, so they stay locked
+  // until the settings are in (a manager could not read them before
+  // 2026-10-08, and every switch read "on" whatever was set). Each part loads
+  // on its own: one refusal used to blank the templates and staff alerts too.
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([getSiteSettings(), fetchSmsTemplates(), getOpsAlertsSettings()])
+    Promise.allSettled([getSiteSettings(), fetchSmsTemplates(), getOpsAlertsSettings()])
       .then(([settingsRes, templatesRes, opsRes]) => {
-        const map: Record<string, string> = {};
-        Object.values(settingsRes.settings ?? {}).forEach((group) => {
-          (group as { key: string; value: string | null }[]).forEach((s) => {
-            if (s.value !== null) map[s.key] = s.value;
+        if (settingsRes.status === 'fulfilled') {
+          const map: Record<string, string> = {};
+          Object.values(settingsRes.value.settings ?? {}).forEach((group) => {
+            (group as { key: string; value: string | null }[]).forEach((s) => {
+              if (s.value !== null) map[s.key] = s.value;
+            });
           });
-        });
-        setSettings(map);
-        setTemplates(templatesRes.templates.filter((t) => t.type === 'customer_notification'));
-        setOpsAlerts(opsRes.settings);
+          setSettings(map);
+          setSettingsLoaded(true);
+        }
+        if (templatesRes.status === 'fulfilled') {
+          setTemplates(templatesRes.value.templates.filter((t) => t.type === 'customer_notification'));
+        }
+        if (opsRes.status === 'fulfilled') setOpsAlerts(opsRes.value.settings);
+        const failed = [settingsRes, templatesRes, opsRes].find((r) => r.status === 'rejected');
+        if (failed && failed.status === 'rejected') {
+          setError(failed.reason instanceof Error ? failed.reason.message : 'Some settings did not load.');
+        }
       })
-      .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
 
@@ -162,7 +175,9 @@ function NotificationsSettings() {
   }, [opsAlerts]);
 
   const saveShiftAlerts = async () => {
-    if (opsSaving) return;
+    // Without the saved values the fields hold defaults; saving them would
+    // overwrite the real ones.
+    if (opsSaving || !opsAlerts) return;
     setOpsSaving(true);
     setError('');
     try {
@@ -203,6 +218,7 @@ function NotificationsSettings() {
   };
 
   const toggle = async (key: string) => {
+    if (!settingsLoaded) return;
     const newVal = isEnabled(key) ? 'false' : 'true';
     setSaving(key);
     setError('');
@@ -232,6 +248,7 @@ function NotificationsSettings() {
             desc={cfg.desc}
             icon={cfg.icon}
             enabled={isEnabled(cfg.key)}
+            switchLocked={!settingsLoaded}
             savingToggle={saving === cfg.key}
             onToggle={() => void toggle(cfg.key)}
           />
@@ -246,6 +263,7 @@ function NotificationsSettings() {
           icon={cfg.icon}
           enabled={isEnabled(cfg.key)}
           toggleDisabled={idx > 0}
+          switchLocked={!settingsLoaded}
           savingToggle={saving === cfg.key}
           onToggle={() => void toggle(cfg.key)}
           template={templateBySlug(slug)}
@@ -273,6 +291,11 @@ function NotificationsSettings() {
   return (
     <div style={{ maxWidth: 720 }}>
       {error && <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, marginBottom: 12 }}>{error}</p>}
+      {!loading && !settingsLoaded && (
+        <p style={{ color: 'var(--color-text-secondary)', fontSize: 13, marginBottom: 12 }}>
+          The current switches did not load, so they are locked: each would show "on" whatever is set.
+        </p>
+      )}
 
       {/* SMS settings audit, 2026-10-03: the same switches exist in three
           places; this names the one list that has all of them. */}
@@ -381,7 +404,7 @@ function NotificationsSettings() {
                 style={{ width: 160, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }}
               />
             </label>
-            <Btn variant="secondary" onClick={() => void saveShiftAlerts()} disabled={opsSaving}>{opsSaving ? 'Saving…' : 'Save alerts'}</Btn>
+            <Btn variant="secondary" onClick={() => void saveShiftAlerts()} disabled={opsSaving || !opsAlerts}>{opsSaving ? 'Saving…' : 'Save alerts'}</Btn>
           </div>
         )}
       </div>

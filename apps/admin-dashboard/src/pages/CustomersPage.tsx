@@ -8,7 +8,7 @@ import {
 } from '../api';
 import {
   Badge, Btn, Card, EmptyState, ErrorMsg, TableSkeleton, TableStateBar,
-  PageHeader, PageShell, Spinner, TableCard, TD, Modal, ModalActions, Input,
+  PageHeader, PageShell, Spinner, TableCard, TD, TD_NOWRAP, Modal, ModalActions, Input,
   ConfirmDialog, useConfirmDialog, InlineIcon,
 } from '../components/SharedUI';
 import { SortFilterHead, useSortFilter } from '../components/TableControls';
@@ -447,11 +447,11 @@ export function CustomersPage() {
                     : <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>—</span>}
                 </td>
                 <td style={TD}>{c.orders_count}</td>
-                <td style={TD}>{fmtDate(c.last_order_at)}</td>
+                <td style={TD_NOWRAP}>{fmtDate(c.last_order_at)}</td>
                 <td style={TD}>
                   <Badge color={c.is_active ? 'green' : 'red'}>{c.is_active ? 'Active' : 'Inactive'}</Badge>
                 </td>
-                <td style={TD}>{fmtDate(c.created_at)}</td>
+                <td style={TD_NOWRAP}>{fmtDate(c.created_at)}</td>
               </tr>
             ))}
           </tbody>

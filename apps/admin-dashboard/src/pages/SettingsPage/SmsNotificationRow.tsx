@@ -13,6 +13,8 @@ type Props = {
   icon: LucideIcon;
   enabled: boolean;
   toggleDisabled?: boolean;
+  /** The switch shows but cannot be pressed (its saved value did not load). */
+  switchLocked?: boolean;
   savingToggle?: boolean;
   onToggle: () => void;
   template?: SmsTemplate | null;
@@ -27,6 +29,7 @@ export function SmsNotificationRow({
   icon: Icon,
   enabled,
   toggleDisabled = false,
+  switchLocked = false,
   savingToggle = false,
   onToggle,
   template,
@@ -188,7 +191,7 @@ export function SmsNotificationRow({
         <Switch
           checked={enabled}
           onChange={() => onToggle()}
-          disabled={toggleDisabled || savingToggle}
+          disabled={toggleDisabled || switchLocked || savingToggle}
           title={enabled ? 'Click to disable' : 'Click to enable'}
           aria-label={`Toggle ${label}`}
         />

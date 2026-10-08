@@ -79,8 +79,9 @@ icons from 768 to 1023px (`AppShell`'s tablet band) and is short of room up to 1
 (the CSS's compact band: the top bar shrinks search and the name chip to icons). Check
 390, 768, 1024 and 1366px; 768–1199 is where wide tables and long button rows break.
 A table goes in `.table-scroll` (or `TableCard` / `ResponsiveTable`) so it scrolls
-inside its card; a `display: grid` column that holds a table needs `minmax(0, 1fr)`;
-a row of tabs or filter chips is `TabScrollRow`. Details: § Stage 3f.
+inside its card, and a cell holding a date, a time or an amount is `TD_NOWRAP`; a
+`display: grid` column that holds a table needs `minmax(0, 1fr)`; a row of tabs or
+filter chips is `TabScrollRow`. Details: § Stage 3f.
 
 ## Brand colours
 

@@ -594,6 +594,31 @@ sign-in screen at three sizes in both themes. What it found:
 - A row of filter chips beside a search box goes in `TabScrollRow` (inside
   a `flex: 1 1 …; min-width: 0` wrapper), not a bare `overflow-x: auto`
   div: Customers → Credit accounts cut its last chips off with no hint.
+- **Dates and amounts.** At 768px six tables broke a date or an amount
+  over two lines ("MVR" above "0.00", "2026-" above "10-08") while the card
+  scrolled anyway. A cell holding a date, a time or an amount uses
+  `TD_NOWRAP` (SharedUI), or a `whiteSpace: 'nowrap'` span when a note sits
+  under the figure. Settlements, Credit accounts, the customer directory,
+  Shifts, Kitchen → How it did and Profit & loss do.
+- **Roles.** Only the owner and the manager have `admin.access`; staff are
+  told so at sign-in. The manager was walked on a phone and a computer, and
+  the walk logged every API call the server refused (the owner's had none).
+  `PUT /api/site-settings` takes `settings.update` but `GET` wants
+  `website.manage`, so a manager's Credit accounts, Refunds & payouts,
+  Notifications, Online ordering and SMS automations showed their defaults
+  ("Open", a blank limit, every switch "on") and Save would have written
+  them over the owner's settings. Every screen that saves site settings now
+  refuses to save what did not load: Save stays off with a line saying why
+  (Credit accounts, Refunds & payouts, pickup slots and catering), the
+  notification switches lock, the shift alerts Save waits for its values,
+  and SMS automations already showed only the error. Letting a manager read
+  those settings changes an API permission, which this repo only changes
+  with approval (`AdminRoutePermissionsSnapshotTest`), so it waits for the
+  owner. Roles & permissions shows a manager the explanation, the cheat
+  sheet and "Only the owner changes…" instead of an editor that cannot
+  load. The calls still refused by design: the health banner's quiet check,
+  the TV pairing list (owner only) and the X report for someone with no
+  shift open.
 
 Every pop-up behind a data-changing button (delete confirmations, pay link,
 send, approve…) followed the rules already. Sign-in: password, PIN, two-step

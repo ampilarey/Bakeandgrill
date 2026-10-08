@@ -55,6 +55,10 @@ export function CreditAccountSettings() {
   const [nudgeDays, setNudgeDays] = useState('3');
   const [alertDays, setAlertDays] = useState('7');
   const [loading, setLoading] = useState(true);
+  // Save stays off until the real values are in: the fields hold defaults until
+  // then, and saving those would overwrite the owner's settings (a manager
+  // could not read them before 2026-10-08 and saw "Open" and a blank limit).
+  const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
@@ -74,6 +78,7 @@ export function CreditAccountSettings() {
         setEveryDays(map.credit_overdue_reminder_every_days ?? '7');
         setNudgeDays(map.trade_unreconciled_nudge_days ?? '3');
         setAlertDays(map.trade_unreconciled_alert_days ?? '7');
+        setLoaded(true);
       })
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
@@ -247,9 +252,14 @@ export function CreditAccountSettings() {
           {error && (
             <p role="alert" style={{ margin: 0, fontSize: 13, color: 'var(--color-danger)' }}>{error}</p>
           )}
+          {!loaded && (
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)' }}>
+              The current settings did not load, so Save is off: saving now would replace them with what is shown.
+            </p>
+          )}
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Button onClick={() => void save()} disabled={saving}>
+            <Button onClick={() => void save()} disabled={saving || !loaded}>
               <Save size={16} /> {saving ? 'Saving…' : 'Save'}
             </Button>
             {saved && (

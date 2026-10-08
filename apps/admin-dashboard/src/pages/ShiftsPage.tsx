@@ -4,7 +4,7 @@ import { AlertTriangle } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
-  PageHeader, PageShell, TableCard, TD, Badge, Btn, Modal, ModalActions, EmptyState,
+  PageHeader, PageShell, TableCard, TD, TD_NOWRAP, Badge, Btn, Modal, ModalActions, EmptyState,
 } from '../components/SharedUI';
 import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import {
@@ -116,14 +116,14 @@ function AdminShiftTable({
                 {s.closed_at ? new Date(s.closed_at).toLocaleString() : stale ? 'Still open — close shift' : '—'}
               </td>
               <td style={TD}>
-                {formatMVR(s.opening_cash)}
+                <span style={{ whiteSpace: 'nowrap' }}>{formatMVR(s.opening_cash)}</span>
                 {floatVar != null && Math.abs(floatVar) >= 0.01 && (
                   <div data-testid={`float-variance-${s.id}`} style={{ fontSize: 11, color: 'var(--color-danger)', fontWeight: 600, marginTop: 2 }}>
                     {floatVar < 0 ? 'Short' : 'Over'} {formatMVR(Math.abs(floatVar))} vs last close {formatMVR(s.opening_float_expected)}
                   </div>
                 )}
               </td>
-              <td style={TD}>{formatMVR(s.closing_cash)}</td>
+              <td style={TD_NOWRAP}>{formatMVR(s.closing_cash)}</td>
               <td style={TD}>
                 {s.force_closed_at ? (
                   <Badge color="yellow">Force-closed{s.force_closer?.name ? ` by ${s.force_closer.name}` : ''} · not counted</Badge>

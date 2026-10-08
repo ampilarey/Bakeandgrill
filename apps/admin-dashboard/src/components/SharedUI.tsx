@@ -770,6 +770,10 @@ export const TD: React.CSSProperties = {
   padding: '12px 16px', fontSize: 14, color: 'var(--color-text)',
   borderBottom: '1px solid var(--color-border-light)', verticalAlign: 'middle',
 };
+/** A cell holding a date, a time or an amount. Those never break over two lines
+ *  ("MVR" above "0.00", "2026-" above "10-08" on an upright iPad); the table
+ *  scrolls inside its card instead. */
+export const TD_NOWRAP: React.CSSProperties = { ...TD, whiteSpace: 'nowrap' };
 
 // ─── DateInput ────────────────────────────────────────────────────────────────
 export function DateInput({ value, onChange, label, max }: {

@@ -35,6 +35,15 @@ describe('RefundPayoutSettings', () => {
     expect(await screen.findByText('Saved.')).toBeInTheDocument();
   });
 
+  it('will not save defaults over settings that did not load', async () => {
+    // Manager walk, 2026-10-08: the read was refused, the screen showed its
+    // defaults, and Save would have written them over the owner's values.
+    vi.spyOn(api, 'getSiteSettings').mockRejectedValue(new Error('You do not have permission to perform this action.'));
+    render(<RefundPayoutSettings />);
+    expect(await screen.findByText(/did not load, so Save is off/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Save/ })).toBeDisabled();
+  });
+
   it('refuses a negative threshold', async () => {
     render(<RefundPayoutSettings />);
     fireEvent.change(await screen.findByTestId('deposit-payout-threshold'), { target: { value: '-5' } });
