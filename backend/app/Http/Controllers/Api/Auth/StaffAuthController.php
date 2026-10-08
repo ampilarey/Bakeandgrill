@@ -457,6 +457,31 @@ class StaffAuthController extends Controller
     }
 
     /**
+     * GET /api/auth/me/permissions — what the signed-in person may do, by name
+     * and group. Only their own access, so it needs no permission of its own;
+     * /auth/me already returns the same slugs bare.
+     */
+    public function myPermissions(Request $request)
+    {
+        if ($denied = $this->denyUnlessStaffActor($request)) {
+            return $denied;
+        }
+
+        $user = $request->user();
+        $user->loadMissing('role');
+        $permissions = \App\Models\Permission::query()
+            ->whereIn('slug', $this->resolvePermissionSlugs($user))
+            ->orderBy('group')
+            ->orderBy('name')
+            ->get(['slug', 'name', 'group']);
+
+        return response()->json([
+            'role' => $user->role?->slug,
+            'permissions' => $permissions,
+        ]);
+    }
+
+    /**
      * Update the authenticated staff member's personal preferences.
      */
     public function updatePreferences(Request $request)

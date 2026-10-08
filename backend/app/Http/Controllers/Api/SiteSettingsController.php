@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Domains\Content\ContentResolver;
+use App\Domains\Permissions\Services\PermissionService;
 use App\Http\Controllers\Controller;
 use App\Models\SiteSetting;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -88,6 +90,31 @@ class SiteSettingsController extends Controller
     ];
 
     /**
+     * Keys the same screens show beside the ones they save: the ordering and
+     * catering schedules and the holiday hour presets (Online Ordering), and
+     * the logo the TV banner preview draws.
+     */
+    private const OPERATIONS_DISPLAY_KEYS = [
+        'online_ordering_schedule',
+        'catering_ordering_schedule',
+        'ramadan_hours_preset',
+        'eid_hours_preset',
+        'logo',
+        'logo_dark',
+    ];
+
+    /**
+     * What the read returns to a settings.update holder without website.manage
+     * (a manager): the keys they may save and the few shown beside them.
+     *
+     * @return list<string>
+     */
+    public static function operationsReadableKeys(): array
+    {
+        return array_values(array_unique([...self::WRITABLE_KEYS, ...self::OPERATIONS_DISPLAY_KEYS]));
+    }
+
+    /**
      * PUT /api/site-settings — write allowlisted settings keys.
      *
      * Body: `{ settings: { key: value|null } }`. Every key is checked before
@@ -140,12 +167,22 @@ class SiteSettingsController extends Controller
         return response()->json(['message' => 'Settings saved.', 'settings' => $saved]);
     }
 
-    /** GET /api/site-settings — owner only, returns shared-scope settings grouped for admin form */
-    public function index(): JsonResponse
+    /**
+     * GET /api/site-settings — shared-scope settings grouped for the admin forms.
+     *
+     * Everything for website.manage. A manager holding settings.update alone
+     * gets the keys their screens save and show, so a Save there writes back
+     * what was loaded rather than the screen's defaults.
+     */
+    public function index(Request $request, PermissionService $permissions): JsonResponse
     {
         $query = SiteSetting::query()->orderBy('id');
         if (SiteSetting::hasScopeColumn()) {
             $query->where('scope', 'shared');
+        }
+        $user = $request->user();
+        if (!$user instanceof User || !$permissions->hasPermission($user, 'website.manage')) {
+            $query->whereIn('key', self::operationsReadableKeys());
         }
         $grouped = $query->get()
             ->groupBy('group')

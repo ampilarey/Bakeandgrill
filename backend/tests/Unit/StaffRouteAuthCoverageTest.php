@@ -24,6 +24,7 @@ class StaffRouteAuthCoverageTest extends TestCase
         'POST api/auth/logout' => 'api/auth/logout — any signed-in staff; StaffAuthController::logout',
         'POST api/auth/logout-everywhere' => 'api/auth/logout-everywhere — any signed-in staff; revokes only their OWN tokens',
         'GET api/auth/me' => 'api/auth/me — any signed-in staff; returns own identity + permissions',
+        'GET api/auth/me/permissions' => 'api/auth/me/permissions — any signed-in staff; own permissions by name and group only',
         'PATCH api/auth/me/preferences' => 'api/auth/me/preferences — any signed-in staff; updates own prefs only',
         // Two-factor management is self-service by design: every one of these
         // reads or writes $request->user()'s own second factor and cannot name

@@ -72,6 +72,11 @@ export async function updateUserPermissions(userId: number, permissions: Record<
   await req(`/users/${userId}/permissions`, { method: 'PUT', body: JSON.stringify({ permissions }) });
 }
 
+/** The signed-in person's own access, named and grouped (any staff member). */
+export async function getMyPermissions(): Promise<{ role: string | null; permissions: { slug: string; name: string; group: string }[] }> {
+  return req('/auth/me/permissions');
+}
+
 export async function getRolePermissions(roleSlug: string): Promise<{ role: string; permissions: PermissionItem[] }> {
   return req(`/roles/${roleSlug}/permissions`);
 }

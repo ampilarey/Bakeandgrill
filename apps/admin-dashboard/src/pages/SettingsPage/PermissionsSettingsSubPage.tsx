@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { Save, RefreshCw, Shield, Users } from 'lucide-react';
 import {
   fetchStaff,
+  getMyPermissions,
   getUserPermissions,
   updateUserPermissions,
   getRolePermissions,
@@ -22,6 +23,29 @@ export const ROLE_OPTIONS = [
 ];
 
 type OverrideMode = 'inherit' | 'allow' | 'deny';
+
+const ACCESS_CHIP: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  padding: '4px 10px',
+  borderRadius: 999,
+  fontSize: 12,
+  fontWeight: 600,
+  background: 'var(--color-tone-brown-bg)',
+  color: 'var(--color-tone-brown-text)',
+  border: '1px solid var(--color-tone-brown-border)',
+};
+
+/** Names under their group, groups in the order the server sorted them. */
+function groupAccess(items: { name: string; group: string }[]): [string, string[]][] {
+  const groups = new Map<string, string[]>();
+  for (const item of items) {
+    const names = groups.get(item.group) ?? [];
+    names.push(item.name);
+    groups.set(item.group, names);
+  }
+  return [...groups.entries()];
+}
 
 function PermissionGroupList({
   grouped,
@@ -173,6 +197,16 @@ export function PermissionsSettings({ initialUserId }: { initialUserId?: number 
   const [userOverrides, setUserOverrides] = useState<Record<string, OverrideMode>>({});
   const [loadingUserPerms, setLoadingUserPerms] = useState(false);
   const [savingUser, setSavingUser] = useState(false);
+  // Owner, 2026-10-08: "If the manager has given the permission he must see
+  // the permission." Someone who cannot edit roles still sees their own access.
+  const [myAccess, setMyAccess] = useState<{ slug: string; name: string; group: string }[] | null>(null);
+
+  useEffect(() => {
+    if (canManage || meLoading) return;
+    getMyPermissions()
+      .then(({ permissions }) => setMyAccess(permissions))
+      .catch(() => setMyAccess([]));
+  }, [canManage, meLoading]);
 
   useEffect(() => {
     if (!canManage) return;
@@ -337,6 +371,29 @@ export function PermissionsSettings({ initialUserId }: { initialUserId?: number 
           <p data-testid="permissions-owner-only" style={{ margin: 0, fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.55 }}>
             Only the owner changes role defaults and one person's overrides. Ask the owner if someone needs more or less access.
           </p>
+        </Card>
+      )}
+
+      {!canManage && myAccess && myAccess.length > 0 && (
+        <Card>
+          <div data-testid="my-access">
+            <p style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>What you can do</p>
+            <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--color-text-secondary)' }}>
+              Your access as the owner has set it, {myAccess.length} permission{myAccess.length === 1 ? '' : 's'}.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {groupAccess(myAccess).map(([group, names]) => (
+                <div key={group}>
+                  <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{group}</p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {names.map((name) => (
+                      <span key={name} style={ACCESS_CHIP}>{name}</span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </Card>
       )}
 

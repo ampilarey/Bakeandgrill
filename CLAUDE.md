@@ -166,6 +166,19 @@ email / Telegram; when nothing reaches someone who has a phone, the SMS goes.
 Customers are untouched. See `docs/NOTIFICATION_CHANNELS.md`
 (`NotificationChannels`, `SmsService::sendByOtherChannels`).
 
+## Who may change something may see it
+
+Owner, 2026-10-08: "If the manager has given the permission he must see the
+permission." A write must not be open to someone its screen's read refuses:
+`GET /api/site-settings` takes `settings.update` as well as `website.manage`, and
+without the latter returns `SiteSettingsController::operationsReadableKeys()` (a new
+display-only key goes in `OPERATIONS_DISPLAY_KEYS`). A settings screen never saves
+values that did not load (Save off, switches locked). Anyone who cannot edit roles
+sees their own access on Settings → Roles & permissions (`GET /api/auth/me/permissions`).
+Route permissions change only with the owner's yes, and the change updates
+`backend/tests/Fixtures/admin_route_permissions.txt`. Details:
+`docs/ADMIN_THEMING_MOBILE_PLAN.md` § Stage 3f.
+
 ## TEST and production share one Redis
 
 The Redis socket is per cPanel *account* (`REDIS_PATH=/home/bakeandgrill/.redis/redis.sock`),

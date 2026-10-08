@@ -21,6 +21,10 @@ if (routes_domain_section_is('staff', 'protected') && !routes_domain_loaded('sta
 
     // Get current user (staff)
     Route::get('/auth/me', [StaffAuthController::class, 'me']);
+    // The same person's access, named and grouped, for the read-only list on
+    // Settings → Roles & permissions (owner, 2026-10-08: "If the manager has
+    // given the permission he must see the permission").
+    Route::get('/auth/me/permissions', [StaffAuthController::class, 'myPermissions']);
 
     // POS bootstrap — menu + current shift in one login round trip
     Route::get('/pos/bootstrap', [App\Http\Controllers\Api\PosBootstrapController::class, 'index'])
@@ -232,16 +236,19 @@ if (routes_domain_section_is('staff', 'admin') && !routes_domain_loaded('staff.a
     });
 
     // ─── Site Settings ──────────────────────────────────────────────────────────
-    // The write is gated wider than the read on purpose: the screens that save
-    // through it (Stock Corrections, Credit Accounts, Ordering Control, SMS
-    // switches) are settings.update pages, and a manager holding that alone
-    // must be able to press Save. What may be written is the controller's
-    // allowlist, not the permission.
+    // The screens that save through this (Stock Corrections, Credit Accounts,
+    // Ordering Control, SMS switches) are settings.update pages, and a manager
+    // holding that alone must be able to press Save. What may be written is
+    // the controller's allowlist, not the permission. The read follows the
+    // write: gated on website.manage alone it left a manager's screens showing
+    // defaults that Save then wrote over the owner's settings (manager walk,
+    // 2026-10-08). Without website.manage the read returns only the keys those
+    // screens use (SiteSettingsController::operationsReadableKeys()).
     Route::middleware(['auth:sanctum', 'staff.token', 'permission.any:settings.update,website.manage'])->group(function () {
         Route::put('/site-settings', [App\Http\Controllers\Api\SiteSettingsController::class, 'update']);
+        Route::get('/site-settings', [App\Http\Controllers\Api\SiteSettingsController::class, 'index']);
     });
     Route::middleware(['auth:sanctum', 'staff.token', 'permission:website.manage'])->group(function () {
-        Route::get('/site-settings', [App\Http\Controllers\Api\SiteSettingsController::class, 'index']);
 
         Route::get('/admin/business-details', [App\Http\Controllers\Api\BusinessDetailsController::class, 'show']);
         Route::put('/admin/business-details', [App\Http\Controllers\Api\BusinessDetailsController::class, 'update']);

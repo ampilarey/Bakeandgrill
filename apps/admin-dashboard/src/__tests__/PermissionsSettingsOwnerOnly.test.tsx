@@ -21,6 +21,7 @@ vi.mock('../hooks/usePermissions', () => ({
 
 const api = vi.hoisted(() => ({
   fetchStaff: vi.fn(),
+  getMyPermissions: vi.fn(),
   getRolePermissions: vi.fn(),
   getUserPermissions: vi.fn(),
   updateRolePermissions: vi.fn(),
@@ -43,6 +44,13 @@ describe('Roles & permissions for someone who cannot change them', () => {
     vi.clearAllMocks();
     api.fetchStaff.mockResolvedValue({ staff: [] });
     api.getRolePermissions.mockResolvedValue({ permissions: [] });
+    api.getMyPermissions.mockResolvedValue({
+      role: 'manager',
+      permissions: [
+        { slug: 'customers.credit.repay', name: 'Record customer credit repayments', group: 'Customers' },
+        { slug: 'settings.update', name: 'Update operational settings', group: 'System' },
+      ],
+    });
   });
 
   it('shows a manager the owner-only note, not an editor that cannot load', async () => {
@@ -56,12 +64,25 @@ describe('Roles & permissions for someone who cannot change them', () => {
     expect(api.fetchStaff).not.toHaveBeenCalled();
   });
 
+  it('shows a manager their own access by name (owner: "he must see the permission")', async () => {
+    perms.manage = false;
+    renderIt();
+
+    const list = await screen.findByTestId('my-access');
+    expect(list).toHaveTextContent('What you can do');
+    expect(list).toHaveTextContent('Customers');
+    expect(list).toHaveTextContent('Record customer credit repayments');
+    expect(list).toHaveTextContent('Update operational settings');
+  });
+
   it('still gives the owner the editor', async () => {
     perms.manage = true;
     renderIt();
 
     await waitFor(() => expect(api.getRolePermissions).toHaveBeenCalledWith('manager'));
     expect(screen.queryByTestId('permissions-owner-only')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('my-access')).not.toBeInTheDocument();
+    expect(api.getMyPermissions).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: /Role permissions/ })).toBeInTheDocument();
   });
 });

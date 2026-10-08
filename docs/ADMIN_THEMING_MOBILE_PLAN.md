@@ -603,22 +603,29 @@ sign-in screen at three sizes in both themes. What it found:
 - **Roles.** Only the owner and the manager have `admin.access`; staff are
   told so at sign-in. The manager was walked on a phone and a computer, and
   the walk logged every API call the server refused (the owner's had none).
-  `PUT /api/site-settings` takes `settings.update` but `GET` wants
+  `PUT /api/site-settings` took `settings.update` but `GET` wanted
   `website.manage`, so a manager's Credit accounts, Refunds & payouts,
   Notifications, Online ordering and SMS automations showed their defaults
   ("Open", a blank limit, every switch "on") and Save would have written
-  them over the owner's settings. Every screen that saves site settings now
-  refuses to save what did not load: Save stays off with a line saying why
-  (Credit accounts, Refunds & payouts, pickup slots and catering), the
-  notification switches lock, the shift alerts Save waits for its values,
-  and SMS automations already showed only the error. Letting a manager read
-  those settings changes an API permission, which this repo only changes
-  with approval (`AdminRoutePermissionsSnapshotTest`), so it waits for the
-  owner. Roles & permissions shows a manager the explanation, the cheat
-  sheet and "Only the owner changes…" instead of an editor that cannot
-  load. The calls still refused by design: the health banner's quiet check,
-  the TV pairing list (owner only) and the X report for someone with no
-  shift open.
+  them over the owner's settings. Owner, approving the fix: "If the manager
+  has given the permission he must see the permission." The read now takes
+  either permission; without `website.manage` it returns
+  `SiteSettingsController::operationsReadableKeys()` (what those screens
+  save, plus the schedules, holiday presets and logo they show; a new
+  display-only key goes in `OPERATIONS_DISPLAY_KEYS`). Every screen that
+  saves site settings also refuses to save what did not load: Save stays
+  off with a line saying why, the notification switches lock, the shift
+  alerts Save waits for its values. Roles & permissions shows someone who
+  cannot edit roles the explanation, the cheat sheet, "Only the owner
+  changes…" and "What you can do": their own permissions by name and group
+  from `GET /api/auth/me/permissions`. A sweep of every route for a role
+  that may change something but not read it (manager, staff, kitchen) left
+  one: a trade-account payment needs `customers.credit.repay`, which a
+  manager holds, while the account needs `trade.view`, which they do not;
+  only Wholesale (trade.view) offers it, so no manager screen reaches it.
+  The calls still refused by design: the health banner's quiet check, the
+  TV pairing list (owner only) and the X report for someone with no shift
+  open.
 
 Every pop-up behind a data-changing button (delete confirmations, pay link,
 send, approve…) followed the rules already. Sign-in: password, PIN, two-step
