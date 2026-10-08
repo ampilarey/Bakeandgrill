@@ -6,6 +6,7 @@ import {
   type ButtonHTMLAttributes, type HTMLAttributes, type ReactElement, type ReactNode, type SelectHTMLAttributes,
 } from 'react';
 import { createPortal } from 'react-dom';
+import type { LucideIcon } from 'lucide-react';
 import { useInHub } from './hubContext';
 
 // ─── Spinner ──────────────────────────────────────────────────────────────────
@@ -50,6 +51,17 @@ export function Card({
   );
 }
 
+// ─── InlineIcon ───────────────────────────────────────────────────────────────
+/**
+ * A line icon sitting in a run of text, where the pages used colour emoji
+ * (📍 👤 🛵 🖨️…). Emoji draw in each phone's own colours and style, so a row
+ * of them never matched the admin's icons or the brand (owner, 2026-10-08:
+ * "many admin pages doesn't follow the branding"). Takes the text's colour.
+ */
+export function InlineIcon({ icon: Icon, size = 14, gap = 4 }: { icon: LucideIcon; size?: number; gap?: number }) {
+  return <Icon size={size} aria-hidden style={{ display: 'inline-block', verticalAlign: '-0.15em', marginRight: gap, flexShrink: 0 }} />;
+}
+
 // ─── Badge ────────────────────────────────────────────────────────────────────
 export function Badge({
   label,
@@ -60,9 +72,16 @@ export function Badge({
     green:  { bg: 'var(--color-success-bg)', text: 'var(--color-success-strong)', border: '#86efac' },
     red:    { bg: 'var(--color-danger-bg)', text: 'var(--color-danger-strong)', border: '#fca5a5' },
     yellow: { bg: '#fef9c3', text: '#a16207', border: '#fde047' },
-    blue:   { bg: '#dbeafe', text: '#1d4ed8', border: '#93c5fd' },
-    purple: { bg: '#f3e8ff', text: '#7e22ce', border: '#d8b4fe' },
-    teal:   { bg: '#ccfbf1', text: '#0f766e', border: '#5eead4' },
+    // Blue, purple and teal were never brand colours (owner, 2026-10-08: "many
+    // admin pages doesn't follow the branding"). The names stay, since pages
+    // and statColor ask for them, but they draw the brand tones: rust for in
+    // progress, cocoa for plain labels, gold for ready.
+    rust:   { bg: 'var(--color-tone-rust-bg)', text: 'var(--color-tone-rust-text)', border: 'var(--color-tone-rust-border)' },
+    brown:  { bg: 'var(--color-tone-brown-bg)', text: 'var(--color-tone-brown-text)', border: 'var(--color-tone-brown-border)' },
+    gold:   { bg: 'var(--color-tone-gold-bg)', text: 'var(--color-tone-gold-text)', border: 'var(--color-tone-gold-border)' },
+    blue:   { bg: 'var(--color-tone-rust-bg)', text: 'var(--color-tone-rust-text)', border: 'var(--color-tone-rust-border)' },
+    purple: { bg: 'var(--color-tone-brown-bg)', text: 'var(--color-tone-brown-text)', border: 'var(--color-tone-brown-border)' },
+    teal:   { bg: 'var(--color-tone-gold-bg)', text: 'var(--color-tone-gold-text)', border: 'var(--color-tone-gold-border)' },
     gray:   { bg: 'var(--color-bg)', text: 'var(--color-text-secondary)', border: 'var(--color-border)' },
     orange: { bg: 'var(--color-warning-bg)', text: '#c2410c', border: '#fed7aa' },
   };
@@ -79,7 +98,9 @@ export function Badge({
          two pills; a badge is one word or two and never needs to wrap. */
       whiteSpace: 'nowrap',
     }}>
-      {label ?? children}
+      {/* Pages pass raw codes ("dine_in", "in_progress"); capitalize alone
+          drew "Dine_in". */}
+      {label != null ? label.replace(/_/g, ' ') : children}
     </span>
   );
 }
@@ -301,12 +322,24 @@ export function TabScrollRow({
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const active = el.querySelector<HTMLElement>('[aria-selected="true"], [aria-current]');
-    if (!active) return;
-    const start = active.offsetLeft;
-    const end = start + active.offsetWidth;
-    if (start < el.scrollLeft) el.scrollLeft = Math.max(0, start - 12);
-    else if (end > el.scrollLeft + el.clientWidth) el.scrollLeft = end - el.clientWidth + 12;
+    // The selected tab is brought to the middle of the strip, clear of the
+    // fades and the chevron at either end: lining it up with the edge left
+    // half of it under the right-hand fade ("Purchase l›", phone sweep
+    // 2026-10-08). Measured again once the web font is in, since the tabs
+    // change width when it lands.
+    const reveal = () => {
+      const active = el.querySelector<HTMLElement>('[aria-selected="true"], [aria-current]');
+      if (!active) return;
+      const start = active.offsetLeft;
+      const end = start + active.offsetWidth;
+      const fade = 40;
+      if (start >= el.scrollLeft + fade && end <= el.scrollLeft + el.clientWidth - fade) return;
+      el.scrollLeft = Math.max(0, start - (el.clientWidth - active.offsetWidth) / 2);
+    };
+    reveal();
+    let live = true;
+    document.fonts?.ready.then(() => { if (live) reveal(); }, () => {});
+    return () => { live = false; };
   }, [children]);
 
   return (
@@ -369,6 +402,48 @@ export function Btn({ variant = 'primary', small, children, style, ref, ...rest 
   );
 }
 
+// ─── Switch ───────────────────────────────────────────────────────────────────
+type SwitchProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onChange' | 'role' | 'children'> & {
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  size?: 'sm' | 'md';
+};
+
+/**
+ * The one on/off switch. Pages drew their own: green on some, rust on others,
+ * cool grey when off, and the ones without role="switch" were stretched to a
+ * lozenge by the phone rule that makes every button 44px tall.
+ */
+export function Switch({ checked, onChange, size = 'md', disabled, style, ...rest }: SwitchProps) {
+  const w = size === 'sm' ? 40 : 48;
+  const h = size === 'sm' ? 22 : 28;
+  const knob = h - 6;
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      {...rest}
+      style={{
+        position: 'relative', display: 'inline-block', flexShrink: 0,
+        width: w, height: h, minHeight: 0, padding: 0, border: 'none', borderRadius: h / 2,
+        background: checked ? 'var(--color-primary)' : 'var(--color-switch-off)',
+        cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.55 : 1,
+        transition: 'background 0.2s',
+        ...style,
+      }}
+    >
+      <span aria-hidden style={{
+        position: 'absolute', top: 3, left: checked ? w - knob - 3 : 3,
+        width: knob, height: knob, borderRadius: '50%', background: 'var(--color-switch-knob)',
+        boxShadow: '0 1px 3px rgba(28, 20, 8, 0.25)', transition: 'left 0.2s',
+      }} />
+    </button>
+  );
+}
+
 // ─── Input ────────────────────────────────────────────────────────────────────
 interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
   label?: string;
@@ -377,8 +452,17 @@ interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, '
 
 export function Input({ label, id, style, onChange, ...rest }: InputProps) {
   const inputId = id ?? label?.toLowerCase().replace(/\s+/g, '-');
+  // Flex sizing a caller asks for belongs on the wrapper, which is the flex
+  // item; on the inner box `flex: 1` did nothing, the field kept its natural
+  // width, and in a narrow row it pushed the button beside it over its
+  // neighbour (Wholesale → Shops, "Search" under "Active only", 2026-10-08).
+  const { flex, flexGrow, flexShrink, flexBasis, ...inputStyle } = style ?? {};
+  const grows = flex !== undefined || flexGrow !== undefined || flexBasis !== undefined;
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+    <div style={{
+      display: 'flex', flexDirection: 'column', gap: '0.25rem',
+      ...(grows ? { flex, flexGrow, flexShrink, flexBasis, minWidth: 0 } : {}),
+    }}>
       {label && <label htmlFor={inputId} style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text)' }}>{label}</label>}
       <input
         id={inputId}
@@ -390,7 +474,8 @@ export function Input({ label, id, style, onChange, ...rest }: InputProps) {
           fontSize: '0.9rem', fontFamily: 'inherit',
           background: 'var(--color-surface)', color: 'var(--color-text)',
           outline: 'none',
-          ...style,
+          ...(grows ? { width: '100%', minWidth: 0 } : {}),
+          ...inputStyle,
         }}
       />
     </div>
@@ -626,7 +711,9 @@ export function StatCard({
       </div>
       {/* Value row */}
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8 }}>
-        <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--color-text)', margin: 0, lineHeight: 1 }}>{value}</p>
+        {/* A long figure ("MVR 12,450.00") broke after "MVR" in a phone's
+            two-up grid; it steps down with the screen instead. */}
+        <p style={{ fontSize: value.length > 9 ? 'clamp(16px, 4.6vw, 22px)' : 22, fontWeight: 800, color: 'var(--color-text)', margin: 0, lineHeight: 1.1 }}>{value}</p>
         {trend && (
           <span style={{
             fontSize: 11,
@@ -679,7 +766,9 @@ export function DateInput({ value, onChange, label, max }: {
   value: string; onChange: (v: string) => void; label?: string; max?: string;
 }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+    // `date-input`: on a phone a From/To pair shares one full-width row
+    // (index.css) instead of two half-empty rows.
+    <div className="date-input" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
       {label && <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</label>}
       <input
         type="date"
@@ -726,11 +815,11 @@ export function statColor(status: string): string {
     // Order statuses
     payment_pending:  'orange',
     pending:          'yellow',
-    confirmed:        'blue',
-    preparing:        'blue',
-    ready:            'teal',
-    delivering:       'teal',
-    out_for_delivery: 'blue',
+    confirmed:        'rust',
+    preparing:        'rust',
+    ready:            'gold',
+    delivering:       'gold',
+    out_for_delivery: 'rust',
     picked_up:        'yellow',
     on_the_way:       'orange',
     delivered:        'green',

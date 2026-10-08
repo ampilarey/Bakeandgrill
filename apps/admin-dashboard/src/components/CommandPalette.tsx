@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ElementType } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, X } from 'lucide-react';
+import { ClipboardList, Search, User, X } from 'lucide-react';
 import { fetchOrders, fetchStaff } from '../api';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { getAllNavItems, getNavItemGroupLabel, canNavItem } from './navConfig';
@@ -9,7 +9,8 @@ type Result = {
   id: string;
   label: string;
   sub?: string;
-  icon: string;
+  /** A line icon, like the sidebar's; the palette drew colour emoji. */
+  icon: ElementType;
   action: () => void;
 };
 
@@ -67,7 +68,7 @@ export function CommandPalette({ open, onClose }: Props) {
         id: `nav-${item.to}`,
         label: item.label,
         sub: item.description ?? getNavItemGroupLabel(item.to),
-        icon: '→',
+        icon: item.icon,
         action: () => { navigate(item.to); onClose(); },
       }));
   };
@@ -124,7 +125,7 @@ export function CommandPalette({ open, onClose }: Props) {
               id: `o-${o.id}`,
               label: `Order #${o.order_number}`,
               sub: `${o.status} · MVR ${Number(o.total ?? 0).toFixed(2)}`,
-              icon: '📋',
+              icon: ClipboardList,
               action: () => { navigate(`/orders?order=${o.id}`); onClose(); },
             });
           });
@@ -139,7 +140,7 @@ export function CommandPalette({ open, onClose }: Props) {
               id: `st-${s.id}`,
               label: s.name,
               sub: `Staff · ${s.role_name ?? s.role ?? ''}`,
-              icon: '👤',
+              icon: User,
               action: () => { navigate('/staff'); onClose(); },
             });
           });
@@ -211,7 +212,7 @@ export function CommandPalette({ open, onClose }: Props) {
                 onMouseEnter={() => setSelected(i)}
                 className={`command-palette-row${i === selected ? ' command-palette-row--selected' : ''}`}
               >
-                <span className="command-palette-row-icon">{r.icon}</span>
+                <span className="command-palette-row-icon"><r.icon size={16} aria-hidden /></span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p className="command-palette-row-label">{r.label}</p>
                   {r.sub && <p className="command-palette-row-sub">{r.sub}</p>}

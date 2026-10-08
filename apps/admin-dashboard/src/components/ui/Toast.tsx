@@ -27,10 +27,10 @@ const icons: Record<ToastType, ReactNode> = {
 };
 
 const styles: Record<ToastType, string> = {
-  success: 'bg-green-50 border-green-300 text-green-800',
-  error:   'bg-red-50 border-red-300 text-red-800',
-  info:    'bg-blue-50 border-blue-300 text-blue-800',
-  warning: 'bg-yellow-50 border-yellow-300 text-yellow-800',
+  success: 'bg-[var(--color-success-bg)] border-[var(--color-success)] text-[var(--color-success-strong)]',
+  error:   'bg-[var(--color-danger-bg)] border-[var(--color-danger)] text-[var(--color-danger-strong)]',
+  info:    'bg-[var(--color-tone-rust-bg)] border-[var(--color-tone-rust-border)] text-[var(--color-tone-rust-text)]',
+  warning: 'bg-[var(--color-warning-bg)] border-[var(--color-warning)] text-[var(--color-warning-strong)]',
 };
 
 export function ToastProvider({ children }: { children: ReactNode }) {

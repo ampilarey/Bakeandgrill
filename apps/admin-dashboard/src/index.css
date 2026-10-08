@@ -32,7 +32,7 @@
   --color-success:       #22C55E;
   --color-warning:       #F59E0B;
   --color-danger:        #EF4444;
-  --color-info:          #3B82F6;
+  --color-info:          #8A6A4F;
 
   /* Status chips (bg + strong text). Light = dominant literal; dark pair ≥4.5:1 */
   --color-danger-bg:     #FEE2E2;
@@ -41,6 +41,24 @@
   --color-success-strong:#15803D;
   --color-warning-bg:    #FFF7ED;
   --color-warning-strong:#92400E;
+
+  /* Brand tones for pills that are not good / bad / careful (owner,
+     2026-10-08: "many admin pages doesn't follow the branding"). They replace
+     the blue, purple and teal pills: rust for in progress and information,
+     cocoa for roles and plain labels, gold for ready and almost done. Text on
+     each tint is at least 5:1. */
+  --color-tone-rust-bg:      #FBEEE6;
+  --color-tone-rust-text:    #A1420B;
+  --color-tone-rust-border:  #EBC3AA;
+  --color-tone-brown-bg:     #F3ECE4;
+  --color-tone-brown-text:   #5C4033;
+  --color-tone-brown-border: #D9C8B6;
+  --color-tone-gold-bg:      #FBF0DC;
+  --color-tone-gold-text:    #8A560C;
+  --color-tone-gold-border:  #E9C88F;
+  /* Off track of the shared Switch: a warm grey that still reads on white. */
+  --color-switch-off:        #D1C9BE;
+  --color-switch-knob:       #FFFFFF;
 
   /* TV Signage designer preview chrome */
   --color-signage-canvas-bg:     #2A2118;
@@ -488,6 +506,28 @@ a { text-decoration: none; color: inherit; }
   }
 }
 
+/* A visible file picker draws the browser's own grey button and "No file
+   chosen", wider than a phone; give it the admin's secondary button. */
+input[type="file"] {
+  max-width: 100%;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+input[type="file"]::file-selector-button {
+  margin-right: 10px;
+  padding: 8px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+input[type="file"]::file-selector-button:hover {
+  background: var(--color-surface-hover);
+}
+
 /* Mobile: < 768px */
 @media (max-width: 767px) {
   /*
@@ -557,6 +597,29 @@ a { text-decoration: none; color: inherit; }
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     max-width: 100%;
+  }
+  /* A row that spans every column is a message ("No reviews yet.", a total,
+     a group heading). Centred across a table wider than the phone it sat
+     off-screen ("No re…", phone sweep 2026-10-08), so it starts at the left,
+     where the phone is looking. */
+  table td[colspan] {
+    text-align: left !important;
+  }
+  /* …and a message block inside one (EmptyState centres its own text across
+     the whole table) is held to the visible width at the left edge. */
+  table td[colspan] > div:only-child {
+    position: sticky;
+    left: 0;
+    max-width: calc(100vw - 48px);
+    box-sizing: border-box;
+  }
+  /* A grid item may be narrower than its content. Left at the default, one
+     wide table or long line inside a grid made the whole grid wider than the
+     phone, and the page frame then cut the right-hand side off (Kitchen →
+     Handover lost 47px of its cards, phone sweep 2026-10-08). With this the
+     table scrolls inside its own card instead. */
+  .admin-shell-main [style*="display: grid"] > * {
+    min-width: 0;
   }
 
   /* Section / sub-tab rows: single horizontal scroll line instead of wrapping */
@@ -769,6 +832,17 @@ a { text-decoration: none; color: inherit; }
 
   /* Sticky page headers can swallow the viewport — cap their height */
   .page-header { padding: 8px 0 !important; }
+
+  /* Reports filters: the dates side by side, the pickers two to a row, the
+     quick ranges on a line of their own. */
+  .report-filters > * { flex: 1 1 140px; min-width: 0; }
+  .report-filters input,
+  .report-filters select { width: 100%; max-width: none !important; }
+  .report-filters > .report-quick-ranges { flex-basis: 100%; }
+
+  /* SharedUI DateInput: From and To side by side, filling the row. */
+  .date-input { flex: 1 1 140px; min-width: 0; }
+  .date-input input { width: 100%; }
 }
 
 @media (min-width: 768px) {
@@ -1413,6 +1487,18 @@ a { text-decoration: none; color: inherit; }
   --color-success-strong:#86EFAC;
   --color-warning-bg:    #422006;
   --color-warning-strong:#FCD34D;
+
+  --color-tone-rust-bg:      rgba(197, 111, 61, 0.16);
+  --color-tone-rust-text:    #E3A57F;
+  --color-tone-rust-border:  rgba(197, 111, 61, 0.45);
+  --color-tone-brown-bg:     rgba(196, 181, 163, 0.12);
+  --color-tone-brown-text:   #D9C8B6;
+  --color-tone-brown-border: rgba(196, 181, 163, 0.35);
+  --color-tone-gold-bg:      rgba(202, 125, 28, 0.16);
+  --color-tone-gold-text:    #E8B66A;
+  --color-tone-gold-border:  rgba(202, 125, 28, 0.45);
+  --color-switch-off:        #4A4234;
+  --color-switch-knob:       #F0EAE0;
 }
 
 [data-theme="dark"] body {

@@ -4,7 +4,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import type { StaffUser } from '../api';
 import { fetchLowStockItems } from '../api';
 import {
-  Bell, BellOff, ChevronLeft, ChevronRight, Moon, Search, Sun, UserCircle, X,
+  Bell, BellOff, ChevronLeft, ChevronRight, Info, Moon, Package, Search, ShoppingBag, Sun, TriangleAlert, UserCircle, X,
+  type LucideIcon,
 } from 'lucide-react';
 import { isAudioEnabled, setAudioEnabled } from '../utils/audio';
 import { useNotifications, markAllRead, clearAll } from '../utils/notifications';
@@ -57,6 +58,14 @@ function useViewportBand(): ViewportBand {
 
 const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 const SEARCH_SHORTCUT = IS_MAC ? '⌘K' : 'Ctrl+K';
+
+/** Line icon and tint per notification type; the list drew colour emoji. */
+const NOTIF_ICON: Record<string, [LucideIcon, string]> = {
+  order: [ShoppingBag, 'var(--color-primary)'],
+  stock: [Package, 'var(--color-tone-brown-text)'],
+  info: [Info, 'var(--color-info)'],
+  warning: [TriangleAlert, 'var(--color-warning-strong)'],
+};
 
 function formatNotifTime(ts: number): string {
   const d = new Date(ts);
@@ -155,10 +164,10 @@ function NotificationsBell() {
         {notifications.length === 0 ? (
           <div className="admin-shell-notif-empty">No notifications yet</div>
         ) : notifications.map((n) => {
-          const iconMap: Record<string, string> = { order: '🛒', stock: '📦', info: 'ℹ️', warning: '⚠️' };
+          const [Icon, tint] = NOTIF_ICON[n.type] ?? NOTIF_ICON.info;
           return (
             <div key={n.id} className="admin-shell-notif-row">
-              <span aria-hidden>{iconMap[n.type] ?? 'ℹ️'}</span>
+              <Icon size={16} aria-hidden style={{ color: tint, flexShrink: 0, marginTop: 2 }} />
               <div>
                 <p className="admin-shell-notif-title">{n.title}</p>
                 <p className="admin-shell-notif-body">{n.body}</p>

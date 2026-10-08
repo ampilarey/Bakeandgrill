@@ -21,6 +21,7 @@
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { Btn, TH } from './SharedUI';
 import { parseNumberFilter } from '../utils/inventoryFilter';
+import { Filter } from 'lucide-react';
 
 export type CellValue = string | number | boolean | Date | null | undefined;
 
@@ -323,7 +324,7 @@ export function SortFilterPanel<T>({ controls, allRows, open, onToggle }: {
           ))}
         </select>
         <Btn small variant={open || activeCount > 0 ? 'primary' : 'secondary'} onClick={onToggle} data-testid={`${id}-filters-toggle`} aria-expanded={open}>
-          ⚲ Filters{activeCount > 0 ? ` (${activeCount})` : ''}
+          <Filter size={14} aria-hidden />Filters{activeCount > 0 ? ` (${activeCount})` : ''}
         </Btn>
         {activeCount > 0 && (
           <Btn small variant="ghost" onClick={clearFilters} data-testid={`${id}-clear-filters`}>Clear</Btn>

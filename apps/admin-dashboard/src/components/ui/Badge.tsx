@@ -2,13 +2,15 @@ import type { ReactNode } from 'react';
 
 type Variant = 'success' | 'warning' | 'danger' | 'info' | 'neutral' | 'brand';
 
+// The theme's tokens, so the pills follow the brand and the dark theme; "info"
+// was Tailwind blue, which is not a brand colour.
 const styles: Record<Variant, string> = {
-  success: 'bg-green-50 text-green-700 border-green-200',
-  warning: 'bg-yellow-50 text-yellow-700 border-yellow-200',
-  danger:  'bg-red-50 text-red-700 border-red-200',
-  info:    'bg-blue-50 text-blue-700 border-blue-200',
+  success: 'bg-[var(--color-success-bg)] text-[var(--color-success-strong)] border-[var(--color-success-bg)]',
+  warning: 'bg-[var(--color-warning-bg)] text-[var(--color-warning-strong)] border-[var(--color-tone-gold-border)]',
+  danger:  'bg-[var(--color-danger-bg)] text-[var(--color-danger-strong)] border-[var(--color-danger-bg)]',
+  info:    'bg-[var(--color-tone-brown-bg)] text-[var(--color-tone-brown-text)] border-[var(--color-tone-brown-border)]',
   neutral: 'bg-[var(--color-bg)] text-[var(--color-text-secondary)] border-[var(--color-border)]',
-  brand:   'bg-orange-50 text-[var(--color-primary)] border-orange-200',
+  brand:   'bg-[var(--color-tone-rust-bg)] text-[var(--color-tone-rust-text)] border-[var(--color-tone-rust-border)]',
 };
 
 interface Props {
