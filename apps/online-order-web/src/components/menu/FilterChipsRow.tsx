@@ -74,17 +74,7 @@ export function FilterChipsRow({
   const { t } = useLanguage();
 
   return (
-    <div
-      className="filter-chips-row"
-      style={{
-        display: 'flex',
-        gap: '0.5rem',
-        overflowX: 'auto',
-        WebkitOverflowScrolling: 'touch',
-        padding: '0.15rem 0',
-        marginTop: '0.65rem',
-      }}
-    >
+    <div className="filter-chips-row">
       <Chip active={sortBy === 'name'} onClick={() => onSortChange('name')}>A–Z</Chip>
       <Chip active={sortBy === 'price-low'} onClick={() => onSortChange('price-low')}>{t('menu.sort_price_low')}</Chip>
       <Chip active={sortBy === 'price-high'} onClick={() => onSortChange('price-high')}>{t('menu.sort_price_high')}</Chip>

@@ -192,7 +192,9 @@ span.menu-rail-thumb {
     background: var(--bg);
     padding-top: 0.5rem;
     margin-bottom: 0.25rem;
-    box-shadow: 0 10px 12px -12px rgba(28, 20, 8, 0.35);
+    /* The two flat side strips cover the 2px a dish photo's frame reaches
+       past the column, so no sliver of a photo shows beside the banner. */
+    box-shadow: -3px 0 0 var(--bg), 3px 0 0 var(--bg), 0 10px 12px -12px rgba(28, 20, 8, 0.35);
     --mh-ease: cubic-bezier(.2,.7,.2,1);
 }
 /* The site header is shorter than --menu-sticky; cover the strip between
@@ -255,10 +257,14 @@ span.menu-rail-thumb {
 
 .mh { --mh-bar-h: 56px; }
 .mh--room { margin-bottom: calc(0.25rem + var(--mh-bar-h)); }
-.mh-under { position: absolute; left: 0; right: 0; top: 100%; background: var(--bg); }
-.mh.has-row .mh-under, .mh.has-panel .mh-under { box-shadow: 0 10px 12px -12px rgba(28, 20, 8, 0.35); }
+.mh-under { position: absolute; left: 0; right: 0; top: 100%; }
+/* The row of buttons wears the page colour (on .mh-bar, so it folds away
+   with the row); the search panel is a card of its own, below. */
+.mh.has-row .mh-bar { box-shadow: -3px 0 0 var(--bg), 3px 0 0 var(--bg), 0 10px 12px -12px rgba(28, 20, 8, 0.35); }
 .mh-bar {
     display: flex; align-items: center; gap: 0.5rem; height: var(--mh-bar-h); overflow: hidden;
+    background: var(--bg);
+    box-shadow: -3px 0 0 var(--bg), 3px 0 0 var(--bg);
     transition: height 0.3s var(--mh-ease), opacity 0.24s ease;
 }
 .mh:not(.has-row) .mh-bar { height: 0; opacity: 0; pointer-events: none; }
@@ -313,8 +319,26 @@ html:not(.js) .mh-chip.is-active { background: var(--amber); }
 .mh-search[aria-expanded="true"], .mh-search.is-on { background: #fff; border-color: #fff; color: var(--amber); }
 /* Search needs the script, so does its button. */
 html:not(.js) .mh-search { display: none; }
-.mh-panel { padding: 0 0 0.6rem; }
 .mh-panel[hidden] { display: none; }
+/* A card of its own over the dishes (owner, 2026-10-08: "when search button
+   is opened its not visible due to similar colors"). It wore the page's
+   cream, and the page's cream is the colour of a dish without a photo, so it
+   melted into the menu. The card surface alone would not do it either: in
+   light mode that is white against #FFFDF9. So: a rust-tinted edge and a
+   lifted shadow, which hold in both themes, with or without photos
+   underneath. It hangs straight from the banner (or the row of buttons) like
+   a sheet: a gap above it showed slivers of the dishes. The order app's
+   .mh-panel matches. */
+.mh-panel {
+    padding: 0 0.75rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-color: color-mix(in srgb, var(--amber) 38%, var(--border));
+    border-radius: 6px 6px 16px 16px;
+    box-shadow: 0 18px 34px -16px rgba(28, 20, 8, 0.5), 0 4px 10px -4px rgba(28, 20, 8, 0.18);
+}
+[data-theme="dark"] .mh-panel { box-shadow: 0 18px 34px -12px rgba(0, 0, 0, 0.8), 0 4px 10px -4px rgba(0, 0, 0, 0.55); }
+html.js .mh-panel .menu-filters { background: transparent; padding: 0.7rem 0 0.75rem; }
 
 /* The All panel: a sheet from the bottom on a phone, a dropdown on a computer. */
 .mh-scrim {

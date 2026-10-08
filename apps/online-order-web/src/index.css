@@ -5565,7 +5565,9 @@ textarea.field-input {
   background: var(--color-bg);
   padding-top: 0.5rem;
   margin-bottom: 0.25rem;
-  box-shadow: 0 10px 12px -12px rgba(28, 20, 8, 0.35);
+  /* The two flat side strips cover the 2px a dish photo's frame reaches past
+     the column, so no sliver of a photo shows beside the banner. */
+  box-shadow: -3px 0 0 var(--color-bg), 3px 0 0 var(--color-bg), 0 10px 12px -12px rgba(28, 20, 8, 0.35);
   --mh-ease: cubic-bezier(.2, .7, .2, 1);
   --mh-bar-h: 54px;
 }
@@ -5576,8 +5578,10 @@ textarea.field-input {
    row comes and goes. Room is kept under the banner only at the top of the
    page, and only when the first section has a row. */
 .mh--room { margin-bottom: calc(0.25rem + var(--mh-bar-h)); }
-.mh-under { position: absolute; left: 0; right: 0; top: 100%; background: var(--color-bg); }
-.mh.has-row .mh-under, .mh.has-panel .mh-under { box-shadow: 0 10px 12px -12px rgba(28, 20, 8, 0.35); }
+.mh-under { position: absolute; left: 0; right: 0; top: 100%; }
+/* The row of buttons wears the page colour (on .mh-bar, so it folds away
+   with the row); the search panel is a card of its own, below. */
+.mh.has-row .mh-bar { box-shadow: -3px 0 0 var(--color-bg), 3px 0 0 var(--color-bg), 0 10px 12px -12px rgba(28, 20, 8, 0.35); }
 .mh:not(.has-row) .mh-bar { height: 0; opacity: 0; pointer-events: none; }
 .mh-banner {
   position: relative; height: 76px; border-radius: 14px; overflow: hidden;
@@ -5634,6 +5638,8 @@ textarea.field-input {
 
 .mh-bar {
   display: flex; align-items: center; gap: 0.5rem; height: var(--mh-bar-h); overflow: hidden;
+  background: var(--color-bg);
+  box-shadow: -3px 0 0 var(--color-bg), 3px 0 0 var(--color-bg);
   transition: height 0.3s var(--mh-ease), opacity 0.24s ease;
 }
 .mh-rows { position: relative; flex: 1; min-width: 0; height: 100%; }
@@ -5682,8 +5688,38 @@ textarea.field-input {
 /* The first row's top space is the panel's own padding, not a margin that
    escapes it: the fold measures with the panel clipped, where margins stay
    inside, and an escaping margin made it overshoot by 8px and snap back. */
-.mh-panel { padding: 0.5rem 0 0.6rem; }
 .mh-panel > :first-child { margin-top: 0; }
+/* A card of its own over the dishes (owner, 2026-10-08: "when search button
+   is opened its not visible due to similar colors"). It wore the page's
+   cream, and the page's cream is the colour of a dish without a photo, so it
+   melted into the menu. The card surface alone would not do it either: in
+   light mode that is white against #FFFDF9. So: a rust-tinted edge and a
+   lifted shadow, which hold in both themes, with or without photos
+   underneath. It hangs straight from the banner (or the row of buttons) like
+   a sheet: a gap above it showed slivers of the dishes. */
+.mh-panel {
+  padding: 0.7rem 0.75rem 0.75rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-color: color-mix(in srgb, var(--color-primary) 38%, var(--color-border));
+  border-radius: 6px 6px 16px 16px;
+  box-shadow: 0 18px 34px -16px rgba(28, 20, 8, 0.5), 0 4px 10px -4px rgba(28, 20, 8, 0.18);
+}
+[data-theme="dark"] .mh-panel { box-shadow: 0 18px 34px -12px rgba(0, 0, 0, 0.8), 0 4px 10px -4px rgba(0, 0, 0, 0.55); }
+/* Inside the card the box is the page colour, so it still reads as a box. */
+.mh-panel .menu-search-row { background: var(--color-bg); }
+.filter-chips-row {
+  display: flex; gap: 0.5rem; overflow-x: auto; -webkit-overflow-scrolling: touch;
+  padding: 0.15rem 0; margin-top: 0.65rem;
+}
+/* The rows that scroll sideways run to the card's edges: a button that does
+   not fit slides under the edge ("more this way") instead of being cut short
+   at the card's padding. The end space is a spacer, since a scroll box's
+   end padding is not kept by every browser. */
+.mh-panel .filter-chips-row,
+.mh-panel .menu-view-row { margin-inline: -0.75rem; padding-left: 0.75rem; padding-right: 0; }
+.mh-panel .filter-chips-row::after,
+.mh-panel .menu-view-row::after { content: ''; flex: none; width: 0.25rem; }
 /* An instant switch (first paint, a shared link) does not slide or roll. */
 .mh--still .mh-chips, .mh--still .mh-img, .mh--still .mh-pill, .mh--still .mh-bar { transition: none; }
 

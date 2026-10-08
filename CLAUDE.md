@@ -181,7 +181,10 @@ Order app: `components/menu/MenuHead.tsx`. Keep the two in step. Shared links
 (`MenuPageController::sharedLink`).
 
 The button row and search panel float under the banner (`.mh-under`), so a
-section without sub-categories shows no strip and nothing jumps. On phones the
+section without sub-categories shows no strip and nothing jumps. The search
+panel is a card of its own (surface, rust-tinted edge, lifted shadow, hanging
+straight from the banner or row): in the page's cream it vanished over dishes
+without photos, whose tiles are that same cream. On phones the
 order app's day and order-type bars are not pinned: they fold into a button at
 the head of the rail (`RailOrderButton`) that drops them back down. On phones
 the menu opens with a brand row (`HomePhoneHeader pinned={false}`) that scrolls away;
