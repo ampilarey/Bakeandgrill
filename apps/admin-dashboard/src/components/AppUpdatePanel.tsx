@@ -109,7 +109,9 @@ export function AppUpdatePanel() {
           <p role="status" style={{ margin: '10px 0 0', fontSize: 13, color: u.updateAvailable ? 'var(--color-primary)' : 'var(--color-text-secondary)' }}>{message}</p>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8, marginTop: 14 }}>
+        {/* 220px: at 150 a phone fitted two to a row and every label broke
+            over two lines ("Clear cached / app & reload"). */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8, marginTop: 14 }}>
           <Button variant="secondary" onClick={() => void check()} disabled={u.checking || u.applying}>
             <RefreshCw size={14} /> {u.checking ? 'Checking…' : 'Check for update'}
           </Button>

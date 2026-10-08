@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Modal, ModalActions, Btn, Select } from './SharedUI';
 import { fetchTableQr, rotateTableQr, type RestaurantTable, type TableQr } from '../api';
+import { Printer } from 'lucide-react';
 
 /*
  * The card that sits on the table.
@@ -270,7 +271,7 @@ export function TableQrModal({ table, onClose }: { table: RestaurantTable; onClo
 
       <ModalActions>
         <Btn variant="secondary" onClick={onClose}>Close</Btn>
-        <Btn onClick={handlePrint} disabled={!qr}>🖨️ Print {copies > 1 ? `${copies} cards` : 'card'}</Btn>
+        <Btn onClick={handlePrint} disabled={!qr}><Printer size={16} aria-hidden />Print {copies > 1 ? `${copies} cards` : 'card'}</Btn>
       </ModalActions>
     </Modal>
   );
@@ -364,7 +365,7 @@ export function TableQrSheetModal({ tables, onClose }: { tables: RestaurantTable
       <ModalActions>
         <Btn variant="secondary" onClick={onClose}>Close</Btn>
         <Btn onClick={handlePrint} disabled={loading || codes.length === 0}>
-          🖨️ Print {codes.length} card{codes.length === 1 ? '' : 's'}
+          <Printer size={16} aria-hidden />Print {codes.length} card{codes.length === 1 ? '' : 's'}
         </Btn>
       </ModalActions>
     </Modal>

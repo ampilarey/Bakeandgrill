@@ -46,7 +46,7 @@ export class ErrorBoundary extends Component<Props, State> {
             </button>
             <button
               onClick={this.state.chunkError ? this.hardReload : () => window.location.reload()}
-              style={{ background: 'transparent', color: 'var(--color-text-secondary)', border: '1px solid #D1D5DB', borderRadius: 8, padding: '0.6rem 1.4rem', fontWeight: 600, cursor: 'pointer' }}
+              style={{ background: 'transparent', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)', borderRadius: 8, padding: '0.6rem 1.4rem', fontWeight: 600, cursor: 'pointer' }}
             >
               Reload page
             </button>

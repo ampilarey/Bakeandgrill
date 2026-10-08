@@ -56,6 +56,13 @@ These variables are defined on `:root` in `apps/admin-dashboard/src/index.css` a
 already flip correctly under `[data-theme="dark"]`. Do not invent parallel hex
 literals for the same roles.
 
+Chips, pills and tinted boxes use the brand tones (owner, 2026-10-08), never blue,
+indigo, violet, teal or cool grey: `--color-tone-rust-{bg,text,border}` for in
+progress and info, `--color-tone-brown-*` for roles, types and plain labels,
+`--color-tone-gold-*` for ready; green, amber and red stay for success, warning and
+danger. Icons are lucide (`InlineIcon` in running text), not emoji; on/off controls
+are SharedUI `Switch`. Details: `docs/ADMIN_THEMING_MOBILE_PLAN.md` § Stage 3c.
+
 ## Brand colours
 
 The accent everywhere is the rust from the logo, `#B74B0C`; on a dark surface it is

@@ -315,7 +315,7 @@ describe('SocialHubPage — automations and insights', () => {
     });
     renderWithRouter(<SocialHubPage />);
     await screen.findByText('Fresh masroshi today');
-    expect(screen.getByTestId('delivery-insights')).toHaveTextContent('♥ 12 · 💬 3 · ↗ 2');
+    expect(screen.getByTestId('delivery-insights')).toHaveTextContent('· 12 likes · 3 comments · 2 shares');
 
     fireEvent.click(screen.getByText('Refresh stats'));
     await waitFor(() => expect(api.refreshSocialInsights).toHaveBeenCalledWith(4));
@@ -467,7 +467,7 @@ describe('SocialHubPage — comments and shares', () => {
     });
     renderWithRouter(<SocialHubPage />);
     await screen.findByText('Fresh masroshi today');
-    expect(screen.getByTestId('delivery-traffic')).toHaveTextContent('↗ 12 visits · 🛒 3 orders');
+    expect(screen.getByTestId('delivery-traffic')).toHaveTextContent('· 12 visits · 3 orders');
 
     fireEvent.click(screen.getByText('Automation'));
     const shared = within(await screen.findByTestId('most-shared'));

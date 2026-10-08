@@ -328,7 +328,7 @@ export default function WholesaleInvoicingPage() {
                   <td style={tdStyle}>{a.shop_name}</td>
                   <td style={tdStyle}>{a.customer?.name ?? a.customer?.phone ?? '—'}</td>
                   <td style={{ ...tdStyle, textAlign: 'right' }}>
-                    <Btn variant="secondary" onClick={() => handlePickAccount(a.id)}>Invoice deliveries</Btn>
+                    <Btn variant="secondary" onClick={() => handlePickAccount(a.id)} style={{ whiteSpace: 'nowrap' }}>Invoice deliveries</Btn>
                   </td>
                 </tr>
               ))}

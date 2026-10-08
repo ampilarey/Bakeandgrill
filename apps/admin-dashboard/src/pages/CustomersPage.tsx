@@ -9,7 +9,7 @@ import {
 import {
   Badge, Btn, Card, EmptyState, ErrorMsg, TableSkeleton, TableStateBar,
   PageHeader, PageShell, Spinner, TableCard, TD, Modal, ModalActions, Input,
-  ConfirmDialog, useConfirmDialog,
+  ConfirmDialog, useConfirmDialog, InlineIcon,
 } from '../components/SharedUI';
 import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import { CustomerCreditSection } from '../components/CustomerCreditSection';
@@ -18,6 +18,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { RecordCard, RecordCardList } from '../components/RecordCard';
+import { StickyNote } from 'lucide-react';
 
 function fmtDate(iso: string | null | undefined) {
   if (!iso) return '—';
@@ -545,9 +546,9 @@ export function CustomersPage() {
                       ))}
                     </div>
                     {detail.customer.internal_notes && (
-                      <div style={{ background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 10, padding: '10px 14px' }}>
-                        <p style={{ color: 'var(--color-warning-strong)', margin: '0 0 4px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>📝 Internal Notes</p>
-                        <p style={{ color: '#78350F', margin: 0, fontSize: 13 }}>{detail.customer.internal_notes}</p>
+                      <div style={{ background: 'var(--color-warning-bg)', border: '1px solid color-mix(in srgb, var(--color-warning) 50%, transparent)', borderRadius: 10, padding: '10px 14px' }}>
+                        <p style={{ color: 'var(--color-warning-strong)', margin: '0 0 4px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center' }}><InlineIcon icon={StickyNote} size={12} />Internal Notes</p>
+                        <p style={{ color: 'var(--color-warning-strong)', margin: 0, fontSize: 13 }}>{detail.customer.internal_notes}</p>
                       </div>
                     )}
                   </>
@@ -588,7 +589,7 @@ export function CustomersPage() {
                 )}
 
                 {!editing && detail && (
-                  <div style={{ background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 12, padding: '14px 16px' }}>
+                  <div style={{ background: 'var(--color-warning-bg)', border: '1px solid color-mix(in srgb, var(--color-warning) 45%, transparent)', borderRadius: 12, padding: '14px 16px' }}>
                     <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: 'var(--color-warning-strong)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                       Account Identity
                     </p>
@@ -610,7 +611,7 @@ export function CustomersPage() {
                       {(detail.orders ?? []).map((o) => (
                         <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, padding: '10px 12px', background: '#FAF7F3', borderRadius: 10, border: '1px solid #F0EAE3' }}>
                           <Link to={`/orders?order=${o.id}`} style={{ fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none' }}>#{o.order_number}</Link>
-                          <span style={{ color: 'var(--color-text-secondary)', fontSize: 12 }}>{o.type?.replace('_', ' ')}</span>
+                          <span style={{ color: 'var(--color-text-secondary)', fontSize: 12 }}>{o.type?.replace(/_/g, ' ')}</span>
                           <Badge color={['completed', 'paid'].includes(o.status) ? 'green' : o.status === 'cancelled' ? 'red' : 'gray'}>{o.status}</Badge>
                           <span style={{ fontWeight: 700, color: 'var(--color-primary)' }}>MVR {parseFloat(String(o.total)).toFixed(2)}</span>
                           <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{fmtDate(o.created_at)}</span>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, Banknote, Bike, Car, ChefHat, Link2, Pause, Play, Receipt, RefreshCw, StickyNote } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useSse } from '../hooks/useSse';
 import {
@@ -16,7 +16,7 @@ import { ADMIN_ORDER_PAYMENT_METHODS } from '../lib/paymentMethods';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
-  Badge, Btn, Card, EmptyState, TableStateBar, PageHeader, PageShell, Select, Spinner, statColor, ConfirmDialog, useConfirmDialog, Modal, TableCard,
+  Badge, Btn, Card, EmptyState, TableStateBar, PageHeader, PageShell, Select, Spinner, statColor, ConfirmDialog, useConfirmDialog, Modal, TableCard, InlineIcon,
 } from '../components/SharedUI';
 import { RecordCard, RecordCardList } from '../components/RecordCard';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -344,7 +344,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
           <>
             <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
               <Badge label={order.status} color={statColor(order.status)} />
-              <Badge label={typeLabel(order.type)} color="blue" />
+              <Badge label={typeLabel(order.type)} color="brown" />
             </div>
 
             {/* Action buttons */}
@@ -352,12 +352,12 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
               {canHoldResume && order.status === 'held' && (
                 <Btn small onClick={() => doAction('resume', () => resumeOrder(order.id), 'Order resumed')}>
-                  {acting === 'resume' ? '…' : '▶ Resume Order'}
+                  {acting === 'resume' ? '…' : <><InlineIcon icon={Play} />Resume Order</>}
                 </Btn>
               )}
               {canHoldResume && ['pending', 'payment_pending', 'in_progress', 'preparing', 'ready'].includes(order.status) && (
                 <Btn small variant="secondary" onClick={() => doAction('hold', () => holdOrder(order.id), 'Order held')}>
-                  {acting === 'hold' ? '…' : '⏸ Hold'}
+                  {acting === 'hold' ? '…' : <><InlineIcon icon={Pause} />Hold</>}
                 </Btn>
               )}
               {canSendPayLink
@@ -372,7 +372,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                     showToast(`Pay link sent to ${res.sent_to} for MVR ${Number(res.amount).toFixed(2)}.`);
                   }, 'Pay link')}
                 >
-                  {acting === 'paylink' ? '…' : '🔗 Send Pay Link'}
+                  {acting === 'paylink' ? '…' : <><InlineIcon icon={Link2} />Send Pay Link</>}
                 </Btn>
               )}
               {canVoid
@@ -435,7 +435,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                     })();
                   }}
                 >
-                  {acting === 'bill' ? '…' : '🧾 Send Bill'}
+                  {acting === 'bill' ? '…' : <><InlineIcon icon={Receipt} />Send Bill</>}
                 </Btn>
               )}
               {canSendBill && SEND_BILL_TYPES.has(order.type) && SEND_BILL_STATUSES.has(order.status) && (showBillPhone || !(order.customer?.phone ?? order.customer_phone)) && (
@@ -447,13 +447,13 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                   aria-label="Bill SMS phone"
                   style={{
                     flex: '1 1 160px', minWidth: 140, padding: '6px 10px',
-                    borderRadius: 8, border: '1px solid #D6C8B8', fontSize: 13,
+                    borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13,
                   }}
                 />
               )}
               {canRecordPayment && !['paid', 'completed', 'cancelled'].includes(order.status) && (
                 <Btn small variant="secondary" onClick={() => { setShowPayment(true); setShowRefund(false); setPayRows([{ method: 'cash', amount: String(parseFloat(String(order.total ?? 0)).toFixed(2)) }]); }}>
-                  💵 Record Payment
+                  <InlineIcon icon={Banknote} />Record Payment
                 </Btn>
               )}
               {canRequestRefund
@@ -599,11 +599,11 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                 )}
                 {canReceipts && ['paid', 'completed', 'refunded', 'delivered'].includes(order.status) ? (
                   <Btn small disabled={receiptBusy} onClick={() => void handleSendReceiptSms()}>
-                    {receiptBusy ? '…' : '📱 Send receipt SMS'}
+                    {receiptBusy ? '…' : <><InlineIcon icon={MessageSquare} />Send receipt SMS</>}
                   </Btn>
                 ) : canInvoice ? (
                   <Btn small disabled={receiptBusy} onClick={() => void handleSendInvoiceSms()}>
-                    {receiptBusy ? '…' : '📱 Send invoice SMS'}
+                    {receiptBusy ? '…' : <><InlineIcon icon={MessageSquare} />Send invoice SMS</>}
                   </Btn>
                 ) : null}
               </div>
@@ -652,8 +652,8 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
             </div>
 
             {order.type === 'delivery' && order.delivery_address_line1 && (
-              <div style={{ background: '#eff6ff', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-                <p style={{ fontWeight: 700, fontSize: 13, color: '#1e40af', marginBottom: 8 }}>Delivery Address</p>
+              <div style={{ background: 'var(--color-tone-rust-bg)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+                <p style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-tone-rust-text)', marginBottom: 8 }}>Delivery Address</p>
                 <p style={{ fontSize: 14 }}>{order.delivery_address_line1}</p>
                 {order.delivery_island && <p style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>{order.delivery_island}</p>}
                 {order.delivery_contact_name && (
@@ -667,7 +667,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
             {order.type === 'delivery' && canManage && (
               <div style={{ marginBottom: 16 }}>
                 <p style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 8 }}>
-                  🚗 Driver
+                  <InlineIcon icon={Car} />Driver
                   {order.driver && <span style={{ marginLeft: 8, fontWeight: 400, fontSize: 12, color: 'var(--color-success-strong)' }}>✓ {order.driver.name}</span>}
                 </p>
                 {drivers.length > 0 ? (
@@ -676,7 +676,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                       defaultValue={order.driver?.id ?? ''}
                       onChange={(e) => { if (e.target.value) void handleAssignDriver(Number(e.target.value)); }}
                       disabled={driverAssigning}
-                      style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', background: '#FAF7F3', color: '#1C1408', cursor: 'pointer' }}
+                      style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', background: 'var(--color-bg)', color: 'var(--color-text)', cursor: 'pointer' }}
                     >
                       <option value="">— select driver —</option>
                       {drivers.map((d) => (
@@ -792,7 +792,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
             )}
 
             {showPayment && (
-              <div style={{ background: '#F9F5F0', border: '1px solid var(--color-border)', borderRadius: 12, padding: 16, marginBottom: 12 }}>
+              <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 12, padding: 16, marginBottom: 12 }}>
                 <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-text)', marginBottom: 12 }}>Record Payment</div>
                 {payRows.map((row, i) => (
                   <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
@@ -841,8 +841,8 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
             )}
 
             {order.notes && (
-              <div style={{ background: '#fefce8', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: '#713f12' }}>
-                📝 {order.notes}
+              <div style={{ background: 'var(--color-warning-bg)', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: 'var(--color-warning-strong)' }}>
+                <InlineIcon icon={StickyNote} />{order.notes}
               </div>
             )}
           </>
@@ -862,6 +862,15 @@ function Row({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
+/** Marks a delivery beside its number; was a scooter emoji. */
+function DeliveryMark() {
+  return (
+    <span title="Delivery" aria-label="Delivery" style={{ marginLeft: 6, color: 'var(--color-primary)', display: 'inline-flex', verticalAlign: '-0.1em' }}>
+      <Bike size={14} aria-hidden />
+    </span>
+  );
+}
+
 type SortKey = 'order_number' | 'total' | 'created_at';
 type SortDir = 'asc' | 'desc';
 
@@ -875,7 +884,7 @@ function OrderFlags({ o }: { o: Order }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
     {/* Pickup phone-call workflow surface:
-        🍳 COOKING — kitchen has the chit (fired_at set)
+        COOKING — kitchen has the chit (fired_at set)
                      AND status is still active. Hidden
                      once paid or completed (no chasing
                      needed) and on held tickets (kitchen
@@ -888,12 +897,13 @@ function OrderFlags({ o }: { o: Order }) {
         title="Kitchen is cooking this"
         style={{
           fontSize: 10, fontWeight: 800, letterSpacing: 0.4,
-          color: '#047857', background: '#ECFDF5',
+          color: 'var(--color-tone-rust-text)', background: 'var(--color-tone-rust-bg)',
           padding: '2px 5px', borderRadius: 4,
-          border: '1px solid #A7F3D0',
+          border: '1px solid var(--color-tone-rust-border)',
+          display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap',
         }}
       >
-        🍳 COOKING
+        <InlineIcon icon={ChefHat} size={11} gap={3} />COOKING
       </span>
     )}
     {(o.payment_status === 'unpaid' || o.payment_status === 'partial') &&
@@ -915,9 +925,9 @@ function OrderFlags({ o }: { o: Order }) {
         title="Charged to customer credit account"
         style={{
           fontSize: 10, fontWeight: 800, letterSpacing: 0.4,
-          color: '#1D4ED8', background: '#EFF6FF',
+          color: 'var(--color-tone-brown-text)', background: 'var(--color-tone-brown-bg)',
           padding: '2px 5px', borderRadius: 4,
-          border: '1px solid #BFDBFE',
+          border: '1px solid var(--color-tone-brown-border)',
         }}
       >
         {(o as { payment_settlement?: { short_label?: string } }).payment_settlement?.short_label ?? 'CREDIT'}
@@ -993,7 +1003,7 @@ export function OrdersPage() {
   };
 
   const quickLabel = (status: string): string | null => {
-    if (status === 'held') return '▶ Resume';
+    if (status === 'held') return 'Resume';
     return null;
   };
 
@@ -1088,7 +1098,7 @@ export function OrdersPage() {
         action={
           <div style={{ display: 'flex', gap: 8 }}>
             <Btn variant="secondary" onClick={() => downloadCSV('orders', orders.map((o) => ({ 'Order #': o.order_number, Type: o.type, Status: o.status, Customer: o.customer?.name ?? '', Total: `MVR ${Number(o.total ?? 0).toFixed(2)}`, Time: o.created_at })))}>Export CSV</Btn>
-            <Btn onClick={load} variant="secondary">↻ Refresh</Btn>
+            <Btn onClick={load} variant="secondary"><InlineIcon icon={RefreshCw} />Refresh</Btn>
           </div>
         }
       />
@@ -1175,7 +1185,7 @@ export function OrdersPage() {
               testId={`order-card-${o.id}`}
               accent={o.payment_status === 'unpaid' || o.payment_status === 'partial'
                 ? 'var(--color-danger)' : 'var(--color-border)'}
-              title={<>#{o.order_number}{o.type === 'delivery' && <span style={{ marginLeft: 6, fontSize: 12 }}>🛵</span>}</>}
+              title={<>#{o.order_number}{o.type === 'delivery' && <DeliveryMark />}</>}
               subtitle={`${typeLabel(o.type)} · ${timeAgo(o.created_at)}`}
               badge={<Badge label={o.status} color={statColor(o.status)} />}
               fields={[
@@ -1235,14 +1245,14 @@ export function OrdersPage() {
             <tbody>
               {sortedOrders.map((o) => (
                 <tr key={o.id} style={{ borderBottom: '1px solid var(--color-border-light)', transition: 'background 0.1s' }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = '#FDF8F4'; }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--color-surface-hover)'; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = ''; }}>
-                  <td style={{ padding: '12px 16px', fontWeight: 700, color: 'var(--color-text)' }}>
+                  <td style={{ padding: '12px 16px', fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>
                     #{o.order_number}
-                    {o.type === 'delivery' && <span style={{ marginLeft: 6, fontSize: 12 }}>🛵</span>}
+                    {o.type === 'delivery' && <DeliveryMark />}
                   </td>
                   <td style={{ padding: '12px 16px' }}>
-                    <Badge label={typeLabel(o.type)} color="blue" />
+                    <Badge label={typeLabel(o.type)} color="brown" />
                   </td>
                   <td style={{ padding: '12px 16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
@@ -1259,10 +1269,10 @@ export function OrdersPage() {
                   <td style={{ padding: '12px 16px', color: 'var(--color-text-muted)', fontSize: 12 }}>
                     {o.device?.name ?? '—'}
                   </td>
-                  <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--color-primary)' }}>
+                  <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--color-primary)', whiteSpace: 'nowrap' }}>
                     MVR {parseFloat(String(o.total ?? 0)).toFixed(2)}
                   </td>
-                  <td style={{ padding: '12px 16px', color: 'var(--color-text-muted)', fontSize: 12 }}>
+                  <td style={{ padding: '12px 16px', color: 'var(--color-text-muted)', fontSize: 12, whiteSpace: 'nowrap' }}>
                     {timeAgo(o.created_at)}
                   </td>
                   <td style={{ padding: '8px 12px' }}>

@@ -55,10 +55,11 @@ function PinInput({ value, onChange }: { value: string; onChange: (v: string) =>
 
 function roleColor(slug: string | null): string {
   const map: Record<string, string> = {
-    owner: 'purple',
-    manager: 'teal',
-    staff: 'yellow',
-    kitchen_staff: 'orange',
+    // Brand tones, one per role; yellow and orange read as warnings.
+    owner: 'rust',
+    manager: 'brown',
+    staff: 'gold',
+    kitchen_staff: 'gray',
   };
   return map[slug ?? ''] ?? 'gray';
 }

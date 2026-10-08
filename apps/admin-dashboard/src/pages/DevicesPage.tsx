@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
-  PageHeader, PageShell, TableCard, TD, Badge, Btn, Modal, ModalActions, EmptyState, StatCard,
+  PageHeader, PageShell, TableCard, TD, Badge, Btn, Modal, ModalActions, EmptyState, StatCard, InlineIcon,
 } from '../components/SharedUI';
 import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import {
@@ -11,6 +11,7 @@ import {
   type Device,
 } from '../api';
 import OrderBoardsCard from './OrderBoardsCard';
+import { Ban, Bell, Check, Trash2, Undo2, X } from 'lucide-react';
 
 const S = {
   input: { width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' as const },
@@ -193,7 +194,7 @@ export default function DevicesPage() {
         <StatCard label="Pending Approval" value={String(pending.length)} accent="var(--color-warning)" />
       </div>
 
-      <p style={{ margin: '0 0 20px', fontSize: 13, color: '#64748B', maxWidth: 720 }}>
+      <p style={{ margin: '0 0 20px', fontSize: 13, color: 'var(--color-text-secondary)', maxWidth: 720 }}>
         New POS devices must be approved here before they can sell or run a cash drawer —
         you get an SMS when one is waiting. <strong>Disable</strong> is a temporary off switch;
         <strong> Reject</strong> blocks a device until you re-approve it below.
@@ -201,16 +202,16 @@ export default function DevicesPage() {
 
       {/* ── Pending Approval Section ── */}
       {pending.length > 0 && (
-        <div style={{ background: '#fffbeb', border: '1.5px solid #fcd34d', borderRadius: 14, padding: '16px 20px', marginBottom: 24 }}>
+        <div style={{ background: 'var(--color-warning-bg)', border: '1.5px solid color-mix(in srgb, var(--color-warning) 55%, transparent)', borderRadius: 14, padding: '16px 20px', marginBottom: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-            <span style={{ fontSize: 20 }}>🔔</span>
+            <Bell size={20} aria-hidden style={{ color: 'var(--color-warning-strong)', flexShrink: 0 }} />
             <p style={{ margin: 0, fontWeight: 700, fontSize: 15, color: 'var(--color-warning-strong)' }}>
               {pending.length} device{pending.length > 1 ? 's' : ''} waiting for approval
             </p>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {pending.map(d => (
-              <div key={d.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)', borderRadius: 10, padding: '12px 16px', border: '1px solid #fde68a', flexWrap: 'wrap', gap: 10 }}>
+              <div key={d.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)', borderRadius: 10, padding: '12px 16px', border: '1px solid color-mix(in srgb, var(--color-warning) 35%, transparent)', flexWrap: 'wrap', gap: 10 }}>
                 <div>
                   <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: 'var(--color-text)' }}>{d.name}</p>
                   <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
@@ -221,16 +222,16 @@ export default function DevicesPage() {
                   {canApprove && (
                     <>
                       <Btn small onClick={() => openApproveModal(d)} disabled={actionLoading === d.id}>
-                        {actionLoading === d.id ? '…' : '✓ Approve'}
+                        {actionLoading === d.id ? '…' : <><InlineIcon icon={Check} />Approve</>}
                       </Btn>
                       <Btn small variant="secondary" onClick={() => handleReject(d)} disabled={actionLoading === d.id}>
-                        {actionLoading === d.id ? '…' : '✕ Reject'}
+                        {actionLoading === d.id ? '…' : <><InlineIcon icon={X} />Reject</>}
                       </Btn>
                     </>
                   )}
                   {canManage && (
-                    <Btn small variant="secondary" onClick={() => handleDelete(d)} disabled={actionLoading === d.id}>
-                      🗑
+                    <Btn small variant="secondary" onClick={() => handleDelete(d)} disabled={actionLoading === d.id} title="Delete" aria-label={`Delete ${d.name}`}>
+                      <Trash2 size={15} aria-hidden />
                     </Btn>
                   )}
                 </div>
@@ -244,7 +245,7 @@ export default function DevicesPage() {
       {rejected.length > 0 && (
         <div style={{ background: 'var(--color-danger-bg)', border: '1.5px solid var(--color-danger)', borderRadius: 14, padding: '16px 20px', marginBottom: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-            <span style={{ fontSize: 20 }}>⛔</span>
+            <Ban size={20} aria-hidden style={{ color: 'var(--color-danger-strong)', flexShrink: 0 }} />
             <p style={{ margin: 0, fontWeight: 700, fontSize: 15, color: 'var(--color-danger-strong)' }}>
               {rejected.length} rejected device{rejected.length > 1 ? 's' : ''}
             </p>
@@ -264,12 +265,12 @@ export default function DevicesPage() {
                 <div style={{ display: 'flex', gap: 8 }}>
                   {canApprove && (
                     <Btn small onClick={() => openApproveModal(d)} disabled={actionLoading === d.id}>
-                      {actionLoading === d.id ? '…' : '↩ Re-approve'}
+                      {actionLoading === d.id ? '…' : <><InlineIcon icon={Undo2} />Re-approve</>}
                     </Btn>
                   )}
                   {canManage && (
-                    <Btn small variant="secondary" onClick={() => handleDelete(d)} disabled={actionLoading === d.id}>
-                      🗑
+                    <Btn small variant="secondary" onClick={() => handleDelete(d)} disabled={actionLoading === d.id} title="Delete" aria-label={`Delete ${d.name}`}>
+                      <Trash2 size={15} aria-hidden />
                     </Btn>
                   )}
                 </div>
@@ -291,7 +292,7 @@ export default function DevicesPage() {
             ) : deviceCtl.rows.map(d => (
               <tr key={d.id}>
                 <td style={{ ...TD, fontWeight: 600 }}>{d.name}</td>
-                <td style={TD}><Badge color="blue">{d.type?.toUpperCase()}</Badge></td>
+                <td style={TD}><Badge color="brown">{d.type?.toUpperCase()}</Badge></td>
                 <td style={TD}><Badge color={d.is_active ? 'green' : 'gray'}>{d.is_active ? 'Active' : 'Disabled'}</Badge></td>
                 <td style={{ ...TD, fontSize: 12, color: 'var(--color-text-secondary)' }}>{d.user?.name ?? d.registered_by ?? '—'}</td>
                 <td style={TD}>
@@ -317,8 +318,8 @@ export default function DevicesPage() {
                     >
                       {actionLoading === d.id ? '…' : d.is_active ? 'Disable' : 'Enable'}
                     </Btn>
-                    <Btn small variant="secondary" onClick={() => handleDelete(d)} disabled={actionLoading === d.id}>
-                      🗑
+                    <Btn small variant="secondary" onClick={() => handleDelete(d)} disabled={actionLoading === d.id} title="Delete" aria-label={`Delete ${d.name}`}>
+                      <Trash2 size={15} aria-hidden />
                     </Btn>
                   </div>
                 </td>
@@ -351,7 +352,7 @@ export default function DevicesPage() {
                 <div style={{ display: 'flex', gap: 8 }}>
                   <code style={{
                     flex: 1, display: 'block', padding: '10px 12px', borderRadius: 8,
-                    background: '#F8FAFC', border: '1px solid #E2E8F0',
+                    background: 'var(--color-bg)', border: '1px solid var(--color-border)',
                     fontSize: 13, color: 'var(--color-text)', wordBreak: 'break-all',
                   }}>
                     {provisioned.identifier}
@@ -369,7 +370,7 @@ export default function DevicesPage() {
                 <div style={{ display: 'flex', gap: 8 }}>
                   <code style={{
                     flex: 1, display: 'block', padding: '10px 12px', borderRadius: 8,
-                    background: '#F8FAFC', border: '1px solid #E2E8F0',
+                    background: 'var(--color-bg)', border: '1px solid var(--color-border)',
                     fontSize: 12, color: 'var(--color-text)', wordBreak: 'break-all',
                   }}>
                     {setupUrl(provisioned.identifier)}

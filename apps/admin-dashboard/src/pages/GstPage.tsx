@@ -224,7 +224,7 @@ export default function GstPage() {
         <p
           data-testid="gst-banner"
           style={{
-            color: messageTone === 'err' ? 'var(--color-danger-strong)' : '#059669',
+            color: messageTone === 'err' ? 'var(--color-danger-strong)' : 'var(--color-success-strong)',
             margin: '12px 0',
           }}
         >
@@ -259,7 +259,7 @@ export default function GstPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginTop: 16 }}>
             <StatCard label="Net GST payable" value={mvr(summary.net_gst_payable_laar)} accent="var(--color-primary)" />
             <StatCard label="Output tax" value={mvr(summary.gst_on_standard_sales_laar)} accent="#8B4513" />
-            <StatCard label="Input tax (claimable)" value={mvr(summary.claimable_input_revenue_laar + summary.claimable_input_capital_laar)} accent="#059669" />
+            <StatCard label="Input tax (claimable)" value={mvr(summary.claimable_input_revenue_laar + summary.claimable_input_capital_laar)} accent="var(--color-success)" />
             <StatCard label="Sales ex-GST" value={mvr(summary.standard_rated_sales_ex_gst_laar)} accent="var(--color-text-secondary)" />
             <StatCard label="Credit notes / refunds" value={mvr(Math.abs(summary.credit_note_refund_adjustments_laar))} accent="var(--color-danger-strong)" />
           </div>

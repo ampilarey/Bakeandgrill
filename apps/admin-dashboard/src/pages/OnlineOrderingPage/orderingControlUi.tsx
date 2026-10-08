@@ -99,9 +99,9 @@ export const S = {
     display: 'inline-flex',
     alignItems: 'center',
     gap: 6,
-    background: '#D1FAE5',
-    color: '#065F46',
-    border: '1px solid #A7F3D0',
+    background: 'var(--color-success-bg)',
+    color: 'var(--color-success-strong)',
+    border: '1px solid color-mix(in srgb, var(--color-success) 40%, transparent)',
     borderRadius: 20,
     padding: '4px 12px',
     fontSize: 13,
@@ -303,7 +303,7 @@ function StatusChipButton({ chip, groupLabel }: { chip: StatusChip; groupLabel?:
           width: 8,
           height: 8,
           borderRadius: '50%',
-          background: unknown ? '#C4B5A5' : chip.open ? '#10B981' : '#EF4444',
+          background: unknown ? 'var(--color-switch-off)' : chip.open ? 'var(--color-success)' : 'var(--color-danger)',
           flexShrink: 0,
         }}
       />

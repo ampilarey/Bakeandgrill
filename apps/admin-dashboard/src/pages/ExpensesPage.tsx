@@ -14,6 +14,7 @@ import {
 import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import { PurchaseSearch, type PurchaseSearchSelection } from '../components/PurchaseSearch';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { Paperclip } from 'lucide-react';
 
 const STATUS_COLOR: Record<string, string> = { approved: 'green', pending: 'yellow', rejected: 'red' };
 
@@ -386,7 +387,7 @@ export function ExpensesPage() {
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search expense #, description…"
           style={{
-            height: 36, minWidth: 220, padding: '0 12px',
+            height: 36, minWidth: 0, flex: '1 1 220px', maxWidth: 420, padding: '0 12px',
             border: '1.5px solid var(--color-border)', borderRadius: 10,
             fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)', outline: 'none',
           }}
@@ -429,7 +430,7 @@ export function ExpensesPage() {
                       <td style={{ ...TD, color: 'var(--color-text)' }}>
                         {exp.description}
                         {exp.is_auto && (
-                          <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, color: '#6366f1', background: '#eef2ff', padding: '2px 6px', borderRadius: 4 }}>AUTO</span>
+                          <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, color: 'var(--color-tone-brown-text)', background: 'var(--color-tone-brown-bg)', padding: '2px 6px', borderRadius: 4 }}>AUTO</span>
                         )}
                       </td>
                       <td style={{ ...TD, fontWeight: 700, color: 'var(--color-primary)', whiteSpace: 'nowrap' }}>MVR {parseFloat(String(exp.amount ?? 0)).toFixed(2)}</td>
@@ -458,7 +459,7 @@ export function ExpensesPage() {
                             </Btn>
                           )}
                           <Btn small variant="secondary" onClick={() => triggerReceiptUpload(exp.id)} disabled={actionLoading === exp.id}>
-                            {actionLoading === exp.id ? '…' : '📎 Receipt'}
+                            {actionLoading === exp.id ? '…' : <><Paperclip size={14} aria-hidden />Receipt</>}
                           </Btn>
                           <Btn small variant="secondary" onClick={() => void handlePushXero(exp)} disabled={actionLoading === exp.id || exp.is_auto}>
                             {actionLoading === exp.id ? '…' : 'Xero ↑'}

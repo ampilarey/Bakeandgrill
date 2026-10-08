@@ -209,8 +209,8 @@ export default function DeliverySettingsPage() {
       {toast && (
         <div style={{
           marginBottom: '1rem', padding: '10px 16px', borderRadius: 10,
-          background: toast.type === 'ok' ? '#D1FAE5' : 'var(--color-danger-bg)',
-          color: toast.type === 'ok' ? '#065F46' : 'var(--color-danger-strong)',
+          background: toast.type === 'ok' ? 'var(--color-success-bg)' : 'var(--color-danger-bg)',
+          color: toast.type === 'ok' ? 'var(--color-success-strong)' : 'var(--color-danger-strong)',
           fontSize: 13, fontWeight: 600,
           display: 'flex', alignItems: 'center', gap: 8,
         }}>

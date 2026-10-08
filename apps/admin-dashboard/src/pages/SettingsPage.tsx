@@ -17,6 +17,9 @@ import {
 } from '../api';
 import { SmsNotificationRow } from './SettingsPage/SmsNotificationRow';
 import { Btn } from '../components/SharedUI';
+import {
+  Bike, ChefHat, CircleCheck, FileText, Flame, Link2, PackageCheck, PartyPopper, Receipt, Smartphone, type LucideIcon,
+} from 'lucide-react';
 
 /** Legacy ?tab= values from before the settings hub — redirect to the tab's path. */
 const LEGACY_TAB_REDIRECTS: Record<string, string> = {
@@ -34,7 +37,7 @@ type NotifConfig = {
   key: string;
   label: string;
   desc: string;
-  emoji: string;
+  icon: LucideIcon;
   templateSlugs?: string[];
   templateLabels?: string[];
 };
@@ -44,7 +47,7 @@ const PAYMENT_SMS_CONFIG: NotifConfig[] = [
     key: 'sms_customer_payment_confirmed_enabled',
     label: 'Payment Received (Receipt SMS)',
     desc: 'Automatic receipt link when payment is confirmed (POS charge and online BML).',
-    emoji: '🎉',
+    icon: PartyPopper,
     templateSlugs: ['customer_payment_confirmed_pos', 'customer_payment_confirmed_online'],
     templateLabels: ['Counter orders (dine-in / takeaway)', 'Online pickup / delivery'],
   },
@@ -52,7 +55,7 @@ const PAYMENT_SMS_CONFIG: NotifConfig[] = [
     key: 'sms_customer_completion_receipt_enabled',
     label: 'Order Completed / Delivered (Receipt SMS)',
     desc: 'Receipt link when an online pickup or delivery order is completed.',
-    emoji: '📄',
+    icon: FileText,
     templateSlugs: ['customer_completion_receipt'],
   },
 ];
@@ -62,28 +65,28 @@ const POS_SMS_CONFIG: NotifConfig[] = [
     key: 'sms_pos_send_bill_enabled',
     label: 'Send Bill',
     desc: 'Cashier sends a pre-payment bill link by SMS from the POS.',
-    emoji: '🧾',
+    icon: Receipt,
     templateSlugs: ['customer_send_bill'],
   },
   {
     key: 'sms_pos_send_pay_link_enabled',
     label: 'Send Pay Link',
     desc: 'Cashier sends a BML pay-page link by SMS from the POS.',
-    emoji: '🔗',
+    icon: Link2,
     templateSlugs: ['customer_send_pay_link'],
   },
   {
     key: 'sms_pos_fire_to_kitchen_enabled',
     label: 'Fire to Kitchen',
     desc: '“Order received” SMS when a phone pickup order is fired from the POS.',
-    emoji: '🔥',
+    icon: Flame,
     templateSlugs: ['customer_fire_to_kitchen'],
   },
   {
     key: 'sms_pos_receipt_resend_enabled',
     label: 'Receipt Resend',
     desc: 'Manual receipt SMS resend from the POS post-charge banner or receipts pane.',
-    emoji: '📱',
+    icon: Smartphone,
     templateSlugs: ['customer_receipt_resend'],
   },
 ];
@@ -93,14 +96,14 @@ const LIFECYCLE_SMS_CONFIG: NotifConfig[] = [
     key: 'sms_customer_preparing_enabled',
     label: 'Order Preparing',
     desc: 'SMS when the kitchen starts preparing an online pickup or delivery order.',
-    emoji: '🍳',
+    icon: ChefHat,
     templateSlugs: ['customer_order_preparing'],
   },
   {
     key: 'sms_customer_ready_enabled',
     label: 'Order Ready / Packed',
     desc: 'SMS when an order is ready for pickup or packed for delivery.',
-    emoji: '✅',
+    icon: CircleCheck,
     templateSlugs: ['customer_order_ready_pickup', 'customer_order_ready_delivery'],
     templateLabels: ['Pickup ready', 'Delivery packed'],
   },
@@ -108,14 +111,14 @@ const LIFECYCLE_SMS_CONFIG: NotifConfig[] = [
     key: 'sms_customer_on_the_way_enabled',
     label: 'Out for Delivery',
     desc: 'SMS when a delivery order is on the way.',
-    emoji: '🛵',
+    icon: Bike,
     templateSlugs: ['customer_order_on_the_way'],
   },
   {
     key: 'sms_customer_delivered_enabled',
     label: 'Delivered',
     desc: 'SMS when the rider marks a delivery order delivered.',
-    emoji: '📦',
+    icon: PackageCheck,
     templateSlugs: ['customer_order_delivered'],
   },
 ];
@@ -227,7 +230,7 @@ function NotificationsSettings() {
             toggleKey={cfg.key}
             label={cfg.label}
             desc={cfg.desc}
-            emoji={cfg.emoji}
+            icon={cfg.icon}
             enabled={isEnabled(cfg.key)}
             savingToggle={saving === cfg.key}
             onToggle={() => void toggle(cfg.key)}
@@ -240,7 +243,7 @@ function NotificationsSettings() {
           toggleKey={cfg.key}
           label={cfg.label}
           desc={cfg.desc}
-          emoji={cfg.emoji}
+          icon={cfg.icon}
           enabled={isEnabled(cfg.key)}
           toggleDisabled={idx > 0}
           savingToggle={saving === cfg.key}

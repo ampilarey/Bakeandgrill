@@ -18,6 +18,7 @@ import { PROMOTIONS_HUB_PERMISSIONS } from './pages/PromotionsHub';
 import { FINANCE_HUB_PERMISSIONS } from './pages/FinanceHub';
 import { WHOLESALE_HUB_PERMISSIONS } from './pages/WholesaleHub';
 import { LABELS_HUB_PERMISSIONS } from './pages/LabelsHub';
+import { Lock } from 'lucide-react';
 
 const OrdersPage              = lazyWithRetry(() => import('./pages/OrdersPage').then((m) => ({ default: m.OrdersPage })));
 const KDSPage                 = lazyWithRetry(() => import('./pages/KDSPage').then((m) => ({ default: m.KDSPage })));
@@ -75,7 +76,7 @@ const queryClient = new QueryClient({
 
 function PageFallback() {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '40vh', color: '#94a3b8', fontSize: 14 }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '40vh', color: 'var(--color-text-muted)', fontSize: 14 }}>
       Loading…
     </div>
   );
@@ -127,7 +128,7 @@ function PermissionGuard({
   if (!allowed) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: 12 }}>
-        <div style={{ fontSize: 48 }}>🔒</div>
+        <Lock size={44} aria-hidden style={{ color: 'var(--color-primary)' }} />
         <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Access Denied</h2>
         <p style={{ color: 'var(--color-text-secondary)', margin: 0 }}>You don't have permission to view this page.</p>
       </div>
@@ -227,8 +228,8 @@ export default function App() {
 
   if (checking) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f1f5f9' }}>
-        <div style={{ color: '#64748b', fontSize: 14 }}>Loading…</div>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-bg)' }}>
+        <div style={{ color: 'var(--color-text-secondary)', fontSize: 14 }}>Loading…</div>
       </div>
     );
   }

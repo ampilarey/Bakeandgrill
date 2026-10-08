@@ -821,7 +821,7 @@ export default function SpecialsPage() {
           )}
         >
           {autoLoadedHint && editing && (
-            <div style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 10, background: '#ECFDF5', border: '1px solid rgba(34,197,94,0.35)' }}>
+            <div style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 10, background: 'var(--color-success-bg)', border: '1px solid rgba(34,197,94,0.35)' }}>
               <p style={{ margin: 0, fontSize: 13, color: 'var(--color-success-strong)', lineHeight: 1.45 }}>
                 Loaded the existing discount for this item. Add or change variant rows below, then click Update.
               </p>

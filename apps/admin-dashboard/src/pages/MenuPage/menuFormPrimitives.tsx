@@ -250,9 +250,9 @@ export function ImageUploadField({
           type="button"
           onClick={() => setPickerOpen(true)}
           style={{
-            flexShrink: 0, padding: '8px 14px', background: '#F0F4FF',
-            border: '1px solid #C7D4F0', borderRadius: 8, cursor: 'pointer',
-            fontSize: 13, fontWeight: 600, color: '#1D4ED8', whiteSpace: 'nowrap',
+            flexShrink: 0, padding: '8px 14px', background: 'var(--color-tone-rust-bg)',
+            border: '1px solid var(--color-tone-rust-border)', borderRadius: 8, cursor: 'pointer',
+            fontSize: 13, fontWeight: 600, color: 'var(--color-tone-rust-text)', whiteSpace: 'nowrap',
             display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 44,
           }}
           data-testid="pick-from-library-btn"

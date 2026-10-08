@@ -5,6 +5,7 @@ import { useIsMobile } from '../../hooks/useIsMobile';
 import { menuItemMarginLabel, menuItemMarginLevel, MENU_MARGIN_COLORS } from '../../utils/menuMargin';
 import { channelWarning } from './channelState';
 import { ItemSnoozeControls } from './ItemSnoozeControls';
+import { ClipboardList, Tag, UtensilsCrossed } from 'lucide-react';
 
 type MenuItemTableProps = {
   categories: MenuCategory[];
@@ -80,7 +81,7 @@ function Thumb({ item, size }: { item: MenuItem; size: number }) {
       onError={(e) => { (e.target as HTMLImageElement).style.visibility = 'hidden'; }}
     />
   ) : (
-    <div className="menu-item-thumb-empty" style={{ ...style, fontSize: Math.round(size * 0.45) }} aria-hidden="true">🍽</div>
+    <div className="menu-item-thumb-empty" style={style} aria-hidden="true"><UtensilsCrossed size={Math.round(size * 0.42)} /></div>
   );
 }
 
@@ -175,13 +176,13 @@ function ItemActions({ item, canManage, canSeeCost, onEditItem, onDeleteItem, on
         <>
           <Btn small variant="secondary" onClick={() => onEditItem(item)} aria-label={`Edit ${item.name}`}>Edit</Btn>
           <Btn small variant="secondary" onClick={() => onBarcodeLabel(item.id)} aria-label={`Print barcode label for ${item.name}`} title="Print barcode label">
-            <span aria-hidden="true">🏷</span> Label
+            <Tag size={14} aria-hidden />Label
           </Btn>
         </>
       )}
       {canSeeCost && (
         <Btn small variant="secondary" onClick={() => onViewRecipe(item.id)} aria-label={`Recipe and cost for ${item.name}`} title="Recipe & cost">
-          <span aria-hidden="true">📋</span> Recipe
+          <ClipboardList size={14} aria-hidden />Recipe
         </Btn>
       )}
       {canManage && (

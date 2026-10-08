@@ -4,13 +4,20 @@
  * State is persisted in localStorage so progress survives page reloads.
  */
 import { useState, useEffect } from 'react';
-import { PageHeader, PageShell } from '../components/SharedUI';
+import {
+  Armchair, BarChart3, Bell, Bike, Building2, CalendarDays, ChefHat, Clock, CreditCard, Factory, FolderOpen, Gift,
+  Globe, Heart, Link2, Lock, Mail, Monitor, Package, PartyPopper, Printer, Receipt, Shield, Smartphone, Star, Tag,
+  TrafficCone, TrendingUp, Tv, User, UtensilsCrossed, Wallet,
+} from 'lucide-react';
+import { InlineIcon, PageHeader, PageShell } from '../components/SharedUI';
+
+const DONE_BORDER = 'color-mix(in srgb, var(--color-success) 45%, transparent)';
 
 const SECTIONS = [
   // ── 1. Infrastructure ──────────────────────────────────────────────────────
   {
     title: 'Infrastructure',
-    icon: '🏗️',
+    icon: Building2,
     items: [
       'GET /api/health returns {"status":"ok"}',
       'Main website (/) loads with no console errors',
@@ -26,7 +33,7 @@ const SECTIONS = [
   // ── 2. Staff Auth ──────────────────────────────────────────────────────────
   {
     title: 'Staff Auth (PIN Login)',
-    icon: '🔐',
+    icon: Lock,
     items: [
       'Staff can log in to Admin dashboard with correct PIN',
       'Wrong PIN is rejected with error message',
@@ -44,7 +51,7 @@ const SECTIONS = [
   // ── 3. POS — Order Creation ────────────────────────────────────────────────
   {
     title: 'POS — Order Creation',
-    icon: '🖥️',
+    icon: Monitor,
     items: [
       'Menu categories load in POS',
       'Items appear under their correct category',
@@ -68,7 +75,7 @@ const SECTIONS = [
   // ── 4. POS — Hold, Tables & Sync ──────────────────────────────────────────
   {
     title: 'POS — Hold, Tables & Offline',
-    icon: '🗂️',
+    icon: FolderOpen,
     items: [
       'Dine-in order can be put on hold',
       'Held order appears in the held orders list',
@@ -86,7 +93,7 @@ const SECTIONS = [
   // ── 5. KDS ────────────────────────────────────────────────────────────────
   {
     title: 'KDS — Kitchen Display',
-    icon: '👨‍🍳',
+    icon: ChefHat,
     items: [
       'New order appears on KDS within seconds of being placed in POS',
       'Order shows correct type (dine-in / takeaway / delivery)',
@@ -102,7 +109,7 @@ const SECTIONS = [
   // ── 6. Customer Online Ordering ───────────────────────────────────────────
   {
     title: 'Customer — Online Ordering',
-    icon: '📱',
+    icon: Smartphone,
     items: [
       'Customer can request OTP via phone number at /order/checkout',
       'OTP SMS is received on the phone',
@@ -125,7 +132,7 @@ const SECTIONS = [
   // ── 7. BML Payment ────────────────────────────────────────────────────────
   {
     title: 'BML Online Payment',
-    icon: '💳',
+    icon: CreditCard,
     items: [
       'BML "Pay Online" button appears at checkout',
       'Clicking it redirects to the BML payment page',
@@ -140,7 +147,7 @@ const SECTIONS = [
   // ── 8. Delivery ────────────────────────────────────────────────────────────
   {
     title: 'Delivery Orders',
-    icon: '🛵',
+    icon: Bike,
     items: [
       'Customer can select Delivery as order type',
       'Delivery address fields appear (island, street, contact name, phone)',
@@ -155,7 +162,7 @@ const SECTIONS = [
   // ── 9. Pre-Orders ─────────────────────────────────────────────────────────
   {
     title: 'Pre-Orders (Event Orders)',
-    icon: '📅',
+    icon: CalendarDays,
     items: [
       '/pre-order 301-redirects to /order/pre-order',
       '/order/pre-order page loads correctly',
@@ -172,7 +179,7 @@ const SECTIONS = [
   // ── 10. Loyalty ───────────────────────────────────────────────────────────
   {
     title: 'Loyalty Programme',
-    icon: '⭐',
+    icon: Star,
     items: [
       'Loyalty account is created automatically on first customer login',
       'Points are awarded after a completed paid order',
@@ -190,7 +197,7 @@ const SECTIONS = [
   // ── 11. Referrals & Gift Cards ────────────────────────────────────────────
   {
     title: 'Referrals & Gift Cards',
-    icon: '🎁',
+    icon: Gift,
     items: [
       'Logged-in customer can generate their referral code',
       'Referral code can be validated (/api/referrals/validate)',
@@ -205,7 +212,7 @@ const SECTIONS = [
   // ── 12. Promotions ────────────────────────────────────────────────────────
   {
     title: 'Promotions',
-    icon: '🏷️',
+    icon: Tag,
     items: [
       'Admin can create a new promo code in Admin → Promotions',
       'Admin can set promo type: percentage or fixed amount',
@@ -225,7 +232,7 @@ const SECTIONS = [
   // ── 13. Favorites & Reorder ───────────────────────────────────────────────
   {
     title: 'Favorites & Quick Reorder',
-    icon: '❤️',
+    icon: Heart,
     items: [
       'Logged-in customer can toggle favorites on menu items',
       'Favorites list is visible to the customer',
@@ -237,7 +244,7 @@ const SECTIONS = [
   // ── 14. Reviews ───────────────────────────────────────────────────────────
   {
     title: 'Reviews',
-    icon: '⭐',
+    icon: Star,
     items: [
       'Logged-in customer can submit a review with a rating (1-5)',
       'Review is created in pending/unapproved state',
@@ -253,7 +260,7 @@ const SECTIONS = [
   // ── 15. Reservations ─────────────────────────────────────────────────────
   {
     title: 'Reservations',
-    icon: '🪑',
+    icon: Armchair,
     items: [
       '/order/reservations page loads',
       'Availability check returns open slots',
@@ -268,7 +275,7 @@ const SECTIONS = [
   // ── 16. Receipts ─────────────────────────────────────────────────────────
   {
     title: 'Receipts',
-    icon: '🧾',
+    icon: Receipt,
     items: [
       'Staff can send an SMS receipt after payment',
       'SMS receipt is received on the customer\'s phone',
@@ -284,7 +291,7 @@ const SECTIONS = [
   // ── 17. SMS & Campaigns ───────────────────────────────────────────────────
   {
     title: 'SMS & Campaigns',
-    icon: '📨',
+    icon: Mail,
     items: [
       'Admin → SMS page loads',
       'SMS logs show sent messages with status',
@@ -300,7 +307,7 @@ const SECTIONS = [
   // ── 18. Inventory ─────────────────────────────────────────────────────────
   {
     title: 'Inventory',
-    icon: '📦',
+    icon: Package,
     items: [
       'Inventory list loads in Admin',
       'New inventory item can be created',
@@ -318,7 +325,7 @@ const SECTIONS = [
   // ── 19. Suppliers & Purchases ─────────────────────────────────────────────
   {
     title: 'Suppliers & Purchases',
-    icon: '🏭',
+    icon: Factory,
     items: [
       'Customer OTP token cannot access /api/suppliers (403 expected)',
       'Staff can create a new supplier',
@@ -335,7 +342,7 @@ const SECTIONS = [
   // ── 20. Shifts & Cash Drawer ─────────────────────────────────────────────
   {
     title: 'Shifts & Cash Drawer',
-    icon: '💰',
+    icon: Wallet,
     items: [
       'Staff can open a shift',
       'Current shift status is returned from /api/shifts/current',
@@ -352,7 +359,7 @@ const SECTIONS = [
   // ── 21. Reports ───────────────────────────────────────────────────────────
   {
     title: 'Reports',
-    icon: '📊',
+    icon: BarChart3,
     items: [
       'Sales summary loads for today\'s date range',
       'Sales breakdown shows items sorted by revenue (with limit)',
@@ -369,7 +376,7 @@ const SECTIONS = [
   // ── 22. Analytics ─────────────────────────────────────────────────────────
   {
     title: 'Analytics',
-    icon: '📈',
+    icon: TrendingUp,
     items: [
       'Admin → Analytics page loads without errors',
       'Peak hours bar chart renders',
@@ -384,7 +391,7 @@ const SECTIONS = [
   // ── 23. Menu Management ───────────────────────────────────────────────────
   {
     title: 'Menu Management',
-    icon: '🍽️',
+    icon: UtensilsCrossed,
     items: [
       'Admin can create a new category',
       'Admin can update a category name/slug',
@@ -407,7 +414,7 @@ const SECTIONS = [
   // ── 24. Staff Management & Time Clock ─────────────────────────────────────
   {
     title: 'Staff Management & Time Clock',
-    icon: '👤',
+    icon: User,
     items: [
       'Admin can create a new staff member',
       'Admin can update staff details',
@@ -425,7 +432,7 @@ const SECTIONS = [
   // ── 25. Invoices & Expenses ───────────────────────────────────────────────
   {
     title: 'Invoices & Expenses',
-    icon: '🧾',
+    icon: Receipt,
     items: [
       'Admin → Invoices page loads',
       'Invoice PDF can be generated (check template uses config(\'business.*\'))',
@@ -438,7 +445,7 @@ const SECTIONS = [
   // ── 26. Webhooks ─────────────────────────────────────────────────────────
   {
     title: 'Webhooks',
-    icon: '🔔',
+    icon: Bell,
     items: [
       'Admin → Webhooks page loads',
       'Supported event types list loads',
@@ -453,7 +460,7 @@ const SECTIONS = [
   // ── 27. Opening Hours ─────────────────────────────────────────────────────
   {
     title: 'Opening Hours',
-    icon: '🕐',
+    icon: Clock,
     items: [
       '/hours Blade page shows correct schedule',
       '/order/hours React page shows same schedule (fetched from API)',
@@ -467,7 +474,7 @@ const SECTIONS = [
   // ── 28. Notifications & Push ─────────────────────────────────────────────
   {
     title: 'Push Notifications',
-    icon: '🔔',
+    icon: Bell,
     items: [
       'Browser push notification permission prompt appears at /order/',
       'Customer can subscribe to push notifications',
@@ -478,7 +485,7 @@ const SECTIONS = [
   // ── 29. Customer Display ─────────────────────────────────────────────────
   {
     title: 'Customer Display',
-    icon: '📺',
+    icon: Tv,
     items: [
       'Customer-facing display endpoint loads (/api/display/:trackingToken)',
       'Display shows correct order number and status',
@@ -488,7 +495,7 @@ const SECTIONS = [
   // ── 30. Blade Website ────────────────────────────────────────────────────
   {
     title: 'Main Blade Website',
-    icon: '🌐',
+    icon: Globe,
     items: [
       'Home page (/) loads with no cart buttons (marketing only)',
       '"Order Now" buttons on home page link to /order/menu',
@@ -508,7 +515,7 @@ const SECTIONS = [
   // ── 31. Redirects ─────────────────────────────────────────────────────────
   {
     title: 'Redirects (301)',
-    icon: '🔗',
+    icon: Link2,
     items: [
       '/menu → /order/menu (301 redirect)',
       '/privacy → /order/privacy (301 redirect)',
@@ -527,7 +534,7 @@ const SECTIONS = [
   // ── 32. Print Proxy & Thermal Printing ───────────────────────────────────
   {
     title: 'Print Proxy & Thermal Printing',
-    icon: '🖨️',
+    icon: Printer,
     items: [
       'Print proxy container is running (docker ps shows print-proxy)',
       'GET /health on print proxy returns {"status":"ok"}',
@@ -546,7 +553,7 @@ const SECTIONS = [
   // ── 33. Staff Scheduling ──────────────────────────────────────────────────
   {
     title: 'Staff Scheduling',
-    icon: '📅',
+    icon: CalendarDays,
     items: [
       'Admin → Schedules page loads',
       'Admin can create a new shift schedule for a staff member',
@@ -560,7 +567,7 @@ const SECTIONS = [
   // ── 34. Rate Limiting ────────────────────────────────────────────────────
   {
     title: 'Rate Limiting',
-    icon: '🚦',
+    icon: TrafficCone,
     items: [
       'OTP request: 4th request within 5 min returns 429 Too Many Requests',
       'OTP verify: 6th attempt within 10 min returns 429',
@@ -575,7 +582,7 @@ const SECTIONS = [
   // ── 35. Mobile Responsiveness ────────────────────────────────────────────
   {
     title: 'Mobile Responsiveness',
-    icon: '📱',
+    icon: Smartphone,
     items: [
       '/order/ loads and is usable on a 375px wide screen (iPhone SE)',
       'Menu categories scroll horizontally on mobile',
@@ -594,7 +601,7 @@ const SECTIONS = [
   // ── 36. Security ─────────────────────────────────────────────────────────
   {
     title: 'Security',
-    icon: '🛡️',
+    icon: Shield,
     items: [
       'Customer OTP token cannot access GET /api/orders (403)',
       'Customer OTP token cannot access /api/suppliers (403)',
@@ -643,7 +650,7 @@ export default function TestChecklistPage() {
   const pct   = total === 0 ? 0 : Math.round((done / total) * 100);
 
   const pctColor =
-    pct === 100 ? '#10B981' : pct >= 70 ? 'var(--color-warning)' : pct >= 40 ? '#F97316' : 'var(--color-danger)';
+    pct === 100 ? 'var(--color-success)' : pct >= 70 ? 'var(--color-warning)' : pct >= 40 ? 'var(--color-primary)' : 'var(--color-danger)';
 
   return (
     <PageShell style={{ maxWidth: 900, margin: '0 auto', padding: '24px 16px 80px' }}>
@@ -686,12 +693,13 @@ export default function TestChecklistPage() {
               title={`${section.title}: ${secDone}/${section.items.length}`}
               style={{
                 fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 999,
-                background: all ? '#D1FAE5' : '#F3F4F6',
-                color:      all ? '#065F46' : '#6B7280',
-                border: `1px solid ${all ? '#6EE7B7' : '#E5E7EB'}`,
+                background: all ? 'var(--color-success-bg)' : 'var(--color-bg)',
+                color:      all ? 'var(--color-success-strong)' : 'var(--color-text-secondary)',
+                border: `1px solid ${all ? DONE_BORDER : 'var(--color-border)'}`,
+                display: 'inline-flex', alignItems: 'center',
               }}
             >
-              {section.icon} {section.title} {secDone}/{section.items.length}
+              <InlineIcon icon={section.icon} size={12} />{section.title} {secDone}/{section.items.length}
             </span>
           );
         })}
@@ -706,8 +714,8 @@ export default function TestChecklistPage() {
             style={{
               padding: '5px 16px', borderRadius: 999, fontSize: 12, fontWeight: 600,
               border: 'none', cursor: 'pointer',
-              background: filter === f ? '#111827' : '#F3F4F6',
-              color:      filter === f ? 'white'    : '#6B7280',
+              background: filter === f ? 'var(--color-primary)' : 'var(--color-bg)',
+              color:      filter === f ? '#fff'    : 'var(--color-text-secondary)',
             }}
           >
             {f === 'all' ? `All (${total})` : f === 'pending' ? `Pending (${total - done})` : `Passed (${done})`}
@@ -733,24 +741,24 @@ export default function TestChecklistPage() {
           return (
             <div key={section.title} style={{
               background: 'var(--color-surface)',
-              border: `1px solid ${allDone ? '#6EE7B7' : '#E5E7EB'}`,
+              border: `1px solid ${allDone ? DONE_BORDER : 'var(--color-border)'}`,
               borderRadius: 14, overflow: 'hidden',
             }}>
               {/* Section header */}
               <div style={{
                 padding: '12px 16px',
-                background: allDone ? '#ECFDF5' : '#F9FAFB',
+                background: allDone ? 'var(--color-success-bg)' : 'var(--color-bg)',
                 borderBottom: '1px solid var(--color-border)',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 18 }}>{section.icon}</span>
+                  <section.icon size={18} aria-hidden style={{ color: allDone ? 'var(--color-success-strong)' : 'var(--color-primary)', flexShrink: 0 }} />
                   <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)' }}>{section.title}</span>
                 </div>
                 <span style={{
                   fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 999,
-                  background: allDone ? '#D1FAE5' : '#F3F4F6',
-                  color:      allDone ? '#059669' : '#6B7280',
+                  background: allDone ? 'var(--color-success-bg)' : 'var(--color-border-light)',
+                  color:      allDone ? 'var(--color-success-strong)' : 'var(--color-text-secondary)',
                 }}>
                   {secDone}/{secTotal}
                 </span>
@@ -766,8 +774,8 @@ export default function TestChecklistPage() {
                     style={{
                       display: 'flex', alignItems: 'flex-start', gap: 12,
                       padding: '11px 16px', cursor: 'pointer',
-                      borderTop: i === 0 ? 'none' : '1px solid #F3F4F6',
-                      background: isDone ? '#F0FDF4' : 'var(--color-surface)',
+                      borderTop: i === 0 ? 'none' : '1px solid var(--color-border-light)',
+                      background: isDone ? 'var(--color-success-bg)' : 'var(--color-surface)',
                       transition: 'background 0.15s',
                     }}
                   >
@@ -775,11 +783,11 @@ export default function TestChecklistPage() {
                       type="checkbox"
                       checked={isDone}
                       onChange={() => toggle(key)}
-                      style={{ marginTop: 2, width: 16, height: 16, accentColor: '#10B981', flexShrink: 0, cursor: 'pointer' }}
+                      style={{ marginTop: 2, width: 16, height: 16, accentColor: 'var(--color-primary)', flexShrink: 0, cursor: 'pointer' }}
                     />
                     <span style={{
                       fontSize: 13, lineHeight: 1.5,
-                      color: isDone ? '#9CA3AF' : '#374151',
+                      color: isDone ? 'var(--color-text-muted)' : 'var(--color-text)',
                       textDecoration: isDone ? 'line-through' : 'none',
                     }}>
                       {item}
@@ -794,10 +802,10 @@ export default function TestChecklistPage() {
 
       {/* All done banner */}
       {pct === 100 && (
-        <div style={{ marginTop: 24, background: '#ECFDF5', border: '1px solid #6EE7B7', borderRadius: 14, padding: '32px 24px', textAlign: 'center' }}>
-          <div style={{ fontSize: 48, marginBottom: 12 }}>🎉</div>
-          <h3 style={{ fontSize: 18, fontWeight: 800, color: '#065F46', margin: 0 }}>All {total} checks passed!</h3>
-          <p style={{ fontSize: 13, color: '#047857', marginTop: 8 }}>Bake &amp; Grill is fully verified and ready to go live.</p>
+        <div style={{ marginTop: 24, background: 'var(--color-success-bg)', border: `1px solid ${DONE_BORDER}`, borderRadius: 14, padding: '32px 24px', textAlign: 'center' }}>
+          <PartyPopper size={44} aria-hidden style={{ color: 'var(--color-success-strong)', marginBottom: 12 }} />
+          <h3 style={{ fontSize: 18, fontWeight: 800, color: 'var(--color-success-strong)', margin: 0 }}>All {total} checks passed!</h3>
+          <p style={{ fontSize: 13, color: 'var(--color-success-strong)', marginTop: 8 }}>Bake &amp; Grill is fully verified and ready to go live.</p>
         </div>
       )}
     </PageShell>

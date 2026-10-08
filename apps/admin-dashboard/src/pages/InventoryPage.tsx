@@ -14,7 +14,7 @@ import {
 } from '../utils/inventoryFilter';
 import {
   PageHeader, PageShell, TableCard, TH, TD, Badge, Btn, Modal, ModalActions,
-  EmptyState, StatCard, useConfirmDialog, ConfirmDialog, TableSkeleton, TableStateBar,
+  EmptyState, StatCard, useConfirmDialog, ConfirmDialog, TableSkeleton, TableStateBar, InlineIcon,
 } from '../components/SharedUI';
 import { downloadCSV } from '../utils/csvExport';
 import { planShelfLabels, shelfLabelsHtml } from '../utils/shelfLabels';
@@ -44,6 +44,7 @@ import {
   type InventoryPurchaseUnit,
 } from '../api';
 import { fmt } from '../utils/fmt';
+import { BadgeCheck, Camera, Filter, History, Pencil, ShoppingCart, SlidersHorizontal, Tag, TrendingUp } from 'lucide-react';
 
 // Waste used to be its own sidebar entry. It is a stock question — what left
 // the shelf without being sold — so it lives here now (purchasing audit,
@@ -811,7 +812,7 @@ export default function InventoryPage() {
           setAdjustItem(item);
           setAdjForm({ type: 'add', quantity: '', reason: '' });
           setAdjError('');
-        }} title="Full adjust dialog">⚙</Btn>
+        }} title="Full adjust dialog" aria-label="Adjust stock"><SlidersHorizontal size={15} aria-hidden /></Btn>
       )}
       {canManage && (
         <Btn
@@ -822,9 +823,10 @@ export default function InventoryPage() {
           title={item.requestable
             ? 'On the staff request list — click to take it off'
             : 'Off the staff request list — click to put it back'}
+          aria-label={item.requestable ? `Take ${item.name} off the staff request list` : `Put ${item.name} on the staff request list`}
           style={{ opacity: item.requestable ? 1 : 0.45 }}
         >
-          🛒
+          <ShoppingCart size={15} aria-hidden />
         </Btn>
       )}
       {canManage && (
@@ -840,15 +842,15 @@ export default function InventoryPage() {
           aria-label={item.is_label_ingredient ? `Take ${item.name} off sticker ingredients` : `List ${item.name} in sticker ingredients`}
           style={{ opacity: item.is_label_ingredient ? 1 : 0.45 }}
         >
-          🏷
+          <Tag size={15} aria-hidden />
         </Btn>
       )}
-      {canManage && <Btn small variant="secondary" onClick={() => openEdit(item)} title="Edit this item">✏️</Btn>}
-      <Btn small variant="secondary" onClick={() => void openLedger(item)} title="Stock movements">📜</Btn>
+      {canManage && <Btn small variant="secondary" onClick={() => openEdit(item)} title="Edit this item" aria-label={`Edit ${item.name}`}><Pencil size={15} aria-hidden /></Btn>}
+      <Btn small variant="secondary" onClick={() => void openLedger(item)} title="Stock movements" aria-label={`Stock movements for ${item.name}`}><History size={15} aria-hidden /></Btn>
       {/* Said in full, because "Price history" undersold a panel that also
           ranks brands per unit, shows the packets and says what you got
           through — and nobody opens an emoji to find out. */}
-      <Btn small variant="secondary" onClick={() => void openPriceHistory(item)} title="Cost & usage — price per unit by brand, brand pictures, what you got through">📈</Btn>
+      <Btn small variant="secondary" onClick={() => void openPriceHistory(item)} title="Cost & usage — price per unit by brand, brand pictures, what you got through" aria-label={`Cost and usage for ${item.name}`}><TrendingUp size={15} aria-hidden /></Btn>
     </>
   );
 
@@ -1402,7 +1404,7 @@ export default function InventoryPage() {
                 borderColor: reorderOnly || reorderSoonCount > 0 ? 'var(--color-danger)' : 'var(--color-border)',
               }}
             >
-              🛒 Reorder soon ({reorderSoonCount})
+              <InlineIcon icon={ShoppingCart} />Reorder soon ({reorderSoonCount})
             </button>
             {/* Owner, 2026-09-07. Off by default: a flat list is still the
                 fastest way to find one thing by eye. */}
@@ -1432,7 +1434,7 @@ export default function InventoryPage() {
                   borderColor: filterCount > 0 ? 'var(--color-primary)' : 'var(--color-border)',
                 }}
               >
-                ⚲ Filters{filterCount > 0 ? ` (${filterCount})` : ''}
+                <InlineIcon icon={Filter} />Filters{filterCount > 0 ? ` (${filterCount})` : ''}
               </button>
             )}
             {canManage && (
@@ -1472,7 +1474,7 @@ export default function InventoryPage() {
                   win.document.close();
                 }}
               >
-                🏷 Print labels ({items.length})
+                <InlineIcon icon={Tag} />Print labels ({items.length})
               </Btn>
             )}
           </div>
@@ -1933,7 +1935,7 @@ export default function InventoryPage() {
               <div style={{ display: 'flex', gap: 6 }}>
                 <input style={{ ...S.input, flex: 1 }} value={editForm.barcode} aria-label="Barcode" inputMode="numeric" autoComplete="off"
                   onChange={(e) => setEditForm((f) => ({ ...f, barcode: e.target.value }))} />
-                <Btn variant="secondary" onClick={() => setScanEditBarcode(true)} aria-label="Scan the item barcode with the camera" title="Scan with the camera">📷</Btn>
+                <Btn variant="secondary" onClick={() => setScanEditBarcode(true)} aria-label="Scan the item barcode with the camera" title="Scan with the camera"><Camera size={16} aria-hidden /></Btn>
               </div>
             </label>
             {scanEditBarcode && (
@@ -2129,7 +2131,7 @@ export default function InventoryPage() {
                   autoComplete="off"
                   data-testid="inventory-barcode"
                 />
-                <Btn variant="secondary" onClick={() => setScanBarcode(true)} aria-label="Scan barcode with the camera" title="Scan with the camera">📷</Btn>
+                <Btn variant="secondary" onClick={() => setScanBarcode(true)} aria-label="Scan barcode with the camera" title="Scan with the camera"><Camera size={16} aria-hidden /></Btn>
               </div>
             </label>
             {scanBarcode && (
@@ -2408,7 +2410,7 @@ export default function InventoryPage() {
                   style={{ ...S.input, flex: '1 1 220px', width: 'auto' }}
                 />
                 <Btn small variant="secondary" onClick={() => { setCountScanMsg(''); setCountScanOpen(true); }} type="button">
-                  📷 Camera
+                  <InlineIcon icon={Camera} />Camera
                 </Btn>
                 <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
                   Each scan adds one — a pack barcode adds the whole pack.
@@ -2549,7 +2551,7 @@ export default function InventoryPage() {
                                 <BrandThumb photo={costUsage.brand_photos[brandKey(row.brand)]} size={32} />
                               )}
                               <span>
-                                {row.is_cheapest && <span title="Cheapest per unit">💰 </span>}
+                                {row.is_cheapest && <span title="Cheapest per unit" style={{ color: 'var(--color-success-strong)' }}><InlineIcon icon={BadgeCheck} /></span>}
                                 {row.brand ?? <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>No brand</span>}
                               </span>
                             </span>
@@ -2650,7 +2652,7 @@ export default function InventoryPage() {
             <>
               {cheapestSupplier && (
                 <div style={{ background: 'var(--color-success-bg)', color: 'var(--color-success-strong)', padding: '10px 14px', borderRadius: 10, marginBottom: 16, fontSize: 13, fontWeight: 600 }}>
-                  💰 Cheapest supplier: <strong>{cheapestSupplier.name}</strong> at MVR {cheapestSupplier.min_cost.toFixed(2)}
+                  <InlineIcon icon={BadgeCheck} />Cheapest supplier: <strong>{cheapestSupplier.name}</strong> at MVR {cheapestSupplier.min_cost.toFixed(2)}
                 </div>
               )}
               {/* Owner, 2026-09-19: "Where i can see the price difference of

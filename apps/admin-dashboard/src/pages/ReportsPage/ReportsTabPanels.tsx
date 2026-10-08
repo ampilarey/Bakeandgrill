@@ -67,13 +67,13 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
             <StatCard label="Completed Revenue" value={mvr(summary.total_revenue)} sub="Finished orders only" accent="var(--color-success)" />
             <StatCard label="Wholesale Revenue" value={mvr(summary.wholesale_revenue ?? 0)} sub={`${summary.wholesale_invoices ?? 0} trade invoice(s)`} accent="var(--color-primary)" />
             <StatCard label="Completed Orders" value={summary.order_count.toLocaleString()} accent="var(--color-primary)" />
-            <StatCard label="Avg Order Value"  value={mvr(summary.average_order_value ?? 0)} accent="#8b5cf6" />
+            <StatCard label="Avg Order Value"  value={mvr(summary.average_order_value ?? 0)} accent="var(--color-info)" />
             {(summary.service_charge_total ?? 0) > 0 && (
-              <StatCard label="Service Charge" value={mvr(summary.service_charge_total ?? 0)} sub="Collected on completed orders" accent="#0ea5e9" />
+              <StatCard label="Service Charge" value={mvr(summary.service_charge_total ?? 0)} sub="Collected on completed orders" accent="var(--color-tone-gold-text)" />
             )}
             {(summary.payment_commission?.totals.gross_commissionable ?? 0) > 0 && (
               <>
-                <StatCard label="Card/Gateway Gross" value={mvr(summary.payment_commission!.totals.gross_commissionable)} accent="#6366f1" />
+                <StatCard label="Card/Gateway Gross" value={mvr(summary.payment_commission!.totals.gross_commissionable)} accent="var(--color-tone-brown-text)" />
                 <StatCard label="BML Commission" value={mvr(summary.payment_commission!.totals.commission_total)} sub="Processing fees" accent="var(--color-danger-strong)" />
                 <StatCard label="Net Settlement" value={mvr(summary.payment_commission!.totals.net_settlement)} sub="After fees" accent="var(--color-success-strong)" />
               </>
@@ -273,7 +273,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
       {!loading && tab === 'Delivery Zones' && deliveryZones && (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 24 }}>
-            <StatCard label="Delivery Orders" value={String(deliveryZones.totals.orders_count)} accent="#0ea5e9" />
+            <StatCard label="Delivery Orders" value={String(deliveryZones.totals.orders_count)} accent="var(--color-tone-gold-text)" />
             <StatCard label="Order Revenue" value={mvr(deliveryZones.totals.order_total)} accent="var(--color-primary)" />
             <StatCard label="Delivery Fees" value={mvr(deliveryZones.totals.fees_total)} accent="var(--color-success)" />
           </div>
@@ -531,7 +531,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                           </div>
                         )}
                         {data.credit_repayments_cash != null && data.credit_repayments_cash > 0 && (
-                          <div style={{ marginTop: 6, fontSize: 11, color: '#059669' }}>
+                          <div style={{ marginTop: 6, fontSize: 11, color: 'var(--color-success-strong)' }}>
                             + MVR {(data.credit_repayments_cash).toFixed(2)} cash received as credit repayments this period
                           </div>
                         )}
@@ -699,7 +699,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
             <StatCard label="Suppliers Owed"      value={String(ap.length)}                                                                accent="#f97316" />
             <StatCard label="Total Outstanding"   value={mvr(ap.reduce((s, x) => s + x.outstanding_amount, 0))}                           accent="var(--color-danger)" />
-            <StatCard label="Open Invoices"       value={String(ap.reduce((s, x) => s + x.invoices.length, 0))}                           accent="#6366f1" />
+            <StatCard label="Open Invoices"       value={String(ap.reduce((s, x) => s + x.invoices.length, 0))}                           accent="var(--color-tone-brown-text)" />
           </div>
           {ap.length === 0 ? (
             <Card><p style={{ textAlign: 'center', padding: '32px 0', color: 'var(--color-text-muted)', fontSize: 14 }}>No outstanding payables.</p></Card>
@@ -743,7 +743,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
       {!loading && tab === 'Accounts Receivable' && ar && (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
-            <StatCard label="Customers with Balance" value={String(ar.length)}                                                             accent="#8b5cf6" />
+            <StatCard label="Customers with Balance" value={String(ar.length)}                                                             accent="var(--color-info)" />
             <StatCard label="Total Outstanding"      value={mvr(ar.reduce((s, x) => s + x.outstanding_amount, 0))}                        accent="var(--color-primary)" />
             <StatCard label="Open Invoices"          value={String(ar.reduce((s, x) => s + x.invoices.length, 0))}                        accent="var(--color-warning)" />
           </div>
@@ -796,7 +796,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
             <StatCard label="Total Promotions"  value={String(promoReport.length)}                                                            accent="var(--color-primary)" />
-            <StatCard label="Total Redemptions" value={String(promoReport.reduce((s, p) => s + p.redemptions_count, 0))}                      accent="#8b5cf6" />
+            <StatCard label="Total Redemptions" value={String(promoReport.reduce((s, p) => s + p.redemptions_count, 0))}                      accent="var(--color-info)" />
             <StatCard label="Total Discounts"   value={mvr(promoReport.reduce((s, p) => s + (p.total_discount_laar ?? 0), 0) / 100)}          accent="var(--color-danger)" />
           </div>
           {promoReport.length === 0 ? (
@@ -836,16 +836,16 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
             <StatCard label="Total Members"         value={loyaltyReport.total_accounts.toLocaleString()}           accent="var(--color-primary)" />
             <StatCard label="Outstanding Points"    value={loyaltyReport.total_outstanding_points.toLocaleString()} accent="var(--color-danger)" />
-            <StatCard label="Lifetime Points Issued" value={loyaltyReport.total_earned_lifetime.toLocaleString()}   accent="#8b5cf6" />
+            <StatCard label="Lifetime Points Issued" value={loyaltyReport.total_earned_lifetime.toLocaleString()}   accent="var(--color-info)" />
           </div>
           <Card>
             <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 16px' }}>Members by Tier</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 12 }}>
               {[
-                { tier: 'Bronze',   count: loyaltyReport.bronze_count,   color: 'var(--color-warning-strong)', bg: '#FEF3E2' },
+                { tier: 'Bronze',   count: loyaltyReport.bronze_count,   color: 'var(--color-tone-rust-text)', bg: 'var(--color-tone-rust-bg)' },
                 { tier: 'Silver',   count: loyaltyReport.silver_count,   color: 'var(--color-text-secondary)', bg: 'var(--color-border-light)' },
-                { tier: 'Gold',     count: loyaltyReport.gold_count,     color: 'var(--color-warning-strong)', bg: '#FFFBEB' },
-                { tier: 'Platinum', count: loyaltyReport.platinum_count, color: '#1D4ED8', bg: '#EFF6FF' },
+                { tier: 'Gold',     count: loyaltyReport.gold_count,     color: 'var(--color-tone-gold-text)', bg: 'var(--color-tone-gold-bg)' },
+                { tier: 'Platinum', count: loyaltyReport.platinum_count, color: 'var(--color-tone-brown-text)', bg: 'var(--color-tone-brown-bg)' },
               ].map(({ tier, count, color, bg }) => (
                 <div key={tier} style={{ background: bg, borderRadius: 10, padding: '16px', textAlign: 'center' }}>
                   <p style={{ fontSize: 22, fontWeight: 800, color, margin: 0 }}>{count}</p>
@@ -996,8 +996,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
       {!loading && tab === 'Deposit Exposure' && depositExposure && (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
-            <StatCard label="Total Liability" value={mvr(depositExposure.total_balance)} accent="#047857" />
-            <StatCard label="Customers with Balance" value={String(depositExposure.customers_count)} accent="#8b5cf6" />
+            <StatCard label="Total Liability" value={mvr(depositExposure.total_balance)} accent="var(--color-success)" />
+            <StatCard label="Customers with Balance" value={String(depositExposure.customers_count)} accent="var(--color-info)" />
           </div>
           {(depositExposure.top_customers ?? []).length === 0 ? (
             <Card><p style={{ textAlign: 'center', padding: '32px 0', color: 'var(--color-text-muted)', fontSize: 14 }}>No outstanding deposit balances.</p></Card>
@@ -1017,7 +1017,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                       <td style={{ ...S.td, fontWeight: 600 }}>
                         <Link to={`/customers?customer=${c.id}`} style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>{c.name}</Link>
                       </td>
-                      <td style={{ ...S.td, textAlign: 'right', fontWeight: 700, color: '#047857' }}>{mvr(c.balance)}</td>
+                      <td style={{ ...S.td, textAlign: 'right', fontWeight: 700, color: 'var(--color-success-strong)' }}>{mvr(c.balance)}</td>
                       <td style={S.td}>{c.status}</td>
                     </tr>
                   ))}
@@ -1033,10 +1033,10 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
       {!loading && tab === 'Deposit Activity' && depositActivity && (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 20 }}>
-            <StatCard label="Received (top-ups)" value={mvr(depositActivity.received)} accent="#047857" />
+            <StatCard label="Received (top-ups)" value={mvr(depositActivity.received)} accent="var(--color-success)" />
             <StatCard label="Used on orders" value={mvr(depositActivity.used)} accent="var(--color-warning)" />
             <StatCard label="Cash payouts" value={mvr(depositActivity.payouts)} accent="var(--color-danger)" />
-            <StatCard label="Transferred to credit" value={mvr(depositActivity.transfers)} accent="#8b5cf6" />
+            <StatCard label="Transferred to credit" value={mvr(depositActivity.transfers)} accent="var(--color-info)" />
           </div>
           <Card>
             <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', margin: '0 0 8px' }}>Deposit ledger activity</p>
@@ -1065,7 +1065,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
             <StatCard label="Total Outstanding" value={mvr(creditExposure.total_balance)} accent="var(--color-danger)" />
-            <StatCard label="Customers with Balance" value={String(creditExposure.customers_count)} accent="#8b5cf6" />
+            <StatCard label="Customers with Balance" value={String(creditExposure.customers_count)} accent="var(--color-info)" />
           </div>
           {/* Audit 2026-09-03 (F5): how old the money is, not only how much. */}
           {creditExposure.aging && (
@@ -1206,8 +1206,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                     <td style={S.td}>
                       <span style={{
                         fontSize: 12, fontWeight: 700, padding: '2px 8px', borderRadius: 999,
-                        background: row.velocity === 'fast' ? 'var(--color-success-bg)' : row.velocity === 'slow' ? 'var(--color-danger-bg)' : '#F3F4F6',
-                        color: row.velocity === 'fast' ? 'var(--color-success-strong)' : row.velocity === 'slow' ? 'var(--color-danger-strong)' : '#6B7280',
+                        background: row.velocity === 'fast' ? 'var(--color-success-bg)' : row.velocity === 'slow' ? 'var(--color-danger-bg)' : 'var(--color-bg)',
+                        color: row.velocity === 'fast' ? 'var(--color-success-strong)' : row.velocity === 'slow' ? 'var(--color-danger-strong)' : 'var(--color-text-secondary)',
                       }}>{row.velocity}</span>
                     </td>
                   </tr>

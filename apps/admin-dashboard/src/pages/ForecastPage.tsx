@@ -1013,7 +1013,7 @@ export function ForecastPage() {
       {restockToast && (
         <div style={{
           marginBottom: 12, padding: '10px 12px', borderRadius: 8,
-          background: '#ecfdf5', color: '#065f46', fontSize: 13, fontWeight: 600,
+          background: 'var(--color-success-bg)', color: 'var(--color-success-strong)', fontSize: 13, fontWeight: 600,
         }}>
           {restockToast}
           {createdPoNumbers.length > 0 && (
@@ -1021,7 +1021,7 @@ export function ForecastPage() {
               {createdPoNumbers.map((num, i) => (
                 <span key={num}>
                   {i > 0 ? ' · ' : ''}
-                  <Link to={`/purchasing/orders?search=${encodeURIComponent(num)}`} style={{ color: '#047857' }}>
+                  <Link to={`/purchasing/orders?search=${encodeURIComponent(num)}`} style={{ color: 'var(--color-success-strong)' }}>
                     {num}
                   </Link>
                 </span>
@@ -1029,9 +1029,9 @@ export function ForecastPage() {
             </div>
           )}
           <div style={{ marginTop: 6, fontWeight: 500 }}>
-            <Link to="/purchasing/orders" style={{ color: '#047857' }}>All purchase orders →</Link>
+            <Link to="/purchasing/orders" style={{ color: 'var(--color-success-strong)' }}>All purchase orders →</Link>
             {' · '}
-            <Link to="/inventory" style={{ color: '#047857' }}>Inventory →</Link>
+            <Link to="/inventory" style={{ color: 'var(--color-success-strong)' }}>Inventory →</Link>
           </div>
         </div>
       )}
@@ -1050,7 +1050,7 @@ export function ForecastPage() {
           {(['daily', 'weekly', 'monthly'] as const).map(g => (
             <button key={g} onClick={() => setGran(g)}
               style={{ padding: '8px 14px', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
-                background: granularity === g ? 'var(--color-text)' : 'transparent',
+                background: granularity === g ? 'var(--color-primary)' : 'transparent',
                 color: granularity === g ? '#fff' : 'var(--color-text-secondary)' }}>
               {g.charAt(0).toUpperCase() + g.slice(1)}
             </button>
@@ -1403,7 +1403,7 @@ export function ForecastPage() {
                   <StatCard label="Snoozed" value={String(restock.totals.snoozed)} accent="var(--color-text-secondary)" />
                 )}
                 {(restock.totals.excluded ?? 0) > 0 && (
-                  <StatCard label="Excluded" value={String(restock.totals.excluded)} accent="#6B7280" />
+                  <StatCard label="Excluded" value={String(restock.totals.excluded)} accent="var(--color-text-muted)" />
                 )}
                 {cheapestRestock.length > 0 && (
                   <StatCard label="No preferred yet" value={String(cheapestRestock.length)} accent="var(--color-text-secondary)" />
@@ -1462,13 +1462,13 @@ export function ForecastPage() {
                         style={{
                           borderBottom: '1px solid var(--color-bg)',
                           background: item.excluded
-                            ? '#F3F4F6'
+                            ? 'var(--color-border-light)'
                             : item.snoozed
-                              ? '#F3F4F6'
+                              ? 'var(--color-border-light)'
                               : item.price_change === 'up'
                                 ? 'var(--color-danger-bg)'
                                 : item.due_soon
-                                  ? '#FFFBEB'
+                                  ? 'var(--color-warning-bg)'
                                   : undefined,
                         }}
                       >
@@ -1489,8 +1489,8 @@ export function ForecastPage() {
                             <div style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
                               <span
                                 style={{
-                                  fontSize: 11, fontWeight: 700, color: '#4B5563',
-                                  background: '#E5E7EB', padding: '2px 6px', borderRadius: 6,
+                                  fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)',
+                                  background: 'var(--color-border)', padding: '2px 6px', borderRadius: 6,
                                 }}
                               >
                                 Excluded
@@ -1502,7 +1502,7 @@ export function ForecastPage() {
                                   onClick={() => void setRestockExcluded(item, false)}
                                   style={{
                                     fontSize: 10, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
-                                    border: '1px solid #D1D5DB', background: '#fff', color: 'var(--color-text)',
+                                    border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)',
                                     borderRadius: 6, padding: '2px 6px',
                                   }}
                                 >
@@ -1515,8 +1515,8 @@ export function ForecastPage() {
                             <div style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
                               <span
                                 style={{
-                                  fontSize: 11, fontWeight: 700, color: '#4B5563',
-                                  background: '#E5E7EB', padding: '2px 6px', borderRadius: 6,
+                                  fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)',
+                                  background: 'var(--color-border)', padding: '2px 6px', borderRadius: 6,
                                 }}
                               >
                                 Snoozed{item.restock_snoozed_until ? ` → ${String(item.restock_snoozed_until).slice(0, 10)}` : ''}
@@ -1528,7 +1528,7 @@ export function ForecastPage() {
                                   onClick={() => void clearRestockSnooze(item)}
                                   style={{
                                     fontSize: 10, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
-                                    border: '1px solid #D1D5DB', background: '#fff', color: 'var(--color-text)',
+                                    border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)',
                                     borderRadius: 6, padding: '2px 6px',
                                   }}
                                 >
@@ -1621,7 +1621,7 @@ export function ForecastPage() {
                             marginLeft: 6, padding: '2px 6px', borderRadius: 12, fontSize: 10, fontWeight: 700,
                             background: STATUS_BG[item.status] ?? 'var(--color-border-light)', color: STATUS_COLOR[item.status] ?? 'var(--color-text-secondary)',
                           }}>
-                            {item.status.replace('_', ' ')}
+                            {item.status.replace(/_/g, ' ')}
                           </span>
                         </td>
                         <td style={{ padding: '8px 12px', fontSize: 12, color: 'var(--color-text-secondary)' }}>
@@ -1751,7 +1751,7 @@ export function ForecastPage() {
                                 border: qtyIsEdited(item) || qtyHasSavedPack(item) ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
                                 fontSize: 12, fontFamily: 'inherit', fontWeight: 700,
                                 color: 'var(--color-success-strong)',
-                                background: qtyIsEdited(item) ? 'var(--color-warning-bg)' : qtyHasSavedPack(item) ? '#FFFBEB' : 'var(--color-surface)',
+                                background: qtyIsEdited(item) ? 'var(--color-warning-bg)' : qtyHasSavedPack(item) ? 'var(--color-tone-gold-bg)' : 'var(--color-surface)',
                               }}
                             />
                             <span style={{ color: 'var(--color-text-muted)' }}>{item.unit}</span>
@@ -1977,7 +1977,7 @@ export function ForecastPage() {
                           <span style={{ padding: '3px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700,
                             background: STATUS_BG[item.status] ?? 'var(--color-border-light)',
                             color: STATUS_COLOR[item.status] ?? 'var(--color-text-secondary)' }}>
-                            {item.status.replace('_', ' ').toUpperCase()}
+                            {item.status.replace(/_/g, ' ').toUpperCase()}
                           </span>
                         </td>
                       </tr>

@@ -435,7 +435,7 @@ export default function GiftCardsPage() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 24 }}>
         <StatCard label="Total Issued" value={String(meta.total)} accent="var(--color-primary)" />
         <StatCard label="Active Cards" value={String(meta.active_count ?? 0)} accent="var(--color-success)" />
-        <StatCard label="Active Balance" value={`MVR ${Number(meta.active_balance ?? 0).toFixed(2)}`} accent="#8b5cf6" />
+        <StatCard label="Active Balance" value={`MVR ${Number(meta.active_balance ?? 0).toFixed(2)}`} accent="var(--color-info)" />
       </div>
 
       <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: 20, marginBottom: 24 }}>

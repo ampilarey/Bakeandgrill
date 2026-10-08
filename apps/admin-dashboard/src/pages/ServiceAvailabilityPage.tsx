@@ -445,7 +445,7 @@ export default function ServiceAvailabilityPage() {
               label="Scheduled"
               value={String(summary.scheduled)}
               sub="Timed windows"
-              accent="#2563eb"
+              accent="var(--color-primary)"
               icon={Clock3}
             />
             <StatCard
@@ -653,8 +653,8 @@ function ServiceSection({
       className="svc-avail-section"
       style={{
         marginBottom: 14,
-        borderColor: warn ? '#fde68a' : undefined,
-        background: warn ? '#fffbeb' : undefined,
+        border: `1px solid ${warn ? 'color-mix(in srgb, var(--color-warning) 45%, transparent)' : 'var(--color-border)'}`,
+        background: warn ? 'var(--color-warning-bg)' : 'var(--color-surface)',
       }}
     >
       <div style={{ marginBottom: 12 }}>
@@ -789,8 +789,8 @@ function chipStyle(tone: 'green' | 'red' | 'orange' | 'blue'): CSSProperties {
   const map = {
     green: { bg: 'var(--color-success-bg)', fg: 'var(--color-success-strong)' },
     red: { bg: 'var(--color-danger-bg)', fg: 'var(--color-danger-strong)' },
-    orange: { bg: '#ffedd5', fg: '#c2410c' },
-    blue: { bg: '#dbeafe', fg: '#1e40af' },
+    orange: { bg: 'var(--color-warning-bg)', fg: 'var(--color-warning-strong)' },
+    blue: { bg: 'var(--color-tone-rust-bg)', fg: 'var(--color-tone-rust-text)' },
   }[tone];
   return {
     display: 'inline-flex',
@@ -940,8 +940,8 @@ function EditServiceModal({
               marginBottom: 14,
               padding: '10px 12px',
               borderRadius: 10,
-              background: status === 'available' ? '#f0fdf4' : '#fffbeb',
-              border: `1px solid ${status === 'available' ? '#bbf7d0' : '#fde68a'}`,
+              background: status === 'available' ? 'var(--color-success-bg)' : 'var(--color-warning-bg)',
+              border: status === 'available' ? '1px solid color-mix(in srgb, var(--color-success) 40%, transparent)' : '1px solid color-mix(in srgb, var(--color-warning) 45%, transparent)',
             }}
           >
             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: 4 }}>

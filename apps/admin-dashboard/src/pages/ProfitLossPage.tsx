@@ -70,14 +70,14 @@ export function ProfitLossPage() {
 
           {/* End-date daily snapshot */}
           {daily && (
-            <div style={{ background: '#fffbeb', border: '1px solid #fef08a', borderRadius: 14, padding: 20 }}>
-              <p style={{ fontWeight: 700, marginBottom: 16, color: 'var(--color-warning-strong)', fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 16px' }}>
+            <div style={{ background: 'var(--color-tone-gold-bg)', border: '1px solid var(--color-tone-gold-border)', borderRadius: 14, padding: 20 }}>
+              <p style={{ fontWeight: 700, marginBottom: 16, color: 'var(--color-tone-gold-text)', fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 16px' }}>
                 {to === today() ? "Today's Snapshot" : `Snapshot — ${to}`}
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14 }}>
                 <StatCard label="Retail Revenue" value={`MVR ${parseFloat(String(daily.revenue ?? 0)).toFixed(2)}`} accent="var(--color-primary)" />
                 <StatCard label="Wholesale Revenue" value={`MVR ${parseFloat(String(daily.wholesale_revenue ?? 0)).toFixed(2)}`} accent="var(--color-primary)" />
-                <StatCard label="Orders" value={String(daily.orders)} sub={`Avg MVR ${parseFloat(String(daily.avg_order ?? 0)).toFixed(2)}`} accent="#8b5cf6" />
+                <StatCard label="Orders" value={String(daily.orders)} sub={`Avg MVR ${parseFloat(String(daily.avg_order ?? 0)).toFixed(2)}`} accent="var(--color-info)" />
                 <StatCard label="Net Profit" value={`MVR ${parseFloat(String(daily.net_profit ?? 0)).toFixed(2)}`} accent={daily.net_profit >= 0 ? 'var(--color-success)' : 'var(--color-danger)'} />
               </div>
             </div>

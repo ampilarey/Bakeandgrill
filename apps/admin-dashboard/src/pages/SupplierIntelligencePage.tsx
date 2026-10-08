@@ -8,13 +8,14 @@ import {
 } from '../api';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
-  Badge, Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Spinner, TableCard, TD, TH,
+  Badge, Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Spinner, TableCard, TD, TH, InlineIcon,
 } from '../components/SharedUI';
 import { SortFilterHead, SortFilterPanel, useSortFilter } from '../components/TableControls';
 import { ItemSearch, type InventoryItemSelection } from '../components/ItemSearch';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { RecordCard, RecordCardList } from '../components/RecordCard';
+import { RefreshCw, Scale, Trophy } from 'lucide-react';
 
 function Stars({ rating, max = 5 }: { rating: number | null; max?: number }) {
   if (rating === null) return <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>Not rated</span>;
@@ -259,9 +260,9 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
   const headerActions = (
     <div style={{ display: 'flex', gap: 8 }}>
       <Btn variant="secondary" onClick={() => { setShowCompare(true); setCompareItem(null); setCompareData(null); }}>
-        ⚖ Price Compare
+        <Scale size={16} aria-hidden />Price Compare
       </Btn>
-      <Btn onClick={() => void refreshAll()} variant="secondary" data-testid="suppliers-refresh">↻ Refresh</Btn>
+      <Btn onClick={() => void refreshAll()} variant="secondary" data-testid="suppliers-refresh"><RefreshCw size={15} aria-hidden />Refresh</Btn>
     </div>
   );
 
@@ -279,9 +280,11 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
       )}
       {error && <ErrorMsg message={error} />}
 
-      {/* ── Owed to suppliers ── */}
+      {/* ── Owed to suppliers ──
+          The whole border, not borderColor: React drops a longhand that turns
+          undefined, and the box fell back to the text colour (a black frame). */}
       {canSeeOwed && payables && (
-        <Card style={{ marginBottom: 20, borderColor: payables.total_owed > 0 ? 'var(--color-warning)' : undefined }} data-testid="payables-card">
+        <Card style={{ marginBottom: 20, border: `1px solid ${payables.total_owed > 0 ? 'var(--color-warning)' : 'var(--color-border)'}` }} data-testid="payables-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8, marginBottom: payables.suppliers.length ? 10 : 0 }}>
             <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', margin: 0 }}>Owed to suppliers</p>
             <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)' }}>
@@ -550,9 +553,9 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
                       {[...(compareData.prices ?? [])]
                         .sort((a, b) => a.unit_price - b.unit_price)
                         .map((p, i) => (
-                          <tr key={p.supplier_id} style={{ background: i === 0 ? '#F0FDF4' : undefined }}>
+                          <tr key={p.supplier_id} style={{ background: i === 0 ? 'var(--color-success-bg)' : undefined }}>
                             <td style={{ ...TD, fontWeight: i === 0 ? 700 : 400, color: i === 0 ? 'var(--color-success-strong)' : 'var(--color-text)' }}>
-                              {i === 0 && '🏆 '}{p.supplier_name}
+                              {i === 0 && <InlineIcon icon={Trophy} />}{p.supplier_name}
                             </td>
                             <td style={{ ...TD, fontWeight: 700, color: i === 0 ? 'var(--color-success-strong)' : 'var(--color-primary)' }}>
                               {parseFloat(String(p.unit_price ?? 0)).toFixed(2)}

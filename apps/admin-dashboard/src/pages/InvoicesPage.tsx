@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   getInvoices, getInvoice, markInvoiceSent, markInvoicePaid, voidInvoice, sendInvoiceToCustomer,
@@ -16,10 +16,14 @@ import { PurchaseSearch, type PurchaseSearchSelection } from '../components/Purc
 import { usePageTitle } from '../hooks/usePageTitle';
 import { today } from '../utils/dateHelpers';
 import { ADMIN_INVOICE_PAYMENT_METHODS } from '../lib/paymentMethods';
+import { MessageSquare, RefreshCw, CloudUpload, FileDown, Ban } from 'lucide-react';
 
 const TYPE_COLOR: Record<string, string> = { sale: 'teal', purchase: 'blue', credit_note: 'orange' };
 
 type LookupSelection = { id: number; label: string };
+
+/** Tighter than TD: ten columns have to fit beside the sidebar on a 1366px screen. */
+const CELL: CSSProperties = { ...TD, padding: '10px 10px', fontSize: 13 };
 
 export function InvoicesPage() {
   usePageTitle('Invoices');
@@ -27,7 +31,7 @@ export function InvoicesPage() {
   const [invoices, setInvoices]     = useState<Invoice[]>([]);
   const invoiceCtl = useSortFilter(invoices, [
     { key: 'number', label: 'Number', get: (inv) => inv.invoice_number },
-    { key: 'type', label: 'Type', kind: 'select', get: (inv) => inv.type.replace('_', ' ') },
+    { key: 'type', label: 'Type', kind: 'select', get: (inv) => inv.type.replace(/_/g, ' ') },
     {
       key: 'status', label: 'Status', kind: 'select',
       get: (inv) => (inv as { display_status?: string }).display_status
@@ -377,7 +381,7 @@ export function InvoicesPage() {
             <Btn onClick={() => { setShowManual(true); setManualError(''); }}>+ New Invoice</Btn>
             <Btn variant="secondary" onClick={() => { setCreateFrom('order'); setCreateRef(null); }}>+ From Order</Btn>
             <Btn variant="secondary" onClick={() => { setCreateFrom('purchase'); setCreateRef(null); }}>+ From Purchase</Btn>
-            <Btn onClick={load} variant="secondary">↻ Refresh</Btn>
+            <Btn onClick={load} variant="secondary"><RefreshCw size={15} aria-hidden />Refresh</Btn>
           </div>
         }
       />
@@ -434,22 +438,22 @@ export function InvoicesPage() {
             />
             <tbody>
               {invoiceCtl.rows.map((inv) => (
-                <tr key={inv.id} style={{ background: bulkSelected.has(inv.id) ? '#FEF8F2' : undefined }}>
-                  <td style={{ ...TD, width: 36 }}>
+                <tr key={inv.id} style={{ background: bulkSelected.has(inv.id) ? 'var(--color-tone-rust-bg)' : undefined }}>
+                  <td style={{ ...CELL, width: 36 }}>
                     <input type="checkbox" checked={bulkSelected.has(inv.id)} onChange={() => toggleSelect(inv.id)} style={{ cursor: 'pointer' }} />
                   </td>
-                  <td style={{ ...TD, fontWeight: 700, color: 'var(--color-text)' }}>{inv.invoice_number}</td>
-                  <td style={TD}>
-                    <Badge label={inv.type.replace('_', ' ')} color={TYPE_COLOR[inv.type] ?? 'gray'} />
+                  <td style={{ ...CELL, fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>{inv.invoice_number}</td>
+                  <td style={CELL}>
+                    <Badge label={inv.type.replace(/_/g, ' ')} color={TYPE_COLOR[inv.type] ?? 'gray'} />
                   </td>
-                  <td style={TD}>
+                  <td style={CELL}>
                     <Badge
                       label={(inv as { display_status?: string; on_credit_account?: boolean }).display_status
                         ?? ((inv as { on_credit_account?: boolean }).on_credit_account && inv.status === 'sent' ? 'on credit' : inv.status)}
                       color={statColor(inv.status)}
                     />
                   </td>
-                  <td style={{ ...TD, color: 'var(--color-text-secondary)' }}>
+                  <td style={{ ...CELL, color: 'var(--color-text-secondary)' }}>
                     {inv.customer?.id ? (
                       <Link to={`/customers?customer=${inv.customer.id}`} style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}>
                         {inv.recipient_name ?? inv.customer.name}
@@ -458,7 +462,7 @@ export function InvoicesPage() {
                       inv.recipient_name ?? inv.customer?.name ?? inv.supplier?.name ?? '—'
                     )}
                   </td>
-                  <td style={TD}>
+                  <td style={CELL}>
                     {inv.order_id ? (
                       <Link
                         to={`/orders?order=${inv.order_id}`}
@@ -474,10 +478,10 @@ export function InvoicesPage() {
                         {inv.purchase?.purchase_number || `PO #${inv.purchase_id}`}
                       </Link>
                     ) : (
-                      <span style={{ color: '#C4B5A3' }}>—</span>
+                      <span style={{ color: 'var(--color-text-muted)' }}>—</span>
                     )}
                   </td>
-                  <td style={{ ...TD, fontWeight: 700, color: 'var(--color-primary)' }}>
+                  <td style={{ ...CELL, fontWeight: 700, color: 'var(--color-primary)', whiteSpace: 'nowrap' }}>
                     MVR {parseFloat(String(inv.total ?? 0)).toFixed(2)}
                     {(inv as { balance_due?: number }).balance_due != null
                       && (inv as { balance_due?: number }).balance_due! > 0
@@ -487,31 +491,40 @@ export function InvoicesPage() {
                       </div>
                     )}
                   </td>
-                  <td style={{ ...TD, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>{inv.issue_date}</td>
-                  <td style={{ ...TD, color: inv.status === 'overdue' ? 'var(--color-danger)' : 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+                  <td style={{ ...CELL, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>{inv.issue_date}</td>
+                  <td style={{ ...CELL, color: inv.status === 'overdue' ? 'var(--color-danger)' : 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
                     {inv.due_date ?? '—'}
                   </td>
-                  <td style={TD}>
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {/* Room for a row of icon buttons: squeezed to its widest
+                      button, the column stacked six buttons and made every row
+                      a screen tall. Kept narrow enough that a 1366px screen
+                      still shows the whole table. */}
+                  <td style={{ ...CELL, minWidth: 150 }}>
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                       {inv.status === 'draft' && (
                         <Btn small variant="secondary" onClick={() => handleSent(inv.id)}>Mark Sent</Btn>
                       )}
                       {['sent', 'overdue'].includes(inv.status) && (
-                        <Btn small onClick={() => { setSelected(inv); setPaying(true); }}>
+                        <Btn
+                          small
+                          onClick={() => { setSelected(inv); setPaying(true); }}
+                          title={(inv as { on_credit_account?: boolean }).on_credit_account ? 'Record repayment for this invoice' : undefined}
+                          style={{ whiteSpace: 'nowrap' }}
+                        >
                           {(inv as { on_credit_account?: boolean }).on_credit_account
-                            ? 'Record repayment for this invoice'
+                            ? 'Record repayment'
                             : 'Mark Paid'}
                         </Btn>
                       )}
                       {!['void', 'cancelled'].includes(inv.status) && inv.type === 'sale' && (
-                        <Btn small variant="secondary" onClick={() => openSmsModal(inv)}>📱 SMS</Btn>
+                        <Btn small variant="secondary" onClick={() => openSmsModal(inv)} title="Send by SMS" aria-label={`Send ${inv.invoice_number} by SMS`}><MessageSquare size={15} aria-hidden /></Btn>
                       )}
-                      <Btn small variant="secondary" onClick={() => void handleDownloadPdf(inv)} disabled={pdfLoading === inv.id}>
-                        {pdfLoading === inv.id ? '…' : '↓ PDF'}
+                      <Btn small variant="secondary" onClick={() => void handleDownloadPdf(inv)} disabled={pdfLoading === inv.id} title="Download PDF" aria-label={`Download ${inv.invoice_number} as PDF`}>
+                        {pdfLoading === inv.id ? '…' : <FileDown size={15} aria-hidden />}
                       </Btn>
                       {!['void', 'cancelled'].includes(inv.status) && (
-                        <Btn small variant="secondary" onClick={() => void handlePushXero(inv)} disabled={xeroLoading === inv.id}>
-                          {xeroLoading === inv.id ? '…' : 'Xero ↑'}
+                        <Btn small variant="secondary" onClick={() => void handlePushXero(inv)} disabled={xeroLoading === inv.id} title="Send to Xero" aria-label={`Send ${inv.invoice_number} to Xero`}>
+                          {xeroLoading === inv.id ? '…' : <CloudUpload size={15} aria-hidden />}
                         </Btn>
                       )}
                       {inv.status === 'draft' && (
@@ -521,7 +534,7 @@ export function InvoicesPage() {
                         <Btn small variant="secondary" onClick={() => { setCnInv(inv); setCnForm({ reason: '', amount: '' }); }}>Credit Note</Btn>
                       )}
                       {!['void', 'cancelled'].includes(inv.status) && (
-                        <Btn small variant="danger" onClick={() => handleVoid(inv.id)}>Void</Btn>
+                        <Btn small variant="danger" onClick={() => handleVoid(inv.id)} title="Void" aria-label={`Void ${inv.invoice_number}`}><Ban size={15} aria-hidden /></Btn>
                       )}
                     </div>
                   </td>
@@ -599,9 +612,9 @@ export function InvoicesPage() {
         <Modal title={`Send Invoice ${sendSmsInv.invoice_number}`} onClose={() => setSendSmsInv(null)} maxWidth={400}>
           {smsResult ? (
             <>
-              <p style={{ color: '#047857', fontWeight: 600, marginBottom: 8 }}>✓ Invoice sent!</p>
+              <p style={{ color: 'var(--color-success-strong)', fontWeight: 600, marginBottom: 8 }}>✓ Invoice sent!</p>
               <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Public link:</p>
-              <div style={{ background: '#F9F5F0', borderRadius: 8, padding: '10px 12px', fontSize: 12, wordBreak: 'break-all', marginBottom: 16, color: '#1C1408' }}>
+              <div style={{ background: 'var(--color-bg)', borderRadius: 8, padding: '10px 12px', fontSize: 12, wordBreak: 'break-all', marginBottom: 16, color: 'var(--color-text)' }}>
                 {smsResult.link}
               </div>
               <ModalActions>

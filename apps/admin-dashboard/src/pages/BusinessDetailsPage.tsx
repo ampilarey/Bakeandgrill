@@ -618,7 +618,9 @@ const noticeStyle: CSSProperties = {
   borderRadius: 10,
   border: '1px solid var(--color-border)',
   background: 'var(--color-border-light)',
-  color: 'var(--color-text)',
+  // Page-body size made a four-line paragraph the loudest thing on the page.
+  fontSize: 13,
+  color: 'var(--color-text-secondary)',
   lineHeight: 1.5,
   maxWidth: 880,
   boxSizing: 'border-box',

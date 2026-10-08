@@ -134,6 +134,7 @@ function editLineBase(line: { quantity: string; purchase_unit_id: string; packs:
 }
 import { today, enteredOn, enteredAt } from '../utils/dateHelpers';
 import { mvr } from '../utils/fmt';
+import { Camera, FolderOpen, Lightbulb, Paperclip, Upload, RefreshCw } from 'lucide-react';
 
 type ManualPoLine = {
   selection: InventoryItemSelection | null;
@@ -1211,19 +1212,19 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
             fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)', outline: 'none',
           }}
         />
-        <Btn variant="secondary" onClick={load}>↻ Refresh</Btn>
+        <Btn variant="secondary" onClick={load}><RefreshCw size={15} aria-hidden />Refresh</Btn>
         <div className="admin-btn-row" style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
           <Btn variant="secondary" onClick={() => void openManualPo()}>+ Create Manual PO</Btn>
-          <Btn variant="secondary" onClick={() => setShowImport(true)}>⬆ Import CSV</Btn>
+          <Btn variant="secondary" onClick={() => setShowImport(true)}><Upload size={16} aria-hidden />Import CSV</Btn>
           <Btn onClick={loadSuggestions} disabled={sugLoading}>
-            {sugLoading ? 'Loading…' : '💡 Auto-Suggest POs'}
+            {sugLoading ? 'Loading…' : <><Lightbulb size={16} aria-hidden />Auto-Suggest POs</>}
           </Btn>
         </div>
       </div>
 
       {/* Suggestions panel */}
       {suggestions && (
-        <Card style={{ marginBottom: 20, background: '#fffbeb', border: '1px solid #fef08a' }}>
+        <Card style={{ marginBottom: 20, background: 'var(--color-warning-bg)', border: '1px solid color-mix(in srgb, var(--color-warning) 45%, transparent)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
             <p style={{ fontWeight: 700, color: 'var(--color-warning-strong)', margin: 0, fontSize: 14 }}>
               Low-Stock Suggestions — {(suggestions.items ?? []).length} items below reorder point
@@ -1553,7 +1554,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                   autoComplete="off"
                   style={{ flex: '1 1 240px', height: 40, padding: '0 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 14, fontFamily: 'inherit' }}
                 />
-                <Btn variant="secondary" onClick={() => setScanCamera(true)} aria-label="Scan with the camera" title="Scan with the camera">📷 Camera</Btn>
+                <Btn variant="secondary" onClick={() => setScanCamera(true)} aria-label="Scan with the camera" title="Scan with the camera"><Camera size={16} aria-hidden />Camera</Btn>
                 {scanMsg && <span role="status" style={{ fontSize: 13, color: 'var(--color-text-secondary)', flexBasis: '100%' }}>{scanMsg}</span>}
               </form>
               {scanCamera && (
@@ -1614,7 +1615,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
 
           <ModalActions>
             <Btn variant="secondary" onClick={() => setDetail(null)}>Close</Btn>
-            <Btn variant="secondary" onClick={() => { setReceiptUploadId(detail.id); setReceiptFile(null); }}>📎 Upload Receipt</Btn>
+            <Btn variant="secondary" onClick={() => { setReceiptUploadId(detail.id); setReceiptFile(null); }}><Paperclip size={16} aria-hidden />Upload Receipt</Btn>
             {['ordered', 'partial'].includes(detail.status) && (
               <Btn onClick={() => void handleReceive()} disabled={actionLoading}>
                 {actionLoading ? 'Saving…' : '✓ Confirm Receipt'}
@@ -1638,7 +1639,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
               <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text)', fontWeight: 600 }}>{receiptFile.name}</p>
             ) : (
               <>
-                <p style={{ margin: '0 0 4px', fontSize: 22 }}>📎</p>
+                <Paperclip size={24} aria-hidden style={{ color: 'var(--color-text-muted)', marginBottom: 4 }} />
                 <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-muted)' }}>Click to select a receipt (PDF, JPG, PNG)</p>
               </>
             )}
@@ -1669,7 +1670,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
               <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text)', fontWeight: 600 }}>{importFile.name}</p>
             ) : (
               <>
-                <p style={{ margin: '0 0 4px', fontSize: 22 }}>📂</p>
+                <FolderOpen size={24} aria-hidden style={{ color: 'var(--color-text-muted)', marginBottom: 4 }} />
                 <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-muted)' }}>Click to select a CSV file</p>
               </>
             )}

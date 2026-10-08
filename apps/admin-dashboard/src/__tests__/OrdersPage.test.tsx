@@ -74,7 +74,7 @@ describe('OrdersPage', () => {
   it('shows row quick Resume for held orders', async () => {
     renderWithRouter(<OrdersPage />);
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /▶ Resume/i })).toBeTruthy();
+      expect(screen.getByRole('button', { name: /^Resume$/i })).toBeTruthy();
     });
   });
 });

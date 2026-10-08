@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Save } from 'lucide-react';
 import { Button, Card } from '../../components/ui';
+import { Switch } from '../../components/SharedUI';
 import {
   getPaymentCommissionSettings,
   updatePaymentCommissionSettings,
@@ -9,25 +10,7 @@ import {
 import { MasterSwitchRow, S } from '../OnlineOrderingPage/orderingControlUi';
 
 function Toggle({ on, onClick, disabled }: { on: boolean; onClick: () => void; disabled?: boolean }) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      role="switch"
-      aria-checked={on}
-      style={{
-        flexShrink: 0, width: 44, height: 24, borderRadius: 12, border: 'none',
-        cursor: disabled ? 'wait' : 'pointer', background: on ? 'var(--color-success-strong)' : '#D1D5DB',
-        position: 'relative', transition: 'background 0.2s',
-      }}
-    >
-      <span style={{
-        position: 'absolute', top: 3, left: on ? 23 : 3, width: 18, height: 18,
-        borderRadius: '50%', background: 'var(--color-surface)', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
-      }} />
-    </button>
-  );
+  return <Switch checked={on} onChange={onClick} disabled={disabled} />;
 }
 
 function exampleNet(amount: number, ratePercent: number): { fee: number; net: number } {

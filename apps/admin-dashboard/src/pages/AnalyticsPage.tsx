@@ -208,7 +208,7 @@ export default function AnalyticsPage() {
           <SectionLabel>Summary</SectionLabel>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
             <StatCard label="Top Customer Spend" value={`MVR ${parseFloat(String(ltvCustomers[0]?.total_spent ?? 0)).toFixed(2)}`} accent="var(--color-primary)" />
-            <StatCard label="Unique Customers" value={String(ltvCustomers.length)} accent="#8b5cf6" />
+            <StatCard label="Unique Customers" value={String(ltvCustomers.length)} accent="var(--color-info)" />
             <StatCard label="Menu Items Tracked" value={String(profitItems.length)} accent="var(--color-success)" />
           </div>
         </div>

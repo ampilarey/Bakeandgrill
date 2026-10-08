@@ -7,11 +7,12 @@ import {
 } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
-  Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input, PageHeader, PageShell, ScrollX, Select, Spinner, TableCard, TD, TH, useConfirmDialog,
+  Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input, PageHeader, PageShell, ScrollX, Select, Spinner, TableCard, TD, TH, useConfirmDialog, InlineIcon,
 } from '../components/SharedUI';
 import { CustomerSearch } from '../components/CustomerSearch';
 import { downloadCSV } from '../utils/csvExport';
 import { PrintCardModal, type PrintCardData } from '../components/PrintCardModal';
+import { Lock, Printer } from 'lucide-react';
 
 const STRATEGY_TYPES: PromotionType[] = ['tiered', 'quantity_break', 'buy_x_get_y', 'free_delivery'];
 
@@ -717,7 +718,7 @@ export function PromotionsPage() {
                 <div key={o.id} style={{ flexShrink: 0, width: 160, border: '1px solid var(--color-border)', borderRadius: 10, padding: 10, background: 'var(--color-bg)' }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-primary)', marginBottom: 4 }}>{o.kind.toUpperCase()}</div>
                   <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-text)' }}>{o.title}</div>
-                  {o.badge && <div style={{ fontSize: 11, color: '#059669', marginTop: 4 }}>{o.badge}</div>}
+                  {o.badge && <div style={{ fontSize: 11, color: 'var(--color-success-strong)', marginTop: 4 }}>{o.badge}</div>}
                   {o.effective_price != null && (
                     <div style={{ fontSize: 12, fontWeight: 700, marginTop: 6, color: 'var(--color-primary)' }}>
                       MVR {Number(o.effective_price).toFixed(2)}
@@ -812,7 +813,7 @@ export function PromotionsPage() {
                   <td style={{ ...TD, fontWeight: 600, color: 'var(--color-text)' }}>
                     {p.name}
                     {p.auto_apply && (
-                      <div style={{ fontSize: 11, color: '#059669', fontWeight: 400, marginTop: 2 }}>
+                      <div style={{ fontSize: 11, color: 'var(--color-success-strong)', fontWeight: 400, marginTop: 2 }}>
                         Automatic — no code
                       </div>
                     )}
@@ -827,9 +828,9 @@ export function PromotionsPage() {
                       </div>
                     )}
                     {p.restricted_customer_id && (
-                      <div style={{ fontSize: 11, color: '#059669', fontWeight: 400, marginTop: 2 }}>
-                        <Link to={`/customers?customer=${p.restricted_customer_id}`} style={{ color: '#059669', textDecoration: 'none' }}>
-                          🔒 Personal promo
+                      <div style={{ fontSize: 11, color: 'var(--color-success-strong)', fontWeight: 400, marginTop: 2 }}>
+                        <Link to={`/customers?customer=${p.restricted_customer_id}`} style={{ color: 'var(--color-success-strong)', textDecoration: 'none' }}>
+                          <InlineIcon icon={Lock} size={11} />Personal promo
                         </Link>
                       </div>
                     )}
@@ -874,7 +875,7 @@ export function PromotionsPage() {
                           ? 'Automatic offer — applied at checkout'
                           : (p.restricted_customer_id ? 'Personal discount — non-transferable' : 'Enter code at checkout'),
                         logoText: 'Bake & Grill',
-                      })}>🖨️ Print</Btn>
+                      })}><Printer size={14} aria-hidden />Print</Btn>
                       <Btn small variant="danger" onClick={() => handleDelete(p.id)}>Delete</Btn>
                     </div>
                   </td>

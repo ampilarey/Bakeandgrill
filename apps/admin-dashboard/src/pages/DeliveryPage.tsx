@@ -2,8 +2,9 @@ import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchOrders, getDriverSettlementReport, type Order, type DriverSettlementReport, adminRequest } from '../api';
 import {
-  Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Modal, PageHeader, PageShell, Spinner, StatCard, statColor, useConfirmDialog,
+  Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Modal, PageHeader, PageShell, Spinner, StatCard, statColor, useConfirmDialog, InlineIcon,
 } from '../components/SharedUI';
+import { Bike, Car, MapPin, User, Phone, RefreshCw } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { today, daysAgo } from '../utils/dateHelpers';
 
@@ -99,7 +100,7 @@ export function DeliveryPage() {
       <PageHeader section="Monitor"
         title="Delivery Orders"
         subtitle="Manage delivery orders and assign drivers"
-        action={<Btn onClick={() => void loadOrders(page)} variant="secondary">↻ Refresh</Btn>}
+        action={<Btn onClick={() => void loadOrders(page)} variant="secondary"><RefreshCw size={15} aria-hidden />Refresh</Btn>}
       />
 
       {/* Tab switcher */}
@@ -112,9 +113,9 @@ export function DeliveryPage() {
             onClick={() => setTab(t)}
             style={{
               padding: '8px 20px', borderRadius: 10, border: '1.5px solid',
-              borderColor: tab === t ? 'var(--color-primary)' : '#e5e7eb',
+              borderColor: tab === t ? 'var(--color-primary)' : 'var(--color-border)',
               background: tab === t ? 'var(--color-primary)' : 'var(--color-surface)',
-              color: tab === t ? 'white' : '#374151',
+              color: tab === t ? 'white' : 'var(--color-text)',
               fontWeight: 600, fontSize: 14, cursor: 'pointer',
               fontFamily: 'inherit',
             }}
@@ -194,7 +195,7 @@ export function DeliveryPage() {
           ) : settlement ? (
             <>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 20 }}>
-                <StatCard label="Delivery Orders" value={String(settlement.totals.orders_count)} accent="#0ea5e9" />
+                <StatCard label="Delivery Orders" value={String(settlement.totals.orders_count)} />
                 <StatCard label="Cash Collected" value={`MVR ${settlement.totals.cash_collected.toFixed(2)}`} accent="var(--color-success-strong)" />
                 <StatCard label="Delivery Fees" value={`MVR ${settlement.totals.delivery_fees.toFixed(2)}`} accent="var(--color-primary)" />
               </div>
@@ -207,7 +208,7 @@ export function DeliveryPage() {
                     <thead>
                       <tr>
                         {['Driver', 'Orders', 'Completed', 'Revenue', 'Fees', 'Cash', 'Card', 'QR', 'Transfer', 'Other', 'Prepaid'].map((h) => (
-                          <th key={h} style={{ textAlign: 'left', padding: '8px 12px', fontSize: 12, color: 'var(--color-text-muted)', borderBottom: '1px solid #F0EAE3' }}>{h}</th>
+                          <th key={h} style={{ textAlign: 'left', padding: '8px 12px', fontSize: 12, color: 'var(--color-text-muted)', borderBottom: '1px solid var(--color-border-light)' }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -250,13 +251,13 @@ export function DeliveryPage() {
             </Link>
           </p>
           <Badge label={selected.status} color={statColor(selected.status)} />
-          <div style={{ background: '#FFF8F3', borderRadius: 10, padding: 16, marginTop: 16, border: '1px solid #F0DCC8' }}>
+          <div style={{ background: 'var(--color-tone-rust-bg)', borderRadius: 10, padding: 16, marginTop: 16, border: '1px solid var(--color-tone-rust-border)' }}>
             <p style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-primary)', marginBottom: 8 }}>Delivery Details</p>
             <p style={{ fontSize: 14, color: 'var(--color-text)' }}>{selected.delivery_address_line1 ?? 'N/A'}</p>
             {selected.delivery_island && <p style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>{selected.delivery_island}</p>}
             {selected.delivery_contact_name && (
               <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 6 }}>
-                👤 {selected.delivery_contact_name} · {selected.delivery_contact_phone}
+                <InlineIcon icon={User} />{selected.delivery_contact_name} · {selected.delivery_contact_phone}
               </p>
             )}
           </div>
@@ -274,7 +275,7 @@ export function DeliveryPage() {
                 href={`/storage/${selected.proof_of_delivery_path}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ fontSize: 13, color: '#2563eb', fontWeight: 600 }}
+                style={{ fontSize: 13, color: 'var(--color-primary)', fontWeight: 600 }}
               >
                 View delivery photo →
               </a>
@@ -324,16 +325,16 @@ function DeliveryCard({
         {order.delivery_address_line1 ?? '—'}
       </p>
       {order.delivery_island && (
-        <p style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>📍 {order.delivery_island}</p>
+        <p style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}><InlineIcon icon={MapPin} />{order.delivery_island}</p>
       )}
       {order.delivery_contact_name && (
-        <p style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>👤 {order.delivery_contact_name}</p>
+        <p style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}><InlineIcon icon={User} />{order.delivery_contact_name}</p>
       )}
 
       {/* Driver badge or quick assign */}
       {driverName ? (
         <div style={{ marginTop: 6 }}>
-          <p style={{ fontSize: 13, color: 'var(--color-success-strong)', fontWeight: 600 }}>🛵 {driverName}</p>
+          <p style={{ fontSize: 13, color: 'var(--color-success-strong)', fontWeight: 600 }}><InlineIcon icon={Bike} />{driverName}</p>
           {isActiveDelivery && extOrder.delivery_driver_id && (
             <DriverLocationBadge orderId={order.id} />
           )}
@@ -377,7 +378,7 @@ function DriverLocationBadge({ orderId }: { orderId: number }) {
   }, [load]);
 
   if (loading) return <p style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>Loading location…</p>;
-  if (!location) return <p style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>📍 Location not available</p>;
+  if (!location) return <p style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}><InlineIcon icon={MapPin} size={12} />Location not available</p>;
 
   const mapsUrl = `https://maps.google.com/?q=${location.latitude},${location.longitude}`;
   const updatedMins = Math.floor((Date.now() - new Date(location.recorded_at).getTime()) / 60000);
@@ -389,7 +390,7 @@ function DriverLocationBadge({ orderId }: { orderId: number }) {
       rel="noopener noreferrer"
       style={{ fontSize: 12, color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none', display: 'block', marginTop: 2 }}
     >
-      📍 Track live · {updatedMins < 1 ? 'just now' : `${updatedMins}m ago`}
+      <InlineIcon icon={MapPin} size={12} />Track live · {updatedMins < 1 ? 'just now' : `${updatedMins}m ago`}
     </a>
   );
 }
@@ -427,10 +428,10 @@ function QuickAssignDriver({ order, drivers, onAssigned }: { order: Order; drive
         style={{
           width: '100%', padding: '6px 10px', borderRadius: 8,
           border: '1.5px solid var(--color-border)', fontSize: 13, color: 'var(--color-text)',
-          background: saving ? '#f9fafb' : 'var(--color-surface)', cursor: 'pointer', fontFamily: 'inherit',
+          background: saving ? 'var(--color-bg)' : 'var(--color-surface)', cursor: 'pointer', fontFamily: 'inherit',
         }}
       >
-        <option value="" disabled>🛵 Assign driver…</option>
+        <option value="" disabled>Assign driver…</option>
         {drivers.filter((d) => d.is_active).map((d) => (
           <option key={d.id} value={d.id}>{d.name}{d.phone ? ` · ${d.phone}` : ''}</option>
         ))}
@@ -572,26 +573,28 @@ function DriversPanel({ drivers, onRefresh }: { drivers: Driver[]; onRefresh: ()
             placeholder="Name *"
             value={form.name}
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-            style={{ ...inputStyle, flex: 2, minWidth: 140 }}
+            style={{ ...inputStyle, flex: '2 1 200px', minWidth: 0 }}
           />
+          {/* Each field takes a line of its own on a phone instead of two
+              squeezed side by side ("Vehicle typ", "PIN (4–6 digi", 2026-10-08). */}
           <input
             placeholder="Phone"
             value={form.phone}
             onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-            style={inputStyle}
+            style={{ ...inputStyle, flex: '1 1 160px', minWidth: 0 }}
           />
         </div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
           <select
             value={form.vehicle_type}
             onChange={(e) => setForm((f) => ({ ...f, vehicle_type: e.target.value }))}
-            style={{ ...inputStyle, color: form.vehicle_type ? '#374151' : 'var(--color-text-muted)' }}
+            style={{ ...inputStyle, flex: '1 1 160px', minWidth: 0, color: form.vehicle_type ? 'var(--color-text)' : 'var(--color-text-muted)' }}
           >
             <option value="">Vehicle type…</option>
-            <option value="bike">🚲 Bike</option>
-            <option value="scooter">🛵 Scooter</option>
-            <option value="motorcycle">🏍️ Motorcycle</option>
-            <option value="car">🚗 Car</option>
+            <option value="bike">Bike</option>
+            <option value="scooter">Scooter</option>
+            <option value="motorcycle">Motorcycle</option>
+            <option value="car">Car</option>
           </select>
           <input
             placeholder={editId !== null ? 'New PIN (leave blank to keep)' : 'PIN (4-6 digits)'}
@@ -600,7 +603,7 @@ function DriversPanel({ drivers, onRefresh }: { drivers: Driver[]; onRefresh: ()
             maxLength={6}
             value={form.pin}
             onChange={(e) => setForm((f) => ({ ...f, pin: e.target.value.replace(/\D/g, '') }))}
-            style={inputStyle}
+            style={{ ...inputStyle, flex: '1 1 160px', minWidth: 0 }}
           />
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>
             <input type="checkbox" checked={form.is_active} onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))} />
@@ -629,8 +632,8 @@ function DriversPanel({ drivers, onRefresh }: { drivers: Driver[]; onRefresh: ()
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
                   <p style={{ fontWeight: 700, fontSize: 15, margin: '0 0 4px' }}>{d.name}</p>
-                  {d.phone && <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: 0 }}>📞 {d.phone}</p>}
-                  {d.vehicle_type && <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '2px 0 0' }}>🚗 {d.vehicle_type}</p>}
+                  {d.phone && <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: 0 }}><InlineIcon icon={Phone} size={12} />{d.phone}</p>}
+                  {d.vehicle_type && <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '2px 0 0' }}><InlineIcon icon={Car} size={12} />{d.vehicle_type}</p>}
                   <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
                     <span style={{
                       padding: '2px 8px', background: d.is_active ? 'var(--color-success-bg)' : 'var(--color-border-light)',
@@ -641,11 +644,11 @@ function DriversPanel({ drivers, onRefresh }: { drivers: Driver[]; onRefresh: ()
                     </span>
                     <span style={{
                       padding: '2px 8px',
-                      background: d.has_pin ? '#dbeafe' : '#fef9c3',
-                      color: d.has_pin ? '#1d4ed8' : '#854d0e',
+                      background: d.has_pin ? 'var(--color-success-bg)' : 'var(--color-warning-bg)',
+                      color: d.has_pin ? 'var(--color-success-strong)' : 'var(--color-warning-strong)',
                       borderRadius: 99, fontSize: 11, fontWeight: 600,
                     }}>
-                      {d.has_pin ? '🔒 PIN set' : '⚠️ No PIN'}
+                      {d.has_pin ? 'PIN set' : 'No PIN'}
                     </span>
                   </div>
                   {d.last_login_at && (

@@ -1,6 +1,8 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { previewSmsTemplateById, updateSmsTemplate, type SmsTemplate } from '../../api';
 import { smsCharCount } from '../../utils/smsCharCount';
+import type { LucideIcon } from 'lucide-react';
+import { Switch } from '../../components/SharedUI';
 
 type TemplateVariable = { name: string; description?: string };
 
@@ -8,7 +10,7 @@ type Props = {
   toggleKey: string;
   label: string;
   desc: string;
-  emoji: string;
+  icon: LucideIcon;
   enabled: boolean;
   toggleDisabled?: boolean;
   savingToggle?: boolean;
@@ -22,7 +24,7 @@ export function SmsNotificationRow({
   toggleKey,
   label,
   desc,
-  emoji,
+  icon: Icon,
   enabled,
   toggleDisabled = false,
   savingToggle = false,
@@ -139,7 +141,7 @@ export function SmsNotificationRow({
         <div style={{
           marginTop: 8,
           padding: '8px 10px',
-          background: '#F9FAFB',
+          background: 'var(--color-bg)',
           borderRadius: 8,
           fontSize: 12,
           color: 'var(--color-text)',
@@ -177,40 +179,19 @@ export function SmsNotificationRow({
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-          <span style={{ fontSize: 22, flexShrink: 0 }}>{emoji}</span>
+          <Icon size={20} aria-hidden style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
           <div style={{ minWidth: 0 }}>
             <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: 'var(--color-text)' }}>{label}</p>
             <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>{desc}</p>
           </div>
         </div>
-        <button
-          onClick={onToggle}
+        <Switch
+          checked={enabled}
+          onChange={() => onToggle()}
           disabled={toggleDisabled || savingToggle}
           title={enabled ? 'Click to disable' : 'Click to enable'}
           aria-label={`Toggle ${label}`}
-          style={{
-            width: 44,
-            height: 24,
-            borderRadius: 12,
-            border: 'none',
-            cursor: toggleDisabled || savingToggle ? 'not-allowed' : 'pointer',
-            background: enabled ? 'var(--color-primary)' : '#D1D5DB',
-            transition: 'background 0.2s',
-            position: 'relative',
-            flexShrink: 0,
-          }}
-        >
-          <span style={{
-            position: 'absolute',
-            top: 3,
-            left: enabled ? 22 : 3,
-            width: 18,
-            height: 18,
-            borderRadius: '50%',
-            background: 'var(--color-surface)',
-            transition: 'left 0.2s',
-          }} />
-        </button>
+        />
       </div>
       {editor}
       <span style={{ display: 'none' }} data-toggle-key={toggleKey} />

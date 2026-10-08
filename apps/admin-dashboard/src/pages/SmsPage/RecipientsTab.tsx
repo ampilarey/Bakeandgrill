@@ -9,7 +9,7 @@ import {
   type SmsContact,
 } from '../../api';
 import {
-  Badge, Btn, EmptyState, Input, Modal, ModalActions, Spinner, TableCard, TD, TH,
+  Badge, Btn, EmptyState, Input, Modal, ModalActions, Spinner, TableCard, TD, TH, Switch,
 } from '../../components/SharedUI';
 
 const ORDER_TYPES = [
@@ -373,8 +373,8 @@ export function RecipientsTab() {
 
       {/* ── Staff recipients ── */}
       <div style={{ marginBottom: 28 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
+          <div style={{ flex: '1 1 240px', minWidth: 0 }}>
             <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 2 }}>Staff Recipients</h3>
             <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
               Toggle SMS on/off per staff. Use <strong>Configure</strong> to set which order types they receive and whether they're a fallback.
@@ -421,31 +421,20 @@ export function RecipientsTab() {
                         )}
                       </td>
                       <td style={{ ...TD, textAlign: 'center' }}>
-                        <button
-                          onClick={() => toggleStaffEnabled(m)}
+                        <Switch
+                          checked={enabled}
+                          onChange={() => toggleStaffEnabled(m)}
                           disabled={togglingId === m.id || !m.phone}
                           title={!m.phone ? 'Add a phone number first' : enabled ? 'Click to disable' : 'Click to enable'}
-                          style={{
-                            width: 40, height: 22, borderRadius: 11, border: 'none',
-                            cursor: m.phone ? 'pointer' : 'not-allowed',
-                            background: !m.phone ? '#E5E7EB' : enabled ? 'var(--color-primary)' : '#D1D5DB',
-                            position: 'relative', transition: 'background 0.2s',
-                            opacity: togglingId === m.id ? 0.6 : 1,
-                          }}
-                        >
-                          <span style={{
-                            position: 'absolute', top: 2, left: enabled ? 20 : 2,
-                            width: 18, height: 18, borderRadius: '50%',
-                            background: 'var(--color-surface)', transition: 'left 0.2s',
-                          }} />
-                        </button>
+                          aria-label={`SMS alerts for ${m.name}`}
+                        />
                       </td>
                       <td style={TD}>
                         {orderTypes === null ? (
                           <Badge label="All orders" color="green" />
                         ) : orderTypes && orderTypes.length > 0 ? (
                           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                            {orderTypes.map(t => <Badge key={t} label={t.replace('online_pickup', 'Online Pickup').replace('dine_in', 'Dine-in').replace('delivery', 'Delivery')} color="blue" />)}
+                            {orderTypes.map(t => <Badge key={t} label={t.replace('online_pickup', 'Online Pickup').replace('dine_in', 'Dine-in').replace('delivery', 'Delivery')} color="brown" />)}
                           </div>
                         ) : (
                           <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>Not configured</span>
@@ -479,21 +468,23 @@ export function RecipientsTab() {
 
       {/* ── External contacts ── */}
       <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <div>
+        {/* Wraps instead of squeezing: on a phone the button broke into
+            "+ / Add / Contact" beside the paragraph. */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 8 }}>
+          <div style={{ flex: '1 1 240px', minWidth: 0 }}>
             <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 2 }}>External Contacts</h3>
             <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
               Non-staff phone numbers that receive fallback alerts (e.g. owner's personal phone, on-call manager). Supports day &amp; time windows.
             </p>
           </div>
-          <Btn onClick={() => setContactModal('new')}>
-            <Plus size={13} style={{ marginRight: 4 }} /> Add Contact
+          <Btn onClick={() => setContactModal('new')} style={{ whiteSpace: 'nowrap' }}>
+            <Plus size={14} aria-hidden /> Add Contact
           </Btn>
         </div>
 
         {externalContacts.length === 0 ? (
-          <div style={{ background: '#F5F0EA', border: '1px dashed #C4A882', borderRadius: 10, padding: '20px 24px', textAlign: 'center' }}>
-            <Bell size={22} style={{ color: '#C4A882', marginBottom: 8 }} />
+          <div style={{ background: 'var(--color-bg)', border: '1px dashed var(--color-border)', borderRadius: 10, padding: '20px 24px', textAlign: 'center' }}>
+            <Bell size={22} style={{ color: 'var(--color-text-muted)', marginBottom: 8 }} />
             <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>No external contacts yet</div>
             <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 12 }}>
               Add a phone number that should always receive fallback alerts, even if no staff is on shift.
@@ -516,7 +507,7 @@ export function RecipientsTab() {
                     <td style={TD}>
                       {c.active_days ? (
                         <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-                          {c.active_days.map(d => <Badge key={d} label={DAY_LABEL[d] ?? d} color="blue" />)}
+                          {c.active_days.map(d => <Badge key={d} label={DAY_LABEL[d] ?? d} color="brown" />)}
                         </div>
                       ) : <span style={{ color: 'var(--color-text-muted)' }}>Every day</span>}
                     </td>

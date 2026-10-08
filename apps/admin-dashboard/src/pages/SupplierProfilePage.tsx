@@ -104,7 +104,7 @@ export default function SupplierProfilePage({ supplierId }: { supplierId: number
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                 <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: 'var(--color-text)' }}>{supplier.name}</h2>
                 {!supplier.is_active && <Badge color="red" label="Inactive" />}
-                {overview.data && overview.data.orders.open > 0 && <Badge color="blue" label={`${overview.data.orders.open} open order${overview.data.orders.open === 1 ? '' : 's'}`} />}
+                {overview.data && overview.data.orders.open > 0 && <Badge color="rust" label={`${overview.data.orders.open} open order${overview.data.orders.open === 1 ? '' : 's'}`} />}
                 {overview.data && overview.data.owed.amount > 0 && (
                   <span data-testid="supplier-owed"><Badge color="orange" label={`Owed ${money(overview.data.owed.amount)} · ${overview.data.owed.orders} order${overview.data.owed.orders === 1 ? '' : 's'}`} /></span>
                 )}

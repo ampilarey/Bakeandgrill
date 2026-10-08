@@ -416,6 +416,30 @@ Requires explicit decision on whether status badges should theme, then new
 variable pairs (`--color-danger-strong`, `--color-danger-bg`, …) in `:root` and
 `[data-theme="dark"]`.
 
+**Done 2026-10-08** (owner: "many admin pages doesn't follow the branding and
+mobile friendly"). Every page walked at 390px and 1366px with screenshots.
+
+- Status colours stay green / amber / red. Everything that was blue, indigo,
+  violet, purple, teal, sky or emerald now draws one of three brand tones,
+  each a `-bg` / `-text` / `-border` triple that flips in dark mode:
+  `--color-tone-rust-*` (in progress, info, links), `--color-tone-brown-*`
+  (roles, types, plain labels) and `--color-tone-gold-*` (ready, nearly
+  done). Badge keeps its old `blue` / `purple` / `teal` names and draws
+  rust / brown / gold for them. `--color-info` is cocoa (`#8A6A4F`), not blue.
+  Cool greys (`#6b7280` family) became the warm text and border tokens.
+- Icons are lucide line icons; `InlineIcon` (SharedUI) sits one in a run of
+  text. No colour emoji as icons.
+- `Switch` (SharedUI) is the one on/off control: rust on, warm grey off,
+  `role="switch"` so the phone 44px rule leaves it alone.
+- Shared fixes that reach every page: Badge turns `dine_in` into "Dine in";
+  StatCard steps long figures down on a phone; DateInput pairs fill one row;
+  visible file pickers get the secondary button; a table's empty message
+  stays in view on a phone; grid children may shrink; the tab row centres
+  the active tab.
+- A React trap found on Purchasing → Suppliers: a `borderColor` that turns
+  `undefined` beside a `border` shorthand drops to the text colour (a black
+  frame). Set the whole `border` instead.
+
 ---
 
 ## 4. Explicitly out of scope

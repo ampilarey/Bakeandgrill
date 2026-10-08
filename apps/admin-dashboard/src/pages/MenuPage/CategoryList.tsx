@@ -59,16 +59,26 @@ function CategoryRow({ cat, sub, subCount, canManage, onToggle, onEdit, onDelete
         <div className="menu-cat-meta">{meta(cat, subCount)}</div>
       </div>
       <div className="menu-cat-actions">
-        <Btn small variant="ghost" onClick={() => onViewItems(cat)} aria-label={`Show items in ${cat.name}`}>
+        {/* One kind of button for the row, Delete in red: the row mixed bare
+            text with one boxed button, and Delete's red lost to the ghost
+            button's inline grey. */}
+        <Btn small variant="secondary" onClick={() => onViewItems(cat)} aria-label={`Show items in ${cat.name}`}>
           Items
         </Btn>
         {canManage && (
           <>
-            <Btn small variant="ghost" onClick={() => onToggle(cat)} aria-label={`${cat.is_active ? 'Hide' : 'Show'} ${cat.name}`}>
+            <Btn small variant="secondary" onClick={() => onToggle(cat)} aria-label={`${cat.is_active ? 'Hide' : 'Show'} ${cat.name}`}>
               {cat.is_active ? 'Hide' : 'Show'}
             </Btn>
             <Btn small variant="secondary" onClick={() => onEdit(cat)} aria-label={`Edit ${cat.name}`}>Edit</Btn>
-            <Btn small variant="ghost" className="menu-cat-delete" onClick={() => onDelete(cat.id)} aria-label={`Delete ${cat.name}`}>
+            <Btn
+              small
+              variant="secondary"
+              className="menu-cat-delete"
+              onClick={() => onDelete(cat.id)}
+              aria-label={`Delete ${cat.name}`}
+              style={{ color: 'var(--color-danger-strong)', borderColor: 'color-mix(in srgb, var(--color-danger) 35%, transparent)' }}
+            >
               Delete
             </Btn>
           </>

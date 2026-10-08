@@ -4,11 +4,12 @@ import { fetchKdsOrders } from '../api';
 import type { KdsTicket } from '../api';
 import { fetchMenuGroups, fetchAdminItems } from '../api/menu';
 import {
-  Badge, Btn, Card, ErrorMsg, PageHeader, PageShell, Spinner, StatCard, statColor,
+  Badge, Btn, Card, ErrorMsg, PageHeader, PageShell, Spinner, StatCard, statColor, InlineIcon,
 } from '../components/SharedUI';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useSse } from '../hooks/useSse';
 import { playChime, playLateAlert } from '../utils/audio';
+import { Bike, Maximize2, Minimize2, RefreshCw } from 'lucide-react';
 
 function elapsed(iso: string): string {
   const t = Date.parse(iso);
@@ -255,9 +256,9 @@ export function KDSPage() {
             >
               Open kitchen screen ↗
             </a>
-            <Btn onClick={load} variant="secondary">↻ Refresh</Btn>
+            <Btn onClick={load} variant="secondary"><RefreshCw size={15} aria-hidden />Refresh</Btn>
             <Btn onClick={toggleFullscreen} variant="secondary" title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}>
-              {isFullscreen ? '⛶ Exit' : '⛶ Fullscreen'}
+              {isFullscreen ? <><Minimize2 size={15} aria-hidden />Exit</> : <><Maximize2 size={15} aria-hidden />Fullscreen</>}
             </Btn>
           </div>
         }
@@ -283,7 +284,7 @@ export function KDSPage() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 20 }}>
         <StatCard label="Pending avg wait" value={`${avgWait(pending)}m`} accent="var(--color-warning)" />
-        <StatCard label="Cooking avg wait" value={`${avgWait(cooking)}m`} accent="#3b82f6" />
+        <StatCard label="Cooking avg wait" value={`${avgWait(cooking)}m`} accent="var(--color-primary)" />
         <StatCard label="Ready queue" value={String(ready.length)} accent="var(--color-success)" />
         <StatCard label="Over prep target" value={String([...pending, ...cooking].filter((t) => minutesSince(t.created_at) >= ticketPrepTarget(t, itemPrepMap)).length)} accent="var(--color-danger)" />
       </div>
@@ -298,7 +299,7 @@ export function KDSPage() {
             )}
           </Column>
 
-          <Column title="Cooking" items={cooking} color="#3b82f6">
+          <Column title="Cooking" items={cooking} color="var(--color-primary)">
             {(t) => (
               <>
                 <TicketHeader ticket={t} prepTargetMin={ticketPrepTarget(t, itemPrepMap)} />
@@ -307,10 +308,10 @@ export function KDSPage() {
                     marginTop: 12,
                     width: '100%',
                     padding: '10px 12px',
-                    background: '#EFF6FF',
-                    border: '1px dashed #BFDBFE',
+                    background: 'var(--color-tone-rust-bg)',
+                    border: '1px dashed var(--color-tone-rust-border)',
                     borderRadius: 8,
-                    color: '#1E40AF',
+                    color: 'var(--color-tone-rust-text)',
                     fontSize: 12,
                     textAlign: 'center',
                     fontWeight: 600,
@@ -360,7 +361,7 @@ function TicketHeader({
             <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--color-text-muted)' }}>Table {ticket.table_number}</span>
           )}
           {ticket.delivery_island && (
-            <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--color-primary)' }}>🛵 {ticket.delivery_island}</span>
+            <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--color-primary)' }}><InlineIcon icon={Bike} size={13} />{ticket.delivery_island}</span>
           )}
         </div>
         <div style={{ textAlign: 'right' }}>

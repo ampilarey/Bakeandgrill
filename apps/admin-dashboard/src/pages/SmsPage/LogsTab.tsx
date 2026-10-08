@@ -161,7 +161,7 @@ export function LogsTab({ initialFilters }: { initialFilters?: Partial<SmsLogFil
                     {l.customer_name && <span style={{ display: 'block', fontWeight: 400, fontSize: 11, color: 'var(--color-text-muted)' }}>{l.customer_name}</span>}
                   </td>
                   <td style={TD}>
-                    <Badge label={l.type_label ?? l.type} color="blue" />
+                    <Badge label={l.type_label ?? l.type} color="brown" />
                     {l.category && <span style={{ display: 'block', fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>{CATEGORY_LABELS[l.category] ?? l.category}</span>}
                   </td>
                   <td style={TD}><Badge label={l.status} color={statColor(l.status)} /></td>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
@@ -18,6 +18,13 @@ import {
   type AdminComplaint,
   type ComplaintStatus,
 } from '../api';
+
+/** The admin's field look. These fields had none: the CSS reset strips the
+ *  border, and the status filter read as plain text with an arrow. */
+const FIELD: CSSProperties = {
+  minHeight: 44, padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10,
+  background: 'var(--color-surface)', color: 'var(--color-text)', fontFamily: 'inherit', fontSize: 14,
+};
 
 const CATEGORY_LABEL: Record<string, string> = {
   wrong_item: 'Wrong item',
@@ -200,7 +207,8 @@ export default function ComplaintsPage() {
         <select
           value={status}
           onChange={(e) => { setPage(1); setStatus(e.target.value); }}
-          style={{ minHeight: 44 }}
+          aria-label="Status"
+          style={FIELD}
         >
           {STATUS_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>{o.label}</option>
@@ -280,10 +288,10 @@ export default function ComplaintsPage() {
                   <select
                     value={nextStatus}
                     onChange={(e) => setNextStatus(e.target.value as ComplaintStatus)}
-                    style={{ display: 'block', width: '100%', minHeight: 44 }}
+                    style={{ ...FIELD, display: 'block', width: '100%', marginTop: 4 }}
                   >
                     {(['new', 'in_progress', 'awaiting_customer', 'resolved', 'not_actionable'] as ComplaintStatus[]).map((s) => (
-                      <option key={s} value={s}>{s}</option>
+                      <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ')}</option>
                     ))}
                   </select>
                 </label>
@@ -292,7 +300,7 @@ export default function ComplaintsPage() {
                   <span style={{ display: 'block', fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: '4px 0 6px' }}>
                     Staff only. Never shown on the receipt and never sent by SMS.
                   </span>
-                  <textarea value={internalNote} onChange={(e) => setInternalNote(e.target.value)} rows={2} style={{ width: '100%' }} />
+                  <textarea value={internalNote} onChange={(e) => setInternalNote(e.target.value)} rows={2} style={{ ...FIELD, width: '100%' }} />
                 </label>
                 <label>
                   Customer reply {closing ? '(required to close)' : ''}
@@ -304,9 +312,10 @@ export default function ComplaintsPage() {
                     onChange={(e) => setCustomerReply(e.target.value)}
                     rows={3}
                     style={{
+                      ...FIELD,
                       width: '100%',
-                      border: closing ? '2px solid var(--color-primary)' : undefined,
-                      background: closing ? 'color-mix(in srgb, var(--color-primary) 6%, transparent)' : undefined,
+                      border: closing ? '2px solid var(--color-primary)' : FIELD.border,
+                      background: closing ? 'color-mix(in srgb, var(--color-primary) 6%, transparent)' : FIELD.background,
                     }}
                     placeholder="What should the customer see?"
                   />
@@ -339,7 +348,7 @@ export default function ComplaintsPage() {
                           value={refundIdInput}
                           onChange={(e) => setRefundIdInput(e.target.value)}
                           inputMode="numeric"
-                          style={{ display: 'block', width: '100%', minHeight: 44 }}
+                          style={{ ...FIELD, display: 'block', width: '100%', marginTop: 4 }}
                           placeholder="id from Refunds page"
                         />
                       </label>
@@ -360,13 +369,14 @@ export default function ComplaintsPage() {
                 <select
                   value={contactChannel}
                   onChange={(e) => setContactChannel(e.target.value as typeof contactChannel)}
-                  style={{ minHeight: 44 }}
+                  aria-label="How you reached them"
+                  style={FIELD}
                 >
                   <option value="phone">Phone</option>
                   <option value="whatsapp">WhatsApp</option>
                   <option value="in_person">In person</option>
                 </select>
-                <textarea value={contactNote} onChange={(e) => setContactNote(e.target.value)} rows={2} placeholder="What was said / agreed" style={{ width: '100%' }} />
+                <textarea value={contactNote} onChange={(e) => setContactNote(e.target.value)} rows={2} placeholder="What was said / agreed" style={{ ...FIELD, width: '100%' }} />
                 <Btn onClick={() => void saveContact()} disabled={busy || !contactNote.trim()}>Add contact note</Btn>
               </>
             )}

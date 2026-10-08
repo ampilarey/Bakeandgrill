@@ -328,7 +328,7 @@ export function CustomerDepositSection({ customerId }: Props) {
           )}
 
           {canTransfer && creditBalance > 0 && deposit.balance_laar > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 10, borderRadius: 8, background: '#FFFBEB', border: '1px solid #FDE68A' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 10, borderRadius: 8, background: 'var(--color-warning-bg)', border: '1px solid color-mix(in srgb, var(--color-warning) 45%, transparent)' }}>
               <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--color-warning-strong)' }}>
                 Transfer to credit (credit owed: MVR {creditBalance.toFixed(2)})
               </p>

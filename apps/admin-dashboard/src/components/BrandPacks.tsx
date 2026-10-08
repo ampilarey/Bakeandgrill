@@ -3,6 +3,7 @@ import { Btn, TableSkeleton } from './SharedUI';
 import { BrandThumb } from './BrandPhotos';
 import { ScanSheet } from './ScanSheet';
 import { brandKey, packNameConflict } from '../api/operations';
+import { Camera } from 'lucide-react';
 
 /*
  * Brands, and under each one the packs it comes in and what each usually costs.
@@ -573,7 +574,7 @@ export function BrandPacks({
           onChange={(e) => setPackForm((f) => ({ ...f, barcode: e.target.value }))}
           style={{ ...S.input, flex: 1, width: 'auto' }}
         />
-        <Btn small variant="secondary" onClick={() => setScanning(true)} aria-label="Scan the pack barcode">📷 Scan</Btn>
+        <Btn small variant="secondary" onClick={() => setScanning(true)} aria-label="Scan the pack barcode"><Camera size={15} aria-hidden />Scan</Btn>
         <Btn small variant="ghost" onClick={closePackForm} aria-label="Close the pack boxes">Done</Btn>
       </div>
     </div>
@@ -608,7 +609,7 @@ export function BrandPacks({
         {canManage && (
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             <Btn small variant="secondary" disabled={busy} onClick={() => askForPhoto(g.brand)} aria-label={`${g.row?.photoUrl ? 'Change' : 'Add'} the picture for ${g.brand}`}>
-              📷 {g.row?.photoUrl ? 'Change picture' : 'Add picture'}
+              <Camera size={15} aria-hidden />{g.row?.photoUrl ? 'Change picture' : 'Add picture'}
             </Btn>
             <Btn small variant="ghost" disabled={busy} onClick={() => void removeBrand(g)} aria-label={`Remove ${g.brand}`}>Remove</Btn>
           </div>
@@ -707,7 +708,7 @@ export function BrandPacks({
                   style={{ display: 'none' }}
                 />
                 <Btn small variant="secondary" disabled={busy} onClick={() => brandFileRef.current?.click()}>
-                  📷 {brandForm.file ? 'Picture chosen' : 'Picture (optional)'}
+                  <Camera size={15} aria-hidden />{brandForm.file ? 'Picture chosen' : 'Picture (optional)'}
                 </Btn>
                 <Btn small disabled={busy} onClick={() => void addBrand(brandForm.brand, brandForm.file)}>
                   {busy ? 'Saving…' : 'Add brand'}

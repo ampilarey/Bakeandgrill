@@ -2085,7 +2085,7 @@ export function SignagePage() {
                                   })()}
                                   style={{ minHeight: 44, textTransform: 'capitalize' }}
                                 >
-                                  {cmd.replace('_', ' ')}
+                                  {cmd.replace(/_/g, ' ')}
                                 </Btn>
                               ))}
                             </div>

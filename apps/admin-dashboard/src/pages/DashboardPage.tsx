@@ -61,24 +61,27 @@ function useNow() {
   return now;
 }
 
+// Brand tones along the order's way (owner, 2026-10-08: the admin should
+// follow the branding): amber waiting, rust confirmed, cocoa in the kitchen,
+// green ready, gold on the road. Blue, violet and sky were never ours.
 const STATUS_COLOR: Record<string, string> = {
   pending:    'var(--color-warning)',
-  confirmed:  '#3b82f6',
-  preparing:  '#8b5cf6',
+  confirmed:  'var(--color-tone-rust-text)',
+  preparing:  'var(--color-tone-brown-text)',
   ready:      'var(--color-success)',
-  delivering: '#0ea5e9',
-  delivered:  '#10b981',
+  delivering: 'var(--color-tone-gold-text)',
+  delivered:  'var(--color-success-strong)',
   completed:  'var(--color-text-secondary)',
   cancelled:  'var(--color-danger)',
 };
 
 const STATUS_BG: Record<string, string> = {
   pending:    'var(--color-warning-bg)',
-  confirmed:  '#DBEAFE',
-  preparing:  '#EDE9FE',
+  confirmed:  'var(--color-tone-rust-bg)',
+  preparing:  'var(--color-tone-brown-bg)',
   ready:      'var(--color-success-bg)',
-  delivering: '#E0F2FE',
-  delivered:  '#D1FAE5',
+  delivering: 'var(--color-tone-gold-bg)',
+  delivered:  'var(--color-success-bg)',
   completed:  'var(--color-bg)',
   cancelled:  'var(--color-danger-bg)',
 };
@@ -112,7 +115,7 @@ function OrderCard({ order, now }: { order: Order; now: number }) {
       </div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, color: 'var(--color-text-secondary)' }}>
         <span style={{ textTransform: 'capitalize', fontWeight: 600 }}>
-          {(order.type ?? '').replace('_', ' ')}
+          {(order.type ?? '').replace(/_/g, ' ')}
           {order.table_number ? ` · T${order.table_number}` : ''}
         </span>
         <span style={{ marginLeft: 'auto', color: urgent ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>
@@ -570,13 +573,13 @@ export function DashboardPage() {
   if (canOrders) {
     opsCards.push({
       key: 'active', label: 'Active Orders', value: String(activeOrders.length),
-      sub: `${pendingCount} pending · ${readyCount} ready`, accent: '#8b5cf6', icon: ShoppingBag,
+      sub: `${pendingCount} pending · ${readyCount} ready`, accent: 'var(--color-primary)', icon: ShoppingBag,
       onClick: () => navigate('/orders'),
     });
     if (onlinePending > 0) {
       opsCards.push({
         key: 'online', label: 'Online Pending', value: String(onlinePending),
-        sub: 'Awaiting confirmation', accent: '#3b82f6', icon: Monitor,
+        sub: 'Awaiting confirmation', accent: 'var(--color-tone-gold-text)', icon: Monitor,
         onClick: () => navigate('/orders'),
       });
     }
@@ -600,7 +603,7 @@ export function DashboardPage() {
   if (canSms) {
     opsCards.push({
       key: 'sms', label: 'SMS Today', value: String(smsSent),
-      sub: smsFailed > 0 ? `${smsFailed} failed` : 'Messages sent', accent: '#0ea5e9', icon: MessageSquare,
+      sub: smsFailed > 0 ? `${smsFailed} failed` : 'Messages sent', accent: smsFailed > 0 ? 'var(--color-danger)' : 'var(--color-tone-brown-text)', icon: MessageSquare,
       onClick: () => navigate('/sms'),
     });
   }
@@ -717,7 +720,7 @@ export function DashboardPage() {
               <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 14, marginBottom: 16 }}>
                 <StatCard label="Open Shifts" value={String(posOverview.open_shifts_count)} accent="var(--color-success)" icon={Users} />
                 <StatCard label="Open Tickets" value={String(posOverview.active_tickets)} sub="Not completed yet" accent="var(--color-primary)" icon={ShoppingBag} />
-                <StatCard label="Clocked In" value={String(posOverview.clocked_in_count)} accent="#8b5cf6" icon={Clock} />
+                <StatCard label="Clocked In" value={String(posOverview.clocked_in_count)} accent="var(--color-tone-brown-text)" icon={Clock} />
                 <StatCard label="Pending Devices" value={String(posOverview.pending_devices)} accent="var(--color-warning)" icon={Monitor} />
                 <StatCard label="Voids Today" value={String(posOverview.today_voids)} accent="var(--color-danger)" icon={Trash2} />
                 <StatCard label="Refunds Today" value={String(posOverview.today_refunds)} accent="var(--color-text-secondary)" icon={Receipt} />
@@ -828,9 +831,9 @@ export function DashboardPage() {
               ? { value: 'Profit', positive: true }
               : { value: 'Loss', positive: false }}
           />
-          <StatCard label="Orders"     value={String(summary.orders)}  sub={`Avg ${fmt(summary.avg_order)}`} accent="#8b5cf6" icon={ShoppingBag} />
+          <StatCard label="Orders"     value={String(summary.orders)}  sub={`Avg ${fmt(summary.avg_order)}`} accent="var(--color-primary)" icon={ShoppingBag} />
           <StatCard label="Tax"        value={fmt(summary.tax)}        accent="var(--color-warning)" icon={Receipt} />
-          <StatCard label="Expenses"   value={fmt(summary.expenses)}   accent="#f97316" icon={CreditCard} />
+          <StatCard label="Expenses"   value={fmt(summary.expenses)}   accent="var(--color-tone-brown-text)" icon={CreditCard} />
           <StatCard label="Waste Cost" value={fmt(summary.waste_cost)} accent="var(--color-danger)" icon={Trash2} />
           {(summary.refunds ?? 0) > 0 && (
             <StatCard label="Refunds" value={fmt(summary.refunds ?? 0)} accent="var(--color-text-secondary)" icon={Receipt} />
@@ -885,7 +888,7 @@ export function DashboardPage() {
           <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
             {[
               { label: 'Pending',   count: pendingCount,   color: 'var(--color-warning)', bg: 'var(--color-warning-bg)', icon: <Clock size={12} /> },
-              { label: 'Preparing', count: preparingCount, color: '#8b5cf6', bg: '#EDE9FE', icon: <ChefHat size={12} /> },
+              { label: 'Preparing', count: preparingCount, color: 'var(--color-tone-brown-text)', bg: 'var(--color-tone-brown-bg)', icon: <ChefHat size={12} /> },
               { label: 'Ready',     count: readyCount,     color: 'var(--color-success)', bg: 'var(--color-success-bg)', icon: <CheckCircle2 size={12} /> },
             ].map(({ label, count, color, bg, icon }) => (
               <div key={label} style={{
@@ -931,7 +934,7 @@ export function DashboardPage() {
                 {liveEvents.map((ev) => (
                   <div key={`${ev.id}-${ev.ts}`} style={{
                     display: 'flex', alignItems: 'center', gap: 10,
-                    padding: '10px 16px', borderBottom: '1px solid #F3EDE4',
+                    padding: '10px 16px', borderBottom: '1px solid var(--color-border-light)',
                     animation: 'fadeSlideIn 0.25s ease',
                   }}>
                     <Link
@@ -1010,15 +1013,15 @@ export function DashboardPage() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 12 }}>
             <StatCard label="Below Reorder" value={String(lowStockTotal)} accent="var(--color-danger)" icon={Package} />
-            <StatCard label="Runway Risk" value={String(stockRunway.length)} sub="≤7 days stock" accent="#f97316" icon={AlertTriangle} />
-            <StatCard label="PO Suggestions" value={String(poSuggestCount)} accent="#8b5cf6" icon={TrendingUp} />
+            <StatCard label="Runway Risk" value={String(stockRunway.length)} sub="≤7 days stock" accent="var(--color-warning)" icon={AlertTriangle} />
+            <StatCard label="PO Suggestions" value={String(poSuggestCount)} accent="var(--color-tone-brown-text)" icon={TrendingUp} />
             {spendRestock && (
               <>
                 <StatCard
                   label="Due Soon"
                   value={String(spendRestock.dueSoon)}
                   sub="Restock plan"
-                  accent={spendRestock.dueSoon > 0 ? '#c2410c' : 'var(--color-success)'}
+                  accent={spendRestock.dueSoon > 0 ? 'var(--color-warning)' : 'var(--color-success)'}
                   icon={ClipboardList}
                 />
                 <StatCard
@@ -1112,7 +1115,7 @@ export function DashboardPage() {
                 {stockRunway.map((item) => (
                   <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
                     <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{item.name}</span>
-                    <span style={{ color: item.status === 'out_of_stock' ? 'var(--color-danger)' : '#f97316', fontWeight: 700 }}>
+                    <span style={{ color: item.status === 'out_of_stock' ? 'var(--color-danger)' : 'var(--color-warning-strong)', fontWeight: 700 }}>
                       {item.days_of_stock == null ? 'Out' : `${item.days_of_stock.toFixed(1)}d left`}
                     </span>
                   </div>
@@ -1145,7 +1148,7 @@ export function DashboardPage() {
                     return (
                       <tr key={item.id}>
                         <td style={{ ...TD, fontWeight: 600 }}>{item.name}</td>
-                        <td style={{ ...TD, textAlign: 'right', color: critical ? 'var(--color-danger)' : '#f97316', fontWeight: 700 }}>
+                        <td style={{ ...TD, textAlign: 'right', color: critical ? 'var(--color-danger)' : 'var(--color-warning-strong)', fontWeight: 700 }}>
                           {item.quantity_on_hand} {item.unit}
                         </td>
                         <td style={{ ...TD, textAlign: 'right', color: 'var(--color-text-muted)' }}>
@@ -1179,7 +1182,7 @@ export function DashboardPage() {
                       <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{t.count} orders</span>
                       <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary)' }}>{fmt(t.revenue)}</span>
                     </div>
-                    <div style={{ height: 4, background: '#F3EDE4', borderRadius: 4 }}>
+                    <div style={{ height: 4, background: 'var(--color-border-light)', borderRadius: 4 }}>
                       <div style={{ height: 4, background: 'var(--color-primary)', borderRadius: 4, width: `${pct}%`, transition: 'width 0.4s ease' }} />
                     </div>
                   </div>
@@ -1199,7 +1202,7 @@ export function DashboardPage() {
               label="Service charge"
               value={fmt(salesSummary.service_charge_total ?? 0)}
               sub="Completed orders"
-              accent="#0ea5e9"
+              accent="var(--color-tone-gold-text)"
               icon={Receipt}
             />
             <StatCard

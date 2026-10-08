@@ -50,7 +50,7 @@ const STATUS: Record<DayStatus | CashDay['status'], { label: string; color: stri
   none: { label: 'No takings', color: 'gray' },
   settled: { label: 'Settled', color: 'green' },
   partial: { label: 'Partly settled', color: 'orange' },
-  awaiting: { label: 'Awaiting', color: 'blue' },
+  awaiting: { label: 'Awaiting', color: 'rust' },
   overdue: { label: 'Overdue', color: 'red' },
   over: { label: 'Bank paid more', color: 'orange' },
   differs: { label: 'Differs', color: 'red' },
@@ -824,9 +824,11 @@ function StatementUploader({ account, lockAccount, accounts, onImported, onError
             </select>
           </label>
         )}
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600 }}>
+        {/* Allowed to shrink: sized to the picker's own width it ran 33px past
+            a phone's edge. */}
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, flex: '1 1 240px', minWidth: 0 }}>
           Statement file
-          <input ref={fileRef} type="file" accept=".csv,.txt,.xls,.xlsx" aria-label="Statement file" onChange={(e) => { setFile(e.target.files?.[0] ?? null); setSummary(null); }} />
+          <input ref={fileRef} type="file" accept=".csv,.txt,.xls,.xlsx" aria-label="Statement file" style={{ width: '100%' }} onChange={(e) => { setFile(e.target.files?.[0] ?? null); setSummary(null); }} />
         </label>
         <Btn onClick={() => void check()} disabled={busy || !file}>Check file</Btn>
       </div>

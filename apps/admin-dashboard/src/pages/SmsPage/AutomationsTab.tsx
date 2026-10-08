@@ -6,7 +6,7 @@ import {
   fetchStaffNotificationLogs, resendStaffNotification,
   type StaffNotificationLog,
 } from '../../api';
-import { Badge, Btn, EmptyState, Spinner, StatCard, TableCard, TD, TH } from '../../components/SharedUI';
+import { Badge, Btn, EmptyState, Spinner, StatCard, TableCard, TD, TH, Switch } from '../../components/SharedUI';
 import { isAutomationEnabled } from './automationSettings';
 
 type EventConfig = {
@@ -168,24 +168,14 @@ export function AutomationsTab() {
                       <div style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>{event.description}</div>
                     </div>
                   </div>
-                  <button
-                    type="button"
+                  <Switch
+                    checked={enabled}
                     aria-label={`${event.label}: ${enabled ? 'enabled' : 'disabled'}`}
                     data-testid={`automation-toggle-${event.key}`}
                     data-enabled={enabled ? '1' : '0'}
-                    onClick={() => toggleEvent(event.key, settings[event.key] ?? '1')}
+                    onChange={() => toggleEvent(event.key, settings[event.key] ?? '1')}
                     disabled={savingKey === event.key}
-                    style={{
-                      width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
-                      background: enabled ? 'var(--color-primary)' : '#D1D5DB', transition: 'background 0.2s',
-                      position: 'relative', flexShrink: 0,
-                    }}
-                  >
-                    <span style={{
-                      position: 'absolute', top: 3, left: enabled ? 22 : 3,
-                      width: 18, height: 18, borderRadius: '50%', background: 'var(--color-surface)', transition: 'left 0.2s',
-                    }} />
-                  </button>
+                  />
                 </div>
               );
             })}
@@ -245,7 +235,7 @@ export function AutomationsTab() {
                       )}
                       {l.order_type && <div style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{l.order_type}</div>}
                     </td>
-                    <td style={TD}><Badge label={l.event_type.replace(/_/g, ' ')} color="blue" /></td>
+                    <td style={TD}><Badge label={l.event_type.replace(/_/g, ' ')} color="brown" /></td>
                     <td style={{ ...TD, color: 'var(--color-text-secondary)', fontSize: 11 }}>
                       <Badge label={l.recipient_type} color="gray" />
                     </td>

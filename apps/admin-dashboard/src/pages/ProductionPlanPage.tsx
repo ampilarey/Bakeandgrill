@@ -411,7 +411,7 @@ function DayStrip({ plan }: { plan: ProductionPlan }) {
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginTop: 12, fontSize: 13 }} data-testid="plan-day-strip">
       <strong>{plan.weekday} {plan.date}</strong>
-      <Badge color="blue" label={POSITION_LABEL[plan.month_position.key] ?? plan.month_position.label} />
+      <Badge color="brown" label={POSITION_LABEL[plan.month_position.key] ?? plan.month_position.label} />
       {plan.calendar.map((c) => (
         <Badge key={c.kind} color="orange">
           {c.label}{c.expected_change_pct != null ? ` (${c.expected_change_pct > 0 ? '+' : ''}${c.expected_change_pct}% expected)` : ''}
@@ -770,7 +770,7 @@ export function PlanAccuracyTab() {
       <Card>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end' }}>
           <Select label="Looking back" value={String(weeks)} onChange={(v) => setWeeks(Number(v))} options={[2, 4, 8, 12].map((w) => ({ value: String(w), label: `${w} weeks` }))} />
-          <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)', flex: 1 }}>
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)', flex: '1 1 260px' }}>
             Every saved plan, marked against what then sold. <b>Enough</b> is a slot that neither ran out nor sold more than was planned.
             <b> Made</b> is what the kitchen sent to the counter; <b>received</b> is what the counter took in.
           </p>
@@ -922,7 +922,7 @@ export function PlanCustomersTab() {
       <Card>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end' }}>
           <Select label="Looking back" value={String(weeks)} onChange={(v) => setWeeks(Number(v))} options={[4, 8, 12, 26].map((w) => ({ value: String(w), label: `${w} weeks` }))} />
-          <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)', flex: 1 }}>
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)', flex: '1 1 260px' }}>
             Registered customers are the steady part of demand: they come back on their own days, at their own hours, for the same things.
             The bigger their share of an item, the firmer the floor under its plan. Walk-ins are the swing. Shares and counts only — no names.
           </p>

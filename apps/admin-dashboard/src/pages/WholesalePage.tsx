@@ -173,7 +173,7 @@ export default function WholesalePage() {
                       {a.shop_name}
                     </Link>
                     {a.delivers_today && (
-                      <span style={{ marginLeft: 8, verticalAlign: 'middle' }}><Badge color="blue">Delivers today</Badge></span>
+                      <span style={{ marginLeft: 8, verticalAlign: 'middle' }}><Badge color="rust">Delivers today</Badge></span>
                     )}
                     {a.contact_name && (
                       <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>

@@ -315,7 +315,7 @@ function Gallery({ itemId }: { itemId: number }) {
           disabled={uploading}
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            padding: '10px 16px', background: 'var(--color-border-light)', border: '2px dashed #cbd5e1',
+            padding: '10px 16px', background: 'var(--color-border-light)', border: '2px dashed var(--color-border)',
             borderRadius: 10, cursor: uploading ? 'not-allowed' : 'pointer',
             fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)',
           }}
@@ -344,9 +344,9 @@ function Gallery({ itemId }: { itemId: number }) {
           disabled={uploading}
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            padding: '10px 16px', background: '#EEF6FF', border: '2px dashed #bfdbfe',
+            padding: '10px 16px', background: 'var(--color-tone-rust-bg)', border: '2px dashed var(--color-tone-rust-border)',
             borderRadius: 10, cursor: uploading ? 'not-allowed' : 'pointer',
-            fontSize: 13, fontWeight: 600, color: '#1e40af',
+            fontSize: 13, fontWeight: 600, color: 'var(--color-tone-rust-text)',
           }}
         >
           <Upload size={15} />

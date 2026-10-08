@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Modal, ModalActions, Btn, Select } from './SharedUI';
+import { Printer } from 'lucide-react';
 
 export type PrintCardData = {
   type: 'gift_card' | 'promo' | 'discount_card';
@@ -199,7 +200,7 @@ export function PrintCardModal({
 
       <ModalActions>
         <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
-        <Btn onClick={handlePrint}>🖨️ Print {copies > 1 ? `${copies} Copies` : 'Card'}</Btn>
+        <Btn onClick={handlePrint}><Printer size={16} aria-hidden />Print {copies > 1 ? `${copies} Copies` : 'Card'}</Btn>
       </ModalActions>
     </Modal>
   );

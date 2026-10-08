@@ -39,20 +39,20 @@ type ViewMode = 'cards' | 'floorplan';
 const STATUS_BG: Record<string, string> = {
   available: 'var(--color-success-bg)',
   occupied:  'var(--color-warning-bg)',
-  reserved:  '#DBEAFE',
-  closed:    '#F3F4F6',
+  reserved:  'var(--color-tone-rust-bg)',
+  closed:    'var(--color-border-light)',
 };
 const STATUS_BORDER: Record<string, string> = {
   available: 'var(--color-success-strong)',
   occupied:  '#d97706',
-  reserved:  '#2563eb',
-  closed:    '#9ca3af',
+  reserved:  'var(--color-primary)',
+  closed:    'var(--color-text-muted)',
 };
 const STATUS_TEXT: Record<string, string> = {
   available: 'var(--color-success-strong)',
   occupied:  'var(--color-warning-strong)',
-  reserved:  '#1d4ed8',
-  closed:    '#6b7280',
+  reserved:  'var(--color-tone-rust-text)',
+  closed:    'var(--color-text-secondary)',
 };
 
 function OrderPeek({ table }: { table: RestaurantTable }) {
@@ -255,9 +255,9 @@ export default function TablesPage() {
 
               <div style={{ padding: 20, display: 'flex', flexWrap: 'wrap', gap: 12 }}>
                 {zoneTables.map(t => {
-                  const bg = STATUS_BG[t.status] ?? '#F9FAFB';
-                  const border = STATUS_BORDER[t.status] ?? '#E5E7EB';
-                  const textColor = STATUS_TEXT[t.status] ?? '#374151';
+                  const bg = STATUS_BG[t.status] ?? 'var(--color-bg)';
+                  const border = STATUS_BORDER[t.status] ?? 'var(--color-border)';
+                  const textColor = STATUS_TEXT[t.status] ?? 'var(--color-text)';
                   return (
                     <div
                       key={t.id}

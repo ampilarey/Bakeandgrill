@@ -12,6 +12,7 @@ import {
 import { SortFilterHead, useSortFilter } from '../../components/TableControls';
 import { smsCharCount } from '../../utils/smsCharCount';
 import { AudienceBuilder, criteriaIsEmpty } from './AudienceBuilder';
+import { Eye } from 'lucide-react';
 
 type PreviewResult = {
   recipient_count: number;
@@ -558,7 +559,7 @@ export function CampaignsTab({ prefill, onViewLog }: { prefill?: CampaignPrefill
 
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <Btn variant="secondary" onClick={handlePreview} disabled={previewing || !message || (abEnabled && !messageB) || !!recipeNeeds}>
-              {previewing ? 'Checking…' : '👁 Preview Audience'}
+              {previewing ? 'Checking…' : <><Eye size={16} aria-hidden />Preview Audience</>}
             </Btn>
             <Btn variant="secondary" onClick={() => handleTest(message, abEnabled ? messageB : null)} disabled={testing || !message}>
               {testing ? 'Sending…' : 'Send a test to me'}

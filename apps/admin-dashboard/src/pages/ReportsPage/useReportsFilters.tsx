@@ -91,7 +91,10 @@ export function ReportsFilters({
 }: ReportsFiltersProps) {
   return (
     <Card style={{ marginBottom: 20 }}>
-      <div className="mobile-filters-body" data-responsive-grid style={{ display: 'flex', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap' }}>
+      {/* Was the collapsible-panel body from Orders: on a phone it stacked
+          into a column aligned to the right edge, the dates hanging off on
+          their own and "7 days" broken over two lines. */}
+      <div className="report-filters" style={{ display: 'flex', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap' }}>
         <DateInput label="From" value={from} onChange={setFrom} />
         <DateInput label="To"   value={to}   onChange={setTo} />
         {tab === 'Summary' && (
@@ -119,9 +122,9 @@ export function ReportsFilters({
             </label>
           </>
         )}
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="report-quick-ranges" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {[{ label: 'Today', days: 0 }, { label: '7 days', days: 7 }, { label: '30 days', days: 30 }, { label: '90 days', days: 90 }].map(({ label, days }) => (
-            <Btn key={label} small variant="secondary" onClick={() => { setFrom(daysAgo(days)); setTo(today()); }}>
+            <Btn key={label} small variant="secondary" style={{ whiteSpace: 'nowrap' }} onClick={() => { setFrom(daysAgo(days)); setTo(today()); }}>
               {label}
             </Btn>
           ))}

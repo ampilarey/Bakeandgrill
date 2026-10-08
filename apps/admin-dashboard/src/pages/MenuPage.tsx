@@ -14,6 +14,7 @@ import { MenuItemTable } from './MenuPage/MenuItemTable';
 import { QuickEditGrid } from './MenuPage/QuickEditGrid';
 import { RecipeEditorModal } from './MenuPage/RecipeEditorModal';
 import { EMPTY_CAT, type CatForm, useMenuPage, type View } from './MenuPage/useMenuPage';
+import { Printer } from 'lucide-react';
 
 function BannerLivePreview({
   label,
@@ -283,7 +284,7 @@ export function MenuPage() {
               onClick={() => window.open('/menu/print', '_blank', 'noopener')}
               title="Print or save the menu — short list, with details, or large type"
             >
-              <span aria-hidden="true">🖨</span> Print menu
+              <Printer size={16} aria-hidden />Print menu
             </Btn>
             {m.canManage && (m.view === 'categories'
               ? <Btn onClick={() => m.setCreatingCat(true)}>+ New Category</Btn>
@@ -479,7 +480,7 @@ export function MenuPage() {
           footer={(
             <ModalActions>
               <Btn variant="secondary" onClick={() => m.setBarcodeLabel(null)}>Close</Btn>
-              <Btn onClick={() => { window.print(); }}>🖨 Print</Btn>
+              <Btn onClick={() => { window.print(); }}><Printer size={16} aria-hidden />Print</Btn>
             </ModalActions>
           )}
         >

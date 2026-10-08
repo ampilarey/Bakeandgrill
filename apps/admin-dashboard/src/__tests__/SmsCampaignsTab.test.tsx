@@ -99,7 +99,7 @@ describe('SMS CampaignsTab — purchase-based targeting', () => {
     fireEvent.change(screen.getByLabelText('Birthday month'), { target: { value: '10' } });
     fireEvent.change(screen.getByLabelText('Campaign message'), { target: { value: 'Hi {name}, new burger' } });
 
-    fireEvent.click(screen.getByText('👁 Preview Audience'));
+    fireEvent.click(screen.getByText('Preview Audience'));
     await waitFor(() => expect(api.previewSmsCampaign).toHaveBeenCalledWith({
       message: 'Hi {name}, new burger',
       target_criteria: { likes_item_id: 11, bought_category_ids: [2], order_types: ['delivery'], min_spend_mvr: 500, birthday_month: 10 },
@@ -131,10 +131,10 @@ describe('SMS CampaignsTab — purchase-based targeting', () => {
 
     fireEvent.change(screen.getByLabelText('Recipe'), { target: { value: 'new_dish_for_fans' } });
     expect(screen.getByTestId('recipe-needs')).toHaveTextContent('Pick the item this recipe is about.');
-    expect(screen.getByText('👁 Preview Audience')).toBeDisabled();
+    expect(screen.getByText('Preview Audience')).toBeDisabled();
     fireEvent.change(screen.getByLabelText('Likes this item (bought it, or what goes with it)'), { target: { value: '12' } });
     expect(screen.queryByTestId('recipe-needs')).toBeNull();
-    expect(screen.getByText('👁 Preview Audience')).not.toBeDisabled();
+    expect(screen.getByText('Preview Audience')).not.toBeDisabled();
   });
 
   it('starts from a saved audience, and saves the current filters as a new one', async () => {
@@ -143,7 +143,7 @@ describe('SMS CampaignsTab — purchase-based targeting', () => {
     fireEvent.change(screen.getByLabelText('Saved audience'), { target: { value: '3' } });
     fireEvent.change(screen.getByLabelText('Minimum paid orders'), { target: { value: '2' } });
     fireEvent.change(screen.getByLabelText('Campaign message'), { target: { value: 'Hello' } });
-    fireEvent.click(screen.getByText('👁 Preview Audience'));
+    fireEvent.click(screen.getByText('Preview Audience'));
     await waitFor(() => expect(api.previewSmsCampaign).toHaveBeenCalledWith(expect.objectContaining({
       target_criteria: { audience_id: 3, min_orders: 2 },
     })));

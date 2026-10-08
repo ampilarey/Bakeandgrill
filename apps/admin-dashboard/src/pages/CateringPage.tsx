@@ -111,7 +111,7 @@ export function CateringPage() {
                     {row.phone}
                     {row.email ? ` · ${row.email}` : ''}
                     {' · '}
-                    {(row.occasion ?? 'other').replace('_', ' ')}
+                    {(row.occasion ?? 'other').replace(/_/g, ' ')}
                     {row.event_date ? ` · ${row.event_date}` : ''}
                     {row.headcount != null ? ` · ${row.headcount} guests` : ''}
                     {(row.lines_count ?? 0) > 0
@@ -131,7 +131,7 @@ export function CateringPage() {
                     textTransform: 'capitalize',
                   }}
                   >
-                    {row.status.replace('_', ' ')}
+                    {row.status.replace(/_/g, ' ')}
                   </span>
                   {row.has_live_quote && (
                     <div style={{ fontSize: 11, color: 'var(--color-warning-strong)', marginTop: 6, fontWeight: 700 }}>

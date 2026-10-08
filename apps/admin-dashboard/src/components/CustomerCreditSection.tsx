@@ -540,9 +540,9 @@ export function CustomerCreditSection({ customerId }: Props) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 160, overflowY: 'auto' }}>
                 {ledger.map((row) => (
                   <div key={row.id} style={{ fontSize: 12, padding: '6px 8px', background: 'var(--color-surface)', borderRadius: 6, border: '1px solid #F0EAE3' }}>
-                    <span style={{ fontWeight: 700, textTransform: 'capitalize' }}>{row.type.replace('_', ' ')}</span>
+                    <span style={{ fontWeight: 700, textTransform: 'capitalize' }}>{row.type.replace(/_/g, ' ')}</span>
                     {' · '}
-                    <span style={{ color: row.amount_mvr >= 0 ? 'var(--color-warning-strong)' : '#059669' }}>
+                    <span style={{ color: row.amount_mvr >= 0 ? 'var(--color-warning-strong)' : 'var(--color-success-strong)' }}>
                       {row.amount_mvr >= 0 ? '+' : ''}MVR {row.amount_mvr.toFixed(2)}
                     </span>
                     {' · bal MVR '}{row.balance_after_mvr.toFixed(2)}

@@ -161,7 +161,7 @@ function BatchMeta({ batch }: { batch: KitchenProductionBatch }) {
         <strong style={{ fontSize: 15 }}>{batch.batch_no}</strong>
         {statusBadge(batch.status)}
         <Badge color="gray">{titleCase(batch.production_type)}</Badge>
-        {batch.station ? <Badge color="teal">{batch.station}</Badge> : null}
+        {batch.station ? <Badge color="brown">{batch.station}</Badge> : null}
       </div>
       <div style={{
         fontSize: 13,

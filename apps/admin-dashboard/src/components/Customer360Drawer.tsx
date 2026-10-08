@@ -24,7 +24,7 @@ function timelineEventPath(ev: CustomerActivityEvent): string | null {
 const BADGE_MAP: Record<string, { label: string; color: string }> = {
   vip: { label: 'VIP', color: 'yellow' },
   new: { label: 'New', color: 'green' },
-  returning: { label: 'Returning', color: 'blue' },
+  returning: { label: 'Returning', color: 'brown' },
   dormant: { label: 'Dormant', color: 'gray' },
   credit: { label: 'Credit', color: 'orange' },
   sms_off: { label: 'SMS off', color: 'red' },

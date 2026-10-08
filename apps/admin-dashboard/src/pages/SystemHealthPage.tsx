@@ -351,7 +351,7 @@ export function SystemHealthPage() {
               label="Queue depth"
               value={String(data.queue_depth)}
               sub="Pending jobs"
-              accent={data.queue_depth > 50 ? 'var(--color-warning)' : '#0ea5e9'}
+              accent={data.queue_depth > 50 ? 'var(--color-warning)' : 'var(--color-info)'}
               icon={Server}
             />
             <StatCard

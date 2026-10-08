@@ -12,7 +12,7 @@ import {
 } from '../api';
 import { ItemSearch, type MenuItemSelection } from '../components/ItemSearch';
 import {
-  Badge, Btn, Card, ErrorMsg, Input, Modal, ModalActions, PageHeader, PageShell, Pagination, Select, Spinner,
+  Badge, Btn, Card, ErrorMsg, Input, Modal, ModalActions, PageHeader, PageShell, Pagination, Select, Spinner, TabScrollRow, InlineIcon,
 } from '../components/SharedUI';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -21,6 +21,7 @@ import { CalendarTab } from './social/CalendarTab';
 import { CommentsTab } from './social/CommentsTab';
 import { ComposeModal } from './social/ComposeModal';
 import { PLATFORM_LABELS, bestTimesHint, navigateTo } from './social/composer';
+import { Heart, MessageCircle, MousePointerClick, Share2, ShoppingBag } from 'lucide-react';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All statuses' },
@@ -163,22 +164,24 @@ export function SocialHubPage() {
         ) : undefined}
       />
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        <Btn small variant={tab === 'posts' ? 'primary' : 'secondary'} onClick={() => setTab('posts')}>Posts</Btn>
-        <Btn small variant={tab === 'calendar' ? 'primary' : 'secondary'} onClick={() => setTab('calendar')}>Calendar</Btn>
-        <Btn small variant={tab === 'comments' ? 'primary' : 'secondary'} onClick={() => setTab('comments')}>Comments</Btn>
-        <Btn small variant={tab === 'automation' ? 'primary' : 'secondary'} onClick={() => setTab('automation')}>
+      {/* Six tabs do not fit a phone's width; the strip scrolls, as the hub tabs do.
+          "Videos" and "Channels" were cut off and out of reach (phone sweep 2026-10-08). */}
+      <TabScrollRow fit style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        <Btn small aria-current={tab === 'posts' ? 'page' : undefined} variant={tab === 'posts' ? 'primary' : 'secondary'} onClick={() => setTab('posts')}>Posts</Btn>
+        <Btn small aria-current={tab === 'calendar' ? 'page' : undefined} variant={tab === 'calendar' ? 'primary' : 'secondary'} onClick={() => setTab('calendar')}>Calendar</Btn>
+        <Btn small aria-current={tab === 'comments' ? 'page' : undefined} variant={tab === 'comments' ? 'primary' : 'secondary'} onClick={() => setTab('comments')}>Comments</Btn>
+        <Btn small aria-current={tab === 'automation' ? 'page' : undefined} variant={tab === 'automation' ? 'primary' : 'secondary'} onClick={() => setTab('automation')}>
           Automation
         </Btn>
-        <Btn small variant={tab === 'videos' ? 'primary' : 'secondary'} onClick={() => setTab('videos')}>
+        <Btn small aria-current={tab === 'videos' ? 'page' : undefined} variant={tab === 'videos' ? 'primary' : 'secondary'} onClick={() => setTab('videos')}>
           Videos
         </Btn>
         {canChannels && (
-          <Btn small variant={tab === 'channels' ? 'primary' : 'secondary'} onClick={() => setTab('channels')}>
+          <Btn small aria-current={tab === 'channels' ? 'page' : undefined} variant={tab === 'channels' ? 'primary' : 'secondary'} onClick={() => setTab('channels')}>
             Channels
           </Btn>
         )}
-      </div>
+      </TabScrollRow>
 
       {error && <ErrorMsg message={error} />}
       {notice && (
@@ -345,11 +348,11 @@ function PostList({ posts, meta, loading, filters, onFilters, onChanged, onEdit 
               )}
               <div style={{ flex: '1 1 240px', minWidth: 0 }}>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <Badge label={post.status.replace('_', ' ')} color={STATUS_COLORS[post.status] ?? 'gray'} />
+                  <Badge label={post.status.replace(/_/g, ' ')} color={STATUS_COLORS[post.status] ?? 'gray'} />
                   {post.dry_run && <Badge label="Dry run — nothing sent" color="gray" />}
                   {SOURCE_LABELS[post.source] && <Badge label={SOURCE_LABELS[post.source]} color={post.source === 'channel_test' ? 'gray' : 'purple'} />}
-                  {post.media_type === 'video' && <Badge label="▶ Video" color="teal" />}
-                  {post.media_type === 'carousel' && <Badge label={`${post.snapshot.images?.length ?? 0} photos`} color="teal" />}
+                  {post.media_type === 'video' && <Badge label="Video" color="brown" />}
+                  {post.media_type === 'carousel' && <Badge label={`${post.snapshot.images?.length ?? 0} photos`} color="brown" />}
                   {post.scheduled_at && post.status === 'scheduled' && (
                     <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
                       for {new Date(post.scheduled_at).toLocaleString()}
@@ -379,7 +382,8 @@ function PostList({ posts, meta, loading, filters, onFilters, onChanged, onEdit 
                       {PLATFORM_LABELS[d.channel?.platform ?? ''] ?? d.channel?.platform} · {d.status}
                       {((d.visits ?? 0) > 0 || (d.orders ?? 0) > 0) && (
                         <span data-testid="delivery-traffic" title="Visits through this post's link, and web orders that followed" style={{ fontWeight: 500, color: 'var(--color-text-muted)' }}>
-                          · ↗ {d.visits ?? 0} visit{d.visits === 1 ? '' : 's'}{(d.orders ?? 0) > 0 ? ` · 🛒 ${d.orders} order${d.orders === 1 ? '' : 's'}` : ''}
+                          {' · '}<InlineIcon icon={MousePointerClick} size={12} />{d.visits ?? 0} visit{d.visits === 1 ? '' : 's'}
+                          {(d.orders ?? 0) > 0 && <>{' · '}<InlineIcon icon={ShoppingBag} size={12} />{d.orders} order{d.orders === 1 ? '' : 's'}</>}
                         </span>
                       )}
                       {d.insights && (
@@ -388,7 +392,9 @@ function PostList({ posts, meta, loading, filters, onFilters, onChanged, onEdit 
                           title={d.insights_at ? `As of ${new Date(d.insights_at).toLocaleString()}` : undefined}
                           style={{ fontWeight: 500, color: 'var(--color-text-muted)' }}
                         >
-                          · ♥ {d.insights.likes ?? 0} · 💬 {d.insights.comments ?? 0}{typeof d.insights.shares === 'number' ? ` · ↗ ${d.insights.shares}` : ''}
+                          {' · '}<InlineIcon icon={Heart} size={12} />{d.insights.likes ?? 0}<span className="sr-only"> likes</span>
+                          {' · '}<InlineIcon icon={MessageCircle} size={12} />{d.insights.comments ?? 0}<span className="sr-only"> comments</span>
+                          {typeof d.insights.shares === 'number' && <>{' · '}<InlineIcon icon={Share2} size={12} />{d.insights.shares}<span className="sr-only"> shares</span></>}
                         </span>
                       )}
                       {d.permalink && (
