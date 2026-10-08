@@ -5,7 +5,7 @@ import {
   type CreditRepaymentMethod,
   type CreditRepaymentsResponse,
 } from '../../api';
-import { Badge, Btn, DateInput, EmptyState, ErrorMsg, TableCard, TableSkeleton, TD, TH } from '../SharedUI';
+import { Badge, Btn, DateInput, EmptyState, ErrorMsg, TableCard, TableSkeleton, TabScrollRow, TD, TH } from '../SharedUI';
 import { useIsMobile } from '../../hooks/useIsMobile';
 // Days in Male time, whatever clock the device keeps: the server counts the
 // day in Indian/Maldives, so "today" here must be the same day.
@@ -137,15 +137,17 @@ export function CreditRepaymentsView() {
       )}
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 12 }}>
-        <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2, flex: '1 1 320px' }} role="tablist" aria-label="Filter repayments by method">
-          {METHOD_CHIPS.map((m) => {
-            const count = m.id === 'all' ? totals?.count : byMethod[m.id]?.count;
-            return (
-              <button key={m.id} type="button" role="tab" aria-selected={method === m.id} style={chip(method === m.id)} onClick={() => setMethod(m.id)}>
-                {m.label}{count !== undefined ? ` ${count}` : ''}
-              </button>
-            );
-          })}
+        <div style={{ flex: '1 1 320px', minWidth: 0 }}>
+          <TabScrollRow style={{ gap: 6, paddingBottom: 2 }} role="tablist" aria-label="Filter repayments by method">
+            {METHOD_CHIPS.map((m) => {
+              const count = m.id === 'all' ? totals?.count : byMethod[m.id]?.count;
+              return (
+                <button key={m.id} type="button" role="tab" aria-selected={method === m.id} style={chip(method === m.id)} onClick={() => setMethod(m.id)}>
+                  {m.label}{count !== undefined ? ` ${count}` : ''}
+                </button>
+              );
+            })}
+          </TabScrollRow>
         </div>
         <input
           type="search"

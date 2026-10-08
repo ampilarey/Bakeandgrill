@@ -86,11 +86,16 @@ export function SectionBar({ user, activeSectionId, onSelectSection }: SectionBa
             aria-controls={`section-rail-${section.id}`}
             tabIndex={selected ? 0 : -1}
             className={`admin-shell-section-tab${selected ? ' admin-shell-section-tab--active' : ''}`}
+            aria-label={section.label}
+            title={section.label}
             onClick={() => selectSection(section)}
             onKeyDown={(e) => onKeyDown(e, index)}
           >
             <Icon size={15} aria-hidden />
-            <span>{section.label}</span>
+            {/* The short name, as on the phone tab bar: the full "Customers & Marketing"
+                pushed Analyze, System and Team out of sight on a tablet. The rail beside
+                the page still shows the full name. */}
+            <span className="admin-shell-section-tab-label">{section.shortLabel ?? section.label}</span>
           </button>
         );
       })}

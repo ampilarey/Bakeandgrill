@@ -209,7 +209,7 @@ export function PlanTab({ canManage }: { canManage: boolean }) {
   const reviewing = !!plan && (plan.is_today || plan.is_past);
 
   return (
-    <div style={{ display: 'grid', gap: 16 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 16 }}>
       <Card>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end' }}>
           <div data-testid="plan-date">
@@ -256,7 +256,7 @@ export function PlanTab({ canManage }: { canManage: boolean }) {
           {items.length === 0 ? (
             <EmptyState message="No items have sold in the look-back window." />
           ) : isMobile ? (
-            <div style={{ display: 'grid', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12 }}>
               {items.map((item) => (
                 <Card key={item.key} data-testid={`plan-item-${item.key}`}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
@@ -658,7 +658,7 @@ export function PlanCalendarTab({ canManage }: { canManage: boolean }) {
   const kindOptions = Object.entries(data?.kinds ?? {}).map(([value, label]) => ({ value, label }));
 
   return (
-    <div style={{ display: 'grid', gap: 16 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 16 }}>
       <Card>
         <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)' }}>
           Days that are not ordinary days. Sales on them teach the plan what that kind of day does to demand; until it has seen a few,
@@ -767,7 +767,7 @@ export function PlanAccuracyTab() {
 
   const t = data?.totals;
   return (
-    <div style={{ display: 'grid', gap: 16 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 16 }}>
       <Card>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end' }}>
           <Select label="Looking back" value={String(weeks)} onChange={(v) => setWeeks(Number(v))} options={[2, 4, 8, 12].map((w) => ({ value: String(w), label: `${w} weeks` }))} />
@@ -919,7 +919,7 @@ export function PlanCustomersTab() {
   }, [weeks]);
 
   return (
-    <div style={{ display: 'grid', gap: 16 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 16 }}>
       <Card>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end' }}>
           <Select label="Looking back" value={String(weeks)} onChange={(v) => setWeeks(Number(v))} options={[4, 8, 12, 26].map((w) => ({ value: String(w), label: `${w} weeks` }))} />
@@ -1042,7 +1042,7 @@ export function PlanSettingsTab({ canManage }: { canManage: boolean }) {
   if (!settings) return error ? <ErrorMsg message={error} /> : <Spinner />;
 
   return (
-    <div style={{ display: 'grid', gap: 16 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 16 }}>
       {error && <ErrorMsg message={error} />}
       <Card data-testid="settings-model">
         <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>The model</h3>
@@ -1064,10 +1064,13 @@ export function PlanSettingsTab({ canManage }: { canManage: boolean }) {
         </p>
         <div style={{ display: 'grid', gap: 8 }}>
           {settings.slots.map((s, i) => (
-            <div key={i} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8, alignItems: 'end' }}>
-              <Input label={i === 0 ? 'Name' : undefined} id={`slot-label-${i}`} aria-label={`Slot ${i + 1} name`} value={s.label} onChange={(v) => setSlot(i, { label: v })} />
-              <Input label={i === 0 ? 'From (hour)' : undefined} id={`slot-from-${i}`} aria-label={`Slot ${i + 1} from`} type="number" min={0} max={23} value={String(s.from)} onChange={(v) => setSlot(i, { from: Number(v) })} />
-              <Input label={i === 0 ? 'To (hour)' : undefined} id={`slot-to-${i}`} aria-label={`Slot ${i + 1} to`} type="number" min={0} max={23} value={String(s.to)} onChange={(v) => setSlot(i, { to: Number(v) })} />
+            // One line per slot at every width. Wrapping columns put a slot's
+            // "to" hour and its remove button on a line of their own, under
+            // the next slot's name, on a phone and on a tablet.
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(72px, 1fr) minmax(72px, 1fr) auto', gap: 8, alignItems: 'end' }}>
+              <Input label={i === 0 ? 'Name' : undefined} id={`slot-label-${i}`} aria-label={`Slot ${i + 1} name`} value={s.label} onChange={(v) => setSlot(i, { label: v })} style={{ width: '100%' }} />
+              <Input label={i === 0 ? 'From (hour)' : undefined} id={`slot-from-${i}`} aria-label={`Slot ${i + 1} from`} type="number" min={0} max={23} value={String(s.from)} onChange={(v) => setSlot(i, { from: Number(v) })} style={{ width: '100%' }} />
+              <Input label={i === 0 ? 'To (hour)' : undefined} id={`slot-to-${i}`} aria-label={`Slot ${i + 1} to`} type="number" min={0} max={23} value={String(s.to)} onChange={(v) => setSlot(i, { to: Number(v) })} style={{ width: '100%' }} />
               <Btn variant="ghost" small onClick={() => setSettings({ ...settings, slots: settings.slots.filter((_, j) => j !== i) })} disabled={settings.slots.length <= 1} aria-label={`Remove slot ${i + 1}`}><X size={16} aria-hidden /></Btn>
             </div>
           ))}

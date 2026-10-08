@@ -538,6 +538,68 @@ the rule each fix leaves behind:
   styles went from 222 to 66, and each that is left is one of those or white
   words on a coloured button.
 
+
+#### Stage 3f — Tablets, every pop-up, and the screens no walk had reached
+
+**Done 2026-10-08** (owner: "Did u check all?"). Not quite, until now. The
+walks had used a phone and a computer, and the computer layout has a
+tablet form: `AppShell`'s `useViewportBand()` is `tablet` from 768 to
+1023px (the rail folds to icons) and the CSS's compact band runs to 1199px,
+so an iPad, 768 upright and 1024 on its side, sees the computer layout in
+less room than it was drawn for. Walked at 768 and 1024 (277 screens each),
+plus every pop-up behind a button that changes data (Delete, Send, Approve,
+Pay…; writes mocked, no six-per-screen cap) on phone and computer, a
+catering quote's page (no quote existed in the local data), and every
+sign-in screen at three sizes in both themes. What it found:
+
+- **Top bar.** The six section tabs ran under the search and bell buttons;
+  Analyze, System and Team were out of sight and the strip's scroll had no
+  hint. The bar now uses `shortLabel` (as `MobileTabBar` does; the rail
+  keeps the full name and the tab's `aria-label` carries it), search and the
+  name chip are icons below 1200px, and below 1024px only the open section
+  keeps its label.
+- **Rail.** `AppShell` folded the rail when the window *entered* the tablet
+  band but not when it *opened* there, so an iPad started with a 220px rail.
+  The first state now honours the band.
+- **Wide content.** The phone block in `index.css` had the only rules that
+  let a `.table-scroll` scroll and a grid item shrink below its content.
+  Above 767px a wide table was simply cut off by `main` (`overflow-x: clip`)
+  or by a card with `overflow: hidden`. Those two rules now hold at every
+  width. A `display: grid` stack of cards with no columns sizes its one
+  column to the widest content in any card; give it
+  `gridTemplateColumns: 'minmax(0, 1fr)'` (Kitchen's views).
+- **Header buttons.** `.page-header-actions` was `flex-shrink: 0`, so a long
+  row (Content Studio: EN/DV, status, Desktop/Mobile, View, Publish) ran off
+  the page instead of wrapping; Publish was cut off on an upright tablet. It
+  may shrink and wrap now.
+- **Tab rows.** `.tab-scroll-row` scrolled only on a phone; it scrolls at
+  every width now, with `.tab-scroll-wrap`'s fades and chevron. TV Signage's
+  eight tabs use `TabScrollRow`.
+- A catering quote's quantity − / + were unstyled buttons (a bare hyphen and
+  plus); a line's Remove is `danger-outline`.
+- **Hidden rules.** A comment in `index.css` had lost its closer, so it ran
+  on to the next comment's and took seven rules with it: the website
+  editor's Desktop / Mobile switch and "View live site" link drew as plain
+  text. Two of the seven had also lost their selectors and styled the
+  website rail deleted in August; they are gone. CSS comments do not nest
+  and the build does not warn, so `npm run lint` now runs
+  `scripts/check-css-comments.mjs`, which fails on a comment that opens
+  another before it closes.
+- Kitchen → Settings: each time slot is one line (name, from, to, remove)
+  at every width; wrapping columns had put a slot's "to" hour and its
+  remove button under the next slot's name.
+- A `<summary>` styled `display: flex` loses the browser's disclosure
+  arrow; TV Signage → Banner's closed "Appearance" and "Advanced" read as
+  headings with nothing under them. Leave a summary's display alone.
+- A row of filter chips beside a search box goes in `TabScrollRow` (inside
+  a `flex: 1 1 …; min-width: 0` wrapper), not a bare `overflow-x: auto`
+  div: Customers → Credit accounts cut its last chips off with no hint.
+
+Every pop-up behind a data-changing button (delete confirmations, pay link,
+send, approve…) followed the rules already. Sign-in: password, PIN, two-step
+code, forgot password and reset code all fit at 390, 768 and 1366px with no
+light boxes in dark mode.
+
 ---
 
 ## 4. Explicitly out of scope

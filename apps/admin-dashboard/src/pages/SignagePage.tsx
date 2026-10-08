@@ -43,7 +43,7 @@ import {
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast } from '../components/ui';
 import { MediaPicker } from '../components/MediaPicker';
-import { Btn, Card, EmptyState, Input, PageHeader, PageShell, Select, Spinner } from '../components/SharedUI';
+import { Btn, Card, EmptyState, Input, PageHeader, PageShell, Select, Spinner, TabScrollRow } from '../components/SharedUI';
 import { BannerAppearanceEditor } from './signage/BannerAppearanceEditor';
 import { BannerLivePreview } from './signage/BannerLivePreview';
 import { nearestPresetValue } from './signage/bannerAppearanceUx';
@@ -909,12 +909,16 @@ export function SignagePage() {
         subtitle="Digital menu boards, playlists, campaigns & emergency overrides"
       />
 
-      <div className="signage-tab-row" data-testid="signage-tab-row" style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-        {TABS.map((t) => (
-          <button key={t.id} type="button" style={tabBtn(tab === t.id)} onClick={() => setTab(t.id)}>
-            {t.label}
-          </button>
-        ))}
+      {/* Scrolls sideways at every width: on a tablet the eight tabs squeezed
+          "Screens & Groups" onto three lines and cut "Prayer" off. */}
+      <div style={{ marginBottom: 20 }}>
+        <TabScrollRow className="signage-tab-row" data-testid="signage-tab-row" style={{ gap: 8 }}>
+          {TABS.map((t) => (
+            <button key={t.id} type="button" style={tabBtn(tab === t.id)} aria-current={tab === t.id ? 'true' : undefined} onClick={() => setTab(t.id)}>
+              {t.label}
+            </button>
+          ))}
+        </TabScrollRow>
       </div>
 
       {loading ? (

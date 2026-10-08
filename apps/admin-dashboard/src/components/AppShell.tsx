@@ -217,7 +217,10 @@ interface AppShellProps {
 export function AppShell({ user, onLogout, onLogoutEverywhere, children, onSearch }: AppShellProps) {
   const band = useViewportBand();
   const isMobile = band === 'mobile';
-  const [collapsed, setCollapsed] = useState(() => readPersistedCollapsed());
+  // A tablet starts with the rail folded to icons, as it does after rotating into
+  // the tablet band: opened there, the 220px rail left an upright iPad about 550px
+  // of page, and wide cards were cut off.
+  const [collapsed, setCollapsed] = useState(() => band === 'tablet' || readPersistedCollapsed());
   const viewportBandRef = useRef<ViewportBand>(band);
   const [sheetSection, setSheetSection] = useState<NavGroup | null>(null);
   const [lowStockCount, setLowStockCount] = useState(0);

@@ -410,6 +410,7 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
           </RecordCardList>
           </>
         ) : (
+          <div className="table-scroll">
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <SortFilterHead controls={supplierCtl} allRows={suppliers} />
             <tbody>
@@ -456,6 +457,7 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </Card>
 

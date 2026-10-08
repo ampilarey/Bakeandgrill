@@ -13,6 +13,7 @@ import {
   type CateringRequestRow,
 } from '../api/catering';
 import { ItemSearch, type MenuItemSelection } from '../components/ItemSearch';
+import { Minus, Plus } from 'lucide-react';
 import { PageHeader, PageShell, Btn } from '../components/SharedUI';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { fmt } from '../utils/fmt';
@@ -65,6 +66,11 @@ const fieldStyle: React.CSSProperties = {
 };
 
 const labelStyle: React.CSSProperties = { fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 600 };
+/** Quantity − / +: they were unstyled buttons that drew as a bare hyphen and plus. */
+const stepBtn: React.CSSProperties = {
+  minWidth: 44, minHeight: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+  border: '1px solid var(--color-border)', borderRadius: 10, background: 'var(--color-surface)', color: 'var(--color-text)', cursor: 'pointer',
+};
 
 export function CateringDetailPage() {
   usePageTitle('Event quote');
@@ -317,18 +323,14 @@ export function CateringDetailPage() {
                       </span>
                     )}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setLines((prev) => prev.filter((_, i) => i !== idx))}
-                    style={{ border: 'none', background: 'none', color: 'var(--color-danger-strong)', cursor: 'pointer', fontWeight: 700 }}
-                  >
+                  <Btn small variant="danger-outline" aria-label={`Remove ${l.name}`} onClick={() => setLines((prev) => prev.filter((_, i) => i !== idx))}>
                     Remove
-                  </button>
+                  </Btn>
                 </div>
                 <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <button type="button" aria-label="Decrease qty" onClick={() => setLines((p) => p.map((x, i) => i === idx ? { ...x, quantity: Math.max(1, x.quantity - 1) } : x))} style={{ minWidth: 44, minHeight: 44 }}>-</button>
+                  <button type="button" aria-label="Decrease qty" onClick={() => setLines((p) => p.map((x, i) => i === idx ? { ...x, quantity: Math.max(1, x.quantity - 1) } : x))} style={stepBtn}><Minus size={16} aria-hidden /></button>
                   <span style={{ minWidth: 28, textAlign: 'center', fontWeight: 700 }}>{l.quantity}</span>
-                  <button type="button" aria-label="Increase qty" onClick={() => setLines((p) => p.map((x, i) => i === idx ? { ...x, quantity: x.quantity + 1 } : x))} style={{ minWidth: 44, minHeight: 44 }}>+</button>
+                  <button type="button" aria-label="Increase qty" onClick={() => setLines((p) => p.map((x, i) => i === idx ? { ...x, quantity: x.quantity + 1 } : x))} style={stepBtn}><Plus size={16} aria-hidden /></button>
                   <label style={{ ...labelStyle, flex: 1, minWidth: 120 }}>
                     Unit price (MVR)
                     <input

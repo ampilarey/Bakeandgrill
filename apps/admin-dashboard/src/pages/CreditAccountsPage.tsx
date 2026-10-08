@@ -10,7 +10,7 @@ import {
 } from '../api';
 import {
   Badge, Btn, ErrorMsg, EmptyState, Modal, ModalActions, PageHeader, PageShell,
-  Pagination, StatCard, TableCard, TableSkeleton, TD, TH,
+  Pagination, StatCard, TableCard, TableSkeleton, TabScrollRow, TD, TH,
 } from '../components/SharedUI';
 import { CustomerCreditSection } from '../components/CustomerCreditSection';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
@@ -236,12 +236,16 @@ export function CreditAccountsPage() {
       )}
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 12 }}>
-        <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2, flex: '1 1 320px' }} role="tablist" aria-label="Filter accounts">
-          {FILTERS.map((f) => (
-            <button key={f.id} type="button" role="tab" aria-selected={filter === f.id} style={chip(filter === f.id)} onClick={() => setFilter(f.id)}>
-              {f.label}{totals ? ` ${f.count(totals)}` : ''}
-            </button>
-          ))}
+        {/* The shared scrolling row: beside the search box on a tablet the
+            last chips were cut off with no sign there were more. */}
+        <div style={{ flex: '1 1 320px', minWidth: 0 }}>
+          <TabScrollRow style={{ gap: 6, paddingBottom: 2 }} role="tablist" aria-label="Filter accounts">
+            {FILTERS.map((f) => (
+              <button key={f.id} type="button" role="tab" aria-selected={filter === f.id} style={chip(filter === f.id)} onClick={() => setFilter(f.id)}>
+                {f.label}{totals ? ` ${f.count(totals)}` : ''}
+              </button>
+            ))}
+          </TabScrollRow>
         </div>
         <input
           type="search"

@@ -598,12 +598,6 @@ input[type="file"]::file-selector-button:hover {
     min-height: 88px;
   }
 
-  /* Table horizontal scroll on mobile (explicit wrapper class) */
-  .table-scroll {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
   /*
    * width:100% on tables was compressing columns instead of scrolling.
    * Let tables grow to content width; wrapper (or table itself) scrolls.
@@ -640,29 +634,10 @@ input[type="file"]::file-selector-button:hover {
     max-width: calc(100vw - 48px);
     box-sizing: border-box;
   }
-  /* A grid item may be narrower than its content. Left at the default, one
-     wide table or long line inside a grid made the whole grid wider than the
-     phone, and the page frame then cut the right-hand side off (Kitchen →
-     Handover lost 47px of its cards, phone sweep 2026-10-08). With this the
-     table scrolls inside its own card instead. */
-  .admin-shell-main [style*="display: grid"] > * {
-    min-width: 0;
-  }
-
-  /* Section / sub-tab rows: single horizontal scroll line instead of wrapping */
+  /* Section / sub-tab rows sit closer on a phone; they scroll at every width
+     (.tab-scroll-row, below). */
   .tab-scroll-row {
-    display: flex;
     gap: 4px;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-  .tab-scroll-row::-webkit-scrollbar {
-    display: none;
-  }
-  .tab-scroll-row > button {
-    flex-shrink: 0;
   }
 
   /* Orders (and similar): collapsible filter panel on mobile */
@@ -2351,7 +2326,11 @@ input[type="file"]::file-selector-button:hover {
   margin: 0.25rem 0 0;
 }
 
-.page-header-actions { flex-shrink: 0; }
+/* Beside the title the buttons keep their size; when they do not fit there they
+   take a line of their own and may shrink so the row wraps, instead of running
+   off the page (Content Studio's Publish was cut off on an upright tablet,
+   tablet sweep 2026-10-08). */
+.page-header-actions { flex-shrink: 1; min-width: 0; max-width: 100%; }
 
 /*
  * A page rendered as a tab of a hub keeps its own buttons and filters but
@@ -2396,6 +2375,18 @@ input[type="file"]::file-selector-button:hover {
   max-width: 100%;
   min-width: 0;
 }
+/* The row scrolls sideways at every width, not only on a phone, so a tablet
+   gets the fades and chevron too instead of squeezed labels and a cut-off last
+   tab (TV Signage at 768px, tablet sweep 2026-10-08). */
+.tab-scroll-row {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.tab-scroll-row::-webkit-scrollbar { display: none; }
+.tab-scroll-row > button { flex-shrink: 0; }
 .tab-scroll-wrap--fit { width: fit-content; }
 .tab-scroll-wrap::before,
 .tab-scroll-wrap::after {
@@ -2525,12 +2516,58 @@ input[type="file"]::file-selector-button:hover {
   width: 100%;
 }
 
+/* Wide content scrolls inside its card at every width, not only on a phone. On a
+   tablet (768–1199px, the computer layout in less room) Menu → Items and Delivery →
+   Driver settlement were wider than their card and the card cut the columns off,
+   and one wide table in a grid stretched every card beside it past the page frame
+   (Kitchen → Settings lost 306px; tablet sweep 2026-10-08). A grid item may be
+   narrower than its content: left at the default, one wide table made the whole
+   grid wider than the page (Kitchen → Handover lost 47px on a phone). */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.admin-shell-main [style*="display: grid"] > * {
+  min-width: 0;
+}
+
 .toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   margin-bottom: 1rem;
+}
+
+/* Tablets (768–1199px) have the computer layout but not its width: the six section
+   tabs ran under the search and bell buttons, so Analyze, System and Team were out
+   of sight with no hint that the strip scrolls. The search box, the name chip and
+   the brand words shrink to icons, and on an upright tablet only the open section
+   keeps its name. */
+@media (max-width: 1199px) {
+  .admin-shell-search-label,
+  .admin-shell-topbar .admin-shell-kbd { display: none; }
+  .admin-shell-topbar .admin-shell-search-btn {
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    padding: 0;
+    justify-content: center;
+  }
+  .admin-shell-user-name,
+  .admin-shell-user-role { display: none; }
+  .admin-shell-topbar .admin-shell-user-chip { padding: 4px; }
+  .admin-shell-brand span { display: none; }
+  .admin-shell-section-tab { padding: 0 10px; }
+}
+
+@media (max-width: 1023px) {
+  .admin-shell-section-tab:not(.admin-shell-section-tab--active) {
+    min-width: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+  .admin-shell-section-tab:not(.admin-shell-section-tab--active) .admin-shell-section-tab-label { display: none; }
 }
 
 @media (max-width: 1023px) {
@@ -2680,14 +2717,7 @@ input[type="file"]::file-selector-button:hover {
     grid-template-columns: 1fr !important;
   }
 }
-/* Rev 3 — Website desktop: ~208px rail,
-work area is a single column that
-   changes mode (page list OR the one focused component {
-  width: 208px;
-}
-.hub-website-desktop-editor-status .hub-draft-status {
-  display: inline-flex;
-}
+/* Website editor header: "View live site" and the Desktop / Mobile switch. */
 .hub-view-live-site {
   text-decoration: none;
   display: inline-flex;
@@ -2721,16 +2751,6 @@ work area is a single column that
   background: var(--color-surface);
   color: var(--color-text);
   box-shadow: 0 1px 2px color-mix(in srgb, var(--color-text) 8%, transparent);
-}
-
-/* Rev 3 §2.1 — the work area is ONE column that changes mode: the full page
-   list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  min-width: 0;
-  width: 100%;
-  flex: 1;
 }
 
 /* Content Hub — collapsed drift summary (keeps landing above the fold) */

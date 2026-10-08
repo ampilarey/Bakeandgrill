@@ -7,7 +7,7 @@
     "dev": "node scripts/generate-version.mjs && vite",
     "build": "node scripts/generate-version.mjs && tsc && vite build",
     "preview": "vite preview",
-    "lint": "eslint . && node scripts/check-hex-in-css.mjs",
+    "lint": "eslint . && node scripts/check-hex-in-css.mjs && node scripts/check-css-comments.mjs",
     "lint:baseline:hex-style": "node scripts/generate-hex-style-baseline.mjs",
     "lint:baseline:hex-css": "node scripts/generate-hex-css-baseline.mjs",
     "test": "vitest run",

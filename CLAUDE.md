@@ -74,6 +74,14 @@ behind a photo or video, and on the sign-in page, `--color-backdrop` (near-black
 both themes; `--color-text` turns cream in dark mode). White stays only where paper or
 a QR code needs it (print previews, QR cards). Details: § Stage 3e.
 
+The admin has a phone layout (≤767px) and a computer layout, which folds its rail to
+icons from 768 to 1023px (`AppShell`'s tablet band) and is short of room up to 1199px
+(the CSS's compact band: the top bar shrinks search and the name chip to icons). Check
+390, 768, 1024 and 1366px; 768–1199 is where wide tables and long button rows break.
+A table goes in `.table-scroll` (or `TableCard` / `ResponsiveTable`) so it scrolls
+inside its card; a `display: grid` column that holds a table needs `minmax(0, 1fr)`;
+a row of tabs or filter chips is `TabScrollRow`. Details: § Stage 3f.
+
 ## Brand colours
 
 The accent everywhere is the rust from the logo, `#B74B0C`; on a dark surface it is

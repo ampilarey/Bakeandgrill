@@ -73,6 +73,18 @@ describe('AppShell', () => {
     expect(screen.getByRole('tab', { name: /Monitor/i })).toBeInTheDocument();
   });
 
+  it('starts with the rail folded and short section names on a tablet', () => {
+    // Opened on an upright iPad the 220px rail left about 550px of page, and the
+    // full "Customers & Marketing" pushed Analyze, System and Team out of the top bar.
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 900 });
+    const { container } = renderShell('/orders');
+    expect(container.querySelector('.admin-shell-rail')).toHaveClass('admin-shell-rail--collapsed');
+    const customers = screen.getByRole('tab', { name: 'Customers & Marketing' });
+    expect(customers).toHaveTextContent('Customers');
+    expect(customers).not.toHaveTextContent('Marketing');
+    expect(screen.getByRole('tab', { name: 'Team' })).toBeInTheDocument();
+  });
+
   it('persists sidebar collapse preference', () => {
     renderShell('/dashboard');
     const collapse = screen.getByLabelText(/Collapse sidebar/i);

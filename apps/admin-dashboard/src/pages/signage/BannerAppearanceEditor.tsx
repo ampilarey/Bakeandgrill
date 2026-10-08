@@ -25,6 +25,17 @@ type Props = {
   onPatch: (patch: Partial<SignageBannerItem>) => void;
 };
 
+// A summary keeps its native disclosure arrow: as a flex box it lost it, and
+// the closed "Appearance" and "Advanced" read as headings with nothing under
+// them (TV Signage → Banner, tablet sweep 2026-10-08).
+const summaryStyle: CSSProperties = {
+  cursor: 'pointer',
+  fontWeight: 700,
+  fontSize: 13,
+  color: 'var(--color-text)',
+  padding: '8px 0',
+};
+
 const labelStyle: CSSProperties = {
   fontSize: 12,
   fontWeight: 700,
@@ -182,7 +193,7 @@ export function BannerAppearanceEditor({ banner, theme, onPatch }: Props) {
 
   return (
     <details data-testid={`signage-banner-appearance-${id}`} style={{ borderTop: '1px solid var(--color-border)', paddingTop: 10 }}>
-      <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: 13, color: 'var(--color-text)', minHeight: 36, display: 'flex', alignItems: 'center' }}>
+      <summary style={summaryStyle}>
         Appearance
       </summary>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 12 }}>
@@ -254,7 +265,7 @@ export function BannerAppearanceEditor({ banner, theme, onPatch }: Props) {
         </div>
 
         <details data-testid={`signage-banner-advanced-${id}`} style={{ borderTop: '1px solid var(--color-border)', paddingTop: 8 }}>
-          <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: 13, color: 'var(--color-text)', minHeight: 36, display: 'flex', alignItems: 'center' }}>
+          <summary style={summaryStyle}>
             Advanced
           </summary>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 10 }}>
