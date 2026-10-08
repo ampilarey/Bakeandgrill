@@ -2,7 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { approvePurchase, cancelPurchase, deletePurchase, undoPurchaseReceipt, updatePurchaseLines, receivePurchase, updatePurchase, getPurchaseSuggestions, createPurchaseFromSuggest, createPurchase, fetchPurchases, fetchSuppliers, importPurchaseCsv, uploadPurchaseReceipt, getPurchaseUnits, createPurchaseUnit, createInventoryItem, getSupplierFrequentItems, type SupplierFrequentItem, type Purchase, type PurchaseSuggestions, type Supplier, type InventoryPurchaseUnit, type LastPurchase } from '../api';
 import {
-  Badge, Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Select, Spinner, TableCard, TD, TH,
+  Badge, Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Select, Spinner, TableCard, TD, TH, InlineIcon,
 } from '../components/SharedUI';
 import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import { ItemSearch, type InventoryItemSelection } from '../components/ItemSearch';
@@ -134,7 +134,7 @@ function editLineBase(line: { quantity: string; purchase_unit_id: string; packs:
 }
 import { today, enteredOn, enteredAt } from '../utils/dateHelpers';
 import { mvr } from '../utils/fmt';
-import { Camera, FolderOpen, Lightbulb, Paperclip, Upload, RefreshCw } from 'lucide-react';
+import { Camera, FolderOpen, Lightbulb, Paperclip, Upload, RefreshCw, X, Check } from 'lucide-react';
 
 type ManualPoLine = {
   selection: InventoryItemSelection | null;
@@ -1155,7 +1155,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
         <Btn small variant="secondary" onClick={() => void openEdit(po)}>Edit</Btn>
       )}
       {po.can_cancel && (
-        <Btn small variant="danger" onClick={() => { setRejectId(po.id); setRejectReason(''); }}>Cancel</Btn>
+        <Btn small variant="danger-outline" onClick={() => { setRejectId(po.id); setRejectReason(''); }}>Cancel</Btn>
       )}
       {po.can_delete && (
         <Btn small variant="ghost" onClick={() => setDeletePo(po)}>Delete</Btn>
@@ -1228,7 +1228,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
             <p style={{ fontWeight: 700, color: 'var(--color-warning-strong)', margin: 0, fontSize: 14 }}>
               Low-Stock Suggestions — {(suggestions.items ?? []).length} items below reorder point
-              <span style={{ display: 'block', fontWeight: 500, fontSize: 12, color: '#a16207', marginTop: 4 }}>
+              <span style={{ display: 'block', fontWeight: 500, fontSize: 12, color: 'var(--color-warning-strong)', marginTop: 4 }}>
                 Qty uses usage cover when higher than the reorder formula. Preferred supplier wins over cheapest price.
               </span>
             </p>
@@ -1255,7 +1255,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {group.items.map((item) => (
-                    <div key={item.inventory_item_id} style={{ background: 'var(--color-surface)', border: '1px solid #fde68a', borderRadius: 10, padding: '8px 14px', fontSize: 13 }}>
+                    <div key={item.inventory_item_id} style={{ background: 'var(--color-surface)', border: '1px solid color-mix(in srgb, var(--color-warning) 35%, transparent)', borderRadius: 10, padding: '8px 14px', fontSize: 13 }}>
                       <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{item.name}</span>
                       <span style={{ color: 'var(--color-danger)', margin: '0 6px' }}>Stock: {parseFloat(String(item.current_stock ?? 0)).toFixed(2)}</span>
                       <span style={{ color: 'var(--color-success-strong)' }}>Order: {item.suggested_quantity} {item.unit}</span>
@@ -1618,7 +1618,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
             <Btn variant="secondary" onClick={() => { setReceiptUploadId(detail.id); setReceiptFile(null); }}><Paperclip size={16} aria-hidden />Upload Receipt</Btn>
             {['ordered', 'partial'].includes(detail.status) && (
               <Btn onClick={() => void handleReceive()} disabled={actionLoading}>
-                {actionLoading ? 'Saving…' : '✓ Confirm Receipt'}
+                {actionLoading ? 'Saving…' : <><InlineIcon icon={Check} />Confirm Receipt</>}
               </Btn>
             )}
           </ModalActions>
@@ -2175,7 +2175,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                   </div>
                 </button>
                 {manualPoForm.lines.length > 1 && (
-                  <Btn small variant="ghost" onClick={() => removeManualLine(idx)} aria-label={`Remove item ${idx + 1}`}>✕</Btn>
+                  <Btn small variant="ghost" onClick={() => removeManualLine(idx)} aria-label={`Remove item ${idx + 1}`}><X size={16} aria-hidden /></Btn>
                 )}
               </div>
             )))}

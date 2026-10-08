@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Check } from 'lucide-react';
 import {
   fetchWebhooks, createWebhook, updateWebhook, deleteWebhook,
   rotateWebhookSecret, fetchWebhookLogs, fetchSupportedWebhookEvents,
@@ -6,7 +7,7 @@ import {
 } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
-  Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input, Modal, ModalActions, PageHeader, PageShell, Spinner, useConfirmDialog,
+  Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input, Modal, ModalActions, PageHeader, PageShell, Spinner, useConfirmDialog, InlineIcon,
 } from '../components/SharedUI';
 
 function StatusBadge({ status }: { status: string }) {
@@ -36,7 +37,7 @@ function RevealSecretModal({
   const [revealed, setRevealed] = useState(false);
   return (
     <Modal title={`New Secret — ${name}`} onClose={onClose} maxWidth={480}>
-      <div style={{ background: 'var(--color-warning-bg)', border: '1px solid #fed7aa', borderRadius: 10, padding: '12px 16px', marginBottom: 16 }}>
+      <div style={{ background: 'var(--color-warning-bg)', border: '1px solid color-mix(in srgb, var(--color-warning) 35%, transparent)', borderRadius: 10, padding: '12px 16px', marginBottom: 16 }}>
         <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-warning-strong)', marginBottom: 4, margin: '0 0 4px' }}>
           Save this secret now — it will NOT be shown again.
         </p>
@@ -59,7 +60,7 @@ function RevealSecretModal({
       </div>
       <ModalActions>
         <Btn variant="secondary" onClick={onClose}>Close</Btn>
-        <Btn onClick={onCopy}>{copied ? '✓ Copied!' : 'Copy to Clipboard'}</Btn>
+        <Btn onClick={onCopy}>{copied ? <><InlineIcon icon={Check} />Copied!</> : 'Copy to Clipboard'}</Btn>
       </ModalActions>
     </Modal>
   );
@@ -343,7 +344,7 @@ export function WebhooksPage() {
                     {actingId === sub.id ? '…' : sub.active ? 'Pause' : 'Enable'}
                   </Btn>
                   <Btn variant="secondary" small onClick={() => handleRotate(sub)} disabled={actingId === sub.id}>Rotate Secret</Btn>
-                  <Btn variant="danger" small onClick={() => handleDelete(sub)} disabled={actingId === sub.id}>Delete</Btn>
+                  <Btn variant="danger-outline" small onClick={() => handleDelete(sub)} disabled={actingId === sub.id}>Delete</Btn>
                 </div>
               </div>
             </Card>

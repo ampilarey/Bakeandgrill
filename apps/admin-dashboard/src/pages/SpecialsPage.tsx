@@ -732,7 +732,7 @@ export default function SpecialsPage() {
                       <Btn small variant="secondary" onClick={() => share(s.id)} style={{ marginRight: 6 }} aria-label="Share special to social" title="Post this special to social"><Share2 size={12} /></Btn>
                     )}
                     <Btn small variant="secondary" onClick={() => void openEdit(s)} style={{ marginRight: 6 }}><Pencil size={12} /></Btn>
-                    <Btn small variant="danger" onClick={() => handleDelete(s.id)}><Trash2 size={12} /></Btn>
+                    <Btn small variant="danger-outline" onClick={() => handleDelete(s.id)} aria-label="Delete special"><Trash2 size={12} /></Btn>
                   </td>
                 </tr>
               ))}
@@ -767,7 +767,7 @@ export default function SpecialsPage() {
                   <Btn small variant="secondary" onClick={() => share(s.id)} aria-label="Share special to social"><Share2 size={14} /></Btn>
                 )}
                 <Btn small variant="secondary" onClick={() => void openEdit(s)} aria-label="Edit special"><Pencil size={14} /></Btn>
-                <Btn small variant="danger" onClick={() => handleDelete(s.id)} aria-label="Delete special"><Trash2 size={14} /></Btn>
+                <Btn small variant="danger-outline" onClick={() => handleDelete(s.id)} aria-label="Delete special"><Trash2 size={14} /></Btn>
               </div>
             </div>
             <div className="specials-mobile-meta">
@@ -828,8 +828,8 @@ export default function SpecialsPage() {
             </div>
           )}
           {conflictSpecialId && !editing && !formError && (
-            <div style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 10, background: '#FEF3E8', border: '1px solid rgba(183,75,12,0.35)' }}>
-              <p style={{ margin: '0 0 8px', fontSize: 13, color: '#9A3412', lineHeight: 1.45 }}>
+            <div style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 10, background: 'var(--color-tone-rust-bg)', border: '1px solid var(--color-tone-rust-border)' }}>
+              <p style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--color-tone-rust-text)', lineHeight: 1.45 }}>
                 This item already has a discount for these dates. Set pricing for each variant below, then add it to the existing discount.
               </p>
               <Btn small onClick={() => void openEditFromConflict()}>
@@ -877,7 +877,7 @@ export default function SpecialsPage() {
                   <Input type="number" min="1" max="100" placeholder="Optional — applies to variants without their own %" value={form.discount_pct} onChange={v => setForm(f => ({ ...f, discount_pct: v }))} />
                 </label>
                 <div className="specials-variant-block" style={{ border: '1px solid var(--color-border)', borderRadius: 10, overflow: 'hidden' }}>
-                  <div style={{ padding: '10px 12px', background: '#FAF7F4', borderBottom: '1px solid var(--color-border)' }}>
+                  <div style={{ padding: '10px 12px', background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
                     <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>Per-variant pricing</span>
                     <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
                       Set a discount on one or more variants. Leave a row blank if that size should stay full price.

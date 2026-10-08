@@ -295,7 +295,7 @@ export function CateringDetailPage() {
           <section style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: 16 }}>
             <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>Quote lines</h3>
             {lines.map((l, idx) => (
-              <div key={l.key} style={{ borderBottom: '1px solid #F0E8E0', padding: '10px 0' }}>
+              <div key={l.key} style={{ borderBottom: '1px solid var(--color-border-light)', padding: '10px 0' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
                   <div style={{ fontWeight: 700, fontSize: 14 }}>
                     {l.name}
@@ -334,7 +334,7 @@ export function CateringDetailPage() {
                     <input
                       data-testid={l.is_custom ? 'custom-price-input' : 'catalog-price-input'}
                       disabled={!l.is_custom}
-                      style={{ ...fieldStyle, background: l.is_custom ? 'var(--color-surface)' : '#F5F0EB' }}
+                      style={{ ...fieldStyle, background: l.is_custom ? 'var(--color-surface)' : 'var(--color-border-light)' }}
                       value={l.unit_price}
                       onChange={(e) => {
                         const v = e.target.value;

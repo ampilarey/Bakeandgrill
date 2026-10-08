@@ -8,7 +8,7 @@ import {
   type Invoice, type ManualInvoiceLineItem,
 } from '../api';
 import {
-  Badge, Btn, ConfirmDialog, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Spinner, TableCard, TD, statColor, useConfirmDialog,
+  Badge, Btn, ConfirmDialog, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Spinner, TableCard, TD, statColor, useConfirmDialog, InlineIcon,
 } from '../components/SharedUI';
 import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import { OrderSearch, type OrderSearchSelection } from '../components/OrderSearch';
@@ -16,7 +16,7 @@ import { PurchaseSearch, type PurchaseSearchSelection } from '../components/Purc
 import { usePageTitle } from '../hooks/usePageTitle';
 import { today } from '../utils/dateHelpers';
 import { ADMIN_INVOICE_PAYMENT_METHODS } from '../lib/paymentMethods';
-import { MessageSquare, RefreshCw, CloudUpload, FileDown, Ban } from 'lucide-react';
+import { MessageSquare, RefreshCw, CloudUpload, FileDown, Ban, Check, X } from 'lucide-react';
 
 const TYPE_COLOR: Record<string, string> = { sale: 'teal', purchase: 'blue', credit_note: 'orange' };
 
@@ -419,12 +419,12 @@ export function InvoicesPage() {
         <div style={{
           display: 'flex', alignItems: 'center', gap: 10,
           padding: '10px 16px', borderRadius: 10, marginBottom: 12,
-          background: '#1C1408', color: '#fff',
+          background: 'var(--color-backdrop)', color: '#fff',
         }}>
           <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>{bulkSelected.size} selected</span>
           <Btn small onClick={bulkMarkSent} disabled={bulkLoading}>Mark Sent</Btn>
           <Btn small variant="danger" onClick={bulkVoid} disabled={bulkLoading}>Void All</Btn>
-          <button onClick={() => setBulkSelected(new Set())} style={{ background: 'none', border: 'none', color: '#C4B5A3', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>×</button>
+          <button type="button" aria-label="Clear selection" onClick={() => setBulkSelected(new Set())} style={{ background: 'none', border: 'none', color: 'var(--color-backdrop-text)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 32, minHeight: 32 }}><X size={18} aria-hidden /></button>
         </div>
       )}
 
@@ -534,7 +534,7 @@ export function InvoicesPage() {
                         <Btn small variant="secondary" onClick={() => { setCnInv(inv); setCnForm({ reason: '', amount: '' }); }}>Credit Note</Btn>
                       )}
                       {!['void', 'cancelled'].includes(inv.status) && (
-                        <Btn small variant="danger" onClick={() => handleVoid(inv.id)} title="Void" aria-label={`Void ${inv.invoice_number}`}><Ban size={15} aria-hidden /></Btn>
+                        <Btn small variant="danger-outline" onClick={() => handleVoid(inv.id)} title="Void" aria-label={`Void ${inv.invoice_number}`}><Ban size={15} aria-hidden /></Btn>
                       )}
                     </div>
                   </td>
@@ -612,7 +612,7 @@ export function InvoicesPage() {
         <Modal title={`Send Invoice ${sendSmsInv.invoice_number}`} onClose={() => setSendSmsInv(null)} maxWidth={400}>
           {smsResult ? (
             <>
-              <p style={{ color: 'var(--color-success-strong)', fontWeight: 600, marginBottom: 8 }}>✓ Invoice sent!</p>
+              <p style={{ color: 'var(--color-success-strong)', fontWeight: 600, marginBottom: 8 }}><InlineIcon icon={Check} />Invoice sent!</p>
               <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Public link:</p>
               <div style={{ background: 'var(--color-bg)', borderRadius: 8, padding: '10px 12px', fontSize: 12, wordBreak: 'break-all', marginBottom: 16, color: 'var(--color-text)' }}>
                 {smsResult.link}

@@ -22,7 +22,7 @@ export const DEFAULT_SCHEDULE: Schedule = Object.fromEntries(
 
 export const S = {
   card: {
-    background: '#FDFAF7',
+    background: 'var(--color-bg)',
     border: '1px solid var(--color-border)',
     borderRadius: 16,
     padding: '1.5rem',
@@ -75,7 +75,7 @@ export const S = {
     borderRadius: 10,
     border: '1.5px solid var(--color-border)',
     background: 'var(--color-surface)',
-    color: '#4A3728',
+    color: 'var(--color-text)',
     fontSize: 13,
     fontWeight: 600,
     cursor: 'pointer',
@@ -115,7 +115,7 @@ export const S = {
     gap: 6,
     background: 'var(--color-danger-bg)',
     color: 'var(--color-danger-strong)',
-    border: '1px solid #FECACA',
+    border: '1px solid color-mix(in srgb, var(--color-danger) 35%, transparent)',
     borderRadius: 20,
     padding: '4px 12px',
     fontSize: 13,
@@ -134,7 +134,10 @@ export const S = {
     width: 48,
     height: 28,
     borderRadius: 14,
-    background: on ? 'var(--color-primary)' : '#D1C9BE',
+    border: 'none',
+    padding: 0,
+    // The off track and the knob follow the theme, as in SharedUI Switch.
+    background: on ? 'var(--color-primary)' : 'var(--color-switch-off)',
     transition: 'background 0.2s',
     cursor: 'pointer',
     flexShrink: 0,
@@ -146,8 +149,8 @@ export const S = {
     width: 20,
     height: 20,
     borderRadius: '50%',
-    background: 'var(--color-surface)',
-    boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
+    background: 'var(--color-switch-knob)',
+    boxShadow: '0 1px 3px rgba(28, 20, 8, 0.25)',
     transition: 'left 0.2s',
   }),
 };
@@ -277,7 +280,7 @@ function StatusChipButton({ chip, groupLabel }: { chip: StatusChip; groupLabel?:
   const style: CSSProperties = unknown
     ? {
         ...S.statusClosed,
-        background: '#F5F0EB',
+        background: 'var(--color-border-light)',
         color: 'var(--color-text-muted)',
         border: '1px solid var(--color-border)',
         cursor: chip.onClick ? 'pointer' : 'default',

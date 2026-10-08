@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { X } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import {
@@ -164,12 +165,12 @@ export function Customer360Drawer({ customerId, onClose }: Props) {
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
         }}
       >
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid #F0EAE3', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ flex: 1 }}>
             <p style={{ margin: 0, fontWeight: 800, fontSize: 17, color: 'var(--color-text)' }}>Customer 360</p>
             <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>{profile?.name ?? profile?.phone ?? `#${customerId}`}</p>
           </div>
-          <button ref={closeRef} type="button" onClick={onClose} aria-label="Close customer 360" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--color-text-muted)' }}>✕</button>
+          <button ref={closeRef} type="button" onClick={onClose} aria-label="Close customer 360" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--color-text-muted)', display: 'inline-flex', alignItems: 'center' }}><X size={20} aria-hidden /></button>
         </div>
 
         {loading ? (
@@ -190,7 +191,7 @@ export function Customer360Drawer({ customerId, onClose }: Props) {
                 { label: 'Lifetime spend', value: `MVR ${summary.lifetime.total_paid_spend.toFixed(2)}` },
                 { label: 'Avg order', value: `MVR ${summary.lifetime.average_order_value.toFixed(2)}` },
               ].map(({ label, value }) => (
-                <div key={label} style={{ background: '#FAF7F3', borderRadius: 10, padding: 10, textAlign: 'center' }}>
+                <div key={label} style={{ background: 'var(--color-bg)', borderRadius: 10, padding: 10, textAlign: 'center' }}>
                   <p style={{ margin: 0, fontWeight: 800, color: 'var(--color-primary)', fontSize: 14 }}>{value}</p>
                   <p style={{ margin: '2px 0 0', fontSize: 10, color: 'var(--color-text-muted)' }}>{label}</p>
                 </div>
@@ -247,7 +248,7 @@ export function Customer360Drawer({ customerId, onClose }: Props) {
               <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Tags</p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
                 {summary.tags.map((t) => (
-                  <span key={t.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#FAF7F3', borderRadius: 999, padding: '4px 10px', fontSize: 12 }}>
+                  <span key={t.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--color-bg)', borderRadius: 999, padding: '4px 10px', fontSize: 12 }}>
                     {t.name}
                     <button type="button" onClick={() => void detachCustomerTag(customerId, t.id).then(reload)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}>×</button>
                   </span>

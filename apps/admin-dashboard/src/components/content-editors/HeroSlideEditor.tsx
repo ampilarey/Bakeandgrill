@@ -19,7 +19,7 @@ export function HeroSlideEditor({ label, description, uploadKey, value, onChange
   ];
 
   return (
-    <div style={{ background: '#FAFAF8', borderRadius: 12, border: '1.5px solid var(--color-border)', padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div style={{ background: 'var(--color-bg)', borderRadius: 12, border: '1.5px solid var(--color-border)', padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div>
         <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{label}</p>
         {description && <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '3px 0 0' }}>{description}</p>}

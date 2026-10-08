@@ -311,7 +311,7 @@ export default function RefundsPage() {
                 const flags = r.phone_flags;
                 const highlight = flags?.phone_added_at_refund || flags?.otp_owner_override || flags?.has_prior_order_history === false;
                 return (
-                <tr key={r.id} style={highlight ? { background: 'var(--color-danger-bg, #FEF2F2)' } : undefined}>
+                <tr key={r.id} style={highlight ? { background: 'var(--color-danger-bg)' } : undefined}>
                   <td style={{ ...TD, color: 'var(--color-text-muted)', fontSize: 12 }}>{r.id}</td>
                   <td style={TD}>
                     <Link
@@ -375,7 +375,7 @@ export default function RefundsPage() {
                     {canApprove && r.status === 'pending' && (
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                         <Btn small variant="secondary" onClick={() => { setApproveOpen(r); setApproveOtp(''); setOwnerOverride(false); }}>Approve</Btn>
-                        <Btn small variant="danger" onClick={() => { setRejectOpen(r); setRejectionReason(''); }}>Reject</Btn>
+                        <Btn small variant="danger-outline" onClick={() => { setRejectOpen(r); setRejectionReason(''); }}>Reject</Btn>
                       </div>
                     )}
                     {canApprove && r.owed_externally && (

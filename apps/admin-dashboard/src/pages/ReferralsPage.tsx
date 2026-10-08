@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
+import { Check, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
   PageHeader, PageShell, TableCard, Badge, Btn, Modal, ModalActions,
-  Pagination, EmptyState, Spinner, ErrorMsg,
+  Pagination, EmptyState, Spinner, ErrorMsg, InlineIcon,
 } from '../components/SharedUI';
 import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import { fetchAdminReferrals, setReferralCodeActive, validateReferralCode, type ReferralCode } from '../api';
@@ -146,11 +147,11 @@ export default function ReferralsPage() {
           {checkResult && (
             <div style={{
               padding: '12px 16px', borderRadius: 10, marginBottom: 16,
-              background: checkResult.valid ? '#f0fdf4' : 'var(--color-danger-bg)',
-              border: `1px solid ${checkResult.valid ? '#bbf7d0' : '#fecaca'}`,
+              background: checkResult.valid ? 'var(--color-success-bg)' : 'var(--color-danger-bg)',
+              border: `1px solid ${checkResult.valid ? 'color-mix(in srgb, var(--color-success) 35%, transparent)' : 'color-mix(in srgb, var(--color-danger) 35%, transparent)'}`,
             }}>
               <p style={{ fontWeight: 700, color: checkResult.valid ? 'var(--color-success-strong)' : 'var(--color-danger-strong)', margin: '0 0 4px', fontSize: 14 }}>
-                {checkResult.valid ? '✓ Valid Code' : '✗ Invalid Code'}
+                {checkResult.valid ? <><InlineIcon icon={Check} />Valid Code</> : <><InlineIcon icon={X} />Invalid Code</>}
               </p>
               {checkResult.valid && checkResult.referee_discount_mvr != null && (
                 <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: 0 }}>

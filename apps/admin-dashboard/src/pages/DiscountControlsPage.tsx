@@ -26,7 +26,7 @@ type ApproverRow = {
 };
 
 const sectionStyle: CSSProperties = {
-  background: '#FDFAF7',
+  background: 'var(--color-bg)',
   border: '1px solid var(--color-border)',
   borderRadius: 16,
   padding: '1.25rem 1.5rem',

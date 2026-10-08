@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react';
 import type { AdminItemSort, MenuCategory, MenuGroupRow, MenuItem, SnoozeUntil } from '../../api';
-import { Badge, Btn, Card, EmptyState, Spinner } from '../../components/SharedUI';
+import { Badge, Btn, Card, EmptyState, InlineIcon, Spinner } from '../../components/SharedUI';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { menuItemMarginLabel, menuItemMarginLevel, MENU_MARGIN_COLORS } from '../../utils/menuMargin';
 import { channelWarning } from './channelState';
 import { ItemSnoozeControls } from './ItemSnoozeControls';
-import { ClipboardList, Tag, UtensilsCrossed } from 'lucide-react';
+import { AlertTriangle, ClipboardList, Tag, UtensilsCrossed } from 'lucide-react';
 
 type MenuItemTableProps = {
   categories: MenuCategory[];
@@ -117,7 +117,7 @@ function MarginTag({ item }: { item: MenuItem }) {
   const style = MENU_MARGIN_COLORS[level];
   return (
     <span className="menu-item-tag" style={{ color: style.color, background: style.bg, borderColor: style.border }}>
-      ⚠ {label}
+      <InlineIcon icon={AlertTriangle} size={12} />{label}
     </span>
   );
 }

@@ -91,7 +91,7 @@ function AdminShiftTable({
               id={highlighted ? `shift-${s.id}` : undefined}
               onClick={() => hasDetail && setExpandedId(expanded ? null : s.id)}
               style={{
-                background: highlighted ? '#FEF8F2' : stale ? 'var(--color-warning-bg)' : undefined,
+                background: highlighted ? 'var(--color-tone-rust-bg)' : stale ? 'var(--color-warning-bg)' : undefined,
                 outline: highlighted ? '2px solid var(--color-primary)' : undefined,
                 outlineOffset: -2,
                 cursor: hasDetail ? 'pointer' : undefined,

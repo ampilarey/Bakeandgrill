@@ -1254,7 +1254,7 @@ function ChannelHealthBadge({ channel }: { channel: SocialChannelRow }) {
   }
   const palette = {
     green: { bg: 'var(--color-success-bg)', text: 'var(--color-success-strong)' },
-    orange: { bg: 'var(--color-warning-bg)', text: '#c2410c' },
+    orange: { bg: 'var(--color-warning-bg)', text: 'var(--color-warning-strong)' },
     red: { bg: 'var(--color-danger-bg)', text: 'var(--color-danger-strong)' },
   }[color];
   return (

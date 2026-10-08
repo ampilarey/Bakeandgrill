@@ -15,7 +15,7 @@ import { ItemSearch, type InventoryItemSelection } from '../components/ItemSearc
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { RecordCard, RecordCardList } from '../components/RecordCard';
-import { RefreshCw, Scale, Trophy } from 'lucide-react';
+import { RefreshCw, Scale, Trophy, Check } from 'lucide-react';
 
 function Stars({ rating, max = 5 }: { rating: number | null; max?: number }) {
   if (rating === null) return <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>Not rated</span>;
@@ -403,7 +403,7 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
                 actions={<>
                   <Link to={`/purchasing/suppliers/${s.id}`} style={{ textDecoration: 'none' }}><Btn small variant="secondary">Open</Btn></Link>
                   <Btn small variant="secondary" onClick={() => openSupplierModal(s)}>Edit</Btn>
-                  <Btn small variant="danger" onClick={() => void handleDeleteSupplier(s.id)}>Delete</Btn>
+                  <Btn small variant="danger-outline" onClick={() => void handleDeleteSupplier(s.id)}>Delete</Btn>
                 </>}
               />
             ))}
@@ -449,7 +449,7 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
                   <td style={TD}>
                     <div style={{ display: 'flex', gap: 6 }}>
                       <Btn small variant="secondary" onClick={() => openSupplierModal(s)}>Edit</Btn>
-                      <Btn small variant="danger" onClick={() => void handleDeleteSupplier(s.id)}>Delete</Btn>
+                      <Btn small variant="danger-outline" onClick={() => void handleDeleteSupplier(s.id)}>Delete</Btn>
                     </div>
                   </td>
                 </tr>
@@ -534,7 +534,7 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
             <>
               {compareData.cheapest && (
                 <div style={{ background: 'var(--color-success-bg)', color: 'var(--color-success-strong)', padding: '10px 14px', borderRadius: 8, marginBottom: 14, fontSize: 13, fontWeight: 600 }}>
-                  ✓ Cheapest: {compareData.cheapest.supplier_name} — MVR {parseFloat(String(compareData.cheapest.unit_price ?? 0)).toFixed(2)}
+                  <InlineIcon icon={Check} />Cheapest: {compareData.cheapest.supplier_name} — MVR {parseFloat(String(compareData.cheapest.unit_price ?? 0)).toFixed(2)}
                 </div>
               )}
               {(compareData.prices ?? []).length === 0 ? (

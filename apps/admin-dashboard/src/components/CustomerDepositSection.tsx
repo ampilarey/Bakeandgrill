@@ -109,7 +109,7 @@ export function CustomerDepositSection({ customerId }: Props) {
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '8px 10px', borderRadius: 8,
-    border: '1px solid #E8DDD0', fontSize: 13, boxSizing: 'border-box',
+    border: '1px solid var(--color-border)', fontSize: 13, boxSizing: 'border-box',
   };
 
   const refresh = async () => {
@@ -252,7 +252,7 @@ export function CustomerDepositSection({ customerId }: Props) {
   const creditBalance = deposit?.credit_balance_mvr ?? 0;
 
   return (
-    <div style={{ border: '1px solid #E8DDD0', borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div style={{ border: '1px solid var(--color-border)', borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <p style={{ margin: 0, fontWeight: 800, fontSize: 13, color: 'var(--color-text)' }}>Customer Deposit</p>
         {deposit && (
@@ -266,23 +266,23 @@ export function CustomerDepositSection({ customerId }: Props) {
       ) : deposit ? (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
-            <div style={{ background: '#FAF7F3', borderRadius: 8, padding: '8px 10px' }}>
+            <div style={{ background: 'var(--color-bg)', borderRadius: 8, padding: '8px 10px' }}>
               <p style={{ margin: 0, fontSize: 10, color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Deposit balance</p>
               <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>MVR {deposit.balance_mvr.toFixed(2)}</p>
             </div>
-            <div style={{ background: '#FAF7F3', borderRadius: 8, padding: '8px 10px' }}>
+            <div style={{ background: 'var(--color-bg)', borderRadius: 8, padding: '8px 10px' }}>
               <p style={{ margin: 0, fontSize: 10, color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>POS availability</p>
               <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 700, color: deposit.can_use ? 'var(--color-success-strong)' : 'var(--color-text-muted)' }}>
                 {deposit.can_use ? 'Can pay from deposit' : 'Unavailable'}
               </p>
             </div>
-            <div style={{ background: '#FAF7F3', borderRadius: 8, padding: '8px 10px' }}>
+            <div style={{ background: 'var(--color-bg)', borderRadius: 8, padding: '8px 10px' }}>
               <p style={{ margin: 0, fontSize: 10, color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Total received</p>
               <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>
                 MVR {(deposit.total_received_mvr ?? 0).toFixed(2)}
               </p>
             </div>
-            <div style={{ background: '#FAF7F3', borderRadius: 8, padding: '8px 10px' }}>
+            <div style={{ background: 'var(--color-bg)', borderRadius: 8, padding: '8px 10px' }}>
               <p style={{ margin: 0, fontSize: 10, color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Total used</p>
               <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>
                 MVR {(deposit.total_used_mvr ?? 0).toFixed(2)}
@@ -294,7 +294,7 @@ export function CustomerDepositSection({ customerId }: Props) {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               <Btn small variant="secondary" onClick={() => void setStatus('active')} disabled={saving}>Activate</Btn>
               <Btn small variant="secondary" onClick={() => void setStatus('frozen')} disabled={saving}>Freeze</Btn>
-              <Btn small variant="danger" onClick={() => void setStatus('closed')} disabled={saving}>Close account</Btn>
+              <Btn small variant="danger-outline" onClick={() => void setStatus('closed')} disabled={saving}>Close account</Btn>
             </div>
           )}
 

@@ -27,7 +27,7 @@ export function pct(n: number, total: number) { return total > 0 ? `${((n / tota
 export function PaymentCommissionBlock({ commission }: { commission?: PaymentCommissionSummary }) {
   if (!commission || (commission.totals.gross_commissionable ?? 0) <= 0) return null;
   const th = { textAlign: 'left' as const, padding: '8px 12px', fontSize: 11, color: 'var(--color-text-muted)', borderBottom: '1px solid var(--color-border)' };
-  const td = { padding: '8px 12px', fontSize: 13, borderBottom: '1px solid #F3EDE4' };
+  const td = { padding: '8px 12px', fontSize: 13, borderBottom: '1px solid var(--color-border-light)' };
   return (
     <div style={{ marginTop: 20 }}>
       <p style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-text)', margin: '0 0 8px' }}>Card / QR / gateway settlement</p>
@@ -243,8 +243,8 @@ export const S = {
     transition: 'all .15s',
   }),
   table: { width: '100%', borderCollapse: 'collapse' } as React.CSSProperties,
-  th: { textAlign: 'left' as const, padding: '8px 12px', fontSize: 12, color: 'var(--color-text-muted)', borderBottom: '1px solid #F0EAE3', whiteSpace: 'nowrap' as const },
-  td: { padding: '10px 12px', fontSize: 13, color: 'var(--color-text)', borderBottom: '1px solid #F8F4F0' },
+  th: { textAlign: 'left' as const, padding: '8px 12px', fontSize: 12, color: 'var(--color-text-muted)', borderBottom: '1px solid var(--color-border-light)', whiteSpace: 'nowrap' as const },
+  td: { padding: '10px 12px', fontSize: 13, color: 'var(--color-text)', borderBottom: '1px solid var(--color-border-light)' },
   bar: (pctVal: number): React.CSSProperties => ({
     height: 8, borderRadius: 4, background: 'var(--color-primary)', width: `${Math.min(100, pctVal)}%`, minWidth: pctVal > 0 ? 4 : 0,
   }),
@@ -253,7 +253,7 @@ export const S = {
 export function BarCell({ value, max }: { value: number; max: number }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <div style={{ flex: 1, background: '#F0EAE3', borderRadius: 4, height: 8 }}>
+      <div style={{ flex: 1, background: 'var(--color-border-light)', borderRadius: 4, height: 8 }}>
         <div style={S.bar(max > 0 ? (value / max) * 100 : 0)} />
       </div>
       <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', width: 80, textAlign: 'right' }}>{mvr(value)}</span>

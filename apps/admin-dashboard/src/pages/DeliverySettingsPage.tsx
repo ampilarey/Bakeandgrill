@@ -354,7 +354,7 @@ export default function DeliverySettingsPage() {
                   type="button"
                   className="icon-button"
                   onClick={() => removeZoneRow(idx)}
-                  style={{ background: 'none', border: 'none', color: '#C0392B', cursor: 'pointer', fontSize: 18, padding: '8px 10px' }}
+                  style={{ background: 'none', border: 'none', color: 'var(--color-danger-strong)', cursor: 'pointer', fontSize: 18, padding: '8px 10px' }}
                   aria-label="Remove zone"
                 >
                   ×

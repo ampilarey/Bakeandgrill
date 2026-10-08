@@ -229,8 +229,8 @@ function ReservationsList() {
                           title={`Prepaid dine-in — order ${r.order_number ?? `#${r.order_id}`} already paid online`}
                           style={{
                             fontSize: 10, fontWeight: 800, letterSpacing: 0.3,
-                            color: 'var(--color-primary)', background: 'var(--color-surface-alt)',
-                            border: '1px solid var(--color-border)', borderRadius: 999,
+                            color: 'var(--color-tone-rust-text)', background: 'var(--color-tone-rust-bg)',
+                            border: '1px solid var(--color-tone-rust-border)', borderRadius: 999,
                             padding: '1px 7px',
                           }}
                         >
@@ -516,11 +516,11 @@ export function ReservationsPage() {
   const tabBtnStyle = (active: boolean): React.CSSProperties => ({
     padding: '8px 18px',
     border: 'none',
-    borderBottom: active ? '2px solid #D4783A' : '2px solid transparent',
+    borderBottom: active ? '2px solid var(--color-primary)' : '2px solid transparent',
     background: 'transparent',
     fontSize: 14,
     fontWeight: active ? 700 : 500,
-    color: active ? '#D4783A' : 'var(--color-text-secondary)',
+    color: active ? 'var(--color-primary)' : 'var(--color-text-secondary)',
     cursor: 'pointer',
     fontFamily: 'inherit',
     transition: 'color 0.15s',

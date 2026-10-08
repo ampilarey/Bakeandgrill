@@ -1285,7 +1285,7 @@ function DevicePlacementFields({
 
 function badgeStyle(on: boolean): CSSProperties {
   return {
-    background: on ? 'var(--color-success-bg, #dcfce7)' : 'var(--color-border-light)',
+    background: on ? 'var(--color-success-bg)' : 'var(--color-border-light)',
     color: on ? 'var(--color-success)' : 'var(--color-text-muted)',
   };
 }

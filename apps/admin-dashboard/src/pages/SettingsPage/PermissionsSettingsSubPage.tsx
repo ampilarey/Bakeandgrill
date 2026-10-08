@@ -68,7 +68,7 @@ function PermissionGroupList({
                     gap: 12,
                     padding: '8px 10px',
                     borderRadius: 8,
-                    background: isModified || (roleMode && p.customised) ? '#FFF8F3' : 'transparent',
+                    background: isModified || (roleMode && p.customised) ? 'var(--color-tone-rust-bg)' : 'transparent',
                   }}
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -280,7 +280,7 @@ export function PermissionsSettings({ initialUserId }: { initialUserId?: number 
         </ul>
       </Card>
 
-      <details style={{ border: '1px solid var(--color-border)', borderRadius: 12, padding: '12px 16px', background: '#FFFBF7' }}>
+      <details style={{ border: '1px solid var(--color-border)', borderRadius: 12, padding: '12px 16px', background: 'var(--color-bg)' }}>
         <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: 14, color: 'var(--color-text)' }}>
           Role cheat sheet (for managers)
         </summary>

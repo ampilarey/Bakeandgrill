@@ -608,7 +608,7 @@ export function CampaignsTab({ prefill, onViewLog }: { prefill?: CampaignPrefill
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                       <Btn small variant="secondary" onClick={() => runSchedule(sc)} disabled={scheduleBusy === sc.id} aria-label={`Run ${sc.name} now`}>Run now</Btn>
                       <Btn small variant="ghost" onClick={() => void toggleSchedule(sc)} disabled={scheduleBusy === sc.id} aria-label={`${sc.is_active ? 'Pause' : 'Resume'} ${sc.name}`}>{sc.is_active ? 'Pause' : 'Resume'}</Btn>
-                      <Btn small variant="danger" onClick={() => removeSchedule(sc)} aria-label={`Delete ${sc.name}`}>Delete</Btn>
+                      <Btn small variant="danger-outline" onClick={() => removeSchedule(sc)} aria-label={`Delete ${sc.name}`}>Delete</Btn>
                     </div>
                   </td>
                 </tr>
@@ -673,7 +673,7 @@ export function CampaignsTab({ prefill, onViewLog }: { prefill?: CampaignPrefill
                         <Btn small variant="ghost" onClick={() => onViewLog(c.id)} aria-label={`View the log for ${c.name}`}>View log</Btn>
                       )}
                       {['draft', 'sending', 'running'].includes(c.status) && (
-                        <Btn small variant="danger" onClick={() => handleCancel(c.id)} disabled={actionId === c.id}>
+                        <Btn small variant="danger-outline" onClick={() => handleCancel(c.id)} disabled={actionId === c.id}>
                           Cancel
                         </Btn>
                       )}

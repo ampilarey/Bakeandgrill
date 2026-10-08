@@ -81,7 +81,7 @@ export function CustomerCreditSection({ customerId }: Props) {
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '8px 10px', borderRadius: 8,
-    border: '1px solid #E8DDD0', fontSize: 13, boxSizing: 'border-box',
+    border: '1px solid var(--color-border)', fontSize: 13, boxSizing: 'border-box',
   };
 
   const runAction = async (payload: Parameters<typeof updateCustomerCredit>[1]) => {
@@ -185,7 +185,7 @@ export function CustomerCreditSection({ customerId }: Props) {
   };
 
   return (
-    <div style={{ border: '1px solid #E8DDD0', borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div style={{ border: '1px solid var(--color-border)', borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <p style={{ margin: 0, fontWeight: 800, fontSize: 13, color: 'var(--color-text)' }}>Credit Account</p>
         {credit && (
@@ -206,7 +206,7 @@ export function CustomerCreditSection({ customerId }: Props) {
               { label: 'Balance owed', value: `MVR ${credit.balance_mvr.toFixed(2)}` },
               { label: 'Available', value: `MVR ${credit.available_mvr.toFixed(2)}` },
             ].map(({ label, value }) => (
-              <div key={label} style={{ background: '#FAF7F3', borderRadius: 8, padding: '8px 10px' }}>
+              <div key={label} style={{ background: 'var(--color-bg)', borderRadius: 8, padding: '8px 10px' }}>
                 <p style={{ margin: 0, fontSize: 10, color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>{label}</p>
                 <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>{value}</p>
               </div>
@@ -429,7 +429,7 @@ export function CustomerCreditSection({ customerId }: Props) {
               <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Open invoices</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {openInvoices.map((inv) => (
-                  <div key={inv.id} style={{ fontSize: 12, padding: '8px 10px', background: 'var(--color-surface)', borderRadius: 6, border: '1px solid #F0EAE3', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8, alignItems: 'center' }}>
+                  <div key={inv.id} style={{ fontSize: 12, padding: '8px 10px', background: 'var(--color-surface)', borderRadius: 6, border: '1px solid var(--color-border-light)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8, alignItems: 'center' }}>
                     <Link to={`/finance/invoices?search=${encodeURIComponent(inv.invoice_number)}`} style={{ fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none' }}>
                       {inv.invoice_number}
                     </Link>
@@ -448,7 +448,7 @@ export function CustomerCreditSection({ customerId }: Props) {
               {!showRepay ? (
                 <Btn onClick={() => setShowRepay(true)}>Record repayment</Btn>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, background: '#FAF7F3', borderRadius: 10, padding: 12 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--color-bg)', borderRadius: 10, padding: 12 }}>
                   <p style={{ margin: 0, fontWeight: 700, fontSize: 12 }}>Record credit repayment</p>
                   <input style={inputStyle} type="number" min="0.01" step="0.01" value={repayAmount} onChange={(e) => setRepayAmount(e.target.value)} placeholder="Amount (MVR)" />
                   <select style={inputStyle} value={repayMethod} onChange={(e) => setRepayMethod(e.target.value as typeof repayMethod)}>
@@ -489,9 +489,9 @@ export function CustomerCreditSection({ customerId }: Props) {
           {canManage && credit.enabled && credit.balance_laar > 0 && (
             <>
               {!showWriteOff ? (
-                <Btn small variant="danger" onClick={() => setShowWriteOff(true)}>Write off balance</Btn>
+                <Btn small variant="danger-outline" onClick={() => setShowWriteOff(true)}>Write off balance</Btn>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--color-danger-bg)', borderRadius: 10, padding: 12, border: '1px solid #FCA5A5' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--color-danger-bg)', borderRadius: 10, padding: 12, border: '1px solid color-mix(in srgb, var(--color-danger) 45%, transparent)' }}>
                   <p style={{ margin: 0, fontWeight: 700, fontSize: 12, color: 'var(--color-danger-strong)' }}>Write off (bad debt adjustment)</p>
                   <p style={{ margin: 0, fontSize: 11, color: 'var(--color-danger-strong)' }}>
                     Reduces the customer's credit balance as an adjustment. No cash movement is recorded.
@@ -539,7 +539,7 @@ export function CustomerCreditSection({ customerId }: Props) {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 160, overflowY: 'auto' }}>
                 {ledger.map((row) => (
-                  <div key={row.id} style={{ fontSize: 12, padding: '6px 8px', background: 'var(--color-surface)', borderRadius: 6, border: '1px solid #F0EAE3' }}>
+                  <div key={row.id} style={{ fontSize: 12, padding: '6px 8px', background: 'var(--color-surface)', borderRadius: 6, border: '1px solid var(--color-border-light)' }}>
                     <span style={{ fontWeight: 700, textTransform: 'capitalize' }}>{row.type.replace(/_/g, ' ')}</span>
                     {' · '}
                     <span style={{ color: row.amount_mvr >= 0 ? 'var(--color-warning-strong)' : 'var(--color-success-strong)' }}>

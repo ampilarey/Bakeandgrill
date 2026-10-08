@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Cropper, { type Area } from 'react-easy-crop';
 import 'react-easy-crop/react-easy-crop.css';
-import { RotateCcw, RotateCw } from 'lucide-react';
+import { RotateCcw, RotateCw, X } from 'lucide-react';
 import { Btn } from '../../components/SharedUI';
 import { useDialogChrome } from '../../components/SharedUI';
 import { getCroppedMenuImage, MENU_IMAGE_ASPECT, MENU_IMAGE_HEIGHT, MENU_IMAGE_WIDTH } from './cropImage';
@@ -132,7 +132,7 @@ function ImageCropModalBody({
               width: 40, height: 40, cursor: busy ? 'not-allowed' : 'pointer', color: 'var(--color-text-secondary)',
             }}
           >
-            ✕
+            <X size={18} aria-hidden />
           </button>
         </div>
 
@@ -209,7 +209,7 @@ function ImageCropModalBody({
                 alignItems: 'center', justifyContent: 'center',
               }}
             >
-              <RotateCcw size={16} color="#6B5D4F" />
+              <RotateCcw size={16} color="var(--color-text-secondary)" />
             </button>
             <button
               type="button"
@@ -222,7 +222,7 @@ function ImageCropModalBody({
                 alignItems: 'center', justifyContent: 'center',
               }}
             >
-              <RotateCw size={16} color="#6B5D4F" />
+              <RotateCw size={16} color="var(--color-text-secondary)" />
             </button>
           </div>
         </div>

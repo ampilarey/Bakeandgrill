@@ -133,10 +133,10 @@ function OrderCard({ order, now }: { order: Order; now: number }) {
 function ShiftBanner({ shift }: { shift: Shift | null }) {
   if (!shift) return (
     <div style={{
-      background: 'var(--color-warning-bg)', border: '1.5px solid #fbbf24', borderRadius: 12,
+      background: 'var(--color-warning-bg)', border: '1.5px solid color-mix(in srgb, var(--color-warning) 55%, transparent)', borderRadius: 12,
       padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, fontSize: 13,
     }}>
-      <AlertTriangle size={16} color="#d97706" />
+      <AlertTriangle size={16} color="var(--color-warning)" />
       <span style={{ color: 'var(--color-warning-strong)', fontWeight: 600 }}>No shift open — cash drawer is untracked.</span>
     </div>
   );
@@ -158,13 +158,13 @@ function ShiftBanner({ shift }: { shift: Shift | null }) {
   const stale = hrs >= 24;
   return (
     <div style={{
-      background: stale ? 'var(--color-warning-bg)' : '#F0FDF4',
-      border: `1.5px solid ${stale ? '#fbbf24' : '#86efac'}`,
+      background: stale ? 'var(--color-warning-bg)' : 'var(--color-success-bg)',
+      border: `1.5px solid ${stale ? 'color-mix(in srgb, var(--color-warning) 55%, transparent)' : 'color-mix(in srgb, var(--color-success) 35%, transparent)'}`,
       borderRadius: 12,
       padding: '12px 16px', display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        {stale ? <AlertTriangle size={16} color="#d97706" /> : <CheckCircle2 size={16} color="var(--color-success)" />}
+        {stale ? <AlertTriangle size={16} color="var(--color-warning)" /> : <CheckCircle2 size={16} color="var(--color-success)" />}
         <span style={{ fontWeight: 700, fontSize: 13, color: stale ? 'var(--color-warning-strong)' : 'var(--color-success-strong)' }}>
           Shift Open{stale ? ' — close this shift' : ''}
         </span>
@@ -265,7 +265,7 @@ function MaintenancePanel({ onDone }: { onDone: () => void }) {
           {preview.stale_shifts_count > 0 && (
             <div style={{
               marginBottom: 12, padding: '10px 14px', borderRadius: 10,
-              background: 'var(--color-warning-bg)', border: '1px solid #fbbf24', fontSize: 13, color: 'var(--color-warning-strong)',
+              background: 'var(--color-warning-bg)', border: '1px solid color-mix(in srgb, var(--color-warning) 55%, transparent)', fontSize: 13, color: 'var(--color-warning-strong)',
             }}>
               <strong>{preview.stale_shifts_count} shift(s)</strong> open more than 24 hours.
               {' '}
@@ -1275,7 +1275,7 @@ export function DashboardPage() {
           {health.env_mismatch && (
             <div style={{
               marginBottom: 12, padding: '10px 14px', borderRadius: 10,
-              background: 'var(--color-danger-bg)', border: '1px solid #FECACA', color: 'var(--color-danger-strong)',
+              background: 'var(--color-danger-bg)', border: '1px solid color-mix(in srgb, var(--color-danger) 35%, transparent)', color: 'var(--color-danger-strong)',
               fontSize: 13, fontWeight: 600,
             }}>
               Staging host ({health.host}) but APP_ENV is &quot;{health.environment}&quot; — set APP_ENV=staging on this server.

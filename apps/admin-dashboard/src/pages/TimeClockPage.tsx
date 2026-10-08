@@ -103,7 +103,7 @@ export default function TimeClockPage() {
         To clock in or out, use the <strong>POS terminal</strong> (Time Clock on the login screen or side menu).
       </p>
 
-      <div role="tablist" style={{ display: 'flex', gap: 8, marginBottom: 24, background: '#F5F0EB', borderRadius: 10, padding: 4, width: 'fit-content' }}>
+      <div role="tablist" style={{ display: 'flex', gap: 8, marginBottom: 24, background: 'var(--color-border-light)', borderRadius: 10, padding: 4, width: 'fit-content' }}>
         <button role="tab" aria-selected={tab === 'history'} style={S.tab(tab === 'history')} onClick={() => setTab('history')}>History</button>
         {canViewSummary && (
           <button role="tab" aria-selected={tab === 'summary'} style={S.tab(tab === 'summary')} onClick={() => setTab('summary')}>Summary</button>

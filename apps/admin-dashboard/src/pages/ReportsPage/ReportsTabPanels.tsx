@@ -112,7 +112,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                 </table>
                 </ResponsiveTable>
                 {(summary.collected != null || summary.on_credit != null) && (
-                  <div style={{ marginTop: 8, padding: 8, background: '#FAF7F4', borderRadius: 6, fontSize: 12, color: '#6B5D4F' }}>
+                  <div style={{ marginTop: 8, padding: 8, background: 'var(--color-bg)', borderRadius: 6, fontSize: 12, color: 'var(--color-text-secondary)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span>Collected</span>
                       <strong style={{ color: 'var(--color-text)' }}>{mvr(summary.collected ?? 0)}</strong>
@@ -490,7 +490,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                         { l: 'Tax', v: mvr(data.totals.tax_amount ?? 0) },
                         { l: 'Discounts', v: mvr(data.totals.discount_amount ?? 0) },
                       ].map(({ l, v }) => (
-                        <div key={l} style={{ background: '#FAF7F4', borderRadius: 8, padding: '10px 14px' }}>
+                        <div key={l} style={{ background: 'var(--color-bg)', borderRadius: 8, padding: '10px 14px' }}>
                           <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 4 }}>{l}</div>
                           <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text)' }}>{v}</div>
                         </div>
@@ -519,7 +519,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                         </table>
                         </ResponsiveTable>
                         {(data.collected != null || data.on_credit != null) && (
-                          <div style={{ marginTop: 8, padding: 8, background: '#FAF7F4', borderRadius: 6, fontSize: 12, color: '#6B5D4F' }}>
+                          <div style={{ marginTop: 8, padding: 8, background: 'var(--color-bg)', borderRadius: 6, fontSize: 12, color: 'var(--color-text-secondary)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                               <span>Collected</span>
                               <strong style={{ color: 'var(--color-text)' }}>{mvr(data.collected ?? 0)}</strong>
@@ -1579,7 +1579,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                       <td style={S.td}>{mvr(row.avg_total)}</td>
                       <td style={{ ...S.td, width: '30%' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div style={{ flex: 1, background: '#F0EAE3', borderRadius: 4, height: 8 }}>
+                          <div style={{ flex: 1, background: 'var(--color-border-light)', borderRadius: 4, height: 8 }}>
                             <div style={S.bar((row.count / maxCount) * 100)} />
                           </div>
                         </div>

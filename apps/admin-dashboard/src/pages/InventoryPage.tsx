@@ -44,7 +44,7 @@ import {
   type InventoryPurchaseUnit,
 } from '../api';
 import { fmt } from '../utils/fmt';
-import { BadgeCheck, Camera, Filter, History, Pencil, ShoppingCart, SlidersHorizontal, Tag, TrendingUp } from 'lucide-react';
+import { AlertTriangle, BadgeCheck, Camera, Filter, History, Pencil, ShoppingCart, SlidersHorizontal, Tag, TrendingUp, Check } from 'lucide-react';
 
 // Waste used to be its own sidebar entry. It is a stock question — what left
 // the shelf without being sold — so it lives here now (purchasing audit,
@@ -1346,7 +1346,7 @@ export default function InventoryPage() {
       <TableStateBar error={error} onRetry={() => void loadItems()} />
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20, background: '#F5F0EB', borderRadius: 10, padding: 4, width: 'fit-content', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20, background: 'var(--color-border-light)', borderRadius: 10, padding: 4, width: 'fit-content', flexWrap: 'wrap' }}>
         <button style={S.tab(tab === 'stock')} onClick={() => setTab('stock')}>Stock</button>
         {canPrepared && (
           <button style={S.tab(tab === 'prepared')} onClick={() => setTab('prepared')}>Prepared Stock</button>
@@ -1367,8 +1367,8 @@ export default function InventoryPage() {
       {tab === 'stock' && (
         <>
           {lowCount > 0 && (
-            <div style={{ background: '#FEF3E8', border: '1px solid var(--color-primary)', borderRadius: 10, padding: '10px 16px', marginBottom: 16, fontSize: 13, color: 'var(--color-primary)', fontWeight: 600 }}>
-              ⚠ {lowCount} item{lowCount !== 1 ? 's are' : ' is'} below reorder level
+            <div style={{ background: 'var(--color-tone-rust-bg)', border: '1px solid var(--color-primary)', borderRadius: 10, padding: '10px 16px', marginBottom: 16, fontSize: 13, color: 'var(--color-primary)', fontWeight: 600 }}>
+              <InlineIcon icon={AlertTriangle} />{lowCount} item{lowCount !== 1 ? 's are' : ' is'} below reorder level
             </div>
           )}
 
@@ -2324,7 +2324,7 @@ export default function InventoryPage() {
       {tab === 'conversions' && (
         <div>
           {convError && <p style={{ color: 'var(--color-danger)', marginBottom: 12 }}>{convError}</p>}
-          <div data-responsive-grid style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 10, alignItems: 'flex-end', marginBottom: 20, background: '#F9F5F0', padding: 16, borderRadius: 12 }}>
+          <div data-responsive-grid style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 10, alignItems: 'flex-end', marginBottom: 20, background: 'var(--color-bg)', padding: 16, borderRadius: 12 }}>
             {(['from_unit', 'to_unit', 'factor'] as const).map((k) => (
               <div key={k}>
                 <label style={S.label}>{k === 'from_unit' ? 'From Unit' : k === 'to_unit' ? 'To Unit' : 'Factor'}</label>
@@ -2350,7 +2350,7 @@ export default function InventoryPage() {
                       <td style={TD}>{c.from_unit}</td>
                       <td style={TD}>{c.to_unit}</td>
                       <td style={TD}>{c.factor}</td>
-                      <td style={TD}><Btn small variant="danger" onClick={() => void handleDeleteConversion(c.id)}>Delete</Btn></td>
+                      <td style={TD}><Btn small variant="danger-outline" onClick={() => void handleDeleteConversion(c.id)}>Delete</Btn></td>
                     </tr>
                   ))}
                 </tbody>
@@ -2367,7 +2367,7 @@ export default function InventoryPage() {
           {countResult ? (
             <div>
               <div style={{ background: 'var(--color-success-bg)', color: 'var(--color-success-strong)', padding: '12px 16px', borderRadius: 10, marginBottom: 16, fontSize: 13 }}>
-                ✓ Stock count submitted. {countResult.filter(r => r.difference !== 0).length} adjustments made.
+                <InlineIcon icon={Check} />Stock count submitted. {countResult.filter(r => r.difference !== 0).length} adjustments made.
               </div>
               <TableCard>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -2460,7 +2460,7 @@ export default function InventoryPage() {
               </TableCard>
               <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
                 <Btn onClick={() => void handleSubmitCount()} disabled={countSaving}>
-                  {countSaving ? 'Submitting…' : '✓ Submit Stock Count'}
+                  {countSaving ? 'Submitting…' : <><InlineIcon icon={Check} />Submit Stock Count</>}
                 </Btn>
               </div>
             </div>

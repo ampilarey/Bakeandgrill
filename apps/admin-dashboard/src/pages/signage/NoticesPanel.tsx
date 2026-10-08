@@ -188,7 +188,7 @@ export function NoticesPanel({ notices, settings, onNotices, onSettings }: Props
                   {SHOWS.find((s) => s.value === n.show)?.label ?? n.show} · {expiryLabel(n)}
                 </div>
               </div>
-              <Btn variant="danger" small onClick={() => void remove(n.id)} disabled={removing === n.id} style={{ minHeight: 40 }} data-testid={`signage-notice-remove-${n.id}`}>
+              <Btn variant="danger-outline" small onClick={() => void remove(n.id)} disabled={removing === n.id} style={{ minHeight: 40 }} data-testid={`signage-notice-remove-${n.id}`}>
                 <Trash2 size={14} /> Take down
               </Btn>
             </div>

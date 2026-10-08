@@ -25,7 +25,7 @@ export function BusinessHoursEditor({ label, description, value, onChange }: Con
           const val = parsed[key] ?? '';
           const isClosed = val.toLowerCase() === 'closed';
           return (
-            <div key={key} style={{ display: 'flex', alignItems: 'center', padding: '10px 14px', borderTop: i === 0 ? 'none' : '1px solid var(--color-border-light)', gap: 12, background: isClosed ? '#FAFAFA' : 'var(--color-surface)' }}>
+            <div key={key} style={{ display: 'flex', alignItems: 'center', padding: '10px 14px', borderTop: i === 0 ? 'none' : '1px solid var(--color-border-light)', gap: 12, background: isClosed ? 'var(--color-bg)' : 'var(--color-surface)' }}>
               <span style={{ width: 90, fontSize: 13, fontWeight: 600, color: 'var(--color-text)', flexShrink: 0 }}>{dayLabel}</span>
               <input
                 value={val}

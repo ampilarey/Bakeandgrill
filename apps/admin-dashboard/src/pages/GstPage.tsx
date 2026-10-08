@@ -17,6 +17,28 @@ import { today } from '../utils/dateHelpers';
 import { ApiRequestError } from '@shared/api';
 
 const mvr = (laar: number) => `MVR ${(laar / 100).toFixed(2)}`;
+
+/** One row of MIRA's output statement: a tax invoice to a GST-registered customer. */
+type OutputInvoiceRow = {
+  customer_tin: string | null; customer_name: string | null; invoice_no: string | null; invoice_date: string | null;
+  standard_8_laar: number; zero_rated_laar: number; exempt_laar: number; out_of_scope_laar: number;
+};
+/** Everything else on the output side, one total per tax code. */
+type OutputOtherRow = { standard_8_laar: number; zero_rated_laar: number; exempt_laar: number; out_of_scope_laar: number };
+type OutputStatement = { tax_invoices: OutputInvoiceRow[]; other_transactions: OutputOtherRow[] };
+/** One row of MIRA's input statement: a supplier tax invoice the GST is claimed on. */
+type InputStatementRow = {
+  supplier_tin: string | null; supplier_name: string | null; supplier_invoice_no: string | null; invoice_date: string | null;
+  total_ex_gst_laar: number; gst_8_laar: number; gst_12_laar: number; gst_16_laar: number; revenue_or_capital: string;
+};
+
+const statementCell: React.CSSProperties = { padding: '8px 6px', whiteSpace: 'nowrap' };
+const statementHead: React.CSSProperties = { padding: '8px 6px', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' };
+/** Settings fields: some had no border and drew as bare browser boxes. */
+const settingsField: React.CSSProperties = {
+  display: 'block', width: '100%', boxSizing: 'border-box', marginTop: 4, padding: 8, borderRadius: 6,
+  border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 14,
+};
 const mvrFromDecimal = (amount: number) => `MVR ${Number(amount).toFixed(2)}`;
 const mvrToLaar = (v: string) => Math.round(parseFloat(v || '0') * 100);
 
@@ -36,8 +58,8 @@ export default function GstPage() {
   const [period, setPeriod] = useState(currentPeriod);
   const [summary, setSummary] = useState<GstSummary | null>(null);
   const [settings, setSettings] = useState<GstSettings | null>(null);
-  const [output, setOutput] = useState<{ tax_invoices: unknown[]; other_transactions: unknown[] } | null>(null);
-  const [inputRows, setInputRows] = useState<unknown[]>([]);
+  const [output, setOutput] = useState<OutputStatement | null>(null);
+  const [inputRows, setInputRows] = useState<InputStatementRow[]>([]);
   const [toClaim, setToClaim] = useState<GstToClaim | null>(null);
   const [warnings, setWarnings] = useState<GstSummary['warnings']>([]);
   const [taxInvoices, setTaxInvoices] = useState<Invoice[]>([]);
@@ -95,7 +117,7 @@ export default function GstPage() {
       getGstOutputStatement(period).then((d) => setOutput(d as typeof output));
     }
     if (tab === 'Input GST') {
-      getGstInputStatement(period).then((d) => setInputRows((d as { rows: unknown[] }).rows ?? []));
+      getGstInputStatement(period).then((d) => setInputRows((d as { rows?: InputStatementRow[] }).rows ?? []));
       setToClaim(null);
       getGstToClaim(period).then(setToClaim).catch(() => setToClaim({ period, rows: [], total_laar: 0, count: 0 }));
     }
@@ -209,7 +231,7 @@ export default function GstPage() {
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
         <label style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>
           Period{' '}
-          <input type="month" value={period} onChange={(e) => setPeriod(e.target.value)} style={{ marginLeft: 8, padding: '6px 10px', borderRadius: 6, border: '1px solid #E8DDD0' }} />
+          <input type="month" value={period} onChange={(e) => setPeriod(e.target.value)} style={{ marginLeft: 8, padding: '6px 10px', borderRadius: 6, border: '1px solid var(--color-border)' }} />
         </label>
         {summary?.locked && <span style={{ color: 'var(--color-warning-strong)', fontSize: 13, fontWeight: 600 }}>Period locked</span>}
       </div>
@@ -322,15 +344,52 @@ export default function GstPage() {
         </>
       )}
 
+      {/* The statements MIRA asks for, as tables: they were printed as raw JSON. */}
       {tab === 'Output GST' && output && (
-        <Card style={{ marginTop: 16, padding: 16 }}>
-          <h3 style={{ marginTop: 0 }}>Tax Invoices ({output.tax_invoices?.length ?? 0})</h3>
+        <Card style={{ marginTop: 16, padding: 16 }} data-testid="gst-output-statement">
+          <h3 style={{ marginTop: 0 }}>Tax invoices ({output.tax_invoices?.length ?? 0})</h3>
           <p style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>GST-registered customers with issued tax invoices.</p>
-          <h3>Other Transactions</h3>
-          <p style={{ fontSize: 13 }}>POS / walk-in / cash / card / BML sales not in TaxInvoices sheet.</p>
-          <pre style={{ fontSize: 11, overflow: 'auto', background: '#FAF7F2', padding: 12, borderRadius: 8 }}>
-            {JSON.stringify(output, null, 2)}
-          </pre>
+          {(output.tax_invoices ?? []).length === 0 ? (
+            <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>No tax invoices this period.</p>
+          ) : (
+            <ResponsiveTable>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
+                    {['Invoice', 'Date', 'Customer', 'TIN', 'Standard 8%', 'Zero-rated', 'Exempt', 'Out of scope'].map((h) => <th key={h} style={statementHead}>{h}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {output.tax_invoices.map((r, i) => (
+                    <tr key={`${r.invoice_no ?? ''}-${i}`} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                      <td style={{ ...statementCell, fontWeight: 600 }}>{r.invoice_no ?? '—'}</td>
+                      <td style={statementCell}>{r.invoice_date ?? '—'}</td>
+                      <td style={statementCell}>{r.customer_name ?? '—'}</td>
+                      <td style={statementCell}>{r.customer_tin ?? '—'}</td>
+                      <td style={statementCell}>{mvr(r.standard_8_laar)}</td>
+                      <td style={statementCell}>{mvr(r.zero_rated_laar)}</td>
+                      <td style={statementCell}>{mvr(r.exempt_laar)}</td>
+                      <td style={statementCell}>{mvr(r.out_of_scope_laar)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </ResponsiveTable>
+          )}
+          <h3>Other transactions</h3>
+          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>POS, walk-in, cash, card and BML sales that are not on a tax invoice, one total per tax code.</p>
+          {(() => {
+            const other = output.other_transactions?.[0];
+            if (!other) return <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Nothing else this period.</p>;
+            return (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
+                <StatCard label="Standard 8%" value={mvr(other.standard_8_laar)} />
+                <StatCard label="Zero-rated" value={mvr(other.zero_rated_laar)} />
+                <StatCard label="Exempt" value={mvr(other.exempt_laar)} />
+                <StatCard label="Out of scope" value={mvr(other.out_of_scope_laar)} />
+              </div>
+            );
+          })()}
         </Card>
       )}
 
@@ -382,11 +441,36 @@ export default function GstPage() {
       )}
 
       {tab === 'Input GST' && (
-        <Card style={{ marginTop: 16, padding: 16 }}>
-          <h3 style={{ marginTop: 0 }}>Claimable input tax ({inputRows.length} rows)</h3>
-          <pre style={{ fontSize: 11, overflow: 'auto', background: '#FAF7F2', padding: 12, borderRadius: 8 }}>
-            {JSON.stringify(inputRows, null, 2)}
-          </pre>
+        <Card style={{ marginTop: 16, padding: 16 }} data-testid="gst-input-statement">
+          <h3 style={{ marginTop: 0 }}>Claimable input tax ({inputRows.length})</h3>
+          {inputRows.length === 0 ? (
+            <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>No claimed input tax this period.</p>
+          ) : (
+            <ResponsiveTable>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
+                    {['Supplier', 'TIN', 'Invoice', 'Date', 'Before GST', 'GST 8%', 'GST 12%', 'GST 16–17%', 'Kind'].map((h) => <th key={h} style={statementHead}>{h}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {inputRows.map((r, i) => (
+                    <tr key={`${r.supplier_invoice_no ?? ''}-${i}`} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                      <td style={{ ...statementCell, fontWeight: 600 }}>{r.supplier_name ?? '—'}</td>
+                      <td style={statementCell}>{r.supplier_tin ?? '—'}</td>
+                      <td style={statementCell}>{r.supplier_invoice_no ?? '—'}</td>
+                      <td style={statementCell}>{r.invoice_date ?? '—'}</td>
+                      <td style={statementCell}>{mvr(r.total_ex_gst_laar)}</td>
+                      <td style={statementCell}>{mvr(r.gst_8_laar)}</td>
+                      <td style={statementCell}>{mvr(r.gst_12_laar)}</td>
+                      <td style={statementCell}>{mvr(r.gst_16_laar)}</td>
+                      <td style={statementCell}>{r.revenue_or_capital === 'capital' ? 'Capital' : 'Revenue'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </ResponsiveTable>
+          )}
         </Card>
       )}
 
@@ -399,20 +483,20 @@ export default function GstPage() {
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
               <label style={{ fontSize: 13 }}>Document no
-                <input value={adjDocNo} onChange={(e) => setAdjDocNo(e.target.value)} style={{ display: 'block', width: '100%', marginTop: 4, padding: 8, borderRadius: 6, border: '1px solid #E8DDD0' }} />
+                <input value={adjDocNo} onChange={(e) => setAdjDocNo(e.target.value)} style={{ display: 'block', width: '100%', marginTop: 4, padding: 8, borderRadius: 6, border: '1px solid var(--color-border)' }} />
               </label>
               <label style={{ fontSize: 13 }}>Document date
-                <input type="date" value={adjDate} onChange={(e) => setAdjDate(e.target.value)} style={{ display: 'block', width: '100%', marginTop: 4, padding: 8, borderRadius: 6, border: '1px solid #E8DDD0' }} />
+                <input type="date" value={adjDate} onChange={(e) => setAdjDate(e.target.value)} style={{ display: 'block', width: '100%', marginTop: 4, padding: 8, borderRadius: 6, border: '1px solid var(--color-border)' }} />
               </label>
               <label style={{ fontSize: 13 }}>Taxable (MVR)
-                <input value={adjTaxable} onChange={(e) => setAdjTaxable(e.target.value)} placeholder="0.00" style={{ display: 'block', width: '100%', marginTop: 4, padding: 8, borderRadius: 6, border: '1px solid #E8DDD0' }} />
+                <input value={adjTaxable} onChange={(e) => setAdjTaxable(e.target.value)} placeholder="0.00" style={{ display: 'block', width: '100%', marginTop: 4, padding: 8, borderRadius: 6, border: '1px solid var(--color-border)' }} />
               </label>
               <label style={{ fontSize: 13 }}>Tax (MVR)
-                <input value={adjTax} onChange={(e) => setAdjTax(e.target.value)} placeholder="0.00" style={{ display: 'block', width: '100%', marginTop: 4, padding: 8, borderRadius: 6, border: '1px solid #E8DDD0' }} />
+                <input value={adjTax} onChange={(e) => setAdjTax(e.target.value)} placeholder="0.00" style={{ display: 'block', width: '100%', marginTop: 4, padding: 8, borderRadius: 6, border: '1px solid var(--color-border)' }} />
               </label>
             </div>
             <label style={{ fontSize: 13, display: 'block', marginTop: 10 }}>Reason
-              <input value={adjReason} onChange={(e) => setAdjReason(e.target.value)} style={{ display: 'block', width: '100%', marginTop: 4, padding: 8, borderRadius: 6, border: '1px solid #E8DDD0' }} />
+              <input value={adjReason} onChange={(e) => setAdjReason(e.target.value)} style={{ display: 'block', width: '100%', marginTop: 4, padding: 8, borderRadius: 6, border: '1px solid var(--color-border)' }} />
             </label>
             <Button onClick={() => void postAdjustment()} disabled={adjBusy} style={{ marginTop: 12 }}>
               {adjBusy ? 'Posting…' : 'Post adjustment'}
@@ -426,7 +510,7 @@ export default function GstPage() {
               <ResponsiveTable>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
-                    <tr style={{ borderBottom: '1px solid #E8DDD0', textAlign: 'left' }}>
+                    <tr style={{ borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
                       {['Doc', 'Date', 'Type', 'Dir', 'Taxable', 'Tax', 'Total'].map((h) => (
                         <th key={h} style={{ padding: '8px 6px', color: 'var(--color-text-secondary)' }}>{h}</th>
                       ))}
@@ -468,7 +552,7 @@ export default function GstPage() {
             <ResponsiveTable>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginTop: 12 }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid #E8DDD0', textAlign: 'left' }}>
+                  <tr style={{ borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
                     {['Number', 'Customer TIN', 'Recipient', 'Date', 'Total', 'Status'].map((h) => (
                       <th key={h} style={{ padding: '8px 6px', color: 'var(--color-text-secondary)' }}>{h}</th>
                     ))}
@@ -505,7 +589,7 @@ export default function GstPage() {
             <ResponsiveTable>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginTop: 12 }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid #E8DDD0', textAlign: 'left' }}>
+                  <tr style={{ borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
                     {['Number', 'Date', 'Total', 'Reason', 'Status'].map((h) => (
                       <th key={h} style={{ padding: '8px 6px', color: 'var(--color-text-secondary)' }}>{h}</th>
                     ))}
@@ -557,7 +641,7 @@ export default function GstPage() {
               <label key={key} style={{ fontSize: 13 }}>
                 {label}
                 <input
-                  style={{ display: 'block', width: '100%', marginTop: 4, padding: 8, borderRadius: 6, border: '1px solid #E8DDD0' }}
+                  style={settingsField}
                   value={String((settings as unknown as Record<string, string | null | boolean | number>)[key] ?? '')}
                   onChange={(e) => setSettings({ ...settings, [key]: e.target.value })}
                 />
@@ -566,7 +650,7 @@ export default function GstPage() {
             <label style={{ fontSize: 13 }}>
               Accounting basis
               <select
-                style={{ display: 'block', width: '100%', marginTop: 4, padding: 8 }}
+                style={settingsField}
                 value={settings.accounting_basis}
                 onChange={(e) => setSettings({ ...settings, accounting_basis: e.target.value as GstSettings['accounting_basis'] })}
               >
@@ -578,12 +662,12 @@ export default function GstPage() {
             </label>
             <label style={{ fontSize: 13 }}>
               GST rate (basis points)
-              <input type="number" value={settings.default_tax_rate_bp} onChange={(e) => setSettings({ ...settings, default_tax_rate_bp: parseInt(e.target.value, 10) || 800 })} style={{ display: 'block', width: '100%', marginTop: 4, padding: 8 }} />
+              <input type="number" value={settings.default_tax_rate_bp} onChange={(e) => setSettings({ ...settings, default_tax_rate_bp: parseInt(e.target.value, 10) || 800 })} style={settingsField} />
               <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Bake &amp; Grill General Sector: 800 bp (8%). Tourism sector was 16% (1 Jan 2023–30 Jun 2025) and 17% from 1 Jul 2025 — not used unless a tourism activity is added.</span>
             </label>
             <label style={{ fontSize: 13 }}>
               Taxable period
-              <select value={settings.taxable_period} onChange={(e) => setSettings({ ...settings, taxable_period: e.target.value as 'monthly' | 'quarterly' })} style={{ display: 'block', width: '100%', marginTop: 4, padding: 8 }}>
+              <select value={settings.taxable_period} onChange={(e) => setSettings({ ...settings, taxable_period: e.target.value as 'monthly' | 'quarterly' })} style={settingsField}>
                 <option value="monthly">Monthly</option>
                 <option value="quarterly">Quarterly</option>
               </select>
@@ -603,7 +687,7 @@ export default function GstPage() {
                 aria-label="Return due on day"
                 value={settings.filing_due_day ?? 28}
                 onChange={(e) => setSettings({ ...settings, filing_due_day: Math.min(28, Math.max(1, parseInt(e.target.value, 10) || 28)) })}
-                style={{ display: 'block', width: '100%', marginTop: 4, padding: 8 }}
+                style={settingsField}
               />
               <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Of the month after the period ends.</span>
             </label>
@@ -614,7 +698,7 @@ export default function GstPage() {
                 aria-label="Remind owners, days before"
                 value={settings.filing_reminder_days ?? 3}
                 onChange={(e) => setSettings({ ...settings, filing_reminder_days: Math.min(14, Math.max(0, parseInt(e.target.value, 10) || 0)) })}
-                style={{ display: 'block', width: '100%', marginTop: 4, padding: 8 }}
+                style={settingsField}
               />
               <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>A text then, on the day and the day after, while the period is not locked. 0 turns it off.</span>
             </label>

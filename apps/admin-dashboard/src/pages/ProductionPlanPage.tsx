@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { X } from 'lucide-react';
 import {
   Badge, Btn, Card, DateInput, EmptyState, ErrorMsg, Input, Select, Spinner,
   StatCard, TableCard, TD, TH,
@@ -1067,7 +1068,7 @@ export function PlanSettingsTab({ canManage }: { canManage: boolean }) {
               <Input label={i === 0 ? 'Name' : undefined} id={`slot-label-${i}`} aria-label={`Slot ${i + 1} name`} value={s.label} onChange={(v) => setSlot(i, { label: v })} />
               <Input label={i === 0 ? 'From (hour)' : undefined} id={`slot-from-${i}`} aria-label={`Slot ${i + 1} from`} type="number" min={0} max={23} value={String(s.from)} onChange={(v) => setSlot(i, { from: Number(v) })} />
               <Input label={i === 0 ? 'To (hour)' : undefined} id={`slot-to-${i}`} aria-label={`Slot ${i + 1} to`} type="number" min={0} max={23} value={String(s.to)} onChange={(v) => setSlot(i, { to: Number(v) })} />
-              <Btn variant="ghost" small onClick={() => setSettings({ ...settings, slots: settings.slots.filter((_, j) => j !== i) })} disabled={settings.slots.length <= 1} aria-label={`Remove slot ${i + 1}`}>✕</Btn>
+              <Btn variant="ghost" small onClick={() => setSettings({ ...settings, slots: settings.slots.filter((_, j) => j !== i) })} disabled={settings.slots.length <= 1} aria-label={`Remove slot ${i + 1}`}><X size={16} aria-hidden /></Btn>
             </div>
           ))}
         </div>

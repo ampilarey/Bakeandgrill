@@ -291,7 +291,7 @@ export default function DiscountCardsPage() {
             {issuedCodes.map((c) => (
               <div key={c.id} style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: '8px 10px', borderRadius: 8, background: '#FEF3E8', fontFamily: 'monospace', fontWeight: 700,
+                padding: '8px 10px', borderRadius: 8, background: 'var(--color-tone-rust-bg)', fontFamily: 'monospace', fontWeight: 700,
               }}>
                 <span>{c.code}</span>
                 <Btn
@@ -339,7 +339,7 @@ export default function DiscountCardsPage() {
                 {detailCards.map((c) => (
                   <div key={c.id} style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8,
-                    padding: '8px 10px', border: '1px solid #EDE4D4', borderRadius: 8,
+                    padding: '8px 10px', border: '1px solid var(--color-border)', borderRadius: 8,
                   }}>
                     <div>
                       <div style={{ fontFamily: 'monospace', fontWeight: 700 }}>{c.code}</div>
@@ -402,7 +402,7 @@ const selectStyle: React.CSSProperties = {
   width: '100%',
   padding: '10px 12px',
   borderRadius: 8,
-  border: '1.5px solid #EDE4D4',
+  border: '1.5px solid var(--color-border)',
   fontSize: 14,
   fontFamily: 'inherit',
   minHeight: 44,

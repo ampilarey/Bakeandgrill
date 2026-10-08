@@ -47,8 +47,8 @@ function BannerLivePreview({
           width: '100%',
           position: 'relative',
           background: imageUrl
-            ? 'var(--color-text)'
-            : 'linear-gradient(135deg, #c2410c 0%, #7c2d12 100%)',
+            ? 'var(--color-backdrop)'
+            : 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%)',
           border: '1px solid var(--color-border)',
         }}
       >

@@ -154,7 +154,7 @@ export function SchedulesTab({ staff }: { staff: StaffMember[] }) {
               {weekDates.map((date, di) => {
                 const daySchedules = schedules.filter((sc) => sc.date === date);
                 return (
-                  <tr key={date} style={{ background: di % 2 === 0 ? '#FAFAF9' : 'var(--color-surface)' }}>
+                  <tr key={date} style={{ background: di % 2 === 0 ? 'var(--color-bg)' : 'var(--color-surface)' }}>
                     <td style={{ ...TD, fontWeight: 600, whiteSpace: 'nowrap' }}>
                       {DAYS[di]}<br />
                       <span style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 400 }}>
@@ -166,14 +166,14 @@ export function SchedulesTab({ staff }: { staff: StaffMember[] }) {
                       return (
                         <td key={s.id} style={{ ...TD, verticalAlign: 'top', padding: 8 }}>
                           {shift ? (
-                            <div style={{ background: '#FEF3E8', border: '1px solid var(--color-primary)', borderRadius: 8, padding: '8px 10px' }}>
+                            <div style={{ background: 'var(--color-tone-rust-bg)', border: '1px solid var(--color-primary)', borderRadius: 8, padding: '8px 10px' }}>
                               <div style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: 12 }}>
                                 {shift.start_time.slice(0, 5)} – {shift.end_time.slice(0, 5)}
                               </div>
                               {shift.notes && <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 2 }}>{shift.notes}</div>}
                               <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                                 <Btn small variant="ghost" onClick={() => openModal(shift)}>Edit</Btn>
-                                <Btn small variant="danger" onClick={() => handleDelete(shift.id)}>Remove</Btn>
+                                <Btn small variant="danger-outline" onClick={() => handleDelete(shift.id)}>Remove</Btn>
                               </div>
                             </div>
                           ) : (

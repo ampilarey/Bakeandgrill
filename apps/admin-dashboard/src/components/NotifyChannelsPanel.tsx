@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Search } from 'lucide-react';
+import { Search, Check } from 'lucide-react';
 import {
   getNotifyChannels,
   updateNotifyPerson,
@@ -8,6 +8,7 @@ import {
   type NotifyPerson,
   type NotifyRole,
 } from '../api';
+import { InlineIcon } from './SharedUI';
 
 /**
  * Admin → SMS Control Center → "Who gets alerts, and how" (owner,
@@ -67,7 +68,7 @@ function Pills({ value, onChange, disabled, label }: {
             disabled={disabled}
             onClick={() => onChange(toggle(value, c))}
           >
-            {on ? '✓ ' : ''}{LABEL[c]}
+            {on && <InlineIcon icon={Check} size={12} />}{LABEL[c]}
           </button>
         );
       })}

@@ -63,6 +63,17 @@ progress and info, `--color-tone-brown-*` for roles, types and plain labels,
 danger. Icons are lucide (`InlineIcon` in running text), not emoji; on/off controls
 are SharedUI `Switch`. Details: `docs/ADMIN_THEMING_MOBILE_PLAN.md` § Stage 3c.
 
+A row's Delete / Remove / Reject is `Btn variant="danger-outline"`; solid `danger` is
+for the final confirm and bulk actions. Pop-ups (`Modal`) render outside the page, so
+never scope a pop-up's CSS under a page class (`.x-page .chip` does not reach it).
+Native tick boxes, radios and sliders take the rust through `accent-color` in
+`index.css`. Every colour must hold in dark mode too: a pale panel is `--color-bg`, a
+track or hairline `--color-border-light`, a picked chip `--color-tone-rust-bg`, a red /
+amber / green edge `color-mix(in srgb, var(--color-danger) 35%, transparent)` and kin;
+behind a photo or video, and on the sign-in page, `--color-backdrop` (near-black in
+both themes; `--color-text` turns cream in dark mode). White stays only where paper or
+a QR code needs it (print previews, QR cards). Details: § Stage 3e.
+
 ## Brand colours
 
 The accent everywhere is the rust from the logo, `#B74B0C`; on a dark surface it is

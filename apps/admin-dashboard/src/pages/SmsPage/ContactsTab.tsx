@@ -223,7 +223,7 @@ export function ContactsTab() {
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
                         {g.contacts.map(c => (
-                          <span key={c.id} style={{ background: '#F5F0EA', borderRadius: 99, padding: '3px 10px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span key={c.id} style={{ background: 'var(--color-border-light)', borderRadius: 99, padding: '3px 10px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
                             {c.name}
                             <button onClick={() => removeMember(g.id, c.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'var(--color-text-muted)', lineHeight: 1 }}>
                               <X size={11} />
@@ -286,7 +286,7 @@ export function ContactsTab() {
                 {DAYS.map(d => (
                   <button key={d} onClick={() => toggleDay(d)} style={{
                     padding: '4px 10px', fontSize: 12, borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit',
-                    background: (contactForm.active_days ?? []).includes(d) ? 'var(--color-primary)' : '#F5F0EA',
+                    background: (contactForm.active_days ?? []).includes(d) ? 'var(--color-primary)' : 'var(--color-border-light)',
                     color: (contactForm.active_days ?? []).includes(d) ? '#fff' : 'var(--color-text-secondary)',
                     border: '1px solid transparent',
                   }}>{DAY_LABEL[d]}</button>

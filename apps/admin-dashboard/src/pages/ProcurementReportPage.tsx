@@ -58,7 +58,7 @@ function PriceTrendChart({ points }: { points: ProcurementReport['price_trend'] 
         return (
           <div key={name}>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)', marginBottom: 6 }}>{name}</div>
-            <svg width="100%" viewBox={`0 0 ${w} ${h}`} style={{ maxWidth: 360, height: 72, background: '#FAFAF8', borderRadius: 8, border: '1px solid var(--color-border)' }}>
+            <svg width="100%" viewBox={`0 0 ${w} ${h}`} style={{ maxWidth: 360, height: 72, background: 'var(--color-bg)', borderRadius: 8, border: '1px solid var(--color-border)' }}>
               <path d={path} fill="none" stroke="var(--color-primary)" strokeWidth="2" />
             </svg>
             <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 4 }}>

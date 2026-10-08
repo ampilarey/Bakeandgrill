@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
-import { Crop, Images, Trash2, Upload } from 'lucide-react';
+import { Crop, Images, Trash2, Upload, Check } from 'lucide-react';
 import { uploadMenuImage } from '../../api';
-import { Input } from '../../components/SharedUI';
+import { Input, InlineIcon } from '../../components/SharedUI';
 import { MediaPicker } from '../../components/MediaPicker';
 import { findMediaByUrl, type MediaAsset } from '../../api/media';
 import {
@@ -186,10 +186,12 @@ export function ImageUploadField({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        {/* A row of its own: beside the buttons it shrank to a stub ("http://127.0.0.1:8000/im"). */}
         <Input
           value={value}
           onChange={(v) => onChange({ url: v, original_url: '' })}
           placeholder="https://… or upload & crop below"
+          style={{ flex: '1 1 100%' }}
         />
         <button
           type="button"
@@ -211,9 +213,9 @@ export function ImageUploadField({
             onClick={() => void openCropperFromExisting()}
             disabled={uploading}
             style={{
-              flexShrink: 0, padding: '8px 14px', background: '#FEF3E8',
-              border: '1px solid #F0D9C0', borderRadius: 8, cursor: uploading ? 'not-allowed' : 'pointer',
-              fontSize: 13, fontWeight: 600, color: '#A1420B', whiteSpace: 'nowrap',
+              flexShrink: 0, padding: '8px 14px', background: 'var(--color-tone-rust-bg)',
+              border: '1px solid var(--color-tone-rust-border)', borderRadius: 8, cursor: uploading ? 'not-allowed' : 'pointer',
+              fontSize: 13, fontWeight: 600, color: 'var(--color-tone-rust-text)', whiteSpace: 'nowrap',
               display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 44,
             }}
           >
@@ -274,7 +276,7 @@ export function ImageUploadField({
       </div>
       <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-muted)' }}>
         {cfg.help}
-        {originalValue.trim() ? ' Master saved ✓' : ''}
+        {originalValue.trim() ? <> Master saved <InlineIcon icon={Check} gap={0} /></> : ''}
       </p>
       {uploadError && <p style={{ color: 'var(--color-danger-strong)', fontSize: 12, margin: 0 }}>{uploadError}</p>}
       {previewSrc && (

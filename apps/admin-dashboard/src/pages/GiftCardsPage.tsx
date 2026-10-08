@@ -453,7 +453,7 @@ export default function GiftCardsPage() {
           </Btn>
         </div>
         {balanceResult && (
-          <div style={{ marginTop: 12, padding: 12, background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0' }}>
+          <div style={{ marginTop: 12, padding: 12, background: 'var(--color-success-bg)', borderRadius: 8, border: '1px solid var(--color-success)' }}>
             <p style={{ margin: 0, color: 'var(--color-success-strong)', fontWeight: 700 }}>
               {balanceResult.masked_code} — Available: MVR {Number(balanceResult.available_balance).toFixed(2)}
             </p>
@@ -679,7 +679,7 @@ export default function GiftCardsPage() {
                 <div style={{
                   marginTop: 16,
                   padding: 12,
-                  background: '#FEF3E8',
+                  background: 'var(--color-tone-rust-bg)',
                   borderRadius: 10,
                   textAlign: 'left',
                 }}>

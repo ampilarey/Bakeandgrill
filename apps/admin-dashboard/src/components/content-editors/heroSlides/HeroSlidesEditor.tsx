@@ -571,7 +571,7 @@ export function HeroSlidesEditor({
               height: 68,
               borderRadius: 8,
               overflow: 'hidden',
-              background: 'var(--color-text)',
+              background: 'var(--color-backdrop)',
               flexShrink: 0,
               border: '1px solid var(--color-border)',
             }}

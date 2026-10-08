@@ -450,7 +450,7 @@ function Gallery({ itemId }: { itemId: number }) {
                     title="Edit / re-crop"
                     disabled={uploading}
                     onClick={() => void openCropperFromExisting(ph)}
-                    style={{ flex: '1 1 100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '6px', background: '#FEF3E8', border: '1px solid #F0D9C0', borderRadius: 6, cursor: uploading ? 'not-allowed' : 'pointer', fontSize: 11, fontWeight: 700, color: '#A1420B' }}
+                    style={{ flex: '1 1 100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '6px', background: 'var(--color-tone-rust-bg)', border: '1px solid var(--color-tone-rust-border)', borderRadius: 6, cursor: uploading ? 'not-allowed' : 'pointer', fontSize: 11, fontWeight: 700, color: 'var(--color-tone-rust-text)' }}
                   >
                     <Crop size={12} /> Edit crop
                   </button>
@@ -478,16 +478,16 @@ function Gallery({ itemId }: { itemId: number }) {
                     type="button"
                     title="Set as primary (card photo, first slide, shared-link picture)"
                     onClick={() => void setPrimary(ph.id)}
-                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px', background: 'var(--color-warning-bg)', border: '1px solid #fcd34d', borderRadius: 6, cursor: 'pointer' }}
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px', background: 'var(--color-warning-bg)', border: '1px solid color-mix(in srgb, var(--color-warning) 55%, transparent)', borderRadius: 6, cursor: 'pointer' }}
                   >
-                    <Star size={13} color="#d97706" />
+                    <Star size={13} color="var(--color-warning)" />
                   </button>
                 )}
                 <button
                   type="button"
                   title="Delete"
                   onClick={() => void remove(ph.id)}
-                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px', background: 'var(--color-danger-bg)', border: '1px solid #fca5a5', borderRadius: 6, cursor: 'pointer' }}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px', background: 'var(--color-danger-bg)', border: '1px solid color-mix(in srgb, var(--color-danger) 45%, transparent)', borderRadius: 6, cursor: 'pointer' }}
                 >
                   <Trash2 size={13} color="var(--color-danger-strong)" />
                 </button>

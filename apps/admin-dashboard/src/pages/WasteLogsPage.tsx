@@ -302,7 +302,7 @@ export default function WasteLogsPage({ embedded = false }: { embedded?: boolean
                           </div>
                         </div>
                         {/* bar */}
-                        <div style={{ height: 6, background: '#F0EAE3', borderRadius: 999, overflow: 'hidden' }}>
+                        <div style={{ height: 6, background: 'var(--color-border-light)', borderRadius: 999, overflow: 'hidden' }}>
                           <div style={{
                             height: '100%', borderRadius: 999,
                             background: hex,
@@ -338,7 +338,7 @@ export default function WasteLogsPage({ embedded = false }: { embedded?: boolean
                           <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-danger)' }}>{mvr(item.cost)}</span>
                         </div>
                         {/* bar */}
-                        <div style={{ height: 6, background: '#F0EAE3', borderRadius: 999, overflow: 'hidden' }}>
+                        <div style={{ height: 6, background: 'var(--color-border-light)', borderRadius: 999, overflow: 'hidden' }}>
                           <div style={{
                             height: '100%', borderRadius: 999,
                             background: `hsl(${Math.round(200 - i * 15)}, 70%, 55%)`,

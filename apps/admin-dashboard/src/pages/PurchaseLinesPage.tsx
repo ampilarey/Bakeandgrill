@@ -173,7 +173,7 @@ export default function PurchaseLinesPage({ embedded = false }: { embedded?: boo
       </div>
 
       {truncated && (
-        <p style={{ fontSize: 12, color: 'var(--color-warning-strong, #b45309)', margin: '0 0 12px' }}>
+        <p style={{ fontSize: 12, color: 'var(--color-warning-strong)', margin: '0 0 12px' }}>
           This window holds more lines than the table carries. Only the newest 3,000 are here — pick a shorter window.
         </p>
       )}

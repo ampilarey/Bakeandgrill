@@ -188,7 +188,7 @@ function TagInput({ value, onChange }: { value: string[]; onChange: (v: string[]
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '6px 8px', border: '1px solid var(--color-border)', borderRadius: 8, minHeight: 44, alignItems: 'center' }}>
       {value.map((t) => (
-        <span key={t} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 9999, background: '#F5E6D3', color: 'var(--color-text)', fontSize: 12, fontWeight: 600 }}>
+        <span key={t} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 9999, background: 'var(--color-tone-rust-bg)', color: 'var(--color-text)', fontSize: 12, fontWeight: 600 }}>
           {t}
           <button type="button" onClick={() => onChange(value.filter((x) => x !== t))} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'var(--color-text-secondary)', lineHeight: 1 }}>×</button>
         </span>
@@ -258,7 +258,7 @@ function AssetCard({
           background: 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
         }}
       >
-        <div style={{ width: '100%', aspectRatio: '4 / 3', overflow: 'hidden', background: '#EDE8E2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: '100%', aspectRatio: '4 / 3', overflow: 'hidden', background: 'var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <AssetThumb asset={asset} />
         </div>
         <div style={{ padding: '6px 8px' }}>
@@ -343,7 +343,7 @@ function CropEditPanel({
         data-testid="media-crop-frame"
         style={{
           position: 'relative', width: '100%', height: frameH, minHeight: compact ? 280 : 220,
-          background: 'var(--color-text)', borderRadius: 10, overflow: 'hidden',
+          background: 'var(--color-backdrop)', borderRadius: 10, overflow: 'hidden',
           touchAction: 'none',
         }}
       >
@@ -431,7 +431,7 @@ function RotateEditPanel({
         data-testid="edit-live-preview"
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          minHeight: 260, width: '100%', background: 'var(--color-text)',
+          minHeight: 260, width: '100%', background: 'var(--color-backdrop)',
           borderRadius: 10, overflow: 'hidden', padding: 16, boxSizing: 'border-box',
         }}
       >
@@ -585,7 +585,7 @@ function ResizeEditPanel({
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           minHeight: Math.max(160, preview.height + 24), width: '100%',
-          background: 'var(--color-text)', borderRadius: 10, overflow: 'hidden',
+          background: 'var(--color-backdrop)', borderRadius: 10, overflow: 'hidden',
           padding: 12, boxSizing: 'border-box',
         }}
       >
@@ -713,7 +713,7 @@ function EditOpPanel({
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               minHeight: Math.max(140, preview.height + 24), width: '100%',
-              background: 'var(--color-text)', borderRadius: 10, overflow: 'hidden',
+              background: 'var(--color-backdrop)', borderRadius: 10, overflow: 'hidden',
               padding: 12, boxSizing: 'border-box',
             }}
           >
@@ -1340,7 +1340,7 @@ export function MediaLibraryPage() {
               borderRadius: isMobile ? 9999 : 8,
               cursor: 'pointer', fontFamily: 'inherit',
               fontSize: 13, fontWeight: activeCollection === '' ? 700 : 400,
-              background: activeCollection === '' ? '#F5E6D3' : (isMobile ? 'var(--color-bg)' : 'transparent'),
+              background: activeCollection === '' ? 'var(--color-tone-rust-bg)' : (isMobile ? 'var(--color-bg)' : 'transparent'),
               color: activeCollection === '' ? 'var(--color-text)' : 'var(--color-text-secondary)',
               marginBottom: isMobile ? 0 : 2,
               flexShrink: 0,
@@ -1380,7 +1380,7 @@ export function MediaLibraryPage() {
                       borderRadius: isMobile ? 9999 : 8,
                       cursor: 'pointer', fontFamily: 'inherit', fontSize: 13,
                       fontWeight: activeCollection === col.slug ? 700 : 400,
-                      background: activeCollection === col.slug ? '#F5E6D3' : (isMobile ? 'var(--color-bg)' : 'transparent'),
+                      background: activeCollection === col.slug ? 'var(--color-tone-rust-bg)' : (isMobile ? 'var(--color-bg)' : 'transparent'),
                       color: activeCollection === col.slug ? 'var(--color-text)' : 'var(--color-text-secondary)',
                       overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     }}
@@ -1426,7 +1426,7 @@ export function MediaLibraryPage() {
               onDrop={(e) => { if (!uploading) onDrop(e); else e.preventDefault(); }}
               onClick={() => { if (!uploading) fileInputRef.current?.click(); }}
               style={{
-                border: `2px dashed ${dragOver ? 'var(--color-primary)' : '#C4B5A5'}`,
+                border: `2px dashed ${dragOver ? 'var(--color-primary)' : 'var(--color-tone-brown-border)'}`,
                 borderRadius: 12, padding: isMobile ? '28px 16px' : '20px 16px', textAlign: 'center',
                 cursor: uploading ? 'wait' : 'pointer',
                 background: dragOver ? 'var(--color-warning-bg)' : 'var(--color-bg)', marginBottom: 16,
@@ -1472,13 +1472,13 @@ export function MediaLibraryPage() {
           />
 
           {uploadError && (
-            <div style={{ background: 'var(--color-danger-bg)', border: '1px solid #fca5a5', borderRadius: 10, padding: '10px 14px', color: 'var(--color-danger-strong)', fontSize: 13, marginBottom: 12 }}>
+            <div style={{ background: 'var(--color-danger-bg)', border: '1px solid color-mix(in srgb, var(--color-danger) 45%, transparent)', borderRadius: 10, padding: '10px 14px', color: 'var(--color-danger-strong)', fontSize: 13, marginBottom: 12 }}>
               {uploadError}
             </div>
           )}
 
           {uploadResults.length > 0 && (
-            <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 10, padding: '10px 14px', marginBottom: 12, fontSize: 13 }}>
+            <div style={{ background: 'var(--color-success-bg)', border: '1px solid var(--color-success)', borderRadius: 10, padding: '10px 14px', marginBottom: 12, fontSize: 13 }}>
               <strong>{uploadResults.length} file{uploadResults.length === 1 ? '' : 's'} uploaded</strong>
               {uploadResults.some((r) => r.deduped) && (
                 <span style={{ marginLeft: 8, color: 'var(--color-text-secondary)' }}>
@@ -1491,7 +1491,7 @@ export function MediaLibraryPage() {
           {/* Grid */}
           {loading && <Spinner />}
           {!loading && error && (
-            <div style={{ background: 'var(--color-danger-bg)', border: '1px solid #fca5a5', borderRadius: 10, padding: '10px 14px', color: 'var(--color-danger-strong)', fontSize: 13 }}>{error}</div>
+            <div style={{ background: 'var(--color-danger-bg)', border: '1px solid color-mix(in srgb, var(--color-danger) 45%, transparent)', borderRadius: 10, padding: '10px 14px', color: 'var(--color-danger-strong)', fontSize: 13 }}>{error}</div>
           )}
           {!loading && !error && assets.length === 0 && (
             <EmptyState message="No assets found. Upload some files to get started." />
@@ -1601,7 +1601,7 @@ export function MediaLibraryPage() {
             </div>
 
             {/* Preview */}
-            <div style={{ width: '100%', aspectRatio: isMobile ? '16/10' : '4/3', borderRadius: 10, overflow: 'hidden', background: '#F0EBE2', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, minHeight: isMobile ? 200 : undefined }}>
+            <div style={{ width: '100%', aspectRatio: isMobile ? '16/10' : '4/3', borderRadius: 10, overflow: 'hidden', background: 'var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, minHeight: isMobile ? 200 : undefined }}>
               <AssetDetailPreview asset={selected} />
             </div>
 
@@ -1621,7 +1621,7 @@ export function MediaLibraryPage() {
                 style={{
                   flex: 1, minWidth: 120, height: 44, minHeight: 44, borderRadius: 8,
                   border: '1px solid var(--color-border)',
-                  background: copiedUrl ? 'var(--color-success-bg, #f0fdf4)' : 'var(--color-bg)',
+                  background: copiedUrl ? 'var(--color-success-bg)' : 'var(--color-bg)',
                   cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600,
                   color: copiedUrl ? 'var(--color-success-strong)' : 'var(--color-text-secondary)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -1638,7 +1638,7 @@ export function MediaLibraryPage() {
                 style={{
                   flex: 1, minWidth: 120, height: 44, minHeight: 44, borderRadius: 8,
                   border: '1px solid var(--color-border)',
-                  background: 'var(--color-primary-soft, #FFF7ED)',
+                  background: 'var(--color-tone-rust-bg)',
                   cursor: exporting ? 'wait' : 'pointer', fontFamily: 'inherit',
                   fontSize: 13, fontWeight: 600, color: 'var(--color-text)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -1710,7 +1710,7 @@ export function MediaLibraryPage() {
             )}
 
             {detailError && (
-              <div style={{ background: 'var(--color-danger-bg)', border: '1px solid #fca5a5', borderRadius: 8, padding: '8px 12px', color: 'var(--color-danger-strong)', fontSize: 12, marginBottom: 10 }}>{detailError}</div>
+              <div style={{ background: 'var(--color-danger-bg)', border: '1px solid color-mix(in srgb, var(--color-danger) 45%, transparent)', borderRadius: 8, padding: '8px 12px', color: 'var(--color-danger-strong)', fontSize: 12, marginBottom: 10 }}>{detailError}</div>
             )}
 
             {/* Edit form */}
@@ -1752,8 +1752,8 @@ export function MediaLibraryPage() {
                         disabled={!canManage}
                         style={{
                           padding: '3px 10px', borderRadius: 9999, fontSize: 11, fontWeight: 600, cursor: canManage ? 'pointer' : 'default',
-                          background: active ? '#F5E6D3' : 'var(--color-bg)',
-                          color: active ? '#3D2B1F' : 'var(--color-text-secondary)',
+                          background: active ? 'var(--color-tone-rust-bg)' : 'var(--color-bg)',
+                          color: active ? 'var(--color-tone-rust-text)' : 'var(--color-text-secondary)',
                           border: active ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
                         }}
                       >
@@ -1797,8 +1797,8 @@ export function MediaLibraryPage() {
                   marginBottom: 14,
                   padding: 12,
                   borderRadius: 12,
-                  border: '1.5px solid #E8D4B8',
-                  background: '#FFFBF5',
+                  border: '1.5px solid var(--color-tone-rust-border)',
+                  background: 'var(--color-bg)',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -1937,7 +1937,7 @@ export function MediaLibraryPage() {
                 )}
 
                 {editResult && (
-                  <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 10, padding: '10px 12px', fontSize: 12, marginTop: 8 }}>
+                  <div style={{ background: 'var(--color-success-bg)', border: '1px solid var(--color-success)', borderRadius: 10, padding: '10px 12px', fontSize: 12, marginTop: 8 }}>
                     {editResult.mode === 'replace'
                       ? `Replaced in ${editResult.updated_references} reference${editResult.updated_references === 1 ? '' : 's'}`
                       : 'Saved as a new copy'}

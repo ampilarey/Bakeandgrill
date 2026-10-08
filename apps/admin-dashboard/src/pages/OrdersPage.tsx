@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { MessageSquare, Banknote, Bike, Car, ChefHat, Link2, Pause, Play, Receipt, RefreshCw, StickyNote } from 'lucide-react';
+import { MessageSquare, Ban, Banknote, Bike, Car, ChefHat, Copy, Link2, Pause, Play, Receipt, RefreshCw, StickyNote, Undo2, X, Check } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useSse } from '../hooks/useSse';
 import {
@@ -349,7 +349,8 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
 
             {/* Action buttons */}
             {(canManage || canHoldResume || canSendBill || canSendPayLink || canRecordPayment || canRequestRefund || canVoid) && (
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
+            // An even grid: wrapped buttons of every width made a ragged stack on a phone.
+            <div className="order-drawer-actions" style={{ marginBottom: 20 }}>
               {canHoldResume && order.status === 'held' && (
                 <Btn small onClick={() => doAction('resume', () => resumeOrder(order.id), 'Order resumed')}>
                   {acting === 'resume' ? '…' : <><InlineIcon icon={Play} />Resume Order</>}
@@ -379,7 +380,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                 && !['cancelled', 'refunded', 'completed', 'paid', 'partially_refunded'].includes(order.status)
                 && !orderHasRecordedPayment(order) && (
                 <Btn small variant="danger" onClick={() => { setShowCancel(true); setCancelReason(''); setActionErr(''); }}>
-                  Void / Cancel
+                  <InlineIcon icon={Ban} />Void / Cancel
                 </Btn>
               )}
               {canVoid
@@ -387,7 +388,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                 && orderHasRecordedPayment(order)
                 && !(canRequestRefund
                   && (order.paid_at || order.payment_status === 'paid' || order.payment_status === 'partial' || REFUNDABLE_STATUSES.has(order.status))) && (
-                <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)', width: '100%' }}>
+                <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)', gridColumn: '1 / -1' }}>
                   Payment recorded — use Request Refund instead of void.
                 </p>
               )}
@@ -446,7 +447,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                   placeholder="7XXXXXX or +9607XXXXXX"
                   aria-label="Bill SMS phone"
                   style={{
-                    flex: '1 1 160px', minWidth: 140, padding: '6px 10px',
+                    gridColumn: '1 / -1', padding: '6px 10px',
                     borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13,
                   }}
                 />
@@ -460,7 +461,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                 && !['cancelled', 'refunded'].includes(order.status)
                 && (order.paid_at || order.payment_status === 'paid' || order.payment_status === 'partial' || REFUNDABLE_STATUSES.has(order.status)) && (
                 <Btn small variant="danger" onClick={openRefundForm}>
-                  Request Refund
+                  <InlineIcon icon={Undo2} />Request Refund
                 </Btn>
               )}
             </div>
@@ -551,13 +552,13 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
             )}
 
             {showCancel && (
-              <div style={{ background: 'var(--color-danger-bg)', border: '1px solid #FECACA', borderRadius: 10, padding: 12, marginBottom: 16 }}>
+              <div style={{ background: 'var(--color-danger-bg)', border: '1px solid var(--color-danger)', borderRadius: 10, padding: 12, marginBottom: 16 }}>
                 <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: 'var(--color-danger-strong)' }}>Void / cancel this order</p>
                 <input
                   value={cancelReason}
                   onChange={(e) => setCancelReason(e.target.value)}
                   placeholder="Reason (required)"
-                  style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid #FECACA', marginBottom: 8, boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-danger)', marginBottom: 8, boxSizing: 'border-box' }}
                 />
                 <div style={{ display: 'flex', gap: 8 }}>
                   <Btn
@@ -586,7 +587,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
             )}
 
             {phone && order.status !== 'cancelled' && (canReceipts || canInvoice) && (
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+              <div className="order-drawer-actions" style={{ marginBottom: 16, gridTemplateColumns: '1fr' }}>
                 {canReceipts && (
                 <Btn
                   small
@@ -594,15 +595,15 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                   disabled={copyLinkBusy}
                   onClick={() => void handleCopyReceiptLink()}
                 >
-                  {copyLinkBusy ? '…' : 'Copy invoice / receipt link'}
+                  {copyLinkBusy ? '…' : <><InlineIcon icon={Copy} />Copy invoice / receipt link</>}
                 </Btn>
                 )}
                 {canReceipts && ['paid', 'completed', 'refunded', 'delivered'].includes(order.status) ? (
-                  <Btn small disabled={receiptBusy} onClick={() => void handleSendReceiptSms()}>
+                  <Btn small variant="secondary" disabled={receiptBusy} onClick={() => void handleSendReceiptSms()}>
                     {receiptBusy ? '…' : <><InlineIcon icon={MessageSquare} />Send receipt SMS</>}
                   </Btn>
                 ) : canInvoice ? (
-                  <Btn small disabled={receiptBusy} onClick={() => void handleSendInvoiceSms()}>
+                  <Btn small variant="secondary" disabled={receiptBusy} onClick={() => void handleSendInvoiceSms()}>
                     {receiptBusy ? '…' : <><InlineIcon icon={MessageSquare} />Send invoice SMS</>}
                   </Btn>
                 ) : null}
@@ -668,7 +669,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
               <div style={{ marginBottom: 16 }}>
                 <p style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 8 }}>
                   <InlineIcon icon={Car} />Driver
-                  {order.driver && <span style={{ marginLeft: 8, fontWeight: 400, fontSize: 12, color: 'var(--color-success-strong)' }}>✓ {order.driver.name}</span>}
+                  {order.driver && <span style={{ marginLeft: 8, fontWeight: 400, fontSize: 12, color: 'var(--color-success-strong)' }}><InlineIcon icon={Check} size={12} />{order.driver.name}</span>}
                 </p>
                 {drivers.length > 0 ? (
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -742,7 +743,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
             )}
 
             {showRefund && (
-              <div style={{ background: 'var(--color-danger-bg)', border: '1px solid #FECACA', borderRadius: 12, padding: 16, marginBottom: 12 }}>
+              <div style={{ background: 'var(--color-danger-bg)', border: '1px solid color-mix(in srgb, var(--color-danger) 35%, transparent)', borderRadius: 12, padding: 16, marginBottom: 12 }}>
                 <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-danger-strong)', marginBottom: 12 }}>Request Refund</div>
                 {refundError && (
                   <p style={{ color: 'var(--color-danger-strong)', fontSize: 12, marginBottom: 10 }}>{refundError}</p>
@@ -814,7 +815,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                     />
                     {payRows.length > 1 && (
                       <button onClick={() => setPayRows((rs) => rs.filter((_, j) => j !== i))}
-                        style={{ background: 'none', border: 'none', fontSize: 16, color: 'var(--color-text-muted)', cursor: 'pointer', padding: '0 4px' }}>✕</button>
+                        aria-label="Remove this payment line" style={{ background: 'none', border: 'none', fontSize: 16, color: 'var(--color-text-muted)', cursor: 'pointer', padding: '0 4px', display: 'inline-flex', alignItems: 'center' }}><X size={16} aria-hidden /></button>
                     )}
                   </div>
                 ))}
@@ -914,7 +915,7 @@ function OrderFlags({ o }: { o: Order }) {
           fontSize: 10, fontWeight: 800, letterSpacing: 0.4,
           color: 'var(--color-danger-strong)', background: 'var(--color-danger-bg)',
           padding: '2px 5px', borderRadius: 4,
-          border: '1px solid #FECACA',
+          border: '1px solid color-mix(in srgb, var(--color-danger) 35%, transparent)',
         }}
       >
         {o.payment_status === 'partial' ? 'PARTIAL' : 'UNPAID'}
@@ -1013,7 +1014,7 @@ export function OrdersPage() {
     setSmsBusy(o.id);
     try {
       await sendReceiptForOrder(o.id, { recipient: phone, channel: 'sms' });
-      showRowToast(o.id, '✓ SMS sent');
+      showRowToast(o.id, 'SMS sent');
     } catch { showRowToast(o.id, 'SMS failed'); } finally { setSmsBusy(null); }
   };
 
@@ -1153,7 +1154,7 @@ export function OrdersPage() {
         >
           {unpaidOnly ? '● ' : '○ '}Unpaid only
         </button>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--color-text-secondary)' }}>
+        <label className="mobile-filters-inline" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--color-text-secondary)' }}>
           Per page:
           <select
             value={perPage}
@@ -1309,7 +1310,7 @@ export function OrdersPage() {
                             opacity: smsBusy === o.id ? 0.5 : 1,
                           }}
                         >
-                          {rowToast?.id === o.id ? '✓' : <MessageSquare size={13} />}
+                          {rowToast?.id === o.id ? <Check size={13} aria-hidden /> : <MessageSquare size={13} />}
                         </button>
                       )}
                       <Btn small onClick={() => setSelectedId(o.id)} variant="ghost">View</Btn>

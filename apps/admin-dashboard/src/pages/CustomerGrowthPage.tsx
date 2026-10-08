@@ -289,7 +289,7 @@ export function CustomerGrowthPage() {
                 style={{
                   textAlign: 'left', padding: 12, borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
                   border: activeSegment === s.slug ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
-                  background: activeSegment === s.slug ? '#FEF3E2' : 'var(--color-surface)',
+                  background: activeSegment === s.slug ? 'var(--color-tone-rust-bg)' : 'var(--color-surface)',
                 }}
               >
                 <p style={{ margin: 0, fontWeight: 700, fontSize: 13 }}>{s.label}</p>
@@ -431,7 +431,7 @@ export function CustomerGrowthPage() {
         <Card>
           <p style={{ margin: '0 0 12px', fontWeight: 700 }}>Segment outreach</p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
-            <select value={marketingSegment} onChange={(e) => setMarketingSegment(e.target.value)} style={{ padding: 8, borderRadius: 8, border: '1px solid var(--color-border)' }}>
+            <select value={marketingSegment} onChange={(e) => setMarketingSegment(e.target.value)} style={{ padding: 8, borderRadius: 8, border: '1px solid var(--color-border)', maxWidth: '100%', minWidth: 0 }}>
               {segments.map((s) => <option key={s.slug} value={s.slug}>{s.label} ({s.count})</option>)}
             </select>
             <StatCard label="Selected segment" value={String(marketingOptIn)} />

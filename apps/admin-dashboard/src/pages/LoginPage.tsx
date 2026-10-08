@@ -12,8 +12,8 @@ type LoginMode = 'password' | 'pin';
 const INPUT: React.CSSProperties = {
   width: '100%', boxSizing: 'border-box',
   borderRadius: 10, padding: '11px 14px',
-  border: '1px solid #EDE4D4', fontSize: 15,
-  color: '#2A1E0C', background: '#FFFDF9', outline: 'none',
+  border: '1px solid var(--color-border)', fontSize: 15,
+  color: 'var(--color-text)', background: 'var(--color-surface)', outline: 'none',
   fontFamily: 'inherit',
 };
 
@@ -168,7 +168,7 @@ export function LoginPage({ onLogin }: { onLogin: (user: StaffUser, returnTo?: s
   };
 
   const wrap: React.CSSProperties = {
-    minHeight: '100vh', background: 'var(--color-text)',
+    minHeight: '100vh', background: 'var(--color-backdrop)',
     display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
   };
 
@@ -196,9 +196,9 @@ export function LoginPage({ onLogin }: { onLogin: (user: StaffUser, returnTo?: s
                 onClick={() => { setLoginMode(mode); setLoginError(''); }}
                 style={{
                   flex: 1, height: 40, borderRadius: 10, cursor: 'pointer', fontWeight: 700,
-                  border: `1px solid ${loginMode === mode ? 'var(--color-primary)' : '#EDE4D4'}`,
-                  background: loginMode === mode ? '#FEF3E8' : '#FFFDF9',
-                  color: loginMode === mode ? '#9A3412' : '#8B7355',
+                  border: `1px solid ${loginMode === mode ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                  background: loginMode === mode ? 'var(--color-tone-rust-bg)' : 'var(--color-surface)',
+                  color: loginMode === mode ? 'var(--color-tone-rust-text)' : 'var(--color-text-secondary)',
                 }}
               >
                 {mode === 'password' ? 'Password' : 'PIN'}
@@ -282,7 +282,7 @@ export function LoginPage({ onLogin }: { onLogin: (user: StaffUser, returnTo?: s
           </form>
 
           <div style={{ marginTop: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <a href="/" style={{ fontSize: 12, color: '#C4A882', textDecoration: 'none' }}>← Main Website</a>
+            <a href="/" style={{ fontSize: 12, color: 'var(--color-text-muted)', textDecoration: 'none' }}>← Main Website</a>
             {loginMode === 'password' && (
               <button style={BTN_GHOST} onClick={() => { setScreen('reset-phone'); setResetPhone(phone); }}>
                 Forgot password?

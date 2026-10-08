@@ -14,15 +14,6 @@ export async function updateSiteSettings(settings: Record<string, string | null>
   await req('/site-settings', { method: 'PUT', body: JSON.stringify({ settings }) });
 }
 
-export async function uploadSiteLogo(key: string, file: File): Promise<{ url: string }> {
-  const { prepareImageForUpload } = await import('../utils/prepareUpload');
-  const prepared = await prepareImageForUpload(file);
-  const form = new FormData();
-  form.append('file', prepared);
-  form.append('key', key);
-  return req('/site-settings/upload', { method: 'POST', body: form });
-}
-
 // ── Online Ordering Gate ───────────────────────────────────────────────────────
 
 export type ModeGateFragment = {

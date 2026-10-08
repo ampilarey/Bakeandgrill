@@ -16,7 +16,7 @@ import {
   type OpsAlertsSettings,
 } from '../api';
 import { SmsNotificationRow } from './SettingsPage/SmsNotificationRow';
-import { Btn } from '../components/SharedUI';
+import { Btn, Switch } from '../components/SharedUI';
 import {
   Bike, ChefHat, CircleCheck, FileText, Flame, Link2, PackageCheck, PartyPopper, Receipt, Smartphone, type LucideIcon,
 } from 'lucide-react';
@@ -316,39 +316,15 @@ function NotificationsSettings() {
             padding: '12px 14px', borderRadius: 10, border: '1px solid var(--color-border)',
             background: 'var(--color-surface)', cursor: 'pointer',
           }}>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={opsAlerts?.inventory_reorder_alert_sms ?? false}
+            {/* The shared switch: this one drew its own, and its "on" colour was
+                an undefined variable, so switched on it showed no track at all. */}
+            <Switch
+              checked={opsAlerts?.inventory_reorder_alert_sms ?? false}
+              onChange={() => void toggleInventoryReorderAlert()}
               aria-label="Inventory reorder SMS alert"
               disabled={opsSaving || !opsAlerts}
-              onClick={(e) => {
-                e.preventDefault();
-                void toggleInventoryReorderAlert();
-              }}
-              style={{
-                flexShrink: 0,
-                width: 44,
-                height: 26,
-                borderRadius: 999,
-                border: 'none',
-                padding: 2,
-                marginTop: 2,
-                cursor: opsSaving || !opsAlerts ? 'not-allowed' : 'pointer',
-                background: opsAlerts?.inventory_reorder_alert_sms ? 'var(--color-accent)' : '#D4C4B5',
-                transition: 'background 0.15s',
-              }}
-            >
-              <span style={{
-                display: 'block',
-                width: 22,
-                height: 22,
-                borderRadius: '50%',
-                background: '#fff',
-                transform: opsAlerts?.inventory_reorder_alert_sms ? 'translateX(18px)' : 'translateX(0)',
-                transition: 'transform 0.15s',
-              }} />
-            </button>
+              style={{ marginTop: 2 }}
+            />
             <span>
               <span style={{ display: 'block', fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>
                 Stock alert SMS

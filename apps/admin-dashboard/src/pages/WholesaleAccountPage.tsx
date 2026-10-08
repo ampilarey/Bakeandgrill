@@ -455,7 +455,7 @@ export default function WholesaleAccountPage() {
                       padding: '6px 12px',
                       borderRadius: 8,
                       border: `1px solid ${on ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                      background: on ? 'var(--color-primary-soft, var(--color-bg))' : 'transparent',
+                      background: on ? 'var(--color-tone-rust-bg)' : 'transparent',
                       color: on ? 'var(--color-primary)' : 'var(--color-text-secondary)',
                       fontWeight: 600,
                       fontSize: 12,

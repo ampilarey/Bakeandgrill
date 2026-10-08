@@ -448,7 +448,7 @@ export default function DevicesPage() {
           <p style={{ margin: '0 0 16px', fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
             Give this device a friendly name so you can identify it later.
           </p>
-          <div style={{ background: '#FEF3E8', borderRadius: 10, padding: '10px 14px', marginBottom: 16 }}>
+          <div style={{ background: 'var(--color-tone-rust-bg)', borderRadius: 10, padding: '10px 14px', marginBottom: 16 }}>
             <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Device ID</p>
             <p style={{ margin: '3px 0 0', fontSize: 13, fontFamily: 'monospace', color: 'var(--color-primary)', fontWeight: 700 }}>{approveTarget.identifier ?? '—'}</p>
           </div>
@@ -467,7 +467,7 @@ export default function DevicesPage() {
           <ModalActions>
             <Btn variant="secondary" onClick={() => setApproveTarget(null)}>Cancel</Btn>
             <Btn onClick={confirmApprove} disabled={approving || !approveName.trim()}>
-              {approving ? 'Approving…' : '✓ Approve Device'}
+              {approving ? 'Approving…' : <><InlineIcon icon={Check} />Approve Device</>}
             </Btn>
           </ModalActions>
         </Modal>

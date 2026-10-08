@@ -59,6 +59,10 @@
   /* Off track of the shared Switch: a warm grey that still reads on white. */
   --color-switch-off:        #D1C9BE;
   --color-switch-knob:       #FFFFFF;
+  /* Near-black in both themes: behind photos and video, the sign-in page,
+     the bulk-selection bar. --color-text flips to cream in dark mode. */
+  --color-backdrop:          #1C1408;
+  --color-backdrop-text:     #C4B5A3;
 
   /* TV Signage designer preview chrome */
   --color-signage-canvas-bg:     #2A2118;
@@ -93,6 +97,11 @@ body {
   margin: 0;
 }
 a { text-decoration: none; color: inherit; }
+/* Tick boxes, radio buttons, sliders and progress bars in the brand rust, not
+   the browser's blue; the variable follows the theme into dark mode. */
+input[type="checkbox"], input[type="radio"], input[type="range"], progress, meter {
+  accent-color: var(--color-primary);
+}
 :focus-visible {
   outline: 2.5px solid var(--color-primary);
   outline-offset: 2px;
@@ -498,6 +507,14 @@ a { text-decoration: none; color: inherit; }
 
 /* ── Mobile & Responsive Breakpoints ───────────────────────── */
 
+/* Order drawer actions: an even grid of equal buttons (OrdersPage). */
+.order-drawer-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.order-drawer-actions > button { width: 100%; justify-content: center; }
+
 /* Tablet: 768px–1023px */
 @media (max-width: 1023px) {
   /* Stat cards: 2-col grid instead of forced 4-col */
@@ -566,6 +583,16 @@ input[type="file"]::file-selector-button:hover {
   input, select, textarea {
     font-size: 16px !important;
     min-height: 44px;
+  }
+  /* …but not tick boxes and radios: a 44px-tall box pushed them off the line of
+     their own label. A little larger than the browser's 13px instead (zero
+     specificity, so any page's own size wins). */
+  input[type="checkbox"], input[type="radio"] {
+    min-height: 0;
+  }
+  :where(input[type="checkbox"], input[type="radio"]) {
+    width: 18px;
+    height: 18px;
   }
   textarea {
     min-height: 88px;
@@ -681,6 +708,12 @@ input[type="file"]::file-selector-button:hover {
     max-width: none !important;
     min-width: 0 !important;
     flex: none !important;
+  }
+  /* A select beside its own words ("Per page: [25]") takes the space left
+     after them; at 100% it ran past the panel's edge. */
+  .mobile-filters-body .mobile-filters-inline select {
+    width: auto !important;
+    flex: 1 1 auto !important;
   }
 
   /* Order detail drawer: full-width on mobile (was 420px fixed) */
@@ -1459,6 +1492,8 @@ input[type="file"]::file-selector-button:hover {
 
 /* ── Dark Mode ───────────────────────────────────────────────── */
 [data-theme="dark"] {
+  /* Native controls (tick boxes, date pickers, select lists, scrollbars) draw dark too. */
+  color-scheme: dark;
   --color-bg:            #0F0D0A;
   /* The brand rust is 3.6:1 on this ground; the lighter shade the website uses on its dark theme reads. */
   --color-primary:       #C56F3D;
@@ -1499,6 +1534,8 @@ input[type="file"]::file-selector-button:hover {
   --color-tone-gold-border:  rgba(202, 125, 28, 0.45);
   --color-switch-off:        #4A4234;
   --color-switch-knob:       #F0EAE0;
+  --color-backdrop:          #0A0907;
+  --color-backdrop-text:     #A09080;
 }
 
 [data-theme="dark"] body {
@@ -2270,7 +2307,7 @@ input[type="file"]::file-selector-button:hover {
 }
 
 .admin-shell-sheet-logout {
-  border-color: #fca5a5;
+  border-color: color-mix(in srgb, var(--color-danger) 45%, transparent);
   color: var(--color-danger-strong);
 }
 
@@ -3512,7 +3549,7 @@ work area is a single column that
 .hub-skeleton-card {
   height: 96px;
   border-radius: 14px;
-  background: linear-gradient(90deg, #F0EBE4 25%, var(--color-bg) 50%, #F0EBE4 75%);
+  background: linear-gradient(90deg, var(--color-border-light) 25%, var(--color-bg) 50%, var(--color-border-light) 75%);
   background-size: 200% 100%;
 }
 
@@ -4083,7 +4120,7 @@ work area is a single column that
 .hub-more-item:hover { background: var(--color-bg); }
 .hub-more-schedule {
   padding: 10px 14px;
-  border-top: 1px solid #F0EBE4;
+  border-top: 1px solid var(--color-border-light);
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -4124,7 +4161,7 @@ work area is a single column that
   padding: 12px;
   border-radius: 12px;
   background: var(--color-warning-bg);
-  border: 1px solid #F5D0A9;
+  border: 1px solid var(--color-warning);
   font-size: 13px;
   color: var(--color-text);
 }
@@ -4541,12 +4578,12 @@ work area is a single column that
   display: none;
 }
 
-.specials-page .specials-day-row {
+.specials-day-row {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 6px;
 }
-.specials-page .specials-day-chip {
+.specials-day-chip {
   min-height: 40px;
   padding: 0;
   border-radius: 10px;
@@ -4558,13 +4595,16 @@ work area is a single column that
   color: var(--color-text-secondary);
   font-family: inherit;
 }
-.specials-page .specials-day-chip.is-active {
+/* Unscoped: the add/edit form is a pop-up, drawn outside .specials-page, so
+   ".specials-page .specials-day-chip" never reached it and Sun–Sat ran
+   together as bare text. */
+.specials-day-chip.is-active {
   border-color: var(--color-primary);
-  background: rgba(183, 75, 12, 0.12);
+  background: var(--color-tone-rust-bg);
   color: var(--color-primary);
 }
 
-.specials-page .specials-active-toggle {
+.specials-active-toggle {
   display: flex;
   align-items: center;
   padding-top: 20px;
@@ -4679,50 +4719,54 @@ work area is a single column that
     line-height: 1.35;
   }
 
-  .specials-page .form-grid-keep-2 {
-    grid-template-columns: 1fr 1fr !important;
+  .form-grid-keep-2 {
+    /* minmax(0, …): a date field's own minimum width pushed the second
+       column past the pop-up's edge. */
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 10px !important;
   }
+  .form-grid-keep-2 > * { min-width: 0; }
+  .form-grid-keep-2 input { min-width: 0; max-width: 100%; }
 
-  .specials-page .specials-day-chip {
+  .specials-day-chip {
     min-height: 44px;
     font-size: 11px;
   }
 
-  .specials-page .specials-active-toggle {
+  .specials-active-toggle {
     padding-top: 0;
   }
 
-  .specials-page .specials-variant-table,
-  .specials-page .specials-variant-table tbody,
-  .specials-page .specials-variant-table tr,
-  .specials-page .specials-variant-table td {
+  .specials-variant-table,
+  .specials-variant-table tbody,
+  .specials-variant-table tr,
+  .specials-variant-table td {
     display: block;
     width: 100%;
   }
-  .specials-page .specials-variant-table thead {
+  .specials-variant-table thead {
     display: none;
   }
-  .specials-page .specials-variant-table tr {
+  .specials-variant-table tr {
     padding: 12px;
     border-bottom: 1px solid var(--color-border-light);
   }
-  .specials-page .specials-variant-table tr:last-child {
+  .specials-variant-table tr:last-child {
     border-bottom: none;
   }
-  .specials-page .specials-variant-table td {
+  .specials-variant-table td {
     border: none !important;
     padding: 4px 0 !important;
   }
-  .specials-page .specials-variant-table td[data-label="Discount %"],
-  .specials-page .specials-variant-table td[data-label="Special price"] {
+  .specials-variant-table td[data-label="Discount %"],
+  .specials-variant-table td[data-label="Special price"] {
     display: grid;
     grid-template-columns: 96px 1fr;
     align-items: center;
     gap: 8px;
   }
-  .specials-page .specials-variant-table td[data-label="Discount %"]::before,
-  .specials-page .specials-variant-table td[data-label="Special price"]::before {
+  .specials-variant-table td[data-label="Discount %"]::before,
+  .specials-variant-table td[data-label="Special price"]::before {
     content: attr(data-label);
     font-size: 12px;
     font-weight: 600;
@@ -5606,6 +5650,8 @@ work area is a single column that
   gap: 10px;
   flex-wrap: wrap;
 }
+/* Drawn like SharedUI Switch (rust on, the switch-off token off): it was the
+   one green switch left in admin. */
 .menu-avail-switch {
   position: relative;
   width: 44px;
@@ -5614,12 +5660,12 @@ work area is a single column that
   padding: 0;
   border: none;
   border-radius: 12px;
-  background: var(--color-border);
+  background: var(--color-switch-off);
   cursor: pointer;
   flex-shrink: 0;
   transition: background 0.2s;
 }
-.menu-avail-switch[data-on="true"] { background: var(--color-success); }
+.menu-avail-switch[data-on="true"] { background: var(--color-primary); }
 .menu-avail-switch-thumb {
   position: absolute;
   top: 2px;
@@ -5627,8 +5673,8 @@ work area is a single column that
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: var(--color-surface);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  background: var(--color-switch-knob);
+  box-shadow: 0 1px 3px rgba(28, 20, 8, 0.25);
   transition: left 0.2s;
 }
 .menu-avail-switch[data-on="true"] .menu-avail-switch-thumb { left: 22px; }
@@ -6467,7 +6513,7 @@ work area is a single column that
 .tg-bot__actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .tg-ok, .tg-warn { display: flex; align-items: center; gap: 6px; font-size: 0.8125rem; font-weight: 600; }
 .tg-ok { color: var(--color-success); }
-.tg-warn { color: var(--color-warning-strong, #b45309); }
+.tg-warn { color: var(--color-warning-strong); }
 .tg-warn--block { align-items: flex-start; padding: 10px 12px; border-radius: 10px; background: var(--color-warning-bg); border: 1px solid var(--color-border); font-weight: 500; }
 .tg-add { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--color-border); }
 .tg-steps { margin: 0; padding-left: 18px; font-size: 0.8125rem; color: var(--color-text-secondary); line-height: 1.5; }

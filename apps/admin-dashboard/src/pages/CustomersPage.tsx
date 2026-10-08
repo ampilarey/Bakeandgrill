@@ -420,8 +420,8 @@ export function CustomersPage() {
                 role="button"
                 onClick={() => void openDetail(c)}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); void openDetail(c); } }}
-                style={{ cursor: 'pointer', borderTop: '1px solid #F0EBE3' }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = '#FAF7F3'; }}
+                style={{ cursor: 'pointer', borderTop: '1px solid var(--color-border-light)' }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = 'var(--color-bg)'; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = ''; }}
               >
                 <td style={TD}>
@@ -459,7 +459,7 @@ export function CustomersPage() {
         )}
 
         {!loading && meta.last_page > 1 && (
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, padding: '16px 0', borderTop: '1px solid #F0EBE3' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, padding: '16px 0', borderTop: '1px solid var(--color-border-light)' }}>
             <Btn small variant="secondary" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>← Prev</Btn>
             <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', alignSelf: 'center' }}>Page {page} of {meta.last_page}</span>
             <Btn small variant="secondary" onClick={() => setPage((p) => Math.min(meta.last_page, p + 1))} disabled={page >= meta.last_page}>Next →</Btn>
@@ -516,7 +516,7 @@ export function CustomersPage() {
                     { label: 'Loyalty Pts', value: String(detail.customer.loyalty_points ?? 0) },
                     { label: 'Total Spend', value: paidSpend != null ? `MVR ${paidSpend.toFixed(2)}` : '…' },
                   ].map(({ label, value }) => (
-                    <div key={label} style={{ background: '#FAF7F3', border: '1px solid #F0EAE3', borderRadius: 12, padding: '12px 10px', textAlign: 'center' }}>
+                    <div key={label} style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', borderRadius: 12, padding: '12px 10px', textAlign: 'center' }}>
                       <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--color-primary)' }}>{value}</p>
                       <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 600 }}>{label}</p>
                     </div>
@@ -539,7 +539,7 @@ export function CustomersPage() {
                         ['TIN', detail.customer.tin ?? '—'],
                         ['GST Registered', detail.customer.is_gst_registered ? 'Yes' : 'No'],
                       ] as [string, string][]).map(([label, value]) => (
-                        <div key={label} style={{ background: '#FAF7F3', borderRadius: 8, padding: '8px 10px' }}>
+                        <div key={label} style={{ background: 'var(--color-bg)', borderRadius: 8, padding: '8px 10px' }}>
                           <p style={{ color: 'var(--color-text-muted)', margin: '0 0 2px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</p>
                           <p style={{ color: 'var(--color-text)', margin: 0, fontWeight: 600, fontSize: 13 }}>{value}</p>
                         </div>
@@ -593,7 +593,7 @@ export function CustomersPage() {
                     <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: 'var(--color-warning-strong)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                       Account Identity
                     </p>
-                    <p style={{ margin: '0 0 12px', fontSize: 13, color: '#78350F', lineHeight: 1.5 }}>
+                    <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--color-warning-strong)', lineHeight: 1.5 }}>
                       Phone is the login identity. Change it here if the customer got a new SIM, or merge duplicate accounts into this one.
                     </p>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -609,7 +609,7 @@ export function CustomersPage() {
                     <p style={{ fontWeight: 700, fontSize: 11, color: 'var(--color-text-muted)', margin: '0 0 10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Order History</p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       {(detail.orders ?? []).map((o) => (
-                        <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, padding: '10px 12px', background: '#FAF7F3', borderRadius: 10, border: '1px solid #F0EAE3' }}>
+                        <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, padding: '10px 12px', background: 'var(--color-bg)', borderRadius: 10, border: '1px solid var(--color-border-light)' }}>
                           <Link to={`/orders?order=${o.id}`} style={{ fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none' }}>#{o.order_number}</Link>
                           <span style={{ color: 'var(--color-text-secondary)', fontSize: 12 }}>{o.type?.replace(/_/g, ' ')}</span>
                           <Badge color={['completed', 'paid'].includes(o.status) ? 'green' : o.status === 'cancelled' ? 'red' : 'gray'}>{o.status}</Badge>
@@ -671,8 +671,8 @@ export function CustomersPage() {
                   style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     padding: '10px 12px', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
-                    border: picked ? '2px solid var(--color-primary)' : '1px solid #F0EAE3',
-                    background: picked ? 'var(--color-warning-bg)' : '#FAF7F3',
+                    border: picked ? '2px solid var(--color-primary)' : '1px solid var(--color-border-light)',
+                    background: picked ? 'var(--color-warning-bg)' : 'var(--color-bg)',
                   }}
                 >
                   <span>

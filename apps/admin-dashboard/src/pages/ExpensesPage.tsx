@@ -9,12 +9,12 @@ import { downloadCSV } from '../utils/csvExport';
 import { today, monthStart } from '../utils/dateHelpers';
 import { ADMIN_EXPENSE_PAYMENT_METHODS, paymentMethodLabel } from '../lib/paymentMethods';
 import {
-  Badge, Btn, Card, ConfirmDialog, DateInput, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Spinner, StatCard, TableCard, TD, useConfirmDialog,
+  Badge, Btn, Card, ConfirmDialog, DateInput, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Spinner, StatCard, TableCard, TD, useConfirmDialog, InlineIcon,
 } from '../components/SharedUI';
 import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import { PurchaseSearch, type PurchaseSearchSelection } from '../components/PurchaseSearch';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { Paperclip } from 'lucide-react';
+import { Paperclip, Check, X } from 'lucide-react';
 
 const STATUS_COLOR: Record<string, string> = { approved: 'green', pending: 'yellow', rejected: 'red' };
 
@@ -50,7 +50,7 @@ function GstExpenseFields({ form, setForm, fieldStyle }: {
   fieldStyle: CSSProperties;
 }) {
   return (
-    <div style={{ borderTop: '1px solid #E8DDD0', paddingTop: 12, marginTop: 4 }}>
+    <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 12, marginTop: 4 }}>
       <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', margin: '0 0 10px' }}>Input GST (optional)</p>
       <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, marginBottom: 10 }}>
         <input type="checkbox" checked={form.is_input_tax_claimable} onChange={(e) => setForm((f) => ({ ...f, is_input_tax_claimable: e.target.checked }))} />
@@ -405,10 +405,10 @@ export function ExpensesPage() {
             <StatCard label="Total Expenses" value={`MVR ${parseFloat(String(totalAmount ?? 0)).toFixed(2)}`} accent="var(--color-danger)" />
 
             {bulkSelected.size > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderRadius: 10, marginBottom: 10, background: '#1C1408', color: '#fff' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderRadius: 10, marginBottom: 10, background: 'var(--color-backdrop)', color: '#fff' }}>
                 <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>{bulkSelected.size} selected</span>
-                <Btn small onClick={bulkApprove} disabled={bulkLoading}>✓ Approve</Btn>
-                <button onClick={() => setBulkSelected(new Set())} style={{ background: 'none', border: 'none', color: '#C4B5A3', cursor: 'pointer', fontSize: 18 }}>×</button>
+                <Btn small onClick={bulkApprove} disabled={bulkLoading}><InlineIcon icon={Check} />Approve</Btn>
+                <button type="button" aria-label="Clear selection" onClick={() => setBulkSelected(new Set())} style={{ background: 'none', border: 'none', color: 'var(--color-backdrop-text)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 32, minHeight: 32 }}><X size={18} aria-hidden /></button>
               </div>
             )}
             <TableCard>
@@ -420,7 +420,7 @@ export function ExpensesPage() {
                 />
                 <tbody>
                   {expenseCtl.rows.map((exp) => (
-                    <tr key={exp.id} style={{ background: bulkSelected.has(exp.id) ? '#FEF8F2' : undefined }}>
+                    <tr key={exp.id} style={{ background: bulkSelected.has(exp.id) ? 'var(--color-tone-rust-bg)' : undefined }}>
                       <td style={{ ...TD, width: 36 }}><input type="checkbox" checked={bulkSelected.has(exp.id)} onChange={() => toggleBulk(exp.id)} style={{ cursor: 'pointer' }} /></td>
                       <td style={{ ...TD, fontWeight: 700, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>
                         {exp.expense_number ?? '—'}
@@ -444,7 +444,7 @@ export function ExpensesPage() {
                             {exp.purchase?.purchase_number || `PO #${exp.purchase_id}`}
                           </Link>
                         ) : (
-                          <span style={{ color: '#C4B5A3' }}>—</span>
+                          <span style={{ color: 'var(--color-text-muted)' }}>—</span>
                         )}
                       </td>
                       <td style={{ ...TD, color: 'var(--color-text-secondary)' }}>{paymentMethodLabel(exp.payment_method)}</td>
@@ -455,7 +455,7 @@ export function ExpensesPage() {
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                           {exp.status === 'pending' && (
                             <Btn small onClick={() => void handleApprove(exp)} disabled={actionLoading === exp.id}>
-                              {actionLoading === exp.id ? '…' : '✓ Approve'}
+                              {actionLoading === exp.id ? '…' : <><InlineIcon icon={Check} />Approve</>}
                             </Btn>
                           )}
                           <Btn small variant="secondary" onClick={() => triggerReceiptUpload(exp.id)} disabled={actionLoading === exp.id}>
@@ -467,7 +467,7 @@ export function ExpensesPage() {
                           {!exp.is_auto && (
                             <>
                               <Btn small variant="secondary" onClick={() => handleEdit(exp)}>Edit</Btn>
-                              <Btn small variant="danger" onClick={() => handleDelete(exp.id)}>Delete</Btn>
+                              <Btn small variant="danger-outline" onClick={() => handleDelete(exp.id)}>Delete</Btn>
                             </>
                           )}
                         </div>

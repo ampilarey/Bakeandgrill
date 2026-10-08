@@ -215,7 +215,7 @@ export function ScheduledTab() {
                 {(['phone', 'contact', 'group'] as const).map(t => (
                   <button key={t} onClick={() => setForm(f => ({ ...f, to_type: t }))} style={{
                     padding: '5px 12px', fontSize: 12, borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit',
-                    background: form.to_type === t ? 'var(--color-primary)' : '#F5F0EA',
+                    background: form.to_type === t ? 'var(--color-primary)' : 'var(--color-border-light)',
                     color: form.to_type === t ? '#fff' : 'var(--color-text-secondary)', border: 'none',
                   }}>
                     {t === 'phone' ? 'Raw Phone' : t === 'contact' ? 'Contact' : 'Group'}
@@ -296,7 +296,7 @@ export function ScheduledTab() {
                       {DAYS.map(d => (
                         <button key={d} onClick={() => toggleDay(d)} style={{
                           padding: '4px 10px', fontSize: 12, borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit',
-                          background: form.recurrence_days.includes(d) ? 'var(--color-primary)' : '#F5F0EA',
+                          background: form.recurrence_days.includes(d) ? 'var(--color-primary)' : 'var(--color-border-light)',
                           color: form.recurrence_days.includes(d) ? '#fff' : 'var(--color-text-secondary)', border: 'none',
                         }}>{DAY_LABEL[d]}</button>
                       ))}

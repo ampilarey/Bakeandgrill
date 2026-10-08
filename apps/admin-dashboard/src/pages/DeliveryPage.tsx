@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchOrders, getDriverSettlementReport, type Order, type DriverSettlementReport, adminRequest } from '../api';
 import {
-  Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Modal, PageHeader, PageShell, Spinner, StatCard, statColor, useConfirmDialog, InlineIcon,
+  Badge, Btn, Card, ConfirmDialog, DateInput, EmptyState, ErrorMsg, Modal, PageHeader, PageShell, Spinner, StatCard, statColor, TabScrollRow, useConfirmDialog, InlineIcon,
 } from '../components/SharedUI';
 import { Bike, Car, MapPin, User, Phone, RefreshCw } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -103,8 +103,9 @@ export function DeliveryPage() {
         action={<Btn onClick={() => void loadOrders(page)} variant="secondary"><RefreshCw size={15} aria-hidden />Refresh</Btn>}
       />
 
-      {/* Tab switcher */}
-      <div role="tablist" style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+      {/* Tab switcher: the hub pages' pill strip, so the labels never wrap on a phone. */}
+      <TabScrollRow role="tablist" aria-label="Delivery" className="hub-tabs" fit
+        style={{ display: 'flex', gap: 4, background: 'var(--color-bg)', borderRadius: 10, padding: 4, maxWidth: '100%', overflowX: 'auto', marginBottom: 20 }}>
         {(['orders', 'drivers', 'settlement'] as const).map((t) => (
           <button
             key={t}
@@ -112,18 +113,16 @@ export function DeliveryPage() {
             aria-selected={tab === t}
             onClick={() => setTab(t)}
             style={{
-              padding: '8px 20px', borderRadius: 10, border: '1.5px solid',
-              borderColor: tab === t ? 'var(--color-primary)' : 'var(--color-border)',
-              background: tab === t ? 'var(--color-primary)' : 'var(--color-surface)',
-              color: tab === t ? 'white' : 'var(--color-text)',
-              fontWeight: 600, fontSize: 14, cursor: 'pointer',
-              fontFamily: 'inherit',
+              padding: '8px 14px', border: 'none', borderRadius: 8, cursor: 'pointer',
+              fontWeight: 600, fontSize: 14, fontFamily: 'inherit', whiteSpace: 'nowrap',
+              background: tab === t ? 'var(--color-primary)' : 'transparent',
+              color: tab === t ? '#fff' : 'var(--color-text-secondary)',
             }}
           >
-            {t === 'orders' ? `Orders (${orders.length})` : t === 'drivers' ? `Drivers (${drivers.length})` : 'Driver Settlement'}
+            {t === 'orders' ? `Orders (${orders.length})` : t === 'drivers' ? `Drivers (${drivers.length})` : 'Driver settlement'}
           </button>
         ))}
-      </div>
+      </TabScrollRow>
 
       {error && <ErrorMsg message={error} />}
 
@@ -178,14 +177,8 @@ export function DeliveryPage() {
       {tab === 'settlement' && (
         <>
           <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', marginBottom: 20, flexWrap: 'wrap' }}>
-            <label>
-              <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>From</span>
-              <input type="date" value={settlementFrom} onChange={(e) => setSettlementFrom(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)' }} />
-            </label>
-            <label>
-              <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>To</span>
-              <input type="date" value={settlementTo} onChange={(e) => setSettlementTo(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)' }} />
-            </label>
+            <DateInput label="From" value={settlementFrom} onChange={setSettlementFrom} />
+            <DateInput label="To" value={settlementTo} onChange={setSettlementTo} />
             {settlementLoading && (
               <span style={{ fontSize: 13, color: 'var(--color-text-muted)', paddingBottom: 8 }}>Loading…</span>
             )}
@@ -659,7 +652,7 @@ function DriversPanel({ drivers, onRefresh }: { drivers: Driver[]; onRefresh: ()
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                   <Btn small variant="ghost" onClick={() => startEdit(d)}>Edit</Btn>
-                  <Btn small variant="danger" onClick={() => void handleDelete(d.id)}>Delete</Btn>
+                  <Btn small variant="danger-outline" onClick={() => void handleDelete(d.id)}>Delete</Btn>
                 </div>
               </div>
             </Card>

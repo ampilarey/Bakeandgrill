@@ -44,7 +44,7 @@ const STATUS_BG: Record<string, string> = {
 };
 const STATUS_BORDER: Record<string, string> = {
   available: 'var(--color-success-strong)',
-  occupied:  '#d97706',
+  occupied:  'var(--color-warning)',
   reserved:  'var(--color-primary)',
   closed:    'var(--color-text-muted)',
 };
@@ -237,9 +237,9 @@ export default function TablesPage() {
             <div key={zone} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 16, overflow: 'hidden' }}>
               <div style={{
                 padding: '12px 20px',
-                borderBottom: '1px solid #F0EAE3',
+                borderBottom: '1px solid var(--color-border-light)',
                 display: 'flex', alignItems: 'center', gap: 12,
-                background: '#FAFAF8',
+                background: 'var(--color-bg)',
               }}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>{zone}</span>
                 <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{zoneTables.length} table{zoneTables.length !== 1 ? 's' : ''}</span>
@@ -247,7 +247,7 @@ export default function TablesPage() {
                   {zoneTables.filter(t => t.status === 'available').length} available
                 </span>
                 {zoneTables.filter(t => t.status === 'occupied').length > 0 && (
-                  <span style={{ fontSize: 12, color: '#d97706', fontWeight: 600 }}>
+                  <span style={{ fontSize: 12, color: 'var(--color-warning-strong)', fontWeight: 600 }}>
                     {zoneTables.filter(t => t.status === 'occupied').length} occupied
                   </span>
                 )}

@@ -104,8 +104,10 @@ export function TemplatesTab() {
           {templates.map(t => (
             <Card key={t.id} style={{ padding: '14px 18px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                {/* minWidth 0 and wrapping body text: a long {{reference}} line pushed
+                    the Edit button past the edge of a phone. */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
                     <span style={{ fontWeight: 700, fontSize: 14 }}>{t.name}</span>
                     <Badge label={t.type.replace(/_/g, ' ')} color={TYPE_COLORS[t.type] ?? 'gray'} />
                     {t.is_system && (
@@ -115,7 +117,7 @@ export function TemplatesTab() {
                     )}
                   </div>
                   {t.description && <div style={{ color: 'var(--color-text-muted)', fontSize: 12, marginBottom: 6 }}>{t.description}</div>}
-                  <div style={{ background: '#F5F0EA', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#3B2A1A', fontFamily: 'monospace', lineHeight: 1.5 }}>
+                  <div style={{ background: 'var(--color-border-light)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--color-text)', fontFamily: 'monospace', lineHeight: 1.5, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
                     {t.body || <em style={{ color: 'var(--color-text-muted)' }}>Empty template</em>}
                   </div>
                   {t.variables && t.variables.length > 0 && (
@@ -128,16 +130,16 @@ export function TemplatesTab() {
                     </div>
                   )}
                 </div>
-                <div style={{ display: 'flex', gap: 6, marginLeft: 12 }}>
-                  <Btn variant="ghost" onClick={() => doPreview(t)}><Eye size={13} /></Btn>
-                  <Btn variant="ghost" onClick={() => openModal(t)}><Pencil size={13} /></Btn>
+                <div style={{ display: 'flex', gap: 6, marginLeft: 12, flexShrink: 0 }}>
+                  <Btn variant="ghost" onClick={() => doPreview(t)} aria-label={`Preview ${t.name}`}><Eye size={13} /></Btn>
+                  <Btn variant="ghost" onClick={() => openModal(t)} aria-label={`Edit ${t.name}`}><Pencil size={13} /></Btn>
                   {!t.is_system && (
-                    <Btn variant="ghost" onClick={() => doDelete(t)}><Trash2 size={13} /></Btn>
+                    <Btn variant="ghost" onClick={() => doDelete(t)} aria-label={`Delete ${t.name}`}><Trash2 size={13} /></Btn>
                   )}
                 </div>
               </div>
               {preview?.templateId === t.id && (
-                <div style={{ marginTop: 10, background: '#fff', border: '1px solid var(--color-primary)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#3B2A1A' }}>
+                <div style={{ marginTop: 10, background: 'var(--color-surface)', border: '1px solid var(--color-primary)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--color-text)' }}>
                   <strong style={{ fontSize: 11, color: 'var(--color-primary)' }}>PREVIEW:</strong> {preview.text}
                 </div>
               )}

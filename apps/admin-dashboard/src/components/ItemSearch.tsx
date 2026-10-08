@@ -162,8 +162,8 @@ export function ItemSearch(props: Props) {
       : null;
     return (
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 8, background: '#F0FDF4',
-        border: '1px solid #86EFAC', borderRadius: 10, padding: '10px 12px', fontSize: 13,
+        display: 'flex', alignItems: 'center', gap: 8, background: 'var(--color-success-bg)',
+        border: '1px solid var(--color-success)', borderRadius: 10, padding: '10px 12px', fontSize: 13,
       }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ color: 'var(--color-success-strong)', fontWeight: 700 }}>{value.label}</div>
@@ -223,7 +223,7 @@ export function ItemSearch(props: Props) {
               style={{
                 display: 'block', width: '100%', textAlign: 'left', padding: '12px 12px',
                 background: 'none', border: 'none', cursor: 'pointer', fontSize: 13,
-                borderBottom: '1px solid #F5F0EB', fontFamily: 'inherit', minHeight: 44,
+                borderBottom: '1px solid var(--color-border-light)', fontFamily: 'inherit', minHeight: 44,
               }}
             >
               <div style={{ fontWeight: 700, color: 'var(--color-text)' }}>{r.label}</div>

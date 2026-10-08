@@ -440,6 +440,104 @@ mobile friendly"). Every page walked at 390px and 1366px with screenshots.
   `undefined` beside a `border` shorthand drops to the text colour (a black
   frame). Set the whole `border` instead.
 
+#### Stage 3e — Deep walk: every tab, pop-up and detail page
+
+**Done 2026-10-08** (owner: "Did u check the each and every pages in admin,
+sub page, sub sub pages? And the mobile layout of each too?"). A crawler
+opened every route, every tab group two levels deep, the safe pop-ups on each
+tab (add / edit / view forms and their own tabs) and the detail pages reached
+from lists, at 390px and 1366px: 271 screens on a phone and 277 on a
+computer, each checked for overflow, clipping, off-brand colour, emoji and
+failed API calls, then the phone set walked again after the fixes and
+compared screen by screen, and both again in dark mode. What it found, and
+the rule each fix leaves behind:
+
+- Native controls were browser blue: every tick box, radio, slider and
+  progress bar. `accent-color: var(--color-primary)` on them in `index.css`;
+  the dark theme also sets `color-scheme: dark` so date pickers, select lists
+  and scrollbars draw dark.
+- The phone rule that makes inputs 44px tall caught tick boxes and radios too,
+  so a radio sat in a 44px box away from its label. They are exempt and 18px
+  (zero-specificity, so a page's own size wins).
+- **Pop-ups render outside the page.** SharedUI `Modal` portals to `<body>`,
+  so a rule written as `.specials-page .specials-day-chip` never reaches a
+  pop-up: Specials' Sun–Sat buttons ran together as bare text. A pop-up's
+  classes are named on their own, never under a page class.
+- Row actions: `Btn variant="danger-outline"` (red words on the secondary
+  button) for a row's Delete / Remove / Reject / Cancel. Solid `danger` is for
+  the final "yes, do it": a confirm, a bulk action.
+- Every on/off control draws like `Switch`: Menu items' availability switch
+  was green, the ordering and delivery settings toggles used a hard-coded off
+  colour, `ui/Toggle` now renders `Switch`, and one Settings switch named an
+  undefined `--color-accent`, so it showed no track when on.
+- "Select all" chips (All Types, Every day) were green beside rust chips; they
+  are rust like the rest. Chip, notice and code-box tints (`#FEF3E8`,
+  `#F5F0EA`, `#f0fdf4`, `#fff`) stayed light in dark mode; they use the tone,
+  border-light, success and surface tokens.
+- `Input` (SharedUI) dropped a caller's `flex`: React writes an undefined
+  longhand as `''`, and `flexGrow: ''` after `flex: '1 1 100%'` cleared the
+  shorthand, so the menu photo address stayed a stub. It now forwards only the
+  keys the caller set.
+- A two-column form row on a phone needs `minmax(0, 1fr)`: with `1fr` a date
+  field's minimum width pushed the second column past the pop-up's edge.
+- SMS → Library: a long `{{reference}}` line in a template card pushed the
+  Edit button past a phone's edge. A flex child that holds free text needs
+  `minWidth: 0` and wrapping; the button column `flexShrink: 0`.
+- Orders' phone filters forced every select to 100%, including "Per page:
+  [25]", which then ran past the panel beside its own words; such a label
+  takes `mobile-filters-inline`.
+- Colour variables that do not exist render as nothing: `--color-accent` (a
+  switch with no track), `--color-surface-alt` (two boxes with no
+  background). Fallback hexes (`var(--color-primary-soft, #FFF7ED)`) stay
+  light in dark mode. Use a token from `index.css`; the walk now checks
+  every `var(--…)` against the ones defined.
+- Close buttons, warnings and ticks drawn with ✕, ⚠ and ✓ are lucide `X`,
+  `AlertTriangle` and `Check` (`InlineIcon` in a label), Modal's included.
+  A ✓ is left only inside a `<select>` option, which can hold text alone.
+- A field styled with padding but no border draws as a bare browser box
+  (GST settings had five); give it `--color-border` and the surface like
+  its neighbours.
+- Five stylesheet literals that stayed light in dark mode (a skeleton
+  shimmer, two borders) are tokens; the hex-in-CSS baseline is down to 19
+  and `npm run lint` passes again.
+- Four things that were broken, not just plain: Inventory → Waste logs →
+  Summary was a server error (a bare `created_at` made ambiguous by a join),
+  Reports → Customers → Loyalty and → Promotions asked routes that do not
+  exist (`/reports/loyalty`, `/reports/promotions`; both live under
+  `/admin`), and Finance → GST → Output and Input GST printed the raw JSON.
+  Each has a test. Every API call in the admin was then checked against
+  `route:list` for path and method; none is left pointing nowhere (one
+  unused helper that did was deleted).
+- **Dark mode, page by page.** The dark walk (268 phone and 277 computer
+  screens) flagged every box whose background stayed light. Behind them were
+  about 150 hard-coded light-theme colours in page styles: pale panels
+  (`#FAF7F3`, `#FDFAF7`, `#FAFAF8`…), tab-strip tracks (`#F5F0EB`), picked
+  chips (`#F5E6D3`, `#FEF3E8`), pale red / amber / green edges (`#FECACA`,
+  `#FCA5A5`, `#FDE68A`, `#86EFAC`), and dark-brown text (`#6B5D4F`,
+  `#4A3728`, `#9A3412`) that disappears on a dark card. They map to tokens
+  by role:
+
+  | Role | Token |
+  |---|---|
+  | Pale panel inside a card, row hover, table stripe | `--color-bg` |
+  | Tab-strip track, progress track, image placeholder, hairline | `--color-border-light` |
+  | Field and box edge (`#E8DDD0`, `#EDE4D4`) | `--color-border` |
+  | Picked chip, highlighted row | `--color-tone-rust-bg` (text `--color-tone-rust-text`) |
+  | Red / amber / green edge | `color-mix(in srgb, var(--color-danger) 35%, transparent)` (warning, success alike) |
+  | Amber or orange words | `--color-warning-strong` |
+  | Behind a photo or video, the sign-in page, the bulk-selection bar | `--color-backdrop` / `--color-backdrop-text` |
+
+  `--color-backdrop` is new: near-black in both themes. Pages had used
+  `--color-text` for it, which turns cream in dark mode, so the sign-in page
+  was a cream sheet round a dark card. Badge's `yellow` is the gold tone;
+  Reservations' tab underline was still the retired amber `#D4783A`.
+  Left as they are on purpose: print and QR previews (paper is white), the
+  camera view, the Google-style search preview, the website hero preview
+  (`#1C1408`, as the site paints it), and preset colours that are data (TV
+  screen themes, hero swatches, the cut-out backdrop). Hex literals in page
+  styles went from 222 to 66, and each that is left is one of those or white
+  words on a coloured button.
+
 ---
 
 ## 4. Explicitly out of scope

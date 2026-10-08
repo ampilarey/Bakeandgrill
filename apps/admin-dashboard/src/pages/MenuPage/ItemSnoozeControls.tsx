@@ -160,7 +160,7 @@ export const ItemSnoozeControls = forwardRef<ItemSnoozeControlsHandle, ItemSnooz
           padding: 14,
           borderRadius: 10,
           border: '1px solid var(--color-border)',
-          background: snoozed || indefinitelyOff ? 'var(--color-danger-bg)' : 'var(--color-surface-alt)',
+          background: snoozed || indefinitelyOff ? 'var(--color-danger-bg)' : 'var(--color-bg)',
         }}
       >
         <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Mark unavailable</div>

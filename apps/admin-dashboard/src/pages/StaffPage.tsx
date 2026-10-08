@@ -336,7 +336,7 @@ function NotificationPrefsModal({ member, onClose }: { member: StaffMember; onCl
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button type="button" onClick={() => setPrefs((p) => (p ? { ...p, order_types: null } : p))} style={{
                 padding: '8px 12px', fontSize: 12, borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit', minHeight: 40,
-                background: prefs.order_types === null ? 'var(--color-success)' : '#F5F0EA',
+                background: prefs.order_types === null ? 'var(--color-primary)' : 'var(--color-border-light)',
                 color: prefs.order_types === null ? '#fff' : 'var(--color-text-secondary)', border: 'none',
               }}>All Types</button>
               {ORDER_TYPES.map((ot) => {
@@ -344,7 +344,7 @@ function NotificationPrefsModal({ member, onClose }: { member: StaffMember; onCl
                 return (
                   <button key={ot.value} type="button" onClick={() => toggleOrderType(ot.value)} style={{
                     padding: '8px 12px', fontSize: 12, borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit', minHeight: 40,
-                    background: active ? 'var(--color-primary)' : '#F5F0EA',
+                    background: active ? 'var(--color-primary)' : 'var(--color-border-light)',
                     color: active ? '#fff' : 'var(--color-text-secondary)', border: 'none',
                   }}>
                     {ot.label}
@@ -533,7 +533,7 @@ function PermissionsModal({ member, onClose }: { member: StaffMember; onClose: (
                   <div style={{
                     fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
                     color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 8,
-                    paddingBottom: 4, borderBottom: '1px solid #f1ece6',
+                    paddingBottom: 4, borderBottom: '1px solid var(--color-border-light)',
                   }}>
                     {category}
                   </div>
@@ -543,14 +543,14 @@ function PermissionsModal({ member, onClose }: { member: StaffMember; onClose: (
                     return (
                       <div key={p.slug} style={{
                         display: 'flex', alignItems: 'center', gap: 10,
-                        padding: '8px 0', borderBottom: '1px solid #faf8f6', minHeight: 44,
+                        padding: '8px 0', borderBottom: '1px solid var(--color-border-light)', minHeight: 44,
                       }}>
                         <div style={{ flex: 1 }}>
                           <span style={{ fontSize: 14, color: 'var(--color-text)', fontWeight: 500 }}>{p.name}</span>
                           {' '}
                           <span style={{
                             fontSize: 11, padding: '1px 6px', borderRadius: 99,
-                            background: modified ? 'var(--color-warning-bg)' : '#f1ece6',
+                            background: modified ? 'var(--color-warning-bg)' : 'var(--color-border-light)',
                             color: modified ? 'var(--color-warning-strong)' : 'var(--color-text-muted)',
                             fontWeight: 600,
                           }}>
@@ -800,7 +800,7 @@ export function StaffPage() {
         action={activeTab === 'staff' && canCreateStaff ? <Btn onClick={() => setCreating(true)}>+ Add Staff</Btn> : undefined}
       />
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20, background: '#F5F0EB', borderRadius: 10, padding: 4, width: 'fit-content', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20, background: 'var(--color-border-light)', borderRadius: 10, padding: 4, width: 'fit-content', flexWrap: 'wrap' }}>
         <button type="button" style={tabStyle(activeTab === 'staff')} onClick={() => switchTab('staff')}>Staff</button>
         {canSchedule && (
           <button type="button" style={tabStyle(activeTab === 'schedules')} onClick={() => switchTab('schedules')}>Schedules</button>

@@ -1773,7 +1773,8 @@ export async function getPromotionReport(params: { from?: string; to?: string } 
   const q = new URLSearchParams();
   Object.entries(params).forEach(([k, v]) => v !== undefined && q.set(k, String(v)));
   const qs = q.toString();
-  return req(`/reports/promotions${qs ? `?${qs}` : ''}`);
+  // Under /admin, where the route lives: /reports/promotions was a 404.
+  return req(`/admin/reports/promotions${qs ? `?${qs}` : ''}`);
 }
 
 // ── Loyalty Analytics ─────────────────────────────────────────────────────────
@@ -1792,7 +1793,9 @@ export async function getLoyaltyReport(params: { from?: string; to?: string } = 
   const q = new URLSearchParams();
   Object.entries(params).forEach(([k, v]) => v !== undefined && q.set(k, String(v)));
   const qs = q.toString();
-  return req(`/reports/loyalty${qs ? `?${qs}` : ''}`);
+  // Under /admin, where the route lives: /reports/loyalty was a 404, so the
+  // Loyalty tab in Reports only ever showed "could not be found".
+  return req(`/admin/reports/loyalty${qs ? `?${qs}` : ''}`);
 }
 
 // ── Discounts / Voids / Refunds / Credit exposure ───────────────────────────

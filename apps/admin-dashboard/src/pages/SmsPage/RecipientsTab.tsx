@@ -70,7 +70,7 @@ function StaffPrefsModal({
 
   return (
     <Modal title={`SMS Notifications — ${member.name}`} onClose={onClose}>
-      {error && <div style={{ background: 'var(--color-danger-bg)', border: '1px solid #fca5a5', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--color-danger-strong)', marginBottom: 12 }}>{error}</div>}
+      {error && <div style={{ background: 'var(--color-danger-bg)', border: '1px solid color-mix(in srgb, var(--color-danger) 45%, transparent)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--color-danger-strong)', marginBottom: 12 }}>{error}</div>}
       {prefs && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {!member.phone && (
@@ -95,14 +95,14 @@ function StaffPrefsModal({
                 return (
                   <button key={ot.value} onClick={() => toggleOrderType(ot.value)} style={{
                     padding: '5px 12px', fontSize: 12, borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit',
-                    background: active ? 'var(--color-primary)' : '#F5F0EA',
+                    background: active ? 'var(--color-primary)' : 'var(--color-border-light)',
                     color: active ? '#fff' : 'var(--color-text-secondary)', border: 'none',
                   }}>{ot.label}</button>
                 );
               })}
               <button onClick={() => setPrefs(p => p ? { ...p, order_types: null } : p)} style={{
                 padding: '5px 12px', fontSize: 12, borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit',
-                background: prefs.order_types === null ? 'var(--color-success)' : '#F5F0EA',
+                background: prefs.order_types === null ? 'var(--color-primary)' : 'var(--color-border-light)',
                 color: prefs.order_types === null ? '#fff' : 'var(--color-text-secondary)', border: 'none',
               }}>All Types</button>
             </div>
@@ -153,7 +153,7 @@ function PhoneModal({ member, onClose, onSaved }: { member: StaffMember; onClose
 
   return (
     <Modal title={`Set Phone — ${member.name}`} onClose={onClose}>
-      {error && <div style={{ background: 'var(--color-danger-bg)', border: '1px solid #fca5a5', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--color-danger-strong)', marginBottom: 12 }}>{error}</div>}
+      {error && <div style={{ background: 'var(--color-danger-bg)', border: '1px solid color-mix(in srgb, var(--color-danger) 45%, transparent)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--color-danger-strong)', marginBottom: 12 }}>{error}</div>}
       <div style={{ marginBottom: 16 }}>
         <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 6 }}>Mobile Phone Number</label>
         <Input placeholder="e.g. 7972434" value={phone} onChange={setPhone} />
@@ -221,7 +221,7 @@ function ExternalContactModal({
 
   return (
     <Modal title={contact ? 'Edit External Contact' : 'Add External Contact'} onClose={onClose}>
-      {error && <div style={{ background: 'var(--color-danger-bg)', border: '1px solid #fca5a5', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--color-danger-strong)', marginBottom: 12 }}>{error}</div>}
+      {error && <div style={{ background: 'var(--color-danger-bg)', border: '1px solid color-mix(in srgb, var(--color-danger) 45%, transparent)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--color-danger-strong)', marginBottom: 12 }}>{error}</div>}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div>
@@ -246,7 +246,7 @@ function ExternalContactModal({
                 <button key={d} onClick={() => toggleDay(d)} style={{
                   padding: '4px 10px', fontSize: 12, borderRadius: 6, cursor: 'pointer',
                   fontFamily: 'inherit', border: 'none',
-                  background: on ? 'var(--color-primary)' : '#F5F0EA',
+                  background: on ? 'var(--color-primary)' : 'var(--color-border-light)',
                   color: on ? '#fff' : 'var(--color-text-secondary)',
                 }}>{DAY_LABEL[d]}</button>
               );
@@ -254,7 +254,7 @@ function ExternalContactModal({
             <button onClick={() => set('active_days', null)} style={{
               padding: '4px 10px', fontSize: 12, borderRadius: 6, cursor: 'pointer',
               fontFamily: 'inherit', border: 'none',
-              background: !form.active_days ? 'var(--color-success)' : '#F5F0EA',
+              background: !form.active_days ? 'var(--color-primary)' : 'var(--color-border-light)',
               color: !form.active_days ? '#fff' : 'var(--color-text-secondary)',
             }}>Every day</button>
           </div>
@@ -356,7 +356,7 @@ export function RecipientsTab() {
   return (
     <>
       {/* Summary banner */}
-      <div style={{ background: '#F5F0EA', border: '1px solid var(--color-border)', borderRadius: 10, padding: '12px 16px', marginBottom: 20, display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+      <div style={{ background: 'var(--color-border-light)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '12px 16px', marginBottom: 20, display: 'flex', gap: 24, flexWrap: 'wrap' }}>
         <div style={{ fontSize: 13 }}>
           <strong style={{ fontSize: 15, color: 'var(--color-primary)' }}>{enabledStaff.length}</strong>
           <span style={{ color: 'var(--color-text-secondary)', marginLeft: 6 }}>staff with notifications on</span>
@@ -413,7 +413,7 @@ export function RecipientsTab() {
                           <button onClick={() => setPhoneModal(m)} style={{
                             display: 'inline-flex', alignItems: 'center', gap: 4,
                             fontSize: 12, color: 'var(--color-danger)', background: 'var(--color-danger-bg)',
-                            border: '1px solid #fca5a5', borderRadius: 6, padding: '2px 8px',
+                            border: '1px solid color-mix(in srgb, var(--color-danger) 45%, transparent)', borderRadius: 6, padding: '2px 8px',
                             cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
                           }}>
                             <Phone size={11} /> Add phone
@@ -523,7 +523,7 @@ export function RecipientsTab() {
                     <td style={{ ...TD, textAlign: 'right' }}>
                       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                         <Btn small variant="ghost" onClick={() => setContactModal(c)}><Pencil size={12} /></Btn>
-                        <Btn small variant="danger" disabled={deletingContactId === c.id} onClick={() => handleDeleteContact(c.id)}>
+                        <Btn small variant="danger-outline" aria-label="Delete contact" disabled={deletingContactId === c.id} onClick={() => handleDeleteContact(c.id)}>
                           <Trash2 size={12} />
                         </Btn>
                       </div>

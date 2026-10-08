@@ -185,7 +185,7 @@ const tabBtn = (active: boolean): CSSProperties => ({
   fontSize: 13,
   border: active ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
   background: active ? 'var(--color-warning-bg)' : 'var(--color-surface)',
-  color: active ? '#9A3412' : 'var(--color-text-secondary)',
+  color: active ? 'var(--color-warning-strong)' : 'var(--color-text-secondary)',
 });
 
 function tvUrl(slug: string): string {
@@ -1962,7 +1962,7 @@ export function SignagePage() {
                           <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4 }}>
                             {d.online ? 'Online now' : 'Seen'} · {d.last_seen_at ? new Date(d.last_seen_at).toLocaleString() : 'never'}
                           </div>
-                          <div style={{ fontSize: 11, color: '#9A8B7A', marginTop: 2, wordBreak: 'break-all' }}>{d.device_id}</div>
+                          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2, wordBreak: 'break-all' }}>{d.device_id}</div>
                         </div>
                         <div>
                           <Select
@@ -2031,8 +2031,8 @@ export function SignagePage() {
                                     marginLeft: 8,
                                     fontSize: 12,
                                     fontWeight: 600,
-                                    color: d.online ? 'var(--color-success-strong)' : '#9A3412',
-                                    background: d.online ? 'var(--color-success-bg)' : '#FFEDD5',
+                                    color: d.online ? 'var(--color-success-strong)' : 'var(--color-warning-strong)',
+                                    background: d.online ? 'var(--color-success-bg)' : 'var(--color-warning-bg)',
                                     padding: '2px 8px',
                                     borderRadius: 999,
                                   }}
@@ -2040,7 +2040,7 @@ export function SignagePage() {
                                   {d.online ? 'Online' : 'Offline'}
                                 </span>
                                 {!d.online && d.offline_minutes != null && (
-                                  <span data-testid={`signage-device-offline-${d.id}`} style={{ marginLeft: 6, fontSize: 12, fontWeight: 600, color: '#9A3412', background: '#FFEDD5', padding: '2px 8px', borderRadius: 999 }}>
+                                  <span data-testid={`signage-device-offline-${d.id}`} style={{ marginLeft: 6, fontSize: 12, fontWeight: 600, color: 'var(--color-warning-strong)', background: 'var(--color-warning-bg)', padding: '2px 8px', borderRadius: 999 }}>
                                     for {d.offline_minutes} min
                                   </span>
                                 )}

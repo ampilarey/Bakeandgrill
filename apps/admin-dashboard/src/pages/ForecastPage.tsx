@@ -51,9 +51,9 @@ const STATUS_COLOR: Record<string, string> = {
 const STATUS_BG: Record<string, string> = {
   ok:           'var(--color-success-bg)',
   warning:      'var(--color-warning-bg)',
-  low:          '#ffedd5',
+  low:          'var(--color-warning-bg)',
   critical:     'var(--color-danger-bg)',
-  out_of_stock: '#fecaca',
+  out_of_stock: 'var(--color-danger-bg)',
 };
 
 function buyingListCandidates(items: RestockPlanItem[]): RestockPlanItem[] {
@@ -1328,7 +1328,7 @@ export function ForecastPage() {
               {selectedRestockItems.length > 0 && (
                 <div style={{
                   marginBottom: 12, padding: '10px 12px', borderRadius: 8,
-                  background: 'var(--color-warning-bg)', border: '1px solid #FED7AA', fontSize: 13, color: 'var(--color-warning-strong)',
+                  background: 'var(--color-warning-bg)', border: '1px solid color-mix(in srgb, var(--color-warning) 35%, transparent)', fontSize: 13, color: 'var(--color-warning-strong)',
                 }}>
                   <strong>{selectedRestockItems.length}</strong> for draft POs ·{' '}
                   <strong>{restockPreviewBySupplier.length}</strong> draft PO
@@ -1352,8 +1352,8 @@ export function ForecastPage() {
                       disabled={restockBusy}
                       onClick={() => void saveSelectedOrderQtys()}
                       style={{
-                        marginLeft: 8, padding: '2px 8px', borderRadius: 6, border: '1px solid #FED7AA',
-                        background: '#fff', color: '#c2410c', fontSize: 11, fontWeight: 700,
+                        marginLeft: 8, padding: '2px 8px', borderRadius: 6, border: '1px solid var(--color-tone-rust-border)',
+                        background: 'var(--color-surface)', color: 'var(--color-tone-rust-text)', fontSize: 11, fontWeight: 700,
                         cursor: 'pointer', fontFamily: 'inherit',
                       }}
                     >
@@ -1361,7 +1361,7 @@ export function ForecastPage() {
                     </button>
                   )}
                   {restockPreviewBySupplier.length > 0 && (
-                    <div style={{ marginTop: 6, fontSize: 12, color: '#c2410c' }}>
+                    <div style={{ marginTop: 6, fontSize: 12, color: 'var(--color-warning-strong)' }}>
                       {restockPreviewBySupplier.map((g) => (
                         <span key={g.supplier_id} style={{ marginRight: 12 }}>
                           {g.name}: {g.lines} line{g.lines === 1 ? '' : 's'} · MVR {fmt(g.total, 2)}
@@ -1427,7 +1427,7 @@ export function ForecastPage() {
                       cursor: 'pointer',
                       border: restockFilter === f.id ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
                       background: restockFilter === f.id ? 'var(--color-warning-bg)' : 'var(--color-bg)',
-                      color: restockFilter === f.id ? '#c2410c' : 'var(--color-text-secondary)',
+                      color: restockFilter === f.id ? 'var(--color-warning-strong)' : 'var(--color-text-secondary)',
                     }}
                   >
                     {f.label}
@@ -1604,7 +1604,7 @@ export function ForecastPage() {
                                   onClick={() => void dismissReorderAlert(item)}
                                   style={{
                                     fontSize: 10, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
-                                    border: '1px solid #fecaca', background: 'var(--color-surface)', color: 'var(--color-danger-strong)',
+                                    border: '1px solid color-mix(in srgb, var(--color-danger) 35%, transparent)', background: 'var(--color-surface)', color: 'var(--color-danger-strong)',
                                     borderRadius: 6, padding: '2px 6px',
                                   }}
                                 >
@@ -1645,7 +1645,7 @@ export function ForecastPage() {
                             </div>
                           ) : null}
                         </td>
-                        <td style={{ padding: '8px 12px', fontWeight: item.due_soon ? 700 : 500, color: item.due_soon ? '#c2410c' : 'var(--color-text)' }}>
+                        <td style={{ padding: '8px 12px', fontWeight: item.due_soon ? 700 : 500, color: item.due_soon ? 'var(--color-warning-strong)' : 'var(--color-text)' }}>
                           {item.suggested_next_order_date ?? '—'}
                         </td>
                         <td style={{ padding: '8px 12px', fontSize: 12, color: 'var(--color-text-secondary)', minWidth: 96 }}>
@@ -1822,7 +1822,7 @@ export function ForecastPage() {
                               <div>{item.reorder_point}</div>
                               <div style={{
                                 fontWeight: 700,
-                                color: canApplyRop(item) ? '#c2410c' : 'var(--color-success-strong)',
+                                color: canApplyRop(item) ? 'var(--color-warning-strong)' : 'var(--color-success-strong)',
                               }}>
                                 → {item.suggested_reorder_point}
                               </div>

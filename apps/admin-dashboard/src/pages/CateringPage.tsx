@@ -125,7 +125,7 @@ export function CateringPage() {
                     display: 'inline-block',
                     padding: '4px 10px',
                     borderRadius: 8,
-                    background: '#F5F0EB',
+                    background: 'var(--color-border-light)',
                     fontSize: 12,
                     fontWeight: 700,
                     textTransform: 'capitalize',

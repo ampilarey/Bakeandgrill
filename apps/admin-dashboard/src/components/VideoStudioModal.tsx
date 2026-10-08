@@ -134,7 +134,7 @@ export function VideoStudioModal({ open, onClose, sourceUrl, mediaId, onExported
 
         <div
           style={{
-            background: 'var(--color-text)',
+            background: 'var(--color-backdrop)',
             borderRadius: 12,
             overflow: 'hidden',
             aspectRatio: aspect === 'original' ? '16 / 9' : aspect.replace(':', ' / '),

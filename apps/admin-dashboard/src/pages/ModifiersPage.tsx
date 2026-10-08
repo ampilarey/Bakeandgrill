@@ -177,7 +177,7 @@ export function ModifiersPage() {
               {canManage && (
                 <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
                   <Btn small variant="secondary" onClick={() => open(m)}>Edit</Btn>
-                  <Btn small variant="danger" onClick={() => remove(m)}>Remove</Btn>
+                  <Btn small variant="danger-outline" onClick={() => remove(m)}>Remove</Btn>
                 </div>
               )}
             </article>
@@ -198,7 +198,7 @@ export function ModifiersPage() {
                     {canManage && (
                       <div style={{ display: 'flex', gap: 6 }}>
                         <Btn small variant="secondary" onClick={() => open(m)}>Edit</Btn>
-                        <Btn small variant="danger" onClick={() => remove(m)}>Remove</Btn>
+                        <Btn small variant="danger-outline" onClick={() => remove(m)}>Remove</Btn>
                       </div>
                     )}
                   </td>

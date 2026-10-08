@@ -90,37 +90,42 @@ export function CutoutBackdropField({
   };
 
   const rowStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' };
+  // A radio and its words stay on one line: with wrap, a long label dropped under its button on a phone.
+  const choiceStyle: React.CSSProperties = { display: 'flex', alignItems: 'flex-start', gap: 10, cursor: disabled ? 'default' : 'pointer', fontSize: 13 };
+  const choiceText: React.CSSProperties = { flex: '1 1 auto', minWidth: 0 };
 
   return (
     <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap' }} data-testid="cutout-backdrop-field">
       <CutoutPreview src={previewSrc} color={effectiveColor} strength={effectiveStrength} label="Circle preview" />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: '1 1 220px', minWidth: 0 }}>
-        <label style={{ ...rowStyle, cursor: disabled ? 'default' : 'pointer', fontSize: 13 }}>
+        <label style={choiceStyle}>
           <input
             type="radio"
             name="cutout-backdrop-mode"
             checked={!own}
             disabled={disabled}
             onChange={() => onChange(null)}
+            style={{ margin: '2px 0 0', flexShrink: 0 }}
             data-testid="cutout-backdrop-inherit"
           />
-          <span>
+          <span style={choiceText}>
             Same as {inheritLabel}
             {inherited ? (
               <span style={{ color: 'var(--color-text-muted)' }}> ({inherited.color}, {inherited.strength}%)</span>
             ) : null}
           </span>
         </label>
-        <label style={{ ...rowStyle, cursor: disabled ? 'default' : 'pointer', fontSize: 13 }}>
+        <label style={choiceStyle}>
           <input
             type="radio"
             name="cutout-backdrop-mode"
             checked={own}
             disabled={disabled}
             onChange={() => onChange({ color: baseColor, strength: baseStrength })}
+            style={{ margin: '2px 0 0', flexShrink: 0 }}
             data-testid="cutout-backdrop-own"
           />
-          <span>Its own circle</span>
+          <span style={choiceText}>Its own circle</span>
         </label>
 
         {own && (

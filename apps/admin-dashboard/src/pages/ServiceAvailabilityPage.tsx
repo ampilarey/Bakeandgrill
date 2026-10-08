@@ -438,7 +438,7 @@ export default function ServiceAvailabilityPage() {
               label="Blocked"
               value={String(summary.blocked)}
               sub={summary.blocked ? 'Banner may show' : 'All clear'}
-              accent={summary.blocked ? '#d97706' : 'var(--color-text-muted)'}
+              accent={summary.blocked ? 'var(--color-warning)' : 'var(--color-text-muted)'}
               icon={Pause}
             />
             <StatCard
@@ -485,7 +485,7 @@ export default function ServiceAvailabilityPage() {
                         textAlign: 'left',
                         padding: '12px 14px',
                         borderRadius: 12,
-                        border: preset.danger ? '1.5px solid #fca5a5' : '1.5px solid var(--color-border)',
+                        border: preset.danger ? '1.5px solid color-mix(in srgb, var(--color-danger) 45%, transparent)' : '1.5px solid var(--color-border)',
                         background: preset.danger ? 'var(--color-danger-bg)' : 'var(--color-bg)',
                         cursor: presetBusy ? 'not-allowed' : 'pointer',
                         fontFamily: 'inherit',
@@ -707,7 +707,7 @@ function ServiceCard({
       className="svc-avail-card"
       style={{
         background: 'var(--color-surface)',
-        border: `1.5px solid ${down ? '#fecaca' : 'var(--color-border)'}`,
+        border: `1.5px solid ${down ? 'color-mix(in srgb, var(--color-danger) 35%, transparent)' : 'var(--color-border)'}`,
         borderRadius: 12,
         padding: 14,
         display: 'flex',
@@ -998,7 +998,7 @@ function EditServiceModal({
                 padding: 12,
                 borderRadius: 10,
                 background: 'var(--color-danger-bg)',
-                border: '1px solid #fecaca',
+                border: '1px solid color-mix(in srgb, var(--color-danger) 35%, transparent)',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, color: 'var(--color-danger-strong)', fontWeight: 700, fontSize: 13 }}>
@@ -1053,7 +1053,7 @@ function TabBtn({
         borderRadius: 10,
         border: active ? '1.5px solid var(--color-primary)' : '1.5px solid var(--color-border)',
         background: active ? 'var(--color-warning-bg)' : 'var(--color-surface)',
-        color: active ? '#c2410c' : 'var(--color-text-secondary)',
+        color: active ? 'var(--color-warning-strong)' : 'var(--color-text-secondary)',
         fontWeight: 700,
         fontSize: 13,
         cursor: 'pointer',
@@ -1089,7 +1089,7 @@ function HistoryPanel({
                 key={inc.id}
                 style={{
                   padding: '10px 0',
-                  borderBottom: '1px solid #F1EDE8',
+                  borderBottom: '1px solid var(--color-border-light)',
                   fontSize: 13,
                 }}
               >
@@ -1127,7 +1127,7 @@ function HistoryPanel({
                 key={a.id}
                 style={{
                   padding: '8px 0',
-                  borderBottom: '1px solid #F1EDE8',
+                  borderBottom: '1px solid var(--color-border-light)',
                   fontSize: 12.5,
                   color: 'var(--color-text-secondary)',
                 }}
@@ -1188,7 +1188,7 @@ function NotifyConfirmModal({
             padding: 10,
             borderRadius: 10,
             background: 'var(--color-warning-bg)',
-            border: '1px solid #fde68a',
+            border: '1px solid color-mix(in srgb, var(--color-warning) 35%, transparent)',
             fontSize: 13,
             color: 'var(--color-warning-strong)',
           }}

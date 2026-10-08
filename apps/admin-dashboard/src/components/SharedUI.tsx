@@ -6,7 +6,7 @@ import {
   type ButtonHTMLAttributes, type HTMLAttributes, type ReactElement, type ReactNode, type SelectHTMLAttributes,
 } from 'react';
 import { createPortal } from 'react-dom';
-import type { LucideIcon } from 'lucide-react';
+import { X, type LucideIcon } from 'lucide-react';
 import { useInHub } from './hubContext';
 
 // ─── Spinner ──────────────────────────────────────────────────────────────────
@@ -69,9 +69,9 @@ export function Badge({
   children,
 }: { label?: string; color?: string; children?: ReactNode }) {
   const colorMap: Record<string, { bg: string; text: string; border: string }> = {
-    green:  { bg: 'var(--color-success-bg)', text: 'var(--color-success-strong)', border: '#86efac' },
-    red:    { bg: 'var(--color-danger-bg)', text: 'var(--color-danger-strong)', border: '#fca5a5' },
-    yellow: { bg: '#fef9c3', text: '#a16207', border: '#fde047' },
+    green:  { bg: 'var(--color-success-bg)', text: 'var(--color-success-strong)', border: 'color-mix(in srgb, var(--color-success) 35%, transparent)' },
+    red:    { bg: 'var(--color-danger-bg)', text: 'var(--color-danger-strong)', border: 'color-mix(in srgb, var(--color-danger) 45%, transparent)' },
+    yellow: { bg: 'var(--color-tone-gold-bg)', text: 'var(--color-tone-gold-text)', border: 'var(--color-tone-gold-border)' },
     // Blue, purple and teal were never brand colours (owner, 2026-10-08: "many
     // admin pages doesn't follow the branding"). The names stay, since pages
     // and statColor ask for them, but they draw the brand tones: rust for in
@@ -83,7 +83,7 @@ export function Badge({
     purple: { bg: 'var(--color-tone-brown-bg)', text: 'var(--color-tone-brown-text)', border: 'var(--color-tone-brown-border)' },
     teal:   { bg: 'var(--color-tone-gold-bg)', text: 'var(--color-tone-gold-text)', border: 'var(--color-tone-gold-border)' },
     gray:   { bg: 'var(--color-bg)', text: 'var(--color-text-secondary)', border: 'var(--color-border)' },
-    orange: { bg: 'var(--color-warning-bg)', text: '#c2410c', border: '#fed7aa' },
+    orange: { bg: 'var(--color-warning-bg)', text: 'var(--color-warning-strong)', border: 'color-mix(in srgb, var(--color-warning) 35%, transparent)' },
   };
   const s = colorMap[color] ?? colorMap.gray;
   return (
@@ -109,7 +109,7 @@ export function Badge({
 export function ErrorMsg({ message }: { message: string }) {
   return (
     <div style={{
-      background: 'var(--color-danger-bg)', border: '1px solid #fca5a5', borderRadius: 10,
+      background: 'var(--color-danger-bg)', border: '1px solid color-mix(in srgb, var(--color-danger) 45%, transparent)', borderRadius: 10,
       padding: '0.75rem 1rem', color: 'var(--color-danger-strong)', fontSize: '0.875rem', marginBottom: '1rem',
     }}>
       {message}
@@ -361,12 +361,16 @@ export function TabScrollRow({
 }
 
 // ─── Btn ──────────────────────────────────────────────────────────────────────
-type BtnVariant = 'primary' | 'secondary' | 'danger' | 'ghost';
+type BtnVariant = 'primary' | 'secondary' | 'danger' | 'danger-outline' | 'ghost';
 
 const BTN_STYLES: Record<BtnVariant, React.CSSProperties> = {
   primary:   { background: 'var(--color-primary)', color: '#fff', border: 'none' },
   secondary: { background: 'var(--color-bg)', color: 'var(--color-text)', border: '1px solid var(--color-border)' },
   danger:    { background: 'var(--color-danger)', color: '#fff', border: 'none' },
+  // A row's Delete / Remove / Reject: red words on the secondary button. Solid
+  // red is for the final "yes, do it" (a confirm, a bulk action); a column of
+  // solid red buttons down a list was the loudest thing on the page.
+  'danger-outline': { background: 'var(--color-bg)', color: 'var(--color-danger-strong)', border: '1px solid color-mix(in srgb, var(--color-danger) 35%, transparent)' },
   ghost:     { background: 'transparent', color: 'var(--color-text-secondary)', border: 'none' },
 };
 
@@ -458,10 +462,16 @@ export function Input({ label, id, style, onChange, ...rest }: InputProps) {
   // neighbour (Wholesale → Shops, "Search" under "Active only", 2026-10-08).
   const { flex, flexGrow, flexShrink, flexBasis, ...inputStyle } = style ?? {};
   const grows = flex !== undefined || flexGrow !== undefined || flexBasis !== undefined;
+  // Only the keys the caller set: React writes an undefined longhand as '',
+  // and flexGrow: '' after flex: '1 1 100%' wiped the shorthand, so the
+  // wrapper never grew (the menu photo address stayed a stub).
+  const flexStyle = Object.fromEntries(
+    Object.entries({ flex, flexGrow, flexShrink, flexBasis }).filter(([, v]) => v !== undefined),
+  ) as React.CSSProperties;
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', gap: '0.25rem',
-      ...(grows ? { flex, flexGrow, flexShrink, flexBasis, minWidth: 0 } : {}),
+      ...(grows ? { ...flexStyle, minWidth: 0 } : {}),
     }}>
       {label && <label htmlFor={inputId} style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text)' }}>{label}</label>}
       <input
@@ -656,7 +666,7 @@ export function Modal({
               width: 40, height: 40, minHeight: 40, cursor: 'pointer', color: 'var(--color-text-secondary)',
               fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
-          >✕</button>
+          ><X size={18} aria-hidden /></button>
         </div>
         <div className="modal-body" data-testid="modal-body">
           {bodyChildren}
@@ -720,7 +730,7 @@ export function StatCard({
             fontWeight: 700,
             color: trend.positive === true ? 'var(--color-success-strong)' : trend.positive === false ? 'var(--color-danger-strong)' : 'var(--color-text-secondary)',
             background: trend.positive === true ? 'var(--color-success-bg)' : trend.positive === false ? 'var(--color-danger-bg)' : 'var(--color-bg)',
-            border: `1px solid ${trend.positive === true ? '#86efac' : trend.positive === false ? '#fca5a5' : 'var(--color-border)'}`,
+            border: `1px solid ${trend.positive === true ? 'color-mix(in srgb, var(--color-success) 35%, transparent)' : trend.positive === false ? 'color-mix(in srgb, var(--color-danger) 45%, transparent)' : 'var(--color-border)'}`,
             borderRadius: 9999,
             padding: '2px 7px',
             whiteSpace: 'nowrap',

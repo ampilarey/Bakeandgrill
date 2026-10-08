@@ -73,7 +73,7 @@ export function SmsNotificationRow({
   };
 
   const editor = template ? (
-    <div style={{ borderTop: toggleDisabled ? 'none' : '1px solid #F3EDE6', paddingTop: toggleDisabled ? 0 : 12 }}>
+    <div style={{ borderTop: toggleDisabled ? 'none' : '1px solid var(--color-border-light)', paddingTop: toggleDisabled ? 0 : 12 }}>
       {templateLabel && (
         <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
           Message: {templateLabel}
@@ -107,8 +107,8 @@ export function SmsNotificationRow({
                 fontSize: 11,
                 padding: '2px 8px',
                 borderRadius: 99,
-                background: '#F5F0EB',
-                color: '#6B5A4E',
+                background: 'var(--color-border-light)',
+                color: 'var(--color-text-secondary)',
                 fontFamily: 'monospace',
               }}
             >

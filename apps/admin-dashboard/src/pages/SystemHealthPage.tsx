@@ -240,7 +240,7 @@ export function SystemHealthPage() {
             display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20,
             padding: '12px 16px', borderRadius: 12,
             background: degraded ? 'var(--color-danger-bg)' : 'var(--color-success-bg)',
-            border: `1px solid ${degraded ? '#FECACA' : '#BBF7D0'}`,
+            border: `1px solid ${degraded ? 'color-mix(in srgb, var(--color-danger) 35%, transparent)' : 'color-mix(in srgb, var(--color-success) 35%, transparent)'}`,
           }}>
             {degraded ? <AlertTriangle size={20} color="var(--color-danger-strong)" /> : <CheckCircle2 size={20} color="var(--color-success-strong)" />}
             <div>

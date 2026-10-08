@@ -214,7 +214,7 @@ function PromotionForm({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {error && <ErrorMsg message={error} />}
-      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer', padding: '10px 12px', background: autoApply ? '#F0FDF4' : 'var(--color-bg)', borderRadius: 8, border: `1px solid ${autoApply ? '#86EFAC' : 'var(--color-border)'}` }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer', padding: '10px 12px', background: autoApply ? 'var(--color-success-bg)' : 'var(--color-bg)', borderRadius: 8, border: `1px solid ${autoApply ? 'color-mix(in srgb, var(--color-success) 35%, transparent)' : 'var(--color-border)'}` }}>
         <input
           type="checkbox"
           checked={autoApply}
@@ -876,7 +876,7 @@ export function PromotionsPage() {
                           : (p.restricted_customer_id ? 'Personal discount — non-transferable' : 'Enter code at checkout'),
                         logoText: 'Bake & Grill',
                       })}><Printer size={14} aria-hidden />Print</Btn>
-                      <Btn small variant="danger" onClick={() => handleDelete(p.id)}>Delete</Btn>
+                      <Btn small variant="danger-outline" onClick={() => handleDelete(p.id)}>Delete</Btn>
                     </div>
                   </td>
                 </tr>

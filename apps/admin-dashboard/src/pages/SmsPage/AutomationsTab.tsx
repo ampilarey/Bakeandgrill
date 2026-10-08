@@ -245,7 +245,7 @@ export function AutomationsTab() {
                     </td>
                     <td style={TD}><Badge label={l.status} color={STATUS_COLOR[l.status] ?? 'gray'} /></td>
                     <td style={{ ...TD, textAlign: 'center' }}>
-                      {l.fallback_used ? <span style={{ color: 'var(--color-warning)', fontSize: 13 }}>⚠</span> : '—'}
+                      {l.fallback_used ? <span style={{ color: 'var(--color-warning)', display: 'inline-flex' }} title="Sent to the fallback contact" aria-label="Fallback used"><AlertTriangle size={14} aria-hidden /></span> : '—'}
                     </td>
                     <td style={{ ...TD, color: 'var(--color-text-muted)', fontSize: 11, whiteSpace: 'nowrap' }}>
                       {l.sent_at ? new Date(l.sent_at).toLocaleString() : '—'}

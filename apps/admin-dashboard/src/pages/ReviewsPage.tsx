@@ -85,7 +85,7 @@ export default function ReviewsPage() {
       </div>
 
       {pending > 0 && (
-        <div style={{ background: 'var(--color-warning-bg)', border: '1px solid #fcd34d', borderRadius: 10, padding: '10px 16px', marginBottom: 20, fontSize: 13, color: 'var(--color-warning-strong)' }}>
+        <div style={{ background: 'var(--color-warning-bg)', border: '1px solid color-mix(in srgb, var(--color-warning) 55%, transparent)', borderRadius: 10, padding: '10px 16px', marginBottom: 20, fontSize: 13, color: 'var(--color-warning-strong)' }}>
           <strong>{pending}</strong> review{pending > 1 ? 's' : ''} pending moderation on this page.
         </div>
       )}
@@ -150,7 +150,7 @@ export default function ReviewsPage() {
                     </Btn>
                   )}
                   {review.status !== 'rejected' && (
-                    <Btn small variant="danger" onClick={() => handleModerate(review.id, 'rejected')} disabled={acting === review.id}>
+                    <Btn small variant="danger-outline" onClick={() => handleModerate(review.id, 'rejected')} disabled={acting === review.id}>
                       Reject
                     </Btn>
                   )}

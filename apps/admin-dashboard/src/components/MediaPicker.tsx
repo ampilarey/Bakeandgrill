@@ -166,7 +166,7 @@ function MediaPickerPanel({ onClose, onPick, mediaType, collection, title = 'Pic
         </div>
 
         {/* Toolbar */}
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', padding: '12px 20px', borderBottom: '1px solid #F0EBE4', flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', padding: '12px 20px', borderBottom: '1px solid var(--color-border-light)', flexShrink: 0 }}>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {TYPE_TABS.map(({ label, value, icon }) => (
               <button
@@ -207,14 +207,14 @@ function MediaPickerPanel({ onClose, onPick, mediaType, collection, title = 'Pic
                 <Folder size={12} /> Collections
               </div>
               <button type="button" onClick={() => setActiveCollection('')}
-                style={{ display: 'block', width: '100%', textAlign: 'left', padding: '6px 8px', border: 'none', borderRadius: 7, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: activeCollection === '' ? 700 : 400, background: activeCollection === '' ? '#F5E6D3' : 'transparent', color: activeCollection === '' ? 'var(--color-text)' : 'var(--color-text-secondary)', marginBottom: 1 }}>
+                style={{ display: 'block', width: '100%', textAlign: 'left', padding: '6px 8px', border: 'none', borderRadius: 7, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: activeCollection === '' ? 700 : 400, background: activeCollection === '' ? 'var(--color-tone-rust-bg)' : 'transparent', color: activeCollection === '' ? 'var(--color-text)' : 'var(--color-text-secondary)', marginBottom: 1 }}>
                 All
               </button>
               {collections.map((col) => (
                 <button key={col.id} type="button"
                   onClick={() => setActiveCollection(col.slug)}
                   data-testid={`picker-collection-${col.slug}`}
-                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '6px 8px', border: 'none', borderRadius: 7, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: activeCollection === col.slug ? 700 : 400, background: activeCollection === col.slug ? '#F5E6D3' : 'transparent', color: activeCollection === col.slug ? 'var(--color-text)' : 'var(--color-text-secondary)', marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '6px 8px', border: 'none', borderRadius: 7, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: activeCollection === col.slug ? 700 : 400, background: activeCollection === col.slug ? 'var(--color-tone-rust-bg)' : 'transparent', color: activeCollection === col.slug ? 'var(--color-text)' : 'var(--color-text-secondary)', marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {col.name}
                 </button>
               ))}
@@ -244,7 +244,7 @@ function MediaPickerPanel({ onClose, onPick, mediaType, collection, title = 'Pic
                       cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', overflow: 'hidden',
                     }}
                   >
-                    <div style={{ width: '100%', aspectRatio: '4/3', overflow: 'hidden', background: '#EDE8E2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: '100%', aspectRatio: '4/3', overflow: 'hidden', background: 'var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {thumbNode(asset)}
                     </div>
                     <div style={{ padding: '4px 6px', fontSize: 10, fontWeight: 600, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

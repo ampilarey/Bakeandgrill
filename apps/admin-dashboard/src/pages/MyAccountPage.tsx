@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { UserCircle } from 'lucide-react';
+import { UserCircle, Check } from 'lucide-react';
 import { getMe, updateMyPreferences } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { PageHeader, PageShell } from '../components/SharedUI';
+import { PageHeader, PageShell, InlineIcon } from '../components/SharedUI';
 import { TwoFactorCard } from '../components/TwoFactorCard';
 import { AppUpdatePanel } from '../components/AppUpdatePanel';
 import { Button, Card } from '../components/ui';
@@ -78,7 +78,7 @@ export function MyAccountPage() {
       {error && (
         <p style={{
           color: 'var(--color-danger-strong)', fontSize: 13, margin: '0 0 16px',
-          background: 'var(--color-danger-bg)', border: '1px solid #fecaca', borderRadius: 8, padding: '8px 12px',
+          background: 'var(--color-danger-bg)', border: '1px solid color-mix(in srgb, var(--color-danger) 35%, transparent)', borderRadius: 8, padding: '8px 12px',
         }}>
           {error}
         </p>
@@ -126,7 +126,7 @@ export function MyAccountPage() {
 
         <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
           <Button className="mobile-full-btn" onClick={() => void handleSave()} disabled={loading || saving}>
-            {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save preferences'}
+            {saving ? 'Saving…' : saved ? <><InlineIcon icon={Check} />Saved</> : 'Save preferences'}
           </Button>
         </div>
       </Card>

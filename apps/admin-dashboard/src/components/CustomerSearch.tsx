@@ -45,7 +45,7 @@ export function CustomerSearch({
   return (
     <div style={{ position: 'relative' }}>
       {value ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: 8, padding: '7px 10px', fontSize: 13 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--color-success-bg)', border: '1px solid var(--color-success)', borderRadius: 8, padding: '7px 10px', fontSize: 13 }}>
           <span style={{ flex: 1, color: 'var(--color-success-strong)', fontWeight: 600 }}>{label || `Customer #${value}`}</span>
           <button
             type="button"
@@ -74,7 +74,7 @@ export function CustomerSearch({
                   style={{
                     display: 'block', width: '100%', textAlign: 'left', padding: '9px 12px',
                     background: 'none', border: 'none', cursor: 'pointer', fontSize: 13,
-                    borderBottom: '1px solid #F5F0EB', fontFamily: 'inherit',
+                    borderBottom: '1px solid var(--color-border-light)', fontFamily: 'inherit',
                   }}
                 >
                   <span style={{ fontWeight: 600 }}>{c.name ?? 'Unknown'}</span>

@@ -71,7 +71,7 @@ export function ServiceChargeSettings({ embedded = false }: { embedded?: boolean
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {error && (
-          <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, margin: 0, background: 'var(--color-danger-bg)', border: '1px solid #fecaca', borderRadius: 8, padding: '8px 12px' }}>
+          <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, margin: 0, background: 'var(--color-danger-bg)', border: '1px solid color-mix(in srgb, var(--color-danger) 35%, transparent)', borderRadius: 8, padding: '8px 12px' }}>
             {error}
           </p>
         )}
@@ -175,7 +175,7 @@ export function ServiceChargeSettings({ embedded = false }: { embedded?: boolean
   return (
     <div style={{ maxWidth: 600, display: 'flex', flexDirection: 'column', gap: 20 }}>
       {error && (
-        <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, margin: 0, background: 'var(--color-danger-bg)', border: '1px solid #fecaca', borderRadius: 8, padding: '8px 12px' }}>
+        <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, margin: 0, background: 'var(--color-danger-bg)', border: '1px solid color-mix(in srgb, var(--color-danger) 35%, transparent)', borderRadius: 8, padding: '8px 12px' }}>
           {error}
         </p>
       )}
