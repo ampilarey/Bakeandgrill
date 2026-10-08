@@ -145,12 +145,15 @@ class WasteLogController extends Controller
         $from = $request->query('from');
         $to = $request->query('to');
 
+        // Qualified: the top-items queries below join items / inventory_items,
+        // which have their own created_at, and a bare one is ambiguous there
+        // (Inventory → Waste logs → Summary showed "Server error").
         $base = WasteLog::query();
         if ($from) {
-            $base->whereDate('created_at', '>=', $from);
+            $base->whereDate('waste_logs.created_at', '>=', $from);
         }
         if ($to) {
-            $base->whereDate('created_at', '<=', $to);
+            $base->whereDate('waste_logs.created_at', '<=', $to);
         }
 
         $byReason = (clone $base)
@@ -182,7 +185,7 @@ class WasteLogController extends Controller
             ->all();
 
         $menuTop = (clone $base)
-            ->whereNotNull('item_id')
+            ->whereNotNull('waste_logs.item_id')
             ->join('items', 'items.id', '=', 'waste_logs.item_id')
             ->select('items.id', 'items.name', DB::raw('COUNT(*) as entries'), DB::raw('COALESCE(SUM(waste_logs.cost_estimate), 0) as cost'))
             ->groupBy('items.id', 'items.name')
@@ -198,7 +201,7 @@ class WasteLogController extends Controller
             ->all();
 
         $invTop = (clone $base)
-            ->whereNotNull('inventory_item_id')
+            ->whereNotNull('waste_logs.inventory_item_id')
             ->join('inventory_items', 'inventory_items.id', '=', 'waste_logs.inventory_item_id')
             ->select('inventory_items.id', 'inventory_items.name', DB::raw('COUNT(*) as entries'), DB::raw('COALESCE(SUM(waste_logs.cost_estimate), 0) as cost'))
             ->groupBy('inventory_items.id', 'inventory_items.name')

@@ -514,7 +514,7 @@ class LoyaltyController extends Controller
 
     public function adminReport(Request $request): JsonResponse
     {
-        $report = LoyaltyAccount::selectRaw(
+        $row = LoyaltyAccount::selectRaw(
             'SUM(points_balance) as total_outstanding_points,
              SUM(lifetime_points) as total_earned_lifetime,
              COUNT(*) as total_accounts,
@@ -523,6 +523,14 @@ class LoyaltyController extends Controller
              SUM(CASE WHEN tier = \'gold\' THEN 1 ELSE 0 END) as gold_count,
              SUM(CASE WHEN tier = \'platinum\' THEN 1 ELSE 0 END) as platinum_count',
         )->first();
+
+        // Whole numbers, never null: SUM over no accounts is NULL, MySQL hands
+        // sums back as strings, and Reports → Customers → Loyalty formats them.
+        $keys = ['total_outstanding_points', 'total_earned_lifetime', 'total_accounts', 'bronze_count', 'silver_count', 'gold_count', 'platinum_count'];
+        $report = [];
+        foreach ($keys as $key) {
+            $report[$key] = (int) ($row?->{$key} ?? 0);
+        }
 
         return response()->json(['report' => $report]);
     }

@@ -620,8 +620,10 @@ class PromotionController extends Controller
                 'is_active' => (bool) $p->is_active,
                 'type' => $p->type,
                 'discount_value' => $p->discount_value,
-                'redemptions_count' => $p->redemptions_count,
-                'total_discount_laar' => $p->redemptions->first()?->total_discount_laar ?? 0,
+                'redemptions_count' => (int) $p->redemptions_count,
+                // Whole laari: MySQL hands SUM() back as a string, and the
+                // Reports tab adds these up ("0" + "100" + "200" joins them).
+                'total_discount_laar' => (int) ($p->redemptions->first()?->total_discount_laar ?? 0),
                 'order_promotions_draft' => OrderPromotion::where('promotion_id', $p->id)->where('status', 'draft')->count(),
             ]);
 
