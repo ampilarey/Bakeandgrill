@@ -110,9 +110,13 @@ class IphoneMediaUploadTest extends TestCase
             return;
         }
 
-        // Fake .mov bytes are not a real container — conversion/probe fails with FFmpeg present.
-        // Real HEVC→H.264 normalisation is covered in VideoPipelineTest.
-        $res->assertStatus(422);
+        // Saved first, converted after (media audit, 2026-10-01). Fake .mov bytes are not a
+        // real container, so the conversion (inline here, with no worker) marks the clip
+        // failed and customers never see it. Real HEVC→H.264 normalisation is covered in
+        // VideoPipelineTest.
+        $res->assertCreated()
+            ->assertJsonPath('photo.processing_status', \App\Domains\Media\Jobs\ConvertUploadedVideo::FAILED);
+        $this->assertSame(0, $item->photos()->count());
     }
 
     public function test_gallery_still_accepts_mp4(): void

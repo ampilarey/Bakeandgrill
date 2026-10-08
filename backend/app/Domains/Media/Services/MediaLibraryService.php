@@ -535,6 +535,12 @@ final class MediaLibraryService
         if ($needsConversion) {
             ConvertUploadedVideo::start('media', (int) $row->id);
             $row = $row->fresh();
+            // With no worker the conversion has already run, and a clip
+            // ffmpeg cannot read is thrown away with its row: say so rather
+            // than fail on the missing row.
+            if ($row === null) {
+                abort(422, VideoProcessor::WEB_UNSAFE_MESSAGE);
+            }
         }
 
         return $row;

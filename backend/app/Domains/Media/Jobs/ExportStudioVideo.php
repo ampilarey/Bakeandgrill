@@ -52,7 +52,11 @@ class ExportStudioVideo implements ShouldQueue
         return is_array($state) ? $state : null;
     }
 
-    public static function queue(string $jobId): void
+    /**
+     * Not named queue(): the bus calls a job's queue() to push it, so a
+     * method by that name took the push and every export failed (2026-10-08).
+     */
+    public static function markQueued(string $jobId): void
     {
         Cache::put(self::key($jobId), ['status' => 'queued'], now()->addMinutes(self::TTL_MINUTES));
     }

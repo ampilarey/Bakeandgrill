@@ -88,7 +88,7 @@ class VideoStudioController extends Controller
         // finished by the time dispatch returns, and the result goes back
         // at once as it always did.
         $jobId = Str::random(32);
-        ExportStudioVideo::queue($jobId);
+        ExportStudioVideo::markQueued($jobId);
         ExportStudioVideo::dispatch(
             $jobId,
             $absolute,
