@@ -2726,7 +2726,8 @@ table[data-cards][data-cards-head] > thead > tr > th:has(> .table-sort-btn) {
 }
 /* Sort-and-filter headings (TableControls): the boxes wait behind a Filters
    button, a labelled grid when opened. */
-table[data-cards] > thead > tr.sf-cards-toggle[hidden] { display: flex !important; }
+tr.sf-cards-toggle { display: none; }
+table[data-cards] > thead > tr.sf-cards-toggle { display: flex !important; }
 table[data-cards] > thead > tr.sf-cards-toggle > td { gap: 8px; }
 table[data-cards] > thead > tr.sf-filter-row { display: none !important; }
 table[data-cards] > thead > tr.sf-filter-row[data-open] {

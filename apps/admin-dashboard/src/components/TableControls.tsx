@@ -275,8 +275,10 @@ export function SortFilterHead<T>({ controls, leading, allRows, thStyle }: {
           reader or a test counting the columns should find one heading per
           column, not two. */}
       {filterable && (
-        // `hidden` in a table; the cards CSS shows it (index.css, tables as cards).
-        <tr className="sf-cards-toggle" hidden>
+        // Hidden in a table by its class, shown by the cards CSS (index.css, tables
+        // as cards). Not the `hidden` attribute: Tailwind's base layer holds that
+        // at display: none !important, which no page rule can lift.
+        <tr className="sf-cards-toggle">
           <td colSpan={span} style={{ ...th, padding: 0 }}>
             <Btn
               small

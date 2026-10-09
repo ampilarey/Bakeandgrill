@@ -768,7 +768,11 @@ walk now waits for that).
 
 For new code: a new table needs nothing. Do not give a tab row `overflowX`
 (it is dropped anyway). A table whose columns are the point (a day per
-column) can keep its scroll with `data-table-scroll="keep"`.
+column) can keep its scroll with `data-table-scroll="keep"`. Something shown
+only in card mode is hidden by its class, not the `hidden` attribute:
+Tailwind's base layer holds `[hidden]` at `display: none !important`, and an
+important rule in a layer beats every unlayered one (the Filters row was
+invisible until this was found).
 
 ---
 
