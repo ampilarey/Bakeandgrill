@@ -310,7 +310,9 @@ export function PermissionsSettings({ initialUserId }: { initialUserId?: number 
       }
     }
     setSaving(false);
-    if (!failed && saved > 0) success('Permissions saved');
+    // The server checks every request at once; a till already signed in reads
+    // its person again within a minute (pos-web useStaffRefresh, 2026-10-10).
+    if (!failed && saved > 0) success('Permissions saved. Open tills pick them up within a minute.');
   };
 
   const pickUser = (id: number | null) => {

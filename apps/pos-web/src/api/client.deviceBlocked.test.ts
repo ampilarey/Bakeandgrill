@@ -30,6 +30,29 @@ describe("a request refused because of this till", () => {
     window.removeEventListener(DEVICE_BLOCKED_EVENT, blocked);
   });
 
+  it("a refusal of the person, not the till, asks for their permissions again", async () => {
+    const { request, DEVICE_BLOCKED_EVENT, PERMISSIONS_STALE_EVENT } = await import("./client");
+    const stale = vi.fn();
+    const blocked = vi.fn();
+    window.addEventListener(PERMISSIONS_STALE_EVENT, stale);
+    window.addEventListener(DEVICE_BLOCKED_EVENT, blocked);
+
+    refuse(403, { message: "You are not allowed to ring Pickup orders. Ask the owner to allow it in Admin → Staff." });
+    await expect(request("/orders")).rejects.toThrow();
+    expect(stale).toHaveBeenCalledTimes(1);
+    expect(blocked).not.toHaveBeenCalled();
+
+    // A refused till locks instead; other failures are not about permissions.
+    refuse(403, { message: "This POS device is waiting for approval.", code: "device_not_approved" });
+    await expect(request("/orders")).rejects.toThrow();
+    refuse(422, { message: "The given data was invalid." });
+    await expect(request("/orders")).rejects.toThrow();
+    expect(stale).toHaveBeenCalledTimes(1);
+
+    window.removeEventListener(PERMISSIONS_STALE_EVENT, stale);
+    window.removeEventListener(DEVICE_BLOCKED_EVENT, blocked);
+  });
+
   it("other refusals do not", async () => {
     const { request, DEVICE_BLOCKED_EVENT } = await import("./client");
     const blocked = vi.fn();

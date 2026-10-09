@@ -44,6 +44,14 @@ const { request: _coreRequest } = createApiClient({
 /** Fired when the server refuses this till; usePosApp re-checks and locks. */
 export const DEVICE_BLOCKED_EVENT = 'pos_device_blocked';
 
+/**
+ * Fired when the server refuses the person, not the till: something the till
+ * offered (an order type, a button) they are no longer allowed. usePosApp
+ * re-reads their permissions at once, since the till's copy may be older than
+ * a change made in Admin.
+ */
+export const PERMISSIONS_STALE_EVENT = 'pos_permissions_stale';
+
 const DEVICE_BLOCKED_CODES = new Set(['device_not_approved', 'device_rejected', 'device_disabled']);
 
 function isDeviceBlockedCode(e: unknown): boolean {
@@ -98,6 +106,8 @@ export async function request<T>(path: string, options: ApiRequestOptions = {}):
     // switched off): lock the screen now rather than at the next sign-in.
     if (status === 403 && isDeviceBlockedCode(e)) {
       window.dispatchEvent(new Event(DEVICE_BLOCKED_EVENT));
+    } else if (status === 403) {
+      window.dispatchEvent(new Event(PERMISSIONS_STALE_EVENT));
     }
     throw e;
   }

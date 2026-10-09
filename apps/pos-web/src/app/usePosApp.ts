@@ -20,6 +20,7 @@ import { useOps }           from "../hooks/useOps";
 import { useShift }         from "../hooks/useShift";
 import { allowedOrderTypes, canSeeCustomersTab, hasPosPermission } from "../hooks/usePosPermissions";
 import { useIdleLock, resolveIdleLockMinutes } from "../hooks/useIdleLock";
+import { useStaffRefresh } from "../hooks/useStaffRefresh";
 import { makeCartKey }       from "../hooks/useCart";
 import {
   applyPackagingPickerSelections,
@@ -41,6 +42,11 @@ import {
 import type { Pane } from "./types";
 import type { OpenShiftConfirmPayload } from "../components/OpenShiftModal";
 import { computePaneAccess } from "./paneAccess";
+
+/** Same permission slugs in the same order: a minute's re-read changes nothing. */
+function sameList(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((v, i) => v === b[i]);
+}
 
 export function usePosApp() {
   // ── Auth ────────────────────────────────────────────────────────────────────
@@ -601,31 +607,32 @@ export function usePosApp() {
     return () => window.clearTimeout(handle);
   }, [isLoggedIn]);
 
-  // Sync role from /auth/me — deferred so menu + shift win the network on login.
-  // staffLogin already caches role/permissions; this refreshes them quietly.
-  useEffect(() => {
-    if (!isLoggedIn) return;
-    const handle = window.setTimeout(() => {
-      void fetchMe()
-        .then((user) => {
-          const role = user.role ?? "";
-          localStorage.setItem("pos_staff_role", role);
-          setStaffRole(role);
-          const perms = user.permissions ?? [];
-          localStorage.setItem("pos_staff_permissions", JSON.stringify(perms));
-          setStaffPermissions(perms);
-          setIdleLockMinutes(resolveIdleLockMinutes(user));
-          setCartSide(user.pos_cart_side === "right" ? "right" : "left");
-          void cacheStaffSessionFromUser({
-            id: user.id,
-            name: user.name,
-            permissions: perms,
-          });
-        })
-        .catch(() => undefined);
-    }, 3000);
-    return () => window.clearTimeout(handle);
-  }, [isLoggedIn]);
+  // Sync role and permissions from /auth/me. staffLogin already caches them;
+  // useStaffRefresh keeps them current while the till is in use, so a change
+  // made in Admin reaches an open till within a minute (owner, 2026-10-10).
+  const refreshMe = useCallback(() => {
+    const token = posToken.get();
+    void fetchMe()
+      .then((user) => {
+        // Signed out (or someone else signed in) while this was on its way.
+        if (!token || posToken.get() !== token) return;
+        const role = user.role ?? "";
+        localStorage.setItem("pos_staff_role", role);
+        setStaffRole(role);
+        const perms = user.permissions ?? [];
+        localStorage.setItem("pos_staff_permissions", JSON.stringify(perms));
+        setStaffPermissions((prev) => (sameList(prev, perms) ? prev : perms));
+        setIdleLockMinutes(resolveIdleLockMinutes(user));
+        setCartSide(user.pos_cart_side === "right" ? "right" : "left");
+        void cacheStaffSessionFromUser({
+          id: user.id,
+          name: user.name,
+          permissions: perms,
+        });
+      })
+      .catch(() => undefined);
+  }, []);
+  useStaffRefresh(isLoggedIn, refreshMe);
 
   useEffect(() => {
     if (!isLoggedIn || !canKitchenReceive) return;

@@ -476,7 +476,7 @@ function PermissionsModal({ member, onClose }: { member: StaffMember; onClose: (
     }
     askPermConfirm({
       title: 'Save permission changes',
-      message: `Apply ${changedCount} permission override(s) for ${member.name}? They take effect immediately.`,
+      message: `Apply ${changedCount} permission override(s) for ${member.name}? They take effect at once; a till they are signed in on picks them up within a minute.`,
       confirmLabel: 'Save changes',
       danger: true,
       onConfirm: () => void doSave(),
@@ -487,7 +487,7 @@ function PermissionsModal({ member, onClose }: { member: StaffMember; onClose: (
     setSaving(true);
     try {
       await updateUserPermissions(member.id, overrides);
-      toast.success('Permissions saved.');
+      toast.success('Permissions saved. Open tills pick them up within a minute.');
       onClose();
     } catch {
       toast.error('Failed to save permissions.');
