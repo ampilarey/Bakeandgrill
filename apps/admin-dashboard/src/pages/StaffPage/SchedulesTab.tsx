@@ -187,7 +187,7 @@ export function SchedulesTab({ staff }: { staff: StaffMember[] }) {
                               }}
                               style={{
                                 fontSize: 12, color: 'var(--color-text-muted)', background: 'none', border: '1px dashed var(--color-border)',
-                                borderRadius: 8, cursor: 'pointer', padding: '10px 8px', width: '100%', minHeight: 38,
+                                borderRadius: 8, cursor: 'pointer', padding: '6px 8px', width: '100%', minHeight: 32,
                               }}
                             >
                               + Add

@@ -139,7 +139,7 @@ function AdminShiftTable({
               </td>
               {showForceClose && (
                 <td style={TD}>
-                  <Btn small variant="secondary" onClick={(e) => { e.stopPropagation(); onForceClose?.(s.id); }}>Force close</Btn>
+                  <Btn small variant="secondary" style={{ whiteSpace: 'nowrap' }} onClick={(e) => { e.stopPropagation(); onForceClose?.(s.id); }}>Force close</Btn>
                 </td>
               )}
             </tr>
