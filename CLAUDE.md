@@ -179,6 +179,15 @@ Route permissions change only with the owner's yes, and the change updates
 `backend/tests/Fixtures/admin_route_permissions.txt`. Details:
 `docs/ADMIN_THEMING_MOBILE_PLAN.md` § Stage 3f.
 
+The role editor shows the permission groups as tiles in six sections that follow
+the admin menu (owner, 2026-10-09: "group and make it easier"). A new permission
+group goes into a section in `pages/SettingsPage/permissionSections.ts`; one left
+out still shows, under "Other". Settings tabs keep scrolling short: long forms are
+tabs (Business), wordings fold to one line until Edit (Notifications). A
+`position: fixed` bar inside a page now sits on the screen, not the page
+(`.animate-fade-in` no longer leaves a transform behind); words on a rust fill are
+`--color-on-primary`. Details: same file, § Stage 3g.
+
 ## TEST and production share one Redis
 
 The Redis socket is per cPanel *account* (`REDIS_PATH=/home/bakeandgrill/.redis/redis.sock`),

@@ -573,6 +573,11 @@ export function ScheduleEditor({
             key={key}
             className={`oc-day${day.enabled ? '' : ' oc-day--closed'}`}
           >
+            {/* Settings audit, 2026-10-09: a day took four lines (switch,
+                the Open / Close labels, the times, Add window), 180px on a
+                phone, seven times per schedule. Now the switch line holds Add
+                window and the times share one line; the labels stay for
+                screen readers. */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: day.enabled ? 8 : 0 }}>
               <button
                 type="button"
@@ -586,6 +591,16 @@ export function ScheduleEditor({
               </button>
               <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>{label}</span>
               {!day.enabled && <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Closed all day</span>}
+              {day.enabled && (
+                <button
+                  type="button"
+                  className="oc-add-window"
+                  onClick={() => setDay(key, { ...day, windows: [...day.windows, { ...newWindow }] })}
+                  aria-label={`Add a window to ${label}`}
+                >
+                  + Add window
+                </button>
+              )}
             </div>
 
             {day.enabled && (
@@ -593,7 +608,7 @@ export function ScheduleEditor({
                 {day.windows.map((win, idx) => (
                   <div key={idx} className="oc-window-row">
                     <div className="oc-time-field">
-                      <label htmlFor={`oc-${key}-open-${idx}`}>Open</label>
+                      <label htmlFor={`oc-${key}-open-${idx}`} className="oc-time-label">Open</label>
                       <div className="oc-time-box">
                         <input
                           id={`oc-${key}-open-${idx}`}
@@ -606,8 +621,9 @@ export function ScheduleEditor({
                         />
                       </div>
                     </div>
+                    <span className="oc-window-dash" aria-hidden>–</span>
                     <div className="oc-time-field">
-                      <label htmlFor={`oc-${key}-close-${idx}`}>Close</label>
+                      <label htmlFor={`oc-${key}-close-${idx}`} className="oc-time-label">Close</label>
                       <div className="oc-time-box">
                         <input
                           id={`oc-${key}-close-${idx}`}
@@ -631,13 +647,6 @@ export function ScheduleEditor({
                     )}
                   </div>
                 ))}
-                <button
-                  type="button"
-                  className="oc-add-window"
-                  onClick={() => setDay(key, { ...day, windows: [...day.windows, { ...newWindow }] })}
-                >
-                  + Add window
-                </button>
               </div>
             )}
           </div>

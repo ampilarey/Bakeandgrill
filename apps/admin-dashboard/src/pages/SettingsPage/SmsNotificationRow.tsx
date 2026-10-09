@@ -1,10 +1,16 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useState } from 'react';
 import { previewSmsTemplateById, updateSmsTemplate, type SmsTemplate } from '../../api';
 import { smsCharCount } from '../../utils/smsCharCount';
 import type { LucideIcon } from 'lucide-react';
-import { Switch } from '../../components/SharedUI';
+import { Btn, Switch } from '../../components/SharedUI';
 
 type TemplateVariable = { name: string; description?: string };
+
+export type NotificationMessage = {
+  template: SmsTemplate | null;
+  /** Which message this is when a switch sends more than one, e.g. "Pickup ready". */
+  label?: string;
+};
 
 type Props = {
   toggleKey: string;
@@ -12,52 +18,112 @@ type Props = {
   desc: string;
   icon: LucideIcon;
   enabled: boolean;
-  toggleDisabled?: boolean;
   /** The switch shows but cannot be pressed (its saved value did not load). */
   switchLocked?: boolean;
   savingToggle?: boolean;
   onToggle: () => void;
-  template?: SmsTemplate | null;
-  templateLabel?: string;
+  /** The texts this switch sends, each folded to one line until Edit. */
+  messages?: NotificationMessage[];
   onTemplateSaved?: (template: SmsTemplate) => void;
 };
 
+/*
+ * One customer SMS: its switch, and the wording of each text it sends.
+ * Settings audit, 2026-10-09 (owner: "minimizing vertical scrolling as much
+ * as possible"): every wording box stood open, thirteen of them, and the tab
+ * ran to 6,000px on a phone. Each is one line now, the start of the message,
+ * and Edit opens the box. A switch that sends two texts (receipt at the
+ * counter and online; pickup ready and delivery packed) shows both under it
+ * instead of a second card with no switch.
+ */
 export function SmsNotificationRow({
   toggleKey,
   label,
   desc,
   icon: Icon,
   enabled,
-  toggleDisabled = false,
   switchLocked = false,
   savingToggle = false,
   onToggle,
-  template,
-  templateLabel,
+  messages = [],
   onTemplateSaved,
 }: Props) {
-  const [body, setBody] = useState(template?.body ?? '');
+  const shown = messages.filter((m): m is { template: SmsTemplate; label?: string } => m.template !== null);
+  return (
+    <div
+      data-toggle-key={toggleKey}
+      style={{
+        background: 'var(--color-surface)',
+        border: '1px solid var(--color-border)',
+        borderRadius: 10,
+        padding: '12px 14px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+          <Icon size={20} aria-hidden style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+          <div style={{ minWidth: 0 }}>
+            <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: 'var(--color-text)' }}>{label}</p>
+            <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.45 }}>{desc}</p>
+          </div>
+        </div>
+        <Switch
+          checked={enabled}
+          onChange={() => onToggle()}
+          disabled={switchLocked || savingToggle}
+          title={enabled ? 'Click to disable' : 'Click to enable'}
+          aria-label={`Toggle ${label}`}
+        />
+      </div>
+      {shown.map((m) => (
+        <MessageEditor
+          key={m.template.id}
+          template={m.template}
+          label={m.label}
+          onSaved={onTemplateSaved}
+        />
+      ))}
+    </div>
+  );
+}
+
+function MessageEditor({
+  template,
+  label,
+  onSaved,
+}: {
+  template: SmsTemplate;
+  label?: string;
+  onSaved?: (template: SmsTemplate) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [body, setBody] = useState(template.body ?? '');
   const [savingBody, setSavingBody] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [bodyError, setBodyError] = useState('');
 
   useEffect(() => {
-    setBody(template?.body ?? '');
+    setBody(template.body ?? '');
     setPreview(null);
-  }, [template?.id, template?.body]);
+  }, [template.id, template.body]);
 
-  const displayBody = body || template?.body || '';
+  const displayBody = body || template.body || '';
+  const edited = displayBody !== (template.body ?? '');
   const count = smsCharCount(displayBody);
-  const variables = (template?.variables ?? []) as TemplateVariable[];
+  const variables = (template.variables ?? []) as TemplateVariable[];
+  const title = label ? `Message: ${label}` : 'Message';
 
   const handleSaveBody = async () => {
-    if (!template) return;
     setSavingBody(true);
     setBodyError('');
     try {
       const res = await updateSmsTemplate(template.id, { body: displayBody });
-      onTemplateSaved?.(res.template);
+      onSaved?.(res.template);
       setBody(res.template.body);
+      setOpen(false);
     } catch (e: unknown) {
       setBodyError((e as Error).message);
     } finally {
@@ -66,7 +132,6 @@ export function SmsNotificationRow({
   };
 
   const handlePreview = async () => {
-    if (!template) return;
     try {
       const res = await previewSmsTemplateById(template.id);
       setPreview(res.preview);
@@ -75,20 +140,59 @@ export function SmsNotificationRow({
     }
   };
 
-  const editor = template ? (
-    <div style={{ borderTop: toggleDisabled ? 'none' : '1px solid var(--color-border-light)', paddingTop: toggleDisabled ? 0 : 12 }}>
-      {templateLabel && (
-        <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
-          Message: {templateLabel}
-        </p>
-      )}
+  if (!open) {
+    return (
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1fr) auto',
+          alignItems: 'center',
+          gap: '2px 10px',
+          paddingTop: 10,
+          borderTop: '1px solid var(--color-border-light)',
+        }}
+      >
+        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+          {title}
+          {edited && <span style={{ color: 'var(--color-tone-rust-text)' }}> · not saved</span>}
+        </span>
+        <Btn
+          variant="secondary"
+          small
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-label={`Edit ${title.toLowerCase()}`}
+          style={{ gridRow: 'span 2' }}
+        >
+          Edit
+        </Btn>
+        <span
+          title={displayBody}
+          style={{
+            fontSize: 13,
+            color: 'var(--color-text)',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {displayBody || 'No wording yet'}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: 10 }}>
+      <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>{title}</p>
       <textarea
-        value={body || template.body}
+        value={displayBody}
+        aria-label={title}
         onChange={(e) => {
           setBody(e.target.value);
           setPreview(null);
         }}
-        rows={4}
+        rows={3}
         style={{
           width: '100%',
           boxSizing: 'border-box',
@@ -98,6 +202,8 @@ export function SmsNotificationRow({
           fontSize: 13,
           fontFamily: 'inherit',
           resize: 'vertical',
+          background: 'var(--color-surface)',
+          color: 'var(--color-text)',
         }}
       />
       {variables.length > 0 && (
@@ -110,8 +216,8 @@ export function SmsNotificationRow({
                 fontSize: 11,
                 padding: '2px 8px',
                 borderRadius: 99,
-                background: 'var(--color-border-light)',
-                color: 'var(--color-text-secondary)',
+                background: 'var(--color-tone-brown-bg)',
+                color: 'var(--color-tone-brown-text)',
                 fontFamily: 'monospace',
               }}
             >
@@ -120,24 +226,20 @@ export function SmsNotificationRow({
           ))}
         </div>
       )}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginTop: 8,
-        gap: 8,
-        flexWrap: 'wrap',
-      }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, gap: 8, flexWrap: 'wrap' }}>
         <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
           {count.encoding} · {count.chars} chars · {count.segments} segment{count.segments === 1 ? '' : 's'}
         </span>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button type="button" onClick={() => void handlePreview()} style={secondaryBtn}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Btn variant="ghost" small type="button" onClick={() => setOpen(false)}>
+            Done
+          </Btn>
+          <Btn variant="secondary" small type="button" onClick={() => void handlePreview()}>
             Preview
-          </button>
-          <button type="button" onClick={() => void handleSaveBody()} disabled={savingBody} style={primaryBtn}>
+          </Btn>
+          <Btn variant="primary" small type="button" onClick={() => void handleSaveBody()} disabled={savingBody || !edited}>
             {savingBody ? 'Saving…' : 'Save message'}
-          </button>
+          </Btn>
         </div>
       </div>
       {preview && (
@@ -155,71 +257,5 @@ export function SmsNotificationRow({
       )}
       {bodyError && <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--color-danger-strong)' }}>{bodyError}</p>}
     </div>
-  ) : null;
-
-  if (toggleDisabled && template) {
-    return (
-      <div style={{
-        background: 'var(--color-surface)',
-        border: '1px solid var(--color-border)',
-        borderRadius: 10,
-        padding: '12px 16px',
-      }}>
-        {editor}
-      </div>
-    );
-  }
-
-  return (
-    <div style={{
-      background: 'var(--color-surface)',
-      border: '1px solid var(--color-border)',
-      borderRadius: 10,
-      padding: '12px 16px',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 12,
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-          <Icon size={20} aria-hidden style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
-          <div style={{ minWidth: 0 }}>
-            <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: 'var(--color-text)' }}>{label}</p>
-            <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>{desc}</p>
-          </div>
-        </div>
-        <Switch
-          checked={enabled}
-          onChange={() => onToggle()}
-          disabled={toggleDisabled || switchLocked || savingToggle}
-          title={enabled ? 'Click to disable' : 'Click to enable'}
-          aria-label={`Toggle ${label}`}
-        />
-      </div>
-      {editor}
-      <span style={{ display: 'none' }} data-toggle-key={toggleKey} />
-    </div>
   );
 }
-
-const primaryBtn: CSSProperties = {
-  border: 'none',
-  borderRadius: 8,
-  padding: '6px 12px',
-  fontSize: 12,
-  fontWeight: 600,
-  cursor: 'pointer',
-  background: 'var(--color-primary)',
-  color: '#fff',
-};
-
-const secondaryBtn: CSSProperties = {
-  border: '1px solid var(--color-border)',
-  borderRadius: 8,
-  padding: '6px 12px',
-  fontSize: 12,
-  fontWeight: 600,
-  cursor: 'pointer',
-  background: 'var(--color-surface)',
-  color: 'var(--color-text)',
-};

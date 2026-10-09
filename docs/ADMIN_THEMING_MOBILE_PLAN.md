@@ -632,6 +632,70 @@ send, approve…) followed the rules already. Sign-in: password, PIN, two-step
 code, forgot password and reset code all fit at 390, 768 and 1366px with no
 light boxes in dark mode.
 
+#### Stage 3g — Settings: less scrolling, and roles in groups
+
+**Done 2026-10-09.** Owner: "Can u check admin settings page. Does it fit
+the branding and mobile friendly? Minimizing vertical scrolling as much as
+possible. And can u check roll and permissions, is it possible to group and
+make it easier." Every tab was measured (page height, phone 390px / computer
+1366px) before and after:
+
+| Tab | Phone before | after | Computer before | after |
+|---|---|---|---|---|
+| Roles & permissions | 14,836 | 2,077 | 14,718 | 1,327 |
+| One person's access | 27,367 | 2,052 | 14,746 | 1,320 |
+| Business (whole tab → one section) | 10,723 | 990 (longest section 2,046) | 6,506 | 900 (1,588) |
+| Notifications | 6,028 | 3,281 | 4,579 | 2,686 |
+| Currency photos | 3,313 | 1,729 | 1,376 | 919 |
+| Ordering → Pre-order | 3,151 | 2,682 | 2,627 | 2,199 |
+| Delivery | 2,551 | 2,295 | 1,666 | 1,666 |
+
+- **Roles & permissions** (`PermissionsSettingsSubPage`, `PermissionBoard`,
+  `permissionSections.ts`). About 190 permissions in 29 groups were one list,
+  a slug under each name. The groups are now tiles in six sections that
+  follow the admin menu (Till and orders; Kitchen; Menu, stock and buying;
+  Customers and marketing; Money and reports; Team and system), each saying
+  "12 of 16 on" with a bar; a tile opens across the row into its switches,
+  with All on / All off. A chip per role says how many it has (two by two on
+  a phone, so Owner is not off the edge); a search and On / Off / Changed
+  filters open every group with a match. One save bar holds every unsaved
+  change, roles and one person together, and saves only what changed (the
+  server keeps what a save does not name). Moving to another role keeps what
+  you changed on this one. One person's rows are As role ✓/✗ · Allow · Deny,
+  and "Put all back to their role" clears their own settings. A group the
+  server adds later and `PERMISSION_SECTIONS` does not list shows under
+  "Other". "How permissions work" and the cheat sheet sit behind "How it
+  works". A manager's "What you can do" uses the same tiles, read only.
+- **Business.** The nine sections are tabs (`?section=` in the address);
+  they wrap on a phone, every button in sight (owner, 2026-08-15). A tab with
+  an unsaved change has an amber dot, one with a refused field a red one, and
+  a refused save opens the tab that holds the field. "Used by" is one quiet
+  line, not a block of chips under every field. One status row ("No unsaved
+  changes" · Save) replaces the full-width Saved button and two boxes; the
+  pictures sit beside their controls on a phone (72 × 56) instead of a
+  120px box above them.
+- **Notifications.** Each SMS wording is one line with Edit; a switch that
+  sends two texts shows both under it rather than a second card without a
+  switch. Save message is off until the wording changes. The closing note is
+  the rust information tone (it was a warning's amber) and links to SMS →
+  Templates / Automations and Settings → Delivery.
+- **Weekly schedules** (online ordering, pre-order, delivery): a day is two
+  lines, not four. "+ Add window" sits on the day's line, the times share one
+  line with a dash, and "Open" / "Close" stay for screen readers only.
+- Currency photos are two to a row on a phone with quiet Upload / Replace
+  buttons; a delivery zone is one line on a phone; the note under the
+  Settings tabs is one line ("More settings: Buying · Kitchen · SMS on/off",
+  rust links).
+- **Fixed bars inside a page.** `.animate-fade-in` ended on
+  `transform: translateY(0)` with `animation-fill-mode: both`, and a
+  transform, even that one, makes the element the frame of every
+  `position: fixed` inside it. Every page is in a `PageShell`, so the phone
+  save bars (Business, Roles & permissions) sat at the foot of the page, not
+  above the tab bar. The animation fills `backwards` now. A fixed element in
+  a page needs no portal any more; it still needs no transformed ancestor.
+- Words on a rust fill use `--color-on-primary` (white in both themes; it
+  was referenced with a `#fff` fallback but never defined).
+
 ---
 
 ## 4. Explicitly out of scope

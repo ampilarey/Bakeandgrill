@@ -237,45 +237,28 @@ function NotificationsSettings() {
   };
 
   const renderConfigRows = (configs: NotifConfig[]) => (
-    configs.flatMap((cfg) => {
-      const slugs = cfg.templateSlugs ?? [];
-      if (slugs.length === 0) {
-        return [(
-          <SmsNotificationRow
-            key={cfg.key}
-            toggleKey={cfg.key}
-            label={cfg.label}
-            desc={cfg.desc}
-            icon={cfg.icon}
-            enabled={isEnabled(cfg.key)}
-            switchLocked={!settingsLoaded}
-            savingToggle={saving === cfg.key}
-            onToggle={() => void toggle(cfg.key)}
-          />
-        )];
-      }
-      return slugs.map((slug, idx) => (
-        <SmsNotificationRow
-          key={`${cfg.key}-${slug}`}
-          toggleKey={cfg.key}
-          label={cfg.label}
-          desc={cfg.desc}
-          icon={cfg.icon}
-          enabled={isEnabled(cfg.key)}
-          toggleDisabled={idx > 0}
-          switchLocked={!settingsLoaded}
-          savingToggle={saving === cfg.key}
-          onToggle={() => void toggle(cfg.key)}
-          template={templateBySlug(slug)}
-          templateLabel={cfg.templateLabels?.[idx]}
-          onTemplateSaved={handleTemplateSaved}
-        />
-      ));
-    })
+    configs.map((cfg) => (
+      <SmsNotificationRow
+        key={cfg.key}
+        toggleKey={cfg.key}
+        label={cfg.label}
+        desc={cfg.desc}
+        icon={cfg.icon}
+        enabled={isEnabled(cfg.key)}
+        switchLocked={!settingsLoaded}
+        savingToggle={saving === cfg.key}
+        onToggle={() => void toggle(cfg.key)}
+        messages={(cfg.templateSlugs ?? []).map((slug, idx) => ({
+          template: templateBySlug(slug),
+          label: cfg.templateLabels?.[idx],
+        }))}
+        onTemplateSaved={handleTemplateSaved}
+      />
+    ))
   );
 
   const renderSection = (title: string, subtitle: string, configs: NotifConfig[]) => (
-    <div style={{ marginBottom: 28 }}>
+    <div style={{ marginBottom: 22 }}>
       <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 4px' }}>{title}</h3>
       <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 14px' }}>{subtitle}</p>
       {loading ? (
@@ -326,7 +309,7 @@ function NotificationsSettings() {
         LIFECYCLE_SMS_CONFIG,
       )}
 
-      <div style={{ marginBottom: 28 }}>
+      <div style={{ marginBottom: 22 }}>
         <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 4px' }}>Staff alerts</h3>
         <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 14px' }}>
           Internal SMS for ops — not customer order status messages.
@@ -361,7 +344,7 @@ function NotificationsSettings() {
         )}
       </div>
 
-      <div style={{ marginBottom: 28 }}>
+      <div style={{ marginBottom: 22 }}>
         <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 4px' }}>Shift alerts</h3>
         <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 14px' }}>
           Owners and managers are texted when a till is left open too long, and when a close lands short or over by more than this. The business phone is texted when a paid pickup or dine-in order has not been started this many minutes after payment, or this long before its pickup time. 0 switches any of them off. Who receives them is set in SMS → Control Center.
@@ -409,11 +392,13 @@ function NotificationsSettings() {
         )}
       </div>
 
-      <div style={{ padding: '12px 16px', background: 'var(--color-warning-bg)', border: '1px solid rgba(183,75,12,0.3)', borderRadius: 10 }}>
-        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
-          Staff SMS templates (new order alerts, shift reminders, etc.) are under{' '}
-          <strong>SMS → Templates</strong> and <strong>SMS → Automations</strong>.
-          Delivery-delay SMS stays on Ordering Control → Delivery.
+      {/* Information, so the brand's rust tone; it was the amber of a warning. */}
+      <div style={{ padding: '10px 14px', background: 'var(--color-tone-rust-bg)', border: '1px solid var(--color-tone-rust-border)', borderRadius: 10 }}>
+        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-tone-rust-text)', lineHeight: 1.6 }}>
+          Staff texts (new order alerts, shift reminders and the rest) are under{' '}
+          <Link to="/sms?tab=templates" style={{ color: 'inherit', fontWeight: 700 }}>SMS → Templates</Link> and{' '}
+          <Link to="/sms?tab=automations" style={{ color: 'inherit', fontWeight: 700 }}>SMS → Automations</Link>.
+          The late-delivery text is on <Link to="/settings/delivery" style={{ color: 'inherit', fontWeight: 700 }}>Settings → Delivery</Link>.
         </p>
       </div>
     </div>
@@ -496,11 +481,17 @@ export function SettingsPage() {
   }
 
   // Route audit, 2026-09-19: three settings tabs live with their pages (owner,
-  // 2026-09-08). Said here, so nobody hunts through this page for them.
+  // 2026-09-08). Said here, so nobody hunts through this page for them; one
+  // line since the 2026-10-09 audit, where three on a phone came before any
+  // setting.
   const note = (
     <span data-testid="settings-elsewhere">
-      Buying switches are under <Link to="/purchasing/settings">Purchasing → Settings</Link>, kitchen handover rules under{' '}
-      <Link to="/kitchen/settings">Kitchen → Settings</Link>, and every SMS on/off under <Link to="/sms?tab=control-center">SMS → Control Center</Link>.
+      More settings:{' '}
+      <Link to="/purchasing/settings" title="Purchasing → Settings: buying switches">Buying</Link>
+      {' · '}
+      <Link to="/kitchen/settings" title="Kitchen → Settings: handover rules">Kitchen</Link>
+      {' · '}
+      <Link to="/sms?tab=control-center" title="SMS → Control Center: every text's on/off">SMS on/off</Link>
     </span>
   );
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { ToastProvider } from '../components/ui';
 
 /*
@@ -58,8 +58,10 @@ describe('Roles & permissions for someone who cannot change them', () => {
     renderIt();
 
     expect(screen.getByTestId('permissions-owner-only')).toHaveTextContent('Only the owner changes role defaults');
-    expect(screen.getByText('How permissions work')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Save role defaults/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /How it works/ }));
+    expect(screen.getByTestId('permissions-help')).toHaveTextContent('The owner always has everything');
+    expect(screen.queryByRole('tab', { name: /Roles/ })).not.toBeInTheDocument();
+    expect(screen.queryByTestId('permissions-savebar')).not.toBeInTheDocument();
     expect(api.getRolePermissions).not.toHaveBeenCalled();
     expect(api.fetchStaff).not.toHaveBeenCalled();
   });
@@ -70,8 +72,11 @@ describe('Roles & permissions for someone who cannot change them', () => {
 
     const list = await screen.findByTestId('my-access');
     expect(list).toHaveTextContent('What you can do');
-    expect(list).toHaveTextContent('Customers');
+    // Groups are tiles in their section; opening one lists the permissions by name.
+    expect(within(list).getByTestId('perm-section-customers')).toHaveTextContent('Customers and marketing');
+    fireEvent.click(within(list).getByTestId('perm-tile-customers'));
     expect(list).toHaveTextContent('Record customer credit repayments');
+    fireEvent.click(within(list).getByTestId('perm-tile-system'));
     expect(list).toHaveTextContent('Update operational settings');
   });
 
@@ -83,6 +88,6 @@ describe('Roles & permissions for someone who cannot change them', () => {
     expect(screen.queryByTestId('permissions-owner-only')).not.toBeInTheDocument();
     expect(screen.queryByTestId('my-access')).not.toBeInTheDocument();
     expect(api.getMyPermissions).not.toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: /Role permissions/ })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Roles/ })).toBeInTheDocument();
   });
 });

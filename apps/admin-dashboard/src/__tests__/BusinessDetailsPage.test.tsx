@@ -267,6 +267,7 @@ describe('BusinessDetailsPage', () => {
     renderPage();
     await screen.findByTestId('business-details-form');
 
+    fireEvent.click(screen.getByRole('tab', { name: 'Address' }));
     const maps = within(screen.getByTestId('business-field-business_maps_url')).getByRole('textbox');
     fireEvent.change(maps, { target: { value: 'javascript:bad' } });
     fireEvent.click(screen.getByTestId('business-details-save'));
@@ -315,12 +316,12 @@ describe('BusinessDetailsPage', () => {
  * Enhancements, 2026-08-15 — "Enhance the business details page desktop and
  * mobile version."
  */
-/** Titles as the API sends them, so the jump buttons can be matched by name. */
+/** The section buttons' names: short ones for the sections the page knows, the API title otherwise. */
 function sectionTitle(id: string): string {
   return ({
-    identity: 'Business identity',
-    address: 'Address and location',
-    contact: 'Customer contact channels',
+    identity: 'Identity',
+    address: 'Address',
+    contact: 'Contact',
     documents: 'Receipt & document branding',
   } as Record<string, string>)[id] ?? id;
 }
@@ -357,17 +358,59 @@ describe('Business Details — enhancements', () => {
     expect(inputIn('business_phone').inputMode).toBe('tel');
     expect(inputIn('business_email').type).toBe('email');
     expect(inputIn('business_website').type).toBe('url');
-    expect(inputIn('business_whatsapp').type).toBe('tel');
     expect(inputIn('site_name').type).toBe('text');
+    fireEvent.click(screen.getByRole('tab', { name: 'Contact' }));
+    expect(inputIn('business_whatsapp').type).toBe('tel');
   });
 
-  it('lists a jump link for every section', async () => {
+  it('has a tab for every section, hours and legal included, and shows one at a time', async () => {
+    // Settings audit, 2026-10-09: the sections were one long page (10,700px
+    // on a phone); each tab now opens its own.
     renderPage();
     const jump = await screen.findByTestId('business-details-jump');
-    const links = within(jump).getAllByRole('link');
-    expect(links).toHaveLength(4);
-    expect(links[0].getAttribute('href')).toBe('#business-section-identity');
-    expect(document.getElementById('business-section-identity')).toBeTruthy();
+    const tabs = within(jump).getAllByRole('tab');
+    expect(tabs).toHaveLength(6);
+    expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
+    expect(tabs[0].getAttribute('aria-controls')).toBe('business-section-identity');
+    expect(screen.getByTestId('business-section-identity')).toBeVisible();
+    expect(screen.getByTestId('business-section-address')).not.toBeVisible();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Address' }));
+    expect(screen.getByTestId('business-section-address')).toBeVisible();
+    expect(screen.getByTestId('business-section-identity')).not.toBeVisible();
+    fireEvent.click(screen.getByRole('tab', { name: 'Legal & tax' }));
+    expect(screen.getByTestId('business-section-legal')).toBeVisible();
+  });
+
+  it('marks the tab that holds an unsaved change, and opens the tab of a refused field', async () => {
+    vi.mocked(api.updateBusinessDetails).mockRejectedValueOnce(
+      new ApiRequestError('must be a safe public URL', 422, {
+        message: 'must be a safe public URL',
+        errors: { business_maps_url: ['Google Maps destination URL must be a safe public URL.'] },
+      }),
+    );
+    renderPage();
+    await screen.findByTestId('business-details-form');
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Address' }));
+    fireEvent.change(within(screen.getByTestId('business-field-business_maps_url')).getByRole('textbox'), {
+      target: { value: 'javascript:bad' },
+    });
+    expect(screen.getByRole('tab', { name: /Address.*unsaved changes/ })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('tab', { name: /Identity/ }));
+    fireEvent.click(screen.getByTestId('business-details-save'));
+    await waitFor(() => expect(screen.getByTestId('business-field-error-business_maps_url')).toBeVisible());
+    expect(screen.getByTestId('business-field-error-business_maps_url')).toHaveTextContent(/safe public URL/);
+    expect(screen.getByRole('tab', { name: /Address.*needs a fix/ })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('says where a field is used in one line', async () => {
+    renderPage();
+    await screen.findByTestId('business-details-form');
+    const usedBy = screen.getByTestId('business-used-by-business_phone');
+    expect(usedBy).toHaveTextContent('Used by Receipts & invoices');
+    expect(usedBy.querySelector('li')).toBeNull();
   });
 
   it('picks a picture from the Media Library instead of pasting a URL', async () => {
@@ -437,10 +480,10 @@ describe('Business Details — enhancements', () => {
     renderPage();
     const jump = await screen.findByTestId('business-details-jump');
 
-    const links = within(jump).getAllByRole('link');
-    expect(links.length).toBe(4);
+    const tabs = within(jump).getAllByRole('tab');
+    expect(tabs.length).toBe(6);
     for (const section of ['identity', 'address', 'contact', 'documents']) {
-      expect(within(jump).getByRole('link', { name: sectionTitle(section) })).toBeTruthy();
+      expect(within(jump).getByRole('tab', { name: sectionTitle(section) })).toBeTruthy();
       expect(document.getElementById(`business-section-${section}`)).toBeTruthy();
     }
   });

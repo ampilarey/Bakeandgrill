@@ -59,6 +59,8 @@
   /* Off track of the shared Switch: a warm grey that still reads on white. */
   --color-switch-off:        #D1C9BE;
   --color-switch-knob:       #FFFFFF;
+  /* Words on a rust fill (a picked tab or chip); white in both themes. */
+  --color-on-primary:        #FFFFFF;
   /* Near-black in both themes: behind photos and video, the sign-in page,
      the bulk-selection bar. --color-text flips to cream in dark mode. */
   --color-backdrop:          #1C1408;
@@ -127,7 +129,12 @@ input[type="checkbox"], input[type="radio"], input[type="range"], progress, mete
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.animate-fade-in { animation: fade-in-up 0.25s ease both; }
+/* `backwards`, not `both`: kept after the animation, the end frame's
+   translateY(0) is still a transform, and a transform makes the page the
+   frame of every position: fixed inside it. The phone save bars on Business
+   and Roles & permissions sat at the foot of the page instead of above the
+   tab bar (2026-10-09). */
+.animate-fade-in { animation: fade-in-up 0.25s ease backwards; }
 
 /* ── Skeleton shimmer ───────────────────────────────────────── */
 @keyframes shimmer {
@@ -1107,16 +1114,29 @@ input[type="file"]::file-selector-button:hover {
 }
 .oc-window-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   gap: 8px;
-  align-items: end;
+  align-items: center;
   min-width: 0;
   max-width: 100%;
   width: 100%;
   box-sizing: border-box;
 }
 .oc-window-row:has(.oc-window-remove) {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 32px;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) 32px;
+}
+.oc-window-dash { color: var(--color-text-muted); font-weight: 600; }
+/* Open and Close stay named for screen readers; the dash says it on screen. */
+.oc-time-label {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 .oc-time-field {
   display: flex;
@@ -1198,11 +1218,11 @@ input[type="file"]::file-selector-button:hover {
   font-size: 20px;
   line-height: 1;
   padding: 8px 2px;
-  align-self: end;
+  align-self: center;
   justify-self: center;
 }
 .oc-add-window {
-  align-self: flex-start;
+  margin-left: auto;
   font-size: 12px;
   color: var(--color-text-secondary);
   background: none;
@@ -1364,9 +1384,11 @@ input[type="file"]::file-selector-button:hover {
   }
 
   /* Delivery zone rows: name on its own line, fee+MVR underneath */
+  /* A zone is one line on a phone too: name, fee, MVR, remove (settings
+     audit, 2026-10-09; it was two). */
   .ordering-page .oc-zone-row {
     display: grid !important;
-    grid-template-columns: 1fr !important;
+    grid-template-columns: minmax(0, 1fr) 150px !important;
     gap: 8px !important;
   }
   .ordering-page .oc-zone-fee {
@@ -5271,29 +5293,89 @@ input[type="file"]::file-selector-button:hover {
 }
 .business-details-field--wide { grid-column: 1 / -1; }
 
-/* ── jump row ──────────────────────────────────────────────── */
-.business-details-jump {
+/* ── the notice, the section tabs and the save status ────────── */
+.business-details-notice {
+  margin: 0 0 12px;
+  max-width: 880px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+.business-details-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+/* Every section button on screen at once; they wrap on a phone (owner,
+   2026-08-15). Each opens its section; the rest wait out of the way. */
+.business-details-tabs {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-bottom: 16px;
-  max-width: 1040px;
 }
-.business-details-jump-link {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  background: var(--color-surface);
+.business-details-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
   border: 1px solid var(--color-border);
-  border-radius: 20px;
-  padding: 7px 13px;
-  text-decoration: none;
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
   white-space: nowrap;
+  cursor: pointer;
   transition: color 0.12s ease, border-color 0.12s ease;
 }
-.business-details-jump-link:hover {
-  color: var(--color-primary);
+.business-details-tab:hover { color: var(--color-primary); border-color: var(--color-primary); }
+.business-details-tab[aria-selected="true"] {
+  background: var(--color-primary);
   border-color: var(--color-primary);
+  color: var(--color-on-primary);
+}
+.business-details-tab-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-warning);
+}
+.business-details-tab-dot--error { background: var(--color-danger); }
+.business-details-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 44px;
+  padding: 4px 4px 4px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+}
+.business-details-status {
+  min-width: 0;
+  font-size: 13.5px;
+  color: var(--color-text-secondary);
+}
+.business-details-status--ok { color: var(--color-success-strong); }
+.business-details-status--failed { color: var(--color-danger-strong); }
+.business-details-card-head { margin-bottom: 12px; }
+.business-details-used-by {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+.business-details-used-by-label {
+  font-weight: 700;
+  color: var(--color-text-secondary);
+}
+.business-details-legal {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px 20px;
+  margin: 0;
 }
 
 /* ── image fields ──────────────────────────────────────────── */
@@ -5360,36 +5442,15 @@ input[type="file"]::file-selector-button:hover {
   font-weight: 600;
   color: var(--color-text-secondary);
 }
-.business-details-foot {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
-}
 
 @media (max-width: 767px) {
   .business-details-grid { grid-template-columns: 1fr; }
   .business-details-card { padding: 14px; }
-  /* Owner, 2026-08-15: all seven section buttons must be on screen at once.
-     They used to sit in one row you had to slide sideways, so the last few
-     were invisible unless you knew to swipe. Now they wrap — about three
-     rows on a phone — and the type tightens just enough to keep it to three. */
-  .business-details-jump {
-    flex-wrap: wrap;
-    overflow-x: visible;
-  }
-  .business-details-jump-link {
-    font-size: 12px;
-    padding: 6px 11px;
-  }
-  .business-details-image {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .business-details-image-preview { width: 100%; height: 120px; }
-  .business-details-image-preview--square { width: 100%; height: 120px; }
-  /* The footer button duplicates the sticky bar on a phone — one Save is enough. */
-  .business-details-foot { display: none; }
+  /* Three short rows of section buttons, all in sight. */
+  .business-details-tab { font-size: 12.5px; padding: 6px 11px; }
+  /* A picture beside its controls, not a 120px box above them. */
+  .business-details-image-preview { width: 72px; height: 56px; }
+  .business-details-image-preview--square { width: 56px; height: 56px; }
   .business-details-savebar {
     position: fixed;
     left: 12px;
@@ -5398,6 +5459,577 @@ input[type="file"]::file-selector-button:hover {
     margin-top: 0;
     z-index: 40;
   }
+}
+
+/* ════════════════════════════════════════════════════════════
+   ROLES & PERMISSIONS — the groups as tiles that open into panels
+   Owner, 2026-10-09: "is it possible to group and make it easier".
+   PermissionBoard.tsx; 14,700px of rows on a phone became two screens.
+════════════════════════════════════════════════════════════ */
+.perm-page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 1120px;
+  min-width: 0;
+}
+.perm-page:has(.perm-savebar) { padding-bottom: 8px; }
+.perm-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  min-width: 0;
+}
+.perm-roles { align-self: flex-start; max-width: 100%; flex-wrap: wrap; }
+.perm-modes,
+.perm-roles {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-light);
+}
+.perm-mode,
+.perm-role {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.perm-mode:hover,
+.perm-role:hover { color: var(--color-primary); }
+.perm-mode[aria-selected="true"],
+.perm-role[aria-selected="true"] {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+.perm-role-count {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--color-tone-brown-bg);
+  color: var(--color-tone-brown-text);
+}
+.perm-role[aria-selected="true"] .perm-role-count {
+  background: color-mix(in srgb, var(--color-on-primary) 22%, transparent);
+  color: var(--color-on-primary);
+}
+.perm-role-dot {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-warning);
+  box-shadow: 0 0 0 2px var(--color-bg);
+}
+
+/* Filters, group tools, "How it works": one small pill. */
+.perm-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.perm-chip:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+.perm-chip[aria-pressed="true"],
+.perm-chip[aria-expanded="true"] {
+  background: var(--color-tone-rust-bg);
+  border-color: var(--color-tone-rust-border);
+  color: var(--color-tone-rust-text);
+}
+.perm-chip:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.perm-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.perm-search {
+  flex: 1 1 240px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 6px 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+}
+.perm-search:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-glow);
+}
+.perm-search input {
+  flex: 1;
+  min-width: 0;
+  min-height: 38px;
+  padding: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 14px;
+}
+.perm-search input::-webkit-search-cancel-button { display: none; }
+.perm-search-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+.perm-filters { display: flex; gap: 6px; }
+
+.perm-board {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+.perm-section-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+.perm-section-head svg { color: var(--color-primary); flex: none; }
+.perm-section-count {
+  margin-left: auto;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+.perm-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+.perm-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.12s ease;
+}
+.perm-tile:hover { border-color: var(--color-primary); }
+.perm-tile-name {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+}
+.perm-tile-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+.perm-meter {
+  display: block;
+  height: 4px;
+  margin-top: 2px;
+  border-radius: 999px;
+  background: var(--color-border-light);
+  overflow: hidden;
+}
+.perm-meter > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-primary);
+}
+.perm-tile-note { font-size: 11.5px; font-weight: 700; }
+.perm-tile-note--rust { color: var(--color-tone-rust-text); }
+.perm-tile-note--brown { color: var(--color-tone-brown-text); }
+.perm-tile-skeleton { height: 72px; border-radius: 12px; }
+
+/* An open group takes the whole row; its permissions pair up beside each other. */
+.perm-panel {
+  grid-column: 1 / -1;
+  min-width: 0;
+  padding: 2px 12px 8px;
+  border: 1px solid var(--color-tone-rust-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+.perm-panel-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--color-border-light);
+}
+.perm-panel-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 4px 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.perm-panel-toggle { cursor: pointer; }
+.perm-chevron {
+  margin-left: auto;
+  align-self: center;
+  flex: none;
+  color: var(--color-text-muted);
+  transform: rotate(180deg);
+}
+.perm-panel-tools { display: flex; flex-wrap: wrap; gap: 6px; }
+.perm-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  column-gap: 20px;
+}
+.perm-rows--wide { grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); }
+.perm-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 5px 6px;
+  border-bottom: 1px solid var(--color-border-light);
+}
+.perm-row[data-pending] {
+  background: var(--color-tone-rust-bg);
+  box-shadow: inset 3px 0 0 var(--color-primary);
+}
+.perm-row-name {
+  flex: 1 1 120px;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.3;
+  color: var(--color-text);
+}
+.perm-row-end {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+.perm-flag {
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--color-tone-brown-border);
+  background: var(--color-tone-brown-bg);
+  color: var(--color-tone-brown-text);
+  font-size: 11px;
+  font-weight: 700;
+}
+.perm-yes { flex: none; color: var(--color-success-strong); }
+
+/* One person: As role / Allow / Deny. */
+.perm-seg {
+  display: inline-flex;
+  flex: none;
+  margin-left: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--color-surface);
+}
+.perm-seg-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 5px 10px;
+  border: none;
+  border-left: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.perm-seg-btn:first-child { border-left: none; }
+.perm-seg-btn:hover:not(:disabled) { color: var(--color-primary); }
+.perm-seg-btn--role[aria-checked="true"] {
+  background: var(--color-tone-brown-bg);
+  color: var(--color-tone-brown-text);
+}
+.perm-seg-btn--allow[aria-checked="true"] {
+  background: var(--color-success-bg);
+  color: var(--color-success-strong);
+}
+.perm-seg-btn--deny[aria-checked="true"] {
+  background: var(--color-danger-bg);
+  color: var(--color-danger-strong);
+}
+
+.perm-person {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-width: 0;
+}
+.perm-person-select {
+  flex: 0 1 340px;
+  min-width: 0;
+  max-width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 14px;
+}
+.perm-person-line {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+.perm-role-chip {
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--color-tone-brown-border);
+  background: var(--color-tone-brown-bg);
+  color: var(--color-tone-brown-text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.perm-note {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border-light);
+  background: var(--color-bg);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+.perm-empty { margin: 0; font-size: 13px; color: var(--color-text-muted); }
+.perm-owner-only {
+  flex: 1 1 260px;
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+.perm-mine { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.perm-mine-title { margin: 0; font-size: 15px; font-weight: 700; color: var(--color-text); }
+.perm-mine-sub { margin: -6px 0 0; font-size: 13px; color: var(--color-text-secondary); }
+
+.perm-help {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--color-text-secondary);
+}
+.perm-help > ul { margin: 0; padding-left: 18px; list-style: disc; }
+.perm-help strong { color: var(--color-text); }
+.perm-cheat { margin-top: 10px; }
+.perm-cheat > summary { cursor: pointer; font-weight: 700; color: var(--color-text); }
+.perm-cheat-roles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+  margin-top: 10px;
+}
+.perm-cheat-title { margin: 0 0 2px; font-weight: 700; color: var(--color-text); }
+.perm-cheat-summary { margin: 0 0 6px; }
+.perm-cheat-can,
+.perm-cheat-cannot { margin: 0 0 6px; padding-left: 18px; font-size: 12px; list-style: disc; }
+.perm-cheat-can { color: var(--color-success-strong); }
+.perm-cheat-cannot { color: var(--color-warning-strong); }
+.perm-cheat-table { margin-top: 12px; }
+.perm-cheat-table table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.perm-cheat-table th {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  color: var(--color-text-muted);
+}
+.perm-cheat-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--color-border-light);
+  vertical-align: top;
+}
+.perm-cheat-table code { font-size: 11.5px; color: var(--color-text); white-space: nowrap; }
+
+/* One save for everything changed, roles and person together. */
+.perm-savebar {
+  position: sticky;
+  bottom: 12px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--color-tone-rust-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md);
+}
+.perm-savebar-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: 13.5px;
+  color: var(--color-text);
+}
+.perm-savebar-parts {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  .perm-mode { padding: 7px 11px; }
+  .perm-help-toggle { padding: 6px 10px; }
+  /* All four roles in sight, two by two, rather than Owner off the edge. */
+  .perm-roles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-self: stretch; }
+  .perm-role { justify-content: space-between; }
+  .perm-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .perm-rows,
+  .perm-rows--wide { grid-template-columns: minmax(0, 1fr); }
+  .perm-seg-btn { padding: 5px 7px; font-size: 12px; }
+  .perm-savebar {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: calc(var(--admin-tabbar-h, 56px) + 12px);
+    z-index: 40;
+  }
+  /* Room under the last tile for the bar that floats over it. */
+  .perm-page:has(.perm-savebar) { padding-bottom: 84px; }
+}
+
+/* The line under a hub's tabs ("More settings: Buying · Kitchen · SMS on/off"):
+   its links looked like the words around them. */
+.hub-note a {
+  color: var(--color-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+.hub-note a:hover { text-decoration: underline; text-underline-offset: 2px; }
+
+/* ════════════════════════════════════════════════════════════
+   CURRENCY PHOTOS — note and coin cards for the POS cash count
+════════════════════════════════════════════════════════════ */
+.currency-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+}
+.currency-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+}
+.currency-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.currency-card-name { font-size: 14px; font-weight: 700; color: var(--color-text); }
+.currency-card-tag { font-size: 11px; font-weight: 600; color: var(--color-text-muted); }
+.currency-card-tag--custom { font-weight: 700; color: var(--color-tone-rust-text); }
+.currency-card-photo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 76px;
+  padding: 6px;
+  border-radius: 10px;
+  background: var(--color-bg);
+}
+.currency-card-note { width: 100%; max-width: 140px; height: 64px; object-fit: cover; border-radius: 6px; }
+.currency-card-coin { width: 60px; height: 60px; object-fit: cover; border-radius: 50%; }
+.currency-card-actions { display: flex; gap: 6px; }
+.currency-card-actions > button { flex: 1 1 auto; justify-content: center; }
+@media (max-width: 767px) {
+  .currency-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* ── Section order & visibility header ─────────────────────────

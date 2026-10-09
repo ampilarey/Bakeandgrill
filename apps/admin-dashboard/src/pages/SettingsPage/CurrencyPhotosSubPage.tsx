@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Btn } from '../../components/SharedUI';
 import {
   CURRENCY_FACES,
   getCurrencyImages,
@@ -97,106 +98,47 @@ export function CurrencyPhotosSettings() {
         }}
       />
 
-      <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 14px', lineHeight: 1.5 }}>
+      <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 12px', lineHeight: 1.5 }}>
         These photos appear on the POS <strong>Close shift</strong> cash count. Upload a clear,
         straight-on photo of each note or coin (PNG/JPG/WebP). Landscape works best for notes,
         square for coins. Reset removes your photo and restores the built-in one.
       </p>
 
-      {error && <p style={{ color: 'var(--color-danger)', fontSize: 13, marginBottom: 10 }}>{error}</p>}
-      {okMsg && <p style={{ color: 'var(--color-success)', fontSize: 13, marginBottom: 10 }}>{okMsg}</p>}
+      {error && <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, marginBottom: 10 }}>{error}</p>}
+      {okMsg && <p style={{ color: 'var(--color-success-strong)', fontSize: 13, marginBottom: 10 }}>{okMsg}</p>}
       {loading && <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Loading…</p>}
 
-      <div
-        data-responsive-grid
-        style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}
-      >
+      {/* Settings audit, 2026-10-09: fourteen cards in one column, each with
+          a solid rust button, ran to 3,300px on a phone. Two to a row there,
+          five or six on a computer, and the buttons are the quiet kind. */}
+      <div className="currency-grid">
         {CURRENCY_FACES.map(({ face, label, kind }) => {
           const customUrl = custom[String(face)];
           const src = customUrl ?? bundledUrl(face);
           const busy = busyFace === face;
           return (
-            <div
-              key={face}
-              style={{
-                border: '1px solid var(--color-border)',
-                borderRadius: 12,
-                background: 'var(--color-surface)',
-                padding: 12,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 10,
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>{label}</span>
-                {customUrl ? (
-                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-primary)' }}>Custom</span>
-                ) : (
-                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)' }}>Default</span>
-                )}
+            <div key={face} className="currency-card" data-testid={`currency-card-${face}`}>
+              <div className="currency-card-head">
+                <span className="currency-card-name">{label}</span>
+                <span className={customUrl ? 'currency-card-tag currency-card-tag--custom' : 'currency-card-tag'}>
+                  {customUrl ? 'Custom' : 'Default'}
+                </span>
               </div>
-
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  minHeight: 84,
-                  background: 'var(--color-bg)',
-                  borderRadius: 10,
-                  padding: 8,
-                }}
-              >
+              <div className="currency-card-photo">
                 <img
                   src={src}
                   alt={label}
-                  style={
-                    kind === 'note'
-                      ? { width: 150, height: 70, objectFit: 'cover', borderRadius: 6 }
-                      : { width: 64, height: 64, objectFit: 'cover', borderRadius: '50%' }
-                  }
+                  className={kind === 'note' ? 'currency-card-note' : 'currency-card-coin'}
                 />
               </div>
-
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => pickFile(face)}
-                  style={{
-                    flex: 1,
-                    minHeight: 40,
-                    borderRadius: 10,
-                    border: 'none',
-                    background: 'var(--color-primary)',
-                    color: '#fff',
-                    fontSize: 13,
-                    fontWeight: 700,
-                    cursor: busy ? 'wait' : 'pointer',
-                  }}
-                >
-                  {busy ? 'Working…' : customUrl ? 'Replace photo' : 'Upload photo'}
-                </button>
+              <div className="currency-card-actions">
+                <Btn variant="secondary" small type="button" disabled={busy} onClick={() => pickFile(face)}>
+                  {busy ? 'Working…' : customUrl ? 'Replace' : 'Upload'}
+                </Btn>
                 {customUrl && (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => void onReset(face)}
-                    style={{
-                      minHeight: 40,
-                      padding: '0 12px',
-                      borderRadius: 10,
-                      border: '1px solid var(--color-border)',
-                      background: 'var(--color-surface)',
-                      color: 'var(--color-text-secondary)',
-                      fontSize: 13,
-                      fontWeight: 700,
-                      cursor: busy ? 'wait' : 'pointer',
-                    }}
-                  >
+                  <Btn variant="ghost" small type="button" disabled={busy} onClick={() => void onReset(face)}>
                     Reset
-                  </button>
+                  </Btn>
                 )}
               </div>
             </div>

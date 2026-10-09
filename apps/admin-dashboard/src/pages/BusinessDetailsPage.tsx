@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Image as ImageIcon } from 'lucide-react';
 import { ApiRequestError } from '@shared/api';
 import {
@@ -59,6 +59,26 @@ function fieldErrorsFromBody(body: unknown): Record<string, string> {
   return out;
 }
 
+/*
+ * Settings audit, 2026-10-09 (owner: "minimizing vertical scrolling as much
+ * as possible"): the nine sections were one page, 10,700px on a phone, each
+ * field followed by a block of "Used by" chips. The sections are tabs now,
+ * every button on screen at once and wrapping on a phone (owner, 2026-08-15:
+ * all section buttons visible, none off the edge), and "Used by" is one line.
+ * The tab is in the address (?section=), so a link can open one.
+ */
+const TAB_LABELS: Record<string, string> = {
+  identity: 'Identity',
+  contact: 'Contact',
+  address: 'Address',
+  brand: 'Brand',
+  social: 'Social',
+  tracking: 'Tracking',
+  menu_rules: 'Menu rules',
+  hours: 'Hours',
+  legal: 'Legal & tax',
+};
+
 export function BusinessDetailsPage() {
   usePageTitle('Business Details');
   const { success, error } = useToast();
@@ -76,6 +96,7 @@ export function BusinessDetailsPage() {
   /** Which image field the Media Library is picking for. */
   const [pickerKey, setPickerKey] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const load = async () => {
     setLoading(true);
@@ -145,9 +166,55 @@ export function BusinessDetailsPage() {
         ? 'Save failed — Retry'
         : isDirty
           ? `Save ${dirty.length} change${dirty.length === 1 ? '' : 's'}`
-          : saveStatus === 'saved'
-            ? 'Saved'
-            : 'Saved';
+          : 'Saved';
+
+  // One field, one place. The API no longer repeats a key across sections,
+  // but the screen refuses to draw the same setting twice regardless — two
+  // boxes holding one value is a bug the owner has to spot, and he already
+  // did once.
+  const drawn = new Set<string>();
+  const drawnSections = sections
+    .map((section) => ({
+      ...section,
+      fields: section.fields.filter((f) => {
+        if (drawn.has(f.key)) return false;
+        drawn.add(f.key);
+        return true;
+      }),
+    }))
+    .filter((section) => section.fields.length > 0);
+
+  const tabs = [
+    ...drawnSections.map((section) => ({ id: section.id, title: section.title })),
+    ...(hours ? [{ id: 'hours', title: 'Hours and closures' }] : []),
+    ...(legal ? [{ id: 'legal', title: 'Legal, tax and document identity' }] : []),
+  ];
+  const wanted = searchParams.get('section');
+  const active = tabs.find((t) => t.id === wanted)?.id ?? tabs[0]?.id ?? null;
+  const pickTab = (id: string) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('section', id);
+      return next;
+    }, { replace: true });
+  };
+
+  const dirtyKeys = new Set(dirty.map((f) => f.key));
+  const tabState = (id: string): 'error' | 'dirty' | null => {
+    const section = drawnSections.find((x) => x.id === id);
+    if (!section) return null;
+    if (section.fields.some((f) => fieldErrors[f.key])) return 'error';
+    if (section.fields.some((f) => dirtyKeys.has(f.key))) return 'dirty';
+    return null;
+  };
+
+  // A refused save names its fields; open the tab that holds the first one.
+  useEffect(() => {
+    const firstKey = Object.keys(fieldErrors)[0];
+    if (!firstKey) return;
+    const home = drawnSections.find((section) => section.fields.some((f) => f.key === firstKey));
+    if (home && home.id !== active) pickTab(home.id);
+  }, [fieldErrors]);
 
   return (
     <PageShell>
@@ -156,61 +223,13 @@ export function BusinessDetailsPage() {
           section="System"
           title="Business Details"
           subtitle="Shared operational business record"
-          action={(
-            <Btn
-              variant="primary"
-              onClick={() => void save()}
-              disabled={saveStatus === 'saving' || (!isDirty && saveStatus !== 'failed')}
-              data-testid="business-details-save"
-            >
-              {saveLabel}
-            </Btn>
-          )}
         />
 
-        <div
-          data-testid="business-details-notice"
-          style={noticeStyle}
-        >
+        <p data-testid="business-details-notice" className="business-details-notice">
           {notice || 'These values appear on invoices, printed receipts, signage and SMS — not Website or Order App marketing content.'}
-        </div>
-
-        <div
-          data-testid="business-details-save-status"
-          role="status"
-          aria-live="polite"
-          style={{
-            ...statusBarStyle,
-            ...(saveStatus === 'failed' ? statusFailedStyle : null),
-            ...(saveStatus === 'saved' && !isDirty ? statusOkStyle : null),
-          }}
-        >
-          {saveStatus === 'saving' && 'Saving…'}
-          {saveStatus === 'saved' && !isDirty && 'Saved'}
-          {saveStatus === 'failed' && (
-            <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-              <span>Save failed — Retry</span>
-              {saveError ? <span style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>{saveError}</span> : null}
-              <Btn variant="secondary" onClick={() => void save()} data-testid="business-details-retry">
-                Retry
-              </Btn>
-            </span>
-          )}
-          {saveStatus === 'idle' && isDirty && `${dirty.length} unsaved change${dirty.length === 1 ? '' : 's'}`}
-          {saveStatus === 'idle' && !isDirty && !loading && 'No unsaved changes'}
-        </div>
+        </p>
 
         {!loading ? <ScopeMismatchNotices mismatches={mismatches} /> : null}
-
-        {!loading && sections.length > 1 ? (
-          <nav className="business-details-jump" aria-label="Jump to a section" data-testid="business-details-jump">
-            {sections.map((section) => (
-              <a key={section.id} href={`#business-section-${section.id}`} className="business-details-jump-link">
-                {section.title}
-              </a>
-            ))}
-          </nav>
-        ) : null}
 
         {loading ? (
           <p style={{ color: 'var(--color-text-muted)' }}>Loading…</p>
@@ -221,34 +240,95 @@ export function BusinessDetailsPage() {
             onSubmit={onSubmit}
             className="business-details-form"
           >
-            {(() => {
-              // One field, one place. The API no longer repeats a key across
-              // sections, but the screen refuses to draw the same setting
-              // twice regardless — two boxes holding one value is a bug the
-              // owner has to spot, and he already did once.
-              const drawn = new Set<string>();
-              return sections.map((section) => {
-                const fieldsToDraw = section.fields.filter((f) => {
-                  if (drawn.has(f.key)) return false;
-                  drawn.add(f.key);
-                  return true;
-                });
-                if (fieldsToDraw.length === 0) return null;
-                return (
+            <div className="business-details-bar">
+              {tabs.length > 1 ? (
+                <div
+                  className="business-details-tabs"
+                  role="tablist"
+                  aria-label="Section"
+                  data-testid="business-details-jump"
+                >
+                  {tabs.map((t) => {
+                    const state = tabState(t.id);
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        role="tab"
+                        id={`business-tab-${t.id}`}
+                        aria-selected={active === t.id}
+                        aria-controls={`business-section-${t.id}`}
+                        className="business-details-tab"
+                        title={t.title}
+                        onClick={() => pickTab(t.id)}
+                      >
+                        {TAB_LABELS[t.id] ?? t.title}
+                        {state ? (
+                          <span
+                            className={`business-details-tab-dot business-details-tab-dot--${state}`}
+                            aria-label={state === 'error' ? 'needs a fix' : 'unsaved changes'}
+                          />
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+
+              <div className="business-details-status-row">
+                <span
+                  data-testid="business-details-save-status"
+                  role="status"
+                  aria-live="polite"
+                  className={`business-details-status${saveStatus === 'failed' ? ' business-details-status--failed' : ''}${saveStatus === 'saved' && !isDirty ? ' business-details-status--ok' : ''}`}
+                >
+                  {saveStatus === 'saving' && 'Saving…'}
+                  {saveStatus === 'saved' && !isDirty && 'Saved'}
+                  {saveStatus === 'failed' && (
+                    <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                      <span>Save failed — Retry</span>
+                      {saveError ? <span style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>{saveError}</span> : null}
+                      <Btn variant="secondary" small type="button" onClick={() => void save()} data-testid="business-details-retry">
+                        Retry
+                      </Btn>
+                    </span>
+                  )}
+                  {saveStatus === 'idle' && isDirty && `${dirty.length} unsaved change${dirty.length === 1 ? '' : 's'}`}
+                  {saveStatus === 'idle' && !isDirty && 'No unsaved changes'}
+                </span>
+                {saveStatus !== 'failed' ? (
+                  // The form's submit button, so Enter in a field saves.
+                  <Btn
+                    variant="primary"
+                    small
+                    type="submit"
+                    disabled={saveStatus === 'saving' || !isDirty}
+                    data-testid="business-details-save"
+                  >
+                    {saveLabel}
+                  </Btn>
+                ) : null}
+              </div>
+            </div>
+
+            {drawnSections.map((section) => (
               <section
                 key={section.id}
                 id={`business-section-${section.id}`}
                 data-testid={`business-section-${section.id}`}
                 className="business-details-card"
+                role="tabpanel"
+                aria-labelledby={`business-tab-${section.id}`}
+                hidden={tabs.length > 1 && active !== section.id}
               >
-                <header style={{ marginBottom: 12 }}>
+                <header className="business-details-card-head">
                   <h2 style={sectionTitleStyle}>{section.title}</h2>
                   {section.description ? (
                     <p style={sectionDescStyle}>{section.description}</p>
                   ) : null}
                 </header>
                 <div className="business-details-grid">
-                  {fieldsToDraw.map((field) => (
+                  {section.fields.map((field) => (
                     <FieldEditor
                       key={`${section.id}-${field.key}`}
                       field={field}
@@ -256,7 +336,7 @@ export function BusinessDetailsPage() {
                       error={fieldErrors[field.key]}
                       onChange={(v) => {
                         setDrafts((d) => ({ ...d, [field.key]: v }));
-                        setSaveStatus((s) => (s === 'saved' ? 'idle' : s));
+                        setSaveStatus((st) => (st === 'saved' ? 'idle' : st));
                         setFieldErrors((prev) => {
                           if (!prev[field.key]) return prev;
                           const next = { ...prev };
@@ -270,33 +350,15 @@ export function BusinessDetailsPage() {
                   ))}
                 </div>
               </section>
-                );
-              });
-            })()}
+            ))}
 
-            <HoursSection hours={hours} />
-            <LegalSection legal={legal} />
-
-            {/* Kept for keyboard submit and for anyone who scrolls to the end. */}
-            <div className="business-details-foot">
-              <Btn
-                variant="primary"
-                type="submit"
-                disabled={saveStatus === 'saving' || (!isDirty && saveStatus !== 'failed')}
-                data-testid="business-details-save-bottom"
-              >
-                {saveLabel}
-              </Btn>
-              {saveStatus === 'failed' ? (
-                <span style={{ color: 'var(--color-danger)', fontSize: 14 }}>Save failed — Retry</span>
-              ) : null}
-            </div>
+            <HoursSection hours={hours} hidden={tabs.length > 1 && active !== 'hours'} />
+            <LegalSection legal={legal} hidden={tabs.length > 1 && active !== 'legal'} />
           </form>
         )}
 
-        {/* Save follows you down the page. With 25 fields and eight sections,
-            a button pinned to the top of a phone screen is a button you have
-            to scroll back up to find. */}
+        {/* Save follows you down the page: on a phone it floats above the tab
+            bar, so a long section never sends you back up for it. */}
         {isDirty || saveStatus === 'failed' ? (
           <div className="business-details-savebar" data-testid="business-details-savebar">
             <span className="business-details-savebar-text">
@@ -457,6 +519,7 @@ function FieldEditor({
               <Btn
                 type="button"
                 variant="secondary"
+                small
                 onClick={onPickImage}
                 data-testid={`business-image-pick-${field.key}`}
               >
@@ -466,6 +529,7 @@ function FieldEditor({
                 <Btn
                   type="button"
                   variant="secondary"
+                  small
                   onClick={() => onChange('')}
                   data-testid={`business-image-clear-${field.key}`}
                 >
@@ -492,27 +556,29 @@ function FieldEditor({
         </span>
       ) : null}
       {field.used_by && field.used_by.length > 0 ? (
-        <div data-testid={`business-used-by-${field.key}`} style={usedByWrapStyle}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            Used by
-          </span>
-          <ul style={usedByListStyle}>
-            {field.used_by.map((item) => (
-              <li key={item} style={usedByItemStyle}>{item}</li>
-            ))}
-          </ul>
-        </div>
+        // One quiet line: as a block of chips under every field it was most
+        // of the page (settings audit, 2026-10-09).
+        <span data-testid={`business-used-by-${field.key}`} className="business-details-used-by">
+          <span className="business-details-used-by-label">Used by</span> {field.used_by.join(' · ')}
+        </span>
       ) : null}
       <ScopeMismatchNotices mismatches={mismatches} onlyKey={field.key} />
     </label>
   );
 }
 
-function HoursSection({ hours }: { hours: BusinessDetailsHours | null }) {
+function HoursSection({ hours, hidden }: { hours: BusinessDetailsHours | null; hidden?: boolean }) {
   if (!hours) return null;
   return (
-    <section data-testid="business-section-hours" style={cardStyle}>
-      <header style={{ marginBottom: 12 }}>
+    <section
+      id="business-section-hours"
+      data-testid="business-section-hours"
+      className="business-details-card"
+      role="tabpanel"
+      aria-labelledby="business-tab-hours"
+      hidden={hidden}
+    >
+      <header className="business-details-card-head">
         <h2 style={sectionTitleStyle}>Hours and closures</h2>
         <p style={sectionDescStyle}>{hours.note}</p>
       </header>
@@ -561,7 +627,7 @@ function HoursSection({ hours }: { hours: BusinessDetailsHours | null }) {
   );
 }
 
-function LegalSection({ legal }: { legal: BusinessDetailsLegal | null }) {
+function LegalSection({ legal, hidden }: { legal: BusinessDetailsLegal | null; hidden?: boolean }) {
   if (!legal) return null;
   const rows: Array<{ label: string; value: string }> = [
     { label: 'Seller / legal name', value: legal.seller_name || '—' },
@@ -576,12 +642,19 @@ function LegalSection({ legal }: { legal: BusinessDetailsLegal | null }) {
   ];
 
   return (
-    <section data-testid="business-section-legal" style={cardStyle}>
-      <header style={{ marginBottom: 12 }}>
+    <section
+      id="business-section-legal"
+      data-testid="business-section-legal"
+      className="business-details-card"
+      role="tabpanel"
+      aria-labelledby="business-tab-legal"
+      hidden={hidden}
+    >
+      <header className="business-details-card-head">
         <h2 style={sectionTitleStyle}>Legal, tax and document identity</h2>
         <p style={sectionDescStyle}>{legal.note}</p>
       </header>
-      <dl data-testid="business-legal-fields" style={{ display: 'grid', gap: 12, margin: 0 }}>
+      <dl data-testid="business-legal-fields" className="business-details-legal">
         {rows.map((row) => (
           <div key={row.label} style={{ minWidth: 0 }}>
             <dt style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 2 }}>
@@ -610,55 +683,6 @@ const pageStyle: CSSProperties = {
   minWidth: 0,
   boxSizing: 'border-box',
   overflowX: 'hidden',
-};
-
-const noticeStyle: CSSProperties = {
-  marginBottom: 12,
-  padding: '14px 16px',
-  borderRadius: 10,
-  border: '1px solid var(--color-border)',
-  background: 'var(--color-border-light)',
-  // Page-body size made a four-line paragraph the loudest thing on the page.
-  fontSize: 13,
-  color: 'var(--color-text-secondary)',
-  lineHeight: 1.5,
-  maxWidth: 880,
-  boxSizing: 'border-box',
-};
-
-const statusBarStyle: CSSProperties = {
-  marginBottom: 16,
-  padding: '10px 14px',
-  borderRadius: 8,
-  border: '1px solid var(--color-border)',
-  fontSize: 14,
-  color: 'var(--color-text-secondary)',
-  maxWidth: 880,
-  boxSizing: 'border-box',
-  minHeight: 44,
-  display: 'flex',
-  alignItems: 'center',
-};
-
-const statusFailedStyle: CSSProperties = {
-  borderColor: 'var(--color-danger)',
-  color: 'var(--color-danger)',
-  background: 'var(--color-border-light)',
-};
-
-const statusOkStyle: CSSProperties = {
-  borderColor: 'var(--color-success)',
-  color: 'var(--color-success)',
-};
-
-const cardStyle: CSSProperties = {
-  padding: 16,
-  borderRadius: 12,
-  border: '1px solid var(--color-border)',
-  background: 'var(--color-bg)',
-  boxSizing: 'border-box',
-  minWidth: 0,
-  width: '100%',
 };
 
 const sectionTitleStyle: CSSProperties = {
@@ -696,31 +720,6 @@ const inputErrorStyle: CSSProperties = {
 const errorTextStyle: CSSProperties = {
   fontSize: 12,
   color: 'var(--color-danger)',
-};
-
-const usedByWrapStyle: CSSProperties = {
-  display: 'grid',
-  gap: 6,
-};
-
-const usedByListStyle: CSSProperties = {
-  listStyle: 'none',
-  margin: 0,
-  padding: 0,
-  display: 'flex',
-  flexWrap: 'wrap',
-  gap: 6,
-};
-
-const usedByItemStyle: CSSProperties = {
-  fontSize: 12,
-  padding: '4px 8px',
-  borderRadius: 6,
-  border: '1px solid var(--color-border)',
-  background: 'var(--color-border-light)',
-  color: 'var(--color-text-secondary)',
-  maxWidth: '100%',
-  wordBreak: 'break-word',
 };
 
 const tableStyle: CSSProperties = {
