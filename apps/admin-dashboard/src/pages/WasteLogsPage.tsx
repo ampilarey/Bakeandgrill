@@ -254,9 +254,12 @@ export default function WasteLogsPage({ embedded = false }: { embedded?: boolean
                 {wasteTrend.length === 0 ? (
                   <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>No data in this range.</p>
                 ) : (
-                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, minHeight: 120, overflowX: 'auto', paddingBottom: 4 }}>
-                    {wasteTrend.map(({ date, cost }) => (
-                      <div key={date} style={{ flex: '1 0 28px', maxWidth: 48, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                  // The bars share the width (they scrolled sideways past
+                  // about ten days on a phone; owner, 2026-10-09). A date
+                  // under every bar would collide, so under every few.
+                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, minHeight: 120, paddingBottom: 4 }}>
+                    {wasteTrend.map(({ date, cost }, i) => (
+                      <div key={date} style={{ flex: '1 1 0', minWidth: 0, maxWidth: 48, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
                         <div
                           title={`${date}: ${mvr(cost)}`}
                           style={{
@@ -268,7 +271,7 @@ export default function WasteLogsPage({ embedded = false }: { embedded?: boolean
                             transition: 'height 0.3s ease',
                           }}
                         />
-                        <span style={{ fontSize: 10, color: 'var(--color-text-muted)', transform: 'rotate(-45deg)', transformOrigin: 'top left', whiteSpace: 'nowrap' }}>
+                        <span style={{ fontSize: 10, color: 'var(--color-text-muted)', transform: 'rotate(-45deg)', transformOrigin: 'top left', whiteSpace: 'nowrap', visibility: i % Math.ceil(wasteTrend.length / 10) === 0 ? 'visible' : 'hidden' }}>
                           {date.slice(5)}
                         </span>
                       </div>

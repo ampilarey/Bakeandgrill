@@ -224,6 +224,12 @@ export function SortFilterHead<T>({ controls, leading, allRows, thStyle }: {
   const { columns, sort, setSort, activeCount, clearFilters, id } = controls;
   const th = { ...TH, ...thStyle };
   const filterable = columns.some((c) => kindOf(c) !== 'none');
+  // A table too wide for its box is drawn as cards (utils/tableCards.ts, owner
+  // 2026-10-09). There the headings are a row of sort chips, and the boxes wait
+  // behind a Filters button instead of standing in a row of their own; in a
+  // table the button's row is hidden and nothing changes.
+  const [cardFilters, setCardFilters] = useState(false);
+  const span = columns.length + (leading !== undefined ? 1 : 0);
   // Clear goes in the last plain heading's cell (Actions, usually); failing
   // that, under the last column's box.
   const clearIndex = (() => {
@@ -269,10 +275,29 @@ export function SortFilterHead<T>({ controls, leading, allRows, thStyle }: {
           reader or a test counting the columns should find one heading per
           column, not two. */}
       {filterable && (
-        <tr data-testid={`${id}-filter-row`}>
+        // `hidden` in a table; the cards CSS shows it (index.css, tables as cards).
+        <tr className="sf-cards-toggle" hidden>
+          <td colSpan={span} style={{ ...th, padding: 0 }}>
+            <Btn
+              small
+              variant={cardFilters || activeCount > 0 ? 'primary' : 'secondary'}
+              onClick={() => setCardFilters((o) => !o)}
+              aria-expanded={cardFilters}
+              data-testid={`${id}-cards-filters-toggle`}
+            >
+              <Filter size={14} aria-hidden />Filters{activeCount > 0 ? ` (${activeCount})` : ''}
+            </Btn>
+            {activeCount > 0 && (
+              <Btn small variant="ghost" onClick={clearFilters}>Clear</Btn>
+            )}
+          </td>
+        </tr>
+      )}
+      {filterable && (
+        <tr data-testid={`${id}-filter-row`} className="sf-filter-row" data-open={cardFilters ? '' : undefined}>
           {leading !== undefined && <td style={{ ...th, padding: '4px 8px 8px' }} />}
           {columns.map((col, i) => (
-            <td key={col.key} style={{ ...th, padding: '4px 8px 8px', fontWeight: 400, verticalAlign: 'top' }}>
+            <td key={col.key} data-label={labelText(col.label) === 'this column' ? '' : labelText(col.label)} style={{ ...th, padding: '4px 8px 8px', fontWeight: 400, verticalAlign: 'top' }}>
               <FilterBox controls={controls} column={col} allRows={allRows} />
               {i === clearIndex && activeCount > 0 && (
                 <div style={{ marginTop: kindOf(col) === 'none' ? 0 : 4 }}>

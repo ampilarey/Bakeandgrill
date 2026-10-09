@@ -1287,7 +1287,8 @@ export function HeroSlidesEditor({
         <div
           className="hero-slides-wide-rail"
           data-testid="hero-slides-wide-rail"
-          style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}
+          // Wraps rather than scrolling sideways (owner, 2026-10-09).
+          style={{ display: 'flex', flexWrap: 'wrap', gap: 10, paddingBottom: 4 }}
         >
           {items.map((slide, idx) => {
             const showing = isHeroSlideShowing(slide);

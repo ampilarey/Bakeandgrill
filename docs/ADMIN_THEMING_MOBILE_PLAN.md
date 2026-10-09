@@ -58,6 +58,11 @@ targets, 16px inputs to prevent iOS zoom-on-focus, `.stat-grid` reflow, reduced
 
 **Action: none.**
 
+**Superseded 2026-10-09 (Stage 3h).** Scrolling inside the card was the
+complaint: "Still horizontal scrolling is there in many places." A table that
+does not fit now becomes cards and a tab strip wraps; the rule above stays only
+as the fallback for a table marked `data-table-scroll="keep"`.
+
 ### 1.3 Dark mode is genuinely broken — this is the real work
 
 The toggle works. `AppShell` sets `data-theme="dark"`, and `index.css:838`
@@ -695,6 +700,75 @@ make it easier." Every tab was measured (page height, phone 390px / computer
   a page needs no portal any more; it still needs no transformed ancestor.
 - Words on a rust fill use `--color-on-primary` (white in both themes; it
   was referenced with a `#fff` fallback but never defined).
+
+#### Stage 3h — Nothing scrolls sideways
+
+**Done 2026-10-09.** Owner: "Still horizontal scrolling is there in many
+places." The deep walk opened every page, tab, sub-tab and pop-up it could
+reach at four widths and counted the screens where anything scrolled
+sideways: a box narrower than what it holds (a table, a row of tabs, a
+strip), or the page itself wider than the screen.
+
+| Width | Before | After |
+|---|---|---|
+| Phone 390 | 241 of 281 screens: rows of tabs, 54 different tables | 0 of 282 |
+| Tablet 768 | 196 of 292: rows of tabs, 44 tables, the page itself on 6 | 0 of 293 |
+| Laptop 1024 | 167 of 294: rows of tabs, 25 tables, the page itself on 6 | 0 of 290 |
+| Computer 1366 | 10 of 294: 9 tables, the New list pop-up | 0 of 293 |
+
+The phone walk first caught four Reports tables in the moment between their
+figures arriving and the next frame, before they are decided; measured two
+frames later, as a person sees them, all 30 Reports screens are clean (the
+walk now waits for that).
+
+- **Rows of tabs and chips wrap.** `TabScrollRow` scrolled sideways with
+  fades and a chevron for the tabs off the edge; it wraps now
+  (`.tab-scroll-row`, `flex-wrap: wrap !important`), every tab in sight, and
+  a page's own `overflowX` / `flexWrap` on the row is dropped. The same for
+  `ui/Tabs`' `TabList`, the SMS Control Center chips, Settlements' tabs, the
+  Purchasing, Delivery and hub tab rows, Media library's collections and
+  the hero slides rail.
+- **A table that does not fit becomes cards** (`utils/tableCards.ts`,
+  started once in `main.tsx`; the drawing is the TABLES AS CARDS block in
+  `index.css`). There are 175 tables in 69 files; rather than give each a
+  phone layout, one watcher decides every table, in this order:
+  1. it fits: it stays a table (`data-table-fits`, which also undoes the
+     phone rule that made every bare table a block of its own, rows short
+     of the card's edge);
+  2. only a floor made it too wide (`ResponsiveTable`'s 640px, on the table
+     or a box between it and its scroller): the floor goes
+     (`data-cards-shrink`) and it stays a table;
+  3. only headings that may not break made it too wide ("MIN LIFETIME
+     PTS"): they may wrap (`data-cards-relax`); dates and amounts in the
+     cells still never do (`TD_NOWRAP`);
+  4. otherwise cards (`data-cards`): one card per row, the row's first words
+     across the top, each other value under its column's name (taken from the
+     heading; a `data-label` a page set itself is kept), a lone tick box in
+     the top right corner, Edit / Delete along the bottom, long text and a
+     drop-down too wide for its column (`data-cell-wide`) across the card, a
+     row across every column ("No results", a group heading) as a plain line.
+  Headings that do something stay as a row of chips: sort buttons, and
+  select all (labelled "Select all"). `SortFilterHead`'s filter boxes wait
+  behind a Filters button and open as a labelled grid. It decides again when
+  rows change, when the window, the table or any box out to its scroller
+  changes size (a card that narrows after the table was decided; the 640px
+  floor itself never changes size), when the brand fonts arrive, and when a
+  hidden tab is shown; a table that keeps changing its mind is left alone for
+  five seconds. On paper every table is a table (Menu and Production plan
+  print the page itself): cards come off before printing and are decided
+  again after. `data-table-scroll="keep"` on a table or anything around it
+  leaves it scrolling (none uses it yet).
+- **Other strips.** The table QR pop-up's preview and sheet scale to fit the
+  pop-up on screen (CSS `zoom`; printing copies the card markup, so the
+  printed size is unchanged), and a long code URL breaks. The Forecasts and
+  Waste log bar charts squeeze their bars into the card and label every few.
+  The Promotions offers preview is a grid; Shopping lists' New list form's
+  grid columns are `minmax(0, 1fr)` (the pop-up's body scrolled 34px
+  sideways even on a computer).
+
+For new code: a new table needs nothing. Do not give a tab row `overflowX`
+(it is dropped anyway). A table whose columns are the point (a day per
+column) can keep its scroll with `data-table-scroll="keep"`.
 
 ---
 

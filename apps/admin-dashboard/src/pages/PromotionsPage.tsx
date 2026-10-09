@@ -713,9 +713,10 @@ export function PromotionsPage() {
           {perf.offers_preview.length === 0 ? (
             <EmptyState message="No active offers right now." />
           ) : (
-            <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 8, marginBottom: 18 }}>
+            // A grid that wraps, not a rail that scrolls sideways (owner, 2026-10-09).
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 10, paddingBottom: 8, marginBottom: 18 }}>
               {perf.offers_preview.map((o) => (
-                <div key={o.id} style={{ flexShrink: 0, width: 160, border: '1px solid var(--color-border)', borderRadius: 10, padding: 10, background: 'var(--color-bg)' }}>
+                <div key={o.id} style={{ minWidth: 0, border: '1px solid var(--color-border)', borderRadius: 10, padding: 10, background: 'var(--color-bg)' }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-primary)', marginBottom: 4 }}>{o.kind.toUpperCase()}</div>
                   <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-text)' }}>{o.title}</div>
                   {o.badge && <div style={{ fontSize: 11, color: 'var(--color-success-strong)', marginTop: 4 }}>{o.badge}</div>}

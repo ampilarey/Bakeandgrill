@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Modal, ModalActions, Btn, Select } from './SharedUI';
 import { fetchTableQr, rotateTableQr, type RestaurantTable, type TableQr } from '../api';
@@ -33,6 +33,31 @@ const SIZES: CardSize[] = [
 ];
 
 const MM_TO_PX = 3.78; // 96 dpi
+
+/**
+ * On screen only: how far to shrink a card that is wider than its box. A
+ * table tent is 397px across, wider than a phone's preview, which scrolled
+ * sideways (owner, 2026-10-09: "Still horizontal scrolling is there in many
+ * places"). The zoom goes on a wrapper; printing copies the card's own
+ * markup, so the printed card keeps its real size.
+ */
+function useFitScale(box: RefObject<HTMLElement | null>, width: number, pad: number, shown: unknown): number {
+  const [scale, setScale] = useState(1);
+  // `shown`: the box appears once the codes load, so the measuring starts then.
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const measure = () => {
+      const room = el.clientWidth - pad;
+      setScale(room > 0 && width > room ? room / width : 1);
+    };
+    measure();
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
+    ro?.observe(el);
+    return () => ro?.disconnect();
+  }, [box, width, pad, shown]);
+  return scale;
+}
 
 function CardFace({ name, url, size }: { name: string; url: string; size: CardSize }) {
   const w = size.widthMm * MM_TO_PX;
@@ -126,8 +151,10 @@ export function TableQrModal({ table, onClose }: { table: RestaurantTable; onClo
   const [rotating, setRotating] = useState(false);
   const [copied, setCopied] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
+  const previewBoxRef = useRef<HTMLDivElement>(null);
 
   const size = SIZES[sizeIdx];
+  const previewScale = useFitScale(previewBoxRef, size.widthMm * MM_TO_PX, 32, qr);
 
   useEffect(() => {
     let cancelled = false;
@@ -207,6 +234,7 @@ export function TableQrModal({ table, onClose }: { table: RestaurantTable; onClo
           </div>
 
           <div
+            ref={previewBoxRef}
             style={{
               background: 'var(--color-bg)',
               borderRadius: 10,
@@ -216,7 +244,7 @@ export function TableQrModal({ table, onClose }: { table: RestaurantTable; onClo
               overflow: 'auto',
             }}
           >
-            <div ref={printRef} data-testid="table-qr-preview">
+            <div ref={printRef} data-testid="table-qr-preview" style={previewScale < 1 ? { zoom: previewScale } : undefined}>
               <CardFace name={table.name} url={qr.url} size={size} />
             </div>
           </div>
@@ -228,7 +256,8 @@ export function TableQrModal({ table, onClose }: { table: RestaurantTable; onClo
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <code
                 style={{
-                  flex: 1, minWidth: 0, overflowX: 'auto', whiteSpace: 'nowrap',
+                  // The whole link, broken over lines, not a line that scrolls sideways.
+                  flex: 1, minWidth: 0, overflowWrap: 'anywhere', wordBreak: 'break-all',
                   fontSize: 12, padding: '7px 10px', borderRadius: 8,
                   background: 'var(--color-bg)', border: '1px solid var(--color-border)',
                   color: 'var(--color-text-secondary)',
@@ -293,6 +322,7 @@ export function TableQrSheetModal({ tables, onClose }: { tables: RestaurantTable
   const printRef = useRef<HTMLDivElement>(null);
 
   const size = SIZES[sizeIdx];
+  const sheetScale = useFitScale(printRef, size.widthMm * MM_TO_PX, 32, codes.length);
 
   useEffect(() => {
     let cancelled = false;
@@ -353,7 +383,7 @@ export function TableQrSheetModal({ tables, onClose }: { tables: RestaurantTable
               }}
             >
               {codes.map((c) => (
-                <div key={c.name}>
+                <div key={c.name} style={sheetScale < 1 ? { zoom: sheetScale } : undefined}>
                   <CardFace name={c.name} url={c.url} size={size} />
                 </div>
               ))}

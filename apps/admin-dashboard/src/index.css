@@ -641,7 +641,7 @@ input[type="file"]::file-selector-button:hover {
     max-width: calc(100vw - 48px);
     box-sizing: border-box;
   }
-  /* Section / sub-tab rows sit closer on a phone; they scroll at every width
+  /* Section / sub-tab rows sit closer on a phone; they wrap at every width
      (.tab-scroll-row, below). */
   .tab-scroll-row {
     gap: 4px;
@@ -2362,13 +2362,6 @@ input[type="file"]::file-selector-button:hover {
  */
 .page-header--embedded { margin-bottom: 0.75rem; }
 
-/*
- * The strip scrolls sideways on a narrow screen. Snapping makes a swipe
- * settle on a whole tab rather than halfway through a word. A fade at the
- * right edge was tried and dropped: CSS cannot tell a row that overflows
- * from one that fits, so it dimmed the last tab when there was nothing
- * more to see. Grouping (see HubPage) is what keeps these rows short.
- */
 /* A row in the pick-or-type list: hover is a look, not a choice. */
 .pick-option:hover { background: var(--color-bg) !important; }
 
@@ -2382,72 +2375,26 @@ input[type="file"]::file-selector-button:hover {
 .table-sort-btn[data-sort="asc"]::after { content: '▲'; opacity: 1; }
 .table-sort-btn[data-sort="desc"]::after { content: '▼'; opacity: 1; }
 
-.hub-tabs { scroll-snap-type: x proximity; scroll-padding: 0 4px; }
-.hub-tabs > button { scroll-snap-align: start; }
-
 /*
- * TabScrollRow (SharedUI) measures the row and sets `data-fade-left` /
- * `data-fade-right` only while there is more to see on that side, which is
- * what the pure-CSS fade above could not do. The wrap is the positioning
- * context; the row inside keeps its own background and radius, so the fade
- * is drawn over it and clipped to the same corners.
+ * TabScrollRow (SharedUI): a row of tabs or chips that wraps. Owner,
+ * 2026-10-09: "Still horizontal scrolling is there in many places." The row
+ * scrolled sideways, with fades and a chevron for what sat off the edge; now
+ * every tab is in sight on as many lines as it takes. `!important` because
+ * pages passed their own `overflowX: auto` to the row.
  */
 .tab-scroll-wrap {
   position: relative;
   max-width: 100%;
   min-width: 0;
 }
-/* The row scrolls sideways at every width, not only on a phone, so a tablet
-   gets the fades and chevron too instead of squeezed labels and a cut-off last
-   tab (TV Signage at 768px, tablet sweep 2026-10-08). */
 .tab-scroll-row {
   display: flex;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+  flex-wrap: wrap !important;
+  row-gap: 4px;
+  overflow-x: visible !important;
 }
-.tab-scroll-row::-webkit-scrollbar { display: none; }
 .tab-scroll-row > button { flex-shrink: 0; }
 .tab-scroll-wrap--fit { width: fit-content; }
-.tab-scroll-wrap::before,
-.tab-scroll-wrap::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 36px;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.15s;
-  border-radius: inherit;
-  z-index: 1;
-}
-.tab-scroll-wrap::before {
-  left: 0;
-  background: linear-gradient(to right, var(--tab-fade-bg, var(--color-bg)) 20%, transparent);
-}
-.tab-scroll-wrap::after {
-  right: 0;
-  background: linear-gradient(to left, var(--tab-fade-bg, var(--color-bg)) 20%, transparent);
-}
-.tab-scroll-wrap[data-fade-left]::before,
-.tab-scroll-wrap[data-fade-right]::after { opacity: 1; }
-/* A chevron on top of the right fade: a fade alone reads as a style. */
-.tab-scroll-wrap[data-fade-right] > .tab-scroll-row::after {
-  content: '›';
-  position: sticky;
-  right: 0;
-  align-self: center;
-  flex: 0 0 auto;
-  margin-left: -8px;
-  padding-left: 8px;
-  font-size: 18px;
-  line-height: 1;
-  color: var(--color-text-muted);
-  pointer-events: none;
-  z-index: 2;
-}
 
 @media (max-width: 767px) {
   /* Confirmed defect: flex-shrink:0 overflowed search / EN·DV / publish status */
@@ -2646,6 +2593,161 @@ input[type="file"]::file-selector-button:hover {
   top: 0;
   z-index: 1;
   background: var(--color-bg);
+}
+
+/* ════════════════════════════════════════════════════════════
+   TABLES AS CARDS — a table that would scroll sideways
+   Owner, 2026-10-09: "Still horizontal scrolling is there in many places."
+   utils/tableCards.ts sets `data-cards` on a table that does not fit its box
+   (any width: a phone, an upright tablet, a narrow card) and labels each
+   cell from its heading; these rules draw one card per row, each value under
+   its column's name. A table that fits is left alone. `!important` where a
+   page's inline cell style (padding, nowrap, a fixed width) would otherwise
+   win, and over the phone rule that kept tables at full width.
+════════════════════════════════════════════════════════════ */
+table[data-cards] {
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: visible !important;
+}
+/* Without its floor a table still fills its card (the phone rule sizes a
+   table to its content). */
+[data-cards-shrink] { min-width: 0 !important; }
+[data-cards-shrink] > table,
+table[data-cards-shrink] { min-width: 100% !important; }
+/* A table that fits once its headings may break over two lines. */
+table[data-cards-relax] > thead th { white-space: normal !important; }
+/* A table that fits is a table again: on a phone the rule that made every bare
+   table its own scroller (display: block) left its rows short of the card's edge. */
+table[data-table-fits] { display: table; overflow: visible; }
+.admin-table-sticky-head:has(> table[data-cards]) { max-height: none; overflow-y: visible; }
+table[data-cards] > thead { display: none !important; }
+table[data-cards] > :is(tbody, tfoot) { display: block; }
+table[data-cards] > :is(tbody, tfoot) > tr {
+  position: relative;
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr));
+  gap: 8px 16px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--color-border-light);
+}
+table[data-cards] > :is(tbody, tfoot) > tr:last-child { border-bottom: 0; }
+table[data-cards] > tfoot > tr { background: var(--color-bg); }
+table[data-cards] > :is(tbody, tfoot) > tr > :is(td, th) {
+  display: block !important;
+  position: static !important;
+  min-width: 0 !important;
+  width: auto !important;
+  max-width: none !important;
+  height: auto !important;
+  padding: 0 !important;
+  border: 0 !important;
+  text-align: left !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+}
+table[data-cards] > :is(tbody, tfoot) > tr > :is(td, th):empty { display: none !important; }
+table[data-cards] :is(td, th)[data-label]:not([data-label=""])::before {
+  content: attr(data-label);
+  display: block;
+  margin-bottom: 2px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+/* The row's first words name the card, across its top, without a label. */
+table[data-cards] [data-cell="title"] {
+  grid-column: 1 / -1;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+table[data-cards] :is([data-cell="title"], [data-cell="media"], [data-cell="actions"], [data-cell="full"], [data-cell="select"])::before {
+  display: none !important;
+}
+table[data-cards] [data-cell="media"] { grid-column: 1 / -1; }
+table[data-cards] [data-cell="media"] :is(img, picture, video) { max-width: 72px; max-height: 72px; object-fit: cover; }
+table[data-cards] :is([data-cell="wide"], [data-cell="full"], [data-cell-wide]) { grid-column: 1 / -1; }
+/* Nothing in a card is wider than the card. Only in a cell already across the
+   whole card: in a column, a drop-down of long choices keeps its width so
+   tableCards.ts sees it is crowded and moves it to a line of its own. */
+table[data-cards] :is([data-cell-wide], [data-cell="wide"], [data-cell="full"], [data-cell="title"], [data-cell="actions"]) :is(select, input, textarea, img, video, canvas, iframe) {
+  max-width: 100%;
+}
+/* Edit / Delete along the bottom of the card. */
+table[data-cards] [data-cell="actions"] {
+  grid-column: 1 / -1;
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+table[data-cards] [data-cell="actions"] > * { flex-wrap: wrap; justify-content: flex-start !important; }
+/* A row's tick box sits in the card's top right corner. */
+table[data-cards] [data-cell="select"] {
+  position: absolute !important;
+  top: 12px;
+  right: 14px;
+  width: auto !important;
+}
+table[data-cards] tr:has(> [data-cell="select"]) > [data-cell="title"] { padding-right: 36px !important; }
+/* A heading row that came in the body (no <thead>) is only a heading. */
+table[data-cards] tr[data-cards-heading] { display: none !important; }
+/* Headings that do something (sort, select all) stay, as a row of chips. */
+table[data-cards][data-cards-head] > thead { display: block !important; border-bottom: 1px solid var(--color-border); }
+table[data-cards][data-cards-head] > thead > tr {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  padding: 10px 14px 0;
+}
+table[data-cards][data-cards-head] > thead > tr:last-child { padding-bottom: 10px; }
+table[data-cards][data-cards-head] > thead > tr > :is(th, td) {
+  display: none;
+  padding: 0 !important;
+  border: 0 !important;
+  background: none !important;
+  position: static !important;
+  white-space: nowrap;
+}
+table[data-cards][data-cards-head] > thead > tr > :is(th, td):has(button, input, select) {
+  display: inline-flex;
+  align-items: center;
+}
+table[data-cards][data-cards-head] > thead > tr > th:has(> .table-sort-btn) {
+  padding: 2px 10px !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 999px;
+  background: var(--color-surface) !important;
+}
+/* Sort-and-filter headings (TableControls): the boxes wait behind a Filters
+   button, a labelled grid when opened. */
+table[data-cards] > thead > tr.sf-cards-toggle[hidden] { display: flex !important; }
+table[data-cards] > thead > tr.sf-cards-toggle > td { gap: 8px; }
+table[data-cards] > thead > tr.sf-filter-row { display: none !important; }
+table[data-cards] > thead > tr.sf-filter-row[data-open] {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr));
+  gap: 8px 12px;
+  padding: 10px 14px;
+}
+table[data-cards] > thead > tr.sf-filter-row[data-open] > td { display: none !important; }
+table[data-cards] > thead > tr.sf-filter-row[data-open] > td:has(input, select) {
+  display: block !important;
+  white-space: normal;
+}
+table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::after {
+  content: 'Select all';
+  margin-left: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--color-text-secondary);
 }
 
 .table-state-bar {
@@ -6363,7 +6465,9 @@ input[type="file"]::file-selector-button:hover {
   border-bottom: 1px solid var(--color-border-light);
 }
 .menu-item-table tbody tr:last-child td { border-bottom: none; }
-.menu-item-table tbody tr:hover td { background: var(--color-surface-hover); }
+/* On the row, not each cell: shown as cards (tableCards.ts) a cell tint left
+   gaps between the values. */
+.menu-item-table tbody tr:hover { background: var(--color-surface-hover); }
 .menu-item-table .menu-item-card-head {
   display: flex;
   align-items: center;
@@ -6980,15 +7084,14 @@ input[type="file"]::file-selector-button:hover {
   font-size: 14px;
   color: var(--color-text);
 }
+/* Wraps rather than scrolling sideways (owner, 2026-10-09). */
 .sms-cc-chips {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   align-items: center;
-  overflow-x: auto;
-  scrollbar-width: none;
   padding-bottom: 2px;
 }
-.sms-cc-chips::-webkit-scrollbar { display: none; }
 .sms-cc-chip {
   flex-shrink: 0;
   min-height: 36px;

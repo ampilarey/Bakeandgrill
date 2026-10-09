@@ -1076,15 +1076,18 @@ export function ForecastPage() {
                   </div>
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 120, overflowX: 'auto', paddingBottom: 8 }}>
-                {trends.data.map(d => (
-                  <div key={d.period} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, minWidth: 40 }}>
-                    <div style={{ fontSize: 10, color: 'var(--color-text-secondary)', marginBottom: 4 }}>
+              {/* The bars share the width rather than scrolling sideways
+                  (owner, 2026-10-09); labels go under every few when crowded. */}
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 120, paddingBottom: 8 }}>
+                {trends.data.map((d, i) => (
+                  <div key={d.period} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: '1 1 0', minWidth: 0, maxWidth: 48 }}>
+                    <div style={{ fontSize: 10, color: 'var(--color-text-secondary)', marginBottom: 4, whiteSpace: 'nowrap', visibility: i % Math.ceil(trends.data.length / 8) === 0 ? 'visible' : 'hidden' }}>
                       {d.growth_pct !== null ? (d.growth_pct >= 0 ? '+' : '') + parseFloat(String(d.growth_pct ?? 0)).toFixed(0) + '%' : ''}
                     </div>
                     <div
                       style={{
-                        width: 32,
+                        width: '100%',
+                        maxWidth: 32,
                         height: Math.max(4, (d.revenue / maxRevenue) * 100),
                         background: d.growth_pct !== null && d.growth_pct < 0 ? 'var(--color-danger)' : 'var(--color-primary)',
                         borderRadius: '4px 4px 0 0',
@@ -1092,7 +1095,7 @@ export function ForecastPage() {
                       }}
                       title={`${d.period}: MVR ${parseFloat(String(d.revenue ?? 0)).toFixed(2)} (${d.orders} orders)`}
                     />
-                    <div style={{ fontSize: 9, color: 'var(--color-text-muted)', marginTop: 4, textAlign: 'center', lineHeight: 1.2, maxWidth: 40 }}>
+                    <div style={{ fontSize: 9, color: 'var(--color-text-muted)', marginTop: 4, textAlign: 'center', lineHeight: 1.2, whiteSpace: 'nowrap', visibility: i % Math.ceil(trends.data.length / 8) === 0 ? 'visible' : 'hidden' }}>
                       {d.period.slice(-5)}
                     </div>
                   </div>

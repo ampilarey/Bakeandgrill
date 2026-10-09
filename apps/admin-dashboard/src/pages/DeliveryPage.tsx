@@ -103,9 +103,9 @@ export function DeliveryPage() {
         action={<Btn onClick={() => void loadOrders(page)} variant="secondary"><RefreshCw size={15} aria-hidden />Refresh</Btn>}
       />
 
-      {/* Tab switcher: the hub pages' pill strip, so the labels never wrap on a phone. */}
+      {/* Tab switcher: the hub pages' pill strip; a label never breaks, the row wraps. */}
       <TabScrollRow role="tablist" aria-label="Delivery" className="hub-tabs" fit
-        style={{ display: 'flex', gap: 4, background: 'var(--color-bg)', borderRadius: 10, padding: 4, maxWidth: '100%', overflowX: 'auto', marginBottom: 20 }}>
+        style={{ display: 'flex', gap: 4, background: 'var(--color-bg)', borderRadius: 10, padding: 4, maxWidth: '100%', marginBottom: 20 }}>
         {(['orders', 'drivers', 'settlement'] as const).map((t) => (
           <button
             key={t}

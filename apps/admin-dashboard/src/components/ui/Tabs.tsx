@@ -34,8 +34,8 @@ export function TabList({ children, className = '' }: TabListProps) {
       style={{
         display: 'flex',
         borderBottom: '2px solid var(--color-border)',
-        overflowX: 'auto',
-        flexWrap: 'nowrap',
+        // Wraps rather than scrolling sideways (owner, 2026-10-09).
+        flexWrap: 'wrap',
         gap: 0,
       }}
     >

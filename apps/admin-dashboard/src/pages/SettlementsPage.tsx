@@ -97,9 +97,10 @@ export function SettlementsPage() {
       />
       {error && <ErrorMsg message={error} />}
 
+      {/* Wraps on a phone rather than scrolling sideways (owner, 2026-10-09). */}
       <div role="tablist" aria-label="Settlements" style={{
-        display: 'flex', gap: 4, marginBottom: 16, background: 'var(--color-bg)',
-        borderRadius: 10, padding: 4, width: 'fit-content', maxWidth: '100%', overflowX: 'auto',
+        display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 16, background: 'var(--color-bg)',
+        borderRadius: 10, padding: 4, width: 'fit-content', maxWidth: '100%',
       }}>
         {TABS.map((t) => (
           <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)} style={tabStyle(tab === t.id)}>

@@ -104,7 +104,7 @@ export function PurchasingPage() {
           fit
           style={{
             display: 'flex', gap: 4, background: 'var(--color-bg)',
-            borderRadius: 10, padding: 4, maxWidth: '100%', overflowX: 'auto',
+            borderRadius: 10, padding: 4, maxWidth: '100%',
           }}
         >
           {visible.map((t) => (

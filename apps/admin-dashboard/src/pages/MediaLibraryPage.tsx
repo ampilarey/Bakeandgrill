@@ -1323,9 +1323,8 @@ export function MediaLibraryPage() {
 
           <div
             data-testid={isMobile ? 'collections-chip-row' : undefined}
-            style={isMobile ? {
-              display: 'flex', gap: 8, overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 4,
-            } : undefined}
+            // Wraps on a phone rather than scrolling sideways (owner, 2026-10-09).
+            style={isMobile ? { display: 'flex', flexWrap: 'wrap', gap: 8, paddingBottom: 4 } : undefined}
           >
           <button
             type="button"

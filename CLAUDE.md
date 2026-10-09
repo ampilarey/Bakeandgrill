@@ -78,10 +78,13 @@ The admin has a phone layout (≤767px) and a computer layout, which folds its r
 icons from 768 to 1023px (`AppShell`'s tablet band) and is short of room up to 1199px
 (the CSS's compact band: the top bar shrinks search and the name chip to icons). Check
 390, 768, 1024 and 1366px; 768–1199 is where wide tables and long button rows break.
-A table goes in `.table-scroll` (or `TableCard` / `ResponsiveTable`) so it scrolls
-inside its card, and a cell holding a date, a time or an amount is `TD_NOWRAP`; a
-`display: grid` column that holds a table needs `minmax(0, 1fr)`; a row of tabs or
-filter chips is `TabScrollRow`. Details: § Stage 3f.
+Nothing scrolls sideways (owner, 2026-10-09). A row of tabs or filter chips is
+`TabScrollRow`, which wraps. A table goes in `.table-scroll` (or `TableCard` /
+`ResponsiveTable`); one that does not fit its box becomes cards, one per row with each
+value under its column's name (`utils/tableCards.ts` watches every table, so a new one
+needs nothing; `data-table-scroll="keep"` is the way out). A cell holding a date, a
+time or an amount is `TD_NOWRAP`; a `display: grid` column that holds a table needs
+`minmax(0, 1fr)`. Details: § Stage 3f and § Stage 3h.
 
 ## Brand colours
 

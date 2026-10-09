@@ -81,7 +81,7 @@ function TabStrip({ label, children }: { label: string; children: ReactNode }) {
       fit
       style={{
         display: 'flex', gap: 4, background: 'var(--color-bg)',
-        borderRadius: 10, padding: 4, maxWidth: '100%', overflowX: 'auto',
+        borderRadius: 10, padding: 4, maxWidth: '100%',
       }}
     >
       {children}
@@ -136,7 +136,7 @@ export function HubPage({ base, section, title, subtitle, tabs, aliases = {}, no
       <PageHeader section={section} title={title} subtitle={current.desc ?? subtitle} />
 
       {grouped && (
-        <TabScrollRow className="hub-groups" style={{ display: 'flex', borderBottom: '2px solid var(--color-border)', overflowX: 'auto' }}>
+        <TabScrollRow className="hub-groups" style={{ display: 'flex', borderBottom: '2px solid var(--color-border)' }}>
           {groups.map((g) => {
             const first = visible.find((t) => t.group === g)!;
             return (
