@@ -176,7 +176,7 @@ export function ItemSearch(props: Props) {
           onClick={() => onChange(null as never)}
           style={{
             background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-danger-strong)',
-            fontSize: 22, lineHeight: 1, minHeight: 40, minWidth: 40,
+            fontSize: 22, lineHeight: 1, minHeight: 32, minWidth: 40,
           }}
           aria-label="Clear selection"
         >
@@ -223,7 +223,7 @@ export function ItemSearch(props: Props) {
               style={{
                 display: 'block', width: '100%', textAlign: 'left', padding: '12px 12px',
                 background: 'none', border: 'none', cursor: 'pointer', fontSize: 13,
-                borderBottom: '1px solid var(--color-border-light)', fontFamily: 'inherit', minHeight: 44,
+                borderBottom: '1px solid var(--color-border-light)', fontFamily: 'inherit', minHeight: 38,
               }}
             >
               <div style={{ fontWeight: 700, color: 'var(--color-text)' }}>{r.label}</div>

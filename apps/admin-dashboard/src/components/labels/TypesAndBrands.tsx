@@ -261,8 +261,8 @@ export function TypesAndBrands({ canManage }: { canManage: boolean }) {
               </div>
               {canManage && (
                 <span className="inline-flex">
-                  <button type="button" onClick={() => setEditType(t)} className="w-11 h-11 inline-flex items-center justify-center rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)]" aria-label={`Edit ${t.name}`}><Pencil size={16} /></button>
-                  <button type="button" onClick={() => removeType(t)} className="w-11 h-11 inline-flex items-center justify-center rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-bg)]" aria-label={`Remove ${t.name}`}><Trash2 size={16} /></button>
+                  <button type="button" onClick={() => setEditType(t)} className="w-9 h-9 inline-flex items-center justify-center rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)]" aria-label={`Edit ${t.name}`}><Pencil size={16} /></button>
+                  <button type="button" onClick={() => removeType(t)} className="w-9 h-9 inline-flex items-center justify-center rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-bg)]" aria-label={`Remove ${t.name}`}><Trash2 size={16} /></button>
                 </span>
               )}
             </li>
@@ -295,8 +295,8 @@ export function TypesAndBrands({ canManage }: { canManage: boolean }) {
               </div>
               {canManage && (
                 <span className="inline-flex">
-                  <button type="button" onClick={() => setEditBrand(b)} className="w-11 h-11 inline-flex items-center justify-center rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)]" aria-label={`Edit ${b.name}`}><Pencil size={16} /></button>
-                  {!b.is_default && <button type="button" onClick={() => removeBrand(b)} className="w-11 h-11 inline-flex items-center justify-center rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-bg)]" aria-label={`Remove ${b.name}`}><Trash2 size={16} /></button>}
+                  <button type="button" onClick={() => setEditBrand(b)} className="w-9 h-9 inline-flex items-center justify-center rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)]" aria-label={`Edit ${b.name}`}><Pencil size={16} /></button>
+                  {!b.is_default && <button type="button" onClick={() => removeBrand(b)} className="w-9 h-9 inline-flex items-center justify-center rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-bg)]" aria-label={`Remove ${b.name}`}><Trash2 size={16} /></button>}
                 </span>
               )}
             </li>

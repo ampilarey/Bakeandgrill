@@ -16,7 +16,7 @@ const S = {
   input: { width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' as const },
   label: { display: 'block' as const, fontSize: 13, fontWeight: 600 as const, color: 'var(--color-text-secondary)', marginBottom: 4 },
   tab: (active: boolean): React.CSSProperties => ({
-    padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
+    padding: '5px 12px', borderRadius: 8, border: 'none', cursor: 'pointer',
     fontFamily: 'inherit', fontSize: 13, fontWeight: active ? 700 : 400,
     background: active ? 'var(--color-primary)' : 'transparent', color: active ? '#fff' : 'var(--color-text-secondary)',
   }),

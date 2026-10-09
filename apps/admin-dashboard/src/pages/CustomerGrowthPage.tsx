@@ -23,8 +23,8 @@ import { fmt } from '../utils/fmt';
 type Tab = 'overview' | 'segments' | 'marketing' | 'quality' | 'corporate' | 'pairs';
 
 const TAB_STYLE = (active: boolean): React.CSSProperties => ({
-  padding: '8px 18px', border: 'none', borderRadius: 8, cursor: 'pointer',
-  fontWeight: 600, fontSize: 14, fontFamily: 'inherit',
+  padding: '5px 12px', border: 'none', borderRadius: 8, cursor: 'pointer',
+  fontWeight: 600, fontSize: 13, fontFamily: 'inherit',
   background: active ? 'var(--color-primary)' : 'transparent',
   color: active ? '#fff' : 'var(--color-text-secondary)',
 });

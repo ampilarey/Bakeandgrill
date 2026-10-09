@@ -206,7 +206,7 @@ export function CreditAccountsPage() {
             aria-selected={view === id}
             onClick={() => setView(id)}
             style={{
-              padding: '8px 16px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 700,
+              padding: '5px 12px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700,
               background: view === id ? 'var(--color-surface)' : 'transparent',
               color: view === id ? 'var(--color-primary)' : 'var(--color-text-secondary)',
               boxShadow: view === id ? '0 1px 3px rgba(28,20,8,0.12)' : 'none',

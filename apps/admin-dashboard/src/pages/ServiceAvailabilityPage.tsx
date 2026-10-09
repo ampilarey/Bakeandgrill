@@ -489,7 +489,7 @@ export default function ServiceAvailabilityPage() {
                         background: preset.danger ? 'var(--color-danger-bg)' : 'var(--color-bg)',
                         cursor: presetBusy ? 'not-allowed' : 'pointer',
                         fontFamily: 'inherit',
-                        minHeight: 44,
+                        minHeight: 38,
                         width: '100%',
                       }}
                     >
@@ -1048,7 +1048,7 @@ function TabBtn({
         display: 'inline-flex',
         alignItems: 'center',
         gap: 6,
-        minHeight: 40,
+        minHeight: 32,
         padding: '0 12px',
         borderRadius: 10,
         border: active ? '1.5px solid var(--color-primary)' : '1.5px solid var(--color-border)',

@@ -147,7 +147,7 @@ export default function WholesaleReportsPage() {
             type="button"
             onClick={() => setTab(t.id)}
             style={{
-              minHeight: 44, padding: '8px 14px', borderRadius: 8, cursor: 'pointer',
+              minHeight: 38, padding: '8px 14px', borderRadius: 8, cursor: 'pointer',
               border: tab === t.id ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
               background: tab === t.id ? 'var(--color-border-light)' : 'var(--color-bg)',
               color: 'var(--color-text)', fontWeight: tab === t.id ? 700 : 500, fontSize: 13,

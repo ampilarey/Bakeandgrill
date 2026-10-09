@@ -134,7 +134,7 @@ export function HeroElementBgEditor({
           cursor: 'pointer',
           fontFamily: 'inherit',
           textAlign: 'left',
-          minHeight: 44,
+          minHeight: 38,
         }}
       >
         {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}

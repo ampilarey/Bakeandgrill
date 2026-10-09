@@ -155,7 +155,8 @@ export function ContactsTab() {
       <div style={{ display: 'flex', gap: 0, marginBottom: 20, borderBottom: '1px solid var(--color-border)' }}>
         {(['contacts', 'groups'] as const).map(v => (
           <button key={v} onClick={() => setView(v)} style={{
-            padding: '8px 18px', fontSize: 13, fontWeight: view === v ? 700 : 500,
+            display: 'inline-flex', alignItems: 'center',
+            padding: '7px 16px', fontSize: 13, fontWeight: view === v ? 700 : 500,
             color: view === v ? 'var(--color-primary)' : 'var(--color-text-muted)', background: 'none', border: 'none',
             cursor: 'pointer', fontFamily: 'inherit',
             borderBottom: view === v ? '2px solid var(--color-primary)' : '2px solid transparent', marginBottom: -1,

@@ -229,7 +229,7 @@ export default function WholesaleStatementPage() {
         title={`${account.shop_name} — statement`}
         subtitle="What they owe, what they hold, and payments received"
         action={canRepay && openInvoices.length > 0 ? (
-          <Btn onClick={() => openPayModal()} style={{ minHeight: 44 }}>Record payment</Btn>
+          <Btn onClick={() => openPayModal()}>Record payment</Btn>
         ) : undefined}
       />
 

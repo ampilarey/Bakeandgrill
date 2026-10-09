@@ -299,7 +299,7 @@ export function RecipeEditorModal({
                       aria-selected={tab === t.id}
                       onClick={() => setTab(t.id)}
                       style={{
-                        padding: '8px 14px', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13, fontFamily: 'inherit',
+                        padding: '5px 12px', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13, fontFamily: 'inherit',
                         background: tab === t.id ? 'var(--color-primary)' : 'var(--color-bg)',
                         color: tab === t.id ? 'var(--color-on-primary, white)' : 'var(--color-text-secondary)',
                         display: 'inline-flex', alignItems: 'center', gap: 6,

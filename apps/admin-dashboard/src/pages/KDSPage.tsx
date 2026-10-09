@@ -252,7 +252,7 @@ export function KDSPage() {
               href="/kds/"
               target="_blank"
               rel="noopener noreferrer"
-              style={{ display: 'inline-flex', alignItems: 'center', minHeight: 40, padding: '0 12px', color: 'var(--color-primary)', fontWeight: 600, fontSize: 13, textDecoration: 'none' }}
+              style={{ display: 'inline-flex', alignItems: 'center', minHeight: 32, padding: '0 12px', color: 'var(--color-primary)', fontWeight: 600, fontSize: 13, textDecoration: 'none' }}
             >
               Open kitchen screen ↗
             </a>

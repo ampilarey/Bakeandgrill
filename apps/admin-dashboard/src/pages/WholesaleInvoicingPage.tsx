@@ -522,7 +522,7 @@ export default function WholesaleInvoicingPage() {
                 style={textareaStyle}
                 placeholder="Anything the shop should see on the tax invoice"
               />
-              <Btn onClick={() => void handleRaise()} disabled={saving} style={{ minHeight: 44, alignSelf: 'flex-start' }}>
+              <Btn onClick={() => void handleRaise()} disabled={saving} style={{ alignSelf: 'flex-start' }}>
                 <FileText size={16} style={{ marginRight: 6 }} />
                 {saving ? 'Raising…' : `Raise invoice for ${mvr(preview.total_laar)}`}
               </Btn>

@@ -127,7 +127,7 @@ function RowActionMenu({ items }: { items: MenuItem[] }) {
                 display: 'block', width: '100%', textAlign: 'left', padding: '10px 12px',
                 border: 'none', background: 'none', cursor: 'pointer', borderRadius: 8,
                 fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
-                color: item.danger ? 'var(--color-danger-strong)' : 'var(--color-text)', minHeight: 44,
+                color: item.danger ? 'var(--color-danger-strong)' : 'var(--color-text)', minHeight: 38,
               }}
             >
               {item.label}
@@ -335,7 +335,7 @@ function NotificationPrefsModal({ member, onClose }: { member: StaffMember; onCl
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button type="button" onClick={() => setPrefs((p) => (p ? { ...p, order_types: null } : p))} style={{
-                padding: '8px 12px', fontSize: 12, borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit', minHeight: 40,
+                padding: '8px 12px', fontSize: 12, borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit', minHeight: 32,
                 background: prefs.order_types === null ? 'var(--color-primary)' : 'var(--color-border-light)',
                 color: prefs.order_types === null ? '#fff' : 'var(--color-text-secondary)', border: 'none',
               }}>All Types</button>
@@ -343,7 +343,7 @@ function NotificationPrefsModal({ member, onClose }: { member: StaffMember; onCl
                 const active = prefs.order_types === null || prefs.order_types.includes(ot.value);
                 return (
                   <button key={ot.value} type="button" onClick={() => toggleOrderType(ot.value)} style={{
-                    padding: '8px 12px', fontSize: 12, borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit', minHeight: 40,
+                    padding: '8px 12px', fontSize: 12, borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit', minHeight: 32,
                     background: active ? 'var(--color-primary)' : 'var(--color-border-light)',
                     color: active ? '#fff' : 'var(--color-text-secondary)', border: 'none',
                   }}>
@@ -779,15 +779,15 @@ export function StaffPage() {
   };
 
   const tabStyle = (active: boolean): React.CSSProperties => ({
-    padding: '8px 20px', border: 'none', borderRadius: 8, cursor: 'pointer',
-    fontWeight: 600, fontSize: 14, fontFamily: 'inherit', minHeight: 40,
+    padding: '5px 12px', border: 'none', borderRadius: 8, cursor: 'pointer',
+    fontWeight: 600, fontSize: 13, fontFamily: 'inherit', minHeight: 32,
     background: active ? 'var(--color-primary)' : 'transparent',
     color: active ? '#fff' : 'var(--color-text-secondary)',
   });
 
   const filterStyle: React.CSSProperties = {
     padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10,
-    fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', minHeight: 40,
+    fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', minHeight: 32,
   };
 
   return (

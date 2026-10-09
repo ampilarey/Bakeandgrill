@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, Save } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { PageHeader, PageShell } from '../components/SharedUI';
+import { PageHeader, PageShell, Switch } from '../components/SharedUI';
 import { OrderingControlTabs } from '../components/OrderingControlTabs';
 import {
   getDeliveryStatus,
@@ -354,7 +354,7 @@ export default function DeliverySettingsPage() {
                   type="button"
                   className="icon-button"
                   onClick={() => removeZoneRow(idx)}
-                  style={{ background: 'none', border: 'none', color: 'var(--color-danger-strong)', cursor: 'pointer', fontSize: 18, padding: '8px 10px' }}
+                  style={{ background: 'none', border: 'none', color: 'var(--color-danger-strong)', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 8px', minWidth: 36, minHeight: 36 }}
                   aria-label="Remove zone"
                 >
                   ×
@@ -421,16 +421,11 @@ export default function DeliverySettingsPage() {
       }}>
         <p style={{ ...S.sectionTitle, marginBottom: 8 }}>Operations alerts</p>
         <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: 'var(--color-text)' }}>
-          <button
-            type="button"
-            style={S.toggleTrack(opsAlerts?.delivery_delay_alert_sms ?? false)}
-            onClick={toggleDeliveryDelayAlert}
-            role="switch"
-            aria-checked={opsAlerts?.delivery_delay_alert_sms ?? false}
+          <Switch
+            checked={opsAlerts?.delivery_delay_alert_sms ?? false}
+            onChange={() => toggleDeliveryDelayAlert()}
             aria-label="Delivery delay SMS alert"
-          >
-            <span style={S.toggleThumb(opsAlerts?.delivery_delay_alert_sms ?? false)} />
-          </button>
+          />
           SMS business phone when delivery orders pass estimated ready time
         </label>
         <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>

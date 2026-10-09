@@ -68,7 +68,7 @@ const fieldStyle: React.CSSProperties = {
 const labelStyle: React.CSSProperties = { fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 600 };
 /** Quantity − / +: they were unstyled buttons that drew as a bare hyphen and plus. */
 const stepBtn: React.CSSProperties = {
-  minWidth: 44, minHeight: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+  minWidth: 44, minHeight: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
   border: '1px solid var(--color-border)', borderRadius: 10, background: 'var(--color-surface)', color: 'var(--color-text)', cursor: 'pointer',
 };
 

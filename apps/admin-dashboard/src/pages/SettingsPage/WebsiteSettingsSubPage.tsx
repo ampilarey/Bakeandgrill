@@ -63,14 +63,13 @@ export function WebsiteSettings() {
               {dineInUrl}
             </code>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <Btn type="button" onClick={() => void onCopyLink()} style={{ minHeight: 44 }}>
+              <Btn type="button" onClick={() => void onCopyLink()}>
                 <Copy size={14} /> Copy link
               </Btn>
               <Btn
                 type="button"
                 variant="secondary"
                 onClick={() => window.open(dineInUrl, '_blank', 'noopener,noreferrer')}
-                style={{ minHeight: 44 }}
               >
                 <ExternalLink size={14} /> Open
               </Btn>
@@ -85,7 +84,6 @@ export function WebsiteSettings() {
                     });
                   }
                 }}
-                style={{ minHeight: 44 }}
               >
                 <Printer size={14} /> Print
               </Btn>
@@ -109,7 +107,7 @@ export function WebsiteSettings() {
           <Link
             to="/content?group=Branding"
             style={{
-              height: 44, padding: '0 16px', borderRadius: 10,
+              height: 38, padding: '0 16px', borderRadius: 10,
               background: 'var(--color-primary)', color: '#fff', fontWeight: 700, fontSize: 14,
               display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none', fontFamily: 'inherit',
             }}

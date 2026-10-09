@@ -148,7 +148,7 @@ export default function SupplierProfilePage({ supplierId }: { supplierId: number
               aria-selected={tab === t.id}
               onClick={() => setTab(t.id)}
               style={{
-                padding: '8px 16px', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13, fontFamily: 'inherit', whiteSpace: 'nowrap',
+                padding: '5px 12px', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13, fontFamily: 'inherit', whiteSpace: 'nowrap',
                 background: tab === t.id ? 'var(--color-primary)' : 'transparent',
                 color: tab === t.id ? 'var(--color-on-primary, white)' : 'var(--color-text-secondary)',
               }}

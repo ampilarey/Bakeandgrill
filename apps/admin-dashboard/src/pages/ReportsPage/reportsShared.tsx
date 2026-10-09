@@ -216,7 +216,7 @@ export async function fetchReportData(
 
 export const S = {
   sectionTab: (active: boolean): React.CSSProperties => ({
-    padding: '10px 16px',
+    padding: '7px 14px',
     fontSize: 13,
     fontWeight: active ? 700 : 500,
     color: active ? 'var(--color-primary)' : 'var(--color-text-muted)',
@@ -237,7 +237,7 @@ export const S = {
     marginTop: 12,
   },
   tab: (active: boolean): React.CSSProperties => ({
-    padding: '8px 18px', borderRadius: 8, border: 'none', cursor: 'pointer',
+    padding: '5px 12px', borderRadius: 8, border: 'none', cursor: 'pointer',
     fontFamily: 'inherit', fontSize: 13, fontWeight: active ? 700 : 400,
     background: active ? 'var(--color-primary)' : 'transparent', color: active ? '#fff' : 'var(--color-text-secondary)',
     transition: 'all .15s',

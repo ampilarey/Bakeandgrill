@@ -210,7 +210,7 @@ export function SystemHealthPage() {
               onClick={() => { void handleClone(); }}
               disabled={cloneBusy || !!cloneInfo?.running || cloneConfirm.trim() !== 'CLONE FROM LIVE'}
               style={{
-                minHeight: 44, padding: '8px 16px', borderRadius: 10, border: 'none',
+                minHeight: 38, padding: '8px 16px', borderRadius: 10, border: 'none',
                 background: 'var(--color-primary)', color: '#fff', fontWeight: 700, fontSize: 13,
                 fontFamily: 'inherit', cursor: cloneBusy || cloneInfo?.running ? 'wait' : 'pointer',
                 opacity: cloneBusy || cloneInfo?.running || cloneConfirm.trim() !== 'CLONE FROM LIVE' ? 0.55 : 1,

@@ -168,7 +168,7 @@ export default function WasteLogsPage({ embedded = false }: { embedded?: boolean
       <div style={{ display: 'flex', borderBottom: '2px solid var(--color-border)', marginBottom: 24 }}>
         {(['logs', 'summary'] as Tab[]).map((t) => (
           <button key={t} onClick={() => setTab(t)} style={{
-            padding: '10px 20px', fontSize: 14,
+            padding: '7px 16px', fontSize: 14,
             fontWeight: tab === t ? 700 : 500,
             color: tab === t ? 'var(--color-primary)' : 'var(--color-text-muted)',
             background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit',

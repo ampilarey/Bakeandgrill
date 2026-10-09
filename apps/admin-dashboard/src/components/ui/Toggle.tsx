@@ -9,7 +9,7 @@ interface Props {
 }
 
 /** A labelled on/off switch. Draws SharedUI's Switch so every switch in admin looks alike. */
-export function Toggle({ checked, onChange, label, disabled = false, size = 'md' }: Props) {
+export function Toggle({ checked, onChange, label, disabled = false, size = 'sm' }: Props) {
   return (
     <label className={['inline-flex items-center gap-2 cursor-pointer', disabled ? 'opacity-50 cursor-not-allowed' : ''].join(' ')}>
       <Switch checked={checked} onChange={onChange} disabled={disabled} size={size} />

@@ -230,7 +230,7 @@ export function LookPanel({ kind, layout, theme, inherited, inheritedLabel, cate
         type="button"
         onClick={() => setOpen((o) => !o)}
         data-testid={`${testId}-toggle`}
-        style={{ background: 'none', border: 0, padding: 0, minHeight: 44, cursor: 'pointer', fontWeight: 700, color: 'var(--color-text)', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}
+        style={{ background: 'none', border: 0, padding: 0, minHeight: 38, cursor: 'pointer', fontWeight: 700, color: 'var(--color-text)', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}
       >
         <span aria-hidden="true">{open ? '▾' : '▸'}</span>
         Look &amp; theme
@@ -392,7 +392,7 @@ export function LookPanel({ kind, layout, theme, inherited, inheritedLabel, cate
                 </div>
               );
             })}
-            <button type="button" data-testid={`${testId}-daypart-add`} onClick={() => setDayparts((list) => [...list, newDaypart()])} style={{ ...chip(false, true), minHeight: 40 }}>
+            <button type="button" data-testid={`${testId}-daypart-add`} onClick={() => setDayparts((list) => [...list, newDaypart()])} style={{ ...chip(false, true), minHeight: 32 }}>
               + Add day part
             </button>
           </div>
@@ -459,7 +459,7 @@ export function LookPanel({ kind, layout, theme, inherited, inheritedLabel, cate
           </div>
 
           <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
-            <Btn onClick={save} disabled={saving} style={{ minHeight: 44 }} data-testid={`${testId}-save`}>
+            <Btn onClick={save} disabled={saving} data-testid={`${testId}-save`}>
               {saving ? 'Saving…' : 'Save look'}
             </Btn>
           </div>

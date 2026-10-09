@@ -58,7 +58,7 @@ export function TagChipField({
               type="button"
               onClick={() => toggle(tag)}
               style={{
-                minHeight: 36,
+                minHeight: 32,
                 padding: '0 12px',
                 borderRadius: 999,
                 border: on ? '2px solid var(--color-primary)' : '1.5px solid var(--color-border)',
@@ -80,7 +80,7 @@ export function TagChipField({
             type="button"
             onClick={() => toggle(tag)}
             style={{
-              minHeight: 36,
+              minHeight: 32,
               padding: '0 12px',
               borderRadius: 999,
               border: '2px solid var(--color-primary)',
@@ -120,7 +120,7 @@ export function TagChipField({
           onClick={addCustom}
           disabled={!custom.trim() || value.length >= max}
           style={{
-            minHeight: 40,
+            minHeight: 32,
             padding: '0 14px',
             borderRadius: 8,
             border: '1px solid var(--color-border)',

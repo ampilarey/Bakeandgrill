@@ -120,7 +120,7 @@ export function HeroColorField({
             data-testid={`${testIdPrefix}-clear`}
             onClick={() => onChange(null)}
             style={{
-              height: 40,
+              height: 38,
               padding: '0 10px',
               borderRadius: 8,
               border: '1px solid var(--color-border)',

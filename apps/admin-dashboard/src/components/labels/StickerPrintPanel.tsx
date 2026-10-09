@@ -281,7 +281,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
           <span className={labelClass}>Language</span>
           <div className="flex gap-2">
             {(['en', 'dv'] as const).map((l) => (
-              <button key={l} type="button" onClick={() => setLang(l)} className={['flex-1 h-10 min-h-[44px] rounded-lg border text-sm font-semibold', lang === l ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white' : 'bg-white border-[var(--color-border)] text-[var(--color-text)]'].join(' ')}>
+              <button key={l} type="button" onClick={() => setLang(l)} className={['flex-1 h-9 min-h-[36px] rounded-lg border text-sm font-semibold', lang === l ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white' : 'bg-white border-[var(--color-border)] text-[var(--color-text)]'].join(' ')}>
                 {l === 'en' ? 'English' : 'ދިވެހި'}
               </button>
             ))}

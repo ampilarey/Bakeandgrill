@@ -112,7 +112,7 @@ export function CutoutSlot({ itemId }: { itemId: number }) {
             onClick={() => fileRef.current?.click()}
             disabled={busy}
             data-testid="cutout-upload-btn"
-            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', background: 'var(--color-surface)', border: '2px dashed var(--color-border)', borderRadius: 10, cursor: busy ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)' }}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px', background: 'var(--color-surface)', border: '2px dashed var(--color-border)', borderRadius: 10, cursor: busy ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)' }}
           >
             <Upload size={14} />
             {busy ? 'Working…' : state?.cutout_url ? 'Replace cut-out PNG' : 'Upload cut-out PNG'}
@@ -163,7 +163,7 @@ export function CutoutSlot({ itemId }: { itemId: number }) {
               onClick={() => void saveBackdrop()}
               disabled={busy || !dirty}
               data-testid="cutout-backdrop-save"
-              style={{ padding: '7px 14px', background: dirty ? 'var(--color-primary)' : 'var(--color-border-light)', color: dirty ? 'white' : 'var(--color-text-muted)', border: 'none', borderRadius: 8, cursor: busy || !dirty ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700 }}
+              style={{ padding: '6px 14px', whiteSpace: 'nowrap', flexShrink: 0, background: dirty ? 'var(--color-primary)' : 'var(--color-border-light)', color: dirty ? 'white' : 'var(--color-text-muted)', border: 'none', borderRadius: 8, cursor: busy || !dirty ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700 }}
             >
               Save circle
             </button>

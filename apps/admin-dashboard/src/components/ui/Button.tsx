@@ -19,10 +19,12 @@ const variantStyles: Record<Variant, string> = {
   outline:   'bg-transparent border border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[var(--color-surface-hover)]',
 };
 
+// The same heights as SharedUI's Btn: 38px, small 32px (owner, 2026-10-10: "change all
+// the big buttons to small buttons").
 const sizeStyles: Record<Size, string> = {
-  sm: 'h-8 min-h-[44px] px-3 text-xs gap-1.5',
-  md: 'h-9 min-h-[44px] px-4 text-sm gap-2',
-  lg: 'h-11 min-h-[44px] px-6 text-base gap-2',
+  sm: 'h-8 min-h-[32px] px-3 text-xs gap-1.5',
+  md: 'h-[38px] min-h-[38px] px-4 text-sm gap-2',
+  lg: 'h-[38px] min-h-[38px] px-6 text-base gap-2',
 };
 
 export function Button({ variant = 'primary', size = 'md', loading, icon, children, className = '', disabled, ...props }: Props) {

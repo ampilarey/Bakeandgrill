@@ -195,7 +195,7 @@ export function LoginPage({ onLogin }: { onLogin: (user: StaffUser, returnTo?: s
                 type="button"
                 onClick={() => { setLoginMode(mode); setLoginError(''); }}
                 style={{
-                  flex: 1, height: 40, borderRadius: 10, cursor: 'pointer', fontWeight: 700,
+                  flex: 1, height: 36, borderRadius: 10, cursor: 'pointer', fontWeight: 700,
                   border: `1px solid ${loginMode === mode ? 'var(--color-primary)' : 'var(--color-border)'}`,
                   background: loginMode === mode ? 'var(--color-tone-rust-bg)' : 'var(--color-surface)',
                   color: loginMode === mode ? 'var(--color-tone-rust-text)' : 'var(--color-text-secondary)',

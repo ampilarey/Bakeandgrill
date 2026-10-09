@@ -352,17 +352,17 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
 
   const actionButtons = (
     <>
-      <Btn type="button" variant="secondary" onClick={onClose} style={{ minHeight: 40 }}>Cancel</Btn>
-      <Btn type="button" onClick={apply} style={{ minHeight: 40 }} data-testid="signage-designer-apply">Apply to playlist</Btn>
+      <Btn type="button" variant="secondary" onClick={onClose}>Cancel</Btn>
+      <Btn type="button" onClick={apply} data-testid="signage-designer-apply">Apply to playlist</Btn>
     </>
   );
 
   return (
     <div data-testid="signage-designer" className="signage-designer" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div className="signage-designer-toolbar" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        <Btn type="button" variant="secondary" onClick={undo} style={{ minHeight: 40 }}><Undo2 size={14} /> Undo</Btn>
-        <Btn type="button" variant="secondary" onClick={redo} style={{ minHeight: 40 }}><Redo2 size={14} /> Redo</Btn>
-        <Btn type="button" variant="secondary" onClick={() => setOrient((o) => (o === 'landscape' ? 'portrait' : 'landscape'))} style={{ minHeight: 40 }}>
+        <Btn type="button" variant="secondary" onClick={undo}><Undo2 size={14} /> Undo</Btn>
+        <Btn type="button" variant="secondary" onClick={redo}><Redo2 size={14} /> Redo</Btn>
+        <Btn type="button" variant="secondary" onClick={() => setOrient((o) => (o === 'landscape' ? 'portrait' : 'landscape'))}>
           {orient === 'landscape' ? '16:9' : '9:16'}
         </Btn>
         <select
@@ -376,7 +376,7 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
           <option value="1080p">1080p</option>
           <option value="4k">4K</option>
         </select>
-        <Btn type="button" variant="secondary" onClick={() => void saveTemplate()} style={{ minHeight: 40 }}><Save size={14} /> Save as template</Btn>
+        <Btn type="button" variant="secondary" onClick={() => void saveTemplate()}><Save size={14} /> Save as template</Btn>
         {!isMobile && (
           <>
             <div style={{ flex: 1 }} />
@@ -684,7 +684,7 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
                 {EMPHASES.map((t) => <option key={t || 'none'} value={t}>{t || 'none'}</option>)}
               </select>
               {(selEl.type === 'image' || selEl.type === 'video') && (
-                <Btn type="button" variant="secondary" style={{ minHeight: 40 }} onClick={() => setMediaOpen(true)}>
+                <Btn type="button" variant="secondary" onClick={() => setMediaOpen(true)}>
                   <Copy size={14} /> Media Library
                 </Btn>
               )}

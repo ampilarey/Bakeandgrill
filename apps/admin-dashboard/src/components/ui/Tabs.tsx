@@ -56,7 +56,7 @@ export function Tab({ id, children }: TabProps) {
     <button
       onClick={() => ctx.onChange(id)}
       style={{
-        padding: '10px 20px',
+        padding: '7px 16px',
         fontSize: 14,
         fontWeight: isActive ? 700 : 500,
         color: isActive ? 'var(--color-primary)' : 'var(--color-text-muted)',

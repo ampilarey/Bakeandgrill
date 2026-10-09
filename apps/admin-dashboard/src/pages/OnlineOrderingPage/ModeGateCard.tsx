@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { ChevronDown, Save } from 'lucide-react';
+import { Switch } from '../../components/SharedUI';
 import {
   DAYS,
   DEFAULT_SCHEDULE,
@@ -132,7 +133,7 @@ export function ModeGateCard({
             padding: 0,
             textAlign: 'left',
             fontFamily: 'inherit',
-            minHeight: 44,
+            minHeight: 38,
           }}
         >
           <ChevronDown
@@ -149,20 +150,16 @@ export function ModeGateCard({
             {open ? 'Available now' : 'Off right now'}
           </span>
         </button>
-        <button
-          style={S.toggleTrack(enabled)}
-          onClick={() => void run(
+        <Switch
+          checked={enabled}
+          onChange={() => void run(
             () => onToggle(!enabled),
             `${label} turned ${enabled ? 'OFF' : 'ON'}.`,
           )}
           disabled={saving}
-          role="switch"
-          aria-checked={enabled}
           aria-label={`Toggle ${label}`}
           data-testid={`${testId}-toggle`}
-        >
-          <span style={S.toggleThumb(enabled)} />
-        </button>
+        />
       </div>
       {!expanded && (scheduled || forced) && (
         <p style={{ ...S.reasonNote, marginTop: 8 }}>

@@ -1313,7 +1313,7 @@ export function HeroSlidesEditor({
                   border: pressed ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
                   background: 'var(--color-surface)',
                   cursor: 'pointer',
-                  minHeight: 44,
+                  minHeight: 38,
                 }}
               >
                 <span
@@ -1356,7 +1356,7 @@ export function HeroSlidesEditor({
             }}
             style={{
               flex: '0 0 120px',
-              minHeight: 44,
+              minHeight: 38,
               borderRadius: 12,
               border: '1px dashed var(--color-border)',
               background: 'transparent',

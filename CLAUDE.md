@@ -64,7 +64,11 @@ danger. Icons are lucide (`InlineIcon` in running text), not emoji; on/off contr
 are SharedUI `Switch`. Details: `docs/ADMIN_THEMING_MOBILE_PLAN.md` § Stage 3c.
 
 A row's Delete / Remove / Reject is `Btn variant="danger-outline"`; solid `danger` is
-for the final confirm and bulk actions. Pop-ups (`Modal`) render outside the page, so
+for the final confirm and bulk actions. Buttons are small (owner, 2026-10-10): `Btn` is
+38px, `Btn small` 32px, chips and tabs 32px, and `Switch` is 40×22 unless a page asks
+for `size="md"`; never draw a switch by hand or give a button its own `minHeight` (the
+phone floor for a bare button is 32px). Inputs and selects stay 44px with 16px type on
+a phone. Details: § Stage 3i. Pop-ups (`Modal`) render outside the page, so
 never scope a pop-up's CSS under a page class (`.x-page .chip` does not reach it).
 Native tick boxes, radios and sliders take the rust through `accent-color` in
 `index.css`. Every colour must hold in dark mode too: a pale panel is `--color-bg`, a

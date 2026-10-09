@@ -65,7 +65,7 @@ function sectionForTab(t: Tab) {
 
 const S = {
   sectionTab: (active: boolean): React.CSSProperties => ({
-    padding: '10px 16px',
+    padding: '7px 14px',
     fontSize: 13,
     fontWeight: active ? 700 : 500,
     color: active ? 'var(--color-primary)' : 'var(--color-text-muted)',
@@ -85,8 +85,11 @@ const S = {
     marginBottom: 20,
     marginTop: 12,
   },
+  // Icon and word on one line: an svg is a block, so it sat above the word (50px tabs).
   tab: (active: boolean): React.CSSProperties => ({
-    padding: '8px 18px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    padding: '5px 12px',
     borderRadius: 8,
     border: 'none',
     cursor: 'pointer',

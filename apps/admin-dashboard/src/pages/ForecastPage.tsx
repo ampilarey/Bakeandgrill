@@ -1049,7 +1049,7 @@ export function ForecastPage() {
         <div style={{ display: 'flex', background: 'var(--color-border-light)', borderRadius: 8, overflow: 'hidden' }}>
           {(['daily', 'weekly', 'monthly'] as const).map(g => (
             <button key={g} onClick={() => setGran(g)}
-              style={{ padding: '8px 14px', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+              style={{ padding: '5px 12px', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
                 background: granularity === g ? 'var(--color-primary)' : 'transparent',
                 color: granularity === g ? '#fff' : 'var(--color-text-secondary)' }}>
               {g.charAt(0).toUpperCase() + g.slice(1)}

@@ -1378,7 +1378,7 @@ export function MenuItemEditorModal({
                       set('packaging_options', next);
                     }}
                     style={{
-                      minHeight: 44, border: '1px solid var(--color-border)', borderRadius: 8,
+                      minHeight: 38, border: '1px solid var(--color-border)', borderRadius: 8,
                       background: 'var(--color-surface)', cursor: 'pointer', fontSize: 16, color: 'var(--color-text-muted)',
                     }}
                     aria-label="Remove packaging option"

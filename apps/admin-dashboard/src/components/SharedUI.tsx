@@ -333,6 +333,15 @@ interface BtnProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   ref?: React.Ref<HTMLButtonElement>;
 }
 
+/**
+ * Owner, 2026-10-10: "change all the big buttons to small buttons". Every
+ * button was 44px tall, small ones included, so a row's Edit or a group's All
+ * on stood as tall as Save. A button is 38px now and a small one 32px, at
+ * every width (the phone rule no longer stretches them).
+ */
+const BTN_HEIGHT = 38;
+const BTN_HEIGHT_SMALL = 32;
+
 export function Btn({ variant = 'primary', small, children, style, ref, ...rest }: BtnProps) {
   return (
     <button
@@ -340,7 +349,7 @@ export function Btn({ variant = 'primary', small, children, style, ref, ...rest 
       {...rest}
       style={{
         display: 'inline-flex', alignItems: 'center', gap: '0.375rem',
-        minHeight: '44px',
+        minHeight: small ? BTN_HEIGHT_SMALL : BTN_HEIGHT,
         padding: small ? '0 0.75rem' : '0 1rem',
         borderRadius: 10, fontWeight: 600,
         fontSize: small ? '0.8125rem' : '0.875rem',
@@ -367,9 +376,11 @@ type SwitchProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onChange' | 'r
 /**
  * The one on/off switch. Pages drew their own: green on some, rust on others,
  * cool grey when off, and the ones without role="switch" were stretched to a
- * lozenge by the phone rule that makes every button 44px tall.
+ * lozenge by the phone rule that made every button 44px tall. Small (40 x 22)
+ * unless a page asks for `md` (owner, 2026-10-10: "change all the big buttons
+ * to small buttons").
  */
-export function Switch({ checked, onChange, size = 'md', disabled, style, ...rest }: SwitchProps) {
+export function Switch({ checked, onChange, size = 'sm', disabled, style, ...rest }: SwitchProps) {
   const w = size === 'sm' ? 40 : 48;
   const h = size === 'sm' ? 22 : 28;
   const knob = h - 6;
@@ -477,9 +488,11 @@ export function Select({ options, value, onChange, label, style, ...rest }: Sele
 }
 
 // ─── ModalActions ─────────────────────────────────────────────────────────────
+// Centred, so a button keeps its own height beside a taller neighbour (a
+// two-line order total stretched Cancel to 46px).
 export function ModalActions({ children }: { children: ReactNode }) {
   return (
-    <div className="modal-actions" style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+    <div className="modal-actions" style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap' }}>
       {children}
     </div>
   );
@@ -614,7 +627,7 @@ export function Modal({
             className="icon-button"
             style={{
               background: 'var(--color-bg)', border: 'none', borderRadius: 8,
-              width: 40, height: 40, minHeight: 40, cursor: 'pointer', color: 'var(--color-text-secondary)',
+              width: 36, height: 36, minHeight: 36, cursor: 'pointer', color: 'var(--color-text-secondary)',
               fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
           ><X size={18} aria-hidden /></button>

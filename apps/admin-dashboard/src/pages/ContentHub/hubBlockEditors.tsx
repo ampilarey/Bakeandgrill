@@ -163,7 +163,7 @@ export function renderPlainEditor(
             type="button"
             onClick={() => deps.setDraft(scope, block.key, '')}
             style={{
-              height: 40,
+              height: 38,
               padding: '0 12px',
               borderRadius: 10,
               border: '1px solid var(--color-border)',

@@ -168,8 +168,8 @@ function AssetDetailPreview({ asset }: { asset: MediaAsset }) {
   return mediaTypeIcon(asset.media_type);
 }
 
-const tabStyle = (active: boolean, mobile = false): CSSProperties => ({
-  height: mobile ? 44 : 36, minHeight: 44, padding: '0 14px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
+const tabStyle = (active: boolean): CSSProperties => ({
+  height: 32, minHeight: 32, padding: '0 12px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
   fontWeight: active ? 700 : 500, fontSize: 13,
   border: active ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
   background: active ? 'var(--color-warning-bg)' : 'var(--color-surface)', color: 'var(--color-text)', whiteSpace: 'nowrap',
@@ -314,7 +314,7 @@ function CropEditPanel({
   }, [onChange]);
 
   const chip = (active: boolean): CSSProperties => ({
-    height: 44, minHeight: 44, padding: '0 14px', borderRadius: 8, cursor: 'pointer',
+    height: 32, minHeight: 32, padding: '0 12px', borderRadius: 8, cursor: 'pointer',
     fontFamily: 'inherit', fontSize: 13, fontWeight: 600,
     border: active ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
     background: active ? 'var(--color-warning-bg)' : 'var(--color-surface)',
@@ -417,7 +417,7 @@ function RotateEditPanel({
   const transform = rotatePreviewTransforms(degrees, flip);
 
   const chip = (active: boolean): CSSProperties => ({
-    height: 44, minHeight: 44, padding: '0 12px', borderRadius: 8, cursor: 'pointer',
+    height: 32, minHeight: 32, padding: '0 12px', borderRadius: 8, cursor: 'pointer',
     fontFamily: 'inherit', fontSize: 13, fontWeight: 600,
     border: active ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
     background: active ? 'var(--color-warning-bg)' : 'var(--color-surface)',
@@ -527,7 +527,7 @@ function RotateEditPanel({
             }}
           />
         </label>
-        <button type="button" onClick={() => onChange({})} style={{ ...chip(false), height: 44 }}>
+        <button type="button" onClick={() => onChange({})} style={{ ...chip(false), height: 38 }}>
           Reset
         </button>
       </div>
@@ -561,7 +561,7 @@ function ResizeEditPanel({
   };
 
   const chip = (active: boolean): CSSProperties => ({
-    height: 44, minHeight: 44, padding: '0 14px', borderRadius: 8, cursor: 'pointer',
+    height: 32, minHeight: 32, padding: '0 12px', borderRadius: 8, cursor: 'pointer',
     fontFamily: 'inherit', fontSize: 13, fontWeight: 600,
     border: active ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
     background: active ? 'var(--color-warning-bg)' : 'var(--color-surface)',
@@ -1285,7 +1285,7 @@ export function MediaLibraryPage() {
             <button
               key={value}
               type="button"
-              style={tabStyle(activeType === value, isMobile)}
+              style={tabStyle(activeType === value)}
               onClick={() => setActiveType(value)}
               aria-pressed={activeType === value}
             >
@@ -1333,8 +1333,8 @@ export function MediaLibraryPage() {
               display: isMobile ? 'inline-flex' : 'block',
               width: isMobile ? 'auto' : '100%',
               textAlign: 'left',
-              padding: isMobile ? '10px 14px' : '7px 9px',
-              minHeight: 44,
+              padding: isMobile ? '4px 12px' : '7px 9px',
+              minHeight: 32,
               border: isMobile ? (activeCollection === '' ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)') : 'none',
               borderRadius: isMobile ? 9999 : 8,
               cursor: 'pointer', fontFamily: 'inherit',
@@ -1362,8 +1362,8 @@ export function MediaLibraryPage() {
                     onChange={(e) => setRenamingName(e.target.value)}
                     style={{ flex: 1, minWidth: 0, height: 44, border: '1px solid var(--color-primary)', borderRadius: 6, padding: '0 6px', fontSize: 12, fontFamily: 'inherit' }}
                   />
-                  <button type="submit" disabled={colSaving} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-primary)', padding: '0 2px', minWidth: 44, minHeight: 44 }}><Check size={14} /></button>
-                  <button type="button" onClick={() => setRenamingId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: '0 2px', minWidth: 44, minHeight: 44 }}><X size={14} /></button>
+                  <button type="submit" disabled={colSaving} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-primary)', padding: '0 2px', minWidth: 44, minHeight: 38 }}><Check size={14} /></button>
+                  <button type="button" onClick={() => setRenamingId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: '0 2px', minWidth: 44, minHeight: 38 }}><X size={14} /></button>
                 </form>
               ) : (
                 <>
@@ -1373,8 +1373,8 @@ export function MediaLibraryPage() {
                     style={{
                       flex: isMobile ? undefined : 1,
                       textAlign: 'left',
-                      padding: isMobile ? '10px 14px' : '7px 9px',
-                      minHeight: 44,
+                      padding: isMobile ? '4px 12px' : '7px 9px',
+                      minHeight: 32,
                       border: isMobile ? (activeCollection === col.slug ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)') : 'none',
                       borderRadius: isMobile ? 9999 : 8,
                       cursor: 'pointer', fontFamily: 'inherit', fontSize: 13,
@@ -1594,7 +1594,7 @@ export function MediaLibraryPage() {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)' }}>Asset details</span>
-              <button type="button" onClick={closeDetail} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 4, minWidth: 44, minHeight: 44 }} aria-label="Close drawer">
+              <button type="button" onClick={closeDetail} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 4, minWidth: 44, minHeight: 38 }} aria-label="Close drawer">
                 <X size={18} />
               </button>
             </div>
@@ -1618,7 +1618,7 @@ export function MediaLibraryPage() {
                 type="button"
                 onClick={() => void copyUrl()}
                 style={{
-                  flex: 1, minWidth: 120, height: 44, minHeight: 44, borderRadius: 8,
+                  flex: 1, minWidth: 120, height: 38, minHeight: 38, borderRadius: 8,
                   border: '1px solid var(--color-border)',
                   background: copiedUrl ? 'var(--color-success-bg)' : 'var(--color-bg)',
                   cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600,
@@ -1635,7 +1635,7 @@ export function MediaLibraryPage() {
                 onClick={() => void handleExport(false)}
                 disabled={exporting || !selected.url}
                 style={{
-                  flex: 1, minWidth: 120, height: 44, minHeight: 44, borderRadius: 8,
+                  flex: 1, minWidth: 120, height: 38, minHeight: 38, borderRadius: 8,
                   border: '1px solid var(--color-border)',
                   background: 'var(--color-tone-rust-bg)',
                   cursor: exporting ? 'wait' : 'pointer', fontFamily: 'inherit',
@@ -1654,7 +1654,7 @@ export function MediaLibraryPage() {
                 onClick={() => void handleExport(true)}
                 disabled={exporting}
                 style={{
-                  width: '100%', height: 40, minHeight: 40, marginTop: -6, marginBottom: 14,
+                  width: '100%', height: 32, minHeight: 32, marginTop: -6, marginBottom: 14,
                   borderRadius: 8, border: '1px dashed var(--color-border)',
                   background: 'var(--color-surface)', cursor: exporting ? 'wait' : 'pointer',
                   fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
@@ -1812,7 +1812,7 @@ export function MediaLibraryPage() {
                   onClick={() => setVideoStudioOpen(true)}
                   disabled={!canManage}
                   style={{
-                    height: 40, padding: '0 14px', borderRadius: 8, border: 'none',
+                    height: 38, padding: '0 14px', borderRadius: 8, border: 'none',
                     background: canManage ? 'var(--color-primary)' : 'var(--color-border)', cursor: canManage ? 'pointer' : 'not-allowed',
                     fontFamily: 'inherit', fontSize: 13, fontWeight: 700,
                     color: canManage ? '#fff' : 'var(--color-text-muted)', display: 'inline-flex', alignItems: 'center', gap: 8,
@@ -1841,7 +1841,7 @@ export function MediaLibraryPage() {
                   data-testid="media-replace-file"
                   disabled={replacingFile}
                   onClick={() => replaceFileInputRef.current?.click()}
-                  style={{ width: '100%', minHeight: 44 }}
+                  style={{ width: '100%' }}
                 >
                   <Replace size={14} /> {replacingFile ? 'Replacing…' : 'Replace photo everywhere'}
                 </Btn>
@@ -1877,7 +1877,7 @@ export function MediaLibraryPage() {
                         setEditError('');
                       }}
                       style={{
-                        height: isMobile ? 40 : 32, minHeight: isMobile ? 40 : 32, padding: '0 10px', borderRadius: 8,
+                        height: 32, minHeight: 32, padding: '0 10px', borderRadius: 8,
                         border: editOp === op ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
                         background: editOp === op ? 'var(--color-warning-bg)' : 'var(--color-bg)', cursor: 'pointer',
                         fontFamily: 'inherit', fontSize: 11, fontWeight: 600,
@@ -1923,12 +1923,12 @@ export function MediaLibraryPage() {
                           || (editOp === 'crop' && !isCropReady(editParams))
                           || (editOp === 'rotate' && !isRotateReady(editParams))
                         }
-                        style={{ flex: 1, minHeight: 44 }}
+                        style={{ flex: 1 }}
                         data-testid="media-edit-apply"
                       >
                         {editSaving ? 'Applying…' : 'Apply'}
                       </Btn>
-                      <Btn variant="ghost" onClick={() => { setEditOp(null); setEditParams({}); }} style={{ minHeight: 44 }}>
+                      <Btn variant="ghost" onClick={() => { setEditOp(null); setEditParams({}); }}>
                         Cancel
                       </Btn>
                     </div>
@@ -1957,11 +1957,11 @@ export function MediaLibraryPage() {
 
             {/* Save + Delete */}
             <div style={{ display: 'flex', gap: 8 }}>
-              <Btn onClick={() => void saveDetail()} disabled={detailSaving} style={{ flex: 1, minHeight: 44 }}>
+              <Btn onClick={() => void saveDetail()} disabled={detailSaving} style={{ flex: 1 }}>
                 {detailSaving ? 'Saving…' : 'Save'}
               </Btn>
               {canManage && (
-                <Btn variant="danger" onClick={() => { setDeleteTargets(selected ? [selected] : null); setDeleteError(''); setForceDelete(false); }} style={{ minHeight: 44, minWidth: 44 }}>
+                <Btn variant="danger" onClick={() => { setDeleteTargets(selected ? [selected] : null); setDeleteError(''); setForceDelete(false); }} style={{ minWidth: 44 }}>
                   <Trash2 size={14} />
                 </Btn>
               )}

@@ -298,7 +298,7 @@ export function MenuPage() {
       <div style={{ display: 'flex', gap: 0, marginBottom: 24, borderBottom: '2px solid var(--color-border)' }}>
         {(['categories', 'items'] as View[]).map((t) => (
           <button key={t} onClick={() => m.setView(t)} style={{
-            padding: '10px 22px', fontSize: 14, fontWeight: m.view === t ? 700 : 400,
+            padding: '7px 18px', fontSize: 14, fontWeight: m.view === t ? 700 : 400,
             color: m.view === t ? 'var(--color-primary)' : 'var(--color-text-muted)',
             background: 'none', border: 'none', cursor: 'pointer', textTransform: 'capitalize',
             borderBottom: m.view === t ? '2px solid var(--color-primary)' : '2px solid transparent',

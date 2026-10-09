@@ -140,7 +140,7 @@ export function AnnouncementModal({ onClose, onSaved, canCompose, canSchedule, c
                   aria-pressed={templateKey === t.key}
                   onClick={() => pickTemplate(t)}
                   style={{
-                    minHeight: 36, padding: '0 12px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12,
+                    minHeight: 32, padding: '0 12px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12,
                     fontWeight: templateKey === t.key ? 700 : 500,
                     border: templateKey === t.key ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
                     background: templateKey === t.key ? 'var(--color-warning-bg)' : 'var(--color-bg)', color: 'var(--color-text)',

@@ -18,7 +18,7 @@ import {
 } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
-import { PageHeader, PageShell, Btn, Modal } from '../components/SharedUI';
+import { PageHeader, PageShell, Btn, Modal, Switch } from '../components/SharedUI';
 import { NotifyChannelsPanel } from '../components/NotifyChannelsPanel';
 import { nonGsm7Characters, smsCharCount } from '../utils/smsCharCount';
 
@@ -733,17 +733,12 @@ function TypeRow({
             {row.always_on ? (
               <span style={badgeStyle('var(--color-border-light)', 'var(--color-text-muted)')}>Always on</span>
             ) : (
-              <button
-                type="button"
-                onClick={onToggle}
+              <Switch
+                checked={row.enabled}
+                onChange={() => onToggle()}
                 disabled={!canToggle || saving}
                 aria-label={`Toggle ${row.label}`}
-                aria-pressed={row.enabled}
-                className={`sms-cc-switch${row.enabled ? ' is-on' : ''}`}
-                style={{ cursor: !canToggle || saving ? 'not-allowed' : 'pointer', opacity: !canToggle ? 0.55 : 1 }}
-              >
-                <span className="sms-cc-switch-knob" />
-              </button>
+              />
             )}
           </div>
           <div className="sms-cc-channel">
@@ -751,33 +746,23 @@ function TypeRow({
             {row.has_own_email ? (
               <span style={badgeStyle('var(--color-border-light)', 'var(--color-text-muted)')} title="Sends its own email, separate from the SMS">Own email</span>
             ) : (
-              <button
-                type="button"
-                onClick={onEmailToggle}
+              <Switch
+                checked={emailOn}
+                onChange={() => onEmailToggle()}
                 disabled={!canToggleEmail || saving}
                 aria-label={`Toggle email for ${row.label}`}
-                aria-pressed={emailOn}
-                className={`sms-cc-switch${emailOn ? ' is-on' : ''}`}
-                style={{ cursor: !canToggleEmail || saving ? 'not-allowed' : 'pointer', opacity: !canToggleEmail ? 0.55 : 1 }}
-              >
-                <span className="sms-cc-switch-knob" />
-              </button>
+              />
             )}
           </div>
           {row.telegram_applies && (
             <div className="sms-cc-channel">
               <span className="sms-cc-channel-label">Telegram</span>
-              <button
-                type="button"
-                onClick={onTelegramToggle}
+              <Switch
+                checked={telegramOn}
+                onChange={() => onTelegramToggle()}
                 disabled={!canToggleEmail || saving}
                 aria-label={`Toggle Telegram for ${row.label}`}
-                aria-pressed={telegramOn}
-                className={`sms-cc-switch${telegramOn ? ' is-on' : ''}`}
-                style={{ cursor: !canToggleEmail || saving ? 'not-allowed' : 'pointer', opacity: !canToggleEmail ? 0.55 : 1 }}
-              >
-                <span className="sms-cc-switch-knob" />
-              </button>
+              />
             </div>
           )}
           <button type="button" onClick={onExpand} className="sms-cc-edit" aria-expanded={expanded}>
@@ -1121,7 +1106,7 @@ const legendStyle: CSSProperties = { fontSize: 12, fontWeight: 700, color: 'var(
 const fieldLabel: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--color-text-secondary)', minWidth: 160 };
 const inputStyle: CSSProperties = { minHeight: 44, border: '1px solid var(--color-border)', borderRadius: 8, padding: '8px 10px', fontSize: 14, fontFamily: 'inherit' };
 const secondaryBtn: CSSProperties = {
-  minHeight: 40, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)',
+  minHeight: 32, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)',
   fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--color-text)',
 };
 const primaryBtn: CSSProperties = {

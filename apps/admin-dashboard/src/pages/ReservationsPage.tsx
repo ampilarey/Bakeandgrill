@@ -514,7 +514,7 @@ export function ReservationsPage() {
   const [tab, setTab] = useState<'list' | 'settings'>('list');
 
   const tabBtnStyle = (active: boolean): React.CSSProperties => ({
-    padding: '8px 18px',
+    padding: '7px 16px',
     border: 'none',
     borderBottom: active ? '2px solid var(--color-primary)' : '2px solid transparent',
     background: 'transparent',

@@ -1,5 +1,6 @@
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import { AlertTriangle, CheckCircle2, ChevronDown, Lock, RefreshCw, Unlock } from 'lucide-react';
+import { Switch } from '../../components/SharedUI';
 
 export const DAYS = [
   { key: 'mon', label: 'Monday' },
@@ -57,7 +58,7 @@ export const S = {
     display: 'inline-flex',
     alignItems: 'center',
     gap: 6,
-    padding: '10px 16px',
+    padding: '0 16px',
     borderRadius: 10,
     border: 'none',
     background: 'var(--color-primary)',
@@ -65,13 +66,13 @@ export const S = {
     fontSize: 13,
     fontWeight: 600,
     cursor: 'pointer',
-    minHeight: 44,
+    minHeight: 38,
   } as CSSProperties,
   btnSecondary: {
     display: 'inline-flex',
     alignItems: 'center',
     gap: 6,
-    padding: '10px 16px',
+    padding: '0 16px',
     borderRadius: 10,
     border: '1.5px solid var(--color-border)',
     background: 'var(--color-surface)',
@@ -79,13 +80,13 @@ export const S = {
     fontSize: 13,
     fontWeight: 600,
     cursor: 'pointer',
-    minHeight: 44,
+    minHeight: 38,
   } as CSSProperties,
   btnDanger: {
     display: 'inline-flex',
     alignItems: 'center',
     gap: 6,
-    padding: '10px 16px',
+    padding: '0 16px',
     borderRadius: 10,
     border: 'none',
     background: 'var(--color-danger)',
@@ -93,7 +94,7 @@ export const S = {
     fontSize: 13,
     fontWeight: 600,
     cursor: 'pointer',
-    minHeight: 44,
+    minHeight: 38,
   } as CSSProperties,
   statusOpen: {
     display: 'inline-flex',
@@ -128,31 +129,6 @@ export const S = {
     color: 'var(--color-text-muted)',
     marginTop: 6,
   },
-  toggleTrack: (on: boolean): CSSProperties => ({
-    display: 'inline-block',
-    position: 'relative',
-    width: 48,
-    height: 28,
-    borderRadius: 14,
-    border: 'none',
-    padding: 0,
-    // The off track and the knob follow the theme, as in SharedUI Switch.
-    background: on ? 'var(--color-primary)' : 'var(--color-switch-off)',
-    transition: 'background 0.2s',
-    cursor: 'pointer',
-    flexShrink: 0,
-  }),
-  toggleThumb: (on: boolean): CSSProperties => ({
-    position: 'absolute',
-    top: 4,
-    left: on ? 24 : 4,
-    width: 20,
-    height: 20,
-    borderRadius: '50%',
-    background: 'var(--color-switch-knob)',
-    boxShadow: '0 1px 3px rgba(28, 20, 8, 0.25)',
-    transition: 'left 0.2s',
-  }),
 };
 
 /** ISO → datetime-local value in the browser's local zone. */
@@ -372,16 +348,12 @@ export function MasterSwitchRow({
 }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-      <button
-        style={S.toggleTrack(on)}
-        onClick={onToggle}
+      <Switch
+        checked={on}
+        onChange={() => onToggle()}
         disabled={toggling}
-        role="switch"
-        aria-checked={on}
         aria-label={on ? titleOn : titleOff}
-      >
-        <span style={S.toggleThumb(on)} />
-      </button>
+      />
       <div>
         <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>
           {toggling ? 'Updating…' : on ? titleOn : titleOff}
@@ -421,8 +393,8 @@ export function Collapsible({
           background: 'none',
           border: 'none',
           cursor: 'pointer',
-          padding: '10px 0',
-          minHeight: 44,
+          padding: '6px 0',
+          minHeight: 38,
           fontFamily: 'inherit',
         }}
       >
@@ -579,16 +551,11 @@ export function ScheduleEditor({
                 window and the times share one line; the labels stay for
                 screen readers. */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: day.enabled ? 8 : 0 }}>
-              <button
-                type="button"
-                style={S.toggleTrack(day.enabled)}
-                onClick={() => setDay(key, { ...day, enabled: !day.enabled })}
-                role="switch"
-                aria-checked={day.enabled}
+              <Switch
+                checked={day.enabled}
+                onChange={(next) => setDay(key, { ...day, enabled: next })}
                 aria-label={label}
-              >
-                <span style={S.toggleThumb(day.enabled)} />
-              </button>
+              />
               <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>{label}</span>
               {!day.enabled && <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Closed all day</span>}
               {day.enabled && (

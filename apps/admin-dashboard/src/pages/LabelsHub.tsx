@@ -75,7 +75,7 @@ function SavedLabelsTab() {
     if (!window.confirm(`Remove the saved label "${j.name}"? Prints already made are kept in the log.`)) return;
     try { await deleteLabelJob(j.id); void load(); } catch (e) { toast('error', e instanceof Error ? e.message : 'Could not remove it.'); }
   };
-  const btn = 'w-11 h-11 inline-flex items-center justify-center rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] disabled:opacity-40';
+  const btn = 'w-9 h-9 inline-flex items-center justify-center rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] disabled:opacity-40';
 
   return (
     <div className="space-y-5">

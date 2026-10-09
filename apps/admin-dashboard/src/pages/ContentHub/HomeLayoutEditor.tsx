@@ -935,7 +935,7 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
                 marginTop: 4,
                 width: '100%',
                 justifyContent: 'center',
-                minHeight: 44,
+                minHeight: 38,
               }}
             >
               + Add component
@@ -1291,7 +1291,7 @@ function badgeStyle(on: boolean): CSSProperties {
 }
 
 const btnPrimary: CSSProperties = {
-  minHeight: 40,
+  minHeight: 38,
   padding: '0 14px',
   borderRadius: 8,
   border: 'none',
@@ -1304,7 +1304,7 @@ const btnPrimary: CSSProperties = {
 };
 
 const btnSecondary: CSSProperties = {
-  minHeight: 40,
+  minHeight: 38,
   padding: '0 12px',
   borderRadius: 8,
   border: '1px solid var(--color-border)',
@@ -1317,7 +1317,7 @@ const btnSecondary: CSSProperties = {
 };
 
 const btnTiny: CSSProperties = {
-  minHeight: 44,
+  minHeight: 32,
   minWidth: 44,
   borderRadius: 8,
   border: '1px solid var(--color-border)',

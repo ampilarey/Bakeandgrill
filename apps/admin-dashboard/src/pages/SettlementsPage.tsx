@@ -74,7 +74,7 @@ function StatusBadge({ status }: { status: DayStatus | CashDay['status'] }) {
 }
 
 const tabStyle = (active: boolean): React.CSSProperties => ({
-  padding: '8px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700,
+  padding: '5px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700,
   background: active ? 'var(--color-surface)' : 'transparent',
   color: active ? 'var(--color-text)' : 'var(--color-text-secondary)',
   boxShadow: active ? '0 1px 2px rgba(0,0,0,0.08)' : 'none', whiteSpace: 'nowrap',

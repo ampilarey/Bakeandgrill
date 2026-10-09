@@ -56,15 +56,17 @@ export function hubGroups(tabs: readonly HubTab[]): string[] {
   return seen;
 }
 
+// Small tabs, 32px like Btn small (owner, 2026-10-10: "change all the big buttons to
+// small buttons").
 const tabStyle = (active: boolean): React.CSSProperties => ({
-  padding: '8px 18px', border: 'none', borderRadius: 8, cursor: 'pointer',
-  fontWeight: 600, fontSize: 14, fontFamily: 'inherit', whiteSpace: 'nowrap',
+  padding: '5px 12px', border: 'none', borderRadius: 8, cursor: 'pointer',
+  fontWeight: 600, fontSize: 13, fontFamily: 'inherit', whiteSpace: 'nowrap',
   background: active ? 'var(--color-primary)' : 'transparent',
   color: active ? 'var(--color-on-primary, #fff)' : 'var(--color-text-secondary)',
 });
 
 const groupStyle = (active: boolean): React.CSSProperties => ({
-  padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
+  padding: '7px 14px', border: 'none', background: 'none', cursor: 'pointer',
   fontFamily: 'inherit', fontSize: 13, whiteSpace: 'nowrap',
   fontWeight: active ? 700 : 500,
   color: active ? 'var(--color-primary)' : 'var(--color-text-muted)',

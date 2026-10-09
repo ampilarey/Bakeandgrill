@@ -129,7 +129,7 @@ function ImageCropModalBody({
             aria-label="Close"
             style={{
               background: 'var(--color-bg)', border: 'none', borderRadius: 8,
-              width: 40, height: 40, cursor: busy ? 'not-allowed' : 'pointer', color: 'var(--color-text-secondary)',
+              width: 36, height: 36, cursor: busy ? 'not-allowed' : 'pointer', color: 'var(--color-text-secondary)',
             }}
           >
             <X size={18} aria-hidden />
@@ -204,7 +204,7 @@ function ImageCropModalBody({
               disabled={busy || !mediaReady}
               onClick={() => setRotation((r) => r - 90)}
               style={{
-                minHeight: 40, minWidth: 40, borderRadius: 8, border: '1px solid var(--color-border)',
+                minHeight: 32, minWidth: 40, borderRadius: 8, border: '1px solid var(--color-border)',
                 background: 'var(--color-bg)', cursor: mediaReady && !busy ? 'pointer' : 'not-allowed', display: 'flex',
                 alignItems: 'center', justifyContent: 'center',
               }}
@@ -217,7 +217,7 @@ function ImageCropModalBody({
               disabled={busy || !mediaReady}
               onClick={() => setRotation((r) => r + 90)}
               style={{
-                minHeight: 40, minWidth: 40, borderRadius: 8, border: '1px solid var(--color-border)',
+                minHeight: 32, minWidth: 40, borderRadius: 8, border: '1px solid var(--color-border)',
                 background: 'var(--color-bg)', cursor: mediaReady && !busy ? 'pointer' : 'not-allowed', display: 'flex',
                 alignItems: 'center', justifyContent: 'center',
               }}

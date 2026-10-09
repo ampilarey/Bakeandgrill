@@ -16,7 +16,7 @@ const TABS = [
 type TabId = (typeof TABS)[number]['id'];
 
 const tabStyle = (active: boolean): React.CSSProperties => ({
-  padding: '8px 14px',
+  padding: '5px 12px',
   borderRadius: 8,
   border: 'none',
   cursor: 'pointer',
@@ -25,7 +25,7 @@ const tabStyle = (active: boolean): React.CSSProperties => ({
   fontWeight: active ? 700 : 500,
   background: active ? 'var(--color-primary)' : 'transparent',
   color: active ? '#fff' : 'var(--color-text-secondary)',
-  minHeight: 40,
+  minHeight: 32,
 });
 
 function activeTab(pathname: string, search: string): TabId {

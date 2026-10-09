@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import type { AdminItemSort, MenuCategory, MenuGroupRow, MenuItem, SnoozeUntil } from '../../api';
-import { Badge, Btn, Card, EmptyState, InlineIcon, Spinner } from '../../components/SharedUI';
+import { Badge, Btn, Card, EmptyState, InlineIcon, Spinner, Switch } from '../../components/SharedUI';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { menuItemMarginLabel, menuItemMarginLevel, MENU_MARGIN_COLORS } from '../../utils/menuMargin';
 import { channelWarning } from './channelState';
@@ -137,18 +137,12 @@ function AvailabilitySwitch({ item, canManage, onToggle }: { item: MenuItem; can
     return <Badge label={item.is_available ? 'Selling' : 'Sold out'} color={item.is_available ? 'green' : 'gray'} />;
   }
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={item.is_available}
+    <Switch
+      checked={item.is_available}
+      onChange={() => onToggle()}
       aria-label={`${item.name}: selling today`}
       title={item.is_available ? 'Click to mark sold out' : 'Click to mark selling'}
-      className="menu-avail-switch"
-      data-on={item.is_available ? 'true' : 'false'}
-      onClick={onToggle}
-    >
-      <span className="menu-avail-switch-thumb" />
-    </button>
+    />
   );
 }
 

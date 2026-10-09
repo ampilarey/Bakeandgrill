@@ -227,10 +227,10 @@ export default function ComplaintBoxPage() {
         subtitle="Staff, food and service complaints from the public form — anonymous or with a number"
         action={(
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <a href={`${origin}/complain`} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: '0 14px', borderRadius: 10, border: '1px solid var(--color-border)', fontWeight: 600, fontSize: 13 }}>
+            <a href={`${origin}/complain`} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 38, padding: '0 14px', borderRadius: 10, border: '1px solid var(--color-border)', fontWeight: 600, fontSize: 13 }}>
               Open the form ↗
             </a>
-            <a href={`${origin}/complain/poster`} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: '0 14px', borderRadius: 10, border: '1px solid var(--color-border)', fontWeight: 600, fontSize: 13 }}>
+            <a href={`${origin}/complain/poster`} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 38, padding: '0 14px', borderRadius: 10, border: '1px solid var(--color-border)', fontWeight: 600, fontSize: 13 }}>
               Print QR poster
             </a>
             {/* Owner, 2026-09-19: "where i can download the qr code to past in
@@ -258,7 +258,7 @@ export default function ComplaintBoxPage() {
             aria-selected={view === id}
             onClick={() => setView(id)}
             style={{
-              padding: '8px 16px', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13, fontFamily: 'inherit',
+              padding: '5px 12px', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13, fontFamily: 'inherit',
               background: view === id ? 'var(--color-primary)' : 'transparent',
               color: view === id ? 'var(--color-on-primary, white)' : 'var(--color-text-secondary)',
             }}

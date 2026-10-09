@@ -69,7 +69,7 @@ function ModalPanel({ onClose, title, size = 'md', children, footer }: Props) {
             <h2 id="ui-modal-title" className="text-base font-bold text-[var(--color-text)]">{title}</h2>
             <button
               onClick={onClose}
-              className="w-10 h-10 rounded-full flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)] transition-colors"
+              className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)] transition-colors"
               aria-label="Close"
             >
               <X size={16} />

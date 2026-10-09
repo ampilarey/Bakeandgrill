@@ -78,8 +78,8 @@ const S = {
   select: { width: '100%', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit' },
   label: { display: 'block' as const, fontSize: 13, fontWeight: 600 as const, color: 'var(--color-text-secondary)', marginBottom: 4 },
   tab: (active: boolean): React.CSSProperties => ({
-    padding: '8px 20px', border: 'none', borderRadius: 8, cursor: 'pointer',
-    fontWeight: 600, fontSize: 14, fontFamily: 'inherit',
+    padding: '5px 12px', border: 'none', borderRadius: 8, cursor: 'pointer',
+    fontWeight: 600, fontSize: 13, fontFamily: 'inherit',
     background: active ? 'var(--color-primary)' : 'transparent',
     color: active ? '#fff' : 'var(--color-text-secondary)',
   }),
@@ -743,15 +743,16 @@ export default function InventoryPage() {
   /**
    * The ± stepper, shown on both the desktop row and the mobile card.
    *
-   * Bigger targets on a phone: 28px is fine for a mouse and awkward for a
-   * thumb, so the same control is drawn at 40 there.
+   * A little bigger on a phone: 28px is fine for a mouse and awkward for a
+   * thumb, so the same control is drawn at 32 there (it was 40 until the
+   * owner asked for small buttons, 2026-10-10).
    */
   const stepper = (item: InventoryItem, isLow: boolean, big = false) => {
-    const size = big ? 40 : 28;
+    const size = big ? 32 : 28;
     const btn = (dir: -1 | 1): React.CSSProperties => ({
-      width: size, height: size, borderRadius: big ? 10 : 7,
+      width: size, height: size, borderRadius: big ? 8 : 7,
       border: '1.5px solid var(--color-border)', background: 'var(--color-bg)', cursor: 'pointer',
-      fontSize: big ? 20 : 16, fontWeight: 700, lineHeight: 1,
+      fontSize: big ? 18 : 16, fontWeight: 700, lineHeight: 1,
       color: dir === -1 ? 'var(--color-danger)' : 'var(--color-success)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     });
@@ -786,8 +787,8 @@ export default function InventoryPage() {
           data-testid={`stock-count-${item.id}`}
           title={saving ? 'Saving…' : undefined}
           style={{
-            minWidth: big ? 56 : 32, textAlign: 'center', fontWeight: 700,
-            fontSize: big ? 18 : 13, color: isLow ? 'var(--color-danger)' : 'var(--color-text)',
+            minWidth: big ? 44 : 32, textAlign: 'center', fontWeight: 700,
+            fontSize: big ? 16 : 13, color: isLow ? 'var(--color-danger)' : 'var(--color-text)',
             opacity: saving ? 0.55 : 1, transition: 'opacity 120ms',
           }}
         >
@@ -1398,7 +1399,7 @@ export default function InventoryPage() {
               title={`Only items at or under their reorder level, or with under ${REORDER_SOON_DAYS} days left at the rate they go`}
               onClick={() => setReorderOnly((v) => !v)}
               style={{
-                ...S.select, width: 'auto', minHeight: 40, cursor: 'pointer', fontWeight: 600,
+                ...S.select, width: 'auto', minHeight: 32, cursor: 'pointer', fontWeight: 600,
                 color: reorderOnly ? 'var(--color-surface)' : reorderSoonCount > 0 ? 'var(--color-danger)' : 'var(--color-text-secondary)',
                 background: reorderOnly ? 'var(--color-danger)' : 'var(--color-surface)',
                 borderColor: reorderOnly || reorderSoonCount > 0 ? 'var(--color-danger)' : 'var(--color-border)',
@@ -1429,7 +1430,7 @@ export default function InventoryPage() {
                 data-testid="inventory-filters-toggle"
                 onClick={() => setFiltersOpen((v) => !v)}
                 style={{
-                  ...S.select, width: 'auto', minHeight: 40, cursor: 'pointer', fontWeight: 600,
+                  ...S.select, width: 'auto', minHeight: 32, cursor: 'pointer', fontWeight: 600,
                   color: filterCount > 0 ? 'var(--color-primary)' : 'var(--color-text-secondary)',
                   borderColor: filterCount > 0 ? 'var(--color-primary)' : 'var(--color-border)',
                 }}

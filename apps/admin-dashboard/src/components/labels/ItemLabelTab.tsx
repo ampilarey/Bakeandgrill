@@ -231,9 +231,9 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
           <span className="text-xs font-semibold text-[var(--color-text-secondary)]">Preview (saved settings)</span>
           <div className="flex gap-1">
             {(['en', 'dv'] as const).map((l) => (
-              <button key={l} type="button" onClick={() => { setLang(l); void refreshPreview(l); }} className={['px-3 h-10 min-w-[44px] rounded-md text-xs font-semibold border', lang === l ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]' : 'bg-white border-[var(--color-border)]'].join(' ')}>{l === 'en' ? 'EN' : 'ދިވެހި'}</button>
+              <button key={l} type="button" onClick={() => { setLang(l); void refreshPreview(l); }} className={['px-3 h-9 min-w-[44px] rounded-md text-xs font-semibold border', lang === l ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]' : 'bg-white border-[var(--color-border)]'].join(' ')}>{l === 'en' ? 'EN' : 'ދިވެހި'}</button>
             ))}
-            <button type="button" onClick={() => void refreshPreview()} className="w-10 h-10 inline-flex items-center justify-center rounded-md border border-[var(--color-border)]" aria-label="Refresh preview"><RefreshCw size={14} /></button>
+            <button type="button" onClick={() => void refreshPreview()} className="w-9 h-9 inline-flex items-center justify-center rounded-md border border-[var(--color-border)]" aria-label="Refresh preview"><RefreshCw size={14} /></button>
           </div>
         </div>
         {preview ? (

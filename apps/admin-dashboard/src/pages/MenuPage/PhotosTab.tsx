@@ -315,7 +315,7 @@ function Gallery({ itemId }: { itemId: number }) {
           disabled={uploading}
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            padding: '10px 16px', background: 'var(--color-border-light)', border: '2px dashed var(--color-border)',
+            padding: '6px 14px', background: 'var(--color-border-light)', border: '2px dashed var(--color-border)',
             borderRadius: 10, cursor: uploading ? 'not-allowed' : 'pointer',
             fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)',
           }}
@@ -330,7 +330,7 @@ function Gallery({ itemId }: { itemId: number }) {
           data-testid="gallery-pick-from-library-btn"
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            padding: '10px 16px', background: 'var(--color-surface)', border: '2px dashed var(--color-border)',
+            padding: '6px 14px', background: 'var(--color-surface)', border: '2px dashed var(--color-border)',
             borderRadius: 10, cursor: uploading ? 'not-allowed' : 'pointer',
             fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)',
           }}
@@ -344,7 +344,7 @@ function Gallery({ itemId }: { itemId: number }) {
           disabled={uploading}
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            padding: '10px 16px', background: 'var(--color-tone-rust-bg)', border: '2px dashed var(--color-tone-rust-border)',
+            padding: '6px 14px', background: 'var(--color-tone-rust-bg)', border: '2px dashed var(--color-tone-rust-border)',
             borderRadius: 10, cursor: uploading ? 'not-allowed' : 'pointer',
             fontSize: 13, fontWeight: 600, color: 'var(--color-tone-rust-text)',
           }}

@@ -309,7 +309,7 @@ function MediaPickerPanel({ onClose, onPick, mediaType, collection, title = 'Pic
 
           <div className="media-picker-footer-actions" style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0, marginLeft: 'auto' }}>
             <button type="button" onClick={onClose}
-              style={{ height: 44, minHeight: 44, padding: '0 16px', borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-bg)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>
+              style={{ height: 38, minHeight: 38, padding: '0 16px', borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-bg)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>
               Cancel
             </button>
             <button
@@ -318,8 +318,8 @@ function MediaPickerPanel({ onClose, onPick, mediaType, collection, title = 'Pic
               disabled={!highlighted}
               data-testid="media-picker-confirm"
               style={{
-                height: 44,
-                minHeight: 44,
+                height: 38,
+                minHeight: 38,
                 padding: '0 16px',
                 borderRadius: 10,
                 background: highlighted ? 'var(--color-primary)' : 'var(--color-border)',

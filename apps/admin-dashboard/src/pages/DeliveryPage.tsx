@@ -113,8 +113,8 @@ export function DeliveryPage() {
             aria-selected={tab === t}
             onClick={() => setTab(t)}
             style={{
-              padding: '8px 14px', border: 'none', borderRadius: 8, cursor: 'pointer',
-              fontWeight: 600, fontSize: 14, fontFamily: 'inherit', whiteSpace: 'nowrap',
+              padding: '5px 12px', border: 'none', borderRadius: 8, cursor: 'pointer',
+              fontWeight: 600, fontSize: 13, fontFamily: 'inherit', whiteSpace: 'nowrap',
               background: tab === t ? 'var(--color-primary)' : 'transparent',
               color: tab === t ? '#fff' : 'var(--color-text-secondary)',
             }}

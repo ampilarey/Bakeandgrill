@@ -167,7 +167,7 @@ export function NoticesPanel({ notices, settings, onNotices, onSettings }: Props
           </div>
         </div>
         <div style={{ marginTop: 14 }}>
-          <Btn onClick={() => void post()} disabled={posting} style={{ minHeight: 44 }} data-testid="signage-notice-post">
+          <Btn onClick={() => void post()} disabled={posting} data-testid="signage-notice-post">
             {posting ? 'Posting…' : 'Post to the board'}
           </Btn>
         </div>
@@ -188,7 +188,7 @@ export function NoticesPanel({ notices, settings, onNotices, onSettings }: Props
                   {SHOWS.find((s) => s.value === n.show)?.label ?? n.show} · {expiryLabel(n)}
                 </div>
               </div>
-              <Btn variant="danger-outline" small onClick={() => void remove(n.id)} disabled={removing === n.id} style={{ minHeight: 40 }} data-testid={`signage-notice-remove-${n.id}`}>
+              <Btn variant="danger-outline" small onClick={() => void remove(n.id)} disabled={removing === n.id} data-testid={`signage-notice-remove-${n.id}`}>
                 <Trash2 size={14} /> Take down
               </Btn>
             </div>
@@ -206,7 +206,7 @@ export function NoticesPanel({ notices, settings, onNotices, onSettings }: Props
             <label style={label} htmlFor="signage-sold-out-minutes">Minutes</label>
             <input id="signage-sold-out-minutes" data-testid="signage-sold-out-minutes" type="number" min={0} max={240} style={field} value={soldOutMinutes} onChange={(e) => setSoldOutMinutes(e.target.value)} />
           </div>
-          <Btn onClick={() => void saveSettings()} disabled={savingSettings} style={{ minHeight: 44 }} data-testid="signage-sold-out-save">
+          <Btn onClick={() => void saveSettings()} disabled={savingSettings} data-testid="signage-sold-out-save">
             {savingSettings ? 'Saving…' : 'Save'}
           </Btn>
         </div>
@@ -217,7 +217,7 @@ export function NoticesPanel({ notices, settings, onNotices, onSettings }: Props
 
 function chip(active: boolean): CSSProperties {
   return {
-    minHeight: 40,
+    minHeight: 32,
     padding: '0 14px',
     borderRadius: 999,
     cursor: 'pointer',

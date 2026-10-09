@@ -76,7 +76,7 @@ export function ScanSheet({ title = 'Scan a barcode', hint = 'Point the camera a
       <div style={{ width: 'min(480px, 100%)', background: 'var(--color-surface)', borderRadius: 16, overflow: 'hidden', boxShadow: '0 20px 60px rgba(15,23,42,0.35)' }}>
         <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <strong style={{ fontSize: 16, color: 'var(--color-text)' }}>{title}</strong>
-          <button type="button" onClick={onClose} aria-label="Close scanner" style={{ minWidth: 44, minHeight: 44, border: 'none', background: 'transparent', fontSize: 20, cursor: 'pointer', color: 'var(--color-text-muted)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><X size={22} aria-hidden /></button>
+          <button type="button" onClick={onClose} aria-label="Close scanner" style={{ minWidth: 44, minHeight: 38, border: 'none', background: 'transparent', fontSize: 20, cursor: 'pointer', color: 'var(--color-text-muted)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><X size={22} aria-hidden /></button>
         </div>
         <div style={{ position: 'relative', background: '#000', aspectRatio: '4 / 3' }}>
           <video ref={videoRef} playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', display: error ? 'none' : 'block' }} />

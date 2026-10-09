@@ -61,8 +61,8 @@ export function purchasingPathTab(pathname: string): string | null {
 }
 
 const tabStyle = (active: boolean): React.CSSProperties => ({
-  padding: '8px 18px', border: 'none', borderRadius: 8, cursor: 'pointer',
-  fontWeight: 600, fontSize: 14, fontFamily: 'inherit', whiteSpace: 'nowrap',
+  padding: '5px 12px', border: 'none', borderRadius: 8, cursor: 'pointer',
+  fontWeight: 600, fontSize: 13, fontFamily: 'inherit', whiteSpace: 'nowrap',
   background: active ? 'var(--color-primary)' : 'transparent',
   color: active ? 'var(--color-on-primary, #fff)' : 'var(--color-text-secondary)',
 });

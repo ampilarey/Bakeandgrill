@@ -774,6 +774,55 @@ Tailwind's base layer holds `[hidden]` at `display: none !important`, and an
 important rule in a layer beats every unlayered one (the Filters row was
 invisible until this was found).
 
+#### Stage 3i — Small buttons
+
+**Done 2026-10-10.** Owner, with two phone screenshots (SMS & Messaging's
+SMS / Email switches drawn as rust blobs; the Roles & permissions chips and
+All on / All off): "In some places big buttons are used. But change all the
+big buttons to small buttons."
+
+Three things made buttons big:
+
+- `Btn` was 44px tall at every size, `small` included (so was `ui/Button`,
+  all three sizes).
+- The phone rule gave every `button` at least 44px, so a 30px chip, a row's
+  Edit and a 24px switch a page drew itself all grew to 44 (the SMS
+  switches became 84 × 44).
+- Pages drew their own switches (SMS Control Center, Online ordering's
+  toggles and days, Delivery's delay alert, Menu Items' selling-today) and
+  wrote `minHeight: 44` or `40` on their own buttons, tabs and steppers.
+
+| Control | Before | After |
+|---|---|---|
+| `Btn`, `ui/Button` | 44 | 38 |
+| `Btn small`, `ui/Button size="sm"` | 44 | 32 |
+| `Switch` (and `ui/Toggle`) | 48 × 28 | 40 × 22 by default; `size="md"` is still there |
+| A bare button on a phone | at least 44 | at least 32 |
+| Chips, pills and tab rows (hub tabs, Roles, SMS, Settings, Specials…) | 36–50 | 32 |
+| Underline tabs (Menu, Reservations, Kitchen, SMS sections, Content) | 40–45 | 36–38 |
+| A pop-up's close (×) and other icon buttons | 40–44 | 36 |
+| Stock ± stepper on a phone | 40 | 32 |
+
+- Every switch is the SharedUI `Switch`; the pages' own switch CSS
+  (`.sms-cc-switch`, `.menu-avail-switch`) is gone.
+- On a phone the header's buttons, and Online ordering's save buttons, keep
+  the width of their words instead of stretching across the line
+  (Auto-Suggest POs was a full-width bar). A pop-up's footer still splits
+  its line between Cancel and the action, as a bottom sheet should.
+- `ModalActions` centres its row, so a button keeps its height beside a
+  taller neighbour (the new purchase order's two-line total stretched Cancel
+  to 46px).
+- SMS's sub-tabs were 50px because the icon (an `svg`, a block in Tailwind's
+  base) sat above the word; they are a row now.
+- Left as they were: inputs, selects and text areas (44px with 16px type on a
+  phone, or iOS zooms into them), a button sized to sit beside such a field
+  (Search, Scan, Add), list rows and tiles (a permission group tile, a
+  bottom sheet's actions, a tick-box row), and the shell's navigation (rail,
+  top bar, bottom tab bar, section tabs).
+
+For new code: `Btn` (`small` for a row's or a card's buttons) and `Switch`;
+never a hand-drawn switch, and no `minHeight` / `height` on a button.
+
 ---
 
 ## 4. Explicitly out of scope

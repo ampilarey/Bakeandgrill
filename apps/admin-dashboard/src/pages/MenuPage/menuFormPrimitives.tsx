@@ -201,7 +201,7 @@ export function ImageUploadField({
             flexShrink: 0, padding: '8px 14px', background: 'var(--color-bg)',
             border: '1px solid var(--color-border)', borderRadius: 8, cursor: uploading ? 'not-allowed' : 'pointer',
             fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', whiteSpace: 'nowrap',
-            display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 44,
+            display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 38,
           }}
         >
           <Upload size={14} />
@@ -216,7 +216,7 @@ export function ImageUploadField({
               flexShrink: 0, padding: '8px 14px', background: 'var(--color-tone-rust-bg)',
               border: '1px solid var(--color-tone-rust-border)', borderRadius: 8, cursor: uploading ? 'not-allowed' : 'pointer',
               fontSize: 13, fontWeight: 600, color: 'var(--color-tone-rust-text)', whiteSpace: 'nowrap',
-              display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 44,
+              display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 38,
             }}
           >
             <Crop size={14} />
@@ -241,7 +241,7 @@ export function ImageUploadField({
               flexShrink: 0, padding: '8px 14px', background: 'var(--color-bg)',
               border: '1px solid var(--color-border)', borderRadius: 8, cursor: uploading ? 'not-allowed' : 'pointer',
               fontSize: 13, fontWeight: 600, color: 'var(--color-danger-strong)', whiteSpace: 'nowrap',
-              display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 44,
+              display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 38,
             }}
           >
             <Trash2 size={14} />
@@ -255,7 +255,7 @@ export function ImageUploadField({
             flexShrink: 0, padding: '8px 14px', background: 'var(--color-tone-rust-bg)',
             border: '1px solid var(--color-tone-rust-border)', borderRadius: 8, cursor: 'pointer',
             fontSize: 13, fontWeight: 600, color: 'var(--color-tone-rust-text)', whiteSpace: 'nowrap',
-            display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 44,
+            display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 38,
           }}
           data-testid="pick-from-library-btn"
         >

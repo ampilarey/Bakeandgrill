@@ -451,8 +451,8 @@ export default function WholesaleAccountPage() {
                     disabled={!canManageAccounts}
                     onClick={() => toggleDay(day)}
                     style={{
-                      minHeight: 36,
-                      padding: '6px 12px',
+                      minHeight: 32,
+                      padding: '4px 12px',
                       borderRadius: 8,
                       border: `1px solid ${on ? 'var(--color-primary)' : 'var(--color-border)'}`,
                       background: on ? 'var(--color-tone-rust-bg)' : 'transparent',

@@ -175,8 +175,8 @@ const cardTitle: CSSProperties = { fontSize: 15, fontWeight: 700, color: 'var(--
 const labelStyle: CSSProperties = { fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6, display: 'block' };
 const fieldStyle: CSSProperties = { minHeight: 44, width: '100%', borderRadius: 10, border: '1px solid var(--color-border)', padding: '0 12px', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' };
 const tabBtn = (active: boolean): CSSProperties => ({
-  height: 44,
-  minHeight: 44,
+  height: 32,
+  minHeight: 32,
   padding: '0 14px',
   borderRadius: 10,
   cursor: 'pointer',
@@ -848,10 +848,10 @@ export function SignagePage() {
             </p>
             <p style={{ margin: '0 0 12px', fontSize: 13, wordBreak: 'break-all', color: 'var(--color-text)' }}>{url}</p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              <Btn variant="secondary" onClick={() => void copyUrl(url)} style={{ minHeight: 44 }}>
+              <Btn variant="secondary" onClick={() => void copyUrl(url)}>
                 <Copy size={16} /> Copy URL
               </Btn>
-              <Btn variant="secondary" onClick={() => window.open(url, '_blank', 'noopener,noreferrer')} style={{ minHeight: 44 }}>
+              <Btn variant="secondary" onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}>
                 <ExternalLink size={16} /> Open
               </Btn>
             </div>
@@ -970,7 +970,7 @@ export function SignagePage() {
                   />
                 </div>
                 <div style={{ marginTop: 14 }}>
-                  <Btn onClick={() => void onCreateScreen()} disabled={screenSaving} style={{ minHeight: 44 }} data-testid="signage-create-screen">
+                  <Btn onClick={() => void onCreateScreen()} disabled={screenSaving} data-testid="signage-create-screen">
                     {screenSaving ? 'Creating…' : 'Create screen'}
                   </Btn>
                 </div>
@@ -1018,7 +1018,7 @@ export function SignagePage() {
                   />
                 </div>
                 <div style={{ marginTop: 14 }}>
-                  <Btn onClick={() => void onCreateGroup()} disabled={groupCreating} style={{ minHeight: 44 }} data-testid="signage-create-group">
+                  <Btn onClick={() => void onCreateGroup()} disabled={groupCreating} data-testid="signage-create-group">
                     {groupCreating ? 'Creating…' : 'Create group'}
                   </Btn>
                 </div>
@@ -1052,7 +1052,6 @@ export function SignagePage() {
                       <Btn
                         onClick={() => void onSaveGroup(group)}
                         disabled={groupSaving === group.id}
-                        style={{ minHeight: 44 }}
                         data-testid={`signage-group-save-${group.id}`}
                       >
                         <Save size={16} /> {groupSaving === group.id ? 'Saving…' : 'Save'}
@@ -1103,7 +1102,7 @@ export function SignagePage() {
                   />
                 </div>
                 <div style={{ marginTop: 14 }}>
-                  <Btn onClick={() => void onCreatePlaylist()} disabled={playlistCreating} style={{ minHeight: 44 }} data-testid="signage-create-playlist">
+                  <Btn onClick={() => void onCreatePlaylist()} disabled={playlistCreating} data-testid="signage-create-playlist">
                     {playlistCreating ? 'Creating…' : 'Create playlist'}
                   </Btn>
                 </div>
@@ -1120,7 +1119,7 @@ export function SignagePage() {
                       options={playlistOptions.length > 0 ? playlistOptions : [{ value: '', label: '— create a playlist first —' }]}
                     />
                   </div>
-                  <Btn onClick={() => void onSavePlaylist()} disabled={!selectedPlaylistId || playlistSaving} style={{ minHeight: 44 }}>
+                  <Btn onClick={() => void onSavePlaylist()} disabled={!selectedPlaylistId || playlistSaving}>
                     <Save size={16} /> {playlistSaving ? 'Saving…' : 'Save playlist'}
                   </Btn>
                 </div>
@@ -1138,7 +1137,7 @@ export function SignagePage() {
                       ))}
                     </select>
                   </div>
-                  <Btn onClick={() => void onAddSlide()} disabled={!templateKey || addingSlide} style={{ minHeight: 44 }}>
+                  <Btn onClick={() => void onAddSlide()} disabled={!templateKey || addingSlide}>
                     {addingSlide ? 'Adding…' : '+ Add slide'}
                   </Btn>
                 </div>
@@ -1156,12 +1155,12 @@ export function SignagePage() {
                         <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4 }}>ID: {slide.id}</div>
                       </div>
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        <Btn variant="secondary" onClick={() => setDesignIndex(index)} style={{ minHeight: 44 }} data-testid={`signage-design-${index}`}>
+                        <Btn variant="secondary" onClick={() => setDesignIndex(index)} data-testid={`signage-design-${index}`}>
                           <Pencil size={14} /> Design
                         </Btn>
-                        <Btn variant="secondary" onClick={() => moveSlide(index, -1)} disabled={index === 0} style={{ minHeight: 44 }}>↑</Btn>
-                        <Btn variant="secondary" onClick={() => moveSlide(index, 1)} disabled={index === slides.length - 1} style={{ minHeight: 44 }}>↓</Btn>
-                        <Btn variant="danger" onClick={() => onDeleteSlide(index)} style={{ minHeight: 44 }} data-testid={`signage-delete-${index}`}>
+                        <Btn variant="secondary" onClick={() => moveSlide(index, -1)} disabled={index === 0}>↑</Btn>
+                        <Btn variant="secondary" onClick={() => moveSlide(index, 1)} disabled={index === slides.length - 1}>↓</Btn>
+                        <Btn variant="danger" onClick={() => onDeleteSlide(index)} data-testid={`signage-delete-${index}`}>
                           <Trash2 size={14} /> Delete
                         </Btn>
                       </div>
@@ -1254,7 +1253,7 @@ export function SignagePage() {
                   />
                 </div>
                 <div style={{ marginTop: 14 }}>
-                  <Btn onClick={() => void onCreateCampaign()} disabled={campaignSaving} style={{ minHeight: 44 }}>
+                  <Btn onClick={() => void onCreateCampaign()} disabled={campaignSaving}>
                     {campaignSaving ? 'Creating…' : 'Create campaign'}
                   </Btn>
                 </div>
@@ -1309,7 +1308,7 @@ export function SignagePage() {
                   <option key={m.value} value={m.value}>{m.label}</option>
                 ))}
               </select>
-              <Btn onClick={() => void onSaveEmergency()} disabled={emergencySaving} style={{ minHeight: 44 }}>
+              <Btn onClick={() => void onSaveEmergency()} disabled={emergencySaving}>
                 <Save size={16} /> {emergencySaving ? 'Saving…' : 'Save emergency mode'}
               </Btn>
             </Card>
@@ -1346,7 +1345,6 @@ export function SignagePage() {
                             type="button"
                             variant="secondary"
                             onClick={() => setEmergencyEntries((prev) => prev.filter((e) => e.id !== entry.id))}
-                            style={{ minHeight: 40 }}
                             data-testid={`signage-emergency-remove-${entry.id}`}
                           >
                             <Trash2 size={14} /> Remove
@@ -1448,7 +1446,6 @@ export function SignagePage() {
                           <Btn
                             type="button"
                             variant="secondary"
-                            style={{ minHeight: 44 }}
                             data-testid={`signage-emergency-media-pick-${entry.id}`}
                             onClick={() => setEmergencyMediaPick({
                               id: entry.id,
@@ -1534,7 +1531,6 @@ export function SignagePage() {
                   type="button"
                   variant="secondary"
                   onClick={() => setEmergencyEntries((prev) => [...prev, newEmergencyEntry()])}
-                  style={{ minHeight: 44 }}
                   data-testid="signage-emergency-add"
                 >
                   Add scheduled emergency
@@ -1542,7 +1538,6 @@ export function SignagePage() {
                 <Btn
                   onClick={() => void onSaveEmergencyConfig()}
                   disabled={emergencyConfigSaving}
-                  style={{ minHeight: 44 }}
                   data-testid="signage-emergency-config-save"
                 >
                   <Save size={16} /> {emergencyConfigSaving ? 'Saving…' : 'Save scheduled emergencies'}
@@ -1624,7 +1619,7 @@ export function SignagePage() {
                   ))}
                 </div>
               </div>
-              <Btn onClick={() => void onSavePrayer()} disabled={prayerSaving} style={{ minHeight: 44 }}>
+              <Btn onClick={() => void onSavePrayer()} disabled={prayerSaving}>
                 <Save size={16} /> {prayerSaving ? 'Saving…' : 'Save prayer settings'}
               </Btn>
             </Card>
@@ -1746,7 +1741,6 @@ export function SignagePage() {
                                 variant="secondary"
                                 onClick={() => moveBanner(idx, -1)}
                                 disabled={idx === 0}
-                                style={{ minHeight: 40 }}
                                 data-testid={`signage-banner-up-${idx}`}
                                 aria-label={`Move banner ${idx + 1} up`}
                               >
@@ -1757,7 +1751,6 @@ export function SignagePage() {
                                 variant="secondary"
                                 onClick={() => moveBanner(idx, 1)}
                                 disabled={idx === bannerItems.length - 1}
-                                style={{ minHeight: 40 }}
                                 data-testid={`signage-banner-down-${idx}`}
                                 aria-label={`Move banner ${idx + 1} down`}
                               >
@@ -1767,7 +1760,6 @@ export function SignagePage() {
                                 type="button"
                                 variant="secondary"
                                 onClick={() => setBannerItems((prev) => prev.filter((x) => x.id !== b.id))}
-                                style={{ minHeight: 40 }}
                                 data-testid={`signage-banner-remove-${b.id}`}
                               >
                                 <Trash2 size={14} /> Remove
@@ -1912,12 +1904,11 @@ export function SignagePage() {
                   type="button"
                   variant="secondary"
                   onClick={() => setBannerItems((prev) => [...prev, newBannerItem({ label: `Banner ${prev.length + 1}` })])}
-                  style={{ minHeight: 44 }}
                   data-testid="signage-banner-add"
                 >
                   Add banner
                 </Btn>
-                <Btn onClick={() => void onSaveBanner()} disabled={bannerSaving} style={{ minHeight: 44 }} data-testid="signage-banner-save">
+                <Btn onClick={() => void onSaveBanner()} disabled={bannerSaving} data-testid="signage-banner-save">
                   <Save size={16} /> {bannerSaving ? 'Saving…' : 'Save banner settings'}
                 </Btn>
               </div>
@@ -1946,7 +1937,7 @@ export function SignagePage() {
               <Card>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 12 }}>
                   <h3 style={cardTitle}>Pending pairings</h3>
-                  <Btn variant="secondary" onClick={() => void loadDevices()} disabled={devicesLoading} style={{ minHeight: 44 }}>
+                  <Btn variant="secondary" onClick={() => void loadDevices()} disabled={devicesLoading}>
                     {devicesLoading ? 'Refreshing…' : 'Refresh'}
                   </Btn>
                 </div>
@@ -1992,7 +1983,6 @@ export function SignagePage() {
                             }
                           })()}
                           disabled={deviceBusy === d.id}
-                          style={{ minHeight: 44 }}
                         >
                           {deviceBusy === d.id ? 'Approving…' : 'Approve'}
                         </Btn>
@@ -2087,7 +2077,7 @@ export function SignagePage() {
                                       setDeviceBusy(null);
                                     }
                                   })()}
-                                  style={{ minHeight: 44, textTransform: 'capitalize' }}
+                                  style={{ textTransform: 'capitalize' }}
                                 >
                                   {cmd.replace(/_/g, ' ')}
                                 </Btn>
