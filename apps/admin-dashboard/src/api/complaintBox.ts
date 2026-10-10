@@ -103,7 +103,8 @@ export async function fetchComplaintsByStaff(): Promise<{ staff: ComplaintStaffR
   return req('/complaint-box/by-staff');
 }
 
-export type ComplaintAlertSettings = { weekly_sms: boolean; stale_sms: boolean; stale_days: number };
+/** How long a complaint waits unread before the owners hear; the alerts' switches are their rows in Admin → Notifications (2026-10-10). */
+export type ComplaintAlertSettings = { stale_days: number };
 
 export async function getComplaintAlertSettings(): Promise<{ settings: ComplaintAlertSettings }> {
   return req('/complaint-box/alert-settings');

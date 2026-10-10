@@ -11,10 +11,11 @@ import {
 import { InlineIcon } from './SharedUI';
 
 /**
- * Admin → SMS Control Center → "Who gets alerts, and how" (owner,
+ * Admin → Notifications → People → "How each person gets alerts" (owner,
  * 2026-10-07: "admin is the one who controls everything, for example admin
  * decides in which channel notifications goes to a specific role or
  * person"). Channels per role, and a person's own choice over their role's.
+ * It was in the SMS Control Center until the notifications audit (2026-10-10).
  */
 
 const CHANNELS: NotifyChannel[] = ['sms', 'email', 'telegram'];
@@ -78,7 +79,7 @@ function Pills({ value, onChange, disabled, label }: {
 
 export function NotifyChannelsPanel({ canManage, emailToStaffOn, onError }: {
   canManage: boolean;
-  /** Delivery rules → "Email copies: staff"; off means no staff email at all. */
+  /** Rules → "Email copies: staff and owner alerts"; off means no staff email at all. */
   emailToStaffOn: boolean;
   onError: (msg: string) => void;
 }) {
@@ -139,14 +140,14 @@ export function NotifyChannelsPanel({ canManage, emailToStaffOn, onError }: {
 
   return (
     <section id="channels" className="nc" data-testid="notify-channels" aria-labelledby="nc-title">
-      <h2 id="nc-title" className="nc-title">Who gets alerts, and how</h2>
+      <h2 id="nc-title" className="nc-title">How each person gets alerts</h2>
       <p className="nc-lead">
         For staff and owner alerts. Each person gets an alert by the channels ticked for their role, or their own if you set one,
-        when the alert itself has that channel on above. Customers are not affected. If none of a person's channels can reach them,
-        the SMS goes, so nothing is missed.
+        when the message's own switch for that channel is on (Messages). Customers are not affected. If none of a person's channels
+        can reach them, the SMS goes, so nothing is missed.
       </p>
       {!emailToStaffOn && (
-        <p className="nc-banner is-warn" data-testid="nc-email-off">Email to staff is switched off in Delivery rules → Email copies, so nobody gets alerts by email.</p>
+        <p className="nc-banner is-warn" data-testid="nc-email-off">Email to staff is switched off in Rules → Email copies, so nobody gets alerts by email.</p>
       )}
       {unreachable > 0 && (
         <p className="nc-banner is-danger">{unreachable} {unreachable === 1 ? 'person gets' : 'people get'} no alerts at all. See below.</p>

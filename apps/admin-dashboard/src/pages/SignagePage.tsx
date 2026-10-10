@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { Link } from 'react-router-dom';
 import { Copy, ExternalLink, Pencil, Save, Trash2 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import {
@@ -29,7 +30,6 @@ import {
   fetchAdminCategories,
   type MenuCategory,
   updateSignageScreen,
-  setSignageBoardSettings,
 } from '../api';
 import {
   BANNER_REPEAT_SLIDER,
@@ -315,19 +315,6 @@ export function SignagePage() {
   // counter per screen that reloads its preview after a look is saved.
   const [menuCategories, setMenuCategories] = useState<MenuCategory[]>([]);
   const [lookSaving, setLookSaving] = useState<string | null>(null);
-  const [alertSmsSaving, setAlertSmsSaving] = useState(false);
-  const onToggleAlertSms = async (on: boolean) => {
-    setAlertSmsSaving(true);
-    try {
-      const res = await setSignageBoardSettings({ device_alert_sms: on });
-      setOverview((prev) => (prev ? { ...prev, settings: res.settings } : prev));
-      toast.success(on ? 'You will get an SMS when a TV goes quiet or sticks.' : 'TV alerts by SMS are off.');
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Could not save');
-    } finally {
-      setAlertSmsSaving(false);
-    }
-  };
   const [previewKeys, setPreviewKeys] = useState<Record<number, number>>({});
   const [groupSaving, setGroupSaving] = useState<number | null>(null);
 
@@ -1917,23 +1904,14 @@ export function SignagePage() {
 
           {tab === 'devices' && (
             <div data-testid="signage-devices-panel" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <Card>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    data-testid="signage-device-alert-sms"
-                    checked={overview?.settings?.device_alert_sms !== false}
-                    disabled={alertSmsSaving}
-                    onChange={(e) => void onToggleAlertSms(e.target.checked)}
-                  />
-                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
-                    SMS the business phone when a TV is offline for 5 minutes or stuck on one slide for 10
-                  </span>
-                </label>
-                <p style={{ margin: '4px 0 0 30px', fontSize: 12, color: 'var(--color-text-muted)' }}>
-                  Checked every five minutes; one message per incident, and a thumbnail of each screen refreshes every couple of minutes below.
-                </p>
-              </Card>
+              {/* Notifications audit, 2026-10-10: the TV alert had a second
+                  switch here; it is one row in Notifications now. */}
+              <p data-testid="signage-device-alert-link" style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)' }}>
+                A TV offline for 5 minutes or stuck on one slide for 10 sends one alert per incident, checked every five minutes.
+                {' '}It is switched on and off, with who gets it, in{' '}
+                <Link to="/notifications/messages?open=owner_signage_devices" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>Notifications → TV screen offline or stuck</Link>.
+                {' '}A thumbnail of each screen refreshes every couple of minutes below.
+              </p>
               <Card>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 12 }}>
                   <h3 style={cardTitle}>Pending pairings</h3>

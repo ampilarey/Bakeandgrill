@@ -442,10 +442,7 @@ export interface SocialPostingRulesConfig {
   min_gap_minutes: number;
   /** 0 = off. */
   max_per_day: number;
-  /** Text the business phone a signed approve/reject link when an automation drafts a post. */
-  approval_sms: boolean;
-  /** Monday morning summary of the social week, to the owners' phones. */
-  weekly_digest: boolean;
+  // The approval-link and weekly-digest switches are their rows in Admin → Notifications (2026-10-10).
 }
 
 export interface SocialBestTimesReport {

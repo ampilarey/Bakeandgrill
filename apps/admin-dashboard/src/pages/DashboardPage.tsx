@@ -604,7 +604,8 @@ export function DashboardPage() {
     opsCards.push({
       key: 'sms', label: 'SMS Today', value: String(smsSent),
       sub: smsFailed > 0 ? `${smsFailed} failed` : 'Messages sent', accent: smsFailed > 0 ? 'var(--color-danger)' : 'var(--color-tone-brown-text)', icon: MessageSquare,
-      onClick: () => navigate('/sms'),
+      // The log of every message is Notifications → Log since 2026-10-10.
+      onClick: () => navigate(can('sms.logs.view') ? '/notifications/log' : '/sms'),
     });
   }
   if (canPrintJobs && printPending > 0) {

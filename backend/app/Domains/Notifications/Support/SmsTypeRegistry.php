@@ -41,6 +41,30 @@ final class SmsTypeRegistry
      */
     public const HIDDEN_FROM_LIST = [self::SETTINGS_TEST_TYPE, 'staff_campaign_test'];
 
+    /**
+     * A message with more than one wording (notifications audit, 2026-10-10):
+     * its row in Admin → Notifications edits these beside its main template,
+     * so none of them is left only on SMS campaigns → Templates. Slug =>
+     * when that wording is the one sent.
+     *
+     * @var array<string, array<string, string>>
+     */
+    public const EXTRA_TEMPLATES = [
+        'customer_order_ready' => [
+            'customer_order_ready_delivery' => 'Delivery orders (packed for the rider)',
+        ],
+        'owner_complaint_received' => [
+            'owner_complaint_received_urgent' => 'Food safety or allergy complaints',
+        ],
+        'credit_payment_reminder' => [
+            'credit_reminder_upcoming' => 'Three days before an invoice is due',
+            'credit_reminder_due_today' => 'On the due date',
+            'credit_reminder_overdue' => 'Overdue, and Send reminder on an account with an open invoice',
+            'credit_balance_reminder' => 'Send reminder on an account with a balance but no open invoice',
+            'credit_pay_link' => 'Send pay link',
+        ],
+    ];
+
     public const SEND_PERMISSION_SETTING_PREFIX = 'sms_type_send_permission.';
 
     /**

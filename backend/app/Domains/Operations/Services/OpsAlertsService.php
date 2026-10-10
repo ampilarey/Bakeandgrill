@@ -20,15 +20,17 @@ final class OpsAlertsService
     public function settings(): array
     {
         return [
-            // The delivery-delay and stock alert switches were folded into
-            // their rows in Admin → Notifications (2026-10-10).
-            // Ops audit, 2026-09-25: a shift open longer than this texts the owners; 0 = off.
+            // When each alert goes. Whether it goes is its row's switches in
+            // Admin → Notifications (2026-10-10), where these numbers are
+            // edited too; the delivery-delay and stock switches that lived
+            // here were folded into their rows.
+            // Ops audit, 2026-09-25: a shift open longer than this alerts the owners.
             'shift_open_alert_hours' => max(0, min(72, (int) SiteSetting::get('ops_shift_open_alert_hours', '14'))),
-            // A close whose cash variance is this much or more texts the owners; 0 = off.
+            // A close (or an opening float) this far off alerts the owners.
             'shift_variance_alert_mvr' => max(0.0, round((float) SiteSetting::get('ops_shift_variance_alert_mvr', '50'), 2)),
             // Checkout audit, 2026-09-26: a paid pickup / dine-in order still
             // not started this many minutes after payment (or this long before
-            // its pickup time) texts the owners; 0 = off.
+            // its pickup time) alerts the owners.
             'unstarted_order_alert_minutes' => max(0, min(120, (int) SiteSetting::get('ops_unstarted_order_alert_minutes', '10'))),
         ];
     }

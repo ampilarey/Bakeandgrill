@@ -1,4 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -10,12 +11,9 @@ import { useToast } from '../components/ui';
 import {
   fetchComplaintBox,
   fetchComplaintsByStaff,
-  getComplaintAlertSettings,
   getComplaintBoxEntry,
   messageComplaintBoxCustomer,
-  updateComplaintAlertSettings,
   updateComplaintBoxStatus,
-  type ComplaintAlertSettings,
   type ComplaintBoxEntry,
   type ComplaintBoxMeta,
   type ComplaintBoxStatus,
@@ -101,12 +99,13 @@ export default function ComplaintBoxPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Phase B (owner, 2026-09-21): who keeps getting named, and the alert switches.
+  // Phase B (owner, 2026-09-21): who keeps getting named. The alert
+  // switches that sat behind "Alerts" here are their rows in Notifications
+  // (2026-10-10), with the days-unread number, so the button goes there.
+  const navigate = useNavigate();
   const [view, setView] = useState<'list' | 'staff'>('list');
   const [staffRows, setStaffRows] = useState<ComplaintStaffRow[] | null>(null);
   const [unnamed, setUnnamed] = useState(0);
-  const [alerts, setAlerts] = useState<ComplaintAlertSettings | null>(null);
-  const [alertsOpen, setAlertsOpen] = useState(false);
 
   const loadStaff = async () => {
     try {
@@ -118,22 +117,6 @@ export default function ComplaintBoxPage() {
     }
   };
   useEffect(() => { if (view === 'staff' && staffRows === null) void loadStaff(); }, [view]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const openAlerts = async () => {
-    try {
-      setAlerts((await getComplaintAlertSettings()).settings);
-      setAlertsOpen(true);
-    } catch (e) {
-      toast.error((e as Error).message);
-    }
-  };
-  const saveAlerts = async (patch: Partial<ComplaintAlertSettings>) => {
-    try {
-      setAlerts((await updateComplaintAlertSettings(patch)).settings);
-    } catch (e) {
-      toast.error((e as Error).message);
-    }
-  };
 
   const [detail, setDetail] = useState<ComplaintBoxEntry | null>(null);
   const [nextStatus, setNextStatus] = useState<ComplaintBoxStatus>('in_progress');
@@ -238,7 +221,7 @@ export default function ComplaintBoxPage() {
             <Btn onClick={() => window.open(`${origin}/complain/poster?download=1`, '_blank', 'noopener')}>
               Download QR image
             </Btn>
-            {canManage && <Btn variant="secondary" onClick={() => void openAlerts()}>Alerts</Btn>}
+            {canManage && <Btn variant="secondary" onClick={() => navigate('/notifications/messages?q=complaint')}>Alerts</Btn>}
           </div>
         )}
       />
@@ -380,32 +363,6 @@ export default function ComplaintBoxPage() {
 
       <Pagination page={page} totalPages={lastPage} onChange={setPage} />
       </>
-      )}
-
-      {alertsOpen && alerts && (
-        <Modal title="Complaint alerts" onClose={() => setAlertsOpen(false)} maxWidth={480}>
-          <div style={{ display: 'grid', gap: 14, fontSize: 14 }} data-testid="complaint-alerts">
-            <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-              <input type="checkbox" checked={alerts.weekly_sms} onChange={(e) => void saveAlerts({ weekly_sms: e.target.checked })} />
-              <span><strong>Weekly summary by SMS.</strong> <span style={{ color: 'var(--color-text-secondary)' }}>Every Monday: how many came in, about what, who was named, and how many are still open.</span></span>
-            </label>
-            <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-              <input type="checkbox" checked={alerts.stale_sms} onChange={(e) => void saveAlerts({ stale_sms: e.target.checked })} />
-              <span><strong>Nudge when a complaint sits unread.</strong> <span style={{ color: 'var(--color-text-secondary)' }}>A text naming any complaint still "new" after the days below, and again every so many days while it stays unread.</span></span>
-            </label>
-            <label style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-              <span>Days before a complaint counts as left unread</span>
-              <input
-                type="number" min={1} max={30} aria-label="Days before unread"
-                defaultValue={alerts.stale_days}
-                onBlur={(e) => { const n = Math.max(1, Math.min(30, parseInt(e.target.value, 10) || 1)); if (n !== alerts.stale_days) void saveAlerts({ stale_days: n }); }}
-                style={{ width: 70, minHeight: 40, padding: '0 8px', border: '1px solid var(--color-border)', borderRadius: 8 }}
-              />
-            </label>
-            <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>Texts go to every owner and manager with a phone on file. Each change saves as you make it.</p>
-          </div>
-          <ModalActions><Btn variant="secondary" onClick={() => setAlertsOpen(false)}>Done</Btn></ModalActions>
-        </Modal>
       )}
 
       {detail && (

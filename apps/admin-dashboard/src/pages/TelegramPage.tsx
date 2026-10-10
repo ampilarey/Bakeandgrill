@@ -5,7 +5,7 @@ import { Bot, CheckCircle2, Copy, Link2, RefreshCw, Send, Trash2, Unlink, AlertT
 import { ApiRequestError } from '@shared/api';
 import {
   fetchTelegram, addTelegramBot, updateTelegramBot, checkTelegramBot, reconnectTelegramBot,
-  removeTelegramBot, makeTelegramLink, testTelegramLink, unlinkTelegram, updateTelegramSettings,
+  removeTelegramBot, makeTelegramLink, testTelegramLink, unlinkTelegram,
   updateTelegramGroup, testTelegramGroup, removeTelegramGroup,
   type TelegramBot, type TelegramGroup, type TelegramOverview, type TelegramPerson, type TelegramRole,
 } from '../api/telegram';
@@ -113,7 +113,7 @@ export function TelegramPage() {
         <div className="tg-col">
           <BotsCard data={data} busy={busy} run={run} roleLabel={roleLabel} onAsk={confirm.ask} />
           <GroupsCard data={data} busy={busy} run={run} onAsk={confirm.ask} />
-          <SettingsCard data={data} busy={busy} run={run} />
+          <AlertsCard data={data} />
         </div>
 
         <Card>
@@ -441,67 +441,26 @@ export function GroupsCard({ data, busy, run, onAsk }: {
   );
 }
 
-// ── Settings ──────────────────────────────────────────────────────────────────
+// ── Alerts ────────────────────────────────────────────────────────────────────
 
-function SettingsCard({ data, busy, run }: {
-  data: TelegramOverview;
-  busy: string | null;
-  run: (key: string, fn: () => Promise<unknown>, ok?: string) => Promise<void>;
-}) {
-  const s = data.settings;
+/*
+ * Notifications audit, 2026-10-10: Telegram alerts on or off, each alert's
+ * Telegram switch, the three Telegram-only alerts and who gets what by
+ * which channel are all in System → Notifications now. This card says so.
+ */
+function AlertsCard({ data }: { data: TelegramOverview }) {
+  const on = data.settings.alerts_enabled;
   return (
     <Card>
       <h2 className="tg-h2">Alerts</h2>
-      <div className="tg-setting">
-        <div>
-          <div className="tg-setting__title">Staff and owner alerts on Telegram</div>
-          <p className="tg-muted">Every “Staff” and “Owner” alert in the SMS Control Center, and discount approval codes, also go to the person's Telegram when they are linked.</p>
-        </div>
-        <Toggle checked={s.alerts_enabled} disabled={busy !== null} onChange={(on) => run('s-alerts', () => updateTelegramSettings({ alerts_enabled: on }), 'Saved.')} />
-      </div>
-      <div className="tg-setting">
-        <div>
-          <div className="tg-setting__title">Who gets alerts by Telegram, SMS or email</div>
-          <p className="tg-muted">Set per role and per person in <Link to="/sms?tab=control-center#channels">SMS Control Center → Who gets alerts, and how</Link>. Someone on Telegram only gets no SMS; if Telegram cannot reach them, the SMS is sent, so nothing is missed.</p>
-        </div>
-      </div>
-      <div className="tg-setting">
-        <div>
-          <div className="tg-setting__title">Day report when the last shift closes</div>
-          <p className="tg-muted">Sales, payments, best sellers, each shift's drawer and refunds still owed, sent once a day to linked owners and to linked managers who can see reports.</p>
-        </div>
-        <Toggle checked={s.day_report} disabled={busy !== null} onChange={(on) => run('s-day', () => updateTelegramSettings({ day_report: on }), 'Saved.')} />
-      </div>
-      <div className="tg-setting">
-        <div>
-          <div className="tg-setting__title">Order cancelled at the till</div>
-          <p className="tg-muted">Who cancelled it, the total, the reason, and whether money had been paid. Telegram only, to linked owners and managers who can see reports.</p>
-        </div>
-        <Toggle checked={s.alert_voids ?? true} disabled={busy !== null} onChange={(on) => run('s-voids', () => updateTelegramSettings({ alert_voids: on }), 'Saved.')} />
-      </div>
-      <div className="tg-setting">
-        <div>
-          <div className="tg-setting__title">Cash taken out of a drawer</div>
-          <p className="tg-muted">Cash out and paid out, with who, how much and why; and when one is struck through. Telegram only, same people.</p>
-          <label className="tg-inline-field">
-            From MVR{' '}
-            <input
-              type="number"
-              min={0}
-              step={1}
-              defaultValue={s.alert_cash_min ?? 0}
-              disabled={busy !== null || !(s.alert_cash ?? true)}
-              aria-label="Cash alert from amount"
-              onBlur={(e) => {
-                const v = Math.max(0, Number(e.target.value) || 0);
-                if (v !== (s.alert_cash_min ?? 0)) void run('s-cash-min', () => updateTelegramSettings({ alert_cash_min: v }), 'Saved.');
-              }}
-            />
-            <span className="tg-muted"> (0 = every one)</span>
-          </label>
-        </div>
-        <Toggle checked={s.alert_cash ?? true} disabled={busy !== null} onChange={(on) => run('s-cash', () => updateTelegramSettings({ alert_cash: on }), 'Saved.')} />
-      </div>
+      <p className="tg-muted" data-testid="telegram-alerts-moved">
+        Telegram alerts are {on ? 'on' : 'off'}. They are all set in System → Notifications:{' '}
+        <Link to="/notifications/messages?group=staff">each alert's Telegram switch</Link>
+        {' · '}<Link to="/notifications/messages?group=telegram">day report, cancelled orders, cash taken out</Link>
+        {' · '}<Link to="/notifications/rules">Telegram on or off</Link>
+        {' · '}<Link to="/notifications/people">who gets them by Telegram, SMS or email</Link>.
+        {' '}Someone on Telegram only gets no SMS; if Telegram cannot reach them, the SMS is sent, so nothing is missed.
+      </p>
     </Card>
   );
 }

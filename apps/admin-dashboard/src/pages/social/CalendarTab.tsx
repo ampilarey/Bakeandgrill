@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   fetchSocialCalendar, fetchSocialPost, moveSocialPost, updateSocialRules,
   type SocialBestTimesReport, type SocialCalendarEntry, type SocialCalendarSlot, type SocialPostRow, type SocialPostingRulesConfig,
@@ -174,26 +175,15 @@ export function CalendarTab({ canSchedule, canEditRules, onEdit }: {
           {hint ?? (bestTimes ? `Best-time hints appear after ${Math.max(0, 5 - bestTimes.sample)} more posts with stats.` : '')}
           {rules && (rules.min_gap_minutes > 0 || rules.max_per_day > 0) && ' Automations and "Post now" are moved to the next free slot when a rule would be broken.'}
         </span>
-        <div style={{ flexBasis: '100%', display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
-            <input
-              type="checkbox"
-              checked={rules?.approval_sms ?? true}
-              disabled={!canEditRules || rules === null}
-              onChange={(e) => { void saveRules({ approval_sms: e.target.checked }); }}
-            />
-            SMS me an approve/reject link when an automation drafts a post
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
-            <input
-              type="checkbox"
-              checked={rules?.weekly_digest ?? true}
-              disabled={!canEditRules || rules === null}
-              onChange={(e) => { void saveRules({ weekly_digest: e.target.checked }); }}
-            />
-            Monday digest SMS of the social week
-          </label>
-        </div>
+        {/* Notifications audit, 2026-10-10: these two alerts had a second
+            switch here; each is one row in Notifications now. */}
+        <p data-testid="social-alerts-link" style={{ flexBasis: '100%', margin: 0, fontSize: 13, color: 'var(--color-text-secondary)' }}>
+          The approve/reject link when an automation drafts a post, and Monday's digest of the social week, are switched on
+          and off in Notifications:{' '}
+          <Link to="/notifications/messages?open=owner_social_approval" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>approval link</Link>
+          {' · '}
+          <Link to="/notifications/messages?open=owner_social_digest" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>weekly digest</Link>.
+        </p>
       </Card>
 
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>

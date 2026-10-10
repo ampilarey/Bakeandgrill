@@ -189,7 +189,7 @@ export function AudienceBuilder({ value, onChange, categories, segments, orderTy
           <input type="checkbox" aria-label="Loyalty members only" checked={!!value.has_loyalty} onChange={(e) => set({ has_loyalty: e.target.checked || undefined })} />
           Loyalty members only
         </label>
-        <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Opted-out numbers are always left out. Each number gets at most the daily marketing cap set in the Control Center.</span>
+        <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Opted-out numbers are always left out. Each number gets at most the daily marketing limit set in Notifications → Rules.</span>
       </div>
     </div>
   );

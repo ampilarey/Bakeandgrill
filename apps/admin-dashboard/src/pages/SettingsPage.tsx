@@ -1,4 +1,4 @@
-import { lazy, useEffect, useState } from 'react';
+import { lazy, useEffect } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { HubPage, hubPermissions, type HubTab } from '../components/HubPage';
 import { PermissionsSettings } from './SettingsPage/PermissionsSettingsSubPage';
@@ -7,19 +7,6 @@ import { PaymentCommissionSettings } from './SettingsPage/PaymentCommissionSetti
 import { CreditAccountSettings } from './SettingsPage/CreditAccountSettings';
 import { RefundPayoutSettings } from './SettingsPage/RefundPayoutSettings';
 import { CurrencyPhotosSettings } from './SettingsPage/CurrencyPhotosSubPage';
-import {
-  getSiteSettings, updateSiteSettings,
-  fetchSmsTemplates,
-  getOpsAlertsSettings,
-  updateOpsAlertsSettings,
-  type SmsTemplate,
-  type OpsAlertsSettings,
-} from '../api';
-import { SmsNotificationRow } from './SettingsPage/SmsNotificationRow';
-import { Btn, Switch } from '../components/SharedUI';
-import {
-  Bike, ChefHat, CircleCheck, FileText, Flame, Link2, PackageCheck, PartyPopper, Receipt, Smartphone, type LucideIcon,
-} from 'lucide-react';
 
 /** Legacy ?tab= values from before the settings hub — redirect to the tab's path. */
 const LEGACY_TAB_REDIRECTS: Record<string, string> = {
@@ -28,382 +15,10 @@ const LEGACY_TAB_REDIRECTS: Record<string, string> = {
   'ordering-charges': '/settings/charges',
   website: '/content/website',
   permissions: '/settings/permissions',
-  notifications: '/settings/notifications',
+  // Notifications audit, 2026-10-10: System → Notifications has every switch.
+  notifications: '/notifications/messages',
   charges: '/settings/charges',
 };
-
-// ─── Notifications sub-page ──────────────────────────────────────────────────
-type NotifConfig = {
-  key: string;
-  label: string;
-  desc: string;
-  icon: LucideIcon;
-  templateSlugs?: string[];
-  templateLabels?: string[];
-};
-
-const PAYMENT_SMS_CONFIG: NotifConfig[] = [
-  {
-    key: 'sms_customer_payment_confirmed_enabled',
-    label: 'Payment Received (Receipt SMS)',
-    desc: 'Automatic receipt link when payment is confirmed (POS charge and online BML).',
-    icon: PartyPopper,
-    templateSlugs: ['customer_payment_confirmed_pos', 'customer_payment_confirmed_online'],
-    templateLabels: ['Counter orders (dine-in / takeaway)', 'Online pickup / delivery'],
-  },
-  {
-    key: 'sms_customer_completion_receipt_enabled',
-    label: 'Order Completed / Delivered (Receipt SMS)',
-    desc: 'Receipt link when an online pickup or delivery order is completed.',
-    icon: FileText,
-    templateSlugs: ['customer_completion_receipt'],
-  },
-];
-
-const POS_SMS_CONFIG: NotifConfig[] = [
-  {
-    key: 'sms_pos_send_bill_enabled',
-    label: 'Send Bill',
-    desc: 'Cashier sends a pre-payment bill link by SMS from the POS.',
-    icon: Receipt,
-    templateSlugs: ['customer_send_bill'],
-  },
-  {
-    key: 'sms_pos_send_pay_link_enabled',
-    label: 'Send Pay Link',
-    desc: 'Cashier sends a BML pay-page link by SMS from the POS.',
-    icon: Link2,
-    templateSlugs: ['customer_send_pay_link'],
-  },
-  {
-    key: 'sms_pos_fire_to_kitchen_enabled',
-    label: 'Fire to Kitchen',
-    desc: '“Order received” SMS when a phone pickup order is fired from the POS.',
-    icon: Flame,
-    templateSlugs: ['customer_fire_to_kitchen'],
-  },
-  {
-    key: 'sms_pos_receipt_resend_enabled',
-    label: 'Receipt Resend',
-    desc: 'Manual receipt SMS resend from the POS post-charge banner or receipts pane.',
-    icon: Smartphone,
-    templateSlugs: ['customer_receipt_resend'],
-  },
-];
-
-const LIFECYCLE_SMS_CONFIG: NotifConfig[] = [
-  {
-    key: 'sms_customer_preparing_enabled',
-    label: 'Order Preparing',
-    desc: 'SMS when the kitchen starts preparing an online pickup or delivery order.',
-    icon: ChefHat,
-    templateSlugs: ['customer_order_preparing'],
-  },
-  {
-    key: 'sms_customer_ready_enabled',
-    label: 'Order Ready / Packed',
-    desc: 'SMS when an order is ready for pickup or packed for delivery.',
-    icon: CircleCheck,
-    templateSlugs: ['customer_order_ready_pickup', 'customer_order_ready_delivery'],
-    templateLabels: ['Pickup ready', 'Delivery packed'],
-  },
-  {
-    key: 'sms_customer_on_the_way_enabled',
-    label: 'Out for Delivery',
-    desc: 'SMS when a delivery order is on the way.',
-    icon: Bike,
-    templateSlugs: ['customer_order_on_the_way'],
-  },
-  {
-    key: 'sms_customer_delivered_enabled',
-    label: 'Delivered',
-    desc: 'SMS when the rider marks a delivery order delivered.',
-    icon: PackageCheck,
-    templateSlugs: ['customer_order_delivered'],
-  },
-];
-
-function NotificationsSettings() {
-  const [settings, setSettings] = useState<Record<string, string>>({});
-  const [templates, setTemplates] = useState<SmsTemplate[]>([]);
-  const [opsAlerts, setOpsAlerts] = useState<OpsAlertsSettings | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState<string | null>(null);
-  const [opsSaving, setOpsSaving] = useState(false);
-  const [error, setError] = useState('');
-  // The switches show "on" for a key that did not load, so they stay locked
-  // until the settings are in (a manager could not read them before
-  // 2026-10-08, and every switch read "on" whatever was set). Each part loads
-  // on its own: one refusal used to blank the templates and staff alerts too.
-  const [settingsLoaded, setSettingsLoaded] = useState(false);
-
-  useEffect(() => {
-    setLoading(true);
-    Promise.allSettled([getSiteSettings(), fetchSmsTemplates(), getOpsAlertsSettings()])
-      .then(([settingsRes, templatesRes, opsRes]) => {
-        if (settingsRes.status === 'fulfilled') {
-          const map: Record<string, string> = {};
-          Object.values(settingsRes.value.settings ?? {}).forEach((group) => {
-            (group as { key: string; value: string | null }[]).forEach((s) => {
-              if (s.value !== null) map[s.key] = s.value;
-            });
-          });
-          setSettings(map);
-          setSettingsLoaded(true);
-        }
-        if (templatesRes.status === 'fulfilled') {
-          setTemplates(templatesRes.value.templates.filter((t) => t.type === 'customer_notification'));
-        }
-        if (opsRes.status === 'fulfilled') setOpsAlerts(opsRes.value.settings);
-        const failed = [settingsRes, templatesRes, opsRes].find((r) => r.status === 'rejected');
-        if (failed && failed.status === 'rejected') {
-          setError(failed.reason instanceof Error ? failed.reason.message : 'Some settings did not load.');
-        }
-      })
-      .finally(() => setLoading(false));
-  }, []);
-
-  const [shiftDraft, setShiftDraft] = useState({ hours: '14', variance: '50', unstarted: '10' });
-  useEffect(() => {
-    if (opsAlerts) {
-      setShiftDraft({
-        hours: String(opsAlerts.shift_open_alert_hours ?? 14),
-        variance: String(opsAlerts.shift_variance_alert_mvr ?? 50),
-        unstarted: String(opsAlerts.unstarted_order_alert_minutes ?? 10),
-      });
-    }
-  }, [opsAlerts]);
-
-  const saveShiftAlerts = async () => {
-    // Without the saved values the fields hold defaults; saving them would
-    // overwrite the real ones.
-    if (opsSaving || !opsAlerts) return;
-    setOpsSaving(true);
-    setError('');
-    try {
-      const res = await updateOpsAlertsSettings({
-        shift_open_alert_hours: Math.max(0, Math.min(72, Number(shiftDraft.hours) || 0)),
-        shift_variance_alert_mvr: Math.max(0, Number(shiftDraft.variance) || 0),
-        unstarted_order_alert_minutes: Math.max(0, Math.min(120, Number(shiftDraft.unstarted) || 0)),
-      });
-      setOpsAlerts(res.settings);
-    } catch (e: unknown) {
-      setError((e as Error).message);
-    } finally {
-      setOpsSaving(false);
-    }
-  };
-
-  const toggleInventoryReorderAlert = async () => {
-    if (!opsAlerts || opsSaving) return;
-    setOpsSaving(true);
-    setError('');
-    try {
-      const res = await updateOpsAlertsSettings({
-        inventory_reorder_alert_sms: !opsAlerts.inventory_reorder_alert_sms,
-      });
-      setOpsAlerts(res.settings);
-    } catch (e: unknown) {
-      setError((e as Error).message);
-    } finally {
-      setOpsSaving(false);
-    }
-  };
-
-  const templateBySlug = (slug: string) => templates.find((t) => t.slug === slug) ?? null;
-
-  const isEnabled = (key: string) => {
-    const v = settings[key];
-    return v === undefined || v === 'true' || v === '1';
-  };
-
-  const toggle = async (key: string) => {
-    if (!settingsLoaded) return;
-    const newVal = isEnabled(key) ? 'false' : 'true';
-    setSaving(key);
-    setError('');
-    try {
-      await updateSiteSettings({ [key]: newVal });
-      setSettings((s) => ({ ...s, [key]: newVal }));
-    } catch (e: unknown) {
-      setError((e as Error).message);
-    } finally {
-      setSaving(null);
-    }
-  };
-
-  const handleTemplateSaved = (updated: SmsTemplate) => {
-    setTemplates((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
-  };
-
-  const renderConfigRows = (configs: NotifConfig[]) => (
-    configs.map((cfg) => (
-      <SmsNotificationRow
-        key={cfg.key}
-        toggleKey={cfg.key}
-        label={cfg.label}
-        desc={cfg.desc}
-        icon={cfg.icon}
-        enabled={isEnabled(cfg.key)}
-        switchLocked={!settingsLoaded}
-        savingToggle={saving === cfg.key}
-        onToggle={() => void toggle(cfg.key)}
-        messages={(cfg.templateSlugs ?? []).map((slug, idx) => ({
-          template: templateBySlug(slug),
-          label: cfg.templateLabels?.[idx],
-        }))}
-        onTemplateSaved={handleTemplateSaved}
-      />
-    ))
-  );
-
-  const renderSection = (title: string, subtitle: string, configs: NotifConfig[]) => (
-    <div style={{ marginBottom: 22 }}>
-      <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 4px' }}>{title}</h3>
-      <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 14px' }}>{subtitle}</p>
-      {loading ? (
-        <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Loading…</p>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {renderConfigRows(configs)}
-        </div>
-      )}
-    </div>
-  );
-
-  return (
-    <div style={{ maxWidth: 720 }}>
-      {error && <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, marginBottom: 12 }}>{error}</p>}
-      {!loading && !settingsLoaded && (
-        <p style={{ color: 'var(--color-text-secondary)', fontSize: 13, marginBottom: 12 }}>
-          The current switches did not load, so they are locked: each would show "on" whatever is set.
-        </p>
-      )}
-
-      {/* SMS settings audit, 2026-10-03: the same switches exist in three
-          places; this names the one list that has all of them. */}
-      <p data-testid="sms-control-center-link" style={{
-        margin: '0 0 18px', padding: '10px 12px', borderRadius: 8, fontSize: 13,
-        background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)',
-      }}>
-        Every text the system sends, with its switch, wording, recipients and a "send me a test", is in one list under{' '}
-        <Link to="/sms?tab=control-center" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>SMS → Control Center</Link>.
-        The switches below are the customer ones from that list.
-      </p>
-
-      {renderSection(
-        'Payment & Receipt SMS',
-        'Automatic customer SMS when payment is received or an online order completes.',
-        PAYMENT_SMS_CONFIG,
-      )}
-
-      {renderSection(
-        'POS Cashier Actions',
-        'SMS triggered by cashier buttons in the POS app. When disabled, the POS shows an error if tapped.',
-        POS_SMS_CONFIG,
-      )}
-
-      {renderSection(
-        'Order Lifecycle SMS',
-        'Status-change SMS for online pickup and delivery orders (including when marked ready from the POS).',
-        LIFECYCLE_SMS_CONFIG,
-      )}
-
-      <div style={{ marginBottom: 22 }}>
-        <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 4px' }}>Staff alerts</h3>
-        <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 14px' }}>
-          Internal SMS for ops — not customer order status messages.
-        </p>
-        {loading ? (
-          <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Loading…</p>
-        ) : (
-          <label style={{
-            display: 'flex', alignItems: 'flex-start', gap: 12, minHeight: 44,
-            padding: '12px 14px', borderRadius: 10, border: '1px solid var(--color-border)',
-            background: 'var(--color-surface)', cursor: 'pointer',
-          }}>
-            {/* The shared switch: this one drew its own, and its "on" colour was
-                an undefined variable, so switched on it showed no track at all. */}
-            <Switch
-              checked={opsAlerts?.inventory_reorder_alert_sms ?? false}
-              onChange={() => void toggleInventoryReorderAlert()}
-              aria-label="Inventory reorder SMS alert"
-              disabled={opsSaving || !opsAlerts}
-              style={{ marginTop: 2 }}
-            />
-            <span>
-              <span style={{ display: 'block', fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>
-                Stock alert SMS
-              </span>
-              <span style={{ display: 'block', fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2, lineHeight: 1.45 }}>
-                Morning text to owners/managers when inventory hits its reorder point (again when a snooze ends, and weekly while it stays low)
-                and when stock on hand expires within a week. Falls back to the business phone if staff have no phone.
-              </span>
-            </span>
-          </label>
-        )}
-      </div>
-
-      <div style={{ marginBottom: 22 }}>
-        <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 4px' }}>Shift alerts</h3>
-        <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 14px' }}>
-          Owners and managers are texted when a till is left open too long, and when a close lands short or over by more than this. The business phone is texted when a paid pickup or dine-in order has not been started this many minutes after payment, or this long before its pickup time. 0 switches any of them off. Who receives them is set in SMS → Control Center.
-        </p>
-        {!loading && opsAlerts && (
-          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
-              Shift open longer than (hours)
-              <input
-                type="number"
-                aria-label="Shift open alert hours"
-                min={0}
-                max={72}
-                value={shiftDraft.hours}
-                onChange={(e) => setShiftDraft((d) => ({ ...d, hours: e.target.value }))}
-                style={{ width: 160, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }}
-              />
-            </label>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
-              Cash variance of at least (MVR)
-              <input
-                type="number"
-                aria-label="Shift variance alert MVR"
-                min={0}
-                step={1}
-                value={shiftDraft.variance}
-                onChange={(e) => setShiftDraft((d) => ({ ...d, variance: e.target.value }))}
-                style={{ width: 160, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }}
-              />
-            </label>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
-              Paid online order not started after (minutes)
-              <input
-                type="number"
-                aria-label="Unstarted order alert minutes"
-                min={0}
-                max={120}
-                value={shiftDraft.unstarted}
-                onChange={(e) => setShiftDraft((d) => ({ ...d, unstarted: e.target.value }))}
-                style={{ width: 160, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }}
-              />
-            </label>
-            <Btn variant="secondary" onClick={() => void saveShiftAlerts()} disabled={opsSaving || !opsAlerts}>{opsSaving ? 'Saving…' : 'Save alerts'}</Btn>
-          </div>
-        )}
-      </div>
-
-      {/* Information, so the brand's rust tone; it was the amber of a warning. */}
-      <div style={{ padding: '10px 14px', background: 'var(--color-tone-rust-bg)', border: '1px solid var(--color-tone-rust-border)', borderRadius: 10 }}>
-        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-tone-rust-text)', lineHeight: 1.6 }}>
-          Staff texts (new order alerts, shift reminders and the rest) are under{' '}
-          <Link to="/sms?tab=templates" style={{ color: 'inherit', fontWeight: 700 }}>SMS → Templates</Link> and{' '}
-          <Link to="/sms?tab=automations" style={{ color: 'inherit', fontWeight: 700 }}>SMS → Automations</Link>.
-          The late-delivery text is on <Link to="/settings/delivery" style={{ color: 'inherit', fontWeight: 700 }}>Settings → Delivery</Link>.
-        </p>
-      </div>
-    </div>
-  );
-}
 
 function ChargesSettings() {
   return (
@@ -421,8 +36,9 @@ function ChargesSettings() {
  * Owner, 2026-09-08: "related tabs together and under same settings". Six
  * System entries, Ordering Control from Manage, and the delivery settings
  * that had no sidebar entry at all, are now tabs here. Purchasing, Kitchen,
- * GST, Promotions and SMS keep their own settings tab, next to the work
- * those switches govern.
+ * GST and Promotions keep their own settings tab, next to the work those
+ * switches govern. Notifications left for System → Notifications
+ * (2026-10-10), where every message's switches are.
  */
 
 const BusinessDetailsPage = lazy(() => import('./BusinessDetailsPage'));
@@ -445,7 +61,6 @@ export const SETTINGS_TABS: HubTab[] = [
   { id: 'delivery', label: 'Delivery', permissions: ['settings.update'], desc: 'Delivery areas, fees and timing', render: () => <DeliverySettingsPage /> },
   { id: 'charges', label: 'Charges & fees', permissions: ['settings.update'], desc: 'Service charge, payment commission, refunds and payouts', render: () => <ChargesSettings /> },
   { id: 'credit', label: 'Credit accounts', permissions: ['settings.update'], desc: 'Approval ceiling, payment terms, and whether credit is open', render: () => <CreditAccountSettings /> },
-  { id: 'notifications', label: 'Notifications', permissions: ANY_ADMIN, desc: 'Customer SMS alerts for order status changes', render: () => <NotificationsSettings /> },
   { id: 'currency', label: 'Currency photos', permissions: ['website.manage'], desc: 'Note & coin photos shown on the POS cash count', render: () => <CurrencyPhotosSettings /> },
   { id: 'permissions', label: 'Roles & permissions', permissions: ANY_ADMIN, desc: 'Role defaults and per-user overrides', render: () => <PermissionsTab /> },
 ];
@@ -491,7 +106,7 @@ export function SettingsPage() {
       {' · '}
       <Link to="/kitchen/settings" title="Kitchen → Settings: handover rules">Kitchen</Link>
       {' · '}
-      <Link to="/sms?tab=control-center" title="SMS → Control Center: every text's on/off">SMS on/off</Link>
+      <Link to="/notifications" title="System → Notifications: every text, email and Telegram alert">Notifications</Link>
     </span>
   );
 

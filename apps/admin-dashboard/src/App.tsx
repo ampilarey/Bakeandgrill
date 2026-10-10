@@ -18,6 +18,7 @@ import { PROMOTIONS_HUB_PERMISSIONS } from './pages/PromotionsHub';
 import { FINANCE_HUB_PERMISSIONS } from './pages/FinanceHub';
 import { WHOLESALE_HUB_PERMISSIONS } from './pages/WholesaleHub';
 import { LABELS_HUB_PERMISSIONS } from './pages/LabelsHub';
+import { NOTIFICATIONS_HUB_PERMISSIONS } from './pages/NotificationsHub';
 import { Lock } from 'lucide-react';
 
 const OrdersPage              = lazyWithRetry(() => import('./pages/OrdersPage').then((m) => ({ default: m.OrdersPage })));
@@ -40,6 +41,7 @@ const FinanceHub              = lazyWithRetry(() => import('./pages/FinanceHub')
 const WholesaleHub            = lazyWithRetry(() => import('./pages/WholesaleHub').then((m) => ({ default: m.WholesaleHub })));
 const LabelsHub               = lazyWithRetry(() => import('./pages/LabelsHub').then((m) => ({ default: m.LabelsHub })));
 const TelegramPage            = lazyWithRetry(() => import('./pages/TelegramPage').then((m) => ({ default: m.TelegramPage })));
+const NotificationsHub        = lazyWithRetry(() => import('./pages/NotificationsHub').then((m) => ({ default: m.NotificationsHub })));
 const WebhooksPage            = lazyWithRetry(() => import('./pages/WebhooksPage').then((m) => ({ default: m.WebhooksPage })));
 const DashboardPage           = lazyWithRetry(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
 const TestChecklistPage       = lazyWithRetry(() => import('./pages/TestChecklistPage'));
@@ -295,13 +297,21 @@ export default function App() {
                     <LoyaltyPage />
                   </PermissionGuard>
                 } />
-                {/* The control center is the SMS page's settings tab now. */}
+                {/* SMS campaigns. Its old Control Center, Recipients, Automations and
+                    Audit Logs tabs are System → Notifications (2026-10-10); the page
+                    sends those ?tab= links on, so the guard still lets them in. */}
                 <Route path="sms" element={
                   <PermissionGuard user={user} permissions={['integrations.sms', 'sms_marketing.manage', 'sms.settings.manage', 'sms.logs.view']}>
                     <SmsPage />
                   </PermissionGuard>
                 } />
-                <Route path="sms/control-center" element={<MovedTo to="/sms?tab=control-center" />} />
+                <Route path="sms/control-center" element={<MovedTo to="/notifications/messages" />} />
+                {/* Notifications (2026-10-10): every text, email and Telegram alert. */}
+                <Route path="notifications/*" element={
+                  <PermissionGuard user={user} permissions={NOTIFICATIONS_HUB_PERMISSIONS}>
+                    <NotificationsHub />
+                  </PermissionGuard>
+                } />
                 <Route path="reports" element={
                   <PermissionGuard user={user} permission="reports.view">
                     <ReportsPage />
@@ -403,6 +413,8 @@ export default function App() {
                 <Route path="business-details" element={<MovedTo to="/settings/business" />} />
                 <Route path="online-ordering" element={<MovedTo to="/settings/ordering" />} />
                 <Route path="delivery-settings" element={<MovedTo to="/settings/delivery" />} />
+                {/* Settings → Notifications became System → Notifications (2026-10-10). */}
+                <Route path="settings/notifications" element={<MovedTo to="/notifications/messages" />} />
                 {/* Settings hub */}
                 <Route path="settings/*" element={
                   <PermissionGuard user={user} permissions={['website.manage', 'settings.update', 'roles_permissions.manage']}>

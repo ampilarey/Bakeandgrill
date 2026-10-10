@@ -2,18 +2,15 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, Save } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { PageHeader, PageShell, Switch } from '../components/SharedUI';
+import { PageHeader, PageShell } from '../components/SharedUI';
 import { OrderingControlTabs } from '../components/OrderingControlTabs';
 import {
   getDeliveryStatus,
   updateDeliveryCapacity,
   getDeliveryFeeSettings,
   updateDeliveryFeeSettings,
-  getOpsAlertsSettings,
-  updateOpsAlertsSettings,
   type DeliveryGateStatus,
   type DeliveryFeeSettings,
-  type OpsAlertsSettings,
 } from '../api';
 import {
   S,
@@ -42,8 +39,6 @@ export default function DeliverySettingsPage() {
   const [restrictZones, setRestrictZones] = useState(false);
   const [feeTaxable, setFeeTaxable] = useState(true);
   const [feeSaving, setFeeSaving] = useState(false);
-  const [opsAlerts, setOpsAlerts] = useState<OpsAlertsSettings | null>(null);
-  const [opsSaving, setOpsSaving] = useState(false);
 
   const showToast = (msg: string, type: 'ok' | 'err' = 'ok') => {
     setToast({ msg, type });
@@ -52,11 +47,10 @@ export default function DeliverySettingsPage() {
 
   const load = () => {
     setLoading(true);
-    Promise.all([getDeliveryStatus(), getDeliveryFeeSettings(), getOpsAlertsSettings()])
-      .then(([s, feeRes, opsRes]) => {
+    Promise.all([getDeliveryStatus(), getDeliveryFeeSettings()])
+      .then(([s, feeRes]) => {
         setStatus(s);
         setFeeSettings(feeRes.settings);
-        setOpsAlerts(opsRes.settings);
         setDefaultFee(String(feeRes.settings.default_fee));
         setFreeThreshold(String(feeRes.settings.free_threshold));
         setMinOrder(String(feeRes.settings.min_order ?? 0));
@@ -135,24 +129,6 @@ export default function DeliverySettingsPage() {
 
   const removeZoneRow = (idx: number) => {
     setZoneRows((prev) => prev.filter((_, i) => i !== idx));
-  };
-
-  const toggleDeliveryDelayAlert = () => {
-    if (!opsAlerts || opsSaving) return;
-    void (async () => {
-      setOpsSaving(true);
-      try {
-        const res = await updateOpsAlertsSettings({
-          delivery_delay_alert_sms: !opsAlerts.delivery_delay_alert_sms,
-        });
-        setOpsAlerts(res.settings);
-        showToast('Alert settings saved.');
-      } catch {
-        showToast('Failed to save alert settings.', 'err');
-      } finally {
-        setOpsSaving(false);
-      }
-    })();
   };
 
   if (loading) {
@@ -414,22 +390,16 @@ export default function DeliverySettingsPage() {
         </p>
       </div>
 
-      <div className="oc-card" style={{
-        padding: '12px 16px', background: 'var(--color-warning-bg)',
-        border: '1px solid rgba(183,75,12,0.3)', borderRadius: 10,
+      {/* Notifications audit, 2026-10-10: the late-delivery alert had a second
+          switch here; it is one row in Notifications now, with its channels. */}
+      <div className="oc-card" data-testid="delivery-alert-link" style={{
+        padding: '12px 16px', background: 'var(--color-tone-rust-bg)',
+        border: '1px solid var(--color-tone-rust-border)', borderRadius: 10,
         marginBottom: '1.25rem',
       }}>
-        <p style={{ ...S.sectionTitle, marginBottom: 8 }}>Operations alerts</p>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: 'var(--color-text)' }}>
-          <Switch
-            checked={opsAlerts?.delivery_delay_alert_sms ?? false}
-            onChange={() => toggleDeliveryDelayAlert()}
-            aria-label="Delivery delay SMS alert"
-          />
-          SMS business phone when delivery orders pass estimated ready time
-        </label>
-        <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
-          Uses the business phone from Website Settings. Runs hourly via scheduler; also appears in System Health alert inbox.
+        <p style={{ margin: 0, fontSize: 13, color: 'var(--color-tone-rust-text)', lineHeight: 1.5 }}>
+          The alert when delivery orders pass their expected time (hourly, also in System Health) is switched on and off in{' '}
+          <Link to="/notifications/messages?open=owner_delivery_delays" style={{ color: 'inherit', fontWeight: 700 }}>Notifications → Owner: deliveries past ETA</Link>.
         </p>
       </div>
 

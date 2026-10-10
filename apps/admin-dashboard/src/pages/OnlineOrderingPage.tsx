@@ -128,7 +128,6 @@ export default function OnlineOrderingPage() {
   const [cateringMinLeadHours, setCateringMinLeadHours] = useState('24');
   const [cateringQuoteValidDays, setCateringQuoteValidDays] = useState('7');
   const [cateringQuoteMinHours, setCateringQuoteMinHours] = useState('24');
-  const [cateringReminderEnabled, setCateringReminderEnabled] = useState(true);
   const [cateringSaving, setCateringSaving] = useState(false);
   const [cateringClosedMessage, setCateringClosedMessage] = useState(
     'Pre-order is currently closed. Please check back during accepting hours.',
@@ -207,10 +206,6 @@ export default function OnlineOrderingPage() {
       setCateringMinLeadHours(byKey('catering_min_lead_hours') ?? '24');
       setCateringQuoteValidDays(byKey('catering_quote_valid_days') ?? '7');
       setCateringQuoteMinHours(byKey('catering_quote_min_hours_before_event') ?? '24');
-      const reminder = byKey('catering_reminder_enabled');
-      if (reminder !== undefined) {
-        setCateringReminderEnabled(reminder === '1' || reminder === 'true');
-      }
       setSiteSettingsLoaded(true);
     }).catch(() => { /* Save stays off; see siteSettingsLoaded */ })
       .finally(() => setScheduleLoading(false));
@@ -356,7 +351,6 @@ export default function OnlineOrderingPage() {
         catering_min_lead_hours: String(lead),
         catering_quote_valid_days: String(validDays),
         catering_quote_min_hours_before_event: String(minHours),
-        catering_reminder_enabled: cateringReminderEnabled ? '1' : '0',
         catering_ordering_closed_message: cateringClosedMessage.trim()
           || 'Pre-order is currently closed. Please check back during accepting hours.',
       });
@@ -1078,15 +1072,15 @@ export default function OnlineOrderingPage() {
               onChange={(e) => setCateringQuoteMinHours(e.target.value)}
             />
           </div>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, minHeight: 44 }}>
-            <input
-              type="checkbox"
-              data-testid="catering-reminder-toggle"
-              checked={cateringReminderEnabled}
-              onChange={(e) => setCateringReminderEnabled(e.target.checked)}
-            />
-            Day-before event reminders
-          </label>
+          {/* Notifications audit, 2026-10-10: the day-before reminders had this
+              second switch; they are two rows in Notifications now (customer
+              and staff), each with its own channels. */}
+          <p data-testid="catering-reminder-link" style={{ gridColumn: '1 / -1', margin: 0, fontSize: 13, color: 'var(--color-text-secondary)' }}>
+            Day-before event reminders are switched on and off in Notifications:{' '}
+            <Link to="/notifications/messages?open=catering_reminder_customer" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>to the customer</Link>
+            {' · '}
+            <Link to="/notifications/messages?open=catering_reminder_staff" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>to staff</Link>.
+          </p>
         </div>
         <div style={{ marginTop: 16 }}>
           {!siteSettingsLoaded && !scheduleLoading && (

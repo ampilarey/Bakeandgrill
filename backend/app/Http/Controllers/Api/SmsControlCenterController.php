@@ -11,6 +11,7 @@ use App\Domains\Notifications\Support\SmsDeliveryRules;
 use App\Domains\Notifications\Support\SmsTypeRegistry;
 use App\Domains\Permissions\Services\PermissionService;
 use App\Domains\Sms\Services\SmsTemplateRenderer;
+use App\Domains\Telegram\Services\TelegramAlertCopier;
 use App\Http\Controllers\Controller;
 use App\Models\Permission;
 use App\Models\Role;
@@ -19,6 +20,7 @@ use App\Models\SmsCampaign;
 use App\Models\SmsCampaignRecipient;
 use App\Models\SmsLog;
 use App\Models\SmsTemplate;
+use App\Models\TelegramBot;
 use App\Models\User;
 use App\Services\AuditLogService;
 use App\Support\OwnerPhones;
@@ -67,6 +69,9 @@ class SmsControlCenterController extends Controller
             ->keyBy('type');
 
         $slugs = array_values(array_filter(array_column(SmsTypeRegistry::all(), 'template_slug')));
+        foreach (SmsTypeRegistry::EXTRA_TEMPLATES as $extra) {
+            array_push($slugs, ...array_keys($extra));
+        }
         $templates = SmsTemplate::query()
             ->whereIn('slug', $slugs)
             ->get()
@@ -141,6 +146,22 @@ class SmsControlCenterController extends Controller
                 }
             }
 
+            // The message's other wordings (delivery vs pickup, urgent, each
+            // credit reminder), edited on the same row (2026-10-10).
+            $extraTemplates = [];
+            foreach (SmsTypeRegistry::EXTRA_TEMPLATES[$key] ?? [] as $extraSlug => $when) {
+                $tpl = $templates->get($extraSlug);
+                if ($tpl) {
+                    $extraTemplates[] = [
+                        'id' => $tpl->id,
+                        'slug' => $tpl->slug,
+                        'label' => $when,
+                        'body' => $tpl->body,
+                        'variables' => $tpl->variables ?? [],
+                    ];
+                }
+            }
+
             $permSlug = SmsTypeRegistry::effectiveSendPermission($entry);
             $systemOnly = $permSlug === null;
 
@@ -163,7 +184,7 @@ class SmsControlCenterController extends Controller
                 'has_own_email' => in_array($key, \App\Domains\Notifications\Services\SmsEmailCopier::HAS_OWN_EMAIL, true),
                 // Telegram switch per staff alert (2026-10-07); who gets it
                 // by which channel is set per role and person.
-                'telegram_applies' => \App\Domains\Telegram\Services\TelegramAlertCopier::isStaffAlert($entry, $key),
+                'telegram_applies' => TelegramAlertCopier::isStaffAlert($entry, $key),
                 'telegram_enabled' => SmsTypeRegistry::isTelegramEnabled($key),
                 'always_on' => (bool) $entry['always_on'],
                 'suppressible' => (bool) $entry['suppressible'],
@@ -178,6 +199,7 @@ class SmsControlCenterController extends Controller
                     : ($rolesByPermission[$permSlug] ?? ['Owner']),
                 'default_send_permission' => $entry['send_permission'],
                 'template' => $template,
+                'extra_templates' => $extraTemplates,
                 'code_fallback_note' => $codeFallback,
                 'sample_variables' => SmsTypeRegistry::sampleVariables($key),
                 'last_30_days' => [
@@ -238,6 +260,11 @@ class SmsControlCenterController extends Controller
             'permission_options' => $permissionOptions,
             'recipient_modes' => SmsTypeRegistry::RECIPIENT_MODES,
             'staff_options' => $staffOptions,
+            // Admin → Notifications shows the rows' Telegram switches against
+            // these (2026-10-10): with the master switch off or no bot, they
+            // send nothing, and the page says so instead of looking on.
+            'telegram_alerts_on' => TelegramAlertCopier::enabled(),
+            'telegram_bot_ready' => TelegramBot::query()->where('is_enabled', true)->exists(),
             'types' => $types,
         ]);
     }
@@ -289,6 +316,8 @@ class SmsControlCenterController extends Controller
             'email_enabled' => 'sometimes|boolean',
             'telegram_enabled' => 'sometimes|boolean',
             'body' => 'sometimes|nullable|string|max:1000',
+            'extra_templates' => 'sometimes|array|min:1',
+            'extra_templates.*' => 'nullable|string|max:1000',
             'send_permission' => [
                 'sometimes',
                 'nullable',
@@ -308,7 +337,7 @@ class SmsControlCenterController extends Controller
         ]);
 
         if ($validated === []) {
-            return response()->json(['message' => 'Provide enabled, email_enabled, telegram_enabled, body, send_permission and/or recipients.'], 422);
+            return response()->json(['message' => 'Provide enabled, email_enabled, telegram_enabled, body, extra_templates, send_permission and/or recipients.'], 422);
         }
 
         $response = ['key' => $key];
@@ -419,6 +448,35 @@ class SmsControlCenterController extends Controller
                 'variables' => $tpl->variables ?? [],
             ];
             $response['estimate'] = $estimate;
+        }
+
+        if (array_key_exists('extra_templates', $validated)) {
+            $allowed = SmsTypeRegistry::EXTRA_TEMPLATES[$key] ?? [];
+            $unknown = array_diff(array_keys($validated['extra_templates']), array_keys($allowed));
+            if ($unknown !== []) {
+                return response()->json(['message' => 'This message has no wording called ' . implode(', ', $unknown) . '.'], 422);
+            }
+            $saved = [];
+            foreach ($validated['extra_templates'] as $extraSlug => $body) {
+                $tpl = SmsTemplate::query()->firstOrCreate(
+                    ['slug' => $extraSlug],
+                    ['name' => $entry['label'] . ': ' . $allowed[$extraSlug], 'type' => 'customer_notification', 'body' => '', 'description' => $allowed[$extraSlug], 'is_system' => true, 'variables' => []],
+                );
+                $oldBody = (string) $tpl->body;
+                $tpl->body = (string) ($body ?? '');
+                $tpl->save();
+                $this->audit->log(
+                    'sms.type.wording.updated',
+                    'SmsTemplate',
+                    $tpl->id,
+                    ['body' => $oldBody, 'type' => $key],
+                    ['body' => $tpl->body, 'type' => $key],
+                    ['sms_type' => $key, 'slug' => $extraSlug],
+                    $request,
+                );
+                $saved[] = ['id' => $tpl->id, 'slug' => $tpl->slug, 'label' => $allowed[$extraSlug], 'body' => $tpl->body, 'variables' => $tpl->variables ?? []];
+            }
+            $response['extra_templates'] = $saved;
         }
 
         if (array_key_exists('send_permission', $validated)) {

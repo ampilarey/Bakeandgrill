@@ -7,8 +7,10 @@ namespace Tests\Feature\Sms;
 use App\Domains\Notifications\Services\SmsService;
 use App\Domains\Notifications\Support\SmsTypeRegistry;
 use App\Domains\Permissions\PermissionCatalogSync;
+use App\Domains\Telegram\Services\TelegramAlertCopier;
 use App\Models\SiteSetting;
 use App\Models\SmsLog;
+use App\Models\SmsTemplate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -67,6 +69,60 @@ class SmsControlCenterAuditTest extends TestCase
         $this->assertSame('Business phone', $types['owner_device_approval']['recipients']);
         // One switch per channel on the row, and nothing else (2026-10-10).
         $this->assertArrayNotHasKey('also_needs', $types['owner_stock_reorder']);
+    }
+
+    /**
+     * Admin → Notifications warns that the rows' Telegram switches send
+     * nothing while Telegram alerts are off or no bot is set up (2026-10-10).
+     */
+    public function test_the_list_says_whether_telegram_alerts_can_go_at_all(): void
+    {
+        Sanctum::actingAs($this->makeOwner(), ['staff']);
+
+        $res = $this->getJson('/api/admin/sms/control-center')->assertOk();
+        $this->assertTrue($res->json('telegram_alerts_on'));
+        $this->assertFalse($res->json('telegram_bot_ready'));
+
+        SiteSetting::set(TelegramAlertCopier::SETTING_ENABLED, 'false');
+        $this->assertFalse($this->getJson('/api/admin/sms/control-center')->json('telegram_alerts_on'));
+    }
+
+    /** SMS campaigns → Templates leaves a message's wording to its row in Notifications. */
+    public function test_each_template_names_the_messages_it_words(): void
+    {
+        SmsTemplate::query()->updateOrCreate(['slug' => 'order_new'], ['name' => 'New order', 'type' => 'order_notification', 'is_system' => true, 'body' => 'New order {{order_number}}']);
+        SmsTemplate::query()->updateOrCreate(['slug' => 'weekend-promo-ab12'], ['name' => 'Weekend promo', 'type' => 'custom', 'is_system' => false, 'body' => 'Weekend!']);
+        Sanctum::actingAs($this->makeOwner(), ['staff']);
+
+        $templates = collect($this->getJson('/api/admin/sms/templates')->assertOk()->json('templates'))->keyBy('slug');
+        $this->assertSame([['key' => 'staff_new_order', 'label' => 'Staff: new order']], $templates['order_new']['used_by']);
+        $this->assertSame([], $templates['weekend-promo-ab12']['used_by']);
+    }
+
+    /** A message with several wordings edits them all on its row (2026-10-10). */
+    public function test_a_row_carries_and_saves_its_other_wordings(): void
+    {
+        SmsTemplate::query()->updateOrCreate(['slug' => 'customer_order_ready_delivery'], ['name' => 'Ready (delivery)', 'type' => 'customer_notification', 'is_system' => true, 'body' => '#{{order_number}} is packed.']);
+        SmsTemplate::query()->updateOrCreate(['slug' => 'credit_reminder_overdue'], ['name' => 'Overdue', 'type' => 'customer_notification', 'is_system' => true, 'body' => 'Invoice {{invoice_number}} is overdue.']);
+        Sanctum::actingAs($this->makeOwner(), ['staff']);
+
+        $types = collect($this->getJson('/api/admin/sms/control-center')->assertOk()->json('types'))->keyBy('key');
+        $extra = collect($types['customer_order_ready']['extra_templates'])->keyBy('slug');
+        $this->assertSame('#{{order_number}} is packed.', $extra['customer_order_ready_delivery']['body']);
+        $this->assertSame('Delivery orders (packed for the rider)', $extra['customer_order_ready_delivery']['label']);
+        $this->assertSame([], $types['giftcard_delivery']['extra_templates']);
+
+        $this->patchJson('/api/admin/sms/types/customer_order_ready', ['extra_templates' => ['customer_order_ready_delivery' => 'Packed: #{{order_number}}']])
+            ->assertOk()
+            ->assertJsonPath('extra_templates.0.body', 'Packed: #{{order_number}}');
+        $this->assertSame('Packed: #{{order_number}}', SmsTemplate::where('slug', 'customer_order_ready_delivery')->value('body'));
+
+        // Only the message's own wordings.
+        $this->patchJson('/api/admin/sms/types/customer_order_ready', ['extra_templates' => ['credit_reminder_overdue' => 'x']])->assertStatus(422);
+        $this->assertSame('Invoice {{invoice_number}} is overdue.', SmsTemplate::where('slug', 'credit_reminder_overdue')->value('body'));
+
+        $templates = collect($this->getJson('/api/admin/sms/templates')->json('templates'))->keyBy('slug');
+        $this->assertSame('credit_payment_reminder', $templates['credit_reminder_overdue']['used_by'][0]['key']);
     }
 
     /**

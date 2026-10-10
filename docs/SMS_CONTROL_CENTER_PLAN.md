@@ -1,6 +1,10 @@
 # SMS Control Center — Implementation Plan
 
-**Status:** Ready to build
+> 2026-10-10: the Control Center is Admin → System → Notifications now, with
+> one switch per alert. What is current is in `docs/NOTIFICATION_CHANNELS.md`;
+> this plan is kept as the history of how it was built.
+
+**Status:** Built
 **Goal:** Give admins one place to control **everything** about SMS — the wording of every
 message, who is allowed to send each type, and whether each type (or all SMS) is switched on.
 

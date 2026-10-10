@@ -59,6 +59,9 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
   { to: '/content/order-app', permission: 'website.manage' },
   { to: '/media', permission: 'media.view' },
   { to: '/settings', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'] },
+  // Notifications audit, 2026-10-10: every text, email and Telegram alert in
+  // one place; each tab keeps the permission its old page used.
+  { to: '/notifications', permissions: ['sms.settings.manage', 'sms.logs.view', 'telegram.manage', 'staff.update', 'sms.contacts.manage'] },
   // Route audit, 2026-09-19: Print Queue is a Devices tab; Service
   // Availability is a System Health tab.
   // Telegram staff bots, 2026-10-06.
@@ -174,6 +177,8 @@ describe('navConfig', () => {
     expect(getActiveSection('/shifts')?.id).toBe('team');
     expect(getActiveSection('/settings/permissions')?.id).toBe('system');
     expect(getActiveSection('/settings/notifications')?.id).toBe('system');
+    expect(getActiveSection('/notifications/messages')?.id).toBe('system');
+    expect(getActiveSection('/sms/control-center')?.id).toBe('system');
     // Hubs: a tab path and an old path both light up the hub's section.
     expect(getActiveSection('/settings/delivery')?.id).toBe('system');
     expect(getActiveSection('/delivery-settings')?.id).toBe('system');

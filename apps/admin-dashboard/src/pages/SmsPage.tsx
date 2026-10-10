@@ -1,60 +1,53 @@
-import { Suspense, lazy, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { HubContext } from '../components/hubContext';
-import { Zap, Users, FileText, Clock, Cpu, BellRing } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { Zap, Users, FileText, Clock } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { PageHeader, PageShell, TabScrollRow } from '../components/SharedUI';
-import { LogsTab } from './SmsPage/LogsTab';
 import { CampaignsTab } from './SmsPage/CampaignsTab';
 import { PromotionsTab } from './SmsPage/PromotionsTab';
 import { ContactsTab } from './SmsPage/ContactsTab';
 import { TemplatesTab } from './SmsPage/TemplatesTab';
 import { ScheduledTab } from './SmsPage/ScheduledTab';
-import { AutomationsTab } from './SmsPage/AutomationsTab';
-import { RecipientsTab } from './SmsPage/RecipientsTab';
 
-// The control center (toggles, wording, kill switch) was its own sidebar
-// entry with a near-identical icon; it is this page's settings.
-const SmsControlCenterPage = lazy(() => import('./SmsControlCenterPage'));
+/*
+ * SMS campaigns: texts somebody sends on purpose (campaigns, blasts,
+ * scheduled messages) and the contacts and templates they use.
+ *
+ * Notifications audit, 2026-10-10: the automatic messages left. The
+ * Control Center, Recipients, Automations and Audit Logs tabs are System →
+ * Notifications now (Messages, People, Log); their old links land there.
+ */
 
-type Tab = 'recipients' | 'automations' | 'logs' | 'campaigns' | 'promotions' | 'contacts' | 'templates' | 'scheduled' | 'control-center';
+type Tab = 'campaigns' | 'promotions' | 'contacts' | 'templates' | 'scheduled';
 
-const VALID_TABS: Tab[] = ['recipients', 'automations', 'logs', 'campaigns', 'promotions', 'contacts', 'templates', 'scheduled', 'control-center'];
+const VALID_TABS: Tab[] = ['campaigns', 'promotions', 'contacts', 'templates', 'scheduled'];
+
+/** Old ?tab= values and where they live now. */
+const MOVED: Record<string, string> = {
+  'control-center': '/notifications/messages',
+  automations: '/notifications/messages',
+  recipients: '/notifications/people',
+  logs: '/notifications/log',
+};
 
 type SmsTabDef = { id: Tab; label: string; icon?: React.ReactNode };
 
 const SMS_SECTIONS: { id: string; label: string; tabs: SmsTabDef[] }[] = [
   {
-    id: 'transactional',
-    label: 'Transactional',
-    tabs: [
-      { id: 'recipients' as Tab, label: 'Recipients', icon: <BellRing size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} /> },
-      { id: 'automations' as Tab, label: 'Automations', icon: <Cpu size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} /> },
-      { id: 'logs' as Tab, label: 'Audit Logs' },
-    ],
-  },
-  {
     id: 'marketing',
     label: 'Marketing',
     tabs: [
-      { id: 'campaigns' as Tab, label: 'Campaigns' },
-      { id: 'promotions' as Tab, label: 'Past blasts', icon: <Zap size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} /> },
-      { id: 'contacts' as Tab, label: 'Contacts & Groups', icon: <Users size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} /> },
-      { id: 'scheduled' as Tab, label: 'Scheduled', icon: <Clock size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} /> },
+      { id: 'campaigns', label: 'Campaigns' },
+      { id: 'promotions', label: 'Past blasts', icon: <Zap size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} /> },
+      { id: 'contacts', label: 'Contacts & Groups', icon: <Users size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} /> },
+      { id: 'scheduled', label: 'Scheduled', icon: <Clock size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} /> },
     ],
   },
   {
     id: 'library',
     label: 'Library',
     tabs: [
-      { id: 'templates' as Tab, label: 'Templates', icon: <FileText size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} /> },
-    ],
-  },
-  {
-    id: 'settings',
-    label: 'Settings',
-    tabs: [
-      { id: 'control-center' as Tab, label: 'Control Center' },
+      { id: 'templates', label: 'Templates', icon: <FileText size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} /> },
     ],
   },
 ];
@@ -97,19 +90,20 @@ const S = {
     fontSize: 13,
     fontWeight: active ? 700 : 400,
     background: active ? 'var(--color-primary)' : 'transparent',
-    color: active ? '#fff' : 'var(--color-text-secondary)',
+    color: active ? 'var(--color-on-primary)' : 'var(--color-text-secondary)',
     transition: 'all .15s',
     whiteSpace: 'nowrap',
   }),
 };
 
 export function SmsPage() {
-  usePageTitle('SMS');
+  usePageTitle('SMS campaigns');
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab');
   const initialTab: Tab = tabFromUrl && VALID_TABS.includes(tabFromUrl as Tab)
     ? (tabFromUrl as Tab)
-    : 'recipients';
+    : 'campaigns';
   const [tab, setTab] = useState<Tab>(initialTab);
   const currentSection = sectionForTab(tab);
 
@@ -119,9 +113,13 @@ export function SmsPage() {
     message: searchParams.get('message') || '',
   }), [searchParams]);
 
-  const logCampaignId = Number(searchParams.get('campaign_id')) || undefined;
+  const moved = tabFromUrl ? MOVED[tabFromUrl] : undefined;
+  if (moved) {
+    const campaignId = searchParams.get('campaign_id');
+    return <Navigate to={`${moved}${tabFromUrl === 'logs' && campaignId ? `?campaign_id=${encodeURIComponent(campaignId)}` : ''}`} replace />;
+  }
 
-  const selectTab = (next: Tab, extra?: Record<string, string>) => {
+  const selectTab = (next: Tab) => {
     setTab(next);
     const nextParams = new URLSearchParams(searchParams);
     nextParams.set('tab', next);
@@ -130,15 +128,20 @@ export function SmsPage() {
       nextParams.delete('segment');
       nextParams.delete('message');
     }
-    if (next !== 'logs') nextParams.delete('campaign_id');
-    for (const [k, v] of Object.entries(extra ?? {})) nextParams.set(k, v);
     setSearchParams(nextParams, { replace: true });
   };
 
   return (
     <PageShell>
-    <>
-      <PageHeader section="Customers & Marketing" title="SMS" subtitle="Transactional alerts, marketing campaigns, and message templates" />
+      <PageHeader
+        section="Customers & Marketing"
+        title="SMS campaigns"
+        subtitle="Campaigns, contacts, scheduled messages and templates"
+      >
+        <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>
+          Order texts, alerts and their switches are in <Link to="/notifications" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>System → Notifications</Link>.
+        </p>
+      </PageHeader>
 
       <TabScrollRow style={S.sectionBar}>
         {SMS_SECTIONS.map((section) => (
@@ -154,7 +157,7 @@ export function SmsPage() {
         ))}
       </TabScrollRow>
 
-      {currentSection.tabs.length > 1 && (
+      {currentSection.tabs.length > 1 ? (
         <TabScrollRow style={S.subTabBar}>
           {currentSection.tabs.map(({ id, label, icon }) => (
             <button key={id} type="button" aria-current={tab === id ? 'true' : undefined} style={S.tab(tab === id)} onClick={() => selectTab(id)}>
@@ -162,25 +165,13 @@ export function SmsPage() {
             </button>
           ))}
         </TabScrollRow>
-      )}
+      ) : <div style={{ height: 20 }} />}
 
-      {tab === 'recipients'  && <RecipientsTab />}
-      {tab === 'automations' && <AutomationsTab />}
-      {tab === 'logs'        && <LogsTab key={logCampaignId ?? 'all'} initialFilters={logCampaignId ? { campaign_id: logCampaignId } : undefined} />}
-      {tab === 'campaigns'   && <CampaignsTab prefill={campaignPrefill} onViewLog={(id) => selectTab('logs', { campaign_id: String(id) })} />}
+      {tab === 'campaigns'   && <CampaignsTab prefill={campaignPrefill} onViewLog={(id) => navigate(`/notifications/log?campaign_id=${id}`)} />}
       {tab === 'promotions'  && <PromotionsTab onGoToCampaigns={() => selectTab('campaigns')} />}
       {tab === 'contacts'    && <ContactsTab />}
       {tab === 'templates'   && <TemplatesTab />}
       {tab === 'scheduled'   && <ScheduledTab />}
-      {tab === 'control-center' && (
-        <HubContext.Provider value={true}>
-          <Suspense fallback={<p style={{ color: 'var(--color-text-muted)' }}>Loading…</p>}>
-            <SmsControlCenterPage />
-          </Suspense>
-        </HubContext.Provider>
-      )}
-    </>
-
     </PageShell>
   );
 }

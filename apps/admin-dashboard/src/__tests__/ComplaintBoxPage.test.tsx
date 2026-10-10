@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import ComplaintBoxPage from '../pages/ComplaintBoxPage';
 
 /*
@@ -121,6 +121,11 @@ describe('ComplaintBoxPage', () => {
   });
 });
 
+function LocationProbe() {
+  const { pathname, search } = useLocation();
+  return <p data-testid="location">{pathname}{search}</p>;
+}
+
 // Phase B (owner, 2026-09-21): who keeps getting named, and the alert switches.
 describe('ComplaintBoxPage by staff and alerts', () => {
   beforeEach(() => {
@@ -137,8 +142,8 @@ describe('ComplaintBoxPage by staff and alerts', () => {
       ],
       unnamed: 4,
     });
-    getComplaintAlertSettings.mockResolvedValue({ settings: { weekly_sms: false, stale_sms: true, stale_days: 2 } });
-    updateComplaintAlertSettings.mockImplementation(async (patch: Record<string, unknown>) => ({ message: 'ok', settings: { weekly_sms: false, stale_sms: true, stale_days: 2, ...patch } }));
+    getComplaintAlertSettings.mockResolvedValue({ settings: { stale_days: 2 } });
+    updateComplaintAlertSettings.mockImplementation(async (patch: Record<string, unknown>) => ({ message: 'ok', settings: { stale_days: 2, ...patch } }));
     getComplaintBoxEntry.mockResolvedValue({ entry: withNumber });
   });
 
@@ -153,15 +158,20 @@ describe('ComplaintBoxPage by staff and alerts', () => {
     await waitFor(() => expect(getComplaintBoxEntry).toHaveBeenCalledWith(7));
   });
 
-  it('switches the weekly summary on and changes the unread days', async () => {
-    render(<MemoryRouter><ComplaintBoxPage /></MemoryRouter>);
+  // Notifications audit, 2026-10-10: the alerts are rows in Notifications,
+  // with the unread days, so "Alerts" opens that list instead of a pop-up.
+  it('sends Alerts to the complaint rows in Notifications', async () => {
+    render(
+      <MemoryRouter initialEntries={['/customers/complaint-box']}>
+        <Routes>
+          <Route path="/customers/complaint-box" element={<ComplaintBoxPage />} />
+          <Route path="/notifications/messages" element={<LocationProbe />} />
+        </Routes>
+      </MemoryRouter>,
+    );
     fireEvent.click(await screen.findByRole('button', { name: 'Alerts' }));
-    const box = await screen.findByTestId('complaint-alerts');
-    fireEvent.click(within(box).getByLabelText(/Weekly summary by SMS/));
-    await waitFor(() => expect(updateComplaintAlertSettings).toHaveBeenCalledWith({ weekly_sms: true }));
-    const days = within(box).getByLabelText('Days before unread');
-    fireEvent.change(days, { target: { value: '5' } });
-    fireEvent.blur(days);
-    await waitFor(() => expect(updateComplaintAlertSettings).toHaveBeenCalledWith({ stale_days: 5 }));
+    expect(await screen.findByTestId('location')).toHaveTextContent('/notifications/messages?q=complaint');
+    expect(screen.queryByTestId('complaint-alerts')).toBeNull();
+    expect(getComplaintAlertSettings).not.toHaveBeenCalled();
   });
 });

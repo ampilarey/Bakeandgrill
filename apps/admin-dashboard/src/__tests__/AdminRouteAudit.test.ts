@@ -21,11 +21,12 @@ describe('admin route audit', () => {
     expect(labelsOf('monitor')).toEqual(['Dashboard', 'Orders', 'Kitchen Display', 'Tables', 'Reservations', 'Delivery Orders', 'Kitchen']);
     expect(labelsOf('manage')).toEqual(['Menu Items', 'Daily Specials', 'Add-ons', 'Inventory', 'Purchasing', 'Wholesale', 'Labels']);
     expect(labelsOf('customers-marketing')).toEqual([
-      'Customers', 'Events & Catering', 'Loyalty', 'Promotions', 'SMS & Messaging', 'Social Hub', 'TV Signage',
+      'Customers', 'Events & Catering', 'Loyalty', 'Promotions', 'SMS campaigns', 'Social Hub', 'TV Signage',
       'Website Content', 'Order App Content', 'Media Library',
     ]);
     expect(labelsOf('analyze')).toEqual(['Reports', 'Analytics', 'Forecasts', 'Finance']);
-    expect(labelsOf('system')).toEqual(['Settings', 'Telegram', 'Devices', 'System Health', 'Webhooks', 'Xero']);
+    // Notifications audit, 2026-10-10: every text, email and Telegram alert in one place.
+    expect(labelsOf('system')).toEqual(['Settings', 'Notifications', 'Telegram', 'Devices', 'System Health', 'Webhooks', 'Xero']);
     expect(labelsOf('team')).toEqual(['Staff', 'Shifts & Cash', 'Time Clock', 'POS Activity', 'My Account']);
   });
 

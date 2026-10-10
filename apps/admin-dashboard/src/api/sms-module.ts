@@ -39,6 +39,8 @@ export type SmsTemplate = {
   is_system: boolean;
   variables: { name: string; description: string }[];
   created_at: string;
+  /** Messages in Admin → Notifications worded by this template (2026-10-10); edited on their row there. */
+  used_by?: { key: string; label: string }[];
 };
 
 export type SmsScheduledMessage = {
@@ -269,7 +271,7 @@ export async function resendStaffNotification(id: number): Promise<{ message: st
   return req(`/admin/sms/staff-logs/${id}/resend`, { method: 'POST' });
 }
 
-// ── SMS Control Center ────────────────────────────────────────────────────────
+// ── Notifications (was the SMS Control Center) ───────────────────────────────
 
 export type SmsControlCenterType = {
   key: string;
@@ -287,8 +289,6 @@ export type SmsControlCenterType = {
   always_on: boolean;
   suppressible: boolean;
   recipients: string;
-  /** A second switch or threshold elsewhere that this type also depends on (SMS audit, 2026-10-03). */
-  also_needs?: string | null;
   user_initiated: boolean;
   send_permission: string | null;
   send_permission_label: string;
@@ -300,6 +300,8 @@ export type SmsControlCenterType = {
     body: string;
     variables: { name: string; description?: string }[];
   } | null;
+  /** The message's other wordings (delivery vs pickup, urgent, each credit reminder), edited on its row (2026-10-10). */
+  extra_templates?: SmsExtraTemplate[];
   code_fallback_note?: string | null;
   sample_variables?: Record<string, string>;
   last_30_days: { count: number; cost_mvr: number };
@@ -308,6 +310,15 @@ export type SmsControlCenterType = {
   default_recipient_mode?: SmsRecipientMode | null;
   recipients_config?: SmsRecipientsConfig | null;
   recipients_resolved?: string[];
+};
+
+export type SmsExtraTemplate = {
+  id: number;
+  slug: string;
+  /** When this wording is the one sent. */
+  label: string;
+  body: string;
+  variables: { name: string; description?: string }[];
 };
 
 export type SmsRecipientMode = 'owners_managers' | 'owner_only' | 'business_phone' | 'staff' | 'custom';
@@ -385,6 +396,10 @@ export type SmsControlCenterResponse = {
   deferred_count?: number;
   recipient_modes?: SmsRecipientMode[];
   staff_options?: SmsStaffOption[];
+  /** Telegram's master switch for staff alerts (2026-10-10); off, the rows' Telegram switches send nothing. */
+  telegram_alerts_on?: boolean;
+  /** A Telegram bot is set up and switched on. */
+  telegram_bot_ready?: boolean;
 };
 
 export type SmsTypeUpdatePayload = {
@@ -392,6 +407,8 @@ export type SmsTypeUpdatePayload = {
   email_enabled?: boolean;
   telegram_enabled?: boolean;
   body?: string;
+  /** slug => body, for the row's other wordings. */
+  extra_templates?: Record<string, string>;
   send_permission?: string | null;
   recipients?: SmsRecipientsConfig | { mode: SmsRecipientMode; user_ids?: number[]; phones?: string[] } | null;
 };
@@ -411,6 +428,7 @@ export async function updateSmsType(
   send_permission?: string | null;
   send_permission_label?: string;
   template?: SmsControlCenterType['template'];
+  extra_templates?: SmsExtraTemplate[];
   estimate?: { encoding: string; segments: number; cost_mvr: number; length: number };
   recipients_config?: SmsRecipientsConfig;
   recipients_resolved?: string[];

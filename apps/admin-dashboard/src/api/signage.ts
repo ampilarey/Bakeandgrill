@@ -103,7 +103,8 @@ export type SignageNotice = {
   expires_at: string | null;
 };
 
-export type SignageBoardSettings = { sold_out_badge_minutes: number; device_alert_sms?: boolean };
+/** The TV-offline alert's switch is its row in Admin → Notifications (2026-10-10). */
+export type SignageBoardSettings = { sold_out_badge_minutes: number };
 
 export async function postSignageNotice(body: {
   text: string;

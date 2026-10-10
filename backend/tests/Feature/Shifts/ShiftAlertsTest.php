@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Shifts;
 
+use App\Domains\Notifications\Support\AlertSwitch;
 use App\Domains\Permissions\PermissionCatalogSync;
 use App\Domains\Shifts\DTOs\ShiftClosedData;
 use App\Domains\Shifts\Events\ShiftClosed;
@@ -50,11 +51,14 @@ class ShiftAlertsTest extends TestCase
         $this->assertStringContainsString("#{$stale->id} Cashier on Front till", (string) $logs->first()->message);
         $this->assertStringNotContainsString('Ahmed on', (string) $logs->first()->message, 'the two-hour shift is fine');
 
+        // Notifications audit, 2026-10-10: the number only says when; 0 is
+        // refused and off is the alert's row in Admin → Notifications.
         Sanctum::actingAs($this->owner, ['staff']);
-        $this->patchJson('/api/admin/ops/alerts', ['shift_open_alert_hours' => 0])->assertOk()->assertJsonPath('settings.shift_open_alert_hours', 0);
+        $this->patchJson('/api/admin/ops/alerts', ['shift_open_alert_hours' => 0])->assertStatus(422);
+        AlertSwitch::setAll('owner_shift_left_open', false);
         SmsLog::query()->delete();
         $this->artisan('shifts:alert-open')->assertSuccessful();
-        $this->assertSame(0, SmsLog::where('type', 'owner_shift_left_open')->count(), '0 switches it off');
+        $this->assertSame(0, SmsLog::where('type', 'owner_shift_left_open')->count(), 'the row switched off stops it');
     }
 
     public function test_a_close_with_a_variance_at_or_over_the_threshold_texts_the_owners(): void

@@ -145,7 +145,9 @@ and `docs/LABEL_HUB_V2_PLAN.md`.
 
 ## Telegram staff bots
 
-Admin → Telegram (owner-only, `telegram.manage`). One bot can serve every role
+Admin → Telegram (owner-only, `telegram.manage`): bots, links and groups; which
+alerts go to Telegram, Telegram on or off and the Telegram-only alerts are in
+System → Notifications. One bot can serve every role
 (owner, manager, staff, kitchen staff, driver) or each role its own. Staff link
 their own Telegram with a one-time link; staff and owner alerts that go through
 `SmsService` are copied to their chat (`TelegramAlertCopier`), and the bot's
@@ -167,11 +169,25 @@ Telegram-only alerts (order cancelled at the till, cash out). See
 
 Staff and owner alerts go to **people**, by channel (SMS, Email, Telegram): the
 alert type's switch, the person's channels (their own, else their role's, set in
-Admin → SMS Control Center → Who gets alerts, and how) and whether they can be
+Admin → System → Notifications → People) and whether they can be
 reached that way. Staff without a phone are addressed as `user:{id}` and get
-email / Telegram; when nothing reaches someone who has a phone, the SMS goes.
-Customers are untouched. See `docs/NOTIFICATION_CHANNELS.md`
-(`NotificationChannels`, `SmsService::sendByOtherChannels`).
+email / Telegram (order alerts and shift reminders too); when nothing reaches
+someone who has a phone, the SMS goes. Customers are untouched. See
+`docs/NOTIFICATION_CHANNELS.md` (`NotificationChannels`,
+`SmsService::sendByOtherChannels`).
+
+## Notifications: one page, one switch per alert
+
+Owner, 2026-10-10 ("to make setting less complicated"). Every text, email and
+Telegram alert is on **Admin → System → Notifications** (Messages, People,
+Rules, Log); SMS & Messaging is "SMS campaigns" (campaigns, contacts,
+scheduled, templates). An alert's row (its SMS, Email and Telegram switches)
+is its only on/off: never add a second switch on a domain page; link to the
+row instead (`/notifications/messages?open=<type>`). A sender asks
+`AlertSwitch::isOn($type)` before working an alert out. A number that says
+when an alert goes lives under the row's Edit ("When it sends") and refuses 0;
+off is the row. A shared switch is split, one per message. Details:
+`docs/NOTIFICATION_CHANNELS.md` § One page, one switch per alert.
 
 ## Who may change something may see it
 
@@ -190,7 +206,7 @@ The role editor shows the permission groups as tiles in six sections that follow
 the admin menu (owner, 2026-10-09: "group and make it easier"). A new permission
 group goes into a section in `pages/SettingsPage/permissionSections.ts`; one left
 out still shows, under "Other". Settings tabs keep scrolling short: long forms are
-tabs (Business), wordings fold to one line until Edit (Notifications). A
+tabs (Business), wordings fold to one line until Edit (Notifications → Messages). A
 `position: fixed` bar inside a page now sits on the screen, not the page
 (`.animate-fade-in` no longer leaves a transform behind); words on a rust fill are
 `--color-on-primary`. Details: same file, § Stage 3g.

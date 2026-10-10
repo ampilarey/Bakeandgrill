@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Notifications\Support\SmsTypeRegistry;
 use App\Domains\Sms\Services\SmsTemplateRenderer;
 use App\Http\Controllers\Controller;
 use App\Models\SmsTemplate;
@@ -20,10 +21,38 @@ class SmsTemplateController extends Controller
 
     public function index(): JsonResponse
     {
+        $usedBy = self::rowsBySlug();
         $templates = SmsTemplate::orderByDesc('is_system')->orderBy('name')->get()
-            ->map(fn (SmsTemplate $t) => $this->format($t));
+            ->map(fn (SmsTemplate $t) => $this->format($t) + ['used_by' => $usedBy[$t->slug] ?? []]);
 
         return response()->json(['templates' => $templates]);
+    }
+
+    /**
+     * The messages in Admin → Notifications whose wording each template is
+     * (notifications audit, 2026-10-10). That wording is edited on the
+     * message's own row; SMS campaigns → Templates keeps the rest.
+     *
+     * @return array<string, list<array{key: string, label: string}>>
+     */
+    private static function rowsBySlug(): array
+    {
+        $map = [];
+        foreach (SmsTypeRegistry::all() as $entry) {
+            $slug = $entry['template_slug'] ?? null;
+            if (!$slug || in_array($entry['key'], SmsTypeRegistry::HIDDEN_FROM_LIST, true)) {
+                continue;
+            }
+            $map[$slug][] = ['key' => (string) $entry['key'], 'label' => (string) $entry['label']];
+        }
+        foreach (SmsTypeRegistry::EXTRA_TEMPLATES as $key => $extra) {
+            $entry = SmsTypeRegistry::get($key);
+            foreach (array_keys($extra) as $slug) {
+                $map[$slug][] = ['key' => $key, 'label' => (string) ($entry['label'] ?? $key)];
+            }
+        }
+
+        return $map;
     }
 
     public function store(Request $request): JsonResponse

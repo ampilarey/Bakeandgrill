@@ -7,8 +7,8 @@ import * as api from '../api/telegram';
 
 /*
  * Admin → Telegram (owner, 2026-10-06: "Build owner bot now"). The page
- * lists bots and people, makes one-time links and holds the two alert
- * switches.
+ * lists bots and people and makes one-time links. Its alert switches moved
+ * to System → Notifications (2026-10-10); the Alerts card points there.
  */
 
 vi.mock('../api/telegram', async () => {
@@ -67,19 +67,15 @@ describe('TelegramPage', () => {
     expect(screen.getByText(/Works once, for 60 minutes, and only for Mariyam/)).toBeInTheDocument();
   });
 
-  it('points to the channel settings and switches the day report', async () => {
+  it('points the alert settings at Notifications', async () => {
     renderPage();
-    const link = await screen.findByRole('link', { name: /Who gets alerts, and how/ });
-    expect(link).toHaveAttribute('href', '/sms?tab=control-center#channels');
-    const switches = screen.getAllByRole('switch');
-    // Bot on/off, alerts, day report, cancelled orders, cash out.
-    fireEvent.click(switches[switches.length - 3]);
-    await waitFor(() => expect(api.updateTelegramSettings).toHaveBeenCalledWith({ day_report: false }));
-    fireEvent.click(switches[switches.length - 2]);
-    await waitFor(() => expect(api.updateTelegramSettings).toHaveBeenCalledWith({ alert_voids: false }));
-    fireEvent.change(screen.getByLabelText('Cash alert from amount'), { target: { value: '500' } });
-    fireEvent.blur(screen.getByLabelText('Cash alert from amount'));
-    await waitFor(() => expect(api.updateTelegramSettings).toHaveBeenCalledWith({ alert_cash_min: 500 }));
+    const card = await screen.findByTestId('telegram-alerts-moved');
+    expect(card).toHaveTextContent('Telegram alerts are on.');
+    expect(screen.getByRole('link', { name: "each alert's Telegram switch" })).toHaveAttribute('href', '/notifications/messages?group=staff');
+    expect(screen.getByRole('link', { name: /day report, cancelled orders, cash taken out/ })).toHaveAttribute('href', '/notifications/messages?group=telegram');
+    expect(screen.getByRole('link', { name: 'Telegram on or off' })).toHaveAttribute('href', '/notifications/rules');
+    expect(screen.getByRole('link', { name: /who gets them by Telegram/ })).toHaveAttribute('href', '/notifications/people');
+    expect(screen.queryByLabelText('Cash alert from amount')).toBeNull();
   });
 
   it('shows how to add a group when there is none', async () => {
@@ -105,7 +101,7 @@ describe('TelegramPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Send a test/ }));
     await waitFor(() => expect(api.testTelegramGroup).toHaveBeenCalledWith(4));
-    // Bot switch, group switch, alerts, day report.
+    // Bot switch, group switch.
     fireEvent.click(screen.getAllByRole('switch')[1]);
     await waitFor(() => expect(api.updateTelegramGroup).toHaveBeenCalledWith(4, { is_enabled: false }));
 

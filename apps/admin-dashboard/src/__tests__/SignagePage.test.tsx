@@ -179,7 +179,9 @@ describe('SignagePage', () => {
     expect(health.textContent).toMatch(/1920x1080/);
   });
 
-  it('shows each TV\'s thumbnail, a stuck badge, and lets the owner switch the SMS alert', async () => {
+  // Notifications audit, 2026-10-10: the alert's switch is its row in
+  // Notifications; the Devices tab links there instead of a second switch.
+  it('shows each TV\'s thumbnail, a stuck badge, and where the alert is switched', async () => {
     vi.spyOn(api, 'fetchSignageDevices').mockResolvedValue({
       data: [{
         id: 7, device_id: 'tv-7', pairing_code: null, approved: true, screen_id: 100,
@@ -192,7 +194,7 @@ describe('SignagePage', () => {
         offline_minutes: 9, stuck_minutes: null, screenshot_url: null, meta: {}, queued_command: null,
       }],
     } as never);
-    const save = vi.spyOn(api, 'setSignageBoardSettings').mockResolvedValue({ settings: { sold_out_badge_minutes: 20, device_alert_sms: false } });
+    const save = vi.spyOn(api, 'setSignageBoardSettings').mockResolvedValue({ settings: { sold_out_badge_minutes: 20 } });
 
     renderWithRouter(<SignagePage />);
     fireEvent.click(screen.getByRole('button', { name: 'Devices' }));
@@ -202,11 +204,9 @@ describe('SignagePage', () => {
     expect(screen.getByTestId('signage-device-offline-8')).toHaveTextContent(/for 9 min/);
     expect(screen.queryByTestId('signage-device-shot-8')).toBeNull();
 
-    const toggle = screen.getByTestId('signage-device-alert-sms') as HTMLInputElement;
-    expect(toggle.checked).toBe(true);
-    fireEvent.click(toggle);
-    await waitFor(() => expect(save).toHaveBeenCalledWith({ device_alert_sms: false }));
-    await waitFor(() => expect((screen.getByTestId('signage-device-alert-sms') as HTMLInputElement).checked).toBe(false));
+    expect(screen.queryByTestId('signage-device-alert-sms')).toBeNull();
+    expect(screen.getByRole('link', { name: /TV screen offline or stuck/ })).toHaveAttribute('href', '/notifications/messages?open=owner_signage_devices');
+    expect(save).not.toHaveBeenCalled();
   });
 
   it('pending pairing row keeps responsive grid hooks at 390px', async () => {

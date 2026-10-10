@@ -46,8 +46,6 @@ const settings = {
   enforce_expense_budgets: false,
   restock_include_waste: false,
   restock_high_waste_pct: 15,
-  reorder_alert_sms: false,
-  price_rise_alert_sms: false,
   expense_categories: [{ id: 3, name: 'Supplies' }],
 };
 const getPurchasingSettings = vi.fn();
@@ -169,8 +167,10 @@ describe('PurchasingPage', () => {
     await screen.findByTestId('purchasing-settings');
     fireEvent.click(screen.getAllByRole('button', { name: 'Off' })[0]);
     await screen.findByText('Server said no');
-    // Still Off: the optimistic flip was rolled back. Eight switches, one
-    // (price hints) defaults On, so seven read Off — same as before the click.
-    expect(screen.getAllByRole('button', { name: 'Off' })).toHaveLength(8);
+    // Still Off: the optimistic flip was rolled back — as many read Off as
+    // before the click. (The reorder and price-rise alert switches left for
+    // their rows in Notifications on 2026-10-10.)
+    expect(screen.getAllByRole('button', { name: 'Off' })).toHaveLength(6);
+    expect(screen.getByTestId('purchasing-alerts-link')).toHaveTextContent(/System → Notifications/);
   });
 });

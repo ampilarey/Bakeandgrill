@@ -8,7 +8,7 @@ import {
   Boxes, LayoutGrid, Wallet, Clock, Monitor, Share2,
   Link, ShoppingBag, Zap,
   ConciergeBell, Wrench, ClipboardCheck, HeartPulse, UserCircle, Utensils,
-  LayoutTemplate, Shield, UserCog, Images, Tv, Store, Tags, Send,
+  LayoutTemplate, Shield, UserCog, Images, Tv, Store, Tags, Send, Bell,
 } from 'lucide-react';
 import type { StaffUser } from '../api';
 
@@ -125,7 +125,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/catering',         icon: ConciergeBell, label: 'Events & Catering', permissions: ['events.manage', 'customers.manage'], description: 'Event orders, quotes & catering pipeline' },
       { to: '/loyalty',          icon: Heart,      label: 'Loyalty',         permission: 'loyalty.manage',      description: 'Points & rewards' },
       { to: '/promotions', icon: Target,        label: 'Promotions',      permissions: ['promotions.manage', 'promotions.discount_cards', 'discounts.settings.manage'], description: 'Offers, gift cards, discount cards & controls' },
-      { to: '/sms',        icon: MessageSquare, label: 'SMS & Messaging', permissions: ['integrations.sms', 'sms_marketing.manage', 'sms.settings.manage', 'sms.logs.view'], description: 'Campaigns, templates, sends & the control center' },
+      // Notifications audit, 2026-10-10: automatic messages moved to System → Notifications.
+      { to: '/sms',        icon: MessageSquare, label: 'SMS campaigns', permissions: ['integrations.sms', 'sms_marketing.manage', 'sms.settings.manage', 'sms.logs.view'], description: 'Campaigns, contacts, scheduled texts & templates' },
       { to: '/social', icon: Share2, label: 'Social Hub', permission: 'social.view', description: 'Post to Facebook, Instagram, Telegram & Viber' },
       { to: '/signage', icon: Tv, label: 'TV Signage', permission: 'signage.manage', description: 'Digital menu boards' },
       { to: '/content/website', icon: LayoutTemplate, label: 'Website Content', permission: 'website.manage', description: 'Public website copy, branding & visuals' },
@@ -154,8 +155,11 @@ export const NAV_GROUPS: NavGroup[] = [
     order: 5,
     items: [
       // Every switch not owned by a domain page: business record, ordering,
-      // delivery, charges, credit, notifications, currency photos, roles.
-      { to: '/settings', icon: Shield, label: 'Settings', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'], description: 'Business, ordering, delivery, fees, credit, notifications & roles' },
+      // delivery, charges, credit, currency photos, roles.
+      { to: '/settings', icon: Shield, label: 'Settings', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'], description: 'Business, ordering, delivery, fees, credit & roles' },
+      // Notifications audit, 2026-10-10 (owner: "to make setting less complicated"):
+      // every text, email and Telegram alert, its switches, people, rules and log.
+      { to: '/notifications', icon: Bell, label: 'Notifications', permissions: ['sms.settings.manage', 'sms.logs.view', 'telegram.manage', 'staff.update', 'sms.contacts.manage'], description: 'Every text, email & Telegram alert: switches, who gets them, rules & log' },
       // Owner, 2026-10-06: staff bots; owner-only until telegram.manage is granted.
       { to: '/telegram',      icon: Send,        label: 'Telegram',       permission: 'telegram.manage', description: 'Staff bot: alerts, sales, shifts & approvals' },
       { to: '/devices',       icon: Monitor,     label: 'Devices',        permission: 'devices.view',   description: 'POS & KDS devices, and the print queue' },
@@ -254,6 +258,9 @@ export const NAV_PATH_ALIASES: Record<string, string> = {
   '/procurement-report': '/purchasing',
   '/print-jobs': '/devices',
   '/service-availability': '/system-health',
+  // Notifications audit, 2026-10-10.
+  '/settings/notifications': '/notifications',
+  '/sms/control-center': '/notifications',
 };
 
 function resolveNavPath(pathname: string): string {

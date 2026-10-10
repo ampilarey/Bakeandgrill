@@ -446,7 +446,7 @@ export function CampaignsTab({ prefill, onViewLog }: { prefill?: CampaignPrefill
               style={textareaStyle}
             />
             <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
-              {'{name}'} becomes the customer's first name. The unsubscribe line from the Control Center is added to the end automatically.
+              {'{name}'} becomes the customer's first name. The unsubscribe line from Notifications → Rules is added to the end automatically.
             </p>
           </div>
 
@@ -540,7 +540,7 @@ export function CampaignsTab({ prefill, onViewLog }: { prefill?: CampaignPrefill
               {preview.daily_cap && preview.daily_cap.cap > 0 && (
                 <p data-testid="campaign-daily-cap" style={{ fontSize: 12, color: preview.daily_cap.blocked ? 'var(--color-danger)' : 'var(--color-text-secondary)', fontWeight: preview.daily_cap.blocked ? 600 : 400, marginBottom: 4 }}>
                   {preview.daily_cap.blocked
-                    ? `Over the daily bulk cap: ${preview.daily_cap.used_24h.toLocaleString()} recipients queued in the last 24 hours, ${preview.daily_cap.remaining?.toLocaleString() ?? 0} left of ${preview.daily_cap.cap.toLocaleString()}. Narrow the audience, wait, or raise the cap in the Control Center.`
+                    ? `Over the daily bulk cap: ${preview.daily_cap.used_24h.toLocaleString()} recipients queued in the last 24 hours, ${preview.daily_cap.remaining?.toLocaleString() ?? 0} left of ${preview.daily_cap.cap.toLocaleString()}. Narrow the audience, wait, or raise the limit in Notifications → Rules.`
                     : `Daily bulk cap: ${preview.daily_cap.used_24h.toLocaleString()} used in the last 24 hours, ${preview.daily_cap.remaining?.toLocaleString() ?? 0} left of ${preview.daily_cap.cap.toLocaleString()}.`}
                 </p>
               )}

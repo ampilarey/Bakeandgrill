@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { Toggle } from '../../components/ui';
 import {
   getPurchasingSettings,
@@ -11,7 +12,7 @@ import {
  * Purchasing → Settings: every switch that governs buying, in the order the
  * work happens. A request is raised, somebody approves it, somebody buys it,
  * the box arrives, the money is booked, and the shelf is topped up again.
- * Thirteen switches, one screen, each one saved the moment it is changed.
+ * Eleven switches, one screen, each one saved the moment it is changed.
  *
  * The wording is deliberately the owner's, not the database's. "Auto-create
  * restock PR on low stock" became "Ask for more automatically when stock runs
@@ -306,16 +307,17 @@ export function PurchasingSettings({ canEdit }: { canEdit: boolean }) {
             />
           )}
         />
-        <Row
-          label="Text the owner when an item hits its reorder point"
-          help="An SMS to every owner phone on file when stock drops under a reorder point. Independent of the automatic request above — you can have the message without the request, or both."
-          control={toggle('reorder_alert_sms')}
-        />
-        <Row
-          label="Text the owner every Monday with what went up"
-          help="An SMS naming the items whose last buy was 10% or more above the one before, with the old and new price. Nothing is sent in a week when nothing rose."
-          control={toggle('price_rise_alert_sms')}
-        />
+        {/* Notifications audit, 2026-10-10: these alerts had a second switch
+            here as well as their own; each is one row in Notifications now. */}
+        <p data-testid="purchasing-alerts-link" style={{ ...S.help, maxWidth: 'none', margin: '4px 0 0' }}>
+          The owner alerts (an item at its reorder point, stock about to expire, Monday's price rises) are switched on and off,
+          with who gets them, in System → Notifications:{' '}
+          <Link to="/notifications/messages?open=owner_stock_reorder" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>reorder point</Link>
+          {' · '}
+          <Link to="/notifications/messages?open=owner_stock_expiry" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>expiring stock</Link>
+          {' · '}
+          <Link to="/notifications/messages?open=owner_price_rise" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>price rises</Link>.
+        </p>
       </Section>
     </div>
   );

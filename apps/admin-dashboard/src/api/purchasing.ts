@@ -27,9 +27,7 @@ export interface PurchasingSettings {
   // Restocking
   restock_include_waste: boolean;
   restock_high_waste_pct: number;
-  reorder_alert_sms: boolean;
-  /** Monday SMS of the items up 10%+ on their last buy (owner, 2026-09-21). */
-  price_rise_alert_sms: boolean;
+  // The reorder and price-rise alert switches are their rows in Admin → Notifications (2026-10-10).
   /** For the category picker, so the screen needs one request. */
   expense_categories: Array<{ id: number; name: string }>;
 }

@@ -683,7 +683,9 @@ make it easier." Every tab was measured (page height, phone 390px / computer
   sends two texts shows both under it rather than a second card without a
   switch. Save message is off until the wording changes. The closing note is
   the rust information tone (it was a warning's amber) and links to SMS →
-  Templates / Automations and Settings → Delivery.
+  Templates / Automations and Settings → Delivery. (2026-10-10: this tab is
+  gone; every message's switches and wording are rows in System →
+  Notifications, see `docs/NOTIFICATION_CHANNELS.md`.)
 - **Weekly schedules** (online ordering, pre-order, delivery): a day is two
   lines, not four. "+ Add window" sits on the day's line, the times share one
   line with a dash, and "Open" / "Close" stay for screen readers only.

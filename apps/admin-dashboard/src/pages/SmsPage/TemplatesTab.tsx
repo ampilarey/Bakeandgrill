@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Plus, Pencil, Trash2, Eye, Lock } from 'lucide-react';
 import {
   fetchSmsTemplates, createSmsTemplate, updateSmsTemplate, deleteSmsTemplate,
@@ -17,13 +18,19 @@ type TemplateForm = {
 const EMPTY_FORM: TemplateForm = { name: '', body: '', type: 'custom', description: '' };
 
 const TYPE_COLORS: Record<string, string> = {
-  order_notification: 'blue',
+  order_notification: 'brown',
   schedule_reminder: 'green',
   duty_reminder: 'orange',
   custom: 'gray',
-  customer_notification: 'purple',
+  customer_notification: 'brown',
 };
 
+/*
+ * Notifications audit, 2026-10-10: the wording of an automatic message
+ * (order alerts, receipts, reminders) is edited on its row in System →
+ * Notifications, beside its switches, so it is no longer a second place
+ * here. This tab keeps the templates campaigns and scheduled messages use.
+ */
 export function TemplatesTab() {
   const [templates, setTemplates] = useState<SmsTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,6 +95,8 @@ export function TemplatesTab() {
   };
 
   const info = smsCharCount(form.body);
+  const automatic = templates.filter((t) => (t.used_by ?? []).length > 0);
+  const own = templates.filter((t) => (t.used_by ?? []).length === 0);
 
   if (loading) return <Spinner />;
 
@@ -97,11 +106,27 @@ export function TemplatesTab() {
         <Plus size={14} style={{ marginRight: 5, verticalAlign: 'middle' }} />New Template
       </Btn>
 
-      {templates.length === 0 ? (
+      {automatic.length > 0 && (
+        <details data-testid="automatic-wording" style={{ marginBottom: 16, fontSize: 13, color: 'var(--color-text-secondary)' }}>
+          <summary style={{ cursor: 'pointer' }}>
+            The wording of {automatic.length} automatic message{automatic.length === 1 ? '' : 's'} (order alerts, receipts, reminders) is
+            edited on {automatic.length === 1 ? 'its' : 'each one\'s'} row in <Link to="/notifications/messages" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>System → Notifications</Link>.
+          </summary>
+          <ul style={{ margin: '8px 0 0', paddingLeft: 18, lineHeight: 1.7 }}>
+            {automatic.flatMap((t) => (t.used_by ?? []).map((u) => (
+              <li key={`${t.id}-${u.key}`}>
+                <Link to={`/notifications/messages?open=${encodeURIComponent(u.key)}`} style={{ color: 'var(--color-primary)' }}>{u.label}</Link>
+              </li>
+            )))}
+          </ul>
+        </details>
+      )}
+
+      {own.length === 0 ? (
         <EmptyState message="No templates yet." />
       ) : (
         <div style={{ display: 'grid', gap: 12 }}>
-          {templates.map(t => (
+          {own.map(t => (
             <Card key={t.id} style={{ padding: '14px 18px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 {/* minWidth 0 and wrapping body text: a long {{reference}} line pushed

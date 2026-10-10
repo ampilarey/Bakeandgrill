@@ -297,15 +297,17 @@ export async function updatePackagingFeeSettings(
   return req('/admin/settings/packaging-fee', { method: 'PUT', body: JSON.stringify(settings) });
 }
 
+/**
+ * When three owner alerts go; whether they go is their row's switches in
+ * Admin → Notifications (2026-10-10), where these are edited too. 0 is refused.
+ */
 export type OpsAlertsSettings = {
-  /** Ops audit, 2026-09-25: a shift open longer than this texts the owners; 0 = off. */
+  /** Ops audit, 2026-09-25: a shift open longer than this alerts the owners. */
   shift_open_alert_hours?: number;
-  /** A close whose cash variance is this much or more texts the owners; 0 = off. */
+  /** A close, or an opening float, this far off alerts the owners. */
   shift_variance_alert_mvr?: number;
-  /** Checkout audit, 2026-09-26: a paid pickup / dine-in order not started after this many minutes texts the owners; 0 = off. */
+  /** Checkout audit, 2026-09-26: a paid pickup / dine-in order not started after this many minutes alerts the owners. */
   unstarted_order_alert_minutes?: number;
-  delivery_delay_alert_sms: boolean;
-  inventory_reorder_alert_sms: boolean;
 };
 
 export async function getOpsAlertsSettings(): Promise<{ settings: OpsAlertsSettings }> {
