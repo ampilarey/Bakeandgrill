@@ -59,6 +59,9 @@ Thumbs.db
 **/.DS_Store
 # Archives (avoid large files on GitHub)
 *.zip
+# Python bytecode (scripts/*.py)
+__pycache__/
+*.pyc
 # Config
 Homestead.json
 Homestead.yaml

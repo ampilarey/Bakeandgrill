@@ -200,7 +200,8 @@ the right, since the website writes the category name on the left; a README nami
 the slot for each file, and a zip of the lot. A busy backdrop needs a photo editor.
 
 Packs are served from `backend/public/brand/photos/<dish>/`, so the owner can
-download them from the test site or the live one.
+download them from the test site or the live one. The zip the script writes is not
+committed (archives are git-ignored); it goes to the owner directly.
 
 | Pack | Made from |
 |---|---|
