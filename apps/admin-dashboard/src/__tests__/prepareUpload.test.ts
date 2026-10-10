@@ -155,6 +155,54 @@ describe('prepareImageForUpload', () => {
     expect(heicTo).not.toHaveBeenCalled();
   });
 
+  function stubBigPicture(alpha: number) {
+    const drawImage = vi.fn();
+    const fillRect = vi.fn();
+    vi.stubGlobal('createImageBitmap', vi.fn(async () => ({ width: 6400, height: 1600, close: vi.fn() })));
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+      fillStyle: '',
+      fillRect,
+      drawImage,
+      // Every sampled pixel carries this alpha.
+      getImageData: (_x: number, _y: number, w: number, h: number) => ({
+        data: new Uint8ClampedArray(w * h * 4).map((_, i) => (i % 4 === 3 ? alpha : 200)),
+      }),
+    } as unknown as CanvasRenderingContext2D);
+    const types: string[] = [];
+    vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((cb: BlobCallback, type?: string) => {
+      types.push(type ?? '');
+      cb(new Blob([new Uint8Array([1, 2, 3])], { type: type ?? 'image/png' }));
+    });
+    return { drawImage, fillRect, types };
+  }
+
+  it('keeps a big see-through PNG see-through when shrinking it (logos)', async () => {
+    const { drawImage, fillRect, types } = stubBigPicture(0);
+    const file = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], 'logo.png', { type: 'image/png' });
+
+    const out = await prepareImageForUpload(file);
+
+    expect(out.type).toBe('image/png');
+    expect(out.name).toBe('logo.png');
+    expect(types).toEqual(['image/png']);
+    expect(fillRect).not.toHaveBeenCalled();
+    const drawn = drawImage.mock.calls[drawImage.mock.calls.length - 1];
+    expect(drawn[3]).toBe(MASTER_MAX_EDGE);
+    expect(drawn[4]).toBe(800);
+  });
+
+  it('still turns a big opaque PNG into a JPEG', async () => {
+    const { fillRect, types } = stubBigPicture(255);
+    const file = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], 'flat.png', { type: 'image/png' });
+
+    const out = await prepareImageForUpload(file);
+
+    expect(out.type).toBe('image/jpeg');
+    expect(out.name).toBe('flat.jpg');
+    expect(types).toEqual(['image/jpeg']);
+    expect(fillRect).toHaveBeenCalled();
+  });
+
   it('downscales images larger than MASTER_MAX_EDGE', async () => {
     const file = new File([new Uint8Array([0xff, 0xd8, 0xff])], 'huge.jpg', { type: 'image/jpeg' });
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Content\BrandImages;
 use App\Domains\Content\ContentIntegrityReport;
 use App\Domains\Content\ContentRegistry;
 use App\Domains\Content\ContentResolver;
@@ -40,6 +41,7 @@ class ContentController extends Controller
         private readonly VideoProcessor $videos,
         private readonly MediaLibraryService $library,
         private readonly ContentValidationService $contentValidator,
+        private readonly BrandImages $brandImages,
     ) {}
 
     /**
@@ -600,7 +602,8 @@ class ContentController extends Controller
 
         $data = $request->validate([
             'key' => ['required', 'string', Rule::in(array_keys(ContentRegistry::blocks()))],
-            'scope' => ['required', 'string', Rule::in(ContentRegistry::APPS)],
+            // Shared too: Business Details uploads the brand pictures (2026-10-10).
+            'scope' => ['required', 'string', Rule::in(ContentRegistry::SCOPES)],
             'locale' => ['sometimes', 'string', Rule::in(ContentRegistry::LOCALES)],
             'file' => ['required', 'file', 'mimes:png,jpg,jpeg,webp', 'max:10240'],
             'original' => ['sometimes', 'file', 'mimes:png,jpg,jpeg,webp', 'max:10240'],
@@ -619,6 +622,13 @@ class ContentController extends Controller
         }
 
         $file = $request->file('file');
+
+        // Logo, dark logo, tab icon, link preview: drawn in their own shape
+        // from the file as sent, not cut to the 4:3 menu crop.
+        if (BrandImages::handles($key)) {
+            return $this->uploadBrandImage($request, $key, $scope, $locale, $file);
+        }
+
         $dir = $scope === 'shared' ? 'site' : "site/{$scope}";
 
         try {
@@ -626,7 +636,7 @@ class ContentController extends Controller
             $thumb = $this->processor->storeThumbnailPair($file, $dir . '/thumbs');
             // Always keep a high-res master for re-crop (prefer explicit original, else source file).
             $masterSource = $request->hasFile('original') ? $request->file('original') : $file;
-            $origRelative = $this->processor->storeMaster($masterSource, $dir . '/masters');
+            $origRelative = $this->processor->storeMaster($masterSource, $dir . '/masters', keepTransparency: true);
             $originalUrl = '/storage/' . ltrim($origRelative, '/');
         } catch (\Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 422);
@@ -669,6 +679,47 @@ class ContentController extends Controller
             'original_url' => $originalUrl,
             'media_id' => $media?->id,
             'id' => $media?->id,
+            'key' => $key,
+            'scope' => $scope,
+            'locale' => $locale,
+            'embed' => true,
+        ], 201);
+    }
+
+    /**
+     * A brand picture drawn in its slot's shape (BrandImages). Not a draft
+     * value of its own: Business Details puts the returned URL in its form,
+     * and the save writes it.
+     */
+    private function uploadBrandImage(Request $request, string $key, string $scope, string $locale, \Illuminate\Http\UploadedFile $file): JsonResponse
+    {
+        try {
+            $media = $this->brandImages->fromUpload($key, $file);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        $url = $media->url;
+        $this->audit->log(
+            action: 'content.uploaded',
+            modelType: Media::class,
+            modelId: $media->id,
+            oldValues: [],
+            newValues: ['url' => $url, 'media_id' => $media->id],
+            meta: ['setting_key' => $key, 'scope' => $scope, 'locale' => $locale, 'brand' => true],
+            request: $request,
+        );
+
+        return response()->json([
+            'url' => $url,
+            'thumb_url' => $url,
+            'image_webp_url' => null,
+            'thumb_webp_url' => null,
+            'original_url' => null,
+            'media_id' => $media->id,
+            'id' => $media->id,
+            'width' => $media->width,
+            'height' => $media->height,
             'key' => $key,
             'scope' => $scope,
             'locale' => $locale,

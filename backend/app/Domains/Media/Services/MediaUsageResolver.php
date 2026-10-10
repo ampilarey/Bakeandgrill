@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Media\Services;
 
+use App\Domains\Content\BrandImages;
 use App\Models\Category;
 use App\Models\Item;
 use App\Models\ItemPhoto;
@@ -392,6 +393,12 @@ final class MediaUsageResolver
             // Path-based: replace absolute/relative forms of each old storage path.
             foreach ($pathMap as $path => $toUrl) {
                 $new = $this->replaceStoragePathInBlob($new, $path, $toUrl);
+            }
+            if ($new !== $value && BrandImages::handles((string) $setting->key)) {
+                // A picture replaced or edited in the library behind the logo,
+                // tab icon or link preview is redrawn in that slot's shape
+                // (2026-10-10), not left as the library's 4:3 crop.
+                $new = app(BrandImages::class)->normalize((string) $setting->key, $new);
             }
             if ($new !== $value) {
                 $setting->value = $new;

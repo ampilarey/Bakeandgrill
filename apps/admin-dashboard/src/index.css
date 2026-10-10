@@ -5516,6 +5516,8 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   overflow: hidden;
 }
 .business-details-image-preview--square { width: 64px; height: 64px; }
+/* The dark-background logo is light lettering: preview it on dark. */
+.business-details-image-preview--dark { background: var(--color-backdrop); }
 .business-details-image-preview img {
   max-width: 100%;
   max-height: 100%;

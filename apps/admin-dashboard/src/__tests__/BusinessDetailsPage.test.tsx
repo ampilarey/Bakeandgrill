@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { ApiRequestError } from '@shared/api';
 import { BusinessDetailsPage } from '../pages/BusinessDetailsPage';
 import * as api from '../api/businessDetails';
+import * as contentApi from '../api/content';
 import type { BusinessDetailsResponse } from '../api/businessDetails';
 
 vi.mock('../api/businessDetails', () => ({
@@ -11,11 +12,19 @@ vi.mock('../api/businessDetails', () => ({
   updateBusinessDetails: vi.fn(),
 }));
 
+vi.mock('../api/content', async () => ({
+  ...(await vi.importActual<typeof import('../api/content')>('../api/content')),
+  uploadContentImage: vi.fn(),
+}));
+
+type PickedAsset = { url: string; original_url?: string | null };
+const picker = vi.hoisted(() => ({ asset: { url: '/storage/picked.png' } as PickedAsset }));
+
 vi.mock('../hooks/usePageTitle', () => ({ usePageTitle: () => {} }));
 vi.mock('../components/MediaPicker', () => ({
-  MediaPicker: ({ open, onPick }: { open: boolean; onPick: (a: { url: string }) => void }) =>
+  MediaPicker: ({ open, onPick }: { open: boolean; onPick: (a: PickedAsset) => void }) =>
     (open ? (
-      <button type="button" data-testid="media-picker-stub" onClick={() => onPick({ url: '/storage/picked.png' })}>
+      <button type="button" data-testid="media-picker-stub" onClick={() => onPick(picker.asset)}>
         Pick
       </button>
     ) : null),
@@ -330,6 +339,7 @@ describe('Business Details — enhancements', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(api.getBusinessDetails).mockResolvedValue(mockResponse());
+    picker.asset = { url: '/storage/picked.png' };
   });
 
   afterEach(() => {
@@ -445,6 +455,58 @@ describe('Business Details — enhancements', () => {
     await waitFor(() => {
       expect(screen.queryByTestId('business-image-preview-logo')).toBeNull();
     });
+  });
+
+  function brandOnly(...keys: string[]) {
+    const brandFields = keys.map((key) => (
+      { key, label: key, type: 'image', group: 'General', description: null, value: '', used_by: [] }
+    ));
+    return mockResponse({
+      sections: [{ id: 'brand', title: 'Brand', description: 'Brand', fields: brandFields }],
+      fields: brandFields,
+    });
+  }
+
+  it('uploads a logo straight to the server, which keeps its own shape', async () => {
+    vi.mocked(api.getBusinessDetails).mockResolvedValue(brandOnly('logo'));
+    vi.mocked(contentApi.uploadContentImage).mockResolvedValue({ url: '/storage/site/brand/logo/new.png' });
+
+    renderPage();
+    await screen.findByTestId('business-details-form');
+    const file = new File([new Uint8Array([0x89, 0x50])], 'logo.png', { type: 'image/png' });
+    fireEvent.change(screen.getByTestId('business-image-file-logo'), { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('business-image-preview-logo').getAttribute('src')).toBe('/storage/site/brand/logo/new.png');
+    });
+    expect(contentApi.uploadContentImage).toHaveBeenCalledWith('logo', 'shared', file);
+    expect(await screen.findByTestId('business-details-savebar')).toHaveTextContent(/1 unsaved change/);
+  });
+
+  it('previews the full picture when a brand picture comes from the library', async () => {
+    vi.mocked(api.getBusinessDetails).mockResolvedValue(brandOnly('og_image'));
+    picker.asset = { url: '/storage/library/images/crop.jpg', original_url: '/storage/library/images/masters/full.png' };
+
+    renderPage();
+    await screen.findByTestId('business-details-form');
+    fireEvent.click(screen.getByTestId('business-image-pick-og_image'));
+    fireEvent.click(await screen.findByTestId('media-picker-stub'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('business-image-preview-og_image').getAttribute('src')).toBe('/storage/library/images/masters/full.png');
+    });
+  });
+
+  it('offers Upload only on the four brand pictures', async () => {
+    vi.mocked(api.getBusinessDetails).mockResolvedValue(brandOnly('logo', 'logo_dark', 'favicon', 'og_image', 'default_item_image'));
+
+    renderPage();
+    await screen.findByTestId('business-details-form');
+    for (const key of ['logo', 'logo_dark', 'favicon', 'og_image']) {
+      expect(screen.getByTestId(`business-image-upload-${key}`)).toBeTruthy();
+    }
+    expect(screen.queryByTestId('business-image-upload-default_item_image')).toBeNull();
+    expect(screen.getByTestId('business-image-slot-logo_dark').className).toMatch(/--dark/);
   });
 
   it('keeps Save reachable once something changes, and hides it again after', async () => {

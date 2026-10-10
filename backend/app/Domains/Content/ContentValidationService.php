@@ -34,6 +34,10 @@ final class ContentValidationService
         'homepage_categories' => ['link', 'image_url'],
     ];
 
+    public function __construct(
+        private readonly BrandImages $brandImages,
+    ) {}
+
     public function normalizeForWrite(string $key, string $scope, mixed $value): string
     {
         $this->assertScopeAllowed($key, $scope);
@@ -48,6 +52,12 @@ final class ContentValidationService
 
         if ($key === 'primary_color') {
             return $this->normalizePrimaryColor($value);
+        }
+
+        // Logo, dark logo, tab icon, link preview: a stored picture is redrawn
+        // in the shape its slot shows (2026-10-10), whichever screen chose it.
+        if (BrandImages::handles($key)) {
+            return $this->brandImages->normalize($key, $value);
         }
 
         if ($key === 'hero_slides') {

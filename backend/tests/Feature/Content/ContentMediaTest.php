@@ -111,21 +111,27 @@ class ContentMediaTest extends TestCase
 
         // The real publish path for a brand image: Media Library "use as",
         // which writes the shared business record.
-        $this->postJson('/api/admin/media/'.$res['media_id'].'/use-as', ['key' => 'logo'])
+        $this->postJson('/api/admin/media/' . $res['media_id'] . '/use-as', ['key' => 'logo'])
             ->assertOk();
 
-        $this->assertSame($res['url'], SiteSetting::get('logo'));
+        // Redrawn whole from the library master (2026-10-10), not the 4:3
+        // menu crop: an 800×600 picture stays 800×600.
+        $logo = (string) SiteSetting::get('logo');
+        $this->assertStringStartsWith('/storage/site/brand/logo/', $logo);
+        $size = getimagesize(storage_path('app/public/' . substr($logo, strlen('/storage/'))));
+        $this->assertSame([800, 600], [$size[0] ?? null, $size[1] ?? null]);
 
         foreach (['website', 'order_app'] as $app) {
-            $public = $this->getJson('/api/content?app='.$app.'&locale=en')
+            $public = $this->getJson('/api/content?app=' . $app . '&locale=en')
                 ->assertOk()
                 ->json('content');
-            $this->assertSame($res['url'], $public['logo'] ?? null, $app);
+            $this->assertSame($logo, $public['logo'] ?? null, $app);
         }
 
         foreach (['url', 'thumb_url', 'original_url', 'image_webp_url', 'thumb_webp_url'] as $field) {
             $this->deleteStorageUrl($res[$field] ?? null);
         }
+        $this->deleteStorageUrl($logo);
     }
 
     public function test_hero_json_embed_upload_returns_url_without_wiping_json(): void

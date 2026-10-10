@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Image as ImageIcon } from 'lucide-react';
+import { Image as ImageIcon, Upload } from 'lucide-react';
 import { ApiRequestError } from '@shared/api';
 import {
   getBusinessDetails,
@@ -12,12 +12,21 @@ import {
 } from '../api/businessDetails';
 import { PageHeader, PageShell, Btn } from '../components/SharedUI';
 import { MediaPicker } from '../components/MediaPicker';
+import { uploadContentImage } from '../api/content';
 import type { MediaAsset } from '../api/media';
 import { ScopeMismatchNotices, type ScopeMismatch } from '../components/ScopeMismatchNotices';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast } from '../components/ui';
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'failed';
+
+/**
+ * Pictures the server keeps in their own shape (BrandImages, 2026-10-10):
+ * the logos whole and see-through, the tab icon on a clear square, the link
+ * preview at 1200 × 630. Each gets an Upload button that sends the file as
+ * it is, and a pick from the Media Library previews the full picture.
+ */
+const BRAND_PICTURE_KEYS = new Set(['logo', 'logo_dark', 'favicon', 'og_image']);
 
 function applyResponse(
   res: Awaited<ReturnType<typeof getBusinessDetails>>,
@@ -95,6 +104,8 @@ export function BusinessDetailsPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   /** Which image field the Media Library is picking for. */
   const [pickerKey, setPickerKey] = useState<string | null>(null);
+  /** Which brand picture is uploading. */
+  const [uploadingKey, setUploadingKey] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -116,6 +127,20 @@ export function BusinessDetailsPage() {
   useEffect(() => {
     void load();
   }, []);
+
+  const uploadBrandPicture = async (key: string, file: File) => {
+    setUploadingKey(key);
+    try {
+      const res = await uploadContentImage(key, 'shared', file);
+      setDrafts((d) => ({ ...d, [key]: res.url }));
+      setSaveStatus((st) => (st === 'saved' ? 'idle' : st));
+      success('Picture ready. Press Save to use it.');
+    } catch (e) {
+      error(e instanceof Error ? e.message : 'Upload failed');
+    } finally {
+      setUploadingKey(null);
+    }
+  };
 
   const dirty = fields.filter((f) => (drafts[f.key] ?? '') !== (f.value ?? ''));
   const isDirty = dirty.length > 0;
@@ -346,6 +371,10 @@ export function BusinessDetailsPage() {
                       }}
                       mismatches={mismatches}
                       onPickImage={() => setPickerKey(field.key)}
+                      onUploadImage={BRAND_PICTURE_KEYS.has(field.key)
+                        ? (file) => void uploadBrandPicture(field.key, file)
+                        : undefined}
+                      uploading={uploadingKey === field.key}
                     />
                   ))}
                 </div>
@@ -388,7 +417,10 @@ export function BusinessDetailsPage() {
             const key = pickerKey;
             setPickerKey(null);
             if (!key) return;
-            setDrafts((d) => ({ ...d, [key]: asset.url }));
+            // A brand picture is redrawn from the full-size master on Save;
+            // preview that, not the 4:3 menu crop.
+            const url = BRAND_PICTURE_KEYS.has(key) ? (asset.original_url || asset.url) : asset.url;
+            setDrafts((d) => ({ ...d, [key]: url }));
             setSaveStatus((st) => (st === 'saved' ? 'idle' : st));
           }}
         />
@@ -429,6 +461,8 @@ function FieldEditor({
   onChange,
   mismatches,
   onPickImage,
+  onUploadImage,
+  uploading = false,
 }: {
   field: BusinessDetailsField;
   value: string;
@@ -436,9 +470,13 @@ function FieldEditor({
   onChange: (v: string) => void;
   mismatches: ScopeMismatch[];
   onPickImage?: () => void;
+  /** Brand pictures only: send a file to be drawn in the slot's own shape. */
+  onUploadImage?: (file: File) => void;
+  uploading?: boolean;
 }) {
   const keyboard = keyboardFor(field);
   const isSquarePreview = field.key === 'favicon' || field.key === 'default_item_image';
+  const uploadRef = useRef<HTMLInputElement>(null);
 
   return (
     <label
@@ -492,7 +530,7 @@ function FieldEditor({
       ) : field.type === 'image' ? (
         <div className="business-details-image">
           <span
-            className={`business-details-image-preview${isSquarePreview ? ' business-details-image-preview--square' : ''}`}
+            className={`business-details-image-preview${isSquarePreview ? ' business-details-image-preview--square' : ''}${field.key === 'logo_dark' ? ' business-details-image-preview--dark' : ''}`}
             data-testid={`business-image-slot-${field.key}`}
           >
             {value ? (
@@ -516,6 +554,32 @@ function FieldEditor({
               aria-invalid={Boolean(error)}
             />
             <span className="business-details-image-actions">
+              {onUploadImage ? (
+                <>
+                  <input
+                    ref={uploadRef}
+                    type="file"
+                    accept="image/png,image/webp,image/jpeg,.png,.webp,.jpg,.jpeg"
+                    hidden
+                    data-testid={`business-image-file-${field.key}`}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      e.target.value = '';
+                      if (file) onUploadImage(file);
+                    }}
+                  />
+                  <Btn
+                    type="button"
+                    variant="secondary"
+                    small
+                    disabled={uploading}
+                    onClick={() => uploadRef.current?.click()}
+                    data-testid={`business-image-upload-${field.key}`}
+                  >
+                    <Upload size={14} aria-hidden /> {uploading ? 'Uploading…' : 'Upload'}
+                  </Btn>
+                </>
+              ) : null}
               <Btn
                 type="button"
                 variant="secondary"

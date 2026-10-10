@@ -176,9 +176,40 @@ async function convertHeicToJpeg(file: File): Promise<File> {
   return convertHeicWithWasm(file);
 }
 
+/** Only these formats can carry see-through pixels; a JPEG never does. */
+function mayBeSeeThrough(file: File): boolean {
+  return /image\/(png|webp|gif)/i.test(file.type || '') || /\.(png|webp|gif)$/i.test(file.name || '');
+}
+
+/**
+ * Does any pixel let the background through? Drawn small and read back: a
+ * logo or cut-out is clear somewhere, a photo is opaque everywhere. A canvas
+ * that cannot be read counts as opaque, which is the old behaviour.
+ */
+function hasTransparency(source: SizedSource): boolean {
+  try {
+    const size = 64;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (!ctx || typeof ctx.getImageData !== 'function') return false;
+    source.draw(ctx, size, size);
+    const { data } = ctx.getImageData(0, 0, size, size);
+    for (let i = 3; i < data.length; i += 4) {
+      if (data[i] < 255) return true;
+    }
+  } catch {
+    // Unreadable canvas: treat as opaque.
+  }
+  return false;
+}
+
 /**
  * Downscale to MASTER_MAX_EDGE max edge when needed. Smaller images pass through.
- * Output is JPEG @ 0.9 — same quality budget the server uses for masters.
+ * Output is JPEG @ 0.9 — same quality budget the server uses for masters —
+ * except a picture with see-through parts, which stays a PNG (2026-10-10): a
+ * big logo flattened onto white here could never be a see-through logo again.
  */
 export async function downscaleImageForUpload(file: File): Promise<File> {
   if (!file.type.startsWith('image/') && !/\.(jpe?g|png|webp)$/i.test(file.name || '')) {
@@ -203,23 +234,31 @@ export async function downscaleImageForUpload(file: File): Promise<File> {
 
     const targetW = Math.max(1, Math.round(srcW * scale));
     const targetH = Math.max(1, Math.round(srcH * scale));
+    const keepAlpha = mayBeSeeThrough(file) && hasTransparency(source);
     const canvas = document.createElement('canvas');
     canvas.width = targetW;
     canvas.height = targetH;
     const ctx = canvas.getContext('2d');
     if (!ctx) return file;
 
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, targetW, targetH);
+    if (!keepAlpha) {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, targetW, targetH);
+    }
     source.draw(ctx, targetW, targetH);
 
+    const type = keepAlpha ? 'image/png' : 'image/jpeg';
     const blob = await new Promise<Blob | null>((resolve) => {
-      canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.9);
+      if (keepAlpha) {
+        canvas.toBlob((b) => resolve(b), type);
+      } else {
+        canvas.toBlob((b) => resolve(b), type, 0.9);
+      }
     });
     if (!blob) return file;
 
     const base = (file.name || 'photo').replace(/\.[^.]+$/, '') || 'photo';
-    return new File([blob], `${base}.jpg`, { type: 'image/jpeg' });
+    return new File([blob], `${base}.${keepAlpha ? 'png' : 'jpg'}`, { type });
   } finally {
     source.close();
   }

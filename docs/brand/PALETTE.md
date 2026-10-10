@@ -145,6 +145,49 @@ the KDS accent is the dark-surface rust `#C56F3D`. The migration
 image still naming an old file; `tests/Feature/Content/BrandIconsTest.php` checks every
 manifest icon is a real image of its stated size and every touch icon is opaque.
 
+### An uploaded logo, tab icon or link preview (2026-10-10)
+
+Owner, 2026-10-10: "Fix". The four brand pictures went through the menu-photo path,
+which cuts every upload to a 4:3 crop on white: a wide see-through logo came out as a
+white box holding its middle third, a square icon lost its top and bottom, a 1200 × 630
+preview lost its sides. Each is now kept in the shape its slot shows
+(`App\Domains\Content\BrandImages`):
+
+| Setting | Saved as |
+|---|---|
+| `logo`, `logo_dark` | the whole picture, see-through parts kept, PNG, up to 1200 px on its longest side (a photographed JPEG logo stays a JPEG) |
+| `favicon` | centred on a clear square, PNG, up to 512 × 512 |
+| `og_image` | 1200 × 630 JPEG, trimmed from the middle when the picture is another shape |
+
+Files go to `storage/app/public/site/brand/{logo,icon,preview}/`, each with a Media
+Library row (source `brand`), so the library lists them and the prune keeps them while
+a setting uses them. The same picture chosen twice reuses its file.
+
+Every way of setting them ends in the same place:
+
+- **Business Details → Brand → Upload** sends the file as it is to
+  `POST /api/admin/content/upload` (`scope=shared`), which draws it at once.
+- **Choose picture** (Media Library) and the library's **Use as** go through
+  `ContentValidationService::normalizeForWrite`, which redraws any of our stored
+  pictures from the library's full-size master. A see-through upload keeps a PNG
+  master since this change (`MenuImageProcessor::storeMaster(..., keepTransparency)`),
+  and the same PNG uploaded again gives an older row a see-through master. Admin
+  shrinks a picture over 3200 px before sending it, and now keeps it a PNG when it has
+  see-through parts.
+- **Replace file** on the logo's own row in the Media Library writes the library's 4:3
+  crop and points every use at it; `MediaUsageResolver::rewriteUrlMap` sends a brand
+  setting through the same redraw, from the new master (a PNG when see-through).
+  A rendition is a `brand` row with no master, which is how a replaced one is told apart.
+- Blank (the shipped files), a file under `/brand/`, and an address on another site
+  are stored as they are. So is a stored file that will not decode.
+
+The migration `2026_10_10_210000_brand_pictures_in_their_own_shape.php` redraws a saved
+value that still names a 4:3 crop. A master made before 2026-10-10 was flattened onto
+white, so such a logo gets its whole shape back but not its see-through background:
+upload the PNG again for that. Tests: `tests/Feature/Content/BrandImagesTest.php`.
+
+Pack logos for labels are separate and already kept as uploaded (`LabelMedia`).
+
 ## Amma
 
 The Amma sub-brand (home-made lines, Rihaakuru first) prints a rust tile: a rounded

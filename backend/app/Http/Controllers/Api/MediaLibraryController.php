@@ -387,6 +387,10 @@ class MediaLibraryController extends Controller
             'content.updated',
             ['source' => 'media.use_as', 'media_id' => (int) $media->id],
         );
+        // The logo, dark logo, tab icon and link preview are redrawn in their
+        // own shape on the way in (BrandImages), so what was stored is not
+        // necessarily this picture's own URL.
+        $url = (string) (SiteSetting::getScoped($key, 'shared', 'en') ?? $url);
 
         $this->audit->log(
             'media.use_as',

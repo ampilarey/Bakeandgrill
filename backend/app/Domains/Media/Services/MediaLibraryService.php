@@ -362,6 +362,9 @@ final class MediaLibraryService
             if ($collectionIds !== []) {
                 $existing->collections()->syncWithoutDetaching($collectionIds);
             }
+            if ($type === 'image') {
+                $this->keepTransparentMaster($existing, $file);
+            }
 
             return ['asset' => $existing->fresh(['collections']), 'deduped' => true];
         }
@@ -379,6 +382,38 @@ final class MediaLibraryService
         }
 
         return ['asset' => $asset->fresh(['collections']), 'deduped' => false];
+    }
+
+    /**
+     * The same see-through PNG uploaded again finds the row made before
+     * 2026-10-10, whose master was flattened onto white, and would keep it.
+     * It gets a see-through master now. The old JPEG master stays on disk:
+     * an item photo taken from the library may point at it.
+     */
+    private function keepTransparentMaster(Media $existing, UploadedFile $file): void
+    {
+        $master = strtolower((string) (parse_url((string) $existing->original_url, PHP_URL_PATH) ?: ''));
+        if (str_ends_with($master, '.png')) {
+            return;
+        }
+        $mime = strtolower((string) $file->getMimeType());
+        if (!str_contains($mime, 'png') && !str_contains($mime, 'webp')) {
+            return;
+        }
+
+        try {
+            $image = $this->images->decode($file);
+            $seeThrough = MenuImageProcessor::hasTransparency($image);
+            imagedestroy($image);
+            if (!$seeThrough) {
+                return;
+            }
+
+            $path = $this->images->storeMaster($file, 'library/images/masters', keepTransparency: true);
+            $existing->forceFill(['original_url' => '/storage/' . ltrim($path, '/')])->save();
+        } catch (\Throwable) {
+            // The upload still succeeds with the master it had.
+        }
     }
 
     public function mediaTypeFromMime(string $mime): ?string
@@ -421,7 +456,9 @@ final class MediaLibraryService
         $dir = 'library/images';
         $processed = $this->images->storeProcessedPair($file, $dir);
         $thumb = $this->images->storeThumbnailPair($file, $dir . '/thumbs');
-        $masterPath = $this->images->storeMaster($file, $dir . '/masters');
+        // A see-through upload keeps a PNG master, so "Use as" logo can still
+        // be see-through (2026-10-10); the crop and thumbnail stay JPEG.
+        $masterPath = $this->images->storeMaster($file, $dir . '/masters', keepTransparency: true);
         $path = $processed['path'];
         $absolute = Storage::disk('public')->path($path);
         [$width, $height] = $this->imageSize($absolute);

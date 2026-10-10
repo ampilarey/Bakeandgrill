@@ -106,6 +106,14 @@ and the banner pattern (`brand/flame-pattern.svg`) come from `scripts/brand-flam
 colours follow `docs/brand/PALETTE.md` § Menu colours: no hue-from-id tints, prices as
 "MVR 12.50".
 
+An uploaded logo, dark logo, browser tab icon or link preview keeps its own shape (owner,
+2026-10-10): `App\Domains\Content\BrandImages` saves the logos whole and see-through (PNG,
+up to 1200 px), the tab icon on a clear square (512) and the preview at 1200 × 630, never
+the 4:3 menu crop on white. Every write of those keys passes through
+`ContentValidationService::normalizeForWrite`, which redraws a library picture from its
+full-size master; never route them through `MenuImageProcessor` crops. Details:
+`docs/brand/PALETTE.md` § An uploaded logo, tab icon or link preview.
+
 To regenerate the hex-in-style baseline after migrating a page:
 
 ```bash

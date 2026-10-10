@@ -111,11 +111,106 @@ class MenuImageProcessor
     /**
      * Store a high-res master (full frame, not forced to 4:3).
      *
+     * With $keepTransparency a picture that has see-through parts is kept as
+     * a PNG with them intact (owner, 2026-10-10): the Media Library and the
+     * website editor are where a logo is uploaded, and a JPEG master flattened
+     * it onto white for good, so nothing made from it later could be a logo.
+     *
      * @return string Relative storage path
      */
-    public function storeMaster(UploadedFile $file, string $directory): string
+    public function storeMaster(UploadedFile $file, string $directory, bool $keepTransparency = false): string
     {
-        return $this->writeBinary($this->processMasterJpeg($file), $directory);
+        [$bytes, $extension] = $this->processMaster($file, $keepTransparency);
+
+        return $this->writeBinary($bytes, $directory, $extension);
+    }
+
+    /**
+     * The master's bytes and extension: a PNG when $keepTransparency and the
+     * picture has see-through parts, else the JPEG master.
+     *
+     * @return array{0: string, 1: string}
+     */
+    public function processMaster(UploadedFile $file, bool $keepTransparency = false): array
+    {
+        if ($keepTransparency) {
+            $png = $this->processMasterPngIfTransparent($file);
+            if ($png !== null) {
+                return [$png, 'png'];
+            }
+        }
+
+        return [$this->processMasterJpeg($file), 'jpg'];
+    }
+
+    /**
+     * The decoded picture with the upload guards applied (HEIC refused, size
+     * limits, EXIF orientation), for a caller that draws its own rendition.
+     * The caller destroys it.
+     */
+    public function decode(UploadedFile $file): \GdImage
+    {
+        $image = $this->loadUploaded($file);
+        imagepalettetotruecolor($image);
+
+        return $image;
+    }
+
+    /**
+     * Does any pixel let the background through? A grid of samples, the way
+     * CutoutImageProcessor checks: a see-through logo is clear at its edges,
+     * which the grid always crosses.
+     */
+    public static function hasTransparency(\GdImage $image): bool
+    {
+        $w = imagesx($image);
+        $h = imagesy($image);
+        $stepX = max(1, intdiv($w, 64));
+        $stepY = max(1, intdiv($h, 64));
+        for ($y = 0; $y < $h; $y += $stepY) {
+            for ($x = 0; $x < $w; $x += $stepX) {
+                if (((imagecolorat($image, $x, $y) >> 24) & 0x7F) > 0) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /** A see-through picture as a PNG master within MASTER_MAX_EDGE; null when it has no see-through parts. */
+    private function processMasterPngIfTransparent(UploadedFile $file): ?string
+    {
+        $image = $this->decode($file);
+
+        try {
+            if (!self::hasTransparency($image)) {
+                return null;
+            }
+
+            [$srcW, $srcH] = $this->dimensions($image);
+            $scale = min(1, self::MASTER_MAX_EDGE / max($srcW, $srcH));
+            $targetW = max(1, (int) round($srcW * $scale));
+            $targetH = max(1, (int) round($srcH * $scale));
+
+            $out = imagecreatetruecolor($targetW, $targetH);
+            if ($out === false) {
+                throw new RuntimeException('Could not allocate image canvas.');
+            }
+            imagealphablending($out, false);
+            imagesavealpha($out, true);
+            imagefill($out, 0, 0, (int) imagecolorallocatealpha($out, 0, 0, 0, 127));
+            imagecopyresampled($out, $image, 0, 0, 0, 0, $targetW, $targetH, $srcW, $srcH);
+
+            ob_start();
+            imagepng($out, null, 6);
+            $png = (string) ob_get_clean();
+            imagedestroy($out);
+
+            return $png !== '' ? $png : null;
+        } finally {
+            imagedestroy($image);
+        }
     }
 
     /**

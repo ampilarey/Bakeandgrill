@@ -340,7 +340,9 @@ final class MediaEditor
 
         $jpeg = $this->images->processToJpeg($file);
         $thumbJpeg = $this->images->processThumbnailJpeg($file);
-        $masterJpeg = $this->images->processMasterJpeg($file);
+        // A see-through replacement keeps a PNG master (2026-10-10), so a
+        // logo redrawn from it stays see-through.
+        [$masterBytes, $masterExt] = $this->images->processMaster($file, keepTransparency: true);
 
         $dir = trim(str_replace('\\', '/', (string) dirname($oldPath)), '.');
         if ($dir === '' || $dir === '/') {
@@ -354,8 +356,8 @@ final class MediaEditor
 
         $thumbPath = 'library/images/thumbs/' . Str::uuid()->toString() . '.jpg';
         Storage::disk('public')->put($thumbPath, $thumbJpeg);
-        $masterPath = 'library/images/masters/' . Str::uuid()->toString() . '.jpg';
-        Storage::disk('public')->put($masterPath, $masterJpeg);
+        $masterPath = 'library/images/masters/' . Str::uuid()->toString() . '.' . $masterExt;
+        Storage::disk('public')->put($masterPath, $masterBytes);
 
         $imageWebp = null;
         $thumbWebp = null;
