@@ -75,11 +75,13 @@ Owner, on the list of what else the bot could do: "Up to u".
 | 💬 Complaints, `/complaints` | Open complaint-box entries, newest first: Reply (asks for the words, texts the customer through `messageCustomer`, and marks it taken up), Taking it up, Resolved. Owner-only (`complaints.manage`). The new-complaint alert arrives as this card. |
 | 🔎 Customer, `/customer 7820288` | A phone number or a name: tier and points to spend, orders and spend, last visit, credit owed and limit, deposit, the last three orders. Several matches give a choice. |
 
-**Day report:** when the last open shift closes, linked owners (and
-managers with `reports.view`, since step 4) get the day's report: the Today figures, each shift closed today with its drawer
-difference, and refunds still owed. Once a day; switched on its row in
-Admin → System → Notifications → Messages → Telegram only (on by default;
-it was on the Telegram page until 2026-10-10).
+**Day report:** when the last open shift closes, the row's audience (owners
+and whoever can see reports until the owner changes it under Edit → Who gets
+it; linked people only) gets the day's report: the Today figures, each shift
+closed today with its drawer difference, and refunds still owed. Once a day;
+switched on its row in Admin → System → Notifications → Messages → Telegram
+only (on by default; it was on the Telegram page until 2026-10-10), and held
+like every Telegram alert when Rules → "Telegram alerts" is off.
 
 ### Discount approval by button
 
@@ -104,9 +106,9 @@ the email copy. A text reaches Telegram when:
 
 1. Admin → System → Notifications → Rules → "Telegram alerts" is on (default
    on; it was on the Telegram page until 2026-10-10);
-2. its type is in the `staff` category of `SmsTypeRegistry`, or is
-   `discount_approval_otp`, and its Telegram switch on its row in
-   Notifications → Messages is on;
+2. its row in Notifications → Messages has a Telegram switch
+   (`SmsTypeRegistry::channels()`: the `staff` category, the discount
+   approval code, and the three Telegram-only rows) and it is on;
 3. the person's channels include Telegram (Notifications → People → How each
    person gets alerts; see `docs/NOTIFICATION_CHANNELS.md`);
 4. they are an active staff member with a usable link (an enabled bot that
@@ -352,8 +354,9 @@ short; each tool shows only to those with its permission.
 | 📣 Message staff, `/tell kitchen Gas comes at 3` | A note "From Ahmed" to everyone, managers, cashiers, kitchen, drivers, or one person by first name; the buttons ask who, then the words. Says who it reached. Audited `telegram.message_staff`. | `telegram.manage` |
 
 **Two Telegram-only alerts** (rows under "Telegram only" in Admin → System →
-Notifications → Messages, both on by default), to linked owners and managers
-who can see reports, the same people as the day report:
+Notifications → Messages, both on by default), to each row's audience: owners
+and whoever can see reports, the same as the day report, until the owner
+changes it under the row's Edit → Who gets it (linked people only):
 
 - **Order cancelled at the till**: who cancelled it, total, items, the
   reason, and whether money had been paid ("check it was refunded").

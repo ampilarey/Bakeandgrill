@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Sms\Services;
 
+use App\Domains\Notifications\Support\AlertAudience;
 use App\Domains\Notifications\Support\NotificationChannels;
+use App\Domains\Notifications\Support\SmsTypeRegistry;
 use App\Models\Order;
 use App\Models\SmsContact;
 use App\Models\StaffNotificationPref;
@@ -16,10 +18,16 @@ use Illuminate\Support\Facades\Log;
 /**
  * Resolves which recipients should receive an SMS notification for a given order event.
  *
- * Priority:
- *   1. Staff on shift that match order type + menu group filters
- *   2. Active external SmsContacts that match order type + time window
- *   3. Fallback staff (is_fallback=true) if nobody else matched
+ * Who gets an order alert is the alert's audience (AlertAudience, Admin →
+ * Notifications → the row's Edit; re-audit 2026-10-10):
+ *   1. "Staff on shift" (the default): staff with a shift covering now whose
+ *      own order-alert settings match (switch on, order type, station);
+ *   2. the other groups and the named people on the row, on shift or not;
+ *   3. typed numbers on the row;
+ *   4. active external SmsContacts that match order type + time window
+ *      (Notifications → People → Extra numbers);
+ *   5. fallback staff (is_fallback=true) if nobody else matched.
+ * Someone the row excepts never gets it, whichever list they are in.
  */
 class StaffNotificationRoutingService
 {
@@ -27,27 +35,54 @@ class StaffNotificationRoutingService
         private readonly StaffScheduleResolver $scheduleResolver,
     ) {}
 
+    /** The row in Admin → Notifications an order event is. */
+    public static function typeFor(string $eventType): string
+    {
+        return SmsTypeRegistry::get('staff_' . $eventType) !== null ? 'staff_' . $eventType : 'staff_notification';
+    }
+
     /**
      * @return Collection<int, array{phone: string, recipient_type: string, recipient_id: int|null, fallback_used: bool}>
      */
     public function resolve(Order $order, string $eventType, Carbon $at): Collection
     {
+        $type = self::typeFor($eventType);
+        $audience = AlertAudience::for($type) ?? AlertAudience::normalize(['groups' => [AlertAudience::GROUP_ON_SHIFT]]);
+        $except = $audience['except'];
         $recipients = collect();
 
-        // 1. Staff recipients: on shift + prefs match
-        $staffRecipients = $this->resolveStaffRecipients($order, $at);
-        $recipients = $recipients->merge($staffRecipients);
+        // 1. Staff on shift whose prefs match
+        if (in_array(AlertAudience::GROUP_ON_SHIFT, $audience['groups'], true)) {
+            $recipients = $recipients->merge($this->resolveStaffRecipients($order, $at, $except));
+        }
 
-        // 2. External SmsContact recipients: active window + order type match
-        $externalRecipients = $this->resolveExternalContacts($order, $at);
-        $recipients = $recipients->merge($externalRecipients);
+        // 2. Everyone else the row names, on shift or not
+        $named = AlertAudience::users($type, ['skip' => [AlertAudience::GROUP_ON_SHIFT], 'at' => $at])
+            ->map(fn (User $user) => NotificationChannels::addressFor($user) === null ? null : [
+                'phone' => NotificationChannels::addressFor($user),
+                'recipient_type' => 'staff',
+                'recipient_id' => (int) $user->id,
+                'fallback_used' => false,
+            ])
+            ->filter()
+            ->values();
+        $recipients = $recipients->merge($named);
 
-        // Deduplicate by phone
+        // 3. Typed numbers, the shop phone and typed emails on the row
+        $typed = AlertAudience::addresses($type, ['skip' => array_diff($audience['groups'], [AlertAudience::GROUP_BUSINESS_PHONE])])
+            ->reject(fn (string $to) => $named->contains('phone', $to))
+            ->map(fn (string $to) => ['phone' => $to, 'recipient_type' => 'contact', 'recipient_id' => null, 'fallback_used' => false]);
+        $recipients = $recipients->merge($typed);
+
+        // 4. External SmsContact recipients: active window + order type match
+        $recipients = $recipients->merge($this->resolveExternalContacts($order, $at));
+
+        // Deduplicate by address
         $recipients = $recipients->unique('phone')->values();
 
-        // 3. If nobody matched, fall back
+        // 5. If nobody matched, fall back
         if ($recipients->isEmpty()) {
-            $fallback = $this->resolveFallback($order);
+            $fallback = $this->resolveFallback($order, $except);
             if ($fallback->isNotEmpty()) {
                 Log::info('StaffNotificationRouting: using fallback recipients', [
                     'order_id' => $order->id,
@@ -62,7 +97,8 @@ class StaffNotificationRoutingService
         return $recipients;
     }
 
-    private function resolveStaffRecipients(Order $order, Carbon $at): Collection
+    /** @param list<int> $except */
+    private function resolveStaffRecipients(Order $order, Carbon $at, array $except): Collection
     {
         // Get menu group IDs from the order's items
         $menuGroupIds = $this->extractMenuGroupIds($order);
@@ -80,7 +116,12 @@ class StaffNotificationRoutingService
             ->get()
             ->keyBy('user_id');
 
-        return $onShift->filter(function (User $user) use ($prefs, $order, $menuGroupIds) {
+        return $onShift->filter(function (User $user) use ($prefs, $order, $menuGroupIds, $except) {
+            // Excepted on the alert's row: never, whatever their own settings say.
+            if (in_array((int) $user->id, $except, true) || !$user->is_active) {
+                return false;
+            }
+
             // No phone: email or Telegram instead, when either reaches them
             // (owner, 2026-10-10). Before, they got no order alerts at all.
             if (NotificationChannels::addressFor($user) === null) {
@@ -148,7 +189,8 @@ class StaffNotificationRoutingService
             ->values();
     }
 
-    private function resolveFallback(Order $order): Collection
+    /** @param list<int> $except */
+    private function resolveFallback(Order $order, array $except): Collection
     {
         $fallbackPrefs = StaffNotificationPref::where('is_fallback', true)
             ->orderBy('fallback_priority', 'desc')
@@ -156,7 +198,7 @@ class StaffNotificationRoutingService
             ->get();
 
         return $fallbackPrefs
-            ->filter(fn ($pref) => $pref->user && $pref->user->is_active && NotificationChannels::addressFor($pref->user) !== null)
+            ->filter(fn ($pref) => $pref->user && $pref->user->is_active && !in_array((int) $pref->user_id, $except, true) && NotificationChannels::addressFor($pref->user) !== null)
             ->map(fn ($pref) => [
                 'phone' => NotificationChannels::addressFor($pref->user),
                 'recipient_type' => 'fallback',

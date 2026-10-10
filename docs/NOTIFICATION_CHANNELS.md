@@ -13,9 +13,9 @@ Telegram alerts is on **Admin → System → Notifications**:
 
 | Tab | What is there | Was |
 |---|---|---|
-| Messages | Every message, one row each: its SMS, Email and Telegram switches, who gets it, when it goes ("When it sends" numbers under Edit), who may send it by hand, its wording and "Send me a test". The three Telegram-only alerts (day report, order cancelled at the till, cash taken out) are rows under "Telegram only". | SMS → Control Center, SMS → Automations, Settings → Notifications, Telegram → Alerts |
-| People | Who gets order alerts, how each person gets their alerts, extra numbers that are not staff | SMS → Recipients, Control Center → Who gets alerts |
-| Rules | Stop all SMS (owner), Telegram alerts on or off, the spending limit, quiet hours, limits, email copies, how long the log is kept | Control Center → Rules & limits, Telegram → Alerts |
+| Messages | Every message, one row each: its SMS, Email and Telegram switches, who gets it (groups, people, exceptions, typed numbers and emails: "Who gets it" under Edit), when it goes ("When it sends" numbers under Edit), who may send it by hand, its wording and "Send me a test". The three Telegram-only alerts (day report, order cancelled at the till, cash taken out) are rows under "Telegram only". | SMS → Control Center, SMS → Automations, Settings → Notifications, Telegram → Alerts |
+| People | One card per person: their channels, what reaches them, the alerts that go to them (mute one, add one); By role: each role's channels and a link to the alerts that reach it; who gets order alerts; extra numbers that are not staff | SMS → Recipients, Control Center → Who gets alerts |
+| Rules | Stop all SMS (owner), Telegram alerts on or off, the spending limit, quiet hours, limits, the hourly email cap, how long the log is kept | Control Center → Rules & limits, Telegram → Alerts |
 | Log | Every message the system tried to send, and the staff order alerts with Resend | SMS → Audit Logs, the bottom of SMS → Automations |
 
 SMS & Messaging is **SMS campaigns** now: campaigns, past blasts, contacts and
@@ -40,9 +40,10 @@ difference, unstarted order, unread complaints, GST reminder days) refuses 0:
 off is the row. Migration `2026_10_10_120000_notifications_one_switch_per_alert`
 moved every old value across without changing what sends.
 
-Not folded (yet): the wholesale numbers on Settings → Credit accounts
-("Nudge a shop to report sales after", "Text owners about unreconciled stock
-after") still take 0 for off.
+The wholesale numbers that were on Settings → Credit accounts ("Nudge a shop
+to report sales after", "Text owners about unreconciled stock after", the
+credit reminder cadence) and the GST reminder days sit under their rows' Edit
+since the re-audit (below); Credit accounts and GST link to the rows.
 
 Old links land on the new page: `/sms?tab=control-center` and `automations`
 → Messages, `recipients` → People, `logs` → Log (a campaign's `campaign_id`
@@ -70,6 +71,95 @@ always did.
 - **Staff without a phone** get order alerts, shift reminders and "shift
   assigned" by email or Telegram (`NotificationChannels::addressFor()`); one
   nothing can reach is left out. Sent that way counts as sent in the log.
+
+## Who gets each alert (re-audit, 2026-10-10)
+
+Owner: "each notification need to be controlled separately for sms, email,
+telegram. And each user group settings must be able to control group wise and
+each staff separately."
+
+**Every row has its own switch per channel.** A row shows a switch for each
+channel it can go by (`SmsTypeRegistry::channels($entry)`: SMS and Email for
+every message, Telegram as well for staff and owner alerts and the discount
+approval code, Telegram alone for the three Telegram-only rows). A message
+the system also sends as an email of its own (order and payment confirmation,
+gift card, the catering emails) has an Email switch for that email:
+`SmsTypeRegistry::isEmailEnabled($type)` gates it, so off means no email. A
+row whose SMS is always on (sign-in codes) shows "Always on" for SMS and
+Email. The three "email copies" category switches (customers, staff,
+promotions) are gone; Rules → Emails keeps only the hourly cap.
+
+**Every staff and owner alert has an audience**
+(`App\Domains\Notifications\Support\AlertAudience`), stored as JSON in
+`sms_type_recipients.{type}`:
+
+| Part | What it holds |
+|---|---|
+| `groups` | `role:{slug}` (every active person in the role), `perm:{slug}` (everyone with the permission, from the curated `PERMISSION_GROUPS`: manages catering, approves refunds, sees reports, manages stock, manages complaints, approves a till), `on_shift` (the staff on shift when it happens, by their own order-alert switch), `catering_team` (the person handling the request, everyone who manages catering until someone does), `business_phone` (the shop's number, an address not a person) |
+| `users` | people who always get it, whatever the groups say |
+| `except` | people who never get it, even when a group includes them |
+| `phones` | typed numbers that are not staff (normalised to +960) |
+| `emails` | typed addresses that are not staff (`email:{address}` tokens; the alert goes by email only) |
+
+`AlertAudience::DEFAULT_GROUPS` says where each alert goes until the owner
+changes it (order alerts → on shift; stock, complaints, shifts, refunds,
+trade, GST → owners and managers; alerts about a till or a channel → the
+business phone; a locked account or an ops failure → owners only; a new
+catering request → whoever manages catering, then the handler; refund
+requests → whoever can approve refunds; the Telegram-only rows → owners and
+whoever can see reports). An alert not listed decides its recipient in code
+(the customer, the rostered person) and has no audience.
+
+`AlertAudience::addresses($type, $context)` is what a sender calls
+(`OwnerPhones::for()` delegates to it): each person's phone, or `user:{id}`
+when they have none, so the other channels reach them and a person nothing
+reaches is a `failed` log row rather than silence; then the shop phone, the
+typed numbers and `email:` tokens. `$context` carries `except` (the person who
+asked, for refunds), `handler` (the catering request's handler), `at` (the
+shift moment) and `skip` (groups the caller resolves itself: the order
+alerts' `on_shift` is resolved by `StaffNotificationRoutingService`, which
+adds the audience's roles, people, exceptions and numbers on top of the shift
+and the fallback staff; a muted person is not even a fallback). The
+`AudienceResolver` loads the active staff once (role, permissions, Telegram
+link) and gives `reach($user)`: the channels that can reach them today.
+
+**In Admin** (Messages → a row → Edit → Who gets it): chips for the groups
+with how many people each has, "Add a person who always gets it", "Add a
+person who never gets it", typed numbers and emails, "Goes to now" (the
+resolved names, each with the channels that reach them, and the addresses
+that are not people) and "Back to the usual people". People → a person's
+card → "Alerts" lists every alert that reaches them with Mute / Unmute / Add
+(the same audience, edited from the person's side); By role links to
+`/notifications/messages?to=role:manager` (`?to=user:12` for one person),
+which filters Messages to the alerts that reach that role or person. The
+Control Center API carries `channels`, `audience`, `audience_default`,
+`audience_custom`, `audience_people` and `audience_configurable` per row,
+and `audience_groups` and `staff_options` at the top; `PATCH
+/admin/sms/types/{key}` takes `audience` (null = back to the default; 422
+for an empty audience, an unknown group or a row without one),
+`email_enabled` (422 for a row with no email or an always-on row) and
+`telegram_enabled` (422 for a row with no Telegram). Routes and permissions
+did not change.
+
+**Duplicates removed.** The catering "notify phone / email" on Settings →
+Ordering (they became typed entries on the five catering staff rows, where
+they went); the three email copies switches; the wholesale and GST timing
+numbers on Credit accounts and GST (now "When it sends" on their rows, 0 no
+longer means off: the row is). Migration
+`2026_10_10_150000_notifications_audience_per_alert` moves every old choice
+across (old recipient modes → groups and people; "Staff: new customer" →
+the fallback staff who got it; an email switch that was off → Email off on
+each row it covered; a 0 → the row off and the default number), widens the
+log `to` column so a typed email fits, and leaves the old settings in place
+unread.
+
+Three things send to more people than before, by design: a simple catering
+web inquiry goes to the catering request audience, not only the old fallback
+phone; refund approvers and low-stock recipients without a phone get the
+alert by email or Telegram; the day report, till cancellation and cash-out
+alerts honour Rules → Telegram alerts like every other Telegram alert. One
+thing sends less: a catering customer's lifecycle and reminder emails went
+out twice (the message's own email and the copy); they go once now.
 
 ## The rule
 
@@ -101,8 +191,9 @@ role to Email + Telegram.
   promotion opt-outs and caps still apply to every channel.
 - **SMS-only switches.** The SMS master switch, an alert's SMS switch and the
   SMS spend ceiling stop only the SMS; email and Telegram still go.
-- **Email to staff at all.** Rules → Email copies → Staff and owner alerts is
-  still the master switch for staff email; the panel warns when it is off.
+- **Email at all.** There is no master email switch any more (the three
+  "email copies" switches went in the re-audit); a row's Email switch is the
+  only one, and Rules → Emails keeps the hourly cap.
 - **Telegram at all.** Rules → Telegram alerts (it was on the Telegram page);
   off, no alert goes to Telegram and Messages says the Telegram switches send
   nothing.
@@ -112,23 +203,30 @@ role to Email + Telegram.
 
 ## People without a phone
 
-Recipients for owner alerts (`OwnerPhones::for`) include active staff without
-a phone as `user:{id}`. `SmsService` sends them no SMS but their email and
-Telegram, and logs one row per person (`to` = `user:{id}`, status
-`suppressed` "Sent by email instead of SMS." or "Sent on Telegram instead of
-SMS."). A discount or refund approval that reached the approver this way
-counts as sent (`SmsLog::reachedRecipient()`).
+An alert's audience (`AlertAudience::addresses`, which `OwnerPhones::for`
+delegates to) includes active staff without a phone as `user:{id}`.
+`SmsService` sends them no SMS but their email and Telegram, and logs one row
+per person (`to` = `user:{id}`, status `suppressed` "Sent by email instead of
+SMS." or "Sent on Telegram instead of SMS."; `failed` "Could not reach …"
+when nothing can). A discount or refund approval that reached the approver
+this way counts as sent (`SmsLog::reachedRecipient()`). A typed email address
+in an audience is `email:{address}`: no text exists for it, the email goes
+through `SmsEmailCopier::sendTo()`, and the row is `suppressed` "Sent by
+email" (or `failed` when the row's Email switch is off).
 
 ## Where things live
 
 | What | Where |
 |---|---|
 | Channels per role / person | `App\Domains\Notifications\Support\NotificationChannels`; setting `notify_channels_roles`; `users.notify_channels` (null = role) |
+| Who gets an alert | `App\Domains\Notifications\Support\AlertAudience` (`DEFAULT_GROUPS`, `for`, `save`, `addresses`, `describe`, `groupOptions`), `AudienceResolver`; setting `sms_type_recipients.{type}` |
+| A row's channels | `SmsTypeRegistry::channels($entry)`; the Telegram-only rows name theirs in `def()`; `TELEGRAM_SETTING_ALIASES` keeps their old setting keys |
+| Per-type Email switch | `SmsTypeRegistry::isEmailEnabled()` (`sms_type_email.{type}`); gates the copy and the message's own email (`HAS_OWN_EMAIL`) |
 | Per-type Telegram switch | `SmsTypeRegistry::isTelegramEnabled()` (`sms_type_telegram.{type}`) |
 | Routing | `SmsService::staffFor()` / `sendByOtherChannels()`; `SmsEmailCopier::copy(staff:)`; `TelegramAlertCopier::sendNow()` / `copy()` |
 | Admin API | `GET /api/admin/sms/channels`, `PUT /api/admin/sms/channels/roles`, `PUT /api/admin/sms/channels/people/{user}` (`sms.settings.manage`) |
-| Admin page | `apps/admin-dashboard/src/pages/NotificationsHub.tsx`, tabs in `pages/Notifications/` (`MessagesTab`, `MessageRow`, `PeopleTab`, `RulesTab`, `LogTab`); the channels panel is `components/NotifyChannelsPanel.tsx` |
-| Whether an alert is on | `App\Domains\Notifications\Support\AlertSwitch` |
+| Admin page | `apps/admin-dashboard/src/pages/NotificationsHub.tsx`, tabs in `pages/Notifications/` (`MessagesTab`, `MessageRow` with its `AudienceEditor` and `TimingEditor`, `PeopleTab` with `PersonAlertsModal`, `RulesTab`, `LogTab`); the By role panel is `components/NotifyChannelsPanel.tsx`; phone layout through `useIsMobile()` (folding groups, a Group select, a "Where every alert goes" overview) |
+| Whether an alert is on | `App\Domains\Notifications\Support\AlertSwitch` (`isOn`: any channel; `channels($type)`) |
 | Shift reminders | `php artisan staff:shift-reminders` (`app/Console/Commands/SendShiftReminders.php`), scheduled every five minutes |
 | Check | `php artisan telegram:check` lists channels per role and every own choice |
-| Tests | `backend/tests/Feature/Telegram/NotificationChannelsTest.php`, `backend/tests/Feature/Notifications/OneSwitchPerAlertMigrationTest.php`, `backend/tests/Feature/SmsModule/ShiftReminderTest.php`; admin `src/__tests__/NotificationsMessages.test.tsx`, `NotificationsTabs.test.tsx` |
+| Tests | `backend/tests/Feature/Telegram/NotificationChannelsTest.php`, `backend/tests/Feature/Notifications/AlertAudienceTest.php`, `OneSwitchPerAlertMigrationTest.php`, `backend/tests/Feature/Sms/SmsDeliveryRulesTest.php`, `SmsEmailCopyTest.php`, `backend/tests/Feature/SmsModule/ShiftReminderTest.php`; admin `src/__tests__/NotificationsMessages.test.tsx`, `NotificationsTabs.test.tsx`, `NotifyChannelsPanel.test.tsx` |

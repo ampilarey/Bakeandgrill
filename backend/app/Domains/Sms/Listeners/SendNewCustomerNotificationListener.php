@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Domains\Sms\Listeners;
 
 use App\Domains\Notifications\Events\CustomerCreated;
+use App\Domains\Notifications\Support\AlertAudience;
+use App\Domains\Notifications\Support\AlertSwitch;
+use App\Domains\Notifications\Support\NotificationChannels;
 use App\Domains\Sms\Jobs\SendStaffNotificationJob;
 use App\Domains\Sms\Services\SmsTemplateRenderer;
 use App\Models\SmsContact;
 use App\Models\SmsTemplate;
-use App\Models\StaffNotificationPref;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 
@@ -25,9 +27,10 @@ class SendNewCustomerNotificationListener implements ShouldQueue
 
     public function handle(CustomerCreated $event): void
     {
-        // SMS off (to save cost) still sends the email copy (owner, 2026-10-06).
+        // SMS off (to save cost) still sends the email and Telegram copies
+        // (owner, 2026-10-06); every channel off sends nothing.
         $smsOn = $this->isEnabled();
-        if (!$smsOn && !\App\Domains\Notifications\Services\SmsEmailCopier::wanted('staff_new_customer')) {
+        if (!$smsOn && !AlertSwitch::isOn('staff_new_customer')) {
             return;
         }
 
@@ -69,26 +72,25 @@ class SendNewCustomerNotificationListener implements ShouldQueue
     }
 
     /**
-     * Recipients for new customer alerts:
-     * 1. Staff marked as is_fallback (managers/owners who want all alerts)
+     * Recipients for new customer alerts (re-audit, 2026-10-10):
+     * 1. Whoever "Staff: new customer" goes to in Admin → Notifications
+     *    (owners and managers by default; the migration kept the fallback
+     *    staff who got it before)
      * 2. Active external SmsContacts (on-call numbers)
      */
     private function resolveRecipients(): \Illuminate\Support\Collection
     {
-        $recipients = collect();
+        $audience = AlertAudience::for('staff_new_customer') ?? AlertAudience::normalize([]);
+        $typed = [...$audience['phones'], ...array_map(fn (string $e) => AlertAudience::EMAIL_PREFIX . $e, $audience['emails'])];
+        $recipients = AlertAudience::addresses('staff_new_customer')->map(function (string $to) use ($typed) {
+            $person = in_array($to, $typed, true) ? null : NotificationChannels::personFor($to);
 
-        // Fallback staff (managers/owners)
-        $fallbackPrefs = StaffNotificationPref::where('is_fallback', true)
-            ->with('user')
-            ->get()
-            ->filter(fn ($pref) => $pref->user && $pref->user->phone && $pref->user->is_active)
-            ->map(fn ($pref) => [
-                'phone' => $pref->user->phone,
-                'recipient_type' => 'fallback',
-                'recipient_id' => $pref->user_id,
-            ]);
-
-        $recipients = $recipients->merge($fallbackPrefs);
+            return [
+                'phone' => $to,
+                'recipient_type' => $person !== null ? 'staff' : 'contact',
+                'recipient_id' => $person?->id,
+            ];
+        });
 
         // Active external SmsContacts
         $externalContacts = SmsContact::where('type', 'external')
@@ -102,9 +104,7 @@ class SendNewCustomerNotificationListener implements ShouldQueue
             ])
             ->filter(fn ($r) => !empty($r['phone']));
 
-        $recipients = $recipients->merge($externalContacts);
-
-        return $recipients->unique('phone')->values();
+        return $recipients->merge($externalContacts)->unique('phone')->values();
     }
 
     private function isEnabled(): bool

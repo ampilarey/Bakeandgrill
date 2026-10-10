@@ -6,6 +6,7 @@ namespace Tests\Feature\Catering;
 
 use App\Domains\Catering\Services\CateringNotifyRecipients;
 use App\Domains\Catering\Services\CateringQuoteService;
+use App\Domains\Notifications\Support\AlertAudience;
 use App\Models\CateringRequest;
 use App\Models\CateringRequestLine;
 use App\Models\Item;
@@ -33,8 +34,9 @@ class EventQuotePhase3Test extends TestCase
         parent::setUp();
         SiteSetting::set('catering_quote_valid_days', '7');
         SiteSetting::set('catering_quote_min_hours_before_event', '24');
-        SiteSetting::set('catering_notify_phone', '9000000');
-        SiteSetting::set('catering_notify_email', 'fallback@bakeandgrill.test');
+        foreach (CateringNotifyRecipients::ALL_STAFF_TYPES as $type) {
+            AlertAudience::save($type, ['groups' => AlertAudience::DEFAULT_GROUPS[$type], 'phones' => ['9000000'], 'emails' => ['fallback@bakeandgrill.test']]);
+        }
 
         Permission::query()->firstOrCreate(
             ['slug' => 'events.manage'],
@@ -330,21 +332,30 @@ class EventQuotePhase3Test extends TestCase
 
     public function test_ownership_notify_targets_and_reassign_audit(): void
     {
+        // Each catering staff alert goes to its row's audience (Admin →
+        // Notifications): everyone who manages catering for a new request,
+        // the person handling it afterwards, plus the typed number and email.
         $helper = app(CateringNotifyRecipients::class);
         $unassigned = $this->makeDraft(['handled_by' => null]);
         $createdTargets = $helper->forCreated();
         $lifecycleUnassigned = $helper->forLifecycle($unassigned);
-        $this->assertSameSize($createdTargets, $lifecycleUnassigned);
-        $userIds = collect($createdTargets)->pluck('user_id')->filter()->all();
-        $this->assertContains($this->eventsStaff->id, $userIds);
-        $this->assertContains($this->otherEventsStaff->id, $userIds);
+        $this->assertEqualsCanonicalizing($createdTargets, $lifecycleUnassigned);
+        $this->assertContains('7777101', $createdTargets);
+        $this->assertContains('7777102', $createdTargets);
+        $this->assertContains('+9609000000', $createdTargets);
+        $this->assertContains('email:fallback@bakeandgrill.test', $createdTargets);
 
         $assigned = $this->makeDraft(['handled_by' => $this->eventsStaff->id, 'reference' => CateringRequest::generateReference()]);
         $lifecycleAssigned = $helper->forLifecycle($assigned);
-        $assignedUserIds = collect($lifecycleAssigned)->pluck('user_id')->filter()->values()->all();
-        $this->assertContains($this->eventsStaff->id, $assignedUserIds);
-        $this->assertNotContains($this->otherEventsStaff->id, $assignedUserIds);
-        $this->assertTrue(collect($lifecycleAssigned)->contains(fn ($t) => ($t['source'] ?? '') === 'settings'));
+        $this->assertContains('7777101', $lifecycleAssigned);
+        $this->assertNotContains('7777102', $lifecycleAssigned);
+        $this->assertContains('email:fallback@bakeandgrill.test', $lifecycleAssigned);
+
+        // The owner can except the helper from new requests, or add a manager to every one.
+        $manager = $this->makeManager(['phone' => '7777200']);
+        AlertAudience::save('catering_lifecycle_staff', ['groups' => ['catering_team', 'role:manager'], 'phones' => ['9000000']]);
+        $withManager = $helper->forLifecycle($assigned);
+        $this->assertEqualsCanonicalizing(['7777101', '7777200', '+9609000000'], $withManager);
 
         Sanctum::actingAs($this->eventsStaff, ['staff']);
         $this->patchJson('/api/admin/customers/catering-requests/' . $assigned->id, [

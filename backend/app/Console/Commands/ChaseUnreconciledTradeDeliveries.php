@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Domains\Notifications\Support\AlertSwitch;
 use App\Domains\Trade\Services\TradeSmsNotifier;
 use App\Models\SiteSetting;
 use App\Models\TradeDelivery;
@@ -14,7 +15,9 @@ use Illuminate\Console\Command;
  * nobody. Daily: a shop that has not reported sales on a delivery past its
  * expected return (or older than the nudge threshold) is texted once; a
  * delivery still unreconciled after the alert threshold is texted to the
- * owners once. Both thresholds are settings.
+ * owners once. Both thresholds are "When it sends" numbers on the two rows
+ * in Admin → Notifications (re-audit, 2026-10-10); off is the row's
+ * switches, so a number of 0 no longer means off.
  */
 class ChaseUnreconciledTradeDeliveries extends Command
 {
@@ -26,18 +29,22 @@ class ChaseUnreconciledTradeDeliveries extends Command
 
     public const DEFAULT_ALERT_DAYS = 7;
 
+    public const TYPE_NUDGE = 'trade_report_reminder_shop';
+
+    public const TYPE_ALERT = 'owner_trade_unreconciled';
+
     protected $signature = 'trade:chase-unreconciled';
 
     protected $description = 'Nudge shops to report sales and alert the owners about deliveries left unreconciled';
 
     public static function nudgeDays(): int
     {
-        return max(0, min(60, (int) SiteSetting::get(self::SETTING_NUDGE_DAYS, (string) self::DEFAULT_NUDGE_DAYS)));
+        return max(1, min(60, (int) SiteSetting::get(self::SETTING_NUDGE_DAYS, (string) self::DEFAULT_NUDGE_DAYS) ?: self::DEFAULT_NUDGE_DAYS));
     }
 
     public static function alertDays(): int
     {
-        return max(0, min(90, (int) SiteSetting::get(self::SETTING_ALERT_DAYS, (string) self::DEFAULT_ALERT_DAYS)));
+        return max(1, min(90, (int) SiteSetting::get(self::SETTING_ALERT_DAYS, (string) self::DEFAULT_ALERT_DAYS) ?: self::DEFAULT_ALERT_DAYS));
     }
 
     public function handle(TradeSmsNotifier $sms): int
@@ -47,7 +54,7 @@ class ChaseUnreconciledTradeDeliveries extends Command
         $alertDays = self::alertDays();
         $nudged = 0;
 
-        if ($nudgeDays > 0) {
+        if (AlertSwitch::isOn(self::TYPE_NUDGE)) {
             $due = TradeDelivery::query()
                 ->where('status', TradeDelivery::STATUS_DISPATCHED)
                 ->whereNull('reported_at')
@@ -73,7 +80,7 @@ class ChaseUnreconciledTradeDeliveries extends Command
         }
 
         $alerted = 0;
-        if ($alertDays > 0) {
+        if (AlertSwitch::isOn(self::TYPE_ALERT)) {
             $stale = TradeDelivery::query()
                 ->where('status', TradeDelivery::STATUS_DISPATCHED)
                 ->whereNull('unreconciled_alerted_at')

@@ -4,15 +4,14 @@ declare(strict_types=1);
 
 namespace App\Domains\Telegram\Listeners;
 
+use App\Domains\Notifications\Support\AlertSwitch;
 use App\Domains\Notifications\Support\SmsTypeRegistry;
-use App\Domains\Permissions\Services\PermissionService;
 use App\Domains\Shifts\Events\ShiftClosed;
 use App\Domains\Telegram\Exceptions\TelegramApiException;
 use App\Domains\Telegram\Services\TelegramClient;
 use App\Domains\Telegram\Services\TelegramOwnerExtras;
+use App\Domains\Telegram\Services\TelegramOwnerTools;
 use App\Models\Shift;
-use App\Models\SiteSetting;
-use App\Models\TelegramLink;
 use App\Support\DeferAfterResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -21,44 +20,32 @@ use Throwable;
 /**
  * The day's report on Telegram as soon as the last shift of the day closes
  * (owner, 2026-10-07): sales, payments, best sellers, each shift's drawer
- * and refunds still owed. Once a day, to every linked owner, and to linked
- * managers who can see reports (manager level, 2026-10-07). Switch:
- * Admin → Telegram → "Day report when the last shift closes".
+ * and refunds still owed. Once a day, to whoever the row "Owner: day report
+ * when the last shift closes" goes to in Admin → Notifications (owners, and
+ * whoever can see reports, by default), when they have linked Telegram.
  */
 class SendDayReportOnLastShiftClose
 {
+    public const TYPE = 'owner_day_report';
+
     public const SETTING = 'telegram_day_report_enabled';
 
+    /** The row's own switch (its only one); the Telegram master switch applies as well when sending. */
     public static function enabled(): bool
     {
-        return SmsTypeRegistry::settingIsTruthy(SiteSetting::get(self::SETTING), true);
-    }
-
-    /** Owners, and managers who hold reports.view. */
-    public static function receives(TelegramLink $link): bool
-    {
-        $permissions = app(PermissionService::class);
-
-        return $permissions->isOwner($link->user)
-            || ($link->role() === 'manager' && $permissions->hasPermission($link->user, 'reports.view'));
+        return SmsTypeRegistry::isTelegramEnabled(self::TYPE);
     }
 
     public function handle(ShiftClosed $event): void
     {
         try {
-            if (!self::enabled()) {
+            if (!AlertSwitch::isOn(self::TYPE)) {
                 return;
             }
             if (Shift::query()->whereNull('closed_at')->exists()) {
                 return; // someone is still on a till
             }
-            $people = TelegramLink::query()
-                ->with(['bot', 'user.role'])
-                ->whereNotNull('user_id')
-                ->whereNull('blocked_at')
-                ->get()
-                ->filter(fn (TelegramLink $l) => $l->isUsable() && $l->user !== null && self::receives($l))
-                ->unique('user_id');
+            $people = TelegramOwnerTools::linksFor(self::TYPE);
             if ($people->isEmpty()) {
                 return;
             }

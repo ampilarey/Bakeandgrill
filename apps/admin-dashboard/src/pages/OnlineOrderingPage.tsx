@@ -123,8 +123,6 @@ export default function OnlineOrderingPage() {
   // over the real settings.
   const [siteSettingsLoaded, setSiteSettingsLoaded] = useState(false);
 
-  const [cateringNotifyPhone, setCateringNotifyPhone] = useState('');
-  const [cateringNotifyEmail, setCateringNotifyEmail] = useState('');
   const [cateringMinLeadHours, setCateringMinLeadHours] = useState('24');
   const [cateringQuoteValidDays, setCateringQuoteValidDays] = useState('7');
   const [cateringQuoteMinHours, setCateringQuoteMinHours] = useState('24');
@@ -201,8 +199,6 @@ export default function OnlineOrderingPage() {
       if (minutes) setPickupMinutes(minutes);
       const capacity = byKey('pickup_slot_capacity');
       if (capacity) setPickupCapacity(capacity);
-      setCateringNotifyPhone(byKey('catering_notify_phone') ?? '');
-      setCateringNotifyEmail(byKey('catering_notify_email') ?? '');
       setCateringMinLeadHours(byKey('catering_min_lead_hours') ?? '24');
       setCateringQuoteValidDays(byKey('catering_quote_valid_days') ?? '7');
       setCateringQuoteMinHours(byKey('catering_quote_min_hours_before_event') ?? '24');
@@ -346,8 +342,6 @@ export default function OnlineOrderingPage() {
     setCateringSaving(true);
     try {
       await updateSiteSettings({
-        catering_notify_phone: cateringNotifyPhone.trim(),
-        catering_notify_email: cateringNotifyEmail.trim(),
         catering_min_lead_hours: String(lead),
         catering_quote_valid_days: String(validDays),
         catering_quote_min_hours_before_event: String(minHours),
@@ -1007,7 +1001,7 @@ export default function OnlineOrderingPage() {
       <div className="oc-card" style={S.card} data-testid="catering-events-settings">
         <p style={S.sectionTitle}>Notifications & lead time</p>
         <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
-          Notify fallbacks when no event staff are online, lead time for new requests, and quote link validity.
+          Lead time for new requests and how long a quote link stays valid.
           Appoint handlers via Roles & Permissions → <code>events.manage</code>.
         </p>
         <div className="oc-form-grid">
@@ -1020,25 +1014,15 @@ export default function OnlineOrderingPage() {
               placeholder="Shown when pre-order is closed"
             />
           </div>
-          <div>
-            <label style={S.label}>Notify phone (fallback)</label>
-            <input
-              style={S.input}
-              value={cateringNotifyPhone}
-              onChange={(e) => setCateringNotifyPhone(e.target.value)}
-              placeholder="7XXXXXX"
-            />
-          </div>
-          <div>
-            <label style={S.label}>Notify email (fallback)</label>
-            <input
-              style={S.input}
-              type="email"
-              value={cateringNotifyEmail}
-              onChange={(e) => setCateringNotifyEmail(e.target.value)}
-              placeholder="events@…"
-            />
-          </div>
+          {/* Re-audit, 2026-10-10: the fallback phone and email that sat here
+              are on the catering staff rows in Notifications now, with the
+              rest of who gets each alert. */}
+          <p data-testid="catering-staff-alerts-link" style={{ gridColumn: '1 / -1', margin: 0, fontSize: 13, color: 'var(--color-text-secondary)' }}>
+            Who gets the staff alerts about events (and any extra number or email) is set on each alert in Notifications:{' '}
+            <Link to="/notifications/messages?open=catering_request_staff" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>new request</Link>
+            {' · '}
+            <Link to="/notifications/messages?q=catering&group=staff" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>all catering alerts</Link>.
+          </p>
           <div>
             <label style={S.label}>Min lead hours</label>
             <input

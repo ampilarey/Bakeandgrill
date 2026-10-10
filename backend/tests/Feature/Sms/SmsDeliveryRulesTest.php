@@ -7,6 +7,7 @@ namespace Tests\Feature\Sms;
 use App\Domains\Notifications\Contracts\SmsProviderInterface;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Notifications\Support\AlertAudience;
 use App\Domains\Notifications\Support\AlertSwitch;
 use App\Domains\Notifications\Support\SmsDeliveryRules;
 use App\Domains\Notifications\Support\SmsTypeRegistry;
@@ -97,7 +98,7 @@ class SmsDeliveryRulesTest extends TestCase
 
     // ── Recipients ───────────────────────────────────────────────────────────
 
-    public function test_owner_alerts_go_where_the_control_center_says(): void
+    public function test_owner_alerts_go_where_their_audience_says(): void
     {
         $owner = $this->makeOwner(['phone' => '9607770001']);
         $manager = $this->makeManager(['phone' => '9607770002']);
@@ -108,27 +109,41 @@ class SmsDeliveryRulesTest extends TestCase
         $this->assertEquals(['9607770001', '9607770002'], OwnerPhones::for('owner_stock_reorder')->all(), 'default: owners & managers');
         $this->assertEquals(['+9607770009'], OwnerPhones::for('owner_device_approval')->all(), 'default: business phone');
 
-        SmsTypeRegistry::setRecipientOverride('owner_stock_reorder', ['mode' => 'owner_only']);
+        // Groups: a role on its own
+        AlertAudience::save('owner_stock_reorder', ['groups' => ['role:owner']]);
         $this->assertEquals(['9607770001'], OwnerPhones::for('owner_stock_reorder')->all());
 
-        SmsTypeRegistry::setRecipientOverride('owner_stock_reorder', ['mode' => 'staff', 'user_ids' => [$cashier->id, $manager->id]]);
-        $this->assertEqualsCanonicalizing(['9607770003', '9607770002'], OwnerPhones::for('owner_stock_reorder')->all());
+        // Named people, on top of a group, and someone excepted from it
+        AlertAudience::save('owner_stock_reorder', ['groups' => ['role:owner'], 'users' => [$cashier->id], 'except' => [$manager->id]]);
+        $this->assertEqualsCanonicalizing(['9607770001', '9607770003'], OwnerPhones::for('owner_stock_reorder')->all());
+        AlertAudience::save('owner_stock_reorder', ['groups' => ['role:owner', 'role:manager'], 'except' => [$manager->id]]);
+        $this->assertEquals(['9607770001'], OwnerPhones::for('owner_stock_reorder')->all(), 'excepted from the role');
 
-        SmsTypeRegistry::setRecipientOverride('owner_stock_reorder', ['mode' => 'custom', 'phones' => ['7770004', '+9607770005']]);
-        $this->assertEquals(['+9607770004', '+9607770005'], OwnerPhones::for('owner_stock_reorder')->all());
+        // Typed numbers and a typed email, with nobody else
+        AlertAudience::save('owner_stock_reorder', ['phones' => ['7770004', '+9607770005'], 'emails' => ['Ops@Example.com']]);
+        $this->assertEquals(['+9607770004', '+9607770005', 'email:ops@example.com'], OwnerPhones::for('owner_stock_reorder')->all());
 
-        SmsTypeRegistry::setRecipientOverride('owner_device_approval', ['mode' => 'owners_managers']);
+        AlertAudience::save('owner_device_approval', ['groups' => ['role:owner', 'role:manager']]);
         $this->assertEquals(['9607770001', '9607770002'], OwnerPhones::for('owner_device_approval')->all());
+
+        // A row saved as one of the old modes before the migration still reads.
+        SiteSetting::set(SmsTypeRegistry::RECIPIENTS_SETTING_PREFIX . 'owner_price_rise', json_encode(['mode' => 'staff', 'user_ids' => [$cashier->id]]));
+        SiteSetting::bust();
+        $this->assertEquals(['9607770003'], OwnerPhones::for('owner_price_rise')->all());
 
         // Someone chosen who has no phone still gets it, by email or
         // Telegram (2026-10-07): addressed as "user:{id}".
         $cashier->update(['phone' => null]);
-        SmsTypeRegistry::setRecipientOverride('owner_stock_reorder', ['mode' => 'staff', 'user_ids' => [$cashier->id]]);
+        AlertAudience::save('owner_stock_reorder', ['users' => [$cashier->id]]);
         $this->assertEquals(['user:' . $cashier->id], OwnerPhones::for('owner_stock_reorder')->all());
 
         // A choice that resolves to nobody falls back to the owners rather than going silent.
         $cashier->update(['is_active' => false]);
         $this->assertEquals(['9607770001', '9607770002'], OwnerPhones::for('owner_stock_reorder')->all());
+
+        // Back to the default
+        AlertAudience::save('owner_stock_reorder', null);
+        $this->assertFalse(AlertAudience::isCustom('owner_stock_reorder'));
         unset($owner);
     }
 
@@ -136,7 +151,7 @@ class SmsDeliveryRulesTest extends TestCase
     {
         $this->makeOwner(['phone' => '9607770001']);
         AlertSwitch::setAll('owner_stock_reorder', true);
-        SmsTypeRegistry::setRecipientOverride('owner_stock_reorder', ['mode' => 'custom', 'phones' => ['7779999']]);
+        AlertAudience::save('owner_stock_reorder', ['phones' => ['7779999']]);
         InventoryItem::create(['name' => 'Flour', 'sku' => 'F2', 'unit' => 'kg', 'current_stock' => 1, 'reorder_point' => 5, 'unit_cost' => 4, 'is_active' => true]);
         $this->sendsOk();
 
@@ -145,28 +160,48 @@ class SmsDeliveryRulesTest extends TestCase
         $this->assertSame(['+9607779999'], SmsLog::where('type', 'owner_stock_reorder')->pluck('to')->all());
     }
 
-    public function test_recipients_are_set_through_the_control_center_and_only_for_owner_alerts(): void
+    public function test_audiences_are_set_through_admin_and_only_for_staff_and_owner_alerts(): void
     {
-        $staff = $this->makeManager(['phone' => '9607770002']);
-        Sanctum::actingAs($this->makeOwner(['phone' => '9607770001']), ['staff']);
+        $staff = $this->makeManager(['phone' => '9607770002', 'name' => 'Mariyam']);
+        $phoneless = $this->makeStaff('staff', ['phone' => null, 'name' => 'Ali', 'email' => 'ali@example.com']);
+        Sanctum::actingAs($this->makeOwner(['phone' => '9607770001', 'name' => 'Ahmed']), ['staff']);
 
         $res = $this->getJson('/api/admin/sms/control-center')->assertOk();
-        $row = collect($res->json('types'))->firstWhere('key', 'owner_stock_reorder');
-        $this->assertTrue($row['recipients_configurable']);
-        $this->assertSame('owners_managers', $row['recipients_config']['mode']);
-        $this->assertContains('9607770001', $row['recipients_resolved']);
-        $this->assertSame('business_phone', collect($res->json('types'))->firstWhere('key', 'owner_device_approval')['default_recipient_mode']);
-        $this->assertFalse(collect($res->json('types'))->firstWhere('key', 'customer_order_ready')['recipients_configurable']);
-        $this->assertNotEmpty($res->json('staff_options'));
+        $types = collect($res->json('types'));
+        $row = $types->firstWhere('key', 'owner_stock_reorder');
+        $this->assertTrue($row['audience_configurable']);
+        $this->assertFalse($row['audience_custom']);
+        $this->assertSame(['role:owner', 'role:manager'], $row['audience']['groups']);
+        $this->assertSame(['role:owner', 'role:manager'], $row['audience_default']['groups']);
+        $this->assertEqualsCanonicalizing(['Ahmed', 'Mariyam'], array_column($row['audience_people']['people'], 'name'));
+        $this->assertSame(['Owners', 'Managers'], $row['audience_people']['groups']);
+        $this->assertSame([AlertAudience::GROUP_BUSINESS_PHONE], $types->firstWhere('key', 'owner_device_approval')['audience_default']['groups']);
+        $this->assertFalse($types->firstWhere('key', 'customer_order_ready')['audience_configurable']);
+        $this->assertNull($types->firstWhere('key', 'customer_order_ready')['audience']);
+        // Every active person can be named, phone or not.
+        $this->assertEqualsCanonicalizing(['Ahmed', 'Ali', 'Mariyam'], array_column($res->json('staff_options'), 'name'));
+        $this->assertContains('role:manager', array_column($res->json('audience_groups'), 'key'));
+        $this->assertContains('perm:events.manage', array_column($res->json('audience_groups'), 'key'));
         $this->assertSame(1, $res->json('delivery_rules.marketing_daily_cap'));
 
-        $this->patchJson('/api/admin/sms/types/owner_stock_reorder', ['recipients' => ['mode' => 'staff', 'user_ids' => [$staff->id]]])
-            ->assertOk()->assertJsonPath('recipients_resolved.0', '9607770002');
-        $this->patchJson('/api/admin/sms/types/owner_stock_reorder', ['recipients' => ['mode' => 'staff', 'user_ids' => []]])->assertStatus(422);
-        $this->patchJson('/api/admin/sms/types/owner_stock_reorder', ['recipients' => ['mode' => 'custom', 'phones' => ['12']]])->assertStatus(422);
-        $this->patchJson('/api/admin/sms/types/customer_order_ready', ['recipients' => ['mode' => 'owner_only']])->assertStatus(422);
-        $this->patchJson('/api/admin/sms/types/owner_stock_reorder', ['recipients' => null])->assertOk()
-            ->assertJsonPath('recipients_config.mode', 'owners_managers');
+        $this->patchJson('/api/admin/sms/types/owner_stock_reorder', ['audience' => ['groups' => [], 'users' => [$staff->id, $phoneless->id]]])
+            ->assertOk()
+            ->assertJsonPath('audience.users', [$staff->id, $phoneless->id])
+            ->assertJsonPath('audience_custom', true);
+        $this->assertEqualsCanonicalizing(['9607770002', 'user:' . $phoneless->id], OwnerPhones::for('owner_stock_reorder')->all());
+        $this->patchJson('/api/admin/sms/types/owner_stock_reorder', ['audience' => ['groups' => ['role:manager'], 'except' => [$staff->id]]])->assertOk();
+        $this->assertSame([], AlertAudience::addresses('owner_stock_reorder')->all(), 'the only manager is excepted');
+        $this->assertEqualsCanonicalizing(['9607770001', '9607770002'], OwnerPhones::for('owner_stock_reorder')->all(), 'nobody left: owners and managers get it rather than nobody');
+
+        $this->patchJson('/api/admin/sms/types/owner_stock_reorder', ['audience' => ['groups' => [], 'users' => []]])->assertStatus(422);
+        $this->patchJson('/api/admin/sms/types/owner_stock_reorder', ['audience' => ['groups' => ['role:nobody']]])->assertStatus(422);
+        $this->patchJson('/api/admin/sms/types/owner_stock_reorder', ['audience' => ['groups' => ['perm:anything.goes']]])->assertStatus(422);
+        $this->patchJson('/api/admin/sms/types/owner_stock_reorder', ['audience' => ['phones' => ['12']]])->assertStatus(422);
+        $this->patchJson('/api/admin/sms/types/owner_stock_reorder', ['audience' => ['emails' => ['not-an-email']]])->assertStatus(422);
+        $this->patchJson('/api/admin/sms/types/customer_order_ready', ['audience' => ['groups' => ['role:owner']]])->assertStatus(422);
+        $this->patchJson('/api/admin/sms/types/owner_stock_reorder', ['audience' => null])->assertOk()
+            ->assertJsonPath('audience.groups', ['role:owner', 'role:manager'])
+            ->assertJsonPath('audience_custom', false);
     }
 
     // ── Quiet hours ──────────────────────────────────────────────────────────

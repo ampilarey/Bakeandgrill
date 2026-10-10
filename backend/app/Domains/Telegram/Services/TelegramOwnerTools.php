@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Domains\Telegram\Services;
 
+use App\Domains\Notifications\Support\AlertAudience;
+use App\Domains\Notifications\Support\AlertSwitch;
+use App\Domains\Notifications\Support\NotificationChannels;
 use App\Domains\Notifications\Support\SmsTypeRegistry;
 use App\Domains\Permissions\Services\PermissionService;
 use App\Domains\Telegram\Exceptions\TelegramApiException;
-use App\Domains\Telegram\Listeners\SendDayReportOnLastShiftClose;
 use App\Domains\Telegram\Support\TelegramOrderText as O;
 use App\Domains\Telegram\Support\TelegramText as T;
 use App\Models\CashMovement;
@@ -35,8 +37,8 @@ use Throwable;
  *    buying list" per item or all at once;
  *  - 🔍 Find an order: by number, the whole order;
  *  - 📣 Message staff: a note to everyone, a role or one person.
- * And two Telegram-only alerts (Admin → Telegram switches): an order
- * cancelled at the till, and cash taken out of a drawer.
+ * And two Telegram-only alerts, rows in Admin → Notifications with their own
+ * audience: an order cancelled at the till, and cash taken out of a drawer.
  * Each checks the person's own permissions, like every other button.
  */
 class TelegramOwnerTools
@@ -519,14 +521,19 @@ class TelegramOwnerTools
 
     // ── Alerts (Telegram only) ───────────────────────────────────────────
 
+    public const TYPE_VOIDS = 'owner_till_void';
+
+    public const TYPE_CASH = 'owner_cash_out';
+
+    /** The row's own switch (Admin → Notifications); sending also needs the Telegram master switch. */
     public static function voidsOn(): bool
     {
-        return SmsTypeRegistry::settingIsTruthy(SiteSetting::get(self::SETTING_VOIDS), true);
+        return SmsTypeRegistry::isTelegramEnabled(self::TYPE_VOIDS);
     }
 
     public static function cashOn(): bool
     {
-        return SmsTypeRegistry::settingIsTruthy(SiteSetting::get(self::SETTING_CASH), true);
+        return SmsTypeRegistry::isTelegramEnabled(self::TYPE_CASH);
     }
 
     public static function cashMin(): float
@@ -534,10 +541,33 @@ class TelegramOwnerTools
         return max(0.0, (float) SiteSetting::get(self::SETTING_CASH_MIN, '0'));
     }
 
+    /**
+     * The linked chats a Telegram-only alert reaches: the row's audience
+     * (AlertAudience) narrowed to people who linked Telegram and whose
+     * channels include it.
+     *
+     * @return Collection<int, TelegramLink>
+     */
+    public static function linksFor(string $type): Collection
+    {
+        $ids = AlertAudience::users($type)->pluck('id')->map(fn ($id) => (int) $id)->all();
+        if ($ids === []) {
+            return collect();
+        }
+
+        return TelegramLink::query()->with(['bot', 'user.role'])
+            ->whereIn('user_id', $ids)
+            ->whereNull('blocked_at')
+            ->get()
+            ->filter(fn (TelegramLink $l) => $l->isUsable() && $l->user !== null && NotificationChannels::allows($l->user, NotificationChannels::TELEGRAM))
+            ->unique('user_id')
+            ->values();
+    }
+
     /** An order cancelled by a staff member (not a customer, not an unpaid online cart). */
     public function orderCancelled(int $orderId): void
     {
-        if (!self::voidsOn()) {
+        if (!AlertSwitch::isOn(self::TYPE_VOIDS)) {
             return;
         }
         $o = Order::query()->with('items')->find($orderId);
@@ -551,13 +581,13 @@ class TelegramOwnerTools
             . ' · placed ' . ($o->created_at?->format('g:i a') ?? '') . "\n"
             . ($paid > 0 ? '💵 ' . T::mvr($paid) . ' had been paid: check it was refunded.' : 'Nothing had been paid.')
             . (trim((string) $o->cancellation_reason) !== '' ? "\nReason: " . T::e((string) $o->cancellation_reason) : '');
-        $this->alert($html);
+        $this->alert(self::TYPE_VOIDS, $html);
     }
 
     /** Cash taken out of a drawer (cash out / paid out), or a movement struck through. */
     public function cashMoved(int $movementId, bool $voided = false): void
     {
-        if (!self::cashOn()) {
+        if (!AlertSwitch::isOn(self::TYPE_CASH)) {
             return;
         }
         $m = CashMovement::query()->with(['user:id,name', 'shift.device:id,name'])->find($movementId);
@@ -569,15 +599,12 @@ class TelegramOwnerTools
         $html = $voided
             ? '↩️ <b>Cash out struck through</b>: ' . T::mvr($m->amount) . ' by ' . $who . $till . (trim((string) $m->void_reason) !== '' ? "\nWhy: " . T::e((string) $m->void_reason) : '')
             : '💵 <b>Cash out ' . T::mvr($m->amount) . '</b> by ' . $who . $till . "\n" . T::e((string) $m->reason) . ($m->category ? ' · ' . T::e(str_replace('_', ' ', (string) $m->category)) : '');
-        $this->alert($html);
+        $this->alert(self::TYPE_CASH, $html);
     }
 
-    private function alert(string $html): void
+    private function alert(string $type, string $html): void
     {
-        $people = TelegramLink::query()->with(['bot', 'user.role'])->whereNotNull('user_id')->whereNull('blocked_at')->get()
-            ->filter(fn (TelegramLink $l) => $l->isUsable() && $l->user !== null && SendDayReportOnLastShiftClose::receives($l))
-            ->unique('user_id');
-        foreach ($people as $link) {
+        foreach (self::linksFor($type) as $link) {
             try {
                 $this->client->sendMessage($link->bot, $link->chat_id, $html);
             } catch (TelegramApiException $e) {

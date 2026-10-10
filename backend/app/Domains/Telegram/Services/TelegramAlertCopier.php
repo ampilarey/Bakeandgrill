@@ -59,11 +59,19 @@ class TelegramAlertCopier
         return SmsTypeRegistry::settingIsTruthy(SiteSetting::get(self::SETTING_ENABLED), true);
     }
 
-    /** @param array<string, mixed>|null $entry */
+    /**
+     * A message that can go to Telegram at all: every staff and owner alert,
+     * the discount code, the Telegram-only alerts (SmsTypeRegistry::channels).
+     *
+     * @param array<string, mixed>|null $entry
+     */
     public static function isStaffAlert(?array $entry, string $type): bool
     {
-        return ($entry['category'] ?? null) === 'staff' || in_array($type, self::EXTRA_TYPES, true)
-            || in_array((string) ($entry['key'] ?? ''), self::EXTRA_TYPES, true);
+        if ($entry !== null) {
+            return in_array('telegram', SmsTypeRegistry::channels($entry), true);
+        }
+
+        return in_array($type, self::EXTRA_TYPES, true);
     }
 
     /** Telegram on for this alert type at all: the master switch and the type's own. */

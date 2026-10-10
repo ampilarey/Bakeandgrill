@@ -167,17 +167,88 @@ describe('Notifications → People', () => {
     vi.spyOn(api, 'updateStaffNotificationPrefs').mockImplementation(async (id: number, data) => ({
       prefs: { user_id: id, notifications_enabled: true, order_types: null, menu_group_ids: null, category_ids: null, is_fallback: false, fallback_priority: 0, ...data },
     }));
-    vi.spyOn(api, 'getNotifyChannels').mockResolvedValue({ channels: ['sms', 'email', 'telegram'], roles: [], people: [] });
+    vi.spyOn(api, 'getNotifyChannels').mockResolvedValue({
+      channels: ['sms', 'email', 'telegram'],
+      roles: [
+        { key: 'owner', label: 'Owner', channels: ['sms', 'email', 'telegram'] },
+        { key: 'manager', label: 'Manager', channels: ['sms', 'email', 'telegram'] },
+        { key: 'staff', label: 'Staff', channels: ['sms', 'email', 'telegram'] },
+      ],
+      people: [
+        { id: 4, name: 'Mariyam', role: 'staff', role_label: 'Staff', phone: null, email: 'mariyam@example.mv', telegram_linked: false, own_channels: null, channels: ['sms', 'email', 'telegram'] },
+        { id: 5, name: 'Ali', role: 'manager', role_label: 'Manager', phone: '7770002', email: 'ali@example.mv', telegram_linked: true, own_channels: null, channels: ['sms', 'email', 'telegram'] },
+      ],
+    });
+    vi.spyOn(api, 'updateNotifyPerson').mockImplementation(async (id, channels) => ({
+      person: { id, name: id === 4 ? 'Mariyam' : 'Ali', role: 'staff', role_label: 'Staff', phone: null, email: 'x@example.mv', telegram_linked: false, own_channels: channels, channels: channels ?? ['sms', 'email', 'telegram'] },
+    }));
+    vi.spyOn(api, 'updateNotifyRoles').mockResolvedValue({ roles: { owner: ['sms', 'email', 'telegram'], manager: ['email', 'telegram'], staff: ['sms', 'email', 'telegram'] } });
     vi.spyOn(api, 'fetchSmsContacts').mockResolvedValue({ contacts: [] });
+    mockControlCenter({
+      staff_options: [{ id: 4, name: 'Mariyam', phone: null, role: 'Staff', role_slug: 'staff' }, { id: 5, name: 'Ali', phone: '7770002', role: 'Manager', role_slug: 'manager' }],
+      audience_groups: [{ key: 'role:owner', label: 'Owners', count: 1 }, { key: 'role:manager', label: 'Managers', count: 1 }, { key: 'role:staff', label: 'Staff (cashiers)', count: 1 }],
+      types: [
+        {
+          key: 'owner_stock_reorder', label: 'Owner: stock at reorder point', category: 'staff', channels: ['sms', 'email', 'telegram'], enabled: true, always_on: false, suppressible: false,
+          recipients: 'Owners & managers', user_initiated: false, send_permission: null, send_permission_label: 'System', roles_with_permission: ['System'], template: null, last_30_days: { count: 0, cost_mvr: 0 },
+          audience_configurable: true, audience_custom: false,
+          audience: { groups: ['role:owner', 'role:manager'], users: [], except: [], phones: [], emails: [] },
+          audience_default: { groups: ['role:owner', 'role:manager'], users: [], except: [], phones: [], emails: [] },
+          audience_people: { people: [{ id: 5, name: 'Ali', role: 'Manager', reach: ['sms', 'email', 'telegram'] }], extras: [], groups: ['Owners', 'Managers'], note: null },
+        },
+        {
+          key: 'staff_low_stock_menu', label: 'Staff: menu item low stock', category: 'staff', channels: ['sms', 'email', 'telegram'], enabled: true, always_on: false, suppressible: false,
+          recipients: 'Owners & managers', user_initiated: false, send_permission: null, send_permission_label: 'System', roles_with_permission: ['System'], template: null, last_30_days: { count: 0, cost_mvr: 0 },
+          audience_configurable: true, audience_custom: true,
+          audience: { groups: ['role:owner'], users: [], except: [5], phones: [], emails: [] },
+          audience_default: { groups: ['role:owner', 'role:manager'], users: [], except: [], phones: [], emails: [] },
+          audience_people: { people: [], extras: [], groups: ['Owners'], note: null },
+        },
+      ],
+    });
   });
 
-  it('lets someone without a phone get order alerts (by email or Telegram)', async () => {
+  it('shows one card per person: channels, order alerts and how many alerts reach them', async () => {
     renderWithRouter(<PeopleTab />);
     const sw = await screen.findByRole('switch', { name: 'Order alerts for Mariyam' });
     expect(sw).not.toBeDisabled();
     expect(screen.getByText('No phone: email or Telegram')).toBeTruthy();
     fireEvent.click(sw);
     await waitFor(() => expect(api.updateStaffNotificationPrefs).toHaveBeenCalledWith(4, { notifications_enabled: true }));
+
+    const ali = screen.getByTestId('nc-person-5');
+    expect(await within(ali).findByText(/1 staff and owner alert reaches them/)).toBeTruthy();
+    fireEvent.change(within(ali).getByRole('combobox', { name: 'Channels for Ali' }), { target: { value: 'own' } });
+    await waitFor(() => expect(api.updateNotifyPerson).toHaveBeenCalledWith(5, ['sms', 'email', 'telegram']));
+
+    // By role: channels and a link to the alerts that reach the role.
+    const manager = screen.getByTestId('nc-role-manager');
+    expect(within(manager).getByRole('link', { name: 'Alerts that reach Manager' })).toHaveTextContent('1 alert');
+    fireEvent.click(within(manager).getByRole('button', { name: /SMS/ }));
+    await waitFor(() => expect(api.updateNotifyRoles).toHaveBeenCalledWith({ manager: ['email', 'telegram'] }));
+  });
+
+  it('mutes and adds alerts for one person from their card', async () => {
+    vi.spyOn(api, 'updateSmsType').mockImplementation(async (key, payload) => {
+      const audience = typeof payload === 'boolean' ? undefined : payload.audience;
+      return {
+        key,
+        audience: { groups: [], users: [], except: [], phones: [], emails: [], ...(audience ?? {}) } as api.AlertAudience,
+        audience_custom: true,
+        audience_people: { people: [], extras: [], groups: [], note: null },
+      };
+    });
+    renderWithRouter(<PeopleTab />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Alerts for Ali' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('Gets (1)')).toBeTruthy();
+    expect(within(dialog).getByText('Muted (1)')).toBeTruthy();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Mute Owner: stock at reorder point' }));
+    await waitFor(() => expect(api.updateSmsType).toHaveBeenCalledWith('owner_stock_reorder', { audience: expect.objectContaining({ except: [5], users: [] }) }));
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Unmute Staff: menu item low stock' }));
+    await waitFor(() => expect(api.updateSmsType).toHaveBeenCalledWith('staff_low_stock_menu', { audience: expect.objectContaining({ except: [] }) }));
   });
 
   it('shows each section only to whoever may change it', async () => {
@@ -185,9 +256,10 @@ describe('Notifications → People', () => {
     mockUser.role = 'manager';
     renderWithRouter(<PeopleTab />);
     expect(await screen.findByTestId('extra-numbers')).toBeTruthy();
-    expect(screen.queryByTestId('order-alert-people')).toBeNull();
+    expect(screen.queryByTestId('people-list')).toBeNull();
     expect(screen.queryByTestId('notify-channels')).toBeNull();
     expect(api.fetchStaff).not.toHaveBeenCalled();
+    expect(api.getNotifyChannels).not.toHaveBeenCalled();
   });
 });
 

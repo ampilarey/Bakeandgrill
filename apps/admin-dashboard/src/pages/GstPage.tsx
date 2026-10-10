@@ -691,20 +691,11 @@ export default function GstPage() {
               />
               <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Of the month after the period ends.</span>
             </label>
-            <label style={{ fontSize: 13 }}>
-              Remind owners, days before
-              <input
-                type="number" min={1} max={14}
-                aria-label="Remind owners, days before"
-                value={settings.filing_reminder_days ?? 3}
-                onChange={(e) => setSettings({ ...settings, filing_reminder_days: Math.min(14, Math.max(1, parseInt(e.target.value, 10) || 1)) })}
-                style={settingsField}
-              />
-              <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
-                A reminder then, on the day and the day after, while the period is not locked. To stop it, switch off
-                {' '}<Link to="/notifications/messages?open=owner_gst_filing_due" style={{ color: 'var(--color-primary)' }}>Owner: GST return due</Link> in Notifications.
-              </span>
-            </label>
+            <p data-testid="gst-reminder-link" style={{ margin: 0, fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
+              The reminder to the owners (how many days before, then on the day and the day after while the period is open), who
+              gets it and its switches are on{' '}
+              <Link to="/notifications/messages?open=owner_gst_filing_due" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>Owner: GST return due</Link> in Notifications.
+            </p>
           </div>
           <Button onClick={saveSettings} disabled={saving} style={{ marginTop: 16 }}>{saving ? 'Saving…' : 'Save settings'}</Button>
         </Card>

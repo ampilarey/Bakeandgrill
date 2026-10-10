@@ -7,14 +7,16 @@ import * as tgApi from '../api/telegram';
 
 /*
  * Notifications → Messages (notifications audit, 2026-10-10): every text,
- * email and Telegram alert, one row each with its own switches. Ported
- * from the SMS Control Center's tests, plus what is new: no "also needs",
- * the "when it sends" numbers in the row, the Telegram-only rows and
- * links that land on one row.
+ * email and Telegram alert, one row each with its own switches. Re-audit
+ * the same day: each staff or owner alert says who gets it (groups,
+ * people, exceptions, numbers) and opens to change it; a message's own
+ * email has an Email switch; the Telegram-only alerts are rows like any
+ * other; the list folds and narrows for a phone.
  */
 
 const mockCan = vi.fn();
 const mockUser = { id: 1, name: 'Owner', role: 'owner', permissions: [] as string[] };
+let mobile = false;
 
 vi.mock('../hooks/usePermissions', () => ({
   useCurrentUserPermissions: () => ({
@@ -23,13 +25,21 @@ vi.mock('../hooks/usePermissions', () => ({
     loading: false,
   }),
 }));
+vi.mock('../hooks/useIsMobile', () => ({
+  useIsMobile: () => mobile,
+}));
+
+const OWNERS_MANAGERS: api.AlertAudience = { groups: ['role:owner', 'role:manager'], users: [], except: [], phones: [], emails: [] };
 
 const typesFixture: api.SmsControlCenterType[] = [
   {
     key: 'auth_customer_otp',
     label: 'Customer login OTP',
     category: 'auth',
+    channels: ['sms', 'email'],
     enabled: true,
+    email_enabled: true,
+    has_own_email: true,
     always_on: true,
     suppressible: false,
     recipients: 'The customer requesting login / verification',
@@ -45,7 +55,10 @@ const typesFixture: api.SmsControlCenterType[] = [
     key: 'giftcard_delivery',
     label: 'Gift card delivery',
     category: 'transactional',
+    channels: ['sms', 'email'],
     enabled: true,
+    email_enabled: true,
+    has_own_email: true,
     always_on: false,
     suppressible: false,
     recipients: 'Gift card recipient phone',
@@ -61,6 +74,7 @@ const typesFixture: api.SmsControlCenterType[] = [
     key: 'marketing_campaign',
     label: 'Bulk campaign',
     category: 'marketing',
+    channels: ['sms', 'email'],
     enabled: true,
     always_on: false,
     suppressible: true,
@@ -76,6 +90,7 @@ const typesFixture: api.SmsControlCenterType[] = [
     key: 'owner_stock_reorder',
     label: 'Owner: stock at reorder point',
     category: 'staff',
+    channels: ['sms', 'email', 'telegram'],
     enabled: true,
     telegram_applies: true,
     always_on: false,
@@ -87,15 +102,20 @@ const typesFixture: api.SmsControlCenterType[] = [
     roles_with_permission: ['System'],
     template: null,
     last_30_days: { count: 4, cost_mvr: 1 },
-    recipients_configurable: true,
-    default_recipient_mode: 'owners_managers',
-    recipients_config: { mode: 'owners_managers', user_ids: [], phones: [] },
-    recipients_resolved: ['9607770001'],
+    audience_configurable: true,
+    audience_custom: false,
+    audience: OWNERS_MANAGERS,
+    audience_default: OWNERS_MANAGERS,
+    audience_people: {
+      people: [{ id: 1, name: 'Ahmed', role: 'Owner', reach: ['sms', 'telegram'] }, { id: 5, name: 'Ali', role: 'Manager', reach: ['sms'] }],
+      extras: [], groups: ['Owners', 'Managers'], note: null,
+    },
   },
   {
     key: 'owner_shift_left_open',
     label: 'Owner: shift left open',
     category: 'staff',
+    channels: ['sms', 'email', 'telegram'],
     enabled: true,
     telegram_applies: true,
     always_on: false,
@@ -107,6 +127,54 @@ const typesFixture: api.SmsControlCenterType[] = [
     roles_with_permission: ['System'],
     template: null,
     last_30_days: { count: 0, cost_mvr: 0 },
+    audience_configurable: true,
+    audience: OWNERS_MANAGERS,
+    audience_default: OWNERS_MANAGERS,
+    audience_people: { people: [], extras: [], groups: ['Owners', 'Managers'], note: null },
+  },
+  {
+    key: 'owner_day_report',
+    label: 'Owner: day report when the last shift closes',
+    category: 'staff',
+    channels: ['telegram'],
+    enabled: false,
+    telegram_applies: true,
+    telegram_enabled: true,
+    always_on: false,
+    suppressible: false,
+    recipients: 'Owners, and whoever can see reports',
+    user_initiated: false,
+    send_permission: null,
+    send_permission_label: 'System-initiated — no manual sending',
+    roles_with_permission: ['System'],
+    template: null,
+    last_30_days: { count: 0, cost_mvr: 0 },
+    audience_configurable: true,
+    audience: { groups: ['role:owner', 'perm:reports.view'], users: [], except: [], phones: [], emails: [] },
+    audience_default: { groups: ['role:owner', 'perm:reports.view'], users: [], except: [], phones: [], emails: [] },
+    audience_people: { people: [{ id: 1, name: 'Ahmed', role: 'Owner', reach: ['telegram'] }], extras: [], groups: ['Owners', 'Whoever can see reports'], note: null },
+  },
+  {
+    key: 'owner_cash_out',
+    label: 'Owner: cash taken out of a drawer',
+    category: 'staff',
+    channels: ['telegram'],
+    enabled: false,
+    telegram_applies: true,
+    telegram_enabled: true,
+    always_on: false,
+    suppressible: false,
+    recipients: 'Owners, and whoever can see reports',
+    user_initiated: false,
+    send_permission: null,
+    send_permission_label: 'System-initiated — no manual sending',
+    roles_with_permission: ['System'],
+    template: null,
+    last_30_days: { count: 0, cost_mvr: 0 },
+    audience_configurable: true,
+    audience: { groups: ['role:owner', 'perm:reports.view'], users: [], except: [], phones: [], emails: [] },
+    audience_default: { groups: ['role:owner', 'perm:reports.view'], users: [], except: [], phones: [], emails: [] },
+    audience_people: { people: [], extras: [], groups: ['Owners', 'Whoever can see reports'], note: null },
   },
 ];
 
@@ -132,6 +200,23 @@ const permissionOptions = [
   { slug: 'orders.send_sms_bill', name: 'Send SMS bill' },
 ];
 
+const staffOptions: api.SmsStaffOption[] = [
+  { id: 1, name: 'Ahmed', phone: '9607770001', role: 'Owner', role_slug: 'owner' },
+  { id: 5, name: 'Ali', phone: '9607770002', role: 'Manager', role_slug: 'manager' },
+  { id: 7, name: 'Hassan', phone: null, email: 'hassan@example.com', role: 'Kitchen Staff', role_slug: 'kitchen_staff' },
+];
+
+const groupOptions: api.AudienceGroupOption[] = [
+  { key: 'role:owner', label: 'Owners', count: 1 },
+  { key: 'role:manager', label: 'Managers', count: 1 },
+  { key: 'role:kitchen_staff', label: 'Kitchen staff', count: 1 },
+  { key: 'perm:events.manage', label: 'Whoever manages catering', count: 2 },
+  { key: 'perm:reports.view', label: 'Whoever can see reports', count: 2 },
+  { key: 'business_phone', label: 'Business phone +9607771234', count: 1 },
+  { key: 'on_shift', label: 'Staff on shift (by their order-alert settings)', count: null },
+  { key: 'catering_team', label: 'The person handling the request (everyone who manages catering until someone does)', count: null },
+];
+
 function mockControlCenter(overrides?: Partial<api.SmsControlCenterResponse>) {
   vi.spyOn(api, 'getSmsControlCenter').mockResolvedValue({
     global_kill_switch: false,
@@ -143,8 +228,8 @@ function mockControlCenter(overrides?: Partial<api.SmsControlCenterResponse>) {
     delivery_rules: { quiet_hours_enabled: false, quiet_hours_start: '22:00', quiet_hours_end: '08:00', quiet_hours_alerts: false, marketing_daily_cap: 1 },
     quiet_now: false,
     deferred_count: 0,
-    recipient_modes: ['owners_managers', 'owner_only', 'business_phone', 'staff', 'custom'],
-    staff_options: [{ id: 5, name: 'Ali', phone: '9607770002', role: 'Manager' }],
+    audience_groups: groupOptions,
+    staff_options: staffOptions,
     telegram_alerts_on: true,
     telegram_bot_ready: true,
     ...overrides,
@@ -155,7 +240,7 @@ function grant(perms: string[]) {
   mockCan.mockImplementation((slug?: string) => !slug || perms.includes(slug));
 }
 
-const MANAGE = ['sms.settings.manage', 'sms.templates.edit', 'sms.logs.view', 'settings.update'];
+const MANAGE = ['sms.settings.manage', 'sms.templates.edit', 'sms.logs.view', 'settings.update', 'telegram.manage'];
 
 /** Open one row's controls. Only one is open at a time, so queries can use screen. */
 async function expand(key: string): Promise<HTMLElement> {
@@ -168,6 +253,7 @@ async function expand(key: string): Promise<HTMLElement> {
 describe('Notifications → Messages', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    mobile = false;
     mockUser.role = 'owner';
     grant(MANAGE);
     mockControlCenter();
@@ -191,7 +277,7 @@ describe('Notifications → Messages', () => {
       settings: { alerts_enabled: true, day_report: true, alert_voids: true, alert_cash: true, alert_cash_min: 0 },
     });
     vi.spyOn(tgApi, 'updateTelegramSettings').mockResolvedValue({
-      settings: { alerts_enabled: true, day_report: false, alert_voids: true, alert_cash: true, alert_cash_min: 0 },
+      settings: { alerts_enabled: true, day_report: true, alert_voids: true, alert_cash: true, alert_cash_min: 500 },
     });
   });
 
@@ -201,7 +287,9 @@ describe('Notifications → Messages', () => {
     expect(screen.getByRole('heading', { name: 'To customers' })).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Staff & owner alerts' })).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Marketing' })).toBeTruthy();
-    expect(screen.getByText(/Goes to: Gift card recipient phone/)).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Telegram only' })).toBeTruthy();
+    expect(screen.getByText(/To: Gift card recipient phone/)).toBeTruthy();
+    expect(within(screen.getByTestId('sms-type-owner_stock_reorder')).getByText(/To: Owners, Managers/)).toBeTruthy();
     expect(screen.getAllByText(/Always on/i).length).toBeGreaterThan(0);
   });
 
@@ -211,11 +299,16 @@ describe('Notifications → Messages', () => {
     expect(screen.queryByText(/Also needs/)).toBeNull();
   });
 
-  it('switches SMS, Email and Telegram per row', async () => {
+  it('switches SMS, Email and Telegram per row, a message\'s own email included', async () => {
     renderWithRouter(<MessagesTab />);
     await screen.findByText('Gift card delivery');
     fireEvent.click(screen.getByLabelText('Toggle Gift card delivery'));
     await waitFor(() => expect(api.updateSmsType).toHaveBeenCalledWith('giftcard_delivery', { enabled: false }));
+
+    // The gift card's own email has a switch now (re-audit, 2026-10-10).
+    vi.mocked(api.updateSmsType).mockResolvedValueOnce({ key: 'giftcard_delivery', email_enabled: false });
+    fireEvent.click(screen.getByLabelText('Toggle email for Gift card delivery'));
+    await waitFor(() => expect(api.updateSmsType).toHaveBeenCalledWith('giftcard_delivery', { email_enabled: false }));
 
     vi.mocked(api.updateSmsType).mockResolvedValueOnce({ key: 'owner_stock_reorder', email_enabled: false });
     fireEvent.click(screen.getByLabelText('Toggle email for Owner: stock at reorder point'));
@@ -236,11 +329,13 @@ describe('Notifications → Messages', () => {
     expect(screen.queryByTestId('sms-type-owner_stock_reorder')).toBeNull();
   });
 
-  it('always-on rows have no SMS switch', async () => {
+  it('always-on rows have no SMS or email switch; a customer row has no Telegram switch', async () => {
     renderWithRouter(<MessagesTab />);
     await screen.findByText('Customer login OTP');
     expect(screen.queryByLabelText('Toggle Customer login OTP')).toBeNull();
+    expect(screen.queryByLabelText('Toggle email for Customer login OTP')).toBeNull();
     expect(screen.getByLabelText('Toggle Gift card delivery')).toBeTruthy();
+    expect(screen.queryByLabelText('Toggle Telegram for Gift card delivery')).toBeNull();
   });
 
   it('saves wording, warns about Unicode and previews the cost', async () => {
@@ -290,20 +385,50 @@ describe('Notifications → Messages', () => {
     await waitFor(() => expect(api.updateSmsType).toHaveBeenCalledWith('giftcard_delivery', { send_permission: 'orders.send_sms_bill' }));
   });
 
-  it('lets the owner choose who gets an owner alert', async () => {
-    vi.mocked(api.updateSmsType).mockResolvedValue({
-      key: 'owner_stock_reorder',
-      recipients_config: { mode: 'staff', user_ids: [5], phones: [] },
-      recipients_resolved: ['9607770002'],
+  it('lets the owner choose who gets an alert: groups, a named person, someone left out', async () => {
+    vi.mocked(api.updateSmsType).mockImplementation(async (key, payload) => {
+      const audience = typeof payload === 'boolean' ? undefined : payload.audience;
+      return {
+        key,
+        audience: audience === null ? OWNERS_MANAGERS : { ...OWNERS_MANAGERS, ...(audience ?? {}) },
+        audience_custom: audience !== null,
+        audience_people: { people: [{ id: 7, name: 'Hassan', role: 'Kitchen Staff', reach: ['email'] }], extras: ['+9607771234'], groups: ['Owners'], note: null },
+      };
     });
     renderWithRouter(<MessagesTab />);
     await expand('owner_stock_reorder');
-    const select = screen.getByLabelText(/Who receives it/i) as HTMLSelectElement;
-    expect(select.value).toBe('owners_managers');
-    fireEvent.change(select, { target: { value: 'staff' } });
-    fireEvent.click(screen.getByLabelText(/Ali \(Manager\)/));
-    await waitFor(() => expect(api.updateSmsType).toHaveBeenCalledWith('owner_stock_reorder', { recipients: { mode: 'staff', user_ids: [5], phones: [] } }));
-    expect(await screen.findByText(/Goes to: 9607770002/)).toBeTruthy();
+    const editor = screen.getByTestId('audience-owner_stock_reorder');
+    expect(within(editor).getByRole('button', { name: /^Managers/ })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('goes-to-owner_stock_reorder')).toHaveTextContent(/Ahmed \(SMS, Telegram\) · Ali \(SMS\)/);
+
+    // A role off
+    fireEvent.click(within(editor).getByRole('button', { name: /^Managers/ }));
+    await waitFor(() => expect(api.updateSmsType).toHaveBeenCalledWith('owner_stock_reorder', { audience: { ...OWNERS_MANAGERS, groups: ['role:owner'] } }));
+
+    // A person always, and the resolved list follows
+    fireEvent.change(screen.getByLabelText('Add a person who always gets it'), { target: { value: '7' } });
+    await waitFor(() => expect(api.updateSmsType).toHaveBeenLastCalledWith('owner_stock_reorder', { audience: expect.objectContaining({ users: [7] }) }));
+    expect(await screen.findByText(/Hassan \(Email\)/)).toBeTruthy();
+    expect(within(screen.getByTestId('audience-owner_stock_reorder')).getByText('Hassan')).toBeTruthy();
+
+    // Someone left out
+    fireEvent.change(screen.getByLabelText('Add a person who never gets it'), { target: { value: '5' } });
+    await waitFor(() => expect(api.updateSmsType).toHaveBeenLastCalledWith('owner_stock_reorder', { audience: expect.objectContaining({ except: [5] }) }));
+    // The saved audience is back on the row before the next change.
+    await screen.findByRole('button', { name: 'Allow Ali again' });
+
+    // A typed number (the editor saves one change at a time)
+    const saveNumbers = () => within(screen.getByTestId('audience-owner_stock_reorder')).getAllByRole('button', { name: 'Save' })[0];
+    fireEvent.change(screen.getByLabelText('Numbers for Owner: stock at reorder point'), { target: { value: '7771234' } });
+    await waitFor(() => expect(saveNumbers()).toBeEnabled());
+    fireEvent.click(saveNumbers());
+    await waitFor(() => expect(api.updateSmsType).toHaveBeenLastCalledWith('owner_stock_reorder', { audience: expect.objectContaining({ phones: ['7771234'] }) }));
+
+    // Back to the default
+    const back = await screen.findByRole('button', { name: 'Back to the usual people' });
+    await waitFor(() => expect(back).toBeEnabled());
+    fireEvent.click(back);
+    await waitFor(() => expect(api.updateSmsType).toHaveBeenLastCalledWith('owner_stock_reorder', { audience: null }));
   });
 
   it('says when an alert goes in its row, and 0 is not a way to switch it off', async () => {
@@ -314,10 +439,10 @@ describe('Notifications → Messages', () => {
 
     fireEvent.change(field, { target: { value: '0' } });
     expect(screen.getByText(/To stop it, switch the row off/)).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+    expect(within(screen.getByTestId('timing-owner_shift_left_open')).getByRole('button', { name: 'Save' })).toBeDisabled();
 
     fireEvent.change(field, { target: { value: '9' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(within(screen.getByTestId('timing-owner_shift_left_open')).getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(api.updateOpsAlertsSettings).toHaveBeenCalledWith({ shift_open_alert_hours: 9 }));
     expect(await screen.findByText('Saved.')).toBeTruthy();
   });
@@ -331,24 +456,22 @@ describe('Notifications → Messages', () => {
     expect(api.getOpsAlertsSettings).not.toHaveBeenCalled();
   });
 
-  it('shows the Telegram-only alerts as rows and switches them', async () => {
-    grant([...MANAGE, 'telegram.manage']);
+  it('shows the Telegram-only alerts as rows with one switch, and the cash amount in the row', async () => {
+    vi.mocked(api.updateSmsType).mockResolvedValueOnce({ key: 'owner_day_report', telegram_enabled: false });
     renderWithRouter(<MessagesTab />);
-    const row = await screen.findByTestId('telegram-only-day_report');
+    const row = await screen.findByTestId('sms-type-owner_day_report');
+    expect(within(row).queryByLabelText(/Toggle Owner: day report/)).toBeNull();
+    expect(within(row).queryByLabelText(/Toggle email for/)).toBeNull();
     fireEvent.click(within(row).getByLabelText(/Toggle Telegram for Owner: day report/));
-    await waitFor(() => expect(tgApi.updateTelegramSettings).toHaveBeenCalledWith({ day_report: false }));
-    await waitFor(() => expect(within(screen.getByTestId('telegram-only-day_report')).getByText('Off')).toBeTruthy());
+    await waitFor(() => expect(api.updateSmsType).toHaveBeenCalledWith('owner_day_report', { telegram_enabled: false }));
+    await waitFor(() => expect(within(screen.getByTestId('sms-type-owner_day_report')).getByText('Off')).toBeTruthy());
 
-    fireEvent.change(screen.getByLabelText('Cash alert from amount'), { target: { value: '500' } });
-    fireEvent.blur(screen.getByLabelText('Cash alert from amount'));
+    await expand('owner_cash_out');
+    const amount = await screen.findByLabelText(/Only when the amount is at least/);
+    await waitFor(() => expect(amount).toHaveValue(0));
+    fireEvent.change(amount, { target: { value: '500' } });
+    fireEvent.click(within(screen.getByTestId('timing-owner_cash_out')).getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(tgApi.updateTelegramSettings).toHaveBeenCalledWith({ alert_cash_min: 500 }));
-  });
-
-  it('has no Telegram-only rows without the Telegram permission', async () => {
-    renderWithRouter(<MessagesTab />);
-    await screen.findByText('Gift card delivery');
-    expect(screen.queryByTestId('telegram-only')).toBeNull();
-    expect(tgApi.fetchTelegram).not.toHaveBeenCalled();
   });
 
   it('warns that the Telegram switches send nothing while Telegram alerts are off', async () => {
@@ -370,6 +493,16 @@ describe('Notifications → Messages', () => {
     expect(screen.queryByText('Gift card delivery')).toBeNull();
   });
 
+  it('?to= shows the alerts that reach a role or a person', async () => {
+    renderWithRouter(<MessagesTab />, { route: '/notifications/messages?to=role:manager' });
+    expect(await screen.findByTestId('to-filter')).toHaveTextContent(/Alerts that reach Managers/);
+    expect(screen.getByText('Owner: stock at reorder point')).toBeTruthy();
+    expect(screen.queryByText('Gift card delivery')).toBeNull();
+    expect(screen.queryByText('Owner: day report when the last shift closes')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Show every message' }));
+    expect(screen.getByText('Gift card delivery')).toBeTruthy();
+  });
+
   it('opens with the phones owner alerts go to', async () => {
     mockControlCenter({ demo_mode: false, business_phone: null, owner_phones: [{ name: 'Ahmed', phone: '+9607770001' }], deferred_count: 3 });
     renderWithRouter(<MessagesTab />);
@@ -387,8 +520,28 @@ describe('Notifications → Messages', () => {
     expect(screen.queryByText('Gift card delivery')).toBeNull();
     expect(screen.getByText('Owner: stock at reorder point')).toBeTruthy();
 
+    fireEvent.change(screen.getByLabelText('Search messages'), { target: { value: 'Ali' } });
+    expect(screen.getByText('Owner: stock at reorder point')).toBeTruthy();
+
     fireEvent.change(screen.getByLabelText('Search messages'), { target: { value: '' } });
     fireEvent.click(screen.getByRole('button', { name: /^Marketing/ }));
+    expect(screen.getByText('Bulk campaign')).toBeTruthy();
+    expect(screen.queryByText('Gift card delivery')).toBeNull();
+  });
+
+  it('on a phone the groups fold, one select replaces the chips and the overview tucks away', async () => {
+    mobile = true;
+    renderWithRouter(<MessagesTab />);
+    const head = await screen.findByRole('heading', { name: 'To customers' });
+    expect(head).toBeTruthy();
+    expect(screen.queryByText('Gift card delivery')).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Marketing/ })).toBeNull();
+    expect(screen.getByText(/At a glance/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show To customers' }));
+    expect(screen.getByText('Gift card delivery')).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText('Group'), { target: { value: 'marketing' } });
     expect(screen.getByText('Bulk campaign')).toBeTruthy();
     expect(screen.queryByText('Gift card delivery')).toBeNull();
   });
@@ -415,5 +568,7 @@ describe('Notifications → Messages', () => {
     expect((screen.getByRole('textbox', { name: /Gift card delivery wording/i }) as HTMLTextAreaElement).disabled).toBe(true);
     expect((screen.getByLabelText(/Who can send/i) as HTMLSelectElement).disabled).toBe(true);
     expect(screen.getByText(/changing them needs Manage SMS settings/)).toBeTruthy();
+    await expand('owner_stock_reorder');
+    expect(within(screen.getByTestId('audience-owner_stock_reorder')).getByRole('button', { name: /^Managers/ })).toBeDisabled();
   });
 });

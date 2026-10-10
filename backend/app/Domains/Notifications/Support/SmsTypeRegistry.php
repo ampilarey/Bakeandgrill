@@ -23,7 +23,8 @@ use Illuminate\Support\Facades\Log;
  *   send_permission: string|null,
  *   always_on: bool,
  *   recipients: string,
- *   user_initiated: bool
+ *   user_initiated: bool,
+ *   channels: list<string>|null
  * }
  */
 final class SmsTypeRegistry
@@ -96,47 +97,35 @@ final class SmsTypeRegistry
     public const TELEGRAM_SETTING_PREFIX = 'sms_type_telegram.';
 
     /**
-     * Types whose recipients the owner chooses in the Control Center, with
-     * where each goes when nothing is chosen. Types not listed here decide
-     * their recipient in code (the ordering customer, the rostered staff
-     * member) and cannot be redirected.
-     *
-     * @var array<string, 'owners_managers'|'business_phone'>
+     * Who a staff or owner alert goes to is its audience (AlertAudience,
+     * 2026-10-10: groups, named people, exceptions, typed numbers and
+     * emails), stored under RECIPIENTS_SETTING_PREFIX . {type}. A type with
+     * no default there decides its recipient in code (the ordering customer,
+     * the rostered staff member) and cannot be redirected.
      */
-    public const RECIPIENT_DEFAULTS = [
-        'owner_stock_reorder' => 'owners_managers',
-        'owner_stock_expiry' => 'owners_managers',
-        'owner_price_rise' => 'owners_managers',
-        'owner_delivery_delays' => 'business_phone',
-        'owner_device_approval' => 'business_phone',
-        'owner_signage_devices' => 'business_phone',
-        'owner_complaint_stale' => 'owners_managers',
-        'owner_complaint_digest' => 'owners_managers',
-        'owner_social_channel' => 'business_phone',
-        'owner_social_approval' => 'business_phone',
-        'owner_social_comments' => 'business_phone',
-        'owner_social_digest' => 'owners_managers',
-        'owner_daily_refund_summary' => 'owners_managers',
-        'owner_deposit_payout' => 'owners_managers',
-        'owner_shift_left_open' => 'owners_managers',
-        'owner_shift_variance' => 'owners_managers',
-        'owner_shift_float_mismatch' => 'owners_managers',
-        'owner_complaint_received' => 'owners_managers',
-        'owner_complaint_box_received' => 'owners_managers',
-        'trade_reconcile_mismatch_owner' => 'owners_managers',
-        'owner_trade_overdue' => 'owners_managers',
-        'owner_trade_unreconciled' => 'owners_managers',
-        'owner_trade_sales_reported' => 'owners_managers',
-        'owner_trade_billing_due' => 'owners_managers',
-        'owner_late_payment' => 'owners_managers',
-        'owner_order_unstarted' => 'business_phone',
-        'owner_gst_filing_due' => 'owners_managers',
-        // Owner only: the alert may be about a manager's account.
-        'owner_staff_login_locked' => 'owner_only',
-        'owner_ops_alert' => 'owner_only',
-    ];
+    public const CHANNELS = ['sms', 'email', 'telegram'];
 
-    public const RECIPIENT_MODES = ['owners_managers', 'owner_only', 'business_phone', 'staff', 'custom'];
+    /**
+     * Alerts that exist only on Telegram (2026-10-07): the day report, an
+     * order cancelled at the till, cash taken out of a drawer. Rows in Admin →
+     * Notifications like any other, with one switch (Telegram) and an
+     * audience; no SMS or email version exists.
+     *
+     * @var list<string>
+     */
+    public const TELEGRAM_ONLY = ['owner_day_report', 'owner_till_void', 'owner_cash_out'];
+
+    /**
+     * Their Telegram switches keep the setting keys the Telegram page wrote
+     * before they became rows, so nothing already switched off comes back on.
+     *
+     * @var array<string, string>
+     */
+    public const TELEGRAM_SETTING_ALIASES = [
+        'owner_day_report' => 'telegram_day_report_enabled',
+        'owner_till_void' => 'telegram_alert_voids',
+        'owner_cash_out' => 'telegram_alert_cash',
+    ];
 
     /** @var array<string, string> Legacy SmsMessage.type → registry key */
     private const TYPE_ALIASES = [
@@ -268,6 +257,13 @@ final class SmsTypeRegistry
             // Operations audit, 2026-10-01: a scheduled task (backups included) failed, or the queue worker stopped.
             self::def('owner_ops_alert', 'Owner: backup or background task failed', 'staff', true, false, null, 'sms_owner_ops_alert_enabled', null, false, 'Owner phone(s)', false),
 
+            // Telegram only (2026-10-07; rows since 2026-10-10): no SMS or email
+            // version exists, so each has one switch. Owners, and whoever can
+            // see reports, when they have linked Telegram.
+            self::def('owner_day_report', 'Owner: day report when the last shift closes', 'staff', true, false, null, null, null, false, 'Owners, and whoever can see reports', false, ['telegram']),
+            self::def('owner_till_void', 'Owner: order cancelled at the till', 'staff', true, false, null, null, null, false, 'Owners, and whoever can see reports', false, ['telegram']),
+            self::def('owner_cash_out', 'Owner: cash taken out of a drawer', 'staff', true, false, null, null, null, false, 'Owners, and whoever can see reports', false, ['telegram']),
+
             // SMS audit, 2026-09-24: the twenty-six paths that still sent under
             // the old category labels ("system", "transactional",
             // "staff_notification") and so had no switch, no cost line and no
@@ -373,8 +369,30 @@ final class SmsTypeRegistry
         return self::settingIsTruthy(SiteSetting::get(self::GLOBAL_KILL_SWITCH, 'false'), false);
     }
 
+    /**
+     * The channels a message can go by: SMS and email for everyone, Telegram
+     * as well for staff and owner alerts, Telegram alone for the three
+     * Telegram-only alerts. Each is a switch on the row in Admin.
+     *
+     * @param array<string, mixed> $entry
+     * @return list<string>
+     */
+    public static function channels(array $entry): array
+    {
+        if (!empty($entry['channels']) && is_array($entry['channels'])) {
+            return array_values($entry['channels']);
+        }
+        $staff = ($entry['category'] ?? '') === 'staff' || ($entry['key'] ?? '') === 'discount_approval_otp';
+
+        return $staff ? self::CHANNELS : ['sms', 'email'];
+    }
+
+    /** Whether the SMS exists and is on; false for a Telegram-only alert. */
     public static function isTypeEnabled(array $entry): bool
     {
+        if (!in_array('sms', self::channels($entry), true)) {
+            return false;
+        }
         if (!empty($entry['always_on'])) {
             return true;
         }
@@ -445,13 +463,19 @@ final class SmsTypeRegistry
     /** Whether this staff alert goes to Telegram; on unless switched off. */
     public static function isTelegramEnabled(string $typeKey): bool
     {
-        return self::settingIsTruthy(SiteSetting::get(self::TELEGRAM_SETTING_PREFIX . $typeKey, '1'), true);
+        return self::settingIsTruthy(SiteSetting::get(self::telegramSettingKey($typeKey), '1'), true);
     }
 
     public static function setTelegramEnabled(string $typeKey, bool $on): void
     {
-        SiteSetting::set(self::TELEGRAM_SETTING_PREFIX . $typeKey, $on ? '1' : 'off');
+        SiteSetting::set(self::telegramSettingKey($typeKey), $on ? '1' : 'off');
         SiteSetting::bust();
+    }
+
+    /** The setting behind a row's Telegram switch (the Telegram-only alerts keep their old keys). */
+    public static function telegramSettingKey(string $typeKey): string
+    {
+        return self::TELEGRAM_SETTING_ALIASES[$typeKey] ?? self::TELEGRAM_SETTING_PREFIX . $typeKey;
     }
 
     public static function settingIsTruthy(mixed $value, bool $default = true): bool
@@ -480,44 +504,6 @@ final class SmsTypeRegistry
     public static function isSuppressible(array $entry): bool
     {
         return (bool) ($entry['suppressible'] ?? true);
-    }
-
-    /** Null when the type's recipient is decided in code. */
-    public static function defaultRecipientMode(string $typeKey): ?string
-    {
-        return self::RECIPIENT_DEFAULTS[$typeKey] ?? null;
-    }
-
-    /**
-     * The owner's recipient choice for a type, or null when none was made.
-     *
-     * @return array{mode: string, user_ids: list<int>, phones: list<string>}|null
-     */
-    public static function recipientOverride(string $typeKey): ?array
-    {
-        $raw = SiteSetting::get(self::RECIPIENTS_SETTING_PREFIX . $typeKey, null);
-        $data = is_string($raw) ? json_decode($raw, true) : (is_array($raw) ? $raw : null);
-        if (!is_array($data) || !in_array($data['mode'] ?? null, self::RECIPIENT_MODES, true)) {
-            return null;
-        }
-
-        return [
-            'mode' => (string) $data['mode'],
-            'user_ids' => array_values(array_unique(array_map('intval', (array) ($data['user_ids'] ?? [])))),
-            'phones' => array_values(array_unique(array_filter(array_map(fn ($p) => trim((string) $p), (array) ($data['phones'] ?? []))))),
-        ];
-    }
-
-    /** @param array{mode: string, user_ids?: list<int>, phones?: list<string>}|null $choice null clears the choice */
-    public static function setRecipientOverride(string $typeKey, ?array $choice): void
-    {
-        $key = self::RECIPIENTS_SETTING_PREFIX . $typeKey;
-        SiteSetting::set($key, $choice === null ? '' : json_encode([
-            'mode' => $choice['mode'],
-            'user_ids' => array_values(array_map('intval', $choice['user_ids'] ?? [])),
-            'phones' => array_values($choice['phones'] ?? []),
-        ]));
-        SiteSetting::bust();
     }
 
     public static function shouldRedactBody(string $type): bool
@@ -631,6 +617,7 @@ final class SmsTypeRegistry
             'always_on' => $category === 'auth',
             'recipients' => 'Legacy caller — recipient decided in code',
             'user_initiated' => false,
+            'channels' => null,
         ];
     }
 
@@ -649,6 +636,7 @@ final class SmsTypeRegistry
         bool $alwaysOn,
         string $recipients,
         bool $userInitiated,
+        ?array $channels = null,
     ): array {
         return [
             'key' => $key,
@@ -662,6 +650,7 @@ final class SmsTypeRegistry
             'always_on' => $alwaysOn,
             'recipients' => $recipients,
             'user_initiated' => $userInitiated,
+            'channels' => $channels,
         ];
     }
 }

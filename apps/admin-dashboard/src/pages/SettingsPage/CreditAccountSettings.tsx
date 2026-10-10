@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Save } from 'lucide-react';
 import { Button, Card } from '../../components/ui';
 import { getSiteSettings, updateSiteSettings } from '../../api';
@@ -50,10 +51,8 @@ export function CreditAccountSettings() {
   const [maxLimit, setMaxLimit] = useState('');
   const [terms, setTerms] = useState('');
   const [mode, setMode] = useState<string>('open');
-  // Wholesale audit, 2026-09-26: chasing that does not stop at day three.
-  const [everyDays, setEveryDays] = useState('7');
-  const [nudgeDays, setNudgeDays] = useState('3');
-  const [alertDays, setAlertDays] = useState('7');
+  // The chasing numbers (wholesale audit, 2026-09-26) are "When it sends" on
+  // their alerts in Notifications since the re-audit of 2026-10-10.
   const [loading, setLoading] = useState(true);
   // Save stays off until the real values are in: the fields hold defaults until
   // then, and saving those would overwrite the owner's settings (a manager
@@ -75,9 +74,6 @@ export function CreditAccountSettings() {
         setMaxLimit(map.credit_limit_max_mvr ?? '50000');
         setTerms(map.credit_payment_terms_default_days ?? '30');
         setMode(map.credit_accounts_mode ?? 'open');
-        setEveryDays(map.credit_overdue_reminder_every_days ?? '7');
-        setNudgeDays(map.trade_unreconciled_nudge_days ?? '3');
-        setAlertDays(map.trade_unreconciled_alert_days ?? '7');
         setLoaded(true);
       })
       .catch((e: Error) => setError(e.message))
@@ -95,14 +91,6 @@ export function CreditAccountSettings() {
       setError('Payment terms must be a whole number of days between 7 and 90.');
       return;
     }
-    const everyNum = Number(everyDays);
-    const nudgeNum = Number(nudgeDays);
-    const alertNum = Number(alertDays);
-    if (![everyNum, nudgeNum, alertNum].every((n) => Number.isInteger(n) && n >= 0 && n <= 90)) {
-      setError('The chasing intervals must be whole numbers of days between 0 and 90.');
-      return;
-    }
-
     setSaving(true);
     setError('');
     setSaved(false);
@@ -111,9 +99,6 @@ export function CreditAccountSettings() {
         credit_limit_max_mvr: String(limitNum),
         credit_payment_terms_default_days: String(termsNum),
         credit_accounts_mode: mode,
-        credit_overdue_reminder_every_days: String(everyNum),
-        trade_unreconciled_nudge_days: String(nudgeNum),
-        trade_unreconciled_alert_days: String(alertNum),
       });
       setSaved(true);
       window.setTimeout(() => setSaved(false), 2500);
@@ -203,50 +188,19 @@ export function CreditAccountSettings() {
             </div>
           </div>
 
-          <div>
+          <div data-testid="credit-chasing-link">
             <span style={{ ...LABEL, marginBottom: 2 }}>Chasing</span>
-            <p style={{ ...HINT, margin: '0 0 10px' }}>
-              Every open invoice is texted three days before it is due, on the day, and three days after.
-              Owners are texted when a wholesale invoice passes 30 and 60 days overdue, and shops get a statement on the 1st.
+            <p style={{ ...HINT, margin: 0 }}>
+              Every open invoice is texted three days before it is due, on the day, and three days after; owners are texted when a
+              wholesale invoice passes 30 and 60 days overdue, and shops get a statement on the 1st. How often it repeats, when a
+              shop is nudged to report sales and when owners hear about unreconciled stock are set on those alerts in Notifications,
+              beside their switches:{' '}
+              <Link to="/notifications/messages?open=credit_payment_reminder" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>credit reminder</Link>
+              {' · '}
+              <Link to="/notifications/messages?open=trade_report_reminder_shop" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>shop sales report nudge</Link>
+              {' · '}
+              <Link to="/notifications/messages?open=owner_trade_unreconciled" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>unreconciled stock alert</Link>.
             </p>
-            <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
-              <div>
-                <label style={LABEL} htmlFor="credit-overdue-every">Then remind every (days)</label>
-                <input
-                  id="credit-overdue-every"
-                  data-testid="credit-overdue-every"
-                  value={everyDays}
-                  onChange={(e) => setEveryDays(e.target.value)}
-                  inputMode="numeric"
-                  style={FIELD}
-                />
-                <p style={HINT}>0 stops the repeats after day three.</p>
-              </div>
-              <div>
-                <label style={LABEL} htmlFor="trade-nudge-days">Nudge a shop to report sales after (days)</label>
-                <input
-                  id="trade-nudge-days"
-                  data-testid="trade-nudge-days"
-                  value={nudgeDays}
-                  onChange={(e) => setNudgeDays(e.target.value)}
-                  inputMode="numeric"
-                  style={FIELD}
-                />
-                <p style={HINT}>Or as soon as the delivery is past its expected return. 0 turns it off.</p>
-              </div>
-              <div>
-                <label style={LABEL} htmlFor="trade-alert-days">Text owners about unreconciled stock after (days)</label>
-                <input
-                  id="trade-alert-days"
-                  data-testid="trade-alert-days"
-                  value={alertDays}
-                  onChange={(e) => setAlertDays(e.target.value)}
-                  inputMode="numeric"
-                  style={FIELD}
-                />
-                <p style={HINT}>Once per delivery. 0 turns it off.</p>
-              </div>
-            </div>
           </div>
 
           {error && (

@@ -52,30 +52,16 @@ class CateringEventConfirmedNotifier
 
         $staffFallback = "Event confirmed {$ref}: paid MVR {$paidMvr}{$balanceBit}. {$when}";
         $staffMsg = $this->messages->build('catering_confirmed_staff', $vars, $staffFallback);
-        foreach ($this->recipients->forLifecycle($request) as $i => $target) {
-            if (!empty($target['phone'])) {
-                $this->sms->send(new SmsMessage(
-                    to: (string) $target['phone'],
-                    message: $staffMsg,
-                    type: 'catering_confirmed_staff',
-                    referenceType: 'catering_request',
-                    referenceId: (string) $request->id,
-                    idempotencyKey: $baseKey . ':staff_sms:' . $i,
-                ));
-            }
-            if (!empty($target['email'])) {
-                try {
-                    Mail::raw($staffMsg, function ($message) use ($target, $ref) {
-                        $message->to((string) $target['email'])
-                            ->subject("Event confirmed {$ref} — Bake & Grill");
-                    });
-                } catch (\Throwable $e) {
-                    Log::warning('CateringEventConfirmedNotifier: staff email failed', [
-                        'id' => $request->id,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-            }
+        // Staff: the row's audience, each person by their own channels.
+        foreach ($this->recipients->forLifecycle($request, 'catering_confirmed_staff') as $i => $to) {
+            $this->sms->send(new SmsMessage(
+                to: $to,
+                message: $staffMsg,
+                type: 'catering_confirmed_staff',
+                referenceType: 'catering_request',
+                referenceId: (string) $request->id,
+                idempotencyKey: $baseKey . ':staff_sms:' . $i,
+            ));
         }
     }
 
@@ -98,8 +84,9 @@ class CateringEventConfirmedNotifier
             ));
         }
 
+        // The row's Email switch in Admin → Notifications is this email's switch (2026-10-10).
         $email = trim((string) ($request->email ?? ''));
-        if ($email !== '') {
+        if ($email !== '' && \App\Domains\Notifications\Support\SmsTypeRegistry::isEmailEnabled('catering_confirmed_customer')) {
             try {
                 Mail::to($email)->send(new EventConfirmedMail($request, $paidLaar, $balanceLaar));
             } catch (\Throwable $e) {

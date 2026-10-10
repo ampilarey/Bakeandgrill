@@ -49,16 +49,11 @@ final class SmsDeliveryRules
     /*
      * Email copies (owner, 2026-10-06: "Admin and all staffs too receive
      * email in all the scenarios"). Every text that passes the rules above
-     * also goes by email to the person's saved address. Email is free on the
-     * hosting but the server sends only so many an hour, so there is a cap;
-     * marketing may use at most half of it.
+     * also goes by email to the person's saved address, when its row's Email
+     * switch is on (the only switch since the re-audit of 2026-10-10). Email
+     * is free on the hosting but the server sends only so many an hour, so
+     * there is a cap; marketing may use at most half of it.
      */
-    public const EMAIL_CUSTOMERS = 'sms_email_copy_customers';
-
-    public const EMAIL_STAFF = 'sms_email_copy_staff';
-
-    public const EMAIL_MARKETING = 'sms_email_copy_marketing';
-
     public const EMAIL_HOURLY_CAP = 'sms_email_copy_hourly_cap';
 
     public const EMAIL_HOURLY_CAP_DEFAULT = 300;
@@ -76,7 +71,7 @@ final class SmsDeliveryRules
         return max(0, (int) config('services.dhiraagu.daily_recipient_cap', 5000));
     }
 
-    /** @return array{quiet_hours_enabled: bool, quiet_hours_start: string, quiet_hours_end: string, quiet_hours_alerts: bool, marketing_daily_cap: int, bulk_daily_recipient_cap: int, log_retention_days: int, marketing_opt_out_line: string} */
+    /** @return array{quiet_hours_enabled: bool, quiet_hours_start: string, quiet_hours_end: string, quiet_hours_alerts: bool, marketing_daily_cap: int, bulk_daily_recipient_cap: int, log_retention_days: int, marketing_opt_out_line: string, email_copy_hourly_cap: int} */
     public static function all(): array
     {
         return [
@@ -91,9 +86,6 @@ final class SmsDeliveryRules
             'log_retention_days' => max(0, (int) SiteSetting::get(self::LOG_RETENTION, '365')),
             // Appended to every marketing text; {url} becomes the short unsubscribe link. Empty = none.
             'marketing_opt_out_line' => self::optOutLine(),
-            'email_copy_customers' => SmsTypeRegistry::settingIsTruthy(SiteSetting::get(self::EMAIL_CUSTOMERS, '1'), true),
-            'email_copy_staff' => SmsTypeRegistry::settingIsTruthy(SiteSetting::get(self::EMAIL_STAFF, '1'), true),
-            'email_copy_marketing' => SmsTypeRegistry::settingIsTruthy(SiteSetting::get(self::EMAIL_MARKETING, '1'), true),
             // Email copies the server may send in an hour, all together; 0 = no cap.
             'email_copy_hourly_cap' => max(0, (int) SiteSetting::get(self::EMAIL_HOURLY_CAP, (string) self::EMAIL_HOURLY_CAP_DEFAULT)),
         ];
@@ -124,12 +116,6 @@ final class SmsDeliveryRules
             // SiteSetting::get() reads an empty value as "unset", so "no line" is stored as the word off.
             $line = mb_substr(trim((string) ($input['marketing_opt_out_line'] ?? '')), 0, 80);
             SiteSetting::set(self::OPT_OUT_LINE, $line === '' ? 'off' : $line);
-        }
-        foreach (['email_copy_customers' => self::EMAIL_CUSTOMERS, 'email_copy_staff' => self::EMAIL_STAFF, 'email_copy_marketing' => self::EMAIL_MARKETING] as $field => $key) {
-            if (array_key_exists($field, $input)) {
-                // Stored as the word off, like the opt-out line, so it never reads as unset.
-                SiteSetting::set($key, filter_var($input[$field], FILTER_VALIDATE_BOOLEAN) ? '1' : 'off');
-            }
         }
         if (array_key_exists('email_copy_hourly_cap', $input)) {
             $cap = max(0, min(100000, (int) $input['email_copy_hourly_cap']));

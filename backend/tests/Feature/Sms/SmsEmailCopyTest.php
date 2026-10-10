@@ -137,19 +137,45 @@ class SmsEmailCopyTest extends TestCase
         Mail::assertNotSent(SmsCopyMail::class);
     }
 
-    public function test_each_switch_turns_its_group_off(): void
+    /**
+     * A row's Email switch is its only email switch (re-audit, 2026-10-10):
+     * the old "email copies" switches for customers, staff and promotions
+     * are gone.
+     */
+    public function test_a_rows_email_switch_is_the_only_one(): void
     {
         $c = $this->customer();
         User::factory()->create(['phone' => '+9607820288', 'email' => 'owner@example.com', 'is_active' => true]);
-        SmsDeliveryRules::update(['email_copy_customers' => false, 'email_copy_staff' => false]);
+        SmsTypeRegistry::setEmailEnabled('customer_order_ready', false);
+        SmsTypeRegistry::setEmailEnabled('owner_shift_left_open', false);
 
         $this->text('7771234', 'Your order is ready.', 'customer_order_ready', $c->id);
         $this->text('7820288', 'Shift open for 14 hours.', 'owner_shift_left_open');
         Mail::assertNotSent(SmsCopyMail::class);
 
-        SmsDeliveryRules::update(['email_copy_staff' => true]);
+        SmsTypeRegistry::setEmailEnabled('owner_shift_left_open', true);
         $this->text('7820288', 'Shift open for 15 hours.', 'owner_shift_left_open', key: 'shift-15');
         Mail::assertSent(SmsCopyMail::class, 1);
+
+        $this->assertArrayNotHasKey('email_copy_staff', SmsDeliveryRules::all());
+        $this->assertArrayHasKey('email_copy_hourly_cap', SmsDeliveryRules::all());
+    }
+
+    /** An address typed on an alert's row gets the message by email alone (AlertAudience "emails"). */
+    public function test_a_typed_email_address_gets_the_alert_by_email(): void
+    {
+        $this->text('email:events@example.com', 'New event EVT-1.', 'catering_request_staff', key: 'evt-1');
+
+        Mail::assertSent(SmsCopyMail::class, fn (SmsCopyMail $m) => $m->hasTo('events@example.com') && $m->smsSent === false);
+        $row = SmsLog::query()->where('to', 'email:events@example.com')->firstOrFail();
+        $this->assertSame('suppressed', $row->status);
+        $this->assertSame(SmsLog::SENT_BY_EMAIL, $row->error_message);
+        $this->assertTrue($row->reachedRecipient());
+
+        SmsTypeRegistry::setEmailEnabled('catering_request_staff', false);
+        $this->text('email:events@example.com', 'New event EVT-2.', 'catering_request_staff', key: 'evt-2');
+        Mail::assertSent(SmsCopyMail::class, 1);
+        $this->assertSame('failed', SmsLog::query()->where('idempotency_key', 'evt-2')->value('status'));
     }
 
     public function test_a_retried_text_is_emailed_once(): void

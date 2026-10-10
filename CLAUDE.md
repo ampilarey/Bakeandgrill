@@ -176,6 +176,19 @@ someone who has a phone, the SMS goes. Customers are untouched. See
 `docs/NOTIFICATION_CHANNELS.md` (`NotificationChannels`,
 `SmsService::sendByOtherChannels`).
 
+**Who gets an alert is its audience** (owner, 2026-10-10: "each user group
+settings must be able to control group wise and each staff separately"):
+`App\Domains\Notifications\Support\AlertAudience`, `{groups, users, except,
+phones, emails}` per alert, groups `role:{slug}`, `perm:{slug}`, `on_shift`,
+`catering_team`, `business_phone`. A sender calls
+`AlertAudience::addresses($type, $context)` (or `OwnerPhones::for`, which
+delegates); a new staff or owner alert goes into `DEFAULT_GROUPS` or it has
+no audience and Admin cannot aim it. Edited on the row (Messages → Edit → Who
+gets it) and from the person's card (People → Alerts: Mute / Add); `?to=role:x`
+or `?to=user:id` filters Messages to what reaches them. Never read a
+recipient list from a settings key of your own: no second place to say who
+gets an alert. Details: `docs/NOTIFICATION_CHANNELS.md` § Who gets each alert.
+
 ## Notifications: one page, one switch per alert
 
 Owner, 2026-10-10 ("to make setting less complicated"). Every text, email and
@@ -186,8 +199,14 @@ is its only on/off: never add a second switch on a domain page; link to the
 row instead (`/notifications/messages?open=<type>`). A sender asks
 `AlertSwitch::isOn($type)` before working an alert out. A number that says
 when an alert goes lives under the row's Edit ("When it sends") and refuses 0;
-off is the row. A shared switch is split, one per message. Details:
-`docs/NOTIFICATION_CHANNELS.md` § One page, one switch per alert.
+off is the row. A shared switch is split, one per message. Every row has one
+switch per channel it can go by (`SmsTypeRegistry::channels($entry)`); a
+message with an email of its own puts that email behind the row's Email
+switch (`SmsTypeRegistry::isEmailEnabled`, `HAS_OWN_EMAIL`), and there is no
+master email switch (the "email copies" category switches went on
+2026-10-10). A Telegram-only alert is a registry row with `channels:
+['telegram']`. Details: `docs/NOTIFICATION_CHANNELS.md` § One page, one
+switch per alert and § Who gets each alert.
 
 ## Who may change something may see it
 

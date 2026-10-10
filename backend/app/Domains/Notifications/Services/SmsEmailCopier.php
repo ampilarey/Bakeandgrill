@@ -28,12 +28,18 @@ use Throwable;
  * rules as the SMS. The copy goes to the address saved for that person:
  * the staff account for a staff or owner alert, the customer account
  * otherwise. One copy per log row however often the SMS is retried.
+ *
+ * Whether a message goes by email is its row's Email switch in Admin →
+ * Notifications and nothing else (re-audit, 2026-10-10: the three "email
+ * copies" switches for customers, staff and promotions are gone). The
+ * hourly cap stays, to protect the mail server.
  */
 class SmsEmailCopier
 {
     /**
      * Types that already send their own, fuller email to the same person;
-     * a copy of the text would be a second email about the same thing.
+     * a copy of the text would be a second email about the same thing. Their
+     * row's Email switch is the switch for that email instead.
      */
     public const HAS_OWN_EMAIL = [
         'auth_customer_otp',            // CustomerOtpService emails the same code
@@ -44,24 +50,21 @@ class SmsEmailCopier
         'catering_quote_customer',      // EventQuoteSentMail
         'catering_confirmed_customer',  // EventConfirmedMail
         'customer_payment_confirmed_pos', // OrderConfirmationMail from PaymentConfirmationNotifier
+        'catering_lifecycle_customer',  // CateringLifecycleNotifier mails the event contact
+        'catering_reminder_customer',   // CateringLifecycleNotifier mails the event contact
     ];
 
     private const RATE_KEY = 'sms-email-copy:hour';
 
     /**
      * Whether this type sends an email copy at all: not one with its own
-     * email, its per-type email switch on, and at least one group on.
-     * Callers whose own SMS switch is off use it to decide whether to send
-     * the message "email only" or not at all.
+     * email, and its row's Email switch on. Callers whose own SMS switch is
+     * off use it to decide whether to send the message "email only" or not
+     * at all.
      */
     public static function wanted(string $type): bool
     {
-        if (in_array($type, self::HAS_OWN_EMAIL, true) || !SmsTypeRegistry::isEmailEnabled($type)) {
-            return false;
-        }
-        $rules = SmsDeliveryRules::all();
-
-        return $rules['email_copy_customers'] || $rules['email_copy_staff'] || $rules['email_copy_marketing'];
+        return !in_array($type, self::HAS_OWN_EMAIL, true) && SmsTypeRegistry::isEmailEnabled($type);
     }
 
     /** Whether a copy of this type to this person could go: wanted, and an address is known. */
@@ -85,7 +88,7 @@ class SmsEmailCopier
     public function copy(SmsMessage $sms, string $normalizedPhone, SmsLog $log, ?array $registryEntry, bool $smsSent = true, ?User $staff = null): bool
     {
         try {
-            if (in_array($sms->type, self::HAS_OWN_EMAIL, true) || !SmsTypeRegistry::isEmailEnabled($sms->type)) {
+            if (!self::wanted($sms->type)) {
                 return false;
             }
 
@@ -109,57 +112,81 @@ class SmsEmailCopier
             }
             [$email, $audience, $customerId] = $person;
 
-            $rules = SmsDeliveryRules::all();
             // A staff member is never sent "promotions": a scheduled message
             // to a staff contact (shift reminder) counts as a staff alert.
             $marketing = $marketing && $audience === 'customer';
-            $allowed = match (true) {
-                $audience === 'staff' => $rules['email_copy_staff'],
-                $marketing => $rules['email_copy_marketing'],
-                default => $rules['email_copy_customers'],
-            };
-            if (!$allowed) {
-                return false;
-            }
 
-            // One copy per log row: a retried or released SMS reuses its row.
-            if (!Cache::add('sms-email-copy:log:' . $log->id, 1, now()->addDays(2))) {
-                return true;
-            }
-
-            if (!$this->withinHourlyCap((int) $rules['email_copy_hourly_cap'], $marketing)) {
-                Log::info('sms email copy: hourly cap reached, skipped', ['type' => $sms->type, 'log_id' => $log->id]);
-
-                return false;
-            }
-
-            $mail = new SmsCopyMail(
-                message: $sms->message,
-                type: $sms->type,
-                label: (string) ($registryEntry['label'] ?? ''),
-                audience: $marketing ? 'marketing' : $audience,
-                phone: $normalizedPhone,
-                customerId: $customerId,
-                smsSent: $smsSent,
-            );
-
-            // After the response (or the job), so a slow mail server never
-            // holds up a checkout, a till or a campaign batch.
-            DeferAfterResponse::run(function () use ($email, $mail, $log): void {
-                try {
-                    Mail::to($email)->send($mail);
-                } catch (Throwable $e) {
-                    Log::warning('sms email copy: send failed', ['log_id' => $log->id, 'error' => $e->getMessage()]);
-                }
-            }, 'sms-email-copy', always: true);
-
-            return true;
+            return $this->dispatch($email, $marketing ? 'marketing' : $audience, $customerId, $sms, $normalizedPhone, $log, $registryEntry, $smsSent, $marketing);
         } catch (Throwable $e) {
             // Never let the email copy affect the SMS.
             Log::warning('sms email copy: skipped after an error', ['type' => $sms->type, 'error' => $e->getMessage()]);
 
             return false;
         }
+    }
+
+    /**
+     * An address typed on an alert's row (AlertAudience "emails"): not a
+     * person with an account, so no channels to check. The message goes by
+     * email when the row's Email switch is on.
+     *
+     * @param array<string, mixed>|null $registryEntry
+     */
+    public function sendTo(SmsMessage $sms, string $email, SmsLog $log, ?array $registryEntry): bool
+    {
+        try {
+            $email = $this->clean($email);
+            if ($email === null || !SmsTypeRegistry::isEmailEnabled($sms->type)) {
+                return false;
+            }
+
+            return $this->dispatch($email, 'staff', null, $sms, $email, $log, $registryEntry, smsSent: false, marketing: false);
+        } catch (Throwable $e) {
+            Log::warning('sms email: typed address skipped after an error', ['type' => $sms->type, 'error' => $e->getMessage()]);
+
+            return false;
+        }
+    }
+
+    /**
+     * Once per log row, within the hourly cap, after the response.
+     *
+     * @param array<string, mixed>|null $registryEntry
+     */
+    private function dispatch(string $email, string $audience, ?int $customerId, SmsMessage $sms, string $shownAs, SmsLog $log, ?array $registryEntry, bool $smsSent, bool $marketing): bool
+    {
+        // One copy per log row: a retried or released SMS reuses its row.
+        if (!Cache::add('sms-email-copy:log:' . $log->id, 1, now()->addDays(2))) {
+            return true;
+        }
+
+        if (!$this->withinHourlyCap((int) SmsDeliveryRules::all()['email_copy_hourly_cap'], $marketing)) {
+            Log::info('sms email copy: hourly cap reached, skipped', ['type' => $sms->type, 'log_id' => $log->id]);
+
+            return false;
+        }
+
+        $mail = new SmsCopyMail(
+            message: $sms->message,
+            type: $sms->type,
+            label: (string) ($registryEntry['label'] ?? ''),
+            audience: $audience,
+            phone: $shownAs,
+            customerId: $customerId,
+            smsSent: $smsSent,
+        );
+
+        // After the response (or the job), so a slow mail server never
+        // holds up a checkout, a till or a campaign batch.
+        DeferAfterResponse::run(function () use ($email, $mail, $log): void {
+            try {
+                Mail::to($email)->send($mail);
+            } catch (Throwable $e) {
+                Log::warning('sms email copy: send failed', ['log_id' => $log->id, 'error' => $e->getMessage()]);
+            }
+        }, 'sms-email-copy', always: true);
+
+        return true;
     }
 
     /**

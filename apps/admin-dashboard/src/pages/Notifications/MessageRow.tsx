@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { X } from 'lucide-react';
 import {
   updateSmsType,
   previewSmsType,
@@ -8,23 +9,30 @@ import {
   updateOpsAlertsSettings,
   getComplaintAlertSettings,
   updateComplaintAlertSettings,
+  getGstSettings,
+  updateGstSettings,
+  getSiteSettings,
+  updateSiteSettings,
+  type AlertAudience,
+  type AudienceGroupOption,
   type OpsAlertsSettings,
   type SmsControlCenterType,
   type SmsExtraTemplate,
-  type SmsRecipientMode,
   type SmsStaffOption,
 } from '../../api';
+import { fetchTelegram, updateTelegramSettings } from '../../api/telegram';
 import { Switch } from '../../components/SharedUI';
 import { useCurrentUserPermissions } from '../../hooks/usePermissions';
 import { nonGsm7Characters, smsCharCount } from '../../utils/smsCharCount';
 import {
-  RECIPIENT_MODE_LABELS, badgeStyle, fieldLabel, inputStyle, primaryBtn, rowChannels, rowLine, secondaryBtn,
+  CHANNEL_LABEL, audienceSummary, badgeStyle, fieldLabel, groupLabel, inputStyle, primaryBtn, rowChannelList, rowChannels, rowLine, secondaryBtn, subHeading,
 } from './shared';
 
 /*
  * One message: who gets it, its SMS / Email / Telegram switches (the only
  * switches it has, notifications audit 2026-10-10), and under Edit who
- * receives it, when it goes, who may send it by hand and its wording.
+ * gets it (groups, people, exceptions, numbers), when it goes, who may
+ * send it by hand and its wording.
  */
 
 type OpsField = keyof OpsAlertsSettings;
@@ -32,12 +40,15 @@ type OpsField = keyof OpsAlertsSettings;
 type TimingDef =
   | { kind: 'ops'; field: OpsField; label: string; min: number; max: number; note?: string }
   | { kind: 'complaints'; label: string; min: number; max: number }
-  | { kind: 'gst'; label: string };
+  | { kind: 'gst'; label: string; min: number; max: number; note?: string }
+  | { kind: 'site'; key: string; label: string; min: number; max: number; fallback: string; note?: string; zeroMeans?: string }
+  | { kind: 'telegram'; label: string; min: number; max: number; zeroMeans?: string };
 
 /**
  * The numbers that say when an alert goes. They lived beside a second
- * switch on Settings, Shifts and the Complaint box; "0 = off" was that
- * switch, so 0 is refused now and off is the row's switches.
+ * switch on Settings, Shifts, the Complaint box, Credit accounts, GST and
+ * the Telegram page; "0 = off" was that switch, so 0 is refused where it
+ * meant off and off is the row's switches.
  */
 export const TIMING: Record<string, TimingDef> = {
   owner_shift_left_open: { kind: 'ops', field: 'shift_open_alert_hours', label: 'When a shift has been open for (hours)', min: 1, max: 72 },
@@ -51,11 +62,24 @@ export const TIMING: Record<string, TimingDef> = {
   },
   owner_order_unstarted: { kind: 'ops', field: 'unstarted_order_alert_minutes', label: 'When a paid order is still not started after (minutes)', min: 1, max: 120 },
   owner_complaint_stale: { kind: 'complaints', label: 'When a complaint is still unread after (days)', min: 1, max: 30 },
-  owner_gst_filing_due: { kind: 'gst', label: 'Days before the filing date' },
+  owner_gst_filing_due: { kind: 'gst', label: 'Days before the filing date', min: 1, max: 14, note: 'Then on the day and the day after, while the period is still open.' },
+  credit_payment_reminder: {
+    kind: 'site', key: 'credit_overdue_reminder_every_days', label: 'After day three, remind again every (days)', min: 0, max: 90, fallback: '7',
+    note: 'Every open invoice is texted three days before it is due, on the day, and three days after.', zeroMeans: 'no repeats after day three',
+  },
+  trade_report_reminder_shop: {
+    kind: 'site', key: 'trade_unreconciled_nudge_days', label: 'When a shop has not reported sales after (days)', min: 1, max: 60, fallback: '3',
+    note: 'Or as soon as the delivery is past its expected return. Once per delivery.',
+  },
+  owner_trade_unreconciled: {
+    kind: 'site', key: 'trade_unreconciled_alert_days', label: 'When stock is still unreconciled after (days)', min: 1, max: 90, fallback: '7',
+    note: 'Once per delivery.',
+  },
+  owner_cash_out: { kind: 'telegram', label: 'Only when the amount is at least (MVR)', min: 0, max: 100000, zeroMeans: 'every cash out' },
 };
 
 export function MessageRow({
-  row, expanded, onExpand, onToggle, onEmailToggle, onTelegramToggle, saving, canToggle, canEdit, canTest, myPhone, permissionOptions, staffOptions, onUpdated, onError,
+  row, expanded, onExpand, onToggle, onEmailToggle, onTelegramToggle, saving, canToggle, canEdit, canTest, myPhone, permissionOptions, staffOptions, groupOptions, onUpdated, onError,
 }: {
   row: SmsControlCenterType;
   expanded: boolean;
@@ -71,81 +95,86 @@ export function MessageRow({
   myPhone: string | null;
   permissionOptions: Array<{ slug: string; name: string }>;
   staffOptions: SmsStaffOption[];
+  groupOptions: AudienceGroupOption[];
   onUpdated: (patch: Partial<SmsControlCenterType>) => void;
   onError: (msg: string) => void;
 }) {
   const systemOnly = row.send_permission == null;
+  const has = rowChannelList(row);
   const ch = rowChannels(row);
-  const smsOff = !ch.sms;
-  const off = smsOff && !ch.email && !ch.telegram;
+  const off = !ch.sms && !ch.email && !ch.telegram;
+  const onlyOn = (['sms', 'email', 'telegram'] as const).filter((c) => has.includes(c) && ch[c]);
+  const partly = !off && !has.every((c) => ch[c]);
+  const to = audienceSummary(row, staffOptions, groupOptions);
+  const unreachable = (row.audience_people?.people ?? []).filter((p) => p.reach.length === 0).length;
 
   return (
-    <div className={`sms-cc-row${off ? ' is-off' : ''}`} data-testid={`sms-type-${row.key}`}>
+    <div className={`sms-cc-row${off ? ' is-off' : ''}${expanded ? ' is-open' : ''}`} data-testid={`sms-type-${row.key}`}>
       <div className="sms-cc-row-main">
-        <div style={{ minWidth: 0, flex: 1 }}>
+        <div className="sms-cc-row-text">
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: 'var(--color-text)' }}>{row.label}</p>
+            <p className="sms-cc-row-title">{row.label}</p>
             {row.always_on
               ? <span style={badgeStyle('var(--color-tone-rust-bg)', 'var(--color-tone-rust-text)')}>Always on</span>
               : off
                 ? <span style={badgeStyle('var(--color-border-light)', 'var(--color-text-muted)')}>Off</span>
-                : smsOff
-                  ? <span style={badgeStyle('var(--color-tone-rust-bg)', 'var(--color-tone-rust-text)')} data-testid={`email-only-${row.key}`}>{[ch.email && 'Email', ch.telegram && 'Telegram'].filter(Boolean).join(' + ')} only</span>
+                : partly && has.length > 1
+                  ? <span style={badgeStyle('var(--color-tone-rust-bg)', 'var(--color-tone-rust-text)')} data-testid={`email-only-${row.key}`}>{onlyOn.map((c) => CHANNEL_LABEL[c]).join(' + ')} only</span>
                   : null}
+            {row.audience_custom && <span style={badgeStyle('var(--color-tone-brown-bg)', 'var(--color-tone-brown-text)')} title="Who gets it was changed from the default">Chosen</span>}
           </div>
-          <p style={rowLine}>
-            Goes to: {row.recipients || '—'}
-            {row.recipients_configurable && row.recipients_config && (
-              <> · now: {RECIPIENT_MODE_LABELS[row.recipients_config.mode]}{row.recipients_resolved && row.recipients_resolved.length > 0 ? ` (${row.recipients_resolved.join(', ')})` : ''}</>
-            )}
-          </p>
-          <p style={{ ...rowLine, color: 'var(--color-text-muted)' }}>
-            Who can send: {row.send_permission_label}
-            {!systemOnly && row.roles_with_permission.length > 0 && <> · {row.roles_with_permission.join(', ')}</>}
-            {expanded && (
-              <>
-                {' · '}
-                <Link to="/settings/permissions" style={{ color: 'var(--color-primary)' }}>Roles & permissions</Link>
-              </>
-            )}
+          <p className="sms-cc-row-to" style={rowLine}>
+            To: {to || '—'}
+            {unreachable > 0 && <span style={{ color: 'var(--color-warning-strong)', fontWeight: 600 }}> · {unreachable} cannot be reached</span>}
           </p>
           {expanded && (
-            <p style={rowLine}>Last 30 days: {row.last_30_days.count} · MVR {row.last_30_days.cost_mvr.toFixed(2)}</p>
+            <p style={{ ...rowLine, color: 'var(--color-text-muted)' }}>
+              Who can send: {row.send_permission_label}
+              {!systemOnly && row.roles_with_permission.length > 0 && <> · {row.roles_with_permission.join(', ')}</>}
+              {' · '}
+              <Link to="/settings/permissions" style={{ color: 'var(--color-primary)' }}>Roles & permissions</Link>
+              {' · '}Last 30 days: {row.last_30_days.count} · MVR {row.last_30_days.cost_mvr.toFixed(2)}
+            </p>
           )}
         </div>
         <div className="sms-cc-row-actions">
           {!expanded && (
-            <span style={{ fontSize: 12, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }} title="Sent in the last 30 days">
+            <span className="sms-cc-count" title="Sent in the last 30 days">
               {row.last_30_days.count} / 30d
             </span>
           )}
-          <div className="sms-cc-channel">
-            <span className="sms-cc-channel-label">SMS</span>
-            {row.always_on ? (
-              <span style={badgeStyle('var(--color-border-light)', 'var(--color-text-muted)')}>Always on</span>
-            ) : (
-              <Switch
-                checked={row.enabled}
-                onChange={() => onToggle()}
-                disabled={!canToggle || saving}
-                aria-label={`Toggle ${row.label}`}
-              />
-            )}
-          </div>
-          <div className="sms-cc-channel">
-            <span className="sms-cc-channel-label">Email</span>
-            {row.has_own_email ? (
-              <span style={badgeStyle('var(--color-border-light)', 'var(--color-text-muted)')} title="Sends its own email, separate from the SMS">Own email</span>
-            ) : (
-              <Switch
-                checked={ch.email}
-                onChange={() => onEmailToggle()}
-                disabled={!canToggle || saving}
-                aria-label={`Toggle email for ${row.label}`}
-              />
-            )}
-          </div>
-          {row.telegram_applies && (
+          {has.includes('sms') && (
+            <div className="sms-cc-channel">
+              <span className="sms-cc-channel-label">SMS</span>
+              {row.always_on ? (
+                <span style={badgeStyle('var(--color-border-light)', 'var(--color-text-muted)')}>Always on</span>
+              ) : (
+                <Switch
+                  checked={row.enabled}
+                  onChange={() => onToggle()}
+                  disabled={!canToggle || saving}
+                  aria-label={`Toggle ${row.label}`}
+                />
+              )}
+            </div>
+          )}
+          {has.includes('email') && (
+            <div className="sms-cc-channel">
+              <span className="sms-cc-channel-label">Email</span>
+              {row.always_on ? (
+                <span style={badgeStyle('var(--color-border-light)', 'var(--color-text-muted)')}>Always on</span>
+              ) : (
+                <Switch
+                  checked={ch.email}
+                  onChange={() => onEmailToggle()}
+                  disabled={!canToggle || saving}
+                  aria-label={`Toggle email for ${row.label}`}
+                  title={row.has_own_email ? 'Its own email, not a copy of the text' : undefined}
+                />
+              )}
+            </div>
+          )}
+          {has.includes('telegram') && (
             <div className="sms-cc-channel">
               <span className="sms-cc-channel-label">Telegram</span>
               <Switch
@@ -170,6 +199,7 @@ export function MessageRow({
           myPhone={myPhone}
           permissionOptions={permissionOptions}
           staffOptions={staffOptions}
+          groupOptions={groupOptions}
           onUpdated={onUpdated}
           onError={onError}
         />
@@ -179,7 +209,7 @@ export function MessageRow({
 }
 
 function MessageEditor({
-  row, disabled, canTest, myPhone, permissionOptions, staffOptions, onUpdated, onError,
+  row, disabled, canTest, myPhone, permissionOptions, staffOptions, groupOptions, onUpdated, onError,
 }: {
   row: SmsControlCenterType;
   disabled: boolean;
@@ -187,6 +217,7 @@ function MessageEditor({
   myPhone: string | null;
   permissionOptions: Array<{ slug: string; name: string }>;
   staffOptions: SmsStaffOption[];
+  groupOptions: AudienceGroupOption[];
   onUpdated: (patch: Partial<SmsControlCenterType>) => void;
   onError: (msg: string) => void;
 }) {
@@ -213,6 +244,7 @@ function MessageEditor({
   const hasTemplate = !!row.template;
   const bodyDirty = hasTemplate && body !== (row.template?.body ?? '');
   const timing = TIMING[row.key];
+  const telegramOnly = rowChannelList(row).length === 1 && rowChannelList(row)[0] === 'telegram';
 
   const saveWording = async () => {
     if (disabled || !hasTemplate) return;
@@ -282,19 +314,21 @@ function MessageEditor({
   };
 
   return (
-    <div style={{ borderTop: '1px solid var(--color-border-light)', marginTop: 12, paddingTop: 12 }}>
-      {row.recipients_configurable && (
-        <RecipientsEditor row={row} disabled={disabled} staffOptions={staffOptions} onUpdated={onUpdated} onError={onError} />
+    <div className="sms-cc-editor" style={{ borderTop: '1px solid var(--color-border-light)', marginTop: 12, paddingTop: 12 }}>
+      {row.audience_configurable && (
+        <AudienceEditor row={row} disabled={disabled} staffOptions={staffOptions} groupOptions={groupOptions} onUpdated={onUpdated} onError={onError} />
       )}
       {timing && <TimingEditor typeKey={row.key} def={timing} onError={onError} />}
-      <label style={{ ...fieldLabel, marginBottom: 12 }}>
-        Who can send
-        <select value={perm} disabled={disabled || saving} onChange={(e) => void savePermission(e.target.value)} style={inputStyle}>
-          {permissionOptions.map((p) => (
-            <option key={p.slug} value={p.slug}>{p.slug === '__system__' ? p.name : `${p.name} (${p.slug})`}</option>
-          ))}
-        </select>
-      </label>
+      {!telegramOnly && (
+        <label style={{ ...fieldLabel, marginBottom: 12 }}>
+          Who can send
+          <select value={perm} disabled={disabled || saving} onChange={(e) => void savePermission(e.target.value)} style={inputStyle}>
+            {permissionOptions.map((p) => (
+              <option key={p.slug} value={p.slug}>{p.slug === '__system__' ? p.name : `${p.name} (${p.slug})`}</option>
+            ))}
+          </select>
+        </label>
+      )}
 
       {hasTemplate ? (
         <>
@@ -309,6 +343,7 @@ function MessageEditor({
               style={{
                 width: '100%', boxSizing: 'border-box', border: '1px solid var(--color-border)', borderRadius: 8,
                 padding: '10px 12px', fontSize: 14, fontFamily: 'inherit', resize: 'vertical', opacity: disabled ? 0.65 : 1,
+                background: 'var(--color-surface)', color: 'var(--color-text)',
               }}
             />
           </label>
@@ -358,9 +393,10 @@ function MessageEditor({
           <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>
             {(row.extra_templates ?? []).length > 0
               ? 'Its wordings are below; which one goes depends on the case.'
-              : row.user_initiated ? 'The message is written when it is sent.' : 'The system writes this message when it happens.'}
+              : telegramOnly ? 'The report or card is written by the system when it happens.'
+                : row.user_initiated ? 'The message is written when it is sent.' : 'The system writes this message when it happens.'}
           </p>
-          {canTest && (
+          {canTest && !telegramOnly && (
             <button type="button" onClick={() => void sendTest()} disabled={testing} style={secondaryBtn} title={myPhone ? `Sends to ${myPhone}` : 'Your staff account needs a phone number'}>
               {testing ? 'Sending…' : 'Send me a test'}
             </button>
@@ -457,6 +493,7 @@ function ExtraWording({ row, wording, disabled, onSaved, onError }: {
           style={{
             width: '100%', boxSizing: 'border-box', border: '1px solid var(--color-border)', borderRadius: 8,
             padding: '10px 12px', fontSize: 14, fontFamily: 'inherit', resize: 'vertical', opacity: disabled ? 0.65 : 1,
+            background: 'var(--color-surface)', color: 'var(--color-text)',
           }}
         />
       </label>
@@ -501,8 +538,14 @@ function ExtraWording({ row, wording, disabled, onSaved, onError }: {
  * row says so rather than showing a value it could not have read.
  */
 function TimingEditor({ typeKey, def, onError }: { typeKey: string; def: TimingDef; onError: (msg: string) => void }) {
-  const { can } = useCurrentUserPermissions();
-  const allowed = def.kind === 'ops' ? can('settings.update') : def.kind === 'complaints' ? can('complaints.manage') : true;
+  const { can, user } = useCurrentUserPermissions();
+  const allowed = def.kind === 'ops' || def.kind === 'site'
+    ? can('settings.update')
+    : def.kind === 'complaints'
+      ? can('complaints.manage')
+      : def.kind === 'gst'
+        ? user?.role === 'owner' || can('settings.manage') || can('settings.update') || can('reports.financial')
+        : can('telegram.manage');
   const [value, setValue] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -510,11 +553,23 @@ function TimingEditor({ typeKey, def, onError }: { typeKey: string; def: TimingD
   const [failed, setFailed] = useState('');
 
   useEffect(() => {
-    if (!allowed || def.kind === 'gst') return;
+    if (!allowed) return;
     let live = true;
-    const read = def.kind === 'ops'
+    const read: Promise<unknown> = def.kind === 'ops'
       ? getOpsAlertsSettings().then((r) => r.settings[def.field])
-      : getComplaintAlertSettings().then((r) => r.settings.stale_days);
+      : def.kind === 'complaints'
+        ? getComplaintAlertSettings().then((r) => r.settings.stale_days)
+        : def.kind === 'gst'
+          ? getGstSettings().then((r) => r.settings.filing_reminder_days ?? 3)
+          : def.kind === 'site'
+            ? getSiteSettings().then((r) => {
+              let found: string | null = null;
+              Object.values(r.settings ?? {}).forEach((group) => {
+                (group as { key: string; value: string | null }[]).forEach((s) => { if (s.key === def.key && s.value !== null) found = s.value; });
+              });
+              return found ?? def.fallback;
+            })
+            : fetchTelegram().then((r) => r.settings.alert_cash_min ?? 0);
     read
       .then((v) => { if (live) { const s = v == null ? '' : String(v); setValue(s); setSaved(s); } })
       .catch((e: unknown) => { if (live) setFailed((e as Error).message || 'Could not load.'); });
@@ -523,40 +578,45 @@ function TimingEditor({ typeKey, def, onError }: { typeKey: string; def: TimingD
 
   const id = `timing-${typeKey}`;
 
-  if (def.kind === 'gst') {
-    return (
-      <p style={{ ...rowLine, margin: '0 0 12px' }} data-testid={id}>
-        When it sends: a few days before the GST return is due, then on the day and the day after, while the period is open.
-        {' '}<Link to="/finance/gst" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>{def.label}: Finance → GST → Settings</Link>
-      </p>
-    );
-  }
-
   if (!allowed) {
+    const who = def.kind === 'complaints' ? 'someone who manages complaints'
+      : def.kind === 'gst' ? 'someone with Settings or finance access'
+        : def.kind === 'telegram' ? 'whoever manages Telegram'
+          : 'someone with Settings access';
     return (
       <p style={{ ...rowLine, margin: '0 0 12px', color: 'var(--color-text-muted)' }} data-testid={id}>
-        When it sends: {def.kind === 'ops' ? 'seen and changed by someone with Settings access.' : 'seen and changed by someone who manages complaints.'}
+        When it sends: seen and changed by {who}.
       </p>
     );
   }
 
   const n = Number(value);
   const valid = value !== null && value.trim() !== '' && Number.isFinite(n) && n >= def.min && n <= def.max;
+  const zeroMeans = 'zeroMeans' in def ? def.zeroMeans : undefined;
 
   const save = async () => {
     if (!valid || value === saved) return;
     setBusy(true);
     setNote('');
     try {
+      let s: string;
       if (def.kind === 'ops') {
         const res = await updateOpsAlertsSettings({ [def.field]: n } as Partial<OpsAlertsSettings>);
-        const s = String(res.settings[def.field] ?? n);
-        setValue(s); setSaved(s);
-      } else {
+        s = String(res.settings[def.field] ?? n);
+      } else if (def.kind === 'complaints') {
         const res = await updateComplaintAlertSettings({ stale_days: n });
-        const s = String(res.settings.stale_days);
-        setValue(s); setSaved(s);
+        s = String(res.settings.stale_days);
+      } else if (def.kind === 'gst') {
+        const res = await updateGstSettings({ filing_reminder_days: n });
+        s = String(res.settings.filing_reminder_days ?? n);
+      } else if (def.kind === 'site') {
+        await updateSiteSettings({ [def.key]: String(n) });
+        s = String(n);
+      } else {
+        const res = await updateTelegramSettings({ alert_cash_min: n });
+        s = String(res.settings.alert_cash_min ?? n);
       }
+      setValue(s); setSaved(s);
       setNote('Saved.');
     } catch (e: unknown) {
       onError((e as Error).message);
@@ -567,6 +627,7 @@ function TimingEditor({ typeKey, def, onError }: { typeKey: string; def: TimingD
 
   return (
     <div style={{ marginBottom: 12 }} data-testid={id}>
+      <p style={subHeading}>When it sends</p>
       <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
         <label style={{ ...fieldLabel, flex: '1 1 220px' }} htmlFor={`${id}-input`}>
           {def.label}
@@ -586,45 +647,58 @@ function TimingEditor({ typeKey, def, onError }: { typeKey: string; def: TimingD
         </button>
       </div>
       {failed && <p style={{ ...rowLine, color: 'var(--color-danger-strong)' }}>{failed}</p>}
-      {value !== null && !valid && <p style={{ ...rowLine, color: 'var(--color-warning-strong)' }}>From {def.min} to {def.max.toLocaleString()}. To stop it, switch the row off.</p>}
-      {def.kind === 'ops' && def.note && <p style={{ ...rowLine, color: 'var(--color-text-muted)' }}>{def.note}</p>}
+      {value !== null && !valid && (
+        <p style={{ ...rowLine, color: 'var(--color-warning-strong)' }}>
+          From {def.min} to {def.max.toLocaleString()}.{def.min > 0 ? ' To stop it, switch the row off.' : ''}
+        </p>
+      )}
+      {zeroMeans && <p style={{ ...rowLine, color: 'var(--color-text-muted)' }}>0 = {zeroMeans}.</p>}
+      {'note' in def && def.note && <p style={{ ...rowLine, color: 'var(--color-text-muted)' }}>{def.note}</p>}
       {note && <p role="status" style={{ ...rowLine, color: 'var(--color-success-strong)' }}>{note}</p>}
     </div>
   );
 }
 
+const EMPTY_AUDIENCE: AlertAudience = { groups: [], users: [], except: [], phones: [], emails: [] };
+
+/** The groups a row offers as chips: the roles, the shop phone, and the special groups its default has. */
+const SPECIAL_GROUPS = ['on_shift', 'catering_team'];
+
 /**
- * Who an owner alert goes to (SMS audit, 2026-09-24). Saved on change;
- * the resolved numbers show so the owner can see who will actually get it.
+ * Who gets a staff or owner alert (re-audit, 2026-10-10): groups as chips,
+ * named people, people who never get it, typed numbers and emails. Saved on
+ * each change; "Goes to now" shows the people it resolves to and how each
+ * can be reached, so the owner sees who will actually get it.
  */
-function RecipientsEditor({ row, disabled, staffOptions, onUpdated, onError }: {
+function AudienceEditor({ row, disabled, staffOptions, groupOptions, onUpdated, onError }: {
   row: SmsControlCenterType;
   disabled: boolean;
   staffOptions: SmsStaffOption[];
+  groupOptions: AudienceGroupOption[];
   onUpdated: (patch: Partial<SmsControlCenterType>) => void;
   onError: (msg: string) => void;
 }) {
-  const initial = row.recipients_config ?? { mode: row.default_recipient_mode ?? 'owners_managers', user_ids: [], phones: [] };
-  const [mode, setMode] = useState<SmsRecipientMode>(initial.mode);
-  const [userIds, setUserIds] = useState<number[]>(initial.user_ids);
-  const [phones, setPhones] = useState(initial.phones.join(', '));
+  const audience = row.audience ?? row.audience_default ?? EMPTY_AUDIENCE;
+  const defaultGroups = row.audience_default?.groups ?? [];
   const [saving, setSaving] = useState(false);
+  const [phones, setPhones] = useState(audience.phones.join(', '));
+  const [emails, setEmails] = useState(audience.emails.join(', '));
   const [err, setErr] = useState('');
+  const [morePick, setMorePick] = useState('');
 
   useEffect(() => {
-    const cfg = row.recipients_config ?? { mode: row.default_recipient_mode ?? 'owners_managers', user_ids: [], phones: [] };
-    setMode(cfg.mode);
-    setUserIds(cfg.user_ids);
-    setPhones(cfg.phones.join(', '));
-  }, [row.key, row.recipients_config, row.default_recipient_mode]);
+    setPhones((row.audience ?? row.audience_default ?? EMPTY_AUDIENCE).phones.join(', '));
+    setEmails((row.audience ?? row.audience_default ?? EMPTY_AUDIENCE).emails.join(', '));
+    setErr('');
+  }, [row.key, row.audience, row.audience_default]);
 
-  const save = async (next: { mode: SmsRecipientMode; user_ids: number[]; phones: string[] }) => {
+  const save = async (next: Partial<AlertAudience> | null) => {
     if (disabled) return;
     setSaving(true);
     setErr('');
     try {
-      const res = await updateSmsType(row.key, { recipients: next });
-      onUpdated({ recipients_config: res.recipients_config, recipients_resolved: res.recipients_resolved });
+      const res = await updateSmsType(row.key, { audience: next === null ? null : { ...audience, ...next } });
+      onUpdated({ audience: res.audience, audience_custom: res.audience_custom, audience_people: res.audience_people });
     } catch (e: unknown) {
       const msg = (e as Error).message;
       setErr(msg);
@@ -634,55 +708,134 @@ function RecipientsEditor({ row, disabled, staffOptions, onUpdated, onError }: {
     }
   };
 
-  const changeMode = (next: SmsRecipientMode) => {
-    setMode(next);
-    if (next !== 'staff' && next !== 'custom') void save({ mode: next, user_ids: [], phones: [] });
-  };
+  const toggleGroup = (key: string) => void save({ groups: audience.groups.includes(key) ? audience.groups.filter((g) => g !== key) : [...audience.groups, key] });
+  const addUser = (id: number) => void save({ users: [...audience.users, id], except: audience.except.filter((x) => x !== id) });
+  const removeUser = (id: number) => void save({ users: audience.users.filter((x) => x !== id) });
+  const addExcept = (id: number) => void save({ except: [...audience.except, id], users: audience.users.filter((x) => x !== id) });
+  const removeExcept = (id: number) => void save({ except: audience.except.filter((x) => x !== id) });
+  const split = (s: string) => s.split(/[,\s;]+/).map((p) => p.trim()).filter(Boolean);
+  const phonesDirty = split(phones).join(',') !== audience.phones.join(',');
+  const emailsDirty = split(emails).join(',') !== audience.emails.join(',');
 
-  const toggleStaff = (id: number) => {
-    const next = userIds.includes(id) ? userIds.filter((u) => u !== id) : [...userIds, id];
-    setUserIds(next);
-    if (next.length > 0) void save({ mode: 'staff', user_ids: next, phones: [] });
-  };
-
-  const savePhones = () => {
-    const list = phones.split(/[,\s]+/).map((p) => p.trim()).filter(Boolean);
-    if (list.length === 0) { setErr('Type at least one phone number.'); return; }
-    void save({ mode: 'custom', user_ids: [], phones: list });
-  };
+  const isOrderAlert = defaultGroups.includes('on_shift');
+  const chipGroups = groupOptions.filter((g) => g.key.startsWith('role:') || g.key === 'business_phone'
+    || (SPECIAL_GROUPS.includes(g.key) && (defaultGroups.includes(g.key) || audience.groups.includes(g.key)))
+    || (g.key.startsWith('perm:') && audience.groups.includes(g.key)));
+  const moreGroups = groupOptions.filter((g) => !chipGroups.some((c) => c.key === g.key) && !SPECIAL_GROUPS.includes(g.key));
+  const name = (id: number) => staffOptions.find((s) => s.id === id)?.name ?? `#${id}`;
+  const chosen = new Set([...audience.users, ...audience.except]);
+  const people = row.audience_people;
 
   return (
-    <div style={{ marginBottom: 12 }} data-testid={`recipients-${row.key}`}>
-      <label style={fieldLabel}>
-        Who receives it
-        <select value={mode} disabled={disabled || saving} onChange={(e) => changeMode(e.target.value as SmsRecipientMode)} style={inputStyle}>
-          {(Object.keys(RECIPIENT_MODE_LABELS) as SmsRecipientMode[]).map((m) => (
-            <option key={m} value={m}>{RECIPIENT_MODE_LABELS[m]}{m === row.default_recipient_mode ? ' (default)' : ''}</option>
-          ))}
-        </select>
-      </label>
-      {mode === 'staff' && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 8 }}>
-          {staffOptions.length === 0 && <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>No staff with a phone number on file.</span>}
-          {staffOptions.map((s) => (
-            <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, minHeight: 32 }}>
-              <input type="checkbox" checked={userIds.includes(s.id)} disabled={disabled || saving} onChange={() => toggleStaff(s.id)} />
-              {s.name}{s.role ? ` (${s.role})` : ''}
-            </label>
-          ))}
+    <div style={{ marginBottom: 14 }} data-testid={`audience-${row.key}`}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+        <p style={{ ...subHeading, margin: 0 }}>Who gets it</p>
+        {row.audience_custom && (
+          <button type="button" onClick={() => void save(null)} disabled={disabled || saving} style={{ ...secondaryBtn, minHeight: 28, padding: '2px 10px', fontSize: 12 }}>
+            Back to the usual people
+          </button>
+        )}
+      </div>
+
+      <div className="aud-chips" role="group" aria-label="Groups">
+        {chipGroups.map((g) => {
+          const on = audience.groups.includes(g.key);
+          return (
+            <button
+              key={g.key}
+              type="button"
+              className={`sms-cc-chip${on ? ' is-on' : ''}`}
+              aria-pressed={on}
+              disabled={disabled || saving}
+              onClick={() => toggleGroup(g.key)}
+              title={g.label}
+            >
+              {groupLabel(g.key, groupOptions)}{g.count !== null && g.count !== undefined ? <small> {g.count}</small> : null}
+            </button>
+          );
+        })}
+        {moreGroups.length > 0 && (
+          <select
+            aria-label="More groups"
+            value={morePick}
+            disabled={disabled || saving}
+            onChange={(e) => { if (e.target.value) toggleGroup(e.target.value); setMorePick(''); }}
+            className="sms-cc-status"
+            style={{ marginLeft: 0 }}
+          >
+            <option value="">More groups…</option>
+            {moreGroups.map((g) => <option key={g.key} value={g.key}>{g.label}{g.count !== null && g.count !== undefined ? ` (${g.count})` : ''}</option>)}
+          </select>
+        )}
+      </div>
+
+      <div className="aud-people">
+        <div className="aud-people-col">
+          <span style={{ ...fieldLabel, minWidth: 0 }}>Also these people, always</span>
+          <div className="aud-tags">
+            {audience.users.map((id) => (
+              <span key={id} className="aud-tag">
+                {name(id)}
+                <button type="button" aria-label={`Remove ${name(id)}`} disabled={disabled || saving} onClick={() => removeUser(id)}><X size={12} aria-hidden /></button>
+              </span>
+            ))}
+            <select aria-label="Add a person who always gets it" value="" disabled={disabled || saving} onChange={(e) => { if (e.target.value) addUser(Number(e.target.value)); }} className="sms-cc-status" style={{ marginLeft: 0 }}>
+              <option value="">Add a person…</option>
+              {staffOptions.filter((s) => !chosen.has(s.id)).map((s) => <option key={s.id} value={s.id}>{s.name}{s.role ? ` (${s.role})` : ''}{s.phone ? '' : ' · no phone'}</option>)}
+            </select>
+          </div>
         </div>
-      )}
-      {mode === 'custom' && (
-        <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <label style={{ ...fieldLabel, flex: '1 1 240px' }}>
-            Numbers, separated by commas
-            <input value={phones} disabled={disabled || saving} onChange={(e) => setPhones(e.target.value)} placeholder="7771234, 9601234" style={inputStyle} />
+        <div className="aud-people-col">
+          <span style={{ ...fieldLabel, minWidth: 0 }}>Never these people</span>
+          <div className="aud-tags">
+            {audience.except.map((id) => (
+              <span key={id} className="aud-tag is-except">
+                {name(id)}
+                <button type="button" aria-label={`Allow ${name(id)} again`} disabled={disabled || saving} onClick={() => removeExcept(id)}><X size={12} aria-hidden /></button>
+              </span>
+            ))}
+            <select aria-label="Add a person who never gets it" value="" disabled={disabled || saving} onChange={(e) => { if (e.target.value) addExcept(Number(e.target.value)); }} className="sms-cc-status" style={{ marginLeft: 0 }}>
+              <option value="">Leave someone out…</option>
+              {staffOptions.filter((s) => !chosen.has(s.id)).map((s) => <option key={s.id} value={s.id}>{s.name}{s.role ? ` (${s.role})` : ''}</option>)}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div className="aud-typed">
+        {isOrderAlert ? (
+          <p style={{ ...rowLine, margin: 0 }}>
+            Numbers that are not staff get order alerts as <Link to="/notifications/people#extra-numbers" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>Extra numbers</Link> (People), with their own days and hours.
+          </p>
+        ) : (
+          <label style={{ ...fieldLabel, flex: '1 1 220px' }}>
+            Numbers that are not staff
+            <div style={{ display: 'flex', gap: 6 }}>
+              <input value={phones} disabled={disabled || saving} onChange={(e) => setPhones(e.target.value)} placeholder="7771234, 9601234" aria-label={`Numbers for ${row.label}`} style={{ ...inputStyle, flex: 1, minWidth: 0 }} />
+              <button type="button" onClick={() => void save({ phones: split(phones) })} disabled={disabled || saving || !phonesDirty} style={{ ...secondaryBtn, minHeight: 44 }}>Save</button>
+            </div>
           </label>
-          <button type="button" onClick={savePhones} disabled={disabled || saving} style={primaryBtn}>{saving ? 'Saving…' : 'Save numbers'}</button>
-        </div>
-      )}
-      {row.recipients_resolved && row.recipients_resolved.length > 0 && (
-        <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>Goes to: {row.recipients_resolved.join(', ')}</p>
+        )}
+        <label style={{ ...fieldLabel, flex: '1 1 220px' }}>
+          Email addresses that are not staff
+          <div style={{ display: 'flex', gap: 6 }}>
+            <input value={emails} disabled={disabled || saving} onChange={(e) => setEmails(e.target.value)} placeholder="events@example.com" aria-label={`Emails for ${row.label}`} style={{ ...inputStyle, flex: 1, minWidth: 0 }} />
+            <button type="button" onClick={() => void save({ emails: split(emails) })} disabled={disabled || saving || !emailsDirty} style={{ ...secondaryBtn, minHeight: 44 }}>Save</button>
+          </div>
+        </label>
+      </div>
+
+      {people && (
+        <p style={{ ...rowLine, marginTop: 8 }} data-testid={`goes-to-${row.key}`}>
+          <strong style={{ color: 'var(--color-text)' }}>Goes to now:</strong>{' '}
+          {people.people.length === 0 && people.extras.length === 0 && !people.note
+            ? 'nobody yet; owners and managers get it until someone is chosen.'
+            : [
+              ...people.people.map((p) => `${p.name}${p.reach.length ? ` (${p.reach.map((c) => CHANNEL_LABEL[c]).join(', ')})` : ' (cannot be reached: no phone, email or Telegram)'}`),
+              ...people.extras,
+            ].join(' · ')}
+          {people.note && <span style={{ color: 'var(--color-text-muted)' }}> {people.note}</span>}
+        </p>
       )}
       {err && <p style={{ color: 'var(--color-danger-strong)', fontSize: 12, margin: '6px 0 0' }}>{err}</p>}
     </div>

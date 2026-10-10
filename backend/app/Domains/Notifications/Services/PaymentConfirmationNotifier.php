@@ -150,7 +150,9 @@ class PaymentConfirmationNotifier
             }
         }
 
-        if ($email) {
+        // The confirmation email's switch is the row's Email switch in
+        // Admin → Notifications (2026-10-10), separate from the SMS one.
+        if ($email && \App\Domains\Notifications\Support\SmsTypeRegistry::isEmailEnabled($typeKey)) {
             try {
                 Mail::to($email)->send(new OrderConfirmationMail($order, $url, $name));
             } catch (\Throwable $e) {

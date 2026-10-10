@@ -96,12 +96,12 @@ class SiteSettingsWriteTest extends TestCase
     public function test_a_null_clears_the_setting(): void
     {
         Sanctum::actingAs($this->makeOwner(), ['staff']);
-        SiteSetting::set('catering_notify_email', 'old@example.com');
+        SiteSetting::set('catering_ordering_closed_message', 'Old message');
 
-        $this->putJson('/api/site-settings', ['settings' => ['catering_notify_email' => null]])
+        $this->putJson('/api/site-settings', ['settings' => ['catering_ordering_closed_message' => null]])
             ->assertOk();
 
-        $this->assertSame('', (string) SiteSetting::get('catering_notify_email'));
+        $this->assertSame('', (string) SiteSetting::get('catering_ordering_closed_message'));
     }
 
     public function test_every_key_the_admin_sends_is_on_the_list(): void

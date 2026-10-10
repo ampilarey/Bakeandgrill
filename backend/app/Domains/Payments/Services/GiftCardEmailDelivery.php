@@ -33,6 +33,14 @@ final class GiftCardEmailDelivery
                 'error' => 'Invalid email address.',
             ];
         }
+        // The row's Email switch in Admin → Notifications (2026-10-10).
+        if (!\App\Domains\Notifications\Support\SmsTypeRegistry::isEmailEnabled('giftcard_delivery')) {
+            return [
+                'ok' => false,
+                'email' => $normalized,
+                'error' => 'Gift card emails are switched off in Admin → Notifications (Gift card delivery → Email).',
+            ];
+        }
 
         $redeemUrl = rtrim((string) config('app.url'), '/') . '/order';
 

@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Notifications\Support\AlertAudience;
 use App\Domains\Notifications\Support\SmsBudgetGate;
 use App\Domains\Notifications\Support\SmsDeliveryRules;
 use App\Domains\Notifications\Support\SmsTypeRegistry;
@@ -21,9 +22,9 @@ use App\Models\SmsCampaignRecipient;
 use App\Models\SmsLog;
 use App\Models\SmsTemplate;
 use App\Models\TelegramBot;
+use App\Models\TelegramLink;
 use App\Models\User;
 use App\Services\AuditLogService;
-use App\Support\OwnerPhones;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -102,6 +103,9 @@ class SmsControlCenterController extends Controller
             $rolesByPermission[$slug] = $roleNames;
         }
 
+        // One load of the active staff for every row's "who gets it".
+        $resolver = AlertAudience::resolver();
+
         $types = [];
         foreach (SmsTypeRegistry::all() as $entry) {
             $key = $entry['key'];
@@ -164,28 +168,33 @@ class SmsControlCenterController extends Controller
 
             $permSlug = SmsTypeRegistry::effectiveSendPermission($entry);
             $systemOnly = $permSlug === null;
-
-            $defaultMode = SmsTypeRegistry::defaultRecipientMode($key);
-            $recipientChoice = $defaultMode !== null ? SmsTypeRegistry::recipientOverride($key) : null;
+            $channels = SmsTypeRegistry::channels($entry);
+            $configurable = AlertAudience::configurable($key);
 
             $types[] = [
-                'recipients_configurable' => $defaultMode !== null,
-                'default_recipient_mode' => $defaultMode,
-                'recipients_config' => $defaultMode === null ? null : ($recipientChoice ?? ['mode' => $defaultMode, 'user_ids' => [], 'phones' => []]),
-                'recipients_resolved' => $defaultMode === null ? [] : OwnerPhones::describe(OwnerPhones::for($key)),
+                // Who gets it (re-audit, 2026-10-10): groups, named people,
+                // exceptions, typed numbers and emails, edited on the row.
+                'audience_configurable' => $configurable,
+                'audience' => $configurable ? AlertAudience::for($key) : null,
+                'audience_default' => $configurable ? AlertAudience::default($key) : null,
+                'audience_custom' => $configurable && AlertAudience::isCustom($key),
+                'audience_people' => $configurable ? AlertAudience::describe($key, ['resolver' => $resolver]) : null,
                 'key' => $key,
                 'label' => $entry['label'],
                 'category' => $entry['category'],
+                // The channels this message can go by; each has a switch.
+                'channels' => $channels,
                 'enabled' => SmsTypeRegistry::isTypeEnabled($entry),
                 // Separate email switch (owner, 2026-10-06): turning the SMS off to
-                // save cost leaves the email going. Types with their own fuller
-                // email (sign-in code, order confirmed...) have no copy to switch.
-                'email_enabled' => SmsTypeRegistry::isEmailEnabled($key),
+                // save cost leaves the email going. For a type with its own fuller
+                // email (order confirmed, gift card, catering) the switch is that
+                // email's switch (2026-10-10); a sign-in code's email is always on.
+                'email_enabled' => in_array('email', $channels, true) && (!empty($entry['always_on']) || SmsTypeRegistry::isEmailEnabled($key)),
                 'has_own_email' => in_array($key, \App\Domains\Notifications\Services\SmsEmailCopier::HAS_OWN_EMAIL, true),
                 // Telegram switch per staff alert (2026-10-07); who gets it
                 // by which channel is set per role and person.
-                'telegram_applies' => TelegramAlertCopier::isStaffAlert($entry, $key),
-                'telegram_enabled' => SmsTypeRegistry::isTelegramEnabled($key),
+                'telegram_applies' => in_array('telegram', $channels, true),
+                'telegram_enabled' => in_array('telegram', $channels, true) && SmsTypeRegistry::isTelegramEnabled($key),
                 'always_on' => (bool) $entry['always_on'],
                 'suppressible' => (bool) $entry['suppressible'],
                 'recipients' => (string) $entry['recipients'],
@@ -223,14 +232,23 @@ class SmsControlCenterController extends Controller
                 ->all(),
         );
 
+        // Every active person, for naming or excepting on a row; one without
+        // a phone is reached by email or Telegram (2026-10-10).
+        $linked = TelegramLink::query()->whereNotNull('user_id')->whereNull('blocked_at')->pluck('user_id')->map(fn ($id) => (int) $id)->all();
         $staffOptions = User::query()
             ->where('is_active', true)
-            ->whereNotNull('phone')
-            ->where('phone', '!=', '')
             ->with('role:id,name,slug')
             ->orderBy('name')
-            ->get(['id', 'name', 'phone', 'role_id'])
-            ->map(fn (User $u) => ['id' => $u->id, 'name' => $u->name, 'phone' => $u->phone, 'role' => $u->role?->name])
+            ->get(['id', 'name', 'phone', 'email', 'role_id'])
+            ->map(fn (User $u) => [
+                'id' => $u->id,
+                'name' => $u->name,
+                'phone' => trim((string) $u->phone) !== '' ? $u->phone : null,
+                'email' => filter_var(trim((string) $u->email), FILTER_VALIDATE_EMAIL) ? trim((string) $u->email) : null,
+                'telegram_linked' => in_array((int) $u->id, $linked, true),
+                'role' => $u->role?->name,
+                'role_slug' => $u->role?->slug,
+            ])
             ->values()
             ->all();
 
@@ -258,7 +276,8 @@ class SmsControlCenterController extends Controller
             'deferred_count' => (int) SmsLog::query()->where('status', 'deferred')->count(),
             'campaign_queue' => $this->campaignQueueHealth(),
             'permission_options' => $permissionOptions,
-            'recipient_modes' => SmsTypeRegistry::RECIPIENT_MODES,
+            // The groups a row's audience can name, with today's head count.
+            'audience_groups' => AlertAudience::groupOptions($resolver),
             'staff_options' => $staffOptions,
             // Admin → Notifications shows the rows' Telegram switches against
             // these (2026-10-10): with the master switch off or no bot, they
@@ -283,9 +302,6 @@ class SmsControlCenterController extends Controller
             'bulk_daily_recipient_cap' => 'sometimes|integer|min:0|max:1000000',
             'log_retention_days' => 'sometimes|integer|min:0|max:3650',
             'marketing_opt_out_line' => 'sometimes|nullable|string|max:80',
-            'email_copy_customers' => 'sometimes|boolean',
-            'email_copy_staff' => 'sometimes|boolean',
-            'email_copy_marketing' => 'sometimes|boolean',
             'email_copy_hourly_cap' => 'sometimes|integer|min:0|max:100000',
         ]);
         if ($validated === []) {
@@ -302,7 +318,8 @@ class SmsControlCenterController extends Controller
     /**
      * PATCH /api/admin/sms/types/{key}
      *
-     * Accepts any of: enabled, body, send_permission.
+     * Accepts any of: enabled, email_enabled, telegram_enabled, body,
+     * extra_templates, send_permission, audience.
      */
     public function updateType(Request $request, string $key): JsonResponse
     {
@@ -310,6 +327,7 @@ class SmsControlCenterController extends Controller
         if ($entry === null) {
             return response()->json(['message' => 'Unknown SMS type.'], 404);
         }
+        $channels = SmsTypeRegistry::channels($entry);
 
         $validated = $request->validate([
             'enabled' => 'sometimes|boolean',
@@ -328,42 +346,60 @@ class SmsControlCenterController extends Controller
                     '',
                 ]),
             ],
-            'recipients' => 'sometimes|nullable|array',
-            'recipients.mode' => ['required_with:recipients', Rule::in(SmsTypeRegistry::RECIPIENT_MODES)],
-            'recipients.user_ids' => 'sometimes|array|max:20',
-            'recipients.user_ids.*' => 'integer|exists:users,id',
-            'recipients.phones' => 'sometimes|array|max:10',
-            'recipients.phones.*' => ['string', new \App\Rules\MaldivesPhone],
+            // Who gets it (AlertAudience): null puts the default back.
+            'audience' => 'sometimes|nullable|array',
+            'audience.groups' => 'sometimes|array|max:20',
+            'audience.groups.*' => 'string|max:80',
+            'audience.users' => 'sometimes|array|max:100',
+            'audience.users.*' => 'integer|exists:users,id',
+            'audience.except' => 'sometimes|array|max:100',
+            'audience.except.*' => 'integer|exists:users,id',
+            'audience.phones' => 'sometimes|array|max:10',
+            'audience.phones.*' => ['string', new \App\Rules\MaldivesPhone],
+            'audience.emails' => 'sometimes|array|max:10',
+            'audience.emails.*' => 'string|email|max:190',
         ]);
 
         if ($validated === []) {
-            return response()->json(['message' => 'Provide enabled, email_enabled, telegram_enabled, body, extra_templates, send_permission and/or recipients.'], 422);
+            return response()->json(['message' => 'Provide enabled, email_enabled, telegram_enabled, body, extra_templates, send_permission and/or audience.'], 422);
         }
 
         $response = ['key' => $key];
 
-        if (array_key_exists('recipients', $validated)) {
-            if (SmsTypeRegistry::defaultRecipientMode($key) === null) {
-                return response()->json(['message' => 'This SMS type decides its recipient in code (the customer, the rostered staff member) and cannot be redirected.'], 422);
+        if (array_key_exists('audience', $validated)) {
+            if (!AlertAudience::configurable($key)) {
+                return response()->json(['message' => 'This message decides who gets it in code (the customer, the rostered staff member) and cannot be redirected.'], 422);
             }
-            $choice = $validated['recipients'];
+            $choice = $validated['audience'];
             if (is_array($choice)) {
-                if ($choice['mode'] === 'staff' && empty($choice['user_ids'])) {
-                    return response()->json(['message' => 'Pick at least one staff member.'], 422);
+                foreach ((array) ($choice['groups'] ?? []) as $group) {
+                    if (!AlertAudience::validGroup((string) $group)) {
+                        return response()->json(['message' => 'Unknown group: ' . $group . '.'], 422);
+                    }
+                    if (str_starts_with((string) $group, 'role:') && !Role::query()->where('slug', substr((string) $group, 5))->exists()) {
+                        return response()->json(['message' => 'There is no role called ' . substr((string) $group, 5) . '.'], 422);
+                    }
                 }
-                if ($choice['mode'] === 'custom' && empty($choice['phones'])) {
-                    return response()->json(['message' => 'Type at least one phone number.'], 422);
+                $choice = AlertAudience::normalize($choice);
+                if (AlertAudience::isEmpty($choice)) {
+                    return response()->json(['message' => 'Pick at least one group, person, number or email address. To stop the alert, switch it off.'], 422);
                 }
-                $choice['phones'] = array_map(fn ($p) => \App\Rules\MaldivesPhone::normalize((string) $p), $choice['phones'] ?? []);
             }
-            $old = SmsTypeRegistry::recipientOverride($key);
-            SmsTypeRegistry::setRecipientOverride($key, is_array($choice) ? $choice : null);
-            $this->audit->log('sms.type.recipients.updated', 'SiteSetting', null, ['recipients' => $old, 'type' => $key], ['recipients' => $choice, 'type' => $key], ['sms_type' => $key], $request);
-            $response['recipients_config'] = SmsTypeRegistry::recipientOverride($key) ?? ['mode' => SmsTypeRegistry::defaultRecipientMode($key), 'user_ids' => [], 'phones' => []];
-            $response['recipients_resolved'] = OwnerPhones::describe(OwnerPhones::for($key));
+            $old = AlertAudience::saved($key);
+            AlertAudience::save($key, is_array($choice) ? $choice : null);
+            $this->audit->log('sms.type.audience.updated', 'SiteSetting', null, ['audience' => $old, 'type' => $key], ['audience' => $choice, 'type' => $key], ['sms_type' => $key], $request);
+            $response['audience'] = AlertAudience::for($key);
+            $response['audience_custom'] = AlertAudience::isCustom($key);
+            $response['audience_people'] = AlertAudience::describe($key);
         }
 
         if (array_key_exists('email_enabled', $validated)) {
+            if (!in_array('email', $channels, true)) {
+                return response()->json(['message' => 'This alert has no email; its only switch is Telegram.'], 422);
+            }
+            if (!empty($entry['always_on'])) {
+                return response()->json(['message' => 'A sign-in code is always on, by email too; only Stop all SMS stops the text.'], 422);
+            }
             $old = SmsTypeRegistry::isEmailEnabled($key);
             SmsTypeRegistry::setEmailEnabled($key, (bool) $validated['email_enabled']);
             $this->audit->log('sms.type.email.updated', 'SiteSetting', null, ['email_enabled' => $old, 'type' => $key], ['email_enabled' => (bool) $validated['email_enabled'], 'type' => $key], ['sms_type' => $key], $request);
@@ -371,6 +407,9 @@ class SmsControlCenterController extends Controller
         }
 
         if (array_key_exists('telegram_enabled', $validated)) {
+            if (!in_array('telegram', $channels, true)) {
+                return response()->json(['message' => 'This message does not go to Telegram; only staff and owner alerts do.'], 422);
+            }
             $old = SmsTypeRegistry::isTelegramEnabled($key);
             SmsTypeRegistry::setTelegramEnabled($key, (bool) $validated['telegram_enabled']);
             $this->audit->log('sms.type.telegram.updated', 'SiteSetting', null, ['telegram_enabled' => $old, 'type' => $key], ['telegram_enabled' => (bool) $validated['telegram_enabled'], 'type' => $key], ['sms_type' => $key], $request);
@@ -378,6 +417,9 @@ class SmsControlCenterController extends Controller
         }
 
         if (array_key_exists('enabled', $validated)) {
+            if (!in_array('sms', $channels, true)) {
+                return response()->json(['message' => 'This alert has no SMS; its only switch is Telegram.'], 422);
+            }
             if (!empty($entry['always_on'])) {
                 return response()->json([
                     'message' => 'This SMS type is always on and cannot be toggled. Use the global kill switch to halt all SMS.',

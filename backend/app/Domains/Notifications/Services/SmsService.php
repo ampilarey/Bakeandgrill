@@ -6,6 +6,7 @@ namespace App\Domains\Notifications\Services;
 
 use App\Domains\Notifications\Contracts\SmsProviderInterface;
 use App\Domains\Notifications\DTOs\SmsMessage;
+use App\Domains\Notifications\Support\AlertAudience;
 use App\Domains\Notifications\Support\NotificationChannels;
 use App\Domains\Notifications\Support\SmsBudgetGate;
 use App\Domains\Notifications\Support\SmsDeliveryRules;
@@ -56,9 +57,12 @@ class SmsService
         if ($phoneless && $staff === null) {
             return $this->rowWithStatus($sms, substr($sms->to, 0, 20), $estimate, 'failed', 'Staff member not found or switched off.');
         }
+        // "email:{address}": an address typed on the alert's row (AlertAudience).
+        // Nobody to text, so it goes by email alone, when the row's Email is on.
+        $typedEmail = AlertAudience::isEmailAddress($sms->to);
 
         try {
-            $normalized = $phoneless ? $sms->to : $this->normalizePhone($sms->to);
+            $normalized = $phoneless || $typedEmail ? substr($sms->to, 0, 64) : $this->normalizePhone($sms->to);
         } catch (\InvalidArgumentException $e) {
             return SmsLog::create([
                 'message' => $this->messageForLog($sms),
@@ -102,6 +106,10 @@ class SmsService
             }
 
             return $this->disabledLog($sms, $normalized, $estimate, $permissionReason);
+        }
+
+        if ($typedEmail) {
+            return $this->emailAddressOnly($sms, $normalized, $estimate, $existing, $registryEntry);
         }
 
         // The SMS switches below exist to save SMS money, so each stops only
@@ -329,6 +337,30 @@ class SmsService
     }
 
     public const SMS_FALLBACK_NOTE = 'Email and Telegram did not reach them, so the SMS was sent.';
+
+    /**
+     * A typed email address on an alert's row: one log row, status
+     * "suppressed" and "Sent by email instead of SMS." when it went, failed
+     * when the row's Email switch is off or the address is not valid.
+     *
+     * @param array{encoding: string, segments: int, cost_mvr: float} $estimate
+     * @param array<string, mixed>|null $registryEntry
+     */
+    private function emailAddressOnly(SmsMessage $sms, string $normalized, array $estimate, ?SmsLog $existing, ?array $registryEntry): SmsLog
+    {
+        if ($existing !== null) {
+            $existing->update(['status' => 'suppressed', 'error_message' => 'Typed email address: no SMS.', 'message' => $this->messageForLog($sms), 'to' => $normalized, 'cost_estimate_mvr' => 0]);
+            $log = $existing->fresh();
+        } else {
+            $log = $this->rowWithStatus($sms, $normalized, $estimate, 'suppressed', 'Typed email address: no SMS.');
+        }
+        $sent = app(SmsEmailCopier::class)->sendTo($sms, AlertAudience::emailFrom($sms->to), $log, $registryEntry);
+        $log->update($sent
+            ? ['error_message' => SmsLog::SENT_BY_EMAIL]
+            : ['status' => 'failed', 'error_message' => 'Not sent: the Email switch for this message is off, or the address is not valid.']);
+
+        return $log->fresh();
+    }
 
     /**
      * The staff member a staff alert is addressed to, or null (customers,

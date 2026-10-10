@@ -1,10 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Phone, Bell, Settings, AlertCircle, Plus, Pencil, Trash2 } from 'lucide-react';
+import { Phone, Bell, Settings, AlertCircle, Plus, Pencil, Trash2, Search } from 'lucide-react';
 import {
   fetchStaff, updateStaff,
   getStaffNotificationPrefs, updateStaffNotificationPrefs,
   fetchSmsContacts, createSmsContact, updateSmsContact, deleteSmsContact,
+  getNotifyChannels, updateNotifyPerson, updateNotifyRoles, updateSmsType,
+  type NotifyChannel, type NotifyPerson, type NotifyRole,
+  type SmsControlCenterType,
+  type SmsStaffOption,
   type StaffMember,
   type StaffNotificationPref,
   type SmsContact,
@@ -12,18 +16,20 @@ import {
 import {
   Badge, Btn, EmptyState, Input, Modal, ModalActions, Spinner, TableCard, TD, TH, Switch,
 } from '../../components/SharedUI';
-import { NotifyChannelsPanel } from '../../components/NotifyChannelsPanel';
+import { NotifyChannelsPanel, LABEL, Pills, reachNote, ordered } from '../../components/NotifyChannelsPanel';
 import { useCurrentUserPermissions } from '../../hooks/usePermissions';
-import { errorBox, sectionHeading, useControlCenter } from './shared';
+import { audienceSummary, errorBox, sectionHeading, useControlCenter } from './shared';
 
 /*
- * Notifications → People (notifications audit, 2026-10-10): who gets the
- * order alerts, how each person gets their alerts (SMS, email, Telegram),
- * and extra numbers that are not staff. These were the SMS page's
- * Recipients tab and the Control Center's "Who gets alerts, and how".
+ * Notifications → People (re-audit, 2026-10-10): one card per person with
+ * everything about their alerts in one place: how they get them (SMS,
+ * email, Telegram), whether they get order alerts while on shift and for
+ * which orders, and "Alerts…" to see every staff and owner alert that
+ * reaches them, mute one or add one. Then the roles, and extra numbers
+ * that are not staff.
  *
- * Staff without a phone get order alerts by email or Telegram now (owner
- * said yes), so their switch is no longer locked behind "Add phone".
+ * Staff without a phone get order alerts by email or Telegram (owner said
+ * yes), so their switch is no longer locked behind "Add phone".
  */
 
 const ORDER_TYPES = [
@@ -43,175 +49,366 @@ const chipStyle = (on: boolean): React.CSSProperties => ({
   color: on ? 'var(--color-on-primary)' : 'var(--color-text-secondary)',
 });
 
+type Person = NotifyPerson & { prefs?: StaffNotificationPref; is_active?: boolean };
+
 export function PeopleTab() {
   const { can } = useCurrentUserPermissions();
   const canChannels = can('sms.settings.manage');
   const canStaff = can('staff.update');
   const canContacts = can('sms.contacts.manage');
   const [error, setError] = useState('');
-  // Rules → Email copies: off for staff means nobody gets alerts by email.
-  const { data } = useControlCenter(canChannels);
+  const { data, setData, loading: ccLoading } = useControlCenter(canChannels);
+
+  const [roles, setRoles] = useState<NotifyRole[]>([]);
+  const [people, setPeople] = useState<Person[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [prefsModal, setPrefsModal] = useState<Person | null>(null);
+  const [phoneModal, setPhoneModal] = useState<Person | null>(null);
+  const [alertsModal, setAlertsModal] = useState<Person | null>(null);
+
+  const load = useCallback(async () => {
+    if (!canChannels && !canStaff) { setLoading(false); return; }
+    setLoading(true);
+    try {
+      let list: Person[] = [];
+      if (canChannels) {
+        const res = await getNotifyChannels();
+        setRoles(res.roles);
+        list = res.people;
+      } else {
+        const res = await fetchStaff();
+        list = res.staff.filter((m: StaffMember) => m.is_active).map((m: StaffMember) => ({
+          id: m.id, name: m.name, role: m.role ?? null, role_label: m.role_name ?? m.role ?? null, phone: m.phone ?? null,
+          email: m.email ?? null, telegram_linked: false, own_channels: null, channels: [],
+        }));
+      }
+      if (canStaff) {
+        list = await Promise.all(list.map(async (p) => {
+          try {
+            const { prefs } = await getStaffNotificationPrefs(p.id);
+            return { ...p, prefs };
+          } catch {
+            return p;
+          }
+        }));
+      }
+      setPeople(list);
+    } catch (e) {
+      setError((e as Error).message || 'Could not load the people.');
+    } finally {
+      setLoading(false);
+    }
+  }, [canChannels, canStaff]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const rows = useMemo(() => (data?.types ?? []).filter((t) => t.audience_configurable), [data]);
+  const alertsByRole = useMemo(() => {
+    const out: Record<string, number> = {};
+    for (const r of roles) {
+      const ids = new Set(people.filter((p) => p.role === r.key).map((p) => p.id));
+      out[r.key] = rows.filter((t) => t.audience?.groups.includes(`role:${r.key}`) || (t.audience_people?.people ?? []).some((p) => ids.has(p.id))).length;
+    }
+    return out;
+  }, [roles, people, rows]);
+  const alertsFor = (p: Person) => rows.filter((t) => (t.audience_people?.people ?? []).some((x) => x.id === p.id)).length;
+
+  const saveRole = async (key: string, channels: NotifyChannel[]) => {
+    setBusy(`role:${key}`);
+    try {
+      const res = await updateNotifyRoles({ [key]: channels });
+      setRoles((prev) => prev.map((r) => ({ ...r, channels: ordered(res.roles[r.key] ?? r.channels) })));
+      setPeople((prev) => prev.map((p) => (p.own_channels === null && p.role === key ? { ...p, channels: ordered(res.roles[key] ?? channels) } : p)));
+    } catch (e: unknown) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const savePerson = async (p: Person, channels: NotifyChannel[] | null) => {
+    setBusy(`person:${p.id}`);
+    try {
+      const res = await updateNotifyPerson(p.id, channels);
+      setPeople((prev) => prev.map((x) => (x.id === p.id ? { ...x, ...res.person } : x)));
+    } catch (e: unknown) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const toggleOrderAlerts = async (p: Person) => {
+    if (!p.prefs) return;
+    setBusy(`orders:${p.id}`);
+    try {
+      const { prefs } = await updateStaffNotificationPrefs(p.id, { notifications_enabled: !p.prefs.notifications_enabled });
+      setPeople((prev) => prev.map((x) => (x.id === p.id ? { ...x, prefs } : x)));
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const patchRow = (key: string, patch: Partial<SmsControlCenterType>) => {
+    setData((prev) => (prev ? { ...prev, types: prev.types.map((t) => (t.key === key ? { ...t, ...patch } : t)) } : prev));
+  };
+
+  const roleChannels = useMemo(() => Object.fromEntries(roles.map((r) => [r.key, r.channels])) as Record<string, NotifyChannel[]>, [roles]);
+  const shown = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return q === '' ? people : people.filter((p) => `${p.name} ${p.role_label ?? ''} ${p.phone ?? ''} ${p.email ?? ''}`.toLowerCase().includes(q));
+  }, [people, query]);
+  const unreachable = canChannels ? people.filter((p) => reachNote(p, p.channels).tone === 'danger').length : 0;
+  const onOrders = people.filter((p) => p.prefs?.notifications_enabled).length;
 
   return (
     <>
       {error && <p role="alert" style={errorBox}>{error}</p>}
-      {canStaff && <OrderAlertPeople />}
-      {canChannels && (
-        <NotifyChannelsPanel canManage={canChannels} emailToStaffOn={data?.delivery_rules?.email_copy_staff ?? true} onError={setError} />
+
+      {(canChannels || canStaff) && (
+        <section className="nc" data-testid="people-list" aria-labelledby="people-title">
+          <div className="nc-people-head">
+            <h2 id="people-title" style={{ ...sectionHeading, margin: 0 }}>People</h2>
+            {people.length > 6 && (
+              <label className="nc-search">
+                <Search size={15} aria-hidden />
+                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find someone" aria-label="Find someone" />
+              </label>
+            )}
+          </div>
+          <p className="nc-lead">
+            Each person, and everything about their alerts: how they get them, whether they get order alerts while on shift, and which
+            staff and owner alerts reach them. Customers are not affected.
+          </p>
+          {unreachable > 0 && (
+            <p className="nc-banner is-danger">{unreachable} {unreachable === 1 ? 'person gets' : 'people get'} no alerts at all. See below.</p>
+          )}
+          {loading ? <Spinner /> : people.length === 0 ? (
+            <EmptyState message="No staff yet. Add them under Staff first." />
+          ) : shown.length === 0 ? <p className="nc-muted">Nobody matches.</p> : (
+            <>
+              {canStaff && (
+                <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--color-text-muted)' }}>
+                  {onOrders} of {people.length} get order alerts while on shift
+                  {' · '}<Link to="/notifications/messages?open=staff_new_order" style={{ color: 'var(--color-primary)' }}>the order alerts</Link>
+                </p>
+              )}
+              <ul className="nc-people">
+                {shown.map((p) => {
+                  const own = p.own_channels !== null;
+                  const note = canChannels ? reachNote(p, p.channels) : null;
+                  const prefs = p.prefs;
+                  const orderTypes = prefs?.order_types;
+                  return (
+                    <li key={p.id} className="nc-person" data-testid={`nc-person-${p.id}`}>
+                      <div className="nc-person-who">
+                        <div className="nc-person-name">{p.name} <span className="nc-muted">· {p.role_label ?? 'No role'}</span></div>
+                        <div className="nc-contacts">
+                          <span className={p.phone ? '' : 'is-missing'}>{p.phone ?? 'No phone: email or Telegram'}</span>
+                          <span className={p.email ? '' : 'is-missing'}>{p.email ?? 'No email'}</span>
+                          {canChannels && <span className={p.telegram_linked ? '' : 'is-missing'}>{p.telegram_linked ? 'Telegram linked' : 'Telegram not linked'}</span>}
+                        </div>
+                        {note && <div className={`nc-note is-${note.tone}`}>{note.text}</div>}
+                        {canChannels && !ccLoading && (
+                          <div className="nc-muted" style={{ fontSize: 12, marginTop: 4 }}>
+                            {alertsFor(p)} staff and owner {alertsFor(p) === 1 ? 'alert reaches' : 'alerts reach'} them
+                            {prefs?.is_fallback ? ' · fallback for order alerts' : ''}
+                          </div>
+                        )}
+                      </div>
+                      <div className="nc-person-set">
+                        {canChannels && (
+                          <div className="nc-person-row">
+                            <select
+                              className="nc-select"
+                              value={own ? 'own' : 'role'}
+                              disabled={busy !== null}
+                              aria-label={`Channels for ${p.name}`}
+                              onChange={(e) => void savePerson(p, e.target.value === 'own' ? p.channels : null)}
+                            >
+                              <option value="role">Same as role{p.role && roleChannels[p.role] ? ` (${roleChannels[p.role].map((c) => LABEL[c]).join(', ') || 'none'})` : ''}</option>
+                              <option value="own">Own choice</option>
+                            </select>
+                            {own && (
+                              <Pills
+                                value={p.channels}
+                                disabled={busy !== null}
+                                label={`Own channels for ${p.name}`}
+                                onChange={(next) => void savePerson(p, next)}
+                              />
+                            )}
+                          </div>
+                        )}
+                        {canStaff && (
+                          <div className="nc-person-row">
+                            <label className="nc-person-orders">
+                              <Switch
+                                checked={prefs?.notifications_enabled ?? false}
+                                onChange={() => void toggleOrderAlerts(p)}
+                                disabled={busy !== null || !prefs}
+                                aria-label={`Order alerts for ${p.name}`}
+                              />
+                              <span>
+                                Order alerts on shift
+                                {prefs?.notifications_enabled && (orderTypes === null
+                                  ? <span className="nc-muted"> · all orders</span>
+                                  : orderTypes && orderTypes.length > 0
+                                    ? <span className="nc-muted"> · {orderTypes.map((t) => ORDER_TYPES.find((o) => o.value === t)?.label ?? t).join(', ')}</span>
+                                    : null)}
+                              </span>
+                            </label>
+                            <Btn small variant="ghost" onClick={() => setPrefsModal(p)} disabled={!prefs} aria-label={`Order alert settings for ${p.name}`}>
+                              <Settings size={12} style={{ marginRight: 3 }} /> Which orders
+                            </Btn>
+                            {!p.phone && (
+                              <Btn small variant="secondary" onClick={() => setPhoneModal(p)} aria-label={`Add a phone for ${p.name}`}>
+                                <Phone size={12} />
+                              </Btn>
+                            )}
+                          </div>
+                        )}
+                        {canChannels && (
+                          <div className="nc-person-row">
+                            <Btn small variant="secondary" onClick={() => setAlertsModal(p)} disabled={ccLoading} aria-label={`Alerts for ${p.name}`}>
+                              <Bell size={12} style={{ marginRight: 4 }} /> Alerts…
+                            </Btn>
+                          </div>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          )}
+        </section>
       )}
+
+      {canChannels && (
+        <section className="nc" aria-label="By role">
+          <NotifyChannelsPanel canManage={canChannels} roles={roles} loading={loading} busy={busy !== null} alertsByRole={alertsByRole} onSaveRole={(k, c) => void saveRole(k, c)} />
+        </section>
+      )}
+
       {canContacts && <ExtraNumbers />}
       {!canStaff && !canChannels && !canContacts && (
         <p style={{ color: 'var(--color-text-muted)' }}>You need Manage SMS settings, Update staff or Manage SMS contacts to see this.</p>
+      )}
+
+      {prefsModal && <StaffPrefsModal member={prefsModal} onClose={() => setPrefsModal(null)} onUpdated={load} />}
+      {phoneModal && <PhoneModal member={phoneModal} onClose={() => setPhoneModal(null)} onSaved={load} />}
+      {alertsModal && (
+        <PersonAlertsModal
+          person={alertsModal}
+          rows={rows}
+          staff={data?.staff_options ?? []}
+          onClose={() => setAlertsModal(null)}
+          onPatched={patchRow}
+          onError={setError}
+        />
       )}
     </>
   );
 }
 
-// ── Who gets order alerts ────────────────────────────────────────────────────
+// ── Every alert that reaches one person ─────────────────────────────────────
 
-type StaffWithPrefs = StaffMember & { prefs?: StaffNotificationPref };
+/**
+ * Per person, per alert (owner, 2026-10-10: "each staff separately"): what
+ * reaches them and why, with Mute (never this one), Add (always this one)
+ * and the way back. Saved on the alert's row, so Messages shows the same.
+ */
+function PersonAlertsModal({ person, rows, staff, onClose, onPatched, onError }: {
+  person: Person;
+  rows: SmsControlCenterType[];
+  staff: SmsStaffOption[];
+  onClose: () => void;
+  onPatched: (key: string, patch: Partial<SmsControlCenterType>) => void;
+  onError: (msg: string) => void;
+}) {
+  const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [q, setQ] = useState('');
 
-function OrderAlertPeople() {
-  const [staff, setStaff] = useState<StaffWithPrefs[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState('');
-  const [prefsModal, setPrefsModal] = useState<StaffMember | null>(null);
-  const [phoneModal, setPhoneModal] = useState<StaffMember | null>(null);
-  const [togglingId, setTogglingId] = useState<number | null>(null);
-
-  const load = async () => {
-    setLoading(true);
-    setLoadError('');
-    try {
-      const staffRes = await fetchStaff();
-      // Each person's switch, in parallel (best effort).
-      const withPrefs = await Promise.all(
-        staffRes.staff.map(async (m) => {
-          try {
-            const { prefs } = await getStaffNotificationPrefs(m.id);
-            return { ...m, prefs };
-          } catch {
-            return m;
-          }
-        }),
-      );
-      setStaff(withPrefs);
-    } catch (e) {
-      setLoadError((e as Error).message || 'Could not load staff.');
-    } finally {
-      setLoading(false);
-    }
+  const stateOf = (t: SmsControlCenterType): 'muted' | 'named' | 'group' | 'none' => {
+    const a = t.audience;
+    if (!a) return 'none';
+    if (a.except.includes(person.id)) return 'muted';
+    if (a.users.includes(person.id)) return 'named';
+    return (t.audience_people?.people ?? []).some((p) => p.id === person.id) ? 'group' : 'none';
   };
 
-  useEffect(() => { void load(); }, []);
-
-  const toggle = async (member: StaffWithPrefs) => {
-    if (!member.prefs) return;
-    const current = member.prefs.notifications_enabled;
-    setTogglingId(member.id);
+  const save = async (t: SmsControlCenterType, next: { users?: number[]; except?: number[] }) => {
+    if (!t.audience) return;
+    setBusyKey(t.key);
     try {
-      const { prefs } = await updateStaffNotificationPrefs(member.id, { notifications_enabled: !current });
-      setStaff((prev) => prev.map((m) => (m.id === member.id ? { ...m, prefs } : m)));
-    } catch (e) {
-      setLoadError((e as Error).message);
+      const res = await updateSmsType(t.key, { audience: { ...t.audience, ...next } });
+      onPatched(t.key, { audience: res.audience, audience_custom: res.audience_custom, audience_people: res.audience_people });
+    } catch (e: unknown) {
+      onError((e as Error).message);
     } finally {
-      setTogglingId(null);
+      setBusyKey(null);
     }
   };
+  const mute = (t: SmsControlCenterType) => save(t, { except: [...(t.audience?.except ?? []), person.id], users: (t.audience?.users ?? []).filter((x) => x !== person.id) });
+  const unmute = (t: SmsControlCenterType) => save(t, { except: (t.audience?.except ?? []).filter((x) => x !== person.id) });
+  const add = (t: SmsControlCenterType) => save(t, { users: [...(t.audience?.users ?? []), person.id], except: (t.audience?.except ?? []).filter((x) => x !== person.id) });
+  const remove = (t: SmsControlCenterType) => save(t, { users: (t.audience?.users ?? []).filter((x) => x !== person.id) });
 
-  const on = staff.filter((m) => m.prefs?.notifications_enabled).length;
-  const fallback = staff.filter((m) => m.prefs?.is_fallback).length;
+  const list = rows.filter((t) => !q || t.label.toLowerCase().includes(q.toLowerCase()));
+  const gets = list.filter((t) => ['named', 'group'].includes(stateOf(t)));
+  const muted = list.filter((t) => stateOf(t) === 'muted');
+  const others = list.filter((t) => stateOf(t) === 'none');
+
+  const line = (t: SmsControlCenterType) => {
+    const s = stateOf(t);
+    return (
+      <li key={t.key} className="pa-row" data-testid={`pa-${t.key}`}>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>{t.label}</div>
+          <div className="nc-muted" style={{ fontSize: 12 }}>
+            {s === 'muted' ? 'Muted for them' : s === 'named' ? 'Named on the alert' : s === 'group' ? `Through: ${audienceSummary(t, staff)}` : `Goes to: ${audienceSummary(t, staff)}`}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+          {s === 'muted' && <Btn small variant="secondary" disabled={busyKey === t.key} onClick={() => void unmute(t)} aria-label={`Unmute ${t.label}`}>Unmute</Btn>}
+          {s === 'named' && <Btn small variant="danger-outline" disabled={busyKey === t.key} onClick={() => void remove(t)} aria-label={`Remove ${t.label}`}>Remove</Btn>}
+          {s === 'group' && <Btn small variant="danger-outline" disabled={busyKey === t.key} onClick={() => void mute(t)} aria-label={`Mute ${t.label}`}>Mute</Btn>}
+          {s === 'none' && <Btn small variant="secondary" disabled={busyKey === t.key} onClick={() => void add(t)} aria-label={`Add ${t.label}`}>Add</Btn>}
+        </div>
+      </li>
+    );
+  };
 
   return (
-    <section style={{ marginBottom: 28 }} data-testid="order-alert-people" aria-labelledby="oap-title">
-      <h2 id="oap-title" style={sectionHeading}>Who gets order alerts</h2>
-      <p style={{ margin: '0 0 12px', fontSize: 13, lineHeight: 1.5, color: 'var(--color-text-secondary)', maxWidth: 760 }}>
-        New order, order confirmed, ready and out for delivery go to the staff on shift whose switch is on here, and to the extra
-        numbers below; when nobody matches, to the fallback staff. Each message's own switches are on Messages.
-        Someone without a phone gets them by email or Telegram, as their channels below allow.
+    <Modal title={`Alerts for ${person.name}`} onClose={onClose}>
+      <p style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
+        Every staff and owner alert, and whether it reaches {person.name}. Mute keeps one away from them whatever group they are in;
+        Add sends it to them always. Each change is saved on the alert itself.
       </p>
-      {loadError && <p role="alert" style={errorBox}>{loadError}</p>}
-      {loading ? <Spinner /> : staff.length === 0 ? (
-        <EmptyState message="No staff yet. Add them under Staff first." />
-      ) : (
-        <>
-          <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--color-text-muted)' }}>
-            {on} of {staff.length} on · {fallback} fallback
-          </p>
-          <TableCard>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-              <thead>
-                <tr>
-                  {['Name', 'Phone', 'Gets order alerts', 'Orders', 'Fallback', ''].map((h) => <th key={h} style={TH}>{h}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {staff.map((m) => {
-                  const enabled = m.prefs?.notifications_enabled ?? false;
-                  const orderTypes = m.prefs?.order_types;
-                  const isFallback = m.prefs?.is_fallback ?? false;
-                  return (
-                    <tr key={m.id} style={{ opacity: m.is_active ? 1 : 0.5 }}>
-                      <td style={{ ...TD, fontWeight: 600 }}>
-                        {m.name}
-                        <div style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{m.role_name ?? m.role ?? '—'}</div>
-                      </td>
-                      <td style={{ ...TD, fontFamily: m.phone ? 'monospace' : undefined }}>
-                        {m.phone ? (
-                          <span style={{ color: 'var(--color-text)' }}>{m.phone}</span>
-                        ) : (
-                          <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>No phone: email or Telegram</span>
-                        )}
-                      </td>
-                      <td style={{ ...TD, textAlign: 'center' }}>
-                        <Switch
-                          checked={enabled}
-                          onChange={() => void toggle(m)}
-                          disabled={togglingId === m.id || !m.prefs}
-                          aria-label={`Order alerts for ${m.name}`}
-                        />
-                      </td>
-                      <td style={TD}>
-                        {orderTypes === null ? (
-                          <Badge label="All orders" color="green" />
-                        ) : orderTypes && orderTypes.length > 0 ? (
-                          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                            {orderTypes.map((t) => <Badge key={t} label={ORDER_TYPES.find((o) => o.value === t)?.label ?? t} color="brown" />)}
-                          </div>
-                        ) : (
-                          <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>—</span>
-                        )}
-                      </td>
-                      <td style={{ ...TD, textAlign: 'center' }}>
-                        {isFallback ? <Badge label={`Fallback${m.prefs?.fallback_priority ? ` (#${m.prefs.fallback_priority})` : ''}`} color="orange" /> : '—'}
-                      </td>
-                      <td style={{ ...TD, textAlign: 'right' }}>
-                        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                          {!m.phone && (
-                            <Btn small variant="secondary" onClick={() => setPhoneModal(m)} aria-label={`Add a phone for ${m.name}`}>
-                              <Phone size={12} />
-                            </Btn>
-                          )}
-                          <Btn small variant="ghost" onClick={() => setPrefsModal(m)}>
-                            <Settings size={12} style={{ marginRight: 3 }} /> Choose
-                          </Btn>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </TableCard>
-        </>
+      {rows.length > 10 && (
+        <label className="nc-search" style={{ marginBottom: 10 }}>
+          <Search size={15} aria-hidden />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find an alert" aria-label="Find an alert" />
+        </label>
       )}
-      {prefsModal && <StaffPrefsModal member={prefsModal} onClose={() => setPrefsModal(null)} onUpdated={load} />}
-      {phoneModal && <PhoneModal member={phoneModal} onClose={() => setPhoneModal(null)} onSaved={load} />}
-    </section>
+      {gets.length > 0 && (<><h4 className="pa-h">Gets ({gets.length})</h4><ul className="pa-list">{gets.map(line)}</ul></>)}
+      {muted.length > 0 && (<><h4 className="pa-h">Muted ({muted.length})</h4><ul className="pa-list">{muted.map(line)}</ul></>)}
+      {others.length > 0 && (<><h4 className="pa-h">Does not get ({others.length})</h4><ul className="pa-list">{others.map(line)}</ul></>)}
+      {list.length === 0 && <p className="nc-muted">Nothing matches.</p>}
+      <ModalActions>
+        <Btn variant="ghost" onClick={onClose}>Done</Btn>
+      </ModalActions>
+    </Modal>
   );
 }
 
-function StaffPrefsModal({ member, onClose, onUpdated }: { member: StaffMember; onClose: () => void; onUpdated: () => void }) {
+// ── Order alerts per person ──────────────────────────────────────────────────
+
+function StaffPrefsModal({ member, onClose, onUpdated }: { member: Person; onClose: () => void; onUpdated: () => void }) {
   const [prefs, setPrefs] = useState<StaffNotificationPref | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -299,7 +496,7 @@ function StaffPrefsModal({ member, onClose, onUpdated }: { member: StaffMember; 
   );
 }
 
-function PhoneModal({ member, onClose, onSaved }: { member: StaffMember; onClose: () => void; onSaved: () => void }) {
+function PhoneModal({ member, onClose, onSaved }: { member: Person; onClose: () => void; onSaved: () => void }) {
   const [phone, setPhone] = useState(member.phone ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -381,12 +578,13 @@ function ExtraNumbers() {
   };
 
   return (
-    <section data-testid="extra-numbers" aria-labelledby="extra-title">
+    <section data-testid="extra-numbers" id="extra-numbers" aria-labelledby="extra-title" style={{ scrollMarginTop: 80 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 8 }}>
         <div style={{ flex: '1 1 240px', minWidth: 0 }}>
           <h2 id="extra-title" style={{ ...sectionHeading, margin: '0 0 2px' }}>Extra numbers</h2>
           <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>
             Phones that are not staff (an on-call manager, the owner's own phone) and get the order alerts too, on the days and hours set.
+            A number for any other alert is typed on that alert's row in Messages.
           </p>
         </div>
         <Btn onClick={() => setModal('new')} style={{ whiteSpace: 'nowrap' }}>

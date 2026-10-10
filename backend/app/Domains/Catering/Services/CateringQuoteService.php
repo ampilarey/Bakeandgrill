@@ -609,8 +609,9 @@ class CateringQuoteService
             ));
         }
 
+        // The row's Email switch in Admin → Notifications is this email's switch (2026-10-10).
         $email = trim((string) ($request->email ?? ''));
-        if ($email !== '') {
+        if ($email !== '' && \App\Domains\Notifications\Support\SmsTypeRegistry::isEmailEnabled('catering_quote_customer')) {
             try {
                 Mail::to($email)->send(new EventQuoteSentMail($request, $link, $this->taxPreview($request)));
             } catch (\Throwable $e) {
@@ -621,31 +622,17 @@ class CateringQuoteService
             }
         }
 
-        $staffMsg = "Quote v{$version} sent for {$ref}";
-        foreach ($this->recipients->forLifecycle($request) as $i => $target) {
-            if (!empty($target['phone'])) {
-                $this->sms->send(new SmsMessage(
-                    to: (string) $target['phone'],
-                    message: $staffMsg,
-                    type: 'catering_quote_staff',
-                    referenceType: 'catering_request',
-                    referenceId: (string) $request->id,
-                    idempotencyKey: $baseKey . ':staff_sms:' . $i,
-                ));
-            }
-            if (!empty($target['email'])) {
-                try {
-                    Mail::raw($staffMsg . "\n" . $link, function ($message) use ($target, $ref, $version) {
-                        $message->to((string) $target['email'])
-                            ->subject("Quote v{$version} sent — {$ref}");
-                    });
-                } catch (\Throwable $e) {
-                    Log::warning('CateringQuoteService: staff quote email failed', [
-                        'id' => $request->id,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-            }
+        // Staff: the row's audience, each person by their own channels.
+        $staffMsg = "Quote v{$version} sent for {$ref}. {$link}";
+        foreach ($this->recipients->forLifecycle($request, 'catering_quote_staff') as $i => $to) {
+            $this->sms->send(new SmsMessage(
+                to: $to,
+                message: $staffMsg,
+                type: 'catering_quote_staff',
+                referenceType: 'catering_request',
+                referenceId: (string) $request->id,
+                idempotencyKey: $baseKey . ':staff_sms:' . $i,
+            ));
         }
     }
 }

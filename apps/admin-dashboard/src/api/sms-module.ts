@@ -273,14 +273,44 @@ export async function resendStaffNotification(id: number): Promise<{ message: st
 
 // ── Notifications (was the SMS Control Center) ───────────────────────────────
 
+export type NotifyChannelKey = 'sms' | 'email' | 'telegram';
+
+/**
+ * Who a staff or owner alert goes to (re-audit, 2026-10-10): groups
+ * ("role:manager", "perm:events.manage", "business_phone", "on_shift",
+ * "catering_team"), named people, people who never get it, typed numbers
+ * and typed email addresses.
+ */
+export type AlertAudience = {
+  groups: string[];
+  users: number[];
+  except: number[];
+  phones: string[];
+  emails: string[];
+};
+
+/** Who gets it today, by name, as the server resolved it. */
+export type AudienceDescription = {
+  people: Array<{ id: number; name: string; role: string | null; reach: NotifyChannelKey[] }>;
+  /** The business phone, typed numbers and emails. */
+  extras: string[];
+  /** The groups' names, in order. */
+  groups: string[];
+  note: string | null;
+};
+
+export type AudienceGroupOption = { key: string; label: string; count: number | null };
+
 export type SmsControlCenterType = {
   key: string;
   label: string;
   category: 'auth' | 'transactional' | 'marketing' | 'staff' | 'system';
+  /** The channels this message can go by; each has a switch. Missing from an older server: SMS and email. */
+  channels?: NotifyChannelKey[];
   enabled: boolean;
-  /** Email copy switch, separate from the SMS switch (owner, 2026-10-06). */
+  /** Email switch, separate from the SMS switch (owner, 2026-10-06); for a type with its own email it is that email's switch. */
   email_enabled?: boolean;
-  /** The type already sends its own fuller email (sign-in code, order confirmed…); no copy to switch. */
+  /** The type sends its own fuller email (order confirmed, gift card, catering) rather than a copy of the text. */
   has_own_email?: boolean;
   /** A staff or owner alert, so it can go to Telegram (2026-10-07). */
   telegram_applies?: boolean;
@@ -305,11 +335,13 @@ export type SmsControlCenterType = {
   code_fallback_note?: string | null;
   sample_variables?: Record<string, string>;
   last_30_days: { count: number; cost_mvr: number };
-  /** Owner alerts: the owner picks who gets them; other types decide in code. */
-  recipients_configurable?: boolean;
-  default_recipient_mode?: SmsRecipientMode | null;
-  recipients_config?: SmsRecipientsConfig | null;
-  recipients_resolved?: string[];
+  /** Staff and owner alerts: the owner chooses who gets them; other types decide in code. */
+  audience_configurable?: boolean;
+  audience?: AlertAudience | null;
+  audience_default?: AlertAudience | null;
+  /** True when the audience differs from the default. */
+  audience_custom?: boolean;
+  audience_people?: AudienceDescription | null;
 };
 
 export type SmsExtraTemplate = {
@@ -319,14 +351,6 @@ export type SmsExtraTemplate = {
   label: string;
   body: string;
   variables: { name: string; description?: string }[];
-};
-
-export type SmsRecipientMode = 'owners_managers' | 'owner_only' | 'business_phone' | 'staff' | 'custom';
-
-export type SmsRecipientsConfig = {
-  mode: SmsRecipientMode;
-  user_ids: number[];
-  phones: string[];
 };
 
 export type SmsDeliveryRules = {
@@ -341,17 +365,20 @@ export type SmsDeliveryRules = {
   log_retention_days?: number;
   /** Appended to every marketing text; {url} becomes the short unsubscribe link. Empty = none. */
   marketing_opt_out_line?: string;
-  /** Email copy of each text to the customer's saved address. */
-  email_copy_customers?: boolean;
-  /** Email copy of each staff / owner alert to the staff account's address. */
-  email_copy_staff?: boolean;
-  /** Email copy of promotional texts (with an unsubscribe link). */
-  email_copy_marketing?: boolean;
   /** Email copies the server may send in an hour, all together; 0 = no cap. Promotions use at most half. */
   email_copy_hourly_cap?: number;
 };
 
-export type SmsStaffOption = { id: number; name: string; phone: string; role: string | null };
+/** Every active person, for naming or excepting on a row; one without a phone is reached by email or Telegram. */
+export type SmsStaffOption = {
+  id: number;
+  name: string;
+  phone: string | null;
+  email?: string | null;
+  telegram_linked?: boolean;
+  role: string | null;
+  role_slug?: string | null;
+};
 
 export type SmsBudgetSnapshot = {
   monthly_segment_ceiling: number | null;
@@ -394,7 +421,8 @@ export type SmsControlCenterResponse = {
   delivery_rules?: SmsDeliveryRules;
   quiet_now?: boolean;
   deferred_count?: number;
-  recipient_modes?: SmsRecipientMode[];
+  /** The groups a row's audience can name, with today's head count. */
+  audience_groups?: AudienceGroupOption[];
   staff_options?: SmsStaffOption[];
   /** Telegram's master switch for staff alerts (2026-10-10); off, the rows' Telegram switches send nothing. */
   telegram_alerts_on?: boolean;
@@ -410,7 +438,8 @@ export type SmsTypeUpdatePayload = {
   /** slug => body, for the row's other wordings. */
   extra_templates?: Record<string, string>;
   send_permission?: string | null;
-  recipients?: SmsRecipientsConfig | { mode: SmsRecipientMode; user_ids?: number[]; phones?: string[] } | null;
+  /** Who gets it; null puts the default back. */
+  audience?: Partial<AlertAudience> | null;
 };
 
 export async function getSmsControlCenter(): Promise<SmsControlCenterResponse> {
@@ -430,8 +459,9 @@ export async function updateSmsType(
   template?: SmsControlCenterType['template'];
   extra_templates?: SmsExtraTemplate[];
   estimate?: { encoding: string; segments: number; cost_mvr: number; length: number };
-  recipients_config?: SmsRecipientsConfig;
-  recipients_resolved?: string[];
+  audience?: AlertAudience;
+  audience_custom?: boolean;
+  audience_people?: AudienceDescription;
 }> {
   const body = typeof payload === 'boolean' ? { enabled: payload } : payload;
   return req(`/admin/sms/types/${encodeURIComponent(key)}`, {

@@ -11,7 +11,7 @@ import { fetchTelegram, updateTelegramSettings } from '../../api/telegram';
 import { Btn, Modal, Switch } from '../../components/SharedUI';
 import { useCurrentUserPermissions } from '../../hooks/usePermissions';
 import {
-  DEFAULT_RULES, KILL_SWITCH_WARNING, emailCopySummary, errorBox, fieldLabel, fieldsetStyle, inputStyle, legendStyle,
+  DEFAULT_RULES, KILL_SWITCH_WARNING, errorBox, fieldLabel, fieldsetStyle, inputStyle, legendStyle,
   panelLead, panelNote, panelStyle, sectionTitle, useControlCenter,
 } from './shared';
 
@@ -19,7 +19,9 @@ import {
  * Notifications → Rules: what applies to every message at once
  * (notifications audit, 2026-10-10). Stop all SMS, Telegram alerts on or
  * off (it was on the Telegram page), the monthly spending limit, quiet
- * hours, limits, email copies and how long the log is kept.
+ * hours, limits, the hourly email limit and how long the log is kept. The
+ * three "email copies" switches are gone (re-audit): a message's Email
+ * switch on Messages is its only one.
  */
 
 export function RulesTab() {
@@ -238,7 +240,7 @@ export function RulesTab() {
             {deferredCount > 0 && <> · {deferredCount} waiting</>}
             {' · '}Marketing limit: {rules.marketing_daily_cap === 0 ? 'off' : `${rules.marketing_daily_cap} a day per number`}
             {' · '}Campaign limit: {!rules.bulk_daily_recipient_cap ? 'off' : `${rules.bulk_daily_recipient_cap.toLocaleString()} recipients a day`}
-            {' · '}Email copies: {emailCopySummary(rules)}
+            {' · '}Emails: {(rules.email_copy_hourly_cap ?? 300) > 0 ? `up to ${(rules.email_copy_hourly_cap ?? 300).toLocaleString()} an hour` : 'no hourly limit'}
           </p>
           <p style={panelNote}>
             Login and approval codes, and order and payment texts to customers, are never held. The marketing limit counts every marketing text to one number in a rolling day, whatever sends it.
@@ -284,25 +286,12 @@ export function RulesTab() {
                 </div>
               </fieldset>
               <fieldset style={fieldsetStyle} data-testid="email-copy-rules">
-                <legend style={legendStyle}>Email copies</legend>
+                <legend style={legendStyle}>Emails</legend>
                 <p style={{ ...panelNote, margin: '0 0 10px' }}>
-                  Every text that goes out also goes by email to the person's saved address, when the message's Email switch is on:
-                  the customer account for customers, the staff account for staff and owner alerts. Free to send; the hourly limit protects
-                  the mail server, and promotions use at most half of it.
+                  Whether a message goes by email is its own Email switch on Messages, and nothing else. Email is free to send; this
+                  hourly limit protects the mail server, and promotions use at most half of it.
                 </p>
                 <div className="sms-cc-fields">
-                  <label style={{ ...fieldLabel, flexDirection: 'row', alignItems: 'center', minWidth: 0 }}>
-                    <input type="checkbox" checked={rulesDraft.email_copy_customers ?? true} onChange={(e) => setRulesDraft((d) => ({ ...d, email_copy_customers: e.target.checked }))} />
-                    Customers
-                  </label>
-                  <label style={{ ...fieldLabel, flexDirection: 'row', alignItems: 'center', minWidth: 0 }}>
-                    <input type="checkbox" checked={rulesDraft.email_copy_staff ?? true} onChange={(e) => setRulesDraft((d) => ({ ...d, email_copy_staff: e.target.checked }))} />
-                    Staff and owner alerts
-                  </label>
-                  <label style={{ ...fieldLabel, flexDirection: 'row', alignItems: 'center', minWidth: 0 }}>
-                    <input type="checkbox" checked={rulesDraft.email_copy_marketing ?? true} onChange={(e) => setRulesDraft((d) => ({ ...d, email_copy_marketing: e.target.checked }))} />
-                    Promotions (with unsubscribe link)
-                  </label>
                   <label style={fieldLabel}>
                     Emails per hour, all together (0 = no limit)
                     <input type="number" min={0} max={100000} value={rulesDraft.email_copy_hourly_cap ?? 300} onChange={(e) => setRulesDraft((d) => ({ ...d, email_copy_hourly_cap: Math.max(0, Math.min(100000, Number(e.target.value) || 0)) }))} style={inputStyle} />

@@ -6,6 +6,7 @@ namespace App\Domains\Catering\Services;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Notifications\Support\SmsTypeRegistry;
 use App\Models\CateringRequest;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -112,8 +113,11 @@ class CateringLifecycleNotifier
             ));
         }
 
+        // The event contact's email: the row's Email switch in Admin →
+        // Notifications is its switch (2026-10-10), and it is the one email
+        // they get about it (SmsEmailCopier::HAS_OWN_EMAIL).
         $email = trim((string) ($request->email ?? ''));
-        if ($email !== '') {
+        if ($email !== '' && SmsTypeRegistry::isEmailEnabled($customerType)) {
             try {
                 Mail::raw($customerMsg, function ($message) use ($email, $emailSubject) {
                     $message->to($email)->subject($emailSubject);
@@ -127,29 +131,16 @@ class CateringLifecycleNotifier
             }
         }
 
-        foreach ($this->recipients->forLifecycle($request) as $i => $target) {
-            if (!empty($target['phone'])) {
-                $this->sms->send(new SmsMessage(
-                    to: (string) $target['phone'],
-                    message: $staffMsg,
-                    type: $staffType,
-                    referenceType: 'catering_request',
-                    referenceId: (string) $request->id,
-                    idempotencyKey: $baseKey . ':staff_sms:' . $i,
-                ));
-            }
-            if (!empty($target['email'])) {
-                try {
-                    Mail::raw($staffMsg, function ($message) use ($target, $emailSubject) {
-                        $message->to((string) $target['email'])->subject($emailSubject);
-                    });
-                } catch (\Throwable $e) {
-                    Log::warning('CateringLifecycleNotifier: staff email failed', [
-                        'id' => $request->id,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-            }
+        // Staff: the row's audience, each person by their own channels.
+        foreach ($this->recipients->forLifecycle($request, $staffType) as $i => $to) {
+            $this->sms->send(new SmsMessage(
+                to: $to,
+                message: $staffMsg,
+                type: $staffType,
+                referenceType: 'catering_request',
+                referenceId: (string) $request->id,
+                idempotencyKey: $baseKey . ':staff_sms:' . $i,
+            ));
         }
     }
 }

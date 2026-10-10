@@ -33,10 +33,12 @@ class SendCateringRequestStaffSmsListener
             return;
         }
 
-        // Simple web inquiry — staff only (legacy behaviour + email setting).
-        $targets = $this->recipients->fromSettingsFallback();
+        // Simple web inquiry: whoever "Catering request (staff)" goes to in
+        // Admin → Notifications (re-audit 2026-10-10; it used to go only to
+        // the fallback phone typed on Settings → Ordering).
+        $targets = $this->recipients->forCreated();
         if ($targets === []) {
-            Log::info('SendCateringRequestStaffSmsListener: no catering notify recipients configured');
+            Log::info('SendCateringRequestStaffSmsListener: nobody gets "Catering request (staff)"');
 
             return;
         }
@@ -47,17 +49,15 @@ class SendCateringRequestStaffSmsListener
         $occasion = str_replace('_', ' ', (string) ($req->occasion ?? 'other'));
         $message = "Catering request: {$name}, {$occasion}, {$date}, {$headcount} guests. Phone {$req->phone}.";
 
-        foreach ($targets as $i => $target) {
-            if (!empty($target['phone'])) {
-                $this->sms->send(new SmsMessage(
-                    to: (string) $target['phone'],
-                    message: $message,
-                    type: 'catering_request_staff',
-                    referenceType: 'catering_request',
-                    referenceId: (string) $req->id,
-                    idempotencyKey: 'catering_request_notify:' . $req->id . ':' . $i,
-                ));
-            }
+        foreach ($targets as $i => $to) {
+            $this->sms->send(new SmsMessage(
+                to: $to,
+                message: $message,
+                type: 'catering_request_staff',
+                referenceType: 'catering_request',
+                referenceId: (string) $req->id,
+                idempotencyKey: 'catering_request_notify:' . $req->id . ':' . $i,
+            ));
         }
     }
 }

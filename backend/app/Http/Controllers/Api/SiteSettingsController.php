@@ -51,18 +51,20 @@ class SiteSettingsController extends Controller
         'credit_accounts_mode',
         'credit_limit_max_mvr',
         'credit_payment_terms_default_days',
-        // Settings → Credit Accounts, chasing (wholesale audit, 2026-09-26)
+        // "When it sends" numbers on three rows of Admin → Notifications
+        // (credit reminder repeats, the wholesale nudge and alert; they were
+        // on Settings → Credit Accounts until the re-audit of 2026-10-10)
         'credit_overdue_reminder_every_days',
         'trade_unreconciled_nudge_days',
         'trade_unreconciled_alert_days',
-        // Ordering Control: pickup slots, business hours, catering
+        // Ordering Control: pickup slots, business hours, catering. The
+        // catering notify phone and email moved onto the catering staff rows
+        // in Admin → Notifications (their audience) on 2026-10-10.
         'pickup_slots_enabled',
         'pickup_slot_minutes',
         'pickup_slot_capacity',
         'business_hours',
         'catering_min_lead_hours',
-        'catering_notify_email',
-        'catering_notify_phone',
         'catering_ordering_closed_message',
         'catering_quote_min_hours_before_event',
         'catering_quote_valid_days',

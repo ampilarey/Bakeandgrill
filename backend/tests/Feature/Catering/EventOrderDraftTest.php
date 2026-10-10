@@ -6,6 +6,8 @@ namespace Tests\Feature\Catering;
 
 use App\Domains\Catering\Events\CateringRequestSubmitted;
 use App\Domains\Catering\Services\CateringEventCreatedNotifier;
+use App\Domains\Catering\Services\CateringNotifyRecipients;
+use App\Domains\Notifications\Support\AlertAudience;
 use App\Mail\CustomerOtpMail;
 use App\Mail\EventRequestReceivedMail;
 use App\Models\CateringRequest;
@@ -32,8 +34,11 @@ class EventOrderDraftTest extends TestCase
     {
         parent::setUp();
         SiteSetting::set('catering_min_lead_hours', '24');
-        SiteSetting::set('catering_notify_phone', '9111111');
-        SiteSetting::set('catering_notify_email', 'events@bakeandgrill.test');
+        // A typed number and email on the catering staff rows (they were the
+        // "catering notify phone / email" settings until 2026-10-10).
+        foreach (CateringNotifyRecipients::ALL_STAFF_TYPES as $type) {
+            AlertAudience::save($type, ['groups' => AlertAudience::DEFAULT_GROUPS[$type], 'phones' => ['9111111'], 'emails' => ['events@bakeandgrill.test']]);
+        }
         $this->customer = $this->makeCustomer([
             'phone' => '+9607777001',
             'name' => 'Aisha',

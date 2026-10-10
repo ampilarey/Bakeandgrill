@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import { CreditAccountSettings } from '../pages/SettingsPage/CreditAccountSettings';
+import { renderWithRouter as render } from './testUtils';
 import * as api from '../api';
 
 /*
@@ -30,6 +31,9 @@ describe('CreditAccountSettings', () => {
     expect(await screen.findByLabelText(/Maximum credit limit/)).toHaveValue('7000');
     expect(screen.getByRole('radio', { name: /Closed/ })).toBeChecked();
     expect(screen.getByRole('button', { name: /Save/ })).toBeEnabled();
+    // The chasing numbers are on their alerts in Notifications (re-audit, 2026-10-10).
+    expect(screen.getByTestId('credit-chasing-link')).toHaveTextContent(/set on those alerts in Notifications/);
+    expect(screen.queryByLabelText(/Then remind every/)).toBeNull();
   });
 
   it('will not save defaults over settings that did not load', async () => {

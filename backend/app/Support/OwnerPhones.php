@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Domains\Notifications\Support\AlertAudience;
 use App\Domains\Notifications\Support\NotificationChannels;
-use App\Domains\Notifications\Support\SmsTypeRegistry;
 use App\Models\SiteSetting;
 use App\Models\User;
-use App\Rules\MaldivesPhone;
 use Illuminate\Support\Collection;
 
 /**
@@ -17,14 +16,17 @@ use Illuminate\Support\Collection;
  * alert, the price-rise alert and the complaint alerts all pick the same
  * people, so they pick them here.
  *
- * Since the SMS audit (2026-09-24) each owner-alert type can be pointed
- * elsewhere in the Control Center: owner only, the business phone, named
- * staff, or typed numbers. `for($typeKey)` honours that choice and falls
- * back to the type's default.
+ * Since 2026-10-10 each alert has an audience the owner edits on its row in
+ * Admin → Notifications (AlertAudience: roles, permission groups, named
+ * people, exceptions, typed numbers and emails). `for($typeKey)` resolves it
+ * and never returns nobody: an audience that resolves to no one falls back
+ * to the owners, then the business phone, so an alert cannot go silent by
+ * accident (off is the row's switches).
  *
  * A staff member with no phone is returned as "user:{id}" (2026-10-07):
  * SmsService sends them no SMS but their email and Telegram, by the
- * channels Admin chose for them (NotificationChannels).
+ * channels Admin chose for them (NotificationChannels). A typed email is
+ * "email:{address}" and goes by email alone.
  */
 final class OwnerPhones
 {
@@ -35,31 +37,21 @@ final class OwnerPhones
     }
 
     /**
-     * Recipients for one SMS type, after the owner's choice in the Control
-     * Center. Types without a configurable recipient get the default.
+     * Recipients for one SMS type, after the owner's choice in Admin →
+     * Notifications. Types without an audience get owners and managers.
      *
      * @return Collection<int, string>
      */
     public static function for(string $typeKey): Collection
     {
-        $choice = SmsTypeRegistry::recipientOverride($typeKey);
-        $mode = $choice['mode'] ?? SmsTypeRegistry::defaultRecipientMode($typeKey) ?? 'owners_managers';
+        if (!AlertAudience::configurable($typeKey)) {
+            return self::all();
+        }
+        $addresses = AlertAudience::addresses($typeKey);
 
-        $phones = match ($mode) {
-            'owner_only' => self::byRoles(['owner']),
-            'business_phone' => self::businessPhone(),
-            'staff' => self::byUserIds($choice['user_ids'] ?? []),
-            'custom' => collect($choice['phones'] ?? [])
-                ->map(fn (string $p) => self::normalize($p))
-                ->filter()
-                ->unique()
-                ->values(),
-            default => self::byRoles(['owner', 'manager']),
-        };
-
-        // A choice that resolves to nobody (staff without phones, an empty
-        // business phone) must not silence the alert: fall back to owners.
-        return $phones->isEmpty() ? self::all() : $phones;
+        // An audience that resolves to nobody (staff without phones, an empty
+        // business phone, everyone excepted) must not silence the alert.
+        return $addresses->isEmpty() ? self::all() : $addresses;
     }
 
     /** @param list<string> $slugs @return Collection<int, string> */
@@ -71,19 +63,6 @@ final class OwnerPhones
             ->get(['id', 'phone']));
 
         return $phones->isEmpty() ? self::businessPhone() : $phones;
-    }
-
-    /** @param list<int> $ids @return Collection<int, string> */
-    private static function byUserIds(array $ids): Collection
-    {
-        if ($ids === []) {
-            return collect();
-        }
-
-        return self::addresses(User::query()
-            ->whereIn('id', $ids)
-            ->where('is_active', true)
-            ->get(['id', 'phone']));
     }
 
     /**
@@ -101,7 +80,8 @@ final class OwnerPhones
     }
 
     /**
-     * For showing in Admin: a "user:{id}" address as the person's name.
+     * For showing in Admin and the log: a "user:{id}" address as the person's
+     * name, an "email:" address as the address.
      *
      * @param Collection<int, string> $addresses
      * @return list<string>
@@ -109,6 +89,9 @@ final class OwnerPhones
     public static function describe(Collection $addresses): array
     {
         return $addresses->map(function (string $a): string {
+            if (AlertAudience::isEmailAddress($a)) {
+                return AlertAudience::emailFrom($a) . ' (email)';
+            }
             if (!NotificationChannels::isToken($a)) {
                 return $a;
             }
@@ -124,14 +107,5 @@ final class OwnerPhones
         $fallback = trim((string) SiteSetting::get('business_phone', ''));
 
         return $fallback !== '' ? collect([$fallback]) : collect();
-    }
-
-    private static function normalize(string $phone): ?string
-    {
-        try {
-            return MaldivesPhone::normalize($phone);
-        } catch (\Throwable) {
-            return null;
-        }
     }
 }

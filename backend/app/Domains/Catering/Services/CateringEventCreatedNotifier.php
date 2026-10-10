@@ -7,6 +7,7 @@ namespace App\Domains\Catering\Services;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\CustomerSmsMessageBuilder;
 use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Notifications\Support\SmsTypeRegistry;
 use App\Mail\EventRequestReceivedMail;
 use App\Models\CateringRequest;
 use Illuminate\Support\Facades\Log;
@@ -72,8 +73,9 @@ class CateringEventCreatedNotifier
             ]);
         }
 
+        // The row's Email switch in Admin → Notifications is this email's switch (2026-10-10).
         $email = trim((string) ($request->email ?? ''));
-        if ($email !== '') {
+        if ($email !== '' && SmsTypeRegistry::isEmailEnabled('catering_request_received')) {
             try {
                 Mail::to($email)->send(new EventRequestReceivedMail(
                     $request,
@@ -92,7 +94,7 @@ class CateringEventCreatedNotifier
     {
         $targets = $this->recipients->forCreated();
         if ($targets === []) {
-            Log::warning('CateringEventCreatedNotifier: no staff recipients (set catering_notify_phone or events.manage phones)', [
+            Log::warning('CateringEventCreatedNotifier: no staff recipients (choose who gets "Catering request (staff)" in Admin → Notifications)', [
                 'id' => $request->id,
                 'reference' => $ref,
             ]);
@@ -112,36 +114,23 @@ class CateringEventCreatedNotifier
             $fallback,
         );
 
-        foreach ($targets as $i => $target) {
-            if (!empty($target['phone'])) {
-                $log = $this->sms->send(new SmsMessage(
-                    to: (string) $target['phone'],
-                    message: $staffMsg,
-                    type: 'catering_request_staff',
-                    referenceType: 'catering_request',
-                    referenceId: (string) $request->id,
-                    idempotencyKey: $baseKey . ':staff_sms:' . $i,
-                ));
-                Log::info('CateringEventCreatedNotifier: staff SMS', [
-                    'id' => $request->id,
-                    'to' => $target['phone'],
-                    'status' => $log->status,
-                    'error' => $log->error_message,
-                ]);
-            }
-            if (!empty($target['email'])) {
-                try {
-                    Mail::raw($staffMsg, function ($message) use ($target, $ref) {
-                        $message->to((string) $target['email'])
-                            ->subject("Event request {$ref} — Bake & Grill");
-                    });
-                } catch (\Throwable $e) {
-                    Log::warning('CateringEventCreatedNotifier: staff email failed', [
-                        'id' => $request->id,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-            }
+        // Each person by their own channels (SMS, email, Telegram); a typed
+        // address by email (SmsService handles "user:" and "email:" addresses).
+        foreach ($targets as $i => $to) {
+            $log = $this->sms->send(new SmsMessage(
+                to: $to,
+                message: $staffMsg,
+                type: 'catering_request_staff',
+                referenceType: 'catering_request',
+                referenceId: (string) $request->id,
+                idempotencyKey: $baseKey . ':staff_sms:' . $i,
+            ));
+            Log::info('CateringEventCreatedNotifier: staff alert', [
+                'id' => $request->id,
+                'to' => $to,
+                'status' => $log->status,
+                'error' => $log->error_message,
+            ]);
         }
     }
 

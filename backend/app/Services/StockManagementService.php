@@ -7,10 +7,10 @@ namespace App\Services;
 use App\Domains\Inventory\DTOs\LowStockReachedData;
 use App\Domains\Inventory\Events\LowStockReached;
 use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Notifications\Support\AlertAudience;
 use App\Models\Item;
 use App\Models\LowStockAlert;
 use App\Models\StockMovement;
-use App\Models\User;
 use App\Models\Variant;
 use Illuminate\Support\Facades\DB;
 
@@ -634,14 +634,8 @@ class StockManagementService
             return; // Don't spam alerts
         }
 
-        // Seeded role slugs are owner / manager / staff — 'admin' is not a
-        // role in this codebase. Listing it here was harmless (it just never
-        // matched) but is misleading and breaks when a future migration
-        // renames anything. Use the seeded slugs only.
-        $recipients = User::whereHas('role', function ($q) {
-            $q->whereIn('slug', ['owner', 'manager']);
-        })->where('is_active', true)->get();
-
+        // Whoever "Staff: menu item low stock" goes to in Admin → Notifications
+        // (owners and managers by default; AlertAudience, 2026-10-10).
         $message = "LOW STOCK ALERT: {$item->name} is running low. Current stock: {$item->stock_quantity}. Threshold: {$item->low_stock_threshold}.";
 
         // Create alert
@@ -650,35 +644,42 @@ class StockManagementService
             'stock_level' => $item->stock_quantity,
             'threshold' => $item->low_stock_threshold,
             'alert_type' => 'sms',
-            'recipients' => $recipients->pluck('id')->toArray(),
+            'recipients' => AlertAudience::users('staff_low_stock_menu')->pluck('id')->toArray(),
             'message' => $message,
             'sent' => false,
         ]);
 
-        // Send SMS to managers/owners
-        $smsService = app(SmsService::class);
-        foreach ($recipients as $user) {
-            if ($user->phone) {
-                try {
-                    $smsService->send(new \App\Domains\Notifications\DTOs\SmsMessage(
-                        to: $user->phone,
-                        message: $message,
-                        type: 'staff_low_stock_menu',
-                    ));
-                } catch (\Exception $e) {
-                    \Log::error('Failed to send low stock SMS', [
-                        'user' => $user->id,
-                        'item' => $item->id,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-            }
-        }
+        $this->sendLowStockAlert($message, ['item' => $item->id]);
 
         $alert->update([
             'sent' => true,
             'sent_at' => now(),
         ]);
+    }
+
+    /**
+     * The low-stock alert to each address on its row: a phone, "user:{id}"
+     * for someone reached by email or Telegram, a typed number or email.
+     *
+     * @param array<string, mixed> $context for the log
+     */
+    private function sendLowStockAlert(string $message, array $context): void
+    {
+        $smsService = app(SmsService::class);
+        foreach (AlertAudience::addresses('staff_low_stock_menu') as $to) {
+            try {
+                $smsService->send(new \App\Domains\Notifications\DTOs\SmsMessage(
+                    to: $to,
+                    message: $message,
+                    type: 'staff_low_stock_menu',
+                ));
+            } catch (\Exception $e) {
+                \Log::error('Failed to send low stock alert', $context + [
+                    'to' => $to,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
     }
 
     /**
@@ -779,10 +780,6 @@ class StockManagementService
             return;
         }
 
-        $recipients = User::whereHas('role', function ($q) {
-            $q->whereIn('slug', ['owner', 'manager']);
-        })->where('is_active', true)->get();
-
         $message = "LOW STOCK ALERT: {$label} is running low. Current stock: {$variant->stock_qty}. Threshold: {$variant->low_stock_threshold}.";
 
         $alert = LowStockAlert::create([
@@ -791,29 +788,12 @@ class StockManagementService
             'stock_level' => $variant->stock_qty,
             'threshold' => $variant->low_stock_threshold ?? 0,
             'alert_type' => 'sms',
-            'recipients' => $recipients->pluck('id')->toArray(),
+            'recipients' => AlertAudience::users('staff_low_stock_menu')->pluck('id')->toArray(),
             'message' => $message,
             'sent' => false,
         ]);
 
-        $smsService = app(SmsService::class);
-        foreach ($recipients as $user) {
-            if ($user->phone) {
-                try {
-                    $smsService->send(new \App\Domains\Notifications\DTOs\SmsMessage(
-                        to: $user->phone,
-                        message: $message,
-                        type: 'staff_low_stock_menu',
-                    ));
-                } catch (\Exception $e) {
-                    \Log::error('Failed to send variant low stock SMS', [
-                        'user' => $user->id,
-                        'variant' => $variant->id,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-            }
-        }
+        $this->sendLowStockAlert($message, ['variant' => $variant->id]);
 
         $alert->update([
             'sent' => true,

@@ -7,12 +7,12 @@ namespace App\Domains\Finance\Services;
 use App\Domains\Auth\Services\ApprovalOtpCoder;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Notifications\Support\AlertAudience;
 use App\Models\Order;
 use App\Models\Refund;
 use App\Models\SmsTemplate;
 use App\Models\User;
 use App\Rules\MaldivesPhone;
-use App\Services\PermissionService;
 use Illuminate\Support\Facades\Log;
 
 class RefundNotificationService
@@ -201,16 +201,16 @@ class RefundNotificationService
         ];
     }
 
+    /**
+     * Whoever "Staff: refund awaiting approval" goes to in Admin →
+     * Notifications (by default everyone who can approve refunds), never the
+     * person asking. A person without a phone is reached by email or
+     * Telegram (AlertAudience, re-audit 2026-10-10).
+     */
     public function notifyApprovers(Refund $refund, User $requester): void
     {
         $order = $refund->order;
-        $perms = app(PermissionService::class);
-        $approvers = User::query()
-            ->where('is_active', true)
-            ->with(['role.permissions', 'permissions'])
-            ->get()
-            ->filter(fn (User $u) => $perms->hasPermission($u, 'orders.refund'))
-            ->filter(fn (User $u) => (int) $u->id !== (int) $requester->id);
+        $targets = AlertAudience::addresses('staff_refund_requested', ['except' => [(int) $requester->id]]);
 
         $amount = number_format((float) $refund->amount, 2);
         $orderNumber = $order?->order_number ?? (string) $refund->order_id;
@@ -221,11 +221,7 @@ class RefundNotificationService
             'phone' => $phone,
         ], "Refund request on {$orderNumber} for MVR {$amount} (phone {$phone}) needs approval. Open Refunds in admin.");
 
-        foreach ($approvers as $approver) {
-            $to = trim((string) ($approver->phone ?? ''));
-            if ($to === '') {
-                continue;
-            }
+        foreach ($targets as $to) {
             try {
                 $this->sms->send(new SmsMessage(
                     to: $to,
@@ -233,12 +229,12 @@ class RefundNotificationService
                     type: 'staff_refund_requested',
                     referenceType: 'refund',
                     referenceId: (string) $refund->id,
-                    idempotencyKey: 'refund-approver:' . $refund->id . ':' . $approver->id,
+                    idempotencyKey: 'refund-approver:' . $refund->id . ':' . substr(md5($to), 0, 10),
                 ));
             } catch (\Throwable $e) {
-                Log::warning('RefundNotificationService: approver SMS failed', [
+                Log::warning('RefundNotificationService: approver alert failed', [
                     'refund_id' => $refund->id,
-                    'user_id' => $approver->id,
+                    'to' => $to,
                     'error' => $e->getMessage(),
                 ]);
             }

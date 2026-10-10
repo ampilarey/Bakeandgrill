@@ -47,7 +47,9 @@ class EventQuotePhase4Test extends TestCase
         ]);
         SiteSetting::set('catering_quote_valid_days', '7');
         SiteSetting::set('catering_quote_min_hours_before_event', '24');
-        SiteSetting::set('catering_notify_phone', '9000000');
+        foreach (\App\Domains\Catering\Services\CateringNotifyRecipients::ALL_STAFF_TYPES as $type) {
+            \App\Domains\Notifications\Support\AlertAudience::save($type, ['groups' => \App\Domains\Notifications\Support\AlertAudience::DEFAULT_GROUPS[$type], 'phones' => ['9000000']]);
+        }
 
         Permission::query()->firstOrCreate(
             ['slug' => 'events.manage'],

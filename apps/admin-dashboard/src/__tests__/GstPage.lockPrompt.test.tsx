@@ -57,15 +57,17 @@ describe('GstPage lock prompt', () => {
     await waitFor(() => expect(screen.queryByTestId('gst-lock-prompt')).toBeNull());
   });
 
-  it('saves the filing reminder settings', async () => {
+  it('saves the filing day, and points at Notifications for the reminder', async () => {
     const update = vi.spyOn(gstApi, 'updateGstSettings').mockResolvedValue({ settings, message: 'ok' } as never);
     render(<MemoryRouter><GstPage /></MemoryRouter>);
     fireEvent.click(await screen.findByText('Settings'));
 
-    fireEvent.change(await screen.findByLabelText('Remind owners, days before'), { target: { value: '5' } });
+    // The reminder's days, switches and who gets it are on its row in Notifications (re-audit, 2026-10-10).
+    expect(await screen.findByTestId('gst-reminder-link')).toHaveTextContent(/Owner: GST return due/);
+    expect(screen.queryByLabelText('Remind owners, days before')).toBeNull();
     fireEvent.change(screen.getByLabelText('Return due on day'), { target: { value: '20' } });
     fireEvent.click(screen.getByText('Save settings'));
 
-    await waitFor(() => expect(update).toHaveBeenCalledWith(expect.objectContaining({ filing_due_day: 20, filing_reminder_days: 5 })));
+    await waitFor(() => expect(update).toHaveBeenCalledWith(expect.objectContaining({ filing_due_day: 20 })));
   });
 });

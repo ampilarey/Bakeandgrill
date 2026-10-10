@@ -407,15 +407,24 @@ switches. Each is a registry key now: `customer_order_confirmed`,
 `owner_social_digest`. `SmsDeliveryRulesTest::test_every_sms_type_string_in_the_code_is_a_registered_type`
 walks `app/` and fails on any sender that uses an unregistered type.
 
-### B.2 Recipients (`OwnerPhones::for($typeKey)`)
-Owner alerts (`SmsTypeRegistry::RECIPIENT_DEFAULTS`) carry a default (owners &
-managers, or the business phone) and an owner's choice stored in
-`sms_type_recipients.<key>` as `{mode, user_ids, phones}` with modes
-`owners_managers | owner_only | business_phone | staff | custom`. A choice that
-resolves to nobody falls back to the owners. Set from the Control Center
-(`PATCH /admin/sms/types/{key}` with `recipients`); the resolved numbers are
-returned and shown. Types whose recipient is decided in code (the customer, the
-rostered staff member) refuse a recipient choice.
+### B.2 Recipients (`AlertAudience::addresses($typeKey)`, `OwnerPhones::for()` delegates)
+Since the re-audit of 2026-10-10 every staff and owner alert has an
+**audience** (`App\Domains\Notifications\Support\AlertAudience`): a default
+in `DEFAULT_GROUPS` and the owner's choice stored in
+`sms_type_recipients.<key>` as `{groups, users, except, phones, emails}`.
+Groups are `role:{slug}`, `perm:{slug}` (a curated list), `on_shift`,
+`catering_team` and `business_phone`; `users` always get it, `except` never
+do, `phones` and `emails` are typed addresses that are not staff. The old
+`{mode, user_ids, phones}` rows were rewritten by migration
+`2026_10_10_150000_notifications_audience_per_alert` and are still read on
+the fly (`AlertAudience::fromLegacy`). A choice that resolves to nobody falls
+back to the owners and managers. Set from Notifications → Messages (`PATCH
+/admin/sms/types/{key}` with `audience`, null = the default); the row returns
+`audience`, `audience_default`, `audience_custom` and `audience_people` (who
+gets it now, by name, with the channels that reach each). Types whose
+recipient is decided in code (the customer, the rostered staff member) have
+no audience and refuse one (422). Details: `docs/NOTIFICATION_CHANNELS.md`
+§ Who gets each alert.
 
 ### B.3 Quiet hours and the marketing cap (`SmsDeliveryRules`)
 Settings `sms_quiet_hours_enabled/start/end/alerts` and `sms_marketing_daily_cap`

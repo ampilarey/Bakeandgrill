@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Notifications\Support;
 
-use App\Domains\Notifications\Services\SmsEmailCopier;
 use App\Domains\Telegram\Services\TelegramAlertCopier;
 
 /**
@@ -16,19 +15,39 @@ use App\Domains\Telegram\Services\TelegramAlertCopier;
  * sender asks this before working an alert out, so one with every channel
  * off costs nothing and leaves no "disabled" rows in the log. With any
  * channel on it sends, and SmsService decides each channel as before.
+ *
+ * Since the re-audit the Email switch also covers a message's own email
+ * (order confirmed, gift card, catering), and a Telegram-only alert has its
+ * Telegram switch and nothing else.
  */
 final class AlertSwitch
 {
-    public static function isOn(string $typeKey): bool
+    /**
+     * Each channel's state for one row: whether the message can go that way
+     * and the switch is on (for Telegram, the master switch too).
+     *
+     * @return array{sms: bool, email: bool, telegram: bool}
+     */
+    public static function channels(string $typeKey): array
     {
         $entry = SmsTypeRegistry::get($typeKey);
         if ($entry === null) {
-            return true;
+            return ['sms' => true, 'email' => false, 'telegram' => false];
         }
+        $has = SmsTypeRegistry::channels($entry);
 
-        return SmsTypeRegistry::isTypeEnabled($entry)
-            || SmsEmailCopier::wanted($typeKey)
-            || TelegramAlertCopier::typeWanted($entry, $typeKey);
+        return [
+            'sms' => in_array('sms', $has, true) && SmsTypeRegistry::isTypeEnabled($entry),
+            'email' => in_array('email', $has, true) && (!empty($entry['always_on']) || SmsTypeRegistry::isEmailEnabled($typeKey)),
+            'telegram' => in_array('telegram', $has, true) && TelegramAlertCopier::typeWanted($entry, $typeKey),
+        ];
+    }
+
+    public static function isOn(string $typeKey): bool
+    {
+        $on = self::channels($typeKey);
+
+        return $on['sms'] || $on['email'] || $on['telegram'];
     }
 
     /** Every channel of one row on or off at once (the migration's "off", and tests). */

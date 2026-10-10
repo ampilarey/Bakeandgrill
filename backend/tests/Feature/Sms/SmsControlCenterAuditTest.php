@@ -34,6 +34,12 @@ class SmsControlCenterAuditTest extends TestCase
     {
         $missing = [];
         foreach (SmsTypeRegistry::definitions() as $def) {
+            // A Telegram-only alert has no SMS; its Telegram switch is its switch.
+            if (!in_array('sms', SmsTypeRegistry::channels($def), true)) {
+                $this->assertSame(['telegram'], SmsTypeRegistry::channels($def), $def['key']);
+
+                continue;
+            }
             if (empty($def['always_on']) && empty($def['enabled_setting'])) {
                 $missing[] = $def['key'];
             }
