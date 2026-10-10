@@ -40,6 +40,9 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind(SmsProviderInterface::class, DhiraaguSmsProvider::class);
         $this->app->singleton(\App\Services\PermissionService::class);
+        // One alert, one message per person per channel, for one request or
+        // queued job (owner, 2026-10-10; see the class).
+        $this->app->scoped(\App\Domains\Notifications\Support\AlertOnce::class);
         // A numbered throttle counts per route, not one count shared by every
         // route (UI audit, 2026-10-10; see the class). Bound in place of the
         // framework's class rather than aliased, so `throttle` keeps its name

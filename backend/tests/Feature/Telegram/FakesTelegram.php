@@ -23,6 +23,9 @@ trait FakesTelegram
 
     protected bool $telegramDown = false;
 
+    /** Telegram takes each message but answers after our timeout (cURL error 28). */
+    protected bool $telegramSlow = false;
+
     protected function fakeTelegram(): void
     {
         $this->telegramCalls = [];
@@ -32,6 +35,9 @@ trait FakesTelegram
             $this->telegramCalls[] = ['method' => $method, 'params' => $params];
             if ($this->telegramDown) {
                 return Http::response(['ok' => false, 'error_code' => 502, 'description' => 'Bad Gateway'], 502);
+            }
+            if ($this->telegramSlow && $method === 'sendMessage') {
+                return (Http::failedConnection('cURL error 28: Operation timed out after 5001 milliseconds with 0 bytes received'))($request);
             }
 
             return match ($method) {

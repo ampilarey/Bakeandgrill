@@ -287,6 +287,41 @@ final class AlertAudience
         return substr($to, strlen(self::EMAIL_PREFIX));
     }
 
+    /**
+     * What makes two addresses the same: a Maldivian number by its seven
+     * digits ("7820288", "+960 782 0288" and "+9607820288" are one phone),
+     * an email address whatever its case, anything else as written. Staff
+     * phones are stored as typed, so the same number can sit on two
+     * accounts in two forms (owner, 2026-10-10: one alert came twice).
+     */
+    public static function addressKey(string $to): string
+    {
+        $to = trim($to);
+        if (self::isEmailAddress($to)) {
+            return strtolower($to);
+        }
+        if (NotificationChannels::isToken($to)) {
+            return $to;
+        }
+        $digits = preg_replace('/\D/', '', $to) ?? '';
+        if (strlen($digits) === 7 || (strlen($digits) === 10 && str_starts_with($digits, '960'))) {
+            return 'mv:' . substr($digits, -7);
+        }
+
+        return $to;
+    }
+
+    /**
+     * Addresses with each phone, person and email once, first one kept.
+     *
+     * @param Collection<int, string> $addresses
+     * @return Collection<int, string>
+     */
+    public static function unique(Collection $addresses): Collection
+    {
+        return $addresses->unique(fn (string $to) => self::addressKey($to))->values();
+    }
+
     /** What a group is called in Admin and in the log. */
     public static function groupLabel(string $group, ?Collection $roleNames = null): string
     {
@@ -363,7 +398,9 @@ final class AlertAudience
             $out->push(self::EMAIL_PREFIX . $email);
         }
 
-        return $out->unique()->values();
+        // One number typed two ways, or the shop phone that is also a
+        // person's phone, is one address: one text.
+        return self::unique($out);
     }
 
     /**

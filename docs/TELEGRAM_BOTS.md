@@ -116,6 +116,12 @@ the email copy. A text reaches Telegram when:
 
 Customer texts never go to Telegram, even to a staff member's number.
 
+One alert reaches each person once (2026-10-10): however many of its
+addresses lead to them (their own phone, the business phone, the same number
+on a second account), the copier claims them in `AlertOnce` before sending,
+and a send that timed out after going out is not repeated. See
+`docs/NOTIFICATION_CHANNELS.md` § One alert, one message per person.
+
 A person whose channels include SMS gets Telegram as a copy, sent after the
 response. A person whose channels leave SMS out gets Telegram at once; the
 SMS log row is `suppressed`, "Sent on Telegram instead of SMS.", cost 0, and

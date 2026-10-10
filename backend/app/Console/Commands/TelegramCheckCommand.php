@@ -69,7 +69,7 @@ class TelegramCheckCommand extends Command
 
         $this->line('<info>Last staff alerts</info>');
         $business = substr(preg_replace('/\D/', '', (string) SiteSetting::get('business_phone', '')) ?? '', -7);
-        $types = ['discount_approval_otp', 'owner_device_approval', 'staff_refund_requested', 'owner_complaint_box_received', 'owner_shift_variance', 'owner_shift_left_open'];
+        $types = ['discount_approval_otp', 'owner_device_approval', 'staff_refund_requested', 'owner_complaint_box_received', 'owner_shift_variance', 'owner_shift_left_open', 'owner_shift_float_mismatch'];
         foreach (SmsLog::query()->whereIn('type', $types)->latest('id')->limit(12)->get() as $log) {
             $link = $linker->linkForPhone((string) $log->to);
             $toBusiness = strlen($business) === 7 && substr(preg_replace('/\D/', '', (string) $log->to) ?? '', -7) === $business;

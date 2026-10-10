@@ -69,16 +69,17 @@ class StaffNotificationRoutingService
         $recipients = $recipients->merge($named);
 
         // 3. Typed numbers, the shop phone and typed emails on the row
+        $namedKeys = $named->map(fn (array $r) => AlertAudience::addressKey((string) $r['phone']))->all();
         $typed = AlertAudience::addresses($type, ['skip' => array_diff($audience['groups'], [AlertAudience::GROUP_BUSINESS_PHONE])])
-            ->reject(fn (string $to) => $named->contains('phone', $to))
+            ->reject(fn (string $to) => in_array(AlertAudience::addressKey($to), $namedKeys, true))
             ->map(fn (string $to) => ['phone' => $to, 'recipient_type' => 'contact', 'recipient_id' => null, 'fallback_used' => false]);
         $recipients = $recipients->merge($typed);
 
         // 4. External SmsContact recipients: active window + order type match
         $recipients = $recipients->merge($this->resolveExternalContacts($order, $at));
 
-        // Deduplicate by address
-        $recipients = $recipients->unique('phone')->values();
+        // Deduplicate by address: one number typed two ways is one phone.
+        $recipients = $recipients->unique(fn (array $r) => AlertAudience::addressKey((string) $r['phone']))->values();
 
         // 5. If nobody matched, fall back
         if ($recipients->isEmpty()) {

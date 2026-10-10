@@ -95,7 +95,8 @@ class ShiftHistoryVoidFloatTest extends TestCase
 
         $alert = SmsLog::where('type', 'owner_shift_float_mismatch')->firstOrFail();
         $this->assertSame('+9607770001', $alert->to);
-        $this->assertStringContainsString("Shift #{$shift->id} opened by Shift Staff", (string) $alert->message);
+        // The owner's text names who opened it and where (owner, 2026-10-10: it said "you opened").
+        $this->assertSame("Shift Staff opened shift #{$shift->id} on Front till with MVR 440.00. The last close on that till left MVR 500.00, so the drawer is MVR 60.00 short.", (string) $alert->message);
 
         // Matching float: no message, no alert; a till with no history: nothing to compare.
         $shift->update(['closed_at' => now(), 'closing_cash' => 440]);

@@ -32,7 +32,8 @@ class TelegramClient
             $response = Http::timeout($timeout)->acceptJson()->asJson()
                 ->post(self::BASE . $token . '/' . $method, $params);
         } catch (ConnectionException $e) {
-            throw new TelegramApiException('Could not reach Telegram: ' . $e->getMessage());
+            // Never echo the token back (it is part of the URL in cURL's message).
+            throw new TelegramApiException('Could not reach Telegram: ' . str_replace($token, '***', $e->getMessage()), 0, self::mayHaveArrived($e->getMessage()));
         }
 
         if (!$response->successful() || $response->json('ok') !== true) {
@@ -42,6 +43,26 @@ class TelegramClient
         }
 
         return $response->json('result');
+    }
+
+    /**
+     * True when the request reached Telegram but the answer did not reach us:
+     * the transfer timed out, or the line dropped mid-answer. A message sent
+     * that way is usually shown. Not when the connection never opened.
+     */
+    public static function mayHaveArrived(string $curlMessage): bool
+    {
+        $m = strtolower($curlMessage);
+        foreach (['connection timed out', 'resolving timed out', 'could not resolve', 'failed to connect', 'connection refused'] as $never) {
+            if (str_contains($m, $never)) {
+                return false;
+            }
+        }
+
+        return str_contains($m, 'operation timed out')
+            || str_contains($m, 'curl error 28')
+            || str_contains($m, 'curl error 52')
+            || str_contains($m, 'curl error 56');
     }
 
     /**

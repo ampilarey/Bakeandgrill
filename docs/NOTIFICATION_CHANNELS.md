@@ -161,6 +161,48 @@ alerts honour Rules → Telegram alerts like every other Telegram alert. One
 thing sends less: a catering customer's lifecycle and reminder emails went
 out twice (the message's own email and the copy); they go once now.
 
+## One alert, one message per person (2026-10-10)
+
+Owner, with a screenshot: "Opening float differs from the last close"
+arrived twice on Telegram. An alert goes out as one `SmsService::send` per
+address, and several addresses could lead to one person:
+
+- the same number typed two ways on two accounts ("7820288" and
+  "+9607820288": staff phones are stored as typed, and the unique index
+  compares the text);
+- the business phone, whose Telegram copy goes to linked owners, beside an
+  owner's own phone in the same audience;
+- a manager (or any account in the audience) whose phone is the shop's;
+- a Telegram send that timed out after Telegram had shown it, followed by the
+  copy that goes with the SMS safety net.
+
+Now:
+
+- **Numbers are compared by their seven digits.** `AlertAudience::addressKey()`
+  ("mv:7820288" for every way of typing it; emails by lower case);
+  `AlertAudience::unique()` keeps the first of each. `AlertAudience::addresses`,
+  `OwnerPhones` and the order-alert router use it, so one phone gets one text.
+- **Each person gets one Telegram message and one email per alert.**
+  `App\Domains\Notifications\Support\AlertOnce` is a ledger for one request,
+  queued job or command run (a scoped binding; the queue worker resets it
+  between jobs). The alert is its type, reference and words; the Telegram
+  copier claims the staff member (or the chat), the email copier the address,
+  before sending. A Resend from Admin is a new request and goes again.
+- **A timed-out Telegram send is not repeated.** `TelegramClient` marks a
+  transfer that went out but got no answer in time (cURL 28 "Operation timed
+  out", 52, 56; not a connection that never opened) as `mayHaveArrived`. The
+  person whose channels leave SMS out then gets the SMS as the safety net, and
+  no second Telegram. A clear refusal (an error from Telegram) still lets the
+  copy beside the SMS try again. `telegram:check` shows `?` for a timed-out
+  copy and "already sent for this alert" for a skipped one, and now lists the
+  opening-float alert too.
+
+The opening-float alert's own words changed with it: the owner's text says
+"Ariya opened shift #25 on Front till with MVR 818.00. The last close on that
+till left MVR 150.00, so the drawer is MVR 668.00 over." instead of the
+cashier's "you opened with". The till's warning to the cashier is unchanged.
+Tests: `backend/tests/Feature/Telegram/OneAlertOneMessageTest.php`.
+
 ## The rule
 
 A staff or owner alert reaches a person by a channel (SMS, Email, Telegram)

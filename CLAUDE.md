@@ -189,6 +189,14 @@ or `?to=user:id` filters Messages to what reaches them. Never read a
 recipient list from a settings key of your own: no second place to say who
 gets an alert. Details: `docs/NOTIFICATION_CHANNELS.md` § Who gets each alert.
 
+One alert reaches each person once per channel (owner, 2026-10-10: an alert
+came twice on Telegram). Phones are stored as typed, so compare addresses
+with `AlertAudience::addressKey()` (seven digits) and build lists with
+`AlertAudience::unique()`, never a plain `unique()`; the Telegram and email
+copiers claim each person in `AlertOnce` (scoped to the request or job), and a
+Telegram send that timed out is not resent. Details: same file, § One alert,
+one message per person.
+
 ## Notifications: one page, one switch per alert
 
 Owner, 2026-10-10 ("to make setting less complicated"). Every text, email and

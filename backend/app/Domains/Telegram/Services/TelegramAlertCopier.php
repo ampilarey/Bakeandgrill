@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Telegram\Services;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
+use App\Domains\Notifications\Support\AlertOnce;
 use App\Domains\Notifications\Support\NotificationChannels;
 use App\Domains\Notifications\Support\SmsTypeRegistry;
 use App\Domains\Telegram\Exceptions\TelegramApiException;
@@ -119,15 +120,28 @@ class TelegramAlertCopier
         if ($link === null || !Cache::add($this->onceKey($log), 1, now()->addDays(2))) {
             return false;
         }
+        // Another of this alert's addresses may already have led to them
+        // (owner, 2026-10-10: the opening-float alert came twice).
+        $once = app(AlertOnce::class);
+        $who = self::person($link);
+        if (!$once->claim(AlertOnce::TELEGRAM, $sms, $who)) {
+            Cache::put(self::resultKey($log), $link->displayName() . ' (already sent for this alert)', now()->addDays(7));
 
-        if ($this->deliver($link, $sms, $entry, timeout: 5)) {
-            Cache::put(self::resultKey($log), $link->displayName() . ' ✓', now()->addDays(7));
+            return $once->outcome(AlertOnce::TELEGRAM, $sms, $who) !== AlertOnce::UNKNOWN;
+        }
 
+        $outcome = $this->attempt($link, $sms, $entry, timeout: 5);
+        $once->settle(AlertOnce::TELEGRAM, $sms, $who, $outcome);
+        Cache::put(self::resultKey($log), $link->displayName() . self::mark($outcome), now()->addDays(7));
+        if ($outcome === AlertOnce::SENT) {
             return true;
         }
-        // Not delivered: let a later copy try again.
-        Cache::forget($this->onceKey($log));
-        Cache::put(self::resultKey($log), $link->displayName() . ' ✗', now()->addDays(7));
+        if ($outcome === AlertOnce::FAILED) {
+            // Refused, so nothing was shown: the copy beside the SMS may try again.
+            Cache::forget($this->onceKey($log));
+        }
+        // Timed out (UNKNOWN): Telegram may well have shown it. The SMS goes
+        // as the safety net, and Telegram is not tried a second time.
 
         return false;
     }
@@ -148,15 +162,43 @@ class TelegramAlertCopier
         if ($links === [] || !Cache::add($this->onceKey($log), 1, now()->addDays(2))) {
             return;
         }
+        // One message per person for one alert, however many of its
+        // addresses lead to them: an owner's own phone and the business
+        // phone, one number typed two ways (owner, 2026-10-10).
+        $once = app(AlertOnce::class);
+        $fresh = array_values(array_filter($links, fn (TelegramLink $one) => $once->claim(AlertOnce::TELEGRAM, $sms, self::person($one))));
+        if ($fresh === []) {
+            Cache::put(self::resultKey($log), 'already sent for this alert', now()->addDays(7));
 
-        DeferAfterResponse::run(function () use ($links, $sms, $entry, $log): void {
+            return;
+        }
+
+        DeferAfterResponse::run(function () use ($fresh, $sms, $entry, $log, $once): void {
             $results = [];
-            foreach ($links as $one) {
-                $results[] = $one->displayName() . ($this->deliver($one, $sms, $entry, timeout: 8) ? ' ✓' : ' ✗');
+            foreach ($fresh as $one) {
+                $outcome = $this->attempt($one, $sms, $entry, timeout: 8);
+                $once->settle(AlertOnce::TELEGRAM, $sms, self::person($one), $outcome);
+                $results[] = $one->displayName() . self::mark($outcome);
             }
             // What happened, for telegram:check.
             Cache::put(self::resultKey($log), implode(', ', $results), now()->addDays(7));
         }, 'telegram-alert', always: true);
+    }
+
+    /** Who a link reaches, for AlertOnce: the staff member, else the chat. */
+    private static function person(TelegramLink $link): string
+    {
+        return $link->user_id !== null ? 'user:' . $link->user_id : 'chat:' . $link->telegram_bot_id . ':' . $link->chat_id;
+    }
+
+    /** ✓ shown, ✗ refused, ? timed out (probably shown), for telegram:check. */
+    private static function mark(string $outcome): string
+    {
+        return match ($outcome) {
+            AlertOnce::SENT => ' ✓',
+            AlertOnce::UNKNOWN => ' ? (timed out, probably shown)',
+            default => ' ✗',
+        };
     }
 
     /**
@@ -217,8 +259,13 @@ class TelegramAlertCopier
         };
     }
 
-    /** @param array<string, mixed>|null $entry */
-    private function deliver(TelegramLink $link, SmsMessage $sms, ?array $entry, int $timeout): bool
+    /**
+     * One try. SENT, FAILED (refused, or never reached Telegram) or UNKNOWN
+     * (it went out but the answer timed out: probably shown).
+     *
+     * @param array<string, mixed>|null $entry
+     */
+    private function attempt(TelegramLink $link, SmsMessage $sms, ?array $entry, int $timeout): string
     {
         try {
             [$html, $buttons] = $this->render($link, $sms, $entry);
@@ -233,18 +280,18 @@ class TelegramAlertCopier
             }
             $this->client->call($link->bot, 'sendMessage', $params, $timeout);
 
-            return true;
+            return AlertOnce::SENT;
         } catch (TelegramApiException $e) {
             if ($e->isBlocked()) {
                 $link->forceFill(['blocked_at' => now()])->save();
             }
-            Log::warning('telegram alert: not delivered', ['type' => $sms->type, 'link_id' => $link->id, 'error' => $e->getMessage()]);
+            Log::warning('telegram alert: not delivered', ['type' => $sms->type, 'link_id' => $link->id, 'error' => $e->getMessage(), 'may_have_arrived' => $e->mayHaveArrived]);
 
-            return false;
+            return $e->mayHaveArrived ? AlertOnce::UNKNOWN : AlertOnce::FAILED;
         } catch (Throwable $e) {
             Log::warning('telegram alert: skipped after an error', ['type' => $sms->type, 'error' => $e->getMessage()]);
 
-            return false;
+            return AlertOnce::FAILED;
         }
     }
 

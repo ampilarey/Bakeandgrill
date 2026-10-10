@@ -739,12 +739,25 @@ class ShiftController extends Controller
             );
             $threshold = (float) (app(\App\Domains\Operations\Services\OpsAlertsService::class)->settings()['shift_variance_alert_mvr'] ?? 0);
             if ($threshold > 0 && abs($variance) >= $threshold && \App\Domains\Notifications\Support\AlertSwitch::isOn('owner_shift_float_mismatch')) {
+                // The owner did not open it: name who did, and which till
+                // (owner, 2026-10-10; the cashier's own warning above keeps "you").
+                $till = trim((string) ($shift->device?->name ?? '')) ?: 'a till';
+                $ownerText = sprintf(
+                    '%s opened shift #%d on %s with MVR %s. The last close on that till left MVR %s, so the drawer is MVR %s %s.',
+                    $userName,
+                    $shift->id,
+                    $till,
+                    number_format((float) $shift->opening_cash, 2),
+                    number_format($expected, 2),
+                    number_format(abs($variance), 2),
+                    $variance < 0 ? 'short' : 'over',
+                );
                 try {
                     $sms = app(\App\Domains\Notifications\Services\SmsService::class);
                     foreach (\App\Support\OwnerPhones::for('owner_shift_float_mismatch') as $phone) {
                         $sms->send(new \App\Domains\Notifications\DTOs\SmsMessage(
                             to: $phone,
-                            message: "Shift #{$shift->id} opened by {$userName}: {$message}",
+                            message: $ownerText,
                             type: 'owner_shift_float_mismatch',
                             referenceType: 'shift',
                             referenceId: (string) $shift->id,

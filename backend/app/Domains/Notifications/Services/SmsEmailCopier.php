@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Notifications\Services;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
+use App\Domains\Notifications\Support\AlertOnce;
 use App\Domains\Notifications\Support\NotificationChannels;
 use App\Domains\Notifications\Support\SmsDeliveryRules;
 use App\Domains\Notifications\Support\SmsTypeRegistry;
@@ -160,8 +161,15 @@ class SmsEmailCopier
             return true;
         }
 
+        // One email per address for one alert, however many of its addresses
+        // lead to the same person (owner, 2026-10-10). Already on its way.
+        if (!app(AlertOnce::class)->claim(AlertOnce::EMAIL, $sms, strtolower($email))) {
+            return true;
+        }
+
         if (!$this->withinHourlyCap((int) SmsDeliveryRules::all()['email_copy_hourly_cap'], $marketing)) {
             Log::info('sms email copy: hourly cap reached, skipped', ['type' => $sms->type, 'log_id' => $log->id]);
+            app(AlertOnce::class)->settle(AlertOnce::EMAIL, $sms, strtolower($email), AlertOnce::FAILED);
 
             return false;
         }

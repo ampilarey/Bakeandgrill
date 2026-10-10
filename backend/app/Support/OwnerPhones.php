@@ -73,10 +73,8 @@ final class OwnerPhones
      */
     private static function addresses(Collection $users): Collection
     {
-        return $users
-            ->map(fn (User $u) => trim((string) $u->phone) !== '' ? trim((string) $u->phone) : NotificationChannels::token($u))
-            ->unique()
-            ->values();
+        return AlertAudience::unique($users
+            ->map(fn (User $u) => trim((string) $u->phone) !== '' ? trim((string) $u->phone) : NotificationChannels::token($u)));
     }
 
     /**
