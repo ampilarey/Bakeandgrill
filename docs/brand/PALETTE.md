@@ -188,6 +188,24 @@ upload the PNG again for that. Tests: `tests/Feature/Content/BrandImagesTest.php
 
 Pack logos for labels are separate and already kept as uploaded (`LabelMedia`).
 
+### Dish photo packs (2026-10-10)
+
+Owner, 2026-10-10: "Can u make the bajiya in this photo without background and
+suitable for other uploads and upload to the test server for testing."
+`scripts/food-photo-pack.py` cuts a dish out of a picture on a plain backdrop (a
+poster, a studio shot) and writes a pack: the see-through cut-out as PNG and WebP,
+1200 px wide, for the item's Thumbnail cut-out and for labels; the 4:3 main photo on
+the menu cream and on white; a 1080 square; a 7:3 category banner with the food on
+the right, since the website writes the category name on the left; a README naming
+the slot for each file, and a zip of the lot. A busy backdrop needs a photo editor.
+
+Packs are served from `backend/public/brand/photos/<dish>/`, so the owner can
+download them from the test site or the live one.
+
+| Pack | Made from |
+|---|---|
+| `photos/bajiya/` | the Frozen Hedhika poster, `--box 280,870,1090,1460` |
+
 ## Amma
 
 The Amma sub-brand (home-made lines, Rihaakuru first) prints a rust tile: a rounded

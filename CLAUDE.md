@@ -112,7 +112,9 @@ up to 1200 px), the tab icon on a clear square (512) and the preview at 1200 × 
 the 4:3 menu crop on white. Every write of those keys passes through
 `ContentValidationService::normalizeForWrite`, which redraws a library picture from its
 full-size master; never route them through `MenuImageProcessor` crops. Details:
-`docs/brand/PALETTE.md` § An uploaded logo, tab icon or link preview.
+`docs/brand/PALETTE.md` § An uploaded logo, tab icon or link preview. A dish cut out of a
+photo on a plain backdrop, with a version for each upload slot, comes from
+`scripts/food-photo-pack.py` into `backend/public/brand/photos/<dish>/` (§ Dish photo packs).
 
 To regenerate the hex-in-style baseline after migrating a page:
 
