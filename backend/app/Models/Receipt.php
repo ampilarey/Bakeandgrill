@@ -27,6 +27,10 @@ class Receipt extends Model
         'last_sent_at' => 'datetime',
     ];
 
+    // The payment confirmation email's once-per-order claim (2026-10-10);
+    // bookkeeping, not part of any receipt payload.
+    protected $hidden = ['confirmation_email_sent_at'];
+
     protected static function booted(): void
     {
         static::creating(function (Receipt $receipt): void {

@@ -266,17 +266,6 @@ class SmsTemplateSeeder extends Seeder
                 ]),
             ],
             [
-                'slug' => 'customer_refund_requested',
-                'name' => 'Refund requested (customer)',
-                'type' => 'order_notification',
-                'body' => 'Bake & Grill: a refund has been requested on order {{order_number}}. We will message you again when it is processed.',
-                'description' => 'Sent to the order phone when staff raise a refund request.',
-                'is_system' => true,
-                'variables' => json_encode([
-                    ['name' => 'order_number', 'description' => 'Order reference number'],
-                ]),
-            ],
-            [
                 'slug' => 'customer_refund_completed',
                 'name' => 'Refund completed (customer)',
                 'type' => 'order_notification',

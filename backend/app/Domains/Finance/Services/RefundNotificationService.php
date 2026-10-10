@@ -51,29 +51,6 @@ class RefundNotificationService
         return $this->resolveOrderContactPhone($order);
     }
 
-    public function notifyCustomerRequested(Refund $refund): void
-    {
-        $order = $refund->order;
-        $phone = $this->resolveRefundPhone($refund);
-        if (!$order || $phone === null) {
-            return;
-        }
-
-        $body = $this->renderTemplate('customer_refund_requested', [
-            'order_number' => $order->order_number ?? (string) $order->id,
-        ], "Bake & Grill: a refund has been requested on order {$order->order_number}. We will message you again when it is processed.");
-
-        $this->sms->send(new SmsMessage(
-            to: $phone,
-            message: $body,
-            type: 'customer_refund_requested',
-            customerId: $order->customer_id,
-            referenceType: 'refund',
-            referenceId: (string) $refund->id,
-            idempotencyKey: 'refund-requested:' . $refund->id,
-        ));
-    }
-
     public function notifyCustomerCompleted(Refund $refund): void
     {
         $order = $refund->order;

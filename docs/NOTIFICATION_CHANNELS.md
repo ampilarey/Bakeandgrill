@@ -203,6 +203,27 @@ till left MVR 150.00, so the drawer is MVR 668.00 over." instead of the
 cashier's "you opened with". The till's warning to the cashier is unchanged.
 Tests: `backend/tests/Feature/Telegram/OneAlertOneMessageTest.php`.
 
+## One event, one message (2026-10-10)
+
+The owner asked "Is there any duplicate notification now?" and then "Fix".
+An audit ran each flow and counted what reached each person; seven events
+sent more than one message. `backend/tests/Feature/Notifications/OneMessagePerEventTest.php`
+replays each one.
+
+| Event | Before | Now |
+|---|---|---|
+| Online card payment (also zero-balance and Stripe) | The order confirmation email three times: the confirm step, "payment confirmed" and "order paid" each call `PaymentConfirmationNotifier`; the text had a once-per-order key, the email did not | The email is claimed on the receipt row (`receipts.confirmation_email_sent_at`), once per order; a failed send gives the claim back |
+| Delivery marked delivered | "Has been delivered" and "Order complete, receipt" together | One text: the delivered wording carries the receipt link (`{{receipt_url}}`, added at the end when the owner's wording leaves it out). The completion receipt goes for pickup orders, for a delivery whose delivered message is off, or one completed without the Delivered step |
+| A cashier starts a refund | "A refund has been requested" and the code text together | The code text alone (it already names the order). "Refund requested" is retired: no row, no template |
+| The owner refunds in one step | "Requested, we will message you again" and "processed" together | "Processed" (or "on its way") alone |
+| Catering quote paid online | A till receipt text and email beside "Event confirmed" | The event confirmation alone, when the money equals what the quote asked; a balance paid later gets its receipt |
+| Takeaway rung up and paid | Staff on shift: "New order" then "Order confirmed" seconds apart | Someone already told an order is new is not told it is confirmed (`SendStaffNotificationJob`, logged as `skipped`, shown in Log → Staff order alerts). With "New order" off, "Order confirmed" is the one alert |
+| A delivery runs late | "Past ETA" again every hour until it arrived | Once per order (`orders.delay_alerted_at`), naming it; later ones list only the newly late orders and the total |
+
+Migration `2026_10_10_190000_one_message_per_event` adds the two columns,
+switches the default delivered wording to the receipt link (only when it was
+not changed) and removes the unused "refund requested" template.
+
 ## The rule
 
 A staff or owner alert reaches a person by a channel (SMS, Email, Telegram)

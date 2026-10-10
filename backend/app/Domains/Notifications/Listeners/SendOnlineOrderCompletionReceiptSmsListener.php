@@ -11,9 +11,10 @@ use App\Domains\Notifications\Services\SmsService;
 use App\Domains\Notifications\Support\SmsNotificationSettings;
 use App\Domains\Orders\Events\OrderStatusChanged;
 use App\Models\Order;
-use App\Models\Receipt;
+use App\Models\SiteSetting;
+use App\Models\SmsLog;
+use App\Support\ReceiptLink;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 /**
  * When an online pickup or delivery order reaches completed or delivered, SMS the receipt link.
@@ -57,18 +58,14 @@ final class SendOnlineOrderCompletionReceiptSmsListener
             return;
         }
 
-        $receipt = Receipt::firstOrNew(['order_id' => $order->id]);
-        if (!$receipt->exists) {
-            $receipt->token = Str::random(48);
+        // A delivery's "delivered" message carries the receipt (owner,
+        // 2026-10-10: two texts at the door). This one goes only when that
+        // message is off, or when the order was completed without it.
+        if ($order->type === 'delivery' && $this->deliveredMessageCarriesIt($order, $status)) {
+            return;
         }
-        $receipt->customer_id = $order->customer_id;
-        $receipt->fill([
-            'channel' => 'sms',
-            'recipient' => $phone,
-        ]);
-        $receipt->save();
 
-        $link = rtrim(config('app.url'), '/') . '/receipts/' . $receipt->token;
+        $link = ReceiptLink::forOrder($order, $phone);
         $fallback = 'Order #' . $order->order_number . ' complete. Receipt: ' . $link;
         $message = $this->messages->build(
             CustomerSmsMessageBuilder::SLUG_COMPLETION_RECEIPT,
@@ -96,5 +93,20 @@ final class SendOnlineOrderCompletionReceiptSmsListener
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * At "delivered", the delivered message goes when it is on in any
+     * channel, with the receipt in it. At "completed", it went if its log
+     * row exists (the rider tapped Delivered first).
+     */
+    private function deliveredMessageCarriesIt(Order $order, string $status): bool
+    {
+        if ($status === 'delivered') {
+            return SiteSetting::get('sms_customer_delivered_enabled', 'true') === 'true'
+                || SmsEmailCopier::wanted('customer_order_delivered');
+        }
+
+        return SmsLog::query()->where('idempotency_key', 'order:delivered:' . $order->id)->exists();
     }
 }

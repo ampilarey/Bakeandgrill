@@ -18,7 +18,10 @@ import { errorBox } from './shared';
 
 type View = 'all' | 'order-alerts';
 
-const STATUS_COLOR: Record<string, string> = { sent: 'green', failed: 'red', queued: 'orange' };
+const STATUS_COLOR: Record<string, string> = { sent: 'green', failed: 'red', queued: 'orange', skipped: 'brown' };
+// "Order confirmed" is not sent to someone already told the order is new
+// (owner, 2026-10-10: two alerts seconds apart for one till sale).
+const STATUS_LABEL: Record<string, string> = { skipped: 'skipped: already told' };
 
 export function LogTab() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -116,6 +119,7 @@ function OrderAlertLog() {
             <option value="sent">Sent</option>
             <option value="failed">Failed</option>
             <option value="queued">Queued</option>
+            <option value="skipped">Skipped (already told)</option>
           </select>
           <Btn small variant="secondary" onClick={() => void load()} aria-label="Refresh"><RotateCcw size={13} /></Btn>
         </div>
@@ -157,7 +161,7 @@ function OrderAlertLog() {
                   <td style={{ ...TD, maxWidth: 220, color: 'var(--color-text-secondary)', fontSize: 12 }}>
                     <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={l.message}>{l.message}</span>
                   </td>
-                  <td style={TD}><Badge label={l.status} color={STATUS_COLOR[l.status] ?? 'gray'} /></td>
+                  <td style={TD} title={l.status === 'skipped' ? 'They already had the "new order" alert for this order' : undefined}><Badge label={STATUS_LABEL[l.status] ?? l.status} color={STATUS_COLOR[l.status] ?? 'gray'} /></td>
                   <td style={{ ...TD, textAlign: 'center' }}>
                     {l.fallback_used
                       ? <span style={{ color: 'var(--color-warning)', display: 'inline-flex' }} title="Went to the fallback staff" aria-label="Fallback used"><AlertTriangle size={14} aria-hidden /></span>
@@ -167,7 +171,7 @@ function OrderAlertLog() {
                     {l.sent_at ? new Date(l.sent_at).toLocaleString() : new Date(l.created_at).toLocaleString()}
                   </td>
                   <td style={TD}>
-                    {l.status !== 'sent' && (
+                    {l.status !== 'sent' && l.status !== 'skipped' && (
                       <Btn small variant="ghost" disabled={resendingId === l.id} onClick={() => void resend(l.id)} aria-label="Resend" title="Resend">
                         <Send size={12} />
                       </Btn>

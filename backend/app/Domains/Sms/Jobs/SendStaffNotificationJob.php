@@ -49,6 +49,29 @@ class SendStaffNotificationJob implements ShouldQueue
             return;
         }
 
+        // One order, one "it's here" alert per person (owner, 2026-10-10: a
+        // takeaway rang up and paid sent "new order" and "order confirmed"
+        // seconds apart). Someone already told it is new is not told it is
+        // confirmed; the Log tab shows the row as skipped. Jobs run in the
+        // order they were queued, so the "new order" row is there first.
+        if ($this->eventType === 'order_confirmed' && $this->alreadyToldItIsNew()) {
+            StaffNotificationLog::updateOrCreate(
+                ['idempotency_key' => $idempotencyKey],
+                [
+                    'order_id' => $this->orderId,
+                    'event_type' => $this->eventType,
+                    'recipient_type' => $this->recipientType,
+                    'recipient_id' => $this->recipientId,
+                    'phone' => $this->phone,
+                    'message' => $this->message,
+                    'status' => 'skipped',
+                    'fallback_used' => $this->fallbackUsed,
+                ],
+            );
+
+            return;
+        }
+
         // Create or update the log record
         $logRecord = StaffNotificationLog::updateOrCreate(
             ['idempotency_key' => $idempotencyKey],
@@ -103,6 +126,19 @@ class SendStaffNotificationJob implements ShouldQueue
 
             throw $e;
         }
+    }
+
+    /** A "new order" alert for this order reached (or is reaching) this same person. */
+    private function alreadyToldItIsNew(): bool
+    {
+        $me = \App\Domains\Notifications\Support\AlertAudience::addressKey($this->phone);
+
+        return StaffNotificationLog::query()
+            ->where('order_id', $this->orderId)
+            ->where('event_type', 'new_order')
+            ->whereNotIn('status', ['failed', 'skipped'])
+            ->pluck('phone')
+            ->contains(fn ($phone) => \App\Domains\Notifications\Support\AlertAudience::addressKey((string) $phone) === $me);
     }
 
     public function failed(\Throwable $e): void

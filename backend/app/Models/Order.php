@@ -107,10 +107,11 @@ class Order extends Model
         'store_id',
     ];
 
-    // Internal alert stamp (checkout audit, 2026-09-26) — not part of the order API.
+    // Internal alert stamps (checkout audit, 2026-09-26; late delivery reported
+    // once, 2026-10-10) — not part of the order API.
     // Kitchen bookkeeping; the kitchen screen reads them through its own
     // payload, and leaving them out keeps the order JSON contract unchanged.
-    protected $hidden = ['unstarted_alerted_at', 'kitchen_started_at', 'ready_at'];
+    protected $hidden = ['unstarted_alerted_at', 'delay_alerted_at', 'kitchen_started_at', 'ready_at'];
 
     protected $casts = [
         // FK integer columns — MySQL PDO returns these as strings without explicit casts

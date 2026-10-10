@@ -231,8 +231,10 @@ class RefundWorkflowService
             $request,
         );
 
-        $this->notifications->notifyCustomerRequested($refund->fresh(['order.customer']));
-
+        // No separate "a refund has been requested" text any more (owner,
+        // 2026-10-10: two texts at once). An owner's refund goes straight to
+        // "processed" or "on its way"; anyone else's sends the code, whose
+        // text already says a refund is being made on the order.
         $autoApproved = false;
         if ($this->isOwner($requester)) {
             // Owner: request + approve in one action, no OTP.

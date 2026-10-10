@@ -77,6 +77,13 @@ class PaymentConfirmationNotifier
         }
         $receipt->save();
 
+        // A catering quote paid online: the event confirmation already says
+        // what was paid, so no till receipt text or email beside it (owner,
+        // 2026-10-10). A balance paid later still gets its receipt.
+        if ((string) $order->type === 'catering' && $this->eventConfirmationCoversPayment($order)) {
+            return;
+        }
+
         if ($isOnline) {
             // Online pickup / delivery: customer isn't in the room, so
             // surface (a) HOW the payment cleared (BML / cash on
@@ -152,16 +159,42 @@ class PaymentConfirmationNotifier
 
         // The confirmation email's switch is the row's Email switch in
         // Admin → Notifications (2026-10-10), separate from the SMS one.
-        if ($email && \App\Domains\Notifications\Support\SmsTypeRegistry::isEmailEnabled($typeKey)) {
+        // Up to three paths announce one payment (the confirm step, "payment
+        // confirmed", "order paid"); the text has its once-per-order key, and
+        // this claim on the receipt is the email's: it went three times
+        // (owner, 2026-10-10). A failed send gives the claim back.
+        if ($email && \App\Domains\Notifications\Support\SmsTypeRegistry::isEmailEnabled($typeKey)
+            && Receipt::whereKey($receipt->id)->whereNull('confirmation_email_sent_at')->update(['confirmation_email_sent_at' => now()]) === 1) {
             try {
                 Mail::to($email)->send(new OrderConfirmationMail($order, $url, $name));
             } catch (\Throwable $e) {
+                Receipt::whereKey($receipt->id)->update(['confirmation_email_sent_at' => null]);
                 Log::error('PaymentConfirmationNotifier: email failed', [
                     'order_id' => $order->id,
                     'error' => $e->getMessage(),
                 ]);
             }
         }
+    }
+
+    /**
+     * True when the money on this catering order is what its quote asked
+     * for: the payment that confirmed the event, whose own message says so.
+     * More than that (a balance after a deposit, items added later) is a
+     * payment of its own and gets the receipt.
+     */
+    private function eventConfirmationCoversPayment(Order $order): bool
+    {
+        $request = \App\Models\CateringRequest::query()->where('pos_order_id', $order->id)->first(['id', 'quote_payment_laar']);
+        $quoted = (int) ($request?->quote_payment_laar ?? 0);
+        if ($quoted <= 0) {
+            return false;
+        }
+        $paid = (int) $order->payments
+            ->whereIn('status', ['confirmed', 'paid', 'completed'])
+            ->sum('amount_laar');
+
+        return $paid > 0 && $paid <= $quoted;
     }
 
     /**

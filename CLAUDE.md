@@ -197,6 +197,15 @@ copiers claim each person in `AlertOnce` (scoped to the request or job), and a
 Telegram send that timed out is not resent. Details: same file, § One alert,
 one message per person.
 
+One event sends one message to each person (owner, 2026-10-10: "Fix" the
+seven doubles). A new message for an event that already sends one is folded
+into it, not sent beside it: the delivered text carries the receipt, the
+refund code text is the request notice, the catering confirmation covers its
+payment, "order confirmed" skips staff told "new order", a late delivery is
+reported once (`delay_alerted_at`), and the payment confirmation email is
+claimed once per order (`receipts.confirmation_email_sent_at`). Details: same
+file, § One event, one message; `OneMessagePerEventTest` replays each.
+
 ## Notifications: one page, one switch per alert
 
 Owner, 2026-10-10 ("to make setting less complicated"). Every text, email and

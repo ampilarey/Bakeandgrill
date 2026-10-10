@@ -45,7 +45,7 @@ Owner decisions already taken:
 | Rating input | `<select>` with 5 options | A dropdown on a phone. Two taps and a scroll to say "good". |
 | Public reviews | `Review` model; `POST /reviews` behind **`auth:sanctum` + `customer.token`** (`catalog.php:94-95`) | Built, but **authenticated customers only**. Most receipt viewers are guests. See §5. |
 | Staff SMS routing | `StaffNotificationDispatcher::dispatch(Order $order, string $eventType)` | **Order events only** — a hardcoded map of `new_order`, `order_ready`, `order_out_for_delivery`. **Not a general owner-alert mechanism.** See §4. |
-| Refund SMS pattern | `sms_customer_refund_requested_enabled`, `sms_customer_refund_completed_enabled`, `sms_staff_refund_requested_enabled` | Built. **This is the pattern to copy** for complaint SMS. |
+| Refund SMS pattern | `sms_customer_refund_completed_enabled`, `sms_staff_refund_requested_enabled` (the customer "refund requested" text was retired on 2026-10-10: the code text or "processed" is the one message) | Built. **This is the pattern to copy** for complaint SMS. |
 | Refund workflow | `RefundWorkflowService::request()` — requires amount, reason category, reason text, shift id. Line 226: **owner requests are auto-approved in one action with no OTP** | Built. A public complaint has none of those inputs and must never reach this. See §6. |
 | Media upload | `admin/media` behind `auth:sanctum` + `staff.token` + `permission:media.manage` | **Staff only.** Not reusable for public complaint photos. See §7. |
 | Overdue invoices | `invoices:mark-overdue` scheduled command | Built. The page must not depend on it alone. See §8. |

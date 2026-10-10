@@ -89,7 +89,8 @@ export type StaffNotificationLog = {
   recipient_id: number | null;
   phone: string;
   message: string;
-  status: 'queued' | 'sent' | 'failed';
+  /** skipped: they already had "new order" for this order (2026-10-10); email_only: SMS off for the alert. */
+  status: 'queued' | 'sent' | 'failed' | 'skipped' | 'email_only';
   fallback_used: boolean;
   sms_log_id: number | null;
   sent_at: string | null;

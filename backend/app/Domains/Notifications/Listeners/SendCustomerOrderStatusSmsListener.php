@@ -12,6 +12,7 @@ use App\Domains\Orders\Events\OrderStatusChanged;
 use App\Models\Order;
 use App\Models\SiteSetting;
 use App\Support\OrderTrackingUrl;
+use App\Support\ReceiptLink;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -95,6 +96,10 @@ final class SendCustomerOrderStatusSmsListener
 
         $orderNum = $order->order_number ?? "#{$order->id}";
 
+        // "Delivered" carries the receipt, so the receipt text does not follow
+        // it a second later (owner, 2026-10-10: two texts at the door).
+        $receiptUrl = $status === 'delivered' ? ReceiptLink::forOrder($order, $phone) : '';
+
         [$slug, $fallback, $idempotencyKey] = match ($status) {
             'in_progress' => [
                 CustomerSmsMessageBuilder::SLUG_ORDER_PREPARING,
@@ -120,7 +125,7 @@ final class SendCustomerOrderStatusSmsListener
             // Ops audit, 2026-09-25: the rider's last tap closes the loop for the customer too.
             'delivered' => [
                 CustomerSmsMessageBuilder::SLUG_ORDER_DELIVERED,
-                "#{$orderNum} has been delivered. Enjoy! {$trackingUrl}",
+                "#{$orderNum} has been delivered. Enjoy! Receipt: {$receiptUrl}",
                 "order:delivered:{$order->id}",
             ],
         };
@@ -130,9 +135,14 @@ final class SendCustomerOrderStatusSmsListener
             [
                 'order_number' => (string) $orderNum,
                 'tracking_url' => $trackingUrl,
+                'receipt_url' => $receiptUrl,
             ],
             $fallback,
         );
+        // A wording the owner changed may leave the receipt out: add it.
+        if ($receiptUrl !== '' && !str_contains($message, $receiptUrl)) {
+            $message = rtrim($message) . ' Receipt: ' . $receiptUrl;
+        }
 
         try {
             $this->sms->send(new SmsMessage(
