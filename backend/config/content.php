@@ -180,7 +180,11 @@ return [
             'validate' => 'nullable|string|max:5000',
             'default' => '+960 912 0011',
         ],
+        // Retired from the website 2026-10-10 (UI audit): the Contact and
+        // maintenance pages list the opening hours from the Admin schedule.
+        // The Ramadan and Eid presets still write it; nothing reads it.
         'business_hours' => [
+            'deprecated' => true,
             'label' => 'Business Hours (display)',
             'group' => 'Contact page',
             'type' => 'json',
@@ -258,17 +262,6 @@ return [
             'rich' => false,
             'validate' => 'nullable|string|max:5000',
             'default' => 'Ask us about catering and trays for offices and celebrations.',
-        ],
-        'contact_hours_fallback' => [
-            'label' => 'Contact Page — Hours Fallback Text',
-            'group' => 'Contact page',
-            'type' => 'textarea',
-            'apps' => ['website'],
-            'shareable' => false,
-            'public' => true,
-            'rich' => false,
-            'validate' => 'nullable|string|max:5000',
-            'default' => '',
         ],
         'contact_hours_heading' => [
             'label' => 'Contact Page — Hours Card Heading',
@@ -652,6 +645,7 @@ return [
             'rich' => false,
             'validate' => 'nullable|string|max:5000',
             'default' => 'Delivery across Malé & Hulhumalé',
+            'description' => 'The delivery area. Also shown on the home page Delivery card and in the Terms.',
         ],
         'footer_ramadan_note' => [
             'label' => 'Footer — Ramadan note',
@@ -844,7 +838,8 @@ return [
             'public' => true,
             'rich' => false,
             'validate' => 'nullable|string|max:5000',
-            'default' => 'Delivery across all of Malé',
+            'default' => '',
+            'description' => 'Leave empty to use the footer delivery line, so the delivery area reads the same everywhere.',
         ],
         'home_featured_eyebrow_bestseller' => [
             'label' => 'Featured Items — Eyebrow (has sales data)',
@@ -1069,7 +1064,7 @@ return [
             'public' => true,
             'rich' => false,
             'validate' => 'nullable|string|max:5000',
-            'default' => 'Contact page \\xe2\\x86\\x92',
+            'default' => 'Contact page →',
         ],
         'hours_meta_description' => [
             'label' => 'Hours Page — Meta Description',
@@ -1080,7 +1075,7 @@ return [
             'public' => true,
             'rich' => false,
             'validate' => 'nullable|string|max:5000',
-            'default' => 'See our opening hours. Bake & Grill is open 7 days a week in Mal\\xc3\\xa9, Maldives.',
+            'default' => 'See our opening hours. Bake & Grill is open 7 days a week in Malé, Maldives.',
         ],
         'hours_meta_title' => [
             'label' => 'Hours Page — Browser Title',
@@ -1091,7 +1086,7 @@ return [
             'public' => true,
             'rich' => false,
             'validate' => 'nullable|string|max:5000',
-            'default' => 'Opening Hours \\xe2\\x80\\x93 Bake & Grill',
+            'default' => 'Opening Hours – Bake & Grill',
         ],
         'hours_open_status_text' => [
             'label' => 'Hours Page — Open Status Badge',
@@ -1113,7 +1108,7 @@ return [
             'public' => true,
             'rich' => false,
             'validate' => 'nullable|string|max:5000',
-            'default' => '\\xf0\\x9f\\x9b\\x92 Order Online Now',
+            'default' => 'Order Online Now',
         ],
         'hours_page_cta_subtitle' => [
             'label' => 'Hours Page — CTA Subtitle',

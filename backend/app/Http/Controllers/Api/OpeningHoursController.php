@@ -42,12 +42,27 @@ class OpeningHoursController extends Controller
     }
 
     /**
-     * Full weekly schedule.
-     * Used by the HoursPage in the React app.
+     * Full weekly schedule, keyed by day name, for the order app's Hours page.
+     *
+     * UI audit, 2026-10-10: this sent the built-in config hours (not the
+     * hours set in Admin) as a list numbered 0 to 6, and the page looks days
+     * up by name, so every day read "Hours not available". It now sends the
+     * same hours as the website's Hours page and the footer.
      */
     public function index(): JsonResponse
     {
-        $schedule = config('opening_hours.hours', []);
+        $names = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        $hours = $this->service->getHoursForDisplay();
+        $schedule = [];
+        foreach ($names as $i => $name) {
+            $row = $hours[$i] ?? null;
+            $open = is_array($row) ? (string) ($row['open'] ?? '') : '';
+            $close = is_array($row) ? (string) ($row['close'] ?? '') : '';
+            $closed = !is_array($row) || (bool) ($row['closed'] ?? false) || $open === '' || $close === '';
+            $schedule[$name] = $closed
+                ? ['closed' => true, 'open' => null, 'close' => null]
+                : ['closed' => false, 'open' => $open, 'close' => $close];
+        }
 
         return response()->json([
             'schedule' => $schedule,

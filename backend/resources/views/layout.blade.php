@@ -119,9 +119,7 @@
     $footerRamadanActive     = $openingHoursSvc->isRamadanHoursActive();
     $footerRamadanNote       = content('footer_ramadan_note', 'Ramadan hours — open after Maghrib.');
     $footerTodayHours        = $footerHours[$footerHoursToday] ?? null;
-    $footerTodayLabel        = ($footerTodayHours && !($footerTodayHours['closed'] ?? false))
-        ? ($footerTodayHours['open'] . ' – ' . $footerTodayHours['close'])
-        : 'Closed';
+    $footerTodayLabel        = \App\Support\OpeningHoursText::range(is_array($footerTodayHours) ? $footerTodayHours : null) ?? 'Closed';
     $homeChatLabel           = trim((string) content('home_chat_label', 'Chat with us'));
     // Compact mobile footer legal links — shared with Order App BrandFooter.
     $footerLinksRaw = content('footer_links', '[]');
@@ -348,6 +346,17 @@
             transition: background 0.15s, border-color 0.15s;
         }
         .dark-toggle:hover { background: var(--amber-light); border-color: var(--amber); }
+        /* Drawn icons in place of emoji (UI audit, 2026-10-10); App\Support\UiIcon. */
+        .ui-icon { display: inline-block; flex-shrink: 0; vertical-align: -0.18em; }
+        /* The favourite heart sits on a pale disc in both themes: a brown
+           outline, filled rust once saved. */
+        .menu-fav-icon { display: inline-flex; color: #6B5D4F; }
+        .menu-fav.is-on .menu-fav-icon { color: var(--amber); }
+        .menu-fav.is-on .menu-fav-icon svg { fill: currentColor; }
+        .dark-toggle { color: var(--text); }
+        .dark-toggle__sun { display: none; }
+        [data-theme="dark"] .dark-toggle__sun { display: inline-flex; }
+        [data-theme="dark"] .dark-toggle__moon { display: none; }
 
         .lang-switcher {
             display: inline-flex;
@@ -519,8 +528,7 @@
         }
         .header-prayer .prayer-banner-summary,
         .header-prayer .prayer-banner-expand,
-        .header-prayer .prayer-banner-skeleton,
-        .header-prayer .prayer-banner-unavailable {
+        .header-prayer .prayer-banner-skeleton {
             min-height: 40px;
         }
         .header-prayer .prayer-banner-next {
@@ -1045,7 +1053,7 @@
             font-weight: 700;
             letter-spacing: 0.1em;
             text-transform: uppercase;
-            color: rgba(255, 255, 255, 0.35);
+            color: rgba(255, 255, 255, 0.58);
         }
         .brand-footer--website .brand-footer__chat-row {
             display: flex;
@@ -1078,15 +1086,15 @@
             text-decoration: none;
             box-sizing: border-box;
         }
-        .brand-footer--website .brand-footer__wa { background: #25D366; }
-        .brand-footer--website .brand-footer__viber { background: #7360F2; }
+        .brand-footer--website .brand-footer__wa { background: #15803D; }
+        .brand-footer--website .brand-footer__viber { background: #6554E0; }
         .brand-footer--website .brand-footer__heading {
             margin: 0 0 0.9rem;
             font-size: 0.7rem;
             font-weight: 700;
             letter-spacing: 0.1em;
             text-transform: uppercase;
-            color: rgba(255, 255, 255, 0.35);
+            color: rgba(255, 255, 255, 0.58);
         }
         .footer-complain-line { margin: 0.1rem 0 0.6rem; font-size: 0.78rem; opacity: 0.75; }
         .brand-footer--website .brand-footer__link {
@@ -1141,7 +1149,7 @@
             margin-top: 0.75rem;
             padding-top: 1.15rem;
             border-top: 1px solid rgba(255, 255, 255, 0.08);
-            color: rgba(255, 255, 255, 0.35);
+            color: rgba(255, 255, 255, 0.58);
             font-size: 0.8rem;
         }
         .footer-grid {
@@ -1191,9 +1199,9 @@
             transition: all 0.15s;
             box-sizing: border-box;
         }
-        .footer-wa    { background: #25D366; }
-        .footer-wa:hover { background: #1bba58; transform: translateY(-1px); }
-        .footer-viber { background: #7360F2; }
+        .footer-wa    { background: #15803D; }
+        .footer-wa:hover { background: #126C34; transform: translateY(-1px); }
+        .footer-viber { background: #6554E0; }
         .footer-viber:hover { background: #5E4CD6; transform: translateY(-1px); }
         .footer-social-icon {
             width: 44px;
@@ -1280,7 +1288,7 @@
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.1em;
-            color: rgba(255,255,255,0.35);
+            color: rgba(255,255,255,0.58);
             margin-bottom: 1.25rem;
         }
         .footer-col a,
@@ -1319,7 +1327,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            color: rgba(255,255,255,0.35);
+            color: rgba(255,255,255,0.58);
             font-size: 0.8rem;
             flex-wrap: wrap;
             gap: 0.75rem;
@@ -1346,9 +1354,10 @@
         }
         /* Author display:flex overrides bare [hidden] in some browsers */
         .prayer-banner-skeleton[hidden],
-        .prayer-banner-unavailable[hidden],
         .prayer-banner-body[hidden],
-        .prayer-banner-panel[hidden] {
+        .prayer-banner-panel[hidden],
+        [data-block="prayer_bar"][hidden],
+        [data-home-block="prayer_bar"][hidden] {
             display: none !important;
         }
         .prayer-banner-skeleton {
@@ -1369,14 +1378,6 @@
         @keyframes ptShimmer {
             0% { background-position: 100% 0; }
             100% { background-position: -100% 0; }
-        }
-        .prayer-banner-unavailable {
-            min-height: 44px;
-            display: flex;
-            align-items: center;
-            padding: 0 0.75rem;
-            font-size: 0.8125rem;
-            color: var(--muted);
         }
         .prayer-banner-summary {
             display: flex;
@@ -1546,7 +1547,7 @@
         .hpt-list { overflow-y: auto; flex: 1; }
         .hpt-group-label {
             padding: 0.45rem 0.9rem 0.25rem;
-            font-size: 0.67rem; font-weight: 700; letter-spacing: 0.07em;
+            font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.07em;
             text-transform: uppercase; color: var(--amber);
             background: var(--surface); position: sticky; top: 0;
             border-bottom: 1px solid var(--border);
@@ -1844,7 +1845,7 @@
                 <a href="{{ $langSwitchDvUrl }}" class="{{ $contentLocale === 'dv' ? 'is-active' : '' }}" aria-label="Switch to Dhivehi">ދވ</a>
             </div>
             @endif
-            <button id="darkToggleDesktop" class="dark-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">🌙</button>
+            <button id="darkToggleDesktop" class="dark-toggle" aria-label="Toggle dark mode" title="Toggle dark mode"><span class="dark-toggle__moon">{{ \App\Support\UiIcon::svg('moon', 18) }}</span><span class="dark-toggle__sun">{{ \App\Support\UiIcon::svg('sun', 18) }}</span></button>
             <a href="/order/menu" class="hdr-order">{{ $navOrderCta }}</a>
         </div>
     </div>
@@ -2035,13 +2036,7 @@
                                 <span class="footer-hours-today-tag">Today</span>
                             @endif
                         </span>
-                        <span>
-                            @if($dayHours && !($dayHours['closed'] ?? false))
-                                {{ $dayHours['open'] }} – {{ $dayHours['close'] }}
-                            @else
-                                Closed
-                            @endif
-                        </span>
+                        <span>{{ \App\Support\OpeningHoursText::range(is_array($dayHours) ? $dayHours : null) ?? 'Closed' }}</span>
                     </div>
                 @endforeach
             </div>
@@ -2452,15 +2447,16 @@ window.bgFold = function (el, open, done) {
         eachBanner(function(root) {
             root.classList.remove('is-loading');
             var sk = root.querySelector('[data-pt-skeleton]');
-            var un = root.querySelector('[data-pt-unavailable]');
             var body = root.querySelector('[data-pt-body]');
+            // With no times the whole box goes, header strip or home block,
+            // rather than a grey "unavailable" bar (UI audit, 2026-10-10).
+            var wrap = root.closest('[data-block="prayer_bar"], [data-home-block="prayer_bar"]') || root;
             setHidden(sk, true);
+            setHidden(wrap, !prayers);
             if (!prayers) {
-                setHidden(un, false);
                 setHidden(body, true);
                 return;
             }
-            setHidden(un, true);
             setHidden(body, false);
             setExpandedUI(root, expanded);
         });
@@ -2698,11 +2694,11 @@ window.bgFold = function (el, open, done) {
     var dark = saved === 'dark';
     function applyTheme(d) {
         document.documentElement.dataset.theme = d ? 'dark' : '';
-        var icon = d ? '☀️' : '🌙';
+        // The button carries both drawn icons; CSS shows the one for the theme.
         var dt = document.getElementById('darkToggleDesktop');
         var dm = document.getElementById('darkToggleMobile');
-        if (dt) { dt.textContent = icon; dt.setAttribute('aria-label', d ? 'Switch to light mode' : 'Switch to dark mode'); }
-        if (dm) { dm.textContent = icon; dm.setAttribute('aria-label', d ? 'Switch to light mode' : 'Switch to dark mode'); }
+        if (dt) { dt.setAttribute('aria-label', d ? 'Switch to light mode' : 'Switch to dark mode'); }
+        if (dm) { dm.setAttribute('aria-label', d ? 'Switch to light mode' : 'Switch to dark mode'); }
     }
     applyTheme(dark);
     function toggleDark() {

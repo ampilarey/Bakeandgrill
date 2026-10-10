@@ -9,7 +9,8 @@ import type { OpeningHoursStatus, Reservation, ReservationSlot } from '@shared/t
 export type { ReservationSlot };
 export type CustomerReservation = Reservation;
 
-export type DaySchedule = { open: string; close: string; closed?: boolean };
+/** One day of the weekly schedule; open and close are null on a closed day. */
+export type DaySchedule = { open: string | null; close: string | null; closed?: boolean };
 
 export async function fetchOpeningHoursStatus(): Promise<OpeningHoursStatus> {
   return request<OpeningHoursStatus>(ENDPOINTS.OPENING_HOURS_STATUS);

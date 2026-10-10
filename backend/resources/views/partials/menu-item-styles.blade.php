@@ -111,10 +111,20 @@ html.js .menu-item-page .menu-fav { display: inline-flex; }
 }
 .menu-item-meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 0.85rem; }
 .menu-item-chip {
+    display: inline-flex; align-items: center; gap: 0.3rem;
     font-size: 0.75rem; font-weight: 700; color: var(--dark);
     background: var(--bg); padding: 0.28rem 0.65rem;
     border-radius: 999px; border: 1px solid var(--border);
 }
+.menu-item-flames { display: inline-flex; color: var(--amber); }
+/* A dish with no photo at all: the menu's quiet tile, the flame faded. */
+.menu-item-hero-quiet {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    background: color-mix(in srgb, var(--amber) 14%, var(--surface));
+}
+.menu-item-hero .menu-item-hero-quiet img { width: 24%; height: auto; object-fit: contain; opacity: 0.32; }
+[data-theme="dark"] .menu-item-hero .menu-item-hero-quiet img { opacity: 0.5; }
 .menu-item-diet { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 0.85rem; }
 .menu-item-diet span {
     font-size: 0.7rem; font-weight: 700; text-transform: capitalize;

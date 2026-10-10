@@ -186,7 +186,7 @@
             flex-shrink: 0;
         }
         .isl-arrow {
-            font-size: 0.6rem;
+            font-size: 0.6875rem;
             color: var(--muted);
             flex-shrink: 0;
             transition: transform 0.2s;
@@ -234,7 +234,7 @@
         .isl-group-label {
             padding: 0.5rem 0.9rem 0.3rem;
             font-family: var(--font-ui);
-            font-size: 0.68rem;
+            font-size: 0.6875rem;
             font-weight: 700;
             color: var(--amber);
             letter-spacing: 0.07em;
@@ -541,7 +541,7 @@
             position: absolute;
             top: 0.55rem;
             right: 0.7rem;
-            font-size: 0.62rem;
+            font-size: 0.6875rem;
             font-weight: 700;
             letter-spacing: 0.06em;
             text-transform: uppercase;
@@ -606,7 +606,7 @@
             padding: 5rem 1rem;
             color: var(--muted);
         }
-        .pt-empty-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.35; }
+        .pt-empty-icon { display: flex; justify-content: center; margin-bottom: 1rem; opacity: 0.35; }
         .pt-empty p    { font-family: var(--font-dhivehi); font-size: 1rem; direction: rtl; }
 
         /* ═══ Footer ═══════════════════════════════════════════════════════ */
@@ -637,7 +637,7 @@
             <img src="{{ $logoUrl }}" alt="{{ $siteName }}">
             <span>{{ $siteName }}</span>
         </a>
-        <h1 class="pt-page-title">🕌 Prayer Times</h1>
+        <h1 class="pt-page-title">Prayer Times</h1>
         <a href="/" class="pt-back-btn">← Back to website</a>
     </div>
 </header>
@@ -734,7 +734,7 @@
     @else
 
         <div class="pt-empty">
-            <div class="pt-empty-icon">🕌</div>
+            <div class="pt-empty-icon">{{ \App\Support\UiIcon::svg('clock', 44) }}</div>
             <p>މި ތާރީޙަށް ނަމާދު ވަގުތު ހޯދިއެއް ނުގެ.</p>
         </div>
 

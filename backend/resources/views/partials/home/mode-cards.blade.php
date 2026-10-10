@@ -86,7 +86,13 @@
     min-height: 44px;
     color: inherit;
     text-decoration: none;
-    display: block;
+    /* A column, not a block: an unavailable card is a <button>, and a button
+       centres its content, which dropped "Eat here" below the others with a
+       band above its photo (UI audit, 2026-10-10). */
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
     box-shadow: none;
     appearance: none;
     -webkit-appearance: none;
@@ -96,13 +102,14 @@
     box-shadow: inset 0 0 0 1px rgba(0,0,0,0.04);
 }
 .home-mode-card__media {
+    flex: 0 0 auto;
     height: 120px;
     overflow: hidden;
     background: linear-gradient(145deg, var(--amber-light) 0%, var(--surface-alt) 100%);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 2.75rem;
+    color: var(--amber);
     position: relative;
 }
 .home-mode-card[data-available="false"] .home-mode-card__media {
@@ -120,6 +127,9 @@
     display: none;
 }
 .home-mode-card__body {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
     padding: 0.875rem 1rem 1rem;
 }
 .home-mode-card__label {
@@ -135,13 +145,23 @@
     line-height: 1.4;
 }
 .home-mode-card__cta {
-    margin-top: 0.625rem;
+    margin-top: auto;
+    padding-top: 0.625rem;
     font-size: 0.8125rem;
     font-weight: 700;
     color: var(--amber);
 }
 .home-mode-card[data-available="false"] .home-mode-card__cta {
     color: var(--muted);
+}
+/* Phones: one row per order type, photo on the left, as the order app does
+   (three columns left the pickup address cut off). */
+@media (max-width: 520px) {
+    .home-mode-cards__row { flex-direction: column; flex-wrap: nowrap; gap: 0.625rem; }
+    .home-mode-card { flex: 0 0 auto; flex-direction: row; }
+    .home-mode-card__media { width: 104px; height: auto; min-height: 104px; }
+    .home-mode-card__body { padding: 0.75rem 0.875rem; }
+    .home-mode-card__cta { padding-top: 0.375rem; }
 }
 .home-mode-info {
     border: none;

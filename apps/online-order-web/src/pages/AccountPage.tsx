@@ -37,6 +37,7 @@ import {
 } from './AccountPage/AccountHub';
 import { complaintUrl } from '../utils/complaintLink';
 import { itemDisplayPrice } from '../utils/money';
+import { CalendarDays, CreditCard, Gift, Heart, Package, Star, Wallet } from 'lucide-react';
 
 type PanelId =
   | 'profile'
@@ -306,7 +307,7 @@ export function AccountPage() {
                 <p style={{ color: 'var(--color-error, #dc2626)', fontSize: 13 }}>{reservationsError}</p>
               ) : reservations.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '32px 0' }}>
-                  <p style={{ fontSize: 32, margin: '0 0 8px' }}>🗓</p>
+                  <p style={{ margin: '0 0 8px', display: 'flex', justifyContent: 'center', color: 'var(--color-text-muted)', opacity: 0.6 }}><CalendarDays size={32} strokeWidth={1.75} aria-hidden /></p>
                   <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>{t('account.rsv_empty')}</p>
                   <Link to="/reservations" style={{ display: 'inline-block', marginTop: 12, fontSize: 14, color: 'var(--color-primary)', fontWeight: 700 }}>
                     {t('account.rsv_book')}
@@ -351,7 +352,7 @@ export function AccountPage() {
                 <p style={{ color: 'var(--color-error, #dc2626)', fontSize: 13 }}>{favouritesError}</p>
               ) : favourites.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '32px 0' }}>
-                  <p style={{ fontSize: 32, margin: '0 0 8px' }}>❤️</p>
+                  <p style={{ margin: '0 0 8px', display: 'flex', justifyContent: 'center', color: 'var(--color-text-muted)', opacity: 0.6 }}><Heart size={32} strokeWidth={1.75} aria-hidden /></p>
                   <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>{t('account.fav_empty')}</p>
                   <Link to="/menu" style={{ display: 'inline-block', marginTop: 12, fontSize: 14, color: 'var(--color-primary)', fontWeight: 700 }}>
                     {t('account.fav_browse')}
@@ -392,7 +393,7 @@ export function AccountPage() {
                 <p style={{ color: 'var(--color-error, #dc2626)', fontSize: 13 }}>{preOrdersError}</p>
               ) : preOrders.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '32px 0' }}>
-                  <p style={{ fontSize: 32, margin: '0 0 8px' }}>📦</p>
+                  <p style={{ margin: '0 0 8px', display: 'flex', justifyContent: 'center', color: 'var(--color-text-muted)', opacity: 0.6 }}><Package size={32} strokeWidth={1.75} aria-hidden /></p>
                   <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>{t('account.po_empty')}</p>
                   <Link to="/events" style={{ display: 'inline-block', marginTop: 12, fontSize: 14, color: 'var(--color-primary)', fontWeight: 700 }}>
                     {t('account.po_place')}
@@ -445,7 +446,7 @@ export function AccountPage() {
                           onClick={() => { setReviewOrderId(o.id); setReviewRating(5); setReviewComment(''); setReviewAnon(false); setReviewSubmitError(''); setShowReviewForm(true); }}
                           style={{ fontSize: 12, fontWeight: 700, padding: '6px 14px', background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit' }}
                         >
-                          ⭐ {t('account.rv_cta')}
+                          <Star size={14} aria-hidden style={{ verticalAlign: '-0.15em' }} /> {t('account.rv_cta')}
                         </button>
                       </div>
                     ))}
@@ -523,7 +524,7 @@ export function AccountPage() {
                   <p style={{ color: 'var(--color-error, #dc2626)', fontSize: 13 }}>{reviewsError}</p>
                 ) : reviews.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '32px 0' }}>
-                    <p style={{ fontSize: 32, margin: '0 0 8px' }}>⭐</p>
+                    <p style={{ margin: '0 0 8px', display: 'flex', justifyContent: 'center', color: 'var(--color-text-muted)', opacity: 0.6 }}><Star size={32} strokeWidth={1.75} aria-hidden /></p>
                     <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>{t('account.rv_empty')}</p>
                   </div>
                 ) : (
@@ -579,7 +580,7 @@ export function AccountPage() {
               ) : !credit ? (
                 <SectionCard title={t('account.credit')}>
                   <div style={{ textAlign: 'center', padding: '32px 0' }}>
-                    <p style={{ fontSize: 32, margin: '0 0 8px' }}>💳</p>
+                    <p style={{ margin: '0 0 8px', display: 'flex', justifyContent: 'center', color: 'var(--color-text-muted)', opacity: 0.6 }}><CreditCard size={32} strokeWidth={1.75} aria-hidden /></p>
                     <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>
                       {t('account.credit_none')}
                     </p>
@@ -692,7 +693,7 @@ export function AccountPage() {
               ) : !deposit ? (
                 <SectionCard title={t('account.deposit')}>
                   <div style={{ textAlign: 'center', padding: '32px 0' }}>
-                    <p style={{ fontSize: 32, margin: '0 0 8px' }}>💰</p>
+                    <p style={{ margin: '0 0 8px', display: 'flex', justifyContent: 'center', color: 'var(--color-text-muted)', opacity: 0.6 }}><Wallet size={32} strokeWidth={1.75} aria-hidden /></p>
                     <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>
                       {t('account.deposit_empty')}
                     </p>
@@ -859,7 +860,7 @@ export function AccountPage() {
                 </>
               ) : (
                 <div style={{ textAlign: 'center', padding: '48px 0' }}>
-                  <p style={{ fontSize: 36, margin: '0 0 8px' }}>🎁</p>
+                  <p style={{ margin: '0 0 8px', display: 'flex', justifyContent: 'center', color: 'var(--color-text-muted)', opacity: 0.6 }}><Gift size={36} strokeWidth={1.75} aria-hidden /></p>
                   <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>{t('account.ref_empty')}</p>
                 </div>
               )}

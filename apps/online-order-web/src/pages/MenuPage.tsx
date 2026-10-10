@@ -56,6 +56,9 @@ import { collectDayPrimaryLabel, formatTomorrowDateLabel } from '../utils/collec
 import { consumePendingPlatterReorder } from '../utils/applyReorderToCart';
 import { itemSortPrice } from '../utils/money';
 import { cartPriceChangeMessage } from '../utils/cartPriceChange';
+import { isBusyError } from '../api/client';
+import { Clock, Search, WifiOff } from 'lucide-react';
+import { ORDER_MODE_ICONS } from '../utils/emojiIcon';
 const MENU_VIEW_KEY = 'bg-menu-view';
 /**
  * The "Other" section's id in the scroll-spy and the rail: dishes with no
@@ -165,12 +168,14 @@ function sortMenuItems(list: Item[], sortBy: string): Item[] {
   return byAvailThen((a, b) => a.name.localeCompare(b.name));
 }
 
+// Words only: the chips are text, and emoji looked different on every phone
+// (UI audit, 2026-10-10).
 const DIETARY_FILTERS = [
-  { id: 'vegetarian', label: '🥬 Vegetarian' },
-  { id: 'vegan', label: '🌱 Vegan' },
-  { id: 'halal', label: '☪ Halal' },
-  { id: 'gluten-free', label: '🌾 Gluten-free' },
-  { id: 'spicy', label: '🌶 Spicy' },
+  { id: 'vegetarian', label: 'Vegetarian' },
+  { id: 'vegan', label: 'Vegan' },
+  { id: 'halal', label: 'Halal' },
+  { id: 'gluten-free', label: 'Gluten-free' },
+  { id: 'spicy', label: 'Spicy' },
 ] as const;
 
 /** Normalize free-form admin tags so "Gluten Free" / "gluten_free" match "gluten-free". */
@@ -209,6 +214,8 @@ export function MenuPage() {
   const [offersSubtext, setOffersSubtext] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  /** The server refused the menu as too frequent (429): say busy and try again, never blame the connection. */
+  const [errorBusy, setErrorBusy] = useState(false);
   const [favouriteIds, setFavouriteIds] = useState<Set<number>>(new Set());
   const [waitMinutes, setWaitMinutes] = useState<number | null>(null);
 
@@ -404,6 +411,8 @@ export function MenuPage() {
       fetchOnlineOrderingStatus(),
     ])
       .then(([cats, its, cateringIts, gate]) => {
+        setError(null);
+        setErrorBusy(false);
         const loadedItems = its.data ?? [];
         setCategories(cats.data ?? []);
         setItems(loadedItems);
@@ -453,7 +462,11 @@ export function MenuPage() {
           }
         }
       })
-      .catch((e) => { if (!silent) setError((e as Error).message); })
+      .catch((e) => {
+        if (silent) return;
+        setError((e as Error).message);
+        setErrorBusy(isBusyError(e));
+      })
       .finally(() => { if (!silent) setLoading(false); });
   };
 
@@ -516,6 +529,17 @@ export function MenuPage() {
     window.addEventListener('sales_channel_change', onChannel);
     return () => window.removeEventListener('sales_channel_change', onChannel);
   }, []);
+
+  // A busy server (429) gets another try by itself ten seconds later, so the
+  // customer does not have to keep pressing Retry (UI audit, 2026-10-10).
+  // Through a ref: loadMenu is a new function every render.
+  const loadMenuRef = useRef(loadMenu);
+  loadMenuRef.current = loadMenu;
+  useEffect(() => {
+    if (!error || !errorBusy) return;
+    const timer = window.setTimeout(() => loadMenuRef.current(), 10_000);
+    return () => window.clearTimeout(timer);
+  }, [error, errorBusy]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -1074,12 +1098,15 @@ export function MenuPage() {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
         <div style={{ textAlign: 'center', padding: '2rem' }} className="animate-fade-in">
-          <div style={{ fontSize: '2.5rem', marginBottom: '1rem', opacity: 0.4 }}>⚠️</div>
-          <p style={{ marginBottom: '1.25rem', color: 'var(--color-text-muted)', fontSize: '0.9375rem' }}>
-            Couldn't load the menu. Check your connection and try again.
+          <div style={{ marginBottom: '1rem', color: 'var(--color-text-muted)', opacity: 0.6 }} aria-hidden="true">
+            {errorBusy ? <Clock size={40} strokeWidth={1.75} /> : <WifiOff size={40} strokeWidth={1.75} />}
+          </div>
+          <p role="status" style={{ marginBottom: '1.25rem', color: 'var(--color-text-muted)', fontSize: '0.9375rem' }}>
+            {errorBusy ? t('menu.load_busy') : t('menu.load_failed')}
           </p>
           <button
-            onClick={() => window.location.reload()}
+            type="button"
+            onClick={() => loadMenu()}
             style={{
               padding: '0.65rem 1.5rem',
               background: 'var(--color-primary)',
@@ -1089,7 +1116,7 @@ export function MenuPage() {
               fontWeight: 600, fontSize: '0.9375rem',
             }}
           >
-            Retry
+            {t('menu.retry')}
           </button>
         </div>
       </div>
@@ -1171,21 +1198,21 @@ export function MenuPage() {
             {([
               {
                 id: 'pickup' as const,
-                icon: '🥡',
+                Icon: ORDER_MODE_ICONS.pickup,
                 label: t('mode.pickup'),
                 blocked: pickupBlocked,
                 blockedReason: t('modeSheet.pickup_unavailable'),
               },
               {
                 id: 'delivery' as const,
-                icon: '🛵',
+                Icon: ORDER_MODE_ICONS.delivery,
                 label: t('mode.delivery'),
                 blocked: deliveryBlocked,
                 blockedReason: getServiceEntry('online_delivery')?.public_message?.trim() || gateMessage || t('modeSheet.delivery_unavailable'),
               },
               {
                 id: 'dine_in' as const,
-                icon: '🍽️',
+                Icon: ORDER_MODE_ICONS.dine_in,
                 label: t('mode.eat_here'),
                 blocked: !dineInAvailable,
                 blockedReason: day === 'tomorrow' ? t('modeSheet.eat_here_tomorrow') : t('modeSheet.eat_here_unavailable'),
@@ -1210,7 +1237,7 @@ export function MenuPage() {
                   data-blocked={opt.blocked ? 'true' : undefined}
                   className={`mode-switch__btn${active ? ' is-active' : ''}${opt.blocked ? ' is-blocked' : ''}`}
                 >
-                  <span className="mode-switch__icon" aria-hidden="true">{opt.icon}</span>
+                  <span className="mode-switch__icon" aria-hidden="true"><opt.Icon size={15} strokeWidth={2.2} /></span>
                   {opt.label}
                 </button>
               );
@@ -1335,7 +1362,7 @@ export function MenuPage() {
               * of it.
               */}
             <div className="menu-search-row">
-              <span className="menu-search-row__icon" aria-hidden="true">🔍</span>
+              <span className="menu-search-row__icon" aria-hidden="true"><Search size={16} /></span>
               <input
                 type="search"
                 data-testid="menu-search-input"
@@ -1420,7 +1447,7 @@ export function MenuPage() {
 
           {!loading && (filtersActive ? filteredItems.length === 0 : !hasSectionedItems) && (
             <div className="empty-state">
-              <div className="empty-state-icon">🔍</div>
+              <div className="empty-state-icon"><Search size={40} strokeWidth={1.75} aria-hidden /></div>
               <p className="empty-state-title">
                 {searchQuery.trim()
                   ? t('menu.no_results').replace('{q}', searchQuery.trim())

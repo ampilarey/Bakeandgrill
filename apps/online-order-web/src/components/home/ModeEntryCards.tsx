@@ -5,6 +5,7 @@ import { useOrderMode } from '../../context/OrderModeContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
 import { Sheet } from '../ui/Sheet';
+import { ORDER_MODE_ICONS } from '../../utils/emojiIcon';
 
 type ModeKind = 'delivery' | 'pickup' | 'dine_in';
 
@@ -64,7 +65,7 @@ function formatWindowTime(iso: string | null | undefined): string {
 
 function ModeCard({ kind, label, hint, statusLine, available, cta, imageSrc, onClick }: CardProps) {
   const [imgFailed, setImgFailed] = useState(false);
-  const icon = kind === 'delivery' ? '🛵' : kind === 'dine_in' ? '🍽️' : '🏪';
+  const ModeIcon = ORDER_MODE_ICONS[kind];
   const resolvedSrc = (imageSrc || '').trim() || MODE_IMAGES[kind];
 
   return (
@@ -89,7 +90,7 @@ function ModeCard({ kind, label, hint, statusLine, available, cta, imageSrc, onC
             onError={() => setImgFailed(true)}
           />
         ) : (
-          <span className="mode-entry-card__icon">{icon}</span>
+          <span className="mode-entry-card__icon"><ModeIcon size={40} strokeWidth={1.75} /></span>
         )}
       </div>
       <div className="mode-entry-card__body" data-testid={`mode-entry-body-${kind}`}>

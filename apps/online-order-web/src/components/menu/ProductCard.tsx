@@ -21,6 +21,7 @@ import {
 } from '../../utils/itemAvailability';
 import { formatCardPrice, itemDisplayPrice } from '../../utils/money';
 import { MenuImageSlider } from './MenuImageSlider';
+import { HeartIcon, SPICE_LEVELS, SpiceFlames } from '../../utils/emojiIcon';
 
 export type ProductCardProps = {
   item: Item;
@@ -42,13 +43,6 @@ export type ProductCardProps = {
    * allow_pre_order is the only gate (items are made fresh for tomorrow).
    */
   orderDay?: 'today' | 'tomorrow';
-};
-
-const SPICE_MAP: Record<string, { label: string; icon: string }> = {
-  mild: { label: 'Mild', icon: '🌶' },
-  medium: { label: 'Medium', icon: '🌶🌶' },
-  hot: { label: 'Hot', icon: '🌶🌶🌶' },
-  extra_hot: { label: 'Extra Hot', icon: '🔥' },
 };
 
 export function ProductCard({
@@ -122,7 +116,7 @@ export function ProductCard({
       ? itemLowStockLabel(item, t)
       : itemTomorrowLowLabel(item, t))
     : null;
-  const spice = item.spice_level && item.spice_level !== 'none' ? SPICE_MAP[item.spice_level] : null;
+  const spice = item.spice_level && item.spice_level !== 'none' ? SPICE_LEVELS[item.spice_level] : null;
   const special = item.special;
   const activeVariants = (item.variants ?? []).filter((v) => v.is_active);
   const discountedVariants = activeVariants.filter(
@@ -191,7 +185,7 @@ export function ProductCard({
         {!isNew && onSale && saleBadgeLabel
           ? <span className="badge badge-sale">{saleBadgeLabel}</span>
           : !isNew && spice
-            ? <span className="badge badge-spicy">{spice.icon}</span>
+            ? <span className="badge badge-spicy" aria-label={spice.label}><SpiceFlames count={spice.flames} size={11} /></span>
             : null}
         {isNew && onSale && saleBadgeLabel
           ? <span className="badge badge-sale">{saleBadgeLabel}</span>
@@ -276,7 +270,7 @@ export function ProductCard({
             onClick={(e) => { e.stopPropagation(); onToggleFavourite(item.id); }}
             aria-label={isFavourite ? 'Remove from favourites' : 'Add to favourites'}
           >
-            {isFavourite ? '❤️' : '🤍'}
+            <HeartIcon on={isFavourite} size={16} />
           </button>
         )}
         {badge}

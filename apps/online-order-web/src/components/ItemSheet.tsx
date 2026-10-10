@@ -2,7 +2,7 @@
  * Item customisation sheet. Phase 3 PR2: same UI;
  * edit-mode props call CartContext.updateEntry when editIndex is set.
  */
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { fetchCartRecommendations, trackSuggestion, getItemReviews, getItemPhotos } from '../api';
 import type { Item, Modifier, ItemReview, ItemPhoto } from '../api';
 import type { ComboItemEntry, PlatterSelection, Variant } from '@shared/types';
@@ -20,7 +20,7 @@ import {
   itemUnavailableLabel,
   needsMoreNoticeThan,
 } from '../utils/itemAvailability';
-import { buildItemSlides } from '../utils/itemMedia';
+import { buildItemSlides, resolveMediaUrl } from '../utils/itemMedia';
 import { formatCardPrice, formatSavingsLabel, itemDisplayPrice } from '../utils/money';
 import {
   isPlatterSelectionValid,
@@ -33,6 +33,8 @@ import { isStandardItemTile } from '../lib/brandLogo';
 import { PlatterPicker } from './PlatterPicker';
 import { ShareControl } from './ShareControl';
 import { publicMenuItemUrl } from '../utils/publicMenuItemUrl';
+import { HeartIcon, SPICE_LEVELS, SpiceFlames } from '../utils/emojiIcon';
+import { Clock } from 'lucide-react';
 
 export type ItemSheetProps = {
   open: boolean;
@@ -340,16 +342,19 @@ export function ItemSheet({
     else onAddToCart(selectedVariant, selectedPackagingId, picks);
   };
 
-  const spice = item.spice_level && item.spice_level !== 'none' ? SPICE_MAP[item.spice_level] : null;
+  const spice = item.spice_level && item.spice_level !== 'none' ? SPICE_LEVELS[item.spice_level] : null;
   const dietary = item.dietary_tags ?? [];
   const allergens = item.allergens ?? [];
-  const metaBits: string[] = [];
-  if (spice) metaBits.push(`${spice.icon} ${spice.label}`);
+  // Heat and prep time with drawn icons, as on the website's dish page.
+  const metaBits: Array<{ key: string; icon: ReactNode; text: string }> = [];
+  if (spice) {
+    metaBits.push({ key: 'spice', icon: <SpiceFlames count={spice.flames} size={12} />, text: spice.label });
+  }
   if (item.prep_time_minutes != null && item.prep_time_minutes > 0) {
-    metaBits.push(`⏱ ${item.prep_time_minutes} min`);
+    metaBits.push({ key: 'prep', icon: <Clock size={12} strokeWidth={2.2} aria-hidden />, text: `${item.prep_time_minutes} min` });
   }
   if (item.calories != null && item.calories > 0) {
-    metaBits.push(`~${item.calories} kcal`);
+    metaBits.push({ key: 'kcal', icon: null, text: `~${item.calories} kcal` });
   }
 
   const chip = (selected: boolean): CSSProperties => ({
@@ -448,13 +453,13 @@ export function ItemSheet({
                 placeholderFit="contain"
               />
             ) : (
+              // The menu's quiet no-photo tile: the flame, faded.
               <div style={{
                 aspectRatio: '4 / 3',
-                background: 'linear-gradient(135deg, var(--color-primary-light), var(--color-surface-alt))',
+                background: 'color-mix(in srgb, var(--color-primary) 14%, var(--color-surface))',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '2.75rem', opacity: 0.45,
               }}>
-                🍽️
+                <img src={resolveMediaUrl('/brand/flame-mark.svg') ?? '/brand/flame-mark.svg'} alt="" width={96} height={90} className="quiet-flame-mark" />
               </div>
             )}
             {onToggleFavourite && (
@@ -463,7 +468,7 @@ export function ItemSheet({
                 onClick={() => onToggleFavourite(item.id)}
                 style={{
                   position: 'absolute', top: 12, right: 12, zIndex: 4,
-                  background: 'rgba(255,255,255,0.95)', border: 'none', borderRadius: '50%',
+                  background: 'color-mix(in srgb, var(--color-surface) 95%, transparent)', border: 'none', borderRadius: '50%',
                   width: 40, height: 40, cursor: 'pointer', fontSize: '1.15rem',
                   boxShadow: '0 2px 10px rgba(0,0,0,0.15)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -472,7 +477,7 @@ export function ItemSheet({
                 aria-pressed={isFavourite}
                 data-testid="item-sheet-favourite"
               >
-                {isFavourite ? '❤️' : '🤍'}
+                <HeartIcon on={isFavourite} size={19} />
               </button>
             )}
           </div>
@@ -578,14 +583,16 @@ export function ItemSheet({
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: '0.85rem', alignItems: 'center' }}>
                 {metaBits.map((bit) => (
                   <span
-                    key={bit}
+                    key={bit.key}
                     style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
                       fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text)',
                       background: 'var(--color-surface-alt)', padding: '0.28rem 0.65rem',
                       borderRadius: 999, border: '1px solid var(--color-border)',
                     }}
                   >
-                    {bit}
+                    {bit.icon}
+                    {bit.text}
                   </span>
                 ))}
                 {avgRating !== null && (
@@ -1015,10 +1022,3 @@ export function ItemSheet({
     </div>
   );
 }
-
-const SPICE_MAP: Record<string, { label: string; icon: string }> = {
-  mild: { label: 'Mild', icon: '🌶' },
-  medium: { label: 'Medium', icon: '🌶🌶' },
-  hot: { label: 'Hot', icon: '🌶🌶🌶' },
-  extra_hot: { label: 'Extra Hot', icon: '🔥' },
-};

@@ -18,7 +18,7 @@
         margin-bottom: 0.5rem;
     }
     .policy-wrap .subtitle {
-        color: var(--text-muted, #78716c);
+        color: var(--muted);
         font-size: 0.975rem;
         margin-bottom: 2.5rem;
     }
@@ -27,7 +27,7 @@
         font-weight: 700;
         margin-top: 2.25rem;
         margin-bottom: 0.75rem;
-        color: var(--amber, #d97706);
+        color: var(--amber);
         text-transform: uppercase;
         letter-spacing: 0.04em;
         font-size: 0.8rem;
@@ -35,24 +35,24 @@
     .policy-wrap p, .policy-wrap li {
         font-size: 0.95rem;
         line-height: 1.8;
-        color: #44403c;
+        color: var(--text);
         margin-bottom: 0.6rem;
     }
     .policy-wrap ul {
         padding-left: 1.5rem;
         margin-bottom: 1rem;
     }
-    .policy-wrap a { color: var(--amber, #d97706); }
+    .policy-wrap a { color: var(--amber); }
     .policy-wrap .updated {
         margin-top: 3rem;
         font-size: 0.8rem;
-        color: #a8a29e;
+        color: var(--muted);
     }
     .policy-wrap .corporate-box {
-        border: 1px solid #e7e0d8;
+        border: 1px solid var(--border);
         border-radius: 12px;
         padding: 1.25rem 1.5rem;
-        background: #fffbf5;
+        background: var(--surface-alt);
         margin-top: 2rem;
         font-size: 0.9rem;
         line-height: 1.7;
@@ -106,8 +106,9 @@
         {{-- BML Req 8: Delivery policy --}}
         <h2>3. Delivery Policy</h2>
         <ul>
-            <li><strong>Delivery area:</strong> We currently deliver within Malé city. Orders outside this area cannot be fulfilled.</li>
-            <li><strong>Delivery fee:</strong> A flat fee applies, displayed at checkout before payment.</li>
+            {{-- One wording for the delivery area, shared with the footer and the home page (UI audit, 2026-10-10). --}}
+            <li><strong>Delivery area:</strong> {{ rtrim(trim((string) content('footer_delivery_text', 'Delivery across Malé & Hulhumalé')), '.') }}. Orders outside our delivery area cannot be fulfilled.</li>
+            <li><strong>Delivery fee:</strong> A delivery fee applies, depending on the area, and is shown at checkout before payment.</li>
             <li><strong>Estimated delivery time:</strong> 30–45 minutes from order confirmation, subject to demand and location.</li>
             <li><strong>Takeaway:</strong> Orders may also be collected in person from our store at Kalaafaanu Hingun, Malé.</li>
             <li>We reserve the right to decline orders if delivery is not feasible due to weather, distance, or operational reasons. In such cases, a full refund will be issued.</li>

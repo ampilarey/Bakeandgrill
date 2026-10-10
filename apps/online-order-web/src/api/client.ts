@@ -45,6 +45,37 @@ async function withCsrf(options: ApiRequestOptions = {}): Promise<ApiRequestOpti
 }
 
 /**
+ * A read the server refused as too frequent (429) waits as long as the
+ * server asked, up to this many seconds, and tries once more before the
+ * page sees an error (UI audit, 2026-10-10: a refused menu read showed
+ * "Couldn't load the menu. Check your connection").
+ */
+export const BUSY_RETRY_MAX_SECONDS = 8;
+const BUSY_RETRY_DEFAULT_SECONDS = 2;
+
+function busyWaitSeconds(e: unknown): number | null {
+  if (!(e instanceof ApiRequestError) || e.status !== 429) return null;
+  const asked = e.retryAfterSeconds ?? BUSY_RETRY_DEFAULT_SECONDS;
+  return asked <= BUSY_RETRY_MAX_SECONDS ? Math.max(1, asked) : null;
+}
+
+async function readWithBusyRetry<T>(path: string, prepared: ApiRequestOptions, method: string): Promise<T> {
+  try {
+    return await coreRequest<T>(path, prepared);
+  } catch (e) {
+    const wait = method === 'GET' || method === 'HEAD' ? busyWaitSeconds(e) : null;
+    if (wait === null) throw e;
+    await new Promise((resolve) => setTimeout(resolve, wait * 1000));
+    return coreRequest<T>(path, prepared);
+  }
+}
+
+/** True when the server refused a request as too frequent, so callers can say "busy" rather than blame the connection. */
+export function isBusyError(e: unknown): boolean {
+  return e instanceof ApiRequestError && e.status === 429;
+}
+
+/**
  * Mutating calls get a fresh CSRF cookie; on 419 (stale sibling-host XSRF),
  * re-prime once and retry — same pattern as admin-dashboard.
  */
@@ -52,7 +83,7 @@ export async function request<T>(path: string, options: ApiRequestOptions = {}):
   const method = (options.method ?? 'GET').toUpperCase();
   const prepared = await withCsrf(options);
   try {
-    return await coreRequest<T>(path, prepared);
+    return await readWithBusyRetry<T>(path, prepared, method);
   } catch (e) {
     const status = e instanceof ApiRequestError ? e.status : (e as { status?: number })?.status;
     if (status === 419 && method !== 'GET' && method !== 'HEAD') {

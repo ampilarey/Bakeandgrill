@@ -1,0 +1,1 @@
+function n(n){const r=/^(\d{1,2}):(\d{2})/.exec((n??"").trim());if(!r)return"";const t=Number(r[1]);if(t>23)return"";return`${t%12||12}:${r[2]} ${t>=12?"PM":"AM"}`}function r(r,t){const e=n(r),u=n(t);return e&&u?`${e} – ${u}`:""}export{r as h};

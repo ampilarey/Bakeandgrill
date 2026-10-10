@@ -13,7 +13,7 @@
         background: linear-gradient(135deg, rgba(183, 75, 12, 0.08), rgba(184, 168, 144, 0.08));
     }
     .login-card {
-        background: white;
+        background: var(--surface);
         border: 1px solid var(--border);
         border-radius: 24px;
         padding: 3rem;
@@ -22,7 +22,7 @@
         box-shadow: 0 12px 32px rgba(0,0,0,0.1);
     }
     .login-card h1 { font-size: 2rem; margin-bottom: 0.5rem; color: var(--dark); text-align: center; }
-    .login-card .subtitle { text-align: center; color: #636e72; margin-bottom: 2rem; font-size: 1rem; }
+    .login-card .subtitle { text-align: center; color: var(--muted); margin-bottom: 2rem; font-size: 1rem; }
     .form-group { margin-bottom: 1.5rem; }
     .form-group label { display: block; font-weight: 500; margin-bottom: 0.6rem; color: var(--dark); font-size: 0.95rem; }
     .form-group input {
@@ -31,34 +31,42 @@
     }
     .form-group input:focus { outline: none; border-color: var(--amber); box-shadow: 0 0 0 4px rgba(183,75,12,0.12); }
     .btn-submit {
-        width: 100%; padding: 1.15rem; background: var(--amber); color: white; border: none;
+        width: 100%; padding: 1.15rem; background: var(--amber); color: var(--amber-contrast); border: none;
         border-radius: 999px; font-weight: 600; font-size: 1.1rem; cursor: pointer;
         transition: all 0.2s; box-shadow: 0 4px 12px rgba(183,75,12,0.3); font-family: inherit;
     }
     .btn-submit:hover { background: var(--amber-hover); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(183,75,12,0.4); }
     .alert { padding: 1rem 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; font-size: 0.95rem; }
-    .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-    .alert-info  { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+    .alert-error   { background: var(--danger-bg); color: var(--danger-text); border: 1px solid color-mix(in srgb, var(--danger-text) 30%, transparent); }
+    .alert-info    { background: var(--amber-light); color: var(--text); border: 1px solid var(--border); }
     .link-muted { color: var(--amber); font-weight: 500; text-decoration: none; font-size: 0.9rem; }
     .link-muted:hover { text-decoration: underline; }
     @media (max-width: 768px) {
         .login-container { padding: 2rem 1rem; }
         .login-card { padding: 2rem 1.5rem; }
     }
+    .auth-badge {
+        width: 64px; height: 64px; margin: 0 auto 1rem; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        background: var(--amber-light); color: var(--amber);
+    }
+    .alert { display: flex; align-items: flex-start; gap: 0.5rem; }
+    .alert .ui-icon { margin-top: 0.15em; }
+    .form-group input { background: var(--bg); color: var(--text); }
 </style>
 @endsection
 
 @section('content')
 <div class="login-container">
     <div class="login-card">
-        <div style="text-align:center; font-size:3rem; margin-bottom:1rem;">🔑</div>
+        <div class="auth-badge">{{ \App\Support\UiIcon::svg('key-round', 30) }}</div>
 
         @if($errors->any())
-            <div class="alert alert-error">⚠️ {{ $errors->first() }}</div>
+            <div class="alert alert-error">{{ \App\Support\UiIcon::svg('alert-triangle', 16) }} {{ $errors->first() }}</div>
         @endif
 
         @if(session('otp_hint'))
-            <div class="alert alert-info">💡 {{ session('otp_hint') }}</div>
+            <div class="alert alert-info">{{ \App\Support\UiIcon::svg('info', 16) }} {{ session('otp_hint') }}</div>
         @endif
 
         {{-- Step 1: Enter phone --}}
@@ -69,8 +77,8 @@
             <form method="POST" action="{{ route('customer.forgot-password.post') }}">
                 @csrf
                 <div class="form-group">
-                    <label for="phone">📱 Phone Number</label>
-                    <input type="text" id="phone" name="phone" placeholder="7820288" value="{{ old('phone') }}" autofocus>
+                    <label for="phone">Phone Number</label>
+                    <input type="text" id="phone" name="phone" placeholder="7XX XXXX" value="{{ old('phone') }}" autofocus>
                 </div>
                 <button type="submit" class="btn-submit">Send Reset Code →</button>
             </form>
@@ -84,7 +92,7 @@
                 @csrf
                 <input type="hidden" name="phone" value="{{ session('phone') ?? old('phone') }}">
                 <div class="form-group">
-                    <label for="otp">🔐 Verification Code</label>
+                    <label for="otp">Verification Code</label>
                     <input type="text" id="otp" name="otp" maxlength="6" inputmode="numeric"
                            placeholder="000000" autofocus autocomplete="one-time-code"
                            style="letter-spacing:0.4rem; font-size:1.5rem; text-align:center;">
@@ -101,7 +109,7 @@
                 @csrf
                 <input type="hidden" name="phone" value="{{ session('password_reset_phone') ?? session('phone') }}">
                 <div class="form-group">
-                    <label for="password">🔒 New Password</label>
+                    <label for="password">New Password</label>
                     <input type="password" id="password" name="password" placeholder="At least 6 characters" autofocus autocomplete="new-password">
                 </div>
                 <div class="form-group">

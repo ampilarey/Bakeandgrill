@@ -147,7 +147,7 @@
     color: #F0A96A;
     padding: 0.3rem 0.875rem;
     border-radius: 999px;
-    font-size: 0.65rem;
+    font-size: 0.6875rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.1em;
@@ -476,14 +476,16 @@
     position: absolute;
     bottom: 1rem;
     left: 50%; transform: translateX(-50%);
-    display: flex; gap: 6px; z-index: 10;
+    display: flex; gap: 0; z-index: 10;
 }
+/* Each dot is a 32px button with the small dot drawn inside it (UI audit,
+   2026-10-10): the old 44px halo of each dot overlapped its neighbours, so a
+   tap between two dots picked whichever came later. */
 .banner-dot {
-    width: 6px; height: 6px; border-radius: 99px;
-    background: rgba(255,255,255,0.3);
-    transition: all 0.3s; cursor: pointer;
-    /* Expand tap target without changing visible size */
-    position: relative;
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    background: transparent;
+    cursor: pointer;
     /* Reset native button chrome — dots are <button> for a11y */
     border: 0;
     padding: 0;
@@ -491,22 +493,20 @@
     -webkit-appearance: none;
     font: inherit;
     color: inherit;
+    transition: width 0.3s;
 }
-.banner-dot::before {
+.banner-dot::after {
     content: '';
-    position: absolute;
-    /* The dot stays 6–8px; the finger gets 44px. */
-    inset: -18px -16px;
+    width: 8px; height: 8px; border-radius: 99px;
+    background: rgba(255, 255, 255, 0.55);
+    box-shadow: 0 0 0 1px rgba(20, 14, 8, 0.18);
+    transition: width 0.3s, background 0.3s;
 }
-.banner-dot.active { width: 24px; background: var(--amber); }
+.banner-dot.active { width: 42px; }
+.banner-dot.active::after { width: 26px; background: var(--amber); }
+.banner-dot:focus-visible { outline: 2px solid #fff; outline-offset: -4px; border-radius: 99px; }
 @media (max-width: 768px) {
-    .banner-dots { bottom: 0.85rem; gap: 8px; }
-    .banner-dot {
-        width: 8px;
-        height: 8px;
-        background: rgba(255, 255, 255, 0.45);
-    }
-    .banner-dot.active { width: 26px; }
+    .banner-dots { bottom: 0.4rem; }
 }
 
 /* ── Desktop-only hero / banner polish (mobile unchanged) ───────── */
@@ -601,20 +601,12 @@
     .banner-btn.prev { left: clamp(1.25rem, 2.5vw, 2.5rem); }
     .banner-btn.next { right: clamp(1.25rem, 2.5vw, 2.5rem); }
     .banner-dots {
-        bottom: 2rem;
+        bottom: 1.5rem;
         left: 50%;
         transform: translateX(-50%);
-        gap: 8px;
     }
-    .banner-dot {
-        width: 8px;
-        height: 8px;
-        background: rgba(255, 255, 255, 0.35);
-    }
-    .banner-dot.active {
-        width: 28px;
-        background: var(--amber);
-    }
+    .banner-dot.active { width: 44px; }
+    .banner-dot.active::after { width: 28px; }
     .hero-status {
         top: 1.75rem;
         right: clamp(1.5rem, 3vw, 2.5rem);
@@ -852,13 +844,15 @@
 .trust-icon-wrap {
     width: 40px; height: 40px;
     background: var(--amber-light);
+    color: var(--amber);
     border-radius: 10px;
     display: flex; align-items: center; justify-content: center;
     font-size: 1.2rem;
     flex-shrink: 0;
 }
 .trust-text strong { display: block; font-size: 0.875rem; font-weight: 700; color: var(--dark); line-height: 1.3; }
-.trust-text span   { font-size: 0.75rem; color: var(--muted); }
+/* Its own line height: the page's tall one spread a two-line subtitle wide apart on phones (UI audit, 2026-10-10). */
+.trust-text span   { display: block; font-size: 0.75rem; color: var(--muted); line-height: 1.4; margin-top: 0.1rem; }
 @media (max-width: 900px) {
     .trust-inner { grid-template-columns: repeat(2, 1fr); }
     .trust-item:nth-child(2) { border-right: none; }
@@ -960,7 +954,7 @@
 
 .cat-body { padding: 1.25rem 1.375rem 1.5rem; }
 .cat-label {
-    font-size: 0.65rem; font-weight: 700;
+    font-size: 0.6875rem; font-weight: 700;
     text-transform: uppercase; letter-spacing: 0.1em;
     color: var(--amber); margin-bottom: 0.35rem;
 }
@@ -1023,13 +1017,16 @@
     display: flex; align-items: center; justify-content: center;
     font-size: 3.5rem;
 }
+/* No photo: the brand flame, as on the menu (was a grey plate emoji). */
+.product-img-placeholder img,
+.cat-img-placeholder img { width: 64px; height: auto; opacity: 0.85; }
 
 .product-badge {
     position: absolute; top: 0.75rem; left: 0.75rem;
     display: inline-flex; align-items: center; gap: 0.3rem;
     padding: 0.3rem 0.75rem;
     border-radius: 999px;
-    font-size: 0.68rem; font-weight: 700;
+    font-size: 0.6875rem; font-weight: 700;
     text-transform: uppercase; letter-spacing: 0.06em;
 }
 .badge-bestseller { background: rgba(168,88,28,0.9); color: #FDDDB4; }
@@ -1129,7 +1126,7 @@
 .special-badge {
     background: var(--amber);
     color: white;
-    font-size: 0.65rem;
+    font-size: 0.6875rem;
     font-weight: 700;
     padding: 0.2rem 0.6rem;
     border-radius: 999px;
@@ -1154,7 +1151,7 @@
 
 .product-body { padding: 1.25rem 1.375rem 1.5rem; }
 .product-cat {
-    font-size: 0.68rem; font-weight: 700;
+    font-size: 0.6875rem; font-weight: 700;
     text-transform: uppercase; letter-spacing: 0.09em;
     color: var(--amber); margin-bottom: 0.4rem;
 }
@@ -1329,6 +1326,11 @@
     transition: all 0.15s; background: transparent;
 }
 .loc-cta-outline:hover { border-color: var(--amber); color: var(--amber); background: var(--amber-light); }
+/* One line each: in a phone-wide card "Order Online Now" and "Get directions"
+   broke in two and the buttons grew to 70px. A pair that does not fit side by
+   side now stacks (UI audit, 2026-10-10). */
+.loc-cta-primary, .loc-cta-outline { flex: 1 1 auto; white-space: nowrap; min-height: 44px; padding-block: 0.625rem; }
+.loc-cta-primary { color: var(--amber-contrast); }
 
 /* Chat with us component */
 .chat-block {
@@ -1344,11 +1346,11 @@
     transition: all 0.15s;
 }
 .chat-btn-wa {
-    background: #25D366; color: white;
+    background: #15803D; color: white;
 }
-.chat-btn-wa:hover { background: #1bba58; transform: translateY(-1px); }
+.chat-btn-wa:hover { background: #126C34; transform: translateY(-1px); }
 .chat-btn-viber {
-    background: #7360F2; color: white;
+    background: #6554E0; color: white;
 }
 .chat-btn-viber:hover { background: #5E4CD6; transform: translateY(-1px); }
 .chat-label {
@@ -1455,8 +1457,8 @@
     $homeCategoriesEyebrow = content('home_categories_eyebrow', "What we're known for");
     $homeCategoriesTitle   = content('home_categories_title',   'Made for Malé');
     $homeCategoriesSubtitle= content('home_categories_subtitle','Four things we do properly, every single day.');
-    $homeFeaturedEyebrowBs = content('home_featured_eyebrow_bestseller', '🔥 Most Ordered');
-    $homeFeaturedEyebrowHp = content('home_featured_eyebrow_handpicked', '⭐ Handpicked');
+    $homeFeaturedEyebrowBs = content('home_featured_eyebrow_bestseller', 'Most Ordered');
+    $homeFeaturedEyebrowHp = content('home_featured_eyebrow_handpicked', 'Handpicked');
     $homeFeaturedTitleBs   = content('home_featured_title_bestseller',   'Best Sellers');
     $homeFeaturedTitleHp   = content('home_featured_title_handpicked',   'Featured Items');
     $homeFeaturedSubtitle  = content('home_featured_subtitle',  'The dishes our regulars order on repeat.');
@@ -1464,7 +1466,13 @@
     $homeLocationTitle     = content('home_location_title',     'Visit or Order');
     $homeLocationSubtitle  = content('home_location_subtitle',  "Come in or stay in — we've got you covered either way.");
     $homeProofEyebrow      = content('home_proof_eyebrow',      'Loved by Malé');
-    $homeDeliveryTagline   = content('home_delivery_tagline',   'Delivery across all of Malé');
+    // One wording for the delivery area (UI audit, 2026-10-10): the card said
+    // "all of Malé" while the footer said "Malé & Hulhumalé". Empty, or the
+    // old default, follows the footer line.
+    $homeDeliveryTagline   = trim((string) content('home_delivery_tagline', ''));
+    if ($homeDeliveryTagline === '' || $homeDeliveryTagline === 'Delivery across all of Malé') {
+        $homeDeliveryTagline = trim((string) content('footer_delivery_text', 'Delivery across Malé & Hulhumalé'));
+    }
     $homeDeliverySubtitle  = content('home_delivery_subtitle',  'We come to you — no exceptions within the city');
     $homeDeliveryQualityLine  = content('home_delivery_quality_line',  'Hot food at your door, not a cold box');
     $homeDeliveryPaymentLine  = content('home_delivery_payment_line',  'Secure BML online payment at checkout');

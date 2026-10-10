@@ -6,6 +6,7 @@ import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { useLanguage } from '../context/LanguageContext';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { PageHeader } from '../components/shell/PageHeader';
+import { hoursRange } from '../utils/clockTime';
 
 const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
 const DAY_KEYS = [
@@ -19,13 +20,6 @@ const DAY_KEYS = [
 ] as const;
 const TODAY_IDX = new Date().getDay();
 
-function fmt(time: string) {
-  if (!time) return '';
-  const [h, m] = time.split(':').map(Number);
-  const period = h >= 12 ? 'PM' : 'AM';
-  const hour = h % 12 || 12;
-  return `${hour}:${String(m).padStart(2, '0')} ${period}`;
-}
 
 export function HoursPage() {
   const navigate = useNavigate();
@@ -60,7 +54,7 @@ export function HoursPage() {
   const weekRows = DAY_NAMES.map((key, i) => {
     const row = schedule?.[key] ?? schedule?.[dayLabels[i]] ?? null;
     const hoursLabel = row
-      ? (row.closed ? t('hours.closed') : `${fmt(row.open)} – ${fmt(row.close)}`)
+      ? (row.closed ? t('hours.closed') : hoursRange(row.open, row.close) || t('hours.unavailable'))
       : t('hours.unavailable');
     return { label: dayLabels[i], hoursLabel, isToday: i === TODAY_IDX, closed: row?.closed ?? false };
   });
@@ -118,7 +112,7 @@ export function HoursPage() {
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
               {row.isToday && (
-                <span style={{ background: 'var(--color-primary)', color: 'white', fontSize: '0.65rem', fontWeight: 700, padding: '0.15rem 0.5rem', borderRadius: '999px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <span style={{ background: 'var(--color-primary)', color: 'white', fontSize: '0.6875rem', fontWeight: 700, padding: '0.15rem 0.5rem', borderRadius: '999px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   {t('hours.today')}
                 </span>
               )}
@@ -158,7 +152,7 @@ export function HoursPage() {
           rel="noopener noreferrer"
           style={{
             flex: 1, minWidth: '160px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            gap: '0.375rem', background: '#25D366', color: 'white', padding: '0.875rem',
+            gap: '0.375rem', background: '#15803D', color: 'white', padding: '0.875rem',
             borderRadius: '12px', fontWeight: 600, fontSize: '0.925rem', textDecoration: 'none',
           }}
         >

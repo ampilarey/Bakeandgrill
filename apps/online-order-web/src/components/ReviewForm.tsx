@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { submitReview } from "../api";
 import { useLanguage } from "../context/LanguageContext";
+import { Star } from "lucide-react";
 
 interface Props {
   orderId: number;
@@ -38,7 +39,9 @@ export function ReviewForm({ orderId, onDone }: Props) {
   if (done) {
     return (
       <div style={s.card}>
-        <p style={{ textAlign: "center", fontSize: 18 }}>⭐ {t("review.thanks")}</p>
+        <p style={{ textAlign: "center", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem" }}>
+          <Star size={18} aria-hidden style={{ color: "var(--color-primary)" }} fill="currentColor" /> {t("review.thanks")}
+        </p>
       </div>
     );
   }

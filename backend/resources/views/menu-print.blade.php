@@ -143,6 +143,7 @@
             /* Tall enough to hit on a phone; the row was 31px. */
             display: inline-flex;
             align-items: center;
+            gap: 0.4rem;
             min-height: 40px;
             padding: 0.45rem 0.8rem;
             border: 1.5px solid #d9d2c8;
@@ -679,22 +680,22 @@
              a button that does nothing. The PDF link beside it always works. --}}
         <button type="button" class="toolbar__share" id="menuShare"
                 data-testid="menu-print-share" hidden>
-            ↗ Share
+            {{ \App\Support\UiIcon::svg('share-2', 16) }} Share
         </button>
 
         {{-- A5 pages on A4 sheets, in folding order, with covers. --}}
         <a class="toolbar__booklet" data-testid="menu-print-booklet"
            href="{{ route('menu.print.booklet', $printQuery(['paper' => null, 'orient' => null])) }}"
            title="A5 booklet: A4 sheets, two pages a side, in folding order. Print two-sided, flip on the short edge, fold in half.">
-            📖 Booklet
+            {{ \App\Support\UiIcon::svg('book-open', 16) }} Booklet
         </a>
 
         <a class="toolbar__pdf" data-testid="menu-print-pdf" id="menuPdfLink"
            href="{{ route('menu.print.pdf', $printQuery()) }}">
-            ⬇ PDF
+            {{ \App\Support\UiIcon::svg('download', 16) }} PDF
         </a>
         <button type="button" class="toolbar__print" id="menuPrintBtn"
-                data-testid="menu-print-button">🖨 Print</button>
+                data-testid="menu-print-button">{{ \App\Support\UiIcon::svg('printer', 16) }} Print</button>
 
         <p class="toolbar__hint">
             {{ strtoupper($paper) }} {{ $orient }}, {{ $columns }} {{ Str::plural('column', $columns) }}.

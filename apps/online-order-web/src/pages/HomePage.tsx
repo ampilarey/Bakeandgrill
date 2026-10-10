@@ -387,7 +387,7 @@ export function HomePage() {
       case 'prayer_bar':
         return (
           <div key={key} className="home-prayer-wrap" data-home-block="prayer_bar">
-            <PrayerBar />
+            <PrayerBar hideWhenUnavailable />
           </div>
         );
       case 'hero':

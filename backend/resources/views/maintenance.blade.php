@@ -18,7 +18,8 @@
     $fbUrl       = content('social_facebook', '');
     $igUrl       = content('social_instagram', '');
     $tiktokUrl   = content('social_tiktok', '');
-    $hoursSetting = content('business_hours', null);
+    // Usual hours from the Admin schedule; the old display key printed its raw JSON here.
+    $hoursGroups = rescue(fn () => \App\Support\OpeningHoursText::groups(), [], false);
 
     $phoneTel = 'tel:' . preg_replace('/[^+\d]/', '', $phone);
     $maintenance = $serviceMaintenance ?? [];
@@ -195,8 +196,12 @@
                     {{ $address }}<br>
                     <a href="mailto:{{ $email }}" style="color:var(--primary);text-decoration:none;">{{ $email }}</a>
                 </p>
-                @if($hoursSetting && is_string($hoursSetting))
-                    <p style="margin-top:0.5rem;">{{ $hoursSetting }}</p>
+                @if($hoursGroups !== [])
+                    <p style="margin-top:0.5rem;">
+                        @foreach($hoursGroups as $group)
+                            {{ $group['days'] }}: {{ $group['hours'] }}@if(! $loop->last)<br>@endif
+                        @endforeach
+                    </p>
                 @endif
                 <div class="maintenance-social">
                     @if($fbUrl)<a href="{{ $fbUrl }}" rel="noopener">Facebook</a>@endif

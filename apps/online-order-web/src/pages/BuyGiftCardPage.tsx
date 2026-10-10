@@ -9,6 +9,7 @@ import { StickyCtaBar } from '../components/ui/StickyCtaBar';
 import { getCustomerMe } from '../api/auth';
 import { purchaseGiftCard } from '../api/promotions';
 import { fetchOnlineOrderingStatus } from '../api/menu';
+import { Lock } from 'lucide-react';
 
 const PRESETS = [100, 200, 500] as const;
 
@@ -294,7 +295,7 @@ export function BuyGiftCardPage() {
           <>
             {purchaseClosed && (
               <div className="banner banner-warning" style={{ marginBottom: 12 }} data-testid="gift-purchase-closed">
-                <span className="banner-icon">🔒</span>
+                <span className="banner-icon"><Lock size={20} aria-hidden /></span>
                 <div>
                   <p className="banner-title">Gift card purchase is paused</p>
                   <p className="banner-sub">Please try again later or call us.</p>

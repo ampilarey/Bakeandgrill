@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
+import { AlertTriangle, Bell, Bike, CheckCircle2, ChefHat, ClipboardList, Gift, Hourglass, MapPin, PartyPopper, PauseCircle, Phone, RefreshCw, Repeat, Share2, Star, Tag, User, Users, Wallet, XCircle, type LucideIcon } from "lucide-react";
 import { getOrderDetail, getOrderByTrackingToken, getReorderPayload, initiateOnlinePayment, initiatePartialPayment, getWaitTimeEstimate, getMyReferralCode, cancelCustomerOrder, type OrderDetail, type OrderItem as OrderDetailItem, API_ORIGIN } from "../api";
 import { ReviewForm } from "../components/ReviewForm";
 import { BrandedHeader } from "../components/BrandedHeader";
@@ -72,13 +73,13 @@ function DriverTracker({ orderId, authenticated }: { orderId: number; authentica
       background: 'linear-gradient(135deg, #B74B0C, #8F3A09)',
       borderRadius: '1rem', padding: '1rem', color: 'white',
     }}>
-      <p style={{ fontSize: 'var(--text-sm)', fontWeight: 700, margin: '0 0 0.5rem', opacity: 0.85 }}>🚀 {t('track.driver.title')}</p>
+      <p style={{ fontSize: 'var(--text-sm)', fontWeight: 700, margin: '0 0 0.5rem', opacity: 0.85 }}><Bike size={15} aria-hidden style={{ verticalAlign: '-0.18em' }} /> {t('track.driver.title')}</p>
       {data?.eta_minutes != null && (
         <p style={{ fontSize: 'var(--text-base)', fontWeight: 800, margin: '0 0 0.35rem' }}>
           {t('track.driver.eta_estimate').replace('{n}', String(data.eta_minutes))}
         </p>
       )}
-      {driver && <p style={{ fontSize: 'var(--text-body)', fontWeight: 700, margin: '0 0 0.25rem' }}>🛵 {driver.name}</p>}
+      {driver && <p style={{ fontSize: 'var(--text-body)', fontWeight: 700, margin: '0 0 0.25rem' }}><User size={15} aria-hidden style={{ verticalAlign: '-0.18em' }} /> {driver.name}</p>}
       {location ? (
         <p style={{ fontSize: 'var(--text-xs)', margin: '0 0 0.75rem', opacity: 0.8 }}>
           {(() => {
@@ -105,7 +106,7 @@ function DriverTracker({ orderId, authenticated }: { orderId: number; authentica
               borderRadius: '0.625rem', textDecoration: 'none',
             }}
           >
-            📍 {t('track.driver.track_map')}
+            <MapPin size={15} aria-hidden /> {t('track.driver.track_map')}
           </a>
         )}
         {driver?.phone && (
@@ -117,7 +118,7 @@ function DriverTracker({ orderId, authenticated }: { orderId: number; authentica
               borderRadius: '0.625rem', textDecoration: 'none',
             }}
           >
-            📞 {t('track.driver.call')}
+            <Phone size={15} aria-hidden /> {t('track.driver.call')}
           </a>
         )}
         {waLink && (
@@ -126,12 +127,12 @@ function DriverTracker({ orderId, authenticated }: { orderId: number; authentica
             target="_blank"
             rel="noopener noreferrer"
             style={{
-              flex: 1, textAlign: 'center', background: '#25D366',
+              flex: 1, textAlign: 'center', background: '#15803D',
               color: 'white', fontWeight: 700, fontSize: 'var(--text-sm)', padding: '0.625rem 0',
               borderRadius: '0.625rem', textDecoration: 'none',
             }}
           >
-            💬 {t('track.driver.whatsapp')}
+            <WhatsAppIcon size={15} /> {t('track.driver.whatsapp')}
           </a>
         )}
       </div>
@@ -140,79 +141,93 @@ function DriverTracker({ orderId, authenticated }: { orderId: number; authentica
 }
 
 // ─── Status config (copy via track.status.* keys) ─────────────────────────────
+// Drawn icons, not emoji (UI audit, 2026-10-10).
 const STATUS_CONFIG: Record<string, {
   labelKey: string; subKey: string; nextKey?: string;
-  color: string; bg: string; icon: string;
+  color: string; bg: string; icon: LucideIcon;
 }> = {
   payment_pending: {
     labelKey: "track.status.payment_pending.label",
     subKey: "track.status.payment_pending.sub",
     nextKey: "track.status.payment_pending.next",
-    color: "var(--color-primary)", bg: "var(--color-primary-light)", icon: "⏳",
+    color: "var(--color-primary)", bg: "var(--color-primary-light)", icon: Hourglass,
   },
   pending: {
     labelKey: "track.status.pending.label",
     subKey: "track.status.pending.sub",
     nextKey: "track.status.pending.next",
-    color: "var(--color-warning)", bg: "var(--color-warning-bg)", icon: "✅",
+    color: "var(--color-warning)", bg: "var(--color-warning-bg)", icon: CheckCircle2,
+  },
+  // A ticket the restaurant has paused, and one part paid: both are received
+  // orders the kitchen has not started. The page used to print the raw word
+  // and light no step (UI audit, 2026-10-10).
+  held: {
+    labelKey: "track.status.held.label",
+    subKey: "track.status.held.sub",
+    color: "var(--color-warning)", bg: "var(--color-warning-bg)", icon: PauseCircle,
+  },
+  partial: {
+    labelKey: "track.status.partial.label",
+    subKey: "track.status.partial.sub",
+    color: "var(--color-warning)", bg: "var(--color-warning-bg)", icon: Wallet,
   },
   paid: {
     labelKey: "track.status.paid.label",
     subKey: "track.status.paid.sub",
     nextKey: "track.status.paid.next",
-    color: "var(--color-success)", bg: "var(--color-success-bg)", icon: "✅",
+    color: "var(--color-success)", bg: "var(--color-success-bg)", icon: CheckCircle2,
   },
   preparing: {
     labelKey: "track.status.preparing.label",
     subKey: "track.status.preparing.sub",
     nextKey: "track.status.preparing.next",
-    color: "var(--color-primary)", bg: "var(--color-primary-light)", icon: "👨‍🍳",
+    color: "var(--color-primary)", bg: "var(--color-primary-light)", icon: ChefHat,
   },
   in_progress: {
     labelKey: "track.status.in_progress.label",
     subKey: "track.status.in_progress.sub",
     nextKey: "track.status.in_progress.next",
-    color: "var(--color-primary)", bg: "var(--color-primary-light)", icon: "👨‍🍳",
+    color: "var(--color-primary)", bg: "var(--color-primary-light)", icon: ChefHat,
   },
   ready: {
     labelKey: "track.status.ready.label",
     subKey: "track.status.ready.sub",
-    color: "var(--color-success)", bg: "var(--color-success-bg)", icon: "🎉",
+    color: "var(--color-success)", bg: "var(--color-success-bg)", icon: PartyPopper,
   },
   out_for_delivery: {
     labelKey: "track.status.out_for_delivery.label",
     subKey: "track.status.out_for_delivery.sub",
-    color: "var(--color-warning)", bg: "var(--color-warning-bg)", icon: "🛵",
+    color: "var(--color-warning)", bg: "var(--color-warning-bg)", icon: Bike,
   },
   picked_up: {
     labelKey: "track.status.picked_up.label",
     subKey: "track.status.picked_up.sub",
-    color: "var(--color-warning)", bg: "var(--color-warning-bg)", icon: "✅",
+    color: "var(--color-warning)", bg: "var(--color-warning-bg)", icon: CheckCircle2,
   },
   on_the_way: {
     labelKey: "track.status.on_the_way.label",
     subKey: "track.status.on_the_way.sub",
-    color: "var(--color-warning)", bg: "var(--color-warning-bg)", icon: "🏃",
+    color: "var(--color-warning)", bg: "var(--color-warning-bg)", icon: Bike,
   },
   delivered: {
     labelKey: "track.status.delivered.label",
     subKey: "track.status.delivered.sub",
-    color: "var(--color-success)", bg: "var(--color-success-bg)", icon: "🎉",
+    color: "var(--color-success)", bg: "var(--color-success-bg)", icon: PartyPopper,
   },
   completed: {
     labelKey: "track.status.completed.label",
     subKey: "track.status.completed.sub",
-    color: "var(--color-text-muted)", bg: "var(--color-surface-alt)", icon: "🎉",
+    color: "var(--color-text-muted)", bg: "var(--color-surface-alt)", icon: PartyPopper,
   },
   cancelled: {
     labelKey: "track.status.cancelled.label",
     subKey: "track.status.cancelled.sub",
-    color: "var(--color-error)", bg: "var(--color-error-bg)", icon: "✕",
+    color: "var(--color-error)", bg: "var(--color-error-bg)", icon: XCircle,
   },
   refunded: {
     labelKey: "track.status.refunded.label",
     subKey: "track.status.refunded.sub",
-    color: "var(--color-error)", bg: "var(--color-error-bg)", icon: "✕",
+    color: "var(--color-error)", bg: "var(--color-error-bg)", icon: XCircle,
   },
 };
 
@@ -225,7 +240,7 @@ const STEPS = [
 ];
 function stepIndex(status: string): number {
   const normalised = status === "paid" || status === "in_progress" ? "preparing"
-    : status === "payment_pending" ? "pending"
+    : status === "payment_pending" || status === "held" || status === "partial" ? "pending"
     : status;
   const s = STEPS.findIndex((s) => s.key === normalised);
   // delivery statuses sit between ready and completed
@@ -554,11 +569,12 @@ export function OrderStatusPage() {
           icon: statusMeta.icon,
         }
       : {
-          label: order.status,
+          // A stage this page has no wording for: say it plainly, never the code.
+          label: t('track.status.other.label'),
           sub: '',
           color: 'var(--color-text-muted)',
           bg: 'var(--color-surface-alt)',
-          icon: '📋',
+          icon: ClipboardList,
         })
     : null;
   const orderTypeLabel = (type: string) => {
@@ -679,7 +695,7 @@ export function OrderStatusPage() {
             "Order confirmed!" or better, this banner would be redundant. */}
         {paymentState === "CONFIRMED" && serverPaymentConfirmed && showPaymentBanner && order?.status === "payment_pending" && (
           <div className="banner banner-success animate-fade-in">
-            <span className="banner-icon">🎉</span>
+            <span className="banner-icon"><PartyPopper size={20} aria-hidden /></span>
             <div style={{ flex: 1 }}>
               <p className="banner-title">{t('track.pay_ok_title')}</p>
               <p className="banner-sub">{t('track.pay_ok_sub')}</p>
@@ -693,7 +709,7 @@ export function OrderStatusPage() {
         )}
         {paymentState === "FAILED" && (
           <div className="banner banner-error animate-fade-in">
-            <span className="banner-icon">❌</span>
+            <span className="banner-icon"><XCircle size={20} aria-hidden /></span>
             <div style={{ flex: 1 }}>
               <p className="banner-title">{t('track.pay_fail_title')}</p>
               <p className="banner-sub">{t('track.pay_fail_sub_before')}{' '}
@@ -752,7 +768,7 @@ export function OrderStatusPage() {
         {/* Mutually exclusive with order content — never show both. */}
         {!loading && error && (
           <div className="banner banner-error" data-testid="order-status-error">
-            <span className="banner-icon">⚠️</span>
+            <span className="banner-icon"><AlertTriangle size={20} aria-hidden /></span>
             <div style={{ flex: 1 }}>
               <p className="banner-title">{t('track.load_fail_title')}</p>
               <p className="banner-sub">{error}</p>
@@ -787,10 +803,10 @@ export function OrderStatusPage() {
                   borderRadius: '50%',
                   background: 'var(--color-surface-alt)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '1.625rem', flexShrink: 0,
+                  flexShrink: 0, color: statusInfo.color,
                   boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
                 }}>
-                  {statusInfo.icon}
+                  <statusInfo.icon size={26} strokeWidth={2} aria-hidden />
                 </div>
                 <div>
                   <p style={{ fontSize: '1.25rem', fontWeight: 800, color: statusInfo.color, margin: 0, letterSpacing: '-0.025em' }}>
@@ -929,7 +945,7 @@ export function OrderStatusPage() {
                 textAlign: 'center',
                 padding: '1.375rem 1.25rem',
               }}>
-                <p style={{ fontSize: '1.75rem', margin: '0 0 0.35rem' }}>🎉</p>
+                <p style={{ margin: '0 0 0.35rem', display: 'flex', justifyContent: 'center', color: '#92400E' }}><PartyPopper size={28} strokeWidth={1.75} aria-hidden /></p>
                 <p style={{ fontSize: 'var(--text-body)', fontWeight: 800, color: '#92400E', margin: '0 0 0.25rem' }}>
                   {t('track.points_title').replace('{n}', pointsEarned.toLocaleString())}
                 </p>
@@ -983,31 +999,31 @@ export function OrderStatusPage() {
                   </div>
                   {(order.promo_discount_laar ?? 0) > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)', color: 'var(--color-success)', paddingBottom: '0.375rem' }}>
-                      <span>🏷️ {t('track.promo')}</span>
+                      <span><Tag size={13} aria-hidden style={{ verticalAlign: '-0.18em' }} /> {t('track.promo')}</span>
                       <span>-MVR {((order.promo_discount_laar ?? 0) / 100).toFixed(2)}</span>
                     </div>
                   )}
                   {(order.loyalty_discount_laar ?? 0) > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)', color: 'var(--color-success)', paddingBottom: '0.375rem' }}>
-                      <span>⭐ {t('track.loyalty')}</span>
+                      <span><Star size={13} aria-hidden style={{ verticalAlign: '-0.18em' }} /> {t('track.loyalty')}</span>
                       <span>-MVR {((order.loyalty_discount_laar ?? 0) / 100).toFixed(2)}</span>
                     </div>
                   )}
                   {(order.gift_card_discount_laar ?? 0) > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)', color: 'var(--color-success)', paddingBottom: '0.375rem' }}>
-                      <span>🎁 {t('track.gift_card')}</span>
+                      <span><Gift size={13} aria-hidden style={{ verticalAlign: '-0.18em' }} /> {t('track.gift_card')}</span>
                       <span>-MVR {((order.gift_card_discount_laar ?? 0) / 100).toFixed(2)}</span>
                     </div>
                   )}
                   {(order.referral_discount_laar ?? 0) > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)', color: 'var(--color-success)', paddingBottom: '0.375rem' }}>
-                      <span>👥 {t('track.referral')}</span>
+                      <span><Users size={13} aria-hidden style={{ verticalAlign: '-0.18em' }} /> {t('track.referral')}</span>
                       <span>-MVR {((order.referral_discount_laar ?? 0) / 100).toFixed(2)}</span>
                     </div>
                   )}
                   {(order.delivery_fee ?? 0) > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', paddingBottom: '0.375rem' }}>
-                      <span>🛵 {t('track.delivery')}</span>
+                      <span><Bike size={13} aria-hidden style={{ verticalAlign: '-0.18em' }} /> {t('track.delivery')}</span>
                       <span>+MVR {parseFloat(String(order.delivery_fee)).toFixed(2)}</span>
                     </div>
                   )}
@@ -1139,8 +1155,8 @@ export function OrderStatusPage() {
             {/* Refresh note */}
             <p style={{ textAlign: 'center', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
               {liveConnected
-                ? `🟢 ${t('track.refresh_live')}`
-                : `🔄 ${t('track.refresh_poll')}`}
+                ? <><span aria-hidden style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 999, background: 'var(--color-success)', marginRight: 6 }} />{t('track.refresh_live')}</>
+                : <><RefreshCw size={12} aria-hidden style={{ verticalAlign: '-0.15em' }} /> {t('track.refresh_poll')}</>}
             </p>
 
             {/* Push notification opt-in banner */}
@@ -1151,7 +1167,7 @@ export function OrderStatusPage() {
                 background: 'linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-surface) 100%)',
                 borderColor: 'rgba(234, 88, 12, 0.2)',
               }}>
-                <div style={{ fontSize: '1.75rem', flexShrink: 0 }}>🔔</div>
+                <div style={{ flexShrink: 0, display: 'flex', color: 'var(--color-primary)' }}><Bell size={28} strokeWidth={1.75} aria-hidden /></div>
                 <div style={{ flex: 1 }}>
                   <p style={{ fontWeight: 700, fontSize: 'var(--text-base)', margin: '0 0 0.125rem', color: 'var(--color-text)' }}>
                     {t('track.push_title')}
@@ -1178,7 +1194,7 @@ export function OrderStatusPage() {
             )}
             {pushSupported && pushSubscribed && !isCancelled && !isDone && (
               <p style={{ textAlign: 'center', fontSize: 'var(--text-xs)', color: 'var(--color-success)' }}>
-                🔔 {t('track.push_on')}
+                <Bell size={12} aria-hidden style={{ verticalAlign: '-0.15em' }} /> {t('track.push_on')}
               </p>
             )}
 
@@ -1273,20 +1289,20 @@ export function OrderStatusPage() {
                   style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', padding: '0.55rem 1rem', background: 'var(--color-surface-alt)', color: 'var(--color-text)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', fontWeight: 700, fontSize: 'var(--text-sm)', textDecoration: 'none' }}
                   aria-label={t('track.call_aria')}
                 >
-                  📞 {t('track.call')}
+                  <Phone size={15} aria-hidden /> {t('track.call')}
                 </a>
                 <a
                   href={`${waLink}?text=Hi%2C+I+need+help+with+order+%23${order.order_number}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4375rem', padding: '0.55rem 1rem', background: '#25d366', color: 'white', borderRadius: 'var(--radius-lg)', fontWeight: 700, fontSize: 'var(--text-sm)', textDecoration: 'none' }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4375rem', padding: '0.55rem 1rem', background: '#15803D', color: 'white', borderRadius: 'var(--radius-lg)', fontWeight: 700, fontSize: 'var(--text-sm)', textDecoration: 'none' }}
                   aria-label={t('track.wa_aria')}
                 >
                   <WhatsAppIcon /> {t('track.whatsapp')}
                 </a>
                 <a
                   href={viberLink}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4375rem', padding: '0.55rem 1rem', background: '#7360f2', color: 'white', borderRadius: 'var(--radius-lg)', fontWeight: 700, fontSize: 'var(--text-sm)', textDecoration: 'none' }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4375rem', padding: '0.55rem 1rem', background: '#6554E0', color: 'white', borderRadius: 'var(--radius-lg)', fontWeight: 700, fontSize: 'var(--text-sm)', textDecoration: 'none' }}
                   aria-label={t('track.viber_aria')}
                 >
                   <ViberIcon /> {t('track.viber')}
@@ -1299,7 +1315,7 @@ export function OrderStatusPage() {
                     style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', padding: '0.55rem 1rem', background: 'var(--color-surface-alt)', color: 'var(--color-text)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', fontWeight: 700, fontSize: 'var(--text-sm)', textDecoration: 'none' }}
                     aria-label={t('track.directions_aria')}
                   >
-                    📍 {t('track.directions')}
+                    <MapPin size={15} aria-hidden /> {t('track.directions')}
                   </a>
                 )}
               </div>
@@ -1330,9 +1346,10 @@ export function OrderStatusPage() {
                   fontSize: 'var(--text-sm)', fontWeight: 700,
                   cursor: 'pointer', width: '100%', fontFamily: 'inherit',
                   marginBottom: '0.625rem',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
                 }}
               >
-                📤 {t('track.share')}
+                <Share2 size={16} aria-hidden /> {t('track.share')}
               </button>
             )}
             <button
@@ -1351,7 +1368,9 @@ export function OrderStatusPage() {
               disabled={reordering}
               onClick={() => void handleOrderAgain()}
             >
-              {reordering ? t('track.reordering') : isDone ? `🔁 ${t('track.reorder')}` : t('track.back_menu')}
+              {reordering ? t('track.reordering') : isDone
+                ? <><Repeat size={16} aria-hidden style={{ verticalAlign: '-0.2em' }} /> {t('track.reorder')}</>
+                : t('track.back_menu')}
             </button>
           </div>
         )}

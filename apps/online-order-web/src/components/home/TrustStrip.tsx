@@ -1,4 +1,5 @@
 import type { TrustItemRow } from '../../context/SiteSettingsContext';
+import { EmojiIcon } from '../../utils/emojiIcon';
 
 type Props = {
   items: TrustItemRow[];
@@ -41,8 +42,12 @@ export function TrustStrip({ items }: Props) {
               border: '1px solid var(--color-border)',
             }}
           >
-            <p style={{ margin: 0, fontSize: '1rem', lineHeight: 1.2 }}>
-              {item.icon ? `${item.icon} ` : ''}
+            <p style={{ margin: 0, fontSize: '1rem', lineHeight: 1.2, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              {item.icon ? (
+                <span style={{ display: 'inline-flex', color: 'var(--color-primary)', flexShrink: 0 }}>
+                  <EmojiIcon emoji={item.icon} size={16} />
+                </span>
+              ) : null}
               <span style={{ fontWeight: 800, fontSize: '0.8125rem', color: 'var(--color-dark)' }}>
                 {item.heading}
               </span>

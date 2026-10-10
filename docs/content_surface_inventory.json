@@ -2,7 +2,7 @@
     "generated_for_commit": "a377ebc37",
     "audited_at": "2026-08-13",
     "website": {
-        "page_count_keys": 159,
+        "page_count_keys": 157,
         "pages": {
             "everywhere": {
                 "title": "Everywhere (layout chrome)",
@@ -224,12 +224,10 @@
                 "route": "GET /contact",
                 "template": "backend/resources/views/contact.blade.php",
                 "keys": [
-                    "business_hours",
                     "maps_embed_url",
                     "contact_email_label",
                     "contact_events_cta_headline",
                     "contact_events_cta_text",
-                    "contact_hours_fallback",
                     "contact_hours_heading",
                     "contact_location_heading",
                     "contact_location_maps_label",
@@ -245,12 +243,10 @@
                     "contact_whatsapp_label"
                 ],
                 "renderers": {
-                    "business_hours": "backend/resources/views/contact.blade.php",
                     "maps_embed_url": "backend/resources/views/contact.blade.php",
                     "contact_email_label": "backend/resources/views/contact.blade.php",
                     "contact_events_cta_headline": "backend/resources/views/contact.blade.php",
                     "contact_events_cta_text": "backend/resources/views/contact.blade.php",
-                    "contact_hours_fallback": "backend/resources/views/contact.blade.php",
                     "contact_hours_heading": "backend/resources/views/contact.blade.php",
                     "contact_location_heading": "backend/resources/views/contact.blade.php",
                     "contact_location_maps_label": "backend/resources/views/contact.blade.php",
@@ -1067,13 +1063,6 @@
                 "group": "Order App",
                 "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
             },
-            "business_hours": {
-                "page": "contact",
-                "order": 1,
-                "label": "Business Hours (display)",
-                "group": "General",
-                "renderer": "backend/resources/views/contact.blade.php"
-            },
             "maps_embed_url": {
                 "page": "contact",
                 "order": 2,
@@ -1100,13 +1089,6 @@
                 "order": 5,
                 "label": "Contact Events Cta Text",
                 "group": "Pages",
-                "renderer": "backend/resources/views/contact.blade.php"
-            },
-            "contact_hours_fallback": {
-                "page": "contact",
-                "order": 6,
-                "label": "Contact Page — Hours Fallback Text",
-                "group": "Contact",
                 "renderer": "backend/resources/views/contact.blade.php"
             },
             "contact_hours_heading": {

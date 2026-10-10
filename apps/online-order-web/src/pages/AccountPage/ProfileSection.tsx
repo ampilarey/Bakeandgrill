@@ -5,6 +5,7 @@ import {
 } from './accountShared';
 import type { useAccountProfile } from './useAccountProfile';
 import { loyaltyAvailablePoints } from '../../utils/loyalty';
+import { Star } from 'lucide-react';
 
 type ProfileSectionProps = {
   profile: ReturnType<typeof useAccountProfile>;
@@ -40,7 +41,7 @@ export function ProfileSection({ profile, loyalty, loyaltyError }: ProfileSectio
           border: `1px solid ${TIER_COLOR[loyalty.tier]?.border ?? '#FCD34D'}`,
           borderRadius: 14,
         }}>
-          <span style={{ fontSize: 22 }}>⭐</span>
+          <Star size={22} aria-hidden style={{ color: TIER_COLOR[loyalty.tier]?.text ?? '#92400E' }} />
           <span style={{ fontSize: 14, fontWeight: 700, color: TIER_COLOR[loyalty.tier]?.text ?? '#92400E' }} data-testid="profile-loyalty-points">
             {t('account.loyalty_pts').replace('{n}', loyaltyAvailablePoints(loyalty).toLocaleString())}
           </span>
@@ -57,7 +58,7 @@ export function ProfileSection({ profile, loyalty, loyaltyError }: ProfileSectio
           border: loyaltyError ? '1px solid #FECACA' : '1px solid var(--color-border)',
           borderRadius: 14,
         }}>
-          <span style={{ fontSize: 22 }}>⭐</span>
+          <Star size={22} aria-hidden style={{ color: 'var(--color-primary)' }} />
           <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-dark)' }}>{t('account.profile_loyalty_title')}</span>
           {loyaltyError && <span style={{ fontSize: 12, color: '#DC2626' }}>{loyaltyError}</span>}
           <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{t('account.profile_loyalty_rate')}</span>

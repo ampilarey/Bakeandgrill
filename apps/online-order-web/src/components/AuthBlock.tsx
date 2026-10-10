@@ -30,6 +30,11 @@ type Step =
 type Props = {
   onSuccess: (name: string) => void;
   skipProfileSetup?: boolean;
+  /**
+   * The line under "Sign in with your phone", for a page that says why it
+   * asks (Rewards). One prompt, not a box above a second one.
+   */
+  intro?: string;
 };
 
 function displayName(customer: AuthCustomer): string {
@@ -306,7 +311,7 @@ function Message({ kind, children }: { kind: "error" | "hint"; children: React.R
 
 // ── Main component ───────────────────────────────────────────────────────────
 
-export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
+export function AuthBlock({ onSuccess, skipProfileSetup = false, intro }: Props) {
   const { settings, text } = useSiteSettingsContext();
   const { t } = useLanguage();
 
@@ -669,7 +674,7 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
       {step === "phone" && (
         <>
           <h2 className="auth__title">{t("auth.title_phone")}</h2>
-          <p className="auth__sub">{t("auth.sub_phone")}</p>
+          <p className="auth__sub">{intro?.trim() || t("auth.sub_phone")}</p>
           {errorMsg}
           <PhoneInput
             value={phone}

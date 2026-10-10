@@ -81,7 +81,9 @@
                              loading="lazy" width="132" height="132">
                     </picture>
                 @else
-                    <span aria-hidden="true">🍽️</span>
+                    <span class="menu-card-quiet" role="img" aria-label="{{ $iname['text'] }}">
+                        <img src="/brand/flame-mark.svg" alt="" width="53" height="50" loading="lazy">
+                    </span>
                 @endif
             </div>
             @if($soldOut)

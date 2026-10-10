@@ -40,6 +40,14 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind(SmsProviderInterface::class, DhiraaguSmsProvider::class);
         $this->app->singleton(\App\Services\PermissionService::class);
+        // A numbered throttle counts per route, not one count shared by every
+        // route (UI audit, 2026-10-10; see the class). Bound in place of the
+        // framework's class rather than aliased, so `throttle` keeps its name
+        // and withoutMiddleware(ThrottleRequests::class) still switches it off.
+        $this->app->bind(
+            \Illuminate\Routing\Middleware\ThrottleRequests::class,
+            \App\Http\Middleware\ThrottleRequestsPerRoute::class,
+        );
     }
 
     /**

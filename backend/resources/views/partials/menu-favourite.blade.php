@@ -3,6 +3,9 @@
     inside an <a> is invalid HTML. Signed-in state comes from the server so
     the first paint is already filled or empty. Guests keep the heart; it
     is a login link, not a hidden control and not a 401 in the console.
+
+    A drawn heart, filled by the is-on class (layout.blade.php), not the
+    emoji it used to be (UI audit, 2026-10-10).
 --}}
 @php
     $liked = isset($favouriteIds[$item->id]);
@@ -13,10 +16,10 @@
             data-item="{{ $item->id }}"
             aria-pressed="{{ $liked ? 'true' : 'false' }}"
             aria-label="{{ $liked ? 'Remove from favourites' : 'Add to favourites' }}">
-        <span class="menu-fav-icon" aria-hidden="true">{{ $liked ? '❤️' : '🤍' }}</span>
+        <span class="menu-fav-icon" aria-hidden="true">{{ \App\Support\UiIcon::svg('heart', 18) }}</span>
     </button>
 @else
     <a class="menu-fav" href="/customer/login" aria-label="Sign in to save favourites">
-        <span class="menu-fav-icon" aria-hidden="true">🤍</span>
+        <span class="menu-fav-icon" aria-hidden="true">{{ \App\Support\UiIcon::svg('heart', 18) }}</span>
     </a>
 @endauth

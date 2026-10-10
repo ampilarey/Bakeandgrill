@@ -117,7 +117,7 @@
     width: 100%; height: auto; aspect-ratio: 4 / 3;
     border-radius: 11px;
 }
-.menu-rail-list > a .menu-rail-label { font-size: 0.66rem; font-weight: 700; padding: 0 2px; }
+.menu-rail-list > a .menu-rail-label { font-size: 0.6875rem; font-weight: 700; padding: 0 2px; }
 /* The chosen tile fills rust, its name in white; the ring glides to it. */
 .menu-rail-list > a.is-active { color: #fff; background: var(--amber); box-shadow: 0 6px 14px -6px color-mix(in srgb, var(--amber) 70%, transparent); }
 .menu-rail-list > a.is-active .menu-rail-label { font-weight: 800; }
@@ -514,7 +514,7 @@ html.js .menu-filters {
     display: inline-flex; align-items: center; justify-content: center;
     font-size: 1.1rem; line-height: 1;
 }
-.menu-rail-side .menu-rail-side__icon { display: inline-block; }
+.menu-rail-side .menu-rail-side__icon { display: inline-flex; }
 html.rail-right .menu-shell { flex-direction: row-reverse; }
 html.rail-right .menu-rail { border-right: 0; border-left: 1px solid var(--border); }
 html.rail-right .menu-rail-side .menu-rail-side__icon { transform: scaleX(-1); }
@@ -540,9 +540,9 @@ html.rail-right .menu-rail-side .menu-rail-side__icon { transform: scaleX(-1); }
 .menu-search-icon {
     position: absolute;
     inset-inline-start: 0.6rem;
-    font-size: 0.8rem;
+    display: inline-flex;
+    color: var(--muted);
     pointer-events: none;
-    opacity: 0.6;
 }
 .menu-search input {
     width: 100%;
@@ -768,7 +768,7 @@ html.js .menu-fav { display: inline-flex; }
     display: inline-block;
     background: var(--amber);
     color: #fff; border: none;
-    font-size: 0.68rem; font-weight: 800;
+    font-size: 0.6875rem; font-weight: 800;
     letter-spacing: 0.03em; text-transform: uppercase;
     padding: 0.24rem 0.5rem; line-height: 1.2;
     border-radius: 999px;
@@ -781,7 +781,7 @@ html.js .menu-fav { display: inline-flex; }
     background: var(--dark);
     /* The page colour, so the pill reads in both themes (--dark is cream at night). */
     color: var(--bg); border: none;
-    font-size: 0.68rem; font-weight: 800;
+    font-size: 0.6875rem; font-weight: 800;
     letter-spacing: 0.03em; text-transform: uppercase;
     padding: 0.24rem 0.5rem; line-height: 1.2;
     border-radius: 999px;
@@ -803,7 +803,7 @@ html.js .menu-fav { display: inline-flex; }
 .menu-card-bundle {
     display: inline-block;
     margin: 0.1rem 0 0.15rem;
-    font-size: 0.66rem; font-weight: 700;
+    font-size: 0.6875rem; font-weight: 700;
     letter-spacing: 0.04em; text-transform: uppercase;
     color: var(--muted);
     border: 1px solid var(--border);
@@ -862,7 +862,7 @@ html.js .menu-fav { display: inline-flex; }
 }
 .menu-offer-badge {
     display: inline-block; margin-bottom: 0.35rem;
-    font-size: 0.68rem; font-weight: 800;
+    font-size: 0.6875rem; font-weight: 800;
     letter-spacing: 0.03em; text-transform: uppercase;
     color: #fff; background: var(--amber);
     padding: 0.2rem 0.45rem; border-radius: 999px;
@@ -1303,7 +1303,7 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                     <div class="menu-tools">
                         <div class="menu-search" id="menuSearchWrap">
                             <label class="visually-hidden" for="menuSearch">Search the menu</label>
-                            <span class="menu-search-icon" aria-hidden="true">🔍</span>
+                            <span class="menu-search-icon" aria-hidden="true">{{ \App\Support\UiIcon::svg('search', 16) }}</span>
                             <input type="search" id="menuSearch" placeholder="Search the menu"
                                    autocomplete="off" enterkeyhint="search">
                             <button type="button" class="menu-search-close" aria-label="Close search">✕</button>
@@ -1318,14 +1318,14 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                                 data-testid="menu-rail-side"
                                 aria-pressed="false" aria-label="Move the categories to the right side"
                                 title="Swap the category rail to the other side">
-                            <span class="menu-rail-side__icon" aria-hidden="true">⇆</span>
+                            <span class="menu-rail-side__icon" aria-hidden="true">{{ \App\Support\UiIcon::svg('arrow-left-right', 16) }}</span>
                         </button>
                         {{-- The menu on paper (owner, 2026-09-05). A link rather than
                              window.print(): printing this page would put the rail
                              and the pinned banner on the paper. --}}
                         <a href="{{ route('menu.print') }}" class="menu-tool" data-testid="menu-print-link"
                            title="Print or save the menu">
-                            <span aria-hidden="true">🖨</span> Print
+                            {{ \App\Support\UiIcon::svg('printer', 16) }} Print
                         </a>
                     </div>
                     <div class="menu-filter-rows">
@@ -1410,7 +1410,7 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                                         @if($offerPhoto)
                                             <img src="{{ $offerPhoto }}" alt="" loading="lazy" width="132" height="132">
                                         @else
-                                            <span aria-hidden="true">🍽️</span>
+                                            <span class="menu-card-quiet"><img src="/brand/flame-mark.svg" alt="" width="53" height="50" loading="lazy"></span>
                                         @endif
                                     </div>
                                 </div>

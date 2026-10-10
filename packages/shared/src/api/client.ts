@@ -28,12 +28,23 @@ type ApiError = { message?: string; errors?: Record<string, string[]> };
 export class ApiRequestError extends Error {
   public readonly status: number;
   public readonly body?: unknown;
-  constructor(message: string, status: number, body?: unknown) {
+  /** Seconds the server asked us to wait before trying again (Retry-After on a 429), when it said. */
+  public readonly retryAfterSeconds?: number;
+  constructor(message: string, status: number, body?: unknown, retryAfterSeconds?: number) {
     super(message);
     this.name = 'ApiRequestError';
     this.status = status;
     this.body = body;
+    this.retryAfterSeconds = retryAfterSeconds;
   }
+}
+
+/** Retry-After as whole seconds, or undefined when absent or not a number of seconds. */
+function retryAfterSeconds(response: Response): number | undefined {
+  const raw = response.headers?.get?.('Retry-After');
+  if (raw == null || raw.trim() === '') return undefined;
+  const seconds = Number(raw);
+  return Number.isFinite(seconds) && seconds >= 0 ? Math.ceil(seconds) : undefined;
 }
 
 export type ApiClient = ReturnType<typeof createApiClient>;
@@ -75,7 +86,12 @@ async function throwForFailedResponse(
   } catch {
     message = `Server error (${response.status})`;
   }
-  throw new ApiRequestError(message, response.status, parsedBody);
+  throw new ApiRequestError(
+    message,
+    response.status,
+    parsedBody,
+    response.status === 429 ? retryAfterSeconds(response) : undefined,
+  );
 }
 
 /** Trigger a browser download for a Blob (PDF, CSV, XLSX exports). */

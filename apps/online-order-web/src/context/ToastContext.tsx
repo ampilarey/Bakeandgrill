@@ -54,9 +54,11 @@ function ToastStack({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id: st
       role="region"
       aria-live="polite"
       aria-label="Notifications"
+      // Height from the bottom is in index.css (.toast-stack): on a phone it
+      // clears the bottom bar and, when there is one, the cart button.
+      className="toast-stack"
       style={{
         position: 'fixed',
-        bottom: '5rem',
         left: '50%',
         transform: 'translateX(-50%)',
         display: 'flex',

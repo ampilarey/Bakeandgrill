@@ -9,6 +9,7 @@ import { fetchCustomerOrders } from '../api';
 import type { Order } from '../api';
 import { checkGiftCardBalance } from '../api/promotions';
 import { isGiftCardOrder } from '../utils/giftCardOrder';
+import { Gift } from 'lucide-react';
 
 function ordersFromResponse(res: unknown): Order[] {
   if (Array.isArray(res)) return res as Order[];
@@ -137,7 +138,7 @@ export function GiftCardsPage() {
         </p>
 
         <Link to="/gift-cards/buy" style={cardLink}>
-          <span style={{ fontSize: 28, lineHeight: 1 }} aria-hidden>🎁</span>
+          <span style={{ display: 'inline-flex', color: 'var(--color-primary)' }} aria-hidden><Gift size={28} strokeWidth={1.75} /></span>
           <span style={{ flex: 1, minWidth: 0 }}>
             <span style={cardTitle}>{t('gift.hub_buy')}</span>
             <span style={cardSub}>{t('gift.hub_buy_sub')}</span>

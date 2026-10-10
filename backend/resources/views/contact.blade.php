@@ -16,9 +16,9 @@
     $addressParts = array_map('trim', explode(',', $address, 2));
     $addressLine1 = $addressParts[0] ?? $address;
     $addressLine2 = $addressParts[1] ?? 'Maldives';
-    // Business hours: stored as JSON, fallback to typical hours
-    $hoursRaw    = content('business_hours', null);
-    $hoursData   = $hoursRaw ? json_decode($hoursRaw, true) : null;
+    // The schedule set in Admin, the same one the Hours page and footer show
+    // (UI audit, 2026-10-10: this card printed a fixed 7 AM to 11 PM).
+    $hoursGroups = \App\Support\OpeningHoursText::groups();
     $siteName    = content('site_name', 'Bake & Grill');
 @endphp
 
@@ -34,7 +34,7 @@
     text-align: center;
 }
 .page-hero-eyebrow {
-    display: inline-block;
+    display: inline-flex; align-items: center; gap: 0.35rem;
     font-size: 0.72rem; font-weight: 700;
     text-transform: uppercase; letter-spacing: 0.1em;
     color: var(--amber); margin-bottom: 0.75rem;
@@ -85,7 +85,7 @@
     background: var(--amber-light);
     border-radius: 12px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 1.4rem;
+    color: var(--amber);
     margin-bottom: 1.25rem;
 }
 .contact-card h2 {
@@ -103,10 +103,18 @@
 .contact-card a:hover { color: var(--amber); }
 .contact-card strong { color: var(--text); font-weight: 600; }
 
+/* `.contact-card a` (muted brown) out-ranked these, so the button words were
+   brown on orange, green and purple in both themes (UI audit, 2026-10-10). */
+.contact-card a.contact-link-row,
+.contact-card a.contact-link-row:hover { color: var(--amber-contrast); }
+.contact-card a.contact-link-wa,
+.contact-card a.contact-link-viber,
+.contact-card a.contact-link-wa:hover,
+.contact-card a.contact-link-viber:hover { color: #fff; }
 .contact-link-row {
     display: inline-flex; align-items: center; gap: 0.4rem;
     padding: 0.5rem 1rem;
-    background: var(--amber); color: white;
+    background: var(--amber); color: var(--amber-contrast);
     border-radius: 8px; font-weight: 700; font-size: 0.85rem;
     margin-top: 0.75rem; transition: all 0.15s;
 }
@@ -115,19 +123,19 @@
 .contact-link-wa {
     display: inline-flex; align-items: center; gap: 0.4rem;
     padding: 0.5rem 1rem;
-    background: #25D366; color: white;
+    background: #15803D; color: #fff;
     border-radius: 8px; font-weight: 700; font-size: 0.85rem;
     margin-top: 0.75rem; transition: all 0.15s;
 }
-.contact-link-wa:hover { background: #1bba58; }
+.contact-link-wa:hover { background: #126C34; }
 .contact-link-viber {
     display: inline-flex; align-items: center; gap: 0.4rem;
     padding: 0.5rem 1rem;
-    background: #7360F2; color: white;
+    background: #6554E0; color: #fff;
     border-radius: 8px; font-weight: 700; font-size: 0.85rem;
     margin-top: 0.5rem; transition: all 0.15s;
 }
-.contact-link-viber:hover { background: #5E4CD6; }
+.contact-link-viber:hover { background: #5545C8; }
 .contact-msg-btns { display: flex; flex-direction: column; }
 
 /* ─── Map ────────────────────────────────────────────────────────── */
@@ -167,6 +175,7 @@
 }
 
 .map-section h2 {
+    display: flex; align-items: center; gap: 0.5rem;
     font-size: 1.35rem; font-weight: 700;
     color: var(--dark); margin-bottom: 1.25rem;
 }
@@ -184,7 +193,7 @@
 @section('content')
 
 <div class="page-hero">
-    <span class="page-hero-eyebrow">{{ content('contact_page_eyebrow', '📍 Find Us') }}</span>
+    <span class="page-hero-eyebrow">{{ \App\Support\UiIcon::label((string) content('contact_page_eyebrow', 'Find Us'), 'map-pin', 14) }}</span>
     <h1>{{ content('contact_page_title', 'Contact Us') }}</h1>
     <p>{{ content('contact_page_subtitle', "Visit us in Malé, call ahead, or drop us a message on WhatsApp or Viber — we're always happy to help") }}</p>
 </div>
@@ -192,7 +201,7 @@
 <div class="contact-section">
 
     <div class="contact-card">
-        <div class="contact-card-icon">📍</div>
+        <div class="contact-card-icon">{{ \App\Support\UiIcon::svg('map-pin', 22) }}</div>
         <h2>{{ content('contact_location_heading', 'Our Location') }}</h2>
         <p><strong>{{ $siteName }}</strong></p>
         <p>{{ $addressLine1 }}</p>
@@ -204,7 +213,7 @@
     </div>
 
     <div class="contact-card">
-        <div class="contact-card-icon">📞</div>
+        <div class="contact-card-icon">{{ \App\Support\UiIcon::svg('phone', 22) }}</div>
         <h2>{{ content('contact_touch_heading', 'Get in Touch') }}</h2>
         <p><strong>{{ content('contact_phone_label', 'Phone') }}</strong></p>
         <a href="{{ $phoneTel }}">{{ $phone }}</a>
@@ -212,40 +221,23 @@
         <a href="mailto:{{ $email }}">{{ $email }}</a>
         <div class="contact-msg-btns">
             <a href="{{ $waLink }}" target="_blank" rel="noopener" class="contact-link-wa">
-                {{ content('contact_whatsapp_label', '💬 WhatsApp') }}
+                {{ \App\Support\UiIcon::label((string) content('contact_whatsapp_label', 'WhatsApp'), 'message-circle') }}
             </a>
             @if($viberLink !== '')
                 <a href="{{ $viberLink }}" class="contact-link-viber">
-                    {{ content('contact_viber_label', '📱 Viber') }}
+                    {{ \App\Support\UiIcon::label((string) content('contact_viber_label', 'Viber'), 'smartphone') }}
                 </a>
             @endif
         </div>
     </div>
 
     <div class="contact-card">
-        <div class="contact-card-icon">🕐</div>
+        <div class="contact-card-icon">{{ \App\Support\UiIcon::svg('clock', 22) }}</div>
         <h2>{{ content('contact_hours_heading', 'Opening Hours') }}</h2>
-        @if($hoursData && is_array($hoursData))
-            @foreach($hoursData as $period)
-                @if(isset($period['days']) && isset($period['hours']))
-                    <p><strong>{{ $period['days'] }}</strong></p>
-                    <p style="{{ !$loop->first ? 'margin-top:0.75rem;' : '' }}">{{ $period['hours'] }}</p>
-                @endif
-            @endforeach
-        @else
-            @php
-                $fallbackHours = content(
-                    'contact_hours_fallback',
-                    "Sunday \xe2\x80\x93 Thursday: 7:00 AM \xe2\x80\x93 11:00 PM\nFriday \xe2\x80\x93 Saturday: 7:00 AM \xe2\x80\x93 2:00 AM"
-                );
-                $fallbackLines = array_filter(array_map('trim', explode("\n", $fallbackHours)));
-            @endphp
-            @foreach($fallbackLines as $fLine)
-                @php [$fDays, $fHrs] = array_pad(explode(':', $fLine, 2), 2, ''); @endphp
-                <p {{ !$loop->first ? 'style="margin-top:0.75rem;"' : '' }}><strong>{{ trim($fDays) }}</strong></p>
-                <p>{{ trim($fHrs) }}</p>
-            @endforeach
-        @endif
+        @foreach($hoursGroups as $group)
+            <p {!! !$loop->first ? 'style="margin-top:0.75rem;"' : '' !!}><strong>{{ $group['days'] }}</strong></p>
+            <p>{{ $group['hours'] }}</p>
+        @endforeach
         <a href="/hours" class="contact-link-row" style="margin-top:1rem;">
             {{ content('contact_schedule_label', 'Full Schedule →') }}
         </a>
@@ -275,7 +267,7 @@
 </section>
 
 <div class="map-section">
-    <h2>{{ content('contact_map_heading', '📍 Find Us on the Map') }}</h2>
+    <h2 class="map-heading">{{ \App\Support\UiIcon::label((string) content('contact_map_heading', 'Find Us on the Map'), 'map-pin', 20) }}</h2>
     <div class="map-wrap">
         <iframe
             title="Bake & Grill location on Google Maps"

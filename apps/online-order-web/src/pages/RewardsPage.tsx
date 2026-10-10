@@ -17,6 +17,7 @@ import {
   ratesFromApi,
 } from '../utils/loyalty';
 import { TIER_COLOR } from './AccountPage/accountShared';
+import { Star } from 'lucide-react';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -77,7 +78,7 @@ function PointsHero({
         >
           {t('rewards.tier_member').replace('{tier}', tierName)}
         </span>
-        <span aria-hidden="true" style={{ fontSize: 22 }}>⭐</span>
+        <Star size={22} aria-hidden style={{ color: tierColors.text }} fill="currentColor" />
       </div>
 
       <div>
@@ -425,7 +426,7 @@ function SpecialsSection({
                       left: 6,
                       background: 'var(--color-primary)',
                       color: '#fff',
-                      fontSize: 9,
+                      fontSize: 11,
                       fontWeight: 700,
                       padding: '2px 7px',
                       borderRadius: 99,
@@ -474,7 +475,7 @@ function SpecialsSection({
                   {wasPrice != null && (
                     <span
                       style={{
-                        fontSize: 10,
+                        fontSize: 11,
                         color: 'var(--color-text-muted)',
                         textDecoration: 'line-through',
                       }}
@@ -719,29 +720,10 @@ export function RewardsPage() {
         }}
       >
         {!isAuthenticated ? (
-          <>
-            <div
-              style={{
-                background: 'var(--color-surface-alt)',
-                border: '1px solid var(--color-border)',
-                borderRadius: 16,
-                padding: '1rem 1.25rem',
-                textAlign: 'center',
-              }}
-            >
-              <p
-                style={{
-                  fontSize: '0.95rem',
-                  fontWeight: 600,
-                  color: 'var(--color-text-muted)',
-                  margin: 0,
-                }}
-              >
-                ⭐ {t('rewards.sign_in_teaser')}
-              </p>
-            </div>
-            <AuthBlock onSuccess={(name) => setAuth(name)} />
-          </>
+          // UI audit, 2026-10-10: a "Sign in to see…" box sat above the
+          // sign-in card's own "Sign in" heading. The reason is now the card's
+          // first line instead.
+          <AuthBlock onSuccess={(name) => setAuth(name)} intro={t('rewards.sign_in_teaser')} />
         ) : loading ? (
           <RewardsSkeleton t={t} />
         ) : (

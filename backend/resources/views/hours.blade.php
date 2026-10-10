@@ -12,7 +12,7 @@
     text-align: center;
 }
 .page-hero-eyebrow {
-    display: inline-block;
+    display: inline-flex; align-items: center; gap: 0.35rem;
     font-size: 0.72rem; font-weight: 700;
     text-transform: uppercase; letter-spacing: 0.1em;
     color: var(--amber); margin-bottom: 0.75rem;
@@ -89,7 +89,7 @@
 .day-name { font-weight: 600; font-size: 0.95rem; color: var(--text); }
 .hours-row.today .day-name { color: var(--amber-hover); }
 .today-tag {
-    font-size: 0.65rem; font-weight: 700;
+    font-size: 0.6875rem; font-weight: 700;
     text-transform: uppercase; letter-spacing: 0.07em;
     color: var(--amber);
     background: rgba(183,75,12,0.12);
@@ -99,6 +99,15 @@
 .hours-time {
     font-weight: 700; font-size: 0.95rem; color: var(--dark);
     font-variant-numeric: tabular-nums;
+    /* "7:00 AM – 11:00 PM" never splits at the dash; on a narrow row it
+       moves under the day as a whole (UI audit, 2026-10-10). */
+    white-space: nowrap; margin-left: auto;
+}
+.hours-row { flex-wrap: wrap; gap: 0.25rem 0.75rem; }
+@media (max-width: 480px) {
+    .hours-wrap { padding-inline: 1rem; }
+    .hours-row { padding: 0.95rem 1rem; }
+    .hours-time { font-size: 0.875rem; }
 }
 .hours-closed { color: var(--muted); font-weight: 500; }
 
@@ -125,7 +134,7 @@
 .order-cta-link {
     display: inline-flex; align-items: center; gap: 0.5rem;
     padding: 0.75rem 1.75rem;
-    background: var(--amber); color: white;
+    background: var(--amber); color: var(--amber-contrast);
     border-radius: 10px; font-weight: 700; font-size: 0.95rem;
     transition: all 0.15s;
 }
@@ -136,7 +145,7 @@
 @section('content')
 
 <div class="page-hero">
-    <span class="page-hero-eyebrow">{{ content('hours_page_eyebrow', '🕐 Schedule') }}</span>
+    <span class="page-hero-eyebrow">{{ \App\Support\UiIcon::label((string) content('hours_page_eyebrow', 'Schedule'), 'clock', 14) }}</span>
     <h1>{{ content('hours_page_title', 'Opening Hours') }}</h1>
     @if($isOpen)
         <span class="status-badge open">{{ content('hours_open_status_text', "● We're open right now") }}</span>
@@ -149,7 +158,7 @@
 
     @if($closureReason)
         <div class="closure-notice">
-            <span class="cn-icon">⚠️</span>
+            <span class="cn-icon">{{ \App\Support\UiIcon::svg('alert-triangle', 18) }}</span>
             <div><strong>{{ content('hours_special_closure_label', 'Special Closure:') }}</strong> {{ $closureReason }}</div>
         </div>
     @endif
@@ -170,13 +179,8 @@
                         <span class="today-tag">Today</span>
                     @endif
                 </div>
-                <span class="{{ ($dayHours && !($dayHours['closed'] ?? false)) ? 'hours-time' : 'hours-closed' }}">
-                    @if($dayHours && !($dayHours['closed'] ?? false))
-                        {{ $dayHours['open'] }} – {{ $dayHours['close'] }}
-                    @else
-                        Closed
-                    @endif
-                </span>
+                @php $dayRange = \App\Support\OpeningHoursText::range(is_array($dayHours) ? $dayHours : null); @endphp
+                <span class="{{ $dayRange !== null ? 'hours-time' : 'hours-closed' }}">{{ $dayRange ?? 'Closed' }}</span>
             </div>
         @endforeach
     </div>
@@ -190,7 +194,7 @@
     <div class="order-cta-block">
         <h3>{{ content('hours_page_cta_title', 'Ready to order?') }}</h3>
         <p>{{ content('hours_page_cta_subtitle', 'Place your order online and have it delivered fresh to your door') }}</p>
-        <a href="/order/" class="order-cta-link">{{ content('hours_order_btn_label', '🛒 Order Online Now') }}</a>
+        <a href="/order/" class="order-cta-link">{{ \App\Support\UiIcon::label((string) content('hours_order_btn_label', 'Order Online Now'), 'shopping-bag', 18) }}</a>
     </div>
 
 </div>

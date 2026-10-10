@@ -12,7 +12,7 @@
         <div class="location-grid">
             <div class="loc-card">
                 <div class="loc-card-accent"></div>
-                <div class="loc-card-icon">📍</div>
+                <div class="loc-card-icon">{{ \App\Support\UiIcon::svg('map-pin', 22) }}</div>
                 <h3>{{ $homeVisitCardTitle }}</h3>
 
                 <div class="loc-detail-row">
@@ -63,17 +63,17 @@
 
                 <div class="loc-ctas" style="margin-top:1rem;">
                     <a href="{{ $mapsUrl }}" target="_blank" rel="noopener" class="loc-cta-outline">
-                        📍 {{ $homeDirectionsCta }}
+                        {{ \App\Support\UiIcon::svg('map-pin', 16) }} {{ $homeDirectionsCta }}
                     </a>
                     <a href="{{ $phoneTel }}" class="loc-cta-outline">
-                        📞 {{ $homeCallCta }}
+                        {{ \App\Support\UiIcon::svg('phone', 16) }} {{ $homeCallCta }}
                     </a>
                 </div>
             </div>
 
             <div class="loc-card">
                 <div class="loc-card-accent"></div>
-                <div class="loc-card-icon">🛵</div>
+                <div class="loc-card-icon">{{ \App\Support\UiIcon::svg('bike', 22) }}</div>
                 <h3>{{ $homeDeliveryCardTitle }}</h3>
 
                 <div class="loc-detail-row">
@@ -104,10 +104,10 @@
 
                 <div class="loc-ctas" style="margin-top:0;">
                     <a href="/order/" class="loc-cta-primary">
-                        🛒 Order Online Now
+                        {{ \App\Support\UiIcon::svg('shopping-bag', 16) }} Order Online Now
                     </a>
                     <a href="/order/menu" class="loc-cta-outline">
-                        🍽️ View Menu
+                        {{ \App\Support\UiIcon::svg('utensils', 16) }} View Menu
                     </a>
                 </div>
             </div>

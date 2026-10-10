@@ -14,7 +14,7 @@
     }
 
     .setup-card {
-        background: white;
+        background: var(--surface);
         border: 1px solid var(--border);
         border-radius: 24px;
         padding: 3rem;
@@ -32,7 +32,7 @@
 
     .setup-card .subtitle {
         text-align: center;
-        color: #636e72;
+        color: var(--muted);
         margin-bottom: 2.5rem;
         font-size: 1rem;
     }
@@ -51,7 +51,7 @@
 
     .form-group .optional {
         font-weight: 400;
-        color: #95a5a6;
+        color: var(--muted);
         font-size: 0.8rem;
         margin-left: 0.3rem;
     }
@@ -75,7 +75,7 @@
 
     .form-group .hint {
         font-size: 0.78rem;
-        color: #95a5a6;
+        color: var(--muted);
         margin-top: 0.35rem;
     }
 
@@ -83,7 +83,7 @@
         width: 100%;
         padding: 1.15rem;
         background: var(--amber);
-        color: white;
+        color: var(--amber-contrast);
         border: none;
         border-radius: 999px;
         font-weight: 600;
@@ -107,25 +107,33 @@
         font-size: 0.95rem;
     }
 
-    .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    .alert-error   { background: var(--danger-bg); color: var(--danger-text); border: 1px solid color-mix(in srgb, var(--danger-text) 30%, transparent); }
 
     @media (max-width: 768px) {
         .setup-container { padding: 2rem 1rem; }
         .setup-card { padding: 2rem 1.5rem; }
         .setup-card h1 { font-size: 1.6rem; }
     }
+    .auth-badge {
+        width: 64px; height: 64px; margin: 0 auto 1rem; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        background: var(--amber-light); color: var(--amber);
+    }
+    .alert { display: flex; align-items: flex-start; gap: 0.5rem; }
+    .alert .ui-icon { margin-top: 0.15em; }
+    .form-group input { background: var(--bg); color: var(--text); }
 </style>
 @endsection
 
 @section('content')
 <div class="setup-container">
     <div class="setup-card">
-        <div style="text-align:center; font-size:3rem; margin-bottom:1rem;">👋</div>
+        <div class="auth-badge">{{ \App\Support\UiIcon::svg('user', 30) }}</div>
         <h1>One last step</h1>
         <p class="subtitle">Set your name and a password so you can sign in easily next time.</p>
 
         @if($errors->any())
-            <div class="alert alert-error">⚠️ {{ $errors->first() }}</div>
+            <div class="alert alert-error">{{ \App\Support\UiIcon::svg('alert-triangle', 16) }} {{ $errors->first() }}</div>
         @endif
 
         <form method="POST" action="{{ route('customer.complete-profile.post') }}">
@@ -182,7 +190,7 @@
             <button type="submit" class="btn-submit">Create Account →</button>
         </form>
 
-        <p style="margin-top:1.5rem; text-align:center; font-size:0.8rem; color:#b2bec3;">
+        <p style="margin-top:1.5rem; text-align:center; font-size:0.8rem; color:var(--muted);">
             You can skip this by going directly to
             <a href="/order/menu" style="color:var(--amber);">the menu</a>.
         </p>

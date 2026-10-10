@@ -374,9 +374,31 @@ class CmsContentTest extends TestCase
 
         $response = $this->get('/hours');
         $response->assertOk();
-        // Sunday row should show the open/close times from the CMS
-        $response->assertSee('08:00');
-        $response->assertSee('14:00');
+        // Sunday row shows the CMS times, read the way people say them
+        // (UI audit, 2026-10-10: one 12-hour style on every page).
+        $response->assertSee('8:00 AM – 2:00 PM');
+        $response->assertDontSee('08:00 – 14:00');
+    }
+
+    public function test_contact_page_lists_the_admin_schedule_not_fixed_text(): void
+    {
+        // UI audit, 2026-10-10: the card printed a fixed "7:00 AM – 11:00 PM"
+        // that came from no setting.
+        $cmsHours = json_encode([
+            '0' => ['open' => '08:00', 'close' => '14:00'],
+            '1' => ['open' => '08:00', 'close' => '14:00'],
+            '2' => ['open' => '08:00', 'close' => '14:00'],
+            '3' => ['open' => '08:00', 'close' => '14:00'],
+            '4' => ['open' => '08:00', 'close' => '14:00'],
+            '5' => ['open' => '15:00', 'close' => '01:00'],
+            '6' => ['closed' => true],
+        ]);
+        $this->seedSetting('business_hours_json', $cmsHours, 'Hours', 'json', true);
+
+        $response = $this->get('/contact');
+        $response->assertOk();
+        $response->assertSeeInOrder(['Sunday – Thursday', '8:00 AM – 2:00 PM', 'Friday', '3:00 PM – 1:00 AM', 'Saturday', 'Closed']);
+        $response->assertDontSee('7:00 AM – 11:00 PM');
     }
 
     // ──────────────────────────────────────────────────────────────────────────

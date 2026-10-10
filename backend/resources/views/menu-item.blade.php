@@ -56,12 +56,10 @@
     $dietary = array_values(array_filter((array) ($item->dietary_tags ?? [])));
     $allergens = array_values(array_filter((array) ($item->allergens ?? [])));
     $spice = $item->spice_level && $item->spice_level !== 'none' ? $item->spice_level : null;
-    $spiceLabel = [
-        'mild' => '🌶 Mild',
-        'medium' => '🌶🌶 Medium',
-        'hot' => '🌶🌶🌶 Hot',
-        'extra_hot' => '🔥 Extra Hot',
-    ][$spice] ?? ($spice ? ucwords(str_replace('_', ' ', $spice)) : null);
+    // Heat as drawn flames, one to four, the same as the order app (UI audit,
+    // 2026-10-10: the chilli emoji looked different on every phone).
+    $spiceFlames = ['mild' => 1, 'medium' => 2, 'hot' => 3, 'extra_hot' => 4][$spice] ?? 0;
+    $spiceLabel = $spice ? ucwords(str_replace('_', ' ', $spice)) : null;
     $pageTitle = $iname['text'] . ' – Menu – Bake & Grill';
     $pageDesc = $desc !== '' ? \Illuminate\Support\Str::limit($desc, 160) : $iname['text'] . ' at Bake & Grill. Prices in MVR.';
     $itemAvailable = $itemAvailable ?? true;
@@ -116,7 +114,8 @@
                 <img src="{{ $photo }}" alt="{{ $iname['text'] }}" width="640" height="400">
             </picture>
         @else
-            <span aria-hidden="true">🍽️</span>
+            {{-- The menu's quiet no-photo tile: the flame, faded. --}}
+            <span class="menu-item-hero-quiet"><img src="/brand/flame-mark.svg" alt="" width="96" height="90"></span>
         @endif
         @include('partials.menu-favourite', ['item' => $item, 'favouriteIds' => $favouriteIds ?? []])
     </div>
@@ -145,9 +144,14 @@
 
     @if($spiceLabel || ($item->prep_time_minutes && $item->prep_time_minutes > 0) || ($item->calories && $item->calories > 0))
         <div class="menu-item-meta">
-            @if($spiceLabel)<span class="menu-item-chip">{{ $spiceLabel }}</span>@endif
+            @if($spiceLabel)
+                <span class="menu-item-chip menu-item-chip--spice">
+                    @if($spiceFlames > 0)<span class="menu-item-flames">@for($f = 0; $f < $spiceFlames; $f++){{ \App\Support\UiIcon::svg('flame', 13) }}@endfor</span>@endif
+                    {{ $spiceLabel }}
+                </span>
+            @endif
             @if($item->prep_time_minutes && $item->prep_time_minutes > 0)
-                <span class="menu-item-chip">⏱ {{ $item->prep_time_minutes }} min</span>
+                <span class="menu-item-chip">{{ \App\Support\UiIcon::svg('clock', 13) }} {{ $item->prep_time_minutes }} min</span>
             @endif
             @if($item->calories && $item->calories > 0)
                 <span class="menu-item-chip">~{{ $item->calories }} kcal</span>

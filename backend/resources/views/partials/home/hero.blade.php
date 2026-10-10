@@ -173,11 +173,11 @@
             <div class="banner-slide active" style="background: linear-gradient(160deg, #2D1A0A 0%, #1C1408 100%);">
                 <div class="banner-overlay">
                     <div class="banner-copy">
-                    <span class="banner-eyebrow">🍞 Fresh daily from 5am</span>
+                    <span class="banner-eyebrow">{{ \App\Support\UiIcon::svg('wheat', 13) }} Fresh daily from 5am</span>
                     <h1 class="banner-title"><span class="hero-title-line">{{ $siteName }}</span><br><span class="hero-title-line"><em>{{ $tagline }}</em></span></h1>
                     <p class="banner-sub">Real food, proper char — order online or visit us in Malé.</p>
                     <div class="banner-ctas">
-                        <a href="/order/" class="banner-cta-primary">🛒 Order Now →</a>
+                        <a href="/order/" class="banner-cta-primary">Order Now →</a>
                         <a href="/order/menu" class="banner-cta-secondary">View Menu</a>
                     </div>
                     </div>
@@ -237,7 +237,10 @@
         var parent = img.parentElement; // clearing innerHTML detaches img, so grab it first
         var ph = document.createElement('div');
         ph.className = img.dataset.fallbackClass;
-        ph.textContent = img.dataset.fallbackIcon || '🍽️';
+        // The brand flame, as the menu's no-photo tile (UI audit, 2026-10-10; was a plate emoji).
+        var mark = document.createElement('img');
+        mark.src = '/brand/flame-mark.svg'; mark.alt = ''; mark.width = 64; mark.height = 60;
+        ph.appendChild(mark);
         parent.innerHTML = '';
         parent.appendChild(ph);
     }, true);

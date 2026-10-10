@@ -597,7 +597,7 @@ class MenuPageTest extends TestCase
         $this->assertStringContainsString('main-thumb.jpg', $card);
     }
 
-    public function test_no_item_image_falls_back_to_the_site_default_then_the_emoji(): void
+    public function test_no_item_image_falls_back_to_the_site_default_then_the_flame(): void
     {
         $cat = $this->category('Shorteats');
         $item = $this->item($cat, 'Bajiya', 5);
@@ -609,7 +609,9 @@ class MenuPageTest extends TestCase
         SiteSetting::set('default_item_image', '', 'shared');
         $plain = $this->item($cat, 'Cutlet', 6);
         $card = $this->itemCard($this->get('/menu')->assertOk()->getContent(), $plain->id);
-        $this->assertStringContainsString('🍽️', $card);
+        // The quiet brand tile, not the plate emoji (UI audit, 2026-10-10).
+        $this->assertStringContainsString('/brand/flame-mark.svg', $card);
+        $this->assertStringNotContainsString('🍽', $card);
         $this->assertStringNotContainsString('src=""', $card);
     }
 
@@ -1590,14 +1592,18 @@ class MenuPageTest extends TestCase
         $this->assertStringContainsString('name="csrf-token"', $html);
         $this->assertStringContainsString("'X-CSRF-TOKEN'", $html);
 
+        // A drawn heart, filled by the is-on class rather than swapped emoji.
         $likedCard = $this->itemCard($html, $liked->id);
         $this->assertStringContainsString('aria-pressed="true"', $likedCard);
-        $this->assertStringContainsString('❤️', $likedCard);
+        $this->assertStringContainsString('class="menu-fav is-on"', $likedCard);
+        $this->assertStringContainsString('class="menu-fav-icon"', $likedCard);
         $this->assertStringContainsString('Remove from favourites', $likedCard);
 
         $plainCard = $this->itemCard($html, $plain->id);
         $this->assertStringContainsString('aria-pressed="false"', $plainCard);
-        $this->assertStringContainsString('🤍', $plainCard);
+        $this->assertStringContainsString('class="menu-fav"', $plainCard);
+        $this->assertStringNotContainsString('❤', $plainCard . $likedCard);
+        $this->assertStringNotContainsString('🤍', $plainCard . $likedCard);
     }
 
     public function test_a_toggled_favourite_survives_reload(): void

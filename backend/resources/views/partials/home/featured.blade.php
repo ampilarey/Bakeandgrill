@@ -7,9 +7,9 @@
         <div class="section-header">
             <span class="section-eyebrow">
                 @if($bestSellers->count() > 0 && $bestSellers->max('order_items_count') > 0)
-                    {{ $homeFeaturedEyebrowBs }}
+                    {{ \App\Support\UiIcon::label((string) $homeFeaturedEyebrowBs, 'flame', 13) }}
                 @else
-                    {{ $homeFeaturedEyebrowHp }}
+                    {{ \App\Support\UiIcon::label((string) $homeFeaturedEyebrowHp, 'star', 13) }}
                 @endif
             </span>
             <h2 class="section-title">
@@ -37,14 +37,13 @@
                                     : ($item->image_url ?? '');
                             @endphp
                             <img src="{{ $imgUrl }}" alt="{{ $item->name }}" loading="lazy"
-                                 data-fallback-class="product-img-placeholder"
-                                 data-fallback-icon="🍽️">
+                                 data-fallback-class="product-img-placeholder">
                         @else
-                            <div class="product-img-placeholder">🍽️</div>
+                            <div class="product-img-placeholder"><img src="/brand/flame-mark.svg" alt="" width="64" height="60" loading="lazy"></div>
                         @endif
 
                         @if($isBestSeller)
-                            <span class="product-badge badge-bestseller">🔥 Best Seller</span>
+                            <span class="product-badge badge-bestseller">{{ \App\Support\UiIcon::svg('flame', 12) }} Best Seller</span>
                         @else
                             <span class="product-badge badge-fresh">Fresh Daily</span>
                         @endif

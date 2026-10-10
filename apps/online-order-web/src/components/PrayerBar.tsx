@@ -212,7 +212,17 @@ function GeoIcon({ spinning }: { spinning: boolean }) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export function PrayerBar() {
+type PrayerBarProps = {
+  /**
+   * Draw nothing when the times cannot load, rather than a grey "Prayer
+   * times unavailable" bar across the top of the home page and the header
+   * (UI audit, 2026-10-10). The Account page's own Prayer times section
+   * keeps the line, since that section is there to show them.
+   */
+  hideWhenUnavailable?: boolean;
+};
+
+export function PrayerBar({ hideWhenUnavailable = false }: PrayerBarProps = {}) {
   const { t } = useLanguage();
   const [loaded, setLoaded] = useState(false);
   const [unavailable, setUnavailable] = useState(false);
@@ -662,6 +672,8 @@ export function PrayerBar() {
   const showOfflineCaption = offline || servedFromCache;
   const cdDisplay = (tick?.cdStr ?? '').replace(/[()]/g, '');
   const locLabel = island ? makeLabel(island.atollLatin, island.nameLatin) : 'K. Malé';
+
+  if (hideWhenUnavailable && loaded && unavailable) return null;
 
   // ── §12 banner (Home / Account) ─────────────────────────────────────────
   return (

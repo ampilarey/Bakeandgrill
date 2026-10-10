@@ -74,6 +74,7 @@ import {
   writeCheckoutAttempt,
   writeCheckoutPendingOrderId,
 } from '../utils/checkoutPendingOrder';
+import { firstName } from "../utils/displayName";
 
 export type CartItem = {
   id: number;
@@ -308,7 +309,10 @@ export function useCheckout() {
 
   const [cartTick, bumpCart] = useReducer((n: number) => n + 1, 0);
   const cart = useMemo(() => readCart(), [cartTick]);
-  const [customerName, setCustomerName] = useState<string | null>(authCustomerName);
+  // The greeting in the checkout bar: the account's first name, or nothing.
+  // Sign-in stores the phone digits as the display name, which is what the
+  // bar used to show ("Hi, 7009995"; UI audit, 2026-10-10).
+  const [customerName, setCustomerName] = useState<string | null>(() => firstName(authCustomerName));
   const [loyaltyAccount, setLoyaltyAccount] = useState<LoyaltyAccount | null>(null);
   const [loyaltyTierProgress, setLoyaltyTierProgress] = useState<LoyaltyTierProgress | null>(null);
   const [loyaltyRates, setLoyaltyRates] = useState<LoyaltyRatesConfig>(DEFAULT_LOYALTY_RATES);
@@ -343,7 +347,8 @@ export function useCheckout() {
   }, []);
 
   useEffect(() => {
-    if (authCustomerName) setCustomerName(authCustomerName);
+    const greeting = firstName(authCustomerName);
+    if (greeting) setCustomerName(greeting);
   }, [authCustomerName]);
 
   useEffect(() => {
@@ -479,9 +484,7 @@ export function useCheckout() {
     getCustomerMe()
       .then((r) => {
         if (cancelled) return;
-        const raw = r.customer.phone ?? r.customer.name ?? "";
-        const display = r.customer.phone ? localPhone(r.customer.phone) : raw;
-        setCustomerName(display);
+        setCustomerName(firstName(r.customer.name));
         if (r.customer.phone) {
           setDelivery((prev) => ({
             ...prev,
@@ -1406,7 +1409,9 @@ export function useCheckout() {
 
   const handleAuthSuccess = (name: string) => {
     setAuth(name);
-    setCustomerName(name);
+    // Usually the phone digits; the account's name arrives with getCustomerMe.
+    const greeting = firstName(name);
+    if (greeting) setCustomerName(greeting);
   };
 
   const allowsTomorrow = cartAllowsTomorrow(cart);

@@ -125,7 +125,7 @@ export function TopNav() {
 
         {showPrayer ? (
           <div className="top-nav__prayer">
-            <PrayerBar />
+            <PrayerBar hideWhenUnavailable />
           </div>
         ) : null}
 

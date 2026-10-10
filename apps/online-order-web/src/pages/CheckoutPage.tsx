@@ -42,6 +42,8 @@ import {
   shouldShowSaveAddressOption,
   shouldShowUsingDefaultNote,
 } from '../utils/checkoutDeliveryAddress';
+import { AlertTriangle, Bike, CalendarDays, Camera, CheckCircle2, Clock, Gift, Hourglass, Lock, MapPin, Receipt, ShoppingBag, Star, Users, Utensils, Zap } from 'lucide-react';
+import { ORDER_MODE_ICONS } from '../utils/emojiIcon';
 
 function parseFreeDeliveryThreshold(raw: string | undefined): number {
   const n = parseFloat(raw ?? '');
@@ -400,7 +402,7 @@ export function CheckoutPage() {
     return (
       <div style={{ padding: '3rem var(--page-gutter)', textAlign: 'center', minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div className="animate-fade-in">
-          <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.35 }}>🛒</div>
+          <div style={{ marginBottom: '1rem', opacity: 0.35, display: 'flex', justifyContent: 'center' }}><ShoppingBag size={48} strokeWidth={1.75} aria-hidden /></div>
           <p style={{ color: 'var(--color-text-muted)', marginBottom: '1.5rem', fontSize: '1rem' }}>
             {t('checkout.empty_cart')}
           </p>
@@ -477,17 +479,19 @@ export function CheckoutPage() {
               disabled={blocked}
               style={{
                 ...S.typeBtn,
+                ...S.orderTypeTile,
                 ...(active ? S.typeBtnActive : {}),
                 ...(blocked ? { opacity: 0.45, cursor: 'not-allowed' } : {}),
               }}
               aria-pressed={active}
               aria-disabled={blocked || undefined}
             >
+              {(() => { const TypeIcon = ORDER_MODE_ICONS[type]; return <TypeIcon size={22} strokeWidth={2} aria-hidden />; })()}
               {type === 'pickup'
-                ? `🥡 ${t('checkout.type_pickup')}`
+                ? t('checkout.type_pickup')
                 : type === 'delivery'
-                  ? `🛵 ${t('checkout.type_delivery')}`
-                  : `🍽️ ${t('checkout.type_eat_here')}`}
+                  ? t('checkout.type_delivery')
+                  : t('checkout.type_eat_here')}
             </button>
           );
         })}
@@ -557,7 +561,7 @@ export function CheckoutPage() {
         }}
       >
         <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text)' }}>
-          <span aria-hidden="true">📅</span>{' '}
+          <CalendarDays size={15} aria-hidden style={{ verticalAlign: '-0.2em' }} />{' '}
           {collectOn === 'tomorrow'
             ? `${tomorrowHeading}, ${tomorrowDateLabel}`
             : t('checkout.day_today')}
@@ -627,7 +631,7 @@ export function CheckoutPage() {
               aria-pressed={pickupSlotAt === null}
               className={`time-slot-btn${pickupSlotAt === null ? ' is-active' : ''}`}
             >
-              <span className="time-slot-btn__label">⚡ {t('checkout.asap')}</span>
+              <span className="time-slot-btn__label"><Zap size={14} aria-hidden style={{ verticalAlign: '-0.15em' }} /> {t('checkout.asap')}</span>
               <span className="time-slot-btn__sub">{t('checkout.asap_sub')}</span>
             </button>
             {pickupSlots.map((slot) => (
@@ -704,7 +708,7 @@ export function CheckoutPage() {
     return (
       <>
         <div style={S.infoNote}>
-          <span>🛵</span>{' '}
+          <Bike size={15} aria-hidden style={{ flexShrink: 0 }} />{' '}
           {t('checkout.delivery_fee_prefix')}{' '}
           <strong>MVR {(deliveryFee / 100).toFixed(2)}</strong>
           {islandKey && zoneFee != null && zoneFee !== defaultFee && (
@@ -811,10 +815,10 @@ export function CheckoutPage() {
           <div style={S.promoApplied}>
             <span style={{ fontSize: 'var(--text-base)' }}>
               {(promoApplied.pending && promoApplied.discountLaar === 0)
-                ? <><span>⏳</span> <strong>{promoApplied.code}</strong> — {t('checkout.promo_pending')}</>
+                ? <><Hourglass size={15} aria-hidden style={{ verticalAlign: '-0.18em' }} /> <strong>{promoApplied.code}</strong> — {t('checkout.promo_pending')}</>
                 : promoApplied.discountLaar === 0
-                  ? <><span>✅</span> <strong>{promoApplied.code}</strong> — Free delivery</>
-                  : <><span>✅</span> <strong>{promoApplied.code}</strong> — {t('checkout.promo_off').replace('{amount}', String(laarToMvr(promoApplied.discountLaar)))}</>
+                  ? <><CheckCircle2 size={15} aria-hidden style={{ verticalAlign: '-0.18em', color: 'var(--color-success)' }} /> <strong>{promoApplied.code}</strong> — Free delivery</>
+                  : <><CheckCircle2 size={15} aria-hidden style={{ verticalAlign: '-0.18em', color: 'var(--color-success)' }} /> <strong>{promoApplied.code}</strong> — {t('checkout.promo_off').replace('{amount}', String(laarToMvr(promoApplied.discountLaar)))}</>
               }
             </span>
             <button style={S.removeBtn} onClick={() => void handleRemovePromo()}>{t('checkout.remove')}</button>
@@ -904,8 +908,8 @@ export function CheckoutPage() {
           <div style={S.promoApplied}>
             <span style={{ fontSize: 'var(--text-base)', color: 'var(--color-text)' }}>
               {friendReferralApplied.pending
-                ? <><span>⏳</span> <strong style={{ fontFamily: 'monospace' }}>{friendReferralApplied.code}</strong> — {t('checkout.referral_est').replace('{amount}', String(laarToMvr(referralDelta)))}</>
-                : <><span>🤝</span> <strong style={{ fontFamily: 'monospace' }}>{friendReferralApplied.code}</strong> — {t('checkout.promo_off').replace('{amount}', String(laarToMvr(friendReferralApplied.discountLaar)))}</>}
+                ? <><Hourglass size={15} aria-hidden style={{ verticalAlign: '-0.18em' }} /> <strong style={{ fontFamily: 'monospace' }}>{friendReferralApplied.code}</strong> — {t('checkout.referral_est').replace('{amount}', String(laarToMvr(referralDelta)))}</>
+                : <><Users size={15} aria-hidden style={{ verticalAlign: '-0.18em', color: 'var(--color-success)' }} /> <strong style={{ fontFamily: 'monospace' }}>{friendReferralApplied.code}</strong> — {t('checkout.promo_off').replace('{amount}', String(laarToMvr(friendReferralApplied.discountLaar)))}</>}
             </span>
             <button style={S.removeBtn} onClick={() => void handleRemoveFriendReferral()}>{t('checkout.remove')}</button>
           </div>
@@ -946,7 +950,7 @@ export function CheckoutPage() {
             fontSize: 'var(--text-sm)', fontWeight: 700,
           }}
         >
-          🍽️ Ordering for {tableSession.name} — we will bring it to your table.
+          <Utensils size={15} aria-hidden style={{ verticalAlign: '-0.18em' }} /> Ordering for {tableSession.name} — we will bring it to your table.
         </div>
       )}
       {tableSession.error && (
@@ -968,8 +972,8 @@ export function CheckoutPage() {
           <div style={S.promoApplied}>
             <span style={{ fontSize: 'var(--text-base)', color: 'var(--color-text)' }}>
               {giftCardApplied.pending
-                ? <><span>⏳</span> <strong style={{ fontFamily: 'monospace' }}>{giftCardApplied.code}</strong> — {t('checkout.promo_pending')}</>
-                : <><span>🎁</span> <strong style={{ fontFamily: 'monospace' }}>{giftCardApplied.code}</strong> — {t('checkout.promo_off').replace('{amount}', String(laarToMvr(giftCardApplied.discountLaar)))}</>}
+                ? <><Hourglass size={15} aria-hidden style={{ verticalAlign: '-0.18em' }} /> <strong style={{ fontFamily: 'monospace' }}>{giftCardApplied.code}</strong> — {t('checkout.promo_pending')}</>
+                : <><Gift size={15} aria-hidden style={{ verticalAlign: '-0.18em', color: 'var(--color-success)' }} /> <strong style={{ fontFamily: 'monospace' }}>{giftCardApplied.code}</strong> — {t('checkout.promo_off').replace('{amount}', String(laarToMvr(giftCardApplied.discountLaar)))}</>}
             </span>
             <button style={S.removeBtn} onClick={() => void handleRemoveGiftCard()}>{t('checkout.remove')}</button>
           </div>
@@ -990,9 +994,9 @@ export function CheckoutPage() {
                   data-testid="gift-card-scan"
                   aria-label="Scan gift card"
                   onClick={() => giftScan.setOpen(true)}
-                  style={{ ...S.secondaryBtn, minWidth: 48, padding: '9px 12px' }}
+                  style={{ ...S.secondaryBtn, minWidth: 48, padding: '9px 12px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                 >
-                  📷
+                  <Camera size={18} aria-hidden />
                 </button>
               )}
               <button
@@ -1177,7 +1181,7 @@ export function CheckoutPage() {
       )}
       {isAuthenticated && totalLaar > 0 && (
         <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px dashed var(--color-border)', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: '0.8rem' }}>⭐</span>
+          <Star size={14} aria-hidden style={{ color: 'var(--color-warning)', flexShrink: 0 }} />
           <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
             {t('checkout.earn_pts').replace('{n}', String(earnPreviewPoints))}
           </span>
@@ -1226,7 +1230,7 @@ export function CheckoutPage() {
         ))}
       </div>
       <p style={{ ...S.secureNote, textAlign: 'left', marginTop: '0.5rem' }}>
-        🔒 Payment processed securely by Bank of Maldives. We do not store your card details.
+        <Lock size={13} aria-hidden style={{ verticalAlign: '-0.15em' }} /> Payment processed securely by Bank of Maldives. We do not store your card details.
       </p>
       <div style={{ ...S.corporateInfo, textAlign: 'left', borderTop: 'none', paddingTop: 0, marginTop: '0.375rem' }}>
         <strong>{siteName}</strong> · {address} ·{' '}
@@ -1286,7 +1290,7 @@ export function CheckoutPage() {
     <>
       {placeBlockedByGate && (
         <div className="banner banner-warning" style={{ marginBottom: 12 }}>
-          <span className="banner-icon">🔒</span>
+          <span className="banner-icon"><Lock size={20} aria-hidden /></span>
           <div>
             <p className="banner-title">{t('checkout.gate_closed')}</p>
             <p className="banner-sub">{onlineGate?.message ?? t('checkout.gate_closed_sub')}</p>
@@ -1295,7 +1299,7 @@ export function CheckoutPage() {
       )}
       {needsModeChoice && !placeBlockedByGate && (
         <div className="banner banner-info" style={{ marginBottom: 12 }} data-testid="choose-order-type-hint">
-          <span className="banner-icon">🥡</span>
+          <span className="banner-icon"><ShoppingBag size={20} aria-hidden /></span>
           <div>
             <p className="banner-title">{t('checkout.choose_order_type')}</p>
             <p className="banner-sub">{t('checkout.choose_order_type_hint')}</p>
@@ -1304,7 +1308,7 @@ export function CheckoutPage() {
       )}
       {collectOn === 'tomorrow' && !placeBlockedByGate && (
         <div className="banner banner-info" style={{ marginBottom: 12 }} data-testid="tomorrow-order-banner">
-          <span className="banner-icon">📅</span>
+          <span className="banner-icon"><CalendarDays size={20} aria-hidden /></span>
           <div>
             <p className="banner-title">{t('checkout.tomorrow_banner_title')}</p>
             <p className="banner-sub">
@@ -1316,7 +1320,7 @@ export function CheckoutPage() {
       )}
       {isDineIn && pickupSlotAt && (
         <div className="banner banner-info" style={{ marginBottom: 12 }} data-testid="dine-in-summary-banner">
-          <span className="banner-icon">🍽️</span>
+          <span className="banner-icon"><Utensils size={20} aria-hidden /></span>
           <div>
             <p className="banner-title">Eating here</p>
             <p className="banner-sub">
@@ -1330,7 +1334,7 @@ export function CheckoutPage() {
       )}
       {isDineIn && !pickupSlotAt && (
         <div className="banner banner-warning" style={{ marginBottom: 12 }} data-testid="dine-in-needs-time-banner">
-          <span className="banner-icon">⏰</span>
+          <span className="banner-icon"><Clock size={20} aria-hidden /></span>
           <div>
             <p className="banner-title">Choose your arrival time</p>
             <p className="banner-sub">Pick when you’ll arrive so we can reserve your table and time the kitchen.</p>
@@ -1343,7 +1347,7 @@ export function CheckoutPage() {
           style={{ marginBottom: 12 }}
           data-testid="checkout-delivery-destination"
         >
-          <span className="banner-icon" aria-hidden>📍</span>
+          <span className="banner-icon" aria-hidden><MapPin size={20} /></span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <p className="banner-title" style={{ margin: 0 }}>
               {t('checkout.delivering_to').replace('{destination}', destinationText)}
@@ -1391,7 +1395,7 @@ export function CheckoutPage() {
       </label>
       {globalError && !zeroBalanceConflict && (
         <div className="banner banner-error" style={{ marginBottom: 12 }}>
-          <span className="banner-icon">⚠️</span>
+          <span className="banner-icon"><AlertTriangle size={20} aria-hidden /></span>
           <div>
             <p className="banner-title">{t('error.generic_title')}</p>
             <p className="banner-sub">{globalError}</p>
@@ -1414,7 +1418,7 @@ export function CheckoutPage() {
       )}
       {hasPendingReferral && (
         <p style={{ marginTop: 8, fontSize: '0.75rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
-          ⏳ {t('checkout.referral_pending')}
+          <Hourglass size={12} aria-hidden style={{ verticalAlign: '-0.15em' }} /> {t('checkout.referral_pending')}
         </p>
       )}
     </>
@@ -1432,7 +1436,7 @@ export function CheckoutPage() {
           fontSize: 14,
           color: 'var(--color-text)',
         }}>
-          ⭐ You&apos;re close to <strong>{loyaltyTierProgress.next_tier_name}</strong>
+          <Star size={14} aria-hidden style={{ verticalAlign: '-0.18em', color: 'var(--color-warning)' }} /> You&apos;re close to <strong>{loyaltyTierProgress.next_tier_name}</strong>
           {loyaltyTierProgress.points_to_next != null && loyaltyTierProgress.points_to_next > 0
             ? (() => {
                 const projected = Math.max(0, loyaltyTierProgress.points_to_next - earnPreviewPoints);
@@ -1457,7 +1461,7 @@ export function CheckoutPage() {
                 color: 'var(--color-warning)', background: 'var(--color-warning-bg)',
                 borderRadius: '999px', padding: '0.2rem 0.6rem',
               }}>
-                ⭐ {loyaltyAvailablePoints(loyaltyAccount).toLocaleString()} pts
+                <Star size={12} aria-hidden /> {loyaltyAvailablePoints(loyaltyAccount).toLocaleString()} pts
               </span>
             )}
             {customerName && (
@@ -1472,7 +1476,7 @@ export function CheckoutPage() {
       {/* ── Page heading ───────────────────────────────────── */}
       <div style={{ background: 'linear-gradient(135deg, var(--color-surface-alt) 0%, var(--color-surface) 100%)', borderBottom: '1px solid rgba(183,75,12,0.2)', padding: '0.875rem 0' }}>
         <div style={{ maxWidth: 'var(--layout-max)', margin: '0 auto', width: '100%', padding: '0 var(--page-gutter)', boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
-          <span style={{ fontSize: '1.25rem' }}>🧾</span>
+          <Receipt size={22} aria-hidden style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
           <div>
             <h1 style={{ fontSize: 'var(--text-md)', fontWeight: 800, color: 'var(--color-text)', margin: 0, lineHeight: 1.2 }}>
               {checkoutTitle}
@@ -1649,6 +1653,19 @@ const S = {
     fontFamily: 'inherit',
   } as React.CSSProperties,
 
+  // The order type tiles: the icon above the word, so "Eat here" stays on
+  // one line in a third of a phone's width (UI audit, 2026-10-10).
+  orderTypeTile: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    padding: '0.6rem 0.5rem',
+    whiteSpace: 'nowrap',
+    minWidth: 0,
+  } as React.CSSProperties,
+
   typeBtnActive: {
     borderColor: 'var(--color-primary)',
     background: 'var(--color-primary-light)',
@@ -1754,7 +1771,7 @@ const S = {
     gap: 6,
     minHeight: 40,
     padding: '0.5rem 1rem',
-    background: '#25d366',
+    background: '#15803D',
     color: 'white',
     borderRadius: 'var(--radius-lg)',
     fontWeight: 700,
@@ -1769,7 +1786,7 @@ const S = {
     gap: 6,
     minHeight: 40,
     padding: '0.5rem 1rem',
-    background: '#7360f2',
+    background: '#6554E0',
     color: 'white',
     borderRadius: 'var(--radius-lg)',
     fontWeight: 700,

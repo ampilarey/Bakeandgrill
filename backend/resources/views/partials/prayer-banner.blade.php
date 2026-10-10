@@ -3,9 +3,6 @@
     <div class="prayer-banner-skeleton" data-pt-skeleton aria-hidden="true">
         <span class="prayer-banner-skeleton-bar"></span>
     </div>
-    <div class="prayer-banner-unavailable" data-pt-unavailable hidden>
-        <span>Prayer times unavailable</span>
-    </div>
     <div class="prayer-banner-body" data-pt-body hidden>
         <div class="prayer-banner-summary">
             <button type="button" class="prayer-banner-expand" data-pt-expand aria-expanded="false">

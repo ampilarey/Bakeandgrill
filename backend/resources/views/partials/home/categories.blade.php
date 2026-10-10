@@ -16,10 +16,9 @@
                     @if(!empty($cat['image_url']))
                         <img src="{{ $cat['image_url'] }}"
                              alt="{{ $cat['image_alt'] ?? ($cat['name'] ?? '') }}"
-                             data-fallback-class="cat-img-placeholder"
-                             data-fallback-icon="{{ $cat['icon'] ?? '🍽️' }}">
+                             data-fallback-class="cat-img-placeholder">
                     @else
-                        <div class="cat-img-placeholder">{{ $cat['icon'] ?? '🍽️' }}</div>
+                        <div class="cat-img-placeholder"><img src="/brand/flame-mark.svg" alt="" width="64" height="60" loading="lazy"></div>
                     @endif
                 </div>
                 <div class="cat-body">

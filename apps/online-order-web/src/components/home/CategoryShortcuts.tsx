@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom';
 import type { HomepageCategoryRow } from '../../context/SiteSettingsContext';
 import { API_ORIGIN } from '../../api';
 import { safePublicUrl } from '../../utils/safePublicUrl';
+import { EmojiIcon } from '../../utils/emojiIcon';
+import { resolveMediaUrl } from '../../utils/itemMedia';
 
 function orderAppHref(url: string): string {
   const trimmed = url.trim();
@@ -114,7 +116,12 @@ export function CategoryShortcuts({ categories, eyebrow, title }: Props) {
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
                   ) : (
-                    <span aria-hidden>{cat.icon || '🍽️'}</span>
+                    // A typed emoji we draw becomes its icon; none at all, the brand flame.
+                    <span aria-hidden style={{ display: 'inline-flex', color: 'var(--color-primary)' }}>
+                      {cat.icon && cat.icon.trim() !== ''
+                        ? <EmojiIcon emoji={cat.icon} size={28} />
+                        : <img src={resolveMediaUrl('/brand/flame-mark.svg') ?? '/brand/flame-mark.svg'} alt="" width={32} height={30} className="quiet-flame-mark" style={{ width: 32 }} />}
+                    </span>
                   )}
                 </div>
                 <div style={{ padding: '0.55rem 0.65rem' }}>
@@ -122,7 +129,7 @@ export function CategoryShortcuts({ categories, eyebrow, title }: Props) {
                     <p
                       style={{
                         margin: 0,
-                        fontSize: 10,
+                        fontSize: 11,
                         fontWeight: 700,
                         color: 'var(--color-primary)',
                         textTransform: 'uppercase',

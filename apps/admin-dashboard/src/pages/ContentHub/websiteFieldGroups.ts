@@ -72,8 +72,9 @@ export const WEBSITE_PAGE_GROUPS: Record<string, FieldGroup[]> = {
       ],
     },
     {
+      // The hours themselves come from the Admin schedule (UI audit, 2026-10-10).
       label: 'Opening hours on this page',
-      keys: ['contact_hours_heading', 'contact_schedule_label', 'contact_hours_fallback', 'business_hours'],
+      keys: ['contact_hours_heading', 'contact_schedule_label'],
     },
     {
       label: 'Where we are',

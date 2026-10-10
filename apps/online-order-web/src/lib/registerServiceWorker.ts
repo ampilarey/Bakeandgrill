@@ -13,6 +13,11 @@
  * policy allows it: install, tell a waiting worker to take over, and reload
  * exactly once when the new worker takes control so the fresh asset URLs
  * are picked up.
+ *
+ * UI audit, 2026-10-10: only when a worker replaces an older one. On a
+ * customer's first visit there is nothing old to replace, but the new worker
+ * claiming the page still fired `controllerchange`, so the first visit
+ * loaded twice and sent every request twice.
  */
 export function registerServiceWorker(
   sw: ServiceWorkerContainer | undefined = typeof navigator !== 'undefined' ? navigator.serviceWorker : undefined,
@@ -33,8 +38,9 @@ export function registerServiceWorker(
         });
       });
       let reloaded = false;
+      const replacingAnOlderWorker = Boolean(sw.controller);
       sw.addEventListener('controllerchange', () => {
-        if (reloaded) return;
+        if (reloaded || !replacingAnOlderWorker) return;
         reloaded = true;
         window.location.reload();
       });

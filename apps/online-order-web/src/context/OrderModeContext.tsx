@@ -140,3 +140,8 @@ export function useOrderMode(): OrderModeContextValue {
   }
   return ctx;
 }
+
+/** The order mode when a provider is mounted, else null (parts also drawn on their own). */
+export function useOptionalOrderMode(): OrderModeContextValue | null {
+  return useContext(OrderModeContext);
+}

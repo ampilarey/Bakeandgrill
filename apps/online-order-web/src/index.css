@@ -97,7 +97,7 @@
   --shell-max:            640px;
   --top-nav-height:       64px;
   --bottom-nav-height:    64px;
-  --float-cart-height:    72px; /* logo FAB clearance (all breakpoints when cart has items) */
+  --float-cart-height:    84px; /* logo FAB clearance: 56px logo, its badge and the price tag under it */
   --safe-bottom:          env(safe-area-inset-bottom, 0px);
   --cat-rail-width:       90px;
   --menu-header-height:   112px; /* fallback; JS sets --menu-sticky-offset from sticky bar */
@@ -131,6 +131,8 @@ img.brand-logo--dark { display: none; }
    DARK MODE TOKEN OVERRIDES
 ════════════════════════════════════════════════════════════ */
 [data-theme="dark"] {
+  /* Native date and time pickers, scrollbars and form controls draw dark too. */
+  color-scheme: dark;
   /* Matched to layout.blade.php [data-theme="dark"] */
   --color-bg:            #1a1208;
   --color-surface:       #231809;
@@ -403,7 +405,7 @@ img.brand-logo--dark { display: none; }
   border: 1px solid rgba(183, 75, 12, 0.4);
   border-radius: 999px;
   padding: 0.3rem 0.875rem;
-  font-size: 0.65rem;
+  font-size: 0.6875rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -636,31 +638,38 @@ img.brand-logo--dark { display: none; }
 }
 .home-promo-hero__dots {
   position: absolute;
-  bottom: 1rem;
+  bottom: 0.4rem;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
-  gap: 6px;
+  gap: 0;
   z-index: 10;
 }
+/* Each dot is a 32px button with the small dot drawn inside it, as on the
+   website (UI audit, 2026-10-10): the old 44px halo of each dot overlapped its
+   neighbours, so a tap between two dots picked whichever came later. */
 .home-promo-hero__dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 99px;
-  background: rgba(255, 255, 255, 0.3);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
   border: none;
   padding: 0;
   cursor: pointer;
-  transition: width 0.3s, background 0.3s;
-  position: relative;
+  transition: width 0.3s;
 }
-/* Expand tap target without changing visible size: the dot stays 6px, the
-   finger gets 44px. */
-.home-promo-hero__dot::before {
+.home-promo-hero__dot::after {
   content: '';
-  position: absolute;
-  inset: -19px -17px;
+  width: 8px;
+  height: 8px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: 0 0 0 1px rgba(20, 14, 8, 0.18);
+  transition: width 0.3s, background 0.3s;
 }
+.home-promo-hero__dot:focus-visible { outline: 2px solid #fff; outline-offset: -4px; border-radius: 99px; }
 
 /* Read by screen readers and search engines, drawn for nobody. */
 .sr-only {
@@ -674,8 +683,9 @@ img.brand-logo--dark { display: none; }
   white-space: nowrap;
   border: 0;
 }
-.home-promo-hero__dot.is-active {
-  width: 24px;
+.home-promo-hero__dot.is-active { width: 42px; }
+.home-promo-hero__dot.is-active::after {
+  width: 26px;
   background: var(--color-primary, #b74b0c);
 }
 .home-promo-hero__btn {
@@ -713,15 +723,6 @@ img.brand-logo--dark { display: none; }
 }
 .home-promo-hero__btn--prev { left: 0.65rem; }
 .home-promo-hero__btn--next { right: 0.65rem; }
-@media (max-width: 768px) {
-  .home-promo-hero__dots { bottom: 0.85rem; gap: 8px; }
-  .home-promo-hero__dot {
-    width: 8px;
-    height: 8px;
-    background: rgba(255, 255, 255, 0.45);
-  }
-  .home-promo-hero__dot.is-active { width: 26px; }
-}
 
 /* Desktop: same height band as main website hero — inside 1280px rail (not full-bleed) */
 @media (min-width: 769px) {
@@ -809,18 +810,12 @@ img.brand-logo--dark { display: none; }
   .home-promo-hero__btn--prev { left: clamp(1.25rem, 2.5vw, 2.5rem); }
   .home-promo-hero__btn--next { right: clamp(1.25rem, 2.5vw, 2.5rem); }
   .home-promo-hero__dots {
-    bottom: 2rem;
+    bottom: 1.5rem;
     left: 50%;
     transform: translateX(-50%);
-    gap: 8px;
   }
-  .home-promo-hero__dot {
-    width: 8px;
-    height: 8px;
-  }
-  .home-promo-hero__dot.is-active {
-    width: 28px;
-  }
+  .home-promo-hero__dot.is-active { width: 44px; }
+  .home-promo-hero__dot.is-active::after { width: 28px; }
 }
 @media (min-width: 1200px) {
   .home-promo-hero {
@@ -1216,7 +1211,7 @@ a { text-decoration: none; color: inherit; }
 }
 .opening-status-badge__tomorrow {
   display: block;
-  font-size: 0.58rem;
+  font-size: 0.6875rem;
   font-weight: 600;
   line-height: 1.2;
   opacity: 0.92;
@@ -1279,7 +1274,7 @@ a { text-decoration: none; color: inherit; }
   gap: 0.35rem;
   padding: 0.28rem 0.65rem;
   border-radius: 999px;
-  font-size: 0.62rem;
+  font-size: 0.6875rem;
   font-weight: 700;
   line-height: 1.15;
   white-space: nowrap;
@@ -1413,7 +1408,7 @@ a { text-decoration: none; color: inherit; }
     padding: 0.32rem 0.7rem;
   }
   .tomorrow-ordering-badge {
-    font-size: 0.58rem;
+    font-size: 0.6875rem;
     padding: 0.25rem 0.55rem;
   }
   .opening-status-badge:not(.opening-status-badge-hero) {
@@ -1473,7 +1468,7 @@ textarea.field-input {
   padding: var(--space-12) var(--space-8);
   color: var(--color-text-muted);
 }
-.empty-state-icon { font-size: 2.5rem; margin-bottom: var(--space-4); opacity: 0.5; }
+.empty-state-icon { display: flex; justify-content: center; font-size: 2.5rem; margin-bottom: var(--space-4); opacity: 0.5; }
 .empty-state-title { font-size: 1.05rem; font-weight: 600; color: var(--color-text); margin-bottom: var(--space-2); }
 .empty-state-sub { font-size: 0.875rem; }
 
@@ -1494,7 +1489,7 @@ textarea.field-input {
 [data-theme="dark"] .banner-success { border-color: rgba(74,222,128,0.25); }
 [data-theme="dark"] .banner-error   { border-color: rgba(248,113,113,0.25); }
 [data-theme="dark"] .banner-warning { border-color: rgba(250,204,21,0.25); }
-.banner-icon    { font-size: 1.375rem; flex-shrink: 0; line-height: 1; margin-top: 2px; }
+.banner-icon    { display: inline-flex; font-size: 1.375rem; flex-shrink: 0; line-height: 1; margin-top: 2px; }
 .banner-title   { font-weight: 700; margin-bottom: 2px; overflow-wrap: anywhere; }
 .banner-sub     { opacity: 0.85; font-size: 0.875rem; overflow-wrap: anywhere; }
 
@@ -1657,9 +1652,9 @@ textarea.field-input {
   transition: all 0.15s;
   box-sizing: border-box;
 }
-.order-site-footer .footer-wa { background: #25D366; }
-.order-site-footer .footer-wa:hover { background: #1bba58; transform: translateY(-1px); }
-.order-site-footer .footer-viber { background: #7360F2; }
+.order-site-footer .footer-wa { background: #15803D; }
+.order-site-footer .footer-wa:hover { background: #126C34; transform: translateY(-1px); }
+.order-site-footer .footer-viber { background: #6554E0; }
 .order-site-footer .footer-viber:hover { background: #5E4CD6; transform: translateY(-1px); }
 .order-site-footer .footer-social-icon {
   width: 44px;
@@ -1738,7 +1733,7 @@ textarea.field-input {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, 0.58);
   margin: 0 0 1.25rem;
 }
 .order-site-footer .footer-col a,
@@ -1794,7 +1789,7 @@ textarea.field-input {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, 0.58);
   font-size: 0.8rem;
   flex-wrap: wrap;
   gap: 0.75rem;
@@ -1863,7 +1858,7 @@ textarea.field-input {
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, 0.58);
 }
 .brand-footer__chat-row {
   display: flex;
@@ -1905,8 +1900,8 @@ textarea.field-input {
 }
 .brand-footer__wa:hover,
 .brand-footer__viber:hover { transform: translateY(-1px); filter: brightness(1.05); }
-.brand-footer__wa { background: #25D366; }
-.brand-footer__viber { background: #7360F2; }
+.brand-footer__wa { background: #15803D; }
+.brand-footer__viber { background: #6554E0; }
 .brand-footer__col {
   min-width: 0;
 }
@@ -1916,7 +1911,7 @@ textarea.field-input {
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, 0.58);
 }
 .brand-footer__link {
   display: flex;
@@ -1971,7 +1966,7 @@ textarea.field-input {
   margin-top: 0.75rem;
   padding-top: 1.15rem;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, 0.58);
   font-size: 0.8rem;
 }
 
@@ -2856,6 +2851,10 @@ textarea.field-input {
 }
 
 /* ── Home stack helpers ─────────────────────────────────────────────── */
+/* A prayer box with no times draws nothing; its wrapper goes with it. */
+.home-prayer-wrap:empty,
+.top-nav__prayer:empty { display: none; }
+
 .home-prayer-wrap {
   padding: 0.25rem var(--page-gutter) 0.4rem;
   max-width: var(--layout-max);
@@ -2931,15 +2930,15 @@ textarea.field-input {
   position: absolute;
   top: -5px;
   right: -8px;
-  min-width: 1.15rem;
-  height: 1.15rem;
+  min-width: 1.25rem;
+  height: 1.25rem;
   padding: 0 0.3rem;
   border-radius: 999px;
   background: var(--color-primary);
   color: #fff;
-  font-size: 0.625rem;
+  font-size: 0.6875rem;
   font-weight: 800;
-  line-height: 1.15rem;
+  line-height: 1.25rem;
   text-align: center;
   font-variant-numeric: tabular-nums;
   box-shadow: 0 0 0 2px var(--color-mobile-nav-bg);
@@ -3042,6 +3041,27 @@ textarea.field-input {
   position: relative;
   width: 56px;
   height: 56px;
+}
+
+/* Drawn icons that stand where emoji were (utils/emojiIcon.tsx). */
+.heart-icon { color: var(--color-text-muted); }
+.heart-icon.is-on { color: var(--color-primary); }
+.spice-flames { display: inline-flex; color: var(--color-primary); vertical-align: -0.15em; }
+.badge-spicy .spice-flames { color: inherit; }
+.quiet-flame-mark { width: 24%; height: auto; opacity: 0.32; }
+[data-theme="dark"] .quiet-flame-mark { opacity: 0.5; }
+
+/* Toasts (ToastContext). UI audit, 2026-10-10: at a fixed 5rem the "added to
+   cart" message landed on the cart button it was talking about, so on a
+   phone it now sits above the bottom bar, and above the cart button while
+   that shows. */
+.toast-stack { bottom: 5rem; }
+@media (max-width: 767px) {
+  .toast-stack { bottom: calc(var(--bottom-nav-height) + var(--safe-bottom) + 12px); }
+  body:has(.app-shell--hide-nav) .toast-stack { bottom: calc(var(--safe-bottom) + 5rem); }
+  body:has(.float-cart-fab) .toast-stack {
+    bottom: calc(var(--bottom-nav-height) + var(--safe-bottom) + 10px + var(--float-cart-height) + 12px);
+  }
 }
 
 .float-cart-fab__logo {
@@ -3491,6 +3511,8 @@ textarea.field-input {
 
 .menu-search-row__icon {
   flex: 0 0 auto;
+  display: inline-flex;
+  color: var(--color-text-muted);
   line-height: 1;
 }
 
@@ -3674,7 +3696,7 @@ textarea.field-input {
 }
 
 .order-day-toggle__date {
-  font-size: 0.66rem;
+  font-size: 0.6875rem;
   font-weight: 600;
   line-height: 1.2;
   opacity: 0.85;
@@ -3801,7 +3823,8 @@ textarea.field-input {
 }
 
 .mode-sheet__icon {
-  font-size: 1.6rem;
+  display: inline-flex;
+  color: var(--color-primary);
   flex-shrink: 0;
 }
 
@@ -4007,7 +4030,7 @@ textarea.field-input {
   .cat-rail__item {
     padding: 0.45rem 0;
     gap: 0.25rem;
-    font-size: 0.625rem;
+    font-size: 0.6875rem;
     min-height: var(--cat-rail-item-height);
   }
 
@@ -4404,7 +4427,7 @@ textarea.field-input {
   .cat-rail__item.cat-rail__sub::after { left: 7px; }
   .cat-rail__item.cat-rail__sub::after { width: 8px; }
   .cat-rail__sub-label {
-    font-size: 0.625rem !important;
+    font-size: 0.6875rem !important;
   }
 }
 
@@ -4728,7 +4751,7 @@ textarea.field-input {
 
   .cat-rail__label {
     -webkit-line-clamp: 1;
-    font-size: 0.625rem !important;
+    font-size: 0.6875rem !important;
   }
 
   .cat-rail__item img,
@@ -5106,7 +5129,8 @@ textarea.field-input {
 }
 
 .mode-entry-card__icon {
-  font-size: 48px;
+  display: inline-flex;
+  color: var(--color-primary);
   line-height: 1;
 }
 
@@ -5153,11 +5177,16 @@ textarea.field-input {
   color: var(--color-text-secondary, var(--color-text-muted));
 }
 
-/* Narrow phones: stack full-width. From 360px keep the three-card row. */
-@media (max-width: 359px) {
-  .mode-entry-card {
-    flex: 1 1 100%;
-  }
+/* Phones: one row per order type, photo on the left (UI audit, 2026-10-10:
+   three columns left the pickup address six lines tall and split "Learn
+   more →"). Keep in step with the website's partials/home/mode-cards. */
+@media (max-width: 520px) {
+  .mode-entry-cards { flex-direction: column; gap: 0.625rem; }
+  .mode-entry-card { flex: 0 0 auto; flex-direction: row; }
+  .mode-entry-card__media { width: 104px; height: auto; min-height: 104px; }
+  .mode-entry-card__img { height: 100%; min-height: 104px; }
+  .mode-entry-card__body { padding: 0.75rem 0.875rem; }
+  .mode-entry-card__cta { padding-top: 0.375rem; }
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -5868,12 +5897,13 @@ textarea.field-input {
   width: 26px; height: 26px; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
   background: color-mix(in srgb, var(--color-primary) 14%, var(--color-surface));
+  color: var(--color-primary);
   font-size: 0.9rem; line-height: 1;
 }
-.rail-order-btn__mode { font-size: 0.66rem; font-weight: 800; color: var(--color-primary); line-height: 1.1; }
+.rail-order-btn__mode { font-size: 0.6875rem; font-weight: 800; color: var(--color-primary); line-height: 1.1; }
 .rail-order-btn__day {
   display: inline-flex; align-items: center; gap: 2px;
-  font-size: 0.58rem; font-weight: 600; color: var(--color-text-muted); line-height: 1.1;
+  font-size: 0.6875rem; font-weight: 600; color: var(--color-text-muted); line-height: 1.1;
 }
 .rail-order-btn.is-unset {
   border-color: transparent;
@@ -6015,8 +6045,8 @@ textarea.field-input {
   display: inline-flex; align-items: center; justify-content: center; gap: 0.3rem;
   font-size: 0.76rem;
 }
-.mode-switch__icon { font-size: 0.9rem; line-height: 1; }
-.mode-switch__btn:not(.is-active) .mode-switch__icon { filter: grayscale(0.4); opacity: 0.8; }
+.mode-switch__icon { display: inline-flex; font-size: 0.9rem; line-height: 1; }
+.mode-switch__btn:not(.is-active) .mode-switch__icon { opacity: 0.8; }
 .order-day-toggle__btn.is-active,
 .mode-switch__btn.is-active {
   box-shadow: 0 3px 8px -3px color-mix(in srgb, var(--color-primary) 70%, transparent);
@@ -6056,7 +6086,7 @@ textarea.field-input {
   outline: 0 !important; box-shadow: none !important;
 }
 .cat-rail__list > .cat-rail__item .cat-rail__label {
-  font-size: 0.66rem !important; font-weight: 700; line-height: 1.15; padding: 0 2px;
+  font-size: 0.6875rem !important; font-weight: 700; line-height: 1.15; padding: 0 2px;
 }
 .cat-rail__list > .cat-rail__item.is-active { background: var(--color-primary); color: #fff; box-shadow: 0 6px 14px -6px color-mix(in srgb, var(--color-primary) 70%, transparent); }
 .cat-rail__list > .cat-rail__item.is-active .cat-rail__label { color: #fff; font-weight: 800; }

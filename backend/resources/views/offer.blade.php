@@ -73,6 +73,13 @@
 .offer-hero img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .offer-hero--placeholder { background: var(--menu-placeholder-bg, #000); }
 .offer-hero--placeholder img { object-fit: contain; padding: 4%; box-sizing: border-box; }
+.offer-hero-quiet {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    background: color-mix(in srgb, var(--amber) 14%, var(--surface));
+}
+.offer-hero .offer-hero-quiet img { width: 22%; height: auto; object-fit: contain; opacity: 0.32; }
+[data-theme="dark"] .offer-hero .offer-hero-quiet img { opacity: 0.5; }
 /* The badge sits on the picture, the way a discount ribbon does on a card,
    rather than pushing the title down the page. */
 .offer-hero .offer-badge {
@@ -145,7 +152,8 @@
                 <img src="{{ $photoUrl }}" alt="{{ $socialImage['alt'] ?? $headline }}" loading="eager" decoding="async">
             </picture>
         @else
-            <span aria-hidden="true">🍽</span>
+            {{-- The menu's quiet no-photo tile: the flame, faded. --}}
+            <span class="offer-hero-quiet"><img src="/brand/flame-mark.svg" alt="" width="96" height="90"></span>
         @endif
         @if(!empty($badge))
             <span class="offer-badge">{{ $badge }}</span>

@@ -18,7 +18,7 @@
         margin-bottom: 0.5rem;
     }
     .policy-wrap .subtitle {
-        color: var(--text-muted, #78716c);
+        color: var(--muted);
         font-size: 0.975rem;
         margin-bottom: 2.5rem;
     }
@@ -27,29 +27,29 @@
         font-weight: 700;
         margin-top: 2.25rem;
         margin-bottom: 0.75rem;
-        color: var(--amber, #d97706);
+        color: var(--amber);
         text-transform: uppercase;
         letter-spacing: 0.04em;
     }
     .policy-wrap p, .policy-wrap li {
         font-size: 0.95rem;
         line-height: 1.8;
-        color: #44403c;
+        color: var(--text);
         margin-bottom: 0.6rem;
     }
     .policy-wrap ul {
         padding-left: 1.5rem;
         margin-bottom: 1rem;
     }
-    .policy-wrap a { color: var(--amber, #d97706); }
+    .policy-wrap a { color: var(--amber); }
     .policy-wrap .updated {
         margin-top: 3rem;
         font-size: 0.8rem;
-        color: #a8a29e;
+        color: var(--muted);
     }
     .policy-wrap .callout {
-        background: #fef3e8;
-        border-left: 4px solid var(--amber, #d97706);
+        background: var(--amber-light);
+        border-left: 4px solid var(--amber);
         border-radius: 0 8px 8px 0;
         padding: 1rem 1.25rem;
         margin: 1.5rem 0;

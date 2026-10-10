@@ -6,6 +6,9 @@ import type { Variant } from '@shared/types';
 import { useAuth } from '../context/AuthContext';
 import { useCart, type CartEntry } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useOptionalOrderMode } from '../context/OrderModeContext';
+import { Bike, Star } from 'lucide-react';
+import { HeartIcon } from '../utils/emojiIcon';
 import { useSiteSettings } from '../context/SiteSettingsContext';
 import { estimateEarnPointsForSubtotalMvr } from '../utils/loyalty';
 import { formatCardPrice, formatSavingsLabel, itemDisplayPrice } from '../utils/money';
@@ -46,6 +49,11 @@ export function CartDrawer({
   const { t } = useLanguage();
   const s = useSiteSettings();
   const freeDeliveryMvr = parseFreeDeliveryThreshold(s.delivery_free_threshold);
+  // Free delivery means nothing to a pickup or eat-in order (UI audit,
+  // 2026-10-10: "Add MVR 197 for free delivery" with Pickup chosen). Shown
+  // for delivery, and before an order type is chosen.
+  const orderMode = useOptionalOrderMode();
+  const showFreeDelivery = !orderMode || !orderMode.modeConfirmed || orderMode.mode === 'delivery';
   const [upsellItems, setUpsellItems] = useState<Item[]>([]);
   const [earnRatePerMvr, setEarnRatePerMvr] = useState(1);
   const [favouriteIds, setFavouriteIds] = useState<Set<number>>(new Set());
@@ -292,9 +300,9 @@ export function CartDrawer({
                       type="button"
                       onClick={() => handleToggleFavourite(entry.item.id)}
                       aria-label={favouriteIds.has(entry.item.id) ? 'Remove from favourites' : 'Save to favourites'}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1, padding: '0.15rem', flexShrink: 0 }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1, padding: '0.15rem', flexShrink: 0, display: 'inline-flex' }}
                     >
-                      {favouriteIds.has(entry.item.id) ? '❤️' : '🤍'}
+                      <HeartIcon on={favouriteIds.has(entry.item.id)} size={18} />
                     </button>
                   )}
                   {/* Qty controls — 32px minimum touch target */}
@@ -386,10 +394,10 @@ export function CartDrawer({
             </div>
 
             {/* Free delivery progress — cart merchandise only; checkout confirms after discounts */}
-            {cartTotal < freeDeliveryMvr && (
+            {showFreeDelivery && cartTotal < freeDeliveryMvr && (
               <div style={{ marginTop: '0.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.35rem' }}>
-                  <span>🛵 {t('cart.free_delivery_add').replace('{amount}', (freeDeliveryMvr - cartTotal).toFixed(2))}</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><Bike size={13} aria-hidden /> {t('cart.free_delivery_add').replace('{amount}', (freeDeliveryMvr - cartTotal).toFixed(2))}</span>
                   <span>MVR {freeDeliveryMvr}</span>
                 </div>
                 <div style={{ height: 6, background: 'var(--color-border)', borderRadius: 999, overflow: 'hidden' }}>
@@ -397,7 +405,7 @@ export function CartDrawer({
                 </div>
               </div>
             )}
-            {cartTotal >= freeDeliveryMvr && (
+            {showFreeDelivery && cartTotal >= freeDeliveryMvr && (
               <div style={{ marginTop: '0.5rem', fontSize: '0.78rem', color: 'var(--color-success)', fontWeight: 600, textAlign: 'center', padding: '0.35rem', background: 'var(--color-success-bg)', borderRadius: 8 }}>
                 {t('cart.free_delivery_met')}
               </div>
@@ -405,7 +413,7 @@ export function CartDrawer({
 
             {earnPreviewPoints > 0 && (
               <div style={{ marginTop: '0.5rem', fontSize: '0.78rem', color: 'var(--color-text-muted)', textAlign: 'center', padding: '0.35rem 0.5rem', background: 'var(--color-warning-bg, #FFFBEB)', borderRadius: 8, border: '1px solid rgba(252, 211, 77, 0.35)' }}>
-                ⭐ {t('cart.earn_preview').replace('{n}', earnPreviewPoints.toLocaleString())}
+                <Star size={13} aria-hidden style={{ verticalAlign: '-0.15em', color: 'var(--color-warning)' }} /> {t('cart.earn_preview').replace('{n}', earnPreviewPoints.toLocaleString())}
               </div>
             )}
           </div>

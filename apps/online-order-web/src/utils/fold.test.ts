@@ -9,7 +9,10 @@ type Fake = { onfinish: (() => void) | null; cancel: ReturnType<typeof vi.fn>; r
 describe('fold', () => {
   const original = HTMLElement.prototype.animate;
   const runs: Fake[] = [];
-  afterEach(() => {
+  afterEach(async () => {
+    // A test may end with a fold still waiting for its frame; let it start on
+    // the fake, or it would call jsdom's missing animate after the restore.
+    await frame();
     HTMLElement.prototype.animate = original;
     runs.length = 0;
   });

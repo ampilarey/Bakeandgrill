@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Skeleton } from '../ui/Skeleton';
 import { useLanguage } from '../../context/LanguageContext';
+import { Star } from 'lucide-react';
 
 type Props = {
   loading: boolean;
@@ -48,7 +49,7 @@ export function StatChipsRow({
         to="/rewards"
         style={{ ...chipBase, color: 'var(--color-primary)' }}
       >
-        <span aria-hidden="true">⭐</span>
+        <Star size={15} aria-hidden />
         {loyaltyPoints !== null
           ? `${loyaltyPoints} ${t('home.chip_rewards')}`
           : t('home.chip_rewards')}

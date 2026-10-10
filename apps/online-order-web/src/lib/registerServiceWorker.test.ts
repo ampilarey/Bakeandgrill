@@ -53,6 +53,37 @@ describe('registerServiceWorker', () => {
     expect(installing.postMessage).toHaveBeenCalledWith('SKIP_WAITING');
   });
 
+  it('reloads once when a new worker replaces an older one', async () => {
+    const { container, fire } = fakeContainer({ controller: {} });
+    Object.defineProperty(document, 'readyState', { value: 'complete', configurable: true });
+    const reload = vi.fn();
+    vi.stubGlobal('location', { ...window.location, reload });
+
+    registerServiceWorker(container as unknown as ServiceWorkerContainer);
+    await Promise.resolve();
+    await Promise.resolve();
+    fire('c:controllerchange');
+    fire('c:controllerchange');
+
+    expect(reload).toHaveBeenCalledTimes(1);
+    vi.unstubAllGlobals();
+  });
+
+  it('does not reload on the first visit, when there is no older worker (UI audit, 2026-10-10)', async () => {
+    const { container, fire } = fakeContainer({ controller: null });
+    Object.defineProperty(document, 'readyState', { value: 'complete', configurable: true });
+    const reload = vi.fn();
+    vi.stubGlobal('location', { ...window.location, reload });
+
+    registerServiceWorker(container as unknown as ServiceWorkerContainer);
+    await Promise.resolve();
+    await Promise.resolve();
+    fire('c:controllerchange');
+
+    expect(reload).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
   it('does nothing where there is no service worker support', () => {
     expect(() => registerServiceWorker(undefined)).not.toThrow();
   });

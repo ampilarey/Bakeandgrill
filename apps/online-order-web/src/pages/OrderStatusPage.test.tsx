@@ -1,4 +1,4 @@
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor, act, cleanup } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { OrderDetail } from '../api';
@@ -130,6 +130,9 @@ describe('OrderStatusPage error banner', () => {
   });
 
   afterEach(() => {
+    // Unmount before the EventSource stub goes: a stream that starts after its
+    // stream-ticket call settles would otherwise meet no EventSource at all.
+    cleanup();
     vi.useRealTimers();
     vi.unstubAllGlobals();
     vi.clearAllMocks();

@@ -1,6 +1,8 @@
 import { Sheet } from './ui/Sheet';
 import { useLanguage } from '../context/LanguageContext';
 import { useOrderMode, type OrderMode } from '../context/OrderModeContext';
+import type { LucideIcon } from 'lucide-react';
+import { ORDER_MODE_ICONS } from '../utils/emojiIcon';
 import { useOrderDay } from '../context/OrderDayContext';
 import { formatTomorrowDateLabel } from '../utils/collectOn';
 
@@ -57,7 +59,7 @@ export function OrderModeSheet({
 
   const options: Array<{
     id: OrderMode;
-    icon: string;
+    Icon: LucideIcon;
     label: string;
     sub: string;
     blocked: boolean;
@@ -65,7 +67,7 @@ export function OrderModeSheet({
   }> = [
     {
       id: 'pickup',
-      icon: '🥡',
+      Icon: ORDER_MODE_ICONS.pickup,
       label: t('mode.pickup'),
       sub: t('modeSheet.pickup_sub'),
       blocked: pickupBlocked,
@@ -73,7 +75,7 @@ export function OrderModeSheet({
     },
     {
       id: 'delivery',
-      icon: '🛵',
+      Icon: ORDER_MODE_ICONS.delivery,
       label: t('mode.delivery'),
       sub: day === 'tomorrow' ? t('modeSheet.delivery_tomorrow_ok') : t('modeSheet.delivery_sub'),
       blocked: deliveryBlocked,
@@ -83,7 +85,7 @@ export function OrderModeSheet({
     },
     {
       id: 'dine_in',
-      icon: '🍽️',
+      Icon: ORDER_MODE_ICONS.dine_in,
       label: t('mode.eat_here'),
       sub: t('modeSheet.eat_here_sub'),
       blocked: !dineInAvailable,
@@ -115,7 +117,7 @@ export function OrderModeSheet({
                 data-blocked={opt.blocked ? 'true' : undefined}
                 className={`mode-sheet__option${active ? ' is-active' : ''}${opt.blocked ? ' is-blocked' : ''}`}
               >
-                <span className="mode-sheet__icon" aria-hidden="true">{opt.icon}</span>
+                <span className="mode-sheet__icon" aria-hidden="true"><opt.Icon size={24} strokeWidth={2} /></span>
                 <span className="mode-sheet__text">
                   <span className="mode-sheet__label">{opt.label}</span>
                   <span className="mode-sheet__sub">{opt.blockedNote ?? opt.sub}</span>

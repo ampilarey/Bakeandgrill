@@ -47,8 +47,7 @@
                 el.classList.toggle('is-on', on);
                 el.setAttribute('aria-pressed', on ? 'true' : 'false');
                 el.setAttribute('aria-label', on ? 'Remove from favourites' : 'Add to favourites');
-                var icon = el.querySelector('.menu-fav-icon');
-                if (icon) icon.textContent = on ? '❤️' : '🤍';
+                // The is-on class fills the drawn heart.
             });
         }).catch(function () { /* offline — the heart just does not move */ });
     });

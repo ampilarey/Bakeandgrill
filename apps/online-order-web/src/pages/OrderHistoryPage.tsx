@@ -13,6 +13,7 @@ import { isGiftCardOrder } from '../utils/giftCardOrder';
 import { applyReorderPayloadToCart } from '../utils/applyReorderToCart';
 
 import { clearCheckoutPendingOrderId } from '../utils/checkoutPendingOrder';
+import { Receipt } from 'lucide-react';
 
 const STATUS_KEY: Record<string, string> = {
   payment_pending: 'order.status.payment_pending',
@@ -185,7 +186,7 @@ export function OrderHistoryPage() {
       {/* Empty state */}
       {authReady && !loading && isAuthenticated && !error && orders.length === 0 && (
         <div className="empty-state">
-          <div className="empty-state-icon">🧾</div>
+          <div className="empty-state-icon"><Receipt size={40} strokeWidth={1.75} aria-hidden /></div>
           <p className="empty-state-title">{t('orders.empty_title')}</p>
           <p className="empty-state-sub">{t('orders.empty_body')}</p>
           <Link

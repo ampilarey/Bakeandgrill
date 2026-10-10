@@ -14,7 +14,7 @@
     }
 
     .login-card {
-        background: white;
+        background: var(--surface);
         border: 1px solid var(--border);
         border-radius: 24px;
         padding: 3rem;
@@ -32,7 +32,7 @@
 
     .login-card p.subtitle {
         text-align: center;
-        color: #636e72;
+        color: var(--muted);
         margin-bottom: 2.5rem;
         font-size: 1.05rem;
     }
@@ -73,7 +73,7 @@
         width: 100%;
         padding: 1.25rem;
         background: var(--amber);
-        color: white;
+        color: var(--amber-contrast);
         border: none;
         border-radius: 999px;
         font-weight: 600;
@@ -115,9 +115,9 @@
         font-size: 0.95rem;
     }
 
-    .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-    .alert-error   { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-    .alert-info    { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+    .alert-success { background: var(--success-bg); color: var(--success-text); border: 1px solid color-mix(in srgb, var(--success-text) 30%, transparent); }
+    .alert-error   { background: var(--danger-bg); color: var(--danger-text); border: 1px solid color-mix(in srgb, var(--danger-text) 30%, transparent); }
+    .alert-info    { background: var(--amber-light); color: var(--text); border: 1px solid var(--border); }
 
     .step-header {
         text-align: center;
@@ -142,24 +142,32 @@
         .login-card { padding: 2rem 1.5rem; }
         .login-card h1 { font-size: 1.75rem; }
     }
+    .auth-badge {
+        width: 64px; height: 64px; margin: 0 auto 1rem; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        background: var(--amber-light); color: var(--amber);
+    }
+    .alert { display: flex; align-items: flex-start; gap: 0.5rem; }
+    .alert .ui-icon { margin-top: 0.15em; }
+    .form-group input { background: var(--bg); color: var(--text); }
 </style>
 @endsection
 
 @section('content')
 <div class="login-container">
     <div class="login-card">
-        <div style="text-align: center; font-size: 3.5rem; margin-bottom: 1rem;">🔐</div>
+        <div class="auth-badge">{{ \App\Support\UiIcon::svg('lock', 30) }}</div>
 
         @if(session('otp_hint'))
-            <div class="alert alert-info">💡 {{ session('otp_hint') }}</div>
+            <div class="alert alert-info">{{ \App\Support\UiIcon::svg('info', 16) }} {{ session('otp_hint') }}</div>
         @endif
 
         @if($errors->any())
-            <div class="alert alert-error">⚠️ {{ $errors->first() }}</div>
+            <div class="alert alert-error">{{ \App\Support\UiIcon::svg('alert-triangle', 16) }} {{ $errors->first() }}</div>
         @endif
 
         @if(session('message'))
-            <div class="alert alert-success">✅ {{ session('message') }}</div>
+            <div class="alert alert-success">{{ \App\Support\UiIcon::svg('check-circle', 16) }} {{ session('message') }}</div>
         @endif
 
         {{-- ── Step 1: Enter phone number ──────────────────────────────── --}}
@@ -170,12 +178,12 @@
             <form method="POST" action="{{ route('customer.request-otp') }}" id="phone-form">
                 @csrf
                 <div class="form-group">
-                    <label for="phone">📱 Phone Number</label>
+                    <label for="phone">Phone Number</label>
                     <input
                         type="text"
                         id="phone"
                         name="phone"
-                        placeholder="7820288 or +9607820288"
+                        placeholder="7XX XXXX"
                         value="{{ old('phone') }}"
                         autofocus
                     >
@@ -184,7 +192,7 @@
             </form>
 
             {{-- For returning customers with a password, check via JS first --}}
-            <p style="text-align:center; margin-top:1.25rem; font-size:0.85rem; color:#95a5a6;">
+            <p style="text-align:center; margin-top:1.25rem; font-size:0.85rem; color:var(--muted);">
                 <a href="/" class="link-muted">← Back to Home</a>
             </p>
 
@@ -192,7 +200,7 @@
         @elseif(session('password_step'))
             <h1>Welcome back</h1>
             <div class="step-header">
-                <p style="color:#636e72; margin-bottom:0.25rem;">Signing in as</p>
+                <p style="color:var(--muted); margin-bottom:0.25rem;">Signing in as</p>
                 <span class="phone-display">{{ session('phone') }}</span>
             </div>
 
@@ -200,7 +208,7 @@
                 @csrf
                 <input type="hidden" name="phone" value="{{ session('phone') }}">
                 <div class="form-group">
-                    <label for="password">🔒 Password</label>
+                    <label for="password">Password</label>
                     <input
                         type="password"
                         id="password"
@@ -223,7 +231,7 @@
         @elseif(session('otp_requested'))
             <h1>Enter the code</h1>
             <div class="step-header">
-                <p style="color:#636e72; margin-bottom:0.25rem;">A 6-digit code was sent to</p>
+                <p style="color:var(--muted); margin-bottom:0.25rem;">A 6-digit code was sent to</p>
                 <span class="phone-display">{{ session('phone') }}</span>
             </div>
 
@@ -231,7 +239,7 @@
                 @csrf
                 <input type="hidden" name="phone" value="{{ session('phone') }}">
                 <div class="form-group">
-                    <label for="otp">🔐 Verification Code</label>
+                    <label for="otp">Verification Code</label>
                     <input
                         type="text"
                         id="otp"
@@ -253,7 +261,7 @@
             </p>
         @endif
 
-        <p style="margin-top: 2rem; font-size: 0.8rem; text-align: center; color: #b2bec3;">
+        <p style="margin-top: 2rem; font-size: 0.8rem; text-align: center; color: var(--muted);">
             Your number is used only for order updates. No spam.
         </p>
     </div>

@@ -6,8 +6,18 @@
     $wa = content('business_whatsapp', '');
     $viber = content('business_viber', '');
     $logo = content('logo', '/logo.png');
+
+    // The full footer already carries the name, the thanks line and the chat
+    // buttons; with both on, the home page ended with them twice in a row
+    // (UI audit, 2026-10-10). Show this block only where the full footer is off.
+    $siteFooter = rescue(fn () => \App\Domains\Content\Blocks\HomeChromeResolver::resolve('website', 'site_footer'), ['enabled' => false, 'settings' => []], false);
+    $footerOnDesktop = $siteFooter['enabled'] && \App\Domains\Content\Blocks\BlockDeviceSettings::showDesktop($siteFooter['settings']);
+    $footerOnMobile = $siteFooter['enabled'] && \App\Domains\Content\Blocks\BlockDeviceSettings::showMobile($siteFooter['settings']);
+    $brandFooterClass = $footerOnDesktop && ! $footerOnMobile ? ' home-block--mobile-only'
+        : (! $footerOnDesktop && $footerOnMobile ? ' home-block--desktop-only' : '');
 @endphp
-<section class="home-brand-footer" data-home-block="brand_footer" style="padding:2.5rem 1.5rem; border-top:1px solid var(--border); background:var(--surface);">
+@unless($footerOnDesktop && $footerOnMobile)
+<section class="home-brand-footer{{ $brandFooterClass }}" data-home-block="brand_footer" style="padding:2.5rem 1.5rem; border-top:1px solid var(--border); background:var(--surface);">
     <div style="max-width:640px; margin:0 auto; text-align:center;">
         @if($logo)
             <img src="{{ $logo }}" alt="{{ $siteName }}" style="height:40px; width:auto; margin:0 auto 1rem; display:block;" />
@@ -29,3 +39,4 @@
         </div>
     </div>
 </section>
+@endunless

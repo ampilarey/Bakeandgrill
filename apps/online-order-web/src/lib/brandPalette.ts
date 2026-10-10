@@ -156,16 +156,19 @@ export function applyBrandPalette(tokens: BrandTokens | null): () => void {
   const prev = pairs.map(([k]) => [k, root.style.getPropertyValue(k)] as const);
   for (const [k, v] of pairs) root.style.setProperty(k, v);
 
-  // Dark theme overrides via a style tag so [data-theme="dark"] wins over :root inline.
+  // Dark theme overrides via a style tag. An inline style on :root beats any
+  // stylesheet rule that is not !important, so without it dark mode kept the
+  // light-mode accent and a cream --color-primary-light (UI audit, 2026-10-10:
+  // the Hours page's "Today" row was a cream bar on the dark page).
   const style = document.createElement('style');
   style.setAttribute('data-brand-palette', '1');
   style.textContent = `[data-theme="dark"]{
-    --color-primary:${tokens.darkPrimary};
-    --color-primary-hover:${tokens.darkHover};
-    --color-primary-light:${tokens.darkLight};
-    --color-primary-glow:${tokens.darkGlow};
-    --color-primary-contrast:${tokens.darkContrast};
-    --color-primary-on-dark:${tokens.onDark};
+    --color-primary:${tokens.darkPrimary} !important;
+    --color-primary-hover:${tokens.darkHover} !important;
+    --color-primary-light:${tokens.darkLight} !important;
+    --color-primary-glow:${tokens.darkGlow} !important;
+    --color-primary-contrast:${tokens.darkContrast} !important;
+    --color-primary-on-dark:${tokens.onDark} !important;
   }`;
   document.head.appendChild(style);
 

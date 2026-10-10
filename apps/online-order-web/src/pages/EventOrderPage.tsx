@@ -750,12 +750,14 @@ const S: Record<string, CSSProperties> = {
   steps: { display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 },
   stepDot: { fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.04, color: 'var(--color-text-muted)', padding: '4px 8px', borderRadius: 6, background: 'var(--color-surface-alt)' },
   stepDotActive: { background: 'var(--color-primary)', color: '#fff', fontWeight: 700 },
-  error: { color: '#b91c1c', fontSize: 13, marginBottom: 12 },
+  error: { color: 'var(--color-error)', fontSize: 13, marginBottom: 12 },
   tabs: { display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 },
   toggleRow: { display: 'flex', gap: 8 },
-  tab: { minHeight: 44, padding: '0 12px', borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-surface)', fontFamily: 'inherit', fontWeight: 600, fontSize: 13, cursor: 'pointer' },
+  // Text and field colours are set, not left to the browser: its black text and
+  // white boxes were what the dark theme showed (UI audit, 2026-10-10).
+  tab: { minHeight: 44, padding: '0 12px', borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontFamily: 'inherit', fontWeight: 600, fontSize: 13, cursor: 'pointer' },
   tabActive: { background: 'var(--color-primary)', color: '#fff', borderColor: 'var(--color-primary)' },
-  input: { display: 'block', width: '100%', minHeight: 44, marginTop: 4, borderRadius: 10, border: '1px solid var(--color-border)', padding: '0 12px', fontFamily: 'inherit', fontSize: 15, boxSizing: 'border-box' },
+  input: { display: 'block', width: '100%', minHeight: 44, marginTop: 4, borderRadius: 10, border: '1px solid var(--color-border)', padding: '0 12px', fontFamily: 'inherit', fontSize: 15, boxSizing: 'border-box', background: 'var(--color-surface)', color: 'var(--color-text)' },
   /** Hide native date/time “default” glyphs until the customer picks a value. */
   pickerWrap: { position: 'relative', display: 'block' },
   pickerPh: {
@@ -768,9 +770,9 @@ const S: Record<string, CSSProperties> = {
   list: { display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10, maxHeight: 360, overflow: 'auto' },
   row: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', border: '1px solid var(--color-border)', borderRadius: 12, background: 'var(--color-surface)' },
   btn: { display: 'inline-block', width: '100%', minHeight: 48, borderRadius: 12, border: 'none', background: 'var(--color-primary)', color: '#fff', fontWeight: 800, fontSize: 15, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'center', textDecoration: 'none', lineHeight: '48px' },
-  btnSm: { minHeight: 40, padding: '0 12px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' },
+  btnSm: { minHeight: 40, padding: '0 12px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' },
   h3: { fontSize: 15, fontWeight: 800, margin: '0 0 8px' },
   phoneRow: { display: 'flex', alignItems: 'stretch', marginTop: 4, borderRadius: 10, border: '1px solid var(--color-border)', overflow: 'hidden', background: 'var(--color-surface)' },
   prefix: { display: 'flex', alignItems: 'center', padding: '0 12px', background: 'var(--color-surface-alt)', fontWeight: 700, fontSize: 14, color: 'var(--color-text-muted)' },
-  phoneField: { flex: 1, minHeight: 44, border: 'none', padding: '0 12px', fontFamily: 'inherit', fontSize: 15, background: 'transparent' },
+  phoneField: { flex: 1, minHeight: 44, border: 'none', padding: '0 12px', fontFamily: 'inherit', fontSize: 15, background: 'transparent', color: 'var(--color-text)' },
 };

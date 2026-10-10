@@ -6,6 +6,7 @@ import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
 import { complaintUrl } from '../../utils/complaintLink';
 import { fetchOpeningHoursSchedule } from '../../api';
 import type { DaySchedule } from '../../api';
+import { hoursRange } from '../../utils/clockTime';
 import { MAIN_WEBSITE_HREF } from '../../utils/mainWebsite';
 import { isExternalHref, shouldLeaveOrderApp, toOrderSpaPath } from '../../utils/footerNav';
 import { safePublicUrl } from '../../utils/safePublicUrl';
@@ -204,7 +205,7 @@ export function BrandFooter({
   const hoursRows = DAY_KEYS.map((key, index) => {
     const dayHours = schedule?.[key] ?? null;
     const label = dayHours && !dayHours.closed
-      ? `${dayHours.open} – ${dayHours.close}`
+      ? hoursRange(dayHours.open, dayHours.close) || '—'
       : dayHours?.closed
         ? 'Closed'
         : '—';

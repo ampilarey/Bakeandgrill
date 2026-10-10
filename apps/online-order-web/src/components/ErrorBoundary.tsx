@@ -1,6 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { translate as t } from '../context/LanguageContext';
 import { reloadBoard } from '../lib/signageBoard';
+import { AlertTriangle } from 'lucide-react';
 
 type Props = {
   children: ReactNode;
@@ -98,7 +99,9 @@ export class ErrorBoundary extends Component<Props, State> {
             fontFamily: "var(--font-ui)",
           }}
         >
-          <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>😔</div>
+          <div style={{ marginBottom: '0.75rem', color: 'var(--color-text-muted)', display: 'flex' }}>
+            <AlertTriangle size={40} strokeWidth={1.75} aria-hidden />
+          </div>
           <h1 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-dark)', marginBottom: '0.5rem' }}>
             {t('error.generic_title')}
           </h1>

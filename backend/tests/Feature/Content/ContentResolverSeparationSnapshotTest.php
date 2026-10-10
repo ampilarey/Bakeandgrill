@@ -25,7 +25,9 @@ class ContentResolverSeparationSnapshotTest extends TestCase
     {
         $keys = ContentResolverSnapshot::nonDeprecatedKeys();
         // 183 since 2026-10-01: the two thumbnail-circle keys (website scope).
-        $this->assertCount(183, $keys, 'Expected 183 non-deprecated content.php keys');
+        // 181 since 2026-10-10: the Contact page's two old hours fields are
+        // retired; it lists the Admin schedule (UI audit).
+        $this->assertCount(181, $keys, 'Expected 181 non-deprecated content.php keys');
 
         $actual = ContentResolverSnapshot::capture();
         $this->assertSame(

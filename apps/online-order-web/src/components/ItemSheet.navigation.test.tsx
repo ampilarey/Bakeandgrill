@@ -93,15 +93,19 @@ describe('ItemSheet — favourites', () => {
   it('shows an empty heart that fills once the item is a favourite', () => {
     const { rerender } = render(sheet({ onToggleFavourite: () => {} }));
 
+    // A drawn heart (not emoji): an outline, filled once saved.
     const heart = screen.getByTestId('item-sheet-favourite');
     expect(heart).toHaveAttribute('aria-pressed', 'false');
-    expect(heart.textContent).toBe('🤍');
+    expect(heart.querySelector('svg')).toHaveAttribute('data-on', 'false');
+    expect(heart.querySelector('svg')).toHaveAttribute('fill', 'none');
 
     rerender(sheet({ onToggleFavourite: () => {}, isFavourite: true }));
 
     const filled = screen.getByTestId('item-sheet-favourite');
     expect(filled).toHaveAttribute('aria-pressed', 'true');
-    expect(filled.textContent).toBe('❤️');
+    expect(filled.querySelector('svg')).toHaveAttribute('data-on', 'true');
+    expect(filled.querySelector('svg')).toHaveAttribute('fill', 'currentColor');
+    expect(filled.textContent).toBe('');
   });
 
   it('reports the item it belongs to, not just that it was pressed', () => {

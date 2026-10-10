@@ -1,6 +1,5 @@
 import type { OrderMode } from '../../context/OrderModeContext';
-
-const ICONS: Record<OrderMode, string> = { pickup: '🥡', delivery: '🛵', dine_in: '🍽️' };
+import { ORDER_MODE_ICONS } from '../../utils/emojiIcon';
 
 type Props = {
   /** Shown once the day and mode bar has scrolled off the top. */
@@ -22,6 +21,7 @@ type Props = {
  * width of the rail. A tap drops the full bar back down over the dishes.
  */
 export function RailOrderButton({ visible, unset, mode, modeLabel, dayLabel, chooseLabel, onOpen }: Props) {
+  const ModeIcon = ORDER_MODE_ICONS[mode];
   return (
     <button
       type="button"
@@ -32,7 +32,7 @@ export function RailOrderButton({ visible, unset, mode, modeLabel, dayLabel, cho
       aria-label={unset ? `${chooseLabel}, ${dayLabel}` : `${modeLabel}, ${dayLabel}. Change`}
       onClick={onOpen}
     >
-      <span className="rail-order-btn__badge" aria-hidden="true">{unset ? '?' : ICONS[mode]}</span>
+      <span className="rail-order-btn__badge" aria-hidden="true">{unset ? '?' : <ModeIcon size={15} strokeWidth={2.2} />}</span>
       <span className="rail-order-btn__mode">{unset ? chooseLabel : modeLabel}</span>
       <span className="rail-order-btn__day">
         {dayLabel}

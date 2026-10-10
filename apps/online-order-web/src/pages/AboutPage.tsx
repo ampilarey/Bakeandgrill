@@ -3,6 +3,25 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { interpolateCopy, useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { useLanguage } from '../context/LanguageContext';
 import { PageHeader } from '../components/shell/PageHeader';
+import { BadgeCheck, Flame, Leaf, Smartphone, Users, Utensils, type LucideIcon } from 'lucide-react';
+import type { AboutValueRow } from '../context/SiteSettingsContext';
+import { iconForEmoji } from '../utils/emojiIcon';
+
+/**
+ * A drawn icon for each value card, in place of its first letter ("F", "C",
+ * "Q"; UI audit, 2026-10-10). A typed emoji we draw wins; otherwise the words
+ * pick one, and anything else gets the brand flame.
+ */
+function aboutValueIcon(v: AboutValueRow): LucideIcon {
+  const fromEmoji = iconForEmoji(v.initial);
+  if (fromEmoji) return fromEmoji;
+  const words = `${v.title ?? ''} ${v.description ?? ''}`.toLowerCase();
+  if (/fresh|ingredient|local|baked?\b/.test(words)) return Leaf;
+  if (/communit|family|neighbou?r|customers/.test(words)) return Users;
+  if (/quality|care|halal|trust/.test(words)) return BadgeCheck;
+  if (/online|ordering|app\b|reserv|loyal/.test(words)) return Smartphone;
+  return Flame;
+}
 
 export function AboutPage() {
   const navigate = useNavigate();
@@ -25,7 +44,9 @@ export function AboutPage() {
       <PageHeader title={text('about_page_title', 'About Bake & Grill')} onBack={() => navigate(-1)} />
       <div style={{ maxWidth: '860px', margin: '0 auto', padding: '1.5rem var(--page-gutter) 3rem' }}>
       <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-        <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🍽️</div>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', color: 'var(--color-primary)' }}>
+          <Utensils size={44} strokeWidth={1.75} aria-hidden />
+        </div>
         <p style={{ fontSize: '1.1rem', color: 'var(--color-text-muted)', lineHeight: 1.7, maxWidth: '560px', margin: '0 auto' }}>
           {tagline}
         </p>
@@ -47,8 +68,8 @@ export function AboutPage() {
             className="cat-card-hover"
             style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '14px', padding: '1.5rem' }}
           >
-            <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'var(--color-primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)', fontWeight: 800, fontSize: '1rem', marginBottom: '0.75rem' }}>
-              {v.initial ?? (v.title?.[0] ?? '')}
+            <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'var(--color-primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)', marginBottom: '0.75rem' }}>
+              {(() => { const ValueIcon = aboutValueIcon(v); return <ValueIcon size={20} aria-hidden />; })()}
             </div>
             <h3 style={{ fontSize: '0.975rem', fontWeight: 700, color: 'var(--color-dark)', marginBottom: '0.4rem' }}>{v.title}</h3>
             <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: 1.6 }}>{v.description}</p>

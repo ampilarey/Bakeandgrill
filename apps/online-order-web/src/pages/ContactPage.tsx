@@ -3,6 +3,8 @@ import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { useLanguage } from '../context/LanguageContext';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { PageHeader } from '../components/shell/PageHeader';
+import { WhatsAppIcon } from '../components/icons';
+import { Mail, MapPin, Phone } from 'lucide-react';
 
 export function ContactPage() {
   const navigate = useNavigate();
@@ -18,10 +20,11 @@ export function ContactPage() {
   usePageTitle(text('contact_page_title', 'Contact Us'));
 
   const CONTACT_ITEMS = [
-    { label: t('contact.phone'),    abbr: 'PH', value: phone,   action: { href: phoneTel,         text: t('contact.call_us') } },
-    { label: t('contact.email'),    abbr: 'EM', value: email,   action: { href: `mailto:${email}`, text: t('contact.send_email') } },
-    { label: t('contact.whatsapp'), abbr: 'WA', value: phone,   action: { href: waLink,            text: t('contact.message_us'), external: true } },
-    { label: t('contact.address'),  abbr: 'AD', value: address, action: null as null },
+    // Drawn icons, not the letters "PH", "EM", "WA", "AD" (UI audit, 2026-10-10).
+    { label: t('contact.phone'),    icon: <Phone size={20} aria-hidden />,  value: phone,   action: { href: phoneTel,         text: t('contact.call_us') } },
+    { label: t('contact.email'),    icon: <Mail size={20} aria-hidden />,   value: email,   action: { href: `mailto:${email}`, text: t('contact.send_email') } },
+    { label: t('contact.whatsapp'), icon: <WhatsAppIcon size={20} />,       value: phone,   action: { href: waLink,            text: t('contact.message_us'), external: true } },
+    { label: t('contact.address'),  icon: <MapPin size={20} aria-hidden />, value: address, action: null as null },
   ];
 
   return (
@@ -44,10 +47,9 @@ export function ContactPage() {
               width: '44px', height: '44px', borderRadius: '50%',
               background: 'var(--color-primary-light)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: 'var(--color-primary)', fontWeight: 800, fontSize: '0.75rem',
-              letterSpacing: '0.05em', marginBottom: '0.875rem',
+              color: 'var(--color-primary)', marginBottom: '0.875rem',
             }}>
-              {item.abbr}
+              {item.icon}
             </div>
             <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-muted)', fontWeight: 700, marginBottom: '0.375rem' }}>
               {item.label}

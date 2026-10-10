@@ -251,6 +251,28 @@ adds the dish in the same tap; the cards' quick "+" goes through the same questi
 and opens the sheet instead for a dish with sizes, extras, a platter, packaging or a
 minimum quantity.
 
+## Customer pages: icons, hours, request limits
+
+UI audit, 2026-10-10. Icons on the website and in the order app are drawn
+(lucide), never emoji: the website uses `App\Support\UiIcon` (`svg()`, and
+`label()` for wording the owner types with a leading emoji), the order app
+`utils/emojiIcon.tsx` (`EmojiIcon`, `ORDER_MODE_ICONS`, `HeartIcon`,
+`SpiceFlames`). Keep the two emoji maps in step. A dish without a photo shows
+the brand flame (`/brand/flame-mark.svg`), faded. Text on these pages is 11px
+at the smallest.
+
+Opening hours come from one place, the Admin schedule: the website through
+`App\Support\OpeningHoursText` (`range()`, `groups()`), the order app through
+`GET /api/opening-hours` (`schedule` keyed `sunday`…`saturday`), both written
+"7:00 AM – 11:00 PM". Do not type hours into page wording.
+
+A numbered `throttle:N,M` counts per route, not one count shared by every
+route on the address: `App\Http\Middleware\ThrottleRequestsPerRoute`, bound in
+place of the framework class in `AppServiceProvider` (so
+`withoutMiddleware(ThrottleRequests::class)` still works in tests). Named
+limiters are unchanged. The order app retries a refused read once after
+`Retry-After` and says the menu is busy rather than blaming the connection.
+
 ## Variants are separate products in reports
 
 Owner, 2026-10-07: "variant should treat as a separate product". Every sales
