@@ -42,7 +42,7 @@
 @section('footer_note')
     @if ($audience === 'staff')
         {{ $smsSent ? 'A copy of the alert texted to ' . ($maskedPhone ?? 'your phone') . '.' : 'Sent by email only: the SMS for this alert is switched off.' }}
-        Alerts are switched on or off in Admin → SMS → Control Center.
+        Alerts are switched on or off in Admin → Notifications.
     @else
         {{ $smsSent ? 'A copy of the text we sent to ' . ($maskedPhone ?? 'your phone') . '.' : 'Sent to you by email.' }}
     @endif

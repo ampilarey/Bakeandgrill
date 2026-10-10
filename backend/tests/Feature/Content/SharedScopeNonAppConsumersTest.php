@@ -7,14 +7,15 @@ namespace Tests\Feature\Content;
 use App\Console\Commands\CheckReorderPoints;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Notifications\Support\AlertSwitch;
 use App\Domains\Permissions\PermissionCatalogSync;
 use App\Domains\Signage\Services\SignageResolver;
 use App\Models\Complaint;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Receipt;
-use App\Models\SmsLog;
 use App\Models\SiteSetting;
+use App\Models\SmsLog;
 use App\Support\DocumentBrandView;
 use Illuminate\Console\OutputStyle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -96,11 +97,11 @@ class SharedScopeNonAppConsumersTest extends TestCase
         );
 
         $customer = $this->makeCustomer([
-            'phone' => '+9607'.str_pad((string) random_int(100000, 999999), 6, '0'),
+            'phone' => '+9607' . str_pad((string) random_int(100000, 999999), 6, '0'),
             'sms_opt_out' => false,
         ]);
         $order = $this->makePaidOrder($customer, [
-            'order_number' => 'BG-COMP-'.Str::upper(Str::random(4)),
+            'order_number' => 'BG-COMP-' . Str::upper(Str::random(4)),
             'type' => 'takeaway',
             'total' => 40,
         ]);
@@ -118,12 +119,12 @@ class SharedScopeNonAppConsumersTest extends TestCase
             'recipient' => $customer->phone,
         ]);
 
-        $this->postJson('/api/receipts/'.$receipt->token.'/complaints', [
+        $this->postJson('/api/receipts/' . $receipt->token . '/complaints', [
             'categories' => [Complaint::CATEGORY_TOO_LONG],
             'idempotency_key' => 'cap-a',
         ])->assertCreated();
 
-        $res = $this->postJson('/api/receipts/'.$receipt->token.'/complaints', [
+        $res = $this->postJson('/api/receipts/' . $receipt->token . '/complaints', [
             'categories' => [Complaint::CATEGORY_SOMETHING_ELSE],
             'idempotency_key' => 'cap-b',
         ])->assertStatus(422);
@@ -136,7 +137,7 @@ class SharedScopeNonAppConsumersTest extends TestCase
 
     public function test_check_reorder_points_fallback_uses_shared_business_phone(): void
     {
-        SiteSetting::set('ops_inventory_reorder_alert_sms', '1', 'shared');
+        AlertSwitch::setAll('owner_stock_reorder', true);
 
         $sms = Mockery::mock(SmsService::class);
         $captured = [];
@@ -160,7 +161,7 @@ class SharedScopeNonAppConsumersTest extends TestCase
 
     public function test_alert_delivery_delays_fallback_uses_shared_business_phone(): void
     {
-        SiteSetting::set('ops_delivery_delay_alert_sms', '1', 'shared');
+        AlertSwitch::setAll('owner_delivery_delays', true);
 
         Order::create([
             'order_number' => 'D-DELAY-1',

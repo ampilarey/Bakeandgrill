@@ -165,8 +165,11 @@ class StaffNotificationRoutingTest extends TestCase
         $this->assertEquals('+9607500005', $fallback['phone']);
     }
 
-    /** Staff without phone is excluded */
-    public function test_staff_without_phone_excluded(): void
+    /**
+     * Staff without a phone get order alerts by email or Telegram, addressed
+     * as "user:{id}" (owner, 2026-10-10); one nothing can reach is left out.
+     */
+    public function test_staff_without_a_phone_get_order_alerts_by_email(): void
     {
         $role = $this->makeRole('staff');
         $staff = User::create([
@@ -179,12 +182,28 @@ class StaffNotificationRoutingTest extends TestCase
         ]);
         $this->putOnShift($staff, Carbon::now());
 
-        $order = $this->makeSmsOrder();
-        $recipients = $this->router->resolve($order, 'new_order', Carbon::now());
+        $recipients = $this->router->resolve($this->makeSmsOrder(), 'new_order', Carbon::now());
 
-        $phones = $recipients->pluck('phone');
-        $this->assertNotContains(null, $phones);
-        $this->assertNotContains('', $phones);
+        $this->assertContains('user:' . $staff->id, $recipients->pluck('phone')->all());
+    }
+
+    public function test_staff_nothing_can_reach_are_left_out(): void
+    {
+        $role = $this->makeRole('staff');
+        $staff = User::create([
+            'name' => 'Unreachable Staff',
+            'email' => 'not-an-email',
+            'phone' => null,
+            'password' => bcrypt('secret'),
+            'role_id' => $role->id,
+            'is_active' => true,
+        ]);
+        $this->putOnShift($staff, Carbon::now());
+
+        $recipients = $this->router->resolve($this->makeSmsOrder(), 'new_order', Carbon::now());
+
+        $this->assertNotContains('user:' . $staff->id, $recipients->pluck('phone')->all());
+        $this->assertNotContains(null, $recipients->pluck('phone')->all());
     }
 
     /** Active external SmsContact receives notification */

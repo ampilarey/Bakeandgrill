@@ -61,7 +61,7 @@ class SmsBulkCapTest extends TestCase
 
         $campaign = SmsCampaign::create(['name' => 'Deal', 'message' => 'Deal', 'status' => 'draft', 'target_criteria' => []]);
         $this->postJson("/api/admin/sms/campaigns/{$campaign->id}/send")->assertStatus(429)
-            ->assertJsonFragment(['message' => 'Daily bulk cap: 2 recipients were queued in the last 24 hours, this send adds 4, the cap is 5. Wait, narrow the audience, or raise the cap in the Control Center.']);
+            ->assertJsonFragment(['message' => 'Daily bulk cap: 2 recipients were queued in the last 24 hours, this send adds 4, the cap is 5. Wait, narrow the audience, or raise the cap in Admin → Notifications → Rules.']);
         $this->assertSame('draft', $campaign->fresh()->status, 'nothing queued');
 
         $this->patchJson('/api/admin/sms/delivery-rules', ['bulk_daily_recipient_cap' => 6])->assertOk();

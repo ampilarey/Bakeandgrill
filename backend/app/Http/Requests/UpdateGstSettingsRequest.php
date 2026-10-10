@@ -46,7 +46,8 @@ class UpdateGstSettingsRequest extends FormRequest
             'lock_after_export' => ['sometimes', 'boolean'],
             // GST audit, 2026-09-26: the monthly filing reminder.
             'filing_due_day' => ['sometimes', 'integer', 'min:1', 'max:28'],
-            'filing_reminder_days' => ['sometimes', 'integer', 'min:0', 'max:14'],
+            // On or off is the alert's row in Admin → Notifications (2026-10-10).
+            'filing_reminder_days' => ['sometimes', 'integer', 'min:1', 'max:14'],
         ];
     }
 }

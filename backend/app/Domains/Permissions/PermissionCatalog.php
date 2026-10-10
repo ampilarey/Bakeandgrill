@@ -234,7 +234,7 @@ final class PermissionCatalog
             ['group' => 'Marketing', 'slug' => 'social.channels.manage', 'name' => 'Manage social channels', 'description' => 'Connect social accounts and rotate their tokens. Owner-only by default — tokens post as the business.'],
             ['group' => 'SMS', 'slug' => 'sms.logs.view', 'name' => 'View SMS logs', 'description' => 'View SMS audit logs and stats'],
             ['group' => 'SMS', 'slug' => 'sms.templates.edit', 'name' => 'Edit SMS templates', 'description' => 'Edit wording of any SMS template'],
-            ['group' => 'SMS', 'slug' => 'sms.settings.manage', 'name' => 'Manage SMS settings', 'description' => 'Toggle SMS types on/off and view Control Center'],
+            ['group' => 'SMS', 'slug' => 'sms.settings.manage', 'name' => 'Manage SMS settings', 'description' => 'Switch messages on or off by SMS, email and Telegram, and edit their wording and recipients, in Admin → Notifications'],
             ['group' => 'SMS', 'slug' => 'sms.contacts.manage', 'name' => 'Manage SMS contacts', 'description' => 'Contacts and contact groups'],
             ['group' => 'SMS', 'slug' => 'sms.scheduled.manage', 'name' => 'Manage scheduled SMS', 'description' => 'Scheduled messages'],
             ['group' => 'SMS', 'slug' => 'sms.campaigns.send', 'name' => 'Send SMS campaigns', 'description' => 'Create and send bulk campaigns and promotions'],

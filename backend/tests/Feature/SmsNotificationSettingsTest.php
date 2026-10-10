@@ -85,7 +85,7 @@ class SmsNotificationSettingsTest extends TestCase
 
     public function test_payment_confirmation_skipped_when_toggle_disabled(): void
     {
-        SiteSetting::set('sms_customer_payment_confirmed_enabled', 'false');
+        SiteSetting::set('sms_customer_payment_confirmed_pos_enabled', 'false');
 
         Sanctum::actingAs($this->staffUser, ['staff']);
         $this->postJson('/api/shifts/open', ['opening_cash' => 100])->assertCreated();
@@ -199,7 +199,7 @@ class SmsNotificationSettingsTest extends TestCase
     {
         \Illuminate\Support\Facades\Mail::fake();
         $this->customer->forceFill(['email' => 'sms.customer@example.com'])->save();
-        SiteSetting::set('sms_customer_payment_confirmed_enabled', 'false');
+        SiteSetting::set('sms_customer_payment_confirmed_pos_enabled', 'false');
 
         Sanctum::actingAs($this->staffUser, ['staff']);
         $this->postJson('/api/shifts/open', ['opening_cash' => 100])->assertCreated();

@@ -66,9 +66,14 @@ class SiteSettingsController extends Controller
         'catering_ordering_closed_message',
         'catering_quote_min_hours_before_event',
         'catering_quote_valid_days',
-        'catering_reminder_enabled',
-        // Settings → Notifications (customer + POS SMS switches)
-        'sms_customer_payment_confirmed_enabled',
+        // The catering reminder rows' SMS switches (2026-10-10: they replaced
+        // catering_reminder_enabled, which this list carried).
+        'sms_catering_reminder_customer_enabled',
+        'sms_catering_reminder_staff_enabled',
+        // Customer + POS SMS switches. They live on Admin → Notifications now;
+        // still writable here, so the permission that could change them can.
+        'sms_customer_payment_confirmed_pos_enabled',
+        'sms_customer_payment_confirmed_online_enabled',
         'sms_customer_completion_receipt_enabled',
         'sms_customer_preparing_enabled',
         'sms_customer_ready_enabled',
@@ -78,7 +83,7 @@ class SiteSettingsController extends Controller
         'sms_pos_send_pay_link_enabled',
         'sms_pos_fire_to_kitchen_enabled',
         'sms_pos_receipt_resend_enabled',
-        // SMS → Automations (staff alerts)
+        // Staff alerts (were SMS → Automations; now Admin → Notifications)
         'staff_sms_new_order_enabled',
         'staff_sms_order_confirmed_enabled',
         'staff_sms_order_ready_enabled',

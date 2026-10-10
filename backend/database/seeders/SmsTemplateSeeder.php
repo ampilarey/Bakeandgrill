@@ -28,6 +28,22 @@ class SmsTemplateSeeder extends Seeder
                 ]),
             ],
             [
+                // Its own wording since 2026-10-10 (it borrowed "New Order").
+                'slug' => 'order_confirmed',
+                'name' => 'Order Confirmed',
+                'type' => 'order_notification',
+                'body' => 'Order #{{order_number}} confirmed ({{order_type}}). {{item_count}} item(s). Total: {{total}}. Customer: {{customer_phone}}.',
+                'description' => 'Sent to staff when an order is paid or started.',
+                'is_system' => true,
+                'variables' => json_encode([
+                    ['name' => 'order_type',      'description' => 'Type of order: dine-in, takeaway, delivery'],
+                    ['name' => 'order_number',    'description' => 'Order reference number'],
+                    ['name' => 'item_count',      'description' => 'Number of items in the order'],
+                    ['name' => 'total',           'description' => 'Order total (formatted, e.g. MVR 12.50)'],
+                    ['name' => 'customer_phone',  'description' => 'Customer phone number'],
+                ]),
+            ],
+            [
                 'slug' => 'order_ready',
                 'name' => 'Order Ready',
                 'type' => 'order_notification',

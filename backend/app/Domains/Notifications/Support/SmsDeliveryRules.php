@@ -32,8 +32,11 @@ final class SmsDeliveryRules
 
     public const QUIET_ALERTS = 'sms_quiet_hours_alerts';
 
-    /** Alerts that go even in quiet hours: someone is waiting on them now. */
-    public const NEVER_HELD = ['owner_device_approval'];
+    /**
+     * Alerts that go even in quiet hours: someone is waiting on them now, or
+     * (a shift reminder) holding it would land it after the shift began.
+     */
+    public const NEVER_HELD = ['owner_device_approval', 'staff_shift_reminder'];
 
     public const MARKETING_CAP = 'sms_marketing_daily_cap';
 
@@ -256,7 +259,7 @@ final class SmsDeliveryRules
         }
 
         return sprintf(
-            'Daily bulk cap: %s recipients were queued in the last 24 hours, this send adds %s, the cap is %s. Wait, narrow the audience, or raise the cap in the Control Center.',
+            'Daily bulk cap: %s recipients were queued in the last 24 hours, this send adds %s, the cap is %s. Wait, narrow the audience, or raise the cap in Admin → Notifications → Rules.',
             number_format($status['used_24h']),
             number_format($adding),
             number_format($status['cap']),

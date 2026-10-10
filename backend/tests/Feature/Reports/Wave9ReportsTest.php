@@ -103,14 +103,18 @@ class Wave9ReportsTest extends TestCase
         $this->actingAs($owner);
 
         $this->patchJson('/api/admin/ops/alerts', [
-            'delivery_delay_alert_sms' => true,
-            'inventory_reorder_alert_sms' => true,
+            'shift_open_alert_hours' => 10,
+            'unstarted_order_alert_minutes' => 15,
         ])
             ->assertOk()
-            ->assertJsonPath('settings.delivery_delay_alert_sms', true)
-            ->assertJsonPath('settings.inventory_reorder_alert_sms', true);
+            ->assertJsonPath('settings.shift_open_alert_hours', 10)
+            ->assertJsonPath('settings.unstarted_order_alert_minutes', 15)
+            // The delivery-delay and stock switches are rows in Admin → Notifications now.
+            ->assertJsonMissingPath('settings.delivery_delay_alert_sms')
+            ->assertJsonMissingPath('settings.inventory_reorder_alert_sms');
 
-        $this->assertSame('1', SiteSetting::get('ops_delivery_delay_alert_sms'));
-        $this->assertSame('1', SiteSetting::get('ops_inventory_reorder_alert_sms'));
+        $this->assertSame('10', SiteSetting::get('ops_shift_open_alert_hours'));
+        // Off is the row's switch, so 0 no longer means off and is refused.
+        $this->patchJson('/api/admin/ops/alerts', ['shift_open_alert_hours' => 0])->assertStatus(422);
     }
 }

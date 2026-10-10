@@ -6,6 +6,7 @@ namespace App\Console\Commands;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Notifications\Support\AlertSwitch;
 use App\Domains\Operations\Services\OpsAlertsService;
 use App\Models\Shift;
 use App\Support\OwnerPhones;
@@ -26,7 +27,7 @@ class AlertShiftsLeftOpen extends Command
     public function handle(SmsService $sms, OpsAlertsService $ops): int
     {
         $hours = (int) ($ops->settings()['shift_open_alert_hours'] ?? 0);
-        if ($hours <= 0) {
+        if ($hours <= 0 || !AlertSwitch::isOn('owner_shift_left_open')) {
             $this->info('Shift left-open alert is off.');
 
             return self::SUCCESS;

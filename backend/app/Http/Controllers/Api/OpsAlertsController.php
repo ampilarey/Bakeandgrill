@@ -19,11 +19,11 @@ class OpsAlertsController extends Controller
     public function update(Request $request, OpsAlertsService $ops): JsonResponse
     {
         $validated = $request->validate([
-            'delivery_delay_alert_sms' => 'sometimes|boolean',
-            'inventory_reorder_alert_sms' => 'sometimes|boolean',
-            'shift_open_alert_hours' => 'sometimes|integer|min:0|max:72',
-            'shift_variance_alert_mvr' => 'sometimes|numeric|min:0|max:1000000',
-            'unstarted_order_alert_minutes' => 'sometimes|integer|min:0|max:120',
+            // When each alert sends; whether it sends is its row's switch in
+            // Admin → Notifications (2026-10-10), so 0 no longer means off.
+            'shift_open_alert_hours' => 'sometimes|integer|min:1|max:72',
+            'shift_variance_alert_mvr' => 'sometimes|numeric|min:1|max:1000000',
+            'unstarted_order_alert_minutes' => 'sometimes|integer|min:1|max:120',
         ]);
 
         return response()->json([

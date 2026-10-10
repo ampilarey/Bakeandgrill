@@ -98,14 +98,10 @@ final class SignageAdminController extends Controller
     {
         $data = $request->validate([
             'sold_out_badge_minutes' => 'nullable|integer|min:0|max:240',
-            'device_alert_sms' => 'nullable|boolean',
         ]);
         $old = $this->boardSettings();
         if (array_key_exists('sold_out_badge_minutes', $data)) {
             SiteSetting::set('signage_sold_out_minutes', (string) (int) $data['sold_out_badge_minutes']);
-        }
-        if (array_key_exists('device_alert_sms', $data)) {
-            SiteSetting::set('signage_device_alert_sms', $data['device_alert_sms'] ? '1' : '0');
         }
         SiteSetting::bust();
         $this->touch($request, 'signage.settings.updated', null, $old, $this->boardSettings());
@@ -113,12 +109,12 @@ final class SignageAdminController extends Controller
         return response()->json(['settings' => $this->boardSettings()]);
     }
 
-    /** @return array{sold_out_badge_minutes: int, device_alert_sms: bool} */
+    /** @return array{sold_out_badge_minutes: int} */
     private function boardSettings(): array
     {
         return [
             'sold_out_badge_minutes' => (int) SiteSetting::get('signage_sold_out_minutes', 20),
-            'device_alert_sms' => filter_var(SiteSetting::get('signage_device_alert_sms', '1'), FILTER_VALIDATE_BOOLEAN),
+            // The offline / stuck TV alert is on/off on its row in Admin → Notifications (2026-10-10).
         ];
     }
 

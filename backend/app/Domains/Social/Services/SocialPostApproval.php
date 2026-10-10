@@ -6,6 +6,7 @@ namespace App\Domains\Social\Services;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Notifications\Support\AlertSwitch;
 use App\Domains\Social\Jobs\PublishSocialDeliveryJob;
 use App\Models\SocialPost;
 use App\Models\SocialPostDelivery;
@@ -70,7 +71,8 @@ class SocialPostApproval
     /** One SMS per drafted post, when the setting is on and there is a phone. */
     public function notify(SocialPost $post): void
     {
-        if (!app(SocialPostingRules::class)->all()['approval_sms']) {
+        // // One switch per channel on its row in Admin → Notifications (2026-10-10).
+        if (!AlertSwitch::isOn('owner_social_approval')) {
             return;
         }
         $what = match ($post->source) {

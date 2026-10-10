@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Signage;
 
 use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Notifications\Support\AlertSwitch;
 use App\Domains\Permissions\PermissionCatalogSync;
 use App\Domains\Signage\Services\SignageDeviceHealth;
 use App\Models\Role;
@@ -153,7 +154,7 @@ final class SignageDeviceAlertsTest extends TestCase
     public function test_the_sms_can_be_switched_off_and_the_devices_tab_sees_the_setting(): void
     {
         SiteSetting::set('business_phone', '+9607771234');
-        SiteSetting::set('signage_device_alert_sms', '0');
+        AlertSwitch::setAll('owner_signage_devices', false);
         SiteSetting::bust();
         $this->device('tv-quiet')->forceFill(['last_seen_at' => now()->subMinutes(9)])->save();
 
@@ -163,8 +164,8 @@ final class SignageDeviceAlertsTest extends TestCase
         $this->artisan('signage:check-devices')->assertSuccessful();
 
         Sanctum::actingAs($this->owner(), ['staff']);
-        $this->getJson('/api/admin/signage')->assertOk()->assertJsonPath('settings.device_alert_sms', false);
-        $this->putJson('/api/admin/signage/settings', ['device_alert_sms' => true])->assertOk()->assertJsonPath('settings.device_alert_sms', true);
+        // The switch is the alert's row in Admin → Notifications (2026-10-10).
+        $this->getJson('/api/admin/signage')->assertOk()->assertJsonMissingPath('settings.device_alert_sms');
         $this->getJson('/api/admin/signage/devices')->assertOk()->assertJsonPath('data.0.offline_minutes', 9);
     }
 

@@ -6,6 +6,7 @@ namespace App\Console\Commands;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Notifications\Support\AlertSwitch;
 use App\Models\InventoryItem;
 use App\Models\InventoryReorderAlert;
 use App\Models\SiteSetting;
@@ -154,7 +155,8 @@ class CheckReorderPoints extends Command
      */
     private function maybeSendReorderSms(SmsService $sms, array $itemNames): bool
     {
-        if (!filter_var(SiteSetting::get('ops_inventory_reorder_alert_sms', '0'), FILTER_VALIDATE_BOOLEAN)) {
+        // // One switch per channel on its row in Admin → Notifications (2026-10-10).
+        if (!AlertSwitch::isOn('owner_stock_reorder')) {
             return false;
         }
 

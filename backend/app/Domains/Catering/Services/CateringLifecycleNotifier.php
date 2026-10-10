@@ -86,7 +86,9 @@ class CateringLifecycleNotifier
         $customerMsg = "Reminder: event {$ref} is tomorrow ({$date}" . ($time ? " {$time}" : '') . ") - {$venue}";
         $staffMsg = "Tomorrow: event {$ref} ({$date}" . ($time ? " {$time}" : '') . ") - {$venue}";
 
-        $this->fanOut($request, $customerMsg, $staffMsg, $baseKey, "Event reminder {$ref} - Bake & Grill");
+        // Its own rows in Admin → Notifications since 2026-10-10 (it shared
+        // the "change" rows, and a switch on Settings → Ordering).
+        $this->fanOut($request, $customerMsg, $staffMsg, $baseKey, "Event reminder {$ref} - Bake & Grill", 'catering_reminder_customer', 'catering_reminder_staff');
     }
 
     private function fanOut(
@@ -95,12 +97,14 @@ class CateringLifecycleNotifier
         string $staffMsg,
         string $baseKey,
         string $emailSubject,
+        string $customerType = 'catering_lifecycle_customer',
+        string $staffType = 'catering_lifecycle_staff',
     ): void {
         if (trim((string) $request->phone) !== '') {
             $this->sms->send(new SmsMessage(
                 to: (string) $request->phone,
                 message: $customerMsg,
-                type: 'catering_lifecycle_customer',
+                type: $customerType,
                 customerId: $request->customer_id,
                 referenceType: 'catering_request',
                 referenceId: (string) $request->id,
@@ -128,7 +132,7 @@ class CateringLifecycleNotifier
                 $this->sms->send(new SmsMessage(
                     to: (string) $target['phone'],
                     message: $staffMsg,
-                    type: 'catering_lifecycle_staff',
+                    type: $staffType,
                     referenceType: 'catering_request',
                     referenceId: (string) $request->id,
                     idempotencyKey: $baseKey . ':staff_sms:' . $i,

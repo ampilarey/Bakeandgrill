@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Inventory;
 
+use App\Domains\Notifications\Support\AlertSwitch;
 use App\Models\InventoryItem;
 use App\Models\InventoryReorderAlert;
 use App\Models\SiteSetting;
@@ -19,7 +20,7 @@ class CheckReorderPointsSmsTest extends TestCase
     public function test_check_reorder_sends_sms_when_enabled_and_new_alerts_created(): void
     {
         $owner = $this->makeOwner(['phone' => '9607771234']);
-        SiteSetting::set('ops_inventory_reorder_alert_sms', '1');
+        AlertSwitch::setAll('owner_stock_reorder', true);
 
         InventoryItem::create([
             'name' => 'Flour',
@@ -48,7 +49,7 @@ class CheckReorderPointsSmsTest extends TestCase
     public function test_check_reorder_skips_sms_when_disabled(): void
     {
         $this->makeOwner(['phone' => '9607771234']);
-        SiteSetting::set('ops_inventory_reorder_alert_sms', '0');
+        AlertSwitch::setAll('owner_stock_reorder', false);
 
         InventoryItem::create([
             'name' => 'Sugar',
@@ -71,7 +72,7 @@ class CheckReorderPointsSmsTest extends TestCase
     public function test_check_reorder_skips_sms_for_snoozed_items(): void
     {
         $this->makeOwner(['phone' => '9607771234']);
-        SiteSetting::set('ops_inventory_reorder_alert_sms', '1');
+        AlertSwitch::setAll('owner_stock_reorder', true);
 
         InventoryItem::create([
             'name' => 'Butter',
@@ -95,7 +96,7 @@ class CheckReorderPointsSmsTest extends TestCase
     public function test_an_alert_is_texted_when_its_snooze_ends_and_again_after_a_week(): void
     {
         $this->makeOwner(['phone' => '9607771234']);
-        SiteSetting::set('ops_inventory_reorder_alert_sms', '1');
+        AlertSwitch::setAll('owner_stock_reorder', true);
         $item = InventoryItem::create([
             'name' => 'Butter', 'sku' => 'BTR-SNZ', 'unit' => 'kg', 'current_stock' => 0, 'reorder_point' => 5, 'unit_cost' => 8,
             'restock_snoozed_until' => now()->addDays(2)->toDateString(), 'is_active' => true,
@@ -123,10 +124,11 @@ class CheckReorderPointsSmsTest extends TestCase
         $this->assertNotNull(InventoryReorderAlert::firstOrFail()->resolved_at);
     }
 
-    public function test_expiring_stock_is_texted_once_a_day_under_the_same_switch(): void
+    public function test_expiring_stock_is_texted_once_a_day_and_has_its_own_switch(): void
     {
         $this->makeOwner(['phone' => '9607771234']);
-        SiteSetting::set('ops_inventory_reorder_alert_sms', '1');
+        // Its own row in Admin → Notifications since 2026-10-10 (it shared the stock alert switch).
+        AlertSwitch::setAll('owner_stock_expiry', true);
         InventoryItem::create(['name' => 'Cream', 'sku' => 'CRM-EXP', 'unit' => 'l', 'current_stock' => 3, 'reorder_point' => 1, 'unit_cost' => 8, 'expiry_date' => now()->addDays(2)->toDateString(), 'is_active' => true]);
         InventoryItem::create(['name' => 'Old yeast', 'sku' => 'YST-EXP', 'unit' => 'g', 'current_stock' => 0, 'reorder_point' => 1, 'unit_cost' => 8, 'expiry_date' => now()->subDay()->toDateString(), 'is_active' => true]);
         InventoryItem::create(['name' => 'Flour', 'sku' => 'FLR-EXP', 'unit' => 'kg', 'current_stock' => 30, 'reorder_point' => 1, 'unit_cost' => 8, 'expiry_date' => now()->addDays(60)->toDateString(), 'is_active' => true]);
@@ -140,7 +142,7 @@ class CheckReorderPointsSmsTest extends TestCase
         $this->assertStringNotContainsString('Old yeast', (string) $logs[0]->message, 'nothing in stock, nothing to use up');
         $this->assertStringNotContainsString('Flour', (string) $logs[0]->message);
 
-        SiteSetting::set('ops_inventory_reorder_alert_sms', '0');
+        AlertSwitch::setAll('owner_stock_expiry', false);
         SiteSetting::bust();
         $this->travel(1)->days();
         Artisan::call('inventory:check-expiry --days=7');
@@ -150,7 +152,7 @@ class CheckReorderPointsSmsTest extends TestCase
     public function test_check_reorder_skips_alerts_for_excluded_items(): void
     {
         $this->makeOwner(['phone' => '9607771234']);
-        SiteSetting::set('ops_inventory_reorder_alert_sms', '1');
+        AlertSwitch::setAll('owner_stock_reorder', true);
 
         InventoryItem::create([
             'name' => 'Party Picks',

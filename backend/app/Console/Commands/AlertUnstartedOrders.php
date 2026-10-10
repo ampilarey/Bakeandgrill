@@ -6,6 +6,7 @@ namespace App\Console\Commands;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Notifications\Support\AlertSwitch;
 use App\Domains\Operations\Services\OpsAlertsService;
 use App\Models\Order;
 use App\Support\OwnerPhones;
@@ -29,7 +30,7 @@ class AlertUnstartedOrders extends Command
     public function handle(SmsService $sms, OpsAlertsService $ops): int
     {
         $minutes = (int) ($ops->settings()['unstarted_order_alert_minutes'] ?? 0);
-        if ($minutes <= 0) {
+        if ($minutes <= 0 || !AlertSwitch::isOn('owner_order_unstarted')) {
             $this->info('Unstarted-order alert is off.');
 
             return self::SUCCESS;

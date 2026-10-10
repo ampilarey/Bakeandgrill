@@ -6,6 +6,7 @@ namespace App\Console\Commands;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Notifications\Support\AlertSwitch;
 use App\Domains\Social\Services\SocialPostingRules;
 use App\Models\SocialChannel;
 use App\Models\SocialComment;
@@ -31,7 +32,8 @@ class SendSocialWeeklyDigest extends Command
 
     public function handle(SmsService $sms, SocialPostingRules $rules): int
     {
-        if (!$this->option('force') && !$rules->all()['weekly_digest']) {
+        // // One switch per channel on its row in Admin → Notifications (2026-10-10).
+        if (!$this->option('force') && !AlertSwitch::isOn('owner_social_digest')) {
             $this->info('Weekly social digest is off.');
 
             return self::SUCCESS;

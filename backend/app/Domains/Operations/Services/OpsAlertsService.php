@@ -20,8 +20,8 @@ final class OpsAlertsService
     public function settings(): array
     {
         return [
-            'delivery_delay_alert_sms' => $this->bool('ops_delivery_delay_alert_sms', false),
-            'inventory_reorder_alert_sms' => $this->bool('ops_inventory_reorder_alert_sms', false),
+            // The delivery-delay and stock alert switches were folded into
+            // their rows in Admin → Notifications (2026-10-10).
             // Ops audit, 2026-09-25: a shift open longer than this texts the owners; 0 = off.
             'shift_open_alert_hours' => max(0, min(72, (int) SiteSetting::get('ops_shift_open_alert_hours', '14'))),
             // A close whose cash variance is this much or more texts the owners; 0 = off.
@@ -36,21 +36,6 @@ final class OpsAlertsService
     /** @param array<string, mixed> $input */
     public function updateSettings(array $input): array
     {
-        if (array_key_exists('delivery_delay_alert_sms', $input)) {
-            SiteSetting::set(
-                'ops_delivery_delay_alert_sms',
-                filter_var($input['delivery_delay_alert_sms'], FILTER_VALIDATE_BOOLEAN) ? '1' : '0',
-            );
-            SiteSetting::bust();
-        }
-
-        if (array_key_exists('inventory_reorder_alert_sms', $input)) {
-            SiteSetting::set(
-                'ops_inventory_reorder_alert_sms',
-                filter_var($input['inventory_reorder_alert_sms'], FILTER_VALIDATE_BOOLEAN) ? '1' : '0',
-            );
-            SiteSetting::bust();
-        }
         if (array_key_exists('shift_open_alert_hours', $input)) {
             SiteSetting::set('ops_shift_open_alert_hours', (string) max(0, min(72, (int) $input['shift_open_alert_hours'])));
             SiteSetting::bust();
@@ -235,15 +220,5 @@ final class OpsAlertsService
                     }
                 });
             });
-    }
-
-    private function bool(string $key, bool $default): bool
-    {
-        $raw = SiteSetting::get($key);
-        if ($raw === null || $raw === '') {
-            return $default;
-        }
-
-        return filter_var($raw, FILTER_VALIDATE_BOOLEAN);
     }
 }

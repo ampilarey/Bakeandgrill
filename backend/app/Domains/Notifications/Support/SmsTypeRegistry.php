@@ -33,6 +33,14 @@ final class SmsTypeRegistry
     /** The type a Control Center "Send me a test" goes out as (hidden from the list). */
     public const SETTINGS_TEST_TYPE = 'staff_settings_test';
 
+    /**
+     * Types that carry a test send, not a message of their own: no row in
+     * Admin → Notifications. The campaign test follows the campaign switch.
+     *
+     * @var list<string>
+     */
+    public const HIDDEN_FROM_LIST = [self::SETTINGS_TEST_TYPE, 'staff_campaign_test'];
+
     public const SEND_PERMISSION_SETTING_PREFIX = 'sms_type_send_permission.';
 
     /**
@@ -143,8 +151,8 @@ final class SmsTypeRegistry
             self::def('discount_approval_otp', 'Discount approval OTP', 'system', true, false, 'discount_approval_otp', null, 'promotions.discounts', true, 'Approver staff with discount-override permission', true),
 
             // Customer / POS transactional
-            self::def('customer_payment_confirmed_pos', 'Payment confirmed (POS)', 'transactional', true, false, 'customer_payment_confirmed_pos', 'sms_customer_payment_confirmed_enabled', 'sms.transactional.manage', false, 'The ordering customer', false),
-            self::def('customer_payment_confirmed_online', 'Payment confirmed (online)', 'transactional', true, false, 'customer_payment_confirmed_online', 'sms_customer_payment_confirmed_enabled', 'sms.transactional.manage', false, 'The ordering customer', false),
+            self::def('customer_payment_confirmed_pos', 'Payment confirmed (POS)', 'transactional', true, false, 'customer_payment_confirmed_pos', 'sms_customer_payment_confirmed_pos_enabled', 'sms.transactional.manage', false, 'The ordering customer', false),
+            self::def('customer_payment_confirmed_online', 'Payment confirmed (online)', 'transactional', true, false, 'customer_payment_confirmed_online', 'sms_customer_payment_confirmed_online_enabled', 'sms.transactional.manage', false, 'The ordering customer', false),
             self::def('customer_completion_receipt', 'Completion receipt', 'transactional', true, false, 'customer_completion_receipt', 'sms_customer_completion_receipt_enabled', 'sms.transactional.manage', false, 'The ordering customer', false),
             self::def('customer_order_preparing', 'Order preparing', 'transactional', true, false, 'customer_order_preparing', 'sms_customer_preparing_enabled', 'sms.transactional.manage', false, 'The ordering customer', false),
             self::def('customer_order_ready', 'Order ready', 'transactional', true, false, 'customer_order_ready_pickup', 'sms_customer_ready_enabled', 'sms.transactional.manage', false, 'The ordering customer', false),
@@ -167,13 +175,19 @@ final class SmsTypeRegistry
             self::def('staff_order_out_for_delivery', 'Staff: out for delivery', 'staff', true, false, 'order_out_for_delivery', 'staff_sms_order_out_for_delivery_enabled', 'sms.transactional.manage', false, 'Assigned / on-shift staff (or fallback)', false),
             self::def('staff_no_staff_found', 'Staff: no staff found', 'staff', true, false, 'no_staff_found', 'staff_sms_no_staff_found_enabled', 'sms.transactional.manage', false, 'Fallback staff / managers', false),
             self::def('staff_new_customer', 'Staff: new customer', 'staff', true, false, 'customer_new', 'staff_sms_new_customer_enabled', 'sms.transactional.manage', false, 'Configured staff recipients', false),
+            // Notifications audit, 2026-10-10: these two hid elsewhere. "Order
+            // confirmed" went out under "Staff: other order alerts" with the
+            // new-order wording; the shift reminder was a scheduled marketing
+            // message, unsubscribe line and daily marketing limit included.
+            self::def('staff_order_confirmed', 'Staff: order confirmed (paid or started)', 'staff', true, false, 'order_confirmed', 'staff_sms_order_confirmed_enabled', 'sms.transactional.manage', false, 'Assigned / on-shift staff (or fallback)', false),
+            self::def('staff_shift_reminder', 'Staff: shift reminder (an hour before)', 'staff', true, false, 'shift_reminder', 'staff_sms_shift_reminder_enabled', 'sms.transactional.manage', false, 'The rostered staff member', false),
             self::def('staff_refund_requested', 'Staff: refund awaiting approval', 'staff', true, false, 'staff_refund_requested', 'sms_staff_refund_requested_enabled', 'sms.transactional.manage', false, 'Staff with orders.refund', false),
             self::def('owner_daily_refund_summary', 'Owner: daily refund summary', 'staff', true, false, 'owner_daily_refund_summary', 'sms_owner_daily_refund_summary_enabled', 'sms.transactional.manage', false, 'Owner phone(s)', false),
             self::def('owner_deposit_payout', 'Owner: customer deposit paid out', 'staff', true, false, null, 'sms_owner_deposit_payout_enabled', null, false, 'Owners & managers', false),
             // Ops audit, 2026-09-25: nothing watched a till left open overnight or a close that landed short.
-            self::def('owner_shift_left_open', 'Owner: shift left open', 'staff', true, false, null, 'sms_owner_shift_left_open_enabled', null, false, 'Owners & managers (hours set in Settings → Notifications)', false),
-            self::def('owner_shift_variance', 'Owner: shift closed with a cash variance', 'staff', true, false, null, 'sms_owner_shift_variance_enabled', null, false, 'Owners & managers (threshold set in Settings → Notifications)', false),
-            self::def('owner_shift_float_mismatch', 'Owner: opening float differs from the last close', 'staff', true, false, null, 'sms_owner_shift_float_mismatch_enabled', null, false, 'Owners & managers (same threshold as the variance alert)', false),
+            self::def('owner_shift_left_open', 'Owner: shift left open', 'staff', true, false, null, 'sms_owner_shift_left_open_enabled', null, false, 'Owners & managers', false),
+            self::def('owner_shift_variance', 'Owner: shift closed with a cash variance', 'staff', true, false, null, 'sms_owner_shift_variance_enabled', null, false, 'Owners & managers', false),
+            self::def('owner_shift_float_mismatch', 'Owner: opening float differs from the last close', 'staff', true, false, null, 'sms_owner_shift_float_mismatch_enabled', null, false, 'Owners & managers', false),
             // Complaints — owner alert never suppressed by customer opt-out; customer ack/resolved honour opt-out.
             self::def('owner_complaint_received', 'Owner: complaint received', 'staff', true, false, 'owner_complaint_received', 'sms_owner_complaint_received_enabled', 'sms.transactional.manage', false, 'Owner phone(s)', false),
             self::def('customer_complaint_acknowledged', 'Complaint acknowledged', 'transactional', true, true, 'customer_complaint_acknowledged', 'sms_customer_complaint_acknowledged_enabled', 'sms.transactional.manage', false, 'Order / receipt customer phone', false),
@@ -186,17 +200,17 @@ final class SmsTypeRegistry
             // Marketing
             self::def('marketing_campaign', 'Bulk campaign', 'marketing', true, true, null, 'sms_marketing_campaigns_enabled', 'sms.campaigns.send', false, 'Campaign audience', true),
             self::def('marketing_promotion', 'SMS blast (old system)', 'marketing', true, true, null, 'sms_marketing_promotions_enabled', 'sms.campaigns.send', false, 'Promotion audience', true),
-            self::def('admin_direct', 'Admin direct SMS', 'marketing', true, true, null, 'sms_marketing_campaigns_enabled', 'sms.campaigns.send', false, 'Selected customer', true),
+            self::def('admin_direct', 'Admin direct SMS', 'marketing', true, true, null, 'sms_admin_direct_enabled', 'sms.campaigns.send', false, 'Selected customer', true),
             self::def('marketing_abandoned_cart', 'Abandoned cart', 'marketing', true, true, null, 'marketing_abandoned_cart_enabled', 'sms.campaigns.send', false, 'Customers with abandoned carts', false),
             self::def('marketing_birthday', 'Birthday offer', 'marketing', true, true, null, 'marketing_birthday_enabled', 'sms.campaigns.send', false, 'Customers with birthday today', false),
             self::def('marketing_tier_milestone', 'Tier milestone', 'marketing', true, true, null, 'marketing_tier_milestone_enabled', 'sms.campaigns.send', false, 'Loyalty members hitting a tier', false),
             self::def('sms_scheduled', 'Scheduled / recurring message', 'marketing', true, true, null, 'sms_scheduled_enabled', null, false, 'The contact or group chosen on the message', false),
 
-            // Catering (shared enabled toggle)
-            self::def('catering_request_received', 'Catering request received', 'transactional', true, false, 'catering_request_received', 'sms_catering_enabled', 'sms.transactional.manage', false, 'The event contact', false),
-            self::def('catering_request_staff', 'Catering request (staff)', 'staff', true, false, 'catering_request_staff', 'sms_catering_enabled', 'sms.transactional.manage', false, 'Catering / ops staff', false),
-            self::def('catering_confirmed_customer', 'Catering confirmed (customer)', 'transactional', true, false, 'catering_confirmed_customer', 'sms_catering_enabled', 'sms.transactional.manage', false, 'The event contact', false),
-            self::def('catering_confirmed_staff', 'Catering confirmed (staff)', 'staff', true, false, 'catering_confirmed_staff', 'sms_catering_enabled', 'sms.transactional.manage', false, 'Catering / ops staff', false),
+            // Catering: each text its own switch (shared one until 2026-10-10)
+            self::def('catering_request_received', 'Catering request received', 'transactional', true, false, 'catering_request_received', 'sms_catering_request_received_enabled', 'sms.transactional.manage', false, 'The event contact', false),
+            self::def('catering_request_staff', 'Catering request (staff)', 'staff', true, false, 'catering_request_staff', 'sms_catering_request_staff_enabled', 'sms.transactional.manage', false, 'Catering / ops staff', false),
+            self::def('catering_confirmed_customer', 'Catering confirmed (customer)', 'transactional', true, false, 'catering_confirmed_customer', 'sms_catering_confirmed_customer_enabled', 'sms.transactional.manage', false, 'The event contact', false),
+            self::def('catering_confirmed_staff', 'Catering confirmed (staff)', 'staff', true, false, 'catering_confirmed_staff', 'sms_catering_confirmed_staff_enabled', 'sms.transactional.manage', false, 'Catering / ops staff', false),
 
             // Gift card + restoration
             self::def('giftcard_delivery', 'Gift card delivery', 'transactional', true, false, 'giftcard_delivery', 'sms_giftcard_enabled', 'sms.transactional.manage', false, 'Gift card recipient phone', false),
@@ -222,9 +236,9 @@ final class SmsTypeRegistry
             // Checkout audit, 2026-09-26: money that arrived for a cancelled
             // order, and a paid order the kitchen has not started.
             self::def('owner_late_payment', 'Owner: payment arrived after the order was cancelled', 'staff', true, false, null, 'sms_owner_late_payment_enabled', null, false, 'Owners & managers', false),
-            self::def('owner_order_unstarted', 'Owner: paid online order not started', 'staff', true, false, null, 'sms_owner_order_unstarted_enabled', null, false, 'Business phone (also needs the minutes set in Settings → Notifications)', false),
+            self::def('owner_order_unstarted', 'Owner: paid online order not started', 'staff', true, false, null, 'sms_owner_order_unstarted_enabled', null, false, 'Business phone', false),
             // GST audit, 2026-09-26: a return due with the period still open.
-            self::def('owner_gst_filing_due', 'Owner: GST return due', 'staff', true, false, null, 'sms_owner_gst_filing_due_enabled', null, false, 'Owners & managers (days ahead set on the GST page)', false),
+            self::def('owner_gst_filing_due', 'Owner: GST return due', 'staff', true, false, null, 'sms_owner_gst_filing_due_enabled', null, false, 'Owners & managers', false),
             // Staff audit, 2026-10-01: an account locked by repeated wrong sign-ins.
             self::def('owner_staff_login_locked', 'Owner: staff sign-in locked after repeated wrong attempts', 'staff', true, false, null, 'sms_owner_staff_login_locked_enabled', null, false, 'Owner phone(s)', false),
             // Operations audit, 2026-10-01: a scheduled task (backups included) failed, or the queue worker stopped.
@@ -237,20 +251,22 @@ final class SmsTypeRegistry
 
             // Customer transactional (message set in code; no template)
             self::def('customer_order_confirmed', 'Order confirmed (at creation)', 'transactional', true, false, null, 'sms_customer_order_confirmed_enabled', 'sms.transactional.manage', false, 'The ordering customer', false),
-            self::def('reservation_received', 'Reservation request received', 'transactional', true, false, null, 'sms_reservation_enabled', 'sms.transactional.manage', false, 'The reservation phone', false),
-            self::def('reservation_confirmed', 'Reservation confirmed', 'transactional', true, false, null, 'sms_reservation_enabled', 'sms.transactional.manage', false, 'The reservation phone', false),
+            self::def('reservation_received', 'Reservation request received', 'transactional', true, false, null, 'sms_reservation_received_enabled', 'sms.transactional.manage', false, 'The reservation phone', false),
+            self::def('reservation_confirmed', 'Reservation confirmed', 'transactional', true, false, null, 'sms_reservation_confirmed_enabled', 'sms.transactional.manage', false, 'The reservation phone', false),
             // Ops audit, 2026-09-25: a guest who booked a week ago heard nothing until they arrived.
-            self::def('reservation_reminder', 'Reservation reminder (day before)', 'transactional', true, false, null, 'sms_reservation_enabled', 'sms.transactional.manage', false, 'The reservation phone', false),
-            self::def('reservation_cancelled', 'Reservation cancelled', 'transactional', true, false, null, 'sms_reservation_enabled', 'sms.transactional.manage', false, 'The reservation phone', false),
-            self::def('catering_quote_customer', 'Catering quote sent (customer)', 'transactional', true, false, null, 'sms_catering_enabled', 'sms.transactional.manage', false, 'The event contact', false),
-            self::def('catering_quote_staff', 'Catering quote sent (staff)', 'staff', true, false, null, 'sms_catering_enabled', 'sms.transactional.manage', false, 'Catering / ops staff', false),
-            self::def('catering_lifecycle_customer', 'Catering reminder / change (customer)', 'transactional', true, false, null, 'sms_catering_enabled', 'sms.transactional.manage', false, 'The event contact', false),
-            self::def('catering_lifecycle_staff', 'Catering reminder / change (staff)', 'staff', true, false, null, 'sms_catering_enabled', 'sms.transactional.manage', false, 'Catering / ops staff', false),
+            self::def('reservation_reminder', 'Reservation reminder (day before)', 'transactional', true, false, null, 'sms_reservation_reminder_enabled', 'sms.transactional.manage', false, 'The reservation phone', false),
+            self::def('reservation_cancelled', 'Reservation cancelled', 'transactional', true, false, null, 'sms_reservation_cancelled_enabled', 'sms.transactional.manage', false, 'The reservation phone', false),
+            self::def('catering_quote_customer', 'Catering quote sent (customer)', 'transactional', true, false, null, 'sms_catering_quote_customer_enabled', 'sms.transactional.manage', false, 'The event contact', false),
+            self::def('catering_quote_staff', 'Catering quote sent (staff)', 'staff', true, false, null, 'sms_catering_quote_staff_enabled', 'sms.transactional.manage', false, 'Catering / ops staff', false),
+            self::def('catering_reminder_customer', 'Catering reminder before the event (customer)', 'transactional', true, false, null, 'sms_catering_reminder_customer_enabled', 'sms.transactional.manage', false, 'The event contact', false),
+            self::def('catering_reminder_staff', 'Catering reminder before the event (staff)', 'staff', true, false, null, 'sms_catering_reminder_staff_enabled', 'sms.transactional.manage', false, 'Catering / ops staff', false),
+            self::def('catering_lifecycle_customer', 'Catering change (customer)', 'transactional', true, false, null, 'sms_catering_lifecycle_customer_enabled', 'sms.transactional.manage', false, 'The event contact', false),
+            self::def('catering_lifecycle_staff', 'Catering change (staff)', 'staff', true, false, null, 'sms_catering_lifecycle_staff_enabled', 'sms.transactional.manage', false, 'Catering / ops staff', false),
             self::def('invoice_send', 'Invoice link', 'transactional', true, false, null, 'sms_invoice_send_enabled', 'sms.transactional.manage', false, 'The number staff typed', true),
             // Owner, 2026-10-03: "add account approved, and any changes to the credit amount notified".
             self::def('customer_credit_approved', 'Credit account approved', 'transactional', true, false, 'customer_credit_approved', 'sms_customer_credit_approved_enabled', 'sms.transactional.manage', false, 'The customer whose credit account was opened or reopened', false),
             self::def('customer_credit_limit_changed', 'Credit limit changed', 'transactional', true, false, 'customer_credit_limit_changed', 'sms_customer_credit_limit_changed_enabled', 'sms.transactional.manage', false, 'The customer whose credit limit went up or down', false),
-            self::def('credit_payment_reminder', 'Credit payment reminder', 'transactional', true, false, null, 'sms_credit_reminder_enabled', 'sms.transactional.manage', false, 'Credit customers with invoices due (their own reminder switch applies too)', false),
+            self::def('credit_payment_reminder', 'Credit payment reminder', 'transactional', true, false, null, 'sms_credit_reminder_enabled', 'sms.transactional.manage', false, 'Credit customers with invoices due, unless their account has reminders off', false),
 
             // Staff
             self::def('staff_low_stock_menu', 'Staff: menu item low stock', 'staff', true, false, null, 'staff_sms_low_stock_enabled', 'sms.transactional.manage', false, 'Owners & managers', false),
@@ -262,24 +278,25 @@ final class SmsTypeRegistry
             self::def('staff_campaign_test', 'Campaign test to staff', 'staff', true, false, null, 'sms_marketing_campaigns_enabled', 'sms.campaigns.send', false, 'The signed-in staff member', true),
             // SMS audit, 2026-10-03: "Send me a test" on any Control Center row. Always on so the
             // owner can prove a phone receives texts at all; only the kill switch stops it.
-            self::def(self::SETTINGS_TEST_TYPE, 'Test message from the Control Center', 'staff', true, false, null, null, 'sms.settings.manage', true, 'The signed-in staff member', true),
+            self::def(self::SETTINGS_TEST_TYPE, 'Test message from Admin → Notifications', 'staff', true, false, null, null, 'sms.settings.manage', true, 'The signed-in staff member', true),
 
-            // Owner alerts — recipients are chosen in the Control Center
-            // (owners & managers, owner only, business phone, named staff,
-            // or typed numbers). Some also have an older on/off switch on the
-            // Settings page; both must be on.
-            self::def('owner_stock_reorder', 'Owner: stock at reorder point', 'staff', true, false, null, 'sms_owner_stock_reorder_enabled', null, false, 'Owners & managers (also needs "Stock alert SMS" in Settings)', false),
-            self::def('owner_stock_expiry', 'Owner: stock expiring', 'staff', true, false, null, 'sms_owner_stock_expiry_enabled', null, false, 'Owners & managers (also needs "Stock alert SMS" in Settings)', false),
-            self::def('owner_price_rise', 'Owner: supplier price rises', 'staff', true, false, null, 'sms_owner_price_rise_enabled', null, false, 'Owners & managers (also needs the price-rise switch in Settings)', false),
-            self::def('owner_delivery_delays', 'Owner: deliveries past ETA', 'staff', true, false, null, 'sms_owner_delivery_delays_enabled', null, false, 'Business phone (also needs the delivery-delay switch in Settings)', false),
+            // Owner alerts — recipients are chosen on their row in Admin →
+            // Notifications (owners & managers, owner only, business phone,
+            // named staff, or typed numbers). The older second switches on
+            // Settings, Purchasing, Signage, the Social Hub and the Complaint
+            // box were folded into the row on 2026-10-10: one switch per channel.
+            self::def('owner_stock_reorder', 'Owner: stock at reorder point', 'staff', true, false, null, 'sms_owner_stock_reorder_enabled', null, false, 'Owners & managers', false),
+            self::def('owner_stock_expiry', 'Owner: stock expiring', 'staff', true, false, null, 'sms_owner_stock_expiry_enabled', null, false, 'Owners & managers', false),
+            self::def('owner_price_rise', 'Owner: supplier price rises', 'staff', true, false, null, 'sms_owner_price_rise_enabled', null, false, 'Owners & managers', false),
+            self::def('owner_delivery_delays', 'Owner: deliveries past ETA', 'staff', true, false, null, 'sms_owner_delivery_delays_enabled', null, false, 'Business phone', false),
             self::def('owner_device_approval', 'Owner: POS device waiting for approval', 'staff', true, false, null, 'sms_owner_device_approval_enabled', null, false, 'Business phone', false),
-            self::def('owner_signage_devices', 'Owner: TV screen offline or stuck', 'staff', true, false, null, 'sms_owner_signage_devices_enabled', null, false, 'Business phone (also needs the TV alert switch in Signage)', false),
+            self::def('owner_signage_devices', 'Owner: TV screen offline or stuck', 'staff', true, false, null, 'sms_owner_signage_devices_enabled', null, false, 'Business phone', false),
             self::def('owner_complaint_stale', 'Owner: complaints unread for days', 'staff', true, false, null, 'sms_owner_complaint_stale_enabled', null, false, 'Owners & managers', false),
             self::def('owner_complaint_digest', 'Owner: weekly complaint summary', 'staff', true, false, null, 'sms_owner_complaint_digest_enabled', null, false, 'Owners & managers', false),
             self::def('owner_social_channel', 'Owner: social channel failing or token expiring', 'staff', true, false, null, 'sms_owner_social_channel_enabled', null, false, 'Business phone', false),
-            self::def('owner_social_approval', 'Owner: social post waiting for approval', 'staff', true, false, null, 'sms_owner_social_approval_enabled', null, false, 'Business phone (also the Social Hub approval-SMS switch)', false),
+            self::def('owner_social_approval', 'Owner: social post waiting for approval', 'staff', true, false, null, 'sms_owner_social_approval_enabled', null, false, 'Business phone', false),
             self::def('owner_social_comments', 'Owner: social comments that look like orders', 'staff', true, false, null, 'sms_owner_social_comments_enabled', null, false, 'Business phone', false),
-            self::def('owner_social_digest', 'Owner: weekly social digest', 'staff', true, false, null, 'sms_owner_social_digest_enabled', null, false, 'Owners & managers (also the Social Hub digest switch)', false),
+            self::def('owner_social_digest', 'Owner: weekly social digest', 'staff', true, false, null, 'sms_owner_social_digest_enabled', null, false, 'Owners & managers', false),
         ];
 
         $defs = [];

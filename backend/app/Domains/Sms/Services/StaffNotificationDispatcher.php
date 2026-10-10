@@ -22,11 +22,14 @@ class StaffNotificationDispatcher
      */
     private const EVENT_TEMPLATE_MAP = [
         'new_order' => 'order_new',
-        'order_confirmed' => 'order_new',
+        // Its own wording since 2026-10-10; the new-order one if it is missing.
+        'order_confirmed' => 'order_confirmed',
         'order_ready' => 'order_ready',
         'order_out_for_delivery' => 'order_out_for_delivery',
         'no_staff_found' => 'no_staff_found',
     ];
+
+    private const TEMPLATE_FALLBACK = ['order_confirmed' => 'order_new'];
 
     /**
      * SiteSetting keys for enabling/disabling each event.
@@ -43,13 +46,13 @@ class StaffNotificationDispatcher
     {
         $at = $at ?? Carbon::now();
 
-        // Check if this event type is enabled
-        // SMS off for this event (to save cost) still sends the email copy
-        // when that alert's email is on (owner, 2026-10-06).
+        // SMS off for this event (to save cost) still sends the email and
+        // Telegram copies when those are on (owner, 2026-10-06); with every
+        // channel off nothing is worked out at all.
         $settingKey = self::EVENT_SETTING_MAP[$eventType] ?? null;
         $smsOn = !$settingKey || $this->isEventEnabled($settingKey);
         $smsType = \App\Domains\Notifications\Support\SmsTypeRegistry::get('staff_' . $eventType) !== null ? 'staff_' . $eventType : 'staff_notification';
-        if (!$smsOn && !\App\Domains\Notifications\Services\SmsEmailCopier::wanted($smsType)) {
+        if (!$smsOn && !\App\Domains\Notifications\Support\AlertSwitch::isOn($smsType)) {
             Log::info('StaffNotificationDispatcher: event disabled', [
                 'event_type' => $eventType,
                 'order_id' => $order->id,
@@ -96,7 +99,8 @@ class StaffNotificationDispatcher
             return "Order #{$order->order_number} requires attention.";
         }
 
-        $template = SmsTemplate::where('slug', $templateSlug)->first();
+        $template = SmsTemplate::where('slug', $templateSlug)->first()
+            ?? (isset(self::TEMPLATE_FALLBACK[$eventType]) ? SmsTemplate::where('slug', self::TEMPLATE_FALLBACK[$eventType])->first() : null);
 
         if (!$template) {
             return "Order #{$order->order_number} - {$eventType}.";

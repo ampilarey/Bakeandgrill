@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Sms\Services;
 
+use App\Domains\Notifications\Support\NotificationChannels;
 use App\Models\Order;
 use App\Models\SmsContact;
 use App\Models\StaffNotificationPref;
@@ -80,8 +81,9 @@ class StaffNotificationRoutingService
             ->keyBy('user_id');
 
         return $onShift->filter(function (User $user) use ($prefs, $order, $menuGroupIds) {
-            // No phone configured — cannot receive SMS
-            if (!$user->phone) {
+            // No phone: email or Telegram instead, when either reaches them
+            // (owner, 2026-10-10). Before, they got no order alerts at all.
+            if (NotificationChannels::addressFor($user) === null) {
                 return false;
             }
 
@@ -106,7 +108,7 @@ class StaffNotificationRoutingService
 
             return true;
         })->map(fn (User $user) => [
-            'phone' => $user->phone,
+            'phone' => NotificationChannels::addressFor($user),
             'recipient_type' => 'staff',
             'recipient_id' => $user->id,
             'fallback_used' => false,
@@ -154,9 +156,9 @@ class StaffNotificationRoutingService
             ->get();
 
         return $fallbackPrefs
-            ->filter(fn ($pref) => $pref->user && $pref->user->phone && $pref->user->is_active)
+            ->filter(fn ($pref) => $pref->user && $pref->user->is_active && NotificationChannels::addressFor($pref->user) !== null)
             ->map(fn ($pref) => [
-                'phone' => $pref->user->phone,
+                'phone' => NotificationChannels::addressFor($pref->user),
                 'recipient_type' => 'fallback',
                 'recipient_id' => $pref->user_id,
                 'fallback_used' => true,

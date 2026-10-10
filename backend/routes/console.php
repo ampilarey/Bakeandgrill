@@ -98,6 +98,13 @@ Schedule::command('shifts:alert-open')
     ->onFailure($alertOnFailure('shifts:alert-open'))
     ->after($trackSuccess('shifts:alert-open'));
 
+// Staff: a reminder an hour before each shift, as a staff alert (notifications audit, 2026-10-10)
+Schedule::command('staff:shift-reminders')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->onFailure($alertOnFailure('staff:shift-reminders'))
+    ->after($trackSuccess('staff:shift-reminders'));
+
 // Catering: expire awaiting_customer quotes past quote_expires_at
 Schedule::job(App\Jobs\ExpireCateringQuotes::class)
     ->hourly()

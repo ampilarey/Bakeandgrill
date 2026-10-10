@@ -6,7 +6,6 @@ namespace Tests\Feature\Settings;
 
 use App\Domains\Finance\Services\NonStockPurchaseExpenseService;
 use App\Domains\Inventory\Services\BackdatePolicy;
-use App\Domains\Operations\Services\OpsAlertsService;
 use App\Domains\Permissions\PermissionCatalogSync;
 use App\Models\ExpenseCategory;
 use App\Models\SiteSetting;
@@ -51,7 +50,7 @@ class PurchasingSettingsTest extends TestCase
             'auto_request_on_low_stock', 'recurring_lists_enabled', 'auto_approve_under_mvr',
             'show_price_hints', 'backdate_max_days', 'stock_variance_reason_mvr',
             'auto_expense_on_verify', 'default_expense_category_id', 'auto_expense_non_stock_purchases',
-            'enforce_expense_budgets', 'restock_include_waste', 'restock_high_waste_pct', 'reorder_alert_sms',
+            'enforce_expense_budgets', 'restock_include_waste', 'restock_high_waste_pct',
         ] as $key) {
             $this->assertArrayHasKey($key, $s, "Missing switch: {$key}");
         }
@@ -83,7 +82,6 @@ class PurchasingSettingsTest extends TestCase
             'enforce_expense_budgets' => true,
             'restock_include_waste' => true,
             'restock_high_waste_pct' => 22.5,
-            'reorder_alert_sms' => true,
         ])->assertOk();
 
         // Requests: the existing purchase-request settings reader.
@@ -108,7 +106,8 @@ class PurchasingSettingsTest extends TestCase
         // Restocking.
         $this->assertSame('1', SiteSetting::get('restock_include_waste'));
         $this->assertSame('22.5', SiteSetting::get('restock_high_waste_pct'));
-        $this->assertTrue(app(OpsAlertsService::class)->settings()['inventory_reorder_alert_sms']);
+        // The two SMS switches left this screen: they are rows in Admin → Notifications.
+        $this->assertArrayNotHasKey('reorder_alert_sms', $this->getJson('/api/purchasing/settings')->json('settings'));
     }
 
     public function test_a_partial_update_leaves_the_rest_alone(): void

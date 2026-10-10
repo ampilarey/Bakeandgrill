@@ -24,12 +24,6 @@ class SocialPostingRules
 
     public const PER_DAY_KEY = 'social_rules_max_per_day';
 
-    /** SMS the business phone with a signed approve/reject link when an automation drafts a post. */
-    public const APPROVAL_SMS_KEY = 'social_approval_sms';
-
-    /** Monday morning SMS: what went out, what worked, what is waiting. */
-    public const WEEKLY_DIGEST_KEY = 'social_weekly_digest';
-
     /** Statuses that count as "a post went (or will go) out". */
     private const COUNTED = [
         SocialPost::STATUS_SCHEDULED,
@@ -39,14 +33,17 @@ class SocialPostingRules
         SocialPost::STATUS_PARTIAL_FAILURE,
     ];
 
-    /** @return array{min_gap_minutes: int, max_per_day: int, approval_sms: bool, weekly_digest: bool} */
+    /**
+     * The approval text and the Monday digest are on/off on their rows in
+     * Admin → Notifications since 2026-10-10.
+     *
+     * @return array{min_gap_minutes: int, max_per_day: int}
+     */
     public function all(): array
     {
         return [
             'min_gap_minutes' => max(0, min(1440, (int) SiteSetting::get(self::GAP_KEY, '0'))),
             'max_per_day' => max(0, min(20, (int) SiteSetting::get(self::PER_DAY_KEY, '0'))),
-            'approval_sms' => filter_var(SiteSetting::get(self::APPROVAL_SMS_KEY, '1'), FILTER_VALIDATE_BOOLEAN),
-            'weekly_digest' => filter_var(SiteSetting::get(self::WEEKLY_DIGEST_KEY, '1'), FILTER_VALIDATE_BOOLEAN),
         ];
     }
 
@@ -58,12 +55,6 @@ class SocialPostingRules
         }
         if (array_key_exists('max_per_day', $input)) {
             SiteSetting::set(self::PER_DAY_KEY, (string) max(0, min(20, (int) $input['max_per_day'])));
-        }
-        if (array_key_exists('approval_sms', $input)) {
-            SiteSetting::set(self::APPROVAL_SMS_KEY, filter_var($input['approval_sms'], FILTER_VALIDATE_BOOLEAN) ? '1' : '0');
-        }
-        if (array_key_exists('weekly_digest', $input)) {
-            SiteSetting::set(self::WEEKLY_DIGEST_KEY, filter_var($input['weekly_digest'], FILTER_VALIDATE_BOOLEAN) ? '1' : '0');
         }
         SiteSetting::bust();
 

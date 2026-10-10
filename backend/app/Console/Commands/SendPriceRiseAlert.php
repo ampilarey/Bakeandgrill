@@ -6,7 +6,7 @@ namespace App\Console\Commands;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
-use App\Models\SiteSetting;
+use App\Domains\Notifications\Support\AlertSwitch;
 use App\Services\PriceChangesService;
 use App\Support\OwnerPhones;
 use Illuminate\Console\Command;
@@ -26,12 +26,11 @@ class SendPriceRiseAlert extends Command
 
     protected $description = 'SMS the owner the items whose last buy was 10% or more above the one before';
 
-    public const SETTING = 'ops_price_rise_alert_sms';
-
     public function handle(SmsService $sms, PriceChangesService $prices): int
     {
-        if (!$this->option('force') && !filter_var(SiteSetting::get(self::SETTING, '0'), FILTER_VALIDATE_BOOLEAN)) {
-            $this->info('Price rise SMS is off.');
+        // // One switch per channel on its row in Admin → Notifications (2026-10-10).
+        if (!$this->option('force') && !AlertSwitch::isOn('owner_price_rise')) {
+            $this->info('Price rise alert is off.');
 
             return self::SUCCESS;
         }

@@ -6,8 +6,8 @@ namespace App\Console\Commands;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Notifications\Support\AlertSwitch;
 use App\Models\ComplaintBoxEntry;
-use App\Models\SiteSetting;
 use App\Support\OwnerPhones;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -26,12 +26,11 @@ class SendComplaintWeeklySummary extends Command
 
     protected $description = 'SMS the owner a summary of the last seven days of complaints';
 
-    public const SETTING = 'ops_complaint_weekly_sms';
-
     public function handle(SmsService $sms): int
     {
-        if (!$this->option('force') && !filter_var(SiteSetting::get(self::SETTING, '0'), FILTER_VALIDATE_BOOLEAN)) {
-            $this->info('Weekly complaint SMS is off.');
+        // // One switch per channel on its row in Admin → Notifications (2026-10-10).
+        if (!$this->option('force') && !AlertSwitch::isOn('owner_complaint_digest')) {
+            $this->info('Weekly complaint summary is off.');
 
             return self::SUCCESS;
         }

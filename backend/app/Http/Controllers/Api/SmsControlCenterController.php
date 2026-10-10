@@ -100,13 +100,9 @@ class SmsControlCenterController extends Controller
         $types = [];
         foreach (SmsTypeRegistry::all() as $entry) {
             $key = $entry['key'];
-            if ($key === SmsTypeRegistry::SETTINGS_TEST_TYPE) {
-                continue; // the "Send me a test" carrier, not a row of its own
+            if (in_array($key, SmsTypeRegistry::HIDDEN_FROM_LIST, true)) {
+                continue; // a test-send carrier, not a row of its own
             }
-            // "Owners & managers (also needs the stock alert switch in Settings)":
-            // the part in brackets is a second switch or threshold elsewhere,
-            // which the row shows as its own line with a link (SMS audit, 2026-10-03).
-            [$recipientsPlain, $alsoNeeds] = self::splitAlsoNeeds((string) $entry['recipients']);
             $aliasHits = array_keys(array_filter(
                 [
                     'otp' => 'auth_customer_otp',
@@ -171,8 +167,7 @@ class SmsControlCenterController extends Controller
                 'telegram_enabled' => SmsTypeRegistry::isTelegramEnabled($key),
                 'always_on' => (bool) $entry['always_on'],
                 'suppressible' => (bool) $entry['suppressible'],
-                'recipients' => $recipientsPlain,
-                'also_needs' => $alsoNeeds,
+                'recipients' => (string) $entry['recipients'],
                 'user_initiated' => (bool) ($entry['user_initiated'] ?? false),
                 'send_permission' => $permSlug,
                 'send_permission_label' => $systemOnly
@@ -544,23 +539,6 @@ class SmsControlCenterController extends Controller
             'status' => $log->status,
             'text' => $text,
         ], $ok ? 200 : 422);
-    }
-
-    /**
-     * @return array{0: string, 1: string|null} plain recipients, and the second switch or threshold named in brackets
-     */
-    public static function splitAlsoNeeds(string $recipients): array
-    {
-        if (preg_match('/^(.*?)\s*\((?:also needs?|also the|also|their own|hours|threshold|days|same|[^)]*?set in)[^)]*\)\s*$/i', $recipients, $m) === 1) {
-            preg_match('/\((.*)\)\s*$/', $recipients, $inner);
-            $note = trim((string) ($inner[1] ?? ''));
-            $note = preg_replace('/^also needs?\s+/i', '', $note) ?? $note;
-            $note = preg_replace('/^also\s+/i', '', $note) ?? $note;
-
-            return [trim($m[1]), ucfirst($note)];
-        }
-
-        return [$recipients, null];
     }
 
     /**

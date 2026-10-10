@@ -6,9 +6,9 @@ namespace App\Console\Commands;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Notifications\Support\AlertSwitch;
 use App\Domains\Signage\Services\SignageDeviceHealth;
 use App\Models\SignageDevice;
-use App\Models\SiteSetting;
 use App\Support\OwnerPhones;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -28,7 +28,8 @@ class CheckSignageDevices extends Command
     public function handle(SmsService $sms): int
     {
         $now = now();
-        $smsOn = filter_var(SiteSetting::get('signage_device_alert_sms', '1'), FILTER_VALIDATE_BOOLEAN);
+        // // One switch per channel on its row in Admin → Notifications (2026-10-10).
+        $smsOn = AlertSwitch::isOn('owner_signage_devices');
         $alerts = [];
 
         foreach (SignageDevice::query()->where('approved', true)->with('screen:id,name,slug')->get() as $device) {

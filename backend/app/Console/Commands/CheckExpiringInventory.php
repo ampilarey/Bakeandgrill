@@ -6,8 +6,8 @@ namespace App\Console\Commands;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Notifications\Support\AlertSwitch;
 use App\Models\InventoryItem;
-use App\Models\SiteSetting;
 use App\Support\OwnerPhones;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -62,13 +62,14 @@ class CheckExpiringInventory extends Command
     /** @param \Illuminate\Support\Collection<int, InventoryItem> $expiring */
     private function maybeSendExpirySms(SmsService $sms, $expiring, int $days): void
     {
-        if (!filter_var(SiteSetting::get('ops_inventory_reorder_alert_sms', '0'), FILTER_VALIDATE_BOOLEAN)) {
+        // // One switch per channel on its row in Admin → Notifications (2026-10-10).
+        if (!AlertSwitch::isOn('owner_stock_expiry')) {
             return;
         }
 
         $phones = OwnerPhones::for('owner_stock_expiry');
         if ($phones->isEmpty()) {
-            $this->warn('Stock alert SMS enabled but no owner/manager phone or business_phone set.');
+            $this->warn('Stock expiry alert on but no owner/manager phone or business_phone set.');
 
             return;
         }

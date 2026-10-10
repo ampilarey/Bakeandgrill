@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Complaints;
 
+use App\Domains\Notifications\Support\AlertSwitch;
 use App\Domains\Permissions\PermissionCatalogSync;
 use App\Models\ComplaintBoxEntry;
 use App\Models\SiteSetting;
@@ -55,7 +56,7 @@ class ComplaintAlertsTest extends TestCase
     public function test_the_weekly_summary_counts_the_week_names_who_was_named_and_says_what_is_open(): void
     {
         $this->makeOwner(['phone' => '9607771234']);
-        SiteSetting::set('ops_complaint_weekly_sms', '1');
+        AlertSwitch::setAll('owner_complaint_digest', true);
         $this->entry(['categories' => ['staff_behaviour'], 'about_staff' => 'Ali']);
         $this->entry(['categories' => ['staff_behaviour', 'slow_service'], 'about_staff' => 'ali', 'status' => 'resolved']);
         $this->entry(['categories' => ['food_quality']]);
@@ -125,15 +126,15 @@ class ComplaintAlertsTest extends TestCase
     public function test_alert_settings_are_read_and_written_by_a_manager(): void
     {
         Sanctum::actingAs($this->makeOwner(), ['staff']);
+        // On or off is each alert's row in Admin → Notifications (2026-10-10);
+        // only how long counts as unread is set here.
         $this->getJson('/api/complaint-box/alert-settings')->assertOk()
-            ->assertJsonPath('settings.weekly_sms', false)
-            ->assertJsonPath('settings.stale_sms', true)
+            ->assertJsonMissingPath('settings.weekly_sms')
+            ->assertJsonMissingPath('settings.stale_sms')
             ->assertJsonPath('settings.stale_days', 2);
 
-        $this->patchJson('/api/complaint-box/alert-settings', ['weekly_sms' => true, 'stale_days' => 5])->assertOk()
-            ->assertJsonPath('settings.weekly_sms', true)
+        $this->patchJson('/api/complaint-box/alert-settings', ['stale_days' => 5])->assertOk()
             ->assertJsonPath('settings.stale_days', 5);
-        $this->assertSame('1', SiteSetting::get('ops_complaint_weekly_sms'));
         $this->assertSame('5', SiteSetting::get('ops_complaint_stale_days'));
 
         $this->patchJson('/api/complaint-box/alert-settings', ['stale_days' => 0])->assertStatus(422);

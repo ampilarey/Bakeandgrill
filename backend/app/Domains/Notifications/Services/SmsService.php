@@ -118,7 +118,7 @@ class SmsService
 
         // 2. Per-type enabled (always_on types ignore their toggle).
         if ($registryEntry !== null && !SmsTypeRegistry::isTypeEnabled($registryEntry)) {
-            return $this->smsOffEmailOn($sms, $normalized, $estimate, $existing, $registryEntry, 'SMS type disabled in Admin → SMS Control Center.', $staff);
+            return $this->smsOffEmailOn($sms, $normalized, $estimate, $existing, $registryEntry, 'SMS switched off for this message in Admin → Notifications.', $staff);
         }
 
         // 4. Spend ceilings — never block always_on auth types.

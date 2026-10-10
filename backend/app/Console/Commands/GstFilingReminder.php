@@ -9,6 +9,7 @@ use App\Domains\Gst\Services\GstReconciliationService;
 use App\Domains\Gst\Services\GstSettingsService;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Notifications\Support\AlertSwitch;
 use App\Support\OwnerPhones;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
@@ -37,7 +38,7 @@ class GstFilingReminder extends Command
     ): int {
         $config = $settings->get();
         $leadDays = (int) ($config->filing_reminder_days ?? 3);
-        if (!$settings->isRegistered() || $leadDays <= 0) {
+        if (!$settings->isRegistered() || $leadDays <= 0 || !AlertSwitch::isOn('owner_gst_filing_due')) {
             $this->info('GST filing reminder is off.');
 
             return self::SUCCESS;

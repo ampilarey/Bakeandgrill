@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Console\Commands\RemindStaleComplaints;
-use App\Console\Commands\SendComplaintWeeklySummary;
 use App\Domains\Complaints\Services\ComplaintBoxService;
 use App\Http\Controllers\Controller;
 use App\Models\ComplaintBoxEntry;
@@ -180,16 +179,8 @@ class ComplaintBoxController extends Controller
     public function updateAlertSettings(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'weekly_sms' => ['sometimes', 'boolean'],
-            'stale_sms' => ['sometimes', 'boolean'],
             'stale_days' => ['sometimes', 'integer', 'min:1', 'max:30'],
         ]);
-        if (array_key_exists('weekly_sms', $data)) {
-            SiteSetting::set(SendComplaintWeeklySummary::SETTING, filter_var($data['weekly_sms'], FILTER_VALIDATE_BOOLEAN) ? '1' : '0');
-        }
-        if (array_key_exists('stale_sms', $data)) {
-            SiteSetting::set(RemindStaleComplaints::SETTING_ON, filter_var($data['stale_sms'], FILTER_VALIDATE_BOOLEAN) ? '1' : '0');
-        }
         if (array_key_exists('stale_days', $data)) {
             SiteSetting::set(RemindStaleComplaints::SETTING_DAYS, (string) (int) $data['stale_days']);
         }
@@ -198,12 +189,15 @@ class ComplaintBoxController extends Controller
         return response()->json(['message' => 'Alert settings saved.', 'settings' => $this->currentAlertSettings()]);
     }
 
-    /** @return array{weekly_sms: bool, stale_sms: bool, stale_days: int} */
+    /**
+     * The weekly summary and the unread nudge are on/off on their rows in
+     * Admin → Notifications (2026-10-10); how long counts as unread stays here.
+     *
+     * @return array{stale_days: int}
+     */
     private function currentAlertSettings(): array
     {
         return [
-            'weekly_sms' => filter_var(SiteSetting::get(SendComplaintWeeklySummary::SETTING, '0'), FILTER_VALIDATE_BOOLEAN),
-            'stale_sms' => filter_var(SiteSetting::get(RemindStaleComplaints::SETTING_ON, '1'), FILTER_VALIDATE_BOOLEAN),
             'stale_days' => RemindStaleComplaints::days(),
         ];
     }

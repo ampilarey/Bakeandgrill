@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Domains\Catering\Services\CateringLifecycleNotifier;
+use App\Domains\Notifications\Support\AlertSwitch;
 use App\Models\CateringRequest;
-use App\Models\SiteSetting;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -26,8 +26,10 @@ class SendCateringEventReminders implements ShouldQueue
 
     public function handle(CateringLifecycleNotifier $notifier): void
     {
-        $enabled = SiteSetting::get('catering_reminder_enabled', '1');
-        if ($enabled === '0' || $enabled === 'false' || $enabled === false) {
+        // One switch per channel on the two reminder rows in Admin →
+        // Notifications (2026-10-10); the old catering_reminder_enabled
+        // switch on Settings → Ordering was folded into them.
+        if (!AlertSwitch::anyOn('catering_reminder_customer', 'catering_reminder_staff')) {
             return;
         }
 

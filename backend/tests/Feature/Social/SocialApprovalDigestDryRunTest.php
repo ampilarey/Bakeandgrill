@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Social;
 
 use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Notifications\Support\AlertSwitch;
 use App\Domains\Permissions\PermissionCatalogSync;
 use App\Domains\Social\Services\NewItemAutoPoster;
 use App\Domains\Social\Services\SocialPostApproval;
@@ -96,7 +97,7 @@ class SocialApprovalDigestDryRunTest extends TestCase
         $this->assertCount(0, $this->sent, 'no business phone, nothing to text');
 
         SiteSetting::set('business_phone', '+9607771234');
-        SiteSetting::set('social_approval_sms', '0');
+        AlertSwitch::setAll('owner_social_approval', false);
         SiteSetting::bust();
         Item::factory()->create(['name' => 'Bajiya', 'image_url' => 'https://cdn.example.com/b.jpg', 'created_at' => now()->subDay()]);
         Carbon::setTestNow('2026-09-25 12:00:00');
@@ -203,7 +204,7 @@ class SocialApprovalDigestDryRunTest extends TestCase
 
         $this->artisan('social:weekly-digest')->expectsOutputToContain('Nothing to report.')->assertSuccessful();
 
-        SiteSetting::set('social_weekly_digest', '0');
+        AlertSwitch::setAll('owner_social_digest', false);
         SiteSetting::bust();
         SocialPost::create(['status' => SocialPost::STATUS_AWAITING_APPROVAL, 'source' => 'auto_special', 'snapshot' => ['caption' => 'Waiting']]);
         $this->artisan('social:weekly-digest')->expectsOutputToContain('Weekly social digest is off.')->assertSuccessful();
@@ -213,16 +214,16 @@ class SocialApprovalDigestDryRunTest extends TestCase
         $this->assertCount(1, $this->sent);
     }
 
-    public function test_the_two_switches_round_trip_through_the_rules_endpoint(): void
+    public function test_the_rules_endpoint_no_longer_carries_the_two_alert_switches(): void
     {
         Sanctum::actingAs($this->makeOwner(), ['staff']);
 
+        // On or off is each alert's row in Admin → Notifications (2026-10-10).
         $this->getJson('/api/admin/social/rules')->assertOk()
-            ->assertJsonPath('rules.approval_sms', true)->assertJsonPath('rules.weekly_digest', true);
-        $this->putJson('/api/admin/social/rules', ['approval_sms' => false, 'weekly_digest' => false])->assertOk()
-            ->assertJsonPath('rules.approval_sms', false)->assertJsonPath('rules.weekly_digest', false);
-        $this->getJson('/api/admin/social/rules')->assertOk()->assertJsonPath('rules.weekly_digest', false);
-        $this->putJson('/api/admin/social/rules', ['approval_sms' => 'maybe'])->assertStatus(422);
+            ->assertJsonMissingPath('rules.approval_sms')->assertJsonMissingPath('rules.weekly_digest');
+        $this->putJson('/api/admin/social/rules', ['min_gap_minutes' => 30, 'approval_sms' => false])->assertOk()
+            ->assertJsonPath('rules.min_gap_minutes', 30)->assertJsonMissingPath('rules.approval_sms');
+        $this->assertTrue(AlertSwitch::isOn('owner_social_approval'));
     }
 
     // ── Dry run ──────────────────────────────────────────────────────────────

@@ -43,10 +43,6 @@ class PaymentConfirmationNotifier
             return;
         }
 
-        // The SMS switch saves SMS cost; it no longer stops the order
-        // confirmation email (owner, 2026-10-06).
-        $smsOn = SmsNotificationSettings::isEnabled(SmsNotificationSettings::PAYMENT_CONFIRMED);
-
         $order->loadMissing(['customer', 'payments']);
 
         $phone = $this->resolveRecipientPhone($order);
@@ -127,6 +123,13 @@ class PaymentConfirmationNotifier
             );
             $typeKey = 'customer_payment_confirmed_pos';
         }
+
+        // The SMS switch saves SMS cost; it no longer stops the order
+        // confirmation email (owner, 2026-10-06). Counter and online each
+        // have their own switch since 2026-10-10 (one used to cover both).
+        $smsOn = SmsNotificationSettings::isEnabled($typeKey === 'customer_payment_confirmed_online'
+            ? SmsNotificationSettings::PAYMENT_CONFIRMED_ONLINE
+            : SmsNotificationSettings::PAYMENT_CONFIRMED_POS);
 
         if ($phone && $smsOn) {
             try {

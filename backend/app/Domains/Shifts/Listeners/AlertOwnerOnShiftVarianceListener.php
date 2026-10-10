@@ -6,6 +6,7 @@ namespace App\Domains\Shifts\Listeners;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Notifications\Support\AlertSwitch;
 use App\Domains\Operations\Services\OpsAlertsService;
 use App\Domains\Shifts\Events\ShiftClosed;
 use App\Support\OwnerPhones;
@@ -24,7 +25,7 @@ class AlertOwnerOnShiftVarianceListener
     {
         $d = $event->data;
         $threshold = (float) ($this->ops->settings()['shift_variance_alert_mvr'] ?? 0);
-        if ($threshold <= 0 || abs($d->variance) < $threshold) {
+        if ($threshold <= 0 || abs($d->variance) < $threshold || !AlertSwitch::isOn('owner_shift_variance')) {
             return;
         }
 

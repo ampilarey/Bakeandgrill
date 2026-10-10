@@ -82,6 +82,34 @@ final class NotificationChannels
         return in_array($channel, self::forUser($user), true);
     }
 
+    /**
+     * Whether a staff member with no phone can still be reached: a saved
+     * email or a linked Telegram, on a channel their settings allow. Order
+     * alerts go to such a person as "user:{id}" (owner, 2026-10-10); one
+     * nothing can reach is left out rather than logged as a failure each time.
+     */
+    public static function reachableWithoutPhone(User $user): bool
+    {
+        $email = trim((string) $user->email);
+        if (self::allows($user, self::EMAIL) && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return true;
+        }
+
+        return self::allows($user, self::TELEGRAM)
+            && app(\App\Domains\Telegram\Services\TelegramLinker::class)->linkForUser($user) !== null;
+    }
+
+    /** Where to address a staff member's alert: their phone, else "user:{id}" when another channel reaches them. */
+    public static function addressFor(User $user): ?string
+    {
+        $phone = trim((string) $user->phone);
+        if ($phone !== '') {
+            return $phone;
+        }
+
+        return self::reachableWithoutPhone($user) ? self::token($user) : null;
+    }
+
     /** @param array<string, list<string>> $roles */
     public static function setRoles(array $roles): void
     {

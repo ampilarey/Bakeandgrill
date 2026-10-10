@@ -77,8 +77,10 @@ class SendStaffNotificationJob implements ShouldQueue
             ));
 
             // 'demo' is a successful no-op send (local/staging without real credentials).
-            // Treat it the same as 'sent' so ops dashboards don't show false failures.
-            $success = in_array($smsLog->status, ['sent', 'demo'], true);
+            // Treat it the same as 'sent' so ops dashboards don't show false failures;
+            // so is reaching them by email or Telegram instead (no phone, or SMS
+            // left out of their channels).
+            $success = in_array($smsLog->status, ['sent', 'demo'], true) || $smsLog->reachedRecipient();
             $emailOnly = isset($this->emailOnly) && $this->emailOnly;
             $logRecord->update([
                 'status' => $emailOnly ? 'email_only' : ($success ? 'sent' : 'failed'),

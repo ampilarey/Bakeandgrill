@@ -7,6 +7,7 @@ namespace Tests\Feature\Sms;
 use App\Domains\Notifications\Contracts\SmsProviderInterface;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Notifications\Support\AlertSwitch;
 use App\Domains\Notifications\Support\SmsDeliveryRules;
 use App\Domains\Notifications\Support\SmsTypeRegistry;
 use App\Models\InventoryItem;
@@ -81,8 +82,9 @@ class SmsDeliveryRulesTest extends TestCase
 
     public function test_a_registered_owner_alert_can_be_switched_off_in_the_control_center(): void
     {
+        // The alert stays on by email; only its SMS is off.
+        AlertSwitch::setAll('owner_stock_reorder', true);
         SiteSetting::set('sms_owner_stock_reorder_enabled', 'false');
-        SiteSetting::set('ops_inventory_reorder_alert_sms', '1');
         $this->makeOwner(['phone' => '9607771234']);
         InventoryItem::create(['name' => 'Flour', 'sku' => 'F1', 'unit' => 'kg', 'current_stock' => 1, 'reorder_point' => 5, 'unit_cost' => 4, 'is_active' => true]);
         $this->provider->shouldNotReceive('send');
@@ -133,7 +135,7 @@ class SmsDeliveryRulesTest extends TestCase
     public function test_the_reorder_digest_uses_the_chosen_recipients(): void
     {
         $this->makeOwner(['phone' => '9607770001']);
-        SiteSetting::set('ops_inventory_reorder_alert_sms', '1');
+        AlertSwitch::setAll('owner_stock_reorder', true);
         SmsTypeRegistry::setRecipientOverride('owner_stock_reorder', ['mode' => 'custom', 'phones' => ['7779999']]);
         InventoryItem::create(['name' => 'Flour', 'sku' => 'F2', 'unit' => 'kg', 'current_stock' => 1, 'reorder_point' => 5, 'unit_cost' => 4, 'is_active' => true]);
         $this->sendsOk();
@@ -188,6 +190,7 @@ class SmsDeliveryRulesTest extends TestCase
         $this->assertSame('deferred', $promo->status);
         $this->assertStringContainsString('will send at 08:00', (string) $promo->error_message);
 
+        AlertSwitch::setAll('owner_stock_reorder', true); // off on a fresh install since 2026-10-10
         $alert = $sms->send(new SmsMessage(to: '+9607770001', message: 'Stock low', type: 'owner_stock_reorder'));
         $this->assertSame('sent', $alert->status, 'owner alerts go through unless the alerts switch is on');
         $this->provider->shouldReceive('send')->once()->andReturn([true, ['ok' => true], null]);
@@ -205,6 +208,7 @@ class SmsDeliveryRulesTest extends TestCase
         SmsDeliveryRules::update(['quiet_hours_enabled' => true, 'quiet_hours_start' => '22:00', 'quiet_hours_end' => '08:00', 'quiet_hours_alerts' => true]);
         Carbon::setTestNow('2026-09-24 23:15:00');
         $sms = app(SmsService::class);
+        AlertSwitch::setAll('owner_stock_reorder', true); // off on a fresh install since 2026-10-10
 
         $alert = $sms->send(new SmsMessage(to: '+9607770001', message: 'Stock low', type: 'owner_stock_reorder'));
         $this->assertSame('deferred', $alert->status);

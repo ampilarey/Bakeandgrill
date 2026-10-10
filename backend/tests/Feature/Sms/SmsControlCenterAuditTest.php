@@ -7,7 +7,6 @@ namespace Tests\Feature\Sms;
 use App\Domains\Notifications\Services\SmsService;
 use App\Domains\Notifications\Support\SmsTypeRegistry;
 use App\Domains\Permissions\PermissionCatalogSync;
-use App\Http\Controllers\Api\SmsControlCenterController;
 use App\Models\SiteSetting;
 use App\Models\SmsLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -63,19 +62,23 @@ class SmsControlCenterAuditTest extends TestCase
 
         $types = collect($res->json('types'))->keyBy('key');
         $this->assertFalse($types->has(SmsTypeRegistry::SETTINGS_TEST_TYPE), 'the test carrier is not a row');
+        $this->assertFalse($types->has('staff_campaign_test'), 'nor is the campaign test carrier');
         $this->assertSame('Owners & managers', $types['owner_stock_reorder']['recipients']);
-        $this->assertSame('"Stock alert SMS" in Settings', $types['owner_stock_reorder']['also_needs']);
         $this->assertSame('Business phone', $types['owner_device_approval']['recipients']);
-        $this->assertNull($types['owner_device_approval']['also_needs']);
-        $this->assertSame('Hours set in Settings → Notifications', $types['owner_shift_left_open']['also_needs']);
+        // One switch per channel on the row, and nothing else (2026-10-10).
+        $this->assertArrayNotHasKey('also_needs', $types['owner_stock_reorder']);
     }
 
-    public function test_split_also_needs_leaves_plain_text_alone(): void
+    /**
+     * Notifications audit, 2026-10-10: no alert may depend on a switch
+     * somewhere else. A recipients note naming one ("also needs the … switch
+     * in …", "set in Settings") is how they crept in before.
+     */
+    public function test_no_message_names_a_second_switch_elsewhere(): void
     {
-        $this->assertSame(['The ordering customer', null], SmsControlCenterController::splitAlsoNeeds('The ordering customer'));
-        // A bracket that explains the recipient, not a second switch, stays as it is.
-        $this->assertSame(['Refund phone (order phone or walk-in add)', null], SmsControlCenterController::splitAlsoNeeds('Refund phone (order phone or walk-in add)'));
-        $this->assertSame(['Business phone', 'The TV alert switch in Signage'], SmsControlCenterController::splitAlsoNeeds('Business phone (also needs the TV alert switch in Signage)'));
+        foreach (SmsTypeRegistry::all() as $entry) {
+            $this->assertDoesNotMatchRegularExpression('/also needs|also the|switch in|set in|set on/i', (string) $entry['recipients'], $entry['key']);
+        }
     }
 
     public function test_send_me_a_test_sends_the_wording_to_my_phone_and_is_logged(): void

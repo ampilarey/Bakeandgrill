@@ -8,7 +8,10 @@ use App\Models\SiteSetting;
 
 final class SmsNotificationSettings
 {
-    public const PAYMENT_CONFIRMED = 'sms_customer_payment_confirmed_enabled';
+    /** Counter (POS) and online payment confirmations: one switch each since 2026-10-10. */
+    public const PAYMENT_CONFIRMED_POS = 'sms_customer_payment_confirmed_pos_enabled';
+
+    public const PAYMENT_CONFIRMED_ONLINE = 'sms_customer_payment_confirmed_online_enabled';
 
     public const COMPLETION_RECEIPT = 'sms_customer_completion_receipt_enabled';
 
@@ -26,7 +29,7 @@ final class SmsNotificationSettings
 
     public const CUSTOMER_ON_THE_WAY = 'sms_customer_on_the_way_enabled';
 
-    public const DISABLED_MESSAGE = 'SMS disabled in Admin → Settings → Notifications.';
+    public const DISABLED_MESSAGE = 'SMS switched off in Admin → Notifications.';
 
     /** SMS off for this (to save cost) and no email to fall back on (owner, 2026-10-06). */
     public const OFF_NO_EMAIL_MESSAGE = 'SMS is switched off for this, and the customer has no email to send it to.';

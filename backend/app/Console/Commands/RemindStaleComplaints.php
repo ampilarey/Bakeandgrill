@@ -6,6 +6,7 @@ namespace App\Console\Commands;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Notifications\Support\AlertSwitch;
 use App\Models\ComplaintBoxEntry;
 use App\Models\SiteSetting;
 use App\Support\OwnerPhones;
@@ -26,8 +27,6 @@ class RemindStaleComplaints extends Command
 
     protected $description = 'SMS the owner about complaints left as "new" for too long';
 
-    public const SETTING_ON = 'ops_complaint_stale_sms';
-
     public const SETTING_DAYS = 'ops_complaint_stale_days';
 
     public static function days(): int
@@ -37,8 +36,9 @@ class RemindStaleComplaints extends Command
 
     public function handle(SmsService $sms): int
     {
-        if (!filter_var(SiteSetting::get(self::SETTING_ON, '1'), FILTER_VALIDATE_BOOLEAN)) {
-            $this->info('Stale complaint SMS is off.');
+        // // One switch per channel on its row in Admin → Notifications (2026-10-10).
+        if (!AlertSwitch::isOn('owner_complaint_stale')) {
+            $this->info('Unread complaint alert is off.');
 
             return self::SUCCESS;
         }

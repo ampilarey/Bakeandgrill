@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Procurement;
 
+use App\Domains\Notifications\Support\AlertSwitch;
 use App\Models\InventoryItem;
-use App\Models\SiteSetting;
 use App\Models\SmsLog;
 use App\Models\Supplier;
 use App\Models\SupplierPriceHistory;
@@ -34,7 +34,7 @@ class PriceRiseAlertTest extends TestCase
     public function test_it_texts_the_owner_the_items_up_ten_percent_or_more(): void
     {
         $this->makeOwner(['phone' => '9607771234']);
-        SiteSetting::set('ops_price_rise_alert_sms', '1');
+        AlertSwitch::setAll('owner_price_rise', true);
         $agora = Supplier::create(['name' => 'Agora']);
         $flour = InventoryItem::create(['name' => 'Flour', 'unit' => 'kg', 'unit_cost' => 12, 'is_active' => true]);
         $eggs = InventoryItem::create(['name' => 'Eggs', 'unit' => 'pcs', 'unit_cost' => 2, 'is_active' => true]);
@@ -63,11 +63,11 @@ class PriceRiseAlertTest extends TestCase
         $this->price($flour, $agora, 10, 20);
         $this->price($flour, $agora, 12, 2);
 
-        SiteSetting::set('ops_price_rise_alert_sms', '0');
+        AlertSwitch::setAll('owner_price_rise', false);
         Artisan::call('purchasing:price-rise-alert');
         $this->assertDatabaseMissing('sms_logs', ['reference_type' => 'price_rise_alert']);
 
-        SiteSetting::set('ops_price_rise_alert_sms', '1');
+        AlertSwitch::setAll('owner_price_rise', true);
         SupplierPriceHistory::query()->delete();
         $this->price($flour, $agora, 12, 2);
         Artisan::call('purchasing:price-rise-alert');

@@ -738,7 +738,7 @@ class ShiftController extends Controller
                 number_format(abs($variance), 2),
             );
             $threshold = (float) (app(\App\Domains\Operations\Services\OpsAlertsService::class)->settings()['shift_variance_alert_mvr'] ?? 0);
-            if ($threshold > 0 && abs($variance) >= $threshold) {
+            if ($threshold > 0 && abs($variance) >= $threshold && \App\Domains\Notifications\Support\AlertSwitch::isOn('owner_shift_float_mismatch')) {
                 try {
                     $sms = app(\App\Domains\Notifications\Services\SmsService::class);
                     foreach (\App\Support\OwnerPhones::for('owner_shift_float_mismatch') as $phone) {

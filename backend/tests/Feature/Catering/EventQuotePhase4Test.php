@@ -48,7 +48,6 @@ class EventQuotePhase4Test extends TestCase
         SiteSetting::set('catering_quote_valid_days', '7');
         SiteSetting::set('catering_quote_min_hours_before_event', '24');
         SiteSetting::set('catering_notify_phone', '9000000');
-        SiteSetting::set('catering_reminder_enabled', '1');
 
         Permission::query()->firstOrCreate(
             ['slug' => 'events.manage'],

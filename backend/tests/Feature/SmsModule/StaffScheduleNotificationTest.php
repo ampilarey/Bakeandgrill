@@ -47,63 +47,25 @@ class StaffScheduleNotificationTest extends TestCase
         ]);
     }
 
-    /** Creating a schedule creates a shift reminder scheduled message */
-    public function test_creating_schedule_creates_shift_reminder(): void
+    /**
+     * The reminder an hour before is staff:shift-reminders now (2026-10-10):
+     * nothing is queued as a scheduled marketing message, and the staff
+     * member is not added as an SMS contact (ShiftReminderTest has the rest).
+     */
+    public function test_creating_or_moving_a_schedule_queues_no_marketing_reminder(): void
     {
         $staff = $this->makeSmsStaff('+9607100100');
-        $tomorrow = Carbon::tomorrow();
-
-        StaffSchedule::create([
-            'user_id' => $staff->id,
-            'date' => $tomorrow->toDateString(),
-            'shift_start' => '09:00',
-            'shift_end' => '17:00',
-            'is_confirmed' => true,
-        ]);
-
-        // An SmsContact should have been created for the staff member
-        $contact = SmsContact::where('user_id', $staff->id)->first();
-        $this->assertNotNull($contact);
-
-        // A shift reminder scheduled message should exist
-        $reminder = SmsScheduledMessage::where('to_contact_id', $contact->id)->first();
-        $this->assertNotNull($reminder);
-        $this->assertEquals('active', $reminder->status);
-
-        // The reminder should be 1 hour before shift start
-        $expectedSendAt = Carbon::parse($tomorrow->toDateString() . ' 09:00')->subHour();
-        $this->assertEquals($expectedSendAt->toDateTimeString(), $reminder->next_send_at->toDateTimeString());
-    }
-
-    /** Updating a schedule cancels old reminder and creates new one */
-    public function test_updating_schedule_replaces_reminder(): void
-    {
-        $staff = $this->makeSmsStaff('+9607200200');
-        $tomorrow = Carbon::tomorrow();
-
         $schedule = StaffSchedule::create([
             'user_id' => $staff->id,
-            'date' => $tomorrow->toDateString(),
+            'date' => Carbon::tomorrow()->toDateString(),
             'shift_start' => '09:00',
             'shift_end' => '17:00',
             'is_confirmed' => true,
         ]);
+        $schedule->update(['shift_start' => '14:00', 'shift_end' => '22:00']);
 
-        // Now update the shift time
-        $schedule->update([
-            'shift_start' => '14:00',
-            'shift_end' => '22:00',
-        ]);
-
-        $contact = SmsContact::where('user_id', $staff->id)->first();
-        $this->assertNotNull($contact);
-
-        // Should have 1 active reminder (for the updated time) and any cancelled ones
-        $activeReminders = SmsScheduledMessage::where('to_contact_id', $contact->id)->where('status', 'active')->get();
-        $this->assertCount(1, $activeReminders);
-
-        $expectedSendAt = Carbon::parse($tomorrow->toDateString() . ' 14:00')->subHour();
-        $this->assertEquals($expectedSendAt->toDateTimeString(), $activeReminders->first()->next_send_at->toDateTimeString());
+        $this->assertSame(0, SmsScheduledMessage::query()->count());
+        $this->assertNull(SmsContact::where('user_id', $staff->id)->first());
     }
 
     /** Staff member with notifications disabled does not get schedule assigned SMS */
