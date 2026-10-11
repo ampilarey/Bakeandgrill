@@ -19,7 +19,7 @@ export function ProductionStickersModal({ productionItemId, onClose }: { product
   }, [productionItemId]);
 
   return (
-    <Modal title="Print stickers" onClose={onClose} maxWidth={640}>
+    <Modal title="Print stickers" onClose={onClose} maxWidth={960}>
       {error && <p className="text-sm text-[var(--color-danger)]">{error}</p>}
       {data && !data.item && <p className="text-sm text-[var(--color-text-secondary)]">This line is not a menu item, so it has no sticker.</p>}
       {data?.item && !data.item.label_enabled && (
@@ -38,7 +38,7 @@ export function ProductionStickersModal({ productionItemId, onClose }: { product
 
 export function DeliveryBoxLabelModal({ deliveryId, onClose }: { deliveryId: number; onClose: () => void }) {
   return (
-    <Modal title="Box label" onClose={onClose} maxWidth={720}>
+    <Modal title="Box label" onClose={onClose} maxWidth={960}>
       <BoxLabelPanel deliveryId={deliveryId} />
     </Modal>
   );

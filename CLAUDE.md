@@ -160,7 +160,12 @@ or cook given Print labels signs in to Admin with phone + PIN and finds Labels i
 menu. Two renderer facts the views depend on: dompdf's baseline
 rule differs from browsers (`LabelText::PDF_BASELINE_K`), and dompdf needs Thaana in
 visual order (`App\Support\ThaanaVisual`, PDF path only; the menu PDF uses it too).
-Phones print the PDF, not the web sheet (iOS adds margins). How to use it and where
+Below 1024px the live preview
+is a bar pinned under the header (`PhonePreviewBar`), never a column under the form
+(audit, 2026-10-11); the form folds Print as, batch and quantity behind More options,
+shows each picked product's expiry before Prepare, and offers the last printed sheets as
+Print again. A saved label is renamed in place (`InlineRename`), never with a browser
+prompt. Phones print the PDF, not the web sheet (iOS adds margins). How to use it and where
 everything lives: `docs/LABELS.md`; design and decisions: `docs/LABEL_HUB_PLAN.md`
 and `docs/LABEL_HUB_V2_PLAN.md`.
 

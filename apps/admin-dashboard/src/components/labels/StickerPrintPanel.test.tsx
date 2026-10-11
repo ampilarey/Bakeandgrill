@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 
 const fetchLabelLayouts = vi.fn();
@@ -8,6 +8,8 @@ const fetchCustomLabels = vi.fn();
 const stickerLinks = vi.fn();
 const openLabelSheet = vi.fn();
 const downloadLabelSheet = vi.fn();
+const fetchLabelJobs = vi.fn();
+const printLabelJob = vi.fn();
 const canManage = { value: false };
 
 vi.mock('../../hooks/usePermissions', () => ({
@@ -27,6 +29,8 @@ vi.mock('../../api', () => ({
   openLabelSheet: (...a: unknown[]) => openLabelSheet(...a),
   printsViaPdf: () => false,
   fetchLabelJob: vi.fn(),
+  fetchLabelJobs: (...a: unknown[]) => fetchLabelJobs(...a),
+  printLabelJob: (...a: unknown[]) => printLabelJob(...a),
   renameLabelJob: vi.fn(),
   downloadLabelSheet: (...a: unknown[]) => downloadLabelSheet(...a),
 }));
@@ -70,7 +74,8 @@ const PRESETS = [
 
 describe('StickerPrintPanel', () => {
   beforeEach(() => {
-    [fetchLabelLayouts, fetchLabelProducts, fetchCustomLabels, stickerLinks, openLabelSheet, downloadLabelSheet].forEach((f) => f.mockReset());
+    [fetchLabelLayouts, fetchLabelProducts, fetchCustomLabels, stickerLinks, openLabelSheet, downloadLabelSheet, fetchLabelJobs, printLabelJob].forEach((f) => f.mockReset());
+    fetchLabelJobs.mockResolvedValue({ data: [], last_page: 1 });
     canManage.value = false;
     try { localStorage.clear(); } catch { /* jsdom */ }
     fetchLabelLayouts.mockResolvedValue({
@@ -261,5 +266,82 @@ describe('StickerPrintPanel', () => {
     await waitFor(() => expect(screen.getByLabelText('Print Gift box')).toBeChecked());
     // Without Manage label settings there is no "New custom label".
     expect(screen.queryByTestId('sticker-new-custom')).not.toBeInTheDocument();
+  });
+});
+
+/*
+ * Labels audit, 2026-10-11: the form on a phone. Print again in one tap,
+ * the seldom-used boxes folded away, the expiry each product will get shown
+ * before Prepare, a batch code from today's date, and below the desktop band
+ * the preview pinned under the header instead of under the whole form.
+ */
+describe('StickerPrintPanel on a phone', () => {
+  const links = { url: '/labels/stickers?print=1&signature=x', view_url: '/labels/stickers?signature=x', pdf_url: '/labels/stickers.pdf?signature=x', expires_in_minutes: 30 };
+  const widthWas = window.innerWidth;
+  beforeEach(() => {
+    [fetchLabelLayouts, fetchLabelProducts, fetchCustomLabels, stickerLinks, openLabelSheet, downloadLabelSheet, fetchLabelJobs, printLabelJob].forEach((f) => f.mockReset());
+    fetchLabelLayouts.mockResolvedValue({ data: [], presets: PRESETS, limits: { min_short: 20, min_long: 30, max_w: 210, max_h: 297, min_round: 30, max_round: 200, sheet_margin: 5 } });
+    fetchLabelProducts.mockResolvedValue({ data: [product(1, 'Bajiya'), product(2, 'Patties', { label_shelf_life_days: null })] });
+    fetchCustomLabels.mockResolvedValue({ data: [] });
+    fetchLabelJobs.mockResolvedValue({ data: [
+      { id: 9, kind: 'stickers', name: 'Bajiya ×21 · 40 × 60 mm', summary: null, print_count: 3, last_printed_at: '2026-10-11T08:00:00Z', created_at: '2026-10-11T08:00:00Z', created_by: 'Owner' },
+      { id: 10, kind: 'stickers', name: 'Never printed', summary: null, print_count: 0, last_printed_at: null, created_at: '2026-10-11T08:00:00Z', created_by: 'Owner' },
+    ], last_page: 1 });
+    stickerLinks.mockResolvedValue({ ...links, one_url: '/labels/stickers?one=1&signature=x', summary: { layout: 'a4-custom', label: '40 × 60 mm, 21 on A4', design: 'small', stickers: 21, pages: 1, per_page: 21, products: [] } });
+  });
+  afterEach(() => { Object.defineProperty(window, 'innerWidth', { value: widthWas, configurable: true, writable: true }); });
+
+  it('prints the last sheet again in one tap, and only sheets that were printed', async () => {
+    printLabelJob.mockResolvedValue({ ...links, summary: {} });
+    render(<MemoryRouter><StickerPrintPanel /></MemoryRouter>);
+    const recent = await screen.findByTestId('sticker-recent');
+    expect(recent).toHaveTextContent('Bajiya ×21 · 40 × 60 mm');
+    expect(recent).not.toHaveTextContent('Never printed');
+    fireEvent.click(screen.getByRole('button', { name: 'Print Bajiya ×21 · 40 × 60 mm again' }));
+    await waitFor(() => expect(printLabelJob).toHaveBeenCalledWith(9));
+    expect(openLabelSheet).toHaveBeenCalledWith(links.url, links.pdf_url);
+  });
+
+  it('folds the seldom-used boxes away and offers a batch code from today', async () => {
+    render(<MemoryRouter><StickerPrintPanel /></MemoryRouter>);
+    await screen.findByTestId('label-size-picker');
+    expect(screen.queryByLabelText('Batch number (optional)')).toBeNull();
+    fireEvent.click(screen.getByTestId('sticker-more-toggle'));
+    fireEvent.click(screen.getByTestId('sticker-batch-today'));
+    const code = new Date().toISOString().slice(2, 10).replace(/-/g, '');
+    expect(screen.getByLabelText('Batch number (optional)')).toHaveValue(code);
+    // Folded again, the toggle still says what is set.
+    fireEvent.click(screen.getByTestId('sticker-more-toggle'));
+    expect(screen.getByTestId('sticker-more-toggle')).toHaveTextContent(`batch ${code}`);
+  });
+
+  it('says each picked product\'s expiry before anything is prepared', async () => {
+    render(<MemoryRouter><StickerPrintPanel /></MemoryRouter>);
+    await screen.findByTestId('label-size-picker');
+    fireEvent.click(screen.getByLabelText('Print Bajiya'));
+    fireEvent.click(screen.getByLabelText('Print Patties'));
+    fireEvent.click(screen.getByText('Fill in the dates'));
+    fireEvent.change(screen.getByLabelText('Made on'), { target: { value: '2026-10-11' } });
+    expect(screen.getByTestId('row-expiry')).toHaveTextContent('EXP 2027-01-09');
+    expect(screen.getByText('Expiry blank: no shelf life set', { exact: false })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Expiry'), { target: { value: '2026-12-01' } });
+    expect(screen.getAllByTestId('row-expiry').map((e) => e.textContent)).toEqual(['EXP 2026-12-01', 'EXP 2026-12-01']);
+  });
+
+  it('pins the preview under the header below the desktop band', async () => {
+    Object.defineProperty(window, 'innerWidth', { value: 390, configurable: true, writable: true });
+    render(<MemoryRouter><StickerPrintPanel /></MemoryRouter>);
+    await screen.findByTestId('label-size-picker');
+    const bar = screen.getByTestId('phone-preview-bar');
+    expect(screen.queryByTestId('sticker-preview-pane')).toBeNull();
+    // The bar comes before the products, so it is in view while they are picked.
+    expect(bar.compareDocumentPosition(screen.getByText('Products'))).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    fireEvent.click(screen.getByLabelText('Print Bajiya'));
+    await waitFor(() => expect(previews().length).toBeGreaterThan(0));
+    expect(screen.queryByTestId('phone-preview-big')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Bigger' }));
+    expect(screen.getByTestId('phone-preview-big')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Smaller' }));
+    expect(screen.queryByTestId('phone-preview-big')).toBeNull();
   });
 });

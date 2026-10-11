@@ -7213,6 +7213,30 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   .labels-actions .labels-actions-row > button.labels-actions-wide { grid-column: 1 / -1; }
 }
 
+/*
+ * Labels audit (2026-10-11): below the desktop band the live preview is a bar
+ * pinned under the header, so a change to the size or the wording is seen
+ * where the finger is. Inside a pop-up the body scrolls, so it pins to its
+ * top; on the Labels page it sits under the 56px header.
+ */
+@media (max-width: 1023px) {
+  .labels-phone-preview {
+    position: sticky;
+    top: 0;
+    z-index: 12;
+    margin: 0 0 12px;
+    padding: 8px 0 10px;
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+  }
+  .labels-sticky .labels-phone-preview {
+    top: 56px;
+    margin: -16px -16px 12px;
+    padding: 10px 16px;
+    border-radius: 14px 14px 0 0;
+  }
+}
+
 /* ── Telegram (Admin → Telegram, 2026-10-06) ─────────────────────────── */
 .tg-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
 .tg-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }

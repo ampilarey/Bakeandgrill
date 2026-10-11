@@ -110,14 +110,20 @@ Dates print as `04 / 10 / 2026` or `4 Oct 2026` (Labels → Settings → Dates).
 
 ## Printing
 
-**Pack stickers** (Labels → Pack stickers): tick products and how many of each (− and +
+**Pack stickers** (Labels → Pack stickers): **Print again** at the top lists the last
+sheets printed; one tap prints one with today's dates, or tap its name to change it
+first. Then tick products and how many of each (− and +
 move a whole sheet). Menu items and custom labels share the list (**All**, **Menu
 items**, **Custom labels** narrow it) and can go on the same sheet. Then the **label
 size**, the language, **Print as** (one type for the whole sheet, optional), and
-whether to fill the dates. The **Preview** beside the form
-(below it on a phone) redraws half a second after every change: **Sticker** shows one
+whether to fill the dates (with the dates on, each picked product shows the expiry it
+will get). **Print as**, the batch number (a **Today** button writes the date as a code,
+261011) and the quantity per pack sit behind **More options**. The **Preview** beside
+the form redraws half a second after every change: **Sticker** shows one
 sticker at its own shape, **Sheet** the first page as it will come out of the printer,
-and with several products picked a list chooses which one to look at. A request the
+and with several products picked a list chooses which one to look at. On a phone or
+tablet the preview is a bar pinned under the header, a thumbnail that redraws as the
+form changes; **Bigger** opens it at full width (the box label has the same bar). A request the
 server would refuse (an expiry already past, too many stickers) shows its reason under
 the preview before anything is prepared. Press **Prepare**: the page lists what will
 print with each product's expiry, and the print is saved. Then **Print** or
@@ -191,8 +197,8 @@ added; up to 16 lines.
 **Saved labels** (Labels → Saved labels): every label prepared, newest printed first.
 **Print** prints it again (stickers with dates get today's made-on date and a fresh
 expiry; change the label to use other dates), **Download PDF**, **Edit** opens it back
-in the form with every setting as it was, **Copy**, the name is a **Rename** button,
-**Remove**. The print log (every sheet, by whom, with dates and batch) is folded
+in the form with every setting as it was, **Copy**, the name with its pencil renames it
+in place, **Remove**. The print log (every sheet, by whom, with dates and batch) is folded
 beneath.
 
 ## Where things live
@@ -213,7 +219,7 @@ beneath.
 | Brand logos, lettering, cut-outs | `App\Domains\Labels\LabelMedia::storePng`: kept as the PNG uploaded, never re-encoded |
 | QR | `App\Support\QrSvg::dataUri(ComplaintBoxLink::url('label'))`, bare |
 | Sheets | `resources/views/labels/*.blade.php`, signed routes `/labels/stickers`, `/labels/box` (+ `.pdf`), links last 30 minutes, same-origin framing allowed for the previews. `preview=1` draws the first page with no print bar, scaled to its frame (up as well as down: the body must not clip, or a small label scaled up shows only its top); `one=1` with it draws the first sticker alone on a page its own size (`one_url` from the API) |
-| Live preview | `apps/admin-dashboard/src/components/labels/SheetPreview.tsx`: a frame the page's shape (width ÷ height) around the preview link; the panels ask the API with `preview: true` half a second after the last change, which logs and saves nothing |
+| Live preview | `apps/admin-dashboard/src/components/labels/SheetPreview.tsx`: a frame the page's shape (width ÷ height) around the preview link; the panels ask the API with `preview: true` half a second after the last change, which logs and saves nothing. Below 1024px (`useIsBelowDesktop`) the panels put it in `PhonePreviewBar`, pinned under the header (`.labels-phone-preview`) |
 | API | `routes/domains/labels.php`, `App\Http\Controllers\Api\LabelsController` |
 | Fonts for the PDF | `public/fonts/pdf` (TTF) and the matching WOFF2 in `public/fonts` for the browser |
 

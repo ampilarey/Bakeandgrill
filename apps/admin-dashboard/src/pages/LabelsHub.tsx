@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Printer, FileDown, Pencil, Copy, Trash2, Tag } from 'lucide-react';
+import { Search, Printer, FileDown, Pencil, Copy, Trash2, Tag, ChevronDown, ChevronUp } from 'lucide-react';
 import { HubPage, hubPermissions, type HubTab } from '../components/HubPage';
 import { StickerPrintPanel } from '../components/labels/StickerPrintPanel';
 import { BoxLabelPanel } from '../components/labels/BoxLabelPanel';
 import { TypesAndBrands } from '../components/labels/TypesAndBrands';
 import { CustomLabelsTab } from '../components/labels/CustomLabels';
+import { InlineRename } from '../components/labels/InlineRename';
 import { Button, Card, useToast } from '../components/ui';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -37,7 +38,12 @@ function jobLine(j: LabelJob): string {
     return `Box label · ${b.customer || 'blank'} · ${b.lines.length} ${b.lines.length === 1 ? 'line' : 'lines'}`;
   }
   const st = j.summary as StickerSummary;
-  return `${st.stickers} ${st.stickers === 1 ? 'sticker' : 'stickers'} · ${st.label} · ${st.products.map((p) => `${p.name} ×${p.copies}`).join(', ')}`;
+  // The automatic name already says the products and the size; a line that repeats them is noise.
+  const products = st.products.map((p) => `${p.name} ×${p.copies}`).join(', ');
+  const parts = [`${st.stickers} ${st.stickers === 1 ? 'sticker' : 'stickers'}`];
+  if (!j.name.includes(st.label)) parts.push(st.label);
+  if (!j.name.includes(products)) parts.push(products);
+  return parts.join(' · ');
 }
 
 function SavedLabelsTab() {
@@ -67,10 +73,8 @@ function SavedLabelsTab() {
   const copy = async (j: LabelJob) => {
     try { const r = await duplicateLabelJob(j.id); edit(r.data); } catch (e) { toast('error', e instanceof Error ? e.message : 'Could not copy it.'); }
   };
-  const rename = async (j: LabelJob) => {
-    const name = window.prompt('Name for this saved label', j.name);
-    if (!name || !name.trim() || name.trim() === j.name) return;
-    try { await renameLabelJob(j.id, name.trim()); void load(); } catch (e) { toast('error', e instanceof Error ? e.message : 'Could not rename it.'); }
+  const rename = async (j: LabelJob, name: string) => {
+    try { await renameLabelJob(j.id, name); void load(); } catch (e) { toast('error', e instanceof Error ? e.message : 'Could not rename it.'); }
   };
   const remove = async (j: LabelJob) => {
     if (!window.confirm(`Remove the saved label "${j.name}"? Prints already made are kept in the log.`)) return;
@@ -88,7 +92,7 @@ function SavedLabelsTab() {
               <div className="flex items-start gap-3">
                 <Tag size={16} className="mt-1 shrink-0 text-[var(--color-primary)]" />
                 <div className="flex-1 min-w-0">
-                  <button type="button" onClick={() => rename(j)} className="text-left text-sm font-semibold text-[var(--color-text)] hover:underline" title="Rename">{j.name}</button>
+                  <InlineRename name={j.name} onSave={(n) => rename(j, n)} buttonClassName="text-sm font-semibold text-[var(--color-text)]" />
                   <div className="text-xs text-[var(--color-text-secondary)]">{jobLine(j)}</div>
                   <div className="text-xs text-[var(--color-text-muted)]">{j.print_count ? `Printed ${j.print_count} ${j.print_count === 1 ? 'time' : 'times'}${j.last_printed_at ? `, last ${when(j.last_printed_at)}` : ''}` : 'Not printed yet'}{j.created_by ? ` · ${j.created_by}` : ''}</div>
                 </div>
@@ -248,6 +252,8 @@ function SettingsTab({ canManage }: { canManage: boolean }) {
   const [settings, setSettings] = useState<LabelSettingsMap>({});
   const [products, setProducts] = useState<LabelProduct[]>([]);
   const [saving, setSaving] = useState(false);
+  // On a phone an open product is a form of four boxes; only the one tapped is open.
+  const [openId, setOpenId] = useState<number | null>(null);
 
   const load = () => {
     fetchLabelSettings().then((r) => setSettings(r.data)).catch(() => undefined);
@@ -340,14 +346,24 @@ function SettingsTab({ canManage }: { canManage: boolean }) {
           <ul className="divide-y divide-[var(--color-border-light)]" data-testid="label-products-cards">
             {shown.map((p) => (
               <li key={p.id} className="px-4 py-3">
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <span className="pt-0.5">{enabledBox(p)}</span>
-                  <span className="flex-1 min-w-0">
-                    <span className="block text-sm font-semibold text-[var(--color-text)]">{p.name}{p.name_dv ? <span className="ml-2 font-normal text-[var(--color-text-muted)]" dir="rtl">{p.name_dv}</span> : null}</span>
-                    <span className="block text-xs text-[var(--color-text-muted)] line-clamp-2">{p.ingredients.from === 'recipe' ? `From the recipe: ${p.ingredients.en}` : (p.ingredients.en || 'No ingredients yet: the sticker leaves them off')}</span>
-                  </span>
-                </label>
-                {p.label_enabled && (
+                <div className="flex items-start gap-3">
+                  <label className="flex items-start gap-3 cursor-pointer flex-1 min-w-0">
+                    <span className="pt-0.5">{enabledBox(p)}</span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-sm font-semibold text-[var(--color-text)]">{p.name}{p.name_dv ? <span className="ml-2 font-normal text-[var(--color-text-muted)]" dir="rtl">{p.name_dv}</span> : null}</span>
+                      <span className="block text-xs text-[var(--color-text-muted)] line-clamp-2">
+                        {p.label_enabled ? `${p.label_shelf_life_days ? `Keeps ${p.label_shelf_life_days} days` : 'No shelf life'} · ${({ frozen: 'frozen', chilled: 'chilled', ambient: 'room temperature' } as const)[p.label_storage]} · ` : ''}
+                        {p.ingredients.from === 'recipe' ? `From the recipe: ${p.ingredients.en}` : (p.ingredients.en || 'No ingredients yet: the sticker leaves them off')}
+                      </span>
+                    </span>
+                  </label>
+                  {p.label_enabled && (
+                    <button type="button" onClick={() => setOpenId((o) => (o === p.id ? null : p.id))} aria-expanded={openId === p.id} className="w-9 h-9 shrink-0 inline-flex items-center justify-center rounded-lg border border-[var(--color-border)] text-[var(--color-text-secondary)]" aria-label={`${openId === p.id ? 'Hide' : 'Show'} ${p.name} label settings`}>
+                      {openId === p.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    </button>
+                  )}
+                </div>
+                {p.label_enabled && openId === p.id && (
                   <div className="grid grid-cols-2 gap-2 mt-3 pl-8">
                     <div className="col-span-2"><span className={small}>Ingredients (typed)</span>{ingredientsBox(p)}</div>
                     <div><span className={small}>Shelf life (days)</span>{shelfBox(p, 'w-full')}</div>

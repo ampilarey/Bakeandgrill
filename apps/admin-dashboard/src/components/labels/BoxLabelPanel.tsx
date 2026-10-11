@@ -7,9 +7,12 @@ import {
   printsViaPdf,
   type BoxFields, type BoxPrefill, type LabelProduct, type LabelShop, type LabelStorage, type SheetLinks, type TradeDelivery,
 } from '../../api';
+import { useIsBelowDesktop } from '../../hooks/useIsMobile';
 import { Button } from '../ui';
 import { QtyStepper } from './QtyStepper';
 import { SheetPreview } from './SheetPreview';
+import { PhonePreviewBar } from './PhonePreviewBar';
+import { InlineRename } from './InlineRename';
 
 /*
  * The A4 box label. Owner, 2026-10-04: "Cant u add all in one place?" — a
@@ -36,6 +39,8 @@ const heading = 'text-sm font-bold text-[var(--color-text)] mb-2';
 const defaultArticle = (name: string) => `FROZEN - SHORT EAT - ${name.toUpperCase()}-PIECE`;
 
 export function BoxLabelPanel({ deliveryId = null }: Props) {
+  // Below the desktop band the preview is a bar pinned under the header, not a column.
+  const stacked = useIsBelowDesktop();
   const [shops, setShops] = useState<LabelShop[]>([]);
   const [deliveries, setDeliveries] = useState<TradeDelivery[]>([]);
   const [products, setProducts] = useState<LabelProduct[]>([]);
@@ -76,11 +81,9 @@ export function BoxLabelPanel({ deliveryId = null }: Props) {
     }).catch(() => setError('That saved label could not be opened.'));
   }, [jobParam]);
 
-  const rename = async (job: { id: number; name: string }) => {
-    const name = window.prompt('Name for this saved label', job.name);
-    if (!name || name.trim() === '' || name.trim() === job.name) return;
+  const rename = async (job: { id: number; name: string }, name: string) => {
     try {
-      const r = await renameLabelJob(job.id, name.trim());
+      const r = await renameLabelJob(job.id, name);
       setResult((s) => (s && s.job?.id === job.id ? { ...s, job: { id: job.id, name: r.data.name } } : s));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not rename it.');
@@ -178,7 +181,9 @@ export function BoxLabelPanel({ deliveryId = null }: Props) {
 
   const shownDeliveries = shopId ? deliveries.filter((d) => d.trade_account_id === shopId) : deliveries;
 
-  const previewPane = (
+  const previewPane = stacked ? (
+    <PhonePreviewBar url={preview} ratio={210 / 297} busy={previewBusy} title="Box label preview" empty="Drawing…" error={previewError} caption={`A4 · ${fields.customer || 'blank'} · updates as you change things; the print is the same.`} />
+  ) : (
     <aside className="space-y-2 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-4 self-start min-w-0" data-testid="box-preview-pane">
       <h3 className="text-sm font-bold text-[var(--color-text)] inline-flex items-center gap-1.5"><Eye size={16} className="text-[var(--color-primary)]" /> Preview</h3>
       <div className="max-w-[320px] mx-auto lg:mx-0">
@@ -194,6 +199,7 @@ export function BoxLabelPanel({ deliveryId = null }: Props) {
 
   return (
     <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:grid-rows-[auto_auto] lg:gap-x-6 lg:gap-y-5" data-testid="box-label-panel">
+    {stacked && previewPane}
     <div className="space-y-5 min-w-0 lg:col-start-1 lg:row-start-1">
       {editing && (
         <p className="flex flex-wrap items-center gap-2 text-sm text-[var(--color-text-secondary)] p-3 rounded-lg bg-[var(--color-bg)]" data-testid="box-editing">
@@ -307,7 +313,7 @@ export function BoxLabelPanel({ deliveryId = null }: Props) {
       </section>
     </div>
 
-    {previewPane}
+    {!stacked && previewPane}
 
     <div className="space-y-5 min-w-0 lg:col-start-1 lg:row-start-2">
       {shopId != null && (
@@ -327,10 +333,11 @@ export function BoxLabelPanel({ deliveryId = null }: Props) {
       {result ? (
         <section className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] space-y-3">
           {result.job && (
-            <p className="text-xs text-[var(--color-text-secondary)]">
-              Saved as <strong>{result.job.name}</strong> on the Saved labels tab.{' '}
-              <button type="button" className="underline text-[var(--color-primary)]" onClick={() => rename(result.job!)}>Rename</button>
-            </p>
+            <div className="text-xs text-[var(--color-text-secondary)] flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span>Saved as</span>
+              <InlineRename name={result.job.name} onSave={(n) => rename(result.job!, n)} buttonClassName="font-bold text-[var(--color-text)]" className="flex-1 min-w-[200px]" />
+              <span>on the Saved labels tab.</span>
+            </div>
           )}
           <p className="text-xs text-[var(--color-text-muted)]">{printsViaPdf() ? 'Print opens the PDF: use Share → Print on A4, and keep the scale at 100%, not "fit".' : 'Print on A4 at actual size (100%).'} These links work for {result.expires_in_minutes} minutes.</p>
           <div className="labels-actions">

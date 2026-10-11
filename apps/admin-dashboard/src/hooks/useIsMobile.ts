@@ -62,6 +62,15 @@ export function useIsCompactAdmin(): boolean {
   return useMatchMedia(COMPACT_ADMIN_MEDIA_QUERY, fallbackCompact);
 }
 
+/** Below the desktop two-column band (< 1024): a form and its preview stack. */
+export const BELOW_DESKTOP_MEDIA_QUERY = '(max-width: 1023px)';
+function fallbackBelowDesktop(): boolean {
+  return window.innerWidth <= 1023;
+}
+export function useIsBelowDesktop(): boolean {
+  return useMatchMedia(BELOW_DESKTOP_MEDIA_QUERY, fallbackBelowDesktop);
+}
+
 /** True for Content Hub wide desktop (≥1200). */
 export function useIsWideDesktop(): boolean {
   return useMatchMedia(WIDE_DESKTOP_MEDIA_QUERY, fallbackWide);

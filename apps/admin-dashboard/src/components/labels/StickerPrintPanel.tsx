@@ -1,15 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Printer, FileDown, AlertTriangle, Search, Bookmark, Eye, Plus } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Printer, FileDown, AlertTriangle, Search, Bookmark, Eye, Plus, History, CalendarDays, ChevronDown, ChevronUp } from 'lucide-react';
 import {
-  downloadLabelSheet, fetchCustomLabels, fetchLabelJob, fetchLabelLayouts, fetchLabelProducts, fetchLabelTypes, openLabelSheet, printsViaPdf, renameLabelJob, stickerLinks,
-  type CustomLabel, type LabelLimits, type LabelPreset, type LabelProduct, type LabelType, type SheetLinks, type StickerSummary,
+  downloadLabelSheet, fetchCustomLabels, fetchLabelJob, fetchLabelJobs, fetchLabelLayouts, fetchLabelProducts, fetchLabelTypes, openLabelSheet, printLabelJob, printsViaPdf, renameLabelJob, stickerLinks,
+  type CustomLabel, type LabelJob, type LabelLimits, type LabelPreset, type LabelProduct, type LabelType, type SheetLinks, type StickerSummary,
 } from '../../api';
 import { useCurrentUserPermissions } from '../../hooks/usePermissions';
+import { useIsBelowDesktop } from '../../hooks/useIsMobile';
 import { Button } from '../ui';
 import { TabScrollRow } from '../SharedUI';
 import { QtyStepper } from './QtyStepper';
 import { SheetPreview } from './SheetPreview';
+import { PhonePreviewBar } from './PhonePreviewBar';
+import { InlineRename } from './InlineRename';
 import { LabelSizePicker } from './LabelSizePicker';
 import { CustomLabelModal } from './CustomLabels';
 import { DEFAULT_CHOICE, choiceFromRequest, pageOf, requestFor, sizeName, sizeOf, sizeProblem, stockOf, type SizeChoice } from './labelSize';
@@ -34,6 +37,15 @@ type Props = {
 type Row = { key: string; kind: 'item' | 'custom'; id: number; name: string; name_dv: string | null; shelf: number | null; ingredients: 'recipe' | 'manual' | 'none'; brand?: string };
 
 const today = () => new Date().toISOString().slice(0, 10);
+/** A batch code from today's date, 261011 for 11 Oct 2026: one tap instead of typing. */
+const todayCode = () => today().slice(2).replace(/-/g, '');
+/** Made-on date + shelf life, as the server prints it (YYYY-MM-DD). */
+function expiryFrom(mfg: string, days: number | null): string | null {
+  if (!days || !/^\d{4}-\d{2}-\d{2}$/.test(mfg)) return null;
+  const d = new Date(`${mfg}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
 const LAST_SIZE_KEY = 'labels.lastSize';
 const LAST_LAYOUT_KEY = 'labels.lastLayout';
 
@@ -70,6 +82,9 @@ function chipClass(on: boolean) {
 
 export function StickerPrintPanel({ fixedItems, productionItemId = null, defaults }: Props) {
   const { can } = useCurrentUserPermissions();
+  const navigate = useNavigate();
+  // Below the desktop band the preview is a bar pinned under the header, not a column.
+  const stacked = useIsBelowDesktop();
   const [products, setProducts] = useState<LabelProduct[]>([]);
   const [customs, setCustoms] = useState<CustomLabel[]>([]);
   const [presets, setPresets] = useState<LabelPreset[]>([]);
@@ -107,6 +122,12 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
   const customParam = fixedItems ? null : params.get('custom');
   const [editing, setEditing] = useState<{ id: number; name: string } | null>(null);
   const [savedSize, setSavedSize] = useState<{ layout: string; w: number | null; h: number | null } | null>(null);
+  // Print again: the last few saved sticker labels, one tap each (a cook
+  // prints the same sheet most days). Not on a production line's pop-up.
+  const [recent, setRecent] = useState<LabelJob[]>([]);
+  const [recentBusy, setRecentBusy] = useState<number | null>(null);
+  // Print as, batch and quantity fold away until wanted: the form was a long scroll on a phone.
+  const [moreOpen, setMoreOpen] = useState(() => Boolean(defaults?.batch || defaults?.qty));
   // The fixed items by id: a caller passing a new array on each render must not refetch or reset the counts.
   const fixedKey = fixedItems ? fixedItems.map((i) => i.id).join(',') : null;
 
@@ -120,8 +141,22 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
     if (fixedKey === null) {
       fetchLabelProducts().then((r) => setProducts(r.data)).catch(() => setProducts([]));
       fetchCustomLabels().then((r) => setCustoms(r.data)).catch(() => setCustoms([]));
+      fetchLabelJobs({ page: 1, kind: 'stickers' }).then((r) => setRecent(r.data.filter((j) => j.print_count > 0).slice(0, 3))).catch(() => setRecent([]));
     }
   }, [fixedKey]);
+
+  const printAgain = async (j: LabelJob) => {
+    setRecentBusy(j.id);
+    try {
+      const r = await printLabelJob(j.id);
+      openLabelSheet(r.url, r.pdf_url);
+      setRecent((s) => s.map((x) => (x.id === j.id ? { ...x, print_count: x.print_count + 1 } : x)));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not print it.');
+    } finally {
+      setRecentBusy(null);
+    }
+  };
 
   // An older remembered stock (a layout key) maps onto the picker once the presets are in.
   useEffect(() => {
@@ -146,6 +181,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
       setQty(q.qty != null && q.qty !== '' ? String(q.qty) : '');
       setAsType(q.type ? Number(q.type) : null);
       setRounded(Boolean(q.rounded));
+      if (q.type || q.batch || q.qty) setMoreOpen(true);
       setEditing({ id: r.data.id, name: r.data.name });
     }).catch(() => setError('That saved label could not be opened.'));
   }, [jobParam]);
@@ -158,11 +194,9 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
     setSavedSize(null);
   }, [savedSize, presets]);
 
-  const rename = async (job: { id: number; name: string }) => {
-    const name = window.prompt('Name for this saved label', job.name);
-    if (!name || name.trim() === '' || name.trim() === job.name) return;
+  const rename = async (job: { id: number; name: string }, name: string) => {
     try {
-      const r = await renameLabelJob(job.id, name.trim());
+      const r = await renameLabelJob(job.id, name);
       setEditing((e) => (e && e.id === job.id ? { ...e, name: r.data.name } : e));
       setResult((s) => (s && s.job?.id === job.id ? { ...s, job: { id: job.id, name: r.data.name } } : s));
     } catch (e) {
@@ -263,40 +297,77 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
     }
   };
 
-  const previewPane = (
+  const modeToggle = (
+    <div className="inline-flex rounded-lg border border-[var(--color-border)] overflow-hidden" role="group" aria-label="What to preview">
+      {(['one', 'sheet'] as const).map((m) => (
+        <button key={m} type="button" onClick={() => setPreviewMode(m)} aria-pressed={previewMode === m} className={['px-3 h-8 min-w-[64px] text-xs font-semibold', previewMode === m ? 'bg-[var(--color-primary)] text-[var(--color-on-primary)]' : 'bg-[var(--color-surface)] text-[var(--color-text)]'].join(' ')}>
+          {m === 'one' ? 'Sticker' : 'Sheet'}
+        </button>
+      ))}
+    </div>
+  );
+  const productSelect = items.length > 1 ? (
+    <select value={previewed ?? ''} onChange={(e) => setPreviewKey(e.target.value)} className={`${fieldClass} !h-9 !min-h-0`} aria-label="Product to preview">
+      {items.map((i) => <option key={i.key} value={i.key}>{nameOf(i.key)}</option>)}
+    </select>
+  ) : null;
+  const previewCaption = preview ? (
+    <>
+      {previewMode === 'one' ? `${nameOf(previewed)} · ${lang === 'dv' ? 'Dhivehi' : 'English'}` : `Page 1 of ${preview.summary.pages} · ${preview.summary.stickers} ${preview.summary.stickers === 1 ? 'sticker' : 'stickers'}`}
+      {' · '}{preview.summary.label.startsWith(sizeName(choice.shape, stickerW, stickerH)) ? preview.summary.label : `${sizeName(choice.shape, stickerW, stickerH)} · ${preview.summary.label}`}. Updates as you change things; the print is the same.
+    </>
+  ) : null;
+  const previewTitle = previewMode === 'one' ? 'Sticker preview' : 'Sheet preview';
+  const previewEmpty = items.length === 0 ? 'Pick a product to see its sticker here.' : 'Drawing…';
+
+  const previewPane = stacked ? (
+    <PhonePreviewBar
+      url={previewUrl}
+      ratio={previewRatio}
+      busy={previewBusy}
+      round={previewMode === 'one' && round}
+      title={previewTitle}
+      empty={previewEmpty}
+      error={previewError}
+      caption={previewCaption ?? (items.length === 0 ? 'Pick a product to see its sticker here.' : null)}
+      controls={<div className="flex flex-wrap items-center gap-2">{modeToggle}{productSelect && <div className="flex-1 min-w-[120px]">{productSelect}</div>}</div>}
+    />
+  ) : (
     <aside className="space-y-2 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-4 self-start min-w-0" data-testid="sticker-preview-pane">
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="text-sm font-bold text-[var(--color-text)] inline-flex items-center gap-1.5"><Eye size={16} className="text-[var(--color-primary)]" /> Preview</h3>
-        <div className="ml-auto inline-flex rounded-lg border border-[var(--color-border)] overflow-hidden" role="group" aria-label="What to preview">
-          {(['one', 'sheet'] as const).map((m) => (
-            <button key={m} type="button" onClick={() => setPreviewMode(m)} aria-pressed={previewMode === m} className={['px-3 h-8 min-w-[64px] text-xs font-semibold', previewMode === m ? 'bg-[var(--color-primary)] text-[var(--color-on-primary)]' : 'bg-[var(--color-surface)] text-[var(--color-text)]'].join(' ')}>
-              {m === 'one' ? 'Sticker' : 'Sheet'}
-            </button>
-          ))}
-        </div>
+        <div className="ml-auto">{modeToggle}</div>
       </div>
-      {items.length > 1 && (
-        <select value={previewed ?? ''} onChange={(e) => setPreviewKey(e.target.value)} className={`${fieldClass} !h-9 !min-h-0`} aria-label="Product to preview">
-          {items.map((i) => <option key={i.key} value={i.key}>{nameOf(i.key)}</option>)}
-        </select>
-      )}
+      {productSelect}
       <div className={previewMode === 'one' && round ? 'max-w-[280px] mx-auto lg:mx-0' : 'max-w-[320px] mx-auto lg:mx-0'}>
-        <SheetPreview url={previewUrl} ratio={previewRatio} busy={previewBusy} round={previewMode === 'one' && round} title={previewMode === 'one' ? 'Sticker preview' : 'Sheet preview'} empty={items.length === 0 ? 'Pick a product to see its sticker here.' : 'Drawing…'} />
+        <SheetPreview url={previewUrl} ratio={previewRatio} busy={previewBusy} round={previewMode === 'one' && round} title={previewTitle} empty={previewEmpty} />
       </div>
       {previewError ? (
         <p role="alert" className="text-xs text-[var(--color-danger)] flex items-start gap-1.5"><AlertTriangle size={14} className="mt-0.5 shrink-0" /> {previewError}</p>
-      ) : preview ? (
-        <p className="text-xs text-[var(--color-text-muted)]">
-          {previewMode === 'one' ? `${nameOf(previewed)} · ${lang === 'dv' ? 'Dhivehi' : 'English'}` : `Page 1 of ${preview.summary.pages} · ${preview.summary.stickers} ${preview.summary.stickers === 1 ? 'sticker' : 'stickers'}`}
-          {' · '}{preview.summary.label.startsWith(sizeName(choice.shape, stickerW, stickerH)) ? preview.summary.label : `${sizeName(choice.shape, stickerW, stickerH)} · ${preview.summary.label}`}. Updates as you change things; the print is the same.
-        </p>
+      ) : previewCaption ? (
+        <p className="text-xs text-[var(--color-text-muted)]">{previewCaption}</p>
       ) : null}
     </aside>
   );
 
   return (
     <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:grid-rows-[auto_auto] lg:gap-x-6 lg:gap-y-5" data-testid="sticker-print-panel">
+    {stacked && previewPane}
     <div className="space-y-5 min-w-0 lg:col-start-1 lg:row-start-1">
+      {!fixedItems && !editing && recent.length > 0 && (
+        <section data-testid="sticker-recent">
+          <h3 className="text-sm font-bold text-[var(--color-text)] inline-flex items-center gap-1.5 mb-2"><History size={15} className="text-[var(--color-primary)]" /> Print again</h3>
+          <TabScrollRow style={{ gap: 8 }}>
+            {recent.map((j) => (
+              <span key={j.id} className="inline-flex items-stretch rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden max-w-full">
+                <button type="button" onClick={() => navigate(`/labels/stickers?job=${j.id}`)} className="px-3 min-h-[38px] text-left text-xs font-semibold text-[var(--color-text)] max-w-[240px] truncate hover:bg-[var(--color-bg)]" title={`Open ${j.name} to change it`}>{j.name}</button>
+                <button type="button" onClick={() => void printAgain(j)} disabled={recentBusy === j.id} className="px-3 min-h-[38px] inline-flex items-center gap-1 border-l border-[var(--color-border)] text-xs font-semibold text-[var(--color-primary)] hover:bg-[var(--color-bg)] disabled:opacity-50" aria-label={`Print ${j.name} again`}><Printer size={14} aria-hidden /> Print</button>
+              </span>
+            ))}
+          </TabScrollRow>
+          <p className="text-xs text-[var(--color-text-muted)] mt-1">The last sheets printed, with today's dates. Tap the name to change one first.</p>
+        </section>
+      )}
       {editing && (
         <p className="flex flex-wrap items-center gap-2 text-sm text-[var(--color-text-secondary)] p-3 rounded-lg bg-[var(--color-bg)]" data-testid="sticker-editing">
           <Bookmark size={16} className="shrink-0 text-[var(--color-primary)]" />
@@ -344,7 +415,11 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
                       </span>
                       <span className="block text-xs text-[var(--color-text-muted)] sm:truncate">
                         {r.kind === 'custom' && r.brand ? `${r.brand} · ` : ''}
-                        {r.shelf ? `Keeps ${r.shelf} days` : 'No shelf life set, dates print blank'}
+                        {picked[r.key] && fill
+                          ? (exp || expiryFrom(mfg, r.shelf)
+                            ? <span className="font-semibold text-[var(--color-text-secondary)]" data-testid="row-expiry">EXP {exp || expiryFrom(mfg, r.shelf)}</span>
+                            : 'Expiry blank: no shelf life set')
+                          : (r.shelf ? `Keeps ${r.shelf} days` : 'No shelf life set, dates print blank')}
                         {' · '}{r.ingredients === 'recipe' ? 'ingredients from the recipe' : r.ingredients === 'manual' ? 'ingredients typed in' : 'no ingredients yet'}
                       </span>
                     </span>
@@ -382,10 +457,10 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
         )}
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2">
+      <section className="space-y-3">
         <div>
           <span className={labelClass}>Language</span>
-          <div className="flex gap-2">
+          <div className="flex gap-2 max-w-md">
             {(['en', 'dv'] as const).map((l) => (
               <button key={l} type="button" onClick={() => setLang(l)} aria-pressed={lang === l} className={['flex-1 h-9 min-h-[36px] rounded-lg border text-sm font-semibold', lang === l ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-[var(--color-on-primary)]' : 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text)]'].join(' ')}>
                 {l === 'en' ? 'English' : 'ދިވެހި'}
@@ -393,19 +468,6 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
             ))}
           </div>
         </div>
-        {types.length > 0 && (
-          <div>
-            <label className={labelClass} htmlFor="label-as-type">Print as</label>
-            <select id="label-as-type" value={asType ?? ''} onChange={(e) => setAsType(e.target.value ? Number(e.target.value) : null)} className={fieldClass}>
-              <option value="">Each product's own label type</option>
-              {types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-            </select>
-            <p className="text-xs text-[var(--color-text-muted)] mt-1">One type for the whole sheet: its heading, dates wording, how-to-use and brand. A product's own typed wording, and a custom label's own brand, still print.</p>
-          </div>
-        )}
-      </section>
-
-      <section className="space-y-3">
         <label className="flex items-center gap-3 min-h-[44px] cursor-pointer">
           <input type="checkbox" checked={fill} onChange={(e) => setFill(e.target.checked)} className="w-5 h-5 shrink-0 accent-[var(--color-primary)]" />
           <span>
@@ -419,18 +481,47 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
             <div>
               <label className={labelClass} htmlFor="label-exp">Expiry</label>
               <input id="label-exp" type="date" value={exp} onChange={(e) => setExp(e.target.value)} className={fieldClass} />
-              <p className="text-xs text-[var(--color-text-muted)] mt-1">Leave empty to use each product's shelf life.</p>
+              <p className="text-xs text-[var(--color-text-muted)] mt-1">Leave empty to use each product's shelf life{fixedItems ? '' : '; each picked product shows its expiry above'}.</p>
             </div>
           </div>
         )}
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div><label className={labelClass} htmlFor="label-batch">Batch number (optional)</label><input id="label-batch" value={batch} maxLength={30} onChange={(e) => setBatch(e.target.value)} className={fieldClass} /></div>
-          <div><label className={labelClass} htmlFor="label-qty">Quantity per pack (optional)</label><input id="label-qty" type="number" inputMode="numeric" min={1} max={9999} value={qty} onChange={(e) => setQty(e.target.value)} className={fieldClass} /></div>
-        </div>
+      </section>
+
+      <section>
+        <button type="button" onClick={() => setMoreOpen((o) => !o)} aria-expanded={moreOpen} aria-controls="label-more-options" className="flex items-start gap-1.5 min-h-[38px] text-left text-sm font-bold text-[var(--color-text)] w-full" data-testid="sticker-more-toggle">
+          {moreOpen ? <ChevronUp size={16} aria-hidden className="mt-0.5 shrink-0" /> : <ChevronDown size={16} aria-hidden className="mt-0.5 shrink-0" />}
+          <span className="min-w-0">
+            <span className="block">More options</span>
+            {!moreOpen && (asType || batch || qty) && <span className="block text-xs font-semibold text-[var(--color-primary)]">{[asType ? 'print as a type' : null, batch ? `batch ${batch}` : null, qty ? `${qty} per pack` : null].filter(Boolean).join(' · ')}</span>}
+            {!moreOpen && !(asType || batch || qty) && <span className="block text-xs font-normal text-[var(--color-text-muted)]">Print as a type, batch number, quantity per pack</span>}
+          </span>
+        </button>
+        {moreOpen && (
+          <div id="label-more-options" className="grid gap-3 sm:grid-cols-2 mt-2">
+            {types.length > 0 && (
+              <div className="sm:col-span-2">
+                <label className={labelClass} htmlFor="label-as-type">Print as</label>
+                <select id="label-as-type" value={asType ?? ''} onChange={(e) => setAsType(e.target.value ? Number(e.target.value) : null)} className={fieldClass}>
+                  <option value="">Each product's own label type</option>
+                  {types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">One type for the whole sheet: its heading, dates wording, how-to-use and brand. A product's own typed wording, and a custom label's own brand, still print.</p>
+              </div>
+            )}
+            <div>
+              <label className={labelClass} htmlFor="label-batch">Batch number (optional)</label>
+              <div className="flex flex-wrap gap-2">
+                <input id="label-batch" value={batch} maxLength={30} onChange={(e) => setBatch(e.target.value)} className={`${fieldClass} !w-auto flex-1 min-w-[140px]`} />
+                <button type="button" onClick={() => setBatch(todayCode())} className="h-10 min-h-[44px] px-3 shrink-0 inline-flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-xs font-semibold text-[var(--color-text)]" title="Today's date as a code" data-testid="sticker-batch-today"><CalendarDays size={14} aria-hidden /> Today</button>
+              </div>
+            </div>
+            <div><label className={labelClass} htmlFor="label-qty">Quantity per pack (optional)</label><input id="label-qty" type="number" inputMode="numeric" min={1} max={9999} value={qty} onChange={(e) => setQty(e.target.value)} className={fieldClass} /></div>
+          </div>
+        )}
       </section>
     </div>
 
-    {previewPane}
+    {!stacked && previewPane}
 
     <div className="space-y-5 min-w-0 lg:col-start-1 lg:row-start-2">
       {error && (
@@ -453,10 +544,11 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
             ))}
           </ul>
           {result.job && (
-            <p className="text-xs text-[var(--color-text-secondary)]">
-              Saved as <strong>{result.job.name}</strong> on the Saved labels tab, to print again or change later.{' '}
-              <button type="button" className="underline text-[var(--color-primary)]" onClick={() => rename(result.job!)}>Rename</button>
-            </p>
+            <div className="text-xs text-[var(--color-text-secondary)] flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span>Saved as</span>
+              <InlineRename name={result.job.name} onSave={(n) => rename(result.job!, n)} buttonClassName="font-bold text-[var(--color-text)]" className="flex-1 min-w-[200px]" />
+              <span>on the Saved labels tab, to print again or change later.</span>
+            </div>
           )}
           <p className="text-xs text-[var(--color-text-muted)]">{printsViaPdf() ? 'Print opens the PDF: use Share → Print, and keep the scale at 100%, not "fit".' : 'Print at actual size (100%).'} These links work for {result.expires_in_minutes} minutes.</p>
           <div className="labels-actions">
