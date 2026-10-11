@@ -131,6 +131,18 @@ describe("Order type stays on show", () => {
   });
 });
 
+// Owner, 2026-10-11: drop the "New Order" title and give its room to the buttons.
+describe("Ticket header", () => {
+  it("has no title, only the buttons, side by side", () => {
+    renderCart();
+    expect(screen.queryByText("New Order")).toBeNull();
+    const row = screen.getByTestId("cart-header-actions");
+    for (const name of ["Save ticket", "Active orders", "Discounts and rewards", "Clear"]) {
+      expect(within(row).getByRole("button", { name })).toBeInTheDocument();
+    }
+  });
+});
+
 describe("Table and customer share a row", () => {
   it("puts both in one row on a dine-in ticket", () => {
     renderCart();

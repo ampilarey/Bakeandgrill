@@ -677,26 +677,23 @@ export function OrderCart(p: Props) {
         data-order-type={ticketTone.key}
         style={{ padding: 14, borderBottom: `1px solid ${C.border}`, boxShadow: `inset 0 4px 0 ${ticketTone.solid}` }}
       >
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          flexWrap: 'wrap', gap: 6, marginBottom: 10,
-        }}>
-          <div style={{ fontWeight: 700, fontSize: 15, color: C.text, minWidth: 0 }}>
-            {isResumed ? `Order ${orderLabel}` : 'New Order'}
-          </div>
+        {/* No "New Order" title any more (owner, 2026-10-11: "save the space
+            removing that"): a saved ticket's number is in the banner above,
+            so the buttons take the whole row, evenly. */}
+        <div data-testid="cart-header-actions" style={{ marginBottom: 10 }}>
           {/* Save and Orders live up here now, not on a row of their own
               in the footer: the header row had the room, the footer did
               not. Owner, 2026-09-02. Discounts joined them on 2026-09-03,
               for the same reason — the bar it used to have above the
               totals cost 52px on every ticket. */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'stretch', gap: 6 }}>
           {p.canHoldResume !== false && (
           <button
             onClick={p.onSaveTicket}
             disabled={p.cartItems.length === 0 || p.isSubmitting || isResumed}
             title={isResumed ? 'Already a resumed ticket' : 'Save this ticket for later'}
             aria-label="Save ticket"
-            style={{ ...smallBtn(p.cartItems.length === 0 || p.isSubmitting || isResumed), flex: 'none', padding: '6px 10px', minHeight: 36 }}
+            style={headerBtn(p.cartItems.length === 0 || p.isSubmitting || isResumed)}
           >
             🎫 Save
           </button>
@@ -706,7 +703,7 @@ export function OrderCart(p: Props) {
             onClick={p.onOpenTickets}
             disabled={p.isSubmitting}
             aria-label={p.openTicketsCount > 0 ? `Active orders, ${p.openTicketsCount}` : 'Active orders'}
-            style={{ ...smallBtn(p.isSubmitting), flex: 'none', padding: '6px 10px', minHeight: 36, position: 'relative' }}
+            style={{ ...headerBtn(p.isSubmitting), position: 'relative' }}
           >
             Orders
             {p.openTicketsCount > 0 && (
@@ -729,12 +726,11 @@ export function OrderCart(p: Props) {
             title="Discount, promo code, points and gift card"
             data-testid="cart-adjust-toggle"
             style={{
-              ...smallBtn(false),
-              flex: 'none', padding: '6px 10px', minHeight: 36,
+              ...headerBtn(false),
               background: adjustmentSummary.length > 0 ? '#FEF3E2' : '#FFFFFF',
               border: `1px solid ${adjustmentSummary.length > 0 ? C.primary : C.border2}`,
-              color: adjustmentSummary.length > 0 ? C.primaryDark : C.muted,
-              fontWeight: adjustmentSummary.length > 0 ? 800 : 600,
+              color: adjustmentSummary.length > 0 ? C.primaryDark : C.text,
+              fontWeight: adjustmentSummary.length > 0 ? 800 : 700,
             }}
           >
             🏷️ Disc
@@ -753,18 +749,14 @@ export function OrderCart(p: Props) {
             disabled={p.cartItems.length === 0 || lockedReadOnly}
             title={lockedReadOnly ? 'Paid ticket — items are locked' : undefined}
             style={{
-              fontSize: 12, fontWeight: clearArmed ? 800 : 600,
-              color: clearArmed ? '#fff' : C.muted,
-              background: clearArmed ? '#B91C1C' : 'transparent',
-              border: 'none',
-              padding: clearArmed ? '4px 10px' : '8px 4px',
-              borderRadius: clearArmed ? 999 : 0,
-              minHeight: 40,
-              cursor: (p.cartItems.length === 0 || lockedReadOnly) ? 'not-allowed' : 'pointer',
-              opacity: (p.cartItems.length === 0 || lockedReadOnly) ? 0.4 : 1,
+              ...headerBtn(p.cartItems.length === 0 || lockedReadOnly),
+              fontWeight: clearArmed ? 800 : 700,
+              color: clearArmed ? '#fff' : palette.dangerDark,
+              background: clearArmed ? '#B91C1C' : '#FFFFFF',
+              border: `1px solid ${clearArmed ? '#B91C1C' : palette.dangerBorder}`,
             }}
           >
-            {clearArmed ? 'Tap again to clear' : 'Clear'}
+            {clearArmed ? 'Tap again' : <><span aria-hidden="true">✕</span> Clear</>}
           </button>
           </div>
         </div>
@@ -1884,6 +1876,17 @@ function Row({ label, value, accent }: { label: string; value: string; accent?: 
       <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{value}</span>
     </div>
   );
+}
+
+/** One of the even buttons across the top of the ticket: Save, Orders, Disc, Clear. */
+function headerBtn(disabled: boolean): React.CSSProperties {
+  return {
+    flex: '1 1 0', minWidth: 0, minHeight: 40, padding: '6px 8px', borderRadius: 8,
+    background: '#FFFFFF', border: `1px solid ${C.border2}`,
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+    fontSize: 13, fontWeight: 700, color: C.text, whiteSpace: 'nowrap',
+    cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.45 : 1,
+  };
 }
 
 function smallBtn(disabled: boolean): React.CSSProperties {
