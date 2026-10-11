@@ -122,6 +122,9 @@ export default function OnlineOrderingPage() {
   // read them before 2026-10-08), Save stays off rather than writing defaults
   // over the real settings.
   const [siteSettingsLoaded, setSiteSettingsLoaded] = useState(false);
+  // The till's Popular now / Goes with row (owner, 2026-10-11). On unless set off.
+  const [posSuggestionsOn, setPosSuggestionsOn] = useState(true);
+  const [posSuggestionsSaving, setPosSuggestionsSaving] = useState(false);
 
   const [cateringMinLeadHours, setCateringMinLeadHours] = useState('24');
   const [cateringQuoteValidDays, setCateringQuoteValidDays] = useState('7');
@@ -202,6 +205,8 @@ export default function OnlineOrderingPage() {
       setCateringMinLeadHours(byKey('catering_min_lead_hours') ?? '24');
       setCateringQuoteValidDays(byKey('catering_quote_valid_days') ?? '7');
       setCateringQuoteMinHours(byKey('catering_quote_min_hours_before_event') ?? '24');
+      const suggestions = byKey('pos_suggestion_strip_enabled');
+      setPosSuggestionsOn(suggestions === undefined || suggestions === '1' || suggestions === 'true');
       setSiteSettingsLoaded(true);
     }).catch(() => { /* Save stays off; see siteSettingsLoaded */ })
       .finally(() => setScheduleLoading(false));
@@ -209,6 +214,20 @@ export default function OnlineOrderingPage() {
       .then(({ settings }) => { setFeeSettings(settings); setFeeError(''); })
       .catch(() => setFeeError('Could not load packaging fee settings.'));
   }, []);
+
+  const togglePosSuggestions = async () => {
+    const next = !posSuggestionsOn;
+    setPosSuggestionsSaving(true);
+    try {
+      await updateSiteSettings({ pos_suggestion_strip_enabled: next ? '1' : '0' });
+      setPosSuggestionsOn(next);
+      showToast(next ? 'Till suggestions are on.' : 'Till suggestions are off.');
+    } catch {
+      showToast('Failed to save till suggestions.', 'err');
+    } finally {
+      setPosSuggestionsSaving(false);
+    }
+  };
 
   const savePickupSlots = async () => {
     const minutes = parseInt(pickupMinutes, 10);
@@ -819,6 +838,19 @@ export default function OnlineOrderingPage() {
               onToast={showToast}
             />
           ))}
+
+      <p style={{ ...S.sectionTitle, marginTop: '1rem' }}>Till</p>
+      <div className="oc-card" style={S.card} data-testid="pos-suggestions-card">
+        <MasterSwitchRow
+          on={posSuggestionsOn}
+          toggling={posSuggestionsSaving || !siteSettingsLoaded}
+          titleOn="Till suggestions are ON"
+          titleOff="Till suggestions are OFF"
+          helpOn="A row above the menu shows what sells most at this hour, then what usually goes with the item just added."
+          helpOff="No suggestions row on the till."
+          onToggle={() => void togglePosSuggestions()}
+        />
+      </div>
       </>)}
 
       {section === 'slots-fees' && (<>

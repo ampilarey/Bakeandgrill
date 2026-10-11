@@ -52,6 +52,8 @@ type Props = {
   /** When true the grid is dimmed and item taps are blocked — set
    *  while a held ticket is in "resumed" mode (cart is read-only). */
   readOnly?: boolean;
+  /** The Popular now / Goes with row, drawn just above the tiles. */
+  suggestionStrip?: React.ReactNode;
 
   /** Manual menu refresh — cashier tap pulls fresh categories + items
    *  from the server (useful when the owner adds a menu item mid-shift
@@ -583,6 +585,7 @@ export function MenuGrid({
   isLoading, dataError, selectedItem, selectedModifiers,
   handleSelectItem, toggleModifier, addToCart, clearSelectedItem,
   barcode, setBarcode, onBarcodeSubmit, onScanCode, onOpenScanner, readOnly = false,
+  suggestionStrip,
   onRefreshMenu, isRefreshingMenu = false, lastRefreshedAt = null,
   orderType,
   quickLayout, canManageSharedQuickKeys = false, onUpdateQuickLayout, onCopyQuickLayout, loadQuickLayoutSources,
@@ -1178,6 +1181,8 @@ export function MenuGrid({
           Loading menu…
         </div>
       )}
+
+      {suggestionStrip}
 
       {/* Item tile grid */}
       <div style={{

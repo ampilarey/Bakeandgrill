@@ -39,6 +39,7 @@ function cacheableTabs(tabs: PosTillTabs) {
     quick_layout: tabs.quickLayout,
     can_manage_shared_quick_keys: tabs.canManageSharedQuickKeys,
     popular_now: tabs.popularNow,
+    suggestion_strip: tabs.suggestionStrip,
   };
 }
 
@@ -153,6 +154,7 @@ export function useMenu(
       quick_layout: cached.quick_layout,
       can_manage_shared_quick_keys: cached.can_manage_shared_quick_keys,
       popular_now: cached.popular_now,
+      suggestion_strip: cached.suggestion_strip,
     }));
     setUsingCachedMenu(true);
     const savedAtMs = Date.parse(cached.cached_at);

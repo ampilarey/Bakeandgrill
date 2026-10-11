@@ -2,7 +2,7 @@ import { lazy, Suspense, useMemo, useState } from 'react';
 import { makeCartKey } from '../hooks/useCart';
 import { MenuGrid } from '../components/MenuGrid';
 import { OrderCart } from '../components/OrderCart';
-import { SuggestionChips } from '../components/SuggestionChips';
+import { SuggestionStrip } from '../components/SuggestionStrip';
 import { SendBillPanel } from '../components/SendBillPanel';
 import { NotePickerModal } from '../components/NotePickerModal';
 import { PackagingReconcileModal } from '../components/PackagingReconcileModal';
@@ -535,18 +535,6 @@ export function PosShellLayout() {
             </div>
           ) : (
           <>
-            {/* A card that pops up over the ticket's footer while the cashier
-                is still talking to the customer — the moment an upsell lands.
-                Fixed-position, so it takes no column of its own. */}
-            <SuggestionChips
-              items={menu.items}
-              pairings={menu.pairings}
-              cartItems={cart.cartItems}
-              addToCart={cart.addToCart}
-              handleSelectItem={cart.handleSelectItem}
-              readOnly={order.resumedOrderId !== null && !order.isEditingActive}
-              packagingEligible={orderType !== "Dine-in"}
-            />
             <OrderCart
               scanRequest={scanRequest}
               onOpenScanner={(target) => setScanner(target)}
@@ -729,6 +717,18 @@ export function PosShellLayout() {
               onOpenScanner={() => setScanner('any')}
               // Lock the menu only for paid online view-only resumes.
               readOnly={order.resumedOrderId !== null && !order.isEditingActive}
+              suggestionStrip={menu.tillTabs.suggestionStrip ? (
+                <SuggestionStrip
+                  items={menu.items}
+                  pairings={menu.pairings}
+                  popularNow={menu.tillTabs.popularNow}
+                  cartItems={cart.cartItems}
+                  addToCart={cart.addToCart}
+                  handleSelectItem={cart.handleSelectItem}
+                  readOnly={order.resumedOrderId !== null && !order.isEditingActive}
+                  packagingEligible={orderType !== "Dine-in"}
+                />
+              ) : undefined}
               onRefreshMenu={refreshAll}
               isRefreshingMenu={isRefreshingAll || menu.isRefreshing}
               lastRefreshedAt={menu.lastRefreshedAt}

@@ -280,6 +280,23 @@ class PosQuickLayoutTest extends TestCase
         $this->assertContains($item->id, $response->json('popular_now'));
     }
 
+    /** Owner, 2026-10-11: "Add a switch so admin can on/off" the till's suggestions row. */
+    public function test_the_suggestions_row_follows_its_admin_switch(): void
+    {
+        $cashier = $this->staff();
+        Sanctum::actingAs($cashier, ['staff']);
+        $this->assertTrue($this->getJson('/api/pos/menu?channel=dine_in')->assertOk()->json('suggestion_strip'));
+
+        \App\Models\SiteSetting::set('pos_suggestion_strip_enabled', '0');
+        $this->assertFalse($this->getJson('/api/pos/menu?channel=dine_in')->assertOk()->json('suggestion_strip'));
+
+        $owner = $this->makeOwner();
+        Sanctum::actingAs($owner, ['staff']);
+        $this->putJson('/api/site-settings', ['settings' => ['pos_suggestion_strip_enabled' => '1']])->assertOk();
+        Sanctum::actingAs($cashier, ['staff']);
+        $this->assertTrue($this->getJson('/api/pos/menu?channel=dine_in')->assertOk()->json('suggestion_strip'));
+    }
+
     public function test_a_cancelled_order_does_not_count(): void
     {
         Cache::flush();

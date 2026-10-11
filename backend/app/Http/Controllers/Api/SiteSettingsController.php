@@ -60,6 +60,8 @@ class SiteSettingsController extends Controller
         // Ordering Control: pickup slots, business hours, catering. The
         // catering notify phone and email moved onto the catering staff rows
         // in Admin → Notifications (their audience) on 2026-10-10.
+        // The till's suggestions row, Popular now and Goes with (owner, 2026-10-11).
+        'pos_suggestion_strip_enabled',
         'pickup_slots_enabled',
         'pickup_slot_minutes',
         'pickup_slot_capacity',

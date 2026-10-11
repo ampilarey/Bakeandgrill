@@ -65,6 +65,7 @@ export type CachedMenuRecord = {
   quick_layout?: { shared: unknown[]; mine: unknown[] };
   can_manage_shared_quick_keys?: boolean;
   popular_now?: number[];
+  suggestion_strip?: boolean;
   tax_rate?: number;
   cached_at: string;
 };

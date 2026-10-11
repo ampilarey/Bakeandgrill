@@ -370,6 +370,17 @@ marks the type filters, receipt rows and the new-order pop-up. Always with the t
 icon and word; never the brand rust, which means selected. A new screen that shows an
 order's type uses these, not colours of its own.
 
+## POS suggestions: a row, never a pop-up
+
+Owner, 2026-10-11: the "Goes with" card that rose over the ticket's footer caught taps
+meant for Charge ("accidentally items are added without intention"). Suggestions now live
+in one row above the menu tiles that is always there (`components/SuggestionStrip.tsx`,
+passed to `MenuGrid` as `suggestionStrip`): Popular now, then Goes with {item} once the
+newest ticket line has pairings. A changed set ignores taps for 600 ms. Admin → Settings →
+Ordering → Features → Till turns it off (`pos_suggestion_strip_enabled`, default on, sent
+as `suggestion_strip` in the till tabs). Do not bring back anything that appears over the
+ticket or moves under the cashier's finger.
+
 ## Queue worker vs synchronous SMS
 
 The queue worker (`php artisan queue:work redis`) is only needed for async listeners

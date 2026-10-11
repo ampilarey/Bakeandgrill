@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api;
 use App\Domains\Kitchen\Services\KitchenMenuResolver;
 use App\Domains\Permissions\Services\PermissionService;
 use App\Http\Controllers\Controller;
+use App\Models\SiteSetting;
 use App\Models\User;
 use App\Services\PosMenuBuilder;
 use App\Services\PosPopularNowService;
@@ -61,6 +62,9 @@ class PosMenuController extends Controller
             'quick_layout' => app(PosQuickKeyService::class)->forUser((int) $user->id),
             'can_manage_shared_quick_keys' => app(PermissionService::class)->hasPermission($user, 'menu.manage'),
             'popular_now' => app(PosPopularNowService::class)->rank($itemIds),
+            // The row of Popular now / Goes with above the menu; Admin → Settings →
+            // Ordering turns it off (owner, 2026-10-11: "Add a switch so admin can on/off").
+            'suggestion_strip' => filter_var(SiteSetting::get('pos_suggestion_strip_enabled', '1'), FILTER_VALIDATE_BOOLEAN),
         ];
     }
 }

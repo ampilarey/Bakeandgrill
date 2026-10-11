@@ -169,12 +169,15 @@ export type PosTillTabs = {
   canManageSharedQuickKeys: boolean;
   /** Item ids ranked by what sells at this hour of the day, best first. */
   popularNow: number[];
+  /** Admin → Settings → Ordering: the row of Popular now / Goes with above the menu. */
+  suggestionStrip: boolean;
 };
 
 type RawTillTabs = {
   quick_layout?: { shared?: unknown; mine?: unknown };
   can_manage_shared_quick_keys?: unknown;
   popular_now?: unknown;
+  suggestion_strip?: unknown;
 };
 
 function idList(raw: unknown): number[] {
@@ -212,6 +215,8 @@ export function normalizePosTillTabs(raw: RawTillTabs | undefined): PosTillTabs 
     },
     canManageSharedQuickKeys: raw?.can_manage_shared_quick_keys === true,
     popularNow: idList(raw?.popular_now),
+    // On unless the server says off, so an older cache keeps the row.
+    suggestionStrip: raw?.suggestion_strip !== false,
   };
 }
 
