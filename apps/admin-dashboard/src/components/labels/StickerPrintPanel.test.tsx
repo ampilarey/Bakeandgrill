@@ -4,14 +4,25 @@ import { MemoryRouter } from 'react-router-dom';
 
 const fetchLabelLayouts = vi.fn();
 const fetchLabelProducts = vi.fn();
+const fetchCustomLabels = vi.fn();
 const stickerLinks = vi.fn();
 const openLabelSheet = vi.fn();
 const downloadLabelSheet = vi.fn();
+const canManage = { value: false };
+
+vi.mock('../../hooks/usePermissions', () => ({
+  useCurrentUserPermissions: () => ({ user: null, loading: false, can: (slug?: string) => slug !== 'labels.manage' || canManage.value }),
+}));
+
+vi.mock('./CustomLabels', () => ({
+  CustomLabelModal: () => <div data-testid="custom-label-modal" />,
+}));
 
 vi.mock('../../api', () => ({
   fetchLabelLayouts: (...a: unknown[]) => fetchLabelLayouts(...a),
   fetchLabelTypes: () => Promise.resolve({ data: [] }),
   fetchLabelProducts: (...a: unknown[]) => fetchLabelProducts(...a),
+  fetchCustomLabels: (...a: unknown[]) => fetchCustomLabels(...a),
   stickerLinks: (...a: unknown[]) => stickerLinks(...a),
   openLabelSheet: (...a: unknown[]) => openLabelSheet(...a),
   printsViaPdf: () => false,
@@ -36,15 +47,42 @@ const product = (id: number, name: string, extra = {}) => ({
   ingredients: { en: 'Flour', dv: '', from: 'manual', recipe_en: '', recipe_dv: '' }, ...extra,
 });
 
+const custom = (id: number, name: string, extra = {}) => ({
+  id, kind: 'custom', name, name_dv: null, brand_id: 2, brand_name: 'Amma', brand_logo_url: null, label_type_id: null, label_type_name: null,
+  label_storage: null, storage: 'chilled', label_heading: null, label_heading_dv: null, label_storage_line: null, label_storage_line_dv: null,
+  label_ingredients: 'Garlic, oil', label_ingredients_dv: null, label_how_to_use: null, label_how_to_use_dv: null, label_note: null, label_note_dv: null,
+  label_shelf_life_days: 14, label_pack_qty: null, label_pack_unit: null, label_photo_media_id: null, label_photo_url: null, label_title_media_id: null, label_title_url: null,
+  defaults: { heading: 'CHILLED', heading_dv: '', storage_line: '', storage_line_dv: '', how_to_use: '', how_to_use_dv: '', note: '', note_dv: '', shelf_life_days: null, brand: 'Amma', unit: 'PCS' },
+  ingredients: { en: 'Garlic, oil', dv: '', from: 'manual' }, created_by: null, updated_at: null, ...extra,
+});
+
+const preset = (id: string, shape: 'rect' | 'circle', w: number, h: number, design: string, options: [string, string, string, number][]) => ({
+  id, shape, w, h, name: shape === 'circle' ? `Round ${w} mm` : `${w} × ${h} mm`, cm: shape === 'circle' ? `${w / 10} cm across` : `${w / 10} × ${h / 10} cm`, design,
+  options: options.map(([on, layout, label, per_page]) => ({ on, layout, label, per_page, landscape: layout === 'a4-custom' })),
+});
+
+const PRESETS = [
+  preset('r105x148', 'rect', 105, 148.5, 'full', [['sheet', 'a4-4', 'A4 sheet', 4], ['precut', 'a4-4-precut', 'Ready-cut A4 sheet', 4], ['printer', 'single-105x148', 'Label printer', 1]]),
+  preset('r66x72', 'rect', 66, 72, 'mini', [['sheet', 'a4-12', 'A4 sheet', 12], ['printer', 'single-custom', 'Label printer', 1]]),
+  preset('r40x60', 'rect', 40, 60, 'small', [['sheet', 'a4-custom', 'A4 sheet', 21], ['printer', 'single-custom', 'Label printer', 1]]),
+  preset('c60', 'circle', 60, 60, 'round', [['sheet', 'a4-round-custom', 'A4 sheet', 12], ['printer', 'single-round-custom', 'Label printer', 1]]),
+];
+
 describe('StickerPrintPanel', () => {
   beforeEach(() => {
-    [fetchLabelLayouts, fetchLabelProducts, stickerLinks, openLabelSheet, downloadLabelSheet].forEach((f) => f.mockReset());
+    [fetchLabelLayouts, fetchLabelProducts, fetchCustomLabels, stickerLinks, openLabelSheet, downloadLabelSheet].forEach((f) => f.mockReset());
+    canManage.value = false;
     try { localStorage.clear(); } catch { /* jsdom */ }
-    fetchLabelLayouts.mockResolvedValue({ data: [
-      { key: 'a4-4', label: '4 on A4', hint: 'Plain A4', per_page: 4, w: 105, h: 148.5, compact: false, shape: 'rect' },
-      { key: 'a4-12', label: '12 on A4', hint: 'Compact', per_page: 12, w: 66, h: 72, compact: true, shape: 'rect' },
-    ] });
+    fetchLabelLayouts.mockResolvedValue({
+      data: [
+        { key: 'a4-4', label: '4 on A4', hint: 'Plain A4', per_page: 4, w: 105, h: 148.5, page_w: 210, page_h: 297, compact: false, shape: 'rect' },
+        { key: 'a4-12', label: '12 on A4', hint: 'Compact', per_page: 12, w: 66, h: 72, page_w: 210, page_h: 297, compact: true, shape: 'rect' },
+      ],
+      presets: PRESETS,
+      limits: { min_short: 20, min_long: 30, max_w: 210, max_h: 297, min_round: 30, max_round: 200, sheet_margin: 5 },
+    });
     fetchLabelProducts.mockResolvedValue({ data: [product(1, 'Bajiya'), product(2, 'Patties', { label_shelf_life_days: null })] });
+    fetchCustomLabels.mockResolvedValue({ data: [] });
   });
 
   it('picks a sheet per product, says what will print, then prints and downloads', async () => {
@@ -55,6 +93,7 @@ describe('StickerPrintPanel', () => {
     render(<MemoryRouter><StickerPrintPanel /></MemoryRouter>);
 
     expect(await screen.findByText(/Keeps 90 days/)).toBeInTheDocument();
+    await screen.findByTestId('label-size-picker');
     expect(screen.getByText(/No shelf life set, dates print blank/)).toBeInTheDocument();
     expect(screen.getByTestId('sticker-prepare')).toBeDisabled();
 
@@ -87,16 +126,23 @@ describe('StickerPrintPanel', () => {
     await waitFor(() => expect(fetchLabelLayouts).toHaveBeenCalled());
     // A production line prints its own item: no product chooser.
     expect(fetchLabelProducts).not.toHaveBeenCalled();
-    fireEvent.click(await screen.findByTestId('sticker-prepare'));
-    expect(await screen.findByRole('alert')).toHaveTextContent('The expiry date has already passed.');
+    // Prepare waits for the sizes and the line's first sheet.
+    await waitFor(() => expect(screen.getByTestId('sticker-prepare')).toBeEnabled());
+    fireEvent.click(screen.getByTestId('sticker-prepare'));
+    await waitFor(() => expect(prepared()).toBeTruthy());
     expect(prepared()).toMatchObject({ pi: 9, batch: 'KP-77', exp: '2020-01-01', items: [{ id: 1, copies: 4 }] });
+    expect(await screen.findByRole('alert')).toHaveTextContent('The expiry date has already passed.');
   });
 
   it('lets a production line print more than one sheet', async () => {
     stickerLinks.mockRejectedValue(new Error('x'));
-    render(<MemoryRouter><StickerPrintPanel fixedItems={[{ id: 1, name: 'Bajiya' }]} productionItemId={9} /></MemoryRouter>);
-    await waitFor(() => expect(fetchLabelLayouts).toHaveBeenCalled());
+    const { rerender } = render(<MemoryRouter><StickerPrintPanel fixedItems={[{ id: 1, name: 'Bajiya' }]} productionItemId={9} /></MemoryRouter>);
+    await waitFor(() => expect(screen.getByTestId('sticker-prepare')).toBeEnabled());
     fireEvent.click(await screen.findByLabelText('How many Bajiya stickers: more'));
+    // The modal around it passes a new list on each render; the count stays.
+    rerender(<MemoryRouter><StickerPrintPanel fixedItems={[{ id: 1, name: 'Bajiya' }]} productionItemId={9} /></MemoryRouter>);
+    expect(screen.getByLabelText('How many Bajiya stickers')).toHaveValue(8);
+    expect(fetchLabelLayouts).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByTestId('sticker-prepare'));
     await waitFor(() => expect(prepared()).toBeTruthy());
     expect(prepared()).toMatchObject({ items: [{ id: 1, copies: 8 }] });
@@ -109,6 +155,7 @@ describe('StickerPrintPanel', () => {
     });
     render(<MemoryRouter><StickerPrintPanel /></MemoryRouter>);
     await screen.findByText(/Keeps 90 days/);
+    await screen.findByTestId('label-size-picker');
     // Nothing picked: no request, a hint in the frame.
     expect(screen.getByTestId('sheet-preview')).toHaveTextContent('Pick a product');
     expect(screen.queryByTitle('Sticker preview')).not.toBeInTheDocument();
@@ -120,10 +167,10 @@ describe('StickerPrintPanel', () => {
     expect(previews()[0]).toMatchObject({ preview: true, items: [{ id: 1, copies: 4 }, { id: 2, copies: 4 }] });
     const frame = await screen.findByTitle('Sticker preview');
     expect(frame).toHaveAttribute('src', expect.stringContaining('one=1'));
-    expect(screen.getByTestId('sticker-preview-pane')).toHaveTextContent('Bajiya · English · 105 × 149 mm');
+    expect(screen.getByTestId('sticker-preview-pane')).toHaveTextContent('Bajiya · English · 105 × 148.5 mm · 4 on A4');
 
     // Another product in front, then the whole sheet.
-    fireEvent.change(screen.getByLabelText('Product to preview'), { target: { value: '2' } });
+    fireEvent.change(screen.getByLabelText('Product to preview'), { target: { value: 'i2' } });
     await waitFor(() => expect(previews().length).toBe(2), { timeout: 2000 });
     expect(previews()[1]).toMatchObject({ items: [{ id: 2, copies: 4 }, { id: 1, copies: 4 }] });
     fireEvent.click(screen.getByRole('button', { name: 'Sheet' }));
@@ -135,5 +182,84 @@ describe('StickerPrintPanel', () => {
     fireEvent.click(screen.getByText('Fill in the dates'));
     fireEvent.change(screen.getByLabelText('Expiry'), { target: { value: '2020-01-01' } });
     expect(await screen.findByRole('alert', {}, { timeout: 2000 })).toHaveTextContent('The expiry date has already passed.');
+  });
+
+  it('prints the owner\'s 4 × 6 cm on a label printer and on A4, and a 6 cm circle', async () => {
+    stickerLinks.mockRejectedValue(new Error('x'));
+    render(<MemoryRouter><StickerPrintPanel /></MemoryRouter>);
+    await screen.findByTestId('label-size-picker');
+    fireEvent.click(screen.getByLabelText('Print Bajiya'));
+
+    fireEvent.click(screen.getByRole('button', { name: '40 × 60' }));
+    // A4 is the stock by default: 21 to a sheet, which is also what − and + step by.
+    expect(screen.getByRole('button', { name: /A4 sheet/ })).toHaveTextContent('21');
+    expect(screen.getByTestId('label-size-hint')).toHaveTextContent('40 × 60 mm (4 × 6 cm) · small sticker · 21 on a landscape A4 sheet');
+    fireEvent.click(screen.getByRole('button', { name: 'Label printer' }));
+    fireEvent.click(screen.getByTestId('sticker-prepare'));
+    await waitFor(() => expect(prepared()).toBeTruthy());
+    expect(prepared()).toMatchObject({ layout: 'single-custom', w: 40, h: 60, rounded: false });
+
+    stickerLinks.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: 'Round' }));
+    expect(screen.getByRole('button', { name: 'Ø 60' })).toHaveAttribute('aria-pressed', 'true');
+    // Round has no rounded-corners box; the label printer stays chosen.
+    expect(screen.queryByText('Rounded corners')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /A4 sheet/ }));
+    fireEvent.click(screen.getByTestId('sticker-prepare'));
+    await waitFor(() => expect(prepared()).toBeTruthy());
+    expect(prepared()).toMatchObject({ layout: 'a4-round-custom', w: 60, h: null });
+  });
+
+  it('takes a size typed in, swaps it, and refuses one too small before asking', async () => {
+    stickerLinks.mockRejectedValue(new Error('x'));
+    render(<MemoryRouter><StickerPrintPanel /></MemoryRouter>);
+    await screen.findByTestId('label-size-picker');
+    fireEvent.click(screen.getByLabelText('Print Bajiya'));
+    fireEvent.click(screen.getByRole('button', { name: 'Custom' }));
+    fireEvent.change(screen.getByLabelText('Width (mm)'), { target: { value: '45' } });
+    fireEvent.change(screen.getByLabelText('Height (mm)'), { target: { value: '35' } });
+    fireEvent.click(screen.getByLabelText('Swap width and height'));
+    expect(screen.getByLabelText('Width (mm)')).toHaveValue(35);
+    expect(screen.getByLabelText('Height (mm)')).toHaveValue(45);
+    fireEvent.click(screen.getByTestId('sticker-prepare'));
+    await waitFor(() => expect(prepared()).toBeTruthy());
+    expect(prepared()).toMatchObject({ layout: 'a4-custom', w: 35, h: 45 });
+
+    fireEvent.change(screen.getByLabelText('Width (mm)'), { target: { value: '15' } });
+    expect(screen.getAllByRole('alert')[0]).toHaveTextContent('Labels can be from 30 × 20 mm');
+    expect(screen.getByTestId('sticker-prepare')).toBeDisabled();
+  });
+
+  it('lists custom labels beside the menu and sends them as custom', async () => {
+    stickerLinks.mockRejectedValue(new Error('x'));
+    fetchCustomLabels.mockResolvedValue({ data: [custom(1, 'Garlic Sauce')] });
+    canManage.value = true;
+    render(<MemoryRouter><StickerPrintPanel /></MemoryRouter>);
+    await screen.findByText('Garlic Sauce');
+    await screen.findByTestId('label-size-picker');
+    expect(screen.getByText('Garlic Sauce').parentElement).toHaveTextContent('Custom');
+    expect(screen.getByText(/Amma · Keeps 14 days/)).toBeInTheDocument();
+
+    // Menu item 1 and custom label 1 are two products.
+    fireEvent.click(screen.getByLabelText('Print Bajiya'));
+    fireEvent.click(screen.getByLabelText('Print Garlic Sauce'));
+    fireEvent.click(screen.getByTestId('sticker-prepare'));
+    await waitFor(() => expect(prepared()).toBeTruthy());
+    expect(prepared()).toMatchObject({ items: [{ id: 1, copies: 4, kind: 'item' }, { id: 1, copies: 4, kind: 'custom' }] });
+
+    fireEvent.click(screen.getByRole('button', { name: /Custom labels \(1\)/ }));
+    expect(screen.queryByLabelText('Print Patties')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('sticker-new-custom'));
+    expect(screen.getByTestId('custom-label-modal')).toBeInTheDocument();
+  });
+
+  it('opens with a custom label picked from the Custom labels tab', async () => {
+    stickerLinks.mockRejectedValue(new Error('x'));
+    fetchCustomLabels.mockResolvedValue({ data: [custom(7, 'Gift box')] });
+    render(<MemoryRouter initialEntries={['/labels/stickers?custom=7']}><StickerPrintPanel /></MemoryRouter>);
+    await screen.findByText('Gift box');
+    await waitFor(() => expect(screen.getByLabelText('Print Gift box')).toBeChecked());
+    // Without Manage label settings there is no "New custom label".
+    expect(screen.queryByTestId('sticker-new-custom')).not.toBeInTheDocument();
   });
 });

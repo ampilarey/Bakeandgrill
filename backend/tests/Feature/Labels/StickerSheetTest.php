@@ -119,20 +119,19 @@ class StickerSheetTest extends TestCase
 
     public function test_every_label_stock_prints_its_count_per_page_and_its_page_size(): void
     {
+        // A size for each layout that takes one: a label printer gets it as the
+        // page; "any size on A4" fits as many as the sheet holds.
+        $sizes = ['single-custom' => [80, 120], 'single-round-custom' => [60, null], 'a4-custom' => [40, 60], 'a4-round-custom' => [60, null]];
         foreach (StickerLayouts::LAYOUTS as $key => $layout) {
-            $body = ['items' => [['id' => $this->bajiya->id, 'copies' => $layout['cols'] * $layout['rows']]], 'layout' => $key];
-            if ($key === 'single-custom') {
-                $body += ['w' => 80, 'h' => 120];
-            }
-            if ($key === 'single-round-custom') {
-                $body += ['w' => 60];
-            }
+            [$w, $h] = $sizes[$key] ?? [null, null];
+            $sheet = StickerLayouts::resolve($key, $w, $h);
+            $perPage = $sheet['per_page'];
+            $body = ['items' => [['id' => $this->bajiya->id, 'copies' => $perPage]], 'layout' => $key, 'w' => $w, 'h' => $h];
             $res = $this->postJson('/api/labels/stickers/url', $body)->assertOk();
             $html = (string) $this->get($res->json('view_url'))->assertOk()->getContent();
-            $perPage = $layout['cols'] * $layout['rows'];
             $this->assertSame($perPage, substr_count($html, 'data-testid="sticker"'), $key);
             $this->assertSame(1, substr_count($html, 'data-testid="labels-page"'), $key);
-            [$pw, $ph] = $key === 'single-custom' ? [80, 120] : ($key === 'single-round-custom' ? [60, 60] : $layout['page']);
+            [$pw, $ph] = [$sheet['page_w'], $sheet['page_h']];
             $this->assertStringContainsString('size: ' . rtrim(rtrim(number_format($pw, 3, '.', ''), '0'), '.') . 'mm ' . rtrim(rtrim(number_format($ph, 3, '.', ''), '0'), '.') . 'mm', $html, $key);
 
             $pdf = $this->get($res->json('pdf_url'))->assertOk();
@@ -147,8 +146,12 @@ class StickerSheetTest extends TestCase
         $this->assertSame('full', $sheet['design']);
         $this->assertEqualsWithDelta(0.7619, $sheet['scale'], 0.001);
         $this->assertSame('mini', StickerLayouts::resolve('a4-12')['design']);
-        $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $this->bajiya->id, 'copies' => 1]], 'layout' => 'single-custom', 'w' => 40, 'h' => 40])
-            ->assertUnprocessable();
+        // Down to 30 × 20 mm either way round (owner, 2026-10-11: "rectangular 4 cm by 6 cm").
+        foreach ([[40, 40], [30, 20], [20, 30]] as [$w, $h]) {
+            $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $this->bajiya->id, 'copies' => 1]], 'layout' => 'single-custom', 'w' => $w, 'h' => $h])->assertOk();
+        }
+        $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $this->bajiya->id, 'copies' => 1]], 'layout' => 'single-custom', 'w' => 25, 'h' => 15])
+            ->assertUnprocessable()->assertJsonPath('message', 'Labels can be from 30 × 20 mm; 25 × 15 mm is smaller than that.');
     }
 
     public function test_the_dhivehi_sheet_orders_thaana_for_the_pdf_and_not_for_the_browser(): void
@@ -301,10 +304,11 @@ class StickerSheetTest extends TestCase
         $res = $this->postJson('/api/labels/stickers/url', $one + ['layout' => 'a4-round-70', 'lang' => 'dv', 'fill' => true])->assertOk();
         $this->dump('round-70-dv', (string) $this->get($res->json('view_url'))->getContent(), (string) $this->get($res->json('pdf_url'))->getContent());
 
-        // Custom diameter, within 40 to 200 mm; a label-printer circle is its own page.
-        $res = $this->postJson('/api/labels/stickers/url', $one + ['layout' => 'single-round-custom', 'w' => 60])->assertOk()->assertJsonPath('summary.label', 'Custom round, 60 mm');
+        // Custom diameter, within 30 to 200 mm; a label-printer circle is its own page.
+        $res = $this->postJson('/api/labels/stickers/url', $one + ['layout' => 'single-round-custom', 'w' => 60])->assertOk()->assertJsonPath('summary.label', 'Round 60 mm, label printer');
         $this->assertStringContainsString('size: 60mm 60mm', (string) $this->get($res->json('view_url'))->getContent());
-        $this->postJson('/api/labels/stickers/url', $one + ['layout' => 'single-round-custom', 'w' => 30])->assertUnprocessable();
+        $this->postJson('/api/labels/stickers/url', $one + ['layout' => 'single-round-custom', 'w' => 30])->assertOk();
+        $this->postJson('/api/labels/stickers/url', $one + ['layout' => 'single-round-custom', 'w' => 25])->assertUnprocessable();
         $res = $this->postJson('/api/labels/stickers/url', $one + ['layout' => 'single-round-50'])->assertOk();
         $this->assertStringContainsString('size: 50mm 50mm', (string) $this->get($res->json('view_url'))->getContent());
 
@@ -318,7 +322,7 @@ class StickerSheetTest extends TestCase
 
         $layouts = $this->getJson('/api/labels/layouts')->assertOk()->json('data');
         $round = array_values(array_filter($layouts, fn ($l) => $l['shape'] === 'circle'));
-        $this->assertCount(5, $round);
+        $this->assertCount(6, $round);
         $this->assertFalse($round[0]['compact']);
     }
 

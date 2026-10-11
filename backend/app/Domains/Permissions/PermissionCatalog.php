@@ -284,8 +284,8 @@ final class PermissionCatalog
             ['group' => 'Menu', 'slug' => 'menu.prepared_stock', 'name' => 'Adjust prepared menu stock at POS', 'description' => 'Add or remove ready-made menu item counts from the POS Operations panel'],
             // Label Hub (owner, 2026-10-04): "by default admin only, but option
             // to give permission to any staff". Both are owner-only below.
-            ['group' => 'Labels', 'slug' => 'labels.print', 'name' => 'Print labels', 'description' => 'Print pack stickers and box labels from the Labels page, a production batch or a wholesale delivery'],
-            ['group' => 'Labels', 'slug' => 'labels.manage', 'name' => 'Manage label settings', 'description' => 'Edit ingredients, shelf life, storage line and label pictures on items, and the label wording'],
+            ['group' => 'Labels', 'slug' => 'labels.print', 'name' => 'Print labels', 'description' => 'Print pack stickers (custom labels too) and box labels from the Labels page, a production batch or a wholesale delivery'],
+            ['group' => 'Labels', 'slug' => 'labels.manage', 'name' => 'Manage label settings', 'description' => 'Edit ingredients, shelf life, storage line and label pictures on items, custom labels, label types and brands, and the label wording'],
             // Telegram staff bots (owner, 2026-10-06): add bots and link staff. Owner-only below.
             ['group' => 'Telegram', 'slug' => 'telegram.manage', 'name' => 'Manage Telegram bots', 'description' => 'Add Telegram bots, choose which roles each serves, and link or unlink staff and drivers'],
             ['group' => 'Media', 'slug' => 'media.view', 'name' => 'View media library', 'description' => 'Browse the Media Library and pick assets'],

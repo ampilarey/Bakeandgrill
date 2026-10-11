@@ -4,19 +4,20 @@ declare(strict_types=1);
 
 namespace App\Domains\Labels;
 
+use App\Models\CustomLabel;
 use App\Models\Item;
 use App\Models\KitchenProductionItem;
 use App\Models\LabelType;
 use App\Support\ComplaintBoxLink;
 use App\Support\QrSvg;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Collection;
 use InvalidArgumentException;
 
 /**
  * A sheet (or a run of sheets) of pack stickers: which products, how many of
  * each, in which language, on which label stock, and what goes in the date,
- * batch and quantity boxes.
+ * batch and quantity boxes. A product is a menu item or a custom label (owner,
+ * 2026-10-11: "Not only from the menu list"), told apart by `kind`.
  *
  * The request travels in a signed URL (LabelLinks) from the Labels page, a
  * production batch or a wholesale delivery; normalise() is the one place its
@@ -47,7 +48,7 @@ final class StickerSheet
      * fit to show the person printing.
      *
      * @param array<string, mixed> $in
-     * @return array{items: list<array{id: int, copies: int}>, lang: 'en'|'dv', layout: string, w: ?float, h: ?float, fill: bool, mfg: ?string, exp: ?string, batch: string, qty: string, pi: ?int}
+     * @return array{items: list<array{id: int, copies: int, kind: 'item'|'custom'}>, lang: 'en'|'dv', layout: string, w: ?float, h: ?float, fill: bool, mfg: ?string, exp: ?string, batch: string, qty: string, pi: ?int}
      */
     public static function normalise(array $in, ?CarbonImmutable $today = null): array
     {
@@ -105,8 +106,8 @@ final class StickerSheet
             'items' => $items,
             'lang' => ($in['lang'] ?? 'en') === 'dv' ? 'dv' : 'en',
             'layout' => $layout,
-            'w' => in_array($layout, ['single-custom', 'single-round-custom'], true) ? $w : null,
-            'h' => $layout === 'single-custom' ? $h : null,
+            'w' => in_array($layout, StickerLayouts::SIZED, true) ? $w : null,
+            'h' => in_array($layout, StickerLayouts::SIZED, true) && StickerLayouts::shape($layout) === 'rect' ? $h : null,
             // Rounded corners on a rectangle's cut line (v2 point 2).
             'rounded' => filter_var($in['rounded'] ?? false, FILTER_VALIDATE_BOOL),
             'fill' => $fill,
@@ -131,28 +132,27 @@ final class StickerSheet
         $sheet = StickerLayouts::resolve($req['layout'], $req['w'], $req['h'], LabelSettings::precut());
         $dv = $req['lang'] === 'dv';
         $production = $req['pi'] ? KitchenProductionItem::query()->find($req['pi']) : null;
-
-        /** @var Collection<int, Item> $items */
-        $items = Item::query()->with('labelType.brand')->whereIn('id', array_column($req['items'], 'id'))->get()->keyBy('id');
+        $products = $this->products($req['items']);
         $common = $this->common();
 
         $stickers = [];
         $summary = [];
         foreach ($req['items'] as $row) {
-            $item = $items->get($row['id']);
-            if ($item === null) {
+            $product = $products[self::key($row)] ?? null;
+            if ($product === null) {
                 continue;
             }
-            $data = $this->stickerData($item, $req, $common, $production);
+            $data = $this->stickerData($product, $req, $common, $production);
             $pieces = match ($sheet['design']) {
                 'full' => StickerDesign::full($data, $dv),
                 'round' => StickerDesign::round($data, $dv, $sheet['w']),
+                'small' => SmallStickerDesign::rect($data, $dv, $sheet['w'], $sheet['h']),
                 default => StickerDesign::mini($data, $dv, $sheet['w'], $sheet['h']),
             };
             for ($i = 0; $i < $row['copies']; $i++) {
                 $stickers[] = $pieces;
             }
-            $summary[] = ['id' => $item->id, 'name' => $item->name, 'copies' => $row['copies'], 'exp' => $data['exp_iso'], 'mfg' => $data['mfg_iso']];
+            $summary[] = ['id' => $product->id, 'kind' => $row['kind'], 'name' => $product->name, 'copies' => $row['copies'], 'exp' => $data['exp_iso'], 'mfg' => $data['mfg_iso']];
         }
 
         return [
@@ -166,6 +166,39 @@ final class StickerSheet
     }
 
     /**
+     * The menu items and custom labels a request names, keyed "i12" / "c5".
+     *
+     * @param list<array{id: int, copies: int, kind: string}> $rows
+     * @return array<string, Item|CustomLabel>
+     */
+    public function products(array $rows): array
+    {
+        $ids = ['item' => [], 'custom' => []];
+        foreach ($rows as $row) {
+            $ids[$row['kind']][] = $row['id'];
+        }
+        $out = [];
+        if ($ids['item'] !== []) {
+            foreach (Item::query()->with('labelType.brand')->whereIn('id', $ids['item'])->get() as $item) {
+                $out['i' . $item->id] = $item;
+            }
+        }
+        if ($ids['custom'] !== []) {
+            foreach (CustomLabel::query()->with(['labelType.brand', 'brand'])->whereIn('id', $ids['custom'])->get() as $custom) {
+                $out['c' . $custom->id] = $custom;
+            }
+        }
+
+        return $out;
+    }
+
+    /** @param array{id: int, kind: string} $row */
+    public static function key(array $row): string
+    {
+        return ($row['kind'] === 'custom' ? 'c' : 'i') . $row['id'];
+    }
+
+    /**
      * What a request will print, without drawing it: per product the copies
      * and the dates that will go on it, and the sheet count.
      *
@@ -176,23 +209,25 @@ final class StickerSheet
     {
         $sheet = StickerLayouts::resolve($req['layout'], $req['w'], $req['h'], LabelSettings::precut());
         $production = $req['pi'] ? KitchenProductionItem::query()->find($req['pi']) : null;
-        $items = Item::query()->with('labelType.brand')->whereIn('id', array_column($req['items'], 'id'))->get()->keyBy('id');
+        $found = $this->products($req['items']);
         $products = [];
         $total = 0;
         foreach ($req['items'] as $row) {
-            $item = $items->get($row['id']);
-            if ($item === null) {
+            $product = $found[self::key($row)] ?? null;
+            if ($product === null) {
                 continue;
             }
-            [$mfg, $exp] = $this->dates($item, $req, $production);
+            [$mfg, $exp] = $this->dates($product, $req, $production);
             $products[] = [
-                'id' => $item->id,
-                'name' => $item->name,
+                'id' => $product->id,
+                'kind' => $row['kind'],
+                'key' => self::key($row),
+                'name' => $product->name,
                 'copies' => $row['copies'],
                 'mfg' => $mfg,
                 'exp' => $exp,
-                'shelf_life_days' => $item->label_shelf_life_days,
-                'ingredients_from' => $this->ingredients->forItem($item)['from'],
+                'shelf_life_days' => $product->label_shelf_life_days,
+                'ingredients_from' => $this->ingredientLines($product)['from'],
             ];
             $total += $row['copies'];
         }
@@ -202,6 +237,8 @@ final class StickerSheet
             'label' => $sheet['label'],
             'design' => $sheet['design'],
             'shape' => $sheet['shape'],
+            'w' => $sheet['w'],
+            'h' => $sheet['h'],
             'stickers' => $total,
             'pages' => (int) ceil($total / max(1, $sheet['per_page'])),
             'per_page' => $sheet['per_page'],
@@ -216,7 +253,7 @@ final class StickerSheet
      * @param array<string, mixed> $req
      * @return array{0: ?string, 1: ?string}
      */
-    public function dates(Item $item, array $req, ?KitchenProductionItem $production = null): array
+    public function dates(Item|CustomLabel $item, array $req, ?KitchenProductionItem $production = null): array
     {
         if (!$req['fill']) {
             return [null, null];
@@ -225,7 +262,7 @@ final class StickerSheet
         if ($req['exp']) {
             return [$mfg, $req['exp']];
         }
-        if ($production && $production->expires_at && (int) $production->item_id === (int) $item->id) {
+        if ($item instanceof Item && $production && $production->expires_at && (int) $production->item_id === (int) $item->id) {
             return [$mfg, CarbonImmutable::parse($production->expires_at)->toDateString()];
         }
         $life = $this->types->forItem($item, $this->asType($req))['shelf_life_days'];
@@ -243,15 +280,16 @@ final class StickerSheet
      * @param array<string, mixed> $common
      * @return array<string, mixed>
      */
-    public function stickerData(Item $item, array $req, array $common, ?KitchenProductionItem $production = null): array
+    public function stickerData(Item|CustomLabel $item, array $req, array $common, ?KitchenProductionItem $production = null): array
     {
-        $lines = $this->ingredients->forItem($item);
+        $lines = $this->ingredientLines($item);
         $title = LabelImage::fromMedia($item->label_title_media_id, 900);
-        $photo = LabelImage::fromMedia($item->label_photo_media_id, 900) ?? LabelImage::fromPublicUrl($item->cutout_url, 900);
+        $photo = LabelImage::fromMedia($item->label_photo_media_id, 900)
+            ?? ($item instanceof Item ? LabelImage::fromPublicUrl($item->cutout_url, 900) : null);
 
         [$mfg, $exp] = $this->dates($item, $req, $production);
         $batch = $req['batch'];
-        if ($batch === '' && $production && (int) $production->item_id === (int) $item->id) {
+        if ($batch === '' && $item instanceof Item && $production && (int) $production->item_id === (int) $item->id) {
             $batch = (string) ($production->batch_code ?? '');
         }
         $qty = $req['qty'] !== '' ? $req['qty'] : ($item->label_pack_qty ? (string) $item->label_pack_qty : '');
@@ -292,6 +330,23 @@ final class StickerSheet
         ];
     }
 
+    /**
+     * The ingredient line: an item's from its recipe or typed in
+     * (LabelIngredients), a custom label's as typed.
+     *
+     * @return array{en: string, dv: string, from: string}
+     */
+    public function ingredientLines(Item|CustomLabel $product): array
+    {
+        if ($product instanceof Item) {
+            return $this->ingredients->forItem($product);
+        }
+        $en = trim((string) $product->label_ingredients);
+        $dv = trim((string) $product->label_ingredients_dv);
+
+        return ['en' => $en, 'dv' => $dv, 'from' => $en !== '' || $dv !== '' ? 'manual' : 'none', 'recipe_en' => '', 'recipe_dv' => ''];
+    }
+
     /** @return array<string, mixed> What every sticker on the sheet shares. */
     public function common(): array
     {
@@ -316,9 +371,10 @@ final class StickerSheet
     }
 
     /**
-     * "12:8,15:4" or [{id, copies}] → [{id, copies}], merged per item.
+     * "12:8,c5:3" or [{id, copies, kind}] → [{id, copies, kind}], merged per
+     * product. A "c" before the id (or kind "custom") is a custom label.
      *
-     * @return list<array{id: int, copies: int}>
+     * @return list<array{id: int, copies: int, kind: 'item'|'custom'}>
      */
     public static function parseItems(mixed $raw): array
     {
@@ -326,23 +382,26 @@ final class StickerSheet
         if (is_string($raw)) {
             foreach (array_filter(explode(',', $raw)) as $part) {
                 [$id, $copies] = array_pad(explode(':', $part, 2), 2, '0');
-                $rows[] = ['id' => (int) $id, 'copies' => (int) $copies];
+                $custom = str_starts_with($id, 'c');
+                $rows[] = ['id' => (int) ltrim($id, 'c'), 'copies' => (int) $copies, 'kind' => $custom ? 'custom' : 'item'];
             }
         } elseif (is_array($raw)) {
             foreach ($raw as $row) {
                 if (is_array($row)) {
-                    $rows[] = ['id' => (int) ($row['id'] ?? 0), 'copies' => (int) ($row['copies'] ?? 0)];
+                    $rows[] = ['id' => (int) ($row['id'] ?? 0), 'copies' => (int) ($row['copies'] ?? 0), 'kind' => ($row['kind'] ?? 'item') === 'custom' ? 'custom' : 'item'];
                 }
             }
         }
         $merged = [];
         foreach ($rows as $row) {
             if ($row['id'] > 0 && $row['copies'] > 0) {
-                $merged[$row['id']] = ($merged[$row['id']] ?? 0) + min($row['copies'], self::MAX_STICKERS);
+                $key = self::key($row);
+                $merged[$key] ??= ['id' => $row['id'], 'copies' => 0, 'kind' => $row['kind']];
+                $merged[$key]['copies'] += min($row['copies'], self::MAX_STICKERS);
             }
         }
 
-        return array_map(fn ($id, $copies) => ['id' => (int) $id, 'copies' => $copies], array_keys($merged), $merged);
+        return array_values($merged);
     }
 
     /**
@@ -370,10 +429,10 @@ final class StickerSheet
         return array_values(array_filter($rows, fn ($r) => $r['id'] > 0));
     }
 
-    /** @param list<array{id: int, copies: int}> $items */
+    /** @param list<array{id: int, copies: int, kind?: string}> $items */
     public static function itemsParam(array $items): string
     {
-        return implode(',', array_map(fn ($r) => $r['id'] . ':' . $r['copies'], $items));
+        return implode(',', array_map(fn ($r) => (($r['kind'] ?? 'item') === 'custom' ? 'c' : '') . $r['id'] . ':' . $r['copies'], $items));
     }
 
     private static function date(mixed $value): ?string

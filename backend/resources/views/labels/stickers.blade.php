@@ -48,7 +48,7 @@
         .page:last-child { page-break-after: auto; }
         .pc { position: absolute; margin: 0; padding: 0; }
         .tx { white-space: pre; overflow: visible; }
-        .latin { font-size: 0.82em; }
+        .latin { font-size: 0.82em; direction: ltr; unicode-bidi: isolate; }
         .cut { position: absolute; border: 0.14mm dashed {{ \App\Domains\Labels\StickerDesign::BORDER }}; }
         @unless ($forPdf)
             @media screen {
@@ -59,8 +59,10 @@
                 .bar .what { margin-left: auto; color: #6B5D4F; font-size: 13px; }
                 .page { margin: 0 auto 16px; background: #fff; box-shadow: 0 6px 24px rgba(0,0,0,0.15); }
                 @if ($preview)
-                    html, body { background: transparent; overflow: hidden; }
-                    body { padding: 0; }
+                    html, body { background: transparent; }
+                    html { overflow: hidden; }
+                    /* The body keeps the page's unscaled height, so it must not clip: a small label scaled up to its frame showed only its top. */
+                    body { padding: 0; overflow: visible; }
                     .page { box-shadow: none; margin: 0; transform-origin: 0 0; }
                 @endif
             }

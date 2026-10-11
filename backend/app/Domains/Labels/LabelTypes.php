@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Labels;
 
+use App\Models\CustomLabel;
 use App\Models\Item;
 use App\Models\LabelBrand;
 use App\Models\LabelType;
@@ -24,8 +25,11 @@ final class LabelTypes
      *   storage_dv, use_within, use_within_dv, mfg_label, exp_label,
      *   how_to_use, how_to_use_dv, note, note_dv, show_qr, shelf_life_days,
      *   type_id, type_name, brand (array)
+     *
+     * A custom label (not on the menu) reads the same way, with its own brand
+     * ahead of the type's.
      */
-    public function forItem(Item $item, ?LabelType $as = null): array
+    public function forItem(Item|CustomLabel $item, ?LabelType $as = null): array
     {
         $type = $as ?? ($item->label_type_id ? $item->labelType : null);
         $storage = LabelSettings::storage((string) ($item->label_storage ?: $type?->storage ?: 'frozen'));
@@ -52,7 +56,7 @@ final class LabelTypes
             'note_dv' => $pick('label_note_dv', $type?->note_dv),
             'show_qr' => $type ? (bool) $type->show_qr : true,
             'shelf_life_days' => $item->label_shelf_life_days ?: $type?->shelf_life_days,
-            'brand' => $this->brand($type?->brand_id ? $type->brand : null),
+            'brand' => $this->brand($item instanceof CustomLabel && $item->brand_id ? $item->brand : ($type?->brand_id ? $type->brand : null)),
         ];
     }
 

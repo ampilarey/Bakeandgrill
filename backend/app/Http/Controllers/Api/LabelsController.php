@@ -13,6 +13,7 @@ use App\Domains\Labels\StickerLayouts;
 use App\Domains\Labels\StickerSheet;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Labels\LabelSheetController;
+use App\Models\CustomLabel;
 use App\Models\Item;
 use App\Models\KitchenProductionItem;
 use App\Models\LabelBrand;
@@ -40,40 +41,75 @@ class LabelsController extends Controller
         private readonly LabelTypes $types,
     ) {}
 
-    /** Label stock the hub offers, for its size picker. */
+    /**
+     * Label stock the hub offers: every layout (the print log names them), the
+     * sizes offered as one tap with the stock each prints on (owner,
+     * 2026-10-11: "Add label size. For example rectangular 4 cm by 6 cm, circle
+     * 6 cm diameter"), and the limits for a size typed in.
+     */
     public function layouts(): JsonResponse
     {
-        return response()->json(['data' => collect(StickerLayouts::LAYOUTS)->map(fn ($l, $key) => [
-            'key' => $key,
-            'label' => $l['label'],
-            'hint' => $l['hint'],
-            'per_page' => $l['cols'] * $l['rows'],
-            'w' => $l['w'],
-            'h' => $l['h'],
-            'page_w' => $l['page'][0] ?? $l['w'],
-            'page_h' => $l['page'][1] ?? $l['h'],
-            'shape' => $l['shape'] ?? 'rect',
-            'compact' => ($l['shape'] ?? 'rect') === 'rect' && $key !== 'single-custom' && min($l['w'] / StickerLayouts::DESIGN_W, $l['h'] / StickerLayouts::DESIGN_H) < StickerLayouts::FULL_MIN_SCALE,
-        ])->values()]);
+        return response()->json([
+            'data' => collect(StickerLayouts::LAYOUTS)->map(function ($l, $key) {
+                $sized = in_array($key, StickerLayouts::SIZED, true);
+                $shape = $l['shape'] ?? 'rect';
+
+                return [
+                    'key' => $key,
+                    'label' => $l['label'],
+                    'hint' => $l['hint'],
+                    'per_page' => !empty($l['grid']) ? null : $l['cols'] * $l['rows'],
+                    'w' => $l['w'],
+                    'h' => $l['h'],
+                    'page_w' => $l['page'][0] ?? $l['w'],
+                    'page_h' => $l['page'][1] ?? $l['h'],
+                    'shape' => $shape,
+                    'sized' => $sized,
+                    'grid' => !empty($l['grid']),
+                    'compact' => !$sized && $shape === 'rect' && StickerLayouts::design($shape, $l['w'], $l['h']) !== 'full',
+                ];
+            })->values(),
+            'presets' => StickerLayouts::presets(),
+            'limits' => StickerLayouts::limits(),
+        ]);
     }
 
-    public const STICKER_RULES = [
-        'items' => 'required|array|min:1|max:60',
-        'items.*.id' => 'required|integer|exists:items,id',
-        'items.*.copies' => 'required|integer|min:1|max:' . StickerSheet::MAX_STICKERS,
-        'lang' => 'sometimes|in:en,dv',
-        'w' => 'nullable|numeric',
-        'h' => 'nullable|numeric',
-        'fill' => 'sometimes|boolean',
-        'mfg' => 'nullable|date_format:Y-m-d',
-        'exp' => 'nullable|date_format:Y-m-d',
-        'batch' => 'nullable|string|max:30',
-        'qty' => 'nullable|integer|min:1|max:9999',
-        'pi' => 'nullable|integer|exists:kitchen_production_items,id',
-        'type' => 'nullable|integer|exists:label_types,id',
-        'rounded' => 'sometimes|boolean',
-        'preview' => 'sometimes|boolean',
-    ];
+    /**
+     * What a sticker request may carry. A product is a menu item, or a custom
+     * label when its `kind` says so; either must still exist.
+     *
+     * @return array<string, mixed>
+     */
+    public static function stickerRules(Request $request): array
+    {
+        return [
+            'items' => 'required|array|min:1|max:60',
+            'items.*.id' => ['required', 'integer', function (string $attribute, mixed $value, \Closure $fail) use ($request): void {
+                $kind = $request->input(substr($attribute, 0, -3) . '.kind', 'item');
+                $exists = $kind === 'custom'
+                    ? CustomLabel::query()->whereKey((int) $value)->exists()
+                    : Item::query()->whereKey((int) $value)->exists();
+                if (!$exists) {
+                    $fail('That product is no longer there. Pick it again.');
+                }
+            }],
+            'items.*.kind' => 'sometimes|in:item,custom',
+            'items.*.copies' => 'required|integer|min:1|max:' . StickerSheet::MAX_STICKERS,
+            'lang' => 'sometimes|in:en,dv',
+            'layout' => ['sometimes', Rule::in(array_keys(StickerLayouts::LAYOUTS))],
+            'w' => 'nullable|numeric',
+            'h' => 'nullable|numeric',
+            'fill' => 'sometimes|boolean',
+            'mfg' => 'nullable|date_format:Y-m-d',
+            'exp' => 'nullable|date_format:Y-m-d',
+            'batch' => 'nullable|string|max:30',
+            'qty' => 'nullable|integer|min:1|max:9999',
+            'pi' => 'nullable|integer|exists:kitchen_production_items,id',
+            'type' => 'nullable|integer|exists:label_types,id',
+            'rounded' => 'sometimes|boolean',
+            'preview' => 'sometimes|boolean',
+        ];
+    }
 
     /** The sticker request keys a saved label keeps. */
     private const STICKER_KEYS = ['items', 'lang', 'layout', 'w', 'h', 'fill', 'mfg', 'exp', 'batch', 'qty', 'pi', 'type', 'rounded'];
@@ -85,14 +121,14 @@ class LabelsController extends Controller
      */
     public function stickersUrl(Request $request): JsonResponse
     {
-        $request->validate(self::STICKER_RULES + ['layout' => ['sometimes', Rule::in(array_keys(StickerLayouts::LAYOUTS))]]);
+        $request->validate(self::stickerRules($request));
         try {
             $req = StickerSheet::normalise($request->all());
+            $preview = $request->boolean('preview');
+            $out = $this->stickerLinks($req, $request->user()?->id, $preview);
         } catch (InvalidArgumentException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
-        $preview = $request->boolean('preview');
-        $out = $this->stickerLinks($req, $request->user()?->id, $preview);
         if (!$preview) {
             $out['job'] = $this->rememberJob('stickers', array_intersect_key($request->all(), array_flip(self::STICKER_KEYS)), $out['summary'], $request->user()?->id);
         }
@@ -110,6 +146,9 @@ class LabelsController extends Controller
     private function stickerLinks(array $req, ?int $userId, bool $preview = false): array
     {
         $summary = $this->stickers->summary($req);
+        if ($summary['stickers'] === 0) {
+            throw new InvalidArgumentException('Nothing to print: the products on this label have been removed. Pick them again.');
+        }
         $query = [
             'items' => StickerSheet::itemsParam($req['items']),
             'lang' => $req['lang'],
@@ -133,7 +172,8 @@ class LabelsController extends Controller
                     'layout' => $req['layout'],
                     'label_w_mm' => $req['w'],
                     'label_h_mm' => $req['h'],
-                    'item_id' => $p['id'],
+                    'item_id' => $p['kind'] === 'item' ? $p['id'] : null,
+                    'custom_label_id' => $p['kind'] === 'custom' ? $p['id'] : null,
                     'kitchen_production_item_id' => $req['pi'],
                     'copies' => $p['copies'],
                     'mfg_date' => $p['mfg'],
@@ -339,10 +379,10 @@ class LabelsController extends Controller
             }
             try {
                 $req = StickerSheet::normalise($data);
+                $out = $this->stickerLinks($req, $request->user()?->id);
             } catch (InvalidArgumentException $e) {
                 return response()->json(['message' => $e->getMessage()], 422);
             }
-            $out = $this->stickerLinks($req, $request->user()?->id);
         } else {
             try {
                 $req = BoxLabel::normalise($data);
@@ -463,7 +503,7 @@ class LabelsController extends Controller
     public function prints(Request $request): JsonResponse
     {
         $rows = LabelPrint::query()
-            ->with(['item:id,name', 'printer:id,name', 'delivery:id,delivery_number'])
+            ->with(['item:id,name', 'customLabel:id,name', 'printer:id,name', 'delivery:id,delivery_number'])
             ->when($request->filled('kind'), fn ($q) => $q->where('kind', $request->string('kind')))
             ->when($request->filled('item_id'), fn ($q) => $q->where('item_id', $request->integer('item_id')))
             ->when($request->filled('from'), fn ($q) => $q->whereDate('created_at', '>=', $request->string('from')))
@@ -475,7 +515,9 @@ class LabelsController extends Controller
             'id' => $p->id,
             'kind' => $p->kind,
             'layout' => $p->layout,
-            'item' => $p->item?->name,
+            'stock' => $p->kind === 'box_label' ? 'A4 box label' : StickerLayouts::describe((string) $p->layout, $p->label_w_mm !== null ? (float) $p->label_w_mm : null, $p->label_h_mm !== null ? (float) $p->label_h_mm : null),
+            'item' => $p->item?->name ?? $p->customLabel?->name,
+            'custom' => $p->custom_label_id !== null,
             'delivery' => $p->delivery?->delivery_number,
             'copies' => $p->copies,
             'mfg_date' => $p->mfg_date?->toDateString(),
@@ -558,6 +600,168 @@ class LabelsController extends Controller
         $item->fill($data)->save();
 
         return response()->json(['data' => $this->present($item->refresh())]);
+    }
+
+    // ---- Custom labels (owner, 2026-10-11: "Not only from the menu list") ----
+
+    public function customLabels(): JsonResponse
+    {
+        $rows = CustomLabel::query()->with(['brand.logo', 'labelType.brand', 'creator:id,name'])->orderBy('name')->orderBy('id')->get();
+
+        return response()->json(['data' => $rows->map(fn (CustomLabel $c) => $this->presentCustom($c))->values()]);
+    }
+
+    public function storeCustomLabel(Request $request): JsonResponse
+    {
+        $data = $this->customData($request, null);
+        if ($data instanceof JsonResponse) {
+            return $data;
+        }
+        $custom = CustomLabel::query()->create($data + ['created_by' => $request->user()?->id]);
+
+        return response()->json(['data' => $this->presentCustom($custom->refresh())], 201);
+    }
+
+    public function updateCustomLabel(Request $request, CustomLabel $customLabel): JsonResponse
+    {
+        $data = $this->customData($request, $customLabel);
+        if ($data instanceof JsonResponse) {
+            return $data;
+        }
+        $customLabel->fill($data)->save();
+
+        return response()->json(['data' => $this->presentCustom($customLabel->refresh())]);
+    }
+
+    /** The picture or the hand-lettered name, kept as the PNG uploaded (LabelMedia), never flattened onto white. */
+    public function customLabelPicture(Request $request, CustomLabel $customLabel): JsonResponse
+    {
+        $data = $request->validate(['file' => 'required|file|max:4096', 'slot' => 'sometimes|in:photo,title']);
+        try {
+            $media = LabelMedia::storePng((string) file_get_contents($request->file('file')->getRealPath()), "{$customLabel->name} label " . ($data['slot'] ?? 'photo'));
+        } catch (InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage(), 'errors' => ['file' => [$e->getMessage()]]], 422);
+        }
+        $customLabel->forceFill([($data['slot'] ?? 'photo') === 'title' ? 'label_title_media_id' : 'label_photo_media_id' => $media->id])->save();
+
+        return response()->json(['data' => $this->presentCustom($customLabel->refresh())]);
+    }
+
+    public function duplicateCustomLabel(Request $request, CustomLabel $customLabel): JsonResponse
+    {
+        $copy = $customLabel->replicate(['created_by']);
+        $copy->forceFill(['name' => mb_substr($customLabel->name . ' (copy)', 0, 80), 'created_by' => $request->user()?->id])->save();
+
+        return response()->json(['data' => $this->presentCustom($copy->refresh())], 201);
+    }
+
+    /** Prints already made stay in the log; saved labels that named it print without it. */
+    public function destroyCustomLabel(CustomLabel $customLabel): JsonResponse
+    {
+        $customLabel->delete();
+
+        return response()->json(['ok' => true]);
+    }
+
+    /** @return array<string, mixed>|JsonResponse */
+    private function customData(Request $request, ?CustomLabel $label): array|JsonResponse
+    {
+        $data = $request->validate([
+            'name' => ($label ? 'sometimes' : 'required') . '|string|max:80',
+            'name_dv' => 'sometimes|nullable|string|max:80',
+            'brand_id' => 'sometimes|nullable|integer|exists:label_brands,id',
+            'label_type_id' => 'sometimes|nullable|integer|exists:label_types,id',
+            'label_storage' => ['sometimes', 'nullable', Rule::in(LabelSettings::STORAGES)],
+            'label_heading' => 'sometimes|nullable|string|max:40',
+            'label_heading_dv' => 'sometimes|nullable|string|max:40',
+            'label_storage_line' => 'sometimes|nullable|string|max:160',
+            'label_storage_line_dv' => 'sometimes|nullable|string|max:160',
+            'label_ingredients' => 'sometimes|nullable|string|max:500',
+            'label_ingredients_dv' => 'sometimes|nullable|string|max:500',
+            'label_how_to_use' => 'sometimes|nullable|string|max:200',
+            'label_how_to_use_dv' => 'sometimes|nullable|string|max:200',
+            'label_note' => 'sometimes|nullable|string|max:120',
+            'label_note_dv' => 'sometimes|nullable|string|max:120',
+            'label_shelf_life_days' => 'sometimes|nullable|integer|min:1|max:730',
+            'label_pack_qty' => 'sometimes|nullable|integer|min:1|max:9999',
+            'label_pack_unit' => 'sometimes|nullable|string|max:10',
+            'label_photo_media_id' => 'sometimes|nullable|integer|exists:media_assets,id',
+            'label_title_media_id' => 'sometimes|nullable|integer|exists:media_assets,id',
+        ]);
+        foreach (['label_title_media_id', 'label_photo_media_id'] as $key) {
+            if (!empty($data[$key]) && Media::query()->whereKey($data[$key])->value('media_type') !== 'image') {
+                return response()->json(['message' => 'Pick an image for the label.', 'errors' => [$key => ['Pick an image.']]], 422);
+            }
+        }
+        foreach ($data as $key => $value) {
+            if (is_string($value)) {
+                $value = trim($value);
+                $data[$key] = $value === '' && $key !== 'name' ? null : $value;
+            }
+        }
+        if (array_key_exists('name', $data) && ($data['name'] ?? '') === '') {
+            return response()->json(['message' => 'Give the label a name.', 'errors' => ['name' => ['Give the label a name.']]], 422);
+        }
+
+        return $data;
+    }
+
+    /** @return array<string, mixed> */
+    private function presentCustom(CustomLabel $c): array
+    {
+        $c->loadMissing(['brand.logo', 'labelType.brand', 'creator:id,name']);
+        // What prints when its own boxes are empty: the type's wording, else the storage defaults.
+        $bare = (clone $c)->forceFill(['label_heading' => null, 'label_heading_dv' => null, 'label_storage_line' => null, 'label_storage_line_dv' => null, 'label_note' => null, 'label_note_dv' => null, 'label_how_to_use' => null, 'label_how_to_use_dv' => null, 'label_shelf_life_days' => null]);
+        $w = $this->types->forItem($bare);
+        $media = Media::query()->whereIn('id', array_filter([$c->label_title_media_id, $c->label_photo_media_id]))->get()->keyBy('id');
+        $brand = $c->brand_id ? $c->brand : ($c->labelType?->brand ?? LabelBrand::default());
+
+        return [
+            'id' => $c->id,
+            'kind' => 'custom',
+            'name' => $c->name,
+            'name_dv' => $c->name_dv,
+            'brand_id' => $c->brand_id,
+            'brand_name' => $w['brand']['name'],
+            'brand_logo_url' => $brand ? LabelTypes::presentBrand($brand)['logo_url'] : null,
+            'label_type_id' => $c->label_type_id,
+            'label_type_name' => $c->labelType?->name,
+            'label_storage' => $c->label_storage,
+            'storage' => $w['storage'],
+            'label_heading' => $c->label_heading,
+            'label_heading_dv' => $c->label_heading_dv,
+            'label_storage_line' => $c->label_storage_line,
+            'label_storage_line_dv' => $c->label_storage_line_dv,
+            'label_ingredients' => $c->label_ingredients,
+            'label_ingredients_dv' => $c->label_ingredients_dv,
+            'label_how_to_use' => $c->label_how_to_use,
+            'label_how_to_use_dv' => $c->label_how_to_use_dv,
+            'label_note' => $c->label_note,
+            'label_note_dv' => $c->label_note_dv,
+            'label_shelf_life_days' => $c->label_shelf_life_days,
+            'label_pack_qty' => $c->label_pack_qty,
+            'label_pack_unit' => $c->label_pack_unit,
+            'label_photo_media_id' => $c->label_photo_media_id,
+            'label_photo_url' => $media->get($c->label_photo_media_id)?->url,
+            'label_title_media_id' => $c->label_title_media_id,
+            'label_title_url' => $media->get($c->label_title_media_id)?->url,
+            'defaults' => [
+                'heading' => $w['heading'],
+                'heading_dv' => $w['heading_dv'],
+                'storage_line' => $w['storage_en'],
+                'storage_line_dv' => $w['storage_dv'],
+                'how_to_use' => $w['how_to_use'],
+                'how_to_use_dv' => $w['how_to_use_dv'],
+                'note' => $w['note'],
+                'note_dv' => $w['note_dv'],
+                'shelf_life_days' => $w['shelf_life_days'],
+                'brand' => $w['brand']['name'],
+                'unit' => 'PCS',
+            ],
+            'ingredients' => $this->stickers->ingredientLines($c),
+            'created_by' => $c->creator?->name,
+            'updated_at' => $c->updated_at?->toIso8601String(),
+        ];
     }
 
     // ---- Label types and brands (v2 points 3 and 6) ----

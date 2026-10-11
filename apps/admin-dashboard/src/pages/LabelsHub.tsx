@@ -5,6 +5,7 @@ import { HubPage, hubPermissions, type HubTab } from '../components/HubPage';
 import { StickerPrintPanel } from '../components/labels/StickerPrintPanel';
 import { BoxLabelPanel } from '../components/labels/BoxLabelPanel';
 import { TypesAndBrands } from '../components/labels/TypesAndBrands';
+import { CustomLabelsTab } from '../components/labels/CustomLabels';
 import { Button, Card, useToast } from '../components/ui';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -137,7 +138,8 @@ function HistoryTab() {
     fetchLabelLayouts().then((r) => setStock((s) => ({ ...s, ...Object.fromEntries(r.data.map((l) => [l.key, l.label])) }))).catch(() => undefined);
   }, []);
 
-  const what = (r: LabelPrintRow) => r.item ?? r.delivery ?? (r.kind === 'box_label' ? 'Blank template' : '');
+  const what = (r: LabelPrintRow) => (r.item ? `${r.item}${r.custom ? ' (custom)' : ''}` : null) ?? r.delivery ?? (r.kind === 'box_label' ? 'Blank template' : '');
+  const stockName = (r: LabelPrintRow) => r.stock ?? stock[r.layout] ?? r.layout;
   const dates = (r: LabelPrintRow) => (r.mfg_date ? `${r.mfg_date} → ${r.exp_date ?? 'blank'}` : 'Dates handwritten');
   const empty = !loading && rows.length === 0;
 
@@ -151,7 +153,7 @@ function HistoryTab() {
                 <span className="text-sm font-semibold text-[var(--color-text)] min-w-0">{what(r)}</span>
                 <span className="text-sm font-semibold text-[var(--color-text)] shrink-0">× {r.copies}</span>
               </div>
-              <div className="text-xs text-[var(--color-text-secondary)] mt-0.5">{KIND[r.kind] ?? r.kind} · {stock[r.layout] ?? r.layout}</div>
+              <div className="text-xs text-[var(--color-text-secondary)] mt-0.5">{KIND[r.kind] ?? r.kind} · {stockName(r)}</div>
               <div className="text-xs text-[var(--color-text-muted)] mt-0.5">
                 {dates(r)}{r.batch_code ? ` · batch ${r.batch_code}` : ''}
               </div>
@@ -178,7 +180,7 @@ function HistoryTab() {
               {rows.map((r) => (
                 <tr key={r.id} className="border-b border-[var(--color-border-light)]">
                   <td className="px-4 py-3 whitespace-nowrap">{when(r.created_at)}</td>
-                  <td className="px-4 py-3">{KIND[r.kind] ?? r.kind}<span className="block text-xs text-[var(--color-text-muted)]">{stock[r.layout] ?? r.layout}</span></td>
+                  <td className="px-4 py-3">{KIND[r.kind] ?? r.kind}<span className="block text-xs text-[var(--color-text-muted)]">{stockName(r)}</span></td>
                   <td className="px-4 py-3">{what(r)}</td>
                   <td className="px-4 py-3 text-right">{r.copies}</td>
                   <td className="px-4 py-3 whitespace-nowrap">{r.mfg_date ? `${r.mfg_date} → ${r.exp_date ?? 'blank'}` : 'Handwritten'}</td>
@@ -430,13 +432,20 @@ function SettingsTabWithPermission() {
   return <SettingsTab canManage={can('labels.manage')} />;
 }
 
+function CustomTabWithPermission() {
+  const { can } = useCurrentUserPermissions();
+  return <CustomLabelsTab canManage={can('labels.manage')} />;
+}
+
 function TypesTabWithPermission() {
   const { can } = useCurrentUserPermissions();
   return <TypesAndBrands canManage={can('labels.manage')} />;
 }
 
 export const LABELS_TABS: HubTab[] = [
-  { id: 'stickers', label: 'Pack stickers', permissions: ['labels.print', 'labels.manage'], desc: 'Stickers for frozen packs, in English or Dhivehi, on any label stock', render: () => <Card padding="sm" className="labels-sticky"><StickerPrintPanel /></Card> },
+  { id: 'stickers', label: 'Pack stickers', permissions: ['labels.print', 'labels.manage'], desc: 'Stickers for packs, in English or Dhivehi, on any size: A4 sheets, label printers, round', render: () => <Card padding="sm" className="labels-sticky"><StickerPrintPanel /></Card> },
+  // Owner, 2026-10-11: "Add option to add custom labels using different brands logos and other details. Not only from the menu list".
+  { id: 'custom', label: 'Custom labels', permissions: ['labels.print', 'labels.manage'], desc: 'Stickers for things that are not on the menu, with any brand, logo and details', render: () => <CustomTabWithPermission /> },
   { id: 'box', label: 'Box labels', permissions: ['labels.print', 'labels.manage'], desc: 'A4 label for a delivery box, blank or from a wholesale delivery', render: () => <Card padding="sm" className="labels-sticky"><BoxLabelPanel /></Card> },
   { id: 'types', label: 'Types & brands', permissions: ['labels.print', 'labels.manage'], desc: 'Kinds of food a label is for, with their wording, and the brands they are from', render: () => <TypesTabWithPermission /> },
   { id: 'saved', label: 'Saved labels', permissions: ['labels.print', 'labels.manage'], desc: 'Every label prepared, to print again, download, change, copy or rename; the print log beneath', render: () => <SavedLabelsTab /> },
@@ -445,6 +454,11 @@ export const LABELS_TABS: HubTab[] = [
 
 export const LABELS_HUB_PERMISSIONS = hubPermissions(LABELS_TABS);
 
+const LABELS_ALIASES = { history: 'saved' };
+
+/** Every address the hub answers on, one per tab: a tab left out here would open the dashboard instead. */
+export const LABELS_HUB_PATHS = ['labels', ...[...LABELS_TABS.map((t) => t.id), ...Object.keys(LABELS_ALIASES)].map((id) => `labels/${id}`)];
+
 export function LabelsHub() {
-  return <HubPage base="/labels" section="Manage" title="Labels" tabs={LABELS_TABS} aliases={{ history: 'saved' }} />;
+  return <HubPage base="/labels" section="Manage" title="Labels" tabs={LABELS_TABS} aliases={LABELS_ALIASES} />;
 }

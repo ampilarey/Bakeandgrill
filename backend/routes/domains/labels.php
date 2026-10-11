@@ -73,6 +73,26 @@ Route::post('/labels/brands/{brand}/logo', [LabelsController::class, 'brandLogo'
 Route::delete('/labels/brands/{brand}', [LabelsController::class, 'destroyBrand'])
     ->middleware('permission:labels.manage')
     ->whereNumber('brand');
+// Custom labels: products that are not on the menu (owner, 2026-10-11: "Add
+// option to add custom labels using different brands logos and other details.
+// Not only from the menu list"). Printing them is labels.print; writing them,
+// like an item's label wording, is labels.manage.
+Route::get('/labels/custom', [LabelsController::class, 'customLabels'])
+    ->middleware('permission:labels.print');
+Route::post('/labels/custom', [LabelsController::class, 'storeCustomLabel'])
+    ->middleware('permission:labels.manage');
+Route::put('/labels/custom/{customLabel}', [LabelsController::class, 'updateCustomLabel'])
+    ->middleware('permission:labels.manage')
+    ->whereNumber('customLabel');
+Route::post('/labels/custom/{customLabel}/picture', [LabelsController::class, 'customLabelPicture'])
+    ->middleware('permission:labels.manage')
+    ->whereNumber('customLabel');
+Route::post('/labels/custom/{customLabel}/duplicate', [LabelsController::class, 'duplicateCustomLabel'])
+    ->middleware('permission:labels.manage')
+    ->whereNumber('customLabel');
+Route::delete('/labels/custom/{customLabel}', [LabelsController::class, 'destroyCustomLabel'])
+    ->middleware('permission:labels.manage')
+    ->whereNumber('customLabel');
 Route::get('/labels/shops', [LabelsController::class, 'shops'])
     ->middleware('permission:labels.print');
 Route::get('/labels/shops/{tradeAccount}/box-label', [LabelsController::class, 'shopBoxLabel'])

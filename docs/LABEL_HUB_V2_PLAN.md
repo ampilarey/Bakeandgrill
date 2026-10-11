@@ -42,3 +42,24 @@ Each step ends with real prints checked on a phone-width screen and in the PDF.
 - A sheet printed "as" a type uses that type for every sticker on it; an item's
   own overrides (heading, storage line, note, how-to-use) still win.
 - The QR encodes the live site's complaint box, never the host printing it.
+
+## Later: sizes and custom labels (2026-10-11)
+
+Owner: "Add label size. For example rectangular 4 cm by 6 cm, circle 6 cm diameter
+ect. Add option to add custom labels using different brands logos and other details.
+Not only from the menu list."
+
+- A size is chosen, not a stock: shape, a one-tap size or one typed in, then where it
+  prints (A4 sheet, ready-cut, landscape A4, label printer). The old stock keys stay as
+  the layouts the presets print with, so saved labels and the print log read as before.
+- Any size fills A4 inside a 5 mm edge, upright or landscape, whichever holds more
+  (40 × 60 mm: 21). Sizes go down to 30 × 20 mm and 30 mm round.
+- Below the compact sticker's room (50 × 60 mm) a third design, `SmallStickerDesign`,
+  keeps who it is from, what it is, its dates and how to keep it, and fits the rest in
+  order while there is room; rounds under 45 mm drop the ingredients.
+- Custom labels are their own table with an item's label columns, so the type
+  resolution and the sheet treat them as items; a request item carries `kind`, the
+  print log and saved labels keep which kind it was. Their own brand beats the type's
+  and a sheet's "Print as" type.
+- The picker's mirror of the server's sizing is held to it by a shared table
+  (`fixtures/label_size_parity.json`), as the money and permission mirrors are.

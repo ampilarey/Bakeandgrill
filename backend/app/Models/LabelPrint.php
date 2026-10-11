@@ -17,7 +17,7 @@ class LabelPrint extends Model
     public const UPDATED_AT = null;
 
     protected $fillable = [
-        'kind', 'layout', 'label_w_mm', 'label_h_mm', 'item_id', 'kitchen_production_item_id',
+        'kind', 'layout', 'label_w_mm', 'label_h_mm', 'item_id', 'custom_label_id', 'kitchen_production_item_id',
         'trade_delivery_id', 'copies', 'mfg_date', 'exp_date', 'batch_code', 'pack_qty',
         'details', 'printed_by', 'output',
     ];
@@ -33,6 +33,11 @@ class LabelPrint extends Model
     public function item(): BelongsTo
     {
         return $this->belongsTo(Item::class);
+    }
+
+    public function customLabel(): BelongsTo
+    {
+        return $this->belongsTo(CustomLabel::class);
     }
 
     public function printer(): BelongsTo

@@ -30,7 +30,7 @@
         .page { position: relative; width: 210mm; height: 297mm; overflow: hidden; }
         .pc { position: absolute; margin: 0; padding: 0; }
         .tx { white-space: pre; overflow: visible; }
-        .latin { font-size: 0.82em; }
+        .latin { font-size: 0.82em; direction: ltr; unicode-bidi: isolate; }
         @unless ($forPdf)
             @media screen {
                 body { background: #E9E4DE; padding: 16px; }

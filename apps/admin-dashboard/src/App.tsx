@@ -17,7 +17,7 @@ import { CUSTOMERS_HUB_PERMISSIONS } from './pages/CustomersHub';
 import { PROMOTIONS_HUB_PERMISSIONS } from './pages/PromotionsHub';
 import { FINANCE_HUB_PERMISSIONS } from './pages/FinanceHub';
 import { WHOLESALE_HUB_PERMISSIONS } from './pages/WholesaleHub';
-import { LABELS_HUB_PERMISSIONS } from './pages/LabelsHub';
+import { LABELS_HUB_PATHS, LABELS_HUB_PERMISSIONS } from './pages/LabelsHub';
 import { NOTIFICATIONS_HUB_PERMISSIONS } from './pages/NotificationsHub';
 import { Lock } from 'lucide-react';
 
@@ -421,8 +421,8 @@ export default function App() {
                     <SettingsPage />
                   </PermissionGuard>
                 } />
-                {/* Labels (owner, 2026-10-04): pack stickers and box labels. */}
-                {['labels', 'labels/stickers', 'labels/box', 'labels/types', 'labels/saved', 'labels/history', 'labels/settings'].map((path) => (
+                {/* Labels (owner, 2026-10-04): pack stickers, custom labels and box labels. */}
+                {LABELS_HUB_PATHS.map((path) => (
                   <Route key={path} path={path} element={
                     <PermissionGuard user={user} permissions={LABELS_HUB_PERMISSIONS}>
                       <LabelsHub />

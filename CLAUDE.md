@@ -145,7 +145,15 @@ sizes, round stickers) and A4 box labels, server-drawn with dompdf. Label types
 (Frozen Hedhika…) carry the wording, brands (Bake & Grill, Amma…) the logo; every
 sticker shares one header and footer with the complaints QR; every prepared print is
 a saved label that can be reprinted or edited; a live preview (one sticker or the
-first page, the box label) redraws beside the form as it changes. Owner-only until `labels.print` /
+first page, the box label) redraws beside the form as it changes. Any size prints
+(owner, 2026-10-11): one-tap sizes such as 40 × 60 mm and 6 cm round, or one typed in
+down to 30 × 20 mm, on a label printer or as many as fit on A4
+(`StickerLayouts::PRESETS`, `grid()`; small labels get `SmallStickerDesign`). The admin
+size picker mirrors the server's sizing in `labelSize.ts`, and
+`fixtures/label_size_parity.json` holds both to the same answers: change them
+together. Custom labels (`custom_labels`) are stickers for things not on the menu, with
+their own brand, logo and wording, printed beside menu items (`kind: custom` in a
+request, `c7` on a sheet link). Owner-only until `labels.print` /
 `labels.manage` are granted; either grant carries the admin sign-in (`admin.access` is
 satisfied by both in `PermissionCatalog::SATISFIED_BY`, owner 2026-10-11), so a cashier
 or cook given Print labels signs in to Admin with phone + PIN and finds Labels in the

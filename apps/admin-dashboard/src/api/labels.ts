@@ -63,10 +63,73 @@ export type LabelType = {
 
 export type LabelTypePayload = Partial<Omit<LabelType, 'id' | 'brand_name' | 'items_count' | 'defaults'>>;
 
-export type LabelLayout = { key: string; label: string; hint: string; per_page: number; w: number; h: number; page_w: number; page_h: number; compact: boolean; shape: 'rect' | 'circle' };
+export type LabelLayout = {
+  key: string; label: string; hint: string;
+  /** Null for "any size on A4": it depends on the size. */
+  per_page: number | null;
+  w: number; h: number; page_w: number; page_h: number; compact: boolean; shape: 'rect' | 'circle';
+  /** Takes its label size from the request (w, and h for a rectangle). */
+  sized?: boolean;
+  /** As many as fit on A4. */
+  grid?: boolean;
+};
+
+/** Where a label prints: plain A4 cut on the lines, a ready-cut sheet, two on landscape A4, or a label printer. */
+export type LabelStock = 'sheet' | 'precut' | 'landscape' | 'printer';
+
+/**
+ * A size offered as one tap (owner, 2026-10-11: "Add label size. For example
+ * rectangular 4 cm by 6 cm, circle 6 cm diameter"), with the layout that
+ * prints it on each stock and how many fit a page.
+ */
+export type LabelPreset = {
+  id: string; shape: 'rect' | 'circle'; w: number; h: number;
+  /** "40 × 60 mm", "Round 60 mm". */
+  name: string;
+  /** "4 × 6 cm", "6 cm across". */
+  cm: string;
+  design: 'full' | 'mini' | 'small' | 'round';
+  options: { on: LabelStock; layout: string; label: string; per_page: number; landscape: boolean }[];
+};
+
+export type LabelLimits = { min_short: number; min_long: number; max_w: number; max_h: number; min_round: number; max_round: number; sheet_margin: number };
+
+export type LabelLayoutsResponse = { data: LabelLayout[]; presets: LabelPreset[]; limits: LabelLimits };
+
+/**
+ * A pack sticker for something that is not on the menu (owner, 2026-10-11:
+ * "Add option to add custom labels using different brands logos and other
+ * details. Not only from the menu list"). Its label fields are named as an
+ * item's; empty ones print the type's wording (in `defaults`).
+ */
+export type CustomLabel = {
+  id: number; kind: 'custom'; name: string; name_dv: string | null;
+  brand_id: number | null; brand_name: string; brand_logo_url: string | null;
+  label_type_id: number | null; label_type_name: string | null;
+  /** Its own storage; null follows the type. `storage` is what prints. */
+  label_storage: LabelStorage | null; storage: LabelStorage;
+  label_heading: string | null; label_heading_dv: string | null;
+  label_storage_line: string | null; label_storage_line_dv: string | null;
+  label_ingredients: string | null; label_ingredients_dv: string | null;
+  label_how_to_use: string | null; label_how_to_use_dv: string | null;
+  label_note: string | null; label_note_dv: string | null;
+  label_shelf_life_days: number | null; label_pack_qty: number | null; label_pack_unit: string | null;
+  label_photo_media_id: number | null; label_photo_url: string | null;
+  label_title_media_id: number | null; label_title_url: string | null;
+  defaults: { heading: string; heading_dv: string; storage_line: string; storage_line_dv: string; how_to_use: string; how_to_use_dv: string; note: string; note_dv: string; shelf_life_days: number | null; brand: string; unit: string };
+  ingredients: { en: string; dv: string; from: 'manual' | 'none' };
+  created_by: string | null; updated_at: string | null;
+};
+
+export type CustomLabelPayload = Partial<Pick<CustomLabel,
+  'name' | 'name_dv' | 'brand_id' | 'label_type_id' | 'label_storage' | 'label_heading' | 'label_heading_dv'
+  | 'label_storage_line' | 'label_storage_line_dv' | 'label_ingredients' | 'label_ingredients_dv'
+  | 'label_how_to_use' | 'label_how_to_use_dv' | 'label_note' | 'label_note_dv'
+  | 'label_shelf_life_days' | 'label_pack_qty' | 'label_pack_unit' | 'label_photo_media_id' | 'label_title_media_id'>>;
 
 export type StickerRequest = {
-  items: { id: number; copies: number }[];
+  /** A menu item, or a custom label when `kind` says so. */
+  items: { id: number; copies: number; kind?: 'item' | 'custom' }[];
   lang?: 'en' | 'dv';
   layout?: string;
   w?: number | null;
@@ -87,11 +150,14 @@ export type StickerRequest = {
 export type StickerSummary = {
   layout: string;
   label: string;
-  design: 'full' | 'mini';
+  design: 'full' | 'mini' | 'small' | 'round';
+  shape?: 'rect' | 'circle';
+  w?: number;
+  h?: number;
   stickers: number;
   pages: number;
   per_page: number;
-  products: { id: number; name: string; copies: number; mfg: string | null; exp: string | null; shelf_life_days: number | null; ingredients_from: string }[];
+  products: { id: number; kind?: 'item' | 'custom'; key?: string; name: string; copies: number; mfg: string | null; exp: string | null; shelf_life_days: number | null; ingredients_from: string }[];
 };
 
 export type SheetLinks = {
@@ -140,6 +206,10 @@ export type LabelPrintRow = {
   id: number;
   kind: 'sticker_en' | 'sticker_dv' | 'box_label';
   layout: string;
+  /** The stock in words, with the size it printed at ("40 × 60 mm, 21 on A4"). */
+  stock?: string;
+  /** A custom label rather than a menu item. */
+  custom?: boolean;
   item: string | null;
   delivery: string | null;
   copies: number;
@@ -167,7 +237,35 @@ export function updateItemLabel(id: number, body: Partial<Omit<LabelProduct, 'id
 }
 
 export function fetchLabelLayouts() {
-  return req<{ data: LabelLayout[] }>('/labels/layouts');
+  return req<LabelLayoutsResponse>('/labels/layouts');
+}
+
+export function fetchCustomLabels() {
+  return req<{ data: CustomLabel[] }>('/labels/custom');
+}
+
+export function createCustomLabel(body: CustomLabelPayload) {
+  return req<{ data: CustomLabel }>('/labels/custom', { method: 'POST', body: JSON.stringify(body) });
+}
+
+export function updateCustomLabel(id: number, body: CustomLabelPayload) {
+  return req<{ data: CustomLabel }>(`/labels/custom/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+}
+
+/** The picture (slot photo) or the hand-lettered name (slot title): a PNG kept exactly as uploaded. */
+export function uploadCustomLabelPicture(id: number, file: File, slot: 'photo' | 'title' = 'photo') {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('slot', slot);
+  return req<{ data: CustomLabel }>(`/labels/custom/${id}/picture`, { method: 'POST', body: form });
+}
+
+export function duplicateCustomLabel(id: number) {
+  return req<{ data: CustomLabel }>(`/labels/custom/${id}/duplicate`, { method: 'POST' });
+}
+
+export function deleteCustomLabel(id: number) {
+  return req<{ ok: true }>(`/labels/custom/${id}`, { method: 'DELETE' });
 }
 
 export function stickerLinks(body: StickerRequest) {

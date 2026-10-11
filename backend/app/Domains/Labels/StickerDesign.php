@@ -473,6 +473,11 @@ final class StickerDesign
      */
     public static function round(array $d, bool $dv, float $D): array
     {
+        // Under 45 mm the rows below shrink past reading; the small round
+        // sticker drops the ingredients and keeps the name and dates big.
+        if ($D < 45) {
+            return SmallStickerDesign::round($d, $dv, $D);
+        }
         $p = [];
         $r = $D / 2;
         $k = $D / 50;
@@ -610,7 +615,7 @@ final class StickerDesign
     }
 
     /** "B A K E   &   G R I L L": letters spaced as the original sticker set them. */
-    private static function spaced(string $text): string
+    public static function spaced(string $text): string
     {
         $words = preg_split('/\s+/u', trim($text)) ?: [];
 

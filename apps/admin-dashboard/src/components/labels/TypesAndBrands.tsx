@@ -151,7 +151,7 @@ function TypeModal({ type, brands, defaults, onClose, onSaved }: { type: LabelTy
   );
 }
 
-function BrandModal({ brand, onClose, onSaved }: { brand: LabelBrand | null; onClose: () => void; onSaved: (b: LabelBrand) => void }) {
+export function BrandModal({ brand, onClose, onSaved }: { brand: LabelBrand | null; onClose: () => void; onSaved: (b: LabelBrand) => void }) {
   const { toast } = useToast();
   const [name, setName] = useState(brand?.name ?? '');
   const [nameDv, setNameDv] = useState(brand?.name_dv ?? '');
