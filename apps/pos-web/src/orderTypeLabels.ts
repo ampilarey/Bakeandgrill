@@ -13,6 +13,8 @@
  * cached response).
  */
 
+import { orderTypePalette } from "./theme";
+
 /**
  * True when a customer placed this themselves, rather than a cashier.
  *
@@ -105,4 +107,29 @@ export function orderOriginBadge(
     title: staffName ? `Rung up on the till by ${staffName}` : "Rung up on the till",
     tone: "staff",
   };
+}
+
+export type OrderTypeKey = keyof typeof orderTypePalette;
+export type OrderTypeTone = { key: OrderTypeKey } & (typeof orderTypePalette)[OrderTypeKey];
+
+/**
+ * Which colour an order type wears (owner, 2026-10-11: "add more visual
+ * colors to differentiate between order type in pos"). Takes the server's
+ * slugs (dine_in, online_pickup…) or the till's own labels (Dine-in,
+ * Pickup…). A pickup is a pickup whoever placed it; the origin badge says
+ * who. Catering, wholesale and anything unknown stay neutral.
+ */
+export function orderTypeKey(type: string | null | undefined): OrderTypeKey {
+  switch (type) {
+    case "dine_in": case "Dine-in": return "dine_in";
+    case "takeaway": case "Takeaway": return "takeaway";
+    case "online_pickup": case "Pickup": return "pickup";
+    case "delivery": case "Delivery": return "delivery";
+    default: return "other";
+  }
+}
+
+export function orderTypeTone(type: string | null | undefined): OrderTypeTone {
+  const key = orderTypeKey(type);
+  return { key, ...orderTypePalette[key] };
 }

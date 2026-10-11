@@ -8,7 +8,8 @@ import {
   REFUND_REASON_CATEGORIES,
   type RefundReasonCategory, correctTender, CORRECTABLE_TENDERS, type CorrectableTender } from "../api";
 import { useMediaQuery } from "../hooks/useMediaQuery";
-import { posOrderTypeEmoji, posOrderTypeLabel } from "../orderTypeLabels";
+import { orderTypeTone, posOrderTypeEmoji } from "../orderTypeLabels";
+import { OrderTypeChip } from "./OrderTypeChip";
 import { palette } from "../theme";
 import { localDateYmd } from "../utils/localDate";
 import { EmptyState, PanelShell } from "./OpenTicketsPanel";
@@ -598,7 +599,8 @@ function ReceiptRow({ receipt: r, showStaff = false, selected, onClick }: { rece
         textAlign: "left", padding: "10px 12px", borderRadius: 10, cursor: "pointer",
         background: selected ? palette.primaryBg : palette.panel,
         border: `1px solid ${selected ? palette.primary : palette.border}`,
-        borderLeft: `4px solid ${selected ? palette.primary : "transparent"}`,
+        // The edge is the order type's colour, as on the ticket cards (owner, 2026-10-11).
+        borderLeft: `4px solid ${orderTypeTone(r.type).solid}`,
         color: palette.panelInk, fontFamily: "inherit",
       }}
     >
@@ -795,10 +797,8 @@ function ReceiptDetail({
     finally { setBusy(""); }
   };
 
-  const typeLabel = posOrderTypeLabel(receipt.type, receipt.user?.id, receipt.is_customer_placed) ?? receipt.type;
   const meta = [
     `${formatDay(receipt.created_at)} ${formatTime(receipt.created_at)}`,
-    typeLabel,
     receipt.table?.name ? `Table ${receipt.table.name}` : null,
     receipt.user?.name ? `by ${receipt.user.name}` : null,
     receipt.device?.name ?? null,
@@ -834,6 +834,7 @@ function ReceiptDetail({
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <span style={{ fontSize: 18, fontWeight: 800, color: palette.panelInk }}>{receipt.order_number}</span>
+            <OrderTypeChip type={receipt.type} staffUserId={receipt.user?.id} isCustomerPlaced={receipt.is_customer_placed} />
             <Chip tone={state.tone}>{state.label}</Chip>
           </div>
           <div style={{ fontSize: 12, color: palette.panelMuted, marginTop: 3 }}>{meta}</div>

@@ -357,6 +357,19 @@ Rows carry `variant_id` and a `key` unique per product. Removed (soft-deleted)
 order lines do not count. Waste logs have no variant, so waste stays per item.
 New sales reports follow the same rule.
 
+## POS order type colours
+
+Owner, 2026-10-11: "add more visual colors to differentiate between order type in
+pos". On the till each order type has one colour: dine-in teal, takeaway mustard,
+pickup purple, delivery blue, anything else slate (`orderTypePalette` in
+`apps/pos-web/src/theme.ts`, read through `orderTypeTone()` in `orderTypeLabels.ts`,
+which takes slugs or the till's labels). It fills the chosen type in the cart, runs
+across the top of the ticket and through the phone's folded cart bar, leads each Active
+orders card as a solid chip (`OrderTypeChip`) with the card's left edge in the same colour,
+marks the type filters, receipt rows and the new-order pop-up. Always with the type's
+icon and word; never the brand rust, which means selected. A new screen that shows an
+order's type uses these, not colours of its own.
+
 ## Queue worker vs synchronous SMS
 
 The queue worker (`php artisan queue:work redis`) is only needed for async listeners

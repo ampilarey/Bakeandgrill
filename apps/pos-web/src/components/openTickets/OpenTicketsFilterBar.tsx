@@ -3,6 +3,7 @@ import { palette, radius, space } from "../../theme";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 import type { OpenTicketsFilterKey } from "../../hooks/useOpenTickets";
 import { FilterGroup } from "./filterPrimitives";
+import { orderTypeTone } from "../../orderTypeLabels";
 
 type Props = {
   allCount: number;
@@ -119,15 +120,21 @@ export function OpenTicketsFilterBar({
 
       {moreOpen && (
         <div className={isNarrow ? "pos-open-tickets-chip-row" : undefined} style={chipRowStyle}>
+          {/* Each type in its own colour, as on the ticket cards (owner, 2026-10-11). */}
           <FilterGroup
             compact
-            activeColor={palette.info}
-            options={[
-              { key: "type:dine_in", label: "Dine-in", count: typeCounts.dine_in },
-              { key: "type:takeaway", label: "Takeaway", count: typeCounts.takeaway },
-              { key: "type:online_pickup", label: "Pickup", count: typeCounts.online_pickup },
-              { key: "type:delivery", label: "Delivery", count: typeCounts.delivery },
-            ]}
+            options={([
+              ["dine_in", "Dine-in"],
+              ["takeaway", "Takeaway"],
+              ["online_pickup", "Pickup"],
+              ["delivery", "Delivery"],
+            ] as const).map(([type, label]) => ({
+              key: `type:${type}`,
+              label,
+              count: typeCounts[type],
+              activeColor: orderTypeTone(type).solid,
+              dot: orderTypeTone(type).solid,
+            }))}
             selected={activeFilter}
             onSelect={(k) => setActiveFilter(k as OpenTicketsFilterKey)}
           />

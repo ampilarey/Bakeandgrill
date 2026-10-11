@@ -61,6 +61,23 @@ export const palette = {
   infoBg: '#EFF6FF',
 } as const;
 
+// ── Order types ────────────────────────────────────────────────────────
+// Owner, 2026-10-11: "add more visual colors to differentiate between
+// order type in pos". One colour for each way the food leaves: `solid`
+// fills a chip with white text (at least 4.5:1) and edges a card, `tint`
+// and `border` make a light badge with `ink` text. Each always comes with
+// its icon and word, so the colour is a quick scan, never the only sign.
+// None is the brand rust, which means "selected" and "act" on the till.
+// Use orderTypeTone() in orderTypeLabels.ts rather than these keys.
+
+export const orderTypePalette = {
+  dine_in:  { solid: '#0F766E', tint: '#F0FDFA', border: '#99F6E4', ink: '#115E59' }, // teal
+  takeaway: { solid: '#A16207', tint: '#FEFCE8', border: '#FDE047', ink: '#854D0E' }, // mustard
+  pickup:   { solid: '#7E22CE', tint: '#FAF5FF', border: '#E9D5FF', ink: '#6B21A8' }, // purple
+  delivery: { solid: '#1D4ED8', tint: '#EFF6FF', border: '#BFDBFE', ink: '#1E40AF' }, // blue
+  other:    { solid: '#475569', tint: '#F1F5F9', border: '#CBD5E1', ink: '#334155' }, // slate: catering, wholesale
+} as const;
+
 // ── Spacing ────────────────────────────────────────────────────────────
 // 4px base scale — covers ~99% of real layouts. If you need 6 or 10,
 // reach for `space.s` / `space.m` first. Off-grid values should be

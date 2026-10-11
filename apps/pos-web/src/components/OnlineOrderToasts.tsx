@@ -1,5 +1,5 @@
 import type { IncomingOnlineOrder } from "../api";
-import { posOrderTypeEmoji } from "../orderTypeLabels";
+import { orderTypeTone, posOrderTypeEmoji } from "../orderTypeLabels";
 
 type Props = {
   toasts: IncomingOnlineOrder[];
@@ -18,7 +18,6 @@ const COLOR = {
   border: "#E2E8F0",
   text: "#0F172A",
   muted: "#64748B",
-  primary: "#B74B0C",
   accent: "#FEF3C7",
   accentBorder: "#FCD34D",
 };
@@ -68,15 +67,18 @@ function ToastCard({
   onDismiss: (id: number) => void;
   onOpen?: (id: number) => void;
 }) {
+  // The order type's colour, as on the ticket cards (owner, 2026-10-11).
+  const tone = orderTypeTone(order.type);
   return (
     <div
+      data-order-type={tone.key}
       style={{
         pointerEvents: "auto",
         minWidth: 280,
         maxWidth: 340,
         background: COLOR.card,
         border: `1px solid ${COLOR.accentBorder}`,
-        borderLeft: `4px solid ${COLOR.primary}`,
+        borderLeft: `5px solid ${tone.solid}`,
         borderRadius: 10,
         padding: 12,
         boxShadow: "0 12px 32px rgba(15, 23, 42, 0.22)",
@@ -100,7 +102,7 @@ function ToastCard({
           <div style={{
             fontSize: 11,
             fontWeight: 700,
-            color: COLOR.primary,
+            color: tone.solid,
             textTransform: "uppercase",
             letterSpacing: "0.05em",
             marginBottom: 2,

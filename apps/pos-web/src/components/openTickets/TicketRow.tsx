@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { palette, radius, space, btnPrimary, btnSecondary, type, z } from "../../theme";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
-import { orderOriginBadge, posOrderTypeEmoji, posOrderTypeLabel } from "../../orderTypeLabels";
+import { orderOriginBadge, orderTypeTone } from "../../orderTypeLabels";
+import { OrderTypeChip } from "../OrderTypeChip";
 import {
   formatTicketAge,
   ticketAgeAnchor,
@@ -195,8 +196,10 @@ export function TicketRow({
   })();
 
   const isCustomerPlaced = (t as { is_customer_placed?: boolean | null }).is_customer_placed;
-  const typeLabel = posOrderTypeLabel(t.type, t.user?.id, isCustomerPlaced);
-  const typeEmoji = posOrderTypeEmoji(t.type, t.user?.id, isCustomerPlaced);
+  // Owner, 2026-10-11: "add more visual colors to differentiate between order
+  // type in pos". The type leads the badges as a solid chip and colours the
+  // card's left edge, so a delivery reads apart from a table at a glance.
+  const typeTone = orderTypeTone(t.type);
   // Origin is its own badge now. Folded into the type label it only ever
   // distinguished online_pickup — a customer delivery and a phoned-in one
   // both read "🛵 Delivery", with nothing to tell them apart at a glance.
@@ -263,6 +266,7 @@ export function TicketRow({
               ? ageStyle.border
               : palette.border
         }`,
+        borderLeft: `5px solid ${typeTone.solid}`,
         display: "flex",
         flexDirection: "column",
         gap: isNarrow ? space.m : space.s,
@@ -312,6 +316,7 @@ export function TicketRow({
             )}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+            <OrderTypeChip type={t.type} staffUserId={t.user?.id} isCustomerPlaced={isCustomerPlaced} />
             <span
               data-testid="ticket-origin-badge"
               data-origin={originBadge.tone}
@@ -380,9 +385,9 @@ export function TicketRow({
                 title="Prepaid dine-in — customer arrival time"
                 style={{
                   ...badgeBase,
-                  color: "#6D28D9",
-                  background: "#F5F3FF",
-                  borderColor: "#DDD6FE",
+                  color: typeTone.ink,
+                  background: typeTone.tint,
+                  borderColor: typeTone.border,
                 }}
               >
                 Arrives {arrivalTime}
@@ -399,7 +404,6 @@ export function TicketRow({
             }}
           >
             {(t.items?.length ?? 0)} {(t.items?.length ?? 0) === 1 ? "item" : "items"}
-            {typeLabel ? ` · ${typeEmoji ? `${typeEmoji} ` : ""}${typeLabel}` : ""}
             {t.type === "delivery" && t.delivery_island ? ` · ${t.delivery_island}` : ""}
             {ageIso ? (
               <span

@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   isCustomerAppOrder,
   orderOriginBadge,
+  orderTypeKey,
+  orderTypeTone,
   posOrderTypeEmoji,
   posOrderTypeLabel,
 } from "./orderTypeLabels";
+import { palette } from "./theme";
 
 /**
  * Origin is not fulfilment.
@@ -91,5 +94,50 @@ describe("posOrderTypeEmoji", () => {
     expect(posOrderTypeEmoji("delivery", null, true)).toBe("🛵");
     expect(posOrderTypeEmoji("dine_in", 4, false)).toBe("🍽");
     expect(posOrderTypeEmoji("nonsense", null, null)).toBe("📋");
+  });
+});
+
+/**
+ * Owner, 2026-10-11: "add more visual colors to differentiate between order
+ * type in pos". One colour per type, readable, and never the brand rust that
+ * means "selected" on the till.
+ */
+describe("orderTypeTone", () => {
+  const luminance = (hex: string) => {
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+      .map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const contrast = (a: string, b: string) => {
+    const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+    return (hi + 0.05) / (lo + 0.05);
+  };
+
+  it("gives the till's labels and the server's slugs the same colour", () => {
+    expect(orderTypeKey("Dine-in")).toBe(orderTypeKey("dine_in"));
+    expect(orderTypeKey("Takeaway")).toBe(orderTypeKey("takeaway"));
+    expect(orderTypeKey("Pickup")).toBe(orderTypeKey("online_pickup"));
+    expect(orderTypeKey("Delivery")).toBe(orderTypeKey("delivery"));
+  });
+
+  it("gives each of the four types its own colour, apart from the brand rust", () => {
+    const solids = ["dine_in", "takeaway", "online_pickup", "delivery"].map((t) => orderTypeTone(t).solid.toLowerCase());
+    expect(new Set(solids).size).toBe(4);
+    expect(solids).not.toContain(palette.primary.toLowerCase());
+    expect(solids).not.toContain(orderTypeTone("catering").solid.toLowerCase());
+  });
+
+  it("keeps catering, wholesale and anything unknown neutral", () => {
+    expect(orderTypeKey("catering")).toBe("other");
+    expect(orderTypeKey("wholesale")).toBe("other");
+    expect(orderTypeKey(null)).toBe("other");
+  });
+
+  it("is readable: white on the chip, the dark text on the light badge", () => {
+    for (const t of ["dine_in", "takeaway", "online_pickup", "delivery", "catering"]) {
+      const tone = orderTypeTone(t);
+      expect(contrast("#ffffff", tone.solid), `${t} chip`).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(tone.tint, tone.ink), `${t} badge`).toBeGreaterThanOrEqual(4.5);
+    }
   });
 });

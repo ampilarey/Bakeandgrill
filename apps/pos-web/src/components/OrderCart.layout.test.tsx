@@ -115,6 +115,20 @@ describe("Order type stays on show", () => {
     fireEvent.click(within(screen.getByTestId("cart-order-types")).getByRole("button", { name: "Delivery" }));
     expect(setOrderType).toHaveBeenCalledWith("Delivery");
   });
+
+  // Owner, 2026-10-11: "add more visual colors to differentiate between order type in pos".
+  it("paints the picked type in its own colour, and the ticket with it", () => {
+    renderCart({ orderType: "Delivery" });
+    const row = screen.getByTestId("cart-order-types");
+    const delivery = within(row).getByRole("button", { name: "Delivery" });
+    expect(delivery).toHaveAttribute("aria-pressed", "true");
+    expect(delivery).toHaveAttribute("data-order-type", "delivery");
+    expect(delivery.style.background).toBe("rgb(29, 78, 216)");
+    expect(within(row).getByRole("button", { name: "Takeaway" })).toHaveAttribute("aria-pressed", "false");
+    expect(document.querySelector(".pos-cart-header")).toHaveAttribute("data-order-type", "delivery");
+    // The phone's folded cart bar names the type too.
+    expect(screen.getByTestId("cart-dock-items")).toHaveTextContent("Delivery · 2 items");
+  });
 });
 
 describe("Table and customer share a row", () => {

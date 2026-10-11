@@ -12,7 +12,7 @@ import type { ScanRequest } from "../api/scan";
 import { QtyStepper } from "./cart/QtyStepper";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { palette } from "../theme";
-import { posOrderTypeEmoji, posOrderTypeLabel, isCustomerAppOrder } from "../orderTypeLabels";
+import { posOrderTypeEmoji, posOrderTypeLabel, isCustomerAppOrder, orderTypeTone } from "../orderTypeLabels";
 import {
   EMPTY_DELIVERY_DETAILS,
   POS_ORDER_TYPES,
@@ -297,6 +297,11 @@ export function OrderCart(p: Props) {
     && isCustomerAppOrder(p.resumedStaffUserId);
   const fulfillmentLabel = posOrderTypeLabel(p.resumedOrderType, p.resumedStaffUserId);
   const fulfillmentEmoji = posOrderTypeEmoji(p.resumedOrderType, p.resumedStaffUserId);
+  // Owner, 2026-10-11: "add more visual colors to differentiate between order
+  // type in pos". The chosen type fills its button in its own colour and a
+  // line of it runs across the top of the ticket, so the cashier sees at a
+  // glance that this one is a delivery and not a table.
+  const ticketTone = orderTypeTone(onlineFulfillment ? p.resumedOrderType : p.orderType);
 
   const deliveryNeedsAddress = isDelivery && !onlineFulfillment && !p.deliveryDetails.addressLine1.trim();
   const showDeliveryForm = isDelivery && !onlineFulfillment;
@@ -469,8 +474,16 @@ export function OrderCart(p: Props) {
           <span className="pos-cart-dock-summary" style={{ flex: 1, minWidth: 0 }}>
             <span
               className="pos-cart-dock-items"
-              style={{ display: "block", fontSize: 12, fontWeight: 700, color: C.muted }}
+              data-testid="cart-dock-items"
+              style={{ display: "block", fontSize: 12, fontWeight: 700, color: C.muted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
             >
+              {/* The ticket's type in its colour, so a phone shows it with the cart folded. */}
+              <span
+                aria-hidden="true"
+                style={{ display: "inline-block", width: 8, height: 8, borderRadius: 999, background: ticketTone.solid, marginRight: 5, verticalAlign: "middle" }}
+              />
+              <span style={{ color: ticketTone.ink }}>{onlineFulfillment ? fulfillmentLabel : p.orderType}</span>
+              {" · "}
               {p.cartItems.length === 0
                 ? "Cart empty"
                 : (
@@ -659,7 +672,11 @@ export function OrderCart(p: Props) {
 
       <div className="pos-cart-body">
       {/* ── Top: ticket header + order type pills ─────────────────── */}
-      <div className="pos-cart-header" style={{ padding: 14, borderBottom: `1px solid ${C.border}` }}>
+      <div
+        className="pos-cart-header"
+        data-order-type={ticketTone.key}
+        style={{ padding: 14, borderBottom: `1px solid ${C.border}`, boxShadow: `inset 0 4px 0 ${ticketTone.solid}` }}
+      >
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           flexWrap: 'wrap', gap: 6, marginBottom: 10,
@@ -757,7 +774,7 @@ export function OrderCart(p: Props) {
           {onlineFulfillment && isResumed ? (
             <div style={{
               flex: 1, padding: '8px 10px', fontSize: 12, fontWeight: 700,
-              borderRadius: 6, background: '#FFFFFF', color: C.text,
+              borderRadius: 6, background: ticketTone.solid, color: '#fff',
               boxShadow: '0 1px 2px rgba(15,23,42,0.08)', textAlign: 'center',
             }}>
               {fulfillmentEmoji} {fulfillmentLabel}
@@ -766,9 +783,14 @@ export function OrderCart(p: Props) {
             <div data-testid="no-order-types" style={{ flex: 1, padding: '8px 10px', fontSize: 12, fontWeight: 600, color: C.muted, textAlign: 'center' }}>
               No order types are allowed for you. Ask the owner to allow one in Admin → Staff.
             </div>
-          ) : shownOrderTypes.map((t) => (
+          ) : shownOrderTypes.map((t) => {
+            const on = (pendingOrderType ?? p.orderType) === t;
+            const tone = orderTypeTone(t);
+            return (
             <button
               key={t}
+              data-order-type={tone.key}
+              aria-pressed={on}
               onClick={() => {
                 if (t !== p.orderType && p.cartItems.length > 0) {
                   setPendingOrderType(t);
@@ -785,16 +807,22 @@ export function OrderCart(p: Props) {
                 fontSize: 11,
                 fontWeight: 700,
                 borderRadius: 6, border: 'none', cursor: lockedReadOnly ? 'not-allowed' : 'pointer',
-                background: (pendingOrderType ?? p.orderType) === t ? '#FFFFFF' : 'transparent',
-                color: (pendingOrderType ?? p.orderType) === t ? C.text : C.muted,
-                boxShadow: (pendingOrderType ?? p.orderType) === t ? '0 1px 2px rgba(15,23,42,0.08)' : 'none',
+                background: on ? tone.solid : 'transparent',
+                color: on ? '#fff' : C.text,
+                boxShadow: on ? '0 1px 2px rgba(15,23,42,0.18)' : 'none',
                 transition: 'background 0.1s',
                 opacity: lockedReadOnly ? 0.6 : 1,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5,
               }}
             >
+              <span
+                aria-hidden="true"
+                style={{ width: 8, height: 8, borderRadius: 999, flexShrink: 0, background: on ? '#fff' : tone.solid }}
+              />
               {t}
             </button>
-          ))}
+            );
+          })}
         </div>
 
         {pendingOrderType && pendingOrderType !== p.orderType && p.cartItems.length > 0 && (
@@ -949,7 +977,7 @@ export function OrderCart(p: Props) {
                   p.onSelectDeliveryAddress?.(v === "manual" ? "manual" : Number(v));
                 }}
                 style={{
-                  width: '100%', padding: '10px 12px', borderRadius: 8,
+                  width: '100%', padding: '10px 12px', borderRadius: 8, boxSizing: 'border-box',
                   border: `1px solid ${C.border2}`, fontSize: 13, background: '#FFFFFF',
                 }}
               >
@@ -971,7 +999,7 @@ export function OrderCart(p: Props) {
                 p.setDeliveryDetails({ ...p.deliveryDetails, addressLine1: e.target.value });
               }}
               style={{
-                width: '100%', padding: '10px 12px', borderRadius: 8,
+                width: '100%', padding: '10px 12px', borderRadius: 8, boxSizing: 'border-box',
                 border: `1px solid ${C.border2}`, fontSize: 13, background: '#FFFFFF',
               }}
             />
@@ -983,7 +1011,7 @@ export function OrderCart(p: Props) {
                 disabled={lockedReadOnly}
                 onChange={(e) => p.setDeliveryDetails({ ...p.deliveryDetails, island: e.target.value })}
                 style={{
-                  flex: 1, padding: '10px 12px', borderRadius: 8,
+                  flex: 1, minWidth: 0, padding: '10px 12px', borderRadius: 8, boxSizing: 'border-box',
                   border: `1px solid ${C.border2}`, fontSize: 13, background: '#FFFFFF',
                 }}
               />
@@ -994,7 +1022,7 @@ export function OrderCart(p: Props) {
                 disabled={lockedReadOnly}
                 onChange={(e) => p.setDeliveryDetails({ ...p.deliveryDetails, contactPhone: e.target.value })}
                 style={{
-                  flex: 1, padding: '10px 12px', borderRadius: 8,
+                  flex: 1, minWidth: 0, padding: '10px 12px', borderRadius: 8, boxSizing: 'border-box',
                   border: `1px solid ${C.border2}`, fontSize: 13, background: '#FFFFFF',
                 }}
               />
@@ -1009,7 +1037,7 @@ export function OrderCart(p: Props) {
                 p.setDeliveryDetails({ ...p.deliveryDetails, contactName: e.target.value });
               }}
               style={{
-                width: '100%', padding: '10px 12px', borderRadius: 8,
+                width: '100%', padding: '10px 12px', borderRadius: 8, boxSizing: 'border-box',
                 border: `1px solid ${C.border2}`, fontSize: 13, background: '#FFFFFF',
               }}
             />
@@ -1023,7 +1051,7 @@ export function OrderCart(p: Props) {
                 p.setDeliveryDetails({ ...p.deliveryDetails, locationLink: e.target.value });
               }}
               style={{
-                width: '100%', padding: '10px 12px', borderRadius: 8,
+                width: '100%', padding: '10px 12px', borderRadius: 8, boxSizing: 'border-box',
                 border: `1px solid ${C.border2}`, fontSize: 13, background: '#FFFFFF',
               }}
             />
@@ -1034,7 +1062,7 @@ export function OrderCart(p: Props) {
               disabled={lockedReadOnly}
               onChange={(e) => p.setDeliveryDetails({ ...p.deliveryDetails, notes: e.target.value })}
               style={{
-                width: '100%', padding: '10px 12px', borderRadius: 8,
+                width: '100%', padding: '10px 12px', borderRadius: 8, boxSizing: 'border-box',
                 border: `1px solid ${C.border2}`, fontSize: 13, background: '#FFFFFF',
               }}
             />

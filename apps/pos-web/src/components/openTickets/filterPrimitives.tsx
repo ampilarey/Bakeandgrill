@@ -38,7 +38,8 @@ export function FilterGroup({
   activeColor: groupActiveColor,
   compact,
 }: {
-  options: ReadonlyArray<{ key: string; label: string; count: number; activeColor?: string }>;
+  /** `dot` marks an option with its colour while it is not picked (the order types). */
+  options: ReadonlyArray<{ key: string; label: string; count: number; activeColor?: string; dot?: string }>;
   selected: string;
   onSelect: (key: string) => void;
   activeColor?: string;
@@ -71,6 +72,18 @@ export function FilterGroup({
               gap: 5,
             }}
           >
+            {opt.dot && (
+              <span
+                aria-hidden="true"
+                style={{
+                  width: 9,
+                  height: 9,
+                  borderRadius: 999,
+                  background: active ? "#fff" : opt.dot,
+                  flexShrink: 0,
+                }}
+              />
+            )}
             <span>{opt.label}</span>
             <span
               style={{
