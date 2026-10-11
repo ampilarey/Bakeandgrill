@@ -146,7 +146,10 @@ sizes, round stickers) and A4 box labels, server-drawn with dompdf. Label types
 sticker shares one header and footer with the complaints QR; every prepared print is
 a saved label that can be reprinted or edited; a live preview (one sticker or the
 first page, the box label) redraws beside the form as it changes. Owner-only until `labels.print` /
-`labels.manage` are granted. Two renderer facts the views depend on: dompdf's baseline
+`labels.manage` are granted; either grant carries the admin sign-in (`admin.access` is
+satisfied by both in `PermissionCatalog::SATISFIED_BY`, owner 2026-10-11), so a cashier
+or cook given Print labels signs in to Admin with phone + PIN and finds Labels in the
+menu. Two renderer facts the views depend on: dompdf's baseline
 rule differs from browsers (`LabelText::PDF_BASELINE_K`), and dompdf needs Thaana in
 visual order (`App\Support\ThaanaVisual`, PDF path only; the menu PDF uses it too).
 Phones print the PDF, not the web sheet (iOS adds margins). How to use it and where

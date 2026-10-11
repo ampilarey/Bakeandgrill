@@ -396,7 +396,7 @@ export function PermissionsSettings({ initialUserId }: { initialUserId?: number 
         <li>The <strong>owner</strong> always has everything; nothing here changes that.</li>
         <li>A <strong>role</strong>'s switches apply to everyone with that role.</li>
         <li><strong>One person</strong>: Allow or Deny wins over their role, for them only. "As role" follows the role again.</li>
-        <li>Signing in here needs <strong>Access admin panel</strong>; the POS PIN needs <strong>Access POS app</strong>.</li>
+        <li>Signing in here needs <strong>Access admin panel</strong>, which <strong>Print labels</strong> and <strong>Manage label settings</strong> carry with them; the POS PIN needs <strong>Access POS app</strong>.</li>
         <li>A "View" permission only shows a screen; changing things needs the matching "Manage" one.</li>
       </ul>
       <details className="perm-cheat">

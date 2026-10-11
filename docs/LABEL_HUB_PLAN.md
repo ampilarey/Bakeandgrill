@@ -92,7 +92,10 @@ Add to `PermissionCatalog`:
  'description' => 'Edit ingredients, shelf life, storage line and label pictures on items, and the label wording'],
 ```
 
-- `SATISFIED_BY`: `'labels.print' => ['labels.manage']`.
+- `SATISFIED_BY`: `'labels.print' => ['labels.manage']`; since 2026-10-11 also
+  `'admin.access' => ['labels.print', 'labels.manage']`, so a staff member given either
+  can sign in to the admin panel where the labels are (owner: "Label permission is
+  given but can not use").
 - Role defaults (owner, 2026-10-04: "by default admin only, but option to give
   permission to any staff"): both slugs go in the owner-only list, so no stock role
   gets them. The owner grants them per role or per staff member in Staff →

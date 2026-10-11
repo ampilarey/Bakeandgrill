@@ -123,6 +123,34 @@ class PermissionToolsTest extends TestCase
             ->assertExitCode(0);
     }
 
+    public function test_explain_says_whether_the_account_can_open_the_admin_panel(): void
+    {
+        // Owner, 2026-10-11: "Label permission is given but can not use". The
+        // admin door is a check of its own, and a Labels permission opens it.
+        PermissionCatalogSync::sync();
+        $cashier = User::factory()->create([
+            'role_id' => Role::where('slug', 'staff')->firstOrFail()->id,
+            'is_active' => true,
+        ]);
+
+        // One substring per printed line: the output mock hands each line to
+        // the first expectation that matches it, so two on one line never both pass.
+        $this->artisan("staff:explain {$cashier->email}")
+            ->expectsOutputToContain('Sign-in to the admin panel: refused — needs admin.access (Access admin panel); Print labels or Manage label settings carries it.')
+            ->assertExitCode(0);
+
+        $cashier->grantPermission('labels.print');
+
+        $this->artisan("staff:explain {$cashier->email}")
+            ->expectsOutputToContain('Sign-in to the admin panel: allowed.')
+            ->assertExitCode(0);
+
+        $this->artisan("staff:explain {$cashier->email} admin.access")
+            ->expectsOutputToContain('GRANTED')
+            ->expectsOutputToContain("'labels.print' stands in for it")
+            ->assertExitCode(0);
+    }
+
     public function test_explain_says_when_the_account_does_not_exist(): void
     {
         $this->artisan('staff:explain nobody@example.com')

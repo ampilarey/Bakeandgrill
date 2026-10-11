@@ -56,6 +56,12 @@ final class PermissionCatalog
         'sms.transactional.manage' => ['integrations.sms', 'sms_marketing.manage'],
         'media.view' => ['website.manage', 'menu.manage'],
         'labels.print' => ['labels.manage'],
+        // Labels live in the admin panel and nowhere else, so either Labels
+        // permission carries the admin sign-in with it (owner, 2026-10-11:
+        // "Label permission is given but can not use" — a cashier given Print
+        // labels was refused at the admin door). This opens the door, not the
+        // rooms: every page inside still asks for its own permission.
+        'admin.access' => ['labels.print', 'labels.manage'],
         'media.manage' => ['website.manage'],
         'webhooks.manage' => ['integrations.webhooks'],
         'xero.manage' => ['integrations.xero'],
@@ -253,7 +259,7 @@ final class PermissionCatalog
             ['group' => 'Staff', 'slug' => 'users.create', 'name' => 'Create users'],
             ['group' => 'Staff', 'slug' => 'users.update', 'name' => 'Update users'],
             ['group' => 'Staff', 'slug' => 'users.delete', 'name' => 'Delete users'],
-            ['group' => 'System', 'slug' => 'admin.access', 'name' => 'Access admin panel', 'description' => 'Sign in to the admin dashboard (phone + password)'],
+            ['group' => 'System', 'slug' => 'admin.access', 'name' => 'Access admin panel', 'description' => 'Sign in to the admin dashboard with phone + PIN or password. Print labels and Manage label settings carry it, since labels are printed there'],
 
             // Service Availability & Maintenance (plan §13)
             ['group' => 'Service Availability', 'slug' => 'service_availability.view', 'name' => 'View service availability', 'description' => 'View the maintenance dashboard and current service states'],

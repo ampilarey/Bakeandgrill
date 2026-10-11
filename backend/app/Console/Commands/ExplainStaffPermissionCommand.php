@@ -71,6 +71,13 @@ class ExplainStaffPermissionCommand extends Command
                 ? 'Sign-in on staff devices: allowed.'
                 : 'Sign-in on staff devices: refused — needs pos.access, kds.view or admin.access.');
 
+            // Owner, 2026-10-11: "Label permission is given but can not use" —
+            // the admin door is a separate check, and a Labels permission
+            // carries it (PermissionCatalog::SATISFIED_BY).
+            $this->line($permissions->hasPermission($user, 'admin.access')
+                ? 'Sign-in to the admin panel: allowed.'
+                : 'Sign-in to the admin panel: refused — needs admin.access (Access admin panel); Print labels or Manage label settings carries it.');
+
             if ($canSignIn && !$permissions->hasPermission($user, 'kds.view')) {
                 $this->newLine();
                 $this->warn('This is the "No KDS access for this account." case: the account can sign in');

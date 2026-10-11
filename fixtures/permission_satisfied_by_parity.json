@@ -86,6 +86,10 @@
     "labels.print": [
       "labels.manage"
     ],
+    "admin.access": [
+      "labels.print",
+      "labels.manage"
+    ],
     "media.manage": [
       "website.manage"
     ],

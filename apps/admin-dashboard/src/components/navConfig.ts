@@ -357,6 +357,8 @@ export const PERM_ALIASES: Record<string, string[]> = {
   'sms.transactional.manage': ['integrations.sms', 'sms_marketing.manage'],
   'media.view': ['website.manage', 'menu.manage'],
   'labels.print': ['labels.manage'],
+  // Either Labels permission carries the admin sign-in (owner, 2026-10-11).
+  'admin.access': ['labels.print', 'labels.manage'],
   'media.manage': ['website.manage'],
   'webhooks.manage': ['integrations.webhooks'],
   'xero.manage': ['integrations.xero'],

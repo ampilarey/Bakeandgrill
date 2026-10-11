@@ -28,7 +28,7 @@ export const ROLE_CHEAT_SHEET: CheatSheetRole[] = [
   {
     slug: 'staff',
     label: 'Staff (Cashier)',
-    summary: 'POS-first role. No admin phone login unless admin.access is granted.',
+    summary: 'POS-first role. No admin sign-in unless admin.access is granted — or a Labels permission, which carries it.',
     can: [
       'POS: ring sales, payments, hold/resume, receipts, discounts, loyalty redeem',
       'Open/close own shift, time clock, own shift history',
@@ -75,7 +75,7 @@ export type CommonSlugRow = {
 };
 
 export const COMMON_PERMISSION_SLUGS: CommonSlugRow[] = [
-  { slug: 'admin.access', gates: 'Admin phone + password login', typical: 'Manager, Owner' },
+  { slug: 'admin.access', gates: 'Admin sign-in (phone + PIN or password). Print labels and Manage label settings carry it', typical: 'Manager, Owner, anyone given Print labels' },
   { slug: 'pos.access', gates: 'POS PIN login', typical: 'All roles with POS duty' },
   { slug: 'kds.view', gates: 'KDS PIN login and queue access', typical: 'Kitchen Staff, Manager' },
   { slug: 'kds.mark_kitchen_done', gates: 'Signal food ready for cashier review (no customer SMS)', typical: 'Kitchen Staff, Manager' },
@@ -100,7 +100,7 @@ export const COMMON_PERMISSION_SLUGS: CommonSlugRow[] = [
   { slug: 'website.manage', gates: 'Website CMS and system health', typical: 'Owner' },
   { slug: 'roles_permissions.manage', gates: 'Edit role defaults & user overrides', typical: 'Owner' },
   { slug: 'trade.view', gates: 'View wholesale shops, prices and deliveries', typical: 'Owner' },
-  { slug: 'labels.print', gates: 'Print pack stickers and box labels (Labels page, production batches, wholesale deliveries)', typical: 'Owner; grant to kitchen or managers as needed' },
+  { slug: 'labels.print', gates: 'Print pack stickers and box labels (Labels page, production batches, wholesale deliveries); signs in to the admin panel to do it', typical: 'Owner; grant to kitchen or managers as needed' },
   { slug: 'labels.manage', gates: 'Label settings: products on labels, ingredients, shelf life, pictures, wording', typical: 'Owner' },
   { slug: 'trade.manage_accounts', gates: 'Create and edit wholesale shop terms', typical: 'Owner' },
   { slug: 'trade.manage_prices', gates: 'Edit per-shop wholesale prices', typical: 'Owner' },

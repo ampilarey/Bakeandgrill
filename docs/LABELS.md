@@ -14,6 +14,15 @@ to one person):
 | `labels.print` | The Labels page: print stickers and box labels, saved labels, the stickers button on a production line (Kitchen → Batches), "Box label" on a wholesale delivery, a shop's saved box label |
 | `labels.manage` | Everything above, plus label types and brands, the item's Label tab and Labels → Settings |
 
+Either one also lets the person **sign in to the admin panel** (owner, 2026-10-11:
+"Label permission is given but can not use"). Admin sign-in is its own check,
+`admin.access` ("Access admin panel"), which stock staff and kitchen roles do not have;
+`PermissionCatalog::SATISFIED_BY` lets `labels.print` and `labels.manage` stand in for
+it, so "Access admin panel" need not be ticked separately. A cashier or cook given
+Print labels signs in at the admin site with their phone and PIN, finds Labels in the
+menu, and otherwise sees only the pages their role already opens. `php artisan
+staff:explain <phone>` says whether an account can get in and why.
+
 ## The pieces
 
 | Piece | What it is | Where |
