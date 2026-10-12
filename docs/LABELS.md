@@ -396,6 +396,59 @@ out (their captions and the "Contains …" note still print), and Dhivehi sets f
 same composed font as the PDF. Crop marks and a bleed do not apply (the label is the
 page), and an A4 sheet has no printer language: the links are refused with the reason.
 
+### Wrap-around labels (parts side by side)
+
+Built 2026-10-12 (owner: a juice bottle's label "with 2, 3, 4, 5 different parts";
+"all the possible things"). A **wide, short label is a wrap-around label**: any size at
+least 90 × 25 mm and two and a half times as wide as tall, and the one-tap sizes
+**200 × 50, 180 × 40, 150 × 35 and 120 × 40 mm** (on a label printer or as many as fit
+on A4: seven 180 × 40 labels to a sheet). Its **parts** sit side by side as columns, in
+the order the product keeps, with a hairline between them and a **flavour band** along
+the bottom (a rust band with the flavour or name, in English and Dhivehi, and the net
+content at the end). The parts:
+
+| Part | What it prints |
+|---|---|
+| Brand and name | The logo, the brand line and heading, the product name (hand-lettered or typed, Dhivehi beneath when both) and the picture when the part is wide enough |
+| Ingredients and legal text | "INGREDIENTS" and the list with allergens bold (the Dhivehi list beneath when both), the note or "Contains …", the storage line, how to use, use-within, and under a hairline "Made by Bake & Grill, address · phone · website" from Business details |
+| Nutrition per 100 g or ml | Every value as a row (energy, fat, of which saturates, carbohydrate, of which sugars, protein, salt) from the recipe, or a custom label's typed line |
+| Dates and batch | The made-on and expiry boxes (side by side when the part is wide), the batch and pack number, price · quantity · net weight; the EAN barcode too, when there is no Barcode part and the height for it |
+| Barcode | The EAN-13 or EAN-8 bars, as wide as the part allows, with the digits beneath; left out when the product has no barcode |
+| QR code | The pack's page (batch QR) when it is on, else the complaints QR, captioned |
+| Recycling marks and pictures | The marks picked, each a symbol with its word beneath, and up to four pictures from the media library (a halal or other certification mark the business holds) |
+| Free text | A heading and lines of the owner's own, English and Dhivehi |
+| Packed for and promotion | The packed-for box and the promotion flash, when the sheet carries them |
+
+A part with nothing to print is left out. Each part asks for a width (the barcode, QR
+and marks from the label's height) and the parts share what is left by weight; on a
+label too narrow for what they ask, every part gives up the same share down to its
+floor (a QR must still scan, a barcode too, 11 and 20 mm), and only when even the
+floors do not fit do the last parts give way, in the order free text, packed for,
+marks, QR, barcode, nutrition, legal (the brand and the dates stay): nine parts print
+on 180 × 40 mm, seven on 150 × 35, five on 120 × 40, four on 100 × 30. A squeezed
+part sets its heading plain where the letter-spaced one would not fit. In Dhivehi the
+parts run right to left, and a Dhivehi label with no Dhivehi ingredients prints the
+English list under the Dhivehi heading. Type and spacing scale with the height (30 to
+60 mm). Everything else on the hub applies: the print log and codes, the saved label,
+the batch QR, the PDF, the web sheet and the label printer's ZPL and TSPL.
+
+**Which parts, in what order** is kept per product (`label_wrap`): the item's Label tab
+(Wrap-around label) and the custom label editor (Wrap-around label) list the parts with
+move and remove, add one from a select, switch the band and type its words, pick the
+recycling marks (the universal loop, the tidy man, plastics 1 to 7, glass, paper,
+metal), pick mark pictures, and type the free text; **Usual set** puts the default
+parts back (brand, legal, nutrition, dates, barcode, QR, marks; the loop and the tidy man).
+Nothing kept prints that default set. The same editors say whether the product's
+nutrition values are **per 100 g or per 100 ml** (`label_nutrition_per`), which the
+nutrition heading reads on every sticker.
+
+The recycling marks are glyphs of a small symbol font (a subset of DejaVu Sans with
+the Unicode recycling symbols, `scripts/label-symbol-font.py`, licence in
+`public/fonts/DEJAVU-LICENSE.txt`), so the browser sheet, the PDF and the thermal
+bitmap all draw them; the tidy man is drawn from boxes. A mark picture is any image in
+the media library; the business is responsible for the right to print a certification
+mark.
+
 ## Printing
 
 **Pack stickers** (Labels → Pack stickers): **Print again** at the top lists the pinned
@@ -531,12 +584,13 @@ beneath.
 | Pack numbering | `number` in a sticker request; `StickerSheet::build()` draws each copy with `pack_no` / `pack_of`; `StickerDesign::full()` prints "PACK n OF N" under the header, `mini()` and `SmallStickerDesign::batchLine()` add "· PACK n/N" / "· n/N" to the batch line |
 | Crop marks and bleed | `marks` and `bleed` (0–5 mm) in a sticker request; `StickerSheet::printReady()` grows a single-label page by the bleed and turns the cut lines off; `labels/stickers.blade.php` draws the ticks (`data-testid="crop-mark"`, cut to the page) |
 | Label printer | `App\Domains\Labels\LabelRaster` (`page()` draws one page of a built sheet with GD at `dpi`, `DPIS` 203 / 300; text from the PDF font files, Thaana in visual order, PNGs dithered, SVGs redrawn from `build()['vectors']`: a QR from its text, a barcode from its digits; `png()` for checking), `ZplEncoder` (`^GFA` with ZPL's run-length form), `TsplEncoder` (`SIZE`, `GAP`, `BITMAP` with the bits inverted, `PRINT 1,1`); signed routes `/labels/stickers.zpl`, `.tspl`, `.png` (`page` outside the signature), single-label sheets only; `dpi` on the sticker request, `zpl_url` / `tspl_url` / `raster_url` in the reply; `scripts/label-print-agent.mjs`; `LabelPrinterCard.tsx` (`labels.printer` in localStorage, `readPrinterSetup()` / `sendToLabelPrinter()` in `api/labels.ts`) and the buttons on `StickerPrintPanel` |
+| Wrap-around labels | `StickerLayouts::design()` answers `wrap` (`WRAP_MIN_RATIO` 2.5, `WRAP_MIN_W` 90, `WRAP_MIN_H` 25; mirrored in `labelSize.ts`, pinned by `fixtures/label_size_parity.json`), presets `r200x50`, `r180x40`, `r150x35`, `r120x40`; `App\Domains\Labels\WrapDesign` (`wrap()`: widths from each part's least width and share, `DROP_ORDER`, the band, one method a part); `WrapConfig` (`of()`, `clean()`, `PARTS`, `DEFAULT_PARTS`, `catalogue()`), kept as `items.label_wrap` / `custom_labels.label_wrap` (JSON) with `label_nutrition_per`; `LabelMarks` (`MARKS` glyph + caption, `for()`); `stickerData()` sets `wrap`, `marks`, `pictures` (PNG data URIs) and `producer`; `LabelText::FONTS['sym']` (`fonts/pdf/LabelSymbols.ttf`, `fonts/label-symbols.woff2`); `GET /api/labels/layouts` carries `wrap` (parts, marks, defaults); `WrapParts.tsx` on `ItemLabelTab` and the custom label editor, `wrap_pictures` on the payloads for the thumbnails |
 | Allergen pictograms | `App\Domains\Labels\AllergenIcons` (`for()`, `keys()`, `svg()`, `dataUri()`; words → symbols, captions, `SPICY_LEVELS`); `stickerData()` sets `icons`, `StickerDesign::full()` draws the row (12 mm pitch, 8.8 mm tall) above the note; setting `label_allergen_icons` |
 | Footers | `label_footers` (`App\Models\LabelFooter`, § Footers); `custom_labels.footer_id`, `label_types.footer_id`, `footer` in a sticker request; `LabelTypes::footer()` fills the blanks, `StickerSheet::footerPreset()` picks which one. API `GET /api/labels/footers` (`labels.print`), `POST` / `PUT` / `DELETE /api/labels/footers/{footer}` (`labels.manage`; the standard one cannot be removed, 422) |
 | Box-label wording per storage, date style, pre-cut offsets | Labels → Settings, site settings with the originals as defaults (`App\Domains\Labels\LabelSettings`) |
 | Phone, website, address, landmark, tagline | Business Details (same as receipts) |
 | Sticker designs | `App\Domains\Labels\StickerDesign`: `full`, `mini`, `round`; `SmallStickerDesign`: `small` and rounds under 45 mm (pieces in mm). A text piece with `bold_words` sets those words in the bold face (allergens). `lang: both` reaches the designs as `$d['both']` |
-| Price, barcode, net weight, allergens | `items.label_price` / `label_show_price` / `label_barcode` / `label_net_weight`; `custom_labels` the same plus `label_allergens`; `StickerSheet::price()`, `allergens()`; `App\Domains\Labels\Barcode` (EAN-13/EAN-8 check digit, modules, bars as an SVG data URI; the digits are a text piece beneath). The bars print on the full design only; the compact sizes in use have no room |
+| Price, barcode, net weight, allergens | `items.label_price` / `label_show_price` / `label_barcode` / `label_net_weight`; `custom_labels` the same plus `label_allergens`; `StickerSheet::price()`, `allergens()`; `App\Domains\Labels\Barcode` (EAN-13/EAN-8 check digit, modules, bars as an SVG data URI sized in its own units, never mm: dompdf's SVG library ignores the viewBox and a size in mm drew the bars twice as tall as their box; the digits are a text piece beneath). The bars print on the full design and the wrap-around label's Barcode part (or under its dates); the compact sizes in use have no room |
 | Draft preview | `POST /api/labels/custom/preview` (`labels.manage`) keeps the draft in the cache for 30 minutes (`StickerSheet::keepDraft`) and links the sheet with `items=d<token>:1`; `StickerSheet::draft()` builds an unsaved `CustomLabel` from it. The print API refuses a draft |
 | Pinned labels | `label_jobs.pinned`; `PUT /api/labels/jobs/{job}` takes `pinned`; the list orders pinned first, `?pinned=1` filters |
 | Kitchen screen stickers | `apps/kds-web`: `fetchProductionStickers`, `productionStickerLinks`, `labelSheetUrl`; the Stickers button on `KitchenProductionPanel` for a job sent this session, shown with `labels.print` |

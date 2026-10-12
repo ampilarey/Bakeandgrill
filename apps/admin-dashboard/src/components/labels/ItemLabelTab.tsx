@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { ImagePlus, X, RefreshCw } from 'lucide-react';
-import { fetchLabelItem, fetchLabelTypes, stickerLinks, updateItemLabel, type IngredientsSource, type LabelProduct, type LabelStorage, type LabelType } from '../../api';
+import { fetchLabelItem, fetchLabelLayouts, fetchLabelTypes, stickerLinks, updateItemLabel, type IngredientsSource, type LabelProduct, type LabelStorage, type LabelType, type LabelWrap, type NutritionPer, type WrapCatalogue, type WrapPicture } from '../../api';
 import { SheetPreview } from './SheetPreview';
+import { WrapParts } from './WrapParts';
 import { MediaPicker } from '../MediaPicker';
 import { Button } from '../ui';
 
@@ -40,6 +41,10 @@ type Draft = {
   label_barcode: string;
   label_net_weight: string;
   label_show_nutrition: boolean;
+  label_nutrition_per: NutritionPer;
+  /** The wrap-around label's parts (2026-10-12), and the picked mark pictures with their urls. */
+  label_wrap: LabelWrap;
+  wrap_pictures: WrapPicture[];
 };
 
 /** What the nutrition switch says the recipe gives today (round C). */
@@ -82,6 +87,9 @@ const toDraft = (p: LabelProduct): Draft => ({
   label_barcode: p.label_barcode ?? '',
   label_net_weight: p.label_net_weight ?? '',
   label_show_nutrition: p.label_show_nutrition,
+  label_nutrition_per: p.label_nutrition_per === 'ml' ? 'ml' : 'g',
+  label_wrap: p.label_wrap,
+  wrap_pictures: p.wrap_pictures ?? [],
 });
 
 const fieldClass = 'h-10 min-h-[44px] px-3 rounded-lg border border-[var(--color-border)] bg-white text-sm text-[var(--color-text)] w-full';
@@ -90,13 +98,16 @@ const labelClass = 'block text-xs font-semibold text-[var(--color-text-secondary
 export function ItemLabelTab({ itemId }: { itemId: number }) {
   const [product, setProduct] = useState<LabelProduct | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
-  const [picker, setPicker] = useState<'title' | 'photo' | null>(null);
+  const [picker, setPicker] = useState<'title' | 'photo' | 'mark' | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [lang, setLang] = useState<'en' | 'dv'>('en');
   const [types, setTypes] = useState<LabelType[]>([]);
+  // The wrap-around label's parts and marks, as the server lists them (2026-10-12).
+  const [catalogue, setCatalogue] = useState<WrapCatalogue | null>(null);
   useEffect(() => { fetchLabelTypes().then((r) => setTypes(r.data.filter((t) => t.is_active || t.id === product?.label_type_id))).catch(() => setTypes([])); }, [product?.label_type_id]);
+  useEffect(() => { fetchLabelLayouts().then((r) => setCatalogue(r.wrap ?? null)).catch(() => setCatalogue(null)); }, []);
 
   useEffect(() => {
     fetchLabelItem(itemId).then((r) => { setProduct(r.data); setDraft(toDraft(r.data)); }).catch(() => setMessage('Could not load the label settings.'));
@@ -144,6 +155,8 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
         label_barcode: draft.label_barcode.trim() || null,
         label_net_weight: draft.label_net_weight.trim() || null,
         label_show_nutrition: draft.label_show_nutrition,
+        label_nutrition_per: draft.label_nutrition_per,
+        label_wrap: draft.label_wrap,
       });
       setProduct(r.data); setDraft(toDraft(r.data));
       setMessage('Label settings saved.');
@@ -176,8 +189,8 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_auto]" data-testid="item-label-tab">
-      <div className="space-y-4">
+    <div className="grid gap-6 lg:grid-cols-[1fr_auto] min-w-0" data-testid="item-label-tab">
+      <div className="space-y-4 min-w-0">
         <label className="flex items-center gap-3 min-h-[44px]">
           <input type="checkbox" checked={draft.label_enabled} onChange={(e) => set('label_enabled', e.target.checked)} className="w-5 h-5 accent-[var(--color-primary)]" />
           <span className="text-sm font-semibold text-[var(--color-text)]">Print pack stickers for this item</span>
@@ -275,6 +288,23 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
           </label>
         </fieldset>
 
+        {/* The wrap-around label's parts (owner, 2026-10-12: a bottle label with parts side by side). */}
+        <fieldset className="rounded-xl border border-[var(--color-border)] p-3 space-y-3 min-w-0" data-testid="item-label-wrap">
+          <legend className="px-1 text-sm font-bold text-[var(--color-text)]">Wrap-around label (wide sizes)</legend>
+          <WrapParts
+            value={draft.label_wrap}
+            onChange={(v) => set('label_wrap', v)}
+            catalogue={catalogue}
+            pictures={draft.wrap_pictures}
+            onAddPicture={() => setPicker('mark')}
+            nutritionPer={draft.label_nutrition_per}
+            onNutritionPer={(per) => set('label_nutrition_per', per)}
+            productName={product.name}
+            netWeight={draft.label_net_weight}
+            idPrefix="lbl-wrap"
+          />
+        </fieldset>
+
         {pictureSlot('title', 'Hand-lettered name', 'A PNG with a clear background. Without one, the name is typed in the brand font.')}
         {pictureSlot('photo', 'Food photo (labels only)', product.cutout_url ? 'Without one, the item\'s cut-out from the Photos tab prints, the same picture the menu cards use.' : 'Without one, the flame prints. Add a background-less PNG as the item\'s cut-out on the Photos tab and it is used here, on the menu cards and the POS.')}
 
@@ -305,10 +335,14 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
         open={picker !== null}
         onClose={() => setPicker(null)}
         mediaType="image"
-        title={picker === 'title' ? 'Hand-lettered name' : 'Food photo'}
+        title={picker === 'title' ? 'Hand-lettered name' : picker === 'mark' ? 'Mark picture' : 'Food photo'}
         onPick={(asset) => {
           if (picker === 'title') { set('label_title_media_id', asset.id); set('label_title_url', asset.url); }
           if (picker === 'photo') { set('label_photo_media_id', asset.id); set('label_photo_url', asset.url); }
+          if (picker === 'mark' && !draft.label_wrap.pictures.includes(asset.id)) {
+            set('label_wrap', { ...draft.label_wrap, pictures: [...draft.label_wrap.pictures, asset.id] });
+            set('wrap_pictures', [...draft.wrap_pictures, { id: asset.id, url: asset.url }]);
+          }
           setPicker(null);
         }}
       />

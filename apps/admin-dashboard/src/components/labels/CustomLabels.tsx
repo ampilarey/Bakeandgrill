@@ -4,9 +4,10 @@ import { Bookmark, ChevronDown, Copy, Eye, ImagePlus, Pencil, Plus, Printer, Ref
 import {
   createCustomLabel, deleteCustomLabel, duplicateCustomLabel, fetchCustomLabels, fetchLabelBrands, fetchLabelFooters, fetchLabelLayouts, fetchLabelSettings, fetchLabelTypes,
   previewCustomDraft, stickerLinks, updateCustomLabel, uploadCustomLabelPicture,
-  type CustomLabel, type CustomLabelPayload, type LabelBrand, type LabelFooter, type LabelLimits, type LabelPreset, type LabelStorage, type LabelType, type StickerLang,
+  type CustomLabel, type CustomLabelPayload, type LabelBrand, type LabelFooter, type LabelLimits, type LabelPreset, type LabelStorage, type LabelType, type LabelWrap, type NutritionPer, type StickerLang, type WrapCatalogue, type WrapPicture,
 } from '../../api';
 import { FooterPicker } from './FooterPicker';
+import { EMPTY_WRAP, WrapParts } from './WrapParts';
 import { DEFAULT_CHOICE, rememberedSize, requestFor, sizeName, sizeOf, stockOf, type SizeChoice } from './labelSize';
 import { Btn, ConfirmDialog, Modal, ModalActions, useConfirmDialog } from '../SharedUI';
 import { Button, Card, useToast } from '../ui';
@@ -49,6 +50,7 @@ type Draft = {
   label_show_qr: '' | 'on' | 'off'; label_lang: StickerLang | '';
   label_shelf_life_days: string; label_pack_qty: string; label_pack_unit: string;
   label_price: string; label_barcode: string; label_net_weight: string; label_allergens: string; label_nutrition: string;
+  label_nutrition_per: NutritionPer; label_wrap: LabelWrap; wrap_pictures: WrapPicture[];
   label_photo_media_id: number | null; label_photo_url: string | null; label_title_media_id: number | null; label_title_url: string | null;
 };
 
@@ -61,6 +63,7 @@ const toDraft = (c: CustomLabel | null): Draft => ({
   label_shelf_life_days: c?.label_shelf_life_days ? String(c.label_shelf_life_days) : '', label_pack_qty: c?.label_pack_qty ? String(c.label_pack_qty) : '', label_pack_unit: c?.label_pack_unit ?? '',
   label_price: c?.label_price != null ? String(c.label_price) : '', label_barcode: c?.label_barcode ?? '', label_net_weight: c?.label_net_weight ?? '', label_allergens: c?.label_allergens ?? '',
   label_nutrition: c?.label_nutrition ?? '',
+  label_nutrition_per: c?.label_nutrition_per === 'ml' ? 'ml' : 'g', label_wrap: c?.label_wrap ?? EMPTY_WRAP, wrap_pictures: c?.wrap_pictures ?? [],
   label_photo_media_id: c?.label_photo_media_id ?? null, label_photo_url: c?.label_photo_url ?? null, label_title_media_id: c?.label_title_media_id ?? null, label_title_url: c?.label_title_url ?? null,
 });
 
@@ -75,6 +78,7 @@ const toPayload = (d: Draft): CustomLabelPayload => ({
   label_shelf_life_days: d.label_shelf_life_days ? Number(d.label_shelf_life_days) : null, label_pack_qty: d.label_pack_qty ? Number(d.label_pack_qty) : null, label_pack_unit: text(d.label_pack_unit),
   label_price: d.label_price !== '' ? Number(d.label_price) : null, label_barcode: text(d.label_barcode), label_net_weight: text(d.label_net_weight), label_allergens: text(d.label_allergens),
   label_nutrition: text(d.label_nutrition),
+  label_nutrition_per: d.label_nutrition_per, label_wrap: d.label_wrap,
   label_photo_media_id: d.label_photo_media_id, label_title_media_id: d.label_title_media_id,
 });
 
@@ -142,7 +146,9 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
   const [saving, setSaving] = useState(false);
   const [printing, setPrinting] = useState(false);
   const [newBrand, setNewBrand] = useState(false);
-  const [picker, setPicker] = useState<'photo' | 'title' | null>(null);
+  const [picker, setPicker] = useState<'photo' | 'title' | 'mark' | null>(null);
+  // The wrap-around label's parts and marks, as the server lists them (2026-10-12).
+  const [catalogue, setCatalogue] = useState<WrapCatalogue | null>(null);
   const [uploading, setUploading] = useState<'photo' | 'title' | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [previewBusy, setPreviewBusy] = useState(false);
@@ -159,7 +165,7 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
     fetchLabelTypes().then((r) => setTypes(r.data.filter((t) => t.is_active || t.id === label?.label_type_id))).catch(() => setTypes([]));
   }, [label?.label_type_id]);
   useEffect(() => {
-    fetchLabelLayouts().then((r) => { setPresets(r.presets); setLimits(r.limits ?? null); }).catch(() => setPresets([]));
+    fetchLabelLayouts().then((r) => { setPresets(r.presets); setLimits(r.limits ?? null); setCatalogue(r.wrap ?? null); }).catch(() => setPresets([]));
     fetchLabelFooters().then((r) => setFooters(r.data)).catch(() => setFooters([]));
     fetchLabelSettings().then((r) => setDvFont(r.data.label_dhivehi_font || 'noto')).catch(() => setDvFont(null));
   }, []);
@@ -418,6 +424,21 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
               </Field>
             </Section>
 
+            <Section title="Wrap-around label (wide sizes)" summary={`${d.label_wrap.parts.length} parts${d.label_wrap.band ? ' · band' : ''}`} open={false} testId="custom-label-wrap">
+              <WrapParts
+                value={d.label_wrap}
+                onChange={(v) => set('label_wrap', v)}
+                catalogue={catalogue}
+                pictures={d.wrap_pictures}
+                onAddPicture={() => setPicker('mark')}
+                nutritionPer={d.label_nutrition_per}
+                onNutritionPer={(per) => set('label_nutrition_per', per)}
+                productName={d.name}
+                netWeight={d.label_net_weight}
+                idPrefix="cl-wrap"
+              />
+            </Section>
+
             {pictureSlot('photo', 'Picture', 'A PNG with a clear background prints over the label; kept exactly as uploaded.')}
             {pictureSlot('title', 'Hand-lettered name (optional)', 'A PNG of the name drawn by hand. Without one, the name is typed in the brand font.')}
           </div>
@@ -455,11 +476,14 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
         open={picker !== null}
         onClose={() => setPicker(null)}
         mediaType="image"
-        title={picker === 'title' ? 'Hand-lettered name' : 'Picture'}
+        title={picker === 'title' ? 'Hand-lettered name' : picker === 'mark' ? 'Mark picture' : 'Picture'}
         onPick={(asset) => {
           const url = asset.original_url ?? asset.url;
           if (picker === 'title') { set('label_title_media_id', asset.id); set('label_title_url', url); }
           if (picker === 'photo') { set('label_photo_media_id', asset.id); set('label_photo_url', url); }
+          if (picker === 'mark' && !d.label_wrap.pictures.includes(asset.id)) {
+            setD((s) => ({ ...s, label_wrap: { ...s.label_wrap, pictures: [...s.label_wrap.pictures, asset.id] }, wrap_pictures: [...s.wrap_pictures, { id: asset.id, url }] }));
+          }
           setPicker(null);
         }}
       />

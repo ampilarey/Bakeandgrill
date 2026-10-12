@@ -82,16 +82,19 @@ final class Nutrition
 
     /**
      * What a sticker prints for a product: the recipe's panel as rows for
-     * the full design, or a custom label's typed line; null for nothing.
+     * the full design (`rows`, five columns) and the wrap label (`all`,
+     * every value), or a custom label's typed line; null for nothing. `per`
+     * is "g" or "ml" (a drink's values are per 100 ml).
      *
-     * @return ?array{rows: list<array{0: string, 1: string}>, line: string}
+     * @return ?array{rows: list<array{0: string, 1: string}>, all: list<array{0: string, 1: string}>, line: string, per: string}
      */
     public function forSticker(Item|CustomLabel $product): ?array
     {
+        $per = self::per($product);
         if ($product instanceof CustomLabel) {
             $line = trim((string) $product->label_nutrition);
 
-            return $line !== '' ? ['rows' => [], 'line' => $line] : null;
+            return $line !== '' ? ['rows' => [], 'all' => [], 'line' => $line, 'per' => $per] : null;
         }
         if (!$product->label_show_nutrition) {
             return null;
@@ -101,7 +104,25 @@ final class Nutrition
             return null;
         }
 
-        return ['rows' => self::rows($panel['per100']), 'line' => self::line($panel['per100'])];
+        return ['rows' => self::rows($panel['per100']), 'all' => self::all($panel['per100']), 'line' => self::line($panel['per100']), 'per' => $per];
+    }
+
+    /** "g", or "ml" when the product says its values are per 100 ml (a drink). */
+    public static function per(Item|CustomLabel $product): string
+    {
+        return $product->label_nutrition_per === 'ml' ? 'ml' : 'g';
+    }
+
+    /** @return list<array{0: string, 1: string}> every value as a row: Energy → "296 kcal", Fat → "1.1 g", of which saturates → "0.3 g" … */
+    public static function all(array $per100): array
+    {
+        $rows = [];
+        foreach (self::FIELDS as $key => $label) {
+            $name = (string) preg_replace('/\s*\((kcal|g)\)$/', '', $label);
+            $rows[] = [$name, $key === 'kcal' ? number_format((float) ($per100[$key] ?? 0), 0) . ' kcal' : number_format((float) ($per100[$key] ?? 0), 1) . ' g'];
+        }
+
+        return $rows;
     }
 
     /**

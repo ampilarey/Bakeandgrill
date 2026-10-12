@@ -88,7 +88,7 @@ class LabelExtrasTest extends TestCase
 
         // The full sticker carries the bars (beside the QRs and the allergen symbols) and the digits with the check digit added.
         $html = $this->sheet(['items' => [['id' => $this->bajiya->id, 'copies' => 1]], 'layout' => 'a4-4', 'qty' => 10]);
-        $this->assertStringContainsString(Barcode::svgDataUri(Barcode::normalise('590123412345'), 30, 12), $html, 'the bars');
+        $this->assertStringContainsString(Barcode::svgDataUri(Barcode::normalise('590123412345')), $html, 'the bars');
         $this->assertStringContainsString('5 901234 123457', $html);
         $this->assertStringContainsString('NET 250 g', $html);
         // A compact label has no room for the bars; the net weight still rides on the quantity.

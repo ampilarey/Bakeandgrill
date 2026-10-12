@@ -9,6 +9,7 @@ use App\Domains\Labels\BatchLink;
 use App\Domains\Labels\BoxLabel;
 use App\Domains\Labels\ExpiringPrints;
 use App\Domains\Labels\LabelIngredients;
+use App\Domains\Labels\LabelMarks;
 use App\Domains\Labels\LabelMedia;
 use App\Domains\Labels\LabelRaster;
 use App\Domains\Labels\LabelSettings;
@@ -16,6 +17,7 @@ use App\Domains\Labels\LabelTypes;
 use App\Domains\Labels\Nutrition;
 use App\Domains\Labels\StickerLayouts;
 use App\Domains\Labels\StickerSheet;
+use App\Domains\Labels\WrapConfig;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Labels\LabelSheetController;
 use App\Models\CateringRequest;
@@ -81,6 +83,8 @@ class LabelsController extends Controller
             })->values(),
             'presets' => StickerLayouts::presets(),
             'limits' => StickerLayouts::limits(),
+            // The wrap-around label's parts and marks, as the editors list them (2026-10-12).
+            'wrap' => WrapConfig::catalogue(),
         ]);
     }
 
@@ -851,13 +855,13 @@ class LabelsController extends Controller
             'label_show_nutrition' => 'sometimes|boolean',
             'label_title_media_id' => 'sometimes|nullable|integer|exists:media_assets,id',
             'label_photo_media_id' => 'sometimes|nullable|integer|exists:media_assets,id',
-        ]);
+        ] + self::wrapRules());
         foreach (['label_title_media_id', 'label_photo_media_id'] as $key) {
             if (!empty($data[$key]) && Media::query()->whereKey($data[$key])->value('media_type') !== 'image') {
                 return response()->json(['message' => 'Pick an image for the label.', 'errors' => [$key => ['Pick an image.']]], 422);
             }
         }
-        if ($bad = $this->barcodeProblem($data)) {
+        if ($bad = $this->barcodeProblem($data) ?? $this->wrapProblem($data)) {
             return $bad;
         }
 
@@ -874,6 +878,63 @@ class LabelsController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * What a wrap-around label keeps (2026-10-12): its parts in order, the
+     * flavour band, the marks and pictures, the free text; and whether the
+     * nutrition values are per 100 g or per 100 ml.
+     *
+     * @return array<string, mixed>
+     */
+    private static function wrapRules(): array
+    {
+        return [
+            'label_nutrition_per' => ['sometimes', Rule::in(['g', 'ml'])],
+            'label_wrap' => 'sometimes|nullable|array',
+            'label_wrap.parts' => 'sometimes|array|max:' . count(WrapConfig::PARTS),
+            'label_wrap.parts.*' => ['string', Rule::in(WrapConfig::PARTS)],
+            'label_wrap.band' => 'sometimes|boolean',
+            'label_wrap.band_text' => 'sometimes|nullable|string|max:60',
+            'label_wrap.band_text_dv' => 'sometimes|nullable|string|max:60',
+            'label_wrap.marks' => 'sometimes|array|max:' . count(LabelMarks::KEYS),
+            'label_wrap.marks.*' => ['string', Rule::in(LabelMarks::KEYS)],
+            'label_wrap.pictures' => 'sometimes|array|max:' . WrapConfig::MAX_PICTURES,
+            'label_wrap.pictures.*' => 'integer|exists:media_assets,id',
+            'label_wrap.text_heading' => 'sometimes|nullable|string|max:40',
+            'label_wrap.text_heading_dv' => 'sometimes|nullable|string|max:40',
+            'label_wrap.text' => 'sometimes|nullable|string|max:400',
+            'label_wrap.text_dv' => 'sometimes|nullable|string|max:400',
+        ];
+    }
+
+    /** A mark picture that is not an image is refused; a kept config is tidied (WrapConfig::clean), null clears it. */
+    private function wrapProblem(array &$data): ?JsonResponse
+    {
+        if (!array_key_exists('label_wrap', $data)) {
+            return null;
+        }
+        if ($data['label_wrap'] === null) {
+            return null;
+        }
+        $clean = WrapConfig::clean($data['label_wrap']);
+        if ($clean['pictures'] !== [] && Media::query()->whereIn('id', $clean['pictures'])->where('media_type', '!=', 'image')->exists()) {
+            return response()->json(['message' => 'Pick images for the marks.', 'errors' => ['label_wrap.pictures' => ['Pick images.']]], 422);
+        }
+        $data['label_wrap'] = $clean;
+
+        return null;
+    }
+
+    /** @return list<array{id: int, url: ?string}> the pictures in a wrap config, with their urls for the editor */
+    private function wrapPictures(array $wrap): array
+    {
+        if ($wrap['pictures'] === []) {
+            return [];
+        }
+        $media = Media::query()->whereIn('id', $wrap['pictures'])->get()->keyBy('id');
+
+        return array_map(fn (int $id) => ['id' => $id, 'url' => $media->get($id)?->url], $wrap['pictures']);
     }
 
     /**
@@ -1008,13 +1069,13 @@ class LabelsController extends Controller
             'label_nutrition' => 'sometimes|nullable|string|max:200',
             'label_photo_media_id' => 'sometimes|nullable|integer|exists:media_assets,id',
             'label_title_media_id' => 'sometimes|nullable|integer|exists:media_assets,id',
-        ]);
+        ] + self::wrapRules());
         foreach (['label_title_media_id', 'label_photo_media_id'] as $key) {
             if (!empty($data[$key]) && Media::query()->whereKey($data[$key])->value('media_type') !== 'image') {
                 return response()->json(['message' => 'Pick an image for the label.', 'errors' => [$key => ['Pick an image.']]], 422);
             }
         }
-        if ($bad = $this->barcodeProblem($data)) {
+        if ($bad = $this->barcodeProblem($data) ?? $this->wrapProblem($data)) {
             return $bad;
         }
         foreach ($data as $key => $value) {
@@ -1080,6 +1141,9 @@ class LabelsController extends Controller
             'label_net_weight' => $c->label_net_weight,
             'label_allergens' => $c->label_allergens,
             'label_nutrition' => $c->label_nutrition,
+            'label_nutrition_per' => Nutrition::per($c),
+            'label_wrap' => $wrap = WrapConfig::of($c),
+            'wrap_pictures' => $this->wrapPictures($wrap),
             'label_photo_media_id' => $c->label_photo_media_id,
             'label_photo_url' => $media->get($c->label_photo_media_id)?->url,
             'label_title_media_id' => $c->label_title_media_id,
@@ -1345,6 +1409,10 @@ class LabelsController extends Controller
             // The nutrition panel (round C): on or off, and what the recipe gives today.
             'label_show_nutrition' => (bool) $item->label_show_nutrition,
             'nutrition' => $this->nutrition->forItem($item),
+            'label_nutrition_per' => Nutrition::per($item),
+            // The wrap-around label's parts (2026-10-12), as they stand.
+            'label_wrap' => $wrap = WrapConfig::of($item),
+            'wrap_pictures' => $this->wrapPictures($wrap),
             'menu_price' => $item->displayPriceInfo()['price'],
             // What prints when the item's own wording is empty: its type's wording, else the defaults for its storage.
             'defaults' => [

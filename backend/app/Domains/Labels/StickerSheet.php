@@ -306,6 +306,7 @@ final class StickerSheet
             'full' => StickerDesign::full($data, $dv),
             'round' => StickerDesign::round($data, $dv, $sheet['w']),
             'small' => SmallStickerDesign::rect($data, $dv, $sheet['w'], $sheet['h']),
+            'wrap' => WrapDesign::wrap($data, $dv, $sheet['w'], $sheet['h']),
             default => StickerDesign::mini($data, $dv, $sheet['w'], $sheet['h']),
         };
         foreach ($req['items'] as $row) {
@@ -581,13 +582,29 @@ final class StickerSheet
             $vector[$batchQr] = ['qr', BatchLink::url($printCode)];
         }
         if ($code !== null) {
-            $vector[Barcode::svgDataUri($code, 30, 12)] = ['ean', $code];
+            $vector[Barcode::svgDataUri($code)] = ['ean', $code];
         }
         foreach ($icons as $icon) {
             $vector[$icon['src']] = ['icon', $icon['key']];
         }
+        // A wrap-around label's parts (owner, 2026-10-12): what prints, the
+        // recycling marks, the pictures picked for the marks row, and who
+        // made it for the legal text.
+        $wrap = WrapConfig::of($item);
+        $pictures = [];
+        foreach ($wrap['pictures'] as $mediaId) {
+            $src = LabelImage::fromMedia($mediaId, 400);
+            if ($src !== null) {
+                $pictures[] = ['src' => $src, 'ratio' => LabelImage::ratio($src)];
+            }
+        }
+        $contact = $common['contact'];
 
         return $common + [
+            'wrap' => $wrap,
+            'marks' => LabelMarks::for($wrap['marks']),
+            'pictures' => $pictures,
+            'producer' => ['name' => (string) ($contact['name'] ?? ''), 'address' => (string) ($contact['address'] ?? ''), 'phone' => (string) ($contact['phone'] ?? ''), 'website' => (string) ($contact['website'] ?? '')],
             // Packed for and the promotion flash (2026-10-12), from the request.
             'packed_for' => (string) ($req['for'] ?? ''),
             'packed_for2' => (string) ($req['for2'] ?? ''),
@@ -623,7 +640,7 @@ final class StickerSheet
             'footer' => $footer,
             'price' => $price,
             'net_weight' => trim((string) $item->label_net_weight),
-            'barcode' => $code !== null ? Barcode::svgDataUri($code, 30, 12) : null,
+            'barcode' => $code !== null ? Barcode::svgDataUri($code) : null,
             'barcode_text' => $code !== null ? Barcode::text($code) : '',
             'allergens' => $allergens,
             'how_to_use' => $w['how_to_use'],

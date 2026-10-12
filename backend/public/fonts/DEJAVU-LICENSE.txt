@@ -2,6 +2,11 @@ dejavu-sans-400.woff2 and dejavu-sans-700.woff2 are Latin subsets of DejaVu Sans
 and DejaVu Sans Bold, as shipped with dompdf, so the printable complaint QR sheet
 draws in the same font in the browser as in its PDF.
 
+label-symbols.woff2 and pdf/LabelSymbols.ttf are a subset of DejaVu Sans (the Unicode
+recycling symbols U+2672 to U+267D, digits and capitals) for the recycling marks on
+wrap-around labels, built by scripts/label-symbol-font.py, so the browser sheet, the PDF
+and the thermal bitmap draw the same glyphs.
+
 Copyright (c) 2003 by Bitstream, Inc. All Rights Reserved.
 Copyright (c) 2006 by Tavmjong Bah. All Rights Reserved.
 DejaVu changes are in public domain

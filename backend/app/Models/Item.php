@@ -94,6 +94,8 @@ class Item extends Model
         'label_barcode',
         'label_net_weight',
         'label_show_nutrition',
+        'label_wrap',
+        'label_nutrition_per',
         'label_title_media_id',
         'label_photo_media_id',
     ];
@@ -130,6 +132,8 @@ class Item extends Model
         'label_barcode',
         'label_net_weight',
         'label_show_nutrition',
+        'label_wrap',
+        'label_nutrition_per',
         'label_title_media_id',
         'label_photo_media_id',
     ];
@@ -346,6 +350,7 @@ class Item extends Model
         'label_enabled' => 'boolean',
         'label_show_price' => 'boolean',
         'label_show_nutrition' => 'boolean',
+        'label_wrap' => 'array',
         'label_price' => 'decimal:2',
         'label_shelf_life_days' => 'integer',
         'label_pack_qty' => 'integer',

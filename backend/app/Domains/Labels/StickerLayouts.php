@@ -38,6 +38,17 @@ final class StickerLayouts
     /** Wider than this (w ÷ h) and the compact sticker's stack wastes the width; the small one puts the dates beside the name. */
     public const MINI_MAX_RATIO = 1.6;
 
+    /**
+     * A label this wide for its height, and at least this big, is a
+     * wrap-around label (owner, 2026-10-12: a bottle label "with 2, 3, 4, 5
+     * different parts"): WrapDesign sets its parts side by side.
+     */
+    public const WRAP_MIN_RATIO = 2.5;
+
+    public const WRAP_MIN_W = 90.0;
+
+    public const WRAP_MIN_H = 25.0;
+
     /** A custom rectangle: the short side at least this, the long side at least MIN_LONG. */
     public const MIN_SHORT = 20.0;
 
@@ -110,6 +121,12 @@ final class StickerLayouts
         ['id' => 'r60x90', 'shape' => 'rect', 'w' => 60.0, 'h' => 90.0, 'on' => ['sheet' => 'a4-custom', 'printer' => 'single-custom']],
         ['id' => 'r80x120', 'shape' => 'rect', 'w' => 80.0, 'h' => 120.0, 'on' => ['sheet' => 'a4-custom', 'printer' => 'single-custom']],
         ['id' => 'r100x100', 'shape' => 'rect', 'w' => 100.0, 'h' => 100.0, 'on' => ['sheet' => 'a4-custom', 'printer' => 'single-custom']],
+        // Wrap-around labels (owner, 2026-10-12: a bottle label with parts
+        // side by side): a juice bottle, a sauce bottle, a long jar.
+        ['id' => 'r200x50', 'shape' => 'rect', 'w' => 200.0, 'h' => 50.0, 'on' => ['sheet' => 'a4-custom', 'printer' => 'single-custom']],
+        ['id' => 'r180x40', 'shape' => 'rect', 'w' => 180.0, 'h' => 40.0, 'on' => ['sheet' => 'a4-custom', 'printer' => 'single-custom']],
+        ['id' => 'r150x35', 'shape' => 'rect', 'w' => 150.0, 'h' => 35.0, 'on' => ['sheet' => 'a4-custom', 'printer' => 'single-custom']],
+        ['id' => 'r120x40', 'shape' => 'rect', 'w' => 120.0, 'h' => 40.0, 'on' => ['sheet' => 'a4-custom', 'printer' => 'single-custom']],
         ['id' => 'c100', 'shape' => 'circle', 'w' => 100.0, 'h' => 100.0, 'on' => ['sheet' => 'a4-round-custom', 'printer' => 'single-round-custom']],
         ['id' => 'c80', 'shape' => 'circle', 'w' => 80.0, 'h' => 80.0, 'on' => ['sheet' => 'a4-round-custom', 'printer' => 'single-round-custom']],
         ['id' => 'c70', 'shape' => 'circle', 'w' => 70.0, 'h' => 70.0, 'on' => ['sheet' => 'a4-round-70', 'printer' => 'single-round-70']],
@@ -137,7 +154,7 @@ final class StickerLayouts
      * how the design fits a label.
      *
      * @param array{top?: float, left?: float, gutter?: float} $precut
-     * @return array{key: string, label: string, shape: 'rect'|'circle', page_w: float, page_h: float, slots: list<array{x: float, y: float, w: float, h: float}>, per_page: int, w: float, h: float, cut: bool, design: 'full'|'mini'|'small'|'round', scale: float, dx: float, dy: float}
+     * @return array{key: string, label: string, shape: 'rect'|'circle', page_w: float, page_h: float, slots: list<array{x: float, y: float, w: float, h: float}>, per_page: int, w: float, h: float, cut: bool, design: 'full'|'mini'|'small'|'round'|'wrap', scale: float, dx: float, dy: float}
      */
     public static function resolve(string $key, ?float $customW = null, ?float $customH = null, array $precut = []): array
     {
@@ -205,6 +222,9 @@ final class StickerLayouts
         }
         if (min($w / self::DESIGN_W, $h / self::DESIGN_H) >= self::FULL_MIN_SCALE) {
             return 'full';
+        }
+        if ($w >= self::WRAP_MIN_W && $h >= self::WRAP_MIN_H && $w / $h >= self::WRAP_MIN_RATIO) {
+            return 'wrap';
         }
         if ($w >= self::MINI_MIN_W && $h >= self::MINI_MIN_H && $w / $h <= self::MINI_MAX_RATIO) {
             return 'mini';

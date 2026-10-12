@@ -32,6 +32,9 @@ final class LabelText
         // The Dhivehi face is whichever DV_FACES entry Labels → Settings picks;
         // this row is the shape the fonts partial loops over.
         'dv' => ['LabelDV', 'fonts/pdf/NotoSansThaana-Regular.ttf', 'fonts/noto-sans-thaana-400.woff2', 1.069, 0.424],
+        // The recycling marks on a wrap-around label (LabelMarks): a subset of
+        // DejaVu Sans with the Unicode recycling symbols (scripts/label-symbol-font.py).
+        'sym' => ['LabelSym', 'fonts/pdf/LabelSymbols.ttf', 'fonts/label-symbols.woff2', 0.928, 0.236],
     ];
 
     /**

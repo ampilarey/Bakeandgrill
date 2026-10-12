@@ -41,6 +41,11 @@ export type LabelProduct = {
   /** The nutrition panel (round C): printed when on and the recipe's panel is complete; `nutrition` is the panel as it stands. */
   label_show_nutrition: boolean;
   nutrition: NutritionPanel;
+  /** Values per 100 g, or per 100 ml for a drink. */
+  label_nutrition_per: NutritionPer;
+  /** The wrap-around label's parts (2026-10-12), as they stand (the defaults when nothing is kept). */
+  label_wrap: LabelWrap;
+  wrap_pictures: WrapPicture[];
   menu_price: number;
   /** From the item's Details tab, as words ("tree nuts"): printed bold and as "Contains …". */
   allergens: string[];
@@ -54,6 +59,33 @@ export type LabelProduct = {
   has_recipe: boolean;
   /** `dv_from` (2026-10-12): typed, from the inventory items' Dhivehi names, or the glossary. */
   ingredients: { en: string; dv: string; from: 'recipe' | 'manual' | 'none'; dv_from?: 'typed' | 'inventory' | 'glossary' | ''; recipe_en: string; recipe_dv: string };
+};
+
+export type NutritionPer = 'g' | 'ml';
+
+/** A wrap-around label's parts (owner, 2026-10-12: a bottle label with parts side by side), kept per product. */
+export type WrapPartKey = 'brand' | 'legal' | 'nutrition' | 'dates' | 'barcode' | 'qr' | 'marks' | 'text' | 'packed';
+export type LabelWrap = {
+  parts: WrapPartKey[];
+  /** The flavour band along the bottom; its words, else the product name, with the net content at the end. */
+  band: boolean;
+  band_text: string;
+  band_text_dv: string;
+  /** Recycling marks (keys from the layouts catalogue) and pictures from the media library, in the marks part. */
+  marks: string[];
+  pictures: number[];
+  text_heading: string;
+  text_heading_dv: string;
+  text: string;
+  text_dv: string;
+};
+export type WrapPicture = { id: number; url: string | null };
+export type WrapCatalogue = {
+  parts: { key: WrapPartKey; label: string; hint: string }[];
+  marks: { key: string; label: string; caption: string }[];
+  default_parts: WrapPartKey[];
+  default_marks: string[];
+  max_pictures: number;
 };
 
 /** The values an ingredient carries per 100 g (round C). */
@@ -139,13 +171,13 @@ export type LabelPreset = {
   name: string;
   /** "4 × 6 cm", "6 cm across". */
   cm: string;
-  design: 'full' | 'mini' | 'small' | 'round';
+  design: 'full' | 'mini' | 'small' | 'round' | 'wrap';
   options: { on: LabelStock; layout: string; label: string; per_page: number; landscape: boolean }[];
 };
 
 export type LabelLimits = { min_short: number; min_long: number; max_w: number; max_h: number; min_round: number; max_round: number; sheet_margin: number };
 
-export type LabelLayoutsResponse = { data: LabelLayout[]; presets: LabelPreset[]; limits: LabelLimits };
+export type LabelLayoutsResponse = { data: LabelLayout[]; presets: LabelPreset[]; limits: LabelLimits; wrap: WrapCatalogue };
 
 /**
  * A pack sticker for something that is not on the menu (owner, 2026-10-11:
@@ -177,6 +209,10 @@ export type CustomLabel = {
   label_price: number | null; label_barcode: string | null; label_net_weight: string | null; label_allergens: string | null;
   /** A typed nutrition line (round C): "Energy 250 kcal · Fat 12 g …", on the full sticker. */
   label_nutrition: string | null;
+  label_nutrition_per: NutritionPer;
+  /** The wrap-around label's parts, as they stand. */
+  label_wrap: LabelWrap;
+  wrap_pictures: WrapPicture[];
   label_photo_media_id: number | null; label_photo_url: string | null;
   label_title_media_id: number | null; label_title_url: string | null;
   defaults: { heading: string; heading_dv: string; storage_line: string; storage_line_dv: string; how_to_use: string; how_to_use_dv: string; note: string; note_dv: string; shelf_life_days: number | null; brand: string; unit: string };
@@ -190,7 +226,7 @@ export type CustomLabelPayload = Partial<Pick<CustomLabel,
   | 'label_how_to_use' | 'label_how_to_use_dv' | 'label_note' | 'label_note_dv'
   | 'footer_id' | 'label_show_qr' | 'label_lang'
   | 'label_shelf_life_days' | 'label_pack_qty' | 'label_pack_unit' | 'label_photo_media_id' | 'label_title_media_id'
-  | 'label_price' | 'label_barcode' | 'label_net_weight' | 'label_allergens' | 'label_nutrition'>>;
+  | 'label_price' | 'label_barcode' | 'label_net_weight' | 'label_allergens' | 'label_nutrition' | 'label_nutrition_per' | 'label_wrap'>>;
 
 /** The sticker's languages: English, Dhivehi, or both on one sticker (2026-10-12). */
 export type StickerLang = 'en' | 'dv' | 'both';
@@ -285,7 +321,7 @@ export type GlossaryMissing = { word: string; products: string[] };
 export type StickerSummary = {
   layout: string;
   label: string;
-  design: 'full' | 'mini' | 'small' | 'round';
+  design: 'full' | 'mini' | 'small' | 'round' | 'wrap';
   shape?: 'rect' | 'circle';
   w?: number;
   h?: number;

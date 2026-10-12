@@ -10,7 +10,7 @@ import type { LabelLimits, LabelPreset, LabelStock } from '../../api';
  */
 
 export type LabelShape = 'rect' | 'circle';
-export type StickerDesignName = 'full' | 'mini' | 'small' | 'round';
+export type StickerDesignName = 'full' | 'mini' | 'small' | 'round' | 'wrap';
 
 export type SizeChoice = {
   shape: LabelShape;
@@ -52,6 +52,8 @@ export function gridCount(w: number, h: number, margin = SHEET_MARGIN): { pageW:
 export function designFor(shape: LabelShape, w: number, h: number): StickerDesignName {
   if (shape === 'circle') return 'round';
   if (Math.min(w / 105, h / 148.5) >= 0.7) return 'full';
+  // A wide, short label is a wrap-around label with parts side by side (WrapDesign).
+  if (w >= 90 && h >= 25 && w / h >= 2.5) return 'wrap';
   if (w >= 50 && h >= 60 && w / h <= 1.6) return 'mini';
   return 'small';
 }
@@ -61,6 +63,7 @@ export const DESIGN_NAMES: Record<StickerDesignName, string> = {
   mini: 'compact sticker',
   small: 'small sticker',
   round: 'round sticker',
+  wrap: 'wrap-around label with parts',
 };
 
 const trim = (n: number) => String(Math.round(n * 10) / 10);

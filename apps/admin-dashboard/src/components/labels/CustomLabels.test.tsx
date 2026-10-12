@@ -63,6 +63,8 @@ const custom = (id: number, name: string, extra: Partial<CustomLabel> = {}): Cus
   label_storage: null, storage: 'chilled', label_heading: null, label_heading_dv: null, label_storage_line: null, label_storage_line_dv: null,
   label_ingredients: 'Garlic, oil', label_ingredients_dv: null, label_how_to_use: null, label_how_to_use_dv: null, label_note: null, label_note_dv: null,
   label_shelf_life_days: 14, label_pack_qty: null, label_pack_unit: null, label_price: null, label_barcode: null, label_net_weight: null, label_allergens: null, label_nutrition: null,
+  label_nutrition_per: 'g', wrap_pictures: [],
+  label_wrap: { parts: ['brand', 'legal', 'nutrition', 'dates', 'barcode', 'qr', 'marks'], band: true, band_text: '', band_text_dv: '', marks: ['recycle', 'dispose'], pictures: [], text_heading: '', text_heading_dv: '', text: '', text_dv: '' },
   footer_id: null, footer_name: null, label_show_qr: null, label_lang: null, print_count: 0, last_printed_at: null,
   label_photo_media_id: null, label_photo_url: null, label_title_media_id: null, label_title_url: null,
   defaults: { heading: 'CHILLED', heading_dv: '', storage_line: '', storage_line_dv: '', how_to_use: '', how_to_use_dv: '', note: '', note_dv: '', shelf_life_days: null, brand: 'Amma', unit: 'PCS' },

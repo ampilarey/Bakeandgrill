@@ -261,7 +261,21 @@ pack numbering (`number`, each copy drawn with `pack_no` / `pack_of`), print-rea
 `stickers.blade.php`), and straight-to-printer output (`LabelRaster` draws a page with GD
 at 203 or 300 dpi from `build()['vectors']` for the QR and barcode; `ZplEncoder`,
 `TsplEncoder`; signed `/labels/stickers.zpl`, `.tspl`, `.png`; `scripts/label-print-agent.mjs`
-on the staff computer; `LabelPrinterCard.tsx` keeps the printer in the browser). How to
+on the staff computer; `LabelPrinterCard.tsx` keeps the printer in the browser).
+Wrap-around labels (owner, 2026-10-12: a juice bottle's label "with 2, 3, 4, 5 different
+parts"): a label at least 90 × 25 mm and 2.5 × as wide as tall gets `WrapDesign`
+(`StickerLayouts::design()` → `wrap`, mirrored in `labelSize.ts` and pinned by the parity
+fixture; presets 200 × 50, 180 × 40, 150 × 35, 120 × 40), its parts side by side in the
+order the product keeps (`label_wrap` JSON, `WrapConfig`; brand, legal, nutrition, dates,
+barcode, QR, marks, free text, packed), a flavour band along the bottom, recycling marks
+as glyphs of the symbol font (`LabelMarks`, `LabelText::FONTS['sym']`,
+`scripts/label-symbol-font.py`) plus the tidy man and mark pictures, and
+`label_nutrition_per` (g or ml); `WrapParts.tsx` edits it on the item's Label tab and the
+custom label editor. Parts share the width by weight (`WrapDesign::share()`): too narrow,
+every part shrinks to its floor before any is dropped (`DROP_ORDER`), so nine parts print
+on 180 × 40 mm. The barcode SVG is sized in its own units (`Barcode::svgDataUri`, no mm):
+dompdf's SVG library ignores the viewBox, and a size in mm drew the bars twice as tall as
+the box on every design. How to
 use it and where everything lives: `docs/LABELS.md`; design and decisions:
 `docs/LABEL_HUB_PLAN.md` and `docs/LABEL_HUB_V2_PLAN.md`.
 

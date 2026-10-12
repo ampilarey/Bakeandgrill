@@ -40,11 +40,11 @@ class BarcodeTest extends TestCase
 
     public function test_the_svg_is_a_data_uri_with_quiet_zones_and_the_digits_are_grouped(): void
     {
-        $uri = Barcode::svgDataUri('5901234123457', 30, 12);
+        $uri = Barcode::svgDataUri('5901234123457');
         $this->assertStringStartsWith('data:image/svg+xml;base64,', $uri);
         $svg = base64_decode(substr($uri, strlen('data:image/svg+xml;base64,')));
         $this->assertStringContainsString('viewBox="0 0 109 100"', $svg, '95 modules plus a 7-module quiet zone each side');
-        $this->assertStringContainsString('width="30mm" height="12mm"', $svg);
+        $this->assertStringContainsString('width="109" height="100"', $svg);
         $this->assertStringContainsString('<rect x="7" y="0" width="1" height="100"/>', $svg, 'the first guard bar after the quiet zone');
         $this->assertSame('5 901234 123457', Barcode::text('5901234123457'));
         $this->assertSame('9638 5074', Barcode::text('96385074'));

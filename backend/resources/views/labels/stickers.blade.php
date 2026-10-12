@@ -34,7 +34,7 @@
     <meta name="robots" content="noindex">
     <title>Pack stickers – {{ $sheet['label'] }}</title>
     @unless ($forPdf)
-        @foreach (['plus-jakarta-sans-400', 'plus-jakarta-sans-500', 'plus-jakarta-sans-700', 'plus-jakarta-sans-800', 'dm-serif-display-regular', 'dm-serif-display-italic'] as $f)
+        @foreach (['plus-jakarta-sans-400', 'plus-jakarta-sans-500', 'plus-jakarta-sans-700', 'plus-jakarta-sans-800', 'dm-serif-display-regular', 'dm-serif-display-italic', 'label-symbols'] as $f)
             <link rel="preload" href="/fonts/{{ $f }}.woff2" as="font" type="font/woff2" crossorigin>
         @endforeach
         @php $dvPreload = \App\Domains\Labels\LabelText::dvFace(); @endphp
@@ -86,7 +86,7 @@
                 <a href="{{ $pdfUrl }}">PDF</a>
             @endif
             <a href="{{ $pdfUrl }}" data-testid="labels-pdf">Download PDF</a>
-            <span class="what">{{ $sheet['label'] }} · {{ $stickerCount }} {{ $stickerCount === 1 ? 'sticker' : 'stickers' }} on {{ count($pages) }} {{ count($pages) === 1 ? 'page' : 'pages' }}@if ($sheet['design'] === 'full' && $s < 0.999) · design at {{ round($s * 100) }}%@endif @if ($sheet['design'] === 'mini') · compact sticker @endif @if ($sheet['design'] === 'round') · round sticker @endif · print at actual size · on a phone, print the PDF</span>
+            <span class="what">{{ $sheet['label'] }} · {{ $stickerCount }} {{ $stickerCount === 1 ? 'sticker' : 'stickers' }} on {{ count($pages) }} {{ count($pages) === 1 ? 'page' : 'pages' }}@if ($sheet['design'] === 'full' && $s < 0.999) · design at {{ round($s * 100) }}%@endif @if ($sheet['design'] === 'mini') · compact sticker @endif @if ($sheet['design'] === 'round') · round sticker @endif @if ($sheet['design'] === 'wrap') · wrap-around label @endif · print at actual size · on a phone, print the PDF</span>
         </div>
     @endif
     @foreach ($pages as $pi => $page)
@@ -136,7 +136,7 @@
             (function () {
                 function printWhenReady() {
                     var f = document.fonts;
-                    var ready = f ? Promise.all(['LabelJ4', 'LabelJ5', 'LabelJ7', 'LabelJ8', 'LabelDS', 'LabelDSI', 'LabelDV'].map(function (n) { return f.load('10pt "' + n + '"'); })).catch(function () {}) : Promise.resolve();
+                    var ready = f ? Promise.all(['LabelJ4', 'LabelJ5', 'LabelJ7', 'LabelJ8', 'LabelDS', 'LabelDSI', 'LabelDV', 'LabelSym'].map(function (n) { return f.load('10pt "' + n + '"'); })).catch(function () {}) : Promise.resolve();
                     ready.then(function () { setTimeout(function () { window.print(); }, 300); });
                 }
                 var b = document.querySelector('[data-print]');

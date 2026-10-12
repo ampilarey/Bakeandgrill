@@ -97,8 +97,15 @@ final class Barcode
         return $out . '101';
     }
 
-    /** The bars as an SVG data URI, $wMm wide and $hMm tall, with a quiet zone either side. */
-    public static function svgDataUri(string $code, float $wMm, float $hMm): string
+    /**
+     * The bars as an SVG data URI with a quiet zone either side. The picture
+     * is sized in its own units (the viewBox) and stretches to whatever box
+     * draws it: the browser through preserveAspectRatio="none", dompdf by
+     * scaling the box over the declared size (its SVG library ignores the
+     * viewBox, so a size in mm drew the bars twice as tall as the box), and
+     * the thermal bitmap draws the modules itself (LabelRaster).
+     */
+    public static function svgDataUri(string $code): string
     {
         $modules = self::modules($code);
         $n = strlen($modules);
@@ -118,9 +125,8 @@ final class Barcode
             }
         }
         $svg = sprintf(
-            '<svg xmlns="http://www.w3.org/2000/svg" width="%smm" height="%smm" viewBox="0 0 %d 100" preserveAspectRatio="none" shape-rendering="crispEdges"><rect width="%d" height="100" fill="#fff"/><g fill="#000">%s</g></svg>',
-            rtrim(rtrim(number_format($wMm, 3, '.', ''), '0'), '.'),
-            rtrim(rtrim(number_format($hMm, 3, '.', ''), '0'), '.'),
+            '<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="100" viewBox="0 0 %d 100" preserveAspectRatio="none" shape-rendering="crispEdges"><rect width="%d" height="100" fill="#fff"/><g fill="#000">%s</g></svg>',
+            $total,
             $total,
             $total,
             $rects,
