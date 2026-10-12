@@ -194,9 +194,10 @@ class CustomLabelsTest extends TestCase
         $this->assertStringNotContainsString('Home-made, the Amma way', $full);
         $this->assertStringNotContainsString('by Bake &amp; Grill', $full);
         $this->assertStringContainsString('data:image/svg+xml;base64,', $full);
-        $this->assertMatchesRegularExpression('#<img class="pc" src="data:image/svg\+xml;base64,[A-Za-z0-9+/=]+" alt="" style="left:87mm#', $full, 'the QR sits at the footer\'s right');
         // The footer's QR by its place: the header's batch QR (2026-10-12) is another SVG before it.
-        preg_match('#<img class="pc" src="data:image/svg\+xml;base64,([A-Za-z0-9+/=]+)" alt="" style="left:87mm#', $full, $m);
+        $qrAt = '#<img class="pc" src="data:image/svg\+xml;base64,([A-Za-z0-9+/=]+)" alt="" style="left:87mm#';
+        $this->assertMatchesRegularExpression($qrAt, $full, 'the QR sits at the footer\'s right');
+        preg_match($qrAt, $full, $m);
         $svg = base64_decode($m[1] ?? '', true);
         $this->assertStringContainsString('<image', (string) $svg, 'the full sticker\'s QR has the brand mark inside');
         // A small sticker keeps the bare code.
@@ -219,12 +220,12 @@ class CustomLabelsTest extends TestCase
         // The QR off for this label although the footer prints it; on again
         // overrides a footer that does not; null follows the footer.
         $this->putJson("/api/labels/custom/{$id}", ['label_show_qr' => false])->assertOk()->assertJsonPath('data.label_show_qr', false);
-        $this->assertStringNotContainsString('data:image/svg+xml;base64,', $sheet(['layout' => 'a4-4']));
+        $this->assertDoesNotMatchRegularExpression($qrAt, $sheet(['layout' => 'a4-4']));
         $this->putJson("/api/labels/footers/{$standard['id']}", ['show_qr' => false])->assertOk()->assertJsonPath('data.show_qr', false);
         $this->putJson("/api/labels/custom/{$id}", ['label_show_qr' => true])->assertOk()->assertJsonPath('data.label_show_qr', true);
-        $this->assertStringContainsString('data:image/svg+xml;base64,', $sheet(['layout' => 'a4-4']));
+        $this->assertMatchesRegularExpression($qrAt, $sheet(['layout' => 'a4-4']));
         $this->putJson("/api/labels/custom/{$id}", ['label_show_qr' => null])->assertOk()->assertJsonPath('data.label_show_qr', null);
-        $this->assertStringNotContainsString('data:image/svg+xml;base64,', $sheet(['layout' => 'a4-4']), 'null follows the footer again');
+        $this->assertDoesNotMatchRegularExpression($qrAt, $sheet(['layout' => 'a4-4']), 'null follows the footer again');
 
         // The language is kept and refused when unknown; a footer that is not there too.
         $this->putJson("/api/labels/custom/{$id}", ['label_lang' => 'both'])->assertOk()->assertJsonPath('data.label_lang', 'both');
