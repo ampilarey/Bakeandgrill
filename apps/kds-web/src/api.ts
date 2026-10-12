@@ -250,6 +250,7 @@ export type KitchenProductionBatch = {
   items: Array<{
     id: number;
     name: string;
+    item_id?: number | null;
     produced_qty: number;
     unit: string;
     status: string;
@@ -320,7 +321,7 @@ export async function markPlanTaskMade(
   taskId: number,
   qty: number,
   notes?: string,
-): Promise<{ task: KdsPlanTask }> {
+): Promise<{ task: KdsPlanTask; batch?: KitchenProductionBatch }> {
   return request(`/production-plan/tasks/${taskId}/made`, {
     method: 'POST',
     headers: authHeaders(token),
@@ -372,6 +373,37 @@ export async function fetchKdsActivity(token: string): Promise<KdsActivityRow[]>
 
 export function hasKdsPermission(permissions: string[], slug: string): boolean {
   return permissions.includes(slug);
+}
+
+/*
+ * Pack stickers for a production line, from the kitchen screen (2026-10-12):
+ * the cook who just made a batch prints its stickers without opening Admin.
+ * Needs the Print labels permission, like the Labels page.
+ */
+export type ProductionStickerDefaults = {
+  pi: number;
+  item: { id: number; name: string; label_enabled: boolean; label_shelf_life_days: number | null } | null;
+  batch: string;
+  exp: string | null;
+  mfg: string | null;
+  qty: number;
+};
+
+export async function fetchProductionStickers(token: string, productionItemId: number): Promise<{ data: ProductionStickerDefaults }> {
+  return request(`/labels/production-items/${productionItemId}`, { headers: authHeaders(token) });
+}
+
+export async function productionStickerLinks(
+  token: string,
+  body: { items: { id: number; copies: number }[]; layout: string; w?: number | null; h?: number | null; fill: boolean; mfg: string | null; exp: string | null; batch: string | null; pi: number },
+): Promise<{ url: string; pdf_url: string; expires_in_minutes: number }> {
+  return request('/labels/stickers/url', { method: 'POST', headers: authHeaders(token), body: JSON.stringify(body) });
+}
+
+/** A sheet link is relative to the API's origin; the kitchen screen may be served elsewhere. */
+export function labelSheetUrl(path: string): string {
+  const base = /^https?:/.test(apiBaseUrl) ? new URL(apiBaseUrl).origin : window.location.origin;
+  return base + path;
 }
 
 export type KdsPurchaseRequestItem = {

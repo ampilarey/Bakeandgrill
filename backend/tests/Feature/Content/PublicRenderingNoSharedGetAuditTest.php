@@ -39,6 +39,7 @@ class PublicRenderingNoSharedGetAuditTest extends TestCase
             'OnlineOrderingController.php',
             'PurchasingSettingsController.php', // staff-only buying switches, nothing renders to customers
             'ComplaintBoxController.php', // staff-only complaint queue; the alert switches are ops settings
+            'PosMenuController.php', // the till's own menu feed (staff sign-in); its suggestions switch is an ops setting
             'Signage/SignageAdminController.php',
             'SmsControlCenterController.php',
             // Content domain ops helpers

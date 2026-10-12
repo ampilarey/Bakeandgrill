@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Printer, FileDown, Pencil, Copy, Trash2, Tag, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, Printer, FileDown, Pencil, Copy, Trash2, Tag, ChevronDown, ChevronUp, Star, Clock } from 'lucide-react';
 import { HubPage, hubPermissions, type HubTab } from '../components/HubPage';
 import { StickerPrintPanel } from '../components/labels/StickerPrintPanel';
 import { BoxLabelPanel } from '../components/labels/BoxLabelPanel';
@@ -12,7 +12,7 @@ import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { useIsMobile } from '../hooks/useIsMobile';
 import {
   deleteLabelJob, downloadLabelSheet, duplicateLabelJob, fetchLabelJobs, fetchLabelLayouts, fetchLabelPrints, fetchLabelProducts, fetchLabelSettings,
-  openLabelSheet, printLabelJob, renameLabelJob, saveLabelSettings, updateItemLabel,
+  openLabelSheet, pinLabelJob, printLabelJob, renameLabelJob, saveLabelSettings, updateItemLabel,
   type LabelJob, type LabelPrintRow, type LabelProduct, type LabelSettingsMap, type LabelStorage, type IngredientsSource, type StickerSummary,
 } from '../api';
 
@@ -23,7 +23,16 @@ import {
  * here; the settings behind them are on the last tab. docs/LABEL_HUB_PLAN.md.
  */
 
-const KIND: Record<LabelPrintRow['kind'], string> = { sticker_en: 'Stickers', sticker_dv: 'Stickers (ދިވެހި)', box_label: 'Box label' };
+const KIND: Record<LabelPrintRow['kind'], string> = { sticker_en: 'Stickers', sticker_dv: 'Stickers (ދިވެހި)', sticker_both: 'Stickers (both languages)', box_label: 'Box label' };
+
+/** A shelf life this short is easy to print with the wrong dates (2026-10-12). */
+const SHORT_LIFE_DAYS = 3;
+const shortLife = (days: number | null) => days !== null && days <= SHORT_LIFE_DAYS;
+const ShortLifeChip = ({ days }: { days: number }) => (
+  <span className="ml-2 inline-flex items-center gap-1 h-5 px-2 rounded-full text-[11px] font-semibold align-middle" style={{ background: 'color-mix(in srgb, var(--color-warning) 18%, transparent)', color: 'var(--color-warning)', border: '1px solid color-mix(in srgb, var(--color-warning) 40%, transparent)' }} data-testid="short-life">
+    <Clock size={11} aria-hidden /> Short life · {days} {days === 1 ? 'day' : 'days'}
+  </span>
+);
 
 /*
  * Saved labels (v2 point 10; owner: "created labels must be saved,
@@ -80,6 +89,10 @@ function SavedLabelsTab() {
     if (!window.confirm(`Remove the saved label "${j.name}"? Prints already made are kept in the log.`)) return;
     try { await deleteLabelJob(j.id); void load(); } catch (e) { toast('error', e instanceof Error ? e.message : 'Could not remove it.'); }
   };
+  // A pinned (favourite) label leads the list and Print again (2026-10-12).
+  const pin = async (j: LabelJob) => {
+    try { await pinLabelJob(j.id, !j.pinned); void load(); } catch (e) { toast('error', e instanceof Error ? e.message : 'Could not pin it.'); }
+  };
   const btn = 'w-9 h-9 inline-flex items-center justify-center rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] disabled:opacity-40';
 
   return (
@@ -90,7 +103,7 @@ function SavedLabelsTab() {
           {rows.map((j) => (
             <li key={j.id} className="px-4 py-3">
               <div className="flex items-start gap-3">
-                <Tag size={16} className="mt-1 shrink-0 text-[var(--color-primary)]" />
+                {j.pinned ? <Star size={16} className="mt-1 shrink-0 text-[var(--color-warning)] fill-current" aria-label="Pinned" /> : <Tag size={16} className="mt-1 shrink-0 text-[var(--color-primary)]" />}
                 <div className="flex-1 min-w-0">
                   <InlineRename name={j.name} onSave={(n) => rename(j, n)} buttonClassName="text-sm font-semibold text-[var(--color-text)]" />
                   <div className="text-xs text-[var(--color-text-secondary)]">{jobLine(j)}</div>
@@ -102,6 +115,7 @@ function SavedLabelsTab() {
                 <button type="button" className={btn} onClick={() => print(j, true)} aria-label={`Download PDF of ${j.name}`}><FileDown size={16} /></button>
                 <button type="button" className={btn} onClick={() => edit(j)} aria-label={`Edit ${j.name}`}><Pencil size={16} /></button>
                 <button type="button" className={btn} onClick={() => copy(j)} aria-label={`Copy ${j.name}`}><Copy size={16} /></button>
+                <button type="button" className={btn} onClick={() => pin(j)} aria-label={`${j.pinned ? 'Unpin' : 'Pin'} ${j.name}`} aria-pressed={j.pinned} title={j.pinned ? 'Unpin' : 'Pin: keep it at the top and in Print again'}><Star size={16} className={j.pinned ? 'text-[var(--color-warning)] fill-current' : ''} /></button>
                 <button type="button" className={btn} onClick={() => remove(j)} aria-label={`Remove ${j.name}`}><Trash2 size={16} /></button>
               </div>
             </li>
@@ -350,7 +364,7 @@ function SettingsTab({ canManage }: { canManage: boolean }) {
                   <label className="flex items-start gap-3 cursor-pointer flex-1 min-w-0">
                     <span className="pt-0.5">{enabledBox(p)}</span>
                     <span className="flex-1 min-w-0">
-                      <span className="block text-sm font-semibold text-[var(--color-text)]">{p.name}{p.name_dv ? <span className="ml-2 font-normal text-[var(--color-text-muted)]" dir="rtl">{p.name_dv}</span> : null}</span>
+                      <span className="block text-sm font-semibold text-[var(--color-text)]">{p.name}{p.name_dv ? <span className="ml-2 font-normal text-[var(--color-text-muted)]" dir="rtl">{p.name_dv}</span> : null}{p.label_enabled && shortLife(p.label_shelf_life_days) && <ShortLifeChip days={p.label_shelf_life_days as number} />}</span>
                       <span className="block text-xs text-[var(--color-text-muted)] line-clamp-2">
                         {p.label_enabled ? `${p.label_shelf_life_days ? `Keeps ${p.label_shelf_life_days} days` : 'No shelf life'} · ${({ frozen: 'frozen', chilled: 'chilled', ambient: 'room temperature' } as const)[p.label_storage]} · ` : ''}
                         {p.ingredients.from === 'recipe' ? `From the recipe: ${p.ingredients.en}` : (p.ingredients.en || 'No ingredients yet: the sticker leaves them off')}
@@ -390,7 +404,7 @@ function SettingsTab({ canManage }: { canManage: boolean }) {
                 {shown.map((p) => (
                   <tr key={p.id} className="border-b border-[var(--color-border-light)]">
                     <td className="px-4 py-2">{enabledBox(p)}</td>
-                    <td className="px-4 py-2 min-w-[280px]">{p.name}{p.ingredients.from === 'recipe' && <span className="block text-xs text-[var(--color-text-muted)] truncate max-w-[280px]">From the recipe: {p.ingredients.en}</span>}{p.label_enabled && <div className="mt-1">{ingredientsBox(p)}</div>}</td>
+                    <td className="px-4 py-2 min-w-[280px]">{p.name}{p.label_enabled && shortLife(p.label_shelf_life_days) && <ShortLifeChip days={p.label_shelf_life_days as number} />}{p.ingredients.from === 'recipe' && <span className="block text-xs text-[var(--color-text-muted)] truncate max-w-[280px]">From the recipe: {p.ingredients.en}</span>}{p.label_enabled && <div className="mt-1">{ingredientsBox(p)}</div>}</td>
                     <td className="px-4 py-2">{shelfBox(p, 'w-24')}</td>
                     <td className="px-4 py-2">{storageSelect(p)}</td>
                     <td className="px-4 py-2">{sourceSelect(p)}</td>

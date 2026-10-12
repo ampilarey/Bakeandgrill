@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Labels\Barcode;
 use App\Domains\Labels\BoxLabel;
 use App\Domains\Labels\LabelIngredients;
 use App\Domains\Labels\LabelMedia;
@@ -95,7 +96,7 @@ class LabelsController extends Controller
             }],
             'items.*.kind' => 'sometimes|in:item,custom',
             'items.*.copies' => 'required|integer|min:1|max:' . StickerSheet::MAX_STICKERS,
-            'lang' => 'sometimes|in:en,dv',
+            'lang' => ['sometimes', Rule::in(StickerSheet::LANGS)],
             'layout' => ['sometimes', Rule::in(array_keys(StickerLayouts::LAYOUTS))],
             'w' => 'nullable|numeric',
             'h' => 'nullable|numeric',
@@ -168,7 +169,7 @@ class LabelsController extends Controller
         if (!$preview) {
             foreach ($summary['products'] as $p) {
                 LabelPrint::create([
-                    'kind' => $req['lang'] === 'dv' ? 'sticker_dv' : 'sticker_en',
+                    'kind' => match ($req['lang']) { 'dv' => 'sticker_dv', 'both' => 'sticker_both', default => 'sticker_en' },
                     'layout' => $req['layout'],
                     'label_w_mm' => $req['w'],
                     'label_h_mm' => $req['h'],
@@ -327,6 +328,9 @@ class LabelsController extends Controller
             ->with('creator:id,name')
             ->when($request->filled('kind'), fn ($q) => $q->where('kind', $request->string('kind')))
             ->when($request->filled('q'), fn ($q) => $q->where('name', 'like', '%' . $request->string('q') . '%'))
+            ->when($request->boolean('pinned'), fn ($q) => $q->where('pinned', true))
+            // Pinned (favourite) labels lead, then the last printed (2026-10-12).
+            ->orderByDesc('pinned')
             ->orderByDesc('last_printed_at')
             ->paginate(min(100, max(10, $request->integer('per_page', 30))));
 
@@ -340,8 +344,14 @@ class LabelsController extends Controller
 
     public function updateJob(Request $request, LabelJob $job): JsonResponse
     {
-        $data = $request->validate(['name' => 'required|string|max:80']);
-        $job->forceFill(['name' => trim($data['name'])])->save();
+        $data = $request->validate(['name' => 'sometimes|required|string|max:80', 'pinned' => 'sometimes|boolean']);
+        if (array_key_exists('name', $data)) {
+            $job->name = trim($data['name']);
+        }
+        if (array_key_exists('pinned', $data)) {
+            $job->pinned = (bool) $data['pinned'];
+        }
+        $job->save();
 
         return response()->json(['data' => $this->presentJob($job->load('creator:id,name'))]);
     }
@@ -404,6 +414,7 @@ class LabelsController extends Controller
             'id' => $job->id,
             'kind' => $job->kind,
             'name' => $job->name,
+            'pinned' => (bool) $job->pinned,
             'summary' => $job->summary,
             'print_count' => $job->print_count,
             'last_printed_at' => $job->last_printed_at?->toIso8601String(),
@@ -588,6 +599,10 @@ class LabelsController extends Controller
             'label_note' => 'sometimes|nullable|string|max:120',
             'label_note_dv' => 'sometimes|nullable|string|max:120',
             'label_pack_unit' => 'sometimes|nullable|string|max:10',
+            'label_price' => 'sometimes|nullable|numeric|min:0|max:99999999',
+            'label_show_price' => 'sometimes|boolean',
+            'label_barcode' => 'sometimes|nullable|string|max:20',
+            'label_net_weight' => 'sometimes|nullable|string|max:20',
             'label_title_media_id' => 'sometimes|nullable|integer|exists:media_assets,id',
             'label_photo_media_id' => 'sometimes|nullable|integer|exists:media_assets,id',
         ]);
@@ -596,10 +611,58 @@ class LabelsController extends Controller
                 return response()->json(['message' => 'Pick an image for the label.', 'errors' => [$key => ['Pick an image.']]], 422);
             }
         }
+        if ($bad = $this->barcodeProblem($data)) {
+            return $bad;
+        }
 
         $item->fill($data)->save();
 
         return response()->json(['data' => $this->present($item->refresh())]);
+    }
+
+    /** A typed barcode that is not an EAN-13 or EAN-8 is refused with the reason. */
+    private function barcodeProblem(array $data): ?JsonResponse
+    {
+        if (!empty($data['label_barcode']) && ($why = Barcode::problem($data['label_barcode'])) !== null) {
+            return response()->json(['message' => $why, 'errors' => ['label_barcode' => [$why]]], 422);
+        }
+
+        return null;
+    }
+
+    /**
+     * A custom label as it is being written, drawn before it is saved
+     * (2026-10-12): the draft is kept for half an hour and a preview link
+     * names it by its token. Nothing is logged or saved.
+     */
+    public function previewCustomLabel(Request $request): JsonResponse
+    {
+        $data = $this->customData($request, new CustomLabel());
+        if ($data instanceof JsonResponse) {
+            return $data;
+        }
+        $size = $request->validate([
+            'layout' => ['sometimes', Rule::in(array_keys(StickerLayouts::LAYOUTS))],
+            'w' => 'nullable|numeric',
+            'h' => 'nullable|numeric',
+            'lang' => ['sometimes', Rule::in(StickerSheet::LANGS)],
+        ]);
+        if (($data['name'] ?? '') === '') {
+            $data['name'] = 'Untitled';
+        }
+        $token = StickerSheet::keepDraft($data);
+        try {
+            $req = StickerSheet::normalise(['items' => 'd' . $token . ':1', 'layout' => $size['layout'] ?? 'single-105x148', 'w' => $size['w'] ?? null, 'h' => $size['h'] ?? null, 'lang' => $size['lang'] ?? 'en', 'fill' => true]);
+        } catch (InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+        $query = ['items' => 'd' . $token . ':1', 'lang' => $req['lang'], 'layout' => $req['layout'], 'w' => $req['w'], 'h' => $req['h'], 'fill' => 1, 'preview' => 1];
+
+        return response()->json([
+            'one_url' => LabelSheetController::link('labels.stickers', $query + ['one' => 1]),
+            'url' => LabelSheetController::link('labels.stickers', $query),
+            'expires_in_minutes' => StickerSheet::DRAFT_MINUTES,
+        ]);
     }
 
     // ---- Custom labels (owner, 2026-10-11: "Not only from the menu list") ----
@@ -685,6 +748,10 @@ class LabelsController extends Controller
             'label_shelf_life_days' => 'sometimes|nullable|integer|min:1|max:730',
             'label_pack_qty' => 'sometimes|nullable|integer|min:1|max:9999',
             'label_pack_unit' => 'sometimes|nullable|string|max:10',
+            'label_price' => 'sometimes|nullable|numeric|min:0|max:99999999',
+            'label_barcode' => 'sometimes|nullable|string|max:20',
+            'label_net_weight' => 'sometimes|nullable|string|max:20',
+            'label_allergens' => 'sometimes|nullable|string|max:200',
             'label_photo_media_id' => 'sometimes|nullable|integer|exists:media_assets,id',
             'label_title_media_id' => 'sometimes|nullable|integer|exists:media_assets,id',
         ]);
@@ -692,6 +759,9 @@ class LabelsController extends Controller
             if (!empty($data[$key]) && Media::query()->whereKey($data[$key])->value('media_type') !== 'image') {
                 return response()->json(['message' => 'Pick an image for the label.', 'errors' => [$key => ['Pick an image.']]], 422);
             }
+        }
+        if ($bad = $this->barcodeProblem($data)) {
+            return $bad;
         }
         foreach ($data as $key => $value) {
             if (is_string($value)) {
@@ -741,6 +811,10 @@ class LabelsController extends Controller
             'label_shelf_life_days' => $c->label_shelf_life_days,
             'label_pack_qty' => $c->label_pack_qty,
             'label_pack_unit' => $c->label_pack_unit,
+            'label_price' => $c->label_price !== null ? (float) $c->label_price : null,
+            'label_barcode' => $c->label_barcode,
+            'label_net_weight' => $c->label_net_weight,
+            'label_allergens' => $c->label_allergens,
             'label_photo_media_id' => $c->label_photo_media_id,
             'label_photo_url' => $media->get($c->label_photo_media_id)?->url,
             'label_title_media_id' => $c->label_title_media_id,
@@ -924,6 +998,12 @@ class LabelsController extends Controller
             'label_type_name' => $item->label_type_id ? $item->labelType?->name : null,
             'label_how_to_use' => $item->label_how_to_use,
             'label_how_to_use_dv' => $item->label_how_to_use_dv,
+            // 2026-10-12: price, barcode, net weight; the allergens come from the item's Details tab.
+            'label_price' => $item->label_price !== null ? (float) $item->label_price : null,
+            'label_show_price' => (bool) $item->label_show_price,
+            'label_barcode' => $item->label_barcode,
+            'label_net_weight' => $item->label_net_weight,
+            'menu_price' => $item->displayPriceInfo()['price'],
             // What prints when the item's own wording is empty: its type's wording, else the defaults for its storage.
             'defaults' => [
                 'heading' => $w['heading'],
@@ -943,7 +1023,8 @@ class LabelsController extends Controller
             'label_photo_media_id' => $item->label_photo_media_id,
             'label_photo_url' => $media->get($item->label_photo_media_id)?->url,
             'cutout_url' => $item->cutout_url,
-            'allergens' => $item->allergens ?? [],
+            // Printed bold in the ingredients and as "Contains …" (2026-10-12), as words ("tree nuts").
+            'allergens' => StickerSheet::allergens($item),
             'has_recipe' => $item->relationLoaded('recipe') ? $item->recipe !== null : $item->recipe()->exists(),
             // What would print today, and where it comes from.
             'ingredients' => $lines,

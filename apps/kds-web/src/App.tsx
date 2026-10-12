@@ -320,6 +320,7 @@ function App() {
   const canRecall = hasKdsPermission(permissions, "kds.recall_order");
   const can86 = hasKdsPermission(permissions, "kds.manage_availability");
   const canPrint = hasKdsPermission(permissions, "kds.print_ticket");
+  const canLabels = hasKdsPermission(permissions, "labels.print");
   const canCreatePurchaseRequest = hasKdsPermission(permissions, "purchase_requests.create");
   const canViewOwnPurchaseRequests = hasKdsPermission(permissions, "purchase_requests.view_own");
   const canBuyAssigned = hasKdsPermission(permissions, "purchase_requests.buy");
@@ -834,6 +835,7 @@ function App() {
             orders={orders}
             canProduce={canProduce}
             canPreparedStock={canPreparedStock}
+            canLabels={canLabels}
             userId={staffUser?.id ?? null}
             onRefresh={() => void load(token)}
           />

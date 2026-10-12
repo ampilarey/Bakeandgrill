@@ -165,7 +165,15 @@ is a bar pinned under the header (`PhonePreviewBar`), never a column under the f
 (audit, 2026-10-11); the form folds Print as, batch and quantity behind More options,
 shows each picked product's expiry before Prepare, and offers the last printed sheets as
 Print again. A saved label is renamed in place (`InlineRename`), never with a browser
-prompt. Phones print the PDF, not the web sheet (iOS adds margins). How to use it and where
+prompt. Built 2026-10-12 (owner: "build all"): a price (the menu's unless typed, on when
+`label_show_price`), an EAN-13/EAN-8 barcode (`Barcode`, full-size stickers only), a net
+weight, allergens bold in the ingredients (`bold_words` on a text piece; an item's from
+Details, a custom label's typed) with a "Contains …" note, `lang: both` (English with the
+Dhivehi name, ingredients and storage line beneath, full and compact designs), a draft
+custom label previewed before it is saved (`POST /labels/custom/preview`, cache token
+`d<token>` in the sheet link, never printed), pinned saved labels (`label_jobs.pinned`,
+first in Saved labels and Print again), and Stickers on the kitchen screen for a batch
+just sent (needs `labels.print`). Phones print the PDF, not the web sheet (iOS adds margins). How to use it and where
 everything lives: `docs/LABELS.md`; design and decisions: `docs/LABEL_HUB_PLAN.md`
 and `docs/LABEL_HUB_V2_PLAN.md`.
 

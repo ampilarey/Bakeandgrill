@@ -5,6 +5,8 @@ import type { KdsPlanTask } from "../../api";
 
 const fetchPlanTasks = vi.fn();
 const markPlanTaskMade = vi.fn();
+const fetchProductionStickers = vi.fn();
+const productionStickerLinks = vi.fn();
 
 vi.mock("../../api", () => ({
   markOrderItemCooked: vi.fn(),
@@ -12,6 +14,9 @@ vi.mock("../../api", () => ({
   submitKitchenProductionBatch: vi.fn(),
   fetchPlanTasks: (...a: unknown[]) => fetchPlanTasks(...a),
   markPlanTaskMade: (...a: unknown[]) => markPlanTaskMade(...a),
+  fetchProductionStickers: (...a: unknown[]) => fetchProductionStickers(...a),
+  productionStickerLinks: (...a: unknown[]) => productionStickerLinks(...a),
+  labelSheetUrl: (path: string) => `https://api.test${path}`,
   failureMessage: (e: unknown, fallback: string) => (e as { message?: string })?.message ?? fallback,
 }));
 
@@ -108,6 +113,39 @@ describe("KitchenProductionPanel", () => {
     await waitFor(() => expect(markPlanTaskMade).toHaveBeenCalledWith("tok", 2, 25));
     await waitFor(() => expect(fetchPlanTasks).toHaveBeenCalledTimes(2));
     expect(onRefresh).toHaveBeenCalled();
+  });
+
+  /*
+   * 2026-10-12: the cook who just sent a batch prints its pack stickers from
+   * here, with the batch's own number and dates, one a piece, on the
+   * kitchen's 4 × 6 cm sticker; the PDF opens to print. Only with Print labels.
+   */
+  it("offers the stickers for a batch just sent, when the cook may print labels", async () => {
+    fetchPlanTasks.mockResolvedValue({ date: "2026-10-12", tasks: [task({ id: 2, name: "Bajiya", item_id: 7, remaining: 30, made_qty: 20, status: "partial" })] });
+    markPlanTaskMade.mockResolvedValue({
+      task: task({ id: 2, made_qty: 50, remaining: 0, status: "made" }),
+      batch: { id: 40, batch_no: "KP-20261012-0003", production_type: "prepared_stock", status: "submitted", items: [{ id: 91, name: "Bajiya", item_id: 7, produced_qty: 30, unit: "pcs", status: "done" }] },
+    });
+    fetchProductionStickers.mockResolvedValue({ data: { pi: 91, item: { id: 7, name: "Bajiya", label_enabled: true, label_shelf_life_days: 90 }, batch: "KP-20261012-0003", exp: "2027-01-10", mfg: "2026-10-12", qty: 30 } });
+    productionStickerLinks.mockResolvedValue({ url: "/labels/stickers?signature=x", pdf_url: "/labels/stickers.pdf?signature=x", expires_in_minutes: 30 });
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+
+    const { rerender } = render(<KitchenProductionPanel token="tok" canProduce canPreparedStock canLabels={false} onRefresh={() => undefined} orders={[]} />);
+    const card = await screen.findByTestId("kds-plan-task-2");
+    fireEvent.click(within(card).getByText("Send to counter"));
+    await waitFor(() => expect(markPlanTaskMade).toHaveBeenCalled());
+    expect(screen.queryByTestId("kds-plan-stickers-2")).toBeNull();
+
+    rerender(<KitchenProductionPanel token="tok" canProduce canPreparedStock canLabels onRefresh={() => undefined} orders={[]} />);
+    const button = await screen.findByTestId("kds-plan-stickers-2");
+    expect(button).toHaveTextContent("Stickers for batch KP-20261012-0003");
+    fireEvent.click(button);
+    await waitFor(() => expect(productionStickerLinks).toHaveBeenCalledWith("tok", expect.objectContaining({
+      items: [{ id: 7, copies: 30 }], layout: "a4-custom", w: 40, h: 60, fill: true, mfg: "2026-10-12", exp: "2027-01-10", batch: "KP-20261012-0003", pi: 91,
+    })));
+    expect(fetchProductionStickers).toHaveBeenCalledWith("tok", 91);
+    expect(open).toHaveBeenCalledWith("https://api.test/labels/stickers.pdf?signature=x", "_blank", "noopener");
+    open.mockRestore();
   });
 
   it("refuses to send nothing", async () => {

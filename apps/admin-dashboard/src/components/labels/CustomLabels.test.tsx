@@ -10,6 +10,7 @@ const uploadCustomLabelPicture = vi.fn();
 const duplicateCustomLabel = vi.fn();
 const deleteCustomLabel = vi.fn();
 const stickerLinks = vi.fn();
+const previewCustomDraft = vi.fn();
 
 vi.mock('../../api', () => ({
   fetchLabelBrands: () => Promise.resolve({ data: [
@@ -24,6 +25,7 @@ vi.mock('../../api', () => ({
   duplicateCustomLabel: (...a: unknown[]) => duplicateCustomLabel(...a),
   deleteCustomLabel: (...a: unknown[]) => deleteCustomLabel(...a),
   stickerLinks: (...a: unknown[]) => stickerLinks(...a),
+  previewCustomDraft: (...a: unknown[]) => previewCustomDraft(...a),
 }));
 vi.mock('../MediaPicker', () => ({ MediaPicker: () => null }));
 vi.mock('./TypesAndBrands', () => ({ BrandModal: () => <div data-testid="brand-modal" /> }));
@@ -34,7 +36,8 @@ const custom = (id: number, name: string, extra = {}) => ({
   id, kind: 'custom', name, name_dv: null, brand_id: 2, brand_name: 'Amma', brand_logo_url: '/storage/amma.png', label_type_id: null, label_type_name: null,
   label_storage: null, storage: 'chilled', label_heading: null, label_heading_dv: null, label_storage_line: null, label_storage_line_dv: null,
   label_ingredients: 'Garlic, oil', label_ingredients_dv: null, label_how_to_use: null, label_how_to_use_dv: null, label_note: null, label_note_dv: null,
-  label_shelf_life_days: 14, label_pack_qty: null, label_pack_unit: null, label_photo_media_id: null, label_photo_url: null, label_title_media_id: null, label_title_url: null,
+  label_shelf_life_days: 14, label_pack_qty: null, label_pack_unit: null, label_price: null, label_barcode: null, label_net_weight: null, label_allergens: null,
+  label_photo_media_id: null, label_photo_url: null, label_title_media_id: null, label_title_url: null,
   defaults: { heading: 'CHILLED', heading_dv: '', storage_line: '', storage_line_dv: '', how_to_use: '', how_to_use_dv: '', note: '', note_dv: '', shelf_life_days: null, brand: 'Amma', unit: 'PCS' },
   ingredients: { en: 'Garlic, oil', dv: '', from: 'manual' }, created_by: null, updated_at: null, ...extra,
 });
@@ -43,11 +46,13 @@ const wrap = (ui: React.ReactElement) => render(<MemoryRouter><ToastProvider>{ui
 
 describe('CustomLabelModal', () => {
   beforeEach(() => {
-    [fetchCustomLabels, createCustomLabel, updateCustomLabel, uploadCustomLabelPicture, duplicateCustomLabel, deleteCustomLabel, stickerLinks].forEach((f) => f.mockReset());
+    [fetchCustomLabels, createCustomLabel, updateCustomLabel, uploadCustomLabelPicture, duplicateCustomLabel, deleteCustomLabel, stickerLinks, previewCustomDraft].forEach((f) => f.mockReset());
     stickerLinks.mockResolvedValue({ url: '/labels/stickers?signature=x', one_url: '/labels/stickers?one=1&signature=x' });
+    previewCustomDraft.mockResolvedValue({ url: '/labels/stickers?signature=d', one_url: '/labels/stickers?one=1&signature=d', expires_in_minutes: 30 });
   });
 
-  it('adds a label with its own brand and details, then previews it at 4 × 6 cm', async () => {
+  // 2026-10-12: the preview redraws from the draft as it is typed, before anything is saved.
+  it('adds a label with its own brand and details, previewing it at 4 × 6 cm as it is typed', async () => {
     const onSaved = vi.fn();
     createCustomLabel.mockResolvedValue({ data: custom(7, 'Garlic Sauce') });
     wrap(<CustomLabelModal label={null} onClose={() => {}} onSaved={onSaved} />);
@@ -58,17 +63,25 @@ describe('CustomLabelModal', () => {
     fireEvent.change(screen.getByLabelText('Ingredients'), { target: { value: 'Garlic, oil' } });
     fireEvent.change(screen.getByLabelText('Shelf life (days)'), { target: { value: '14' } });
     fireEvent.change(screen.getByLabelText('Unit after the quantity'), { target: { value: 'ml' } });
+    fireEvent.change(screen.getByLabelText('Allergens'), { target: { value: 'garlic' } });
+    fireEvent.change(screen.getByLabelText('Price (MVR)'), { target: { value: '25' } });
+    fireEvent.change(screen.getByLabelText('Barcode (EAN-13 or EAN-8)'), { target: { value: '590123412345' } });
+    fireEvent.change(screen.getByLabelText('Net weight'), { target: { value: '250 ml' } });
+
+    // The draft is drawn before Save, at the size picked, with everything typed so far.
+    await waitFor(() => expect(previewCustomDraft).toHaveBeenCalledWith(expect.objectContaining({
+      name: 'Garlic Sauce', brand_id: 2, label_ingredients: 'Garlic, oil', label_allergens: 'garlic', label_price: 25, label_barcode: '590123412345', label_net_weight: '250 ml',
+      layout: 'single-custom', w: 40, h: 60, lang: 'en',
+    })), { timeout: 3000 });
+    expect(stickerLinks).not.toHaveBeenCalled();
     fireEvent.click(screen.getByTestId('custom-label-save'));
 
     await waitFor(() => expect(createCustomLabel).toHaveBeenCalledTimes(1));
     expect(createCustomLabel.mock.calls[0][0]).toMatchObject({
       name: 'Garlic Sauce', brand_id: 2, label_ingredients: 'Garlic, oil', label_shelf_life_days: 14, label_pack_unit: 'ML',
-      label_heading: null, label_note: null, label_type_id: null,
+      label_heading: null, label_note: null, label_type_id: null, label_price: 25, label_barcode: '590123412345', label_net_weight: '250 ml', label_allergens: 'garlic',
     });
     await waitFor(() => expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({ id: 7 })));
-    await waitFor(() => expect(stickerLinks).toHaveBeenCalledWith(expect.objectContaining({
-      items: [{ id: 7, kind: 'custom', copies: 1 }], layout: 'single-custom', w: 40, h: 60, preview: true,
-    })));
     expect(await screen.findByRole('button', { name: 'Print' })).toBeInTheDocument();
   });
 

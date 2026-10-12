@@ -16,11 +16,11 @@ class LabelJob extends Model
 {
     public const KINDS = ['stickers', 'box'];
 
-    protected $fillable = ['kind', 'name', 'request', 'summary', 'request_hash', 'created_by', 'print_count', 'last_printed_at'];
+    protected $fillable = ['kind', 'name', 'pinned', 'request', 'summary', 'request_hash', 'created_by', 'print_count', 'last_printed_at'];
 
     protected function casts(): array
     {
-        return ['request' => 'array', 'summary' => 'array', 'print_count' => 'integer', 'last_printed_at' => 'datetime'];
+        return ['request' => 'array', 'summary' => 'array', 'pinned' => 'boolean', 'print_count' => 'integer', 'last_printed_at' => 'datetime'];
     }
 
     public function creator(): BelongsTo

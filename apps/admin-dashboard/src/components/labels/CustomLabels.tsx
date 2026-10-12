@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Copy, ImagePlus, Pencil, Plus, Printer, RefreshCw, Tag, Upload, X } from 'lucide-react';
 import {
   createCustomLabel, deleteCustomLabel, duplicateCustomLabel, fetchCustomLabels, fetchLabelBrands, fetchLabelTypes,
-  stickerLinks, updateCustomLabel, uploadCustomLabelPicture,
-  type CustomLabel, type CustomLabelPayload, type LabelBrand, type LabelStorage, type LabelType,
+  previewCustomDraft, updateCustomLabel, uploadCustomLabelPicture,
+  type CustomLabel, type CustomLabelPayload, type LabelBrand, type LabelStorage, type LabelType, type StickerLang,
 } from '../../api';
 import { Btn, Modal } from '../SharedUI';
 import { Button, Card, useToast } from '../ui';
@@ -30,6 +30,7 @@ type Draft = {
   label_heading: string; label_heading_dv: string; label_storage_line: string; label_storage_line_dv: string;
   label_ingredients: string; label_ingredients_dv: string; label_how_to_use: string; label_how_to_use_dv: string;
   label_note: string; label_note_dv: string; label_shelf_life_days: string; label_pack_qty: string; label_pack_unit: string;
+  label_price: string; label_barcode: string; label_net_weight: string; label_allergens: string;
   label_photo_media_id: number | null; label_photo_url: string | null; label_title_media_id: number | null; label_title_url: string | null;
 };
 
@@ -39,6 +40,7 @@ const toDraft = (c: CustomLabel | null): Draft => ({
   label_ingredients: c?.label_ingredients ?? '', label_ingredients_dv: c?.label_ingredients_dv ?? '', label_how_to_use: c?.label_how_to_use ?? '', label_how_to_use_dv: c?.label_how_to_use_dv ?? '',
   label_note: c?.label_note ?? '', label_note_dv: c?.label_note_dv ?? '',
   label_shelf_life_days: c?.label_shelf_life_days ? String(c.label_shelf_life_days) : '', label_pack_qty: c?.label_pack_qty ? String(c.label_pack_qty) : '', label_pack_unit: c?.label_pack_unit ?? '',
+  label_price: c?.label_price != null ? String(c.label_price) : '', label_barcode: c?.label_barcode ?? '', label_net_weight: c?.label_net_weight ?? '', label_allergens: c?.label_allergens ?? '',
   label_photo_media_id: c?.label_photo_media_id ?? null, label_photo_url: c?.label_photo_url ?? null, label_title_media_id: c?.label_title_media_id ?? null, label_title_url: c?.label_title_url ?? null,
 });
 
@@ -50,6 +52,7 @@ const toPayload = (d: Draft): CustomLabelPayload => ({
   label_ingredients: text(d.label_ingredients), label_ingredients_dv: text(d.label_ingredients_dv), label_how_to_use: text(d.label_how_to_use), label_how_to_use_dv: text(d.label_how_to_use_dv),
   label_note: text(d.label_note), label_note_dv: text(d.label_note_dv),
   label_shelf_life_days: d.label_shelf_life_days ? Number(d.label_shelf_life_days) : null, label_pack_qty: d.label_pack_qty ? Number(d.label_pack_qty) : null, label_pack_unit: text(d.label_pack_unit),
+  label_price: d.label_price !== '' ? Number(d.label_price) : null, label_barcode: text(d.label_barcode), label_net_weight: text(d.label_net_weight), label_allergens: text(d.label_allergens),
   label_photo_media_id: d.label_photo_media_id, label_title_media_id: d.label_title_media_id,
 });
 
@@ -82,8 +85,10 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
   const [picker, setPicker] = useState<'photo' | 'title' | null>(null);
   const [uploading, setUploading] = useState<'photo' | 'title' | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [previewBusy, setPreviewBusy] = useState(false);
   const [previewSize, setPreviewSize] = useState<(typeof PREVIEWS)[number]['id']>('r40x60');
-  const [lang, setLang] = useState<'en' | 'dv'>('en');
+  const [lang, setLang] = useState<StickerLang>('en');
+  const previewSeq = useRef(0);
   const files = { photo: useRef<HTMLInputElement>(null), title: useRef<HTMLInputElement>(null) };
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((s) => ({ ...s, [k]: v }));
 
@@ -93,16 +98,29 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
   }, [label?.label_type_id]);
 
   const size = PREVIEWS.find((p) => p.id === previewSize) ?? PREVIEWS[1];
-  const refreshPreview = async (id = saved?.id, l = lang, s = size) => {
-    if (!id) return;
+  // The preview redraws from the draft as it is typed (2026-10-12), half a
+  // second after the last change, saved or not; a reply that arrives after
+  // a newer request is ignored.
+  const draftKey = JSON.stringify([toPayload(d), lang, previewSize]);
+  const refreshPreview = async () => {
+    const seq = ++previewSeq.current;
+    setPreviewBusy(true);
     try {
-      const r = await stickerLinks({ items: [{ id, kind: 'custom', copies: 1 }], layout: s.layout, w: s.w, h: s.h, lang: l, fill: true, preview: true });
+      const payload = toPayload(d);
+      if (!payload.name) delete payload.name;
+      const r = await previewCustomDraft({ ...payload, layout: size.layout, w: size.w, h: size.h, lang });
+      if (seq !== previewSeq.current) return;
       setPreview(r.one_url ?? r.url);
     } catch {
-      setPreview(null);
+      if (seq === previewSeq.current) setPreview(null);
+    } finally {
+      if (seq === previewSeq.current) setPreviewBusy(false);
     }
   };
-  useEffect(() => { void refreshPreview(); }, [saved?.id, lang, previewSize]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const timer = setTimeout(() => { void refreshPreview(); }, 500);
+    return () => clearTimeout(timer);
+  }, [draftKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // What prints in an empty box: the chosen type's wording, else the usual wording.
   const type = types.find((t) => t.id === d.label_type_id) ?? null;
@@ -127,7 +145,6 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
       setD(toDraft(r.data));
       onSaved(r.data);
       toast('success', saved ? 'Custom label saved.' : 'Custom label added.');
-      void refreshPreview(r.data.id);
       return r.data;
     } catch (e) {
       toast('error', e instanceof Error ? e.message : 'Could not save.');
@@ -148,7 +165,6 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
       setSaved(r.data);
       setD((s) => ({ ...s, [`label_${slot}_media_id`]: r.data[`label_${slot}_media_id`], [`label_${slot}_url`]: r.data[`label_${slot}_url`] }));
       onSaved(r.data);
-      void refreshPreview(r.data.id);
     } catch (e) {
       toast('error', e instanceof Error ? e.message : 'Could not upload the picture.');
     } finally {
@@ -217,6 +233,16 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
                 <Field id="cl-life" label="Shelf life (days)" hint="Expiry = made-on date + this."><input id="cl-life" type="number" inputMode="numeric" min={1} max={730} value={d.label_shelf_life_days} onChange={(e) => set('label_shelf_life_days', e.target.value)} className={fieldClass} placeholder={ph.shelf} /></Field>
                 <Field id="cl-qty" label="Quantity per pack"><input id="cl-qty" type="number" inputMode="numeric" min={1} max={9999} value={d.label_pack_qty} onChange={(e) => set('label_pack_qty', e.target.value)} className={fieldClass} placeholder="Blank: write by hand" /></Field>
                 <Field id="cl-unit" label="Unit after the quantity" hint="PCS, G, ML, KG, PACK…"><input id="cl-unit" maxLength={10} value={d.label_pack_unit} onChange={(e) => set('label_pack_unit', e.target.value.toUpperCase())} className={fieldClass} placeholder="PCS" /></Field>
+                <Field id="cl-allergens" label="Allergens" hint="Printed bold in the ingredients, and as “Contains …” when the note is empty."><input id="cl-allergens" maxLength={200} value={d.label_allergens} onChange={(e) => set('label_allergens', e.target.value)} className={fieldClass} placeholder="egg, gluten, peanuts" /></Field>
+                <Field id="cl-weight" label="Net weight" hint="Beside the quantity."><input id="cl-weight" maxLength={20} value={d.label_net_weight} onChange={(e) => set('label_net_weight', e.target.value)} className={fieldClass} placeholder="250 g" /></Field>
+              </div>
+            </fieldset>
+
+            <fieldset className="rounded-xl border border-[var(--color-border)] p-3 space-y-3" data-testid="custom-label-shop">
+              <legend className="px-1 text-sm font-bold text-[var(--color-text)]">For the shop till</legend>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field id="cl-price" label="Price (MVR)" hint="Empty prints no price."><input id="cl-price" type="number" inputMode="decimal" min={0} step="0.5" value={d.label_price} onChange={(e) => set('label_price', e.target.value)} className={fieldClass} placeholder="25.00" /></Field>
+                <Field id="cl-barcode" label="Barcode (EAN-13 or EAN-8)" hint="12 digits: the check digit is added. Prints on the full-size sticker."><input id="cl-barcode" inputMode="numeric" maxLength={20} value={d.label_barcode} onChange={(e) => set('label_barcode', e.target.value)} className={fieldClass} placeholder="590123412345" /></Field>
               </div>
             </fieldset>
 
@@ -241,9 +267,9 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
 
           <aside className="space-y-2 min-w-0 lg:sticky lg:top-0 self-start" data-testid="custom-label-preview">
             <div className="flex flex-wrap items-center gap-1">
-              <span className="text-xs font-semibold text-[var(--color-text-secondary)] mr-auto">Preview (saved)</span>
-              {(['en', 'dv'] as const).map((l) => (
-                <button key={l} type="button" onClick={() => setLang(l)} aria-pressed={lang === l} className={['px-2.5 h-8 rounded-md text-xs font-semibold border', lang === l ? 'bg-[var(--color-tone-rust-bg)] border-[var(--color-tone-rust-border)] text-[var(--color-tone-rust-text)]' : 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text)]'].join(' ')}>{l === 'en' ? 'EN' : 'ދިވެހި'}</button>
+              <span className="text-xs font-semibold text-[var(--color-text-secondary)] mr-auto">Preview</span>
+              {(['en', 'dv', 'both'] as const).map((l) => (
+                <button key={l} type="button" onClick={() => setLang(l)} aria-pressed={lang === l} className={['px-2.5 h-8 rounded-md text-xs font-semibold border', lang === l ? 'bg-[var(--color-tone-rust-bg)] border-[var(--color-tone-rust-border)] text-[var(--color-tone-rust-text)]' : 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text)]'].join(' ')}>{l === 'en' ? 'EN' : l === 'dv' ? 'ދިވެހި' : 'Both'}</button>
               ))}
               <button type="button" onClick={() => void refreshPreview()} className="w-8 h-8 inline-flex items-center justify-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface)]" aria-label="Refresh preview"><RefreshCw size={14} /></button>
             </div>
@@ -253,9 +279,9 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
               ))}
             </div>
             <div className={size.round ? 'max-w-[240px] mx-auto' : 'max-w-[220px] mx-auto'}>
-              <SheetPreview url={saved ? preview : null} ratio={size.ratio} round={size.round} title="Custom label preview" empty="Save to see the sticker." />
+              <SheetPreview url={preview} ratio={size.ratio} round={size.round} busy={previewBusy} title="Custom label preview" empty="Drawing…" />
             </div>
-            <p className="text-xs text-[var(--color-text-muted)]">Any size prints from Pack stickers; these three are a quick look.</p>
+            <p className="text-xs text-[var(--color-text-muted)]">Redraws as you type, saved or not. Any size prints from Pack stickers; these three are a quick look.</p>
           </aside>
         </div>
         <div className="flex flex-wrap gap-2 justify-end mt-4">

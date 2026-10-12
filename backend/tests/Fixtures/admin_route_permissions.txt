@@ -143,8 +143,10 @@ backend/routes/domains/kitchen.php:91:kitchen.variance.review
 backend/routes/domains/kitchen.php:94:kitchen.production.reports
 backend/routes/domains/kitchen.php:96:kitchen.production.reports
 backend/routes/domains/kitchen.php:98:kitchen.production.reports
+backend/routes/domains/labels.php:100:labels.print
 backend/routes/domains/labels.php:102:labels.print
 backend/routes/domains/labels.php:105:labels.print
+backend/routes/domains/labels.php:108:labels.print
 backend/routes/domains/labels.php:14:labels.print
 backend/routes/domains/labels.php:16:labels.print
 backend/routes/domains/labels.php:19:labels.manage
@@ -172,12 +174,11 @@ backend/routes/domains/labels.php:71:labels.manage
 backend/routes/domains/labels.php:74:labels.manage
 backend/routes/domains/labels.php:81:labels.print
 backend/routes/domains/labels.php:83:labels.manage
-backend/routes/domains/labels.php:85:labels.manage
+backend/routes/domains/labels.php:86:labels.manage
 backend/routes/domains/labels.php:88:labels.manage
 backend/routes/domains/labels.php:91:labels.manage
 backend/routes/domains/labels.php:94:labels.manage
-backend/routes/domains/labels.php:97:labels.print
-backend/routes/domains/labels.php:99:labels.print
+backend/routes/domains/labels.php:97:labels.manage
 backend/routes/domains/loyalty.php:34:loyalty.manage
 backend/routes/domains/marketing.php:115:promotions.discount_cards
 backend/routes/domains/marketing.php:123:discounts.settings.manage

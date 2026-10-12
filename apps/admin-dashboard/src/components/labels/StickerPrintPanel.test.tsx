@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -290,6 +290,39 @@ describe('StickerPrintPanel on a phone', () => {
     stickerLinks.mockResolvedValue({ ...links, one_url: '/labels/stickers?one=1&signature=x', summary: { layout: 'a4-custom', label: '40 × 60 mm, 21 on A4', design: 'small', stickers: 21, pages: 1, per_page: 21, products: [] } });
   });
   afterEach(() => { Object.defineProperty(window, 'innerWidth', { value: widthWas, configurable: true, writable: true }); });
+
+  // 2026-10-12: both languages on one sticker, a short-life mark, pinned labels first.
+  it('prints both languages on one sticker when asked', async () => {
+    render(<MemoryRouter><StickerPrintPanel /></MemoryRouter>);
+    await screen.findByTestId('label-size-picker');
+    fireEvent.click(screen.getByLabelText('Print Bajiya'));
+    fireEvent.click(screen.getByRole('button', { name: 'Both' }));
+    expect(screen.getByText(/English with the Dhivehi name/)).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('sticker-prepare'));
+    await waitFor(() => expect(prepared()).toBeTruthy());
+    expect(prepared()).toMatchObject({ lang: 'both' });
+  });
+
+  it('marks a product whose shelf life is three days or under', async () => {
+    fetchLabelProducts.mockResolvedValue({ data: [product(1, 'Bajiya'), product(3, 'Cream cake', { label_shelf_life_days: 2 })] });
+    render(<MemoryRouter><StickerPrintPanel /></MemoryRouter>);
+    await screen.findByTestId('label-size-picker');
+    const chips = screen.getAllByTestId('short-life');
+    expect(chips).toHaveLength(1);
+    expect(chips[0]).toHaveTextContent('Short life · 2 days');
+  });
+
+  it('puts a pinned label first in Print again, printed or not', async () => {
+    fetchLabelJobs.mockResolvedValue({ data: [
+      { id: 11, kind: 'stickers', name: 'Friday run', pinned: true, summary: null, print_count: 0, last_printed_at: null, created_at: '2026-10-11T08:00:00Z', created_by: 'Owner' },
+      { id: 9, kind: 'stickers', name: 'Bajiya ×21 · 40 × 60 mm', pinned: false, summary: null, print_count: 3, last_printed_at: '2026-10-11T08:00:00Z', created_at: '2026-10-11T08:00:00Z', created_by: 'Owner' },
+    ], last_page: 1 });
+    render(<MemoryRouter><StickerPrintPanel /></MemoryRouter>);
+    const recent = await screen.findByTestId('sticker-recent');
+    const names = within(recent).getAllByRole('button').map((b) => b.textContent ?? '').filter((t) => !t.startsWith('Print'));
+    expect(names[0]).toContain('Friday run');
+    expect(within(recent).getByLabelText('Pinned')).toBeInTheDocument();
+  });
 
   it('prints the last sheet again in one tap, and only sheets that were printed', async () => {
     printLabelJob.mockResolvedValue({ ...links, summary: {} });

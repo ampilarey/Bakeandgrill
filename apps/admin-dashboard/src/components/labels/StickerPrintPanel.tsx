@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Printer, FileDown, AlertTriangle, Search, Bookmark, Eye, Plus, History, CalendarDays, ChevronDown, ChevronUp } from 'lucide-react';
+import { Printer, FileDown, AlertTriangle, Search, Bookmark, Eye, Plus, History, CalendarDays, ChevronDown, ChevronUp, Star, Clock } from 'lucide-react';
 import {
   downloadLabelSheet, fetchCustomLabels, fetchLabelJob, fetchLabelJobs, fetchLabelLayouts, fetchLabelProducts, fetchLabelTypes, openLabelSheet, printLabelJob, printsViaPdf, renameLabelJob, stickerLinks,
-  type CustomLabel, type LabelJob, type LabelLimits, type LabelPreset, type LabelProduct, type LabelType, type SheetLinks, type StickerSummary,
+  type CustomLabel, type LabelJob, type LabelLimits, type LabelPreset, type LabelProduct, type LabelType, type SheetLinks, type StickerLang, type StickerSummary,
 } from '../../api';
 import { useCurrentUserPermissions } from '../../hooks/usePermissions';
 import { useIsBelowDesktop } from '../../hooks/useIsMobile';
@@ -68,6 +68,9 @@ function rememberedLayout(): string | null {
 }
 
 const keyOf = (kind: 'item' | 'custom', id: number) => `${kind === 'custom' ? 'c' : 'i'}${id}`;
+/** A shelf life this short is easy to print with the wrong dates (2026-10-12): the list marks it. */
+const SHORT_LIFE_DAYS = 3;
+const LANG_NAMES: Record<StickerLang, string> = { en: 'English', dv: 'ދިވެހި', both: 'Both' };
 const parseKey = (key: string): { kind: 'item' | 'custom'; id: number } => ({ kind: key.startsWith('c') ? 'custom' : 'item', id: Number(key.slice(1)) });
 
 const fieldClass = 'h-10 min-h-[44px] px-3 rounded-lg border border-[var(--color-border)] bg-white text-sm text-[var(--color-text)] w-full';
@@ -93,7 +96,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
   const [types, setTypes] = useState<LabelType[]>([]);
   const [asType, setAsType] = useState<number | null>(null);
   const [picked, setPicked] = useState<Record<string, number>>({});
-  const [lang, setLang] = useState<'en' | 'dv'>('en');
+  const [lang, setLang] = useState<StickerLang>('en');
   const [choice, setChoice] = useState<SizeChoice>(() => rememberedSize() ?? DEFAULT_CHOICE);
   const [rounded, setRounded] = useState(false);
   const [fill, setFill] = useState(defaults?.fill ?? Boolean(productionItemId));
@@ -141,7 +144,8 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
     if (fixedKey === null) {
       fetchLabelProducts().then((r) => setProducts(r.data)).catch(() => setProducts([]));
       fetchCustomLabels().then((r) => setCustoms(r.data)).catch(() => setCustoms([]));
-      fetchLabelJobs({ page: 1, kind: 'stickers' }).then((r) => setRecent(r.data.filter((j) => j.print_count > 0).slice(0, 3))).catch(() => setRecent([]));
+      // Pinned labels lead (the server puts them first), then the last printed.
+      fetchLabelJobs({ page: 1, kind: 'stickers' }).then((r) => setRecent(r.data.filter((j) => j.pinned || j.print_count > 0).slice(0, 4))).catch(() => setRecent([]));
     }
   }, [fixedKey]);
 
@@ -172,7 +176,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
       const q = r.data.request as Record<string, unknown>;
       const items = Array.isArray(q.items) ? (q.items as { id: number; copies: number; kind?: string }[]) : [];
       setPicked(Object.fromEntries(items.map((i) => [keyOf(i.kind === 'custom' ? 'custom' : 'item', Number(i.id)), Number(i.copies)])));
-      if (q.lang === 'dv' || q.lang === 'en') setLang(q.lang);
+      if (q.lang === 'dv' || q.lang === 'en' || q.lang === 'both') setLang(q.lang);
       setSavedSize({ layout: typeof q.layout === 'string' ? q.layout : 'a4-4', w: q.w != null ? Number(q.w) : null, h: q.h != null ? Number(q.h) : null });
       setFill(Boolean(q.fill));
       if (typeof q.mfg === 'string' && q.mfg) setMfg(q.mfg);
@@ -313,7 +317,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
   ) : null;
   const previewCaption = preview ? (
     <>
-      {previewMode === 'one' ? `${nameOf(previewed)} · ${lang === 'dv' ? 'Dhivehi' : 'English'}` : `Page 1 of ${preview.summary.pages} · ${preview.summary.stickers} ${preview.summary.stickers === 1 ? 'sticker' : 'stickers'}`}
+      {previewMode === 'one' ? `${nameOf(previewed)} · ${lang === 'dv' ? 'Dhivehi' : lang === 'both' ? 'English and Dhivehi' : 'English'}` : `Page 1 of ${preview.summary.pages} · ${preview.summary.stickers} ${preview.summary.stickers === 1 ? 'sticker' : 'stickers'}`}
       {' · '}{preview.summary.label.startsWith(sizeName(choice.shape, stickerW, stickerH)) ? preview.summary.label : `${sizeName(choice.shape, stickerW, stickerH)} · ${preview.summary.label}`}. Updates as you change things; the print is the same.
     </>
   ) : null;
@@ -360,12 +364,15 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
           <TabScrollRow style={{ gap: 8 }}>
             {recent.map((j) => (
               <span key={j.id} className="inline-flex items-stretch rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden max-w-full">
-                <button type="button" onClick={() => navigate(`/labels/stickers?job=${j.id}`)} className="px-3 min-h-[38px] text-left text-xs font-semibold text-[var(--color-text)] max-w-[240px] truncate hover:bg-[var(--color-bg)]" title={`Open ${j.name} to change it`}>{j.name}</button>
+                <button type="button" onClick={() => navigate(`/labels/stickers?job=${j.id}`)} className="px-3 min-h-[38px] inline-flex items-center gap-1.5 text-left text-xs font-semibold text-[var(--color-text)] max-w-[260px] hover:bg-[var(--color-bg)]" title={`Open ${j.name} to change it`}>
+                  {j.pinned && <Star size={12} className="shrink-0 text-[var(--color-warning)] fill-current" aria-label="Pinned" />}
+                  <span className="truncate">{j.name}</span>
+                </button>
                 <button type="button" onClick={() => void printAgain(j)} disabled={recentBusy === j.id} className="px-3 min-h-[38px] inline-flex items-center gap-1 border-l border-[var(--color-border)] text-xs font-semibold text-[var(--color-primary)] hover:bg-[var(--color-bg)] disabled:opacity-50" aria-label={`Print ${j.name} again`}><Printer size={14} aria-hidden /> Print</button>
               </span>
             ))}
           </TabScrollRow>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">The last sheets printed, with today's dates. Tap the name to change one first.</p>
+          <p className="text-xs text-[var(--color-text-muted)] mt-1">Pinned labels, then the last sheets printed, with today's dates. Tap the name to change one first.</p>
         </section>
       )}
       {editing && (
@@ -412,6 +419,11 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
                       <span className="block text-sm font-semibold text-[var(--color-text)]">
                         {r.name}{r.name_dv ? <span className="ml-2 font-normal text-[var(--color-text-muted)]" dir="rtl">{r.name_dv}</span> : null}
                         {r.kind === 'custom' && <span className="ml-2 inline-flex items-center h-5 px-2 rounded-full text-[11px] font-semibold bg-[var(--color-tone-brown-bg)] text-[var(--color-tone-brown-text)] border border-[var(--color-tone-brown-border)] align-middle">Custom</span>}
+                        {r.shelf !== null && r.shelf <= SHORT_LIFE_DAYS && (
+                          <span className="ml-2 inline-flex items-center gap-1 h-5 px-2 rounded-full text-[11px] font-semibold align-middle" style={{ background: 'color-mix(in srgb, var(--color-warning) 18%, transparent)', color: 'var(--color-warning)', border: '1px solid color-mix(in srgb, var(--color-warning) 40%, transparent)' }} data-testid="short-life">
+                            <Clock size={11} aria-hidden /> Short life · {r.shelf} {r.shelf === 1 ? 'day' : 'days'}
+                          </span>
+                        )}
                       </span>
                       <span className="block text-xs text-[var(--color-text-muted)] sm:truncate">
                         {r.kind === 'custom' && r.brand ? `${r.brand} · ` : ''}
@@ -460,13 +472,14 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
       <section className="space-y-3">
         <div>
           <span className={labelClass}>Language</span>
-          <div className="flex gap-2 max-w-md">
-            {(['en', 'dv'] as const).map((l) => (
+          <div className="flex gap-2 max-w-md" role="group" aria-label="Language">
+            {(['en', 'dv', 'both'] as const).map((l) => (
               <button key={l} type="button" onClick={() => setLang(l)} aria-pressed={lang === l} className={['flex-1 h-9 min-h-[36px] rounded-lg border text-sm font-semibold', lang === l ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-[var(--color-on-primary)]' : 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text)]'].join(' ')}>
-                {l === 'en' ? 'English' : 'ދިވެހި'}
+                {LANG_NAMES[l]}
               </button>
             ))}
           </div>
+          {lang === 'both' && <p className="text-xs text-[var(--color-text-muted)] mt-1">English with the Dhivehi name, ingredients and storage line beneath, on the full and compact sizes; small and round stickers print English.</p>}
         </div>
         <label className="flex items-center gap-3 min-h-[44px] cursor-pointer">
           <input type="checkbox" checked={fill} onChange={(e) => setFill(e.target.checked)} className="w-5 h-5 shrink-0 accent-[var(--color-primary)]" />

@@ -20,6 +20,7 @@ class CustomLabel extends Model
         'label_heading', 'label_heading_dv', 'label_storage_line', 'label_storage_line_dv',
         'label_ingredients', 'label_ingredients_dv', 'label_how_to_use', 'label_how_to_use_dv',
         'label_note', 'label_note_dv', 'label_shelf_life_days', 'label_pack_qty', 'label_pack_unit',
+        'label_price', 'label_barcode', 'label_net_weight', 'label_allergens',
         'label_photo_media_id', 'label_title_media_id', 'created_by',
     ];
 
@@ -30,6 +31,7 @@ class CustomLabel extends Model
             'label_type_id' => 'integer',
             'label_shelf_life_days' => 'integer',
             'label_pack_qty' => 'integer',
+            'label_price' => 'decimal:2',
             'label_photo_media_id' => 'integer',
             'label_title_media_id' => 'integer',
         ];

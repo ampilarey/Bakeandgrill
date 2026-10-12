@@ -81,6 +81,9 @@ Route::get('/labels/custom', [LabelsController::class, 'customLabels'])
     ->middleware('permission:labels.print');
 Route::post('/labels/custom', [LabelsController::class, 'storeCustomLabel'])
     ->middleware('permission:labels.manage');
+// A draft custom label drawn before it is saved (2026-10-12): preview only, nothing logged.
+Route::post('/labels/custom/preview', [LabelsController::class, 'previewCustomLabel'])
+    ->middleware(['permission:labels.manage', 'throttle:120,1']);
 Route::put('/labels/custom/{customLabel}', [LabelsController::class, 'updateCustomLabel'])
     ->middleware('permission:labels.manage')
     ->whereNumber('customLabel');

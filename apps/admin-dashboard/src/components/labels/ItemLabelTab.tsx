@@ -35,6 +35,10 @@ type Draft = {
   label_title_url: string | null;
   label_photo_media_id: number | null;
   label_photo_url: string | null;
+  label_price: string;
+  label_show_price: boolean;
+  label_barcode: string;
+  label_net_weight: string;
 };
 
 const toDraft = (p: LabelProduct): Draft => ({
@@ -59,6 +63,10 @@ const toDraft = (p: LabelProduct): Draft => ({
   label_title_url: p.label_title_url,
   label_photo_media_id: p.label_photo_media_id,
   label_photo_url: p.label_photo_url,
+  label_price: p.label_price != null ? String(p.label_price) : '',
+  label_show_price: p.label_show_price,
+  label_barcode: p.label_barcode ?? '',
+  label_net_weight: p.label_net_weight ?? '',
 });
 
 const fieldClass = 'h-10 min-h-[44px] px-3 rounded-lg border border-[var(--color-border)] bg-white text-sm text-[var(--color-text)] w-full';
@@ -116,6 +124,10 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
         label_how_to_use_dv: draft.label_how_to_use_dv.trim() || null,
         label_title_media_id: draft.label_title_media_id,
         label_photo_media_id: draft.label_photo_media_id,
+        label_price: draft.label_price !== '' ? Number(draft.label_price) : null,
+        label_show_price: draft.label_show_price,
+        label_barcode: draft.label_barcode.trim() || null,
+        label_net_weight: draft.label_net_weight.trim() || null,
       });
       setProduct(r.data); setDraft(toDraft(r.data));
       setMessage('Label settings saved.');
@@ -215,6 +227,28 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
             <div><label className={labelClass} htmlFor="lbl-use-dv">How to use (Dhivehi)</label><textarea id="lbl-use-dv" dir="rtl" rows={2} maxLength={200} value={draft.label_how_to_use_dv} onChange={(e) => set('label_how_to_use_dv', e.target.value)} className="w-full min-h-[44px] px-3 py-2 rounded-lg border border-[var(--color-border)] text-sm resize-y" placeholder={product.defaults.how_to_use_dv} /></div>
             <div><label className={labelClass} htmlFor="lbl-unit">Unit after the quantity</label><input id="lbl-unit" maxLength={10} value={draft.label_pack_unit} onChange={(e) => set('label_pack_unit', e.target.value)} className={fieldClass} placeholder={product.defaults.unit} /><p className="text-xs text-[var(--color-text-muted)] mt-1">PCS, SLICES, PACK, G…</p></div>
           </div>
+        </fieldset>
+
+        {/* 2026-10-12: price, barcode and net weight for a pack sold at another shop's till; the allergens come from Details. */}
+        <fieldset className="rounded-xl border border-[var(--color-border)] p-3 space-y-3" data-testid="item-label-shop">
+          <legend className="px-1 text-sm font-bold text-[var(--color-text)]">For the shop till</legend>
+          <label className="flex items-center gap-3 min-h-[44px] cursor-pointer">
+            <input type="checkbox" checked={draft.label_show_price} onChange={(e) => set('label_show_price', e.target.checked)} className="w-5 h-5 shrink-0 accent-[var(--color-primary)]" />
+            <span>
+              <span className="block text-sm font-semibold text-[var(--color-text)]">Print the price</span>
+              <span className="block text-xs text-[var(--color-text-muted)]">The menu price, MVR {product.menu_price.toFixed(2)}, unless one is typed below.</span>
+            </span>
+          </label>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div><label className={labelClass} htmlFor="lbl-price">Label price (MVR)</label><input id="lbl-price" type="number" inputMode="decimal" min={0} step="0.5" value={draft.label_price} onChange={(e) => set('label_price', e.target.value)} className={fieldClass} placeholder={product.menu_price.toFixed(2)} disabled={!draft.label_show_price} /></div>
+            <div><label className={labelClass} htmlFor="lbl-barcode">Barcode (EAN-13 or EAN-8)</label><input id="lbl-barcode" inputMode="numeric" maxLength={20} value={draft.label_barcode} onChange={(e) => set('label_barcode', e.target.value)} className={fieldClass} placeholder="590123412345" /><p className="text-xs text-[var(--color-text-muted)] mt-1">12 digits: the check digit is added. Prints on the full-size sticker.</p></div>
+            <div><label className={labelClass} htmlFor="lbl-weight">Net weight</label><input id="lbl-weight" maxLength={20} value={draft.label_net_weight} onChange={(e) => set('label_net_weight', e.target.value)} className={fieldClass} placeholder="250 g" /><p className="text-xs text-[var(--color-text-muted)] mt-1">Beside the quantity.</p></div>
+          </div>
+          <p className="text-xs text-[var(--color-text-muted)]" data-testid="item-label-allergens">
+            {product.allergens.length > 0
+              ? <>Allergens from the Details tab, <strong className="text-[var(--color-text-secondary)]">{product.allergens.join(', ')}</strong>, print bold in the ingredients and as “Contains {product.allergens.join(', ')}” when the note is empty.</>
+              : 'No allergens on the Details tab. Tick them there and they print bold in the ingredients.'}
+          </p>
         </fieldset>
 
         {pictureSlot('title', 'Hand-lettered name', 'A PNG with a clear background. Without one, the name is typed in the brand font.')}

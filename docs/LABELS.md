@@ -6,7 +6,10 @@ label types, brands, more shapes and saved labels (`docs/LABEL_HUB_V2_PLAN.md`).
 Label sizes down to 3 × 2 cm and custom labels for things not on the menu came on
 2026-10-11 (owner: "Add label size. For example rectangular 4 cm by 6 cm, circle 6 cm
 diameter ect. Add option to add custom labels using different brands logos and other
-details. Not only from the menu list").
+details. Not only from the menu list"). On 2026-10-12 (owner: "build all" of the audit's
+recommendations): price and barcode, net weight, allergens in bold, both languages on
+one sticker, a draft previewed as it is typed, pinned saved labels, and stickers from
+the kitchen screen (§ For the shop till and after).
 
 ## Who can use it
 
@@ -55,7 +58,13 @@ staff:explain <phone>` says whether an account can get in and why.
    the sticker, as it does on the menu cards and the POS. **Hand-lettered name** and
    **Food photo (labels only)** override it from the media library. Without any, the
    name is typed in the brand serif and the flame stands in.
-7. The preview on the right shows the sticker from the saved settings, English or
+7. **For the shop till**: **Print the price** puts the menu price on the sticker (or
+   the **Label price** typed beside it); a **Barcode** (EAN-13 or EAN-8: type the first
+   12 or 7 digits and the check digit is added, or all of them and it is checked) prints
+   on the full-size sticker with its digits beneath; a **Net weight** ("250 g") prints
+   beside the quantity. The item's allergens, ticked on its Details tab, print bold in
+   the ingredients and, when the note is empty, as "Contains egg, tree nuts".
+8. The preview on the right shows the sticker from the saved settings, English or
    Dhivehi.
 
 The nine original products are brought in once with:
@@ -81,14 +90,17 @@ the new label straight away):
 3. **Label type**: brings the heading, storage, date wording, shelf life and how-to-use,
    as for a menu item. Anything typed in the boxes below prints instead.
 4. **Ingredients**, storage, **shelf life (days)**, **quantity per pack** and the
-   **unit** after it (PCS, G, ML, KG, PACK).
+   **unit** after it (PCS, G, ML, KG, PACK), the **allergens** (a comma list, printed
+   bold and as "Contains …") and the **net weight**; under **For the shop till**, a
+   **price** and a **barcode**.
 5. **Wording on the sticker**: heading, storage line, note, how to use, each in
    English and Dhivehi. An empty box prints what is shown in grey.
 6. **Picture** and **hand-lettered name**: a PNG upload (kept exactly as uploaded) or
    one from the media library. Uploading a picture to a new label saves it first.
 
-The preview beside the form shows the saved label at 105 × 148, 40 × 60 and 6 cm round,
-in English or Dhivehi. **Print** opens Pack stickers with the label picked; it prints
+The preview beside the form redraws as you type, saved or not (the server keeps the
+draft for half an hour under a token the preview link names; nothing is printed or
+logged from it), at 105 × 148, 40 × 60 and 6 cm round, in English, Dhivehi or both. **Print** opens Pack stickers with the label picked; it prints
 there on any size, alone or on the same sheet as menu items. On the list, **Copy**
 makes a copy to change, **Remove** deletes it: prints already made stay in the log,
 and a saved label that only had removed products says so instead of printing.
@@ -110,12 +122,16 @@ Dates print as `04 / 10 / 2026` or `4 Oct 2026` (Labels → Settings → Dates).
 
 ## Printing
 
-**Pack stickers** (Labels → Pack stickers): **Print again** at the top lists the last
-sheets printed; one tap prints one with today's dates, or tap its name to change it
-first. Then tick products and how many of each (− and +
+**Pack stickers** (Labels → Pack stickers): **Print again** at the top lists the pinned
+labels, then the last sheets printed; one tap prints one with today's dates, or tap
+its name to change it first. A product that keeps 3 days or fewer carries a **Short
+life** mark in the list (and on Settings), so a chilled item is not printed with a
+frozen item's dates by mistake. Then tick products and how many of each (− and +
 move a whole sheet). Menu items and custom labels share the list (**All**, **Menu
 items**, **Custom labels** narrow it) and can go on the same sheet. Then the **label
-size**, the language, **Print as** (one type for the whole sheet, optional), and
+size**, the language (**English**, **ދިވެހި**, or **Both**: English with the Dhivehi name,
+ingredients and storage line beneath, on the full and compact designs; small and round
+stickers print English), **Print as** (one type for the whole sheet, optional), and
 whether to fill the dates (with the dates on, each picked product shows the expiry it
 will get). **Print as**, the batch number (a **Today** button writes the date as a code,
 261011) and the quantity per pack sit behind **More options**. The **Preview** beside
@@ -177,7 +193,10 @@ the limits.
 
 **From a production line** (Kitchen → Batches → the tag icon on a line): the same panel
 with the batch number, the batch's own expiry (which wins over shelf life) and made-on
-date filled in.
+date filled in. **From the kitchen screen** (KDS → Production → Today's plan): once a
+job is sent to the counter, a cook with Print labels sees **Stickers for batch …** on
+it, which opens the PDF of one 40 × 60 mm sticker a piece, on A4, with the batch's
+number and dates.
 
 **Box labels** (Labels → Box labels, or "Box label" on a wholesale delivery). The
 same live preview sits beside the form, so the label is seen filled in before it is
@@ -197,8 +216,9 @@ added; up to 16 lines.
 **Saved labels** (Labels → Saved labels): every label prepared, newest printed first.
 **Print** prints it again (stickers with dates get today's made-on date and a fresh
 expiry; change the label to use other dates), **Download PDF**, **Edit** opens it back
-in the form with every setting as it was, **Copy**, the name with its pencil renames it
-in place, **Remove**. The print log (every sheet, by whom, with dates and batch) is folded
+in the form with every setting as it was, **Copy**, the star **pins** it (a favourite:
+it stays at the top of the list and leads Print again), the name with its pencil
+renames it in place, **Remove**. The print log (every sheet, by whom, with dates and batch) is folded
 beneath.
 
 ## Where things live
@@ -212,7 +232,11 @@ beneath.
 | Print log | `label_prints`; written on every print, never edited; `item_id` or `custom_label_id` (emptied when the custom label is removed), the layout and label size, shown in words ("40 × 60 mm, 21 on A4", `StickerLayouts::describe()`) |
 | Footer wording, box-label wording per storage, date style, pre-cut offsets | Labels → Settings, site settings with the originals as defaults (`App\Domains\Labels\LabelSettings`) |
 | Phone, website, address, landmark, tagline | Business Details (same as receipts) |
-| Sticker designs | `App\Domains\Labels\StickerDesign`: `full`, `mini`, `round`; `SmallStickerDesign`: `small` and rounds under 45 mm (pieces in mm) |
+| Sticker designs | `App\Domains\Labels\StickerDesign`: `full`, `mini`, `round`; `SmallStickerDesign`: `small` and rounds under 45 mm (pieces in mm). A text piece with `bold_words` sets those words in the bold face (allergens). `lang: both` reaches the designs as `$d['both']` |
+| Price, barcode, net weight, allergens | `items.label_price` / `label_show_price` / `label_barcode` / `label_net_weight`; `custom_labels` the same plus `label_allergens`; `StickerSheet::price()`, `allergens()`; `App\Domains\Labels\Barcode` (EAN-13/EAN-8 check digit, modules, bars as an SVG data URI; the digits are a text piece beneath). The bars print on the full design only; the compact sizes in use have no room |
+| Draft preview | `POST /api/labels/custom/preview` (`labels.manage`) keeps the draft in the cache for 30 minutes (`StickerSheet::keepDraft`) and links the sheet with `items=d<token>:1`; `StickerSheet::draft()` builds an unsaved `CustomLabel` from it. The print API refuses a draft |
+| Pinned labels | `label_jobs.pinned`; `PUT /api/labels/jobs/{job}` takes `pinned`; the list orders pinned first, `?pinned=1` filters |
+| Kitchen screen stickers | `apps/kds-web`: `fetchProductionStickers`, `productionStickerLinks`, `labelSheetUrl`; the Stickers button on `KitchenProductionPanel` for a job sent this session, shown with `labels.print` |
 | Label stock and sizes | `App\Domains\Labels\StickerLayouts`: `LAYOUTS` (`shape` rect or circle; `a4-custom` and `a4-round-custom` fill A4 with any size, `single-custom` and `single-round-custom` one per label), `PRESETS` (the one-tap sizes and the layout for each stock), `design()`, `grid()`, `limits()` |
 | Size picker | `apps/admin-dashboard/src/components/labels/LabelSizePicker.tsx` and `labelSize.ts`, which mirrors `design()`, `grid()` and the limits so the picker can say "21 on A4" and "too small" before asking. `fixtures/label_size_parity.json` holds both to the same answers (`LabelSizeParityTest`, `labelSize.test.ts`); change the server, the mirror and the table together |
 | Box label | `App\Domains\Labels\BoxLabel`; a shop's saved label in `trade_accounts.box_label` |

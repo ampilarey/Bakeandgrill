@@ -7,10 +7,12 @@ namespace App\Domains\Labels;
 use App\Models\CustomLabel;
 use App\Models\Item;
 use App\Models\KitchenProductionItem;
+use App\Models\LabelBrand;
 use App\Models\LabelType;
 use App\Support\ComplaintBoxLink;
 use App\Support\QrSvg;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Cache;
 use InvalidArgumentException;
 
 /**
@@ -26,6 +28,14 @@ use InvalidArgumentException;
 final class StickerSheet
 {
     public const MAX_STICKERS = 400;
+
+    /** English, Dhivehi, or both on one sticker (2026-10-12). */
+    public const LANGS = ['en', 'dv', 'both'];
+
+    /** A custom label still being written previews from the cache under this key (2026-10-12). */
+    public const DRAFT_CACHE = 'label-draft:';
+
+    public const DRAFT_MINUTES = 30;
 
     /** @var array<int, ?LabelType> */
     private array $asTypes = [];
@@ -104,7 +114,7 @@ final class StickerSheet
 
         return [
             'items' => $items,
-            'lang' => ($in['lang'] ?? 'en') === 'dv' ? 'dv' : 'en',
+            'lang' => in_array($in['lang'] ?? 'en', self::LANGS, true) ? (string) ($in['lang'] ?? 'en') : 'en',
             'layout' => $layout,
             'w' => in_array($layout, StickerLayouts::SIZED, true) ? $w : null,
             'h' => in_array($layout, StickerLayouts::SIZED, true) && StickerLayouts::shape($layout) === 'rect' ? $h : null,
@@ -133,7 +143,9 @@ final class StickerSheet
         $dv = $req['lang'] === 'dv';
         $production = $req['pi'] ? KitchenProductionItem::query()->find($req['pi']) : null;
         $products = $this->products($req['items']);
-        $common = $this->common();
+        // Both languages on one sticker: the English layout with the Dhivehi
+        // name, ingredients and storage line set beneath their English.
+        $common = $this->common() + ['both' => $req['lang'] === 'both'];
 
         $stickers = [];
         $summary = [];
@@ -166,18 +178,25 @@ final class StickerSheet
     }
 
     /**
-     * The menu items and custom labels a request names, keyed "i12" / "c5".
+     * The menu items and custom labels a request names, keyed "i12" / "c5";
+     * a draft custom label ("d" + its cache token) is built from the cache.
      *
-     * @param list<array{id: int, copies: int, kind: string}> $rows
+     * @param list<array{id: int|string, copies: int, kind: string}> $rows
      * @return array<string, Item|CustomLabel>
      */
     public function products(array $rows): array
     {
-        $ids = ['item' => [], 'custom' => []];
+        $ids = ['item' => [], 'custom' => [], 'draft' => []];
         foreach ($rows as $row) {
             $ids[$row['kind']][] = $row['id'];
         }
         $out = [];
+        foreach ($ids['draft'] as $token) {
+            $draft = self::draft((string) $token);
+            if ($draft !== null) {
+                $out['d' . $token] = $draft;
+            }
+        }
         if ($ids['item'] !== []) {
             foreach (Item::query()->with('labelType.brand')->whereIn('id', $ids['item'])->get() as $item) {
                 $out['i' . $item->id] = $item;
@@ -192,10 +211,43 @@ final class StickerSheet
         return $out;
     }
 
-    /** @param array{id: int, kind: string} $row */
+    /** @param array{id: int|string, kind: string} $row */
     public static function key(array $row): string
     {
-        return ($row['kind'] === 'custom' ? 'c' : 'i') . $row['id'];
+        return (['custom' => 'c', 'draft' => 'd'][$row['kind']] ?? 'i') . $row['id'];
+    }
+
+    /**
+     * Keep a custom label that is still being written, so the editor can
+     * show it before it is saved (2026-10-12). Returns the token the sheet
+     * link names it by.
+     *
+     * @param array<string, mixed> $attributes the custom label's columns
+     */
+    public static function keepDraft(array $attributes): string
+    {
+        $token = bin2hex(random_bytes(8));
+        Cache::put(self::DRAFT_CACHE . $token, $attributes, now()->addMinutes(self::DRAFT_MINUTES));
+
+        return $token;
+    }
+
+    /** The draft behind a token as an unsaved custom label, with its brand and type. */
+    public static function draft(string $token): ?CustomLabel
+    {
+        if (!preg_match('/^[a-f0-9]{16}$/', $token)) {
+            return null;
+        }
+        $attributes = Cache::get(self::DRAFT_CACHE . $token);
+        if (!is_array($attributes)) {
+            return null;
+        }
+        $draft = new CustomLabel();
+        $draft->forceFill(array_intersect_key($attributes, array_flip($draft->getFillable())));
+        $draft->setRelation('brand', $draft->brand_id ? LabelBrand::query()->find($draft->brand_id) : null);
+        $draft->setRelation('labelType', $draft->label_type_id ? LabelType::query()->with('brand')->find($draft->label_type_id) : null);
+
+        return $draft;
     }
 
     /**
@@ -294,6 +346,15 @@ final class StickerSheet
         }
         $qty = $req['qty'] !== '' ? $req['qty'] : ($item->label_pack_qty ? (string) $item->label_pack_qty : '');
         $w = $this->types->forItem($item, $this->asType($req));
+        // 2026-10-12: a price (the menu's unless typed, and only when switched
+        // on for a menu item), a barcode, a net weight and the allergens.
+        $price = $this->price($item);
+        $code = Barcode::normalise($item->label_barcode);
+        $allergens = self::allergens($item);
+        $note = $w['note'];
+        if ($note === '' && $allergens !== []) {
+            $note = 'Contains ' . implode(', ', $allergens);
+        }
 
         return $common + [
             'name' => (string) $item->name,
@@ -316,8 +377,13 @@ final class StickerSheet
             'header_line_dv' => $w['heading_dv'],
             'storage_en' => $w['storage_en'],
             'storage_dv' => $w['storage_dv'],
-            'note' => $w['note'],
+            'note' => $note,
             'note_dv' => $w['note_dv'],
+            'price' => $price,
+            'net_weight' => trim((string) $item->label_net_weight),
+            'barcode' => $code !== null ? Barcode::svgDataUri($code, 30, 12) : null,
+            'barcode_text' => $code !== null ? Barcode::text($code) : '',
+            'allergens' => $allergens,
             'how_to_use' => $w['how_to_use'],
             'how_to_use_dv' => $w['how_to_use_dv'],
             'use_within' => $w['use_within'],
@@ -328,6 +394,42 @@ final class StickerSheet
             'brand' => $w['brand'],
             'type_name' => $w['type_name'],
         ];
+    }
+
+    /** "MVR 25.00", or '' when nothing is to print. */
+    public function price(Item|CustomLabel $item): string
+    {
+        if ($item instanceof CustomLabel) {
+            $amount = $item->label_price !== null ? (float) $item->label_price : null;
+        } elseif ($item->label_show_price) {
+            $amount = $item->label_price !== null ? (float) $item->label_price : $item->displayPriceInfo()['price'];
+        } else {
+            $amount = null;
+        }
+
+        return $amount !== null && $amount > 0 ? 'MVR ' . number_format($amount, 2) : '';
+    }
+
+    /**
+     * The allergens to set bold in the ingredients: a menu item's from its
+     * Details tab ("egg", "tree-nuts" → "tree nuts"), a custom label's as typed.
+     *
+     * @return list<string>
+     */
+    public static function allergens(Item|CustomLabel $item): array
+    {
+        $raw = $item instanceof CustomLabel
+            ? preg_split('/\s*,\s*/u', trim((string) $item->label_allergens)) ?: []
+            : (is_array($item->allergens) ? $item->allergens : []);
+        $out = [];
+        foreach ($raw as $a) {
+            $a = mb_strtolower(trim(str_replace(['-', '_'], ' ', (string) $a)));
+            if ($a !== '' && !in_array($a, $out, true)) {
+                $out[] = $a;
+            }
+        }
+
+        return $out;
     }
 
     /**
@@ -382,6 +484,11 @@ final class StickerSheet
         if (is_string($raw)) {
             foreach (array_filter(explode(',', $raw)) as $part) {
                 [$id, $copies] = array_pad(explode(':', $part, 2), 2, '0');
+                if (str_starts_with($id, 'd')) {
+                    // A draft custom label, by its cache token (previews only).
+                    $rows[] = ['id' => substr($id, 1), 'copies' => (int) $copies, 'kind' => 'draft'];
+                    continue;
+                }
                 $custom = str_starts_with($id, 'c');
                 $rows[] = ['id' => (int) ltrim($id, 'c'), 'copies' => (int) $copies, 'kind' => $custom ? 'custom' : 'item'];
             }
@@ -394,7 +501,7 @@ final class StickerSheet
         }
         $merged = [];
         foreach ($rows as $row) {
-            if ($row['id'] > 0 && $row['copies'] > 0) {
+            if ((is_string($row['id']) ? $row['id'] !== '' : $row['id'] > 0) && $row['copies'] > 0) {
                 $key = self::key($row);
                 $merged[$key] ??= ['id' => $row['id'], 'copies' => 0, 'kind' => $row['kind']];
                 $merged[$key]['copies'] += min($row['copies'], self::MAX_STICKERS);

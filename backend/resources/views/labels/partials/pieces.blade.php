@@ -10,9 +10,17 @@
      */
     $mm = fn (float $v): string => rtrim(rtrim(number_format($v, 3, '.', ''), '0'), '.') . 'mm';
     $PT = \App\Domains\Labels\LabelText::PT;
-    $textHtml = function (string $text, string $font) use ($forPdf): string {
+    $textHtml = function (string $text, string $font, array $boldWords = []) use ($forPdf): string {
         if ($font !== 'dv' || !\App\Support\ThaanaVisual::hasThaana($text)) {
-            return e($text);
+            $html = e($text);
+            // Allergens in bold inside the ingredients (2026-10-12): whole
+            // words, any case, set in the bold face of the same family.
+            if ($boldWords !== []) {
+                $pattern = '/\b(' . implode('|', array_map(fn ($w) => preg_quote($w, '/'), $boldWords)) . ')\b/iu';
+                $html = (string) preg_replace($pattern, '<span class="f-j7">$1</span>', $html);
+            }
+
+            return $html;
         }
         if ($forPdf) {
             $text = \App\Support\ThaanaVisual::order($text);
@@ -65,7 +73,7 @@
                 $offsets = $bold > 0 ? [-$nudge * 0.5, $nudge * 0.5, 0.0] : [0.0];
             @endphp
             @foreach ($offsets as $dx)
-            <div class="pc tx f-{{ $p['font'] }}" style="left:{{ $mm($ox + $p['x'] * $s + $dx) }};top:{{ $mm($top) }};width:{{ $mm($p['w'] * $s) }};height:{{ $mm($lh) }};line-height:{{ $mm($lh) }};font-size:{{ round($size, 3) }}pt;color:{{ $p['color'] }};text-align:{{ $align }};{{ $ls }}{{ $rtl ? 'direction:rtl;' : '' }}">{!! $textHtml((string) $p['text'], $p['font']) !!}</div>
+            <div class="pc tx f-{{ $p['font'] }}" style="left:{{ $mm($ox + $p['x'] * $s + $dx) }};top:{{ $mm($top) }};width:{{ $mm($p['w'] * $s) }};height:{{ $mm($lh) }};line-height:{{ $mm($lh) }};font-size:{{ round($size, 3) }}pt;color:{{ $p['color'] }};text-align:{{ $align }};{{ $ls }}{{ $rtl ? 'direction:rtl;' : '' }}">{!! $textHtml((string) $p['text'], $p['font'], $p['bold_words'] ?? []) !!}</div>
             @endforeach
             @break
     @endswitch

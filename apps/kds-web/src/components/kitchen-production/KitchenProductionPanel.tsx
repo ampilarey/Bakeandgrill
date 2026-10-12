@@ -3,12 +3,16 @@ import {
   createKitchenProductionBatch,
   failureMessage,
   fetchPlanTasks,
+  fetchProductionStickers,
+  labelSheetUrl,
   markOrderItemCooked,
   markPlanTaskMade,
+  productionStickerLinks,
   submitKitchenProductionBatch,
   type KdsOrder,
   type KdsOrderItem,
   type KdsPlanTask,
+  type KitchenProductionBatch,
 } from "../../api";
 
 type Props = {
@@ -16,6 +20,8 @@ type Props = {
   orders: KdsOrder[];
   canProduce: boolean;
   canPreparedStock: boolean;
+  /** Print labels: a Stickers button on a job just sent to the counter (2026-10-12). */
+  canLabels?: boolean;
   /** Who is signed in, so their own jobs come first. */
   userId?: number | null;
   onRefresh: () => void;
@@ -53,11 +59,15 @@ function fmtQty(n: number): string {
   return Number.isInteger(n) ? String(n) : n.toFixed(1);
 }
 
+/** The owner's 4 × 6 cm sticker, as many to an A4 sheet as fit: the size a kitchen prints without asking. */
+const KITCHEN_STICKER = { layout: "a4-custom", w: 40, h: 60 };
+
 export function KitchenProductionPanel({
   token,
   orders,
   canProduce,
   canPreparedStock,
+  canLabels = false,
   userId,
   onRefresh,
 }: Props) {
@@ -70,6 +80,8 @@ export function KitchenProductionPanel({
   const [tasks, setTasks] = useState<KdsPlanTask[] | null>(null);
   const [tasksDate, setTasksDate] = useState("");
   const [madeQty, setMadeQty] = useState<Record<number, string>>({});
+  // The batch each job made this session, so its stickers can be printed from here.
+  const [batches, setBatches] = useState<Record<number, KitchenProductionBatch>>({});
 
   const cookingOrders = orders.filter((o) =>
     ["in_progress", "preparing"].includes(o.status),
@@ -113,12 +125,37 @@ export function KitchenProductionPanel({
     setBusyKey(`task-${task.id}`);
     setErr("");
     try {
-      await markPlanTaskMade(token, task.id, qty);
+      const res = await markPlanTaskMade(token, task.id, qty);
+      if (res.batch) setBatches((b) => ({ ...b, [task.id]: res.batch as KitchenProductionBatch }));
       setMadeQty((m) => { const next = { ...m }; delete next[task.id]; return next; });
       await loadTasks();
       onRefresh();
     } catch (e) {
       setErr(failureMessage(e, "Could not send that to the counter."));
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
+  /*
+   * Stickers for the batch just made (2026-10-12): the batch number, expiry
+   * and made-on date come from the line, one sticker a piece, on the
+   * kitchen's sticker size; the PDF opens to print (a tablet prints the PDF).
+   */
+  const printStickers = async (task: KdsPlanTask) => {
+    const batch = batches[task.id];
+    const line = batch?.items.find((i) => i.item_id === task.item_id) ?? batch?.items[0];
+    if (!line) return;
+    setBusyKey(`stickers-${task.id}`);
+    setErr("");
+    try {
+      const { data } = await fetchProductionStickers(token, line.id);
+      if (!data.item) { setErr("This line is not a menu item, so it has no sticker."); return; }
+      const copies = Math.max(1, Math.min(400, Math.round(data.qty || task.made_qty || 1)));
+      const r = await productionStickerLinks(token, { items: [{ id: data.item.id, copies }], ...KITCHEN_STICKER, fill: true, mfg: data.mfg, exp: data.exp, batch: data.batch || null, pi: data.pi });
+      window.open(labelSheetUrl(r.pdf_url), "_blank", "noopener");
+    } catch (e) {
+      setErr(failureMessage(e, "Could not prepare the stickers."));
     } finally {
       setBusyKey(null);
     }
@@ -235,6 +272,17 @@ export function KitchenProductionPanel({
                     <summary style={{ cursor: "pointer", fontWeight: 700, minHeight: 28, display: "flex", alignItems: "center" }}>How to make</summary>
                     <div style={{ whiteSpace: "pre-wrap", padding: "6px 10px", borderLeft: "2px solid #EDE4D4", marginTop: 2 }}>{task.instructions}</div>
                   </details>
+                )}
+                {canLabels && batches[task.id] && (
+                  <button
+                    type="button"
+                    disabled={busyKey === `stickers-${task.id}`}
+                    onClick={() => void printStickers(task)}
+                    data-testid={`kds-plan-stickers-${task.id}`}
+                    style={{ alignSelf: "flex-start", padding: "8px 12px", borderRadius: 8, border: "1px solid #B74B0C", background: "#fff", color: "#B74B0C", fontWeight: 700, cursor: "pointer", fontSize: 13 }}
+                  >
+                    {busyKey === `stickers-${task.id}` ? "Preparing…" : `Stickers for batch ${batches[task.id].batch_no}`}
+                  </button>
                 )}
                 {!done && (
                   <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>

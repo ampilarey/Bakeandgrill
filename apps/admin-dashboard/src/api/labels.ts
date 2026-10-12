@@ -33,6 +33,14 @@ export type LabelProduct = {
   label_type_name: string | null;
   label_how_to_use: string | null;
   label_how_to_use_dv: string | null;
+  /** 2026-10-12: the price prints when switched on (the menu price unless one is typed), a barcode (EAN-13 or EAN-8), a net weight. */
+  label_price: number | null;
+  label_show_price: boolean;
+  label_barcode: string | null;
+  label_net_weight: string | null;
+  menu_price: number;
+  /** From the item's Details tab, as words ("tree nuts"): printed bold and as "Contains …". */
+  allergens: string[];
   /** What prints when the item's own box is empty: its type's wording, else the storage defaults. */
   defaults: { heading: string; heading_dv: string; storage_line: string; storage_line_dv: string; how_to_use: string; how_to_use_dv: string; note: string; note_dv: string; shelf_life_days: number | null; brand: string; unit: string };
   label_title_media_id: number | null;
@@ -40,7 +48,6 @@ export type LabelProduct = {
   label_photo_media_id: number | null;
   label_photo_url: string | null;
   cutout_url: string | null;
-  allergens: string[];
   has_recipe: boolean;
   ingredients: { en: string; dv: string; from: 'recipe' | 'manual' | 'none'; recipe_en: string; recipe_dv: string };
 };
@@ -114,6 +121,8 @@ export type CustomLabel = {
   label_how_to_use: string | null; label_how_to_use_dv: string | null;
   label_note: string | null; label_note_dv: string | null;
   label_shelf_life_days: number | null; label_pack_qty: number | null; label_pack_unit: string | null;
+  /** 2026-10-12: price, barcode, net weight and the allergens (a comma list, printed bold and as "Contains …"). */
+  label_price: number | null; label_barcode: string | null; label_net_weight: string | null; label_allergens: string | null;
   label_photo_media_id: number | null; label_photo_url: string | null;
   label_title_media_id: number | null; label_title_url: string | null;
   defaults: { heading: string; heading_dv: string; storage_line: string; storage_line_dv: string; how_to_use: string; how_to_use_dv: string; note: string; note_dv: string; shelf_life_days: number | null; brand: string; unit: string };
@@ -125,12 +134,16 @@ export type CustomLabelPayload = Partial<Pick<CustomLabel,
   'name' | 'name_dv' | 'brand_id' | 'label_type_id' | 'label_storage' | 'label_heading' | 'label_heading_dv'
   | 'label_storage_line' | 'label_storage_line_dv' | 'label_ingredients' | 'label_ingredients_dv'
   | 'label_how_to_use' | 'label_how_to_use_dv' | 'label_note' | 'label_note_dv'
-  | 'label_shelf_life_days' | 'label_pack_qty' | 'label_pack_unit' | 'label_photo_media_id' | 'label_title_media_id'>>;
+  | 'label_shelf_life_days' | 'label_pack_qty' | 'label_pack_unit' | 'label_photo_media_id' | 'label_title_media_id'
+  | 'label_price' | 'label_barcode' | 'label_net_weight' | 'label_allergens'>>;
+
+/** The sticker's languages: English, Dhivehi, or both on one sticker (2026-10-12). */
+export type StickerLang = 'en' | 'dv' | 'both';
 
 export type StickerRequest = {
   /** A menu item, or a custom label when `kind` says so. */
   items: { id: number; copies: number; kind?: 'item' | 'custom' }[];
-  lang?: 'en' | 'dv';
+  lang?: StickerLang;
   layout?: string;
   w?: number | null;
   h?: number | null;
@@ -173,6 +186,8 @@ export type SheetLinks = {
 /** A saved label (v2 point 10): a prepared print kept with its request. */
 export type LabelJob = {
   id: number; kind: 'stickers' | 'box'; name: string;
+  /** A favourite (2026-10-12): leads Saved labels and Print again. */
+  pinned: boolean;
   summary: (StickerSummary | { label: string; customer: string; when: string; lines: { name: string; qty: number }[] }) | null;
   print_count: number; last_printed_at: string | null; created_at: string; created_by: string | null;
 };
@@ -204,7 +219,7 @@ export type LabelShop = { id: number; shop_name: string; saved: boolean };
 
 export type LabelPrintRow = {
   id: number;
-  kind: 'sticker_en' | 'sticker_dv' | 'box_label';
+  kind: 'sticker_en' | 'sticker_dv' | 'sticker_both' | 'box_label';
   layout: string;
   /** The stock in words, with the size it printed at ("40 × 60 mm, 21 on A4"). */
   stock?: string;
@@ -297,11 +312,12 @@ export function fetchProductionStickers(productionItemId: number) {
   return req<{ data: { pi: number; item: { id: number; name: string; label_enabled: boolean; label_shelf_life_days: number | null } | null; batch: string; exp: string | null; mfg: string | null; qty: number } }>(`/labels/production-items/${productionItemId}`);
 }
 
-export function fetchLabelJobs(params: { page?: number; kind?: string; q?: string } = {}) {
+export function fetchLabelJobs(params: { page?: number; kind?: string; q?: string; pinned?: boolean } = {}) {
   const qs = new URLSearchParams();
   if (params.page) qs.set('page', String(params.page));
   if (params.kind) qs.set('kind', params.kind);
   if (params.q) qs.set('q', params.q);
+  if (params.pinned) qs.set('pinned', '1');
   return req<{ data: LabelJob[]; current_page: number; last_page: number; total: number }>(`/labels/jobs${qs.toString() ? `?${qs}` : ''}`);
 }
 
@@ -311,6 +327,20 @@ export function fetchLabelJob(id: number) {
 
 export function renameLabelJob(id: number, name: string) {
   return req<{ data: LabelJob }>(`/labels/jobs/${id}`, { method: 'PUT', body: JSON.stringify({ name }) });
+}
+
+/** Pin (favourite) a saved label so it leads the list and Print again (2026-10-12). */
+export function pinLabelJob(id: number, pinned: boolean) {
+  return req<{ data: LabelJob }>(`/labels/jobs/${id}`, { method: 'PUT', body: JSON.stringify({ pinned }) });
+}
+
+/**
+ * A custom label as it is being written, drawn before it is saved
+ * (2026-10-12): the server keeps the draft for half an hour and the link
+ * names it. Nothing is saved or logged.
+ */
+export function previewCustomDraft(body: CustomLabelPayload & { layout?: string; w?: number | null; h?: number | null; lang?: StickerLang }) {
+  return req<{ one_url: string; url: string; expires_in_minutes: number }>('/labels/custom/preview', { method: 'POST', body: JSON.stringify(body) });
 }
 
 /** Print a saved label again: stickers with dates get today's made-on date. */

@@ -549,7 +549,7 @@ final class SmallStickerDesign
             : $this->text($this->X($x, $bw), $y + 0.78 * $headPt * LabelText::PT + 0.2, $bw, $a, 'j7', $headPt, StickerDesign::PRIMARY, StickerDesign::spaced('INGREDIENTS'));
         foreach ($plan['lines'] as $i => $l) {
             $base = $y + $plan['headH'] + $i * $plan['lead'] + ($this->dv ? 0.95 : 0.8) * $plan['pt'] * LabelText::PT;
-            $this->text($this->X($x, $bw), $base, $bw, $a, $font, $plan['pt'], StickerDesign::TEXT, $l, $this->dv ? 0.4 : 0.0);
+            $this->text($this->X($x, $bw), $base, $bw, $a, $font, $plan['pt'], StickerDesign::TEXT, $l, $this->dv ? 0.4 : 0.0, $this->dv ? [] : ($this->d['allergens'] ?? []));
         }
     }
 
@@ -580,7 +580,14 @@ final class SmallStickerDesign
         } else {
             $font = 'j5';
             $b = 'BATCH: ' . ($d['batch'] !== '' ? $d['batch'] : '________');
+            // The price and net weight (2026-10-12) ride on the quantity when the label is wide enough to read them.
             $q = 'QTY: ' . ($d['qty'] !== '' ? $d['qty'] : '____') . ' ' . $d['unit'];
+            if ($half >= 22 && $d['net_weight'] !== '') {
+                $q .= ' · ' . $d['net_weight'];
+            }
+            if ($half >= 18 && $d['price'] !== '') {
+                $q = $d['price'] . ' · ' . $q;
+            }
         }
         $max = $this->dv ? $lh * 1.8 : $lh * 1.45;
         $pt = min(LabelText::fitPt($b, $font, $half - 0.6, $max, 3.0), LabelText::fitPt($q, $font, $half - 0.6, $max, 3.0));
@@ -801,12 +808,12 @@ final class SmallStickerDesign
         return $this->dv ? ['l' => 'r', 'r' => 'l', 'c' => 'c'][$align] : $align;
     }
 
-    private function text(float $x, float $base, float $bw, string $align, string $font, float $pt, string $color, string $t, float $bold = 0.0): void
+    private function text(float $x, float $base, float $bw, string $align, string $font, float $pt, string $color, string $t, float $bold = 0.0, array $boldWords = []): void
     {
         if (trim($t) === '') {
             return;
         }
-        $this->p[] = ['t' => 'text', 'x' => round($x, 3), 'base' => round($base, 3), 'w' => round($bw, 3), 'align' => $align, 'font' => $font, 'pt' => round($pt, 2), 'color' => $color, 'text' => $t] + ($bold > 0 ? ['bold' => $bold] : []);
+        $this->p[] = ['t' => 'text', 'x' => round($x, 3), 'base' => round($base, 3), 'w' => round($bw, 3), 'align' => $align, 'font' => $font, 'pt' => round($pt, 2), 'color' => $color, 'text' => $t] + ($bold > 0 ? ['bold' => $bold] : []) + ($boldWords !== [] ? ['bold_words' => $boldWords] : []);
     }
 
     private function box(float $x, float $y, float $bw, float $bh, string $fill, float $r = 0.0, ?string $stroke = null): void
