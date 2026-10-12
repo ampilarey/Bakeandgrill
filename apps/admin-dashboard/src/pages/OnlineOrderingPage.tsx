@@ -125,6 +125,9 @@ export default function OnlineOrderingPage() {
   // The till's Popular now / Goes with row (owner, 2026-10-11). On unless set off.
   const [posSuggestionsOn, setPosSuggestionsOn] = useState(true);
   const [posSuggestionsSaving, setPosSuggestionsSaving] = useState(false);
+  // The order app's "~N min wait" pill (owner, 2026-10-12). Off unless set on.
+  const [waitTimeOn, setWaitTimeOn] = useState(false);
+  const [waitTimeSaving, setWaitTimeSaving] = useState(false);
 
   const [cateringMinLeadHours, setCateringMinLeadHours] = useState('24');
   const [cateringQuoteValidDays, setCateringQuoteValidDays] = useState('7');
@@ -207,6 +210,8 @@ export default function OnlineOrderingPage() {
       setCateringQuoteMinHours(byKey('catering_quote_min_hours_before_event') ?? '24');
       const suggestions = byKey('pos_suggestion_strip_enabled');
       setPosSuggestionsOn(suggestions === undefined || suggestions === '1' || suggestions === 'true');
+      const waitTime = byKey('order_app_wait_time_enabled');
+      setWaitTimeOn(waitTime === '1' || waitTime === 'true');
       setSiteSettingsLoaded(true);
     }).catch(() => { /* Save stays off; see siteSettingsLoaded */ })
       .finally(() => setScheduleLoading(false));
@@ -226,6 +231,20 @@ export default function OnlineOrderingPage() {
       showToast('Failed to save till suggestions.', 'err');
     } finally {
       setPosSuggestionsSaving(false);
+    }
+  };
+
+  const toggleWaitTime = async () => {
+    const next = !waitTimeOn;
+    setWaitTimeSaving(true);
+    try {
+      await updateSiteSettings({ order_app_wait_time_enabled: next ? '1' : '0' });
+      setWaitTimeOn(next);
+      showToast(next ? 'The wait time shows in the order app.' : 'The wait time is hidden in the order app.');
+    } catch {
+      showToast('Failed to save the wait time switch.', 'err');
+    } finally {
+      setWaitTimeSaving(false);
     }
   };
 
@@ -838,6 +857,19 @@ export default function OnlineOrderingPage() {
               onToast={showToast}
             />
           ))}
+
+      <p style={{ ...S.sectionTitle, marginTop: '1rem' }}>Order app</p>
+      <div className="oc-card" style={S.card} data-testid="wait-time-card">
+        <MasterSwitchRow
+          on={waitTimeOn}
+          toggling={waitTimeSaving || !siteSettingsLoaded}
+          titleOn="Kitchen wait time is SHOWN"
+          titleOff="Kitchen wait time is HIDDEN"
+          helpOn="The menu, cart and checkout show “~N min wait”, worked out from the open kitchen tickets and each dish's prep time (5 to 60 minutes)."
+          helpOff="Customers see no wait estimate. Turn on when the kitchen screen is kept up to date, or the estimate sits at 60."
+          onToggle={() => void toggleWaitTime()}
+        />
+      </div>
 
       <p style={{ ...S.sectionTitle, marginTop: '1rem' }}>Till</p>
       <div className="oc-card" style={S.card} data-testid="pos-suggestions-card">

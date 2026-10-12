@@ -360,6 +360,12 @@ Opening hours come from one place, the Admin schedule: the website through
 `GET /api/opening-hours` (`schedule` keyed `sunday`…`saturday`), both written
 "7:00 AM – 11:00 PM". Do not type hours into page wording.
 
+The order app's "~N min wait" pill (menu, cart, checkout) is `WaitTimeEstimator` (open
+tickets of the last 2 hours, each dish's prep time, two tickets at once, 5 to 60
+minutes) behind one switch, Admin → Settings → Ordering → Features → Order app
+(`order_app_wait_time_enabled`, off by default; owner, 2026-10-12). Off, `GET
+/api/wait-time` answers an empty queue, which is what hides the pill.
+
 A numbered `throttle:N,M` counts per route, not one count shared by every
 route on the address: `App\Http\Middleware\ThrottleRequestsPerRoute`, bound in
 place of the framework class in `AppServiceProvider` (so

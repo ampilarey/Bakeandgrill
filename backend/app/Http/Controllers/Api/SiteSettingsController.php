@@ -62,6 +62,8 @@ class SiteSettingsController extends Controller
         // in Admin → Notifications (their audience) on 2026-10-10.
         // The till's suggestions row, Popular now and Goes with (owner, 2026-10-11).
         'pos_suggestion_strip_enabled',
+        // The order app's "~N min wait" pill (owner, 2026-10-12: off until wanted).
+        'order_app_wait_time_enabled',
         'pickup_slots_enabled',
         'pickup_slot_minutes',
         'pickup_slot_capacity',
