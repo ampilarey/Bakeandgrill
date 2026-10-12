@@ -115,17 +115,21 @@ class CustomLabelsTest extends TestCase
      * Owner, 2026-10-12: "add option to edit footer also", "when i select
      * both languages it shows English only" (on a 40 × 60 the editor
      * previewed), "layout of the custom labels is different when i go to
-     * print".
+     * print". The owner's own words live in a footer preset's tagline now
+     * ("No easy option to select and edit branding footer").
      */
-    public function test_a_custom_label_prints_its_own_footer_line_and_both_names_on_every_size(): void
+    public function test_a_custom_label_prints_its_footers_own_words_and_both_names_on_every_size(): void
     {
         Sanctum::actingAs($this->makeOwner(), ['staff']);
-        $id = $this->postJson('/api/labels/custom', $this->sauce() + ['label_footer_style' => 'own', 'label_footer' => 'Made in Malé with love', 'label_footer_dv' => 'މާލޭގައި ތައްޔާރުކުރި'])
-            ->assertCreated()->assertJsonPath('data.label_footer', 'Made in Malé with love')->assertJsonPath('data.label_footer_style', 'own')->json('data.id');
+        $amma = LabelBrand::query()->where('name', 'Amma')->value('id');
+        $footer = $this->postJson('/api/labels/footers', ['name' => 'Amma with love', 'brand_id' => $amma, 'tagline' => 'Made in Malé with love', 'tagline_dv' => 'މާލޭގައި ތައްޔާރުކުރި'])
+            ->assertCreated()->assertJsonPath('data.effective.name', 'Amma')->assertJsonPath('data.effective.tagline', 'Made in Malé with love')->json('data.id');
+        $id = $this->postJson('/api/labels/custom', $this->sauce() + ['footer_id' => $footer])
+            ->assertCreated()->assertJsonPath('data.footer_id', $footer)->assertJsonPath('data.footer_name', 'Amma with love')->json('data.id');
 
         $sheet = fn (array $extra) => (string) $this->get($this->postJson('/api/labels/stickers/url', ['items' => [['id' => $id, 'kind' => 'custom', 'copies' => 1]], 'preview' => true] + $extra)->assertOk()->json('view_url'))->assertOk()->getContent();
 
-        // Full sticker: the footer line where the brand's tagline was.
+        // Full sticker: the footer's words where the brand's tagline was.
         $full = $sheet(['layout' => 'a4-4']);
         $this->assertStringContainsString('Made in Malé with love', $full);
         $this->assertStringNotContainsString('Home-made, the Amma way', $full);
@@ -134,7 +138,7 @@ class CustomLabelsTest extends TestCase
         $this->assertStringContainsString('މާލޭގައި ތައްޔާރުކުރި', $sheet(['layout' => 'a4-4', 'lang' => 'dv']));
 
         // Small sticker (40 × 60): the band has no room for three parts, so the
-        // footer line takes the phone's place rather than being dropped.
+        // footer's words take the phone's place rather than being dropped.
         $small = $sheet(['layout' => 'single-custom', 'w' => 40, 'h' => 60]);
         $this->assertStringContainsString('Made in Malé with love', $small);
         $this->assertStringNotContainsString('+960 912 0011', $small);
@@ -153,8 +157,8 @@ class CustomLabelsTest extends TestCase
         $en = $sheet(['layout' => 'single-custom', 'w' => 40, 'h' => 60]);
         $this->assertStringNotContainsString('ލޮނުމެދު ސޯސް', $en, 'English alone stays English');
 
-        // The footer is a label field like the rest: cleared by saving it empty.
-        $this->putJson("/api/labels/custom/{$id}", ['label_footer' => ''])->assertOk()->assertJsonPath('data.label_footer', null);
+        // No footer picked: the brand's own footer prints again.
+        $this->putJson("/api/labels/custom/{$id}", ['footer_id' => null])->assertOk()->assertJsonPath('data.footer_id', null)->assertJsonPath('data.footer_name', null);
         $this->assertStringContainsString('Home-made, the Amma way', $sheet(['layout' => 'a4-4']));
     }
 
@@ -167,7 +171,7 @@ class CustomLabelsTest extends TestCase
     {
         Sanctum::actingAs($this->makeOwner(), ['staff']);
         $made = $this->postJson('/api/labels/custom', $this->sauce())->assertCreated()
-            ->assertJsonPath('data.label_footer_style', 'brand')
+            ->assertJsonPath('data.footer_id', null)
             ->assertJsonPath('data.label_show_qr', null)
             ->assertJsonPath('data.label_lang', null)
             ->assertJsonPath('data.print_count', 0);
@@ -187,30 +191,34 @@ class CustomLabelsTest extends TestCase
         $small = $sheet(['layout' => 'single-custom', 'w' => 40, 'h' => 60]);
         $this->assertStringNotContainsString('<image', (string) base64_decode(explode('"', explode('src="data:image/svg+xml;base64,', $small)[1] ?? '')[0] ?? '', true));
 
-        // The standard footer: the main brand's name and tagline under an Amma header.
-        $this->putJson("/api/labels/custom/{$id}", ['label_footer_style' => 'standard'])->assertOk()->assertJsonPath('data.label_footer_style', 'standard');
-        $standard = $sheet(['layout' => 'a4-4']);
-        $this->assertStringContainsString('Fresh Baked, Fire Grilled', $standard);
-        $this->assertStringNotContainsString('Home-made, the Amma way', $standard);
-        $this->assertStringNotContainsString('by Bake &amp; Grill', $standard);
-        $this->assertStringContainsString('A M M A', $standard, 'the header keeps the label\'s own brand');
+        // The standard footer (the seeded preset): the main brand's name and
+        // tagline under an Amma header.
+        $standard = collect($this->getJson('/api/labels/footers')->assertOk()->json('data'))->firstWhere('is_default', true);
+        $this->assertSame('Standard', $standard['name']);
+        $this->putJson("/api/labels/custom/{$id}", ['footer_id' => $standard['id']])->assertOk()->assertJsonPath('data.footer_name', 'Standard');
+        $html = $sheet(['layout' => 'a4-4']);
+        $this->assertStringContainsString('Fresh Baked, Fire Grilled', $html);
+        $this->assertStringNotContainsString('Home-made, the Amma way', $html);
+        $this->assertStringNotContainsString('by Bake &amp; Grill', $html);
+        $this->assertStringContainsString('A M M A', $html, 'the header keeps the label\'s own brand');
         // On the compact and small designs too.
         $this->assertStringContainsString('Bake &amp; Grill', $sheet(['layout' => 'single-custom', 'w' => 40, 'h' => 60]));
         $this->assertStringNotContainsString('>Amma<', $sheet(['layout' => 'a4-12']));
 
-        // The QR off for this label although the type prints it; on again overrides a type that does not.
+        // The QR off for this label although the footer prints it; on again
+        // overrides a footer that does not; null follows the footer.
         $this->putJson("/api/labels/custom/{$id}", ['label_show_qr' => false])->assertOk()->assertJsonPath('data.label_show_qr', false);
         $this->assertStringNotContainsString('data:image/svg+xml;base64,', $sheet(['layout' => 'a4-4']));
-        LabelType::query()->where('name', 'Chilled Hedhika')->update(['show_qr' => false]);
+        $this->putJson("/api/labels/footers/{$standard['id']}", ['show_qr' => false])->assertOk()->assertJsonPath('data.show_qr', false);
         $this->putJson("/api/labels/custom/{$id}", ['label_show_qr' => true])->assertOk()->assertJsonPath('data.label_show_qr', true);
         $this->assertStringContainsString('data:image/svg+xml;base64,', $sheet(['layout' => 'a4-4']));
         $this->putJson("/api/labels/custom/{$id}", ['label_show_qr' => null])->assertOk()->assertJsonPath('data.label_show_qr', null);
-        $this->assertStringNotContainsString('data:image/svg+xml;base64,', $sheet(['layout' => 'a4-4']), 'null follows the type again');
+        $this->assertStringNotContainsString('data:image/svg+xml;base64,', $sheet(['layout' => 'a4-4']), 'null follows the footer again');
 
-        // The language is kept and refused when unknown; an unknown footer style too.
+        // The language is kept and refused when unknown; a footer that is not there too.
         $this->putJson("/api/labels/custom/{$id}", ['label_lang' => 'both'])->assertOk()->assertJsonPath('data.label_lang', 'both');
         $this->putJson("/api/labels/custom/{$id}", ['label_lang' => 'fr'])->assertStatus(422);
-        $this->putJson("/api/labels/custom/{$id}", ['label_footer_style' => 'fancy'])->assertStatus(422);
+        $this->putJson("/api/labels/custom/{$id}", ['footer_id' => 9999])->assertStatus(422);
 
         // More sizes to pick from (owner: "I need more size options").
         $ids = array_column($this->getJson('/api/labels/layouts')->assertOk()->json('presets'), 'id');

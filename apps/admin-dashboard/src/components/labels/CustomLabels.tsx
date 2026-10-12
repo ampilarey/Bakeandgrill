@@ -2,10 +2,11 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bookmark, ChevronDown, Copy, Eye, ImagePlus, Pencil, Plus, Printer, RefreshCw, Search, Tag, Upload, X } from 'lucide-react';
 import {
-  createCustomLabel, deleteCustomLabel, duplicateCustomLabel, fetchCustomLabels, fetchLabelBrands, fetchLabelLayouts, fetchLabelTypes,
+  createCustomLabel, deleteCustomLabel, duplicateCustomLabel, fetchCustomLabels, fetchLabelBrands, fetchLabelFooters, fetchLabelLayouts, fetchLabelSettings, fetchLabelTypes,
   previewCustomDraft, stickerLinks, updateCustomLabel, uploadCustomLabelPicture,
-  type CustomLabel, type CustomLabelPayload, type LabelBrand, type LabelLimits, type LabelPreset, type LabelStorage, type LabelType, type StickerLang,
+  type CustomLabel, type CustomLabelPayload, type LabelBrand, type LabelFooter, type LabelLimits, type LabelPreset, type LabelStorage, type LabelType, type StickerLang,
 } from '../../api';
+import { FooterPicker } from './FooterPicker';
 import { DEFAULT_CHOICE, rememberedSize, requestFor, sizeName, sizeOf, stockOf, type SizeChoice } from './labelSize';
 import { Btn, ConfirmDialog, Modal, ModalActions, useConfirmDialog } from '../SharedUI';
 import { Button, Card, useToast } from '../ui';
@@ -38,14 +39,14 @@ const fieldClass = 'h-10 min-h-[44px] px-3 rounded-lg border border-[var(--color
 const areaClass = 'w-full min-h-[44px] px-3 py-2 rounded-lg border border-[var(--color-border)] bg-white text-sm text-[var(--color-text)] resize-y';
 const labelClass = 'block text-xs font-semibold text-[var(--color-text-secondary)] mb-1';
 const STORAGE_NAMES: Record<LabelStorage, string> = { frozen: 'Frozen', chilled: 'Chilled', ambient: 'Room temperature' };
-type FooterStyle = CustomLabel['label_footer_style'];
+const DV_FONT_NAMES: Record<string, string> = { noto: 'Noto Sans Thaana', faruma: 'Faruma', site: "the website's font" };
 
 type Draft = {
   name: string; name_dv: string; brand_id: number | null; label_type_id: number | null; label_storage: LabelStorage | '';
   label_heading: string; label_heading_dv: string; label_storage_line: string; label_storage_line_dv: string;
   label_ingredients: string; label_ingredients_dv: string; label_how_to_use: string; label_how_to_use_dv: string;
-  label_note: string; label_note_dv: string; label_footer: string; label_footer_dv: string;
-  label_footer_style: FooterStyle; label_show_qr: '' | 'on' | 'off'; label_lang: StickerLang | '';
+  label_note: string; label_note_dv: string; footer_id: number | null;
+  label_show_qr: '' | 'on' | 'off'; label_lang: StickerLang | '';
   label_shelf_life_days: string; label_pack_qty: string; label_pack_unit: string;
   label_price: string; label_barcode: string; label_net_weight: string; label_allergens: string;
   label_photo_media_id: number | null; label_photo_url: string | null; label_title_media_id: number | null; label_title_url: string | null;
@@ -55,8 +56,8 @@ const toDraft = (c: CustomLabel | null): Draft => ({
   name: c?.name ?? '', name_dv: c?.name_dv ?? '', brand_id: c?.brand_id ?? null, label_type_id: c?.label_type_id ?? null, label_storage: c?.label_storage ?? '',
   label_heading: c?.label_heading ?? '', label_heading_dv: c?.label_heading_dv ?? '', label_storage_line: c?.label_storage_line ?? '', label_storage_line_dv: c?.label_storage_line_dv ?? '',
   label_ingredients: c?.label_ingredients ?? '', label_ingredients_dv: c?.label_ingredients_dv ?? '', label_how_to_use: c?.label_how_to_use ?? '', label_how_to_use_dv: c?.label_how_to_use_dv ?? '',
-  label_note: c?.label_note ?? '', label_note_dv: c?.label_note_dv ?? '', label_footer: c?.label_footer ?? '', label_footer_dv: c?.label_footer_dv ?? '',
-  label_footer_style: c?.label_footer_style ?? 'brand', label_show_qr: c?.label_show_qr == null ? '' : c.label_show_qr ? 'on' : 'off', label_lang: c?.label_lang ?? '',
+  label_note: c?.label_note ?? '', label_note_dv: c?.label_note_dv ?? '', footer_id: c?.footer_id ?? null,
+  label_show_qr: c?.label_show_qr == null ? '' : c.label_show_qr ? 'on' : 'off', label_lang: c?.label_lang ?? '',
   label_shelf_life_days: c?.label_shelf_life_days ? String(c.label_shelf_life_days) : '', label_pack_qty: c?.label_pack_qty ? String(c.label_pack_qty) : '', label_pack_unit: c?.label_pack_unit ?? '',
   label_price: c?.label_price != null ? String(c.label_price) : '', label_barcode: c?.label_barcode ?? '', label_net_weight: c?.label_net_weight ?? '', label_allergens: c?.label_allergens ?? '',
   label_photo_media_id: c?.label_photo_media_id ?? null, label_photo_url: c?.label_photo_url ?? null, label_title_media_id: c?.label_title_media_id ?? null, label_title_url: c?.label_title_url ?? null,
@@ -68,8 +69,8 @@ const toPayload = (d: Draft): CustomLabelPayload => ({
   name: d.name.trim(), name_dv: text(d.name_dv), brand_id: d.brand_id, label_type_id: d.label_type_id, label_storage: d.label_storage || null,
   label_heading: text(d.label_heading), label_heading_dv: text(d.label_heading_dv), label_storage_line: text(d.label_storage_line), label_storage_line_dv: text(d.label_storage_line_dv),
   label_ingredients: text(d.label_ingredients), label_ingredients_dv: text(d.label_ingredients_dv), label_how_to_use: text(d.label_how_to_use), label_how_to_use_dv: text(d.label_how_to_use_dv),
-  label_note: text(d.label_note), label_note_dv: text(d.label_note_dv), label_footer: text(d.label_footer), label_footer_dv: text(d.label_footer_dv),
-  label_footer_style: d.label_footer_style, label_show_qr: d.label_show_qr === '' ? null : d.label_show_qr === 'on', label_lang: d.label_lang || null,
+  label_note: text(d.label_note), label_note_dv: text(d.label_note_dv), footer_id: d.footer_id,
+  label_show_qr: d.label_show_qr === '' ? null : d.label_show_qr === 'on', label_lang: d.label_lang || null,
   label_shelf_life_days: d.label_shelf_life_days ? Number(d.label_shelf_life_days) : null, label_pack_qty: d.label_pack_qty ? Number(d.label_pack_qty) : null, label_pack_unit: text(d.label_pack_unit),
   label_price: d.label_price !== '' ? Number(d.label_price) : null, label_barcode: text(d.label_barcode), label_net_weight: text(d.label_net_weight), label_allergens: text(d.label_allergens),
   label_photo_media_id: d.label_photo_media_id, label_title_media_id: d.label_title_media_id,
@@ -132,6 +133,8 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
   const [d, setD] = useState<Draft>(() => toDraft(label));
   const [brands, setBrands] = useState<LabelBrand[]>([]);
   const [types, setTypes] = useState<LabelType[]>([]);
+  const [footers, setFooters] = useState<LabelFooter[]>([]);
+  const [dvFont, setDvFont] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [printing, setPrinting] = useState(false);
   const [newBrand, setNewBrand] = useState(false);
@@ -153,6 +156,8 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
   }, [label?.label_type_id]);
   useEffect(() => {
     fetchLabelLayouts().then((r) => { setPresets(r.presets); setLimits(r.limits ?? null); }).catch(() => setPresets([]));
+    fetchLabelFooters().then((r) => setFooters(r.data)).catch(() => setFooters([]));
+    fetchLabelSettings().then((r) => setDvFont(r.data.label_dhivehi_font || 'noto')).catch(() => setDvFont(null));
   }, []);
 
   // The language the preview and Print… use: the label's own, else both when
@@ -208,7 +213,7 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
   const mainBrand = brands.find((b) => b.is_default)?.name ?? 'Bake & Grill';
   const typeBrand = type?.brand_name ?? mainBrand;
   const printedBrand = brandOf(d.brand_id)?.name ?? typeBrand;
-  const printedIsMain = printedBrand === mainBrand;
+  const pickedFooter = footers.find((f) => f.id === d.footer_id) ?? null;
 
   const save = async (): Promise<CustomLabel | null> => {
     if (!d.name.trim()) { toast('error', 'Give the label a name.'); return null; }
@@ -298,8 +303,9 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
   // What each folded part holds, for its title line.
   const wordingSet = WORDING_KEYS.filter((k) => String(d[k]).trim() !== '').length;
   const shopSummary = [d.label_price !== '' ? `MVR ${d.label_price}` : null, d.label_barcode.trim() ? 'barcode' : null].filter(Boolean).join(' · ') || 'Price and barcode';
-  const footerName = d.label_footer_style === 'standard' ? `Standard ${mainBrand}` : d.label_footer_style === 'own' ? 'Your own words' : `${printedBrand}'s`;
-  const qrWord = d.label_show_qr === 'on' ? 'printed' : d.label_show_qr === 'off' ? 'off' : `as the type${type ? ` (${type.show_qr ? 'printed' : 'off'})` : ''}`;
+  const footerName = pickedFooter ? pickedFooter.name : `${printedBrand}'s own`;
+  const qrFollows = pickedFooter ? pickedFooter.show_qr : type ? type.show_qr : true;
+  const qrWord = d.label_show_qr === 'on' ? 'printed' : d.label_show_qr === 'off' ? 'off' : `as the footer (${qrFollows ? 'printed' : 'off'})`;
   const sizeLine = `${sizeName(choice.shape, dims.w, dims.h)} · ${presets.length ? stockOf(choice, presets).label : 'A4 sheet'}`;
 
   const sizeSection = (
@@ -308,7 +314,7 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
       <LabelSizePicker presets={presets} limits={limits} choice={choice} onChange={setChoice} rounded={rounded} onRounded={setRounded} />
     </Section>
   );
-  const previewCaption = `${sizeName(choice.shape, dims.w, dims.h)} · the first sticker of the sheet Pack stickers prints at this size. Redraws as you type, saved or not.`;
+  const previewCaption = `${sizeName(choice.shape, dims.w, dims.h)} · the first sticker of the sheet Pack stickers prints at this size. Redraws as you type, saved or not.${dvFont ? ` Dhivehi in ${DV_FONT_NAMES[dvFont] ?? dvFont} (Labels → Settings).` : ''}`;
 
   return (
     <>
@@ -389,28 +395,13 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
               </div>
             </Section>
 
-            <Section title="Footer and complaints QR" summary={`${footerName} · QR ${qrWord}`} open={d.label_footer_style !== 'brand' || d.label_show_qr !== ''} testId="custom-label-footer">
-              <div role="radiogroup" aria-label="Footer" className="space-y-2">
-                {([
-                  ['brand', `${printedBrand}'s footer`, printedIsMain ? `${mainBrand}, its tagline, phone, website and address.` : `${printedBrand} and its tagline, by ${mainBrand}, with the phone, website and address.`],
-                  ['standard', `Standard ${mainBrand} footer`, `The main brand's name and tagline with the phone, website and address, whatever brand is on the header.`],
-                  ['own', 'Your own words', 'Typed below, where the tagline or the website would be. The phone stays.'],
-                ] as const).map(([value, name, desc]) => (
-                  <label key={value} className={['flex items-start gap-3 min-h-[44px] p-2.5 rounded-lg border cursor-pointer', d.label_footer_style === value ? 'border-[var(--color-tone-rust-border)] bg-[var(--color-tone-rust-bg)]' : 'border-[var(--color-border)]'].join(' ')}>
-                    <input type="radio" name="cl-footer-style" value={value} checked={d.label_footer_style === value} onChange={() => set('label_footer_style', value)} className="mt-1 w-4 h-4 shrink-0 accent-[var(--color-primary)]" />
-                    <span className="min-w-0"><span className="block text-sm font-semibold text-[var(--color-text)]">{name}</span><span className="block text-xs text-[var(--color-text-muted)]">{desc}</span></span>
-                  </label>
-                ))}
-              </div>
-              {d.label_footer_style === 'own' && (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Field id="cl-footer" label="Footer line"><input id="cl-footer" maxLength={120} value={d.label_footer} onChange={(e) => set('label_footer', e.target.value)} className={fieldClass} placeholder={printedIsMain ? 'Fresh Baked, Fire Grilled' : 'Home-made, the Amma way'} /></Field>
-                  <Field id="cl-footer-dv" label="Footer line (Dhivehi)"><input id="cl-footer-dv" dir="rtl" maxLength={120} value={d.label_footer_dv} onChange={(e) => set('label_footer_dv', e.target.value)} className={fieldClass} /></Field>
-                </div>
-              )}
+            <Section title="Footer and complaints QR" summary={`${footerName} · QR ${qrWord}`} open={d.footer_id !== null || d.label_show_qr !== ''} testId="custom-label-footer">
+              <Field id="cl-footer" label="Footer" hint={`Pick a footer by name, change it with the pencil, or add one with +. "${printedBrand}'s own" is its name and tagline${printedBrand === mainBrand ? '' : `, by ${mainBrand},`} with the phone, website and address from Business Details.`}>
+                <FooterPicker id="cl-footer" footers={footers} value={d.footer_id} onChange={(id) => set('footer_id', id)} onFootersChange={setFooters} noneLabel={`${printedBrand}'s own footer`} canManage />
+              </Field>
               <Field id="cl-qr" label="Complaints QR in the footer" hint="The same code as the receipts and the poster: with the brand mark inside on the full sticker, bare on the small ones.">
                 <select id="cl-qr" value={d.label_show_qr} onChange={(e) => set('label_show_qr', e.target.value as Draft['label_show_qr'])} className={fieldClass}>
-                  <option value="">As the label type{type ? ` (${type.show_qr ? 'printed' : 'off'})` : ' (printed)'}</option>
+                  <option value="">As the footer ({qrFollows ? 'printed' : 'off'})</option>
                   <option value="on">Print it</option>
                   <option value="off">Leave it off</option>
                 </select>

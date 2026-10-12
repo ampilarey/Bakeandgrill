@@ -44,6 +44,38 @@ class ThaanaVisualTest extends TestCase
         $this->assertSame('(' . ThaanaVisual::order($w) . ')', ThaanaVisual::order('(' . $w . ')'));
     }
 
+    /**
+     * 2026-10-12: Noto's fili drifted off wide letters in the PDF, because
+     * dompdf ignores the anchors the font positions them by. A composed face
+     * (scripts/thaana-composed-font.py) carries each letter + fili as one
+     * glyph, and the PDF text names those.
+     */
+    public function test_with_a_composed_face_each_letter_and_its_fili_become_one_pair_glyph(): void
+    {
+        $pairs = json_decode((string) file_get_contents(base_path('../fixtures/thaana_pairs.json')), true);
+        $this->assertSame(ThaanaVisual::PAIR_BASE, $pairs['base']);
+        foreach ($pairs['examples'] as $from => $to) {
+            [$letter, $mark] = array_map(fn ($h) => hexdec($h), explode('+', $from));
+            $this->assertSame(mb_chr(hexdec($to), 'UTF-8'), ThaanaVisual::pair($letter, $mark), $from);
+        }
+        // BAA (U+0784, the 5th letter) + ABAFILI (the first mark) = U+E040.
+        $this->assertSame("\u{E040}", ThaanaVisual::pair(0x0784, 0x07A6));
+        // Not a letter, not a mark, or a mark where the letter should be: no pair.
+        $this->assertNull(ThaanaVisual::pair(0x0041, 0x07A6));
+        $this->assertNull(ThaanaVisual::pair(0x0784, 0x0784));
+        $this->assertNull(ThaanaVisual::pair(0x07A6, 0x07A6));
+
+        // މާލެ: visual order puts ލެ first, each pair as its glyph.
+        $this->assertSame(
+            ThaanaVisual::pair(0x078D, 0x07AC) . ThaanaVisual::pair(0x0789, 0x07A7),
+            ThaanaVisual::order("\u{0789}\u{07A7}\u{078D}\u{07AC}", true),
+        );
+        // A letter without a fili stays itself; Latin keeps its order; the plain face is untouched.
+        $this->assertSame("\u{0784}" . ThaanaVisual::pair(0x0789, 0x07A7), ThaanaVisual::order("\u{0789}\u{07A7}\u{0784}", true));
+        $this->assertStringContainsString('-18°C', ThaanaVisual::order("\u{0789}\u{07A7} -18°C", true));
+        $this->assertSame("\u{07A7}\u{0789}", ThaanaVisual::order("\u{0789}\u{07A7}"));
+    }
+
     public function test_text_without_thaana_and_empty_text_pass_through(): void
     {
         $this->assertSame('', ThaanaVisual::order(''));

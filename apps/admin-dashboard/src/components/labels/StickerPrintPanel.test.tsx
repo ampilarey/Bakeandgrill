@@ -10,7 +10,15 @@ const openLabelSheet = vi.fn();
 const downloadLabelSheet = vi.fn();
 const fetchLabelJobs = vi.fn();
 const printLabelJob = vi.fn();
+const fetchLabelFooters = vi.fn();
 const canManage = { value: false };
+
+const footerRow = (id: number, name: string, tagline: string) => ({
+  id, name, brand_id: null, brand_name: null, heading: null, heading_dv: null, tagline: null, tagline_dv: null, by_line: null, show_by: true,
+  phone: null, ways: null, ways_dv: null, website: null, address: null, address_dv: null, landmark: null, landmark_dv: null,
+  show_qr: true, show_mark: true, is_default: id === 1, sort: id, custom_labels_count: 0, types_count: 0,
+  effective: { name: 'Bake & Grill', name_dv: '', tagline, tagline_dv: '', by: '', phone: '+960 912 0011', ways: '', ways_dv: '', website: 'bakeandgrill.mv', address: '', address_dv: '', landmark: '', landmark_dv: '', show_qr: true, show_mark: true },
+});
 
 vi.mock('../../hooks/usePermissions', () => ({
   useCurrentUserPermissions: () => ({ user: null, loading: false, can: (slug?: string) => slug !== 'labels.manage' || canManage.value }),
@@ -33,6 +41,11 @@ vi.mock('../../api', () => ({
   printLabelJob: (...a: unknown[]) => printLabelJob(...a),
   renameLabelJob: vi.fn(),
   downloadLabelSheet: (...a: unknown[]) => downloadLabelSheet(...a),
+  fetchLabelFooters: (...a: unknown[]) => fetchLabelFooters(...a),
+  fetchLabelBrands: () => Promise.resolve({ data: [{ id: 1, name: 'Bake & Grill', is_default: true, logo_url: null }] }),
+  createLabelFooter: vi.fn(),
+  updateLabelFooter: vi.fn(),
+  deleteLabelFooter: vi.fn(),
 }));
 
 import { StickerPrintPanel } from './StickerPrintPanel';
@@ -74,8 +87,9 @@ const PRESETS = [
 
 describe('StickerPrintPanel', () => {
   beforeEach(() => {
-    [fetchLabelLayouts, fetchLabelProducts, fetchCustomLabels, stickerLinks, openLabelSheet, downloadLabelSheet, fetchLabelJobs, printLabelJob].forEach((f) => f.mockReset());
+    [fetchLabelLayouts, fetchLabelProducts, fetchCustomLabels, stickerLinks, openLabelSheet, downloadLabelSheet, fetchLabelJobs, printLabelJob, fetchLabelFooters].forEach((f) => f.mockReset());
     fetchLabelJobs.mockResolvedValue({ data: [], last_page: 1 });
+    fetchLabelFooters.mockResolvedValue({ data: [] });
     canManage.value = false;
     try { localStorage.clear(); } catch { /* jsdom */ }
     fetchLabelLayouts.mockResolvedValue({
@@ -308,7 +322,7 @@ describe('StickerPrintPanel on a phone', () => {
     await screen.findByTestId('label-size-picker');
     fireEvent.click(screen.getByLabelText('Print Bajiya'));
     fireEvent.click(screen.getByRole('button', { name: 'Both' }));
-    expect(screen.getByText(/English with the Dhivehi name/)).toBeInTheDocument();
+    expect(screen.getByText(/Every line in English with the Dhivehi beneath or beside it/)).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('sticker-prepare'));
     await waitFor(() => expect(prepared()).toBeTruthy());
     expect(prepared()).toMatchObject({ lang: 'both' });
@@ -357,6 +371,32 @@ describe('StickerPrintPanel on a phone', () => {
     // Folded again, the toggle still says what is set.
     fireEvent.click(screen.getByTestId('sticker-more-toggle'));
     expect(screen.getByTestId('sticker-more-toggle')).toHaveTextContent(`batch ${code}`);
+  });
+
+  // Owner, 2026-10-12: "No easy option to select and edit branding footer."
+  // One footer for the whole sheet, picked by name under More options.
+  it('prints one footer for the whole sheet when one is picked, and names it when folded', async () => {
+    fetchLabelFooters.mockResolvedValue({ data: [footerRow(1, 'Standard', 'Fresh Baked, Fire Grilled'), footerRow(2, 'Kitchen stamp', 'Hand-made daily')] });
+    stickerLinks.mockResolvedValue({
+      url: '/labels/stickers?print=1&signature=x', view_url: '/labels/stickers?signature=x', pdf_url: '/labels/stickers.pdf?signature=x', expires_in_minutes: 30,
+      summary: { layout: 'a4-4', label: '4 on A4', design: 'full', stickers: 4, pages: 1, per_page: 4, products: [] },
+    });
+    render(<MemoryRouter><StickerPrintPanel /></MemoryRouter>);
+    await screen.findByTestId('label-size-picker');
+    fireEvent.click(screen.getByTestId('sticker-more-toggle'));
+    const pick = await screen.findByLabelText('Footer');
+    expect(within(pick).getByRole('option', { name: "Each product's own footer" })).toBeInTheDocument();
+    // Only Manage label settings may change a footer from here.
+    expect(screen.queryByRole('button', { name: 'New footer' })).toBeNull();
+    fireEvent.change(pick, { target: { value: '2' } });
+    expect(screen.getByTestId('label-footer-lines')).toHaveTextContent('Bake & Grill · Hand-made daily · +960 912 0011 · bakeandgrill.mv');
+    fireEvent.click(screen.getByTestId('sticker-more-toggle'));
+    expect(screen.getByTestId('sticker-more-toggle')).toHaveTextContent('footer: Kitchen stamp');
+
+    fireEvent.click(screen.getByLabelText('Print Bajiya'));
+    fireEvent.click(screen.getByTestId('sticker-prepare'));
+    await waitFor(() => expect(prepared()).toBeTruthy());
+    expect(prepared()).toMatchObject({ items: [{ id: 1, copies: 4 }], footer: 2 });
   });
 
   it('says each picked product\'s expiry before anything is prepared', async () => {

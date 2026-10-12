@@ -190,14 +190,35 @@ and the browser drops the rule). Dhivehi at hand-thickening 0.5 and up sets in t
 bold (`LabelText::DV_BOLD_FROM`). A custom label's row has Save, which prepares a full
 sheet straight into Saved labels at the size Pack stickers last printed
 (`rememberedSize()` in `labelSize.ts`), and the editor previews the first sticker of that
-same sheet, so preview and print never differ. A custom label picks its footer
-(`label_footer_style`: the brand's, the standard main-brand one via `footer_brand` in
-the sticker data, or its own words `label_footer`, `_dv` through
-`StickerDesign::ownFooter`, printed where the tagline or website would be, the phone
-kept), whether the complaints QR prints (`label_show_qr`, null follows the type; the
-full design draws the branded code `qr_branded`, small ones the bare `qr`) and the
-language it prints in (`label_lang`; `langOf()` in `CustomLabels.tsx`); `lang: both`
-sets the Dhivehi name under the English on the small and compact designs too. The
+same sheet, so preview and print never differ. Footers are named presets (owner,
+2026-10-12: "No easy option to select and edit branding footer"): `label_footers`
+(`LabelFooter`), every line optional and an empty line printing the brand's or Business
+Details' live value, seeded as Standard (the business, `is_default`, cannot be removed)
+plus one per sub-brand. A custom label (`custom_labels.footer_id`), a label type
+(`label_types.footer_id`, the default for what prints with it) and a whole sheet
+(`footer` in the sticker request, kept by the saved label) each pick one, in that
+order of precedence (`StickerSheet::footerPreset`), and `LabelTypes::footer()` turns
+the pick into the `footer` array the designs read (`$d['footer']`; `ownFooter` prints
+a typed tagline where the tagline or website would be, the phone kept). The QR goes
+`label_show_qr` → the footer's `show_qr` → the type's; the full design draws the
+branded code `qr_branded`, small ones the bare `qr`. The admin picks a footer with
+`FooterPicker` (select, pencil to edit in place, + for new; `FooterModal` shows each
+blank's live value as the placeholder) on the custom label editor, a type's editor and
+Pack stickers → More options, and lists them under Types & brands → Footers;
+`GET /labels/footers` needs `labels.print`, the writes `labels.manage`. Never add a
+second footer choice (a settings key, a radio) beside the preset. A custom label also
+keeps the language it prints in (`label_lang`; `langOf()` in `CustomLabels.tsx`).
+`lang: both` is bilingual on every part and every design (owner, 2026-10-12: "Not
+showing both languages correctly"): heading, name, ingredients, how to use, note, date
+labels, use-within and storage line, EN with DV beneath or beside, on full, compact,
+small and round (`$d['both']`; `SmallStickerDesign::pairLine`), and the full design's
+picture band shrinks to what the text leaves (`$band`, down to none) so the middle never
+overlaps. The PDF sets Noto Sans Thaana from the derived composed files
+(`fonts/pdf/NotoSansThaana-*-composed.ttf`, each letter+fili pair one glyph from
+U+E000, `scripts/thaana-composed-font.py`, `fixtures/thaana_pairs.json`) because
+dompdf ignores Noto's mark positioning: `ThaanaVisual::order($text, composed: true)`
+and `ThaanaVisual::pair()`, switched by `LabelText::dvFace()['composed']`, PDF path
+only; the browser keeps the plain webfont. The
 editor uses `LabelSizePicker` and, below 1024px, `PhonePreviewBar` inside the Modal,
 with `ModalActions` for Close / Print… / Save and a ConfirmDialog before discarding
 changes; the long parts are `<details>` folds (`.cl-section`). How to use it and where

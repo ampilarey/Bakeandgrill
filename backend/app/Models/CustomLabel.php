@@ -16,20 +16,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class CustomLabel extends Model
 {
-    /**
-     * Which footer the sticker gets (owner, 2026-10-12: "Standard footer
-     * options with standard branding footer"): its brand's own, the standard
-     * footer of the main brand, or its own footer line.
-     *
-     * @var list<string>
-     */
-    public const FOOTER_STYLES = ['brand', 'standard', 'own'];
-
     protected $fillable = [
         'name', 'name_dv', 'brand_id', 'label_type_id', 'label_storage',
         'label_heading', 'label_heading_dv', 'label_storage_line', 'label_storage_line_dv',
         'label_ingredients', 'label_ingredients_dv', 'label_how_to_use', 'label_how_to_use_dv',
-        'label_note', 'label_note_dv', 'label_footer', 'label_footer_dv', 'label_footer_style', 'label_show_qr', 'label_lang',
+        'label_note', 'label_note_dv', 'footer_id', 'label_show_qr', 'label_lang',
         'label_shelf_life_days', 'label_pack_qty', 'label_pack_unit',
         'label_price', 'label_barcode', 'label_net_weight', 'label_allergens',
         'label_photo_media_id', 'label_title_media_id', 'created_by',
@@ -40,6 +31,7 @@ class CustomLabel extends Model
         return [
             'brand_id' => 'integer',
             'label_type_id' => 'integer',
+            'footer_id' => 'integer',
             'label_shelf_life_days' => 'integer',
             'label_pack_qty' => 'integer',
             'label_price' => 'decimal:2',
@@ -58,6 +50,12 @@ class CustomLabel extends Model
     public function brand(): BelongsTo
     {
         return $this->belongsTo(LabelBrand::class, 'brand_id');
+    }
+
+    /** The footer preset it prints (owner, 2026-10-12); null prints its brand's footer. */
+    public function footer(): BelongsTo
+    {
+        return $this->belongsTo(LabelFooter::class, 'footer_id');
     }
 
     public function labelType(): BelongsTo

@@ -7,6 +7,7 @@ namespace App\Domains\Labels;
 use App\Models\CustomLabel;
 use App\Models\Item;
 use App\Models\LabelBrand;
+use App\Models\LabelFooter;
 use App\Models\LabelType;
 
 /**
@@ -22,9 +23,9 @@ final class LabelTypes
 
     /**
      * @return array<string, mixed> heading, heading_dv, storage, storage_en,
-     *   storage_dv, use_within, use_within_dv, mfg_label, exp_label,
-     *   how_to_use, how_to_use_dv, note, note_dv, show_qr, shelf_life_days,
-     *   type_id, type_name, brand (array)
+     *                              storage_dv, use_within, use_within_dv, mfg_label, exp_label,
+     *                              how_to_use, how_to_use_dv, note, note_dv, show_qr, shelf_life_days,
+     *                              type_id, type_name, brand (array)
      *
      * A custom label (not on the menu) reads the same way, with its own brand
      * ahead of the type's.
@@ -57,6 +58,81 @@ final class LabelTypes
             'show_qr' => $type ? (bool) $type->show_qr : true,
             'shelf_life_days' => $item->label_shelf_life_days ?: $type?->shelf_life_days,
             'brand' => $this->brand($item instanceof CustomLabel && $item->brand_id ? $item->brand : ($type?->brand_id ? $type->brand : null)),
+            // The type's default footer preset (owner, 2026-10-12); StickerSheet
+            // lets a custom label's own and a sheet-level choice win over it.
+            'footer_id' => $type?->footer_id,
+        ];
+    }
+
+    /**
+     * The footer a sticker prints (owner, 2026-10-12: "No easy option to
+     * select and edit branding footer"): from a preset when one is picked,
+     * else the brand's own as before. A preset's blank line takes the live
+     * value of its brand (the business when it has none); its typed tagline
+     * is "own": the compact designs print it where the website would go.
+     *
+     * @param array<string, mixed> $brand the sticker's brand, from brand()
+     * @return array{name: string, name_dv: string, tagline: string, tagline_dv: string, own: bool, by: string, phone: string, ways: string, ways_dv: string, website: string, address: string, address_dv: string, landmark: string, landmark_dv: string, show_qr: bool, show_mark: bool, preset_id: ?int, preset_name: ?string}
+     */
+    public function footer(?LabelFooter $preset, array $brand, bool $typeShowQr = true): array
+    {
+        $contact = LabelSettings::contact();
+        $base = $preset === null ? $brand : $this->brand($preset->brand_id ? $preset->brand : null);
+        $line = fn (string $col, string $fallback): string => $preset !== null && trim((string) $preset->{$col}) !== '' ? trim((string) $preset->{$col}) : $fallback;
+        $byAuto = $base['parent'] !== '' ? 'by ' . $base['parent'] : '';
+
+        return [
+            'name' => $line('heading', $base['name']),
+            'name_dv' => $line('heading_dv', $base['name_dv']),
+            'tagline' => $line('tagline', $base['tagline']),
+            'tagline_dv' => $line('tagline_dv', $base['tagline_dv']),
+            'own' => $preset !== null && trim((string) $preset->tagline) !== '',
+            'by' => $preset === null ? $byAuto : ($preset->show_by ? $line('by_line', $byAuto) : ''),
+            'phone' => $line('phone', $contact['phone']),
+            'ways' => $line('ways', LabelSettings::get('label_contact_ways')),
+            'ways_dv' => $line('ways_dv', LabelSettings::get('label_contact_ways_dv')),
+            'website' => $line('website', $contact['website']),
+            'address' => $line('address', $contact['address']),
+            'address_dv' => $line('address_dv', LabelSettings::get('label_address_dv')),
+            'landmark' => $line('landmark', $contact['landmark']),
+            'landmark_dv' => $line('landmark_dv', LabelSettings::get('label_landmark_dv')),
+            'show_qr' => $preset !== null ? (bool) $preset->show_qr : $typeShowQr,
+            'show_mark' => $preset === null || (bool) $preset->show_mark,
+            'preset_id' => $preset?->id,
+            'preset_name' => $preset?->name,
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    public static function presentFooter(LabelFooter $footer, array $effective): array
+    {
+        return [
+            'id' => $footer->id,
+            'name' => $footer->name,
+            'brand_id' => $footer->brand_id,
+            'brand_name' => $footer->brand?->name,
+            'heading' => $footer->heading,
+            'heading_dv' => $footer->heading_dv,
+            'tagline' => $footer->tagline,
+            'tagline_dv' => $footer->tagline_dv,
+            'by_line' => $footer->by_line,
+            'show_by' => (bool) $footer->show_by,
+            'phone' => $footer->phone,
+            'ways' => $footer->ways,
+            'ways_dv' => $footer->ways_dv,
+            'website' => $footer->website,
+            'address' => $footer->address,
+            'address_dv' => $footer->address_dv,
+            'landmark' => $footer->landmark,
+            'landmark_dv' => $footer->landmark_dv,
+            'show_qr' => (bool) $footer->show_qr,
+            'show_mark' => (bool) $footer->show_mark,
+            'is_default' => (bool) $footer->is_default,
+            'sort' => $footer->sort,
+            // What each blank line prints, for the editor's grey text.
+            'effective' => array_diff_key($effective, array_flip(['preset_id', 'preset_name', 'own'])),
+            'custom_labels_count' => $footer->custom_labels_count ?? null,
+            'types_count' => $footer->types_count ?? null,
         ];
     }
 
@@ -127,6 +203,7 @@ final class LabelTypes
             'note_dv' => $type->note_dv,
             'shelf_life_days' => $type->shelf_life_days,
             'show_qr' => (bool) $type->show_qr,
+            'footer_id' => $type->footer_id,
             'is_active' => (bool) $type->is_active,
             'sort' => $type->sort,
             'items_count' => $type->items_count ?? null,

@@ -32,10 +32,33 @@ final class ThaanaVisual
     /** Characters swapped when they sit inside right-to-left text. */
     private const MIRROR = ['(' => ')', ')' => '(', '[' => ']', ']' => '[', '{' => '}', '}' => '{', '<' => '>', '>' => '<', '«' => '»', '»' => '«'];
 
+    /**
+     * A letter and its fili as one glyph, for a face built by
+     * scripts/thaana-composed-font.py: dompdf never positions a mark by the
+     * font's anchors, so Noto's fili drifted off wide letters (2026-10-12).
+     * The pair glyph sits at U+E000 + letter index × 16 + mark index, letters
+     * U+0780 (HAA) to U+07B1 (NAA), marks U+07A6 (ABAFILI) to U+07B0 (SUKUN);
+     * fixtures/thaana_pairs.json holds the same numbers for the script.
+     */
+    public const PAIR_BASE = 0xE000;
+
+    private const LETTER_FIRST = 0x0780;
+
+    private const LETTER_LAST = 0x07B1;
+
+    private const MARK_FIRST = 0x07A6;
+
+    private const MARK_LAST = 0x07B0;
+
     /** @var array<string, array{upm: int, widths: array<int, int>}> */
     private static array $metrics = [];
 
-    public static function order(string $text): string
+    /**
+     * The visual order dompdf needs. With $composed (the face has the pair
+     * glyphs) each letter-plus-fili cluster becomes its pair glyph; otherwise
+     * the fili goes just before its letter, where Faruma's marks expect it.
+     */
+    public static function order(string $text, bool $composed = false): string
     {
         if ($text === '' || !self::hasThaana($text)) {
             return $text;
@@ -90,13 +113,41 @@ final class ThaanaVisual
             // consonant: Faruma's marks have no advance and are drawn from the
             // pen position, which in a right-to-left font is the letter's left
             // edge. In cluster order (letter, then mark) dompdf set every mark
-            // beside its letter instead of over it.
+            // beside its letter instead of over it. A composed face draws the
+            // pair as one glyph instead.
             foreach (array_reverse($run['chars']) as $c) {
-                $out .= self::MIRROR[$c] ?? implode('', array_reverse(mb_str_split($c)));
+                $out .= self::MIRROR[$c] ?? ($composed ? self::composeCluster($c) : implode('', array_reverse(mb_str_split($c))));
             }
         }
 
         return $out;
+    }
+
+    /** The pair glyph's character for a Thaana letter and fili, or null when either is not one. */
+    public static function pair(int $letter, int $mark): ?string
+    {
+        if ($letter < self::LETTER_FIRST || $letter > self::LETTER_LAST || ($letter >= self::MARK_FIRST && $letter <= self::MARK_LAST)) {
+            return null;
+        }
+        if ($mark < self::MARK_FIRST || $mark > self::MARK_LAST) {
+            return null;
+        }
+
+        return mb_chr(self::PAIR_BASE + ($letter - self::LETTER_FIRST) * 16 + ($mark - self::MARK_FIRST), 'UTF-8');
+    }
+
+    /** A grapheme cluster for a composed face: letter + fili as the pair glyph, anything further reversed behind it. */
+    private static function composeCluster(string $cluster): string
+    {
+        $chars = mb_str_split($cluster);
+        if (count($chars) >= 2) {
+            $pair = self::pair(mb_ord($chars[0]), mb_ord($chars[1]));
+            if ($pair !== null) {
+                return $pair . implode('', array_reverse(array_slice($chars, 2)));
+            }
+        }
+
+        return implode('', array_reverse($chars));
     }
 
     /**

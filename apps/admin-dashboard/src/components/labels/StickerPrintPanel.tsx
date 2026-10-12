@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Printer, FileDown, AlertTriangle, Search, Bookmark, Eye, Plus, History, CalendarDays, ChevronDown, ChevronUp, Star, Clock } from 'lucide-react';
 import {
-  downloadLabelSheet, fetchCustomLabels, fetchLabelJob, fetchLabelJobs, fetchLabelLayouts, fetchLabelProducts, fetchLabelTypes, openLabelSheet, printLabelJob, printsViaPdf, renameLabelJob, stickerLinks,
-  type CustomLabel, type LabelJob, type LabelLimits, type LabelPreset, type LabelProduct, type LabelType, type SheetLinks, type StickerLang, type StickerSummary,
+  downloadLabelSheet, fetchCustomLabels, fetchLabelFooters, fetchLabelJob, fetchLabelJobs, fetchLabelLayouts, fetchLabelProducts, fetchLabelTypes, openLabelSheet, printLabelJob, printsViaPdf, renameLabelJob, stickerLinks,
+  type CustomLabel, type LabelFooter, type LabelJob, type LabelLimits, type LabelPreset, type LabelProduct, type LabelType, type SheetLinks, type StickerLang, type StickerSummary,
 } from '../../api';
 import { useCurrentUserPermissions } from '../../hooks/usePermissions';
 import { useIsBelowDesktop } from '../../hooks/useIsMobile';
@@ -15,6 +15,7 @@ import { PhonePreviewBar } from './PhonePreviewBar';
 import { InlineRename } from './InlineRename';
 import { LabelSizePicker } from './LabelSizePicker';
 import { CustomLabelModal } from './CustomLabels';
+import { FooterPicker } from './FooterPicker';
 import { DEFAULT_CHOICE, choiceFromRequest, pageOf, rememberSize, rememberedSize, requestFor, sizeName, sizeOf, sizeProblem, stockOf, type SizeChoice } from './labelSize';
 
 /*
@@ -79,6 +80,10 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
   const [fixedPages, setFixedPages] = useState<Record<string, { w: number; h: number }>>({});
   const [types, setTypes] = useState<LabelType[]>([]);
   const [asType, setAsType] = useState<number | null>(null);
+  // One footer for the whole sheet (owner, 2026-10-12: "No easy option to
+  // select and edit branding footer"); empty means each product's own.
+  const [footers, setFooters] = useState<LabelFooter[]>([]);
+  const [footer, setFooter] = useState<number | null>(null);
   const [picked, setPicked] = useState<Record<string, number>>({});
   const [lang, setLang] = useState<StickerLang>('en');
   const [choice, setChoice] = useState<SizeChoice>(() => rememberedSize() ?? DEFAULT_CHOICE);
@@ -125,6 +130,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
       setFixedPages(Object.fromEntries((r.data ?? []).map((l) => [l.key, { w: l.page_w, h: l.page_h }])));
     }).catch(() => setPresets([]));
     fetchLabelTypes().then((r) => setTypes(r.data.filter((t) => t.is_active))).catch(() => setTypes([]));
+    fetchLabelFooters().then((r) => setFooters(r.data)).catch(() => setFooters([]));
     if (fixedKey === null) {
       fetchLabelProducts().then((r) => setProducts(r.data)).catch(() => setProducts([]));
       fetchCustomLabels().then((r) => setCustoms(r.data)).catch(() => setCustoms([]));
@@ -168,8 +174,9 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
       setBatch(typeof q.batch === 'string' ? q.batch : '');
       setQty(q.qty != null && q.qty !== '' ? String(q.qty) : '');
       setAsType(q.type ? Number(q.type) : null);
+      setFooter(q.footer ? Number(q.footer) : null);
       setRounded(Boolean(q.rounded));
-      if (q.type || q.batch || q.qty) setMoreOpen(true);
+      if (q.type || q.footer || q.batch || q.qty) setMoreOpen(true);
       setEditing({ id: r.data.id, name: r.data.name });
     }).catch(() => setError('That saved label could not be opened.'));
   }, [jobParam]);
@@ -239,7 +246,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
       w: sized.w, h: sized.h,
       rounded: choice.shape === 'rect' && rounded,
       fill, mfg: fill ? mfg : null, exp: fill && exp ? exp : null,
-      batch: batch || null, qty: qty ? Number(qty) : null, pi: productionItemId, type: asType,
+      batch: batch || null, qty: qty ? Number(qty) : null, pi: productionItemId, type: asType, footer,
     };
   };
 
@@ -473,7 +480,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
               </button>
             ))}
           </div>
-          {lang === 'both' && <p className="text-xs text-[var(--color-text-muted)] mt-1">English with the Dhivehi name, ingredients and storage line beneath, on the full and compact sizes; small and round stickers print English.</p>}
+          {lang === 'both' && <p className="text-xs text-[var(--color-text-muted)] mt-1">Every line in English with the Dhivehi beneath or beside it: heading, name, ingredients, how to use, note, date labels, use-within and storage. Small and round stickers add the Dhivehi name, list and storage line where there is room.</p>}
         </div>
         <label className="flex items-center gap-3 min-h-[44px] cursor-pointer">
           <input type="checkbox" checked={fill} onChange={(e) => setFill(e.target.checked)} className="w-5 h-5 shrink-0 accent-[var(--color-primary)]" />
@@ -499,8 +506,8 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
           {moreOpen ? <ChevronUp size={16} aria-hidden className="mt-0.5 shrink-0" /> : <ChevronDown size={16} aria-hidden className="mt-0.5 shrink-0" />}
           <span className="min-w-0">
             <span className="block">More options</span>
-            {!moreOpen && (asType || batch || qty) && <span className="block text-xs font-semibold text-[var(--color-primary)]">{[asType ? 'print as a type' : null, batch ? `batch ${batch}` : null, qty ? `${qty} per pack` : null].filter(Boolean).join(' · ')}</span>}
-            {!moreOpen && !(asType || batch || qty) && <span className="block text-xs font-normal text-[var(--color-text-muted)]">Print as a type, batch number, quantity per pack</span>}
+            {!moreOpen && (asType || footer || batch || qty) && <span className="block text-xs font-semibold text-[var(--color-primary)]">{[asType ? 'print as a type' : null, footer ? `footer: ${footers.find((f) => f.id === footer)?.name ?? 'picked'}` : null, batch ? `batch ${batch}` : null, qty ? `${qty} per pack` : null].filter(Boolean).join(' · ')}</span>}
+            {!moreOpen && !(asType || footer || batch || qty) && <span className="block text-xs font-normal text-[var(--color-text-muted)]">Print as a type, one footer for the sheet, batch number, quantity per pack</span>}
           </span>
         </button>
         {moreOpen && (
@@ -513,6 +520,13 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
                   {types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
                 <p className="text-xs text-[var(--color-text-muted)] mt-1">One type for the whole sheet: its heading, dates wording, how-to-use and brand. A product's own typed wording, and a custom label's own brand, still print.</p>
+              </div>
+            )}
+            {footers.length > 0 && (
+              <div className="sm:col-span-2">
+                <label className={labelClass} htmlFor="label-footer">Footer</label>
+                <FooterPicker id="label-footer" footers={footers} value={footer} onChange={setFooter} onFootersChange={setFooters} noneLabel="Each product's own footer" canManage={can('labels.manage')} />
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">One footer for every sticker on the sheet: name, tagline, phone, website and whether the complaints QR prints. Empty keeps each product's own, from its label, its type or its brand.</p>
               </div>
             )}
             <div>

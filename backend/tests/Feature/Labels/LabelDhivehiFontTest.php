@@ -39,17 +39,24 @@ class LabelDhivehiFontTest extends TestCase
 
     public function test_the_shipped_noto_files_exist_and_are_the_default_face(): void
     {
-        foreach (['fonts/pdf/NotoSansThaana-Regular.ttf', 'fonts/pdf/NotoSansThaana-Bold.ttf', 'fonts/noto-sans-thaana-400.woff2', 'fonts/noto-sans-thaana-700.woff2', 'fonts/NOTO-SANS-THAANA-LICENSE.txt'] as $file) {
+        foreach (['fonts/pdf/NotoSansThaana-Regular.ttf', 'fonts/pdf/NotoSansThaana-Bold.ttf', 'fonts/pdf/NotoSansThaana-Regular-composed.ttf', 'fonts/pdf/NotoSansThaana-Bold-composed.ttf', 'fonts/noto-sans-thaana-400.woff2', 'fonts/noto-sans-thaana-700.woff2', 'fonts/NOTO-SANS-THAANA-LICENSE.txt'] as $file) {
             $this->assertFileExists(public_path($file));
         }
         $face = LabelText::dvFace();
         $this->assertSame('noto', $face['key']);
-        $this->assertStringEndsWith('NotoSansThaana-Regular.ttf', $face['pdf']);
-        $this->assertStringEndsWith('NotoSansThaana-Bold.ttf', (string) $face['bold_pdf']);
+        // The PDF prints the composed copies (every letter + fili as one glyph,
+        // scripts/thaana-composed-font.py): dompdf ignores the font's anchors,
+        // so Noto's fili drifted off wide letters on paper (2026-10-12).
+        $this->assertTrue($face['composed']);
+        $this->assertStringEndsWith('NotoSansThaana-Regular-composed.ttf', $face['pdf']);
+        $this->assertStringEndsWith('NotoSansThaana-Bold-composed.ttf', (string) $face['bold_pdf']);
+        $this->assertSame('/fonts/noto-sans-thaana-400.woff2', $face['web'], 'the browser shapes the plain face itself');
         $this->assertTrue(LabelText::dvHasBold());
-        // Text is measured in the bold, the wider of the two.
-        $this->assertStringEndsWith('NotoSansThaana-Bold.ttf', LabelText::file('dv'));
+        // Text is measured in the bold, the wider of the two; the composed
+        // copy keeps every plain letter, so a logical string measures the same.
+        $this->assertStringEndsWith('NotoSansThaana-Bold-composed.ttf', LabelText::file('dv'));
         $this->assertGreaterThan(0, LabelText::widthMm('ބާޖިޔާ', 10, 'dv'));
+        $this->assertEqualsWithDelta(LabelText::widthMm('ބާޖިޔާ', 10, 'dv'), \App\Support\ThaanaVisual::widthMm('ބާޖިޔާ', 10, public_path('fonts/pdf/NotoSansThaana-Bold.ttf')), 0.01);
         $this->assertEqualsWithDelta(1.069, LabelText::ascent('dv'), 0.001);
     }
 
@@ -77,6 +84,7 @@ class LabelDhivehiFontTest extends TestCase
         $this->putJson('/api/labels/settings', ['label_dhivehi_font' => 'faruma'])->assertOk()->assertJsonPath('data.label_dhivehi_font', 'faruma');
         $this->assertSame('faruma', LabelSettings::dhivehiFont());
         $this->assertFalse(LabelText::dvHasBold());
+        $this->assertFalse(LabelText::dvFace()['composed'], 'Faruma draws its fili for renderers like dompdf');
         $this->assertStringEndsWith('a_faruma.ttf', LabelText::file('dv'));
         $this->assertEqualsWithDelta(1.139, LabelText::ascent('dv'), 0.001);
 

@@ -18,6 +18,7 @@ use App\Models\CustomLabel;
 use App\Models\Item;
 use App\Models\KitchenProductionItem;
 use App\Models\LabelBrand;
+use App\Models\LabelFooter;
 use App\Models\LabelJob;
 use App\Models\LabelPrint;
 use App\Models\LabelType;
@@ -107,13 +108,15 @@ class LabelsController extends Controller
             'qty' => 'nullable|integer|min:1|max:9999',
             'pi' => 'nullable|integer|exists:kitchen_production_items,id',
             'type' => 'nullable|integer|exists:label_types,id',
+            // One footer preset for the whole sheet (owner, 2026-10-12).
+            'footer' => 'nullable|integer|exists:label_footers,id',
             'rounded' => 'sometimes|boolean',
             'preview' => 'sometimes|boolean',
         ];
     }
 
     /** The sticker request keys a saved label keeps. */
-    private const STICKER_KEYS = ['items', 'lang', 'layout', 'w', 'h', 'fill', 'mfg', 'exp', 'batch', 'qty', 'pi', 'type', 'rounded'];
+    private const STICKER_KEYS = ['items', 'lang', 'layout', 'w', 'h', 'fill', 'mfg', 'exp', 'batch', 'qty', 'pi', 'type', 'footer', 'rounded'];
 
     /**
      * Signed links to a sheet of pack stickers, after checking the request
@@ -163,13 +166,16 @@ class LabelsController extends Controller
             'qty' => $req['qty'],
             'pi' => $req['pi'],
             'type' => $req['type'],
+            'footer' => $req['footer'],
             'rounded' => $req['rounded'] ? 1 : null,
         ];
 
         if (!$preview) {
             foreach ($summary['products'] as $p) {
                 LabelPrint::create([
-                    'kind' => match ($req['lang']) { 'dv' => 'sticker_dv', 'both' => 'sticker_both', default => 'sticker_en' },
+                    'kind' => match ($req['lang']) {
+                        'dv' => 'sticker_dv', 'both' => 'sticker_both', default => 'sticker_en'
+                    },
                     'layout' => $req['layout'],
                     'label_w_mm' => $req['w'],
                     'label_h_mm' => $req['h'],
@@ -253,13 +259,13 @@ class LabelsController extends Controller
         );
         if (!$preview) {
             LabelPrint::create([
-            'kind' => 'box_label',
-            'layout' => 'a4',
-            'trade_delivery_id' => $req['delivery'],
-            'copies' => 1,
-            'details' => ['fields' => array_filter($req['fields'], fn ($v) => $v !== ''), 'lines' => array_map(fn ($l) => array_filter($l, fn ($v) => $v !== ''), $req['lines'])],
-            'printed_by' => $userId,
-            'output' => 'print',
+                'kind' => 'box_label',
+                'layout' => 'a4',
+                'trade_delivery_id' => $req['delivery'],
+                'copies' => 1,
+                'details' => ['fields' => array_filter($req['fields'], fn ($v) => $v !== ''), 'lines' => array_map(fn ($l) => array_filter($l, fn ($v) => $v !== ''), $req['lines'])],
+                'printed_by' => $userId,
+                'output' => 'print',
             ]);
         }
         $names = Item::query()->whereIn('id', array_column($req['lines'], 'id'))->pluck('name', 'id');
@@ -641,7 +647,7 @@ class LabelsController extends Controller
      */
     public function previewCustomLabel(Request $request): JsonResponse
     {
-        $data = $this->customData($request, new CustomLabel());
+        $data = $this->customData($request, new CustomLabel);
         if ($data instanceof JsonResponse) {
             return $data;
         }
@@ -673,7 +679,7 @@ class LabelsController extends Controller
 
     public function customLabels(): JsonResponse
     {
-        $rows = CustomLabel::query()->with(['brand.logo', 'labelType.brand', 'creator:id,name'])->withCount('prints')->withMax('prints', 'created_at')->orderBy('name')->orderBy('id')->get();
+        $rows = CustomLabel::query()->with(['brand.logo', 'labelType.brand', 'footer', 'creator:id,name'])->withCount('prints')->withMax('prints', 'created_at')->orderBy('name')->orderBy('id')->get();
 
         return response()->json(['data' => $rows->map(fn (CustomLabel $c) => $this->presentCustom($c))->values()]);
     }
@@ -749,11 +755,10 @@ class LabelsController extends Controller
             'label_how_to_use_dv' => 'sometimes|nullable|string|max:200',
             'label_note' => 'sometimes|nullable|string|max:120',
             'label_note_dv' => 'sometimes|nullable|string|max:120',
-            'label_footer' => 'sometimes|nullable|string|max:120',
-            'label_footer_dv' => 'sometimes|nullable|string|max:120',
-            // 2026-10-12: which footer, whether the complaints QR prints
-            // (null follows the type), and the language it usually prints in.
-            'label_footer_style' => ['sometimes', 'nullable', Rule::in(CustomLabel::FOOTER_STYLES)],
+            // 2026-10-12: which footer preset (null prints the brand's own),
+            // whether the complaints QR prints (null follows the footer and
+            // the type), and the language it usually prints in.
+            'footer_id' => 'sometimes|nullable|integer|exists:label_footers,id',
             'label_show_qr' => 'sometimes|nullable|boolean',
             'label_lang' => ['sometimes', 'nullable', Rule::in(StickerSheet::LANGS)],
             'label_shelf_life_days' => 'sometimes|nullable|integer|min:1|max:730',
@@ -783,9 +788,6 @@ class LabelsController extends Controller
         if (array_key_exists('name', $data) && ($data['name'] ?? '') === '') {
             return response()->json(['message' => 'Give the label a name.', 'errors' => ['name' => ['Give the label a name.']]], 422);
         }
-        if (array_key_exists('label_footer_style', $data) && $data['label_footer_style'] === null) {
-            $data['label_footer_style'] = 'brand';
-        }
         if (array_key_exists('label_show_qr', $data) && $data['label_show_qr'] !== null) {
             $data['label_show_qr'] = filter_var($data['label_show_qr'], FILTER_VALIDATE_BOOLEAN);
         }
@@ -796,7 +798,7 @@ class LabelsController extends Controller
     /** @return array<string, mixed> */
     private function presentCustom(CustomLabel $c): array
     {
-        $c->loadMissing(['brand.logo', 'labelType.brand', 'creator:id,name']);
+        $c->loadMissing(['brand.logo', 'labelType.brand', 'footer', 'creator:id,name']);
         // What prints when its own boxes are empty: the type's wording, else the storage defaults.
         $bare = (clone $c)->forceFill(['label_heading' => null, 'label_heading_dv' => null, 'label_storage_line' => null, 'label_storage_line_dv' => null, 'label_note' => null, 'label_note_dv' => null, 'label_how_to_use' => null, 'label_how_to_use_dv' => null, 'label_shelf_life_days' => null]);
         $w = $this->types->forItem($bare);
@@ -825,9 +827,8 @@ class LabelsController extends Controller
             'label_how_to_use_dv' => $c->label_how_to_use_dv,
             'label_note' => $c->label_note,
             'label_note_dv' => $c->label_note_dv,
-            'label_footer' => $c->label_footer,
-            'label_footer_dv' => $c->label_footer_dv,
-            'label_footer_style' => in_array($c->label_footer_style, CustomLabel::FOOTER_STYLES, true) ? $c->label_footer_style : 'brand',
+            'footer_id' => $c->footer_id,
+            'footer_name' => $c->footer?->name,
             'label_show_qr' => $c->label_show_qr === null ? null : (bool) $c->label_show_qr,
             'label_lang' => in_array($c->label_lang, StickerSheet::LANGS, true) ? $c->label_lang : null,
             // Printed how often, from the print log (the list loads these; a fresh save answers 0).
@@ -924,9 +925,92 @@ class LabelsController extends Controller
             'note_dv' => 'sometimes|nullable|string|max:120',
             'shelf_life_days' => 'sometimes|nullable|integer|min:1|max:730',
             'show_qr' => 'sometimes|boolean',
+            'footer_id' => 'sometimes|nullable|integer|exists:label_footers,id',
             'is_active' => 'sometimes|boolean',
             'sort' => 'sometimes|integer|min:0|max:999',
         ]);
+    }
+
+    // ---- Footer presets (owner, 2026-10-12: "No easy option to select and edit branding footer") ----
+
+    public function footers(): JsonResponse
+    {
+        $rows = LabelFooter::query()->with('brand')->withCount(['customLabels', 'types'])->orderBy('sort')->orderBy('id')->get();
+
+        return response()->json(['data' => $rows->map(fn (LabelFooter $f) => $this->presentFooter($f))->values()]);
+    }
+
+    public function storeFooter(Request $request): JsonResponse
+    {
+        $footer = new LabelFooter(['sort' => (int) LabelFooter::query()->max('sort') + 1]);
+        $footer->fill($this->footerData($request, $footer))->save();
+
+        return response()->json(['data' => $this->presentFooter($footer->load('brand'))], 201);
+    }
+
+    public function updateFooter(Request $request, LabelFooter $footer): JsonResponse
+    {
+        $footer->fill($this->footerData($request, $footer))->save();
+
+        return response()->json(['data' => $this->presentFooter($footer->load('brand'))]);
+    }
+
+    /** Labels and types that printed it go back to their brand's footer (the database clears the reference). */
+    public function destroyFooter(LabelFooter $footer): JsonResponse
+    {
+        if ($footer->is_default) {
+            return response()->json(['message' => 'The standard footer cannot be removed.'], 422);
+        }
+        $footer->delete();
+
+        return response()->json(['ok' => true]);
+    }
+
+    /** @return array<string, mixed> */
+    private function footerData(Request $request, LabelFooter $footer): array
+    {
+        $data = $request->validate([
+            'name' => ($footer->exists ? 'sometimes' : 'required') . '|string|max:60',
+            'brand_id' => 'sometimes|nullable|integer|exists:label_brands,id',
+            'heading' => 'sometimes|nullable|string|max:60',
+            'heading_dv' => 'sometimes|nullable|string|max:60',
+            'tagline' => 'sometimes|nullable|string|max:120',
+            'tagline_dv' => 'sometimes|nullable|string|max:120',
+            'by_line' => 'sometimes|nullable|string|max:60',
+            'show_by' => 'sometimes|boolean',
+            'phone' => 'sometimes|nullable|string|max:40',
+            'ways' => 'sometimes|nullable|string|max:80',
+            'ways_dv' => 'sometimes|nullable|string|max:80',
+            'website' => 'sometimes|nullable|string|max:80',
+            'address' => 'sometimes|nullable|string|max:120',
+            'address_dv' => 'sometimes|nullable|string|max:120',
+            'landmark' => 'sometimes|nullable|string|max:80',
+            'landmark_dv' => 'sometimes|nullable|string|max:80',
+            'show_qr' => 'sometimes|boolean',
+            'show_mark' => 'sometimes|boolean',
+            'sort' => 'sometimes|integer|min:0|max:999',
+        ]);
+        foreach ($data as $key => $value) {
+            if (is_string($value)) {
+                $value = trim($value);
+                $data[$key] = $value === '' && $key !== 'name' ? null : $value;
+            }
+        }
+        // The main brand's footer takes its name and lines from the business itself.
+        if (!empty($data['brand_id']) && LabelBrand::query()->whereKey($data['brand_id'])->value('is_default')) {
+            $data['brand_id'] = null;
+        }
+
+        return $data;
+    }
+
+    /** @return array<string, mixed> */
+    private function presentFooter(LabelFooter $footer): array
+    {
+        $footer->loadMissing('brand');
+        $brand = $this->types->brand($footer->brand_id ? $footer->brand : null);
+
+        return LabelTypes::presentFooter($footer, $this->types->footer($footer, $brand));
     }
 
     public function brands(): JsonResponse

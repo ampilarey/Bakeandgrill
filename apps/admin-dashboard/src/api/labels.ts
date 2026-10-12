@@ -64,9 +64,33 @@ export type LabelType = {
   heading: string; heading_dv: string | null; storage: LabelStorage; storage_line: string | null; storage_line_dv: string | null;
   use_within: string | null; use_within_dv: string | null; mfg_label: string; exp_label: string;
   how_to_use: string | null; how_to_use_dv: string | null; note: string | null; note_dv: string | null;
-  shelf_life_days: number | null; show_qr: boolean; is_active: boolean; sort: number; items_count: number | null;
+  shelf_life_days: number | null; show_qr: boolean;
+  /** The footer preset its stickers print by default (owner, 2026-10-12); null prints the brand's. */
+  footer_id: number | null;
+  is_active: boolean; sort: number; items_count: number | null;
   defaults: { storage_line: string; storage_line_dv: string };
 };
+
+/**
+ * A sticker footer to pick by name and change in place (owner, 2026-10-12:
+ * "No easy option to select and edit branding footer"). A blank line prints
+ * the brand's or Business Details' live value, shown in `effective`.
+ */
+export type LabelFooter = {
+  id: number; name: string; brand_id: number | null; brand_name: string | null;
+  heading: string | null; heading_dv: string | null; tagline: string | null; tagline_dv: string | null;
+  by_line: string | null; show_by: boolean;
+  phone: string | null; ways: string | null; ways_dv: string | null; website: string | null;
+  address: string | null; address_dv: string | null; landmark: string | null; landmark_dv: string | null;
+  show_qr: boolean; show_mark: boolean; is_default: boolean; sort: number;
+  /** What each line prints, blanks filled in. */
+  effective: { name: string; name_dv: string; tagline: string; tagline_dv: string; by: string; phone: string; ways: string; ways_dv: string; website: string; address: string; address_dv: string; landmark: string; landmark_dv: string; show_qr: boolean; show_mark: boolean };
+  custom_labels_count: number | null; types_count: number | null;
+};
+
+export type LabelFooterPayload = Partial<Pick<LabelFooter,
+  'name' | 'brand_id' | 'heading' | 'heading_dv' | 'tagline' | 'tagline_dv' | 'by_line' | 'show_by'
+  | 'phone' | 'ways' | 'ways_dv' | 'website' | 'address' | 'address_dv' | 'landmark' | 'landmark_dv' | 'show_qr' | 'show_mark' | 'sort'>>;
 
 export type LabelTypePayload = Partial<Omit<LabelType, 'id' | 'brand_name' | 'items_count' | 'defaults'>>;
 
@@ -120,11 +144,9 @@ export type CustomLabel = {
   label_ingredients: string | null; label_ingredients_dv: string | null;
   label_how_to_use: string | null; label_how_to_use_dv: string | null;
   label_note: string | null; label_note_dv: string | null;
-  /** Its own footer line (2026-10-12), where the brand's tagline or the website would print; the phone stays. */
-  label_footer: string | null; label_footer_dv: string | null;
-  /** Which footer: its brand's, the standard main-brand one, or its own words (owner, 2026-10-12). */
-  label_footer_style: 'brand' | 'standard' | 'own';
-  /** The complaints QR: null follows the label type. */
+  /** The footer preset it prints (owner, 2026-10-12); null prints its brand's footer. */
+  footer_id: number | null; footer_name: string | null;
+  /** The complaints QR: null follows the footer, then the label type. */
   label_show_qr: boolean | null;
   /** The language it usually prints in; null means English, or both when it has a Dhivehi name. */
   label_lang: StickerLang | null;
@@ -143,8 +165,8 @@ export type CustomLabel = {
 export type CustomLabelPayload = Partial<Pick<CustomLabel,
   'name' | 'name_dv' | 'brand_id' | 'label_type_id' | 'label_storage' | 'label_heading' | 'label_heading_dv'
   | 'label_storage_line' | 'label_storage_line_dv' | 'label_ingredients' | 'label_ingredients_dv'
-  | 'label_how_to_use' | 'label_how_to_use_dv' | 'label_note' | 'label_note_dv' | 'label_footer' | 'label_footer_dv'
-  | 'label_footer_style' | 'label_show_qr' | 'label_lang'
+  | 'label_how_to_use' | 'label_how_to_use_dv' | 'label_note' | 'label_note_dv'
+  | 'footer_id' | 'label_show_qr' | 'label_lang'
   | 'label_shelf_life_days' | 'label_pack_qty' | 'label_pack_unit' | 'label_photo_media_id' | 'label_title_media_id'
   | 'label_price' | 'label_barcode' | 'label_net_weight' | 'label_allergens'>>;
 
@@ -166,6 +188,8 @@ export type StickerRequest = {
   pi?: number | null;
   /** Print the whole sheet as this label type. */
   type?: number | null;
+  /** One footer preset for the whole sheet (owner, 2026-10-12). */
+  footer?: number | null;
   /** Rounded corners on a rectangle's cut line. */
   rounded?: boolean;
   preview?: boolean;
@@ -411,6 +435,22 @@ export function uploadLabelBrandLogo(id: number, file: File) {
 
 export function deleteLabelBrand(id: number) {
   return req<{ ok: true }>(`/labels/brands/${id}`, { method: 'DELETE' });
+}
+
+export function fetchLabelFooters() {
+  return req<{ data: LabelFooter[] }>('/labels/footers');
+}
+
+export function createLabelFooter(body: LabelFooterPayload) {
+  return req<{ data: LabelFooter }>('/labels/footers', { method: 'POST', body: JSON.stringify(body) });
+}
+
+export function updateLabelFooter(id: number, body: LabelFooterPayload) {
+  return req<{ data: LabelFooter }>(`/labels/footers/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+}
+
+export function deleteLabelFooter(id: number) {
+  return req<{ ok: true }>(`/labels/footers/${id}`, { method: 'DELETE' });
 }
 
 export function fetchLabelSettings() {

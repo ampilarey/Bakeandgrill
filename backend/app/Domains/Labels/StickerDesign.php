@@ -67,11 +67,19 @@ final class StickerDesign
             $p[] = ['t' => 'img', 'x' => $X(8, $lw), 'y' => 5 + (28 - $lh) / 2, 'w' => $lw, 'h' => $lh, 'src' => $brand['logo']];
         }
         $headX = $X(34, 62);
+        $both = !$dv && !empty($d['both']);
         if ($dv) {
             [$top, $bottom] = self::twoWords($d['header_line_dv']);
             $p[] = ['t' => 'text', 'x' => $headX, 'base' => 11.5, 'w' => 62, 'align' => 'r', 'font' => 'dv', 'pt' => 9, 'color' => self::PRIMARY, 'text' => $brand['name_dv'], 'bold' => 0.6];
             $p[] = ['t' => 'text', 'x' => $headX, 'base' => 19.5, 'w' => 62, 'align' => 'r', 'font' => 'dv', 'pt' => 19, 'color' => self::DARK, 'text' => $top, 'bold' => 0.7];
             $p[] = ['t' => 'text', 'x' => $headX, 'base' => 26.5, 'w' => 62, 'align' => 'r', 'font' => 'dv', 'pt' => 19, 'color' => self::DARK, 'text' => $bottom, 'bold' => 0.7];
+        } elseif ($both && $d['header_line_dv'] !== '') {
+            // Both languages (2026-10-12): the English heading on one line
+            // with the Dhivehi heading beneath, in the two lines the English
+            // alone spreads over.
+            $p[] = ['t' => 'text', 'x' => $headX, 'base' => 12.5, 'w' => 62, 'align' => 'l', 'font' => 'j7', 'pt' => LabelText::fitPt(self::spaced(mb_strtoupper($brand['name'])), 'j7', 61, 7.5, 5), 'color' => self::PRIMARY, 'text' => self::spaced(mb_strtoupper($brand['name']))];
+            $p[] = ['t' => 'text', 'x' => $headX, 'base' => 20.5, 'w' => 62, 'align' => 'l', 'font' => 'j8', 'pt' => LabelText::fitPt($d['header_line'], 'j8', 61, 15, 9), 'color' => self::DARK, 'text' => $d['header_line']];
+            $p[] = ['t' => 'text', 'x' => $headX, 'base' => 27.4, 'w' => 62, 'align' => 'l', 'font' => 'dv', 'pt' => LabelText::fitPt($d['header_line_dv'], 'dv', 61, 12, 7), 'color' => self::DARK, 'text' => $d['header_line_dv'], 'bold' => 0.7];
         } else {
             [$top, $bottom] = self::twoWords($d['header_line']);
             $p[] = ['t' => 'text', 'x' => $headX, 'base' => 12.5, 'w' => 62, 'align' => 'l', 'font' => 'j7', 'pt' => LabelText::fitPt(self::spaced(mb_strtoupper($brand['name'])), 'j7', 61, 7.5, 5), 'color' => self::PRIMARY, 'text' => self::spaced(mb_strtoupper($brand['name']))];
@@ -99,18 +107,70 @@ final class StickerDesign
             $p[] = ['t' => 'text', 'x' => 16.5, 'base' => $titleTop + 11, 'w' => 72, 'align' => 'c', 'font' => 'dsi', 'pt' => $pt, 'color' => self::PRIMARY, 'text' => $d['name']];
         }
         // Both languages (2026-10-12): the Dhivehi name under the English one.
-        $both = !$dv && !empty($d['both']);
         if ($both && $d['name_dv'] !== '') {
             $p[] = ['t' => 'text', 'x' => 9, 'base' => $titleTop + $th + 4.6, 'w' => 87, 'align' => 'c', 'font' => 'dv', 'pt' => LabelText::fitPt($d['name_dv'], 'dv', 87, 14, 9), 'color' => self::PRIMARY, 'text' => $d['name_dv'], 'bold' => 0.6];
             $th += 5.8;
         }
 
-        // The food: a cut-out photo, else the brand mark smaller in the same
-        // band. With a barcode (2026-10-12) the bars take the right of the
-        // band and the picture sits in what is left.
-        $band = ($dv ? 25.0 : 28.0) - ($both && $d['name_dv'] !== '' ? 5.8 : 0.0);
-        $foodTop = $titleTop + $th + ($dv ? 4.0 : 2.5);
-        $barW = $d['barcode'] ? 28.0 : 0.0;
+        // The middle, between the name and the date boxes at 99.5: the note
+        // and HOW TO USE sit at its foot, the ingredients follow the name, and
+        // the picture (a cut-out photo, else the brand mark) takes whatever
+        // room the text leaves, up to 28 mm and none under 9. Until
+        // 2026-10-12 the band was fixed, and with all three the list, HOW TO
+        // USE and the note were drawn over each other. A barcode (2026-10-12)
+        // keeps 14.5 mm of the band for the bars.
+        $middleTop = $titleTop + $th + ($dv ? 4.0 : 2.5);
+        $middleBottom = 98.5;
+        $note = $dv ? $d['note_dv'] : $d['note'];
+        $noteDv = $both ? $d['note_dv'] : '';
+        $noteH = $note !== '' || $noteDv !== '' ? ($dv || $noteDv !== '' ? 4.6 : 3.6) : 0.0;
+        // v2 point 8: HOW TO USE, up to two lines (and two Dhivehi lines with
+        // both languages), above the note.
+        $how = $dv ? $d['how_to_use_dv'] : $d['how_to_use'];
+        $howLines = $how !== '' ? array_slice(LabelText::wrap($how, $dv ? 8.2 : 6.6, 90, $dv ? 'dv' : 'j4'), 0, 2) : [];
+        $howDvLines = $both && $howLines !== [] && $d['how_to_use_dv'] !== '' ? array_slice(LabelText::wrap($d['how_to_use_dv'], 7.6, 90, 'dv'), 0, 2) : [];
+        $howLead = $dv ? 3.9 : 3.1;
+        $howDvLead = 3.7;
+        $howH = $howLines !== [] ? 2.9 + $howLead * count($howLines) + $howDvLead * count($howDvLines) + 0.8 : 0.0;
+        $blockTop = $middleBottom - $noteH - $howH;
+
+        // The ingredients at the largest size that fits above that block with
+        // only the band a barcode keeps; broken into lines here, not by the
+        // renderer, so the browser and the PDF print the same lines.
+        $ing = $dv ? $d['ingredients_dv'] : $d['ingredients_en'];
+        $ingDvLines = $both && $ing !== '' && $d['ingredients_dv'] !== '' ? array_slice(LabelText::wrap($d['ingredients_dv'], 8.6, 93, 'dv'), 0, 3) : [];
+        $minBand = $d['barcode'] ? 14.5 : 0.0;
+        $headH = $dv ? 5.3 : 4.68;
+        $ingLines = [];
+        $ingPt = $dv ? 9.6 : 7.6;
+        $ingLead = $dv ? 4.4 : 3.528;
+        $ingText = 0.0;
+        if ($ing !== '') {
+            $dvH = count($ingDvLines) > 0 ? count($ingDvLines) * 4.2 + 0.4 : 0.0;
+            $room = $blockTop - 1.0 - ($middleTop + $minBand + ($minBand > 0 ? 5.0 : 3.6)) - $headH - $dvH;
+            if ($dv) {
+                $ingLines = array_slice(LabelText::wrap($ing, $ingPt, 93, 'dv'), 0, max(1, (int) floor($room / $ingLead) + 1));
+            } else {
+                $wrapped = [];
+                for ($pt = 7.6; $pt >= 6.2; $pt -= 0.2) {
+                    $ingLead = min(3.528, $pt * 1.32 * LabelText::PT);
+                    $wrapped = LabelText::wrap($ing, $pt, 85, 'j4');
+                    if ((count($wrapped) - 1) * $ingLead <= $room) {
+                        break;
+                    }
+                }
+                $ingPt = round($pt, 2);
+                $ingLines = array_slice($wrapped, 0, max(1, (int) floor($room / $ingLead) + 1));
+            }
+            $ingText = $headH + (count($ingLines) - 1) * $ingLead + $dvH + 1.0;
+        }
+        $band = min($dv ? 25.0 : 28.0, $blockTop - 1.0 - $middleTop - ($ingText > 0 ? 5.0 + $ingText : 0.0));
+        $band = $band >= 7.0 ? round($band, 2) : $minBand;
+
+        // The band: a cut-out photo, else the brand mark; with a barcode the
+        // bars take the right of the band and the picture what is left.
+        $foodTop = $middleTop;
+        $barW = $d['barcode'] && $band >= 14.0 ? 28.0 : 0.0;
         $picLeft = 5.0;
         $picSpan = $barW > 0 ? 95.0 - $barW - 2.5 : 95.0;
         if ($barW > 0) {
@@ -122,56 +182,31 @@ final class StickerDesign
                 $picLeft = 5.0 + $barW + 2.5;
             }
         }
-        if ($d['photo']) {
+        if ($band > 0 && $d['photo']) {
             [$fw, $fh] = self::fit($d['photo_ratio'], min(62.0, $picSpan - 4), $band);
-            $p[] = ['t' => 'img', 'x' => $picLeft + ($picSpan - $fw) / 2, 'y' => $foodTop + ($dv ? ($band - $fh) / 2 : 0), 'w' => $fw, 'h' => $fh, 'src' => $d['photo']];
-            $foodBottom = $dv ? $foodTop + $band : max($foodTop + $fh, $barW > 0 ? $foodTop + $bh + 3.2 : 0.0);
-        } else {
-            [$fw, $fh] = self::fit($d['mark_ratio'], 40, $dv ? 22 : 24);
-            if ($d['mark']) {
-                $p[] = ['t' => 'img', 'x' => $picLeft + ($picSpan - $fw) / 2, 'y' => $foodTop + ($band - $fh) / 2, 'w' => $fw, 'h' => $fh, 'src' => $d['mark']];
-            }
-            $foodBottom = $foodTop + $band;
+            $p[] = ['t' => 'img', 'x' => $picLeft + ($picSpan - $fw) / 2, 'y' => $foodTop + ($band - $fh) / 2, 'w' => $fw, 'h' => $fh, 'src' => $d['photo']];
+        } elseif ($band > 0 && $d['mark']) {
+            [$fw, $fh] = self::fit($d['mark_ratio'], 40, min($band, $dv ? 22 : 24));
+            $p[] = ['t' => 'img', 'x' => $picLeft + ($picSpan - $fw) / 2, 'y' => $foodTop + ($band - $fh) / 2, 'w' => $fw, 'h' => $fh, 'src' => $d['mark']];
         }
 
-        // Ingredients, and the item's note (allergen, serving tip) under them.
-        $ingBase = $foodBottom + 5;
-        $note = $dv ? $d['note_dv'] : $d['note'];
-        $noteH = $note !== '' ? ($dv ? 4.6 : 3.6) : 0.0;
-        // v2 point 8: HOW TO USE, up to two lines, above the note.
-        $how = $dv ? $d['how_to_use_dv'] : $d['how_to_use'];
-        $howLines = $how !== '' ? array_slice(LabelText::wrap($how, $dv ? 8.2 : 6.6, 90, $dv ? 'dv' : 'j4'), 0, 2) : [];
-        $howLead = $dv ? 3.9 : 3.1;
-        $howH = $howLines !== [] ? 2.9 + $howLead * count($howLines) + 0.8 : 0.0;
-        $blockTop = 99.5 - 1 - $noteH - $howH;
-        $lines = [];
-        if ($dv && $d['ingredients_dv'] !== '') {
-            $p[] = ['t' => 'text', 'x' => 5, 'base' => $ingBase, 'w' => 95, 'align' => 'c', 'font' => 'dv', 'pt' => 11, 'color' => self::PRIMARY, 'text' => 'ހިމެނޭ ތަކެތި', 'bold' => 0.6];
-            $lines = array_slice(LabelText::wrap($d['ingredients_dv'], 9.6, 93, 'dv'), 0, max(1, (int) floor(($blockTop - ($ingBase + 5.3)) / 4.4) + 1));
-            foreach ($lines as $i => $line) {
-                $p[] = ['t' => 'text', 'x' => 5, 'base' => $ingBase + 5.3 + $i * 4.4, 'w' => 95, 'align' => 'c', 'font' => 'dv', 'pt' => 9.6, 'color' => self::TEXT, 'text' => $line, 'bold' => 0.5];
-            }
-        } elseif (!$dv && $d['ingredients_en'] !== '') {
-            $p[] = ['t' => 'text', 'x' => 5, 'base' => $ingBase, 'w' => 95, 'align' => 'c', 'font' => 'j7', 'pt' => 7.3, 'color' => self::PRIMARY, 'text' => self::spaced('INGREDIENTS')];
-            // Broken into lines here, not by the renderer, so the browser and
-            // the PDF print the same lines; a long list steps the size down.
-            {
-                // Both languages: up to two Dhivehi lines follow the English ones.
-                $dvLines = $both && $d['ingredients_dv'] !== '' ? array_slice(LabelText::wrap($d['ingredients_dv'], 8.6, 93, 'dv'), 0, 2) : [];
-                $room = max(1, (int) floor(($blockTop - ($ingBase + 4.68) - count($dvLines) * 4.2) / 3.528) + 1);
-                for ($pt = 7.6; $pt >= 6.2; $pt -= 0.2) {
-                    $lines = LabelText::wrap($d['ingredients_en'], $pt, 85, 'j4');
-                    if (count($lines) <= $room) {
-                        break;
-                    }
+        // Ingredients under the band (allergens bold); with both languages the
+        // Dhivehi list follows the English one.
+        if ($ing !== '') {
+            $ingBase = $middleTop + $band + ($band > 0 ? 5.0 : 3.6);
+            if ($dv) {
+                $p[] = ['t' => 'text', 'x' => 5, 'base' => $ingBase, 'w' => 95, 'align' => 'c', 'font' => 'dv', 'pt' => 11, 'color' => self::PRIMARY, 'text' => 'ހިމެނޭ ތަކެތި', 'bold' => 0.6];
+                foreach ($ingLines as $i => $line) {
+                    $p[] = ['t' => 'text', 'x' => 5, 'base' => $ingBase + $headH + $i * $ingLead, 'w' => 95, 'align' => 'c', 'font' => 'dv', 'pt' => $ingPt, 'color' => self::TEXT, 'text' => $line, 'bold' => 0.5];
                 }
-                $lead = min(3.528, $pt * 1.32 * LabelText::PT);
-                $last = $ingBase + 4.68;
-                foreach (array_slice($lines, 0, $room) as $i => $line) {
-                    $last = $ingBase + 4.68 + $i * $lead;
-                    $p[] = ['t' => 'text', 'x' => 5, 'base' => $last, 'w' => 95, 'align' => 'c', 'font' => 'j4', 'pt' => round($pt, 2), 'color' => self::TEXT, 'text' => $line, 'bold_words' => $d['allergens']];
+            } else {
+                $p[] = ['t' => 'text', 'x' => 5, 'base' => $ingBase, 'w' => 95, 'align' => 'c', 'font' => 'j7', 'pt' => 7.3, 'color' => self::PRIMARY, 'text' => self::spaced('INGREDIENTS')];
+                $last = $ingBase + $headH;
+                foreach ($ingLines as $i => $line) {
+                    $last = $ingBase + $headH + $i * $ingLead;
+                    $p[] = ['t' => 'text', 'x' => 5, 'base' => $last, 'w' => 95, 'align' => 'c', 'font' => 'j4', 'pt' => $ingPt, 'color' => self::TEXT, 'text' => $line, 'bold_words' => $d['allergens']];
                 }
-                foreach ($dvLines as $i => $line) {
+                foreach ($ingDvLines as $i => $line) {
                     $p[] = ['t' => 'text', 'x' => 5, 'base' => $last + 4.2 * ($i + 1) + 0.4, 'w' => 95, 'align' => 'c', 'font' => 'dv', 'pt' => 8.6, 'color' => self::TEXT, 'text' => $line, 'bold' => 0.5];
                 }
             }
@@ -185,37 +220,65 @@ final class StickerDesign
                     ? ['t' => 'text', 'x' => 5, 'base' => $blockTop + 2.9 + $howLead * ($i + 1), 'w' => 95, 'align' => 'c', 'font' => 'dv', 'pt' => 8.2, 'color' => self::TEXT, 'text' => $line, 'bold' => 0.4]
                     : ['t' => 'text', 'x' => 5, 'base' => $blockTop + 2.6 + $howLead * ($i + 1), 'w' => 95, 'align' => 'c', 'font' => 'j4', 'pt' => 6.6, 'color' => self::TEXT, 'text' => $line];
             }
+            $dvFrom = $blockTop + 2.6 + $howLead * count($howLines) + 0.3;
+            foreach ($howDvLines as $i => $line) {
+                $p[] = ['t' => 'text', 'x' => 5, 'base' => $dvFrom + $howDvLead * ($i + 1), 'w' => 95, 'align' => 'c', 'font' => 'dv', 'pt' => 7.6, 'color' => self::TEXT, 'text' => $line, 'bold' => 0.4];
+            }
         }
-        if ($note !== '') {
-            $p[] = $dv
-                ? ['t' => 'text', 'x' => 5, 'base' => 97.6, 'w' => 95, 'align' => 'c', 'font' => 'dv', 'pt' => LabelText::fitPt($note, 'dv', 92, 8.6, 6.5), 'color' => self::PRIMARY, 'text' => $note, 'bold' => 0.6]
-                : ['t' => 'text', 'x' => 5, 'base' => 97.4, 'w' => 95, 'align' => 'c', 'font' => 'j7', 'pt' => LabelText::fitPt($note, 'j7', 92, 6.6, 5), 'color' => self::PRIMARY, 'text' => $note];
+        if ($note !== '' || $noteDv !== '') {
+            if ($dv) {
+                $p[] = ['t' => 'text', 'x' => 5, 'base' => 97.6, 'w' => 95, 'align' => 'c', 'font' => 'dv', 'pt' => LabelText::fitPt($note, 'dv', 92, 8.6, 6.5), 'color' => self::PRIMARY, 'text' => $note, 'bold' => 0.6];
+            } elseif ($note !== '' && $noteDv !== '') {
+                // Both languages share the line: English on the left, Dhivehi on the right.
+                $p[] = ['t' => 'text', 'x' => 5, 'base' => 97.4, 'w' => 45, 'align' => 'r', 'font' => 'j7', 'pt' => LabelText::fitPt($note, 'j7', 44, 6.6, 4.8), 'color' => self::PRIMARY, 'text' => $note];
+                $p[] = ['t' => 'text', 'x' => 55, 'base' => 97.8, 'w' => 45, 'align' => 'l', 'font' => 'dv', 'pt' => LabelText::fitPt($noteDv, 'dv', 44, 8.2, 6), 'color' => self::PRIMARY, 'text' => $noteDv, 'bold' => 0.6];
+            } else {
+                $only = $note !== '' ? $note : $noteDv;
+                $font = $note !== '' ? 'j7' : 'dv';
+                $p[] = ['t' => 'text', 'x' => 5, 'base' => $font === 'dv' ? 97.8 : 97.4, 'w' => 95, 'align' => 'c', 'font' => $font, 'pt' => LabelText::fitPt($only, $font, 92, $font === 'dv' ? 8.2 : 6.6, 5), 'color' => self::PRIMARY, 'text' => $only] + ($font === 'dv' ? ['bold' => 0.6] : []);
+            }
         }
 
         // MFG and EXP boxes (Dhivehi: made-on on the right), worded by the
-        // label type (v2 point 4), with its use-within line beneath.
+        // label type (v2 point 4), with its use-within line beneath. With
+        // both languages the strip and the use-within line carry the English
+        // on the left and the Dhivehi on the right.
         $within = $dv ? $d['use_within_dv'] : $d['use_within'];
-        $boxH = $within !== '' ? 12.4 : 14.0;
+        $withinDv = $both ? $d['use_within_dv'] : '';
+        $boxH = $within !== '' || $withinDv !== '' ? 12.4 : 14.0;
         $boxes = $dv
             ? [['ހެދި ތާރީޚު', self::DARK, $d['mfg']], ['ހަމަވާ ތާރީޚު', self::PRIMARY, $d['exp']]]
             : [[$d['mfg_label'], self::DARK, $d['mfg']], [$d['exp_label'], self::PRIMARY, $d['exp']]];
+        $dvLabels = ['ހެދި ތާރީޚު', 'ހަމަވާ ތާރީޚު'];
         foreach ($boxes as $i => [$label, $colour, $date]) {
             $bx = $X(5 + $i * 49.5, 45.5);
             $strip = $dv ? 5.6 : 5.2;
             $p[] = ['t' => 'rect', 'x' => $bx, 'y' => 99.5, 'w' => 45.5, 'h' => $boxH, 'fill' => self::CREAM, 'stroke' => $colour, 'sw' => 0.42, 'r' => 2];
             $p[] = ['t' => 'rect', 'x' => $bx, 'y' => 99.5, 'w' => 45.5, 'h' => $strip, 'fill' => $colour, 'r' => 2, 'rb' => 0];
-            $p[] = $dv
-                ? ['t' => 'text', 'x' => $bx, 'base' => 99.5 + 4.2, 'w' => 45.5, 'align' => 'c', 'font' => 'dv', 'pt' => 10.5, 'color' => self::CREAM, 'text' => $label, 'bold' => 0.6]
-                : ['t' => 'text', 'x' => $bx, 'base' => 99.5 + 3.8, 'w' => 45.5, 'align' => 'c', 'font' => 'j7', 'pt' => 8, 'color' => self::CREAM, 'text' => $label];
+            if ($dv) {
+                $p[] = ['t' => 'text', 'x' => $bx, 'base' => 99.5 + 4.2, 'w' => 45.5, 'align' => 'c', 'font' => 'dv', 'pt' => 10.5, 'color' => self::CREAM, 'text' => $label, 'bold' => 0.6];
+            } elseif ($both) {
+                $p[] = ['t' => 'text', 'x' => $bx + 1.5, 'base' => 99.5 + 3.8, 'w' => 22, 'align' => 'l', 'font' => 'j7', 'pt' => LabelText::fitPt($label, 'j7', 21, 7.4, 5), 'color' => self::CREAM, 'text' => $label];
+                $p[] = ['t' => 'text', 'x' => $bx + 23.5, 'base' => 99.5 + 4.1, 'w' => 20.5, 'align' => 'r', 'font' => 'dv', 'pt' => LabelText::fitPt($dvLabels[$i], 'dv', 20, 8.5, 5.5), 'color' => self::CREAM, 'text' => $dvLabels[$i], 'bold' => 0.6];
+            } else {
+                $p[] = ['t' => 'text', 'x' => $bx, 'base' => 99.5 + 3.8, 'w' => 45.5, 'align' => 'c', 'font' => 'j7', 'pt' => 8, 'color' => self::CREAM, 'text' => $label];
+            }
             $dateBase = 99.5 + $boxH - 3.1;
             $p[] = $date
                 ? ['t' => 'text', 'x' => $bx, 'base' => $dateBase, 'w' => 45.5, 'align' => 'c', 'font' => 'j7', 'pt' => LabelText::fitPt($date, 'j7', 42, 12, 8), 'color' => self::TEXT, 'text' => $date]
                 : ['t' => 'text', 'x' => $bx, 'base' => $dateBase, 'w' => 45.5, 'align' => 'c', 'font' => 'j4', 'pt' => 13, 'color' => self::SOFT, 'text' => '__ /__ /____'];
         }
-        if ($within !== '') {
-            $p[] = $dv
-                ? ['t' => 'text', 'x' => 5, 'base' => 99.5 + $boxH + 3.2, 'w' => 95, 'align' => 'c', 'font' => 'dv', 'pt' => 7.8, 'color' => self::PRIMARY, 'text' => $within, 'bold' => 0.6]
-                : ['t' => 'text', 'x' => 5, 'base' => 99.5 + $boxH + 2.8, 'w' => 95, 'align' => 'c', 'font' => 'j7', 'pt' => LabelText::fitPt($within, 'j7', 92, 6.4, 5), 'color' => self::PRIMARY, 'text' => $within];
+        if ($within !== '' || $withinDv !== '') {
+            if ($dv) {
+                $p[] = ['t' => 'text', 'x' => 5, 'base' => 99.5 + $boxH + 3.2, 'w' => 95, 'align' => 'c', 'font' => 'dv', 'pt' => 7.8, 'color' => self::PRIMARY, 'text' => $within, 'bold' => 0.6];
+            } elseif ($within !== '' && $withinDv !== '') {
+                $p[] = ['t' => 'text', 'x' => 5, 'base' => 99.5 + $boxH + 2.8, 'w' => 46, 'align' => 'r', 'font' => 'j7', 'pt' => LabelText::fitPt($within, 'j7', 45, 6.4, 4.6), 'color' => self::PRIMARY, 'text' => $within];
+                $p[] = ['t' => 'text', 'x' => 54, 'base' => 99.5 + $boxH + 3.2, 'w' => 46, 'align' => 'l', 'font' => 'dv', 'pt' => LabelText::fitPt($withinDv, 'dv', 45, 7.8, 5.5), 'color' => self::PRIMARY, 'text' => $withinDv, 'bold' => 0.6];
+            } else {
+                $only = $within !== '' ? $within : $withinDv;
+                $font = $within !== '' ? 'j7' : 'dv';
+                $p[] = ['t' => 'text', 'x' => 5, 'base' => 99.5 + $boxH + ($font === 'dv' ? 3.2 : 2.8), 'w' => 95, 'align' => 'c', 'font' => $font, 'pt' => LabelText::fitPt($only, $font, 92, $font === 'dv' ? 7.8 : 6.4, 5), 'color' => self::PRIMARY, 'text' => $only] + ($font === 'dv' ? ['bold' => 0.6] : []);
+            }
         }
 
         // Batch and quantity.
@@ -264,49 +327,47 @@ final class StickerDesign
             }
         }
 
-        // Dark footer: the brand, who it is by, the contact details and the
-        // complaints QR (v2 point 1), the same on every size.
-        $c = $d['contact'];
-        $fb = $d['footer_brand'] ?? $brand;
+        // Dark footer: the footer preset, or the brand's own (LabelTypes::footer):
+        // name, tagline or by-line, address, phone, ways to reach you, website
+        // and the complaints QR (v2 point 1), the same on every size.
+        $f = $d['footer'];
         $p[] = ['t' => 'rect', 'x' => 5, 'y' => 128, 'w' => 95, 'h' => 15.5, 'fill' => self::DARK, 'r' => 2.5];
         [$mw, $mh] = self::fit($d['mark_ratio'], 10, 10.5);
-        if ($d['mark']) {
+        if ($d['mark'] && $f['show_mark']) {
             $p[] = ['t' => 'img', 'x' => $X(8, $mw), 'y' => 128 + (15.5 - $mh) / 2, 'w' => $mw, 'h' => $mh, 'src' => $d['mark']];
+        } else {
+            $mw = 0.0;
         }
         $qr = $d['show_qr'] && $d['qr'] ? 11.5 : 0.0;
         if ($qr > 0) {
             $p[] = ['t' => 'rect', 'x' => $X(86.5, 12.5), 'y' => 129.5, 'w' => 12.5, 'h' => 12.5, 'fill' => self::CREAM, 'r' => 1];
             $p[] = ['t' => 'img', 'x' => $X(87, $qr), 'y' => 130, 'w' => $qr, 'h' => $qr, 'src' => $d['qr_branded'] ?? $d['qr']];
         }
-        $tx = 8 + $mw + 2.5;
+        $tx = 8 + $mw + ($mw > 0 ? 2.5 : 0.0);
         $nameX = $X($tx, 50);
-        $p[] = ['t' => 'text', 'x' => $nameX, 'base' => 133.5, 'w' => 50, 'align' => $A('l'), 'font' => 'ds', 'pt' => LabelText::fitPt($fb['name'], 'ds', 40, 12.5, 8), 'color' => self::CREAM, 'text' => $fb['name']];
-        // The tagline (Dhivehi one on a Dhivehi sticker when the brand has
-        // it) shares its line with the ways-to-reach-you text under the
-        // phone, so each keeps to its own half: 34 mm for the tagline, the
-        // phone's width for the ways line.
-        $tagline = $dv && $fb['tagline_dv'] !== '' ? $fb['tagline_dv'] : $fb['tagline'];
-        $tagline = $tagline !== '' ? $tagline : ($fb['parent'] !== '' ? 'by ' . $fb['parent'] : '');
-        $tagFont = $dv && $fb['tagline_dv'] !== '' ? 'dv' : 'dsi';
-        // A custom label's own footer line takes the tagline's place.
-        if (($own = self::ownFooter($d, $dv)) !== null) {
-            [$tagline, $tagFont] = $own;
-        }
+        $p[] = ['t' => 'text', 'x' => $nameX, 'base' => 133.5, 'w' => 50, 'align' => $A('l'), 'font' => 'ds', 'pt' => LabelText::fitPt($f['name'], 'ds', 40, 12.5, 8), 'color' => self::CREAM, 'text' => $f['name']];
+        // The tagline (Dhivehi one on a Dhivehi sticker when there is one)
+        // shares its line with the ways-to-reach-you text under the phone, so
+        // each keeps to its own half: 34 mm for the tagline, the phone's
+        // width for the ways line. With no tagline the by-line stands there.
+        $tagline = $dv && $f['tagline_dv'] !== '' ? $f['tagline_dv'] : $f['tagline'];
+        $tagline = $tagline !== '' ? $tagline : $f['by'];
+        $tagFont = $dv && $f['tagline_dv'] !== '' ? 'dv' : 'dsi';
         $p[] = ['t' => 'text', 'x' => $nameX, 'base' => 137.2, 'w' => 50, 'align' => $A('l'), 'font' => $tagFont, 'pt' => LabelText::fitPt($tagline, $tagFont, 34, $tagFont === 'dv' ? 8 : 7.8, 5.5), 'color' => self::ON_DARK, 'text' => $tagline] + ($tagFont === 'dv' ? ['bold' => 0.4] : []);
-        $by = $fb['parent'] !== '' && $fb['tagline'] !== '' ? 'by ' . $fb['parent'] . '  ·  ' : '';
+        $by = $f['by'] !== '' && $f['tagline'] !== '' ? $f['by'] . '  ·  ' : '';
         // The address line stops where the website (right-aligned, ~27 mm)
         // begins; with the QR that edge is 12 mm further left. Too long at
         // the smallest size, it drops the landmark, then the "by" line.
         $addrW = ($qr > 0 ? 84.5 : 96.5) - 28 - $tx;
         if ($dv) {
-            $full = trim($d['address_dv'] . ($d['landmark_dv'] !== '' ? '  •  ' . $d['landmark_dv'] : ''));
-            $addr = LabelText::widthMm($full, 7, 'dv') <= $addrW ? $full : trim($d['address_dv']);
+            $full = trim($f['address_dv'] . ($f['landmark_dv'] !== '' ? '  •  ' . $f['landmark_dv'] : ''));
+            $addr = LabelText::widthMm($full, 7, 'dv') <= $addrW ? $full : trim($f['address_dv']);
             $p[] = ['t' => 'text', 'x' => $X($tx, $addrW), 'base' => 141, 'w' => $addrW, 'align' => 'r', 'font' => 'dv', 'pt' => LabelText::fitPt($addr, 'dv', $addrW, 8, 6.5), 'color' => self::SOFT, 'text' => $addr, 'bold' => 0.4];
         } else {
             $candidates = [
-                $by . trim($c['address'] . ($c['landmark'] !== '' ? '  ·  ' . $c['landmark'] : '')),
-                $by . trim($c['address']),
-                trim($c['address']),
+                $by . trim($f['address'] . ($f['landmark'] !== '' ? '  ·  ' . $f['landmark'] : '')),
+                $by . trim($f['address']),
+                trim($f['address']),
             ];
             $addr = $candidates[0];
             foreach ($candidates as $try) {
@@ -318,12 +379,12 @@ final class StickerDesign
             $p[] = ['t' => 'text', 'x' => $nameX, 'base' => 140.8, 'w' => $addrW, 'align' => 'l', 'font' => 'j4', 'pt' => LabelText::fitPt($addr, 'j4', $addrW, 5.4, 4.2), 'color' => self::SOFT, 'text' => $addr];
         }
         $rightX = $X($qr > 0 ? 34.5 : 46.5, 50);
-        $p[] = ['t' => 'text', 'x' => $rightX, 'base' => 133.5, 'w' => 50, 'align' => $A('r'), 'font' => 'j8', 'pt' => 10.5, 'color' => self::CREAM, 'text' => $c['phone']];
-        $waysW = max(22.0, LabelText::widthMm($c['phone'], 10.5, 'j8'));
+        $p[] = ['t' => 'text', 'x' => $rightX, 'base' => 133.5, 'w' => 50, 'align' => $A('r'), 'font' => 'j8', 'pt' => 10.5, 'color' => self::CREAM, 'text' => $f['phone']];
+        $waysW = max(22.0, LabelText::widthMm($f['phone'], 10.5, 'j8'));
         $p[] = $dv
-            ? ['t' => 'text', 'x' => $rightX, 'base' => 137.2, 'w' => $waysW, 'align' => 'l', 'font' => 'dv', 'pt' => LabelText::fitPt($d['ways_dv'], 'dv', $waysW, 8, 5.5), 'color' => self::ON_DARK, 'text' => $d['ways_dv'], 'bold' => 0.5]
-            : ['t' => 'text', 'x' => $rightX, 'base' => 137, 'w' => 50, 'align' => 'r', 'font' => 'j7', 'pt' => LabelText::fitPt($d['ways'], 'j7', $waysW, 5.6, 4), 'color' => self::ON_DARK, 'text' => $d['ways']];
-        $p[] = ['t' => 'text', 'x' => $rightX, 'base' => 140.8, 'w' => 50, 'align' => $A('r'), 'font' => 'dsi', 'pt' => 10, 'color' => self::CREAM, 'text' => $c['website']];
+            ? ['t' => 'text', 'x' => $rightX, 'base' => 137.2, 'w' => $waysW, 'align' => 'l', 'font' => 'dv', 'pt' => LabelText::fitPt($f['ways_dv'], 'dv', $waysW, 8, 5.5), 'color' => self::ON_DARK, 'text' => $f['ways_dv'], 'bold' => 0.5]
+            : ['t' => 'text', 'x' => $rightX, 'base' => 137, 'w' => 50, 'align' => 'r', 'font' => 'j7', 'pt' => LabelText::fitPt($f['ways'], 'j7', $waysW, 5.6, 4), 'color' => self::ON_DARK, 'text' => $f['ways']];
+        $p[] = ['t' => 'text', 'x' => $rightX, 'base' => 140.8, 'w' => 50, 'align' => $A('r'), 'font' => 'dsi', 'pt' => 10, 'color' => self::CREAM, 'text' => $f['website']];
 
         return $p;
     }
@@ -372,7 +433,14 @@ final class StickerDesign
             if ($tall) {
                 $p[] = ['t' => 'text', 'x' => $tx, 'base' => $pad + 3.6, 'w' => $tw, 'align' => 'l', 'font' => 'j7', 'pt' => LabelText::fitPt(self::spaced(mb_strtoupper($brand['name'])), 'j7', $tw, 5, 3.8), 'color' => self::PRIMARY, 'text' => self::spaced(mb_strtoupper($brand['name']))];
             }
-            $p[] = ['t' => 'text', 'x' => $tx, 'base' => $headBase, 'w' => $tw, 'align' => 'l', 'font' => 'j8', 'pt' => $tall ? LabelText::fitPt($d['header_line'], 'j8', $tw, 8.5, 6) : 6.5, 'color' => self::DARK, 'text' => $d['header_line'], 'ls' => 0.04];
+            if (!empty($d['both']) && $d['header_line_dv'] !== '') {
+                // Both languages: the English heading and the Dhivehi one share the line.
+                $ew = $tw * 0.56;
+                $p[] = ['t' => 'text', 'x' => $tx, 'base' => $headBase, 'w' => $ew, 'align' => 'l', 'font' => 'j8', 'pt' => LabelText::fitPt($d['header_line'], 'j8', $ew, $tall ? 8.5 : 6.5, 5), 'color' => self::DARK, 'text' => $d['header_line']];
+                $p[] = ['t' => 'text', 'x' => $tx + $ew + 1, 'base' => $headBase + 0.3, 'w' => $tw - $ew - 1, 'align' => 'r', 'font' => 'dv', 'pt' => LabelText::fitPt($d['header_line_dv'], 'dv', $tw - $ew - 1.5, $tall ? 8.5 : 6.8, 4.5), 'color' => self::DARK, 'text' => $d['header_line_dv'], 'bold' => 0.6];
+            } else {
+                $p[] = ['t' => 'text', 'x' => $tx, 'base' => $headBase, 'w' => $tw, 'align' => 'l', 'font' => 'j8', 'pt' => $tall ? LabelText::fitPt($d['header_line'], 'j8', $tw, 8.5, 6) : 6.5, 'color' => self::DARK, 'text' => $d['header_line'], 'ls' => 0.04];
+            }
             if (!empty($d['both']) && $d['name_dv'] !== '') {
                 // Both languages (owner, 2026-10-12: "when i select both
                 // languages it shows English only"): the English name a
@@ -388,8 +456,7 @@ final class StickerDesign
         // whatever height the label has between them.
         // Owner, 2026-10-04: "There is no website." A tall label gets the
         // two-line footer of the original: name and address, phone and website.
-        $c = $d['contact'];
-        $fb = $d['footer_brand'] ?? $brand;
+        $f = $d['footer'];
         $fh = $tall ? 9.6 : 6.0;
         $fy = $h - $pad - $fh;
         $p[] = ['t' => 'rect', 'x' => $pad, 'y' => $fy, 'w' => $iw, 'h' => $fh, 'fill' => self::DARK, 'r' => 1.5];
@@ -400,24 +467,24 @@ final class StickerDesign
             $p[] = ['t' => 'rect', 'x' => $X($pad + $iw - 0.8 - $qr - 0.8, $qr + 1.6), 'y' => $fy + 0.4, 'w' => $qr + 1.6, 'h' => $qr + 1.6, 'fill' => self::CREAM, 'r' => 0.8];
             $p[] = ['t' => 'img', 'x' => $X($pad + $iw - 0.8 - $qr, $qr), 'y' => $fy + 0.8, 'w' => $qr, 'h' => $qr, 'src' => $d['qr']];
         }
-        $p[] = ['t' => 'text', 'x' => $X($pad + 2, $iw / 2), 'base' => $fy + 4.1, 'w' => $iw / 2, 'align' => $A('l'), 'font' => 'ds', 'pt' => LabelText::fitPt($fb['name'], 'ds', $iw / 2 - 2, 8.5, 6), 'color' => self::CREAM, 'text' => $fb['name']];
-        $p[] = ['t' => 'text', 'x' => $X($pad + $iw / 2 - 2, $iw / 2 - $rshift), 'base' => $fy + 4.1, 'w' => $iw / 2 - $rshift, 'align' => $A('r'), 'font' => 'j8', 'pt' => 7.5, 'color' => self::CREAM, 'text' => $c['phone']];
+        $p[] = ['t' => 'text', 'x' => $X($pad + 2, $iw / 2), 'base' => $fy + 4.1, 'w' => $iw / 2, 'align' => $A('l'), 'font' => 'ds', 'pt' => LabelText::fitPt($f['name'], 'ds', $iw / 2 - 2, 8.5, 6), 'color' => self::CREAM, 'text' => $f['name']];
+        $p[] = ['t' => 'text', 'x' => $X($pad + $iw / 2 - 2, $iw / 2 - $rshift), 'base' => $fy + 4.1, 'w' => $iw / 2 - $rshift, 'align' => $A('r'), 'font' => 'j8', 'pt' => 7.5, 'color' => self::CREAM, 'text' => $f['phone']];
         if ($tall) {
-            // A custom label's own footer line takes the website's place
-            // (owner, 2026-10-12). It needs more room than "bakeandgrill.mv",
-            // so beside it the address line drops the by-line and landmark
-            // and keeps to the left 42 %; the footer line takes what is left
-            // before the QR.
+            // A footer's own tagline takes the website's place (owner,
+            // 2026-10-12). It needs more room than "bakeandgrill.mv", so
+            // beside it the address line drops the by-line and landmark and
+            // keeps to the left 42 %; the tagline takes what is left before
+            // the QR.
             $own = self::ownFooter($d, $dv);
-            $by = $fb['parent'] !== '' ? 'by ' . $fb['parent'] . '  ·  ' : '';
+            $by = $f['by'] !== '' ? $f['by'] . '  ·  ' : '';
             $addr = $own !== null
-                ? trim($dv ? $d['address_dv'] : $c['address'])
-                : ($dv ? trim($d['address_dv'] . ($d['landmark_dv'] !== '' ? '  ·  ' . $d['landmark_dv'] : '')) : $by . trim($c['address'] . ($c['landmark'] !== '' ? '  ·  ' . $c['landmark'] : '')));
+                ? trim($dv ? $f['address_dv'] : $f['address'])
+                : ($dv ? trim($f['address_dv'] . ($f['landmark_dv'] !== '' ? '  ·  ' . $f['landmark_dv'] : '')) : $by . trim($f['address'] . ($f['landmark'] !== '' ? '  ·  ' . $f['landmark'] : '')));
             $addrW = $own !== null ? $iw * 0.42 : $iw * 0.55;
             $p[] = $dv
                 ? ['t' => 'text', 'x' => $X($pad + 2, $addrW), 'base' => $fy + 8.2, 'w' => $addrW, 'align' => 'r', 'font' => 'dv', 'pt' => $own !== null ? LabelText::fitPt($addr, 'dv', $addrW - 1, 6.5, 5) : 6.5, 'color' => self::SOFT, 'text' => $addr, 'bold' => 0.4]
                 : ['t' => 'text', 'x' => $pad + 2, 'base' => $fy + 8, 'w' => $addrW, 'align' => 'l', 'font' => 'j4', 'pt' => LabelText::fitPt($addr, 'j4', $addrW - 2, 5.2, 4.0), 'color' => self::SOFT, 'text' => $addr];
-            [$site, $siteFont] = $own ?? [$c['website'], 'dsi'];
+            [$site, $siteFont] = $own ?? [$f['website'], 'dsi'];
             $siteX = $own !== null ? $pad + 2 + $addrW + 1 : $pad + $iw / 2 - 2;
             $siteW = $pad + $iw - 2 - $rshift - $siteX;
             $p[] = ['t' => 'text', 'x' => $X($siteX, $siteW), 'base' => $fy + 8.1, 'w' => $siteW, 'align' => $A('r'), 'font' => $siteFont, 'pt' => $siteFont === 'dv' ? LabelText::fitPt($site, 'dv', $siteW - 1, 7.5, 4.5) : LabelText::fitPt($site, 'dsi', $siteW - 1, 7, 4.0), 'color' => self::CREAM, 'text' => $site] + ($siteFont === 'dv' ? ['bold' => 0.5] : []);
@@ -455,9 +522,16 @@ final class StickerDesign
         $dy = $by - 2.6 - $dh - $withinH;
         $dw = ($iw - 2.5) / 2;
         if ($within !== '') {
-            $p[] = $dv
-                ? ['t' => 'text', 'x' => $pad, 'base' => $dy + $dh + 2.6, 'w' => $iw, 'align' => 'c', 'font' => 'dv', 'pt' => 6.8, 'color' => self::PRIMARY, 'text' => $within, 'bold' => 0.5]
-                : ['t' => 'text', 'x' => $pad, 'base' => $dy + $dh + 2.3, 'w' => $iw, 'align' => 'c', 'font' => 'j7', 'pt' => LabelText::fitPt($within, 'j7', $iw - 2, 5.2, 4.2), 'color' => self::PRIMARY, 'text' => $within];
+            if (!$dv && !empty($d['both']) && $d['use_within_dv'] !== '' && $iw >= 56) {
+                // Both languages share the line: English on the left, Dhivehi on the right.
+                $half = ($iw - 2) / 2;
+                $p[] = ['t' => 'text', 'x' => $pad, 'base' => $dy + $dh + 2.3, 'w' => $half, 'align' => 'r', 'font' => 'j7', 'pt' => LabelText::fitPt($within, 'j7', $half - 1, 5.2, 4.0), 'color' => self::PRIMARY, 'text' => $within];
+                $p[] = ['t' => 'text', 'x' => $pad + $half + 2, 'base' => $dy + $dh + 2.6, 'w' => $half, 'align' => 'l', 'font' => 'dv', 'pt' => LabelText::fitPt($d['use_within_dv'], 'dv', $half - 1, 6.6, 4.4), 'color' => self::PRIMARY, 'text' => $d['use_within_dv'], 'bold' => 0.5];
+            } else {
+                $p[] = $dv
+                    ? ['t' => 'text', 'x' => $pad, 'base' => $dy + $dh + 2.6, 'w' => $iw, 'align' => 'c', 'font' => 'dv', 'pt' => 6.8, 'color' => self::PRIMARY, 'text' => $within, 'bold' => 0.5]
+                    : ['t' => 'text', 'x' => $pad, 'base' => $dy + $dh + 2.3, 'w' => $iw, 'align' => 'c', 'font' => 'j7', 'pt' => LabelText::fitPt($within, 'j7', $iw - 2, 5.2, 4.2), 'color' => self::PRIMARY, 'text' => $within];
+            }
         }
         $boxes = $dv
             ? [['ހެދި', self::DARK, $d['mfg']], ['ހަމަވާ', self::PRIMARY, $d['exp']]]
@@ -466,7 +540,14 @@ final class StickerDesign
             $bx = $X($pad + $i * ($dw + 2.5), $dw);
             $p[] = ['t' => 'rect', 'x' => $bx, 'y' => $dy, 'w' => $dw, 'h' => $dh, 'fill' => self::CREAM, 'stroke' => $colour, 'sw' => 0.35, 'r' => 1.4];
             $p[] = ['t' => 'rect', 'x' => $bx, 'y' => $dy, 'w' => $dw, 'h' => 3.4, 'fill' => $colour, 'r' => 1.4, 'rb' => 0];
-            $p[] = ['t' => 'text', 'x' => $bx, 'base' => $dy + 2.55, 'w' => $dw, 'align' => 'c', 'font' => $dv ? 'dv' : 'j7', 'pt' => $dv ? 7 : LabelText::fitPt($label, 'j7', $dw - 2, 5.8, 4.2), 'color' => self::CREAM, 'text' => $label];
+            if (!$dv && !empty($d['both']) && $dw >= 26) {
+                // Both languages: the English label on the left of the strip, the short Dhivehi one on the right.
+                $dvShort = ['ހެދި', 'ހަމަވާ'][$i];
+                $p[] = ['t' => 'text', 'x' => $bx + 1, 'base' => $dy + 2.55, 'w' => $dw * 0.58, 'align' => 'l', 'font' => 'j7', 'pt' => LabelText::fitPt($label, 'j7', $dw * 0.58 - 1, 5.8, 4.0), 'color' => self::CREAM, 'text' => $label];
+                $p[] = ['t' => 'text', 'x' => $bx + $dw * 0.6, 'base' => $dy + 2.75, 'w' => $dw * 0.4 - 1, 'align' => 'r', 'font' => 'dv', 'pt' => LabelText::fitPt($dvShort, 'dv', $dw * 0.4 - 1.5, 6.5, 4.0), 'color' => self::CREAM, 'text' => $dvShort, 'bold' => 0.5];
+            } else {
+                $p[] = ['t' => 'text', 'x' => $bx, 'base' => $dy + 2.55, 'w' => $dw, 'align' => 'c', 'font' => $dv ? 'dv' : 'j7', 'pt' => $dv ? 7 : LabelText::fitPt($label, 'j7', $dw - 2, 5.8, 4.2), 'color' => self::CREAM, 'text' => $label];
+            }
             $dateText = $date ?: '__ /__ /____';
             $p[] = ['t' => 'text', 'x' => $bx, 'base' => $dy + 7.6, 'w' => $dw, 'align' => 'c', 'font' => $date ? 'j7' : 'j4', 'pt' => LabelText::fitPt($dateText, $date ? 'j7' : 'j4', $dw - 2, 9, 6), 'color' => $date ? self::TEXT : self::SOFT, 'text' => $dateText];
         }
@@ -494,22 +575,21 @@ final class StickerDesign
             }
         } elseif ($has) {
             $p[] = ['t' => 'text', 'x' => $pad, 'base' => $top + 0.6, 'w' => $iw, 'align' => 'c', 'font' => 'j7', 'pt' => 5.5, 'color' => self::PRIMARY, 'text' => self::spaced('INGREDIENTS')];
-            {
-                $pt = self::paraFit($d['ingredients_en'], $iw - 2, $room - 2.2, 6.2, 5.5);
-                $lead = $pt * 1.28 * LabelText::PT;
-                $max = max(1, (int) floor(($room - 2.2) / $lead));
-                foreach (array_slice(LabelText::wrap($d['ingredients_en'], $pt, $iw - 2, 'j4'), 0, $max) as $i => $line) {
-                    $p[] = ['t' => 'text', 'x' => $pad, 'base' => $top + 3.2 + $i * $lead, 'w' => $iw, 'align' => 'c', 'font' => 'j4', 'pt' => $pt, 'color' => self::TEXT, 'text' => $line, 'bold_words' => $d['allergens']];
-                    $usedTo = $top + 3.2 + $i * $lead + 0.8;
+
+            $pt = self::paraFit($d['ingredients_en'], $iw - 2, $room - 2.2, 6.2, 5.5);
+            $lead = $pt * 1.28 * LabelText::PT;
+            $max = max(1, (int) floor(($room - 2.2) / $lead));
+            foreach (array_slice(LabelText::wrap($d['ingredients_en'], $pt, $iw - 2, 'j4'), 0, $max) as $i => $line) {
+                $p[] = ['t' => 'text', 'x' => $pad, 'base' => $top + 3.2 + $i * $lead, 'w' => $iw, 'align' => 'c', 'font' => 'j4', 'pt' => $pt, 'color' => self::TEXT, 'text' => $line, 'bold_words' => $d['allergens']];
+                $usedTo = $top + 3.2 + $i * $lead + 0.8;
+            }
+            // Both languages: the Dhivehi list beneath, while there is room.
+            if (!empty($d['both']) && $d['ingredients_dv'] !== '') {
+                $dvMax = max(0, (int) floor(($dy - 1.5 - ($usedTo + 1.8)) / 3.4));
+                foreach (array_slice(LabelText::wrap($d['ingredients_dv'], 7.2, $iw - 2, 'dv'), 0, min(2, $dvMax)) as $i => $line) {
+                    $p[] = ['t' => 'text', 'x' => $pad, 'base' => $usedTo + 2.6 + $i * 3.4, 'w' => $iw, 'align' => 'c', 'font' => 'dv', 'pt' => 7.2, 'color' => self::TEXT, 'text' => $line, 'bold' => 0.4];
                 }
-                // Both languages: the Dhivehi list beneath, while there is room.
-                if (!empty($d['both']) && $d['ingredients_dv'] !== '') {
-                    $dvMax = max(0, (int) floor(($dy - 1.5 - ($usedTo + 1.8)) / 3.4));
-                    foreach (array_slice(LabelText::wrap($d['ingredients_dv'], 7.2, $iw - 2, 'dv'), 0, min(2, $dvMax)) as $i => $line) {
-                        $p[] = ['t' => 'text', 'x' => $pad, 'base' => $usedTo + 2.6 + $i * 3.4, 'w' => $iw, 'align' => 'c', 'font' => 'dv', 'pt' => 7.2, 'color' => self::TEXT, 'text' => $line, 'bold' => 0.4];
-                    }
-                    $usedTo += min(2, $dvMax) * 3.4;
-                }
+                $usedTo += min(2, $dvMax) * 3.4;
             }
         }
 
@@ -528,6 +608,14 @@ final class StickerDesign
                 $p[] = ['t' => 'text', 'x' => $pad, 'base' => $usedTo + 3.1 + 2.7 * ($i + 1) + ($dv ? 0.4 : 0), 'w' => $iw, 'align' => 'c', 'font' => $hf, 'pt' => $hpt, 'color' => self::TEXT, 'text' => $line, 'bold' => $dv ? 0.4 : 0];
             }
             $usedTo += 3.1 + 2.7 * count($lines) + 0.6;
+            if (!$dv && !empty($d['both']) && $d['how_to_use_dv'] !== '') {
+                // Both languages: the Dhivehi lines follow while there is room above the dates.
+                $dvLines = array_slice(LabelText::wrap($d['how_to_use_dv'], 6.6, $iw - 2, 'dv'), 0, max(0, min(2, (int) floor(($dy - 1.5 - $reserve - ($usedTo + 0.6)) / 3.0))));
+                foreach ($dvLines as $i => $line) {
+                    $p[] = ['t' => 'text', 'x' => $pad, 'base' => $usedTo + 3.0 * ($i + 1) - 0.2, 'w' => $iw, 'align' => 'c', 'font' => 'dv', 'pt' => 6.6, 'color' => self::TEXT, 'text' => $line, 'bold' => 0.4];
+                }
+                $usedTo += 3.0 * count($dvLines);
+            }
         } elseif ($how !== '' && $roomNow >= 3.2) {
             // A tight label (99 x 70 with the two-line footer) gets it on one line.
             $line = ($dv ? 'ބޭނުންކުރާނެ ގޮތް: ' : 'HOW TO USE: ') . $how;
@@ -580,7 +668,7 @@ final class StickerDesign
         $centred = fn (float $y, float $w): float => ($D - $w) / 2;
         $text = fn (float $y, float $w, string $font, float $pt, string $color, string $t, float $bold = 0.0) => ['t' => 'text', 'x' => $centred($y, $w), 'base' => $y, 'w' => $w, 'align' => 'c', 'font' => $font, 'pt' => $pt, 'color' => $color, 'text' => $t] + ($bold > 0 ? ['bold' => $bold] : []);
         $brand = $d['brand'];
-        $c = $d['contact'];
+        $ft = $d['footer'];
         $big = $D >= 68;
 
         // Brand line, heading, rule, name.
@@ -600,13 +688,21 @@ final class StickerDesign
         $w = $chord($y - 3 * $k);
         $name = $dv && $d['name_dv'] !== '' ? $d['name_dv'] : $d['name'];
         $nf = $dv && $d['name_dv'] !== '' ? 'dv' : 'dsi';
-        $p[] = $text($y + ($nf === 'dv' ? 0.5 * $f : 0), $w, $nf, LabelText::fitPt($name, $nf, $w, 12.5 * $f, 7), self::PRIMARY, $name, $nf === 'dv' ? 0.7 : 0.0);
+        $both = !$dv && !empty($d['both']) && $d['name_dv'] !== '';
+        if ($both) {
+            // Both languages (2026-10-12): the English name a little higher
+            // and smaller, the Dhivehi name beneath; the zone below starts lower.
+            $p[] = $text(16.4 * $k, $w, 'dsi', LabelText::fitPt($d['name'], 'dsi', $w, 10.5 * $f, 6), self::PRIMARY, $d['name']);
+            $p[] = $text(20.8 * $k, $chord(18.6 * $k), 'dv', LabelText::fitPt($d['name_dv'], 'dv', $chord(18.6 * $k), 7.6 * $f, 5), self::PRIMARY, $d['name_dv'], 0.6);
+        } else {
+            $p[] = $text($y + ($nf === 'dv' ? 0.5 * $f : 0), $w, $nf, LabelText::fitPt($name, $nf, $w, 12.5 * $f, 7), self::PRIMARY, $name, $nf === 'dv' ? 0.7 : 0.0);
+        }
 
         // Ingredients (or the picture) between the name and the dates; on a
         // big circle the brand logo sits to their left and the QR to their
         // right, so the round sticker carries the same branding as the rest.
-        $top = 19.8 * $k;
-        $zoneH = 9.2 * $k;
+        $top = ($both ? 21.6 : 19.8) * $k;
+        $zoneH = 29.0 * $k - $top;
         $qr = $big && $d['show_qr'] && $d['qr'] ? 9.5 : 0.0;
         $logo = $big && $brand['logo'] ? 11.0 : 0.0;
         $ing = $dv ? $d['ingredients_dv'] : $d['ingredients_en'];
@@ -631,9 +727,15 @@ final class StickerDesign
             $p[] = $dv
                 ? ['t' => 'text', 'x' => $zx, 'base' => $top + 2.6 * $f, 'w' => $zw, 'align' => 'c', 'font' => 'dv', 'pt' => 5.6 * $f, 'color' => self::PRIMARY, 'text' => 'ހިމެނޭ ތަކެތި', 'bold' => 0.5]
                 : ['t' => 'text', 'x' => $zx, 'base' => $top + 2.3 * $f, 'w' => $zw, 'align' => 'c', 'font' => 'j7', 'pt' => 3.9 * $f, 'color' => self::PRIMARY, 'text' => self::spaced('INGREDIENTS')];
-            $max = max(1, (int) floor(($zoneH - 2.6 * $f) / $lead));
-            foreach (array_slice(LabelText::wrap($ing, $lpt, $zw - 1, $lf), 0, $max) as $i => $line) {
+            // Both languages: the last line of the zone is the first Dhivehi line of the list.
+            $dvLine = !$dv && !empty($d['both']) && $d['ingredients_dv'] !== '' ? (LabelText::wrap($d['ingredients_dv'], 5.8 * $f, $zw - 1, 'dv')[0] ?? '') : '';
+            $max = max(1, (int) floor(($zoneH - 2.6 * $f) / $lead) - ($dvLine !== '' ? 1 : 0));
+            $lines = array_slice(LabelText::wrap($ing, $lpt, $zw - 1, $lf), 0, $max);
+            foreach ($lines as $i => $line) {
                 $p[] = ['t' => 'text', 'x' => $zx, 'base' => $top + 2.3 * $f + $lead * ($i + 1), 'w' => $zw, 'align' => 'c', 'font' => $lf, 'pt' => $lpt, 'color' => self::TEXT, 'text' => $line] + ($dv ? ['bold' => 0.4] : ['bold_words' => $d['allergens']]);
+            }
+            if ($dvLine !== '') {
+                $p[] = ['t' => 'text', 'x' => $zx, 'base' => $top + 2.3 * $f + $lead * (count($lines) + 1) + 0.4 * $f, 'w' => $zw, 'align' => 'c', 'font' => 'dv', 'pt' => 5.8 * $f, 'color' => self::TEXT, 'text' => $dvLine, 'bold' => 0.4];
             }
         } elseif ($d['photo'] ?: $d['mark']) {
             $pic = $d['photo'] ?: $d['mark'];
@@ -683,11 +785,11 @@ final class StickerDesign
         $p[] = $text($sy + $sh * 0.72, $sw - 2, $sf, LabelText::fitPt($msg, $sf, $sw - 3, ($dv ? 5.6 : 4.2) * $f, 3.2), self::CREAM, $msg, $dv ? 0.7 : 0.0);
         $y = 46.4 * $k;
         $w = $chord($y - 1.2 * $f);
-        // A custom label's own footer line takes the website's place.
-        [$site, $siteFont] = self::ownFooter($d, $dv) ?? [$c['website'], 'j7'];
-        $foot = ($d['footer_brand'] ?? $brand)['name'] . '  ·  ' . $c['phone'] . '  ·  ' . $site;
+        // A footer's own tagline takes the website's place.
+        [$site, $siteFont] = self::ownFooter($d, $dv) ?? [$ft['website'], 'j7'];
+        $foot = $ft['name'] . '  ·  ' . $ft['phone'] . '  ·  ' . $site;
         if (LabelText::widthMm($foot, 3.6, $siteFont) > $w) {
-            $foot = $c['phone'] . '  ·  ' . $site;
+            $foot = $ft['phone'] . '  ·  ' . $site;
         }
         if ($siteFont === 'dv' && LabelText::widthMm($foot, 3.6, 'dv') > $w) {
             $foot = $site;
@@ -698,17 +800,22 @@ final class StickerDesign
     }
 
     /**
-     * A custom label's own footer line (owner, 2026-10-12: "add option to
-     * edit footer also"): the Dhivehi one on a Dhivehi sticker when it has
-     * one, set in the Dhivehi face when it holds Thaana. Null when the label
-     * has none, so the brand's tagline or the website prints as before.
+     * A footer preset's own tagline (owner, 2026-10-12: "add option to edit
+     * footer also"), which the compact designs print where the website would
+     * go: the Dhivehi one on a Dhivehi sticker when it has one, set in the
+     * Dhivehi face when it holds Thaana. Null when the footer is the brand's
+     * own, so the website prints as before.
      *
      * @param array<string, mixed> $d
      * @return array{0: string, 1: string}|null
      */
     public static function ownFooter(array $d, bool $dv): ?array
     {
-        $text = $dv && ($d['footer_dv'] ?? '') !== '' ? (string) $d['footer_dv'] : (string) ($d['footer'] ?? '');
+        $f = $d['footer'] ?? null;
+        if (!is_array($f) || empty($f['own'])) {
+            return null;
+        }
+        $text = $dv && $f['tagline_dv'] !== '' ? (string) $f['tagline_dv'] : (string) $f['tagline'];
         if ($text === '') {
             return null;
         }

@@ -73,6 +73,18 @@ Route::post('/labels/brands/{brand}/logo', [LabelsController::class, 'brandLogo'
 Route::delete('/labels/brands/{brand}', [LabelsController::class, 'destroyBrand'])
     ->middleware('permission:labels.manage')
     ->whereNumber('brand');
+// Footer presets (owner, 2026-10-12: "No easy option to select and edit
+// branding footer"): read with Print labels, written with Manage label settings.
+Route::get('/labels/footers', [LabelsController::class, 'footers'])
+    ->middleware('permission:labels.print');
+Route::post('/labels/footers', [LabelsController::class, 'storeFooter'])
+    ->middleware('permission:labels.manage');
+Route::put('/labels/footers/{footer}', [LabelsController::class, 'updateFooter'])
+    ->middleware('permission:labels.manage')
+    ->whereNumber('footer');
+Route::delete('/labels/footers/{footer}', [LabelsController::class, 'destroyFooter'])
+    ->middleware('permission:labels.manage')
+    ->whereNumber('footer');
 // Custom labels: products that are not on the menu (owner, 2026-10-11: "Add
 // option to add custom labels using different brands logos and other details.
 // Not only from the menu list"). Printing them is labels.print; writing them,

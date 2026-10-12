@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { Plus, Pencil, Trash2, Upload, Tag, BadgeCheck } from 'lucide-react';
 import {
-  createLabelBrand, createLabelType, deleteLabelBrand, deleteLabelType, fetchLabelBrands, fetchLabelTypes,
+  createLabelBrand, createLabelType, deleteLabelBrand, deleteLabelFooter, deleteLabelType, fetchLabelBrands, fetchLabelFooters, fetchLabelTypes,
   updateLabelBrand, updateLabelType, uploadLabelBrandLogo,
-  type LabelBrand, type LabelStorage, type LabelType, type LabelTypePayload,
+  type LabelBrand, type LabelFooter, type LabelStorage, type LabelType, type LabelTypePayload,
 } from '../../api';
 import { Modal } from '../SharedUI';
 import { Button, Card, useToast } from '../ui';
+import { FooterModal, FooterPicker, describeFooter } from './FooterPicker';
 
 /*
  * Label Hub v2, step 1 (docs/LABEL_HUB_V2_PLAN.md). Owner, 2026-10-04:
@@ -24,13 +25,13 @@ const MFG_CHOICES = ['MFG DATE', 'MADE ON', 'PACKED ON', 'BAKED ON'];
 const EXP_CHOICES = ['EXP DATE', 'BEST BEFORE', 'USE BY', 'EXPIRY'];
 
 type TypeDraft = Required<Pick<LabelType, 'name' | 'heading' | 'storage' | 'mfg_label' | 'exp_label' | 'show_qr' | 'is_active'>> & {
-  brand_id: number | null; heading_dv: string; storage_line: string; storage_line_dv: string; use_within: string; use_within_dv: string;
+  brand_id: number | null; footer_id: number | null; heading_dv: string; storage_line: string; storage_line_dv: string; use_within: string; use_within_dv: string;
   how_to_use: string; how_to_use_dv: string; note: string; note_dv: string; shelf_life_days: string;
 };
 
 const typeDraft = (t: LabelType | null, brands: LabelBrand[]): TypeDraft => ({
   name: t?.name ?? '', heading: t?.heading ?? '', heading_dv: t?.heading_dv ?? '',
-  brand_id: t?.brand_id ?? (brands.find((b) => b.is_default)?.id ?? null),
+  brand_id: t?.brand_id ?? (brands.find((b) => b.is_default)?.id ?? null), footer_id: t?.footer_id ?? null,
   storage: t?.storage ?? 'frozen', storage_line: t?.storage_line ?? '', storage_line_dv: t?.storage_line_dv ?? '',
   use_within: t?.use_within ?? '', use_within_dv: t?.use_within_dv ?? '',
   mfg_label: t?.mfg_label ?? 'MFG DATE', exp_label: t?.exp_label ?? 'EXP DATE',
@@ -39,7 +40,7 @@ const typeDraft = (t: LabelType | null, brands: LabelBrand[]): TypeDraft => ({
 });
 
 const typePayload = (d: TypeDraft): LabelTypePayload => ({
-  name: d.name.trim(), heading: d.heading.trim(), heading_dv: d.heading_dv.trim() || null, brand_id: d.brand_id,
+  name: d.name.trim(), heading: d.heading.trim(), heading_dv: d.heading_dv.trim() || null, brand_id: d.brand_id, footer_id: d.footer_id,
   storage: d.storage, storage_line: d.storage_line.trim() || null, storage_line_dv: d.storage_line_dv.trim() || null,
   use_within: d.use_within.trim() || null, use_within_dv: d.use_within_dv.trim() || null,
   mfg_label: d.mfg_label.trim() || 'MFG DATE', exp_label: d.exp_label.trim() || 'EXP DATE',
@@ -68,7 +69,7 @@ function ChoiceInput({ id, value, choices, onChange }: { id: string; value: stri
   );
 }
 
-function TypeModal({ type, brands, defaults, onClose, onSaved }: { type: LabelType | null; brands: LabelBrand[]; defaults: LabelType['defaults'] | null; onClose: () => void; onSaved: (t: LabelType) => void }) {
+function TypeModal({ type, brands, footers, onFootersChange, canManage, defaults, onClose, onSaved }: { type: LabelType | null; brands: LabelBrand[]; footers: LabelFooter[]; onFootersChange: (f: LabelFooter[]) => void; canManage: boolean; defaults: LabelType['defaults'] | null; onClose: () => void; onSaved: (t: LabelType) => void }) {
   const { toast } = useToast();
   const [d, setD] = useState<TypeDraft>(() => typeDraft(type, brands));
   const [saving, setSaving] = useState(false);
@@ -136,6 +137,10 @@ function TypeModal({ type, brands, defaults, onClose, onSaved }: { type: LabelTy
             <Field id="lt-note-dv" label="Note (Dhivehi)"><input id="lt-note-dv" dir="rtl" value={d.note_dv} maxLength={120} onChange={(e) => set('note_dv', e.target.value)} className={fieldClass} /></Field>
           </div>
         </fieldset>
+
+        <Field id="lt-footer" label="Footer" hint="The footer its stickers print unless a custom label or a sheet picks another (owner, 2026-10-12). Its own QR switch wins over the box below.">
+          <FooterPicker id="lt-footer" footers={footers} value={d.footer_id} onChange={(id) => set('footer_id', id)} onFootersChange={onFootersChange} noneLabel="The brand's own footer" canManage={canManage} />
+        </Field>
 
         <div className="flex flex-wrap gap-4">
           <label className="flex items-center gap-2 min-h-[44px] cursor-pointer"><input type="checkbox" checked={d.show_qr} onChange={(e) => set('show_qr', e.target.checked)} className="w-5 h-5 accent-[var(--color-primary)]" /><span className="text-sm text-[var(--color-text)]">Print the complaints QR in the footer</span></label>
@@ -220,14 +225,22 @@ export function TypesAndBrands({ canManage }: { canManage: boolean }) {
   const { toast } = useToast();
   const [types, setTypes] = useState<LabelType[]>([]);
   const [brands, setBrands] = useState<LabelBrand[]>([]);
+  const [footers, setFooters] = useState<LabelFooter[]>([]);
   const [editType, setEditType] = useState<LabelType | null | 'new'>(null);
   const [editBrand, setEditBrand] = useState<LabelBrand | null | 'new'>(null);
+  const [editFooter, setEditFooter] = useState<LabelFooter | null | 'new'>(null);
 
   const load = () => {
     fetchLabelTypes().then((r) => setTypes(r.data)).catch(() => setTypes([]));
     fetchLabelBrands().then((r) => setBrands(r.data)).catch(() => setBrands([]));
+    fetchLabelFooters().then((r) => setFooters(r.data)).catch(() => setFooters([]));
   };
   useEffect(load, []);
+
+  const removeFooter = async (f: LabelFooter) => {
+    if (!window.confirm(`Remove the footer "${f.name}"? Labels and types that print it go back to their brand's footer.`)) return;
+    try { await deleteLabelFooter(f.id); load(); toast('success', 'Footer removed.'); } catch (e) { toast('error', e instanceof Error ? e.message : 'Could not remove it.'); }
+  };
 
   const removeType = async (t: LabelType) => {
     if (!window.confirm(`Remove the label type "${t.name}"?`)) return;
@@ -304,8 +317,40 @@ export function TypesAndBrands({ canManage }: { canManage: boolean }) {
         </ul>
       </Card>
 
-      {editType !== null && <TypeModal type={editType === 'new' ? null : editType} brands={brands} defaults={editType === 'new' ? null : editType.defaults} onClose={() => setEditType(null)} onSaved={load} />}
+      <Card
+        padding="none"
+        header={
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h3 className="font-bold text-[var(--color-text)]">Footers</h3>
+              <p className="text-xs text-[var(--color-text-muted)] mt-1">What the dark band at the foot of a sticker says: name, tagline or your own words, phone, website, address, the complaints QR and the brand mark. Picked by name on a custom label, a label type or a whole sheet; a blank line follows Business Details.</p>
+            </div>
+            {canManage && <Button size="sm" icon={<Plus size={16} />} onClick={() => setEditFooter('new')} data-testid="label-footer-new">New footer</Button>}
+          </div>
+        }
+      >
+        <ul className="divide-y divide-[var(--color-border-light)]" data-testid="label-footers">
+          {footers.map((f) => (
+            <li key={f.id} className="px-4 py-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <div className="flex-1 min-w-[180px]">
+                <div className="text-sm font-semibold text-[var(--color-text)] flex items-center gap-1">{f.name}{f.is_default && <BadgeCheck size={14} className="text-[var(--color-primary)]" aria-label="Standard footer" />}</div>
+                <div className="text-xs text-[var(--color-text-muted)]">{describeFooter(f)}{f.show_qr ? '' : ' · no QR'}{f.custom_labels_count || f.types_count ? ` · used by ${[f.custom_labels_count ? `${f.custom_labels_count} ${f.custom_labels_count === 1 ? 'label' : 'labels'}` : null, f.types_count ? `${f.types_count} ${f.types_count === 1 ? 'type' : 'types'}` : null].filter(Boolean).join(' and ')}` : ''}</div>
+              </div>
+              {canManage && (
+                <span className="inline-flex">
+                  <button type="button" onClick={() => setEditFooter(f)} className="w-9 h-9 inline-flex items-center justify-center rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)]" aria-label={`Edit ${f.name}`}><Pencil size={16} /></button>
+                  {!f.is_default && <button type="button" onClick={() => void removeFooter(f)} className="w-9 h-9 inline-flex items-center justify-center rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-bg)]" aria-label={`Remove ${f.name}`}><Trash2 size={16} /></button>}
+                </span>
+              )}
+            </li>
+          ))}
+          {footers.length === 0 && <li className="px-4 py-6 text-center text-sm text-[var(--color-text-muted)]">No footers yet.</li>}
+        </ul>
+      </Card>
+
+      {editType !== null && <TypeModal type={editType === 'new' ? null : editType} brands={brands} footers={footers} onFootersChange={setFooters} canManage={canManage} defaults={editType === 'new' ? null : editType.defaults} onClose={() => setEditType(null)} onSaved={load} />}
       {editBrand !== null && <BrandModal brand={editBrand === 'new' ? null : editBrand} onClose={() => setEditBrand(null)} onSaved={load} />}
+      {editFooter !== null && <FooterModal footer={editFooter === 'new' ? null : editFooter} footers={footers} onClose={() => setEditFooter(null)} onSaved={load} onRemoved={load} />}
     </div>
   );
 }

@@ -23,7 +23,9 @@
             return $html;
         }
         if ($forPdf) {
-            $text = \App\Support\ThaanaVisual::order($text);
+            // Visual order for dompdf; with a composed face (Noto) each letter
+            // and its fili go as one pair glyph, so the mark sits where it should.
+            $text = \App\Support\ThaanaVisual::order($text, \App\Domains\Labels\LabelText::dvFace()['composed']);
         }
         // Faruma has no Latin, digits or °: those runs set in Plus Jakarta Sans.
         return (string) preg_replace_callback(

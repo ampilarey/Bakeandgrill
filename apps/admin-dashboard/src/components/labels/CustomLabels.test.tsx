@@ -12,6 +12,23 @@ const deleteCustomLabel = vi.fn();
 const stickerLinks = vi.fn();
 const previewCustomDraft = vi.fn();
 const fetchLabelLayouts = vi.fn();
+const createLabelFooter = vi.fn();
+const updateLabelFooter = vi.fn();
+const deleteLabelFooter = vi.fn();
+
+const effective = (name: string, tagline: string, by = '') => ({
+  name, name_dv: '', tagline, tagline_dv: '', by, phone: '+960 912 0011', ways: '', ways_dv: '', website: 'bakeandgrill.mv',
+  address: 'Kalaafaanu Hingun, Malé', address_dv: '', landmark: '', landmark_dv: '', show_qr: true, show_mark: true,
+});
+const footerRow = (id: number, name: string, brand_id: number | null, eff: ReturnType<typeof effective>, extra = {}) => ({
+  id, name, brand_id, brand_name: brand_id ? 'Amma' : null, heading: null, heading_dv: null, tagline: null, tagline_dv: null, by_line: null, show_by: true,
+  phone: null, ways: null, ways_dv: null, website: null, address: null, address_dv: null, landmark: null, landmark_dv: null,
+  show_qr: true, show_mark: true, is_default: brand_id === null, sort: id, effective: eff, custom_labels_count: 0, types_count: 0, ...extra,
+});
+const FOOTERS = [
+  footerRow(1, 'Standard', null, effective('Bake & Grill', 'Fresh Baked, Fire Grilled')),
+  footerRow(2, 'Amma', 2, effective('Amma', 'Home-made, the Amma way', 'by Bake & Grill')),
+];
 
 vi.mock('../../api', () => ({
   fetchLabelBrands: () => Promise.resolve({ data: [
@@ -19,6 +36,11 @@ vi.mock('../../api', () => ({
     { id: 2, name: 'Amma', is_default: false, logo_url: '/storage/amma.png' },
   ] }),
   fetchLabelTypes: () => Promise.resolve({ data: [] }),
+  fetchLabelFooters: () => Promise.resolve({ data: FOOTERS }),
+  fetchLabelSettings: () => Promise.resolve({ data: { label_dhivehi_font: 'noto' }, defaults: {} }),
+  createLabelFooter: (...a: unknown[]) => createLabelFooter(...a),
+  updateLabelFooter: (...a: unknown[]) => updateLabelFooter(...a),
+  deleteLabelFooter: (...a: unknown[]) => deleteLabelFooter(...a),
   fetchCustomLabels: (...a: unknown[]) => fetchCustomLabels(...a),
   createCustomLabel: (...a: unknown[]) => createCustomLabel(...a),
   updateCustomLabel: (...a: unknown[]) => updateCustomLabel(...a),
@@ -40,7 +62,7 @@ const custom = (id: number, name: string, extra: Partial<CustomLabel> = {}): Cus
   label_storage: null, storage: 'chilled', label_heading: null, label_heading_dv: null, label_storage_line: null, label_storage_line_dv: null,
   label_ingredients: 'Garlic, oil', label_ingredients_dv: null, label_how_to_use: null, label_how_to_use_dv: null, label_note: null, label_note_dv: null,
   label_shelf_life_days: 14, label_pack_qty: null, label_pack_unit: null, label_price: null, label_barcode: null, label_net_weight: null, label_allergens: null,
-  label_footer: null, label_footer_dv: null, label_footer_style: 'brand', label_show_qr: null, label_lang: null, print_count: 0, last_printed_at: null,
+  footer_id: null, footer_name: null, label_show_qr: null, label_lang: null, print_count: 0, last_printed_at: null,
   label_photo_media_id: null, label_photo_url: null, label_title_media_id: null, label_title_url: null,
   defaults: { heading: 'CHILLED', heading_dv: '', storage_line: '', storage_line_dv: '', how_to_use: '', how_to_use_dv: '', note: '', note_dv: '', shelf_life_days: null, brand: 'Amma', unit: 'PCS' },
   ingredients: { en: 'Garlic, oil', dv: '', from: 'manual' }, created_by: null, updated_at: null, ...extra,
@@ -63,7 +85,7 @@ const LAYOUTS = {
 
 describe('CustomLabelModal', () => {
   beforeEach(() => {
-    [fetchCustomLabels, createCustomLabel, updateCustomLabel, uploadCustomLabelPicture, duplicateCustomLabel, deleteCustomLabel, stickerLinks, previewCustomDraft, fetchLabelLayouts].forEach((f) => f.mockReset());
+    [fetchCustomLabels, createCustomLabel, updateCustomLabel, uploadCustomLabelPicture, duplicateCustomLabel, deleteCustomLabel, stickerLinks, previewCustomDraft, fetchLabelLayouts, createLabelFooter, updateLabelFooter, deleteLabelFooter].forEach((f) => f.mockReset());
     fetchLabelLayouts.mockResolvedValue(LAYOUTS);
     try { localStorage.clear(); } catch { /* jsdom */ }
     stickerLinks.mockResolvedValue({ url: '/labels/stickers?signature=x', one_url: '/labels/stickers?one=1&signature=x' });
@@ -77,7 +99,7 @@ describe('CustomLabelModal', () => {
     wrap(<CustomLabelModal label={null} onClose={() => {}} onSaved={onSaved} />);
 
     fireEvent.change(screen.getByLabelText('Product name'), { target: { value: '  Garlic Sauce ' } });
-    await screen.findByRole('option', { name: 'Amma' });
+    await within(screen.getByLabelText('Brand and logo')).findByRole('option', { name: 'Amma' });
     fireEvent.change(screen.getByLabelText('Brand and logo'), { target: { value: '2' } });
     fireEvent.change(screen.getByLabelText('Ingredients'), { target: { value: 'Garlic, oil' } });
     fireEvent.change(screen.getByLabelText('Shelf life (days)'), { target: { value: '14' } });
@@ -107,21 +129,40 @@ describe('CustomLabelModal', () => {
   // Audit, 2026-10-12: the label picks its footer, its QR and its language;
   // Print… carries the size and language to Pack stickers; closing with
   // changes asks first.
-  it('saves the footer choice, the QR switch and the language, and previews in that language', async () => {
-    createCustomLabel.mockResolvedValue({ data: custom(9, 'Gift Box', { label_footer_style: 'standard', label_show_qr: false, label_lang: 'both' }) });
+  it('picks a footer by name, the QR switch and the language, and previews in that language', async () => {
+    createCustomLabel.mockResolvedValue({ data: custom(9, 'Gift Box', { footer_id: 1, footer_name: 'Standard', label_show_qr: false, label_lang: 'both' }) });
     wrap(<CustomLabelModal label={null} onClose={() => {}} onSaved={() => {}} />);
     fireEvent.change(screen.getByLabelText('Product name'), { target: { value: 'Gift Box' } });
-    fireEvent.click(screen.getByRole('radio', { name: /Standard Bake & Grill footer/ }));
+    // The footers come by name; nothing picked means the brand's own.
+    await screen.findByRole('option', { name: 'Standard (standard)' });
+    expect(screen.getByRole('option', { name: "Bake & Grill's own footer" })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Footer'), { target: { value: '1' } });
+    // The picked footer says what it prints, and the QR follows it until told otherwise.
+    expect(screen.getByTestId('cl-footer-lines')).toHaveTextContent('Bake & Grill · Fresh Baked, Fire Grilled · +960 912 0011 · bakeandgrill.mv');
+    expect(screen.getByRole('option', { name: 'As the footer (printed)' })).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Complaints QR in the footer'), { target: { value: 'off' } });
     fireEvent.click(screen.getByRole('button', { name: 'Both' }));
-    await waitFor(() => expect(previewCustomDraft).toHaveBeenCalledWith(expect.objectContaining({ name: 'Gift Box', label_footer_style: 'standard', label_show_qr: false, label_lang: 'both', lang: 'both' })), { timeout: 3000 });
-    // Own words show their boxes only when picked.
-    expect(screen.queryByLabelText('Footer line')).toBeNull();
-    fireEvent.click(screen.getByRole('radio', { name: /Your own words/ }));
-    fireEvent.change(screen.getByLabelText('Footer line'), { target: { value: 'Made with love' } });
+    await waitFor(() => expect(previewCustomDraft).toHaveBeenCalledWith(expect.objectContaining({ name: 'Gift Box', footer_id: 1, label_show_qr: false, label_lang: 'both', lang: 'both' })), { timeout: 3000 });
+    // Which Dhivehi face the preview is drawn in is said under it.
+    expect(screen.getByTestId('custom-preview-size')).toHaveTextContent('Dhivehi in Noto Sans Thaana');
     fireEvent.click(screen.getByTestId('custom-label-save'));
     await waitFor(() => expect(createCustomLabel).toHaveBeenCalledTimes(1));
-    expect(createCustomLabel.mock.calls[0][0]).toMatchObject({ label_footer_style: 'own', label_footer: 'Made with love', label_show_qr: false, label_lang: 'both' });
+    expect(createCustomLabel.mock.calls[0][0]).toMatchObject({ footer_id: 1, label_show_qr: false, label_lang: 'both' });
+  });
+
+  it('changes the picked footer in place and the new words reach the preview', async () => {
+    updateLabelFooter.mockResolvedValue({ data: footerRow(1, 'Standard', null, effective('Bake & Grill', 'Made in Malé with love'), { tagline: 'Made in Malé with love' }) });
+    wrap(<CustomLabelModal label={custom(9, 'Gift Box', { footer_id: 1, footer_name: 'Standard' })} onClose={() => {}} onSaved={() => {}} />);
+    await screen.findByRole('option', { name: 'Standard (standard)' });
+    fireEvent.click(screen.getByRole('button', { name: 'Edit the footer Standard' }));
+    const form = await screen.findByTestId('label-footer-form');
+    // A blank line shows, in grey, what it prints today.
+    expect(within(form).getByLabelText('Tagline, or your own words')).toHaveAttribute('placeholder', 'Fresh Baked, Fire Grilled');
+    fireEvent.change(within(form).getByLabelText('Tagline, or your own words'), { target: { value: 'Made in Malé with love' } });
+    fireEvent.click(screen.getByTestId('label-footer-save'));
+    await waitFor(() => expect(updateLabelFooter).toHaveBeenCalledWith(1, expect.objectContaining({ name: 'Standard', tagline: 'Made in Malé with love', brand_id: null })));
+    await waitFor(() => expect(screen.getByTestId('cl-footer-lines')).toHaveTextContent('Made in Malé with love'));
+    expect(screen.queryByTestId('label-footer-form')).toBeNull();
   });
 
   it('Print… saves first and opens Pack stickers on the same size and language', async () => {

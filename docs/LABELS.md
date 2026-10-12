@@ -98,17 +98,18 @@ the new label straight away):
    the shop till** and **Footer and complaints QR** fold away, open when they hold
    something (audit, 2026-10-12).
 6. **Footer and complaints QR** (owner, 2026-10-12: "Standard footer options with
-   standard branding footer. Option to add complaint qr with its branding"). The
-   footer is one of three: **the brand's own** (its name and tagline, "by Bake &
-   Grill" for a sub-brand, with the phone, website and address), the **standard Bake
-   & Grill footer** (the main brand's name and tagline whatever brand is on the
-   header), or **your own words** (a footer line in English and Dhivehi, printed
-   where the tagline or the website would be; the phone stays, and on a band too
-   narrow for both the footer line takes the phone's place). The **complaints QR**
-   follows the label type, or is printed or left off for this label alone; on the
-   full sticker the code carries the brand mark inside (`StickerSheet::QR_LOGO_RATIO`,
-   smaller than the poster's so an 11.5 mm code still scans), the small designs keep
-   the bare code.
+   standard branding footer. Option to add complaint qr with its branding", then "No
+   easy option to select and edit branding footer"). The **Footer** box picks a
+   footer by name (§ Footers): empty is **the brand's own** (its name and tagline, "by
+   Bake & Grill" for a sub-brand, with the phone, website and address from Business
+   Details), **Standard** is the main brand's footer whatever brand is on the header,
+   and any other footer made under Types & brands. The pencil beside the box changes
+   the picked footer in place and **+** makes a new one, without leaving the label;
+   the line under the box says what it prints. The **complaints QR** follows the
+   footer (whose own switch follows the label type), or is printed or left off for
+   this label alone; on the full sticker the code carries the brand mark inside
+   (`StickerSheet::QR_LOGO_RATIO`, smaller than the poster's so an 11.5 mm code still
+   scans), the small designs keep the bare code.
 7. **Size and language.** The preview is the first sticker of the sheet Pack stickers
    would print, at the size last used there (full size until one is picked); **Sticker
    size** folds open to the same picker as Pack stickers (every one-tap size, a typed
@@ -140,10 +141,43 @@ header and footer including the branding details"):
 - **Header**: the brand's logo and name, the type's heading ("FROZEN HEDHIKA").
 - **Footer**: brand name, tagline (or "by Bake & Grill"), address, phone, ways to
   reach you, website, and the **complaints QR**, the same code the receipts and the
-  poster carry (it scans to the live site's complaint box). Off per type if wanted.
+  poster carry (it scans to the live site's complaint box). Which lines print is a
+  **footer** picked by name (below); a label type and a custom label each pick
+  theirs, and Pack stickers can put one footer on a whole sheet.
 - Between them: the product name, the picture, ingredients, **HOW TO USE**, a note,
   the date boxes with the type's wording, the **use-within** line, batch and
   quantity with the unit, the storage strip.
+
+### Footers
+
+Owner, 2026-10-12: "No easy option to select and edit branding footer." A footer is a
+named preset of every footer line (`label_footers`, `App\Models\LabelFooter`): the
+name printed big and its Dhivehi, the tagline (or your own words), the by-line and
+whether it prints, phone, ways to reach you, website, address and landmark (each with
+a Dhivehi line), the complaints QR and the brand mark. **Every line left empty prints
+the live value**: the lines of the footer's brand (its name, tagline, logo and "by Bake
+& Grill") or, for a footer of the business itself, Business Details. So **Standard**,
+seeded with every box empty, follows Business Details for ever, and a footer seeded per
+brand (**Amma**) follows that brand. The migration turned every custom label's old "own
+words" footer into a footer named "<label> footer" and its "standard" choice into
+Standard.
+
+Where they are picked, each with the same box, a pencil to change the picked footer in
+place and **+** to make one (`FooterPicker`; changing needs **Manage label settings**,
+printing with one only **Print labels**):
+
+- **Custom label → Footer and complaints QR**: that label's footer (`custom_labels.footer_id`).
+- **Types & brands → a type → Footer**: the default for every item and custom label
+  printed with that type (`label_types.footer_id`).
+- **Pack stickers → More options → Footer**: one footer for every sticker on the sheet
+  (`footer` in the request; a saved label keeps it and Print again prints it).
+- **Types & brands → Footers**: the list, with what each prints and how many labels
+  and types use it; Standard cannot be removed, and a removed footer's labels and types
+  go back to their brand's own.
+
+Which footer prints: the sheet's, else the custom label's, else the type's, else the
+brand's own (`StickerSheet::footerPreset`, `LabelTypes::footer`). The complaints QR
+follows the same order: the label's own switch, else the footer's, else the type's.
 
 Dates print as `04 / 10 / 2026` or `4 Oct 2026` (Labels → Settings → Dates and fonts).
 
@@ -157,6 +191,20 @@ preview and the PDF use the same face (`LabelText::dvFace()`); until 2026-10-12 
 preview's font rule was dropped by Blade escaping, so browsers drew a system font there.
 The menu PDF, website and order app keep their own Dhivehi font setting.
 
+**Why the PDF has its own Noto files** (owner, 2026-10-12, again: "Still label dhivehi
+font is not nice"). Noto Sans Thaana places each fili over its letter with font
+positioning rules (GPOS) that a browser applies and dompdf ignores, so in the PDF the
+marks drifted off their letters. The PDF now sets Dhivehi in a derived face,
+`backend/public/fonts/pdf/NotoSansThaana-{Regular,Bold}-composed.ttf`, in which every
+letter-and-fili pair is one ready-drawn glyph (429 pairs each, in the private-use
+block from U+E000: letter index × 16 + mark index, `fixtures/thaana_pairs.json`).
+`ThaanaVisual::order($text, composed: true)` swaps each pair for its glyph while it
+puts the run in visual order (`ThaanaVisual::pair()`), only on the PDF path and only
+for Noto (`LabelText::dvFace()['composed']`); the browser keeps the plain webfont and
+shapes it itself. The files come from `scripts/thaana-composed-font.py` (Python
+fontTools, the same install as the Dhivehi webfont inspector) and are checked in, so
+nothing runs at deploy time; rerun the script only after replacing the Noto files.
+
 ## Printing
 
 **Pack stickers** (Labels → Pack stickers): **Print again** at the top lists the pinned
@@ -166,13 +214,22 @@ life** mark in the list (and on Settings), so a chilled item is not printed with
 frozen item's dates by mistake. Then tick products and how many of each (− and +
 move a whole sheet). Menu items and custom labels share the list (**All**, **Menu
 items**, **Custom labels** narrow it) and can go on the same sheet. Then the **label
-size**, the language (**English**, **ދިވެހި**, or **Both**: English with the Dhivehi name,
-ingredients and storage line beneath on the full design; the compact and small designs
-set the Dhivehi name under the English one, 2026-10-12; round stickers print English),
-**Print as** (one type for the whole sheet, optional), and
+size**, the language (**English**, **ދިވެހި**, or **Both**), **Print as** (one type for
+the whole sheet, optional), a **Footer** for the whole sheet (optional, § Footers), and
 whether to fill the dates (with the dates on, each picked product shows the expiry it
-will get). **Print as**, the batch number (a **Today** button writes the date as a code,
-261011) and the quantity per pack sit behind **More options**. The **Preview** beside
+will get). **Print as**, **Footer**, the batch number (a **Today** button writes the
+date as a code, 261011) and the quantity per pack sit behind **More options**.
+
+**Both** prints every line in English with the Dhivehi beneath or beside it (owner,
+2026-10-12: "When both is selected. Not showing both languages correctly"). On the full
+sticker: the heading on two lines, the name, the ingredients list, **HOW TO USE** and the
+note each in both, the date boxes labelled "MFG / ހެދި ތާރީޚު" and "EXP / ހަމަވާ ތާރީޚު",
+the use-within line as a pair, the storage strip in both. The compact design sets the
+heading side by side and the rest beneath; the small and round designs add the Dhivehi
+name, ingredients line, storage line, short date labels (ހެދި / ހަމަވާ) and the use-within
+pair where there is room, and drop them first when there is not. In every language the
+full sticker's picture band shrinks to make room for the ingredients, how-to-use and note
+(before 2026-10-12 the three could overlap), down to no picture at all. The **Preview** beside
 the form redraws half a second after every change: **Sticker** shows one
 sticker at its own shape, **Sheet** the first page as it will come out of the printer,
 and with several products picked a list chooses which one to look at. On a phone or
@@ -274,7 +331,8 @@ beneath.
 | Custom labels | `custom_labels` (`App\Models\CustomLabel`), its label columns named as an item's so `LabelTypes::forItem()` and `StickerSheet` print either; its own `brand_id` wins over the type's. API `GET /api/labels/custom` (`labels.print`), writes under `labels.manage`. A sticker request names one as `{"id": 7, "kind": "custom"}`; on a sheet link `items=7:2,c7:3` is menu item 7 twice and custom label 7 three times |
 | Saved labels | `label_jobs` (`App\Models\LabelJob`): the request as sent, a name, print count |
 | Print log | `label_prints`; written on every print, never edited; `item_id` or `custom_label_id` (emptied when the custom label is removed), the layout and label size, shown in words ("40 × 60 mm, 21 on A4", `StickerLayouts::describe()`) |
-| Footer wording, box-label wording per storage, date style, pre-cut offsets | Labels → Settings, site settings with the originals as defaults (`App\Domains\Labels\LabelSettings`) |
+| Footers | `label_footers` (`App\Models\LabelFooter`, § Footers); `custom_labels.footer_id`, `label_types.footer_id`, `footer` in a sticker request; `LabelTypes::footer()` fills the blanks, `StickerSheet::footerPreset()` picks which one. API `GET /api/labels/footers` (`labels.print`), `POST` / `PUT` / `DELETE /api/labels/footers/{footer}` (`labels.manage`; the standard one cannot be removed, 422) |
+| Box-label wording per storage, date style, pre-cut offsets | Labels → Settings, site settings with the originals as defaults (`App\Domains\Labels\LabelSettings`) |
 | Phone, website, address, landmark, tagline | Business Details (same as receipts) |
 | Sticker designs | `App\Domains\Labels\StickerDesign`: `full`, `mini`, `round`; `SmallStickerDesign`: `small` and rounds under 45 mm (pieces in mm). A text piece with `bold_words` sets those words in the bold face (allergens). `lang: both` reaches the designs as `$d['both']` |
 | Price, barcode, net weight, allergens | `items.label_price` / `label_show_price` / `label_barcode` / `label_net_weight`; `custom_labels` the same plus `label_allergens`; `StickerSheet::price()`, `allergens()`; `App\Domains\Labels\Barcode` (EAN-13/EAN-8 check digit, modules, bars as an SVG data URI; the digits are a text piece beneath). The bars print on the full design only; the compact sizes in use have no room |

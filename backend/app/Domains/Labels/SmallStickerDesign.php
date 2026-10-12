@@ -278,7 +278,7 @@ final class SmallStickerDesign
     {
         $d = $this->d;
         $brand = $d['brand'];
-        $c = $d['contact'];
+        $f = $d['footer'];
         $r = $D / 2;
         $k = $D / 40;
         $chord = fn (float $y): float => max(8.0, 2 * sqrt(max(0.0, $r * $r - ($y - $r) * ($y - $r))) - 2.4 * $k);
@@ -322,8 +322,8 @@ final class SmallStickerDesign
         $font = $this->dv ? 'dv' : 'j7';
         $pt = LabelText::fitPt($msg, $font, $sw - 1.6, ($this->dv ? 5.4 : 4.2) * $k, 3.0);
         $this->text(($D - $sw) / 2 + 0.8, $this->baseCentred($sy, $sh, $font, $pt), $sw - 1.6, 'c', $font, $pt, StickerDesign::CREAM, $msg, $this->dv ? 0.6 : 0.0);
-        if ($D >= 34 && $c['phone'] !== '') {
-            $put(36.0 * $k, 1.4 * $k, 'j7', 4.2 * $k, 3.0, StickerDesign::DARK, $c['phone']);
+        if ($D >= 34 && $f['phone'] !== '') {
+            $put(36.0 * $k, 1.4 * $k, 'j7', 4.2 * $k, 3.0, StickerDesign::DARK, $f['phone']);
         }
     }
 
@@ -349,6 +349,24 @@ final class SmallStickerDesign
         $tx = $x + 0.9 + ($lw > 0 ? $lw + 1.3 : 0.4);
         $tw = $x + $bw - 0.9 - ($qr > 0 ? $qr + 1.1 : 0.0) - $tx;
         $two = $hb >= 7.6;
+        if ($this->both() && $d['header_line_dv'] !== '' && $tw >= 30) {
+            // Both languages (2026-10-12): the English heading and the Dhivehi
+            // one share the line, when the band is wide enough for the pair.
+            $ew = $tw * 0.56;
+            $dw = $tw - $ew - 1.2;
+            if ($two) {
+                $line = StickerDesign::spaced(mb_strtoupper($brand['name']));
+                $pt = LabelText::fitPt($line, 'j7', $tw, min(5.4, $hb * 0.5), 3.0);
+                $this->text($tx, $y + $hb * 0.38, $tw, 'l', 'j7', $pt, StickerDesign::PRIMARY, $line);
+            }
+            $pt = LabelText::fitPt($d['header_line'], 'j8', $ew, $two ? $hb * 0.8 : $hb * 0.95, 3.6);
+            $base = $two ? $y + $hb * 0.8 : $this->baseCentred($y, $hb, 'j8', $pt);
+            $this->text($tx, $base, $ew, 'l', 'j8', $pt, StickerDesign::DARK, $d['header_line']);
+            $dpt = LabelText::fitPt($d['header_line_dv'], 'dv', $dw, $two ? $hb * 0.8 : $hb * 0.95, 3.8);
+            $this->text($tx + $ew + 1.2, $base + 0.3, $dw, 'r', 'dv', $dpt, StickerDesign::DARK, $d['header_line_dv'], 0.6);
+
+            return;
+        }
         if ($this->dv) {
             $head = $d['header_line_dv'];
             if ($two) {
@@ -454,6 +472,14 @@ final class SmallStickerDesign
             $label = LabelText::fitPt($long, 'dv', $inner, $strip * 1.9, 3.4) >= 4.6 ? $long : $short;
             $pt = LabelText::fitPt($label, 'dv', $inner, $strip * 1.9, 3.4);
             $this->text($x + 0.6, $this->baseCentred($y, $strip, 'dv', $pt), $inner, 'c', 'dv', $pt, StickerDesign::CREAM, $label, 0.5);
+        } elseif ($this->both() && $bw >= 24) {
+            // Both languages: the English label on the left, the short Dhivehi one on the right.
+            $dvShort = $colour === StickerDesign::DARK ? 'ހެދި' : 'ހަމަވާ';
+            $ew = $inner * 0.6;
+            $pt = LabelText::fitPt($long, 'j7', $ew - 0.6, $strip * 1.5, 2.8);
+            $this->text($x + 0.6, $this->baseCentred($y, $strip, 'j7', $pt), $ew, 'l', 'j7', $pt, StickerDesign::CREAM, $long);
+            $dpt = LabelText::fitPt($dvShort, 'dv', $inner - $ew - 0.6, $strip * 1.9, 3.2);
+            $this->text($x + 0.6 + $ew + 0.6, $this->baseCentred($y, $strip, 'dv', $dpt), $inner - $ew - 0.6, 'r', 'dv', $dpt, StickerDesign::CREAM, $dvShort, 0.5);
         } else {
             $pt = LabelText::fitPt($long, 'j7', $inner, $strip * 1.5, 2.8);
             $this->text($x + 0.6, $this->baseCentred($y, $strip, 'j7', $pt), $inner, 'c', 'j7', $pt, StickerDesign::CREAM, $long);
@@ -523,7 +549,10 @@ final class SmallStickerDesign
         $font = $this->dv ? 'dv' : 'j4';
         $headPt = $this->dv ? self::clamp(5.6 * $k, 4.4, 7.0) : self::clamp(4.0 * $k, 3.2, 5.0);
         $headH = ($this->dv ? 1.25 : 1.15) * $headPt * LabelText::PT + 0.45;
-        $room = $height - $headH;
+        // Both languages: one Dhivehi line of the list follows the English ones.
+        $dvPt = $this->both() && $this->d['ingredients_dv'] !== '' ? self::clamp(5.4 * $k, 4.4, 6.4) : 0.0;
+        $dvLead = $dvPt > 0 ? $dvPt * 1.42 * LabelText::PT : 0.0;
+        $room = $height - $headH - $dvLead;
         $max = $this->dv ? self::clamp(6.4 * $k, 4.8, 8.0) : self::clamp(5.2 * $k, 4.0, 6.4);
         $min = $this->dv ? 4.4 : 3.4;
         $lines = [];
@@ -551,10 +580,24 @@ final class SmallStickerDesign
             $lines[] = $last . '…';
         }
 
-        return ['lines' => $lines, 'pt' => $pt, 'lead' => $lead, 'headPt' => $headPt, 'headH' => $headH, 'height' => $headH + count($lines) * $lead + 0.4];
+        $dvLine = '';
+        if ($dvPt > 0) {
+            // The first line of the Dhivehi list, with "…" when there is more.
+            $dvLines = LabelText::wrap((string) $this->d['ingredients_dv'], $dvPt, $bw, 'dv');
+            $dvLine = (string) ($dvLines[0] ?? '');
+            if (count($dvLines) > 1) {
+                $dvLine = rtrim($dvLine, ' ,،');
+                while ($dvLine !== '' && LabelText::widthMm($dvLine . '…', $dvPt, 'dv') > $bw) {
+                    $dvLine = rtrim(mb_substr($dvLine, 0, -1), ' ,،');
+                }
+                $dvLine .= '…';
+            }
+        }
+
+        return ['lines' => $lines, 'pt' => $pt, 'lead' => $lead, 'headPt' => $headPt, 'headH' => $headH, 'dv_line' => $dvLine, 'dv_pt' => $dvPt, 'dv_lead' => $dvLead, 'height' => $headH + count($lines) * $lead + ($dvLine !== '' ? $dvLead : 0.0) + 0.4];
     }
 
-    /** @param array{lines: list<string>, pt: float, lead: float, headPt: float, headH: float, height: float} $plan */
+    /** @param array{lines: list<string>, pt: float, lead: float, headPt: float, headH: float, dv_line: string, dv_pt: float, dv_lead: float, height: float} $plan */
     private function drawIngredients(array $plan, float $x, float $y, float $bw, string $align): void
     {
         $font = $this->dv ? 'dv' : 'j4';
@@ -567,11 +610,18 @@ final class SmallStickerDesign
             $base = $y + $plan['headH'] + $i * $plan['lead'] + ($this->dv ? 0.95 : 0.8) * $plan['pt'] * LabelText::PT;
             $this->text($this->X($x, $bw), $base, $bw, $a, $font, $plan['pt'], StickerDesign::TEXT, $l, $this->dv ? 0.4 : 0.0, $this->dv ? [] : ($this->d['allergens'] ?? []));
         }
+        if ($plan['dv_line'] !== '') {
+            $base = $y + $plan['headH'] + count($plan['lines']) * $plan['lead'] + 0.95 * $plan['dv_pt'] * LabelText::PT;
+            $this->text($this->X($x, $bw), $base, $bw, $a, 'dv', $plan['dv_pt'], StickerDesign::TEXT, $plan['dv_line'], 0.4);
+        }
     }
 
     private function noteLine(float $x, float $y, float $bw, float $lh, float $k, string $align): void
     {
         $t = $this->noteText();
+        if ($this->pairLine($x, $y, $bw, $lh, $t, (string) $this->d['note_dv'], $align)) {
+            return;
+        }
         $font = $this->dv ? 'dv' : 'j7';
         $pt = LabelText::fitPt($t, $font, $bw, $this->dv ? $lh * 1.9 : $lh * 1.45, 3.0);
         $this->text($this->X($x, $bw), $this->baseCentred($y, $lh, $font, $pt), $bw, $this->A($align), $font, $pt, StickerDesign::PRIMARY, $t, $this->dv ? 0.5 : 0.0);
@@ -580,9 +630,37 @@ final class SmallStickerDesign
     private function withinLine(float $x, float $y, float $bw, float $lh, float $k): void
     {
         $t = $this->withinText();
+        if ($this->pairLine($x, $y, $bw, $lh, $t, (string) $this->d['use_within_dv'], 'c')) {
+            return;
+        }
         $font = $this->dv ? 'dv' : 'j7';
         $pt = LabelText::fitPt($t, $font, $bw, $this->dv ? $lh * 1.8 : $lh * 1.4, 3.0);
         $this->text($this->X($x, $bw), $this->baseCentred($y, $lh, $font, $pt), $bw, 'c', $font, $pt, StickerDesign::PRIMARY, $t, $this->dv ? 0.5 : 0.0);
+    }
+
+    /**
+     * Both languages on one line (2026-10-12): the English on the left half,
+     * the Dhivehi on the right, when the line is wide enough for the pair.
+     * False when it is not, or there is nothing to pair, so the caller
+     * prints the one line as usual.
+     */
+    private function pairLine(float $x, float $y, float $bw, float $lh, string $en, string $dv, string $align): bool
+    {
+        if (!$this->both() || $en === '' || $dv === '' || $bw < 44) {
+            return false;
+        }
+        $half = ($bw - 1.6) / 2;
+        $pt = LabelText::fitPt($en, 'j7', $half, $lh * 1.45, 3.0);
+        $dpt = LabelText::fitPt($dv, 'dv', $half, $lh * 1.9, 3.2);
+        $this->text($x, $this->baseCentred($y, $lh, 'j7', $pt), $half, $align === 'l' ? 'l' : 'r', 'j7', $pt, StickerDesign::PRIMARY, $en);
+        $this->text($x + $half + 1.6, $this->baseCentred($y, $lh, 'dv', $dpt), $half, 'l', 'dv', $dpt, StickerDesign::PRIMARY, $dv, 0.5);
+
+        return true;
+    }
+
+    private function both(): bool
+    {
+        return !$this->dv && !empty($this->d['both']);
     }
 
     private function batchLine(float $x, float $y, float $bw, float $lh, float $k): void
@@ -616,11 +694,29 @@ final class SmallStickerDesign
     {
         $this->box($x, $y, $bw, $sh, StickerDesign::PRIMARY, min(1.0, $sh * 0.3));
         $font = $this->dv ? 'dv' : 'j7';
-        [$lines, $pt] = $this->stripText($bw - 1.6, $sh);
-        $rowH = $sh / count($lines);
+        // Both languages: the Dhivehi line on a second row (stripHeight made room).
+        $dvLine = $this->both() ? $this->shortStorageDv($bw - 1.6) : '';
+        $enH = $dvLine !== '' ? $sh * 0.52 : $sh;
+        [$lines, $pt] = $this->stripText($bw - 1.6, $enH);
+        $rowH = $enH / count($lines);
         foreach ($lines as $i => $l) {
             $this->text($x + 0.8, $this->baseCentred($y + $i * $rowH + (count($lines) > 1 ? ($i === 0 ? 0.2 : -0.2) : 0.0), $rowH, $font, $pt), $bw - 1.6, 'c', $font, $pt, StickerDesign::CREAM, $l, $this->dv ? 0.7 : 0.0);
         }
+        if ($dvLine !== '') {
+            $dpt = LabelText::fitPt($dvLine, 'dv', $bw - 1.6, ($sh - $enH) * 1.75, 3.4);
+            $this->text($x + 0.8, $this->baseCentred($y + $enH - 0.2, $sh - $enH, 'dv', $dpt), $bw - 1.6, 'c', 'dv', $dpt, StickerDesign::CREAM, $dvLine, 0.7);
+        }
+    }
+
+    /** The Dhivehi storage line for the strip's second row, cut to its first clause when the whole would set too small. */
+    private function shortStorageDv(float $width): string
+    {
+        $msg = (string) $this->d['storage_dv'];
+        if ($msg !== '' && LabelText::widthMm($msg, 4.4, 'dv') > $width && preg_match('/^(.+?)\s+[•·]\s+/u', $msg, $m)) {
+            return trim($m[1]);
+        }
+
+        return $msg;
     }
 
     /**
@@ -655,35 +751,36 @@ final class SmallStickerDesign
         $font = $this->dv ? 'dv' : 'j7';
         $min = $this->dv ? 3.6 : 2.8;
         $msg = $this->shortStorage($bw - 1.6, $this->dv ? 4.4 : 3.6);
+        $h = LabelText::widthMm($msg, $min, $font) > ($bw - 1.6) * 1.01 ? max($sh, 4.4) : $sh;
 
-        return LabelText::widthMm($msg, $min, $font) > ($bw - 1.6) * 1.01 ? max($sh, 4.4) : $sh;
+        // Both languages: a second row for the Dhivehi line.
+        return $this->both() && $this->shortStorageDv($bw - 1.6) !== '' ? $h + max(2.6, $sh * 0.95) : $h;
     }
 
     /** The dark footer: brand name, phone, and the website when it fits. */
     private function footerBand(float $x, float $y, float $bw, float $fh, float $k): void
     {
         $d = $this->d;
-        $brand = $d['footer_brand'] ?? $d['brand'];
-        $c = $d['contact'];
+        $f = $d['footer'];
         $this->box($x, $y, $bw, $fh, StickerDesign::DARK, min(1.3, $fh * 0.25));
         $inner = $bw - 2.0;
-        // A custom label's own footer line (owner, 2026-10-12) stands where
-        // the website would; on a band too narrow for three parts it takes
-        // the phone's place, so the owner's words are never dropped.
+        // A footer's own tagline (owner, 2026-10-12) stands where the website
+        // would; on a band too narrow for three parts it takes the phone's
+        // place, so the owner's words are never dropped.
         $own = StickerDesign::ownFooter($d, $this->dv);
-        $site = $inner >= 62 && ($own !== null || $c['website'] !== '');
+        $site = $inner >= 62 && ($own !== null || $f['website'] !== '');
         $part = $site ? $inner / 3 : $inner / 2;
         $maxPt = $fh * 1.45;
-        $namePt = LabelText::fitPt($brand['name'], 'ds', $part - 0.6, $maxPt * 1.15, 3.6);
-        $this->text($this->X($x + 1.0, $part), $this->baseCentred($y, $fh, 'ds', $namePt), $part, $this->A('l'), 'ds', $namePt, StickerDesign::CREAM, $brand['name']);
-        $right = $own !== null && !$site ? $own : ($c['phone'] !== '' ? [$c['phone'], 'j8'] : null);
+        $namePt = LabelText::fitPt($f['name'], 'ds', $part - 0.6, $maxPt * 1.15, 3.6);
+        $this->text($this->X($x + 1.0, $part), $this->baseCentred($y, $fh, 'ds', $namePt), $part, $this->A('l'), 'ds', $namePt, StickerDesign::CREAM, $f['name']);
+        $right = $own !== null && !$site ? $own : ($f['phone'] !== '' ? [$f['phone'], 'j8'] : null);
         if ($right !== null) {
             [$rt, $rf] = $right;
             $pt = LabelText::fitPt($rt, $rf, $part - 0.6, $rf === 'dv' ? $maxPt * 1.3 : $maxPt, 3.2);
             $this->text($this->X($x + 1.0 + $inner - $part, $part), $this->baseCentred($y, $fh, $rf, $pt), $part, $this->A('r'), $rf, $pt, StickerDesign::CREAM, $rt, $rf === 'dv' ? 0.5 : 0.0);
         }
         if ($site) {
-            [$st, $sf] = $own ?? [$c['website'], 'dsi'];
+            [$st, $sf] = $own ?? [$f['website'], 'dsi'];
             $pt = LabelText::fitPt($st, $sf, $part - 0.6, $sf === 'dv' ? $maxPt * 1.3 : $maxPt * 1.1, 3.2);
             $this->text($this->X($x + 1.0 + $part, $part), $this->baseCentred($y, $fh, $sf, $pt), $part, 'c', $sf, $pt, StickerDesign::ON_DARK, $st, $sf === 'dv' ? 0.5 : 0.0);
         }
@@ -692,9 +789,9 @@ final class SmallStickerDesign
     /** Phone and website (or the label's own footer line) on one plain line, when there is no room for the band. */
     private function footerLine(float $x, float $y, float $bw, float $lh, float $k): void
     {
-        $c = $this->d['contact'];
-        [$site, $font] = StickerDesign::ownFooter($this->d, $this->dv) ?? [$c['website'], 'j7'];
-        $t = implode('  ·  ', array_filter([$c['phone'], $site], fn ($s) => $s !== ''));
+        $f = $this->d['footer'];
+        [$site, $font] = StickerDesign::ownFooter($this->d, $this->dv) ?? [$f['website'], 'j7'];
+        $t = implode('  ·  ', array_filter([$f['phone'], $site], fn ($s) => $s !== ''));
         if ($t === '') {
             return;
         }

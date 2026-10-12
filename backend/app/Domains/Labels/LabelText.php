@@ -52,6 +52,23 @@ final class LabelText
     ];
 
     /**
+     * The PDF prints a face through its composed copy when one is shipped
+     * (scripts/thaana-composed-font.py): every letter-plus-fili pair as one
+     * glyph, so dompdf, which never reads a font's anchors, sets each fili
+     * where the browser does (2026-10-12: Noto's marks drifted off wide
+     * letters on the printed stickers). Faruma's marks were drawn for such
+     * renderers and need no copy.
+     *
+     * @var array<string, array{0: string, 1: string}> key => [regular, bold]
+     */
+    public const COMPOSED = [
+        'noto' => ['fonts/pdf/NotoSansThaana-Regular-composed.ttf', 'fonts/pdf/NotoSansThaana-Bold-composed.ttf'],
+    ];
+
+    /** @var array<string, array<string, mixed>> */
+    private static array $faces = [];
+
+    /**
      * Text at this hand-thickening or more sets in the true bold when the
      * face has one: headings, names, date labels and ingredients (0.5 and
      * up); the how-to-use lines (0.4) stay regular. Owner, 2026-10-12: "use
@@ -66,7 +83,10 @@ final class LabelText
      * The Dhivehi face in use: absolute files for the PDF, URLs for the web
      * sheet, and the bold pair when there is one.
      *
-     * @return array{key: string, pdf: string, web: string, ascent: float, descent: float, bold_pdf: ?string, bold_web: ?string}
+     * `composed` says the PDF files carry the letter-plus-fili pair glyphs
+     * (ThaanaVisual::order then hands dompdf those).
+     *
+     * @return array{key: string, pdf: string, web: string, ascent: float, descent: float, bold_pdf: ?string, bold_web: ?string, composed: bool}
      */
     public static function dvFace(): array
     {
@@ -83,18 +103,25 @@ final class LabelText
                 'descent' => $faruma[3],
                 'bold_pdf' => null,
                 'bold_web' => null,
+                'composed' => false,
             ];
         }
-        $face = self::DV_FACES[$key] ?? self::DV_FACES['noto'];
+        $key = isset(self::DV_FACES[$key]) ? $key : 'noto';
+        if (isset(self::$faces[$key])) {
+            return self::$faces[$key];
+        }
+        $face = self::DV_FACES[$key];
+        $composed = isset(self::COMPOSED[$key]) && is_file(public_path(self::COMPOSED[$key][0])) && is_file(public_path(self::COMPOSED[$key][1]));
 
-        return [
-            'key' => isset(self::DV_FACES[$key]) ? $key : 'noto',
-            'pdf' => public_path($face[0]),
+        return self::$faces[$key] = [
+            'key' => $key,
+            'pdf' => public_path($composed ? self::COMPOSED[$key][0] : $face[0]),
             'web' => '/' . $face[1],
             'ascent' => $face[2],
             'descent' => $face[3],
-            'bold_pdf' => $face[4] !== null ? public_path($face[4]) : null,
+            'bold_pdf' => $composed ? public_path(self::COMPOSED[$key][1]) : ($face[4] !== null ? public_path($face[4]) : null),
             'bold_web' => $face[5] !== null ? '/' . $face[5] : null,
+            'composed' => $composed,
         ];
     }
 

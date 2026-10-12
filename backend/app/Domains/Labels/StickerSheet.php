@@ -8,6 +8,7 @@ use App\Models\CustomLabel;
 use App\Models\Item;
 use App\Models\KitchenProductionItem;
 use App\Models\LabelBrand;
+use App\Models\LabelFooter;
 use App\Models\LabelType;
 use App\Support\ComplaintBoxLink;
 use App\Support\QrSvg;
@@ -131,7 +132,33 @@ final class StickerSheet
             'pi' => isset($in['pi']) && $in['pi'] !== '' ? (int) $in['pi'] : null,
             // Print the whole sheet "as" a label type (v2 point 3); the items' own wording still wins.
             'type' => isset($in['type']) && $in['type'] !== '' ? (int) $in['type'] : null,
+            // One footer preset for the whole sheet (owner, 2026-10-12).
+            'footer' => isset($in['footer']) && $in['footer'] !== '' ? (int) $in['footer'] : null,
         ];
+    }
+
+    /** @var array<int, ?LabelFooter> */
+    private array $footers = [];
+
+    /**
+     * The footer preset a sticker prints: the sheet's, else a custom label's
+     * own, else its label type's default; null prints the brand's footer.
+     *
+     * @param array<string, mixed> $req
+     * @param array<string, mixed> $w from LabelTypes::forItem()
+     */
+    private function footerPreset(array $req, Item|CustomLabel $item, array $w): ?LabelFooter
+    {
+        $id = $req['footer'] ?? null;
+        if (!$id && $item instanceof CustomLabel && $item->footer_id) {
+            return $item->relationLoaded('footer') ? $item->footer : ($this->footers[(int) $item->footer_id] ??= LabelFooter::query()->find($item->footer_id));
+        }
+        $id = $id ?: ($w['footer_id'] ?? null);
+        if (!$id) {
+            return null;
+        }
+
+        return $this->footers[(int) $id] ??= LabelFooter::query()->with('brand')->find((int) $id);
     }
 
     /**
@@ -206,7 +233,7 @@ final class StickerSheet
             }
         }
         if ($ids['custom'] !== []) {
-            foreach (CustomLabel::query()->with(['labelType.brand', 'brand'])->whereIn('id', $ids['custom'])->get() as $custom) {
+            foreach (CustomLabel::query()->with(['labelType.brand', 'brand', 'footer.brand'])->whereIn('id', $ids['custom'])->get() as $custom) {
                 $out['c' . $custom->id] = $custom;
             }
         }
@@ -245,10 +272,11 @@ final class StickerSheet
         if (!is_array($attributes)) {
             return null;
         }
-        $draft = new CustomLabel();
+        $draft = new CustomLabel;
         $draft->forceFill(array_intersect_key($attributes, array_flip($draft->getFillable())));
         $draft->setRelation('brand', $draft->brand_id ? LabelBrand::query()->find($draft->brand_id) : null);
         $draft->setRelation('labelType', $draft->label_type_id ? LabelType::query()->with('brand')->find($draft->label_type_id) : null);
+        $draft->setRelation('footer', $draft->footer_id ? LabelFooter::query()->with('brand')->find($draft->footer_id) : null);
 
         return $draft;
     }
@@ -358,8 +386,11 @@ final class StickerSheet
         if ($note === '' && $allergens !== []) {
             $note = 'Contains ' . implode(', ', $allergens);
         }
-        $footerStyle = $item instanceof CustomLabel && in_array($item->label_footer_style, CustomLabel::FOOTER_STYLES, true) ? $item->label_footer_style : 'brand';
-        $showQr = $item instanceof CustomLabel && $item->label_show_qr !== null ? (bool) $item->label_show_qr : $w['show_qr'];
+        // The footer (owner, 2026-10-12): a preset picked for the sheet, the
+        // label or its type, else the brand's own; the complaints QR follows
+        // the custom label's own switch, else the footer's.
+        $footer = $this->types->footer($this->footerPreset($req, $item, $w), $w['brand'], $w['show_qr']);
+        $showQr = $item instanceof CustomLabel && $item->label_show_qr !== null ? (bool) $item->label_show_qr : $footer['show_qr'];
 
         return $common + [
             'name' => (string) $item->name,
@@ -384,14 +415,7 @@ final class StickerSheet
             'storage_dv' => $w['storage_dv'],
             'note' => $note,
             'note_dv' => $w['note_dv'],
-            // A custom label picks its footer (owner, 2026-10-12: "Standard
-            // footer options with standard branding footer"): its brand's,
-            // the standard one of the main brand, or its own footer line
-            // printed where the tagline or website goes. And whether the
-            // complaints QR prints, when it says so itself.
-            'footer_brand' => $footerStyle === 'standard' ? $this->types->brand(null) : $w['brand'],
-            'footer' => $footerStyle === 'own' && $item instanceof CustomLabel ? trim((string) $item->label_footer) : '',
-            'footer_dv' => $footerStyle === 'own' && $item instanceof CustomLabel ? trim((string) $item->label_footer_dv) : '',
+            'footer' => $footer,
             'price' => $price,
             'net_weight' => trim((string) $item->label_net_weight),
             'barcode' => $code !== null ? Barcode::svgDataUri($code, 30, 12) : null,
