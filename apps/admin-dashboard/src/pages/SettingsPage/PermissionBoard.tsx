@@ -43,7 +43,6 @@ export function PermissionBoard({
   countText = defaultCount,
   tileNote,
   meter = true,
-  wideRows = false,
 }: {
   rows: readonly BoardRow[];
   /** Slugs a search or filter keeps; null shows everything. While set, every group with a match is open. */
@@ -59,8 +58,6 @@ export function PermissionBoard({
   tileNote?: (rows: readonly BoardRow[]) => { text: string; tone: 'rust' | 'brown' } | null;
   /** The bar under the count; off where the total is unknown. */
   meter?: boolean;
-  /** Rows that hold a three-way choice need more width before they pair up. */
-  wideRows?: boolean;
 }) {
   const byGroup = new Map<string, BoardRow[]>();
   for (const row of rows) {
@@ -144,7 +141,7 @@ export function PermissionBoard({
                       )}
                       {groupTools && <div className="perm-panel-tools">{groupTools(group, groupRows)}</div>}
                     </div>
-                    <ul className={`perm-rows${wideRows ? ' perm-rows--wide' : ''}`}>
+                    <ul className="perm-rows">
                       {listed.map((row) => (
                         <li
                           key={row.slug}

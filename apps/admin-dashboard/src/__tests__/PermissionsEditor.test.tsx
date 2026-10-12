@@ -188,7 +188,10 @@ describe('Roles & permissions editor', () => {
     expect(sw).toBeDisabled();
   });
 
-  it("sets one person's Allow, Deny and As role, and saves them as true, false and null", async () => {
+  // Owner, 2026-10-12: one person looks like a role. The same switches, with
+  // the role's answer as the start; a switch set away from the role wears a
+  // "For them" mark that puts it back.
+  function mockAisha() {
     api.getUserPermissions.mockResolvedValue({
       user_id: 7,
       name: 'Aisha',
@@ -201,17 +204,29 @@ describe('Roles & permissions editor', () => {
         source: p.slug === 'reports.view' ? 'override' : 'role',
       })),
     });
+  }
+
+  it("sets one person's switches, and saves them as Allow, Deny and As role", async () => {
+    mockAisha();
     renderIt(7);
     await waitFor(() => expect(api.getUserPermissions).toHaveBeenCalledWith(7));
     expect(await screen.findByText(/1 set just for them/)).toBeInTheDocument();
     expect(screen.getByTestId('perm-tile-reports')).toHaveTextContent('1 set for them');
 
     fireEvent.click(screen.getByRole('button', { name: 'Open all' }));
-    const voidRow = screen.getByRole('radiogroup', { name: 'Void orders' });
-    expect(within(voidRow).getByRole('radio', { name: /As role/ })).toHaveAttribute('aria-checked', 'true');
-    fireEvent.click(within(voidRow).getByRole('radio', { name: 'Allow' }));
-    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Ring sales' })).getByRole('radio', { name: 'Deny' }));
-    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'View reports' })).getByRole('radio', { name: /As role/ }));
+    // Cashiers cannot void: on is theirs alone, and the row says so.
+    const voidSw = screen.getByRole('switch', { name: 'Void orders' });
+    expect(voidSw).toHaveAttribute('aria-checked', 'false');
+    expect(screen.queryByTestId('user-own-orders.void')).not.toBeInTheDocument();
+    fireEvent.click(voidSw);
+    expect(screen.getByTestId('user-own-orders.void')).toHaveTextContent('For them');
+    // Cashiers ring sales: off is a Deny for them.
+    fireEvent.click(screen.getByRole('switch', { name: 'Ring sales' }));
+    // View reports was allowed just for them: the mark follows the role again.
+    expect(screen.getByRole('switch', { name: 'View reports' })).toHaveAttribute('aria-checked', 'true');
+    fireEvent.click(screen.getByTestId('user-own-reports.view'));
+    expect(screen.queryByTestId('user-own-reports.view')).not.toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'View reports' })).toHaveAttribute('aria-checked', 'false');
 
     const bar = screen.getByTestId('permissions-savebar');
     expect(bar).toHaveTextContent('3 unsaved changes');
@@ -222,5 +237,40 @@ describe('Roles & permissions editor', () => {
       'pos.ring_sales': false,
       'reports.view': null,
     }));
+  });
+
+  it('a switch put back to what the role gives leaves nothing to save', async () => {
+    mockAisha();
+    renderIt(7);
+    await screen.findByText(/1 set just for them/);
+    fireEvent.click(screen.getByRole('button', { name: 'Open all' }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Void orders' }));
+    expect(screen.getByTestId('permissions-savebar')).toHaveTextContent('1 unsaved change');
+    fireEvent.click(screen.getByRole('switch', { name: 'Void orders' }));
+    expect(screen.queryByTestId('permissions-savebar')).not.toBeInTheDocument();
+    // An Allow that only repeats the role is kept as it was, too.
+    fireEvent.click(screen.getByRole('switch', { name: 'View reports' }));
+    fireEvent.click(screen.getByRole('switch', { name: 'View reports' }));
+    expect(screen.queryByTestId('permissions-savebar')).not.toBeInTheDocument();
+    expect(screen.getByTestId('user-own-reports.view')).toBeInTheDocument();
+  });
+
+  it('switches a whole group on, off, or back to the role for one person', async () => {
+    mockAisha();
+    renderIt(7);
+    await screen.findByText(/1 set just for them/);
+    fireEvent.click(screen.getByTestId('perm-tile-pos'));
+    const panel = screen.getByTestId('perm-panel-pos');
+    expect(within(panel).getByRole('button', { name: 'All on' })).toBeDisabled();
+    expect(within(panel).getByRole('button', { name: 'All as role' })).toBeDisabled();
+
+    fireEvent.click(within(panel).getByRole('button', { name: 'All off' }));
+    expect(panel).toHaveTextContent('0 of 2 on');
+    expect(screen.getByTestId('permissions-savebar')).toHaveTextContent('2 unsaved changes');
+    expect(within(panel).getAllByText('For them')).toHaveLength(2);
+
+    fireEvent.click(within(panel).getByRole('button', { name: 'All as role' }));
+    expect(panel).toHaveTextContent('2 of 2 on');
+    expect(screen.queryByTestId('permissions-savebar')).not.toBeInTheDocument();
   });
 });

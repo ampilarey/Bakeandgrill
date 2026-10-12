@@ -283,7 +283,12 @@ Route permissions change only with the owner's yes, and the change updates
 The role editor shows the permission groups as tiles in six sections that follow
 the admin menu (owner, 2026-10-09: "group and make it easier"). A new permission
 group goes into a section in `pages/SettingsPage/permissionSections.ts`; one left
-out still shows, under "Other". Settings tabs keep scrolling short: long forms are
+out still shows, under "Other". One person is edited like a role (owner, 2026-10-12):
+the same switches and All on / All off, starting from what the role gives; a switch set
+away from the role is theirs alone and wears a "For them" mark that puts it back (All
+as role for a group). Never bring back a three-way As role / Allow / Deny control.
+Team → Staff → More → Permissions opens this editor on that person (`?user=<id>&from=staff`,
+with Back to Staff), not a pop-up. Settings tabs keep scrolling short: long forms are
 tabs (Business), wordings fold to one line until Edit (Notifications → Messages). A
 `position: fixed` bar inside a page now sits on the screen, not the page
 (`.animate-fade-in` no longer leaves a transform behind); words on a rust fill are

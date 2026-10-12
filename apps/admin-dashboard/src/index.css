@@ -5916,7 +5916,6 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   column-gap: 20px;
 }
-.perm-rows--wide { grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); }
 .perm-row {
   display: flex;
   align-items: center;
@@ -5954,47 +5953,26 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   font-size: 11px;
   font-weight: 700;
 }
-.perm-yes { flex: none; color: var(--color-success-strong); }
-
-/* One person: As role / Allow / Deny. */
-.perm-seg {
-  display: inline-flex;
-  flex: none;
-  margin-left: auto;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  overflow: hidden;
-  background: var(--color-surface);
-}
-.perm-seg-btn {
+/* One person: a row set away from the role wears this mark; a tap follows the role again. */
+.perm-flag--btn {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  padding: 5px 10px;
-  border: none;
-  border-left: 1px solid var(--color-border);
-  background: transparent;
-  color: var(--color-text-secondary);
+  min-height: 24px;
+  padding: 1px 6px 1px 8px;
   font: inherit;
-  font-size: 12.5px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
   white-space: nowrap;
   cursor: pointer;
 }
-.perm-seg-btn:first-child { border-left: none; }
-.perm-seg-btn:hover:not(:disabled) { color: var(--color-primary); }
-.perm-seg-btn--role[aria-checked="true"] {
-  background: var(--color-tone-brown-bg);
-  color: var(--color-tone-brown-text);
+.perm-flag--btn:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
-.perm-seg-btn--allow[aria-checked="true"] {
-  background: var(--color-success-bg);
-  color: var(--color-success-strong);
-}
-.perm-seg-btn--deny[aria-checked="true"] {
-  background: var(--color-danger-bg);
-  color: var(--color-danger-strong);
-}
+.perm-flag--btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.perm-yes { flex: none; color: var(--color-success-strong); }
 
 .perm-person {
   display: flex;
@@ -6134,9 +6112,7 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   .perm-roles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-self: stretch; }
   .perm-role { justify-content: space-between; }
   .perm-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .perm-rows,
-  .perm-rows--wide { grid-template-columns: minmax(0, 1fr); }
-  .perm-seg-btn { padding: 5px 7px; font-size: 12px; }
+  .perm-rows { grid-template-columns: minmax(0, 1fr); }
   .perm-savebar {
     position: fixed;
     left: 12px;

@@ -24,6 +24,13 @@ import { PermissionBoard, type BoardRow, type OverrideMode } from './PermissionB
  * off or changed, whole-group switches, and one save bar for every unsaved
  * change, roles and person together. Switching role keeps what you changed
  * on the other one.
+ *
+ * One person looks like a role (owner, 2026-10-12: "in per person setting,
+ * its not nice and no nice buttons"): the same switches, All on / All off,
+ * and the role's answer is the starting point. A switch set away from the
+ * role is theirs alone and wears a "For them" mark; tapping the mark, or
+ * All as role, follows the role again. There is no separate As role / Allow
+ * / Deny choice to make.
  */
 
 type Mode = 'roles' | 'users';
@@ -253,6 +260,30 @@ export function PermissionsSettings({ initialUserId, onBack, backLabel = 'Back' 
     });
   };
 
+  /**
+   * One person's switch: on or off is what they can do. Set to what the role
+   * gives, the row follows the role again; set away from it, the row is
+   * theirs alone (Allow or Deny). A row saved with an Allow that only repeats
+   * the role keeps it, so flipping a switch there and back leaves nothing to
+   * save.
+   */
+  const setUserOn = (slugs: string[], on: boolean) => {
+    setUserChanges((all) => {
+      const mine = { ...all };
+      for (const slug of slugs) {
+        const p = userPerms.find((x) => x.slug === slug);
+        if (!p) continue;
+        const saved = savedMode(p);
+        const wanted: OverrideMode = on ? 'allow' : 'deny';
+        const roleOn = p.role_default ?? p.granted;
+        const next: OverrideMode = saved === wanted ? saved : on === roleOn ? 'inherit' : wanted;
+        if (next === saved) delete mine[slug];
+        else mine[slug] = next;
+      }
+      return mine;
+    });
+  };
+
   const pendingRoles = EDITABLE_ROLES
     .map((r) => [r, Object.keys(roleChanges[r] ?? {}).length] as const)
     .filter(([, n]) => n > 0);
@@ -400,7 +431,7 @@ export function PermissionsSettings({ initialUserId, onBack, backLabel = 'Back' 
       <ul>
         <li>The <strong>owner</strong> always has everything; nothing here changes that.</li>
         <li>A <strong>role</strong>'s switches apply to everyone with that role.</li>
-        <li><strong>One person</strong>: Allow or Deny wins over their role, for them only. "As role" follows the role again.</li>
+        <li><strong>One person</strong>: their switches start as their role's. One set differently is marked "For them" and wins over the role, for them only; tap the mark, or "All as role", to follow the role again.</li>
         <li>Signing in here needs <strong>Access admin panel</strong>, which <strong>Print labels</strong> and <strong>Manage label settings</strong> carry with them; the POS PIN needs <strong>Access POS app</strong>.</li>
         <li>A "View" permission only shows a screen; changing things needs the matching "Manage" one.</li>
       </ul>
@@ -628,49 +659,48 @@ export function PermissionsSettings({ initialUserId, onBack, backLabel = 'Back' 
               open={open}
               onToggle={toggleGroup}
               tileNote={userTileNote}
-              wideRows
               renderControl={(row) => (
-                <span className="perm-seg" role="radiogroup" aria-label={row.name}>
-                  <button
-                    type="button"
-                    role="radio"
-                    aria-checked={row.mode === 'inherit'}
-                    className="perm-seg-btn perm-seg-btn--role"
+                <span className="perm-row-end">
+                  {row.marked && (
+                    <button
+                      type="button"
+                      className="perm-flag perm-flag--btn"
+                      title={`Set just for them; as ${roleName(selectedUserRole)} it would be ${row.roleOn ? 'on' : 'off'}. Tap to follow the role again.`}
+                      aria-label={`${row.name}: set just for them. Follow the role again`}
+                      disabled={saving}
+                      onClick={() => setUserMode([row.slug], 'inherit')}
+                      data-testid={`user-own-${row.slug}`}
+                    >
+                      For them <X size={11} aria-hidden />
+                    </button>
+                  )}
+                  <Switch
+                    size="sm"
+                    checked={row.on}
                     disabled={saving}
-                    onClick={() => setUserMode([row.slug], 'inherit')}
-                    title={`As their role: ${row.roleOn ? 'allowed' : 'not allowed'}`}
-                  >
-                    As role {row.roleOn ? <Check size={13} aria-label="(on)" /> : <X size={13} aria-label="(off)" />}
-                  </button>
-                  <button
-                    type="button"
-                    role="radio"
-                    aria-checked={row.mode === 'allow'}
-                    className="perm-seg-btn perm-seg-btn--allow"
-                    disabled={saving}
-                    onClick={() => setUserMode([row.slug], 'allow')}
-                  >
-                    Allow
-                  </button>
-                  <button
-                    type="button"
-                    role="radio"
-                    aria-checked={row.mode === 'deny'}
-                    className="perm-seg-btn perm-seg-btn--deny"
-                    disabled={saving}
-                    onClick={() => setUserMode([row.slug], 'deny')}
-                  >
-                    Deny
-                  </button>
+                    onChange={(next) => setUserOn([row.slug], next)}
+                    aria-label={row.name}
+                  />
                 </span>
               )}
               groupTools={(_group, groupRows) => {
+                const slugs = groupRows.map((r) => r.slug);
                 const own = groupRows.filter((r) => r.mode !== 'inherit').map((r) => r.slug);
-                return own.length > 0 ? (
-                  <button type="button" className="perm-chip" disabled={saving} onClick={() => setUserMode(own, 'inherit')}>
-                    All as role
-                  </button>
-                ) : null;
+                const allOn = groupRows.every((r) => r.on);
+                const allOff = groupRows.every((r) => !r.on);
+                return (
+                  <>
+                    <button type="button" className="perm-chip" disabled={allOn || saving} onClick={() => setUserOn(slugs, true)}>
+                      All on
+                    </button>
+                    <button type="button" className="perm-chip" disabled={allOff || saving} onClick={() => setUserOn(slugs, false)}>
+                      All off
+                    </button>
+                    <button type="button" className="perm-chip" disabled={own.length === 0 || saving} onClick={() => setUserMode(own, 'inherit')}>
+                      All as role
+                    </button>
+                  </>
+                );
               }}
             />
           </>
