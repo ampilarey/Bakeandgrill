@@ -21,7 +21,7 @@ const effective = (tagline: string, website = 'bakeandgrill.mv'): LabelFooter['e
   address: 'Kalaafaanu Hingun, Malé', address_dv: '', landmark: '', landmark_dv: '', show_qr: true, show_mark: true,
 });
 const footer = (id: number, name: string, eff: LabelFooter['effective'], extra: Partial<LabelFooter> = {}): LabelFooter => ({
-  id, name, heading: null, heading_dv: null, tagline: null, tagline_dv: null,
+  id, name, style: 'dark', heading: null, heading_dv: null, tagline: null, tagline_dv: null,
   phone: null, ways: null, ways_dv: null, website: null, address: null, address_dv: null, landmark: null, landmark_dv: null,
   show_qr: true, show_mark: true, is_default: id === 1, sort: id, effective: eff, custom_labels_count: 0, types_count: 0, ...extra,
 });
@@ -50,6 +50,8 @@ describe('FooterPicker', () => {
   it('describes a footer in one line', () => {
     expect(describeFooter(STANDARD)).toBe('Bake & Grill · Fresh Baked, Fire Grilled · +960 912 0011 · bakeandgrill.mv');
     expect(describeFooter(footer(3, 'Plain', effective('', '')))).toBe('Bake & Grill · +960 912 0011');
+    // A look other than the dark band is named.
+    expect(describeFooter({ ...STANDARD, style: 'light' })).toBe('Bake & Grill · Fresh Baked, Fire Grilled · +960 912 0011 · bakeandgrill.mv · Light look');
   });
 
   it('picks a footer by name and says what it prints; Edit and New need Manage label settings', () => {
@@ -114,9 +116,15 @@ describe('FooterPicker', () => {
 
     fireEvent.change(within(form).getByLabelText('Tagline, or your own words'), { target: { value: '  Hand-made every morning ' } });
     fireEvent.click(within(form).getByLabelText('Print the complaints QR'));
+    // The look: five swatches, the dark band picked until another is.
+    const looks = within(form).getByTestId('label-footer-looks');
+    expect(within(looks).getAllByRole('radio')).toHaveLength(5);
+    expect(within(looks).getByRole('radio', { name: /^Dark/ })).toBeChecked();
+    fireEvent.click(within(looks).getByRole('radio', { name: /^Rust/ }));
+    expect(within(looks).getByRole('radio', { name: /^Rust/ })).toBeChecked();
     fireEvent.click(screen.getByTestId('label-footer-save'));
     await waitFor(() => expect(updateLabelFooter).toHaveBeenCalledTimes(1));
-    expect(updateLabelFooter.mock.calls[0]).toEqual([2, expect.objectContaining({ name: 'Kitchen stamp', tagline: 'Hand-made every morning', heading: null, website: 'amma.mv', show_qr: false })]);
+    expect(updateLabelFooter.mock.calls[0]).toEqual([2, expect.objectContaining({ name: 'Kitchen stamp', style: 'rust', tagline: 'Hand-made every morning', heading: null, website: 'amma.mv', show_qr: false })]);
     expect(updateLabelFooter.mock.calls[0][1]).not.toHaveProperty('brand_id');
     await waitFor(() => expect(screen.queryByTestId('label-footer-form')).toBeNull());
     expect(onFootersChange).toHaveBeenCalledWith([STANDARD, expect.objectContaining({ id: 2, tagline: 'Hand-made every morning' })]);

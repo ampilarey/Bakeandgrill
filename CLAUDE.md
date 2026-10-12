@@ -213,7 +213,11 @@ live value as the placeholder) on the custom label editor, a type's editor and P
 stickers → More options, and lists them under Types & brands → Footers;
 `GET /labels/footers` needs `labels.print`, the writes `labels.manage`. Never add a
 second footer choice (a settings key, a radio) beside the preset, and never give a
-footer a brand again. A custom label also
+footer a brand again. A footer also picks its look (owner, 2026-10-12: "different
+styles"): `label_footers.style`, one of `LabelFooter::STYLES` (dark, light, rust,
+plain, logo), drawn by every design through `StickerDesign::footerPalette()` (band
+fill, rule, inks, QR border, whether the whole logo `wordmark` stands for the name);
+a new look goes into those two and `LOOKS` in `FooterPicker.tsx`, nowhere else. A custom label also
 keeps the language it prints in (`label_lang`; `langOf()` in `CustomLabels.tsx`).
 `lang: both` is bilingual on every part and every design (owner, 2026-10-12: "Not
 showing both languages correctly"): heading, name, ingredients, how to use, note, date

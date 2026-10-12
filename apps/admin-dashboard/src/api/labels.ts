@@ -81,8 +81,11 @@ export type LabelType = {
  * 2026-10-12): a food brand such as Amma is on the header only, so a footer
  * has no brand of its own and a blank line prints Business Details' value.
  */
+/** The looks a footer prints in (owner, 2026-10-12: "different styles"); LabelFooter::STYLES. */
+export type LabelFooterStyle = 'dark' | 'light' | 'rust' | 'plain' | 'logo';
+
 export type LabelFooter = {
-  id: number; name: string;
+  id: number; name: string; style: LabelFooterStyle;
   heading: string | null; heading_dv: string | null; tagline: string | null; tagline_dv: string | null;
   phone: string | null; ways: string | null; ways_dv: string | null; website: string | null;
   address: string | null; address_dv: string | null; landmark: string | null; landmark_dv: string | null;
@@ -93,7 +96,7 @@ export type LabelFooter = {
 };
 
 export type LabelFooterPayload = Partial<Pick<LabelFooter,
-  'name' | 'heading' | 'heading_dv' | 'tagline' | 'tagline_dv'
+  'name' | 'style' | 'heading' | 'heading_dv' | 'tagline' | 'tagline_dv'
   | 'phone' | 'ways' | 'ways_dv' | 'website' | 'address' | 'address_dv' | 'landmark' | 'landmark_dv' | 'show_qr' | 'show_mark' | 'sort'>>;
 
 export type LabelTypePayload = Partial<Omit<LabelType, 'id' | 'brand_name' | 'items_count' | 'defaults'>>;

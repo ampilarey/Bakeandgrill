@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Pencil, Plus } from 'lucide-react';
 import {
   createLabelFooter, deleteLabelFooter, updateLabelFooter,
-  type LabelFooter, type LabelFooterPayload,
+  type LabelFooter, type LabelFooterPayload, type LabelFooterStyle,
 } from '../../api';
 import { Btn, Modal, ModalActions } from '../SharedUI';
 import { Button, useToast } from '../ui';
@@ -23,9 +23,45 @@ import { Button, useToast } from '../ui';
 const fieldClass = 'h-10 min-h-[44px] px-3 rounded-lg border border-[var(--color-border)] bg-white text-sm text-[var(--color-text)] w-full';
 const labelClass = 'block text-xs font-semibold text-[var(--color-text-secondary)] mb-1';
 
-/** "Bake & Grill · Fresh Baked, Fire Grilled · +960 912 0011 · bakeandgrill.mv": what the footer prints, in a line. */
+/**
+ * The looks a footer prints in (owner, 2026-10-12: "different styles"), the
+ * server's LabelFooter::STYLES, drawn by StickerDesign::footerPalette().
+ */
+export const LOOKS: { key: LabelFooterStyle; name: string; hint: string }[] = [
+  { key: 'dark', name: 'Dark', hint: 'The dark band, cream lettering' },
+  { key: 'light', name: 'Light', hint: 'A pale band under a rust rule, dark lettering' },
+  { key: 'rust', name: 'Rust', hint: 'The band in the brand rust' },
+  { key: 'plain', name: 'Plain', hint: 'No band: the lines under a rust rule' },
+  { key: 'logo', name: 'Logo', hint: 'The dark band with the whole logo' },
+];
+const LOOK_NAMES = Object.fromEntries(LOOKS.map((l) => [l.key, l.name])) as Record<LabelFooterStyle, string>;
+
+/** "Bake & Grill · Fresh Baked, Fire Grilled · +960 912 0011 · bakeandgrill.mv · Light look": what the footer prints, in a line. */
 export const describeFooter = (f: LabelFooter): string =>
-  [f.effective.name, f.effective.tagline, f.effective.phone, f.effective.website].filter(Boolean).join(' · ');
+  [f.effective.name, f.effective.tagline, f.effective.phone, f.effective.website].filter(Boolean).join(' · ')
+  + (f.style && f.style !== 'dark' ? ` · ${LOOK_NAMES[f.style] ?? f.style} look` : '');
+
+// Print colours (StickerDesign), the same in both admin themes: a swatch shows paper, not the screen.
+const PRINT = { dark: '#1C1408', cream: '#FFFDF9', tint: '#FEF3E8', rust: '#B74B0C', text: '#2A1E0C', paper: '#FFFFFF', border: '#EDE4D4', onDark: '#C56F3D' };
+
+/** A small picture of the band a look prints: the sticker's foot in print colours. */
+function LookSwatch({ look }: { look: LabelFooterStyle }) {
+  const pale = look === 'light' || look === 'plain';
+  const band = look === 'light' ? PRINT.tint : look === 'rust' ? PRINT.rust : look === 'plain' ? PRINT.paper : PRINT.dark;
+  const ink = pale ? PRINT.text : PRINT.cream;
+  const accent = pale ? PRINT.rust : look === 'rust' ? PRINT.tint : PRINT.onDark;
+  return (
+    <span aria-hidden className="block rounded-md overflow-hidden" style={{ background: PRINT.paper, border: `1px solid ${PRINT.border}` }}>
+      <span className="block h-2.5" />
+      <span className="flex items-center gap-1 px-1.5 h-7" style={{ background: band, borderTop: pale ? `2px solid ${PRINT.rust}` : '2px solid transparent' }}>
+        <img src={look === 'logo' ? '/brand/logo-dark.png' : '/brand/logo-mark.png'} alt="" className={look === 'logo' ? 'h-5 w-5' : 'h-3.5 w-3.5'} />
+        {look !== 'logo' && <span className="text-[9px] font-extrabold leading-none" style={{ color: ink }}>Bake &amp; Grill</span>}
+        {look === 'logo' && <span className="text-[7px] italic leading-none" style={{ color: accent }}>Fresh Baked</span>}
+        <span className="ml-auto text-[7px] font-bold leading-none" style={{ color: ink }}>+960</span>
+      </span>
+    </span>
+  );
+}
 
 const upsert = (list: LabelFooter[], f: LabelFooter): LabelFooter[] =>
   list.some((x) => x.id === f.id) ? list.map((x) => (x.id === f.id ? f : x)) : [...list, f].sort((a, b) => a.sort - b.sort || a.id - b.id);
@@ -82,14 +118,14 @@ export function FooterPicker({ id, footers, value, onChange, onFootersChange, no
 }
 
 type Draft = {
-  name: string;
+  name: string; style: LabelFooterStyle;
   heading: string; heading_dv: string; tagline: string; tagline_dv: string;
   phone: string; ways: string; ways_dv: string; website: string; address: string; address_dv: string; landmark: string; landmark_dv: string;
   show_qr: boolean; show_mark: boolean;
 };
 
 const toDraft = (f: LabelFooter | null): Draft => ({
-  name: f?.name ?? '',
+  name: f?.name ?? '', style: f?.style ?? 'dark',
   heading: f?.heading ?? '', heading_dv: f?.heading_dv ?? '', tagline: f?.tagline ?? '', tagline_dv: f?.tagline_dv ?? '',
   phone: f?.phone ?? '', ways: f?.ways ?? '', ways_dv: f?.ways_dv ?? '', website: f?.website ?? '',
   address: f?.address ?? '', address_dv: f?.address_dv ?? '', landmark: f?.landmark ?? '', landmark_dv: f?.landmark_dv ?? '',
@@ -99,7 +135,7 @@ const toDraft = (f: LabelFooter | null): Draft => ({
 const text = (v: string) => v.trim() || null;
 
 const toPayload = (d: Draft): LabelFooterPayload => ({
-  name: d.name.trim(),
+  name: d.name.trim(), style: d.style,
   heading: text(d.heading), heading_dv: text(d.heading_dv), tagline: text(d.tagline), tagline_dv: text(d.tagline_dv),
   phone: text(d.phone), ways: text(d.ways), ways_dv: text(d.ways_dv), website: text(d.website),
   address: text(d.address), address_dv: text(d.address_dv), landmark: text(d.landmark), landmark_dv: text(d.landmark_dv),
@@ -176,6 +212,21 @@ export function FooterModal({ footer, footers, onClose, onSaved, onRemoved }: {
       <div className="space-y-4" data-testid="label-footer-form">
         <p className="text-xs text-[var(--color-text-muted)]">The footer is always {business}'s branding: a food brand such as Amma keeps its logo and name on the header. A footer is picked by name on a custom label, a label type or a whole sheet. Leave a box empty to print what is shown in grey, the current value from Business Details.</p>
         <Field id="lf-name" label="Footer name (for the list)"><input id="lf-name" value={d.name} maxLength={60} onChange={(e) => set('name', e.target.value)} className={fieldClass} placeholder="Kitchen stamp" /></Field>
+
+        <fieldset className="rounded-xl border border-[var(--color-border)] p-3 space-y-2">
+          <legend className="px-1 text-sm font-bold text-[var(--color-text)]">Look</legend>
+          <p className="text-xs text-[var(--color-text-muted)]">How the band at the foot prints, on every size (the round sticker has no band).</p>
+          <div className="grid gap-2 grid-cols-2 sm:grid-cols-5" role="radiogroup" aria-label="Look" data-testid="label-footer-looks">
+            {LOOKS.map((l) => (
+              <label key={l.key} className={['block cursor-pointer rounded-lg border p-1.5', d.style === l.key ? 'border-[var(--color-primary)] bg-[var(--color-tone-rust-bg)]' : 'border-[var(--color-border)]'].join(' ')}>
+                <input type="radio" name="lf-look" value={l.key} checked={d.style === l.key} onChange={() => set('style', l.key)} className="sr-only" />
+                <LookSwatch look={l.key} />
+                <span className="block mt-1 text-xs font-semibold text-[var(--color-text)]">{l.name}</span>
+                <span className="block text-[11px] leading-tight text-[var(--color-text-muted)]">{l.hint}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
 
         <fieldset className="rounded-xl border border-[var(--color-border)] p-3 space-y-3">
           <legend className="px-1 text-sm font-bold text-[var(--color-text)]">Name and tagline</legend>

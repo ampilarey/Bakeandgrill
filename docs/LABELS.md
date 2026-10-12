@@ -168,6 +168,15 @@ there, is no longer offered on the brand.) The migration turned every custom lab
 old "own words" footer into a footer named "<label> footer" and its "standard" choice
 into Standard.
 
+**Look** (owner, 2026-10-12: footers "in different styles"; `label_footers.style`,
+`StickerDesign::footerPalette()`). Each footer picks how it prints, on every size:
+**Dark** (the dark band, as before), **Light** (a pale band with a rust rule along the
+top and dark lettering), **Rust** (the band in the brand rust), **Plain** (no band: the
+lines on the sticker's own ground under a rust rule) or **Logo** (the dark band with the
+whole Bake & Grill logo where the mark and the name were; the tagline moves up beside
+it). The round sticker has no band, so there only Rust changes the colour of its footer
+line. The editor shows a swatch of each look.
+
 Where they are picked, each with the same box, a pencil to change the footer that
 prints (picked or, with nothing picked, the type's or the standard one) in place and
 **+** to make one (`FooterPicker`; changing needs **Manage label settings**, printing

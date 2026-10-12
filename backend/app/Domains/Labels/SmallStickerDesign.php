@@ -757,12 +757,18 @@ final class SmallStickerDesign
         return $this->both() && $this->shortStorageDv($bw - 1.6) !== '' ? $h + max(2.6, $sh * 0.95) : $h;
     }
 
-    /** The dark footer: brand name, phone, and the website when it fits. */
+    /** The footer band in the preset's look (StickerDesign::footerPalette): brand name or the logo, phone, and the website when it fits. */
     private function footerBand(float $x, float $y, float $bw, float $fh, float $k): void
     {
         $d = $this->d;
         $f = $d['footer'];
-        $this->box($x, $y, $bw, $fh, StickerDesign::DARK, min(1.3, $fh * 0.25));
+        $pal = StickerDesign::footerPalette($f['style'] ?? 'dark');
+        if ($pal['band'] !== null) {
+            $this->box($x, $y, $bw, $fh, $pal['band'], min(1.3, $fh * 0.25));
+        }
+        if ($pal['rule'] !== null) {
+            $this->box($x, $y, $bw, 0.35, $pal['rule']);
+        }
         $inner = $bw - 2.0;
         // A footer's own tagline (owner, 2026-10-12) stands where the website
         // would; on a band too narrow for three parts it takes the phone's
@@ -771,18 +777,24 @@ final class SmallStickerDesign
         $site = $inner >= 62 && ($own !== null || $f['website'] !== '');
         $part = $site ? $inner / 3 : $inner / 2;
         $maxPt = $fh * 1.45;
-        $namePt = LabelText::fitPt($f['name'], 'ds', $part - 0.6, $maxPt * 1.15, 3.6);
-        $this->text($this->X($x + 1.0, $part), $this->baseCentred($y, $fh, 'ds', $namePt), $part, $this->A('l'), 'ds', $namePt, StickerDesign::CREAM, $f['name']);
+        if ($pal['wordmark'] && !empty($d['wordmark'])) {
+            // The "logo" look: the whole logo where the name was.
+            [$lw, $lh] = StickerDesign::fit($d['wordmark_ratio'], $part - 0.6, $fh - 0.8);
+            $this->img($this->X($x + 1.0, $lw), $y + ($fh - $lh) / 2, $lw, $lh, $d['wordmark']);
+        } else {
+            $namePt = LabelText::fitPt($f['name'], 'ds', $part - 0.6, $maxPt * 1.15, 3.6);
+            $this->text($this->X($x + 1.0, $part), $this->baseCentred($y, $fh, 'ds', $namePt), $part, $this->A('l'), 'ds', $namePt, $pal['ink'], $f['name']);
+        }
         $right = $own !== null && !$site ? $own : ($f['phone'] !== '' ? [$f['phone'], 'j8'] : null);
         if ($right !== null) {
             [$rt, $rf] = $right;
             $pt = LabelText::fitPt($rt, $rf, $part - 0.6, $rf === 'dv' ? $maxPt * 1.3 : $maxPt, 3.2);
-            $this->text($this->X($x + 1.0 + $inner - $part, $part), $this->baseCentred($y, $fh, $rf, $pt), $part, $this->A('r'), $rf, $pt, StickerDesign::CREAM, $rt, $rf === 'dv' ? 0.5 : 0.0);
+            $this->text($this->X($x + 1.0 + $inner - $part, $part), $this->baseCentred($y, $fh, $rf, $pt), $part, $this->A('r'), $rf, $pt, $pal['ink'], $rt, $rf === 'dv' ? 0.5 : 0.0);
         }
         if ($site) {
             [$st, $sf] = $own ?? [$f['website'], 'dsi'];
             $pt = LabelText::fitPt($st, $sf, $part - 0.6, $sf === 'dv' ? $maxPt * 1.3 : $maxPt * 1.1, 3.2);
-            $this->text($this->X($x + 1.0 + $part, $part), $this->baseCentred($y, $fh, $sf, $pt), $part, 'c', $sf, $pt, StickerDesign::ON_DARK, $st, $sf === 'dv' ? 0.5 : 0.0);
+            $this->text($this->X($x + 1.0 + $part, $part), $this->baseCentred($y, $fh, $sf, $pt), $part, 'c', $sf, $pt, $pal['accent'], $st, $sf === 'dv' ? 0.5 : 0.0);
         }
     }
 

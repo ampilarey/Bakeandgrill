@@ -75,7 +75,7 @@ final class LabelTypes
      *
      * @param bool $implicit the preset stands in for "nothing picked": its
      *                       lines print, the complaints QR follows the type
-     * @return array{name: string, name_dv: string, tagline: string, tagline_dv: string, own: bool, phone: string, ways: string, ways_dv: string, website: string, address: string, address_dv: string, landmark: string, landmark_dv: string, show_qr: bool, show_mark: bool, preset_id: ?int, preset_name: ?string}
+     * @return array{style: string, name: string, name_dv: string, tagline: string, tagline_dv: string, own: bool, phone: string, ways: string, ways_dv: string, website: string, address: string, address_dv: string, landmark: string, landmark_dv: string, show_qr: bool, show_mark: bool, preset_id: ?int, preset_name: ?string}
      */
     public function footer(?LabelFooter $preset, bool $typeShowQr = true, bool $implicit = false): array
     {
@@ -84,6 +84,8 @@ final class LabelTypes
         $line = fn (string $col, string $fallback): string => $preset !== null && trim((string) $preset->{$col}) !== '' ? trim((string) $preset->{$col}) : $fallback;
 
         return [
+            // The look (owner, 2026-10-12: "different styles"), StickerDesign::footerPalette().
+            'style' => $preset !== null && in_array((string) $preset->style, LabelFooter::STYLES, true) ? (string) $preset->style : 'dark',
             'name' => $line('heading', $base['name']),
             'name_dv' => $line('heading_dv', $base['name_dv']),
             'tagline' => $line('tagline', $base['tagline']),
@@ -110,6 +112,7 @@ final class LabelTypes
         return [
             'id' => $footer->id,
             'name' => $footer->name,
+            'style' => in_array((string) $footer->style, LabelFooter::STYLES, true) ? (string) $footer->style : 'dark',
             'heading' => $footer->heading,
             'heading_dv' => $footer->heading_dv,
             'tagline' => $footer->tagline,

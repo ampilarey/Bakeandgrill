@@ -502,12 +502,16 @@ final class StickerSheet
     {
         $logo = LabelImage::fromPublic('brand/logo-light.png', 500);
         $mark = LabelImage::fromPublic('brand/logo-mark.png', 300);
+        // The logo with cream lettering, for the footer's "logo" look on the dark band.
+        $wordmark = LabelImage::fromPublic('brand/logo-dark.png', 500);
 
         return [
             'logo' => $logo,
             'logo_ratio' => LabelImage::ratio($logo),
             'mark' => $mark,
             'mark_ratio' => LabelImage::ratio($mark),
+            'wordmark' => $wordmark,
+            'wordmark_ratio' => LabelImage::ratio($wordmark),
             'contact' => LabelSettings::contact(),
             // v2 point 1: the complaints QR, the same code as the receipts and
             // the poster, bare (no logo: it prints at 8 to 12 mm) — and with

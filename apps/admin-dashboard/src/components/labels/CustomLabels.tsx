@@ -134,6 +134,8 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
   const [brands, setBrands] = useState<LabelBrand[]>([]);
   const [types, setTypes] = useState<LabelType[]>([]);
   const [footers, setFooters] = useState<LabelFooter[]>([]);
+  // A footer changed from the pencil prints differently without the draft changing: counted into the preview key.
+  const [footersTick, setFootersTick] = useState(0);
   const [dvFont, setDvFont] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [printing, setPrinting] = useState(false);
@@ -176,7 +178,7 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
   // second after the last change, saved or not; a reply that arrives after
   // a newer request is ignored. It waits for the size presets, which say
   // what a preset's name measures.
-  const draftKey = JSON.stringify([toPayload(d), lang, sized, rounded, presets.length]);
+  const draftKey = JSON.stringify([toPayload(d), lang, sized, rounded, presets.length, footersTick]);
   const refreshPreview = async () => {
     if (presets.length === 0) return;
     const seq = ++previewSeq.current;
@@ -401,7 +403,7 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
 
             <Section title="Footer and complaints QR" summary={`${footerName} · QR ${qrWord}`} open={d.footer_id !== null || d.label_show_qr !== ''} testId="custom-label-footer">
               <Field id="cl-footer" label="Footer" hint={`Always ${mainBrand}'s branding, whatever brand is on the header. Pick a footer by name, change the one that prints with the pencil, or add one with +. Nothing picked follows the label type, else Standard.`}>
-                <FooterPicker id="cl-footer" footers={footers} value={d.footer_id} onChange={(id) => set('footer_id', id)} onFootersChange={setFooters} noneLabel={d.label_type_id ? `Follow the type (${fallbackFooter?.name ?? 'Standard'})` : (fallbackFooter?.name ?? 'Standard')} fallback={fallbackFooter} canManage />
+                <FooterPicker id="cl-footer" footers={footers} value={d.footer_id} onChange={(id) => set('footer_id', id)} onFootersChange={(f) => { setFooters(f); setFootersTick((t) => t + 1); }} noneLabel={d.label_type_id ? `Follow the type (${fallbackFooter?.name ?? 'Standard'})` : (fallbackFooter?.name ?? 'Standard')} fallback={fallbackFooter} canManage />
               </Field>
               <Field id="cl-qr" label="Complaints QR in the footer" hint="The same code as the receipts and the poster: with the brand mark inside on the full sticker, bare on the small ones.">
                 <select id="cl-qr" value={d.label_show_qr} onChange={(e) => set('label_show_qr', e.target.value as Draft['label_show_qr'])} className={fieldClass}>

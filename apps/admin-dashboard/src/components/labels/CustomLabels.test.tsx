@@ -22,7 +22,7 @@ const effective = (tagline: string) => ({
   address: 'Kalaafaanu Hingun, Malé', address_dv: '', landmark: '', landmark_dv: '', show_qr: true, show_mark: true,
 });
 const footerRow = (id: number, name: string, eff: ReturnType<typeof effective>, extra = {}) => ({
-  id, name, heading: null, heading_dv: null, tagline: null, tagline_dv: null,
+  id, name, style: 'dark', heading: null, heading_dv: null, tagline: null, tagline_dv: null,
   phone: null, ways: null, ways_dv: null, website: null, address: null, address_dv: null, landmark: null, landmark_dv: null,
   show_qr: true, show_mark: true, is_default: id === 1, sort: id, effective: eff, custom_labels_count: 0, types_count: 0, ...extra,
 });
@@ -163,11 +163,14 @@ describe('CustomLabelModal', () => {
     // A blank line shows, in grey, what it prints today.
     expect(within(form).getByLabelText('Tagline, or your own words')).toHaveAttribute('placeholder', 'Fresh Baked, Fire Grilled');
     fireEvent.change(within(form).getByLabelText('Tagline, or your own words'), { target: { value: 'Made in Malé with love' } });
+    const drawn = previewCustomDraft.mock.calls.length;
     fireEvent.click(screen.getByTestId('label-footer-save'));
     await waitFor(() => expect(updateLabelFooter).toHaveBeenCalledWith(1, expect.objectContaining({ name: 'Standard', tagline: 'Made in Malé with love' })));
     expect(updateLabelFooter.mock.calls[0][1]).not.toHaveProperty('brand_id');
     await waitFor(() => expect(screen.getByTestId('cl-footer-lines')).toHaveTextContent('Made in Malé with love'));
     expect(screen.queryByTestId('label-footer-form')).toBeNull();
+    // The preview redraws with the changed footer although the label's own draft did not change.
+    await waitFor(() => expect(previewCustomDraft.mock.calls.length).toBeGreaterThan(drawn), { timeout: 3000 });
   });
 
   it('Print… saves first and opens Pack stickers on the same size and language', async () => {

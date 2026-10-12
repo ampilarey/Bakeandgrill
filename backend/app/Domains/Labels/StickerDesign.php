@@ -327,32 +327,46 @@ final class StickerDesign
             }
         }
 
-        // Dark footer, always the business's branding (LabelTypes::footer):
+        // The footer, always the business's branding (LabelTypes::footer):
         // name, tagline, address, phone, ways to reach you, website and the
-        // complaints QR (v2 point 1), the same on every size.
+        // complaints QR (v2 point 1), the same on every size, in the look the
+        // footer preset picked (footerPalette: dark, light, rust, plain, logo).
         $f = $d['footer'];
-        $p[] = ['t' => 'rect', 'x' => 5, 'y' => 128, 'w' => 95, 'h' => 15.5, 'fill' => self::DARK, 'r' => 2.5];
-        [$mw, $mh] = self::fit($d['mark_ratio'], 10, 10.5);
-        if ($d['mark'] && $f['show_mark']) {
+        $pal = self::footerPalette($f['style'] ?? 'dark');
+        if ($pal['band'] !== null) {
+            $p[] = ['t' => 'rect', 'x' => 5, 'y' => 128, 'w' => 95, 'h' => 15.5, 'fill' => $pal['band'], 'r' => 2.5];
+        }
+        if ($pal['rule'] !== null) {
+            $p[] = ['t' => 'rect', 'x' => 5, 'y' => 128, 'w' => 95, 'h' => 0.6, 'fill' => $pal['rule'], 'r' => 0.3];
+        }
+        // The "logo" look sets the whole logo where the mark and the name were.
+        $wordmark = $pal['wordmark'] && !empty($d['wordmark']);
+        $mw = 0.0;
+        if ($wordmark) {
+            [$mw, $mh] = self::fit($d['wordmark_ratio'], 13.5, 13.5);
+            $p[] = ['t' => 'img', 'x' => $X(6.5, $mw), 'y' => 128 + (15.5 - $mh) / 2, 'w' => $mw, 'h' => $mh, 'src' => $d['wordmark']];
+        } elseif ($d['mark'] && $f['show_mark']) {
+            [$mw, $mh] = self::fit($d['mark_ratio'], 10, 10.5);
             $p[] = ['t' => 'img', 'x' => $X(8, $mw), 'y' => 128 + (15.5 - $mh) / 2, 'w' => $mw, 'h' => $mh, 'src' => $d['mark']];
-        } else {
-            $mw = 0.0;
         }
         $qr = $d['show_qr'] && $d['qr'] ? 11.5 : 0.0;
         if ($qr > 0) {
-            $p[] = ['t' => 'rect', 'x' => $X(86.5, 12.5), 'y' => 129.5, 'w' => 12.5, 'h' => 12.5, 'fill' => self::CREAM, 'r' => 1];
+            $p[] = ['t' => 'rect', 'x' => $X(86.5, 12.5), 'y' => 129.5, 'w' => 12.5, 'h' => 12.5, 'fill' => self::CREAM, 'r' => 1] + ($pal['qr_stroke'] !== null ? ['stroke' => $pal['qr_stroke'], 'sw' => 0.2] : []);
             $p[] = ['t' => 'img', 'x' => $X(87, $qr), 'y' => 130, 'w' => $qr, 'h' => $qr, 'src' => $d['qr_branded'] ?? $d['qr']];
         }
-        $tx = 8 + $mw + ($mw > 0 ? 2.5 : 0.0);
+        $tx = ($wordmark ? 6.5 : 8) + $mw + ($mw > 0 ? 2.5 : 0.0);
         $nameX = $X($tx, 50);
-        $p[] = ['t' => 'text', 'x' => $nameX, 'base' => 133.5, 'w' => 50, 'align' => $A('l'), 'font' => 'ds', 'pt' => LabelText::fitPt($f['name'], 'ds', 40, 12.5, 8), 'color' => self::CREAM, 'text' => $f['name']];
+        if (!$wordmark) {
+            $p[] = ['t' => 'text', 'x' => $nameX, 'base' => 133.5, 'w' => 50, 'align' => $A('l'), 'font' => 'ds', 'pt' => LabelText::fitPt($f['name'], 'ds', 40, 12.5, 8), 'color' => $pal['ink'], 'text' => $f['name']];
+        }
         // The tagline (Dhivehi one on a Dhivehi sticker when there is one)
         // shares its line with the ways-to-reach-you text under the phone, so
         // each keeps to its own half: 34 mm for the tagline, the phone's
-        // width for the ways line.
+        // width for the ways line. With the logo look it takes the name's line.
         $tagline = $dv && $f['tagline_dv'] !== '' ? $f['tagline_dv'] : $f['tagline'];
         $tagFont = $dv && $f['tagline_dv'] !== '' ? 'dv' : 'dsi';
-        $p[] = ['t' => 'text', 'x' => $nameX, 'base' => 137.2, 'w' => 50, 'align' => $A('l'), 'font' => $tagFont, 'pt' => LabelText::fitPt($tagline, $tagFont, 34, $tagFont === 'dv' ? 8 : 7.8, 5.5), 'color' => self::ON_DARK, 'text' => $tagline] + ($tagFont === 'dv' ? ['bold' => 0.4] : []);
+        $tagMax = $wordmark ? 9.5 : ($tagFont === 'dv' ? 8 : 7.8);
+        $p[] = ['t' => 'text', 'x' => $nameX, 'base' => $wordmark ? 134.8 : 137.2, 'w' => 50, 'align' => $A('l'), 'font' => $tagFont, 'pt' => LabelText::fitPt($tagline, $tagFont, 34, $tagMax, 5.5), 'color' => $pal['accent'], 'text' => $tagline] + ($tagFont === 'dv' ? ['bold' => 0.4] : []);
         // The address line stops where the website (right-aligned, ~27 mm)
         // begins; with the QR that edge is 12 mm further left. Too long at
         // the smallest size, it drops the landmark.
@@ -360,7 +374,7 @@ final class StickerDesign
         if ($dv) {
             $full = trim($f['address_dv'] . ($f['landmark_dv'] !== '' ? '  •  ' . $f['landmark_dv'] : ''));
             $addr = LabelText::widthMm($full, 7, 'dv') <= $addrW ? $full : trim($f['address_dv']);
-            $p[] = ['t' => 'text', 'x' => $X($tx, $addrW), 'base' => 141, 'w' => $addrW, 'align' => 'r', 'font' => 'dv', 'pt' => LabelText::fitPt($addr, 'dv', $addrW, 8, 6.5), 'color' => self::SOFT, 'text' => $addr, 'bold' => 0.4];
+            $p[] = ['t' => 'text', 'x' => $X($tx, $addrW), 'base' => 141, 'w' => $addrW, 'align' => 'r', 'font' => 'dv', 'pt' => LabelText::fitPt($addr, 'dv', $addrW, 8, 6.5), 'color' => $pal['soft'], 'text' => $addr, 'bold' => 0.4];
         } else {
             $candidates = [
                 trim($f['address'] . ($f['landmark'] !== '' ? '  ·  ' . $f['landmark'] : '')),
@@ -373,15 +387,15 @@ final class StickerDesign
                     break;
                 }
             }
-            $p[] = ['t' => 'text', 'x' => $nameX, 'base' => 140.8, 'w' => $addrW, 'align' => 'l', 'font' => 'j4', 'pt' => LabelText::fitPt($addr, 'j4', $addrW, 5.4, 4.2), 'color' => self::SOFT, 'text' => $addr];
+            $p[] = ['t' => 'text', 'x' => $nameX, 'base' => 140.8, 'w' => $addrW, 'align' => 'l', 'font' => 'j4', 'pt' => LabelText::fitPt($addr, 'j4', $addrW, 5.4, 4.2), 'color' => $pal['soft'], 'text' => $addr];
         }
         $rightX = $X($qr > 0 ? 34.5 : 46.5, 50);
-        $p[] = ['t' => 'text', 'x' => $rightX, 'base' => 133.5, 'w' => 50, 'align' => $A('r'), 'font' => 'j8', 'pt' => 10.5, 'color' => self::CREAM, 'text' => $f['phone']];
+        $p[] = ['t' => 'text', 'x' => $rightX, 'base' => 133.5, 'w' => 50, 'align' => $A('r'), 'font' => 'j8', 'pt' => 10.5, 'color' => $pal['ink'], 'text' => $f['phone']];
         $waysW = max(22.0, LabelText::widthMm($f['phone'], 10.5, 'j8'));
         $p[] = $dv
-            ? ['t' => 'text', 'x' => $rightX, 'base' => 137.2, 'w' => $waysW, 'align' => 'l', 'font' => 'dv', 'pt' => LabelText::fitPt($f['ways_dv'], 'dv', $waysW, 8, 5.5), 'color' => self::ON_DARK, 'text' => $f['ways_dv'], 'bold' => 0.5]
-            : ['t' => 'text', 'x' => $rightX, 'base' => 137, 'w' => 50, 'align' => 'r', 'font' => 'j7', 'pt' => LabelText::fitPt($f['ways'], 'j7', $waysW, 5.6, 4), 'color' => self::ON_DARK, 'text' => $f['ways']];
-        $p[] = ['t' => 'text', 'x' => $rightX, 'base' => 140.8, 'w' => 50, 'align' => $A('r'), 'font' => 'dsi', 'pt' => 10, 'color' => self::CREAM, 'text' => $f['website']];
+            ? ['t' => 'text', 'x' => $rightX, 'base' => 137.2, 'w' => $waysW, 'align' => 'l', 'font' => 'dv', 'pt' => LabelText::fitPt($f['ways_dv'], 'dv', $waysW, 8, 5.5), 'color' => $pal['accent'], 'text' => $f['ways_dv'], 'bold' => 0.5]
+            : ['t' => 'text', 'x' => $rightX, 'base' => 137, 'w' => 50, 'align' => 'r', 'font' => 'j7', 'pt' => LabelText::fitPt($f['ways'], 'j7', $waysW, 5.6, 4), 'color' => $pal['accent'], 'text' => $f['ways']];
+        $p[] = ['t' => 'text', 'x' => $rightX, 'base' => 140.8, 'w' => 50, 'align' => $A('r'), 'font' => 'dsi', 'pt' => 10, 'color' => $pal['ink'], 'text' => $f['website']];
 
         return $p;
     }
@@ -454,18 +468,32 @@ final class StickerDesign
         // Owner, 2026-10-04: "There is no website." A tall label gets the
         // two-line footer of the original: name and address, phone and website.
         $f = $d['footer'];
+        $pal = self::footerPalette($f['style'] ?? 'dark');
         $fh = $tall ? 9.6 : 6.0;
         $fy = $h - $pad - $fh;
-        $p[] = ['t' => 'rect', 'x' => $pad, 'y' => $fy, 'w' => $iw, 'h' => $fh, 'fill' => self::DARK, 'r' => 1.5];
+        if ($pal['band'] !== null) {
+            $p[] = ['t' => 'rect', 'x' => $pad, 'y' => $fy, 'w' => $iw, 'h' => $fh, 'fill' => $pal['band'], 'r' => 1.5];
+        }
+        if ($pal['rule'] !== null) {
+            $p[] = ['t' => 'rect', 'x' => $pad, 'y' => $fy, 'w' => $iw, 'h' => 0.5, 'fill' => $pal['rule'], 'r' => 0.25];
+        }
         // The complaints QR at the end of a tall footer (v2 point 1); the right-hand text moves over.
         $qr = $tall && $d['show_qr'] && $d['qr'] ? $fh - 1.6 : 0.0;
         $rshift = $qr > 0 ? $qr + 2.4 : 0.0;
         if ($qr > 0) {
-            $p[] = ['t' => 'rect', 'x' => $X($pad + $iw - 0.8 - $qr - 0.8, $qr + 1.6), 'y' => $fy + 0.4, 'w' => $qr + 1.6, 'h' => $qr + 1.6, 'fill' => self::CREAM, 'r' => 0.8];
+            $p[] = ['t' => 'rect', 'x' => $X($pad + $iw - 0.8 - $qr - 0.8, $qr + 1.6), 'y' => $fy + 0.4, 'w' => $qr + 1.6, 'h' => $qr + 1.6, 'fill' => self::CREAM, 'r' => 0.8] + ($pal['qr_stroke'] !== null ? ['stroke' => $pal['qr_stroke'], 'sw' => 0.2] : []);
             $p[] = ['t' => 'img', 'x' => $X($pad + $iw - 0.8 - $qr, $qr), 'y' => $fy + 0.8, 'w' => $qr, 'h' => $qr, 'src' => $d['qr']];
         }
-        $p[] = ['t' => 'text', 'x' => $X($pad + 2, $iw / 2), 'base' => $fy + 4.1, 'w' => $iw / 2, 'align' => $A('l'), 'font' => 'ds', 'pt' => LabelText::fitPt($f['name'], 'ds', $iw / 2 - 2, 8.5, 6), 'color' => self::CREAM, 'text' => $f['name']];
-        $p[] = ['t' => 'text', 'x' => $X($pad + $iw / 2 - 2, $iw / 2 - $rshift), 'base' => $fy + 4.1, 'w' => $iw / 2 - $rshift, 'align' => $A('r'), 'font' => 'j8', 'pt' => 7.5, 'color' => self::CREAM, 'text' => $f['phone']];
+        // The "logo" look sets the whole logo in the name's place; the lines beside it move over.
+        $lw = 0.0;
+        if ($pal['wordmark'] && !empty($d['wordmark'])) {
+            [$lw, $lh] = self::fit($d['wordmark_ratio'], $fh - 1.0, $fh - 1.0);
+            $p[] = ['t' => 'img', 'x' => $X($pad + 1.0, $lw), 'y' => $fy + ($fh - $lh) / 2, 'w' => $lw, 'h' => $lh, 'src' => $d['wordmark']];
+            $lw += 1.2;
+        } else {
+            $p[] = ['t' => 'text', 'x' => $X($pad + 2, $iw / 2), 'base' => $fy + 4.1, 'w' => $iw / 2, 'align' => $A('l'), 'font' => 'ds', 'pt' => LabelText::fitPt($f['name'], 'ds', $iw / 2 - 2, 8.5, 6), 'color' => $pal['ink'], 'text' => $f['name']];
+        }
+        $p[] = ['t' => 'text', 'x' => $X($pad + $iw / 2 - 2, $iw / 2 - $rshift), 'base' => $fy + 4.1, 'w' => $iw / 2 - $rshift, 'align' => $A('r'), 'font' => 'j8', 'pt' => 7.5, 'color' => $pal['ink'], 'text' => $f['phone']];
         if ($tall) {
             // A footer's own tagline takes the website's place (owner,
             // 2026-10-12). It needs more room than "bakeandgrill.mv", so
@@ -475,14 +503,14 @@ final class StickerDesign
             $addr = $own !== null
                 ? trim($dv ? $f['address_dv'] : $f['address'])
                 : ($dv ? trim($f['address_dv'] . ($f['landmark_dv'] !== '' ? '  ·  ' . $f['landmark_dv'] : '')) : trim($f['address'] . ($f['landmark'] !== '' ? '  ·  ' . $f['landmark'] : '')));
-            $addrW = $own !== null ? $iw * 0.42 : $iw * 0.55;
+            $addrW = ($own !== null ? $iw * 0.42 : $iw * 0.55) - $lw;
             $p[] = $dv
-                ? ['t' => 'text', 'x' => $X($pad + 2, $addrW), 'base' => $fy + 8.2, 'w' => $addrW, 'align' => 'r', 'font' => 'dv', 'pt' => $own !== null ? LabelText::fitPt($addr, 'dv', $addrW - 1, 6.5, 5) : 6.5, 'color' => self::SOFT, 'text' => $addr, 'bold' => 0.4]
-                : ['t' => 'text', 'x' => $pad + 2, 'base' => $fy + 8, 'w' => $addrW, 'align' => 'l', 'font' => 'j4', 'pt' => LabelText::fitPt($addr, 'j4', $addrW - 2, 5.2, 4.0), 'color' => self::SOFT, 'text' => $addr];
+                ? ['t' => 'text', 'x' => $X($pad + 2 + $lw, $addrW), 'base' => $fy + 8.2, 'w' => $addrW, 'align' => 'r', 'font' => 'dv', 'pt' => $own !== null ? LabelText::fitPt($addr, 'dv', $addrW - 1, 6.5, 5) : 6.5, 'color' => $pal['soft'], 'text' => $addr, 'bold' => 0.4]
+                : ['t' => 'text', 'x' => $pad + 2 + $lw, 'base' => $fy + 8, 'w' => $addrW, 'align' => 'l', 'font' => 'j4', 'pt' => LabelText::fitPt($addr, 'j4', $addrW - 2, 5.2, 4.0), 'color' => $pal['soft'], 'text' => $addr];
             [$site, $siteFont] = $own ?? [$f['website'], 'dsi'];
-            $siteX = $own !== null ? $pad + 2 + $addrW + 1 : $pad + $iw / 2 - 2;
+            $siteX = $own !== null ? $pad + 2 + $lw + $addrW + 1 : $pad + $iw / 2 - 2;
             $siteW = $pad + $iw - 2 - $rshift - $siteX;
-            $p[] = ['t' => 'text', 'x' => $X($siteX, $siteW), 'base' => $fy + 8.1, 'w' => $siteW, 'align' => $A('r'), 'font' => $siteFont, 'pt' => $siteFont === 'dv' ? LabelText::fitPt($site, 'dv', $siteW - 1, 7.5, 4.5) : LabelText::fitPt($site, 'dsi', $siteW - 1, 7, 4.0), 'color' => self::CREAM, 'text' => $site] + ($siteFont === 'dv' ? ['bold' => 0.5] : []);
+            $p[] = ['t' => 'text', 'x' => $X($siteX, $siteW), 'base' => $fy + 8.1, 'w' => $siteW, 'align' => $A('r'), 'font' => $siteFont, 'pt' => $siteFont === 'dv' ? LabelText::fitPt($site, 'dv', $siteW - 1, 7.5, 4.5) : LabelText::fitPt($site, 'dsi', $siteW - 1, 7, 4.0), 'color' => $pal['ink'], 'text' => $site] + ($siteFont === 'dv' ? ['bold' => 0.5] : []);
         }
 
         $both = !$dv && !empty($d['both']) && $d['storage_dv'] !== '';
@@ -789,7 +817,8 @@ final class StickerDesign
         if ($siteFont === 'dv' && LabelText::widthMm($foot, 3.6, 'dv') > $w) {
             $foot = $site;
         }
-        $p[] = $text($y, $w, $siteFont, LabelText::fitPt($foot, $siteFont, $w, ($siteFont === 'dv' ? 5.4 : 4.3) * $f, 3.2), self::DARK, $foot, $siteFont === 'dv' ? 0.5 : 0.0);
+        // No band on a circle: the rust look colours the line, the others keep it dark.
+        $p[] = $text($y, $w, $siteFont, LabelText::fitPt($foot, $siteFont, $w, ($siteFont === 'dv' ? 5.4 : 4.3) * $f, 3.2), ($ft['style'] ?? 'dark') === 'rust' ? self::PRIMARY : self::DARK, $foot, $siteFont === 'dv' ? 0.5 : 0.0);
 
         return $p;
     }
@@ -816,6 +845,32 @@ final class StickerDesign
         }
 
         return [$text, \App\Support\ThaanaVisual::hasThaana($text) ? 'dv' : 'dsi'];
+    }
+
+    /** Secondary ink on the rust band (the footer's "rust" look): cream warmed towards the band. */
+    public const ON_RUST = '#FFE3CF';
+
+    public const ON_RUST_SOFT = '#F4CBB0';
+
+    /**
+     * How a footer look draws (owner, 2026-10-12: footers "in different
+     * styles"; LabelFooter::STYLES): the band fill (null: no band), a rule
+     * along the top (null: none), the main ink (name, phone, website), the
+     * accent (tagline, ways to reach you), the soft ink (address), a border
+     * for the QR's white box on a pale ground, and whether the whole logo
+     * stands where the mark and the name were.
+     *
+     * @return array{band: ?string, rule: ?string, ink: string, accent: string, soft: string, qr_stroke: ?string, wordmark: bool}
+     */
+    public static function footerPalette(string $style): array
+    {
+        return match ($style) {
+            'light' => ['band' => self::TINT, 'rule' => self::PRIMARY, 'ink' => self::TEXT, 'accent' => self::PRIMARY, 'soft' => self::MUTED, 'qr_stroke' => self::BORDER, 'wordmark' => false],
+            'rust' => ['band' => self::PRIMARY, 'rule' => null, 'ink' => self::CREAM, 'accent' => self::ON_RUST, 'soft' => self::ON_RUST_SOFT, 'qr_stroke' => null, 'wordmark' => false],
+            'plain' => ['band' => null, 'rule' => self::PRIMARY, 'ink' => self::TEXT, 'accent' => self::PRIMARY, 'soft' => self::MUTED, 'qr_stroke' => self::BORDER, 'wordmark' => false],
+            'logo' => ['band' => self::DARK, 'rule' => null, 'ink' => self::CREAM, 'accent' => self::ON_DARK, 'soft' => self::SOFT, 'qr_stroke' => null, 'wordmark' => true],
+            default => ['band' => self::DARK, 'rule' => null, 'ink' => self::CREAM, 'accent' => self::ON_DARK, 'soft' => self::SOFT, 'qr_stroke' => null, 'wordmark' => false],
+        };
     }
 
     /**

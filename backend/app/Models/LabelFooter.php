@@ -26,8 +26,15 @@ class LabelFooter extends Model
     /** The lines that fall back to the business's values when blank. */
     public const LINES = ['heading', 'heading_dv', 'tagline', 'tagline_dv', 'phone', 'ways', 'ways_dv', 'website', 'address', 'address_dv', 'landmark', 'landmark_dv'];
 
+    /**
+     * The looks a footer prints in (owner, 2026-10-12: "different styles"):
+     * the dark band, a light band, the rust band, no band (a rule above the
+     * lines) or the dark band with the whole logo. StickerDesign::footerPalette().
+     */
+    public const STYLES = ['dark', 'light', 'rust', 'plain', 'logo'];
+
     protected $fillable = [
-        'name', 'heading', 'heading_dv', 'tagline', 'tagline_dv',
+        'name', 'style', 'heading', 'heading_dv', 'tagline', 'tagline_dv',
         'phone', 'ways', 'ways_dv', 'website', 'address', 'address_dv', 'landmark', 'landmark_dv',
         'show_qr', 'show_mark', 'is_default', 'sort',
     ];

@@ -971,6 +971,7 @@ class LabelsController extends Controller
     {
         $data = $request->validate([
             'name' => ($footer->exists ? 'sometimes' : 'required') . '|string|max:60',
+            'style' => ['sometimes', Rule::in(LabelFooter::STYLES)],
             'heading' => 'sometimes|nullable|string|max:60',
             'heading_dv' => 'sometimes|nullable|string|max:60',
             'tagline' => 'sometimes|nullable|string|max:120',

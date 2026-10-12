@@ -137,6 +137,73 @@ class LabelFootersTest extends TestCase
     }
 
     /**
+     * Owner, 2026-10-12: footers "in different styles". A footer picks its
+     * look; every design draws it: the band's colour, no band, or the logo
+     * in the name's place.
+     */
+    public function test_a_footer_prints_in_the_look_it_picked_on_every_size(): void
+    {
+        Sanctum::actingAs($this->makeOwner(), ['staff']);
+        $amma = LabelBrand::query()->where('name', 'Amma')->value('id');
+        $standard = LabelFooter::default();
+        $this->assertSame('dark', collect($this->getJson('/api/labels/footers')->json('data'))->firstWhere('id', $standard->id)['style']);
+        $this->putJson("/api/labels/footers/{$standard->id}", ['style' => 'neon'])->assertStatus(422);
+
+        $custom = $this->postJson('/api/labels/custom', ['name' => 'Garlic Sauce', 'brand_id' => $amma])->assertCreated()->json('data.id');
+        $sheet = fn (string $layout, array $size = []) => (string) $this->get($this->postJson('/api/labels/stickers/url', ['items' => [['id' => $custom, 'kind' => 'custom', 'copies' => 1]], 'preview' => true, 'layout' => $layout] + $size)->assertOk()->json('view_url'))->assertOk()->getContent();
+        $band = fn (string $html, string $hex): int => substr_count($html, 'background:' . $hex . ';');
+        $layouts = ['a4-4' => [], 'a4-12' => [], 'single-custom' => ['w' => 40, 'h' => 60]];
+
+        // Dark: the dark band, the name in it. Other boxes share its colours
+        // (the made-on date box is dark, the header band pale), so each look
+        // is measured against this one.
+        $dark = [];
+        $pale = [];
+        foreach ($layouts as $layout => $size) {
+            $html = $sheet($layout, $size);
+            $dark[$layout] = $band($html, '#1C1408');
+            $pale[$layout] = $band($html, '#FEF3E8');
+            $this->assertGreaterThanOrEqual(1, $dark[$layout], "$layout dark band");
+            $this->assertStringContainsString('Bake &amp; Grill', $html, "$layout name");
+        }
+
+        // Light: a pale band with a rust rule in the dark band's place.
+        $this->putJson("/api/labels/footers/{$standard->id}", ['style' => 'light'])->assertOk()->assertJsonPath('data.style', 'light');
+        foreach ($layouts as $layout => $size) {
+            $html = $sheet($layout, $size);
+            $this->assertSame($dark[$layout] - 1, $band($html, '#1C1408'), "$layout light: no dark band");
+            $this->assertSame($pale[$layout] + 1, $band($html, '#FEF3E8'), "$layout light: a pale band");
+            $this->assertStringContainsString('Bake &amp; Grill', $html, "$layout keeps the name");
+        }
+
+        // Rust: the band in the brand rust (the storage strip is rust too).
+        $this->putJson("/api/labels/footers/{$standard->id}", ['style' => 'rust'])->assertOk();
+        $full = $sheet('a4-4');
+        $this->assertSame($dark['a4-4'] - 1, $band($full, '#1C1408'));
+        $this->assertGreaterThanOrEqual(2, $band($full, '#B74B0C'));
+
+        // Plain: no band at all, a rule where it was.
+        $this->putJson("/api/labels/footers/{$standard->id}", ['style' => 'plain'])->assertOk();
+        foreach ($layouts as $layout => $size) {
+            $html = $sheet($layout, $size);
+            $this->assertSame($dark[$layout] - 1, $band($html, '#1C1408'), "$layout plain: no dark band");
+            $this->assertSame($pale[$layout], $band($html, '#FEF3E8'), "$layout plain: no pale band either");
+            $this->assertStringContainsString('Bake &amp; Grill', $html, "$layout keeps the name");
+        }
+
+        // Logo: the dark band with the whole logo where the name was, on the full, compact and small designs.
+        $this->putJson("/api/labels/footers/{$standard->id}", ['style' => 'logo'])->assertOk();
+        foreach ($layouts as $layout => $size) {
+            $html = $sheet($layout, $size);
+            $this->assertSame($dark[$layout], $band($html, '#1C1408'), "$layout logo: the dark band");
+            $this->assertStringNotContainsString('Bake &amp; Grill', $html, "$layout: the logo stands for the name");
+            $this->assertStringContainsString('+960 912 0011', $html, "$layout keeps the phone");
+        }
+        // The round sticker has no band: it keeps its footer line.
+        $this->assertStringContainsString('Bake &amp; Grill', $sheet('single-round-custom', ['w' => 60]));
+    }
+
+    /**
      * Owner, 2026-10-12: "Footer should be always branding of Bake and Grill."
      * With nothing picked the standard footer prints, words typed into it
      * included, under any food brand's header; the QR then follows the type.

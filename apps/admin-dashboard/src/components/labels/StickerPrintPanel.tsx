@@ -84,6 +84,8 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
   // select and edit branding footer"); empty means each product's own.
   const [footers, setFooters] = useState<LabelFooter[]>([]);
   const [footer, setFooter] = useState<number | null>(null);
+  // A footer changed from the pencil prints differently without the request changing: counted into the preview key.
+  const [footersTick, setFootersTick] = useState(0);
   const [picked, setPicked] = useState<Record<string, number>>({});
   const [lang, setLang] = useState<StickerLang>('en');
   const [choice, setChoice] = useState<SizeChoice>(() => rememberedSize() ?? DEFAULT_CHOICE);
@@ -252,7 +254,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
 
   // Redraw the preview half a second after the last change; a reply that
   // arrives after a newer request is ignored.
-  const previewRequestKey = JSON.stringify([request(previewKey), previewKey, presets.length]);
+  const previewRequestKey = JSON.stringify([request(previewKey), previewKey, presets.length, footersTick]);
   useEffect(() => {
     if (items.length === 0 || presets.length === 0) { setPreview(null); setPreviewError(null); setPreviewBusy(false); return; }
     if (sizeIssue) { setPreviewError(sizeIssue); setPreviewBusy(false); return; }
@@ -525,7 +527,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
             {footers.length > 0 && (
               <div className="sm:col-span-2">
                 <label className={labelClass} htmlFor="label-footer">Footer</label>
-                <FooterPicker id="label-footer" footers={footers} value={footer} onChange={setFooter} onFootersChange={setFooters} noneLabel="Each product's own footer" canManage={can('labels.manage')} />
+                <FooterPicker id="label-footer" footers={footers} value={footer} onChange={setFooter} onFootersChange={(f) => { setFooters(f); setFootersTick((t) => t + 1); }} noneLabel="Each product's own footer" canManage={can('labels.manage')} />
                 <p className="text-xs text-[var(--color-text-muted)] mt-1">One footer for every sticker on the sheet, always Bake &amp; Grill's branding: tagline, phone, website and whether the complaints QR prints. Empty keeps each product's own, from its label or its type, else the standard one.</p>
               </div>
             )}
