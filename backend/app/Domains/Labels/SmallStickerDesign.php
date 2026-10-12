@@ -697,13 +697,15 @@ final class SmallStickerDesign
     {
         $d = $this->d;
         $half = $bw / 2;
+        // Pack numbering (round C): "PACK 3/40" after the batch.
+        $pack = !empty($d['pack_of']) ? ' · ' . $d['pack_no'] . '/' . $d['pack_of'] : '';
         if ($this->dv) {
             $font = 'dv';
-            $b = 'ބެޗް: ' . ($d['batch'] !== '' ? $d['batch'] : '..........');
+            $b = 'ބެޗް: ' . ($d['batch'] !== '' ? $d['batch'] : '..........') . $pack;
             $q = 'އަދަދު: ' . ($d['qty'] !== '' ? $d['qty'] : '......');
         } else {
             $font = 'j5';
-            $b = 'BATCH: ' . ($d['batch'] !== '' ? $d['batch'] : '________');
+            $b = 'BATCH: ' . ($d['batch'] !== '' ? $d['batch'] : '________') . $pack;
             // The price and net weight (2026-10-12) ride on the quantity when the label is wide enough to read them.
             $q = 'QTY: ' . ($d['qty'] !== '' ? $d['qty'] : '____') . ' ' . $d['unit'];
             if ($half >= 22 && $d['net_weight'] !== '') {

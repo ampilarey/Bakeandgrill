@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Printer, FileDown, AlertTriangle, Search, Bookmark, Eye, Plus, History, CalendarDays, ChevronDown, ChevronUp, Star, Clock } from 'lucide-react';
+import { Printer, FileDown, AlertTriangle, Search, Bookmark, Eye, Plus, History, CalendarDays, ChevronDown, ChevronUp, Star, Clock, Send, Image as ImageIcon } from 'lucide-react';
 import {
-  downloadLabelSheet, fetchCateringStickers, fetchCustomLabels, fetchDeliveryStickers, fetchLabelFooters, fetchLabelJob, fetchLabelJobs, fetchLabelLayouts, fetchLabelProducts, fetchLabelTypes, openLabelSheet, printLabelJob, printsViaPdf, renameLabelJob, stickerLinks,
+  downloadLabelSheet, fetchCateringStickers, fetchCustomLabels, fetchDeliveryStickers, fetchLabelFooters, fetchLabelJob, fetchLabelJobs, fetchLabelLayouts, fetchLabelProducts, fetchLabelTypes, openLabelSheet, printLabelJob, printsViaPdf, readPrinterSetup, renameLabelJob, sendToLabelPrinter, stickerLinks,
   type CustomLabel, type LabelFooter, type LabelJob, type LabelLimits, type LabelPreset, type LabelProduct, type LabelType, type PromoKind, type SheetLinks, type StickerLang, type StickerSummary,
 } from '../../api';
 import { useCurrentUserPermissions } from '../../hooks/usePermissions';
@@ -100,6 +100,14 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
   const [promoText, setPromoText] = useState('');
   const promoKind: PromoKind = promoPreset === '' ? '' : promoPreset === 'was_now' ? 'was_now' : 'text';
   const promoWords = promoPreset === 'custom' ? promoText : promoPreset;
+  // Round C: "Pack 3 of 40" on each copy, and a print-ready sheet (crop marks, a bleed) for a print shop.
+  const [numbered, setNumbered] = useState(false);
+  const [marks, setMarks] = useState(false);
+  const [bleed, setBleed] = useState('0');
+  // Straight to a label printer through the print agent on this computer (Labels → Settings → Label printer).
+  const printer = readPrinterSetup();
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState<string | null>(null);
   const [picked, setPicked] = useState<Record<string, number>>({});
   const [lang, setLang] = useState<StickerLang>('en');
   const [choice, setChoice] = useState<SizeChoice>(() => rememberedSize() ?? DEFAULT_CHOICE);
@@ -211,7 +219,10 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
       } else {
         setPromoPreset('');
       }
-      if (q.type || q.footer || q.batch || q.qty || q.for || q.promo) setMoreOpen(true);
+      setNumbered(Boolean(q.number));
+      setMarks(Boolean(q.marks));
+      setBleed(q.bleed != null && q.bleed !== '' && Number(q.bleed) > 0 ? String(q.bleed) : '0');
+      if (q.type || q.footer || q.batch || q.qty || q.for || q.promo || q.number || q.marks) setMoreOpen(true);
       setEditing({ id: r.data.id, name: r.data.name });
     }).catch(() => setError('That saved label could not be opened.'));
   }, [jobParam]);
@@ -305,6 +316,10 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
       promo_was: promoKind === 'was_now' && promoWas !== '' ? Number(promoWas) : null,
       promo_now: promoKind === 'was_now' && promoNow !== '' ? Number(promoNow) : null,
       promo_text: promoKind === 'text' ? promoWords.trim() || null : null,
+      number: numbered,
+      marks,
+      bleed: marks && Number(bleed) > 0 ? Number(bleed) : null,
+      dpi: printer.dpi,
     };
   };
 
@@ -345,8 +360,21 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
   const previewRatio = previewMode === 'one' ? stickerW / stickerH : page.w / page.h;
   const previewUrl = preview ? (previewMode === 'one' ? preview.one : preview.sheet) : null;
 
+  const sendToPrinter = async () => {
+    if (!result?.zpl_url || !result.tspl_url) return;
+    setSending(true); setSent(null); setError(null);
+    try {
+      const r = await sendToLabelPrinter(printer.language === 'zpl' ? result.zpl_url : result.tspl_url, printer);
+      setSent(`Sent ${result.summary.stickers} ${result.summary.stickers === 1 ? 'sticker' : 'stickers'} to the printer at ${printer.host} (${Math.max(1, Math.round(r.bytes / 1024))} KB).`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not send to the printer.');
+    } finally {
+      setSending(false);
+    }
+  };
+
   const prepare = async () => {
-    setBusy(true); setError(null); setResult(null);
+    setBusy(true); setError(null); setResult(null); setSent(null);
     try {
       const r = await stickerLinks(request());
       rememberSize(choice);
@@ -564,8 +592,8 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
           {moreOpen ? <ChevronUp size={16} aria-hidden className="mt-0.5 shrink-0" /> : <ChevronDown size={16} aria-hidden className="mt-0.5 shrink-0" />}
           <span className="min-w-0">
             <span className="block">More options</span>
-            {!moreOpen && (asType || footer || batch || qty || packedFor || promoKind) && <span className="block text-xs font-semibold text-[var(--color-primary)]">{[asType ? 'print as a type' : null, footer ? `footer: ${footers.find((f) => f.id === footer)?.name ?? 'picked'}` : null, batch ? `batch ${batch}` : null, qty ? `${qty} per pack` : null, packedFor ? `for ${packedFor}` : null, promoKind === 'was_now' ? 'was → now flash' : promoKind ? `flash: ${promoWords}` : null].filter(Boolean).join(' · ')}</span>}
-            {!moreOpen && !(asType || footer || batch || qty || packedFor || promoKind) && <span className="block text-xs font-normal text-[var(--color-text-muted)]">Print as a type, one footer for the sheet, batch number, quantity per pack, packed for, promotion flash</span>}
+            {!moreOpen && (asType || footer || batch || qty || packedFor || promoKind || numbered || marks) && <span className="block text-xs font-semibold text-[var(--color-primary)]">{[asType ? 'print as a type' : null, footer ? `footer: ${footers.find((f) => f.id === footer)?.name ?? 'picked'}` : null, batch ? `batch ${batch}` : null, qty ? `${qty} per pack` : null, packedFor ? `for ${packedFor}` : null, promoKind === 'was_now' ? 'was → now flash' : promoKind ? `flash: ${promoWords}` : null, numbered ? 'numbered packs' : null, marks ? `crop marks${Number(bleed) > 0 ? `, ${bleed} mm bleed` : ''}` : null].filter(Boolean).join(' · ')}</span>}
+            {!moreOpen && !(asType || footer || batch || qty || packedFor || promoKind || numbered || marks) && <span className="block text-xs font-normal text-[var(--color-text-muted)]">Print as a type, one footer for the sheet, batch number, quantity per pack, packed for, promotion flash, pack numbering, crop marks</span>}
           </span>
         </button>
         {moreOpen && (
@@ -624,6 +652,32 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
               </div>
               <p className="text-xs text-[var(--color-text-muted)] mt-1">A rust badge beside the name on the full sticker and in the compact sticker's band (where it takes the batch QR's place). Was → Now also prints the new price on the quantity line. Small and round stickers have no room for it.</p>
             </div>
+            {/* Round C: pack numbering, and a print-ready sheet for a print shop. */}
+            <label className="flex items-start gap-3 min-h-[44px] cursor-pointer">
+              <input type="checkbox" checked={numbered} onChange={(e) => setNumbered(e.target.checked)} className="mt-0.5 w-5 h-5 shrink-0 accent-[var(--color-primary)]" data-testid="sticker-number" />
+              <span>
+                <span className="block text-sm font-semibold text-[var(--color-text)]">Number the packs</span>
+                <span className="block text-xs text-[var(--color-text-muted)]">"Pack 3 of 40" on each sticker of a product's run: under the header on the full sticker, on the batch line of the compact and small ones.</span>
+              </span>
+            </label>
+            <div>
+              <label className="flex items-start gap-3 min-h-[44px] cursor-pointer">
+                <input type="checkbox" checked={marks} onChange={(e) => setMarks(e.target.checked)} className="mt-0.5 w-5 h-5 shrink-0 accent-[var(--color-primary)]" data-testid="sticker-marks" />
+                <span>
+                  <span className="block text-sm font-semibold text-[var(--color-text)]">Crop marks for a print shop</span>
+                  <span className="block text-xs text-[var(--color-text-muted)]">Hairline ticks at every corner in place of the dashed cut lines.</span>
+                </span>
+              </label>
+              {marks && (
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <label className="text-xs font-semibold text-[var(--color-text-secondary)]" htmlFor="label-bleed">Bleed</label>
+                  <select id="label-bleed" value={bleed} onChange={(e) => setBleed(e.target.value)} className={`${fieldClass} !w-auto`}>
+                    {['0', '1', '2', '3', '5'].map((b) => <option key={b} value={b}>{b === '0' ? 'None' : `${b} mm`}</option>)}
+                  </select>
+                  <span className="text-xs text-[var(--color-text-muted)]">Around a single label, so the page grows by it on every side. A sheet of several keeps its page.</span>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </section>
@@ -660,10 +714,19 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
             </div>
           )}
           <p className="text-xs text-[var(--color-text-muted)]">{printsViaPdf() ? 'Print opens the PDF: use Share → Print, and keep the scale at 100%, not "fit".' : 'Print at actual size (100%).'} These links work for {result.expires_in_minutes} minutes.</p>
+          {sent && <p className="text-sm font-semibold text-[var(--color-success)]" role="status" data-testid="sticker-sent">{sent}</p>}
           <div className="labels-actions">
             <div className="labels-actions-row flex flex-wrap gap-2">
               <Button icon={<Printer size={16} />} onClick={() => openLabelSheet(result.url, result.pdf_url)}>Print</Button>
               <Button variant="secondary" icon={<FileDown size={16} />} onClick={() => downloadLabelSheet(result.pdf_url)} aria-label="Download PDF"><span className="sm:hidden">PDF</span><span className="hidden sm:inline">Download PDF</span></Button>
+              {/* Round C: a label-printer stock goes straight to the printer as ZPL or TSPL, through the print agent on this computer. */}
+              {result.zpl_url && result.tspl_url && (
+                <>
+                  <Button variant="secondary" icon={<Send size={16} />} loading={sending} onClick={() => void sendToPrinter()} data-testid="sticker-send-printer">Send to label printer</Button>
+                  <Button variant="ghost" icon={<FileDown size={16} />} onClick={() => downloadLabelSheet(printer.language === 'zpl' ? result.zpl_url! : result.tspl_url!)} data-testid="sticker-printer-file" title={`The stickers as ${printer.language.toUpperCase()} at ${printer.dpi} dpi, to send to the printer yourself`}>{printer.language.toUpperCase()} file</Button>
+                  {result.raster_url && <Button variant="ghost" icon={<ImageIcon size={16} />} onClick={() => window.open(`${window.location.origin}${result.raster_url}`, '_blank', 'noopener')} data-testid="sticker-printer-bitmap">Check the bitmap</Button>}
+                </>
+              )}
               <Button variant="ghost" className="labels-actions-wide" onClick={() => setResult(null)}>Change</Button>
             </div>
           </div>

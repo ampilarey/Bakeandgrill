@@ -322,6 +322,80 @@ the band on the compact sticker, where it stands in for the batch QR (the print 
 still has the pack code). Small and round stickers have no room for it. The saved label
 and the print log keep the flash.
 
+### Nutrition panel
+
+Built 2026-10-12. A **nutrition panel per 100 g** (energy, fat, carbohydrate, protein,
+salt in five columns) prints on the full-size sticker above the allergen row, worked
+out from the recipe: each food ingredient carries its **values per 100 g** (energy in
+kcal, fat, of which saturates, carbohydrate, of which sugars, protein, salt), typed under
+**Labels → Settings → Nutrition per 100 g** from the packet or a food table; the
+recipe's grams of each give the totals, and the totals over the recipe's weight give the
+panel. It prints only when the item's Label tab has **Print nutrition per 100 g** on
+*and* every food ingredient in the recipe has values and a weight in grams (an
+ingredient in pieces or a unit that is not a weight stops it): a half panel misleads.
+The Label tab says what the recipe gives today, or which ingredient is holding it up;
+the settings card lists the ingredients still without values first (each with who uses
+it), every ingredient behind **Show all**, and each product's standing. Only the energy
+must be typed; a blank value is nought. A **custom label** types its own line
+(**Nutrition per 100 g** on its editor, one line as it should print, up to 200 letters),
+set smaller to fit the width. The compact, small and round stickers have no room.
+
+### Pack numbering
+
+Built 2026-10-12. **Number the packs** (Pack stickers → More options) prints "PACK 3 OF
+40" on each sticker of a product's run: under the header on the full sticker, at the end
+of the batch line on the compact and small ones ("· PACK 3/40", "· 3/40"), nothing on the
+round ones. Each copy is drawn on its own, so a numbered run of 40 is 40 different
+stickers. The saved label keeps it and prints the run numbered again.
+
+### Print-ready sheets
+
+Built 2026-10-12. **Crop marks for a print shop** (Pack stickers → More options) draws
+hairline ticks 3 mm long, 1 mm off every corner of every label, in place of the dashed
+cut lines, on the web sheet and the PDF alike; a tick is cut short where the page has
+less room (the labels on a plain A4 sheet start at the paper's edge). With the marks on,
+a **bleed** (1, 2, 3 or 5 mm) around a **single label** grows the page by it on every
+side, so a 40 × 60 mm label with a 5 mm bleed is a 50 × 70 mm page with the sticker in
+the middle; the sticker's ground is white, so the bleed is white. A sheet of several
+labels takes no bleed (the page is the paper). The saved label keeps both.
+
+### Label printer
+
+Built 2026-10-12. A **label-printer size** (one sticker a label: 105 × 148, 100 × 150,
+76 × 127 mm, any custom size or round size on a label printer) can go **straight to a
+thermal label printer** instead of through a print dialog. The server draws each sticker
+as a black-and-white bitmap at the printer's dots per inch and wraps it in the printer's
+language: **ZPL** (Zebra and printers that emulate it) or **TSPL** (TSC, Xprinter,
+iDPRT and most unbranded thermal label printers). Pack stickers → Prepare on such a size
+gives, beside Print and the PDF, **Send to label printer**, a **ZPL file** / **TSPL
+file** to download and send yourself, and **Check the bitmap** (the first sticker as the
+printer will put it down, as a PNG).
+
+Sending needs the **print agent**, `scripts/label-print-agent.mjs`, running on the
+computer the admin is used from (Node 18 or newer, no dependencies):
+
+```bash
+node scripts/label-print-agent.mjs            # listens on http://127.0.0.1:9110
+PORT=9111 node scripts/label-print-agent.mjs  # another port
+SITE=https://bakeandgrill.mv node scripts/label-print-agent.mjs   # fetch from this site only
+```
+
+It listens on the computer's own address only. The admin posts it the signed link to the
+stickers; the agent fetches the bytes from the site and sends them to the printer over
+the shop network on port 9100 (what nearly every network label printer listens on). Under
+**Labels → Settings → Label printer on this computer** go the language, the dots per inch
+(203, or 300 when the printer has them), the printer's IP address (from its self-test
+page), the port and the agent's address, with **Check the agent**; it is kept in that
+browser, so each till or office computer has its own printer. A USB-only printer, or a
+phone, downloads the file and sends it with the printer's own tool instead.
+
+On the thermal bitmap the sticker's colours become ink or paper: the rust fills and the
+dark band print black with their words in white, the tints print white, photos and logos
+are dithered, a QR or barcode is redrawn from its data, the allergen pictograms are left
+out (their captions and the "Contains …" note still print), and Dhivehi sets from the
+same composed font as the PDF. Crop marks and a bleed do not apply (the label is the
+page), and an A4 sheet has no printer language: the links are refused with the reason.
+
 ## Printing
 
 **Pack stickers** (Labels → Pack stickers): **Print again** at the top lists the pinned
@@ -453,6 +527,10 @@ beneath.
 | Ingredient glossary | `label_glossary` (`App\Models\LabelGlossaryEntry`: `key()`, `lookup()` with the plural and prefix variants, a cached `map()`); `LabelIngredients::translate()`, `parts()`, `missingWords()`, `dv_from` on the lines; API `GET /api/labels/glossary` (`labels.print`; `missing` beside `data`), `POST` / `PUT` / `DELETE /api/labels/glossary/{entry}` (`labels.manage`); `apps/admin-dashboard/src/components/labels/IngredientGlossary.tsx` on Labels → Settings |
 | Packed for | `for` and `for2` in a sticker request (`StickerSheet::normalise()`), `packed_for` / `packed_for2` in the sticker data, drawn by `StickerDesign::full()` (box under the name), `mini()` (line under the band) and `SmallStickerDesign::packedForLine()`; `GET /api/labels/deliveries/{delivery}/stickers` and `GET /api/labels/catering/{cateringRequest}/stickers` (`labels.print`) fill the form through `?delivery=` / `?catering=` on `StickerPrintPanel` |
 | Promotion flash | `promo` (`was_now` or `text`), `promo_was`, `promo_now`, `promo_text` in a sticker request (`StickerSheet::promoOf()` checks, `promoFor()` words it); `StickerDesign::flash()` draws the badge for the full sticker's name row and the compact band; `PROMO_PRESETS` in `StickerPrintPanel.tsx` |
+| Nutrition panel | `inventory_items.nutrition` (JSON per 100 g, `Nutrition::FIELDS`), `items.label_show_nutrition`, `custom_labels.label_nutrition`; `App\Domains\Labels\Nutrition` (`forItem()` from `LabelIngredients::recipeIngredients()`, which now carries grams; `forSticker()`, `clean()`, `rows()`, `line()`); `stickerData()` sets `nutrition`, `StickerDesign::full()` draws the five columns (or a custom label's fitted line) above the allergen row; API `GET /api/labels/nutrition` (`labels.print`), `PUT /api/labels/nutrition/{inventoryItem}` (`labels.manage`); `NutritionCard.tsx` on Labels → Settings, the switch on `ItemLabelTab.tsx` (`nutritionWords()`), the line on the custom label editor |
+| Pack numbering | `number` in a sticker request; `StickerSheet::build()` draws each copy with `pack_no` / `pack_of`; `StickerDesign::full()` prints "PACK n OF N" under the header, `mini()` and `SmallStickerDesign::batchLine()` add "· PACK n/N" / "· n/N" to the batch line |
+| Crop marks and bleed | `marks` and `bleed` (0–5 mm) in a sticker request; `StickerSheet::printReady()` grows a single-label page by the bleed and turns the cut lines off; `labels/stickers.blade.php` draws the ticks (`data-testid="crop-mark"`, cut to the page) |
+| Label printer | `App\Domains\Labels\LabelRaster` (`page()` draws one page of a built sheet with GD at `dpi`, `DPIS` 203 / 300; text from the PDF font files, Thaana in visual order, PNGs dithered, SVGs redrawn from `build()['vectors']`: a QR from its text, a barcode from its digits; `png()` for checking), `ZplEncoder` (`^GFA` with ZPL's run-length form), `TsplEncoder` (`SIZE`, `GAP`, `BITMAP` with the bits inverted, `PRINT 1,1`); signed routes `/labels/stickers.zpl`, `.tspl`, `.png` (`page` outside the signature), single-label sheets only; `dpi` on the sticker request, `zpl_url` / `tspl_url` / `raster_url` in the reply; `scripts/label-print-agent.mjs`; `LabelPrinterCard.tsx` (`labels.printer` in localStorage, `readPrinterSetup()` / `sendToLabelPrinter()` in `api/labels.ts`) and the buttons on `StickerPrintPanel` |
 | Allergen pictograms | `App\Domains\Labels\AllergenIcons` (`for()`, `keys()`, `svg()`, `dataUri()`; words → symbols, captions, `SPICY_LEVELS`); `stickerData()` sets `icons`, `StickerDesign::full()` draws the row (12 mm pitch, 8.8 mm tall) above the note; setting `label_allergen_icons` |
 | Footers | `label_footers` (`App\Models\LabelFooter`, § Footers); `custom_labels.footer_id`, `label_types.footer_id`, `footer` in a sticker request; `LabelTypes::footer()` fills the blanks, `StickerSheet::footerPreset()` picks which one. API `GET /api/labels/footers` (`labels.print`), `POST` / `PUT` / `DELETE /api/labels/footers/{footer}` (`labels.manage`; the standard one cannot be removed, 422) |
 | Box-label wording per storage, date style, pre-cut offsets | Labels → Settings, site settings with the originals as defaults (`App\Domains\Labels\LabelSettings`) |

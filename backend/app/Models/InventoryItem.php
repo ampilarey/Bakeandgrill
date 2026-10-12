@@ -20,6 +20,9 @@ class InventoryItem extends Model
         // ingredient line on a pack sticker lists food only.
         'is_label_ingredient',
         'name_dv',
+        // Nutrition per 100 g (kcal, fat, sat_fat, carbs, sugars, protein, salt)
+        // for the sticker's nutrition panel (App\Domains\Labels\Nutrition).
+        'nutrition',
     ];
 
     /** The item's own picture rides on every payload the model is serialised into. */
@@ -38,6 +41,7 @@ class InventoryItem extends Model
         'is_active' => 'boolean',
         'requestable' => 'boolean',
         'is_label_ingredient' => 'boolean',
+        'nutrition' => 'array',
         'current_stock' => 'float',
         'unit_cost' => 'decimal:4',
         // Owner, 2026-09-07: some items are bought with GST that comes back.

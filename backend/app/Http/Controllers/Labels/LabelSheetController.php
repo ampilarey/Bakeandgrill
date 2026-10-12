@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Labels;
 
 use App\Domains\Labels\BoxLabel;
+use App\Domains\Labels\LabelRaster;
 use App\Domains\Labels\StickerSheet;
+use App\Domains\Labels\TsplEncoder;
+use App\Domains\Labels\ZplEncoder;
 use App\Http\Controllers\Controller;
 use App\Models\TradeDelivery;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -115,6 +118,101 @@ class LabelSheetController extends Controller
     /** @return array<string, mixed> */
     private function query(Request $request): array
     {
-        return $request->only(['items', 'lang', 'layout', 'w', 'h', 'fill', 'mfg', 'exp', 'batch', 'qty', 'pi', 'type', 'footer', 'rounded', 'b', 'for', 'for2', 'promo', 'promo_was', 'promo_now', 'promo_text']);
+        return $request->only(['items', 'lang', 'layout', 'w', 'h', 'fill', 'mfg', 'exp', 'batch', 'qty', 'pi', 'type', 'footer', 'rounded', 'b', 'for', 'for2', 'promo', 'promo_was', 'promo_now', 'promo_text', 'number', 'marks', 'bleed']);
+    }
+
+    // ---- Straight to a label printer (round C, 2026-10-12) ----
+
+    /** The sheet as ZPL, one format per sticker, for a Zebra-language printer. */
+    public function stickersZpl(Request $request): Response
+    {
+        [$labels] = $this->printerLabels($request);
+
+        return response(ZplEncoder::encode($labels), 200, [
+            'Content-Type' => 'text/plain; charset=us-ascii',
+            'Content-Disposition' => 'attachment; filename="' . $this->printerName($request, 'zpl') . '"',
+        ]);
+    }
+
+    /** The sheet as TSPL, one job per sticker, for a TSC-language printer. */
+    public function stickersTspl(Request $request): Response
+    {
+        [$labels, $sheet] = $this->printerLabels($request);
+
+        return response(TsplEncoder::encode($labels, (float) $sheet['w'], (float) $sheet['h']), 200, [
+            'Content-Type' => 'application/octet-stream',
+            'Content-Disposition' => 'attachment; filename="' . $this->printerName($request, 'tspl') . '"',
+        ]);
+    }
+
+    /** One sticker's bitmap as a PNG (`page`, from 1): what the printer will put on the label. */
+    public function stickersPng(Request $request): Response
+    {
+        $data = $this->printerData($request);
+        $page = max(1, $request->integer('page', 1));
+        if (!isset($data['pages'][$page - 1])) {
+            abort(404, 'That sticker is not on this sheet.');
+        }
+
+        return response(LabelRaster::png(LabelRaster::page($data, $page - 1, $this->dpi($request))), 200, [
+            'Content-Type' => 'image/png',
+            'Cache-Control' => 'private, max-age=600',
+        ]);
+    }
+
+    /**
+     * Every sticker on the sheet as bits at the printer's dots per inch.
+     * Identical stickers (copies without numbering) are drawn once.
+     *
+     * @return array{0: list<array{w: int, h: int, bytes: int, rows: list<string>}>, 1: array<string, mixed>}
+     */
+    private function printerLabels(Request $request): array
+    {
+        $data = $this->printerData($request);
+        $dpi = $this->dpi($request);
+        $labels = [];
+        $drawn = [];
+        foreach ($data['pages'] as $i => $page) {
+            $key = md5(serialize($page));
+            $drawn[$key] ??= LabelRaster::page($data, $i, $dpi);
+            $labels[] = $drawn[$key];
+        }
+
+        return [$labels, $data['sheet']];
+    }
+
+    /**
+     * The built sheet for a label printer: one sticker a page, without
+     * crop marks or a bleed (the label is the page).
+     *
+     * @return array<string, mixed>
+     */
+    private function printerData(Request $request): array
+    {
+        try {
+            $req = StickerSheet::normalise($this->query($request) + ['marks' => false, 'bleed' => 0]);
+            $req['marks'] = false;
+            $req['bleed'] = 0.0;
+        } catch (InvalidArgumentException $e) {
+            abort(422, $e->getMessage());
+        }
+        $data = $this->stickers->build($req);
+        if ($data['sheet']['per_page'] !== 1) {
+            abort(422, 'A label printer takes one sticker a label: pick a label-printer size, not a sheet.');
+        }
+
+        return $data;
+    }
+
+    private function dpi(Request $request): int
+    {
+        $dpi = $request->integer('dpi', LabelRaster::DEFAULT_DPI);
+
+        return in_array($dpi, LabelRaster::DPIS, true) ? $dpi : LabelRaster::DEFAULT_DPI;
+    }
+
+    private function printerName(Request $request, string $ext): string
+    {
+        return 'labels-' . now()->format('Y-m-d-Hi') . '-' . $this->dpi($request) . 'dpi.' . $ext;
     }
 }

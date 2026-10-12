@@ -140,3 +140,9 @@ Route::put('/labels/glossary/{entry}', [LabelsController::class, 'updateGlossary
 Route::delete('/labels/glossary/{entry}', [LabelsController::class, 'destroyGlossary'])
     ->middleware('permission:labels.manage')
     ->whereNumber('entry');
+// Nutrition per 100 g of each ingredient (round C, 2026-10-12): read with Print labels, written with Manage label settings.
+Route::get('/labels/nutrition', [LabelsController::class, 'nutrition'])
+    ->middleware('permission:labels.print');
+Route::put('/labels/nutrition/{inventoryItem}', [LabelsController::class, 'updateNutrition'])
+    ->middleware('permission:labels.manage')
+    ->whereNumber('inventoryItem');

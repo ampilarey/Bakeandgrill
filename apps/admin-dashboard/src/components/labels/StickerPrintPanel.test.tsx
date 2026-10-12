@@ -13,7 +13,10 @@ const printLabelJob = vi.fn();
 const fetchLabelFooters = vi.fn();
 const fetchDeliveryStickers = vi.fn();
 const fetchCateringStickers = vi.fn();
+const sendToLabelPrinter = vi.fn();
 const canManage = { value: false };
+/** The label printer kept in this browser (round C); the test sets it. */
+const printerSetup = { language: 'tspl', dpi: 203, agent: 'http://127.0.0.1:9110', host: '', port: 9100 };
 
 const footerRow = (id: number, name: string, tagline: string) => ({
   id, name, style: 'dark', heading: null, heading_dv: null, tagline: null, tagline_dv: null,
@@ -50,6 +53,8 @@ vi.mock('../../api', () => ({
   createLabelFooter: vi.fn(),
   updateLabelFooter: vi.fn(),
   deleteLabelFooter: vi.fn(),
+  readPrinterSetup: () => ({ ...printerSetup }),
+  sendToLabelPrinter: (...a: unknown[]) => sendToLabelPrinter(...a),
 }));
 
 import { StickerPrintPanel } from './StickerPrintPanel';
@@ -91,7 +96,8 @@ const PRESETS = [
 
 describe('StickerPrintPanel', () => {
   beforeEach(() => {
-    [fetchLabelLayouts, fetchLabelProducts, fetchCustomLabels, stickerLinks, openLabelSheet, downloadLabelSheet, fetchLabelJobs, printLabelJob, fetchLabelFooters].forEach((f) => f.mockReset());
+    [fetchLabelLayouts, fetchLabelProducts, fetchCustomLabels, stickerLinks, openLabelSheet, downloadLabelSheet, fetchLabelJobs, printLabelJob, fetchLabelFooters, sendToLabelPrinter].forEach((f) => f.mockReset());
+    Object.assign(printerSetup, { language: 'tspl', dpi: 203, host: '', port: 9100 });
     fetchLabelJobs.mockResolvedValue({ data: [], last_page: 1 });
     fetchLabelFooters.mockResolvedValue({ data: [] });
     canManage.value = false;
@@ -136,6 +142,8 @@ describe('StickerPrintPanel', () => {
     const summary = await screen.findByTestId('sticker-summary');
     expect(summary).toHaveTextContent('4 stickers on 1 page');
     expect(summary).toHaveTextContent('EXP 2027-01-02');
+    // An A4 sheet has no printer-language links, so no printer buttons (round C).
+    expect(screen.queryByTestId('sticker-send-printer')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Print' }));
     expect(openLabelSheet).toHaveBeenCalledWith('/labels/stickers?print=1&signature=x', '/labels/stickers.pdf?signature=x');
@@ -495,5 +503,51 @@ describe('StickerPrintPanel on a phone', () => {
     expect(screen.getByTestId('phone-preview-big')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Smaller' }));
     expect(screen.queryByTestId('phone-preview-big')).toBeNull();
+  });
+
+  // Round C: pack numbering and a print-ready sheet sit behind More options.
+  it('numbers the packs and asks for crop marks with a bleed, and says so when More options is folded', async () => {
+    stickerLinks.mockRejectedValue(new Error('x'));
+    render(<MemoryRouter><StickerPrintPanel /></MemoryRouter>);
+    await screen.findByTestId('label-size-picker');
+    fireEvent.click(screen.getByLabelText('Print Bajiya'));
+    fireEvent.click(screen.getByTestId('sticker-more-toggle'));
+    fireEvent.click(screen.getByTestId('sticker-number'));
+    fireEvent.click(screen.getByTestId('sticker-marks'));
+    fireEvent.change(screen.getByLabelText('Bleed'), { target: { value: '3' } });
+    fireEvent.click(screen.getByTestId('sticker-more-toggle'));
+    expect(screen.getByTestId('sticker-more-toggle')).toHaveTextContent('numbered packs · crop marks, 3 mm bleed');
+    fireEvent.click(screen.getByTestId('sticker-prepare'));
+    await waitFor(() => expect(prepared()).toBeTruthy());
+    expect(prepared()).toMatchObject({ number: true, marks: true, bleed: 3, dpi: 203 });
+  });
+
+  // Round C: a label-printer stock goes straight to the printer through the agent on this computer.
+  it('sends a label-printer sheet to the printer through the agent, in the language and dots set for this computer', async () => {
+    Object.assign(printerSetup, { language: 'zpl', dpi: 300, host: '192.168.1.50' });
+    stickerLinks.mockResolvedValue({
+      url: '/labels/stickers?print=1&signature=x', view_url: '/labels/stickers?signature=x', pdf_url: '/labels/stickers.pdf?signature=x',
+      zpl_url: '/labels/stickers.zpl?dpi=300&signature=x', tspl_url: '/labels/stickers.tspl?dpi=300&signature=x', raster_url: '/labels/stickers.png?dpi=300&signature=x', expires_in_minutes: 30,
+      summary: { layout: 'single-105x148', label: 'Label printer, 105 × 148 mm', design: 'full', stickers: 2, pages: 2, per_page: 1, products: [{ id: 1, name: 'Bajiya', copies: 2, mfg: null, exp: null, shelf_life_days: 90, ingredients_from: 'manual' }] },
+    });
+    sendToLabelPrinter.mockResolvedValue({ ok: true, bytes: 40960 });
+    render(<MemoryRouter><StickerPrintPanel /></MemoryRouter>);
+    await screen.findByTestId('label-size-picker');
+    fireEvent.click(screen.getByLabelText('Print Bajiya'));
+    fireEvent.click(screen.getByTestId('sticker-prepare'));
+    await screen.findByTestId('sticker-summary');
+    expect(prepared()).toMatchObject({ dpi: 300 });
+
+    fireEvent.click(screen.getByTestId('sticker-send-printer'));
+    await waitFor(() => expect(sendToLabelPrinter).toHaveBeenCalledWith('/labels/stickers.zpl?dpi=300&signature=x', expect.objectContaining({ language: 'zpl', dpi: 300, host: '192.168.1.50' })));
+    expect(await screen.findByTestId('sticker-sent')).toHaveTextContent('Sent 2 stickers to the printer at 192.168.1.50 (40 KB).');
+    expect(screen.getByTestId('sticker-printer-file')).toHaveTextContent('ZPL file');
+    fireEvent.click(screen.getByTestId('sticker-printer-file'));
+    expect(downloadLabelSheet).toHaveBeenCalledWith('/labels/stickers.zpl?dpi=300&signature=x');
+
+    // The agent's reason shows when it cannot print.
+    sendToLabelPrinter.mockRejectedValue(new Error('Could not reach the printer at 192.168.1.50:9100 (EHOSTUNREACH).'));
+    fireEvent.click(screen.getByTestId('sticker-send-printer'));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not reach the printer at 192.168.1.50:9100 (EHOSTUNREACH).');
   });
 });

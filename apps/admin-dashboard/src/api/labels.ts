@@ -38,6 +38,9 @@ export type LabelProduct = {
   label_show_price: boolean;
   label_barcode: string | null;
   label_net_weight: string | null;
+  /** The nutrition panel (round C): printed when on and the recipe's panel is complete; `nutrition` is the panel as it stands. */
+  label_show_nutrition: boolean;
+  nutrition: NutritionPanel;
   menu_price: number;
   /** From the item's Details tab, as words ("tree nuts"): printed bold and as "Contains …". */
   allergens: string[];
@@ -52,6 +55,15 @@ export type LabelProduct = {
   /** `dv_from` (2026-10-12): typed, from the inventory items' Dhivehi names, or the glossary. */
   ingredients: { en: string; dv: string; from: 'recipe' | 'manual' | 'none'; dv_from?: 'typed' | 'inventory' | 'glossary' | ''; recipe_en: string; recipe_dv: string };
 };
+
+/** The values an ingredient carries per 100 g (round C). */
+export type NutritionValues = { kcal: number; fat: number; sat_fat: number; carbs: number; sugars: number; protein: number; salt: number };
+export const NUTRITION_KEYS = ['kcal', 'fat', 'sat_fat', 'carbs', 'sugars', 'protein', 'salt'] as const;
+export type NutritionKey = (typeof NUTRITION_KEYS)[number];
+/** A product's panel from its recipe: complete, or which ingredients have no values (`missing`) or no weight in grams (`unweighed`). */
+export type NutritionPanel = { complete: boolean; per100: Partial<NutritionValues>; grams: number; missing: string[]; unweighed: string[]; rows: { en: string; grams: number | null; has: boolean }[] };
+export type NutritionIngredient = { id: number; name: string; unit: string; nutrition: NutritionValues | null; used_by: string[] };
+export type NutritionProduct = { id: number; name: string; show: boolean; complete: boolean; per100: Partial<NutritionValues>; grams: number; missing: string[]; unweighed: string[] };
 
 /** Label Hub v2: who the label is from. The default brand is the business itself. */
 export type LabelBrand = {
@@ -163,6 +175,8 @@ export type CustomLabel = {
   label_shelf_life_days: number | null; label_pack_qty: number | null; label_pack_unit: string | null;
   /** 2026-10-12: price, barcode, net weight and the allergens (a comma list, printed bold and as "Contains …"). */
   label_price: number | null; label_barcode: string | null; label_net_weight: string | null; label_allergens: string | null;
+  /** A typed nutrition line (round C): "Energy 250 kcal · Fat 12 g …", on the full sticker. */
+  label_nutrition: string | null;
   label_photo_media_id: number | null; label_photo_url: string | null;
   label_title_media_id: number | null; label_title_url: string | null;
   defaults: { heading: string; heading_dv: string; storage_line: string; storage_line_dv: string; how_to_use: string; how_to_use_dv: string; note: string; note_dv: string; shelf_life_days: number | null; brand: string; unit: string };
@@ -176,7 +190,7 @@ export type CustomLabelPayload = Partial<Pick<CustomLabel,
   | 'label_how_to_use' | 'label_how_to_use_dv' | 'label_note' | 'label_note_dv'
   | 'footer_id' | 'label_show_qr' | 'label_lang'
   | 'label_shelf_life_days' | 'label_pack_qty' | 'label_pack_unit' | 'label_photo_media_id' | 'label_title_media_id'
-  | 'label_price' | 'label_barcode' | 'label_net_weight' | 'label_allergens'>>;
+  | 'label_price' | 'label_barcode' | 'label_net_weight' | 'label_allergens' | 'label_nutrition'>>;
 
 /** The sticker's languages: English, Dhivehi, or both on one sticker (2026-10-12). */
 export type StickerLang = 'en' | 'dv' | 'both';
@@ -209,9 +223,53 @@ export type StickerRequest = {
   promo_was?: number | null;
   promo_now?: number | null;
   promo_text?: string | null;
+  /** Round C: "Pack 3 of 40" on each copy; crop marks, and a bleed in mm (0–5) around a single label; the label printer's dots per inch. */
+  number?: boolean;
+  marks?: boolean;
+  bleed?: number | null;
+  dpi?: PrinterDpi | null;
 };
 
 export type PromoKind = '' | 'was_now' | 'text';
+export type PrinterDpi = 203 | 300;
+export type PrinterLanguage = 'zpl' | 'tspl';
+/** How the admin reaches a label printer (round C): through the print agent on this computer (scripts/label-print-agent.mjs), kept in this browser. */
+export type PrinterSetup = { language: PrinterLanguage; dpi: PrinterDpi; agent: string; host: string; port: number };
+export const PRINTER_SETUP_KEY = 'labels.printer';
+export const DEFAULT_PRINTER_SETUP: PrinterSetup = { language: 'tspl', dpi: 203, agent: 'http://127.0.0.1:9110', host: '', port: 9100 };
+export function readPrinterSetup(): PrinterSetup {
+  try {
+    const raw = localStorage.getItem(PRINTER_SETUP_KEY);
+    if (!raw) return DEFAULT_PRINTER_SETUP;
+    const p = JSON.parse(raw) as Partial<PrinterSetup>;
+    return {
+      language: p.language === 'zpl' ? 'zpl' : 'tspl',
+      dpi: p.dpi === 300 ? 300 : 203,
+      agent: typeof p.agent === 'string' && p.agent.trim() ? p.agent.trim() : DEFAULT_PRINTER_SETUP.agent,
+      host: typeof p.host === 'string' ? p.host.trim() : '',
+      port: Number.isFinite(Number(p.port)) && Number(p.port) > 0 ? Number(p.port) : 9100,
+    };
+  } catch { return DEFAULT_PRINTER_SETUP; }
+}
+export function savePrinterSetup(setup: PrinterSetup) {
+  try { localStorage.setItem(PRINTER_SETUP_KEY, JSON.stringify(setup)); } catch { /* a private window keeps nothing */ }
+}
+/** Hand a signed printer-language link to the print agent, which fetches it and sends the bytes to the printer. */
+export async function sendToLabelPrinter(url: string, setup: PrinterSetup = readPrinterSetup()): Promise<{ ok: true; bytes: number }> {
+  if (!setup.host.trim()) throw new Error('Type the printer\'s address under Labels → Settings → Label printer.');
+  let res: Response;
+  try {
+    res = await fetch(`${setup.agent.replace(/\/$/, '')}/print`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: `${window.location.origin}${url}`, host: setup.host.trim(), port: setup.port }),
+    });
+  } catch {
+    throw new Error('The print agent is not running on this computer. Start it (scripts/label-print-agent.mjs), or download the file and send it to the printer yourself.');
+  }
+  const body = (await res.json().catch(() => ({}))) as { ok?: boolean; bytes?: number; error?: string };
+  if (!res.ok || !body.ok) throw new Error(body.error || 'The print agent could not reach the printer.');
+  return { ok: true, bytes: body.bytes ?? 0 };
+}
 
 /** What a wholesale delivery or a catering event fills in on Pack stickers (2026-10-12). */
 export type PackedForPrefill = {
@@ -244,6 +302,10 @@ export type SheetLinks = {
   one_url?: string | null;
   view_url: string;
   pdf_url: string;
+  /** Round C: the sheet for a label printer (one sticker a page only; null on a preview). */
+  zpl_url?: string | null;
+  tspl_url?: string | null;
+  raster_url?: string | null;
   expires_in_minutes: number;
   job?: { id: number; name: string };
 };
@@ -415,6 +477,15 @@ export function updateGlossaryWord(id: number, body: Partial<{ en: string; dv: s
 
 export function deleteGlossaryWord(id: number) {
   return req<{ ok: true }>(`/labels/glossary/${id}`, { method: 'DELETE' });
+}
+
+/** Nutrition per 100 g (round C): the ingredients label-enabled recipes use, and each product's panel as it stands. */
+export function fetchLabelNutrition() {
+  return req<{ data: NutritionIngredient[]; products: NutritionProduct[]; fields: Record<NutritionKey, string> }>('/labels/nutrition');
+}
+
+export function saveIngredientNutrition(inventoryItemId: number, body: Partial<Record<NutritionKey, number | string | null>>) {
+  return req<{ data: Omit<NutritionIngredient, 'used_by'> }>(`/labels/nutrition/${inventoryItemId}`, { method: 'PUT', body: JSON.stringify(body) });
 }
 
 export function fetchProductionStickers(productionItemId: number) {

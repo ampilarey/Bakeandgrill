@@ -48,7 +48,7 @@ type Draft = {
   label_note: string; label_note_dv: string; footer_id: number | null;
   label_show_qr: '' | 'on' | 'off'; label_lang: StickerLang | '';
   label_shelf_life_days: string; label_pack_qty: string; label_pack_unit: string;
-  label_price: string; label_barcode: string; label_net_weight: string; label_allergens: string;
+  label_price: string; label_barcode: string; label_net_weight: string; label_allergens: string; label_nutrition: string;
   label_photo_media_id: number | null; label_photo_url: string | null; label_title_media_id: number | null; label_title_url: string | null;
 };
 
@@ -60,6 +60,7 @@ const toDraft = (c: CustomLabel | null): Draft => ({
   label_show_qr: c?.label_show_qr == null ? '' : c.label_show_qr ? 'on' : 'off', label_lang: c?.label_lang ?? '',
   label_shelf_life_days: c?.label_shelf_life_days ? String(c.label_shelf_life_days) : '', label_pack_qty: c?.label_pack_qty ? String(c.label_pack_qty) : '', label_pack_unit: c?.label_pack_unit ?? '',
   label_price: c?.label_price != null ? String(c.label_price) : '', label_barcode: c?.label_barcode ?? '', label_net_weight: c?.label_net_weight ?? '', label_allergens: c?.label_allergens ?? '',
+  label_nutrition: c?.label_nutrition ?? '',
   label_photo_media_id: c?.label_photo_media_id ?? null, label_photo_url: c?.label_photo_url ?? null, label_title_media_id: c?.label_title_media_id ?? null, label_title_url: c?.label_title_url ?? null,
 });
 
@@ -73,6 +74,7 @@ const toPayload = (d: Draft): CustomLabelPayload => ({
   label_show_qr: d.label_show_qr === '' ? null : d.label_show_qr === 'on', label_lang: d.label_lang || null,
   label_shelf_life_days: d.label_shelf_life_days ? Number(d.label_shelf_life_days) : null, label_pack_qty: d.label_pack_qty ? Number(d.label_pack_qty) : null, label_pack_unit: text(d.label_pack_unit),
   label_price: d.label_price !== '' ? Number(d.label_price) : null, label_barcode: text(d.label_barcode), label_net_weight: text(d.label_net_weight), label_allergens: text(d.label_allergens),
+  label_nutrition: text(d.label_nutrition),
   label_photo_media_id: d.label_photo_media_id, label_title_media_id: d.label_title_media_id,
 });
 
@@ -377,6 +379,8 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
                 <Field id="cl-unit" label="Unit after the quantity" hint="PCS, G, ML, KG, PACK…"><input id="cl-unit" maxLength={10} value={d.label_pack_unit} onChange={(e) => set('label_pack_unit', e.target.value.toUpperCase())} className={fieldClass} placeholder="PCS" /></Field>
                 <Field id="cl-allergens" label="Allergens" hint="Printed bold in the ingredients, and as “Contains …” when the note is empty."><input id="cl-allergens" maxLength={200} value={d.label_allergens} onChange={(e) => set('label_allergens', e.target.value)} className={fieldClass} placeholder="egg, gluten, peanuts" /></Field>
                 <Field id="cl-weight" label="Net weight" hint="Beside the quantity."><input id="cl-weight" maxLength={20} value={d.label_net_weight} onChange={(e) => set('label_net_weight', e.target.value)} className={fieldClass} placeholder="250 g" /></Field>
+                {/* Round C: a typed nutrition line; a menu item's comes from its recipe instead. */}
+                <div className="sm:col-span-2"><Field id="cl-nutrition" label="Nutrition per 100 g" hint="One line, as it should print on the full-size sticker."><input id="cl-nutrition" maxLength={200} value={d.label_nutrition} onChange={(e) => set('label_nutrition', e.target.value)} className={fieldClass} placeholder="Energy 250 kcal · Fat 12 g · Carbs 30 g · Protein 8 g · Salt 1.2 g" /></Field></div>
               </div>
             </fieldset>
 

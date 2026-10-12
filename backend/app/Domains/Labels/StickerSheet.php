@@ -44,7 +44,7 @@ final class StickerSheet
     /** @var array<int, ?LabelType> */
     private array $asTypes = [];
 
-    public function __construct(private readonly LabelIngredients $ingredients, private readonly LabelTypes $types) {}
+    public function __construct(private readonly LabelIngredients $ingredients, private readonly LabelTypes $types, private readonly Nutrition $nutrition) {}
 
     /** The label type a sheet is printed "as", when the request names one. */
     private function asType(array $req): ?LabelType
@@ -145,6 +145,11 @@ final class StickerSheet
             'promo_was' => $promo['was'],
             'promo_now' => $promo['now'],
             'promo_text' => $promo['text'],
+            // Round C (2026-10-12): "Pack 3 of 40" on each sticker, and a
+            // print-ready sheet with crop marks and a bleed (mm, single labels).
+            'number' => filter_var($in['number'] ?? false, FILTER_VALIDATE_BOOL),
+            'marks' => filter_var($in['marks'] ?? false, FILTER_VALIDATE_BOOL),
+            'bleed' => max(0.0, min(5.0, round((float) ($in['bleed'] ?? 0), 1))),
         ];
     }
 
@@ -294,32 +299,73 @@ final class StickerSheet
 
         $stickers = [];
         $summary = [];
+        // What each SVG picture on the sheet is (round C), for the label
+        // printer's rasteriser, which draws a QR or a barcode itself.
+        $vectors = [];
+        $draw = fn (array $data): array => match ($sheet['design']) {
+            'full' => StickerDesign::full($data, $dv),
+            'round' => StickerDesign::round($data, $dv, $sheet['w']),
+            'small' => SmallStickerDesign::rect($data, $dv, $sheet['w'], $sheet['h']),
+            default => StickerDesign::mini($data, $dv, $sheet['w'], $sheet['h']),
+        };
         foreach ($req['items'] as $row) {
             $product = $products[self::key($row)] ?? null;
             if ($product === null) {
                 continue;
             }
             $data = $this->stickerData($product, $req, $common, $production);
-            $pieces = match ($sheet['design']) {
-                'full' => StickerDesign::full($data, $dv),
-                'round' => StickerDesign::round($data, $dv, $sheet['w']),
-                'small' => SmallStickerDesign::rect($data, $dv, $sheet['w'], $sheet['h']),
-                default => StickerDesign::mini($data, $dv, $sheet['w'], $sheet['h']),
-            };
-            for ($i = 0; $i < $row['copies']; $i++) {
-                $stickers[] = $pieces;
+            $vectors += $data['vector'];
+            if (!empty($req['number'])) {
+                // Pack numbering (round C): each copy its own sticker, "Pack 3 of 40".
+                for ($i = 1; $i <= $row['copies']; $i++) {
+                    $stickers[] = $draw($data + ['pack_no' => $i, 'pack_of' => (int) $row['copies']]);
+                }
+            } else {
+                $pieces = $draw($data);
+                for ($i = 0; $i < $row['copies']; $i++) {
+                    $stickers[] = $pieces;
+                }
             }
             $summary[] = ['id' => $product->id, 'kind' => $row['kind'], 'name' => $product->name, 'copies' => $row['copies'], 'exp' => $data['exp_iso'], 'mfg' => $data['mfg_iso']];
         }
 
         return [
-            'sheet' => $sheet,
+            'sheet' => self::printReady($sheet, $req),
             'pages' => array_chunk($stickers, $sheet['per_page']),
             'dv' => $dv,
             'summary' => $summary,
             'stickerCount' => count($stickers),
             'rounded' => $sheet['shape'] === 'rect' && $req['rounded'],
+            'vectors' => $vectors,
         ];
+    }
+
+    /**
+     * A print-ready sheet (round C): crop marks at every label's corners,
+     * and on a one-label page a bleed around the label (the page grows by
+     * it on each side; the sticker's ground is white, so the bleed is
+     * white). The dashed cut lines go when the marks come.
+     *
+     * @param array<string, mixed> $sheet from StickerLayouts::resolve()
+     * @param array<string, mixed> $req
+     * @return array<string, mixed>
+     */
+    public static function printReady(array $sheet, array $req): array
+    {
+        $marks = !empty($req['marks']);
+        $bleed = $marks && $sheet['per_page'] === 1 ? (float) ($req['bleed'] ?? 0) : 0.0;
+        if ($bleed > 0) {
+            $sheet['page_w'] = round($sheet['page_w'] + 2 * $bleed, 2);
+            $sheet['page_h'] = round($sheet['page_h'] + 2 * $bleed, 2);
+            $sheet['slots'] = array_map(fn (array $s) => ['x' => round($s['x'] + $bleed, 3), 'y' => round($s['y'] + $bleed, 3)] + $s, $sheet['slots']);
+        }
+        $sheet['marks'] = $marks;
+        $sheet['bleed'] = $bleed;
+        if ($marks) {
+            $sheet['cut'] = false;
+        }
+
+        return $sheet;
     }
 
     /**
@@ -520,14 +566,38 @@ final class StickerSheet
         $printCode = $key !== null ? ($req['codes'][$key] ?? null) : null;
         $spicy = $item instanceof Item && in_array((string) $item->spice_level, AllergenIcons::SPICY_LEVELS, true);
 
+        $batchQr = $printCode !== null && LabelSettings::on('label_batch_qr') ? BatchLink::qr($printCode) : null;
+        $icons = LabelSettings::on('label_allergen_icons') ? AllergenIcons::for($allergens, $spicy) : [];
+        // What each SVG picture on the sticker is (round C): the thermal
+        // rasteriser draws a QR or a barcode itself, since GD reads no SVG.
+        $vector = [];
+        if ($common['qr'] ?? null) {
+            $vector[$common['qr']] = ['qr', ComplaintBoxLink::url('label')];
+        }
+        if ($common['qr_branded'] ?? null) {
+            $vector[$common['qr_branded']] = ['qr', ComplaintBoxLink::url('label')];
+        }
+        if ($batchQr !== null) {
+            $vector[$batchQr] = ['qr', BatchLink::url($printCode)];
+        }
+        if ($code !== null) {
+            $vector[Barcode::svgDataUri($code, 30, 12)] = ['ean', $code];
+        }
+        foreach ($icons as $icon) {
+            $vector[$icon['src']] = ['icon', $icon['key']];
+        }
+
         return $common + [
             // Packed for and the promotion flash (2026-10-12), from the request.
             'packed_for' => (string) ($req['for'] ?? ''),
             'packed_for2' => (string) ($req['for2'] ?? ''),
             'promo' => $promo,
             'print_code' => $printCode ?? '',
-            'batch_qr' => $printCode !== null && LabelSettings::on('label_batch_qr') ? BatchLink::qr($printCode) : null,
-            'icons' => LabelSettings::on('label_allergen_icons') ? AllergenIcons::for($allergens, $spicy) : [],
+            'batch_qr' => $batchQr,
+            'icons' => $icons,
+            'vector' => $vector,
+            // The nutrition panel (round C): the recipe's per 100 g when the item prints it, a custom label's typed line.
+            'nutrition' => $this->nutrition->forSticker($item),
             'name' => (string) $item->name,
             'name_dv' => trim((string) $item->name_dv),
             'title_img' => $title,

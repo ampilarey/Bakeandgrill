@@ -169,6 +169,17 @@ final class LabelIngredients
         return $out;
     }
 
+    /**
+     * The recipe's food ingredients with their weight in grams (null when
+     * the unit cannot be turned into grams), for the nutrition panel.
+     *
+     * @return list<array{inventory_id: int, en: string, dv: string, grams: ?float}>
+     */
+    public function recipeIngredients(Item $item): array
+    {
+        return array_map(fn (array $r) => ['inventory_id' => $r['inventory_id'], 'en' => $r['en'], 'dv' => $r['dv'], 'grams' => $r['grams']], $this->recipeRows($item));
+    }
+
     /** @return array{0: string, 1: string, 2: string} the English line, the Dhivehi line, where the Dhivehi came from */
     private function fromRecipe(Item $item): array
     {
@@ -199,7 +210,7 @@ final class LabelIngredients
      * The recipe's food ingredients, heaviest first, with the Dhivehi name
      * the inventory item carries (empty when it has none).
      *
-     * @return list<array{en: string, dv: string, weight: float}>
+     * @return list<array{inventory_id: int, en: string, dv: string, weight: float, grams: ?float}>
      */
     private function recipeRows(Item $item): array
     {
@@ -226,8 +237,12 @@ final class LabelIngredients
                 continue;
             }
             $key = mb_strtolower($name);
-            $byName[$key] ??= ['en' => $name, 'dv' => trim((string) ($inv->name_dv ?? '')), 'weight' => 0.0];
-            $byName[$key]['weight'] += $this->weight((float) $row->quantity, (string) ($row->unit ?: $inv->unit));
+            $byName[$key] ??= ['inventory_id' => (int) $inv->id, 'en' => $name, 'dv' => trim((string) ($inv->name_dv ?? '')), 'weight' => 0.0, 'grams' => 0.0];
+            $grams = $this->grams((float) $row->quantity, (string) ($row->unit ?: $inv->unit));
+            // Grams for the order and the nutrition panel; a unit that is not
+            // a weight keeps the raw quantity for the order and no grams.
+            $byName[$key]['weight'] += $grams ?? (float) $row->quantity;
+            $byName[$key]['grams'] = $grams === null || $byName[$key]['grams'] === null ? null : $byName[$key]['grams'] + $grams;
         }
 
         uasort($byName, fn ($a, $b) => [$b['weight'], $a['en']] <=> [$a['weight'], $b['en']]);
@@ -235,8 +250,8 @@ final class LabelIngredients
         return array_values($byName);
     }
 
-    /** Grams where the unit allows; otherwise the raw quantity, for ordering only. */
-    private function weight(float $qty, string $unit): float
+    /** Grams (or millilitres) where the unit allows, else null. */
+    private function grams(float $qty, string $unit): ?float
     {
         $u = mb_strtolower(trim($unit));
         if (isset(self::METRIC[$u])) {
@@ -244,7 +259,7 @@ final class LabelIngredients
         }
         $factor = $u !== '' ? $this->units->factor($u, 'g') : null;
 
-        return $factor !== null ? $qty * $factor : $qty;
+        return $factor !== null ? $qty * $factor : null;
     }
 
     /** "Flour, salt, oil": first word capitalised, the rest as written. */

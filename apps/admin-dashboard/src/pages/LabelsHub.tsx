@@ -9,6 +9,8 @@ import { CustomLabelsTab } from '../components/labels/CustomLabels';
 import { InlineRename } from '../components/labels/InlineRename';
 import { ExpiringStock } from '../components/labels/ExpiringStock';
 import { IngredientGlossary } from '../components/labels/IngredientGlossary';
+import { NutritionCard } from '../components/labels/NutritionCard';
+import { LabelPrinterCard } from '../components/labels/LabelPrinterCard';
 import { Switch } from '../components/SharedUI';
 import { Button, Card, useToast } from '../components/ui';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
@@ -487,6 +489,9 @@ function SettingsTab({ canManage }: { canManage: boolean }) {
 
       {/* The ingredient glossary (2026-10-12): English → Dhivehi for recipe names and typed lists. */}
       <IngredientGlossary canManage={canManage} />
+      {/* Round C: nutrition per 100 g of each ingredient, and the label printer on this computer. */}
+      <NutritionCard canManage={canManage} />
+      <LabelPrinterCard />
     </div>
   );
 }
@@ -513,7 +518,7 @@ export const LABELS_TABS: HubTab[] = [
   { id: 'box', label: 'Box labels', permissions: ['labels.print', 'labels.manage'], desc: 'A4 label for a delivery box, blank or from a wholesale delivery', render: () => <Card padding="sm" className="labels-sticky"><BoxLabelPanel /></Card> },
   { id: 'types', label: 'Types & brands', permissions: ['labels.print', 'labels.manage'], desc: 'Kinds of food a label is for, with their wording, and the brands they are from', render: () => <TypesTabWithPermission /> },
   { id: 'saved', label: 'Saved labels', permissions: ['labels.print', 'labels.manage'], desc: 'Every label prepared, to print again, download, change, copy or rename; the print log beneath', render: () => <SavedLabelsTab /> },
-  { id: 'settings', label: 'Settings', permissions: ['labels.print', 'labels.manage'], desc: 'Which products print, shelf life, storage, the label wording and the ingredient glossary', render: () => <SettingsTabWithPermission /> },
+  { id: 'settings', label: 'Settings', permissions: ['labels.print', 'labels.manage'], desc: 'Which products print, shelf life, storage, the label wording, the ingredient glossary, nutrition and the label printer', render: () => <SettingsTabWithPermission /> },
 ];
 
 export const LABELS_HUB_PERMISSIONS = hubPermissions(LABELS_TABS);

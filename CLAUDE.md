@@ -253,9 +253,17 @@ every design but the round ones; `GET /api/labels/deliveries/{id}/stickers` and
 `/catering/{id}/stickers` fill the form through `?delivery=` / `?catering=`); and a
 promotion flash (`promo` was_now or text, `StickerSheet::promoOf()`,
 `StickerDesign::flash()` on the full name row and the compact band, where it replaces
-the batch QR; `PROMO_PRESETS`). How to use it and where
-everything lives: `docs/LABELS.md`; design and decisions: `docs/LABEL_HUB_PLAN.md`
-and `docs/LABEL_HUB_V2_PLAN.md`.
+the batch QR; `PROMO_PRESETS`). Round C: a nutrition panel per 100 g from the recipe
+(`inventory_items.nutrition`, `App\Domains\Labels\Nutrition`, `items.label_show_nutrition`;
+prints only when complete; a custom label types `label_nutrition`; `NutritionCard.tsx`),
+pack numbering (`number`, each copy drawn with `pack_no` / `pack_of`), print-ready sheets
+(`marks`, `bleed` 0–5 mm on a single label, `StickerSheet::printReady()`, ticks in
+`stickers.blade.php`), and straight-to-printer output (`LabelRaster` draws a page with GD
+at 203 or 300 dpi from `build()['vectors']` for the QR and barcode; `ZplEncoder`,
+`TsplEncoder`; signed `/labels/stickers.zpl`, `.tspl`, `.png`; `scripts/label-print-agent.mjs`
+on the staff computer; `LabelPrinterCard.tsx` keeps the printer in the browser). How to
+use it and where everything lives: `docs/LABELS.md`; design and decisions:
+`docs/LABEL_HUB_PLAN.md` and `docs/LABEL_HUB_V2_PLAN.md`.
 
 ## Telegram staff bots
 

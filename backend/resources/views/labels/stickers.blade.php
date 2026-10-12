@@ -56,6 +56,8 @@
         .tx { white-space: pre; overflow: visible; }
         .latin { font-size: 0.82em; direction: ltr; unicode-bidi: isolate; }
         .cut { position: absolute; border: 0.14mm dashed {{ \App\Domains\Labels\StickerDesign::BORDER }}; }
+        /* Crop marks (round C): hairlines 3 mm long, 1 mm off each corner, for a print shop's trimmer. */
+        .mark { position: absolute; background: #000; }
         @unless ($forPdf)
             @media screen {
                 body { background: #E9E4DE; padding: 16px; }
@@ -92,6 +94,25 @@
             @foreach ($sheet['slots'] as $si => $slot)
                 @if ($sheet['cut'])
                     <div class="cut" style="left:{{ $mm($slot['x']) }};top:{{ $mm($slot['y']) }};width:{{ $mm($slot['w']) }};height:{{ $mm($slot['h']) }};{{ $sheet['shape'] === 'circle' ? 'border-radius:50%;' : ($rounded ?? false ? 'border-radius:3mm;' : '') }}"></div>
+                @endif
+                @if (!empty($sheet['marks']))
+                    @php
+                        $mk = 3.0; $gap = 1.0; $sw = 0.15;
+                        $corners = [[$slot['x'], $slot['y'], -1, -1], [$slot['x'] + $slot['w'], $slot['y'], 1, -1], [$slot['x'], $slot['y'] + $slot['h'], -1, 1], [$slot['x'] + $slot['w'], $slot['y'] + $slot['h'], 1, 1]];
+                    @endphp
+                    @foreach ($corners as [$cx, $cy, $dx, $dy])
+                        @php
+                            // Each corner: a horizontal and a vertical tick outside the label, cut to what the page has room for.
+                            [$hx1, $hx2] = $dx < 0 ? [max(0.0, $cx - $gap - $mk), $cx - $gap] : [$cx + $gap, min($pageW, $cx + $gap + $mk)];
+                            [$vy1, $vy2] = $dy < 0 ? [max(0.0, $cy - $gap - $mk), $cy - $gap] : [$cy + $gap, min($pageH, $cy + $gap + $mk)];
+                        @endphp
+                        @if ($hx2 - $hx1 >= 0.5)
+                            <div class="mark" data-testid="crop-mark" style="left:{{ $mm($hx1) }};top:{{ $mm(max(0.0, min($pageH - $sw, $cy - $sw / 2))) }};width:{{ $mm($hx2 - $hx1) }};height:{{ $mm($sw) }};"></div>
+                        @endif
+                        @if ($vy2 - $vy1 >= 0.5)
+                            <div class="mark" data-testid="crop-mark" style="left:{{ $mm(max(0.0, min($pageW - $sw, $cx - $sw / 2))) }};top:{{ $mm($vy1) }};width:{{ $mm($sw) }};height:{{ $mm($vy2 - $vy1) }};"></div>
+                        @endif
+                    @endforeach
                 @endif
                 @if (isset($page[$si]))
                     <div class="sticker" data-testid="sticker"></div>

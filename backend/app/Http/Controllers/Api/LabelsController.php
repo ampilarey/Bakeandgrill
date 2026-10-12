@@ -10,14 +10,17 @@ use App\Domains\Labels\BoxLabel;
 use App\Domains\Labels\ExpiringPrints;
 use App\Domains\Labels\LabelIngredients;
 use App\Domains\Labels\LabelMedia;
+use App\Domains\Labels\LabelRaster;
 use App\Domains\Labels\LabelSettings;
 use App\Domains\Labels\LabelTypes;
+use App\Domains\Labels\Nutrition;
 use App\Domains\Labels\StickerLayouts;
 use App\Domains\Labels\StickerSheet;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Labels\LabelSheetController;
 use App\Models\CateringRequest;
 use App\Models\CustomLabel;
+use App\Models\InventoryItem;
 use App\Models\Item;
 use App\Models\KitchenProductionItem;
 use App\Models\LabelBrand;
@@ -45,6 +48,7 @@ class LabelsController extends Controller
         private readonly LabelIngredients $ingredients,
         private readonly StickerSheet $stickers,
         private readonly LabelTypes $types,
+        private readonly Nutrition $nutrition,
     ) {}
 
     /**
@@ -123,11 +127,17 @@ class LabelsController extends Controller
             'promo_was' => 'nullable|numeric|min:0|max:99999',
             'promo_now' => 'nullable|numeric|min:0|max:99999',
             'promo_text' => 'nullable|string|max:24',
+            // Round C (2026-10-12): pack numbering, a print-ready sheet
+            // (crop marks, bleed in mm) and the label printer's dots per inch.
+            'number' => 'sometimes|boolean',
+            'marks' => 'sometimes|boolean',
+            'bleed' => 'nullable|numeric|min:0|max:5',
+            'dpi' => ['nullable', Rule::in(LabelRaster::DPIS)],
         ];
     }
 
     /** The sticker request keys a saved label keeps. */
-    private const STICKER_KEYS = ['items', 'lang', 'layout', 'w', 'h', 'fill', 'mfg', 'exp', 'batch', 'qty', 'pi', 'type', 'footer', 'rounded', 'for', 'for2', 'promo', 'promo_was', 'promo_now', 'promo_text'];
+    private const STICKER_KEYS = ['items', 'lang', 'layout', 'w', 'h', 'fill', 'mfg', 'exp', 'batch', 'qty', 'pi', 'type', 'footer', 'rounded', 'for', 'for2', 'promo', 'promo_was', 'promo_now', 'promo_text', 'number', 'marks', 'bleed'];
 
     /**
      * Signed links to a sheet of pack stickers, after checking the request
@@ -140,7 +150,7 @@ class LabelsController extends Controller
         try {
             $req = StickerSheet::normalise($request->all());
             $preview = $request->boolean('preview');
-            $out = $this->stickerLinks($req, $request->user()?->id, $preview);
+            $out = $this->stickerLinks($req, $request->user()?->id, $preview, $request->filled('dpi') ? $request->integer('dpi') : null);
         } catch (InvalidArgumentException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
@@ -158,7 +168,7 @@ class LabelsController extends Controller
      * @param array<string, mixed> $req from StickerSheet::normalise()
      * @return array<string, mixed>
      */
-    private function stickerLinks(array $req, ?int $userId, bool $preview = false): array
+    private function stickerLinks(array $req, ?int $userId, bool $preview = false, ?int $dpi = null): array
     {
         $summary = $this->stickers->summary($req);
         if ($summary['stickers'] === 0) {
@@ -185,6 +195,9 @@ class LabelsController extends Controller
             'promo_was' => $req['promo_was'],
             'promo_now' => $req['promo_now'],
             'promo_text' => $req['promo_text'],
+            'number' => $req['number'] ? 1 : null,
+            'marks' => $req['marks'] ? 1 : null,
+            'bleed' => $req['marks'] && $req['bleed'] > 0 ? $req['bleed'] : null,
         ];
         $details = array_filter([
             'for' => $req['for'],
@@ -231,6 +244,12 @@ class LabelsController extends Controller
             'one_url' => $preview ? LabelSheetController::link('labels.stickers', $query + ['preview' => 1, 'one' => 1]) : null,
             'view_url' => LabelSheetController::link('labels.stickers', $query),
             'pdf_url' => LabelSheetController::link('labels.stickers.pdf', $query),
+            // Straight to a label printer (round C): the sheet as ZPL or TSPL
+            // at the printer's dots per inch, and the same bitmap as a PNG to
+            // check it. One-label pages only; an A4 sheet has no printer language.
+            'zpl_url' => $preview ? null : LabelSheetController::link('labels.stickers.zpl', $query + ['dpi' => $dpi]),
+            'tspl_url' => $preview ? null : LabelSheetController::link('labels.stickers.tspl', $query + ['dpi' => $dpi]),
+            'raster_url' => $preview ? null : LabelSheetController::link('labels.stickers.png', $query + ['dpi' => $dpi]),
             'expires_in_minutes' => LabelSheetController::LINK_MINUTES,
             'summary' => $summary,
         ];
@@ -654,6 +673,67 @@ class LabelsController extends Controller
         return ['id' => $entry->id, 'en' => (string) $entry->en, 'word' => (string) $entry->word, 'dv' => (string) $entry->dv];
     }
 
+    // ---- Nutrition per 100 g (round C, 2026-10-12) ----
+
+    /**
+     * Every food ingredient the label-enabled recipes use, with its values
+     * per 100 g and the products using it, and each product's panel as it
+     * stands (complete, or what is missing).
+     */
+    public function nutrition(): JsonResponse
+    {
+        $items = Item::query()->where('label_enabled', true)->where('is_active', true)->orderBy('name')->get();
+        $usedBy = [];
+        $products = [];
+        foreach ($items as $item) {
+            $panel = $this->nutrition->forItem($item);
+            if ($panel['rows'] === []) {
+                continue;
+            }
+            foreach ($this->ingredients->recipeIngredients($item) as $row) {
+                $usedBy[$row['inventory_id']][] = (string) $item->name;
+            }
+            $products[] = [
+                'id' => $item->id,
+                'name' => (string) $item->name,
+                'show' => (bool) $item->label_show_nutrition,
+                'complete' => $panel['complete'],
+                'per100' => $panel['per100'],
+                'grams' => $panel['grams'],
+                'missing' => $panel['missing'],
+                'unweighed' => $panel['unweighed'],
+            ];
+        }
+        $ingredients = InventoryItem::query()->whereIn('id', array_keys($usedBy))->orderBy('name')->get()
+            ->map(fn (InventoryItem $inv) => $this->presentNutrition($inv) + ['used_by' => array_values(array_unique($usedBy[$inv->id]))])
+            ->values();
+
+        return response()->json(['data' => $ingredients, 'products' => $products, 'fields' => Nutrition::FIELDS]);
+    }
+
+    /** Give an ingredient its values per 100 g, or clear them (every value blank). */
+    public function updateNutrition(Request $request, InventoryItem $inventoryItem): JsonResponse
+    {
+        $rules = [];
+        foreach (array_keys(Nutrition::FIELDS) as $key) {
+            $rules[$key] = 'nullable|numeric|min:0|max:' . ($key === 'kcal' ? 900 : 100);
+        }
+        $data = $request->validate($rules);
+        $clean = Nutrition::clean($data);
+        if ($clean === null && array_filter($data, fn ($v) => $v !== null && $v !== '') !== []) {
+            return response()->json(['message' => 'Type the energy (kcal) per 100 g; the rest may stay blank.', 'errors' => ['kcal' => ['Type the energy per 100 g.']]], 422);
+        }
+        $inventoryItem->forceFill(['nutrition' => $clean])->save();
+
+        return response()->json(['data' => $this->presentNutrition($inventoryItem->refresh())]);
+    }
+
+    /** @return array{id: int, name: string, unit: string, nutrition: ?array<string, float>} */
+    private function presentNutrition(InventoryItem $inv): array
+    {
+        return ['id' => $inv->id, 'name' => (string) $inv->name, 'unit' => (string) $inv->unit, 'nutrition' => is_array($inv->nutrition) ? Nutrition::clean($inv->nutrition) : null];
+    }
+
     /** The print log, newest first. */
     public function prints(Request $request): JsonResponse
     {
@@ -768,6 +848,7 @@ class LabelsController extends Controller
             'label_show_price' => 'sometimes|boolean',
             'label_barcode' => 'sometimes|nullable|string|max:20',
             'label_net_weight' => 'sometimes|nullable|string|max:20',
+            'label_show_nutrition' => 'sometimes|boolean',
             'label_title_media_id' => 'sometimes|nullable|integer|exists:media_assets,id',
             'label_photo_media_id' => 'sometimes|nullable|integer|exists:media_assets,id',
         ]);
@@ -923,6 +1004,8 @@ class LabelsController extends Controller
             'label_barcode' => 'sometimes|nullable|string|max:20',
             'label_net_weight' => 'sometimes|nullable|string|max:20',
             'label_allergens' => 'sometimes|nullable|string|max:200',
+            // A typed nutrition line (round C): "Energy 250 kcal · Fat 12 g …".
+            'label_nutrition' => 'sometimes|nullable|string|max:200',
             'label_photo_media_id' => 'sometimes|nullable|integer|exists:media_assets,id',
             'label_title_media_id' => 'sometimes|nullable|integer|exists:media_assets,id',
         ]);
@@ -996,6 +1079,7 @@ class LabelsController extends Controller
             'label_barcode' => $c->label_barcode,
             'label_net_weight' => $c->label_net_weight,
             'label_allergens' => $c->label_allergens,
+            'label_nutrition' => $c->label_nutrition,
             'label_photo_media_id' => $c->label_photo_media_id,
             'label_photo_url' => $media->get($c->label_photo_media_id)?->url,
             'label_title_media_id' => $c->label_title_media_id,
@@ -1258,6 +1342,9 @@ class LabelsController extends Controller
             'label_show_price' => (bool) $item->label_show_price,
             'label_barcode' => $item->label_barcode,
             'label_net_weight' => $item->label_net_weight,
+            // The nutrition panel (round C): on or off, and what the recipe gives today.
+            'label_show_nutrition' => (bool) $item->label_show_nutrition,
+            'nutrition' => $this->nutrition->forItem($item),
             'menu_price' => $item->displayPriceInfo()['price'],
             // What prints when the item's own wording is empty: its type's wording, else the defaults for its storage.
             'defaults' => [

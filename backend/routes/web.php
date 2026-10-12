@@ -111,6 +111,13 @@ Route::middleware(['content.locale', 'service.banner'])->group(function () {
 Route::middleware(['signed:relative', 'throttle:120,1'])->prefix('labels')->group(function () {
     Route::get('/stickers', [App\Http\Controllers\Labels\LabelSheetController::class, 'stickers'])->name('labels.stickers');
     Route::get('/stickers.pdf', [App\Http\Controllers\Labels\LabelSheetController::class, 'stickersPdf'])->name('labels.stickers.pdf');
+    // Straight to a label printer (round C): the printer languages.
+    Route::get('/stickers.zpl', [App\Http\Controllers\Labels\LabelSheetController::class, 'stickersZpl'])->name('labels.stickers.zpl');
+    Route::get('/stickers.tspl', [App\Http\Controllers\Labels\LabelSheetController::class, 'stickersTspl'])->name('labels.stickers.tspl');
+});
+// The bitmap a label printer gets, as a PNG to check: `page` picks the sticker and is outside the signature.
+Route::middleware(['signed:relative,page', 'throttle:120,1'])->prefix('labels')->group(function () {
+    Route::get('/stickers.png', [App\Http\Controllers\Labels\LabelSheetController::class, 'stickersPng'])->name('labels.stickers.png');
     Route::get('/box', [App\Http\Controllers\Labels\LabelSheetController::class, 'box'])->name('labels.box');
     Route::get('/box.pdf', [App\Http\Controllers\Labels\LabelSheetController::class, 'boxPdf'])->name('labels.box.pdf');
 });

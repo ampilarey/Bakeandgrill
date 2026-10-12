@@ -95,6 +95,10 @@ final class StickerDesign
             $p[] = ['t' => 'rect', 'x' => $X(83.5, 15), 'y' => 11.5, 'w' => 15, 'h' => 15, 'fill' => self::CREAM, 'r' => 1];
             $p[] = ['t' => 'img', 'x' => $X(84.5, 13), 'y' => 12.5, 'w' => 13, 'h' => 13, 'src' => $d['batch_qr']];
         }
+        // Pack numbering (round C): "PACK 3 OF 40" under the header's end.
+        if (!empty($d['pack_of'])) {
+            $p[] = ['t' => 'text', 'x' => $X(60, 40), 'base' => 35.6, 'w' => 40, 'align' => $A('r'), 'font' => 'j7', 'pt' => 5.2, 'color' => self::MUTED, 'text' => 'PACK ' . $d['pack_no'] . ' OF ' . $d['pack_of'], 'ls' => 0.06];
+        }
 
         // Product name: hand lettering when there is some, else typed.
         $titleTop = 36.5;
@@ -168,7 +172,11 @@ final class StickerDesign
         // beneath, between HOW TO USE and the note.
         $icons = is_array($d['icons'] ?? null) ? $d['icons'] : [];
         $iconH = $icons !== [] ? 8.8 : 0.0;
-        $blockTop = $middleBottom - $noteH - $iconH - $howH;
+        // The nutrition panel (round C): five columns per 100 g, or a custom
+        // label's typed line, between HOW TO USE and the pictograms.
+        $nutrition = is_array($d['nutrition'] ?? null) ? $d['nutrition'] : null;
+        $nutH = $nutrition === null ? 0.0 : ($nutrition['rows'] !== [] ? 9.2 : 4.4);
+        $blockTop = $middleBottom - $noteH - $iconH - $nutH - $howH;
 
         // The ingredients at the largest size that fits above that block with
         // only the band a barcode keeps; broken into lines here, not by the
@@ -259,6 +267,22 @@ final class StickerDesign
             $dvFrom = $blockTop + 2.6 + $howLead * count($howLines) + 0.3;
             foreach ($howDvLines as $i => $line) {
                 $p[] = ['t' => 'text', 'x' => 5, 'base' => $dvFrom + $howDvLead * ($i + 1), 'w' => 95, 'align' => 'c', 'font' => 'dv', 'pt' => 7.6, 'color' => self::TEXT, 'text' => $line, 'bold' => 0.4];
+            }
+        }
+        if ($nutrition !== null) {
+            $nutTop = $middleBottom - $noteH - $iconH - $nutH;
+            $p[] = ['t' => 'line', 'x' => 12, 'y' => $nutTop + 0.3, 'w' => 81, 'color' => self::BORDER, 'sw' => 0.25];
+            if ($nutrition['rows'] !== []) {
+                $cols = count($nutrition['rows']);
+                $cw = 86.0 / $cols;
+                $p[] = ['t' => 'text', 'x' => 5, 'base' => $nutTop + 2.9, 'w' => 95, 'align' => 'c', 'font' => 'j7', 'pt' => 4.6, 'color' => self::PRIMARY, 'text' => self::spaced('NUTRITION PER 100 g')];
+                foreach ($nutrition['rows'] as $i => [$label, $value]) {
+                    $cx = 9.5 + $i * $cw;
+                    $p[] = ['t' => 'text', 'x' => $cx, 'base' => $nutTop + 5.6, 'w' => $cw, 'align' => 'c', 'font' => 'j7', 'pt' => 4.2, 'color' => self::MUTED, 'text' => $label, 'ls' => 0.05];
+                    $p[] = ['t' => 'text', 'x' => $cx, 'base' => $nutTop + 8.6, 'w' => $cw, 'align' => 'c', 'font' => 'j8', 'pt' => 6.2, 'color' => self::TEXT, 'text' => $value];
+                }
+            } else {
+                $p[] = ['t' => 'text', 'x' => 5, 'base' => $nutTop + 3.4, 'w' => 95, 'align' => 'c', 'font' => 'j5', 'pt' => LabelText::fitPt($nutrition['line'], 'j5', 92, 5.6, 4.0), 'color' => self::TEXT, 'text' => $nutrition['line']];
             }
         }
         if ($icons !== []) {
@@ -590,11 +614,13 @@ final class StickerDesign
 
         // Batch and quantity.
         $by = $sy - 2.2;
+        // Pack numbering (round C) rides on the batch: "BATCH: 261012 · PACK 3/40".
+        $packText = !empty($d['pack_of']) ? ' · PACK ' . $d['pack_no'] . '/' . $d['pack_of'] : '';
         if ($dv) {
-            $p[] = ['t' => 'text', 'x' => $pad + 1, 'base' => $by, 'w' => $iw - 2, 'align' => 'r', 'font' => 'dv', 'pt' => 7.5, 'color' => self::TEXT, 'text' => 'ބެޗް: ' . ($d['batch'] !== '' ? $d['batch'] : '..............')];
+            $p[] = ['t' => 'text', 'x' => $pad + 1, 'base' => $by, 'w' => $iw - 2, 'align' => 'r', 'font' => 'dv', 'pt' => 7.5, 'color' => self::TEXT, 'text' => 'ބެޗް: ' . ($d['batch'] !== '' ? $d['batch'] : '..............') . $packText];
             $p[] = ['t' => 'text', 'x' => $pad + 1, 'base' => $by, 'w' => $iw - 2, 'align' => 'l', 'font' => 'dv', 'pt' => 7.5, 'color' => self::TEXT, 'text' => 'އަދަދު: ' . ($d['qty'] !== '' ? $d['qty'] : '........')];
         } else {
-            $batchText = 'BATCH: ' . ($d['batch'] !== '' ? $d['batch'] : '__________');
+            $batchText = 'BATCH: ' . ($d['batch'] !== '' ? $d['batch'] : '__________') . $packText;
             $qtyText = ($d['price'] !== '' ? $d['price'] . '  ·  ' : '') . 'QTY: ' . ($d['qty'] !== '' ? $d['qty'] : '____') . ' ' . $d['unit'] . ($d['net_weight'] !== '' ? ' · ' . $d['net_weight'] : '');
             $bw = LabelText::widthMm($batchText, 5.8, 'j5');
             $p[] = ['t' => 'text', 'x' => $pad + 1, 'base' => $by, 'w' => $iw - 2, 'align' => 'l', 'font' => 'j5', 'pt' => 5.8, 'color' => self::TEXT, 'text' => $batchText];

@@ -39,7 +39,21 @@ type Draft = {
   label_show_price: boolean;
   label_barcode: string;
   label_net_weight: string;
+  label_show_nutrition: boolean;
 };
+
+/** What the nutrition switch says the recipe gives today (round C). */
+export function nutritionWords(n: LabelProduct['nutrition']): string {
+  if (n.rows.length === 0) return 'Needs a recipe: the panel is worked out from the recipe\'s ingredients and their values per 100 g (Labels → Settings → Nutrition).';
+  if (n.complete) {
+    const v = n.per100;
+    return `From the recipe (${n.grams} g): ${v.kcal ?? 0} kcal, fat ${v.fat ?? 0} g, carbs ${v.carbs ?? 0} g, protein ${v.protein ?? 0} g, salt ${v.salt ?? 0} g per 100 g. Prints on the full-size sticker.`;
+  }
+  const parts: string[] = [];
+  if (n.missing.length) parts.push(`Waiting for values per 100 g for ${n.missing.join(', ')} (Labels → Settings → Nutrition).`);
+  if (n.unweighed.length) parts.push(`${n.unweighed.join(', ')} ${n.unweighed.length === 1 ? 'is' : 'are'} not measured in grams in the recipe, so the panel cannot be worked out.`);
+  return parts.join(' ');
+}
 
 const toDraft = (p: LabelProduct): Draft => ({
   label_enabled: p.label_enabled,
@@ -67,6 +81,7 @@ const toDraft = (p: LabelProduct): Draft => ({
   label_show_price: p.label_show_price,
   label_barcode: p.label_barcode ?? '',
   label_net_weight: p.label_net_weight ?? '',
+  label_show_nutrition: p.label_show_nutrition,
 });
 
 const fieldClass = 'h-10 min-h-[44px] px-3 rounded-lg border border-[var(--color-border)] bg-white text-sm text-[var(--color-text)] w-full';
@@ -128,6 +143,7 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
         label_show_price: draft.label_show_price,
         label_barcode: draft.label_barcode.trim() || null,
         label_net_weight: draft.label_net_weight.trim() || null,
+        label_show_nutrition: draft.label_show_nutrition,
       });
       setProduct(r.data); setDraft(toDraft(r.data));
       setMessage('Label settings saved.');
@@ -249,6 +265,14 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
               ? <>Allergens from the Details tab, <strong className="text-[var(--color-text-secondary)]">{product.allergens.join(', ')}</strong>, print bold in the ingredients and as “Contains {product.allergens.join(', ')}” when the note is empty.</>
               : 'No allergens on the Details tab. Tick them there and they print bold in the ingredients.'}
           </p>
+          {/* Round C: the nutrition panel per 100 g, worked out from the recipe. */}
+          <label className="flex items-start gap-3 min-h-[44px] cursor-pointer" data-testid="item-label-nutrition">
+            <input type="checkbox" checked={draft.label_show_nutrition} onChange={(e) => set('label_show_nutrition', e.target.checked)} className="mt-0.5 w-5 h-5 shrink-0 accent-[var(--color-primary)]" />
+            <span>
+              <span className="block text-sm font-semibold text-[var(--color-text)]">Print nutrition per 100 g</span>
+              <span className="block text-xs text-[var(--color-text-muted)]">{nutritionWords(product.nutrition)}</span>
+            </span>
+          </label>
         </fieldset>
 
         {pictureSlot('title', 'Hand-lettered name', 'A PNG with a clear background. Without one, the name is typed in the brand font.')}
