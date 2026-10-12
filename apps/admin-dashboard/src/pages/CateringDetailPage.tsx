@@ -290,6 +290,8 @@ export function CateringDetailPage() {
       <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
         <Link to="/catering" style={{ fontSize: 13, color: 'var(--color-warning-strong)', fontWeight: 700 }}>← Pipeline</Link>
         <Btn onClick={() => void onDuplicate()} disabled={saving}>Duplicate event</Btn>
+        {/* Packed-for stickers (2026-10-12): the Labels form filled with this event's packs and who they are for. */}
+        <Btn variant="secondary" onClick={() => navigate(`/labels/stickers?catering=${id}`)}>Pack stickers</Btn>
         <Btn onClick={() => void saveLines()} disabled={saving} variant="secondary">Save lines</Btn>
       </div>
 

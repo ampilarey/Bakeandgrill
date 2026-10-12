@@ -122,3 +122,21 @@ Route::put('/labels/shops/{tradeAccount}/box-label', [LabelsController::class, '
 Route::get('/labels/production-items/{productionItem}', [LabelsController::class, 'productionStickers'])
     ->middleware('permission:labels.print')
     ->whereNumber('productionItem');
+// Packed-for stickers from a wholesale delivery or a catering event (2026-10-12).
+Route::get('/labels/deliveries/{delivery}/stickers', [LabelsController::class, 'deliveryStickers'])
+    ->middleware('permission:labels.print')
+    ->whereNumber('delivery');
+Route::get('/labels/catering/{cateringRequest}/stickers', [LabelsController::class, 'cateringStickers'])
+    ->middleware('permission:labels.print')
+    ->whereNumber('cateringRequest');
+// The ingredient glossary, English → Dhivehi (2026-10-12): read with Print labels, written with Manage label settings.
+Route::get('/labels/glossary', [LabelsController::class, 'glossary'])
+    ->middleware('permission:labels.print');
+Route::post('/labels/glossary', [LabelsController::class, 'storeGlossary'])
+    ->middleware('permission:labels.manage');
+Route::put('/labels/glossary/{entry}', [LabelsController::class, 'updateGlossary'])
+    ->middleware('permission:labels.manage')
+    ->whereNumber('entry');
+Route::delete('/labels/glossary/{entry}', [LabelsController::class, 'destroyGlossary'])
+    ->middleware('permission:labels.manage')
+    ->whereNumber('entry');

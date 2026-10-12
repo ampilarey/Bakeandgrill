@@ -52,6 +52,9 @@ staff:explain <phone>` says whether an account can get in and why.
    one. Inventory items that are not food (cling film, boxes) are left off with the
    🏷 button on their row in Inventory. Ingredients can also be typed on Labels →
    Settings, under each product. With none at all, the sticker leaves the heading off.
+   The **Dhivehi line** needs no typing when every word is known: an inventory item's
+   own Dhivehi name, else the **ingredient glossary** (§ Ingredient glossary), for a
+   recipe and for a typed English list alike. A typed Dhivehi line always wins.
 5. **Shelf life (days)**: expiry = made-on date + this. Empty uses the type's; with
    neither, the date boxes print blank for writing by hand.
 6. **Pictures**: the item's **cut-out** (Photos tab, a background-less PNG) prints on
@@ -276,6 +279,49 @@ and bold in the ingredients. The compact, small and round stickers have no room 
 row. The pack page shows the same symbols. Labels → Settings → **On the sticker** →
 **Allergen pictograms** turns them off.
 
+### Ingredient glossary
+
+Built 2026-10-12. Labels → Settings → **Ingredient glossary** is a list of English
+ingredient words with their Dhivehi (`label_glossary`), seeded with the kitchen's
+everyday ingredients (flour ފުށް, salt ލޮނު, smoked tuna ވަޅޯމަސް …). A recipe's inventory
+item with no Dhivehi name of its own, and every word of a typed English list (a menu
+item's or a custom label's), is looked up here; plurals find the singular ("carrots" →
+carrot) and "fresh", "dried", "ground", "chopped", "grated" and "sliced" are dropped
+before looking. The Dhivehi line prints only when **every** word is known, since a half
+list misleads; **Needs Dhivehi** at the top of the card lists the words on labels the
+glossary does not know, with the products using them, and a Dhivehi typed there is a
+new word. Behind **Show all words** every word is edited in place or removed; the add
+row takes a new one, and the same English typed again changes its Dhivehi rather than
+adding a second row. Reading takes Print labels; writing, Manage label settings. The
+item's Label tab and the custom label's row say where the Dhivehi came from
+(`ingredients.dv_from`: typed, inventory, glossary).
+
+### Packed-for stickers
+
+Built 2026-10-12. **Packed for** (Pack stickers → More options) prints who the packs
+are for under the name: a tinted box with "PACKED FOR" and the name on the full
+sticker, with a **second line** (the delivery, the date) beneath; one line under the
+band on the compact sticker; a line under the name on the small sizes (the second part
+when the label is at least 40 mm wide); nothing on the round ones. **Wholesale → a
+delivery → Pack stickers** (on the list and the delivery's page) opens the form with
+the shop as "packed for", "Delivery TD-0042 · Wed, 14 Oct 2026" as the second line and
+a sticker per pack sent of each product; an **event's page → Pack stickers** does the
+same with the company or contact, the reference, the occasion and the date, and a
+sticker per pack on the quote. A product not switched on for labels is named above the
+form instead of picked. The saved label and the print log keep it.
+
+### Promotion stickers
+
+Built 2026-10-12. **Promotion flash** (Pack stickers → More options): **Was → Now
+prices** draws a rust badge with the old price struck through over the new one (the
+new price then prints on the quantity line too; the old price must be the higher), or a
+short line of words from one pick (**2 for 1**, **Buy 2 get 1 free**, **Special
+offer**, **Half price**, **New**, **Fresh today**) or typed (**Other words…**, up to
+24 letters). The badge takes the end of the name row on the full sticker and the end of
+the band on the compact sticker, where it stands in for the batch QR (the print log
+still has the pack code). Small and round stickers have no room for it. The saved label
+and the print log keep the flash.
+
 ## Printing
 
 **Pack stickers** (Labels → Pack stickers): **Print again** at the top lists the pinned
@@ -404,6 +450,9 @@ beneath.
 | Print log | `label_prints`; written on every print, never edited; `item_id` or `custom_label_id` (emptied when the custom label is removed), the layout and label size, shown in words ("40 × 60 mm, 21 on A4", `StickerLayouts::describe()`); since 2026-10-12 a `code` per sticker print (`LabelPrint::newCode()`) and `expiry_alerted_at` |
 | Batch QR and the pack page | `App\Domains\Labels\BatchLink` (`url()` on the live site, `qr()`, `valid()`, `PREVIEW`); the sheet link carries `b=i12:CODE,c7:CODE` (`StickerSheet::parseCodes()` / `codesParam()`), `stickerData()` sets `batch_qr`; `StickerDesign::full()` (header's end, heading width 62 → 48 mm) and `mini()` (tall bands at least 75 mm wide); `GET /b/{code}` → `App\Http\Controllers\LabelBatchPageController`, `resources/views/labels/batch.blade.php` (public, `noindex`, 404 page for an unknown code); setting `label_batch_qr` |
 | Expiring printed stock | `App\Domains\Labels\ExpiringPrints` (`groups()`, `due()`, `phrase()`); `GET /api/labels/expiring?days=` (`labels.print`); `apps/admin-dashboard/src/components/labels/ExpiringStock.tsx` over Pack stickers, Reprint → `?item=` / `?custom=`; `labels:check-expiring --days=2` (`App\Console\Commands\CheckExpiringLabels`, 08:10) under the registry row `owner_labels_expiry` |
+| Ingredient glossary | `label_glossary` (`App\Models\LabelGlossaryEntry`: `key()`, `lookup()` with the plural and prefix variants, a cached `map()`); `LabelIngredients::translate()`, `parts()`, `missingWords()`, `dv_from` on the lines; API `GET /api/labels/glossary` (`labels.print`; `missing` beside `data`), `POST` / `PUT` / `DELETE /api/labels/glossary/{entry}` (`labels.manage`); `apps/admin-dashboard/src/components/labels/IngredientGlossary.tsx` on Labels → Settings |
+| Packed for | `for` and `for2` in a sticker request (`StickerSheet::normalise()`), `packed_for` / `packed_for2` in the sticker data, drawn by `StickerDesign::full()` (box under the name), `mini()` (line under the band) and `SmallStickerDesign::packedForLine()`; `GET /api/labels/deliveries/{delivery}/stickers` and `GET /api/labels/catering/{cateringRequest}/stickers` (`labels.print`) fill the form through `?delivery=` / `?catering=` on `StickerPrintPanel` |
+| Promotion flash | `promo` (`was_now` or `text`), `promo_was`, `promo_now`, `promo_text` in a sticker request (`StickerSheet::promoOf()` checks, `promoFor()` words it); `StickerDesign::flash()` draws the badge for the full sticker's name row and the compact band; `PROMO_PRESETS` in `StickerPrintPanel.tsx` |
 | Allergen pictograms | `App\Domains\Labels\AllergenIcons` (`for()`, `keys()`, `svg()`, `dataUri()`; words → symbols, captions, `SPICY_LEVELS`); `stickerData()` sets `icons`, `StickerDesign::full()` draws the row (12 mm pitch, 8.8 mm tall) above the note; setting `label_allergen_icons` |
 | Footers | `label_footers` (`App\Models\LabelFooter`, § Footers); `custom_labels.footer_id`, `label_types.footer_id`, `footer` in a sticker request; `LabelTypes::footer()` fills the blanks, `StickerSheet::footerPreset()` picks which one. API `GET /api/labels/footers` (`labels.print`), `POST` / `PUT` / `DELETE /api/labels/footers/{footer}` (`labels.manage`; the standard one cannot be removed, 422) |
 | Box-label wording per storage, date style, pre-cut offsets | Labels → Settings, site settings with the originals as defaults (`App\Domains\Labels\LabelSettings`) |

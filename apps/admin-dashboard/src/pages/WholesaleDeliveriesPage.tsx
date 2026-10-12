@@ -127,9 +127,15 @@ function DeliveryList() {
                       {d.dispatched_at ? new Date(d.dispatched_at).toLocaleString() : '—'}
                     </div>
                     {canLabel && (
-                      <button type="button" onClick={() => setBoxFor(d.id)} style={{ marginTop: 4, border: 0, background: 'transparent', color: 'var(--color-primary)', fontSize: 12, fontWeight: 600, padding: 0, cursor: 'pointer', minHeight: 24 }}>
-                        Box label
-                      </button>
+                      <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+                        <button type="button" onClick={() => setBoxFor(d.id)} style={{ border: 0, background: 'transparent', color: 'var(--color-primary)', fontSize: 12, fontWeight: 600, padding: 0, cursor: 'pointer', minHeight: 24 }}>
+                          Box label
+                        </button>
+                        {/* Packed-for stickers (2026-10-12): the Labels form filled with this delivery's shop and packs. */}
+                        <Link to={`/labels/stickers?delivery=${d.id}`} style={{ color: 'var(--color-primary)', fontSize: 12, fontWeight: 600, textDecoration: 'none', minHeight: 24, display: 'inline-flex', alignItems: 'center' }}>
+                          Pack stickers
+                        </Link>
+                      </div>
                     )}
                   </td>
                   <td style={tdStyle}>{d.shop_name ?? '—'}</td>
@@ -188,8 +194,12 @@ function DeliveryDetail({ id }: { id: number }) {
         subtitle={`${delivery.shop_name ?? 'Shop'} · ${STATUS_LABEL[delivery.status] ?? delivery.status}`}
       />
       {canLabel && (
-        <div style={{ marginBottom: 12 }}>
+        <div style={{ marginBottom: 12, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           <Btn variant="secondary" onClick={() => setBoxOpen(true)}>Print box label</Btn>
+          {/* Packed-for stickers (2026-10-12): a sticker per pack sent, "PACKED FOR" the shop. */}
+          <Link to={`/labels/stickers?delivery=${delivery.id}`} className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 38, padding: '0 14px', borderRadius: 10, border: '1px solid var(--color-border)', color: 'var(--color-text)', fontWeight: 600, fontSize: 13, textDecoration: 'none' }}>
+            Pack stickers
+          </Link>
         </div>
       )}
       {boxOpen && <DeliveryBoxLabelModal deliveryId={delivery.id} onClose={() => setBoxOpen(false)} />}

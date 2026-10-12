@@ -11,6 +11,8 @@ const downloadLabelSheet = vi.fn();
 const fetchLabelJobs = vi.fn();
 const printLabelJob = vi.fn();
 const fetchLabelFooters = vi.fn();
+const fetchDeliveryStickers = vi.fn();
+const fetchCateringStickers = vi.fn();
 const canManage = { value: false };
 
 const footerRow = (id: number, name: string, tagline: string) => ({
@@ -42,6 +44,8 @@ vi.mock('../../api', () => ({
   renameLabelJob: vi.fn(),
   downloadLabelSheet: (...a: unknown[]) => downloadLabelSheet(...a),
   fetchLabelFooters: (...a: unknown[]) => fetchLabelFooters(...a),
+  fetchDeliveryStickers: (...a: unknown[]) => fetchDeliveryStickers(...a),
+  fetchCateringStickers: (...a: unknown[]) => fetchCateringStickers(...a),
   fetchLabelBrands: () => Promise.resolve({ data: [{ id: 1, name: 'Bake & Grill', is_default: true, logo_url: null }] }),
   createLabelFooter: vi.fn(),
   updateLabelFooter: vi.fn(),
@@ -289,6 +293,48 @@ describe('StickerPrintPanel', () => {
     await screen.findByText('Patties');
     await waitFor(() => expect(screen.getByLabelText('Print Patties')).toBeChecked());
     expect(screen.getByLabelText('Print Bajiya')).not.toBeChecked();
+  });
+
+  // Packed-for stickers (2026-10-12): a wholesale delivery fills the products, the copies and the shop.
+  it('fills the form from a wholesale delivery and says which products are not on labels', async () => {
+    stickerLinks.mockRejectedValue(new Error('x'));
+    fetchDeliveryStickers.mockResolvedValue({ data: { delivery: 5, delivery_number: 'TD-0005', for: 'NH Kuda Rah', for2: 'Delivery TD-0005 · Wed, 14 Oct 2026', items: [
+      { id: 1, name: 'Bajiya', copies: 40, label_enabled: true }, { id: 9, name: 'Masroshi', copies: 5, label_enabled: false },
+    ] } });
+    render(<MemoryRouter initialEntries={['/labels/stickers?delivery=5']}><StickerPrintPanel /></MemoryRouter>);
+    await screen.findByTestId('label-size-picker');
+    await waitFor(() => expect(screen.getByLabelText('Print Bajiya')).toBeChecked());
+    expect(fetchDeliveryStickers).toHaveBeenCalledWith(5);
+    expect(screen.getByLabelText('Packed for (optional)')).toHaveValue('NH Kuda Rah');
+    expect(screen.getByLabelText('Packed for, second line (optional)')).toHaveValue('Delivery TD-0005 · Wed, 14 Oct 2026');
+    expect(screen.getByRole('alert')).toHaveTextContent('Masroshi is not on labels yet');
+    expect(screen.getByLabelText('How many Bajiya stickers')).toHaveValue(40);
+  });
+
+  // A promotion flash and packed for (2026-10-12) go with the request and are named on the folded More options.
+  it('sends a promotion flash and who the packs are for', async () => {
+    stickerLinks.mockResolvedValue({ ...{ url: '/labels/stickers?print=1&signature=x', view_url: '/labels/stickers?signature=x', pdf_url: '/labels/stickers.pdf?signature=x', expires_in_minutes: 30 }, summary: { layout: 'a4-4', label: '4 on A4', design: 'full', stickers: 4, pages: 1, per_page: 4, products: [] } });
+    render(<MemoryRouter><StickerPrintPanel /></MemoryRouter>);
+    await screen.findByTestId('label-size-picker');
+    fireEvent.click(screen.getByLabelText('Print Bajiya'));
+    fireEvent.click(screen.getByTestId('sticker-more-toggle'));
+    fireEvent.change(screen.getByLabelText('Promotion flash'), { target: { value: 'was_now' } });
+    fireEvent.change(screen.getByLabelText('Was, MVR'), { target: { value: '25' } });
+    fireEvent.change(screen.getByLabelText('Now, MVR'), { target: { value: '20' } });
+    fireEvent.change(screen.getByLabelText('Packed for (optional)'), { target: { value: 'Ooredoo' } });
+    fireEvent.click(screen.getByTestId('sticker-prepare'));
+    await waitFor(() => expect(prepared()).toBeTruthy());
+    expect(prepared()).toMatchObject({ promo: 'was_now', promo_was: 25, promo_now: 20, promo_text: null, for: 'Ooredoo', for2: null });
+
+    // Folded, the toggle names them; a preset flash sends its words.
+    fireEvent.click(screen.getByRole('button', { name: 'Change' }));
+    fireEvent.change(screen.getByLabelText('Promotion flash'), { target: { value: '2 FOR 1' } });
+    fireEvent.click(screen.getByTestId('sticker-more-toggle'));
+    expect(screen.getByTestId('sticker-more-toggle')).toHaveTextContent('for Ooredoo · flash: 2 FOR 1');
+    stickerLinks.mockClear();
+    fireEvent.click(screen.getByTestId('sticker-prepare'));
+    await waitFor(() => expect(prepared()).toBeTruthy());
+    expect(prepared()).toMatchObject({ promo: 'text', promo_text: '2 FOR 1', promo_was: null });
   });
 
   // The prepared list names each product's print code (2026-10-12): the QR on its stickers.

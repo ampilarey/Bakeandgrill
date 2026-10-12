@@ -98,26 +98,34 @@ final class StickerDesign
 
         // Product name: hand lettering when there is some, else typed.
         $titleTop = 36.5;
+        // A promotion flash (2026-10-12) takes the name row's end (its start
+        // on the Dhivehi sticker); the name keeps to the room before it.
+        $promo = is_array($d['promo'] ?? null) ? $d['promo'] : null;
+        $nameX = $promo ? ($dv ? 32.0 : 9.0) : 9.0;
+        $nameW = $promo ? 64.0 : 87.0;
         // The Dhivehi sticker types the Dhivehi name, as the original did;
         // the hand lettering is in English.
         if ($d['title_img'] && !($dv && $d['name_dv'] !== '')) {
-            [$tw, $th] = self::fit($d['title_ratio'], 72, 15);
-            $p[] = ['t' => 'img', 'x' => (self::W - $tw) / 2, 'y' => $titleTop, 'w' => $tw, 'h' => $th, 'src' => $d['title_img']];
+            [$tw, $th] = self::fit($d['title_ratio'], $promo ? 58 : 72, 15);
+            $p[] = ['t' => 'img', 'x' => $nameX + ($nameW - $tw) / 2, 'y' => $titleTop, 'w' => $tw, 'h' => $th, 'src' => $d['title_img']];
         } elseif ($dv) {
             $name = $d['name_dv'] !== '' ? $d['name_dv'] : $d['name'];
             $font = $d['name_dv'] !== '' ? 'dv' : 'dsi';
-            $pt = LabelText::fitPt($name, $font, 87, $font === 'dv' ? 30 : 24, 14);
+            $pt = LabelText::fitPt($name, $font, $nameW, $font === 'dv' ? 30 : 24, 14);
             $th = 15.0;
-            $p[] = ['t' => 'text', 'x' => 9, 'base' => $titleTop + 11.5, 'w' => 87, 'align' => 'c', 'font' => $font, 'pt' => $pt, 'color' => self::PRIMARY, 'text' => $name, 'bold' => $font === 'dv' ? 0.7 : 0];
+            $p[] = ['t' => 'text', 'x' => $nameX, 'base' => $titleTop + 11.5, 'w' => $nameW, 'align' => 'c', 'font' => $font, 'pt' => $pt, 'color' => self::PRIMARY, 'text' => $name, 'bold' => $font === 'dv' ? 0.7 : 0];
         } else {
-            $pt = LabelText::fitPt($d['name'], 'dsi', 72, 24, 14);
+            $pt = LabelText::fitPt($d['name'], 'dsi', $promo ? 62 : 72, 24, 14);
             $th = 15.0;
-            $p[] = ['t' => 'text', 'x' => 16.5, 'base' => $titleTop + 11, 'w' => 72, 'align' => 'c', 'font' => 'dsi', 'pt' => $pt, 'color' => self::PRIMARY, 'text' => $d['name']];
+            $p[] = ['t' => 'text', 'x' => $nameX, 'base' => $titleTop + 11, 'w' => $nameW, 'align' => 'c', 'font' => 'dsi', 'pt' => $pt, 'color' => self::PRIMARY, 'text' => $d['name']];
         }
         // Both languages (2026-10-12): the Dhivehi name under the English one.
         if ($both && $d['name_dv'] !== '') {
-            $p[] = ['t' => 'text', 'x' => 9, 'base' => $titleTop + $th + 4.6, 'w' => 87, 'align' => 'c', 'font' => 'dv', 'pt' => LabelText::fitPt($d['name_dv'], 'dv', 87, 14, 9), 'color' => self::PRIMARY, 'text' => $d['name_dv'], 'bold' => 0.6];
+            $p[] = ['t' => 'text', 'x' => $nameX, 'base' => $titleTop + $th + 4.6, 'w' => $nameW, 'align' => 'c', 'font' => 'dv', 'pt' => LabelText::fitPt($d['name_dv'], 'dv', $nameW, 14, 9), 'color' => self::PRIMARY, 'text' => $d['name_dv'], 'bold' => 0.6];
             $th += 5.8;
+        }
+        if ($promo) {
+            array_push($p, ...self::flash($promo, $X(75, 24), $titleTop - 0.5, 24, 15));
         }
 
         // The middle, between the name and the date boxes at 99.5: the note
@@ -128,6 +136,22 @@ final class StickerDesign
         // USE and the note were drawn over each other. A barcode (2026-10-12)
         // keeps 14.5 mm of the band for the bars.
         $middleTop = $titleTop + $th + ($dv ? 4.0 : 2.5);
+        // Packed for (2026-10-12): who the packs are for, in a tinted box
+        // under the name, with a second line for the delivery or the date.
+        $pf = trim((string) ($d['packed_for'] ?? ''));
+        $pf2 = trim((string) ($d['packed_for2'] ?? ''));
+        if ($pf !== '') {
+            $pfH = $pf2 !== '' ? 9.8 : 6.6;
+            $p[] = ['t' => 'rect', 'x' => 5, 'y' => $middleTop, 'w' => 95, 'h' => $pfH, 'fill' => self::TINT, 'stroke' => self::PRIMARY, 'sw' => 0.3, 'r' => 1.5];
+            $eyebrow = self::spaced('PACKED FOR');
+            $ew = LabelText::widthMm($eyebrow, 5.2, 'j7') + 2.5;
+            $p[] = ['t' => 'text', 'x' => $X(7.5, $ew), 'base' => $middleTop + 4.5, 'w' => $ew, 'align' => $A('l'), 'font' => 'j7', 'pt' => 5.2, 'color' => self::PRIMARY, 'text' => $eyebrow];
+            $p[] = ['t' => 'text', 'x' => $X(7.5 + $ew, 90 - $ew), 'base' => $middleTop + 4.7, 'w' => 90 - $ew, 'align' => $A('l'), 'font' => 'j8', 'pt' => LabelText::fitPt($pf, 'j8', 89 - $ew, 8.5, 6), 'color' => self::DARK, 'text' => $pf];
+            if ($pf2 !== '') {
+                $p[] = ['t' => 'text', 'x' => $X(7.5, 90), 'base' => $middleTop + 8.4, 'w' => 90, 'align' => $A('l'), 'font' => 'j5', 'pt' => LabelText::fitPt($pf2, 'j5', 89, 6.2, 4.6), 'color' => self::TEXT, 'text' => $pf2];
+            }
+            $middleTop += $pfH + 1.5;
+        }
         $middleBottom = 98.5;
         $note = $dv ? $d['note_dv'] : $d['note'];
         $noteDv = $both ? $d['note_dv'] : '';
@@ -456,7 +480,15 @@ final class StickerDesign
         // The batch QR (2026-10-12) at the band's end on a tall label wide
         // enough to keep the heading readable beside it (the 99 × 70 mm
         // compact sticker, not the 66 mm one).
-        $bq = $tall && $iw >= 75 && !empty($d['batch_qr']) ? $hb - 4.0 : 0.0;
+        // A promotion flash (2026-10-12) takes the band's end instead on a
+        // tall label; the batch QR then stays off the compact sticker.
+        $flash = $tall && is_array($d['promo'] ?? null) ? $d['promo'] : null;
+        if ($flash !== null) {
+            $fw = 20.0;
+            array_push($p, ...self::flash($flash, $X($pad + $iw - 1.2 - $fw, $fw), $pad + 1.4, $fw, $hb - 2.8));
+            $tw -= $fw + 2.4;
+        }
+        $bq = $flash === null && $tall && $iw >= 75 && !empty($d['batch_qr']) ? $hb - 4.0 : 0.0;
         if ($bq > 0) {
             $p[] = ['t' => 'rect', 'x' => $X($pad + $iw - 1.2 - $bq - 1.2, $bq + 2.4), 'y' => $pad + ($hb - $bq - 2.4) / 2, 'w' => $bq + 2.4, 'h' => $bq + 2.4, 'fill' => self::CREAM, 'r' => 0.8];
             $p[] = ['t' => 'img', 'x' => $X($pad + $iw - 1.2 - $bq, $bq), 'y' => $pad + ($hb - $bq) / 2, 'w' => $bq, 'h' => $bq, 'src' => $d['batch_qr']];
@@ -612,6 +644,14 @@ final class StickerDesign
         // Owner, 2026-10-04: "If ingredients are not entered don't show it":
         // no heading without a list, and the picture takes the room.
         $top = $pad + $hb + 3.4;
+        // Packed for (2026-10-12): one line under the band, before the ingredients.
+        $pf = trim((string) ($d['packed_for'] ?? ''));
+        if ($pf !== '') {
+            $pf2 = trim((string) ($d['packed_for2'] ?? ''));
+            $line = 'PACKED FOR: ' . $pf . ($pf2 !== '' ? ' · ' . $pf2 : '');
+            $p[] = ['t' => 'text', 'x' => $pad, 'base' => $pad + $hb + 3.7, 'w' => $iw, 'align' => 'c', 'font' => 'j8', 'pt' => LabelText::fitPt($line, 'j8', $iw - 2, 6.4, 4.4), 'color' => self::DARK, 'text' => $line];
+            $top += 4.4;
+        }
         // A barcode (2026-10-12) keeps its room at the foot of the middle when
         // the label is tall enough for the ingredients as well; the compact
         // sizes in use (66 × 72, 99 × 70.5) are not, so the barcode is for
@@ -929,6 +969,47 @@ final class StickerDesign
     }
 
     /** "FROZEN HEDHIKA" on two lines; a longer line splits at its last space. */
+    /**
+     * The promotion flash (2026-10-12): a rust badge with the old price
+     * struck through over the new one, or a short line of words.
+     *
+     * @param array{kind: string, was: string, now: string, text: string} $promo
+     * @return list<array<string, mixed>>
+     */
+    public static function flash(array $promo, float $x, float $y, float $w, float $h): array
+    {
+        $p = [['t' => 'rect', 'x' => $x, 'y' => $y, 'w' => $w, 'h' => $h, 'fill' => self::PRIMARY, 'r' => min(2.5, $h / 5)]];
+        $k = $h / 15.0;
+        if ($promo['kind'] === 'was_now') {
+            if ($promo['was'] !== '') {
+                $wasPt = LabelText::fitPt($promo['was'], 'j7', $w - 3, 6.2 * $k, 4.0);
+                $ww = LabelText::widthMm($promo['was'], $wasPt, 'j7');
+                $p[] = ['t' => 'text', 'x' => $x, 'base' => $y + 4.6 * $k, 'w' => $w, 'align' => 'c', 'font' => 'j7', 'pt' => $wasPt, 'color' => self::TINT, 'text' => $promo['was']];
+                $p[] = ['t' => 'line', 'x' => $x + ($w - $ww) / 2, 'y' => $y + 3.4 * $k, 'w' => $ww, 'color' => self::TINT, 'sw' => 0.35];
+                $p[] = ['t' => 'text', 'x' => $x, 'base' => $y + 8.4 * $k, 'w' => $w, 'align' => 'c', 'font' => 'j7', 'pt' => 5.0 * $k, 'color' => self::CREAM, 'text' => 'NOW', 'ls' => 0.12];
+                $p[] = ['t' => 'text', 'x' => $x, 'base' => $y + 13.3 * $k, 'w' => $w, 'align' => 'c', 'font' => 'j8', 'pt' => LabelText::fitPt($promo['now'], 'j8', $w - 2.5, 9.5 * $k, 5.5), 'color' => self::CREAM, 'text' => $promo['now']];
+            } else {
+                $p[] = ['t' => 'text', 'x' => $x, 'base' => $y + 5.8 * $k, 'w' => $w, 'align' => 'c', 'font' => 'j7', 'pt' => 5.6 * $k, 'color' => self::CREAM, 'text' => 'NOW', 'ls' => 0.12];
+                $p[] = ['t' => 'text', 'x' => $x, 'base' => $y + 12.2 * $k, 'w' => $w, 'align' => 'c', 'font' => 'j8', 'pt' => LabelText::fitPt($promo['now'], 'j8', $w - 2.5, 11 * $k, 6), 'color' => self::CREAM, 'text' => $promo['now']];
+            }
+
+            return $p;
+        }
+        $lines = array_slice(LabelText::wrap($promo['text'], 7.5 * $k, $w - 3, 'j8'), 0, 2);
+        $pt = min(array_map(fn (string $l) => LabelText::fitPt($l, 'j8', $w - 3, (count($lines) === 1 ? 9.5 : 7.5) * $k, 5.0), $lines));
+        if (count($lines) === 1) {
+            $p[] = ['t' => 'text', 'x' => $x, 'base' => $y + $h / 2 + 0.36 * $pt * LabelText::PT, 'w' => $w, 'align' => 'c', 'font' => 'j8', 'pt' => $pt, 'color' => self::CREAM, 'text' => $lines[0]];
+        } else {
+            $lead = 1.3 * $pt * LabelText::PT;
+            $base = $y + $h / 2 - $lead / 2 + 0.36 * $pt * LabelText::PT;
+            foreach ($lines as $i => $line) {
+                $p[] = ['t' => 'text', 'x' => $x, 'base' => $base + $i * $lead, 'w' => $w, 'align' => 'c', 'font' => 'j8', 'pt' => $pt, 'color' => self::CREAM, 'text' => $line];
+            }
+        }
+
+        return $p;
+    }
+
     private static function twoWords(string $line): array
     {
         $line = trim($line);

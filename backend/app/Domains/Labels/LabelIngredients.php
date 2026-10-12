@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Labels;
 
+use App\Models\CustomLabel;
 use App\Models\Item;
+use App\Models\LabelGlossaryEntry;
 use App\Models\RecipeItem;
 use App\Services\UnitConversionService;
 
@@ -20,6 +22,11 @@ use App\Services\UnitConversionService;
  *
  * A recipe line lists the inventory items in it, heaviest first as food labels
  * do, without the ones the owner has unticked as not food (cling film, boxes).
+ *
+ * The Dhivehi line (2026-10-12) comes from the inventory item's Dhivehi
+ * name, else the ingredient glossary (LabelGlossaryEntry), for a recipe and
+ * for a typed English list alike; only a complete Dhivehi list prints, since
+ * a half one misleads. `dv_from` says which it was.
  */
 final class LabelIngredients
 {
@@ -36,33 +43,169 @@ final class LabelIngredients
     public function __construct(private readonly UnitConversionService $units) {}
 
     /**
-     * @return array{en: string, dv: string, from: 'recipe'|'manual'|'none', recipe_en: string, recipe_dv: string}
+     * @return array{en: string, dv: string, from: 'recipe'|'manual'|'none', dv_from: 'typed'|'inventory'|'glossary'|'', recipe_en: string, recipe_dv: string}
      */
     public function forItem(Item $item): array
     {
         $source = in_array($item->label_ingredients_source, self::SOURCES, true) ? $item->label_ingredients_source : 'auto';
         $manualEn = trim((string) $item->label_ingredients);
         $manualDv = trim((string) $item->label_ingredients_dv);
-        [$recipeEn, $recipeDv] = $source === 'manual' ? ['', ''] : $this->fromRecipe($item);
+        [$recipeEn, $recipeDv, $recipeDvFrom] = $source === 'manual' ? ['', '', ''] : $this->fromRecipe($item);
 
         if ($recipeEn !== '') {
-            // A recipe has no Dhivehi names until the owner adds them; the
-            // manual Dhivehi line stands in rather than printing nothing.
-            return ['en' => $recipeEn, 'dv' => $recipeDv !== '' ? $recipeDv : $manualDv, 'from' => 'recipe', 'recipe_en' => $recipeEn, 'recipe_dv' => $recipeDv];
+            // A recipe with no Dhivehi name on an item and none in the
+            // glossary: the manual Dhivehi line stands in rather than nothing.
+            $dv = $recipeDv;
+            $dvFrom = $recipeDvFrom;
+            if ($dv === '' && $manualDv !== '') {
+                $dv = $manualDv;
+                $dvFrom = 'typed';
+            }
+
+            return ['en' => $recipeEn, 'dv' => $dv, 'from' => 'recipe', 'dv_from' => $dv !== '' ? $dvFrom : '', 'recipe_en' => $recipeEn, 'recipe_dv' => $recipeDv];
         }
         if ($manualEn !== '' || $manualDv !== '') {
-            return ['en' => $manualEn, 'dv' => $manualDv, 'from' => 'manual', 'recipe_en' => $recipeEn, 'recipe_dv' => $recipeDv];
+            $dv = $manualDv;
+            $dvFrom = $manualDv !== '' ? 'typed' : '';
+            if ($dv === '' && $manualEn !== '') {
+                $dv = self::translate($manualEn)['dv'];
+                $dvFrom = $dv !== '' ? 'glossary' : '';
+            }
+
+            return ['en' => $manualEn, 'dv' => $dv, 'from' => 'manual', 'dv_from' => $dvFrom, 'recipe_en' => $recipeEn, 'recipe_dv' => $recipeDv];
         }
 
-        return ['en' => '', 'dv' => '', 'from' => 'none', 'recipe_en' => '', 'recipe_dv' => ''];
+        return ['en' => '', 'dv' => '', 'from' => 'none', 'dv_from' => '', 'recipe_en' => '', 'recipe_dv' => ''];
     }
 
-    /** @return array{0: string, 1: string} */
+    /**
+     * A typed English list through the glossary: "Flour, salt, eggs" →
+     * "ފުށް، ލޮނު، ބިސް". Every part must be known, or the Dhivehi stays empty
+     * and `missing` says which words the glossary needs.
+     *
+     * @return array{dv: string, missing: list<string>, parts: list<string>}
+     */
+    public static function translate(string $en): array
+    {
+        $parts = self::parts($en);
+        $map = LabelGlossaryEntry::map();
+        $dv = [];
+        $missing = [];
+        foreach ($parts as $part) {
+            $found = LabelGlossaryEntry::lookup($part, $map);
+            if ($found === null) {
+                $missing[] = $part;
+            } else {
+                $dv[] = $found;
+            }
+        }
+
+        return ['dv' => $missing === [] && $dv !== [] ? implode('، ', $dv) : '', 'missing' => $missing, 'parts' => $parts];
+    }
+
+    /**
+     * "Flour, salt and oil, egg (free range)" → ["flour", "salt", "oil", "egg"]:
+     * split on commas and "and", lower-case, a bracketed aside dropped.
+     *
+     * @return list<string>
+     */
+    public static function parts(string $en): array
+    {
+        $out = [];
+        foreach (preg_split('/\s*[,،;]\s*|\s+and\s+/u', $en) ?: [] as $part) {
+            $part = LabelGlossaryEntry::key((string) preg_replace('/\s*\([^)]*\)/u', '', (string) $part));
+            if ($part !== '' && !in_array($part, $out, true)) {
+                $out[] = $part;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Ingredient words printed on labels that have no Dhivehi yet, with the
+     * products using them: what the glossary card asks the owner to fill in.
+     *
+     * @return list<array{word: string, products: list<string>}>
+     */
+    public function missingWords(): array
+    {
+        $map = LabelGlossaryEntry::map();
+        $seen = [];
+        $note = function (array $words, string $product) use (&$seen, $map): void {
+            foreach ($words as $w) {
+                if (LabelGlossaryEntry::lookup($w, $map) !== null) {
+                    continue;
+                }
+                $seen[$w] ??= [];
+                if (!in_array($product, $seen[$w], true)) {
+                    $seen[$w][] = $product;
+                }
+            }
+        };
+        foreach (Item::query()->where('label_enabled', true)->where('is_active', true)->orderBy('name')->get() as $item) {
+            $lines = $this->forItem($item);
+            if ($lines['dv'] !== '' || $lines['en'] === '') {
+                continue;
+            }
+            $words = $lines['from'] === 'recipe'
+                ? array_map(fn (array $r) => LabelGlossaryEntry::key($r['en']), array_filter($this->recipeRows($item), fn (array $r) => $r['dv'] === ''))
+                : self::parts($lines['en']);
+            $note(array_values($words), (string) $item->name);
+        }
+        foreach (CustomLabel::query()->orderBy('name')->get() as $custom) {
+            $en = trim((string) $custom->label_ingredients);
+            if ($en === '' || trim((string) $custom->label_ingredients_dv) !== '') {
+                continue;
+            }
+            $note(self::parts($en), (string) $custom->name);
+        }
+        $out = [];
+        foreach ($seen as $word => $products) {
+            $out[] = ['word' => (string) $word, 'products' => $products];
+        }
+        usort($out, fn (array $a, array $b) => [count($b['products']), $a['word']] <=> [count($a['products']), $b['word']]);
+
+        return $out;
+    }
+
+    /** @return array{0: string, 1: string, 2: string} the English line, the Dhivehi line, where the Dhivehi came from */
     private function fromRecipe(Item $item): array
+    {
+        $rows = $this->recipeRows($item);
+        if ($rows === []) {
+            return ['', '', ''];
+        }
+        $map = LabelGlossaryEntry::map();
+        $glossary = false;
+        foreach ($rows as $i => $row) {
+            if ($row['dv'] === '') {
+                $found = LabelGlossaryEntry::lookup($row['en'], $map);
+                if ($found !== null) {
+                    $rows[$i]['dv'] = $found;
+                    $glossary = true;
+                }
+            }
+        }
+        $en = implode(', ', array_column($rows, 'en'));
+        $dvNames = array_filter(array_column($rows, 'dv'), fn ($s) => $s !== '');
+        // Only a complete Dhivehi list is worth printing; a half one misleads.
+        $complete = count($dvNames) === count($rows);
+
+        return [$this->sentence($en), $complete ? implode('، ', $dvNames) : '', $complete ? ($glossary ? 'glossary' : 'inventory') : ''];
+    }
+
+    /**
+     * The recipe's food ingredients, heaviest first, with the Dhivehi name
+     * the inventory item carries (empty when it has none).
+     *
+     * @return list<array{en: string, dv: string, weight: float}>
+     */
+    private function recipeRows(Item $item): array
     {
         $recipe = $item->recipe()->with('recipeItems.inventoryItem')->first();
         if ($recipe === null) {
-            return ['', ''];
+            return [];
         }
 
         $rows = $recipe->recipeItems->whereNull('variant_id');
@@ -89,12 +232,7 @@ final class LabelIngredients
 
         uasort($byName, fn ($a, $b) => [$b['weight'], $a['en']] <=> [$a['weight'], $b['en']]);
 
-        $en = implode(', ', array_column($byName, 'en'));
-        $dvNames = array_filter(array_column($byName, 'dv'), fn ($s) => $s !== '');
-        // Only a complete Dhivehi list is worth printing; a half one misleads.
-        $dv = count($dvNames) === count($byName) ? implode('، ', $dvNames) : '';
-
-        return [$this->sentence($en), $dv];
+        return array_values($byName);
     }
 
     /** Grams where the unit allows; otherwise the raw quantity, for ordering only. */

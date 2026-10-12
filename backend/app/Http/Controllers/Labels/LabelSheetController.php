@@ -115,6 +115,6 @@ class LabelSheetController extends Controller
     /** @return array<string, mixed> */
     private function query(Request $request): array
     {
-        return $request->only(['items', 'lang', 'layout', 'w', 'h', 'fill', 'mfg', 'exp', 'batch', 'qty', 'pi', 'type', 'footer', 'rounded', 'b']);
+        return $request->only(['items', 'lang', 'layout', 'w', 'h', 'fill', 'mfg', 'exp', 'batch', 'qty', 'pi', 'type', 'footer', 'rounded', 'b', 'for', 'for2', 'promo', 'promo_was', 'promo_now', 'promo_text']);
     }
 }

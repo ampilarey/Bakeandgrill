@@ -84,6 +84,9 @@ final class SmallStickerDesign
 
         // The essentials, then the extras while they fit.
         $free = $ih - ($hb + $gap + $nh + $gap + $datesH + $gap + $sh);
+        // Packed for (2026-10-12): a line under the name, ahead of the extras
+        // (a wholesale pack says who it is for before it says its batch).
+        $packed = $this->packedForText() !== '' && $this->take($free, $line + 0.3 * $gap);
         $footer = $this->take($free, $fh + $gap) ? 'band' : ($this->take($free, $line + 0.5 * $gap) ? 'line' : 'none');
         $ing = $this->ingredientsText();
         $hasIng = $ing !== '' && $this->take($free, $this->ingredientsMin($k) + $gap);
@@ -96,6 +99,10 @@ final class SmallStickerDesign
         $y += $hb + $gap;
         $this->name($pad, $y, $iw, $nh, 'c', $k);
         $y += $nh + $gap;
+        if ($packed) {
+            $this->packedForLine($pad, $y, $iw, $line, 'c');
+            $y += $line + 0.3 * $gap;
+        }
 
         // From the bottom up.
         $bottom = $h - $pad;
@@ -168,6 +175,7 @@ final class SmallStickerDesign
         $lw = $iw - $rw - 1.4 * $gap;
 
         $free = $ih - ($hb + $gap + 2 * $bh + 0.6 * $gap + $gap + $sh);
+        $packed = $this->packedForText() !== '' && $this->take($free, $line);
         $footer = $this->take($free, $fh + $gap) ? 'band' : ($this->take($free, $line + 0.5 * $gap) ? 'line' : 'none');
         $batch = $this->take($free, $line);
 
@@ -212,6 +220,11 @@ final class SmallStickerDesign
         $this->name($pad, $y, $lw, $nh, 'l', $k);
         $left = $mid - $nh - 0.4 * $gap;
         $ly = $y + $nh + 0.4 * $gap;
+        if ($packed) {
+            $this->packedForLine($pad, $ly, $lw, $line, 'l');
+            $ly += $line;
+            $left -= $line;
+        }
         $used = 0.0;
         $note = $this->noteText() !== '' && $left >= $line;
         if ($this->ingredientsText() !== '' && $left - ($note ? $line : 0.0) >= $this->ingredientsMin($k)) {
@@ -625,6 +638,23 @@ final class SmallStickerDesign
         $font = $this->dv ? 'dv' : 'j7';
         $pt = LabelText::fitPt($t, $font, $bw, $this->dv ? $lh * 1.9 : $lh * 1.45, 3.0);
         $this->text($this->X($x, $bw), $this->baseCentred($y, $lh, $font, $pt), $bw, $this->A($align), $font, $pt, StickerDesign::PRIMARY, $t, $this->dv ? 0.5 : 0.0);
+    }
+
+    /** "PACKED FOR: NH Kuda Rah · Delivery TD-12" (2026-10-12), the second part when the line is wide enough. */
+    private function packedForLine(float $x, float $y, float $bw, float $lh, string $align): void
+    {
+        $t = 'PACKED FOR: ' . $this->packedForText();
+        $second = trim((string) ($this->d['packed_for2'] ?? ''));
+        if ($second !== '' && $bw >= 40) {
+            $t .= ' · ' . $second;
+        }
+        $pt = LabelText::fitPt($t, 'j8', $bw - 0.6, $lh * 1.4, 3.0);
+        $this->text($this->X($x, $bw), $this->baseCentred($y, $lh, 'j8', $pt), $bw, $this->A($align), 'j8', $pt, StickerDesign::DARK, $t);
+    }
+
+    private function packedForText(): string
+    {
+        return trim((string) ($this->d['packed_for'] ?? ''));
     }
 
     private function withinLine(float $x, float $y, float $bw, float $lh, float $k): void

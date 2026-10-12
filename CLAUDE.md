@@ -244,7 +244,16 @@ stickers with Reprint → `?item=` / `?custom=`, and `labels:check-expiring --da
 08:10 under the row `owner_labels_expiry`, marking `expiry_alerted_at` so a batch is told
 once); allergen pictograms (`AllergenIcons`, SVG data URIs with the word beneath, the
 chilli from `spice_level`) sit above the note on the full sticker only, setting
-`label_allergen_icons`. How to use it and where
+`label_allergen_icons`. Round B: the ingredient glossary (`label_glossary`,
+`LabelGlossaryEntry::lookup()` with plural and prefix variants, `LabelIngredients::translate()`
+and `missingWords()`; a Dhivehi line prints only when every word is known, `dv_from`
+says where it came from; `IngredientGlossary.tsx` on Labels → Settings); packed-for
+stickers (`for` / `for2` in the request, `packed_for` in the sticker data, drawn by
+every design but the round ones; `GET /api/labels/deliveries/{id}/stickers` and
+`/catering/{id}/stickers` fill the form through `?delivery=` / `?catering=`); and a
+promotion flash (`promo` was_now or text, `StickerSheet::promoOf()`,
+`StickerDesign::flash()` on the full name row and the compact band, where it replaces
+the batch QR; `PROMO_PRESETS`). How to use it and where
 everything lives: `docs/LABELS.md`; design and decisions: `docs/LABEL_HUB_PLAN.md`
 and `docs/LABEL_HUB_V2_PLAN.md`.
 

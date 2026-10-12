@@ -16,11 +16,13 @@ use App\Domains\Labels\StickerLayouts;
 use App\Domains\Labels\StickerSheet;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Labels\LabelSheetController;
+use App\Models\CateringRequest;
 use App\Models\CustomLabel;
 use App\Models\Item;
 use App\Models\KitchenProductionItem;
 use App\Models\LabelBrand;
 use App\Models\LabelFooter;
+use App\Models\LabelGlossaryEntry;
 use App\Models\LabelJob;
 use App\Models\LabelPrint;
 use App\Models\LabelType;
@@ -114,11 +116,18 @@ class LabelsController extends Controller
             'footer' => 'nullable|integer|exists:label_footers,id',
             'rounded' => 'sometimes|boolean',
             'preview' => 'sometimes|boolean',
+            // Packed for, and a promotion flash (2026-10-12).
+            'for' => 'nullable|string|max:60',
+            'for2' => 'nullable|string|max:60',
+            'promo' => ['nullable', Rule::in(['', ...StickerSheet::PROMO_KINDS])],
+            'promo_was' => 'nullable|numeric|min:0|max:99999',
+            'promo_now' => 'nullable|numeric|min:0|max:99999',
+            'promo_text' => 'nullable|string|max:24',
         ];
     }
 
     /** The sticker request keys a saved label keeps. */
-    private const STICKER_KEYS = ['items', 'lang', 'layout', 'w', 'h', 'fill', 'mfg', 'exp', 'batch', 'qty', 'pi', 'type', 'footer', 'rounded'];
+    private const STICKER_KEYS = ['items', 'lang', 'layout', 'w', 'h', 'fill', 'mfg', 'exp', 'batch', 'qty', 'pi', 'type', 'footer', 'rounded', 'for', 'for2', 'promo', 'promo_was', 'promo_now', 'promo_text'];
 
     /**
      * Signed links to a sheet of pack stickers, after checking the request
@@ -170,7 +179,18 @@ class LabelsController extends Controller
             'type' => $req['type'],
             'footer' => $req['footer'],
             'rounded' => $req['rounded'] ? 1 : null,
+            'for' => $req['for'],
+            'for2' => $req['for2'],
+            'promo' => $req['promo'],
+            'promo_was' => $req['promo_was'],
+            'promo_now' => $req['promo_now'],
+            'promo_text' => $req['promo_text'],
         ];
+        $details = array_filter([
+            'for' => $req['for'],
+            'for2' => $req['for2'],
+            'promo' => $req['promo'] === 'was_now' ? 'now MVR ' . number_format((float) $req['promo_now'], 2) : ($req['promo'] === 'text' ? $req['promo_text'] : null),
+        ], fn ($v) => $v !== null && $v !== '');
 
         // Each product's print gets a code the sticker carries as a QR (the
         // pack's page, BatchLink); a preview shows the QR with a code that
@@ -197,6 +217,7 @@ class LabelsController extends Controller
                     'exp_date' => $p['exp'],
                     'batch_code' => $req['batch'] !== '' ? $req['batch'] : null,
                     'pack_qty' => $req['qty'] !== '' ? (int) $req['qty'] : null,
+                    'details' => $details !== [] ? $details : null,
                     'printed_by' => $userId,
                     'output' => 'print',
                 ]);
@@ -525,6 +546,112 @@ class LabelsController extends Controller
             'mfg' => ($productionItem->batch?->submitted_at ?? $productionItem->created_at)?->toDateString(),
             'qty' => (int) round((float) $productionItem->produced_qty),
         ]]);
+    }
+
+    /**
+     * Packed-for stickers from a wholesale delivery (2026-10-12): the shop,
+     * the delivery and its date, and a sticker per pack sent of each item.
+     */
+    public function deliveryStickers(TradeDelivery $delivery): JsonResponse
+    {
+        $delivery->loadMissing(['tradeAccount', 'lines']);
+        $when = $delivery->dispatched_at ? Carbon::parse($delivery->dispatched_at) : Carbon::today();
+        $sent = [];
+        foreach ($delivery->lines as $line) {
+            if ($line->item_id && (int) round((float) $line->qty_sent) > 0) {
+                $sent[(int) $line->item_id] = ($sent[(int) $line->item_id] ?? 0) + (int) round((float) $line->qty_sent);
+            }
+        }
+
+        return response()->json(['data' => [
+            'delivery' => $delivery->id,
+            'delivery_number' => $delivery->delivery_number,
+            'for' => (string) ($delivery->tradeAccount?->shop_name ?? ''),
+            'for2' => 'Delivery ' . $delivery->delivery_number . ' · ' . $when->format('D, j M Y'),
+            'items' => $this->stickerItems($sent),
+        ]]);
+    }
+
+    /** Packed-for stickers from a catering event (2026-10-12): who it is for, the event and its date, a sticker per pack. */
+    public function cateringStickers(CateringRequest $cateringRequest): JsonResponse
+    {
+        $cateringRequest->loadMissing('lines');
+        $wanted = [];
+        foreach ($cateringRequest->lines as $line) {
+            if ($line->item_id && (int) round((float) $line->quantity) > 0) {
+                $wanted[(int) $line->item_id] = ($wanted[(int) $line->item_id] ?? 0) + (int) round((float) $line->quantity);
+            }
+        }
+        $date = $cateringRequest->event_date ? Carbon::parse($cateringRequest->event_date)->format('D, j M Y') : null;
+        $occasion = trim((string) $cateringRequest->occasion);
+
+        return response()->json(['data' => [
+            'catering' => $cateringRequest->id,
+            'reference' => $cateringRequest->reference,
+            'for' => trim((string) ($cateringRequest->company ?: $cateringRequest->contact_name)),
+            'for2' => implode(' · ', array_filter([$cateringRequest->reference, $occasion !== '' ? mb_strtoupper(mb_substr($occasion, 0, 1)) . mb_substr($occasion, 1) : null, $date])),
+            'items' => $this->stickerItems($wanted),
+        ]]);
+    }
+
+    /**
+     * @param array<int, int> $copies item id → packs
+     * @return list<array{id: int, name: string, copies: int, label_enabled: bool}>
+     */
+    private function stickerItems(array $copies): array
+    {
+        if ($copies === []) {
+            return [];
+        }
+        $items = Item::query()->whereIn('id', array_keys($copies))->get(['id', 'name', 'label_enabled']);
+
+        return $items->map(fn (Item $i) => ['id' => $i->id, 'name' => (string) $i->name, 'copies' => min(StickerSheet::MAX_STICKERS, $copies[$i->id]), 'label_enabled' => (bool) $i->label_enabled])->values()->all();
+    }
+
+    // ---- The ingredient glossary (2026-10-12) ----
+
+    /** Every word with its Dhivehi, and the ingredient words on labels that have none yet. */
+    public function glossary(): JsonResponse
+    {
+        return response()->json([
+            'data' => LabelGlossaryEntry::query()->orderBy('word')->get()->map(fn (LabelGlossaryEntry $e) => $this->presentWord($e))->values(),
+            'missing' => $this->ingredients->missingWords(),
+        ]);
+    }
+
+    /** Add a word, or give a listed word its Dhivehi again. */
+    public function storeGlossary(Request $request): JsonResponse
+    {
+        $data = $request->validate(['en' => 'required|string|max:80', 'dv' => 'required|string|max:160']);
+        $entry = LabelGlossaryEntry::query()->firstOrNew(['word' => LabelGlossaryEntry::key($data['en'])]);
+        $created = !$entry->exists;
+        $entry->fill(['en' => $data['en'], 'dv' => $data['dv']])->save();
+
+        return response()->json(['data' => $this->presentWord($entry->refresh())], $created ? 201 : 200);
+    }
+
+    public function updateGlossary(Request $request, LabelGlossaryEntry $entry): JsonResponse
+    {
+        $data = $request->validate(['en' => 'sometimes|string|max:80', 'dv' => 'sometimes|required|string|max:160']);
+        if (isset($data['en']) && LabelGlossaryEntry::query()->where('word', LabelGlossaryEntry::key($data['en']))->whereKeyNot($entry->id)->exists()) {
+            return response()->json(['message' => 'That word is already in the glossary.', 'errors' => ['en' => ['That word is already in the glossary.']]], 422);
+        }
+        $entry->fill($data)->save();
+
+        return response()->json(['data' => $this->presentWord($entry->refresh())]);
+    }
+
+    public function destroyGlossary(LabelGlossaryEntry $entry): JsonResponse
+    {
+        $entry->delete();
+
+        return response()->json(['ok' => true]);
+    }
+
+    /** @return array{id: int, en: string, word: string, dv: string} */
+    private function presentWord(LabelGlossaryEntry $entry): array
+    {
+        return ['id' => $entry->id, 'en' => (string) $entry->en, 'word' => (string) $entry->word, 'dv' => (string) $entry->dv];
     }
 
     /** The print log, newest first. */

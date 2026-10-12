@@ -49,7 +49,8 @@ export type LabelProduct = {
   label_photo_url: string | null;
   cutout_url: string | null;
   has_recipe: boolean;
-  ingredients: { en: string; dv: string; from: 'recipe' | 'manual' | 'none'; recipe_en: string; recipe_dv: string };
+  /** `dv_from` (2026-10-12): typed, from the inventory items' Dhivehi names, or the glossary. */
+  ingredients: { en: string; dv: string; from: 'recipe' | 'manual' | 'none'; dv_from?: 'typed' | 'inventory' | 'glossary' | ''; recipe_en: string; recipe_dv: string };
 };
 
 /** Label Hub v2: who the label is from. The default brand is the business itself. */
@@ -200,7 +201,28 @@ export type StickerRequest = {
   /** Rounded corners on a rectangle's cut line. */
   rounded?: boolean;
   preview?: boolean;
+  /** Packed for (2026-10-12): who the packs are for, and a second line (the delivery, the date). */
+  for?: string | null;
+  for2?: string | null;
+  /** A promotion flash (2026-10-12): an old and new price, or a short line of words. */
+  promo?: PromoKind | null;
+  promo_was?: number | null;
+  promo_now?: number | null;
+  promo_text?: string | null;
 };
+
+export type PromoKind = '' | 'was_now' | 'text';
+
+/** What a wholesale delivery or a catering event fills in on Pack stickers (2026-10-12). */
+export type PackedForPrefill = {
+  for: string; for2: string;
+  items: { id: number; name: string; copies: number; label_enabled: boolean }[];
+};
+
+/** A word of the ingredient glossary, English → Dhivehi (2026-10-12). */
+export type GlossaryWord = { id: number; en: string; word: string; dv: string };
+/** An ingredient word on a label that has no Dhivehi yet, and the products using it. */
+export type GlossaryMissing = { word: string; products: string[] };
 
 export type StickerSummary = {
   layout: string;
@@ -366,6 +388,33 @@ export function fetchShopBoxLabel(accountId: number) {
 /** Keep the label as the shop's box label: who, boat, pick-up, window, and its items with their article names. */
 export function saveShopBoxLabel(accountId: number, body: BoxFields & { items: { id: number; article?: string }[] }) {
   return req<{ data: BoxPrefill }>(`/labels/shops/${accountId}/box-label`, { method: 'PUT', body: JSON.stringify(body) });
+}
+
+/** Packed-for stickers from a wholesale delivery: the shop, the delivery and its date, a sticker per pack sent. */
+export function fetchDeliveryStickers(deliveryId: number) {
+  return req<{ data: PackedForPrefill & { delivery: number; delivery_number: string } }>(`/labels/deliveries/${deliveryId}/stickers`);
+}
+
+/** Packed-for stickers from a catering event: who it is for, the event and its date, a sticker per pack. */
+export function fetchCateringStickers(cateringId: number) {
+  return req<{ data: PackedForPrefill & { catering: number; reference: string } }>(`/labels/catering/${cateringId}/stickers`);
+}
+
+export function fetchLabelGlossary() {
+  return req<{ data: GlossaryWord[]; missing: GlossaryMissing[] }>('/labels/glossary');
+}
+
+/** Add a word, or give a listed word its Dhivehi again (the same English is one row). */
+export function saveGlossaryWord(body: { en: string; dv: string }) {
+  return req<{ data: GlossaryWord }>('/labels/glossary', { method: 'POST', body: JSON.stringify(body) });
+}
+
+export function updateGlossaryWord(id: number, body: Partial<{ en: string; dv: string }>) {
+  return req<{ data: GlossaryWord }>(`/labels/glossary/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+}
+
+export function deleteGlossaryWord(id: number) {
+  return req<{ ok: true }>(`/labels/glossary/${id}`, { method: 'DELETE' });
 }
 
 export function fetchProductionStickers(productionItemId: number) {

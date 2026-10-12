@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Printer, FileDown, AlertTriangle, Search, Bookmark, Eye, Plus, History, CalendarDays, ChevronDown, ChevronUp, Star, Clock } from 'lucide-react';
 import {
-  downloadLabelSheet, fetchCustomLabels, fetchLabelFooters, fetchLabelJob, fetchLabelJobs, fetchLabelLayouts, fetchLabelProducts, fetchLabelTypes, openLabelSheet, printLabelJob, printsViaPdf, renameLabelJob, stickerLinks,
-  type CustomLabel, type LabelFooter, type LabelJob, type LabelLimits, type LabelPreset, type LabelProduct, type LabelType, type SheetLinks, type StickerLang, type StickerSummary,
+  downloadLabelSheet, fetchCateringStickers, fetchCustomLabels, fetchDeliveryStickers, fetchLabelFooters, fetchLabelJob, fetchLabelJobs, fetchLabelLayouts, fetchLabelProducts, fetchLabelTypes, openLabelSheet, printLabelJob, printsViaPdf, renameLabelJob, stickerLinks,
+  type CustomLabel, type LabelFooter, type LabelJob, type LabelLimits, type LabelPreset, type LabelProduct, type LabelType, type PromoKind, type SheetLinks, type StickerLang, type StickerSummary,
 } from '../../api';
 import { useCurrentUserPermissions } from '../../hooks/usePermissions';
 import { useIsBelowDesktop } from '../../hooks/useIsMobile';
@@ -53,6 +53,11 @@ function rememberedLayout(): string | null {
 }
 
 const keyOf = (kind: 'item' | 'custom', id: number) => `${kind === 'custom' ? 'c' : 'i'}${id}`;
+/** The promotion flashes offered as one pick (2026-10-12); the words are what prints, "custom" takes typed words. */
+export const PROMO_PRESETS: [string, string][] = [
+  ['', 'No flash'], ['was_now', 'Was → Now prices'], ['2 FOR 1', '2 for 1'], ['BUY 2 GET 1 FREE', 'Buy 2 get 1 free'],
+  ['SPECIAL OFFER', 'Special offer'], ['HALF PRICE', 'Half price'], ['NEW', 'New'], ['FRESH TODAY', 'Fresh today'], ['custom', 'Other words…'],
+];
 /** A shelf life this short is easy to print with the wrong dates (2026-10-12): the list marks it. */
 const SHORT_LIFE_DAYS = 3;
 const LANG_NAMES: Record<StickerLang, string> = { en: 'English', dv: 'ދިވެހި', both: 'Both' };
@@ -86,6 +91,15 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
   const [footer, setFooter] = useState<number | null>(null);
   // A footer changed from the pencil prints differently without the request changing: counted into the preview key.
   const [footersTick, setFootersTick] = useState(0);
+  // Packed for and a promotion flash (2026-10-12), behind More options.
+  const [packedFor, setPackedFor] = useState('');
+  const [packedFor2, setPackedFor2] = useState('');
+  const [promoPreset, setPromoPreset] = useState('');
+  const [promoWas, setPromoWas] = useState('');
+  const [promoNow, setPromoNow] = useState('');
+  const [promoText, setPromoText] = useState('');
+  const promoKind: PromoKind = promoPreset === '' ? '' : promoPreset === 'was_now' ? 'was_now' : 'text';
+  const promoWords = promoPreset === 'custom' ? promoText : promoPreset;
   const [picked, setPicked] = useState<Record<string, number>>({});
   const [lang, setLang] = useState<StickerLang>('en');
   const [choice, setChoice] = useState<SizeChoice>(() => rememberedSize() ?? DEFAULT_CHOICE);
@@ -116,6 +130,10 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
   const customParam = fixedItems ? null : params.get('custom');
   // Expiring printed stock's Reprint (2026-10-12): ?item=ID picks that menu item.
   const itemParam = fixedItems ? null : params.get('item');
+  // Packed-for stickers (2026-10-12): ?delivery=ID or ?catering=ID fills the
+  // products, how many of each, and who the packs are for.
+  const deliveryParam = fixedItems ? null : params.get('delivery');
+  const cateringParam = fixedItems ? null : params.get('catering');
   const [editing, setEditing] = useState<{ id: number; name: string } | null>(null);
   const [savedSize, setSavedSize] = useState<{ layout: string; w: number | null; h: number | null } | null>(null);
   // Print again: the last few saved sticker labels, one tap each (a cook
@@ -180,7 +198,20 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
       setAsType(q.type ? Number(q.type) : null);
       setFooter(q.footer ? Number(q.footer) : null);
       setRounded(Boolean(q.rounded));
-      if (q.type || q.footer || q.batch || q.qty) setMoreOpen(true);
+      setPackedFor(typeof q.for === 'string' ? q.for : '');
+      setPackedFor2(typeof q.for2 === 'string' ? q.for2 : '');
+      if (q.promo === 'was_now') {
+        setPromoPreset('was_now');
+        setPromoWas(q.promo_was != null && q.promo_was !== '' ? String(q.promo_was) : '');
+        setPromoNow(q.promo_now != null && q.promo_now !== '' ? String(q.promo_now) : '');
+      } else if (q.promo === 'text' && typeof q.promo_text === 'string') {
+        const words = q.promo_text.toUpperCase();
+        setPromoPreset(PROMO_PRESETS.some(([v]) => v === words) ? words : 'custom');
+        setPromoText(q.promo_text);
+      } else {
+        setPromoPreset('');
+      }
+      if (q.type || q.footer || q.batch || q.qty || q.for || q.promo) setMoreOpen(true);
       setEditing({ id: r.data.id, name: r.data.name });
     }).catch(() => setError('That saved label could not be opened.'));
   }, [jobParam]);
@@ -225,6 +256,19 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
     const key = keyOf('item', Number(itemParam));
     if (products.some((p) => keyOf('item', p.id) === key)) setPicked((p) => (p[key] ? p : { ...p, [key]: perPage }));
   }, [itemParam, products, presets.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if ((!deliveryParam && !cateringParam) || products.length === 0 || presets.length === 0) return;
+    const load = deliveryParam ? fetchDeliveryStickers(Number(deliveryParam)) : fetchCateringStickers(Number(cateringParam));
+    load.then((r) => {
+      const known = r.data.items.filter((i) => i.label_enabled && products.some((p) => p.id === i.id));
+      setPicked(Object.fromEntries(known.map((i) => [keyOf('item', i.id), Math.max(1, i.copies)])));
+      setPackedFor(r.data.for);
+      setPackedFor2(r.data.for2);
+      setMoreOpen(true);
+      const left = r.data.items.filter((i) => !known.some((k) => k.id === i.id)).map((i) => i.name);
+      setError(left.length ? `${left.join(', ')} ${left.length === 1 ? 'is' : 'are'} not on labels yet: switch ${left.length === 1 ? 'it' : 'them'} on under Settings to print stickers for ${left.length === 1 ? 'it' : 'them'}.` : null);
+    }).catch(() => setError('That delivery or event could not be opened.'));
+  }, [deliveryParam, cateringParam, products, presets.length]); // eslint-disable-line react-hooks/exhaustive-deps
   // The custom label editor's Print… carries the size and language it was
   // previewed at (owner, 2026-10-12), so this form opens on the same sticker.
   const sizeParam = customParam ? params.get('layout') : null;
@@ -256,6 +300,11 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
       rounded: choice.shape === 'rect' && rounded,
       fill, mfg: fill ? mfg : null, exp: fill && exp ? exp : null,
       batch: batch || null, qty: qty ? Number(qty) : null, pi: productionItemId, type: asType, footer,
+      for: packedFor.trim() || null, for2: packedFor2.trim() || null,
+      promo: promoKind || null,
+      promo_was: promoKind === 'was_now' && promoWas !== '' ? Number(promoWas) : null,
+      promo_now: promoKind === 'was_now' && promoNow !== '' ? Number(promoNow) : null,
+      promo_text: promoKind === 'text' ? promoWords.trim() || null : null,
     };
   };
 
@@ -515,8 +564,8 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
           {moreOpen ? <ChevronUp size={16} aria-hidden className="mt-0.5 shrink-0" /> : <ChevronDown size={16} aria-hidden className="mt-0.5 shrink-0" />}
           <span className="min-w-0">
             <span className="block">More options</span>
-            {!moreOpen && (asType || footer || batch || qty) && <span className="block text-xs font-semibold text-[var(--color-primary)]">{[asType ? 'print as a type' : null, footer ? `footer: ${footers.find((f) => f.id === footer)?.name ?? 'picked'}` : null, batch ? `batch ${batch}` : null, qty ? `${qty} per pack` : null].filter(Boolean).join(' · ')}</span>}
-            {!moreOpen && !(asType || footer || batch || qty) && <span className="block text-xs font-normal text-[var(--color-text-muted)]">Print as a type, one footer for the sheet, batch number, quantity per pack</span>}
+            {!moreOpen && (asType || footer || batch || qty || packedFor || promoKind) && <span className="block text-xs font-semibold text-[var(--color-primary)]">{[asType ? 'print as a type' : null, footer ? `footer: ${footers.find((f) => f.id === footer)?.name ?? 'picked'}` : null, batch ? `batch ${batch}` : null, qty ? `${qty} per pack` : null, packedFor ? `for ${packedFor}` : null, promoKind === 'was_now' ? 'was → now flash' : promoKind ? `flash: ${promoWords}` : null].filter(Boolean).join(' · ')}</span>}
+            {!moreOpen && !(asType || footer || batch || qty || packedFor || promoKind) && <span className="block text-xs font-normal text-[var(--color-text-muted)]">Print as a type, one footer for the sheet, batch number, quantity per pack, packed for, promotion flash</span>}
           </span>
         </button>
         {moreOpen && (
@@ -546,6 +595,35 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
               </div>
             </div>
             <div><label className={labelClass} htmlFor="label-qty">Quantity per pack (optional)</label><input id="label-qty" type="number" inputMode="numeric" min={1} max={9999} value={qty} onChange={(e) => setQty(e.target.value)} className={fieldClass} /></div>
+            {/* Packed for (2026-10-12): a wholesale shop or an event; a delivery or event page fills it in. */}
+            <div>
+              <label className={labelClass} htmlFor="label-for">Packed for (optional)</label>
+              <input id="label-for" value={packedFor} maxLength={60} onChange={(e) => setPackedFor(e.target.value)} placeholder="A shop, a customer, an event" className={fieldClass} />
+              <p className="text-xs text-[var(--color-text-muted)] mt-1">Prints "PACKED FOR" under the name. Wholesale → a delivery → Pack stickers fills it with the shop; an event's page with the customer.</p>
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="label-for2">Packed for, second line (optional)</label>
+              <input id="label-for2" value={packedFor2} maxLength={60} onChange={(e) => setPackedFor2(e.target.value)} placeholder="Delivery TD-0042 · Tue, 14 Oct" disabled={!packedFor.trim()} className={fieldClass} />
+            </div>
+            {/* A promotion flash (2026-10-12): was → now prices or a short line, on the full and compact stickers. */}
+            <div className="sm:col-span-2">
+              <label className={labelClass} htmlFor="label-promo">Promotion flash</label>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <select id="label-promo" value={promoPreset} onChange={(e) => setPromoPreset(e.target.value)} className={fieldClass}>
+                  {PROMO_PRESETS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+                {promoKind === 'was_now' && (
+                  <div className="flex gap-2">
+                    <input type="number" inputMode="decimal" min={0} step="0.5" value={promoWas} onChange={(e) => setPromoWas(e.target.value)} placeholder="Was, MVR" aria-label="Was, MVR" className={fieldClass} />
+                    <input type="number" inputMode="decimal" min={0} step="0.5" value={promoNow} onChange={(e) => setPromoNow(e.target.value)} placeholder="Now, MVR" aria-label="Now, MVR" className={fieldClass} />
+                  </div>
+                )}
+                {promoPreset === 'custom' && (
+                  <input value={promoText} maxLength={24} onChange={(e) => setPromoText(e.target.value)} placeholder="Up to 24 letters" aria-label="Flash words" className={fieldClass} />
+                )}
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-1">A rust badge beside the name on the full sticker and in the compact sticker's band (where it takes the batch QR's place). Was → Now also prints the new price on the quantity line. Small and round stickers have no room for it.</p>
+            </div>
           </div>
         )}
       </section>

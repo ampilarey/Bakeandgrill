@@ -115,6 +115,7 @@ final class StickerSheet
         if ($qty !== '' && (!ctype_digit($qty) || (int) $qty < 1 || (int) $qty > 9999)) {
             throw new InvalidArgumentException('The quantity is a number of pieces, 1 to 9999.');
         }
+        $promo = self::promoOf($in);
 
         return [
             'items' => $items,
@@ -136,7 +137,75 @@ final class StickerSheet
             'footer' => isset($in['footer']) && $in['footer'] !== '' ? (int) $in['footer'] : null,
             // The print log's code per product, for the batch QR (BatchLink).
             'codes' => self::parseCodes($in['b'] ?? ''),
+            // Packed for (2026-10-12): who the packs are for, and a second line (the delivery, the date).
+            'for' => mb_substr(trim((string) ($in['for'] ?? '')), 0, 60),
+            'for2' => mb_substr(trim((string) ($in['for2'] ?? '')), 0, 60),
+            // A promotion flash (2026-10-12): was → now prices, or a short line.
+            'promo' => $promo['kind'],
+            'promo_was' => $promo['was'],
+            'promo_now' => $promo['now'],
+            'promo_text' => $promo['text'],
         ];
+    }
+
+    /** The promotion flashes a sticker can carry: an old and new price, or a short line of words. */
+    public const PROMO_KINDS = ['was_now', 'text'];
+
+    /**
+     * The promotion flash a request asks for, checked.
+     *
+     * @param array<string, mixed> $in
+     * @return array{kind: string, was: ?float, now: ?float, text: string}
+     */
+    public static function promoOf(array $in): array
+    {
+        $kind = (string) ($in['promo'] ?? '');
+        $text = mb_substr(trim((string) ($in['promo_text'] ?? '')), 0, 24);
+        $num = fn ($v): ?float => isset($v) && $v !== '' && is_numeric($v) ? round((float) $v, 2) : null;
+        $was = $num($in['promo_was'] ?? null);
+        $now = $num($in['promo_now'] ?? null);
+        if ($kind === '' || !in_array($kind, self::PROMO_KINDS, true)) {
+            return ['kind' => '', 'was' => null, 'now' => null, 'text' => ''];
+        }
+        if ($kind === 'was_now') {
+            if ($now === null || $now < 0) {
+                throw new InvalidArgumentException('Type the new price for the Was → Now flash.');
+            }
+            if ($was !== null && $was <= $now) {
+                throw new InvalidArgumentException('The old price must be higher than the new one.');
+            }
+
+            return ['kind' => 'was_now', 'was' => $was, 'now' => $now, 'text' => ''];
+        }
+        if ($text === '') {
+            throw new InvalidArgumentException('Type the words for the promotion flash.');
+        }
+
+        return ['kind' => 'text', 'was' => null, 'now' => null, 'text' => $text];
+    }
+
+    /**
+     * The flash as the designs draw it: prices worded, or the words upper-cased.
+     *
+     * @param array<string, mixed> $req
+     * @return ?array{kind: string, was: string, now: string, text: string}
+     */
+    public static function promoFor(array $req): ?array
+    {
+        $kind = (string) ($req['promo'] ?? '');
+        if ($kind === 'was_now' && isset($req['promo_now'])) {
+            return [
+                'kind' => 'was_now',
+                'was' => isset($req['promo_was']) ? 'MVR ' . number_format((float) $req['promo_was'], 2) : '',
+                'now' => 'MVR ' . number_format((float) $req['promo_now'], 2),
+                'text' => '',
+            ];
+        }
+        if ($kind === 'text' && trim((string) ($req['promo_text'] ?? '')) !== '') {
+            return ['kind' => 'text', 'was' => '', 'now' => '', 'text' => mb_strtoupper(trim((string) $req['promo_text']))];
+        }
+
+        return null;
     }
 
     /**
@@ -426,6 +495,11 @@ final class StickerSheet
         // 2026-10-12: a price (the menu's unless typed, and only when switched
         // on for a menu item), a barcode, a net weight and the allergens.
         $price = $this->price($item);
+        // A was → now flash (2026-10-12) makes the new price the one on the quantity line.
+        $promo = self::promoFor($req);
+        if ($promo !== null && $promo['kind'] === 'was_now') {
+            $price = $promo['now'];
+        }
         $code = Barcode::normalise($item->label_barcode);
         $allergens = self::allergens($item);
         $note = $w['note'];
@@ -447,6 +521,10 @@ final class StickerSheet
         $spicy = $item instanceof Item && in_array((string) $item->spice_level, AllergenIcons::SPICY_LEVELS, true);
 
         return $common + [
+            // Packed for and the promotion flash (2026-10-12), from the request.
+            'packed_for' => (string) ($req['for'] ?? ''),
+            'packed_for2' => (string) ($req['for2'] ?? ''),
+            'promo' => $promo,
             'print_code' => $printCode ?? '',
             'batch_qr' => $printCode !== null && LabelSettings::on('label_batch_qr') ? BatchLink::qr($printCode) : null,
             'icons' => LabelSettings::on('label_allergen_icons') ? AllergenIcons::for($allergens, $spicy) : [],
@@ -539,8 +617,14 @@ final class StickerSheet
         }
         $en = trim((string) $product->label_ingredients);
         $dv = trim((string) $product->label_ingredients_dv);
+        $dvFrom = $dv !== '' ? 'typed' : '';
+        // No Dhivehi typed: the glossary translates the English list (2026-10-12).
+        if ($dv === '' && $en !== '') {
+            $dv = LabelIngredients::translate($en)['dv'];
+            $dvFrom = $dv !== '' ? 'glossary' : '';
+        }
 
-        return ['en' => $en, 'dv' => $dv, 'from' => $en !== '' || $dv !== '' ? 'manual' : 'none', 'recipe_en' => '', 'recipe_dv' => ''];
+        return ['en' => $en, 'dv' => $dv, 'from' => $en !== '' || $dv !== '' ? 'manual' : 'none', 'dv_from' => $dvFrom, 'recipe_en' => '', 'recipe_dv' => ''];
     }
 
     /** @return array<string, mixed> What every sticker on the sheet shares. */
