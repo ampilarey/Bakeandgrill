@@ -47,12 +47,25 @@ const DeliverySettingsPage = lazy(() => import('./DeliverySettingsPage'));
 
 const ANY_ADMIN = ['settings.update', 'roles_permissions.manage', 'website.manage'] as const;
 
-/** Roles & permissions still takes ?user= to open straight onto one person. */
+/**
+ * Roles & permissions still takes ?user= to open straight onto one person.
+ * Team → Staff → More → Permissions lands here with &from=staff (owner,
+ * 2026-10-12: the one editor, not a second pop-up), so the page offers the
+ * way back.
+ */
 function PermissionsTab() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const userParam = searchParams.get('user');
   const id = userParam ? Number(userParam) : null;
-  return <PermissionsSettings initialUserId={id !== null && Number.isFinite(id) ? id : null} />;
+  const fromStaff = searchParams.get('from') === 'staff';
+  return (
+    <PermissionsSettings
+      initialUserId={id !== null && Number.isFinite(id) ? id : null}
+      onBack={fromStaff ? () => navigate('/staff') : undefined}
+      backLabel="Back to Staff"
+    />
+  );
 }
 
 export const SETTINGS_TABS: HubTab[] = [

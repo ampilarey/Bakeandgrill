@@ -3,16 +3,15 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { MoreHorizontal } from 'lucide-react';
 import {
   fetchStaff, createStaff, updateStaff, resetStaffPin, resetStaffTwoFactor, deleteStaff,
-  getUserPermissions, updateUserPermissions,
   getStaffNotificationPrefs, updateStaffNotificationPrefs,
-  type StaffMember, type StaffRole, type PermissionItem, type StaffNotificationPref,
+  type StaffMember, type StaffRole, type StaffNotificationPref,
 } from '../api';
 import { SchedulesTab } from './StaffPage/SchedulesTab';
 import {
   Badge, Btn, ConfirmDialog, EmptyState, ErrorMsg, Input, Modal, ModalActions, PageHeader, PageShell, Spinner, TableCard, TD, useConfirmDialog,
 } from '../components/SharedUI';
 import { SortFilterHead, useSortFilter } from '../components/TableControls';
-import { Toggle, useToast } from '../components/ui';
+import { useToast } from '../components/ui';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 
@@ -435,184 +434,9 @@ function PinModal({ member, onSave, onClose }: {
   );
 }
 
-// ── Permissions modal ─────────────────────────────────────────────────────────
-
-function groupPermissions(perms: PermissionItem[]): Record<string, PermissionItem[]> {
-  const groups: Record<string, PermissionItem[]> = {};
-  for (const p of perms) {
-    const label = p.group
-      ? p.group.charAt(0).toUpperCase() + p.group.slice(1).replace(/_/g, ' ')
-      : 'Other';
-    (groups[label] ??= []).push(p);
-  }
-  return groups;
-}
-
-function PermissionsModal({ member, onClose }: { member: StaffMember; onClose: () => void }) {
-  const toast = useToast();
-  const navigate = useNavigate();
-  const { state: permDlg, ask: askPermConfirm, close: closePermDlg } = useConfirmDialog();
-  const [perms, setPerms] = useState<PermissionItem[]>([]);
-  const [overrides, setOverrides] = useState<Record<string, boolean | null>>({});
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    getUserPermissions(member.id)
-      .then((res) => {
-        setPerms(res.permissions);
-        const initial: Record<string, boolean | null> = {};
-        for (const p of res.permissions) {
-          if (p.source === 'override') initial[p.slug] = p.granted;
-        }
-        setOverrides(initial);
-      })
-      .catch(() => toast.error('Failed to load permissions.'))
-      .finally(() => setLoading(false));
-  }, [member.id]);
-
-  const toggle = (slug: string) => {
-    setOverrides((prev) => {
-      const perm = perms.find((p) => p.slug === slug);
-      if (!perm) return prev;
-      const current = prev[slug] !== undefined && prev[slug] !== null ? prev[slug] : perm.granted;
-      return { ...prev, [slug]: !current };
-    });
-  };
-
-  const reset = (slug: string) => {
-    setOverrides((prev) => ({ ...prev, [slug]: null }));
-  };
-
-  const resetAll = () => setOverrides({});
-
-  const save = async () => {
-    const changedCount = Object.keys(overrides).length;
-    if (changedCount === 0) {
-      onClose();
-      return;
-    }
-    askPermConfirm({
-      title: 'Save permission changes',
-      message: `Apply ${changedCount} permission override(s) for ${member.name}? They take effect at once; a till they are signed in on picks them up within a minute.`,
-      confirmLabel: 'Save changes',
-      danger: true,
-      onConfirm: () => void doSave(),
-    });
-  };
-
-  const doSave = async () => {
-    setSaving(true);
-    try {
-      await updateUserPermissions(member.id, overrides);
-      toast.success('Permissions saved. Open tills pick them up within a minute.');
-      onClose();
-    } catch {
-      toast.error('Failed to save permissions.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const effectiveGranted = (p: PermissionItem): boolean => {
-    const ov = overrides[p.slug];
-    if (ov === null || ov === undefined) return p.granted;
-    return ov;
-  };
-
-  const isModified = (p: PermissionItem): boolean => {
-    const ov = overrides[p.slug];
-    return ov !== null && ov !== undefined;
-  };
-
-  const groups = groupPermissions(perms);
-  const hasChanges = Object.values(overrides).some((v) => v !== null && v !== undefined);
-
-  return (
-    <>
-      <Modal title={`Permissions — ${member.name}`} onClose={onClose} maxWidth={720}>
-        {loading ? (
-          <Spinner />
-        ) : (
-          <>
-            <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--color-text-secondary)' }}>
-              Toggle overrides for this person. Role defaults still apply unless overridden.{' '}
-              <button
-                type="button"
-                onClick={() => navigate(`/settings/permissions?user=${member.id}`)}
-                style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontWeight: 700, cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontSize: 13 }}
-              >
-                Open full permissions editor →
-              </button>
-            </p>
-            <div style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: 4 }}>
-              {Object.entries(groups).map(([category, items]) => (
-                <div key={category} style={{ marginBottom: 20 }}>
-                  <div style={{
-                    fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
-                    color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 8,
-                    paddingBottom: 4, borderBottom: '1px solid var(--color-border-light)',
-                  }}>
-                    {category}
-                  </div>
-                  {items.map((p) => {
-                    const granted = effectiveGranted(p);
-                    const modified = isModified(p);
-                    return (
-                      <div key={p.slug} style={{
-                        display: 'flex', alignItems: 'center', gap: 10,
-                        padding: '8px 0', borderBottom: '1px solid var(--color-border-light)', minHeight: 44,
-                      }}>
-                        <div style={{ flex: 1 }}>
-                          <span style={{ fontSize: 14, color: 'var(--color-text)', fontWeight: 500 }}>{p.name}</span>
-                          {' '}
-                          <span style={{
-                            fontSize: 11, padding: '1px 6px', borderRadius: 99,
-                            background: modified ? 'var(--color-warning-bg)' : 'var(--color-border-light)',
-                            color: modified ? 'var(--color-warning-strong)' : 'var(--color-text-muted)',
-                            fontWeight: 600,
-                          }}>
-                            {modified ? 'override' : p.source}
-                          </span>
-                        </div>
-                        {modified && (
-                          <button
-                            type="button"
-                            onClick={() => reset(p.slug)}
-                            style={{
-                              fontSize: 12, color: 'var(--color-warning-strong)', background: 'none',
-                              border: 'none', cursor: 'pointer', padding: '6px 8px',
-                              textDecoration: 'underline', minHeight: 36,
-                            }}
-                          >
-                            reset
-                          </button>
-                        )}
-                        <Toggle checked={granted} onChange={() => toggle(p.slug)} />
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-        <ModalActions>
-          {hasChanges && (
-            <Btn variant="ghost" onClick={resetAll} style={{ marginRight: 'auto' }}>
-              Reset all changes
-            </Btn>
-          )}
-          <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
-          <Btn onClick={() => void save()} disabled={saving || loading}>
-            {saving ? 'Saving…' : 'Save Permissions'}
-          </Btn>
-        </ModalActions>
-      </Modal>
-      <ConfirmDialog state={permDlg} close={closePermDlg} />
-    </>
-  );
-}
+// Permissions: Team → Staff → More → Permissions opens the one editor,
+// Settings → Roles & permissions → One person (owner, 2026-10-12). The pop-up
+// that edited the same overrides here went with it.
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
@@ -643,7 +467,6 @@ export function StaffPage() {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<StaffMember | null>(null);
   const [changingPin, setChangingPin] = useState<StaffMember | null>(null);
-  const [permissionsUser, setPermissionsUser] = useState<StaffMember | null>(null);
   const [notifPrefsUser, setNotifPrefsUser] = useState<StaffMember | null>(null);
 
   const switchTab = (tab: 'staff' | 'schedules') => {
@@ -889,7 +712,7 @@ export function StaffPage() {
                         }
                       }
                       if (m.role !== 'owner' && canManagePerms) {
-                        menuItems.push({ label: 'Permissions', onClick: () => setPermissionsUser(m) });
+                        menuItems.push({ label: 'Permissions', onClick: () => navigate(`/settings/permissions?user=${m.id}&from=staff`) });
                       }
                       if (canDeleteStaff) {
                         menuItems.push({ label: 'Remove', onClick: () => handleDelete(m), danger: true });
@@ -951,9 +774,6 @@ export function StaffPage() {
           )}
           {changingPin && (
             <PinModal member={changingPin} onSave={handlePinChange} onClose={() => setChangingPin(null)} />
-          )}
-          {permissionsUser && (
-            <PermissionsModal member={permissionsUser} onClose={() => setPermissionsUser(null)} />
           )}
           {notifPrefsUser && (
             <NotificationPrefsModal member={notifPrefsUser} onClose={() => setNotifPrefsUser(null)} />

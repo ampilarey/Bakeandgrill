@@ -5623,6 +5623,22 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   min-width: 0;
 }
 .perm-page:has(.perm-savebar) { padding-bottom: 8px; }
+/* The way back to Team → Staff when the editor was opened from a member's row. */
+.perm-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-primary);
+  cursor: pointer;
+  min-height: 32px;
+}
 .perm-topline {
   display: flex;
   align-items: center;

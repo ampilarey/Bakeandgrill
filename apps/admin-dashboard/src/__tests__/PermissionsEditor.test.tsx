@@ -79,6 +79,29 @@ describe('Roles & permissions editor', () => {
     api.updateUserPermissions.mockResolvedValue(undefined);
   });
 
+  it('offers the way back when opened from Team → Staff', async () => {
+    // Owner, 2026-10-12: Staff → More → Permissions opens this one editor
+    // on that person instead of a second pop-up, so the page says how to
+    // get back; opened from Settings, there is no such link.
+    api.getUserPermissions.mockResolvedValue({ role: 'staff', permissions: rolePayload('staff').permissions });
+    const onBack = vi.fn();
+    render(
+      <ToastProvider>
+        <PermissionsSettings initialUserId={7} onBack={onBack} backLabel="Back to Staff" />
+      </ToastProvider>,
+    );
+    expect(await screen.findByRole('tab', { name: /One person/, selected: true })).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('perm-back'));
+    expect(onBack).toHaveBeenCalled();
+    expect(screen.getByTestId('perm-back')).toHaveTextContent('Back to Staff');
+  });
+
+  it('has no back link when opened from Settings', async () => {
+    renderIt();
+    await screen.findByRole('tab', { name: /Manager\s*5/ });
+    expect(screen.queryByTestId('perm-back')).not.toBeInTheDocument();
+  });
+
   it('shows each role with how many it has, and the groups as tiles with counts', async () => {
     renderIt();
     await waitFor(() => expect(screen.getByRole('tab', { name: /Manager\s*5/ })).toBeInTheDocument());

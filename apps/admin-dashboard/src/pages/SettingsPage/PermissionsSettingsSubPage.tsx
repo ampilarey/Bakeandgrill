@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Check, ChevronsDownUp, ChevronsUpDown, CircleHelp, Search, Shield, User, X } from 'lucide-react';
+import { ArrowLeft, Check, ChevronsDownUp, ChevronsUpDown, CircleHelp, Search, Shield, User, X } from 'lucide-react';
 import {
   fetchStaff,
   getMyPermissions,
@@ -90,7 +90,12 @@ function roleRowsFor(
   });
 }
 
-export function PermissionsSettings({ initialUserId }: { initialUserId?: number | null }) {
+export function PermissionsSettings({ initialUserId, onBack, backLabel = 'Back' }: {
+  initialUserId?: number | null;
+  /** Where the visitor came from (Team → Staff), so the page offers the way back. */
+  onBack?: () => void;
+  backLabel?: string;
+}) {
   const { success, error } = useToast();
   // Role defaults and per-person overrides are the owner's
   // (roles_permissions.manage). Anyone else gets the explanation and their
@@ -681,6 +686,11 @@ export function PermissionsSettings({ initialUserId }: { initialUserId?: number 
 
   return (
     <div className="perm-page">
+      {onBack && (
+        <button type="button" className="perm-back" data-testid="perm-back" onClick={onBack}>
+          <ArrowLeft size={15} aria-hidden /> {backLabel}
+        </button>
+      )}
       <div className="perm-topline">
         <TabScrollRow className="perm-modes" role="tablist" aria-label="Edit by" fit>
           <button type="button" role="tab" aria-selected={mode === 'roles'} className="perm-mode" onClick={() => setMode('roles')}>
