@@ -279,11 +279,19 @@ export function CheckoutPage() {
   const tomorrowGateOpen = onlineGate?.order_for_tomorrow?.open !== false;
   const canOrderTomorrowWhileClosed = shopClosed && allowsTomorrow && checkoutServiceAvailable && tomorrowGateOpen;
   const placeBlockedByGate = orderingGateClosed && !(canOrderTomorrowWhileClosed && collectOn === 'tomorrow');
+  /*
+   * Seated: the guest scanned the QR on their table. They are already in the
+   * room, so the order type, the arrival time and the party size are questions
+   * with no answer, and the eat-here pre-order switch does not apply (owner,
+   * 2026-10-12: a seated guest saw "Pickup · Today ASAP" and a greyed-out
+   * "Eat here").
+   */
+  const seated = Boolean(tableSession.name);
   // Prepaid dine-in ("Eat here"): today uses modes.dine_in / legacy; tomorrow needs tomorrow_dine_in.
-  const dineInAvailable = forTomorrow
+  const dineInAvailable = seated || (forTomorrow
     ? onlineGate?.order_for_tomorrow?.modes?.dine_in?.open === true
     : (onlineGate?.modes?.dine_in?.open
-      ?? ((onlineGate?.dine_in_preorder?.open ?? onlineGate?.dine_in_preorder?.enabled) === true && !shopClosed));
+      ?? ((onlineGate?.dine_in_preorder?.open ?? onlineGate?.dine_in_preorder?.enabled) === true && !shopClosed)));
   const isDineIn = orderType === 'dine_in';
 
   // Auto-fallback when the chosen mode becomes unavailable — never counts as an explicit choice.
@@ -940,29 +948,6 @@ export function CheckoutPage() {
         )}
       </div>
 
-      {tableSession.name && (
-        <div
-          data-testid="table-session-banner"
-          style={{
-            padding: '10px 12px', borderRadius: 10, marginBottom: 12,
-            background: 'var(--color-success-bg, #F0FDF4)',
-            border: '1px solid var(--color-success, #10B981)',
-            fontSize: 'var(--text-sm)', fontWeight: 700,
-          }}
-        >
-          <Utensils size={15} aria-hidden style={{ verticalAlign: '-0.18em' }} /> Ordering for {tableSession.name} — we will bring it to your table.
-        </div>
-      )}
-      {tableSession.error && (
-        <div
-          data-testid="table-session-error"
-          className="field-error"
-          style={{ marginBottom: 12 }}
-        >
-          {tableSession.error}
-        </div>
-      )}
-
       {/* Gift Card */}
       <div>
         <p style={{ margin: '0 0 8px', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
@@ -1318,7 +1303,7 @@ export function CheckoutPage() {
           </div>
         </div>
       )}
-      {isDineIn && pickupSlotAt && (
+      {isDineIn && !seated && pickupSlotAt && (
         <div className="banner banner-info" style={{ marginBottom: 12 }} data-testid="dine-in-summary-banner">
           <span className="banner-icon"><Utensils size={20} aria-hidden /></span>
           <div>
@@ -1332,7 +1317,7 @@ export function CheckoutPage() {
           </div>
         </div>
       )}
-      {isDineIn && !pickupSlotAt && (
+      {isDineIn && !seated && !pickupSlotAt && (
         <div className="banner banner-warning" style={{ marginBottom: 12 }} data-testid="dine-in-needs-time-banner">
           <span className="banner-icon"><Clock size={20} aria-hidden /></span>
           <div>
@@ -1493,9 +1478,30 @@ export function CheckoutPage() {
       <div className="checkout-layout">
         {/* Main: auth gate + accordion sections + sticky CTA */}
         <div className="checkout-main">
+          {/* The table, first thing on the page: it used to sit inside the
+              folded Discounts box, where nobody saw it. */}
+          {seated && (
+            <div className="banner banner-success" style={{ marginBottom: 12 }} data-testid="table-session-banner">
+              <span className="banner-icon"><Utensils size={20} aria-hidden /></span>
+              <div>
+                <p className="banner-title">Eating here · Table {tableSession.name}</p>
+                <p className="banner-sub">Pay on your phone and we bring it to your table. No need to pick a time.</p>
+              </div>
+            </div>
+          )}
+          {tableSession.error && (
+            <div className="banner banner-warning" style={{ marginBottom: 12 }} data-testid="table-session-error">
+              <span className="banner-icon"><Utensils size={20} aria-hidden /></span>
+              <div>
+                <p className="banner-title">{tableSession.error}</p>
+                <p className="banner-sub">This order will be a normal pickup unless you scan the table's card again.</p>
+              </div>
+            </div>
+          )}
           {!isAuthenticated && <AuthBlock skipProfileSetup onSuccess={handleAuthSuccess} />}
           {isAuthenticated && (
             <>
+              {!seated && (
               <AccordionItem
                 id="order-type"
                 title={t('checkout.acc_order_type')}
@@ -1509,7 +1515,9 @@ export function CheckoutPage() {
               >
                 {bodyOrderType}
               </AccordionItem>
+              )}
 
+              {!seated && (
               <AccordionItem
                 id="fulfillment"
                 title={fulfillmentTitle}
@@ -1519,6 +1527,7 @@ export function CheckoutPage() {
               >
                 {bodyFulfillment}
               </AccordionItem>
+              )}
 
               <AccordionItem
                 id="discounts"
@@ -1569,7 +1578,8 @@ export function CheckoutPage() {
                   || needsModeChoice
                   || !checkoutServiceAvailable
                   || (!paymentServiceAvailable && amountDueLaar > 0)
-                  || (isDineIn && !pickupSlotAt)
+                  // A seated guest has no arrival time to pick.
+                  || (isDineIn && !seated && !pickupSlotAt)
                 }
                 loading={isPlacing}
               />

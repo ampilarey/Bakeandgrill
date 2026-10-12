@@ -14,6 +14,11 @@ import { lookupTableByQr } from "../api/orders";
  * The name is confirmed with the server before anything is shown. A QR that
  * has been rotated, or belongs to a table taken out of service, must say so
  * on the menu screen rather than at the end of an order.
+ *
+ * Runs once for the whole app, in `TableSessionProvider` (owner, 2026-10-12:
+ * a scan landed on the home page, and by checkout the table was gone because
+ * only the checkout page read the link). `useCheckout` reads the provider and
+ * falls back to its own copy only where no provider is mounted (tests).
  */
 const KEY = "bg_table_token";
 
@@ -39,13 +44,15 @@ function readStored(): string | null {
   }
 }
 
-export function useTableSession(): TableSession {
+export function useTableSession(opts: { skip?: boolean } = {}): TableSession {
+  const skip = opts.skip === true;
   const [token, setToken] = useState<string | null>(null);
   const [name, setName] = useState<string | null>(null);
-  const [checking, setChecking] = useState(true);
+  const [checking, setChecking] = useState(!skip);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (skip) return;
     let cancelled = false;
 
     // A token in the URL wins over a stored one: scanning a different table
@@ -79,7 +86,7 @@ export function useTableSession(): TableSession {
     })();
 
     return () => { cancelled = true; };
-  }, []);
+  }, [skip]);
 
   const clear = () => {
     setToken(null);

@@ -79,12 +79,17 @@ class RestaurantTable extends Model
         return $token;
     }
 
-    /** What the QR encodes: the ordering app, scoped to this table. */
+    /**
+     * What the QR encodes: the ordering app, scoped to this table.
+     *
+     * The order app lives at /order/ on the site; the card used to encode the
+     * site root, which is the website, and the website let the token fall
+     * (owner, 2026-10-12: a scan ended as a plain visit). The website root now
+     * forwards a table link too, for cards already printed.
+     */
     public function qrUrl(): string
     {
-        $base = rtrim((string) config('app.order_app_url', config('app.url')), '/');
-
-        return $base . '/?table=' . $this->ensureQrToken();
+        return rtrim((string) config('app.url'), '/') . '/order/?table=' . $this->ensureQrToken();
     }
 
     /**

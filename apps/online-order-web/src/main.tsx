@@ -11,6 +11,7 @@ import { CartProvider } from './context/CartContext';
 import { ToastProvider } from './context/ToastContext';
 import { AuthProvider } from './context/AuthContext';
 import { OrderModeProvider } from './context/OrderModeContext';
+import { TableSessionProvider } from './context/TableSessionContext';
 import { OrderDayProvider } from './context/OrderDayContext';
 import { ServiceStatusProvider } from './context/ServiceStatusContext';
 import { AppShell } from './components/shell/AppShell';
@@ -122,6 +123,7 @@ if (isSignagePath(window.location.pathname)) {
             <AuthProvider>
             <AbandonedCartTracker />
             <OrderModeProvider>
+            <TableSessionProvider>
             <OrderDayProvider>
             <ServiceStatusProvider>
             <BrowserRouter basename="/order">
@@ -167,6 +169,7 @@ if (isSignagePath(window.location.pathname)) {
             </BrowserRouter>
             </ServiceStatusProvider>
             </OrderDayProvider>
+            </TableSessionProvider>
             </OrderModeProvider>
             </AuthProvider>
             </ToastProvider>

@@ -367,6 +367,20 @@ place of the framework class in `AppServiceProvider` (so
 limiters are unchanged. The order app retries a refused read once after
 `Retry-After` and says the menu is busy rather than blaming the connection.
 
+## Ordering from the table (QR)
+
+Admin → Tables prints a card per table whose QR encodes `APP_URL/order/?table=<token>`
+(`RestaurantTable::qrUrl`); the website root forwards an old card's `/?table=` there.
+The token, never the table id, decides the table (`OrderCreationController`, public
+lookup `GET /api/tables/qr/{token}` answers with a name only). The order app reads the
+scan once, on any page, in `TableSessionProvider` (owner, 2026-10-12: the checkout page
+alone read it, so the table was gone by the time the guest got there), keeps it for the
+tab, settles the mode on eat-here, shows one seated chip on the menu in place of the
+order-type switch, and at checkout a "Eating here · Table T4" banner first, no order
+type, arrival time or party size; the table branch runs before delivery in
+`useCheckout`. The eat-here pre-order switch does not apply to a seated guest. Checked
+end to end in `TableQrOrderingTest` and `TableSessionContext.test.tsx`.
+
 ## Variants are separate products in reports
 
 Owner, 2026-10-07: "variant should treat as a separate product". Every sales

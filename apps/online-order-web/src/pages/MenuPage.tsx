@@ -27,6 +27,7 @@ import { DaySwitchConfirmSheet } from '../components/DaySwitchConfirmSheet';
 import { useOrderDay, type OrderDay } from '../context/OrderDayContext';
 import { isItemAvailableNow, itemMinOrderQty } from '../utils/itemAvailability';
 import { useOrderMode, modeToChannel, type OrderMode } from '../context/OrderModeContext';
+import { useSeatedTable } from '../context/TableSessionContext';
 import { useServiceStatusContext } from '../context/ServiceStatusContext';
 import { isDeliveryBlocked, isPickupBlocked } from '../utils/fulfilmentAvailability';
 import { CategoryRail } from '../components/menu/CategoryRail';
@@ -252,6 +253,8 @@ export function MenuPage() {
 
   const { day, setDay } = useOrderDay();
   const { mode, modeConfirmed, setMode } = useOrderMode();
+  // The guest scanned the QR on their table: eating here, no question asked.
+  const seated = useSeatedTable();
   /** Pending manual day switch that would remove cart lines — asks first. */
   const [daySwitchConfirm, setDaySwitchConfirm] = useState<{ target: OrderDay; count: number } | null>(null);
 
@@ -1090,9 +1093,10 @@ export function MenuPage() {
     modeGateOpen: forTomorrow ? tomorrowModeGates.delivery : modeGates.delivery,
   });
   const dineInAvailableToday = modeGates.dine_in ?? (dineInPreorderEnabled && isOpen === true);
-  const dineInAvailable = forTomorrow
+  // A seated guest is already in the room; the eat-here pre-order switch is not about them.
+  const dineInAvailable = seated.name !== null || (forTomorrow
     ? tomorrowModeGates.dine_in === true
-    : dineInAvailableToday;
+    : dineInAvailableToday);
 
   if (error) {
     return (
@@ -1189,6 +1193,16 @@ export function MenuPage() {
               }}
             />
           </div>
+          {seated.name || seated.error ? (
+            <div
+              data-testid="mode-chip-seated"
+              role="status"
+              className={`mode-switch mode-switch--seated${seated.error ? ' mode-switch--seated-error' : ''}`}
+            >
+              <span className="mode-switch__icon" aria-hidden="true"><ORDER_MODE_ICONS.dine_in size={15} strokeWidth={2.2} /></span>
+              {seated.name ? `${t('mode.eat_here')} · Table ${seated.name}` : seated.error}
+            </div>
+          ) : (
           <div
             data-testid="mode-chip"
             role="group"
@@ -1243,6 +1257,7 @@ export function MenuPage() {
               );
             })}
           </div>
+          )}
           {/* Wait time is status, not a control, so it stays in view. */}
           {waitMinutes !== null && (
             <div

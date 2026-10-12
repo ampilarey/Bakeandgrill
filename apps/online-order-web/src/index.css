@@ -3748,6 +3748,27 @@ textarea.field-input {
   opacity: 0.42;
 }
 
+/* Seated (scanned the table's QR): one quiet chip in place of the three choices. */
+.mode-switch--seated {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  background: var(--color-success-bg, #F0FDF4);
+  color: var(--color-success, #15803D);
+  border: 1px solid color-mix(in srgb, var(--color-success, #15803D) 35%, transparent);
+  font-size: 0.8rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.mode-switch--seated-error {
+  background: var(--color-warning-bg, #FFFBEB);
+  color: var(--color-warning, #B45309);
+  border-color: color-mix(in srgb, var(--color-warning, #B45309) 35%, transparent);
+  white-space: normal;
+}
+
 .mode-switch__btn.is-active.is-blocked {
   opacity: 0.55;
 }

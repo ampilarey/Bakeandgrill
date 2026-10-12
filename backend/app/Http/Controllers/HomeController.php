@@ -13,6 +13,13 @@ class HomeController extends Controller
 {
     public function index()
     {
+        // A table's QR card printed before 2026-10-12 encodes the site root
+        // with the token; the order app is where a seated guest belongs.
+        $tableToken = (string) request()->query('table', '');
+        if (preg_match('/^[A-Za-z0-9]{24}$/', $tableToken)) {
+            return redirect('/order/?table=' . $tableToken);
+        }
+
         $openingHours = app(OpeningHoursService::class);
         $isOpen = $openingHours->isOpenNow();
         $todayHours = $openingHours->getTodayHours();

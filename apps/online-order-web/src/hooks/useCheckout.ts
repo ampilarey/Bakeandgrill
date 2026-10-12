@@ -1,5 +1,6 @@
 import { giftCardTokenFromLink, normalizeGiftCardInput } from '../utils/giftCardInput';
 import { useTableSession } from './useTableSession';
+import { useTableSessionContext } from '../context/TableSessionContext';
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchItems, fetchDeliveryFeePreview, fetchCheckoutFeesPreview, fetchGstBootstrap, getOrderDay, setOrderDay, type SalesChannel } from "../api/menu";
@@ -819,8 +820,14 @@ export function useCheckout() {
     }
   };
 
-  /** Set when the customer arrived by scanning the QR on their table. */
-  const tableSession = useTableSession();
+  /**
+   * Set when the customer arrived by scanning the QR on their table. The app
+   * reads the scan once, on arrival (TableSessionProvider); the local copy is
+   * only for a checkout mounted without the provider (tests).
+   */
+  const tableSessionShared = useTableSessionContext();
+  const tableSessionLocal = useTableSession({ skip: tableSessionShared !== null });
+  const tableSession = tableSessionShared ?? tableSessionLocal;
 
   // ── Gift Card ──────────────────────────────────────────────────────────────
   /**
@@ -1116,7 +1123,34 @@ export function useCheckout() {
       writeCheckoutAttempt(attempt);
 
       const createOrder = async (key: string): Promise<{ id: number; status: string }> => {
-        if (orderType === "delivery") {
+        if (tableSession.token) {
+          /*
+           * Scanned the QR on the table. Checked first: the table wins over
+           * whatever mode was tapped at the first Add (a seated guest who
+           * answered "Delivery" used to get a delivery order).
+           *
+           * No arrival time and no party size: the guests are already sitting
+           * down, so both are questions with no answer. The token decides which
+           * table — never an id from here — so an order cannot be sent to
+           * somebody else's table.
+           */
+          const res = await createCustomerOrder({
+            items: cart.map((item) => ({
+              item_id: item.id,
+              quantity: item.quantity,
+              variant_id: (item as CartItem & { variantId?: number | null }).variantId ?? undefined,
+              modifiers: item.modifiers?.map((m) => ({ modifier_id: m.id })),
+              children: childrenFromCartItem(item),
+            })),
+            type: "dine_in",
+            table_token: tableSession.token,
+            customer_notes: notes || undefined,
+            collect_on: "today",
+            reward_claims: rewardClaimsFromCart(cart),
+            idempotency_key: key,
+          });
+          return { id: res.order.id, status: String((res.order as { status?: string }).status ?? '') };
+        } else if (orderType === "delivery") {
           const res = await createDeliveryOrder({
             items: cart.map((item) => ({
               item_id: item.id,
@@ -1136,31 +1170,6 @@ export function useCheckout() {
             ...saveAddressRequestFields(saveAddress, addressLabel),
             customer_notes: notes || undefined,
             collect_on: collectOn,
-            reward_claims: rewardClaimsFromCart(cart),
-            idempotency_key: key,
-          });
-          return { id: res.order.id, status: String((res.order as { status?: string }).status ?? '') };
-        } else if (tableSession.token) {
-          /*
-           * Scanned the QR on the table.
-           *
-           * No arrival time and no party size: the guests are already sitting
-           * down, so both are questions with no answer. The token decides which
-           * table — never an id from here — so an order cannot be sent to
-           * somebody else's table.
-           */
-          const res = await createCustomerOrder({
-            items: cart.map((item) => ({
-              item_id: item.id,
-              quantity: item.quantity,
-              variant_id: (item as CartItem & { variantId?: number | null }).variantId ?? undefined,
-              modifiers: item.modifiers?.map((m) => ({ modifier_id: m.id })),
-              children: childrenFromCartItem(item),
-            })),
-            type: "dine_in",
-            table_token: tableSession.token,
-            customer_notes: notes || undefined,
-            collect_on: "today",
             reward_claims: rewardClaimsFromCart(cart),
             idempotency_key: key,
           });

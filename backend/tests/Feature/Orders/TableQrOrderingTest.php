@@ -62,6 +62,19 @@ class TableQrOrderingTest extends TestCase
         $this->assertSame($token, $table->fresh()->ensureQrToken());
     }
 
+    public function test_the_card_opens_the_order_app_and_an_old_card_is_forwarded_there(): void
+    {
+        // The card used to encode the site root, where the website let the
+        // token fall (owner, 2026-10-12: a scan ended as a plain visit).
+        $table = $this->table();
+        $token = $table->ensureQrToken();
+
+        $this->assertSame(rtrim(config('app.url'), '/') . '/order/?table=' . $token, $table->qrUrl());
+        $this->get('/?table=' . $token)->assertRedirect('/order/?table=' . $token);
+        // Anything that is not a token leaves the home page alone.
+        $this->get('/?table=4')->assertOk();
+    }
+
     public function test_a_scan_says_which_table_it_is_and_nothing_else(): void
     {
         // Public, because the phone has not logged in yet. A guessed token must
