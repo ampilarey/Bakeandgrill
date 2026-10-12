@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Copy, ImagePlus, Pencil, Plus, Printer, RefreshCw, Tag, Upload, X } from 'lucide-react';
+import { Bookmark, Copy, ImagePlus, Pencil, Plus, Printer, RefreshCw, Tag, Upload, X } from 'lucide-react';
 import {
   createCustomLabel, deleteCustomLabel, duplicateCustomLabel, fetchCustomLabels, fetchLabelBrands, fetchLabelTypes,
-  previewCustomDraft, updateCustomLabel, uploadCustomLabelPicture,
+  previewCustomDraft, stickerLinks, updateCustomLabel, uploadCustomLabelPicture,
   type CustomLabel, type CustomLabelPayload, type LabelBrand, type LabelStorage, type LabelType, type StickerLang,
 } from '../../api';
 import { Btn, Modal } from '../SharedUI';
@@ -329,6 +329,23 @@ export function CustomLabelsTab({ canManage }: { canManage: boolean }) {
     if (!window.confirm(`Remove the custom label "${c.name}"? Prints already made stay in the log.`)) return;
     try { await deleteCustomLabel(c.id); await load(); toast('success', 'Custom label removed.'); } catch (e) { toast('error', e instanceof Error ? e.message : 'Could not remove it.'); }
   };
+  // Owner, 2026-10-12: "no option to send to saved labels". One tap prepares
+  // a sheet of this label at the usual size (full stickers, four to an A4
+  // page, English with the Dhivehi beneath when it has a Dhivehi name) and
+  // lands on Saved labels, where it can be printed again, pinned or changed.
+  const [savingId, setSavingId] = useState<number | null>(null);
+  const saveToSaved = async (c: CustomLabel) => {
+    setSavingId(c.id);
+    try {
+      const r = await stickerLinks({ items: [{ id: c.id, copies: 4, kind: 'custom' }], layout: 'a4-4', lang: c.name_dv ? 'both' : 'en', fill: true });
+      toast('success', r.job ? `Saved as “${r.job.name}”.` : 'Saved to Saved labels.');
+      navigate('/labels/saved');
+    } catch (e) {
+      toast('error', e instanceof Error ? e.message : 'Could not save it.');
+    } finally {
+      setSavingId(null);
+    }
+  };
   const iconBtn = 'w-9 h-9 inline-flex items-center justify-center rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)]';
 
   return (
@@ -361,6 +378,7 @@ export function CustomLabelsTab({ canManage }: { canManage: boolean }) {
               </div>
               <div className="flex items-center gap-1 ml-auto">
                 <Button size="sm" icon={<Printer size={14} />} onClick={() => navigate(`/labels/stickers?custom=${c.id}`)} aria-label={`Print ${c.name}`}>Print</Button>
+                <Button size="sm" variant="secondary" icon={<Bookmark size={14} />} loading={savingId === c.id} onClick={() => void saveToSaved(c)} aria-label={`Save ${c.name} to Saved labels`} data-testid={`custom-save-${c.id}`}>Save</Button>
                 {canManage && (
                   <>
                     <button type="button" className={iconBtn} onClick={() => setEdit(c)} aria-label={`Edit ${c.name}`}><Pencil size={16} /></button>

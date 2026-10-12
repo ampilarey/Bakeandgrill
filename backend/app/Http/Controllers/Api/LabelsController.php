@@ -550,7 +550,11 @@ class LabelsController extends Controller
     {
         $rules = [];
         foreach (array_keys(LabelSettings::DEFAULTS) as $key) {
-            $rules[$key] = str_starts_with($key, 'label_precut_') ? 'sometimes|nullable|numeric|between:-20,20' : 'sometimes|nullable|string|max:200';
+            $rules[$key] = match (true) {
+                str_starts_with($key, 'label_precut_') => 'sometimes|nullable|numeric|between:-20,20',
+                $key === 'label_dhivehi_font' => ['sometimes', 'nullable', Rule::in(LabelSettings::DHIVEHI_FONTS)],
+                default => 'sometimes|nullable|string|max:200',
+            };
         }
         LabelSettings::save($request->validate($rules));
 

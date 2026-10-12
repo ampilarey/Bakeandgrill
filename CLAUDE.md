@@ -181,7 +181,13 @@ Dhivehi name, ingredients and storage line beneath, full and compact designs), a
 custom label previewed before it is saved (`POST /labels/custom/preview`, cache token
 `d<token>` in the sheet link, never printed), pinned saved labels (`label_jobs.pinned`,
 first in Saved labels and Print again), and Stickers on the kitchen screen for a batch
-just sent (needs `labels.print`). Phones print the PDF, not the web sheet (iOS adds margins). How to use it and where
+just sent (needs `labels.print`). Phones print the PDF, not the web sheet (iOS adds margins).
+Dhivehi on stickers is Noto Sans Thaana with a true bold for headings (owner, 2026-10-12:
+"dhivehi font is not nice"), or Faruma or the website's uploaded font by Labels → Settings
+(`label_dhivehi_font`, `LabelText::dvFace()`); the web sheet and the PDF share the face,
+and a second family in a Blade `{{ }}` must not be quoted there (Blade escapes the quotes
+and the browser drops the rule). A custom label's row has Save, which prepares a default
+sheet straight into Saved labels. How to use it and where
 everything lives: `docs/LABELS.md`; design and decisions: `docs/LABEL_HUB_PLAN.md`
 and `docs/LABEL_HUB_V2_PLAN.md`.
 

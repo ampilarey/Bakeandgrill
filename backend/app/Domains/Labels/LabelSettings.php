@@ -53,6 +53,9 @@ final class LabelSettings
         'label_box_strip_ambient' => 'FOOD ITEMS  •  KEEP COOL AND DRY  •  HANDLE WITH CARE  •  THIS SIDE UP',
         // v2 point 4: how dates print, "04 / 10 / 2026" or "4 Oct 2026".
         'label_date_style' => 'dmy',
+        // Owner, 2026-10-12: "dhivehi font is not nice". A LabelText::DV_FACES
+        // key, or "site" for the font uploaded in Content Hub.
+        'label_dhivehi_font' => 'noto',
         'label_precut_top' => '0',
         'label_precut_left' => '0',
         'label_precut_gutter' => '0',
@@ -88,6 +91,16 @@ final class LabelSettings
             // Saving the default (or nothing) clears the override.
             SiteSetting::set($key, $value === self::DEFAULTS[$key] ? '' : $value);
         }
+    }
+
+    /** @var list<string> */
+    public const DHIVEHI_FONTS = ['noto', 'faruma', 'site'];
+
+    public static function dhivehiFont(): string
+    {
+        $font = self::get('label_dhivehi_font');
+
+        return in_array($font, self::DHIVEHI_FONTS, true) ? $font : 'noto';
     }
 
     public static function storage(string $storage): string

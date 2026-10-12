@@ -34,8 +34,14 @@
     <meta name="robots" content="noindex">
     <title>Pack stickers – {{ $sheet['label'] }}</title>
     @unless ($forPdf)
-        @foreach (['plus-jakarta-sans-400', 'plus-jakarta-sans-500', 'plus-jakarta-sans-700', 'plus-jakarta-sans-800', 'dm-serif-display-regular', 'dm-serif-display-italic', 'a_faruma'] as $f)
+        @foreach (['plus-jakarta-sans-400', 'plus-jakarta-sans-500', 'plus-jakarta-sans-700', 'plus-jakarta-sans-800', 'dm-serif-display-regular', 'dm-serif-display-italic'] as $f)
             <link rel="preload" href="/fonts/{{ $f }}.woff2" as="font" type="font/woff2" crossorigin>
+        @endforeach
+        @php $dvPreload = \App\Domains\Labels\LabelText::dvFace(); @endphp
+        @foreach (array_filter([$dvPreload['web'], $dvPreload['bold_web']]) as $f)
+            @if (str_ends_with($f, '.woff2'))
+            <link rel="preload" href="{{ $f }}" as="font" type="font/woff2" crossorigin>
+            @endif
         @endforeach
     @endunless
     <style>

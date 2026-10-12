@@ -66,14 +66,18 @@
                 $ls = isset($p['ls']) ? 'letter-spacing:' . $p['ls'] . 'em;' : '';
             @endphp
             @php
-                // Faruma has no bold: thicken by drawing beside itself, about
-                // the stroke the original stickers used (size × 0.035 × weight).
+                // A Dhivehi heading sets in the face's true bold when it has
+                // one (Noto Sans Thaana). Otherwise, and for the lighter
+                // weights, thicken by drawing beside itself, about the stroke
+                // the original stickers used (size × 0.035 × weight): Faruma
+                // has no bold.
                 $bold = (float) ($p['bold'] ?? 0);
-                $nudge = $bold > 0 ? $size * 0.035 * $bold * $PT : 0.0;
-                $offsets = $bold > 0 ? [-$nudge * 0.5, $nudge * 0.5, 0.0] : [0.0];
+                $trueBold = $p['font'] === 'dv' && $bold >= \App\Domains\Labels\LabelText::DV_BOLD_FROM && \App\Domains\Labels\LabelText::dvHasBold();
+                $nudge = $bold > 0 && !$trueBold ? $size * 0.035 * $bold * $PT : 0.0;
+                $offsets = $nudge > 0 ? [-$nudge * 0.5, $nudge * 0.5, 0.0] : [0.0];
             @endphp
             @foreach ($offsets as $dx)
-            <div class="pc tx f-{{ $p['font'] }}" style="left:{{ $mm($ox + $p['x'] * $s + $dx) }};top:{{ $mm($top) }};width:{{ $mm($p['w'] * $s) }};height:{{ $mm($lh) }};line-height:{{ $mm($lh) }};font-size:{{ round($size, 3) }}pt;color:{{ $p['color'] }};text-align:{{ $align }};{{ $ls }}{{ $rtl ? 'direction:rtl;' : '' }}">{!! $textHtml((string) $p['text'], $p['font'], $p['bold_words'] ?? []) !!}</div>
+            <div class="pc tx f-{{ $p['font'] }}{{ $trueBold ? ' b' : '' }}" style="left:{{ $mm($ox + $p['x'] * $s + $dx) }};top:{{ $mm($top) }};width:{{ $mm($p['w'] * $s) }};height:{{ $mm($lh) }};line-height:{{ $mm($lh) }};font-size:{{ round($size, 3) }}pt;color:{{ $p['color'] }};text-align:{{ $align }};{{ $ls }}{{ $rtl ? 'direction:rtl;' : '' }}">{!! $textHtml((string) $p['text'], $p['font'], $p['bold_words'] ?? []) !!}</div>
             @endforeach
             @break
     @endswitch

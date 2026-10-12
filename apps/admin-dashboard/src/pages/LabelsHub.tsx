@@ -436,13 +436,25 @@ function SettingsTab({ canManage }: { canManage: boolean }) {
             </div>
           ))}
         </div>
-        <h4 className="text-sm font-bold text-[var(--color-text)] mt-5 mb-1">Dates</h4>
-        <div className="max-w-xs">
-          <label className="block text-xs font-semibold text-[var(--color-text-secondary)] mb-1" htmlFor="label_date_style">How dates print</label>
-          <select id="label_date_style" value={settings.label_date_style ?? 'dmy'} disabled={!canManage} onChange={(e) => setSettings((s) => ({ ...s, label_date_style: e.target.value }))} className={input}>
-            <option value="dmy">04 / 10 / 2026</option>
-            <option value="text">4 Oct 2026</option>
-          </select>
+        <h4 className="text-sm font-bold text-[var(--color-text)] mt-5 mb-1">Dates and fonts</h4>
+        <div className="grid gap-3 sm:grid-cols-2 max-w-2xl">
+          <div>
+            <label className="block text-xs font-semibold text-[var(--color-text-secondary)] mb-1" htmlFor="label_date_style">How dates print</label>
+            <select id="label_date_style" value={settings.label_date_style ?? 'dmy'} disabled={!canManage} onChange={(e) => setSettings((s) => ({ ...s, label_date_style: e.target.value }))} className={input}>
+              <option value="dmy">04 / 10 / 2026</option>
+              <option value="text">4 Oct 2026</option>
+            </select>
+          </div>
+          <div>
+            {/* Owner, 2026-10-12: "dhivehi font is not nice". */}
+            <label className="block text-xs font-semibold text-[var(--color-text-secondary)] mb-1" htmlFor="label_dhivehi_font">Dhivehi font on stickers</label>
+            <select id="label_dhivehi_font" value={settings.label_dhivehi_font ?? 'noto'} disabled={!canManage} onChange={(e) => setSettings((s) => ({ ...s, label_dhivehi_font: e.target.value }))} className={input}>
+              <option value="noto">Noto Sans Thaana · clean, with a real bold</option>
+              <option value="faruma">Faruma · the classic face</option>
+              <option value="site">The font uploaded for the website</option>
+            </select>
+            <p className="text-xs text-[var(--color-text-muted)] mt-1">The website font prints on the PDF only when it was uploaded as TTF or OTF; otherwise the PDF falls back to Faruma.</p>
+          </div>
         </div>
         <h4 className="text-sm font-bold text-[var(--color-text)] mt-5 mb-1">Pre-cut sheet position</h4>
         <p className="text-xs text-[var(--color-text-muted)] mb-2">If stickers on ready-cut sheets print off the cut, move them here in millimetres: down and right are positive, gap is the space between labels.</p>

@@ -118,7 +118,17 @@ header and footer including the branding details"):
   the date boxes with the type's wording, the **use-within** line, batch and
   quantity with the unit, the storage strip.
 
-Dates print as `04 / 10 / 2026` or `4 Oct 2026` (Labels → Settings → Dates).
+Dates print as `04 / 10 / 2026` or `4 Oct 2026` (Labels → Settings → Dates and fonts).
+
+**Dhivehi font** (Labels → Settings → Dates and fonts; owner, 2026-10-12: "dhivehi font
+is not nice"). Stickers set Dhivehi in **Noto Sans Thaana** (clean, with a true bold for
+the headings; OFL, `backend/public/fonts/NOTO-SANS-THAANA-LICENSE.txt`), or in
+**Faruma** (the classic face the first stickers used, thickened by hand for headings),
+or in **the website's uploaded font** (Content Hub `dhivehi_font`; the PDF uses it only
+when it was uploaded as TTF or OTF, otherwise the PDF falls back to Faruma). The web
+preview and the PDF use the same face (`LabelText::dvFace()`); until 2026-10-12 the
+preview's font rule was dropped by Blade escaping, so browsers drew a system font there.
+The menu PDF, website and order app keep their own Dhivehi font setting.
 
 ## Printing
 
@@ -212,6 +222,12 @@ prepared. Each shop's box label is kept in one place, with the shop:
 
 A quantity of 0 leaves a line to write the count on; three spare rows are always
 added; up to 16 lines.
+
+A custom label's row has **Save** beside Print (owner, 2026-10-12: "no option to send
+to saved labels"): one tap prepares a sheet of it at the usual size (full stickers,
+four to an A4 page, English with the Dhivehi beneath when it has a Dhivehi name) and
+opens Saved labels on it. Print on the row opens Pack stickers instead, to choose a size
+first.
 
 **Saved labels** (Labels → Saved labels): every label prepared, newest printed first.
 **Print** prints it again (stickers with dates get today's made-on date and a fresh

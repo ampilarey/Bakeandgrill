@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { ToastProvider } from '../ui';
 
 const fetchCustomLabels = vi.fn();
@@ -125,6 +125,26 @@ describe('CustomLabelsTab', () => {
     wrap(<CustomLabelsTab canManage />);
     expect(await screen.findByTestId('custom-label-new')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Edit Garlic Sauce' })).toBeInTheDocument();
+  });
+
+  // Owner, 2026-10-12: "no option to send to saved labels".
+  it('saves a label to Saved labels in one tap, as a full A4 sheet, and goes there', async () => {
+    fetchCustomLabels.mockResolvedValue({ data: [custom(7, 'Garlic Sauce'), custom(8, 'Theluli Rihaakuru', { name_dv: 'ތެލުލި ރިހާކުރު' })] });
+    stickerLinks.mockResolvedValue({ url: '/labels/stickers?signature=x', view_url: '/x', pdf_url: '/x.pdf', expires_in_minutes: 30, job: { id: 3, name: 'Theluli Rihaakuru · 4 stickers' } });
+    render(
+      <MemoryRouter initialEntries={['/labels/custom']}>
+        <ToastProvider>
+          <Routes>
+            <Route path="/labels/custom" element={<CustomLabelsTab canManage={false} />} />
+            <Route path="/labels/saved" element={<div data-testid="saved-tab" />} />
+          </Routes>
+        </ToastProvider>
+      </MemoryRouter>,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Save Theluli Rihaakuru to Saved labels' }));
+    await waitFor(() => expect(stickerLinks).toHaveBeenCalledWith({ items: [{ id: 8, copies: 4, kind: 'custom' }], layout: 'a4-4', lang: 'both', fill: true }));
+    expect(await screen.findByTestId('saved-tab')).toBeInTheDocument();
+    expect(screen.getByText('Saved as “Theluli Rihaakuru · 4 stickers”.')).toBeInTheDocument();
   });
 
   it('copies a label into the editor and removes one after asking', async () => {
