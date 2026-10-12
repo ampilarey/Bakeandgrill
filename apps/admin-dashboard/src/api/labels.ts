@@ -120,6 +120,8 @@ export type CustomLabel = {
   label_ingredients: string | null; label_ingredients_dv: string | null;
   label_how_to_use: string | null; label_how_to_use_dv: string | null;
   label_note: string | null; label_note_dv: string | null;
+  /** Its own footer line (2026-10-12), where the brand's tagline or the website would print; the phone stays. */
+  label_footer: string | null; label_footer_dv: string | null;
   label_shelf_life_days: number | null; label_pack_qty: number | null; label_pack_unit: string | null;
   /** 2026-10-12: price, barcode, net weight and the allergens (a comma list, printed bold and as "Contains …"). */
   label_price: number | null; label_barcode: string | null; label_net_weight: string | null; label_allergens: string | null;
@@ -133,7 +135,7 @@ export type CustomLabel = {
 export type CustomLabelPayload = Partial<Pick<CustomLabel,
   'name' | 'name_dv' | 'brand_id' | 'label_type_id' | 'label_storage' | 'label_heading' | 'label_heading_dv'
   | 'label_storage_line' | 'label_storage_line_dv' | 'label_ingredients' | 'label_ingredients_dv'
-  | 'label_how_to_use' | 'label_how_to_use_dv' | 'label_note' | 'label_note_dv'
+  | 'label_how_to_use' | 'label_how_to_use_dv' | 'label_note' | 'label_note_dv' | 'label_footer' | 'label_footer_dv'
   | 'label_shelf_life_days' | 'label_pack_qty' | 'label_pack_unit' | 'label_photo_media_id' | 'label_title_media_id'
   | 'label_price' | 'label_barcode' | 'label_net_weight' | 'label_allergens'>>;
 

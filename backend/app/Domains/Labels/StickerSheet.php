@@ -379,6 +379,10 @@ final class StickerSheet
             'storage_dv' => $w['storage_dv'],
             'note' => $note,
             'note_dv' => $w['note_dv'],
+            // A custom label's own footer line (owner, 2026-10-12: "add option
+            // to edit footer also"), printed where the tagline or website goes.
+            'footer' => $item instanceof CustomLabel ? trim((string) $item->label_footer) : '',
+            'footer_dv' => $item instanceof CustomLabel ? trim((string) $item->label_footer_dv) : '',
             'price' => $price,
             'net_weight' => trim((string) $item->label_net_weight),
             'barcode' => $code !== null ? Barcode::svgDataUri($code, 30, 12) : null,

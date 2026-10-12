@@ -287,6 +287,10 @@ final class StickerDesign
         $tagline = $dv && $brand['tagline_dv'] !== '' ? $brand['tagline_dv'] : $brand['tagline'];
         $tagline = $tagline !== '' ? $tagline : ($brand['parent'] !== '' ? 'by ' . $brand['parent'] : '');
         $tagFont = $dv && $brand['tagline_dv'] !== '' ? 'dv' : 'dsi';
+        // A custom label's own footer line takes the tagline's place.
+        if (($own = self::ownFooter($d, $dv)) !== null) {
+            [$tagline, $tagFont] = $own;
+        }
         $p[] = ['t' => 'text', 'x' => $nameX, 'base' => 137.2, 'w' => 50, 'align' => $A('l'), 'font' => $tagFont, 'pt' => LabelText::fitPt($tagline, $tagFont, 34, $tagFont === 'dv' ? 8 : 7.8, 5.5), 'color' => self::ON_DARK, 'text' => $tagline] + ($tagFont === 'dv' ? ['bold' => 0.4] : []);
         $by = $brand['parent'] !== '' && $brand['tagline'] !== '' ? 'by ' . $brand['parent'] . '  ·  ' : '';
         // The address line stops where the website (right-aligned, ~27 mm)
@@ -368,7 +372,15 @@ final class StickerDesign
                 $p[] = ['t' => 'text', 'x' => $tx, 'base' => $pad + 3.6, 'w' => $tw, 'align' => 'l', 'font' => 'j7', 'pt' => LabelText::fitPt(self::spaced(mb_strtoupper($brand['name'])), 'j7', $tw, 5, 3.8), 'color' => self::PRIMARY, 'text' => self::spaced(mb_strtoupper($brand['name']))];
             }
             $p[] = ['t' => 'text', 'x' => $tx, 'base' => $headBase, 'w' => $tw, 'align' => 'l', 'font' => 'j8', 'pt' => $tall ? LabelText::fitPt($d['header_line'], 'j8', $tw, 8.5, 6) : 6.5, 'color' => self::DARK, 'text' => $d['header_line'], 'ls' => 0.04];
-            $p[] = ['t' => 'text', 'x' => $tx, 'base' => $nameBase, 'w' => $tw, 'align' => 'l', 'font' => 'dsi', 'pt' => LabelText::fitPt($d['name'], 'dsi', $tw, 16, 9), 'color' => self::PRIMARY, 'text' => $d['name']];
+            if (!empty($d['both']) && $d['name_dv'] !== '') {
+                // Both languages (owner, 2026-10-12: "when i select both
+                // languages it shows English only"): the English name a
+                // little smaller with the Dhivehi name on the line beneath.
+                $p[] = ['t' => 'text', 'x' => $tx, 'base' => $nameBase - 4.2, 'w' => $tw, 'align' => 'l', 'font' => 'dsi', 'pt' => LabelText::fitPt($d['name'], 'dsi', $tw, 11, 8), 'color' => self::PRIMARY, 'text' => $d['name']];
+                $p[] = ['t' => 'text', 'x' => $tx, 'base' => $nameBase + 0.8, 'w' => $tw, 'align' => 'l', 'font' => 'dv', 'pt' => LabelText::fitPt($d['name_dv'], 'dv', $tw, 8, 6), 'color' => self::PRIMARY, 'text' => $d['name_dv'], 'bold' => 0.6];
+            } else {
+                $p[] = ['t' => 'text', 'x' => $tx, 'base' => $nameBase, 'w' => $tw, 'align' => 'l', 'font' => 'dsi', 'pt' => LabelText::fitPt($d['name'], 'dsi', $tw, 16, 9), 'color' => self::PRIMARY, 'text' => $d['name']];
+            }
         }
 
         // Footer and storage strip from the bottom up, so the ingredients get
@@ -389,12 +401,24 @@ final class StickerDesign
         $p[] = ['t' => 'text', 'x' => $X($pad + 2, $iw / 2), 'base' => $fy + 4.1, 'w' => $iw / 2, 'align' => $A('l'), 'font' => 'ds', 'pt' => LabelText::fitPt($brand['name'], 'ds', $iw / 2 - 2, 8.5, 6), 'color' => self::CREAM, 'text' => $brand['name']];
         $p[] = ['t' => 'text', 'x' => $X($pad + $iw / 2 - 2, $iw / 2 - $rshift), 'base' => $fy + 4.1, 'w' => $iw / 2 - $rshift, 'align' => $A('r'), 'font' => 'j8', 'pt' => 7.5, 'color' => self::CREAM, 'text' => $c['phone']];
         if ($tall) {
+            // A custom label's own footer line takes the website's place
+            // (owner, 2026-10-12). It needs more room than "bakeandgrill.mv",
+            // so beside it the address line drops the by-line and landmark
+            // and keeps to the left 42 %; the footer line takes what is left
+            // before the QR.
+            $own = self::ownFooter($d, $dv);
             $by = $brand['parent'] !== '' ? 'by ' . $brand['parent'] . '  ·  ' : '';
-            $addr = $dv ? trim($d['address_dv'] . ($d['landmark_dv'] !== '' ? '  ·  ' . $d['landmark_dv'] : '')) : $by . trim($c['address'] . ($c['landmark'] !== '' ? '  ·  ' . $c['landmark'] : ''));
+            $addr = $own !== null
+                ? trim($dv ? $d['address_dv'] : $c['address'])
+                : ($dv ? trim($d['address_dv'] . ($d['landmark_dv'] !== '' ? '  ·  ' . $d['landmark_dv'] : '')) : $by . trim($c['address'] . ($c['landmark'] !== '' ? '  ·  ' . $c['landmark'] : '')));
+            $addrW = $own !== null ? $iw * 0.42 : $iw * 0.55;
             $p[] = $dv
-                ? ['t' => 'text', 'x' => $X($pad + 2, $iw * 0.55), 'base' => $fy + 8.2, 'w' => $iw * 0.55, 'align' => 'r', 'font' => 'dv', 'pt' => 6.5, 'color' => self::SOFT, 'text' => $addr, 'bold' => 0.4]
-                : ['t' => 'text', 'x' => $pad + 2, 'base' => $fy + 8, 'w' => $iw * 0.55, 'align' => 'l', 'font' => 'j4', 'pt' => LabelText::fitPt($addr, 'j4', $iw * 0.55 - 2, 5.2, 4.0), 'color' => self::SOFT, 'text' => $addr];
-            $p[] = ['t' => 'text', 'x' => $X($pad + $iw * 0.5 - 2, $iw * 0.5 - $rshift), 'base' => $fy + 8.1, 'w' => $iw * 0.5 - $rshift, 'align' => $A('r'), 'font' => 'dsi', 'pt' => 7, 'color' => self::CREAM, 'text' => $c['website']];
+                ? ['t' => 'text', 'x' => $X($pad + 2, $addrW), 'base' => $fy + 8.2, 'w' => $addrW, 'align' => 'r', 'font' => 'dv', 'pt' => $own !== null ? LabelText::fitPt($addr, 'dv', $addrW - 1, 6.5, 5) : 6.5, 'color' => self::SOFT, 'text' => $addr, 'bold' => 0.4]
+                : ['t' => 'text', 'x' => $pad + 2, 'base' => $fy + 8, 'w' => $addrW, 'align' => 'l', 'font' => 'j4', 'pt' => LabelText::fitPt($addr, 'j4', $addrW - 2, 5.2, 4.0), 'color' => self::SOFT, 'text' => $addr];
+            [$site, $siteFont] = $own ?? [$c['website'], 'dsi'];
+            $siteX = $own !== null ? $pad + 2 + $addrW + 1 : $pad + $iw / 2 - 2;
+            $siteW = $pad + $iw - 2 - $rshift - $siteX;
+            $p[] = ['t' => 'text', 'x' => $X($siteX, $siteW), 'base' => $fy + 8.1, 'w' => $siteW, 'align' => $A('r'), 'font' => $siteFont, 'pt' => $siteFont === 'dv' ? LabelText::fitPt($site, 'dv', $siteW - 1, 7.5, 4.5) : LabelText::fitPt($site, 'dsi', $siteW - 1, 7, 4.0), 'color' => self::CREAM, 'text' => $site] + ($siteFont === 'dv' ? ['bold' => 0.5] : []);
         }
 
         $both = !$dv && !empty($d['both']) && $d['storage_dv'] !== '';
@@ -657,13 +681,37 @@ final class StickerDesign
         $p[] = $text($sy + $sh * 0.72, $sw - 2, $sf, LabelText::fitPt($msg, $sf, $sw - 3, ($dv ? 5.6 : 4.2) * $f, 3.2), self::CREAM, $msg, $dv ? 0.7 : 0.0);
         $y = 46.4 * $k;
         $w = $chord($y - 1.2 * $f);
-        $foot = $brand['name'] . '  ·  ' . $c['phone'] . '  ·  ' . $c['website'];
-        if (LabelText::widthMm($foot, 3.6, 'j7') > $w) {
-            $foot = $c['phone'] . '  ·  ' . $c['website'];
+        // A custom label's own footer line takes the website's place.
+        [$site, $siteFont] = self::ownFooter($d, $dv) ?? [$c['website'], 'j7'];
+        $foot = $brand['name'] . '  ·  ' . $c['phone'] . '  ·  ' . $site;
+        if (LabelText::widthMm($foot, 3.6, $siteFont) > $w) {
+            $foot = $c['phone'] . '  ·  ' . $site;
         }
-        $p[] = $text($y, $w, 'j7', LabelText::fitPt($foot, 'j7', $w, 4.3 * $f, 3.2), self::DARK, $foot);
+        if ($siteFont === 'dv' && LabelText::widthMm($foot, 3.6, 'dv') > $w) {
+            $foot = $site;
+        }
+        $p[] = $text($y, $w, $siteFont, LabelText::fitPt($foot, $siteFont, $w, ($siteFont === 'dv' ? 5.4 : 4.3) * $f, 3.2), self::DARK, $foot, $siteFont === 'dv' ? 0.5 : 0.0);
 
         return $p;
+    }
+
+    /**
+     * A custom label's own footer line (owner, 2026-10-12: "add option to
+     * edit footer also"): the Dhivehi one on a Dhivehi sticker when it has
+     * one, set in the Dhivehi face when it holds Thaana. Null when the label
+     * has none, so the brand's tagline or the website prints as before.
+     *
+     * @param array<string, mixed> $d
+     * @return array{0: string, 1: string}|null
+     */
+    public static function ownFooter(array $d, bool $dv): ?array
+    {
+        $text = $dv && ($d['footer_dv'] ?? '') !== '' ? (string) $d['footer_dv'] : (string) ($d['footer'] ?? '');
+        if ($text === '') {
+            return null;
+        }
+
+        return [$text, \App\Support\ThaanaVisual::hasThaana($text) ? 'dv' : 'dsi'];
     }
 
     /**

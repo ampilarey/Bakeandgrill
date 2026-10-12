@@ -11,6 +11,7 @@ const duplicateCustomLabel = vi.fn();
 const deleteCustomLabel = vi.fn();
 const stickerLinks = vi.fn();
 const previewCustomDraft = vi.fn();
+const fetchLabelLayouts = vi.fn();
 
 vi.mock('../../api', () => ({
   fetchLabelBrands: () => Promise.resolve({ data: [
@@ -26,6 +27,7 @@ vi.mock('../../api', () => ({
   deleteCustomLabel: (...a: unknown[]) => deleteCustomLabel(...a),
   stickerLinks: (...a: unknown[]) => stickerLinks(...a),
   previewCustomDraft: (...a: unknown[]) => previewCustomDraft(...a),
+  fetchLabelLayouts: (...a: unknown[]) => fetchLabelLayouts(...a),
 }));
 vi.mock('../MediaPicker', () => ({ MediaPicker: () => null }));
 vi.mock('./TypesAndBrands', () => ({ BrandModal: () => <div data-testid="brand-modal" /> }));
@@ -44,15 +46,30 @@ const custom = (id: number, name: string, extra = {}) => ({
 
 const wrap = (ui: React.ReactElement) => render(<MemoryRouter><ToastProvider>{ui}</ToastProvider></MemoryRouter>);
 
+const preset = (id: string, shape: 'rect' | 'circle', w: number, h: number, design: string, options: [string, string, string, number][]) => ({
+  id, shape, w, h, name: shape === 'circle' ? `Round ${w} mm` : `${w} × ${h} mm`, cm: '', design,
+  options: options.map(([on, layout, label, per_page]) => ({ on, layout, label, per_page, landscape: layout === 'a4-custom' })),
+});
+const LAYOUTS = {
+  data: [],
+  presets: [
+    preset('r105x148', 'rect', 105, 148.5, 'full', [['sheet', 'a4-4', 'A4 sheet', 4], ['printer', 'single-105x148', 'Label printer', 1]]),
+    preset('r40x60', 'rect', 40, 60, 'small', [['sheet', 'a4-custom', 'A4 sheet', 21], ['printer', 'single-custom', 'Label printer', 1]]),
+  ],
+  limits: { min_short: 20, min_long: 30, max_w: 210, max_h: 297, min_round: 30, max_round: 200, sheet_margin: 5 },
+};
+
 describe('CustomLabelModal', () => {
   beforeEach(() => {
-    [fetchCustomLabels, createCustomLabel, updateCustomLabel, uploadCustomLabelPicture, duplicateCustomLabel, deleteCustomLabel, stickerLinks, previewCustomDraft].forEach((f) => f.mockReset());
+    [fetchCustomLabels, createCustomLabel, updateCustomLabel, uploadCustomLabelPicture, duplicateCustomLabel, deleteCustomLabel, stickerLinks, previewCustomDraft, fetchLabelLayouts].forEach((f) => f.mockReset());
+    fetchLabelLayouts.mockResolvedValue(LAYOUTS);
+    try { localStorage.clear(); } catch { /* jsdom */ }
     stickerLinks.mockResolvedValue({ url: '/labels/stickers?signature=x', one_url: '/labels/stickers?one=1&signature=x' });
     previewCustomDraft.mockResolvedValue({ url: '/labels/stickers?signature=d', one_url: '/labels/stickers?one=1&signature=d', expires_in_minutes: 30 });
   });
 
   // 2026-10-12: the preview redraws from the draft as it is typed, before anything is saved.
-  it('adds a label with its own brand and details, previewing it at 4 × 6 cm as it is typed', async () => {
+  it('adds a label with its own brand and details, previewing it at the print size as it is typed', async () => {
     const onSaved = vi.fn();
     createCustomLabel.mockResolvedValue({ data: custom(7, 'Garlic Sauce') });
     wrap(<CustomLabelModal label={null} onClose={() => {}} onSaved={onSaved} />);
@@ -71,7 +88,7 @@ describe('CustomLabelModal', () => {
     // The draft is drawn before Save, at the size picked, with everything typed so far.
     await waitFor(() => expect(previewCustomDraft).toHaveBeenCalledWith(expect.objectContaining({
       name: 'Garlic Sauce', brand_id: 2, label_ingredients: 'Garlic, oil', label_allergens: 'garlic', label_price: 25, label_barcode: '590123412345', label_net_weight: '250 ml',
-      layout: 'single-custom', w: 40, h: 60, lang: 'en',
+      layout: 'a4-4', w: null, h: null, lang: 'en',
     })), { timeout: 3000 });
     expect(stickerLinks).not.toHaveBeenCalled();
     fireEvent.click(screen.getByTestId('custom-label-save'));
@@ -108,7 +125,9 @@ describe('CustomLabelModal', () => {
 
 describe('CustomLabelsTab', () => {
   beforeEach(() => {
-    [fetchCustomLabels, duplicateCustomLabel, deleteCustomLabel, stickerLinks].forEach((f) => f.mockReset());
+    [fetchCustomLabels, duplicateCustomLabel, deleteCustomLabel, stickerLinks, fetchLabelLayouts].forEach((f) => f.mockReset());
+    fetchLabelLayouts.mockResolvedValue(LAYOUTS);
+    try { localStorage.clear(); } catch { /* jsdom */ }
     stickerLinks.mockResolvedValue({ url: '/labels/stickers?signature=x' });
     fetchCustomLabels.mockResolvedValue({ data: [custom(7, 'Garlic Sauce')] });
   });
@@ -142,9 +161,22 @@ describe('CustomLabelsTab', () => {
       </MemoryRouter>,
     );
     fireEvent.click(await screen.findByRole('button', { name: 'Save Theluli Rihaakuru to Saved labels' }));
-    await waitFor(() => expect(stickerLinks).toHaveBeenCalledWith({ items: [{ id: 8, copies: 4, kind: 'custom' }], layout: 'a4-4', lang: 'both', fill: true }));
+    await waitFor(() => expect(stickerLinks).toHaveBeenCalledWith({ items: [{ id: 8, copies: 4, kind: 'custom' }], layout: 'a4-4', w: null, h: null, lang: 'both', fill: true }));
     expect(await screen.findByTestId('saved-tab')).toBeInTheDocument();
     expect(screen.getByText('Saved as “Theluli Rihaakuru · 4 stickers”.')).toBeInTheDocument();
+  });
+
+  // Owner, 2026-10-12: "Layout of the custom labels is different when i go to
+  // print". Save and the editor's preview follow the size Pack stickers last
+  // printed, so a 4 × 6 cm owner gets a sheet of 4 × 6 cm.
+  it('saves at the size Pack stickers last printed, a full sheet of it', async () => {
+    localStorage.setItem('labels.lastSize', JSON.stringify({ shape: 'rect', preset: 'r40x60', on: 'sheet', w: 40, h: 60 }));
+    fetchCustomLabels.mockResolvedValue({ data: [custom(7, 'Garlic Sauce')] });
+    stickerLinks.mockResolvedValue({ url: '/x', view_url: '/x', pdf_url: '/x.pdf', expires_in_minutes: 30, job: { id: 4, name: 'Garlic Sauce · 21 stickers' } });
+    wrap(<CustomLabelsTab canManage={false} />);
+    await waitFor(() => expect(fetchLabelLayouts).toHaveBeenCalled());
+    fireEvent.click(await screen.findByRole('button', { name: 'Save Garlic Sauce to Saved labels' }));
+    await waitFor(() => expect(stickerLinks).toHaveBeenCalledWith({ items: [{ id: 7, copies: 21, kind: 'custom' }], layout: 'a4-custom', w: 40, h: 60, lang: 'en', fill: true }));
   });
 
   it('copies a label into the editor and removes one after asking', async () => {

@@ -19,7 +19,7 @@ class CustomLabel extends Model
         'name', 'name_dv', 'brand_id', 'label_type_id', 'label_storage',
         'label_heading', 'label_heading_dv', 'label_storage_line', 'label_storage_line_dv',
         'label_ingredients', 'label_ingredients_dv', 'label_how_to_use', 'label_how_to_use_dv',
-        'label_note', 'label_note_dv', 'label_shelf_life_days', 'label_pack_qty', 'label_pack_unit',
+        'label_note', 'label_note_dv', 'label_footer', 'label_footer_dv', 'label_shelf_life_days', 'label_pack_qty', 'label_pack_unit',
         'label_price', 'label_barcode', 'label_net_weight', 'label_allergens',
         'label_photo_media_id', 'label_title_media_id', 'created_by',
     ];

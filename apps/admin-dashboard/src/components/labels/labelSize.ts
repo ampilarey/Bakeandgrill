@@ -188,3 +188,27 @@ export function withPreset(choice: SizeChoice, preset: string, presets: LabelPre
   const on = p.options.some((o) => o.on === choice.on) ? choice.on : (p.options.find((o) => o.on === 'sheet') ?? p.options[0]).on;
   return { ...choice, shape: p.shape, preset: p.id, on, w: p.w, h: p.h };
 }
+
+const LAST_SIZE_KEY = 'labels.lastSize';
+
+/**
+ * The size last prepared on Pack stickers, kept in the browser so the next
+ * sheet, the custom label editor's preview and a custom label's one-tap Save
+ * all start from it (owner, 2026-10-12: "Layout of the custom labels is
+ * different when i go to print"). Null in a private window or before any print.
+ */
+export function rememberedSize(): SizeChoice | null {
+  try {
+    const raw = localStorage.getItem(LAST_SIZE_KEY);
+    if (!raw) return null;
+    const v = JSON.parse(raw) as Partial<SizeChoice>;
+    if ((v.shape === 'rect' || v.shape === 'circle') && typeof v.preset === 'string' && typeof v.on === 'string') {
+      return { ...DEFAULT_CHOICE, ...v } as SizeChoice;
+    }
+  } catch { /* private window, or a value from an older version */ }
+  return null;
+}
+
+export function rememberSize(choice: SizeChoice): void {
+  try { localStorage.setItem(LAST_SIZE_KEY, JSON.stringify(choice)); } catch { /* private window */ }
+}

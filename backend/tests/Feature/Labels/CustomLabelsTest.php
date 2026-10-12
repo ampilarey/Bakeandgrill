@@ -111,6 +111,53 @@ class CustomLabelsTest extends TestCase
         $this->assertStringContainsString('ލޮނުމެދު ސޯސް', (string) $this->get($res->json('view_url'))->getContent());
     }
 
+    /**
+     * Owner, 2026-10-12: "add option to edit footer also", "when i select
+     * both languages it shows English only" (on a 40 × 60 the editor
+     * previewed), "layout of the custom labels is different when i go to
+     * print".
+     */
+    public function test_a_custom_label_prints_its_own_footer_line_and_both_names_on_every_size(): void
+    {
+        Sanctum::actingAs($this->makeOwner(), ['staff']);
+        $id = $this->postJson('/api/labels/custom', $this->sauce() + ['label_footer' => 'Made in Malé with love', 'label_footer_dv' => 'މާލޭގައި ތައްޔާރުކުރި'])
+            ->assertCreated()->assertJsonPath('data.label_footer', 'Made in Malé with love')->json('data.id');
+
+        $sheet = fn (array $extra) => (string) $this->get($this->postJson('/api/labels/stickers/url', ['items' => [['id' => $id, 'kind' => 'custom', 'copies' => 1]], 'preview' => true] + $extra)->assertOk()->json('view_url'))->assertOk()->getContent();
+
+        // Full sticker: the footer line where the brand's tagline was.
+        $full = $sheet(['layout' => 'a4-4']);
+        $this->assertStringContainsString('Made in Malé with love', $full);
+        $this->assertStringNotContainsString('Home-made, the Amma way', $full);
+        $this->assertStringContainsString('+960 912 0011', $full, 'the phone stays');
+        // The Dhivehi one on a Dhivehi sticker.
+        $this->assertStringContainsString('މާލޭގައި ތައްޔާރުކުރި', $sheet(['layout' => 'a4-4', 'lang' => 'dv']));
+
+        // Small sticker (40 × 60): the band has no room for three parts, so the
+        // footer line takes the phone's place rather than being dropped.
+        $small = $sheet(['layout' => 'single-custom', 'w' => 40, 'h' => 60]);
+        $this->assertStringContainsString('Made in Malé with love', $small);
+        $this->assertStringNotContainsString('+960 912 0011', $small);
+        // A wider small sticker keeps the phone beside it.
+        $wide = $sheet(['layout' => 'single-custom', 'w' => 100, 'h' => 50]);
+        $this->assertStringContainsString('Made in Malé with love', $wide);
+        $this->assertStringContainsString('+960 912 0011', $wide);
+
+        // Both languages: the Dhivehi name beneath the English one, on the
+        // small and the compact designs too (the full one already had it).
+        foreach ([['layout' => 'single-custom', 'w' => 40, 'h' => 60], ['layout' => 'a4-12'], ['layout' => 'a4-4']] as $size) {
+            $both = $sheet($size + ['lang' => 'both']);
+            $this->assertStringContainsString('Garlic Sauce', $both, json_encode($size));
+            $this->assertStringContainsString('ލޮނުމެދު ސޯސް', $both, json_encode($size));
+        }
+        $en = $sheet(['layout' => 'single-custom', 'w' => 40, 'h' => 60]);
+        $this->assertStringNotContainsString('ލޮނުމެދު ސޯސް', $en, 'English alone stays English');
+
+        // The footer is a label field like the rest: cleared by saving it empty.
+        $this->putJson("/api/labels/custom/{$id}", ['label_footer' => ''])->assertOk()->assertJsonPath('data.label_footer', null);
+        $this->assertStringContainsString('Home-made, the Amma way', $sheet(['layout' => 'a4-4']));
+    }
+
     public function test_menu_items_and_custom_labels_share_a_sheet_and_never_mix_up_their_ids(): void
     {
         Sanctum::actingAs($this->makeOwner(), ['staff']);

@@ -15,7 +15,7 @@ import { PhonePreviewBar } from './PhonePreviewBar';
 import { InlineRename } from './InlineRename';
 import { LabelSizePicker } from './LabelSizePicker';
 import { CustomLabelModal } from './CustomLabels';
-import { DEFAULT_CHOICE, choiceFromRequest, pageOf, requestFor, sizeName, sizeOf, sizeProblem, stockOf, type SizeChoice } from './labelSize';
+import { DEFAULT_CHOICE, choiceFromRequest, pageOf, rememberSize, rememberedSize, requestFor, sizeName, sizeOf, sizeProblem, stockOf, type SizeChoice } from './labelSize';
 
 /*
  * Pack stickers: pick products, how many, the language, the label size and
@@ -46,23 +46,7 @@ function expiryFrom(mfg: string, days: number | null): string | null {
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
 }
-const LAST_SIZE_KEY = 'labels.lastSize';
 const LAST_LAYOUT_KEY = 'labels.lastLayout';
-
-function rememberedSize(): SizeChoice | null {
-  try {
-    const raw = localStorage.getItem(LAST_SIZE_KEY);
-    if (!raw) return null;
-    const v = JSON.parse(raw) as Partial<SizeChoice>;
-    if ((v.shape === 'rect' || v.shape === 'circle') && typeof v.preset === 'string' && typeof v.on === 'string') {
-      return { ...DEFAULT_CHOICE, ...v } as SizeChoice;
-    }
-  } catch { /* private window, or a value from an older version */ }
-  return null;
-}
-function rememberSize(choice: SizeChoice) {
-  try { localStorage.setItem(LAST_SIZE_KEY, JSON.stringify(choice)); } catch { /* private window */ }
-}
 function rememberedLayout(): string | null {
   try { return localStorage.getItem(LAST_LAYOUT_KEY); } catch { return null; }
 }

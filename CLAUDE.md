@@ -186,8 +186,14 @@ Dhivehi on stickers is Noto Sans Thaana with a true bold for headings (owner, 20
 "dhivehi font is not nice"), or Faruma or the website's uploaded font by Labels → Settings
 (`label_dhivehi_font`, `LabelText::dvFace()`); the web sheet and the PDF share the face,
 and a second family in a Blade `{{ }}` must not be quoted there (Blade escapes the quotes
-and the browser drops the rule). A custom label's row has Save, which prepares a default
-sheet straight into Saved labels. How to use it and where
+and the browser drops the rule). Dhivehi at hand-thickening 0.5 and up sets in the true
+bold (`LabelText::DV_BOLD_FROM`). A custom label's row has Save, which prepares a full
+sheet straight into Saved labels at the size Pack stickers last printed
+(`rememberedSize()` in `labelSize.ts`), and the editor previews the first sticker of that
+same sheet, so preview and print never differ. A custom label has its own footer line
+(`label_footer`, `_dv`; `StickerDesign::ownFooter`), printed where the tagline or website
+would be, the phone kept; `lang: both` sets the Dhivehi name under the English on the
+small and compact designs too. How to use it and where
 everything lives: `docs/LABELS.md`; design and decisions: `docs/LABEL_HUB_PLAN.md`
 and `docs/LABEL_HUB_V2_PLAN.md`.
 

@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bookmark, Copy, ImagePlus, Pencil, Plus, Printer, RefreshCw, Tag, Upload, X } from 'lucide-react';
 import {
-  createCustomLabel, deleteCustomLabel, duplicateCustomLabel, fetchCustomLabels, fetchLabelBrands, fetchLabelTypes,
+  createCustomLabel, deleteCustomLabel, duplicateCustomLabel, fetchCustomLabels, fetchLabelBrands, fetchLabelLayouts, fetchLabelTypes,
   previewCustomDraft, stickerLinks, updateCustomLabel, uploadCustomLabelPicture,
-  type CustomLabel, type CustomLabelPayload, type LabelBrand, type LabelStorage, type LabelType, type StickerLang,
+  type CustomLabel, type CustomLabelPayload, type LabelBrand, type LabelPreset, type LabelStorage, type LabelType, type StickerLang,
 } from '../../api';
+import { DEFAULT_CHOICE, rememberedSize, requestFor, sizeName, sizeOf, stockOf, type SizeChoice } from './labelSize';
 import { Btn, Modal } from '../SharedUI';
 import { Button, Card, useToast } from '../ui';
 import { MediaPicker } from '../MediaPicker';
@@ -29,7 +30,8 @@ type Draft = {
   name: string; name_dv: string; brand_id: number | null; label_type_id: number | null; label_storage: LabelStorage | '';
   label_heading: string; label_heading_dv: string; label_storage_line: string; label_storage_line_dv: string;
   label_ingredients: string; label_ingredients_dv: string; label_how_to_use: string; label_how_to_use_dv: string;
-  label_note: string; label_note_dv: string; label_shelf_life_days: string; label_pack_qty: string; label_pack_unit: string;
+  label_note: string; label_note_dv: string; label_footer: string; label_footer_dv: string;
+  label_shelf_life_days: string; label_pack_qty: string; label_pack_unit: string;
   label_price: string; label_barcode: string; label_net_weight: string; label_allergens: string;
   label_photo_media_id: number | null; label_photo_url: string | null; label_title_media_id: number | null; label_title_url: string | null;
 };
@@ -38,7 +40,7 @@ const toDraft = (c: CustomLabel | null): Draft => ({
   name: c?.name ?? '', name_dv: c?.name_dv ?? '', brand_id: c?.brand_id ?? null, label_type_id: c?.label_type_id ?? null, label_storage: c?.label_storage ?? '',
   label_heading: c?.label_heading ?? '', label_heading_dv: c?.label_heading_dv ?? '', label_storage_line: c?.label_storage_line ?? '', label_storage_line_dv: c?.label_storage_line_dv ?? '',
   label_ingredients: c?.label_ingredients ?? '', label_ingredients_dv: c?.label_ingredients_dv ?? '', label_how_to_use: c?.label_how_to_use ?? '', label_how_to_use_dv: c?.label_how_to_use_dv ?? '',
-  label_note: c?.label_note ?? '', label_note_dv: c?.label_note_dv ?? '',
+  label_note: c?.label_note ?? '', label_note_dv: c?.label_note_dv ?? '', label_footer: c?.label_footer ?? '', label_footer_dv: c?.label_footer_dv ?? '',
   label_shelf_life_days: c?.label_shelf_life_days ? String(c.label_shelf_life_days) : '', label_pack_qty: c?.label_pack_qty ? String(c.label_pack_qty) : '', label_pack_unit: c?.label_pack_unit ?? '',
   label_price: c?.label_price != null ? String(c.label_price) : '', label_barcode: c?.label_barcode ?? '', label_net_weight: c?.label_net_weight ?? '', label_allergens: c?.label_allergens ?? '',
   label_photo_media_id: c?.label_photo_media_id ?? null, label_photo_url: c?.label_photo_url ?? null, label_title_media_id: c?.label_title_media_id ?? null, label_title_url: c?.label_title_url ?? null,
@@ -50,18 +52,30 @@ const toPayload = (d: Draft): CustomLabelPayload => ({
   name: d.name.trim(), name_dv: text(d.name_dv), brand_id: d.brand_id, label_type_id: d.label_type_id, label_storage: d.label_storage || null,
   label_heading: text(d.label_heading), label_heading_dv: text(d.label_heading_dv), label_storage_line: text(d.label_storage_line), label_storage_line_dv: text(d.label_storage_line_dv),
   label_ingredients: text(d.label_ingredients), label_ingredients_dv: text(d.label_ingredients_dv), label_how_to_use: text(d.label_how_to_use), label_how_to_use_dv: text(d.label_how_to_use_dv),
-  label_note: text(d.label_note), label_note_dv: text(d.label_note_dv),
+  label_note: text(d.label_note), label_note_dv: text(d.label_note_dv), label_footer: text(d.label_footer), label_footer_dv: text(d.label_footer_dv),
   label_shelf_life_days: d.label_shelf_life_days ? Number(d.label_shelf_life_days) : null, label_pack_qty: d.label_pack_qty ? Number(d.label_pack_qty) : null, label_pack_unit: text(d.label_pack_unit),
   label_price: d.label_price !== '' ? Number(d.label_price) : null, label_barcode: text(d.label_barcode), label_net_weight: text(d.label_net_weight), label_allergens: text(d.label_allergens),
   label_photo_media_id: d.label_photo_media_id, label_title_media_id: d.label_title_media_id,
 });
 
-/** Preview sizes for the editor: the full sticker, the owner's 4 × 6 cm, a 6 cm circle. */
-const PREVIEWS = [
-  { id: 'a6', name: '105 × 148', layout: 'single-105x148', w: null, h: null, ratio: 105 / 148.5, round: false },
-  { id: 'r40x60', name: '40 × 60', layout: 'single-custom', w: 40, h: 60, ratio: 40 / 60, round: false },
-  { id: 'c60', name: 'Ø 60', layout: 'single-round-custom', w: 60, h: null, ratio: 1, round: true },
-] as const;
+/**
+ * The editor previews at the size Pack stickers last printed (owner,
+ * 2026-10-12: "Layout of the custom labels is different when i go to
+ * print"), with the full sticker, the owner's 4 × 6 cm and a 6 cm circle as
+ * quick looks. Any other size prints from Pack stickers.
+ */
+const QUICK_SIZES: { name: string; choice: SizeChoice }[] = [
+  { name: '105 × 148', choice: { ...DEFAULT_CHOICE } },
+  { name: '40 × 60', choice: { shape: 'rect', preset: 'custom', on: 'sheet', w: 40, h: 60 } },
+  { name: 'Ø 60', choice: { shape: 'circle', preset: 'custom', on: 'sheet', w: 60, h: 60 } },
+];
+
+/** What a custom label prepares at one tap: the remembered size, a full sheet of it. */
+function savedSheetRequest(presets: LabelPreset[]): { layout: string; w: number | null; h: number | null; copies: number } {
+  const choice = rememberedSize() ?? DEFAULT_CHOICE;
+  if (presets.length === 0) return { layout: 'a4-4', w: null, h: null, copies: 4 };
+  return { ...requestFor(choice, presets), copies: Math.max(1, stockOf(choice, presets).perPage) };
+}
 
 function Field({ id, label, hint, children }: { id: string; label: string; hint?: string; children: React.ReactNode }) {
   return (
@@ -86,7 +100,8 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
   const [uploading, setUploading] = useState<'photo' | 'title' | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [previewBusy, setPreviewBusy] = useState(false);
-  const [previewSize, setPreviewSize] = useState<(typeof PREVIEWS)[number]['id']>('r40x60');
+  const [presets, setPresets] = useState<LabelPreset[]>([]);
+  const [choice, setChoice] = useState<SizeChoice>(() => rememberedSize() ?? DEFAULT_CHOICE);
   const [lang, setLang] = useState<StickerLang>('en');
   const previewSeq = useRef(0);
   const files = { photo: useRef<HTMLInputElement>(null), title: useRef<HTMLInputElement>(null) };
@@ -96,19 +111,31 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
     fetchLabelBrands().then((r) => setBrands(r.data)).catch(() => setBrands([]));
     fetchLabelTypes().then((r) => setTypes(r.data.filter((t) => t.is_active || t.id === label?.label_type_id))).catch(() => setTypes([]));
   }, [label?.label_type_id]);
+  useEffect(() => {
+    fetchLabelLayouts().then((r) => setPresets(r.presets)).catch(() => setPresets([]));
+  }, []);
 
-  const size = PREVIEWS.find((p) => p.id === previewSize) ?? PREVIEWS[1];
+  // The preview is the first sticker of the sheet Pack stickers would print
+  // at this size, so what is seen here is what comes out.
+  const sized = requestFor(choice, presets);
+  const dims = sizeOf(choice, presets);
+  const round = choice.shape === 'circle';
+  const sameChoice = (a: SizeChoice, b: SizeChoice) => a.shape === b.shape && Math.abs(sizeOf(a, presets).w - sizeOf(b, presets).w) < 0.05 && Math.abs(sizeOf(a, presets).h - sizeOf(b, presets).h) < 0.05;
+  const packChoice = rememberedSize() ?? DEFAULT_CHOICE;
+  const sizeChips = [{ name: `As Pack stickers · ${sizeName(packChoice.shape, sizeOf(packChoice, presets).w, sizeOf(packChoice, presets).h)}`, choice: packChoice }, ...QUICK_SIZES.filter((q) => !sameChoice(q.choice, packChoice))];
   // The preview redraws from the draft as it is typed (2026-10-12), half a
   // second after the last change, saved or not; a reply that arrives after
-  // a newer request is ignored.
-  const draftKey = JSON.stringify([toPayload(d), lang, previewSize]);
+  // a newer request is ignored. It waits for the size presets, which say
+  // what a preset's name measures.
+  const draftKey = JSON.stringify([toPayload(d), lang, sized, presets.length]);
   const refreshPreview = async () => {
+    if (presets.length === 0) return;
     const seq = ++previewSeq.current;
     setPreviewBusy(true);
     try {
       const payload = toPayload(d);
       if (!payload.name) delete payload.name;
-      const r = await previewCustomDraft({ ...payload, layout: size.layout, w: size.w, h: size.h, lang });
+      const r = await previewCustomDraft({ ...payload, layout: sized.layout, w: sized.w, h: sized.h, lang });
       if (seq !== previewSeq.current) return;
       setPreview(r.one_url ?? r.url);
     } catch {
@@ -256,6 +283,8 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
                 <Field id="cl-line-dv" label="Storage line (Dhivehi)"><input id="cl-line-dv" dir="rtl" maxLength={160} value={d.label_storage_line_dv} onChange={(e) => set('label_storage_line_dv', e.target.value)} className={fieldClass} placeholder={ph.storage_line_dv} /></Field>
                 <Field id="cl-note" label="Note under the ingredients"><input id="cl-note" maxLength={120} value={d.label_note} onChange={(e) => set('label_note', e.target.value)} className={fieldClass} placeholder={ph.note} /></Field>
                 <Field id="cl-note-dv" label="Note (Dhivehi)"><input id="cl-note-dv" dir="rtl" maxLength={120} value={d.label_note_dv} onChange={(e) => set('label_note_dv', e.target.value)} className={fieldClass} /></Field>
+                <Field id="cl-footer" label="Footer line" hint="Your own words in the dark footer, where the brand's tagline or the website would be. The phone stays."><input id="cl-footer" maxLength={120} value={d.label_footer} onChange={(e) => set('label_footer', e.target.value)} className={fieldClass} placeholder={saved?.brand_name === 'Amma' ? 'Home-made, the Amma way' : 'Fresh Baked, Fire Grilled'} /></Field>
+                <Field id="cl-footer-dv" label="Footer line (Dhivehi)"><input id="cl-footer-dv" dir="rtl" maxLength={120} value={d.label_footer_dv} onChange={(e) => set('label_footer_dv', e.target.value)} className={fieldClass} /></Field>
                 <Field id="cl-use" label="How to use"><textarea id="cl-use" rows={2} maxLength={200} value={d.label_how_to_use} onChange={(e) => set('label_how_to_use', e.target.value)} className={areaClass} placeholder={ph.how_to_use} /></Field>
                 <Field id="cl-use-dv" label="How to use (Dhivehi)"><textarea id="cl-use-dv" dir="rtl" rows={2} maxLength={200} value={d.label_how_to_use_dv} onChange={(e) => set('label_how_to_use_dv', e.target.value)} className={areaClass} /></Field>
               </div>
@@ -274,14 +303,14 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
               <button type="button" onClick={() => void refreshPreview()} className="w-8 h-8 inline-flex items-center justify-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface)]" aria-label="Refresh preview"><RefreshCw size={14} /></button>
             </div>
             <div className="flex flex-wrap gap-1" role="group" aria-label="Preview size">
-              {PREVIEWS.map((p) => (
-                <button key={p.id} type="button" onClick={() => setPreviewSize(p.id)} aria-pressed={previewSize === p.id} className={['px-2.5 h-8 rounded-full text-xs font-semibold border', previewSize === p.id ? 'bg-[var(--color-tone-rust-bg)] border-[var(--color-tone-rust-border)] text-[var(--color-tone-rust-text)]' : 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text)]'].join(' ')}>{p.name}</button>
+              {sizeChips.map((p) => (
+                <button key={p.name} type="button" onClick={() => setChoice(p.choice)} aria-pressed={sameChoice(choice, p.choice)} className={['px-2.5 h-8 rounded-full text-xs font-semibold border', sameChoice(choice, p.choice) ? 'bg-[var(--color-tone-rust-bg)] border-[var(--color-tone-rust-border)] text-[var(--color-tone-rust-text)]' : 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text)]'].join(' ')}>{p.name}</button>
               ))}
             </div>
-            <div className={size.round ? 'max-w-[240px] mx-auto' : 'max-w-[220px] mx-auto'}>
-              <SheetPreview url={preview} ratio={size.ratio} round={size.round} busy={previewBusy} title="Custom label preview" empty="Drawing…" />
+            <div className={round ? 'max-w-[240px] mx-auto' : 'max-w-[220px] mx-auto'}>
+              <SheetPreview url={preview} ratio={dims.w / dims.h} round={round} busy={previewBusy} title="Custom label preview" empty="Drawing…" />
             </div>
-            <p className="text-xs text-[var(--color-text-muted)]">Redraws as you type, saved or not. Any size prints from Pack stickers; these three are a quick look.</p>
+            <p className="text-xs text-[var(--color-text-muted)]" data-testid="custom-preview-size">{sizeName(choice.shape, dims.w, dims.h)} · the first sticker of the sheet Pack stickers prints at this size. Redraws as you type, saved or not.</p>
           </aside>
         </div>
         <div className="flex flex-wrap gap-2 justify-end mt-4">
@@ -330,14 +359,20 @@ export function CustomLabelsTab({ canManage }: { canManage: boolean }) {
     try { await deleteCustomLabel(c.id); await load(); toast('success', 'Custom label removed.'); } catch (e) { toast('error', e instanceof Error ? e.message : 'Could not remove it.'); }
   };
   // Owner, 2026-10-12: "no option to send to saved labels". One tap prepares
-  // a sheet of this label at the usual size (full stickers, four to an A4
-  // page, English with the Dhivehi beneath when it has a Dhivehi name) and
-  // lands on Saved labels, where it can be printed again, pinned or changed.
+  // a full sheet of this label at the size Pack stickers last printed (full
+  // stickers, four to an A4 page, until a size is picked there; English with
+  // the Dhivehi beneath when it has a Dhivehi name) and lands on Saved
+  // labels, where it can be printed again, pinned or changed.
   const [savingId, setSavingId] = useState<number | null>(null);
+  const [presets, setPresets] = useState<LabelPreset[]>([]);
+  useEffect(() => {
+    fetchLabelLayouts().then((r) => setPresets(r.presets)).catch(() => setPresets([]));
+  }, []);
   const saveToSaved = async (c: CustomLabel) => {
     setSavingId(c.id);
     try {
-      const r = await stickerLinks({ items: [{ id: c.id, copies: 4, kind: 'custom' }], layout: 'a4-4', lang: c.name_dv ? 'both' : 'en', fill: true });
+      const { copies, ...sized } = savedSheetRequest(presets);
+      const r = await stickerLinks({ items: [{ id: c.id, copies, kind: 'custom' }], ...sized, lang: c.name_dv ? 'both' : 'en', fill: true });
       toast('success', r.job ? `Saved as “${r.job.name}”.` : 'Saved to Saved labels.');
       navigate('/labels/saved');
     } catch (e) {

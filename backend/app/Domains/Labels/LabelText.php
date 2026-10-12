@@ -51,8 +51,14 @@ final class LabelText
         'faruma' => ['fonts/a_faruma.ttf', 'fonts/a_faruma.woff2', 1.139, 0.472, null, null],
     ];
 
-    /** Headings at this hand-thickening or more set in the true bold when the face has one. */
-    public const DV_BOLD_FROM = 0.6;
+    /**
+     * Text at this hand-thickening or more sets in the true bold when the
+     * face has one: headings, names, date labels and ingredients (0.5 and
+     * up); the how-to-use lines (0.4) stay regular. Owner, 2026-10-12: "use
+     * a much readable font" — on a 40 × 60 mm sticker the regular weight
+     * printed faint.
+     */
+    public const DV_BOLD_FROM = 0.5;
 
     public const PT = 0.3528;
 

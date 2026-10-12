@@ -93,8 +93,14 @@ the new label straight away):
    **unit** after it (PCS, G, ML, KG, PACK), the **allergens** (a comma list, printed
    bold and as "Contains …") and the **net weight**; under **For the shop till**, a
    **price** and a **barcode**.
-5. **Wording on the sticker**: heading, storage line, note, how to use, each in
-   English and Dhivehi. An empty box prints what is shown in grey.
+5. **Wording on the sticker**: heading, storage line, note, how to use, and a
+   **footer line** (owner, 2026-10-12: "add option to edit footer also"), each in
+   English and Dhivehi. An empty box prints what is shown in grey. The footer line
+   prints in the dark footer where the brand's tagline or the website would be; the
+   phone stays (on a band too narrow for both, the footer line takes the phone's
+   place). The preview beside the form is the first sticker of the sheet Pack stickers
+   would print, at the size last used there (full size until one is picked), so what
+   is seen is what prints; chips give a quick look at the other sizes.
 6. **Picture** and **hand-lettered name**: a PNG upload (kept exactly as uploaded) or
    one from the media library. Uploading a picture to a new label saves it first.
 
@@ -140,8 +146,9 @@ frozen item's dates by mistake. Then tick products and how many of each (− and
 move a whole sheet). Menu items and custom labels share the list (**All**, **Menu
 items**, **Custom labels** narrow it) and can go on the same sheet. Then the **label
 size**, the language (**English**, **ދިވެހި**, or **Both**: English with the Dhivehi name,
-ingredients and storage line beneath, on the full and compact designs; small and round
-stickers print English), **Print as** (one type for the whole sheet, optional), and
+ingredients and storage line beneath on the full design; the compact and small designs
+set the Dhivehi name under the English one, 2026-10-12; round stickers print English),
+**Print as** (one type for the whole sheet, optional), and
 whether to fill the dates (with the dates on, each picked product shows the expiry it
 will get). **Print as**, the batch number (a **Today** button writes the date as a code,
 261011) and the quantity per pack sit behind **More options**. The **Preview** beside
@@ -224,10 +231,10 @@ A quantity of 0 leaves a line to write the count on; three spare rows are always
 added; up to 16 lines.
 
 A custom label's row has **Save** beside Print (owner, 2026-10-12: "no option to send
-to saved labels"): one tap prepares a sheet of it at the usual size (full stickers,
-four to an A4 page, English with the Dhivehi beneath when it has a Dhivehi name) and
-opens Saved labels on it. Print on the row opens Pack stickers instead, to choose a size
-first.
+to saved labels"): one tap prepares a full sheet of it at the size Pack stickers last
+printed (full stickers, four to an A4 page, until a size is picked there; English with
+the Dhivehi beneath when it has a Dhivehi name) and opens Saved labels on it. Print on
+the row opens Pack stickers instead, to choose a size first.
 
 **Saved labels** (Labels → Saved labels): every label prepared, newest printed first.
 **Print** prints it again (stickers with dates get today's made-on date and a fresh

@@ -391,6 +391,22 @@ final class SmallStickerDesign
         $font = $useDv ? 'dv' : 'dsi';
         $lineK = (LabelText::ascent($font) + LabelText::descent($font)) * LabelText::PT;
         $min = $useDv ? 6.0 : 5.5;
+        // Both languages (owner, 2026-10-12: "when i select both languages it
+        // shows English only"): the English name on the upper part of the
+        // box and the Dhivehi name beneath it, each on one line.
+        if (!$useDv && !empty($d['both']) && $d['name_dv'] !== '') {
+            $dvK = (LabelText::ascent('dv') + LabelText::descent('dv')) * LabelText::PT;
+            $enH = $nh * 0.56;
+            $dvH = $nh - $enH;
+            $enPt = LabelText::fitPt($t, 'dsi', $bw, min(14.0, $enH / $lineK), 5.0);
+            $dvPt = LabelText::fitPt($d['name_dv'], 'dv', $bw, min(10.0, $dvH / $dvK), 4.5);
+            $enTop = $y + max(0.0, ($enH - $lineK * $enPt) / 2);
+            $dvTop = $y + $enH + max(0.0, ($dvH - $dvK * $dvPt) / 2);
+            $this->text($this->X($x, $bw), $enTop + LabelText::ascent('dsi') * $enPt * LabelText::PT, $bw, $this->A($align), 'dsi', $enPt, StickerDesign::PRIMARY, $t);
+            $this->text($this->X($x, $bw), $dvTop + LabelText::ascent('dv') * $dvPt * LabelText::PT, $bw, $this->A($align), 'dv', $dvPt, StickerDesign::PRIMARY, $d['name_dv'], 0.6);
+
+            return;
+        }
         // One line as big as fits; a long name that will not fit at the
         // smallest size goes onto two lines when the box is tall enough.
         $pt = LabelText::fitPt($t, $font, $bw, min(18.0, $nh / $lineK), $min);
@@ -651,31 +667,42 @@ final class SmallStickerDesign
         $c = $d['contact'];
         $this->box($x, $y, $bw, $fh, StickerDesign::DARK, min(1.3, $fh * 0.25));
         $inner = $bw - 2.0;
-        $site = $inner >= 62 && $c['website'] !== '';
+        // A custom label's own footer line (owner, 2026-10-12) stands where
+        // the website would; on a band too narrow for three parts it takes
+        // the phone's place, so the owner's words are never dropped.
+        $own = StickerDesign::ownFooter($d, $this->dv);
+        $site = $inner >= 62 && ($own !== null || $c['website'] !== '');
         $part = $site ? $inner / 3 : $inner / 2;
         $maxPt = $fh * 1.45;
         $namePt = LabelText::fitPt($brand['name'], 'ds', $part - 0.6, $maxPt * 1.15, 3.6);
         $this->text($this->X($x + 1.0, $part), $this->baseCentred($y, $fh, 'ds', $namePt), $part, $this->A('l'), 'ds', $namePt, StickerDesign::CREAM, $brand['name']);
-        if ($c['phone'] !== '') {
-            $pt = LabelText::fitPt($c['phone'], 'j8', $part - 0.6, $maxPt, 3.2);
-            $this->text($this->X($x + 1.0 + $inner - $part, $part), $this->baseCentred($y, $fh, 'j8', $pt), $part, $this->A('r'), 'j8', $pt, StickerDesign::CREAM, $c['phone']);
+        $right = $own !== null && !$site ? $own : ($c['phone'] !== '' ? [$c['phone'], 'j8'] : null);
+        if ($right !== null) {
+            [$rt, $rf] = $right;
+            $pt = LabelText::fitPt($rt, $rf, $part - 0.6, $rf === 'dv' ? $maxPt * 1.3 : $maxPt, 3.2);
+            $this->text($this->X($x + 1.0 + $inner - $part, $part), $this->baseCentred($y, $fh, $rf, $pt), $part, $this->A('r'), $rf, $pt, StickerDesign::CREAM, $rt, $rf === 'dv' ? 0.5 : 0.0);
         }
         if ($site) {
-            $pt = LabelText::fitPt($c['website'], 'dsi', $part - 0.6, $maxPt * 1.1, 3.2);
-            $this->text($this->X($x + 1.0 + $part, $part), $this->baseCentred($y, $fh, 'dsi', $pt), $part, 'c', 'dsi', $pt, StickerDesign::ON_DARK, $c['website']);
+            [$st, $sf] = $own ?? [$c['website'], 'dsi'];
+            $pt = LabelText::fitPt($st, $sf, $part - 0.6, $sf === 'dv' ? $maxPt * 1.3 : $maxPt * 1.1, 3.2);
+            $this->text($this->X($x + 1.0 + $part, $part), $this->baseCentred($y, $fh, $sf, $pt), $part, 'c', $sf, $pt, StickerDesign::ON_DARK, $st, $sf === 'dv' ? 0.5 : 0.0);
         }
     }
 
-    /** Phone and website on one plain line, when there is no room for the band. */
+    /** Phone and website (or the label's own footer line) on one plain line, when there is no room for the band. */
     private function footerLine(float $x, float $y, float $bw, float $lh, float $k): void
     {
         $c = $this->d['contact'];
-        $t = implode('  ·  ', array_filter([$c['phone'], $c['website']], fn ($s) => $s !== ''));
+        [$site, $font] = StickerDesign::ownFooter($this->d, $this->dv) ?? [$c['website'], 'j7'];
+        $t = implode('  ·  ', array_filter([$c['phone'], $site], fn ($s) => $s !== ''));
         if ($t === '') {
             return;
         }
-        $pt = LabelText::fitPt($t, 'j7', $bw, $lh * 1.4, 3.0);
-        $this->text($x, $this->baseCentred($y, $lh, 'j7', $pt), $bw, 'c', 'j7', $pt, StickerDesign::DARK, $t);
+        if ($font === 'dv' && LabelText::widthMm($t, 3.0, 'dv') > $bw) {
+            $t = $site;
+        }
+        $pt = LabelText::fitPt($t, $font, $bw, $lh * ($font === 'dv' ? 1.7 : 1.4), 3.0);
+        $this->text($x, $this->baseCentred($y, $lh, $font, $pt), $bw, 'c', $font, $pt, StickerDesign::DARK, $t, $font === 'dv' ? 0.5 : 0.0);
     }
 
     private function qr(float $x, float $y, float $size): void
