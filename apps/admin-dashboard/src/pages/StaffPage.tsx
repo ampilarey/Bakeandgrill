@@ -90,8 +90,18 @@ type MenuItem = {
   danger?: boolean;
 };
 
-function RowActionMenu({ items }: { items: MenuItem[] }) {
+const ROW_MENU_WIDTH = 180;
+
+/**
+ * The row's More menu. It hangs from whichever side of the button has room:
+ * on a computer the button sits in the last column, so the menu opens to the
+ * left; on a phone the table is cards and the button sits at the card's left
+ * edge, where a left-opening menu ran off the card and was clipped (owner,
+ * 2026-10-12: "hange PIN", "isable login").
+ */
+export function RowActionMenu({ items }: { items: MenuItem[] }) {
   const [open, setOpen] = useState(false);
+  const [side, setSide] = useState<'left' | 'right'>('right');
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -105,17 +115,25 @@ function RowActionMenu({ items }: { items: MenuItem[] }) {
 
   if (items.length === 0) return null;
 
+  const toggle = () => {
+    const rect = ref.current?.getBoundingClientRect();
+    // Room to the right of the button's left edge? Then hang from the left.
+    setSide(rect && rect.left + ROW_MENU_WIDTH <= window.innerWidth - 16 ? 'left' : 'right');
+    setOpen((v) => !v);
+  };
+
   return (
     <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
-      <Btn small variant="secondary" onClick={() => setOpen((v) => !v)} aria-label="More actions">
+      <Btn small variant="secondary" onClick={toggle} aria-label="More actions" aria-expanded={open}>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
           <MoreHorizontal size={16} /> More
         </span>
       </Btn>
       {open && (
-        <div style={{
-          position: 'absolute', right: 0, top: '100%', marginTop: 4, zIndex: 20,
-          minWidth: 180, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 10,
+        <div data-testid="row-action-menu" data-side={side} style={{
+          position: 'absolute', [side]: 0, top: '100%', marginTop: 4, zIndex: 20,
+          minWidth: ROW_MENU_WIDTH, maxWidth: 'calc(100vw - 32px)',
+          background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 10,
           boxShadow: '0 8px 24px rgba(28,20,8,0.12)', padding: 4,
         }}>
           {items.map((item) => (
