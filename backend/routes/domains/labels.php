@@ -41,6 +41,9 @@ Route::delete('/labels/jobs/{job}', [LabelsController::class, 'destroyJob'])
     ->whereNumber('job');
 Route::get('/labels/prints', [LabelsController::class, 'prints'])
     ->middleware('permission:labels.print');
+// Printed stock near its expiry (2026-10-12), from the print log.
+Route::get('/labels/expiring', [LabelsController::class, 'expiring'])
+    ->middleware('permission:labels.print');
 Route::get('/labels/settings', [LabelsController::class, 'settings'])
     ->middleware('permission:labels.print');
 Route::put('/labels/settings', [LabelsController::class, 'updateSettings'])

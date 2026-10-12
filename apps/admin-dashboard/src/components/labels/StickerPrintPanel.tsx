@@ -114,6 +114,8 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
   const [params] = useSearchParams();
   const jobParam = fixedItems ? null : params.get('job');
   const customParam = fixedItems ? null : params.get('custom');
+  // Expiring printed stock's Reprint (2026-10-12): ?item=ID picks that menu item.
+  const itemParam = fixedItems ? null : params.get('item');
   const [editing, setEditing] = useState<{ id: number; name: string } | null>(null);
   const [savedSize, setSavedSize] = useState<{ layout: string; w: number | null; h: number | null } | null>(null);
   // Print again: the last few saved sticker labels, one tap each (a cook
@@ -218,6 +220,11 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
     const key = keyOf('custom', Number(customParam));
     if (customs.some((c) => keyOf('custom', c.id) === key)) setPicked((p) => (p[key] ? p : { ...p, [key]: perPage }));
   }, [customParam, customs, presets.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!itemParam || products.length === 0 || presets.length === 0) return;
+    const key = keyOf('item', Number(itemParam));
+    if (products.some((p) => keyOf('item', p.id) === key)) setPicked((p) => (p[key] ? p : { ...p, [key]: perPage }));
+  }, [itemParam, products, presets.length]); // eslint-disable-line react-hooks/exhaustive-deps
   // The custom label editor's Print… carries the size and language it was
   // previewed at (owner, 2026-10-12), so this form opens on the same sticker.
   const sizeParam = customParam ? params.get('layout') : null;
@@ -563,6 +570,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
               <li key={p.key ?? p.id}>
                 {p.name} × {p.copies}
                 {fill ? (p.exp ? ` · EXP ${p.exp}` : ' · expiry blank (no shelf life set)') : ''}
+                {p.code && <span className="ml-2 font-mono text-xs text-[var(--color-text-muted)]" title="On every sticker of this product as a QR, which opens the pack's page" data-testid="print-code">code {p.code}</span>}
               </li>
             ))}
           </ul>

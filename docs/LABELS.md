@@ -147,9 +147,11 @@ header and footer including the branding details"):
   the live site's complaint box). Which lines print is a **footer** picked by name
   (below); a label type and a custom label each pick theirs, and Pack stickers can
   put one footer on a whole sheet.
-- Between them: the product name, the picture, ingredients, **HOW TO USE**, a note,
-  the date boxes with the type's wording, the **use-within** line, batch and
-  quantity with the unit, the storage strip.
+- Between them: the product name, the picture, ingredients, **HOW TO USE**, the
+  **allergen pictograms** (below), a note, the date boxes with the type's wording, the
+  **use-within** line, batch and quantity with the unit, the storage strip.
+- In the header's corner, the **batch QR** (below): the code of that print, which
+  opens the pack's own page.
 
 ### Footers
 
@@ -222,6 +224,57 @@ for Noto (`LabelText::dvFace()['composed']`); the browser keeps the plain webfon
 shapes it itself. The files come from `scripts/thaana-composed-font.py` (Python
 fontTools, the same install as the Dhivehi webfont inspector) and are checked in, so
 nothing runs at deploy time; rerun the script only after replacing the Noto files.
+
+### Batch QR and the pack page
+
+Built 2026-10-12 (owner: "All" of the advanced features). Every print gets a **code**
+of eight letters and digits (none that read alike: no 0, O, 1 or I), kept on its print
+log row (`label_prints.code`). The full sticker carries it as a **13 mm QR at the
+header's end** (the heading keeps to the room before it), the 99 × 70 mm compact
+sticker at the end of its band; the 66 mm compact, small and round stickers have no room
+for it. Scanned, it opens **`/b/{code}`**, the pack's public page on the live site (the
+same rule as the complaints QR: the Business Website address, never the host the sheet
+was printed from): the product in both languages, made-on and use-by with whether the
+pack is still good ("Good for 12 more days", "Use today", "Past its date by 3 days"),
+batch, pack size, net weight, after-opening line, storage strip, ingredients with the
+allergens in bold, the allergen symbols and "Contains …", how to use, and a **Something
+wrong with this pack? Tell us** button that opens the complaint box with the pack code
+filled in as the reference. Nothing about who printed it or how many; the page is not
+indexed by search engines. A code that is not in the log (a preview sheet, a typo) gets a
+page that says so. A preview sheet draws the QR with the code `PREVIEW`, so the preview
+looks as the print will; nothing is logged for it. A saved label printed again is a new
+code: it is a new batch. The prepared list on Pack stickers shows each product's code,
+the print log shows it as a link to the page, and `GET /api/labels/prints?code=` finds a
+print by it. Labels → Settings → **On the sticker** → **Batch QR in the header** turns
+the QR off (prints are still logged with a code).
+
+### Expiring printed stock
+
+The print log knows what was stickered with which expiry, so it can say what in the
+freezer is near its date before a customer does. **Pack stickers** opens with an
+**Expiring printed stock** card (hidden when there is nothing to say): one row per
+product, batch and expiry within 7 days, and anything that passed its date in the last 2
+days, with the copies printed, how many prints, "Expires tomorrow" / "Expires in 5 days
+(17 Oct)" / "Expires expired yesterday" in amber or red, a **Pack page** link and
+**Reprint**, which opens the form on that product (`?item=` or `?custom=`) for a fresh
+batch. Once a day at 08:10 `labels:check-expiring --days=2` texts the owners the same
+list for stock expiring within two days or just past it, **once per batch** (each print
+row is marked `expiry_alerted_at`; a new print of the same batch is news again). The row
+is **Owner: printed stock expiring** on Admin → System → Notifications (`owner_labels_expiry`,
+owners and managers by default), with its SMS, Email and Telegram switches like any
+other alert.
+
+### Allergen pictograms
+
+The full sticker draws a **row of symbols with the word beneath** between HOW TO USE and
+the note: egg, milk, gluten, nuts, peanuts, soy, fish, shellfish, sesame, mustard and
+celery, from the item's allergens on its Details tab ("tree-nuts" and "almonds" are both
+the nut; "dairy" is milk; "tuna" is fish) or a custom label's typed list, each once, up
+to seven, and a **chilli marked SPICY** for a menu item whose spice level is medium or
+hotter. An allergen with no symbol (lupin, sulphites) is still in the "Contains …" note
+and bold in the ingredients. The compact, small and round stickers have no room for the
+row. The pack page shows the same symbols. Labels → Settings → **On the sticker** →
+**Allergen pictograms** turns them off.
 
 ## Printing
 
@@ -348,7 +401,10 @@ beneath.
 | An item's own wording | `items.label_*` columns, on the item's Label tab |
 | Custom labels | `custom_labels` (`App\Models\CustomLabel`), its label columns named as an item's so `LabelTypes::forItem()` and `StickerSheet` print either; its own `brand_id` wins over the type's. API `GET /api/labels/custom` (`labels.print`), writes under `labels.manage`. A sticker request names one as `{"id": 7, "kind": "custom"}`; on a sheet link `items=7:2,c7:3` is menu item 7 twice and custom label 7 three times |
 | Saved labels | `label_jobs` (`App\Models\LabelJob`): the request as sent, a name, print count |
-| Print log | `label_prints`; written on every print, never edited; `item_id` or `custom_label_id` (emptied when the custom label is removed), the layout and label size, shown in words ("40 × 60 mm, 21 on A4", `StickerLayouts::describe()`) |
+| Print log | `label_prints`; written on every print, never edited; `item_id` or `custom_label_id` (emptied when the custom label is removed), the layout and label size, shown in words ("40 × 60 mm, 21 on A4", `StickerLayouts::describe()`); since 2026-10-12 a `code` per sticker print (`LabelPrint::newCode()`) and `expiry_alerted_at` |
+| Batch QR and the pack page | `App\Domains\Labels\BatchLink` (`url()` on the live site, `qr()`, `valid()`, `PREVIEW`); the sheet link carries `b=i12:CODE,c7:CODE` (`StickerSheet::parseCodes()` / `codesParam()`), `stickerData()` sets `batch_qr`; `StickerDesign::full()` (header's end, heading width 62 → 48 mm) and `mini()` (tall bands at least 75 mm wide); `GET /b/{code}` → `App\Http\Controllers\LabelBatchPageController`, `resources/views/labels/batch.blade.php` (public, `noindex`, 404 page for an unknown code); setting `label_batch_qr` |
+| Expiring printed stock | `App\Domains\Labels\ExpiringPrints` (`groups()`, `due()`, `phrase()`); `GET /api/labels/expiring?days=` (`labels.print`); `apps/admin-dashboard/src/components/labels/ExpiringStock.tsx` over Pack stickers, Reprint → `?item=` / `?custom=`; `labels:check-expiring --days=2` (`App\Console\Commands\CheckExpiringLabels`, 08:10) under the registry row `owner_labels_expiry` |
+| Allergen pictograms | `App\Domains\Labels\AllergenIcons` (`for()`, `keys()`, `svg()`, `dataUri()`; words → symbols, captions, `SPICY_LEVELS`); `stickerData()` sets `icons`, `StickerDesign::full()` draws the row (12 mm pitch, 8.8 mm tall) above the note; setting `label_allergen_icons` |
 | Footers | `label_footers` (`App\Models\LabelFooter`, § Footers); `custom_labels.footer_id`, `label_types.footer_id`, `footer` in a sticker request; `LabelTypes::footer()` fills the blanks, `StickerSheet::footerPreset()` picks which one. API `GET /api/labels/footers` (`labels.print`), `POST` / `PUT` / `DELETE /api/labels/footers/{footer}` (`labels.manage`; the standard one cannot be removed, 422) |
 | Box-label wording per storage, date style, pre-cut offsets | Labels → Settings, site settings with the originals as defaults (`App\Domains\Labels\LabelSettings`) |
 | Phone, website, address, landmark, tagline | Business Details (same as receipts) |
@@ -361,7 +417,7 @@ beneath.
 | Size picker | `apps/admin-dashboard/src/components/labels/LabelSizePicker.tsx` and `labelSize.ts`, which mirrors `design()`, `grid()` and the limits so the picker can say "21 on A4" and "too small" before asking. `fixtures/label_size_parity.json` holds both to the same answers (`LabelSizeParityTest`, `labelSize.test.ts`); change the server, the mirror and the table together |
 | Box label | `App\Domains\Labels\BoxLabel`; a shop's saved label in `trade_accounts.box_label` |
 | Brand logos, lettering, cut-outs | `App\Domains\Labels\LabelMedia::storePng`: kept as the PNG uploaded, never re-encoded |
-| QR | `App\Support\QrSvg::dataUri(ComplaintBoxLink::url('label'))`, bare |
+| QR | `App\Support\QrSvg::dataUri(ComplaintBoxLink::url('label'))`, bare; the batch QR is `BatchLink::qr()` |
 | Sheets | `resources/views/labels/*.blade.php`, signed routes `/labels/stickers`, `/labels/box` (+ `.pdf`), links last 30 minutes, same-origin framing allowed for the previews. `preview=1` draws the first page with no print bar, scaled to its frame (up as well as down: the body must not clip, or a small label scaled up shows only its top); `one=1` with it draws the first sticker alone on a page its own size (`one_url` from the API) |
 | Live preview | `apps/admin-dashboard/src/components/labels/SheetPreview.tsx`: a frame the page's shape (width ÷ height) around the preview link; the panels ask the API with `preview: true` half a second after the last change, which logs and saves nothing. Below 1024px (`useIsBelowDesktop`) the panels put it in `PhonePreviewBar`, pinned under the header (`.labels-phone-preview`) |
 | API | `routes/domains/labels.php`, `App\Http\Controllers\Api\LabelsController` |

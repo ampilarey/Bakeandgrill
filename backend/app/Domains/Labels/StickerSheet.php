@@ -134,7 +134,44 @@ final class StickerSheet
             'type' => isset($in['type']) && $in['type'] !== '' ? (int) $in['type'] : null,
             // One footer preset for the whole sheet (owner, 2026-10-12).
             'footer' => isset($in['footer']) && $in['footer'] !== '' ? (int) $in['footer'] : null,
+            // The print log's code per product, for the batch QR (BatchLink).
+            'codes' => self::parseCodes($in['b'] ?? ''),
         ];
+    }
+
+    /**
+     * "i12:ABCD2345,c7:EFGH6789" (or a key → code array) → the print code
+     * per product key, bad ones dropped.
+     *
+     * @return array<string, string>
+     */
+    public static function parseCodes(mixed $raw): array
+    {
+        $out = [];
+        $pairs = [];
+        if (is_array($raw)) {
+            foreach ($raw as $key => $code) {
+                $pairs[] = [(string) $key, (string) $code];
+            }
+        } else {
+            foreach (array_filter(explode(',', (string) $raw)) as $part) {
+                $pairs[] = array_pad(explode(':', $part, 2), 2, '');
+            }
+        }
+        foreach ($pairs as [$key, $code]) {
+            $code = mb_strtoupper(trim($code));
+            if (preg_match('/^[icd][a-z0-9]{1,20}$/', $key) === 1 && BatchLink::valid($code)) {
+                $out[$key] = $code;
+            }
+        }
+
+        return $out;
+    }
+
+    /** The inverse: the `b` a sheet link carries. */
+    public static function codesParam(array $codes): string
+    {
+        return implode(',', array_map(fn (string $key, string $code) => $key . ':' . $code, array_keys($codes), array_values($codes)));
     }
 
     /** @var array<int, ?LabelFooter> */
@@ -402,8 +439,17 @@ final class StickerSheet
         $explicit = $this->footerPreset($req, $item, $w);
         $footer = $this->types->footer($explicit ?? $this->standardFooter(), $w['show_qr'], implicit: $explicit === null);
         $showQr = $item instanceof CustomLabel && $item->label_show_qr !== null ? (bool) $item->label_show_qr : $footer['show_qr'];
+        // 2026-10-12: the print's code as a QR in the header (the pack's
+        // page), and allergen pictograms above the note; each behind a
+        // switch on Labels → Settings. A draft custom label has no code.
+        $key = $item instanceof CustomLabel ? ($item->exists ? 'c' . $item->id : null) : 'i' . $item->id;
+        $printCode = $key !== null ? ($req['codes'][$key] ?? null) : null;
+        $spicy = $item instanceof Item && in_array((string) $item->spice_level, AllergenIcons::SPICY_LEVELS, true);
 
         return $common + [
+            'print_code' => $printCode ?? '',
+            'batch_qr' => $printCode !== null && LabelSettings::on('label_batch_qr') ? BatchLink::qr($printCode) : null,
+            'icons' => LabelSettings::on('label_allergen_icons') ? AllergenIcons::for($allergens, $spicy) : [],
             'name' => (string) $item->name,
             'name_dv' => trim((string) $item->name_dv),
             'title_img' => $title,

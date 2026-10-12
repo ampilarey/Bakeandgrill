@@ -212,7 +212,8 @@ export type StickerSummary = {
   stickers: number;
   pages: number;
   per_page: number;
-  products: { id: number; kind?: 'item' | 'custom'; key?: string; name: string; copies: number; mfg: string | null; exp: string | null; shelf_life_days: number | null; ingredients_from: string }[];
+  /** `code`: the print's code (2026-10-12), which its stickers carry as a QR; null on a preview. */
+  products: { id: number; kind?: 'item' | 'custom'; key?: string; name: string; copies: number; mfg: string | null; exp: string | null; shelf_life_days: number | null; ingredients_from: string; code?: string | null }[];
 };
 
 export type SheetLinks = {
@@ -277,6 +278,23 @@ export type LabelPrintRow = {
   details: Record<string, unknown> | null;
   printed_by: string | null;
   created_at: string;
+  /** The sticker's code and the pack page it opens (2026-10-12), stickers only. */
+  code?: string | null;
+  batch_url?: string | null;
+};
+
+/**
+ * Printed stock near its expiry (2026-10-12): one row per product, batch and
+ * date from the print log, soonest first; `days_left` is negative once past.
+ */
+export type ExpiringLabelGroup = {
+  key: string; kind: 'item' | 'custom' | 'gone'; id: number | null; name: string;
+  copies: number; prints: number; batch_code: string | null; mfg_date: string | null; exp_date: string; days_left: number;
+  /** The newest prints' codes, for the pack pages. */
+  codes: string[];
+  last_printed_at: string | null;
+  /** The owners have been told (the daily alert). */
+  alerted: boolean;
 };
 
 export type LabelSettingsMap = Record<string, string>;
@@ -403,6 +421,11 @@ export function fetchLabelPrints(params: { page?: number; kind?: string } = {}) 
   if (params.page) qs.set('page', String(params.page));
   if (params.kind) qs.set('kind', params.kind);
   return req<{ data: LabelPrintRow[]; current_page: number; last_page: number; total: number }>(`/labels/prints${qs.toString() ? `?${qs}` : ''}`);
+}
+
+/** Printed stock expiring within `days` (and expired in the last couple), from the print log. */
+export function fetchExpiringLabels(days = 7) {
+  return req<{ data: ExpiringLabelGroup[]; days: number; expired_kept_days: number }>(`/labels/expiring?days=${days}`);
 }
 
 export function fetchLabelTypes() {

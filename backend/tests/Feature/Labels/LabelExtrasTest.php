@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Labels;
 
+use App\Domains\Labels\Barcode;
 use App\Domains\Permissions\PermissionCatalogSync;
 use App\Models\CustomLabel;
 use App\Models\Item;
@@ -85,9 +86,9 @@ class LabelExtrasTest extends TestCase
             ->assertJsonPath('data.label_barcode', '590123412345')
             ->assertJsonPath('data.label_net_weight', '250 g');
 
-        // The full sticker carries the bars (the QR is the other SVG) and the digits with the check digit added.
+        // The full sticker carries the bars (beside the QRs and the allergen symbols) and the digits with the check digit added.
         $html = $this->sheet(['items' => [['id' => $this->bajiya->id, 'copies' => 1]], 'layout' => 'a4-4', 'qty' => 10]);
-        $this->assertSame(2, substr_count($html, 'data:image/svg+xml;base64,'), 'the QR and the bars');
+        $this->assertStringContainsString(Barcode::svgDataUri(Barcode::normalise('590123412345'), 30, 12), $html, 'the bars');
         $this->assertStringContainsString('5 901234 123457', $html);
         $this->assertStringContainsString('NET 250 g', $html);
         // A compact label has no room for the bars; the net weight still rides on the quantity.

@@ -268,7 +268,10 @@ class StickerSheetTest extends TestCase
         \Illuminate\Support\Facades\Cache::flush();
         $res = $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $pickle->id, 'copies' => 1]], 'fill' => true, 'mfg' => '2026-10-04'])->assertOk();
         $html = (string) $this->get($res->json('view_url'))->getContent();
-        $this->assertStringNotContainsString('data:image/svg+xml', $html);
+        // The complaints QR is off; the batch QR in the header (2026-10-12) is its own switch.
+        $common = app(\App\Domains\Labels\StickerSheet::class)->common();
+        $this->assertStringNotContainsString($common['qr'], $html);
+        $this->assertStringNotContainsString($common['qr_branded'], $html);
         $this->assertStringContainsString('4 Oct 2026', $html);
         $this->assertStringContainsString('2 Apr 2027', $html);
 

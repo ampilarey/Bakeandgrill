@@ -213,6 +213,12 @@ Schedule::command('inventory:check-expiry --days=7')
     ->onFailure($alertOnFailure('inventory:check-expiry'))
     ->after($trackSuccess('inventory:check-expiry'));
 
+// Labels: printed stock whose expiry is within two days, or just passed, once per batch (2026-10-12)
+Schedule::command('labels:check-expiring --days=2')
+    ->dailyAt('08:10')
+    ->onFailure($alertOnFailure('labels:check-expiring'))
+    ->after($trackSuccess('labels:check-expiring'));
+
 // Housekeeping: prune expired OTP records daily
 Schedule::command('otp:prune')
     ->dailyAt('02:00')

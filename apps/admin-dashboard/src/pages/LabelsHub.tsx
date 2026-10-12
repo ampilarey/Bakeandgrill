@@ -7,6 +7,8 @@ import { BoxLabelPanel } from '../components/labels/BoxLabelPanel';
 import { TypesAndBrands } from '../components/labels/TypesAndBrands';
 import { CustomLabelsTab } from '../components/labels/CustomLabels';
 import { InlineRename } from '../components/labels/InlineRename';
+import { ExpiringStock } from '../components/labels/ExpiringStock';
+import { Switch } from '../components/SharedUI';
 import { Button, Card, useToast } from '../components/ui';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -174,6 +176,7 @@ function HistoryTab() {
               <div className="text-xs text-[var(--color-text-secondary)] mt-0.5">{KIND[r.kind] ?? r.kind} · {stockName(r)}</div>
               <div className="text-xs text-[var(--color-text-muted)] mt-0.5">
                 {dates(r)}{r.batch_code ? ` · batch ${r.batch_code}` : ''}
+                {r.code && r.batch_url && <> · <a href={r.batch_url} target="_blank" rel="noreferrer" className="font-mono text-[var(--color-primary)]" aria-label={`Open the pack page ${r.code}`}>{r.code}</a></>}
               </div>
               <div className="text-xs text-[var(--color-text-muted)] mt-0.5">{when(r.created_at)}{r.printed_by ? ` · ${r.printed_by}` : ''}</div>
             </li>
@@ -191,6 +194,7 @@ function HistoryTab() {
                 <th className="px-4 py-3 font-semibold text-right">Copies</th>
                 <th className="px-4 py-3 font-semibold">Dates</th>
                 <th className="px-4 py-3 font-semibold">Batch</th>
+                <th className="px-4 py-3 font-semibold">Pack code</th>
                 <th className="px-4 py-3 font-semibold">By</th>
               </tr>
             </thead>
@@ -203,11 +207,12 @@ function HistoryTab() {
                   <td className="px-4 py-3 text-right">{r.copies}</td>
                   <td className="px-4 py-3 whitespace-nowrap">{r.mfg_date ? `${r.mfg_date} → ${r.exp_date ?? 'blank'}` : 'Handwritten'}</td>
                   <td className="px-4 py-3">{r.batch_code ?? ''}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">{r.code && r.batch_url ? <a href={r.batch_url} target="_blank" rel="noreferrer" className="font-mono text-[var(--color-primary)]" title="The QR on every sticker of this print opens this page" aria-label={`Open the pack page ${r.code}`}>{r.code}</a> : ''}</td>
                   <td className="px-4 py-3">{r.printed_by ?? ''}</td>
                 </tr>
               ))}
               {empty && (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-[var(--color-text-muted)]">Nothing printed yet.</td></tr>
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-[var(--color-text-muted)]">Nothing printed yet.</td></tr>
               )}
             </tbody>
           </table>
@@ -456,6 +461,19 @@ function SettingsTab({ canManage }: { canManage: boolean }) {
             <p className="text-xs text-[var(--color-text-muted)] mt-1">The website font prints on the PDF only when it was uploaded as TTF or OTF; otherwise the PDF falls back to Faruma.</p>
           </div>
         </div>
+        {/* 2026-10-12: the batch QR (BatchLink) and the allergen pictograms (AllergenIcons), each with a switch. */}
+        <h4 className="text-sm font-bold text-[var(--color-text)] mt-5 mb-1">On the sticker</h4>
+        <div className="max-w-2xl" data-testid="label-sticker-switches">
+          {([
+            ['label_batch_qr', 'Batch QR in the header', 'Every print gets a code; the QR opens the pack\'s page with its dates, batch, ingredients and allergens. On the full sticker and the 99 mm compact one.'],
+            ['label_allergen_icons', 'Allergen pictograms', 'Symbols with the word beneath, above the note on the full sticker; a chilli for a spicy item. The "Contains …" note stays either way.'],
+          ] as const).map(([k, l, h]) => (
+            <div key={k} className="flex items-start justify-between gap-3 py-2.5 border-b border-[var(--color-border-light)]">
+              <div className="min-w-0"><div className="text-sm font-semibold text-[var(--color-text)]">{l}</div><div className="text-xs text-[var(--color-text-muted)]">{h}</div></div>
+              <Switch checked={(settings[k] ?? '1') !== '0'} disabled={!canManage} onChange={(v) => setSettings((s) => ({ ...s, [k]: v ? '1' : '0' }))} aria-label={l} />
+            </div>
+          ))}
+        </div>
         <h4 className="text-sm font-bold text-[var(--color-text)] mt-5 mb-1">Pre-cut sheet position</h4>
         <p className="text-xs text-[var(--color-text-muted)] mb-2">If stickers on ready-cut sheets print off the cut, move them here in millimetres: down and right are positive, gap is the space between labels.</p>
         <div className="grid gap-3 grid-cols-3 items-end">
@@ -485,7 +503,7 @@ function TypesTabWithPermission() {
 }
 
 export const LABELS_TABS: HubTab[] = [
-  { id: 'stickers', label: 'Pack stickers', permissions: ['labels.print', 'labels.manage'], desc: 'Stickers for packs, in English or Dhivehi, on any size: A4 sheets, label printers, round', render: () => <Card padding="sm" className="labels-sticky"><StickerPrintPanel /></Card> },
+  { id: 'stickers', label: 'Pack stickers', permissions: ['labels.print', 'labels.manage'], desc: 'Stickers for packs, in English or Dhivehi, on any size: A4 sheets, label printers, round', render: () => <><ExpiringStock /><Card padding="sm" className="labels-sticky"><StickerPrintPanel /></Card></> },
   // Owner, 2026-10-11: "Add option to add custom labels using different brands logos and other details. Not only from the menu list".
   { id: 'custom', label: 'Custom labels', permissions: ['labels.print', 'labels.manage'], desc: 'Stickers for things that are not on the menu, with any brand, logo and details', render: () => <CustomTabWithPermission /> },
   { id: 'box', label: 'Box labels', permissions: ['labels.print', 'labels.manage'], desc: 'A4 label for a delivery box, blank or from a wholesale delivery', render: () => <Card padding="sm" className="labels-sticky"><BoxLabelPanel /></Card> },

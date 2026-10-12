@@ -232,7 +232,19 @@ and `ThaanaVisual::pair()`, switched by `LabelText::dvFace()['composed']`, PDF p
 only; the browser keeps the plain webfont. The
 editor uses `LabelSizePicker` and, below 1024px, `PhonePreviewBar` inside the Modal,
 with `ModalActions` for Close / Print… / Save and a ConfirmDialog before discarding
-changes; the long parts are `<details>` folds (`.cl-section`). How to use it and where
+changes; the long parts are `<details>` folds (`.cl-section`). Round A of the advanced
+features (owner, 2026-10-12: "All"): every sticker print has a code (`label_prints.code`,
+`LabelPrint::newCode()`, no 0/O/1/I) that the full header and the 99 mm compact band
+carry as a QR (`BatchLink`, `b=i12:CODE` on the sheet link, setting `label_batch_qr`;
+a preview carries `PREVIEW`) opening the public pack page `GET /b/{code}`
+(`LabelBatchPageController`, `labels/batch.blade.php`, no permission, `noindex`, the
+complaint link carries the code); printed stock near its expiry comes from the print log
+(`ExpiringPrints`, `GET /api/labels/expiring`, the `ExpiringStock` card over Pack
+stickers with Reprint → `?item=` / `?custom=`, and `labels:check-expiring --days=2` at
+08:10 under the row `owner_labels_expiry`, marking `expiry_alerted_at` so a batch is told
+once); allergen pictograms (`AllergenIcons`, SVG data URIs with the word beneath, the
+chilli from `spice_level`) sit above the note on the full sticker only, setting
+`label_allergen_icons`. How to use it and where
 everything lives: `docs/LABELS.md`; design and decisions: `docs/LABEL_HUB_PLAN.md`
 and `docs/LABEL_HUB_V2_PLAN.md`.
 

@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Domains\Labels\Barcode;
+use App\Domains\Labels\BatchLink;
 use App\Domains\Labels\BoxLabel;
+use App\Domains\Labels\ExpiringPrints;
 use App\Domains\Labels\LabelIngredients;
 use App\Domains\Labels\LabelMedia;
 use App\Domains\Labels\LabelSettings;
@@ -170,9 +172,17 @@ class LabelsController extends Controller
             'rounded' => $req['rounded'] ? 1 : null,
         ];
 
-        if (!$preview) {
-            foreach ($summary['products'] as $p) {
+        // Each product's print gets a code the sticker carries as a QR (the
+        // pack's page, BatchLink); a preview shows the QR with a code that
+        // opens nothing, so the sheet looks as it will print.
+        $codes = [];
+        foreach ($summary['products'] as $i => $p) {
+            $code = $preview ? BatchLink::PREVIEW : LabelPrint::newCode();
+            $codes[$p['key']] = $code;
+            $summary['products'][$i]['code'] = $preview ? null : $code;
+            if (!$preview) {
                 LabelPrint::create([
+                    'code' => $code,
                     'kind' => match ($req['lang']) {
                         'dv' => 'sticker_dv', 'both' => 'sticker_both', default => 'sticker_en'
                     },
@@ -192,6 +202,7 @@ class LabelsController extends Controller
                 ]);
             }
         }
+        $query['b'] = StickerSheet::codesParam($codes);
 
         return [
             'url' => LabelSheetController::link('labels.stickers', $query + ($preview ? ['preview' => 1] : ['print' => 1])),
@@ -523,6 +534,7 @@ class LabelsController extends Controller
             ->with(['item:id,name', 'customLabel:id,name', 'printer:id,name', 'delivery:id,delivery_number'])
             ->when($request->filled('kind'), fn ($q) => $q->where('kind', $request->string('kind')))
             ->when($request->filled('item_id'), fn ($q) => $q->where('item_id', $request->integer('item_id')))
+            ->when($request->filled('code'), fn ($q) => $q->where('code', mb_strtoupper(trim((string) $request->string('code')))))
             ->when($request->filled('from'), fn ($q) => $q->whereDate('created_at', '>=', $request->string('from')))
             ->when($request->filled('to'), fn ($q) => $q->whereDate('created_at', '<=', $request->string('to')))
             ->orderByDesc('id')
@@ -544,7 +556,23 @@ class LabelsController extends Controller
             'details' => $p->details,
             'printed_by' => $p->printer?->name,
             'created_at' => $p->created_at?->toIso8601String(),
+            // The sticker's code and the pack page it opens (2026-10-12).
+            'code' => $p->code,
+            'batch_url' => $p->code !== null ? BatchLink::path($p->code) : null,
         ]));
+    }
+
+    /**
+     * Printed stock near its expiry (2026-10-12), one row per product, batch
+     * and date, for the card on Pack stickers; the daily alert
+     * (labels:check-expiring) reads the same groups.
+     */
+    public function expiring(Request $request): JsonResponse
+    {
+        $days = max(0, min(60, $request->integer('days', 7)));
+        $groups = array_map(fn (array $g) => array_diff_key($g, ['print_ids' => true]), ExpiringPrints::groups($days));
+
+        return response()->json(['data' => $groups, 'days' => $days, 'expired_kept_days' => ExpiringPrints::EXPIRED_KEPT_DAYS]);
     }
 
     public function settings(): JsonResponse

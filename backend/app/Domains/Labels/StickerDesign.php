@@ -66,27 +66,35 @@ final class StickerDesign
         if ($brand['logo']) {
             $p[] = ['t' => 'img', 'x' => $X(8, $lw), 'y' => 5 + (28 - $lh) / 2, 'w' => $lw, 'h' => $lh, 'src' => $brand['logo']];
         }
-        $headX = $X(34, 62);
+        // The batch QR (2026-10-12): the print's code, 13 mm at the header's
+        // end, opens the pack's page; the heading keeps to the room before it.
+        $batchQr = !empty($d['batch_qr']);
+        $headW = $batchQr ? 48.0 : 62.0;
+        $headX = $X(34, $headW);
         $both = !$dv && !empty($d['both']);
         if ($dv) {
             [$top, $bottom] = self::twoWords($d['header_line_dv']);
-            $p[] = ['t' => 'text', 'x' => $headX, 'base' => 11.5, 'w' => 62, 'align' => 'r', 'font' => 'dv', 'pt' => 9, 'color' => self::PRIMARY, 'text' => $brand['name_dv'], 'bold' => 0.6];
-            $p[] = ['t' => 'text', 'x' => $headX, 'base' => 19.5, 'w' => 62, 'align' => 'r', 'font' => 'dv', 'pt' => 19, 'color' => self::DARK, 'text' => $top, 'bold' => 0.7];
-            $p[] = ['t' => 'text', 'x' => $headX, 'base' => 26.5, 'w' => 62, 'align' => 'r', 'font' => 'dv', 'pt' => 19, 'color' => self::DARK, 'text' => $bottom, 'bold' => 0.7];
+            $p[] = ['t' => 'text', 'x' => $headX, 'base' => 11.5, 'w' => $headW, 'align' => 'r', 'font' => 'dv', 'pt' => 9, 'color' => self::PRIMARY, 'text' => $brand['name_dv'], 'bold' => 0.6];
+            $p[] = ['t' => 'text', 'x' => $headX, 'base' => 19.5, 'w' => $headW, 'align' => 'r', 'font' => 'dv', 'pt' => LabelText::fitPt($top, 'dv', $headW - 1, 19, 12), 'color' => self::DARK, 'text' => $top, 'bold' => 0.7];
+            $p[] = ['t' => 'text', 'x' => $headX, 'base' => 26.5, 'w' => $headW, 'align' => 'r', 'font' => 'dv', 'pt' => LabelText::fitPt($bottom, 'dv', $headW - 1, 19, 12), 'color' => self::DARK, 'text' => $bottom, 'bold' => 0.7];
         } elseif ($both && $d['header_line_dv'] !== '') {
             // Both languages (2026-10-12): the English heading on one line
             // with the Dhivehi heading beneath, in the two lines the English
             // alone spreads over.
-            $p[] = ['t' => 'text', 'x' => $headX, 'base' => 12.5, 'w' => 62, 'align' => 'l', 'font' => 'j7', 'pt' => LabelText::fitPt(self::spaced(mb_strtoupper($brand['name'])), 'j7', 61, 7.5, 5), 'color' => self::PRIMARY, 'text' => self::spaced(mb_strtoupper($brand['name']))];
-            $p[] = ['t' => 'text', 'x' => $headX, 'base' => 20.5, 'w' => 62, 'align' => 'l', 'font' => 'j8', 'pt' => LabelText::fitPt($d['header_line'], 'j8', 61, 15, 9), 'color' => self::DARK, 'text' => $d['header_line']];
-            $p[] = ['t' => 'text', 'x' => $headX, 'base' => 27.4, 'w' => 62, 'align' => 'l', 'font' => 'dv', 'pt' => LabelText::fitPt($d['header_line_dv'], 'dv', 61, 12, 7), 'color' => self::DARK, 'text' => $d['header_line_dv'], 'bold' => 0.7];
+            $p[] = ['t' => 'text', 'x' => $headX, 'base' => 12.5, 'w' => $headW, 'align' => 'l', 'font' => 'j7', 'pt' => LabelText::fitPt(self::spaced(mb_strtoupper($brand['name'])), 'j7', $headW - 1, 7.5, 5), 'color' => self::PRIMARY, 'text' => self::spaced(mb_strtoupper($brand['name']))];
+            $p[] = ['t' => 'text', 'x' => $headX, 'base' => 20.5, 'w' => $headW, 'align' => 'l', 'font' => 'j8', 'pt' => LabelText::fitPt($d['header_line'], 'j8', $headW - 1, 15, 9), 'color' => self::DARK, 'text' => $d['header_line']];
+            $p[] = ['t' => 'text', 'x' => $headX, 'base' => 27.4, 'w' => $headW, 'align' => 'l', 'font' => 'dv', 'pt' => LabelText::fitPt($d['header_line_dv'], 'dv', $headW - 1, 12, 7), 'color' => self::DARK, 'text' => $d['header_line_dv'], 'bold' => 0.7];
         } else {
             [$top, $bottom] = self::twoWords($d['header_line']);
-            $p[] = ['t' => 'text', 'x' => $headX, 'base' => 12.5, 'w' => 62, 'align' => 'l', 'font' => 'j7', 'pt' => LabelText::fitPt(self::spaced(mb_strtoupper($brand['name'])), 'j7', 61, 7.5, 5), 'color' => self::PRIMARY, 'text' => self::spaced(mb_strtoupper($brand['name']))];
-            $p[] = ['t' => 'text', 'x' => $headX, 'base' => 20.5, 'w' => 62, 'align' => 'l', 'font' => 'j8', 'pt' => self::fitHeader($top), 'color' => self::DARK, 'text' => $top];
-            $p[] = ['t' => 'text', 'x' => $headX, 'base' => 28, 'w' => 62, 'align' => 'l', 'font' => 'j8', 'pt' => self::fitHeader($bottom), 'color' => self::DARK, 'text' => $bottom];
+            $p[] = ['t' => 'text', 'x' => $headX, 'base' => 12.5, 'w' => $headW, 'align' => 'l', 'font' => 'j7', 'pt' => LabelText::fitPt(self::spaced(mb_strtoupper($brand['name'])), 'j7', $headW - 1, 7.5, 5), 'color' => self::PRIMARY, 'text' => self::spaced(mb_strtoupper($brand['name']))];
+            $p[] = ['t' => 'text', 'x' => $headX, 'base' => 20.5, 'w' => $headW, 'align' => 'l', 'font' => 'j8', 'pt' => self::fitHeader($top, $headW - 1), 'color' => self::DARK, 'text' => $top];
+            $p[] = ['t' => 'text', 'x' => $headX, 'base' => 28, 'w' => $headW, 'align' => 'l', 'font' => 'j8', 'pt' => self::fitHeader($bottom, $headW - 1), 'color' => self::DARK, 'text' => $bottom];
         }
         $p[] = ['t' => 'rect', 'x' => $X(34, 14), 'y' => 29.5, 'w' => 14, 'h' => 1, 'fill' => self::PRIMARY];
+        if ($batchQr) {
+            $p[] = ['t' => 'rect', 'x' => $X(83.5, 15), 'y' => 11.5, 'w' => 15, 'h' => 15, 'fill' => self::CREAM, 'r' => 1];
+            $p[] = ['t' => 'img', 'x' => $X(84.5, 13), 'y' => 12.5, 'w' => 13, 'h' => 13, 'src' => $d['batch_qr']];
+        }
 
         // Product name: hand lettering when there is some, else typed.
         $titleTop = 36.5;
@@ -132,7 +140,11 @@ final class StickerDesign
         $howLead = $dv ? 3.9 : 3.1;
         $howDvLead = 3.7;
         $howH = $howLines !== [] ? 2.9 + $howLead * count($howLines) + $howDvLead * count($howDvLines) + 0.8 : 0.0;
-        $blockTop = $middleBottom - $noteH - $howH;
+        // Allergen pictograms (2026-10-12): a row of symbols with the word
+        // beneath, between HOW TO USE and the note.
+        $icons = is_array($d['icons'] ?? null) ? $d['icons'] : [];
+        $iconH = $icons !== [] ? 8.8 : 0.0;
+        $blockTop = $middleBottom - $noteH - $iconH - $howH;
 
         // The ingredients at the largest size that fits above that block with
         // only the band a barcode keeps; broken into lines here, not by the
@@ -223,6 +235,17 @@ final class StickerDesign
             $dvFrom = $blockTop + 2.6 + $howLead * count($howLines) + 0.3;
             foreach ($howDvLines as $i => $line) {
                 $p[] = ['t' => 'text', 'x' => 5, 'base' => $dvFrom + $howDvLead * ($i + 1), 'w' => 95, 'align' => 'c', 'font' => 'dv', 'pt' => 7.6, 'color' => self::TEXT, 'text' => $line, 'bold' => 0.4];
+            }
+        }
+        if ($icons !== []) {
+            $size = 5.8;
+            $pitch = 12.0;
+            $rowTop = $middleBottom - $noteH - $iconH + 0.4;
+            $x0 = (self::W - count($icons) * $pitch) / 2;
+            foreach (array_values($icons) as $i => $icon) {
+                $cx = $x0 + $i * $pitch + $pitch / 2;
+                $p[] = ['t' => 'img', 'x' => $cx - $size / 2, 'y' => $rowTop, 'w' => $size, 'h' => $size, 'src' => $icon['src']];
+                $p[] = ['t' => 'text', 'x' => $cx - $pitch / 2, 'base' => $rowTop + $size + 2.0, 'w' => $pitch, 'align' => 'c', 'font' => 'j7', 'pt' => 4.4, 'color' => self::TEXT, 'text' => $icon['caption'], 'ls' => 0.03];
             }
         }
         if ($note !== '' || $noteDv !== '') {
@@ -430,6 +453,15 @@ final class StickerDesign
         }
         $tx = $pad + 1.8 + $mw + 2;
         $tw = $iw - ($tx - $pad) - 1.5;
+        // The batch QR (2026-10-12) at the band's end on a tall label wide
+        // enough to keep the heading readable beside it (the 99 × 70 mm
+        // compact sticker, not the 66 mm one).
+        $bq = $tall && $iw >= 75 && !empty($d['batch_qr']) ? $hb - 4.0 : 0.0;
+        if ($bq > 0) {
+            $p[] = ['t' => 'rect', 'x' => $X($pad + $iw - 1.2 - $bq - 1.2, $bq + 2.4), 'y' => $pad + ($hb - $bq - 2.4) / 2, 'w' => $bq + 2.4, 'h' => $bq + 2.4, 'fill' => self::CREAM, 'r' => 0.8];
+            $p[] = ['t' => 'img', 'x' => $X($pad + $iw - 1.2 - $bq, $bq), 'y' => $pad + ($hb - $bq) / 2, 'w' => $bq, 'h' => $bq, 'src' => $d['batch_qr']];
+            $tw -= $bq + 3.6;
+        }
         $headBase = $tall ? $pad + 8.2 : $pad + 4.4;
         $nameBase = $tall ? $pad + $hb - 2.6 : $pad + 10.6;
         if ($dv) {
@@ -905,9 +937,9 @@ final class StickerDesign
         return $at === false ? [$line, ''] : [mb_substr($line, 0, $at), mb_substr($line, $at + 1)];
     }
 
-    private static function fitHeader(string $word): float
+    private static function fitHeader(string $word, float $w = 61): float
     {
-        return LabelText::fitPt($word, 'j8', 61, 19, 11);
+        return LabelText::fitPt($word, 'j8', $w, 19, 11);
     }
 
     /** The largest size from $max down to $min at which the paragraph fits its box. */

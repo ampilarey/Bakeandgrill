@@ -90,6 +90,11 @@ Route::middleware(['content.locale', 'service.banner'])->group(function () {
     // Owner, 2026-10-03: the poster in other sizes, and several to an A4 sheet.
     Route::get('/complain/poster/sheet', [App\Http\Controllers\ComplaintBoxPageController::class, 'sheet'])->name('complain.poster.sheet');
     Route::get('/complain/poster/sheet.pdf', [App\Http\Controllers\ComplaintBoxPageController::class, 'sheetPdf'])->middleware('throttle:20,1')->name('complain.poster.pdf');
+    // The pack's page (2026-10-12): the batch QR on a pack sticker opens it
+    // by the print's code. Public, like the complaint box; says nothing
+    // about who printed it.
+    Route::get('/b/{code}', [App\Http\Controllers\LabelBatchPageController::class, 'show'])
+        ->where('code', '[A-Za-z0-9]{1,16}')->middleware('throttle:60,1')->name('labels.batch');
     Route::get('/hours', [HomeController::class, 'hours'])->name('hours');
     Route::get('/terms', [HomeController::class, 'terms'])->name('terms');
     Route::get('/refund', [HomeController::class, 'refund'])->name('refund');

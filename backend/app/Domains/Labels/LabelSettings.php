@@ -56,6 +56,10 @@ final class LabelSettings
         // Owner, 2026-10-12: "dhivehi font is not nice". A LabelText::DV_FACES
         // key, or "site" for the font uploaded in Content Hub.
         'label_dhivehi_font' => 'noto',
+        // 2026-10-12: the batch QR in the header (the pack's page, BatchLink)
+        // and the allergen pictograms (AllergenIcons); "1" on, "0" off.
+        'label_batch_qr' => '1',
+        'label_allergen_icons' => '1',
         'label_precut_top' => '0',
         'label_precut_left' => '0',
         'label_precut_gutter' => '0',
@@ -67,6 +71,12 @@ final class LabelSettings
         $value = is_string($value) ? trim($value) : (is_numeric($value) ? (string) $value : '');
 
         return $value !== '' ? $value : (self::DEFAULTS[$key] ?? '');
+    }
+
+    /** An on/off setting ("1", "true", "on", "yes" are on). */
+    public static function on(string $key): bool
+    {
+        return in_array(mb_strtolower(self::get($key)), ['1', 'true', 'on', 'yes'], true);
     }
 
     /** @return array<string, string> */

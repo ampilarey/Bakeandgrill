@@ -282,6 +282,28 @@ describe('StickerPrintPanel', () => {
     expect(screen.queryByTestId('sticker-new-custom')).not.toBeInTheDocument();
   });
 
+  // 2026-10-12: Reprint on Expiring printed stock opens the form on the menu item.
+  it('opens with a menu item picked from Expiring printed stock', async () => {
+    stickerLinks.mockRejectedValue(new Error('x'));
+    render(<MemoryRouter initialEntries={['/labels/stickers?item=2']}><StickerPrintPanel /></MemoryRouter>);
+    await screen.findByText('Patties');
+    await waitFor(() => expect(screen.getByLabelText('Print Patties')).toBeChecked());
+    expect(screen.getByLabelText('Print Bajiya')).not.toBeChecked();
+  });
+
+  // The prepared list names each product's print code (2026-10-12): the QR on its stickers.
+  it('shows the print code of each product once prepared', async () => {
+    stickerLinks.mockResolvedValue({
+      url: '/labels/stickers?print=1&signature=x', view_url: '/labels/stickers?signature=x', pdf_url: '/labels/stickers.pdf?signature=x', expires_in_minutes: 30,
+      summary: { layout: 'a4-4', label: '4 on A4', design: 'full', stickers: 4, pages: 1, per_page: 4, products: [{ id: 1, name: 'Bajiya', copies: 4, mfg: null, exp: null, shelf_life_days: 90, ingredients_from: 'manual', code: 'BAJ12345' }] },
+    });
+    render(<MemoryRouter><StickerPrintPanel /></MemoryRouter>);
+    await screen.findByTestId('label-size-picker');
+    fireEvent.click(screen.getByLabelText('Print Bajiya'));
+    fireEvent.click(screen.getByTestId('sticker-prepare'));
+    expect(await screen.findByTestId('print-code')).toHaveTextContent('code BAJ12345');
+  });
+
   // Audit, 2026-10-12: the custom label editor's Print… carries the size and
   // language it was previewed at.
   it('opens on the size and language the custom label editor hands over', async () => {

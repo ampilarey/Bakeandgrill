@@ -195,7 +195,9 @@ class CustomLabelsTest extends TestCase
         $this->assertStringNotContainsString('by Bake &amp; Grill', $full);
         $this->assertStringContainsString('data:image/svg+xml;base64,', $full);
         $this->assertMatchesRegularExpression('#<img class="pc" src="data:image/svg\+xml;base64,[A-Za-z0-9+/=]+" alt="" style="left:87mm#', $full, 'the QR sits at the footer\'s right');
-        $svg = base64_decode(explode('"', explode('style="left:87mm', explode('<img class="pc" src="data:image/svg+xml;base64,', $full)[1])[0])[0] ?? '', true);
+        // The footer's QR by its place: the header's batch QR (2026-10-12) is another SVG before it.
+        preg_match('#<img class="pc" src="data:image/svg\+xml;base64,([A-Za-z0-9+/=]+)" alt="" style="left:87mm#', $full, $m);
+        $svg = base64_decode($m[1] ?? '', true);
         $this->assertStringContainsString('<image', (string) $svg, 'the full sticker\'s QR has the brand mark inside');
         // A small sticker keeps the bare code.
         $small = $sheet(['layout' => 'single-custom', 'w' => 40, 'h' => 60]);
