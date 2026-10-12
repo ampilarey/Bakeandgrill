@@ -16,8 +16,10 @@ use Tests\TestCase;
 
 /**
  * Owner, 2026-10-12: "No easy option to select and edit branding footer."
- * A footer is a preset to pick by name and change in place; blank lines
- * follow the brand and Business Details.
+ * A footer is a preset to pick by name and change in place. And: "Footer
+ * should be always branding of Bake and Grill. Amma is a food brand label
+ * but the actual brand is under Bake and Grill": blank lines follow Business
+ * Details whatever brand is on the header, and a footer has no brand.
  */
 class LabelFootersTest extends TestCase
 {
@@ -41,7 +43,7 @@ class LabelFootersTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_the_standard_footer_and_one_per_brand_are_seeded_and_say_what_their_blank_lines_print(): void
+    public function test_only_the_standard_footer_is_seeded_and_it_says_what_its_blank_lines_print(): void
     {
         $manager = $this->makeManager();
         Sanctum::actingAs($manager, ['staff']);
@@ -50,23 +52,20 @@ class LabelFootersTest extends TestCase
         Sanctum::actingAs($manager->fresh(), ['staff']);
         $rows = collect($this->getJson('/api/labels/footers')->assertOk()->json('data'));
 
+        // One footer per food brand was seeded once; a footer is the business's now.
+        $this->assertCount(1, $rows);
         $standard = $rows->firstWhere('is_default', true);
         $this->assertSame('Standard', $standard['name']);
-        $this->assertNull($standard['brand_id']);
+        $this->assertArrayNotHasKey('brand_id', $standard);
+        $this->assertArrayNotHasKey('by_line', $standard);
+        $this->assertArrayNotHasKey('by', $standard['effective']);
         $this->assertNull($standard['tagline'], 'blank: it follows the business');
         $this->assertSame('Bake & Grill', $standard['effective']['name']);
         $this->assertSame('Fresh Baked, Fire Grilled', $standard['effective']['tagline']);
         $this->assertSame('+960 912 0011', $standard['effective']['phone']);
         $this->assertSame('bakeandgrill.mv', $standard['effective']['website']);
         $this->assertSame('Kalaafaanu Hingun, Malé', $standard['effective']['address']);
-        $this->assertSame('', $standard['effective']['by']);
         $this->assertTrue($standard['show_qr']);
-
-        $amma = $rows->firstWhere('name', 'Amma');
-        $this->assertSame(LabelBrand::query()->where('name', 'Amma')->value('id'), $amma['brand_id']);
-        $this->assertSame('Amma', $amma['effective']['name']);
-        $this->assertSame('Home-made, the Amma way', $amma['effective']['tagline']);
-        $this->assertSame('by Bake & Grill', $amma['effective']['by']);
 
         // Writing needs Manage label settings.
         $this->postJson('/api/labels/footers', ['name' => 'Kitchen stamp'])->assertForbidden();
@@ -75,29 +74,29 @@ class LabelFootersTest extends TestCase
     public function test_a_footer_is_made_changed_and_removed_and_the_standard_one_stays(): void
     {
         Sanctum::actingAs($this->makeOwner(), ['staff']);
+        $amma = LabelBrand::query()->where('name', 'Amma')->value('id');
         $made = $this->postJson('/api/labels/footers', [
-            'name' => 'Kitchen stamp', 'tagline' => 'Hand-made daily', 'website' => 'amma.mv', 'show_qr' => false, 'by_line' => '',
+            'name' => 'Kitchen stamp', 'tagline' => 'Hand-made daily', 'website' => 'amma.mv', 'show_qr' => false, 'brand_id' => $amma,
         ])->assertCreated()
             ->assertJsonPath('data.name', 'Kitchen stamp')
             ->assertJsonPath('data.tagline', 'Hand-made daily')
+            ->assertJsonPath('data.effective.name', 'Bake & Grill', 'the business, whatever brand was sent')
             ->assertJsonPath('data.effective.tagline', 'Hand-made daily')
             ->assertJsonPath('data.effective.website', 'amma.mv')
             ->assertJsonPath('data.effective.phone', '+960 912 0011', 'a blank line keeps the business value')
             ->assertJsonPath('data.show_qr', false)
-            ->assertJsonPath('data.by_line', null);
+            ->assertJsonMissingPath('data.brand_id');
         $id = $made->json('data.id');
 
-        $this->putJson("/api/labels/footers/{$id}", ['phone' => '+960 777 1234', 'show_by' => false])->assertOk()
+        $this->putJson("/api/labels/footers/{$id}", ['phone' => '+960 777 1234', 'tagline' => ''])->assertOk()
             ->assertJsonPath('data.effective.phone', '+960 777 1234')
-            ->assertJsonPath('data.show_by', false);
+            ->assertJsonPath('data.tagline', null)
+            ->assertJsonPath('data.effective.tagline', 'Fresh Baked, Fire Grilled');
         $this->putJson("/api/labels/footers/{$id}", ['name' => ''])->assertStatus(422);
-        // A footer for the main brand is a footer for the business: no brand kept.
-        $main = LabelBrand::query()->where('is_default', true)->value('id');
-        $this->putJson("/api/labels/footers/{$id}", ['brand_id' => $main])->assertOk()->assertJsonPath('data.brand_id', null);
 
         $standard = LabelFooter::default();
         $this->deleteJson("/api/labels/footers/{$standard->id}")->assertStatus(422);
-        // A label that printed it goes back to its brand's footer once it is gone.
+        // A label that printed it prints the standard footer once it is gone.
         $label = $this->postJson('/api/labels/custom', ['name' => 'Garlic Sauce', 'footer_id' => $id])->assertCreated()->json('data.id');
         $this->deleteJson("/api/labels/footers/{$id}")->assertOk();
         $this->assertNull(collect($this->getJson('/api/labels/custom')->json('data'))->firstWhere('id', $label)['footer_id']);
@@ -135,5 +134,40 @@ class LabelFootersTest extends TestCase
 
         // A footer that is not there is refused.
         $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $item->id, 'copies' => 1]], 'layout' => 'a4-4', 'footer' => 9999])->assertStatus(422);
+    }
+
+    /**
+     * Owner, 2026-10-12: "Footer should be always branding of Bake and Grill."
+     * With nothing picked the standard footer prints, words typed into it
+     * included, under any food brand's header; the QR then follows the type.
+     */
+    public function test_nothing_picked_prints_the_standard_footer_under_any_brand_with_the_types_qr_choice(): void
+    {
+        Sanctum::actingAs($this->makeOwner(), ['staff']);
+        $amma = LabelBrand::query()->where('name', 'Amma')->value('id');
+        $type = LabelType::query()->where('name', 'Chilled Hedhika')->first();
+        $standard = LabelFooter::default();
+        $sheet = fn (array $items, array $extra = []) => (string) $this->get($this->postJson('/api/labels/stickers/url', ['items' => $items, 'preview' => true, 'layout' => 'a4-4'] + $extra)->assertOk()->json('view_url'))->assertOk()->getContent();
+
+        $custom = $this->postJson('/api/labels/custom', ['name' => 'Garlic Sauce', 'brand_id' => $amma, 'label_type_id' => $type->id])->assertCreated()->json('data.id');
+        $html = $sheet([['id' => $custom, 'kind' => 'custom', 'copies' => 1]]);
+        $this->assertStringContainsString('A M M A', $html, 'the food brand on the header');
+        $this->assertStringContainsString('Fresh Baked, Fire Grilled', $html, 'the business in the footer');
+        $this->assertStringNotContainsString('Home-made, the Amma way', $html);
+        $this->assertStringNotContainsString('by Bake &amp; Grill', $html);
+        $this->assertStringContainsString('style="left:87mm', $html, 'the complaints QR at the footer\'s right');
+
+        // Words typed into the standard footer print without picking it anywhere.
+        $this->putJson("/api/labels/footers/{$standard->id}", ['tagline' => 'Hand-made in Malé'])->assertOk()->assertJsonPath('data.effective.tagline', 'Hand-made in Malé');
+        $html = $sheet([['id' => $custom, 'kind' => 'custom', 'copies' => 1]]);
+        $this->assertStringContainsString('Hand-made in Malé', $html);
+        $this->assertStringNotContainsString('Fresh Baked, Fire Grilled', $html);
+
+        // The type's own QR switch still decides when no footer was picked.
+        $this->putJson("/api/labels/types/{$type->id}", ['show_qr' => false])->assertOk();
+        $this->assertStringNotContainsString('style="left:87mm', $sheet([['id' => $custom, 'kind' => 'custom', 'copies' => 1]]));
+        // A picked footer's switch wins over the type's.
+        $this->putJson("/api/labels/custom/{$custom}", ['footer_id' => $standard->id])->assertOk();
+        $this->assertStringContainsString('style="left:87mm', $sheet([['id' => $custom, 'kind' => 'custom', 'copies' => 1]]));
     }
 }

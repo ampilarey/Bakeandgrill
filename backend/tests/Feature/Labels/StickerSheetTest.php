@@ -8,8 +8,8 @@ use App\Domains\Labels\StickerLayouts;
 use App\Domains\Permissions\PermissionCatalogSync;
 use App\Models\Item;
 use App\Models\LabelBrand;
-use App\Models\LabelType;
 use App\Models\LabelPrint;
+use App\Models\LabelType;
 use App\Models\Media;
 use App\Models\SiteSetting;
 use Carbon\CarbonImmutable;
@@ -252,7 +252,8 @@ class StickerSheetTest extends TestCase
         foreach (['a4-4', 'a4-8'] as $layout) {
             $res = $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $pickle->id, 'copies' => 1]], 'layout' => $layout, 'fill' => true, 'mfg' => '2026-10-04'])->assertOk();
             $html = (string) $this->get($res->json('view_url'))->assertOk()->getContent();
-            foreach (['Amma', 'A M M A', 'by Bake &amp; Grill', 'data:image/svg+xml', 'PACKED ON', 'BEST BEFORE', 'Use within a month of opening', $layout === 'a4-4' ? 'H O W   T O   U S E' : 'HOW TO USE: Serve', 'Serve with rice', 'bakeandgrill.mv', '+960 912 0011'] as $needle) {
+            // The food brand on the header, the business in the footer (owner, 2026-10-12).
+            foreach (['A M M A', 'Bake &amp; Grill', 'data:image/svg+xml', 'PACKED ON', 'BEST BEFORE', 'Use within a month of opening', $layout === 'a4-4' ? 'H O W   T O   U S E' : 'HOW TO USE: Serve', 'Serve with rice', 'bakeandgrill.mv', '+960 912 0011'] as $needle) {
                 $this->assertStringContainsString($needle, $html, "$layout: $needle");
             }
             $this->assertStringContainsString('04 / 10 / 2026', $html, "$layout mfg");

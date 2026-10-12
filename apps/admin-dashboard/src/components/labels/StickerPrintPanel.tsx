@@ -526,7 +526,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
               <div className="sm:col-span-2">
                 <label className={labelClass} htmlFor="label-footer">Footer</label>
                 <FooterPicker id="label-footer" footers={footers} value={footer} onChange={setFooter} onFootersChange={setFooters} noneLabel="Each product's own footer" canManage={can('labels.manage')} />
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">One footer for every sticker on the sheet: name, tagline, phone, website and whether the complaints QR prints. Empty keeps each product's own, from its label, its type or its brand.</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">One footer for every sticker on the sheet, always Bake &amp; Grill's branding: tagline, phone, website and whether the complaints QR prints. Empty keeps each product's own, from its label or its type, else the standard one.</p>
               </div>
             )}
             <div>

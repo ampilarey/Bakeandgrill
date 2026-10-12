@@ -1,8 +1,8 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Pencil, Plus } from 'lucide-react';
 import {
-  createLabelFooter, deleteLabelFooter, fetchLabelBrands, updateLabelFooter,
-  type LabelBrand, type LabelFooter, type LabelFooterPayload,
+  createLabelFooter, deleteLabelFooter, updateLabelFooter,
+  type LabelFooter, type LabelFooterPayload,
 } from '../../api';
 import { Btn, Modal, ModalActions } from '../SharedUI';
 import { Button, useToast } from '../ui';
@@ -11,17 +11,21 @@ import { Button, useToast } from '../ui';
  * Footer presets (owner, 2026-10-12: "No easy option to select and edit
  * branding footer"). One select with Edit and New beside it, the same on the
  * custom label editor, Pack stickers (one footer for the whole sheet) and a
- * label type (its default). The editor lists every line of the footer and
- * shows, in grey, what a blank line prints: the brand's and Business
- * Details' live values, so the standard footer follows the business.
+ * label type (its default). The footer is always the business's branding
+ * (owner, 2026-10-12: "Footer should be always branding of Bake and Grill";
+ * a food brand such as Amma keeps its logo and name on the header): the
+ * editor lists every line of the footer and shows, in grey, what a blank
+ * line prints, the live value from Business Details. With nothing picked the
+ * footer that prints instead (the type's, else the standard one) is shown
+ * and can be changed from the same pencil.
  */
 
 const fieldClass = 'h-10 min-h-[44px] px-3 rounded-lg border border-[var(--color-border)] bg-white text-sm text-[var(--color-text)] w-full';
 const labelClass = 'block text-xs font-semibold text-[var(--color-text-secondary)] mb-1';
 
-/** "Amma · Home-made, the Amma way · +960 912 0011 · bakeandgrill.mv": what the footer prints, in a line. */
+/** "Bake & Grill · Fresh Baked, Fire Grilled · +960 912 0011 · bakeandgrill.mv": what the footer prints, in a line. */
 export const describeFooter = (f: LabelFooter): string =>
-  [f.effective.name, f.effective.tagline || f.effective.by, f.effective.phone, f.effective.website].filter(Boolean).join(' · ');
+  [f.effective.name, f.effective.tagline, f.effective.phone, f.effective.website].filter(Boolean).join(' · ');
 
 const upsert = (list: LabelFooter[], f: LabelFooter): LabelFooter[] =>
   list.some((x) => x.id === f.id) ? list.map((x) => (x.id === f.id ? f : x)) : [...list, f].sort((a, b) => a.sort - b.sort || a.id - b.id);
@@ -32,15 +36,18 @@ type PickerProps = {
   value: number | null;
   onChange: (id: number | null) => void;
   onFootersChange: (footers: LabelFooter[]) => void;
-  /** What "no footer picked" means here, e.g. "Amma's own footer". */
+  /** What "no footer picked" means here, e.g. "Follow the type (Standard)". */
   noneLabel: string;
+  /** The footer that prints when none is picked, so its lines show and the pencil reaches it. */
+  fallback?: LabelFooter | null;
   /** Edit and New need Manage label settings. */
   canManage: boolean;
 };
 
-export function FooterPicker({ id, footers, value, onChange, onFootersChange, noneLabel, canManage }: PickerProps) {
+export function FooterPicker({ id, footers, value, onChange, onFootersChange, noneLabel, fallback = null, canManage }: PickerProps) {
   const [editing, setEditing] = useState<LabelFooter | null | 'new'>(null);
   const picked = footers.find((f) => f.id === value) ?? null;
+  const shown = picked ?? fallback;
 
   return (
     <div data-testid={`${id}-picker`}>
@@ -49,20 +56,24 @@ export function FooterPicker({ id, footers, value, onChange, onFootersChange, no
           <option value="">{noneLabel}</option>
           {footers.map((f) => <option key={f.id} value={f.id}>{f.name}{f.is_default ? ' (standard)' : ''}</option>)}
         </select>
-        {canManage && picked && (
-          <Button variant="secondary" icon={<Pencil size={16} />} onClick={() => setEditing(picked)} aria-label={`Edit the footer ${picked.name}`} title="Change this footer" className="shrink-0" />
+        {canManage && shown && (
+          <Button variant="secondary" icon={<Pencil size={16} />} onClick={() => setEditing(shown)} aria-label={`Edit the footer ${shown.name}`} title="Change this footer" className="shrink-0" />
         )}
         {canManage && (
           <Button variant="secondary" icon={<Plus size={16} />} onClick={() => setEditing('new')} aria-label="New footer" title="New footer" className="shrink-0" />
         )}
       </div>
-      {picked && <p className="text-xs text-[var(--color-text-muted)] mt-1" data-testid={`${id}-lines`}>{describeFooter(picked)}</p>}
+      {shown && <p className="text-xs text-[var(--color-text-muted)] mt-1" data-testid={`${id}-lines`}>{describeFooter(shown)}</p>}
       {editing !== null && (
         <FooterModal
           footer={editing === 'new' ? null : editing}
           footers={footers}
           onClose={() => setEditing(null)}
-          onSaved={(f) => { onFootersChange(upsert(footers, f)); onChange(f.id); }}
+          onSaved={(f) => {
+            onFootersChange(upsert(footers, f));
+            // A new footer is picked; a changed one keeps its place (a fallback stays unpicked).
+            if (editing === 'new' || picked) onChange(f.id);
+          }}
           onRemoved={(fid) => { onFootersChange(footers.filter((x) => x.id !== fid)); if (value === fid) onChange(null); }}
         />
       )}
@@ -71,16 +82,15 @@ export function FooterPicker({ id, footers, value, onChange, onFootersChange, no
 }
 
 type Draft = {
-  name: string; brand_id: number | null;
-  heading: string; heading_dv: string; tagline: string; tagline_dv: string; by_line: string; show_by: boolean;
+  name: string;
+  heading: string; heading_dv: string; tagline: string; tagline_dv: string;
   phone: string; ways: string; ways_dv: string; website: string; address: string; address_dv: string; landmark: string; landmark_dv: string;
   show_qr: boolean; show_mark: boolean;
 };
 
 const toDraft = (f: LabelFooter | null): Draft => ({
-  name: f?.name ?? '', brand_id: f?.brand_id ?? null,
+  name: f?.name ?? '',
   heading: f?.heading ?? '', heading_dv: f?.heading_dv ?? '', tagline: f?.tagline ?? '', tagline_dv: f?.tagline_dv ?? '',
-  by_line: f?.by_line ?? '', show_by: f?.show_by ?? true,
   phone: f?.phone ?? '', ways: f?.ways ?? '', ways_dv: f?.ways_dv ?? '', website: f?.website ?? '',
   address: f?.address ?? '', address_dv: f?.address_dv ?? '', landmark: f?.landmark ?? '', landmark_dv: f?.landmark_dv ?? '',
   show_qr: f?.show_qr ?? true, show_mark: f?.show_mark ?? true,
@@ -89,9 +99,8 @@ const toDraft = (f: LabelFooter | null): Draft => ({
 const text = (v: string) => v.trim() || null;
 
 const toPayload = (d: Draft): LabelFooterPayload => ({
-  name: d.name.trim(), brand_id: d.brand_id,
+  name: d.name.trim(),
   heading: text(d.heading), heading_dv: text(d.heading_dv), tagline: text(d.tagline), tagline_dv: text(d.tagline_dv),
-  by_line: text(d.by_line), show_by: d.show_by,
   phone: text(d.phone), ways: text(d.ways), ways_dv: text(d.ways_dv), website: text(d.website),
   address: text(d.address), address_dv: text(d.address_dv), landmark: text(d.landmark), landmark_dv: text(d.landmark_dv),
   show_qr: d.show_qr, show_mark: d.show_mark,
@@ -117,21 +126,14 @@ export function FooterModal({ footer, footers, onClose, onSaved, onRemoved }: {
 }) {
   const { toast } = useToast();
   const [d, setD] = useState<Draft>(() => toDraft(footer));
-  const [brands, setBrands] = useState<LabelBrand[]>([]);
   const [saving, setSaving] = useState(false);
   const [removing, setRemoving] = useState(false);
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((s) => ({ ...s, [k]: v }));
 
-  useEffect(() => {
-    fetchLabelBrands().then((r) => setBrands(r.data)).catch(() => setBrands([]));
-  }, []);
-
-  // What a blank line prints: this footer's own lines, else the lines of the
-  // footer for the brand picked, else the standard one's.
-  const template = footer ?? footers.find((f) => f.brand_id === d.brand_id) ?? footers.find((f) => f.is_default) ?? null;
-  const ph = template?.effective;
-  const brand = brands.find((b) => b.id === d.brand_id) ?? null;
-  const mainName = brands.find((b) => b.is_default)?.name ?? 'Bake & Grill';
+  // What a blank line prints: this footer's own lines, else the standard footer's (the business's).
+  const standard = footers.find((f) => f.is_default) ?? null;
+  const ph = (footer ?? standard)?.effective;
+  const business = standard?.effective.name ?? 'Bake & Grill';
 
   const save = async () => {
     if (!d.name.trim()) { toast('error', 'Give the footer a name.'); return; }
@@ -149,7 +151,7 @@ export function FooterModal({ footer, footers, onClose, onSaved, onRemoved }: {
   };
 
   const remove = async () => {
-    if (!footer || !window.confirm(`Remove the footer "${footer.name}"? Labels and types that print it go back to their brand's footer.`)) return;
+    if (!footer || !window.confirm(`Remove the footer "${footer.name}"? Labels and types that print it go back to the standard footer.`)) return;
     setRemoving(true);
     try {
       await deleteLabelFooter(footer.id);
@@ -165,23 +167,15 @@ export function FooterModal({ footer, footers, onClose, onSaved, onRemoved }: {
 
   const input = (k: keyof Draft, id: string, label: string, max: number, dv = false, hint?: string) => (
     <Field id={id} label={label} hint={hint}>
-      <input id={id} dir={dv ? 'rtl' : undefined} value={String(d[k])} maxLength={max} onChange={(e) => set(k, e.target.value as Draft[typeof k])} className={fieldClass} placeholder={ph ? String(ph[(k === 'heading' ? 'name' : k === 'heading_dv' ? 'name_dv' : k === 'by_line' ? 'by' : k) as keyof typeof ph] ?? '') : ''} />
+      <input id={id} dir={dv ? 'rtl' : undefined} value={String(d[k])} maxLength={max} onChange={(e) => set(k, e.target.value as Draft[typeof k])} className={fieldClass} placeholder={ph ? String(ph[(k === 'heading' ? 'name' : k === 'heading_dv' ? 'name_dv' : k) as keyof typeof ph] ?? '') : ''} />
     </Field>
   );
 
   return (
     <Modal title={footer ? `Edit footer: ${footer.name}` : 'New footer'} onClose={onClose} maxWidth={760}>
       <div className="space-y-4" data-testid="label-footer-form">
-        <p className="text-xs text-[var(--color-text-muted)]">A footer is picked by name on a custom label, a label type or a whole sheet. Leave a box empty to print what is shown in grey: the brand's and Business Details' current values.</p>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field id="lf-name" label="Footer name (for the list)"><input id="lf-name" value={d.name} maxLength={60} onChange={(e) => set('name', e.target.value)} className={fieldClass} placeholder="Kitchen stamp" /></Field>
-          <Field id="lf-brand" label="Whose lines fill the blanks" hint={brand && !brand.is_default ? `${brand.name}'s name, tagline and logo, by ${mainName}.` : `${mainName} itself, from Business Details.`}>
-            <select id="lf-brand" value={d.brand_id ?? ''} onChange={(e) => set('brand_id', e.target.value ? Number(e.target.value) : null)} className={fieldClass}>
-              <option value="">{mainName} (the business)</option>
-              {brands.filter((b) => !b.is_default).map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
-          </Field>
-        </div>
+        <p className="text-xs text-[var(--color-text-muted)]">The footer is always {business}'s branding: a food brand such as Amma keeps its logo and name on the header. A footer is picked by name on a custom label, a label type or a whole sheet. Leave a box empty to print what is shown in grey, the current value from Business Details.</p>
+        <Field id="lf-name" label="Footer name (for the list)"><input id="lf-name" value={d.name} maxLength={60} onChange={(e) => set('name', e.target.value)} className={fieldClass} placeholder="Kitchen stamp" /></Field>
 
         <fieldset className="rounded-xl border border-[var(--color-border)] p-3 space-y-3">
           <legend className="px-1 text-sm font-bold text-[var(--color-text)]">Name and tagline</legend>
@@ -190,8 +184,6 @@ export function FooterModal({ footer, footers, onClose, onSaved, onRemoved }: {
             {input('heading_dv', 'lf-heading-dv', 'Name (Dhivehi)', 60, true)}
             {input('tagline', 'lf-tagline', 'Tagline, or your own words', 120, false, 'On the small stickers it prints where the website would.')}
             {input('tagline_dv', 'lf-tagline-dv', 'Tagline (Dhivehi)', 120, true)}
-            {input('by_line', 'lf-by', 'By-line', 60, false, `Empty prints "by ${mainName}" for a brand under it.`)}
-            <label className="flex items-center gap-2 min-h-[44px] cursor-pointer sm:mt-5"><input type="checkbox" checked={d.show_by} onChange={(e) => set('show_by', e.target.checked)} className="w-5 h-5 accent-[var(--color-primary)]" /><span className="text-sm text-[var(--color-text)]">Print the by-line</span></label>
           </div>
         </fieldset>
 

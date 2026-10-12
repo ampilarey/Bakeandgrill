@@ -66,20 +66,22 @@ final class LabelTypes
 
     /**
      * The footer a sticker prints (owner, 2026-10-12: "No easy option to
-     * select and edit branding footer"): from a preset when one is picked,
-     * else the brand's own as before. A preset's blank line takes the live
-     * value of its brand (the business when it has none); its typed tagline
-     * is "own": the compact designs print it where the website would go.
+     * select and edit branding footer"): always the business's branding
+     * (owner, 2026-10-12: "Footer should be always branding of Bake and
+     * Grill"; a food brand such as Amma keeps its logo and name on the
+     * header), from a preset when one is picked. A preset's blank line
+     * takes the live value from Business Details; its typed tagline is
+     * "own": the compact designs print it where the website would go.
      *
-     * @param array<string, mixed> $brand the sticker's brand, from brand()
-     * @return array{name: string, name_dv: string, tagline: string, tagline_dv: string, own: bool, by: string, phone: string, ways: string, ways_dv: string, website: string, address: string, address_dv: string, landmark: string, landmark_dv: string, show_qr: bool, show_mark: bool, preset_id: ?int, preset_name: ?string}
+     * @param bool $implicit the preset stands in for "nothing picked": its
+     *                       lines print, the complaints QR follows the type
+     * @return array{name: string, name_dv: string, tagline: string, tagline_dv: string, own: bool, phone: string, ways: string, ways_dv: string, website: string, address: string, address_dv: string, landmark: string, landmark_dv: string, show_qr: bool, show_mark: bool, preset_id: ?int, preset_name: ?string}
      */
-    public function footer(?LabelFooter $preset, array $brand, bool $typeShowQr = true): array
+    public function footer(?LabelFooter $preset, bool $typeShowQr = true, bool $implicit = false): array
     {
         $contact = LabelSettings::contact();
-        $base = $preset === null ? $brand : $this->brand($preset->brand_id ? $preset->brand : null);
+        $base = $this->brand(null);
         $line = fn (string $col, string $fallback): string => $preset !== null && trim((string) $preset->{$col}) !== '' ? trim((string) $preset->{$col}) : $fallback;
-        $byAuto = $base['parent'] !== '' ? 'by ' . $base['parent'] : '';
 
         return [
             'name' => $line('heading', $base['name']),
@@ -87,7 +89,6 @@ final class LabelTypes
             'tagline' => $line('tagline', $base['tagline']),
             'tagline_dv' => $line('tagline_dv', $base['tagline_dv']),
             'own' => $preset !== null && trim((string) $preset->tagline) !== '',
-            'by' => $preset === null ? $byAuto : ($preset->show_by ? $line('by_line', $byAuto) : ''),
             'phone' => $line('phone', $contact['phone']),
             'ways' => $line('ways', LabelSettings::get('label_contact_ways')),
             'ways_dv' => $line('ways_dv', LabelSettings::get('label_contact_ways_dv')),
@@ -96,7 +97,7 @@ final class LabelTypes
             'address_dv' => $line('address_dv', LabelSettings::get('label_address_dv')),
             'landmark' => $line('landmark', $contact['landmark']),
             'landmark_dv' => $line('landmark_dv', LabelSettings::get('label_landmark_dv')),
-            'show_qr' => $preset !== null ? (bool) $preset->show_qr : $typeShowQr,
+            'show_qr' => $preset !== null && !$implicit ? (bool) $preset->show_qr : $typeShowQr,
             'show_mark' => $preset === null || (bool) $preset->show_mark,
             'preset_id' => $preset?->id,
             'preset_name' => $preset?->name,
@@ -109,14 +110,10 @@ final class LabelTypes
         return [
             'id' => $footer->id,
             'name' => $footer->name,
-            'brand_id' => $footer->brand_id,
-            'brand_name' => $footer->brand?->name,
             'heading' => $footer->heading,
             'heading_dv' => $footer->heading_dv,
             'tagline' => $footer->tagline,
             'tagline_dv' => $footer->tagline_dv,
-            'by_line' => $footer->by_line,
-            'show_by' => (bool) $footer->show_by,
             'phone' => $footer->phone,
             'ways' => $footer->ways,
             'ways_dv' => $footer->ways_dv,
@@ -141,7 +138,7 @@ final class LabelTypes
      * its name, tagline and logo come from Business Details and the brand
      * pack, so they stay in step with the receipts.
      *
-     * @return array{id: ?int, name: string, name_dv: string, tagline: string, tagline_dv: string, logo: ?string, logo_ratio: float, is_default: bool, parent: string}
+     * @return array{id: ?int, name: string, name_dv: string, tagline: string, tagline_dv: string, logo: ?string, logo_ratio: float, is_default: bool}
      */
     public function brand(?LabelBrand $brand): array
     {
@@ -170,8 +167,6 @@ final class LabelTypes
             'logo' => $logo,
             'logo_ratio' => LabelImage::ratio($logo),
             'is_default' => $isDefault,
-            // A sub-brand's footer says who it is by.
-            'parent' => $isDefault ? '' : $contact['name'],
         ];
     }
 

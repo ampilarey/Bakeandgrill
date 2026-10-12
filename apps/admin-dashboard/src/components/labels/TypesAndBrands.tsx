@@ -138,8 +138,8 @@ function TypeModal({ type, brands, footers, onFootersChange, canManage, defaults
           </div>
         </fieldset>
 
-        <Field id="lt-footer" label="Footer" hint="The footer its stickers print unless a custom label or a sheet picks another (owner, 2026-10-12). Its own QR switch wins over the box below.">
-          <FooterPicker id="lt-footer" footers={footers} value={d.footer_id} onChange={(id) => set('footer_id', id)} onFootersChange={onFootersChange} noneLabel="The brand's own footer" canManage={canManage} />
+        <Field id="lt-footer" label="Footer" hint="Always Bake & Grill's branding, whatever brand is on the header. The footer its stickers print unless a custom label or a sheet picks another (owner, 2026-10-12); a picked footer's QR switch wins over the box below.">
+          <FooterPicker id="lt-footer" footers={footers} value={d.footer_id} onChange={(id) => set('footer_id', id)} onFootersChange={onFootersChange} noneLabel="Standard (the business's footer)" fallback={footers.find((f) => f.is_default) ?? null} canManage={canManage} />
         </Field>
 
         <div className="flex flex-wrap gap-4">
@@ -160,8 +160,6 @@ export function BrandModal({ brand, onClose, onSaved }: { brand: LabelBrand | nu
   const { toast } = useToast();
   const [name, setName] = useState(brand?.name ?? '');
   const [nameDv, setNameDv] = useState(brand?.name_dv ?? '');
-  const [tagline, setTagline] = useState(brand?.tagline ?? '');
-  const [taglineDv, setTaglineDv] = useState(brand?.tagline_dv ?? '');
   const [logo, setLogo] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(brand?.logo_url ?? null);
   const [saving, setSaving] = useState(false);
@@ -176,7 +174,7 @@ export function BrandModal({ brand, onClose, onSaved }: { brand: LabelBrand | nu
     if (!name.trim()) { toast('error', 'Give the brand a name.'); return; }
     setSaving(true);
     try {
-      const body = { name: name.trim(), name_dv: nameDv.trim() || null, tagline: tagline.trim() || null, tagline_dv: taglineDv.trim() || null };
+      const body = { name: name.trim(), name_dv: nameDv.trim() || null };
       let saved = brand ? (await updateLabelBrand(brand.id, body)).data : (await createLabelBrand(body)).data;
       if (logo) saved = (await uploadLabelBrandLogo(saved.id, logo)).data;
       onSaved(saved);
@@ -192,12 +190,12 @@ export function BrandModal({ brand, onClose, onSaved }: { brand: LabelBrand | nu
   return (
     <Modal title={brand ? `Edit ${brand.name}` : 'New brand'} onClose={onClose} maxWidth={560}>
       <div className="space-y-4" data-testid="label-brand-form">
-        {brand?.is_default && <p className="text-xs text-[var(--color-text-muted)]">The main brand's name, tagline, phone, address and website come from Business Details. Only the Dhivehi name is set here.</p>}
+        {brand?.is_default
+          ? <p className="text-xs text-[var(--color-text-muted)]">The main brand's name, phone, address and website come from Business Details. Only the Dhivehi name is set here.</p>
+          : <p className="text-xs text-[var(--color-text-muted)]">A food brand: its logo and name go on the sticker's header. The footer is always Bake &amp; Grill's branding (Types &amp; brands → Footers).</p>}
         <div className="grid gap-3 sm:grid-cols-2">
           <Field id="lb-name" label="Brand name"><input id="lb-name" value={name} maxLength={60} disabled={brand?.is_default} onChange={(e) => setName(e.target.value)} className={fieldClass} placeholder="Amma" /></Field>
           <Field id="lb-name-dv" label="Brand name (Dhivehi)"><input id="lb-name-dv" dir="rtl" value={nameDv} maxLength={60} onChange={(e) => setNameDv(e.target.value)} className={fieldClass} /></Field>
-          <Field id="lb-tag" label="Tagline"><input id="lb-tag" value={tagline} maxLength={80} disabled={brand?.is_default} onChange={(e) => setTagline(e.target.value)} className={fieldClass} placeholder="Home-made, the Amma way" /></Field>
-          <Field id="lb-tag-dv" label="Tagline (Dhivehi)"><input id="lb-tag-dv" dir="rtl" value={taglineDv} maxLength={80} onChange={(e) => setTaglineDv(e.target.value)} className={fieldClass} /></Field>
         </div>
         {!brand?.is_default && (
           <div>
@@ -290,7 +288,7 @@ export function TypesAndBrands({ canManage }: { canManage: boolean }) {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h3 className="font-bold text-[var(--color-text)]">Brands</h3>
-              <p className="text-xs text-[var(--color-text-muted)] mt-1">Who the label is from. The main brand is the business itself; a brand under it, like Amma, prints its own name and logo with "by Bake &amp; Grill" in the footer.</p>
+              <p className="text-xs text-[var(--color-text-muted)] mt-1">Who the label is from, on the header. The main brand is the business itself; a food brand under it, like Amma, prints its own name and logo there. The footer is always Bake &amp; Grill's (below).</p>
             </div>
             {canManage && <Button size="sm" icon={<Plus size={16} />} onClick={() => setEditBrand('new')} data-testid="label-brand-new">New brand</Button>}
           </div>
@@ -304,7 +302,7 @@ export function TypesAndBrands({ canManage }: { canManage: boolean }) {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-semibold text-[var(--color-text)] flex items-center gap-1">{b.name}{b.is_default && <BadgeCheck size={14} className="text-[var(--color-primary)]" aria-label="Main brand" />}</div>
-                <div className="text-xs text-[var(--color-text-muted)] truncate">{b.tagline || (b.is_default ? 'From Business Details' : 'No tagline')}{b.types_count ? ` · ${b.types_count} ${b.types_count === 1 ? 'type' : 'types'}` : ''}</div>
+                <div className="text-xs text-[var(--color-text-muted)] truncate">{b.is_default ? 'The business, from Business Details' : b.name_dv || 'Food brand'}{b.types_count ? ` · ${b.types_count} ${b.types_count === 1 ? 'type' : 'types'}` : ''}</div>
               </div>
               {canManage && (
                 <span className="inline-flex">
@@ -323,7 +321,7 @@ export function TypesAndBrands({ canManage }: { canManage: boolean }) {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h3 className="font-bold text-[var(--color-text)]">Footers</h3>
-              <p className="text-xs text-[var(--color-text-muted)] mt-1">What the dark band at the foot of a sticker says: name, tagline or your own words, phone, website, address, the complaints QR and the brand mark. Picked by name on a custom label, a label type or a whole sheet; a blank line follows Business Details.</p>
+              <p className="text-xs text-[var(--color-text-muted)] mt-1">What the dark band at the foot of a sticker says, always Bake &amp; Grill's branding whatever food brand is on the header: name, tagline or your own words, phone, website, address, the complaints QR and the brand mark. Picked by name on a custom label, a label type or a whole sheet; a blank line follows Business Details, and nothing picked prints the standard one.</p>
             </div>
             {canManage && <Button size="sm" icon={<Plus size={16} />} onClick={() => setEditFooter('new')} data-testid="label-footer-new">New footer</Button>}
           </div>

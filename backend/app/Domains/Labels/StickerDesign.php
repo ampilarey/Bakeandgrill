@@ -327,9 +327,9 @@ final class StickerDesign
             }
         }
 
-        // Dark footer: the footer preset, or the brand's own (LabelTypes::footer):
-        // name, tagline or by-line, address, phone, ways to reach you, website
-        // and the complaints QR (v2 point 1), the same on every size.
+        // Dark footer, always the business's branding (LabelTypes::footer):
+        // name, tagline, address, phone, ways to reach you, website and the
+        // complaints QR (v2 point 1), the same on every size.
         $f = $d['footer'];
         $p[] = ['t' => 'rect', 'x' => 5, 'y' => 128, 'w' => 95, 'h' => 15.5, 'fill' => self::DARK, 'r' => 2.5];
         [$mw, $mh] = self::fit($d['mark_ratio'], 10, 10.5);
@@ -349,15 +349,13 @@ final class StickerDesign
         // The tagline (Dhivehi one on a Dhivehi sticker when there is one)
         // shares its line with the ways-to-reach-you text under the phone, so
         // each keeps to its own half: 34 mm for the tagline, the phone's
-        // width for the ways line. With no tagline the by-line stands there.
+        // width for the ways line.
         $tagline = $dv && $f['tagline_dv'] !== '' ? $f['tagline_dv'] : $f['tagline'];
-        $tagline = $tagline !== '' ? $tagline : $f['by'];
         $tagFont = $dv && $f['tagline_dv'] !== '' ? 'dv' : 'dsi';
         $p[] = ['t' => 'text', 'x' => $nameX, 'base' => 137.2, 'w' => 50, 'align' => $A('l'), 'font' => $tagFont, 'pt' => LabelText::fitPt($tagline, $tagFont, 34, $tagFont === 'dv' ? 8 : 7.8, 5.5), 'color' => self::ON_DARK, 'text' => $tagline] + ($tagFont === 'dv' ? ['bold' => 0.4] : []);
-        $by = $f['by'] !== '' && $f['tagline'] !== '' ? $f['by'] . '  ·  ' : '';
         // The address line stops where the website (right-aligned, ~27 mm)
         // begins; with the QR that edge is 12 mm further left. Too long at
-        // the smallest size, it drops the landmark, then the "by" line.
+        // the smallest size, it drops the landmark.
         $addrW = ($qr > 0 ? 84.5 : 96.5) - 28 - $tx;
         if ($dv) {
             $full = trim($f['address_dv'] . ($f['landmark_dv'] !== '' ? '  •  ' . $f['landmark_dv'] : ''));
@@ -365,8 +363,7 @@ final class StickerDesign
             $p[] = ['t' => 'text', 'x' => $X($tx, $addrW), 'base' => 141, 'w' => $addrW, 'align' => 'r', 'font' => 'dv', 'pt' => LabelText::fitPt($addr, 'dv', $addrW, 8, 6.5), 'color' => self::SOFT, 'text' => $addr, 'bold' => 0.4];
         } else {
             $candidates = [
-                $by . trim($f['address'] . ($f['landmark'] !== '' ? '  ·  ' . $f['landmark'] : '')),
-                $by . trim($f['address']),
+                trim($f['address'] . ($f['landmark'] !== '' ? '  ·  ' . $f['landmark'] : '')),
                 trim($f['address']),
             ];
             $addr = $candidates[0];
@@ -472,14 +469,12 @@ final class StickerDesign
         if ($tall) {
             // A footer's own tagline takes the website's place (owner,
             // 2026-10-12). It needs more room than "bakeandgrill.mv", so
-            // beside it the address line drops the by-line and landmark and
-            // keeps to the left 42 %; the tagline takes what is left before
-            // the QR.
+            // beside it the address line drops the landmark and keeps to the
+            // left 42 %; the tagline takes what is left before the QR.
             $own = self::ownFooter($d, $dv);
-            $by = $f['by'] !== '' ? $f['by'] . '  ·  ' : '';
             $addr = $own !== null
                 ? trim($dv ? $f['address_dv'] : $f['address'])
-                : ($dv ? trim($f['address_dv'] . ($f['landmark_dv'] !== '' ? '  ·  ' . $f['landmark_dv'] : '')) : $by . trim($f['address'] . ($f['landmark'] !== '' ? '  ·  ' . $f['landmark'] : '')));
+                : ($dv ? trim($f['address_dv'] . ($f['landmark_dv'] !== '' ? '  ·  ' . $f['landmark_dv'] : '')) : trim($f['address'] . ($f['landmark'] !== '' ? '  ·  ' . $f['landmark'] : '')));
             $addrW = $own !== null ? $iw * 0.42 : $iw * 0.55;
             $p[] = $dv
                 ? ['t' => 'text', 'x' => $X($pad + 2, $addrW), 'base' => $fy + 8.2, 'w' => $addrW, 'align' => 'r', 'font' => 'dv', 'pt' => $own !== null ? LabelText::fitPt($addr, 'dv', $addrW - 1, 6.5, 5) : 6.5, 'color' => self::SOFT, 'text' => $addr, 'bold' => 0.4]

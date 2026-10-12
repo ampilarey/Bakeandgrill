@@ -16,18 +16,19 @@ const createLabelFooter = vi.fn();
 const updateLabelFooter = vi.fn();
 const deleteLabelFooter = vi.fn();
 
-const effective = (name: string, tagline: string, by = '') => ({
-  name, name_dv: '', tagline, tagline_dv: '', by, phone: '+960 912 0011', ways: '', ways_dv: '', website: 'bakeandgrill.mv',
+// A footer is always the business's (owner, 2026-10-12): no brand, no by-line.
+const effective = (tagline: string) => ({
+  name: 'Bake & Grill', name_dv: '', tagline, tagline_dv: '', phone: '+960 912 0011', ways: '', ways_dv: '', website: 'bakeandgrill.mv',
   address: 'Kalaafaanu Hingun, Malé', address_dv: '', landmark: '', landmark_dv: '', show_qr: true, show_mark: true,
 });
-const footerRow = (id: number, name: string, brand_id: number | null, eff: ReturnType<typeof effective>, extra = {}) => ({
-  id, name, brand_id, brand_name: brand_id ? 'Amma' : null, heading: null, heading_dv: null, tagline: null, tagline_dv: null, by_line: null, show_by: true,
+const footerRow = (id: number, name: string, eff: ReturnType<typeof effective>, extra = {}) => ({
+  id, name, heading: null, heading_dv: null, tagline: null, tagline_dv: null,
   phone: null, ways: null, ways_dv: null, website: null, address: null, address_dv: null, landmark: null, landmark_dv: null,
-  show_qr: true, show_mark: true, is_default: brand_id === null, sort: id, effective: eff, custom_labels_count: 0, types_count: 0, ...extra,
+  show_qr: true, show_mark: true, is_default: id === 1, sort: id, effective: eff, custom_labels_count: 0, types_count: 0, ...extra,
 });
 const FOOTERS = [
-  footerRow(1, 'Standard', null, effective('Bake & Grill', 'Fresh Baked, Fire Grilled')),
-  footerRow(2, 'Amma', 2, effective('Amma', 'Home-made, the Amma way', 'by Bake & Grill')),
+  footerRow(1, 'Standard', effective('Fresh Baked, Fire Grilled')),
+  footerRow(2, 'Kitchen stamp', effective('Hand-made daily'), { tagline: 'Hand-made daily' }),
 ];
 
 vi.mock('../../api', () => ({
@@ -133,9 +134,12 @@ describe('CustomLabelModal', () => {
     createCustomLabel.mockResolvedValue({ data: custom(9, 'Gift Box', { footer_id: 1, footer_name: 'Standard', label_show_qr: false, label_lang: 'both' }) });
     wrap(<CustomLabelModal label={null} onClose={() => {}} onSaved={() => {}} />);
     fireEvent.change(screen.getByLabelText('Product name'), { target: { value: 'Gift Box' } });
-    // The footers come by name; nothing picked means the brand's own.
+    // The footers come by name; nothing picked means the standard one (always
+    // Bake & Grill's), whose lines already show and which the pencil reaches.
     await screen.findByRole('option', { name: 'Standard (standard)' });
-    expect(screen.getByRole('option', { name: "Bake & Grill's own footer" })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Standard' })).toBeInTheDocument();
+    expect(screen.getByTestId('cl-footer-lines')).toHaveTextContent('Fresh Baked, Fire Grilled');
+    expect(screen.getByRole('button', { name: 'Edit the footer Standard' })).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Footer'), { target: { value: '1' } });
     // The picked footer says what it prints, and the QR follows it until told otherwise.
     expect(screen.getByTestId('cl-footer-lines')).toHaveTextContent('Bake & Grill · Fresh Baked, Fire Grilled · +960 912 0011 · bakeandgrill.mv');
@@ -151,7 +155,7 @@ describe('CustomLabelModal', () => {
   });
 
   it('changes the picked footer in place and the new words reach the preview', async () => {
-    updateLabelFooter.mockResolvedValue({ data: footerRow(1, 'Standard', null, effective('Bake & Grill', 'Made in Malé with love'), { tagline: 'Made in Malé with love' }) });
+    updateLabelFooter.mockResolvedValue({ data: footerRow(1, 'Standard', effective('Made in Malé with love'), { tagline: 'Made in Malé with love' }) });
     wrap(<CustomLabelModal label={custom(9, 'Gift Box', { footer_id: 1, footer_name: 'Standard' })} onClose={() => {}} onSaved={() => {}} />);
     await screen.findByRole('option', { name: 'Standard (standard)' });
     fireEvent.click(screen.getByRole('button', { name: 'Edit the footer Standard' }));
@@ -160,7 +164,8 @@ describe('CustomLabelModal', () => {
     expect(within(form).getByLabelText('Tagline, or your own words')).toHaveAttribute('placeholder', 'Fresh Baked, Fire Grilled');
     fireEvent.change(within(form).getByLabelText('Tagline, or your own words'), { target: { value: 'Made in Malé with love' } });
     fireEvent.click(screen.getByTestId('label-footer-save'));
-    await waitFor(() => expect(updateLabelFooter).toHaveBeenCalledWith(1, expect.objectContaining({ name: 'Standard', tagline: 'Made in Malé with love', brand_id: null })));
+    await waitFor(() => expect(updateLabelFooter).toHaveBeenCalledWith(1, expect.objectContaining({ name: 'Standard', tagline: 'Made in Malé with love' })));
+    expect(updateLabelFooter.mock.calls[0][1]).not.toHaveProperty('brand_id');
     await waitFor(() => expect(screen.getByTestId('cl-footer-lines')).toHaveTextContent('Made in Malé with love'));
     expect(screen.queryByTestId('label-footer-form')).toBeNull();
   });

@@ -35,7 +35,7 @@ staff:explain <phone>` says whether an account can get in and why.
 | Piece | What it is | Where |
 |---|---|---|
 | **Label type** | What kind of food a label is for: Frozen Hedhika, Chilled Hedhika, Fresh Hedhika to start. Carries the heading, storage and its line, the date-box wording (MFG DATE / PACKED ON, EXP DATE / BEST BEFORE / USE BY), a use-within line, how-to-use, a note, a shelf life, whether the QR prints, and the brand | Labels → Types & brands |
-| **Brand** | Who the label is from. Bake & Grill is the main brand (details from Business Details); a brand under it, like Amma, has its own name, tagline and PNG logo, and its footer says "by Bake & Grill". With no logo uploaded, a brand prints the badge shipped in `public/brand/<name>-logo.png` when there is one (Amma's is there, drawn from `docs/brand/amma-logo.html`), else the main logo | Labels → Types & brands |
+| **Brand** | Who the label is from. Bake & Grill is the main brand (details from Business Details); a food brand under it, like Amma, has its own name and PNG logo on the header, and the footer stays Bake & Grill's (owner, 2026-10-12: "Amma is a food brand label but the actual brand is under Bake & Grill"). With no logo uploaded, a brand prints the badge shipped in `public/brand/<name>-logo.png` when there is one (Amma's is there, drawn from `docs/brand/amma-logo.html`), else the main logo | Labels → Types & brands |
 | **Item's label** | Picks a type; its own ingredients, shelf life, pieces per pack, pictures; and any wording that should differ from the type's | Menu Items → item → Label |
 | **Custom label** | A sticker for something that is not on the menu (a sauce in jars, a gift box, another brand's product): its own name, brand and logo, type, ingredients, shelf life, quantity and unit, wording and pictures. It prints beside the menu items | Labels → Custom labels, or **New custom label** on Pack stickers |
 | **Saved label** | Every print prepared, kept with its settings to print again, download, change, copy, rename | Labels → Saved labels |
@@ -99,13 +99,13 @@ the new label straight away):
    something (audit, 2026-10-12).
 6. **Footer and complaints QR** (owner, 2026-10-12: "Standard footer options with
    standard branding footer. Option to add complaint qr with its branding", then "No
-   easy option to select and edit branding footer"). The **Footer** box picks a
-   footer by name (§ Footers): empty is **the brand's own** (its name and tagline, "by
-   Bake & Grill" for a sub-brand, with the phone, website and address from Business
-   Details), **Standard** is the main brand's footer whatever brand is on the header,
-   and any other footer made under Types & brands. The pencil beside the box changes
-   the picked footer in place and **+** makes a new one, without leaving the label;
-   the line under the box says what it prints. The **complaints QR** follows the
+   easy option to select and edit branding footer"). The footer is always Bake &
+   Grill's branding, whatever food brand is on the header (owner, 2026-10-12). The
+   **Footer** box picks a footer by name (§ Footers): empty follows the label type's
+   footer, else **Standard** (the business's own lines from Business Details); any
+   footer made under Types & brands can be picked instead. The pencil beside the box
+   changes the footer that prints, picked or not, in place, and **+** makes a new one,
+   without leaving the label; the line under the box says what it prints. The **complaints QR** follows the
    footer (whose own switch follows the label type), or is printed or left off for
    this label alone; on the full sticker the code carries the brand mark inside
    (`StickerSheet::QR_LOGO_RATIO`, smaller than the poster's so an 11.5 mm code still
@@ -139,32 +139,39 @@ The same header and footer on every size and shape (owner: "all should have comm
 header and footer including the branding details"):
 
 - **Header**: the brand's logo and name, the type's heading ("FROZEN HEDHIKA").
-- **Footer**: brand name, tagline (or "by Bake & Grill"), address, phone, ways to
-  reach you, website, and the **complaints QR**, the same code the receipts and the
-  poster carry (it scans to the live site's complaint box). Which lines print is a
-  **footer** picked by name (below); a label type and a custom label each pick
-  theirs, and Pack stickers can put one footer on a whole sheet.
+- **Footer**: always Bake & Grill's branding, whatever food brand is on the header
+  (owner, 2026-10-12: "Amma is a food brand label but the actual brand is under
+  Bake & Grill, so its branding should be used in the footer"): the business name,
+  tagline, address, phone, ways to reach you, website, the brand mark and the
+  **complaints QR**, the same code the receipts and the poster carry (it scans to
+  the live site's complaint box). Which lines print is a **footer** picked by name
+  (below); a label type and a custom label each pick theirs, and Pack stickers can
+  put one footer on a whole sheet.
 - Between them: the product name, the picture, ingredients, **HOW TO USE**, a note,
   the date boxes with the type's wording, the **use-within** line, batch and
   quantity with the unit, the storage strip.
 
 ### Footers
 
-Owner, 2026-10-12: "No easy option to select and edit branding footer." A footer is a
-named preset of every footer line (`label_footers`, `App\Models\LabelFooter`): the
-name printed big and its Dhivehi, the tagline (or your own words), the by-line and
-whether it prints, phone, ways to reach you, website, address and landmark (each with
-a Dhivehi line), the complaints QR and the brand mark. **Every line left empty prints
-the live value**: the lines of the footer's brand (its name, tagline, logo and "by Bake
-& Grill") or, for a footer of the business itself, Business Details. So **Standard**,
-seeded with every box empty, follows Business Details for ever, and a footer seeded per
-brand (**Amma**) follows that brand. The migration turned every custom label's old "own
-words" footer into a footer named "<label> footer" and its "standard" choice into
-Standard.
+Owner, 2026-10-12: "No easy option to select and edit branding footer", and "Footer
+should be always branding of Bake and Grill. Amma is a food brand label but the actual
+brand is under Bake and Grill, so its branding should be used in the footer." A footer
+is a named preset of every footer line (`label_footers`, `App\Models\LabelFooter`): the
+name printed big and its Dhivehi, the tagline (or your own words), phone, ways to reach
+you, website, address and landmark (each with a Dhivehi line), the complaints QR and
+the brand mark. A footer has no brand and no by-line: **every line left empty prints
+the live value from Business Details**, whatever food brand is on the header, so
+**Standard**, seeded with every box empty, follows Business Details for ever. (The
+first migration also seeded one footer per food brand that printed that brand's
+lines; the second removed them, and a food brand's tagline, which printed only
+there, is no longer offered on the brand.) The migration turned every custom label's
+old "own words" footer into a footer named "<label> footer" and its "standard" choice
+into Standard.
 
-Where they are picked, each with the same box, a pencil to change the picked footer in
-place and **+** to make one (`FooterPicker`; changing needs **Manage label settings**,
-printing with one only **Print labels**):
+Where they are picked, each with the same box, a pencil to change the footer that
+prints (picked or, with nothing picked, the type's or the standard one) in place and
+**+** to make one (`FooterPicker`; changing needs **Manage label settings**, printing
+with one only **Print labels**):
 
 - **Custom label → Footer and complaints QR**: that label's footer (`custom_labels.footer_id`).
 - **Types & brands → a type → Footer**: the default for every item and custom label
@@ -173,11 +180,13 @@ printing with one only **Print labels**):
   (`footer` in the request; a saved label keeps it and Print again prints it).
 - **Types & brands → Footers**: the list, with what each prints and how many labels
   and types use it; Standard cannot be removed, and a removed footer's labels and types
-  go back to their brand's own.
+  go back to the standard one.
 
-Which footer prints: the sheet's, else the custom label's, else the type's, else the
-brand's own (`StickerSheet::footerPreset`, `LabelTypes::footer`). The complaints QR
-follows the same order: the label's own switch, else the footer's, else the type's.
+Which footer prints: the sheet's, else the custom label's, else the type's, else
+Standard (`StickerSheet::footerPreset`, `standardFooter`, `LabelTypes::footer`). The
+complaints QR: the label's own switch, else the picked footer's (sheet, label or
+type), else the type's own switch (nothing picked prints Standard's lines with the
+type's QR choice).
 
 Dates print as `04 / 10 / 2026` or `4 Oct 2026` (Labels → Settings → Dates and fonts).
 

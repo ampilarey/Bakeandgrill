@@ -96,7 +96,7 @@ class CustomLabelsTest extends TestCase
             ->assertJsonPath('summary.products.0.name', 'Garlic Sauce')
             ->assertJsonPath('summary.products.0.exp', '2026-10-18');
         $html = (string) $this->get($res->json('view_url'))->assertOk()->getContent();
-        foreach (['Garlic Sauce', 'Garlic, oil, lemon, salt', 'Contains no nuts', 'A M M A', 'HOMEMADE', 'QTY: 250 ML', 'Home-made, the Amma way', 'BEST BEFORE'] as $text) {
+        foreach (['Garlic Sauce', 'Garlic, oil, lemon, salt', 'Contains no nuts', 'A M M A', 'HOMEMADE', 'QTY: 250 ML', 'Fresh Baked, Fire Grilled', 'BEST BEFORE'] as $text) {
             $this->assertStringContainsString($text, $html, $text);
         }
         $this->assertSame(4, substr_count($html, 'data-testid="sticker"'));
@@ -121,18 +121,22 @@ class CustomLabelsTest extends TestCase
     public function test_a_custom_label_prints_its_footers_own_words_and_both_names_on_every_size(): void
     {
         Sanctum::actingAs($this->makeOwner(), ['staff']);
+        // A footer is the business's whatever brand is on the header (owner,
+        // 2026-10-12): it has no brand of its own, and a brand id sent is ignored.
         $amma = LabelBrand::query()->where('name', 'Amma')->value('id');
-        $footer = $this->postJson('/api/labels/footers', ['name' => 'Amma with love', 'brand_id' => $amma, 'tagline' => 'Made in Malé with love', 'tagline_dv' => 'މާލޭގައި ތައްޔާރުކުރި'])
-            ->assertCreated()->assertJsonPath('data.effective.name', 'Amma')->assertJsonPath('data.effective.tagline', 'Made in Malé with love')->json('data.id');
+        $footer = $this->postJson('/api/labels/footers', ['name' => 'With love', 'brand_id' => $amma, 'tagline' => 'Made in Malé with love', 'tagline_dv' => 'މާލޭގައި ތައްޔާރުކުރި'])
+            ->assertCreated()->assertJsonPath('data.effective.name', 'Bake & Grill')->assertJsonPath('data.effective.tagline', 'Made in Malé with love')->assertJsonMissingPath('data.brand_id')->json('data.id');
         $id = $this->postJson('/api/labels/custom', $this->sauce() + ['footer_id' => $footer])
-            ->assertCreated()->assertJsonPath('data.footer_id', $footer)->assertJsonPath('data.footer_name', 'Amma with love')->json('data.id');
+            ->assertCreated()->assertJsonPath('data.footer_id', $footer)->assertJsonPath('data.footer_name', 'With love')->json('data.id');
 
         $sheet = fn (array $extra) => (string) $this->get($this->postJson('/api/labels/stickers/url', ['items' => [['id' => $id, 'kind' => 'custom', 'copies' => 1]], 'preview' => true] + $extra)->assertOk()->json('view_url'))->assertOk()->getContent();
 
-        // Full sticker: the footer's words where the brand's tagline was.
+        // Full sticker: the footer's words where the business's tagline was, under an Amma header.
         $full = $sheet(['layout' => 'a4-4']);
         $this->assertStringContainsString('Made in Malé with love', $full);
+        $this->assertStringNotContainsString('Fresh Baked, Fire Grilled', $full);
         $this->assertStringNotContainsString('Home-made, the Amma way', $full);
+        $this->assertStringContainsString('A M M A', $full, 'the header keeps the food brand');
         $this->assertStringContainsString('+960 912 0011', $full, 'the phone stays');
         // The Dhivehi one on a Dhivehi sticker.
         $this->assertStringContainsString('މާލޭގައި ތައްޔާރުކުރި', $sheet(['layout' => 'a4-4', 'lang' => 'dv']));
@@ -157,9 +161,11 @@ class CustomLabelsTest extends TestCase
         $en = $sheet(['layout' => 'single-custom', 'w' => 40, 'h' => 60]);
         $this->assertStringNotContainsString('ލޮނުމެދު ސޯސް', $en, 'English alone stays English');
 
-        // No footer picked: the brand's own footer prints again.
+        // No footer picked: the standard footer prints again.
         $this->putJson("/api/labels/custom/{$id}", ['footer_id' => null])->assertOk()->assertJsonPath('data.footer_id', null)->assertJsonPath('data.footer_name', null);
-        $this->assertStringContainsString('Home-made, the Amma way', $sheet(['layout' => 'a4-4']));
+        $again = $sheet(['layout' => 'a4-4']);
+        $this->assertStringContainsString('Fresh Baked, Fire Grilled', $again);
+        $this->assertStringNotContainsString('Made in Malé with love', $again);
     }
 
     /**
@@ -178,11 +184,15 @@ class CustomLabelsTest extends TestCase
         $id = $made->json('data.id');
         $sheet = fn (array $extra) => (string) $this->get($this->postJson('/api/labels/stickers/url', ['items' => [['id' => $id, 'kind' => 'custom', 'copies' => 1]], 'preview' => true] + $extra)->assertOk()->json('view_url'))->assertOk()->getContent();
 
-        // The brand's own footer: Amma, its tagline, by Bake & Grill; the full
-        // sticker's QR carries the brand mark (a PNG inside the SVG).
+        // Nothing picked: the footer is Bake & Grill's under the Amma header
+        // (owner, 2026-10-12: "Amma is a food brand label but actual brand is
+        // under Bake and Grill"), never the food brand's name or a by-line; the
+        // full sticker's QR carries the brand mark (a PNG inside the SVG).
         $full = $sheet(['layout' => 'a4-4']);
-        $this->assertStringContainsString('Home-made, the Amma way', $full);
-        $this->assertStringContainsString('by Bake &amp; Grill', $full);
+        $this->assertStringContainsString('Fresh Baked, Fire Grilled', $full);
+        $this->assertStringContainsString('A M M A', $full, 'the header keeps the label\'s own brand');
+        $this->assertStringNotContainsString('Home-made, the Amma way', $full);
+        $this->assertStringNotContainsString('by Bake &amp; Grill', $full);
         $this->assertStringContainsString('data:image/svg+xml;base64,', $full);
         $this->assertMatchesRegularExpression('#<img class="pc" src="data:image/svg\+xml;base64,[A-Za-z0-9+/=]+" alt="" style="left:87mm#', $full, 'the QR sits at the footer\'s right');
         $svg = base64_decode(explode('"', explode('style="left:87mm', explode('<img class="pc" src="data:image/svg+xml;base64,', $full)[1])[0])[0] ?? '', true);
@@ -191,8 +201,7 @@ class CustomLabelsTest extends TestCase
         $small = $sheet(['layout' => 'single-custom', 'w' => 40, 'h' => 60]);
         $this->assertStringNotContainsString('<image', (string) base64_decode(explode('"', explode('src="data:image/svg+xml;base64,', $small)[1] ?? '')[0] ?? '', true));
 
-        // The standard footer (the seeded preset): the main brand's name and
-        // tagline under an Amma header.
+        // The standard footer picked by name prints the same lines.
         $standard = collect($this->getJson('/api/labels/footers')->assertOk()->json('data'))->firstWhere('is_default', true);
         $this->assertSame('Standard', $standard['name']);
         $this->putJson("/api/labels/custom/{$id}", ['footer_id' => $standard['id']])->assertOk()->assertJsonPath('data.footer_name', 'Standard');

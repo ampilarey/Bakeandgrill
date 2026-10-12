@@ -76,20 +76,24 @@ export type LabelType = {
  * "No easy option to select and edit branding footer"). A blank line prints
  * the brand's or Business Details' live value, shown in `effective`.
  */
+/**
+ * A footer preset. The footer is always the business's branding (owner,
+ * 2026-10-12): a food brand such as Amma is on the header only, so a footer
+ * has no brand of its own and a blank line prints Business Details' value.
+ */
 export type LabelFooter = {
-  id: number; name: string; brand_id: number | null; brand_name: string | null;
+  id: number; name: string;
   heading: string | null; heading_dv: string | null; tagline: string | null; tagline_dv: string | null;
-  by_line: string | null; show_by: boolean;
   phone: string | null; ways: string | null; ways_dv: string | null; website: string | null;
   address: string | null; address_dv: string | null; landmark: string | null; landmark_dv: string | null;
   show_qr: boolean; show_mark: boolean; is_default: boolean; sort: number;
   /** What each line prints, blanks filled in. */
-  effective: { name: string; name_dv: string; tagline: string; tagline_dv: string; by: string; phone: string; ways: string; ways_dv: string; website: string; address: string; address_dv: string; landmark: string; landmark_dv: string; show_qr: boolean; show_mark: boolean };
+  effective: { name: string; name_dv: string; tagline: string; tagline_dv: string; phone: string; ways: string; ways_dv: string; website: string; address: string; address_dv: string; landmark: string; landmark_dv: string; show_qr: boolean; show_mark: boolean };
   custom_labels_count: number | null; types_count: number | null;
 };
 
 export type LabelFooterPayload = Partial<Pick<LabelFooter,
-  'name' | 'brand_id' | 'heading' | 'heading_dv' | 'tagline' | 'tagline_dv' | 'by_line' | 'show_by'
+  'name' | 'heading' | 'heading_dv' | 'tagline' | 'tagline_dv'
   | 'phone' | 'ways' | 'ways_dv' | 'website' | 'address' | 'address_dv' | 'landmark' | 'landmark_dv' | 'show_qr' | 'show_mark' | 'sort'>>;
 
 export type LabelTypePayload = Partial<Omit<LabelType, 'id' | 'brand_name' | 'items_count' | 'defaults'>>;

@@ -141,8 +141,8 @@ final class StickerSheet
     private array $footers = [];
 
     /**
-     * The footer preset a sticker prints: the sheet's, else a custom label's
-     * own, else its label type's default; null prints the brand's footer.
+     * The footer preset picked for a sticker: the sheet's, else a custom
+     * label's own, else its label type's default; null means the standard one.
      *
      * @param array<string, mixed> $req
      * @param array<string, mixed> $w from LabelTypes::forItem()
@@ -158,7 +158,13 @@ final class StickerSheet
             return null;
         }
 
-        return $this->footers[(int) $id] ??= LabelFooter::query()->with('brand')->find((int) $id);
+        return $this->footers[(int) $id] ??= LabelFooter::query()->find((int) $id);
+    }
+
+    /** The footer a sticker prints when nothing picked one: the one marked standard. */
+    private function standardFooter(): ?LabelFooter
+    {
+        return $this->footers[0] ??= LabelFooter::default();
     }
 
     /**
@@ -169,6 +175,9 @@ final class StickerSheet
      */
     public function build(array $req): array
     {
+        // The footers read once per sheet, never per process: the router keeps
+        // the controller, and this object with it, between requests.
+        $this->footers = [];
         $sheet = StickerLayouts::resolve($req['layout'], $req['w'], $req['h'], LabelSettings::precut());
         $dv = $req['lang'] === 'dv';
         $production = $req['pi'] ? KitchenProductionItem::query()->find($req['pi']) : null;
@@ -233,7 +242,7 @@ final class StickerSheet
             }
         }
         if ($ids['custom'] !== []) {
-            foreach (CustomLabel::query()->with(['labelType.brand', 'brand', 'footer.brand'])->whereIn('id', $ids['custom'])->get() as $custom) {
+            foreach (CustomLabel::query()->with(['labelType.brand', 'brand', 'footer'])->whereIn('id', $ids['custom'])->get() as $custom) {
                 $out['c' . $custom->id] = $custom;
             }
         }
@@ -276,7 +285,7 @@ final class StickerSheet
         $draft->forceFill(array_intersect_key($attributes, array_flip($draft->getFillable())));
         $draft->setRelation('brand', $draft->brand_id ? LabelBrand::query()->find($draft->brand_id) : null);
         $draft->setRelation('labelType', $draft->label_type_id ? LabelType::query()->with('brand')->find($draft->label_type_id) : null);
-        $draft->setRelation('footer', $draft->footer_id ? LabelFooter::query()->with('brand')->find($draft->footer_id) : null);
+        $draft->setRelation('footer', $draft->footer_id ? LabelFooter::query()->find($draft->footer_id) : null);
 
         return $draft;
     }
@@ -386,10 +395,12 @@ final class StickerSheet
         if ($note === '' && $allergens !== []) {
             $note = 'Contains ' . implode(', ', $allergens);
         }
-        // The footer (owner, 2026-10-12): a preset picked for the sheet, the
-        // label or its type, else the brand's own; the complaints QR follows
-        // the custom label's own switch, else the footer's.
-        $footer = $this->types->footer($this->footerPreset($req, $item, $w), $w['brand'], $w['show_qr']);
+        // The footer (owner, 2026-10-12), always the business's branding: a
+        // preset picked for the sheet, the label or its type, else the
+        // standard one; the complaints QR follows the custom label's own
+        // switch, else the picked footer's, else the type's.
+        $explicit = $this->footerPreset($req, $item, $w);
+        $footer = $this->types->footer($explicit ?? $this->standardFooter(), $w['show_qr'], implicit: $explicit === null);
         $showQr = $item instanceof CustomLabel && $item->label_show_qr !== null ? (bool) $item->label_show_qr : $footer['show_qr'];
 
         return $common + [

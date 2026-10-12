@@ -190,23 +190,30 @@ and the browser drops the rule). Dhivehi at hand-thickening 0.5 and up sets in t
 bold (`LabelText::DV_BOLD_FROM`). A custom label's row has Save, which prepares a full
 sheet straight into Saved labels at the size Pack stickers last printed
 (`rememberedSize()` in `labelSize.ts`), and the editor previews the first sticker of that
-same sheet, so preview and print never differ. Footers are named presets (owner,
+same sheet, so preview and print never differ. **The footer is always Bake & Grill's
+branding** (owner, 2026-10-12: "Amma is a food brand label but the actual brand is
+under Bake and Grill, so its branding should be used in the footer"): a food brand's
+logo and name go on the header only; `LabelTypes::footer()` always takes the
+business's lines, a footer has no brand and no by-line, and a brand's tagline prints
+nowhere (the Brands editor no longer offers one). Footers are named presets (owner,
 2026-10-12: "No easy option to select and edit branding footer"): `label_footers`
-(`LabelFooter`), every line optional and an empty line printing the brand's or Business
-Details' live value, seeded as Standard (the business, `is_default`, cannot be removed)
-plus one per sub-brand. A custom label (`custom_labels.footer_id`), a label type
-(`label_types.footer_id`, the default for what prints with it) and a whole sheet
-(`footer` in the sticker request, kept by the saved label) each pick one, in that
-order of precedence (`StickerSheet::footerPreset`), and `LabelTypes::footer()` turns
-the pick into the `footer` array the designs read (`$d['footer']`; `ownFooter` prints
-a typed tagline where the tagline or website would be, the phone kept). The QR goes
-`label_show_qr` → the footer's `show_qr` → the type's; the full design draws the
-branded code `qr_branded`, small ones the bare `qr`. The admin picks a footer with
-`FooterPicker` (select, pencil to edit in place, + for new; `FooterModal` shows each
-blank's live value as the placeholder) on the custom label editor, a type's editor and
-Pack stickers → More options, and lists them under Types & brands → Footers;
+(`LabelFooter`), every line optional and an empty line printing Business Details' live
+value, seeded as Standard (`is_default`, cannot be removed). A custom label
+(`custom_labels.footer_id`), a label type (`label_types.footer_id`, the default for
+what prints with it) and a whole sheet (`footer` in the sticker request, kept by the
+saved label) each pick one, in that order of precedence (`StickerSheet::footerPreset`;
+nothing picked prints Standard, `standardFooter()`, with the type's QR choice), and
+`LabelTypes::footer()` turns the pick into the `footer` array the designs read
+(`$d['footer']`; `ownFooter` prints a typed tagline where the tagline or website would
+be, the phone kept). The QR goes `label_show_qr` → the picked footer's `show_qr` → the
+type's; the full design draws the branded code `qr_branded`, small ones the bare `qr`.
+The admin picks a footer with `FooterPicker` (select, pencil to edit in place the
+footer that prints, picked or `fallback`, + for new; `FooterModal` shows each blank's
+live value as the placeholder) on the custom label editor, a type's editor and Pack
+stickers → More options, and lists them under Types & brands → Footers;
 `GET /labels/footers` needs `labels.print`, the writes `labels.manage`. Never add a
-second footer choice (a settings key, a radio) beside the preset. A custom label also
+second footer choice (a settings key, a radio) beside the preset, and never give a
+footer a brand again. A custom label also
 keeps the language it prints in (`label_lang`; `langOf()` in `CustomLabels.tsx`).
 `lang: both` is bilingual on every part and every design (owner, 2026-10-12: "Not
 showing both languages correctly"): heading, name, ingredients, how to use, note, date

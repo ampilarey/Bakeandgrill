@@ -14,10 +14,10 @@ const fetchLabelFooters = vi.fn();
 const canManage = { value: false };
 
 const footerRow = (id: number, name: string, tagline: string) => ({
-  id, name, brand_id: null, brand_name: null, heading: null, heading_dv: null, tagline: null, tagline_dv: null, by_line: null, show_by: true,
+  id, name, heading: null, heading_dv: null, tagline: null, tagline_dv: null,
   phone: null, ways: null, ways_dv: null, website: null, address: null, address_dv: null, landmark: null, landmark_dv: null,
   show_qr: true, show_mark: true, is_default: id === 1, sort: id, custom_labels_count: 0, types_count: 0,
-  effective: { name: 'Bake & Grill', name_dv: '', tagline, tagline_dv: '', by: '', phone: '+960 912 0011', ways: '', ways_dv: '', website: 'bakeandgrill.mv', address: '', address_dv: '', landmark: '', landmark_dv: '', show_qr: true, show_mark: true },
+  effective: { name: 'Bake & Grill', name_dv: '', tagline, tagline_dv: '', phone: '+960 912 0011', ways: '', ways_dv: '', website: 'bakeandgrill.mv', address: '', address_dv: '', landmark: '', landmark_dv: '', show_qr: true, show_mark: true },
 });
 
 vi.mock('../../hooks/usePermissions', () => ({

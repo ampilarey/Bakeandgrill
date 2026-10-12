@@ -212,8 +212,11 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
   const brandOf = (id: number | null) => brands.find((b) => b.id === id);
   const mainBrand = brands.find((b) => b.is_default)?.name ?? 'Bake & Grill';
   const typeBrand = type?.brand_name ?? mainBrand;
-  const printedBrand = brandOf(d.brand_id)?.name ?? typeBrand;
   const pickedFooter = footers.find((f) => f.id === d.footer_id) ?? null;
+  // With nothing picked the type's footer prints, else the standard one; the
+  // footer is always the business's (owner, 2026-10-12), whatever brand is on the header.
+  const typeFooter = type?.footer_id ? footers.find((f) => f.id === type.footer_id) ?? null : null;
+  const fallbackFooter = typeFooter ?? footers.find((f) => f.is_default) ?? null;
 
   const save = async (): Promise<CustomLabel | null> => {
     if (!d.name.trim()) { toast('error', 'Give the label a name.'); return null; }
@@ -303,8 +306,9 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
   // What each folded part holds, for its title line.
   const wordingSet = WORDING_KEYS.filter((k) => String(d[k]).trim() !== '').length;
   const shopSummary = [d.label_price !== '' ? `MVR ${d.label_price}` : null, d.label_barcode.trim() ? 'barcode' : null].filter(Boolean).join(' · ') || 'Price and barcode';
-  const footerName = pickedFooter ? pickedFooter.name : `${printedBrand}'s own`;
-  const qrFollows = pickedFooter ? pickedFooter.show_qr : type ? type.show_qr : true;
+  const footerName = pickedFooter ? pickedFooter.name : `${fallbackFooter?.name ?? 'Standard'}${typeFooter ? ' (type)' : ''}`;
+  // The QR: this label's switch, else the picked footer's, else the type's footer's, else the type's own.
+  const qrFollows = (pickedFooter ?? typeFooter)?.show_qr ?? (type ? type.show_qr : true);
   const qrWord = d.label_show_qr === 'on' ? 'printed' : d.label_show_qr === 'off' ? 'off' : `as the footer (${qrFollows ? 'printed' : 'off'})`;
   const sizeLine = `${sizeName(choice.shape, dims.w, dims.h)} · ${presets.length ? stockOf(choice, presets).label : 'A4 sheet'}`;
 
@@ -396,8 +400,8 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
             </Section>
 
             <Section title="Footer and complaints QR" summary={`${footerName} · QR ${qrWord}`} open={d.footer_id !== null || d.label_show_qr !== ''} testId="custom-label-footer">
-              <Field id="cl-footer" label="Footer" hint={`Pick a footer by name, change it with the pencil, or add one with +. "${printedBrand}'s own" is its name and tagline${printedBrand === mainBrand ? '' : `, by ${mainBrand},`} with the phone, website and address from Business Details.`}>
-                <FooterPicker id="cl-footer" footers={footers} value={d.footer_id} onChange={(id) => set('footer_id', id)} onFootersChange={setFooters} noneLabel={`${printedBrand}'s own footer`} canManage />
+              <Field id="cl-footer" label="Footer" hint={`Always ${mainBrand}'s branding, whatever brand is on the header. Pick a footer by name, change the one that prints with the pencil, or add one with +. Nothing picked follows the label type, else Standard.`}>
+                <FooterPicker id="cl-footer" footers={footers} value={d.footer_id} onChange={(id) => set('footer_id', id)} onFootersChange={setFooters} noneLabel={d.label_type_id ? `Follow the type (${fallbackFooter?.name ?? 'Standard'})` : (fallbackFooter?.name ?? 'Standard')} fallback={fallbackFooter} canManage />
               </Field>
               <Field id="cl-qr" label="Complaints QR in the footer" hint="The same code as the receipts and the poster: with the brand mark inside on the full sticker, bare on the small ones.">
                 <select id="cl-qr" value={d.label_show_qr} onChange={(e) => set('label_show_qr', e.target.value as Draft['label_show_qr'])} className={fieldClass}>

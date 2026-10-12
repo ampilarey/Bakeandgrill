@@ -935,7 +935,7 @@ class LabelsController extends Controller
 
     public function footers(): JsonResponse
     {
-        $rows = LabelFooter::query()->with('brand')->withCount(['customLabels', 'types'])->orderBy('sort')->orderBy('id')->get();
+        $rows = LabelFooter::query()->withCount(['customLabels', 'types'])->orderBy('sort')->orderBy('id')->get();
 
         return response()->json(['data' => $rows->map(fn (LabelFooter $f) => $this->presentFooter($f))->values()]);
     }
@@ -945,17 +945,17 @@ class LabelsController extends Controller
         $footer = new LabelFooter(['sort' => (int) LabelFooter::query()->max('sort') + 1]);
         $footer->fill($this->footerData($request, $footer))->save();
 
-        return response()->json(['data' => $this->presentFooter($footer->load('brand'))], 201);
+        return response()->json(['data' => $this->presentFooter($footer)], 201);
     }
 
     public function updateFooter(Request $request, LabelFooter $footer): JsonResponse
     {
         $footer->fill($this->footerData($request, $footer))->save();
 
-        return response()->json(['data' => $this->presentFooter($footer->load('brand'))]);
+        return response()->json(['data' => $this->presentFooter($footer)]);
     }
 
-    /** Labels and types that printed it go back to their brand's footer (the database clears the reference). */
+    /** Labels and types that printed it print the standard footer again (the database clears the reference). */
     public function destroyFooter(LabelFooter $footer): JsonResponse
     {
         if ($footer->is_default) {
@@ -971,13 +971,10 @@ class LabelsController extends Controller
     {
         $data = $request->validate([
             'name' => ($footer->exists ? 'sometimes' : 'required') . '|string|max:60',
-            'brand_id' => 'sometimes|nullable|integer|exists:label_brands,id',
             'heading' => 'sometimes|nullable|string|max:60',
             'heading_dv' => 'sometimes|nullable|string|max:60',
             'tagline' => 'sometimes|nullable|string|max:120',
             'tagline_dv' => 'sometimes|nullable|string|max:120',
-            'by_line' => 'sometimes|nullable|string|max:60',
-            'show_by' => 'sometimes|boolean',
             'phone' => 'sometimes|nullable|string|max:40',
             'ways' => 'sometimes|nullable|string|max:80',
             'ways_dv' => 'sometimes|nullable|string|max:80',
@@ -996,10 +993,6 @@ class LabelsController extends Controller
                 $data[$key] = $value === '' && $key !== 'name' ? null : $value;
             }
         }
-        // The main brand's footer takes its name and lines from the business itself.
-        if (!empty($data['brand_id']) && LabelBrand::query()->whereKey($data['brand_id'])->value('is_default')) {
-            $data['brand_id'] = null;
-        }
 
         return $data;
     }
@@ -1007,10 +1000,7 @@ class LabelsController extends Controller
     /** @return array<string, mixed> */
     private function presentFooter(LabelFooter $footer): array
     {
-        $footer->loadMissing('brand');
-        $brand = $this->types->brand($footer->brand_id ? $footer->brand : null);
-
-        return LabelTypes::presentFooter($footer, $this->types->footer($footer, $brand));
+        return LabelTypes::presentFooter($footer, $this->types->footer($footer));
     }
 
     public function brands(): JsonResponse
