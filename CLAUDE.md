@@ -78,10 +78,18 @@ behind a photo or video, and on the sign-in page, `--color-backdrop` (near-black
 both themes; `--color-text` turns cream in dark mode). White stays only where paper or
 a QR code needs it (print previews, QR cards). Details: § Stage 3e.
 
-The admin has a phone layout (≤767px) and a computer layout, which folds its rail to
-icons from 768 to 1023px (`AppShell`'s tablet band) and is short of room up to 1199px
+The admin has a phone layout (≤767px) and a computer layout, which folds its rail
+from 768 to 1023px (`AppShell`'s tablet band) and is short of room up to 1199px
 (the CSS's compact band: the top bar shrinks search and the name chip to icons). Check
 390, 768, 1024 and 1366px; 768–1199 is where wide tables and long button rows break.
+What a computer shows, a phone shows (owner, 2026-10-12: "couldn't find Tables from
+mobile view"): a folded rail and the tablet's section tabs keep every page's name
+under its icon (a finger gets no tooltip), the phone's section sheet lists every
+permitted page, and a page's phone layout keeps the computer's controls: a card list
+that replaces a sortable table carries `SortFilterPanel`, a per-row action (rename,
+delete) sits beside the picked chip, and a device or layout switch (the content hubs'
+Desktop | Mobile) is offered on both. Never gate a control on `isMobile` alone; change
+its shape instead.
 Nothing scrolls sideways (owner, 2026-10-09). A row of tabs or filter chips is
 `TabScrollRow`, which wraps. A table goes in `.table-scroll` (or `TableCard` /
 `ResponsiveTable`); one that does not fit its box becomes cards, one per row with each

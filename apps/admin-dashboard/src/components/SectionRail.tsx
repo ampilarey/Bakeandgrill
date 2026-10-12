@@ -99,7 +99,10 @@ function RailItem({
           </span>
         )}
       </span>
-      {!collapsed && <span className="admin-nav-item-label">{item.label}</span>}
+      {/* Folded, the rail keeps the page's name under its icon (owner, 2026-10-12:
+          "couldn't find Tables" on a tablet, where the rail folds to icons and a
+          finger gets no tooltip). */}
+      <span className="admin-nav-item-label">{item.label}</span>
       {!collapsed && (badge ?? 0) > 0 && (
         <span className="admin-nav-badge">{badge}</span>
       )}

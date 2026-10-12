@@ -299,7 +299,10 @@ export function AppShell({ user, onLogout, onLogoutEverywhere, children, onSearc
 
   const currentPage = resolveNavItemForPath(location.pathname, allNavItems)?.label ?? 'Admin';
   const sectionLabel = activeSection?.label ?? 'Admin';
-  const railW = collapsed ? 68 : 220;
+  // Folded, the rail still names every page under its icon, so it is a little
+  // wider than an icon column (owner, 2026-10-12: Tables could not be found on
+  // a tablet, where the rail folds by default and a finger gets no tooltip).
+  const railW = collapsed ? 76 : 220;
 
   const openSectionSheet = (section: NavGroup) => {
     // Always open the page list first. Navigating here would change pathname and

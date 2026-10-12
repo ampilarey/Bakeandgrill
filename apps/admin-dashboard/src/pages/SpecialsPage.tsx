@@ -3,7 +3,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import {
   PageHeader, PageShell, TableCard, TH, TD, Badge, Btn, ConfirmDialog, Modal, ModalActions, Input, Pagination, EmptyState, TabScrollRow, useConfirmDialog,
 } from '../components/SharedUI';
-import { SortFilterHead, useSortFilter } from '../components/TableControls';
+import { SortFilterHead, SortFilterPanel, useSortFilter } from '../components/TableControls';
 import { fetchSpecials, findOverlappingSpecial, getSpecial, createSpecial, updateSpecial, deleteSpecial, fetchItemVariants, type DailySpecial, type DailySpecialVariantOverride, type MenuItem, type MenuVariant, type DailySpecialPayload } from '../api';
 import { ItemSearch, type MenuItemSelection } from '../components/ItemSearch';
 import { useToast } from '../components/ui';
@@ -317,6 +317,7 @@ export default function SpecialsPage() {
   const [itemSelection, setItemSelection] = useState<MenuItemSelection | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -742,11 +743,16 @@ export default function SpecialsPage() {
       </div>
 
       <div className="specials-mobile-list" aria-live="polite">
+        {/* The table headings' sort and filters, as a panel (owner, 2026-10-12:
+            a phone shows what a computer shows). */}
+        {!loading && specials.length > 0 && (
+          <SortFilterPanel controls={specialCtl} allRows={specials} open={mobileFiltersOpen} onToggle={() => setMobileFiltersOpen((o) => !o)} />
+        )}
         {loading ? (
           <div className="specials-mobile-card specials-mobile-card--muted">Loading…</div>
         ) : specials.length === 0 ? (
           <EmptyState message={emptyMessage} />
-        ) : specials.map(s => (
+        ) : specialCtl.rows.map(s => (
           <article key={s.id} className="specials-mobile-card">
             <div className="specials-mobile-card-top">
               <div className="specials-mobile-card-item">

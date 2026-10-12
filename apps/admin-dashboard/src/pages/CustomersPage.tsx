@@ -11,7 +11,7 @@ import {
   PageHeader, PageShell, Spinner, TableCard, TD, TD_NOWRAP, Modal, ModalActions, Input,
   ConfirmDialog, useConfirmDialog, InlineIcon,
 } from '../components/SharedUI';
-import { SortFilterHead, useSortFilter } from '../components/TableControls';
+import { SortFilterHead, SortFilterPanel, useSortFilter } from '../components/TableControls';
 import { CustomerCreditSection } from '../components/CustomerCreditSection';
 import { Customer360Drawer, BADGE_MAP } from '../components/Customer360Drawer';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -56,6 +56,7 @@ export function CustomersPage() {
   const [segments, setSegments]     = useState<CustomerSegmentMeta[]>([]);
   const [paidSpend, setPaidSpend]   = useState<number | null>(null);
   const [view360Id, setView360Id]   = useState<number | null>(null);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   const [selected, setSelected]          = useState<AdminCustomer | null>(null);
   const [detail, setDetail]              = useState<{ customer: AdminCustomer; orders: Order[] } | null>(null);
@@ -375,8 +376,14 @@ export function CustomersPage() {
       {/* Layout audit L-01: eight columns, and on a phone the name you are
           looking for was three drags to the right of where you started. */}
       {isMobile ? (
+        <>
+        {/* The headings' sort and filters, as a panel (owner, 2026-10-12: a
+            phone shows what a computer shows). */}
+        {customers.length > 0 && (
+          <SortFilterPanel controls={customerCtl} allRows={customers} open={mobileFiltersOpen} onToggle={() => setMobileFiltersOpen((o) => !o)} />
+        )}
         <RecordCardList testId="customer-cards">
-          {customers.map((c) => (
+          {customerCtl.rows.map((c) => (
             <RecordCard
               key={c.id}
               testId={`customer-card-${c.id}`}
@@ -403,6 +410,7 @@ export function CustomersPage() {
             />
           ))}
         </RecordCardList>
+        </>
       ) : (
       <TableCard stickyHead>
         {loading ? (

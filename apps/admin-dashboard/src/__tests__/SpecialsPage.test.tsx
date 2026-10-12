@@ -103,6 +103,11 @@ describe('SpecialsPage', () => {
     expect((await screen.findAllByText('Chicken Grill')).length).toBeGreaterThan(0);
     expect(document.querySelector('.specials-mobile-list')).toBeTruthy();
     expect(document.querySelector('.specials-mobile-card')).toBeTruthy();
+    // The headings' sort and filters ride along as a panel in the card list
+    // (owner, 2026-10-12: a phone shows what a computer shows).
+    const list = document.querySelector('.specials-mobile-list') as HTMLElement;
+    expect(within(list).getByTestId('specials-sort-select')).toBeTruthy();
+    expect(within(list).getByTestId('specials-filters-toggle')).toBeTruthy();
     expect(document.querySelector('.specials-desktop-table')).toBeTruthy();
   });
 

@@ -329,9 +329,15 @@ input[type="checkbox"], input[type="radio"], input[type="range"], progress, mete
   border-radius: 0 4px 4px 0;
 }
 
+/* Folded (a tablet's default, or Collapse on a computer): the icon with the
+   page's name beneath it, never an unnamed icon (owner, 2026-10-12: "couldn't
+   find Tables" on a tablet; a finger gets no tooltip). */
 .admin-nav-item--collapsed {
+  flex-direction: column;
   justify-content: center;
-  padding: 10px 0;
+  gap: 3px;
+  min-height: 52px;
+  padding: 7px 2px;
 }
 
 .admin-nav-item-label {
@@ -339,6 +345,19 @@ input[type="checkbox"], input[type="radio"], input[type="range"], progress, mete
   text-overflow: ellipsis;
   white-space: nowrap;
   flex: 1;
+}
+
+.admin-nav-item--collapsed .admin-nav-item-label {
+  flex: none;
+  width: 100%;
+  font-size: 9.5px;
+  line-height: 1.15;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .admin-nav-badge {
@@ -2542,13 +2561,22 @@ input[type="file"]::file-selector-button:hover {
   .admin-shell-section-tab { padding: 0 10px; }
 }
 
+/* Tablet band: every section keeps its name, stacked under the icon like the
+   phone's tab bar, instead of the unnamed icons that hid Manage, Customers,
+   Analyze, System and Team from a finger (owner, 2026-10-12). Six such tabs
+   are about 380px, which fits beside the logo and the header icons at 768. */
 @media (max-width: 1023px) {
-  .admin-shell-section-tab:not(.admin-shell-section-tab--active) {
-    min-width: 44px;
-    padding: 0;
+  .admin-shell-section-tab {
+    flex-direction: column;
     justify-content: center;
+    gap: 2px;
+    min-width: 56px;
+    padding: 4px 6px;
   }
-  .admin-shell-section-tab:not(.admin-shell-section-tab--active) .admin-shell-section-tab-label { display: none; }
+  .admin-shell-section-tab .admin-shell-section-tab-label {
+    font-size: 10px;
+    line-height: 1.1;
+  }
 }
 
 @media (max-width: 1023px) {

@@ -113,8 +113,14 @@ export function ContentHubPage() {
   const pendingFocusKeyRef = useRef<string | null>(null);
   /** The one-time landing on Home has already happened (or been claimed). */
   const autoSelectedRef = useRef(false);
-  /** Desktop | Mobile — which device's Home layout to arrange (default Desktop). */
-  const [websiteDeviceFilter, setWebsiteDeviceFilter] = useState<'desktop' | 'mobile'>('desktop');
+  /**
+   * Desktop | Mobile — which device's Home layout to arrange. A computer starts
+   * on Desktop, a phone on Mobile, and either can switch: a phone used to be
+   * held to the mobile layout, so the desktop sections could not be reached
+   * from it (owner, 2026-10-12: "all the settings in desktop are not showing
+   * in mobile view").
+   */
+  const [websiteDeviceFilter, setWebsiteDeviceFilter] = useState<'desktop' | 'mobile'>(() => (isMobile ? 'mobile' : 'desktop'));
 
   const moreMenuRef = useRef<HTMLDivElement>(null);
   const moreBtnRef = useRef<HTMLButtonElement>(null);
@@ -244,8 +250,7 @@ export function ContentHubPage() {
     let resolvedSurface = home ? (surface ?? null) : null;
     if (home && !resolvedSurface) {
       const app = homeAppHint ?? hubApp;
-      const device = isMobile ? 'mobile' : 'desktop';
-      resolvedSurface = surfaceId(app, device, 'home');
+      resolvedSurface = surfaceId(app, websiteDeviceFilter, 'home');
     }
     const parsed = resolvedSurface ? parseSurfaceId(resolvedSurface) : null;
     setActiveSurface(parsed);
@@ -310,7 +315,7 @@ export function ContentHubPage() {
   const urlSurface = parseSurfaceId(searchParams.get('surface')?.trim() ?? '');
   const surfaceFilter: SurfaceFilter | null = activeSurface
     ?? urlSurface
-    ?? (isHomeSection(activeGroup) ? defaultHomeSurface(homeLayoutApp, isMobile ? 'mobile' : 'desktop') : null);
+    ?? (isHomeSection(activeGroup) ? defaultHomeSurface(homeLayoutApp, websiteDeviceFilter) : null);
 
   useEffect(() => {
     if (!urlSurface) return;
@@ -398,12 +403,12 @@ export function ContentHubPage() {
   );
 
   // Which device's Home layout the "Section order & visibility" editor
-  // arranges: the Desktop|Mobile filter on a laptop, always mobile on a phone.
+  // arranges: the Desktop|Mobile filter, on a laptop and on a phone alike.
   // Derived, not written to the URL — an effect that rewrote search params
   // raced with tab clicks and could drag the owner back to the page they had
   // just left.
   const homeSurfaceFilter = parseSurfaceId(
-    surfaceId(hubApp, isMobile ? 'mobile' : websiteDeviceFilter, 'home'),
+    surfaceId(hubApp, websiteDeviceFilter, 'home'),
   );
 
   const searchField = (
@@ -485,8 +490,14 @@ export function ContentHubPage() {
         success('Open ⋯ on any field to view and restore History.');
       }}
       liveSiteUrl={`${window.location.origin}/${hubApp === 'order_app' ? 'order' : ''}`}
-      deviceFilter={isDesktop ? websiteDeviceFilter : undefined}
-      onDeviceFilterChange={isDesktop ? setWebsiteDeviceFilter : undefined}
+      deviceFilter={websiteDeviceFilter}
+      onDeviceFilterChange={(device) => {
+        setWebsiteDeviceFilter(device);
+        // The open Home page follows the switch; nothing else keys on it.
+        if (isHomeSection(activeGroup)) {
+          setActiveSurface(parseSurfaceId(surfaceId(homeLayoutApp, device, 'home')));
+        }
+      }}
     />
   );
 

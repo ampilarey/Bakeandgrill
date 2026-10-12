@@ -312,6 +312,14 @@ describe('MediaLibraryPage', () => {
     expect(await screen.findByTestId('collections-chip-row')).toBeTruthy();
     expect(screen.getByTestId('collections-sidebar').getAttribute('data-layout')).toBe('chips');
 
+    // Rename and Delete sit beside the picked chip only (owner, 2026-10-12: a
+    // phone shows what a computer shows); the other chips stay plain names.
+    expect(screen.queryByRole('button', { name: 'Rename Menu Items' })).toBeNull();
+    fireEvent.click(screen.getByTestId('collection-btn-menu-items'));
+    expect(await screen.findByRole('button', { name: 'Rename Menu Items' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Delete Menu Items' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Rename Banners' })).toBeNull();
+
     await openAssetDetail(1);
     const drawer = await screen.findByTestId('detail-drawer');
     expect(drawer.getAttribute('data-mobile-overlay')).toBe('true');

@@ -1387,10 +1387,13 @@ export function MediaLibraryPage() {
                   >
                     {col.name}
                   </button>
-                  {canManage && !isMobile && (
+                  {/* A phone shows Rename and Delete beside the picked chip only, so the
+                      row stays a row of names; they were missing there altogether
+                      (owner, 2026-10-12: what a computer shows, a phone shows). */}
+                  {canManage && (!isMobile || activeCollection === col.slug) && (
                     <>
-                      <button type="button" onClick={() => { setRenamingId(col.id); setRenamingName(col.name); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 2, flexShrink: 0 }} aria-label={`Rename ${col.name}`}><Pencil size={12} /></button>
-                      <button type="button" onClick={() => void removeCollection(col.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-danger)', padding: 2, flexShrink: 0 }} aria-label={`Delete ${col.name}`}><Trash2 size={12} /></button>
+                      <button type="button" onClick={() => { setRenamingId(col.id); setRenamingName(col.name); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: isMobile ? 6 : 2, flexShrink: 0 }} aria-label={`Rename ${col.name}`}><Pencil size={isMobile ? 14 : 12} /></button>
+                      <button type="button" onClick={() => void removeCollection(col.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-danger)', padding: isMobile ? 6 : 2, flexShrink: 0 }} aria-label={`Delete ${col.name}`}><Trash2 size={isMobile ? 14 : 12} /></button>
                     </>
                   )}
                 </>

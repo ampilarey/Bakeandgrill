@@ -346,4 +346,18 @@ describe('ContentHub mobile polish — stacking CSS + structure', () => {
     expect(within(field).getAllByRole('checkbox')).toHaveLength(1);
     expect(field.querySelector('.wcw-field-label')).toBeTruthy();
   });
+
+  it('a phone can switch between the Mobile and Desktop home layouts', async () => {
+    // Owner, 2026-10-12: "all the settings in desktop are not showing in mobile
+    // view". A phone used to be held to the mobile layout; now it starts there
+    // and the Desktop | Mobile switch is in the header as on a computer.
+    openSection('Home', 'website');
+    await screen.findByTestId('website-device-filter');
+    expect(screen.getByTestId('website-device-filter-mobile').getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByTestId('website-device-filter-desktop').getAttribute('aria-pressed')).toBe('false');
+    fireEvent.click(screen.getByTestId('website-device-filter-desktop'));
+    await waitFor(() => {
+      expect(screen.getByTestId('website-device-filter-desktop').getAttribute('aria-pressed')).toBe('true');
+    });
+  });
 });

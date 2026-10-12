@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
 import { SectionRail } from '../components/SectionRail';
@@ -83,6 +83,12 @@ describe('AppShell', () => {
     expect(customers).toHaveTextContent('Customers');
     expect(customers).not.toHaveTextContent('Marketing');
     expect(screen.getByRole('tab', { name: 'Team' })).toBeInTheDocument();
+    // Folded, the rail still names every page under its icon (owner, 2026-10-12:
+    // "couldn't find Tables" on a tablet, where a finger gets no tooltip).
+    const rail = screen.getByRole('navigation', { name: /Monitor pages/i });
+    expect(within(rail).getByText('Tables')).toBeInTheDocument();
+    expect(within(rail).getByText('Kitchen Display')).toBeInTheDocument();
+    expect(within(rail).getByRole('link', { name: /Tables/ })).toHaveClass('admin-nav-item--collapsed');
   });
 
   it('persists sidebar collapse preference', () => {
