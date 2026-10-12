@@ -52,6 +52,9 @@ final class LabelRaster
      */
     public static function page(array $build, int $page, int $dpi): array
     {
+        if (!self::available()) {
+            throw new \RuntimeException('This server\'s PHP cannot draw text in pictures (GD without FreeType): the label printer output needs it. Print the PDF instead.');
+        }
         [$im, $photos] = self::draw($build, $page, $dpi);
         $bits = self::bits($im, $photos);
         imagedestroy($im);
@@ -82,6 +85,12 @@ final class LabelRaster
         imagedestroy($im);
 
         return (string) ob_get_clean();
+    }
+
+    /** Whether this PHP's GD can draw TrueType text, which the bitmap needs (FreeType in GD). */
+    public static function available(): bool
+    {
+        return function_exists('imagettftext') && function_exists('imagecreatetruecolor');
     }
 
     /** The dots a length in millimetres takes at $dpi. */

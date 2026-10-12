@@ -200,6 +200,9 @@ class LabelSheetController extends Controller
         if ($data['sheet']['per_page'] !== 1) {
             abort(422, 'A label printer takes one sticker a label: pick a label-printer size, not a sheet.');
         }
+        if (!LabelRaster::available()) {
+            abort(503, 'This server\'s PHP cannot draw text in pictures (GD without FreeType), which the label printer output needs. Print the PDF instead.');
+        }
 
         return $data;
     }
