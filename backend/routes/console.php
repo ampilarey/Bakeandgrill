@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Domains\System\Services\SchedulerRunTracker;
 use App\Models\Item;
+use App\Support\ScheduleLock;
 use Database\Seeders\ImportMenuSeeder;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -447,19 +448,28 @@ Schedule::command('ops:watch-queue-worker')
     ->onFailure($alertOnFailure('ops:watch-queue-worker'))
     ->after($trackSuccess('ops:watch-queue-worker'));
 
-// External dead-man's switch — pings HEALTHCHECK_URL when configured
+// External dead-man's switch — pings HEALTHCHECK_URL when configured.
+// No overlap lock on either heartbeat (2026-10-12): a `schedule:run` killed
+// mid-heartbeat left the lock behind, the task was skipped every minute for
+// the day the lock lasts, and the admin said "Scheduler stopped" for a
+// scheduler that was running. A heartbeat takes a second or two; two of them
+// overlapping is harmless, a lock that outlives a killed run is not.
 Schedule::command('scheduler:heartbeat')
     ->everyMinute()
-    ->withoutOverlapping()
     ->onFailure($alertOnFailure('scheduler:heartbeat'))
     ->after($trackSuccess('scheduler:heartbeat'));
 
 // Queue worker dead-man's switch — must be processed by `queue:work` / Horizon.
 Schedule::job(App\Jobs\QueueWorkerHeartbeatJob::class)
     ->everyMinute()
-    ->withoutOverlapping()
     ->onFailure($alertOnFailure('QueueWorkerHeartbeatJob'));
 
 // Horizon metrics snapshots (requires `php artisan horizon` worker)
 Schedule::command('horizon:snapshot')
     ->everyFiveMinutes();
+
+// A task's overlap lock outlives a killed run by minutes, not the framework's
+// 24 hours (see ScheduleLock): otherwise a `schedule:run` that dies mid-task
+// sidelines that task, silently, for a day. Applied last so every task above,
+// and one added later with a bare withoutOverlapping(), is covered.
+ScheduleLock::apply(app(Illuminate\Console\Scheduling\Schedule::class));

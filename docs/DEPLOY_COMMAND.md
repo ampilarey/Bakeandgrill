@@ -175,6 +175,21 @@ cat /home/bakeandgrill/public_html/backend/storage/logs/schedule-error.log   # w
 ps -eo args | grep -c "[a]rtisan queue:work.*php84"                          # want 2
 ```
 
+**"Scheduler stopped" in the admin while cron is fine.** Every task runs "without
+overlapping", which takes a lock in Redis for the run. A `schedule:run` that dies
+mid-task (the deploy's composer and database backup steps are when the host kills
+processes) never releases it, and the task is then skipped silently on every tick
+until the lock expires. On 2026-10-12 that task was the scheduler's own heartbeat,
+minutes after a production deploy. Locks now expire within minutes, by cadence
+(`App\Support\ScheduleLock`), and the two heartbeats take no lock at all, so this
+heals itself; to see which tasks sit behind a lock and release them by hand:
+
+```bash
+cd /home/bakeandgrill/public_html/backend
+php artisan tinker --execute='foreach (app(Illuminate\Console\Scheduling\Schedule::class)->events() as $e) { if ($e->withoutOverlapping && $e->mutex->exists($e)) echo "locked: ", $e->command, PHP_EOL; }'
+php artisan schedule:clear-cache
+```
+
 ---
 
 ## What each step does

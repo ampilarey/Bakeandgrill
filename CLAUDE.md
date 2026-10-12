@@ -451,3 +451,19 @@ ticket or moves under the cashier's finger.
 The queue worker (`php artisan queue:work redis`) is only needed for async listeners
 (loyalty, inventory, outgoing webhooks, campaign SMS). Payment/order SMS send
 synchronously.
+
+## Scheduled tasks: a lock outlives a killed run by minutes, not a day
+
+A `schedule:run` that dies mid-task (the deploy's composer and database backup
+steps are when the host kills processes) never releases the task's
+`withoutOverlapping()` lock, and Laravel's default lock lasts 24 hours: the task is
+then skipped silently on every tick for a day. On 2026-10-12 the admin said
+"Scheduler stopped" minutes after a production deploy for a scheduler that was
+running; its heartbeat task sat behind such a lock. `App\Support\ScheduleLock::apply()`
+at the end of `routes/console.php` gives every lock still at the default an expiry by
+cadence (5 min for every-minute tasks, up to 3 h for daily ones), `ScheduleLockTest`
+holds every task to it, and the two heartbeats (`scheduler:heartbeat`,
+`QueueWorkerHeartbeatJob`) take no lock at all. A task that honestly runs longer than
+its window passes its own expiry to `withoutOverlapping(N)`, which `apply()` keeps.
+`php artisan schedule:clear-cache` releases a stuck lock by hand
+(`docs/DEPLOY_COMMAND.md` § Scheduled tasks and the queue worker).
