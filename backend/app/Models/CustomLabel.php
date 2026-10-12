@@ -6,6 +6,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * A pack sticker for something that is not on the menu (owner, 2026-10-11:
@@ -15,11 +16,21 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class CustomLabel extends Model
 {
+    /**
+     * Which footer the sticker gets (owner, 2026-10-12: "Standard footer
+     * options with standard branding footer"): its brand's own, the standard
+     * footer of the main brand, or its own footer line.
+     *
+     * @var list<string>
+     */
+    public const FOOTER_STYLES = ['brand', 'standard', 'own'];
+
     protected $fillable = [
         'name', 'name_dv', 'brand_id', 'label_type_id', 'label_storage',
         'label_heading', 'label_heading_dv', 'label_storage_line', 'label_storage_line_dv',
         'label_ingredients', 'label_ingredients_dv', 'label_how_to_use', 'label_how_to_use_dv',
-        'label_note', 'label_note_dv', 'label_footer', 'label_footer_dv', 'label_shelf_life_days', 'label_pack_qty', 'label_pack_unit',
+        'label_note', 'label_note_dv', 'label_footer', 'label_footer_dv', 'label_footer_style', 'label_show_qr', 'label_lang',
+        'label_shelf_life_days', 'label_pack_qty', 'label_pack_unit',
         'label_price', 'label_barcode', 'label_net_weight', 'label_allergens',
         'label_photo_media_id', 'label_title_media_id', 'created_by',
     ];
@@ -32,9 +43,16 @@ class CustomLabel extends Model
             'label_shelf_life_days' => 'integer',
             'label_pack_qty' => 'integer',
             'label_price' => 'decimal:2',
+            'label_show_qr' => 'boolean',
             'label_photo_media_id' => 'integer',
             'label_title_media_id' => 'integer',
         ];
+    }
+
+    /** Every sheet this label was printed on (the print log). */
+    public function prints(): HasMany
+    {
+        return $this->hasMany(LabelPrint::class, 'custom_label_id');
     }
 
     public function brand(): BelongsTo

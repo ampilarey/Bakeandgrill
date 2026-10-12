@@ -673,7 +673,7 @@ class LabelsController extends Controller
 
     public function customLabels(): JsonResponse
     {
-        $rows = CustomLabel::query()->with(['brand.logo', 'labelType.brand', 'creator:id,name'])->orderBy('name')->orderBy('id')->get();
+        $rows = CustomLabel::query()->with(['brand.logo', 'labelType.brand', 'creator:id,name'])->withCount('prints')->withMax('prints', 'created_at')->orderBy('name')->orderBy('id')->get();
 
         return response()->json(['data' => $rows->map(fn (CustomLabel $c) => $this->presentCustom($c))->values()]);
     }
@@ -751,6 +751,11 @@ class LabelsController extends Controller
             'label_note_dv' => 'sometimes|nullable|string|max:120',
             'label_footer' => 'sometimes|nullable|string|max:120',
             'label_footer_dv' => 'sometimes|nullable|string|max:120',
+            // 2026-10-12: which footer, whether the complaints QR prints
+            // (null follows the type), and the language it usually prints in.
+            'label_footer_style' => ['sometimes', 'nullable', Rule::in(CustomLabel::FOOTER_STYLES)],
+            'label_show_qr' => 'sometimes|nullable|boolean',
+            'label_lang' => ['sometimes', 'nullable', Rule::in(StickerSheet::LANGS)],
             'label_shelf_life_days' => 'sometimes|nullable|integer|min:1|max:730',
             'label_pack_qty' => 'sometimes|nullable|integer|min:1|max:9999',
             'label_pack_unit' => 'sometimes|nullable|string|max:10',
@@ -777,6 +782,12 @@ class LabelsController extends Controller
         }
         if (array_key_exists('name', $data) && ($data['name'] ?? '') === '') {
             return response()->json(['message' => 'Give the label a name.', 'errors' => ['name' => ['Give the label a name.']]], 422);
+        }
+        if (array_key_exists('label_footer_style', $data) && $data['label_footer_style'] === null) {
+            $data['label_footer_style'] = 'brand';
+        }
+        if (array_key_exists('label_show_qr', $data) && $data['label_show_qr'] !== null) {
+            $data['label_show_qr'] = filter_var($data['label_show_qr'], FILTER_VALIDATE_BOOLEAN);
         }
 
         return $data;
@@ -816,6 +827,12 @@ class LabelsController extends Controller
             'label_note_dv' => $c->label_note_dv,
             'label_footer' => $c->label_footer,
             'label_footer_dv' => $c->label_footer_dv,
+            'label_footer_style' => in_array($c->label_footer_style, CustomLabel::FOOTER_STYLES, true) ? $c->label_footer_style : 'brand',
+            'label_show_qr' => $c->label_show_qr === null ? null : (bool) $c->label_show_qr,
+            'label_lang' => in_array($c->label_lang, StickerSheet::LANGS, true) ? $c->label_lang : null,
+            // Printed how often, from the print log (the list loads these; a fresh save answers 0).
+            'print_count' => (int) ($c->prints_count ?? 0),
+            'last_printed_at' => $c->prints_max_created_at ? \Carbon\CarbonImmutable::parse((string) $c->prints_max_created_at)->toIso8601String() : null,
             'label_shelf_life_days' => $c->label_shelf_life_days,
             'label_pack_qty' => $c->label_pack_qty,
             'label_pack_unit' => $c->label_pack_unit,

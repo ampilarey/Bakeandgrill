@@ -93,16 +93,37 @@ the new label straight away):
    **unit** after it (PCS, G, ML, KG, PACK), the **allergens** (a comma list, printed
    bold and as "Contains …") and the **net weight**; under **For the shop till**, a
    **price** and a **barcode**.
-5. **Wording on the sticker**: heading, storage line, note, how to use, and a
-   **footer line** (owner, 2026-10-12: "add option to edit footer also"), each in
-   English and Dhivehi. An empty box prints what is shown in grey. The footer line
-   prints in the dark footer where the brand's tagline or the website would be; the
-   phone stays (on a band too narrow for both, the footer line takes the phone's
-   place). The preview beside the form is the first sticker of the sheet Pack stickers
-   would print, at the size last used there (full size until one is picked), so what
-   is seen is what prints; chips give a quick look at the other sizes.
-6. **Picture** and **hand-lettered name**: a PNG upload (kept exactly as uploaded) or
+5. **Wording on the sticker**: heading, storage line, note, how to use, each in
+   English and Dhivehi. An empty box prints what is shown in grey. This part, **For
+   the shop till** and **Footer and complaints QR** fold away, open when they hold
+   something (audit, 2026-10-12).
+6. **Footer and complaints QR** (owner, 2026-10-12: "Standard footer options with
+   standard branding footer. Option to add complaint qr with its branding"). The
+   footer is one of three: **the brand's own** (its name and tagline, "by Bake &
+   Grill" for a sub-brand, with the phone, website and address), the **standard Bake
+   & Grill footer** (the main brand's name and tagline whatever brand is on the
+   header), or **your own words** (a footer line in English and Dhivehi, printed
+   where the tagline or the website would be; the phone stays, and on a band too
+   narrow for both the footer line takes the phone's place). The **complaints QR**
+   follows the label type, or is printed or left off for this label alone; on the
+   full sticker the code carries the brand mark inside (`StickerSheet::QR_LOGO_RATIO`,
+   smaller than the poster's so an 11.5 mm code still scans), the small designs keep
+   the bare code.
+7. **Size and language.** The preview is the first sticker of the sheet Pack stickers
+   would print, at the size last used there (full size until one is picked); **Sticker
+   size** folds open to the same picker as Pack stickers (every one-tap size, a typed
+   size, round, where it prints). EN / ދިވެހި / Both above the preview is the language
+   the label usually prints in and is saved with it. **Print…** saves the label and
+   opens Pack stickers on that size and language; on a phone or tablet the preview is
+   the bar pinned under the title, and Close, Print… and Save stay in the sheet's
+   footer. Closing with unsaved changes asks first.
+8. **Picture** and **hand-lettered name**: a PNG upload (kept exactly as uploaded) or
    one from the media library. Uploading a picture to a new label saves it first.
+
+The list says how often each label was printed and when, and which language it
+prints in; with four or more labels a search box finds one by name, Dhivehi name,
+brand or type. One-tap sizes gained 50 × 80, 60 × 90, 80 × 120, 100 × 100 and 80 and
+100 mm rounds (owner, 2026-10-12: "I need more size options").
 
 The preview beside the form redraws as you type, saved or not (the server keeps the
 draft for half an hour under a token the preview link names; nothing is printed or

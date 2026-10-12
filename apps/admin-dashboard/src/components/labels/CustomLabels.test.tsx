@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { ToastProvider } from '../ui';
@@ -33,12 +33,14 @@ vi.mock('../MediaPicker', () => ({ MediaPicker: () => null }));
 vi.mock('./TypesAndBrands', () => ({ BrandModal: () => <div data-testid="brand-modal" /> }));
 
 import { CustomLabelModal, CustomLabelsTab } from './CustomLabels';
+import type { CustomLabel } from '../../api';
 
-const custom = (id: number, name: string, extra = {}) => ({
-  id, kind: 'custom', name, name_dv: null, brand_id: 2, brand_name: 'Amma', brand_logo_url: '/storage/amma.png', label_type_id: null, label_type_name: null,
+const custom = (id: number, name: string, extra: Partial<CustomLabel> = {}): CustomLabel => ({
+  id, kind: 'custom' as const, name, name_dv: null, brand_id: 2, brand_name: 'Amma', brand_logo_url: '/storage/amma.png', label_type_id: null, label_type_name: null,
   label_storage: null, storage: 'chilled', label_heading: null, label_heading_dv: null, label_storage_line: null, label_storage_line_dv: null,
   label_ingredients: 'Garlic, oil', label_ingredients_dv: null, label_how_to_use: null, label_how_to_use_dv: null, label_note: null, label_note_dv: null,
   label_shelf_life_days: 14, label_pack_qty: null, label_pack_unit: null, label_price: null, label_barcode: null, label_net_weight: null, label_allergens: null,
+  label_footer: null, label_footer_dv: null, label_footer_style: 'brand', label_show_qr: null, label_lang: null, print_count: 0, last_printed_at: null,
   label_photo_media_id: null, label_photo_url: null, label_title_media_id: null, label_title_url: null,
   defaults: { heading: 'CHILLED', heading_dv: '', storage_line: '', storage_line_dv: '', how_to_use: '', how_to_use_dv: '', note: '', note_dv: '', shelf_life_days: null, brand: 'Amma', unit: 'PCS' },
   ingredients: { en: 'Garlic, oil', dv: '', from: 'manual' }, created_by: null, updated_at: null, ...extra,
@@ -99,7 +101,62 @@ describe('CustomLabelModal', () => {
       label_heading: null, label_note: null, label_type_id: null, label_price: 25, label_barcode: '590123412345', label_net_weight: '250 ml', label_allergens: 'garlic',
     });
     await waitFor(() => expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({ id: 7 })));
-    expect(await screen.findByRole('button', { name: 'Print' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /^Print/ })).toBeInTheDocument();
+  });
+
+  // Audit, 2026-10-12: the label picks its footer, its QR and its language;
+  // Print… carries the size and language to Pack stickers; closing with
+  // changes asks first.
+  it('saves the footer choice, the QR switch and the language, and previews in that language', async () => {
+    createCustomLabel.mockResolvedValue({ data: custom(9, 'Gift Box', { label_footer_style: 'standard', label_show_qr: false, label_lang: 'both' }) });
+    wrap(<CustomLabelModal label={null} onClose={() => {}} onSaved={() => {}} />);
+    fireEvent.change(screen.getByLabelText('Product name'), { target: { value: 'Gift Box' } });
+    fireEvent.click(screen.getByRole('radio', { name: /Standard Bake & Grill footer/ }));
+    fireEvent.change(screen.getByLabelText('Complaints QR in the footer'), { target: { value: 'off' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Both' }));
+    await waitFor(() => expect(previewCustomDraft).toHaveBeenCalledWith(expect.objectContaining({ name: 'Gift Box', label_footer_style: 'standard', label_show_qr: false, label_lang: 'both', lang: 'both' })), { timeout: 3000 });
+    // Own words show their boxes only when picked.
+    expect(screen.queryByLabelText('Footer line')).toBeNull();
+    fireEvent.click(screen.getByRole('radio', { name: /Your own words/ }));
+    fireEvent.change(screen.getByLabelText('Footer line'), { target: { value: 'Made with love' } });
+    fireEvent.click(screen.getByTestId('custom-label-save'));
+    await waitFor(() => expect(createCustomLabel).toHaveBeenCalledTimes(1));
+    expect(createCustomLabel.mock.calls[0][0]).toMatchObject({ label_footer_style: 'own', label_footer: 'Made with love', label_show_qr: false, label_lang: 'both' });
+  });
+
+  it('Print… saves first and opens Pack stickers on the same size and language', async () => {
+    createCustomLabel.mockResolvedValue({ data: custom(9, 'Gift Box') });
+    localStorage.setItem('labels.lastSize', JSON.stringify({ shape: 'rect', preset: 'r40x60', on: 'sheet', w: 40, h: 60 }));
+    render(
+      <MemoryRouter initialEntries={['/labels/custom']}>
+        <ToastProvider>
+          <Routes>
+            <Route path="/labels/custom" element={<CustomLabelModal label={null} onClose={() => {}} onSaved={() => {}} />} />
+            <Route path="/labels/stickers" element={<div data-testid="stickers-tab">{window.location.search}</div>} />
+          </Routes>
+        </ToastProvider>
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(fetchLabelLayouts).toHaveBeenCalled());
+    fireEvent.change(screen.getByLabelText('Product name'), { target: { value: 'Gift Box' } });
+    expect(await screen.findByText(/40 × 60 mm · A4 sheet/)).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('custom-label-print'));
+    await waitFor(() => expect(createCustomLabel).toHaveBeenCalledTimes(1));
+    expect(await screen.findByTestId('stickers-tab')).toBeInTheDocument();
+  });
+
+  it('asks before closing with unsaved changes, and closes at once without any', async () => {
+    const onClose = vi.fn();
+    wrap(<CustomLabelModal label={custom(7, 'Garlic Sauce')} onClose={onClose} onSaved={() => {}} />);
+    const closeButton = () => within(screen.getByTestId('modal-footer')).getByRole('button', { name: 'Close' });
+    fireEvent.click(closeButton());
+    expect(onClose).toHaveBeenCalledTimes(1);
+    fireEvent.change(screen.getByLabelText('Product name'), { target: { value: 'Garlic Sauce 2' } });
+    fireEvent.click(closeButton());
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText('Close without saving?')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }));
+    expect(onClose).toHaveBeenCalledTimes(2);
   });
 
   it('asks for a name before saving', async () => {
@@ -177,6 +234,23 @@ describe('CustomLabelsTab', () => {
     await waitFor(() => expect(fetchLabelLayouts).toHaveBeenCalled());
     fireEvent.click(await screen.findByRole('button', { name: 'Save Garlic Sauce to Saved labels' }));
     await waitFor(() => expect(stickerLinks).toHaveBeenCalledWith({ items: [{ id: 7, copies: 21, kind: 'custom' }], layout: 'a4-custom', w: 40, h: 60, lang: 'en', fill: true }));
+  });
+
+  it('says how often each label was printed, in which language, and finds one by name, brand or type', async () => {
+    fetchCustomLabels.mockResolvedValue({ data: [
+      custom(1, 'Garlic Sauce', { print_count: 3, last_printed_at: '2026-10-12T08:00:00Z' }),
+      custom(2, 'Chilli Paste', { label_lang: 'dv' }),
+      custom(3, 'Gift Box', { brand_name: 'Bake & Grill' }),
+      custom(4, 'Fish Chutney', { label_type_name: 'Frozen Hedhika' }),
+    ] });
+    wrap(<CustomLabelsTab canManage={false} />);
+    expect(await screen.findByTestId('custom-printed-1')).toHaveTextContent('Printed 3 times, last 12 Oct · prints in English');
+    expect(screen.getByTestId('custom-printed-2')).toHaveTextContent('Not printed yet · prints in Dhivehi');
+    fireEvent.change(screen.getByLabelText('Find a custom label'), { target: { value: 'frozen' } });
+    expect(screen.getByText('Fish Chutney')).toBeInTheDocument();
+    expect(screen.queryByText('Garlic Sauce')).toBeNull();
+    fireEvent.change(screen.getByLabelText('Find a custom label'), { target: { value: 'zzz' } });
+    expect(screen.getByText('No label matches “zzz”.')).toBeInTheDocument();
   });
 
   it('copies a label into the editor and removes one after asking', async () => {

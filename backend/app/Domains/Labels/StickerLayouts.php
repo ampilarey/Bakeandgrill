@@ -103,6 +103,15 @@ final class StickerLayouts
         ['id' => 'r40x60', 'shape' => 'rect', 'w' => 40.0, 'h' => 60.0, 'on' => ['sheet' => 'a4-custom', 'printer' => 'single-custom']],
         ['id' => 'r50x30', 'shape' => 'rect', 'w' => 50.0, 'h' => 30.0, 'on' => ['sheet' => 'a4-custom', 'printer' => 'single-custom']],
         ['id' => 'r40x30', 'shape' => 'rect', 'w' => 40.0, 'h' => 30.0, 'on' => ['sheet' => 'a4-custom', 'printer' => 'single-custom']],
+        // Owner, 2026-10-12: "I need more size options". Common label-printer
+        // rolls and jar and box lids: 50 × 80, 60 × 90, 80 × 120, a 100 mm
+        // square, and 80 and 100 mm rounds.
+        ['id' => 'r50x80', 'shape' => 'rect', 'w' => 50.0, 'h' => 80.0, 'on' => ['sheet' => 'a4-custom', 'printer' => 'single-custom']],
+        ['id' => 'r60x90', 'shape' => 'rect', 'w' => 60.0, 'h' => 90.0, 'on' => ['sheet' => 'a4-custom', 'printer' => 'single-custom']],
+        ['id' => 'r80x120', 'shape' => 'rect', 'w' => 80.0, 'h' => 120.0, 'on' => ['sheet' => 'a4-custom', 'printer' => 'single-custom']],
+        ['id' => 'r100x100', 'shape' => 'rect', 'w' => 100.0, 'h' => 100.0, 'on' => ['sheet' => 'a4-custom', 'printer' => 'single-custom']],
+        ['id' => 'c100', 'shape' => 'circle', 'w' => 100.0, 'h' => 100.0, 'on' => ['sheet' => 'a4-round-custom', 'printer' => 'single-round-custom']],
+        ['id' => 'c80', 'shape' => 'circle', 'w' => 80.0, 'h' => 80.0, 'on' => ['sheet' => 'a4-round-custom', 'printer' => 'single-round-custom']],
         ['id' => 'c70', 'shape' => 'circle', 'w' => 70.0, 'h' => 70.0, 'on' => ['sheet' => 'a4-round-70', 'printer' => 'single-round-70']],
         ['id' => 'c60', 'shape' => 'circle', 'w' => 60.0, 'h' => 60.0, 'on' => ['sheet' => 'a4-round-custom', 'printer' => 'single-round-custom']],
         ['id' => 'c50', 'shape' => 'circle', 'w' => 50.0, 'h' => 50.0, 'on' => ['sheet' => 'a4-round-50', 'printer' => 'single-round-50']],

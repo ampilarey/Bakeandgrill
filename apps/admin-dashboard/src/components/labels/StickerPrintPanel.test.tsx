@@ -267,6 +267,17 @@ describe('StickerPrintPanel', () => {
     // Without Manage label settings there is no "New custom label".
     expect(screen.queryByTestId('sticker-new-custom')).not.toBeInTheDocument();
   });
+
+  // Audit, 2026-10-12: the custom label editor's Print… carries the size and
+  // language it was previewed at.
+  it('opens on the size and language the custom label editor hands over', async () => {
+    stickerLinks.mockRejectedValue(new Error('x'));
+    fetchCustomLabels.mockResolvedValue({ data: [custom(7, 'Gift box')] });
+    render(<MemoryRouter initialEntries={['/labels/stickers?custom=7&layout=a4-custom&w=40&h=60&lang=dv&rounded=1']}><StickerPrintPanel /></MemoryRouter>);
+    await screen.findByText('Gift box');
+    await waitFor(() => expect(screen.getByLabelText('Print Gift box')).toBeChecked());
+    await waitFor(() => expect(stickerLinks).toHaveBeenCalledWith(expect.objectContaining({ layout: 'a4-custom', w: 40, h: 60, lang: 'dv', rounded: true, preview: true })), { timeout: 3000 });
+  });
 });
 
 /*

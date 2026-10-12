@@ -267,6 +267,7 @@ final class StickerDesign
         // Dark footer: the brand, who it is by, the contact details and the
         // complaints QR (v2 point 1), the same on every size.
         $c = $d['contact'];
+        $fb = $d['footer_brand'] ?? $brand;
         $p[] = ['t' => 'rect', 'x' => 5, 'y' => 128, 'w' => 95, 'h' => 15.5, 'fill' => self::DARK, 'r' => 2.5];
         [$mw, $mh] = self::fit($d['mark_ratio'], 10, 10.5);
         if ($d['mark']) {
@@ -275,24 +276,24 @@ final class StickerDesign
         $qr = $d['show_qr'] && $d['qr'] ? 11.5 : 0.0;
         if ($qr > 0) {
             $p[] = ['t' => 'rect', 'x' => $X(86.5, 12.5), 'y' => 129.5, 'w' => 12.5, 'h' => 12.5, 'fill' => self::CREAM, 'r' => 1];
-            $p[] = ['t' => 'img', 'x' => $X(87, $qr), 'y' => 130, 'w' => $qr, 'h' => $qr, 'src' => $d['qr']];
+            $p[] = ['t' => 'img', 'x' => $X(87, $qr), 'y' => 130, 'w' => $qr, 'h' => $qr, 'src' => $d['qr_branded'] ?? $d['qr']];
         }
         $tx = 8 + $mw + 2.5;
         $nameX = $X($tx, 50);
-        $p[] = ['t' => 'text', 'x' => $nameX, 'base' => 133.5, 'w' => 50, 'align' => $A('l'), 'font' => 'ds', 'pt' => LabelText::fitPt($brand['name'], 'ds', 40, 12.5, 8), 'color' => self::CREAM, 'text' => $brand['name']];
+        $p[] = ['t' => 'text', 'x' => $nameX, 'base' => 133.5, 'w' => 50, 'align' => $A('l'), 'font' => 'ds', 'pt' => LabelText::fitPt($fb['name'], 'ds', 40, 12.5, 8), 'color' => self::CREAM, 'text' => $fb['name']];
         // The tagline (Dhivehi one on a Dhivehi sticker when the brand has
         // it) shares its line with the ways-to-reach-you text under the
         // phone, so each keeps to its own half: 34 mm for the tagline, the
         // phone's width for the ways line.
-        $tagline = $dv && $brand['tagline_dv'] !== '' ? $brand['tagline_dv'] : $brand['tagline'];
-        $tagline = $tagline !== '' ? $tagline : ($brand['parent'] !== '' ? 'by ' . $brand['parent'] : '');
-        $tagFont = $dv && $brand['tagline_dv'] !== '' ? 'dv' : 'dsi';
+        $tagline = $dv && $fb['tagline_dv'] !== '' ? $fb['tagline_dv'] : $fb['tagline'];
+        $tagline = $tagline !== '' ? $tagline : ($fb['parent'] !== '' ? 'by ' . $fb['parent'] : '');
+        $tagFont = $dv && $fb['tagline_dv'] !== '' ? 'dv' : 'dsi';
         // A custom label's own footer line takes the tagline's place.
         if (($own = self::ownFooter($d, $dv)) !== null) {
             [$tagline, $tagFont] = $own;
         }
         $p[] = ['t' => 'text', 'x' => $nameX, 'base' => 137.2, 'w' => 50, 'align' => $A('l'), 'font' => $tagFont, 'pt' => LabelText::fitPt($tagline, $tagFont, 34, $tagFont === 'dv' ? 8 : 7.8, 5.5), 'color' => self::ON_DARK, 'text' => $tagline] + ($tagFont === 'dv' ? ['bold' => 0.4] : []);
-        $by = $brand['parent'] !== '' && $brand['tagline'] !== '' ? 'by ' . $brand['parent'] . '  ·  ' : '';
+        $by = $fb['parent'] !== '' && $fb['tagline'] !== '' ? 'by ' . $fb['parent'] . '  ·  ' : '';
         // The address line stops where the website (right-aligned, ~27 mm)
         // begins; with the QR that edge is 12 mm further left. Too long at
         // the smallest size, it drops the landmark, then the "by" line.
@@ -388,6 +389,7 @@ final class StickerDesign
         // Owner, 2026-10-04: "There is no website." A tall label gets the
         // two-line footer of the original: name and address, phone and website.
         $c = $d['contact'];
+        $fb = $d['footer_brand'] ?? $brand;
         $fh = $tall ? 9.6 : 6.0;
         $fy = $h - $pad - $fh;
         $p[] = ['t' => 'rect', 'x' => $pad, 'y' => $fy, 'w' => $iw, 'h' => $fh, 'fill' => self::DARK, 'r' => 1.5];
@@ -398,7 +400,7 @@ final class StickerDesign
             $p[] = ['t' => 'rect', 'x' => $X($pad + $iw - 0.8 - $qr - 0.8, $qr + 1.6), 'y' => $fy + 0.4, 'w' => $qr + 1.6, 'h' => $qr + 1.6, 'fill' => self::CREAM, 'r' => 0.8];
             $p[] = ['t' => 'img', 'x' => $X($pad + $iw - 0.8 - $qr, $qr), 'y' => $fy + 0.8, 'w' => $qr, 'h' => $qr, 'src' => $d['qr']];
         }
-        $p[] = ['t' => 'text', 'x' => $X($pad + 2, $iw / 2), 'base' => $fy + 4.1, 'w' => $iw / 2, 'align' => $A('l'), 'font' => 'ds', 'pt' => LabelText::fitPt($brand['name'], 'ds', $iw / 2 - 2, 8.5, 6), 'color' => self::CREAM, 'text' => $brand['name']];
+        $p[] = ['t' => 'text', 'x' => $X($pad + 2, $iw / 2), 'base' => $fy + 4.1, 'w' => $iw / 2, 'align' => $A('l'), 'font' => 'ds', 'pt' => LabelText::fitPt($fb['name'], 'ds', $iw / 2 - 2, 8.5, 6), 'color' => self::CREAM, 'text' => $fb['name']];
         $p[] = ['t' => 'text', 'x' => $X($pad + $iw / 2 - 2, $iw / 2 - $rshift), 'base' => $fy + 4.1, 'w' => $iw / 2 - $rshift, 'align' => $A('r'), 'font' => 'j8', 'pt' => 7.5, 'color' => self::CREAM, 'text' => $c['phone']];
         if ($tall) {
             // A custom label's own footer line takes the website's place
@@ -407,7 +409,7 @@ final class StickerDesign
             // and keeps to the left 42 %; the footer line takes what is left
             // before the QR.
             $own = self::ownFooter($d, $dv);
-            $by = $brand['parent'] !== '' ? 'by ' . $brand['parent'] . '  ·  ' : '';
+            $by = $fb['parent'] !== '' ? 'by ' . $fb['parent'] . '  ·  ' : '';
             $addr = $own !== null
                 ? trim($dv ? $d['address_dv'] : $c['address'])
                 : ($dv ? trim($d['address_dv'] . ($d['landmark_dv'] !== '' ? '  ·  ' . $d['landmark_dv'] : '')) : $by . trim($c['address'] . ($c['landmark'] !== '' ? '  ·  ' . $c['landmark'] : '')));
@@ -683,7 +685,7 @@ final class StickerDesign
         $w = $chord($y - 1.2 * $f);
         // A custom label's own footer line takes the website's place.
         [$site, $siteFont] = self::ownFooter($d, $dv) ?? [$c['website'], 'j7'];
-        $foot = $brand['name'] . '  ·  ' . $c['phone'] . '  ·  ' . $site;
+        $foot = ($d['footer_brand'] ?? $brand)['name'] . '  ·  ' . $c['phone'] . '  ·  ' . $site;
         if (LabelText::widthMm($foot, 3.6, $siteFont) > $w) {
             $foot = $c['phone'] . '  ·  ' . $site;
         }

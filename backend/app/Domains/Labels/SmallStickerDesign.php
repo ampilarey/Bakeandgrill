@@ -663,7 +663,7 @@ final class SmallStickerDesign
     private function footerBand(float $x, float $y, float $bw, float $fh, float $k): void
     {
         $d = $this->d;
-        $brand = $d['brand'];
+        $brand = $d['footer_brand'] ?? $d['brand'];
         $c = $d['contact'];
         $this->box($x, $y, $bw, $fh, StickerDesign::DARK, min(1.3, $fh * 0.25));
         $inner = $bw - 2.0;

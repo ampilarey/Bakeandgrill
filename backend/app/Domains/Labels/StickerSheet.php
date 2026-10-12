@@ -32,6 +32,9 @@ final class StickerSheet
     /** English, Dhivehi, or both on one sticker (2026-10-12). */
     public const LANGS = ['en', 'dv', 'both'];
 
+    /** The brand mark's share of the full sticker's complaints QR: smaller than the poster's 0.26, for an 11.5 mm code. */
+    public const QR_LOGO_RATIO = 0.2;
+
     /** A custom label still being written previews from the cache under this key (2026-10-12). */
     public const DRAFT_CACHE = 'label-draft:';
 
@@ -355,6 +358,8 @@ final class StickerSheet
         if ($note === '' && $allergens !== []) {
             $note = 'Contains ' . implode(', ', $allergens);
         }
+        $footerStyle = $item instanceof CustomLabel && in_array($item->label_footer_style, CustomLabel::FOOTER_STYLES, true) ? $item->label_footer_style : 'brand';
+        $showQr = $item instanceof CustomLabel && $item->label_show_qr !== null ? (bool) $item->label_show_qr : $w['show_qr'];
 
         return $common + [
             'name' => (string) $item->name,
@@ -379,10 +384,14 @@ final class StickerSheet
             'storage_dv' => $w['storage_dv'],
             'note' => $note,
             'note_dv' => $w['note_dv'],
-            // A custom label's own footer line (owner, 2026-10-12: "add option
-            // to edit footer also"), printed where the tagline or website goes.
-            'footer' => $item instanceof CustomLabel ? trim((string) $item->label_footer) : '',
-            'footer_dv' => $item instanceof CustomLabel ? trim((string) $item->label_footer_dv) : '',
+            // A custom label picks its footer (owner, 2026-10-12: "Standard
+            // footer options with standard branding footer"): its brand's,
+            // the standard one of the main brand, or its own footer line
+            // printed where the tagline or website goes. And whether the
+            // complaints QR prints, when it says so itself.
+            'footer_brand' => $footerStyle === 'standard' ? $this->types->brand(null) : $w['brand'],
+            'footer' => $footerStyle === 'own' && $item instanceof CustomLabel ? trim((string) $item->label_footer) : '',
+            'footer_dv' => $footerStyle === 'own' && $item instanceof CustomLabel ? trim((string) $item->label_footer_dv) : '',
             'price' => $price,
             'net_weight' => trim((string) $item->label_net_weight),
             'barcode' => $code !== null ? Barcode::svgDataUri($code, 30, 12) : null,
@@ -394,7 +403,7 @@ final class StickerSheet
             'use_within_dv' => $w['use_within_dv'],
             'mfg_label' => $w['mfg_label'],
             'exp_label' => $w['exp_label'],
-            'show_qr' => $w['show_qr'],
+            'show_qr' => $showQr,
             'brand' => $w['brand'],
             'type_name' => $w['type_name'],
         ];
@@ -466,8 +475,12 @@ final class StickerSheet
             'mark_ratio' => LabelImage::ratio($mark),
             'contact' => LabelSettings::contact(),
             // v2 point 1: the complaints QR, the same code as the receipts and
-            // the poster, bare (no logo: it prints at 8 to 12 mm).
+            // the poster, bare (no logo: it prints at 8 to 12 mm) — and with
+            // the brand mark inside for the full sticker, whose 11.5 mm code
+            // has room for it (owner, 2026-10-12: "complaint qr with its
+            // branding"; the mark is kept small so a phone still reads it).
             'qr' => QrSvg::dataUri(ComplaintBoxLink::url('label'), 160),
+            'qr_branded' => ComplaintBoxLink::qr(ComplaintBoxLink::url('label'), 240, self::QR_LOGO_RATIO),
             'brand_line_dv' => LabelSettings::get('label_brand_line_dv'),
             'ways' => LabelSettings::get('label_contact_ways'),
             'ways_dv' => LabelSettings::get('label_contact_ways_dv'),

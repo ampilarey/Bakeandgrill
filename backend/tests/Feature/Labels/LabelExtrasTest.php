@@ -63,7 +63,8 @@ class LabelExtrasTest extends TestCase
     public function test_the_price_prints_only_when_switched_on_the_menu_price_unless_one_is_typed(): void
     {
         $html = $this->sheet(['items' => [['id' => $this->bajiya->id, 'copies' => 1]], 'layout' => 'a4-4']);
-        $this->assertStringNotContainsString('MVR', $html, 'off by default');
+        // "MVR " with its space: the sheet carries the branded QR as base64, which can spell MVR by chance.
+        $this->assertStringNotContainsString('MVR ', $html, 'off by default');
 
         $this->putJson("/api/items/{$this->bajiya->id}/label", ['label_show_price' => true])->assertOk()
             ->assertJsonPath('data.label_show_price', true)

@@ -7449,3 +7449,9 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   .nc-person-row { justify-content: flex-start; }
   .pa-row { flex-direction: column; align-items: stretch; }
 }
+
+/* ── Custom label editor folds (audit, 2026-10-12) ─────────────────────── */
+.cl-section > summary::-webkit-details-marker { display: none; }
+.cl-section .cl-chev { transition: transform 0.15s; }
+.cl-section[open] .cl-chev { transform: rotate(180deg); }
+.cl-section[open] > summary { border-bottom: 1px solid var(--color-border-light); margin-bottom: 10px; }

@@ -209,6 +209,16 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
     const key = keyOf('custom', Number(customParam));
     if (customs.some((c) => keyOf('custom', c.id) === key)) setPicked((p) => (p[key] ? p : { ...p, [key]: perPage }));
   }, [customParam, customs, presets.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The custom label editor's Print… carries the size and language it was
+  // previewed at (owner, 2026-10-12), so this form opens on the same sticker.
+  const sizeParam = customParam ? params.get('layout') : null;
+  useEffect(() => {
+    if (!customParam) return;
+    const l = params.get('lang');
+    if (l === 'en' || l === 'dv' || l === 'both') setLang(l);
+    if (params.get('rounded') === '1') setRounded(true);
+    if (sizeParam) setSavedSize({ layout: sizeParam, w: params.get('w') ? Number(params.get('w')) : null, h: params.get('h') ? Number(params.get('h')) : null });
+  }, [customParam, sizeParam]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const rows: Row[] = useMemo(() => [
     ...products.map((p): Row => ({ key: keyOf('item', p.id), kind: 'item', id: p.id, name: p.name, name_dv: p.name_dv, shelf: p.label_shelf_life_days, ingredients: p.ingredients.from })),

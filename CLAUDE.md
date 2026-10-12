@@ -190,10 +190,17 @@ and the browser drops the rule). Dhivehi at hand-thickening 0.5 and up sets in t
 bold (`LabelText::DV_BOLD_FROM`). A custom label's row has Save, which prepares a full
 sheet straight into Saved labels at the size Pack stickers last printed
 (`rememberedSize()` in `labelSize.ts`), and the editor previews the first sticker of that
-same sheet, so preview and print never differ. A custom label has its own footer line
-(`label_footer`, `_dv`; `StickerDesign::ownFooter`), printed where the tagline or website
-would be, the phone kept; `lang: both` sets the Dhivehi name under the English on the
-small and compact designs too. How to use it and where
+same sheet, so preview and print never differ. A custom label picks its footer
+(`label_footer_style`: the brand's, the standard main-brand one via `footer_brand` in
+the sticker data, or its own words `label_footer`, `_dv` through
+`StickerDesign::ownFooter`, printed where the tagline or website would be, the phone
+kept), whether the complaints QR prints (`label_show_qr`, null follows the type; the
+full design draws the branded code `qr_branded`, small ones the bare `qr`) and the
+language it prints in (`label_lang`; `langOf()` in `CustomLabels.tsx`); `lang: both`
+sets the Dhivehi name under the English on the small and compact designs too. The
+editor uses `LabelSizePicker` and, below 1024px, `PhonePreviewBar` inside the Modal,
+with `ModalActions` for Close / Print… / Save and a ConfirmDialog before discarding
+changes; the long parts are `<details>` folds (`.cl-section`). How to use it and where
 everything lives: `docs/LABELS.md`; design and decisions: `docs/LABEL_HUB_PLAN.md`
 and `docs/LABEL_HUB_V2_PLAN.md`.
 
