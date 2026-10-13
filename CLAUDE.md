@@ -329,7 +329,12 @@ Badges (round 9): up to four keys from `LabelBadges::CATALOGUE` per product
 (`label_badges`), drawn by every design as rust pills under the name through
 `LabelBadges::pills()` (rectangles and text, so the raster draws them too), picked with
 `BadgePicker` or the tap sheet's `chips` input; a new badge goes into the catalogue (and
-`BADGE_FALLBACK`), nowhere else. How to
+`BADGE_FALLBACK`), nowhere else. Variable runs (round 10): a row of a sticker request may
+carry its own batch, quantity, dates and packed-for (`StickerSheet::RUN_KEYS`,
+`cleanRun()`, `rowRequest()` over the sheet's request in `build()` and `summary()`; the
+link's `runs`; the print log per product), typed in the Details fold of each picked row
+on Print labels; a new per-print value that a row may own goes into `RUN_KEYS`, the
+rules, `runPayload()` and the fold together. How to
 use it and where everything lives: `docs/LABELS.md`; design and decisions:
 `docs/LABEL_HUB_PLAN.md` and `docs/LABEL_HUB_V2_PLAN.md`.
 

@@ -291,9 +291,12 @@ export type CustomLabelPayload = Partial<Pick<CustomLabel,
 /** The sticker's languages: English, Dhivehi, or both on one sticker (2026-10-12). */
 export type StickerLang = 'en' | 'dv' | 'both';
 
+/** A row's own details on a variable run (round 10, 2026-10-13): printed on that product's stickers instead of the sheet's. */
+export type StickerRun = { batch?: string | null; qty?: number | null; mfg?: string | null; exp?: string | null; for?: string | null; for2?: string | null };
+
 export type StickerRequest = {
-  /** A menu item, or a custom label when `kind` says so. */
-  items: { id: number; copies: number; kind?: 'item' | 'custom' }[];
+  /** A menu item, or a custom label when `kind` says so; with its own details on a variable run. */
+  items: ({ id: number; copies: number; kind?: 'item' | 'custom' } & StickerRun)[];
   lang?: StickerLang;
   layout?: string;
   w?: number | null;
@@ -411,7 +414,9 @@ export type StickerSummary = {
   pages: number;
   per_page: number;
   /** `code`: the print's code (2026-10-12), which its stickers carry as a QR; null on a preview. */
-  products: { id: number; kind?: 'item' | 'custom'; key?: string; name: string; copies: number; mfg: string | null; exp: string | null; shelf_life_days: number | null; ingredients_from: string; code?: string | null }[];
+  products: { id: number; kind?: 'item' | 'custom'; key?: string; name: string; copies: number; mfg: string | null; exp: string | null; shelf_life_days: number | null; ingredients_from: string; code?: string | null;
+    /** What the row prints with (round 10): its own details where it has them (`varied`), else the sheet's. */
+    batch?: string; qty?: number | null; for?: string; for2?: string; varied?: boolean }[];
   /** On a wrap-around label: the first product's strips. */
   wrap?: WrapStrips | null;
   /** On every other design: where the first product's parts are, for the preview's touch zones (empty on a wrap label). */

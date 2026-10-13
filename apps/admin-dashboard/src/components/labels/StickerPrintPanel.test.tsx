@@ -349,6 +349,44 @@ describe('StickerPrintPanel', () => {
   });
 
   // The prepared list names each product's print code (2026-10-12): the QR on its stickers.
+  // A variable run (round 10, 2026-10-13): a picked row's own batch, quantity, dates and packed-for go with that row, and the summary says so.
+  it('gives a picked product its own batch, dates and packed-for, which the request and the summary carry', async () => {
+    stickerLinks.mockImplementation(async (body: { preview?: boolean }) => ({
+      url: '/labels/stickers?print=1&signature=x', one_url: body.preview ? '/labels/stickers?one=1&signature=p' : null, view_url: '/labels/stickers?signature=x', pdf_url: '/labels/stickers.pdf?signature=x', expires_in_minutes: 30,
+      summary: { layout: 'a4-4', label: '4 on A4', design: 'full', stickers: 8, pages: 2, per_page: 4, products: [
+        { id: 1, key: 'i1', name: 'Bajiya', copies: 4, mfg: '2026-10-10', exp: '2027-01-08', shelf_life_days: 90, ingredients_from: 'manual', batch: 'A1', qty: 6, for: 'NH Kuda Rah', varied: true },
+        { id: 2, key: 'i2', name: 'Patties', copies: 4, mfg: '2026-10-13', exp: null, shelf_life_days: null, ingredients_from: 'manual', batch: 'SHEET', qty: null, varied: false },
+      ] },
+    }));
+    render(<MemoryRouter><StickerPrintPanel /></MemoryRouter>);
+    await screen.findByTestId('label-size-picker');
+    fireEvent.click(screen.getByLabelText('Print Bajiya'));
+    fireEvent.click(screen.getByLabelText('Print Patties'));
+    fireEvent.click(screen.getByText('Fill in the dates'));
+    expect(screen.queryByTestId('sticker-row-run-i1')).toBeNull();
+    fireEvent.click(screen.getByTestId('sticker-row-details-i1'));
+    const fold = screen.getByTestId('sticker-row-run-i1');
+    fireEvent.change(within(fold).getByLabelText('Bajiya: batch'), { target: { value: ' A1 ' } });
+    fireEvent.change(within(fold).getByLabelText('Bajiya: quantity per pack'), { target: { value: '6' } });
+    fireEvent.change(within(fold).getByLabelText('Bajiya: made on'), { target: { value: '2026-10-10' } });
+    fireEvent.change(within(fold).getByLabelText('Bajiya: packed for'), { target: { value: 'NH Kuda Rah' } });
+    expect(screen.getByTestId('sticker-row-details-i1')).toHaveTextContent('Own details');
+    // The row's expiry follows its own made-on date.
+    expect(screen.getAllByTestId('row-expiry')[0]).toHaveTextContent('EXP 2027-01-08');
+    fireEvent.click(screen.getByTestId('sticker-prepare'));
+    await waitFor(() => expect(prepared()).toBeTruthy());
+    expect(prepared()).toMatchObject({ items: [{ id: 1, copies: 4, kind: 'item', batch: 'A1', qty: 6, mfg: '2026-10-10', for: 'NH Kuda Rah' }, { id: 2, copies: 4, kind: 'item' }] });
+    expect((prepared()!.items as Record<string, unknown>[])[1]).not.toHaveProperty('batch');
+    const summary = await screen.findByTestId('sticker-summary');
+    expect(summary).toHaveTextContent('Bajiya × 4 · EXP 2027-01-08 · batch A1 · 6 per pack · for NH Kuda Rah');
+    expect(summary).not.toHaveTextContent('batch SHEET');
+    // Use the sheet's details clears the row's own.
+    fireEvent.click(screen.getByRole('button', { name: 'Change' }));
+    fireEvent.click(screen.getByTestId('sticker-row-run-clear-i1'));
+    expect(screen.queryByTestId('sticker-row-run-i1')).toBeNull();
+    expect(screen.getByTestId('sticker-row-details-i1')).toHaveTextContent('Details');
+  });
+
   it('shows the print code of each product once prepared', async () => {
     stickerLinks.mockResolvedValue({
       url: '/labels/stickers?print=1&signature=x', view_url: '/labels/stickers?signature=x', pdf_url: '/labels/stickers.pdf?signature=x', expires_in_minutes: 30,

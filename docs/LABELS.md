@@ -223,6 +223,32 @@ until the catalogue arrives), the `chips` input kind on the tap sheet (`quickSpe
 `label_badges` on the drafts and payloads and in `TEMPLATE_KEYS`. Tests: `LabelBadgesTest`,
 `BadgePicker.test.tsx`, the badges case in `CustomLabels.test.tsx`.
 
+### Variable runs: each product's own details on one print
+
+Round 10 (owner, 2026-10-13; the audit's "one label per line of a catering order or
+wholesale delivery, each with its own name, date and batch, printed in one go"). On Print
+labels every picked product has a **Details** button beside its count; it opens that
+row's own boxes: batch, quantity per pack, packed for and its second line, and (when the
+dates are filled in) its own made-on and expiry dates. What is typed there prints on that
+product's stickers instead of the sheet's batch, quantity, dates and packed-for; an
+empty box falls back to the sheet's, and a made-on date of its own gives the row its own
+expiry from its shelf life. The button reads **Own details** once a row has some; **Use
+the sheet's details** clears them. The summary after preparing says what each row
+printed with, the print log keeps each product's own batch, quantity and packed-for,
+the sheet link carries the rows (`runs`, a JSON list aligned with `items`), and the saved
+label replays them. A row's details are checked as the sheet's are (a made-on date more
+than a week away, an expiry before its made-on date or already passed, a quantity
+outside 1 to 9999, a batch over 30 characters).
+
+Where: `StickerSheet::RUN_KEYS`, `parseItems()` keeps a row's `run`, `cleanRun()`,
+`runsParam()` / the `runs` query, `rowRequest()` (the sheet's request with the row's
+details over it, used by `build()` and `summary()`, whose products carry `batch`, `qty`,
+`for`, `for2`, `varied`); `stickerRules()` takes `items.*.batch` and kin; the print log
+takes each product's own values. Admin: `RowRun`, `runPayload()`, the Details fold on
+each picked row (`sticker-row-details-{key}`, `sticker-row-run-{key}`) and the saved
+label's reopen in `StickerPrintPanel.tsx`; `StickerRun` in `api/labels.ts`. Tests:
+`VariableRunsTest`, the variable-run case in `StickerPrintPanel.test.tsx`.
+
 ## Who can use it
 
 Two permissions, both owner-only until granted in Staff → Permissions (to a role or
@@ -813,6 +839,7 @@ beneath.
 | Label printer | `App\Domains\Labels\LabelRaster` (`page()` draws one page of a built sheet with GD at `dpi`, `DPIS` 203 / 300; text from the PDF font files, Thaana in visual order, PNGs dithered, SVGs redrawn from `build()['vectors']`: a QR from its text, a barcode from its digits; `png()` for checking), `ZplEncoder` (`^GFA` with ZPL's run-length form), `TsplEncoder` (`SIZE`, `GAP`, `BITMAP` with the bits inverted, `PRINT 1,1`); signed routes `/labels/stickers.zpl`, `.tspl`, `.png` (`page` outside the signature), single-label sheets only; `dpi` on the sticker request, `zpl_url` / `tspl_url` / `raster_url` in the reply; `scripts/label-print-agent.mjs`; `LabelPrinterCard.tsx` (`labels.printer` in localStorage, `readPrinterSetup()` / `sendToLabelPrinter()` in `api/labels.ts`) and the buttons on `StickerPrintPanel` |
 | Wrap-around labels | `StickerLayouts::design()` answers `wrap` (`WRAP_MIN_RATIO` 2.5, `WRAP_MIN_W` 90, `WRAP_MIN_H` 25; mirrored in `labelSize.ts`, pinned by `fixtures/label_size_parity.json`), presets `r200x50`, `r180x40`, `r150x35`, `r120x40`; `App\Domains\Labels\WrapDesign` (`wrap()`: widths from each part's least width and share, `DROP_ORDER`, the band, one method a part); `WrapConfig` (`of()`, `clean()`, `PARTS`, `DEFAULT_PARTS`, `catalogue()`), kept as `items.label_wrap` / `custom_labels.label_wrap` (JSON) with `label_nutrition_per`; `LabelMarks` (`MARKS` glyph + caption, `for()`); `stickerData()` sets `wrap`, `marks`, `pictures` (PNG data URIs) and `producer`; `LabelText::FONTS['sym']` (`fonts/pdf/LabelSymbols.ttf`, `fonts/label-symbols.woff2`); `GET /api/labels/layouts` carries `wrap` (parts, marks, defaults); `WrapParts.tsx` on `ItemLabelTab` and the custom label editor, `wrap_pictures` on the payloads for the thumbnails |
 | Allergen pictograms | `App\Domains\Labels\AllergenIcons` (`for()`, `keys()`, `svg()`, `dataUri()`; words → symbols, captions, `SPICY_LEVELS`); `stickerData()` sets `icons`, `StickerDesign::full()` draws the row (12 mm pitch, 8.8 mm tall) above the note; setting `label_allergen_icons` |
+| Variable runs | A row's own `batch`, `qty`, `mfg`, `exp`, `for`, `for2` in a sticker request (`StickerSheet::RUN_KEYS`, `cleanRun()`, `rowRequest()`; the link's `runs`); the Details fold on each picked row of `StickerPrintPanel.tsx` (§ Variable runs) |
 | Badges | `items.label_badges`, `custom_labels.label_badges` (JSON list, up to four keys; § Badges); `App\Domains\Labels\LabelBadges` (`CATALOGUE`, `clean()`, `rules()`, `for()`, `pills()`), drawn by every design under the name; the catalogue with `GET /api/labels/layouts` as `badges`; `BadgePicker.tsx` and the tap sheet's `chips` input |
 | Drag designer | `items.label_layout`, `custom_labels.label_layout` (JSON per design and part; § The drag designer); `App\Domains\Labels\LabelLayout` (`clean()`, `rules()`, `apply()` on the marked runs in `StickerSheet::pieces()`); `labelLayout.ts`, `SpotOverlay` move mode, `ArrangeBar.tsx` |
 | Templates | `label_templates` (`App\Models\LabelTemplate`; § Templates); `App\Domains\Labels\LabelTemplates` (`KEYS`, `BUILTIN`, `rules()`, `normaliseFields()`, `normaliseSize()`, `present()`); API `GET /api/labels/templates` (`labels.print`), `POST` / `PUT` / `DELETE /api/labels/templates/{template}` (`labels.manage`); `labelTemplates.ts`, `StartFrom.tsx`, `LabelTemplatesCard.tsx` under Wording and logos |

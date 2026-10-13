@@ -117,6 +117,13 @@ class LabelsController extends Controller
             }],
             'items.*.kind' => 'sometimes|in:item,custom',
             'items.*.copies' => 'required|integer|min:1|max:' . StickerSheet::MAX_STICKERS,
+            // A variable run (round 10, 2026-10-13): a row's own batch, quantity, dates and packed-for.
+            'items.*.batch' => 'nullable|string|max:30',
+            'items.*.qty' => 'nullable|integer|min:1|max:9999',
+            'items.*.mfg' => 'nullable|date_format:Y-m-d',
+            'items.*.exp' => 'nullable|date_format:Y-m-d',
+            'items.*.for' => 'nullable|string|max:60',
+            'items.*.for2' => 'nullable|string|max:60',
             'lang' => ['sometimes', Rule::in(StickerSheet::LANGS)],
             'layout' => ['sometimes', Rule::in(array_keys(StickerLayouts::LAYOUTS))],
             'w' => 'nullable|numeric',
@@ -210,12 +217,10 @@ class LabelsController extends Controller
             'number' => $req['number'] ? 1 : null,
             'marks' => $req['marks'] ? 1 : null,
             'bleed' => $req['marks'] && $req['bleed'] > 0 ? $req['bleed'] : null,
+            // A variable run (round 10): the rows' own details, aligned with items.
+            'runs' => StickerSheet::runsParam($req['items']),
         ];
-        $details = array_filter([
-            'for' => $req['for'],
-            'for2' => $req['for2'],
-            'promo' => $req['promo'] === 'was_now' ? 'now MVR ' . number_format((float) $req['promo_now'], 2) : ($req['promo'] === 'text' ? $req['promo_text'] : null),
-        ], fn ($v) => $v !== null && $v !== '');
+        $promoDetail = $req['promo'] === 'was_now' ? 'now MVR ' . number_format((float) $req['promo_now'], 2) : ($req['promo'] === 'text' ? $req['promo_text'] : null);
 
         // Each product's print gets a code the sticker carries as a QR (the
         // pack's page, BatchLink); a preview shows the QR with a code that
@@ -240,9 +245,10 @@ class LabelsController extends Controller
                     'copies' => $p['copies'],
                     'mfg_date' => $p['mfg'],
                     'exp_date' => $p['exp'],
-                    'batch_code' => $req['batch'] !== '' ? $req['batch'] : null,
-                    'pack_qty' => $req['qty'] !== '' ? (int) $req['qty'] : null,
-                    'details' => $details !== [] ? $details : null,
+                    // Each product's own batch, quantity and packed-for when the run varies (round 10), else the sheet's.
+                    'batch_code' => ($p['batch'] ?? '') !== '' ? $p['batch'] : null,
+                    'pack_qty' => $p['qty'] ?? null,
+                    'details' => ($details = array_filter(['for' => $p['for'] ?? null, 'for2' => $p['for2'] ?? null, 'promo' => $promoDetail], fn ($v) => $v !== null && $v !== '')) !== [] ? $details : null,
                     'printed_by' => $userId,
                     'output' => 'print',
                 ]);

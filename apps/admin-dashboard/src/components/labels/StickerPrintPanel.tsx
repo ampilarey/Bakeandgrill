@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Printer, FileDown, AlertTriangle, Search, Bookmark, Eye, Plus, History, CalendarDays, ChevronDown, ChevronUp, Star, Clock, Send, Image as ImageIcon } from 'lucide-react';
+import { Printer, FileDown, AlertTriangle, Search, Bookmark, Eye, Plus, History, CalendarDays, ChevronDown, ChevronUp, Star, Clock, Send, Image as ImageIcon, ListPlus } from 'lucide-react';
 import {
   downloadLabelSheet, fetchCateringStickers, fetchCustomLabels, fetchDeliveryStickers, fetchLabelFooters, fetchLabelJob, fetchLabelJobs, fetchLabelLayouts, fetchLabelProducts, fetchLabelTypes, openLabelSheet, printLabelJob, printsViaPdf, readPrinterSetup, renameLabelJob, sendToLabelPrinter, stickerLinks,
-  type CustomLabel, type LabelFooter, type LabelJob, type LabelLimits, type LabelPreset, type LabelProduct, type LabelRoll, type LabelType, type PromoKind, type SheetLinks, type StickerLang, type StickerSummary,
+  type CustomLabel, type LabelFooter, type LabelJob, type LabelLimits, type LabelPreset, type LabelProduct, type LabelRoll, type LabelType, type PromoKind, type SheetLinks, type StickerLang, type StickerRun, type StickerSummary,
 } from '../../api';
 import { useCurrentUserPermissions } from '../../hooks/usePermissions';
 import { useIsBelowDesktop } from '../../hooks/useIsMobile';
@@ -65,6 +65,31 @@ const SHORT_LIFE_DAYS = 3;
 const LANG_NAMES: Record<StickerLang, string> = { en: 'English', dv: 'ދިވެހި', both: 'Both' };
 const parseKey = (key: string): { kind: 'item' | 'custom'; id: number } => ({ kind: key.startsWith('c') ? 'custom' : 'item', id: Number(key.slice(1)) });
 
+/*
+ * A variable run (round 10, 2026-10-13: "one label per line of a catering
+ * order or wholesale delivery, each with its own name, date and batch,
+ * printed in one go"): a picked row may carry its own batch, quantity,
+ * made-on and expiry dates and packed-for lines, printed on that product's
+ * stickers instead of the sheet's; an empty box falls back to the sheet's.
+ */
+type RowRun = { batch: string; qty: string; mfg: string; exp: string; for: string; for2: string };
+const RUN_KEYS = ['batch', 'qty', 'mfg', 'exp', 'for', 'for2'] as const;
+const EMPTY_RUN: RowRun = { batch: '', qty: '', mfg: '', exp: '', for: '', for2: '' };
+const hasRun = (run: RowRun | undefined): boolean => Boolean(run) && RUN_KEYS.some((k) => run![k].trim() !== '');
+const runFrom = (row: StickerRun): RowRun => ({ batch: row.batch ?? '', qty: row.qty != null ? String(row.qty) : '', mfg: row.mfg ?? '', exp: row.exp ?? '', for: row.for ?? '', for2: row.for2 ?? '' });
+/** What a row sends: only the boxes with something in them; the dates only when they are filled in. */
+function runPayload(run: RowRun | undefined, fill: boolean): StickerRun {
+  if (!run) return {};
+  const out: StickerRun = {};
+  if (run.batch.trim()) out.batch = run.batch.trim();
+  if (run.qty.trim()) out.qty = Number(run.qty);
+  if (fill && run.mfg) out.mfg = run.mfg;
+  if (fill && run.exp) out.exp = run.exp;
+  if (run.for.trim()) out.for = run.for.trim();
+  if (run.for2.trim()) out.for2 = run.for2.trim();
+  return out;
+}
+
 const fieldClass = 'h-10 min-h-[44px] px-3 rounded-lg border border-[var(--color-border)] bg-white text-sm text-[var(--color-text)] w-full';
 const labelClass = 'block text-xs font-semibold text-[var(--color-text-secondary)] mb-1';
 
@@ -113,6 +138,9 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState<string | null>(null);
   const [picked, setPicked] = useState<Record<string, number>>({});
+  // A variable run (round 10, 2026-10-13): a row's own batch, quantity, dates and packed-for, printed instead of the sheet's.
+  const [runs, setRuns] = useState<Record<string, RowRun>>({});
+  const [openRun, setOpenRun] = useState<string | null>(null);
   const [lang, setLang] = useState<StickerLang>('en');
   const [choice, setChoice] = useState<SizeChoice>(() => rememberedSize() ?? DEFAULT_CHOICE);
   const [rounded, setRounded] = useState(false);
@@ -202,8 +230,9 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
     if (!jobParam) return;
     fetchLabelJob(Number(jobParam)).then((r) => {
       const q = r.data.request as Record<string, unknown>;
-      const items = Array.isArray(q.items) ? (q.items as { id: number; copies: number; kind?: string }[]) : [];
+      const items = Array.isArray(q.items) ? (q.items as ({ id: number; copies: number; kind?: string } & StickerRun)[]) : [];
       setPicked(Object.fromEntries(items.map((i) => [keyOf(i.kind === 'custom' ? 'custom' : 'item', Number(i.id)), Number(i.copies)])));
+      setRuns(Object.fromEntries(items.filter((i) => RUN_KEYS.some((k) => i[k] != null && i[k] !== '')).map((i) => [keyOf(i.kind === 'custom' ? 'custom' : 'item', Number(i.id)), runFrom(i)])));
       if (q.lang === 'dv' || q.lang === 'en' || q.lang === 'both') setLang(q.lang);
       setSavedSize({ layout: typeof q.layout === 'string' ? q.layout : 'a4-4', w: q.w != null ? Number(q.w) : null, h: q.h != null ? Number(q.h) : null });
       setFill(Boolean(q.fill));
@@ -310,11 +339,14 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
   const shown = rows.filter((r) => (show === 'all' || r.kind === show) && (!needle || picked[r.key] || r.name.toLowerCase().includes(needle) || (r.name_dv ?? '').includes(query.trim())));
 
   const toggle = (key: string) => setPicked((p) => (p[key] ? Object.fromEntries(Object.entries(p).filter(([k]) => k !== key)) : { ...p, [key]: perPage }));
+  const setRun = (key: string, k: keyof RowRun, v: string) => setRuns((s) => ({ ...s, [key]: { ...(s[key] ?? EMPTY_RUN), [k]: v } }));
+  /** A row's expiry as it will print: its own dates first, then the sheet's. */
+  const rowExpiry = (r: Row): string | null => (runs[r.key]?.exp || exp) || expiryFrom(runs[r.key]?.mfg || mfg, r.shelf);
 
   const request = (first: string | null = null) => {
     const ordered = first != null && items.some((i) => i.key === first) ? [...items.filter((i) => i.key === first), ...items.filter((i) => i.key !== first)] : items;
     return {
-      items: ordered.map((i) => ({ id: i.id, copies: i.copies, kind: i.kind })), lang, layout: sized.layout,
+      items: ordered.map((i) => ({ id: i.id, copies: i.copies, kind: i.kind, ...runPayload(runs[i.key], fill) })), lang, layout: sized.layout,
       w: sized.w, h: sized.h,
       rounded: choice.shape === 'rect' && rounded,
       fill, mfg: fill ? mfg : null, exp: fill && exp ? exp : null,
@@ -542,8 +574,8 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
                       <span className="block text-xs text-[var(--color-text-muted)] sm:truncate">
                         {r.kind === 'custom' && r.brand ? `${r.brand} · ` : ''}
                         {picked[r.key] && fill
-                          ? (exp || expiryFrom(mfg, r.shelf)
-                            ? <span className="font-semibold text-[var(--color-text-secondary)]" data-testid="row-expiry">EXP {exp || expiryFrom(mfg, r.shelf)}</span>
+                          ? (rowExpiry(r)
+                            ? <span className="font-semibold text-[var(--color-text-secondary)]" data-testid="row-expiry">EXP {rowExpiry(r)}</span>
                             : 'Expiry blank: no shelf life set')
                           : (r.shelf ? `Keeps ${r.shelf} days` : 'No shelf life set, dates print blank')}
                         {' · '}{r.ingredients === 'recipe' ? 'ingredients from the recipe' : r.ingredients === 'manual' ? 'ingredients typed in' : 'no ingredients yet'}
@@ -551,10 +583,26 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
                     </span>
                   </label>
                   {picked[r.key] ? (
-                    <div className="ml-auto pl-8 sm:pl-0">
+                    <div className="ml-auto pl-8 sm:pl-0 flex items-center gap-2">
                       <QtyStepper value={picked[r.key]} min={1} max={400} step={perPage} onChange={(n) => setPicked((s) => ({ ...s, [r.key]: n }))} label={`How many ${r.name} stickers`} />
+                      <button type="button" onClick={() => setOpenRun((o) => (o === r.key ? null : r.key))} aria-expanded={openRun === r.key || hasRun(runs[r.key])} aria-label={`Own details for ${r.name}`} title="Its own batch, quantity, dates and packed-for" data-testid={`sticker-row-details-${r.key}`}
+                        className={['h-8 min-h-[32px] px-2 rounded-lg border text-xs font-semibold inline-flex items-center gap-1', hasRun(runs[r.key]) ? 'bg-[var(--color-tone-rust-bg)] border-[var(--color-tone-rust-border)] text-[var(--color-tone-rust-text)]' : 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text-secondary)]'].join(' ')}>
+                        <ListPlus size={14} aria-hidden /> {hasRun(runs[r.key]) ? 'Own details' : 'Details'}
+                      </button>
                     </div>
                   ) : null}
+                  {picked[r.key] && (openRun === r.key || hasRun(runs[r.key])) && (
+                    <div className="w-full pl-8 sm:pl-0 grid gap-2 sm:grid-cols-3" data-testid={`sticker-row-run-${r.key}`}>
+                      <p className="sm:col-span-3 text-xs text-[var(--color-text-muted)]">Printed on {r.name}'s stickers instead of the sheet's batch, quantity, dates and packed-for. Leave a box empty to use the sheet's.</p>
+                      <input value={runs[r.key]?.batch ?? ''} maxLength={30} onChange={(e) => setRun(r.key, 'batch', e.target.value)} placeholder="Batch" aria-label={`${r.name}: batch`} className={fieldClass} />
+                      <input type="number" inputMode="numeric" min={1} max={9999} value={runs[r.key]?.qty ?? ''} onChange={(e) => setRun(r.key, 'qty', e.target.value)} placeholder="Quantity per pack" aria-label={`${r.name}: quantity per pack`} className={fieldClass} />
+                      <input value={runs[r.key]?.for ?? ''} maxLength={60} onChange={(e) => setRun(r.key, 'for', e.target.value)} placeholder="Packed for" aria-label={`${r.name}: packed for`} className={fieldClass} />
+                      {fill && <input type="date" value={runs[r.key]?.mfg ?? ''} onChange={(e) => setRun(r.key, 'mfg', e.target.value)} aria-label={`${r.name}: made on`} className={fieldClass} />}
+                      {fill && <input type="date" value={runs[r.key]?.exp ?? ''} onChange={(e) => setRun(r.key, 'exp', e.target.value)} aria-label={`${r.name}: expiry`} className={fieldClass} />}
+                      <input value={runs[r.key]?.for2 ?? ''} maxLength={60} onChange={(e) => setRun(r.key, 'for2', e.target.value)} placeholder="Second line (the delivery, the date)" aria-label={`${r.name}: packed for, second line`} className={fieldClass} />
+                      {hasRun(runs[r.key]) && <button type="button" onClick={() => { setRuns((s) => Object.fromEntries(Object.entries(s).filter(([k]) => k !== r.key))); setOpenRun(null); }} className="text-xs underline text-[var(--color-tone-rust-text)] text-left sm:col-span-3" data-testid={`sticker-row-run-clear-${r.key}`}>Use the sheet's details</button>}
+                    </div>
+                  )}
                 </div>
               ))}
               {shown.length === 0 && <p className="px-3 py-4 text-sm text-[var(--color-text-muted)] bg-[var(--color-surface)]">{needle ? `No product matches “${query}”.` : 'Nothing here yet.'}</p>}
@@ -730,6 +778,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
               <li key={p.key ?? p.id}>
                 {p.name} × {p.copies}
                 {fill ? (p.exp ? ` · EXP ${p.exp}` : ' · expiry blank (no shelf life set)') : ''}
+                {p.varied ? [p.batch ? `batch ${p.batch}` : null, p.qty ? `${p.qty} per pack` : null, p.for ? `for ${p.for}` : null].filter(Boolean).map((t) => ` · ${t}`).join('') : ''}
                 {p.code && <span className="ml-2 font-mono text-xs text-[var(--color-text-muted)]" title="On every sticker of this product as a QR, which opens the pack's page" data-testid="print-code">code {p.code}</span>}
               </li>
             ))}

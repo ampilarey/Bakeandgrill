@@ -259,7 +259,7 @@ class CustomLabelsTest extends TestCase
         $this->assertStringContainsString('Garlic Sauce', $html);
 
         // "7:2" is menu item 7, "c7:3" custom label 7: two products.
-        $this->assertSame([['id' => 7, 'copies' => 2, 'kind' => 'item'], ['id' => 7, 'copies' => 3, 'kind' => 'custom']], StickerSheet::parseItems('7:2,c7:3'));
+        $this->assertSame([['id' => 7, 'copies' => 2, 'kind' => 'item', 'run' => []], ['id' => 7, 'copies' => 3, 'kind' => 'custom', 'run' => []]], StickerSheet::parseItems('7:2,c7:3'));
         $this->assertSame('7:2,c7:3', StickerSheet::itemsParam(StickerSheet::parseItems('7:2,c7:3')));
 
         $this->postJson('/api/labels/stickers/url', ['items' => [['id' => 99999, 'kind' => 'custom', 'copies' => 1]]])

@@ -116,6 +116,20 @@ final class StickerSheet
             throw new InvalidArgumentException('The quantity is a number of pieces, 1 to 9999.');
         }
         $promo = self::promoOf($in);
+        // A variable run (round 10, 2026-10-13): each row's own details, from the
+        // rows themselves or from a sheet link's `runs` (a JSON list aligned with items).
+        $runs = $in['runs'] ?? null;
+        if (is_string($runs)) {
+            $decoded = json_decode($runs, true);
+            $runs = is_array($decoded) ? $decoded : null;
+        }
+        foreach ($items as $i => $row) {
+            $run = $row['run'] ?? [];
+            if ($run === [] && is_array($runs) && isset($runs[$i]) && is_array($runs[$i])) {
+                $run = $runs[$i];
+            }
+            $items[$i]['run'] = self::cleanRun($run, $fill, $today);
+        }
 
         return [
             'items' => $items,
@@ -308,7 +322,8 @@ final class StickerSheet
             if ($product === null) {
                 continue;
             }
-            $data = $this->stickerData($product, $req, $common, $production);
+            $rowReq = self::rowRequest($req, $row);
+            $data = $this->stickerData($product, $rowReq, $common, $production);
             $vectors += $data['vector'];
             if (!empty($req['number'])) {
                 // Pack numbering (round C): each copy its own sticker, "Pack 3 of 40".
@@ -321,7 +336,7 @@ final class StickerSheet
                     $stickers[] = $pieces;
                 }
             }
-            $summary[] = ['id' => $product->id, 'kind' => $row['kind'], 'name' => $product->name, 'copies' => $row['copies'], 'exp' => $data['exp_iso'], 'mfg' => $data['mfg_iso']];
+            $summary[] = ['id' => $product->id, 'kind' => $row['kind'], 'name' => $product->name, 'copies' => $row['copies'], 'exp' => $data['exp_iso'], 'mfg' => $data['mfg_iso'], 'batch' => $rowReq['batch'], 'qty' => $rowReq['qty']];
         }
 
         return [
@@ -479,7 +494,8 @@ final class StickerSheet
             if ($product === null) {
                 continue;
             }
-            [$mfg, $exp] = $this->dates($product, $req, $production);
+            $rowReq = self::rowRequest($req, $row);
+            [$mfg, $exp] = $this->dates($product, $rowReq, $production);
             $products[] = [
                 'id' => $product->id,
                 'kind' => $row['kind'],
@@ -490,6 +506,12 @@ final class StickerSheet
                 'exp' => $exp,
                 'shelf_life_days' => $product->label_shelf_life_days,
                 'ingredients_from' => $this->ingredientLines($product)['from'],
+                // A variable run (round 10): what this row prints with, where it differs from the sheet.
+                'batch' => $rowReq['batch'],
+                'qty' => $rowReq['qty'] !== '' ? (int) $rowReq['qty'] : null,
+                'for' => $rowReq['for'],
+                'for2' => $rowReq['for2'],
+                'varied' => ($row['run'] ?? []) !== [],
             ];
             $total += $row['copies'];
         }
@@ -513,7 +535,7 @@ final class StickerSheet
         if ($products !== []) {
             $first = $found[$products[0]['key']];
             $dv = $req['lang'] === 'dv';
-            $data = $this->stickerData($first, $req, $this->common() + ['both' => $req['lang'] === 'both'], $production);
+            $data = $this->stickerData($first, self::rowRequest($req, $req['items'][0]), $this->common() + ['both' => $req['lang'] === 'both'], $production);
             if ($sheet['design'] === 'wrap') {
                 $summary['wrap'] = WrapDesign::strips($data, $dv, (float) $sheet['w'], (float) $sheet['h']);
             }
@@ -804,7 +826,14 @@ final class StickerSheet
         } elseif (is_array($raw)) {
             foreach ($raw as $row) {
                 if (is_array($row)) {
-                    $rows[] = ['id' => (int) ($row['id'] ?? 0), 'copies' => (int) ($row['copies'] ?? 0), 'kind' => ($row['kind'] ?? 'item') === 'custom' ? 'custom' : 'item'];
+                    // A variable run (round 10, 2026-10-13): a row's own batch, quantity, dates and packed-for.
+                    $run = [];
+                    foreach (self::RUN_KEYS as $k) {
+                        if (isset($row[$k]) && trim((string) $row[$k]) !== '') {
+                            $run[$k] = trim((string) $row[$k]);
+                        }
+                    }
+                    $rows[] = ['id' => (int) ($row['id'] ?? 0), 'copies' => (int) ($row['copies'] ?? 0), 'kind' => ($row['kind'] ?? 'item') === 'custom' ? 'custom' : 'item', 'run' => $run];
                 }
             }
         }
@@ -812,12 +841,111 @@ final class StickerSheet
         foreach ($rows as $row) {
             if ((is_string($row['id']) ? $row['id'] !== '' : $row['id'] > 0) && $row['copies'] > 0) {
                 $key = self::key($row);
-                $merged[$key] ??= ['id' => $row['id'], 'copies' => 0, 'kind' => $row['kind']];
+                $merged[$key] ??= ['id' => $row['id'], 'copies' => 0, 'kind' => $row['kind'], 'run' => $row['run'] ?? []];
                 $merged[$key]['copies'] += min($row['copies'], self::MAX_STICKERS);
             }
         }
 
         return array_values($merged);
+    }
+
+    /** What a row of a variable run may set for itself (round 10): the sheet's value otherwise. */
+    public const RUN_KEYS = ['batch', 'qty', 'mfg', 'exp', 'for', 'for2'];
+
+    /**
+     * A row's own details, checked as the sheet's are: the batch to 30
+     * characters, the quantity 1 to 9999, the dates real and in order (and
+     * dropped when the dates are not filled in), packed-for to 60. Only
+     * what is set is kept.
+     *
+     * @param array<string, mixed> $run
+     * @return array<string, string>
+     */
+    private static function cleanRun(array $run, bool $fill, CarbonImmutable $today): array
+    {
+        $out = [];
+        $batch = mb_substr(trim((string) ($run['batch'] ?? '')), 0, 30);
+        if ($batch !== '') {
+            $out['batch'] = $batch;
+        }
+        $qty = trim((string) ($run['qty'] ?? ''));
+        if ($qty !== '') {
+            if (!ctype_digit($qty) || (int) $qty < 1 || (int) $qty > 9999) {
+                throw new InvalidArgumentException('A quantity is a number of pieces, 1 to 9999.');
+            }
+            $out['qty'] = $qty;
+        }
+        if ($fill) {
+            $mfg = self::date($run['mfg'] ?? null);
+            $exp = self::date($run['exp'] ?? null);
+            if ($mfg !== null && CarbonImmutable::parse($mfg)->greaterThan($today->addDays(7))) {
+                throw new InvalidArgumentException('A made-on date is more than a week away. Check the dates.');
+            }
+            if ($exp !== null) {
+                $e = CarbonImmutable::parse($exp);
+                if ($mfg !== null && $e->lessThan(CarbonImmutable::parse($mfg))) {
+                    throw new InvalidArgumentException('An expiry date is before its made-on date.');
+                }
+                if ($e->lessThan($today)) {
+                    throw new InvalidArgumentException('An expiry date has already passed.');
+                }
+            }
+            if ($mfg !== null) {
+                $out['mfg'] = $mfg;
+            }
+            if ($exp !== null) {
+                $out['exp'] = $exp;
+            }
+        }
+        foreach (['for', 'for2'] as $k) {
+            $v = mb_substr(trim((string) ($run[$k] ?? '')), 0, 60);
+            if ($v !== '') {
+                $out[$k] = $v;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * The rows' own details as a sheet link carries them (`runs`): a JSON
+     * list aligned with `items`, or null when no row has any.
+     *
+     * @param list<array{run?: array<string, string>}> $items
+     */
+    public static function runsParam(array $items): ?string
+    {
+        $runs = array_map(fn (array $r) => $r['run'] ?? [], $items);
+        if (array_filter($runs) === []) {
+            return null;
+        }
+
+        return (string) json_encode(array_map(fn (array $r) => (object) $r, $runs), JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * The request a row prints with: the sheet's, with the row's own details over it.
+     *
+     * @param array<string, mixed> $req
+     * @param array{run?: array<string, string>} $row
+     * @return array<string, mixed>
+     */
+    public static function rowRequest(array $req, array $row): array
+    {
+        $run = $row['run'] ?? [];
+        if ($run === []) {
+            return $req;
+        }
+        $out = $req;
+        foreach ($run as $k => $v) {
+            $out[$k] = $v;
+        }
+        // A row's own made-on date without an expiry: the expiry follows from the shelf life again.
+        if (isset($run['mfg']) && !isset($run['exp'])) {
+            $out['exp'] = null;
+        }
+
+        return $out;
     }
 
     /**
