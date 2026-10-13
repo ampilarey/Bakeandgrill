@@ -322,9 +322,11 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
   const qrWord = d.label_show_qr === 'on' ? 'printed' : d.label_show_qr === 'off' ? 'off' : `as the footer (${qrFollows ? 'printed' : 'off'})`;
   const sizeLine = `${sizeName(choice.shape, dims.w, dims.h)} · ${presets.length ? stockOf(choice, presets).label : 'A4 sheet'}`;
 
+  // Open, not folded (owner, 2026-10-13: "there is no custom size selection in
+  // custom labels"): the shape and size chips sit in plain view, as on Pack stickers.
   const sizeSection = (
-    <Section title="Sticker size" summary={sizeLine} open={false} testId="custom-label-size">
-      <p className="text-xs text-[var(--color-text-muted)]">The preview and Print… use this size; it starts as the one Pack stickers last printed.</p>
+    <Section title="Shape and size" summary={sizeLine} open testId="custom-label-size">
+      <p className="text-xs text-[var(--color-text-muted)]">Round or rectangle, a one-tap size or any size typed in. The preview and Print… use it; it starts as the one Pack stickers last printed.</p>
       <LabelSizePicker presets={presets} limits={limits} choice={choice} onChange={setChoice} rounded={rounded} onRounded={setRounded} />
     </Section>
   );
