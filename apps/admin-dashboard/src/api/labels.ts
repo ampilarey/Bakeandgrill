@@ -177,7 +177,15 @@ export type LabelPreset = {
 
 export type LabelLimits = { min_short: number; min_long: number; max_w: number; max_h: number; min_round: number; max_round: number; sheet_margin: number };
 
-export type LabelLayoutsResponse = { data: LabelLayout[]; presets: LabelPreset[]; limits: LabelLimits; wrap: WrapCatalogue };
+/**
+ * A label roll or sheet the business owns (round 6, 2026-10-13: "only the
+ * sizes you own"; Labels → Settings → My label rolls): a size choice as the
+ * picker holds it, with a name of the owner's. Every size picker shows them
+ * first and the rest under More sizes. Kept as the JSON setting `label_rolls`.
+ */
+export type LabelRoll = { id: string; name: string; shape: 'rect' | 'circle'; preset: string; on: LabelStock; w: number; h: number };
+
+export type LabelLayoutsResponse = { data: LabelLayout[]; presets: LabelPreset[]; limits: LabelLimits; wrap: WrapCatalogue; rolls?: LabelRoll[] };
 
 /**
  * A pack sticker for something that is not on the menu (owner, 2026-10-11:

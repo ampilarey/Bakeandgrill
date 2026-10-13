@@ -1,8 +1,8 @@
-import { ArrowLeftRight, Circle, RectangleVertical } from 'lucide-react';
-import type { LabelLimits, LabelPreset } from '../../api';
+import { ArrowLeftRight, ChevronDown, Circle, RectangleVertical } from 'lucide-react';
+import type { LabelLimits, LabelPreset, LabelRoll } from '../../api';
 import { TabScrollRow } from '../SharedUI';
 import {
-  DESIGN_NAMES, designFor, sizeCm, sizeName, sizeOf, sizeProblem, stockOf, stocksFor, switchShape, withPreset,
+  DESIGN_NAMES, designFor, rollChoice, rollMatches, rollName, sizeCm, sizeName, sizeOf, sizeProblem, stockOf, stocksFor, switchShape, withPreset,
   type LabelShape, type SizeChoice,
 } from './labelSize';
 
@@ -10,7 +10,10 @@ import {
  * Label size (owner, 2026-10-11: "Add label size. For example rectangular 4 cm
  * by 6 cm, circle 6 cm diameter ect."): the shape, a size in one tap or typed
  * in, and where it prints, with how many fit a sheet. The live preview beside
- * the form shows the result.
+ * the form shows the result. With rolls registered under Settings (round 6,
+ * 2026-10-13: "only the sizes you own") they come first, one chip each, and
+ * the shape, every size and the stock fold away under More sizes, open only
+ * while the choice is none of the rolls.
  */
 
 type Props = {
@@ -20,6 +23,8 @@ type Props = {
   onChange: (choice: SizeChoice) => void;
   rounded: boolean;
   onRounded: (rounded: boolean) => void;
+  /** The rolls and sheets the business owns; none shows every size plainly. */
+  rolls?: LabelRoll[];
 };
 
 const labelClass = 'block text-xs font-semibold text-[var(--color-text-secondary)] mb-1';
@@ -34,7 +39,7 @@ function chipClass(on: boolean) {
   ].join(' ');
 }
 
-export function LabelSizePicker({ presets, limits, choice, onChange, rounded, onRounded }: Props) {
+export function LabelSizePicker({ presets, limits, choice, onChange, rounded, onRounded, rolls = [] }: Props) {
   const ofShape = presets.filter((p) => p.shape === choice.shape);
   const custom = choice.preset === 'custom';
   const stocks = stocksFor(choice, presets);
@@ -48,9 +53,10 @@ export function LabelSizePicker({ presets, limits, choice, onChange, rounded, on
       ? `${stock.perPage} on a ready-cut A4 sheet`
       : `${stock.perPage} on ${stock.landscape ? 'a landscape' : 'an'} A4 sheet, cut on the dashed lines`;
   const setNum = (key: 'w' | 'h', value: string) => onChange({ ...choice, [key]: Number(value), ...(choice.shape === 'circle' && key === 'w' ? { h: Number(value) } : {}) });
+  const onRoll = rolls.find((r) => rollMatches(r, choice, presets)) ?? null;
 
-  return (
-    <div className="space-y-3" data-testid="label-size-picker">
+  const everySize = (
+    <>
       <div>
         <span className={labelClass}>Shape</span>
         <div className="flex flex-wrap gap-2" role="group" aria-label="Shape">
@@ -99,12 +105,44 @@ export function LabelSizePicker({ presets, limits, choice, onChange, rounded, on
           ))}
         </TabScrollRow>
       </div>
+    </>
+  );
+
+  return (
+    <div className="space-y-3" data-testid="label-size-picker">
+      {rolls.length > 0 && (
+        <div>
+          <span className={labelClass}>My label rolls</span>
+          <TabScrollRow role="group" aria-label="My label rolls" style={{ gap: 8 }}>
+            {rolls.map((r) => {
+              const on = onRoll?.id === r.id;
+              const rs = stockOf(rollChoice(r), presets);
+              return (
+                <button key={r.id} type="button" aria-pressed={on} onClick={() => onChange(rollChoice(r))} className={chipClass(on)} title={`${sizeName(r.shape, r.w, r.h)} · ${rs.label}`}>
+                  {rollName(r)}{r.name.trim() ? <span className="font-normal opacity-80">· {r.shape === 'circle' ? `Ø ${r.w}` : `${r.w} × ${r.h}`}</span> : null}
+                </button>
+              );
+            })}
+          </TabScrollRow>
+        </div>
+      )}
+
+      {rolls.length > 0 ? (
+        <details className="rounded-xl border border-[var(--color-border)]" open={onRoll === null} data-testid="label-size-more">
+          <summary className="cursor-pointer list-none px-3 min-h-[40px] flex items-center gap-2 text-sm font-semibold text-[var(--color-text)] select-none">
+            <ChevronDown size={16} className="shrink-0 text-[var(--color-text-muted)]" aria-hidden />
+            <span>More sizes</span>
+            <span className="ml-auto text-xs font-normal text-[var(--color-text-muted)]">{onRoll ? 'Any shape, size or stock' : sizeName(choice.shape, w, h)}</span>
+          </summary>
+          <div className="px-3 pb-3 space-y-3">{everySize}</div>
+        </details>
+      ) : everySize}
 
       {problem ? (
         <p role="alert" className="text-xs text-[var(--color-danger-strong)]">{problem}</p>
       ) : (
         <p className="text-xs text-[var(--color-text-muted)]" data-testid="label-size-hint">
-          {sizeName(choice.shape, w, h)} ({sizeCm(choice.shape, w, h)}) · {DESIGN_NAMES[design]} · {where}.
+          {onRoll ? `${rollName(onRoll)} · ` : ''}{sizeName(choice.shape, w, h)} ({sizeCm(choice.shape, w, h)}) · {DESIGN_NAMES[design]} · {where}.
           {stock.on === 'precut' ? ' Nudge the position in Settings if it prints off the cut.' : ''}
         </p>
       )}

@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Domains\Labels\Barcode;
 use App\Domains\Labels\BatchLink;
+use App\Domains\Labels\LabelRolls;
 use App\Domains\Labels\BoxLabel;
 use App\Domains\Labels\ExpiringPrints;
 use App\Domains\Labels\LabelIngredients;
@@ -85,6 +86,8 @@ class LabelsController extends Controller
             'limits' => StickerLayouts::limits(),
             // The wrap-around label's parts and marks, as the editors list them (2026-10-12).
             'wrap' => WrapConfig::catalogue(),
+            // The rolls and sheets the business owns (round 6, 2026-10-13): every size picker shows them first.
+            'rolls' => LabelRolls::all(),
         ]);
     }
 
@@ -798,10 +801,20 @@ class LabelsController extends Controller
             $rules[$key] = match (true) {
                 str_starts_with($key, 'label_precut_') => 'sometimes|nullable|numeric|between:-20,20',
                 $key === 'label_dhivehi_font' => ['sometimes', 'nullable', Rule::in(LabelSettings::DHIVEHI_FONTS)],
+                // My label rolls (round 6): a JSON list, tidied by LabelRolls before it is kept.
+                $key === LabelRolls::KEY => ['sometimes', 'nullable', 'string', 'max:8000', function (string $attribute, mixed $value, \Closure $fail): void {
+                    if ($value !== null && trim((string) $value) !== '' && !is_array(json_decode((string) $value, true))) {
+                        $fail('The label rolls are not a list.');
+                    }
+                }],
                 default => 'sometimes|nullable|string|max:200',
             };
         }
-        LabelSettings::save($request->validate($rules));
+        $data = $request->validate($rules);
+        if (array_key_exists(LabelRolls::KEY, $data)) {
+            $data[LabelRolls::KEY] = LabelRolls::encode(LabelRolls::normalise($data[LabelRolls::KEY] ?? ''));
+        }
+        LabelSettings::save($data);
 
         return response()->json(['data' => LabelSettings::all()]);
     }

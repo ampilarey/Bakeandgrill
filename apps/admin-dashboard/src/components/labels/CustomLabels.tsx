@@ -4,7 +4,7 @@ import { Bookmark, ChevronDown, Copy, Eye, ImagePlus, Pencil, Plus, Printer, Ref
 import {
   createCustomLabel, deleteCustomLabel, duplicateCustomLabel, fetchCustomLabels, fetchLabelBrands, fetchLabelFooters, fetchLabelLayouts, fetchLabelSettings, fetchLabelTypes,
   previewCustomDraft, stickerLinks, updateCustomLabel, uploadCustomLabelPicture,
-  type CustomLabel, type LabelBrand, type LabelFooter, type LabelLimits, type LabelPreset, type LabelSpot, type LabelSpotKey, type LabelStorage, type LabelType, type StickerLang, type WrapCatalogue, type WrapPartKey, type WrapStrips,
+  type CustomLabel, type LabelBrand, type LabelFooter, type LabelLimits, type LabelPreset, type LabelRoll, type LabelSpot, type LabelSpotKey, type LabelStorage, type LabelType, type StickerLang, type WrapCatalogue, type WrapPartKey, type WrapStrips,
 } from '../../api';
 import { FooterPicker } from './FooterPicker';
 import { WRAP_FALLBACK, WrapParts } from './WrapParts';
@@ -128,6 +128,8 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
   const [quick, setQuick] = useState<LabelSpotKey | null>(null);
   const [presets, setPresets] = useState<LabelPreset[]>([]);
   const [limits, setLimits] = useState<LabelLimits | null>(null);
+  // The rolls and sheets the business owns (round 6): the size picker shows them first.
+  const [rolls, setRolls] = useState<LabelRoll[]>([]);
   const [choice, setChoice] = useState<SizeChoice>(() => rememberedSize() ?? DEFAULT_CHOICE);
   const [rounded, setRounded] = useState(false);
   const previewSeq = useRef(0);
@@ -139,7 +141,7 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
     fetchLabelTypes().then((r) => setTypes(r.data.filter((t) => t.is_active || t.id === label?.label_type_id))).catch(() => setTypes([]));
   }, [label?.label_type_id]);
   useEffect(() => {
-    fetchLabelLayouts().then((r) => { setPresets(r.presets); setLimits(r.limits ?? null); setCatalogue(r.wrap ?? null); }).catch(() => setPresets([]));
+    fetchLabelLayouts().then((r) => { setPresets(r.presets); setLimits(r.limits ?? null); setCatalogue(r.wrap ?? null); setRolls(r.rolls ?? []); }).catch(() => setPresets([]));
     fetchLabelFooters().then((r) => setFooters(r.data)).catch(() => setFooters([]));
     fetchLabelSettings().then((r) => setDvFont(r.data.label_dhivehi_font || 'noto')).catch(() => setDvFont(null));
   }, []);
@@ -302,7 +304,7 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
   // custom labels"): the shape and size chips sit in plain view, as on Print labels.
   const sizeSection = (
     <Section title="Shape and size" summary={sizeLine} open testId="custom-label-size" help="Round or rectangle, a one-tap size or any size typed in. The preview and Print… use it; it starts as the one Print labels last printed.">
-      <LabelSizePicker presets={presets} limits={limits} choice={choice} onChange={setChoice} rounded={rounded} onRounded={setRounded} />
+      <LabelSizePicker presets={presets} limits={limits} choice={choice} onChange={setChoice} rounded={rounded} onRounded={setRounded} rolls={rolls} />
     </Section>
   );
   const touchable = previewWrap !== null || previewSpots.length > 0;

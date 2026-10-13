@@ -13,6 +13,7 @@ import { IngredientGlossary } from '../components/labels/IngredientGlossary';
 import { NutritionCard } from '../components/labels/NutritionCard';
 import { LabelPrinterCard } from '../components/labels/LabelPrinterCard';
 import { LabelsTour } from '../components/labels/LabelsTour';
+import { LabelRollsCard } from '../components/labels/LabelRollsCard';
 import { Switch } from '../components/SharedUI';
 import { Button, Card, useToast } from '../components/ui';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
@@ -437,6 +438,9 @@ function SettingsTab({ canManage }: { canManage: boolean }) {
           <p className="px-4 py-6 text-center text-sm text-[var(--color-text-muted)]">{query ? `No item matches “${query}”.` : 'No products are on labels yet. Pick All items to switch some on.'}</p>
         )}
       </Card>
+
+      {/* The rolls and sheets the business owns (round 6, 2026-10-13): every size picker shows them first. */}
+      <LabelRollsCard canManage={canManage} />
 
       <Card className="labels-sticky" padding="sm" header={<div><h3 className="font-bold text-[var(--color-text)]">Wording</h3><p className="text-xs text-[var(--color-text-muted)] mt-1">Phone, website, address and tagline come from Business Details. Empty a box to go back to the original wording.</p></div>}>
         <div className="space-y-5">

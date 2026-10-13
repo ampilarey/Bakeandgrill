@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Printer, FileDown, AlertTriangle, Search, Bookmark, Eye, Plus, History, CalendarDays, ChevronDown, ChevronUp, Star, Clock, Send, Image as ImageIcon } from 'lucide-react';
 import {
   downloadLabelSheet, fetchCateringStickers, fetchCustomLabels, fetchDeliveryStickers, fetchLabelFooters, fetchLabelJob, fetchLabelJobs, fetchLabelLayouts, fetchLabelProducts, fetchLabelTypes, openLabelSheet, printLabelJob, printsViaPdf, readPrinterSetup, renameLabelJob, sendToLabelPrinter, stickerLinks,
-  type CustomLabel, type LabelFooter, type LabelJob, type LabelLimits, type LabelPreset, type LabelProduct, type LabelType, type PromoKind, type SheetLinks, type StickerLang, type StickerSummary,
+  type CustomLabel, type LabelFooter, type LabelJob, type LabelLimits, type LabelPreset, type LabelProduct, type LabelRoll, type LabelType, type PromoKind, type SheetLinks, type StickerLang, type StickerSummary,
 } from '../../api';
 import { useCurrentUserPermissions } from '../../hooks/usePermissions';
 import { useIsBelowDesktop } from '../../hooks/useIsMobile';
@@ -84,6 +84,8 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
   const [customs, setCustoms] = useState<CustomLabel[]>([]);
   const [presets, setPresets] = useState<LabelPreset[]>([]);
   const [limits, setLimits] = useState<LabelLimits | null>(null);
+  // The rolls and sheets the business owns (round 6): the size picker shows them first.
+  const [rolls, setRolls] = useState<LabelRoll[]>([]);
   const [fixedPages, setFixedPages] = useState<Record<string, { w: number; h: number }>>({});
   const [types, setTypes] = useState<LabelType[]>([]);
   const [asType, setAsType] = useState<number | null>(null);
@@ -162,6 +164,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
     fetchLabelLayouts().then((r) => {
       setPresets(r.presets ?? []);
       setLimits(r.limits ?? null);
+      setRolls(r.rolls ?? []);
       setFixedPages(Object.fromEntries((r.data ?? []).map((l) => [l.key, { w: l.page_w, h: l.page_h }])));
     }).catch(() => setPresets([]));
     fetchLabelTypes().then((r) => setTypes(r.data.filter((t) => t.is_active))).catch(() => setTypes([]));
@@ -574,7 +577,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
       <section className="space-y-3">
         <h3 className="text-sm font-bold text-[var(--color-text)]">Label size</h3>
         {presets.length > 0 ? (
-          <LabelSizePicker presets={presets} limits={limits} choice={choice} onChange={setChoice} rounded={rounded} onRounded={setRounded} />
+          <LabelSizePicker presets={presets} limits={limits} choice={choice} onChange={setChoice} rounded={rounded} onRounded={setRounded} rolls={rolls} />
         ) : (
           <p className="text-xs text-[var(--color-text-muted)]">Loading the sizes…</p>
         )}

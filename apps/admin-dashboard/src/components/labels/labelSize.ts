@@ -1,4 +1,4 @@
-import type { LabelLimits, LabelPreset, LabelStock } from '../../api';
+import type { LabelLimits, LabelPreset, LabelRoll, LabelStock } from '../../api';
 
 /*
  * The label size picker's state, and what it sends (owner, 2026-10-11: "Add
@@ -190,6 +190,42 @@ export function withPreset(choice: SizeChoice, preset: string, presets: LabelPre
   }
   const on = p.options.some((o) => o.on === choice.on) ? choice.on : (p.options.find((o) => o.on === 'sheet') ?? p.options[0]).on;
   return { ...choice, shape: p.shape, preset: p.id, on, w: p.w, h: p.h };
+}
+
+/*
+ * My label rolls (round 6, 2026-10-13): the rolls and sheets the business
+ * owns, each a size choice with a name; the pickers show them first.
+ */
+
+/** The picker's choice for a roll. */
+export function rollChoice(roll: LabelRoll): SizeChoice {
+  return { shape: roll.shape, preset: roll.preset, on: roll.on, w: roll.w, h: roll.h };
+}
+
+/** What a roll is called: its name, else its size. */
+export function rollName(roll: LabelRoll): string {
+  return roll.name.trim() || sizeName(roll.shape, roll.w, roll.h);
+}
+
+/** Whether a choice is this roll: the same shape, the same printed size and the same stock. */
+export function rollMatches(roll: LabelRoll, choice: SizeChoice, presets: LabelPreset[]): boolean {
+  if (roll.shape !== choice.shape) return false;
+  const a = sizeOf(rollChoice(roll), presets);
+  const b = sizeOf(choice, presets);
+  return near(a.w, b.w) && near(a.h, b.h) && stockOf(rollChoice(roll), presets).on === stockOf(choice, presets).on;
+}
+
+/** The rolls kept in the settings map (`label_rolls`, JSON), or none. */
+export function parseRolls(raw: string | null | undefined): LabelRoll[] {
+  if (!raw) return [];
+  try {
+    const list = JSON.parse(raw) as unknown;
+    if (!Array.isArray(list)) return [];
+    return list.filter((r): r is LabelRoll => Boolean(r) && typeof r === 'object' && typeof (r as LabelRoll).id === 'string' && ((r as LabelRoll).shape === 'rect' || (r as LabelRoll).shape === 'circle') && Number.isFinite((r as LabelRoll).w))
+      .map((r) => ({ id: r.id, name: typeof r.name === 'string' ? r.name : '', shape: r.shape, preset: typeof r.preset === 'string' && r.preset ? r.preset : 'custom', on: r.on, w: Number(r.w), h: Number.isFinite(r.h) ? Number(r.h) : Number(r.w) }));
+  } catch {
+    return [];
+  }
 }
 
 const LAST_SIZE_KEY = 'labels.lastSize';

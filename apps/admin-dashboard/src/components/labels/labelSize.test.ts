@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { LabelLimits, LabelPreset } from '../../api';
+import type { LabelLimits, LabelPreset, LabelRoll } from '../../api';
 import {
-  choiceFromRequest, designFor, gridCount, pageOf, requestFor, sizeCm, sizeName, sizeProblem, stockOf, stocksFor,
+  choiceFromRequest, designFor, gridCount, pageOf, parseRolls, requestFor, rollChoice, rollMatches, rollName, sizeCm, sizeName, sizeProblem, stockOf, stocksFor,
   switchShape, withPreset, type LabelShape, type SizeChoice,
 } from './labelSize';
 
@@ -138,5 +138,36 @@ describe('label size picker', () => {
     expect(sizeProblem(typed('circle', 25, 25), limits)).toBe('Round stickers can be from 30 to 200 mm across.');
     // A preset is always fine.
     expect(sizeProblem({ shape: 'rect', preset: 'r40x60', on: 'sheet', w: 1, h: 1 }, limits)).toBeNull();
+  });
+});
+
+/* My label rolls (round 6, 2026-10-13): a roll is a size choice with a name. */
+describe('label rolls', () => {
+  const big: LabelRoll = { id: 'big', name: 'Big sheets', shape: 'rect', preset: 'r105x148', on: 'precut', w: 105, h: 148.5 };
+  const small: LabelRoll = { id: 'small', name: '', shape: 'rect', preset: 'custom', on: 'printer', w: 40, h: 60 };
+
+  it('turns a roll into the picker\'s choice and names it', () => {
+    expect(rollChoice(big)).toEqual({ shape: 'rect', preset: 'r105x148', on: 'precut', w: 105, h: 148.5 });
+    expect(rollName(big)).toBe('Big sheets');
+    expect(rollName(small)).toBe('40 × 60 mm');
+  });
+
+  it('matches a choice by shape, printed size and stock', () => {
+    expect(rollMatches(big, { shape: 'rect', preset: 'r105x148', on: 'precut', w: 1, h: 1 }, PRESETS)).toBe(true);
+    expect(rollMatches(big, { shape: 'rect', preset: 'r105x148', on: 'sheet', w: 105, h: 148.5 }, PRESETS)).toBe(false);
+    // A typed size that prints the same as a preset is the same roll; the preset r40x60 on a printer is the small roll.
+    expect(rollMatches(small, { shape: 'rect', preset: 'r40x60', on: 'printer', w: 40, h: 60 }, PRESETS)).toBe(true);
+    expect(rollMatches(small, typed('rect', 40, 60, 'printer'), PRESETS)).toBe(true);
+    expect(rollMatches(small, typed('rect', 40, 60), PRESETS)).toBe(false);
+    expect(rollMatches(small, typed('circle', 40, 40, 'printer'), PRESETS)).toBe(false);
+  });
+
+  it('reads the rolls kept in the settings map and drops what is not a roll', () => {
+    expect(parseRolls('')).toEqual([]);
+    expect(parseRolls('not json')).toEqual([]);
+    expect(parseRolls(JSON.stringify([big, { id: 'c', shape: 'circle', w: 60, on: 'sheet' }, { shape: 'rect' }, 7]))).toEqual([
+      big,
+      { id: 'c', name: '', shape: 'circle', preset: 'custom', on: 'sheet', w: 60, h: 60 },
+    ]);
   });
 });

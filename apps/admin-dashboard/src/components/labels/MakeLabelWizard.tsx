@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Box, Check, FileDown, HelpCircle, Pencil, Plus, Printer, Search, Tag, UtensilsCrossed } from 'lucide-react';
 import {
   downloadLabelSheet, fetchCustomLabels, fetchLabelBrands, fetchLabelFooters, fetchLabelLayouts, fetchLabelProducts, fetchLabelTypes, openLabelSheet, stickerLinks, updateCustomLabel, updateItemLabel,
-  type CustomLabel, type LabelBrand, type LabelFooter, type LabelLimits, type LabelPreset, type LabelProduct, type LabelSpot, type LabelSpotKey, type LabelType, type SheetLinks, type StickerLang,
+  type CustomLabel, type LabelBrand, type LabelFooter, type LabelLimits, type LabelPreset, type LabelProduct, type LabelRoll, type LabelSpot, type LabelSpotKey, type LabelType, type SheetLinks, type StickerLang,
 } from '../../api';
 import { Button, useToast } from '../ui';
 import { Modal, TabScrollRow } from '../SharedUI';
@@ -16,7 +16,7 @@ import { LabelSizePicker } from './LabelSizePicker';
 import { QtyStepper } from './QtyStepper';
 import { CustomLabelModal, langOf } from './CustomLabels';
 import { ItemLabelTab } from './ItemLabelTab';
-import { DEFAULT_CHOICE, DESIGN_NAMES, designFor, rememberSize, rememberedSize, requestFor, sizeName, sizeOf, sizeProblem, stockOf, stocksFor, withPreset, type SizeChoice } from './labelSize';
+import { DEFAULT_CHOICE, DESIGN_NAMES, designFor, rememberSize, rememberedSize, requestFor, rollChoice, rollMatches, rollName, sizeName, sizeOf, sizeProblem, stockOf, stocksFor, withPreset, type SizeChoice } from './labelSize';
 
 /*
  * Make a label, in four steps (owner, 2026-10-13: "Still its v confusing and
@@ -146,6 +146,9 @@ export function MakeLabelWizard() {
   const [customs, setCustoms] = useState<CustomLabel[] | null>(null);
   const [presets, setPresets] = useState<LabelPreset[]>([]);
   const [limits, setLimits] = useState<LabelLimits | null>(null);
+  // The rolls and sheets the business owns (round 6): their cards come first, the rest under More sizes.
+  const [rolls, setRolls] = useState<LabelRoll[]>([]);
+  const [moreSizes, setMoreSizes] = useState(false);
   const [query, setQuery] = useState('');
   const [switching, setSwitching] = useState<number | null>(null);
   const [newCustom, setNewCustom] = useState(false);
@@ -180,7 +183,13 @@ export function MakeLabelWizard() {
   const previewSeq = useRef(0);
 
   useEffect(() => {
-    fetchLabelLayouts().then((r) => { setPresets(r.presets); setLimits(r.limits); }).catch(() => { setPresets([]); setLimits(null); });
+    fetchLabelLayouts().then((r) => {
+      setPresets(r.presets); setLimits(r.limits);
+      const owned = r.rolls ?? [];
+      setRolls(owned);
+      // Start on the first roll you own, unless a size was already picked.
+      if (owned.length > 0) setChoice((c) => (c === DEFAULT_CHOICE ? rollChoice(owned[0]) : c));
+    }).catch(() => { setPresets([]); setLimits(null); });
   }, []);
   useEffect(() => {
     if (kind === 'item' && products === null) fetchLabelProducts(true).then((r) => setProducts(r.data)).catch(() => setProducts([]));
@@ -236,6 +245,13 @@ export function MakeLabelWizard() {
   const pickCard = (id: string) => {
     setOwnSize(false);
     setChoice((c) => withPreset(c, id, presets));
+  };
+  // A roll you own, picked as a card; the standard cards stay under More sizes while one is picked.
+  const rollPicked = !ownSize ? rolls.find((r) => rollMatches(r, choice, presets)) ?? null : null;
+  const showStandard = rolls.length === 0 || moreSizes || (!rollPicked && !ownSize);
+  const pickRoll = (r: LabelRoll) => {
+    setOwnSize(false);
+    setChoice(rollChoice(r));
   };
 
   const sized = presets.length > 0 ? requestFor(choice, presets) : { layout: 'a4-4', w: null as number | null, h: null as number | null };
@@ -464,6 +480,29 @@ export function MakeLabelWizard() {
       {step === 2 && picked && (
         <div className="space-y-4" data-testid="make-step-2">
           <h2 className="text-lg font-bold text-[var(--color-text)]">Which label for {picked.name}?</h2>
+          {rolls.length > 0 && (
+            <div className="grid gap-3 grid-cols-2 sm:grid-cols-3" role="group" aria-label="My label rolls" data-testid="make-rolls">
+              {rolls.map((r) => {
+                const on = rollPicked?.id === r.id;
+                const stock = stockOf(rollChoice(r), presets);
+                const { w, h } = sizeOf(rollChoice(r), presets);
+                return (
+                  <button key={r.id} type="button" onClick={() => pickRoll(r)} aria-pressed={on}
+                    className={['text-left rounded-xl border p-3 flex flex-col items-center gap-2', on ? 'border-[var(--color-primary)] bg-[var(--color-tone-rust-bg)]' : 'border-[var(--color-border)] bg-[var(--color-bg)]'].join(' ')}>
+                    <LabelSchematic shape={r.shape} w={w} h={h} />
+                    <span className="block w-full">
+                      <span className="block text-sm font-bold text-[var(--color-text)]">{rollName(r)}</span>
+                      <span className="block text-xs text-[var(--color-text-muted)]">{r.name.trim() ? `${sizeName(r.shape, w, h)} · ` : ''}{stock.on === 'printer' ? 'label printer' : `${stock.perPage} on ${stock.label}`}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {!showStandard && (
+            <button type="button" onClick={() => setMoreSizes(true)} className="text-sm font-semibold underline text-[var(--color-tone-rust-text)]" data-testid="make-more-sizes">More sizes</button>
+          )}
+          {showStandard && (
           <div className="grid gap-3 grid-cols-2 sm:grid-cols-3" role="group" aria-label="Which label">
             {LABEL_CARDS.map((card) => {
               const p = presetOf(card.preset);
@@ -490,6 +529,7 @@ export function MakeLabelWizard() {
               </span>
             </button>
           </div>
+          )}
           {ownSize && (
             <div className="rounded-xl border border-[var(--color-border)] p-3" data-testid="make-own-size">
               <LabelSizePicker presets={presets} limits={limits} choice={choice} onChange={setChoice} rounded={rounded} onRounded={setRounded} />
@@ -498,7 +538,7 @@ export function MakeLabelWizard() {
           <p className="text-xs text-[var(--color-text-muted)]" data-testid="make-size-line">{sizeLine}.</p>
           <div className="flex flex-wrap gap-2 justify-between">
             <Button variant="secondary" icon={<ArrowLeft size={16} />} onClick={() => jump(1)}>Back</Button>
-            <Button onClick={() => setStep(3)} disabled={Boolean(sizeIssue) || (!cardPicked && !ownSize)} data-testid="make-next-2">Next: see it</Button>
+            <Button onClick={() => setStep(3)} disabled={Boolean(sizeIssue) || (!cardPicked && !ownSize && !rollPicked)} data-testid="make-next-2">Next: see it</Button>
           </div>
         </div>
       )}

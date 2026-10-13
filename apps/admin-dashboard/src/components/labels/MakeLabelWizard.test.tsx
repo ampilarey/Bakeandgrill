@@ -185,4 +185,40 @@ describe('MakeLabelWizard', () => {
     fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'All details' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
+
+  // Round 6 (owner, 2026-10-13: only the sizes you own): the rolls registered under
+  // Settings come first as cards, the wizard starts on the first, and the picture
+  // cards wait under More sizes.
+  it('shows the rolls you own first and keeps the other sizes under More sizes', async () => {
+    api.fetchLabelLayouts.mockResolvedValue({
+      data: [], presets, limits, wrap: { parts: [], marks: [], default_parts: [], default_marks: [], max_pictures: 4 },
+      rolls: [
+        { id: 'small', name: 'Small roll', shape: 'rect', preset: 'r60x40', on: 'printer', w: 60, h: 40 },
+        { id: 'lids', name: '', shape: 'circle', preset: 'c60', on: 'sheet', w: 60, h: 60 },
+      ],
+    });
+    mount();
+    fireEvent.click(screen.getByRole('button', { name: /A menu item/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Masroshi/ }));
+    const mine = await screen.findByRole('group', { name: 'My label rolls' });
+    const cards = within(mine).getAllByRole('button');
+    expect(cards.map((c) => c.textContent)).toEqual(['Small roll60 × 40 mm · label printer', 'Round 60 mm12 on A4 sheet']);
+    // Started on the first roll: picked, and the picture cards folded away.
+    expect(cards[0]).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByRole('group', { name: 'Which label' })).toBeNull();
+    expect(screen.getByTestId('make-size-line')).toHaveTextContent('60 × 40 mm · small sticker · one per label on a label printer');
+    expect(screen.getByTestId('make-next-2')).toBeEnabled();
+
+    fireEvent.click(cards[1]);
+    expect(cards[1]).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('make-size-line')).toHaveTextContent('Round 60 mm · round sticker · 12 on A4 sheet');
+
+    fireEvent.click(screen.getByTestId('make-more-sizes'));
+    const all = screen.getByRole('group', { name: 'Which label' });
+    fireEvent.click(within(all).getByRole('button', { name: /Jar or tub/ }));
+    expect(screen.getByTestId('make-size-line')).toHaveTextContent('60 × 40 mm · small sticker · 18 on A4 sheet');
+    expect(cards[0]).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(screen.getByTestId('make-next-2'));
+    await waitFor(() => expect(api.stickerLinks).toHaveBeenLastCalledWith(expect.objectContaining({ layout: 'a4-custom', w: 60, h: 40, preview: true })));
+  });
 });

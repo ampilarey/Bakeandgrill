@@ -105,6 +105,26 @@ where things live), kept away by Done or the X (`localStorage['labels.tour']`), 
 from **How it works** beside the wizard's steps (`openLabelsTour()`). A new tab or a
 renamed one goes into the fourth card.
 
+### My label rolls: only the sizes you own
+
+Round 6 of the usability work (owner, 2026-10-13; the audit's "size is a wall of 19
+numbers"). Labels → Settings → **My label rolls** lists the rolls and sheets the business
+actually has, each with a name of the owner's ("Big sheets", "Small roll"), added with
+the usual size picker (shape, a one-tap size or a typed one, the stock it prints on),
+renamed in place and removed after asking (`LabelRollsCard.tsx`). They are kept as one
+JSON setting, `label_rolls` (`LabelRolls::normalise()` on the way in: a roll on an unknown
+preset, a shape that does not match it or a typed size the sheet cannot print is dropped,
+a stock the size does not offer falls back to its first, at most twenty), and sent with
+`GET /labels/layouts` as `rolls` so every picker has them with Print labels alone. With
+rolls registered, the size picker (`LabelSizePicker`, on Print labels and the custom
+label editor) shows them first, one chip each by name, and folds the shape, every size and
+the stock under **More sizes**, open only while the choice is none of the rolls
+(`rollMatches()`: the same shape, printed size and stock); the wizard's "Which label"
+shows their cards first (the schematic, the name, the size and the stock), starts on the
+first roll, and keeps the picture cards and My own size behind **More sizes**. With no
+rolls, nothing changes. A roll is a size choice as the picker holds it
+(`rollChoice()`), so anything that takes a `SizeChoice` takes a roll.
+
 ## Who can use it
 
 Two permissions, both owner-only until granted in Staff → Permissions (to a role or

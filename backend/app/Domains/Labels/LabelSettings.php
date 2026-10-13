@@ -63,6 +63,8 @@ final class LabelSettings
         'label_precut_top' => '0',
         'label_precut_left' => '0',
         'label_precut_gutter' => '0',
+        // The label rolls and sheets the business owns (round 6, 2026-10-13), a JSON list; LabelRolls reads it.
+        'label_rolls' => '',
     ];
 
     public static function get(string $key): string

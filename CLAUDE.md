@@ -306,7 +306,11 @@ screen's words and the code the code's. Zero state and tour (round 5): an empty 
 labels list offers Choose which items get labels (`ChooseItemsModal`, ticks saved at once)
 and Make a label, and `LabelsTour` (four cards, `localStorage['labels.tour']`, How it works
 on the wizard) opens on the hub's first visit; a renamed or new tab goes into its fourth
-card. How to
+card. My label rolls (round 6): the rolls and sheets the business owns, the setting
+`label_rolls` (`LabelRolls::normalise()`, sent with `GET /labels/layouts` as `rolls`),
+edited under Settings (`LabelRollsCard`); every size picker shows them first and folds
+the rest under More sizes (`LabelSizePicker` `rolls`, the wizard's roll cards,
+`rollMatches()` in `labelSize.ts`), and with none registered nothing changes. How to
 use it and where everything lives: `docs/LABELS.md`; design and decisions:
 `docs/LABEL_HUB_PLAN.md` and `docs/LABEL_HUB_V2_PLAN.md`.
 
