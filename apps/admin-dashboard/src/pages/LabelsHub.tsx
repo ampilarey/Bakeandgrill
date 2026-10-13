@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Printer, FileDown, Pencil, Copy, Trash2, Tag, ChevronDown, ChevronUp, Star, Clock } from 'lucide-react';
 import { HubPage, hubPermissions, type HubTab } from '../components/HubPage';
+import { MakeLabelWizard } from '../components/labels/MakeLabelWizard';
 import { StickerPrintPanel } from '../components/labels/StickerPrintPanel';
 import { BoxLabelPanel } from '../components/labels/BoxLabelPanel';
 import { TypesAndBrands } from '../components/labels/TypesAndBrands';
@@ -512,6 +513,9 @@ function TypesTabWithPermission() {
 }
 
 export const LABELS_TABS: HubTab[] = [
+  // Owner, 2026-10-13 ("Still its v confusing and not user friendly"): the way in
+  // for everyone, four steps; the other tabs stay for those who know them.
+  { id: 'make', label: 'Make a label', permissions: ['labels.print', 'labels.manage'], desc: 'Four steps: what it is for, which label, a look at it, how many to print', render: () => <MakeLabelWizard /> },
   { id: 'stickers', label: 'Pack stickers', permissions: ['labels.print', 'labels.manage'], desc: 'Stickers for packs, in English or Dhivehi, on any size: A4 sheets, label printers, round', render: () => <><ExpiringStock /><Card padding="sm" className="labels-sticky"><StickerPrintPanel /></Card></> },
   // Owner, 2026-10-11: "Add option to add custom labels using different brands logos and other details. Not only from the menu list".
   { id: 'custom', label: 'Custom labels', permissions: ['labels.print', 'labels.manage'], desc: 'Stickers for things that are not on the menu, with any brand, logo and details', render: () => <CustomTabWithPermission /> },

@@ -11,6 +11,32 @@ recommendations): price and barcode, net weight, allergens in bold, both languag
 one sticker, a draft previewed as it is typed, pinned saved labels, and stickers from
 the kitchen screen (§ For the shop till and after).
 
+## Make a label: the way in
+
+Owner, 2026-10-13 ("Still its v confusing and not user friendly"): Labels now opens on
+**Make a label**, four steps that reach a printed sheet without knowing the rest of the
+hub (`MakeLabelWizard.tsx`, the hub's first tab, `labels/make`):
+
+1. **What is it for.** A menu item (any item; one not yet on labels is switched on the
+   moment it is picked, so "Menu items (0)" is never the first thing anyone sees), something
+   else (a custom label from the list, or New custom label, which opens the editor), or a
+   delivery box (Box labels).
+2. **Which label.** Picture cards with everyday names, each drawn as it prints
+   (`LabelSchematic`, `LABEL_CARDS`): Big pack sticker (105 × 148.5), Half-size sticker
+   (99 × 70.5), Jar or tub (60 × 40), Price tag (40 × 30), Round lid (Ø 60), Bottle wrap
+   (180 × 40), and My own size, which opens the usual shape and size picker. The last size
+   printed wears "last used".
+3. **Looks right.** One large live preview (the same `stickerLinks` preview request Pack
+   stickers makes), the language, whether to fill in the dates and the made-on date, the
+   quantity per pack, and "Change the details", which opens the custom label editor or the
+   item's Label tab in a pop-up; the preview redraws when it closes.
+4. **How many and print.** Print on (the size's stocks), the number of labels (a sheet's
+   worth to start with, one on a label printer), then Print or PDF: the same request as
+   Pack stickers, so the print is logged, the size remembered and the sheet lands under
+   Saved labels, where the step says so. "Make another label" starts over.
+
+Pack stickers, Custom labels and the rest stay as they were for those who know them.
+
 ## Who can use it
 
 Two permissions, both owner-only until granted in Staff → Permissions (to a role or

@@ -275,7 +275,14 @@ custom label editor. Parts share the width by weight (`WrapDesign::share()`): to
 every part shrinks to its floor before any is dropped (`DROP_ORDER`), so nine parts print
 on 180 × 40 mm. The barcode SVG is sized in its own units (`Barcode::svgDataUri`, no mm):
 dompdf's SVG library ignores the viewBox, and a size in mm drew the bars twice as tall as
-the box on every design. How to
+the box on every design. Labels opens on **Make a label** (owner, 2026-10-13: "Still
+its v confusing and not user friendly"): `MakeLabelWizard.tsx`, the hub's first tab, four
+steps (what it is for, with a menu item switched on for labels as it is picked; which
+label, as picture cards with everyday names from `LABEL_CARDS` drawn by `LabelSchematic`;
+looks right, one live preview with language, dates and quantity and the full editor in a
+pop-up; how many and print, through the same sticker request as Pack stickers). The other
+tabs stay for those who know them; a new way to print a label goes into the wizard too,
+not beside it. How to
 use it and where everything lives: `docs/LABELS.md`; design and decisions:
 `docs/LABEL_HUB_PLAN.md` and `docs/LABEL_HUB_V2_PLAN.md`.
 
