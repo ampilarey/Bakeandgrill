@@ -60,6 +60,7 @@ vi.mock('../../api', () => ({
   readPrinterSetup: () => ({ ...printerSetup }),
   sendToLabelPrinter: (...a: unknown[]) => sendToLabelPrinter(...a),
   fetchLabelPrint: (...a: unknown[]) => fetchLabelPrint(...a),
+  MOCK_SURFACE_NAMES: { jar: 'Jar', bottle: 'Bottle', box: 'Box', lid: 'Lid' },
 }));
 vi.mock('../ScanSheet', () => ({ ScanSheet: () => <div data-testid="scan-sheet" /> }));
 
@@ -298,6 +299,25 @@ describe('StickerPrintPanel', () => {
     await waitFor(() => expect(screen.getByLabelText('Print Gift box')).toBeChecked());
     // Without Manage label settings there is no "New custom label".
     expect(screen.queryByTestId('sticker-new-custom')).not.toBeInTheDocument();
+  });
+
+  // The mock-up preview (round 14, 2026-10-13): the sticker on each surface that suits it, the likeliest first.
+  it('shows the sticker on a jar, bottle or box in the mock-up preview', async () => {
+    stickerLinks.mockResolvedValue({ url: '/labels/stickers?preview=1&signature=s', one_url: '/labels/stickers?one=1&signature=o', view_url: '/v', pdf_url: '/p', expires_in_minutes: 30,
+      mock_urls: { jar: '/labels/stickers?mock=jar&signature=j', bottle: '/labels/stickers?mock=bottle&signature=b', box: '/labels/stickers?mock=box&signature=x' },
+      summary: { layout: 'a4-4', label: '4 on A4', design: 'full', stickers: 1, pages: 1, per_page: 4, products: [] } });
+    render(<MemoryRouter><StickerPrintPanel /></MemoryRouter>);
+    await screen.findByTestId('label-size-picker');
+    fireEvent.click(screen.getByLabelText('Print Bajiya'));
+    await waitFor(() => expect(previews().length).toBeGreaterThan(0));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Mock-up' })[0]);
+    const jar = await screen.findByTestId('mock-surface-jar');
+    expect(jar).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('mock-surface-bottle')).toBeInTheDocument();
+    await waitFor(() => expect(document.querySelector('iframe')?.getAttribute('src') ?? '').toContain('mock=jar'));
+    fireEvent.click(screen.getByTestId('mock-surface-box'));
+    await waitFor(() => expect(document.querySelector('iframe')?.getAttribute('src') ?? '').toContain('mock=box'));
+    expect(screen.getByText(/Bajiya on a box, to judge how it reads on the pack/)).toBeInTheDocument();
   });
 
   // Label stock (round 13, 2026-10-13): a counted roll says what is left and what the print takes, the request names it, and the summary says what is left after.

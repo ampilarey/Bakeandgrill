@@ -25,6 +25,13 @@
         $pageW = $slot['w'];
         $pageH = $slot['h'];
     }
+    // The mock-up preview (round 14): the first sticker on a jar, bottle, box or lid, on a scene of its own.
+    $scene = null;
+    if (($mock ?? null) !== null && $one && $pages !== [] && isset($pages[0][0])) {
+        $scene = \App\Domains\Labels\StickerMockup::scene($mock, (float) $sheet['slots'][0]['w'], (float) $sheet['slots'][0]['h'], (string) $sheet['shape'], (string) $sheet['design']);
+        $pageW = $scene['w'];
+        $pageH = $scene['h'];
+    }
 @endphp
 <!DOCTYPE html>
 <html lang="{{ $dv ? 'dv' : 'en' }}">
@@ -58,6 +65,30 @@
         .cut { position: absolute; border: 0.14mm dashed {{ \App\Domains\Labels\StickerDesign::BORDER }}; }
         /* Crop marks (round C): hairlines 3 mm long, 1 mm off each corner, for a print shop's trimmer. */
         .mark { position: absolute; background: #000; }
+        @if ($scene)
+            /* The mock-up (round 14): a table, the thing, its shading; every box in mm. */
+            .mock { background: radial-gradient(ellipse at 50% 35%, #FBF7F1 0%, #EFE7DC 70%, #E4D9CB 100%); }
+            .mock > div, .mk-label, .mk-flat, .mk-paper, .mk-gloss { position: absolute; }
+            .mk-floor { border-radius: 50%; background: radial-gradient(ellipse at center, rgba(60,40,20,0.32) 0%, rgba(60,40,20,0) 70%); }
+            .mk-body { border-radius: 4mm 4mm 6mm 6mm; }
+            .mk-jar { background: linear-gradient(90deg, #B9AFA2 0%, #E7E1D8 18%, #FBF9F5 34%, #EDE7DE 55%, #D4CBBF 80%, #A99E90 100%); }
+            .mk-bottle { border-radius: 9mm 9mm 5mm 5mm; background: linear-gradient(90deg, #8E4F12 0%, #C9762A 18%, #F0A955 34%, #D98B38 58%, #B4651C 82%, #7A410C 100%); }
+            .mk-neck { background: linear-gradient(90deg, #8E4F12, #E59A45 40%, #B4651C 80%, #7A410C); border-radius: 2mm 2mm 0 0; }
+            .mk-cap { border-radius: 2mm; }
+            .mk-jar-cap { background: linear-gradient(90deg, #5A3A1A 0%, #B07B3C 22%, #E2B66E 38%, #A86F2E 62%, #4E3016 100%); box-shadow: inset 0 -1mm 0 rgba(0,0,0,0.25); }
+            .mk-bottle-cap { background: linear-gradient(90deg, #2B2018 0%, #5C4A3A 30%, #8C7663 45%, #3E3024 75%, #1E1610 100%); }
+            .mk-strip { overflow: hidden; transform-origin: 0 0; }
+            .mk-label, .mk-flat { left: 0; top: 0; }
+            .mk-paper { left: 0; top: 0; height: 100%; background: #fff; }
+            .mk-shade { pointer-events: none; border-radius: 4mm 4mm 6mm 6mm; background: linear-gradient(90deg, rgba(30,15,0,0.42) 0%, rgba(30,15,0,0.12) 14%, rgba(255,255,255,0) 28%, rgba(255,255,255,0.28) 38%, rgba(255,255,255,0) 50%, rgba(30,15,0,0.10) 74%, rgba(30,15,0,0.46) 100%); }
+            .mk-lid { transform-origin: 0 0; border-radius: 50%; background: radial-gradient(circle at 38% 32%, #F1D49B 0%, #C99A52 45%, #8C6129 100%); box-shadow: inset 0 0 0 1.4mm rgba(0,0,0,0.18); }
+            .mk-lid .mk-gloss { inset: 0; border-radius: 50%; background: radial-gradient(ellipse at 30% 25%, rgba(255,255,255,0.35), rgba(255,255,255,0) 45%); pointer-events: none; }
+            .mk-rim { border-radius: 50%; background: linear-gradient(90deg, #4E3016, #9C6A30 40%, #4E3016); }
+            .mk-box { background: linear-gradient(160deg, #D9B98C 0%, #C9A473 60%, #B8915F 100%); }
+            .mk-box-top { background: linear-gradient(180deg, #E8CFA8, #D7B888); }
+            .mk-box-side { background: linear-gradient(90deg, #A8814F, #8E6A3E); }
+            .mk-flat .mk-paper { box-shadow: 0 0.6mm 1.6mm rgba(0,0,0,0.22); }
+        @endif
         @unless ($forPdf)
             @media screen {
                 body { background: #E9E4DE; padding: 16px; }
@@ -89,7 +120,12 @@
             <span class="what">{{ $sheet['label'] }} · {{ $stickerCount }} {{ $stickerCount === 1 ? 'sticker' : 'stickers' }} on {{ count($pages) }} {{ count($pages) === 1 ? 'page' : 'pages' }}@if ($sheet['design'] === 'full' && $s < 0.999) · design at {{ round($s * 100) }}%@endif @if ($sheet['design'] === 'mini') · compact sticker @endif @if ($sheet['design'] === 'round') · round sticker @endif @if ($sheet['design'] === 'wrap') · wrap-around label @endif · print at actual size · on a phone, print the PDF</span>
         </div>
     @endif
-    @foreach ($pages as $pi => $page)
+    @if ($scene)
+        <div class="page mock" data-testid="mockup" data-surface="{{ $scene['surface'] }}">
+            @include('labels.partials.mockup', ['scene' => $scene, 'pieces' => $pages[0][0], 'dx' => $sheet['dx'], 'dy' => $sheet['dy'], 's' => $s, 'rounded' => $rounded ?? false])
+        </div>
+    @endif
+    @foreach ($scene ? [] : $pages as $pi => $page)
         <div class="page" data-testid="labels-page">
             @foreach ($sheet['slots'] as $si => $slot)
                 @if ($sheet['cut'])

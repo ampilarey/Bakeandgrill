@@ -20,6 +20,7 @@ use App\Domains\Labels\LabelTypes;
 use App\Domains\Labels\Nutrition;
 use App\Domains\Labels\Reprint;
 use App\Domains\Labels\StickerLayouts;
+use App\Domains\Labels\StickerMockup;
 use App\Domains\Labels\StickerSheet;
 use App\Domains\Labels\WrapConfig;
 use App\Http\Controllers\Controller;
@@ -271,6 +272,11 @@ class LabelsController extends Controller
             'url' => LabelSheetController::link('labels.stickers', $query + ($preview ? ['preview' => 1] : ['print' => 1])),
             // The hub's live preview: the first sticker on its own, at its own size.
             'one_url' => $preview ? LabelSheetController::link('labels.stickers', $query + ['preview' => 1, 'one' => 1]) : null,
+            // The mock-up preview (round 14): the first sticker on each surface that suits its shape, the likeliest first.
+            'mock_urls' => $preview ? array_combine(
+                $surfaces = StickerMockup::surfacesFor((string) ($summary['shape'] ?? 'rect'), (string) ($summary['design'] ?? 'full')),
+                array_map(fn (string $m) => LabelSheetController::link('labels.stickers', $query + ['preview' => 1, 'one' => 1, 'mock' => $m]), $surfaces),
+            ) : null,
             'view_url' => LabelSheetController::link('labels.stickers', $query),
             'pdf_url' => LabelSheetController::link('labels.stickers.pdf', $query),
             // Straight to a label printer (round C): the sheet as ZPL or TSPL

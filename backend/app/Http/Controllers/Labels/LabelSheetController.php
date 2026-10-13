@@ -39,6 +39,8 @@ class LabelSheetController extends Controller
             'preview' => $request->boolean('preview'),
             // The hub's live preview shows the first sticker alone, at its own size.
             'one' => $request->boolean('preview') && $request->boolean('one'),
+            // The mock-up preview (round 14): that sticker on a jar, bottle, box or lid.
+            'mock' => $request->boolean('preview') && $request->boolean('one') ? \App\Domains\Labels\StickerMockup::valid($request->query('mock')) : null,
             'pdfUrl' => self::link('labels.stickers.pdf', $this->query($request)),
         ]);
     }

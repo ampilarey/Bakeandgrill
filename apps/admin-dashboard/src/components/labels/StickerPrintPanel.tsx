@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Printer, FileDown, AlertTriangle, Search, Bookmark, Eye, Plus, History, CalendarDays, ChevronDown, ChevronUp, Star, Clock, Send, Image as ImageIcon, ListPlus, RotateCcw } from 'lucide-react';
 import {
   downloadLabelSheet, fetchCateringStickers, fetchCustomLabels, fetchDeliveryStickers, fetchLabelFooters, fetchLabelJob, fetchLabelJobs, fetchLabelLayouts, fetchLabelPrint, fetchLabelProducts, fetchLabelTypes, openLabelSheet, printLabelJob, printsViaPdf, readPrinterSetup, renameLabelJob, sendToLabelPrinter, stickerLinks,
-  type CustomLabel, type LabelFooter, type LabelJob, type LabelLimits, type LabelPreset, type LabelPrintLookup, type LabelProduct, type LabelRoll, type LabelType, type PromoKind, type SheetLinks, type StickerLang, type StickerRun, type StickerSummary,
+  MOCK_SURFACE_NAMES, type CustomLabel, type MockSurface, type LabelFooter, type LabelJob, type LabelLimits, type LabelPreset, type LabelPrintLookup, type LabelProduct, type LabelRoll, type LabelType, type PromoKind, type SheetLinks, type StickerLang, type StickerRun, type StickerSummary,
 } from '../../api';
 import { useCurrentUserPermissions } from '../../hooks/usePermissions';
 import { useIsBelowDesktop } from '../../hooks/useIsMobile';
@@ -179,9 +179,11 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
   const summaryRef = useRef<HTMLElement>(null);
   // The live preview (owner, 2026-10-05: "There is no preview in labels"):
   // one sticker or the first page, redrawn as the form changes.
-  const [previewMode, setPreviewMode] = useState<'one' | 'sheet'>('one');
+  const [previewMode, setPreviewMode] = useState<'one' | 'sheet' | 'mock'>('one');
+  // The mock-up preview (round 14): the sticker on a jar, bottle, box or lid; null takes the likeliest.
+  const [mockSurface, setMockSurface] = useState<MockSurface | null>(null);
   const [previewKey, setPreviewKey] = useState<string | null>(null);
-  const [preview, setPreview] = useState<{ one: string | null; sheet: string; summary: StickerSummary } | null>(null);
+  const [preview, setPreview] = useState<{ one: string | null; sheet: string; mocks: Partial<Record<MockSurface, string>>; summary: StickerSummary } | null>(null);
   const [previewBusy, setPreviewBusy] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const previewSeq = useRef(0);
@@ -424,7 +426,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
       try {
         const r = await stickerLinks({ ...request(previewKey), preview: true });
         if (seq !== previewSeq.current) return;
-        setPreview({ one: r.one_url ?? null, sheet: r.url, summary: r.summary });
+        setPreview({ one: r.one_url ?? null, sheet: r.url, mocks: r.mock_urls ?? {}, summary: r.summary });
         setPreviewError(null);
       } catch (e) {
         if (seq !== previewSeq.current) return;
@@ -446,8 +448,11 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
   const { w: stickerW, h: stickerH } = sizeOf(choice, presets.length ? presets : []);
   const page = pageOf(choice, presets, fixedPages);
   const round = choice.shape === 'circle';
-  const previewRatio = previewMode === 'one' ? stickerW / stickerH : page.w / page.h;
-  const previewUrl = preview ? (previewMode === 'one' ? preview.one : preview.sheet) : null;
+  const mockOffered = preview ? (Object.keys(preview.mocks) as MockSurface[]) : [];
+  const mockPicked: MockSurface | null = mockSurface && mockOffered.includes(mockSurface) ? mockSurface : (mockOffered[0] ?? null);
+  // A mock-up scene is 4 : 3 (StickerMockup::frame).
+  const previewRatio = previewMode === 'one' ? stickerW / stickerH : previewMode === 'mock' ? 4 / 3 : page.w / page.h;
+  const previewUrl = preview ? (previewMode === 'one' ? preview.one : previewMode === 'mock' ? (mockPicked ? preview.mocks[mockPicked] ?? null : preview.one) : preview.sheet) : null;
 
   const sendToPrinter = async () => {
     if (!result?.zpl_url || !result.tspl_url) return;
@@ -479,13 +484,21 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
 
   const modeToggle = (
     <div className="inline-flex rounded-lg border border-[var(--color-border)] overflow-hidden" role="group" aria-label="What to preview">
-      {(['one', 'sheet'] as const).map((m) => (
+      {(['one', 'sheet', 'mock'] as const).map((m) => (
         <button key={m} type="button" onClick={() => setPreviewMode(m)} aria-pressed={previewMode === m} className={['px-3 h-8 min-w-[64px] text-xs font-semibold', previewMode === m ? 'bg-[var(--color-primary)] text-[var(--color-on-primary)]' : 'bg-[var(--color-surface)] text-[var(--color-text)]'].join(' ')}>
-          {m === 'one' ? 'Sticker' : 'Sheet'}
+          {m === 'one' ? 'Sticker' : m === 'sheet' ? 'Sheet' : 'Mock-up'}
         </button>
       ))}
     </div>
   );
+  // The mock-up's surfaces (round 14), offered for the label's shape, the likeliest first.
+  const surfaceRow = previewMode === 'mock' && mockOffered.length > 0 ? (
+    <TabScrollRow role="group" aria-label="Show it on" style={{ gap: 6 }}>
+      {mockOffered.map((m) => (
+        <button key={m} type="button" aria-pressed={mockPicked === m} onClick={() => setMockSurface(m)} className={chipClass(mockPicked === m)} data-testid={`mock-surface-${m}`}>{MOCK_SURFACE_NAMES[m]}</button>
+      ))}
+    </TabScrollRow>
+  ) : null;
   const productSelect = items.length > 1 ? (
     <select value={previewed ?? ''} onChange={(e) => setPreviewKey(e.target.value)} className={`${fieldClass} !h-9 !min-h-0`} aria-label="Product to preview">
       {items.map((i) => <option key={i.key} value={i.key}>{nameOf(i.key)}</option>)}
@@ -493,11 +506,11 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
   ) : null;
   const previewCaption = preview ? (
     <>
-      {previewMode === 'one' ? `${nameOf(previewed)} · ${lang === 'dv' ? 'Dhivehi' : lang === 'both' ? 'English and Dhivehi' : 'English'}` : `Page 1 of ${preview.summary.pages} · ${preview.summary.stickers} ${preview.summary.stickers === 1 ? 'sticker' : 'stickers'}`}
+      {previewMode === 'mock' ? `${nameOf(previewed)} on a ${mockPicked ? MOCK_SURFACE_NAMES[mockPicked].toLowerCase() : 'jar'}, to judge how it reads on the pack; the print is the flat sticker` : previewMode === 'one' ? `${nameOf(previewed)} · ${lang === 'dv' ? 'Dhivehi' : lang === 'both' ? 'English and Dhivehi' : 'English'}` : `Page 1 of ${preview.summary.pages} · ${preview.summary.stickers} ${preview.summary.stickers === 1 ? 'sticker' : 'stickers'}`}
       {' · '}{preview.summary.label.startsWith(sizeName(choice.shape, stickerW, stickerH)) ? preview.summary.label : `${sizeName(choice.shape, stickerW, stickerH)} · ${preview.summary.label}`}. Updates as you change things; the print is the same.
     </>
   ) : null;
-  const previewTitle = previewMode === 'one' ? 'Sticker preview' : 'Sheet preview';
+  const previewTitle = previewMode === 'one' ? 'Sticker preview' : previewMode === 'mock' ? 'Mock-up preview' : 'Sheet preview';
   const previewEmpty = items.length === 0 ? 'Pick a product to see its sticker here.' : 'Drawing…';
 
   const previewPane = stacked ? (
@@ -510,7 +523,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
       empty={previewEmpty}
       error={previewError}
       caption={previewCaption ?? (items.length === 0 ? 'Pick a product to see its sticker here.' : null)}
-      controls={<div className="flex flex-wrap items-center gap-2">{modeToggle}{productSelect && <div className="flex-1 min-w-[120px]">{productSelect}</div>}</div>}
+      controls={<div className="flex flex-wrap items-center gap-2">{modeToggle}{productSelect && <div className="flex-1 min-w-[120px]">{productSelect}</div>}{surfaceRow && <div className="w-full">{surfaceRow}</div>}</div>}
     />
   ) : (
     <aside className="space-y-2 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-4 self-start min-w-0" data-testid="sticker-preview-pane">
@@ -519,6 +532,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
         <div className="ml-auto">{modeToggle}</div>
       </div>
       {productSelect}
+      {surfaceRow}
       <div className={previewMode === 'one' && round ? 'max-w-[280px] mx-auto lg:mx-0' : 'max-w-[320px] mx-auto lg:mx-0'}>
         <SheetPreview url={previewUrl} ratio={previewRatio} busy={previewBusy} round={previewMode === 'one' && round} title={previewTitle} empty={previewEmpty} />
       </div>

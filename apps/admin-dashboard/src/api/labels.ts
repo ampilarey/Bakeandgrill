@@ -341,6 +341,9 @@ export type StickerRequest = {
 };
 
 export type PromoKind = '' | 'was_now' | 'text';
+/** The mock-up preview's surfaces (round 14). */
+export type MockSurface = 'jar' | 'bottle' | 'box' | 'lid';
+export const MOCK_SURFACE_NAMES: Record<MockSurface, string> = { jar: 'Jar', bottle: 'Bottle', box: 'Box', lid: 'Lid' };
 export type PrinterDpi = 203 | 300;
 export type PrinterLanguage = 'zpl' | 'tspl';
 /** How the admin reaches a label printer (round C): through the print agent on this computer (scripts/label-print-agent.mjs), kept in this browser. */
@@ -440,6 +443,8 @@ export type SheetLinks = {
   url: string;
   /** A preview only: the first sticker alone, at its own size. */
   one_url?: string | null;
+  /** A preview only (round 14): the first sticker on each surface that suits it, the likeliest first. */
+  mock_urls?: Partial<Record<MockSurface, string>> | null;
   view_url: string;
   pdf_url: string;
   /** Round C: the sheet for a label printer (one sticker a page only; null on a preview). */

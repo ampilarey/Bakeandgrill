@@ -352,7 +352,11 @@ may carry `left` and `low`; every real print is counted off the roll it names (`
 in the request, else the roll of that size; `LabelRolls::consume()`, labels on a
 printer roll, sheets otherwise), the pickers show what is left, and the owners hear
 once at the level through the registry row `owner_labels_roll_low`
-(`RollStockAlert`), forgotten when the roll is counted up again. How to
+(`RollStockAlert`), forgotten when the roll is counted up again. Mock-up preview (round
+14): a preview's reply carries `mock_urls`, the first sticker drawn by the server on a
+jar, bottle, box or lid (`StickerMockup::scene()`, curved labels as squeezed strips;
+`mock` on the signed sheet link, `labels/partials/mockup.blade.php`), shown by the
+Mock-up mode on Print labels and Flat / On a … at the wizard's step 3. How to
 use it and where everything lives: `docs/LABELS.md`; design and decisions:
 `docs/LABEL_HUB_PLAN.md` and `docs/LABEL_HUB_V2_PLAN.md`.
 

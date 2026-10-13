@@ -3,10 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Box, Check, FileDown, HelpCircle, Pencil, Plus, Printer, Search, Tag, UtensilsCrossed } from 'lucide-react';
 import {
   downloadLabelSheet, fetchCustomLabels, fetchLabelBrands, fetchLabelFooters, fetchLabelLayouts, fetchLabelProducts, fetchLabelTypes, openLabelSheet, stickerLinks, updateCustomLabel, updateItemLabel,
-  type CustomLabel, type LabelBadge, type LabelBrand, type LabelDesign, type LabelFooter, type LabelArrangement, type LabelLimits, type LabelPreset, type LabelProduct, type LabelRoll, type LabelSpot, type LabelSpotKey, type LabelType, type SheetLinks, type StickerLang,
+  type CustomLabel, type LabelBadge, type LabelBrand, type LabelDesign, type LabelFooter, type LabelArrangement, type LabelLimits, type LabelPreset, type LabelProduct, type LabelRoll, type LabelSpot, type LabelSpotKey, type LabelType, type MockSurface, type SheetLinks, type StickerLang,
 } from '../../api';
 import { Button, useToast } from '../ui';
 import { Modal, TabScrollRow } from '../SharedUI';
+
+/** The mock-up surfaces in words (round 14). */
+const WIZ_MOCK_NAMES: Record<MockSurface, string> = { jar: 'Jar', bottle: 'Bottle', box: 'Box', lid: 'Lid' };
+const wizChip = (on: boolean) => ['h-8 px-3 rounded-full border text-sm font-semibold whitespace-nowrap', on ? 'bg-[var(--color-tone-rust-bg)] border-[var(--color-tone-rust-border)] text-[var(--color-tone-rust-text)]' : 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text)]'].join(' ');
 import { SheetPreview } from './SheetPreview';
 import { SpotOverlay } from './SpotOverlay';
 import { openLabelsTour } from './LabelsTour';
@@ -175,6 +179,9 @@ export function MakeLabelWizard({ canManage = false }: {
   const [packedFor2, setPackedFor2] = useState('');
   const [copies, setCopies] = useState(1);
   const [preview, setPreview] = useState<string | null>(null);
+  // The mock-up (round 14): the label on a jar, bottle, box or lid, beside the flat one.
+  const [mocks, setMocks] = useState<Partial<Record<MockSurface, string>>>({});
+  const [onPack, setOnPack] = useState<MockSurface | null>(null);
   // Where each part of the preview landed, the part whose sheet a tap opened, the draft that sheet edits, and the lists its selects need.
   const [spots, setSpots] = useState<LabelSpot[]>([]);
   const [spotBox, setSpotBox] = useState<{ w: number; h: number } | null>(null);
@@ -300,6 +307,7 @@ export function MakeLabelWizard({ canManage = false }: {
         const r = await stickerLinks(request(1, true));
         if (seq !== previewSeq.current) return;
         setPreview(r.one_url ?? r.url);
+        setMocks(r.mock_urls ?? {});
         setPreviewError(null);
         // A wrap label is touched by its strips in the editors; here the other designs' parts are the touch zones.
         setSpots(r.summary?.design === 'wrap' ? [] : (r.summary?.spots ?? []));
@@ -571,11 +579,25 @@ export function MakeLabelWizard({ canManage = false }: {
           <h2 className="text-lg font-bold text-[var(--color-text)]">Does it look right?</h2>
           <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_280px]">
             <div className="min-w-0">
+              {Object.keys(mocks).length > 0 && (
+                <TabScrollRow role="group" aria-label="See it" style={{ gap: 6, marginBottom: 8 }}>
+                  <button type="button" aria-pressed={onPack === null} onClick={() => setOnPack(null)} className={wizChip(onPack === null)} data-testid="make-flat">Flat</button>
+                  {(Object.keys(mocks) as MockSurface[]).map((m) => (
+                    <button key={m} type="button" aria-pressed={onPack === m} onClick={() => setOnPack(m)} className={wizChip(onPack === m)} data-testid={`make-mock-${m}`}>On a {WIZ_MOCK_NAMES[m].toLowerCase()}</button>
+                  ))}
+                </TabScrollRow>
+              )}
+              {onPack && mocks[onPack] ? (
+                <div className="max-w-[420px] mx-auto" data-testid="make-mockup">
+                  <SheetPreview url={mocks[onPack] ?? null} ratio={4 / 3} busy={previewBusy} title={`The label on a ${WIZ_MOCK_NAMES[onPack].toLowerCase()}`} empty={previewError ?? 'Drawing…'} />
+                </div>
+              ) : (
               <div className={round ? 'max-w-[360px] mx-auto' : design === 'wrap' ? 'w-full' : 'max-w-[420px] mx-auto'}>
                 <SheetPreview url={preview} ratio={stickerW / stickerH} busy={previewBusy} round={round} title="The label" empty={previewError ?? 'Drawing…'}
                   overlay={spots.length > 0 ? <SpotOverlay spots={spots} w={spotBox?.w ?? stickerW} h={spotBox?.h ?? stickerH} onPick={openQuick} mode={moving ? 'move' : 'tap'} onMove={(key, dx, dy) => { if (movable) saveLayout(nudgeSpot(productLayout, movable, key, { dx, dy })); }} onScale={(key, f) => { if (movable) saveLayout(nudgeSpot(productLayout, movable, key, { s: f })); }} /> : null} />
               </div>
-              <p className="text-xs text-[var(--color-text-muted)] mt-2 text-center" data-testid="make-preview-line">{moving ? 'Drag a part to move it, its corner to resize it. ' : spots.length > 0 ? 'Tap a part of the label to change it. ' : ''}{sizeName(choice.shape, stickerW, stickerH)} · {DESIGN_NAMES[design]}. <button type="button" className="underline" onClick={() => jump(2)}>Change the label</button></p>
+              )}
+              <p className="text-xs text-[var(--color-text-muted)] mt-2 text-center" data-testid="make-preview-line">{onPack ? 'The print is the flat label. ' : moving ? 'Drag a part to move it, its corner to resize it. ' : spots.length > 0 ? 'Tap a part of the label to change it. ' : ''}{sizeName(choice.shape, stickerW, stickerH)} · {DESIGN_NAMES[design]}. <button type="button" className="underline" onClick={() => jump(2)}>Change the label</button></p>
               {movable && (
                 <div className="mt-2 flex justify-center">
                   <ArrangeBar on={arrange} onToggle={setArrange} canReset={hasOverrides(productLayout, movable)} onReset={() => saveLayout(clearDesign(productLayout, movable))} compact />

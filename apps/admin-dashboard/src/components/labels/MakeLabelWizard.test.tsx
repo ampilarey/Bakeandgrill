@@ -284,4 +284,22 @@ describe('MakeLabelWizard', () => {
     fireEvent.click(screen.getByTestId('make-next-2'));
     await waitFor(() => expect(api.stickerLinks).toHaveBeenLastCalledWith(expect.objectContaining({ layout: 'single-custom', w: 60, h: 40, roll: 'small', preview: true })));
   });
+
+  // The mock-up (round 14): step 3 shows the label flat, or on a jar, bottle or box.
+  it('shows the label on a pack at step 3', async () => {
+    api.stickerLinks.mockResolvedValue({ url: '/s', one_url: '/labels/stickers?one=1', view_url: '/v', pdf_url: '/p', expires_in_minutes: 30,
+      mock_urls: { jar: '/labels/stickers?mock=jar', bottle: '/labels/stickers?mock=bottle' },
+      summary: { layout: 'a4-4', label: '4 on A4', design: 'full', stickers: 1, pages: 1, per_page: 4, products: [], spots: [] } });
+    mount();
+    fireEvent.click(screen.getByRole('button', { name: /A menu item/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Masroshi/ }));
+    fireEvent.click(await screen.findByTestId('make-next-2'));
+    const jar = await screen.findByTestId('make-mock-jar');
+    expect(screen.getByTestId('make-flat')).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(jar);
+    expect(jar).toHaveAttribute('aria-pressed', 'true');
+    await waitFor(() => expect(screen.getByTestId('make-mockup').querySelector('iframe')?.getAttribute('src') ?? '').toContain('mock=jar'));
+    fireEvent.click(screen.getByTestId('make-flat'));
+    expect(screen.queryByTestId('make-mockup')).toBeNull();
+  });
 });

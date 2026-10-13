@@ -365,6 +365,31 @@ on `LabelSizePicker.tsx`; `onRoll`, `sticker-roll-stock`, `sticker-roll-after` a
 `LabelSizePicker.test.tsx`, `LabelRollsCard.test.tsx`, `StickerPrintPanel.test.tsx` and
 `MakeLabelWizard.test.tsx`.
 
+### Mock-up preview: the label on the pack
+
+Round 14 (owner, 2026-10-13; the audit's "a mock-up preview on a jar or bottle, so the
+wrap and round labels are judged as they will be seen"). Print labels' preview has a
+third mode, **Mock-up**, beside Sticker and Sheet, and Make a label's step 3 has **Flat ·
+On a jar · On a bottle · On a box · On a lid**. The first sticker is drawn on the pack by
+the server, from the same pieces the sheet prints, so what is judged is what prints.
+Which surfaces are offered follows the label: a wrap-around label goes round a bottle
+(first), a jar or a box; a round sticker on a lid (seen from above at a tilt, first), a
+jar or a box; any other on a jar (first), a bottle, a box or a lid. On a jar or bottle
+the label is cut into upright strips, each squeezed by where it sits round the side, so
+the middle reads straight on and the edges turn away, with the light and shade of the
+glass over it; a wrap-around label goes round the whole bottle and shows its front half,
+any other label covers a third of the side. A box carries the label flat on its front.
+The scene is 4 : 3, nothing is logged, and the print is still the flat sticker.
+
+Where: `App\Domains\Labels\StickerMockup` (`SURFACES`, `surfacesFor()`, `scene()`:
+strips as label slice `sx`/`sw` and projected `px`/`pw`); `mock_urls` on a preview's
+reply; `mock` on the signed sheet link (with `preview` and `one`), read by
+`LabelSheetController::stickers()`; `labels/stickers.blade.php` (the `.mk-*` styles) and
+`labels/partials/mockup.blade.php`. Admin: `MockSurface`, `MOCK_SURFACE_NAMES` in
+`api/labels.ts`; the Mock-up mode and surface chips on `StickerPrintPanel.tsx`; Flat / On
+a … on `MakeLabelWizard.tsx`. Tests: `StickerMockupTest`, the mock-up cases in
+`StickerPrintPanel.test.tsx` and `MakeLabelWizard.test.tsx`.
+
 ## Who can use it
 
 Two permissions, both owner-only until granted in Staff → Permissions (to a role or
@@ -957,6 +982,7 @@ beneath.
 | Allergen pictograms | `App\Domains\Labels\AllergenIcons` (`for()`, `keys()`, `svg()`, `dataUri()`; words → symbols, captions, `SPICY_LEVELS`); `stickerData()` sets `icons`, `StickerDesign::full()` draws the row (12 mm pitch, 8.8 mm tall) above the note; setting `label_allergen_icons` |
 | Variable runs | A row's own `batch`, `qty`, `mfg`, `exp`, `for`, `for2` in a sticker request (`StickerSheet::RUN_KEYS`, `cleanRun()`, `rowRequest()`; the link's `runs`); the Details fold on each picked row of `StickerPrintPanel.tsx` (§ Variable runs) |
 | Scan to reprint | `label_prints.request` (the request that made the print, one product; § Scan to reprint) and `details.reprint_of`; `App\Domains\Labels\Reprint` (`of()`, `rebuilt()`, `status()`, `present()`); `reprint` on a sticker request; `GET /api/labels/prints/{code}` (`labels.print`); the staff link on the pack page; `ReprintScan.tsx` (`codeFromScan()`), `?code=` on `StickerPrintPanel.tsx`, Print again in the print log |
+| Mock-up preview | `App\Domains\Labels\StickerMockup` (§ Mock-up preview); `mock_urls` on a preview, `mock` on the sheet link; `labels/partials/mockup.blade.php`; the Mock-up mode on `StickerPrintPanel.tsx`, Flat / On a … on `MakeLabelWizard.tsx` |
 | Label stock | `left`, `low`, `low_alerted_at` on each roll in `label_rolls` (§ Label stock); `LabelRolls::consume()` on every real print (`roll` in the request, else the roll of that size), `present()` / `presentAll()`, `roll` on the sticker summary; `App\Domains\Labels\RollStockAlert` under the registry row `owner_labels_roll_low`; `rollStock()` / `rollStockWords()` in `labelSize.ts`, the boxes on `LabelRollsCard.tsx`, the lines on `StickerPrintPanel.tsx` and the wizard |
 | Badges | `items.label_badges`, `custom_labels.label_badges` (JSON list, up to four keys; § Badges); `App\Domains\Labels\LabelBadges` (`CATALOGUE`, `clean()`, `rules()`, `for()`, `pills()`), drawn by every design under the name; the catalogue with `GET /api/labels/layouts` as `badges`; `BadgePicker.tsx` and the tap sheet's `chips` input |
 | Drag designer | `items.label_layout`, `custom_labels.label_layout` (JSON per design and part; § The drag designer); `App\Domains\Labels\LabelLayout` (`clean()`, `rules()`, `apply()` on the marked runs in `StickerSheet::pieces()`); `labelLayout.ts`, `SpotOverlay` move mode, `ArrangeBar.tsx` |
