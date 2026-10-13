@@ -11,6 +11,7 @@ import type { LabelProduct } from '../../api';
 const api = vi.hoisted(() => ({
   fetchLabelItem: vi.fn(), fetchLabelLayouts: vi.fn(), fetchLabelTypes: vi.fn(), stickerLinks: vi.fn(), updateItemLabel: vi.fn(),
   fetchLabelTemplates: vi.fn(), fetchCustomLabels: vi.fn(), fetchLabelProducts: vi.fn(), createLabelTemplate: vi.fn(),
+  fetchLabelSignoff: vi.fn(async () => ({ data: { kind: 'item', id: 7, name: 'Bajiya', state: 'none', lines: { name: 'Bajiya', ingredients: 'Flour' }, changed: [], signed: null, locked: false, printable: true }, lines: {} })), signOffLabel: vi.fn(),
 }));
 vi.mock('../../api', () => api);
 vi.mock('../MediaPicker', () => ({ MediaPicker: () => null }));

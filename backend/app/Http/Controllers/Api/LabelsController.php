@@ -15,6 +15,8 @@ use App\Domains\Labels\LabelLayout;
 use App\Domains\Labels\LabelMedia;
 use App\Domains\Labels\LabelRaster;
 use App\Domains\Labels\LabelSettings;
+use App\Domains\Labels\LabelSignoffs;
+use App\Models\LabelSignoff;
 use App\Domains\Labels\LabelTemplates;
 use App\Domains\Labels\LabelTypes;
 use App\Domains\Labels\Nutrition;
@@ -57,6 +59,7 @@ class LabelsController extends Controller
         private readonly StickerSheet $stickers,
         private readonly LabelTypes $types,
         private readonly Nutrition $nutrition,
+        private readonly LabelSignoffs $signoffs,
     ) {}
 
     /**
@@ -230,6 +233,14 @@ class LabelsController extends Controller
             // A variable run (round 10): the rows' own details, aligned with items.
             'runs' => StickerSheet::runsParam($req['items']),
         ];
+        // The wording lock (round 17): a real print records the sign-off each product prints under, and with the lock on refuses one whose legal lines are not signed off as they stand.
+        $signed = ['ids' => [], 'refused' => []];
+        if (!$preview) {
+            $signed = $this->signoffs->forPrint($this->stickers->products($req['items']));
+            if ($signed['refused'] !== []) {
+                throw new InvalidArgumentException('The wording is locked: ' . implode(', ', $signed['refused']) . (count($signed['refused']) === 1 ? ' has' : ' have') . ' legal lines not signed off as they stand. Sign them off on the label first, or turn the lock off under Labels → Settings.');
+            }
+        }
         $promoDetail = $req['promo'] === 'was_now' ? 'now MVR ' . number_format((float) $req['promo_now'], 2) : ($req['promo'] === 'text' ? $req['promo_text'] : null);
 
         // Each product's print gets a code the sticker carries as a QR (the
@@ -258,7 +269,7 @@ class LabelsController extends Controller
                     // Each product's own batch, quantity and packed-for when the run varies (round 10), else the sheet's.
                     'batch_code' => ($p['batch'] ?? '') !== '' ? $p['batch'] : null,
                     'pack_qty' => $p['qty'] ?? null,
-                    'details' => ($details = array_filter(['for' => $p['for'] ?? null, 'for2' => $p['for2'] ?? null, 'promo' => $promoDetail, 'reprint_of' => $req['reprint'] ?? null], fn ($v) => $v !== null && $v !== '')) !== [] ? $details : null,
+                    'details' => ($details = array_filter(['for' => $p['for'] ?? null, 'for2' => $p['for2'] ?? null, 'promo' => $promoDetail, 'reprint_of' => $req['reprint'] ?? null, 'signoff' => $signed['ids'][$p['key']] ?? null], fn ($v) => $v !== null && $v !== '')) !== [] ? $details : null,
                     // The request that made this product's print (round 11): a scan of its code prints it again.
                     'request' => Reprint::of($req, $p),
                     'printed_by' => $userId,
@@ -829,6 +840,54 @@ class LabelsController extends Controller
         }
 
         return response()->json(['data' => Reprint::present($print)]);
+    }
+
+    // ---- The wording lock (round 17, 2026-10-13) ----
+
+    /** Every product on labels with where its legal lines stand, and whether the lock is on. */
+    public function signoffs(): JsonResponse
+    {
+        $rows = [];
+        foreach (Item::query()->with('labelType.brand')->where('label_enabled', true)->orderBy('name')->get() as $item) {
+            $rows[] = $this->signoffs->status($item);
+        }
+        foreach (CustomLabel::query()->with(['labelType.brand', 'brand'])->orderBy('name')->get() as $custom) {
+            $rows[] = $this->signoffs->status($custom);
+        }
+
+        return response()->json(['data' => $rows, 'locked' => LabelSignoffs::locked(), 'lines' => LabelSignoffs::LINES]);
+    }
+
+    /** One product's legal lines, its last sign-off and what changed since. */
+    public function signoffStatus(string $kind, int $id): JsonResponse
+    {
+        return response()->json(['data' => $this->signoffs->status($this->signoffProduct($kind, $id)), 'lines' => LabelSignoffs::LINES]);
+    }
+
+    /** Sign off a product's legal lines as they stand. */
+    public function signOff(Request $request, string $kind, int $id): JsonResponse
+    {
+        $data = $request->validate(['note' => 'nullable|string|max:200']);
+        $product = $this->signoffProduct($kind, $id);
+        $this->signoffs->signOff($product, $request->user()?->id, $data['note'] ?? null);
+
+        return response()->json(['data' => $this->signoffs->status($product->fresh())], 201);
+    }
+
+    /** Past sign-offs of one product, newest first. */
+    public function signoffHistory(string $kind, int $id): JsonResponse
+    {
+        $this->signoffProduct($kind, $id);
+        $rows = LabelSignoff::query()->with('signer:id,name')->where('kind', $kind)->where('product_id', $id)->orderByDesc('id')->limit(20)->get();
+
+        return response()->json(['data' => $rows->map(fn (LabelSignoff $s) => ['id' => $s->id, 'by' => $s->signer?->name, 'at' => $s->created_at?->toIso8601String(), 'note' => $s->note, 'lines' => $s->lines])->values()]);
+    }
+
+    private function signoffProduct(string $kind, int $id): Item|CustomLabel
+    {
+        return $kind === 'custom'
+            ? CustomLabel::query()->with(['labelType.brand', 'brand'])->findOrFail($id)
+            : Item::query()->with('labelType.brand')->findOrFail($id);
     }
 
     /**

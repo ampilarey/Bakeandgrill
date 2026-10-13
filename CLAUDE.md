@@ -364,7 +364,13 @@ the layouts, `ShelfLifeHint`), filled only on Use. Round 16: a phone or tablet i
 Chrome prints to a Bluetooth Low Energy label printer straight from the browser
 (`bluetoothPrinter.ts`: pair from a tap, the first writable characteristic of a known
 printer service, the same TSPL/ZPL links in 180-byte chunks), chosen as `via:
-'bluetooth'` on the printer setup; iPhones cannot, and the card says so. How to
+'bluetooth'` on the printer setup; iPhones cannot, and the card says so. Wording lock
+(round 17): a label's legal lines (`LabelSignoffs::LINES`: name, ingredients, allergens,
+storage, after opening, net weight, nutrition) are signed off into `label_signoffs`;
+with `label_wording_lock` on, `stickerLinks()` refuses a real print whose lines differ
+from the last sign-off (previews draw), and every print logs `details.signoff`. A new
+line that has legal weight goes into `LabelSignoffs::lines()` and `LINES` (and
+`LINE_NAMES` in `WordingSignoff.tsx`). How to
 use it and where everything lives: `docs/LABELS.md`; design and decisions:
 `docs/LABEL_HUB_PLAN.md` and `docs/LABEL_HUB_V2_PLAN.md`.
 

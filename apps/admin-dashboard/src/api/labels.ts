@@ -726,6 +726,33 @@ export function fetchLabelPrints(params: { page?: number; kind?: string } = {}) 
   return req<{ data: LabelPrintRow[]; current_page: number; last_page: number; total: number }>(`/labels/prints${qs.toString() ? `?${qs}` : ''}`);
 }
 
+/**
+ * The wording lock (round 17): where a product's legal lines stand. `state`
+ * none (never signed off), signed (as they stand) or changed (since the last
+ * sign-off; `changed` names the lines). `printable` is false while the lock
+ * is on and the lines are not signed off as they stand.
+ */
+export type LabelSignoffLines = Record<string, string>;
+export type LabelSignoffStatus = {
+  kind: 'item' | 'custom'; id: number; name: string;
+  state: 'none' | 'signed' | 'changed';
+  lines: LabelSignoffLines; changed: string[];
+  signed: { id: number; by: string | null; at: string | null; note: string | null; lines: LabelSignoffLines } | null;
+  locked: boolean; printable: boolean;
+};
+
+export function fetchLabelSignoffs() {
+  return req<{ data: LabelSignoffStatus[]; locked: boolean; lines: Record<string, string> }>('/labels/signoffs');
+}
+
+export function fetchLabelSignoff(kind: 'item' | 'custom', id: number) {
+  return req<{ data: LabelSignoffStatus; lines: Record<string, string> }>(`/labels/signoffs/${kind}/${id}`);
+}
+
+export function signOffLabel(kind: 'item' | 'custom', id: number, note: string | null) {
+  return req<{ data: LabelSignoffStatus }>(`/labels/signoffs/${kind}/${id}`, { method: 'POST', body: JSON.stringify({ note }) });
+}
+
 /** A print by the code on its stickers (round 11, scan to reprint); 404 when no pack has it. */
 export function fetchLabelPrint(code: string) {
   return req<{ data: LabelPrintLookup }>(`/labels/prints/${encodeURIComponent(code.trim().toUpperCase())}`);

@@ -35,6 +35,8 @@ const FOOTERS = [
 ];
 
 vi.mock('../../api', () => ({
+  fetchLabelSignoff: () => Promise.resolve({ data: { kind: 'custom', id: 7, name: 'Gift box', state: 'none', lines: { name: 'Gift box' }, changed: [], signed: null, locked: false, printable: true }, lines: {} }),
+  signOffLabel: vi.fn(),
   fetchLabelBrands: () => Promise.resolve({ data: [
     { id: 1, name: 'Bake & Grill', is_default: true, logo_url: null },
     { id: 2, name: 'Amma', is_default: false, logo_url: '/storage/amma.png' },

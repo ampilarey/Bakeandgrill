@@ -15,6 +15,7 @@ import { LabelPrinterCard } from '../components/labels/LabelPrinterCard';
 import { LabelsTour } from '../components/labels/LabelsTour';
 import { LabelRollsCard } from '../components/labels/LabelRollsCard';
 import { ShelfLifeHint } from '../components/labels/ShelfLifeHint';
+import { WordingLockCard } from '../components/labels/WordingLockCard';
 import { Switch } from '../components/SharedUI';
 import { Button, Card, useToast } from '../components/ui';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
@@ -520,6 +521,8 @@ function SettingsTab({ canManage }: { canManage: boolean }) {
         {canManage && <div className="mt-4 labels-actions"><div className="labels-actions-row flex"><Button onClick={saveWording} loading={saving}>Save wording</Button></div></div>}
       </Card>
 
+      {/* The wording lock (round 17): sign off each label's legal lines; locked, only signed-off wording prints. */}
+      <WordingLockCard canManage={canManage} />
       {/* The ingredient glossary (2026-10-12): English → Dhivehi for recipe names and typed lists. */}
       <IngredientGlossary canManage={canManage} />
       {/* Round C: nutrition per 100 g of each ingredient, and the label printer on this computer. */}

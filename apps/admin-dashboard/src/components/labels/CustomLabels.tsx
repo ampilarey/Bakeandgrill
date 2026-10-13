@@ -17,6 +17,7 @@ import { StripOverlay } from './StripEditor';
 import { SpotOverlay } from './SpotOverlay';
 import { FoldHelp } from './FoldHelp';
 import { ShelfLifeHint } from './ShelfLifeHint';
+import { WordingSignoff } from './WordingSignoff';
 import { QuickEditSheet, quickSpec } from './QuickEdit';
 import { customDraft as toDraft, customPayload as toPayload, type CustomDraft as Draft } from './labelDrafts';
 import { DEFAULT_CHOICE, rememberedSize, requestFor, sizeName, sizeOf, stockOf, type SizeChoice } from './labelSize';
@@ -149,6 +150,8 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
   const [badges, setBadges] = useState<LabelBadge[]>([]);
   // Round 15: a shelf life to suggest for the label's storage.
   const [shelfLife, setShelfLife] = useState<ShelfLifeSuggestions | null>(null);
+  // The wording lock (round 17): read the legal lines again after each save.
+  const [signoffTick, setSignoffTick] = useState(0);
   const [choice, setChoice] = useState<SizeChoice>(() => (label === null && startFrom ? templateSize(startFrom) : null) ?? rememberedSize() ?? DEFAULT_CHOICE);
   const [rounded, setRounded] = useState(false);
   const previewSeq = useRef(0);
@@ -240,6 +243,7 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
       setSaved(r.data);
       setD(toDraft(r.data));
       onSaved(r.data);
+      setSignoffTick((t) => t + 1);
       toast('success', saved ? 'Custom label saved.' : 'Custom label added.');
       return r.data;
     } catch (e) {
@@ -453,6 +457,12 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
               </div>
             </Section>
 
+            {/* The wording lock (round 17): a saved label's legal lines and their sign-off. */}
+            {saved && (
+              <Section title="Legal wording" summary="Sign-off" open={false} testId="custom-label-signoff" help="What the law cares about on the sticker, as saved. Sign it off once checked; a change after that shows here and, with the wording locked under Settings, stops the label printing until signed off again.">
+                <WordingSignoff kind="custom" id={saved.id} canManage refresh={signoffTick} />
+              </Section>
+            )}
             <Section title="Bottom strip and complaints QR" summary={`${footerName} · QR ${qrWord}`} open={d.footer_id !== null || d.label_show_qr !== ''} testId="custom-label-footer" help={`The band at the foot of every sticker: ${mainBrand}'s name, phone, website and the complaints QR. Pick a saved strip by name.`}>
               <Field id="cl-footer" label="Bottom strip" hint={`Always ${mainBrand}'s branding, whatever brand is on the header. Pick one by name, change the one that prints with the pencil, or add one with +. Nothing picked follows the label type, else Standard.`}>
                 <FooterPicker id="cl-footer" footers={footers} value={d.footer_id} onChange={(id) => set('footer_id', id)} onFootersChange={(f) => { setFooters(f); setFootersTick((t) => t + 1); }} noneLabel={d.label_type_id ? `Follow the type (${fallbackFooter?.name ?? 'Standard'})` : (fallbackFooter?.name ?? 'Standard')} fallback={fallbackFooter} canManage />

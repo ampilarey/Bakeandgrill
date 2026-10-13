@@ -167,6 +167,10 @@ backend/routes/domains/labels.php:157:labels.manage
 backend/routes/domains/labels.php:160:labels.manage
 backend/routes/domains/labels.php:166:labels.print
 backend/routes/domains/labels.php:16:labels.print
+backend/routes/domains/labels.php:172:labels.print
+backend/routes/domains/labels.php:174:labels.print
+backend/routes/domains/labels.php:177:labels.print
+backend/routes/domains/labels.php:180:labels.manage
 backend/routes/domains/labels.php:19:labels.manage
 backend/routes/domains/labels.php:22:labels.print
 backend/routes/domains/labels.php:24:labels.print

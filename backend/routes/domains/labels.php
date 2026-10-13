@@ -165,3 +165,17 @@ Route::delete('/labels/templates/{template}', [LabelsController::class, 'destroy
 Route::get('/labels/prints/{code}', [LabelsController::class, 'print'])
     ->middleware('permission:labels.print')
     ->where('code', '[A-Za-z0-9]{4,12}');
+// The wording lock (round 17, 2026-10-13: "a wording lock with sign-off for
+// legal lines"): where each product's legal lines stand is read with Print
+// labels; signing them off is Manage label settings, as the wording itself.
+Route::get('/labels/signoffs', [LabelsController::class, 'signoffs'])
+    ->middleware('permission:labels.print');
+Route::get('/labels/signoffs/{kind}/{id}', [LabelsController::class, 'signoffStatus'])
+    ->middleware('permission:labels.print')
+    ->whereIn('kind', ['item', 'custom'])->whereNumber('id');
+Route::get('/labels/signoffs/{kind}/{id}/history', [LabelsController::class, 'signoffHistory'])
+    ->middleware('permission:labels.print')
+    ->whereIn('kind', ['item', 'custom'])->whereNumber('id');
+Route::post('/labels/signoffs/{kind}/{id}', [LabelsController::class, 'signOff'])
+    ->middleware('permission:labels.manage')
+    ->whereIn('kind', ['item', 'custom'])->whereNumber('id');

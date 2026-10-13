@@ -6,6 +6,7 @@ import { WrapParts } from './WrapParts';
 import { SpotOverlay } from './SpotOverlay';
 import { FoldHelp } from './FoldHelp';
 import { ShelfLifeHint } from './ShelfLifeHint';
+import { WordingSignoff } from './WordingSignoff';
 import { QuickEditSheet, quickSpec } from './QuickEdit';
 import { itemDraft as toDraft, itemPayload, nutritionWords, pickKeys, type ItemDraft as Draft, type ItemLabelPayload } from './labelDrafts';
 import { SaveAsTemplate, StartFromRow } from './StartFrom';
@@ -36,6 +37,8 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [picker, setPicker] = useState<'title' | 'photo' | 'mark' | null>(null);
   const [saving, setSaving] = useState(false);
+  // The wording lock (round 17): read the legal lines again after each save.
+  const [savedTick, setSavedTick] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   // Where each part of the preview landed, the part whose sheet a tap opened, and whether that sheet is saving (round 3, 2026-10-13).
@@ -83,6 +86,7 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
       const r = await updateItemLabel(itemId, itemPayload(draft));
       setProduct(r.data); setDraft(toDraft(r.data));
       setMessage('Label settings saved.');
+      setSavedTick((t) => t + 1);
       void refreshPreview();
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Could not save.');
@@ -261,6 +265,13 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
               <input id="lbl-serving" type="number" inputMode="decimal" min={1} max={5000} step="0.5" value={draft.label_serving_g} onChange={(e) => set('label_serving_g', e.target.value)} className={fieldClass} placeholder="Blank: per 100 only" />
             </div>
           )}
+        </fieldset>
+
+        {/* The wording lock (round 17): this label's legal lines as they print, and their sign-off. */}
+        <fieldset className="rounded-xl border border-[var(--color-border)] p-3 space-y-2 min-w-0" data-testid="item-label-signoff">
+          <legend className="px-1 text-sm font-bold text-[var(--color-text)]">Legal wording</legend>
+          <FoldHelp>What the law cares about on the sticker, as it prints now. Sign it off once checked; a change after that shows here and, with the wording locked under Settings, stops the label printing until signed off again. Save first: the lines are the saved ones.</FoldHelp>
+          <WordingSignoff kind="item" id={itemId} canManage refresh={savedTick} />
         </fieldset>
 
         {/* The wrap-around label's parts (owner, 2026-10-12: a bottle label with parts side by side). */}

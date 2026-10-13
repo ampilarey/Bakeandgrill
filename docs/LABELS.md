@@ -453,6 +453,41 @@ Bluetooth on `StickerPrintPanel.tsx`. Nothing on the server changes. Tests:
 `bluetoothPrinter.test.ts`, the Bluetooth cases in `LabelPrinterCard.test.tsx` and
 `StickerPrintPanel.test.tsx`.
 
+### Wording lock: legal lines signed off
+
+Round 17 (owner, 2026-10-13; the audit's "a wording lock with sign-off for legal lines,
+plus the print log already kept"). A label's **legal lines** are what the law cares
+about on the sticker, as it prints now: the name in both languages, the ingredients in
+both languages, the allergens, the storage line in both languages, the after-opening
+line, the net weight and the nutrition. Someone with Manage label settings **signs them
+off** as they stand, with an optional note ("Checked against the recipe"); the sign-off
+keeps the lines, who and when, and is never edited (a change is a new sign-off).
+
+Where the lines stand shows on a menu item's Label tab (**Legal wording**, under the
+nutrition switch), on a saved custom label (**Legal wording** fold) and on Labels →
+Settings → **Wording lock**, which lists every label with **Signed off**, **Changed** or
+**Not signed off** and opens each one's lines. A line changed since the sign-off is red,
+with what was signed off struck through beneath it. Because the Dhivehi ingredients
+follow the English through the glossary, changing the English list usually moves both.
+
+**Lock the wording** (the switch on that card, `label_wording_lock`) makes a label print
+only while its lines are the ones signed off: Prepare, Print again, a reprint, the
+kitchen screen and the wizard all go through the same check, and a refused print says
+which labels and what to do ("The wording is locked: Bajiya has legal lines not signed off
+as they stand. Sign them off on the label first, or turn the lock off under Labels →
+Settings."). Previews always draw. With the lock on or off, every print records in the
+print log (`details.signoff`) the sign-off it printed under, or none.
+
+Where: `label_signoffs` (`App\Models\LabelSignoff`, migration `label_signoffs`);
+`App\Domains\Labels\LabelSignoffs` (`LINES`, `lines()`, `hash()`, `status()`,
+`signOff()`, `forPrint()`, `locked()`); the check in `LabelsController::stickerLinks()`;
+`GET /api/labels/signoffs` and `GET /api/labels/signoffs/{kind}/{id}` (and `/history`) with
+`labels.print`, `POST /api/labels/signoffs/{kind}/{id}` with `labels.manage` (the route
+fixture gains the four lines). Admin: `WordingSignoff.tsx` (`SignoffChip`,
+`signoffWords()`), `WordingLockCard.tsx` on Settings, the panel on `ItemLabelTab.tsx` and
+`CustomLabels.tsx`; `fetchLabelSignoffs()`, `fetchLabelSignoff()`, `signOffLabel()` in
+`api/labels.ts`. Tests: `WordingLockTest`, `WordingSignoff.test.tsx`.
+
 ## Who can use it
 
 Two permissions, both owner-only until granted in Staff → Permissions (to a role or
@@ -1045,6 +1080,7 @@ beneath.
 | Allergen pictograms | `App\Domains\Labels\AllergenIcons` (`for()`, `keys()`, `svg()`, `dataUri()`; words → symbols, captions, `SPICY_LEVELS`); `stickerData()` sets `icons`, `StickerDesign::full()` draws the row (12 mm pitch, 8.8 mm tall) above the note; setting `label_allergen_icons` |
 | Variable runs | A row's own `batch`, `qty`, `mfg`, `exp`, `for`, `for2` in a sticker request (`StickerSheet::RUN_KEYS`, `cleanRun()`, `rowRequest()`; the link's `runs`); the Details fold on each picked row of `StickerPrintPanel.tsx` (§ Variable runs) |
 | Scan to reprint | `label_prints.request` (the request that made the print, one product; § Scan to reprint) and `details.reprint_of`; `App\Domains\Labels\Reprint` (`of()`, `rebuilt()`, `status()`, `present()`); `reprint` on a sticker request; `GET /api/labels/prints/{code}` (`labels.print`); the staff link on the pack page; `ReprintScan.tsx` (`codeFromScan()`), `?code=` on `StickerPrintPanel.tsx`, Print again in the print log |
+| Wording lock | `label_signoffs` (`App\Models\LabelSignoff`); `App\Domains\Labels\LabelSignoffs` (§ Wording lock); setting `label_wording_lock`; `details.signoff` on each print; `GET` / `POST /api/labels/signoffs…`; `WordingSignoff.tsx`, `WordingLockCard.tsx` |
 | Bluetooth printing | `bluetoothPrinter.ts` (Web Bluetooth, known printer services, chunked writes); `via: 'bluetooth'` on the printer setup; Pair on `LabelPrinterCard.tsx`, Print over Bluetooth on `StickerPrintPanel.tsx` (§ Printing from a phone) |
 | Per serving, shelf-life suggestion | `items.label_serving_g`; `Nutrition::serving()` / `scaled()` and `serv_rows` / `serv_all` on the sticker data; `LabelSettings::SHELF_LIFE_SUGGESTED` as `shelf_life` on the layouts; the Serving size box on `ItemLabelTab.tsx`; `ShelfLifeHint.tsx` (§ Nutrition per serving) |
 | Mock-up preview | `App\Domains\Labels\StickerMockup` (§ Mock-up preview); `mock_urls` on a preview, `mock` on the sheet link; `labels/partials/mockup.blade.php`; the Mock-up mode on `StickerPrintPanel.tsx`, Flat / On a … on `MakeLabelWizard.tsx` |

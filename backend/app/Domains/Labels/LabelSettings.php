@@ -70,6 +70,8 @@ final class LabelSettings
         // the language it prints them in. LabelRolls::kitchen() reads them.
         'label_kitchen_roll' => '',
         'label_kitchen_lang' => 'en',
+        // The wording lock (round 17): "1" prints only products whose legal lines are signed off as they stand.
+        'label_wording_lock' => '0',
     ];
 
     /**
