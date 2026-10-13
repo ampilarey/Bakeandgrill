@@ -104,7 +104,45 @@ final class Nutrition
             return null;
         }
 
-        return ['rows' => self::rows($panel['per100']), 'all' => self::all($panel['per100']), 'line' => self::line($panel['per100']), 'per' => $per];
+        $out = ['rows' => self::rows($panel['per100']), 'all' => self::all($panel['per100']), 'line' => self::line($panel['per100']), 'per' => $per];
+        // Per serving beside per 100 (round 15): the same values for one serving of this size.
+        $serving = self::serving($product);
+        if ($serving !== null) {
+            $each = self::scaled($panel['per100'], $serving);
+            $out += ['serving' => $serving, 'serv_rows' => self::rows($each), 'serv_all' => self::all($each)];
+        }
+
+        return $out;
+    }
+
+    /** A menu item's serving size in g (or ml), or null when none is set (round 15). */
+    public static function serving(Item $item): ?float
+    {
+        $g = $item->label_serving_g !== null ? (float) $item->label_serving_g : 0.0;
+
+        return $g > 0 ? round($g, 1) : null;
+    }
+
+    /** "30 g", "250 ml", "12.5 g". */
+    public static function servingWords(float $serving, string $per): string
+    {
+        return rtrim(rtrim(number_format($serving, 1, '.', ''), '0'), '.') . ' ' . $per;
+    }
+
+    /**
+     * Per-100 values for one serving of $grams.
+     *
+     * @param array<string, float> $per100
+     * @return array<string, float>
+     */
+    public static function scaled(array $per100, float $grams): array
+    {
+        $out = [];
+        foreach ($per100 as $key => $v) {
+            $out[$key] = round((float) $v * $grams / 100, $key === 'kcal' ? 0 : 1);
+        }
+
+        return $out;
     }
 
     /** "g", or "ml" when the product says its values are per 100 ml (a drink). */

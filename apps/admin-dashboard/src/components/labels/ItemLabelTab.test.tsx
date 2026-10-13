@@ -100,4 +100,19 @@ describe('ItemLabelTab', () => {
     await waitFor(() => expect(api.updateItemLabel).toHaveBeenLastCalledWith(7, { label_layout: null }));
     rect.mockRestore();
   });
+
+  // Round 15: a serving size beside per 100, and the usual shelf life for the storage.
+  it('saves a serving size for the nutrition panel and suggests a shelf life for the storage', async () => {
+    api.fetchLabelLayouts.mockResolvedValue({ data: [], presets: [], wrap: null, shelf_life: { frozen: { days: 90, why: 'Frozen.' }, chilled: { days: 3, why: 'Chilled.' }, ambient: { days: 2, why: 'Ambient.' } } });
+    api.fetchLabelItem.mockResolvedValue({ data: { ...product(), label_show_nutrition: true, label_shelf_life_days: null, label_storage: 'chilled' } });
+    render(<ItemLabelTab itemId={7} />);
+    const hint = await screen.findByTestId('item-shelf-life-hint');
+    expect(hint).toHaveTextContent('Usual for chilled: 3 days.');
+    fireEvent.click(screen.getByRole('button', { name: 'Use 3' }));
+    expect(screen.getByLabelText('Shelf life (days)')).toHaveValue(3);
+    expect(screen.queryByTestId('item-shelf-life-hint')).toBeNull();
+    fireEvent.change(screen.getByLabelText(/Serving size/), { target: { value: '45' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save label settings' }));
+    await waitFor(() => expect(api.updateItemLabel).toHaveBeenCalledWith(7, expect.objectContaining({ label_serving_g: 45, label_shelf_life_days: 3 })));
+  });
 });

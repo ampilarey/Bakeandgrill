@@ -390,6 +390,37 @@ reply; `mock` on the signed sheet link (with `preview` and `one`), read by
 a … on `MakeLabelWizard.tsx`. Tests: `StickerMockupTest`, the mock-up cases in
 `StickerPrintPanel.test.tsx` and `MakeLabelWizard.test.tsx`.
 
+### Nutrition per serving, and a shelf-life suggestion
+
+Round 15 (owner, 2026-10-13; the audit's "nutrition per serving beside per 100 g, and a
+shelf-life suggestion by storage type").
+
+**Per serving.** On a menu item's Label tab, once **Print nutrition per 100 g** is on, a
+**Serving size** box (g, or ml for a drink) appears. With a serving typed, the full
+sticker's panel reads **NUTRITION PER 100 g · PER SERVING (45 g)** and prints each
+serving value smaller under its per-100 value; the wrap-around label's nutrition part
+reads **PER 100 g | PER 45 g** with the serving values in a second column. The serving
+values are the per-100 values scaled (`Nutrition::scaled()`), energy to the whole kcal,
+the rest to one decimal. Blank, the panel is per 100 alone, as before. A custom label
+types its own nutrition line, so it writes a serving into it if it wants one.
+
+**Shelf-life suggestion.** Under every shelf-life box (the item's Label tab, the custom
+label editor, Labels → Settings → Products on labels) a line says what a cooked short
+eat usually keeps for at the picked storage, **Usual for chilled: 3 days. Use 3**, with
+the reason beneath: frozen 90 days (three months at -18°C keeps the taste and texture),
+chilled 3 days (0–4°C), room temperature 2 days (baked, cool and dry). **Use** fills the
+box; nothing is saved or printed until the owner saves. The line hides once the box
+holds the suggestion. It is a starting point the owner checks, not a rule.
+
+Where: `items.label_serving_g` (migration `label_serving`), `Nutrition::serving()`,
+`servingWords()`, `scaled()`, `serving` / `serv_rows` / `serv_all` from `forSticker()`,
+drawn by `StickerDesign::full()` and `WrapDesign::nutrition()`;
+`LabelSettings::SHELF_LIFE_SUGGESTED` sent as `shelf_life` with `GET /api/labels/layouts`.
+Admin: `label_serving_g` in `labelDrafts.ts` and the Serving size box on
+`ItemLabelTab.tsx`; `ShelfLifeHint.tsx` on the item tab, `CustomLabels.tsx` and the
+Settings products list. Tests: `ServingAndShelfLifeTest`, `ShelfLifeHint.test.tsx`, the
+round 15 case in `ItemLabelTab.test.tsx`.
+
 ## Who can use it
 
 Two permissions, both owner-only until granted in Staff → Permissions (to a role or
@@ -982,6 +1013,7 @@ beneath.
 | Allergen pictograms | `App\Domains\Labels\AllergenIcons` (`for()`, `keys()`, `svg()`, `dataUri()`; words → symbols, captions, `SPICY_LEVELS`); `stickerData()` sets `icons`, `StickerDesign::full()` draws the row (12 mm pitch, 8.8 mm tall) above the note; setting `label_allergen_icons` |
 | Variable runs | A row's own `batch`, `qty`, `mfg`, `exp`, `for`, `for2` in a sticker request (`StickerSheet::RUN_KEYS`, `cleanRun()`, `rowRequest()`; the link's `runs`); the Details fold on each picked row of `StickerPrintPanel.tsx` (§ Variable runs) |
 | Scan to reprint | `label_prints.request` (the request that made the print, one product; § Scan to reprint) and `details.reprint_of`; `App\Domains\Labels\Reprint` (`of()`, `rebuilt()`, `status()`, `present()`); `reprint` on a sticker request; `GET /api/labels/prints/{code}` (`labels.print`); the staff link on the pack page; `ReprintScan.tsx` (`codeFromScan()`), `?code=` on `StickerPrintPanel.tsx`, Print again in the print log |
+| Per serving, shelf-life suggestion | `items.label_serving_g`; `Nutrition::serving()` / `scaled()` and `serv_rows` / `serv_all` on the sticker data; `LabelSettings::SHELF_LIFE_SUGGESTED` as `shelf_life` on the layouts; the Serving size box on `ItemLabelTab.tsx`; `ShelfLifeHint.tsx` (§ Nutrition per serving) |
 | Mock-up preview | `App\Domains\Labels\StickerMockup` (§ Mock-up preview); `mock_urls` on a preview, `mock` on the sheet link; `labels/partials/mockup.blade.php`; the Mock-up mode on `StickerPrintPanel.tsx`, Flat / On a … on `MakeLabelWizard.tsx` |
 | Label stock | `left`, `low`, `low_alerted_at` on each roll in `label_rolls` (§ Label stock); `LabelRolls::consume()` on every real print (`roll` in the request, else the roll of that size), `present()` / `presentAll()`, `roll` on the sticker summary; `App\Domains\Labels\RollStockAlert` under the registry row `owner_labels_roll_low`; `rollStock()` / `rollStockWords()` in `labelSize.ts`, the boxes on `LabelRollsCard.tsx`, the lines on `StickerPrintPanel.tsx` and the wizard |
 | Badges | `items.label_badges`, `custom_labels.label_badges` (JSON list, up to four keys; § Badges); `App\Domains\Labels\LabelBadges` (`CATALOGUE`, `clean()`, `rules()`, `for()`, `pills()`), drawn by every design under the name; the catalogue with `GET /api/labels/layouts` as `badges`; `BadgePicker.tsx` and the tap sheet's `chips` input |

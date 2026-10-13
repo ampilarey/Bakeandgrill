@@ -14,6 +14,7 @@ import { NutritionCard } from '../components/labels/NutritionCard';
 import { LabelPrinterCard } from '../components/labels/LabelPrinterCard';
 import { LabelsTour } from '../components/labels/LabelsTour';
 import { LabelRollsCard } from '../components/labels/LabelRollsCard';
+import { ShelfLifeHint } from '../components/labels/ShelfLifeHint';
 import { Switch } from '../components/SharedUI';
 import { Button, Card, useToast } from '../components/ui';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
@@ -21,7 +22,7 @@ import { useIsMobile } from '../hooks/useIsMobile';
 import {
   deleteLabelJob, downloadLabelSheet, duplicateLabelJob, fetchLabelJobs, fetchLabelLayouts, fetchLabelPrints, fetchLabelProducts, fetchLabelSettings,
   openLabelSheet, pinLabelJob, printLabelJob, renameLabelJob, saveLabelSettings, updateItemLabel,
-  type LabelJob, type LabelPrintRow, type LabelProduct, type LabelSettingsMap, type LabelStorage, type IngredientsSource, type StickerSummary,
+  type ShelfLifeSuggestions, type LabelJob, type LabelPrintRow, type LabelProduct, type LabelSettingsMap, type LabelStorage, type IngredientsSource, type StickerSummary,
 } from '../api';
 
 /*
@@ -303,7 +304,10 @@ function SettingsTab({ canManage }: { canManage: boolean }) {
   // On a phone an open product is a form of four boxes; only the one tapped is open.
   const [openId, setOpenId] = useState<number | null>(null);
 
+  // Round 15: a shelf life to suggest for each storage.
+  const [shelfLife, setShelfLife] = useState<ShelfLifeSuggestions | null>(null);
   const load = () => {
+    fetchLabelLayouts().then((r) => setShelfLife(r.shelf_life ?? null)).catch(() => setShelfLife(null));
     fetchLabelSettings().then((r) => setSettings(r.data)).catch(() => undefined);
     fetchLabelProducts(true).then((r) => setProducts(r.data)).catch(() => undefined);
   };
@@ -347,7 +351,7 @@ function SettingsTab({ canManage }: { canManage: boolean }) {
     <input type="checkbox" checked={p.label_enabled} disabled={!canManage} onChange={(e) => saveItem(p, { label_enabled: e.target.checked })} className="w-5 h-5 shrink-0 accent-[var(--color-primary)]" aria-label={`${p.name} on labels`} />
   );
   const shelfBox = (p: LabelProduct, cls: string) => (
-    <input type="number" inputMode="numeric" min={1} max={730} defaultValue={p.label_shelf_life_days ?? ''} placeholder="Blank" disabled={!canManage} onBlur={(e) => { const v = e.target.value ? Number(e.target.value) : null; if (v !== p.label_shelf_life_days) saveItem(p, { label_shelf_life_days: v }); }} className={`${control} ${cls}`} aria-label={`${p.name} shelf life in days`} />
+    <input key={`life-${p.id}-${p.label_shelf_life_days ?? ''}`} type="number" inputMode="numeric" min={1} max={730} defaultValue={p.label_shelf_life_days ?? ''} placeholder="Blank" disabled={!canManage} onBlur={(e) => { const v = e.target.value ? Number(e.target.value) : null; if (v !== p.label_shelf_life_days) saveItem(p, { label_shelf_life_days: v }); }} className={`${control} ${cls}`} aria-label={`${p.name} shelf life in days`} />
   );
   const storageSelect = (p: LabelProduct, cls = '') => (
     <select value={p.label_storage} disabled={!canManage} onChange={(e) => saveItem(p, { label_storage: e.target.value as LabelStorage })} className={`${control} ${cls}`} aria-label={`${p.name} storage`}>
@@ -414,7 +418,7 @@ function SettingsTab({ canManage }: { canManage: boolean }) {
                 {p.label_enabled && openId === p.id && (
                   <div className="grid grid-cols-2 gap-2 mt-3 pl-8">
                     <div className="col-span-2"><span className={small}>Ingredients (typed)</span>{ingredientsBox(p)}</div>
-                    <div><span className={small}>Shelf life (days)</span>{shelfBox(p, 'w-full')}</div>
+                    <div><span className={small}>Shelf life (days)</span>{shelfBox(p, 'w-full')}<ShelfLifeHint storage={p.label_storage} value={p.label_shelf_life_days} suggestions={shelfLife} disabled={!canManage} onUse={(n) => saveItem(p, { label_shelf_life_days: n })} testId={`shelf-life-hint-${p.id}`} /></div>
                     <div><span className={small}>Storage</span>{storageSelect(p, 'w-full')}</div>
                     <div className="col-span-2"><span className={small}>Ingredients from</span>{sourceSelect(p, 'w-full')}</div>
                   </div>
@@ -439,7 +443,7 @@ function SettingsTab({ canManage }: { canManage: boolean }) {
                   <tr key={p.id} className="border-b border-[var(--color-border-light)]">
                     <td className="px-4 py-2">{enabledBox(p)}</td>
                     <td className="px-4 py-2 min-w-[280px]">{p.name}{p.label_enabled && shortLife(p.label_shelf_life_days) && <ShortLifeChip days={p.label_shelf_life_days as number} />}{p.ingredients.from === 'recipe' && <span className="block text-xs text-[var(--color-text-muted)] truncate max-w-[280px]">From the recipe: {p.ingredients.en}</span>}{p.label_enabled && <div className="mt-1">{ingredientsBox(p)}</div>}</td>
-                    <td className="px-4 py-2">{shelfBox(p, 'w-24')}</td>
+                    <td className="px-4 py-2 max-w-[220px]">{shelfBox(p, 'w-24')}{p.label_enabled && <ShelfLifeHint storage={p.label_storage} value={p.label_shelf_life_days} suggestions={shelfLife} disabled={!canManage} onUse={(n) => saveItem(p, { label_shelf_life_days: n })} testId={`shelf-life-hint-${p.id}`} />}</td>
                     <td className="px-4 py-2">{storageSelect(p)}</td>
                     <td className="px-4 py-2">{sourceSelect(p)}</td>
                   </tr>

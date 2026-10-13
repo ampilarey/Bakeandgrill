@@ -43,6 +43,8 @@ export type LabelProduct = {
   nutrition: NutritionPanel;
   /** Values per 100 g, or per 100 ml for a drink. */
   label_nutrition_per: NutritionPer;
+  /** Round 15: the serving size in g (or ml), for a per-serving column beside per 100. */
+  label_serving_g?: number | null;
   /** The wrap-around label's parts (2026-10-12), as they stand (the defaults when nothing is kept). */
   label_wrap: LabelWrap;
   wrap_pictures: WrapPicture[];
@@ -211,7 +213,10 @@ export type LabelBadge = { key: string; label: string; word: string; word_dv: st
 /** What the kitchen screen prints a batch's stickers on and in (round 12): the roll picked under Settings, or 4 × 6 cm on A4. */
 export type KitchenLabelSetup = { size: { layout: string; w: number | null; h: number | null; name: string; roll: string | null }; lang: StickerLang };
 
-export type LabelLayoutsResponse = { data: LabelLayout[]; presets: LabelPreset[]; limits: LabelLimits; wrap: WrapCatalogue; rolls?: LabelRoll[]; badges?: LabelBadge[]; kitchen?: KitchenLabelSetup };
+/** A shelf life to suggest per storage (round 15): days, and why. */
+export type ShelfLifeSuggestions = Record<LabelStorage, { days: number; why: string }>;
+
+export type LabelLayoutsResponse = { data: LabelLayout[]; presets: LabelPreset[]; limits: LabelLimits; wrap: WrapCatalogue; rolls?: LabelRoll[]; badges?: LabelBadge[]; kitchen?: KitchenLabelSetup; shelf_life?: ShelfLifeSuggestions };
 
 /**
  * A label template (round 7, 2026-10-13: "Start from a saved label or a

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { ImagePlus, X, RefreshCw } from 'lucide-react';
-import { fetchLabelItem, fetchLabelLayouts, fetchLabelTypes, stickerLinks, updateItemLabel, type IngredientsSource, type LabelArrangement, type LabelBadge, type LabelProduct, type LabelSpot, type LabelSpotKey, type LabelStorage, type LabelType, type WrapCatalogue } from '../../api';
+import { fetchLabelItem, fetchLabelLayouts, fetchLabelTypes, stickerLinks, updateItemLabel, type ShelfLifeSuggestions, type IngredientsSource, type LabelArrangement, type LabelBadge, type LabelProduct, type LabelSpot, type LabelSpotKey, type LabelStorage, type LabelType, type WrapCatalogue } from '../../api';
 import { SheetPreview } from './SheetPreview';
 import { WrapParts } from './WrapParts';
 import { SpotOverlay } from './SpotOverlay';
 import { FoldHelp } from './FoldHelp';
+import { ShelfLifeHint } from './ShelfLifeHint';
 import { QuickEditSheet, quickSpec } from './QuickEdit';
 import { itemDraft as toDraft, itemPayload, nutritionWords, pickKeys, type ItemDraft as Draft, type ItemLabelPayload } from './labelDrafts';
 import { SaveAsTemplate, StartFromRow } from './StartFrom';
@@ -52,7 +53,9 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
   // The badges an item can carry (round 9), from the layouts.
   const [badges, setBadges] = useState<LabelBadge[]>([]);
   useEffect(() => { fetchLabelTypes().then((r) => setTypes(r.data.filter((t) => t.is_active || t.id === product?.label_type_id))).catch(() => setTypes([])); }, [product?.label_type_id]);
-  useEffect(() => { fetchLabelLayouts().then((r) => { setCatalogue(r.wrap ?? null); setBadges(r.badges ?? []); }).catch(() => setCatalogue(null)); }, []);
+  // Round 15: a shelf life to suggest for the item's storage.
+  const [shelfLife, setShelfLife] = useState<ShelfLifeSuggestions | null>(null);
+  useEffect(() => { fetchLabelLayouts().then((r) => { setCatalogue(r.wrap ?? null); setBadges(r.badges ?? []); setShelfLife(r.shelf_life ?? null); }).catch(() => setCatalogue(null)); }, []);
 
   useEffect(() => {
     fetchLabelItem(itemId).then((r) => { setProduct(r.data); setDraft(toDraft(r.data)); }).catch(() => setMessage('Could not load the label settings.'));
@@ -185,7 +188,8 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
         </div>
 
         <div className="grid gap-3 sm:grid-cols-3">
-          <div><label className={labelClass} htmlFor="lbl-life">Shelf life (days)</label><input id="lbl-life" type="number" min={1} max={730} value={draft.label_shelf_life_days} onChange={(e) => set('label_shelf_life_days', e.target.value)} className={fieldClass} placeholder={product.defaults.shelf_life_days ? `${product.defaults.shelf_life_days} from the type` : 'Blank: write by hand'} /></div>
+          <div><label className={labelClass} htmlFor="lbl-life">Shelf life (days)</label><input id="lbl-life" type="number" min={1} max={730} value={draft.label_shelf_life_days} onChange={(e) => set('label_shelf_life_days', e.target.value)} className={fieldClass} placeholder={product.defaults.shelf_life_days ? `${product.defaults.shelf_life_days} from the type` : 'Blank: write by hand'} />
+            <ShelfLifeHint storage={draft.label_storage} value={draft.label_shelf_life_days} suggestions={shelfLife} onUse={(n) => set('label_shelf_life_days', String(n))} testId="item-shelf-life-hint" /></div>
           <div>
             <label className={labelClass} htmlFor="lbl-storage">Storage</label>
             <select id="lbl-storage" value={draft.label_storage} onChange={(e) => set('label_storage', e.target.value as LabelStorage)} className={fieldClass}>
@@ -250,6 +254,13 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
               <span className="block text-xs text-[var(--color-text-muted)]">{nutritionWords(product.nutrition)}</span>
             </span>
           </label>
+          {/* Round 15: a serving size prints a per-serving value under each per-100 one. */}
+          {draft.label_show_nutrition && (
+            <div className="max-w-xs">
+              <label className={labelClass} htmlFor="lbl-serving">Serving size ({draft.label_nutrition_per}), for per serving beside per 100</label>
+              <input id="lbl-serving" type="number" inputMode="decimal" min={1} max={5000} step="0.5" value={draft.label_serving_g} onChange={(e) => set('label_serving_g', e.target.value)} className={fieldClass} placeholder="Blank: per 100 only" />
+            </div>
+          )}
         </fieldset>
 
         {/* The wrap-around label's parts (owner, 2026-10-12: a bottle label with parts side by side). */}

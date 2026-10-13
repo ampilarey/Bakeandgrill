@@ -477,10 +477,13 @@ final class WrapDesign
         $a = $this->a('l');
         // The heading letter-spaced when the part is wide enough, else plain, else just "PER 100 g".
         $per = (string) ($n['per'] ?? 'g');
+        $serv = !empty($n['serv_all']) ? $n['serv_all'] : null;
+        $servWords = $serv !== null ? Nutrition::servingWords((float) $n['serving'], $per) : '';
         $heading = StickerDesign::spaced('NUTRITION PER 100 ' . $per);
-        if (LabelText::widthMm($heading, $headPt * 0.85, 'j7') > $pw) {
-            $heading = 'NUTRITION PER 100 ' . $per;
-            if (LabelText::widthMm($heading, $headPt * 0.85, 'j7') > $pw) {
+        if ($serv !== null || LabelText::widthMm($heading, $headPt * 0.85, 'j7') > $pw) {
+            // Per serving beside per 100 (round 15): two value columns under one heading.
+            $heading = $serv !== null ? 'PER 100 ' . $per . ' | PER ' . $servWords : 'NUTRITION PER 100 ' . $per;
+            if ($serv === null && LabelText::widthMm($heading, $headPt * 0.85, 'j7') > $pw) {
                 $heading = 'PER 100 ' . $per;
             }
         }
@@ -508,11 +511,16 @@ final class WrapDesign
                 break;
             }
             $sub = str_starts_with($label, 'of which');
+            $sv = $serv !== null ? (string) ($serv[$i][1] ?? '') : '';
+            $sw = $sv !== '' ? LabelText::widthMm($sv, $rowPt, 'j5') + 1.2 : 0.0;
             $vw = LabelText::widthMm($value, $rowPt, 'j7') + 0.4;
             $lf = $sub ? 'j4' : 'j5';
             $lpt = $sub ? $rowPt * 0.92 : $rowPt;
-            $this->text($this->dv ? $x + $vw : $x + ($sub ? 1.2 : 0.0), $base, $pw - $vw - ($sub ? 1.2 : 0.0), $a, $lf, $lpt, $sub ? StickerDesign::MUTED : StickerDesign::TEXT, $label);
-            $this->text($this->dv ? $x : $x + $pw - $vw, $base, $vw, $this->dv ? 'l' : 'r', 'j7', $rowPt, StickerDesign::TEXT, $value);
+            $this->text($this->dv ? $x + $vw + $sw : $x + ($sub ? 1.2 : 0.0), $base, $pw - $vw - $sw - ($sub ? 1.2 : 0.0), $a, $lf, $lpt, $sub ? StickerDesign::MUTED : StickerDesign::TEXT, $label);
+            $this->text($this->dv ? $x + $sw : $x + $pw - $vw - $sw, $base, $vw, $this->dv ? 'l' : 'r', 'j7', $rowPt, StickerDesign::TEXT, $value);
+            if ($sv !== '') {
+                $this->text($this->dv ? $x : $x + $pw - $sw, $base, $sw, $this->dv ? 'l' : 'r', 'j5', $rowPt, StickerDesign::MUTED, $sv);
+            }
         }
     }
 

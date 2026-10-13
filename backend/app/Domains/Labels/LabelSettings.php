@@ -72,6 +72,25 @@ final class LabelSettings
         'label_kitchen_lang' => 'en',
     ];
 
+    /**
+     * A shelf-life suggestion by storage (round 15 of the usability work,
+     * owner, 2026-10-13: "a shelf-life suggestion by storage type"): what a
+     * cooked short eat usually keeps for, offered beside the shelf-life box
+     * when it is empty or far from it. A starting point the owner checks,
+     * never printed by itself.
+     */
+    public const SHELF_LIFE_SUGGESTED = [
+        'frozen' => ['days' => 90, 'why' => 'Cooked and frozen at -18°C: about three months keeps the taste and texture.'],
+        'chilled' => ['days' => 3, 'why' => 'Cooked and kept at 0–4°C: eat within three days.'],
+        'ambient' => ['days' => 2, 'why' => 'Baked and kept cool and dry: best within two days.'],
+    ];
+
+    /** @return array<string, array{days: int, why: string}> */
+    public static function shelfLifeSuggestions(): array
+    {
+        return self::SHELF_LIFE_SUGGESTED;
+    }
+
     public static function get(string $key): string
     {
         $value = SiteSetting::get($key, null);

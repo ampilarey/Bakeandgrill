@@ -97,6 +97,8 @@ class LabelsController extends Controller
             'badges' => LabelBadges::catalogue(),
             // What the kitchen screen prints a batch's stickers on and in (round 12).
             'kitchen' => LabelRolls::kitchen(),
+            // A shelf-life suggestion by storage (round 15).
+            'shelf_life' => LabelSettings::shelfLifeSuggestions(),
         ]);
     }
 
@@ -921,6 +923,8 @@ class LabelsController extends Controller
             'label_barcode' => 'sometimes|nullable|string|max:20',
             'label_net_weight' => 'sometimes|nullable|string|max:20',
             'label_show_nutrition' => 'sometimes|boolean',
+            // Round 15: the serving size, for a per-serving column beside per 100 g.
+            'label_serving_g' => 'sometimes|nullable|numeric|min:1|max:5000',
             'label_title_media_id' => 'sometimes|nullable|integer|exists:media_assets,id',
             'label_photo_media_id' => 'sometimes|nullable|integer|exists:media_assets,id',
         ] + self::wrapRules());
@@ -1560,6 +1564,7 @@ class LabelsController extends Controller
             'label_show_nutrition' => (bool) $item->label_show_nutrition,
             'nutrition' => $this->nutrition->forItem($item),
             'label_nutrition_per' => Nutrition::per($item),
+            'label_serving_g' => Nutrition::serving($item),
             // The wrap-around label's parts (2026-10-12), as they stand.
             'label_wrap' => $wrap = WrapConfig::of($item),
             'wrap_pictures' => $this->wrapPictures($wrap),

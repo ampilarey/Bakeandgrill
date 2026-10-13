@@ -356,7 +356,11 @@ once at the level through the registry row `owner_labels_roll_low`
 14): a preview's reply carries `mock_urls`, the first sticker drawn by the server on a
 jar, bottle, box or lid (`StickerMockup::scene()`, curved labels as squeezed strips;
 `mock` on the signed sheet link, `labels/partials/mockup.blade.php`), shown by the
-Mock-up mode on Print labels and Flat / On a … at the wizard's step 3. How to
+Mock-up mode on Print labels and Flat / On a … at the wizard's step 3. Round 15: an
+item's serving size (`items.label_serving_g`) prints per-serving values beside per 100
+on the full and wrap designs (`Nutrition::scaled()`), and every shelf-life box offers
+the usual days for its storage (`LabelSettings::SHELF_LIFE_SUGGESTED`, `shelf_life` on
+the layouts, `ShelfLifeHint`), filled only on Use. How to
 use it and where everything lives: `docs/LABELS.md`; design and decisions:
 `docs/LABEL_HUB_PLAN.md` and `docs/LABEL_HUB_V2_PLAN.md`.
 

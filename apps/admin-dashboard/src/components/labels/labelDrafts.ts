@@ -83,6 +83,8 @@ export type ItemDraft = {
   label_net_weight: string;
   label_show_nutrition: boolean;
   label_nutrition_per: NutritionPer;
+  /** Round 15: the serving size, typed. */
+  label_serving_g: string;
   /** The wrap-around label's parts (2026-10-12), and the picked mark pictures with their urls. */
   label_wrap: LabelWrap;
   wrap_pictures: WrapPicture[];
@@ -120,6 +122,7 @@ export const itemDraft = (p: LabelProduct): ItemDraft => ({
   label_net_weight: p.label_net_weight ?? '',
   label_show_nutrition: p.label_show_nutrition,
   label_nutrition_per: p.label_nutrition_per === 'ml' ? 'ml' : 'g',
+  label_serving_g: p.label_serving_g ? String(p.label_serving_g) : '',
   label_wrap: p.label_wrap,
   wrap_pictures: p.wrap_pictures ?? [],
   label_layout: p.label_layout ?? {},
@@ -154,6 +157,7 @@ export const itemPayload = (d: ItemDraft): ItemLabelPayload => ({
   label_net_weight: d.label_net_weight.trim() || null,
   label_show_nutrition: d.label_show_nutrition,
   label_nutrition_per: d.label_nutrition_per,
+  label_serving_g: d.label_serving_g !== '' && Number(d.label_serving_g) > 0 ? Number(d.label_serving_g) : null,
   label_wrap: d.label_wrap,
   label_layout: d.label_layout,
   label_badges: d.label_badges,

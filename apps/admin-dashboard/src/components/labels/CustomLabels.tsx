@@ -4,7 +4,7 @@ import { Bookmark, ChevronDown, Copy, Eye, ImagePlus, Pencil, Plus, Printer, Ref
 import {
   createCustomLabel, deleteCustomLabel, duplicateCustomLabel, fetchCustomLabels, fetchLabelBrands, fetchLabelFooters, fetchLabelLayouts, fetchLabelSettings, fetchLabelTypes,
   previewCustomDraft, stickerLinks, updateCustomLabel, uploadCustomLabelPicture,
-  type CustomLabel, type LabelBadge, type LabelBrand, type LabelDesign, type LabelFooter, type LabelLimits, type LabelPreset, type LabelRoll, type LabelSpot, type LabelSpotKey, type LabelStorage, type LabelTemplate, type LabelType, type StickerLang, type WrapCatalogue, type WrapPartKey, type WrapStrips,
+  type CustomLabel, type LabelBadge, type LabelBrand, type LabelDesign, type LabelFooter, type LabelLimits, type LabelPreset, type LabelRoll, type LabelSpot, type LabelSpotKey, type LabelStorage, type LabelTemplate, type ShelfLifeSuggestions, type LabelType, type StickerLang, type WrapCatalogue, type WrapPartKey, type WrapStrips,
 } from '../../api';
 import { FooterPicker } from './FooterPicker';
 import { SaveAsTemplate, StartFromRow } from './StartFrom';
@@ -16,6 +16,7 @@ import { WRAP_FALLBACK, WrapParts } from './WrapParts';
 import { StripOverlay } from './StripEditor';
 import { SpotOverlay } from './SpotOverlay';
 import { FoldHelp } from './FoldHelp';
+import { ShelfLifeHint } from './ShelfLifeHint';
 import { QuickEditSheet, quickSpec } from './QuickEdit';
 import { customDraft as toDraft, customPayload as toPayload, type CustomDraft as Draft } from './labelDrafts';
 import { DEFAULT_CHOICE, rememberedSize, requestFor, sizeName, sizeOf, stockOf, type SizeChoice } from './labelSize';
@@ -146,6 +147,8 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
   const [rolls, setRolls] = useState<LabelRoll[]>([]);
   // The badges a label can carry (round 9), from the layouts.
   const [badges, setBadges] = useState<LabelBadge[]>([]);
+  // Round 15: a shelf life to suggest for the label's storage.
+  const [shelfLife, setShelfLife] = useState<ShelfLifeSuggestions | null>(null);
   const [choice, setChoice] = useState<SizeChoice>(() => (label === null && startFrom ? templateSize(startFrom) : null) ?? rememberedSize() ?? DEFAULT_CHOICE);
   const [rounded, setRounded] = useState(false);
   const previewSeq = useRef(0);
@@ -163,7 +166,7 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
     fetchLabelTypes().then((r) => setTypes(r.data.filter((t) => t.is_active || t.id === label?.label_type_id))).catch(() => setTypes([]));
   }, [label?.label_type_id]);
   useEffect(() => {
-    fetchLabelLayouts().then((r) => { setPresets(r.presets); setLimits(r.limits ?? null); setCatalogue(r.wrap ?? null); setRolls(r.rolls ?? []); setBadges(r.badges ?? []); }).catch(() => setPresets([]));
+    fetchLabelLayouts().then((r) => { setPresets(r.presets); setLimits(r.limits ?? null); setCatalogue(r.wrap ?? null); setRolls(r.rolls ?? []); setBadges(r.badges ?? []); setShelfLife(r.shelf_life ?? null); }).catch(() => setPresets([]));
     fetchLabelFooters().then((r) => setFooters(r.data)).catch(() => setFooters([]));
     fetchLabelSettings().then((r) => setDvFont(r.data.label_dhivehi_font || 'noto')).catch(() => setDvFont(null));
   }, []);
@@ -412,7 +415,8 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
                     {(Object.keys(STORAGE_NAMES) as LabelStorage[]).map((k) => <option key={k} value={k}>{STORAGE_NAMES[k]}</option>)}
                   </select>
                 </Field>
-                <Field id="cl-life" label="Shelf life (days)" hint="Expiry = made-on date + this."><input id="cl-life" type="number" inputMode="numeric" min={1} max={730} value={d.label_shelf_life_days} onChange={(e) => set('label_shelf_life_days', e.target.value)} className={fieldClass} placeholder={ph.shelf} /></Field>
+                <Field id="cl-life" label="Shelf life (days)" hint="Expiry = made-on date + this."><input id="cl-life" type="number" inputMode="numeric" min={1} max={730} value={d.label_shelf_life_days} onChange={(e) => set('label_shelf_life_days', e.target.value)} className={fieldClass} placeholder={ph.shelf} />
+                  <ShelfLifeHint storage={(d.label_storage || type?.storage || 'frozen') as LabelStorage} value={d.label_shelf_life_days || type?.shelf_life_days || ''} suggestions={shelfLife} onUse={(n) => set('label_shelf_life_days', String(n))} testId="custom-shelf-life-hint" /></Field>
                 <Field id="cl-qty" label="Quantity per pack"><input id="cl-qty" type="number" inputMode="numeric" min={1} max={9999} value={d.label_pack_qty} onChange={(e) => set('label_pack_qty', e.target.value)} className={fieldClass} placeholder="Blank: write by hand" /></Field>
                 <Field id="cl-unit" label="Unit after the quantity" hint="PCS, G, ML, KG, PACK…"><input id="cl-unit" maxLength={10} value={d.label_pack_unit} onChange={(e) => set('label_pack_unit', e.target.value.toUpperCase())} className={fieldClass} placeholder="PCS" /></Field>
                 <Field id="cl-allergens" label="Allergens" hint="Printed bold in the ingredients, and as “Contains …” when the note is empty."><input id="cl-allergens" maxLength={200} value={d.label_allergens} onChange={(e) => set('label_allergens', e.target.value)} className={fieldClass} placeholder="egg, gluten, peanuts" /></Field>

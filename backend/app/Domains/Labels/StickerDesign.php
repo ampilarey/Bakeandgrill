@@ -198,7 +198,7 @@ final class StickerDesign
         // The nutrition panel (round C): five columns per 100 g, or a custom
         // label's typed line, between HOW TO USE and the pictograms.
         $nutrition = is_array($d['nutrition'] ?? null) ? $d['nutrition'] : null;
-        $nutH = $nutrition === null ? 0.0 : ($nutrition['rows'] !== [] ? 9.2 : 4.4);
+        $nutH = $nutrition === null ? 0.0 : ($nutrition['rows'] !== [] ? (!empty($nutrition['serv_rows']) ? 11.8 : 9.2) : 4.4);
         $blockTop = $middleBottom - $noteH - $iconH - $nutH - $howH;
 
         // The ingredients at the largest size that fits above that block with
@@ -304,11 +304,20 @@ final class StickerDesign
             if ($nutrition['rows'] !== []) {
                 $cols = count($nutrition['rows']);
                 $cw = 86.0 / $cols;
-                $p[] = ['t' => 'text', 'x' => 5, 'base' => $nutTop + 2.9, 'w' => 95, 'align' => 'c', 'font' => 'j7', 'pt' => 4.6, 'color' => self::PRIMARY, 'text' => self::spaced('NUTRITION PER 100 g')];
+                $per = (string) ($nutrition['per'] ?? 'g');
+                $serv = !empty($nutrition['serv_rows']) ? $nutrition['serv_rows'] : null;
+                // Per serving beside per 100 (round 15): a second, smaller value under each column.
+                $heading = $serv !== null
+                    ? 'NUTRITION PER 100 ' . $per . '  ·  PER SERVING (' . Nutrition::servingWords((float) $nutrition['serving'], $per) . ')'
+                    : self::spaced('NUTRITION PER 100 ' . $per);
+                $p[] = ['t' => 'text', 'x' => 5, 'base' => $nutTop + 2.9, 'w' => 95, 'align' => 'c', 'font' => 'j7', 'pt' => LabelText::fitPt($heading, 'j7', 92, 4.6, 3.4), 'color' => self::PRIMARY, 'text' => $heading];
                 foreach ($nutrition['rows'] as $i => [$label, $value]) {
                     $cx = 9.5 + $i * $cw;
                     $p[] = ['t' => 'text', 'x' => $cx, 'base' => $nutTop + 5.6, 'w' => $cw, 'align' => 'c', 'font' => 'j7', 'pt' => 4.2, 'color' => self::MUTED, 'text' => $label, 'ls' => 0.05];
                     $p[] = ['t' => 'text', 'x' => $cx, 'base' => $nutTop + 8.6, 'w' => $cw, 'align' => 'c', 'font' => 'j8', 'pt' => 6.2, 'color' => self::TEXT, 'text' => $value];
+                    if ($serv !== null) {
+                        $p[] = ['t' => 'text', 'x' => $cx, 'base' => $nutTop + 11.2, 'w' => $cw, 'align' => 'c', 'font' => 'j5', 'pt' => 4.8, 'color' => self::MUTED, 'text' => $serv[$i][1]];
+                    }
                 }
             } else {
                 $p[] = ['t' => 'text', 'x' => 5, 'base' => $nutTop + 3.4, 'w' => 95, 'align' => 'c', 'font' => 'j5', 'pt' => LabelText::fitPt($nutrition['line'], 'j5', 92, 5.6, 4.0), 'color' => self::TEXT, 'text' => $nutrition['line']];
