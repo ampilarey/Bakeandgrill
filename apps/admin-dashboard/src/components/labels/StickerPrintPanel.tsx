@@ -19,7 +19,7 @@ import { FooterPicker } from './FooterPicker';
 import { FoldHelp } from './FoldHelp';
 import { ChooseItemsModal } from './ChooseItemsModal';
 import { ReprintScan } from './ReprintScan';
-import { DEFAULT_CHOICE, choiceFromRequest, pageOf, rememberSize, rememberedSize, requestFor, sizeName, sizeOf, sizeProblem, stockOf, type SizeChoice } from './labelSize';
+import { DEFAULT_CHOICE, choiceFromRequest, pageOf, rememberSize, rememberedSize, requestFor, rollMatches, rollName, rollStock, rollStockWords, sizeName, sizeOf, sizeProblem, stockOf, type SizeChoice } from './labelSize';
 
 /*
  * Print labels: pick products, how many, the language, the label size and
@@ -377,6 +377,10 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
   ], [products, customs]);
   const items = useMemo(() => Object.entries(picked).filter(([, n]) => n > 0).map(([key, copies]) => ({ key, ...parseKey(key), copies })), [picked]);
   const total = items.reduce((s, i) => s + i.copies, 0);
+  // Label stock (round 13): the roll this size is, what it has left, and what this print takes off it (labels, or sheets of a sheet stock).
+  const onRoll = presets.length > 0 ? rolls.find((r) => rollMatches(r, choice, presets)) ?? null : null;
+  const onRollStock = onRoll ? rollStock(onRoll) : null;
+  const rollTakes = onRollStock ? (onRollStock.unit === 'labels' ? total : Math.ceil(total / Math.max(1, perPage))) : 0;
 
   const needle = query.trim().toLowerCase();
   const shown = rows.filter((r) => (show === 'all' || r.kind === show) && (!needle || picked[r.key] || r.name.toLowerCase().includes(needle) || (r.name_dv ?? '').includes(query.trim())));
@@ -404,6 +408,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
       bleed: marks && Number(bleed) > 0 ? Number(bleed) : null,
       dpi: printer.dpi,
       reprint: reprint?.code ?? null,
+      roll: onRoll?.id ?? null,
     };
   };
 
@@ -548,6 +553,15 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
       )}
       {/* Scan to reprint (round 11): the QR on a pack, or its code, opens the label that printed it. */}
       {!fixedItems && !editing && !reprint && <ReprintScan />}
+      {/* Label stock (round 13): the rolls at or under their warning level, so nobody starts a sheet that will not finish. */}
+      {!fixedItems && rolls.some((r) => rollStock(r).lowNow) && (
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs p-2.5 rounded-lg border" style={{ borderColor: 'color-mix(in srgb, var(--color-warning) 45%, transparent)', color: 'var(--color-warning)' }} data-testid="sticker-low-rolls">
+          <AlertTriangle size={14} className="shrink-0" aria-hidden />
+          <span className="font-semibold">Running low:</span>{' '}
+          <span>{rolls.filter((r) => rollStock(r).lowNow).map((r) => `${rollName(r)} (${rollStockWords(r)})`).join(', ')}.</span>{' '}
+          <button type="button" className="underline font-semibold" onClick={() => navigate('/labels/settings')}>Count in new ones</button>
+        </p>
+      )}
       {reprint && (
         <div className="flex flex-wrap items-start gap-2 text-sm text-[var(--color-text-secondary)] p-3 rounded-lg bg-[var(--color-bg)]" data-testid="sticker-reprint">
           <RotateCcw size={16} className="mt-0.5 shrink-0 text-[var(--color-primary)]" aria-hidden />
@@ -691,6 +705,11 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
           <LabelSizePicker presets={presets} limits={limits} choice={choice} onChange={setChoice} rounded={rounded} onRounded={setRounded} rolls={rolls} />
         ) : (
           <p className="text-xs text-[var(--color-text-muted)]">Loading the sizes…</p>
+        )}
+        {onRoll && onRollStock && onRollStock.left !== null && (
+          <p className={['text-xs', rollTakes > onRollStock.left ? 'text-[var(--color-danger)] font-semibold' : onRollStock.lowNow ? 'text-[var(--color-warning)] font-semibold' : 'text-[var(--color-text-muted)]'].join(' ')} data-testid="sticker-roll-stock">
+            {rollName(onRoll)}: {rollStockWords(onRoll)}{total > 0 ? `; this print takes ${rollTakes} ${rollTakes === 1 ? onRollStock.unit.slice(0, -1) : onRollStock.unit}` : ''}{rollTakes > onRollStock.left ? ', more than is left' : onRollStock.lowNow ? ' (running low)' : ''}.
+          </p>
         )}
       </section>
 
@@ -846,6 +865,11 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
               </li>
             ))}
           </ul>
+          {result.summary.roll && (
+            <p className={['text-xs', result.summary.roll.low_now ? 'font-semibold text-[var(--color-warning)]' : 'text-[var(--color-text-secondary)]'].join(' ')} data-testid="sticker-roll-after">
+              Counted off <strong className="text-[var(--color-text)]">{rollName(result.summary.roll)}</strong>: {rollStockWords(result.summary.roll) ?? 'not counted'}{result.summary.roll.out ? '. Count in a new roll under Settings.' : result.summary.roll.low_now ? ' (running low: order more).' : '.'}
+            </p>
+          )}
           {result.job && (
             <div className="text-xs text-[var(--color-text-secondary)] flex flex-wrap items-center gap-x-2 gap-y-1">
               <span>Saved as</span>

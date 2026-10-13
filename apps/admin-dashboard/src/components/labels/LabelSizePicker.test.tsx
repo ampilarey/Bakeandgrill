@@ -67,4 +67,15 @@ describe('LabelSizePicker', () => {
     fireEvent.click(within(mine).getByRole('button', { name: 'Round 60 mm' }));
     expect(screen.getByTestId('label-size-hint')).toHaveTextContent('Round 60 mm · Round 60 mm (6 cm across) · round sticker · 12 on an A4 sheet');
   });
+
+  // Label stock (round 13): a counted roll says what is left on its chip, in red once it is at its warning level.
+  it('shows what is left on a counted roll', () => {
+    render(<Harness owned={[{ ...rolls[1], left: 34, low: 50 }, { ...rolls[0], left: 12, low: 2 }, rolls[2]]} />);
+    const mine = screen.getByRole('group', { name: 'My label rolls' });
+    const chips = within(mine).getAllByRole('button');
+    expect(chips.map((b) => b.textContent)).toEqual(['Small roll· 60 × 40 · 34 left', 'Big sheets· 105 × 148.5 · 12 left', 'Round 60 mm']);
+    expect(chips[0]).toHaveAttribute('data-low', 'true');
+    expect(chips[1]).not.toHaveAttribute('data-low');
+    expect(chips[0]).toHaveAttribute('title', '60 × 40 mm · Label printer · 34 labels left');
+  });
 });

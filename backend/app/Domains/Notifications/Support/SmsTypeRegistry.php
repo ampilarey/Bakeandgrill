@@ -308,6 +308,8 @@ final class SmsTypeRegistry
             self::def('owner_stock_expiry', 'Owner: stock expiring', 'staff', true, false, null, 'sms_owner_stock_expiry_enabled', null, false, 'Owners & managers', false),
             // Labels, 2026-10-12: packs stickered with an expiry that is near (labels:check-expiring).
             self::def('owner_labels_expiry', 'Owner: printed stock expiring', 'staff', true, false, null, 'sms_owner_labels_expiry_enabled', null, false, 'Owners & managers', false),
+            // Labels, 2026-10-13 (round 13): a label roll counted down to its warning level (LabelRolls::consume, RollStockAlert).
+            self::def('owner_labels_roll_low', 'Owner: label roll running low', 'staff', true, false, null, 'sms_owner_labels_roll_low_enabled', null, false, 'Owners & managers', false),
             self::def('owner_price_rise', 'Owner: supplier price rises', 'staff', true, false, null, 'sms_owner_price_rise_enabled', null, false, 'Owners & managers', false),
             self::def('owner_delivery_delays', 'Owner: deliveries past ETA', 'staff', true, false, null, 'sms_owner_delivery_delays_enabled', null, false, 'Business phone', false),
             self::def('owner_device_approval', 'Owner: POS device waiting for approval', 'staff', true, false, null, 'sms_owner_device_approval_enabled', null, false, 'Business phone', false),

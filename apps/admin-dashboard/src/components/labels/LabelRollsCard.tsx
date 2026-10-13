@@ -5,7 +5,7 @@ import { Btn } from '../SharedUI';
 import { Button, Card, useToast } from '../ui';
 import { InlineRename } from './InlineRename';
 import { LabelSizePicker } from './LabelSizePicker';
-import { DEFAULT_CHOICE, parseRolls, rollName, sizeName, sizeOf, stockOf, type SizeChoice } from './labelSize';
+import { DEFAULT_CHOICE, parseRolls, rollName, rollStock, rollStockWords, rollUnit, sizeName, sizeOf, stockOf, type SizeChoice } from './labelSize';
 
 /*
  * My label rolls (round 6 of the usability work, owner, 2026-10-13: "only the
@@ -63,6 +63,37 @@ export function LabelRollsCard({ canManage }: { canManage: boolean }) {
     void save((rolls ?? []).filter((r) => r.id !== roll.id), `${rollName(roll)} removed.`);
   };
   const rename = (roll: LabelRoll, n: string) => void save((rolls ?? []).map((r) => (r.id === roll.id ? { ...r, name: n.trim() } : r)), 'Roll renamed.');
+  /*
+   * Label stock (round 13, owner 2026-10-13: "how many labels are left on
+   * each roll, with a warning when low"): how many are left (labels on a
+   * printer roll, sheets otherwise) and the level that warns. Every print
+   * counts its roll down; the owners hear once when it reaches the level.
+   */
+  const setStock = (roll: LabelRoll, key: 'left' | 'low', raw: string) => {
+    const v = raw.trim() === '' ? null : Math.max(0, Math.round(Number(raw)));
+    if (v !== null && !Number.isFinite(v)) return;
+    if ((roll[key] ?? null) === v) return;
+    const said = v === null ? `${rollName(roll)}: ${key === 'left' ? 'no longer counted' : 'no warning level'}.` : key === 'left' ? `${rollName(roll)}: ${v} ${rollUnit(roll)} left.` : `${rollName(roll)} warns at ${v}.`;
+    void save((rolls ?? []).map((r) => (r.id === roll.id ? { ...r, [key]: v } : r)), said);
+  };
+  const stockBox = (roll: LabelRoll, key: 'left' | 'low', label: string) => (
+    <label className="inline-flex items-center gap-1.5 text-xs text-[var(--color-text-secondary)]">
+      <span>{label}</span>
+      <input
+        type="number"
+        inputMode="numeric"
+        min={0}
+        max={999999}
+        key={`${roll.id}-${key}-${roll[key] ?? ''}`}
+        defaultValue={roll[key] ?? ''}
+        placeholder={key === 'left' ? 'Not counted' : 'None'}
+        aria-label={`${rollName(roll)}: ${key === 'left' ? 'left' : 'warn at'}`}
+        onBlur={(e) => setStock(roll, key, e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+        className="h-10 min-h-[44px] w-24 px-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-sm text-[var(--color-text)]"
+      />
+    </label>
+  );
 
   return (
     <Card
@@ -71,7 +102,7 @@ export function LabelRollsCard({ canManage }: { canManage: boolean }) {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h3 className="font-bold text-[var(--color-text)]">My label rolls</h3>
-            <p className="text-xs text-[var(--color-text-muted)] mt-1">The rolls and sheets you actually have. Every size picker shows these first, by name, and keeps the other sizes under More sizes.</p>
+            <p className="text-xs text-[var(--color-text-muted)] mt-1">The rolls and sheets you actually have. Every size picker shows these first, by name, and keeps the other sizes under More sizes. Type how many are left and every print is counted off; at the warning level the owners hear once.</p>
           </div>
           {canManage && !adding && <Button size="sm" icon={<Plus size={16} />} onClick={() => setAdding(true)} data-testid="label-roll-new">Add a roll</Button>}
         </div>
@@ -81,14 +112,26 @@ export function LabelRollsCard({ canManage }: { canManage: boolean }) {
         {(rolls ?? []).map((r) => {
           const { w, h } = sizeOf({ shape: r.shape, preset: r.preset, on: r.on, w: r.w, h: r.h }, presets);
           const stock = stockOf({ shape: r.shape, preset: r.preset, on: r.on, w: r.w, h: r.h }, presets);
+          const rs = rollStock(r);
           return (
-            <li key={r.id} className="px-4 py-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <li key={r.id} className="px-4 py-3 flex flex-wrap items-center gap-x-3 gap-y-2">
               <div className="flex-1 min-w-[180px]">
                 {canManage
                   ? <InlineRename name={rollName(r)} onSave={(n) => rename(r, n)} buttonClassName="text-sm font-semibold text-[var(--color-text)]" />
                   : <div className="text-sm font-semibold text-[var(--color-text)]">{rollName(r)}</div>}
                 <div className="text-xs text-[var(--color-text-muted)]">{sizeName(r.shape, w, h)} · {stock.label}{stock.on !== 'printer' && stock.perPage > 0 ? ` · ${stock.perPage} a sheet` : ''}</div>
+                <div className="text-xs mt-0.5 flex flex-wrap items-center gap-2" data-testid={`label-roll-stock-${r.id}`}>
+                  <span className={rs.lowNow ? 'font-semibold text-[var(--color-danger)]' : 'text-[var(--color-text-secondary)]'}>{rollStockWords(r) ?? 'Not counted'}</span>
+                  {rs.lowNow && <span className="inline-flex items-center h-5 px-2 rounded-full text-[11px] font-semibold" style={{ background: 'color-mix(in srgb, var(--color-danger) 14%, transparent)', color: 'var(--color-danger)', border: '1px solid color-mix(in srgb, var(--color-danger) 35%, transparent)' }}>{rs.out ? 'Out' : 'Low'}</span>}
+                  {rs.left !== null && rs.low !== null && !rs.lowNow && <span className="text-[var(--color-text-muted)]">warns at {rs.low}</span>}
+                </div>
               </div>
+              {canManage && (
+                <div className="flex flex-wrap items-center gap-2">
+                  {stockBox(r, 'left', rollUnit(r) === 'labels' ? 'Labels left' : 'Sheets left')}
+                  {stockBox(r, 'low', 'Warn at')}
+                </div>
+              )}
               {canManage && <Btn variant="danger-outline" small onClick={() => remove(r)} aria-label={`Remove ${rollName(r)}`}>Remove</Btn>}
             </li>
           );

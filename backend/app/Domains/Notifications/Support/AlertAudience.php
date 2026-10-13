@@ -116,6 +116,7 @@ final class AlertAudience
         'owner_stock_reorder' => self::OWNERS_MANAGERS,
         'owner_stock_expiry' => self::OWNERS_MANAGERS,
         'owner_labels_expiry' => self::OWNERS_MANAGERS,
+        'owner_labels_roll_low' => self::OWNERS_MANAGERS,
         'owner_price_rise' => self::OWNERS_MANAGERS,
         'owner_social_digest' => self::OWNERS_MANAGERS,
         'trade_reconcile_mismatch_owner' => self::OWNERS_MANAGERS,

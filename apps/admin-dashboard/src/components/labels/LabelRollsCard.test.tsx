@@ -84,6 +84,29 @@ describe('LabelRollsCard', () => {
     confirm.mockRestore();
   });
 
+  // Label stock (round 13): how many are left and the warning level, typed on the roll's row.
+  it('counts what is left on a roll and the level that warns', async () => {
+    api.fetchLabelLayouts.mockResolvedValue({ data: [], presets, limits, rolls: [{ ...owned[0], left: 34, low: 50, low_now: true, out: false, unit: 'labels' }] });
+    render(<LabelRollsCard canManage />);
+    const row = await screen.findByTestId('label-roll-stock-small');
+    expect(row).toHaveTextContent('34 labels left');
+    expect(row).toHaveTextContent('Low');
+    const left = screen.getByLabelText('Small roll: left');
+    expect(left).toHaveValue(34);
+    fireEvent.change(left, { target: { value: '200' } });
+    fireEvent.blur(left);
+    await waitFor(() => expect(api.saveLabelSettings).toHaveBeenCalledTimes(1));
+    const saved = JSON.parse(api.saveLabelSettings.mock.calls[0][0].label_rolls as string) as { id: string; left: number | null; low: number | null }[];
+    expect(saved[0]).toMatchObject({ id: 'small', left: 200, low: 50 });
+    fireEvent.change(screen.getByLabelText('Small roll: warn at'), { target: { value: '' } });
+    fireEvent.blur(screen.getByLabelText('Small roll: warn at'));
+    await waitFor(() => expect(api.saveLabelSettings).toHaveBeenCalledTimes(2));
+    expect((JSON.parse(api.saveLabelSettings.mock.calls[1][0].label_rolls as string) as { low: number | null }[])[0].low).toBeNull();
+    // Blurring without a change saves nothing.
+    fireEvent.blur(screen.getByLabelText('Small roll: left'));
+    expect(api.saveLabelSettings).toHaveBeenCalledTimes(2);
+  });
+
   it('only shows the rolls to someone who cannot manage labels', async () => {
     render(<LabelRollsCard canManage={false} />);
     expect(await screen.findByTestId('label-rolls')).toHaveTextContent('Small roll');

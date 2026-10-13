@@ -90,8 +90,8 @@ class LabelsController extends Controller
             'limits' => StickerLayouts::limits(),
             // The wrap-around label's parts and marks, as the editors list them (2026-10-12).
             'wrap' => WrapConfig::catalogue(),
-            // The rolls and sheets the business owns (round 6, 2026-10-13): every size picker shows them first.
-            'rolls' => LabelRolls::all(),
+            // The rolls and sheets the business owns (round 6, 2026-10-13): every size picker shows them first; with what is left on each (round 13).
+            'rolls' => LabelRolls::presentAll(),
             // The badges a product can carry (round 9), for the pickers.
             'badges' => LabelBadges::catalogue(),
             // What the kitchen screen prints a batch's stickers on and in (round 12).
@@ -157,6 +157,8 @@ class LabelsController extends Controller
             'dpi' => ['nullable', Rule::in(LabelRaster::DPIS)],
             // Scan to reprint (round 11, 2026-10-13): the code of the pack this print stands in for.
             'reprint' => 'nullable|string|max:12',
+            // Label stock (round 13): the roll this print is counted off.
+            'roll' => 'nullable|string|max:40',
         ];
     }
 
@@ -262,6 +264,8 @@ class LabelsController extends Controller
             }
         }
         $query['b'] = StickerSheet::codesParam($codes);
+        // Label stock (round 13): a real print is counted off the roll it used; the summary says what is left.
+        $summary['roll'] = $preview ? null : LabelRolls::consume($req, $summary);
 
         return [
             'url' => LabelSheetController::link('labels.stickers', $query + ($preview ? ['preview' => 1] : ['print' => 1])),

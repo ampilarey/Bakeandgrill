@@ -267,6 +267,21 @@ describe('MakeLabelWizard', () => {
     expect(screen.getByTestId('make-size-line')).toHaveTextContent('60 × 40 mm · small sticker · 18 on A4 sheet');
     expect(cards[0]).toHaveAttribute('aria-pressed', 'false');
     fireEvent.click(screen.getByTestId('make-next-2'));
-    await waitFor(() => expect(api.stickerLinks).toHaveBeenLastCalledWith(expect.objectContaining({ layout: 'a4-custom', w: 60, h: 40, preview: true })));
+    await waitFor(() => expect(api.stickerLinks).toHaveBeenLastCalledWith(expect.objectContaining({ layout: 'a4-custom', w: 60, h: 40, roll: null, preview: true })));
+  });
+
+  // Label stock (round 13): a counted roll's card says what is left, and a print on it names the roll so it is counted off.
+  it('names the roll a print is on, and says what is left on it', async () => {
+    api.fetchLabelLayouts.mockResolvedValue({
+      data: [], presets, limits, wrap: { parts: [], marks: [], default_parts: [], default_marks: [], max_pictures: 4 },
+      rolls: [{ id: 'small', name: 'Small roll', shape: 'rect', preset: 'r60x40', on: 'printer', w: 60, h: 40, left: 34, low: 50, unit: 'labels', low_now: true, out: false }],
+    });
+    mount();
+    fireEvent.click(screen.getByRole('button', { name: /A menu item/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Masroshi/ }));
+    const mine = await screen.findByRole('group', { name: 'My label rolls' });
+    expect(within(mine).getByRole('button', { name: /Small roll/ })).toHaveTextContent('34 labels left');
+    fireEvent.click(screen.getByTestId('make-next-2'));
+    await waitFor(() => expect(api.stickerLinks).toHaveBeenLastCalledWith(expect.objectContaining({ layout: 'single-custom', w: 60, h: 40, roll: 'small', preview: true })));
   });
 });

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { LabelLimits, LabelPreset, LabelRoll } from '../../api';
 import {
-  choiceFromRequest, designFor, gridCount, pageOf, parseRolls, requestFor, rollChoice, rollMatches, rollName, sizeCm, sizeName, sizeProblem, stockOf, stocksFor,
+  choiceFromRequest, designFor, gridCount, pageOf, parseRolls, requestFor, rollChoice, rollMatches, rollName, rollStock, rollStockWords, rollUnit, sizeCm, sizeName, sizeProblem, stockOf, stocksFor,
   switchShape, withPreset, type LabelShape, type SizeChoice,
 } from './labelSize';
 
@@ -169,5 +169,19 @@ describe('label rolls', () => {
       big,
       { id: 'c', name: '', shape: 'circle', preset: 'custom', on: 'sheet', w: 60, h: 60 },
     ]);
+  });
+
+  // Label stock (round 13): how many are left and the warning level ride along; a roll without a count says nothing.
+  it('keeps a roll\'s stock and words it by what the roll counts', () => {
+    const [counted, plain] = parseRolls(JSON.stringify([{ ...small, left: 34, low: 50, low_alerted_at: '2026-10-13T09:00:00+05:00' }, { ...big, left: null, low: 'x' }]));
+    expect(counted).toMatchObject({ id: 'small', left: 34, low: 50, low_alerted_at: '2026-10-13T09:00:00+05:00' });
+    expect(plain).toEqual(big);
+    expect(rollStock(counted)).toEqual({ left: 34, low: 50, unit: 'labels', lowNow: true, out: false });
+    expect(rollStockWords(counted)).toBe('34 labels left');
+    expect(rollStockWords({ ...big, left: 1, low: 2 })).toBe('1 sheet left');
+    expect(rollStockWords({ ...big, left: 0 })).toBe('Out of sheets');
+    expect(rollStockWords(plain)).toBeNull();
+    expect(rollStock({ ...small, left: 80, low: 50 })).toMatchObject({ lowNow: false, out: false });
+    expect(rollUnit(big)).toBe('sheets');
   });
 });

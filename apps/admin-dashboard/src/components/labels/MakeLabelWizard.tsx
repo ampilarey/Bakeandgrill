@@ -20,7 +20,7 @@ import { LabelSizePicker } from './LabelSizePicker';
 import { QtyStepper } from './QtyStepper';
 import { CustomLabelModal, langOf } from './CustomLabels';
 import { ItemLabelTab } from './ItemLabelTab';
-import { DEFAULT_CHOICE, DESIGN_NAMES, designFor, rememberSize, rememberedSize, requestFor, rollChoice, rollMatches, rollName, sizeName, sizeOf, sizeProblem, stockOf, stocksFor, withPreset, type SizeChoice } from './labelSize';
+import { DEFAULT_CHOICE, DESIGN_NAMES, designFor, rememberSize, rememberedSize, requestFor, rollChoice, rollMatches, rollName, rollStock, rollStockWords, sizeName, sizeOf, sizeProblem, stockOf, stocksFor, withPreset, type SizeChoice } from './labelSize';
 
 /*
  * Make a label, in four steps (owner, 2026-10-13: "Still its v confusing and
@@ -283,6 +283,8 @@ export function MakeLabelWizard({ canManage = false }: {
     batch: batch.trim() || null,
     for: packedFor.trim() || null,
     for2: packedFor2.trim() || null,
+    // Label stock (round 13): a roll you own is counted off.
+    roll: rollPicked?.id ?? null,
     preview: forPreview || undefined,
   });
 
@@ -513,6 +515,7 @@ export function MakeLabelWizard({ canManage = false }: {
                     <span className="block w-full">
                       <span className="block text-sm font-bold text-[var(--color-text)]">{rollName(r)}</span>
                       <span className="block text-xs text-[var(--color-text-muted)]">{r.name.trim() ? `${sizeName(r.shape, w, h)} · ` : ''}{stock.on === 'printer' ? 'label printer' : `${stock.perPage} on ${stock.label}`}</span>
+                      {rollStockWords(r) && <span className={['block text-xs', rollStock(r).lowNow ? 'font-semibold text-[var(--color-danger)]' : 'text-[var(--color-text-secondary)]'].join(' ')}>{rollStockWords(r)}</span>}
                     </span>
                   </button>
                 );

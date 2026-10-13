@@ -326,6 +326,45 @@ Where: `ProductionTasks::madeFor()` and `batches` in `format()`;
 `KitchenStickersTest`, the sticker cases in `KitchenProductionPanel.test.tsx`, the
 kitchen case in `LabelRollsCard.test.tsx`.
 
+### Label stock: what is left on each roll
+
+Round 13 (owner, 2026-10-13; the audit's "how many labels are left on each roll, with
+a warning when low"). Under **Labels → Settings → My label rolls** each roll has two
+boxes, **Labels left** (or **Sheets left** for a sheet stock) and **Warn at**. Type a
+count and every print is counted off that roll: a print names the roll it is on
+(`roll` in the sticker request, the roll chip or card picked on Print labels and Make
+a label; a request that names none is counted off the first roll of that very layout
+and size), labels off a label-printer roll, sheets off a sheet stock, never below
+none; a roll without a count is left alone. What is left shows everywhere the roll
+does: the chip under My label rolls (**Small roll · 60 × 40 · 34 left**, red at the
+level), the wizard's roll card, a line under the size on Print labels (**Small roll: 34
+labels left; this print takes 40 labels, more than is left**), the prepared summary
+(**Counted off Small roll: 31 labels left (running low: order more)**) and a **Running
+low** notice at the top of Print labels with **Count in new ones**. When a print takes
+a roll down to its warning level the owners hear once, **Owner: label roll running
+low** on Admin → System → Notifications (`owner_labels_roll_low`, to owners and
+managers by their channels): "Bake & Grill: the label roll Small roll (60 × 40 mm,
+label printer) is down to 50 labels (warning at 50). Order more, and count the new
+ones in under Labels → Settings → My label rolls." Counting the roll up above the
+level forgets the telling, so the next drop warns again; a print counts the roll down
+whether or not the alert is on. A saved label and a pack's reprint keep the roll, so
+printing them again counts it off too. A preview counts nothing.
+
+Where: `left`, `low` and `low_alerted_at` on each roll in `label_rolls`
+(`LabelRolls::normalise()` tidies them; `present()` adds `unit`, `low_now`, `out`;
+`presentAll()` is what `GET /api/labels/layouts` sends as `rolls`),
+`LabelRolls::consume()` (the roll by id or `sameSize()`, the count, the alert, the
+save) called by `stickerLinks()` for a real print, `roll` on the summary with `took`;
+`App\Domains\Labels\RollStockAlert` (`TYPE`, `send()`, `message()`), the registry row
+and `AlertAudience::DEFAULT_GROUPS`; `roll` in `StickerSheet::normalise()` and
+`Reprint::KEYS`. Admin: `rollStock()`, `rollStockWords()`, `rollUnit()` and the stock
+fields in `parseRolls()` (`labelSize.ts`); the boxes on `LabelRollsCard.tsx`; the chip
+on `LabelSizePicker.tsx`; `onRoll`, `sticker-roll-stock`, `sticker-roll-after` and
+`sticker-low-rolls` on `StickerPrintPanel.tsx`; the card words and `roll` on
+`MakeLabelWizard.tsx`. Tests: `LabelStockTest`; the stock cases in `labelSize.test.ts`,
+`LabelSizePicker.test.tsx`, `LabelRollsCard.test.tsx`, `StickerPrintPanel.test.tsx` and
+`MakeLabelWizard.test.tsx`.
+
 ## Who can use it
 
 Two permissions, both owner-only until granted in Staff → Permissions (to a role or
@@ -918,6 +957,7 @@ beneath.
 | Allergen pictograms | `App\Domains\Labels\AllergenIcons` (`for()`, `keys()`, `svg()`, `dataUri()`; words → symbols, captions, `SPICY_LEVELS`); `stickerData()` sets `icons`, `StickerDesign::full()` draws the row (12 mm pitch, 8.8 mm tall) above the note; setting `label_allergen_icons` |
 | Variable runs | A row's own `batch`, `qty`, `mfg`, `exp`, `for`, `for2` in a sticker request (`StickerSheet::RUN_KEYS`, `cleanRun()`, `rowRequest()`; the link's `runs`); the Details fold on each picked row of `StickerPrintPanel.tsx` (§ Variable runs) |
 | Scan to reprint | `label_prints.request` (the request that made the print, one product; § Scan to reprint) and `details.reprint_of`; `App\Domains\Labels\Reprint` (`of()`, `rebuilt()`, `status()`, `present()`); `reprint` on a sticker request; `GET /api/labels/prints/{code}` (`labels.print`); the staff link on the pack page; `ReprintScan.tsx` (`codeFromScan()`), `?code=` on `StickerPrintPanel.tsx`, Print again in the print log |
+| Label stock | `left`, `low`, `low_alerted_at` on each roll in `label_rolls` (§ Label stock); `LabelRolls::consume()` on every real print (`roll` in the request, else the roll of that size), `present()` / `presentAll()`, `roll` on the sticker summary; `App\Domains\Labels\RollStockAlert` under the registry row `owner_labels_roll_low`; `rollStock()` / `rollStockWords()` in `labelSize.ts`, the boxes on `LabelRollsCard.tsx`, the lines on `StickerPrintPanel.tsx` and the wizard |
 | Badges | `items.label_badges`, `custom_labels.label_badges` (JSON list, up to four keys; § Badges); `App\Domains\Labels\LabelBadges` (`CATALOGUE`, `clean()`, `rules()`, `for()`, `pills()`), drawn by every design under the name; the catalogue with `GET /api/labels/layouts` as `badges`; `BadgePicker.tsx` and the tap sheet's `chips` input |
 | Drag designer | `items.label_layout`, `custom_labels.label_layout` (JSON per design and part; § The drag designer); `App\Domains\Labels\LabelLayout` (`clean()`, `rules()`, `apply()` on the marked runs in `StickerSheet::pieces()`); `labelLayout.ts`, `SpotOverlay` move mode, `ArrangeBar.tsx` |
 | Templates | `label_templates` (`App\Models\LabelTemplate`; § Templates); `App\Domains\Labels\LabelTemplates` (`KEYS`, `BUILTIN`, `rules()`, `normaliseFields()`, `normaliseSize()`, `present()`); API `GET /api/labels/templates` (`labels.print`), `POST` / `PUT` / `DELETE /api/labels/templates/{template}` (`labels.manage`); `labelTemplates.ts`, `StartFrom.tsx`, `LabelTemplatesCard.tsx` under Wording and logos |

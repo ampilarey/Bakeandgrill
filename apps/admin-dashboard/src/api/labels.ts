@@ -199,7 +199,11 @@ export type LabelLimits = { min_short: number; min_long: number; max_w: number; 
  * picker holds it, with a name of the owner's. Every size picker shows them
  * first and the rest under More sizes. Kept as the JSON setting `label_rolls`.
  */
-export type LabelRoll = { id: string; name: string; shape: 'rect' | 'circle'; preset: string; on: LabelStock; w: number; h: number };
+export type LabelRoll = {
+  id: string; name: string; shape: 'rect' | 'circle'; preset: string; on: LabelStock; w: number; h: number;
+  /** Label stock (round 13): how many are left (labels on a printer roll, sheets otherwise), the level that warns, when the owners were told; the server adds the unit and whether it is low or out. */
+  left?: number | null; low?: number | null; low_alerted_at?: string | null; unit?: 'labels' | 'sheets'; low_now?: boolean; out?: boolean;
+};
 
 /** A badge a product can carry (round 9, 2026-10-13): its key, everyday name and the words printed on the pill. */
 export type LabelBadge = { key: string; label: string; word: string; word_dv: string };
@@ -332,6 +336,8 @@ export type StickerRequest = {
   dpi?: PrinterDpi | null;
   /** Scan to reprint (round 11): the code of the pack this print stands in for; the log keeps it. */
   reprint?: string | null;
+  /** Label stock (round 13): the roll this print is counted off. */
+  roll?: string | null;
 };
 
 export type PromoKind = '' | 'was_now' | 'text';
@@ -426,6 +432,8 @@ export type StickerSummary = {
   wrap?: WrapStrips | null;
   /** On every other design: where the first product's parts are, for the preview's touch zones (empty on a wrap label). */
   spots?: LabelSpot[];
+  /** Label stock (round 13): the roll this print was counted off, as it now stands, with what the print took; null on a preview or when no roll matched. */
+  roll?: (LabelRoll & { took: number }) | null;
 };
 
 export type SheetLinks = {

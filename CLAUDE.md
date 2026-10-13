@@ -347,7 +347,12 @@ packing (round 12): a plan task carries the batches made for it (`batches`,
 Print stickers, on the roll and in the language from `LabelRolls::kitchen()`
 (`label_kitchen_roll`, `label_kitchen_lang`, picked under Labels → Settings → My label
 rolls; `kitchen` on `GET /api/labels/layouts`); the PDF's window is opened in the tap
-itself so a tablet does not block it. How to
+itself so a tablet does not block it. Label stock (round 13): a roll in `label_rolls`
+may carry `left` and `low`; every real print is counted off the roll it names (`roll`
+in the request, else the roll of that size; `LabelRolls::consume()`, labels on a
+printer roll, sheets otherwise), the pickers show what is left, and the owners hear
+once at the level through the registry row `owner_labels_roll_low`
+(`RollStockAlert`), forgotten when the roll is counted up again. How to
 use it and where everything lives: `docs/LABELS.md`; design and decisions:
 `docs/LABEL_HUB_PLAN.md` and `docs/LABEL_HUB_V2_PLAN.md`.
 

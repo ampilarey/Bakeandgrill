@@ -2,7 +2,7 @@ import { ArrowLeftRight, ChevronDown, Circle, RectangleVertical } from 'lucide-r
 import type { LabelLimits, LabelPreset, LabelRoll } from '../../api';
 import { TabScrollRow } from '../SharedUI';
 import {
-  DESIGN_NAMES, designFor, rollChoice, rollMatches, rollName, sizeCm, sizeName, sizeOf, sizeProblem, stockOf, stocksFor, switchShape, withPreset,
+  DESIGN_NAMES, designFor, rollChoice, rollMatches, rollName, rollStock, rollStockWords, sizeCm, sizeName, sizeOf, sizeProblem, stockOf, stocksFor, switchShape, withPreset,
   type LabelShape, type SizeChoice,
 } from './labelSize';
 
@@ -117,9 +117,11 @@ export function LabelSizePicker({ presets, limits, choice, onChange, rounded, on
             {rolls.map((r) => {
               const on = onRoll?.id === r.id;
               const rs = stockOf(rollChoice(r), presets);
+              const stockOfRoll = rollStock(r);
               return (
-                <button key={r.id} type="button" aria-pressed={on} onClick={() => onChange(rollChoice(r))} className={chipClass(on)} title={`${sizeName(r.shape, r.w, r.h)} · ${rs.label}`}>
+                <button key={r.id} type="button" aria-pressed={on} onClick={() => onChange(rollChoice(r))} className={chipClass(on)} title={`${sizeName(r.shape, r.w, r.h)} · ${rs.label}${rollStockWords(r) ? ` · ${rollStockWords(r)}` : ''}`} data-low={stockOfRoll.lowNow ? 'true' : undefined}>
                   {rollName(r)}{r.name.trim() ? <span className="font-normal opacity-80">· {r.shape === 'circle' ? `Ø ${r.w}` : `${r.w} × ${r.h}`}</span> : null}
+                  {stockOfRoll.left !== null && <span className={['font-normal', stockOfRoll.lowNow ? 'text-[var(--color-danger)] font-semibold' : 'opacity-80'].join(' ')}> · {stockOfRoll.left} left</span>}
                 </button>
               );
             })}

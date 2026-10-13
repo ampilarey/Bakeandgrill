@@ -167,6 +167,8 @@ final class StickerSheet
             // Scan to reprint (round 11, 2026-10-13): the code of the pack this
             // print stands in for; the log keeps it, the sticker does not change.
             'reprint' => self::reprintOf($in['reprint'] ?? null),
+            // Label stock (round 13): the roll this print is counted off (LabelRolls::consume), by its id.
+            'roll' => mb_substr((string) preg_replace('/[^a-zA-Z0-9_-]/', '', (string) ($in['roll'] ?? '')), 0, 40) ?: null,
         ];
     }
 

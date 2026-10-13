@@ -222,10 +222,40 @@ export function parseRolls(raw: string | null | undefined): LabelRoll[] {
     const list = JSON.parse(raw) as unknown;
     if (!Array.isArray(list)) return [];
     return list.filter((r): r is LabelRoll => Boolean(r) && typeof r === 'object' && typeof (r as LabelRoll).id === 'string' && ((r as LabelRoll).shape === 'rect' || (r as LabelRoll).shape === 'circle') && Number.isFinite((r as LabelRoll).w))
-      .map((r) => ({ id: r.id, name: typeof r.name === 'string' ? r.name : '', shape: r.shape, preset: typeof r.preset === 'string' && r.preset ? r.preset : 'custom', on: r.on, w: Number(r.w), h: Number.isFinite(r.h) ? Number(r.h) : Number(r.w) }));
+      .map((r) => ({
+        id: r.id, name: typeof r.name === 'string' ? r.name : '', shape: r.shape, preset: typeof r.preset === 'string' && r.preset ? r.preset : 'custom', on: r.on, w: Number(r.w), h: Number.isFinite(r.h) ? Number(r.h) : Number(r.w),
+        // Label stock (round 13): kept only where a number was typed.
+        ...(Number.isFinite(r.left) ? { left: Number(r.left) } : {}),
+        ...(Number.isFinite(r.low) ? { low: Number(r.low) } : {}),
+        ...(typeof r.low_alerted_at === 'string' && r.low_alerted_at ? { low_alerted_at: r.low_alerted_at } : {}),
+      }));
   } catch {
     return [];
   }
+}
+
+/*
+ * Label stock (round 13, owner 2026-10-13: "how many labels are left on each
+ * roll, with a warning when low"): a roll counts labels when it is on a
+ * label printer, sheets otherwise; a roll without a number typed in is not
+ * counted and says nothing.
+ */
+export function rollUnit(roll: LabelRoll): 'labels' | 'sheets' {
+  return roll.on === 'printer' ? 'labels' : 'sheets';
+}
+
+export function rollStock(roll: LabelRoll): { left: number | null; low: number | null; unit: 'labels' | 'sheets'; lowNow: boolean; out: boolean } {
+  const left = Number.isFinite(roll.left) ? Number(roll.left) : null;
+  const low = Number.isFinite(roll.low) ? Number(roll.low) : null;
+  return { left, low, unit: rollUnit(roll), lowNow: left !== null && low !== null && left <= low, out: left !== null && left <= 0 };
+}
+
+/** "34 labels left", "1 sheet left", "Out of labels"; null when the roll is not counted. */
+export function rollStockWords(roll: LabelRoll): string | null {
+  const s = rollStock(roll);
+  if (s.left === null) return null;
+  if (s.out) return `Out of ${s.unit}`;
+  return `${s.left} ${s.left === 1 ? s.unit.slice(0, -1) : s.unit} left`;
 }
 
 const LAST_SIZE_KEY = 'labels.lastSize';

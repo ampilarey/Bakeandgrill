@@ -19,8 +19,8 @@ use Carbon\CarbonImmutable;
  */
 final class Reprint
 {
-    /** The sticker request keys a print keeps, the ones a saved label keeps. */
-    public const KEYS = ['lang', 'layout', 'w', 'h', 'fill', 'mfg', 'exp', 'batch', 'qty', 'pi', 'type', 'footer', 'rounded', 'for', 'for2', 'promo', 'promo_was', 'promo_now', 'promo_text', 'number', 'marks', 'bleed'];
+    /** The sticker request keys a print keeps, the ones a saved label keeps (`roll`: the roll it is counted off, round 13). */
+    public const KEYS = ['lang', 'layout', 'w', 'h', 'fill', 'mfg', 'exp', 'batch', 'qty', 'pi', 'type', 'footer', 'rounded', 'for', 'for2', 'promo', 'promo_was', 'promo_now', 'promo_text', 'number', 'marks', 'bleed', 'roll'];
 
     /**
      * The request one product's print replays: the sheet's settings with the

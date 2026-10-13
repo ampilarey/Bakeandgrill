@@ -84,6 +84,15 @@ final class LabelRolls
                 continue;
             }
             $seen[$id] = true;
+            // Label stock (round 13): how many are left (labels on a printer
+            // roll, sheets otherwise), the level that warns, and when the owners
+            // were told; the telling is forgotten once the roll is above the level again.
+            $left = isset($row['left']) && $row['left'] !== '' && is_numeric($row['left']) ? max(0, (int) round((float) $row['left'])) : null;
+            $low = isset($row['low']) && $row['low'] !== '' && is_numeric($row['low']) ? max(0, (int) round((float) $row['low'])) : null;
+            $alerted = isset($row['low_alerted_at']) && is_string($row['low_alerted_at']) && trim($row['low_alerted_at']) !== '' ? trim($row['low_alerted_at']) : null;
+            if ($left === null || $low === null || $left > $low) {
+                $alerted = null;
+            }
             $out[] = [
                 'id' => $id,
                 'name' => mb_substr(trim((string) ($row['name'] ?? '')), 0, self::NAME_MAX),
@@ -92,6 +101,9 @@ final class LabelRolls
                 'on' => $on,
                 'w' => $w,
                 'h' => $h,
+                'left' => $left,
+                'low' => $low,
+                'low_alerted_at' => $alerted,
             ];
             if (count($out) >= self::MAX) {
                 break;
@@ -105,6 +117,99 @@ final class LabelRolls
     public static function encode(array $rolls): string
     {
         return $rolls === [] ? '' : (string) json_encode(array_values($rolls), JSON_UNESCAPED_UNICODE);
+    }
+
+    /** What a roll counts in: labels off a printer roll, sheets off a sheet stock. */
+    public static function unit(array $roll): string
+    {
+        return ($roll['on'] ?? '') === 'printer' ? 'labels' : 'sheets';
+    }
+
+    /**
+     * A roll as the pickers see it (round 13): with its unit, whether it is
+     * at or under its warning level, and whether it is out.
+     *
+     * @param array<string, mixed> $roll
+     * @return array<string, mixed>
+     */
+    public static function present(array $roll): array
+    {
+        $left = $roll['left'] ?? null;
+        $low = $roll['low'] ?? null;
+
+        return $roll + [
+            'unit' => self::unit($roll),
+            'low_now' => $left !== null && $low !== null && $left <= $low,
+            'out' => $left !== null && $left <= 0,
+        ];
+    }
+
+    /** @return list<array<string, mixed>> */
+    public static function presentAll(): array
+    {
+        return array_map([self::class, 'present'], self::all());
+    }
+
+    /** Whether a roll prints exactly this layout and size. */
+    public static function sameSize(array $roll, string $layout, ?float $w, ?float $h): bool
+    {
+        $r = self::request($roll);
+        $near = fn (?float $a, ?float $b): bool => ($a === null && $b === null) || ($a !== null && $b !== null && abs($a - $b) < 0.05);
+
+        return $r['layout'] === $layout && $near($r['w'], $w) && $near($r['h'], $h);
+    }
+
+    /**
+     * Count a print off the roll it used (round 13 of the usability work,
+     * owner, 2026-10-13: "how many labels are left on each roll, with a
+     * warning when low"): the roll the request names, else the first roll of
+     * that very layout and size; labels off a printer roll, sheets off a
+     * sheet stock, never below none. A roll that is not counted (no number
+     * typed in) is left alone. When the count reaches the warning level the
+     * owners are told once (RollStockAlert), and told again only after the
+     * roll has been counted up above the level. Returns the roll as it now
+     * stands with what this print took, or null when no roll was used.
+     *
+     * @param array<string, mixed> $req from StickerSheet::normalise()
+     * @param array<string, mixed> $summary from StickerSheet::summary()
+     * @return ?array<string, mixed>
+     */
+    public static function consume(array $req, array $summary): ?array
+    {
+        $rolls = self::all();
+        $index = null;
+        $wanted = (string) ($req['roll'] ?? '');
+        if ($wanted !== '') {
+            foreach ($rolls as $i => $roll) {
+                if ($roll['id'] === $wanted) {
+                    $index = $i;
+                    break;
+                }
+            }
+        }
+        if ($index === null) {
+            foreach ($rolls as $i => $roll) {
+                if (self::sameSize($roll, (string) $req['layout'], $req['w'] ?? null, $req['h'] ?? null)) {
+                    $index = $i;
+                    break;
+                }
+            }
+        }
+        if ($index === null) {
+            return null;
+        }
+        $roll = $rolls[$index];
+        $took = $roll['on'] === 'printer' ? (int) ($summary['stickers'] ?? 0) : (int) ($summary['pages'] ?? 0);
+        if ($roll['left'] !== null) {
+            $roll['left'] = max(0, (int) $roll['left'] - $took);
+            if ($roll['low'] !== null && $roll['left'] <= $roll['low'] && $roll['low_alerted_at'] === null && RollStockAlert::send($roll)) {
+                $roll['low_alerted_at'] = now()->toIso8601String();
+            }
+            $rolls[$index] = $roll;
+            LabelSettings::save([self::KEY => self::encode($rolls)]);
+        }
+
+        return self::present($roll) + ['took' => $took];
     }
 
     /** @return ?array{id: string, name: string, shape: string, preset: string, on: string, w: float, h: float} */

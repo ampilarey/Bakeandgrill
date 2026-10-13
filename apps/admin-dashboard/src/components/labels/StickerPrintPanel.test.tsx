@@ -300,6 +300,34 @@ describe('StickerPrintPanel', () => {
     expect(screen.queryByTestId('sticker-new-custom')).not.toBeInTheDocument();
   });
 
+  // Label stock (round 13, 2026-10-13): a counted roll says what is left and what the print takes, the request names it, and the summary says what is left after.
+  it('counts a print off the roll it is on and warns when the roll is low', async () => {
+    fetchLabelLayouts.mockResolvedValue({
+      data: [{ key: 'a4-4', label: '4 on A4', hint: 'Plain A4', per_page: 4, w: 105, h: 148.5, page_w: 210, page_h: 297, compact: false, shape: 'rect' }],
+      presets: PRESETS,
+      limits: { min_short: 20, min_long: 30, max_w: 210, max_h: 297, min_round: 30, max_round: 200, sheet_margin: 5 },
+      rolls: [{ id: 'small', name: 'Small roll', shape: 'rect', preset: 'r40x60', on: 'printer', w: 40, h: 60, left: 34, low: 50, unit: 'labels', low_now: true, out: false }],
+    });
+    stickerLinks.mockResolvedValue({
+      url: '/labels/stickers?print=1&signature=x', view_url: '/labels/stickers?signature=x', pdf_url: '/labels/stickers.pdf?signature=x', expires_in_minutes: 30,
+      summary: { layout: 'single-custom', label: '40 × 60 mm, label printer', design: 'small', stickers: 3, pages: 3, per_page: 1, products: [], roll: { id: 'small', name: 'Small roll', shape: 'rect', preset: 'r40x60', on: 'printer', w: 40, h: 60, left: 31, low: 50, unit: 'labels', low_now: true, out: false, took: 3 } },
+    });
+    render(<MemoryRouter><StickerPrintPanel /></MemoryRouter>);
+    await screen.findByTestId('label-size-picker');
+    expect(screen.getByTestId('sticker-low-rolls')).toHaveTextContent('Running low: Small roll (34 labels left).');
+    // The roll first, so the product comes in at one a label; a product ticked before keeps its count when the size changes.
+    fireEvent.click(within(screen.getByRole('group', { name: 'My label rolls' })).getByRole('button', { name: /Small roll/ }));
+    fireEvent.click(screen.getByLabelText('Print Bajiya'));
+    expect(screen.getByTestId('sticker-roll-stock')).toHaveTextContent('Small roll: 34 labels left; this print takes 1 label (running low).');
+    fireEvent.change(screen.getByLabelText('How many Bajiya stickers'), { target: { value: '40' } });
+    expect(screen.getByTestId('sticker-roll-stock')).toHaveTextContent('this print takes 40 labels, more than is left.');
+    fireEvent.change(screen.getByLabelText('How many Bajiya stickers'), { target: { value: '3' } });
+    fireEvent.click(screen.getByTestId('sticker-prepare'));
+    await waitFor(() => expect(prepared()).toBeTruthy());
+    expect(prepared()).toMatchObject({ roll: 'small', layout: 'single-custom', w: 40, h: 60 });
+    expect(await screen.findByTestId('sticker-roll-after')).toHaveTextContent('Counted off Small roll: 31 labels left (running low: order more).');
+  });
+
   // Scan to reprint (round 11, 2026-10-13): a pack's code opens the form on the very label that printed it.
   it('opens on the exact label of a scanned pack code and marks the new print as a reprint of it', async () => {
     stickerLinks.mockResolvedValue({ url: '/labels/stickers?print=1&signature=x', view_url: '/labels/stickers?signature=x', pdf_url: '/labels/stickers.pdf?signature=x', expires_in_minutes: 30, summary: { layout: 'a4-4', label: '4 on A4', design: 'full', stickers: 2, pages: 1, per_page: 4, products: [] } });
