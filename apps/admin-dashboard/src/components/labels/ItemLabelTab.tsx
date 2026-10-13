@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ImagePlus, X, RefreshCw } from 'lucide-react';
-import { fetchLabelItem, fetchLabelLayouts, fetchLabelTypes, stickerLinks, updateItemLabel, type IngredientsSource, type LabelProduct, type LabelSpot, type LabelSpotKey, type LabelStorage, type LabelType, type WrapCatalogue } from '../../api';
+import { fetchLabelItem, fetchLabelLayouts, fetchLabelTypes, stickerLinks, updateItemLabel, type IngredientsSource, type LabelArrangement, type LabelProduct, type LabelSpot, type LabelSpotKey, type LabelStorage, type LabelType, type WrapCatalogue } from '../../api';
 import { SheetPreview } from './SheetPreview';
 import { WrapParts } from './WrapParts';
 import { SpotOverlay } from './SpotOverlay';
@@ -9,6 +9,8 @@ import { QuickEditSheet, quickSpec } from './QuickEdit';
 import { itemDraft as toDraft, itemPayload, nutritionWords, pickKeys, type ItemDraft as Draft, type ItemLabelPayload } from './labelDrafts';
 import { SaveAsTemplate, StartFromRow } from './StartFrom';
 import { applyToItem, templateFromItem } from './labelTemplates';
+import { ArrangeBar } from './ArrangeBar';
+import { clearDesign, hasOverrides, layoutPayload, nudgeSpot } from './labelLayout';
 import { MediaPicker } from '../MediaPicker';
 import { Button } from '../ui';
 
@@ -38,6 +40,8 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
   const [spots, setSpots] = useState<LabelSpot[]>([]);
   const [quick, setQuick] = useState<LabelSpotKey | null>(null);
   const [quickSaving, setQuickSaving] = useState(false);
+  // The drag designer (round 8): the preview is the full sticker, so its parts move on the full design; each move is saved at once.
+  const [arrange, setArrange] = useState(false);
   // The media picker opened from a tap's sheet saves the picture as soon as it is picked.
   const [pickerSaves, setPickerSaves] = useState(false);
   const [lang, setLang] = useState<'en' | 'dv'>('en');
@@ -98,6 +102,10 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
     } finally {
       setQuickSaving(false);
     }
+  };
+  const saveLayout = (next: LabelArrangement) => {
+    set('label_layout', next);
+    void saveSome({ label_layout: layoutPayload(next) }, ['label_layout']);
   };
   const quickContext = {
     kind: 'item' as const, types, defaults: product.defaults, allergens: product.allergens, menuPrice: product.menu_price,
@@ -274,8 +282,14 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
         </div>
         {preview ? (
           <>
-            <SheetPreview url={preview} ratio={105 / 148.5} title="Sticker preview" overlay={spots.length > 0 ? <SpotOverlay spots={spots} w={105} h={148.5} onPick={setQuick} /> : null} />
-            {spots.length > 0 && <p className="text-xs text-[var(--color-text-muted)] mt-2" data-testid="item-label-tap-hint">Tap a part of the label to change it; the change is saved straight away.</p>}
+            <SheetPreview url={preview} ratio={105 / 148.5} title="Sticker preview"
+              overlay={spots.length > 0 ? <SpotOverlay spots={spots} w={105} h={148.5} onPick={setQuick} mode={arrange ? 'move' : 'tap'} onMove={(key, dx, dy) => saveLayout(nudgeSpot(draft.label_layout, 'full', key, { dx, dy }))} onScale={(key, f) => saveLayout(nudgeSpot(draft.label_layout, 'full', key, { s: f }))} /> : null} />
+            {spots.length > 0 && !arrange && <p className="text-xs text-[var(--color-text-muted)] mt-2" data-testid="item-label-tap-hint">Tap a part of the label to change it; the change is saved straight away.</p>}
+            {spots.length > 0 && (
+              <div className="mt-2">
+                <ArrangeBar on={arrange} onToggle={setArrange} canReset={hasOverrides(draft.label_layout, 'full')} onReset={() => saveLayout(clearDesign(draft.label_layout, 'full'))} />
+              </div>
+            )}
           </>
         ) : (
           <p className="text-xs text-[var(--color-text-muted)]">The preview needs the Print labels permission.</p>

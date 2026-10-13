@@ -1,4 +1,4 @@
-import type { CustomLabel, CustomLabelPayload, IngredientsSource, LabelProduct, LabelStorage, LabelWrap, NutritionPer, StickerLang, WrapPicture, updateItemLabel } from '../../api';
+import type { CustomLabel, CustomLabelPayload, IngredientsSource, LabelArrangement, LabelProduct, LabelStorage, LabelWrap, NutritionPer, StickerLang, WrapPicture, updateItemLabel } from '../../api';
 import { EMPTY_WRAP } from './WrapParts';
 
 /*
@@ -18,6 +18,8 @@ export type CustomDraft = {
   label_shelf_life_days: string; label_pack_qty: string; label_pack_unit: string;
   label_price: string; label_barcode: string; label_net_weight: string; label_allergens: string; label_nutrition: string;
   label_nutrition_per: NutritionPer; label_wrap: LabelWrap; wrap_pictures: WrapPicture[];
+  /** The parts moved or resized by hand, per design (round 8). */
+  label_layout: LabelArrangement;
   label_photo_media_id: number | null; label_photo_url: string | null; label_title_media_id: number | null; label_title_url: string | null;
 };
 
@@ -31,6 +33,7 @@ export const customDraft = (c: CustomLabel | null): CustomDraft => ({
   label_price: c?.label_price != null ? String(c.label_price) : '', label_barcode: c?.label_barcode ?? '', label_net_weight: c?.label_net_weight ?? '', label_allergens: c?.label_allergens ?? '',
   label_nutrition: c?.label_nutrition ?? '',
   label_nutrition_per: c?.label_nutrition_per === 'ml' ? 'ml' : 'g', label_wrap: c?.label_wrap ?? EMPTY_WRAP, wrap_pictures: c?.wrap_pictures ?? [],
+  label_layout: c?.label_layout ?? {},
   label_photo_media_id: c?.label_photo_media_id ?? null, label_photo_url: c?.label_photo_url ?? null, label_title_media_id: c?.label_title_media_id ?? null, label_title_url: c?.label_title_url ?? null,
 });
 
@@ -45,7 +48,7 @@ export const customPayload = (d: CustomDraft): CustomLabelPayload => ({
   label_shelf_life_days: d.label_shelf_life_days ? Number(d.label_shelf_life_days) : null, label_pack_qty: d.label_pack_qty ? Number(d.label_pack_qty) : null, label_pack_unit: text(d.label_pack_unit),
   label_price: d.label_price !== '' ? Number(d.label_price) : null, label_barcode: text(d.label_barcode), label_net_weight: text(d.label_net_weight), label_allergens: text(d.label_allergens),
   label_nutrition: text(d.label_nutrition),
-  label_nutrition_per: d.label_nutrition_per, label_wrap: d.label_wrap,
+  label_nutrition_per: d.label_nutrition_per, label_wrap: d.label_wrap, label_layout: d.label_layout,
   label_photo_media_id: d.label_photo_media_id, label_title_media_id: d.label_title_media_id,
 });
 
@@ -80,6 +83,8 @@ export type ItemDraft = {
   /** The wrap-around label's parts (2026-10-12), and the picked mark pictures with their urls. */
   label_wrap: LabelWrap;
   wrap_pictures: WrapPicture[];
+  /** The parts moved or resized by hand, per design (round 8). */
+  label_layout: LabelArrangement;
 };
 
 export const itemDraft = (p: LabelProduct): ItemDraft => ({
@@ -112,6 +117,7 @@ export const itemDraft = (p: LabelProduct): ItemDraft => ({
   label_nutrition_per: p.label_nutrition_per === 'ml' ? 'ml' : 'g',
   label_wrap: p.label_wrap,
   wrap_pictures: p.wrap_pictures ?? [],
+  label_layout: p.label_layout ?? {},
 });
 
 export type ItemLabelPayload = Parameters<typeof updateItemLabel>[1];
@@ -143,6 +149,7 @@ export const itemPayload = (d: ItemDraft): ItemLabelPayload => ({
   label_show_nutrition: d.label_show_nutrition,
   label_nutrition_per: d.label_nutrition_per,
   label_wrap: d.label_wrap,
+  label_layout: d.label_layout,
 });
 
 /** The part of a payload a tap-to-edit sheet changed: only those keys go to the server. */

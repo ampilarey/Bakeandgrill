@@ -169,6 +169,36 @@ takes `startFrom`. Tests: `LabelTemplatesTest`, `labelTemplates.test.ts`,
 `StartFrom.test.tsx`, `LabelTemplatesCard.test.tsx`, `ItemLabelTab.test.tsx`, and the
 cases in `CustomLabels.test.tsx` and `MakeLabelWizard.test.tsx`.
 
+### The drag designer: move and resize parts
+
+Round 8 (owner, 2026-10-13; the audit's "a drag-and-drop designer on the sticker: move and
+resize text and pictures, with Back to automatic"). Every design still places its parts
+itself; on top of that a product keeps, **per design**, the parts moved or resized by hand
+on the preview. The switch **Move and resize** (`ArrangeBar`) under the preview of the
+custom label editor, the item's Label tab and the wizard's Looks right step (with Manage
+label settings) turns the tap zones into handles: drag a part to move it, drag its corner
+to resize it, or nudge it with the arrow keys (shift: 5 mm) and + / −. **Back to
+automatic** forgets that design's moves. A part the design draws with a box of its own
+(the compact sticker's batch and quantity) is fixed and shown dashed. A wrap-around label
+is arranged by its strips instead. The custom label editor keeps the moves in the draft
+(Save keeps them with the label; the preview redraws as they happen); the item tab and
+the wizard save each move at once, like a tap's sheet. A size's design decides which
+moves apply: a move on the full sticker leaves the small one as it was.
+
+Where: `items.label_layout` / `custom_labels.label_layout` (JSON: `{"full": {"name":
+{"dx": 3, "dy": -2, "s": 1.2}}}`), `App\Domains\Labels\LabelLayout` (`DESIGNS`,
+`clean()`: known designs and spots, shifts to 0.1 mm within ±300, the scale 0.5 to 2, a
+part neither moved nor scaled left out; `rules()`; `apply()`: each marked run (LabelSpots)
+scaled about its top-left corner and shifted, before `StickerSheet::pieces()` strips the
+markers, so the web sheet, the PDF, the raster and the spots all see the part where it
+was put; `stickerData()` carries it as `layout`); `LabelSpots::spots()` marks a box of its
+own `fixed`; the update endpoints and the draft preview take `label_layout` (null or
+nothing kept forgets it), templates carry it as a field. Admin: `labelLayout.ts`
+(`nudgeSpot`, `clearDesign`, `hasOverrides`, `layoutPayload`, `isMovable`),
+`SpotOverlay` `mode="move"` with `onMove` / `onScale`, `ArrangeBar.tsx`. Tests:
+`LabelLayoutTest`, `labelLayout.test.ts`, the move-mode cases in `SpotOverlay.test.tsx`,
+`CustomLabels.test.tsx`, `ItemLabelTab.test.tsx` and `MakeLabelWizard.test.tsx`.
+
 ## Who can use it
 
 Two permissions, both owner-only until granted in Staff → Permissions (to a role or
@@ -759,6 +789,7 @@ beneath.
 | Label printer | `App\Domains\Labels\LabelRaster` (`page()` draws one page of a built sheet with GD at `dpi`, `DPIS` 203 / 300; text from the PDF font files, Thaana in visual order, PNGs dithered, SVGs redrawn from `build()['vectors']`: a QR from its text, a barcode from its digits; `png()` for checking), `ZplEncoder` (`^GFA` with ZPL's run-length form), `TsplEncoder` (`SIZE`, `GAP`, `BITMAP` with the bits inverted, `PRINT 1,1`); signed routes `/labels/stickers.zpl`, `.tspl`, `.png` (`page` outside the signature), single-label sheets only; `dpi` on the sticker request, `zpl_url` / `tspl_url` / `raster_url` in the reply; `scripts/label-print-agent.mjs`; `LabelPrinterCard.tsx` (`labels.printer` in localStorage, `readPrinterSetup()` / `sendToLabelPrinter()` in `api/labels.ts`) and the buttons on `StickerPrintPanel` |
 | Wrap-around labels | `StickerLayouts::design()` answers `wrap` (`WRAP_MIN_RATIO` 2.5, `WRAP_MIN_W` 90, `WRAP_MIN_H` 25; mirrored in `labelSize.ts`, pinned by `fixtures/label_size_parity.json`), presets `r200x50`, `r180x40`, `r150x35`, `r120x40`; `App\Domains\Labels\WrapDesign` (`wrap()`: widths from each part's least width and share, `DROP_ORDER`, the band, one method a part); `WrapConfig` (`of()`, `clean()`, `PARTS`, `DEFAULT_PARTS`, `catalogue()`), kept as `items.label_wrap` / `custom_labels.label_wrap` (JSON) with `label_nutrition_per`; `LabelMarks` (`MARKS` glyph + caption, `for()`); `stickerData()` sets `wrap`, `marks`, `pictures` (PNG data URIs) and `producer`; `LabelText::FONTS['sym']` (`fonts/pdf/LabelSymbols.ttf`, `fonts/label-symbols.woff2`); `GET /api/labels/layouts` carries `wrap` (parts, marks, defaults); `WrapParts.tsx` on `ItemLabelTab` and the custom label editor, `wrap_pictures` on the payloads for the thumbnails |
 | Allergen pictograms | `App\Domains\Labels\AllergenIcons` (`for()`, `keys()`, `svg()`, `dataUri()`; words → symbols, captions, `SPICY_LEVELS`); `stickerData()` sets `icons`, `StickerDesign::full()` draws the row (12 mm pitch, 8.8 mm tall) above the note; setting `label_allergen_icons` |
+| Drag designer | `items.label_layout`, `custom_labels.label_layout` (JSON per design and part; § The drag designer); `App\Domains\Labels\LabelLayout` (`clean()`, `rules()`, `apply()` on the marked runs in `StickerSheet::pieces()`); `labelLayout.ts`, `SpotOverlay` move mode, `ArrangeBar.tsx` |
 | Templates | `label_templates` (`App\Models\LabelTemplate`; § Templates); `App\Domains\Labels\LabelTemplates` (`KEYS`, `BUILTIN`, `rules()`, `normaliseFields()`, `normaliseSize()`, `present()`); API `GET /api/labels/templates` (`labels.print`), `POST` / `PUT` / `DELETE /api/labels/templates/{template}` (`labels.manage`); `labelTemplates.ts`, `StartFrom.tsx`, `LabelTemplatesCard.tsx` under Wording and logos |
 | Footers | `label_footers` (`App\Models\LabelFooter`, § Footers); `custom_labels.footer_id`, `label_types.footer_id`, `footer` in a sticker request; `LabelTypes::footer()` fills the blanks, `StickerSheet::footerPreset()` picks which one. API `GET /api/labels/footers` (`labels.print`), `POST` / `PUT` / `DELETE /api/labels/footers/{footer}` (`labels.manage`; the standard one cannot be removed, 422) |
 | Box-label wording per storage, date style, pre-cut offsets | Labels → Settings, site settings with the originals as defaults (`App\Domains\Labels\LabelSettings`) |

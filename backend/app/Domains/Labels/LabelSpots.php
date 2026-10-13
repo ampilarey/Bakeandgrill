@@ -92,7 +92,8 @@ final class LabelSpots
                 $flush();
                 if (isset($p['box'])) {
                     [$bx, $by, $bw, $bh] = $p['box'];
-                    $out[] = ['key' => (string) $p['key'], 'x' => round($bx, 2), 'y' => round($by, 2), 'w' => round($bw, 2), 'h' => round($bh, 2)];
+                    // A box of its own has no run of pieces, so the drag designer (LabelLayout) cannot move it.
+                    $out[] = ['key' => (string) $p['key'], 'x' => round($bx, 2), 'y' => round($by, 2), 'w' => round($bw, 2), 'h' => round($bh, 2), 'fixed' => true];
                     $key = null;
                     continue;
                 }
@@ -114,12 +115,12 @@ final class LabelSpots
     }
 
     /**
-     * The box a piece covers: x1, y1, x2, y2.
+     * The box a piece covers: x1, y1, x2, y2 (the drag designer scales a run about its box).
      *
      * @param array<string, mixed> $p
      * @return array{0: float, 1: float, 2: float, 3: float}|null
      */
-    private static function box(array $p): ?array
+    public static function box(array $p): ?array
     {
         $x = (float) ($p['x'] ?? 0.0);
         $w = (float) ($p['w'] ?? 0.0);

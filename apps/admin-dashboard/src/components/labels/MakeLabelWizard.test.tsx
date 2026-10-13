@@ -216,6 +216,27 @@ describe('MakeLabelWizard', () => {
     expect(screen.queryByTestId('save-as-template')).toBeNull();
   });
 
+  // The drag designer (round 8): with Manage label settings, Move and resize on the preview step saves a drag to the product and redraws.
+  it('drags a part on the preview step into the product\'s layout, for label managers', async () => {
+    const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ width: 120, height: 80, left: 0, top: 0, right: 120, bottom: 80, x: 0, y: 0, toJSON: () => ({}) } as DOMRect);
+    api.updateItemLabel.mockResolvedValue({ data: { id: 8, name: 'Masroshi', name_dv: null, label_enabled: true, label_layout: { small: { name: { dx: 5, dy: 0, s: 1 } } } } });
+    render(<MemoryRouter><MakeLabelWizard canManage /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: /A menu item/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Masroshi/ }));
+    fireEvent.click(within(await screen.findByRole('group', { name: 'Which label' })).getByRole('button', { name: /Jar or tub/ }));
+    fireEvent.click(screen.getByTestId('make-next-2'));
+    await screen.findByRole('button', { name: 'Change the name' });
+    fireEvent.click(screen.getByTestId('arrange-switch'));
+    const name = await screen.findByRole('button', { name: 'Move the name' });
+    expect(screen.getByTestId('make-preview-line')).toHaveTextContent('Drag a part to move it');
+    // 120 px for a 60 mm label: 2 px per mm.
+    fireEvent.pointerDown(name, { pointerId: 1, clientX: 10, clientY: 10 });
+    fireEvent.pointerUp(name, { pointerId: 1, clientX: 20, clientY: 10 });
+    await waitFor(() => expect(api.updateItemLabel).toHaveBeenCalledWith(8, { label_layout: { small: { name: { dx: 5, dy: 0, s: 1 } } } }));
+    await waitFor(() => expect(screen.getByTestId('arrange-reset')).toBeEnabled());
+    rect.mockRestore();
+  });
+
   it('shows the rolls you own first and keeps the other sizes under More sizes', async () => {
     api.fetchLabelLayouts.mockResolvedValue({
       data: [], presets, limits, wrap: { parts: [], marks: [], default_parts: [], default_marks: [], max_pictures: 4 },

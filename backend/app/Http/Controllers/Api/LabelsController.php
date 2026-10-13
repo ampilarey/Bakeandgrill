@@ -10,6 +10,7 @@ use App\Domains\Labels\LabelRolls;
 use App\Domains\Labels\BoxLabel;
 use App\Domains\Labels\ExpiringPrints;
 use App\Domains\Labels\LabelIngredients;
+use App\Domains\Labels\LabelLayout;
 use App\Domains\Labels\LabelMedia;
 use App\Domains\Labels\LabelRaster;
 use App\Domains\Labels\LabelSettings;
@@ -903,12 +904,17 @@ class LabelsController extends Controller
      */
     private static function wrapRules(): array
     {
-        return ['label_nutrition_per' => ['sometimes', Rule::in(['g', 'ml'])]] + WrapConfig::rules();
+        return ['label_nutrition_per' => ['sometimes', Rule::in(['g', 'ml'])]] + WrapConfig::rules() + LabelLayout::rules();
     }
 
     /** A mark picture that is not an image is refused; a kept config is tidied (WrapConfig::clean), null clears it. */
     private function wrapProblem(array &$data): ?JsonResponse
     {
+        // The drag designer's layout (round 8): tidied, and nothing kept is null. The
+        // validator drops an empty array, so the raw input says whether it was sent.
+        if (request()->has('label_layout')) {
+            $data['label_layout'] = LabelLayout::clean(request()->input('label_layout')) ?: null;
+        }
         if (!array_key_exists('label_wrap', $data)) {
             return null;
         }
@@ -1147,6 +1153,7 @@ class LabelsController extends Controller
             'label_nutrition_per' => Nutrition::per($c),
             'label_wrap' => $wrap = WrapConfig::of($c),
             'wrap_pictures' => $this->wrapPictures($wrap),
+            'label_layout' => LabelLayout::of($c),
             'label_photo_media_id' => $c->label_photo_media_id,
             'label_photo_url' => $media->get($c->label_photo_media_id)?->url,
             'label_title_media_id' => $c->label_title_media_id,
@@ -1498,6 +1505,8 @@ class LabelsController extends Controller
             // The wrap-around label's parts (2026-10-12), as they stand.
             'label_wrap' => $wrap = WrapConfig::of($item),
             'wrap_pictures' => $this->wrapPictures($wrap),
+            // The parts moved or resized by hand, per design (round 8).
+            'label_layout' => LabelLayout::of($item),
             'menu_price' => $item->displayPriceInfo()['price'],
             // What prints when the item's own wording is empty: its type's wording, else the defaults for its storage.
             'defaults' => [

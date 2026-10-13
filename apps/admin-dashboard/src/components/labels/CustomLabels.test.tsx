@@ -69,7 +69,7 @@ const custom = (id: number, name: string, extra: Partial<CustomLabel> = {}): Cus
   label_storage: null, storage: 'chilled', label_heading: null, label_heading_dv: null, label_storage_line: null, label_storage_line_dv: null,
   label_ingredients: 'Garlic, oil', label_ingredients_dv: null, label_how_to_use: null, label_how_to_use_dv: null, label_note: null, label_note_dv: null,
   label_shelf_life_days: 14, label_pack_qty: null, label_pack_unit: null, label_price: null, label_barcode: null, label_net_weight: null, label_allergens: null, label_nutrition: null,
-  label_nutrition_per: 'g', wrap_pictures: [],
+  label_nutrition_per: 'g', wrap_pictures: [], label_layout: {},
   label_wrap: { parts: ['brand', 'legal', 'nutrition', 'dates', 'barcode', 'qr', 'marks'], band: true, band_text: '', band_text_dv: '', marks: ['recycle', 'dispose'], pictures: [], text_heading: '', text_heading_dv: '', text: '', text_dv: '' },
   footer_id: null, footer_name: null, label_show_qr: null, label_lang: null, print_count: 0, last_printed_at: null,
   label_photo_media_id: null, label_photo_url: null, label_title_media_id: null, label_title_url: null,
@@ -306,6 +306,31 @@ describe('CustomLabelModal', () => {
     expect(screen.getByLabelText('Heading (top of the sticker)')).toHaveValue('JAR');
     expect(screen.getByLabelText('Shelf life (days)')).toHaveValue(7);
     expect(screen.getByLabelText('Product name')).toHaveValue('');
+  });
+
+  // The drag designer (round 8, 2026-10-13): Move and resize turns the zones into handles; a drag goes into the
+  // label's layout, the preview redraws with it, and Back to automatic forgets the design's moves.
+  it('moves a part on the preview into the label\'s layout and puts it back with Back to automatic', async () => {
+    previewCustomDraft.mockResolvedValue({ url: '/labels/stickers?signature=d', one_url: '/labels/stickers?one=1&signature=d', expires_in_minutes: 30, design: 'full', spots: [{ key: 'name', x: 9, y: 36.5, w: 87, h: 15 }, { key: 'batch', x: 5, y: 120, w: 40, h: 4, fixed: true }] });
+    const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ width: 210, height: 297, left: 0, top: 0, right: 210, bottom: 297, x: 0, y: 0, toJSON: () => ({}) } as DOMRect);
+    wrap(<CustomLabelModal label={custom(3, 'Garlic Sauce')} onClose={() => {}} onSaved={() => {}} />);
+    await screen.findByRole('button', { name: 'Change the name' });
+    const bar = screen.getByTestId('arrange-bar');
+    expect(bar).toHaveAttribute('data-on', 'false');
+    expect(screen.getByTestId('arrange-reset')).toBeDisabled();
+    fireEvent.click(screen.getByTestId('arrange-switch'));
+    const name = await screen.findByRole('button', { name: 'Move the name' });
+    expect(screen.getByTestId('custom-preview-size')).toHaveTextContent('Drag a part to move it');
+    fireEvent.pointerDown(name, { pointerId: 1, clientX: 50, clientY: 50 });
+    fireEvent.pointerUp(name, { pointerId: 1, clientX: 70, clientY: 44 });
+    await waitFor(() => expect(previewCustomDraft).toHaveBeenLastCalledWith(expect.objectContaining({ label_layout: { full: { name: { dx: 10, dy: -3, s: 1 } } } })), { timeout: 3000 });
+    expect(screen.getByTestId('arrange-reset')).toBeEnabled();
+    fireEvent.click(screen.getByTestId('arrange-reset'));
+    await waitFor(() => expect(previewCustomDraft).toHaveBeenLastCalledWith(expect.objectContaining({ label_layout: {} })), { timeout: 3000 });
+    // Saved with the label.
+    fireEvent.click(screen.getByTestId('arrange-switch'));
+    expect(screen.queryByRole('button', { name: 'Move the name' })).toBeNull();
+    rect.mockRestore();
   });
 
   it('asks for a name before saving', async () => {

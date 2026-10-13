@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Box, Check, FileDown, HelpCircle, Pencil, Plus, Printer, Search, Tag, UtensilsCrossed } from 'lucide-react';
 import {
   downloadLabelSheet, fetchCustomLabels, fetchLabelBrands, fetchLabelFooters, fetchLabelLayouts, fetchLabelProducts, fetchLabelTypes, openLabelSheet, stickerLinks, updateCustomLabel, updateItemLabel,
-  type CustomLabel, type LabelBrand, type LabelFooter, type LabelLimits, type LabelPreset, type LabelProduct, type LabelRoll, type LabelSpot, type LabelSpotKey, type LabelType, type SheetLinks, type StickerLang,
+  type CustomLabel, type LabelBrand, type LabelDesign, type LabelFooter, type LabelArrangement, type LabelLimits, type LabelPreset, type LabelProduct, type LabelRoll, type LabelSpot, type LabelSpotKey, type LabelType, type SheetLinks, type StickerLang,
 } from '../../api';
 import { Button, useToast } from '../ui';
 import { Modal, TabScrollRow } from '../SharedUI';
@@ -14,6 +14,8 @@ import { QuickEditSheet, quickSpec, type QuickContext, type QuickInput, type Qui
 import { customDraft, customPayload, itemDraft, itemPayload, nutritionWords, pickKeys, type CustomDraft, type ItemDraft } from './labelDrafts';
 import { SaveAsTemplate } from './StartFrom';
 import { templateFromCustom, templateFromItem } from './labelTemplates';
+import { ArrangeBar } from './ArrangeBar';
+import { clearDesign, hasOverrides, isMovable, layoutPayload, nudgeSpot } from './labelLayout';
 import { LabelSizePicker } from './LabelSizePicker';
 import { QtyStepper } from './QtyStepper';
 import { CustomLabelModal, langOf } from './CustomLabels';
@@ -174,6 +176,9 @@ export function MakeLabelWizard({ canManage = false }: {
   // Where each part of the preview landed, the part whose sheet a tap opened, the draft that sheet edits, and the lists its selects need.
   const [spots, setSpots] = useState<LabelSpot[]>([]);
   const [spotBox, setSpotBox] = useState<{ w: number; h: number } | null>(null);
+  // The drag designer (round 8): the design the preview drew, and whether its zones move parts; a move is saved to the product like a tap's sheet.
+  const [previewDesign, setPreviewDesign] = useState<LabelDesign | null>(null);
+  const [arrange, setArrange] = useState(false);
   const [quick, setQuick] = useState<LabelSpotKey | null>(null);
   const [quickDraft, setQuickDraft] = useState<Record<string, unknown> | null>(null);
   const [quickSaving, setQuickSaving] = useState(false);
@@ -294,6 +299,7 @@ export function MakeLabelWizard({ canManage = false }: {
         // A wrap label is touched by its strips in the editors; here the other designs' parts are the touch zones.
         setSpots(r.summary?.design === 'wrap' ? [] : (r.summary?.spots ?? []));
         setSpotBox(r.summary?.w && r.summary?.h ? { w: r.summary.w, h: r.summary.h } : null);
+        setPreviewDesign(r.summary?.design ?? null);
       } catch (e) {
         if (seq !== previewSeq.current) return;
         setPreviewError(e instanceof Error ? e.message : 'Could not draw the preview.');
@@ -414,6 +420,12 @@ export function MakeLabelWizard({ canManage = false }: {
     if (a === 'photo') { setQuick(null); setDetails(true); }
     if (a === 'remove_photo') void saveQuick({ label_photo_media_id: null });
   };
+
+  // The drag designer (round 8): a part dragged on the preview is kept with the product, per design, and the preview redraws.
+  const movable = canManage && previewDesign !== null && isMovable(previewDesign) && spots.length > 0 ? previewDesign : null;
+  const moving = arrange && movable !== null;
+  const productLayout: LabelArrangement = pickedCustom?.label_layout ?? pickedItem?.label_layout ?? {};
+  const saveLayout = (next: LabelArrangement) => void saveQuick({ label_layout: layoutPayload(next) });
 
   const sizeLine = `${sizeName(choice.shape, stickerW, stickerH)} · ${DESIGN_NAMES[design]}${stock ? ` · ${stock.on === 'printer' ? 'one per label on a label printer' : `${stock.perPage} on ${stock.label}`}` : ''}`;
 
@@ -555,9 +567,14 @@ export function MakeLabelWizard({ canManage = false }: {
             <div className="min-w-0">
               <div className={round ? 'max-w-[360px] mx-auto' : design === 'wrap' ? 'w-full' : 'max-w-[420px] mx-auto'}>
                 <SheetPreview url={preview} ratio={stickerW / stickerH} busy={previewBusy} round={round} title="The label" empty={previewError ?? 'Drawing…'}
-                  overlay={spots.length > 0 ? <SpotOverlay spots={spots} w={spotBox?.w ?? stickerW} h={spotBox?.h ?? stickerH} onPick={openQuick} /> : null} />
+                  overlay={spots.length > 0 ? <SpotOverlay spots={spots} w={spotBox?.w ?? stickerW} h={spotBox?.h ?? stickerH} onPick={openQuick} mode={moving ? 'move' : 'tap'} onMove={(key, dx, dy) => { if (movable) saveLayout(nudgeSpot(productLayout, movable, key, { dx, dy })); }} onScale={(key, f) => { if (movable) saveLayout(nudgeSpot(productLayout, movable, key, { s: f })); }} /> : null} />
               </div>
-              <p className="text-xs text-[var(--color-text-muted)] mt-2 text-center" data-testid="make-preview-line">{spots.length > 0 ? 'Tap a part of the label to change it. ' : ''}{sizeName(choice.shape, stickerW, stickerH)} · {DESIGN_NAMES[design]}. <button type="button" className="underline" onClick={() => jump(2)}>Change the label</button></p>
+              <p className="text-xs text-[var(--color-text-muted)] mt-2 text-center" data-testid="make-preview-line">{moving ? 'Drag a part to move it, its corner to resize it. ' : spots.length > 0 ? 'Tap a part of the label to change it. ' : ''}{sizeName(choice.shape, stickerW, stickerH)} · {DESIGN_NAMES[design]}. <button type="button" className="underline" onClick={() => jump(2)}>Change the label</button></p>
+              {movable && (
+                <div className="mt-2 flex justify-center">
+                  <ArrangeBar on={arrange} onToggle={setArrange} canReset={hasOverrides(productLayout, movable)} onReset={() => saveLayout(clearDesign(productLayout, movable))} compact />
+                </div>
+              )}
             </div>
             <div className="space-y-3">
               <div>

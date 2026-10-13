@@ -4,11 +4,13 @@ import { Bookmark, ChevronDown, Copy, Eye, ImagePlus, Pencil, Plus, Printer, Ref
 import {
   createCustomLabel, deleteCustomLabel, duplicateCustomLabel, fetchCustomLabels, fetchLabelBrands, fetchLabelFooters, fetchLabelLayouts, fetchLabelSettings, fetchLabelTypes,
   previewCustomDraft, stickerLinks, updateCustomLabel, uploadCustomLabelPicture,
-  type CustomLabel, type LabelBrand, type LabelFooter, type LabelLimits, type LabelPreset, type LabelRoll, type LabelSpot, type LabelSpotKey, type LabelStorage, type LabelTemplate, type LabelType, type StickerLang, type WrapCatalogue, type WrapPartKey, type WrapStrips,
+  type CustomLabel, type LabelBrand, type LabelDesign, type LabelFooter, type LabelLimits, type LabelPreset, type LabelRoll, type LabelSpot, type LabelSpotKey, type LabelStorage, type LabelTemplate, type LabelType, type StickerLang, type WrapCatalogue, type WrapPartKey, type WrapStrips,
 } from '../../api';
 import { FooterPicker } from './FooterPicker';
 import { SaveAsTemplate, StartFromRow } from './StartFrom';
 import { applyToCustom, templateFromCustom, templateSize } from './labelTemplates';
+import { ArrangeBar } from './ArrangeBar';
+import { clearDesign, hasOverrides, isMovable, nudgeSpot } from './labelLayout';
 import { WRAP_FALLBACK, WrapParts } from './WrapParts';
 import { StripOverlay } from './StripEditor';
 import { SpotOverlay } from './SpotOverlay';
@@ -134,6 +136,9 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
   // Where each part landed on every other design, and the part whose sheet a tap opened (round 3, 2026-10-13).
   const [previewSpots, setPreviewSpots] = useState<LabelSpot[]>([]);
   const [quick, setQuick] = useState<LabelSpotKey | null>(null);
+  // The drag designer (round 8, 2026-10-13): which design the preview drew, and whether the zones move parts rather than open them.
+  const [previewDesign, setPreviewDesign] = useState<LabelDesign | null>(null);
+  const [arrange, setArrange] = useState(false);
   const [presets, setPresets] = useState<LabelPreset[]>([]);
   const [limits, setLimits] = useState<LabelLimits | null>(null);
   // The rolls and sheets the business owns (round 6): the size picker shows them first.
@@ -189,6 +194,7 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
       setPreview(r.one_url ?? r.url);
       setPreviewWrap(r.design === 'wrap' ? (r.wrap ?? null) : null);
       setPreviewSpots(r.design === 'wrap' ? [] : (r.spots ?? []));
+      setPreviewDesign(r.design ?? null);
     } catch {
       if (seq === previewSeq.current) setPreview(null);
     } finally {
@@ -322,11 +328,23 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
     </Section>
   );
   const touchable = previewWrap !== null || previewSpots.length > 0;
-  const previewCaption = `${touchable ? 'Tap a part of the label to change it. ' : ''}${sizeName(choice.shape, dims.w, dims.h)} · the first sticker of the sheet Print labels prints at this size. Redraws as you type, saved or not.${dvFont ? ` Dhivehi in ${DV_FONT_NAMES[dvFont] ?? dvFont} (Labels → Settings).` : ''}`;
-  // Touch zones over the preview: a wrap label's strips (round 2, 2026-10-13), every other design's parts (round 3).
+  // The drag designer (round 8): on a design that places its parts, the zones move and resize them; the layout is kept with the label.
+  const movable = previewDesign !== null && isMovable(previewDesign) && previewSpots.length > 0 ? previewDesign : null;
+  const moving = arrange && movable !== null;
+  const previewCaption = `${moving ? 'Drag a part to move it, its corner to resize it. ' : touchable ? 'Tap a part of the label to change it. ' : ''}${sizeName(choice.shape, dims.w, dims.h)} · the first sticker of the sheet Print labels prints at this size. Redraws as you type, saved or not.${dvFont ? ` Dhivehi in ${DV_FONT_NAMES[dvFont] ?? dvFont} (Labels → Settings).` : ''}`;
+  const nudge = (key: LabelSpotKey, change: { dx?: number; dy?: number; s?: number }) => {
+    if (!movable) return;
+    setD((s) => ({ ...s, label_layout: nudgeSpot(s.label_layout, movable, key, change) }));
+  };
+  const arrangeBar = movable
+    ? <ArrangeBar on={arrange} onToggle={setArrange} canReset={hasOverrides(d.label_layout, movable)} onReset={() => setD((s) => ({ ...s, label_layout: clearDesign(s.label_layout, movable) }))} compact={stacked} />
+    : null;
+  // Touch zones over the preview: a wrap label's strips (round 2, 2026-10-13), every other design's parts (round 3), which move in the drag designer (round 8).
   const stripOverlay = previewWrap
     ? <StripOverlay strips={previewWrap} w={dims.w} h={dims.h} catalogue={catalogue ?? WRAP_FALLBACK} onPick={setOpenStrip} />
-    : previewSpots.length > 0 ? <SpotOverlay spots={previewSpots} w={dims.w} h={dims.h} onPick={setQuick} /> : null;
+    : previewSpots.length > 0
+      ? <SpotOverlay spots={previewSpots} w={dims.w} h={dims.h} onPick={setQuick} mode={moving ? 'move' : 'tap'} onMove={(key, dx, dy) => nudge(key, { dx, dy })} onScale={(key, f) => nudge(key, { s: f })} />
+      : null;
   // What a tap's sheet shows: the type's wording in grey, the brands, types and footers to pick from.
   const quickContext = {
     kind: 'custom' as const, types, brands, footers, mainBrand,
@@ -347,7 +365,7 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
             empty="Drawing…"
             caption={previewCaption}
             overlay={stripOverlay}
-            controls={<div className="flex flex-wrap items-center gap-2"><LangChips lang={lang} onChange={(l) => set('label_lang', l)} /><button type="button" onClick={() => void refreshPreview()} className="w-8 h-8 inline-flex items-center justify-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface)]" aria-label="Refresh preview"><RefreshCw size={14} /></button></div>}
+            controls={<div className="space-y-1.5"><div className="flex flex-wrap items-center gap-2"><LangChips lang={lang} onChange={(l) => set('label_lang', l)} /><button type="button" onClick={() => void refreshPreview()} className="w-8 h-8 inline-flex items-center justify-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface)]" aria-label="Refresh preview"><RefreshCw size={14} /></button></div>{arrangeBar}</div>}
           />
         )}
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]" data-testid="custom-label-form">
@@ -468,6 +486,7 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
                 <SheetPreview url={preview} ratio={dims.w / dims.h} round={round} busy={previewBusy} title="Custom label preview" empty="Drawing…" overlay={stripOverlay} />
               </div>
               <p className="text-xs text-[var(--color-text-muted)]" data-testid="custom-preview-size">{previewCaption} The language is kept with the label.</p>
+              {arrangeBar}
               {sizeSection}
             </aside>
           )}

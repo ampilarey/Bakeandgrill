@@ -46,6 +46,8 @@ export type LabelProduct = {
   /** The wrap-around label's parts (2026-10-12), as they stand (the defaults when nothing is kept). */
   label_wrap: LabelWrap;
   wrap_pictures: WrapPicture[];
+  /** The parts moved or resized by hand on the preview, per design (the drag designer, round 8). */
+  label_layout: LabelArrangement;
   menu_price: number;
   /** From the item's Details tab, as words ("tree nuts"): printed bold and as "Contains …". */
   allergens: string[];
@@ -80,6 +82,18 @@ export type LabelWrap = {
   text_dv: string;
 };
 export type WrapPicture = { id: number; url: string | null };
+
+/** The looks a sticker prints in, decided by its size (StickerLayouts::design()). */
+export type LabelDesign = 'full' | 'mini' | 'small' | 'round' | 'wrap';
+/** A part moved by (dx, dy) mm and scaled by s, about its own top-left corner. */
+export type LabelPartOverride = { dx: number; dy: number; s: number };
+/**
+ * The parts moved or resized by hand on the preview (the drag designer,
+ * round 8, 2026-10-13), per design and part: `label_layout`, LabelLayout on the
+ * server (the print layouts are LabelLayout here). A wrap-around label is
+ * arranged by its strips instead.
+ */
+export type LabelArrangement = Partial<Record<'full' | 'mini' | 'small' | 'round', Partial<Record<LabelSpotKey, LabelPartOverride>>>>;
 export type WrapCatalogue = {
   parts: { key: WrapPartKey; label: string; hint: string }[];
   marks: { key: string; label: string; caption: string }[];
@@ -202,7 +216,7 @@ export type LabelTemplateFields = Partial<{
   label_note: string | null; label_note_dv: string | null; footer_id: number | null; label_show_qr: boolean | null; label_lang: StickerLang | null;
   label_shelf_life_days: number | null; label_pack_qty: number | null; label_pack_unit: string | null; label_net_weight: string | null;
   label_allergens: string | null; label_nutrition: string | null; label_nutrition_per: NutritionPer | null; label_wrap: LabelWrap | null;
-  label_show_price: boolean | null; label_show_nutrition: boolean | null;
+  label_show_price: boolean | null; label_show_nutrition: boolean | null; label_layout: LabelArrangement | null;
 }>;
 export type LabelTemplateSize = { shape: 'rect' | 'circle'; preset: string; on: LabelStock; w: number; h: number };
 export type LabelTemplate = {
@@ -250,6 +264,8 @@ export type CustomLabel = {
   /** The wrap-around label's parts, as they stand. */
   label_wrap: LabelWrap;
   wrap_pictures: WrapPicture[];
+  /** The parts moved or resized by hand on the preview, per design (round 8). */
+  label_layout: LabelArrangement;
   label_photo_media_id: number | null; label_photo_url: string | null;
   label_title_media_id: number | null; label_title_url: string | null;
   defaults: { heading: string; heading_dv: string; storage_line: string; storage_line_dv: string; how_to_use: string; how_to_use_dv: string; note: string; note_dv: string; shelf_life_days: number | null; brand: string; unit: string };
@@ -263,7 +279,7 @@ export type CustomLabelPayload = Partial<Pick<CustomLabel,
   | 'label_how_to_use' | 'label_how_to_use_dv' | 'label_note' | 'label_note_dv'
   | 'footer_id' | 'label_show_qr' | 'label_lang'
   | 'label_shelf_life_days' | 'label_pack_qty' | 'label_pack_unit' | 'label_photo_media_id' | 'label_title_media_id'
-  | 'label_price' | 'label_barcode' | 'label_net_weight' | 'label_allergens' | 'label_nutrition' | 'label_nutrition_per' | 'label_wrap'>>;
+  | 'label_price' | 'label_barcode' | 'label_net_weight' | 'label_allergens' | 'label_nutrition' | 'label_nutrition_per' | 'label_wrap'>> & { label_layout?: LabelArrangement | null };
 
 /** The sticker's languages: English, Dhivehi, or both on one sticker (2026-10-12). */
 export type StickerLang = 'en' | 'dv' | 'both';
@@ -374,13 +390,13 @@ export type WrapStrips = {
  */
 export type LabelSpotKey = 'brand' | 'heading' | 'batch_qr' | 'pack' | 'name' | 'promo' | 'packed' | 'photo' | 'barcode' | 'ingredients' | 'how_to_use' | 'nutrition' | 'icons' | 'note' | 'dates' | 'batch' | 'qty' | 'price' | 'storage' | 'footer';
 
-/** Where a part of the first sticker landed, in mm from its top-left corner; a part drawn in two places comes twice. */
-export type LabelSpot = { key: LabelSpotKey; x: number; y: number; w: number; h: number };
+/** Where a part of the first sticker landed, in mm from its top-left corner; a part drawn in two places comes twice. `fixed`: a box of its own that the drag designer cannot move. */
+export type LabelSpot = { key: LabelSpotKey; x: number; y: number; w: number; h: number; fixed?: boolean };
 
 export type StickerSummary = {
   layout: string;
   label: string;
-  design: 'full' | 'mini' | 'small' | 'round' | 'wrap';
+  design: LabelDesign;
   shape?: 'rect' | 'circle';
   w?: number;
   h?: number;
@@ -490,7 +506,7 @@ export function fetchLabelItem(id: number) {
   return req<{ data: LabelProduct }>(`/labels/items/${id}`);
 }
 
-export function updateItemLabel(id: number, body: Partial<Omit<LabelProduct, 'id' | 'name' | 'name_dv' | 'ingredients' | 'has_recipe' | 'allergens' | 'cutout_url' | 'label_title_url' | 'label_photo_url'>>) {
+export function updateItemLabel(id: number, body: Partial<Omit<LabelProduct, 'id' | 'name' | 'name_dv' | 'ingredients' | 'has_recipe' | 'allergens' | 'cutout_url' | 'label_title_url' | 'label_photo_url' | 'label_layout'>> & { label_layout?: LabelArrangement | null }) {
   return req<{ data: LabelProduct }>(`/items/${id}/label`, { method: 'PUT', body: JSON.stringify(body) });
 }
 

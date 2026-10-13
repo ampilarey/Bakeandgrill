@@ -33,7 +33,7 @@ final class LabelTemplates
         'label_ingredients', 'label_ingredients_dv', 'label_how_to_use', 'label_how_to_use_dv', 'label_note', 'label_note_dv',
         'footer_id', 'label_show_qr', 'label_lang',
         'label_shelf_life_days', 'label_pack_qty', 'label_pack_unit', 'label_net_weight', 'label_allergens',
-        'label_nutrition', 'label_nutrition_per', 'label_wrap', 'label_show_price', 'label_show_nutrition',
+        'label_nutrition', 'label_nutrition_per', 'label_wrap', 'label_show_price', 'label_show_nutrition', 'label_layout',
     ];
 
     public const NAME_MAX = 60;
@@ -130,7 +130,7 @@ final class LabelTemplates
             $out[$prefix . $key] = is_array($rule) ? array_merge(['sometimes'], $rule) : 'sometimes|' . $rule;
         }
 
-        return $out + WrapConfig::rules($prefix . 'label_wrap');
+        return $out + WrapConfig::rules($prefix . 'label_wrap') + LabelLayout::rules($prefix . 'label_layout');
     }
 
     /**
@@ -152,6 +152,8 @@ final class LabelTemplates
             $v = $in[$key];
             if ($key === 'label_wrap') {
                 $out[$key] = is_array($v) ? WrapConfig::clean($v) : null;
+            } elseif ($key === 'label_layout') {
+                $out[$key] = is_array($v) ? (LabelLayout::clean($v) ?: null) : null;
             } elseif (in_array($key, ['label_show_qr', 'label_show_price', 'label_show_nutrition'], true)) {
                 $out[$key] = $v === null || $v === '' ? null : filter_var($v, FILTER_VALIDATE_BOOLEAN);
             } elseif (in_array($key, ['brand_id', 'label_type_id', 'footer_id', 'label_shelf_life_days', 'label_pack_qty'], true)) {

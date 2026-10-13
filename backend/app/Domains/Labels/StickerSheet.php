@@ -346,13 +346,16 @@ final class StickerSheet
      */
     private function pieces(array $sheet, array $data, bool $dv): array
     {
-        return match ($sheet['design']) {
+        $pieces = match ($sheet['design']) {
             'full' => StickerDesign::full($data, $dv),
             'round' => StickerDesign::round($data, $dv, $sheet['w']),
             'small' => SmallStickerDesign::rect($data, $dv, $sheet['w'], $sheet['h']),
             'wrap' => WrapDesign::wrap($data, $dv, $sheet['w'], $sheet['h']),
             default => StickerDesign::mini($data, $dv, $sheet['w'], $sheet['h']),
         };
+
+        // The parts moved or resized by hand on this design (the drag designer, round 8, 2026-10-13).
+        return LabelLayout::apply($pieces, $data['layout'][$sheet['design']] ?? []);
     }
 
     /**
@@ -631,6 +634,8 @@ final class StickerSheet
 
         return $common + [
             'wrap' => $wrap,
+            // The parts moved or resized by hand, per design (round 8).
+            'layout' => LabelLayout::of($item),
             'marks' => LabelMarks::for($wrap['marks']),
             'pictures' => $pictures,
             'producer' => ['name' => (string) ($contact['name'] ?? ''), 'address' => (string) ($contact['address'] ?? ''), 'phone' => (string) ($contact['phone'] ?? ''), 'website' => (string) ($contact['website'] ?? '')],

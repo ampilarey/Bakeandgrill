@@ -27,7 +27,7 @@ const product = (): LabelProduct => ({
   label_shelf_life_days: 90, label_storage: 'frozen', label_pack_qty: 10, label_heading: null, label_heading_dv: null, label_storage_line: null, label_storage_line_dv: null,
   label_note: null, label_note_dv: null, label_pack_unit: 'PCS', label_type_id: null, label_type_name: null, label_how_to_use: null, label_how_to_use_dv: null,
   label_price: null, label_show_price: false, label_barcode: '12345670', label_net_weight: null, label_show_nutrition: false,
-  nutrition: { complete: false, per100: {}, grams: 0, missing: [], unweighed: [], rows: [] }, label_nutrition_per: 'g', label_wrap: WRAP, wrap_pictures: [],
+  nutrition: { complete: false, per100: {}, grams: 0, missing: [], unweighed: [], rows: [] }, label_nutrition_per: 'g', label_wrap: WRAP, wrap_pictures: [], label_layout: {},
   menu_price: 5, allergens: [], defaults: { heading: 'FROZEN HEDHIKA', heading_dv: '', storage_line: '', storage_line_dv: '', how_to_use: '', how_to_use_dv: '', note: '', note_dv: '', shelf_life_days: null, brand: 'Bake & Grill', unit: 'PCS' },
   label_title_media_id: null, label_title_url: null, label_photo_media_id: 12, label_photo_url: '/m/12.png', cutout_url: null, has_recipe: true,
   ingredients: { en: 'Flour, tuna', dv: '', from: 'recipe', recipe_en: 'Flour, tuna', recipe_dv: '' },
@@ -81,5 +81,23 @@ describe('ItemLabelTab', () => {
     expect(body.size).toBeNull();
     expect(body.fields).toMatchObject({ label_storage: 'chilled', label_heading: 'HOMEMADE SAUCE', label_shelf_life_days: 14, label_pack_unit: 'G' });
     for (const key of ['label_ingredients', 'label_ingredients_dv', 'label_barcode', 'label_photo_media_id', 'label_enabled']) expect(body.fields).not.toHaveProperty(key);
+  });
+
+  // The drag designer (round 8): a drag on the full sticker's preview is saved to the item at once, like a tap's sheet.
+  it('saves a dragged part to the item straight away and Back to automatic forgets it', async () => {
+    api.stickerLinks.mockResolvedValue({ url: '/labels/stickers?signature=x', one_url: '/labels/stickers?one=1&signature=x', summary: { design: 'full', spots: [{ key: 'name', x: 9, y: 36.5, w: 87, h: 15 }] } });
+    const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ width: 210, height: 297, left: 0, top: 0, right: 210, bottom: 297, x: 0, y: 0, toJSON: () => ({}) } as DOMRect);
+    render(<ItemLabelTab itemId={7} />);
+    await screen.findByRole('button', { name: 'Change the name' });
+    fireEvent.click(screen.getByTestId('arrange-switch'));
+    const name = await screen.findByRole('button', { name: 'Move the name' });
+    expect(screen.queryByTestId('item-label-tap-hint')).toBeNull();
+    fireEvent.pointerDown(name, { pointerId: 1, clientX: 50, clientY: 50 });
+    fireEvent.pointerUp(name, { pointerId: 1, clientX: 60, clientY: 50 });
+    await waitFor(() => expect(api.updateItemLabel).toHaveBeenCalledWith(7, { label_layout: { full: { name: { dx: 5, dy: 0, s: 1 } } } }));
+    await waitFor(() => expect(screen.getByTestId('arrange-reset')).toBeEnabled());
+    fireEvent.click(screen.getByTestId('arrange-reset'));
+    await waitFor(() => expect(api.updateItemLabel).toHaveBeenLastCalledWith(7, { label_layout: null }));
+    rect.mockRestore();
   });
 });

@@ -83,7 +83,8 @@ class LabelSpotsTest extends TestCase
         $this->assertSame(58.0, round($name['x'] + $name['w'], 2));
         $this->assertSame(12.0, $name['y']);
         $this->assertGreaterThan(20.0, round($name['y'] + $name['h'], 2));
-        $this->assertSame(['key' => 'batch', 'x' => 1.0, 'y' => 2.0, 'w' => 3.0, 'h' => 4.0], $spots[1]);
+        // A box of its own is a fixed part: the drag designer (round 8) cannot move it.
+        $this->assertSame(['key' => 'batch', 'x' => 1.0, 'y' => 2.0, 'w' => 3.0, 'h' => 4.0, 'fixed' => true], $spots[1]);
         $this->assertSame(['key' => 'dates', 'x' => 10.0, 'y' => 49.5, 'w' => 20.0, 'h' => 1.0], $spots[2]);
     }
 
