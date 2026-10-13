@@ -25,11 +25,13 @@ type Props = {
   empty?: string;
   /** Sticker / Sheet, the product list: sit beside the thumbnail. */
   controls?: ReactNode;
+  /** Touch zones over the big preview (the wrap-around label's strips, round 2, 2026-10-13). */
+  overlay?: ReactNode;
 };
 
 const THUMB_H = 84;
 
-export function PhonePreviewBar({ url, ratio, busy = false, round = false, title, caption, error, empty = 'Pick a product to see it.', controls }: Props) {
+export function PhonePreviewBar({ url, ratio, busy = false, round = false, title, caption, error, empty = 'Pick a product to see it.', controls, overlay }: Props) {
   const [open, setOpen] = useState(false);
   const thumbW = Math.min(150, Math.round(THUMB_H * ratio));
   return (
@@ -56,8 +58,8 @@ export function PhonePreviewBar({ url, ratio, busy = false, round = false, title
         </div>
       </div>
       {open && (
-        <div className={`mt-2 mx-auto ${round ? 'max-w-[260px]' : 'max-w-[300px]'}`} data-testid="phone-preview-big">
-          <SheetPreview url={url} ratio={ratio} busy={busy} round={round} title={title} empty={empty} />
+        <div className={`mt-2 mx-auto ${round ? 'max-w-[260px]' : ratio > 2 ? 'max-w-full' : 'max-w-[300px]'}`} data-testid="phone-preview-big">
+          <SheetPreview url={url} ratio={ratio} busy={busy} round={round} title={title} empty={empty} overlay={overlay} />
         </div>
       )}
     </div>

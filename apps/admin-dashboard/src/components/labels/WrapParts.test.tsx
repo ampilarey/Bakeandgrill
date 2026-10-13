@@ -4,10 +4,11 @@ import type { LabelWrap } from '../../api';
 import { EMPTY_WRAP, WRAP_FALLBACK, WrapParts } from './WrapParts';
 
 /*
- * The wrap-around label's parts editor (2026-10-12): the parts in order
- * with move and remove, a part added from the select, the flavour band and
- * its words, the recycling marks as chips, the mark pictures, the free
- * text, and whether the nutrition values are per 100 g or 100 ml.
+ * The wrap-around label's editor (2026-10-12; round 2 of the usability work,
+ * 2026-10-13, put the parts on a board of strips): the strips with their
+ * count picker and sheet, the flavour band and its words, the recycling
+ * marks as chips, the mark pictures, the free text, and whether the
+ * nutrition values are per 100 g or 100 ml.
  */
 function mount(value: LabelWrap = EMPTY_WRAP, pictures: { id: number; url: string | null }[] = []) {
   const onChange = vi.fn();
@@ -18,27 +19,21 @@ function mount(value: LabelWrap = EMPTY_WRAP, pictures: { id: number; url: strin
 }
 
 describe('WrapParts', () => {
-  it('lists the parts in order and moves, removes and adds them', () => {
+  it('shows the parts as strips, with the count picker, the sheet and Reset', () => {
     const { onChange } = mount();
-    const items = within(screen.getByTestId('wrap-part-list')).getAllByRole('listitem');
-    expect(items.map((li) => li.textContent?.slice(0, 1))).toEqual(['1', '2', '3', '4', '5', '6', '7']);
-    expect(items[0]).toHaveTextContent('Brand and name');
-    expect(items[1]).toHaveTextContent('Ingredients and legal text');
-    expect(items[4]).toHaveTextContent('Barcode');
-    expect(screen.getByRole('button', { name: 'Move Brand and name up' })).toBeDisabled();
+    const board = screen.getByRole('group', { name: 'Strips' });
+    expect(within(board).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual([
+      'Strip 1: Brand and name', 'Strip 2: Ingredients and legal text', 'Strip 3: Nutrition per 100 g or ml', 'Strip 4: Dates and batch', 'Strip 5: Barcode', 'Strip 6: QR code', 'Strip 7: Recycling marks and pictures', 'Add a strip',
+    ]);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Move Ingredients and legal text up' }));
-    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ parts: ['legal', 'brand', 'nutrition', 'dates', 'barcode', 'qr', 'marks'] }));
-    fireEvent.click(screen.getByRole('button', { name: 'Remove QR code' }));
+    fireEvent.click(within(screen.getByRole('group', { name: 'How many strips' })).getByRole('button', { name: '3' }));
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ parts: ['brand', 'legal', 'nutrition'] }));
+
+    fireEvent.click(within(board).getByRole('button', { name: 'Strip 6: QR code' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove this strip' }));
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ parts: ['brand', 'legal', 'nutrition', 'dates', 'barcode', 'marks'] }));
 
-    // Only the parts not yet in the list are offered.
-    const add = screen.getByLabelText('Add a part');
-    expect(within(add).getAllByRole('option').map((o) => o.textContent)).toEqual(['Add a part…', 'Free text', 'Packed for and promotion']);
-    fireEvent.change(add, { target: { value: 'text' } });
-    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ parts: ['brand', 'legal', 'nutrition', 'dates', 'barcode', 'qr', 'marks', 'text'] }));
-
-    fireEvent.click(screen.getByRole('button', { name: 'Usual set' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ parts: WRAP_FALLBACK.default_parts, marks: WRAP_FALLBACK.default_marks }));
   });
 

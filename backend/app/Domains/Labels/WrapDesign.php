@@ -69,9 +69,41 @@ final class WrapDesign
         return $s->p;
     }
 
+    /**
+     * Where the strips land, without drawing (the Admin's touchable strips,
+     * round 2 of the usability work, 2026-10-13): each part that prints with
+     * its box in mm from the label's top-left corner, in reading order, the
+     * band's box, and the parts asked for that were left out and why
+     * ("empty": nothing to print; "narrow": no room even squeezed).
+     *
+     * @param array<string, mixed> $d
+     * @return array{strips: list<array{part: string, x: float, y: float, w: float, h: float}>, band: ?array{x: float, y: float, w: float, h: float}, left_out: array<string, string>}
+     */
+    public static function strips(array $d, bool $dv, float $w, float $h): array
+    {
+        $s = new self($d, $dv, $w, $h);
+        $l = $s->layout();
+        $strips = [];
+        foreach ($l['order'] as $part) {
+            $strips[] = ['part' => $part, 'x' => round($l['x'][$part], 2), 'y' => round($l['top'], 2), 'w' => round($l['widths'][$part], 2), 'h' => round($l['ph'], 2)];
+        }
+
+        return [
+            'strips' => $strips,
+            'band' => $l['band'] ? ['x' => round($l['pad'], 2), 'y' => round($h - $l['pad'] - $l['bh'], 2), 'w' => round($l['iw'], 2), 'h' => round($l['bh'], 2)] : null,
+            'left_out' => $l['left_out'],
+        ];
+    }
+
     // ---- Layout ----
 
-    private function draw(): void
+    /**
+     * The parts that print and their boxes: what each asks for, the width
+     * shared out, and in Dhivehi the order reversed.
+     *
+     * @return array{parts: list<string>, order: list<string>, widths: array<string, float>, x: array<string, float>, pad: float, gap: float, iw: float, top: float, ph: float, band: bool, bh: float, left_out: array<string, string>}
+     */
+    private function layout(): array
     {
         $d = $this->d;
         $k = $this->k;
@@ -84,7 +116,15 @@ final class WrapDesign
         $top = $pad;
         $ph = $this->h - 2 * $pad - ($band ? $bh + 0.7 * $gap : 0.0);
 
-        $parts = array_values(array_filter($wrap['parts'], fn (string $part) => $this->has($part)));
+        $leftOut = [];
+        $parts = [];
+        foreach ($wrap['parts'] as $part) {
+            if ($this->has($part)) {
+                $parts[] = $part;
+            } else {
+                $leftOut[$part] = 'empty';
+            }
+        }
         if ($parts === []) {
             $parts = ['brand'];
         }
@@ -101,13 +141,34 @@ final class WrapDesign
             };
         }
         $widths = $this->share($parts, $asks, $iw, $gap);
-        $this->parts = $parts = array_keys($widths);
+        foreach ($parts as $part) {
+            if (!isset($widths[$part])) {
+                $leftOut[$part] = 'narrow';
+            }
+        }
+        $parts = array_keys($widths);
 
         // Dhivehi reads right to left: the brand at the right, the parts in reverse.
-        $ordered = $this->dv ? array_reverse($parts) : $parts;
+        $order = $this->dv ? array_reverse($parts) : $parts;
+        $xs = [];
         $x = $pad;
-        foreach ($ordered as $i => $part) {
+        foreach ($order as $part) {
+            $xs[$part] = $x;
+            $x += $widths[$part] + $gap;
+        }
+
+        return ['parts' => $parts, 'order' => $order, 'widths' => $widths, 'x' => $xs, 'pad' => $pad, 'gap' => $gap, 'iw' => $iw, 'top' => $top, 'ph' => $ph, 'band' => $band, 'bh' => $bh, 'left_out' => $leftOut];
+    }
+
+    private function draw(): void
+    {
+        $l = $this->layout();
+        ['widths' => $widths, 'gap' => $gap, 'top' => $top, 'ph' => $ph, 'pad' => $pad, 'iw' => $iw, 'band' => $band, 'bh' => $bh] = $l;
+        $this->parts = $l['parts'];
+
+        foreach ($l['order'] as $i => $part) {
             $pw = $widths[$part];
+            $x = $l['x'][$part];
             if ($i > 0) {
                 $this->p[] = ['t' => 'rect', 'x' => round($x - $gap / 2 - 0.1, 3), 'y' => $top + 1.0, 'w' => 0.2, 'h' => $ph - 2.0, 'fill' => StickerDesign::BORDER];
             }
@@ -122,7 +183,6 @@ final class WrapDesign
                 'text' => $this->freeText($x, $top, $pw, $ph),
                 'packed' => $this->packed($x, $top, $pw, $ph),
             };
-            $x += $pw + $gap;
         }
 
         if ($band) {

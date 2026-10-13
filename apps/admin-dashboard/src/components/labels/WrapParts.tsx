@@ -1,6 +1,7 @@
-import { ArrowDown, ArrowUp, ImagePlus, RotateCcw, X } from 'lucide-react';
-import type { LabelWrap, NutritionPer, WrapCatalogue, WrapPartKey, WrapPicture } from '../../api';
+import { ImagePlus, X } from 'lucide-react';
+import type { LabelWrap, NutritionPer, WrapCatalogue, WrapPartKey, WrapPicture, WrapStrips } from '../../api';
 import { Button } from '../ui';
+import { StripEditor } from './StripEditor';
 
 /*
  * The wrap-around label's parts (owner, 2026-10-12: a bottle label "with 2,
@@ -63,58 +64,41 @@ type Props = {
   productName: string;
   netWeight: string;
   idPrefix?: string;
+  /** Where the server put the strips, when the live preview is a wrap label (round 2, 2026-10-13). */
+  strips?: WrapStrips | null;
+  /** The label's size the board is drawn to; 180 × 40 until the preview is a wrap label. */
+  size?: { w: number; h: number } | null;
+  /** The strip whose sheet is open, when a tap on the preview opens it. */
+  openPart?: WrapPartKey | null;
+  onOpenPart?: (part: WrapPartKey | null) => void;
 };
 
 const fieldClass = 'h-10 min-h-[44px] px-3 rounded-lg border border-[var(--color-border)] bg-white text-sm text-[var(--color-text)] w-full';
 const labelClass = 'block text-xs font-semibold text-[var(--color-text-secondary)] mb-1';
 
-export function WrapParts({ value, onChange, catalogue, pictures, onAddPicture, nutritionPer, onNutritionPer, productName, netWeight, idPrefix = 'wrap' }: Props) {
+export function WrapParts({ value, onChange, catalogue, pictures, onAddPicture, nutritionPer, onNutritionPer, productName, netWeight, idPrefix = 'wrap', strips = null, size = null, openPart, onOpenPart }: Props) {
   const cat = catalogue ?? WRAP_FALLBACK;
-  const wordsOf = (key: WrapPartKey) => cat.parts.find((p) => p.key === key) ?? { key, label: key, hint: '' };
   const set = <K extends keyof LabelWrap>(key: K, v: LabelWrap[K]) => onChange({ ...value, [key]: v });
-  const move = (i: number, dir: -1 | 1) => {
-    const parts = [...value.parts];
-    const j = i + dir;
-    if (j < 0 || j >= parts.length) return;
-    [parts[i], parts[j]] = [parts[j], parts[i]];
-    set('parts', parts);
-  };
-  const left = cat.parts.filter((p) => !value.parts.includes(p.key));
   const maxPictures = cat.max_pictures ?? 4;
 
   return (
     <div className="space-y-4" data-testid="wrap-parts">
-      <p className="text-xs text-[var(--color-text-muted)]">Prints when the label is wide and short: 180 × 40, 150 × 35, 200 × 50, 120 × 40 mm on the size picker, or any size at least 90 × 25 mm and two and a half times as wide as tall. The parts sit side by side in this order; a part with nothing to print is left out, and on a narrow label the last parts give way. Other sizes keep their usual sticker.</p>
+      <p className="text-xs text-[var(--color-text-muted)]">Prints when the label is wide and short: 180 × 40, 150 × 35, 200 × 50, 120 × 40 mm on the size picker, or any size at least 90 × 25 mm and two and a half times as wide as tall. A strip with nothing to print is left out, and on a narrow label the last strips give way. Other sizes keep their usual sticker.</p>
 
-      <div>
-        <div className="flex items-center justify-between gap-2 mb-1">
-          <span className={labelClass}>Parts, in order</span>
-          <Button variant="ghost" size="sm" icon={<RotateCcw size={14} />} onClick={() => onChange({ ...value, parts: cat.default_parts, marks: cat.default_marks })}>Usual set</Button>
-        </div>
-        <ol className="divide-y divide-[var(--color-border-light)] border border-[var(--color-border)] rounded-xl overflow-hidden" data-testid="wrap-part-list">
-          {value.parts.map((key, i) => {
-            const w = wordsOf(key);
-            return (
-              <li key={key} className="flex items-center gap-2 px-2 py-1.5 bg-[var(--color-surface)]">
-                <span className="w-6 h-6 shrink-0 inline-flex items-center justify-center rounded-full text-[11px] font-bold bg-[var(--color-tone-brown-bg)] text-[var(--color-tone-brown-text)] border border-[var(--color-tone-brown-border)]">{i + 1}</span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-semibold text-[var(--color-text)]">{w.label}</span>
-                  {w.hint && <span className="block text-[11px] text-[var(--color-text-muted)] truncate">{w.hint}</span>}
-                </span>
-                <button type="button" onClick={() => move(i, -1)} disabled={i === 0} className="w-8 h-8 inline-flex items-center justify-center rounded-md border border-[var(--color-border)] text-[var(--color-text-secondary)] disabled:opacity-40" aria-label={`Move ${w.label} up`}><ArrowUp size={14} /></button>
-                <button type="button" onClick={() => move(i, 1)} disabled={i === value.parts.length - 1} className="w-8 h-8 inline-flex items-center justify-center rounded-md border border-[var(--color-border)] text-[var(--color-text-secondary)] disabled:opacity-40" aria-label={`Move ${w.label} down`}><ArrowDown size={14} /></button>
-                <button type="button" onClick={() => set('parts', value.parts.filter((p) => p !== key))} disabled={value.parts.length === 1} className="w-8 h-8 inline-flex items-center justify-center rounded-md border border-[var(--color-border)] text-[var(--color-danger)] disabled:opacity-40" aria-label={`Remove ${w.label}`}><X size={14} /></button>
-              </li>
-            );
-          })}
-        </ol>
-        {left.length > 0 && (
-          <select aria-label="Add a part" value="" onChange={(e) => { const k = e.target.value as WrapPartKey; if (k) set('parts', [...value.parts, k]); }} className={`${fieldClass} mt-2`}>
-            <option value="">Add a part…</option>
-            {left.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
-          </select>
-        )}
-      </div>
+      {/* Round 2 (owner, 2026-10-13): the parts as strips on a board, not a list. */}
+      <StripEditor
+        parts={value.parts as WrapPartKey[]}
+        onChange={(parts) => set('parts', parts)}
+        catalogue={cat}
+        strips={strips}
+        w={size?.w ?? 180}
+        h={size?.h ?? 40}
+        bandOn={value.band}
+        onReset={() => onChange({ ...value, parts: cat.default_parts, marks: cat.default_marks })}
+        openPart={openPart}
+        onOpenPart={onOpenPart}
+        idPrefix={idPrefix}
+      />
 
       <div className="rounded-xl border border-[var(--color-border)] p-3 space-y-2">
         <label className="flex items-start gap-3 min-h-[44px] cursor-pointer">

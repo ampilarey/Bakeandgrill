@@ -100,6 +100,29 @@ class WrapLabelTest extends TestCase
         $this->assertStringContainsString('class="pc tx f-sym"', $html, 'the recycling glyph sets in the symbol font');
         $this->assertStringContainsString('· wrap-around label', $html);
         $this->assertSame(1, substr_count($html, 'data-testid="sticker"'));
+
+        // Where the strips land (round 2, 2026-10-13), for the editors' touch zones: every part, left to right, inside the label.
+        $wrap = $res['summary']['wrap'];
+        $this->assertSame(['brand', 'legal', 'nutrition', 'dates', 'barcode', 'qr', 'marks', 'text', 'packed'], array_column($wrap['strips'], 'part'));
+        $x = 0.0;
+        foreach ($wrap['strips'] as $strip) {
+            $this->assertGreaterThanOrEqual($x, $strip['x'], 'the strips follow one another');
+            $this->assertGreaterThan(5.0, $strip['w']);
+            $x = $strip['x'] + $strip['w'];
+        }
+        $this->assertLessThanOrEqual(180.0, $x);
+        $this->assertNotNull($wrap['band']);
+        $this->assertSame([], $wrap['left_out']);
+
+        // A draft previewed before it is saved says the same, so the editor's strips move as it is typed.
+        $draft = $this->postJson('/api/labels/custom/preview', ['name' => 'Lime Soda', 'label_barcode' => '96385074', 'layout' => 'single-custom', 'w' => 120, 'h' => 40])->assertOk()->json();
+        $this->assertSame('wrap', $draft['design']);
+        $this->assertSame(['brand', 'legal', 'dates', 'barcode', 'qr', 'marks'], array_column($draft['wrap']['strips'], 'part'), 'no nutrition line: that part is left out');
+        $this->assertSame(['nutrition' => 'empty'], $draft['wrap']['left_out']);
+        // On 100 × 30 mm there is no room for every strip even squeezed: the last ones are reported as left out for want of room.
+        $narrow = $this->postJson('/api/labels/custom/preview', ['name' => 'Lime Soda', 'label_barcode' => '96385074', 'layout' => 'single-custom', 'w' => 100, 'h' => 30])->assertOk()->json();
+        $this->assertContains('narrow', $narrow['wrap']['left_out']);
+        $this->assertSame('brand', $narrow['wrap']['strips'][0]['part']);
     }
 
     public function test_dhivehi_and_both_languages_and_a_narrow_label_that_gives_up_its_last_parts(): void

@@ -318,6 +318,18 @@ export type GlossaryWord = { id: number; en: string; word: string; dv: string };
 /** An ingredient word on a label that has no Dhivehi yet, and the products using it. */
 export type GlossaryMissing = { word: string; products: string[] };
 
+/**
+ * Where a wrap-around label's strips land (round 2, 2026-10-13): each part
+ * that prints with its box in mm from the label's top-left corner, the band's
+ * box, and the parts asked for that were left out and why (empty: nothing to
+ * print; narrow: no room even squeezed).
+ */
+export type WrapStrips = {
+  strips: { part: WrapPartKey; x: number; y: number; w: number; h: number }[];
+  band: { x: number; y: number; w: number; h: number } | null;
+  left_out: Partial<Record<WrapPartKey, 'empty' | 'narrow'>>;
+};
+
 export type StickerSummary = {
   layout: string;
   label: string;
@@ -330,6 +342,8 @@ export type StickerSummary = {
   per_page: number;
   /** `code`: the print's code (2026-10-12), which its stickers carry as a QR; null on a preview. */
   products: { id: number; kind?: 'item' | 'custom'; key?: string; name: string; copies: number; mfg: string | null; exp: string | null; shelf_life_days: number | null; ingredients_from: string; code?: string | null }[];
+  /** On a wrap-around label: the first product's strips. */
+  wrap?: WrapStrips | null;
 };
 
 export type SheetLinks = {
@@ -556,7 +570,7 @@ export function pinLabelJob(id: number, pinned: boolean) {
  * names it. Nothing is saved or logged.
  */
 export function previewCustomDraft(body: CustomLabelPayload & { layout?: string; w?: number | null; h?: number | null; lang?: StickerLang }) {
-  return req<{ one_url: string; url: string; expires_in_minutes: number }>('/labels/custom/preview', { method: 'POST', body: JSON.stringify(body) });
+  return req<{ one_url: string; url: string; expires_in_minutes: number; design?: StickerSummary['design']; wrap?: WrapStrips | null }>('/labels/custom/preview', { method: 'POST', body: JSON.stringify(body) });
 }
 
 /** Print a saved label again: stickers with dates get today's made-on date. */

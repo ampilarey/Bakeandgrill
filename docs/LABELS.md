@@ -459,12 +459,24 @@ English list under the Dhivehi heading. Type and spacing scale with the height (
 the batch QR, the PDF, the web sheet and the label printer's ZPL and TSPL.
 
 **Which parts, in what order** is kept per product (`label_wrap`): the item's Label tab
-(Wrap-around label) and the custom label editor (Wrap-around label) list the parts with
-move and remove, add one from a select, switch the band and type its words, pick the
-recycling marks (the universal loop, the tidy man, plastics 1 to 7, glass, paper,
-metal), pick mark pictures, and type the free text; **Usual set** puts the default
-parts back (brand, legal, nutrition, dates, barcode, QR, marks; the loop and the tidy man).
-Nothing kept prints that default set. The same editors say whether the product's
+(Wrap-around label) and the custom label editor (Wrap-around label) show the parts as
+**strips you can see and touch** (round 2 of the usability work, owner, 2026-10-13:
+"How to decide its 2 strips, 3, or, 4"; `StripEditor.tsx`): thumbnails pick how many
+strips (2 to 6, or all nine; `partsForCount` trims the list or fills it from the usual
+order), a board drawn to the label's proportions shows one strip per part with the
+band beneath, a tap on a strip opens its sheet (what it holds, with a part already on
+another strip swapping over; Move left / right; Remove), a strip can be dragged to
+reorder on a computer, and **Reset** puts the default parts and marks back (brand,
+legal, nutrition, dates, barcode, QR, marks; the loop and the tidy man). When the live
+preview is a wrap label, the server says where each strip landed
+(`WrapDesign::strips()`, carried as `wrap` in the sticker summary and the draft
+preview's reply: each strip's box in mm, the band's box, and the parts left out as
+`empty` or `narrow`): the board takes the printed widths, the strips that will not
+print are dimmed and named under the board, and the preview itself carries touch
+zones (`StripOverlay`, through `SheetPreview`'s `overlay`, the phone's big preview
+too) that open the same sheet. Below the board: the band and its words, the recycling
+marks (the universal loop, the tidy man, plastics 1 to 7, glass, paper, metal), mark
+pictures, and the free text. Nothing kept prints the default set. The same editors say whether the product's
 nutrition values are **per 100 g or per 100 ml** (`label_nutrition_per`), which the
 nutrition heading reads on every sticker.
 

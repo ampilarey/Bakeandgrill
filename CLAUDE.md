@@ -271,7 +271,12 @@ barcode, QR, marks, free text, packed), a flavour band along the bottom, recycli
 as glyphs of the symbol font (`LabelMarks`, `LabelText::FONTS['sym']`,
 `scripts/label-symbol-font.py`) plus the tidy man and mark pictures, and
 `label_nutrition_per` (g or ml); `WrapParts.tsx` edits it on the item's Label tab and the
-custom label editor. Parts share the width by weight (`WrapDesign::share()`): too narrow,
+custom label editor, as strips you can see and touch (round 2, owner 2026-10-13:
+`StripEditor.tsx`, a count picker, a board to the label's proportions, a sheet per strip,
+drag to reorder; `WrapDesign::strips()` reports each strip's box and the parts left out,
+carried as `wrap` in the sticker summary and the draft preview, and `StripOverlay` lays
+touch zones over the preview through `SheetPreview`'s `overlay`). Parts share the width
+by weight (`WrapDesign::share()`): too narrow,
 every part shrinks to its floor before any is dropped (`DROP_ORDER`), so nine parts print
 on 180 × 40 mm. The barcode SVG is sized in its own units (`Barcode::svgDataUri`, no mm):
 dompdf's SVG library ignores the viewBox, and a size in mm drew the bars twice as tall as

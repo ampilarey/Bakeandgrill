@@ -964,11 +964,15 @@ class LabelsController extends Controller
             return response()->json(['message' => $e->getMessage()], 422);
         }
         $query = ['items' => 'd' . $token . ':1', 'lang' => $req['lang'], 'layout' => $req['layout'], 'w' => $req['w'], 'h' => $req['h'], 'fill' => 1, 'preview' => 1];
+        // Where a wrap-around label's strips land (round 2, 2026-10-13), for the editor's touch zones.
+        $summary = $this->stickers->summary($req);
 
         return response()->json([
             'one_url' => LabelSheetController::link('labels.stickers', $query + ['one' => 1]),
             'url' => LabelSheetController::link('labels.stickers', $query),
             'expires_in_minutes' => StickerSheet::DRAFT_MINUTES,
+            'design' => $summary['design'],
+            'wrap' => $summary['wrap'] ?? null,
         ]);
     }
 

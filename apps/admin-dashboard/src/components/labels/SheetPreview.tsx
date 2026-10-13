@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Loader2 } from 'lucide-react';
 
 /*
@@ -22,9 +22,11 @@ type Props = {
   className?: string;
   /** Round pages are shown in a round frame. */
   round?: boolean;
+  /** Drawn over the page, the frame's size: touch zones for the wrap-around label's strips (round 2, 2026-10-13). */
+  overlay?: ReactNode;
 };
 
-export function SheetPreview({ url, ratio, busy = false, title = 'Preview', empty = 'Pick a product to see it.', className = '', round = false }: Props) {
+export function SheetPreview({ url, ratio, busy = false, title = 'Preview', empty = 'Pick a product to see it.', className = '', round = false, overlay }: Props) {
   const [loaded, setLoaded] = useState<string | null>(null);
   const shown = useRef<string | null>(null);
   useEffect(() => { if (url === null) { shown.current = null; setLoaded(null); } }, [url]);
@@ -47,6 +49,7 @@ export function SheetPreview({ url, ratio, busy = false, title = 'Preview', empt
           <p className="absolute inset-0 flex items-center justify-center p-4 text-center text-xs text-[var(--color-text-muted)]">{empty}</p>
         )}
       </div>
+      {overlay && src && <div className="absolute inset-0" data-testid="sheet-preview-overlay">{overlay}</div>}
       {(busy || pending) && src && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-live="polite" aria-label="Updating the preview">
           <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/90 border border-[var(--color-border)] text-xs text-[var(--color-text-secondary)] shadow-sm"><Loader2 size={14} className="animate-spin" /> Updating</span>

@@ -477,7 +477,7 @@ final class StickerSheet
             $total += $row['copies'];
         }
 
-        return [
+        $summary = [
             'layout' => $sheet['key'],
             'label' => $sheet['label'],
             'design' => $sheet['design'],
@@ -489,6 +489,16 @@ final class StickerSheet
             'per_page' => $sheet['per_page'],
             'products' => $products,
         ];
+        // A wrap-around label says where its strips land (round 2 of the
+        // usability work, 2026-10-13), for the first product, so the Admin can
+        // lay touch zones over the preview; the same layout the sheet draws.
+        if ($sheet['design'] === 'wrap' && $products !== []) {
+            $first = $found[$products[0]['key']];
+            $data = $this->stickerData($first, $req, $this->common() + ['both' => $req['lang'] === 'both'], $production);
+            $summary['wrap'] = WrapDesign::strips($data, $req['lang'] === 'dv', (float) $sheet['w'], (float) $sheet['h']);
+        }
+
+        return $summary;
     }
 
     /**

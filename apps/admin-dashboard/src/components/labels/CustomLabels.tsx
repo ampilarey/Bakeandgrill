@@ -4,10 +4,11 @@ import { Bookmark, ChevronDown, Copy, Eye, ImagePlus, Pencil, Plus, Printer, Ref
 import {
   createCustomLabel, deleteCustomLabel, duplicateCustomLabel, fetchCustomLabels, fetchLabelBrands, fetchLabelFooters, fetchLabelLayouts, fetchLabelSettings, fetchLabelTypes,
   previewCustomDraft, stickerLinks, updateCustomLabel, uploadCustomLabelPicture,
-  type CustomLabel, type CustomLabelPayload, type LabelBrand, type LabelFooter, type LabelLimits, type LabelPreset, type LabelStorage, type LabelType, type LabelWrap, type NutritionPer, type StickerLang, type WrapCatalogue, type WrapPicture,
+  type CustomLabel, type CustomLabelPayload, type LabelBrand, type LabelFooter, type LabelLimits, type LabelPreset, type LabelStorage, type LabelType, type LabelWrap, type NutritionPer, type StickerLang, type WrapCatalogue, type WrapPartKey, type WrapPicture, type WrapStrips,
 } from '../../api';
 import { FooterPicker } from './FooterPicker';
-import { EMPTY_WRAP, WrapParts } from './WrapParts';
+import { EMPTY_WRAP, WRAP_FALLBACK, WrapParts } from './WrapParts';
+import { StripOverlay } from './StripEditor';
 import { DEFAULT_CHOICE, rememberedSize, requestFor, sizeName, sizeOf, stockOf, type SizeChoice } from './labelSize';
 import { Btn, ConfirmDialog, Modal, ModalActions, useConfirmDialog } from '../SharedUI';
 import { Button, Card, useToast } from '../ui';
@@ -152,6 +153,9 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
   const [uploading, setUploading] = useState<'photo' | 'title' | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [previewBusy, setPreviewBusy] = useState(false);
+  // Where the strips landed when the preview is a wrap label, and the strip whose sheet a tap opened (round 2, 2026-10-13).
+  const [previewWrap, setPreviewWrap] = useState<WrapStrips | null>(null);
+  const [openStrip, setOpenStrip] = useState<WrapPartKey | null>(null);
   const [presets, setPresets] = useState<LabelPreset[]>([]);
   const [limits, setLimits] = useState<LabelLimits | null>(null);
   const [choice, setChoice] = useState<SizeChoice>(() => rememberedSize() ?? DEFAULT_CHOICE);
@@ -197,6 +201,7 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
       const r = await previewCustomDraft({ ...payload, layout: sized.layout, w: sized.w, h: sized.h, lang });
       if (seq !== previewSeq.current) return;
       setPreview(r.one_url ?? r.url);
+      setPreviewWrap(r.design === 'wrap' ? (r.wrap ?? null) : null);
     } catch {
       if (seq === previewSeq.current) setPreview(null);
     } finally {
@@ -331,6 +336,8 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
     </Section>
   );
   const previewCaption = `${sizeName(choice.shape, dims.w, dims.h)} · the first sticker of the sheet Pack stickers prints at this size. Redraws as you type, saved or not.${dvFont ? ` Dhivehi in ${DV_FONT_NAMES[dvFont] ?? dvFont} (Labels → Settings).` : ''}`;
+  // A wrap label's strips over the preview: tap one to change it (round 2, 2026-10-13).
+  const stripOverlay = previewWrap ? <StripOverlay strips={previewWrap} w={dims.w} h={dims.h} catalogue={catalogue ?? WRAP_FALLBACK} onPick={setOpenStrip} /> : null;
 
   return (
     <>
@@ -344,6 +351,7 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
             title="Custom label preview"
             empty="Drawing…"
             caption={previewCaption}
+            overlay={stripOverlay}
             controls={<div className="flex flex-wrap items-center gap-2"><LangChips lang={lang} onChange={(l) => set('label_lang', l)} /><button type="button" onClick={() => void refreshPreview()} className="w-8 h-8 inline-flex items-center justify-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface)]" aria-label="Refresh preview"><RefreshCw size={14} /></button></div>}
           />
         )}
@@ -438,6 +446,10 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
                 productName={d.name}
                 netWeight={d.label_net_weight}
                 idPrefix="cl-wrap"
+                strips={previewWrap}
+                size={previewWrap ? dims : null}
+                openPart={openStrip}
+                onOpenPart={setOpenStrip}
               />
             </Section>
 
@@ -452,8 +464,8 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
                 <LangChips lang={lang} onChange={(l) => set('label_lang', l)} />
                 <button type="button" onClick={() => void refreshPreview()} className="w-8 h-8 inline-flex items-center justify-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface)]" aria-label="Refresh preview"><RefreshCw size={14} /></button>
               </div>
-              <div className={round ? 'max-w-[240px] mx-auto' : 'max-w-[240px] mx-auto'}>
-                <SheetPreview url={preview} ratio={dims.w / dims.h} round={round} busy={previewBusy} title="Custom label preview" empty="Drawing…" />
+              <div className={previewWrap ? 'w-full' : 'max-w-[240px] mx-auto'}>
+                <SheetPreview url={preview} ratio={dims.w / dims.h} round={round} busy={previewBusy} title="Custom label preview" empty="Drawing…" overlay={stripOverlay} />
               </div>
               <p className="text-xs text-[var(--color-text-muted)]" data-testid="custom-preview-size">{previewCaption} The language is kept with the label.</p>
               {sizeSection}
