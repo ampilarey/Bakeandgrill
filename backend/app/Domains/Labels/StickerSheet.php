@@ -302,13 +302,7 @@ final class StickerSheet
         // What each SVG picture on the sheet is (round C), for the label
         // printer's rasteriser, which draws a QR or a barcode itself.
         $vectors = [];
-        $draw = fn (array $data): array => match ($sheet['design']) {
-            'full' => StickerDesign::full($data, $dv),
-            'round' => StickerDesign::round($data, $dv, $sheet['w']),
-            'small' => SmallStickerDesign::rect($data, $dv, $sheet['w'], $sheet['h']),
-            'wrap' => WrapDesign::wrap($data, $dv, $sheet['w'], $sheet['h']),
-            default => StickerDesign::mini($data, $dv, $sheet['w'], $sheet['h']),
-        };
+        $draw = fn (array $data): array => LabelSpots::strip($this->pieces($sheet, $data, $dv));
         foreach ($req['items'] as $row) {
             $product = $products[self::key($row)] ?? null;
             if ($product === null) {
@@ -339,6 +333,26 @@ final class StickerSheet
             'rounded' => $sheet['shape'] === 'rect' && $req['rounded'],
             'vectors' => $vectors,
         ];
+    }
+
+    /**
+     * One sticker's pieces in the sheet's design, with the part markers the
+     * designs put in for the preview's touch zones (LabelSpots): strip them
+     * before anything draws.
+     *
+     * @param array<string, mixed> $sheet from StickerLayouts::resolve()
+     * @param array<string, mixed> $data from stickerData()
+     * @return list<array<string, mixed>>
+     */
+    private function pieces(array $sheet, array $data, bool $dv): array
+    {
+        return match ($sheet['design']) {
+            'full' => StickerDesign::full($data, $dv),
+            'round' => StickerDesign::round($data, $dv, $sheet['w']),
+            'small' => SmallStickerDesign::rect($data, $dv, $sheet['w'], $sheet['h']),
+            'wrap' => WrapDesign::wrap($data, $dv, $sheet['w'], $sheet['h']),
+            default => StickerDesign::mini($data, $dv, $sheet['w'], $sheet['h']),
+        };
     }
 
     /**
@@ -489,13 +503,18 @@ final class StickerSheet
             'per_page' => $sheet['per_page'],
             'products' => $products,
         ];
-        // A wrap-around label says where its strips land (round 2 of the
-        // usability work, 2026-10-13), for the first product, so the Admin can
-        // lay touch zones over the preview; the same layout the sheet draws.
-        if ($sheet['design'] === 'wrap' && $products !== []) {
+        // Where the first product's parts land (rounds 2 and 3 of the usability
+        // work, 2026-10-13), so the Admin can lay touch zones over the preview:
+        // a wrap-around label says where its strips are, every other design
+        // where each part is (LabelSpots), from the same layout the sheet draws.
+        if ($products !== []) {
             $first = $found[$products[0]['key']];
+            $dv = $req['lang'] === 'dv';
             $data = $this->stickerData($first, $req, $this->common() + ['both' => $req['lang'] === 'both'], $production);
-            $summary['wrap'] = WrapDesign::strips($data, $req['lang'] === 'dv', (float) $sheet['w'], (float) $sheet['h']);
+            if ($sheet['design'] === 'wrap') {
+                $summary['wrap'] = WrapDesign::strips($data, $dv, (float) $sheet['w'], (float) $sheet['h']);
+            }
+            $summary['spots'] = LabelSpots::spots($this->pieces($sheet, $data, $dv));
         }
 
         return $summary;

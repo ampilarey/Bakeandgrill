@@ -964,7 +964,7 @@ class LabelsController extends Controller
             return response()->json(['message' => $e->getMessage()], 422);
         }
         $query = ['items' => 'd' . $token . ':1', 'lang' => $req['lang'], 'layout' => $req['layout'], 'w' => $req['w'], 'h' => $req['h'], 'fill' => 1, 'preview' => 1];
-        // Where a wrap-around label's strips land (round 2, 2026-10-13), for the editor's touch zones.
+        // Where the strips (a wrap-around label) and the parts land (rounds 2 and 3, 2026-10-13), for the editor's touch zones.
         $summary = $this->stickers->summary($req);
 
         return response()->json([
@@ -973,6 +973,7 @@ class LabelsController extends Controller
             'expires_in_minutes' => StickerSheet::DRAFT_MINUTES,
             'design' => $summary['design'],
             'wrap' => $summary['wrap'] ?? null,
+            'spots' => $summary['spots'] ?? [],
         ]);
     }
 

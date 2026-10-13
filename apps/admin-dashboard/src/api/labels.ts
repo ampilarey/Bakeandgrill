@@ -330,6 +330,16 @@ export type WrapStrips = {
   left_out: Partial<Record<WrapPartKey, 'empty' | 'narrow'>>;
 };
 
+/**
+ * The parts of a sticker a tap can open (round 3, 2026-10-13: "tap to edit on
+ * every label"); LabelSpots::KEYS. `batch_qr` is the pack page's code in the
+ * header; the complaints QR belongs to the footer.
+ */
+export type LabelSpotKey = 'brand' | 'heading' | 'batch_qr' | 'pack' | 'name' | 'promo' | 'packed' | 'photo' | 'barcode' | 'ingredients' | 'how_to_use' | 'nutrition' | 'icons' | 'note' | 'dates' | 'batch' | 'qty' | 'price' | 'storage' | 'footer';
+
+/** Where a part of the first sticker landed, in mm from its top-left corner; a part drawn in two places comes twice. */
+export type LabelSpot = { key: LabelSpotKey; x: number; y: number; w: number; h: number };
+
 export type StickerSummary = {
   layout: string;
   label: string;
@@ -344,6 +354,8 @@ export type StickerSummary = {
   products: { id: number; kind?: 'item' | 'custom'; key?: string; name: string; copies: number; mfg: string | null; exp: string | null; shelf_life_days: number | null; ingredients_from: string; code?: string | null }[];
   /** On a wrap-around label: the first product's strips. */
   wrap?: WrapStrips | null;
+  /** On every other design: where the first product's parts are, for the preview's touch zones (empty on a wrap label). */
+  spots?: LabelSpot[];
 };
 
 export type SheetLinks = {
@@ -570,7 +582,7 @@ export function pinLabelJob(id: number, pinned: boolean) {
  * names it. Nothing is saved or logged.
  */
 export function previewCustomDraft(body: CustomLabelPayload & { layout?: string; w?: number | null; h?: number | null; lang?: StickerLang }) {
-  return req<{ one_url: string; url: string; expires_in_minutes: number; design?: StickerSummary['design']; wrap?: WrapStrips | null }>('/labels/custom/preview', { method: 'POST', body: JSON.stringify(body) });
+  return req<{ one_url: string; url: string; expires_in_minutes: number; design?: StickerSummary['design']; wrap?: WrapStrips | null; spots?: LabelSpot[] }>('/labels/custom/preview', { method: 'POST', body: JSON.stringify(body) });
 }
 
 /** Print a saved label again: stickers with dates get today's made-on date. */

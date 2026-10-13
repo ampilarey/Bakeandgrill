@@ -284,10 +284,19 @@ the box on every design. Labels opens on **Make a label** (owner, 2026-10-13: "S
 its v confusing and not user friendly"): `MakeLabelWizard.tsx`, the hub's first tab, four
 steps (what it is for, with a menu item switched on for labels as it is picked; which
 label, as picture cards with everyday names from `LABEL_CARDS` drawn by `LabelSchematic`;
-looks right, one live preview with language, dates and quantity and the full editor in a
-pop-up; how many and print, through the same sticker request as Pack stickers). The other
+looks right, one live preview with language, dates and quantity and the full editor behind
+All details; how many and print, through the same sticker request as Pack stickers). The other
 tabs stay for those who know them; a new way to print a label goes into the wizard too,
-not beside it. How to
+not beside it. **Tap to edit** (round 3, owner 2026-10-13): a tap on a part of the preview
+(the wizard's step 3, the custom label editor, the item's Label tab) opens that part's boxes
+alone. Every design marks its parts (`LabelSpots::open()` / `close()` / `at()`),
+`StickerSheet::pieces()` strips the markers before any renderer sees them (the raster reads
+every piece's x and w), `summary()` carries the first product's boxes as `spots` beside
+`wrap`, and the Admin lays `SpotOverlay` over the preview and opens `QuickEditSheet` with
+what `quickSpec()` (`QuickEdit.tsx`) says the part needs; the three hosts share
+`labelDrafts.ts` and save only the sheet's keys (`pickKeys`). A new part on a sticker gets a
+marker in every design, a name in `SPOT_NAMES`, a case in `quickSpec()` and a key in
+`LabelSpots::KEYS`. How to
 use it and where everything lives: `docs/LABELS.md`; design and decisions:
 `docs/LABEL_HUB_PLAN.md` and `docs/LABEL_HUB_V2_PLAN.md`.
 

@@ -4,11 +4,14 @@ import { Bookmark, ChevronDown, Copy, Eye, ImagePlus, Pencil, Plus, Printer, Ref
 import {
   createCustomLabel, deleteCustomLabel, duplicateCustomLabel, fetchCustomLabels, fetchLabelBrands, fetchLabelFooters, fetchLabelLayouts, fetchLabelSettings, fetchLabelTypes,
   previewCustomDraft, stickerLinks, updateCustomLabel, uploadCustomLabelPicture,
-  type CustomLabel, type CustomLabelPayload, type LabelBrand, type LabelFooter, type LabelLimits, type LabelPreset, type LabelStorage, type LabelType, type LabelWrap, type NutritionPer, type StickerLang, type WrapCatalogue, type WrapPartKey, type WrapPicture, type WrapStrips,
+  type CustomLabel, type LabelBrand, type LabelFooter, type LabelLimits, type LabelPreset, type LabelSpot, type LabelSpotKey, type LabelStorage, type LabelType, type StickerLang, type WrapCatalogue, type WrapPartKey, type WrapStrips,
 } from '../../api';
 import { FooterPicker } from './FooterPicker';
-import { EMPTY_WRAP, WRAP_FALLBACK, WrapParts } from './WrapParts';
+import { WRAP_FALLBACK, WrapParts } from './WrapParts';
 import { StripOverlay } from './StripEditor';
+import { SpotOverlay } from './SpotOverlay';
+import { QuickEditSheet, quickSpec } from './QuickEdit';
+import { customDraft as toDraft, customPayload as toPayload, type CustomDraft as Draft } from './labelDrafts';
 import { DEFAULT_CHOICE, rememberedSize, requestFor, sizeName, sizeOf, stockOf, type SizeChoice } from './labelSize';
 import { Btn, ConfirmDialog, Modal, ModalActions, useConfirmDialog } from '../SharedUI';
 import { Button, Card, useToast } from '../ui';
@@ -42,46 +45,6 @@ const areaClass = 'w-full min-h-[44px] px-3 py-2 rounded-lg border border-[var(-
 const labelClass = 'block text-xs font-semibold text-[var(--color-text-secondary)] mb-1';
 const STORAGE_NAMES: Record<LabelStorage, string> = { frozen: 'Frozen', chilled: 'Chilled', ambient: 'Room temperature' };
 const DV_FONT_NAMES: Record<string, string> = { noto: 'Noto Sans Thaana', faruma: 'Faruma', site: "the website's font" };
-
-type Draft = {
-  name: string; name_dv: string; brand_id: number | null; label_type_id: number | null; label_storage: LabelStorage | '';
-  label_heading: string; label_heading_dv: string; label_storage_line: string; label_storage_line_dv: string;
-  label_ingredients: string; label_ingredients_dv: string; label_how_to_use: string; label_how_to_use_dv: string;
-  label_note: string; label_note_dv: string; footer_id: number | null;
-  label_show_qr: '' | 'on' | 'off'; label_lang: StickerLang | '';
-  label_shelf_life_days: string; label_pack_qty: string; label_pack_unit: string;
-  label_price: string; label_barcode: string; label_net_weight: string; label_allergens: string; label_nutrition: string;
-  label_nutrition_per: NutritionPer; label_wrap: LabelWrap; wrap_pictures: WrapPicture[];
-  label_photo_media_id: number | null; label_photo_url: string | null; label_title_media_id: number | null; label_title_url: string | null;
-};
-
-const toDraft = (c: CustomLabel | null): Draft => ({
-  name: c?.name ?? '', name_dv: c?.name_dv ?? '', brand_id: c?.brand_id ?? null, label_type_id: c?.label_type_id ?? null, label_storage: c?.label_storage ?? '',
-  label_heading: c?.label_heading ?? '', label_heading_dv: c?.label_heading_dv ?? '', label_storage_line: c?.label_storage_line ?? '', label_storage_line_dv: c?.label_storage_line_dv ?? '',
-  label_ingredients: c?.label_ingredients ?? '', label_ingredients_dv: c?.label_ingredients_dv ?? '', label_how_to_use: c?.label_how_to_use ?? '', label_how_to_use_dv: c?.label_how_to_use_dv ?? '',
-  label_note: c?.label_note ?? '', label_note_dv: c?.label_note_dv ?? '', footer_id: c?.footer_id ?? null,
-  label_show_qr: c?.label_show_qr == null ? '' : c.label_show_qr ? 'on' : 'off', label_lang: c?.label_lang ?? '',
-  label_shelf_life_days: c?.label_shelf_life_days ? String(c.label_shelf_life_days) : '', label_pack_qty: c?.label_pack_qty ? String(c.label_pack_qty) : '', label_pack_unit: c?.label_pack_unit ?? '',
-  label_price: c?.label_price != null ? String(c.label_price) : '', label_barcode: c?.label_barcode ?? '', label_net_weight: c?.label_net_weight ?? '', label_allergens: c?.label_allergens ?? '',
-  label_nutrition: c?.label_nutrition ?? '',
-  label_nutrition_per: c?.label_nutrition_per === 'ml' ? 'ml' : 'g', label_wrap: c?.label_wrap ?? EMPTY_WRAP, wrap_pictures: c?.wrap_pictures ?? [],
-  label_photo_media_id: c?.label_photo_media_id ?? null, label_photo_url: c?.label_photo_url ?? null, label_title_media_id: c?.label_title_media_id ?? null, label_title_url: c?.label_title_url ?? null,
-});
-
-const text = (v: string) => v.trim() || null;
-
-const toPayload = (d: Draft): CustomLabelPayload => ({
-  name: d.name.trim(), name_dv: text(d.name_dv), brand_id: d.brand_id, label_type_id: d.label_type_id, label_storage: d.label_storage || null,
-  label_heading: text(d.label_heading), label_heading_dv: text(d.label_heading_dv), label_storage_line: text(d.label_storage_line), label_storage_line_dv: text(d.label_storage_line_dv),
-  label_ingredients: text(d.label_ingredients), label_ingredients_dv: text(d.label_ingredients_dv), label_how_to_use: text(d.label_how_to_use), label_how_to_use_dv: text(d.label_how_to_use_dv),
-  label_note: text(d.label_note), label_note_dv: text(d.label_note_dv), footer_id: d.footer_id,
-  label_show_qr: d.label_show_qr === '' ? null : d.label_show_qr === 'on', label_lang: d.label_lang || null,
-  label_shelf_life_days: d.label_shelf_life_days ? Number(d.label_shelf_life_days) : null, label_pack_qty: d.label_pack_qty ? Number(d.label_pack_qty) : null, label_pack_unit: text(d.label_pack_unit),
-  label_price: d.label_price !== '' ? Number(d.label_price) : null, label_barcode: text(d.label_barcode), label_net_weight: text(d.label_net_weight), label_allergens: text(d.label_allergens),
-  label_nutrition: text(d.label_nutrition),
-  label_nutrition_per: d.label_nutrition_per, label_wrap: d.label_wrap,
-  label_photo_media_id: d.label_photo_media_id, label_title_media_id: d.label_title_media_id,
-});
 
 /** The language a label usually prints in: what it says, else both when it has a Dhivehi name. */
 export const langOf = (c: Pick<CustomLabel, 'label_lang' | 'name_dv'>): StickerLang => c.label_lang ?? (c.name_dv ? 'both' : 'en');
@@ -156,6 +119,9 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
   // Where the strips landed when the preview is a wrap label, and the strip whose sheet a tap opened (round 2, 2026-10-13).
   const [previewWrap, setPreviewWrap] = useState<WrapStrips | null>(null);
   const [openStrip, setOpenStrip] = useState<WrapPartKey | null>(null);
+  // Where each part landed on every other design, and the part whose sheet a tap opened (round 3, 2026-10-13).
+  const [previewSpots, setPreviewSpots] = useState<LabelSpot[]>([]);
+  const [quick, setQuick] = useState<LabelSpotKey | null>(null);
   const [presets, setPresets] = useState<LabelPreset[]>([]);
   const [limits, setLimits] = useState<LabelLimits | null>(null);
   const [choice, setChoice] = useState<SizeChoice>(() => rememberedSize() ?? DEFAULT_CHOICE);
@@ -202,6 +168,7 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
       if (seq !== previewSeq.current) return;
       setPreview(r.one_url ?? r.url);
       setPreviewWrap(r.design === 'wrap' ? (r.wrap ?? null) : null);
+      setPreviewSpots(r.design === 'wrap' ? [] : (r.spots ?? []));
     } catch {
       if (seq === previewSeq.current) setPreview(null);
     } finally {
@@ -335,9 +302,18 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
       <LabelSizePicker presets={presets} limits={limits} choice={choice} onChange={setChoice} rounded={rounded} onRounded={setRounded} />
     </Section>
   );
-  const previewCaption = `${sizeName(choice.shape, dims.w, dims.h)} · the first sticker of the sheet Pack stickers prints at this size. Redraws as you type, saved or not.${dvFont ? ` Dhivehi in ${DV_FONT_NAMES[dvFont] ?? dvFont} (Labels → Settings).` : ''}`;
-  // A wrap label's strips over the preview: tap one to change it (round 2, 2026-10-13).
-  const stripOverlay = previewWrap ? <StripOverlay strips={previewWrap} w={dims.w} h={dims.h} catalogue={catalogue ?? WRAP_FALLBACK} onPick={setOpenStrip} /> : null;
+  const touchable = previewWrap !== null || previewSpots.length > 0;
+  const previewCaption = `${touchable ? 'Tap a part of the label to change it. ' : ''}${sizeName(choice.shape, dims.w, dims.h)} · the first sticker of the sheet Pack stickers prints at this size. Redraws as you type, saved or not.${dvFont ? ` Dhivehi in ${DV_FONT_NAMES[dvFont] ?? dvFont} (Labels → Settings).` : ''}`;
+  // Touch zones over the preview: a wrap label's strips (round 2, 2026-10-13), every other design's parts (round 3).
+  const stripOverlay = previewWrap
+    ? <StripOverlay strips={previewWrap} w={dims.w} h={dims.h} catalogue={catalogue ?? WRAP_FALLBACK} onPick={setOpenStrip} />
+    : previewSpots.length > 0 ? <SpotOverlay spots={previewSpots} w={dims.w} h={dims.h} onPick={setQuick} /> : null;
+  // What a tap's sheet shows: the type's wording in grey, the brands, types and footers to pick from.
+  const quickContext = {
+    kind: 'custom' as const, types, brands, footers, mainBrand,
+    defaults: { heading: ph.heading, heading_dv: ph.heading_dv, storage_line: ph.storage_line, storage_line_dv: ph.storage_line_dv, how_to_use: ph.how_to_use, note: ph.note, brand: typeBrand, unit: 'PCS', shelf_life_days: type?.shelf_life_days ?? null },
+    hasPhoto: Boolean(d.label_photo_url),
+  };
 
   return (
     <>
@@ -479,6 +455,20 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
         </ModalActions>
       </Modal>
       <ConfirmDialog state={dialog.state} close={dialog.close} />
+      {quick && (
+        <QuickEditSheet
+          spec={quickSpec(quick, quickContext)}
+          values={d as unknown as Record<string, unknown>}
+          onChange={(k, v) => setD((s) => ({ ...s, [k]: v }))}
+          onAction={(a) => {
+            if (a === 'photo') setPicker('photo');
+            if (a === 'remove_photo') { set('label_photo_media_id', null); set('label_photo_url', null); }
+            setQuick(null);
+          }}
+          onDone={() => setQuick(null)}
+          idPrefix="cl-quick"
+        />
+      )}
       {newBrand && (
         <BrandModal
           brand={null}

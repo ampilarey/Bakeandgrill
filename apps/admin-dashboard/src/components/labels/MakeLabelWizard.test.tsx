@@ -13,8 +13,12 @@ const api = vi.hoisted(() => ({
   fetchLabelLayouts: vi.fn(),
   fetchLabelProducts: vi.fn(),
   fetchCustomLabels: vi.fn(),
+  fetchLabelTypes: vi.fn(),
+  fetchLabelBrands: vi.fn(),
+  fetchLabelFooters: vi.fn(),
   stickerLinks: vi.fn(),
   updateItemLabel: vi.fn(),
+  updateCustomLabel: vi.fn(),
   openLabelSheet: vi.fn(),
   downloadLabelSheet: vi.fn(),
 }));
@@ -54,13 +58,19 @@ beforeEach(() => {
     { id: 8, name: 'Masroshi', name_dv: null, label_enabled: true },
   ] });
   api.fetchCustomLabels.mockResolvedValue({ data: [] });
+  api.fetchLabelTypes.mockResolvedValue({ data: [] });
+  api.fetchLabelBrands.mockResolvedValue({ data: [] });
+  api.fetchLabelFooters.mockResolvedValue({ data: [] });
   api.updateItemLabel.mockResolvedValue({ data: { id: 7, label_enabled: true } });
   api.stickerLinks.mockImplementation(async (body: { preview?: boolean }) => ({
     url: body.preview ? '/labels/stickers?preview=1&signature=p' : '/labels/stickers?print=1&signature=x',
     one_url: body.preview ? '/labels/stickers?preview=1&one=1&signature=p' : null,
     view_url: '/labels/stickers?signature=x', pdf_url: '/labels/stickers.pdf?signature=x', expires_in_minutes: 30,
     job: body.preview ? undefined : { id: 3, name: 'Bajiya · 60 × 40 mm' },
-    summary: { layout: 'a4-custom', label: '', design: 'small', stickers: 18, pages: 1, per_page: 18, products: [] },
+    summary: {
+      layout: 'a4-custom', label: '', design: 'small', w: 60, h: 40, stickers: 18, pages: 1, per_page: 18, products: [],
+      spots: [{ key: 'name', x: 2, y: 10, w: 56, h: 8 }, { key: 'dates', x: 2, y: 22, w: 56, h: 9 }, { key: 'batch', x: 2, y: 33, w: 28, h: 3 }],
+    },
   }));
 });
 
@@ -124,5 +134,55 @@ describe('MakeLabelWizard', () => {
     expect(api.stickerLinks).toHaveBeenLastCalledWith(expect.objectContaining({ layout: 'single-round-custom', w: 45, h: null, items: [{ id: 8, copies: 1, kind: 'item' }] }));
     fireEvent.click(screen.getByTestId('make-again'));
     expect(screen.getByTestId('make-step-1')).toBeInTheDocument();
+  });
+
+  // Round 3 (owner, 2026-10-13): tap the name, the dates, the batch on the
+  // preview; the sheet holds that part's boxes alone, saves them, and the
+  // preview redraws. The print's own values sit at the top of their sheets.
+  it('opens a part\'s boxes from a tap on the preview, saves them and redraws', async () => {
+    api.fetchCustomLabels.mockResolvedValue({ data: [{ id: 5, name: 'Garlic Sauce', name_dv: null, brand_name: 'Amma', label_type_name: null, label_shelf_life_days: 14, defaults: { heading: 'CHILLED', unit: 'PCS', shelf_life_days: null } }] });
+    api.updateCustomLabel.mockImplementation(async (id: number, body: Record<string, unknown>) => ({ data: { id, name: 'Garlic Sauce', name_dv: null, brand_name: 'Amma', label_type_name: null, label_shelf_life_days: 14, ...body } }));
+    mount();
+    fireEvent.click(screen.getByRole('button', { name: /Something else/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Garlic Sauce/ }));
+    fireEvent.click(within(await screen.findByRole('group', { name: 'Which label' })).getByRole('button', { name: /Jar or tub/ }));
+    fireEvent.click(screen.getByTestId('make-next-2'));
+
+    // The zones arrive with the preview, and the line under it says what they are for.
+    const nameZone = await screen.findByRole('button', { name: 'Change the name' });
+    expect(screen.getByTestId('make-preview-line')).toHaveTextContent('Tap a part of the label to change it.');
+    expect(screen.getByTestId('make-details')).toHaveTextContent('All details');
+    fireEvent.click(nameZone);
+    const sheet = await screen.findByRole('dialog');
+    expect(sheet).toHaveTextContent('Name');
+    fireEvent.change(within(sheet).getByLabelText('Product name'), { target: { value: 'Garlic Sauce 2' } });
+    const drawn = api.stickerLinks.mock.calls.length;
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Done' }));
+    await waitFor(() => expect(api.updateCustomLabel).toHaveBeenCalledWith(5, { name: 'Garlic Sauce 2', name_dv: null }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await waitFor(() => expect(api.stickerLinks.mock.calls.length).toBeGreaterThan(drawn), { timeout: 3000 });
+    expect(screen.getByRole('heading', { name: 'Does it look right?' })).toBeInTheDocument();
+
+    // The dates: this print's made-on date first, then the product's shelf life, which is what gets saved.
+    fireEvent.click(screen.getByRole('button', { name: 'Change the dates' }));
+    const dates = await screen.findByRole('dialog');
+    expect(within(dates).getByLabelText('Fill in the dates')).toBeChecked();
+    fireEvent.change(within(dates).getByLabelText('Made on'), { target: { value: '2026-10-01' } });
+    await waitFor(() => expect(api.stickerLinks).toHaveBeenLastCalledWith(expect.objectContaining({ mfg: '2026-10-01', preview: true })), { timeout: 3000 });
+    fireEvent.change(within(dates).getByLabelText('Shelf life (days)'), { target: { value: '21' } });
+    fireEvent.click(within(dates).getByRole('button', { name: 'Done' }));
+    await waitFor(() => expect(api.updateCustomLabel).toHaveBeenLastCalledWith(5, { label_shelf_life_days: 21 }));
+
+    // The batch is typed for this print alone: nothing is saved, the preview carries it.
+    fireEvent.click(await screen.findByRole('button', { name: 'Change the batch number' }));
+    const batch = await screen.findByRole('dialog');
+    fireEvent.change(within(batch).getByLabelText('Batch number'), { target: { value: 'B-42' } });
+    fireEvent.click(within(batch).getByRole('button', { name: 'Done' }));
+    await waitFor(() => expect(api.stickerLinks).toHaveBeenLastCalledWith(expect.objectContaining({ batch: 'B-42', preview: true })), { timeout: 3000 });
+    expect(api.updateCustomLabel).toHaveBeenCalledTimes(2);
+    // All details from a sheet opens the long form.
+    fireEvent.click(screen.getByRole('button', { name: 'Change the name' }));
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'All details' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 });

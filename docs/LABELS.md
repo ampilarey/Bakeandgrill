@@ -28,14 +28,50 @@ hub (`MakeLabelWizard.tsx`, the hub's first tab, `labels/make`):
    printed wears "last used".
 3. **Looks right.** One large live preview (the same `stickerLinks` preview request Pack
    stickers makes), the language, whether to fill in the dates and the made-on date, the
-   quantity per pack, and "Change the details", which opens the custom label editor or the
-   item's Label tab in a pop-up; the preview redraws when it closes.
+   quantity per pack, and "All details", which opens the custom label editor or the
+   item's Label tab in a pop-up; the preview redraws when it closes. A tap on any part
+   of the preview opens that part's boxes alone (below).
 4. **How many and print.** Print on (the size's stocks), the number of labels (a sheet's
    worth to start with, one on a label printer), then Print or PDF: the same request as
    Pack stickers, so the print is logged, the size remembered and the sheet lands under
    Saved labels, where the step says so. "Make another label" starts over.
 
 Pack stickers, Custom labels and the rest stay as they were for those who know them.
+
+### Tap to edit
+
+Round 3 of the usability work (owner, 2026-10-13): **tap the name, the dates, the logo on
+the preview** and a small sheet opens with the boxes for that part alone; the long form
+stays behind All details. It works on the wizard's step 3, the custom label editor's
+preview (the phone's big preview too) and the item's Label tab, on every design but the
+wrap-around label, whose strips are the touch zones (round 2).
+
+How it works: every design marks the part each run of pieces draws
+(`LabelSpots::open('name')` … `close()`; `at()` for a part that shares a line with
+another, as the batch and the quantity do on the compact sticker), `StickerSheet::pieces()`
+strips the markers before anything renders (the web sheet, the PDF and the thermal
+rasteriser read every piece they are given), and `StickerSheet::summary()` turns the first
+product's markers into boxes in mm, `spots`, carried by the sticker summary and the draft
+preview's reply beside `wrap`. The Admin lays `SpotOverlay` over the preview through
+`SheetPreview`'s `overlay` (a hairline is widened to a tappable height; a part drawn in two
+places, the brand's logo and its name line, gets two zones) and a tap opens
+`QuickEditSheet` with what `quickSpec()` says the part needs for a custom label or a menu
+item (`QuickEdit.tsx`): the brand picker, the heading with the type, the name (a menu
+item's is the menu's, so the sheet says where to change it), the ingredients, how to use,
+the nutrition line or switch, the note, the shelf life, the pack quantity with its unit
+and net weight, the price, the barcode, the storage line, the footer and its QR, the
+picture (choose or remove). A part that is a print option or a setting (the pack QR, pack
+numbering, the promotion flash, packed for, the batch) says so and links to the page. The
+three hosts share one draft shape (`labelDrafts.ts`: `customDraft` / `customPayload`,
+`itemDraft` / `itemPayload`) and decide what Done does: the custom label editor keeps
+editing (its preview is live and Save is on the sheet), the item's Label tab and the wizard
+save only that sheet's boxes straight away (`pickKeys`) and redraw. In the wizard the
+print's own values sit at the top of their sheets and save nothing: Fill in the dates and
+Made on under Dates, the quantity on this print under Quantity, the batch number and
+Packed for (new to the wizard; they travel in the sticker request as `batch`, `for` and
+`for2`). A new part on a sticker gets a marker in every design that draws it, a name in
+`SPOT_NAMES`, a case in `quickSpec()`, and a key in `LabelSpots::KEYS`; `LabelSpotsTest`
+holds every design to the markers and every spot to the label.
 
 ## Who can use it
 

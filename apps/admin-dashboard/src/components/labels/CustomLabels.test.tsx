@@ -210,6 +210,33 @@ describe('CustomLabelModal', () => {
     expect(onClose).toHaveBeenCalledTimes(2);
   });
 
+  // Round 3 (owner, 2026-10-13): a tap on a part of the preview opens that
+  // part's boxes; the change lands in the long form and the live preview.
+  it('opens a part\'s boxes from a tap on the preview and the change reaches the form and the preview', async () => {
+    previewCustomDraft.mockResolvedValue({ url: '/labels/stickers?signature=d', one_url: '/labels/stickers?one=1&signature=d', expires_in_minutes: 30, design: 'full', spots: [{ key: 'note', x: 5, y: 94, w: 95, h: 4 }, { key: 'brand', x: 5, y: 5, w: 95, h: 28 }] });
+    wrap(<CustomLabelModal label={custom(7, 'Garlic Sauce')} onClose={() => {}} onSaved={() => {}} />);
+    const zone = await screen.findByRole('button', { name: 'Change the note' }, { timeout: 3000 });
+    expect(screen.getByTestId('custom-preview-size')).toHaveTextContent('Tap a part of the label to change it.');
+    fireEvent.click(zone);
+    // The sheet is a dialog of its own over the editor's.
+    const sheetOf = async () => (await screen.findByTestId('quick-edit')).closest('[role="dialog"]') as HTMLElement;
+    const sheet = await sheetOf();
+    expect(sheet).toHaveTextContent('Note');
+    fireEvent.change(within(sheet).getByLabelText('Note under the ingredients'), { target: { value: 'Contains garlic' } });
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Done' }));
+    await waitFor(() => expect(screen.queryByTestId('quick-edit')).toBeNull());
+    expect(screen.getByLabelText('Note under the ingredients')).toHaveValue('Contains garlic');
+    await waitFor(() => expect(previewCustomDraft).toHaveBeenLastCalledWith(expect.objectContaining({ label_note: 'Contains garlic' })), { timeout: 3000 });
+    // The brand sheet picks from the brands loaded for the form.
+    fireEvent.click(screen.getByRole('button', { name: 'Change the brand and logo' }));
+    const brand = await sheetOf();
+    expect(within(brand).getByRole('option', { name: 'Amma' })).toBeInTheDocument();
+    fireEvent.change(within(brand).getByLabelText('Brand'), { target: { value: '1' } });
+    fireEvent.click(within(brand).getByRole('button', { name: 'Done' }));
+    await waitFor(() => expect(screen.queryByTestId('quick-edit')).toBeNull());
+    expect(screen.getByLabelText('Brand and logo')).toHaveValue('1');
+  });
+
   it('asks for a name before saving', async () => {
     wrap(<CustomLabelModal label={null} onClose={() => {}} onSaved={() => {}} />);
     fireEvent.click(screen.getByTestId('custom-label-save'));

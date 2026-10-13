@@ -2,12 +2,15 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Box, Check, FileDown, Pencil, Plus, Printer, Search, Tag, UtensilsCrossed } from 'lucide-react';
 import {
-  downloadLabelSheet, fetchCustomLabels, fetchLabelLayouts, fetchLabelProducts, openLabelSheet, stickerLinks, updateItemLabel,
-  type CustomLabel, type LabelLimits, type LabelPreset, type LabelProduct, type SheetLinks, type StickerLang,
+  downloadLabelSheet, fetchCustomLabels, fetchLabelBrands, fetchLabelFooters, fetchLabelLayouts, fetchLabelProducts, fetchLabelTypes, openLabelSheet, stickerLinks, updateCustomLabel, updateItemLabel,
+  type CustomLabel, type LabelBrand, type LabelFooter, type LabelLimits, type LabelPreset, type LabelProduct, type LabelSpot, type LabelSpotKey, type LabelType, type SheetLinks, type StickerLang,
 } from '../../api';
 import { Button, useToast } from '../ui';
 import { Modal, TabScrollRow } from '../SharedUI';
 import { SheetPreview } from './SheetPreview';
+import { SpotOverlay } from './SpotOverlay';
+import { QuickEditSheet, quickSpec, type QuickContext, type QuickInput, type QuickSpec, type QuickValue } from './QuickEdit';
+import { customDraft, customPayload, itemDraft, itemPayload, nutritionWords, pickKeys, type CustomDraft, type ItemDraft } from './labelDrafts';
 import { LabelSizePicker } from './LabelSizePicker';
 import { QtyStepper } from './QtyStepper';
 import { CustomLabelModal, langOf } from './CustomLabels';
@@ -26,11 +29,18 @@ import { DEFAULT_CHOICE, DESIGN_NAMES, designFor, rememberSize, rememberedSize, 
  *      wrap", "Round lid"), each drawn as it prints, with "My own size" last.
  *   3. Looks right: one large live preview, with the few things that change
  *      a print (language, the dates, the quantity) and a door to the full
- *      details.
+ *      details. A tap on a part of the preview (the name, the dates, the
+ *      logo…) opens the boxes for that part alone and saves them (round 3,
+ *      2026-10-13); the long form is behind All details.
  *   4. How many and print: copies, what it prints on, Print or PDF, through
  *      the same sticker request Pack stickers makes, so the print is logged
  *      and lands under Saved labels like any other.
  */
+
+/** A call that may not exist or may fail (a mocked or refused list): its fallback instead. */
+async function safe<T>(call: () => Promise<T>, fallback: T): Promise<T> {
+  try { return await call(); } catch { return fallback; }
+}
 
 type Kind = 'item' | 'custom';
 type Picked = { kind: Kind; id: number; name: string; name_dv: string | null; lang: StickerLang };
@@ -146,8 +156,19 @@ export function MakeLabelWizard() {
   const [fill, setFill] = useState(true);
   const [mfg, setMfg] = useState(today());
   const [qty, setQty] = useState('');
+  // Typed from a tap on the preview (round 3): the batch number and who the packs are for.
+  const [batch, setBatch] = useState('');
+  const [packedFor, setPackedFor] = useState('');
+  const [packedFor2, setPackedFor2] = useState('');
   const [copies, setCopies] = useState(1);
   const [preview, setPreview] = useState<string | null>(null);
+  // Where each part of the preview landed, the part whose sheet a tap opened, the draft that sheet edits, and the lists its selects need.
+  const [spots, setSpots] = useState<LabelSpot[]>([]);
+  const [spotBox, setSpotBox] = useState<{ w: number; h: number } | null>(null);
+  const [quick, setQuick] = useState<LabelSpotKey | null>(null);
+  const [quickDraft, setQuickDraft] = useState<Record<string, unknown> | null>(null);
+  const [quickSaving, setQuickSaving] = useState(false);
+  const [lists, setLists] = useState<{ types: LabelType[]; brands: LabelBrand[]; footers: LabelFooter[] } | null>(null);
   const [previewBusy, setPreviewBusy] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [printing, setPrinting] = useState<'print' | 'pdf' | null>(null);
@@ -164,6 +185,18 @@ export function MakeLabelWizard() {
     if (kind === 'item' && products === null) fetchLabelProducts(true).then((r) => setProducts(r.data)).catch(() => setProducts([]));
     if (kind === 'custom' && customs === null) fetchCustomLabels().then((r) => setCustoms(r.data)).catch(() => setCustoms([]));
   }, [kind, products, customs]);
+  // The types, brands and footers a tap's sheet picks from, read once the first sheet opens.
+  useEffect(() => {
+    if (quick === null || lists !== null) return;
+    void (async () => {
+      const [types, brands, footers] = await Promise.all([
+        safe(() => fetchLabelTypes().then((r) => r.data.filter((t) => t.is_active)), [] as LabelType[]),
+        safe(() => fetchLabelBrands().then((r) => r.data), [] as LabelBrand[]),
+        safe(() => fetchLabelFooters().then((r) => r.data), [] as LabelFooter[]),
+      ]);
+      setLists({ types, brands, footers });
+    })();
+  }, [quick, lists]);
 
   const needle = query.trim().toLowerCase();
   const itemRows = (products ?? []).filter((p) => !needle || p.name.toLowerCase().includes(needle) || (p.name_dv ?? '').includes(query.trim()));
@@ -217,6 +250,9 @@ export function MakeLabelWizard() {
     rounded: choice.shape === 'rect' && rounded,
     fill, mfg: fill ? mfg : null, exp: null,
     qty: qty !== '' ? Number(qty) : null,
+    batch: batch.trim() || null,
+    for: packedFor.trim() || null,
+    for2: packedFor2.trim() || null,
     preview: forPreview || undefined,
   });
 
@@ -233,6 +269,9 @@ export function MakeLabelWizard() {
         if (seq !== previewSeq.current) return;
         setPreview(r.one_url ?? r.url);
         setPreviewError(null);
+        // A wrap label is touched by its strips in the editors; here the other designs' parts are the touch zones.
+        setSpots(r.summary?.design === 'wrap' ? [] : (r.summary?.spots ?? []));
+        setSpotBox(r.summary?.w && r.summary?.h ? { w: r.summary.w, h: r.summary.h } : null);
       } catch (e) {
         if (seq !== previewSeq.current) return;
         setPreviewError(e instanceof Error ? e.message : 'Could not draw the preview.');
@@ -266,9 +305,93 @@ export function MakeLabelWizard() {
 
   const startAgain = () => {
     setStep(1); setKind(null); setPicked(null); setResult(null); setError(null); setPreview(null); setOwnSize(false); setQuery('');
+    setSpots([]); setQuick(null); setQuickDraft(null); setBatch(''); setPackedFor(''); setPackedFor2('');
   };
 
   const jump = (s: Step) => { setResult(null); setStep(s); };
+
+  // Tap to edit (round 3, 2026-10-13): the sheet for the part tapped edits a
+  // fresh draft of the product; Done saves only that sheet's boxes and the
+  // preview redraws. The print's own values (the dates, the quantity, the
+  // batch, who it is for) sit at the top of their sheets and save nothing.
+  const pickedCustom = picked?.kind === 'custom' ? customs?.find((c) => c.id === picked.id) ?? null : null;
+  const pickedItem = picked?.kind === 'item' ? products?.find((p) => p.id === picked.id) ?? null : null;
+  const openQuick = (key: LabelSpotKey) => {
+    if (!picked) return;
+    const draft = pickedCustom ? customDraft(pickedCustom) : pickedItem ? itemDraft(pickedItem) : null;
+    if (!draft) return;
+    setQuickDraft(draft as unknown as Record<string, unknown>);
+    setQuick(key);
+  };
+  const quickContext: QuickContext = {
+    kind: picked?.kind === 'custom' ? 'custom' : 'item',
+    types: lists?.types ?? [], brands: lists?.brands ?? [], footers: lists?.footers ?? [],
+    mainBrand: lists?.brands.find((b) => b.is_default)?.name,
+    defaults: pickedCustom?.defaults ?? pickedItem?.defaults,
+    allergens: pickedItem?.allergens,
+    menuPrice: pickedItem?.menu_price,
+    nutritionWords: pickedItem?.nutrition ? nutritionWords(pickedItem.nutrition) : undefined,
+    hasPhoto: Boolean(pickedCustom?.label_photo_url ?? pickedItem?.label_photo_url),
+  };
+  const wizardSpec = (key: LabelSpotKey): QuickSpec => {
+    const spec = quickSpec(key, quickContext);
+    const own: QuickInput[] = key === 'dates'
+      ? [{ key: '_fill', label: 'Fill in the dates', kind: 'switch', hint: 'Off: blank boxes to write in by hand.' }, ...(fill ? [{ key: '_mfg', label: 'Made on', kind: 'date' as const }] : [])]
+      : key === 'qty'
+        ? [{ key: '_qty', label: 'Quantity on this print', kind: 'number', min: 1, inputMode: 'numeric', placeholder: 'Blank: the pack size below, else written by hand' }]
+        : key === 'batch'
+          ? [{ key: '_batch', label: 'Batch number', kind: 'text', maxLength: 30, placeholder: 'Blank: written by hand' }]
+          : key === 'packed'
+            ? [{ key: '_for', label: 'Packed for', kind: 'text', maxLength: 60, placeholder: 'NH Kuda Rah' }, { key: '_for2', label: 'Second line', kind: 'text', maxLength: 60, placeholder: 'The delivery, the date' }]
+            : [];
+    if (own.length === 0) return spec;
+    const notes: Partial<Record<LabelSpotKey, string>> = { dates: 'The expiry follows from the shelf life.', batch: 'Printed on every label of this print.', packed: 'Who the packs are for, printed under the name of every label of this print.' };
+    return { ...spec, note: notes[key] ?? spec.note, inputs: [...own, ...spec.inputs], link: key === 'batch' || key === 'packed' ? undefined : spec.link };
+  };
+  const quickValues: Record<string, unknown> = { ...(quickDraft ?? {}), _fill: fill, _mfg: mfg, _qty: qty, _batch: batch, _for: packedFor, _for2: packedFor2 };
+  const quickChange = (k: string, v: QuickValue) => {
+    const s = v == null ? '' : String(v);
+    switch (k) {
+      case '_fill': setFill(Boolean(v)); return;
+      case '_mfg': setMfg(s); return;
+      case '_qty': setQty(s); return;
+      case '_batch': setBatch(s); return;
+      case '_for': setPackedFor(s); return;
+      case '_for2': setPackedFor2(s); return;
+      default: setQuickDraft((d) => ({ ...(d ?? {}), [k]: v }));
+    }
+  };
+  const saveQuick = async (body: Record<string, unknown>) => {
+    if (!picked) return;
+    setQuickSaving(true);
+    try {
+      if (picked.kind === 'custom') {
+        const r = await updateCustomLabel(picked.id, body);
+        setCustoms((list) => (list ?? []).map((x) => (x.id === r.data.id ? r.data : x)));
+        setPicked({ kind: 'custom', id: r.data.id, name: r.data.name, name_dv: r.data.name_dv, lang: langOf(r.data) });
+      } else {
+        const r = await updateItemLabel(picked.id, body);
+        setProducts((list) => (list ?? []).map((x) => (x.id === r.data.id ? r.data : x)));
+      }
+      setRedraw((n) => n + 1);
+      setQuick(null);
+    } catch (e) {
+      toast('error', e instanceof Error ? e.message : 'Could not save.');
+    } finally {
+      setQuickSaving(false);
+    }
+  };
+  const quickDone = () => {
+    if (!quick) return;
+    const keys = wizardSpec(quick).inputs.map((i) => i.key).filter((k) => !k.startsWith('_'));
+    if (keys.length === 0 || !quickDraft) { setQuick(null); return; }
+    const payload = picked?.kind === 'custom' ? customPayload(quickDraft as unknown as CustomDraft) : itemPayload(quickDraft as unknown as ItemDraft);
+    void saveQuick(pickKeys(payload as Record<string, unknown>, keys));
+  };
+  const quickAction = (a: string) => {
+    if (a === 'photo') { setQuick(null); setDetails(true); }
+    if (a === 'remove_photo') void saveQuick({ label_photo_media_id: null });
+  };
 
   const sizeLine = `${sizeName(choice.shape, stickerW, stickerH)} · ${DESIGN_NAMES[design]}${stock ? ` · ${stock.on === 'printer' ? 'one per label on a label printer' : `${stock.perPage} on ${stock.label}`}` : ''}`;
 
@@ -382,9 +505,10 @@ export function MakeLabelWizard() {
           <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_280px]">
             <div className="min-w-0">
               <div className={round ? 'max-w-[360px] mx-auto' : design === 'wrap' ? 'w-full' : 'max-w-[420px] mx-auto'}>
-                <SheetPreview url={preview} ratio={stickerW / stickerH} busy={previewBusy} round={round} title="The label" empty={previewError ?? 'Drawing…'} />
+                <SheetPreview url={preview} ratio={stickerW / stickerH} busy={previewBusy} round={round} title="The label" empty={previewError ?? 'Drawing…'}
+                  overlay={spots.length > 0 ? <SpotOverlay spots={spots} w={spotBox?.w ?? stickerW} h={spotBox?.h ?? stickerH} onPick={openQuick} /> : null} />
               </div>
-              <p className="text-xs text-[var(--color-text-muted)] mt-2 text-center">{sizeName(choice.shape, stickerW, stickerH)} · {DESIGN_NAMES[design]}. <button type="button" className="underline" onClick={() => jump(2)}>Change the label</button></p>
+              <p className="text-xs text-[var(--color-text-muted)] mt-2 text-center" data-testid="make-preview-line">{spots.length > 0 ? 'Tap a part of the label to change it. ' : ''}{sizeName(choice.shape, stickerW, stickerH)} · {DESIGN_NAMES[design]}. <button type="button" className="underline" onClick={() => jump(2)}>Change the label</button></p>
             </div>
             <div className="space-y-3">
               <div>
@@ -410,7 +534,7 @@ export function MakeLabelWizard() {
                 <label className={labelClass} htmlFor="make-qty">Quantity per pack</label>
                 <input id="make-qty" type="number" inputMode="numeric" min={1} value={qty} onChange={(e) => setQty(e.target.value)} placeholder="Blank: write by hand" className={fieldClass} />
               </div>
-              <Button variant="secondary" icon={<Pencil size={16} />} onClick={() => setDetails(true)} data-testid="make-details">Change the details</Button>
+              <Button variant="secondary" icon={<Pencil size={16} />} onClick={() => setDetails(true)} data-testid="make-details">All details</Button>
             </div>
           </div>
           <div className="flex flex-wrap gap-2 justify-between">
@@ -464,6 +588,18 @@ export function MakeLabelWizard() {
         </div>
       )}
 
+      {quick && (
+        <QuickEditSheet
+          spec={wizardSpec(quick)}
+          values={quickValues}
+          onChange={quickChange}
+          onAction={quickAction}
+          onDone={quickDone}
+          onAll={() => { setQuick(null); setDetails(true); }}
+          saving={quickSaving}
+          idPrefix="make-quick"
+        />
+      )}
       {newCustom && (
         <CustomLabelModal label={null} onClose={() => setNewCustom(false)} onSaved={(c) => { setNewCustom(false); setCustoms((list) => [c, ...(list ?? []).filter((x) => x.id !== c.id)]); pickCustom(c); }} />
       )}

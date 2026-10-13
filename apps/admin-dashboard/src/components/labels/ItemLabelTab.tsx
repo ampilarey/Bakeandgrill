@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
 import { ImagePlus, X, RefreshCw } from 'lucide-react';
-import { fetchLabelItem, fetchLabelLayouts, fetchLabelTypes, stickerLinks, updateItemLabel, type IngredientsSource, type LabelProduct, type LabelStorage, type LabelType, type LabelWrap, type NutritionPer, type WrapCatalogue, type WrapPicture } from '../../api';
+import { fetchLabelItem, fetchLabelLayouts, fetchLabelTypes, stickerLinks, updateItemLabel, type IngredientsSource, type LabelProduct, type LabelSpot, type LabelSpotKey, type LabelStorage, type LabelType, type WrapCatalogue } from '../../api';
 import { SheetPreview } from './SheetPreview';
 import { WrapParts } from './WrapParts';
+import { SpotOverlay } from './SpotOverlay';
+import { QuickEditSheet, quickSpec } from './QuickEdit';
+import { itemDraft as toDraft, itemPayload, nutritionWords, pickKeys, type ItemDraft as Draft, type ItemLabelPayload } from './labelDrafts';
 import { MediaPicker } from '../MediaPicker';
 import { Button } from '../ui';
 
@@ -11,86 +14,12 @@ import { Button } from '../ui';
  * the ingredient line comes from ("add option to include manual ingredients if
  * recipe is not there in the item"), shelf life ("add option to add life"),
  * storage, pack size, the hand lettering and the photo, with a preview of the
- * sticker as it will print. Saved on its own, with labels.manage.
+ * sticker as it will print. Saved on its own, with labels.manage. A tap on a
+ * part of the preview opens the boxes for that part alone and saves them
+ * straight away (round 3, 2026-10-13), since the preview draws what is saved.
  */
 
-type Draft = {
-  label_enabled: boolean;
-  label_ingredients_source: IngredientsSource;
-  label_ingredients: string;
-  label_ingredients_dv: string;
-  label_shelf_life_days: string;
-  label_storage: LabelStorage;
-  label_pack_qty: string;
-  label_heading: string;
-  label_heading_dv: string;
-  label_storage_line: string;
-  label_storage_line_dv: string;
-  label_note: string;
-  label_note_dv: string;
-  label_pack_unit: string;
-  label_type_id: number | null;
-  label_how_to_use: string;
-  label_how_to_use_dv: string;
-  label_title_media_id: number | null;
-  label_title_url: string | null;
-  label_photo_media_id: number | null;
-  label_photo_url: string | null;
-  label_price: string;
-  label_show_price: boolean;
-  label_barcode: string;
-  label_net_weight: string;
-  label_show_nutrition: boolean;
-  label_nutrition_per: NutritionPer;
-  /** The wrap-around label's parts (2026-10-12), and the picked mark pictures with their urls. */
-  label_wrap: LabelWrap;
-  wrap_pictures: WrapPicture[];
-};
-
-/** What the nutrition switch says the recipe gives today (round C). */
-export function nutritionWords(n: LabelProduct['nutrition']): string {
-  if (n.rows.length === 0) return 'Needs a recipe: the panel is worked out from the recipe\'s ingredients and their values per 100 g (Labels → Settings → Nutrition).';
-  if (n.complete) {
-    const v = n.per100;
-    return `From the recipe (${n.grams} g): ${v.kcal ?? 0} kcal, fat ${v.fat ?? 0} g, carbs ${v.carbs ?? 0} g, protein ${v.protein ?? 0} g, salt ${v.salt ?? 0} g per 100 g. Prints on the full-size sticker.`;
-  }
-  const parts: string[] = [];
-  if (n.missing.length) parts.push(`Waiting for values per 100 g for ${n.missing.join(', ')} (Labels → Settings → Nutrition).`);
-  if (n.unweighed.length) parts.push(`${n.unweighed.join(', ')} ${n.unweighed.length === 1 ? 'is' : 'are'} not measured in grams in the recipe, so the panel cannot be worked out.`);
-  return parts.join(' ');
-}
-
-const toDraft = (p: LabelProduct): Draft => ({
-  label_enabled: p.label_enabled,
-  label_ingredients_source: p.label_ingredients_source,
-  label_ingredients: p.label_ingredients ?? '',
-  label_ingredients_dv: p.label_ingredients_dv ?? '',
-  label_shelf_life_days: p.label_shelf_life_days ? String(p.label_shelf_life_days) : '',
-  label_storage: p.label_storage,
-  label_pack_qty: p.label_pack_qty ? String(p.label_pack_qty) : '',
-  label_heading: p.label_heading ?? '',
-  label_heading_dv: p.label_heading_dv ?? '',
-  label_storage_line: p.label_storage_line ?? '',
-  label_storage_line_dv: p.label_storage_line_dv ?? '',
-  label_note: p.label_note ?? '',
-  label_note_dv: p.label_note_dv ?? '',
-  label_pack_unit: p.label_pack_unit ?? '',
-  label_type_id: p.label_type_id,
-  label_how_to_use: p.label_how_to_use ?? '',
-  label_how_to_use_dv: p.label_how_to_use_dv ?? '',
-  label_title_media_id: p.label_title_media_id,
-  label_title_url: p.label_title_url,
-  label_photo_media_id: p.label_photo_media_id,
-  label_photo_url: p.label_photo_url,
-  label_price: p.label_price != null ? String(p.label_price) : '',
-  label_show_price: p.label_show_price,
-  label_barcode: p.label_barcode ?? '',
-  label_net_weight: p.label_net_weight ?? '',
-  label_show_nutrition: p.label_show_nutrition,
-  label_nutrition_per: p.label_nutrition_per === 'ml' ? 'ml' : 'g',
-  label_wrap: p.label_wrap,
-  wrap_pictures: p.wrap_pictures ?? [],
-});
+export { nutritionWords };
 
 const fieldClass = 'h-10 min-h-[44px] px-3 rounded-lg border border-[var(--color-border)] bg-white text-sm text-[var(--color-text)] w-full';
 const labelClass = 'block text-xs font-semibold text-[var(--color-text-secondary)] mb-1';
@@ -102,6 +31,12 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  // Where each part of the preview landed, the part whose sheet a tap opened, and whether that sheet is saving (round 3, 2026-10-13).
+  const [spots, setSpots] = useState<LabelSpot[]>([]);
+  const [quick, setQuick] = useState<LabelSpotKey | null>(null);
+  const [quickSaving, setQuickSaving] = useState(false);
+  // The media picker opened from a tap's sheet saves the picture as soon as it is picked.
+  const [pickerSaves, setPickerSaves] = useState(false);
   const [lang, setLang] = useState<'en' | 'dv'>('en');
   const [types, setTypes] = useState<LabelType[]>([]);
   // The wrap-around label's parts and marks, as the server lists them (2026-10-12).
@@ -117,8 +52,10 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
     try {
       const r = await stickerLinks({ items: [{ id: itemId, copies: 1 }], layout: 'single-105x148', lang: l, preview: true });
       setPreview(r.one_url ?? r.url);
+      setSpots(r.summary?.design === 'wrap' ? [] : (r.summary?.spots ?? []));
     } catch {
       setPreview(null);
+      setSpots([]);
     }
   };
   useEffect(() => { void refreshPreview(); }, [itemId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -130,34 +67,7 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
   const save = async () => {
     setSaving(true); setMessage(null);
     try {
-      const r = await updateItemLabel(itemId, {
-        label_enabled: draft.label_enabled,
-        label_ingredients_source: draft.label_ingredients_source,
-        label_ingredients: draft.label_ingredients || null,
-        label_ingredients_dv: draft.label_ingredients_dv || null,
-        label_shelf_life_days: draft.label_shelf_life_days ? Number(draft.label_shelf_life_days) : null,
-        label_storage: draft.label_storage,
-        label_pack_qty: draft.label_pack_qty ? Number(draft.label_pack_qty) : null,
-        label_heading: draft.label_heading.trim() || null,
-        label_heading_dv: draft.label_heading_dv.trim() || null,
-        label_storage_line: draft.label_storage_line.trim() || null,
-        label_storage_line_dv: draft.label_storage_line_dv.trim() || null,
-        label_note: draft.label_note.trim() || null,
-        label_note_dv: draft.label_note_dv.trim() || null,
-        label_pack_unit: draft.label_pack_unit.trim() || null,
-        label_type_id: draft.label_type_id,
-        label_how_to_use: draft.label_how_to_use.trim() || null,
-        label_how_to_use_dv: draft.label_how_to_use_dv.trim() || null,
-        label_title_media_id: draft.label_title_media_id,
-        label_photo_media_id: draft.label_photo_media_id,
-        label_price: draft.label_price !== '' ? Number(draft.label_price) : null,
-        label_show_price: draft.label_show_price,
-        label_barcode: draft.label_barcode.trim() || null,
-        label_net_weight: draft.label_net_weight.trim() || null,
-        label_show_nutrition: draft.label_show_nutrition,
-        label_nutrition_per: draft.label_nutrition_per,
-        label_wrap: draft.label_wrap,
-      });
+      const r = await updateItemLabel(itemId, itemPayload(draft));
       setProduct(r.data); setDraft(toDraft(r.data));
       setMessage('Label settings saved.');
       void refreshPreview();
@@ -166,6 +76,35 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
     } finally {
       setSaving(false);
     }
+  };
+
+  // A tap's sheet saves only its own boxes, so the rest of the form keeps
+  // whatever is typed but not yet saved; the preview then redraws.
+  const saveSome = async (body: Partial<ItemLabelPayload>, keys: string[]) => {
+    setQuickSaving(true); setMessage(null);
+    try {
+      const r = await updateItemLabel(itemId, body);
+      const fresh = toDraft(r.data);
+      setProduct(r.data);
+      setDraft((cur) => (cur ? { ...cur, ...pickKeys(fresh, keys) } : cur));
+      setMessage('Saved.');
+      setQuick(null);
+      void refreshPreview();
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : 'Could not save.');
+    } finally {
+      setQuickSaving(false);
+    }
+  };
+  const quickContext = {
+    kind: 'item' as const, types, defaults: product.defaults, allergens: product.allergens, menuPrice: product.menu_price,
+    nutritionWords: nutritionWords(product.nutrition), hasPhoto: Boolean(draft.label_photo_url),
+  };
+  const quickDone = () => {
+    if (!quick) return;
+    const keys = quickSpec(quick, quickContext).inputs.map((i) => i.key);
+    if (keys.length === 0) { setQuick(null); return; }
+    void saveSome(pickKeys(itemPayload(draft), keys), keys);
   };
 
   const recipeLine = product.ingredients.recipe_en;
@@ -325,25 +264,50 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
           </div>
         </div>
         {preview ? (
-          <SheetPreview url={preview} ratio={105 / 148.5} title="Sticker preview" />
+          <>
+            <SheetPreview url={preview} ratio={105 / 148.5} title="Sticker preview" overlay={spots.length > 0 ? <SpotOverlay spots={spots} w={105} h={148.5} onPick={setQuick} /> : null} />
+            {spots.length > 0 && <p className="text-xs text-[var(--color-text-muted)] mt-2" data-testid="item-label-tap-hint">Tap a part of the label to change it; the change is saved straight away.</p>}
+          </>
         ) : (
           <p className="text-xs text-[var(--color-text-muted)]">The preview needs the Print labels permission.</p>
         )}
       </div>
 
+      {quick && (
+        <QuickEditSheet
+          spec={quickSpec(quick, quickContext)}
+          values={draft as unknown as Record<string, unknown>}
+          onChange={(k, v) => setDraft((cur) => (cur ? { ...cur, [k]: v } : cur))}
+          onAction={(a) => {
+            if (a === 'photo') { setPickerSaves(true); setPicker('photo'); setQuick(null); }
+            if (a === 'remove_photo') {
+              set('label_photo_media_id', null); set('label_photo_url', null);
+              void saveSome({ label_photo_media_id: null }, ['label_photo_media_id', 'label_photo_url']);
+            }
+          }}
+          onDone={quickDone}
+          saving={quickSaving}
+          idPrefix="lbl-quick"
+        />
+      )}
+
       <MediaPicker
         open={picker !== null}
-        onClose={() => setPicker(null)}
+        onClose={() => { setPicker(null); setPickerSaves(false); }}
         mediaType="image"
         title={picker === 'title' ? 'Hand-lettered name' : picker === 'mark' ? 'Mark picture' : 'Food photo'}
         onPick={(asset) => {
           if (picker === 'title') { set('label_title_media_id', asset.id); set('label_title_url', asset.url); }
-          if (picker === 'photo') { set('label_photo_media_id', asset.id); set('label_photo_url', asset.url); }
+          if (picker === 'photo') {
+            set('label_photo_media_id', asset.id); set('label_photo_url', asset.url);
+            if (pickerSaves) void saveSome({ label_photo_media_id: asset.id }, ['label_photo_media_id', 'label_photo_url']);
+          }
           if (picker === 'mark' && !draft.label_wrap.pictures.includes(asset.id)) {
             set('label_wrap', { ...draft.label_wrap, pictures: [...draft.label_wrap.pictures, asset.id] });
             set('wrap_pictures', [...draft.wrap_pictures, { id: asset.id, url: asset.url }]);
           }
           setPicker(null);
+          setPickerSaves(false);
         }}
       />
     </div>

@@ -252,6 +252,7 @@ final class SmallStickerDesign
 
         // Brand line in a tinted band: "BAKE & GRILL · FROZEN HEDHIKA".
         $tb = self::clamp($h * 0.17, 3.0, 4.0);
+        $this->mark('heading');
         $this->box($pad, $pad, $iw, $tb, StickerDesign::TINT, 0.8);
         if ($this->dv) {
             $t = trim($brand['name_dv'] . '  •  ' . $d['header_line_dv'], ' •');
@@ -276,6 +277,7 @@ final class SmallStickerDesign
         if ($logo) {
             [$lgW, $lgH] = StickerDesign::fit($brand['logo'] ? $brand['logo_ratio'] : $d['mark_ratio'], $mid * 0.75, $mid);
             if ($lgW <= $lw * 0.4) {
+                $this->mark('brand');
                 $this->img($this->X($pad, $lgW), $y + ($mid - $lgH) / 2, $lgW, $lgH, $logo);
             } else {
                 $lgW = 0.0;
@@ -304,18 +306,24 @@ final class SmallStickerDesign
 
         // Brand line, heading, rule, name.
         if ($this->dv) {
+            $this->mark('brand');
             $put(6.9 * $k, 1.2 * $k, 'dv', 5.4 * $k, 3.6, StickerDesign::PRIMARY, $brand['name_dv'], 0.5);
+            $this->mark('heading');
             $put(11.6 * $k, 2.0 * $k, 'dv', 8.0 * $k, 4.6, StickerDesign::DARK, $d['header_line_dv'], 0.6);
         } else {
             $line = StickerDesign::spaced(mb_strtoupper($brand['name']));
+            $this->mark('brand');
             $put(6.6 * $k, 1.2 * $k, 'j7', 4.4 * $k, 3.0, StickerDesign::PRIMARY, $line);
+            $this->mark('heading');
             $put(11.2 * $k, 2.0 * $k, 'j8', 6.6 * $k, 3.8, StickerDesign::DARK, $d['header_line']);
         }
         $this->box(($D - 8 * $k) / 2, 12.6 * $k, 8 * $k, 0.6 * $k, StickerDesign::PRIMARY);
         $useDv = $this->dv && $d['name_dv'] !== '';
+        $this->mark('name');
         $put(19.4 * $k, 3.6 * $k, $useDv ? 'dv' : 'dsi', ($useDv ? 13.0 : 12.0) * $k, 6.0, StickerDesign::PRIMARY, $useDv ? $d['name_dv'] : $d['name'], $useDv ? 0.7 : 0.0);
 
         // The dates on two lines.
+        $this->mark('dates');
         $blank = '__ / __ / ____';
         $rows = $this->dv
             ? [['ހެދި', $d['mfg']], ['ހަމަވާ', $d['exp']]]
@@ -330,22 +338,31 @@ final class SmallStickerDesign
         $sy = 29.6 * $k;
         $sh = 3.4 * $k;
         $sw = $chord($sy + $sh / 2) - 0.6;
+        $this->mark('storage');
         $this->box(($D - $sw) / 2, $sy, $sw, $sh, StickerDesign::PRIMARY, 0.8);
         $msg = $this->shortStorage($sw - 1.6, $this->dv ? 4.4 : 3.6);
         $font = $this->dv ? 'dv' : 'j7';
         $pt = LabelText::fitPt($msg, $font, $sw - 1.6, ($this->dv ? 5.4 : 4.2) * $k, 3.0);
         $this->text(($D - $sw) / 2 + 0.8, $this->baseCentred($sy, $sh, $font, $pt), $sw - 1.6, 'c', $font, $pt, StickerDesign::CREAM, $msg, $this->dv ? 0.6 : 0.0);
         if ($D >= 34 && $f['phone'] !== '') {
+            $this->mark('footer');
             $put(36.0 * $k, 1.4 * $k, 'j7', 4.2 * $k, 3.0, StickerDesign::DARK, $f['phone']);
         }
     }
 
     // ---- Pieces ----
 
+    /** Mark the part the next pieces draw, for the preview's touch zones (LabelSpots, round 3, 2026-10-13). */
+    private function mark(string $key): void
+    {
+        $this->p[] = LabelSpots::open($key);
+    }
+
     private function header(float $x, float $y, float $bw, float $hb, float $qr, float $k): void
     {
         $d = $this->d;
         $brand = $d['brand'];
+        $this->mark('brand');
         $this->box($x, $y, $bw, $hb, StickerDesign::TINT, min(2.0, $hb * 0.18));
         $logo = $brand['logo'] ?: $d['mark'];
         $lw = 0.0;
@@ -356,6 +373,8 @@ final class SmallStickerDesign
         if ($qr > 0) {
             $qy = $y + ($hb - $qr) / 2;
             $qx = $x + $bw - 0.7 - $qr;
+            // The complaints QR is the footer's: its tap opens the footer.
+            $this->mark('footer');
             $this->box($this->X($qx - 0.35, $qr + 0.7), $qy - 0.35, $qr + 0.7, $qr + 0.7, StickerDesign::CREAM, 0.5);
             $this->img($this->X($qx, $qr), $qy, $qr, $qr, $d['qr']);
         }
@@ -370,8 +389,10 @@ final class SmallStickerDesign
             if ($two) {
                 $line = StickerDesign::spaced(mb_strtoupper($brand['name']));
                 $pt = LabelText::fitPt($line, 'j7', $tw, min(5.4, $hb * 0.5), 3.0);
+                $this->mark('brand');
                 $this->text($tx, $y + $hb * 0.38, $tw, 'l', 'j7', $pt, StickerDesign::PRIMARY, $line);
             }
+            $this->mark('heading');
             $pt = LabelText::fitPt($d['header_line'], 'j8', $ew, $two ? $hb * 0.8 : $hb * 0.95, 3.6);
             $base = $two ? $y + $hb * 0.8 : $this->baseCentred($y, $hb, 'j8', $pt);
             $this->text($tx, $base, $ew, 'l', 'j8', $pt, StickerDesign::DARK, $d['header_line']);
@@ -384,11 +405,14 @@ final class SmallStickerDesign
             $head = $d['header_line_dv'];
             if ($two) {
                 $pt = LabelText::fitPt($brand['name_dv'], 'dv', $tw, $hb * 0.58, 3.6);
+                $this->mark('brand');
                 $this->text($this->X($tx, $tw), $y + $hb * 0.42, $tw, 'r', 'dv', $pt, StickerDesign::PRIMARY, $brand['name_dv'], 0.5);
                 $pt = LabelText::fitPt($head, 'dv', $tw, $hb * 0.98, 4.4);
+                $this->mark('heading');
                 $this->text($this->X($tx, $tw), $y + $hb * 0.84, $tw, 'r', 'dv', $pt, StickerDesign::DARK, $head, 0.6);
             } else {
                 $pt = LabelText::fitPt($head, 'dv', $tw, $hb * 1.15, 4.0);
+                $this->mark('heading');
                 $this->text($this->X($tx, $tw), $this->baseCentred($y, $hb, 'dv', $pt), $tw, 'r', 'dv', $pt, StickerDesign::DARK, $head, 0.6);
             }
 
@@ -397,11 +421,14 @@ final class SmallStickerDesign
         if ($two) {
             $line = StickerDesign::spaced(mb_strtoupper($brand['name']));
             $pt = LabelText::fitPt($line, 'j7', $tw, min(5.4, $hb * 0.5), 3.0);
+            $this->mark('brand');
             $this->text($tx, $y + $hb * 0.38, $tw, 'l', 'j7', $pt, StickerDesign::PRIMARY, $line);
             $pt = LabelText::fitPt($d['header_line'], 'j8', $tw, $hb * 0.8, 3.8);
+            $this->mark('heading');
             $this->text($tx, $y + $hb * 0.8, $tw, 'l', 'j8', $pt, StickerDesign::DARK, $d['header_line']);
         } else {
             $pt = LabelText::fitPt($d['header_line'], 'j8', $tw, $hb * 0.95, 3.6);
+            $this->mark('heading');
             $this->text($tx, $this->baseCentred($y, $hb, 'j8', $pt), $tw, 'l', 'j8', $pt, StickerDesign::DARK, $d['header_line']);
         }
     }
@@ -410,6 +437,7 @@ final class SmallStickerDesign
     private function name(float $x, float $y, float $bw, float $nh, string $align, float $k): void
     {
         $d = $this->d;
+        $this->mark('name');
         $useDv = $this->dv && $d['name_dv'] !== '';
         if ($d['title_img'] && !$useDv) {
             [$tw, $th] = StickerDesign::fit($d['title_ratio'], $bw, $nh);
@@ -462,6 +490,7 @@ final class SmallStickerDesign
     private function dates(float $x, float $y, float $bw, float $height, float $bh, bool $side, float $k): void
     {
         $d = $this->d;
+        $this->mark('dates');
         $rows = $this->dv
             ? [['ހެދި ތާރީޚު', 'ހެދި', StickerDesign::DARK, $d['mfg']], ['ހަމަވާ ތާރީޚު', 'ހަމަވާ', StickerDesign::PRIMARY, $d['exp']]]
             : [[$d['mfg_label'], $d['mfg_label'], StickerDesign::DARK, $d['mfg']], [$d['exp_label'], $d['exp_label'], StickerDesign::PRIMARY, $d['exp']]];
@@ -507,6 +536,7 @@ final class SmallStickerDesign
     private function dateLines(float $x, float $y, float $bw, float $height, float $k): void
     {
         $d = $this->d;
+        $this->mark('dates');
         $blank = '__ /__ /____';
         $rows = $this->dv
             ? [['ހެދި', StickerDesign::DARK, $d['mfg']], ['ހަމަވާ', StickerDesign::PRIMARY, $d['exp']]]
@@ -615,6 +645,7 @@ final class SmallStickerDesign
     {
         $font = $this->dv ? 'dv' : 'j4';
         $a = $this->A($align);
+        $this->mark('ingredients');
         $headPt = $plan['headPt'];
         $this->dv
             ? $this->text($this->X($x, $bw), $y + 0.9 * $headPt * LabelText::PT + 0.2, $bw, $a, 'dv', $headPt, StickerDesign::PRIMARY, 'ހިމެނޭ ތަކެތި', 0.5)
@@ -632,6 +663,7 @@ final class SmallStickerDesign
     private function noteLine(float $x, float $y, float $bw, float $lh, float $k, string $align): void
     {
         $t = $this->noteText();
+        $this->mark('note');
         if ($this->pairLine($x, $y, $bw, $lh, $t, (string) $this->d['note_dv'], $align)) {
             return;
         }
@@ -643,6 +675,7 @@ final class SmallStickerDesign
     /** "PACKED FOR: NH Kuda Rah · Delivery TD-12" (2026-10-12), the second part when the line is wide enough. */
     private function packedForLine(float $x, float $y, float $bw, float $lh, string $align): void
     {
+        $this->mark('packed');
         $t = 'PACKED FOR: ' . $this->packedForText();
         $second = trim((string) ($this->d['packed_for2'] ?? ''));
         if ($second !== '' && $bw >= 40) {
@@ -660,6 +693,7 @@ final class SmallStickerDesign
     private function withinLine(float $x, float $y, float $bw, float $lh, float $k): void
     {
         $t = $this->withinText();
+        $this->mark('dates');
         if ($this->pairLine($x, $y, $bw, $lh, $t, (string) $this->d['use_within_dv'], 'c')) {
             return;
         }
@@ -718,12 +752,15 @@ final class SmallStickerDesign
         $max = $this->dv ? $lh * 1.8 : $lh * 1.45;
         $pt = min(LabelText::fitPt($b, $font, $half - 0.6, $max, 3.0), LabelText::fitPt($q, $font, $half - 0.6, $max, 3.0));
         $base = $this->baseCentred($y, $lh, $font, $pt);
+        $this->mark('batch');
         $this->text($this->X($x, $half), $base, $half, $this->A('l'), $font, $pt, StickerDesign::TEXT, $b, $this->dv ? 0.4 : 0.0);
+        $this->mark('qty');
         $this->text($this->X($x + $half, $half), $base, $half, $this->A('r'), $font, $pt, StickerDesign::TEXT, $q, $this->dv ? 0.4 : 0.0);
     }
 
     private function strip(float $x, float $y, float $bw, float $sh, float $k): void
     {
+        $this->mark('storage');
         $this->box($x, $y, $bw, $sh, StickerDesign::PRIMARY, min(1.0, $sh * 0.3));
         $font = $this->dv ? 'dv' : 'j7';
         // Both languages: the Dhivehi line on a second row (stripHeight made room).
@@ -795,6 +832,7 @@ final class SmallStickerDesign
         $d = $this->d;
         $f = $d['footer'];
         $pal = StickerDesign::footerPalette($f['style'] ?? 'dark');
+        $this->mark('footer');
         if ($pal['band'] !== null) {
             $this->box($x, $y, $bw, $fh, $pal['band'], min(1.3, $fh * 0.25));
         }
@@ -843,11 +881,14 @@ final class SmallStickerDesign
             $t = $site;
         }
         $pt = LabelText::fitPt($t, $font, $bw, $lh * ($font === 'dv' ? 1.7 : 1.4), 3.0);
+        $this->mark('footer');
         $this->text($x, $this->baseCentred($y, $lh, $font, $pt), $bw, 'c', $font, $pt, StickerDesign::DARK, $t, $font === 'dv' ? 0.5 : 0.0);
     }
 
     private function qr(float $x, float $y, float $size): void
     {
+        // The complaints QR is the footer's: its tap opens the footer.
+        $this->mark('footer');
         $this->box($this->X($x - 0.4, $size + 0.8), $y - 0.4, $size + 0.8, $size + 0.8, StickerDesign::CREAM, 0.6, StickerDesign::SOFT);
         $this->img($this->X($x, $size), $y, $size, $size, $this->d['qr']);
     }
@@ -863,6 +904,7 @@ final class SmallStickerDesign
         }
         $cx = $x + ($bw - $total) / 2;
         if ($pic) {
+            $this->mark('photo');
             $this->img($this->X($cx, $pic[0]), $y + ($bh - $pic[1]) / 2, $pic[0], $pic[1], $d['photo']);
             $cx += $pic[0] + 2.0;
         }
@@ -880,6 +922,7 @@ final class SmallStickerDesign
         }
         [$pw, $ph] = StickerDesign::fit($d['photo_ratio'], $bw * 0.9, $bh - 0.6);
         $px = $align === 'c' ? $x + ($bw - $pw) / 2 : $x;
+        $this->mark('photo');
         $this->img($this->X($px, $pw), $y + ($bh - $ph) / 2, $pw, $ph, $d['photo']);
     }
 
