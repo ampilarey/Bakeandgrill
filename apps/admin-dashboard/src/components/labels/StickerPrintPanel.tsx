@@ -19,6 +19,7 @@ import { FooterPicker } from './FooterPicker';
 import { FoldHelp } from './FoldHelp';
 import { ChooseItemsModal } from './ChooseItemsModal';
 import { ReprintScan } from './ReprintScan';
+import { pairedPrinter, printOverBluetooth } from './bluetoothPrinter';
 import { DEFAULT_CHOICE, choiceFromRequest, pageOf, rememberSize, rememberedSize, requestFor, rollMatches, rollName, rollStock, rollStockWords, sizeName, sizeOf, sizeProblem, stockOf, type SizeChoice } from './labelSize';
 
 /*
@@ -458,8 +459,15 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
     if (!result?.zpl_url || !result.tspl_url) return;
     setSending(true); setSent(null); setError(null);
     try {
-      const r = await sendToLabelPrinter(printer.language === 'zpl' ? result.zpl_url : result.tspl_url, printer);
-      setSent(`Sent ${result.summary.stickers} ${result.summary.stickers === 1 ? 'sticker' : 'stickers'} to the printer at ${printer.host} (${Math.max(1, Math.round(r.bytes / 1024))} KB).`);
+      const url = printer.language === 'zpl' ? result.zpl_url : result.tspl_url;
+      // Round 16: Bluetooth from this phone or tablet, else the print agent on this computer.
+      if (printer.via === 'bluetooth') {
+        const r = await printOverBluetooth(url);
+        setSent(`Sent ${result.summary.stickers} ${result.summary.stickers === 1 ? 'sticker' : 'stickers'} to ${pairedPrinter()?.name ?? 'the printer'} over Bluetooth (${Math.max(1, Math.round(r.bytes / 1024))} KB).`);
+      } else {
+        const r = await sendToLabelPrinter(url, printer);
+        setSent(`Sent ${result.summary.stickers} ${result.summary.stickers === 1 ? 'sticker' : 'stickers'} to the printer at ${printer.host} (${Math.max(1, Math.round(r.bytes / 1024))} KB).`);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not send to the printer.');
     } finally {
@@ -900,7 +908,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
               {/* Round C: a label-printer stock goes straight to the printer as ZPL or TSPL, through the print agent on this computer. */}
               {result.zpl_url && result.tspl_url && (
                 <>
-                  <Button variant="secondary" icon={<Send size={16} />} loading={sending} onClick={() => void sendToPrinter()} data-testid="sticker-send-printer">Send to label printer</Button>
+                  <Button variant="secondary" icon={<Send size={16} />} loading={sending} onClick={() => void sendToPrinter()} data-testid="sticker-send-printer">{printer.via === 'bluetooth' ? 'Print over Bluetooth' : 'Send to label printer'}</Button>
                   <Button variant="ghost" icon={<FileDown size={16} />} onClick={() => downloadLabelSheet(printer.language === 'zpl' ? result.zpl_url! : result.tspl_url!)} data-testid="sticker-printer-file" title={`The stickers as ${printer.language.toUpperCase()} at ${printer.dpi} dpi, to send to the printer yourself`}>{printer.language.toUpperCase()} file</Button>
                   {result.raster_url && <Button variant="ghost" icon={<ImageIcon size={16} />} onClick={() => window.open(`${window.location.origin}${result.raster_url}`, '_blank', 'noopener')} data-testid="sticker-printer-bitmap">Check the bitmap</Button>}
                 </>

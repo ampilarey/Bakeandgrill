@@ -352,9 +352,10 @@ export const MOCK_SURFACE_NAMES: Record<MockSurface, string> = { jar: 'Jar', bot
 export type PrinterDpi = 203 | 300;
 export type PrinterLanguage = 'zpl' | 'tspl';
 /** How the admin reaches a label printer (round C): through the print agent on this computer (scripts/label-print-agent.mjs), kept in this browser. */
-export type PrinterSetup = { language: PrinterLanguage; dpi: PrinterDpi; agent: string; host: string; port: number };
+/** `via` (round 16): the print agent on a computer, or Bluetooth from this phone or tablet. */
+export type PrinterSetup = { language: PrinterLanguage; dpi: PrinterDpi; agent: string; host: string; port: number; via?: 'agent' | 'bluetooth' };
 export const PRINTER_SETUP_KEY = 'labels.printer';
-export const DEFAULT_PRINTER_SETUP: PrinterSetup = { language: 'tspl', dpi: 203, agent: 'http://127.0.0.1:9110', host: '', port: 9100 };
+export const DEFAULT_PRINTER_SETUP: PrinterSetup = { language: 'tspl', dpi: 203, agent: 'http://127.0.0.1:9110', host: '', port: 9100, via: 'agent' };
 export function readPrinterSetup(): PrinterSetup {
   try {
     const raw = localStorage.getItem(PRINTER_SETUP_KEY);
@@ -366,6 +367,7 @@ export function readPrinterSetup(): PrinterSetup {
       agent: typeof p.agent === 'string' && p.agent.trim() ? p.agent.trim() : DEFAULT_PRINTER_SETUP.agent,
       host: typeof p.host === 'string' ? p.host.trim() : '',
       port: Number.isFinite(Number(p.port)) && Number(p.port) > 0 ? Number(p.port) : 9100,
+      via: p.via === 'bluetooth' ? 'bluetooth' : 'agent',
     };
   } catch { return DEFAULT_PRINTER_SETUP; }
 }

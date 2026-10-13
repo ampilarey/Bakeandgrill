@@ -360,7 +360,11 @@ Mock-up mode on Print labels and Flat / On a … at the wizard's step 3. Round 1
 item's serving size (`items.label_serving_g`) prints per-serving values beside per 100
 on the full and wrap designs (`Nutrition::scaled()`), and every shelf-life box offers
 the usual days for its storage (`LabelSettings::SHELF_LIFE_SUGGESTED`, `shelf_life` on
-the layouts, `ShelfLifeHint`), filled only on Use. How to
+the layouts, `ShelfLifeHint`), filled only on Use. Round 16: a phone or tablet in
+Chrome prints to a Bluetooth Low Energy label printer straight from the browser
+(`bluetoothPrinter.ts`: pair from a tap, the first writable characteristic of a known
+printer service, the same TSPL/ZPL links in 180-byte chunks), chosen as `via:
+'bluetooth'` on the printer setup; iPhones cannot, and the card says so. How to
 use it and where everything lives: `docs/LABELS.md`; design and decisions:
 `docs/LABEL_HUB_PLAN.md` and `docs/LABEL_HUB_V2_PLAN.md`.
 

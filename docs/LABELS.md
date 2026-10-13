@@ -421,6 +421,38 @@ Admin: `label_serving_g` in `labelDrafts.ts` and the Serving size box on
 Settings products list. Tests: `ServingAndShelfLifeTest`, `ShelfLifeHint.test.tsx`, the
 round 15 case in `ItemLabelTab.test.tsx`.
 
+### Printing from a phone to a Bluetooth label printer
+
+Round 16 (owner, 2026-10-13; the audit's "printing from a phone straight to a Bluetooth
+label printer"). Labels → Settings → **Label printer on this computer** has a choice,
+**Network, through the print agent** (as before) or **Bluetooth, from this phone or
+tablet**. Bluetooth needs no agent and no address: switch the printer on, keep it near,
+tap **Pair the printer** and pick it from the phone's list, then **Save for this phone**.
+Print labels at a label-printer size then shows **Print over Bluetooth** after Prepare,
+which sends the stickers in the printer's language (TSPL or ZPL at its dots per inch,
+the same signed links as before) and says **Sent 3 stickers to XP-P323B over Bluetooth
+(3 KB)**. A phone that has not paired in this visit is asked to pick the printer on the
+first print (the tap that asked to print opens the picker, so the pairing comes before
+the stickers are fetched).
+
+It uses Web Bluetooth, which Chrome on Android and on a computer has. iPhone and iPad
+browsers do not let a web page use Bluetooth; the card says so and the PDF stays the way
+to print there. Thermal label printers talk Bluetooth Low Energy through a serial service
+whose name varies by maker, so the common ones are asked for (`PRINTER_SERVICES`: the
+18F0 service most Chinese printers use, FF00, the HM-10 FFE0, Microchip's transparent
+UART, a common printer module and Zebra's parser) and the first characteristic that takes
+writes is used; the bytes go in 180-byte chunks with a short pause, a printer's buffer
+being small. A printer that only speaks classic Bluetooth (not Low Energy) cannot be
+reached from a web page; use its network port with the print agent, or the PDF.
+
+Where: `apps/admin-dashboard/src/components/labels/bluetoothPrinter.ts`
+(`bluetoothSupported()`, `bluetoothWhyNot()`, `pairPrinter()`, `sendBytes()`,
+`printOverBluetooth()`, `PRINTER_SERVICES`, `CHUNK`); `via` on `PrinterSetup`
+(`readPrinterSetup()`); the choice and Pair on `LabelPrinterCard.tsx`; Print over
+Bluetooth on `StickerPrintPanel.tsx`. Nothing on the server changes. Tests:
+`bluetoothPrinter.test.ts`, the Bluetooth cases in `LabelPrinterCard.test.tsx` and
+`StickerPrintPanel.test.tsx`.
+
 ## Who can use it
 
 Two permissions, both owner-only until granted in Staff → Permissions (to a role or
@@ -1013,6 +1045,7 @@ beneath.
 | Allergen pictograms | `App\Domains\Labels\AllergenIcons` (`for()`, `keys()`, `svg()`, `dataUri()`; words → symbols, captions, `SPICY_LEVELS`); `stickerData()` sets `icons`, `StickerDesign::full()` draws the row (12 mm pitch, 8.8 mm tall) above the note; setting `label_allergen_icons` |
 | Variable runs | A row's own `batch`, `qty`, `mfg`, `exp`, `for`, `for2` in a sticker request (`StickerSheet::RUN_KEYS`, `cleanRun()`, `rowRequest()`; the link's `runs`); the Details fold on each picked row of `StickerPrintPanel.tsx` (§ Variable runs) |
 | Scan to reprint | `label_prints.request` (the request that made the print, one product; § Scan to reprint) and `details.reprint_of`; `App\Domains\Labels\Reprint` (`of()`, `rebuilt()`, `status()`, `present()`); `reprint` on a sticker request; `GET /api/labels/prints/{code}` (`labels.print`); the staff link on the pack page; `ReprintScan.tsx` (`codeFromScan()`), `?code=` on `StickerPrintPanel.tsx`, Print again in the print log |
+| Bluetooth printing | `bluetoothPrinter.ts` (Web Bluetooth, known printer services, chunked writes); `via: 'bluetooth'` on the printer setup; Pair on `LabelPrinterCard.tsx`, Print over Bluetooth on `StickerPrintPanel.tsx` (§ Printing from a phone) |
 | Per serving, shelf-life suggestion | `items.label_serving_g`; `Nutrition::serving()` / `scaled()` and `serv_rows` / `serv_all` on the sticker data; `LabelSettings::SHELF_LIFE_SUGGESTED` as `shelf_life` on the layouts; the Serving size box on `ItemLabelTab.tsx`; `ShelfLifeHint.tsx` (§ Nutrition per serving) |
 | Mock-up preview | `App\Domains\Labels\StickerMockup` (§ Mock-up preview); `mock_urls` on a preview, `mock` on the sheet link; `labels/partials/mockup.blade.php`; the Mock-up mode on `StickerPrintPanel.tsx`, Flat / On a … on `MakeLabelWizard.tsx` |
 | Label stock | `left`, `low`, `low_alerted_at` on each roll in `label_rolls` (§ Label stock); `LabelRolls::consume()` on every real print (`roll` in the request, else the roll of that size), `present()` / `presentAll()`, `roll` on the sticker summary; `App\Domains\Labels\RollStockAlert` under the registry row `owner_labels_roll_low`; `rollStock()` / `rollStockWords()` in `labelSize.ts`, the boxes on `LabelRollsCard.tsx`, the lines on `StickerPrintPanel.tsx` and the wizard |

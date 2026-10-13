@@ -17,7 +17,8 @@ const sendToLabelPrinter = vi.fn();
 const fetchLabelPrint = vi.fn();
 const canManage = { value: false };
 /** The label printer kept in this browser (round C); the test sets it. */
-const printerSetup = { language: 'tspl', dpi: 203, agent: 'http://127.0.0.1:9110', host: '', port: 9100 };
+const printerSetup: Record<string, unknown> = { language: 'tspl', dpi: 203, agent: 'http://127.0.0.1:9110', host: '', port: 9100, via: 'agent' };
+const printOverBluetooth = vi.fn();
 
 const footerRow = (id: number, name: string, tagline: string) => ({
   id, name, style: 'dark', heading: null, heading_dv: null, tagline: null, tagline_dv: null,
@@ -63,6 +64,7 @@ vi.mock('../../api', () => ({
   MOCK_SURFACE_NAMES: { jar: 'Jar', bottle: 'Bottle', box: 'Box', lid: 'Lid' },
 }));
 vi.mock('../ScanSheet', () => ({ ScanSheet: () => <div data-testid="scan-sheet" /> }));
+vi.mock('./bluetoothPrinter', () => ({ printOverBluetooth: (...a: unknown[]) => printOverBluetooth(...a), pairedPrinter: () => ({ name: 'XP-P323B' }) }));
 
 import { StickerPrintPanel } from './StickerPrintPanel';
 
@@ -104,7 +106,8 @@ const PRESETS = [
 describe('StickerPrintPanel', () => {
   beforeEach(() => {
     [fetchLabelLayouts, fetchLabelProducts, fetchCustomLabels, stickerLinks, openLabelSheet, downloadLabelSheet, fetchLabelJobs, printLabelJob, fetchLabelFooters, sendToLabelPrinter, fetchLabelPrint].forEach((f) => f.mockReset());
-    Object.assign(printerSetup, { language: 'tspl', dpi: 203, host: '', port: 9100 });
+    Object.assign(printerSetup, { language: 'tspl', dpi: 203, host: '', port: 9100, via: 'agent' });
+    printOverBluetooth.mockReset();
     fetchLabelJobs.mockResolvedValue({ data: [], last_page: 1 });
     fetchLabelFooters.mockResolvedValue({ data: [] });
     canManage.value = false;
@@ -689,6 +692,30 @@ describe('StickerPrintPanel on a phone', () => {
     sendToLabelPrinter.mockRejectedValue(new Error('Could not reach the printer at 192.168.1.50:9100 (EHOSTUNREACH).'));
     fireEvent.click(screen.getByTestId('sticker-send-printer'));
     expect(await screen.findByRole('alert')).toHaveTextContent('Could not reach the printer at 192.168.1.50:9100 (EHOSTUNREACH).');
+  });
+
+  // Round 16: on a phone set to Bluetooth, the stickers go to the paired printer over Bluetooth.
+  it('prints a label-printer sheet over Bluetooth when this phone is set to it', async () => {
+    Object.assign(printerSetup, { language: 'tspl', dpi: 203, via: 'bluetooth' });
+    sendToLabelPrinter.mockClear();
+    printOverBluetooth.mockReset();
+    stickerLinks.mockResolvedValue({
+      url: '/labels/stickers?print=1&signature=x', view_url: '/v', pdf_url: '/p',
+      zpl_url: '/labels/stickers.zpl?signature=x', tspl_url: '/labels/stickers.tspl?signature=x', raster_url: '/labels/stickers.png?signature=x', expires_in_minutes: 30,
+      summary: { layout: 'single-custom', label: '40 × 60 mm, label printer', design: 'small', stickers: 3, pages: 3, per_page: 1, products: [] },
+    });
+    printOverBluetooth.mockResolvedValue({ bytes: 3072 });
+    render(<MemoryRouter><StickerPrintPanel /></MemoryRouter>);
+    await screen.findByTestId('label-size-picker');
+    fireEvent.click(screen.getByLabelText('Print Bajiya'));
+    fireEvent.click(screen.getByTestId('sticker-prepare'));
+    const send = await screen.findByTestId('sticker-send-printer');
+    expect(send).toHaveTextContent('Print over Bluetooth');
+    fireEvent.click(send);
+    await waitFor(() => expect(printOverBluetooth).toHaveBeenCalledWith('/labels/stickers.tspl?signature=x'));
+    expect(sendToLabelPrinter).not.toHaveBeenCalled();
+    expect(await screen.findByTestId('sticker-sent')).toHaveTextContent('Sent 3 stickers to XP-P323B over Bluetooth (3 KB).');
+    printerSetup.via = 'agent';
   });
 
   // Round 5 (owner, 2026-10-13): nothing on labels yet says so and offers the way on right there.
