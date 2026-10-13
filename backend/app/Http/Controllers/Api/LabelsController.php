@@ -94,6 +94,8 @@ class LabelsController extends Controller
             'rolls' => LabelRolls::all(),
             // The badges a product can carry (round 9), for the pickers.
             'badges' => LabelBadges::catalogue(),
+            // What the kitchen screen prints a batch's stickers on and in (round 12).
+            'kitchen' => LabelRolls::kitchen(),
         ]);
     }
 
@@ -579,6 +581,7 @@ class LabelsController extends Controller
     public function productionStickers(KitchenProductionItem $productionItem): JsonResponse
     {
         $item = $productionItem->item_id ? Item::query()->find($productionItem->item_id) : null;
+        $kitchen = LabelRolls::kitchen();
 
         return response()->json(['data' => [
             'pi' => $productionItem->id,
@@ -587,6 +590,9 @@ class LabelsController extends Controller
             'exp' => $productionItem->expires_at?->toDateString(),
             'mfg' => ($productionItem->batch?->submitted_at ?? $productionItem->created_at)?->toDateString(),
             'qty' => (int) round((float) $productionItem->produced_qty),
+            // Print when packing (round 12): the roll and language the kitchen screen prints with.
+            'size' => $kitchen['size'],
+            'lang' => $kitchen['lang'],
         ]]);
     }
 
@@ -838,6 +844,8 @@ class LabelsController extends Controller
             $rules[$key] = match (true) {
                 str_starts_with($key, 'label_precut_') => 'sometimes|nullable|numeric|between:-20,20',
                 $key === 'label_dhivehi_font' => ['sometimes', 'nullable', Rule::in(LabelSettings::DHIVEHI_FONTS)],
+                // The kitchen screen's language (round 12); the roll is an id checked when it prints.
+                $key === LabelRolls::KITCHEN_LANG_KEY => ['sometimes', 'nullable', Rule::in(['', ...StickerSheet::LANGS])],
                 // My label rolls (round 6): a JSON list, tidied by LabelRolls before it is kept.
                 $key === LabelRolls::KEY => ['sometimes', 'nullable', 'string', 'max:8000', function (string $attribute, mixed $value, \Closure $fail): void {
                     if ($value !== null && trim((string) $value) !== '' && !is_array(json_decode((string) $value, true))) {

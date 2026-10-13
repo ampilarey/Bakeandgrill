@@ -7,8 +7,10 @@ const fetchPlanTasks = vi.fn();
 const markPlanTaskMade = vi.fn();
 const fetchProductionStickers = vi.fn();
 const productionStickerLinks = vi.fn();
+const fetchKitchenLabelSetup = vi.fn();
 
 vi.mock("../../api", () => ({
+  DEFAULT_KITCHEN_STICKER: { layout: "a4-custom", w: 40, h: 60, name: "40 × 60 mm, 21 on A4", roll: null },
   markOrderItemCooked: vi.fn(),
   createKitchenProductionBatch: vi.fn(),
   submitKitchenProductionBatch: vi.fn(),
@@ -16,6 +18,7 @@ vi.mock("../../api", () => ({
   markPlanTaskMade: (...a: unknown[]) => markPlanTaskMade(...a),
   fetchProductionStickers: (...a: unknown[]) => fetchProductionStickers(...a),
   productionStickerLinks: (...a: unknown[]) => productionStickerLinks(...a),
+  fetchKitchenLabelSetup: (...a: unknown[]) => fetchKitchenLabelSetup(...a),
   labelSheetUrl: (path: string) => `https://api.test${path}`,
   failureMessage: (e: unknown, fallback: string) => (e as { message?: string })?.message ?? fallback,
 }));
@@ -48,6 +51,8 @@ describe("KitchenProductionPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     fetchPlanTasks.mockResolvedValue({ date: "2026-09-17", tasks: [] });
+    fetchKitchenLabelSetup.mockResolvedValue({ size: { layout: "a4-custom", w: 40, h: 60, name: "40 × 60 mm, 21 on A4", roll: null }, lang: "en" });
+    try { localStorage.clear(); } catch { /* jsdom */ }
   });
 
   it("shows order production tab with cook progress", async () => {
@@ -116,17 +121,24 @@ describe("KitchenProductionPanel", () => {
   });
 
   /*
-   * 2026-10-12: the cook who just sent a batch prints its pack stickers from
-   * here, with the batch's own number and dates, one a piece, on the
-   * kitchen's 4 × 6 cm sticker; the PDF opens to print. Only with Print labels.
+   * 2026-10-12, round 12 (print when packing): the cook who just sent a batch
+   * prints its pack stickers from here, with the batch's own number and
+   * dates, one a piece unless a count is typed, on the roll and in the
+   * language Labels → Settings picked; the PDF opens to print. Only with
+   * Print labels. The server lists the batches on the task, so they stay
+   * after a reload and on another device.
    */
   it("offers the stickers for a batch just sent, when the cook may print labels", async () => {
-    fetchPlanTasks.mockResolvedValue({ date: "2026-10-12", tasks: [task({ id: 2, name: "Bajiya", item_id: 7, remaining: 30, made_qty: 20, status: "partial" })] });
+    const batchRow = { pi: 91, batch_no: "KP-20261012-0003", qty: 30, made_at: "2026-10-12T17:05:00+05:00", expires_at: "2027-01-10", status: "submitted" };
+    fetchPlanTasks
+      .mockResolvedValueOnce({ date: "2026-10-12", tasks: [task({ id: 2, name: "Bajiya", item_id: 7, remaining: 30, made_qty: 20, status: "partial", batches: [] })] })
+      .mockResolvedValue({ date: "2026-10-12", tasks: [task({ id: 2, name: "Bajiya", item_id: 7, remaining: 0, made_qty: 50, status: "made", batches: [batchRow] })] });
     markPlanTaskMade.mockResolvedValue({
       task: task({ id: 2, made_qty: 50, remaining: 0, status: "made" }),
       batch: { id: 40, batch_no: "KP-20261012-0003", production_type: "prepared_stock", status: "submitted", items: [{ id: 91, name: "Bajiya", item_id: 7, produced_qty: 30, unit: "pcs", status: "done" }] },
     });
-    fetchProductionStickers.mockResolvedValue({ data: { pi: 91, item: { id: 7, name: "Bajiya", label_enabled: true, label_shelf_life_days: 90 }, batch: "KP-20261012-0003", exp: "2027-01-10", mfg: "2026-10-12", qty: 30 } });
+    fetchKitchenLabelSetup.mockResolvedValue({ size: { layout: "single-custom", w: 60, h: 40, name: "60 × 40 mm, label printer", roll: "small" }, lang: "dv" });
+    fetchProductionStickers.mockResolvedValue({ data: { pi: 91, item: { id: 7, name: "Bajiya", label_enabled: true, label_shelf_life_days: 90 }, batch: "KP-20261012-0003", exp: "2027-01-10", mfg: "2026-10-12", qty: 30, size: { layout: "single-custom", w: 60, h: 40, name: "60 × 40 mm, label printer", roll: "small" }, lang: "dv" } });
     productionStickerLinks.mockResolvedValue({ url: "/labels/stickers?signature=x", pdf_url: "/labels/stickers.pdf?signature=x", expires_in_minutes: 30 });
     const open = vi.spyOn(window, "open").mockReturnValue(null);
 
@@ -134,18 +146,49 @@ describe("KitchenProductionPanel", () => {
     const card = await screen.findByTestId("kds-plan-task-2");
     fireEvent.click(within(card).getByText("Send to counter"));
     await waitFor(() => expect(markPlanTaskMade).toHaveBeenCalled());
-    expect(screen.queryByTestId("kds-plan-stickers-2")).toBeNull();
+    expect(screen.queryByTestId("kds-batch-91")).toBeNull();
+    expect(screen.queryByTestId("kds-sticker-setup")).toBeNull();
 
     rerender(<KitchenProductionPanel token="tok" canProduce canPreparedStock canLabels onRefresh={() => undefined} orders={[]} />);
-    const button = await screen.findByTestId("kds-plan-stickers-2");
-    expect(button).toHaveTextContent("Stickers for batch KP-20261012-0003");
-    fireEvent.click(button);
+    const row = await screen.findByTestId("kds-batch-91");
+    expect(row).toHaveTextContent("Batch KP-20261012-0003");
+    expect(row).toHaveTextContent("use by 2027-01-10");
+    // The roll and language from Settings, the latter changeable here.
+    const setup = await screen.findByTestId("kds-sticker-setup");
+    await waitFor(() => expect(setup).toHaveTextContent("Stickers print on 60 × 40 mm, label printer"));
+    expect(within(setup).getByRole("button", { name: "ދިވެހި" })).toHaveAttribute("aria-pressed", "true");
+    const box = within(row).getByLabelText("Stickers for batch KP-20261012-0003");
+    expect(box).toHaveValue(30);
+    fireEvent.change(box, { target: { value: "24" } });
+    fireEvent.click(within(row).getByTestId("kds-plan-stickers-91"));
     await waitFor(() => expect(productionStickerLinks).toHaveBeenCalledWith("tok", expect.objectContaining({
-      items: [{ id: 7, copies: 30 }], layout: "a4-custom", w: 40, h: 60, fill: true, mfg: "2026-10-12", exp: "2027-01-10", batch: "KP-20261012-0003", pi: 91,
+      items: [{ id: 7, copies: 24 }], layout: "single-custom", w: 60, h: 40, lang: "dv", fill: true, mfg: "2026-10-12", exp: "2027-01-10", batch: "KP-20261012-0003", pi: 91,
     })));
     expect(fetchProductionStickers).toHaveBeenCalledWith("tok", 91);
+    // The window is opened in the tap; a blocked one falls back to opening the PDF, and a link stays on the card either way.
     expect(open).toHaveBeenCalledWith("https://api.test/labels/stickers.pdf?signature=x", "_blank", "noopener");
+    expect(await within(row).findByTestId("kds-stickers-ready-91")).toHaveTextContent("24 ready");
+
+    // Picking English here is remembered and used for the next print.
+    fireEvent.click(within(setup).getByRole("button", { name: "English" }));
+    expect(localStorage.getItem("kds_label_lang")).toBe("en");
+    fireEvent.click(within(row).getByTestId("kds-plan-stickers-91"));
+    await waitFor(() => expect(productionStickerLinks).toHaveBeenCalledTimes(2));
+    expect(productionStickerLinks.mock.calls[1][1]).toMatchObject({ lang: "en", items: [{ id: 7, copies: 24 }] });
     open.mockRestore();
+  });
+
+  it("lists the batches another device made, each with its own sticker button", async () => {
+    fetchPlanTasks.mockResolvedValue({ date: "2026-10-13", tasks: [task({ id: 5, name: "Gulha", item_id: 9, made_qty: 50, remaining: 0, status: "received", batches: [
+      { pi: 120, batch_no: "KP-20261013-0002", qty: 20, made_at: "2026-10-13T11:40:00+05:00", expires_at: null, status: "received" },
+      { pi: 118, batch_no: "KP-20261013-0001", qty: 30, made_at: "2026-10-13T09:10:00+05:00", expires_at: null, status: "received" },
+    ] })] });
+    render(<KitchenProductionPanel token="tok" canProduce canPreparedStock canLabels onRefresh={() => undefined} orders={[]} />);
+    const card = await screen.findByTestId("kds-plan-task-5");
+    expect(within(card).getByTestId("kds-batch-120")).toHaveTextContent("Batch KP-20261013-0002");
+    expect(within(card).getByTestId("kds-batch-118")).toHaveTextContent("Batch KP-20261013-0001");
+    expect(within(card).getByLabelText("Stickers for batch KP-20261013-0001")).toHaveValue(30);
+    expect(markPlanTaskMade).not.toHaveBeenCalled();
   });
 
   it("refuses to send nothing", async () => {

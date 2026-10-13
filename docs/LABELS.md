@@ -294,6 +294,38 @@ print log; `fetchLabelPrint()` and `LabelPrintLookup` in `api/labels.ts`. Tests:
 `ScanToReprintTest`, `ReprintScan.test.tsx`, the scanned-code cases in
 `StickerPrintPanel.test.tsx`.
 
+### Print when packing: stickers from the kitchen screen
+
+Round 12 (owner, 2026-10-13; the audit's "a Labels button on the kitchen board for the
+batch just made, already partly there"). On the kitchen screen's **Production → Today's
+plan**, every batch a cook has sent to the counter is listed on its task's card as a
+row, **Batch KP-20261013-0003 · 5:05 PM · use by 2027-01-11**, with a count box
+(one sticker a piece, change it) and **Print stickers**; the PDF opens to print (a
+tablet prints the PDF). The batches come from the server with the task
+(`batches` on each task, newest first), so the row is there after a reload, on another
+tablet and for the next cook, not only in the session that sent the batch. A line
+above the cards says what the stickers print on and in, **Stickers print on 60 × 40 mm,
+label printer, in English · ދިވެހި · Both**; the cook can pick another language, which
+that screen remembers. Which roll and which language is the owner's choice under
+**Labels → Settings → My label rolls → The kitchen screen** (`label_kitchen_roll`, a
+roll from the list or the 4 × 6 cm default; `label_kitchen_lang`). The window for the
+PDF is opened in the tap itself, before the server answers, so a tablet's browser does
+not block it as a pop-up; a blocked one falls back, and the row keeps a link, **24
+ready · open the PDF again**. The batch's number, made-on date, expiry and count come
+from the batch line as before (`GET /api/labels/production-items/{pi}`, which now also
+answers with `size` and `lang`); the print is logged against the batch line
+(`kitchen_production_item_id`). Only with Print labels; a cook without it sees the
+cards as before.
+
+Where: `ProductionTasks::madeFor()` and `batches` in `format()`;
+`LabelRolls::kitchen()` (`find()`, `request()` turn a roll into a sticker request;
+`KITCHEN_DEFAULT`), `kitchen` on `GET /api/labels/layouts`, the settings keys in
+`LabelSettings::DEFAULTS`; kitchen screen `apps/kds-web/src/components/kitchen-production/KitchenProductionPanel.tsx`
+(`batchesOf()`, `printStickers()`, the language row), `fetchKitchenLabelSetup()`,
+`KdsTaskBatch` in `api.ts`; Admin `LabelRollsCard.tsx` (The kitchen screen). Tests:
+`KitchenStickersTest`, the sticker cases in `KitchenProductionPanel.test.tsx`, the
+kitchen case in `LabelRollsCard.test.tsx`.
+
 ## Who can use it
 
 Two permissions, both owner-only until granted in Staff → Permissions (to a role or
@@ -896,7 +928,7 @@ beneath.
 | Price, barcode, net weight, allergens | `items.label_price` / `label_show_price` / `label_barcode` / `label_net_weight`; `custom_labels` the same plus `label_allergens`; `StickerSheet::price()`, `allergens()`; `App\Domains\Labels\Barcode` (EAN-13/EAN-8 check digit, modules, bars as an SVG data URI sized in its own units, never mm: dompdf's SVG library ignores the viewBox and a size in mm drew the bars twice as tall as their box; the digits are a text piece beneath). The bars print on the full design and the wrap-around label's Barcode part (or under its dates); the compact sizes in use have no room |
 | Draft preview | `POST /api/labels/custom/preview` (`labels.manage`) keeps the draft in the cache for 30 minutes (`StickerSheet::keepDraft`) and links the sheet with `items=d<token>:1`; `StickerSheet::draft()` builds an unsaved `CustomLabel` from it. The print API refuses a draft |
 | Pinned labels | `label_jobs.pinned`; `PUT /api/labels/jobs/{job}` takes `pinned`; the list orders pinned first, `?pinned=1` filters |
-| Kitchen screen stickers | `apps/kds-web`: `fetchProductionStickers`, `productionStickerLinks`, `labelSheetUrl`; the Stickers button on `KitchenProductionPanel` for a job sent this session, shown with `labels.print` |
+| Kitchen screen stickers | `apps/kds-web`: `fetchProductionStickers`, `fetchKitchenLabelSetup`, `productionStickerLinks`, `labelSheetUrl`; a row per batch made for a task on `KitchenProductionPanel` (`batches` on the task from `ProductionTasks`, § Print when packing), shown with `labels.print`; the roll and language from `LabelRolls::kitchen()` (`label_kitchen_roll`, `label_kitchen_lang`, picked on `LabelRollsCard`) |
 | Label stock and sizes | `App\Domains\Labels\StickerLayouts`: `LAYOUTS` (`shape` rect or circle; `a4-custom` and `a4-round-custom` fill A4 with any size, `single-custom` and `single-round-custom` one per label), `PRESETS` (the one-tap sizes and the layout for each stock), `design()`, `grid()`, `limits()` |
 | Size picker | `apps/admin-dashboard/src/components/labels/LabelSizePicker.tsx` and `labelSize.ts`, which mirrors `design()`, `grid()` and the limits so the picker can say "21 on A4" and "too small" before asking. `fixtures/label_size_parity.json` holds both to the same answers (`LabelSizeParityTest`, `labelSize.test.ts`); change the server, the mirror and the table together |
 | Box label | `App\Domains\Labels\BoxLabel`; a shop's saved label in `trade_accounts.box_label` |

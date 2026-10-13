@@ -65,6 +65,11 @@ final class LabelSettings
         'label_precut_gutter' => '0',
         // The label rolls and sheets the business owns (round 6, 2026-10-13), a JSON list; LabelRolls reads it.
         'label_rolls' => '',
+        // Print when packing (round 12): the roll the kitchen screen prints a
+        // batch's stickers on (a label_rolls id; empty is 4 × 6 cm on A4) and
+        // the language it prints them in. LabelRolls::kitchen() reads them.
+        'label_kitchen_roll' => '',
+        'label_kitchen_lang' => 'en',
     ];
 
     public static function get(string $key): string

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Kitchen\Services;
 
 use App\Models\Item;
+use App\Models\KitchenProductionItem;
 use App\Models\ProductionPlanRecord;
 use App\Models\User;
 use App\Models\Variant;
@@ -65,9 +66,10 @@ final class ProductionTasks
             ->get();
 
         [$items, $variants] = $this->catalogue($records);
+        $made = $this->madeFor($records);
 
         $tasks = $records
-            ->map(fn (ProductionPlanRecord $r) => $this->format($r, $items, $variants))
+            ->map(fn (ProductionPlanRecord $r) => $this->format($r, $items, $variants, $made->get((int) $r->id, new Collection())))
             ->filter()
             ->values()
             ->all();
@@ -126,7 +128,7 @@ final class ProductionTasks
             [$items, $variants] = $this->catalogue(new Collection([$fresh]));
 
             return [
-                'task' => $this->format($fresh, $items, $variants) ?? [],
+                'task' => $this->format($fresh, $items, $variants, $this->madeFor(new Collection([$fresh]))->get((int) $fresh->id, new Collection())) ?? [],
                 'batch' => $batch,
                 'name' => $name,
             ];
@@ -134,11 +136,35 @@ final class ProductionTasks
     }
 
     /**
+     * The batch lines made for each task (round 12 of the labels work, print
+     * when packing): the kitchen screen offers a batch's stickers from them,
+     * whichever device or sign-in made it. Newest first.
+     *
+     * @param Collection<int, ProductionPlanRecord> $records
+     * @return Collection<int, Collection<int, KitchenProductionItem>> keyed by the record
+     */
+    private function madeFor(Collection $records): Collection
+    {
+        $ids = $records->pluck('id')->map(fn ($id) => (int) $id)->all();
+        if ($ids === []) {
+            return new Collection();
+        }
+
+        return KitchenProductionItem::query()
+            ->whereIn('production_plan_record_id', $ids)
+            ->with('batch:id,batch_no,status,submitted_at')
+            ->orderByDesc('id')
+            ->get()
+            ->groupBy(fn (KitchenProductionItem $i) => (int) $i->production_plan_record_id);
+    }
+
+    /**
      * @param Collection<int, Item> $items
      * @param Collection<int, Variant> $variants
+     * @param Collection<int, KitchenProductionItem> $lines the batch lines made for it
      * @return array<string, mixed>|null
      */
-    private function format(ProductionPlanRecord $r, Collection $items, Collection $variants): ?array
+    private function format(ProductionPlanRecord $r, Collection $items, Collection $variants, ?Collection $lines = null): ?array
     {
         $item = $items->get((int) $r->item_id);
         if (!$item) {
@@ -182,6 +208,15 @@ final class ProductionTasks
             'status' => $status,
             // The recipe's method, for the cook making it.
             'instructions' => trim((string) ($item->recipe?->instructions ?? '')) ?: null,
+            // The batches made for it (round 12): each one's stickers print from the kitchen screen.
+            'batches' => ($lines ?? new Collection())->map(fn (KitchenProductionItem $i) => [
+                'pi' => (int) $i->id,
+                'batch_no' => (string) ($i->batch_code ?: $i->batch?->batch_no ?: ''),
+                'qty' => round((float) $i->produced_qty, 1),
+                'made_at' => ($i->batch?->submitted_at ?? $i->created_at)?->toIso8601String(),
+                'expires_at' => $i->expires_at?->toDateString(),
+                'status' => (string) $i->status,
+            ])->values()->all(),
         ];
     }
 

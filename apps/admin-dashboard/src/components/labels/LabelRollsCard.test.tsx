@@ -7,7 +7,7 @@ import type { LabelPreset } from '../../api';
  * added with the size picker, renamed in place, removed after asking; kept
  * as the one setting `label_rolls`.
  */
-const api = vi.hoisted(() => ({ fetchLabelLayouts: vi.fn(), saveLabelSettings: vi.fn() }));
+const api = vi.hoisted(() => ({ fetchLabelLayouts: vi.fn(), saveLabelSettings: vi.fn(), fetchLabelSettings: vi.fn() }));
 vi.mock('../../api', () => api);
 vi.mock('../ui', async () => {
   const actual = await vi.importActual<typeof import('../ui')>('../ui');
@@ -27,7 +27,32 @@ describe('LabelRollsCard', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     api.fetchLabelLayouts.mockResolvedValue({ data: [], presets, limits, rolls: owned });
-    api.saveLabelSettings.mockImplementation(async (body: { label_rolls: string }) => ({ data: { label_rolls: body.label_rolls } }));
+    api.fetchLabelSettings.mockResolvedValue({ data: { label_rolls: JSON.stringify(owned), label_kitchen_roll: '', label_kitchen_lang: 'en' }, defaults: {} });
+    // The server answers with every setting as stored, so a save keeps what earlier saves set.
+    const stored: Record<string, string> = { label_rolls: JSON.stringify(owned), label_kitchen_roll: '', label_kitchen_lang: 'en' };
+    api.saveLabelSettings.mockImplementation(async (body: Record<string, string>) => ({ data: Object.assign(stored, body) }));
+  });
+
+  // Print when packing (round 12): the roll and language the kitchen screen prints a batch's stickers with.
+  it('picks the roll and language the kitchen screen prints with', async () => {
+    render(<LabelRollsCard canManage />);
+    const setup = await screen.findByTestId('label-kitchen-setup');
+    const roll = within(setup).getByLabelText('Prints on') as HTMLSelectElement;
+    expect(roll).toHaveValue('');
+    expect(within(roll).getByRole('option', { name: /Small roll · 60 × 40 mm · Label printer/ })).toBeInTheDocument();
+    fireEvent.change(roll, { target: { value: 'small' } });
+    await waitFor(() => expect(api.saveLabelSettings).toHaveBeenCalledWith({ label_kitchen_roll: 'small' }));
+    fireEvent.change(within(setup).getByLabelText('In'), { target: { value: 'both' } });
+    await waitFor(() => expect(api.saveLabelSettings).toHaveBeenCalledWith({ label_kitchen_lang: 'both' }));
+    await waitFor(() => expect(within(setup).getByLabelText('In')).toHaveValue('both'));
+    expect(roll).toHaveValue('small');
+  });
+
+  it('shows the kitchen picks locked to someone who cannot manage labels', async () => {
+    render(<LabelRollsCard canManage={false} />);
+    const setup = await screen.findByTestId('label-kitchen-setup');
+    expect(within(setup).getByLabelText('Prints on')).toBeDisabled();
+    expect(within(setup).getByLabelText('In')).toBeDisabled();
   });
 
   it('lists the rolls, adds one with the size picker, and removes one after asking', async () => {

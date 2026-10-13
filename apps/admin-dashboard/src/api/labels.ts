@@ -204,7 +204,10 @@ export type LabelRoll = { id: string; name: string; shape: 'rect' | 'circle'; pr
 /** A badge a product can carry (round 9, 2026-10-13): its key, everyday name and the words printed on the pill. */
 export type LabelBadge = { key: string; label: string; word: string; word_dv: string };
 
-export type LabelLayoutsResponse = { data: LabelLayout[]; presets: LabelPreset[]; limits: LabelLimits; wrap: WrapCatalogue; rolls?: LabelRoll[]; badges?: LabelBadge[] };
+/** What the kitchen screen prints a batch's stickers on and in (round 12): the roll picked under Settings, or 4 × 6 cm on A4. */
+export type KitchenLabelSetup = { size: { layout: string; w: number | null; h: number | null; name: string; roll: string | null }; lang: StickerLang };
+
+export type LabelLayoutsResponse = { data: LabelLayout[]; presets: LabelPreset[]; limits: LabelLimits; wrap: WrapCatalogue; rolls?: LabelRoll[]; badges?: LabelBadge[]; kitchen?: KitchenLabelSetup };
 
 /**
  * A label template (round 7, 2026-10-13: "Start from a saved label or a

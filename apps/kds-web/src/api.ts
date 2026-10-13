@@ -285,6 +285,20 @@ export async function submitKitchenProductionBatch(token: string, batchId: numbe
  * made creates and submits a prepared-stock batch tied to the line, so the
  * counter receives it like any other and the plan fills in by itself.
  */
+/**
+ * A batch made for a plan task (round 12 of the labels work, print when
+ * packing): the kitchen screen prints its stickers from here, whichever
+ * device or sign-in made it. `pi` is the batch line the stickers come from.
+ */
+export type KdsTaskBatch = {
+  pi: number;
+  batch_no: string;
+  qty: number;
+  made_at: string | null;
+  expires_at: string | null;
+  status: string;
+};
+
 export type KdsPlanTask = {
   id: number;
   item_id: number;
@@ -306,6 +320,8 @@ export type KdsPlanTask = {
   status: 'todo' | 'partial' | 'made' | 'received';
   /** The recipe's method, for the cook making it. */
   instructions?: string | null;
+  /** The batches made for it, newest first (round 12). */
+  batches?: KdsTaskBatch[];
 };
 
 export async function fetchPlanTasks(token: string, date?: string): Promise<{ date: string; tasks: KdsPlanTask[] }> {
@@ -380,6 +396,15 @@ export function hasKdsPermission(permissions: string[], slug: string): boolean {
  * the cook who just made a batch prints its stickers without opening Admin.
  * Needs the Print labels permission, like the Labels page.
  */
+export type StickerLang = 'en' | 'dv' | 'both';
+
+/** The sticker the kitchen screen prints on (round 12): the roll picked under Labels → Settings, or 4 × 6 cm on A4. */
+export type KitchenStickerSize = { layout: string; w: number | null; h: number | null; name: string; roll: string | null };
+
+export type KitchenLabelSetup = { size: KitchenStickerSize; lang: StickerLang };
+
+export const DEFAULT_KITCHEN_STICKER: KitchenStickerSize = { layout: 'a4-custom', w: 40, h: 60, name: '40 × 60 mm, 21 on A4', roll: null };
+
 export type ProductionStickerDefaults = {
   pi: number;
   item: { id: number; name: string; label_enabled: boolean; label_shelf_life_days: number | null } | null;
@@ -387,15 +412,24 @@ export type ProductionStickerDefaults = {
   exp: string | null;
   mfg: string | null;
   qty: number;
+  /** What the kitchen prints on and in (round 12); older servers leave them out. */
+  size?: KitchenStickerSize;
+  lang?: StickerLang;
 };
 
 export async function fetchProductionStickers(token: string, productionItemId: number): Promise<{ data: ProductionStickerDefaults }> {
   return request(`/labels/production-items/${productionItemId}`, { headers: authHeaders(token) });
 }
 
+/** What the kitchen screen prints stickers on and in, from Labels → Settings (round 12). */
+export async function fetchKitchenLabelSetup(token: string): Promise<KitchenLabelSetup> {
+  const data = await request<{ kitchen?: KitchenLabelSetup }>('/labels/layouts', { headers: authHeaders(token) });
+  return data.kitchen ?? { size: DEFAULT_KITCHEN_STICKER, lang: 'en' };
+}
+
 export async function productionStickerLinks(
   token: string,
-  body: { items: { id: number; copies: number }[]; layout: string; w?: number | null; h?: number | null; fill: boolean; mfg: string | null; exp: string | null; batch: string | null; pi: number },
+  body: { items: { id: number; copies: number }[]; layout: string; w?: number | null; h?: number | null; lang?: StickerLang; fill: boolean; mfg: string | null; exp: string | null; batch: string | null; pi: number },
 ): Promise<{ url: string; pdf_url: string; expires_in_minutes: number }> {
   return request('/labels/stickers/url', { method: 'POST', headers: authHeaders(token), body: JSON.stringify(body) });
 }

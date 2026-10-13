@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
-import { fetchLabelLayouts, saveLabelSettings, type LabelLimits, type LabelPreset, type LabelRoll } from '../../api';
+import { fetchLabelLayouts, fetchLabelSettings, saveLabelSettings, type LabelLimits, type LabelPreset, type LabelRoll } from '../../api';
 import { Btn } from '../SharedUI';
 import { Button, Card, useToast } from '../ui';
 import { InlineRename } from './InlineRename';
@@ -23,9 +23,22 @@ export function LabelRollsCard({ canManage }: { canManage: boolean }) {
   const [choice, setChoice] = useState<SizeChoice>(DEFAULT_CHOICE);
   const [rounded, setRounded] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Print when packing (round 12): the roll and language the kitchen screen prints a batch's stickers with.
+  const [kitchen, setKitchen] = useState<{ roll: string; lang: string } | null>(null);
   useEffect(() => {
     fetchLabelLayouts().then((r) => { setPresets(r.presets); setLimits(r.limits ?? null); setRolls(r.rolls ?? []); }).catch(() => setRolls([]));
+    fetchLabelSettings().then((r) => setKitchen({ roll: r.data.label_kitchen_roll ?? '', lang: r.data.label_kitchen_lang || 'en' })).catch(() => setKitchen(null));
   }, []);
+  const saveKitchen = async (patch: { label_kitchen_roll?: string; label_kitchen_lang?: string }) => {
+    setKitchen((k) => (k ? { roll: patch.label_kitchen_roll ?? k.roll, lang: patch.label_kitchen_lang ?? k.lang } : k));
+    try {
+      const r = await saveLabelSettings(patch);
+      setKitchen({ roll: r.data.label_kitchen_roll ?? '', lang: r.data.label_kitchen_lang || 'en' });
+      toast('success', 'Kitchen screen saved.');
+    } catch (e) {
+      toast('error', e instanceof Error ? e.message : 'Could not save the kitchen screen.');
+    }
+  };
 
   const save = async (next: LabelRoll[], said: string) => {
     setSaving(true);
@@ -84,6 +97,32 @@ export function LabelRollsCard({ canManage }: { canManage: boolean }) {
           <li className="px-4 py-6 text-center text-sm text-[var(--color-text-muted)]">{canManage ? 'No rolls yet: every size shows everywhere. Add the ones you have and they come first.' : 'No rolls registered yet, so every size shows everywhere.'}</li>
         )}
       </ul>
+      {kitchen && (
+        <div className="px-4 py-3 border-t border-[var(--color-border-light)]" data-testid="label-kitchen-setup">
+          <h4 className="text-sm font-bold text-[var(--color-text)]">The kitchen screen</h4>
+          <p className="text-xs text-[var(--color-text-muted)] mb-2">When a cook sends a batch to the counter, the kitchen screen prints its stickers without asking: one a piece, on this roll, in this language.</p>
+          <div className="grid gap-3 sm:grid-cols-2 max-w-2xl">
+            <div>
+              <label className="block text-xs font-semibold text-[var(--color-text-secondary)] mb-1" htmlFor="label_kitchen_roll">Prints on</label>
+              <select id="label_kitchen_roll" value={(rolls ?? []).some((r) => r.id === kitchen.roll) ? kitchen.roll : ''} disabled={!canManage} onChange={(e) => void saveKitchen({ label_kitchen_roll: e.target.value })} className="h-10 min-h-[44px] px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-sm text-[var(--color-text)] w-full">
+                <option value="">4 × 6 cm, as many to an A4 sheet as fit</option>
+                {(rolls ?? []).map((r) => {
+                  const { w, h } = sizeOf({ shape: r.shape, preset: r.preset, on: r.on, w: r.w, h: r.h }, presets);
+                  return <option key={r.id} value={r.id}>{rollName(r)} · {sizeName(r.shape, w, h)} · {stockOf({ shape: r.shape, preset: r.preset, on: r.on, w: r.w, h: r.h }, presets).label}</option>;
+                })}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-[var(--color-text-secondary)] mb-1" htmlFor="label_kitchen_lang">In</label>
+              <select id="label_kitchen_lang" value={kitchen.lang} disabled={!canManage} onChange={(e) => void saveKitchen({ label_kitchen_lang: e.target.value })} className="h-10 min-h-[44px] px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-sm text-[var(--color-text)] w-full">
+                <option value="en">English</option>
+                <option value="dv">Dhivehi</option>
+                <option value="both">Both</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
       {adding && (
         <div className="px-4 py-3 border-t border-[var(--color-border-light)] space-y-3" data-testid="label-roll-form">
           <div className="max-w-sm">

@@ -341,7 +341,13 @@ print keeps the request that made it, one product (`label_prints.request`,
 "Staff: print this sticker again", the scan row on Print labels (`ReprintScan`,
 `codeFromScan()`) and Print again on the print log all open `?code=`, whose print is
 logged with `details.reprint_of` and a code of its own. A new sticker request key that
-a print must replay goes into `Reprint::KEYS` (the saved label's keys too). How to
+a print must replay goes into `Reprint::KEYS` (the saved label's keys too). Print when
+packing (round 12): a plan task carries the batches made for it (`batches`,
+`ProductionTasks::madeFor()`), and the kitchen screen lists each with a count box and
+Print stickers, on the roll and in the language from `LabelRolls::kitchen()`
+(`label_kitchen_roll`, `label_kitchen_lang`, picked under Labels → Settings → My label
+rolls; `kitchen` on `GET /api/labels/layouts`); the PDF's window is opened in the tap
+itself so a tablet does not block it. How to
 use it and where everything lives: `docs/LABELS.md`; design and decisions:
 `docs/LABEL_HUB_PLAN.md` and `docs/LABEL_HUB_V2_PLAN.md`.
 

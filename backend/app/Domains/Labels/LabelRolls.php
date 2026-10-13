@@ -106,4 +106,72 @@ final class LabelRolls
     {
         return $rolls === [] ? '' : (string) json_encode(array_values($rolls), JSON_UNESCAPED_UNICODE);
     }
+
+    /** @return ?array{id: string, name: string, shape: string, preset: string, on: string, w: float, h: float} */
+    public static function find(string $id): ?array
+    {
+        foreach (self::all() as $roll) {
+            if ($roll['id'] === $id) {
+                return $roll;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * The sticker request a roll stands for: the layout its stock prints on,
+     * and the size where that layout takes one.
+     *
+     * @param array{shape: string, preset: string, on: string, w: float, h: float} $roll
+     * @return array{layout: string, w: ?float, h: ?float}
+     */
+    public static function request(array $roll): array
+    {
+        $presets = array_column(StickerLayouts::PRESETS, null, 'id');
+        $p = $roll['preset'] !== 'custom' ? ($presets[$roll['preset']] ?? null) : null;
+        if ($p !== null) {
+            $layout = (string) ($p['on'][$roll['on']] ?? array_values($p['on'])[0]);
+        } else {
+            $printer = $roll['on'] === 'printer';
+            $layout = $roll['shape'] === 'circle' ? ($printer ? 'single-round-custom' : 'a4-round-custom') : ($printer ? 'single-custom' : 'a4-custom');
+        }
+        $sized = in_array($layout, StickerLayouts::SIZED, true);
+
+        return [
+            'layout' => $layout,
+            'w' => $sized ? (float) $roll['w'] : null,
+            'h' => $sized && $roll['shape'] !== 'circle' ? (float) $roll['h'] : null,
+        ];
+    }
+
+    /** Print when packing (round 12): which roll the kitchen screen prints on, and in which language. */
+    public const KITCHEN_ROLL_KEY = 'label_kitchen_roll';
+
+    public const KITCHEN_LANG_KEY = 'label_kitchen_lang';
+
+    /** The kitchen's sticker when no roll is picked: 4 × 6 cm, as many to an A4 sheet as fit. */
+    public const KITCHEN_DEFAULT = ['layout' => 'a4-custom', 'w' => 40.0, 'h' => 60.0];
+
+    /**
+     * What the kitchen screen prints a batch's stickers on and in (round 12,
+     * 2026-10-13: "a Labels button on the kitchen board for the batch just
+     * made"): the roll picked under Labels → Settings → My label rolls, or
+     * the 4 × 6 cm default when none is picked or it is gone; the language
+     * picked there, English unless said otherwise.
+     *
+     * @return array{size: array{layout: string, w: ?float, h: ?float, name: string, roll: ?string}, lang: string}
+     */
+    public static function kitchen(): array
+    {
+        $id = trim(LabelSettings::get(self::KITCHEN_ROLL_KEY));
+        $roll = $id !== '' ? self::find($id) : null;
+        $req = $roll !== null ? self::request($roll) : self::KITCHEN_DEFAULT;
+        $lang = LabelSettings::get(self::KITCHEN_LANG_KEY);
+
+        return [
+            'size' => $req + ['name' => StickerLayouts::describe($req['layout'], $req['w'], $req['h']), 'roll' => $roll['id'] ?? null],
+            'lang' => in_array($lang, StickerSheet::LANGS, true) ? $lang : 'en',
+        ];
+    }
 }

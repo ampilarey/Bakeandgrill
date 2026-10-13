@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import {
+  DEFAULT_KITCHEN_STICKER,
   createKitchenProductionBatch,
   failureMessage,
+  fetchKitchenLabelSetup,
   fetchPlanTasks,
   fetchProductionStickers,
   labelSheetUrl,
@@ -12,7 +14,10 @@ import {
   type KdsOrder,
   type KdsOrderItem,
   type KdsPlanTask,
+  type KdsTaskBatch,
+  type KitchenLabelSetup,
   type KitchenProductionBatch,
+  type StickerLang,
 } from "../../api";
 
 type Props = {
@@ -59,8 +64,26 @@ function fmtQty(n: number): string {
   return Number.isInteger(n) ? String(n) : n.toFixed(1);
 }
 
-/** The owner's 4 × 6 cm sticker, as many to an A4 sheet as fit: the size a kitchen prints without asking. */
-const KITCHEN_STICKER = { layout: "a4-custom", w: 40, h: 60 };
+/*
+ * Print when packing (round 12 of the labels work, owner 2026-10-13: "a
+ * Labels button on the kitchen board for the batch just made"). Every batch
+ * made for a task is listed on its card, from the server, so the stickers
+ * print from any device after a reload or by the next cook: how many, on
+ * the roll and in the language picked under Labels → Settings (4 × 6 cm in
+ * English until something is picked); the cook can pick another language
+ * here, which this screen remembers.
+ */
+const LANG_WORDS: Record<StickerLang, string> = { en: "English", dv: "ދިވެހި", both: "Both" };
+const LANG_KEY = "kds_label_lang";
+function storedLang(): StickerLang | null {
+  try {
+    const v = localStorage.getItem(LANG_KEY);
+    return v === "en" || v === "dv" || v === "both" ? v : null;
+  } catch {
+    return null;
+  }
+}
+const fmtTime = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 
 export function KitchenProductionPanel({
   token,
@@ -80,8 +103,30 @@ export function KitchenProductionPanel({
   const [tasks, setTasks] = useState<KdsPlanTask[] | null>(null);
   const [tasksDate, setTasksDate] = useState("");
   const [madeQty, setMadeQty] = useState<Record<number, string>>({});
-  // The batch each job made this session, so its stickers can be printed from here.
+  // The batch each job made this session: the server lists them on the task too, this covers the moment before the list reloads.
   const [batches, setBatches] = useState<Record<number, KitchenProductionBatch>>({});
+  // Print when packing (round 12): what the kitchen prints stickers on and in, the cook's own language pick, how many per batch, and what was printed.
+  const [labelSetup, setLabelSetup] = useState<KitchenLabelSetup | null>(null);
+  const [lang, setLang] = useState<StickerLang | null>(storedLang);
+  const [copies, setCopies] = useState<Record<number, string>>({});
+  const [printed, setPrinted] = useState<Record<number, { pdf: string; count: number }>>({});
+  useEffect(() => {
+    if (!canLabels) return;
+    fetchKitchenLabelSetup(token).then(setLabelSetup).catch(() => setLabelSetup(null));
+  }, [canLabels, token]);
+  const stickerSize = labelSetup?.size ?? DEFAULT_KITCHEN_STICKER;
+  const stickerLang: StickerLang = lang ?? labelSetup?.lang ?? "en";
+  const pickLang = (l: StickerLang) => {
+    setLang(l);
+    try { localStorage.setItem(LANG_KEY, l); } catch { /* a private window */ }
+  };
+  /** The batches made for a task: the server's list, else the one this session just sent. */
+  const batchesOf = (task: KdsPlanTask): KdsTaskBatch[] => {
+    if (task.batches && task.batches.length > 0) return task.batches;
+    const b = batches[task.id];
+    const line = b?.items.find((i) => i.item_id === task.item_id) ?? b?.items[0];
+    return b && line ? [{ pi: line.id, batch_no: b.batch_no, qty: line.produced_qty, made_at: null, expires_at: null, status: line.status }] : [];
+  };
 
   const cookingOrders = orders.filter((o) =>
     ["in_progress", "preparing"].includes(o.status),
@@ -138,23 +183,29 @@ export function KitchenProductionPanel({
   };
 
   /*
-   * Stickers for the batch just made (2026-10-12): the batch number, expiry
-   * and made-on date come from the line, one sticker a piece, on the
-   * kitchen's sticker size; the PDF opens to print (a tablet prints the PDF).
+   * Stickers for a batch (2026-10-12, round 12): the batch number, expiry
+   * and made-on date come from the line, one sticker a piece unless the cook
+   * typed a count, on the kitchen's roll and in its language; the PDF opens
+   * to print (a tablet prints the PDF).
    */
-  const printStickers = async (task: KdsPlanTask) => {
-    const batch = batches[task.id];
-    const line = batch?.items.find((i) => i.item_id === task.item_id) ?? batch?.items[0];
-    if (!line) return;
-    setBusyKey(`stickers-${task.id}`);
+  const printStickers = async (task: KdsPlanTask, b: KdsTaskBatch) => {
+    setBusyKey(`stickers-${b.pi}`);
     setErr("");
+    // Opened in the tap itself: a tablet's browser blocks a window opened only once the server has answered.
+    const win = window.open("", "_blank");
     try {
-      const { data } = await fetchProductionStickers(token, line.id);
-      if (!data.item) { setErr("This line is not a menu item, so it has no sticker."); return; }
-      const copies = Math.max(1, Math.min(400, Math.round(data.qty || task.made_qty || 1)));
-      const r = await productionStickerLinks(token, { items: [{ id: data.item.id, copies }], ...KITCHEN_STICKER, fill: true, mfg: data.mfg, exp: data.exp, batch: data.batch || null, pi: data.pi });
-      window.open(labelSheetUrl(r.pdf_url), "_blank", "noopener");
+      const { data } = await fetchProductionStickers(token, b.pi);
+      if (!data.item) { win?.close(); setErr("This line is not a menu item, so it has no sticker."); return; }
+      const typed = Number(copies[b.pi] ?? "");
+      const n = Math.max(1, Math.min(400, Math.round(typed > 0 ? typed : (data.qty || b.qty || task.made_qty || 1))));
+      const size = labelSetup?.size ?? data.size ?? DEFAULT_KITCHEN_STICKER;
+      const useLang: StickerLang = lang ?? labelSetup?.lang ?? data.lang ?? "en";
+      const r = await productionStickerLinks(token, { items: [{ id: data.item.id, copies: n }], layout: size.layout, w: size.w, h: size.h, lang: useLang, fill: true, mfg: data.mfg, exp: data.exp, batch: data.batch || null, pi: data.pi });
+      const pdf = labelSheetUrl(r.pdf_url);
+      if (win) { win.location.href = pdf; } else { window.open(pdf, "_blank", "noopener"); }
+      setPrinted((p) => ({ ...p, [b.pi]: { pdf, count: n } }));
     } catch (e) {
+      win?.close();
       setErr(failureMessage(e, "Could not prepare the stickers."));
     } finally {
       setBusyKey(null);
@@ -235,6 +286,22 @@ export function KitchenProductionPanel({
           {canProduce && tasks !== null && tasks.length === 0 && (
             <p style={{ color: "#b6a992" }}>Nothing planned for today{tasksDate ? ` (${tasksDate})` : ""}. The manager saves the plan under Kitchen → Plan.</p>
           )}
+          {canProduce && canLabels && tasks !== null && tasks.length > 0 && (
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", fontSize: 13, color: "#EDE4D4" }} data-testid="kds-sticker-setup">
+              <span>Stickers print on {stickerSize.name}, in</span>
+              {(["en", "dv", "both"] as const).map((l) => (
+                <button
+                  key={l}
+                  type="button"
+                  aria-pressed={stickerLang === l}
+                  onClick={() => pickLang(l)}
+                  style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid #EDE4D4", background: stickerLang === l ? "#B74B0C" : "#fff", color: stickerLang === l ? "#fff" : "#2A1E0C", fontWeight: 700, cursor: "pointer", fontSize: 12 }}
+                >
+                  {LANG_WORDS[l]}
+                </button>
+              ))}
+            </div>
+          )}
           {canProduce && ordered.map((task) => {
             const mine = userId != null && task.assigned_to === userId;
             const done = task.remaining <= 0;
@@ -273,17 +340,41 @@ export function KitchenProductionPanel({
                     <div style={{ whiteSpace: "pre-wrap", padding: "6px 10px", borderLeft: "2px solid #EDE4D4", marginTop: 2 }}>{task.instructions}</div>
                   </details>
                 )}
-                {canLabels && batches[task.id] && (
-                  <button
-                    type="button"
-                    disabled={busyKey === `stickers-${task.id}`}
-                    onClick={() => void printStickers(task)}
-                    data-testid={`kds-plan-stickers-${task.id}`}
-                    style={{ alignSelf: "flex-start", padding: "8px 12px", borderRadius: 8, border: "1px solid #B74B0C", background: "#fff", color: "#B74B0C", fontWeight: 700, cursor: "pointer", fontSize: 13 }}
-                  >
-                    {busyKey === `stickers-${task.id}` ? "Preparing…" : `Stickers for batch ${batches[task.id].batch_no}`}
-                  </button>
-                )}
+                {canLabels && batchesOf(task).map((b) => {
+                  const busyB = busyKey === `stickers-${b.pi}`;
+                  return (
+                    <div key={b.pi} data-testid={`kds-batch-${b.pi}`} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", padding: "8px 10px", borderRadius: 8, border: "1px dashed #B74B0C", background: "#FFF8F3" }}>
+                      <span style={{ fontSize: 13, fontWeight: 700 }}>
+                        Batch {b.batch_no || "—"}{b.made_at ? ` · ${fmtTime(b.made_at)}` : ""}{b.expires_at ? ` · use by ${b.expires_at}` : ""}
+                      </span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={400}
+                        step={1}
+                        inputMode="numeric"
+                        aria-label={`Stickers for batch ${b.batch_no}`}
+                        value={copies[b.pi] ?? String(Math.max(1, Math.round(b.qty)))}
+                        onChange={(e) => setCopies((c) => ({ ...c, [b.pi]: e.target.value }))}
+                        style={{ width: 72, padding: 8, borderRadius: 8, border: "1px solid #EDE4D4", fontSize: 15, fontWeight: 700, textAlign: "center" }}
+                      />
+                      <button
+                        type="button"
+                        disabled={busyB}
+                        onClick={() => void printStickers(task, b)}
+                        data-testid={`kds-plan-stickers-${b.pi}`}
+                        style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid #B74B0C", background: "#B74B0C", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: 13 }}
+                      >
+                        {busyB ? "Preparing…" : "Print stickers"}
+                      </button>
+                      {printed[b.pi] && (
+                        <a href={printed[b.pi].pdf} target="_blank" rel="noreferrer" data-testid={`kds-stickers-ready-${b.pi}`} style={{ fontSize: 12, color: "#B74B0C", fontWeight: 700 }}>
+                          {printed[b.pi].count} ready · open the PDF again
+                        </a>
+                      )}
+                    </div>
+                  );
+                })}
                 {!done && (
                   <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                     <input
