@@ -70,6 +70,10 @@ class Item extends Model
         'show_on_signage',
         'is_signage_promoted',
         'is_featured',
+        // Owner, 2026-10-13: water and other staples sell most but need no
+        // promoting. Ticked, the item is left out of every best-sellers and
+        // popular list (website home, order app, till, signage); reports count it.
+        'hide_from_bestsellers',
         // Label Hub (docs/LABEL_HUB_PLAN.md). Written only through
         // PUT /api/items/{item}/label, which needs labels.manage.
         'label_enabled',
@@ -108,6 +112,9 @@ class Item extends Model
      */
     protected $hidden = [
         'wholesale_price_laar',
+        // The Admin's switch (ItemController lists it for staff); the public
+        // menu only sees its effect, so the contract snapshots stay as they are.
+        'hide_from_bestsellers',
         // Label Hub settings are read through /api/labels, never the menu
         // payloads every app and customer sees.
         'label_enabled',
@@ -347,6 +354,7 @@ class Item extends Model
         'show_on_signage' => 'boolean',
         'is_signage_promoted' => 'boolean',
         'is_featured' => 'boolean',
+        'hide_from_bestsellers' => 'boolean',
         'label_enabled' => 'boolean',
         'label_show_price' => 'boolean',
         'label_show_nutrition' => 'boolean',

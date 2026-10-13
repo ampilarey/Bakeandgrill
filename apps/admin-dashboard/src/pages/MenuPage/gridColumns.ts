@@ -147,6 +147,7 @@ export const GRID_COLUMNS: GridColumn[] = [
   { key: 'show_on_signage', label: 'On signage', group: 'Display', kind: 'bool', field: 'show_on_signage', width: 86, defaultOn: false, sortValue: (i) => (i.show_on_signage ? 1 : 0) },
   { key: 'is_signage_promoted', label: 'Promoted', group: 'Display', kind: 'bool', field: 'is_signage_promoted', width: 84, defaultOn: false, sortValue: (i) => (i.is_signage_promoted ? 1 : 0) },
   { key: 'is_featured', label: 'Featured', group: 'Display', kind: 'bool', field: 'is_featured', width: 84, defaultOn: false, sortValue: (i) => (i.is_featured ? 1 : 0) },
+  { key: 'hide_from_bestsellers', label: 'Out of best sellers', group: 'Display', kind: 'bool', field: 'hide_from_bestsellers', width: 120, defaultOn: false, sortValue: (i) => (i.hide_from_bestsellers ? 1 : 0) },
   { key: 'sort', label: 'Sort', group: 'Basics', kind: 'int', field: 'sort_order', variantField: 'sort_order', width: 70, defaultOn: true, sortValue: (i) => numOf(i.sort_order) },
 ];
 

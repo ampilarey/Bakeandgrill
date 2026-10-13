@@ -86,6 +86,7 @@ class MenuBulkUpdateService
             'show_on_signage' => 'boolean',
             'is_signage_promoted' => 'boolean',
             'is_featured' => 'boolean',
+            'hide_from_bestsellers' => 'boolean',
             'card_name' => 'nullable|string|max:120',
             'card_name_dv' => 'nullable|string|max:120',
             'short_description' => 'nullable|string|max:140',

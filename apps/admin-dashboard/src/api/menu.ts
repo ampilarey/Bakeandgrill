@@ -148,6 +148,8 @@ export type MenuItem = {
   show_on_signage?: boolean;
   is_signage_promoted?: boolean;
   is_featured?: boolean;
+  /** Kept out of every best-sellers and popular list (owner, 2026-10-13: water bottles). */
+  hide_from_bestsellers?: boolean;
   combo_discount_pct?: number | null;
   combo_items?: Array<{
     item_id: number;
@@ -256,6 +258,8 @@ export type MenuItemPayload = {
   show_on_signage?: boolean;
   is_signage_promoted?: boolean;
   is_featured?: boolean;
+  /** Kept out of every best-sellers and popular list (owner, 2026-10-13: water bottles). */
+  hide_from_bestsellers?: boolean;
   combo_discount_pct?: number | null;
   combo_items?: Array<{ item_id: number; variant_id?: number | null; quantity?: number; is_optional?: boolean; surcharge?: number }>;
   /** Add-ons the customer may pick on this item. */
@@ -416,6 +420,7 @@ export type BulkItemFields = Partial<{
   packaging_fee: number;
   allow_pre_order: boolean;
   show_on_signage: boolean;
+  hide_from_bestsellers: boolean;
 }>;
 
 export type BulkItemChange = { id: number; fields: BulkItemFields };

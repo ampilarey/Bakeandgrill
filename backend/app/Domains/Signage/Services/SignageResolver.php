@@ -410,6 +410,8 @@ final class SignageResolver
         try {
             $items = Item::query()
                 ->where('is_active', true)
+                // An item kept out of the best sellers (owner, 2026-10-13) never makes the slide.
+                ->where('hide_from_bestsellers', false)
                 ->withCount(['orderItems as sales_30d' => function ($q) {
                     $q->whereHas('order', function ($order) {
                         $order->where('status', '!=', 'cancelled')

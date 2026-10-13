@@ -659,7 +659,7 @@ function VariantsEditor({
  * is always in reach.
  */
 type SectionId =
-  | 'basics' | 'pricing' | 'card' | 'details' | 'selling' | 'stock' | 'packaging' | 'addons' | 'bundle' | 'signage' | 'featured';
+  | 'basics' | 'pricing' | 'card' | 'details' | 'selling' | 'stock' | 'packaging' | 'addons' | 'bundle' | 'signage' | 'featured' | 'bestsellers';
 
 const SECTIONS: Array<{ id: SectionId; label: string }> = [
   { id: 'basics', label: 'Basics' },
@@ -673,6 +673,7 @@ const SECTIONS: Array<{ id: SectionId; label: string }> = [
   { id: 'bundle', label: 'Bundle' },
   { id: 'signage', label: 'TV board' },
   { id: 'featured', label: 'Featured' },
+  { id: 'bestsellers', label: 'Best sellers' },
 ];
 
 function Section({
@@ -1647,6 +1648,22 @@ export function MenuItemEditorModal({
             </label>
             <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
               Leads the website menu and the order app in a "Chef's picks" strip ahead of the categories. The dish stays in its own category too.
+            </p>
+          </Section>
+          <Section id="bestsellers" title="Best sellers" register={register}>
+            {/* Owner, 2026-10-13: "Some items like water bottles are always in
+                the best sellers section but I don't want some items be there." */}
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={form.hide_from_bestsellers}
+                onChange={(e) => set('hide_from_bestsellers', e.target.checked)}
+                data-testid="item-bestsellers-optout"
+              />
+              <span style={{ fontWeight: 600 }}>Keep out of best sellers</span>
+            </label>
+            <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
+              For water and other staples that sell most but need no promoting. Ticked, this item is left out of the website's Best Sellers, the order app's Top sellers, the till's Popular now row and the signage Bestsellers slide. Sales reports still count it.
             </p>
           </Section>
         </div>

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Models\Item;
 use App\Models\OrderItem;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
@@ -51,7 +52,11 @@ class PosPopularNowService
         }
 
         $onMenu = array_flip(array_map('intval', $menuItemIds));
-        $ranked = array_filter($totals, fn (int $qty, int $id) => isset($onMenu[$id]) && $qty > 0, ARRAY_FILTER_USE_BOTH);
+        // An item the owner keeps out of the best sellers (water and other
+        // staples, 2026-10-13) is left out here too, read fresh so the switch
+        // takes effect on the next menu refresh rather than when the cache turns.
+        $hidden = array_flip(Item::query()->where('hide_from_bestsellers', true)->pluck('id')->map('intval')->all());
+        $ranked = array_filter($totals, fn (int $qty, int $id) => isset($onMenu[$id]) && !isset($hidden[$id]) && $qty > 0, ARRAY_FILTER_USE_BOTH);
         arsort($ranked);
 
         return array_slice(array_map('intval', array_keys($ranked)), 0, self::LIMIT);

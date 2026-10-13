@@ -497,6 +497,21 @@ Rows carry `variant_id` and a `key` unique per product. Removed (soft-deleted)
 order lines do not count. Waste logs have no variant, so waste stays per item.
 New sales reports follow the same rule.
 
+## Best sellers: an item can opt out
+
+Owner, 2026-10-13: "Some items like water bottles are always in the best sellers
+section but I don't want some items be there." `items.hide_from_bestsellers` (the item
+editor's Best sellers section, "Keep out of best sellers"; a column and a bulk action
+on the menu grid) leaves the item out of every best-sellers and popular list: the
+website home's Best Sellers (`HomeController`, the content preview), the order app's
+Top sellers filter and sort (the public items list reports `sales_30d` 0 for it, which
+the signage board reads too), the till's Popular now row (`PosPopularNowService::rank`,
+read fresh so the switch takes effect on the next menu refresh) and the signage
+Bestsellers slide (`SignageResolver`). Sales reports and the Telegram best sellers still
+count it: a report is not a promotion. The flag is in the model's `$hidden` and listed
+by `ItemController` for staff only, so the public contract snapshots do not carry it.
+A new best-sellers or popular surface honours the flag too. `BestSellerOptOutTest`.
+
 ## POS order type colours
 
 Owner, 2026-10-11: "add more visual colors to differentiate between order type in

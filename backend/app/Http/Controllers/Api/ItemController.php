@@ -406,6 +406,13 @@ class ItemController extends Controller
                 ]),
             ];
 
+            if ($includeAdminExtras) {
+                // Kept out of every best-sellers and popular list (owner,
+                // 2026-10-13: water bottles). The Admin's switch; customers
+                // only see its effect (sales_30d below, the home page).
+                $data['hide_from_bestsellers'] = (bool) ($item->hide_from_bestsellers ?? false);
+            }
+
             // Public / POS callers receive availability metadata
             if ($includeAvailability) {
                 $specialBlock = $baseSpecial?->toApiBlock();
@@ -472,7 +479,9 @@ class ItemController extends Controller
                     $data['prep_time_minutes'] = $item->prep_time_minutes ?? null;
                     $data['avg_rating'] = $item->avg_rating !== null ? round((float) $item->avg_rating, 1) : null;
                     $data['review_count'] = (int) ($item->review_count ?? 0);
-                    $data['sales_30d'] = (int) ($item->sales_30d ?? 0);
+                    // The order app's Top sellers filter and the signage board read
+                    // this count; an item kept out of the best sellers reports none.
+                    $data['sales_30d'] = $item->hide_from_bestsellers ? 0 : (int) ($item->sales_30d ?? 0);
                     $data['photos'] = $item->relationLoaded('photos')
                         ? $item->photos->map(fn ($p) => [
                             'id' => $p->id,

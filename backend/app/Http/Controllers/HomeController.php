@@ -24,9 +24,11 @@ class HomeController extends Controller
         $isOpen = $openingHours->isOpenNow();
         $todayHours = $openingHours->getTodayHours();
 
-        // Get best selling items (most ordered)
+        // Get best selling items (most ordered). An item the owner keeps out of
+        // the best sellers (water and other staples, 2026-10-13) never leads here.
         $bestSellers = Item::where('is_active', true)
             ->where('is_available', true)
+            ->where('hide_from_bestsellers', false)
             ->with(['category', 'variants'])
             ->withCount(['orderItems' => function ($q) {
                 $q->whereHas('order', function ($query) {
