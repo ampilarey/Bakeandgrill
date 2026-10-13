@@ -14,6 +14,7 @@ const fetchLabelFooters = vi.fn();
 const fetchDeliveryStickers = vi.fn();
 const fetchCateringStickers = vi.fn();
 const sendToLabelPrinter = vi.fn();
+const fetchLabelPrint = vi.fn();
 const canManage = { value: false };
 /** The label printer kept in this browser (round C); the test sets it. */
 const printerSetup = { language: 'tspl', dpi: 203, agent: 'http://127.0.0.1:9110', host: '', port: 9100 };
@@ -58,7 +59,9 @@ vi.mock('../../api', () => ({
   deleteLabelFooter: vi.fn(),
   readPrinterSetup: () => ({ ...printerSetup }),
   sendToLabelPrinter: (...a: unknown[]) => sendToLabelPrinter(...a),
+  fetchLabelPrint: (...a: unknown[]) => fetchLabelPrint(...a),
 }));
+vi.mock('../ScanSheet', () => ({ ScanSheet: () => <div data-testid="scan-sheet" /> }));
 
 import { StickerPrintPanel } from './StickerPrintPanel';
 
@@ -99,7 +102,7 @@ const PRESETS = [
 
 describe('StickerPrintPanel', () => {
   beforeEach(() => {
-    [fetchLabelLayouts, fetchLabelProducts, fetchCustomLabels, stickerLinks, openLabelSheet, downloadLabelSheet, fetchLabelJobs, printLabelJob, fetchLabelFooters, sendToLabelPrinter].forEach((f) => f.mockReset());
+    [fetchLabelLayouts, fetchLabelProducts, fetchCustomLabels, stickerLinks, openLabelSheet, downloadLabelSheet, fetchLabelJobs, printLabelJob, fetchLabelFooters, sendToLabelPrinter, fetchLabelPrint].forEach((f) => f.mockReset());
     Object.assign(printerSetup, { language: 'tspl', dpi: 203, host: '', port: 9100 });
     fetchLabelJobs.mockResolvedValue({ data: [], last_page: 1 });
     fetchLabelFooters.mockResolvedValue({ data: [] });
@@ -295,6 +298,54 @@ describe('StickerPrintPanel', () => {
     await waitFor(() => expect(screen.getByLabelText('Print Gift box')).toBeChecked());
     // Without Manage label settings there is no "New custom label".
     expect(screen.queryByTestId('sticker-new-custom')).not.toBeInTheDocument();
+  });
+
+  // Scan to reprint (round 11, 2026-10-13): a pack's code opens the form on the very label that printed it.
+  it('opens on the exact label of a scanned pack code and marks the new print as a reprint of it', async () => {
+    stickerLinks.mockResolvedValue({ url: '/labels/stickers?print=1&signature=x', view_url: '/labels/stickers?signature=x', pdf_url: '/labels/stickers.pdf?signature=x', expires_in_minutes: 30, summary: { layout: 'a4-4', label: '4 on A4', design: 'full', stickers: 2, pages: 1, per_page: 4, products: [] } });
+    fetchLabelPrint.mockResolvedValue({ data: {
+      code: 'K7PQ2M4D', kind: 'sticker_dv', layout: 'a4-4', stock: '4 on A4', product: { kind: 'item', id: 1, name: 'Bajiya' }, copies: 2,
+      mfg_date: '2026-10-10', exp_date: '2027-01-08', days_left: 87, status: 'fresh', batch_code: 'A1', pack_qty: 6, for: 'NH Kuda Rah', for2: null, reprint_of: null,
+      printed_by: 'Aminath', printed_at: '2026-10-13T09:00:00+05:00', batch_url: '/b/K7PQ2M4D',
+      request: { items: [{ id: 1, copies: 2, kind: 'item', batch: 'A1', qty: 6, mfg: '2026-10-10' }], lang: 'dv', layout: 'a4-4', w: null, h: null, fill: true, mfg: '2026-10-13', exp: null, batch: 'SHEET', qty: 12, pi: null, type: null, footer: null, rounded: false, for: 'NH Kuda Rah', for2: null, promo: null, promo_was: null, promo_now: null, promo_text: null, number: false, marks: false, bleed: null },
+    } });
+    render(<MemoryRouter initialEntries={['/labels/stickers?code=k7pq2m4d']}><StickerPrintPanel /></MemoryRouter>);
+    const banner = await screen.findByTestId('sticker-reprint');
+    expect(fetchLabelPrint).toHaveBeenCalledWith('k7pq2m4d');
+    expect(banner).toHaveTextContent('Printing again the sticker of pack K7PQ2M4D: Bajiya · 2 stickers · 4 on A4 · batch A1 · 6 per pack · made 2026-10-10 · use by 2027-01-08 · for NH Kuda Rah.');
+    expect(banner).toHaveTextContent('by Aminath');
+    expect(screen.queryByTestId('sticker-reprint-expired')).not.toBeInTheDocument();
+    // The scan row gives way to the banner; the form holds the pack's details.
+    expect(screen.queryByTestId('reprint-scan')).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByLabelText('Print Bajiya')).toBeChecked());
+    expect(screen.getByLabelText('How many Bajiya stickers')).toHaveValue(2);
+    expect(screen.getByLabelText('Bajiya: batch')).toHaveValue('A1');
+    expect(screen.getByLabelText('Bajiya: made on')).toHaveValue('2026-10-10');
+    expect(screen.getByRole('button', { name: 'ދިވެހި' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByLabelText('Packed for (optional)')).toHaveValue('NH Kuda Rah');
+    fireEvent.click(screen.getByTestId('sticker-prepare'));
+    await waitFor(() => expect(prepared()).toBeTruthy());
+    expect(prepared()).toMatchObject({ reprint: 'K7PQ2M4D', lang: 'dv', fill: true, batch: 'SHEET', qty: 12, for: 'NH Kuda Rah', items: [{ id: 1, copies: 2, kind: 'item', batch: 'A1', qty: 6, mfg: '2026-10-10' }] });
+  });
+
+  it('says when no pack has the scanned code, and when the pack is past its date', async () => {
+    stickerLinks.mockRejectedValue(new Error('x'));
+    fetchLabelPrint.mockRejectedValue(new Error('No pack has the code ZZZZ9999. A code is eight letters and digits, none of 0, O, 1 or I.'));
+    const { unmount } = render(<MemoryRouter initialEntries={['/labels/stickers?code=ZZZZ9999']}><StickerPrintPanel /></MemoryRouter>);
+    expect(await screen.findByRole('alert')).toHaveTextContent('No pack has the code ZZZZ9999');
+    expect(screen.getByTestId('reprint-scan')).toBeInTheDocument();
+    unmount();
+
+    fetchLabelPrint.mockResolvedValue({ data: {
+      code: 'EXPD2345', kind: 'sticker_en', layout: 'a4-4', stock: '4 on A4', product: { kind: 'item', id: 2, name: 'Patties' }, copies: 1,
+      mfg_date: '2026-07-01', exp_date: '2026-10-09', days_left: -4, status: 'expired', batch_code: null, pack_qty: null, for: null, for2: null, reprint_of: null,
+      printed_by: null, printed_at: null, batch_url: '/b/EXPD2345',
+      request: { items: [{ id: 2, copies: 1, kind: 'item' }], lang: 'en', layout: 'a4-4', fill: true, mfg: '2026-07-01', exp: '2026-10-09' },
+    } });
+    render(<MemoryRouter initialEntries={['/labels/stickers?code=EXPD2345']}><StickerPrintPanel /></MemoryRouter>);
+    expect(await screen.findByTestId('sticker-reprint-expired')).toHaveTextContent('past its date by 4 days');
+    await waitFor(() => expect(screen.getByLabelText('Print Patties')).toBeChecked());
+    expect(screen.getByLabelText('Expiry')).toHaveValue('2026-10-09');
   });
 
   // 2026-10-12: Reprint on Expiring printed stock opens the form on the menu item.

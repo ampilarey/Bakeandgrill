@@ -159,3 +159,9 @@ Route::put('/labels/templates/{template}', [LabelsController::class, 'updateTemp
 Route::delete('/labels/templates/{template}', [LabelsController::class, 'destroyTemplate'])
     ->middleware('permission:labels.manage')
     ->whereNumber('template');
+// Scan to reprint (round 11, 2026-10-13: "scan a pack's QR with the phone and
+// reprint that exact label"): a print by the code on its stickers, with the
+// request that prints it again. Read with Print labels, as the print log is.
+Route::get('/labels/prints/{code}', [LabelsController::class, 'print'])
+    ->middleware('permission:labels.print')
+    ->where('code', '[A-Za-z0-9]{4,12}');

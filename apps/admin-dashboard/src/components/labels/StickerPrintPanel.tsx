@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Printer, FileDown, AlertTriangle, Search, Bookmark, Eye, Plus, History, CalendarDays, ChevronDown, ChevronUp, Star, Clock, Send, Image as ImageIcon, ListPlus } from 'lucide-react';
+import { Printer, FileDown, AlertTriangle, Search, Bookmark, Eye, Plus, History, CalendarDays, ChevronDown, ChevronUp, Star, Clock, Send, Image as ImageIcon, ListPlus, RotateCcw } from 'lucide-react';
 import {
-  downloadLabelSheet, fetchCateringStickers, fetchCustomLabels, fetchDeliveryStickers, fetchLabelFooters, fetchLabelJob, fetchLabelJobs, fetchLabelLayouts, fetchLabelProducts, fetchLabelTypes, openLabelSheet, printLabelJob, printsViaPdf, readPrinterSetup, renameLabelJob, sendToLabelPrinter, stickerLinks,
-  type CustomLabel, type LabelFooter, type LabelJob, type LabelLimits, type LabelPreset, type LabelProduct, type LabelRoll, type LabelType, type PromoKind, type SheetLinks, type StickerLang, type StickerRun, type StickerSummary,
+  downloadLabelSheet, fetchCateringStickers, fetchCustomLabels, fetchDeliveryStickers, fetchLabelFooters, fetchLabelJob, fetchLabelJobs, fetchLabelLayouts, fetchLabelPrint, fetchLabelProducts, fetchLabelTypes, openLabelSheet, printLabelJob, printsViaPdf, readPrinterSetup, renameLabelJob, sendToLabelPrinter, stickerLinks,
+  type CustomLabel, type LabelFooter, type LabelJob, type LabelLimits, type LabelPreset, type LabelPrintLookup, type LabelProduct, type LabelRoll, type LabelType, type PromoKind, type SheetLinks, type StickerLang, type StickerRun, type StickerSummary,
 } from '../../api';
 import { useCurrentUserPermissions } from '../../hooks/usePermissions';
 import { useIsBelowDesktop } from '../../hooks/useIsMobile';
@@ -18,6 +18,7 @@ import { CustomLabelModal } from './CustomLabels';
 import { FooterPicker } from './FooterPicker';
 import { FoldHelp } from './FoldHelp';
 import { ChooseItemsModal } from './ChooseItemsModal';
+import { ReprintScan } from './ReprintScan';
 import { DEFAULT_CHOICE, choiceFromRequest, pageOf, rememberSize, rememberedSize, requestFor, sizeName, sizeOf, sizeProblem, stockOf, type SizeChoice } from './labelSize';
 
 /*
@@ -88,6 +89,26 @@ function runPayload(run: RowRun | undefined, fill: boolean): StickerRun {
   if (run.for.trim()) out.for = run.for.trim();
   if (run.for2.trim()) out.for2 = run.for2.trim();
   return out;
+}
+
+/*
+ * Scan to reprint (round 11, 2026-10-13): ?code=CODE, from the QR on a pack's
+ * sticker, opens the form on the very label that printed it, with the pack's
+ * details named above the form; the new print is logged as a reprint of it.
+ */
+const whenPrinted = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+/** "Bajiya · 2 stickers · 40 × 60 mm, 21 on A4 · batch A1 · 6 per pack · made 2026-10-10 · use by 2027-01-08 · for NH Kuda Rah". */
+export function reprintLine(r: LabelPrintLookup): string {
+  return [
+    r.product?.name ?? 'a product no longer on the list',
+    `${r.copies} ${r.copies === 1 ? 'sticker' : 'stickers'}`,
+    r.stock,
+    r.batch_code ? `batch ${r.batch_code}` : null,
+    r.pack_qty ? `${r.pack_qty} per pack` : null,
+    r.mfg_date ? `made ${r.mfg_date}` : null,
+    r.exp_date ? `use by ${r.exp_date}` : null,
+    r.for ? `for ${r.for}` : null,
+  ].filter(Boolean).join(' · ');
 }
 
 const fieldClass = 'h-10 min-h-[44px] px-3 rounded-lg border border-[var(--color-border)] bg-white text-sm text-[var(--color-text)] w-full';
@@ -174,6 +195,9 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
   // products, how many of each, and who the packs are for.
   const deliveryParam = fixedItems ? null : params.get('delivery');
   const cateringParam = fixedItems ? null : params.get('catering');
+  // Scan to reprint (round 11): ?code=CODE opens the label that printed that pack.
+  const codeParam = fixedItems ? null : params.get('code');
+  const [reprint, setReprint] = useState<LabelPrintLookup | null>(null);
   const [editing, setEditing] = useState<{ id: number; name: string } | null>(null);
   const [savedSize, setSavedSize] = useState<{ layout: string; w: number | null; h: number | null } | null>(null);
   // Print again: the last few saved sticker labels, one tap each (a cook
@@ -226,43 +250,62 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
     if (mapped) setChoice(mapped);
   }, [presets]);
 
+  /** Fill the form from a request as it was sent: a saved label's (?job=) or a scanned pack's (?code=). */
+  const applyRequest = (q: Record<string, unknown>) => {
+    const items = Array.isArray(q.items) ? (q.items as ({ id: number; copies: number; kind?: string } & StickerRun)[]) : [];
+    setPicked(Object.fromEntries(items.map((i) => [keyOf(i.kind === 'custom' ? 'custom' : 'item', Number(i.id)), Number(i.copies)])));
+    setRuns(Object.fromEntries(items.filter((i) => RUN_KEYS.some((k) => i[k] != null && i[k] !== '')).map((i) => [keyOf(i.kind === 'custom' ? 'custom' : 'item', Number(i.id)), runFrom(i)])));
+    if (q.lang === 'dv' || q.lang === 'en' || q.lang === 'both') setLang(q.lang);
+    setSavedSize({ layout: typeof q.layout === 'string' ? q.layout : 'a4-4', w: q.w != null ? Number(q.w) : null, h: q.h != null ? Number(q.h) : null });
+    setFill(Boolean(q.fill));
+    if (typeof q.mfg === 'string' && q.mfg) setMfg(q.mfg);
+    setExp(typeof q.exp === 'string' ? q.exp : '');
+    setBatch(typeof q.batch === 'string' ? q.batch : '');
+    setQty(q.qty != null && q.qty !== '' ? String(q.qty) : '');
+    setAsType(q.type ? Number(q.type) : null);
+    setFooter(q.footer ? Number(q.footer) : null);
+    setRounded(Boolean(q.rounded));
+    setPackedFor(typeof q.for === 'string' ? q.for : '');
+    setPackedFor2(typeof q.for2 === 'string' ? q.for2 : '');
+    if (q.promo === 'was_now') {
+      setPromoPreset('was_now');
+      setPromoWas(q.promo_was != null && q.promo_was !== '' ? String(q.promo_was) : '');
+      setPromoNow(q.promo_now != null && q.promo_now !== '' ? String(q.promo_now) : '');
+    } else if (q.promo === 'text' && typeof q.promo_text === 'string') {
+      const words = q.promo_text.toUpperCase();
+      setPromoPreset(PROMO_PRESETS.some(([v]) => v === words) ? words : 'custom');
+      setPromoText(q.promo_text);
+    } else {
+      setPromoPreset('');
+    }
+    setNumbered(Boolean(q.number));
+    setMarks(Boolean(q.marks));
+    setBleed(q.bleed != null && q.bleed !== '' && Number(q.bleed) > 0 ? String(q.bleed) : '0');
+    if (q.type || q.footer || q.batch || q.qty || q.for || q.promo || q.number || q.marks) setMoreOpen(true);
+  };
+
   useEffect(() => {
     if (!jobParam) return;
     fetchLabelJob(Number(jobParam)).then((r) => {
-      const q = r.data.request as Record<string, unknown>;
-      const items = Array.isArray(q.items) ? (q.items as ({ id: number; copies: number; kind?: string } & StickerRun)[]) : [];
-      setPicked(Object.fromEntries(items.map((i) => [keyOf(i.kind === 'custom' ? 'custom' : 'item', Number(i.id)), Number(i.copies)])));
-      setRuns(Object.fromEntries(items.filter((i) => RUN_KEYS.some((k) => i[k] != null && i[k] !== '')).map((i) => [keyOf(i.kind === 'custom' ? 'custom' : 'item', Number(i.id)), runFrom(i)])));
-      if (q.lang === 'dv' || q.lang === 'en' || q.lang === 'both') setLang(q.lang);
-      setSavedSize({ layout: typeof q.layout === 'string' ? q.layout : 'a4-4', w: q.w != null ? Number(q.w) : null, h: q.h != null ? Number(q.h) : null });
-      setFill(Boolean(q.fill));
-      if (typeof q.mfg === 'string' && q.mfg) setMfg(q.mfg);
-      setExp(typeof q.exp === 'string' ? q.exp : '');
-      setBatch(typeof q.batch === 'string' ? q.batch : '');
-      setQty(q.qty != null && q.qty !== '' ? String(q.qty) : '');
-      setAsType(q.type ? Number(q.type) : null);
-      setFooter(q.footer ? Number(q.footer) : null);
-      setRounded(Boolean(q.rounded));
-      setPackedFor(typeof q.for === 'string' ? q.for : '');
-      setPackedFor2(typeof q.for2 === 'string' ? q.for2 : '');
-      if (q.promo === 'was_now') {
-        setPromoPreset('was_now');
-        setPromoWas(q.promo_was != null && q.promo_was !== '' ? String(q.promo_was) : '');
-        setPromoNow(q.promo_now != null && q.promo_now !== '' ? String(q.promo_now) : '');
-      } else if (q.promo === 'text' && typeof q.promo_text === 'string') {
-        const words = q.promo_text.toUpperCase();
-        setPromoPreset(PROMO_PRESETS.some(([v]) => v === words) ? words : 'custom');
-        setPromoText(q.promo_text);
-      } else {
-        setPromoPreset('');
-      }
-      setNumbered(Boolean(q.number));
-      setMarks(Boolean(q.marks));
-      setBleed(q.bleed != null && q.bleed !== '' && Number(q.bleed) > 0 ? String(q.bleed) : '0');
-      if (q.type || q.footer || q.batch || q.qty || q.for || q.promo || q.number || q.marks) setMoreOpen(true);
+      applyRequest(r.data.request as Record<string, unknown>);
       setEditing({ id: r.data.id, name: r.data.name });
     }).catch(() => setError('That saved label could not be opened.'));
-  }, [jobParam]);
+  }, [jobParam]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Scan to reprint (round 11): the pack's print, with the request that made it.
+  useEffect(() => {
+    if (!codeParam) return;
+    fetchLabelPrint(codeParam).then((r) => {
+      if (!r.data.request) {
+        setReprint(null);
+        setError(`Pack ${r.data.code} is of a product that is no longer on the list, so its sticker cannot be printed again.`);
+        return;
+      }
+      applyRequest(r.data.request);
+      setReprint(r.data);
+      setError(null);
+    }).catch((e) => setError(e instanceof Error && e.message ? e.message : `No pack has the code ${codeParam.toUpperCase()}.`));
+  }, [codeParam]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // A saved label's size, once the presets are known.
   useEffect(() => {
@@ -360,6 +403,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
       marks,
       bleed: marks && Number(bleed) > 0 ? Number(bleed) : null,
       dpi: printer.dpi,
+      reprint: reprint?.code ?? null,
     };
   };
 
@@ -501,6 +545,25 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
           </TabScrollRow>
           <p className="text-xs text-[var(--color-text-muted)] mt-1">Pinned labels, then the last sheets printed, with today's dates. Tap the name to change one first.</p>
         </section>
+      )}
+      {/* Scan to reprint (round 11): the QR on a pack, or its code, opens the label that printed it. */}
+      {!fixedItems && !editing && !reprint && <ReprintScan />}
+      {reprint && (
+        <div className="flex flex-wrap items-start gap-2 text-sm text-[var(--color-text-secondary)] p-3 rounded-lg bg-[var(--color-bg)]" data-testid="sticker-reprint">
+          <RotateCcw size={16} className="mt-0.5 shrink-0 text-[var(--color-primary)]" aria-hidden />
+          <span className="flex-1 min-w-[200px]">
+            Printing again the sticker of pack <strong className="font-mono text-[var(--color-text)]">{reprint.code}</strong>: {reprintLine(reprint)}.
+            {reprint.printed_at ? ` Printed ${whenPrinted(reprint.printed_at)}${reprint.printed_by ? ` by ${reprint.printed_by}` : ''}.` : ''}
+            {' '}The same details are filled in below: change anything, then Prepare. The new print gets a code of its own and the log says which pack it stood in for.
+            {reprint.status === 'expired' && (
+              <span className="block mt-1 font-semibold text-[var(--color-danger)]" data-testid="sticker-reprint-expired">This pack is past its date{reprint.days_left != null ? ` by ${-reprint.days_left} ${-reprint.days_left === 1 ? 'day' : 'days'}` : ''}: it will not print until the dates are changed.</span>
+            )}
+            {(reprint.status === 'today' || reprint.status === 'soon') && (
+              <span className="block mt-1 font-semibold text-[var(--color-warning)]">{reprint.status === 'today' ? 'This pack expires today.' : `This pack expires in ${reprint.days_left} ${reprint.days_left === 1 ? 'day' : 'days'}.`}</span>
+            )}
+          </span>
+          {reprint.batch_url && <a href={reprint.batch_url} target="_blank" rel="noreferrer" className="text-xs font-semibold text-[var(--color-primary)] underline">Pack page</a>}
+        </div>
       )}
       {editing && (
         <p className="flex flex-wrap items-center gap-2 text-sm text-[var(--color-text-secondary)] p-3 rounded-lg bg-[var(--color-bg)]" data-testid="sticker-editing">

@@ -249,6 +249,51 @@ each picked row (`sticker-row-details-{key}`, `sticker-row-run-{key}`) and the s
 label's reopen in `StickerPrintPanel.tsx`; `StickerRun` in `api/labels.ts`. Tests:
 `VariableRunsTest`, the variable-run case in `StickerPrintPanel.test.tsx`.
 
+### Scan to reprint: a pack's code opens the label that printed it
+
+Round 11 (owner, 2026-10-13; the audit's "scan a pack's QR with the phone and reprint
+that exact label"). Every sticker print keeps the request that made it, narrowed to its
+own product (`label_prints.request`): the product and its count, the size, the
+language, the dates, the sheet's batch, quantity, packed-for, bottom strip, flash,
+numbering and crop marks, and the row's own details (round 10). The code on the pack
+gives it all back. Three ways in, all landing on **Print labels** with `?code=CODE`:
+
+- **The phone's camera.** The QR in the sticker's header opens the pack page
+  (`/b/{code}`), which now ends with **Staff: print this sticker again** (shown while
+  the product exists). Signing in to the Admin lands on the label.
+- **Print labels → Print a pack's sticker again.** A row above the products, with
+  **Scan its QR** (the camera, through the same `ScanSheet` the stock shelf uses) and a
+  box to type the code from the print log or the pack page; either opens the label.
+- **Saved labels → Print log → Print again** on any sticker row whose product still
+  exists.
+
+The form opens with the pack's details filled in and a line above it: "Printing again
+the sticker of pack K7PQ2M4D: Bajiya · 2 stickers · 40 × 60 mm, 21 on A4 · batch A1 ·
+6 per pack · made 2026-10-10 · use by 2027-01-08 · for NH Kuda Rah. Printed 13 Oct 2026
+by Aminath." plus **Pack page**; a pack past its date says so in red (the server
+refuses an expired date, so the dates must change first), one expiring today or within
+two days in amber. Change anything, then Prepare: the new print is a print of its own
+(a new code; the pack page of the old code still stands) and the print log says
+**Reprint of K7PQ2M4D**. A product no longer on the list cannot be printed again; the
+lookup says so. A code nobody has gets "No pack has the code ZZZZ9999. A code is eight
+letters and digits, none of 0, O, 1 or I." A print logged before this round is rebuilt
+from the log's columns (product, count, size, language, dates, batch, quantity,
+packed-for), so older packs reprint too.
+
+Where: `App\Domains\Labels\Reprint` (`KEYS`, `of()` narrows a normalised request to one
+product, `rebuilt()` from the columns, `status()`, `present()`); the log row's
+`request` (migration `label_print_requests`) and `details.reprint_of`; `reprint` on a
+sticker request (`StickerSheet::normalise()`, log only, not kept by the saved label);
+`GET /api/labels/prints/{code}` (`labels.print`; 404 for an unknown code) and
+`reprint_of` / `reprintable` on `GET /api/labels/prints`; the staff link in
+`labels/batch.blade.php`. Admin: `ReprintScan.tsx` (`codeFromScan()` reads the code
+out of the pack page's address, a reprint link or the bare code), `?code=` and the
+`sticker-reprint` line in `StickerPrintPanel.tsx` (`applyRequest()` fills the form for
+a saved label and a scanned pack alike; `reprintLine()`), Print again in the hub's
+print log; `fetchLabelPrint()` and `LabelPrintLookup` in `api/labels.ts`. Tests:
+`ScanToReprintTest`, `ReprintScan.test.tsx`, the scanned-code cases in
+`StickerPrintPanel.test.tsx`.
+
 ## Who can use it
 
 Two permissions, both owner-only until granted in Staff → Permissions (to a role or
@@ -840,6 +885,7 @@ beneath.
 | Wrap-around labels | `StickerLayouts::design()` answers `wrap` (`WRAP_MIN_RATIO` 2.5, `WRAP_MIN_W` 90, `WRAP_MIN_H` 25; mirrored in `labelSize.ts`, pinned by `fixtures/label_size_parity.json`), presets `r200x50`, `r180x40`, `r150x35`, `r120x40`; `App\Domains\Labels\WrapDesign` (`wrap()`: widths from each part's least width and share, `DROP_ORDER`, the band, one method a part); `WrapConfig` (`of()`, `clean()`, `PARTS`, `DEFAULT_PARTS`, `catalogue()`), kept as `items.label_wrap` / `custom_labels.label_wrap` (JSON) with `label_nutrition_per`; `LabelMarks` (`MARKS` glyph + caption, `for()`); `stickerData()` sets `wrap`, `marks`, `pictures` (PNG data URIs) and `producer`; `LabelText::FONTS['sym']` (`fonts/pdf/LabelSymbols.ttf`, `fonts/label-symbols.woff2`); `GET /api/labels/layouts` carries `wrap` (parts, marks, defaults); `WrapParts.tsx` on `ItemLabelTab` and the custom label editor, `wrap_pictures` on the payloads for the thumbnails |
 | Allergen pictograms | `App\Domains\Labels\AllergenIcons` (`for()`, `keys()`, `svg()`, `dataUri()`; words → symbols, captions, `SPICY_LEVELS`); `stickerData()` sets `icons`, `StickerDesign::full()` draws the row (12 mm pitch, 8.8 mm tall) above the note; setting `label_allergen_icons` |
 | Variable runs | A row's own `batch`, `qty`, `mfg`, `exp`, `for`, `for2` in a sticker request (`StickerSheet::RUN_KEYS`, `cleanRun()`, `rowRequest()`; the link's `runs`); the Details fold on each picked row of `StickerPrintPanel.tsx` (§ Variable runs) |
+| Scan to reprint | `label_prints.request` (the request that made the print, one product; § Scan to reprint) and `details.reprint_of`; `App\Domains\Labels\Reprint` (`of()`, `rebuilt()`, `status()`, `present()`); `reprint` on a sticker request; `GET /api/labels/prints/{code}` (`labels.print`); the staff link on the pack page; `ReprintScan.tsx` (`codeFromScan()`), `?code=` on `StickerPrintPanel.tsx`, Print again in the print log |
 | Badges | `items.label_badges`, `custom_labels.label_badges` (JSON list, up to four keys; § Badges); `App\Domains\Labels\LabelBadges` (`CATALOGUE`, `clean()`, `rules()`, `for()`, `pills()`), drawn by every design under the name; the catalogue with `GET /api/labels/layouts` as `badges`; `BadgePicker.tsx` and the tap sheet's `chips` input |
 | Drag designer | `items.label_layout`, `custom_labels.label_layout` (JSON per design and part; § The drag designer); `App\Domains\Labels\LabelLayout` (`clean()`, `rules()`, `apply()` on the marked runs in `StickerSheet::pieces()`); `labelLayout.ts`, `SpotOverlay` move mode, `ArrangeBar.tsx` |
 | Templates | `label_templates` (`App\Models\LabelTemplate`; § Templates); `App\Domains\Labels\LabelTemplates` (`KEYS`, `BUILTIN`, `rules()`, `normaliseFields()`, `normaliseSize()`, `present()`); API `GET /api/labels/templates` (`labels.print`), `POST` / `PUT` / `DELETE /api/labels/templates/{template}` (`labels.manage`); `labelTemplates.ts`, `StartFrom.tsx`, `LabelTemplatesCard.tsx` under Wording and logos |

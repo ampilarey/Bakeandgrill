@@ -334,7 +334,14 @@ carry its own batch, quantity, dates and packed-for (`StickerSheet::RUN_KEYS`,
 `cleanRun()`, `rowRequest()` over the sheet's request in `build()` and `summary()`; the
 link's `runs`; the print log per product), typed in the Details fold of each picked row
 on Print labels; a new per-print value that a row may own goes into `RUN_KEYS`, the
-rules, `runPayload()` and the fold together. How to
+rules, `runPayload()` and the fold together. Scan to reprint (round 11): every sticker
+print keeps the request that made it, one product (`label_prints.request`,
+`App\Domains\Labels\Reprint::of()`; `rebuilt()` from the columns for older rows), and
+`GET /api/labels/prints/{code}` gives it back with the pack's dates; the pack page's
+"Staff: print this sticker again", the scan row on Print labels (`ReprintScan`,
+`codeFromScan()`) and Print again on the print log all open `?code=`, whose print is
+logged with `details.reprint_of` and a code of its own. A new sticker request key that
+a print must replay goes into `Reprint::KEYS` (the saved label's keys too). How to
 use it and where everything lives: `docs/LABELS.md`; design and decisions:
 `docs/LABEL_HUB_PLAN.md` and `docs/LABEL_HUB_V2_PLAN.md`.
 

@@ -327,6 +327,8 @@ export type StickerRequest = {
   marks?: boolean;
   bleed?: number | null;
   dpi?: PrinterDpi | null;
+  /** Scan to reprint (round 11): the code of the pack this print stands in for; the log keeps it. */
+  reprint?: string | null;
 };
 
 export type PromoKind = '' | 'was_now' | 'text';
@@ -492,6 +494,37 @@ export type LabelPrintRow = {
   /** The sticker's code and the pack page it opens (2026-10-12), stickers only. */
   code?: string | null;
   batch_url?: string | null;
+  /** Scan to reprint (round 11): which pack this print stood in for, and whether it can print again. */
+  reprint_of?: string | null;
+  reprintable?: boolean;
+};
+
+/**
+ * A print found by the code on its stickers (round 11, scan to reprint): the
+ * pack, and the request that prints its sticker again (null when the
+ * product is gone). `status` as the pack page words it; `days_left` is
+ * negative once past.
+ */
+export type LabelPrintLookup = {
+  code: string;
+  kind: LabelPrintRow['kind'];
+  layout: string;
+  stock: string;
+  product: { kind: 'item' | 'custom'; id: number; name: string } | null;
+  copies: number;
+  mfg_date: string | null;
+  exp_date: string | null;
+  days_left: number | null;
+  status: 'fresh' | 'soon' | 'today' | 'expired' | null;
+  batch_code: string | null;
+  pack_qty: number | null;
+  for: string | null;
+  for2: string | null;
+  reprint_of: string | null;
+  printed_by: string | null;
+  printed_at: string | null;
+  batch_url: string | null;
+  request: Record<string, unknown> | null;
 };
 
 /**
@@ -668,6 +701,11 @@ export function fetchLabelPrints(params: { page?: number; kind?: string } = {}) 
   if (params.page) qs.set('page', String(params.page));
   if (params.kind) qs.set('kind', params.kind);
   return req<{ data: LabelPrintRow[]; current_page: number; last_page: number; total: number }>(`/labels/prints${qs.toString() ? `?${qs}` : ''}`);
+}
+
+/** A print by the code on its stickers (round 11, scan to reprint); 404 when no pack has it. */
+export function fetchLabelPrint(code: string) {
+  return req<{ data: LabelPrintLookup }>(`/labels/prints/${encodeURIComponent(code.trim().toUpperCase())}`);
 }
 
 /** Printed stock expiring within `days` (and expired in the last couple), from the print log. */

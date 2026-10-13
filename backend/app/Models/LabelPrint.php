@@ -30,11 +30,13 @@ class LabelPrint extends Model
     protected $fillable = [
         'code', 'kind', 'layout', 'label_w_mm', 'label_h_mm', 'item_id', 'custom_label_id', 'kitchen_production_item_id',
         'trade_delivery_id', 'copies', 'mfg_date', 'exp_date', 'expiry_alerted_at', 'batch_code', 'pack_qty',
-        'details', 'printed_by', 'output',
+        'details', 'request', 'printed_by', 'output',
     ];
 
     protected $casts = [
         'details' => 'array',
+        // The request that made this product's print (round 11, scan to reprint; App\Domains\Labels\Reprint).
+        'request' => 'array',
         'mfg_date' => 'date',
         'exp_date' => 'date',
         'expiry_alerted_at' => 'datetime',

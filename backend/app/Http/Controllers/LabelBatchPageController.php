@@ -8,6 +8,7 @@ use App\Domains\Labels\AllergenIcons;
 use App\Domains\Labels\BatchLink;
 use App\Domains\Labels\LabelSettings;
 use App\Domains\Labels\LabelTypes;
+use App\Domains\Labels\Reprint;
 use App\Domains\Labels\StickerSheet;
 use App\Models\Item;
 use App\Models\LabelPrint;
@@ -55,13 +56,7 @@ class LabelBatchPageController extends Controller
             'mfg' => LabelSettings::formatDate($print->mfg_date?->toDateString()),
             'exp' => LabelSettings::formatDate($exp),
             'days_left' => $left,
-            'status' => match (true) {
-                $left === null => null,
-                $left < 0 => 'expired',
-                $left === 0 => 'today',
-                $left <= 2 => 'soon',
-                default => 'fresh',
-            },
+            'status' => Reprint::status($left),
             'batch' => (string) ($print->batch_code ?? ''),
             'qty' => $print->pack_qty,
             'unit' => $product !== null && trim((string) $product->label_pack_unit) !== '' ? mb_strtoupper(trim((string) $product->label_pack_unit)) : 'PCS',

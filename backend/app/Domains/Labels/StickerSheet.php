@@ -164,7 +164,18 @@ final class StickerSheet
             'number' => filter_var($in['number'] ?? false, FILTER_VALIDATE_BOOL),
             'marks' => filter_var($in['marks'] ?? false, FILTER_VALIDATE_BOOL),
             'bleed' => max(0.0, min(5.0, round((float) ($in['bleed'] ?? 0), 1))),
+            // Scan to reprint (round 11, 2026-10-13): the code of the pack this
+            // print stands in for; the log keeps it, the sticker does not change.
+            'reprint' => self::reprintOf($in['reprint'] ?? null),
         ];
+    }
+
+    /** A pack code a request says it reprints, upper-cased, or null when it is none. */
+    private static function reprintOf(mixed $raw): ?string
+    {
+        $code = mb_strtoupper(trim((string) $raw));
+
+        return $code !== '' && $code !== BatchLink::PREVIEW && BatchLink::valid($code) ? $code : null;
     }
 
     /** The promotion flashes a sticker can carry: an old and new price, or a short line of words. */

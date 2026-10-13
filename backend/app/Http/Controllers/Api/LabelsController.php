@@ -18,6 +18,7 @@ use App\Domains\Labels\LabelSettings;
 use App\Domains\Labels\LabelTemplates;
 use App\Domains\Labels\LabelTypes;
 use App\Domains\Labels\Nutrition;
+use App\Domains\Labels\Reprint;
 use App\Domains\Labels\StickerLayouts;
 use App\Domains\Labels\StickerSheet;
 use App\Domains\Labels\WrapConfig;
@@ -152,11 +153,13 @@ class LabelsController extends Controller
             'marks' => 'sometimes|boolean',
             'bleed' => 'nullable|numeric|min:0|max:5',
             'dpi' => ['nullable', Rule::in(LabelRaster::DPIS)],
+            // Scan to reprint (round 11, 2026-10-13): the code of the pack this print stands in for.
+            'reprint' => 'nullable|string|max:12',
         ];
     }
 
-    /** The sticker request keys a saved label keeps. */
-    private const STICKER_KEYS = ['items', 'lang', 'layout', 'w', 'h', 'fill', 'mfg', 'exp', 'batch', 'qty', 'pi', 'type', 'footer', 'rounded', 'for', 'for2', 'promo', 'promo_was', 'promo_now', 'promo_text', 'number', 'marks', 'bleed'];
+    /** The sticker request keys a saved label keeps (a reprint's `reprint` is not one: the label is the same label). */
+    private const STICKER_KEYS = ['items', ...Reprint::KEYS];
 
     /**
      * Signed links to a sheet of pack stickers, after checking the request
@@ -248,7 +251,9 @@ class LabelsController extends Controller
                     // Each product's own batch, quantity and packed-for when the run varies (round 10), else the sheet's.
                     'batch_code' => ($p['batch'] ?? '') !== '' ? $p['batch'] : null,
                     'pack_qty' => $p['qty'] ?? null,
-                    'details' => ($details = array_filter(['for' => $p['for'] ?? null, 'for2' => $p['for2'] ?? null, 'promo' => $promoDetail], fn ($v) => $v !== null && $v !== '')) !== [] ? $details : null,
+                    'details' => ($details = array_filter(['for' => $p['for'] ?? null, 'for2' => $p['for2'] ?? null, 'promo' => $promoDetail, 'reprint_of' => $req['reprint'] ?? null], fn ($v) => $v !== null && $v !== '')) !== [] ? $details : null,
+                    // The request that made this product's print (round 11): a scan of its code prints it again.
+                    'request' => Reprint::of($req, $p),
                     'printed_by' => $userId,
                     'output' => 'print',
                 ]);
@@ -784,7 +789,28 @@ class LabelsController extends Controller
             // The sticker's code and the pack page it opens (2026-10-12).
             'code' => $p->code,
             'batch_url' => $p->code !== null ? BatchLink::path($p->code) : null,
+            // Scan to reprint (round 11): which pack this print stood in for, and whether it can print again.
+            'reprint_of' => isset($p->details['reprint_of']) && $p->details['reprint_of'] !== '' ? (string) $p->details['reprint_of'] : null,
+            'reprintable' => $p->code !== null && str_starts_with((string) $p->kind, 'sticker_') && ($p->item !== null || $p->customLabel !== null),
         ]));
+    }
+
+    /**
+     * A print by the code on its stickers (round 11, scan to reprint): the
+     * pack and the request that prints its sticker again. The code is read
+     * off a QR or typed, so it is taken in any case.
+     */
+    public function print(string $code): JsonResponse
+    {
+        $code = mb_strtoupper(trim($code));
+        $print = BatchLink::valid($code) && $code !== BatchLink::PREVIEW
+            ? LabelPrint::query()->stickers()->with(['item:id,name', 'customLabel:id,name', 'printer:id,name'])->where('code', $code)->first()
+            : null;
+        if ($print === null) {
+            return response()->json(['message' => 'No pack has the code ' . $code . '. A code is eight letters and digits, none of 0, O, 1 or I.'], 404);
+        }
+
+        return response()->json(['data' => Reprint::present($print)]);
     }
 
     /**

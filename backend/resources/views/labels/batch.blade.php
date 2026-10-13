@@ -165,6 +165,10 @@
         <a class="bp-btn secondary" href="{{ $menuUrl }}">See the menu</a>
     </div>
     <p class="bp-foot">The pack code identifies the sticker, not you. Scanning tells us nothing about who scanned it.</p>
+    @if (!$pack['gone'])
+        {{-- Scan to reprint (round 11, 2026-10-13): staff who scan a pack with the phone's camera land here; one tap opens Print labels on this very sticker. --}}
+        <p class="bp-foot"><a href="{{ url('/admin/labels/stickers?code=' . rawurlencode($code)) }}" data-testid="batch-reprint" style="color: var(--muted); text-decoration: underline;">Staff: print this sticker again</a></p>
+    @endif
 </div>
 @endif
 @endsection

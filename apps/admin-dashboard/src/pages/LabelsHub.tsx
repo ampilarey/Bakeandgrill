@@ -159,6 +159,7 @@ const when = (iso: string) => new Date(iso).toLocaleString(undefined, { day: 'nu
 
 function HistoryTab() {
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const [rows, setRows] = useState<LabelPrintRow[]>([]);
   const [page, setPage] = useState(1);
   const [last, setLast] = useState(1);
@@ -177,6 +178,13 @@ function HistoryTab() {
   const stockName = (r: LabelPrintRow) => r.stock ?? stock[r.layout] ?? r.layout;
   const dates = (r: LabelPrintRow) => (r.mfg_date ? `${r.mfg_date} → ${r.exp_date ?? 'blank'}` : 'Dates handwritten');
   const empty = !loading && rows.length === 0;
+  // Scan to reprint (round 11): a sticker print opens Print labels on the very label that made it.
+  const reprint = (r: LabelPrintRow) => (r.reprintable && r.code ? (
+    <button type="button" onClick={() => navigate(`/labels/stickers?code=${r.code}`)} className="inline-flex items-center gap-1 h-8 min-h-[32px] px-2 rounded-lg border border-[var(--color-border)] text-xs font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)]" aria-label={`Print the sticker of pack ${r.code} again`} title="Opens Print labels on this very label, with the same details">
+      <Printer size={14} aria-hidden /> Print again
+    </button>
+  ) : null);
+  const reprintOf = (r: LabelPrintRow) => (r.reprint_of ? <span className="block text-xs text-[var(--color-text-muted)]">Reprint of {r.reprint_of}</span> : null);
 
   return (
     <Card padding="none">
@@ -192,8 +200,12 @@ function HistoryTab() {
               <div className="text-xs text-[var(--color-text-muted)] mt-0.5">
                 {dates(r)}{r.batch_code ? ` · batch ${r.batch_code}` : ''}
                 {r.code && r.batch_url && <> · <a href={r.batch_url} target="_blank" rel="noreferrer" className="font-mono text-[var(--color-primary)]" aria-label={`Open the pack page ${r.code}`}>{r.code}</a></>}
+                {r.reprint_of ? ` · reprint of ${r.reprint_of}` : ''}
               </div>
-              <div className="text-xs text-[var(--color-text-muted)] mt-0.5">{when(r.created_at)}{r.printed_by ? ` · ${r.printed_by}` : ''}</div>
+              <div className="text-xs text-[var(--color-text-muted)] mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span>{when(r.created_at)}{r.printed_by ? ` · ${r.printed_by}` : ''}</span>
+                {reprint(r)}
+              </div>
             </li>
           ))}
           {empty && <li className="px-4 py-8 text-center text-sm text-[var(--color-text-muted)]">Nothing printed yet.</li>}
@@ -211,6 +223,7 @@ function HistoryTab() {
                 <th className="px-4 py-3 font-semibold">Batch</th>
                 <th className="px-4 py-3 font-semibold">Pack code</th>
                 <th className="px-4 py-3 font-semibold">By</th>
+                <th className="px-4 py-3 font-semibold"><span className="sr-only">Print again</span></th>
               </tr>
             </thead>
             <tbody>
@@ -222,12 +235,13 @@ function HistoryTab() {
                   <td className="px-4 py-3 text-right">{r.copies}</td>
                   <td className="px-4 py-3 whitespace-nowrap">{r.mfg_date ? `${r.mfg_date} → ${r.exp_date ?? 'blank'}` : 'Handwritten'}</td>
                   <td className="px-4 py-3">{r.batch_code ?? ''}</td>
-                  <td className="px-4 py-3 whitespace-nowrap">{r.code && r.batch_url ? <a href={r.batch_url} target="_blank" rel="noreferrer" className="font-mono text-[var(--color-primary)]" title="The QR on every sticker of this print opens this page" aria-label={`Open the pack page ${r.code}`}>{r.code}</a> : ''}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">{r.code && r.batch_url ? <a href={r.batch_url} target="_blank" rel="noreferrer" className="font-mono text-[var(--color-primary)]" title="The QR on every sticker of this print opens this page" aria-label={`Open the pack page ${r.code}`}>{r.code}</a> : ''}{reprintOf(r)}</td>
                   <td className="px-4 py-3">{r.printed_by ?? ''}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">{reprint(r)}</td>
                 </tr>
               ))}
               {empty && (
-                <tr><td colSpan={8} className="px-4 py-8 text-center text-[var(--color-text-muted)]">Nothing printed yet.</td></tr>
+                <tr><td colSpan={9} className="px-4 py-8 text-center text-[var(--color-text-muted)]">Nothing printed yet.</td></tr>
               )}
             </tbody>
           </table>
