@@ -1,4 +1,4 @@
-import { useState, type DragEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react';
 import { ArrowLeft, ArrowRight, Barcode, CalendarDays, FileText, Leaf, PackageOpen, Plus, QrCode, Recycle, RotateCcw, Tag, Trash2, Type } from 'lucide-react';
 import type { WrapCatalogue, WrapPartKey, WrapStrips } from '../../api';
 import { Btn, Modal, ModalActions } from '../SharedUI';
@@ -84,6 +84,17 @@ type Props = {
 export function StripEditor({ parts, onChange, catalogue, strips, w = 180, h = 40, bandOn = true, onReset, openPart, onOpenPart, idPrefix = 'strips' }: Props) {
   const [ownOpen, setOwnOpen] = useState<WrapPartKey | null>(null);
   const [dragging, setDragging] = useState<number | null>(null);
+  // On a phone nine strips share 330 px: below about 56 px a strip shows its icon and number, its name in the sheet.
+  const boardRef = useRef<HTMLDivElement>(null);
+  const [boardW, setBoardW] = useState(0);
+  useEffect(() => {
+    const el = boardRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver((entries) => setBoardW(entries[0]?.contentRect.width ?? 0));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const compact = boardW > 0 && boardW / Math.max(1, parts.length) < 56;
   const open = openPart !== undefined ? openPart : ownOpen;
   const setOpen = (p: WrapPartKey | null) => { if (onOpenPart) onOpenPart(p); else setOwnOpen(p); };
   const wordsOf = (key: WrapPartKey) => catalogue.parts.find((p) => p.key === key) ?? { key, label: SHORT_NAMES[key] ?? key, hint: '' };
@@ -157,7 +168,7 @@ export function StripEditor({ parts, onChange, catalogue, strips, w = 180, h = 4
 
       <div>
         <span className="block text-xs font-semibold text-[var(--color-text-secondary)] mb-1">The strips, left to right. Tap one to change it; drag to reorder.</span>
-        <div className="rounded-lg border border-[var(--color-text)] bg-white p-1 flex flex-col gap-1 w-full" style={{ aspectRatio: `${w} / ${h}`, minHeight: 72 }} data-testid="strip-board" role="group" aria-label="Strips">
+        <div ref={boardRef} className="rounded-lg border border-[var(--color-text)] bg-white p-1 flex flex-col gap-1 w-full" style={{ aspectRatio: `${w} / ${h}`, minHeight: 72 }} data-testid="strip-board" role="group" aria-label="Strips" data-compact={compact ? 'true' : 'false'}>
           <div className="flex gap-1 flex-1 min-h-0">
             {parts.map((key, i) => {
               const words = wordsOf(key);
@@ -170,7 +181,7 @@ export function StripEditor({ parts, onChange, catalogue, strips, w = 180, h = 4
                   style={{ flex: `${widthOf(key)} 1 0` }}
                   className={['min-w-0 rounded-md border text-left px-1 py-1 flex flex-col items-center justify-center gap-0.5 overflow-hidden', open === key ? 'border-[var(--color-primary)] bg-[var(--color-tone-rust-bg)]' : out ? 'border-dashed border-[var(--color-border)] bg-[var(--color-bg)] opacity-60' : 'border-[var(--color-border)] bg-[var(--color-surface)]', dragging === i ? 'opacity-40' : ''].join(' ')}>
                   <span className="text-[var(--color-primary)]">{PART_ICONS[key]}</span>
-                  <span className="text-[10px] font-semibold text-[var(--color-text)] leading-tight text-center truncate w-full">{SHORT_NAMES[key] ?? words.label}</span>
+                  <span className="text-[10px] font-semibold text-[var(--color-text)] leading-tight text-center truncate w-full">{compact ? i + 1 : (SHORT_NAMES[key] ?? words.label)}</span>
                 </button>
               );
             })}
