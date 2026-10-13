@@ -32,6 +32,9 @@ vi.mock('../../hooks/usePermissions', () => ({
 vi.mock('./CustomLabels', () => ({
   CustomLabelModal: () => <div data-testid="custom-label-modal" />,
 }));
+vi.mock('./ChooseItemsModal', () => ({
+  ChooseItemsModal: ({ onClose, onChanged }: { onClose: () => void; onChanged?: () => void }) => <div data-testid="choose-items-modal"><button type="button" onClick={() => { onChanged?.(); onClose(); }}>Done</button></div>,
+}));
 
 vi.mock('../../api', () => ({
   fetchLabelLayouts: (...a: unknown[]) => fetchLabelLayouts(...a),
@@ -549,5 +552,30 @@ describe('StickerPrintPanel on a phone', () => {
     sendToLabelPrinter.mockRejectedValue(new Error('Could not reach the printer at 192.168.1.50:9100 (EHOSTUNREACH).'));
     fireEvent.click(screen.getByTestId('sticker-send-printer'));
     expect(await screen.findByRole('alert')).toHaveTextContent('Could not reach the printer at 192.168.1.50:9100 (EHOSTUNREACH).');
+  });
+
+  // Round 5 (owner, 2026-10-13): nothing on labels yet says so and offers the way on right there.
+  it('offers to choose which items get labels when nothing is on labels, and reloads the list after', async () => {
+    fetchLabelProducts.mockResolvedValueOnce({ data: [] });
+    fetchCustomLabels.mockResolvedValue({ data: [] });
+    canManage.value = true;
+    render(<MemoryRouter><StickerPrintPanel /></MemoryRouter>);
+    const zero = await screen.findByTestId('sticker-zero-state');
+    expect(zero).toHaveTextContent('Nothing is on labels yet.');
+    expect(within(zero).getByTestId('sticker-zero-make')).toBeInTheDocument();
+    fireEvent.click(within(zero).getByTestId('sticker-choose-items'));
+    fireEvent.click(within(screen.getByTestId('choose-items-modal')).getByRole('button', { name: 'Done' }));
+    expect(await screen.findByLabelText('Print Bajiya')).toBeInTheDocument();
+    expect(screen.queryByTestId('sticker-zero-state')).toBeNull();
+  });
+
+  it('says when only custom labels are on labels, and leaves choosing to label managers', async () => {
+    canManage.value = false;
+    fetchLabelProducts.mockResolvedValue({ data: [] });
+    fetchCustomLabels.mockResolvedValue({ data: [custom(1, 'Garlic Sauce')] });
+    render(<MemoryRouter><StickerPrintPanel /></MemoryRouter>);
+    expect(await screen.findByTestId('sticker-no-items')).toHaveTextContent('Someone with Manage label settings can choose which items get labels.');
+    expect(screen.queryByTestId('sticker-choose-items')).toBeNull();
+    expect(screen.queryByTestId('sticker-zero-state')).toBeNull();
   });
 });

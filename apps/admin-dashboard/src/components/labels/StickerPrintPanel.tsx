@@ -17,6 +17,7 @@ import { LabelSizePicker } from './LabelSizePicker';
 import { CustomLabelModal } from './CustomLabels';
 import { FooterPicker } from './FooterPicker';
 import { FoldHelp } from './FoldHelp';
+import { ChooseItemsModal } from './ChooseItemsModal';
 import { DEFAULT_CHOICE, choiceFromRequest, pageOf, rememberSize, rememberedSize, requestFor, sizeName, sizeOf, sizeProblem, stockOf, type SizeChoice } from './labelSize';
 
 /*
@@ -151,6 +152,9 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
   const [recentBusy, setRecentBusy] = useState<number | null>(null);
   // Print as, batch and quantity fold away until wanted: the form was a long scroll on a phone.
   const [moreOpen, setMoreOpen] = useState(() => Boolean(defaults?.batch || defaults?.qty));
+  // Choose which items get labels, from the empty list (round 5, 2026-10-13).
+  const [choosing, setChoosing] = useState(false);
+  const reloadProducts = () => fetchLabelProducts().then((r) => setProducts(r.data)).catch(() => setProducts([]));
   // The fixed items by id: a caller passing a new array on each render must not refetch or reset the counts.
   const fixedKey = fixedItems ? fixedItems.map((i) => i.id).join(',') : null;
 
@@ -489,6 +493,15 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
               )}
             </div>
           )}
+          {products.length === 0 && rows.length > 0 && (
+            <p className="text-xs text-[var(--color-text-muted)] mb-2" data-testid="sticker-no-items">
+              No menu items are on labels yet.{' '}
+              {can('labels.manage')
+                ? <button type="button" className="underline font-semibold text-[var(--color-tone-rust-text)]" onClick={() => setChoosing(true)} data-testid="sticker-choose-items">Choose which items get labels</button>
+                : 'Someone with Manage label settings can choose which items get labels.'}
+            </p>
+          )}
+          {choosing && <ChooseItemsModal onClose={() => setChoosing(false)} onChanged={() => void reloadProducts()} />}
           {rows.length > 8 && (
             <div className="relative mb-2">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] pointer-events-none" />
@@ -496,7 +509,17 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
             </div>
           )}
           {rows.length === 0 ? (
-            <p className="text-sm text-[var(--color-text-muted)]">No products are switched on for labels yet. Switch them on in Settings or on an item's Label tab in Menu Items, or make a custom label for something that is not on the menu.</p>
+            // Zero state (round 5, 2026-10-13): say so, and offer the way on right here.
+            <div className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-bg)] p-4 text-center space-y-2" data-testid="sticker-zero-state">
+              <p className="text-sm font-semibold text-[var(--color-text)]">Nothing is on labels yet.</p>
+              <p className="text-xs text-[var(--color-text-muted)]">Choose which menu items get labels, or make a label for something that is not on the menu.</p>
+              <div className="flex flex-wrap justify-center gap-2">
+                {can('labels.manage')
+                  ? <Button size="sm" onClick={() => setChoosing(true)} data-testid="sticker-choose-items">Choose which items get labels</Button>
+                  : <span className="text-xs text-[var(--color-text-muted)]">Someone with Manage label settings can choose which items get labels.</span>}
+                <Button size="sm" variant="secondary" onClick={() => navigate('/labels/make')} data-testid="sticker-zero-make">Make a label</Button>
+              </div>
+            </div>
           ) : (
             <div className="divide-y divide-[var(--color-border-light)] border border-[var(--color-border)] rounded-xl overflow-hidden">
               {shown.map((r) => (

@@ -89,6 +89,22 @@ data keep their names (`/labels/stickers`, `/labels/types`, `label_footers`,
 "footer" for the thing and "bottom strip" when it quotes the screen, and a new screen uses
 the screen's words.
 
+### Zero-state help and the tour
+
+Round 5 of the usability work (owner, 2026-10-13; the audit's "Menu items (0)" with no
+hint that items must be switched on first). When nothing is on labels, Print labels says
+so in place of the list and offers the way on right there: **Choose which items get
+labels** (`ChooseItemsModal.tsx`: every menu item with a tick that is saved at once, the
+same switch as Settings → Products on labels; Done reloads the list) and **Make a label**;
+when only custom labels are on labels, a line under the filters says no menu items are and
+offers the same chooser. Someone without Manage label settings is told who can choose.
+Saved labels' empty list offers Make a label too. The **first-visit tour**
+(`LabelsTour.tsx`, mounted by `LabelsHub`) is four cards the first time the hub opens in a
+browser (Make a label in four steps; tap the label to change it; any size, any shape;
+where things live), kept away by Done or the X (`localStorage['labels.tour']`), and back
+from **How it works** beside the wizard's steps (`openLabelsTour()`). A new tab or a
+renamed one goes into the fourth card.
+
 ## Who can use it
 
 Two permissions, both owner-only until granted in Staff → Permissions (to a role or

@@ -302,7 +302,11 @@ Print labels (`/labels/stickers`) and Wording and logos (`/labels/types`), the f
 the bottom strip, Print as is Use the wording of, the wrap strips' default set is Reset,
 and every fold of a label form opens with a one-line `FoldHelp`; routes, code and data
 keep their names (`label_footers`, `FooterPicker`, `footer_id`), so a new screen uses the
-screen's words and the code the code's. How to
+screen's words and the code the code's. Zero state and tour (round 5): an empty Print
+labels list offers Choose which items get labels (`ChooseItemsModal`, ticks saved at once)
+and Make a label, and `LabelsTour` (four cards, `localStorage['labels.tour']`, How it works
+on the wizard) opens on the hub's first visit; a renamed or new tab goes into its fourth
+card. How to
 use it and where everything lives: `docs/LABELS.md`; design and decisions:
 `docs/LABEL_HUB_PLAN.md` and `docs/LABEL_HUB_V2_PLAN.md`.
 

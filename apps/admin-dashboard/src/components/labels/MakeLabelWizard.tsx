@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Box, Check, FileDown, Pencil, Plus, Printer, Search, Tag, UtensilsCrossed } from 'lucide-react';
+import { ArrowLeft, Box, Check, FileDown, HelpCircle, Pencil, Plus, Printer, Search, Tag, UtensilsCrossed } from 'lucide-react';
 import {
   downloadLabelSheet, fetchCustomLabels, fetchLabelBrands, fetchLabelFooters, fetchLabelLayouts, fetchLabelProducts, fetchLabelTypes, openLabelSheet, stickerLinks, updateCustomLabel, updateItemLabel,
   type CustomLabel, type LabelBrand, type LabelFooter, type LabelLimits, type LabelPreset, type LabelProduct, type LabelSpot, type LabelSpotKey, type LabelType, type SheetLinks, type StickerLang,
@@ -9,6 +9,7 @@ import { Button, useToast } from '../ui';
 import { Modal, TabScrollRow } from '../SharedUI';
 import { SheetPreview } from './SheetPreview';
 import { SpotOverlay } from './SpotOverlay';
+import { openLabelsTour } from './LabelsTour';
 import { QuickEditSheet, quickSpec, type QuickContext, type QuickInput, type QuickSpec, type QuickValue } from './QuickEdit';
 import { customDraft, customPayload, itemDraft, itemPayload, nutritionWords, pickKeys, type CustomDraft, type ItemDraft } from './labelDrafts';
 import { LabelSizePicker } from './LabelSizePicker';
@@ -397,7 +398,10 @@ export function MakeLabelWizard() {
 
   return (
     <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 space-y-4 max-w-[760px]" data-testid="make-label">
-      <StepHeader step={step} onJump={jump} />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <StepHeader step={step} onJump={jump} />
+        <button type="button" onClick={openLabelsTour} className="inline-flex items-center gap-1 h-8 px-2 rounded-lg text-xs font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)]" data-testid="make-tour"><HelpCircle size={14} aria-hidden /> How it works</button>
+      </div>
 
       {step === 1 && (
         <div className="space-y-4" data-testid="make-step-1">
