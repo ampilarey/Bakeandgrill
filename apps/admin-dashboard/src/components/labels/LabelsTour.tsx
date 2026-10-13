@@ -28,7 +28,7 @@ export const TOUR_CARDS: { title: string; text: string; icon: ReactNode }[] = [
   { title: 'Make a label in four steps', text: 'What it is for, which label, a look at it, how many to print. A menu item not yet on labels is switched on the moment you pick it.', icon: <ListChecks size={26} /> },
   { title: 'Tap the label to change it', text: 'On the preview, tap the name, the dates or the logo and a small sheet opens with just those boxes. All details has the rest.', icon: <MousePointerClick size={26} /> },
   { title: 'Any size, any shape', text: 'Picture cards for the usual labels: big pack sticker, jar or tub, price tag, round lid, bottle wrap, or a size of your own. The size decides the look.', icon: <Ruler size={26} /> },
-  { title: 'Where things live', text: 'Print labels prints. Custom labels is for things not on the menu. Wording and logos holds the types, brands and bottom strips. Saved labels keeps every print. Settings says which items get labels.', icon: <Map size={26} /> },
+  { title: 'Where things live', text: 'Print labels prints. Custom labels is for things not on the menu. Wording and logos holds the types, brands, bottom strips and templates. Saved labels keeps every print. Settings says which items get labels.', icon: <Map size={26} /> },
 ];
 
 export function LabelsTour() {

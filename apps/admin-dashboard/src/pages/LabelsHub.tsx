@@ -526,16 +526,21 @@ function TypesTabWithPermission() {
   return <TypesAndBrands canManage={can('labels.manage')} />;
 }
 
+function MakeTabWithPermission() {
+  const { can } = useCurrentUserPermissions();
+  return <MakeLabelWizard canManage={can('labels.manage')} />;
+}
+
 export const LABELS_TABS: HubTab[] = [
   // Owner, 2026-10-13 ("Still its v confusing and not user friendly"): the way in
   // for everyone, four steps; the other tabs stay for those who know them.
-  { id: 'make', label: 'Make a label', permissions: ['labels.print', 'labels.manage'], desc: 'Four steps: what it is for, which label, a look at it, how many to print', render: () => <MakeLabelWizard /> },
+  { id: 'make', label: 'Make a label', permissions: ['labels.print', 'labels.manage'], desc: 'Four steps: what it is for, which label, a look at it, how many to print', render: () => <MakeTabWithPermission /> },
   // Round 4 (owner, 2026-10-13: plain words everywhere): Print labels was Pack stickers, Wording and logos was Types & brands; the paths stay.
   { id: 'stickers', label: 'Print labels', permissions: ['labels.print', 'labels.manage'], desc: 'Print stickers for packs, in English or Dhivehi, on any size: A4 sheets, label printers, round', render: () => <><ExpiringStock /><Card padding="sm" className="labels-sticky"><StickerPrintPanel /></Card></> },
   // Owner, 2026-10-11: "Add option to add custom labels using different brands logos and other details. Not only from the menu list".
   { id: 'custom', label: 'Custom labels', permissions: ['labels.print', 'labels.manage'], desc: 'Stickers for things that are not on the menu, with any brand, logo and details', render: () => <CustomTabWithPermission /> },
   { id: 'box', label: 'Box labels', permissions: ['labels.print', 'labels.manage'], desc: 'A4 label for a delivery box, blank or from a wholesale delivery', render: () => <Card padding="sm" className="labels-sticky"><BoxLabelPanel /></Card> },
-  { id: 'types', label: 'Wording and logos', permissions: ['labels.print', 'labels.manage'], desc: 'The wording each kind of food gets, the brands and logos on the header, and the bottom strip', render: () => <TypesTabWithPermission /> },
+  { id: 'types', label: 'Wording and logos', permissions: ['labels.print', 'labels.manage'], desc: 'The wording each kind of food gets, the brands and logos on the header, the bottom strip, and the templates a new label starts from', render: () => <TypesTabWithPermission /> },
   { id: 'saved', label: 'Saved labels', permissions: ['labels.print', 'labels.manage'], desc: 'Every label prepared, to print again, download, change, copy or rename; the print log beneath', render: () => <SavedLabelsTab /> },
   { id: 'settings', label: 'Settings', permissions: ['labels.print', 'labels.manage'], desc: 'Which products print, shelf life, storage, the label wording, the ingredient glossary, nutrition and the label printer', render: () => <SettingsTabWithPermission /> },
 ];

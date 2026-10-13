@@ -146,3 +146,16 @@ Route::get('/labels/nutrition', [LabelsController::class, 'nutrition'])
 Route::put('/labels/nutrition/{inventoryItem}', [LabelsController::class, 'updateNutrition'])
     ->middleware('permission:labels.manage')
     ->whereNumber('inventoryItem');
+// Label templates (round 7, 2026-10-13: "Start from a saved label or a built-in
+// template; Save as template from any label"): read with Print labels, written
+// with Manage label settings, as the custom labels they start.
+Route::get('/labels/templates', [LabelsController::class, 'templates'])
+    ->middleware('permission:labels.print');
+Route::post('/labels/templates', [LabelsController::class, 'storeTemplate'])
+    ->middleware('permission:labels.manage');
+Route::put('/labels/templates/{template}', [LabelsController::class, 'updateTemplate'])
+    ->middleware('permission:labels.manage')
+    ->whereNumber('template');
+Route::delete('/labels/templates/{template}', [LabelsController::class, 'destroyTemplate'])
+    ->middleware('permission:labels.manage')
+    ->whereNumber('template');

@@ -125,6 +125,50 @@ first roll, and keeps the picture cards and My own size behind **More sizes**. W
 rolls, nothing changes. A roll is a size choice as the picker holds it
 (`rollChoice()`), so anything that takes a `SizeChoice` takes a roll.
 
+### Templates: start from, save as
+
+Round 7 of the usability work (owner, 2026-10-13; the audit's "so a new sauce takes
+thirty seconds"). A **template** is a label's settings without the product: brand, type,
+storage, the wording (heading, storage line, note, how to use, in both languages), shelf
+life, quantity per pack and unit, net weight, allergens, the typed nutrition line, bottom
+strip, QR choice, language, wrap parts, and the size it printed at. Never the name, the
+pictures, the barcode or the price (`LabelTemplates::KEYS`).
+
+- **Start from.** A new custom label (New custom label on Custom labels, Print labels or
+  the wizard's Something else) opens with a **Start from** box at the top: the built-in
+  templates (Frozen pack, Sauce or dip in a jar, Drink in a bottle, Baked goods, Dry mix or
+  spice, Gift pack or hamper, Jar lid), your own templates, and every other label to copy
+  from (a custom label, a menu item on labels). Picking one fills the boxes and sets the
+  size; the name stays yours and anything can be changed after. A menu item's Label tab
+  has the same box: it fills the type, storage, wording, shelf life, pack settings and the
+  price and nutrition switches, and leaves the item's ingredients (its recipe's), pictures,
+  price, barcode and on/off alone; Save keeps it.
+- **Save as template.** On the custom label editor (top right), the item's Label tab
+  (beside Save) and the wizard's Looks right step (with Manage label settings): asks for a
+  name (the label's name plus "template" to start), says what it keeps, saves. The custom
+  label editor and the wizard keep the size picked with it; the item tab has no size.
+- **Wording and logos → Templates** lists your templates (renamed in place, removed after
+  asking; labels made from one keep their settings) and the built-in ones beneath (a
+  "Built in" chip), each with a line saying what it carries; **New label from this** opens
+  a new custom label already filled.
+
+A key a template holds fills the box; a key it leaves out leaves the box alone; one that
+is null blanks it (a built-in sets a few keys, a saved template every key). Where:
+`label_templates` (`App\Models\LabelTemplate`: `name`, `source`, `fields` JSON, `size`
+JSON), `App\Domains\Labels\LabelTemplates` (`KEYS`, `BUILTIN`, `rules()`,
+`normaliseFields()`: only KEYS, strings trimmed, blanks null; `normaliseSize()` through
+`LabelRolls::normalise()`; `present()` / `presentBuiltin()` with the names behind the ids,
+a removed type, brand or strip leaving the box blank), `WrapConfig::rules()` (shared with
+the labels' own validation). API `GET /api/labels/templates` (`labels.print`; `data` the
+saved ones, `builtin` the built-in), `POST` / `PUT` / `DELETE /api/labels/templates/{template}`
+(`labels.manage`). Admin: `labelTemplates.ts` (`templateFromCustom` / `templateFromItem`
+from a draft, `templateOfCustom` / `templateOfItem` to copy a label, `applyToCustom` /
+`applyToItem`, `templateSize`, `templateLine`), `StartFrom.tsx` (`StartFromRow`,
+`loadStartFromChoices`, `SaveAsTemplate`), `LabelTemplatesCard.tsx`; `CustomLabelModal`
+takes `startFrom`. Tests: `LabelTemplatesTest`, `labelTemplates.test.ts`,
+`StartFrom.test.tsx`, `LabelTemplatesCard.test.tsx`, `ItemLabelTab.test.tsx`, and the
+cases in `CustomLabels.test.tsx` and `MakeLabelWizard.test.tsx`.
+
 ## Who can use it
 
 Two permissions, both owner-only until granted in Staff → Permissions (to a role or
@@ -715,6 +759,7 @@ beneath.
 | Label printer | `App\Domains\Labels\LabelRaster` (`page()` draws one page of a built sheet with GD at `dpi`, `DPIS` 203 / 300; text from the PDF font files, Thaana in visual order, PNGs dithered, SVGs redrawn from `build()['vectors']`: a QR from its text, a barcode from its digits; `png()` for checking), `ZplEncoder` (`^GFA` with ZPL's run-length form), `TsplEncoder` (`SIZE`, `GAP`, `BITMAP` with the bits inverted, `PRINT 1,1`); signed routes `/labels/stickers.zpl`, `.tspl`, `.png` (`page` outside the signature), single-label sheets only; `dpi` on the sticker request, `zpl_url` / `tspl_url` / `raster_url` in the reply; `scripts/label-print-agent.mjs`; `LabelPrinterCard.tsx` (`labels.printer` in localStorage, `readPrinterSetup()` / `sendToLabelPrinter()` in `api/labels.ts`) and the buttons on `StickerPrintPanel` |
 | Wrap-around labels | `StickerLayouts::design()` answers `wrap` (`WRAP_MIN_RATIO` 2.5, `WRAP_MIN_W` 90, `WRAP_MIN_H` 25; mirrored in `labelSize.ts`, pinned by `fixtures/label_size_parity.json`), presets `r200x50`, `r180x40`, `r150x35`, `r120x40`; `App\Domains\Labels\WrapDesign` (`wrap()`: widths from each part's least width and share, `DROP_ORDER`, the band, one method a part); `WrapConfig` (`of()`, `clean()`, `PARTS`, `DEFAULT_PARTS`, `catalogue()`), kept as `items.label_wrap` / `custom_labels.label_wrap` (JSON) with `label_nutrition_per`; `LabelMarks` (`MARKS` glyph + caption, `for()`); `stickerData()` sets `wrap`, `marks`, `pictures` (PNG data URIs) and `producer`; `LabelText::FONTS['sym']` (`fonts/pdf/LabelSymbols.ttf`, `fonts/label-symbols.woff2`); `GET /api/labels/layouts` carries `wrap` (parts, marks, defaults); `WrapParts.tsx` on `ItemLabelTab` and the custom label editor, `wrap_pictures` on the payloads for the thumbnails |
 | Allergen pictograms | `App\Domains\Labels\AllergenIcons` (`for()`, `keys()`, `svg()`, `dataUri()`; words → symbols, captions, `SPICY_LEVELS`); `stickerData()` sets `icons`, `StickerDesign::full()` draws the row (12 mm pitch, 8.8 mm tall) above the note; setting `label_allergen_icons` |
+| Templates | `label_templates` (`App\Models\LabelTemplate`; § Templates); `App\Domains\Labels\LabelTemplates` (`KEYS`, `BUILTIN`, `rules()`, `normaliseFields()`, `normaliseSize()`, `present()`); API `GET /api/labels/templates` (`labels.print`), `POST` / `PUT` / `DELETE /api/labels/templates/{template}` (`labels.manage`); `labelTemplates.ts`, `StartFrom.tsx`, `LabelTemplatesCard.tsx` under Wording and logos |
 | Footers | `label_footers` (`App\Models\LabelFooter`, § Footers); `custom_labels.footer_id`, `label_types.footer_id`, `footer` in a sticker request; `LabelTypes::footer()` fills the blanks, `StickerSheet::footerPreset()` picks which one. API `GET /api/labels/footers` (`labels.print`), `POST` / `PUT` / `DELETE /api/labels/footers/{footer}` (`labels.manage`; the standard one cannot be removed, 422) |
 | Box-label wording per storage, date style, pre-cut offsets | Labels → Settings, site settings with the originals as defaults (`App\Domains\Labels\LabelSettings`) |
 | Phone, website, address, landmark, tagline | Business Details (same as receipts) |

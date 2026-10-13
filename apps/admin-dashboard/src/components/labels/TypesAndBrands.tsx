@@ -9,6 +9,7 @@ import { Modal } from '../SharedUI';
 import { Button, Card, useToast } from '../ui';
 import { FooterModal, FooterPicker, describeFooter } from './FooterPicker';
 import { FoldHelp } from './FoldHelp';
+import { LabelTemplatesCard } from './LabelTemplatesCard';
 
 /*
  * Label Hub v2, step 1 (docs/LABEL_HUB_V2_PLAN.md). Owner, 2026-10-04:
@@ -350,7 +351,10 @@ export function TypesAndBrands({ canManage }: { canManage: boolean }) {
         </ul>
       </Card>
 
-      {editType !== null && <TypeModal type={editType === 'new' ? null : editType} brands={brands} footers={footers} onFootersChange={setFooters} canManage={canManage} defaults={editType === 'new' ? null : editType.defaults} onClose={() => setEditType(null)} onSaved={load} />}
+      {/* Round 7 (2026-10-13): templates saved from labels, and the built-in ones. */}
+      <LabelTemplatesCard canManage={canManage} />
+
+      {editType !== null &&<TypeModal type={editType === 'new' ? null : editType} brands={brands} footers={footers} onFootersChange={setFooters} canManage={canManage} defaults={editType === 'new' ? null : editType.defaults} onClose={() => setEditType(null)} onSaved={load} />}
       {editBrand !== null && <BrandModal brand={editBrand === 'new' ? null : editBrand} onClose={() => setEditBrand(null)} onSaved={load} />}
       {editFooter !== null && <FooterModal footer={editFooter === 'new' ? null : editFooter} footers={footers} onClose={() => setEditFooter(null)} onSaved={load} onRemoved={load} />}
     </div>

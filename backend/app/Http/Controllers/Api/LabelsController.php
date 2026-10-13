@@ -10,10 +10,10 @@ use App\Domains\Labels\LabelRolls;
 use App\Domains\Labels\BoxLabel;
 use App\Domains\Labels\ExpiringPrints;
 use App\Domains\Labels\LabelIngredients;
-use App\Domains\Labels\LabelMarks;
 use App\Domains\Labels\LabelMedia;
 use App\Domains\Labels\LabelRaster;
 use App\Domains\Labels\LabelSettings;
+use App\Domains\Labels\LabelTemplates;
 use App\Domains\Labels\LabelTypes;
 use App\Domains\Labels\Nutrition;
 use App\Domains\Labels\StickerLayouts;
@@ -31,6 +31,7 @@ use App\Models\LabelFooter;
 use App\Models\LabelGlossaryEntry;
 use App\Models\LabelJob;
 use App\Models\LabelPrint;
+use App\Models\LabelTemplate;
 use App\Models\LabelType;
 use App\Models\Media;
 use App\Models\TradeAccount;
@@ -902,23 +903,7 @@ class LabelsController extends Controller
      */
     private static function wrapRules(): array
     {
-        return [
-            'label_nutrition_per' => ['sometimes', Rule::in(['g', 'ml'])],
-            'label_wrap' => 'sometimes|nullable|array',
-            'label_wrap.parts' => 'sometimes|array|max:' . count(WrapConfig::PARTS),
-            'label_wrap.parts.*' => ['string', Rule::in(WrapConfig::PARTS)],
-            'label_wrap.band' => 'sometimes|boolean',
-            'label_wrap.band_text' => 'sometimes|nullable|string|max:60',
-            'label_wrap.band_text_dv' => 'sometimes|nullable|string|max:60',
-            'label_wrap.marks' => 'sometimes|array|max:' . count(LabelMarks::KEYS),
-            'label_wrap.marks.*' => ['string', Rule::in(LabelMarks::KEYS)],
-            'label_wrap.pictures' => 'sometimes|array|max:' . WrapConfig::MAX_PICTURES,
-            'label_wrap.pictures.*' => 'integer|exists:media_assets,id',
-            'label_wrap.text_heading' => 'sometimes|nullable|string|max:40',
-            'label_wrap.text_heading_dv' => 'sometimes|nullable|string|max:40',
-            'label_wrap.text' => 'sometimes|nullable|string|max:400',
-            'label_wrap.text_dv' => 'sometimes|nullable|string|max:400',
-        ];
+        return ['label_nutrition_per' => ['sometimes', Rule::in(['g', 'ml'])]] + WrapConfig::rules();
     }
 
     /** A mark picture that is not an image is refused; a kept config is tidied (WrapConfig::clean), null clears it. */
@@ -1183,6 +1168,88 @@ class LabelsController extends Controller
             'created_by' => $c->creator?->name,
             'updated_at' => $c->updated_at?->toIso8601String(),
         ];
+    }
+
+    // ---- Templates (round 7, 2026-10-13: "Start from a saved label or a built-in template") ----
+
+    /** The saved templates, then the built-in ones, with the names behind their ids. */
+    public function templates(): JsonResponse
+    {
+        $rows = LabelTemplate::query()->with('creator:id,name')->orderBy('name')->orderBy('id')->get();
+        $names = LabelTemplates::names([...$rows->map(fn (LabelTemplate $t) => is_array($t->fields) ? $t->fields : [])->all(), ...array_column(LabelTemplates::BUILTIN, 'fields')]);
+
+        return response()->json([
+            'data' => $rows->map(fn (LabelTemplate $t) => LabelTemplates::present($t, $names))->values(),
+            'builtin' => array_values(array_map(fn (array $b) => LabelTemplates::presentBuiltin($b, $names), LabelTemplates::BUILTIN)),
+        ]);
+    }
+
+    public function storeTemplate(Request $request): JsonResponse
+    {
+        $data = $this->templateData($request, true);
+        if ($data instanceof JsonResponse) {
+            return $data;
+        }
+        $template = LabelTemplate::query()->create($data + ['created_by' => $request->user()?->id]);
+        $template->refresh();
+
+        return response()->json(['data' => LabelTemplates::present($template, LabelTemplates::names([$template->fields ?? []]))], 201);
+    }
+
+    public function updateTemplate(Request $request, LabelTemplate $template): JsonResponse
+    {
+        $data = $this->templateData($request, false);
+        if ($data instanceof JsonResponse) {
+            return $data;
+        }
+        $template->fill($data)->save();
+        $template->refresh();
+
+        return response()->json(['data' => LabelTemplates::present($template, LabelTemplates::names([$template->fields ?? []]))]);
+    }
+
+    /** Labels made from it are their own; nothing else points at a template. */
+    public function destroyTemplate(LabelTemplate $template): JsonResponse
+    {
+        $template->delete();
+
+        return response()->json(['ok' => true]);
+    }
+
+    /** @return array<string, mixed>|JsonResponse */
+    private function templateData(Request $request, bool $new): array|JsonResponse
+    {
+        $data = $request->validate([
+            'name' => ($new ? 'required' : 'sometimes') . '|string|max:' . LabelTemplates::NAME_MAX,
+            'source' => 'sometimes|nullable|string|max:' . LabelTemplates::SOURCE_MAX,
+            // Present, possibly empty: a template may carry a size and nothing else.
+            'fields' => ($new ? 'present' : 'sometimes') . '|array',
+            'size' => 'sometimes|nullable|array',
+        ] + LabelTemplates::rules());
+        if (array_key_exists('name', $data)) {
+            $data['name'] = trim($data['name']);
+            if ($data['name'] === '') {
+                return response()->json(['message' => 'Give the template a name.', 'errors' => ['name' => ['Give the template a name.']]], 422);
+            }
+        }
+        if (array_key_exists('source', $data)) {
+            $data['source'] = trim((string) $data['source']) ?: null;
+        }
+        // The validator keeps only the nested keys it checked, and drops an
+        // empty array altogether; the keys a template may hold are whitelisted
+        // again on the way in, so the raw input is safe to read here.
+        if ($new || $request->has('fields')) {
+            $fields = LabelTemplates::normaliseFields((array) $request->input('fields', []));
+            if ($bad = $this->wrapProblem($fields)) {
+                return $bad;
+            }
+            $data['fields'] = $fields;
+        }
+        if ($request->has('size')) {
+            $data['size'] = LabelTemplates::normaliseSize($request->input('size'));
+        }
+
+        return $data;
     }
 
     // ---- Label types and brands (v2 points 3 and 6) ----

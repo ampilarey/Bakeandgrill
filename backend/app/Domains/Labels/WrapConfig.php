@@ -6,6 +6,7 @@ namespace App\Domains\Labels;
 
 use App\Models\CustomLabel;
 use App\Models\Item;
+use Illuminate\Validation\Rule;
 
 /**
  * What a product's wrap-around label prints (owner, 2026-10-12: a bottle
@@ -99,6 +100,32 @@ final class WrapConfig
             'text_heading_dv' => $text('text_heading_dv', 40),
             'text' => $text('text', 400),
             'text_dv' => $text('text_dv', 400),
+        ];
+    }
+
+    /**
+     * The validation of a typed config under `$key` (a label's `label_wrap`,
+     * a template's `fields.label_wrap`).
+     *
+     * @return array<string, mixed>
+     */
+    public static function rules(string $key = 'label_wrap'): array
+    {
+        return [
+            $key => 'sometimes|nullable|array',
+            "$key.parts" => 'sometimes|array|max:' . count(self::PARTS),
+            "$key.parts.*" => ['string', Rule::in(self::PARTS)],
+            "$key.band" => 'sometimes|boolean',
+            "$key.band_text" => 'sometimes|nullable|string|max:60',
+            "$key.band_text_dv" => 'sometimes|nullable|string|max:60',
+            "$key.marks" => 'sometimes|array|max:' . count(LabelMarks::KEYS),
+            "$key.marks.*" => ['string', Rule::in(LabelMarks::KEYS)],
+            "$key.pictures" => 'sometimes|array|max:' . self::MAX_PICTURES,
+            "$key.pictures.*" => 'integer|exists:media_assets,id',
+            "$key.text_heading" => 'sometimes|nullable|string|max:40',
+            "$key.text_heading_dv" => 'sometimes|nullable|string|max:40',
+            "$key.text" => 'sometimes|nullable|string|max:400',
+            "$key.text_dv" => 'sometimes|nullable|string|max:400',
         ];
     }
 

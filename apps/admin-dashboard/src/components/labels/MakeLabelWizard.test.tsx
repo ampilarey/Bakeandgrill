@@ -19,6 +19,7 @@ const api = vi.hoisted(() => ({
   stickerLinks: vi.fn(),
   updateItemLabel: vi.fn(),
   updateCustomLabel: vi.fn(),
+  createLabelTemplate: vi.fn(),
   openLabelSheet: vi.fn(),
   downloadLabelSheet: vi.fn(),
 }));
@@ -55,7 +56,7 @@ beforeEach(() => {
   api.fetchLabelLayouts.mockResolvedValue({ data: [], presets, limits, wrap: { parts: [], marks: [], default_parts: [], default_marks: [], max_pictures: 4 } });
   api.fetchLabelProducts.mockResolvedValue({ data: [
     { id: 7, name: 'Bajiya', name_dv: 'ބަޖިޔާ', label_enabled: false },
-    { id: 8, name: 'Masroshi', name_dv: null, label_enabled: true },
+    { id: 8, name: 'Masroshi', name_dv: null, label_enabled: true, label_storage: 'frozen', label_shelf_life_days: 90, label_pack_unit: 'PCS' },
   ] });
   api.fetchCustomLabels.mockResolvedValue({ data: [] });
   api.fetchLabelTypes.mockResolvedValue({ data: [] });
@@ -189,6 +190,32 @@ describe('MakeLabelWizard', () => {
   // Round 6 (owner, 2026-10-13: only the sizes you own): the rolls registered under
   // Settings come first as cards, the wizard starts on the first, and the picture
   // cards wait under More sizes.
+  // Round 7 (2026-10-13): the preview step keeps the label's settings and the size picked as a template.
+  it('keeps the picked label\'s settings and size as a template from the preview step, for label managers only', async () => {
+    api.createLabelTemplate.mockResolvedValue({ data: { id: 5, name: 'Masroshi template' } });
+    render(<MemoryRouter><MakeLabelWizard canManage /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: /A menu item/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Masroshi/ }));
+    fireEvent.click(within(await screen.findByRole('group', { name: 'Which label' })).getByRole('button', { name: /Jar or tub/ }));
+    fireEvent.click(screen.getByTestId('make-next-2'));
+    fireEvent.click(await screen.findByTestId('save-as-template'));
+    expect(screen.getByLabelText('Template name')).toHaveValue('Masroshi template');
+    fireEvent.click(screen.getByTestId('save-template-save'));
+    await waitFor(() => expect(api.createLabelTemplate).toHaveBeenCalledTimes(1));
+    expect(api.createLabelTemplate.mock.calls[0][0]).toMatchObject({ name: 'Masroshi template', source: 'Masroshi', fields: { label_storage: 'frozen', label_shelf_life_days: 90, label_pack_unit: 'PCS' }, size: { preset: 'r60x40', on: 'sheet', w: 60, h: 40 } });
+    expect(api.createLabelTemplate.mock.calls[0][0].fields).not.toHaveProperty('label_ingredients');
+  });
+
+  it('offers no Save as template without Manage label settings', async () => {
+    mount();
+    fireEvent.click(screen.getByRole('button', { name: /A menu item/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Masroshi/ }));
+    fireEvent.click(within(await screen.findByRole('group', { name: 'Which label' })).getByRole('button', { name: /Jar or tub/ }));
+    fireEvent.click(screen.getByTestId('make-next-2'));
+    await screen.findByTestId('make-details');
+    expect(screen.queryByTestId('save-as-template')).toBeNull();
+  });
+
   it('shows the rolls you own first and keeps the other sizes under More sizes', async () => {
     api.fetchLabelLayouts.mockResolvedValue({
       data: [], presets, limits, wrap: { parts: [], marks: [], default_parts: [], default_marks: [], max_pictures: 4 },

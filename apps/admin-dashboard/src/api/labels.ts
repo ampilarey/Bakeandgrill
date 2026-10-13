@@ -188,6 +188,35 @@ export type LabelRoll = { id: string; name: string; shape: 'rect' | 'circle'; pr
 export type LabelLayoutsResponse = { data: LabelLayout[]; presets: LabelPreset[]; limits: LabelLimits; wrap: WrapCatalogue; rolls?: LabelRoll[] };
 
 /**
+ * A label template (round 7, 2026-10-13: "Start from a saved label or a
+ * built-in template, and Save as template from any label"): a label's
+ * settings without the product itself (never the name, pictures, barcode or
+ * price) and the size it printed at. Built-in ones carry a string id and
+ * `builtin`; saved ones live in `label_templates`. A key left out leaves
+ * that box alone when starting from it; one that is null blanks the box.
+ */
+export type LabelTemplateFields = Partial<{
+  brand_id: number | null; label_type_id: number | null; label_storage: LabelStorage | null;
+  label_heading: string | null; label_heading_dv: string | null; label_storage_line: string | null; label_storage_line_dv: string | null;
+  label_ingredients: string | null; label_ingredients_dv: string | null; label_how_to_use: string | null; label_how_to_use_dv: string | null;
+  label_note: string | null; label_note_dv: string | null; footer_id: number | null; label_show_qr: boolean | null; label_lang: StickerLang | null;
+  label_shelf_life_days: number | null; label_pack_qty: number | null; label_pack_unit: string | null; label_net_weight: string | null;
+  label_allergens: string | null; label_nutrition: string | null; label_nutrition_per: NutritionPer | null; label_wrap: LabelWrap | null;
+  label_show_price: boolean | null; label_show_nutrition: boolean | null;
+}>;
+export type LabelTemplateSize = { shape: 'rect' | 'circle'; preset: string; on: LabelStock; w: number; h: number };
+export type LabelTemplate = {
+  id: number | string; builtin: boolean; name: string; blurb: string | null;
+  /** The label it was saved from. */
+  source: string | null;
+  fields: LabelTemplateFields; wrap_pictures: WrapPicture[]; size: LabelTemplateSize | null;
+  /** The names behind the ids, for the list line; `storage` is what its fields or its type say. */
+  type_name: string | null; brand_name: string | null; footer_name: string | null; storage: LabelStorage | null;
+  created_by: string | null; created_at: string | null;
+};
+export type LabelTemplatePayload = { name?: string; source?: string | null; fields?: LabelTemplateFields; size?: LabelTemplateSize | null };
+
+/**
  * A pack sticker for something that is not on the menu (owner, 2026-10-11:
  * "Add option to add custom labels using different brands logos and other
  * details. Not only from the menu list"). Its label fields are named as an
@@ -671,6 +700,23 @@ export function updateLabelFooter(id: number, body: LabelFooterPayload) {
 
 export function deleteLabelFooter(id: number) {
   return req<{ ok: true }>(`/labels/footers/${id}`, { method: 'DELETE' });
+}
+
+/** The saved templates and the built-in ones (round 7). */
+export function fetchLabelTemplates() {
+  return req<{ data: LabelTemplate[]; builtin: LabelTemplate[] }>('/labels/templates');
+}
+
+export function createLabelTemplate(body: LabelTemplatePayload) {
+  return req<{ data: LabelTemplate }>('/labels/templates', { method: 'POST', body: JSON.stringify(body) });
+}
+
+export function updateLabelTemplate(id: number, body: LabelTemplatePayload) {
+  return req<{ data: LabelTemplate }>(`/labels/templates/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+}
+
+export function deleteLabelTemplate(id: number) {
+  return req<{ ok: true }>(`/labels/templates/${id}`, { method: 'DELETE' });
 }
 
 export function fetchLabelSettings() {

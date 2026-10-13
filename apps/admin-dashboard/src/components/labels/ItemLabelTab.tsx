@@ -7,6 +7,8 @@ import { SpotOverlay } from './SpotOverlay';
 import { FoldHelp } from './FoldHelp';
 import { QuickEditSheet, quickSpec } from './QuickEdit';
 import { itemDraft as toDraft, itemPayload, nutritionWords, pickKeys, type ItemDraft as Draft, type ItemLabelPayload } from './labelDrafts';
+import { SaveAsTemplate, StartFromRow } from './StartFrom';
+import { applyToItem, templateFromItem } from './labelTemplates';
 import { MediaPicker } from '../MediaPicker';
 import { Button } from '../ui';
 
@@ -136,6 +138,9 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
           <span className="text-sm font-semibold text-[var(--color-text)]">Print pack stickers for this item</span>
         </label>
 
+        {/* Round 7 (2026-10-13): a template's or another label's settings fill the boxes below; Save keeps them. */}
+        <StartFromRow onPick={(t) => setDraft((d) => (d ? applyToItem(d, t) : d))} exclude={{ kind: 'item', id: itemId }} idPrefix="lbl-start" hint="Fills the type, storage, wording, shelf life and pack settings below. The ingredients, pictures, price and barcode stay. Save to keep it." />
+
         {/* v2 point 3: "frozen hedika is a type of food so that label should be easily selected". */}
         <div>
           <label className={labelClass} htmlFor="lbl-type">Label type</label>
@@ -252,6 +257,7 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
 
         <div className="flex flex-wrap items-center gap-3">
           <Button onClick={save} loading={saving} className="w-full sm:w-auto justify-center">Save label settings</Button>
+          <SaveAsTemplate fields={templateFromItem(draft)} at={null} source={product.name} variant="secondary" />
           {message && <span className="text-sm text-[var(--color-text-secondary)]" role="status">{message}</span>}
         </div>
       </div>

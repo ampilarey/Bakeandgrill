@@ -4,9 +4,11 @@ import { Bookmark, ChevronDown, Copy, Eye, ImagePlus, Pencil, Plus, Printer, Ref
 import {
   createCustomLabel, deleteCustomLabel, duplicateCustomLabel, fetchCustomLabels, fetchLabelBrands, fetchLabelFooters, fetchLabelLayouts, fetchLabelSettings, fetchLabelTypes,
   previewCustomDraft, stickerLinks, updateCustomLabel, uploadCustomLabelPicture,
-  type CustomLabel, type LabelBrand, type LabelFooter, type LabelLimits, type LabelPreset, type LabelRoll, type LabelSpot, type LabelSpotKey, type LabelStorage, type LabelType, type StickerLang, type WrapCatalogue, type WrapPartKey, type WrapStrips,
+  type CustomLabel, type LabelBrand, type LabelFooter, type LabelLimits, type LabelPreset, type LabelRoll, type LabelSpot, type LabelSpotKey, type LabelStorage, type LabelTemplate, type LabelType, type StickerLang, type WrapCatalogue, type WrapPartKey, type WrapStrips,
 } from '../../api';
 import { FooterPicker } from './FooterPicker';
+import { SaveAsTemplate, StartFromRow } from './StartFrom';
+import { applyToCustom, templateFromCustom, templateSize } from './labelTemplates';
 import { WRAP_FALLBACK, WrapParts } from './WrapParts';
 import { StripOverlay } from './StripEditor';
 import { SpotOverlay } from './SpotOverlay';
@@ -98,13 +100,19 @@ function LangChips({ lang, onChange }: { lang: StickerLang; onChange: (l: Sticke
   );
 }
 
-export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLabel | null; onClose: () => void; onSaved: (c: CustomLabel) => void }) {
+export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: {
+  label: CustomLabel | null;
+  onClose: () => void;
+  onSaved: (c: CustomLabel) => void;
+  /** A template a new label starts from (round 7): its settings fill the boxes before the editor opens. */
+  startFrom?: LabelTemplate | null;
+}) {
   const { toast } = useToast();
   const navigate = useNavigate();
   const stacked = useIsBelowDesktop();
   const dialog = useConfirmDialog();
   const [saved, setSaved] = useState<CustomLabel | null>(label);
-  const [d, setD] = useState<Draft>(() => toDraft(label));
+  const [d, setD] = useState<Draft>(() => (label === null && startFrom ? applyToCustom(toDraft(null), startFrom) : toDraft(label)));
   const [brands, setBrands] = useState<LabelBrand[]>([]);
   const [types, setTypes] = useState<LabelType[]>([]);
   const [footers, setFooters] = useState<LabelFooter[]>([]);
@@ -130,11 +138,17 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
   const [limits, setLimits] = useState<LabelLimits | null>(null);
   // The rolls and sheets the business owns (round 6): the size picker shows them first.
   const [rolls, setRolls] = useState<LabelRoll[]>([]);
-  const [choice, setChoice] = useState<SizeChoice>(() => rememberedSize() ?? DEFAULT_CHOICE);
+  const [choice, setChoice] = useState<SizeChoice>(() => (label === null && startFrom ? templateSize(startFrom) : null) ?? rememberedSize() ?? DEFAULT_CHOICE);
   const [rounded, setRounded] = useState(false);
   const previewSeq = useRef(0);
   const files = { photo: useRef<HTMLInputElement>(null), title: useRef<HTMLInputElement>(null) };
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((s) => ({ ...s, [k]: v }));
+  // Start from (round 7, 2026-10-13): a template's or another label's settings fill the boxes and set the size; the name stays.
+  const applyTemplate = (t: LabelTemplate) => {
+    setD((s) => applyToCustom(s, t));
+    const at = templateSize(t);
+    if (at) setChoice(at);
+  };
 
   useEffect(() => {
     fetchLabelBrands().then((r) => setBrands(r.data)).catch(() => setBrands([]));
@@ -338,6 +352,11 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
         )}
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]" data-testid="custom-label-form">
           <div className="space-y-4 min-w-0">
+            {/* Round 7: a new label starts from a template or another label (first thing on the form, on a phone too); any label's settings can be kept as a template. */}
+            <div className="flex flex-wrap items-end gap-3" data-testid="custom-label-top">
+              {!saved && <div className="flex-1 min-w-[220px]"><StartFromRow onPick={applyTemplate} idPrefix="cl-start" /></div>}
+              <SaveAsTemplate fields={templateFromCustom(d)} at={choice} source={d.name.trim() || saved?.name || ''} variant="secondary" className={saved ? 'ml-auto' : ''} />
+            </div>
             {stacked && sizeSection}
             <div className="grid gap-3 sm:grid-cols-2">
               <Field id="cl-name" label="Product name"><input id="cl-name" value={d.name} maxLength={80} onChange={(e) => set('name', e.target.value)} className={fieldClass} placeholder="Garlic sauce" /></Field>

@@ -15,6 +15,9 @@ const fetchLabelLayouts = vi.fn();
 const createLabelFooter = vi.fn();
 const updateLabelFooter = vi.fn();
 const deleteLabelFooter = vi.fn();
+const fetchLabelTemplates = vi.fn();
+const fetchLabelProducts = vi.fn();
+const createLabelTemplate = vi.fn();
 
 // A footer is always the business's (owner, 2026-10-12): no brand, no by-line.
 const effective = (tagline: string) => ({
@@ -51,6 +54,9 @@ vi.mock('../../api', () => ({
   stickerLinks: (...a: unknown[]) => stickerLinks(...a),
   previewCustomDraft: (...a: unknown[]) => previewCustomDraft(...a),
   fetchLabelLayouts: (...a: unknown[]) => fetchLabelLayouts(...a),
+  fetchLabelTemplates: (...a: unknown[]) => fetchLabelTemplates(...a),
+  fetchLabelProducts: (...a: unknown[]) => fetchLabelProducts(...a),
+  createLabelTemplate: (...a: unknown[]) => createLabelTemplate(...a),
 }));
 vi.mock('../MediaPicker', () => ({ MediaPicker: () => null }));
 vi.mock('./TypesAndBrands', () => ({ BrandModal: () => <div data-testid="brand-modal" /> }));
@@ -88,8 +94,11 @@ const LAYOUTS = {
 
 describe('CustomLabelModal', () => {
   beforeEach(() => {
-    [fetchCustomLabels, createCustomLabel, updateCustomLabel, uploadCustomLabelPicture, duplicateCustomLabel, deleteCustomLabel, stickerLinks, previewCustomDraft, fetchLabelLayouts, createLabelFooter, updateLabelFooter, deleteLabelFooter].forEach((f) => f.mockReset());
+    [fetchCustomLabels, createCustomLabel, updateCustomLabel, uploadCustomLabelPicture, duplicateCustomLabel, deleteCustomLabel, stickerLinks, previewCustomDraft, fetchLabelLayouts, createLabelFooter, updateLabelFooter, deleteLabelFooter, fetchLabelTemplates, fetchLabelProducts, createLabelTemplate].forEach((f) => f.mockReset());
     fetchLabelLayouts.mockResolvedValue(LAYOUTS);
+    fetchLabelTemplates.mockResolvedValue({ data: [], builtin: [] });
+    fetchLabelProducts.mockResolvedValue({ data: [] });
+    fetchCustomLabels.mockResolvedValue({ data: [] });
     try { localStorage.clear(); } catch { /* jsdom */ }
     stickerLinks.mockResolvedValue({ url: '/labels/stickers?signature=x', one_url: '/labels/stickers?one=1&signature=x' });
     previewCustomDraft.mockResolvedValue({ url: '/labels/stickers?signature=d', one_url: '/labels/stickers?one=1&signature=d', expires_in_minutes: 30 });
@@ -252,6 +261,51 @@ describe('CustomLabelModal', () => {
     expect(screen.getByLabelText('Bottom strip')).toBeInTheDocument();
     expect(screen.getByLabelText('Storage line (the coloured line above the bottom strip)')).toBeInTheDocument();
     expect(screen.queryByText(/Footer and complaints QR/)).toBeNull();
+  });
+
+  // Round 7 (2026-10-13): a new label starts from a template, which fills the
+  // boxes and sets the size; any label's settings are kept as a template.
+  it('starts a new label from a built-in template and keeps its settings as a template of its own', async () => {
+    const TEMPLATE = {
+      id: 'sauce-jar', builtin: true, name: 'Sauce or dip in a jar', blurb: null, source: null,
+      fields: { label_storage: 'chilled', label_heading: 'HOMEMADE SAUCE', label_how_to_use: 'Stir before use.', label_shelf_life_days: 14, label_pack_unit: 'G', label_lang: 'en' },
+      wrap_pictures: [], size: { shape: 'rect', preset: 'r40x60', on: 'sheet', w: 40, h: 60 }, type_name: null, brand_name: null, footer_name: null, storage: 'chilled', created_by: null, created_at: null,
+    };
+    fetchLabelTemplates.mockResolvedValue({ data: [], builtin: [TEMPLATE] });
+    createLabelTemplate.mockResolvedValue({ data: { ...TEMPLATE, id: 5, builtin: false, name: 'Chilli sauce template' } });
+    wrap(<CustomLabelModal label={null} onClose={() => {}} onSaved={() => {}} />);
+    const select = await screen.findByLabelText('Start from');
+    await waitFor(() => expect(select).not.toBeDisabled());
+    fireEvent.change(select, { target: { value: 'sauce-jar' } });
+    expect(screen.getByLabelText('Heading (top of the sticker)')).toHaveValue('HOMEMADE SAUCE');
+    expect(screen.getByLabelText('How to use')).toHaveValue('Stir before use.');
+    expect(screen.getByLabelText('Shelf life (days)')).toHaveValue(14);
+    expect(screen.getByLabelText('Unit after the quantity')).toHaveValue('G');
+    expect(screen.getByLabelText('Storage')).toHaveValue('chilled');
+    expect(screen.getByTestId('start-from-hint')).toHaveTextContent('Started from Sauce or dip in a jar.');
+    // The preview follows: the template's wording at the template's size.
+    await waitFor(() => expect(previewCustomDraft).toHaveBeenLastCalledWith(expect.objectContaining({ label_heading: 'HOMEMADE SAUCE', label_shelf_life_days: 14, layout: 'a4-custom', w: 40, h: 60, lang: 'en' })), { timeout: 3000 });
+
+    fireEvent.change(screen.getByLabelText('Product name'), { target: { value: 'Chilli sauce' } });
+    fireEvent.click(screen.getByTestId('save-as-template'));
+    expect(screen.getByLabelText('Template name')).toHaveValue('Chilli sauce template');
+    fireEvent.click(screen.getByTestId('save-template-save'));
+    await waitFor(() => expect(createLabelTemplate).toHaveBeenCalledTimes(1));
+    const body = createLabelTemplate.mock.calls[0][0] as { name: string; source: string; fields: Record<string, unknown>; size: Record<string, unknown> };
+    expect(body.name).toBe('Chilli sauce template');
+    expect(body.source).toBe('Chilli sauce');
+    expect(body.fields).toMatchObject({ label_storage: 'chilled', label_heading: 'HOMEMADE SAUCE', label_shelf_life_days: 14, label_pack_unit: 'G' });
+    expect(body.fields).not.toHaveProperty('name');
+    expect(body.size).toMatchObject({ preset: 'r40x60', on: 'sheet', w: 40, h: 60 });
+  });
+
+  // A label opened from Wording and logos → Templates → New label from this starts filled in.
+  it('opens a new label already filled from a template', async () => {
+    const t = { id: 4, builtin: false, name: 'Jar sauce', blurb: null, source: 'Garlic Sauce', fields: { label_heading: 'JAR', label_shelf_life_days: 7 }, wrap_pictures: [], size: null, type_name: null, brand_name: null, footer_name: null, storage: null, created_by: null, created_at: null };
+    wrap(<CustomLabelModal label={null} startFrom={t} onClose={() => {}} onSaved={() => {}} />);
+    expect(screen.getByLabelText('Heading (top of the sticker)')).toHaveValue('JAR');
+    expect(screen.getByLabelText('Shelf life (days)')).toHaveValue(7);
+    expect(screen.getByLabelText('Product name')).toHaveValue('');
   });
 
   it('asks for a name before saving', async () => {

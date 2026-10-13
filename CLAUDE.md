@@ -310,7 +310,14 @@ card. My label rolls (round 6): the rolls and sheets the business owns, the sett
 `label_rolls` (`LabelRolls::normalise()`, sent with `GET /labels/layouts` as `rolls`),
 edited under Settings (`LabelRollsCard`); every size picker shows them first and folds
 the rest under More sizes (`LabelSizePicker` `rolls`, the wizard's roll cards,
-`rollMatches()` in `labelSize.ts`), and with none registered nothing changes. How to
+`rollMatches()` in `labelSize.ts`), and with none registered nothing changes. Templates
+(round 7): a label's settings without the product, never its name, pictures, barcode or
+price (`label_templates`, `LabelTemplates::KEYS`, the built-in ones in
+`LabelTemplates::BUILTIN`; `GET` / `POST` / `PUT` / `DELETE /labels/templates`); Start
+from on a new custom label and on a menu item's Label tab (`StartFromRow`,
+`applyToCustom` / `applyToItem` in `labelTemplates.ts`; another label is offered as a
+template too, `templateOfCustom` / `templateOfItem`), Save as template on every label
+(`SaveAsTemplate`), the list under Wording and logos (`LabelTemplatesCard`). How to
 use it and where everything lives: `docs/LABELS.md`; design and decisions:
 `docs/LABEL_HUB_PLAN.md` and `docs/LABEL_HUB_V2_PLAN.md`.
 

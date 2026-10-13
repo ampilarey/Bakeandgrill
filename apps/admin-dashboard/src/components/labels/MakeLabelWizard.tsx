@@ -12,6 +12,8 @@ import { SpotOverlay } from './SpotOverlay';
 import { openLabelsTour } from './LabelsTour';
 import { QuickEditSheet, quickSpec, type QuickContext, type QuickInput, type QuickSpec, type QuickValue } from './QuickEdit';
 import { customDraft, customPayload, itemDraft, itemPayload, nutritionWords, pickKeys, type CustomDraft, type ItemDraft } from './labelDrafts';
+import { SaveAsTemplate } from './StartFrom';
+import { templateFromCustom, templateFromItem } from './labelTemplates';
 import { LabelSizePicker } from './LabelSizePicker';
 import { QtyStepper } from './QtyStepper';
 import { CustomLabelModal, langOf } from './CustomLabels';
@@ -136,7 +138,10 @@ function StepHeader({ step, onJump }: { step: Step; onJump: (s: Step) => void })
   );
 }
 
-export function MakeLabelWizard() {
+export function MakeLabelWizard({ canManage = false }: {
+  /** Manage label settings: shows Save as template on the preview step (round 7). */
+  canManage?: boolean;
+}) {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [step, setStep] = useState<Step>(1);
@@ -579,6 +584,10 @@ export function MakeLabelWizard() {
                 <input id="make-qty" type="number" inputMode="numeric" min={1} value={qty} onChange={(e) => setQty(e.target.value)} placeholder="Blank: write by hand" className={fieldClass} />
               </div>
               <Button variant="secondary" icon={<Pencil size={16} />} onClick={() => setDetails(true)} data-testid="make-details">All details</Button>
+              {/* Round 7: keep this label's settings, and the size picked, as a template to start the next one from. */}
+              {canManage && (pickedCustom || pickedItem) && (
+                <SaveAsTemplate fields={pickedCustom ? templateFromCustom(customDraft(pickedCustom)) : templateFromItem(itemDraft(pickedItem as LabelProduct))} at={choice} source={picked.name} />
+              )}
             </div>
           </div>
           <div className="flex flex-wrap gap-2 justify-between">
