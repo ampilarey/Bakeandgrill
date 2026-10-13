@@ -1,6 +1,6 @@
 # Labels
 
-Pack stickers and box labels, printed from Admin → Labels. Built 2026-10-04 from the
+Print labels and box labels, printed from Admin → Labels. Built 2026-10-04 from the
 owner's ReportLab label project (`docs/LABEL_HUB_PLAN.md`), reworked 2026-10-05 into
 label types, brands, more shapes and saved labels (`docs/LABEL_HUB_V2_PLAN.md`).
 Label sizes down to 3 × 2 cm and custom labels for things not on the menu came on
@@ -33,10 +33,10 @@ hub (`MakeLabelWizard.tsx`, the hub's first tab, `labels/make`):
    of the preview opens that part's boxes alone (below).
 4. **How many and print.** Print on (the size's stocks), the number of labels (a sheet's
    worth to start with, one on a label printer), then Print or PDF: the same request as
-   Pack stickers, so the print is logged, the size remembered and the sheet lands under
+   Print labels, so the print is logged, the size remembered and the sheet lands under
    Saved labels, where the step says so. "Make another label" starts over.
 
-Pack stickers, Custom labels and the rest stay as they were for those who know them.
+Print labels, Custom labels and the rest stay as they were for those who know them.
 
 ### Tap to edit
 
@@ -73,6 +73,22 @@ Packed for (new to the wizard; they travel in the sticker request as `batch`, `f
 `SPOT_NAMES`, a case in `quickSpec()`, and a key in `LabelSpots::KEYS`; `LabelSpotsTest`
 holds every design to the markers and every spot to the label.
 
+### Plain words
+
+Round 4 of the usability work (owner, 2026-10-13): the hub's own words went. On screen
+the tabs are **Print labels** (was Pack stickers) and **Wording and logos** (was Types &
+brands), the band at the foot of a sticker is the **bottom strip** (was the footer:
+Bottom strips under Wording and logos, "Bottom strip" wherever one is picked, "Edit the
+bottom strip …"), the sheet-wide type on Print labels is **Use the wording of** (was Print
+as), the wrap strips' default set comes back with **Reset** (was Usual set, round 2), and
+every fold of the label forms opens with a one-line "?" saying what it is for
+(`FoldHelp.tsx`: the custom label editor's sections and fieldsets, the item's Label tab,
+a type's editor, a bottom strip's editor, More options on Print labels). Paths, code and
+data keep their names (`/labels/stickers`, `/labels/types`, `label_footers`,
+`LabelFooter`, `FooterPicker`, `footer_id`, `type` in a sticker request): this file says
+"footer" for the thing and "bottom strip" when it quotes the screen, and a new screen uses
+the screen's words.
+
 ## Who can use it
 
 Two permissions, both owner-only until granted in Staff → Permissions (to a role or
@@ -96,10 +112,10 @@ staff:explain <phone>` says whether an account can get in and why.
 
 | Piece | What it is | Where |
 |---|---|---|
-| **Label type** | What kind of food a label is for: Frozen Hedhika, Chilled Hedhika, Fresh Hedhika to start. Carries the heading, storage and its line, the date-box wording (MFG DATE / PACKED ON, EXP DATE / BEST BEFORE / USE BY), a use-within line, how-to-use, a note, a shelf life, whether the QR prints, and the brand | Labels → Types & brands |
-| **Brand** | Who the label is from. Bake & Grill is the main brand (details from Business Details); a food brand under it, like Amma, has its own name and PNG logo on the header, and the footer stays Bake & Grill's (owner, 2026-10-12: "Amma is a food brand label but the actual brand is under Bake & Grill"). With no logo uploaded, a brand prints the badge shipped in `public/brand/<name>-logo.png` when there is one (Amma's is there, drawn from `docs/brand/amma-logo.html`), else the main logo | Labels → Types & brands |
+| **Label type** | What kind of food a label is for: Frozen Hedhika, Chilled Hedhika, Fresh Hedhika to start. Carries the heading, storage and its line, the date-box wording (MFG DATE / PACKED ON, EXP DATE / BEST BEFORE / USE BY), a use-within line, how-to-use, a note, a shelf life, whether the QR prints, and the brand | Labels → Wording and logos |
+| **Brand** | Who the label is from. Bake & Grill is the main brand (details from Business Details); a food brand under it, like Amma, has its own name and PNG logo on the header, and the footer stays Bake & Grill's (owner, 2026-10-12: "Amma is a food brand label but the actual brand is under Bake & Grill"). With no logo uploaded, a brand prints the badge shipped in `public/brand/<name>-logo.png` when there is one (Amma's is there, drawn from `docs/brand/amma-logo.html`), else the main logo | Labels → Wording and logos |
 | **Item's label** | Picks a type; its own ingredients, shelf life, pieces per pack, pictures; and any wording that should differ from the type's | Menu Items → item → Label |
-| **Custom label** | A sticker for something that is not on the menu (a sauce in jars, a gift box, another brand's product): its own name, brand and logo, type, ingredients, shelf life, quantity and unit, wording and pictures. It prints beside the menu items | Labels → Custom labels, or **New custom label** on Pack stickers |
+| **Custom label** | A sticker for something that is not on the menu (a sauce in jars, a gift box, another brand's product): its own name, brand and logo, type, ingredients, shelf life, quantity and unit, wording and pictures. It prints beside the menu items | Labels → Custom labels, or **New custom label** on Print labels |
 | **Saved label** | Every print prepared, kept with its settings to print again, download, change, copy, rename | Labels → Saved labels |
 
 ## Setting up a product
@@ -145,13 +161,13 @@ Frozen Hedhika type.
 ## Custom labels
 
 For anything that is not on the menu. Labels → **Custom labels** → **New custom
-label** (or **New custom label** above the product list on Pack stickers, which picks
+label** (or **New custom label** above the product list on Print labels, which picks
 the new label straight away):
 
 1. **Product name**, and in Dhivehi if wanted.
 2. **Brand and logo**: any brand, or **+** to add one with its own logo there and then.
    Empty follows the label type's brand. A custom label's own brand also wins over
-   **Print as** on Pack stickers.
+   **Use the wording of** on Print labels.
 3. **Label type**: brings the heading, storage, date wording, shelf life and how-to-use,
    as for a menu item. Anything typed in the boxes below prints instead.
 4. **Ingredients**, storage, **shelf life (days)**, **quantity per pack** and the
@@ -160,27 +176,28 @@ the new label straight away):
    **price** and a **barcode**.
 5. **Wording on the sticker**: heading, storage line, note, how to use, each in
    English and Dhivehi. An empty box prints what is shown in grey. This part, **For
-   the shop till** and **Footer and complaints QR** fold away, open when they hold
-   something (audit, 2026-10-12).
-6. **Footer and complaints QR** (owner, 2026-10-12: "Standard footer options with
+   the shop till** and **Bottom strip and complaints QR** fold away, open when they hold
+   something (audit, 2026-10-12), each with a one-line "?" saying what it is for.
+6. **Bottom strip and complaints QR** (on screen the footer is the bottom strip, round
+   4; owner, 2026-10-12: "Standard footer options with
    standard branding footer. Option to add complaint qr with its branding", then "No
    easy option to select and edit branding footer"). The footer is always Bake &
    Grill's branding, whatever food brand is on the header (owner, 2026-10-12). The
-   **Footer** box picks a footer by name (§ Footers): empty follows the label type's
+   **Bottom strip** box picks a footer by name (§ Footers): empty follows the label type's
    footer, else **Standard** (the business's own lines from Business Details); any
-   footer made under Types & brands can be picked instead. The pencil beside the box
+   footer made under Wording and logos can be picked instead. The pencil beside the box
    changes the footer that prints, picked or not, in place, and **+** makes a new one,
    without leaving the label; the line under the box says what it prints. The **complaints QR** follows the
    footer (whose own switch follows the label type), or is printed or left off for
    this label alone; on the full sticker the code carries the brand mark inside
    (`StickerSheet::QR_LOGO_RATIO`, smaller than the poster's so an 11.5 mm code still
    scans), the small designs keep the bare code.
-7. **Size and language.** The preview is the first sticker of the sheet Pack stickers
+7. **Size and language.** The preview is the first sticker of the sheet Print labels
    would print, at the size last used there (full size until one is picked); **Sticker
-   size** folds open to the same picker as Pack stickers (every one-tap size, a typed
+   size** folds open to the same picker as Print labels (every one-tap size, a typed
    size, round, where it prints). EN / ދިވެހި / Both above the preview is the language
    the label usually prints in and is saved with it. **Print…** saves the label and
-   opens Pack stickers on that size and language; on a phone or tablet the preview is
+   opens Print labels on that size and language; on a phone or tablet the preview is
    the bar pinned under the title, and Close, Print… and Save stay in the sheet's
    footer. Closing with unsaved changes asks first.
 8. **Picture** and **hand-lettered name**: a PNG upload (kept exactly as uploaded) or
@@ -193,7 +210,7 @@ brand or type. One-tap sizes gained 50 × 80, 60 × 90, 80 × 120, 100 × 100 an
 
 The preview beside the form redraws as you type, saved or not (the server keeps the
 draft for half an hour under a token the preview link names; nothing is printed or
-logged from it), at 105 × 148, 40 × 60 and 6 cm round, in English, Dhivehi or both. **Print** opens Pack stickers with the label picked; it prints
+logged from it), at 105 × 148, 40 × 60 and 6 cm round, in English, Dhivehi or both. **Print** opens Print labels with the label picked; it prints
 there on any size, alone or on the same sheet as menu items. On the list, **Copy**
 makes a copy to change, **Remove** deletes it: prints already made stay in the log,
 and a saved label that only had removed products says so instead of printing.
@@ -204,13 +221,13 @@ The same header and footer on every size and shape (owner: "all should have comm
 header and footer including the branding details"):
 
 - **Header**: the brand's logo and name, the type's heading ("FROZEN HEDHIKA").
-- **Footer**: always Bake & Grill's branding, whatever food brand is on the header
+- **Footer** (on screen: the bottom strip): always Bake & Grill's branding, whatever food brand is on the header
   (owner, 2026-10-12: "Amma is a food brand label but the actual brand is under
   Bake & Grill, so its branding should be used in the footer"): the business name,
   tagline, address, phone, ways to reach you, website, the brand mark and the
   **complaints QR**, the same code the receipts and the poster carry (it scans to
   the live site's complaint box). Which lines print is a **footer** picked by name
-  (below); a label type and a custom label each pick theirs, and Pack stickers can
+  (below); a label type and a custom label each pick theirs, and Print labels can
   put one footer on a whole sheet.
 - Between them: the product name, the picture, ingredients, **HOW TO USE**, the
   **allergen pictograms** (below), a note, the date boxes with the type's wording, the
@@ -250,11 +267,11 @@ prints (picked or, with nothing picked, the type's or the standard one) in place
 with one only **Print labels**):
 
 - **Custom label → Footer and complaints QR**: that label's footer (`custom_labels.footer_id`).
-- **Types & brands → a type → Footer**: the default for every item and custom label
+- **Wording and logos → a type → Footer**: the default for every item and custom label
   printed with that type (`label_types.footer_id`).
-- **Pack stickers → More options → Footer**: one footer for every sticker on the sheet
+- **Print labels → More options → Footer**: one footer for every sticker on the sheet
   (`footer` in the request; a saved label keeps it and Print again prints it).
-- **Types & brands → Footers**: the list, with what each prints and how many labels
+- **Wording and logos → Footers**: the list, with what each prints and how many labels
   and types use it; Standard cannot be removed, and a removed footer's labels and types
   go back to the standard one.
 
@@ -308,7 +325,7 @@ filled in as the reference. Nothing about who printed it or how many; the page i
 indexed by search engines. A code that is not in the log (a preview sheet, a typo) gets a
 page that says so. A preview sheet draws the QR with the code `PREVIEW`, so the preview
 looks as the print will; nothing is logged for it. A saved label printed again is a new
-code: it is a new batch. The prepared list on Pack stickers shows each product's code,
+code: it is a new batch. The prepared list on Print labels shows each product's code,
 the print log shows it as a link to the page, and `GET /api/labels/prints?code=` finds a
 print by it. Labels → Settings → **On the sticker** → **Batch QR in the header** turns
 the QR off (prints are still logged with a code).
@@ -316,7 +333,7 @@ the QR off (prints are still logged with a code).
 ### Expiring printed stock
 
 The print log knows what was stickered with which expiry, so it can say what in the
-freezer is near its date before a customer does. **Pack stickers** opens with an
+freezer is near its date before a customer does. **Print labels** opens with an
 **Expiring printed stock** card (hidden when there is nothing to say): one row per
 product, batch and expiry within 7 days, and anything that passed its date in the last 2
 days, with the copies printed, how many prints, "Expires tomorrow" / "Expires in 5 days
@@ -360,21 +377,21 @@ item's Label tab and the custom label's row say where the Dhivehi came from
 
 ### Packed-for stickers
 
-Built 2026-10-12. **Packed for** (Pack stickers → More options) prints who the packs
+Built 2026-10-12. **Packed for** (Print labels → More options) prints who the packs
 are for under the name: a tinted box with "PACKED FOR" and the name on the full
 sticker, with a **second line** (the delivery, the date) beneath; one line under the
 band on the compact sticker; a line under the name on the small sizes (the second part
 when the label is at least 40 mm wide); nothing on the round ones. **Wholesale → a
-delivery → Pack stickers** (on the list and the delivery's page) opens the form with
+delivery → Print labels** (on the list and the delivery's page) opens the form with
 the shop as "packed for", "Delivery TD-0042 · Wed, 14 Oct 2026" as the second line and
-a sticker per pack sent of each product; an **event's page → Pack stickers** does the
+a sticker per pack sent of each product; an **event's page → Print labels** does the
 same with the company or contact, the reference, the occasion and the date, and a
 sticker per pack on the quote. A product not switched on for labels is named above the
 form instead of picked. The saved label and the print log keep it.
 
 ### Promotion stickers
 
-Built 2026-10-12. **Promotion flash** (Pack stickers → More options): **Was → Now
+Built 2026-10-12. **Promotion flash** (Print labels → More options): **Was → Now
 prices** draws a rust badge with the old price struck through over the new one (the
 new price then prints on the quantity line too; the old price must be the higher), or a
 short line of words from one pick (**2 for 1**, **Buy 2 get 1 free**, **Special
@@ -404,7 +421,7 @@ set smaller to fit the width. The compact, small and round stickers have no room
 
 ### Pack numbering
 
-Built 2026-10-12. **Number the packs** (Pack stickers → More options) prints "PACK 3 OF
+Built 2026-10-12. **Number the packs** (Print labels → More options) prints "PACK 3 OF
 40" on each sticker of a product's run: under the header on the full sticker, at the end
 of the batch line on the compact and small ones ("· PACK 3/40", "· 3/40"), nothing on the
 round ones. Each copy is drawn on its own, so a numbered run of 40 is 40 different
@@ -412,7 +429,7 @@ stickers. The saved label keeps it and prints the run numbered again.
 
 ### Print-ready sheets
 
-Built 2026-10-12. **Crop marks for a print shop** (Pack stickers → More options) draws
+Built 2026-10-12. **Crop marks for a print shop** (Print labels → More options) draws
 hairline ticks 3 mm long, 1 mm off every corner of every label, in place of the dashed
 cut lines, on the web sheet and the PDF alike; a tick is cut short where the page has
 less room (the labels on a plain A4 sheet start at the paper's edge). With the marks on,
@@ -428,7 +445,7 @@ Built 2026-10-12. A **label-printer size** (one sticker a label: 105 × 148, 100
 thermal label printer** instead of through a print dialog. The server draws each sticker
 as a black-and-white bitmap at the printer's dots per inch and wraps it in the printer's
 language: **ZPL** (Zebra and printers that emulate it) or **TSPL** (TSC, Xprinter,
-iDPRT and most unbranded thermal label printers). Pack stickers → Prepare on such a size
+iDPRT and most unbranded thermal label printers). Print labels → Prepare on such a size
 gives, beside Print and the PDF, **Send to label printer**, a **ZPL file** / **TSPL
 file** to download and send yourself, and **Check the bitmap** (the first sticker as the
 printer will put it down, as a PNG).
@@ -525,18 +542,20 @@ mark.
 
 ## Printing
 
-**Pack stickers** (Labels → Pack stickers): **Print again** at the top lists the pinned
+**Print labels** (Labels → Print labels): **Print again** at the top lists the pinned
 labels, then the last sheets printed; one tap prints one with today's dates, or tap
 its name to change it first. A product that keeps 3 days or fewer carries a **Short
 life** mark in the list (and on Settings), so a chilled item is not printed with a
 frozen item's dates by mistake. Then tick products and how many of each (− and +
 move a whole sheet). Menu items and custom labels share the list (**All**, **Menu
 items**, **Custom labels** narrow it) and can go on the same sheet. Then the **label
-size**, the language (**English**, **ދިވެހި**, or **Both**), **Print as** (one type for
-the whole sheet, optional), a **Footer** for the whole sheet (optional, § Footers), and
+size**, the language (**English**, **ދިވެހި**, or **Both**), **Use the wording of** (one
+type for the whole sheet, optional; it was "Print as" until round 4), a **Bottom strip**
+for the whole sheet (optional, § Footers), and
 whether to fill the dates (with the dates on, each picked product shows the expiry it
-will get). **Print as**, **Footer**, the batch number (a **Today** button writes the
-date as a code, 261011) and the quantity per pack sit behind **More options**.
+will get). **Use the wording of**, **Bottom strip**, the batch number (a **Today** button
+writes the date as a code, 261011) and the quantity per pack sit behind **More options**,
+which opens with a one-line "?" saying what it holds.
 
 **Both** prints every line in English with the Dhivehi beneath or beside it (owner,
 2026-10-12: "When both is selected. Not showing both languages correctly"). On the full
@@ -627,10 +646,10 @@ A quantity of 0 leaves a line to write the count on; three spare rows are always
 added; up to 16 lines.
 
 A custom label's row has **Save** beside Print (owner, 2026-10-12: "no option to send
-to saved labels"): one tap prepares a full sheet of it at the size Pack stickers last
+to saved labels"): one tap prepares a full sheet of it at the size Print labels last
 printed (full stickers, four to an A4 page, until a size is picked there; English with
 the Dhivehi beneath when it has a Dhivehi name) and opens Saved labels on it. Print on
-the row opens Pack stickers instead, to choose a size first.
+the row opens Print labels instead, to choose a size first.
 
 **Saved labels** (Labels → Saved labels): every label prepared, newest printed first.
 **Print** prints it again (stickers with dates get today's made-on date and a fresh
@@ -650,7 +669,7 @@ beneath.
 | Saved labels | `label_jobs` (`App\Models\LabelJob`): the request as sent, a name, print count |
 | Print log | `label_prints`; written on every print, never edited; `item_id` or `custom_label_id` (emptied when the custom label is removed), the layout and label size, shown in words ("40 × 60 mm, 21 on A4", `StickerLayouts::describe()`); since 2026-10-12 a `code` per sticker print (`LabelPrint::newCode()`) and `expiry_alerted_at` |
 | Batch QR and the pack page | `App\Domains\Labels\BatchLink` (`url()` on the live site, `qr()`, `valid()`, `PREVIEW`); the sheet link carries `b=i12:CODE,c7:CODE` (`StickerSheet::parseCodes()` / `codesParam()`), `stickerData()` sets `batch_qr`; `StickerDesign::full()` (header's end, heading width 62 → 48 mm) and `mini()` (tall bands at least 75 mm wide); `GET /b/{code}` → `App\Http\Controllers\LabelBatchPageController`, `resources/views/labels/batch.blade.php` (public, `noindex`, 404 page for an unknown code); setting `label_batch_qr` |
-| Expiring printed stock | `App\Domains\Labels\ExpiringPrints` (`groups()`, `due()`, `phrase()`); `GET /api/labels/expiring?days=` (`labels.print`); `apps/admin-dashboard/src/components/labels/ExpiringStock.tsx` over Pack stickers, Reprint → `?item=` / `?custom=`; `labels:check-expiring --days=2` (`App\Console\Commands\CheckExpiringLabels`, 08:10) under the registry row `owner_labels_expiry` |
+| Expiring printed stock | `App\Domains\Labels\ExpiringPrints` (`groups()`, `due()`, `phrase()`); `GET /api/labels/expiring?days=` (`labels.print`); `apps/admin-dashboard/src/components/labels/ExpiringStock.tsx` over Print labels, Reprint → `?item=` / `?custom=`; `labels:check-expiring --days=2` (`App\Console\Commands\CheckExpiringLabels`, 08:10) under the registry row `owner_labels_expiry` |
 | Ingredient glossary | `label_glossary` (`App\Models\LabelGlossaryEntry`: `key()`, `lookup()` with the plural and prefix variants, a cached `map()`); `LabelIngredients::translate()`, `parts()`, `missingWords()`, `dv_from` on the lines; API `GET /api/labels/glossary` (`labels.print`; `missing` beside `data`), `POST` / `PUT` / `DELETE /api/labels/glossary/{entry}` (`labels.manage`); `apps/admin-dashboard/src/components/labels/IngredientGlossary.tsx` on Labels → Settings |
 | Packed for | `for` and `for2` in a sticker request (`StickerSheet::normalise()`), `packed_for` / `packed_for2` in the sticker data, drawn by `StickerDesign::full()` (box under the name), `mini()` (line under the band) and `SmallStickerDesign::packedForLine()`; `GET /api/labels/deliveries/{delivery}/stickers` and `GET /api/labels/catering/{cateringRequest}/stickers` (`labels.print`) fill the form through `?delivery=` / `?catering=` on `StickerPrintPanel` |
 | Promotion flash | `promo` (`was_now` or `text`), `promo_was`, `promo_now`, `promo_text` in a sticker request (`StickerSheet::promoOf()` checks, `promoFor()` words it); `StickerDesign::flash()` draws the badge for the full sticker's name row and the compact band; `PROMO_PRESETS` in `StickerPrintPanel.tsx` |

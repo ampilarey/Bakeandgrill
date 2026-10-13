@@ -65,8 +65,8 @@ export type QuickContext = {
 const STORAGES = [{ value: 'frozen', label: 'Frozen' }, { value: 'chilled', label: 'Chilled' }, { value: 'ambient', label: 'Room temperature' }];
 
 const SETTINGS = { label: 'Labels → Settings', to: '/labels/settings' };
-const STICKERS = { label: 'Pack stickers', to: '/labels/stickers' };
-const TYPES = { label: 'Types & brands', to: '/labels/types' };
+const STICKERS = { label: 'Print labels', to: '/labels/stickers' };
+const TYPES = { label: 'Wording and logos', to: '/labels/types' };
 
 function typeSelect(ctx: QuickContext, label = 'Label type'): QuickInput {
   return {
@@ -85,13 +85,13 @@ export function quickSpec(key: LabelSpotKey, ctx: QuickContext): QuickSpec {
       return custom
         ? {
           title: 'Brand and logo',
-          note: `The brand's logo and name go on the header; the footer is always ${ctx.mainBrand ?? 'the business'}'s.`,
+          note: `The brand's logo and name go on the header; the bottom strip is always ${ctx.mainBrand ?? 'the business'}'s.`,
           inputs: [{ key: 'brand_id', label: 'Brand', kind: 'select', numeric: true, options: [{ value: '', label: `As the label type${d.brand ? ` (${d.brand})` : ''}` }, ...(ctx.brands ?? []).map((b) => ({ value: String(b.id), label: `${b.name}${b.is_default ? ' (main)' : ''}` }))] }],
           link: TYPES,
         }
         : {
           title: 'Brand and logo',
-          note: `A menu item's brand is its label type's${d.brand ? ` (${d.brand})` : ''}. Pick a type with its own brand, or add a brand under Types & brands.`,
+          note: `A menu item's brand is its label type's${d.brand ? ` (${d.brand})` : ''}. Pick a type with its own brand, or add a brand under Wording and logos.`,
           inputs: [typeSelect(ctx)],
           link: TYPES,
         };
@@ -108,7 +108,7 @@ export function quickSpec(key: LabelSpotKey, ctx: QuickContext): QuickSpec {
     case 'batch_qr':
       return { title: 'Pack QR code', note: "The code opens the pack's page (its batch and dates). It is on or off for every label under Labels → Settings.", inputs: [], link: SETTINGS };
     case 'pack':
-      return { title: 'Pack numbering', note: '“Pack 3 of 40” is a print option: Pack stickers → More options → Number the packs.', inputs: [], link: STICKERS };
+      return { title: 'Pack numbering', note: '“Pack 3 of 40” is a print option: Print labels → More options → Number the packs.', inputs: [], link: STICKERS };
     case 'name':
       return custom
         ? {
@@ -121,9 +121,9 @@ export function quickSpec(key: LabelSpotKey, ctx: QuickContext): QuickSpec {
         }
         : { title: 'Name', note: "The name is the menu item's: change it on the item's Details tab under Menu. A hand-lettered name picture prints instead when there is one: All details → Hand-lettered name.", inputs: [] };
     case 'promo':
-      return { title: 'Promotion flash', note: 'A Was → Now price or a few words, added when you print: Pack stickers → More options → Promotion.', inputs: [], link: STICKERS };
+      return { title: 'Promotion flash', note: 'A Was → Now price or a few words, added when you print: Print labels → More options → Promotion.', inputs: [], link: STICKERS };
     case 'packed':
-      return { title: 'Packed for', note: 'Who the packs are for is typed when you print (Pack stickers → More options → Packed for), or filled in from a wholesale delivery or a catering event.', inputs: [], link: STICKERS };
+      return { title: 'Packed for', note: 'Who the packs are for is typed when you print (Print labels → More options → Packed for), or filled in from a wholesale delivery or a catering event.', inputs: [], link: STICKERS };
     case 'photo':
       return {
         title: 'Picture',
@@ -208,7 +208,7 @@ export function quickSpec(key: LabelSpotKey, ctx: QuickContext): QuickSpec {
         inputs: [{ key: 'label_shelf_life_days', label: 'Shelf life (days)', kind: 'number', min: 1, max: 730, inputMode: 'numeric', placeholder: d.shelf_life_days ? `${d.shelf_life_days} from the type` : 'Blank: write by hand' }],
       };
     case 'batch':
-      return { title: 'Batch number', note: 'Typed when you print (Pack stickers), or filled in from the kitchen batch the stickers are for.', inputs: [], link: STICKERS };
+      return { title: 'Batch number', note: 'Typed when you print (Print labels), or filled in from the kitchen batch the stickers are for.', inputs: [], link: STICKERS };
     case 'qty':
       return {
         title: 'Quantity per pack',
@@ -240,15 +240,15 @@ export function quickSpec(key: LabelSpotKey, ctx: QuickContext): QuickSpec {
     case 'footer':
       return custom
         ? {
-          title: 'Footer and complaints QR',
-          note: `Always ${ctx.mainBrand ?? 'the business'}'s branding, whatever brand is on the header. A footer's words are changed under Types & brands → Footers.`,
+          title: 'Bottom strip and complaints QR',
+          note: `The band at the foot of the sticker, always ${ctx.mainBrand ?? 'the business'}'s branding whatever brand is on the header. A bottom strip's words are changed under Wording and logos → Bottom strips.`,
           inputs: [
-            { key: 'footer_id', label: 'Footer', kind: 'select', numeric: true, options: [{ value: '', label: 'As the label type, else Standard' }, ...(ctx.footers ?? []).map((f) => ({ value: String(f.id), label: `${f.name}${f.is_default ? ' (standard)' : ''}` }))] },
-            { key: 'label_show_qr', label: 'Complaints QR in the footer', kind: 'select', options: [{ value: '', label: 'As the footer' }, { value: 'on', label: 'Print it' }, { value: 'off', label: 'Leave it off' }] },
+            { key: 'footer_id', label: 'Bottom strip', kind: 'select', numeric: true, options: [{ value: '', label: 'As the label type, else Standard' }, ...(ctx.footers ?? []).map((f) => ({ value: String(f.id), label: `${f.name}${f.is_default ? ' (standard)' : ''}` }))] },
+            { key: 'label_show_qr', label: 'Complaints QR in the bottom strip', kind: 'select', options: [{ value: '', label: 'As the bottom strip' }, { value: 'on', label: 'Print it' }, { value: 'off', label: 'Leave it off' }] },
           ],
           link: TYPES,
         }
-        : { title: 'Footer', note: "The footer is the label type's, else Standard, always the business's branding. Footers are picked for a type and changed under Types & brands → Footers.", inputs: [], link: TYPES };
+        : { title: 'Bottom strip', note: "The band at the foot of the sticker is the label type's, else Standard, always the business's branding. Bottom strips are picked for a type and changed under Wording and logos → Bottom strips.", inputs: [], link: TYPES };
     default:
       return { title: spotName(key), note: 'Change this under All details.', inputs: [] };
   }

@@ -4,6 +4,7 @@ import { fetchLabelItem, fetchLabelLayouts, fetchLabelTypes, stickerLinks, updat
 import { SheetPreview } from './SheetPreview';
 import { WrapParts } from './WrapParts';
 import { SpotOverlay } from './SpotOverlay';
+import { FoldHelp } from './FoldHelp';
 import { QuickEditSheet, quickSpec } from './QuickEdit';
 import { itemDraft as toDraft, itemPayload, nutritionWords, pickKeys, type ItemDraft as Draft, type ItemLabelPayload } from './labelDrafts';
 import { MediaPicker } from '../MediaPicker';
@@ -142,7 +143,7 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
             <option value="">No type: the usual wording for its storage</option>
             {types.map((t) => <option key={t.id} value={t.id}>{t.name}{t.brand_name && t.brand_name !== product.defaults.brand ? ` · ${t.brand_name}` : ''}</option>)}
           </select>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">Brings the heading, storage, dates wording, shelf life, how-to-use and brand ({product.defaults.brand}). Anything typed below prints instead. Types are managed on Labels → Types &amp; brands.</p>
+          <p className="text-xs text-[var(--color-text-muted)] mt-1">Brings the heading, storage, dates wording, shelf life, how-to-use and brand ({product.defaults.brand}). Anything typed below prints instead. Types are managed on Labels → Wording and logos.</p>
         </div>
 
         <div>
@@ -183,11 +184,11 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
             product; empty prints the default for the storage picked above. */}
         <fieldset className="rounded-xl border border-[var(--color-border)] p-3 space-y-3">
           <legend className="px-1 text-sm font-bold text-[var(--color-text)]">Wording on this sticker</legend>
-          <p className="text-xs text-[var(--color-text-muted)]">Leave a box empty to print the usual wording for {({ frozen: 'frozen', chilled: 'chilled', ambient: 'room-temperature' } as const)[draft.label_storage]} items, shown in grey. Change the usual wording in Labels → Settings.</p>
+          <FoldHelp>The heading, the storage line, the note and how to use. Leave a box empty to print the usual wording for {({ frozen: 'frozen', chilled: 'chilled', ambient: 'room-temperature' } as const)[draft.label_storage]} items, shown in grey; change the usual wording under Labels → Settings.</FoldHelp>
           <div className="grid gap-3 sm:grid-cols-2">
             <div><label className={labelClass} htmlFor="lbl-heading">Heading (top of the sticker)</label><input id="lbl-heading" maxLength={40} value={draft.label_heading} onChange={(e) => set('label_heading', e.target.value)} className={fieldClass} placeholder={product.defaults.heading} /></div>
             <div><label className={labelClass} htmlFor="lbl-heading-dv">Heading (Dhivehi)</label><input id="lbl-heading-dv" dir="rtl" maxLength={40} value={draft.label_heading_dv} onChange={(e) => set('label_heading_dv', e.target.value)} className={fieldClass} placeholder={product.defaults.heading_dv} /></div>
-            <div><label className={labelClass} htmlFor="lbl-storage-line">Storage line (strip above the footer)</label><input id="lbl-storage-line" maxLength={160} value={draft.label_storage_line} onChange={(e) => set('label_storage_line', e.target.value)} className={fieldClass} placeholder={product.defaults.storage_line} /></div>
+            <div><label className={labelClass} htmlFor="lbl-storage-line">Storage line (the coloured line above the bottom strip)</label><input id="lbl-storage-line" maxLength={160} value={draft.label_storage_line} onChange={(e) => set('label_storage_line', e.target.value)} className={fieldClass} placeholder={product.defaults.storage_line} /></div>
             <div><label className={labelClass} htmlFor="lbl-storage-line-dv">Storage line (Dhivehi)</label><input id="lbl-storage-line-dv" dir="rtl" maxLength={160} value={draft.label_storage_line_dv} onChange={(e) => set('label_storage_line_dv', e.target.value)} className={fieldClass} placeholder={product.defaults.storage_line_dv} /></div>
             <div><label className={labelClass} htmlFor="lbl-note">Note under the ingredients</label><input id="lbl-note" maxLength={120} value={draft.label_note} onChange={(e) => set('label_note', e.target.value)} className={fieldClass} placeholder={product.defaults.note || 'Contains egg and gluten'} /></div>
             <div><label className={labelClass} htmlFor="lbl-note-dv">Note (Dhivehi)</label><input id="lbl-note-dv" dir="rtl" maxLength={120} value={draft.label_note_dv} onChange={(e) => set('label_note_dv', e.target.value)} className={fieldClass} placeholder={product.defaults.note_dv} /></div>
@@ -200,6 +201,7 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
         {/* 2026-10-12: price, barcode and net weight for a pack sold at another shop's till; the allergens come from Details. */}
         <fieldset className="rounded-xl border border-[var(--color-border)] p-3 space-y-3" data-testid="item-label-shop">
           <legend className="px-1 text-sm font-bold text-[var(--color-text)]">For the shop till</legend>
+          <FoldHelp>A price, a barcode and a net weight for a pack sold at another shop's till, and the nutrition panel. Empty boxes print nothing.</FoldHelp>
           <label className="flex items-center gap-3 min-h-[44px] cursor-pointer">
             <input type="checkbox" checked={draft.label_show_price} onChange={(e) => set('label_show_price', e.target.checked)} className="w-5 h-5 shrink-0 accent-[var(--color-primary)]" />
             <span>
@@ -230,6 +232,7 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
         {/* The wrap-around label's parts (owner, 2026-10-12: a bottle label with parts side by side). */}
         <fieldset className="rounded-xl border border-[var(--color-border)] p-3 space-y-3 min-w-0" data-testid="item-label-wrap">
           <legend className="px-1 text-sm font-bold text-[var(--color-text)]">Wrap-around label (wide sizes)</legend>
+          <FoldHelp>Only for a wide label such as a bottle wrap: which strips print and in what order, the band along the bottom, and the recycling marks.</FoldHelp>
           <WrapParts
             value={draft.label_wrap}
             onChange={(v) => set('label_wrap', v)}

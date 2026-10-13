@@ -30,7 +30,7 @@ export const SPOT_NAMES: Record<LabelSpotKey, string> = {
   qty: 'quantity',
   price: 'price',
   storage: 'storage line',
-  footer: 'footer',
+  footer: 'bottom strip',
 };
 
 export function spotName(key: LabelSpotKey): string {

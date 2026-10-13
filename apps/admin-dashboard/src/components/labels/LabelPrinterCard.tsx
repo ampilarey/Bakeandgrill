@@ -46,7 +46,7 @@ export function LabelPrinterCard() {
     <Card padding="md">
     <div data-testid="label-printer-card">
       <h3 className="text-base font-bold text-[var(--color-text)] flex items-center gap-2"><Printer size={18} aria-hidden /> Label printer on this computer</h3>
-      <p className="text-xs text-[var(--color-text-muted)] mb-3">Pack stickers on a label-printer size can go straight to a thermal label printer: Prepare, then Send to label printer. The print agent (scripts/label-print-agent.mjs, a small program run on this computer) fetches the stickers in the printer's language and sends them to the printer over the network. Kept in this browser only.</p>
+      <p className="text-xs text-[var(--color-text-muted)] mb-3">Stickers prepared on Print labels at a label-printer size can go straight to a thermal label printer: Prepare, then Send to label printer. The print agent (scripts/label-print-agent.mjs, a small program run on this computer) fetches the stickers in the printer's language and sends them to the printer over the network. Kept in this browser only.</p>
       <div className="grid gap-3 sm:grid-cols-2 max-w-2xl">
         <div>
           <label className={label} htmlFor="printer-language">Printer language</label>

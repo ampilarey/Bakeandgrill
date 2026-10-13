@@ -61,7 +61,7 @@ describe('FooterPicker', () => {
     expect(within(select).getByRole('option', { name: 'Follow the type (Standard)' })).toBeInTheDocument();
     expect(within(select).getByRole('option', { name: 'Standard (standard)' })).toBeInTheDocument();
     expect(screen.queryByTestId('t-footer-lines')).toBeNull();
-    expect(screen.queryByRole('button', { name: 'New footer' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'New bottom strip' })).toBeNull();
     fireEvent.change(select, { target: { value: '2' } });
     expect(onChange).toHaveBeenCalledWith(2);
     fireEvent.change(select, { target: { value: '' } });
@@ -69,11 +69,11 @@ describe('FooterPicker', () => {
 
     rerender(<Harness value={2} canManage={false} onChange={onChange} />);
     expect(screen.getByTestId('t-footer-lines')).toHaveTextContent('Bake & Grill · Hand-made daily · +960 912 0011 · amma.mv');
-    expect(screen.queryByRole('button', { name: 'Edit the footer Kitchen stamp' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Edit the bottom strip Kitchen stamp' })).toBeNull();
 
     rerender(<Harness value={2} onChange={onChange} />);
-    expect(screen.getByRole('button', { name: 'Edit the footer Kitchen stamp' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'New footer' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Edit the bottom strip Kitchen stamp' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'New bottom strip' })).toBeInTheDocument();
   });
 
   // Owner, 2026-10-12: the footer is always the business's. With nothing
@@ -85,9 +85,9 @@ describe('FooterPicker', () => {
     updateLabelFooter.mockResolvedValue({ data: { ...STANDARD, tagline: 'Hand-made in Malé', effective: effective('Hand-made in Malé') } });
     render(<Harness value={null} fallback={STANDARD} onChange={onChange} onFootersChange={onFootersChange} />);
     expect(screen.getByTestId('t-footer-lines')).toHaveTextContent('Bake & Grill · Fresh Baked, Fire Grilled');
-    fireEvent.click(screen.getByRole('button', { name: 'Edit the footer Standard' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit the bottom strip Standard' }));
     const form = await screen.findByTestId('label-footer-form');
-    expect(form).toHaveTextContent("The footer is always Bake & Grill's branding");
+    expect(form).toHaveTextContent("The bottom strip is always Bake & Grill's branding");
     // No brand to choose, no by-line: a food brand is on the header only.
     expect(within(form).queryByLabelText('Whose lines fill the blanks')).toBeNull();
     expect(within(form).queryByLabelText('By-line')).toBeNull();
@@ -103,10 +103,10 @@ describe('FooterPicker', () => {
     const onFootersChange = vi.fn();
     updateLabelFooter.mockResolvedValue({ data: { ...STAMP, tagline: 'Hand-made every morning', effective: effective('Hand-made every morning', 'amma.mv') } });
     render(<Harness value={2} onChange={onChange} onFootersChange={onFootersChange} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Edit the footer Kitchen stamp' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit the bottom strip Kitchen stamp' }));
     const form = await screen.findByTestId('label-footer-form');
-    expect(screen.getByText('Edit footer: Kitchen stamp')).toBeInTheDocument();
-    expect(within(form).getByLabelText('Footer name (for the list)')).toHaveValue('Kitchen stamp');
+    expect(screen.getByText('Edit bottom strip: Kitchen stamp')).toBeInTheDocument();
+    expect(within(form).getByLabelText('Bottom strip name (for the list)')).toHaveValue('Kitchen stamp');
     expect(within(form).getByLabelText('Tagline, or your own words')).toHaveValue('Hand-made daily');
     // Each empty box shows its live value in grey: the business's.
     expect(within(form).getByLabelText('Name printed big')).toHaveAttribute('placeholder', 'Bake & Grill');
@@ -136,17 +136,17 @@ describe('FooterPicker', () => {
     const onFootersChange = vi.fn();
     createLabelFooter.mockResolvedValue({ data: footer(3, 'Gift box', effective('With love'), { tagline: 'With love', sort: 3 }) });
     render(<Harness value={null} fallback={STANDARD} onChange={onChange} onFootersChange={onFootersChange} />);
-    fireEvent.click(screen.getByRole('button', { name: 'New footer' }));
+    fireEvent.click(screen.getByRole('button', { name: 'New bottom strip' }));
     const form = await screen.findByTestId('label-footer-form');
-    expect(screen.getByRole('heading', { name: 'New footer' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'New bottom strip' })).toBeInTheDocument();
     // A new footer's blanks show the standard footer's lines; nothing is removed from one not saved yet.
     expect(within(form).getByLabelText('Tagline, or your own words')).toHaveAttribute('placeholder', 'Fresh Baked, Fire Grilled');
     expect(screen.queryByTestId('label-footer-remove')).toBeNull();
     fireEvent.click(screen.getByTestId('label-footer-save'));
     expect(createLabelFooter).not.toHaveBeenCalled();
-    expect(await screen.findByText('Give the footer a name.')).toBeInTheDocument();
+    expect(await screen.findByText('Give the bottom strip a name.')).toBeInTheDocument();
 
-    fireEvent.change(within(form).getByLabelText('Footer name (for the list)'), { target: { value: 'Gift box' } });
+    fireEvent.change(within(form).getByLabelText('Bottom strip name (for the list)'), { target: { value: 'Gift box' } });
     fireEvent.change(within(form).getByLabelText('Tagline, or your own words'), { target: { value: 'With love' } });
     fireEvent.click(screen.getByTestId('label-footer-save'));
     await waitFor(() => expect(createLabelFooter).toHaveBeenCalledWith(expect.objectContaining({ name: 'Gift box', tagline: 'With love', show_qr: true, show_mark: true })));
@@ -160,10 +160,10 @@ describe('FooterPicker', () => {
     deleteLabelFooter.mockResolvedValue({ ok: true });
     vi.spyOn(window, 'confirm').mockReturnValue(false);
     const { rerender } = render(<Harness value={2} onChange={onChange} onFootersChange={onFootersChange} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Edit the footer Kitchen stamp' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit the bottom strip Kitchen stamp' }));
     await screen.findByTestId('label-footer-form');
     fireEvent.click(screen.getByTestId('label-footer-remove'));
-    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('Remove the footer "Kitchen stamp"?'));
+    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('Remove the bottom strip "Kitchen stamp"?'));
     expect(deleteLabelFooter).not.toHaveBeenCalled();
 
     vi.spyOn(window, 'confirm').mockReturnValue(true);
@@ -174,7 +174,7 @@ describe('FooterPicker', () => {
     await waitFor(() => expect(screen.queryByTestId('label-footer-form')).toBeNull());
 
     rerender(<Harness value={1} onChange={onChange} onFootersChange={onFootersChange} footers={[STANDARD]} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Edit the footer Standard' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit the bottom strip Standard' }));
     await screen.findByTestId('label-footer-form');
     expect(screen.queryByTestId('label-footer-remove')).toBeNull();
   });

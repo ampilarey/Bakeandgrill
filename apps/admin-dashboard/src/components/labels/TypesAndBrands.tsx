@@ -8,6 +8,7 @@ import {
 import { Modal } from '../SharedUI';
 import { Button, Card, useToast } from '../ui';
 import { FooterModal, FooterPicker, describeFooter } from './FooterPicker';
+import { FoldHelp } from './FoldHelp';
 
 /*
  * Label Hub v2, step 1 (docs/LABEL_HUB_V2_PLAN.md). Owner, 2026-10-04:
@@ -106,6 +107,7 @@ function TypeModal({ type, brands, footers, onFootersChange, canManage, defaults
 
         <fieldset className="rounded-xl border border-[var(--color-border)] p-3 space-y-3">
           <legend className="px-1 text-sm font-bold text-[var(--color-text)]">Storage</legend>
+          <FoldHelp>How the food is kept and for how long. The storage line is the coloured line above the bottom strip; empty prints the usual line for that storage.</FoldHelp>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field id="lt-storage" label="Kept">
               <select id="lt-storage" value={d.storage} onChange={(e) => set('storage', e.target.value as LabelStorage)} className={fieldClass}>
@@ -113,13 +115,14 @@ function TypeModal({ type, brands, footers, onFootersChange, canManage, defaults
               </select>
             </Field>
             <Field id="lt-life" label="Shelf life (days)" hint="Expiry = made-on date + this, unless the item has its own."><input id="lt-life" type="number" inputMode="numeric" min={1} max={730} value={d.shelf_life_days} onChange={(e) => set('shelf_life_days', e.target.value)} className={fieldClass} placeholder="Blank: write by hand" /></Field>
-            <Field id="lt-line" label="Storage line (strip above the footer)"><input id="lt-line" value={d.storage_line} maxLength={160} onChange={(e) => set('storage_line', e.target.value)} className={fieldClass} placeholder={defaults?.storage_line ?? 'Usual line for this storage'} /></Field>
+            <Field id="lt-line" label="Storage line (the coloured line above the bottom strip)"><input id="lt-line" value={d.storage_line} maxLength={160} onChange={(e) => set('storage_line', e.target.value)} className={fieldClass} placeholder={defaults?.storage_line ?? 'Usual line for this storage'} /></Field>
             <Field id="lt-line-dv" label="Storage line (Dhivehi)"><input id="lt-line-dv" dir="rtl" value={d.storage_line_dv} maxLength={160} onChange={(e) => set('storage_line_dv', e.target.value)} className={fieldClass} placeholder={defaults?.storage_line_dv ?? ''} /></Field>
           </div>
         </fieldset>
 
         <fieldset className="rounded-xl border border-[var(--color-border)] p-3 space-y-3">
           <legend className="px-1 text-sm font-bold text-[var(--color-text)]">Dates</legend>
+          <FoldHelp>What the two date boxes are called, and the use-within line printed under them.</FoldHelp>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field id="lt-mfg" label="Made-on box says" hint="Pick one or type your own."><ChoiceInput id="lt-mfg" value={d.mfg_label} choices={MFG_CHOICES} onChange={(v) => set('mfg_label', v)} /></Field>
             <Field id="lt-exp" label="Expiry box says"><ChoiceInput id="lt-exp" value={d.exp_label} choices={EXP_CHOICES} onChange={(v) => set('exp_label', v)} /></Field>
@@ -130,6 +133,7 @@ function TypeModal({ type, brands, footers, onFootersChange, canManage, defaults
 
         <fieldset className="rounded-xl border border-[var(--color-border)] p-3 space-y-3">
           <legend className="px-1 text-sm font-bold text-[var(--color-text)]">How to use, and a note</legend>
+          <FoldHelp>Printed under the ingredients when the label has room for them. An item can type its own instead.</FoldHelp>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field id="lt-use" label="How to use" hint="An item can have its own instead."><textarea id="lt-use" rows={2} value={d.how_to_use} maxLength={200} onChange={(e) => set('how_to_use', e.target.value)} className={areaClass} placeholder="Thaw 10 min. Deep fry 4–5 min on medium heat until golden." /></Field>
             <Field id="lt-use-dv" label="How to use (Dhivehi)"><textarea id="lt-use-dv" dir="rtl" rows={2} value={d.how_to_use_dv} maxLength={200} onChange={(e) => set('how_to_use_dv', e.target.value)} className={areaClass} /></Field>
@@ -138,12 +142,12 @@ function TypeModal({ type, brands, footers, onFootersChange, canManage, defaults
           </div>
         </fieldset>
 
-        <Field id="lt-footer" label="Footer" hint="Always Bake & Grill's branding, whatever brand is on the header. The footer its stickers print unless a custom label or a sheet picks another (owner, 2026-10-12); a picked footer's QR switch wins over the box below.">
-          <FooterPicker id="lt-footer" footers={footers} value={d.footer_id} onChange={(id) => set('footer_id', id)} onFootersChange={onFootersChange} noneLabel="Standard (the business's footer)" fallback={footers.find((f) => f.is_default) ?? null} canManage={canManage} />
+        <Field id="lt-footer" label="Bottom strip" hint="Always Bake & Grill's branding, whatever brand is on the header: the bottom strip its stickers print unless a custom label or a sheet picks another. A picked strip's QR switch wins over the box below.">
+          <FooterPicker id="lt-footer" footers={footers} value={d.footer_id} onChange={(id) => set('footer_id', id)} onFootersChange={onFootersChange} noneLabel="Standard (the business's bottom strip)" fallback={footers.find((f) => f.is_default) ?? null} canManage={canManage} />
         </Field>
 
         <div className="flex flex-wrap gap-4">
-          <label className="flex items-center gap-2 min-h-[44px] cursor-pointer"><input type="checkbox" checked={d.show_qr} onChange={(e) => set('show_qr', e.target.checked)} className="w-5 h-5 accent-[var(--color-primary)]" /><span className="text-sm text-[var(--color-text)]">Print the complaints QR in the footer</span></label>
+          <label className="flex items-center gap-2 min-h-[44px] cursor-pointer"><input type="checkbox" checked={d.show_qr} onChange={(e) => set('show_qr', e.target.checked)} className="w-5 h-5 accent-[var(--color-primary)]" /><span className="text-sm text-[var(--color-text)]">Print the complaints QR in the bottom strip</span></label>
           <label className="flex items-center gap-2 min-h-[44px] cursor-pointer"><input type="checkbox" checked={d.is_active} onChange={(e) => set('is_active', e.target.checked)} className="w-5 h-5 accent-[var(--color-primary)]" /><span className="text-sm text-[var(--color-text)]">Offered when picking a type</span></label>
         </div>
 
@@ -192,7 +196,7 @@ export function BrandModal({ brand, onClose, onSaved }: { brand: LabelBrand | nu
       <div className="space-y-4" data-testid="label-brand-form">
         {brand?.is_default
           ? <p className="text-xs text-[var(--color-text-muted)]">The main brand's name, phone, address and website come from Business Details. Only the Dhivehi name is set here.</p>
-          : <p className="text-xs text-[var(--color-text-muted)]">A food brand: its logo and name go on the sticker's header. The footer is always Bake &amp; Grill's branding (Types &amp; brands → Footers).</p>}
+          : <p className="text-xs text-[var(--color-text-muted)]">A food brand: its logo and name go on the sticker's header. The bottom strip is always Bake &amp; Grill's branding (Wording and logos → Bottom strips).</p>}
         <div className="grid gap-3 sm:grid-cols-2">
           <Field id="lb-name" label="Brand name"><input id="lb-name" value={name} maxLength={60} disabled={brand?.is_default} onChange={(e) => setName(e.target.value)} className={fieldClass} placeholder="Amma" /></Field>
           <Field id="lb-name-dv" label="Brand name (Dhivehi)"><input id="lb-name-dv" dir="rtl" value={nameDv} maxLength={60} onChange={(e) => setNameDv(e.target.value)} className={fieldClass} /></Field>
@@ -236,8 +240,8 @@ export function TypesAndBrands({ canManage }: { canManage: boolean }) {
   useEffect(load, []);
 
   const removeFooter = async (f: LabelFooter) => {
-    if (!window.confirm(`Remove the footer "${f.name}"? Labels and types that print it go back to their brand's footer.`)) return;
-    try { await deleteLabelFooter(f.id); load(); toast('success', 'Footer removed.'); } catch (e) { toast('error', e instanceof Error ? e.message : 'Could not remove it.'); }
+    if (!window.confirm(`Remove the bottom strip "${f.name}"? Labels and types that print it go back to the standard one.`)) return;
+    try { await deleteLabelFooter(f.id); load(); toast('success', 'Bottom strip removed.'); } catch (e) { toast('error', e instanceof Error ? e.message : 'Could not remove it.'); }
   };
 
   const removeType = async (t: LabelType) => {
@@ -257,7 +261,7 @@ export function TypesAndBrands({ canManage }: { canManage: boolean }) {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h3 className="font-bold text-[var(--color-text)]">Label types</h3>
-              <p className="text-xs text-[var(--color-text-muted)] mt-1">What kind of food a label is for, with its wording. Each item picks one on its Label tab; a sheet can also be printed as a type.</p>
+              <p className="text-xs text-[var(--color-text-muted)] mt-1">What kind of food a label is for, with its wording: the heading, the storage line, the dates, how to use. Each item picks one on its Label tab; a whole sheet can use one type's wording from Print labels.</p>
             </div>
             {canManage && <Button size="sm" icon={<Plus size={16} />} onClick={() => setEditType('new')} data-testid="label-type-new">New type</Button>}
           </div>
@@ -288,7 +292,7 @@ export function TypesAndBrands({ canManage }: { canManage: boolean }) {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h3 className="font-bold text-[var(--color-text)]">Brands</h3>
-              <p className="text-xs text-[var(--color-text-muted)] mt-1">Who the label is from, on the header. The main brand is the business itself; a food brand under it, like Amma, prints its own name and logo there. The footer is always Bake &amp; Grill's (below).</p>
+              <p className="text-xs text-[var(--color-text-muted)] mt-1">Who the label is from, on the header. The main brand is the business itself; a food brand under it, like Amma, prints its own name and logo there. The bottom strip is always Bake &amp; Grill's (below).</p>
             </div>
             {canManage && <Button size="sm" icon={<Plus size={16} />} onClick={() => setEditBrand('new')} data-testid="label-brand-new">New brand</Button>}
           </div>
@@ -320,10 +324,10 @@ export function TypesAndBrands({ canManage }: { canManage: boolean }) {
         header={
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h3 className="font-bold text-[var(--color-text)]">Footers</h3>
-              <p className="text-xs text-[var(--color-text-muted)] mt-1">What the dark band at the foot of a sticker says, always Bake &amp; Grill's branding whatever food brand is on the header: name, tagline or your own words, phone, website, address, the complaints QR and the brand mark. Picked by name on a custom label, a label type or a whole sheet; a blank line follows Business Details, and nothing picked prints the standard one.</p>
+              <h3 className="font-bold text-[var(--color-text)]">Bottom strips</h3>
+              <p className="text-xs text-[var(--color-text-muted)] mt-1">What the band at the foot of a sticker says, always Bake &amp; Grill's branding whatever food brand is on the header: name, tagline or your own words, phone, website, address, the complaints QR and the brand mark. Picked by name on a custom label, a label type or a whole sheet; a blank line follows Business Details, and nothing picked prints the standard one.</p>
             </div>
-            {canManage && <Button size="sm" icon={<Plus size={16} />} onClick={() => setEditFooter('new')} data-testid="label-footer-new">New footer</Button>}
+            {canManage && <Button size="sm" icon={<Plus size={16} />} onClick={() => setEditFooter('new')} data-testid="label-footer-new">New bottom strip</Button>}
           </div>
         }
       >
@@ -331,7 +335,7 @@ export function TypesAndBrands({ canManage }: { canManage: boolean }) {
           {footers.map((f) => (
             <li key={f.id} className="px-4 py-3 flex flex-wrap items-center gap-x-3 gap-y-1">
               <div className="flex-1 min-w-[180px]">
-                <div className="text-sm font-semibold text-[var(--color-text)] flex items-center gap-1">{f.name}{f.is_default && <BadgeCheck size={14} className="text-[var(--color-primary)]" aria-label="Standard footer" />}</div>
+                <div className="text-sm font-semibold text-[var(--color-text)] flex items-center gap-1">{f.name}{f.is_default && <BadgeCheck size={14} className="text-[var(--color-primary)]" aria-label="Standard bottom strip" />}</div>
                 <div className="text-xs text-[var(--color-text-muted)]">{describeFooter(f)}{f.show_qr ? '' : ' · no QR'}{f.custom_labels_count || f.types_count ? ` · used by ${[f.custom_labels_count ? `${f.custom_labels_count} ${f.custom_labels_count === 1 ? 'label' : 'labels'}` : null, f.types_count ? `${f.types_count} ${f.types_count === 1 ? 'type' : 'types'}` : null].filter(Boolean).join(' and ')}` : ''}</div>
               </div>
               {canManage && (
@@ -342,7 +346,7 @@ export function TypesAndBrands({ canManage }: { canManage: boolean }) {
               )}
             </li>
           ))}
-          {footers.length === 0 && <li className="px-4 py-6 text-center text-sm text-[var(--color-text-muted)]">No footers yet.</li>}
+          {footers.length === 0 && <li className="px-4 py-6 text-center text-sm text-[var(--color-text-muted)]">No bottom strips yet.</li>}
         </ul>
       </Card>
 

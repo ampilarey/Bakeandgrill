@@ -111,7 +111,7 @@ export const NAV_GROUPS: NavGroup[] = [
       // Delivery settings: Settings → Delivery tab only. Not listed again here.
       { to: '/wholesale', icon: Store, label: 'Wholesale', permission: 'trade.view', description: 'Shops, deliveries, invoicing & reports' },
       // Owner, 2026-10-04: "a label making hub … accessible to all staff who have the authority".
-      { to: '/labels', icon: Tags, label: 'Labels', permissions: ['labels.print', 'labels.manage'], description: 'Pack stickers & box labels' },
+      { to: '/labels', icon: Tags, label: 'Labels', permissions: ['labels.print', 'labels.manage'], description: 'Labels for packs and boxes' },
     ],
   },
   {

@@ -20,7 +20,7 @@ use Tests\TestCase;
 /**
  * Printed stock near its expiry (2026-10-12): the print log knows what was
  * stickered with which date, so the owners hear once per batch and the
- * Pack stickers tab lists it with Reprint.
+ * Print labels tab lists it with Reprint.
  */
 class ExpiringLabelsTest extends TestCase
 {

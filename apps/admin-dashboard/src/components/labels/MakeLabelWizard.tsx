@@ -33,7 +33,7 @@ import { DEFAULT_CHOICE, DESIGN_NAMES, designFor, rememberSize, rememberedSize, 
  *      logo…) opens the boxes for that part alone and saves them (round 3,
  *      2026-10-13); the long form is behind All details.
  *   4. How many and print: copies, what it prints on, Print or PDF, through
- *      the same sticker request Pack stickers makes, so the print is logged
+ *      the same sticker request Print labels makes, so the print is logged
  *      and lands under Saved labels like any other.
  */
 

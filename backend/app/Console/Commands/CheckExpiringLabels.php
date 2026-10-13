@@ -91,6 +91,6 @@ class CheckExpiringLabels extends Command
 
         return 'Bake & Grill: ' . $total . ' printed pack(s) expire within ' . $days . ' days or just did: '
             . implode('; ', $phrases) . ($more > 0 ? '; +' . $more . ' more' : '')
-            . '. Check the freezer; Labels → Pack stickers lists them with Reprint.';
+            . '. Check the freezer; Labels → Print labels lists them with Reprint.';
     }
 }

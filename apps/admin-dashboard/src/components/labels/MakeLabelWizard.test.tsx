@@ -6,7 +6,7 @@ import type { LabelPreset } from '../../api';
 /*
  * Make a label in four steps (owner, 2026-10-13): a menu item not yet on
  * labels is switched on when picked; a picture card picks the size; the
- * preview draws from the same sticker request Pack stickers makes; Print
+ * preview draws from the same sticker request Print labels makes; Print
  * prepares the sheet with the copies asked for and opens it.
  */
 const api = vi.hoisted(() => ({
@@ -96,7 +96,7 @@ describe('MakeLabelWizard', () => {
     expect(screen.getByTestId('make-size-line')).toHaveTextContent('60 × 40 mm · small sticker · 18 on A4 sheet');
     fireEvent.click(screen.getByTestId('make-next-2'));
 
-    // Step 3: the preview is drawn from the same request Pack stickers makes, in both languages for a Dhivehi name.
+    // Step 3: the preview is drawn from the same request Print labels makes, in both languages for a Dhivehi name.
     await waitFor(() => expect(api.stickerLinks).toHaveBeenCalled());
     expect(api.stickerLinks).toHaveBeenLastCalledWith(expect.objectContaining({ items: [{ id: 7, copies: 1, kind: 'item' }], layout: 'a4-custom', w: 60, h: 40, lang: 'both', fill: true, preview: true }));
     await waitFor(() => expect(screen.getByTitle('The label')).toHaveAttribute('src', expect.stringContaining('one=1')));

@@ -1,6 +1,6 @@
 @php
     /*
-     * Pack stickers (owner, 2026-10-04: "I want to print labels like this").
+     * Print labels (owner, 2026-10-04: "I want to print labels like this").
      * The same view prints from the browser and renders as the PDF; every
      * piece is placed in millimetres by StickerDesign, so the two match.
      *
@@ -32,7 +32,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex">
-    <title>Pack stickers – {{ $sheet['label'] }}</title>
+    <title>Print labels – {{ $sheet['label'] }}</title>
     @unless ($forPdf)
         @foreach (['plus-jakarta-sans-400', 'plus-jakarta-sans-500', 'plus-jakarta-sans-700', 'plus-jakarta-sans-800', 'dm-serif-display-regular', 'dm-serif-display-italic', 'label-symbols'] as $f)
             <link rel="preload" href="/fonts/{{ $f }}.woff2" as="font" type="font/woff2" crossorigin>

@@ -18,7 +18,7 @@ const group = (extra: Record<string, unknown>) => ({
 });
 
 /*
- * Expiring printed stock (2026-10-12): the card over Pack stickers, from the
+ * Expiring printed stock (2026-10-12): the card over Print labels, from the
  * print log, with Reprint that opens the form on that product.
  */
 describe('ExpiringStock', () => {

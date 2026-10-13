@@ -130,7 +130,7 @@ describe('CustomLabelModal', () => {
   });
 
   // Audit, 2026-10-12: the label picks its footer, its QR and its language;
-  // Print… carries the size and language to Pack stickers; closing with
+  // Print… carries the size and language to Print labels; closing with
   // changes asks first.
   it('picks a footer by name, the QR switch and the language, and previews in that language', async () => {
     createCustomLabel.mockResolvedValue({ data: custom(9, 'Gift Box', { footer_id: 1, footer_name: 'Standard', label_show_qr: false, label_lang: 'both' }) });
@@ -141,12 +141,12 @@ describe('CustomLabelModal', () => {
     await screen.findByRole('option', { name: 'Standard (standard)' });
     expect(screen.getByRole('option', { name: 'Standard' })).toBeInTheDocument();
     expect(screen.getByTestId('cl-footer-lines')).toHaveTextContent('Fresh Baked, Fire Grilled');
-    expect(screen.getByRole('button', { name: 'Edit the footer Standard' })).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('Footer'), { target: { value: '1' } });
+    expect(screen.getByRole('button', { name: 'Edit the bottom strip Standard' })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Bottom strip'), { target: { value: '1' } });
     // The picked footer says what it prints, and the QR follows it until told otherwise.
     expect(screen.getByTestId('cl-footer-lines')).toHaveTextContent('Bake & Grill · Fresh Baked, Fire Grilled · +960 912 0011 · bakeandgrill.mv');
-    expect(screen.getByRole('option', { name: 'As the footer (printed)' })).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('Complaints QR in the footer'), { target: { value: 'off' } });
+    expect(screen.getByRole('option', { name: 'As the bottom strip (printed)' })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Complaints QR in the bottom strip'), { target: { value: 'off' } });
     fireEvent.click(screen.getByRole('button', { name: 'Both' }));
     await waitFor(() => expect(previewCustomDraft).toHaveBeenCalledWith(expect.objectContaining({ name: 'Gift Box', footer_id: 1, label_show_qr: false, label_lang: 'both', lang: 'both' })), { timeout: 3000 });
     // Which Dhivehi face the preview is drawn in is said under it.
@@ -160,7 +160,7 @@ describe('CustomLabelModal', () => {
     updateLabelFooter.mockResolvedValue({ data: footerRow(1, 'Standard', effective('Made in Malé with love'), { tagline: 'Made in Malé with love' }) });
     wrap(<CustomLabelModal label={custom(9, 'Gift Box', { footer_id: 1, footer_name: 'Standard' })} onClose={() => {}} onSaved={() => {}} />);
     await screen.findByRole('option', { name: 'Standard (standard)' });
-    fireEvent.click(screen.getByRole('button', { name: 'Edit the footer Standard' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit the bottom strip Standard' }));
     const form = await screen.findByTestId('label-footer-form');
     // A blank line shows, in grey, what it prints today.
     expect(within(form).getByLabelText('Tagline, or your own words')).toHaveAttribute('placeholder', 'Fresh Baked, Fire Grilled');
@@ -175,7 +175,7 @@ describe('CustomLabelModal', () => {
     await waitFor(() => expect(previewCustomDraft.mock.calls.length).toBeGreaterThan(drawn), { timeout: 3000 });
   });
 
-  it('Print… saves first and opens Pack stickers on the same size and language', async () => {
+  it('Print… saves first and opens Print labels on the same size and language', async () => {
     createCustomLabel.mockResolvedValue({ data: custom(9, 'Gift Box') });
     localStorage.setItem('labels.lastSize', JSON.stringify({ shape: 'rect', preset: 'r40x60', on: 'sheet', w: 40, h: 60 }));
     render(
@@ -235,6 +235,23 @@ describe('CustomLabelModal', () => {
     fireEvent.click(within(brand).getByRole('button', { name: 'Done' }));
     await waitFor(() => expect(screen.queryByTestId('quick-edit')).toBeNull());
     expect(screen.getByLabelText('Brand and logo')).toHaveValue('1');
+  });
+
+  // Round 4 (owner, 2026-10-13: plain words everywhere): every fold opens with a
+  // one-line "?" saying what it is for, and the footer is called the bottom strip.
+  it('says what each fold is for and calls the footer the bottom strip', async () => {
+    wrap(<CustomLabelModal label={custom(7, 'Garlic Sauce', { footer_id: 1, footer_name: 'Standard' })} onClose={() => {}} onSaved={() => {}} />);
+    const helps = screen.getAllByTestId('fold-help').map((el) => el.textContent ?? '');
+    expect(helps.some((t) => t.startsWith('Round or rectangle'))).toBe(true);
+    expect(helps.some((t) => t.startsWith('What is in it and how it keeps'))).toBe(true);
+    expect(helps.some((t) => t.startsWith('A price and a barcode'))).toBe(true);
+    expect(helps.some((t) => t.startsWith('The heading, the storage line'))).toBe(true);
+    expect(helps.some((t) => t.startsWith('The band at the foot of every sticker'))).toBe(true);
+    expect(helps.some((t) => t.startsWith('Only for a wide label'))).toBe(true);
+    expect(screen.getByText('Bottom strip and complaints QR')).toBeInTheDocument();
+    expect(screen.getByLabelText('Bottom strip')).toBeInTheDocument();
+    expect(screen.getByLabelText('Storage line (the coloured line above the bottom strip)')).toBeInTheDocument();
+    expect(screen.queryByText(/Footer and complaints QR/)).toBeNull();
   });
 
   it('asks for a name before saving', async () => {
@@ -302,9 +319,9 @@ describe('CustomLabelsTab', () => {
   });
 
   // Owner, 2026-10-12: "Layout of the custom labels is different when i go to
-  // print". Save and the editor's preview follow the size Pack stickers last
+  // print". Save and the editor's preview follow the size Print labels last
   // printed, so a 4 × 6 cm owner gets a sheet of 4 × 6 cm.
-  it('saves at the size Pack stickers last printed, a full sheet of it', async () => {
+  it('saves at the size Print labels last printed, a full sheet of it', async () => {
     localStorage.setItem('labels.lastSize', JSON.stringify({ shape: 'rect', preset: 'r40x60', on: 'sheet', w: 40, h: 60 }));
     fetchCustomLabels.mockResolvedValue({ data: [custom(7, 'Garlic Sauce')] });
     stickerLinks.mockResolvedValue({ url: '/x', view_url: '/x', pdf_url: '/x.pdf', expires_in_minutes: 30, job: { id: 4, name: 'Garlic Sauce · 21 stickers' } });

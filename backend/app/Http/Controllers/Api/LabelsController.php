@@ -775,7 +775,7 @@ class LabelsController extends Controller
 
     /**
      * Printed stock near its expiry (2026-10-12), one row per product, batch
-     * and date, for the card on Pack stickers; the daily alert
+     * and date, for the card on Print labels; the daily alert
      * (labels:check-expiring) reads the same groups.
      */
     public function expiring(Request $request): JsonResponse

@@ -10,6 +10,7 @@ import { FooterPicker } from './FooterPicker';
 import { WRAP_FALLBACK, WrapParts } from './WrapParts';
 import { StripOverlay } from './StripEditor';
 import { SpotOverlay } from './SpotOverlay';
+import { FoldHelp } from './FoldHelp';
 import { QuickEditSheet, quickSpec } from './QuickEdit';
 import { customDraft as toDraft, customPayload as toPayload, type CustomDraft as Draft } from './labelDrafts';
 import { DEFAULT_CHOICE, rememberedSize, requestFor, sizeName, sizeOf, stockOf, type SizeChoice } from './labelSize';
@@ -26,12 +27,12 @@ import { useIsBelowDesktop } from '../../hooks/useIsMobile';
  * Custom labels (owner, 2026-10-11: "Add option to add custom labels using
  * different brands logos and other details. Not only from the menu list"):
  * a pack sticker for something that is not on the menu, with its own brand
- * and logo, label type and wording. It prints from Pack stickers beside the
+ * and logo, label type and wording. It prints from Print labels beside the
  * menu items, on any size. Writing one needs Manage label settings.
  *
  * Audit, 2026-10-12 (owner: "Do a full audit and add important features and
  * make it user friendly and mobile friendly"). The editor previews the very
- * sticker Pack stickers would print, at any size (the same picker), and on a
+ * sticker Print labels would print, at any size (the same picker), and on a
  * phone the preview is a bar pinned under the title, not the end of a long
  * scroll. Save and Print… sit in the sheet's sticky footer; closing with
  * changes asks first. The label picks its footer (its brand's, the standard
@@ -70,8 +71,8 @@ function Field({ id, label, hint, children }: { id: string; label: string; hint?
   );
 }
 
-/** A part of the form that folds: the title stays, with a line saying what it holds. */
-function Section({ title, summary, open, testId, children }: { title: string; summary?: ReactNode; open: boolean; testId?: string; children: ReactNode }) {
+/** A part of the form that folds: the title stays, with a line saying what it holds, and a one-line "?" at the top saying what it is for (round 4, 2026-10-13). */
+function Section({ title, summary, open, testId, help, children }: { title: string; summary?: ReactNode; open: boolean; testId?: string; help?: ReactNode; children: ReactNode }) {
   return (
     <details className="cl-section rounded-xl border border-[var(--color-border)]" open={open} data-testid={testId}>
       <summary className="cursor-pointer list-none px-3 min-h-[44px] flex items-center gap-2 text-sm font-bold text-[var(--color-text)] select-none">
@@ -79,7 +80,10 @@ function Section({ title, summary, open, testId, children }: { title: string; su
         <span>{title}</span>
         {summary && <span className="ml-auto text-xs font-normal text-[var(--color-text-muted)] text-right min-w-0">{summary}</span>}
       </summary>
-      <div className="px-3 pb-3 space-y-3">{children}</div>
+      <div className="px-3 pb-3 space-y-3">
+        {help && <FoldHelp>{help}</FoldHelp>}
+        {children}
+      </div>
     </details>
   );
 }
@@ -147,7 +151,7 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
   const baseline = useMemo(() => JSON.stringify(toPayload(toDraft(saved))), [saved]);
   const dirty = JSON.stringify(toPayload(d)) !== baseline;
 
-  // The preview is the first sticker of the sheet Pack stickers would print
+  // The preview is the first sticker of the sheet Print labels would print
   // at this size, so what is seen here is what comes out.
   const sized = requestFor(choice, presets);
   const dims = sizeOf(choice, presets);
@@ -218,7 +222,7 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
     }
   };
 
-  // Print…: Pack stickers opens on this label at the size and language
+  // Print…: Print labels opens on this label at the size and language
   // previewed here. A changed or new label is saved first.
   const printIt = async () => {
     setPrinting(true);
@@ -291,19 +295,18 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
   const footerName = pickedFooter ? pickedFooter.name : `${fallbackFooter?.name ?? 'Standard'}${typeFooter ? ' (type)' : ''}`;
   // The QR: this label's switch, else the picked footer's, else the type's footer's, else the type's own.
   const qrFollows = (pickedFooter ?? typeFooter)?.show_qr ?? (type ? type.show_qr : true);
-  const qrWord = d.label_show_qr === 'on' ? 'printed' : d.label_show_qr === 'off' ? 'off' : `as the footer (${qrFollows ? 'printed' : 'off'})`;
+  const qrWord = d.label_show_qr === 'on' ? 'printed' : d.label_show_qr === 'off' ? 'off' : `as the bottom strip (${qrFollows ? 'printed' : 'off'})`;
   const sizeLine = `${sizeName(choice.shape, dims.w, dims.h)} · ${presets.length ? stockOf(choice, presets).label : 'A4 sheet'}`;
 
   // Open, not folded (owner, 2026-10-13: "there is no custom size selection in
-  // custom labels"): the shape and size chips sit in plain view, as on Pack stickers.
+  // custom labels"): the shape and size chips sit in plain view, as on Print labels.
   const sizeSection = (
-    <Section title="Shape and size" summary={sizeLine} open testId="custom-label-size">
-      <p className="text-xs text-[var(--color-text-muted)]">Round or rectangle, a one-tap size or any size typed in. The preview and Print… use it; it starts as the one Pack stickers last printed.</p>
+    <Section title="Shape and size" summary={sizeLine} open testId="custom-label-size" help="Round or rectangle, a one-tap size or any size typed in. The preview and Print… use it; it starts as the one Print labels last printed.">
       <LabelSizePicker presets={presets} limits={limits} choice={choice} onChange={setChoice} rounded={rounded} onRounded={setRounded} />
     </Section>
   );
   const touchable = previewWrap !== null || previewSpots.length > 0;
-  const previewCaption = `${touchable ? 'Tap a part of the label to change it. ' : ''}${sizeName(choice.shape, dims.w, dims.h)} · the first sticker of the sheet Pack stickers prints at this size. Redraws as you type, saved or not.${dvFont ? ` Dhivehi in ${DV_FONT_NAMES[dvFont] ?? dvFont} (Labels → Settings).` : ''}`;
+  const previewCaption = `${touchable ? 'Tap a part of the label to change it. ' : ''}${sizeName(choice.shape, dims.w, dims.h)} · the first sticker of the sheet Print labels prints at this size. Redraws as you type, saved or not.${dvFont ? ` Dhivehi in ${DV_FONT_NAMES[dvFont] ?? dvFont} (Labels → Settings).` : ''}`;
   // Touch zones over the preview: a wrap label's strips (round 2, 2026-10-13), every other design's parts (round 3).
   const stripOverlay = previewWrap
     ? <StripOverlay strips={previewWrap} w={dims.w} h={dims.h} catalogue={catalogue ?? WRAP_FALLBACK} onPick={setOpenStrip} />
@@ -357,6 +360,7 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
 
             <fieldset className="rounded-xl border border-[var(--color-border)] p-3 space-y-3">
               <legend className="px-1 text-sm font-bold text-[var(--color-text)]">Ingredients and keeping</legend>
+              <FoldHelp>What is in it and how it keeps. The shelf life sets the expiry date when the dates are filled in at print time.</FoldHelp>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field id="cl-ing" label="Ingredients"><textarea id="cl-ing" rows={2} maxLength={500} value={d.label_ingredients} onChange={(e) => set('label_ingredients', e.target.value)} className={areaClass} placeholder="Garlic, oil, lemon, salt" /></Field>
                 <Field id="cl-ing-dv" label="Ingredients (Dhivehi)"><textarea id="cl-ing-dv" dir="rtl" rows={2} maxLength={500} value={d.label_ingredients_dv} onChange={(e) => set('label_ingredients_dv', e.target.value)} className={areaClass} /></Field>
@@ -376,19 +380,18 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
               </div>
             </fieldset>
 
-            <Section title="For the shop till" summary={shopSummary} open={d.label_price !== '' || d.label_barcode.trim() !== ''} testId="custom-label-shop">
+            <Section title="For the shop till" summary={shopSummary} open={d.label_price !== '' || d.label_barcode.trim() !== ''} testId="custom-label-shop" help="A price and a barcode for a pack sold at another shop's till. Empty boxes print nothing.">
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field id="cl-price" label="Price (MVR)" hint="Empty prints no price."><input id="cl-price" type="number" inputMode="decimal" min={0} step="0.5" value={d.label_price} onChange={(e) => set('label_price', e.target.value)} className={fieldClass} placeholder="25.00" /></Field>
                 <Field id="cl-barcode" label="Barcode (EAN-13 or EAN-8)" hint="12 digits: the check digit is added. Prints on the full-size sticker."><input id="cl-barcode" inputMode="numeric" maxLength={20} value={d.label_barcode} onChange={(e) => set('label_barcode', e.target.value)} className={fieldClass} placeholder="590123412345" /></Field>
               </div>
             </Section>
 
-            <Section title="Wording on the sticker" summary={wordingSet > 0 ? `${wordingSet} of ${WORDING_KEYS.length} set` : 'As the type'} open={wordingSet > 0} testId="custom-label-wording">
-              <p className="text-xs text-[var(--color-text-muted)]">Leave a box empty to print what is shown in grey.</p>
+            <Section title="Wording on the sticker" summary={wordingSet > 0 ? `${wordingSet} of ${WORDING_KEYS.length} set` : 'As the type'} open={wordingSet > 0} testId="custom-label-wording" help="The heading, the storage line, the note and how to use. Leave a box empty to print what is shown in grey, the label type's wording.">
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field id="cl-heading" label="Heading (top of the sticker)"><input id="cl-heading" maxLength={40} value={d.label_heading} onChange={(e) => set('label_heading', e.target.value.toUpperCase())} className={fieldClass} placeholder={ph.heading} /></Field>
                 <Field id="cl-heading-dv" label="Heading (Dhivehi)"><input id="cl-heading-dv" dir="rtl" maxLength={40} value={d.label_heading_dv} onChange={(e) => set('label_heading_dv', e.target.value)} className={fieldClass} placeholder={ph.heading_dv} /></Field>
-                <Field id="cl-line" label="Storage line (strip above the footer)"><input id="cl-line" maxLength={160} value={d.label_storage_line} onChange={(e) => set('label_storage_line', e.target.value)} className={fieldClass} placeholder={ph.storage_line} /></Field>
+                <Field id="cl-line" label="Storage line (the coloured line above the bottom strip)"><input id="cl-line" maxLength={160} value={d.label_storage_line} onChange={(e) => set('label_storage_line', e.target.value)} className={fieldClass} placeholder={ph.storage_line} /></Field>
                 <Field id="cl-line-dv" label="Storage line (Dhivehi)"><input id="cl-line-dv" dir="rtl" maxLength={160} value={d.label_storage_line_dv} onChange={(e) => set('label_storage_line_dv', e.target.value)} className={fieldClass} placeholder={ph.storage_line_dv} /></Field>
                 <Field id="cl-note" label="Note under the ingredients"><input id="cl-note" maxLength={120} value={d.label_note} onChange={(e) => set('label_note', e.target.value)} className={fieldClass} placeholder={ph.note} /></Field>
                 <Field id="cl-note-dv" label="Note (Dhivehi)"><input id="cl-note-dv" dir="rtl" maxLength={120} value={d.label_note_dv} onChange={(e) => set('label_note_dv', e.target.value)} className={fieldClass} /></Field>
@@ -397,20 +400,20 @@ export function CustomLabelModal({ label, onClose, onSaved }: { label: CustomLab
               </div>
             </Section>
 
-            <Section title="Footer and complaints QR" summary={`${footerName} · QR ${qrWord}`} open={d.footer_id !== null || d.label_show_qr !== ''} testId="custom-label-footer">
-              <Field id="cl-footer" label="Footer" hint={`Always ${mainBrand}'s branding, whatever brand is on the header. Pick a footer by name, change the one that prints with the pencil, or add one with +. Nothing picked follows the label type, else Standard.`}>
+            <Section title="Bottom strip and complaints QR" summary={`${footerName} · QR ${qrWord}`} open={d.footer_id !== null || d.label_show_qr !== ''} testId="custom-label-footer" help={`The band at the foot of every sticker: ${mainBrand}'s name, phone, website and the complaints QR. Pick a saved strip by name.`}>
+              <Field id="cl-footer" label="Bottom strip" hint={`Always ${mainBrand}'s branding, whatever brand is on the header. Pick one by name, change the one that prints with the pencil, or add one with +. Nothing picked follows the label type, else Standard.`}>
                 <FooterPicker id="cl-footer" footers={footers} value={d.footer_id} onChange={(id) => set('footer_id', id)} onFootersChange={(f) => { setFooters(f); setFootersTick((t) => t + 1); }} noneLabel={d.label_type_id ? `Follow the type (${fallbackFooter?.name ?? 'Standard'})` : (fallbackFooter?.name ?? 'Standard')} fallback={fallbackFooter} canManage />
               </Field>
-              <Field id="cl-qr" label="Complaints QR in the footer" hint="The same code as the receipts and the poster: with the brand mark inside on the full sticker, bare on the small ones.">
+              <Field id="cl-qr" label="Complaints QR in the bottom strip" hint="The same code as the receipts and the poster: with the brand mark inside on the full sticker, bare on the small ones.">
                 <select id="cl-qr" value={d.label_show_qr} onChange={(e) => set('label_show_qr', e.target.value as Draft['label_show_qr'])} className={fieldClass}>
-                  <option value="">As the footer ({qrFollows ? 'printed' : 'off'})</option>
+                  <option value="">As the bottom strip ({qrFollows ? 'printed' : 'off'})</option>
                   <option value="on">Print it</option>
                   <option value="off">Leave it off</option>
                 </select>
               </Field>
             </Section>
 
-            <Section title="Wrap-around label (wide sizes)" summary={`${d.label_wrap.parts.length} parts${d.label_wrap.band ? ' · band' : ''}`} open={false} testId="custom-label-wrap">
+            <Section title="Wrap-around label (wide sizes)" summary={`${d.label_wrap.parts.length} parts${d.label_wrap.band ? ' · band' : ''}`} open={false} testId="custom-label-wrap" help="Only for a wide label such as a bottle wrap: which strips print and in what order, the band along the bottom, and the recycling marks.">
               <WrapParts
                 value={d.label_wrap}
                 onChange={(v) => set('label_wrap', v)}
@@ -513,7 +516,7 @@ export function CustomLabelsTab({ canManage }: { canManage: boolean }) {
     try { await deleteCustomLabel(c.id); await load(); toast('success', 'Custom label removed.'); } catch (e) { toast('error', e instanceof Error ? e.message : 'Could not remove it.'); }
   };
   // Owner, 2026-10-12: "no option to send to saved labels". One tap prepares
-  // a full sheet of this label at the size Pack stickers last printed (full
+  // a full sheet of this label at the size Print labels last printed (full
   // stickers, four to an A4 page, until a size is picked there), in the
   // language the label says, and lands on Saved labels, where it can be
   // printed again, pinned or changed.
@@ -549,7 +552,7 @@ export function CustomLabelsTab({ canManage }: { canManage: boolean }) {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex-1 min-w-[200px]">
                 <h3 className="font-bold text-[var(--color-text)]">Custom labels</h3>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">Stickers for things that are not on the menu, with any brand and logo, wording and picture. They print from Pack stickers, on any size, beside the menu items.</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">Stickers for things that are not on the menu, with any brand and logo, wording and picture. They print from Print labels, on any size, beside the menu items.</p>
               </div>
               {canManage && <Button size="sm" icon={<Plus size={16} />} onClick={() => setEdit('new')} data-testid="custom-label-new">New custom label</Button>}
             </div>

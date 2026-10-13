@@ -16,13 +16,14 @@ import { InlineRename } from './InlineRename';
 import { LabelSizePicker } from './LabelSizePicker';
 import { CustomLabelModal } from './CustomLabels';
 import { FooterPicker } from './FooterPicker';
+import { FoldHelp } from './FoldHelp';
 import { DEFAULT_CHOICE, choiceFromRequest, pageOf, rememberSize, rememberedSize, requestFor, sizeName, sizeOf, sizeProblem, stockOf, type SizeChoice } from './labelSize';
 
 /*
- * Pack stickers: pick products, how many, the language, the label size and
+ * Print labels: pick products, how many, the language, the label size and
  * what goes in the date boxes; the server checks it, says what will print,
  * and hands back a print link and a PDF link (good for 30 minutes).
- * Used by Labels → Pack stickers and by "Print stickers" on a production line.
+ * Used by Labels → Print labels and by "Print stickers" on a production line.
  * A product is a menu item or a custom label (owner, 2026-10-11: "Not only
  * from the menu list"), keyed "i12" and "c5" so the two never mix up.
  */
@@ -592,17 +593,18 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
           {moreOpen ? <ChevronUp size={16} aria-hidden className="mt-0.5 shrink-0" /> : <ChevronDown size={16} aria-hidden className="mt-0.5 shrink-0" />}
           <span className="min-w-0">
             <span className="block">More options</span>
-            {!moreOpen && (asType || footer || batch || qty || packedFor || promoKind || numbered || marks) && <span className="block text-xs font-semibold text-[var(--color-primary)]">{[asType ? 'print as a type' : null, footer ? `footer: ${footers.find((f) => f.id === footer)?.name ?? 'picked'}` : null, batch ? `batch ${batch}` : null, qty ? `${qty} per pack` : null, packedFor ? `for ${packedFor}` : null, promoKind === 'was_now' ? 'was → now flash' : promoKind ? `flash: ${promoWords}` : null, numbered ? 'numbered packs' : null, marks ? `crop marks${Number(bleed) > 0 ? `, ${bleed} mm bleed` : ''}` : null].filter(Boolean).join(' · ')}</span>}
-            {!moreOpen && !(asType || footer || batch || qty || packedFor || promoKind || numbered || marks) && <span className="block text-xs font-normal text-[var(--color-text-muted)]">Print as a type, one footer for the sheet, batch number, quantity per pack, packed for, promotion flash, pack numbering, crop marks</span>}
+            {!moreOpen && (asType || footer || batch || qty || packedFor || promoKind || numbered || marks) && <span className="block text-xs font-semibold text-[var(--color-primary)]">{[asType ? `wording of ${types.find((t) => t.id === asType)?.name ?? 'a type'}` : null, footer ? `bottom strip: ${footers.find((f) => f.id === footer)?.name ?? 'picked'}` : null, batch ? `batch ${batch}` : null, qty ? `${qty} per pack` : null, packedFor ? `for ${packedFor}` : null, promoKind === 'was_now' ? 'was → now flash' : promoKind ? `flash: ${promoWords}` : null, numbered ? 'numbered packs' : null, marks ? `crop marks${Number(bleed) > 0 ? `, ${bleed} mm bleed` : ''}` : null].filter(Boolean).join(' · ')}</span>}
+            {!moreOpen && !(asType || footer || batch || qty || packedFor || promoKind || numbered || marks) && <span className="block text-xs font-normal text-[var(--color-text-muted)]">Another type's wording, one bottom strip for the sheet, batch number, quantity per pack, packed for, promotion flash, pack numbering, crop marks</span>}
           </span>
         </button>
         {moreOpen && (
           <div id="label-more-options" className="grid gap-3 sm:grid-cols-2 mt-2">
+            <FoldHelp className="sm:col-span-2">Things that change this print only: the wording of another type, one bottom strip for the whole sheet, the batch number, how many per pack, who it is for, a promotion flash, pack numbering and crop marks.</FoldHelp>
             {types.length > 0 && (
               <div className="sm:col-span-2">
-                <label className={labelClass} htmlFor="label-as-type">Print as</label>
+                <label className={labelClass} htmlFor="label-as-type">Use the wording of</label>
                 <select id="label-as-type" value={asType ?? ''} onChange={(e) => setAsType(e.target.value ? Number(e.target.value) : null)} className={fieldClass}>
-                  <option value="">Each product's own label type</option>
+                  <option value="">Each product's own type</option>
                   {types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
                 <p className="text-xs text-[var(--color-text-muted)] mt-1">One type for the whole sheet: its heading, dates wording, how-to-use and brand. A product's own typed wording, and a custom label's own brand, still print.</p>
@@ -610,9 +612,9 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
             )}
             {footers.length > 0 && (
               <div className="sm:col-span-2">
-                <label className={labelClass} htmlFor="label-footer">Footer</label>
-                <FooterPicker id="label-footer" footers={footers} value={footer} onChange={setFooter} onFootersChange={(f) => { setFooters(f); setFootersTick((t) => t + 1); }} noneLabel="Each product's own footer" canManage={can('labels.manage')} />
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">One footer for every sticker on the sheet, always Bake &amp; Grill's branding: tagline, phone, website and whether the complaints QR prints. Empty keeps each product's own, from its label or its type, else the standard one.</p>
+                <label className={labelClass} htmlFor="label-footer">Bottom strip</label>
+                <FooterPicker id="label-footer" footers={footers} value={footer} onChange={setFooter} onFootersChange={(f) => { setFooters(f); setFootersTick((t) => t + 1); }} noneLabel="Each product's own bottom strip" canManage={can('labels.manage')} />
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">One bottom strip for every sticker on the sheet, always Bake &amp; Grill's branding: tagline, phone, website and whether the complaints QR prints. Empty keeps each product's own, from its label or its type, else the standard one.</p>
               </div>
             )}
             <div>
@@ -627,7 +629,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
             <div>
               <label className={labelClass} htmlFor="label-for">Packed for (optional)</label>
               <input id="label-for" value={packedFor} maxLength={60} onChange={(e) => setPackedFor(e.target.value)} placeholder="A shop, a customer, an event" className={fieldClass} />
-              <p className="text-xs text-[var(--color-text-muted)] mt-1">Prints "PACKED FOR" under the name. Wholesale → a delivery → Pack stickers fills it with the shop; an event's page with the customer.</p>
+              <p className="text-xs text-[var(--color-text-muted)] mt-1">Prints "PACKED FOR" under the name. Wholesale → a delivery → Print labels fills it with the shop; an event's page with the customer.</p>
             </div>
             <div>
               <label className={labelClass} htmlFor="label-for2">Packed for, second line (optional)</label>

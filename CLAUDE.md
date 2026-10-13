@@ -170,7 +170,8 @@ rule differs from browsers (`LabelText::PDF_BASELINE_K`), and dompdf needs Thaan
 visual order (`App\Support\ThaanaVisual`, PDF path only; the menu PDF uses it too).
 Below 1024px the live preview
 is a bar pinned under the header (`PhonePreviewBar`), never a column under the form
-(audit, 2026-10-11); the form folds Print as, batch and quantity behind More options,
+(audit, 2026-10-11); the form folds Use the wording of (one type for the sheet; "Print as"
+until round 4), batch and quantity behind More options,
 shows each picked product's expiry before Prepare, and offers the last printed sheets as
 Print again. A saved label is renamed in place (`InlineRename`), never with a browser
 prompt. Built 2026-10-12 (owner: "build all"): a price (the menu's unless typed, on when
@@ -188,7 +189,7 @@ Dhivehi on stickers is Noto Sans Thaana with a true bold for headings (owner, 20
 and a second family in a Blade `{{ }}` must not be quoted there (Blade escapes the quotes
 and the browser drops the rule). Dhivehi at hand-thickening 0.5 and up sets in the true
 bold (`LabelText::DV_BOLD_FROM`). A custom label's row has Save, which prepares a full
-sheet straight into Saved labels at the size Pack stickers last printed
+sheet straight into Saved labels at the size Print labels last printed
 (`rememberedSize()` in `labelSize.ts`), and the editor previews the first sticker of that
 same sheet, so preview and print never differ. **The footer is always Bake & Grill's
 branding** (owner, 2026-10-12: "Amma is a food brand label but the actual brand is
@@ -210,7 +211,7 @@ type's; the full design draws the branded code `qr_branded`, small ones the bare
 The admin picks a footer with `FooterPicker` (select, pencil to edit in place the
 footer that prints, picked or `fallback`, + for new; `FooterModal` shows each blank's
 live value as the placeholder) on the custom label editor, a type's editor and Pack
-stickers → More options, and lists them under Types & brands → Footers;
+stickers → More options, and lists them under Wording and logos → Footers;
 `GET /labels/footers` needs `labels.print`, the writes `labels.manage`. Never add a
 second footer choice (a settings key, a radio) beside the preset, and never give a
 footer a brand again. A footer also picks its look (owner, 2026-10-12: "different
@@ -285,7 +286,7 @@ its v confusing and not user friendly"): `MakeLabelWizard.tsx`, the hub's first 
 steps (what it is for, with a menu item switched on for labels as it is picked; which
 label, as picture cards with everyday names from `LABEL_CARDS` drawn by `LabelSchematic`;
 looks right, one live preview with language, dates and quantity and the full editor behind
-All details; how many and print, through the same sticker request as Pack stickers). The other
+All details; how many and print, through the same sticker request as Print labels). The other
 tabs stay for those who know them; a new way to print a label goes into the wizard too,
 not beside it. **Tap to edit** (round 3, owner 2026-10-13): a tap on a part of the preview
 (the wizard's step 3, the custom label editor, the item's Label tab) opens that part's boxes
@@ -296,7 +297,12 @@ every piece's x and w), `summary()` carries the first product's boxes as `spots`
 what `quickSpec()` (`QuickEdit.tsx`) says the part needs; the three hosts share
 `labelDrafts.ts` and save only the sheet's keys (`pickKeys`). A new part on a sticker gets a
 marker in every design, a name in `SPOT_NAMES`, a case in `quickSpec()` and a key in
-`LabelSpots::KEYS`. How to
+`LabelSpots::KEYS`. **Plain words** (round 4, owner 2026-10-13): on screen the tabs are
+Print labels (`/labels/stickers`) and Wording and logos (`/labels/types`), the footer is
+the bottom strip, Print as is Use the wording of, the wrap strips' default set is Reset,
+and every fold of a label form opens with a one-line `FoldHelp`; routes, code and data
+keep their names (`label_footers`, `FooterPicker`, `footer_id`), so a new screen uses the
+screen's words and the code the code's. How to
 use it and where everything lives: `docs/LABELS.md`; design and decisions:
 `docs/LABEL_HUB_PLAN.md` and `docs/LABEL_HUB_V2_PLAN.md`.
 

@@ -25,7 +25,7 @@ import {
 /*
  * Labels (owner, 2026-10-04: "I want to print labels like this … accessible
  * to all staff who have the authority"; "by default admin only, but option to
- * give permission to any staff"). Pack stickers and box labels print from
+ * give permission to any staff"). Print labels and box labels print from
  * here; the settings behind them are on the last tab. docs/LABEL_HUB_PLAN.md.
  */
 
@@ -126,7 +126,7 @@ function SavedLabelsTab() {
               </div>
             </li>
           ))}
-          {rows.length === 0 && <li className="px-4 py-8 text-center text-sm text-[var(--color-text-muted)]">{q ? 'No saved label matches.' : 'Nothing saved yet: prepare a label on Pack stickers or Box labels and it lands here.'}</li>}
+          {rows.length === 0 && <li className="px-4 py-8 text-center text-sm text-[var(--color-text-muted)]">{q ? 'No saved label matches.' : 'Nothing saved yet: prepare a label on Print labels or Box labels and it lands here.'}</li>}
         </ul>
         {last > 1 && (
           <div className="flex items-center justify-between gap-2 px-4 py-3 border-t border-[var(--color-border-light)]">
@@ -238,7 +238,7 @@ type Wording = { key: string; label: string; dv?: boolean };
 /** Settings → Wording, in groups. The frozen keys kept their original names. */
 const WORDING_GROUPS: { title: string; hint?: string; rows: Wording[] }[] = [
   {
-    title: 'Sticker footer',
+    title: 'Sticker bottom strip',
     rows: [
       { key: 'label_brand_line_dv', label: 'Brand line above the heading (Dhivehi)', dv: true },
       { key: 'label_contact_ways', label: 'Ways to reach you' },
@@ -516,11 +516,12 @@ export const LABELS_TABS: HubTab[] = [
   // Owner, 2026-10-13 ("Still its v confusing and not user friendly"): the way in
   // for everyone, four steps; the other tabs stay for those who know them.
   { id: 'make', label: 'Make a label', permissions: ['labels.print', 'labels.manage'], desc: 'Four steps: what it is for, which label, a look at it, how many to print', render: () => <MakeLabelWizard /> },
-  { id: 'stickers', label: 'Pack stickers', permissions: ['labels.print', 'labels.manage'], desc: 'Stickers for packs, in English or Dhivehi, on any size: A4 sheets, label printers, round', render: () => <><ExpiringStock /><Card padding="sm" className="labels-sticky"><StickerPrintPanel /></Card></> },
+  // Round 4 (owner, 2026-10-13: plain words everywhere): Print labels was Pack stickers, Wording and logos was Types & brands; the paths stay.
+  { id: 'stickers', label: 'Print labels', permissions: ['labels.print', 'labels.manage'], desc: 'Print stickers for packs, in English or Dhivehi, on any size: A4 sheets, label printers, round', render: () => <><ExpiringStock /><Card padding="sm" className="labels-sticky"><StickerPrintPanel /></Card></> },
   // Owner, 2026-10-11: "Add option to add custom labels using different brands logos and other details. Not only from the menu list".
   { id: 'custom', label: 'Custom labels', permissions: ['labels.print', 'labels.manage'], desc: 'Stickers for things that are not on the menu, with any brand, logo and details', render: () => <CustomTabWithPermission /> },
   { id: 'box', label: 'Box labels', permissions: ['labels.print', 'labels.manage'], desc: 'A4 label for a delivery box, blank or from a wholesale delivery', render: () => <Card padding="sm" className="labels-sticky"><BoxLabelPanel /></Card> },
-  { id: 'types', label: 'Types & brands', permissions: ['labels.print', 'labels.manage'], desc: 'Kinds of food a label is for, with their wording, and the brands they are from', render: () => <TypesTabWithPermission /> },
+  { id: 'types', label: 'Wording and logos', permissions: ['labels.print', 'labels.manage'], desc: 'The wording each kind of food gets, the brands and logos on the header, and the bottom strip', render: () => <TypesTabWithPermission /> },
   { id: 'saved', label: 'Saved labels', permissions: ['labels.print', 'labels.manage'], desc: 'Every label prepared, to print again, download, change, copy or rename; the print log beneath', render: () => <SavedLabelsTab /> },
   { id: 'settings', label: 'Settings', permissions: ['labels.print', 'labels.manage'], desc: 'Which products print, shelf life, storage, the label wording, the ingredient glossary, nutrition and the label printer', render: () => <SettingsTabWithPermission /> },
 ];

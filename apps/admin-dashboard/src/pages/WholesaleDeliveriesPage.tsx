@@ -133,7 +133,7 @@ function DeliveryList() {
                         </button>
                         {/* Packed-for stickers (2026-10-12): the Labels form filled with this delivery's shop and packs. */}
                         <Link to={`/labels/stickers?delivery=${d.id}`} style={{ color: 'var(--color-primary)', fontSize: 12, fontWeight: 600, textDecoration: 'none', minHeight: 24, display: 'inline-flex', alignItems: 'center' }}>
-                          Pack stickers
+                          Print labels
                         </Link>
                       </div>
                     )}
@@ -198,7 +198,7 @@ function DeliveryDetail({ id }: { id: number }) {
           <Btn variant="secondary" onClick={() => setBoxOpen(true)}>Print box label</Btn>
           {/* Packed-for stickers (2026-10-12): a sticker per pack sent, "PACKED FOR" the shop. */}
           <Link to={`/labels/stickers?delivery=${delivery.id}`} className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 38, padding: '0 14px', borderRadius: 10, border: '1px solid var(--color-border)', color: 'var(--color-text)', fontWeight: 600, fontSize: 13, textDecoration: 'none' }}>
-            Pack stickers
+            Print labels
           </Link>
         </div>
       )}

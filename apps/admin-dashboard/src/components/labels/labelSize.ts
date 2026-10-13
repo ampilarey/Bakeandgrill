@@ -195,7 +195,7 @@ export function withPreset(choice: SizeChoice, preset: string, presets: LabelPre
 const LAST_SIZE_KEY = 'labels.lastSize';
 
 /**
- * The size last prepared on Pack stickers, kept in the browser so the next
+ * The size last prepared on Print labels, kept in the browser so the next
  * sheet, the custom label editor's preview and a custom label's one-tap Save
  * all start from it (owner, 2026-10-12: "Layout of the custom labels is
  * different when i go to print"). Null in a private window or before any print.

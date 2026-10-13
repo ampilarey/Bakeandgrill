@@ -6,7 +6,7 @@ import { fetchExpiringLabels, type ExpiringLabelGroup } from '../../api';
 
 /*
  * Expiring printed stock (2026-10-12): the print log knows what was
- * stickered with which expiry, so the Pack stickers tab opens with what in
+ * stickered with which expiry, so the Print labels tab opens with what in
  * the freezer is near its date (and what just passed it), one row per
  * product, batch and date, with Reprint for a fresh batch. The owners get
  * the same list by text once a day (labels:check-expiring). Nothing to say,

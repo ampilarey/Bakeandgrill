@@ -2,7 +2,7 @@ import { req } from './client';
 
 /*
  * Label Hub (owner, 2026-10-04: "I want to print labels like this … accessible
- * to all staff who have the authority"). Pack stickers and box labels are
+ * to all staff who have the authority"). Print labels and box labels are
  * drawn by the server; these calls get signed links to them and the settings
  * behind them. docs/LABEL_HUB_PLAN.md.
  */
@@ -307,7 +307,7 @@ export async function sendToLabelPrinter(url: string, setup: PrinterSetup = read
   return { ok: true, bytes: body.bytes ?? 0 };
 }
 
-/** What a wholesale delivery or a catering event fills in on Pack stickers (2026-10-12). */
+/** What a wholesale delivery or a catering event fills in on Print labels (2026-10-12). */
 export type PackedForPrefill = {
   for: string; for2: string;
   items: { id: number; name: string; copies: number; label_enabled: boolean }[];

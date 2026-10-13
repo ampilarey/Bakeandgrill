@@ -29,7 +29,7 @@ describe('quickSpec', () => {
     const brand = quickSpec('brand', custom);
     expect(brand.inputs.map((i) => i.key)).toEqual(['brand_id']);
     expect(brand.inputs[0].options?.map((o) => o.label)).toEqual(['As the label type (Bake & Grill)', 'Bake & Grill (main)', 'Amma']);
-    expect(brand.note).toContain("the footer is always Bake & Grill's");
+    expect(brand.note).toContain("the bottom strip is always Bake & Grill's");
     // A menu item's brand is its type's: the sheet picks the type.
     expect(quickSpec('brand', item).inputs.map((i) => i.key)).toEqual(['label_type_id']);
     expect(quickSpec('brand', item).note).toContain('(Amma)');

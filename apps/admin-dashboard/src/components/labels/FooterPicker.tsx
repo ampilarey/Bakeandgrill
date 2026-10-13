@@ -6,11 +6,12 @@ import {
 } from '../../api';
 import { Btn, Modal, ModalActions } from '../SharedUI';
 import { Button, useToast } from '../ui';
+import { FoldHelp } from './FoldHelp';
 
 /*
  * Footer presets (owner, 2026-10-12: "No easy option to select and edit
  * branding footer"). One select with Edit and New beside it, the same on the
- * custom label editor, Pack stickers (one footer for the whole sheet) and a
+ * custom label editor, Print labels (one footer for the whole sheet) and a
  * label type (its default). The footer is always the business's branding
  * (owner, 2026-10-12: "Footer should be always branding of Bake and Grill";
  * a food brand such as Amma keeps its logo and name on the header): the
@@ -93,10 +94,10 @@ export function FooterPicker({ id, footers, value, onChange, onFootersChange, no
           {footers.map((f) => <option key={f.id} value={f.id}>{f.name}{f.is_default ? ' (standard)' : ''}</option>)}
         </select>
         {canManage && shown && (
-          <Button variant="secondary" icon={<Pencil size={16} />} onClick={() => setEditing(shown)} aria-label={`Edit the footer ${shown.name}`} title="Change this footer" className="shrink-0" />
+          <Button variant="secondary" icon={<Pencil size={16} />} onClick={() => setEditing(shown)} aria-label={`Edit the bottom strip ${shown.name}`} title="Change this bottom strip" className="shrink-0" />
         )}
         {canManage && (
-          <Button variant="secondary" icon={<Plus size={16} />} onClick={() => setEditing('new')} aria-label="New footer" title="New footer" className="shrink-0" />
+          <Button variant="secondary" icon={<Plus size={16} />} onClick={() => setEditing('new')} aria-label="New bottom strip" title="New bottom strip" className="shrink-0" />
         )}
       </div>
       {shown && <p className="text-xs text-[var(--color-text-muted)] mt-1" data-testid={`${id}-lines`}>{describeFooter(shown)}</p>}
@@ -172,12 +173,12 @@ export function FooterModal({ footer, footers, onClose, onSaved, onRemoved }: {
   const business = standard?.effective.name ?? 'Bake & Grill';
 
   const save = async () => {
-    if (!d.name.trim()) { toast('error', 'Give the footer a name.'); return; }
+    if (!d.name.trim()) { toast('error', 'Give the bottom strip a name.'); return; }
     setSaving(true);
     try {
       const r = footer ? await updateLabelFooter(footer.id, toPayload(d)) : await createLabelFooter(toPayload(d));
       onSaved(r.data);
-      toast('success', footer ? 'Footer saved.' : 'Footer added.');
+      toast('success', footer ? 'Bottom strip saved.' : 'Bottom strip added.');
       onClose();
     } catch (e) {
       toast('error', e instanceof Error ? e.message : 'Could not save.');
@@ -187,12 +188,12 @@ export function FooterModal({ footer, footers, onClose, onSaved, onRemoved }: {
   };
 
   const remove = async () => {
-    if (!footer || !window.confirm(`Remove the footer "${footer.name}"? Labels and types that print it go back to the standard footer.`)) return;
+    if (!footer || !window.confirm(`Remove the bottom strip "${footer.name}"? Labels and types that print it go back to the standard one.`)) return;
     setRemoving(true);
     try {
       await deleteLabelFooter(footer.id);
       onRemoved?.(footer.id);
-      toast('success', 'Footer removed.');
+      toast('success', 'Bottom strip removed.');
       onClose();
     } catch (e) {
       toast('error', e instanceof Error ? e.message : 'Could not remove it.');
@@ -208,10 +209,10 @@ export function FooterModal({ footer, footers, onClose, onSaved, onRemoved }: {
   );
 
   return (
-    <Modal title={footer ? `Edit footer: ${footer.name}` : 'New footer'} onClose={onClose} maxWidth={760}>
+    <Modal title={footer ? `Edit bottom strip: ${footer.name}` : 'New bottom strip'} onClose={onClose} maxWidth={760}>
       <div className="space-y-4" data-testid="label-footer-form">
-        <p className="text-xs text-[var(--color-text-muted)]">The footer is always {business}'s branding: a food brand such as Amma keeps its logo and name on the header. A footer is picked by name on a custom label, a label type or a whole sheet. Leave a box empty to print what is shown in grey, the current value from Business Details.</p>
-        <Field id="lf-name" label="Footer name (for the list)"><input id="lf-name" value={d.name} maxLength={60} onChange={(e) => set('name', e.target.value)} className={fieldClass} placeholder="Kitchen stamp" /></Field>
+        <p className="text-xs text-[var(--color-text-muted)]">The bottom strip is always {business}'s branding: a food brand such as Amma keeps its logo and name on the header. A bottom strip is picked by name on a custom label, a label type or a whole sheet. Leave a box empty to print what is shown in grey, the current value from Business Details.</p>
+        <Field id="lf-name" label="Bottom strip name (for the list)"><input id="lf-name" value={d.name} maxLength={60} onChange={(e) => set('name', e.target.value)} className={fieldClass} placeholder="Kitchen stamp" /></Field>
 
         <fieldset className="rounded-xl border border-[var(--color-border)] p-3 space-y-2">
           <legend className="px-1 text-sm font-bold text-[var(--color-text)]">Look</legend>
@@ -230,6 +231,7 @@ export function FooterModal({ footer, footers, onClose, onSaved, onRemoved }: {
 
         <fieldset className="rounded-xl border border-[var(--color-border)] p-3 space-y-3">
           <legend className="px-1 text-sm font-bold text-[var(--color-text)]">Name and tagline</legend>
+          <FoldHelp>What prints big on the strip and the line under it. Empty prints what Business Details says, shown in grey.</FoldHelp>
           <div className="grid gap-3 sm:grid-cols-2">
             {input('heading', 'lf-heading', 'Name printed big', 60)}
             {input('heading_dv', 'lf-heading-dv', 'Name (Dhivehi)', 60, true)}
@@ -240,6 +242,7 @@ export function FooterModal({ footer, footers, onClose, onSaved, onRemoved }: {
 
         <fieldset className="rounded-xl border border-[var(--color-border)] p-3 space-y-3">
           <legend className="px-1 text-sm font-bold text-[var(--color-text)]">How to reach you</legend>
+          <FoldHelp>Phone, website, address and the ways to reach you, as they print on the strip. Empty prints what Business Details says.</FoldHelp>
           <div className="grid gap-3 sm:grid-cols-2">
             {input('phone', 'lf-phone', 'Phone', 40)}
             {input('website', 'lf-website', 'Website', 80)}
@@ -260,7 +263,7 @@ export function FooterModal({ footer, footers, onClose, onSaved, onRemoved }: {
       <ModalActions>
         {footer && !footer.is_default && onRemoved && <Btn variant="danger-outline" onClick={() => void remove()} disabled={removing} data-testid="label-footer-remove">Remove</Btn>}
         <Button variant="ghost" onClick={onClose}>Cancel</Button>
-        <Button onClick={() => void save()} loading={saving} data-testid="label-footer-save">{footer ? 'Save footer' : 'Add footer'}</Button>
+        <Button onClick={() => void save()} loading={saving} data-testid="label-footer-save">{footer ? 'Save bottom strip' : 'Add bottom strip'}</Button>
       </ModalActions>
     </Modal>
   );

@@ -460,14 +460,14 @@ describe('StickerPrintPanel on a phone', () => {
     render(<MemoryRouter><StickerPrintPanel /></MemoryRouter>);
     await screen.findByTestId('label-size-picker');
     fireEvent.click(screen.getByTestId('sticker-more-toggle'));
-    const pick = await screen.findByLabelText('Footer');
-    expect(within(pick).getByRole('option', { name: "Each product's own footer" })).toBeInTheDocument();
+    const pick = await screen.findByLabelText('Bottom strip');
+    expect(within(pick).getByRole('option', { name: "Each product's own bottom strip" })).toBeInTheDocument();
     // Only Manage label settings may change a footer from here.
-    expect(screen.queryByRole('button', { name: 'New footer' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'New bottom strip' })).toBeNull();
     fireEvent.change(pick, { target: { value: '2' } });
     expect(screen.getByTestId('label-footer-lines')).toHaveTextContent('Bake & Grill · Hand-made daily · +960 912 0011 · bakeandgrill.mv');
     fireEvent.click(screen.getByTestId('sticker-more-toggle'));
-    expect(screen.getByTestId('sticker-more-toggle')).toHaveTextContent('footer: Kitchen stamp');
+    expect(screen.getByTestId('sticker-more-toggle')).toHaveTextContent('bottom strip: Kitchen stamp');
 
     fireEvent.click(screen.getByLabelText('Print Bajiya'));
     fireEvent.click(screen.getByTestId('sticker-prepare'));
