@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ImagePlus, X, RefreshCw } from 'lucide-react';
-import { fetchLabelItem, fetchLabelLayouts, fetchLabelTypes, stickerLinks, updateItemLabel, type IngredientsSource, type LabelArrangement, type LabelProduct, type LabelSpot, type LabelSpotKey, type LabelStorage, type LabelType, type WrapCatalogue } from '../../api';
+import { fetchLabelItem, fetchLabelLayouts, fetchLabelTypes, stickerLinks, updateItemLabel, type IngredientsSource, type LabelArrangement, type LabelBadge, type LabelProduct, type LabelSpot, type LabelSpotKey, type LabelStorage, type LabelType, type WrapCatalogue } from '../../api';
 import { SheetPreview } from './SheetPreview';
 import { WrapParts } from './WrapParts';
 import { SpotOverlay } from './SpotOverlay';
@@ -10,6 +10,7 @@ import { itemDraft as toDraft, itemPayload, nutritionWords, pickKeys, type ItemD
 import { SaveAsTemplate, StartFromRow } from './StartFrom';
 import { applyToItem, templateFromItem } from './labelTemplates';
 import { ArrangeBar } from './ArrangeBar';
+import { BadgePicker } from './BadgePicker';
 import { clearDesign, hasOverrides, layoutPayload, nudgeSpot } from './labelLayout';
 import { MediaPicker } from '../MediaPicker';
 import { Button } from '../ui';
@@ -48,8 +49,10 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
   const [types, setTypes] = useState<LabelType[]>([]);
   // The wrap-around label's parts and marks, as the server lists them (2026-10-12).
   const [catalogue, setCatalogue] = useState<WrapCatalogue | null>(null);
+  // The badges an item can carry (round 9), from the layouts.
+  const [badges, setBadges] = useState<LabelBadge[]>([]);
   useEffect(() => { fetchLabelTypes().then((r) => setTypes(r.data.filter((t) => t.is_active || t.id === product?.label_type_id))).catch(() => setTypes([])); }, [product?.label_type_id]);
-  useEffect(() => { fetchLabelLayouts().then((r) => setCatalogue(r.wrap ?? null)).catch(() => setCatalogue(null)); }, []);
+  useEffect(() => { fetchLabelLayouts().then((r) => { setCatalogue(r.wrap ?? null); setBadges(r.badges ?? []); }).catch(() => setCatalogue(null)); }, []);
 
   useEffect(() => {
     fetchLabelItem(itemId).then((r) => { setProduct(r.data); setDraft(toDraft(r.data)); }).catch(() => setMessage('Could not load the label settings.'));
@@ -108,7 +111,7 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
     void saveSome({ label_layout: layoutPayload(next) }, ['label_layout']);
   };
   const quickContext = {
-    kind: 'item' as const, types, defaults: product.defaults, allergens: product.allergens, menuPrice: product.menu_price,
+    kind: 'item' as const, types, badges, defaults: product.defaults, allergens: product.allergens, menuPrice: product.menu_price,
     nutritionWords: nutritionWords(product.nutrition), hasPhoto: Boolean(draft.label_photo_url),
   };
   const quickDone = () => {
@@ -209,6 +212,13 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
             <div><label className={labelClass} htmlFor="lbl-use-dv">How to use (Dhivehi)</label><textarea id="lbl-use-dv" dir="rtl" rows={2} maxLength={200} value={draft.label_how_to_use_dv} onChange={(e) => set('label_how_to_use_dv', e.target.value)} className="w-full min-h-[44px] px-3 py-2 rounded-lg border border-[var(--color-border)] text-sm resize-y" placeholder={product.defaults.how_to_use_dv} /></div>
             <div><label className={labelClass} htmlFor="lbl-unit">Unit after the quantity</label><input id="lbl-unit" maxLength={10} value={draft.label_pack_unit} onChange={(e) => set('label_pack_unit', e.target.value)} className={fieldClass} placeholder={product.defaults.unit} /><p className="text-xs text-[var(--color-text-muted)] mt-1">PCS, SLICES, PACK, G…</p></div>
           </div>
+        </fieldset>
+
+        {/* Badges (round 9, 2026-10-13): Halal, Spicy, New… as rust pills under the name. */}
+        <fieldset className="rounded-xl border border-[var(--color-border)] p-3 space-y-3" data-testid="item-label-badges">
+          <legend className="px-1 text-sm font-bold text-[var(--color-text)]">Badges</legend>
+          <FoldHelp>Halal, Spicy, New and the like, printed as rust pills under the name on every size with the room. Tap to pick up to four.</FoldHelp>
+          <BadgePicker value={draft.label_badges} onChange={(v) => set('label_badges', v)} catalogue={badges} idPrefix="lbl-badges" />
         </fieldset>
 
         {/* 2026-10-12: price, barcode and net weight for a pack sold at another shop's till; the allergens come from Details. */}

@@ -48,6 +48,8 @@ export type LabelProduct = {
   wrap_pictures: WrapPicture[];
   /** The parts moved or resized by hand on the preview, per design (the drag designer, round 8). */
   label_layout: LabelArrangement;
+  /** Badges (round 9): keys from the layouts' `badges` catalogue, up to four, printed as rust pills under the name. */
+  label_badges: string[];
   menu_price: number;
   /** From the item's Details tab, as words ("tree nuts"): printed bold and as "Contains …". */
   allergens: string[];
@@ -199,7 +201,10 @@ export type LabelLimits = { min_short: number; min_long: number; max_w: number; 
  */
 export type LabelRoll = { id: string; name: string; shape: 'rect' | 'circle'; preset: string; on: LabelStock; w: number; h: number };
 
-export type LabelLayoutsResponse = { data: LabelLayout[]; presets: LabelPreset[]; limits: LabelLimits; wrap: WrapCatalogue; rolls?: LabelRoll[] };
+/** A badge a product can carry (round 9, 2026-10-13): its key, everyday name and the words printed on the pill. */
+export type LabelBadge = { key: string; label: string; word: string; word_dv: string };
+
+export type LabelLayoutsResponse = { data: LabelLayout[]; presets: LabelPreset[]; limits: LabelLimits; wrap: WrapCatalogue; rolls?: LabelRoll[]; badges?: LabelBadge[] };
 
 /**
  * A label template (round 7, 2026-10-13: "Start from a saved label or a
@@ -216,7 +221,7 @@ export type LabelTemplateFields = Partial<{
   label_note: string | null; label_note_dv: string | null; footer_id: number | null; label_show_qr: boolean | null; label_lang: StickerLang | null;
   label_shelf_life_days: number | null; label_pack_qty: number | null; label_pack_unit: string | null; label_net_weight: string | null;
   label_allergens: string | null; label_nutrition: string | null; label_nutrition_per: NutritionPer | null; label_wrap: LabelWrap | null;
-  label_show_price: boolean | null; label_show_nutrition: boolean | null; label_layout: LabelArrangement | null;
+  label_show_price: boolean | null; label_show_nutrition: boolean | null; label_layout: LabelArrangement | null; label_badges: string[] | null;
 }>;
 export type LabelTemplateSize = { shape: 'rect' | 'circle'; preset: string; on: LabelStock; w: number; h: number };
 export type LabelTemplate = {
@@ -266,6 +271,8 @@ export type CustomLabel = {
   wrap_pictures: WrapPicture[];
   /** The parts moved or resized by hand on the preview, per design (round 8). */
   label_layout: LabelArrangement;
+  /** Badges (round 9): up to four keys from the catalogue. */
+  label_badges: string[];
   label_photo_media_id: number | null; label_photo_url: string | null;
   label_title_media_id: number | null; label_title_url: string | null;
   defaults: { heading: string; heading_dv: string; storage_line: string; storage_line_dv: string; how_to_use: string; how_to_use_dv: string; note: string; note_dv: string; shelf_life_days: number | null; brand: string; unit: string };
@@ -279,7 +286,7 @@ export type CustomLabelPayload = Partial<Pick<CustomLabel,
   | 'label_how_to_use' | 'label_how_to_use_dv' | 'label_note' | 'label_note_dv'
   | 'footer_id' | 'label_show_qr' | 'label_lang'
   | 'label_shelf_life_days' | 'label_pack_qty' | 'label_pack_unit' | 'label_photo_media_id' | 'label_title_media_id'
-  | 'label_price' | 'label_barcode' | 'label_net_weight' | 'label_allergens' | 'label_nutrition' | 'label_nutrition_per' | 'label_wrap'>> & { label_layout?: LabelArrangement | null };
+  | 'label_price' | 'label_barcode' | 'label_net_weight' | 'label_allergens' | 'label_nutrition' | 'label_nutrition_per' | 'label_wrap'>> & { label_layout?: LabelArrangement | null; label_badges?: string[] | null };
 
 /** The sticker's languages: English, Dhivehi, or both on one sticker (2026-10-12). */
 export type StickerLang = 'en' | 'dv' | 'both';
@@ -388,7 +395,7 @@ export type WrapStrips = {
  * every label"); LabelSpots::KEYS. `batch_qr` is the pack page's code in the
  * header; the complaints QR belongs to the footer.
  */
-export type LabelSpotKey = 'brand' | 'heading' | 'batch_qr' | 'pack' | 'name' | 'promo' | 'packed' | 'photo' | 'barcode' | 'ingredients' | 'how_to_use' | 'nutrition' | 'icons' | 'note' | 'dates' | 'batch' | 'qty' | 'price' | 'storage' | 'footer';
+export type LabelSpotKey = 'brand' | 'heading' | 'batch_qr' | 'pack' | 'name' | 'promo' | 'badges' | 'packed' | 'photo' | 'barcode' | 'ingredients' | 'how_to_use' | 'nutrition' | 'icons' | 'note' | 'dates' | 'batch' | 'qty' | 'price' | 'storage' | 'footer';
 
 /** Where a part of the first sticker landed, in mm from its top-left corner; a part drawn in two places comes twice. `fixed`: a box of its own that the drag designer cannot move. */
 export type LabelSpot = { key: LabelSpotKey; x: number; y: number; w: number; h: number; fixed?: boolean };
@@ -506,7 +513,7 @@ export function fetchLabelItem(id: number) {
   return req<{ data: LabelProduct }>(`/labels/items/${id}`);
 }
 
-export function updateItemLabel(id: number, body: Partial<Omit<LabelProduct, 'id' | 'name' | 'name_dv' | 'ingredients' | 'has_recipe' | 'allergens' | 'cutout_url' | 'label_title_url' | 'label_photo_url' | 'label_layout'>> & { label_layout?: LabelArrangement | null }) {
+export function updateItemLabel(id: number, body: Partial<Omit<LabelProduct, 'id' | 'name' | 'name_dv' | 'ingredients' | 'has_recipe' | 'allergens' | 'cutout_url' | 'label_title_url' | 'label_photo_url' | 'label_layout'>> & { label_layout?: LabelArrangement | null; label_badges?: string[] | null }) {
   return req<{ data: LabelProduct }>(`/items/${id}/label`, { method: 'PUT', body: JSON.stringify(body) });
 }
 

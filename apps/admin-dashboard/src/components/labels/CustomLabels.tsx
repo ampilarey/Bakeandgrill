@@ -4,13 +4,14 @@ import { Bookmark, ChevronDown, Copy, Eye, ImagePlus, Pencil, Plus, Printer, Ref
 import {
   createCustomLabel, deleteCustomLabel, duplicateCustomLabel, fetchCustomLabels, fetchLabelBrands, fetchLabelFooters, fetchLabelLayouts, fetchLabelSettings, fetchLabelTypes,
   previewCustomDraft, stickerLinks, updateCustomLabel, uploadCustomLabelPicture,
-  type CustomLabel, type LabelBrand, type LabelDesign, type LabelFooter, type LabelLimits, type LabelPreset, type LabelRoll, type LabelSpot, type LabelSpotKey, type LabelStorage, type LabelTemplate, type LabelType, type StickerLang, type WrapCatalogue, type WrapPartKey, type WrapStrips,
+  type CustomLabel, type LabelBadge, type LabelBrand, type LabelDesign, type LabelFooter, type LabelLimits, type LabelPreset, type LabelRoll, type LabelSpot, type LabelSpotKey, type LabelStorage, type LabelTemplate, type LabelType, type StickerLang, type WrapCatalogue, type WrapPartKey, type WrapStrips,
 } from '../../api';
 import { FooterPicker } from './FooterPicker';
 import { SaveAsTemplate, StartFromRow } from './StartFrom';
 import { applyToCustom, templateFromCustom, templateSize } from './labelTemplates';
 import { ArrangeBar } from './ArrangeBar';
 import { clearDesign, hasOverrides, isMovable, nudgeSpot } from './labelLayout';
+import { BadgePicker } from './BadgePicker';
 import { WRAP_FALLBACK, WrapParts } from './WrapParts';
 import { StripOverlay } from './StripEditor';
 import { SpotOverlay } from './SpotOverlay';
@@ -143,6 +144,8 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
   const [limits, setLimits] = useState<LabelLimits | null>(null);
   // The rolls and sheets the business owns (round 6): the size picker shows them first.
   const [rolls, setRolls] = useState<LabelRoll[]>([]);
+  // The badges a label can carry (round 9), from the layouts.
+  const [badges, setBadges] = useState<LabelBadge[]>([]);
   const [choice, setChoice] = useState<SizeChoice>(() => (label === null && startFrom ? templateSize(startFrom) : null) ?? rememberedSize() ?? DEFAULT_CHOICE);
   const [rounded, setRounded] = useState(false);
   const previewSeq = useRef(0);
@@ -160,7 +163,7 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
     fetchLabelTypes().then((r) => setTypes(r.data.filter((t) => t.is_active || t.id === label?.label_type_id))).catch(() => setTypes([]));
   }, [label?.label_type_id]);
   useEffect(() => {
-    fetchLabelLayouts().then((r) => { setPresets(r.presets); setLimits(r.limits ?? null); setCatalogue(r.wrap ?? null); setRolls(r.rolls ?? []); }).catch(() => setPresets([]));
+    fetchLabelLayouts().then((r) => { setPresets(r.presets); setLimits(r.limits ?? null); setCatalogue(r.wrap ?? null); setRolls(r.rolls ?? []); setBadges(r.badges ?? []); }).catch(() => setPresets([]));
     fetchLabelFooters().then((r) => setFooters(r.data)).catch(() => setFooters([]));
     fetchLabelSettings().then((r) => setDvFont(r.data.label_dhivehi_font || 'noto')).catch(() => setDvFont(null));
   }, []);
@@ -347,7 +350,7 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
       : null;
   // What a tap's sheet shows: the type's wording in grey, the brands, types and footers to pick from.
   const quickContext = {
-    kind: 'custom' as const, types, brands, footers, mainBrand,
+    kind: 'custom' as const, types, brands, footers, mainBrand, badges,
     defaults: { heading: ph.heading, heading_dv: ph.heading_dv, storage_line: ph.storage_line, storage_line_dv: ph.storage_line_dv, how_to_use: ph.how_to_use, note: ph.note, brand: typeBrand, unit: 'PCS', shelf_life_days: type?.shelf_life_days ?? null },
     hasPhoto: Boolean(d.label_photo_url),
   };
@@ -417,6 +420,13 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
                 {/* Round C: a typed nutrition line; a menu item's comes from its recipe instead. */}
                 <div className="sm:col-span-2"><Field id="cl-nutrition" label="Nutrition per 100 g" hint="One line, as it should print on the full-size sticker."><input id="cl-nutrition" maxLength={200} value={d.label_nutrition} onChange={(e) => set('label_nutrition', e.target.value)} className={fieldClass} placeholder="Energy 250 kcal · Fat 12 g · Carbs 30 g · Protein 8 g · Salt 1.2 g" /></Field></div>
               </div>
+            </fieldset>
+
+            {/* Badges (round 9, 2026-10-13): Halal, Spicy, New… as rust pills under the name. */}
+            <fieldset className="rounded-xl border border-[var(--color-border)] p-3 space-y-3" data-testid="custom-label-badges">
+              <legend className="px-1 text-sm font-bold text-[var(--color-text)]">Badges</legend>
+              <FoldHelp>Halal, Spicy, New and the like, printed as rust pills under the name on every size with the room. Tap to pick up to four.</FoldHelp>
+              <BadgePicker value={d.label_badges} onChange={(v) => set('label_badges', v)} catalogue={badges} idPrefix="cl-badges" />
             </fieldset>
 
             <Section title="For the shop till" summary={shopSummary} open={d.label_price !== '' || d.label_barcode.trim() !== ''} testId="custom-label-shop" help="A price and a barcode for a pack sold at another shop's till. Empty boxes print nothing.">

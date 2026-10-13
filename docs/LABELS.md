@@ -199,6 +199,30 @@ nothing kept forgets it), templates carry it as a field. Admin: `labelLayout.ts`
 `LabelLayoutTest`, `labelLayout.test.ts`, the move-mode cases in `SpotOverlay.test.tsx`,
 `CustomLabels.test.tsx`, `ItemLabelTab.test.tsx` and `MakeLabelWizard.test.tsx`.
 
+### Badges
+
+Round 9 (owner, 2026-10-13; the audit's "badges you drop on: Halal, Spicy, New,
+Gluten-free, drawn in the brand style"). A product carries up to four badges from a fixed
+set (Halal, Spicy, New, Gluten-free, Vegan, Vegetarian, Sugar-free, Dairy-free, Nut-free,
+Homemade, Best seller), each with an English and a Dhivehi word, picked as pills in the
+**Badges** fold of the custom label editor and the item's Label tab, or from a tap on the
+badges row of the preview (the wizard too). Every design draws them as a row of rust
+pills with the word in cream under the name, in the sticker's language, wherever the size
+has the room: the full sticker, the compact one (when its middle is tall enough), the
+small sticker upright and wide (after the packed-for line, ahead of the extras), a round
+sticker from 60 mm, and the wrap-around label's brand part (when the part is tall enough
+for the name and a row). A badge that does not fit its row is left out rather than
+squeezed. Pills are rectangles and text, so the web sheet, the PDF and the thermal
+rasteriser all draw them. Templates carry the badges.
+
+Where: `items.label_badges` / `custom_labels.label_badges` (JSON list of keys),
+`App\Domains\Labels\LabelBadges` (`CATALOGUE`, `MAX`, `clean()`, `rules()`, `for()` for the
+sticker data, `pills()`: the row of pills as pieces), `GET /api/labels/layouts` carries the
+catalogue as `badges`; `LabelSpots` key `badges`. Admin: `BadgePicker.tsx` (`BADGE_FALLBACK`
+until the catalogue arrives), the `chips` input kind on the tap sheet (`quickSpec('badges')`),
+`label_badges` on the drafts and payloads and in `TEMPLATE_KEYS`. Tests: `LabelBadgesTest`,
+`BadgePicker.test.tsx`, the badges case in `CustomLabels.test.tsx`.
+
 ## Who can use it
 
 Two permissions, both owner-only until granted in Staff → Permissions (to a role or
@@ -789,6 +813,7 @@ beneath.
 | Label printer | `App\Domains\Labels\LabelRaster` (`page()` draws one page of a built sheet with GD at `dpi`, `DPIS` 203 / 300; text from the PDF font files, Thaana in visual order, PNGs dithered, SVGs redrawn from `build()['vectors']`: a QR from its text, a barcode from its digits; `png()` for checking), `ZplEncoder` (`^GFA` with ZPL's run-length form), `TsplEncoder` (`SIZE`, `GAP`, `BITMAP` with the bits inverted, `PRINT 1,1`); signed routes `/labels/stickers.zpl`, `.tspl`, `.png` (`page` outside the signature), single-label sheets only; `dpi` on the sticker request, `zpl_url` / `tspl_url` / `raster_url` in the reply; `scripts/label-print-agent.mjs`; `LabelPrinterCard.tsx` (`labels.printer` in localStorage, `readPrinterSetup()` / `sendToLabelPrinter()` in `api/labels.ts`) and the buttons on `StickerPrintPanel` |
 | Wrap-around labels | `StickerLayouts::design()` answers `wrap` (`WRAP_MIN_RATIO` 2.5, `WRAP_MIN_W` 90, `WRAP_MIN_H` 25; mirrored in `labelSize.ts`, pinned by `fixtures/label_size_parity.json`), presets `r200x50`, `r180x40`, `r150x35`, `r120x40`; `App\Domains\Labels\WrapDesign` (`wrap()`: widths from each part's least width and share, `DROP_ORDER`, the band, one method a part); `WrapConfig` (`of()`, `clean()`, `PARTS`, `DEFAULT_PARTS`, `catalogue()`), kept as `items.label_wrap` / `custom_labels.label_wrap` (JSON) with `label_nutrition_per`; `LabelMarks` (`MARKS` glyph + caption, `for()`); `stickerData()` sets `wrap`, `marks`, `pictures` (PNG data URIs) and `producer`; `LabelText::FONTS['sym']` (`fonts/pdf/LabelSymbols.ttf`, `fonts/label-symbols.woff2`); `GET /api/labels/layouts` carries `wrap` (parts, marks, defaults); `WrapParts.tsx` on `ItemLabelTab` and the custom label editor, `wrap_pictures` on the payloads for the thumbnails |
 | Allergen pictograms | `App\Domains\Labels\AllergenIcons` (`for()`, `keys()`, `svg()`, `dataUri()`; words → symbols, captions, `SPICY_LEVELS`); `stickerData()` sets `icons`, `StickerDesign::full()` draws the row (12 mm pitch, 8.8 mm tall) above the note; setting `label_allergen_icons` |
+| Badges | `items.label_badges`, `custom_labels.label_badges` (JSON list, up to four keys; § Badges); `App\Domains\Labels\LabelBadges` (`CATALOGUE`, `clean()`, `rules()`, `for()`, `pills()`), drawn by every design under the name; the catalogue with `GET /api/labels/layouts` as `badges`; `BadgePicker.tsx` and the tap sheet's `chips` input |
 | Drag designer | `items.label_layout`, `custom_labels.label_layout` (JSON per design and part; § The drag designer); `App\Domains\Labels\LabelLayout` (`clean()`, `rules()`, `apply()` on the marked runs in `StickerSheet::pieces()`); `labelLayout.ts`, `SpotOverlay` move mode, `ArrangeBar.tsx` |
 | Templates | `label_templates` (`App\Models\LabelTemplate`; § Templates); `App\Domains\Labels\LabelTemplates` (`KEYS`, `BUILTIN`, `rules()`, `normaliseFields()`, `normaliseSize()`, `present()`); API `GET /api/labels/templates` (`labels.print`), `POST` / `PUT` / `DELETE /api/labels/templates/{template}` (`labels.manage`); `labelTemplates.ts`, `StartFrom.tsx`, `LabelTemplatesCard.tsx` under Wording and logos |
 | Footers | `label_footers` (`App\Models\LabelFooter`, § Footers); `custom_labels.footer_id`, `label_types.footer_id`, `footer` in a sticker request; `LabelTypes::footer()` fills the blanks, `StickerSheet::footerPreset()` picks which one. API `GET /api/labels/footers` (`labels.print`), `POST` / `PUT` / `DELETE /api/labels/footers/{footer}` (`labels.manage`; the standard one cannot be removed, 422) |

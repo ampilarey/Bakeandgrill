@@ -87,6 +87,8 @@ final class SmallStickerDesign
         // Packed for (2026-10-12): a line under the name, ahead of the extras
         // (a wholesale pack says who it is for before it says its batch).
         $packed = $this->packedForText() !== '' && $this->take($free, $line + 0.3 * $gap);
+        // Badges (round 9): a line of pills under the name, ahead of the extras.
+        $badges = $this->d['badges'] !== [] && $this->take($free, $line + 0.3 * $gap);
         $footer = $this->take($free, $fh + $gap) ? 'band' : ($this->take($free, $line + 0.5 * $gap) ? 'line' : 'none');
         $ing = $this->ingredientsText();
         $hasIng = $ing !== '' && $this->take($free, $this->ingredientsMin($k) + $gap);
@@ -101,6 +103,10 @@ final class SmallStickerDesign
         $y += $nh + $gap;
         if ($packed) {
             $this->packedForLine($pad, $y, $iw, $line, 'c');
+            $y += $line + 0.3 * $gap;
+        }
+        if ($badges) {
+            $this->badgesRow($pad, $y, $iw, $line, 'c');
             $y += $line + 0.3 * $gap;
         }
 
@@ -176,6 +182,7 @@ final class SmallStickerDesign
 
         $free = $ih - ($hb + $gap + 2 * $bh + 0.6 * $gap + $gap + $sh);
         $packed = $this->packedForText() !== '' && $this->take($free, $line);
+        $badges = $this->d['badges'] !== [] && $this->take($free, $line);
         $footer = $this->take($free, $fh + $gap) ? 'band' : ($this->take($free, $line + 0.5 * $gap) ? 'line' : 'none');
         $batch = $this->take($free, $line);
 
@@ -224,6 +231,11 @@ final class SmallStickerDesign
             $this->packedForLine($pad, $ly, $lw, $line, 'l');
             $ly += $line;
             $left -= $line;
+        }
+        if ($badges) {
+            $this->badgesRow($pad, $ly, $lw, $line, 'l');
+            $ly += $line + 0.3 * $gap;
+            $left -= $line + 0.3 * $gap;
         }
         $used = 0.0;
         $note = $this->noteText() !== '' && $left >= $line;
@@ -673,6 +685,13 @@ final class SmallStickerDesign
     }
 
     /** "PACKED FOR: NH Kuda Rah · Delivery TD-12" (2026-10-12), the second part when the line is wide enough. */
+    /** Badges (round 9): a line of rust pills, centred or at the start. */
+    private function badgesRow(float $x, float $y, float $bw, float $lh, string $align): void
+    {
+        $this->mark('badges');
+        array_push($this->p, ...LabelBadges::pills($this->d['badges'], $this->dv, $this->X($x, $bw), $y, $bw, $lh, $this->A($align)));
+    }
+
     private function packedForLine(float $x, float $y, float $bw, float $lh, string $align): void
     {
         $this->mark('packed');

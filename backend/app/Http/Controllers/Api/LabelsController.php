@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Domains\Labels\Barcode;
 use App\Domains\Labels\BatchLink;
+use App\Domains\Labels\LabelBadges;
 use App\Domains\Labels\LabelRolls;
 use App\Domains\Labels\BoxLabel;
 use App\Domains\Labels\ExpiringPrints;
@@ -90,6 +91,8 @@ class LabelsController extends Controller
             'wrap' => WrapConfig::catalogue(),
             // The rolls and sheets the business owns (round 6, 2026-10-13): every size picker shows them first.
             'rolls' => LabelRolls::all(),
+            // The badges a product can carry (round 9), for the pickers.
+            'badges' => LabelBadges::catalogue(),
         ]);
     }
 
@@ -904,7 +907,7 @@ class LabelsController extends Controller
      */
     private static function wrapRules(): array
     {
-        return ['label_nutrition_per' => ['sometimes', Rule::in(['g', 'ml'])]] + WrapConfig::rules() + LabelLayout::rules();
+        return ['label_nutrition_per' => ['sometimes', Rule::in(['g', 'ml'])]] + WrapConfig::rules() + LabelLayout::rules() + LabelBadges::rules();
     }
 
     /** A mark picture that is not an image is refused; a kept config is tidied (WrapConfig::clean), null clears it. */
@@ -914,6 +917,10 @@ class LabelsController extends Controller
         // validator drops an empty array, so the raw input says whether it was sent.
         if (request()->has('label_layout')) {
             $data['label_layout'] = LabelLayout::clean(request()->input('label_layout')) ?: null;
+        }
+        // Badges (round 9): known keys once each, at most four; none is null.
+        if (request()->has('label_badges')) {
+            $data['label_badges'] = LabelBadges::clean(request()->input('label_badges')) ?: null;
         }
         if (!array_key_exists('label_wrap', $data)) {
             return null;
@@ -1154,6 +1161,7 @@ class LabelsController extends Controller
             'label_wrap' => $wrap = WrapConfig::of($c),
             'wrap_pictures' => $this->wrapPictures($wrap),
             'label_layout' => LabelLayout::of($c),
+            'label_badges' => LabelBadges::of($c),
             'label_photo_media_id' => $c->label_photo_media_id,
             'label_photo_url' => $media->get($c->label_photo_media_id)?->url,
             'label_title_media_id' => $c->label_title_media_id,
@@ -1507,6 +1515,7 @@ class LabelsController extends Controller
             'wrap_pictures' => $this->wrapPictures($wrap),
             // The parts moved or resized by hand, per design (round 8).
             'label_layout' => LabelLayout::of($item),
+            'label_badges' => LabelBadges::of($item),
             'menu_price' => $item->displayPriceInfo()['price'],
             // What prints when the item's own wording is empty: its type's wording, else the defaults for its storage.
             'defaults' => [

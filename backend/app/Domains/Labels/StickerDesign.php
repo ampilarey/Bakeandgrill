@@ -154,6 +154,13 @@ final class StickerDesign
         // USE and the note were drawn over each other. A barcode (2026-10-12)
         // keeps 14.5 mm of the band for the bars.
         $middleTop = $titleTop + $th + ($dv ? 4.0 : 2.5);
+        // Badges (round 9, 2026-10-13): a row of rust pills under the name.
+        if (!empty($d['badges'])) {
+            $p[] = LabelSpots::open('badges');
+            array_push($p, ...LabelBadges::pills($d['badges'], $dv, 5.0, $middleTop, 95.0, 5.6, 'c'));
+            $p[] = LabelSpots::close();
+            $middleTop += 7.0;
+        }
         // Packed for (2026-10-12): who the packs are for, in a tinted box
         // under the name, with a second line for the delivery or the date.
         $pf = trim((string) ($d['packed_for'] ?? ''));
@@ -736,6 +743,13 @@ final class StickerDesign
             $p[] = LabelSpots::close();
             $top += 4.4;
         }
+        // Badges (round 9): small pills under the name, when the middle has the room.
+        if (!empty($d['badges']) && $dy - 1.5 - $top >= 11.0) {
+            $p[] = LabelSpots::open('badges');
+            array_push($p, ...LabelBadges::pills($d['badges'], $dv, $pad, $top - 0.8, $iw, 3.4, 'c'));
+            $p[] = LabelSpots::close();
+            $top += 3.8;
+        }
         // A barcode (2026-10-12) keeps its room at the foot of the middle when
         // the label is tall enough for the ingredients as well; the compact
         // sizes in use (66 × 72, 99 × 70.5) are not, so the barcode is for
@@ -890,6 +904,16 @@ final class StickerDesign
         // right, so the round sticker carries the same branding as the rest.
         $top = ($both ? 21.6 : 19.8) * $k;
         $zoneH = 29.0 * $k - $top;
+        // Badges (round 9): a row of pills at the top of the middle, from a 60 mm circle up.
+        if (!empty($d['badges']) && $D >= 60) {
+            $bh = 3.6 * $f;
+            $bw = $chord($top + $bh / 2);
+            $p[] = LabelSpots::open('badges');
+            array_push($p, ...LabelBadges::pills($d['badges'], $dv, ($D - $bw) / 2, $top, $bw, $bh, 'c'));
+            $p[] = LabelSpots::close();
+            $top += $bh + 0.8 * $f;
+            $zoneH -= $bh + 0.8 * $f;
+        }
         $qr = $big && $d['show_qr'] && $d['qr'] ? 9.5 : 0.0;
         $logo = $big && $brand['logo'] ? 11.0 : 0.0;
         $ing = $dv ? $d['ingredients_dv'] : $d['ingredients_en'];

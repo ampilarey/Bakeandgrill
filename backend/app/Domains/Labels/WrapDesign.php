@@ -331,7 +331,13 @@ final class WrapDesign
         }
         $nx = $x + $in;
         $nw = $pw - 2 * $in - $picW;
-        $this->name($this->ax($nx, $nw, $pw, $x), $ny, $nw, $nh, $this->dv ? 'r' : ($picW > 0 ? 'l' : 'c'));
+        // Badges (round 9): a row of pills under the name when the part is tall enough for both.
+        $badges = $d['badges'] !== [] && $nh >= 9.5;
+        $bh = $badges ? 3.0 : 0.0;
+        $this->name($this->ax($nx, $nw, $pw, $x), $ny, $nw, $nh - ($badges ? $bh + 0.8 : 0.0), $this->dv ? 'r' : ($picW > 0 ? 'l' : 'c'));
+        if ($badges) {
+            array_push($this->p, ...LabelBadges::pills($d['badges'], $this->dv, $this->ax($nx, $nw, $pw, $x), $ny + $nh - $bh, $nw, $bh, $this->dv ? 'r' : ($picW > 0 ? 'l' : 'c')));
+        }
     }
 
     /** The product name: the hand lettering when there is some, else typed, English with Dhivehi beneath when both. */

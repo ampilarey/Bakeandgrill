@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Box, Check, FileDown, HelpCircle, Pencil, Plus, Printer, Search, Tag, UtensilsCrossed } from 'lucide-react';
 import {
   downloadLabelSheet, fetchCustomLabels, fetchLabelBrands, fetchLabelFooters, fetchLabelLayouts, fetchLabelProducts, fetchLabelTypes, openLabelSheet, stickerLinks, updateCustomLabel, updateItemLabel,
-  type CustomLabel, type LabelBrand, type LabelDesign, type LabelFooter, type LabelArrangement, type LabelLimits, type LabelPreset, type LabelProduct, type LabelRoll, type LabelSpot, type LabelSpotKey, type LabelType, type SheetLinks, type StickerLang,
+  type CustomLabel, type LabelBadge, type LabelBrand, type LabelDesign, type LabelFooter, type LabelArrangement, type LabelLimits, type LabelPreset, type LabelProduct, type LabelRoll, type LabelSpot, type LabelSpotKey, type LabelType, type SheetLinks, type StickerLang,
 } from '../../api';
 import { Button, useToast } from '../ui';
 import { Modal, TabScrollRow } from '../SharedUI';
@@ -156,6 +156,8 @@ export function MakeLabelWizard({ canManage = false }: {
   // The rolls and sheets the business owns (round 6): their cards come first, the rest under More sizes.
   const [rolls, setRolls] = useState<LabelRoll[]>([]);
   const [moreSizes, setMoreSizes] = useState(false);
+  // The badges a product can carry (round 9), for a tap's sheet.
+  const [badges, setBadges] = useState<LabelBadge[]>([]);
   const [query, setQuery] = useState('');
   const [switching, setSwitching] = useState<number | null>(null);
   const [newCustom, setNewCustom] = useState(false);
@@ -197,6 +199,7 @@ export function MakeLabelWizard({ canManage = false }: {
       setPresets(r.presets); setLimits(r.limits);
       const owned = r.rolls ?? [];
       setRolls(owned);
+      setBadges(r.badges ?? []);
       // Start on the first roll you own, unless a size was already picked.
       if (owned.length > 0) setChoice((c) => (c === DEFAULT_CHOICE ? rollChoice(owned[0]) : c));
     }).catch(() => { setPresets([]); setLimits(null); });
@@ -353,7 +356,7 @@ export function MakeLabelWizard({ canManage = false }: {
   };
   const quickContext: QuickContext = {
     kind: picked?.kind === 'custom' ? 'custom' : 'item',
-    types: lists?.types ?? [], brands: lists?.brands ?? [], footers: lists?.footers ?? [],
+    types: lists?.types ?? [], brands: lists?.brands ?? [], footers: lists?.footers ?? [], badges,
     mainBrand: lists?.brands.find((b) => b.is_default)?.name,
     defaults: pickedCustom?.defaults ?? pickedItem?.defaults,
     allergens: pickedItem?.allergens,

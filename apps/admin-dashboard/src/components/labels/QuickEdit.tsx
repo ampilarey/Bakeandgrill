@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom';
-import type { LabelBrand, LabelFooter, LabelSpotKey, LabelType } from '../../api';
+import type { LabelBadge, LabelBrand, LabelFooter, LabelSpotKey, LabelType } from '../../api';
 import { Btn, Modal, ModalActions } from '../SharedUI';
 import { spotName } from './SpotOverlay';
+import { BADGE_FALLBACK, MAX_BADGES } from './BadgePicker';
 
 /*
  * The sheet a tap on the preview opens (round 3 of the usability work, owner,
@@ -14,12 +15,12 @@ import { spotName } from './SpotOverlay';
  */
 
 export type QuickKind = 'custom' | 'item';
-export type QuickValue = string | number | boolean | null;
+export type QuickValue = string | number | boolean | string[] | null;
 
 export type QuickInput = {
   key: string;
   label: string;
-  kind: 'text' | 'textarea' | 'number' | 'date' | 'select' | 'switch';
+  kind: 'text' | 'textarea' | 'number' | 'date' | 'select' | 'switch' | 'chips';
   hint?: string;
   placeholder?: string;
   dir?: 'rtl';
@@ -55,6 +56,8 @@ export type QuickContext = {
   defaults?: Partial<{ heading: string; heading_dv: string; storage_line: string; storage_line_dv: string; how_to_use: string; how_to_use_dv: string; note: string; note_dv: string; brand: string; unit: string; shelf_life_days: number | null }>;
   /** The business's own brand, whose branding every footer carries. */
   mainBrand?: string;
+  /** The badges a product can carry (round 9), from the layouts. */
+  badges?: LabelBadge[];
   /** A menu item's allergens, from its Details tab. */
   allergens?: string[];
   menuPrice?: number;
@@ -120,6 +123,12 @@ export function quickSpec(key: LabelSpotKey, ctx: QuickContext): QuickSpec {
           ],
         }
         : { title: 'Name', note: "The name is the menu item's: change it on the item's Details tab under Menu. A hand-lettered name picture prints instead when there is one: All details → Hand-lettered name.", inputs: [] };
+    case 'badges':
+      return {
+        title: 'Badges',
+        note: `Halal, Spicy, New and the like, printed as rust pills under the name on every size with the room. Up to ${MAX_BADGES}.`,
+        inputs: [{ key: 'label_badges', label: 'Badges', kind: 'chips', max: MAX_BADGES, options: (ctx.badges && ctx.badges.length > 0 ? ctx.badges : BADGE_FALLBACK).map((b) => ({ value: b.key, label: b.word })) }],
+      };
     case 'promo':
       return { title: 'Promotion flash', note: 'A Was → Now price or a few words, added when you print: Print labels → More options → Promotion.', inputs: [], link: STICKERS };
     case 'packed':
@@ -281,6 +290,26 @@ export function QuickEditSheet({ spec, values, onChange, onAction, onDone, onAll
         {spec.inputs.map((input) => {
           const id = `${idPrefix}-${input.key}`;
           const value = values[input.key];
+          if (input.kind === 'chips') {
+            const picked = Array.isArray(value) ? (value as string[]) : [];
+            const max = input.max ?? Infinity;
+            return (
+              <div key={input.key} role="group" aria-label={input.label} data-testid={`${idPrefix}-chips`}>
+                <span className={labelClass}>{input.label}</span>
+                <div className="flex flex-wrap gap-2">
+                  {(input.options ?? []).map((o) => {
+                    const on = picked.includes(o.value);
+                    const full = !on && picked.length >= max;
+                    return (
+                      <button key={o.value} type="button" aria-pressed={on} disabled={full} onClick={() => onChange(input.key, on ? picked.filter((k) => k !== o.value) : [...picked, o.value])}
+                        className={['h-8 min-h-[32px] px-3 rounded-full border text-xs font-bold tracking-wide', on ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-[var(--color-on-primary)]' : 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text)] disabled:opacity-40'].join(' ')}>{o.label}</button>
+                    );
+                  })}
+                </div>
+                {input.hint && <p className="text-xs text-[var(--color-text-muted)] mt-1">{input.hint}</p>}
+              </div>
+            );
+          }
           if (input.kind === 'switch') {
             return (
               <div key={input.key}>

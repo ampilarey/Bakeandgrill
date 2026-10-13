@@ -29,7 +29,7 @@ final class LabelSpots
      * The parts a sticker can carry, as the Admin names them. `batch_qr` is
      * the pack page's code in the header; the complaints QR is the footer's.
      */
-    public const KEYS = ['brand', 'heading', 'batch_qr', 'pack', 'name', 'promo', 'packed', 'photo', 'barcode', 'ingredients', 'how_to_use', 'nutrition', 'icons', 'note', 'dates', 'batch', 'qty', 'price', 'storage', 'footer'];
+    public const KEYS = ['brand', 'heading', 'batch_qr', 'pack', 'name', 'promo', 'badges', 'packed', 'photo', 'barcode', 'ingredients', 'how_to_use', 'nutrition', 'icons', 'note', 'dates', 'batch', 'qty', 'price', 'storage', 'footer'];
 
     /** @return array{t: string, key: string} */
     public static function open(string $key): array

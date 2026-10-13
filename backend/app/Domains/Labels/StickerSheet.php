@@ -636,6 +636,8 @@ final class StickerSheet
             'wrap' => $wrap,
             // The parts moved or resized by hand, per design (round 8).
             'layout' => LabelLayout::of($item),
+            // Badges (round 9): rust pills under the name.
+            'badges' => LabelBadges::for($item),
             'marks' => LabelMarks::for($wrap['marks']),
             'pictures' => $pictures,
             'producer' => ['name' => (string) ($contact['name'] ?? ''), 'address' => (string) ($contact['address'] ?? ''), 'phone' => (string) ($contact['phone'] ?? ''), 'website' => (string) ($contact['website'] ?? '')],

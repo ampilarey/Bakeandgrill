@@ -27,7 +27,7 @@ const product = (): LabelProduct => ({
   label_shelf_life_days: 90, label_storage: 'frozen', label_pack_qty: 10, label_heading: null, label_heading_dv: null, label_storage_line: null, label_storage_line_dv: null,
   label_note: null, label_note_dv: null, label_pack_unit: 'PCS', label_type_id: null, label_type_name: null, label_how_to_use: null, label_how_to_use_dv: null,
   label_price: null, label_show_price: false, label_barcode: '12345670', label_net_weight: null, label_show_nutrition: false,
-  nutrition: { complete: false, per100: {}, grams: 0, missing: [], unweighed: [], rows: [] }, label_nutrition_per: 'g', label_wrap: WRAP, wrap_pictures: [], label_layout: {},
+  nutrition: { complete: false, per100: {}, grams: 0, missing: [], unweighed: [], rows: [] }, label_nutrition_per: 'g', label_wrap: WRAP, wrap_pictures: [], label_layout: {}, label_badges: [],
   menu_price: 5, allergens: [], defaults: { heading: 'FROZEN HEDHIKA', heading_dv: '', storage_line: '', storage_line_dv: '', how_to_use: '', how_to_use_dv: '', note: '', note_dv: '', shelf_life_days: null, brand: 'Bake & Grill', unit: 'PCS' },
   label_title_media_id: null, label_title_url: null, label_photo_media_id: 12, label_photo_url: '/m/12.png', cutout_url: null, has_recipe: true,
   ingredients: { en: 'Flour, tuna', dv: '', from: 'recipe', recipe_en: 'Flour, tuna', recipe_dv: '' },

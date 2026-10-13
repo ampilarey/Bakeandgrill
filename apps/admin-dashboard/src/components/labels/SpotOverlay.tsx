@@ -24,6 +24,7 @@ export const SPOT_NAMES: Record<LabelSpotKey, string> = {
   pack: 'pack number',
   name: 'name',
   promo: 'promotion flash',
+  badges: 'badges',
   packed: 'packed for',
   photo: 'picture',
   barcode: 'barcode',

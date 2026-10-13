@@ -324,7 +324,12 @@ designer (round 8): a product keeps per design the parts moved or resized by han
 stripped); `SpotOverlay mode="move"` with `ArrangeBar` (Move and resize, Back to
 automatic) on the custom label editor, the item's Label tab and the wizard; a part with a
 box of its own (`LabelSpots::at`) is `fixed`; a wrap label is arranged by its strips. A
-new design that places parts goes into `LabelLayout::DESIGNS` and `MOVABLE_DESIGNS`. How to
+new design that places parts goes into `LabelLayout::DESIGNS` and `MOVABLE_DESIGNS`.
+Badges (round 9): up to four keys from `LabelBadges::CATALOGUE` per product
+(`label_badges`), drawn by every design as rust pills under the name through
+`LabelBadges::pills()` (rectangles and text, so the raster draws them too), picked with
+`BadgePicker` or the tap sheet's `chips` input; a new badge goes into the catalogue (and
+`BADGE_FALLBACK`), nowhere else. How to
 use it and where everything lives: `docs/LABELS.md`; design and decisions:
 `docs/LABEL_HUB_PLAN.md` and `docs/LABEL_HUB_V2_PLAN.md`.
 

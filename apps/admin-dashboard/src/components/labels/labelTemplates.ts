@@ -23,7 +23,7 @@ export const TEMPLATE_KEYS = [
   'label_ingredients', 'label_ingredients_dv', 'label_how_to_use', 'label_how_to_use_dv', 'label_note', 'label_note_dv',
   'footer_id', 'label_show_qr', 'label_lang',
   'label_shelf_life_days', 'label_pack_qty', 'label_pack_unit', 'label_net_weight', 'label_allergens',
-  'label_nutrition', 'label_nutrition_per', 'label_wrap', 'label_show_price', 'label_show_nutrition', 'label_layout',
+  'label_nutrition', 'label_nutrition_per', 'label_wrap', 'label_show_price', 'label_show_nutrition', 'label_layout', 'label_badges',
 ] as const;
 type Key = (typeof TEMPLATE_KEYS)[number];
 
@@ -92,6 +92,7 @@ export function applyToCustom(d: CustomDraft, t: LabelTemplate): CustomDraft {
     n.wrap_pictures = t.wrap_pictures ?? [];
   }
   if (has('label_layout')) n.label_layout = f.label_layout ?? {};
+  if (has('label_badges')) n.label_badges = f.label_badges ? [...f.label_badges] : [];
   return n;
 }
 
@@ -120,6 +121,7 @@ export function applyToItem(d: ItemDraft, t: LabelTemplate): ItemDraft {
     n.wrap_pictures = t.wrap_pictures ?? [];
   }
   if (has('label_layout')) n.label_layout = f.label_layout ?? {};
+  if (has('label_badges')) n.label_badges = f.label_badges ? [...f.label_badges] : [];
   return n;
 }
 
