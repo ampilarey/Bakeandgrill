@@ -26,6 +26,9 @@ use Illuminate\Http\Request;
 
 class OrderCreationController extends Controller
 {
+    /** How a customer pays online (a pay link or an invoice through the gateway), as the payments table records it. */
+    private const ONLINE_PAYMENT_METHODS = ['bml_connect', 'bml_pay', 'bml', 'online', 'stripe'];
+
     /**
      * GET /api/orders — staff order list with filters.
      */
@@ -211,7 +214,8 @@ class OrderCreationController extends Controller
         //
         // Payment + type rules:
         //   - dine_in / takeaway: only while UNPAID (or partial). Once
-        //     paid the sale is done — it belongs in Receipts, not here.
+        //     paid the sale is done — it belongs in Receipts, not here;
+        //     except a takeaway paid online, which waits for Collected.
         //   - online_pickup / delivery: stay until physically fulfilled,
         //     even when paid, so staff can Start cooking → Ready →
         //     Picked up / Delivered.
@@ -236,6 +240,15 @@ class OrderCreationController extends Controller
                     // the kitchen, seat the guest, and possibly ring add-ons.
                     ->orWhere(function ($w4) {
                         $w4->where('type', 'dine_in')->whereNull('user_id');
+                    })
+                    // A takeaway the customer paid online (owner, 2026-10-15:
+                    // the cashier sent the invoice or pay link, the customer
+                    // paid it): it stays until the till marks it Collected,
+                    // as an online pickup does. A takeaway paid at the till
+                    // still leaves as soon as it is paid.
+                    ->orWhere(function ($w5) {
+                        $w5->where('type', 'takeaway')
+                            ->whereHas('payments', fn ($p) => $p->whereIn('method', self::ONLINE_PAYMENT_METHODS)->whereIn('status', ['paid', 'completed', 'confirmed']));
                     });
             });
         }

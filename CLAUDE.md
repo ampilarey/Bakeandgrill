@@ -620,6 +620,14 @@ marks the type filters, receipt rows and the new-order pop-up. Always with the t
 icon and word; never the brand rust, which means selected. A new screen that shows an
 order's type uses these, not colours of its own.
 
+## POS Active orders: a takeaway paid online waits for Collected
+
+Owner, 2026-10-15. A dine-in or takeaway leaves the till's Active orders once paid, but a
+takeaway with a gateway payment (the cashier sent the invoice or pay link and the customer
+paid online; `OrderCreationController::ONLINE_PAYMENT_METHODS`) stays, like an online
+pickup, until the till takes it through Start cooking, Mark ready and **Collected**. A
+takeaway paid at the till still leaves as soon as it is paid. `PaidOnlineTakeawayTest`.
+
 ## POS suggestions: a row, never a pop-up
 
 Owner, 2026-10-11: the "Goes with" card that rose over the ticket's footer caught taps
