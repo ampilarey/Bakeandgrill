@@ -57,6 +57,12 @@ class PaidOnlineTakeawayTest extends TestCase
         $this->assertContains($online->id, $this->active(), 'paid by pay link or invoice: stays for Collected');
         $this->assertNotContains($till->id, $this->active(), 'paid at the till: the sale is done');
 
+        // The ticket says how it was paid: "Paid online", not plain "Paid".
+        $row = collect($this->getJson('/api/orders?active_only=1&slim=1')->json('data'))->firstWhere('id', $online->id);
+        $this->assertTrue($row['paid_online']);
+        $tillRow = collect($this->getJson('/api/orders?slim=1')->json('data'))->firstWhere('id', $till->id);
+        $this->assertFalse($tillRow['paid_online']);
+
         // The till walks it through as it does a pickup: Start cooking, Mark ready, Collected.
         $this->postJson("/api/orders/{$online->id}/start-cooking")->assertOk();
         $this->postJson("/api/orders/{$online->id}/mark-ready")->assertOk();

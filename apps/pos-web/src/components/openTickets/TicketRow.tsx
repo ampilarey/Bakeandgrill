@@ -136,6 +136,8 @@ export function TicketRow({
 
   const stage = ticketStage(t);
   const isPaid = t.payment_status === "paid";
+  // Owner, 2026-10-15: a ticket the customer paid by pay link or invoice says so.
+  const paidOnline = Boolean(t.paid_online);
   const isUnpaid = t.payment_status === "unpaid" || t.payment_status === "partial";
 
   const collectTomorrow = Boolean(t.fulfil_date && !t.fired_at);
@@ -343,7 +345,8 @@ export function TicketRow({
             </span>
             {isPaid && (
               <span
-                title="Customer has paid"
+                title={paidOnline ? "Customer paid online (pay link or invoice)" : "Customer has paid"}
+                data-testid="ticket-paid-badge"
                 style={{
                   ...badgeBase,
                   color: palette.info,
@@ -351,7 +354,7 @@ export function TicketRow({
                   borderColor: "#BFDBFE",
                 }}
               >
-                Paid
+                {paidOnline ? "Paid online" : "Paid"}
               </span>
             )}
             {isUnpaid && (

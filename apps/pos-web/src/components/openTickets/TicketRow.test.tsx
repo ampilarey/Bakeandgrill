@@ -73,3 +73,17 @@ describe("TicketRow order type colour", () => {
     expect(chip).toHaveAttribute("data-order-type", "pickup");
   });
 });
+
+describe("TicketRow paid badge", () => {
+  it("says Paid online on a takeaway the customer paid by pay link or invoice", () => {
+    renderRow(ticket({ type: "takeaway", status: "paid", payment_status: "paid", paid_online: true }));
+    expect(screen.getByTestId("ticket-paid-badge")).toHaveTextContent("Paid online");
+  });
+
+  it("says Paid on one paid at the till", () => {
+    renderRow(ticket({ type: "takeaway", status: "paid", payment_status: "paid" }));
+    const badge = screen.getByTestId("ticket-paid-badge");
+    expect(badge).toHaveTextContent("Paid");
+    expect(badge).not.toHaveTextContent("online");
+  });
+});

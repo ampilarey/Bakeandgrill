@@ -580,6 +580,8 @@ export async function fetchReceipts(params: {
     delivery_fee?: number | null;
     paid_at?: string | null;
     is_customer_placed?: boolean;
+    /** The customer paid online, by pay link or invoice (2026-10-15). */
+    paid_online?: boolean;
     created_at: string;
     customer?: { id: number; name?: string; phone?: string } | null;
     user?: { id: number; name?: string } | null;

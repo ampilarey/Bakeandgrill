@@ -282,6 +282,9 @@ class OrderCreationController extends Controller
             });
         }
 
+        // Whether the customer paid online (a pay link or an invoice through the gateway), for the till's "Paid online" badge.
+        $query->withExists(['payments as paid_online' => fn ($p) => $p->whereIn('method', self::ONLINE_PAYMENT_METHODS)->whereIn('status', ['paid', 'completed', 'confirmed'])]);
+
         $perPage = min(100, max(10, (int) $request->input('per_page', 30)));
         $orders = $query->paginate($perPage);
 
@@ -296,6 +299,7 @@ class OrderCreationController extends Controller
             // work it out from `type` plus a nullable relation, which is how
             // the list filter and the row label ended up disagreeing.
             $data['is_customer_placed'] = $order->isCustomerPlaced();
+            $data['paid_online'] = (bool) ($order->paid_online ?? false);
             if (!$slim) {
                 $data['payment_settlement'] = OrderSettlement::forOrder($order);
             }
