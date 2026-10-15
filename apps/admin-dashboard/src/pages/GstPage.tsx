@@ -696,6 +696,11 @@ export default function GstPage() {
               gets it and its switches are on{' '}
               <Link to="/notifications/messages?open=owner_gst_filing_due" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>Owner: GST return due</Link> in Notifications.
             </p>
+            <p data-testid="gst-fee-switches-link" style={{ margin: 0, fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
+              GST on the packaging and small-order fees is switched on or off in{' '}
+              <Link to="/settings/ordering?section=slots-fees" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>Settings → Ordering → Fees &amp; slots</Link>.
+              GST on food follows each item&apos;s tax code in the item editor.
+            </p>
           </div>
           <Button onClick={saveSettings} disabled={saving} style={{ marginTop: 16 }}>{saving ? 'Saving…' : 'Save settings'}</Button>
         </Card>

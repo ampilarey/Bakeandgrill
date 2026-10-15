@@ -8,7 +8,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 const TABS = [
   { id: 'online', to: '/settings/ordering', label: 'Online' },
   { id: 'features', to: '/settings/ordering?section=features', label: 'Features' },
-  { id: 'slots-fees', to: '/settings/ordering?section=slots-fees', label: 'Slots' },
+  { id: 'slots-fees', to: '/settings/ordering?section=slots-fees', label: 'Fees & slots' },
   { id: 'preorder', to: '/settings/ordering?section=events', label: 'Pre-order' },
   { id: 'delivery', to: '/settings/delivery', label: 'Delivery' },
 ] as const;

@@ -645,8 +645,8 @@ the receipt page and PDF, the bill page and PDF (`partials/order-fee-lines`), th
 Receipts pane (`fee_lines` and `items[].packaging_note` on the orders list) and the printed
 slip (`fee_lines`, `packaging_note` in the print payload; `print-proxy/src/tickets.ts`).
 Built from the stored order on every open, so old orders show it too. The GST on a fee
-follows its switch on Online Ordering (`packaging_fee_taxable` and kin,
-`OrderFeeTaxCalculator`), not the items' tax codes.
+follows its switch on Settings → Ordering → **Fees & slots** (`packaging_fee_taxable` and kin,
+`OrderFeeTaxCalculator`; linked from Finance → GST settings), not the items' tax codes.
 
 ## POS suggestions: a row, never a pop-up
 

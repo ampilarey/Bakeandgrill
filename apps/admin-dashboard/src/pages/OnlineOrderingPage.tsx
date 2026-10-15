@@ -886,57 +886,6 @@ export default function OnlineOrderingPage() {
       </>)}
 
       {section === 'slots-fees' && (<>
-      <div className="oc-card" style={S.card}>
-          <p style={S.sectionTitle}>Pickup time slots</p>
-          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 14, lineHeight: 1.5 }}>
-            When enabled, online pickup checkout offers timed windows. Capacity limits how many
-            orders can book each slot. POS dine-in is unaffected.
-          </p>
-          <MasterSwitchRow
-            on={pickupEnabled}
-            toggling={false}
-            titleOn="Pickup slots are ON"
-            titleOff="Pickup slots are OFF"
-            helpOn="Checkout offers timed pickup windows."
-            helpOff="No timed pickup windows at checkout."
-            onToggle={() => setPickupEnabled((v) => !v)}
-          />
-          <div className="oc-form-grid" style={{ marginTop: 16 }}>
-            <div>
-              <label style={S.label}>Slot length (minutes)</label>
-              <input
-                style={S.input}
-                type="number"
-                min={5}
-                max={240}
-                value={pickupMinutes}
-                onChange={(e) => setPickupMinutes(e.target.value)}
-                disabled={!pickupEnabled}
-              />
-            </div>
-            <div>
-              <label style={S.label}>Orders per slot</label>
-              <input
-                style={S.input}
-                type="number"
-                min={1}
-                max={200}
-                value={pickupCapacity}
-                onChange={(e) => setPickupCapacity(e.target.value)}
-                disabled={!pickupEnabled}
-              />
-            </div>
-          </div>
-          <div style={{ marginTop: 16 }}>
-            {!siteSettingsLoaded && !scheduleLoading && (
-              <p style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--color-text-secondary)' }}>{SETTINGS_NOT_LOADED}</p>
-            )}
-            <button type="button" className="oc-btn-block" style={S.btnPrimary} onClick={() => void savePickupSlots()} disabled={pickupSaving || !siteSettingsLoaded}>
-              <Save size={14} />
-              {pickupSaving ? 'Saving…' : 'Save pickup slots'}
-            </button>
-          </div>
-        </div>
       {feeError && (
         <div className="oc-card" style={S.card}>
           <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, margin: 0 }}>{feeError}</p>
@@ -1003,6 +952,57 @@ export default function OnlineOrderingPage() {
           </div>
         </div>
       )}
+      <div className="oc-card" style={S.card}>
+          <p style={S.sectionTitle}>Pickup time slots</p>
+          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 14, lineHeight: 1.5 }}>
+            When enabled, online pickup checkout offers timed windows. Capacity limits how many
+            orders can book each slot. POS dine-in is unaffected.
+          </p>
+          <MasterSwitchRow
+            on={pickupEnabled}
+            toggling={false}
+            titleOn="Pickup slots are ON"
+            titleOff="Pickup slots are OFF"
+            helpOn="Checkout offers timed pickup windows."
+            helpOff="No timed pickup windows at checkout."
+            onToggle={() => setPickupEnabled((v) => !v)}
+          />
+          <div className="oc-form-grid" style={{ marginTop: 16 }}>
+            <div>
+              <label style={S.label}>Slot length (minutes)</label>
+              <input
+                style={S.input}
+                type="number"
+                min={5}
+                max={240}
+                value={pickupMinutes}
+                onChange={(e) => setPickupMinutes(e.target.value)}
+                disabled={!pickupEnabled}
+              />
+            </div>
+            <div>
+              <label style={S.label}>Orders per slot</label>
+              <input
+                style={S.input}
+                type="number"
+                min={1}
+                max={200}
+                value={pickupCapacity}
+                onChange={(e) => setPickupCapacity(e.target.value)}
+                disabled={!pickupEnabled}
+              />
+            </div>
+          </div>
+          <div style={{ marginTop: 16 }}>
+            {!siteSettingsLoaded && !scheduleLoading && (
+              <p style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--color-text-secondary)' }}>{SETTINGS_NOT_LOADED}</p>
+            )}
+            <button type="button" className="oc-btn-block" style={S.btnPrimary} onClick={() => void savePickupSlots()} disabled={pickupSaving || !siteSettingsLoaded}>
+              <Save size={14} />
+              {pickupSaving ? 'Saving…' : 'Save pickup slots'}
+            </button>
+          </div>
+        </div>
 
       </>)}
 
