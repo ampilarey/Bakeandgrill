@@ -29,7 +29,6 @@
     $typeLabel = $typeLabels[$order->type ?? ''] ?? str_replace('_', ' ', (string) ($order->type ?? ''));
     $statusLabel = $statusLabels[$order->status ?? ''] ?? str_replace('_', ' ', (string) ($order->status ?? ''));
     $discount = (float) ($order->discount_amount ?? 0);
-    $deliveryFee = (float) ($order->delivery_fee ?? 0);
     $refunds = $order->refunds ?? collect();
     $refundedTotal = (float) $refunds->sum('amount');
     $isFullyRefunded = $refundedTotal > 0.0001 && in_array($order->status ?? '', ['refunded'], true);
@@ -109,7 +108,10 @@
                             @if ($item->variant_name)
                                 <div class="doc-mods">{{ $item->variant_name }}</div>
                             @endif
-                            @if (!empty($item->packaging_option_name))
+                            @php $packNote = \App\Support\OrderFeeLines::itemPackagingNote($item, $order); @endphp
+                            @if ($packNote)
+                                <div class="doc-mods" data-packaging-note>+ {{ $packNote }}</div>
+                            @elseif (!empty($item->packaging_option_name))
                                 <div class="doc-mods">+ {{ $item->packaging_option_name }}</div>
                             @endif
                             @if ($item->modifiers->count() > 0)
@@ -129,9 +131,7 @@
 
         <div class="doc-totals">
             <p><span>Subtotal</span><span>MVR {{ number_format((float) $order->subtotal, 2) }}</span></p>
-            @if ($deliveryFee > 0.0001)
-                <p><span>Delivery fee</span><span>MVR {{ number_format($deliveryFee, 2) }}</span></p>
-            @endif
+            @include('partials.order-fee-lines', ['order' => $order])
             @if ($discount > 0.0001)
                 <p><span>Discount</span><span>− MVR {{ number_format($discount, 2) }}</span></p>
             @endif

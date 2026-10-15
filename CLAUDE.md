@@ -636,6 +636,18 @@ cooking stay tap-twice. More → Copy bill link / Share bill link open `BillLink
 invoice link from `send-bill` with no phone (silent), a QR, Copy link, Share… (the iPad's
 share sheet) and WhatsApp / Viber links. Nothing is sent from the till.
 
+## Receipts and bills show every fee
+
+Owner, 2026-10-15: a 10.00 packaging fee was in the total but on no line. Packaging,
+small-order and delivery fees print between Subtotal and GST, and an item with a packaging
+fee carries "+ Packaging fee · 5.00 × 2 = 10.00", from one place, `App\Support\OrderFeeLines`:
+the receipt page and PDF, the bill page and PDF (`partials/order-fee-lines`), the till's
+Receipts pane (`fee_lines` and `items[].packaging_note` on the orders list) and the printed
+slip (`fee_lines`, `packaging_note` in the print payload; `print-proxy/src/tickets.ts`).
+Built from the stored order on every open, so old orders show it too. The GST on a fee
+follows its switch on Online Ordering (`packaging_fee_taxable` and kin,
+`OrderFeeTaxCalculator`), not the items' tax codes.
+
 ## POS suggestions: a row, never a pop-up
 
 Owner, 2026-10-11: the "Goes with" card that rose over the ticket's footer caught taps

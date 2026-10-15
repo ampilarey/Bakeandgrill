@@ -64,7 +64,10 @@
                     @if ($item->variant_name)
                         <div class="pdf-mods">{{ $item->variant_name }}</div>
                     @endif
-                    @if (!empty($item->packaging_option_name))
+                    @php $packNote = \App\Support\OrderFeeLines::itemPackagingNote($item, $order); @endphp
+                    @if ($packNote)
+                        <div class="pdf-mods">+ {{ $packNote }}</div>
+                    @elseif (!empty($item->packaging_option_name))
                         <div class="pdf-mods">+ {{ $item->packaging_option_name }}</div>
                     @endif
                     @if ($item->modifiers->count() > 0)
@@ -83,6 +86,7 @@
 
 <div class="pdf-totals">
     <div class="pdf-totals-row"><span>Subtotal</span><span>MVR {{ number_format((float) $order->subtotal, 2) }}</span></div>
+    @include('partials.order-fee-lines', ['order' => $order, 'asPdf' => true])
     @if ($discount > 0.0001)
         <div class="pdf-totals-row"><span>Discount</span><span>− MVR {{ number_format($discount, 2) }}</span></div>
     @endif

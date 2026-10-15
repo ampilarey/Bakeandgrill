@@ -578,6 +578,8 @@ export async function fetchReceipts(params: {
     service_charge_label?: string | null;
     packaging_fee?: number | null;
     delivery_fee?: number | null;
+    /** Packaging, small-order and delivery fees as the receipt page shows them (2026-10-15). */
+    fee_lines?: Array<{ label: string; amount: number }>;
     paid_at?: string | null;
     is_customer_placed?: boolean;
     /** The customer paid online, by pay link or invoice (2026-10-15). */
@@ -594,6 +596,8 @@ export async function fetchReceipts(params: {
       quantity: number;
       unit_price: number;
       total_price: number;
+      /** "Packaging fee · 5.00 × 2 = 10.00" when the order charged packaging. */
+      packaging_note?: string | null;
     }>;
     payments?: Array<{
       id: number;

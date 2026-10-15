@@ -147,6 +147,19 @@
                         <td>
                             <strong>{{ $lineName }}</strong>
                             <div class="doc-mods doc-unit-inline">{{ $lineQty }} × MVR {{ number_format($lineUnit, 2) }}</div>
+                            @php
+                                // A bill's lines are copied from the order's in order, so the
+                                // order line at the same place carries the packaging fee.
+                                $sourceLine = $itemsAreOrderLines
+                                    ? $item
+                                    : (($invoice->order && $invoice->order->items->count() === $displayItems->count())
+                                        ? $invoice->order->items->values()->get($loop->index)
+                                        : null);
+                                $packNote = $sourceLine ? \App\Support\OrderFeeLines::itemPackagingNote($sourceLine, $invoice->order) : null;
+                            @endphp
+                            @if ($packNote)
+                                <div class="doc-mods" data-packaging-note>+ {{ $packNote }}</div>
+                            @endif
                         </td>
                         <td class="qty">{{ $lineQty }}</td>
                         <td class="amount col-unit">MVR {{ number_format($lineUnit, 2) }}</td>
@@ -160,6 +173,7 @@
 
         <div class="doc-totals">
             <p><span>Subtotal</span><span>MVR {{ number_format($displaySubtotal, 2) }}</span></p>
+            @include('partials.order-fee-lines', ['order' => $invoice->order])
             @if ($displayTax > 0)
                 <p><span>Tax</span><span>MVR {{ number_format($displayTax, 2) }}</span></p>
             @endif

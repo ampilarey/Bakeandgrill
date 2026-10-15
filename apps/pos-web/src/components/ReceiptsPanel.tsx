@@ -807,8 +807,13 @@ function ReceiptDetail({
   const lines: Array<{ label: string; value: number; tone?: "minus" }> = [];
   if (Number(receipt.discount_amount) > 0) lines.push({ label: "Discount", value: Number(receipt.discount_amount), tone: "minus" });
   if (Number(receipt.service_charge_amount) > 0) lines.push({ label: receipt.service_charge_label || "Service charge", value: Number(receipt.service_charge_amount) });
-  if (Number(receipt.packaging_fee) > 0) lines.push({ label: "Packaging", value: Number(receipt.packaging_fee) });
-  if (Number(receipt.delivery_fee) > 0) lines.push({ label: "Delivery", value: Number(receipt.delivery_fee) });
+  // Fees as the receipt page shows them; an older server sent none, so fall back.
+  if (receipt.fee_lines && receipt.fee_lines.length > 0) {
+    receipt.fee_lines.forEach((f) => lines.push({ label: f.label, value: Number(f.amount) }));
+  } else {
+    if (Number(receipt.packaging_fee) > 0) lines.push({ label: "Packaging", value: Number(receipt.packaging_fee) });
+    if (Number(receipt.delivery_fee) > 0) lines.push({ label: "Delivery", value: Number(receipt.delivery_fee) });
+  }
   if (Number(receipt.tax_amount) > 0) lines.push({ label: "GST", value: Number(receipt.tax_amount) });
 
   const input: React.CSSProperties = {
@@ -861,6 +866,9 @@ function ReceiptDetail({
             <span style={{ flex: 1, minWidth: 0 }}>
               <span style={{ fontWeight: 600 }}>{it.item_name}</span>
               {it.variant_name && <span style={{ color: palette.panelMuted }}> · {it.variant_name}</span>}
+              {it.packaging_note && (
+                <div data-testid="receipt-packaging-note" style={{ fontSize: 12, color: palette.panelMuted }}>+ {it.packaging_note}</div>
+              )}
               {it.notes && <div style={{ fontSize: 12, color: palette.panelMuted, fontStyle: "italic" }}>{it.notes}</div>}
               {it.quantity > 1 && <div style={{ fontSize: 11, color: palette.panelSubtle }}>@ {Number(it.unit_price).toFixed(2)}</div>}
             </span>

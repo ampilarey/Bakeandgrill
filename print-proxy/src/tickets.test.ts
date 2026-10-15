@@ -159,3 +159,16 @@ test('new kitchen fields are sanitised too', () => {
   });
   assert.equal(injectedControlBytes(ticket), 0);
 });
+
+test('a receipt prints the packaging fee line and the item note', () => {
+  const out = buildReceiptTicket({
+    order: {
+      order_number: 'BG-1', subtotal: 320, tax_amount: 0.8, total: 330.8,
+      fee_lines: [{ label: 'Packaging fee', amount: 10 }],
+      items: [{ item_name: 'Momo Set', quantity: 2, unit_price: 160, packaging_note: 'Packaging fee · 5.00 × 2 = 10.00' }],
+    },
+  } as unknown as PrintPayload);
+  assert.match(out, /Packaging fee: 10\.00/);
+  assert.match(out, /\+ Packaging fee - 5\.00 x 2 = 10\.00/);
+  assert.ok(out.indexOf('Packaging fee: 10.00') < out.indexOf('Tax: 0.80'));
+});

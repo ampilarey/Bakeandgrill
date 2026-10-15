@@ -479,6 +479,8 @@ class PrintJobService
                 'service_charge_type' => $order->service_charge_type,
                 'service_charge_value' => $order->service_charge_value,
                 'total' => $order->total,
+                // Packaging, small-order and delivery fees, as the receipt page shows them.
+                'fee_lines' => \App\Support\OrderFeeLines::for($order),
                 'created_at' => $order->created_at?->toIso8601String(),
                 'receipt_url' => $receiptUrl,
                 'items' => $order->items->map(fn ($item) => [
@@ -486,6 +488,7 @@ class PrintJobService
                     'item_name' => $item->item_name,
                     'variant_name' => $item->variant_name,
                     'packaging_option_name' => $item->packaging_option_name,
+                    'packaging_note' => \App\Support\OrderFeeLines::itemPackagingNote($item, $order),
                     'quantity' => $item->quantity,
                     'unit_price' => $item->unit_price,
                     'notes' => $item->notes,

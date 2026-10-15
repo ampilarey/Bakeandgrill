@@ -20,12 +20,16 @@ export type PrintPayload = {
     tax_amount?: number;
     discount_amount?: number;
     total?: number;
+    /** Packaging, small-order and delivery fees, between Subtotal and Tax. */
+    fee_lines?: Array<{ label: string; amount: number }>;
     items: Array<{
       item_name: string;
       quantity: number;
       unit_price?: number;
       variant_name?: string | null;
       packaging_option_name?: string | null;
+      /** "Packaging fee · 5.00 × 2 = 10.00" when the order charged packaging. */
+      packaging_note?: string | null;
       /** The cashier's per-line instruction: "no onions", "well done". */
       notes?: string | null;
       /** A platter's pick, printed indented under its platter. */
@@ -170,7 +174,10 @@ export const buildReceiptTicket = (payload: PrintPayload): string => {
     const price     = item.unit_price ?? 0;
     const lineTotal = price * item.quantity;
     lines.push(`${item.quantity}x ${s(item.item_name)}  ${lineTotal.toFixed(2)}\n`);
-    if (item.packaging_option_name) {
+    if (item.packaging_note) {
+      // Plain ASCII: a thermal head's code page may not have · or ×.
+      lines.push(`  + ${s(item.packaging_note).replace(/·/g, '-').replace(/×/g, 'x')}\n`);
+    } else if (item.packaging_option_name) {
       lines.push(`  - ${s(item.packaging_option_name)}\n`);
     }
     if (item.modifiers && item.modifiers.length > 0) {
@@ -179,6 +186,7 @@ export const buildReceiptTicket = (payload: PrintPayload): string => {
   });
   lines.push('-----------------------------\n');
   if (typeof payload.order.subtotal === 'number') lines.push(`Subtotal: ${payload.order.subtotal.toFixed(2)}\n`);
+  (payload.order.fee_lines ?? []).forEach(f => lines.push(`${s(f.label)}: ${Number(f.amount).toFixed(2)}\n`));
   if (typeof payload.order.tax_amount === 'number') lines.push(`Tax: ${payload.order.tax_amount.toFixed(2)}\n`);
   if (typeof payload.order.discount_amount === 'number' && payload.order.discount_amount > 0)
     lines.push(`Discount: -${payload.order.discount_amount.toFixed(2)}\n`);

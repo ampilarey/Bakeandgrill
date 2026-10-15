@@ -58,7 +58,7 @@ class OrderCreationController extends Controller
             // Size and note travel with each line so the Receipts pane can
             // show "Water · Small" and "no ice" the way the printed receipt
             // does. Owner, 2026-09-02.
-            'items:id,order_id,item_name,variant_name,notes,quantity,unit_price,total_price',
+            'items:id,order_id,item_name,variant_name,notes,quantity,unit_price,total_price,packaging_fee,packaging_fee_mode,packaging_option_name',
             // Eager-load the table so the POS Active orders search
             // can match on table name (e.g. cashier types "T4"
             // and lands on Table T4's open ticket without
@@ -302,6 +302,16 @@ class OrderCreationController extends Controller
             $data['paid_online'] = (bool) ($order->paid_online ?? false);
             if (!$slim) {
                 $data['payment_settlement'] = OrderSettlement::forOrder($order);
+                // The till's Receipts pane prints the fees and each item's
+                // packaging as the receipt page does (\App\Support\OrderFeeLines).
+                $data['fee_lines'] = \App\Support\OrderFeeLines::for($order);
+                if ($order->relationLoaded('items') && isset($data['items']) && is_array($data['items'])) {
+                    foreach ($order->items as $i => $item) {
+                        if (isset($data['items'][$i])) {
+                            $data['items'][$i]['packaging_note'] = \App\Support\OrderFeeLines::itemPackagingNote($item, $order);
+                        }
+                    }
+                }
             }
 
             return $data;

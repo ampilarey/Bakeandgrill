@@ -80,6 +80,7 @@
 
 <div class="pdf-totals">
     <div class="pdf-totals-row"><span>Subtotal</span><span>MVR {{ number_format((float) $invoice->subtotal, 2) }}</span></div>
+    @include('partials.order-fee-lines', ['order' => $invoice->order, 'asPdf' => true])
     @if ((float) ($invoice->tax_amount ?? 0) > 0)
         <div class="pdf-totals-row"><span>Tax</span><span>MVR {{ number_format((float) $invoice->tax_amount, 2) }}</span></div>
     @endif
