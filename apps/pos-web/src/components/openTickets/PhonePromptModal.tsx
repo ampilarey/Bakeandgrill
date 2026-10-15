@@ -8,6 +8,7 @@ export function PhonePromptModal({
   onSubmit,
   title = "Send bill SMS",
   submitLabel = "Send SMS",
+  note,
 }: {
   ticketLabel: string;
   phone: string;
@@ -16,6 +17,8 @@ export function PhonePromptModal({
   onSubmit: () => void;
   title?: string;
   submitLabel?: string;
+  /** A line under the number: Send pay link and Send bill always ask first. */
+  note?: string;
 }) {
   return (
     <div
@@ -73,6 +76,9 @@ export function PhonePromptModal({
             placeholder="7XXXXXX"
             style={{ ...inputField, width: "100%", fontSize: type.subtitle.fontSize }}
           />
+          {note && (
+            <div style={{ ...type.bodySm, color: palette.panelMuted, marginTop: space.xs }}>{note}</div>
+          )}
         </div>
         <div style={{ display: "flex", gap: space.s, justifyContent: "flex-end", marginTop: space.xs }}>
           <button type="button" onClick={onCancel} style={btnSecondary()}>Cancel</button>

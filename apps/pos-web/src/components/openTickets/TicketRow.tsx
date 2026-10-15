@@ -11,6 +11,7 @@ import {
   TICKET_AGE_COLORS,
 } from "../../utils/ticketAging";
 import { ticketDisplayTotal, ticketStage, type OpenTicket } from "../../utils/openTicketUtils";
+import { doneLabelFor } from "./StatusConfirmModal";
 import { ActionButton } from "./ActionButton";
 
 export type TicketRowProps = {
@@ -35,6 +36,8 @@ export type TicketRowProps = {
   handleMarkPickedUp: (t: OpenTicket) => void;
   handleSendBill: (t: OpenTicket) => void;
   handlePrintBill: (t: OpenTicket) => void;
+  /** Copy bill link (copy = true) or Share bill link: opens the bill link sheet. */
+  handleBillLink?: (t: OpenTicket, copy: boolean) => void;
   handleStartMerge: (t: OpenTicket) => void;
   handlePickMergeSource: (t: OpenTicket) => void;
 };
@@ -61,6 +64,7 @@ export function TicketRow({
   handleMarkPickedUp,
   handleSendBill,
   handlePrintBill,
+  handleBillLink,
   handleStartMerge,
   handlePickMergeSource,
 }: TicketRowProps) {
@@ -217,8 +221,8 @@ export function TicketRow({
    * says what actually happens: a delivery is Delivered, a pickup is Picked
    * up, a table or takeaway is Collected.
    */
-  const doneLabel = t.type === "delivery" ? "Delivered" : t.type === "online_pickup" ? "Picked up" : "Collected";
-  const doneConfirm = t.type === "delivery" ? "Delivered to the customer? Tap to confirm" : `${doneLabel}? Tap to confirm`;
+  // Mark ready and this button ask in a pop-up (StatusConfirmModal), not by a second tap.
+  const doneLabel = doneLabelFor(t);
 
   const cardClickHandler = mergeTargetId === null
     ? () => onResume(t)
@@ -475,8 +479,6 @@ export function TicketRow({
                   onClick={() => handleMarkReady(t)}
                   busy={busy}
                   bg={palette.successDark}
-                  confirm
-                  confirmLabel="Mark ready and notify customer?"
                   grow={isNarrow}
                 >
                   Mark ready
@@ -510,8 +512,6 @@ export function TicketRow({
                     onClick={() => handleMarkReady(t)}
                     busy={busy}
                     bg={palette.successDark}
-                    confirm
-                    confirmLabel="Mark ready and notify customer?"
                     grow={isNarrow}
                   >
                     Mark ready
@@ -524,8 +524,6 @@ export function TicketRow({
                 onClick={() => handleMarkPickedUp(t)}
                 busy={busy}
                 bg="#0F766E"
-                confirm
-                confirmLabel={doneConfirm}
                 grow={isNarrow}
               >
                 {doneLabel}
@@ -667,6 +665,36 @@ export function TicketRow({
                       >
                         🖨 Print Bill
                       </button>
+                      {handleBillLink && (
+                        <>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            disabled={busy}
+                            style={moreBtnStyle}
+                            title="Copy the bill link to paste in WhatsApp, Viber or any chat"
+                            onClick={() => {
+                              closeMore();
+                              handleBillLink(t, true);
+                            }}
+                          >
+                            🔗 Copy bill link
+                          </button>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            disabled={busy}
+                            style={moreBtnStyle}
+                            title="Share the bill link to WhatsApp, Viber or another app"
+                            onClick={() => {
+                              closeMore();
+                              handleBillLink(t, false);
+                            }}
+                          >
+                            📤 Share bill link
+                          </button>
+                        </>
+                      )}
                       {showMerge && (
                         <button
                           type="button"

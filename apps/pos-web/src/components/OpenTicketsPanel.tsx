@@ -17,6 +17,8 @@ import { SplitItemPicker } from "./openTickets/SplitItemPicker";
 import { TicketList } from "./openTickets/TicketList";
 import { FireEarlyConfirmModal } from "./openTickets/FireEarlyConfirmModal";
 import { VoidConfirmModal } from "./openTickets/VoidConfirmModal";
+import { StatusConfirmModal } from "./openTickets/StatusConfirmModal";
+import { BillLinkModal } from "./openTickets/BillLinkModal";
 
 const PrintBillFallbackModal = lazy(() =>
   import("./openTickets/PrintBillFallbackModal").then((m) => ({
@@ -93,7 +95,13 @@ export function OpenTicketsPanel({
     handleMarkReady,
     confirmVoidTicket,
     handleMarkPickedUp,
+    statusConfirm,
+    confirmStatus,
+    cancelStatusConfirm,
     handleSendBill,
+    billLink,
+    handleBillLink,
+    closeBillLink,
     submitPhonePrompt,
     handlePrintBill,
     handleStartMerge,
@@ -200,6 +208,7 @@ export function OpenTicketsPanel({
         handleMarkPickedUp={handleMarkPickedUp}
         handleSendBill={handleSendBill}
         handlePrintBill={handlePrintBill}
+        handleBillLink={handleBillLink}
         handleStartMerge={handleStartMerge}
         handlePickMergeSource={handlePickMergeSource}
       />
@@ -211,8 +220,9 @@ export function OpenTicketsPanel({
           onPhoneChange={(phone) => setPhonePrompt((p) => p ? { ...p, phone } : p)}
           onCancel={() => setPhonePrompt(null)}
           onSubmit={submitPhonePrompt}
-          title={phonePrompt.purpose === "pay_link" ? "Send pay link SMS" : "Send bill SMS"}
+          title={phonePrompt.purpose === "pay_link" ? "Send pay link SMS?" : "Send bill SMS?"}
           submitLabel={phonePrompt.purpose === "pay_link" ? "Send pay link" : "Send SMS"}
+          note="Check the number, then send. The customer gets it straight away."
         />
       )}
       {splitFor && (
@@ -245,6 +255,24 @@ export function OpenTicketsPanel({
             setVoidPrompt(null);
           }}
           onConfirm={() => void handleConfirmVoid()}
+        />
+      )}
+      {statusConfirm && (
+        <StatusConfirmModal
+          ticket={statusConfirm.ticket}
+          kind={statusConfirm.kind}
+          busy={busyId === statusConfirm.ticket.id}
+          onCancel={cancelStatusConfirm}
+          onConfirm={() => void confirmStatus()}
+        />
+      )}
+      {billLink && (
+        <BillLinkModal
+          ticket={billLink.ticket}
+          url={billLink.url}
+          error={billLink.error}
+          copyOnOpen={billLink.copyOnOpen}
+          onClose={closeBillLink}
         />
       )}
       {fireEarlyConfirm && (

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { TicketRow, type TicketRowProps } from "./TicketRow";
 import type { OpenTicket } from "../../utils/openTicketUtils";
@@ -85,5 +85,51 @@ describe("TicketRow paid badge", () => {
     const badge = screen.getByTestId("ticket-paid-badge");
     expect(badge).toHaveTextContent("Paid");
     expect(badge).not.toHaveTextContent("online");
+  });
+});
+
+describe("TicketRow bill link", () => {
+  it("offers Copy bill link and Share bill link under More", () => {
+    const handleBillLink = vi.fn();
+    const noop = vi.fn();
+    render(
+      <TicketRow
+        ticket={ticket({ type: "takeaway" })}
+        busy={false} msg={null} mergeTargetId={null}
+        canVoidOrders={false} canHoldResume canManageOrderStatus canSendBill={false} canSendPayLink={false}
+        requirePosReceivingBeforeReady={false}
+        smsNotifications={{ send_bill: false, send_pay_link: false }}
+        onResume={noop} onVoid={noop} onSplit={noop}
+        handleFireToKitchen={noop} handleSendPayLink={noop} handleStartCooking={noop} handleMarkReady={noop}
+        handleMarkPickedUp={noop} handleSendBill={noop} handlePrintBill={noop} handleStartMerge={noop}
+        handlePickMergeSource={noop} handleBillLink={handleBillLink}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /Copy bill link/ }));
+    expect(handleBillLink).toHaveBeenLastCalledWith(expect.objectContaining({ id: 5 }), true);
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /Share bill link/ }));
+    expect(handleBillLink).toHaveBeenLastCalledWith(expect.objectContaining({ id: 5 }), false);
+  });
+
+  it("Mark ready goes to the pop-up on the first tap (no tap-twice as well)", () => {
+    const handleMarkReady = vi.fn();
+    const noop = vi.fn();
+    render(
+      <TicketRow
+        ticket={ticket({ type: "takeaway", status: "pending" })}
+        busy={false} msg={null} mergeTargetId={null}
+        canVoidOrders={false} canHoldResume canManageOrderStatus canSendBill={false} canSendPayLink={false}
+        requirePosReceivingBeforeReady={false}
+        smsNotifications={{ send_bill: false, send_pay_link: false }}
+        onResume={noop} onVoid={noop} onSplit={noop}
+        handleFireToKitchen={noop} handleSendPayLink={noop} handleStartCooking={noop} handleMarkReady={handleMarkReady}
+        handleMarkPickedUp={noop} handleSendBill={noop} handlePrintBill={noop} handleStartMerge={noop}
+        handlePickMergeSource={noop}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Mark ready" }));
+    expect(handleMarkReady).toHaveBeenCalledTimes(1);
   });
 });

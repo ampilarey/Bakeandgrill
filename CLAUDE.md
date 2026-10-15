@@ -627,6 +627,14 @@ takeaway with a gateway payment (the cashier sent the invoice or pay link and th
 paid online; `OrderCreationController::ONLINE_PAYMENT_METHODS`) stays, like an online
 pickup, until the till takes it through Start cooking, Mark ready and **Collected**. A
 takeaway paid at the till still leaves as soon as it is paid. `PaidOnlineTakeawayTest`.
+Such a ticket says **Paid online** (`paid_online` on the orders list), not plain Paid.
+
+Mark ready and Collected / Picked up / Delivered ask in a pop-up (`StatusConfirmModal`), and
+Send pay link and Send Bill SMS always open the number to check first, even with a linked
+customer (owner, 2026-10-15: "all need 2nd time approval"); Fire to kitchen and Start
+cooking stay tap-twice. More → Copy bill link / Share bill link open `BillLinkModal`: the
+invoice link from `send-bill` with no phone (silent), a QR, Copy link, Share… (the iPad's
+share sheet) and WhatsApp / Viber links. Nothing is sent from the till.
 
 ## POS suggestions: a row, never a pop-up
 

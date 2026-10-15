@@ -79,6 +79,18 @@ export function useOpenTickets({ cartCustomerPhone, onOrderCancelled }: UseOpenT
   const [fireEarlyConfirm, setFireEarlyConfirm] = useState<OpenTicket | null>(null);
   const [splitFor, setSplitFor] = useState<OpenTicket | null>(null);
   /**
+   * Mark ready and Collected / Picked up / Delivered ask once more in a
+   * pop-up (owner, 2026-10-15): one notifies the customer, the other
+   * takes the order off Active orders with no undo.
+   */
+  const [statusConfirm, setStatusConfirm] = useState<
+    { ticket: OpenTicket; kind: "ready" | "done" } | null
+  >(null);
+  /** Copy / Share bill link: the sheet with the invoice link, QR and share buttons. */
+  const [billLink, setBillLink] = useState<
+    { ticket: OpenTicket; url: string | null; error: string | null; copyOnOpen: boolean } | null
+  >(null);
+  /**
    * FIX 19 — when window.open is blocked (mobile Safari, popup-blocker,
    * kiosk), we fall back to an in-app modal so the cashier can still get
    * the invoice URL onto the customer's phone via QR / clipboard.
@@ -192,13 +204,9 @@ export function useOpenTickets({ cartCustomerPhone, onOrderCancelled }: UseOpenT
     }
   };
 
+  /** Always asks first, with the number filled in to check (owner, 2026-10-15). */
   const handleSendPayLink = (t: OpenTicket) => {
-    const linkedPhone = t.customer?.phone ?? null;
-    if (linkedPhone) {
-      void doSendPayLink(t, linkedPhone);
-      return;
-    }
-    setPhonePrompt({ ticket: t, phone: cartCustomerPhone ?? "", purpose: "pay_link" });
+    setPhonePrompt({ ticket: t, phone: t.customer?.phone ?? cartCustomerPhone ?? "", purpose: "pay_link" });
   };
 
   const handleStartCooking = async (t: OpenTicket) => {
@@ -217,7 +225,17 @@ export function useOpenTickets({ cartCustomerPhone, onOrderCancelled }: UseOpenT
     }
   };
 
-  const handleMarkReady = async (t: OpenTicket) => {
+  const handleMarkReady = (t: OpenTicket) => {
+    setStatusConfirm({ ticket: t, kind: "ready" });
+  };
+
+  const handleMarkPickedUp = (t: OpenTicket) => {
+    setStatusConfirm({ ticket: t, kind: "done" });
+  };
+
+  const cancelStatusConfirm = useCallback(() => setStatusConfirm(null), []);
+
+  const executeMarkReady = async (t: OpenTicket) => {
     setBusyId(t.id);
     setRowMsg(null);
     try {
@@ -249,7 +267,7 @@ export function useOpenTickets({ cartCustomerPhone, onOrderCancelled }: UseOpenT
     }
   };
 
-  const handleMarkPickedUp = async (t: OpenTicket) => {
+  const executeMarkPickedUp = async (t: OpenTicket) => {
     setBusyId(t.id);
     setRowMsg(null);
     try {
@@ -285,14 +303,41 @@ export function useOpenTickets({ cartCustomerPhone, onOrderCancelled }: UseOpenT
     }
   };
 
-  const handleSendBill = (t: OpenTicket) => {
-    const linkedPhone = t.customer?.phone ?? null;
-    if (linkedPhone) {
-      void doSendBill(t, linkedPhone);
+  const confirmStatus = async () => {
+    const pending = statusConfirm;
+    if (!pending) return;
+    setStatusConfirm(null);
+    if (pending.kind === "ready") {
+      await executeMarkReady(pending.ticket);
       return;
     }
-    setPhonePrompt({ ticket: t, phone: cartCustomerPhone ?? "", purpose: "bill" });
+    await executeMarkPickedUp(pending.ticket);
   };
+
+  /** Always asks first, with the number filled in to check (owner, 2026-10-15). */
+  const handleSendBill = (t: OpenTicket) => {
+    setPhonePrompt({ ticket: t, phone: t.customer?.phone ?? cartCustomerPhone ?? "", purpose: "bill" });
+  };
+
+  /**
+   * Copy bill link / Share bill link: fetch the invoice link without sending
+   * anything (send-bill with no phone is silent), then show it in a sheet whose
+   * buttons copy it or hand it to the iPad's share sheet, WhatsApp or Viber.
+   * The share itself is a tap inside the sheet, so Safari allows it.
+   */
+  const handleBillLink = async (t: OpenTicket, copyOnOpen: boolean) => {
+    setBillLink({ ticket: t, url: null, error: null, copyOnOpen });
+    try {
+      const res = await sendBill(t.id);
+      setBillLink((cur) => (cur && cur.ticket.id === t.id ? { ...cur, url: res.link } : cur));
+    } catch (e) {
+      setBillLink((cur) => (cur && cur.ticket.id === t.id
+        ? { ...cur, error: (e as Error).message || "Couldn't get the bill link" }
+        : cur));
+    }
+  };
+
+  const closeBillLink = useCallback(() => setBillLink(null), []);
 
   const submitPhonePrompt = async () => {
     if (!phonePrompt) return;
@@ -541,7 +586,13 @@ export function useOpenTickets({ cartCustomerPhone, onOrderCancelled }: UseOpenT
     handleMarkReady,
     confirmVoidTicket,
     handleMarkPickedUp,
+    statusConfirm,
+    confirmStatus,
+    cancelStatusConfirm,
     handleSendBill,
+    billLink,
+    handleBillLink,
+    closeBillLink,
     submitPhonePrompt,
     handlePrintBill,
     handleStartMerge,
