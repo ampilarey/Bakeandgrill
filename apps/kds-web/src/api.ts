@@ -431,7 +431,7 @@ export async function fetchKitchenLabelSetup(token: string): Promise<KitchenLabe
 
 export async function productionStickerLinks(
   token: string,
-  body: { items: { id: number; copies: number }[]; layout: string; w?: number | null; h?: number | null; lang?: StickerLang; fill: boolean; mfg: string | null; exp: string | null; batch: string | null; pi: number },
+  body: { items: { id: number; copies: number }[]; layout: string; w?: number | null; h?: number | null; lang?: StickerLang; fill: boolean; mfg: string | null; exp: string | null; batch: string | null; pi: number; roll?: string | null },
 ): Promise<{ url: string; pdf_url: string; expires_in_minutes: number }> {
   return request('/labels/stickers/url', { method: 'POST', headers: authHeaders(token), body: JSON.stringify(body) });
 }

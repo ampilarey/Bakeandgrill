@@ -2,7 +2,7 @@ import { ArrowLeftRight, ChevronDown, Circle, RectangleVertical } from 'lucide-r
 import type { LabelLimits, LabelPreset, LabelRoll } from '../../api';
 import { TabScrollRow } from '../SharedUI';
 import {
-  DESIGN_NAMES, designFor, rollChoice, rollMatches, rollName, rollStock, rollStockWords, sizeCm, sizeName, sizeOf, sizeProblem, stockOf, stocksFor, switchShape, withPreset,
+  DESIGN_NAMES, designFor, pickRoll, rollChoice, rollName, rollStock, rollStockWords, sizeCm, sizeName, sizeOf, sizeProblem, stockOf, stocksFor, switchShape, withPreset,
   type LabelShape, type SizeChoice,
 } from './labelSize';
 
@@ -25,6 +25,9 @@ type Props = {
   onRounded: (rounded: boolean) => void;
   /** The rolls and sheets the business owns; none shows every size plainly. */
   rolls?: LabelRoll[];
+  /** The roll picked by name (label audit, Batch C): two rolls of one size are told apart by it; told when a roll is tapped. */
+  rollId?: string | null;
+  onRoll?: (id: string) => void;
 };
 
 const labelClass = 'block text-xs font-semibold text-[var(--color-text-secondary)] mb-1';
@@ -39,7 +42,7 @@ function chipClass(on: boolean) {
   ].join(' ');
 }
 
-export function LabelSizePicker({ presets, limits, choice, onChange, rounded, onRounded, rolls = [] }: Props) {
+export function LabelSizePicker({ presets, limits, choice, onChange, rounded, onRounded, rolls = [], rollId = null, onRoll: onRollPicked }: Props) {
   const ofShape = presets.filter((p) => p.shape === choice.shape);
   const custom = choice.preset === 'custom';
   const stocks = stocksFor(choice, presets);
@@ -53,7 +56,7 @@ export function LabelSizePicker({ presets, limits, choice, onChange, rounded, on
       ? `${stock.perPage} on a ready-cut A4 sheet`
       : `${stock.perPage} on ${stock.landscape ? 'a landscape' : 'an'} A4 sheet, cut on the dashed lines`;
   const setNum = (key: 'w' | 'h', value: string) => onChange({ ...choice, [key]: Number(value), ...(choice.shape === 'circle' && key === 'w' ? { h: Number(value) } : {}) });
-  const onRoll = rolls.find((r) => rollMatches(r, choice, presets)) ?? null;
+  const onRoll = pickRoll(rolls, choice, presets, rollId).roll;
 
   const everySize = (
     <>
@@ -119,7 +122,7 @@ export function LabelSizePicker({ presets, limits, choice, onChange, rounded, on
               const rs = stockOf(rollChoice(r), presets);
               const stockOfRoll = rollStock(r);
               return (
-                <button key={r.id} type="button" aria-pressed={on} onClick={() => onChange(rollChoice(r))} className={chipClass(on)} title={`${sizeName(r.shape, r.w, r.h)} · ${rs.label}${rollStockWords(r) ? ` · ${rollStockWords(r)}` : ''}`} data-low={stockOfRoll.lowNow ? 'true' : undefined}>
+                <button key={r.id} type="button" aria-pressed={on} onClick={() => { onRollPicked?.(r.id); onChange(rollChoice(r)); }} className={chipClass(on)} title={`${sizeName(r.shape, r.w, r.h)} · ${rs.label}${rollStockWords(r) ? ` · ${rollStockWords(r)}` : ''}`} data-low={stockOfRoll.lowNow ? 'true' : undefined}>
                   {rollName(r)}{r.name.trim() ? <span className="font-normal opacity-80">· {r.shape === 'circle' ? `Ø ${r.w}` : `${r.w} × ${r.h}`}</span> : null}
                   {stockOfRoll.left !== null && <span className={['font-normal', stockOfRoll.lowNow ? 'text-[var(--color-danger)] font-semibold' : 'opacity-80'].join(' ')}> · {stockOfRoll.left} left</span>}
                 </button>

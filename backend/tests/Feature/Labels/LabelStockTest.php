@@ -140,4 +140,39 @@ class LabelStockTest extends TestCase
         $this->assertNull($this->roll('small')['low_alerted_at'], 'nobody was told, so a later switch-on tells them at the next print');
         $this->assertStringContainsString('the label roll 60 × 40 mm, label printer is down to 1 label', RollStockAlert::message(['id' => 'x', 'name' => '', 'shape' => 'rect', 'preset' => 'r60x40', 'on' => 'printer', 'w' => 60.0, 'h' => 40.0, 'left' => 1, 'low' => 0]));
     }
+
+    public function test_two_rolls_of_one_size_are_never_guessed_between(): void
+    {
+        // Label audit, Batch C: a second 60 × 40 printer roll.
+        $this->putJson('/api/labels/settings', ['label_rolls' => json_encode([
+            ['id' => 'small', 'name' => 'Small roll', 'shape' => 'rect', 'preset' => 'r60x40', 'on' => 'printer', 'left' => 60, 'low' => 5],
+            ['id' => 'spare', 'name' => 'Spare roll', 'shape' => 'rect', 'preset' => 'r60x40', 'on' => 'printer', 'left' => 100],
+        ])])->assertOk();
+        $req = LabelRolls::request(LabelRolls::find('small'));
+        $print = fn (array $extra = []) => $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $this->bajiya->id, 'copies' => 4]], 'layout' => $req['layout'], 'w' => $req['w'], 'h' => $req['h']] + $extra)->assertOk();
+
+        // None named: neither is counted, and the summary names both so the screen asks.
+        $print()->assertJsonPath('summary.roll', null)->assertJsonPath('summary.roll_unsure', ['Small roll', 'Spare roll']);
+        $this->assertSame([60, 100], [$this->roll('small')['left'], $this->roll('spare')['left']]);
+        $print(['preview' => true])->assertJsonPath('summary.roll_unsure', ['Small roll', 'Spare roll']);
+
+        // Named: that one comes off, and only that one.
+        $print(['roll' => 'spare'])->assertJsonPath('summary.roll.id', 'spare')->assertJsonPath('summary.roll.left', 96)->assertJsonPath('summary.roll_unsure', []);
+        $this->assertSame([60, 96], [$this->roll('small')['left'], $this->roll('spare')['left']]);
+
+        // A roll named for another size is not counted against this print.
+        $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $this->bajiya->id, 'copies' => 4]], 'layout' => 'a4-4', 'roll' => 'small'])->assertOk()->assertJsonPath('summary.roll', null);
+        $this->assertSame(60, $this->roll('small')['left']);
+    }
+
+    public function test_the_count_is_read_fresh_under_a_lock_so_no_print_is_lost(): void
+    {
+        // Label audit, Batch C: the count comes from the database row, not a stale cached copy.
+        $req = LabelRolls::request(LabelRolls::find('small'));
+        $before = LabelRolls::presentAll();
+        \App\Models\SiteSetting::query()->where('key', LabelRolls::KEY)->update(['value' => json_encode([['id' => 'small', 'name' => 'Small roll', 'shape' => 'rect', 'preset' => 'r60x40', 'on' => 'printer', 'left' => 40, 'low' => 5]])]);
+        $this->assertSame(60, $before[0]['left']);
+        $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $this->bajiya->id, 'copies' => 3]], 'layout' => $req['layout'], 'w' => $req['w'], 'h' => $req['h'], 'roll' => 'small'])->assertOk()->assertJsonPath('summary.roll.left', 37);
+        $this->assertSame(37, $this->roll('small')['left']);
+    }
 }

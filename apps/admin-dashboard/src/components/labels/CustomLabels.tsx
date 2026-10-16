@@ -20,7 +20,7 @@ import { ShelfLifeHint } from './ShelfLifeHint';
 import { WordingSignoff } from './WordingSignoff';
 import { QuickEditSheet, quickSpec } from './QuickEdit';
 import { customDraft as toDraft, customPayload as toPayload, type CustomDraft as Draft } from './labelDrafts';
-import { DEFAULT_CHOICE, rememberedSize, requestFor, sizeName, sizeOf, stockOf, type SizeChoice } from './labelSize';
+import { DEFAULT_CHOICE, rememberedRoll, rememberedSize, requestFor, sizeName, sizeOf, stockOf, type SizeChoice } from './labelSize';
 import { Btn, ConfirmDialog, Modal, ModalActions, useConfirmDialog } from '../SharedUI';
 import { Button, Card, useToast } from '../ui';
 import { MediaPicker } from '../MediaPicker';
@@ -58,10 +58,11 @@ const DV_FONT_NAMES: Record<string, string> = { noto: 'Noto Sans Thaana', faruma
 export const langOf = (c: Pick<CustomLabel, 'label_lang' | 'name_dv'>): StickerLang => c.label_lang ?? (c.name_dv ? 'both' : 'en');
 
 /** What a custom label prepares at one tap: the remembered size, a full sheet of it. */
-function savedSheetRequest(presets: LabelPreset[]): { layout: string; w: number | null; h: number | null; copies: number } {
+function savedSheetRequest(presets: LabelPreset[]): { layout: string; w: number | null; h: number | null; copies: number; roll: string | null } {
   const choice = rememberedSize() ?? DEFAULT_CHOICE;
-  if (presets.length === 0) return { layout: 'a4-4', w: null, h: null, copies: 4 };
-  return { ...requestFor(choice, presets), copies: Math.max(1, stockOf(choice, presets).perPage) };
+  if (presets.length === 0) return { layout: 'a4-4', w: null, h: null, copies: 4, roll: null };
+  // The roll Print labels last printed this size on, so the count comes off the right one (label audit, Batch C).
+  return { ...requestFor(choice, presets), copies: Math.max(1, stockOf(choice, presets).perPage), roll: rememberedRoll() };
 }
 
 const WORDING_KEYS: (keyof Draft)[] = ['label_heading', 'label_heading_dv', 'label_storage_line', 'label_storage_line_dv', 'label_note', 'label_note_dv', 'label_how_to_use', 'label_how_to_use_dv'];

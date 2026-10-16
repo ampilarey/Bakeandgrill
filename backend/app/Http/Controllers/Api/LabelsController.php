@@ -282,6 +282,8 @@ class LabelsController extends Controller
         $query['b'] = StickerSheet::codesParam($codes);
         // Label stock (round 13): a real print is counted off the roll it used; the summary says what is left.
         $summary['roll'] = $preview ? null : LabelRolls::consume($req, $summary);
+        // Two rolls of this size and none named (label audit, Batch C): not guessed, and said, so the screen asks which.
+        $summary['roll_unsure'] = LabelRolls::pick(LabelRolls::all(), $req)['unsure'];
 
         return [
             'url' => LabelSheetController::link('labels.stickers', $query + ($preview ? ['preview' => 1] : ['print' => 1])),

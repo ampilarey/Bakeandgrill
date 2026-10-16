@@ -409,7 +409,7 @@ describe('CustomLabelsTab', () => {
       </MemoryRouter>,
     );
     fireEvent.click(await screen.findByRole('button', { name: 'Save Theluli Rihaakuru to Saved labels' }));
-    await waitFor(() => expect(stickerLinks).toHaveBeenCalledWith({ items: [{ id: 8, copies: 4, kind: 'custom' }], layout: 'a4-4', w: null, h: null, lang: 'both', fill: true }));
+    await waitFor(() => expect(stickerLinks).toHaveBeenCalledWith({ items: [{ id: 8, copies: 4, kind: 'custom' }], layout: 'a4-4', w: null, h: null, roll: null, lang: 'both', fill: true }));
     expect(await screen.findByTestId('saved-tab')).toBeInTheDocument();
     expect(screen.getByText('Saved as “Theluli Rihaakuru · 4 stickers”.')).toBeInTheDocument();
   });
@@ -418,13 +418,14 @@ describe('CustomLabelsTab', () => {
   // print". Save and the editor's preview follow the size Print labels last
   // printed, so a 4 × 6 cm owner gets a sheet of 4 × 6 cm.
   it('saves at the size Print labels last printed, a full sheet of it', async () => {
-    localStorage.setItem('labels.lastSize', JSON.stringify({ shape: 'rect', preset: 'r40x60', on: 'sheet', w: 40, h: 60 }));
+    localStorage.setItem('labels.lastSize', JSON.stringify({ shape: 'rect', preset: 'r40x60', on: 'sheet', w: 40, h: 60, roll: 'sheets' }));
     fetchCustomLabels.mockResolvedValue({ data: [custom(7, 'Garlic Sauce')] });
     stickerLinks.mockResolvedValue({ url: '/x', view_url: '/x', pdf_url: '/x.pdf', expires_in_minutes: 30, job: { id: 4, name: 'Garlic Sauce · 21 stickers' } });
     wrap(<CustomLabelsTab canManage={false} />);
     await waitFor(() => expect(fetchLabelLayouts).toHaveBeenCalled());
     fireEvent.click(await screen.findByRole('button', { name: 'Save Garlic Sauce to Saved labels' }));
-    await waitFor(() => expect(stickerLinks).toHaveBeenCalledWith({ items: [{ id: 7, copies: 21, kind: 'custom' }], layout: 'a4-custom', w: 40, h: 60, lang: 'en', fill: true }));
+    await waitFor(() => expect(stickerLinks).toHaveBeenCalledWith({ items: [{ id: 7, copies: 21, kind: 'custom' }], layout: 'a4-custom', w: 40, h: 60, roll: 'sheets', lang: 'en', fill: true }));
+    // Label audit, Batch C: the roll Print labels last printed it on goes too, so the count comes off that one.
   });
 
   it('says how often each label was printed, in which language, and finds one by name, brand or type', async () => {

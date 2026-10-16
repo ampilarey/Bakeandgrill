@@ -278,6 +278,28 @@ export function rememberedSize(): SizeChoice | null {
   return null;
 }
 
-export function rememberSize(choice: SizeChoice): void {
-  try { localStorage.setItem(LAST_SIZE_KEY, JSON.stringify(choice)); } catch { /* private window */ }
+/** Keeps the size printed last, and the roll it was on (label audit, Batch C), for the next one-tap print. */
+export function rememberSize(choice: SizeChoice, roll: string | null = null): void {
+  try { localStorage.setItem(LAST_SIZE_KEY, JSON.stringify({ ...choice, roll })); } catch { /* private window */ }
+}
+
+/** The roll the remembered size was printed on, if one was picked. */
+export function rememberedRoll(): string | null {
+  try {
+    const v = JSON.parse(localStorage.getItem(LAST_SIZE_KEY) ?? 'null') as { roll?: unknown } | null;
+    return typeof v?.roll === 'string' && v.roll ? v.roll : null;
+  } catch { return null; }
+}
+
+/**
+ * The roll a print is on (label audit, Batch C, 2026-10-16): the one picked
+ * when it is this size, else the one roll of this size. Two or more of this
+ * size with none picked is never guessed: no roll, and `matches` lists them
+ * so the screen can ask. Mirrors `LabelRolls::pick()`.
+ */
+export function pickRoll(rolls: LabelRoll[], choice: SizeChoice, presets: LabelPreset[], picked: string | null): { roll: LabelRoll | null; matches: LabelRoll[] } {
+  if (presets.length === 0) return { roll: null, matches: [] };
+  const matches = rolls.filter((r) => rollMatches(r, choice, presets));
+  const roll = matches.find((r) => r.id === picked) ?? (matches.length === 1 ? matches[0] : null);
+  return { roll, matches };
 }

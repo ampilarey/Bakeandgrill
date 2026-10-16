@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Labels;
 
+use App\Models\SiteSetting;
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 /**
@@ -160,15 +162,62 @@ final class LabelRolls
     }
 
     /**
+     * Which roll a print is on (label audit, Batch C, 2026-10-16): the roll
+     * the request names when it is this very layout and size; with none
+     * named, the one roll of that size. Two or more rolls of that size and
+     * none named is never guessed: no roll, and their names in `unsure` so
+     * the screen can ask.
+     *
+     * @param list<array<string, mixed>> $rolls
+     * @param array<string, mixed> $req from StickerSheet::normalise()
+     * @return array{index: ?int, unsure: list<string>}
+     */
+    public static function pick(array $rolls, array $req): array
+    {
+        $layout = (string) ($req['layout'] ?? '');
+        $w = isset($req['w']) ? (float) $req['w'] : null;
+        $h = isset($req['h']) ? (float) $req['h'] : null;
+        $wanted = (string) ($req['roll'] ?? '');
+        $matches = [];
+        foreach ($rolls as $i => $roll) {
+            if (!self::sameSize($roll, $layout, $w, $h)) {
+                continue;
+            }
+            if ($wanted !== '' && $roll['id'] === $wanted) {
+                return ['index' => $i, 'unsure' => []];
+            }
+            $matches[] = $i;
+        }
+        if (count($matches) === 1) {
+            return ['index' => $matches[0], 'unsure' => []];
+        }
+
+        return ['index' => null, 'unsure' => array_map(fn (int $i) => self::nameOf($rolls[$i]), $matches)];
+    }
+
+    /** A roll's name, or its size when it has none. */
+    public static function nameOf(array $roll): string
+    {
+        $name = trim((string) ($roll['name'] ?? ''));
+        if ($name !== '') {
+            return $name;
+        }
+        $r = self::request($roll);
+
+        return StickerLayouts::describe($r['layout'], $r['w'], $r['h']);
+    }
+
+    /**
      * Count a print off the roll it used (round 13 of the usability work,
      * owner, 2026-10-13: "how many labels are left on each roll, with a
-     * warning when low"): the roll the request names, else the first roll of
-     * that very layout and size; labels off a printer roll, sheets off a
-     * sheet stock, never below none. A roll that is not counted (no number
-     * typed in) is left alone. When the count reaches the warning level the
-     * owners are told once (RollStockAlert), and told again only after the
-     * roll has been counted up above the level. Returns the roll as it now
-     * stands with what this print took, or null when no roll was used.
+     * warning when low"): the roll pick() finds; labels off a printer roll,
+     * sheets off a sheet stock, never below none. A roll that is not counted
+     * (no number typed in) is left alone. The count is read and written under
+     * a row lock (label audit, Batch C), so two prints at once both come off.
+     * When the count reaches the warning level the owners are told once
+     * (RollStockAlert), and told again only after the roll has been counted
+     * up above the level. Returns the roll as it now stands with what this
+     * print took, or null when no roll was used.
      *
      * @param array<string, mixed> $req from StickerSheet::normalise()
      * @param array<string, mixed> $summary from StickerSheet::summary()
@@ -176,40 +225,27 @@ final class LabelRolls
      */
     public static function consume(array $req, array $summary): ?array
     {
-        $rolls = self::all();
-        $index = null;
-        $wanted = (string) ($req['roll'] ?? '');
-        if ($wanted !== '') {
-            foreach ($rolls as $i => $roll) {
-                if ($roll['id'] === $wanted) {
-                    $index = $i;
-                    break;
+        return DB::transaction(function () use ($req, $summary): ?array {
+            $row = SiteSetting::query()->where('key', self::KEY)->lockForUpdate()->get()
+                ->first(fn (SiteSetting $r) => ($r->scope ?? 'shared') === 'shared' && ($r->locale ?? 'en') === 'en');
+            $rolls = self::normalise($row?->value ?? '');
+            $index = self::pick($rolls, $req)['index'];
+            if ($index === null) {
+                return null;
+            }
+            $roll = $rolls[$index];
+            $took = $roll['on'] === 'printer' ? (int) ($summary['stickers'] ?? 0) : (int) ($summary['pages'] ?? 0);
+            if ($roll['left'] !== null) {
+                $roll['left'] = max(0, (int) $roll['left'] - $took);
+                if ($roll['low'] !== null && $roll['left'] <= $roll['low'] && $roll['low_alerted_at'] === null && RollStockAlert::send($roll)) {
+                    $roll['low_alerted_at'] = now()->toIso8601String();
                 }
+                $rolls[$index] = $roll;
+                LabelSettings::save([self::KEY => self::encode($rolls)]);
             }
-        }
-        if ($index === null) {
-            foreach ($rolls as $i => $roll) {
-                if (self::sameSize($roll, (string) $req['layout'], $req['w'] ?? null, $req['h'] ?? null)) {
-                    $index = $i;
-                    break;
-                }
-            }
-        }
-        if ($index === null) {
-            return null;
-        }
-        $roll = $rolls[$index];
-        $took = $roll['on'] === 'printer' ? (int) ($summary['stickers'] ?? 0) : (int) ($summary['pages'] ?? 0);
-        if ($roll['left'] !== null) {
-            $roll['left'] = max(0, (int) $roll['left'] - $took);
-            if ($roll['low'] !== null && $roll['left'] <= $roll['low'] && $roll['low_alerted_at'] === null && RollStockAlert::send($roll)) {
-                $roll['low_alerted_at'] = now()->toIso8601String();
-            }
-            $rolls[$index] = $roll;
-            LabelSettings::save([self::KEY => self::encode($rolls)]);
-        }
 
-        return self::present($roll) + ['took' => $took];
+            return self::present($roll) + ['took' => $took];
+        });
     }
 
     /** @return ?array{id: string, name: string, shape: string, preset: string, on: string, w: float, h: float} */

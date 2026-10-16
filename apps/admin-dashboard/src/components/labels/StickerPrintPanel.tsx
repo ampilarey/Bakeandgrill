@@ -21,7 +21,7 @@ import { FoldHelp } from './FoldHelp';
 import { ChooseItemsModal } from './ChooseItemsModal';
 import { ReprintScan } from './ReprintScan';
 import { pairedPrinter, printOverBluetooth } from './bluetoothPrinter';
-import { DEFAULT_CHOICE, choiceFromRequest, pageOf, rememberSize, rememberedSize, requestFor, rollMatches, rollName, rollStock, rollStockWords, sizeName, sizeOf, sizeProblem, stockOf, type SizeChoice } from './labelSize';
+import { DEFAULT_CHOICE, choiceFromRequest, pageOf, pickRoll, rememberSize, rememberedSize, requestFor, rollName, rollStock, rollStockWords, sizeName, sizeOf, sizeProblem, stockOf, type SizeChoice } from './labelSize';
 
 /*
  * Print labels: pick products, how many, the language, the label size and
@@ -96,6 +96,9 @@ function runPayload(run: RowRun | undefined, fill: boolean): StickerRun {
  * sticker, opens the form on the very label that printed it, with the pack's
  * details named above the form; the new print is logged as a reprint of it.
  */
+/** Picked in the Which roll box: print without counting it off any roll. */
+const NO_ROLL = 'none';
+
 const whenPrinted = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 /** "Bajiya · 2 stickers · 40 × 60 mm, 21 on A4 · batch A1 · 6 per pack · made 2026-10-10 · use by 2027-01-08 · for NH Kuda Rah". */
 export function reprintLine(r: LabelPrintLookup): string {
@@ -260,6 +263,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
     setPicked(Object.fromEntries(items.map((i) => [keyOf(i.kind === 'custom' ? 'custom' : 'item', Number(i.id)), Number(i.copies)])));
     setRuns(Object.fromEntries(items.filter((i) => RUN_KEYS.some((k) => i[k] != null && i[k] !== '')).map((i) => [keyOf(i.kind === 'custom' ? 'custom' : 'item', Number(i.id)), runFrom(i)])));
     setSizes(Object.fromEntries(items.filter((i) => i.size).map((i) => [keyOf('item', Number(i.id)), Number(i.size)])));
+    setRollId(typeof q.roll === 'string' && q.roll ? q.roll : null);
     if (q.lang === 'dv' || q.lang === 'en' || q.lang === 'both') setLang(q.lang);
     setSavedSize({ layout: typeof q.layout === 'string' ? q.layout : 'a4-4', w: q.w != null ? Number(q.w) : null, h: q.h != null ? Number(q.h) : null });
     setFill(Boolean(q.fill));
@@ -383,7 +387,10 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
   const items = useMemo(() => Object.entries(picked).filter(([, n]) => n > 0).map(([key, copies]) => ({ key, ...parseKey(key), copies })), [picked]);
   const total = items.reduce((s, i) => s + i.copies, 0);
   // Label stock (round 13): the roll this size is, what it has left, and what this print takes off it (labels, or sheets of a sheet stock).
-  const onRoll = presets.length > 0 ? rolls.find((r) => rollMatches(r, choice, presets)) ?? null : null;
+  // Two rolls of this size are never guessed between (label audit, Batch C): the form asks, or the print is not counted.
+  const [rollId, setRollId] = useState<string | null>(null);
+  const { roll: onRoll, matches: rollsHere } = pickRoll(rolls, choice, presets, rollId);
+  const rollUnpicked = rollsHere.length > 1 && !onRoll && rollId !== NO_ROLL;
   const onRollStock = onRoll ? rollStock(onRoll) : null;
   const rollTakes = onRollStock ? (onRollStock.unit === 'labels' ? total : Math.ceil(total / Math.max(1, perPage))) : 0;
 
@@ -483,7 +490,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
     setBusy(true); setError(null); setResult(null); setSent(null);
     try {
       const r = await stickerLinks(request());
-      rememberSize(choice);
+      rememberSize(choice, onRoll?.id ?? null);
       setResult(r);
       // On a phone the summary lands below the fold; bring it up.
       requestAnimationFrame(() => summaryRef.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' }));
@@ -732,9 +739,20 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
       <section className="space-y-3">
         <h3 className="text-sm font-bold text-[var(--color-text)]">Label size</h3>
         {presets.length > 0 ? (
-          <LabelSizePicker presets={presets} limits={limits} choice={choice} onChange={setChoice} rounded={rounded} onRounded={setRounded} rolls={rolls} />
+          <LabelSizePicker presets={presets} limits={limits} choice={choice} onChange={setChoice} rounded={rounded} onRounded={setRounded} rolls={rolls} rollId={onRoll?.id ?? null} onRoll={setRollId} />
         ) : (
           <p className="text-xs text-[var(--color-text-muted)]">Loading the sizes…</p>
+        )}
+        {rollsHere.length > 1 && (
+          <div>
+            <label className="block text-xs font-semibold text-[var(--color-text-secondary)] mb-1" htmlFor="sticker-roll">Which roll is in the printer?</label>
+            <select id="sticker-roll" value={onRoll?.id ?? (rollId === NO_ROLL ? NO_ROLL : '')} onChange={(e) => setRollId(e.target.value || null)} className={fieldClass} data-testid="sticker-roll">
+              <option value="">Pick the roll</option>
+              {rollsHere.map((r) => <option key={r.id} value={r.id}>{rollName(r)}{rollStockWords(r) ? ` · ${rollStockWords(r)}` : ''}</option>)}
+              <option value={NO_ROLL}>Do not count this print</option>
+            </select>
+            {rollUnpicked && <p className="text-xs text-[var(--color-text-muted)] mt-1">{rollsHere.length} of your rolls are this size. Pick the one you are printing on, so its count comes off the right roll.</p>}
+          </div>
         )}
         {onRoll && onRollStock && onRollStock.left !== null && (
           <p className={['text-xs', rollTakes > onRollStock.left ? 'text-[var(--color-danger)] font-semibold' : onRollStock.lowNow ? 'text-[var(--color-warning)] font-semibold' : 'text-[var(--color-text-muted)]'].join(' ')} data-testid="sticker-roll-stock">
@@ -896,6 +914,9 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
               </li>
             ))}
           </ul>
+          {!result.summary.roll && (result.summary.roll_unsure?.length ?? 0) > 1 && (
+            <p className="text-xs text-[var(--color-text-secondary)]" data-testid="sticker-roll-unsure">Not counted off a roll: {result.summary.roll_unsure!.join(' and ')} are both this size. Pick the roll next time to keep its count right.</p>
+          )}
           {result.summary.roll && (
             <p className={['text-xs', result.summary.roll.low_now ? 'font-semibold text-[var(--color-warning)]' : 'text-[var(--color-text-secondary)]'].join(' ')} data-testid="sticker-roll-after">
               Counted off <strong className="text-[var(--color-text)]">{rollName(result.summary.roll)}</strong>: {rollStockWords(result.summary.roll) ?? 'not counted'}{result.summary.roll.out ? '. Count in a new roll under Settings.' : result.summary.roll.low_now ? ' (running low: order more).' : '.'}
@@ -931,7 +952,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
           {stacked && !previewError && <DroppedNote dropped={preview?.summary.dropped} />}
           <WordingLockNotice wording={items.length > 0 ? preview?.summary.wording : null} canManage={can('labels.manage')} onSigned={() => setChecksTick((t) => t + 1)} />
           <div className="labels-actions-row flex">
-            <Button onClick={prepare} loading={busy} disabled={total === 0 || Boolean(sizeIssue) || presets.length === 0 || (items.length > 0 && wordingRefused(preview?.summary))} icon={<Printer size={16} />} data-testid="sticker-prepare">
+            <Button onClick={prepare} loading={busy} disabled={total === 0 || Boolean(sizeIssue) || presets.length === 0 || rollUnpicked || (items.length > 0 && wordingRefused(preview?.summary))} icon={<Printer size={16} />} data-testid="sticker-prepare">
               {total > 0 ? `Prepare ${total} ${total === 1 ? 'sticker' : 'stickers'}` : 'Pick a product'}
             </Button>
           </div>

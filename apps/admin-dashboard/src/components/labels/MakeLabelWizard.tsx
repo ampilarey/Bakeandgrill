@@ -25,7 +25,7 @@ import { LabelSizePicker } from './LabelSizePicker';
 import { QtyStepper } from './QtyStepper';
 import { CustomLabelModal, langOf } from './CustomLabels';
 import { ItemLabelTab } from './ItemLabelTab';
-import { DEFAULT_CHOICE, DESIGN_NAMES, designFor, rememberSize, rememberedSize, requestFor, rollChoice, rollMatches, rollName, rollStock, rollStockWords, sizeName, sizeOf, sizeProblem, stockOf, stocksFor, withPreset, type SizeChoice } from './labelSize';
+import { DEFAULT_CHOICE, DESIGN_NAMES, designFor, pickRoll, rememberSize, rememberedSize, requestFor, rollChoice, rollName, rollStock, rollStockWords, sizeName, sizeOf, sizeProblem, stockOf, stocksFor, withPreset, type SizeChoice } from './labelSize';
 
 /*
  * Make a label, in four steps (owner, 2026-10-13: "Still its v confusing and
@@ -215,7 +215,7 @@ export function MakeLabelWizard({ canManage = false }: {
       setRolls(owned);
       setBadges(r.badges ?? []);
       // Start on the first roll you own, unless a size was already picked.
-      if (owned.length > 0) setChoice((c) => (c === DEFAULT_CHOICE ? rollChoice(owned[0]) : c));
+      if (owned.length > 0) { setChoice((c) => (c === DEFAULT_CHOICE ? rollChoice(owned[0]) : c)); setRollId((id) => id ?? owned[0].id); }
     }).catch(() => { setPresets([]); setLimits(null); });
   }, []);
   useEffect(() => {
@@ -275,10 +275,13 @@ export function MakeLabelWizard({ canManage = false }: {
     setChoice((c) => withPreset(c, id, presets));
   };
   // A roll you own, picked as a card; the standard cards stay under More sizes while one is picked.
-  const rollPicked = !ownSize ? rolls.find((r) => rollMatches(r, choice, presets)) ?? null : null;
+  // The roll card tapped (label audit, Batch C): two rolls of one size are told apart by it, never guessed.
+  const [rollId, setRollId] = useState<string | null>(null);
+  const rollPicked = !ownSize ? pickRoll(rolls, choice, presets, rollId).roll : null;
   const showStandard = rolls.length === 0 || moreSizes || (!rollPicked && !ownSize);
-  const pickRoll = (r: LabelRoll) => {
+  const tapRoll = (r: LabelRoll) => {
     setOwnSize(false);
+    setRollId(r.id);
     setChoice(rollChoice(r));
   };
 
@@ -342,7 +345,7 @@ export function MakeLabelWizard({ canManage = false }: {
     setPrinting(how); setError(null);
     try {
       const r = await stickerLinks(request(copies, false));
-      rememberSize(choice);
+      rememberSize(choice, rollPicked?.id ?? null);
       setResult(r);
       if (how === 'print') openLabelSheet(r.url, r.pdf_url);
       else downloadLabelSheet(r.pdf_url);
@@ -526,7 +529,7 @@ export function MakeLabelWizard({ canManage = false }: {
                 const stock = stockOf(rollChoice(r), presets);
                 const { w, h } = sizeOf(rollChoice(r), presets);
                 return (
-                  <button key={r.id} type="button" onClick={() => pickRoll(r)} aria-pressed={on}
+                  <button key={r.id} type="button" onClick={() => tapRoll(r)} aria-pressed={on}
                     className={['text-left rounded-xl border p-3 flex flex-col items-center gap-2', on ? 'border-[var(--color-primary)] bg-[var(--color-tone-rust-bg)]' : 'border-[var(--color-border)] bg-[var(--color-bg)]'].join(' ')}>
                     <LabelSchematic shape={r.shape} w={w} h={h} />
                     <span className="block w-full">

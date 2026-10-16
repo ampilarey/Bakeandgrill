@@ -357,6 +357,38 @@ describe('StickerPrintPanel', () => {
     expect(screen.getByText(/Bajiya on a box, to judge how it reads on the pack/)).toBeInTheDocument();
   });
 
+  // Label audit, Batch C (2026-10-16): two rolls of one size are never guessed between.
+  it('asks which roll when two are this size, and names the one tapped', async () => {
+    const roll = (id: string, name: string, left: number) => ({ id, name, shape: 'rect', preset: 'r40x60', on: 'printer', w: 40, h: 60, left, low: null, unit: 'labels', low_now: false, out: false });
+    fetchLabelLayouts.mockResolvedValue({
+      data: [{ key: 'a4-4', label: '4 on A4', hint: 'Plain A4', per_page: 4, w: 105, h: 148.5, page_w: 210, page_h: 297, compact: false, shape: 'rect' }],
+      presets: PRESETS,
+      limits: { min_short: 20, min_long: 30, max_w: 210, max_h: 297, min_round: 30, max_round: 200, sheet_margin: 5 },
+      rolls: [roll('small', 'Small roll', 300), roll('spare', 'Spare roll', 500)],
+    });
+    stickerLinks.mockResolvedValue({
+      url: '/s', view_url: '/v', pdf_url: '/p', expires_in_minutes: 30,
+      summary: { layout: 'single-custom', label: '40 × 60 mm', design: 'small', stickers: 1, pages: 1, per_page: 1, products: [] },
+    });
+    render(<MemoryRouter><StickerPrintPanel /></MemoryRouter>);
+    await screen.findByTestId('label-size-picker');
+    // Tapping a roll names it: only that one is picked, and no question.
+    fireEvent.click(within(screen.getByRole('group', { name: 'My label rolls' })).getByRole('button', { name: /Spare roll/ }));
+    expect(within(screen.getByRole('group', { name: 'My label rolls' })).getByRole('button', { name: /Small roll/ })).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(screen.getByLabelText('Print Bajiya'));
+    expect(screen.getByTestId('sticker-roll')).toHaveValue('spare');
+    fireEvent.click(screen.getByTestId('sticker-prepare'));
+    await waitFor(() => expect(prepared()).toMatchObject({ roll: 'spare' }));
+
+    // Choosing "Pick the roll" again leaves Prepare off until a roll, or Do not count, is picked.
+    fireEvent.click(screen.getByRole('button', { name: 'Change' }));
+    fireEvent.change(screen.getByTestId('sticker-roll'), { target: { value: '' } });
+    expect(screen.getByTestId('sticker-prepare')).toBeDisabled();
+    expect(screen.getByText(/2 of your rolls are this size/)).toBeInTheDocument();
+    fireEvent.change(screen.getByTestId('sticker-roll'), { target: { value: 'none' } });
+    expect(screen.getByTestId('sticker-prepare')).not.toBeDisabled();
+  });
+
   // Label stock (round 13, 2026-10-13): a counted roll says what is left and what the print takes, the request names it, and the summary says what is left after.
   it('counts a print off the roll it is on and warns when the roll is low', async () => {
     fetchLabelLayouts.mockResolvedValue({

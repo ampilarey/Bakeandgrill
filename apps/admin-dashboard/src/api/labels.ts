@@ -452,6 +452,8 @@ export type StickerSummary = {
   wording?: { refused: { key: string; kind: 'item' | 'custom'; id: number; name: string }[]; message: string } | null;
   /** Label stock (round 13): the roll this print was counted off, as it now stands, with what the print took; null on a preview or when no roll matched. */
   roll?: (LabelRoll & { took: number }) | null;
+  /** Label audit, Batch C: two or more rolls of this size and none named, so none was counted; their names. */
+  roll_unsure?: string[];
 };
 
 export type SheetLinks = {
