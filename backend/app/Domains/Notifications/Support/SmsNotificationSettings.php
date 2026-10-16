@@ -43,8 +43,15 @@ final class SmsNotificationSettings
         return self::isEnabled($key) || \App\Domains\Notifications\Services\SmsEmailCopier::wanted($smsType);
     }
 
+    /**
+     * Read the same way as the Notifications page reads it
+     * (SmsTypeRegistry::settingIsTruthy): "true", "1", "yes" and "on" are on,
+     * "false", "0", "no" and "off" are off, and a switch never saved keeps its
+     * default. Only "true" counted here before (audit, 2026-10-16), so a stored
+     * "1" showed On on the page while the till hid Send bill.
+     */
     public static function isEnabled(string $key, bool $default = true): bool
     {
-        return SiteSetting::get($key, $default ? 'true' : 'false') === 'true';
+        return SmsTypeRegistry::settingIsTruthy(SiteSetting::get($key), $default);
     }
 }
