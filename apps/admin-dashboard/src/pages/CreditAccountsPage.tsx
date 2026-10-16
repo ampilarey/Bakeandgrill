@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { SeeAlso } from '../components/SeeAlso';
 import {
   fetchCreditAccounts,
   sendCreditReminder,
@@ -195,7 +196,10 @@ export function CreditAccountsPage() {
 
   return (
     <PageShell>
-      <PageHeader title="Credit accounts" subtitle="Every customer buying on account: what they owe, how late, and the texts to chase it" />
+      <PageHeader title="Accounts on credit" subtitle="Every customer buying on account: what they owe, how late, and the texts to chase it" />
+      <SeeAlso to="/settings/credit" label="Settings → Credit rules" testId="credit-see-rules">
+        The approval ceiling, payment terms and whether credit is open are in
+      </SeeAlso>
 
       <div role="tablist" aria-label="Credit view" style={{ display: 'inline-flex', gap: 4, padding: 4, marginBottom: 14, borderRadius: 12, background: 'var(--color-border-light)' }}>
         {([['accounts', 'Accounts'], ['repayments', 'Repayments']] as const).map(([id, label]) => (

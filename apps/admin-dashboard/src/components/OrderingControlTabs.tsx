@@ -1,4 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useInHub } from './hubContext';
 
 /**
  * Section bar shared by the Ordering and Delivery tabs of Settings.
@@ -43,10 +44,16 @@ export function OrderingControlTabs() {
   const navigate = useNavigate();
   const { pathname, search } = useLocation();
   const active = activeTab(pathname, search);
+  // Inside Settings the hub's own tabs already offer Delivery (nav audit,
+  // 2026-10-16): the inner row keeps the ordering sections only, and the
+  // Delivery tab shows no inner row at all.
+  const inHub = useInHub();
+  if (inHub && active === 'delivery') return null;
+  const tabs = inHub ? TABS.filter((tab) => tab.id !== 'delivery') : TABS;
 
   return (
-    <div className="oc-tabbar" role="tablist" aria-label="Ordering control sections">
-      {TABS.map((tab) => (
+    <div className="oc-tabbar" role="tablist" aria-label="Ordering sections">
+      {tabs.map((tab) => (
         <button
           key={tab.id}
           type="button"

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, type CSSProperties } from 'react';
+import { SeeAlso } from '../components/SeeAlso';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
   PageHeader, PageShell, TableCard, TH, TD, Badge, Btn, ConfirmDialog, Modal, ModalActions, Input, Pagination, EmptyState, TabScrollRow, useConfirmDialog,
@@ -666,6 +667,9 @@ export default function SpecialsPage() {
         Schedule a <strong>discount %</strong> or fixed sale price on specific menu items for any date range.
         Active discounts show on the order app menu (badge + sale price), POS, and optionally in Today&apos;s Specials on the homepage.
       </p>
+      <SeeAlso to="/promotions/offers" label="Promotions → Offers" testId="specials-see-offers">
+        Codes, buy-one-get-one, minimum-spend and whole-order discounts are in
+      </SeeAlso>
       {error && <p style={{ color: 'var(--color-danger)', marginBottom: 16 }}>{error}</p>}
 
       <div className="page-stat-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 24 }}>

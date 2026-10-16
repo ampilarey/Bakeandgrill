@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { SeeAlso } from '../components/SeeAlso';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   getSalesTrends, getRevenueForecast, getInventoryForecast, getRestockPlan,
@@ -1008,7 +1009,10 @@ export function ForecastPage() {
   return (
     <PageShell>
     <>
-      <PageHeader section="Analyze" title="Forecasts & Trends" subtitle="Revenue projections, inventory runway, and restock plan" />
+      <PageHeader section="Analyze" title="Forecasts" subtitle="The revenue projection, how long stock lasts, and the restock plan" />
+      <SeeAlso to="/purchasing/reports" label="Purchasing → Reports" testId="forecasts-see-purchasing">
+        Recent order patterns are in Analytics. What you spent and how prices moved are in
+      </SeeAlso>
       {error && <ErrorMsg message={error} />}
       {restockToast && (
         <div style={{

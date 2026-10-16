@@ -79,7 +79,8 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'notices', label: 'Notices' },
   { id: 'prayer', label: 'Prayer' },
   { id: 'banner', label: 'Banner' },
-  { id: 'devices', label: 'Devices' },
+  // The TVs' online / stuck status; System → Devices is the tills and kitchen screens (nav audit, 2026-10-16).
+  { id: 'devices', label: 'TV status' },
 ];
 
 const EMERGENCY_MODES = [

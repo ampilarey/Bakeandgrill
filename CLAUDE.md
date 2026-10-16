@@ -90,6 +90,13 @@ that replaces a sortable table carries `SortFilterPanel`, a per-row action (rena
 delete) sits beside the picked chip, and a device or layout switch (the content hubs'
 Desktop | Mobile) is offered on both. Never gate a control on `isMobile` alone; change
 its shape instead.
+Two pages that sound alike say which is which (nav audit, 2026-10-16): Customers →
+Accounts on credit and Settings → Credit rules, Analytics (recent demand) and Forecasts
+(revenue and restock plan, pointing to Purchasing → Reports), Daily Specials and
+Promotions → Offers each carry a one-line `SeeAlso` to the other; Signage's TV health
+tab is "TV status", never "Devices" (System → Devices is tills and kitchen screens).
+Inside Settings, `OrderingControlTabs` drops its own Delivery tab and hides on the
+Delivery tab, since the hub already offers it.
 Nothing scrolls sideways (owner, 2026-10-09). A row of tabs or filter chips is
 `TabScrollRow`, which wraps. A table goes in `.table-scroll` (or `TableCard` /
 `ResponsiveTable`); one that does not fit its box becomes cards, one per row with each

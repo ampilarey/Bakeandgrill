@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { SeeAlso } from '../components/SeeAlso';
 import { getAnalytics } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
@@ -51,7 +52,7 @@ export default function AnalyticsPage() {
   if (loading) {
     return (
       <PageShell>
-        <PageHeader section="Analyze" title="Analytics" subtitle="Insights, forecasting and profitability" />
+        <PageHeader section="Analyze" title="Analytics" subtitle="Recent demand: peak hours, busy days and profitability" />
         <Spinner />
       </PageShell>
     );
@@ -59,7 +60,7 @@ export default function AnalyticsPage() {
   if (error) {
     return (
       <PageShell>
-        <PageHeader section="Analyze" title="Analytics" subtitle="Insights, forecasting and profitability" />
+        <PageHeader section="Analyze" title="Analytics" subtitle="Recent demand: peak hours, busy days and profitability" />
         <ErrorMsg message={error} />
       </PageShell>
     );
@@ -68,7 +69,7 @@ export default function AnalyticsPage() {
   return (
     <PageShell>
     <>
-      <PageHeader section="Analyze" title="Analytics" subtitle="Insights, forecasting and profitability" />
+      <PageHeader section="Analyze" title="Analytics" subtitle="Recent demand: peak hours, busy days and profitability" />
 
       {/* Peak Hours bar chart */}
       <div style={{ marginBottom: 24 }}>
@@ -95,7 +96,10 @@ export default function AnalyticsPage() {
 
       {/* 7-Day Demand Forecast */}
       <div style={{ marginBottom: 24 }}>
-        <SectionLabel>7-Day Demand Forecast</SectionLabel>
+        <SectionLabel>Next 7 days: expected orders from recent demand</SectionLabel>
+        <SeeAlso to="/forecasts" label="Forecasts" testId="analytics-see-forecasts">
+          For the revenue projection and what to restock, see
+        </SeeAlso>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           {forecast.map((f) => (
             <div key={f.date} style={{

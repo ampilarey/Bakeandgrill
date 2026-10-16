@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { SeeAlso } from '../components/SeeAlso';
 import { Link } from 'react-router-dom';
 import {
   fetchPromotions, createPromotion, updatePromotion, deletePromotion, fetchOffersPerformance,
@@ -699,6 +700,9 @@ export function PromotionsPage() {
           ) : undefined
         }
       />
+      <SeeAlso to="/specials" label="Daily Specials" testId="offers-see-specials">
+        A lower price on one item for a set period is simpler in
+      </SeeAlso>
       {error && <ErrorMsg message={error} />}
 
       {showPerf && perf && (

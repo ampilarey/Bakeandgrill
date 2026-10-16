@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { SeeAlso } from '../../components/SeeAlso';
 import { Link } from 'react-router-dom';
 import { Save } from 'lucide-react';
 import { Button, Card } from '../../components/ui';
@@ -115,6 +116,9 @@ export function CreditAccountSettings() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 720 }}>
+      <SeeAlso to="/customers/credit" label="Customers → Accounts on credit" testId="credit-see-accounts">
+        Who owes money, reminders and pay links are in
+      </SeeAlso>
       <Card>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
           <div>

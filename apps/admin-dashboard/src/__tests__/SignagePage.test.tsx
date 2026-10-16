@@ -168,7 +168,7 @@ describe('SignagePage', () => {
 
   it('loads device health and pending pairings', async () => {
     renderWithRouter(<SignagePage />);
-    fireEvent.click(screen.getByRole('button', { name: 'Devices' }));
+    fireEvent.click(screen.getByRole('button', { name: 'TV status' }));
 
     expect(await screen.findByTestId('signage-devices-panel')).toBeTruthy();
     expect(await screen.findByTestId('signage-pending-1')).toBeTruthy();
@@ -197,7 +197,7 @@ describe('SignagePage', () => {
     const save = vi.spyOn(api, 'setSignageBoardSettings').mockResolvedValue({ settings: { sold_out_badge_minutes: 20 } });
 
     renderWithRouter(<SignagePage />);
-    fireEvent.click(screen.getByRole('button', { name: 'Devices' }));
+    fireEvent.click(screen.getByRole('button', { name: 'TV status' }));
 
     expect((await screen.findByTestId('signage-device-shot-7')).getAttribute('src')).toContain('/storage/signage/devices/7.jpg');
     expect(screen.getByTestId('signage-device-stuck-7')).toHaveTextContent(/Stuck on one slide for 14 min/);
@@ -217,7 +217,7 @@ describe('SignagePage', () => {
     // Keep structural hooks that the mobile CSS targets.
     await screen.findByTestId('signage-tab-row');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Devices' }));
+    fireEvent.click(screen.getByRole('button', { name: 'TV status' }));
     const pending = await screen.findByTestId('signage-pending-1');
     expect(pending.className).toMatch(/\bform-grid-3\b/);
     expect(pending.style.gridTemplateColumns).toMatch(/auto-fit/);

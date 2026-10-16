@@ -73,7 +73,7 @@ export const SETTINGS_TABS: HubTab[] = [
   { id: 'ordering', label: 'Ordering', permissions: ['settings.update'], desc: 'Online, pickup, delivery, pre-order and feature gates', render: () => <OnlineOrderingPage /> },
   { id: 'delivery', label: 'Delivery', permissions: ['settings.update'], desc: 'Delivery areas, fees and timing', render: () => <DeliverySettingsPage /> },
   { id: 'charges', label: 'Charges & fees', permissions: ['settings.update'], desc: 'Service charge, payment commission, refunds and payouts', render: () => <ChargesSettings /> },
-  { id: 'credit', label: 'Credit accounts', permissions: ['settings.update'], desc: 'Approval ceiling, payment terms, and whether credit is open', render: () => <CreditAccountSettings /> },
+  { id: 'credit', label: 'Credit rules', permissions: ['settings.update'], desc: 'Approval ceiling, payment terms, and whether credit is open', render: () => <CreditAccountSettings /> },
   { id: 'currency', label: 'Currency photos', permissions: ['website.manage'], desc: 'Note & coin photos shown on the POS cash count', render: () => <CurrencyPhotosSettings /> },
   { id: 'permissions', label: 'Roles & permissions', permissions: ANY_ADMIN, desc: 'Role defaults and per-user overrides', render: () => <PermissionsTab /> },
 ];
