@@ -102,6 +102,16 @@ function Field({
 }
 
 // ── Summary row ────────────────────────────────────────────────────────────────
+/** "10:00 PM", or "Fri 10:00 PM" when the offer ends on another day. */
+function offerEndLabel(iso: string): string {
+  const end = new Date(iso);
+  if (Number.isNaN(end.getTime())) return '';
+  const time = end.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  return end.toDateString() === new Date().toDateString()
+    ? time
+    : `${end.toLocaleDateString([], { weekday: 'short' })} ${time}`;
+}
+
 function SummaryRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
     <div style={S.summaryRow}>
@@ -213,6 +223,7 @@ export function CheckoutPage() {
     saveAddress, setSaveAddress, addressLabel, setAddressLabel, usingAutoDefaultAddress,
     promoCode, setPromoCode, promoApplied,
     promoError, promoLoading,
+    autoPromo, autoPromoDelta,
     useLoyalty, setUseLoyalty,
     deliveryFee, deliveryMinimum, errors, isPlacing, globalError,
     subtotalLaar, discountedSubtotalLaar, taxLaar, deliveryFeeLaar, promoDelta, loyaltyDelta, referralDelta,
@@ -814,6 +825,15 @@ export function CheckoutPage() {
   // Discounts: promo + loyalty + friend referral + gift card stacked in one panel
   const bodyDiscounts = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {autoPromo && autoPromoDelta > 0 && (
+        <div style={S.promoApplied} data-testid="checkout-auto-promo">
+          <span style={{ fontSize: 'var(--text-base)' }}>
+            <CheckCircle2 size={15} aria-hidden style={{ verticalAlign: '-0.18em', color: 'var(--color-success)' }} />{' '}
+            {t('checkout.offer_applied').replace('{name}', autoPromo.name).replace('{amount}', String(laarToMvr(autoPromoDelta)))}
+            {autoPromo.endsAt ? ` (${t('checkout.offer_until').replace('{time}', offerEndLabel(autoPromo.endsAt))})` : ''}
+          </span>
+        </div>
+      )}
       {/* Promo Code */}
       <div>
         <p style={{ margin: '0 0 8px', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
@@ -1047,6 +1067,7 @@ export function CheckoutPage() {
   );
 
   const discountsSummary: string | undefined = [
+    autoPromo?.name ?? null,
     promoApplied?.code ?? null,
     useLoyalty && loyaltyDelta > 0 ? t('checkout.loyalty_summary') : null,
     giftCardApplied?.code ?? null,
@@ -1076,6 +1097,9 @@ export function CheckoutPage() {
     <div style={S.cardWarm}>
       <h2 style={S.sectionTitle}>{t('checkout.order_summary')}</h2>
       <SummaryRow label={t('cart.subtotal')} value={`MVR ${laarToMvr(subtotalLaar)}`} />
+      {autoPromo && autoPromoDelta > 0 && (
+        <SummaryRow label={`${t('checkout.offer')} (${autoPromo.name})`} value={`− MVR ${laarToMvr(autoPromoDelta)}`} highlight />
+      )}
       {promoApplied && promoDelta > 0 && (
         <SummaryRow label={`${t('checkout.promo_code')} (${promoApplied.code})`} value={`− MVR ${laarToMvr(promoDelta)}`} highlight />
       )}

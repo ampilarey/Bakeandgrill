@@ -36,6 +36,9 @@ if (routes_domain_section_is('marketing', 'public') && !routes_domain_loaded('ma
     // Public/customer — validate a code
     Route::post('/promotions/cart-rewards', [App\Http\Controllers\Api\PromotionController::class, 'cartRewards'])
         ->middleware('throttle:60,1');
+    // The automatic offers on a cart before it is saved (till and order app).
+    Route::post('/promotions/auto-preview', [App\Http\Controllers\Api\PromotionController::class, 'autoPreview'])
+        ->middleware('throttle:120,1');
     Route::post('/promotions/validate', [App\Http\Controllers\Api\PromotionController::class, 'validate'])
         ->middleware('throttle:20,1');
 

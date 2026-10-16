@@ -287,7 +287,10 @@ class OrderItemController extends Controller
                 'tax_amount' => (float) $fresh->tax_amount,
                 'type' => $fresh->type,
                 'restaurant_table_id' => $fresh->restaurant_table_id,
+                'promo_discount_laar' => (int) ($fresh->promo_discount_laar ?? 0),
             ],
+            // A discount re-measured or dropped by this save, in words for the cashier.
+            'discount_notes' => \App\Domains\Orders\Support\DiscountNotes::take((int) $fresh->id),
         ]);
     }
 

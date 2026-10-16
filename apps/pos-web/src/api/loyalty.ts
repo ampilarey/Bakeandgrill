@@ -160,3 +160,27 @@ export async function applyGiftCardToOrder(
 export async function removeGiftCardFromOrder(orderId: number): Promise<{ message: string }> {
   return request(`/pos/orders/${orderId}/gift-card`, { method: "DELETE" });
 }
+
+export type AutoPromoPreviewResponse = {
+  discount_laar: number;
+  discount_mvr: string;
+  promotions: Array<{ id: number; name: string; type: string; discount_value: number; expires_at: string | null }>;
+  /** When the earliest of the offers shown ends; the cart re-checks then. */
+  ends_at: string | null;
+};
+
+/** The automatic offers on the cart before it is saved (owner, 2026-10-16:
+ *  the cashier and the customer see the discount before paying). Display
+ *  only: the order decides again when it is saved. */
+export async function previewAutoPromo(input: {
+  items: PromoPreviewLine[];
+  customerId?: number | null;
+}): Promise<AutoPromoPreviewResponse> {
+  return request("/promotions/auto-preview", {
+    method: "POST",
+    body: JSON.stringify({
+      items: input.items,
+      ...(input.customerId != null ? { customer_id: input.customerId } : {}),
+    }),
+  });
+}

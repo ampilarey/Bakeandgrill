@@ -35,6 +35,26 @@ export async function fetchCartRewards(
   });
 }
 
+export type AutoPromoPreview = {
+  discount_laar: number;
+  discount_mvr: string;
+  promotions: Array<{ id: number; name: string; type: string; discount_value: number; expires_at: string | null }>;
+  /** When the earliest of the offers shown ends; checkout re-asks then. */
+  ends_at: string | null;
+};
+
+/** The automatic offers on the cart before it is placed (owner, 2026-10-16:
+ *  the customer sees the discount before paying). Display only: the order
+ *  decides again when it is placed. */
+export async function previewAutoPromo(
+  items: Array<{ item_id: number; quantity: number; unit_price?: number; total_price?: number }>,
+): Promise<AutoPromoPreview> {
+  return request<AutoPromoPreview>('/promotions/auto-preview', {
+    method: 'POST',
+    body: JSON.stringify({ items }),
+  });
+}
+
 export async function applyPromoCode(
   orderId: number,
   code: string,

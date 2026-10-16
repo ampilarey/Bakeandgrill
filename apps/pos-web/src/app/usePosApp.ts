@@ -16,6 +16,7 @@ import type { RestaurantTable } from "../types";
 import { useMenu }          from "../hooks/useMenu";
 import { useCart }          from "../hooks/useCart";
 import { useOrderCreation } from "../hooks/useOrderCreation";
+import { useAutoPromoPreview } from "../hooks/useAutoPromoPreview";
 import { useOps }           from "../hooks/useOps";
 import { useShift }         from "../hooks/useShift";
 import { allowedOrderTypes, canSeeCustomersTab, hasPosPermission } from "../hooks/usePosPermissions";
@@ -641,6 +642,16 @@ export function usePosApp() {
       .catch(() => undefined);
   }, [isLoggedIn, canKitchenReceive]);
 
+  // What the automatic offers take off this cart, shown before Charge
+  // (owner, 2026-10-16). A resumed ticket keeps the server's figure instead.
+  const autoPromoLines = useMemo(
+    () => cart.cartItems.map((item) => {
+      const unit = item.price + item.modifiers.reduce((ms, m) => ms + m.price, 0);
+      return { item_id: item.id, quantity: item.quantity, unit_price: unit, total_price: Math.round(unit * item.quantity * 100) / 100 };
+    }),
+    [cart.cartItems],
+  );
+
   const order = useOrderCreation({
     isOnline,
     isReachable,
@@ -667,6 +678,9 @@ export function usePosApp() {
     appliedLoyaltyPoints: cart.appliedLoyalty?.points ?? null,
     appliedGiftCardCode:  cart.appliedGiftCard?.code ?? null,
     appliedPromoServerApplied: cart.appliedPromo?.serverApplied === true,
+    // The offer the cart showed; Charge stops if the saved order did not get it.
+    expectedAutoPromoLaar: Math.round((cart.autoPromo?.discount ?? 0) * 100),
+    onAutoPromoLost: () => cart.setAutoPromo(null),
     appliedLoyaltyServerApplied: cart.appliedLoyalty?.serverApplied === true,
     appliedGiftCardServerApplied: cart.appliedGiftCard?.serverApplied === true,
     clearCart:        handleClearCart,
@@ -703,6 +717,14 @@ export function usePosApp() {
       setPane("sales");
     },
   });
+
+  const autoPromoPreview = useAutoPromoPreview({
+    lines: autoPromoLines,
+    customerId: cart.attachedCustomer?.id ?? null,
+    enabled: isReachable && order.resumedOrderId == null && cart.cartItems.length > 0,
+  });
+  const setAutoPromo = cart.setAutoPromo;
+  useEffect(() => { setAutoPromo(autoPromoPreview); }, [autoPromoPreview, setAutoPromo]);
 
   clearPendingPaymentRef.current = order.clearPendingPayment;
 

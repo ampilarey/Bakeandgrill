@@ -648,6 +648,30 @@ Built from the stored order on every open, so old orders show it too. The GST on
 follows its switch on Settings → Ordering → **Fees & slots** (`packaging_fee_taxable` and kin,
 `OrderFeeTaxCalculator`; linked from Finance → GST settings), not the items' tax codes.
 
+## A discount on every sale in a period
+
+Owner, 2026-10-16. An automatic promotion (Promotions → "Automatic (all customers, no
+code)", scope order, with Starts at and Expires at) takes its discount off every order
+saved in the period, on the till and online; `PromotionEvaluator::applyAutomatic` at
+`OrderCreationService::createFromPayload`. **The discount is decided when the order is
+saved**, not when it is paid: a ticket saved before the end and charged after keeps it
+(resume and `addPayments` never re-price; `ConsumePromoRedemptionsListener` redeems the
+draft as it is), an online order placed before the end and paid at BML after keeps it
+(the gateway amount was fixed at place time), and a ticket saved after the end gets
+nothing. A ticket **changed** after the end loses it: every recalculation re-measures
+the drafts (`DiscountRevalidator` → `revalidateOrderPromotions`), the dropped offer is
+named in `discount_notes` on `PATCH /orders/{id}/items` (`DiscountNotes`, filled by
+`OrderTotalsCalculator::recalculateAndPersist`), and the till flashes it. Before the order
+exists the carts ask `POST /promotions/auto-preview`
+(`PromotionEvaluator::previewAutomatic`, item-level offers skipped because the line
+prices already carry them): the till's `useAutoPromoPreview` → `useCart.autoPromo` →
+"Offer · name · until 10:00 PM" on the cart, and the order app's `autoPromo` in
+`useCheckout` → the Offer row at checkout; both re-ask at `ends_at` and every five
+minutes. If the saved order did not get the offer the cart showed, Charge stops with
+"The offer has ended. The total is now MVR x" and the order waits as pending payment,
+and Place order stops with `checkout.offer_ended` and the next tap reuses the order at
+the price shown. `AutoPromoTimingTest`, `useAutoPromoPreview.test.ts`.
+
 ## POS suggestions: a row, never a pop-up
 
 Owner, 2026-10-11: the "Goes with" card that rose over the ticket's footer caught taps

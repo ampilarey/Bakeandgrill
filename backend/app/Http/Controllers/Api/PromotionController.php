@@ -26,6 +26,77 @@ class PromotionController extends Controller
      * Cart reward picker — which free rewards the current basket has earned.
      * Public; entitlement is recomputed from the submitted lines (not trusted client state).
      */
+    /**
+     * POST /promotions/auto-preview
+     *
+     * What the automatic offers take off these lines right now, for the cart
+     * on the till or in the order app before the order is saved. Public and
+     * recomputed from the lines; a customer token names the customer, a staff
+     * token may pass customer_id. Display only: the order decides again when
+     * it is saved.
+     */
+    public function autoPreview(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'items' => 'required|array|min:1|max:50',
+            'items.*.item_id' => 'required|integer|min:1',
+            'items.*.quantity' => 'required|integer|min:1|max:99',
+            'items.*.unit_price' => 'nullable|numeric|min:0',
+            'items.*.total_price' => 'nullable|numeric|min:0',
+            'customer_id' => 'nullable|integer',
+        ]);
+
+        $user = $request->user();
+        $customerId = null;
+        if ($user && $user->tokenCan('customer')) {
+            $customerId = (int) $user->id;
+        } elseif ($user && $user->tokenCan('staff') && !empty($validated['customer_id'])) {
+            $customerId = (int) $validated['customer_id'];
+        }
+
+        $lines = $this->linesWithCatalogPrices($validated['items']);
+        $preview = $this->evaluator->previewAutomatic($lines, $customerId);
+
+        return response()->json([
+            'discount_laar' => $preview['discount_laar'],
+            'discount_mvr' => number_format($preview['discount_laar'] / 100, 2),
+            'promotions' => array_map(
+                fn (Promotion $p) => $p->only('id', 'name', 'type', 'discount_value', 'expires_at'),
+                $preview['promotions'],
+            ),
+            'ends_at' => $preview['ends_at'],
+        ]);
+    }
+
+    /**
+     * @param array<int, array{item_id: int|string, quantity: int|string, unit_price?: mixed, total_price?: mixed}> $items
+     * @return list<array{item_id: int, quantity: int, unit_price: float, total_price: float}>
+     */
+    private function linesWithCatalogPrices(array $items): array
+    {
+        $lines = [];
+        foreach ($items as $row) {
+            $lines[] = [
+                'item_id' => (int) $row['item_id'],
+                'quantity' => (int) $row['quantity'],
+                'unit_price' => (float) ($row['unit_price'] ?? 0),
+                'total_price' => isset($row['total_price']) ? (float) $row['total_price'] : 0.0,
+            ];
+        }
+        $prices = \App\Models\Item::query()->whereIn('id', array_column($lines, 'item_id'))->pluck('base_price', 'id');
+        foreach ($lines as &$line) {
+            if ($line['unit_price'] <= 0) {
+                $line['unit_price'] = (float) ($prices[$line['item_id']] ?? 0);
+            }
+            if ($line['total_price'] <= 0) {
+                $line['total_price'] = $line['unit_price'] * $line['quantity'];
+            }
+        }
+        unset($line);
+
+        return $lines;
+    }
+
     public function cartRewards(Request $request): JsonResponse
     {
         $validated = $request->validate([

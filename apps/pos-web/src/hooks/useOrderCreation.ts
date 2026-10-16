@@ -227,6 +227,10 @@ type Params = {
   appliedPromoServerApplied?: boolean;
   appliedLoyaltyServerApplied?: boolean;
   appliedGiftCardServerApplied?: boolean;
+  /** Laari the cart showed as an automatic offer. If the saved order got
+   *  none (the offer ended), Charge stops and says so. */
+  expectedAutoPromoLaar?: number;
+  onAutoPromoLost?: () => void;
   clearCart: () => void;
   setCartItems: (items: CartItem[]) => void;
   setSelectedItem: (item: Item | null) => void;
@@ -691,7 +695,7 @@ export function useOrderCreation(params: Params) {
 
   const submitCreatedOrder = async (
     payload: ReturnType<typeof buildPayload>,
-  ): Promise<{ order: { id: number; total: number } }> => {
+  ): Promise<{ order: { id: number; total: number; promo_discount_laar?: number } }> => {
     if (params.orderType === "Delivery") {
       return createDeliveryOrder(payload as Parameters<typeof createDeliveryOrder>[0]);
     }
@@ -1228,6 +1232,21 @@ export function useOrderCreation(params: Params) {
       setLastCreatedOrderId(response.order.id);
       let totalDue = response.order.total ?? params.cartTotal;
 
+      // The cart showed an offer the saved order did not get: it ended
+      // between the last look and this tap. Stop before taking money the
+      // customer has not agreed to; the order waits as pending payment.
+      if ((params.expectedAutoPromoLaar ?? 0) > 0 && (response.order.promo_discount_laar ?? 0) === 0) {
+        params.onAutoPromoLost?.();
+        flashError(`The offer has ended. The total is now MVR ${Number(totalDue).toFixed(2)}. Check with the customer, then take payment.`);
+        setPendingPaymentForOrderId(response.order.id);
+        setPendingPaymentSnapshot({
+          orderId: response.order.id,
+          totalDue,
+          rows: paymentSnapshot,
+        });
+        return false;
+      }
+
       if (approvalNeeded) {
         const approved = await runDiscountApprovalFlow(response.order.id, discountAmt);
         if (!approved) {
@@ -1729,6 +1748,15 @@ export function useOrderCreation(params: Params) {
           : {}),
       });
       let freshTotal = res.order.total != null ? Number(res.order.total) : null;
+
+      // A save re-measures the ticket's discounts; an offer that ended while
+      // it was parked is dropped here, and the cashier is told.
+      if (res.discount_notes && res.discount_notes.length > 0) {
+        flashError(res.discount_notes.join(" "));
+        if (params.setAppliedPromo && (res.order.promo_discount_laar ?? 0) === 0) {
+          params.setAppliedPromo(null);
+        }
+      }
 
       // Standalone Save Changes with approval required — request OTP here.
       // Charge path passes omitDiscountForApproval and runs OTP itself.

@@ -242,7 +242,10 @@ class OrderTotalsCalculator
         // reading them. The stored figures were sized for the cart at the
         // moment they were applied; on an edited ticket they are a request,
         // not an answer. See DiscountRevalidator for what that cost.
-        $this->revalidator->revalidate($order, $this->lineItemsSubtotalLaar($order));
+        \App\Domains\Orders\Support\DiscountNotes::add(
+            (int) $order->id,
+            $this->revalidator->revalidate($order, $this->lineItemsSubtotalLaar($order)),
+        );
 
         $discounts = new DiscountsInput(
             promoDiscountLaar: (int) ($order->promo_discount_laar ?? 0),

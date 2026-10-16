@@ -41,7 +41,7 @@ export async function createOrder(payload: {
     notes?: string;
     children?: PosOrderLineChild[];
   }>;
-}): Promise<{ order: { id: number; total: number } }> {
+}): Promise<{ order: { id: number; total: number; promo_discount_laar?: number } }> {
   return request("/orders", { method: "POST", body: JSON.stringify(payload) });
 }
 
@@ -75,7 +75,7 @@ export async function createDeliveryOrder(payload: {
     notes?: string;
     children?: PosOrderLineChild[];
   }>;
-}): Promise<{ order: { id: number; total: number; delivery_fee?: number } }> {
+}): Promise<{ order: { id: number; total: number; delivery_fee?: number; promo_discount_laar?: number } }> {
   return request("/orders/delivery", { method: "POST", body: JSON.stringify(payload) });
 }
 /** Minimal "incoming online order" record used by the new-order toast.
@@ -420,7 +420,10 @@ export async function updateOrderItems(
     restaurant_table_id?: number | null;
     delivery_address_line1?: string | null;
     delivery_island?: string | null;
+    promo_discount_laar?: number;
   };
+  /** A discount this save re-measured or dropped (an offer that ended), in words. */
+  discount_notes?: string[];
 }> {
   return request(`/orders/${orderId}/items`, {
     method: "PATCH",

@@ -122,6 +122,8 @@ type Props = {
 
   appliedPromo: AppliedPromo | null;
   setAppliedPromo: (v: AppliedPromo | null) => void;
+  /** The automatic offer on the cart, previewed before Charge (useAutoPromoPreview). */
+  autoPromo?: { name: string; discount: number; endsAt: string | null } | null;
   appliedLoyalty: AppliedLoyalty | null;
   setAppliedLoyalty: (v: AppliedLoyalty | null) => void;
   appliedGiftCard: AppliedGiftCard | null;
@@ -312,6 +314,7 @@ export function OrderCart(p: Props) {
   const adjustmentSummary = [
     p.discountValue > 0 ? `Discount MVR ${p.discountValue.toFixed(2)}` : null,
     p.appliedPromo ? `Promo ${p.appliedPromo.serverApplied ? "on ticket" : p.appliedPromo.code} MVR ${p.appliedPromo.discount.toFixed(2)}` : null,
+    p.autoPromo ? `Offer ${p.autoPromo.name} MVR ${p.autoPromo.discount.toFixed(2)}` : null,
     p.appliedLoyalty ? `Points MVR ${p.appliedLoyalty.discount.toFixed(2)}` : null,
     p.appliedGiftCard ? `Gift card MVR ${p.appliedGiftCard.discount.toFixed(2)}` : null,
   ].filter((s): s is string => s !== null);
@@ -1221,6 +1224,15 @@ export function OrderCart(p: Props) {
                 accent={C.primaryDark}
               />
             )}
+            {p.autoPromo && (
+              <div data-testid="cart-auto-promo">
+                <Row
+                  label={`Offer · ${p.autoPromo.name}${p.autoPromo.endsAt ? ` · until ${offerEndLabel(p.autoPromo.endsAt)}` : ""}`}
+                  value={`− MVR ${p.autoPromo.discount.toFixed(2)}`}
+                  accent={C.primaryDark}
+                />
+              </div>
+            )}
             {p.appliedLoyalty && (
               <Row
                 label={`Points · ${p.appliedLoyalty.points.toLocaleString()}`}
@@ -1863,6 +1875,16 @@ function TableFloorActions({
       {err && <div style={{ fontSize: 11, color: "#B91C1C" }}>{err}</div>}
     </div>
   );
+}
+
+/** "10:00 PM", or "Fri 10:00 PM" when the offer ends on another day. */
+function offerEndLabel(iso: string): string {
+  const end = new Date(iso);
+  if (Number.isNaN(end.getTime())) return "";
+  const time = end.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  return end.toDateString() === new Date().toDateString()
+    ? time
+    : `${end.toLocaleDateString([], { weekday: "short" })} ${time}`;
 }
 
 function Row({ label, value, accent }: { label: string; value: string; accent?: string }) {

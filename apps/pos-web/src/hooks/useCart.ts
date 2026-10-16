@@ -1,3 +1,4 @@
+import type { AutoPromo } from "./useAutoPromoPreview";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   CartItem, Item, Modifier, PackagingOption, PlatterSelection, Variant,
@@ -194,6 +195,8 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
     discount: number;
     serverApplied?: boolean;
   } | null>(null);
+  /** The automatic offer on this cart, previewed from the server (useAutoPromoPreview). */
+  const [autoPromo, setAutoPromo] = useState<AutoPromo | null>(null);
   const [appliedGiftCard, setAppliedGiftCard] = useState<{
     code: string;
     discount: number;
@@ -309,11 +312,11 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
   }, [discountAmount, cartSubtotal]);
 
   const rewardsDiscount = useMemo(() => {
-    const promo = appliedPromo?.discount ?? 0;
+    const promo = (appliedPromo?.discount ?? 0) + (autoPromo?.discount ?? 0);
     const loyalty = appliedLoyalty?.discount ?? 0;
     // Gift card is tender (shown separately) — not a pre-tax discount.
     return Math.max(0, promo + loyalty);
-  }, [appliedPromo, appliedLoyalty]);
+  }, [appliedPromo, autoPromo, appliedLoyalty]);
 
   /**
    * Pre-tax discount total and discounted subtotal — mirrors backend
@@ -323,13 +326,13 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
   const discountedSubtotal = useMemo(() => {
     const subLaar = Math.round(cartSubtotal * 100);
     const afterLaar = calcDiscountedSubtotalLaar(subLaar, {
-      promo: Math.round((appliedPromo?.discount ?? 0) * 100),
+      promo: Math.round(((appliedPromo?.discount ?? 0) + (autoPromo?.discount ?? 0)) * 100),
       loyalty: Math.round((appliedLoyalty?.discount ?? 0) * 100),
       gift_card: 0,
       manual: Math.round(discountValue * 100),
     });
     return afterLaar / 100;
-  }, [cartSubtotal, appliedPromo, appliedLoyalty, discountValue]);
+  }, [cartSubtotal, appliedPromo, autoPromo, appliedLoyalty, discountValue]);
 
   const totalDiscount = useMemo(
     () => Math.max(0, cartSubtotal - discountedSubtotal),
@@ -693,6 +696,8 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
     // ── Customer rewards staged on the ticket ──────────────────
     appliedPromo,
     setAppliedPromo,
+    autoPromo,
+    setAutoPromo,
     appliedLoyalty,
     setAppliedLoyalty,
     appliedGiftCard,

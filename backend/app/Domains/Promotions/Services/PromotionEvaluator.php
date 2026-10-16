@@ -252,14 +252,17 @@ class PromotionEvaluator
                 );
 
                 $wasLaar = (int) $draft->discount_laar;
+                // An automatic offer is known by its name; its code is internal.
+                $kind = $promotion->auto_apply ? 'Offer' : 'Promo';
+                $label = $promotion->auto_apply ? $promotion->name : ($promotion->code ?? $promotion->name);
 
                 if (!$check['valid']) {
                     $draft->update(['status' => 'released', 'discount_laar' => 0]);
-                    $notes[] = sprintf(
-                        'Promo %s removed — %s',
-                        $promotion->code ?? $promotion->name,
-                        lcfirst($check['message']),
-                    );
+                    $reason = lcfirst($check['message']);
+                    if ($promotion->auto_apply && !$promotion->isValid()) {
+                        $reason = 'the offer has ended.';
+                    }
+                    $notes[] = sprintf('%s %s removed — %s', $kind, $label, $reason);
 
                     continue;
                 }
@@ -268,8 +271,9 @@ class PromotionEvaluator
                 if ($nowLaar !== $wasLaar) {
                     $draft->update(['discount_laar' => $nowLaar]);
                     $notes[] = sprintf(
-                        'Promo %s changed from MVR %s to MVR %s for this ticket.',
-                        $promotion->code ?? $promotion->name,
+                        '%s %s changed from MVR %s to MVR %s for this ticket.',
+                        $kind,
+                        $label,
                         number_format($wasLaar / 100, 2),
                         number_format($nowLaar / 100, 2),
                     );
@@ -374,6 +378,64 @@ class PromotionEvaluator
             'discount_laar' => $discountLaar,
             'message' => 'Automatic promotion applied.',
             'promotion' => $promotion,
+        ];
+    }
+
+    /**
+     * What the automatic promotions would take off a cart that has not been
+     * saved yet (owner, 2026-10-16: the till and the order app show the offer
+     * before the customer pays). Same rules as applyAutomatic: item-level
+     * offers are already in the line prices and are skipped, the stacking
+     * policy picks among the rest. Nothing is written.
+     *
+     * @param array<int, array{item_id: int, quantity?: numeric, unit_price: numeric, total_price?: numeric}> $lines
+     * @return array{discount_laar: int, promotions: list<Promotion>, ends_at: ?string}
+     */
+    public function previewAutomatic(array $lines, ?int $customerId = null): array
+    {
+        if ($lines === []) {
+            return ['discount_laar' => 0, 'promotions' => [], 'ends_at' => null];
+        }
+
+        $order = $this->ephemeralOrderFromLines($lines);
+
+        $eligible = [];
+        $candidates = Promotion::query()
+            ->autoApply()
+            ->active()
+            ->with('targets')
+            ->get()
+            ->filter(fn (Promotion $p) => $p->isValid());
+        foreach ($candidates as $promotion) {
+            if ($this->isItemLevelPromo($promotion) || $this->isDeliveryWaiver($promotion)) {
+                continue;
+            }
+            $check = $this->eligibilityForPromotion($promotion, $order, $customerId, null);
+            if ($check['valid'] && (int) $check['discount_laar'] > 0) {
+                $eligible[] = ['promotion' => $promotion, 'discount_laar' => (int) $check['discount_laar']];
+            }
+        }
+
+        $policy = (string) SiteSetting::get('discount_stacking_policy', 'best_wins');
+        $selected = $this->selectByStackingPolicy($eligible, $policy);
+
+        $total = 0;
+        $promotions = [];
+        $endsAt = null;
+        foreach ($selected as $row) {
+            $total += (int) $row['discount_laar'];
+            $promotions[] = $row['promotion'];
+            // The earliest end among the offers shown: the client re-checks then.
+            $end = $row['promotion']->expires_at;
+            if ($end !== null && ($endsAt === null || $end->lt($endsAt))) {
+                $endsAt = $end;
+            }
+        }
+
+        return [
+            'discount_laar' => $total,
+            'promotions' => $promotions,
+            'ends_at' => $endsAt?->toIso8601String(),
         ];
     }
 

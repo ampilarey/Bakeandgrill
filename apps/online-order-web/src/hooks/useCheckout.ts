@@ -9,6 +9,7 @@ import { useOrderMode } from "../context/OrderModeContext";
 import {
   applyPromoCode,
   validatePromoCode,
+  previewAutoPromo,
   removePromoCode,
   createCustomerOrder,
   createDeliveryOrder,
@@ -34,6 +35,7 @@ import {
   type LoyaltyAccount,
 } from "../api";
 import type { LoyaltyTierProgress } from "@shared/types";
+import { translate } from '../context/LanguageContext';
 import { ApiRequestError } from "@shared/api";
 import {
   discountLaarForRedeemPoints,
@@ -381,6 +383,9 @@ export function useCheckout() {
   } | null>(null);
   const [promoError, setPromoError]   = useState("");
   const [promoLoading, setPromoLoading] = useState(false);
+  /** The automatic offer on the cart, asked of the server as the cart changes. */
+  const [autoPromo, setAutoPromo] = useState<{ name: string; discountLaar: number; endsAt: string | null } | null>(null);
+  const [autoPromoTick, setAutoPromoTick] = useState(0);
   const [pendingOrderId, setPendingOrderIdState] = useState<number | null>(() => readCheckoutPendingOrderId());
   const setPendingOrderId = (id: number | null) => {
     setPendingOrderIdState(id);
@@ -561,12 +566,48 @@ export function useCheckout() {
 
   const deliveryFeeLaar  = orderType === "delivery" ? deliveryFee : 0;
   const promoDelta       = promoApplied?.discountLaar ?? 0;
+  const autoPromoDelta   = autoPromo?.discountLaar ?? 0;
+
+  // What the automatic offers take off this cart, before it is placed
+  // (owner, 2026-10-16). Re-asked when the offer ends and now and then in
+  // case one starts. Not sure means not shown: the placed order decides.
+  const autoPromoKey = cart.length > 0
+    ? JSON.stringify(cart.map((i) => [i.id, i.quantity, Math.round(i.price * 100), (i.modifiers ?? []).map((m) => Math.round(m.price * 100))]))
+    : '';
+  useEffect(() => {
+    if (!autoPromoKey) { setAutoPromo(null); return; }
+    let live = true;
+    const handle = window.setTimeout(() => {
+      const lines = cart.map((item) => {
+        const unit = item.price + (item.modifiers ?? []).reduce((ms, m) => ms + m.price, 0);
+        return { item_id: item.id, quantity: item.quantity, unit_price: unit, total_price: Math.round(unit * item.quantity * 100) / 100 };
+      });
+      previewAutoPromo(lines)
+        .then((res) => {
+          if (!live) return;
+          const first = res.promotions[0];
+          setAutoPromo(res.discount_laar > 0 && first ? { name: first.name, discountLaar: res.discount_laar, endsAt: res.ends_at } : null);
+        })
+        .catch(() => { if (live) setAutoPromo(null); });
+    }, 350);
+    return () => { live = false; window.clearTimeout(handle); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoPromoKey, autoPromoTick]);
+  useEffect(() => {
+    if (!autoPromoKey) return;
+    const timers: number[] = [window.setInterval(() => setAutoPromoTick((n) => n + 1), 5 * 60_000)];
+    if (autoPromo?.endsAt) {
+      const wait = new Date(autoPromo.endsAt).getTime() - Date.now() + 1000;
+      if (wait > 0 && wait < 2_000_000_000) timers.push(window.setTimeout(() => setAutoPromoTick((n) => n + 1), wait));
+    }
+    return () => timers.forEach((id) => { window.clearInterval(id); window.clearTimeout(id); });
+  }, [autoPromoKey, autoPromo?.endsAt]);
 
   const loyaltyRedeemPoints = useMemo(() => {
     if (!useLoyalty || !loyaltyAccount) return 0;
-    const roomLaar = Math.max(0, subtotalLaar - promoDelta);
+    const roomLaar = Math.max(0, subtotalLaar - promoDelta - autoPromoDelta);
     return maxRedeemPointsForSubtotalLaar(roomLaar, loyaltyAvailablePoints(loyaltyAccount), loyaltyRates);
-  }, [useLoyalty, loyaltyAccount, subtotalLaar, promoDelta, loyaltyRates]);
+  }, [useLoyalty, loyaltyAccount, subtotalLaar, promoDelta, autoPromoDelta, loyaltyRates]);
 
   const loyaltyDelta = loyaltyRedeemPoints > 0
     ? discountLaarForRedeemPoints(loyaltyRedeemPoints, loyaltyRates)
@@ -575,7 +616,7 @@ export function useCheckout() {
   const giftCardDelta    = giftCardApplied?.discountLaar ?? 0;
 
   // Gift cards are tender — they do not consume merchandise discount room.
-  const referralRoomLaar = Math.max(0, subtotalLaar - promoDelta - loyaltyDelta);
+  const referralRoomLaar = Math.max(0, subtotalLaar - promoDelta - autoPromoDelta - loyaltyDelta);
   const referralDelta = friendReferralApplied
     ? (friendReferralApplied.pending
       ? Math.min(friendReferralApplied.configuredLaar ?? friendReferralApplied.discountLaar, referralRoomLaar)
@@ -584,7 +625,7 @@ export function useCheckout() {
 
   // GST on discounted subtotal — gift card excluded (tender, not pre-tax discount).
   const discountedSubtotalLaar = calcDiscountedSubtotalLaar(subtotalLaar, {
-    promo: promoDelta,
+    promo: promoDelta + autoPromoDelta,
     loyalty: loyaltyDelta,
     gift_card: 0,
     referral: referralDelta,
@@ -956,7 +997,7 @@ export function useCheckout() {
         // Gift card is a tender, not a pre-tax discount — do not consume referral room.
         const roomLaar = computeReferralRoomLaar({
           subtotalLaar,
-          promoLaar: promoDelta,
+          promoLaar: promoDelta + autoPromoDelta,
           loyaltyLaar: loyaltyDelta,
         });
         const estLaar = Math.min(configuredLaar, roomLaar);
@@ -1122,7 +1163,7 @@ export function useCheckout() {
       }
       writeCheckoutAttempt(attempt);
 
-      const createOrder = async (key: string): Promise<{ id: number; status: string }> => {
+      const createOrder = async (key: string): Promise<{ id: number; status: string; promoDiscountLaar: number; totalLaar: number }> => {
         if (tableSession.token) {
           /*
            * Scanned the QR on the table. Checked first: the table wins over
@@ -1149,7 +1190,7 @@ export function useCheckout() {
             reward_claims: rewardClaimsFromCart(cart),
             idempotency_key: key,
           });
-          return { id: res.order.id, status: String((res.order as { status?: string }).status ?? '') };
+          return { id: res.order.id, status: String((res.order as { status?: string }).status ?? ''), promoDiscountLaar: Number((res.order as { promo_discount_laar?: number | null }).promo_discount_laar ?? 0), totalLaar: Math.round(Number((res.order as { total?: number | string }).total ?? 0) * 100) };
         } else if (orderType === "delivery") {
           const res = await createDeliveryOrder({
             items: cart.map((item) => ({
@@ -1173,7 +1214,7 @@ export function useCheckout() {
             reward_claims: rewardClaimsFromCart(cart),
             idempotency_key: key,
           });
-          return { id: res.order.id, status: String((res.order as { status?: string }).status ?? '') };
+          return { id: res.order.id, status: String((res.order as { status?: string }).status ?? ''), promoDiscountLaar: Number((res.order as { promo_discount_laar?: number | null }).promo_discount_laar ?? 0), totalLaar: Math.round(Number((res.order as { total?: number | string }).total ?? 0) * 100) };
         } else if (orderType === "dine_in") {
           // Prepaid dine-in: pay now, table held, pickup_slot_at = arrival time.
           const res = await createCustomerOrder({
@@ -1192,7 +1233,7 @@ export function useCheckout() {
             reward_claims: rewardClaimsFromCart(cart),
             idempotency_key: key,
           });
-          return { id: res.order.id, status: String((res.order as { status?: string }).status ?? '') };
+          return { id: res.order.id, status: String((res.order as { status?: string }).status ?? ''), promoDiscountLaar: Number((res.order as { promo_discount_laar?: number | null }).promo_discount_laar ?? 0), totalLaar: Math.round(Number((res.order as { total?: number | string }).total ?? 0) * 100) };
         } else {
           const res = await createCustomerOrder({
             items: cart.map((item) => ({
@@ -1211,7 +1252,7 @@ export function useCheckout() {
             pickup_slot_at: collectOn === 'today' ? (pickupSlotAt ?? undefined) : undefined,
             collect_on: collectOn,
           });
-          return { id: res.order.id, status: String((res.order as { status?: string }).status ?? '') };
+          return { id: res.order.id, status: String((res.order as { status?: string }).status ?? ''), promoDiscountLaar: Number((res.order as { promo_discount_laar?: number | null }).promo_discount_laar ?? 0), totalLaar: Math.round(Number((res.order as { total?: number | string }).total ?? 0) * 100) };
         }
       };
 
@@ -1224,6 +1265,23 @@ export function useCheckout() {
           created = await createOrder(attempt.key);
         }
         orderId = created.id;
+
+        // The page showed an offer the placed order did not get: it ended
+        // between the last look and this tap. Say so and stop before the
+        // customer pays a total they have not seen. The order waits unpaid
+        // and the next tap reuses it, now at the price shown.
+        if (autoPromoDelta > 0 && created.promoDiscountLaar === 0) {
+          setPendingOrderId(orderId);
+          const endedName = autoPromo?.name ?? '';
+          setAutoPromo(null);
+          setGlobalError(
+            translate('checkout.offer_ended')
+              .replace('{name}', endedName)
+              .replace('{amount}', (created.totalLaar / 100).toFixed(2)),
+          );
+          setIsPlacing(false);
+          return;
+        }
       }
 
       setPendingOrderId(orderId);
@@ -1440,6 +1498,7 @@ export function useCheckout() {
     savedAddresses, selectedAddressId, setSelectedAddressId, applySavedAddress, markAddressAsNew,
     saveAddress, setSaveAddress, addressLabel, setAddressLabel, usingAutoDefaultAddress,
     promoCode, setPromoCode, promoApplied, setPromoApplied, promoError, promoLoading,
+    autoPromo, autoPromoDelta,
     useLoyalty, setUseLoyalty, deliveryFee, deliveryMinimum, errors, isPlacing, globalError,
     subtotalLaar, discountedSubtotalLaar, taxLaar, deliveryFeeLaar, promoDelta, loyaltyDelta, referralDelta,
     serviceChargeLaar, serviceChargeLabel: serviceChargePreview.label,

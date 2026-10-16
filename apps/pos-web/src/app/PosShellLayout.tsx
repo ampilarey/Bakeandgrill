@@ -569,6 +569,7 @@ export function PosShellLayout() {
                 cart.cartSubtotal
                   - cart.discountValue
                   - (cart.appliedPromo?.discount ?? 0)
+                  - (cart.autoPromo?.discount ?? 0)
                   - (cart.appliedLoyalty?.discount ?? 0),
               )}
               deliveryFeeEst={deliveryFeeEst}
@@ -576,6 +577,7 @@ export function PosShellLayout() {
               rewardsDiscount={cart.rewardsDiscount}
               appliedPromo={cart.appliedPromo}
               setAppliedPromo={cart.setAppliedPromo}
+              autoPromo={cart.autoPromo}
               appliedLoyalty={cart.appliedLoyalty}
               setAppliedLoyalty={cart.setAppliedLoyalty}
               appliedGiftCard={cart.appliedGiftCard}
