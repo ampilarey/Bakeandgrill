@@ -50,6 +50,24 @@ const SETTINGS_NOT_LOADED = 'The current settings did not load, so Save is off: 
 
 type PageSection = 'channels' | 'features' | 'slots-fees' | 'events';
 
+/** The checkout's pickup slot limits (backend PickupSlotService::MINUTES_* / CAPACITY_*). */
+export const PICKUP_MINUTES = { min: 15, max: 120 } as const;
+export const PICKUP_CAPACITY = { min: 1, max: 50 } as const;
+
+/**
+ * The checkout's own limits: outside them a saved number would be quietly
+ * clamped, so the form refuses it (audit, 2026-10-16). Null when both fit.
+ */
+export function pickupSlotError(minutes: number, capacity: number): string | null {
+  if (!Number.isInteger(minutes) || minutes < PICKUP_MINUTES.min || minutes > PICKUP_MINUTES.max) {
+    return `Slot length must be ${PICKUP_MINUTES.min} to ${PICKUP_MINUTES.max} minutes.`;
+  }
+  if (!Number.isInteger(capacity) || capacity < PICKUP_CAPACITY.min || capacity > PICKUP_CAPACITY.max) {
+    return `Orders per slot must be ${PICKUP_CAPACITY.min} to ${PICKUP_CAPACITY.max}.`;
+  }
+  return null;
+}
+
 const DEFAULT_RAMADAN_BUSINESS_HOURS: Record<string, string> = {
   mon: '4:00 PM – 11:00 PM',
   tue: '4:00 PM – 11:00 PM',
@@ -251,12 +269,9 @@ export default function OnlineOrderingPage() {
   const savePickupSlots = async () => {
     const minutes = parseInt(pickupMinutes, 10);
     const capacity = parseInt(pickupCapacity, 10);
-    if (!Number.isFinite(minutes) || minutes < 5 || minutes > 240) {
-      showToast('Slot length must be 5–240 minutes.', 'err');
-      return;
-    }
-    if (!Number.isFinite(capacity) || capacity < 1 || capacity > 200) {
-      showToast('Slot capacity must be 1–200.', 'err');
+    const slotError = pickupSlotError(minutes, capacity);
+    if (slotError) {
+      showToast(slotError, 'err');
       return;
     }
     setPickupSaving(true);
@@ -973,24 +988,28 @@ export default function OnlineOrderingPage() {
               <input
                 style={S.input}
                 type="number"
-                min={5}
-                max={240}
+                min={PICKUP_MINUTES.min}
+                max={PICKUP_MINUTES.max}
                 value={pickupMinutes}
                 onChange={(e) => setPickupMinutes(e.target.value)}
                 disabled={!pickupEnabled}
+                aria-label="Slot length (minutes)"
               />
+              <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--color-text-muted)' }}>{PICKUP_MINUTES.min} to {PICKUP_MINUTES.max} minutes</p>
             </div>
             <div>
               <label style={S.label}>Orders per slot</label>
               <input
                 style={S.input}
                 type="number"
-                min={1}
-                max={200}
+                min={PICKUP_CAPACITY.min}
+                max={PICKUP_CAPACITY.max}
                 value={pickupCapacity}
                 onChange={(e) => setPickupCapacity(e.target.value)}
                 disabled={!pickupEnabled}
+                aria-label="Orders per slot"
               />
+              <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--color-text-muted)' }}>{PICKUP_CAPACITY.min} to {PICKUP_CAPACITY.max} orders</p>
             </div>
           </div>
           <div style={{ marginTop: 16 }}>

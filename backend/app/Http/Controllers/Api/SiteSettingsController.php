@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Domains\Content\ContentResolver;
+use App\Domains\Ordering\Services\PickupSlotService;
 use App\Domains\Permissions\Services\PermissionService;
 use App\Http\Controllers\Controller;
 use App\Models\SiteSetting;
@@ -163,6 +164,22 @@ class SiteSettingsController extends Controller
                     . '. Website copy is edited through the Content Hub.',
                 ],
             ]);
+        }
+
+        // Pickup slots: refuse what the checkout would quietly clamp, so a saved
+        // 200 orders per slot cannot sit there meaning 50 (audit, 2026-10-16).
+        $ranges = [
+            'pickup_slot_minutes' => [PickupSlotService::MINUTES_MIN, PickupSlotService::MINUTES_MAX, 'Slot length must be %d to %d minutes.'],
+            'pickup_slot_capacity' => [PickupSlotService::CAPACITY_MIN, PickupSlotService::CAPACITY_MAX, 'Orders per slot must be %d to %d.'],
+        ];
+        foreach ($ranges as $key => [$min, $max, $message]) {
+            if (!array_key_exists($key, $settings)) {
+                continue;
+            }
+            $value = $settings[$key];
+            if (filter_var($value, FILTER_VALIDATE_INT) === false || (int) $value < $min || (int) $value > $max) {
+                throw ValidationException::withMessages(["settings.{$key}" => [sprintf($message, $min, $max)]]);
+            }
         }
 
         foreach ($settings as $key => $value) {

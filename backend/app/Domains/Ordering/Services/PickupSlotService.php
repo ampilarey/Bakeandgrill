@@ -12,6 +12,15 @@ use Carbon\Carbon;
 
 final class PickupSlotService
 {
+    /** The slot length and capacity the checkout uses; the admin form and the save keep to them. */
+    public const MINUTES_MIN = 15;
+
+    public const MINUTES_MAX = 120;
+
+    public const CAPACITY_MIN = 1;
+
+    public const CAPACITY_MAX = 50;
+
     /** How long an unpaid order keeps its pickup slot. */
     public const UNPAID_HOLD_MINUTES = 10;
 
@@ -34,8 +43,8 @@ final class PickupSlotService
             return [];
         }
 
-        $slotMinutes = max(15, min(120, (int) SiteSetting::get('pickup_slot_minutes', '30')));
-        $capacity = max(1, min(50, (int) SiteSetting::get('pickup_slot_capacity', '8')));
+        $slotMinutes = max(self::MINUTES_MIN, min(self::MINUTES_MAX, (int) SiteSetting::get('pickup_slot_minutes', '30')));
+        $capacity = max(self::CAPACITY_MIN, min(self::CAPACITY_MAX, (int) SiteSetting::get('pickup_slot_capacity', '8')));
 
         $windows = $this->openWindowsForDate($parsed);
         if ($windows === []) {
