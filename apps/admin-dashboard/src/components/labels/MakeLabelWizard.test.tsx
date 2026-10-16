@@ -323,4 +323,30 @@ describe('MakeLabelWizard', () => {
     fireEvent.click(screen.getByTestId('make-flat'));
     expect(screen.queryByTestId('make-mockup')).toBeNull();
   });
+
+  // Label audit, Batch B (2026-10-16): the last step shows the use-by that prints and stops a print the lock refuses.
+  it('shows the use-by with the short-life mark, what did not fit, and the wording lock on the last step', async () => {
+    const message = 'The wording is locked: Bajiya has legal lines not signed off as they stand. Sign them off on the label first, or turn the lock off under Labels → Settings.';
+    api.stickerLinks.mockImplementation(async () => ({
+      url: '/s', one_url: '/labels/stickers?one=1', view_url: '/v', pdf_url: '/p', expires_in_minutes: 30,
+      summary: { layout: 'a4-custom', label: '', design: 'small', w: 60, h: 40, stickers: 1, pages: 1, per_page: 18, spots: [], dropped: ['QR code'],
+        products: [{ id: 7, name: 'Bajiya', copies: 1, mfg: '2026-10-04', exp: '2026-10-06', shelf_life_days: 2, ingredients_from: 'manual' }],
+        wording: { refused: [{ key: 'i7', kind: 'item', id: 7, name: 'Bajiya' }], message } },
+    }));
+    mount();
+    fireEvent.click(screen.getByRole('button', { name: /A menu item/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Bajiya/ }));
+    const cards = await screen.findByRole('group', { name: 'Which label' });
+    fireEvent.click(within(cards).getByRole('button', { name: /Jar or tub/ }));
+    fireEvent.click(screen.getByTestId('make-next-2'));
+    expect(await screen.findByTestId('sticker-dropped')).toHaveTextContent('Did not fit on this size: QR code.');
+    fireEvent.click(screen.getByTestId('make-next-3'));
+
+    expect(screen.getByTestId('make-use-by')).toHaveTextContent(/Use by .*2026 on every label/);
+    expect(screen.getByTestId('short-life')).toHaveTextContent('Short life · 2 days');
+    expect(screen.getByTestId('wording-lock-notice')).toHaveTextContent(message);
+    expect(screen.getByTestId('make-print')).toBeDisabled();
+    expect(screen.getByTestId('make-pdf')).toBeDisabled();
+    expect(screen.getByTestId('link-life-note')).toBeInTheDocument();
+  });
 });

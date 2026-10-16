@@ -161,6 +161,24 @@ describe('StickerPrintPanel', () => {
     expect(downloadLabelSheet).toHaveBeenCalledWith('/labels/stickers.pdf?signature=x');
   });
 
+  // Label audit, Batch B (2026-10-16): what a print would meet is said before Prepare.
+  it('says before Prepare that the wording lock refuses, what did not fit, and how long the links last', async () => {
+    const message = 'The wording is locked: Bajiya has legal lines not signed off as they stand. Sign them off on the label first, or turn the lock off under Labels → Settings.';
+    stickerLinks.mockResolvedValue({
+      url: '/labels/stickers?signature=p', one_url: '/labels/stickers?one=1&signature=p', view_url: '/v', pdf_url: '/p', expires_in_minutes: 30,
+      summary: { layout: 'a4-4', label: '4 on A4', design: 'full', stickers: 4, pages: 1, per_page: 4, products: [], dropped: ['Ingredients', 'Badge Halal'],
+        wording: { refused: [{ key: 'i1', kind: 'item', id: 1, name: 'Bajiya' }], message } },
+    });
+    render(<MemoryRouter><StickerPrintPanel /></MemoryRouter>);
+    fireEvent.click(await screen.findByLabelText('Print Bajiya'));
+
+    expect(await screen.findByTestId('wording-lock-notice')).toHaveTextContent(message);
+    expect(screen.getByTestId('wording-signoff-open-i1')).toHaveTextContent("See Bajiya's lines");
+    expect(screen.getByTestId('sticker-prepare')).toBeDisabled();
+    expect(screen.getByTestId('sticker-dropped')).toHaveTextContent('Did not fit on this size: Ingredients, Badge Halal.');
+    expect(screen.getByTestId('link-life-note')).toHaveTextContent('The print and PDF links last 30 minutes.');
+  });
+
   // Label audit, 2026-10-16: a sized item's sticker says which size it is for.
   it('sends the size picked for a sized item', async () => {
     fetchLabelProducts.mockResolvedValue({ data: [product(3, 'Mango juice', { sizes: [{ id: 31, name: 'Small', price: 15 }, { id: 32, name: 'Large', price: 25 }] })] });

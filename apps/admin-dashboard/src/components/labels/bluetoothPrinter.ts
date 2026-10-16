@@ -116,6 +116,27 @@ async function write(c: Char, part: Uint8Array<ArrayBuffer>) {
   throw new Error('The printer refused the stickers.');
 }
 
+/**
+ * Where each sticker ends in a TSPL or ZPL job (label audit, Batch B): the
+ * byte just past each TSPL `PRINT` line or ZPL `^XZ`, so a send that stops
+ * part way can say how many stickers went.
+ */
+export function stickerEnds(bytes: Uint8Array): number[] {
+  const text = new TextDecoder('latin1').decode(bytes);
+  const ends: number[] = [];
+  const re = /(?:^|\n)PRINT [^\n]*\n|\^XZ/g;
+  for (let m = re.exec(text); m; m = re.exec(text)) ends.push(m.index + m[0].length);
+  return ends;
+}
+
+/** A send that stopped part way: how many stickers reached the printer. */
+export class PartialSendError extends Error {
+  constructor(public sent: number, public total: number, reason: string) {
+    super(`Sent ${sent} of ${total} ${total === 1 ? 'sticker' : 'stickers'}; the other ${total - sent} did not reach the printer. ${reason}`);
+    this.name = 'PartialSendError';
+  }
+}
+
 /** Send bytes to the paired printer in chunks (pairing first when nothing is paired). */
 export async function sendBytes(bytes: Uint8Array<ArrayBuffer>, opts: { chunk?: number; pause?: number } = {}): Promise<number> {
   if (!device || !writer || !device.gatt?.connected) {
@@ -128,7 +149,14 @@ export async function sendBytes(bytes: Uint8Array<ArrayBuffer>, opts: { chunk?: 
   const chunk = opts.chunk ?? CHUNK;
   const pause = opts.pause ?? 12;
   for (let i = 0; i < bytes.length; i += chunk) {
-    await write(writer!, bytes.subarray(i, Math.min(bytes.length, i + chunk)));
+    try {
+      await write(writer!, bytes.subarray(i, Math.min(bytes.length, i + chunk)));
+    } catch (e) {
+      const ends = stickerEnds(bytes);
+      const reason = e instanceof Error && e.message ? (/[.!?]$/.test(e.message) ? e.message : `${e.message}.`) : 'The printer stopped answering.';
+      if (ends.length > 0) throw new PartialSendError(ends.filter((end) => end <= i).length, ends.length, reason);
+      throw e;
+    }
     if (pause > 0) await new Promise((r) => setTimeout(r, pause));
   }
   return bytes.length;

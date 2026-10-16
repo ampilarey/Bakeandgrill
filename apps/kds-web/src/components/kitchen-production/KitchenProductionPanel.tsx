@@ -340,6 +340,9 @@ export function KitchenProductionPanel({
                     <div style={{ whiteSpace: "pre-wrap", padding: "6px 10px", borderLeft: "2px solid #EDE4D4", marginTop: 2 }}>{task.instructions}</div>
                   </details>
                 )}
+                {canLabels && task.stickers_locked && batchesOf(task).length > 0 && (
+                  <p role="alert" data-testid={`kds-stickers-locked-${task.id}`} style={{ margin: 0, fontSize: 13, padding: 8, background: "#FEE2E2", color: "#991B1B", borderRadius: 8 }}>{task.stickers_locked}</p>
+                )}
                 {canLabels && batchesOf(task).map((b) => {
                   const busyB = busyKey === `stickers-${b.pi}`;
                   return (
@@ -360,10 +363,10 @@ export function KitchenProductionPanel({
                       />
                       <button
                         type="button"
-                        disabled={busyB}
+                        disabled={busyB || Boolean(task.stickers_locked)}
                         onClick={() => void printStickers(task, b)}
                         data-testid={`kds-plan-stickers-${b.pi}`}
-                        style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid #B74B0C", background: "#B74B0C", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: 13 }}
+                        style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid #B74B0C", background: "#B74B0C", color: "#fff", fontWeight: 700, cursor: task.stickers_locked ? "not-allowed" : "pointer", opacity: task.stickers_locked ? 0.5 : 1, fontSize: 13 }}
                       >
                         {busyB ? "Preparing…" : "Print stickers"}
                       </button>

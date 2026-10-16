@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Printer, FileDown, AlertTriangle, Search, Bookmark, Eye, Plus, History, CalendarDays, ChevronDown, ChevronUp, Star, Clock, Send, Image as ImageIcon, ListPlus, RotateCcw } from 'lucide-react';
+import { Printer, FileDown, AlertTriangle, Search, Bookmark, Eye, Plus, History, CalendarDays, ChevronDown, ChevronUp, Star, Send, Image as ImageIcon, ListPlus, RotateCcw } from 'lucide-react';
 import {
   downloadLabelSheet, fetchCateringStickers, fetchCustomLabels, fetchDeliveryStickers, fetchLabelFooters, fetchLabelJob, fetchLabelJobs, fetchLabelLayouts, fetchLabelPrint, fetchLabelProducts, fetchLabelTypes, openLabelSheet, printLabelJob, printsViaPdf, readPrinterSetup, renameLabelJob, sendToLabelPrinter, stickerLinks,
   MOCK_SURFACE_NAMES, type CustomLabel, type MockSurface, type LabelFooter, type LabelJob, type LabelLimits, type LabelPreset, type LabelPrintLookup, type LabelProduct, type LabelRoll, type LabelType, type PromoKind, type SheetLinks, type StickerLang, type StickerRun, type StickerSummary,
@@ -12,6 +12,7 @@ import { TabScrollRow } from '../SharedUI';
 import { QtyStepper } from './QtyStepper';
 import { SheetPreview } from './SheetPreview';
 import { PhonePreviewBar } from './PhonePreviewBar';
+import { DroppedNote, LinkLifeNote, ShortLifeChip, WordingLockNotice, wordingRefused } from './PrintChecks';
 import { InlineRename } from './InlineRename';
 import { LabelSizePicker } from './LabelSizePicker';
 import { CustomLabelModal } from './CustomLabels';
@@ -62,8 +63,6 @@ export const PROMO_PRESETS: [string, string][] = [
   ['', 'No flash'], ['was_now', 'Was → Now prices'], ['2 FOR 1', '2 for 1'], ['BUY 2 GET 1 FREE', 'Buy 2 get 1 free'],
   ['SPECIAL OFFER', 'Special offer'], ['HALF PRICE', 'Half price'], ['NEW', 'New'], ['FRESH TODAY', 'Fresh today'], ['custom', 'Other words…'],
 ];
-/** A shelf life this short is easy to print with the wrong dates (2026-10-12): the list marks it. */
-const SHORT_LIFE_DAYS = 3;
 const LANG_NAMES: Record<StickerLang, string> = { en: 'English', dv: 'ދިވެހި', both: 'Both' };
 const parseKey = (key: string): { kind: 'item' | 'custom'; id: number } => ({ kind: key.startsWith('c') ? 'custom' : 'item', id: Number(key.slice(1)) });
 
@@ -420,7 +419,9 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
 
   // Redraw the preview half a second after the last change; a reply that
   // arrives after a newer request is ignored.
-  const previewRequestKey = JSON.stringify([request(previewKey), previewKey, presets.length, footersTick]);
+  // checksTick: a sign-off from the wording notice reads the preview (and the lock) again.
+  const [checksTick, setChecksTick] = useState(0);
+  const previewRequestKey = JSON.stringify([request(previewKey), previewKey, presets.length, footersTick, checksTick]);
   useEffect(() => {
     if (items.length === 0 || presets.length === 0) { setPreview(null); setPreviewError(null); setPreviewBusy(false); return; }
     if (sizeIssue) { setPreviewError(sizeIssue); setPreviewBusy(false); return; }
@@ -552,6 +553,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
       ) : previewCaption ? (
         <p className="text-xs text-[var(--color-text-muted)]">{previewCaption}</p>
       ) : null}
+      {!previewError && <DroppedNote dropped={preview?.summary.dropped} />}
     </aside>
   );
 
@@ -667,11 +669,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
                       <span className="block text-sm font-semibold text-[var(--color-text)]">
                         {r.name}{r.name_dv ? <span className="ml-2 font-normal text-[var(--color-text-muted)]" dir="rtl">{r.name_dv}</span> : null}
                         {r.kind === 'custom' && <span className="ml-2 inline-flex items-center h-5 px-2 rounded-full text-[11px] font-semibold bg-[var(--color-tone-brown-bg)] text-[var(--color-tone-brown-text)] border border-[var(--color-tone-brown-border)] align-middle">Custom</span>}
-                        {r.shelf !== null && r.shelf <= SHORT_LIFE_DAYS && (
-                          <span className="ml-2 inline-flex items-center gap-1 h-5 px-2 rounded-full text-[11px] font-semibold align-middle" style={{ background: 'color-mix(in srgb, var(--color-warning) 18%, transparent)', color: 'var(--color-warning)', border: '1px solid color-mix(in srgb, var(--color-warning) 40%, transparent)' }} data-testid="short-life">
-                            <Clock size={11} aria-hidden /> Short life · {r.shelf} {r.shelf === 1 ? 'day' : 'days'}
-                          </span>
-                        )}
+                        <ShortLifeChip days={r.shelf} />
                       </span>
                       <span className="block text-xs text-[var(--color-text-muted)] sm:truncate">
                         {r.kind === 'custom' && r.brand ? `${r.brand} · ` : ''}
@@ -929,12 +927,15 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
           </div>
         </section>
       ) : (
-        <div className="labels-actions">
+        <div className="labels-actions space-y-2">
+          {stacked && !previewError && <DroppedNote dropped={preview?.summary.dropped} />}
+          <WordingLockNotice wording={items.length > 0 ? preview?.summary.wording : null} canManage={can('labels.manage')} onSigned={() => setChecksTick((t) => t + 1)} />
           <div className="labels-actions-row flex">
-            <Button onClick={prepare} loading={busy} disabled={total === 0 || Boolean(sizeIssue) || presets.length === 0} icon={<Printer size={16} />} data-testid="sticker-prepare">
+            <Button onClick={prepare} loading={busy} disabled={total === 0 || Boolean(sizeIssue) || presets.length === 0 || (items.length > 0 && wordingRefused(preview?.summary))} icon={<Printer size={16} />} data-testid="sticker-prepare">
               {total > 0 ? `Prepare ${total} ${total === 1 ? 'sticker' : 'stickers'}` : 'Pick a product'}
             </Button>
           </div>
+          {total > 0 && <LinkLifeNote />}
         </div>
       )}
     </div>

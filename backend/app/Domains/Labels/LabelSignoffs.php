@@ -154,12 +154,13 @@ final class LabelSignoffs
      * lock refuses it. Keyed by the summary's product key.
      *
      * @param array<string, Item|CustomLabel> $products keyed as StickerSheet::products()
-     * @return array{ids: array<string, ?int>, refused: list<string>}
+     * @return array{ids: array<string, ?int>, refused: list<string>, refused_products: list<array{key: string, kind: string, id: int, name: string}>}
      */
     public function forPrint(array $products): array
     {
         $ids = [];
         $refused = [];
+        $refusedProducts = [];
         foreach ($products as $key => $product) {
             if (!$product instanceof Item && !$product instanceof CustomLabel) {
                 continue;
@@ -169,9 +170,21 @@ final class LabelSignoffs
             $ids[$key] = $ok ? $last->id : null;
             if (!$ok && self::locked()) {
                 $refused[] = (string) $product->name;
+                $refusedProducts[] = ['key' => (string) $key, 'kind' => self::kindOf($product), 'id' => (int) $product->id, 'name' => (string) $product->name];
             }
         }
 
-        return ['ids' => $ids, 'refused' => $refused];
+        return ['ids' => $ids, 'refused' => $refused, 'refused_products' => $refusedProducts];
+    }
+
+    /**
+     * What a refused print says, the same words before Prepare (a preview,
+     * label audit Batch B) and on the refusal itself.
+     *
+     * @param list<string> $names
+     */
+    public static function refusalMessage(array $names): string
+    {
+        return 'The wording is locked: ' . implode(', ', $names) . (count($names) === 1 ? ' has' : ' have') . ' legal lines not signed off as they stand. Sign them off on the label first, or turn the lock off under Labels → Settings.';
     }
 }

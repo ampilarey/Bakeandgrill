@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CHUNK, PRINTER_SERVICES, bluetoothSupported, bluetoothWhyNot, forgetPrinter, pairPrinter, pairedPrinter, printOverBluetooth, sendBytes } from './bluetoothPrinter';
+import { CHUNK, PRINTER_SERVICES, bluetoothSupported, bluetoothWhyNot, forgetPrinter, pairPrinter, pairedPrinter, printOverBluetooth, sendBytes, stickerEnds } from './bluetoothPrinter';
 
 /*
  * Printing to a Bluetooth label printer from a phone (round 16, 2026-10-13):
@@ -62,5 +62,23 @@ describe('bluetoothPrinter', () => {
     fakeBluetooth();
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 422 })));
     await expect(printOverBluetooth('/labels/stickers.tspl?x')).rejects.toThrow('A label printer takes one sticker a label');
+  });
+
+  it('says how many stickers went when a send stops part way (label audit, Batch B)', async () => {
+    const bt = fakeBluetooth({ withoutResponse: true });
+    await pairPrinter();
+    const one = 'SIZE 60 mm,40 mm\r\nCLS\r\n' + 'BAR 0,0,10,10\r\n'.repeat(12) + 'PRINT 1,1\r\n';
+    const bytes = new TextEncoder().encode(one.repeat(4));
+    expect(stickerEnds(bytes)).toHaveLength(4);
+    expect(stickerEnds(new TextEncoder().encode('^XA^FO0,0^FS^XZ\n^XA^XZ\n'))).toHaveLength(2);
+    // Fails once 2 stickers' bytes have gone.
+    let sent = 0;
+    bt.write.mockImplementation(async (d: BufferSource) => {
+      const part = new Uint8Array(d as Uint8Array);
+      if (sent + part.length > one.length * 2 + 20) throw new Error('GATT operation failed');
+      sent += part.length;
+      bt.written.push(part);
+    });
+    await expect(sendBytes(bytes, { pause: 0, chunk: 20 })).rejects.toThrow('Sent 2 of 4 stickers; the other 2 did not reach the printer. GATT operation failed.');
   });
 });

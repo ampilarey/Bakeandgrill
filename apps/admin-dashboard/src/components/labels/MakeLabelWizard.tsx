@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Box, Check, FileDown, HelpCircle, Pencil, Plus, Printer, Search, Tag, UtensilsCrossed } from 'lucide-react';
 import {
   downloadLabelSheet, fetchCustomLabels, fetchLabelBrands, fetchLabelFooters, fetchLabelLayouts, fetchLabelProducts, fetchLabelTypes, openLabelSheet, stickerLinks, updateCustomLabel, updateItemLabel,
-  type CustomLabel, type LabelBadge, type LabelBrand, type LabelDesign, type LabelFooter, type LabelArrangement, type LabelLimits, type LabelPreset, type LabelProduct, type LabelRoll, type LabelSpot, type LabelSpotKey, type LabelType, type MockSurface, type SheetLinks, type StickerLang,
+  type CustomLabel, type LabelBadge, type LabelBrand, type LabelDesign, type LabelFooter, type LabelArrangement, type LabelLimits, type LabelPreset, type LabelProduct, type LabelRoll, type LabelSpot, type LabelSpotKey, type LabelType, type MockSurface, type SheetLinks, type StickerLang, type StickerSummary,
 } from '../../api';
 import { Button, useToast } from '../ui';
 import { Modal, TabScrollRow } from '../SharedUI';
@@ -12,6 +12,7 @@ import { Modal, TabScrollRow } from '../SharedUI';
 const WIZ_MOCK_NAMES: Record<MockSurface, string> = { jar: 'Jar', bottle: 'Bottle', box: 'Box', lid: 'Lid' };
 const wizChip = (on: boolean) => ['h-8 px-3 rounded-full border text-sm font-semibold whitespace-nowrap', on ? 'bg-[var(--color-tone-rust-bg)] border-[var(--color-tone-rust-border)] text-[var(--color-tone-rust-text)]' : 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text)]'].join(' ');
 import { SheetPreview } from './SheetPreview';
+import { DroppedNote, LinkLifeNote, UseByLine, WordingLockNotice, wordingRefused } from './PrintChecks';
 import { SpotOverlay } from './SpotOverlay';
 import { openLabelsTour } from './LabelsTour';
 import { QuickEditSheet, quickSpec, type QuickContext, type QuickInput, type QuickSpec, type QuickValue } from './QuickEdit';
@@ -203,6 +204,8 @@ export function MakeLabelWizard({ canManage = false }: {
   const [error, setError] = useState<string | null>(null);
   // Bumped when the details were edited behind the preview, so it redraws with nothing else changed.
   const [redraw, setRedraw] = useState(0);
+  // Label audit, Batch B: the latest preview's summary, for what the print would meet (lock, parts left out, the use-by).
+  const [checked, setChecked] = useState<StickerSummary | null>(null);
   const previewSeq = useRef(0);
 
   useEffect(() => {
@@ -303,7 +306,7 @@ export function MakeLabelWizard({ canManage = false }: {
   // Step 3: redraw the preview a little after the last change.
   const previewKey = JSON.stringify([step >= 3 ? request(1, true) : null, presets.length, redraw]);
   useEffect(() => {
-    if (step < 3 || !picked || presets.length === 0) { setPreview(null); setPreviewBusy(false); return; }
+    if (step < 3 || !picked || presets.length === 0) { setPreview(null); setChecked(null); setPreviewBusy(false); return; }
     if (sizeIssue) { setPreviewError(sizeIssue); setPreviewBusy(false); return; }
     const seq = ++previewSeq.current;
     setPreviewBusy(true);
@@ -318,6 +321,7 @@ export function MakeLabelWizard({ canManage = false }: {
         setSpots(r.summary?.design === 'wrap' ? [] : (r.summary?.spots ?? []));
         setSpotBox(r.summary?.w && r.summary?.h ? { w: r.summary.w, h: r.summary.h } : null);
         setPreviewDesign(r.summary?.design ?? null);
+        setChecked(r.summary ?? null);
       } catch (e) {
         if (seq !== previewSeq.current) return;
         setPreviewError(e instanceof Error ? e.message : 'Could not draw the preview.');
@@ -603,6 +607,7 @@ export function MakeLabelWizard({ canManage = false }: {
               </div>
               )}
               <p className="text-xs text-[var(--color-text-muted)] mt-2 text-center" data-testid="make-preview-line">{onPack ? 'The print is the flat label. ' : moving ? 'Drag a part to move it, its corner to resize it. ' : spots.length > 0 ? 'Tap a part of the label to change it. ' : ''}{sizeName(choice.shape, stickerW, stickerH)} · {DESIGN_NAMES[design]}. <button type="button" className="underline" onClick={() => jump(2)}>Change the label</button></p>
+              {!onPack && !previewError && <div className="mt-1 flex justify-center"><DroppedNote dropped={checked?.dropped} /></div>}
               {movable && (
                 <div className="mt-2 flex justify-center">
                   <ArrangeBar on={arrange} onToggle={setArrange} canReset={hasOverrides(productLayout, movable)} onReset={() => saveLayout(clearDesign(productLayout, movable))} compact />
@@ -682,6 +687,9 @@ export function MakeLabelWizard({ canManage = false }: {
             </div>
           </div>
           <p className="text-xs text-[var(--color-text-muted)]">{picked.name} · {sizeLine}.</p>
+          {checked && <UseByLine exp={checked.products[0]?.exp} shelf={checked.products[0]?.shelf_life_days} fill={fill} />}
+          <DroppedNote dropped={checked?.dropped} />
+          {!result && <WordingLockNotice wording={checked?.wording} canManage={canManage} onSigned={() => setRedraw((n) => n + 1)} />}
           {error && <p role="alert" className="text-sm text-[var(--color-danger-strong)]">{error}</p>}
           {result ? (
             <div className="rounded-xl border border-[var(--color-tone-rust-border)] bg-[var(--color-tone-rust-bg)] p-3 space-y-2" data-testid="make-done">
@@ -696,11 +704,12 @@ export function MakeLabelWizard({ canManage = false }: {
             <div className="flex flex-wrap gap-2 justify-between">
               <Button variant="secondary" icon={<ArrowLeft size={16} />} onClick={() => jump(3)}>Back</Button>
               <div className="flex flex-wrap gap-2">
-                <Button variant="secondary" icon={<FileDown size={16} />} loading={printing === 'pdf'} disabled={printing !== null} onClick={() => void print('pdf')} data-testid="make-pdf">PDF</Button>
-                <Button icon={<Printer size={16} />} loading={printing === 'print'} disabled={printing !== null} onClick={() => void print('print')} data-testid="make-print">Print</Button>
+                <Button variant="secondary" icon={<FileDown size={16} />} loading={printing === 'pdf'} disabled={printing !== null || wordingRefused(checked)} onClick={() => void print('pdf')} data-testid="make-pdf">PDF</Button>
+                <Button icon={<Printer size={16} />} loading={printing === 'print'} disabled={printing !== null || wordingRefused(checked)} onClick={() => void print('print')} data-testid="make-print">Print</Button>
               </div>
             </div>
           )}
+          {!result && <LinkLifeNote />}
           <p className="text-xs text-[var(--color-text-muted)]">On a phone, print the PDF. Every print is kept under Saved labels to print again.</p>
         </div>
       )}

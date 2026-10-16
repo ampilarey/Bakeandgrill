@@ -134,4 +134,19 @@ class KitchenStickersTest extends TestCase
         $this->putJson('/api/labels/settings', ['label_rolls' => json_encode([$rolls[0]])])->assertOk();
         $this->getJson('/api/labels/layouts')->assertOk()->assertJsonPath('kitchen.size.layout', 'a4-custom')->assertJsonPath('kitchen.size.roll', null)->assertJsonPath('kitchen.lang', 'both');
     }
+
+    public function test_the_kitchen_card_says_before_the_tap_when_the_wording_lock_refuses_its_stickers(): void
+    {
+        $record = $this->plan();
+        Sanctum::actingAs($this->cook, ['staff']);
+        $this->postJson("/api/production-plan/tasks/{$record->id}/made", ['qty' => 30])->assertCreated();
+        $this->getJson('/api/production-plan/tasks?date=' . self::DAY)->assertOk()->assertJsonPath('tasks.0.stickers_locked', null);
+
+        // Label audit, Batch B: with the lock on and nothing signed off, the card carries the refusal's words.
+        Sanctum::actingAs($this->owner, ['staff']);
+        $this->putJson('/api/labels/settings', ['label_wording_lock' => '1'])->assertOk();
+        Sanctum::actingAs($this->cook, ['staff']);
+        $locked = (string) $this->getJson('/api/production-plan/tasks?date=' . self::DAY)->assertOk()->json('tasks.0.stickers_locked');
+        $this->assertStringStartsWith('The wording is locked: ', $locked);
+    }
 }

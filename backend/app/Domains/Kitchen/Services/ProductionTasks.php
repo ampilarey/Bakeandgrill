@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Kitchen\Services;
 
+use App\Domains\Labels\LabelSignoffs;
 use App\Models\Item;
 use App\Models\KitchenProductionItem;
 use App\Models\ProductionPlanRecord;
@@ -69,7 +70,7 @@ final class ProductionTasks
         $made = $this->madeFor($records);
 
         $tasks = $records
-            ->map(fn (ProductionPlanRecord $r) => $this->format($r, $items, $variants, $made->get((int) $r->id, new Collection())))
+            ->map(fn (ProductionPlanRecord $r) => $this->format($r, $items, $variants, $made->get((int) $r->id, new Collection)))
             ->filter()
             ->values()
             ->all();
@@ -128,7 +129,7 @@ final class ProductionTasks
             [$items, $variants] = $this->catalogue(new Collection([$fresh]));
 
             return [
-                'task' => $this->format($fresh, $items, $variants, $this->madeFor(new Collection([$fresh]))->get((int) $fresh->id, new Collection())) ?? [],
+                'task' => $this->format($fresh, $items, $variants, $this->madeFor(new Collection([$fresh]))->get((int) $fresh->id, new Collection)) ?? [],
                 'batch' => $batch,
                 'name' => $name,
             ];
@@ -147,7 +148,7 @@ final class ProductionTasks
     {
         $ids = $records->pluck('id')->map(fn ($id) => (int) $id)->all();
         if ($ids === []) {
-            return new Collection();
+            return new Collection;
         }
 
         return KitchenProductionItem::query()
@@ -209,7 +210,7 @@ final class ProductionTasks
             // The recipe's method, for the cook making it.
             'instructions' => trim((string) ($item->recipe?->instructions ?? '')) ?: null,
             // The batches made for it (round 12): each one's stickers print from the kitchen screen.
-            'batches' => ($lines ?? new Collection())->map(fn (KitchenProductionItem $i) => [
+            'batches' => ($lines ?? new Collection)->map(fn (KitchenProductionItem $i) => [
                 'pi' => (int) $i->id,
                 'batch_no' => (string) ($i->batch_code ?: $i->batch?->batch_no ?: ''),
                 'qty' => round((float) $i->produced_qty, 1),
@@ -217,7 +218,26 @@ final class ProductionTasks
                 'expires_at' => $i->expires_at?->toDateString(),
                 'status' => (string) $i->status,
             ])->values()->all(),
+            // The wording lock (label audit, Batch B): the refusal said on the card before Print stickers is tapped.
+            'stickers_locked' => $this->stickersLocked($item, $lines),
         ];
+    }
+
+    /**
+     * The words a sticker print of this item would be refused with while the
+     * wording lock is on and its legal lines are not signed off; null when it
+     * would print, or there is no batch to print for.
+     *
+     * @param Collection<int, KitchenProductionItem>|null $lines
+     */
+    private function stickersLocked(Item $item, ?Collection $lines): ?string
+    {
+        if ($lines === null || $lines->isEmpty() || !LabelSignoffs::locked()) {
+            return null;
+        }
+        $refused = app(LabelSignoffs::class)->forPrint(['i' . $item->id => $item])['refused'];
+
+        return $refused === [] ? null : LabelSignoffs::refusalMessage($refused);
     }
 
     /**

@@ -446,6 +446,10 @@ export type StickerSummary = {
   wrap?: WrapStrips | null;
   /** On every other design: where the first product's parts are, for the preview's touch zones (empty on a wrap label). */
   spots?: LabelSpot[];
+  /** Label audit, Batch B (2026-10-16): the first product's parts this size could not draw, in plain words. */
+  dropped?: string[];
+  /** On a preview, when the wording lock would refuse the real print: the products and the refusal's words. */
+  wording?: { refused: { key: string; kind: 'item' | 'custom'; id: number; name: string }[]; message: string } | null;
   /** Label stock (round 13): the roll this print was counted off, as it now stands, with what the print took; null on a preview or when no roll matched. */
   roll?: (LabelRoll & { took: number }) | null;
 };

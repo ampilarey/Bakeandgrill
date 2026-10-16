@@ -322,6 +322,8 @@ export type KdsPlanTask = {
   instructions?: string | null;
   /** The batches made for it, newest first (round 12). */
   batches?: KdsTaskBatch[];
+  /** The wording lock's refusal for this item's stickers (label audit, Batch B), said before Print stickers; null when they print. */
+  stickers_locked?: string | null;
 };
 
 export async function fetchPlanTasks(token: string, date?: string): Promise<{ date: string; tasks: KdsPlanTask[] }> {

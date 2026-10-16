@@ -86,4 +86,21 @@ class WordingLockTest extends TestCase
         Sanctum::actingAs($manager->fresh(), ['staff']);
         $this->postJson("/api/labels/signoffs/item/{$this->bajiya->id}")->assertCreated();
     }
+
+    public function test_a_preview_draws_under_the_lock_and_says_ahead_what_a_print_would_meet(): void
+    {
+        $this->putJson('/api/labels/settings', ['label_wording_lock' => '1'])->assertOk();
+
+        // Label audit, Batch B: the preview still draws, and carries the refusal's own words and the product to sign off.
+        $this->print(['preview' => true])->assertOk()
+            ->assertJsonPath('summary.wording.message', 'The wording is locked: Bajiya has legal lines not signed off as they stand. Sign them off on the label first, or turn the lock off under Labels → Settings.')
+            ->assertJsonPath('summary.wording.refused.0', ['key' => "i{$this->bajiya->id}", 'kind' => 'item', 'id' => $this->bajiya->id, 'name' => 'Bajiya']);
+        $this->print()->assertUnprocessable();
+        $this->assertSame(0, LabelPrint::count());
+
+        // Signed off, the preview says nothing and the print goes.
+        $this->postJson("/api/labels/signoffs/item/{$this->bajiya->id}")->assertCreated();
+        $this->print(['preview' => true])->assertOk()->assertJsonMissingPath('summary.wording');
+        $this->print()->assertOk();
+    }
 }

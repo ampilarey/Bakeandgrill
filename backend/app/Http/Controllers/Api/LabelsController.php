@@ -235,13 +235,13 @@ class LabelsController extends Controller
             // A variable run (round 10): the rows' own details, aligned with items.
             'runs' => StickerSheet::runsParam($req['items']),
         ];
-        // The wording lock (round 17): a real print records the sign-off each product prints under, and with the lock on refuses one whose legal lines are not signed off as they stand.
-        $signed = ['ids' => [], 'refused' => []];
-        if (!$preview) {
-            $signed = $this->signoffs->forPrint($this->stickers->products($req['items']));
-            if ($signed['refused'] !== []) {
-                throw new InvalidArgumentException('The wording is locked: ' . implode(', ', $signed['refused']) . (count($signed['refused']) === 1 ? ' has' : ' have') . ' legal lines not signed off as they stand. Sign them off on the label first, or turn the lock off under Labels → Settings.');
+        // The wording lock (round 17): a real print records the sign-off each product prints under, and with the lock on refuses one whose legal lines are not signed off as they stand. A preview still draws and says so ahead (label audit, Batch B).
+        $signed = $this->signoffs->forPrint($this->stickers->products($req['items']));
+        if ($signed['refused'] !== []) {
+            if (!$preview) {
+                throw new InvalidArgumentException(LabelSignoffs::refusalMessage($signed['refused']));
             }
+            $summary['wording'] = ['refused' => $signed['refused_products'], 'message' => LabelSignoffs::refusalMessage($signed['refused'])];
         }
         $promoDetail = $req['promo'] === 'was_now' ? 'now MVR ' . number_format((float) $req['promo_now'], 2) : ($req['promo'] === 'text' ? $req['promo_text'] : null);
 

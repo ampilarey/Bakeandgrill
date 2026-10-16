@@ -558,7 +558,10 @@ final class StickerSheet
             if ($sheet['design'] === 'wrap') {
                 $summary['wrap'] = WrapDesign::strips($data, $dv, (float) $sheet['w'], (float) $sheet['h']);
             }
-            $summary['spots'] = LabelSpots::spots($this->pieces($sheet, $data, $dv));
+            $pieces = $this->pieces($sheet, $data, $dv);
+            $summary['spots'] = LabelSpots::spots($pieces);
+            // What the size left out (label audit, Batch B, 2026-10-16), said under the preview.
+            $summary['dropped'] = self::dropped($sheet, $data, $req['lang'], $pieces, $summary['wrap']['left_out'] ?? []);
         }
 
         return $summary;
@@ -731,6 +734,68 @@ final class StickerSheet
             'brand' => $w['brand'],
             'type_name' => $w['type_name'],
         ];
+    }
+
+    /**
+     * The parts the product has that this size could not draw (label audit,
+     * Batch B, 2026-10-16): the Dhivehi name, the ingredients, the photo, the
+     * QR and each badge, read from the pieces the sheet draws, and on a wrap
+     * label the parts its strips left out. Plain words, in that order.
+     *
+     * @param array<string, mixed> $sheet
+     * @param array<string, mixed> $data from stickerData()
+     * @param list<array<string, mixed>> $pieces with the spot markers
+     * @param array<string, string> $leftOut WrapDesign's parts left out
+     * @return list<string>
+     */
+    public static function dropped(array $sheet, array $data, string $lang, array $pieces, array $leftOut = []): array
+    {
+        $texts = [];
+        $imgs = [];
+        $spots = [];
+        foreach ($pieces as $p) {
+            $t = $p['t'] ?? null;
+            if ($t === 'text') {
+                $texts[] = (string) ($p['text'] ?? '');
+            } elseif ($t === 'img') {
+                $imgs[] = (string) ($p['src'] ?? '');
+            } elseif ($t === LabelSpots::MARK && isset($p['key'])) {
+                $spots[(string) $p['key']] = true;
+            }
+        }
+        $all = ' ' . implode(' ', $texts) . ' ';
+        $has = fn (string $word): bool => $word !== '' && str_contains($all, $word);
+        $out = [];
+        if ($sheet['design'] === 'wrap') {
+            foreach (array_keys(array_filter($leftOut, fn ($why) => $why === 'narrow')) as $part) {
+                $out[] = WrapConfig::PART_WORDS[$part][0] ?? ucfirst(str_replace('_', ' ', (string) $part));
+            }
+        } else {
+            $nameDv = (string) ($data['name_dv'] ?? '');
+            $firstDv = $nameDv !== '' ? (string) preg_split('/\s+/u', $nameDv)[0] : '';
+            if ($lang !== 'en' && $firstDv !== '' && !$has($firstDv)) {
+                $out[] = 'Dhivehi name';
+            }
+            $ingredients = $lang === 'dv' ? ($data['ingredients_dv'] ?? '') : ($data['ingredients_en'] ?? '');
+            if (trim((string) $ingredients) !== '' && !isset($spots['ingredients'])) {
+                $out[] = 'Ingredients';
+            }
+            if (!empty($data['photo']) && !isset($spots['photo'])) {
+                $out[] = 'Photo';
+            }
+            $qrs = array_filter([$data['qr'] ?? null, $data['qr_branded'] ?? null]);
+            if (!empty($data['show_qr']) && $qrs !== [] && array_intersect($qrs, $imgs) === []) {
+                $out[] = 'QR code';
+            }
+        }
+        foreach ($data['badges'] ?? [] as $b) {
+            $word = $lang === 'dv' ? $b['dv'] : $b['en'];
+            if (!$has($word)) {
+                $out[] = 'Badge ' . ucfirst(mb_strtolower($b['en']));
+            }
+        }
+
+        return $out;
     }
 
     /**
