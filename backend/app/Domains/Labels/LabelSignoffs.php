@@ -7,6 +7,7 @@ namespace App\Domains\Labels;
 use App\Models\CustomLabel;
 use App\Models\Item;
 use App\Models\LabelSignoff;
+use App\Models\Variant;
 
 /**
  * The wording lock (round 17 of the usability work, owner, 2026-10-13: "a
@@ -27,6 +28,7 @@ final class LabelSignoffs
     /** The legal lines in the order the sign-off sheet shows them, with their names. */
     public const LINES = [
         'name' => 'Name',
+        'size' => 'Size',
         'name_dv' => 'Name (Dhivehi)',
         'ingredients' => 'Ingredients',
         'ingredients_dv' => 'Ingredients (Dhivehi)',
@@ -38,7 +40,39 @@ final class LabelSignoffs
         'nutrition' => 'Nutrition',
     ];
 
-    public function __construct(private readonly StickerSheet $stickers, private readonly LabelTypes $types, private readonly Nutrition $nutrition) {}
+    public function __construct(private readonly StickerSheet $stickers, private readonly LabelTypes $types, private readonly Nutrition $nutrition, private readonly LabelIngredients $ingredients) {}
+
+    /**
+     * The size a product is signed off as (label audit, 2026-10-16): a sized
+     * copy (StickerSheet::forSize) whose lines differ from the item's, as a
+     * size with a recipe of its own does, is signed off apart; a size that
+     * prints the item's very lines stands under the item's sign-off.
+     */
+    public function sizeOf(Item|CustomLabel $product): ?Variant
+    {
+        if (!$product instanceof Item) {
+            return null;
+        }
+        $size = LabelIngredients::sizeOf($product);
+        if ($size === null) {
+            return null;
+        }
+        if ($this->ingredients->sizeRecipe($product) === 'own') {
+            return $size;
+        }
+        $plain = clone $product;
+        $plain->unsetRelation('labelSize');
+
+        return $this->baseLines($product) === $this->baseLines($plain) ? null : $size;
+    }
+
+    /** "Juice (Large)" for a size signed off apart, else the name. */
+    public function nameOf(Item|CustomLabel $product): string
+    {
+        $size = $this->sizeOf($product);
+
+        return (string) $product->name . ($size !== null ? ' (' . $size->name . ')' : '');
+    }
 
     public static function locked(): bool
     {
@@ -56,6 +90,23 @@ final class LabelSignoffs
      * @return array<string, string>
      */
     public function lines(Item|CustomLabel $product): array
+    {
+        $lines = $this->baseLines($product);
+        $size = $this->sizeOf($product);
+        if ($size === null) {
+            return $lines;
+        }
+
+        // A size signed off apart signs its name with its lines; the item's own lines carry no size, so their sign-offs stand.
+        return array_slice($lines, 0, 1, true) + ['size' => trim((string) $size->name)] + array_slice($lines, 1, null, true);
+    }
+
+    /**
+     * The legal lines without the size's name.
+     *
+     * @return array<string, string>
+     */
+    private function baseLines(Item|CustomLabel $product): array
     {
         $w = $this->types->forItem($product);
         $ing = $this->stickers->ingredientLines($product);
@@ -89,9 +140,12 @@ final class LabelSignoffs
         return hash('sha256', (string) json_encode($lines, JSON_UNESCAPED_UNICODE));
     }
 
-    public static function latest(string $kind, int $id): ?LabelSignoff
+    public static function latest(string $kind, int $id, ?int $sizeId = null): ?LabelSignoff
     {
-        return LabelSignoff::query()->with('signer:id,name')->where('kind', $kind)->where('product_id', $id)->orderByDesc('id')->first();
+        $q = LabelSignoff::query()->with('signer:id,name')->where('kind', $kind)->where('product_id', $id);
+        $sizeId === null ? $q->whereNull('size_id') : $q->where('size_id', $sizeId);
+
+        return $q->orderByDesc('id')->first();
     }
 
     /**
@@ -104,7 +158,8 @@ final class LabelSignoffs
     {
         $lines = $this->lines($product);
         $hash = self::hash($lines);
-        $last = self::latest(self::kindOf($product), (int) $product->id);
+        $size = $this->sizeOf($product);
+        $last = self::latest(self::kindOf($product), (int) $product->id, $size?->id);
         $state = $last === null ? 'none' : ($last->hash === $hash ? 'signed' : 'changed');
         $changed = [];
         if ($state === 'changed') {
@@ -119,6 +174,7 @@ final class LabelSignoffs
             'kind' => self::kindOf($product),
             'id' => (int) $product->id,
             'name' => (string) $product->name,
+            'size' => $size !== null ? ['id' => (int) $size->id, 'name' => (string) $size->name] : null,
             'state' => $state,
             'lines' => $lines,
             'changed' => $changed,
@@ -142,6 +198,7 @@ final class LabelSignoffs
         return LabelSignoff::query()->create([
             'kind' => self::kindOf($product),
             'product_id' => (int) $product->id,
+            'size_id' => $this->sizeOf($product)?->id,
             'hash' => self::hash($lines),
             'lines' => $lines,
             'note' => $note !== null && trim($note) !== '' ? mb_substr(trim($note), 0, 200) : null,
@@ -153,7 +210,7 @@ final class LabelSignoffs
      * The sign-off each product of a print prints under, or the reason the
      * lock refuses it. Keyed by the summary's product key.
      *
-     * @param array<string, Item|CustomLabel> $products keyed as StickerSheet::products()
+     * @param array<string, Item|CustomLabel> $products keyed as StickerSheet::printProducts() (the product key and size)
      * @return array{ids: array<string, ?int>, refused: list<string>, refused_products: list<array{key: string, kind: string, id: int, name: string}>}
      */
     public function forPrint(array $products): array
@@ -165,12 +222,13 @@ final class LabelSignoffs
             if (!$product instanceof Item && !$product instanceof CustomLabel) {
                 continue;
             }
-            $last = self::latest(self::kindOf($product), (int) $product->id);
+            $size = $this->sizeOf($product);
+            $last = self::latest(self::kindOf($product), (int) $product->id, $size?->id);
             $ok = $last !== null && $last->hash === self::hash($this->lines($product));
             $ids[$key] = $ok ? $last->id : null;
             if (!$ok && self::locked()) {
-                $refused[] = (string) $product->name;
-                $refusedProducts[] = ['key' => (string) $key, 'kind' => self::kindOf($product), 'id' => (int) $product->id, 'name' => (string) $product->name];
+                $refused[] = $this->nameOf($product);
+                $refusedProducts[] = ['key' => (string) $key, 'kind' => self::kindOf($product), 'id' => (int) $product->id, 'name' => $this->nameOf($product), 'size' => $size?->id];
             }
         }
 

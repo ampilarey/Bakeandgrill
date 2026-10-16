@@ -14,7 +14,7 @@ import { Button } from '../ui';
  */
 
 export const LINE_NAMES: Record<string, string> = {
-  name: 'Name', name_dv: 'Name (Dhivehi)', ingredients: 'Ingredients', ingredients_dv: 'Ingredients (Dhivehi)', allergens: 'Allergens',
+  name: 'Name', size: 'Size', name_dv: 'Name (Dhivehi)', ingredients: 'Ingredients', ingredients_dv: 'Ingredients (Dhivehi)', allergens: 'Allergens',
   storage: 'Storage line', storage_dv: 'Storage line (Dhivehi)', use_within: 'After opening', net_weight: 'Net weight', nutrition: 'Nutrition',
 };
 
@@ -39,6 +39,8 @@ export function SignoffChip({ status }: { status: LabelSignoffStatus }) {
 type Props = {
   kind: 'item' | 'custom';
   id: number;
+  /** One size of the item, signed off apart (label audit, 2026-10-16). */
+  size?: number | null;
   canManage: boolean;
   /** Bumped by the host after a save, to read the lines again. */
   refresh?: number;
@@ -47,21 +49,21 @@ type Props = {
   onChange?: (s: LabelSignoffStatus) => void;
 };
 
-export function WordingSignoff({ kind, id, canManage, refresh = 0, initial, onChange }: Props) {
+export function WordingSignoff({ kind, id, size = null, canManage, refresh = 0, initial, onChange }: Props) {
   const [status, setStatus] = useState<LabelSignoffStatus | null>(initial ?? null);
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     if (initial && refresh === 0) return;
-    fetchLabelSignoff(kind, id).then((r) => setStatus(r.data)).catch(() => setStatus(null));
-  }, [kind, id, refresh]); // eslint-disable-line react-hooks/exhaustive-deps
+    fetchLabelSignoff(kind, id, size).then((r) => setStatus(r.data)).catch(() => setStatus(null));
+  }, [kind, id, size, refresh]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!status) return null;
   const signOff = async () => {
     setBusy(true); setError(null);
     try {
-      const r = await signOffLabel(kind, id, note.trim() || null);
+      const r = await signOffLabel(kind, id, note.trim() || null, size);
       setStatus(r.data);
       setNote('');
       onChange?.(r.data);

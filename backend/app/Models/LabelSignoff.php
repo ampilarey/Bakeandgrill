@@ -15,9 +15,9 @@ class LabelSignoff extends Model
 {
     public const UPDATED_AT = null;
 
-    protected $fillable = ['kind', 'product_id', 'hash', 'lines', 'note', 'signed_by'];
+    protected $fillable = ['kind', 'product_id', 'size_id', 'hash', 'lines', 'note', 'signed_by'];
 
-    protected $casts = ['lines' => 'array', 'product_id' => 'integer'];
+    protected $casts = ['lines' => 'array', 'product_id' => 'integer', 'size_id' => 'integer'];
 
     public function signer(): BelongsTo
     {

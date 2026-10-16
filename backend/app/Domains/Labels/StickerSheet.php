@@ -76,8 +76,14 @@ final class StickerSheet
         StickerLayouts::resolve($layout, $w, $h); // throws for a bad custom size
 
         $items = [];
+        // Each row its own key (label audit, 2026-10-16): the product's ("i12"),
+        // then "i12r2", "i12r3" for more rows of it (another batch or size), so
+        // each row's stickers carry a print code of their own.
+        $seen = [];
         foreach (self::parseItems($in['items'] ?? []) as $row) {
-            $items[] = $row;
+            $key = self::key($row);
+            $seen[$key] = ($seen[$key] ?? 0) + 1;
+            $items[] = $row + ['row' => $seen[$key] === 1 ? $key : $key . 'r' . $seen[$key]];
         }
         if ($items === []) {
             throw new InvalidArgumentException('Pick at least one product.');
@@ -415,6 +421,32 @@ final class StickerSheet
     }
 
     /**
+     * The products of a print as they print, a row each (label audit,
+     * 2026-10-16): each row's product for its size, keyed "i12|5" (the
+     * product key and the size it prints, empty for none, as the summary's
+     * products carry it), so two sizes of one item are
+     * signed off, and their prints recorded, apart.
+     *
+     * @param array<string, mixed> $req from normalise()
+     * @return array<string, Item|CustomLabel>
+     */
+    public function printProducts(array $req): array
+    {
+        $found = $this->products($req['items']);
+        $out = [];
+        foreach ($req['items'] as $row) {
+            $product = $found[self::key($row)] ?? null;
+            if ($product instanceof Item || $product instanceof CustomLabel) {
+                $sized = $this->forSize($product, self::rowRequest($req, $row));
+                $size = $sized instanceof Item ? LabelIngredients::sizeOf($sized) : null;
+                $out[self::key($row) . '|' . ($size?->id ?? '')] = $sized;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * The menu items and custom labels a request names, keyed "i12" / "c5";
      * a draft custom label ("d" + its cache token) is built from the cache.
      *
@@ -515,6 +547,8 @@ final class StickerSheet
                 'id' => $product->id,
                 'kind' => $row['kind'],
                 'key' => self::key($row),
+                // This row's own key: the product key, or "i12r2" for its second row (label audit, 2026-10-16).
+                'row' => $row['row'] ?? self::key($row),
                 'name' => $product->name,
                 // The size this row is for, and where its recipe came from (label audit, 2026-10-16).
                 'size' => $size !== null ? ['id' => (int) $size->id, 'name' => (string) $size->name] : null,
@@ -643,7 +677,8 @@ final class StickerSheet
         // page), and allergen pictograms above the note; each behind a
         // switch on Labels → Settings. A draft custom label has no code.
         $key = $item instanceof CustomLabel ? ($item->exists ? 'c' . $item->id : null) : 'i' . $item->id;
-        $printCode = $key !== null ? ($req['codes'][$key] ?? null) : null;
+        // The row's own code when it has one (another batch of the same product), else the product's.
+        $printCode = $key !== null ? ($req['codes'][$req['row'] ?? $key] ?? $req['codes'][$key] ?? null) : null;
         $spicy = $item instanceof Item && in_array((string) $item->spice_level, AllergenIcons::SPICY_LEVELS, true);
 
         $batchQr = $printCode !== null && LabelSettings::on('label_batch_qr') ? BatchLink::qr($printCode) : null;
@@ -966,10 +1001,13 @@ final class StickerSheet
             }
         }
         $merged = [];
-        foreach ($rows as $row) {
+        foreach ($rows as $i => $row) {
             if ((is_string($row['id']) ? $row['id'] !== '' : $row['id'] > 0) && $row['copies'] > 0) {
-                // Two sizes of one item are two rows (label audit, 2026-10-16).
-                $key = self::key($row) . '|' . ($row['run']['size'] ?? '');
+                // Picks of one product with the same details add up; another
+                // size, batch, dates or kitchen batch is a row of its own (label
+                // audit, 2026-10-16). A sheet link's rows are already one each,
+                // its runs aligned by place, so they never merge.
+                $key = is_string($raw) ? (string) $i : self::key($row) . '|' . json_encode($row['run'] ?? []) . '|' . ($row['pi'] ?? '');
                 $merged[$key] ??= ['id' => $row['id'], 'copies' => 0, 'kind' => $row['kind'], 'run' => $row['run'] ?? []] + (isset($row['pi']) ? ['pi' => $row['pi']] : []);
                 $merged[$key]['copies'] += min($row['copies'], self::MAX_STICKERS);
             }
@@ -1067,6 +1105,7 @@ final class StickerSheet
     public static function rowRequest(array $req, array $row): array
     {
         $run = $row['run'] ?? [];
+        $req['row'] = $row['row'] ?? null;
         if ($run === []) {
             return $req;
         }

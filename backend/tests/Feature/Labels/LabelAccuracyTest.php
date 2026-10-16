@@ -173,4 +173,37 @@ class LabelAccuracyTest extends TestCase
         $this->assertStringContainsString('Per serving (80 g)', $after['nutrition']);
         $this->assertNotSame(\App\Domains\Labels\LabelSignoffs::hash($before), \App\Domains\Labels\LabelSignoffs::hash($after));
     }
+
+    public function test_a_size_with_its_own_recipe_is_signed_off_apart(): void
+    {
+        [$juice, $small, $large] = $this->juice();
+        // A third size with no recipe rows of its own shares the item's unsized ones.
+        $medium = Variant::create(['item_id' => $juice->id, 'name' => 'Medium', 'price' => 20, 'is_active' => true, 'sort_order' => 3]);
+        RecipeItem::create(['recipe_id' => $juice->recipe->id, 'inventory_item_id' => $this->inventory('Mango pulp')->id, 'variant_id' => null, 'quantity' => 300, 'unit' => 'g']);
+        $this->putJson('/api/labels/settings', ['label_wording_lock' => '1'])->assertOk();
+        $print = fn (int $size) => $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $juice->id, 'copies' => 1, 'size' => $size]], 'layout' => 'a4-4']);
+
+        // The list has the item and a row per size with its own recipe.
+        $rows = collect($this->getJson('/api/labels/signoffs')->assertOk()->json('data'))->where('id', $juice->id);
+        $this->assertSame([null, 'Small', 'Large'], $rows->pluck('size.name')->all());
+        $this->assertSame('Large', $rows->last()['lines']['size']);
+        $this->assertArrayNotHasKey('size', $rows->first()['lines']);
+        $sizes = collect($this->getJson('/api/labels/products')->json('data'))->firstWhere('id', $juice->id)['sizes'];
+        $this->assertSame([$small->id => true, $large->id => true, $medium->id => false], array_column($sizes, 'own_recipe', 'id'));
+
+        // The item signed off covers the item and the size sharing its recipe, not a size with its own.
+        $this->postJson("/api/labels/signoffs/item/{$juice->id}")->assertCreated();
+        $print($medium->id)->assertOk();
+        $print($large->id)->assertUnprocessable()->assertJsonPath('message', 'The wording is locked: Mango juice (Large) has legal lines not signed off as they stand. Sign them off on the label first, or turn the lock off under Labels → Settings.');
+        $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $juice->id, 'copies' => 1, 'size' => $large->id]], 'layout' => 'a4-4', 'preview' => true])->assertOk()
+            ->assertJsonPath('summary.wording.refused.0.size', $large->id)->assertJsonPath('summary.wording.refused.0.name', 'Mango juice (Large)');
+
+        // Signing the size off lets it print, under its own sign-off.
+        $this->getJson("/api/labels/signoffs/item/{$juice->id}?size={$large->id}")->assertOk()->assertJsonPath('data.state', 'none')->assertJsonPath('data.size.name', 'Large');
+        $signed = $this->postJson("/api/labels/signoffs/item/{$juice->id}", ['size' => $large->id])->assertCreated()->assertJsonPath('data.state', 'signed')->json('data.signed.id');
+        $print($large->id)->assertOk();
+        $this->assertSame($signed, \App\Models\LabelPrint::query()->latest('id')->first()->details['signoff']);
+        $this->assertSame('signed', $this->getJson("/api/labels/signoffs/item/{$juice->id}")->json('data.state'));
+        $this->assertCount(1, $this->getJson("/api/labels/signoffs/item/{$juice->id}/history?size={$large->id}")->json('data'));
+    }
 }

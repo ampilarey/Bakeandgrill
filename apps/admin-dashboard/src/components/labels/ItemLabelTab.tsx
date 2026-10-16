@@ -272,6 +272,13 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
           <legend className="px-1 text-sm font-bold text-[var(--color-text)]">Legal wording</legend>
           <FoldHelp>What the law cares about on the sticker, as it prints now. Sign it off once checked; a change after that shows here and, with the wording locked under Settings, stops the label printing until signed off again. Save first: the lines are the saved ones.</FoldHelp>
           <WordingSignoff kind="item" id={itemId} canManage refresh={savedTick} />
+          {/* A size whose lines differ (its own recipe) is signed off apart (label audit, 2026-10-16). */}
+          {(product.sizes ?? []).filter((z) => z.own_recipe).map((z) => (
+            <div key={z.id} className="mt-3 pt-3 border-t border-[var(--color-border-light)]" data-testid={`signoff-size-${z.id}`}>
+              <p className="text-xs font-bold text-[var(--color-text-secondary)] mb-1">{z.name}: its own recipe, signed off apart</p>
+              <WordingSignoff kind="item" id={itemId} size={z.id} canManage refresh={savedTick} />
+            </div>
+          ))}
         </fieldset>
 
         {/* The wrap-around label's parts (owner, 2026-10-12: a bottle label with parts side by side). */}

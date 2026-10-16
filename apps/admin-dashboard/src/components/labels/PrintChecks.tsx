@@ -32,7 +32,7 @@ export function WordingLockNotice({ wording, canManage, onSigned }: { wording: W
       </div>
       {open && (
         <Modal title={`Wording of ${open.name}`} onClose={() => setOpen(null)} maxWidth={560}>
-          <WordingSignoff kind={open.kind} id={open.id} canManage={canManage} onChange={(s) => { if (s.state === 'signed') { setOpen(null); onSigned(); } }} />
+          <WordingSignoff kind={open.kind} id={open.id} size={open.size ?? null} canManage={canManage} onChange={(s) => { if (s.state === 'signed') { setOpen(null); onSigned(); } }} />
         </Modal>
       )}
     </div>

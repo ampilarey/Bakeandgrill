@@ -94,7 +94,7 @@ class WordingLockTest extends TestCase
         // Label audit, Batch B: the preview still draws, and carries the refusal's own words and the product to sign off.
         $this->print(['preview' => true])->assertOk()
             ->assertJsonPath('summary.wording.message', 'The wording is locked: Bajiya has legal lines not signed off as they stand. Sign them off on the label first, or turn the lock off under Labels → Settings.')
-            ->assertJsonPath('summary.wording.refused.0', ['key' => "i{$this->bajiya->id}", 'kind' => 'item', 'id' => $this->bajiya->id, 'name' => 'Bajiya']);
+            ->assertJsonPath('summary.wording.refused.0', ['key' => "i{$this->bajiya->id}|", 'kind' => 'item', 'id' => $this->bajiya->id, 'name' => 'Bajiya', 'size' => null]);
         $this->print()->assertUnprocessable();
         $this->assertSame(0, LabelPrint::count());
 

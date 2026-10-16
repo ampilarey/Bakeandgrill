@@ -488,6 +488,81 @@ fixture gains the four lines). Admin: `WordingSignoff.tsx` (`SignoffChip`,
 `CustomLabels.tsx`; `fetchLabelSignoffs()`, `fetchLabelSignoff()`, `signOffLabel()` in
 `api/labels.ts`. Tests: `WordingLockTest`, `WordingSignoff.test.tsx`.
 
+## The label audit (2026-10-16): fewer surprises when printing
+
+Four batches and a round of follow-ups. What changed for the person printing:
+
+### Sizes
+
+- **A sized item's sticker is for one size.** Print labels, the wizard and the kitchen
+  screen say which size. The sticker prints that size's price and its recipe's
+  ingredients and nutrition. With no size picked, the cheapest price prints as
+  "From MVR 15.00". A typed label price still wins, and the Daily Specials price never
+  prints. A size with no recipe rows of its own uses the item's, and the summary says so.
+- **A size with its own lines is signed off apart.** When a size's legal lines differ from
+  the item's (it has its own recipe), the item's Label tab shows a sign-off for that size
+  under the item's, and Settings → Wording lock lists it as "Juice (Large)". A size
+  that prints the item's very lines stands under the item's sign-off. With the lock on, a
+  refused print names the size.
+
+### Print again and dates
+
+- **Print again dates as the saved label says.** On Saved labels each sticker label
+  shows **Shelf life from today** (dates worked out again from today) or **Keep use-by
+  {date}** (the typed date kept; a date that has passed is refused with a plain message).
+  Tap the chip to switch. A label with no typed use-by is "Shelf life from today".
+- **The wizard can take a use-by for one print**, and its last step shows the use-by that
+  will print, with the **Short life** mark at 3 days or fewer.
+
+### Before Prepare
+
+- **Wording lock, said ahead.** Print labels and the wizard show the lock's message before
+  Prepare, with a **Sign off** button beside each label (a pop-up with its lines); Prepare,
+  Print and PDF stay off until it is signed. The preview still draws. The kitchen card says
+  the same, and its Print stickers button stays off.
+- **"Did not fit on this size: …"** under the preview: the Dhivehi name, ingredients,
+  photo, QR or badges a small size could not draw, and a wrap label's strips that were too
+  narrow. A bigger size prints them.
+- **The print and PDF links last 30 minutes.** Prepare again after that.
+
+### Label rolls
+
+- **No guessing between rolls.** With two rolls of the same size, Print labels asks
+  **Which roll is in the printer?** (Prepare waits for a roll or **Do not count this
+  print**); a roll tapped in the size list or the wizard is the one counted. A print that
+  names no roll when two share the size counts off neither and says so.
+- **Two prints at once both come off the roll** (the count is changed under a lock).
+- **Every print says its roll**: Print labels, the wizard, the kitchen screen and a custom
+  label's Save (the roll Print labels last used for that size).
+- **A custom label's Save does not use stock.** Save keeps the label under Saved labels
+  without printing: nothing is logged and nothing comes off a roll until it is printed from
+  there.
+
+### Bluetooth
+
+- If a send stops part way, it says **"Sent 2 of 4 stickers; the other 2 did not reach the
+  printer."** iPhones and iPads still cannot print over Bluetooth.
+
+### Kitchen screen: today's packs
+
+- **Print stickers for today's packs** lists every batch of today's plan for items on
+  labels, each with **Not printed yet** or how many have printed (from the print log, by
+  batch). The bare ones are ticked; one Print makes one PDF on the kitchen's roll, each
+  batch with its own batch number, use-by and size. Two batches of one item sit on the
+  same sheet, each with a print code of its own, so scanning a pack reprints that batch. A
+  pack whose wording is not signed off under the lock is shown but never ticked.
+
+Where: `StickerSheet::forSize()`, `price()`, `dropped()`, `printProducts()`, row keys
+(`row`, "i12" then "i12r2", in `normalise()`; codes and `Reprint::of()` follow the row);
+`LabelIngredients::sizeOf()` / `sizeRecipe()`; `LabelJob::dateMode()`; `LabelSignoffs`
+(`sizeOf()`, `nameOf()`, `refusalMessage()`, `label_signoffs.size_id`);
+`LabelRolls::pick()` and the locked `consume()`; `save` on `POST /labels/stickers/url`;
+`printed`, `mfg`, `label_enabled` and `stickers_locked` on the kitchen's plan tasks. Admin:
+`PrintChecks.tsx`, `pickRoll()` / `rememberedRoll()` in `labelSize.ts`, `bluetoothPrinter.ts`
+(`stickerEnds()`, `PartialSendError`). Kitchen screen: `TodaysPacks.tsx`. Tests:
+`LabelAccuracyTest`, `LabelFitTest`, `LabelStockTest`, `KitchenStickersTest`,
+`WordingLockTest`.
+
 ## Who can use it
 
 Two permissions, both owner-only until granted in Staff → Permissions (to a role or

@@ -37,7 +37,7 @@ describe('WordingSignoff', () => {
     expect(box).toHaveTextContent('Will not print until signed off: the wording is locked.');
     fireEvent.change(within(box).getByLabelText('Sign-off note'), { target: { value: 'Chilli added' } });
     fireEvent.click(within(box).getByTestId('signoff-button'));
-    await waitFor(() => expect(api.signOffLabel).toHaveBeenCalledWith('item', 7, 'Chilli added'));
+    await waitFor(() => expect(api.signOffLabel).toHaveBeenCalledWith('item', 7, 'Chilli added', null));
     expect(await within(box).findByTestId('signoff-words')).toHaveTextContent('Signed off by Aminath');
     expect(within(box).queryByTestId('signoff-button')).toBeNull();
   });
@@ -48,6 +48,29 @@ describe('WordingSignoff', () => {
     render(<WordingSignoff kind="item" id={7} canManage={false} />);
     expect(await screen.findByText('Someone with Manage label settings signs the wording off.')).toBeInTheDocument();
     expect(screen.queryByTestId('signoff-button')).toBeNull();
+  });
+});
+
+describe('WordingSignoff for one size', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  // Label audit, 2026-10-16: a size with its own recipe is signed off apart.
+  it('reads and signs off the size it is given', async () => {
+    const large = { ...changed, size: { id: 5, name: 'Large' }, state: 'none' as const, signed: null, changed: [], lines: { ...lines, size: 'Large' } };
+    api.fetchLabelSignoff.mockResolvedValue({ data: large, lines: {} });
+    api.signOffLabel.mockResolvedValue({ data: { ...large, state: 'signed', printable: true, signed: { id: 9, by: 'Aminath', at: null, note: null, lines: large.lines } } });
+    render(<WordingSignoff kind="item" id={7} size={5} canManage />);
+    expect(await screen.findByTestId('signoff-line-size')).toHaveTextContent('Large');
+    expect(api.fetchLabelSignoff).toHaveBeenCalledWith('item', 7, 5);
+    fireEvent.click(screen.getByTestId('signoff-button'));
+    await waitFor(() => expect(api.signOffLabel).toHaveBeenCalledWith('item', 7, null, 5));
+  });
+
+  it('lists a size signed off apart as its own row', async () => {
+    api.fetchLabelSignoffs.mockResolvedValue({ data: [changed, { ...changed, size: { id: 5, name: 'Large' }, state: 'none', signed: null, changed: [] }], locked: true, lines: {} });
+    render(<WordingLockCard canManage />);
+    expect(await screen.findByTestId('wording-row-item7s5')).toHaveTextContent('Bajiya(Large)');
+    expect(screen.getByTestId('wording-row-item7')).toBeInTheDocument();
   });
 });
 

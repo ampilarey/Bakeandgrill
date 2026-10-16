@@ -46,7 +46,8 @@ export type LabelProduct = {
   /** Round 15: the serving size in g (or ml), for a per-serving column beside per 100. */
   label_serving_g?: number | null;
   /** The item's active sizes; a sticker for a sized item says which one it is for (label audit, 2026-10-16). */
-  sizes?: { id: number; name: string; price: number }[];
+  /** `own_recipe`: the size prints lines of its own, so its wording is signed off apart. */
+  sizes?: { id: number; name: string; price: number; own_recipe?: boolean }[];
   /** The wrap-around label's parts (2026-10-12), as they stand (the defaults when nothing is kept). */
   label_wrap: LabelWrap;
   wrap_pictures: WrapPicture[];
@@ -328,6 +329,8 @@ export type StickerRequest = {
   /** Rounded corners on a rectangle's cut line. */
   rounded?: boolean;
   preview?: boolean;
+  /** Keep it under Saved labels without printing: nothing logged or counted off a roll (label audit, 2026-10-16). */
+  save?: boolean;
   /** Packed for (2026-10-12): who the packs are for, and a second line (the delivery, the date). */
   for?: string | null;
   for2?: string | null;
@@ -437,7 +440,7 @@ export type StickerSummary = {
   pages: number;
   per_page: number;
   /** `code`: the print's code (2026-10-12), which its stickers carry as a QR; null on a preview. */
-  products: { id: number; kind?: 'item' | 'custom'; key?: string; name: string; copies: number; mfg: string | null; exp: string | null; shelf_life_days: number | null; ingredients_from: string; code?: string | null;
+  products: { id: number; kind?: 'item' | 'custom'; key?: string; /** This row's own key: the product key, or "i12r2" for its second row (another size or batch). */ row?: string; name: string; copies: number; mfg: string | null; exp: string | null; shelf_life_days: number | null; ingredients_from: string; code?: string | null;
     /** The size this row is for, its recipe's source ('shared' when the size has no rows of its own) and the price it prints (label audit, 2026-10-16). */
     size?: { id: number; name: string } | null; size_recipe?: 'own' | 'shared' | null; price?: string;
     /** What the row prints with (round 10): its own details where it has them (`varied`), else the sheet's. */
@@ -449,7 +452,7 @@ export type StickerSummary = {
   /** Label audit, Batch B (2026-10-16): the first product's parts this size could not draw, in plain words. */
   dropped?: string[];
   /** On a preview, when the wording lock would refuse the real print: the products and the refusal's words. */
-  wording?: { refused: { key: string; kind: 'item' | 'custom'; id: number; name: string }[]; message: string } | null;
+  wording?: { refused: { key: string; kind: 'item' | 'custom'; id: number; name: string; size?: number | null }[]; message: string } | null;
   /** Label stock (round 13): the roll this print was counted off, as it now stands, with what the print took; null on a preview or when no roll matched. */
   roll?: (LabelRoll & { took: number }) | null;
   /** Label audit, Batch C: two or more rolls of this size and none named, so none was counted; their names. */
@@ -753,6 +756,8 @@ export function fetchLabelPrints(params: { page?: number; kind?: string } = {}) 
 export type LabelSignoffLines = Record<string, string>;
 export type LabelSignoffStatus = {
   kind: 'item' | 'custom'; id: number; name: string;
+  /** A size signed off apart (label audit, 2026-10-16): its lines differ from the item's. */
+  size?: { id: number; name: string } | null;
   state: 'none' | 'signed' | 'changed';
   lines: LabelSignoffLines; changed: string[];
   signed: { id: number; by: string | null; at: string | null; note: string | null; lines: LabelSignoffLines } | null;
@@ -763,12 +768,12 @@ export function fetchLabelSignoffs() {
   return req<{ data: LabelSignoffStatus[]; locked: boolean; lines: Record<string, string> }>('/labels/signoffs');
 }
 
-export function fetchLabelSignoff(kind: 'item' | 'custom', id: number) {
-  return req<{ data: LabelSignoffStatus; lines: Record<string, string> }>(`/labels/signoffs/${kind}/${id}`);
+export function fetchLabelSignoff(kind: 'item' | 'custom', id: number, size: number | null = null) {
+  return req<{ data: LabelSignoffStatus; lines: Record<string, string> }>(`/labels/signoffs/${kind}/${id}${size ? `?size=${size}` : ''}`);
 }
 
-export function signOffLabel(kind: 'item' | 'custom', id: number, note: string | null) {
-  return req<{ data: LabelSignoffStatus }>(`/labels/signoffs/${kind}/${id}`, { method: 'POST', body: JSON.stringify({ note }) });
+export function signOffLabel(kind: 'item' | 'custom', id: number, note: string | null, size: number | null = null) {
+  return req<{ data: LabelSignoffStatus }>(`/labels/signoffs/${kind}/${id}`, { method: 'POST', body: JSON.stringify(size ? { note, size } : { note }) });
 }
 
 /** A print by the code on its stickers (round 11, scan to reprint); 404 when no pack has it. */

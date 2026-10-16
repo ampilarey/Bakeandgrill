@@ -181,4 +181,32 @@ class KitchenStickersTest extends TestCase
         $this->assertSame([4, 6], [$tasks['Patties']['batches'][0]['printed'], $tasks['Bajiya']['batches'][0]['printed']]);
         $this->assertSame($rows[1]['pi'], (int) LabelPrint::query()->where('item_id', $this->bajiya->id)->value('kitchen_production_item_id'));
     }
+
+    public function test_two_batches_of_one_item_print_on_one_sheet_each_with_its_own_code(): void
+    {
+        // Label audit, 2026-10-16: no "next set" for a second batch of the same item.
+        $record = $this->plan();
+        Sanctum::actingAs($this->cook, ['staff']);
+        $this->postJson("/api/production-plan/tasks/{$record->id}/made", ['qty' => 3])->assertCreated();
+        $this->postJson("/api/production-plan/tasks/{$record->id}/made", ['qty' => 2])->assertCreated();
+        $batches = $this->getJson('/api/production-plan/tasks?date=' . self::DAY)->json('tasks.0.batches');
+        $this->assertCount(2, $batches);
+
+        $items = array_map(fn (array $b) => ['id' => $this->bajiya->id, 'copies' => (int) $b['qty'], 'pi' => $b['pi'], 'batch' => $b['batch_no'], 'mfg' => $b['mfg'], 'exp' => $b['expires_at']], $batches);
+        $res = $this->postJson('/api/labels/stickers/url', ['items' => $items, 'layout' => 'a4-custom', 'w' => 40, 'h' => 60, 'fill' => true])->assertOk()
+            ->assertJsonPath('summary.stickers', 5)->assertJsonCount(2, 'summary.products')
+            ->assertJsonPath('summary.products.0.row', "i{$this->bajiya->id}")->assertJsonPath('summary.products.1.row', "i{$this->bajiya->id}r2");
+        $prints = LabelPrint::query()->orderBy('id')->get();
+        $this->assertCount(2, $prints);
+        $this->assertSame(array_column($batches, 'pi'), $prints->pluck('kitchen_production_item_id')->map(fn ($v) => (int) $v)->all());
+        $this->assertSame(array_column($batches, 'batch_no'), $prints->pluck('batch_code')->all());
+        $this->assertNotSame($prints[0]->code, $prints[1]->code);
+        // The sheet link carries both codes, one per row, and draws all five stickers.
+        $b = [];
+        parse_str((string) parse_url((string) $res->json('url'), PHP_URL_QUERY), $b);
+        $this->assertSame("i{$this->bajiya->id}:{$prints[0]->code},i{$this->bajiya->id}r2:{$prints[1]->code}", $b['b']);
+        $this->get((string) $res->json('view_url'))->assertOk()->assertSee($prints[1]->batch_code);
+        // Scanning the second batch's code prints that batch again.
+        $this->getJson("/api/labels/prints/{$prints[1]->code}")->assertOk()->assertJsonPath('data.request.items.0.batch', $prints[1]->batch_code)->assertJsonPath('data.request.items.0.copies', (int) $batches[1]['qty']);
+    }
 }

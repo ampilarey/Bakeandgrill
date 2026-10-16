@@ -409,7 +409,7 @@ describe('CustomLabelsTab', () => {
       </MemoryRouter>,
     );
     fireEvent.click(await screen.findByRole('button', { name: 'Save Theluli Rihaakuru to Saved labels' }));
-    await waitFor(() => expect(stickerLinks).toHaveBeenCalledWith({ items: [{ id: 8, copies: 4, kind: 'custom' }], layout: 'a4-4', w: null, h: null, roll: null, lang: 'both', fill: true }));
+    await waitFor(() => expect(stickerLinks).toHaveBeenCalledWith({ items: [{ id: 8, copies: 4, kind: 'custom' }], layout: 'a4-4', w: null, h: null, roll: null, lang: 'both', fill: true, save: true }));
     expect(await screen.findByTestId('saved-tab')).toBeInTheDocument();
     expect(screen.getByText('Saved as “Theluli Rihaakuru · 4 stickers”.')).toBeInTheDocument();
   });
@@ -424,7 +424,7 @@ describe('CustomLabelsTab', () => {
     wrap(<CustomLabelsTab canManage={false} />);
     await waitFor(() => expect(fetchLabelLayouts).toHaveBeenCalled());
     fireEvent.click(await screen.findByRole('button', { name: 'Save Garlic Sauce to Saved labels' }));
-    await waitFor(() => expect(stickerLinks).toHaveBeenCalledWith({ items: [{ id: 7, copies: 21, kind: 'custom' }], layout: 'a4-custom', w: 40, h: 60, roll: 'sheets', lang: 'en', fill: true }));
+    await waitFor(() => expect(stickerLinks).toHaveBeenCalledWith({ items: [{ id: 7, copies: 21, kind: 'custom' }], layout: 'a4-custom', w: 40, h: 60, roll: 'sheets', lang: 'en', fill: true, save: true }));
     // Label audit, Batch C: the roll Print labels last printed it on goes too, so the count comes off that one.
   });
 

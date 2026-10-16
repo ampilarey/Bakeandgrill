@@ -175,4 +175,21 @@ class LabelStockTest extends TestCase
         $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $this->bajiya->id, 'copies' => 3]], 'layout' => $req['layout'], 'w' => $req['w'], 'h' => $req['h'], 'roll' => 'small'])->assertOk()->assertJsonPath('summary.roll.left', 37);
         $this->assertSame(37, $this->roll('small')['left']);
     }
+
+    public function test_saving_a_label_without_printing_counts_nothing_off_the_roll(): void
+    {
+        // Label audit, 2026-10-16: a custom label's Save keeps the label, and only a print counts.
+        $req = LabelRolls::request(LabelRolls::find('small'));
+        $body = ['items' => [['id' => $this->bajiya->id, 'copies' => 5]], 'layout' => $req['layout'], 'w' => $req['w'], 'h' => $req['h'], 'roll' => 'small'];
+        $job = $this->postJson('/api/labels/stickers/url', $body + ['save' => true])->assertOk()->assertJsonPath('saved_only', true)->assertJsonPath('summary.roll', null)->json('job');
+        $this->assertSame(60, $this->roll('small')['left']);
+        $this->assertSame(0, \App\Models\LabelPrint::query()->count());
+        $this->assertSame(0, LabelJob::query()->findOrFail($job['id'])->print_count);
+
+        // Printed from Saved labels, it counts, under the same saved label.
+        $this->postJson("/api/labels/jobs/{$job['id']}/print")->assertOk()->assertJsonPath('summary.roll.left', 55);
+        $this->assertSame(1, LabelJob::query()->count());
+        $this->assertSame(1, LabelJob::query()->findOrFail($job['id'])->print_count);
+        $this->assertSame(1, \App\Models\LabelPrint::query()->count());
+    }
 }

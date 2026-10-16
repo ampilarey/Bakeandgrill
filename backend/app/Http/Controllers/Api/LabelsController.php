@@ -151,6 +151,8 @@ class LabelsController extends Controller
             'footer' => 'nullable|integer|exists:label_footers,id',
             'rounded' => 'sometimes|boolean',
             'preview' => 'sometimes|boolean',
+            // Save to Saved labels without printing (label audit, 2026-10-16): no print log, no roll counted.
+            'save' => 'sometimes|boolean',
             // Packed for, and a promotion flash (2026-10-12).
             'for' => 'nullable|string|max:60',
             'for2' => 'nullable|string|max:60',
@@ -185,12 +187,15 @@ class LabelsController extends Controller
         try {
             $req = StickerSheet::normalise($request->all());
             $preview = $request->boolean('preview');
-            $out = $this->stickerLinks($req, $request->user()?->id, $preview, $request->filled('dpi') ? $request->integer('dpi') : null);
+            // A save is drawn as a preview is: nothing printed, logged or counted off a roll until it is printed from Saved labels.
+            $save = !$preview && $request->boolean('save');
+            $out = $this->stickerLinks($req, $request->user()?->id, $preview || $save, $request->filled('dpi') ? $request->integer('dpi') : null);
         } catch (InvalidArgumentException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
         if (!$preview) {
-            $out['job'] = $this->rememberJob('stickers', array_intersect_key($request->all(), array_flip(self::STICKER_KEYS)), $out['summary'], $request->user()?->id);
+            $out['job'] = $this->rememberJob('stickers', array_intersect_key($request->all(), array_flip(self::STICKER_KEYS)), $out['summary'], $request->user()?->id, printed: !$save);
+            $out['saved_only'] = $save;
         }
 
         return response()->json($out);
@@ -237,7 +242,7 @@ class LabelsController extends Controller
             'runs' => StickerSheet::runsParam($req['items']),
         ];
         // The wording lock (round 17): a real print records the sign-off each product prints under, and with the lock on refuses one whose legal lines are not signed off as they stand. A preview still draws and says so ahead (label audit, Batch B).
-        $signed = $this->signoffs->forPrint($this->stickers->products($req['items']));
+        $signed = $this->signoffs->forPrint($this->stickers->printProducts($req));
         if ($signed['refused'] !== []) {
             if (!$preview) {
                 throw new InvalidArgumentException(LabelSignoffs::refusalMessage($signed['refused']));
@@ -252,7 +257,7 @@ class LabelsController extends Controller
         $codes = [];
         foreach ($summary['products'] as $i => $p) {
             $code = $preview ? BatchLink::PREVIEW : LabelPrint::newCode();
-            $codes[$p['key']] = $code;
+            $codes[$p['row'] ?? $p['key']] = $code;
             $summary['products'][$i]['code'] = $preview ? null : $code;
             if (!$preview) {
                 LabelPrint::create([
@@ -272,7 +277,7 @@ class LabelsController extends Controller
                     // Each product's own batch, quantity and packed-for when the run varies (round 10), else the sheet's.
                     'batch_code' => ($p['batch'] ?? '') !== '' ? $p['batch'] : null,
                     'pack_qty' => $p['qty'] ?? null,
-                    'details' => ($details = array_filter(['for' => $p['for'] ?? null, 'for2' => $p['for2'] ?? null, 'promo' => $promoDetail, 'reprint_of' => $req['reprint'] ?? null, 'signoff' => $signed['ids'][$p['key']] ?? null], fn ($v) => $v !== null && $v !== '')) !== [] ? $details : null,
+                    'details' => ($details = array_filter(['for' => $p['for'] ?? null, 'for2' => $p['for2'] ?? null, 'promo' => $promoDetail, 'reprint_of' => $req['reprint'] ?? null, 'signoff' => $signed['ids'][$p['key'] . '|' . ($p['size']['id'] ?? '')] ?? null], fn ($v) => $v !== null && $v !== '')) !== [] ? $details : null,
                     // The request that made this product's print (round 11): a scan of its code prints it again.
                     'request' => Reprint::of($req, $p),
                     'printed_by' => $userId,
@@ -398,7 +403,7 @@ class LabelsController extends Controller
      * @param array<string, mixed> $summary
      * @return array{id: int, name: string}
      */
-    private function rememberJob(string $kind, array $request, array $summary, ?int $userId): array
+    private function rememberJob(string $kind, array $request, array $summary, ?int $userId, bool $printed = true): array
     {
         $hash = LabelJob::hashOf($kind, $request);
         $job = LabelJob::query()->where('request_hash', $hash)->first();
@@ -412,7 +417,8 @@ class LabelsController extends Controller
                 'created_by' => $userId,
             ]);
         }
-        $job->forceFill(['print_count' => $job->print_count + 1, 'last_printed_at' => now(), 'summary' => $summary])->save();
+        // Saved without printing (a custom label's Save): kept, not counted as a print.
+        $job->forceFill($printed ? ['print_count' => $job->print_count + 1, 'last_printed_at' => now(), 'summary' => $summary] : ['summary' => $summary])->save();
 
         return ['id' => $job->id, 'name' => $job->name];
     }
@@ -883,12 +889,18 @@ class LabelsController extends Controller
 
     // ---- The wording lock (round 17, 2026-10-13) ----
 
-    /** Every product on labels with where its legal lines stand, and whether the lock is on. */
+    /** Every product on labels with where its legal lines stand, and whether the lock is on; a size with its own recipe is a row of its own. */
     public function signoffs(): JsonResponse
     {
         $rows = [];
         foreach (Item::query()->with('labelType.brand')->where('label_enabled', true)->orderBy('name')->get() as $item) {
             $rows[] = $this->signoffs->status($item);
+            foreach ($item->variants()->where('is_active', true)->orderBy('sort_order')->orderBy('id')->get() as $size) {
+                $sized = $this->stickers->forSize($item, ['size' => $size->id]);
+                if ($this->signoffs->sizeOf($sized) !== null) {
+                    $rows[] = $this->signoffs->status($sized);
+                }
+            }
         }
         foreach (CustomLabel::query()->with(['labelType.brand', 'brand'])->orderBy('name')->get() as $custom) {
             $rows[] = $this->signoffs->status($custom);
@@ -897,36 +909,42 @@ class LabelsController extends Controller
         return response()->json(['data' => $rows, 'locked' => LabelSignoffs::locked(), 'lines' => LabelSignoffs::LINES]);
     }
 
-    /** One product's legal lines, its last sign-off and what changed since. */
-    public function signoffStatus(string $kind, int $id): JsonResponse
+    /** One product's legal lines (one size's, with ?size=), its last sign-off and what changed since. */
+    public function signoffStatus(Request $request, string $kind, int $id): JsonResponse
     {
-        return response()->json(['data' => $this->signoffs->status($this->signoffProduct($kind, $id)), 'lines' => LabelSignoffs::LINES]);
+        return response()->json(['data' => $this->signoffs->status($this->signoffProduct($kind, $id, $request->integer('size') ?: null)), 'lines' => LabelSignoffs::LINES]);
     }
 
-    /** Sign off a product's legal lines as they stand. */
+    /** Sign off a product's (or one size's) legal lines as they stand. */
     public function signOff(Request $request, string $kind, int $id): JsonResponse
     {
-        $data = $request->validate(['note' => 'nullable|string|max:200']);
-        $product = $this->signoffProduct($kind, $id);
+        $data = $request->validate(['note' => 'nullable|string|max:200', 'size' => 'nullable|integer|min:1']);
+        $product = $this->signoffProduct($kind, $id, $data['size'] ?? null);
         $this->signoffs->signOff($product, $request->user()?->id, $data['note'] ?? null);
 
-        return response()->json(['data' => $this->signoffs->status($product->fresh())], 201);
+        return response()->json(['data' => $this->signoffs->status($this->signoffProduct($kind, $id, $data['size'] ?? null))], 201);
     }
 
-    /** Past sign-offs of one product, newest first. */
-    public function signoffHistory(string $kind, int $id): JsonResponse
+    /** Past sign-offs of one product (or one size), newest first. */
+    public function signoffHistory(Request $request, string $kind, int $id): JsonResponse
     {
-        $this->signoffProduct($kind, $id);
-        $rows = LabelSignoff::query()->with('signer:id,name')->where('kind', $kind)->where('product_id', $id)->orderByDesc('id')->limit(20)->get();
+        $product = $this->signoffProduct($kind, $id, $request->integer('size') ?: null);
+        $sizeId = $this->signoffs->sizeOf($product)?->id;
+        $q = LabelSignoff::query()->with('signer:id,name')->where('kind', $kind)->where('product_id', $id);
+        $sizeId === null ? $q->whereNull('size_id') : $q->where('size_id', $sizeId);
+        $rows = $q->orderByDesc('id')->limit(20)->get();
 
         return response()->json(['data' => $rows->map(fn (LabelSignoff $s) => ['id' => $s->id, 'by' => $s->signer?->name, 'at' => $s->created_at?->toIso8601String(), 'note' => $s->note, 'lines' => $s->lines])->values()]);
     }
 
-    private function signoffProduct(string $kind, int $id): Item|CustomLabel
+    /** The product signed off: an item for one of its sizes when one is asked for (an unknown size is the item). */
+    private function signoffProduct(string $kind, int $id, ?int $size = null): Item|CustomLabel
     {
-        return $kind === 'custom'
+        $product = $kind === 'custom'
             ? CustomLabel::query()->with(['labelType.brand', 'brand'])->findOrFail($id)
             : Item::query()->with('labelType.brand')->findOrFail($id);
+
+        return $size !== null ? $this->stickers->forSize($product, ['size' => $size]) : $product;
     }
 
     /**
@@ -1666,7 +1684,8 @@ class LabelsController extends Controller
             // The item's active sizes, so a sticker can say which one it is for (label audit, 2026-10-16).
             'sizes' => $item->has_variants
                 ? $item->variants()->where('is_active', true)->orderBy('sort_order')->orderBy('id')->get(['id', 'name', 'price'])
-                    ->map(fn ($v) => ['id' => (int) $v->id, 'name' => (string) $v->name, 'price' => (float) $v->price])->values()->all()
+                    // own_recipe: the size has recipe rows of its own, so its wording is signed off apart.
+                    ->map(fn ($v) => ['id' => (int) $v->id, 'name' => (string) $v->name, 'price' => (float) $v->price, 'own_recipe' => $this->signoffs->sizeOf($this->stickers->forSize($item, ['size' => $v->id])) !== null])->values()->all()
                 : [],
             // The wrap-around label's parts (2026-10-12), as they stand.
             'label_wrap' => $wrap = WrapConfig::of($item),

@@ -31,23 +31,27 @@ describe("TodaysPacks", () => {
     vi.stubGlobal("open", vi.fn(() => ({ location: { href: "" }, close: vi.fn() })));
   });
 
-  it("lists today's batches of label items and takes the first ticked pack of each item into one print", () => {
+  it("lists today's batches of label items and takes every ticked pack into one print", () => {
     const packs = packsOf([task(1, 7, "Bajiya", [batch(3), batch(1)]), task(2, 8, "Patties", [batch(2)]), task(3, 9, "Tea", [batch(4)], { label_enabled: false })]);
     expect(packs.map((p) => p.pi)).toEqual([3, 2, 1]);
     const ticked = { 1: true, 2: true, 3: true };
-    expect(nextSet(packs, ticked).map((p: TodaysPack) => p.pi)).toEqual([3, 2]);
+    // Two batches of one item go in the same print (label audit, 2026-10-16).
+    expect(nextSet(packs, ticked).map((p: TodaysPack) => p.pi)).toEqual([3, 2, 1]);
     expect(nextSet(packs, { 1: true }).map((p) => p.pi)).toEqual([1]);
+    // Two sizes of one item go in one print too, each with its size.
+    const sized = packsOf([task(1, 7, "Juice — Small", [batch(5)], { variant_id: 11 }), task(2, 7, "Juice — Large", [batch(6)], { variant_id: 12 })]);
+    expect(nextSet(sized, { 5: true, 6: true }).map((p) => [p.pi, p.size])).toEqual([[6, 12], [5, 11]]);
     // A pack the wording lock refuses is never ticked into a print.
     const locked = packsOf([task(1, 7, "Bajiya", [batch(3)], { stickers_locked: "The wording is locked: Bajiya …" })]);
     expect(locked[0].locked).toBe(true);
     expect(nextSet(locked, { 3: true })).toEqual([]);
   });
 
-  it("ticks the bare ones and prints them in sets with their own batches", async () => {
+  it("ticks the bare ones and prints them all at once, each with its own batch", async () => {
     productionStickerLinks.mockResolvedValue({ url: "/s", pdf_url: "/s.pdf", expires_in_minutes: 30 });
     function Host() {
       const [tasks, setTasks] = useState([task(1, 7, "Bajiya", [batch(3), batch(1, { qty: 5 })]), task(2, 8, "Patties", [batch(2, { qty: 4 })]), task(3, 9, "Hedhika", [batch(9, { printed: 10 })])]);
-      return <TodaysPacks token="t" size={SIZE} lang="both" tasks={tasks} onPrinted={() => setTasks([task(1, 7, "Bajiya", [batch(3, { printed: 6 }), batch(1, { qty: 5 })]), task(2, 8, "Patties", [batch(2, { qty: 4, printed: 4 })]), task(3, 9, "Hedhika", [batch(9, { printed: 10 })])])} />;
+      return <TodaysPacks token="t" size={SIZE} lang="both" tasks={tasks} onPrinted={() => setTasks([task(1, 7, "Bajiya", [batch(3, { printed: 6 }), batch(1, { qty: 5, printed: 5 })]), task(2, 8, "Patties", [batch(2, { qty: 4, printed: 4 })]), task(3, 9, "Hedhika", [batch(9, { printed: 10 })])])} />;
     }
     render(<Host />);
     fireEvent.click(screen.getByTestId("kds-todays-packs-toggle"));
@@ -55,22 +59,20 @@ describe("TodaysPacks", () => {
     expect(screen.getByTestId("kds-pack-9")).toHaveTextContent("10 printed");
     expect(screen.getByTestId("kds-pack-3")).toHaveTextContent("Not printed yet");
     expect(screen.getByLabelText("Print Hedhika, batch B9")).not.toBeChecked();
-    expect(screen.getByTestId("kds-todays-packs-print")).toHaveTextContent("Print: 10 stickers for 2 packs");
-    expect(screen.getByTestId("kds-todays-packs-more")).toHaveTextContent("1 more ticked pack is a second batch");
+    expect(screen.getByTestId("kds-todays-packs-print")).toHaveTextContent("Print 15 stickers for 3 packs");
 
     fireEvent.click(screen.getByTestId("kds-todays-packs-print"));
     await waitFor(() => expect(productionStickerLinks).toHaveBeenCalledWith("t", expect.objectContaining({
       items: [
         { id: 7, copies: 6, pi: 3, batch: "B3", mfg: "2026-10-16", exp: "2026-10-19" },
         { id: 8, copies: 4, pi: 2, batch: "B2", mfg: "2026-10-16", exp: "2026-10-19" },
+        { id: 7, copies: 5, pi: 1, batch: "B1", mfg: "2026-10-16", exp: "2026-10-19" },
       ],
       layout: "a4-custom", w: 40, h: 60, lang: "both", fill: true, roll: "small",
     })));
-    expect(await screen.findByTestId("kds-todays-packs-ready")).toHaveTextContent("10 ready");
+    expect(await screen.findByTestId("kds-todays-packs-ready")).toHaveTextContent("15 ready");
     expect(screen.getByTestId("kds-pack-3")).toHaveTextContent("6 printed");
-    // The second Bajiya batch is next.
-    expect(screen.getByTestId("kds-todays-packs-print")).toHaveTextContent("Print the next set: 5 stickers for 1 pack");
-    expect(screen.queryByTestId("kds-todays-packs-more")).toBeNull();
+    expect(screen.getByTestId("kds-todays-packs-print")).toHaveTextContent("Tick the packs to print");
   });
 
   it("closes the window it opened and says why when the print is refused", async () => {

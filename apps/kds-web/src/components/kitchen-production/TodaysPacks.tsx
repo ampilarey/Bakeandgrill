@@ -7,13 +7,13 @@ import { failureMessage, labelSheetUrl, productionStickerLinks, type KdsPlanTask
  * stickers have printed for each (from the tasks the screen already reads),
  * and one Print for the ones ticked. Each
  * batch keeps its own batch number and dates on its stickers, and its print
- * is logged against it. Two batches of one item print one after the other
- * (a sheet holds one row per item), so the button then offers the next set.
+ * is logged against it; two batches of one item are two rows on the same
+ * sheet, each with a print code of its own.
  * The PDF's window opens in the tap itself, as for a single batch.
  */
 
 /** A batch made today, as the list shows it. */
-export type TodaysPack = { pi: number; item: { id: number; name: string }; batch: string; mfg: string | null; exp: string | null; qty: number; printed: number; locked: boolean };
+export type TodaysPack = { pi: number; item: { id: number; name: string }; size: number | null; batch: string; mfg: string | null; exp: string | null; qty: number; printed: number; locked: boolean };
 
 type Props = {
   token: string;
@@ -28,14 +28,13 @@ type Props = {
 export function packsOf(tasks: KdsPlanTask[]): TodaysPack[] {
   return tasks
     .filter((t) => t.label_enabled !== false)
-    .flatMap((t) => (t.batches ?? []).map((b) => ({ pi: b.pi, item: { id: t.item_id, name: t.name }, batch: b.batch_no, mfg: b.mfg ?? null, exp: b.expires_at, qty: Math.round(b.qty), printed: b.printed ?? 0, locked: Boolean(t.stickers_locked) })))
+    .flatMap((t) => (t.batches ?? []).map((b) => ({ pi: b.pi, item: { id: t.item_id, name: t.name }, size: t.variant_id > 0 ? t.variant_id : null, batch: b.batch_no, mfg: b.mfg ?? null, exp: b.expires_at, qty: Math.round(b.qty), printed: b.printed ?? 0, locked: Boolean(t.stickers_locked) })))
     .sort((a, b) => b.pi - a.pi);
 }
 
-/** The ticked packs that go in one print: the first of each item. */
+/** The ticked packs that go in the print: every one ticked, except what the wording lock refuses. */
 export function nextSet(packs: TodaysPack[], ticked: Record<number, boolean>): TodaysPack[] {
-  const seen = new Set<number>();
-  return packs.filter((p) => ticked[p.pi] && !p.locked && !seen.has(p.item.id) && (seen.add(p.item.id), true));
+  return packs.filter((p) => ticked[p.pi] && !p.locked);
 }
 
 export function TodaysPacks({ token, size, lang, tasks, onPrinted }: Props) {
@@ -57,7 +56,6 @@ export function TodaysPacks({ token, size, lang, tasks, onPrinted }: Props) {
 
   const countOf = (p: TodaysPack) => Math.max(1, Math.min(400, Math.round(Number(counts[p.pi] ?? "") > 0 ? Number(counts[p.pi]) : p.qty || 1)));
   const set = nextSet(packs, ticked);
-  const tickedCount = packs.filter((p) => ticked[p.pi] && !p.locked).length;
   const stickers = set.reduce((n, p) => n + countOf(p), 0);
 
   const print = async () => {
@@ -66,7 +64,7 @@ export function TodaysPacks({ token, size, lang, tasks, onPrinted }: Props) {
     const win = window.open("", "_blank");
     try {
       const r = await productionStickerLinks(token, {
-        items: set.map((p) => ({ id: p.item.id, copies: countOf(p), pi: p.pi, batch: p.batch || null, mfg: p.mfg, exp: p.exp })),
+        items: set.map((p) => ({ id: p.item.id, copies: countOf(p), pi: p.pi, ...(p.size ? { size: p.size } : {}), batch: p.batch || null, mfg: p.mfg, exp: p.exp })),
         layout: size.layout, w: size.w, h: size.h, lang, fill: true, mfg: null, exp: null, roll: size.roll ?? null,
       });
       const pdf = labelSheetUrl(r.pdf_url);
@@ -81,8 +79,6 @@ export function TodaysPacks({ token, size, lang, tasks, onPrinted }: Props) {
       setBusy(false);
     }
   };
-
-  const remaining = tickedCount - set.length;
 
   return (
     <div data-testid="kds-todays-packs" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -123,12 +119,11 @@ export function TodaysPacks({ token, size, lang, tasks, onPrinted }: Props) {
                 data-testid="kds-todays-packs-print"
                 style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid #B74B0C", background: "#B74B0C", color: "#fff", fontWeight: 700, cursor: set.length === 0 ? "not-allowed" : "pointer", opacity: set.length === 0 ? 0.5 : 1, fontSize: 13 }}
               >
-                {busy ? "Preparing…" : set.length === 0 ? "Tick the packs to print" : `${done ? "Print the next set" : "Print"}: ${stickers} ${stickers === 1 ? "sticker" : "stickers"} for ${set.length} ${set.length === 1 ? "pack" : "packs"}`}
+                {busy ? "Preparing…" : set.length === 0 ? "Tick the packs to print" : `Print ${stickers} ${stickers === 1 ? "sticker" : "stickers"} for ${set.length} ${set.length === 1 ? "pack" : "packs"}`}
               </button>
               <span style={{ fontSize: 12, color: "#6B5D4F" }}>On {size.name}.</span>
             </div>
           )}
-          {remaining > 0 && <p style={{ margin: 0, fontSize: 12, color: "#6B5D4F" }} data-testid="kds-todays-packs-more">{remaining} more ticked {remaining === 1 ? "pack is" : "packs are"} a second batch of an item already in this print; {remaining === 1 ? "it prints" : "they print"} next.</p>}
           {done && (
             <a href={done.pdf} target="_blank" rel="noreferrer" data-testid="kds-todays-packs-ready" style={{ fontSize: 12, color: "#B74B0C", fontWeight: 700 }}>
               {done.count} ready · open the PDF again

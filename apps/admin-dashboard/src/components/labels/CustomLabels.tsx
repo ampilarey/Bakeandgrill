@@ -594,7 +594,8 @@ export function CustomLabelsTab({ canManage }: { canManage: boolean }) {
     setSavingId(c.id);
     try {
       const { copies, ...sized } = savedSheetRequest(presets);
-      const r = await stickerLinks({ items: [{ id: c.id, copies, kind: 'custom' }], ...sized, lang: langOf(c), fill: true });
+      // save: kept under Saved labels, not printed, so nothing comes off a roll until it is printed (label audit, 2026-10-16).
+      const r = await stickerLinks({ items: [{ id: c.id, copies, kind: 'custom' }], ...sized, lang: langOf(c), fill: true, save: true });
       toast('success', r.job ? `Saved as “${r.job.name}”.` : 'Saved to Saved labels.');
       navigate('/labels/saved');
     } catch (e) {

@@ -201,7 +201,7 @@ export function KitchenProductionPanel({
       const n = Math.max(1, Math.min(400, Math.round(typed > 0 ? typed : (data.qty || b.qty || task.made_qty || 1))));
       const size = labelSetup?.size ?? data.size ?? DEFAULT_KITCHEN_STICKER;
       const useLang: StickerLang = lang ?? labelSetup?.lang ?? data.lang ?? "en";
-      const r = await productionStickerLinks(token, { items: [{ id: data.item.id, copies: n }], layout: size.layout, w: size.w, h: size.h, lang: useLang, fill: true, mfg: data.mfg, exp: data.exp, batch: data.batch || null, pi: data.pi, roll: size.roll ?? null });
+      const r = await productionStickerLinks(token, { items: [{ id: data.item.id, copies: n, ...(task.variant_id > 0 ? { size: task.variant_id } : {}) }], layout: size.layout, w: size.w, h: size.h, lang: useLang, fill: true, mfg: data.mfg, exp: data.exp, batch: data.batch || null, pi: data.pi, roll: size.roll ?? null });
       const pdf = labelSheetUrl(r.pdf_url);
       if (win) { win.location.href = pdf; } else { window.open(pdf, "_blank", "noopener"); }
       setPrinted((p) => ({ ...p, [b.pi]: { pdf, count: n } }));

@@ -905,7 +905,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
           </p>
           <ul className="text-sm text-[var(--color-text-secondary)] space-y-1">
             {result.summary.products.map((p) => (
-              <li key={p.key ?? p.id}>
+              <li key={p.row ?? p.key ?? p.id}>
                 {p.name}{p.size ? ` (${p.size.name})` : ''} × {p.copies}
                 {fill ? (p.exp ? ` · EXP ${p.exp}` : ' · expiry blank (no shelf life set)') : ''}
                 {p.size_recipe === 'shared' ? ` · ingredients from the item's shared recipe; ${p.size?.name ?? 'this size'} has none of its own` : ''}

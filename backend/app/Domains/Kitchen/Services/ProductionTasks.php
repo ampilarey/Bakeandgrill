@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Kitchen\Services;
 
 use App\Domains\Labels\LabelSignoffs;
+use App\Domains\Labels\StickerSheet;
 use App\Models\Item;
 use App\Models\KitchenProductionItem;
 use App\Models\LabelPrint;
@@ -228,7 +229,7 @@ final class ProductionTasks
                 'mfg' => ($i->batch?->submitted_at ?? $i->created_at)?->toDateString(),
             ])->values()->all(),
             // The wording lock (label audit, Batch B): the refusal said on the card before Print stickers is tapped.
-            'stickers_locked' => $this->stickersLocked($item, $lines),
+            'stickers_locked' => $this->stickersLocked($variant !== null ? app(StickerSheet::class)->forSize($item, ['size' => $variant->id]) : $item, $lines),
             'label_enabled' => (bool) $item->label_enabled,
         ];
     }
@@ -245,7 +246,7 @@ final class ProductionTasks
         if ($lines === null || $lines->isEmpty() || !LabelSignoffs::locked()) {
             return null;
         }
-        $refused = app(LabelSignoffs::class)->forPrint(['i' . $item->id => $item])['refused'];
+        $refused = app(LabelSignoffs::class)->forPrint(['i' . $item->id . '|' => $item])['refused'];
 
         return $refused === [] ? null : LabelSignoffs::refusalMessage($refused);
     }
