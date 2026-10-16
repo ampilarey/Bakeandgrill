@@ -19,6 +19,7 @@ import {
   type KitchenProductionBatch,
   type StickerLang,
 } from "../../api";
+import { TodaysPacks } from "./TodaysPacks";
 
 type Props = {
   token: string;
@@ -301,6 +302,9 @@ export function KitchenProductionPanel({
                 </button>
               ))}
             </div>
+          )}
+          {canProduce && canLabels && tasks !== null && tasks.some((t) => (t.batches ?? []).length > 0) && (
+            <TodaysPacks token={token} size={stickerSize} lang={stickerLang} tasks={tasks} onPrinted={loadTasks} />
           )}
           {canProduce && ordered.map((task) => {
             const mine = userId != null && task.assigned_to === userId;

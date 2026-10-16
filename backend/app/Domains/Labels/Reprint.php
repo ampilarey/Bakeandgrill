@@ -57,6 +57,10 @@ final class Reprint
             }
             $out[$k] = $v;
         }
+        // The kitchen batch this product's stickers were for (label audit, Batch D).
+        if (!empty($product['pi'])) {
+            $out['pi'] = (int) $product['pi'];
+        }
 
         return $out;
     }

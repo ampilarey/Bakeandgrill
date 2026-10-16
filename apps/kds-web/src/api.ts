@@ -297,6 +297,9 @@ export type KdsTaskBatch = {
   made_at: string | null;
   expires_at: string | null;
   status: string;
+  /** Today's packs (label audit, Batch D): the made-on date and how many stickers have printed for this batch. */
+  mfg?: string | null;
+  printed?: number;
 };
 
 export type KdsPlanTask = {
@@ -324,6 +327,8 @@ export type KdsPlanTask = {
   batches?: KdsTaskBatch[];
   /** The wording lock's refusal for this item's stickers (label audit, Batch B), said before Print stickers; null when they print. */
   stickers_locked?: string | null;
+  /** Whether the item prints labels (label audit, Batch D). */
+  label_enabled?: boolean;
 };
 
 export async function fetchPlanTasks(token: string, date?: string): Promise<{ date: string; tasks: KdsPlanTask[] }> {
@@ -431,7 +436,7 @@ export async function fetchKitchenLabelSetup(token: string): Promise<KitchenLabe
 
 export async function productionStickerLinks(
   token: string,
-  body: { items: { id: number; copies: number }[]; layout: string; w?: number | null; h?: number | null; lang?: StickerLang; fill: boolean; mfg: string | null; exp: string | null; batch: string | null; pi: number; roll?: string | null },
+  body: { items: { id: number; copies: number; pi?: number; batch?: string | null; mfg?: string | null; exp?: string | null }[]; layout: string; w?: number | null; h?: number | null; lang?: StickerLang; fill: boolean; mfg: string | null; exp: string | null; batch?: string | null; pi?: number | null; roll?: string | null },
 ): Promise<{ url: string; pdf_url: string; expires_in_minutes: number }> {
   return request('/labels/stickers/url', { method: 'POST', headers: authHeaders(token), body: JSON.stringify(body) });
 }

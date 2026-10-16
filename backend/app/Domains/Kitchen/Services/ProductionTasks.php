@@ -7,6 +7,7 @@ namespace App\Domains\Kitchen\Services;
 use App\Domains\Labels\LabelSignoffs;
 use App\Models\Item;
 use App\Models\KitchenProductionItem;
+use App\Models\LabelPrint;
 use App\Models\ProductionPlanRecord;
 use App\Models\User;
 use App\Models\Variant;
@@ -151,12 +152,17 @@ final class ProductionTasks
             return new Collection;
         }
 
-        return KitchenProductionItem::query()
+        $lines = KitchenProductionItem::query()
             ->whereIn('production_plan_record_id', $ids)
             ->with('batch:id,batch_no,status,submitted_at')
             ->orderByDesc('id')
-            ->get()
-            ->groupBy(fn (KitchenProductionItem $i) => (int) $i->production_plan_record_id);
+            ->get();
+        // How many stickers have printed for each batch (label audit, Batch D): the print log, by batch.
+        $printed = $lines->isEmpty() ? collect() : LabelPrint::query()->whereIn('kitchen_production_item_id', $lines->pluck('id')->all())->where('output', 'print')
+            ->selectRaw('kitchen_production_item_id, SUM(copies) as n')->groupBy('kitchen_production_item_id')->pluck('n', 'kitchen_production_item_id');
+        $lines->each(fn (KitchenProductionItem $i) => $i->setAttribute('stickers_printed', (int) ($printed[$i->id] ?? 0)));
+
+        return $lines->groupBy(fn (KitchenProductionItem $i) => (int) $i->production_plan_record_id);
     }
 
     /**
@@ -217,9 +223,13 @@ final class ProductionTasks
                 'made_at' => ($i->batch?->submitted_at ?? $i->created_at)?->toIso8601String(),
                 'expires_at' => $i->expires_at?->toDateString(),
                 'status' => (string) $i->status,
+                // Today's packs (label audit, Batch D): stickers printed for this batch so far.
+                'printed' => (int) ($i->getAttribute('stickers_printed') ?? 0),
+                'mfg' => ($i->batch?->submitted_at ?? $i->created_at)?->toDateString(),
             ])->values()->all(),
             // The wording lock (label audit, Batch B): the refusal said on the card before Print stickers is tapped.
             'stickers_locked' => $this->stickersLocked($item, $lines),
+            'label_enabled' => (bool) $item->label_enabled,
         ];
     }
 

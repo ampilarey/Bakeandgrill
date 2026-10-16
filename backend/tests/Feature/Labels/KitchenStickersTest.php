@@ -149,4 +149,36 @@ class KitchenStickersTest extends TestCase
         $locked = (string) $this->getJson('/api/production-plan/tasks?date=' . self::DAY)->assertOk()->json('tasks.0.stickers_locked');
         $this->assertStringStartsWith('The wording is locked: ', $locked);
     }
+
+    public function test_tasks_carry_each_batchs_printed_count_and_one_print_covers_several_batches_logged_per_batch(): void
+    {
+        // Label audit, Batch D: a second item, so one print carries two batches.
+        $patties = Item::factory()->prepared(0)->create(['name' => 'Patties', 'label_enabled' => true, 'label_shelf_life_days' => 30]);
+        $record = $this->plan();
+        Sanctum::actingAs($this->owner, ['staff']);
+        $this->postJson('/api/production-plan/commit', ['date' => self::DAY, 'lines' => [
+            ['item_id' => $this->bajiya->id, 'variant_id' => 0, 'slot_start' => 18, 'slot_end' => 22, 'slot_label' => 'Evening', 'forecast_qty' => 45, 'planned_qty' => 50, 'assigned_to' => $this->cook->id],
+            ['item_id' => $patties->id, 'variant_id' => 0, 'slot_start' => 18, 'slot_end' => 22, 'slot_label' => 'Evening', 'forecast_qty' => 10, 'planned_qty' => 12, 'assigned_to' => $this->cook->id],
+        ]])->assertOk();
+        $pattiesRecord = ProductionPlanRecord::query()->where('item_id', $patties->id)->firstOrFail();
+
+        Sanctum::actingAs($this->cook, ['staff']);
+        $this->postJson("/api/production-plan/tasks/{$record->id}/made", ['qty' => 6])->assertCreated();
+        $this->postJson("/api/production-plan/tasks/{$pattiesRecord->id}/made", ['qty' => 4])->assertCreated();
+
+        // Every task carries its batches with how many stickers have printed for each.
+        $tasks = collect($this->getJson('/api/production-plan/tasks?date=' . self::DAY)->assertOk()->json('tasks'))->keyBy('name');
+        $this->assertTrue($tasks['Bajiya']['label_enabled']);
+        $rows = [$tasks['Patties']['batches'][0] + ['item_id' => $patties->id], $tasks['Bajiya']['batches'][0] + ['item_id' => $this->bajiya->id]];
+        $this->assertSame([0, 0], array_column($rows, 'printed'));
+        $this->assertSame([self::DAY, self::DAY], array_column($rows, 'mfg'));
+
+        // One print, a row per batch with its own batch and dates: each batch's print is logged against it.
+        $items = array_map(fn (array $r) => ['id' => $r['item_id'], 'copies' => (int) $r['qty'], 'pi' => $r['pi'], 'batch' => $r['batch_no'], 'mfg' => $r['mfg'], 'exp' => $r['expires_at']], $rows);
+        $this->postJson('/api/labels/stickers/url', ['items' => $items, 'layout' => 'a4-custom', 'w' => 40, 'h' => 60, 'fill' => true])->assertOk()
+            ->assertJsonPath('summary.stickers', 10)->assertJsonPath('summary.products.0.pi', $rows[0]['pi']);
+        $tasks = collect($this->getJson('/api/production-plan/tasks?date=' . self::DAY)->json('tasks'))->keyBy('name');
+        $this->assertSame([4, 6], [$tasks['Patties']['batches'][0]['printed'], $tasks['Bajiya']['batches'][0]['printed']]);
+        $this->assertSame($rows[1]['pi'], (int) LabelPrint::query()->where('item_id', $this->bajiya->id)->value('kitchen_production_item_id'));
+    }
 }

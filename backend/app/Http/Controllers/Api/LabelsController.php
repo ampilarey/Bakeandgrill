@@ -135,6 +135,7 @@ class LabelsController extends Controller
             'items.*.for2' => 'nullable|string|max:60',
             // The size a sized item's sticker is for (label audit, 2026-10-16).
             'items.*.size' => 'nullable|integer|min:1',
+            'items.*.pi' => 'nullable|integer|min:1',
             'lang' => ['sometimes', Rule::in(StickerSheet::LANGS)],
             'layout' => ['sometimes', Rule::in(array_keys(StickerLayouts::LAYOUTS))],
             'w' => 'nullable|numeric',
@@ -264,7 +265,7 @@ class LabelsController extends Controller
                     'label_h_mm' => $req['h'],
                     'item_id' => $p['kind'] === 'item' ? $p['id'] : null,
                     'custom_label_id' => $p['kind'] === 'custom' ? $p['id'] : null,
-                    'kitchen_production_item_id' => $req['pi'],
+                    'kitchen_production_item_id' => $p['pi'] ?? $req['pi'],
                     'copies' => $p['copies'],
                     'mfg_date' => $p['mfg'],
                     'exp_date' => $p['exp'],

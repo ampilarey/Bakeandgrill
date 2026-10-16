@@ -531,6 +531,8 @@ final class StickerSheet
                 'for' => $rowReq['for'],
                 'for2' => $rowReq['for2'],
                 'varied' => ($row['run'] ?? []) !== [],
+                // The kitchen batch these stickers are for: the row's own, else the sheet's.
+                'pi' => $row['pi'] ?? ($req['pi'] ?: null),
             ];
             $total += $row['copies'];
         }
@@ -957,7 +959,9 @@ final class StickerSheet
                             $run[$k] = trim((string) $row[$k]);
                         }
                     }
-                    $rows[] = ['id' => (int) ($row['id'] ?? 0), 'copies' => (int) ($row['copies'] ?? 0), 'kind' => ($row['kind'] ?? 'item') === 'custom' ? 'custom' : 'item', 'run' => $run];
+                    $rows[] = ['id' => (int) ($row['id'] ?? 0), 'copies' => (int) ($row['copies'] ?? 0), 'kind' => ($row['kind'] ?? 'item') === 'custom' ? 'custom' : 'item', 'run' => $run]
+                        // The kitchen batch a row's stickers are for (label audit, Batch D): kept on its print.
+                        + (isset($row['pi']) && (int) $row['pi'] > 0 ? ['pi' => (int) $row['pi']] : []);
                 }
             }
         }
@@ -966,7 +970,7 @@ final class StickerSheet
             if ((is_string($row['id']) ? $row['id'] !== '' : $row['id'] > 0) && $row['copies'] > 0) {
                 // Two sizes of one item are two rows (label audit, 2026-10-16).
                 $key = self::key($row) . '|' . ($row['run']['size'] ?? '');
-                $merged[$key] ??= ['id' => $row['id'], 'copies' => 0, 'kind' => $row['kind'], 'run' => $row['run'] ?? []];
+                $merged[$key] ??= ['id' => $row['id'], 'copies' => 0, 'kind' => $row['kind'], 'run' => $row['run'] ?? []] + (isset($row['pi']) ? ['pi' => $row['pi']] : []);
                 $merged[$key]['copies'] += min($row['copies'], self::MAX_STICKERS);
             }
         }
