@@ -58,6 +58,36 @@ export const PICKUP_CAPACITY = { min: 1, max: 50 } as const;
  * The checkout's own limits: outside them a saved number would be quietly
  * clamped, so the form refuses it (audit, 2026-10-16). Null when both fit.
  */
+/**
+ * The message after a Ramadan or Eid preset, which saves business hours and
+ * the online ordering schedule together. When one half fails it says which,
+ * because the other may already have saved (audit, 2026-10-16).
+ */
+export function presetOutcome(
+  name: string,
+  hours: PromiseSettledResult<unknown>,
+  schedule: PromiseSettledResult<unknown>,
+): { ok: boolean; message: string } {
+  const why = (r: PromiseSettledResult<unknown>) =>
+    r.status === 'rejected' ? ((r.reason as Error)?.message || 'the server did not answer') : '';
+  if (hours.status === 'fulfilled' && schedule.status === 'fulfilled') {
+    return { ok: true, message: `${name} hours saved to business hours and online ordering schedule.` };
+  }
+  if (hours.status === 'rejected' && schedule.status === 'rejected') {
+    return { ok: false, message: `${name} hours did not save: ${why(hours)}. Nothing changed. Tap again to retry.` };
+  }
+  if (hours.status === 'rejected') {
+    return {
+      ok: false,
+      message: `${name} hours saved to the online ordering schedule, but business hours did not save: ${why(hours)}. Tap again to retry.`,
+    };
+  }
+  return {
+    ok: false,
+    message: `${name} hours saved to business hours, but the online ordering schedule did not save: ${why(schedule)}. Tap again to retry.`,
+  };
+}
+
 export function pickupSlotError(minutes: number, capacity: number): string | null {
   if (!Number.isInteger(minutes) || minutes < PICKUP_MINUTES.min || minutes > PICKUP_MINUTES.max) {
     return `Slot length must be ${PICKUP_MINUTES.min} to ${PICKUP_MINUTES.max} minutes.`;
@@ -431,15 +461,19 @@ export default function OnlineOrderingPage() {
     } catch { /* use default */ }
 
     try {
-      await Promise.all([
+      // Both halves run; a failure names the half that did not save, since
+      // the other may have (audit, 2026-10-16).
+      const [hoursResult, scheduleResult] = await Promise.allSettled([
         updateSiteSettings({ business_hours: JSON.stringify(businessHours) }),
         updateOnlineOrderingSchedule(preset),
       ]);
-      const res = await getOnlineOrderingStatus();
-      setStatus(res);
-      showToast('Ramadan hours saved to business hours and online ordering schedule.');
+      if (scheduleResult.status === 'fulfilled') {
+        setStatus(await getOnlineOrderingStatus());
+      }
+      const outcome = presetOutcome('Ramadan', hoursResult, scheduleResult);
+      showToast(outcome.message, outcome.ok ? 'ok' : 'err');
     } catch {
-      showToast('Failed to save Ramadan preset. Try again.', 'err');
+      showToast('Saved the Ramadan hours, but could not refresh the page. Reload to check.', 'err');
     } finally {
       setScheduleSaving(false);
     }
@@ -466,15 +500,19 @@ export default function OnlineOrderingPage() {
     } catch { /* use default */ }
 
     try {
-      await Promise.all([
+      // Both halves run; a failure names the half that did not save, since
+      // the other may have (audit, 2026-10-16).
+      const [hoursResult, scheduleResult] = await Promise.allSettled([
         updateSiteSettings({ business_hours: JSON.stringify(businessHours) }),
         updateOnlineOrderingSchedule(preset),
       ]);
-      const res = await getOnlineOrderingStatus();
-      setStatus(res);
-      showToast('Eid hours saved to business hours and online ordering schedule.');
+      if (scheduleResult.status === 'fulfilled') {
+        setStatus(await getOnlineOrderingStatus());
+      }
+      const outcome = presetOutcome('Eid', hoursResult, scheduleResult);
+      showToast(outcome.message, outcome.ok ? 'ok' : 'err');
     } catch {
-      showToast('Failed to save Eid preset. Try again.', 'err');
+      showToast('Saved the Eid hours, but could not refresh the page. Reload to check.', 'err');
     } finally {
       setScheduleSaving(false);
     }
