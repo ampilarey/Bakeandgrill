@@ -163,12 +163,12 @@ class SiteSettingsWriteTest extends TestCase
         $this->putJson('/api/site-settings', ['settings' => ['pickup_slot_minutes' => '5']])
             ->assertStatus(422)
             ->assertJsonValidationErrors(['settings.pickup_slot_minutes' => 'Slot length must be 15 to 120 minutes.']);
-        $this->assertNotSame('200', \App\Models\SiteSetting::get('pickup_slot_capacity'));
+        $this->assertNotSame('200', SiteSetting::get('pickup_slot_capacity'));
 
         $this->putJson('/api/site-settings', ['settings' => [
             'pickup_slot_minutes' => '30', 'pickup_slot_capacity' => '8',
         ]])->assertOk();
-        $this->assertSame('30', \App\Models\SiteSetting::get('pickup_slot_minutes'));
-        $this->assertSame('8', \App\Models\SiteSetting::get('pickup_slot_capacity'));
+        $this->assertSame('30', SiteSetting::get('pickup_slot_minutes'));
+        $this->assertSame('8', SiteSetting::get('pickup_slot_capacity'));
     }
 }
