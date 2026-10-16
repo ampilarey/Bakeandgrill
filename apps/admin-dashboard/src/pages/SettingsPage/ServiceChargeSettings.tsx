@@ -8,6 +8,7 @@ import {
   type ServiceChargeSettings,
 } from '../../api';
 import { MasterSwitchRow, S } from '../OnlineOrderingPage/orderingControlUi';
+import { LoadFailed } from './LoadFailed';
 
 function Toggle({ on, onClick, disabled }: { on: boolean; onClick: () => void; disabled?: boolean }) {
   return <Switch checked={on} onChange={onClick} disabled={disabled} />;
@@ -20,12 +21,19 @@ export function ServiceChargeSettings({ embedded = false }: { embedded?: boolean
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
-  useEffect(() => {
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const load = () => {
+    setLoading(true);
+    setLoadError(null);
     getServiceChargeSettings()
       .then((r) => setForm(r.settings))
-      .catch((e: Error) => setError(e.message))
+      .catch((e: Error) => setLoadError(e.message || 'the server did not answer.'))
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(load, []);
 
   const handleSave = async () => {
     if (!form) return;
@@ -43,6 +51,9 @@ export function ServiceChargeSettings({ embedded = false }: { embedded?: boolean
     }
   };
 
+  if (!form && loadError && !loading) {
+    return <LoadFailed what="service charge" message={loadError} onRetry={load} />;
+  }
   if (loading || !form) {
     return <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>Loading…</p>;
   }
