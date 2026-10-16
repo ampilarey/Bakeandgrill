@@ -109,7 +109,7 @@ final class Nutrition
         $serving = self::serving($product);
         if ($serving !== null) {
             $each = self::scaled($panel['per100'], $serving);
-            $out += ['serving' => $serving, 'serv_rows' => self::rows($each), 'serv_all' => self::all($each)];
+            $out += ['serving' => $serving, 'serv_rows' => self::rows($each), 'serv_all' => self::all($each), 'serv_line' => self::line($each)];
         }
 
         return $out;

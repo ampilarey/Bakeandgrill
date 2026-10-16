@@ -175,6 +175,31 @@ final class LabelIngredients
      *
      * @return list<array{inventory_id: int, en: string, dv: string, grams: ?float}>
      */
+    /** The size a sticker is for, set by StickerSheet::forSize() on a copy of the item. */
+    public static function sizeOf(Item $item): ?\App\Models\Variant
+    {
+        return $item->relationLoaded('labelSize') ? $item->getRelation('labelSize') : null;
+    }
+
+    /**
+     * Where a sized sticker's recipe came from: 'own' when the size has rows
+     * of its own, 'shared' when it fell back to the item's unsized rows, null
+     * when no size is picked or there is no recipe.
+     */
+    public function sizeRecipe(Item $item): ?string
+    {
+        $size = self::sizeOf($item);
+        if ($size === null) {
+            return null;
+        }
+        $recipe = $item->recipe()->with('recipeItems')->first();
+        if ($recipe === null || $recipe->recipeItems->isEmpty()) {
+            return null;
+        }
+
+        return $recipe->recipeItems->where('variant_id', $size->id)->isNotEmpty() ? 'own' : 'shared';
+    }
+
     public function recipeIngredients(Item $item): array
     {
         return array_map(fn (array $r) => ['inventory_id' => $r['inventory_id'], 'en' => $r['en'], 'dv' => $r['dv'], 'grams' => $r['grams']], $this->recipeRows($item));
@@ -219,8 +244,16 @@ final class LabelIngredients
             return [];
         }
 
-        $rows = $recipe->recipeItems->whereNull('variant_id');
-        if ($rows->isEmpty()) {
+        // The size this sticker is for (label audit, 2026-10-16): its own
+        // rows, else the unsized ones (sizeRecipe() says which).
+        $size = self::sizeOf($item);
+        if ($size !== null) {
+            $own = $recipe->recipeItems->where('variant_id', $size->id);
+            $rows = $own->isNotEmpty() ? $own : $recipe->recipeItems->whereNull('variant_id');
+        } else {
+            $rows = $recipe->recipeItems->whereNull('variant_id');
+        }
+        if ($rows->isEmpty() && $size === null) {
             $variantId = $item->variants()->where('is_active', true)->orderBy('sort_order')->orderBy('id')->value('id');
             $rows = $variantId ? $recipe->recipeItems->where('variant_id', $variantId) : collect();
         }

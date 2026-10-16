@@ -161,6 +161,22 @@ describe('StickerPrintPanel', () => {
     expect(downloadLabelSheet).toHaveBeenCalledWith('/labels/stickers.pdf?signature=x');
   });
 
+  // Label audit, 2026-10-16: a sized item's sticker says which size it is for.
+  it('sends the size picked for a sized item', async () => {
+    fetchLabelProducts.mockResolvedValue({ data: [product(3, 'Mango juice', { sizes: [{ id: 31, name: 'Small', price: 15 }, { id: 32, name: 'Large', price: 25 }] })] });
+    stickerLinks.mockResolvedValue({
+      url: '/labels/stickers?print=1&signature=x', view_url: '/labels/stickers?signature=x', pdf_url: '/labels/stickers.pdf?signature=x', expires_in_minutes: 30,
+      summary: { layout: 'a4-4', label: '4 on A4', design: 'full', stickers: 4, pages: 1, per_page: 4, products: [] },
+    });
+    render(<MemoryRouter><StickerPrintPanel /></MemoryRouter>);
+    await screen.findByTestId('label-size-picker');
+    fireEvent.click(await screen.findByLabelText('Print Mango juice'));
+    fireEvent.change(screen.getByLabelText('Mango juice: which size'), { target: { value: '32' } });
+    fireEvent.click(screen.getByTestId('sticker-prepare'));
+    await waitFor(() => expect(prepared()).toBeTruthy());
+    expect(prepared()).toMatchObject({ items: [{ id: 3, copies: 4, size: 32 }] });
+  });
+
   it('shows the server\'s reason when a sheet is refused', async () => {
     stickerLinks.mockRejectedValue(new Error('The expiry date has already passed.'));
     render(<MemoryRouter><StickerPrintPanel fixedItems={[{ id: 1, name: 'Bajiya' }]} productionItemId={9} defaults={{ batch: 'KP-77', exp: '2020-01-01', fill: true }} /></MemoryRouter>);

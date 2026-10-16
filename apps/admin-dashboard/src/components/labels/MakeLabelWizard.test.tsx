@@ -115,6 +115,27 @@ describe('MakeLabelWizard', () => {
     expect(JSON.parse(window.localStorage.getItem('labels.lastSize') ?? '{}')).toMatchObject({ preset: 'r60x40' });
   });
 
+  // Label audit, 2026-10-16: a sized item's size, and a use-by for this print only.
+  it('sends the size and a typed use-by for this print', async () => {
+    api.fetchLabelProducts.mockResolvedValue({ data: [
+      { id: 9, name: 'Mango juice', name_dv: null, label_enabled: true, label_shelf_life_days: 3, sizes: [{ id: 91, name: 'Small', price: 15 }, { id: 92, name: 'Large', price: 25 }] },
+    ] });
+    mount();
+    fireEvent.click(screen.getByRole('button', { name: /A menu item/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Mango juice/ }));
+    const cards = await screen.findByRole('group', { name: 'Which label' });
+    fireEvent.click(within(cards).getByRole('button', { name: /Jar or tub/ }));
+    fireEvent.click(screen.getByTestId('make-next-2'));
+    await waitFor(() => expect(api.stickerLinks).toHaveBeenCalled());
+
+    fireEvent.change(screen.getByTestId('make-size'), { target: { value: '92' } });
+    fireEvent.change(screen.getByTestId('make-exp'), { target: { value: '2099-01-05' } });
+    expect(screen.getByText(/For this print only/)).toBeInTheDocument();
+    await waitFor(() => expect(api.stickerLinks).toHaveBeenLastCalledWith(expect.objectContaining({
+      items: [{ id: 9, copies: 1, kind: 'item', size: 92 }], exp: '2099-01-05', preview: true,
+    })), { timeout: 3000 });
+  });
+
   it('offers a size of your own and a label printer, and starts over', async () => {
     mount();
     fireEvent.click(screen.getByRole('button', { name: /A menu item/ }));

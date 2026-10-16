@@ -377,7 +377,18 @@ storage, after opening, net weight, nutrition) are signed off into `label_signof
 with `label_wording_lock` on, `stickerLinks()` refuses a real print whose lines differ
 from the last sign-off (previews draw), and every print logs `details.signoff`. A new
 line that has legal weight goes into `LabelSignoffs::lines()` and `LINES` (and
-`LINE_NAMES` in `WordingSignoff.tsx`). How to
+`LINE_NAMES` in `WordingSignoff.tsx`). Label audit, Batch A (2026-10-16): a sized item's
+sticker is for one size, `size` on its request row (a `RUN_KEYS` key, so Print again and
+scan-to-reprint keep it; `StickerSheet::forSize()` hands the designs a copy carrying the
+size as the `labelSize` relation): its price (a typed label price still wins; with no
+size, the cheapest prints as "From MVR …") and its recipe rows (`LabelIngredients::sizeOf`,
+`sizeRecipe()` 'shared' when the size has none and the unsized rows stand in, said in the
+summary, never on the sticker); never the Daily Specials price. Print again dates by the
+saved label's choice (`LabelJob::dateMode`, `reprint_dates` in its request, set with
+`PUT /labels/jobs/{id}` `dates`): "shelf" clears the sheet's and every row's dates so they
+are worked out from today, "keep" keeps the typed use-by and refuses one already past; a
+label with no typed use-by is "shelf". The wizard types a use-by for one print, and the
+signed nutrition line carries the serving size and the per-serving values. How to
 use it and where everything lives: `docs/LABELS.md`; design and decisions:
 `docs/LABEL_HUB_PLAN.md` and `docs/LABEL_HUB_V2_PLAN.md`.
 

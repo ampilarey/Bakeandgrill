@@ -509,16 +509,22 @@ final class StickerSheet
             }
             $rowReq = self::rowRequest($req, $row);
             [$mfg, $exp] = $this->dates($product, $rowReq, $production);
+            $sized = $this->forSize($product, $rowReq);
+            $size = $sized instanceof Item ? LabelIngredients::sizeOf($sized) : null;
             $products[] = [
                 'id' => $product->id,
                 'kind' => $row['kind'],
                 'key' => self::key($row),
                 'name' => $product->name,
+                // The size this row is for, and where its recipe came from (label audit, 2026-10-16).
+                'size' => $size !== null ? ['id' => (int) $size->id, 'name' => (string) $size->name] : null,
+                'size_recipe' => $sized instanceof Item ? $this->ingredients->sizeRecipe($sized) : null,
+                'price' => $this->price($sized),
                 'copies' => $row['copies'],
                 'mfg' => $mfg,
                 'exp' => $exp,
                 'shelf_life_days' => $product->label_shelf_life_days,
-                'ingredients_from' => $this->ingredientLines($product)['from'],
+                'ingredients_from' => $this->ingredientLines($sized)['from'],
                 // A variable run (round 10): what this row prints with, where it differs from the sheet.
                 'batch' => $rowReq['batch'],
                 'qty' => $rowReq['qty'] !== '' ? (int) $rowReq['qty'] : null,
@@ -594,6 +600,7 @@ final class StickerSheet
      */
     public function stickerData(Item|CustomLabel $item, array $req, array $common, ?KitchenProductionItem $production = null): array
     {
+        $item = $this->forSize($item, $req);
         $lines = $this->ingredientLines($item);
         $title = LabelImage::fromMedia($item->label_title_media_id, 900);
         $photo = LabelImage::fromMedia($item->label_photo_media_id, 900)
@@ -726,18 +733,57 @@ final class StickerSheet
         ];
     }
 
-    /** "MVR 25.00", or '' when nothing is to print. */
+    /**
+     * The item as a sticker for one of its sizes (label audit, 2026-10-16):
+     * a copy carrying the size, so the price and the recipe follow it. The
+     * size must be an active size of this item; anything else is ignored.
+     *
+     * @param array<string, mixed> $req
+     */
+    public function forSize(Item|CustomLabel $item, array $req): Item|CustomLabel
+    {
+        $id = (int) ($req['size'] ?? 0);
+        if (!$item instanceof Item || $id <= 0) {
+            return $item;
+        }
+        $size = $item->variants()->whereKey($id)->where('is_active', true)->first();
+        if ($size === null) {
+            return $item;
+        }
+        $copy = clone $item;
+        $copy->setRelation('labelSize', $size);
+
+        return $copy;
+    }
+
+    /**
+     * "MVR 25.00", or '' when nothing is to print. A typed label price wins;
+     * else the picked size's price; else the menu price, written "From MVR …"
+     * when it is the cheapest of several sizes (label audit, 2026-10-16: it
+     * printed the cheapest size's price as if it were this pack's). Never the
+     * Daily Specials or offer price.
+     */
     public function price(Item|CustomLabel $item): string
     {
+        $from = false;
         if ($item instanceof CustomLabel) {
             $amount = $item->label_price !== null ? (float) $item->label_price : null;
         } elseif ($item->label_show_price) {
-            $amount = $item->label_price !== null ? (float) $item->label_price : $item->displayPriceInfo()['price'];
+            $size = LabelIngredients::sizeOf($item);
+            if ($item->label_price !== null) {
+                $amount = (float) $item->label_price;
+            } elseif ($size !== null) {
+                $amount = (float) $size->price;
+            } else {
+                $info = $item->displayPriceInfo();
+                $amount = $info['price'];
+                $from = (bool) $info['from'];
+            }
         } else {
             $amount = null;
         }
 
-        return $amount !== null && $amount > 0 ? 'MVR ' . number_format($amount, 2) : '';
+        return $amount !== null && $amount > 0 ? ($from ? 'From ' : '') . 'MVR ' . number_format($amount, 2) : '';
     }
 
     /**
@@ -853,7 +899,8 @@ final class StickerSheet
         $merged = [];
         foreach ($rows as $row) {
             if ((is_string($row['id']) ? $row['id'] !== '' : $row['id'] > 0) && $row['copies'] > 0) {
-                $key = self::key($row);
+                // Two sizes of one item are two rows (label audit, 2026-10-16).
+                $key = self::key($row) . '|' . ($row['run']['size'] ?? '');
                 $merged[$key] ??= ['id' => $row['id'], 'copies' => 0, 'kind' => $row['kind'], 'run' => $row['run'] ?? []];
                 $merged[$key]['copies'] += min($row['copies'], self::MAX_STICKERS);
             }
@@ -863,7 +910,7 @@ final class StickerSheet
     }
 
     /** What a row of a variable run may set for itself (round 10): the sheet's value otherwise. */
-    public const RUN_KEYS = ['batch', 'qty', 'mfg', 'exp', 'for', 'for2'];
+    public const RUN_KEYS = ['batch', 'qty', 'mfg', 'exp', 'for', 'for2', 'size'];
 
     /**
      * A row's own details, checked as the sheet's are: the batch to 30
@@ -915,6 +962,11 @@ final class StickerSheet
             if ($v !== '') {
                 $out[$k] = $v;
             }
+        }
+        // The size a sized item's sticker is for (label audit, 2026-10-16).
+        $size = trim((string) ($run['size'] ?? ''));
+        if ($size !== '' && ctype_digit($size) && (int) $size > 0) {
+            $out['size'] = $size;
         }
 
         return $out;

@@ -172,6 +172,10 @@ export function MakeLabelWizard({ canManage = false }: {
   const [lang, setLang] = useState<StickerLang>('en');
   const [fill, setFill] = useState(true);
   const [mfg, setMfg] = useState(today());
+  // A use-by for this print only (label audit, 2026-10-16); empty follows the shelf life.
+  const [exp, setExp] = useState('');
+  // The size a sized item's sticker is for: its price and recipe follow it.
+  const [sizeId, setSizeId] = useState<number | null>(null);
   const [qty, setQty] = useState('');
   // Typed from a tap on the preview (round 3): the batch number and who the packs are for.
   const [batch, setBatch] = useState('');
@@ -249,6 +253,7 @@ export function MakeLabelWizard({ canManage = false }: {
       if (!on) return;
     }
     setPicked({ kind: 'item', id: p.id, name: p.name, name_dv: p.name_dv, lang: p.name_dv ? 'both' : 'en' });
+    setSizeId(null);
     setLang(p.name_dv ? 'both' : 'en');
     setStep(2);
   };
@@ -282,10 +287,10 @@ export function MakeLabelWizard({ canManage = false }: {
   const round = choice.shape === 'circle';
 
   const request = (copiesWanted: number, forPreview: boolean) => ({
-    items: [{ id: picked?.id ?? 0, copies: copiesWanted, kind: picked?.kind ?? 'item' }],
+    items: [{ id: picked?.id ?? 0, copies: copiesWanted, kind: picked?.kind ?? 'item', ...(picked?.kind === 'item' && sizeId ? { size: sizeId } : {}) }],
     lang, layout: sized.layout, w: sized.w, h: sized.h,
     rounded: choice.shape === 'rect' && rounded,
-    fill, mfg: fill ? mfg : null, exp: null,
+    fill, mfg: fill ? mfg : null, exp: fill && exp ? exp : null,
     qty: qty !== '' ? Number(qty) : null,
     batch: batch.trim() || null,
     for: packedFor.trim() || null,
@@ -345,7 +350,7 @@ export function MakeLabelWizard({ canManage = false }: {
   };
 
   const startAgain = () => {
-    setStep(1); setKind(null); setPicked(null); setResult(null); setError(null); setPreview(null); setOwnSize(false); setQuery('');
+    setStep(1); setKind(null); setPicked(null); setResult(null); setError(null); setPreview(null); setOwnSize(false); setQuery(''); setSizeId(null); setExp('');
     setSpots([]); setQuick(null); setQuickDraft(null); setBatch(''); setPackedFor(''); setPackedFor2('');
   };
 
@@ -621,7 +626,21 @@ export function MakeLabelWizard({ canManage = false }: {
                 <div>
                   <label className={labelClass} htmlFor="make-mfg">Made on</label>
                   <input id="make-mfg" type="date" value={mfg} onChange={(e) => setMfg(e.target.value)} className={fieldClass} />
-                  <p className="text-xs text-[var(--color-text-muted)] mt-1">The expiry follows from its shelf life.</p>
+                  <label className={`${labelClass} mt-3`} htmlFor="make-exp">Use by</label>
+                  <input id="make-exp" type="date" value={exp} min={mfg} onChange={(e) => setExp(e.target.value)} className={fieldClass} data-testid="make-exp" />
+                  <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                    {exp ? 'For this print only. The product\'s shelf life stays as it is.' : 'Empty: worked out from its shelf life.'}
+                  </p>
+                </div>
+              )}
+              {(pickedItem?.sizes?.length ?? 0) > 0 && (
+                <div>
+                  <label className={labelClass} htmlFor="make-size">Which size is this sticker for?</label>
+                  <select id="make-size" value={sizeId ?? ''} onChange={(e) => setSizeId(Number(e.target.value) || null)} className={fieldClass} data-testid="make-size">
+                    <option value="">Not one size: prints the "From" price</option>
+                    {pickedItem!.sizes!.map((z) => <option key={z.id} value={z.id}>{z.name} · MVR {z.price.toFixed(2)}</option>)}
+                  </select>
+                  <p className="text-xs text-[var(--color-text-muted)] mt-1">Its price and its recipe's ingredients go on the sticker.</p>
                 </div>
               )}
               <div>

@@ -22,7 +22,7 @@ import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { useIsMobile } from '../hooks/useIsMobile';
 import {
   deleteLabelJob, downloadLabelSheet, duplicateLabelJob, fetchLabelJobs, fetchLabelLayouts, fetchLabelPrints, fetchLabelProducts, fetchLabelSettings,
-  openLabelSheet, pinLabelJob, printLabelJob, renameLabelJob, saveLabelSettings, updateItemLabel,
+  openLabelSheet, pinLabelJob, printLabelJob, renameLabelJob, saveLabelSettings, setLabelJobDates, updateItemLabel,
   type ShelfLifeSuggestions, type LabelJob, type LabelPrintRow, type LabelProduct, type LabelSettingsMap, type LabelStorage, type IngredientsSource, type StickerSummary,
 } from '../api';
 
@@ -65,6 +65,28 @@ function jobLine(j: LabelJob): string {
   return parts.join(' · ');
 }
 
+/**
+ * How Print again dates a saved label's stickers (label audit, 2026-10-16):
+ * made today, with the use-by worked out from the shelf life, or the typed
+ * use-by kept. A label with no typed use-by has only the first.
+ */
+function JobDates({ job, onChange }: { job: LabelJob; onChange: (mode: 'shelf' | 'keep') => void }) {
+  const kept = job.typed_exp ? new Date(`${job.typed_exp}T00:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : null;
+  const chip = (on: boolean) => ['h-8 min-h-[32px] px-3 rounded-full text-xs font-semibold border', on
+    ? 'bg-[var(--color-tone-rust-bg)] border-[var(--color-tone-rust-border)] text-[var(--color-tone-rust-text)]'
+    : 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text-secondary)]'].join(' ');
+  if (!kept) {
+    return <div className="text-xs text-[var(--color-text-muted)] mt-1" data-testid={`job-dates-${job.id}`}>Print again: made today, use-by from its shelf life.</div>;
+  }
+  return (
+    <div className="flex flex-wrap items-center gap-2 mt-1" role="group" aria-label="How Print again dates the stickers" data-testid={`job-dates-${job.id}`}>
+      <span className="text-xs text-[var(--color-text-muted)]">Print again:</span>
+      <button type="button" className={chip(job.dates === 'shelf')} aria-pressed={job.dates === 'shelf'} onClick={() => onChange('shelf')}>Shelf life from today</button>
+      <button type="button" className={chip(job.dates === 'keep')} aria-pressed={job.dates === 'keep'} onClick={() => onChange('keep')}>Keep use-by {kept}</button>
+    </div>
+  );
+}
+
 function SavedLabelsTab() {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -103,11 +125,15 @@ function SavedLabelsTab() {
   const pin = async (j: LabelJob) => {
     try { await pinLabelJob(j.id, !j.pinned); void load(); } catch (e) { toast('error', e instanceof Error ? e.message : 'Could not pin it.'); }
   };
+  // How Print again dates the stickers (label audit, 2026-10-16).
+  const dates = async (j: LabelJob, mode: 'shelf' | 'keep') => {
+    try { await setLabelJobDates(j.id, mode); void load(); } catch (e) { toast('error', e instanceof Error ? e.message : 'Could not change it.'); }
+  };
   const btn = 'w-9 h-9 inline-flex items-center justify-center rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] disabled:opacity-40';
 
   return (
     <div className="space-y-5">
-      <Card padding="none" header={<div className="flex flex-wrap items-center gap-3"><div className="flex-1 min-w-[160px]"><h3 className="font-bold text-[var(--color-text)]">Saved labels</h3><p className="text-xs text-[var(--color-text-muted)] mt-1">Every label you prepare is kept here. Print it again (stickers get today's date), download the PDF, open it to change, copy, rename or remove.</p></div>
+      <Card padding="none" header={<div className="flex flex-wrap items-center gap-3"><div className="flex-1 min-w-[160px]"><h3 className="font-bold text-[var(--color-text)]">Saved labels</h3><p className="text-xs text-[var(--color-text-muted)] mt-1">Every label you prepare is kept here. Print it again (made today; each label says how its use-by is set), download the PDF, open it to change, copy, rename or remove.</p></div>
         <div className="relative w-full sm:w-64"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] pointer-events-none" /><input type="search" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} placeholder="Find a saved label" aria-label="Find a saved label" className="h-10 min-h-[44px] pl-9 pr-3 rounded-lg border border-[var(--color-border)] bg-white text-sm w-full" /></div></div>}>
         <ul className="divide-y divide-[var(--color-border-light)]" data-testid="saved-labels">
           {rows.map((j) => (
@@ -118,6 +144,7 @@ function SavedLabelsTab() {
                   <InlineRename name={j.name} onSave={(n) => rename(j, n)} buttonClassName="text-sm font-semibold text-[var(--color-text)]" />
                   <div className="text-xs text-[var(--color-text-secondary)]">{jobLine(j)}</div>
                   <div className="text-xs text-[var(--color-text-muted)]">{j.print_count ? `Printed ${j.print_count} ${j.print_count === 1 ? 'time' : 'times'}${j.last_printed_at ? `, last ${when(j.last_printed_at)}` : ''}` : 'Not printed yet'}{j.created_by ? ` · ${j.created_by}` : ''}</div>
+                  {j.dates && <JobDates job={j} onChange={(mode) => dates(j, mode)} />}
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-1 mt-1 pl-7">

@@ -6,17 +6,16 @@ namespace App\Http\Controllers\Api;
 
 use App\Domains\Labels\Barcode;
 use App\Domains\Labels\BatchLink;
-use App\Domains\Labels\LabelBadges;
-use App\Domains\Labels\LabelRolls;
 use App\Domains\Labels\BoxLabel;
 use App\Domains\Labels\ExpiringPrints;
+use App\Domains\Labels\LabelBadges;
 use App\Domains\Labels\LabelIngredients;
 use App\Domains\Labels\LabelLayout;
 use App\Domains\Labels\LabelMedia;
 use App\Domains\Labels\LabelRaster;
+use App\Domains\Labels\LabelRolls;
 use App\Domains\Labels\LabelSettings;
 use App\Domains\Labels\LabelSignoffs;
-use App\Models\LabelSignoff;
 use App\Domains\Labels\LabelTemplates;
 use App\Domains\Labels\LabelTypes;
 use App\Domains\Labels\Nutrition;
@@ -37,6 +36,7 @@ use App\Models\LabelFooter;
 use App\Models\LabelGlossaryEntry;
 use App\Models\LabelJob;
 use App\Models\LabelPrint;
+use App\Models\LabelSignoff;
 use App\Models\LabelTemplate;
 use App\Models\LabelType;
 use App\Models\Media;
@@ -133,6 +133,8 @@ class LabelsController extends Controller
             'items.*.exp' => 'nullable|date_format:Y-m-d',
             'items.*.for' => 'nullable|string|max:60',
             'items.*.for2' => 'nullable|string|max:60',
+            // The size a sized item's sticker is for (label audit, 2026-10-16).
+            'items.*.size' => 'nullable|integer|min:1',
             'lang' => ['sometimes', Rule::in(StickerSheet::LANGS)],
             'layout' => ['sometimes', Rule::in(array_keys(StickerLayouts::LAYOUTS))],
             'w' => 'nullable|numeric',
@@ -449,9 +451,17 @@ class LabelsController extends Controller
 
     public function updateJob(Request $request, LabelJob $job): JsonResponse
     {
-        $data = $request->validate(['name' => 'sometimes|required|string|max:80', 'pinned' => 'sometimes|boolean']);
+        $data = $request->validate([
+            'name' => 'sometimes|required|string|max:80',
+            'pinned' => 'sometimes|boolean',
+            // How Print again dates the stickers (label audit, 2026-10-16).
+            'dates' => ['sometimes', Rule::in(LabelJob::DATE_MODES)],
+        ]);
         if (array_key_exists('name', $data)) {
             $job->name = trim($data['name']);
+        }
+        if (array_key_exists('dates', $data) && $job->kind === 'stickers') {
+            $job->request = array_merge($job->request ?? [], [LabelJob::DATES_KEY => $data['dates']]);
         }
         if (array_key_exists('pinned', $data)) {
             $job->pinned = (bool) $data['pinned'];
@@ -477,19 +487,42 @@ class LabelsController extends Controller
     }
 
     /**
-     * Print a saved label again. Stickers with dates filled are printed
-     * with today's made-on date (and the expiry worked out from it) unless
-     * the saved expiry is still ahead; a label is a new batch, not the old
-     * one. Edit the label to print it with other dates.
+     * Print a saved label again: a new batch, made today. The label's date
+     * choice (label audit, 2026-10-16; LabelJob::dateMode) decides the use-by:
+     * "Shelf life from today" clears every stored expiry and row date so each
+     * is worked out again from today; "Keep this use-by date" keeps the typed
+     * expiry, the sheet's and each row's, and refuses one that has passed
+     * rather than printing a sticker already out of date. Before this a typed
+     * future expiry stayed while made-on moved, shortening the printed life,
+     * and a variable run's own dates did not move at all.
      */
     public function printJob(Request $request, LabelJob $job): JsonResponse
     {
         $data = $job->request;
         if ($job->kind === 'stickers') {
             if (!empty($data['fill'])) {
-                $data['mfg'] = Carbon::today()->toDateString();
-                if (!empty($data['exp']) && Carbon::parse($data['exp'])->lessThan(Carbon::today())) {
+                $today = Carbon::today();
+                $keep = LabelJob::dateMode($data) === 'keep';
+                $data['mfg'] = $today->toDateString();
+                $passed = null;
+                if (!$keep) {
                     $data['exp'] = null;
+                } elseif (!empty($data['exp']) && Carbon::parse($data['exp'])->lessThan($today)) {
+                    $passed = Carbon::parse($data['exp']);
+                }
+                foreach (($data['items'] ?? []) as $i => $row) {
+                    if (!is_array($row)) {
+                        continue;
+                    }
+                    $data['items'][$i]['mfg'] = null;
+                    if (!$keep) {
+                        $data['items'][$i]['exp'] = null;
+                    } elseif (!empty($row['exp']) && Carbon::parse($row['exp'])->lessThan($today)) {
+                        $passed ??= Carbon::parse($row['exp']);
+                    }
+                }
+                if ($passed !== null) {
+                    return response()->json(['message' => 'This label keeps its use-by date, ' . $passed->format('j M Y') . ', which has passed. Switch it to Shelf life from today, or edit the label with a new date.'], 422);
                 }
             }
             try {
@@ -520,6 +553,9 @@ class LabelsController extends Controller
             'kind' => $job->kind,
             'name' => $job->name,
             'pinned' => (bool) $job->pinned,
+            // How Print again dates the stickers, and the use-by it keeps (label audit, 2026-10-16).
+            'dates' => $job->kind === 'stickers' ? LabelJob::dateMode($job->request ?? []) : null,
+            'typed_exp' => $job->kind === 'stickers' ? LabelJob::typedExp($job->request ?? []) : null,
             'summary' => $job->summary,
             'print_count' => $job->print_count,
             'last_printed_at' => $job->last_printed_at?->toIso8601String(),
@@ -1624,6 +1660,11 @@ class LabelsController extends Controller
             'nutrition' => $this->nutrition->forItem($item),
             'label_nutrition_per' => Nutrition::per($item),
             'label_serving_g' => Nutrition::serving($item),
+            // The item's active sizes, so a sticker can say which one it is for (label audit, 2026-10-16).
+            'sizes' => $item->has_variants
+                ? $item->variants()->where('is_active', true)->orderBy('sort_order')->orderBy('id')->get(['id', 'name', 'price'])
+                    ->map(fn ($v) => ['id' => (int) $v->id, 'name' => (string) $v->name, 'price' => (float) $v->price])->values()->all()
+                : [],
             // The wrap-around label's parts (2026-10-12), as they stand.
             'label_wrap' => $wrap = WrapConfig::of($item),
             'wrap_pictures' => $this->wrapPictures($wrap),

@@ -34,7 +34,9 @@ final class Reprint
     {
         $row = null;
         foreach ($req['items'] as $r) {
-            if (($r['kind'] ?? 'item') === $product['kind'] && (string) $r['id'] === (string) $product['id']) {
+            // Two sizes of one item are two rows: replay the one this print was (label audit, 2026-10-16).
+            $size = isset($product['size']['id']) ? (string) $product['size']['id'] : '';
+            if (($r['kind'] ?? 'item') === $product['kind'] && (string) $r['id'] === (string) $product['id'] && (string) ($r['run']['size'] ?? '') === $size) {
                 $row = $r;
                 break;
             }

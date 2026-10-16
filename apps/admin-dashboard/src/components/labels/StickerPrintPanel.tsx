@@ -39,7 +39,7 @@ type Props = {
   defaults?: { batch?: string; exp?: string | null; mfg?: string | null; qty?: number | null; fill?: boolean };
 };
 
-type Row = { key: string; kind: 'item' | 'custom'; id: number; name: string; name_dv: string | null; shelf: number | null; ingredients: 'recipe' | 'manual' | 'none'; brand?: string };
+type Row = { key: string; kind: 'item' | 'custom'; id: number; name: string; name_dv: string | null; shelf: number | null; ingredients: 'recipe' | 'manual' | 'none'; brand?: string; sizes?: { id: number; name: string; price: number }[] };
 
 const today = () => new Date().toISOString().slice(0, 10);
 /** A batch code from today's date, 261011 for 11 Oct 2026: one tap instead of typing. */
@@ -162,6 +162,8 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
   const [picked, setPicked] = useState<Record<string, number>>({});
   // A variable run (round 10, 2026-10-13): a row's own batch, quantity, dates and packed-for, printed instead of the sheet's.
   const [runs, setRuns] = useState<Record<string, RowRun>>({});
+  // The size a sized item's stickers are for (label audit, 2026-10-16): its price and recipe follow it.
+  const [sizes, setSizes] = useState<Record<string, number>>({});
   const [openRun, setOpenRun] = useState<string | null>(null);
   const [lang, setLang] = useState<StickerLang>('en');
   const [choice, setChoice] = useState<SizeChoice>(() => rememberedSize() ?? DEFAULT_CHOICE);
@@ -258,6 +260,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
     const items = Array.isArray(q.items) ? (q.items as ({ id: number; copies: number; kind?: string } & StickerRun)[]) : [];
     setPicked(Object.fromEntries(items.map((i) => [keyOf(i.kind === 'custom' ? 'custom' : 'item', Number(i.id)), Number(i.copies)])));
     setRuns(Object.fromEntries(items.filter((i) => RUN_KEYS.some((k) => i[k] != null && i[k] !== '')).map((i) => [keyOf(i.kind === 'custom' ? 'custom' : 'item', Number(i.id)), runFrom(i)])));
+    setSizes(Object.fromEntries(items.filter((i) => i.size).map((i) => [keyOf('item', Number(i.id)), Number(i.size)])));
     if (q.lang === 'dv' || q.lang === 'en' || q.lang === 'both') setLang(q.lang);
     setSavedSize({ layout: typeof q.layout === 'string' ? q.layout : 'a4-4', w: q.w != null ? Number(q.w) : null, h: q.h != null ? Number(q.h) : null });
     setFill(Boolean(q.fill));
@@ -375,7 +378,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
   }, [customParam, sizeParam]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const rows: Row[] = useMemo(() => [
-    ...products.map((p): Row => ({ key: keyOf('item', p.id), kind: 'item', id: p.id, name: p.name, name_dv: p.name_dv, shelf: p.label_shelf_life_days, ingredients: p.ingredients.from })),
+    ...products.map((p): Row => ({ key: keyOf('item', p.id), kind: 'item', id: p.id, name: p.name, name_dv: p.name_dv, shelf: p.label_shelf_life_days, ingredients: p.ingredients.from, sizes: p.sizes ?? [] })),
     ...customs.map((c): Row => ({ key: keyOf('custom', c.id), kind: 'custom', id: c.id, name: c.name, name_dv: c.name_dv, shelf: c.label_shelf_life_days ?? c.defaults.shelf_life_days, ingredients: c.ingredients.from, brand: c.brand_name })),
   ], [products, customs]);
   const items = useMemo(() => Object.entries(picked).filter(([, n]) => n > 0).map(([key, copies]) => ({ key, ...parseKey(key), copies })), [picked]);
@@ -396,7 +399,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
   const request = (first: string | null = null) => {
     const ordered = first != null && items.some((i) => i.key === first) ? [...items.filter((i) => i.key === first), ...items.filter((i) => i.key !== first)] : items;
     return {
-      items: ordered.map((i) => ({ id: i.id, copies: i.copies, kind: i.kind, ...runPayload(runs[i.key], fill) })), lang, layout: sized.layout,
+      items: ordered.map((i) => ({ id: i.id, copies: i.copies, kind: i.kind, ...runPayload(runs[i.key], fill), ...(sizes[i.key] ? { size: sizes[i.key] } : {}) })), lang, layout: sized.layout,
       w: sized.w, h: sized.h,
       rounded: choice.shape === 'rect' && rounded,
       fill, mfg: fill ? mfg : null, exp: fill && exp ? exp : null,
@@ -683,6 +686,13 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
                   </label>
                   {picked[r.key] ? (
                     <div className="ml-auto pl-8 sm:pl-0 flex items-center gap-2">
+                      {(r.sizes?.length ?? 0) > 0 && (
+                        <select value={sizes[r.key] ?? ''} onChange={(e) => setSizes((s) => ({ ...s, [r.key]: Number(e.target.value) }))} aria-label={`${r.name}: which size`} data-testid={`sticker-row-size-${r.key}`}
+                          className="h-8 min-h-[32px] px-2 rounded-lg border text-xs font-semibold bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text)]">
+                          <option value="" disabled>Which size?</option>
+                          {r.sizes!.map((z) => <option key={z.id} value={z.id}>{z.name} · MVR {z.price.toFixed(2)}</option>)}
+                        </select>
+                      )}
                       <QtyStepper value={picked[r.key]} min={1} max={400} step={perPage} onChange={(n) => setPicked((s) => ({ ...s, [r.key]: n }))} label={`How many ${r.name} stickers`} />
                       <button type="button" onClick={() => setOpenRun((o) => (o === r.key ? null : r.key))} aria-expanded={openRun === r.key || hasRun(runs[r.key])} aria-label={`Own details for ${r.name}`} title="Its own batch, quantity, dates and packed-for" data-testid={`sticker-row-details-${r.key}`}
                         className={['h-8 min-h-[32px] px-2 rounded-lg border text-xs font-semibold inline-flex items-center gap-1', hasRun(runs[r.key]) ? 'bg-[var(--color-tone-rust-bg)] border-[var(--color-tone-rust-border)] text-[var(--color-tone-rust-text)]' : 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text-secondary)]'].join(' ')}>
@@ -880,8 +890,9 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
           <ul className="text-sm text-[var(--color-text-secondary)] space-y-1">
             {result.summary.products.map((p) => (
               <li key={p.key ?? p.id}>
-                {p.name} × {p.copies}
+                {p.name}{p.size ? ` (${p.size.name})` : ''} × {p.copies}
                 {fill ? (p.exp ? ` · EXP ${p.exp}` : ' · expiry blank (no shelf life set)') : ''}
+                {p.size_recipe === 'shared' ? ` · ingredients from the item's shared recipe; ${p.size?.name ?? 'this size'} has none of its own` : ''}
                 {p.varied ? [p.batch ? `batch ${p.batch}` : null, p.qty ? `${p.qty} per pack` : null, p.for ? `for ${p.for}` : null].filter(Boolean).map((t) => ` · ${t}`).join('') : ''}
                 {p.code && <span className="ml-2 font-mono text-xs text-[var(--color-text-muted)]" title="On every sticker of this product as a QR, which opens the pack's page" data-testid="print-code">code {p.code}</span>}
               </li>

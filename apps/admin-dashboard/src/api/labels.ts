@@ -45,6 +45,8 @@ export type LabelProduct = {
   label_nutrition_per: NutritionPer;
   /** Round 15: the serving size in g (or ml), for a per-serving column beside per 100. */
   label_serving_g?: number | null;
+  /** The item's active sizes; a sticker for a sized item says which one it is for (label audit, 2026-10-16). */
+  sizes?: { id: number; name: string; price: number }[];
   /** The wrap-around label's parts (2026-10-12), as they stand (the defaults when nothing is kept). */
   label_wrap: LabelWrap;
   wrap_pictures: WrapPicture[];
@@ -304,7 +306,7 @@ export type CustomLabelPayload = Partial<Pick<CustomLabel,
 export type StickerLang = 'en' | 'dv' | 'both';
 
 /** A row's own details on a variable run (round 10, 2026-10-13): printed on that product's stickers instead of the sheet's. */
-export type StickerRun = { batch?: string | null; qty?: number | null; mfg?: string | null; exp?: string | null; for?: string | null; for2?: string | null };
+export type StickerRun = { batch?: string | null; qty?: number | null; mfg?: string | null; exp?: string | null; for?: string | null; for2?: string | null; size?: number | null };
 
 export type StickerRequest = {
   /** A menu item, or a custom label when `kind` says so; with its own details on a variable run. */
@@ -436,6 +438,8 @@ export type StickerSummary = {
   per_page: number;
   /** `code`: the print's code (2026-10-12), which its stickers carry as a QR; null on a preview. */
   products: { id: number; kind?: 'item' | 'custom'; key?: string; name: string; copies: number; mfg: string | null; exp: string | null; shelf_life_days: number | null; ingredients_from: string; code?: string | null;
+    /** The size this row is for, its recipe's source ('shared' when the size has no rows of its own) and the price it prints (label audit, 2026-10-16). */
+    size?: { id: number; name: string } | null; size_recipe?: 'own' | 'shared' | null; price?: string;
     /** What the row prints with (round 10): its own details where it has them (`varied`), else the sheet's. */
     batch?: string; qty?: number | null; for?: string; for2?: string; varied?: boolean }[];
   /** On a wrap-around label: the first product's strips. */
@@ -469,6 +473,9 @@ export type LabelJob = {
   pinned: boolean;
   summary: (StickerSummary | { label: string; customer: string; when: string; lines: { name: string; qty: number }[] }) | null;
   print_count: number; last_printed_at: string | null; created_at: string; created_by: string | null;
+  /** How Print again dates the stickers (label audit, 2026-10-16): "shelf" works the use-by out from today, "keep" keeps `typed_exp`. Null on a box label. */
+  dates?: 'shelf' | 'keep' | null;
+  typed_exp?: string | null;
 };
 export type LabelJobFull = LabelJob & { request: Record<string, unknown> };
 
@@ -690,6 +697,11 @@ export function fetchLabelJob(id: number) {
 
 export function renameLabelJob(id: number, name: string) {
   return req<{ data: LabelJob }>(`/labels/jobs/${id}`, { method: 'PUT', body: JSON.stringify({ name }) });
+}
+
+/** How Print again dates this label's stickers (label audit, 2026-10-16). */
+export function setLabelJobDates(id: number, dates: 'shelf' | 'keep') {
+  return req<{ data: LabelJob }>(`/labels/jobs/${id}`, { method: 'PUT', body: JSON.stringify({ dates }) });
 }
 
 /** Pin (favourite) a saved label so it leads the list and Print again (2026-10-12). */

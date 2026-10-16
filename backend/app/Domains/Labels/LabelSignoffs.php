@@ -72,6 +72,13 @@ final class LabelSignoffs
             'net_weight' => trim((string) ($product->label_net_weight ?? '')),
             'nutrition' => $n === null ? '' : ($n['rows'] !== [] ? 'Per 100 ' . $n['per'] . ': ' . $n['line'] : $n['line']),
         ];
+        // The per-serving column prints too, so its size and values are signed
+        // with the rest (label audit, 2026-10-16: a new serving size changed
+        // the sticker without the wording showing Changed). Added only when a
+        // serving is set, so labels without one keep their sign-off.
+        if ($n !== null && isset($n['serving'], $n['serv_line'])) {
+            $out['nutrition'] .= ' · Per serving (' . Nutrition::servingWords((float) $n['serving'], $n['per']) . '): ' . $n['serv_line'];
+        }
 
         return $out;
     }
