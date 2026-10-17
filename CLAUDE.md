@@ -97,6 +97,11 @@ Promotions → Offers each carry a one-line `SeeAlso` to the other; Signage's TV
 tab is "TV status", never "Devices" (System → Devices is tills and kitchen screens).
 Inside Settings, `OrderingControlTabs` drops its own Delivery tab and hides on the
 Delivery tab, since the hub already offers it.
+Nav check (2026-10-17): Posters (Customers & Marketing, promotion) and Labels (Manage,
+packaging) each carry a `SeeAlso` to the other; Labels' permissions sit in the role editor's
+"Menu, stock and buying" section, as Labels sits in Manage; Webhooks and Xero are tabs of
+System → Integrations (`IntegrationsHub`, old paths forward); Shifts & Cash points to
+Settings → Currency photos.
 Nothing scrolls sideways (owner, 2026-10-09). A row of tabs or filter chips is
 `TabScrollRow`, which wraps. A table goes in `.table-scroll` (or `TableCard` /
 `ResponsiveTable`); one that does not fit its box becomes cards, one per row with each
