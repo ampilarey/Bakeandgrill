@@ -117,6 +117,7 @@ final class SignageResolver
             }
         }
 
+        $slides = self::dropOutsideSchedule($slides, $now);
         $rotation = WeightedRotation::buildOrder($slides);
         $prayer = $this->prayerPayload($now);
 
@@ -189,6 +190,28 @@ final class SignageResolver
         }
 
         return null;
+    }
+
+    /**
+     * A slide with a schedule (a poster sent to the TV) leaves the loop
+     * once date_end has passed. Slides without a schedule are unchanged.
+     *
+     * @param list<mixed> $slides
+     * @return list<mixed>
+     */
+    private static function dropOutsideSchedule(array $slides, Carbon $now): array
+    {
+        return array_values(array_filter($slides, static function ($slide) use ($now): bool {
+            if (!is_array($slide)) {
+                return false;
+            }
+            $schedule = $slide['schedule'] ?? null;
+            if (!is_array($schedule) || $schedule === []) {
+                return true;
+            }
+
+            return SignageScheduleMatcher::matches($schedule, $now);
+        }));
     }
 
     private function campaignMatches(SignageCampaign $campaign, Carbon $now): bool

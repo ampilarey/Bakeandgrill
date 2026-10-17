@@ -283,6 +283,7 @@ backend/routes/domains/orders.php:90:orders.refund
 backend/routes/domains/orders.php:92:orders.refund
 backend/routes/domains/orders.php:95:orders.refund
 backend/routes/domains/payments.php:24:customers.credit.repay
+backend/routes/domains/posters.php:10:posters.make
 backend/routes/domains/reporting.php:22:reports.view
 backend/routes/domains/reporting.php:68:customers.analytics
 backend/routes/domains/reservations.php:31:reservations.manage

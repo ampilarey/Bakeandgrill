@@ -44,9 +44,19 @@ A changed price, dish or hours marks the poster out of date, with the diff
 ("price MVR 45.00 → MVR 50.00"). `posters:alert` each morning texts
 `owner_poster_stale` and `owner_poster_ending` (due down today or tomorrow).
 
-**Tell us how we did** is a poster on this page. Its code opens `/complain`.
-The old `/complain/poster` sheet pages stay, so a bookmark or a many-up print
-link still opens them.
+**Tell us how we did** is a poster on this page. Its code opens `/p/{code}`,
+which counts the scan and then opens `/complain`. The old `/complain/poster`
+sheet pages stay, so a bookmark or a many-up print link still opens them.
+
+## Everywhere
+
+On My posters, one design can go further than the print shop:
+
+- **TV** makes a 1920×1080 picture and adds one image slide to the dining playlist. The take-down date is that slide's `date_end`, so the rest of the board stays and the slide leaves on its own.
+- **Instagram** saves a draft through the social drafter: approval, the next free time when a spacing rule would be broken, and channels that need a photo. The pictures are 1200×630, 1080×1080, 1080×1350 and 1080×1920. WhatsApp and Viber are share links for a phone.
+- **Home banner** adds the offer as one hero slide for the same period. The other slides stay.
+- **Scans** are `/p/{code}`. The printed QR uses that code once the poster is saved. Wi-Fi posters keep a Wi-Fi QR. My posters shows the count. A scan stores the poster and the time only.
+- **Menu board** is the list layout, landscape, and starts at A2. Send it to the TV the same way.
 
 ## Phase 0, the print file
 

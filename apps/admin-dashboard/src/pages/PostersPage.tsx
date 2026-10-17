@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
-import { Copy, Download, Pin, Send, Trash2 } from 'lucide-react';
+import { Copy, Download, Monitor, Pin, Send, Share2, Trash2 } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { PageHeader, Btn } from '../components/SharedUI';
 import {
   advancePosterOrder, approvePosterQuote, createPoster, deletePoster, deletePosterTemplate, downloadPosterZip, duplicatePoster, exportPoster,
   fetchPosterCatalog, fetchPosterLookups, fetchPosterOrders, fetchPosters, fetchPosterTemplates, fetchPrintShops, lockPosterTemplate,
-  previewPoster, quotePosterOrder, savePosterTemplate, savePrintShop, sendPosterToShop, setPosterProofApproval, updatePoster,
+  draftPosterSocial, previewPoster, quotePosterOrder, savePosterTemplate, savePrintShop, sendPosterToShop, sendPosterToTv, setPosterHomeBanner, setPosterProofApproval, updatePoster,
   type PosterCheck, type PosterDraft, type PosterOrderRow, type PosterPiece, type PosterPurpose, type PosterRow, type PosterTemplateRow, type PrintShop,
 } from '../api';
 
@@ -21,7 +21,7 @@ function emptyDraft(purpose: PosterPurpose): PosterDraft {
     mood: 'dark',
     language: 'both',
     landscape: purpose.landscape,
-    sizes: purpose.landscape ? ['A5'] : ['A4'],
+    sizes: purpose.key === 'menu_board' ? ['A2'] : (purpose.landscape ? ['A5'] : ['A4']),
     slots: { ...purpose.slots },
     bindings: {},
     place: null,
@@ -308,25 +308,37 @@ function Preview({ sheet, gloss }: { sheet: { w: number; h: number; hex_bg: stri
 function MineTab({ onEdit }: { onEdit: () => void }) {
   const [rows, setRows] = useState<PosterRow[]>([]);
   const [down, setDown] = useState<PosterRow[]>([]);
+  const [note, setNote] = useState('');
+  const [shares, setShares] = useState<Record<number, { whatsapp: string; viber: string }>>({});
   const load = () => fetchPosters().then((r) => { setRows(r.posters); setDown(r.should_be_down); }).catch(() => undefined);
   useEffect(() => { load(); }, []);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {down.length > 0 && <p style={{ color: 'var(--color-warning)' }}>{down.length} should be down: {down.map((p) => p.name).join(', ')}</p>}
+      {note && <p style={{ color: 'var(--color-text-secondary)' }}>{note}</p>}
       {rows.length === 0 && <p style={{ color: 'var(--color-text-muted)' }}>No posters yet.</p>}
       {rows.map((p) => (
-        <div key={p.id} style={{ ...cardStyle, display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
-          <div>
-            <strong>{p.pinned ? '★ ' : ''}{p.code} · {p.name}</strong>
-            <div style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>{p.state} · {(p.sizes ?? []).join(', ')}{p.place ? ` · ${p.place}` : ''}{p.take_down_on ? ` · down ${p.take_down_on}` : ''}{p.should_be_down ? ' · should be down' : ''}{p.stale ? ` · out of date${p.diff ? `: ${p.diff}` : ''}` : ''}{p.order ? ` · ${p.order.shop ?? 'shop'} ${p.order.state.replace(/_/g, ' ')}` : ''}</div>
+        <div key={p.id} style={{ ...cardStyle, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div>
+              <strong>{p.pinned ? '★ ' : ''}{p.code} · {p.name}</strong>
+              <div style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>{p.state} · {(p.sizes ?? []).join(', ')}{p.place ? ` · ${p.place}` : ''}{p.take_down_on ? ` · down ${p.take_down_on}` : ''}{p.should_be_down ? ' · should be down' : ''}{typeof p.scans === 'number' ? ` · ${p.scans} scans` : ''}{p.banner ? ' · home banner' : ''}{p.stale ? ` · out of date${p.diff ? `: ${p.diff}` : ''}` : ''}{p.order ? ` · ${p.order.shop ?? 'shop'} ${p.order.state.replace(/_/g, ' ')}` : ''}</div>
+            </div>
+            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+              <Btn variant="ghost" onClick={() => updatePoster(p.id, { pinned: !p.pinned }).then(load)}><Pin size={14} /></Btn>
+              <Btn variant="ghost" onClick={() => duplicatePoster(p.id).then(load)}><Copy size={14} /></Btn>
+              <Btn variant="ghost" onClick={() => { const name = window.prompt('Name', p.name); if (name) updatePoster(p.id, { name }).then(load); }}>Rename</Btn>
+              <Btn variant="ghost" onClick={() => updatePoster(p.id, { state: p.state === 'up' ? 'down' : 'up' }).then(load)}>{p.state === 'up' ? 'Mark down' : 'Mark up'}</Btn>
+              <Btn variant="ghost" onClick={() => deletePoster(p.id).then(load)}><Trash2 size={14} /></Btn>
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: 4 }}>
-            <Btn variant="ghost" onClick={() => updatePoster(p.id, { pinned: !p.pinned }).then(load)}><Pin size={14} /></Btn>
-            <Btn variant="ghost" onClick={() => duplicatePoster(p.id).then(load)}><Copy size={14} /></Btn>
-            <Btn variant="ghost" onClick={() => { const name = window.prompt('Name', p.name); if (name) updatePoster(p.id, { name }).then(load); }}>Rename</Btn>
-            <Btn variant="ghost" onClick={() => updatePoster(p.id, { state: p.state === 'up' ? 'down' : 'up' }).then(load)}>{p.state === 'up' ? 'Mark down' : 'Mark up'}</Btn>
-            <Btn variant="ghost" onClick={() => deletePoster(p.id).then(load)}><Trash2 size={14} /></Btn>
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+            <Btn variant="secondary" onClick={() => sendPosterToTv(p.id).then((r) => setNote(`${p.name} is on the TV${r.date_end ? ` until ${r.date_end}` : ''}.`)).catch((e) => setNote(e instanceof Error ? e.message : 'Could not send it to the TV.'))}><Monitor size={14} /> TV</Btn>
+            <Btn variant="secondary" onClick={() => draftPosterSocial(p.id).then((r) => { setShares((s) => ({ ...s, [p.id]: { whatsapp: r.whatsapp, viber: r.viber } })); setNote(`${p.name} is a social draft${r.best_time ? `, best time ${r.best_time}` : ''}.`); }).catch((e) => setNote(e instanceof Error ? e.message : 'Could not draft the post.'))}><Share2 size={14} /> Instagram</Btn>
+            <Btn variant="secondary" onClick={() => setPosterHomeBanner(p.id, !p.banner).then(() => load()).catch((e) => setNote(e instanceof Error ? e.message : 'Could not update the home banner.'))}>{p.banner ? 'Take off home' : 'Home banner'}</Btn>
+            {shares[p.id] && <a href={shares[p.id].whatsapp} style={{ alignSelf: 'center', minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>WhatsApp</a>}
+            {shares[p.id] && <a href={shares[p.id].viber} style={{ alignSelf: 'center', minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>Viber</a>}
           </div>
         </div>
       ))}

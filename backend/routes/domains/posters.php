@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Api\PosterController;
+use App\Http\Controllers\Api\PosterEverywhereController;
 use App\Http\Controllers\Api\PosterShopController;
 use Illuminate\Support\Facades\Route;
 
@@ -28,6 +29,9 @@ Route::middleware(['auth:sanctum', 'staff.token', 'permission:posters.make'])
         Route::post('/orders/{order}/state', [PosterShopController::class, 'advance']);
         Route::get('/exports/{export}/download', [PosterController::class, 'download']);
         Route::post('/{poster}/orders', [PosterShopController::class, 'send']);
+        Route::post('/{poster}/tv', [PosterEverywhereController::class, 'tv']);
+        Route::post('/{poster}/social', [PosterEverywhereController::class, 'social']);
+        Route::post('/{poster}/banner', [PosterEverywhereController::class, 'banner']);
         Route::get('/{poster}', [PosterController::class, 'show']);
         Route::put('/{poster}', [PosterController::class, 'update']);
         Route::delete('/{poster}', [PosterController::class, 'destroy']);
