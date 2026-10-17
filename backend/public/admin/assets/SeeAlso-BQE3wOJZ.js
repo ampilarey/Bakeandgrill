@@ -1,0 +1,1 @@
+import{j as o}from"./index-DOYNffv_.js";import{L as i}from"./vendor-Du1vKj2-.js";function l({children:r,to:e,label:t,testId:s}){return o.jsxs("p",{"data-testid":s??"see-also",style:{margin:"0 0 14px",fontSize:13,color:"var(--color-text-secondary)",lineHeight:1.5},children:[r," ",o.jsx(i,{to:e,style:{color:"var(--color-primary)",fontWeight:600},children:t})]})}export{l as S};

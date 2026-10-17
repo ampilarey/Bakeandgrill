@@ -49,6 +49,8 @@ export type PosterRow = PosterDraft & {
   code: string;
   version: number;
   should_be_down: boolean;
+  scans?: number;
+  banner?: boolean;
   stale?: boolean;
   diff?: string;
   order?: { id: number; state: string; shop: string | null; quote_mvr: string | null } | null;
@@ -166,3 +168,23 @@ export const approvePosterQuote = (id: number) =>
 
 export const advancePosterOrder = (id: number, state: 'received' | 'up' | 'down') =>
   req<PosterOrderRow>(`/posters/orders/${id}/state`, { method: 'POST', body: JSON.stringify({ state }) });
+
+export type PosterSocialDraft = {
+  post_id: number;
+  status: string;
+  image_url: string | null;
+  sizes: Record<string, string>;
+  best_time: string | null;
+  whatsapp: string;
+  viber: string;
+  link: string;
+};
+
+export const sendPosterToTv = (id: number) =>
+  req<{ slide_id: string; image_url: string; date_end: string | null }>(`/posters/${id}/tv`, { method: 'POST', body: JSON.stringify({}) });
+
+export const draftPosterSocial = (id: number) =>
+  req<PosterSocialDraft>(`/posters/${id}/social`, { method: 'POST', body: JSON.stringify({}) });
+
+export const setPosterHomeBanner = (id: number, on: boolean) =>
+  req<{ on: boolean; code: string }>(`/posters/${id}/banner`, { method: 'POST', body: JSON.stringify({ on }) });

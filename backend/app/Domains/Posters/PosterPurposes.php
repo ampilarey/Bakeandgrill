@@ -98,7 +98,7 @@ final class PosterPurposes
             ]),
             'menu_board' => self::row('Menu board', 'Dishes', 'list', 'category', [
                 'headline' => 'Menu', 'headline_dv' => 'މެނޫ',
-            ]),
+            ], true),
             'drinks' => self::row('Drinks and juices', 'Dishes', 'list', 'category', [
                 'headline' => 'Drinks', 'headline_dv' => 'ބުއިން',
             ]),

@@ -60,9 +60,29 @@ class Poster extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function scans(): HasMany
+    {
+        return $this->hasMany(PosterScan::class);
+    }
+
     public function code(): string
     {
-        return 'P' . str_pad((string) $this->id, 4, '0', STR_PAD_LEFT);
+        return self::codeFor((int) $this->id);
+    }
+
+    public static function codeFor(int $id): string
+    {
+        return 'P' . str_pad((string) $id, 4, '0', STR_PAD_LEFT);
+    }
+
+    public static function idFromCode(string $code): ?int
+    {
+        if (!preg_match('/^P(\d{4,8})$/', strtoupper(trim($code)), $match)) {
+            return null;
+        }
+        $id = (int) $match[1];
+
+        return $id > 0 ? $id : null;
     }
 
     /** Past its take-down date and not marked down. */

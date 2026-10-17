@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Domains\Posters\PaperSize;
+use App\Domains\Posters\PosterBanner;
 use App\Domains\Posters\PosterContent;
 use App\Domains\Posters\PosterImposition;
 use App\Domains\Posters\PosterMoods;
@@ -102,8 +103,9 @@ class PosterController extends Controller
 
     public function index(): JsonResponse
     {
-        $rows = Poster::query()->with(['latestReady', 'latestOrder.shop'])->orderByDesc('pinned')->orderByDesc('id')->limit(200)->get()
-            ->map(fn (Poster $p) => $this->summary($p));
+        $bannerCodes = PosterBanner::codes();
+        $rows = Poster::query()->with(['latestReady', 'latestOrder.shop'])->withCount('scans')->orderByDesc('pinned')->orderByDesc('id')->limit(200)->get()
+            ->map(fn (Poster $p) => $this->summary($p, $bannerCodes));
 
         return response()->json([
             'posters' => $rows,
@@ -256,8 +258,11 @@ class PosterController extends Controller
         return response()->json(['ok' => true]);
     }
 
-    /** @return array<string, mixed> */
-    private function summary(Poster $poster): array
+    /**
+     * @param list<string> $bannerCodes
+     * @return array<string, mixed>
+     */
+    private function summary(Poster $poster, array $bannerCodes = []): array
     {
         $previous = $poster->relationLoaded('latestReady') ? $poster->latestReady : null;
         $stale = false;
@@ -288,6 +293,8 @@ class PosterController extends Controller
             'pinned' => $poster->pinned,
             'version' => $poster->version,
             'should_be_down' => $poster->shouldBeDown(),
+            'scans' => (int) ($poster->scans_count ?? $poster->scans()->count()),
+            'banner' => in_array($poster->code(), $bannerCodes, true),
             'stale' => $stale,
             'diff' => $diff,
             'order' => $poster->relationLoaded('latestOrder') && $poster->latestOrder ? [

@@ -97,6 +97,9 @@ Route::middleware(['content.locale', 'service.banner'])->group(function () {
     // about who printed it.
     Route::get('/b/{code}', [App\Http\Controllers\LabelBatchPageController::class, 'show'])
         ->where('code', '[A-Za-z0-9]{1,16}')->middleware('throttle:60,1')->name('labels.batch');
+    // The small code on a printed poster. Counts the scan, then opens the dish or offer.
+    Route::get('/p/{code}', [App\Http\Controllers\PosterScanPageController::class, 'show'])
+        ->where('code', '[A-Za-z0-9]{1,16}')->middleware('throttle:60,1')->name('posters.scan');
     Route::get('/hours', [HomeController::class, 'hours'])->name('hours');
     Route::get('/terms', [HomeController::class, 'terms'])->name('terms');
     Route::get('/refund', [HomeController::class, 'refund'])->name('refund');

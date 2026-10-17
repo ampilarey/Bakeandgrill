@@ -7,6 +7,7 @@ namespace App\Domains\Posters;
 use App\Domains\Gst\Services\GstSettingsService;
 use App\Models\Category;
 use App\Models\Item;
+use App\Models\Poster;
 use App\Models\Promotion;
 use App\Models\RestaurantTable;
 use App\Services\OpeningHoursService;
@@ -86,7 +87,7 @@ final class PosterContent
             'period' => $offer['period'],
             'gst' => $gst,
             'gst_dv' => $gstDv,
-            'qr_url' => self::qrUrl($poster, $slots, $table),
+            'qr_url' => self::qrUrl($poster, $slots, $bindings, $table),
             'photo' => self::photoFile($item),
             'photo_url' => $item?->image_url,
             'rows' => self::rows($poster, $category),
@@ -105,18 +106,21 @@ final class PosterContent
     }
 
     /**
+     * Where a scan of /p/{code} should land: a path on this site, a full
+     * URL (a table QR or a follow link), or a Wi-Fi payload.
+     *
      * @param array<string, mixed> $poster
-     * @param array<string, mixed> $slots
      */
-    private static function qrUrl(array $poster, array $slots, ?RestaurantTable $table): string
+    public static function livePath(array $poster): string
     {
-        $base = rtrim((string) config('app.url'), '/');
+        $slots = is_array($poster['slots'] ?? null) ? $poster['slots'] : [];
+        $bindings = is_array($poster['bindings'] ?? null) ? $poster['bindings'] : [];
         $key = (string) ($poster['template_key'] ?? '');
         if ($key === 'how_we_did') {
-            return $base . '/complain';
+            return '/complain';
         }
         if ($key === 'order_ahead') {
-            return $base . '/order';
+            return '/order';
         }
         if ($key === 'wifi') {
             $ssid = self::slot($slots, 'ssid', 'BakeAndGrill');
@@ -127,10 +131,57 @@ final class PosterContent
         if ($key === 'follow') {
             $url = self::slot($slots, 'url', '');
 
-            return $url !== '' ? $url : $base;
+            return $url !== '' ? $url : '/';
+        }
+        $itemId = isset($bindings['item_id']) ? (int) $bindings['item_id'] : 0;
+        if ($itemId > 0) {
+            return '/menu/' . $itemId;
+        }
+        $promoId = isset($bindings['promotion_id']) ? (int) $bindings['promotion_id'] : 0;
+        if ($promoId > 0) {
+            return '/offers/promo/' . $promoId;
+        }
+        $categoryId = isset($bindings['category_id']) ? (int) $bindings['category_id'] : 0;
+        if ($categoryId > 0) {
+            return '/menu/c/' . $categoryId;
+        }
+        $table = self::table(isset($bindings['table_id']) ? (int) $bindings['table_id'] : null);
+        if ($table !== null) {
+            return $table->qrUrl();
         }
 
-        return $table !== null ? $table->qrUrl() : $base . '/menu';
+        return '/menu';
+    }
+
+    /**
+     * The printed QR. A saved poster carries /p/{code} so the scan is
+     * counted. A preview before the poster is saved still points straight
+     * at the dish or page. Wi-Fi stays a Wi-Fi payload.
+     *
+     * @param array<string, mixed> $poster
+     * @param array<string, mixed> $slots
+     * @param array<string, mixed> $bindings
+     */
+    private static function qrUrl(array $poster, array $slots, array $bindings, ?RestaurantTable $table): string
+    {
+        $poster['slots'] = $slots;
+        $poster['bindings'] = $bindings;
+        if ($table !== null) {
+            $poster['bindings']['table_id'] = $table->id;
+        }
+        $live = self::livePath($poster);
+        if (str_starts_with($live, 'WIFI:')) {
+            return $live;
+        }
+        $id = isset($poster['id']) ? (int) $poster['id'] : 0;
+        if ($id > 0) {
+            return PosterLink::url(Poster::codeFor($id));
+        }
+        if (str_starts_with($live, 'http://') || str_starts_with($live, 'https://')) {
+            return $live;
+        }
+
+        return rtrim(\App\Support\ComplaintBoxLink::site(), '/') . ($live === '/' ? '' : $live);
     }
 
     private static function wifiField(string $value): string
