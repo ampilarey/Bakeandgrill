@@ -56,6 +56,10 @@ Standard commands also live in `README.md`, `backend/README.md`,
 `backend/composer.json` scripts, and each app's `package.json`.
 
 - Dhivehi WOFF2 inspector: `bash scripts/install-fonttools.sh` (Python `fontTools` + `brotli`). Required for Content Hub WOFF/WOFF2 uploads and the font PHPUnit tests.
+- Poster press profile: `bash scripts/install-poster-icc.sh` (fetches the FOGRA39 ICC into
+ `backend/storage/app/posters/icc/`). Optional for tests (they use TCPDF's sRGB as a stand-in);
+ needed for `php artisan posters:spike` to embed the real output intent. poppler-utils and
+ qpdf are handy for checking the PDFs (`docs/POSTERS.md`).
 - Backend tests: `php artisan test` (full, SQLite) or `composer test:readiness`
   (fast curated subset). Backend lint/format: `./vendor/bin/pint` (use `--test`
   to check without writing). Note: `pint --test` currently reports pre-existing

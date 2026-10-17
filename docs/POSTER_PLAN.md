@@ -7,10 +7,11 @@ Many templates, easy to edit. We use UV printing." Then: "I outsource everything
 a detailed plan using best practices. Don't implement yet." And: "I told u I don't know
 details. Just make the plan based on best practices."
 
-Status: **plan only, nothing built.** Every choice below is made from print and design
-best practice, so nothing has to be known up front: the defaults in § 14 work with a
-typical outsourced UV print shop, and each one can be changed later in the app (per print
-shop) without new code. Each phase starts only on the owner's go.
+Status: **Phase 0 built** (`php artisan posters:spike`, `docs/POSTERS.md`); its
+findings are in § 17. Phases 1–3 wait for the owner's go after the shop prints the Phase 0
+A3 and swatch card. Every choice below is made from print and design best practice, so
+nothing has to be known up front: the defaults in § 14 work with a typical outsourced UV
+print shop, and each one can be changed later in the app (per print shop) without new code.
 
 Revised 2026-10-17 after a review checked every claim against the code on `main`. Where a
 point rests on the code, the file is named. The review's corrections that were kept, and
@@ -271,6 +272,14 @@ set to the palette's `#B74B0C`) and decides one of two ways to put it in the pri
 - **(b) Keep the logo RGB** under the FOGRA39 output intent, gradients and all, and say so in
   § 14. Simpler, but the shop's conversion decides the rust.
 
+**Phase 0 took way (a)** (`App\Domains\Posters\LogoVector`, `SvgPath`): the seven paths are
+parsed from the SVG and filled in CMYK with TCPDF's own path operators; the drop gradient
+becomes flame, the ampersand gradient amber. The still logos are committed as
+`backend/public/brand/logo.svg` and `logo-dark.svg` (regenerate with
+`posters:spike --logo-svg`). The owner judges the flat mark against the original on the
+printed A3; if the shading is missed, (b) is one line in `HeroPoster` (`ImageSVG` of the still
+file) and § 14 changes.
+
 An uploaded logo that is only a PNG prints with an amber warning above A4.
 
 ### 6.5 Layout on the sheet (imposition)
@@ -284,9 +293,10 @@ a fold mark), **2-up**, **4-up**, with crop marks on the sheet.
 
 The brand colours are defined in RGB (`App\Domains\Content\BrandPalette`). Phase 0 prints a
 **swatch card**: an A5 with five CMYK candidates for each brand colour, the hex beside each.
-The owner picks the best under shop lights, and the chosen values go into
-`docs/brand/PALETTE.md` and a new `BrandPalette::cmyk()`. It is the cheapest way to keep the
-rust looking like the rust.
+The owner picks the best under shop lights, and the chosen letters go into the
+`poster_brand_cmyk` setting (`App\Domains\Posters\BrandCmyk::SETTING`, JSON `{"rust":"B",…}`;
+until then candidate A, the plain conversion, is used) and `docs/brand/PALETTE.md`. It is the
+cheapest way to keep the rust looking like the rust.
 
 ## 7. Photos
 
@@ -428,17 +438,26 @@ and suggestion, so it is one new Composer dependency.
 
 TCPDF has **no PDF/X mode**. It writes the ICC output intent and XMP only in PDF/A mode. PDF/X-4
 needs an `OutputIntents` entry with `GTS_PDFX`, a `pdfxid` XMP block, `Trapped` in the info
-dictionary and no encryption, so Phase 0 builds a small subclass that overrides `_putcatalog`,
-`_putXMP` and `_putinfo`, and proves it in Acrobat Preflight. A test parses every export for
-the output intent and the `pdfxid` block, so a TCPDF upgrade cannot quietly break it.
+dictionary and no encryption, so Phase 0 built a small subclass
+(`App\Domains\Posters\Pdf\PdfX4Document`) that overrides `_putcatalog` and `_putinfo` and adds
+the `pdfxid` block through `setExtraXMPRDF()` (no `_putXMP` override needed). It also drops
+TCPDF's default **Helvetica**, which is a non-embedded core font and would fail PDF/X on its
+own: the constructor and every `AddPage()` select it, so the subclass removes it after both.
+`tests/Feature/Posters/PdfX4DocumentTest` parses every export for the version, output intent,
+page boxes, `pdfxid` block, Info keys and embedded fonts, so a TCPDF upgrade cannot quietly
+break it. Acrobat Preflight is the owner's step (`docs/POSTERS.md`).
 
-**Fonts:** converted once with `TCPDF_FONTS::addTTFfont()` from `backend/public/fonts/pdf/`
+**Fonts:** converted on first use with `TCPDF_FONTS::addTTFfont()` from `backend/public/fonts/pdf/`
 (Plus Jakarta Sans 400, 500, 700, 800; DM Serif Display regular and italic;
-`NotoSansThaana-Regular-composed` and `-Bold-composed`; `LabelSymbols`) and committed under
-`backend/public/fonts/pdf/tcpdf/`.
+`NotoSansThaana-Regular-composed` and `-Bold-composed`; `LabelSymbols`) into
+`storage/app/posters/fonts/` (`PosterFonts`), not committed: the made files are derived and
+the host writes to storage anyway.
 
-**Dhivehi:** passed in visual order from `ThaanaVisual` with TCPDF's own right-to-left handling
-off (`setRTL(false)`), or the fili are reordered twice.
+**Dhivehi:** passed in visual order from `ThaanaVisual` with TCPDF's own bidi off. `setRTL(false)`
+is not enough: TCPDF reorders any string matching its RTL *or* "Arabic" pattern, and the Arabic
+pattern covers the Thaana block, so both `TCPDF_FONT_DATA` patterns are set to never match.
+Composed glyphs sit in the Private Use Area, but bare letters (a final RAA, say) remain Thaana
+code points and would otherwise be reordered a second time.
 
 The **on-screen preview** stays HTML/SVG from the same pieces, and proofs come from GD, so the
 browser never needs the print engine.
@@ -481,7 +500,7 @@ Phase 1 (`CLAUDE.md`: route permissions change only with the owner's yes).
 
 | Phase | What | Done when |
 |---|---|---|
-| **0. Prove the file** | TCPDF with the PDF/X-4 subclass; one A3 `hero_photo` with Dhivehi, the logo by way (a) or (b) of § 6.4 (decided here, with the flat logo beside the original), CMYK brand colours and an RGB photo; page boxes; a `-WHITE.pdf` mask; the swatch card; spot layers and overprint tried but not required; host check for Imagick and Ghostscript; a worst-case A2 export timed on TEST | Acrobat Preflight passes PDF/X-4 and the shop prints the A3 and the swatch card without changes |
+| **0. Prove the file** — *built, awaiting the shop's print (§ 17)* | TCPDF with the PDF/X-4 subclass; one A3 `hero_photo` with Dhivehi, the logo by way (a) or (b) of § 6.4 (decided here, with the flat logo beside the original), CMYK brand colours and an RGB photo; page boxes; a `-WHITE.pdf` mask; the swatch card; spot layers and overprint tried but not required; host check for Imagick and Ghostscript; a worst-case A2 export timed on TEST | Acrobat Preflight passes PDF/X-4 and the shop prints the A3 and the swatch card without changes |
 | **1. Make and send** | The `/posters` page; 8 layouts; 20 purposes (happy hour, dish on discount, new lower price, meal deal, % off everything, flier with a coupon, new dish, dish of the day, best sellers, category, mini menu, opening hours, holiday hours, Ramadan, scan to order, table card, we deliver, we're hiring, plain notice, tell us how we did, opening the existing complaint poster); live data with "From" prices and the GST line; A5 to A2 and layout on the sheet; preflight with the revised lines and keep-outs; queued export; spec sheet with white and gloss in words and optional masks; ZIP of all sizes; My posters with take-down dates and places | The owner sends a real happy hour poster and a table card set in under 5 minutes, and the shop prints both first time |
 | **2. The shop and staying true** | Print shops as suppliers with preferences, **Send to print shop** by email, order states with Proof approved and Quote approved, costs as expenses, proof approval by signed link, spot layers inside the file on a shop's request, out-of-date and should-be-down alerts, versions and diffs, your own templates, the rest of the purposes, the complaint poster taken over (old routes forward) | A clear acrylic poster with white and gloss comes back right first time |
 | **3. Everywhere** | TV slide, social drafts through `SocialPublisher`, scan counts per poster, website banner, A2 menu board | One offer goes on the window, the TV and Instagram from one design |
@@ -525,6 +544,10 @@ its card in § 9 changes and every file after follows it.
   scaled and cached photos, and the A2 timing in Phase 0.
 - **The PDF/X subclass** depends on TCPDF internals. Re-checked on every TCPDF upgrade by the test
   that parses the catalog and XMP.
+- **TCPDF is in maintenance.** 6.11 raises an `E_USER_DEPRECATED` notice on construct ("migrate
+  to tc-lib-pdf"); Laravel logs it and the exports run. The subclass touches only `_putcatalog`,
+  `_putinfo`, the font tables and two static bidi patterns, so a move to tc-lib-pdf later is
+  contained in `App\Domains\Posters\Pdf`.
 - **Layout drift** at A5 and in Dhivehi. The CI proof PNG per layout × size × language catches it.
 - **Shops differ.** The per-shop card in § 9 is the safety valve, and masks work with every RIP.
 
@@ -561,3 +584,30 @@ redrawn CMYK (recommended) or RGB, and the wordmark check is done; the existing 
 seeded in group `Marketing` (`permissionSections.ts`); "Proof approved" and "Quote approved" are
 named apart; Send to print shop is marked Phase 2; the queue worker is kept up by the crontab
 keepalive and full deploys, not quick pulls, and a stuck export says so.
+
+## 17. Phase 0: what was built and found
+
+Built on branch `cursor/posters-phase0-spike-d038` (how to run it: `docs/POSTERS.md`).
+
+- `composer require tecnickcom/tcpdf` (6.11). `App\Domains\Posters\Pdf\PdfX4Document` writes
+  PDF 1.6 with `/OutputIntents [/S /GTS_PDFX …]`, the FOGRA39 profile embedded when
+  `scripts/install-poster-icc.sh` has run, `pdfxid:GTS_PDFXVersion` in the XMP, `/GTS_PDFXVersion`
+  and `/Trapped /False` in Info, MediaBox = BleedBox at trim + 3 mm, TrimBox at the cut, every font
+  an embedded TrueType subset, and no Helvetica.
+- `php artisan posters:spike` writes `BG-POSTER-SPIKE-A3-foam-v1.pdf`, its `-WHITE.pdf` mask
+  (black where ink goes, choked 0.2 mm), `BG-SWATCH-A5-v1.pdf`, an A2 timing run and
+  `spike-report.json`. Verified with poppler and qpdf: `pdfinfo` reports "PDF subtype: PDF/X-4";
+  `pdffonts` lists only embedded subsets; `pdfimages` shows the photo ICC-tagged at the size's
+  ppi; `qpdf --check` is clean.
+- **Timings (Cloud VM, PHP 8.4, GD):** A3 0.3 s, 1.7 MB, peak 65 MB; A2 0.5 s, 1.9 MB, peak
+  71 MB. Of each file 1.4 MB is the embedded press profile, so a ZIP of all sizes carries it
+  once per file; acceptable. Without the profile the A3 is 350 KB.
+- **Host:** Imagick and Ghostscript absent, as expected; GD does the photo work; photos stay
+  RGB with an sRGB profile tagged into the JPEG so PDF/X-4 accepts them.
+- **Logo:** way (a) (§ 6.4). All seven paths use only M/L/C/Z; arcs would be refused.
+- **Dhivehi:** TCPDF's "Arabic" bidi pattern covers Thaana; both patterns are disabled (§ 12.4).
+- **Spot layers / overprint:** not attempted beyond the mask, per § 6.3 (masks work with every
+  RIP; named layers wait for a shop's request in Phase 2).
+- **Open, owner-side:** Acrobat Preflight (PDF/X-4 profile) on the A3; the shop prints the A3 on
+  foam and the swatch card; the swatch letters go into `poster_brand_cmyk`; the flat logo is
+  judged beside the original.

@@ -702,6 +702,14 @@ Ordering → Features → Till turns it off (`pos_suggestion_strip_enabled`, def
 as `suggestion_strip` in the till tabs). Do not bring back anything that appears over the
 ticket or moves under the cashier's finger.
 
+## Poster print PDFs (PDF/X-4)
+
+Posters render through TCPDF via `App\Domains\Posters\Pdf\PdfX4Document`, not dompdf
+(`docs/POSTERS.md`, `docs/POSTER_PLAN.md`). Keep core fonts out (the subclass drops
+Helvetica), pass Dhivehi in visual order with TCPDF bidi off, and run
+`scripts/install-poster-icc.sh` once per host so the FOGRA39 output intent is embedded.
+TCPDF fonts are made into `storage/app/posters/fonts/` on first use; nothing to commit.
+
 ## Queue worker vs synchronous SMS
 
 The queue worker (`php artisan queue:work redis`) is only needed for async listeners

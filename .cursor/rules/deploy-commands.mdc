@@ -29,6 +29,17 @@ bash /home/bakeandgrill/test.bakeandgrill.mv/scripts/install-fonttools.sh
 
 Without that pair, TTF/OTF still work; WOFF/WOFF2 are rejected with a message that says so.
 
+## One-time: poster press ICC profile
+
+Poster PDFs (`docs/POSTERS.md`) embed the FOGRA39 profile as their PDF/X-4 output intent.
+Fetch it once per environment (1.8 MB, not committed):
+
+```bash
+bash /home/bakeandgrill/test.bakeandgrill.mv/scripts/install-poster-icc.sh
+# production, only when posters go live:
+# bash /home/bakeandgrill/public_html/scripts/install-poster-icc.sh
+```
+
 ## TEST auto-deploy
 
 Preferred path: after CI is green, GitHub Actions calls `POST /api/deploy/test-pull` for an immediate pull. Cron (`scripts/self-update-test.sh`) remains the fallback. Setup: `docs/TEST_AUTO_DEPLOY.md`. Production is never auto-deployed.
