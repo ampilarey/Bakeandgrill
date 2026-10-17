@@ -81,6 +81,20 @@ describe('DiscountControlsPage', () => {
     expect(await screen.findByText('Saved.')).toBeTruthy();
   });
 
+  it('loads and saves the overlapping offers choice', async () => {
+    vi.mocked(api.getDiscountControls).mockResolvedValue({ ...controlsFixture, discount_stacking_policy: 'best_wins' });
+    renderWithRouter(<DiscountControlsPage />);
+    const best = (await screen.findByTestId('dc-stacking-best_wins')) as HTMLInputElement;
+    await waitFor(() => expect(best.checked).toBe(true));
+    expect(screen.getByText('When offers overlap')).toBeTruthy();
+
+    fireEvent.click(screen.getByTestId('dc-stacking-stack'));
+    fireEvent.click(screen.getByRole('button', { name: /Save changes/i }));
+
+    await waitFor(() => expect(api.updateDiscountControls).toHaveBeenCalled());
+    expect(vi.mocked(api.updateDiscountControls).mock.calls[0][0].discount_stacking_policy).toBe('stack');
+  });
+
   it('gates the page without discounts.settings.manage', async () => {
     mockCan.mockImplementation(() => false);
     renderWithRouter(<DiscountControlsPage />);

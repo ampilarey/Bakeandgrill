@@ -11,6 +11,8 @@ export type DiscountApprover = {
   label?: string;
 };
 
+export type StackingPolicy = 'best_wins' | 'stack';
+
 export type DiscountControls = {
   discount_manual_enabled: boolean;
   discount_max_percent: number;
@@ -24,6 +26,8 @@ export type DiscountControls = {
   discount_approval_max_attempts: number;
   discount_margin_floor_enabled: boolean;
   discount_margin_floor_pct: number;
+  /** When offers overlap: the biggest one, or all of them. */
+  discount_stacking_policy?: StackingPolicy;
   /** Active items with no cost price: the margin floor cannot protect these. */
   items_without_cost?: number;
   roles_with_discounts: string[];
@@ -43,6 +47,7 @@ export type DiscountControlsUpdate = Partial<{
   discount_approval_max_attempts: number;
   discount_margin_floor_enabled: boolean;
   discount_margin_floor_pct: number;
+  discount_stacking_policy: StackingPolicy;
 }>;
 
 export async function getDiscountControls(): Promise<DiscountControls> {

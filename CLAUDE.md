@@ -696,6 +696,15 @@ minutes. If the saved order did not get the offer the cart showed, Charge stops 
 and Place order stops with `checkout.offer_ended` and the next tap reuses the order at
 the price shown. `AutoPromoTimingTest`, `useAutoPromoPreview.test.ts`.
 
+When two offers fit one order or dish, Promotions → Controls → When offers overlap decides
+(owner, 2026-10-17): Best one wins (default; free delivery still comes on top) or Add them
+up, the setting `discount_stacking_policy`, read only through
+`DiscountSettings::stackingPolicy()` (an unknown value reads as best wins). Promo codes,
+discount cards, automatic offers and daily specials follow it; a manual till discount always
+comes on top. Daily Specials, Loyalty and Referrals stay beside their own jobs, and the top of
+Promotions links them (`ELSEWHERE_LINKS` in `PromotionsHub.tsx`, only the ones the reader can
+open): a new money-off page kept outside Promotions goes into that list.
+
 ## POS suggestions: a row, never a pop-up
 
 Owner, 2026-10-11: the "Goes with" card that rose over the ticket's footer caught taps

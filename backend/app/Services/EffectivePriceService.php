@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Domains\Menu\Services\BundlePricingService;
+use App\Domains\Orders\Support\DiscountSettings;
 use App\Domains\Promotions\Services\AutoPromotionPricing;
 use App\Models\Item;
-use App\Models\SiteSetting;
 
 /**
  * Single authoritative price resolver: daily specials + item-level auto-promos.
@@ -39,7 +39,7 @@ class EffectivePriceService
         $special = $this->specialPricing->resolveUnitPrice($itemId, $catalogPrice, $item, $variantId);
         $promo = $this->autoPromoPricing->resolveForItem($itemId, $catalogPrice, $item);
 
-        $policy = (string) SiteSetting::get('discount_stacking_policy', 'best_wins');
+        $policy = DiscountSettings::stackingPolicy();
 
         $specialPrice = $special->hasDiscount() ? $special->unitPrice : $catalogPrice;
         $promoPrice = $promo['promotion'] !== null ? (float) $promo['unit_price'] : $catalogPrice;

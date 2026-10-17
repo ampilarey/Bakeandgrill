@@ -43,6 +43,7 @@ class DiscountControlsController extends Controller
             'discount_approval_max_attempts' => 'sometimes|integer|min:1|max:20',
             'discount_margin_floor_enabled' => 'sometimes|boolean',
             'discount_margin_floor_pct' => 'sometimes|integer|min:0|max:100',
+            'discount_stacking_policy' => 'sometimes|string|in:' . implode(',', DiscountSettings::STACKING_POLICIES),
         ]);
 
         $old = $this->payload();
@@ -108,6 +109,9 @@ class DiscountControlsController extends Controller
                 (string) max(0, min(100, (int) $validated['discount_margin_floor_pct'])),
             );
         }
+        if (array_key_exists('discount_stacking_policy', $validated)) {
+            SiteSetting::set(DiscountSettings::STACKING, $validated['discount_stacking_policy']);
+        }
 
         SiteSetting::bust();
         $new = $this->payload();
@@ -168,6 +172,7 @@ class DiscountControlsController extends Controller
             'discount_approval_max_attempts' => DiscountSettings::maxAttempts(),
             'discount_margin_floor_enabled' => DiscountSettings::marginFloorEnabled(),
             'discount_margin_floor_pct' => DiscountSettings::marginFloorPct(),
+            'discount_stacking_policy' => DiscountSettings::stackingPolicy(),
             // The floor can only protect a line whose cost is known. This is
             // how many active items it cannot protect.
             'items_without_cost' => \App\Models\Item::query()

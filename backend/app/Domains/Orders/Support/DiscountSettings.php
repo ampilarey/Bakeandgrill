@@ -38,6 +38,11 @@ final class DiscountSettings
 
     public const MARGIN_FLOOR_PCT = 'discount_margin_floor_pct';
 
+    /** When offers overlap: 'best_wins' (the largest one) or 'stack' (all of them). */
+    public const STACKING = 'discount_stacking_policy';
+
+    public const STACKING_POLICIES = ['best_wins', 'stack'];
+
     public static function manualEnabled(): bool
     {
         return SmsTypeRegistry::settingIsTruthy(
@@ -210,6 +215,13 @@ final class DiscountSettings
     public static function marginFloorPct(): int
     {
         return max(0, min(100, (int) SiteSetting::get(self::MARGIN_FLOOR_PCT, '0')));
+    }
+
+    public static function stackingPolicy(): string
+    {
+        $policy = (string) SiteSetting::get(self::STACKING, 'best_wins');
+
+        return in_array($policy, self::STACKING_POLICIES, true) ? $policy : 'best_wins';
     }
 
     /**

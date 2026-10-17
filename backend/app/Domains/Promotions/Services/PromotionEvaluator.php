@@ -13,7 +13,6 @@ use App\Models\OrderItem;
 use App\Models\OrderPromotion;
 use App\Models\Promotion;
 use App\Models\PromotionTarget;
-use App\Models\SiteSetting;
 use App\Support\LaariConverter;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -106,7 +105,7 @@ class PromotionEvaluator
             return [];
         }
 
-        $policy = (string) SiteSetting::get('discount_stacking_policy', 'best_wins');
+        $policy = DiscountSettings::stackingPolicy();
         $selected = $this->selectByStackingPolicy($eligible, $policy);
 
         $applied = [];
@@ -416,7 +415,7 @@ class PromotionEvaluator
             }
         }
 
-        $policy = (string) SiteSetting::get('discount_stacking_policy', 'best_wins');
+        $policy = DiscountSettings::stackingPolicy();
         $selected = $this->selectByStackingPolicy($eligible, $policy);
 
         $total = 0;

@@ -7,6 +7,7 @@ import {
   type DiscountApprover,
   type DiscountControls,
   type DiscountRoleCap,
+  type StackingPolicy,
 } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
@@ -125,6 +126,7 @@ function applyControls(
     setRolesWithDiscounts: (v: string[]) => void;
     setRolesWithOverride: (v: string[]) => void;
     setItemsWithoutCost?: (v: number | null) => void;
+    setStacking?: (v: StackingPolicy) => void;
   },
 ) {
   setters.setEnabled(data.discount_manual_enabled);
@@ -144,7 +146,22 @@ function applyControls(
   setters.setRolesWithDiscounts(data.roles_with_discounts ?? []);
   setters.setRolesWithOverride(data.roles_with_override ?? []);
   setters.setItemsWithoutCost?.(typeof data.items_without_cost === 'number' ? data.items_without_cost : null);
+  setters.setStacking?.(data.discount_stacking_policy === 'stack' ? 'stack' : 'best_wins');
 }
+
+/** When two offers fit the same order or dish (`discount_stacking_policy`). */
+export const STACKING_CHOICES: { value: StackingPolicy; label: string; hint: string }[] = [
+  {
+    value: 'best_wins',
+    label: 'Best one wins',
+    hint: 'The customer gets the single biggest offer. A daily special and an offer on the same dish: the lower price. Free delivery still comes on top.',
+  },
+  {
+    value: 'stack',
+    label: 'Add them up',
+    hint: 'Every offer that fits is taken off. An offer on a dish comes off the daily special price. Turn on the margin floor below so nothing sells under cost.',
+  },
+];
 
 export function DiscountControlsPage() {
   usePageTitle('Discount Controls');
@@ -172,6 +189,7 @@ export function DiscountControlsPage() {
   const [rolesWithDiscounts, setRolesWithDiscounts] = useState<string[]>([]);
   const [rolesWithOverride, setRolesWithOverride] = useState<string[]>([]);
   const [itemsWithoutCost, setItemsWithoutCost] = useState<number | null>(null);
+  const [stacking, setStacking] = useState<StackingPolicy>('best_wins');
 
   const setters = {
     setEnabled,
@@ -188,6 +206,7 @@ export function DiscountControlsPage() {
     setMaxAttempts,
     setRolesWithDiscounts,
     setRolesWithOverride,
+    setStacking,
     setItemsWithoutCost,
   };
 
@@ -239,6 +258,7 @@ export function DiscountControlsPage() {
         discount_approval_max_attempts: Math.max(1, Math.min(20, Math.round(maxAttempts))),
         discount_margin_floor_enabled: marginFloorEnabled,
         discount_margin_floor_pct: Math.max(0, Math.min(100, Math.round(marginFloorPct))),
+        discount_stacking_policy: stacking,
       });
       applyControls(data, setters);
       setSavedMsg('Saved.');
@@ -304,6 +324,46 @@ export function DiscountControlsPage() {
               onChange={setEnabled}
               label={enabled ? 'Manual discounts enabled' : 'Manual discounts disabled'}
             />
+          </section>
+
+          {/* Overlapping offers */}
+          <section style={sectionStyle} aria-labelledby="dc-stacking" data-testid="dc-stacking">
+            <h2 id="dc-stacking" style={sectionTitleStyle}>When offers overlap</h2>
+            <p style={sectionHintStyle}>
+              What happens when more than one offer fits the same order or dish: promo codes, discount
+              cards, automatic offers and daily specials. A manual discount at the till always comes on top.
+            </p>
+            <div role="radiogroup" aria-labelledby="dc-stacking" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {STACKING_CHOICES.map((c) => (
+                <label
+                  key={c.value}
+                  style={{
+                    display: 'flex',
+                    gap: 10,
+                    alignItems: 'flex-start',
+                    padding: '10px 12px',
+                    borderRadius: 10,
+                    border: `1px solid ${stacking === c.value ? 'var(--color-tone-rust-border)' : 'var(--color-border)'}`,
+                    background: stacking === c.value ? 'var(--color-tone-rust-bg)' : 'transparent',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="dc-stacking"
+                    value={c.value}
+                    checked={stacking === c.value}
+                    onChange={() => setStacking(c.value)}
+                    data-testid={`dc-stacking-${c.value}`}
+                    style={{ marginTop: 3 }}
+                  />
+                  <span>
+                    <span style={{ display: 'block', fontWeight: 600, color: 'var(--color-text)' }}>{c.label}</span>
+                    <span style={{ display: 'block', fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 2 }}>{c.hint}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
           </section>
 
           {/* Margin floor */}

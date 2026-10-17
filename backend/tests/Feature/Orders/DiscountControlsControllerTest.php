@@ -102,4 +102,31 @@ class DiscountControlsControllerTest extends TestCase
             'discount_max_percent' => 150,
         ])->assertStatus(422);
     }
+
+    public function test_stacking_policy_reads_saves_and_rejects_unknown(): void
+    {
+        Sanctum::actingAs($this->manager, ['staff']);
+
+        $this->getJson('/api/admin/discounts/controls')
+            ->assertOk()
+            ->assertJsonPath('discount_stacking_policy', 'best_wins');
+
+        $this->patchJson('/api/admin/discounts/controls', [
+            'discount_stacking_policy' => 'stack',
+        ])->assertOk()
+            ->assertJsonPath('discount_stacking_policy', 'stack');
+        $this->assertSame('stack', SiteSetting::get('discount_stacking_policy'));
+
+        $this->patchJson('/api/admin/discounts/controls', [
+            'discount_stacking_policy' => 'everything',
+        ])->assertStatus(422);
+    }
+
+    public function test_stacking_policy_reader_falls_back_on_a_stray_value(): void
+    {
+        SiteSetting::set('discount_stacking_policy', 'something-old');
+        SiteSetting::bust();
+
+        $this->assertSame('best_wins', \App\Domains\Orders\Support\DiscountSettings::stackingPolicy());
+    }
 }
