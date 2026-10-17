@@ -58,6 +58,17 @@ export interface SystemHealthDetailed {
     last_run: string | null;
     stale: boolean;
   }>;
+  /** Errors counted in the last 24 hours (ErrorTracker). */
+  errors_24h?: number;
+  recent_errors?: Array<{
+    id: number;
+    exception: string;
+    message: string;
+    where: string;
+    count: number;
+    payment: boolean;
+    last_seen_at: string | null;
+  }>;
   alert_inbox?: Array<{
     type: string;
     severity: 'warning' | 'critical' | string;

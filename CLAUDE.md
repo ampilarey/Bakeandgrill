@@ -739,6 +739,17 @@ a 1920×1080 image slide on the dining playlist (`date_end` is the take-down
 date), a social draft (approval, best time, channel rules) plus WhatsApp and
 Viber share links, and an optional home hero slide for the offer's period.
 
+## Errors are counted here, Sentry or not
+
+iruali import plan, feature 17 (2026-10-17). Every reported exception except the everyday
+ones (validation, 404, sign-in, throttled) is counted by kind and day in `error_events`
+(`App\Domains\System\ErrorTracker::record`, called from the report hook in
+`bootstrap/app.php`; it never throws). An error in the money code (BML, gift cards, the
+wallet, refunds) tells the owner at once, once an hour per kind (row `owner_payment_error`),
+`errors:digest` at 07:50 sends yesterday's list (row `owner_error_digest`) and forgets rows
+older than 30 days, and System → Health shows the last 24 hours. Sentry still gets every
+exception when its DSN is set.
+
 ## Queue worker vs synchronous SMS
 
 The queue worker (`php artisan queue:work redis`) is only needed for async listeners

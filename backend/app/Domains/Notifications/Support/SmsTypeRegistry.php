@@ -313,6 +313,9 @@ final class SmsTypeRegistry
             self::def('owner_poster_proof', 'Owner: poster waiting for approval', 'staff', true, false, null, 'sms_owner_poster_proof_enabled', null, false, 'Owners & managers', false),
             // Labels, 2026-10-13 (round 13): a label roll counted down to its warning level (LabelRolls::consume, RollStockAlert).
             self::def('owner_labels_roll_low', 'Owner: label roll running low', 'staff', true, false, null, 'sms_owner_labels_roll_low_enabled', null, false, 'Owners & managers', false),
+            // iruali import plan, feature 17 (2026-10-17): errors counted in error_events (ErrorTracker, errors:digest).
+            self::def('owner_error_digest', 'Owner: daily error report', 'staff', true, false, null, 'sms_owner_error_digest_enabled', null, false, 'Owner phone(s)', false),
+            self::def('owner_payment_error', 'Owner: payment error', 'staff', true, false, null, 'sms_owner_payment_error_enabled', null, false, 'Owner phone(s)', false),
             self::def('owner_price_rise', 'Owner: supplier price rises', 'staff', true, false, null, 'sms_owner_price_rise_enabled', null, false, 'Owners & managers', false),
             self::def('owner_delivery_delays', 'Owner: deliveries past ETA', 'staff', true, false, null, 'sms_owner_delivery_delays_enabled', null, false, 'Business phone', false),
             self::def('owner_device_approval', 'Owner: POS device waiting for approval', 'staff', true, false, null, 'sms_owner_device_approval_enabled', null, false, 'Business phone', false),

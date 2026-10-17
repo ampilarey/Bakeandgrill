@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Activity, AlertTriangle, CheckCircle2, Database, HardDrive, MessageSquare, Printer, RefreshCw, Server, Webhook } from 'lucide-react';
+import { Activity, AlertTriangle, Bug, CheckCircle2, Database, HardDrive, MessageSquare, Printer, RefreshCw, Server, Webhook } from 'lucide-react';
 import {
   forgetFailedJob,
   getCloneLiveToTestStatus,
@@ -313,6 +313,13 @@ export function SystemHealthPage() {
               icon={Activity}
             />
             <StatCard
+              label="Errors"
+              value={String(data.errors_24h ?? 0)}
+              sub={(data.errors_24h ?? 0) > 0 ? 'See the list below' : 'None'}
+              accent={(data.recent_errors ?? []).some((e) => e.payment) ? 'var(--color-danger)' : (data.errors_24h ?? 0) > 0 ? 'var(--color-warning)' : 'var(--color-success)'}
+              icon={Bug}
+            />
+            <StatCard
               label="SMS failures"
               value={String(data.sms_failed_24h)}
               sub="Last 24 hours"
@@ -409,6 +416,29 @@ export function SystemHealthPage() {
                       <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{w.event_type ?? 'unknown event'}</div>
                       <div style={{ color: 'var(--color-text-secondary)' }}>{w.error_message ?? 'No error message'}</div>
                       <div style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>{fmtTime(w.created_at)}</div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </>
+          )}
+
+          {(data.recent_errors?.length ?? 0) > 0 && (
+            <>
+              <SectionLabel>Errors in the last 24 hours</SectionLabel>
+              <Card>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }} data-testid="health-recent-errors">
+                  {data.recent_errors!.map((e) => (
+                    <div key={e.id} style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, minWidth: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                        <span style={{ fontWeight: 600 }}>
+                          {e.count}× {e.exception}
+                          {e.payment && <span style={{ marginLeft: 8, color: 'var(--color-danger)', fontWeight: 700 }}>Payment</span>}
+                        </span>
+                        <span style={{ color: 'var(--color-text-muted)' }}>{fmtTime(e.last_seen_at)}</span>
+                      </div>
+                      <div style={{ color: 'var(--color-text-secondary)', overflowWrap: 'anywhere' }}>{e.message || 'No message'}</div>
+                      <div style={{ color: 'var(--color-text-muted)', fontSize: 12, fontFamily: 'monospace', overflowWrap: 'anywhere' }}>{e.where}</div>
                     </div>
                   ))}
                 </div>

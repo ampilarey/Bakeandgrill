@@ -150,6 +150,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // Sentry captures exceptions automatically via its Laravel integration.
         // The explicit log call below is kept as a secondary record for local log files.
         $exceptions->report(function (Throwable $e): void {
+            // Counted by kind and day for the morning error report (iruali import plan, feature 17).
+            App\Domains\System\ErrorTracker::record($e);
             if (app()->bound('log')) {
                 app('log')->error($e->getMessage(), [
                     'exception' => get_class($e),

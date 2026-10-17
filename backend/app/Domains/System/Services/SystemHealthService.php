@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\System\Services;
 
 use App\Domains\Operations\Services\OpsAlertsService;
+use App\Models\ErrorEvent;
 use App\Models\Order;
 use App\Models\SmsLog;
 use App\Models\WebhookLog;
@@ -13,6 +14,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 class SystemHealthService
@@ -153,6 +155,8 @@ class SystemHealthService
             ->values()
             ->all();
 
+        $errors = $this->recentErrors($since24h);
+
         $disk = $this->diskHealth();
         $redis = $this->checkRedis();
 
@@ -189,6 +193,35 @@ class SystemHealthService
             'stuck_payment_pending_orders' => $stuckOrders,
             'scheduler_last_runs' => $this->schedulerRuns->getLastRuns(),
             'alert_inbox' => $this->opsAlerts->inbox(),
+            'errors_24h' => $errors['total'],
+            'recent_errors' => $errors['rows'],
+        ];
+    }
+
+    /**
+     * Errors counted by ErrorTracker in the last 24 hours, most frequent first
+     * (iruali import plan, feature 17). Empty until the table exists.
+     *
+     * @return array{total: int, rows: list<array<string, mixed>>}
+     */
+    private function recentErrors(\DateTimeInterface $since): array
+    {
+        if (!Schema::hasTable('error_events')) {
+            return ['total' => 0, 'rows' => []];
+        }
+        $query = ErrorEvent::query()->where('last_seen_at', '>=', $since);
+
+        return [
+            'total' => (int) (clone $query)->sum('count'),
+            'rows' => $query->orderByDesc('count')->limit(10)->get()->map(fn (ErrorEvent $e) => [
+                'id' => $e->id,
+                'exception' => class_basename($e->exception),
+                'message' => mb_strimwidth((string) $e->message, 0, 200, '…'),
+                'where' => $e->file . ':' . $e->line,
+                'count' => $e->count,
+                'payment' => $e->payment,
+                'last_seen_at' => $e->last_seen_at?->toIso8601String(),
+            ])->values()->all(),
         ];
     }
 

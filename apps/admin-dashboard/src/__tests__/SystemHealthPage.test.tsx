@@ -50,6 +50,26 @@ describe('SystemHealthPage', () => {
     });
   });
 
+  it('lists the errors of the last 24 hours, marking payment ones', async () => {
+    const base = await api.getSystemHealthDetailed();
+    vi.spyOn(api, 'getSystemHealthDetailed').mockResolvedValue({
+      ...base,
+      errors_24h: 7,
+      recent_errors: [{ id: 1, exception: 'BmlTimeout', message: 'cURL error 28', where: 'app/Domains/Payments/Bml.php:40', count: 7, payment: true, last_seen_at: new Date().toISOString() }],
+    });
+    render(
+      <MemoryRouter>
+        <SystemHealthPage />
+      </MemoryRouter>,
+    );
+
+    const list = await screen.findByTestId('health-recent-errors');
+    expect(list.textContent).toContain('7× BmlTimeout');
+    expect(list.textContent).toContain('Payment');
+    expect(list.textContent).toContain('app/Domains/Payments/Bml.php:40');
+    expect(screen.getByText('Errors')).toBeTruthy();
+  });
+
   it('renders unknown deploy stamp when absent', async () => {
     vi.spyOn(api, 'getSystemHealthDetailed').mockResolvedValue({
       status: 'ok',

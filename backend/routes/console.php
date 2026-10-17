@@ -213,6 +213,12 @@ Schedule::command('inventory:check-expiry --days=7')
     ->onFailure($alertOnFailure('inventory:check-expiry'))
     ->after($trackSuccess('inventory:check-expiry'));
 
+// Yesterday's errors to the owners, and errors older than 30 days forgotten (iruali import plan, feature 17)
+Schedule::command('errors:digest')
+    ->dailyAt('07:50')
+    ->onFailure($alertOnFailure('errors:digest'))
+    ->after($trackSuccess('errors:digest'));
+
 // Labels: printed stock whose expiry is within two days, or just passed, once per batch (2026-10-12)
 Schedule::command('labels:check-expiring --days=2')
     ->dailyAt('08:10')
