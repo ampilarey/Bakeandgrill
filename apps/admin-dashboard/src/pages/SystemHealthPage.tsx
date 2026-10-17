@@ -15,6 +15,10 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { fmt } from '../utils/fmt';
 
+/** System status words and colours (ReadyChecks: pass, warn, fail, skip). */
+const READY_WORDS: Record<string, string> = { pass: 'OK', warn: 'Check', fail: 'Fix', skip: 'Not set' };
+const READY_COLOURS: Record<string, string> = { pass: 'var(--color-success)', warn: 'var(--color-warning)', fail: 'var(--color-danger)', skip: 'var(--color-text-muted)' };
+
 function fmtTime(iso: string | null | undefined): string {
   if (!iso) return '—';
   return new Date(iso).toLocaleString('en-MV', { dateStyle: 'short', timeStyle: 'short' });
@@ -258,6 +262,35 @@ export function SystemHealthPage() {
               </p>
             </div>
           </div>
+
+          {(data.ready?.length ?? 0) > 0 && (
+            <>
+              <SectionLabel>System status</SectionLabel>
+              <Card style={{ marginBottom: 24 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }} data-testid="health-ready">
+                  {data.ready!.map((c) => (
+                    <div key={c.key} data-testid={`ready-${c.key}`} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 13, minWidth: 0 }}>
+                      <span
+                        aria-label={READY_WORDS[c.status] ?? c.status}
+                        style={{
+                          flexShrink: 0, minWidth: 44, textAlign: 'center', padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700,
+                          background: `color-mix(in srgb, ${READY_COLOURS[c.status] ?? 'var(--color-text-muted)'} 14%, transparent)`,
+                          color: READY_COLOURS[c.status] ?? 'var(--color-text-muted)',
+                        }}
+                      >
+                        {READY_WORDS[c.status] ?? c.status}
+                      </span>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{c.label}</div>
+                        <div style={{ color: 'var(--color-text-secondary)', overflowWrap: 'anywhere' }}>{c.detail}</div>
+                        {c.fix && <div style={{ color: 'var(--color-text-muted)', fontSize: 12, marginTop: 2, overflowWrap: 'anywhere' }}>{c.fix}</div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </>
+          )}
 
           {(data.alert_inbox?.length ?? 0) > 0 && (
             <>

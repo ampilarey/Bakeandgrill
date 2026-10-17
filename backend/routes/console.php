@@ -213,6 +213,14 @@ Schedule::command('inventory:check-expiry --days=7')
     ->onFailure($alertOnFailure('inventory:check-expiry'))
     ->after($trackSuccess('inventory:check-expiry'));
 
+// The newest backup restored into the drill database and checked, monthly (iruali import plan, feature 15).
+// A long restore is honest work, so its lock lasts the night rather than the default for a daily task.
+Schedule::command('backup:restore-drill')
+    ->monthlyOn(1, '04:10')
+    ->withoutOverlapping(180)
+    ->onFailure($alertOnFailure('backup:restore-drill'))
+    ->after($trackSuccess('backup:restore-drill'));
+
 // Yesterday's errors to the owners, and errors older than 30 days forgotten (iruali import plan, feature 17)
 Schedule::command('errors:digest')
     ->dailyAt('07:50')

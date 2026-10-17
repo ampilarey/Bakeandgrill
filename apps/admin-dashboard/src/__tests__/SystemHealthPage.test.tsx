@@ -70,6 +70,28 @@ describe('SystemHealthPage', () => {
     expect(screen.getByText('Errors')).toBeTruthy();
   });
 
+  it('shows the system status with how to fix what fails', async () => {
+    const base = await api.getSystemHealthDetailed();
+    vi.spyOn(api, 'getSystemHealthDetailed').mockResolvedValue({
+      ...base,
+      ready: [
+        { key: 'database', label: 'Database', status: 'pass', detail: 'Working.', fix: '' },
+        { key: 'backup', label: 'Nightly backup', status: 'fail', detail: 'The last finished backup is 30 hours old.', fix: 'Run php artisan backup:run and check the scheduler.' },
+      ],
+    });
+    render(
+      <MemoryRouter>
+        <SystemHealthPage />
+      </MemoryRouter>,
+    );
+
+    const backup = await screen.findByTestId('ready-backup');
+    expect(backup.textContent).toContain('Fix');
+    expect(backup.textContent).toContain('30 hours old');
+    expect(backup.textContent).toContain('backup:run');
+    expect(screen.getByTestId('ready-database').textContent).toContain('OK');
+  });
+
   it('renders unknown deploy stamp when absent', async () => {
     vi.spyOn(api, 'getSystemHealthDetailed').mockResolvedValue({
       status: 'ok',

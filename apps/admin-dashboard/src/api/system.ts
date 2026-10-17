@@ -58,6 +58,14 @@ export interface SystemHealthDetailed {
     last_run: string | null;
     stale: boolean;
   }>;
+  /** System status: can the site run unattended (ReadyChecks, also `php artisan app:ready`). */
+  ready?: Array<{
+    key: string;
+    label: string;
+    status: 'pass' | 'warn' | 'fail' | 'skip' | string;
+    detail: string;
+    fix: string;
+  }>;
   /** Errors counted in the last 24 hours (ErrorTracker). */
   errors_24h?: number;
   recent_errors?: Array<{

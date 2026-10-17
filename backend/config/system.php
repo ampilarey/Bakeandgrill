@@ -18,6 +18,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Monthly backup restore drill
+    |--------------------------------------------------------------------------
+    |
+    | An empty database (same server and user as the site's) that
+    | backup:restore-drill may fill from the newest backup and empty again.
+    | Unset, the drill reports "skipped". Never point it at a live database.
+    |
+    */
+
+    'restore_drill_database' => env('BACKUP_DRILL_DATABASE'),
+
+    /*
+    |--------------------------------------------------------------------------
     | OTP_DEV_RETURN — return OTP codes in API responses (local/testing only)
     |--------------------------------------------------------------------------
     |

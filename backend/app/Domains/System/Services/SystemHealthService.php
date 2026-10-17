@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\System\Services;
 
 use App\Domains\Operations\Services\OpsAlertsService;
+use App\Domains\System\ReadyChecks;
 use App\Models\ErrorEvent;
 use App\Models\Order;
 use App\Models\SmsLog;
@@ -156,6 +157,7 @@ class SystemHealthService
             ->all();
 
         $errors = $this->recentErrors($since24h);
+        $ready = app(ReadyChecks::class)->run();
 
         $disk = $this->diskHealth();
         $redis = $this->checkRedis();
@@ -173,6 +175,7 @@ class SystemHealthService
         if ($redis['status'] === 'down') {
             $issues++;
         }
+        $issues += ReadyChecks::failures($ready);
 
         return [
             'status' => $issues > 0 ? 'degraded' : 'ok',
@@ -195,6 +198,7 @@ class SystemHealthService
             'alert_inbox' => $this->opsAlerts->inbox(),
             'errors_24h' => $errors['total'],
             'recent_errors' => $errors['rows'],
+            'ready' => $ready,
         ];
     }
 

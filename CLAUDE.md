@@ -750,6 +750,20 @@ wallet, refunds) tells the owner at once, once an hour per kind (row `owner_paym
 older than 30 days, and System → Health shows the last 24 hours. Sentry still gets every
 exception when its DSN is set.
 
+## Is the site ready (app:ready) and the restore drill
+
+iruali import plan, feature 15 (2026-10-17). `App\Domains\System\ReadyChecks` is one list,
+each check pass / warn / fail / skip with a one-line fix: the live checks from
+`SystemHealthService` plus debug mode, mail, BML keys and callbacks, SMS keys and recent
+sends, the last `backup:run` (26 h), the last restore drill and, off production, the TEST
+Redis separation above. `php artisan app:ready` prints it (exit 1 on a fail) and System →
+Health shows it as System status (`ready` on the detailed health; a fail counts as an issue).
+`backup:restore-drill` (monthly, 1st, 04:10; `RestoreDrill`) restores the newest backup into
+`BACKUP_DRILL_DATABASE`, compares key tables with live, empties it again, keeps the result in
+the site setting `system_restore_drill_last` and tells the owner (`owner_restore_drill`).
+A new thing the site needs to run unattended becomes a check here, not a page of its own.
+Setup: `docs/DEPLOY_COMMAND.md`.
+
 ## Queue worker vs synchronous SMS
 
 The queue worker (`php artisan queue:work redis`) is only needed for async listeners

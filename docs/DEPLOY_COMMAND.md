@@ -144,6 +144,27 @@ Changing the cron line does not replace a running worker — `--max-time=3600`
 keeps it alive for up to an hour and flock stops a replacement starting. To
 apply a change now: `pkill -f "artisan queue:work"` and wait a minute.
 
+### Is the site ready? (`app:ready`) and the monthly restore drill
+
+`php artisan app:ready` lists database, Redis, queue worker, scheduler, uploaded
+pictures, debug mode, email, BML, SMS, the last backup, the last restore drill and (on
+TEST) its own Redis databases, each OK, Check, Fix or Not set with one line on how to fix
+it. System → Health shows the same list as **System status**. It exits 1 on any Fix.
+
+`backup:restore-drill` runs on the 1st of each month at 04:10. It restores the newest
+backup into an empty database, counts orders, order lines, customers, items and payments
+against live, empties that database again and tells the owner (row "Owner: backup restore
+drill"). Until a drill database is set it reports "skipped". To set one up once:
+
+1. cPanel → MySQL Databases: create `bakeandgrill_drill` (empty) and add the site's own
+   database user to it with **All privileges**.
+2. Add `BACKUP_DRILL_DATABASE=bakeandgrill_drill` to `.env`, then
+   `php artisan config:cache`.
+3. `php artisan backup:restore-drill` runs one now. It needs the `mysql` client, which
+   cPanel has.
+
+Never point `BACKUP_DRILL_DATABASE` at the live database; the drill refuses to.
+
 ### Why these lines look the way they do
 
 Three deliberate details, each of which was a real failure:
