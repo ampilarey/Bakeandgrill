@@ -526,3 +526,22 @@ export async function fetchGstBootstrap(): Promise<GstBootstrap> {
     };
   }
 }
+
+// ── Questions about a dish (iruali import plan, feature 7) ──────────────────
+
+export interface ItemQuestion {
+  id: number;
+  question: string;
+  answer: string | null;
+  answered_at: string | null;
+  /** "Please tell staff about any allergy when you order." when it touches allergens. */
+  allergy_note: string | null;
+}
+
+export async function getItemQuestions(itemId: number): Promise<{ questions: ItemQuestion[] }> {
+  return request(`/items/${itemId}/questions`);
+}
+
+export async function askItemQuestion(itemId: number, question: string): Promise<{ message: string }> {
+  return request(`/items/${itemId}/questions`, { method: 'POST', body: JSON.stringify({ question }) });
+}

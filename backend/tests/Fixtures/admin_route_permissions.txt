@@ -12,7 +12,8 @@ backend/routes/domains/admin_customers.php:89:customers.credit.repay
 backend/routes/domains/admin_customers.php:94:customers.credit.writeoff
 backend/routes/domains/admin_customers.php:98:customers.deposit.view
 backend/routes/domains/catalog.php:104:menu.manage
-backend/routes/domains/catalog.php:132:customers.manage
+backend/routes/domains/catalog.php:137:customers.manage
+backend/routes/domains/catalog.php:144:customers.manage
 backend/routes/domains/catalog.php:43:menu.manage
 backend/routes/domains/catalog.php:70:menu.manage
 backend/routes/domains/catalog.php:81:recipes.manage

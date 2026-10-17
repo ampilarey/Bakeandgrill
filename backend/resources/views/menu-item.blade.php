@@ -317,6 +317,21 @@
             @endforeach
         </section>
     @endif
+
+    @php
+        $itemQuestions = $itemQuestions ?? collect();
+    @endphp
+    <section class="menu-item-reviews menu-item-questions" data-testid="item-questions" aria-labelledby="item-questions-h">
+        <h2 id="item-questions-h">Questions</h2>
+        @foreach($itemQuestions as $q)
+            <div class="menu-item-review">
+                <p class="menu-item-review-head">{{ $q->question }}</p>
+                <p class="menu-item-review-text">{{ $q->answer }}</p>
+                @if($q->mentionsAllergens())<p class="menu-item-review-helpful">{{ \App\Http\Controllers\Api\ItemQuestionController::ALLERGY_LINE }}</p>@endif
+            </div>
+        @endforeach
+        <p class="menu-item-review-helpful"><a href="/order/menu?item={{ $item->id }}" class="menu-item-ask" data-testid="item-ask-link">Ask a question</a> about this dish. We answer here and text you.</p>
+    </section>
 </article>
 
 @php

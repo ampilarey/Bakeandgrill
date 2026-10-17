@@ -17,6 +17,7 @@ const CustomerGrowthPage = lazy(() => import('./CustomerGrowthPage').then((m) =>
 const CreditAccountsPage = lazy(() => import('./CreditAccountsPage'));
 const ReferralsPage = lazy(() => import('./ReferralsPage'));
 const ReviewsPage = lazy(() => import('./ReviewsPage'));
+const DishQuestionsPage = lazy(() => import('./DishQuestionsPage'));
 const ComplaintsPage = lazy(() => import('./ComplaintsPage'));
 const ComplaintBoxPage = lazy(() => import('./ComplaintBoxPage'));
 
@@ -27,6 +28,8 @@ export const CUSTOMERS_TABS: HubTab[] = [
   { id: 'credit', label: 'Accounts on credit', permissions: ['customers.credit.manage', 'customers.credit.repay'], desc: 'Who buys on account, what they owe, reminders and pay links', render: () => <CreditAccountsPage /> },
   { id: 'referrals', label: 'Referrals', permissions: ['customers.manage'], desc: 'The referral programme', render: () => <ReferralsPage /> },
   { id: 'reviews', label: 'Reviews', permissions: ['customers.manage'], desc: 'Ratings to moderate', render: () => <ReviewsPage /> },
+  // iruali import plan, feature 7: next to Reviews, one place for both.
+  { id: 'questions', label: 'Dish questions', permissions: ['customers.manage'], desc: 'Questions customers ask about a dish', render: () => <DishQuestionsPage /> },
   { id: 'complaints', label: 'Order complaints', permissions: ['complaints.view'], desc: 'Problems with a specific receipt or invoice', render: () => <ComplaintsPage /> },
   { id: 'complaint-box', label: 'Complaint box', permissions: ['complaints.view'], desc: 'Staff, food and service complaints from the public form — anonymous or with a number', render: () => <ComplaintBoxPage /> },
 ];

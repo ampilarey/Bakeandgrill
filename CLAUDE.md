@@ -726,6 +726,18 @@ review as "Reply from Bake & Grill" and texts the customer on the first reply (r
 on the website dish page with `aggregateRating` in its JSON-LD, and picked on both review
 forms with `ReviewPhotoPicker`. `BetterReviewsTest`.
 
+## Questions about a dish
+
+iruali import plan, feature 7 (2026-10-17). A signed-in customer asks from the order app's
+dish sheet (`ItemQuestions`, 300 characters, `throttle:5,10`, five waiting at most);
+`item_questions` waits for staff and only answered ones show (order app, and the website dish
+page with an Ask a question link). Customers → Dish questions (`DishQuestionsPage`,
+`customers.manage`, `/api/admin/item-questions`) answers, hides, or answers and adds the answer
+to the dish's description. An answer touching allergens (`ItemQuestion::mentionsAllergens()`)
+carries "Please tell staff about any allergy when you order." Rows `staff_new_question`
+(audience `perm:customers.manage`, so whoever is told can answer) and
+`customer_question_answered` (first answer only). `ItemQuestionsTest`.
+
 ## POS order type colours
 
 Owner, 2026-10-11: "add more visual colors to differentiate between order type in

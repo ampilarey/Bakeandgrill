@@ -766,3 +766,32 @@ export async function fetchCreditRepayments(f: CreditRepaymentFilters): Promise<
 export async function exportCreditRepayments(f: CreditRepaymentFilters): Promise<Blob> {
   return requestBlob(`/admin/customers/credit-repayments.csv?${creditRepaymentQuery(f)}`);
 }
+
+// ── Dish questions (iruali import plan, feature 7) ──────────────────────────
+
+export interface ItemQuestion {
+  id: number;
+  question: string;
+  answer: string | null;
+  answered_at: string | null;
+  allergy_note: string | null;
+  status: 'pending' | 'answered' | 'hidden';
+  created_at: string;
+  item: { id: number; name: string } | null;
+  customer: { id: number; name: string | null } | null;
+}
+
+export async function fetchItemQuestions(params: { status: string; page?: number }): Promise<{ data: ItemQuestion[]; meta: { current_page: number; last_page: number; total: number }; pending: number }> {
+  const qs = new URLSearchParams({ status: params.status });
+  if (params.page) qs.set('page', String(params.page));
+  return req(`/admin/item-questions?${qs}`);
+}
+
+/** Answer a question; add_to_details also puts the answer in the dish's description. */
+export async function answerItemQuestion(id: number, answer: string, addToDetails: boolean): Promise<{ question: ItemQuestion }> {
+  return req(`/admin/item-questions/${id}/answer`, { method: 'POST', body: JSON.stringify({ answer, add_to_details: addToDetails }) });
+}
+
+export async function hideItemQuestion(id: number): Promise<{ question: ItemQuestion }> {
+  return req(`/admin/item-questions/${id}/hide`, { method: 'POST' });
+}

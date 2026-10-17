@@ -33,6 +33,7 @@ import { isStandardItemTile } from '../lib/brandLogo';
 import { PlatterPicker } from './PlatterPicker';
 import { ItemAlertButton, canAskForItemAlert } from './ItemAlertButton';
 import { ItemReviewList } from './ItemReviewList';
+import { ItemQuestions } from './ItemQuestions';
 import { ShareControl } from './ShareControl';
 import { publicMenuItemUrl } from '../utils/publicMenuItemUrl';
 import { HeartIcon, SPICE_LEVELS, SpiceFlames } from '../utils/emojiIcon';
@@ -955,6 +956,7 @@ export function ItemSheet({
                 <ItemReviewList reviews={reviews} />
               </div>
             )}
+            {!viewOnly && <ItemQuestions itemId={item.id} />}
           </div>
         </div>
 

@@ -806,6 +806,9 @@ class MenuPageController extends Controller
             // Approved reviews, most helpful first (iruali import plan, feature 6).
             'itemReviews' => \App\Models\Review::query()->where('item_id', $row->id)->where('status', 'approved')
                 ->with('customer:id,name')->orderByDesc('helpful_count')->orderByDesc('created_at')->limit(5)->get(),
+            // Answered questions about the dish (feature 7).
+            'itemQuestions' => \App\Models\ItemQuestion::query()->where('item_id', $row->id)->where('status', 'answered')
+                ->orderByDesc('answered_at')->limit(10)->get(),
             'reviewStats' => \App\Models\Review::query()->where('item_id', $row->id)->where('status', 'approved')
                 ->selectRaw('COUNT(*) as review_count, AVG(rating) as average_rating')->first(),
             'menuPhotos' => $this->displayPhotos($priced),

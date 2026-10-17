@@ -112,6 +112,9 @@ if (routes_domain_section_is('catalog', 'main') && !routes_domain_loaded('catalo
     Route::get('/items/{itemId}/reviews', [App\Http\Controllers\Api\ReviewController::class, 'itemReviews']);
     Route::get('/reviews/featured', [App\Http\Controllers\Api\ReviewController::class, 'featured'])
         ->middleware('throttle:60,1');
+    // Questions about a dish (iruali import plan, feature 7).
+    Route::get('/items/{item}/questions', [App\Http\Controllers\Api\ItemQuestionController::class, 'index'])
+        ->whereNumber('item')->middleware('throttle:60,1');
     // Review photos, approved reviews only (iruali import plan, feature 6).
     Route::get('/reviews/{id}/photos/{n}', [App\Http\Controllers\Api\ReviewController::class, 'photo'])
         ->whereNumber(['id', 'n'])->middleware('throttle:120,1');
@@ -125,6 +128,8 @@ if (routes_domain_section_is('catalog', 'main') && !routes_domain_loaded('catalo
     Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
         Route::post('/reviews', [App\Http\Controllers\Api\ReviewController::class, 'store']);
         Route::get('/customer/reviews', [App\Http\Controllers\Api\ReviewController::class, 'myReviews']);
+        Route::post('/items/{item}/questions', [App\Http\Controllers\Api\ItemQuestionController::class, 'store'])
+            ->whereNumber('item')->middleware('throttle:5,10');
         Route::post('/reviews/{id}/helpful', [App\Http\Controllers\Api\ReviewController::class, 'helpful'])
             ->whereNumber('id')->middleware('throttle:30,1');
     });
@@ -134,5 +139,11 @@ if (routes_domain_section_is('catalog', 'main') && !routes_domain_loaded('catalo
         Route::patch('/{id}/moderate', [App\Http\Controllers\Api\ReviewController::class, 'moderate']);
         Route::post('/{id}/reply', [App\Http\Controllers\Api\ReviewController::class, 'reply']);
         Route::get('/{id}/photos/{n}', [App\Http\Controllers\Api\ReviewController::class, 'adminPhoto'])->whereNumber(['id', 'n']);
+    });
+
+    Route::middleware(['auth:sanctum', 'staff.token', 'permission:customers.manage'])->prefix('admin/item-questions')->group(function () {
+        Route::get('/', [App\Http\Controllers\Api\ItemQuestionController::class, 'adminIndex']);
+        Route::post('/{id}/answer', [App\Http\Controllers\Api\ItemQuestionController::class, 'answer'])->whereNumber('id');
+        Route::post('/{id}/hide', [App\Http\Controllers\Api\ItemQuestionController::class, 'hide'])->whereNumber('id');
     });
 }

@@ -1072,5 +1072,13 @@
   "review.photo_n": "Photo {n}",
   "review.add_photos": "Add photos",
   "review.photo_remove": "Remove photo",
-  "review.photos_hint": "Up to 3 photos. Staff check reviews before they show."
+  "review.photos_hint": "Up to 3 photos. Staff check reviews before they show.",
+  "question.title": "Questions",
+  "question.ask": "Ask a question",
+  "question.placeholder": "Is it spicy? Does it have nuts?",
+  "question.send": "Send question",
+  "question.thanks": "Thanks. We'll text you when it's answered.",
+  "question.error": "Could not send that. Please try again.",
+  "question.sign_in": "Sign in to ask a question",
+  "question.allergy": "Please tell staff about any allergy when you order."
 }

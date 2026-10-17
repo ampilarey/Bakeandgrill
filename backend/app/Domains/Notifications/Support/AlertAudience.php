@@ -55,6 +55,7 @@ final class AlertAudience
         'inventory.manage' => 'Whoever manages stock',
         'complaints.manage' => 'Whoever manages complaints',
         'devices.approve' => 'Whoever can approve a till',
+        'customers.manage' => 'Whoever looks after customers',
     ];
 
     /** Plural names for the seeded roles; any other role shows its own name. */
@@ -95,6 +96,7 @@ final class AlertAudience
         'staff_notification' => self::ON_SHIFT,
         'staff_new_customer' => self::OWNERS_MANAGERS,
         'staff_refund_requested' => ['perm:orders.refund'],
+        'staff_new_question' => ['perm:customers.manage'],
         'staff_low_stock_menu' => self::OWNERS_MANAGERS,
         // Catering: a new request to everyone who manages catering; from then
         // on to the person handling it (everyone until someone does).

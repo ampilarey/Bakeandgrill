@@ -266,6 +266,7 @@ html.js .menu-item-page .menu-fav { display: inline-flex; }
 .menu-item-review-helpful { margin: 0.3rem 0 0; font-size: 0.75rem; color: var(--muted); }
 .menu-item-review-reply { margin-top: 0.45rem; padding: 0.5rem 0.7rem; border-left: 3px solid var(--amber); background: var(--amber-light); border-radius: 0 8px 8px 0; font-size: 0.85rem; color: var(--dark); }
 .menu-item-review-reply p { margin: 0.15rem 0 0; }
+.menu-item-ask { color: var(--amber); font-weight: 700; }
 @media (max-width: 768px) {
     .menu-item-page { padding: 1rem 1rem 5rem; }
 }
