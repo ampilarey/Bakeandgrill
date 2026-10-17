@@ -77,6 +77,10 @@ class Order extends Model
         'delivery_address_line2',
         'delivery_island',
         'delivery_contact_name',
+        'is_gift',
+        'gift_to_name',
+        'gift_to_phone',
+        'gift_message',
         'delivery_contact_phone',
         'delivery_notes',
         'delivery_location_link',
@@ -111,7 +115,7 @@ class Order extends Model
     // once, 2026-10-10) — not part of the order API.
     // Kitchen bookkeeping; the kitchen screen reads them through its own
     // payload, and leaving them out keeps the order JSON contract unchanged.
-    protected $hidden = ['unstarted_alerted_at', 'delay_alerted_at', 'kitchen_started_at', 'ready_at'];
+    protected $hidden = ['unstarted_alerted_at', 'delay_alerted_at', 'kitchen_started_at', 'ready_at', 'gift_sms_sent_at'];
 
     protected $casts = [
         // FK integer columns — MySQL PDO returns these as strings without explicit casts
@@ -127,6 +131,8 @@ class Order extends Model
         'fired_at' => 'datetime',
         'paid_at' => 'datetime',
         'completed_at' => 'datetime',
+        'is_gift' => 'boolean',
+        'gift_sms_sent_at' => 'datetime',
         'kitchen_done_at' => 'datetime',
         'kitchen_done_by' => 'integer',
         'pos_received_at' => 'datetime',

@@ -179,6 +179,8 @@ class DomainEventServiceProvider extends EventServiceProvider
             PublishOrderStatusToRedisListener::class,
             SendOrderStatusPushListener::class,
             SendCustomerOrderStatusSmsListener::class,
+            // A gift on the way texts its receiver once (feature 10).
+            \App\Domains\Orders\Listeners\TellGiftReceiverListener::class,
             SendOnlineOrderCompletionReceiptSmsListener::class,
             SendStaffOrderNotificationListener::class,
             // Online order cards in Telegram groups follow the order (2026-10-07).

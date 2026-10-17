@@ -16,7 +16,7 @@ class StoreCustomerOrderRequest extends FormRequest
 
     public function rules(): array
     {
-        return [
+        return \App\Domains\Orders\Support\GiftOrder::rules() + [
             // dine_in = prepaid dine-in: customer pays now, arrives at pickup_slot_at.
             'type' => 'sometimes|string|in:online_pickup,dine_in',
             /*

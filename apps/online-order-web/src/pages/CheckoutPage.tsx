@@ -1,3 +1,4 @@
+import { GiftOptions } from '../components/GiftOptions';
 import { canScanGiftCard, useGiftCardScan } from '../hooks/useGiftCardScan';
 import { useEffect, useState, useCallback, useRef } from "react";
 import {
@@ -219,6 +220,7 @@ export function CheckoutPage() {
     collectOn, setCollectOn, allowsTomorrow, cartForcesTomorrow,
     partySize, setPartySize,
     delivery, setDelivery, notes, setNotes,
+    gift, setGift,
     savedAddresses, selectedAddressId, applySavedAddress, markAddressAsNew,
     saveAddress, setSaveAddress, addressLabel, setAddressLabel, usingAutoDefaultAddress,
     promoCode, setPromoCode, promoApplied,
@@ -812,14 +814,18 @@ export function CheckoutPage() {
     );
   })() : null;
 
+  const giftAllowed = !seated && (orderType === 'delivery' || orderType === 'pickup');
   const bodyNotes = (
-    <textarea
-      className="field-input"
-      placeholder={t('checkout.ph_notes')}
-      value={notes}
-      onChange={(e) => setNotes(e.target.value)}
-      style={{ height: 80, resize: 'vertical' }}
-    />
+    <div style={{ display: 'grid', gap: 12 }}>
+      <textarea
+        className="field-input"
+        placeholder={t('checkout.ph_notes')}
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        style={{ height: 80, resize: 'vertical' }}
+      />
+      {giftAllowed && <GiftOptions gift={gift} onChange={setGift} delivery={orderType === 'delivery'} />}
+    </div>
   );
 
   // Discounts: promo + loyalty + friend referral + gift card stacked in one panel

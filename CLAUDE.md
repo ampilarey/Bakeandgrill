@@ -753,6 +753,21 @@ till's Active orders card shows "Customer: …" from `customer_message` on the o
 (`unreadFor`). Rows `staff_order_message` (audience on shift) and
 `customer_order_message_reply` (kind orders). Complaints stay separate. `OrderMessagesTest`.
 
+## Gift orders
+
+iruali import plan, feature 10 (2026-10-17). "This is a gift" at checkout for delivery and pickup
+(`GiftOptions`, never for eat-in or a table QR): receiver's name and phone and a 200-character
+message, `orders.is_gift`, `gift_to_name`, `gift_to_phone`, `gift_message`, kept by
+`App\Domains\Orders\Support\GiftOrder::apply()` after the order is made (`rules()` on both
+checkout endpoints). A gift delivery's drop-off contact is the receiver; the driver app shows
+"Gift: hand it to …" with the receiver and the buyer as second contact (`is_gift`,
+`gift_to_*`, `buyer_phone` on the driver's delivery). The kitchen slip prints GIFT, who for and
+the message (`gift` in the print payload, `print-proxy/src/tickets.ts`); it never carried
+prices. The buyer's receipt is unchanged and goes to the buyer. The till marks the ticket
+"Gift for …". The receiver gets one text when it is on the way (`TellGiftReceiverListener`,
+row `customer_gift_on_the_way`, SMS only, off by default, `gift_sms_sent_at`). Order app
+strings are `giftOrder.*` (`gift.*` is gift cards). `GiftOrdersTest`.
+
 ## POS order type colours
 
 Owner, 2026-10-11: "add more visual colors to differentiate between order type in

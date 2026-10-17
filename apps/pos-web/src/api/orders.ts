@@ -589,6 +589,9 @@ export async function fetchReceipts(params: {
     paid_online?: boolean;
     /** The customer's unread "Message us" lines (feature 9): how many and the newest. */
     customer_message?: { count: number; latest: string } | null;
+    /** A gift for someone else (feature 10): the slip prints GIFT and no prices. */
+    is_gift?: boolean;
+    gift_to_name?: string | null;
     created_at: string;
     customer?: { id: number; name?: string; phone?: string } | null;
     user?: { id: number; name?: string } | null;

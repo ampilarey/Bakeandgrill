@@ -31,6 +31,11 @@ export interface Delivery {
   delivery_notes: string | null;
   customer_name: string | null;
   customer_phone: string | null;
+  /** A gift (feature 10): hand it to the receiver; the buyer is the second contact. */
+  is_gift?: boolean;
+  gift_to_name?: string | null;
+  gift_to_phone?: string | null;
+  buyer_phone?: string | null;
   driver_assigned_at: string | null;
   picked_up_at: string | null;
   delivered_at: string | null;

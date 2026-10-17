@@ -1,9 +1,11 @@
 interface Props {
   name: string | null;
   phone: string | null;
+  /** Heading over the card; "Customer Contact" unless a gift names who is who. */
+  title?: string;
 }
 
-export default function ContactBar({ name, phone }: Props) {
+export default function ContactBar({ name, phone, title = 'Customer Contact' }: Props) {
   if (!phone) return null;
   const clean = phone.replace(/\s+/g, '').replace(/^\+/, '');
   const waLink = `https://wa.me/${clean}`;
@@ -17,7 +19,7 @@ export default function ContactBar({ name, phone }: Props) {
       boxShadow: 'var(--shadow-sm)',
     }}>
       <p style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 10px' }}>
-        Customer Contact
+        {title}
       </p>
       {name && (
         <p style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--color-text)', margin: '0 0 10px' }}>{name}</p>

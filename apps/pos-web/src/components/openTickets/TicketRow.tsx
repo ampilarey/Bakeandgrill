@@ -347,6 +347,15 @@ export function TicketRow({
             >
               {stageBadge.label}
             </span>
+            {t.is_gift && (
+              <span
+                title={t.gift_to_name ? `A gift for ${t.gift_to_name}. The slip prints GIFT and no prices.` : "A gift. The slip prints GIFT and no prices."}
+                data-testid="ticket-gift-badge"
+                style={{ ...badgeBase, color: palette.warnDark, background: palette.warnBg, borderColor: palette.warnBorder }}
+              >
+                Gift{t.gift_to_name ? ` for ${t.gift_to_name}` : ""}
+              </span>
+            )}
             {t.customer_message && (
               <span
                 title={`Customer: ${t.customer_message.latest}. Reply from the order in Admin.`}

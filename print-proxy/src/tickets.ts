@@ -16,6 +16,8 @@ export type PrintPayload = {
     pickup_at?: string | null;
     /** What the customer typed on an online order. */
     customer_notes?: string | null;
+    /** A gift (feature 10): GIFT, who it is for and the message. The kitchen slip never prints prices. */
+    gift?: { to: string; message?: string | null } | null;
     subtotal?: number;
     tax_amount?: number;
     discount_amount?: number;
@@ -149,6 +151,15 @@ export const buildKitchenTicket = (payload: PrintPayload): string => {
   if (payload.order.customer_notes) {
     lines.push('-----------------------------\n');
     lines.push(`${BOLD_ON}Customer: ${s(payload.order.customer_notes)}${BOLD_OFF}\n`);
+  }
+  if (payload.order.gift) {
+    lines.push('-----------------------------\n');
+    lines.push(`${BIG_ON}GIFT${BIG_OFF}\n`);
+    lines.push(`${BOLD_ON}For: ${s(payload.order.gift.to)}${BOLD_OFF}\n`);
+    if (payload.order.gift.message) {
+      lines.push(`"${s(payload.order.gift.message)}"\n`);
+    }
+    lines.push('No prices in the bag.\n');
   }
   if (payload.order.notes) {
     lines.push('-----------------------------\n');

@@ -145,3 +145,10 @@ describe("TicketRow customer message badge", () => {
     expect(screen.queryByTestId("ticket-message-badge")).toBeNull();
   });
 });
+
+describe("TicketRow gift badge", () => {
+  it("marks a gift with who it is for (feature 10)", () => {
+    renderRow(ticket({ is_gift: true, gift_to_name: "Aisha" }));
+    expect(screen.getByTestId("ticket-gift-badge")).toHaveTextContent("Gift for Aisha");
+  });
+});

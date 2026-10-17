@@ -172,3 +172,14 @@ test('a receipt prints the packaging fee line and the item note', () => {
   assert.match(out, /\+ Packaging fee - 5\.00 x 2 = 10\.00/);
   assert.ok(out.indexOf('Packaging fee: 10.00') < out.indexOf('Tax: 0.80'));
 });
+
+test('a gift slip says GIFT, who for and the message, and no prices (feature 10)', () => {
+  const payload = hostilePayload();
+  payload.order.items = [{ item_name: 'Cake', quantity: 1, unit_price: 45 }];
+  payload.order.gift = { to: 'Aisha', message: 'Happy birthday!' };
+  const ticket = buildKitchenTicket(payload);
+  assert.ok(ticket.includes('GIFT'));
+  assert.ok(ticket.includes('For: Aisha'));
+  assert.ok(ticket.includes('"Happy birthday!"'));
+  assert.ok(!ticket.includes('45.00'));
+});

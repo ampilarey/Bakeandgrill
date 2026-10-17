@@ -207,11 +207,22 @@ export default function DetailPage() {
           )}
         </div>
 
-        {/* Contact */}
-        <ContactBar
-          name={delivery.customer_name}
-          phone={delivery.customer_phone ?? delivery.customer?.phone ?? null}
-        />
+        {/* Contact. A gift goes to its receiver; the buyer is the second contact (feature 10). */}
+        {delivery.is_gift ? (
+          <>
+            <div data-testid="gift-banner" style={{ ...S.card, borderColor: 'var(--color-primary)' }}>
+              <p style={{ margin: 0, fontWeight: 800, color: 'var(--color-primary)' }}>Gift: hand it to {delivery.gift_to_name}</p>
+              <p style={{ margin: '4px 0 0', fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>No prices with the order.</p>
+            </div>
+            <ContactBar title="Receiver" name={delivery.gift_to_name ?? null} phone={delivery.gift_to_phone ?? null} />
+            <ContactBar title="Buyer (second contact)" name={delivery.customer?.name ?? null} phone={delivery.buyer_phone ?? null} />
+          </>
+        ) : (
+          <ContactBar
+            name={delivery.customer_name}
+            phone={delivery.customer_phone ?? delivery.customer?.phone ?? null}
+          />
+        )}
 
         {/* Items */}
         {delivery.items && delivery.items.length > 0 && (

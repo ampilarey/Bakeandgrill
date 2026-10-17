@@ -220,6 +220,8 @@ final class SmsTypeRegistry
             self::def('marketing_birthday', 'Birthday offer', 'marketing', true, true, null, 'marketing_birthday_enabled', 'sms.campaigns.send', false, 'Customers with birthday today', false),
             // iruali import plan, feature 8: a customer asked to be told (items:alerts). Asked for, so no offer opt-out applies.
             self::def('customer_back_in_stock', 'Dish back on the menu (asked for)', 'transactional', true, false, null, 'customer_back_in_stock_enabled', null, false, 'Customers who asked to be told', false),
+            // iruali import plan, feature 10: the receiver of a gift, once, when it is on the way. Off until the owner turns it on.
+            self::def('customer_gift_on_the_way', 'Gift on the way (to the receiver)', 'transactional', false, false, null, 'customer_gift_on_the_way_enabled', null, false, 'The person a gift is for', false, ['sms']),
             self::def('customer_order_message_reply', 'Reply to an order message', 'transactional', true, false, null, 'customer_order_message_reply_enabled', null, false, 'The customer who wrote', false),
             // iruali import plan, feature 7: a dish question answered in Admin → Customers → Dish questions.
             self::def('customer_question_answered', 'Dish question answered', 'transactional', true, false, null, 'customer_question_answered_enabled', null, false, 'The customer who asked', false),

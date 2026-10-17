@@ -114,7 +114,7 @@ class DeliveryOrderController extends Controller
             'reward_claims' => 'nullable|array|max:10',
             'reward_claims.*.promotion_id' => 'required_with:reward_claims|integer|min:1',
             'reward_claims.*.item_id' => 'required_with:reward_claims|integer|min:1',
-        ]);
+        ] + \App\Domains\Orders\Support\GiftOrder::rules());
 
         // Recompute tomorrow collection server-side (never trust the browser date).
         $fulfil = app(\App\Services\OrderFulfilDateService::class);
@@ -246,6 +246,9 @@ class DeliveryOrderController extends Controller
 
             return $order->fresh()->load(['items.modifiers']);
         });
+
+        // A gift: the receiver becomes the drop-off contact (feature 10).
+        \App\Domains\Orders\Support\GiftOrder::apply($order, $validated);
 
         $customerId = $order->customer_id;
         if ($customerId && ($validated['save_address'] ?? false)) {

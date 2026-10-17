@@ -194,6 +194,11 @@ class DriverDeliveryController extends Controller
             'delivery_notes' => $order->delivery_notes,
             'customer_name' => $order->customer_name,
             'customer_phone' => $order->customer_phone,
+            // A gift (feature 10): hand it to the receiver; the buyer is the second contact.
+            'is_gift' => (bool) $order->is_gift,
+            'gift_to_name' => $order->is_gift ? $order->gift_to_name : null,
+            'gift_to_phone' => $order->is_gift ? $order->gift_to_phone : null,
+            'buyer_phone' => $order->is_gift ? \App\Models\Customer::query()->whereKey($order->customer_id)->value('phone') : null,
             'driver_assigned_at' => $order->driver_assigned_at?->toIso8601String(),
             'picked_up_at' => $order->picked_up_at?->toIso8601String(),
             'delivered_at' => $order->delivered_at?->toIso8601String(),

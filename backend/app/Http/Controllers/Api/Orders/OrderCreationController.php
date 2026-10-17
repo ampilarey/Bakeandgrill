@@ -568,6 +568,11 @@ class OrderCreationController extends Controller
             $slotLock?->release();
         }
 
+        // A gift for someone else (feature 10); never at a table.
+        if ($seatedTable === null) {
+            \App\Domains\Orders\Support\GiftOrder::apply($order, $request->validated());
+        }
+
         $customer->update(['last_order_at' => now()]);
 
         app(AuditLogService::class)->log('order.created', 'Order', $order->id, [], $order->toArray(), ['source' => 'customer'], $request);

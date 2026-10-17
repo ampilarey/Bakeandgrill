@@ -36,7 +36,10 @@ export type OrderLineChildPayload = {
   surcharge?: number;
 };
 
-export type DeliveryOrderPayload = {
+/** "This is a gift" (feature 10). */
+export type GiftFields = { is_gift?: boolean; gift_to_name?: string; gift_to_phone?: string; gift_message?: string };
+
+export type DeliveryOrderPayload = GiftFields & {
   items: Array<{
     item_id: number;
     quantity: number;
@@ -119,7 +122,7 @@ export async function createCustomerOrder(
     reward_claims?: Array<{ promotion_id: number; item_id: number }>;
     /** One per checkout attempt: a retried request returns the same order (checkout audit, 2026-09-26). */
     idempotency_key?: string;
-  },
+  } & GiftFields,
 ): Promise<{ order: Order }> {
   return request<{ order: Order }>(ENDPOINTS.CUSTOMER_ORDERS, {
     method: 'POST',

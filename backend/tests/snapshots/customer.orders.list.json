@@ -88,6 +88,10 @@
             "fulfil_date": null,
             "manual_discount_subtotal_laar": null,
             "social_delivery_id": null,
+            "is_gift": false,
+            "gift_to_name": null,
+            "gift_to_phone": null,
+            "gift_message": null,
             "items": [],
             "payments": [],
             "payment_settlement": {

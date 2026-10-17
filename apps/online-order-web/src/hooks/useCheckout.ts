@@ -376,6 +376,8 @@ export function useCheckout() {
   const [partySize, setPartySize] = useState(2);
   const [delivery, setDelivery]     = useState<DeliveryForm>(EMPTY_DELIVERY);
   const [notes, setNotes]           = useState("");
+  // "This is a gift" (iruali import plan, feature 10): delivery and pickup only, never at a table.
+  const [gift, setGift] = useState<{ on: boolean; name: string; phone: string; message: string }>({ on: false, name: '', phone: '', message: '' });
 
   const [promoCode, setPromoCode]   = useState("");
   const [promoApplied, setPromoApplied] = useState<{
@@ -1098,6 +1100,11 @@ export function useCheckout() {
     if (!isAuthenticated) { setGlobalError('Please sign in to continue.'); return; }
     if (isPlacing) return; // prevent double-submission
     if (orderType === "delivery" && !validateDelivery()) return;
+    const giftOn = gift.on && !tableSession?.token && (orderType === "delivery" || orderType === "pickup");
+    if (giftOn && (!gift.name.trim() || localPhone(gift.phone).length !== 7)) {
+      setGlobalError(translate('giftOrder.err_receiver'));
+      return;
+    }
     if (orderType === "delivery" && deliveryMinimum.shortByLaar > 0) {
       setGlobalError(`Delivery orders start at MVR ${deliveryMinimum.minMvr.toFixed(2)}. Add MVR ${(deliveryMinimum.shortByLaar / 100).toFixed(2)} more, or choose pickup.`);
       return;
@@ -1209,6 +1216,7 @@ export function useCheckout() {
             delivery_notes: delivery.notes || undefined,
             delivery_location_link: delivery.location_link.trim() || undefined,
             ...saveAddressRequestFields(saveAddress, addressLabel),
+            ...(gift.on && !tableSession?.token ? { is_gift: true, gift_to_name: gift.name.trim(), gift_to_phone: localPhone(gift.phone), gift_message: gift.message.trim() || undefined } : {}),
             customer_notes: notes || undefined,
             collect_on: collectOn,
             reward_claims: rewardClaimsFromCart(cart),
@@ -1245,6 +1253,7 @@ export function useCheckout() {
               children: childrenFromCartItem(item),
             })),
             type: "online_pickup",
+            ...(gift.on && !tableSession?.token ? { is_gift: true, gift_to_name: gift.name.trim(), gift_to_phone: localPhone(gift.phone), gift_message: gift.message.trim() || undefined } : {}),
             customer_notes: notes || undefined,
             reward_claims: rewardClaimsFromCart(cart),
             idempotency_key: key,
@@ -1495,6 +1504,7 @@ export function useCheckout() {
     collectOn, setCollectOn, allowsTomorrow, cartForcesTomorrow,
     partySize, setPartySize,
     delivery, setDelivery, notes, setNotes,
+    gift, setGift,
     savedAddresses, selectedAddressId, setSelectedAddressId, applySavedAddress, markAddressAsNew,
     saveAddress, setSaveAddress, addressLabel, setAddressLabel, usingAutoDefaultAddress,
     promoCode, setPromoCode, promoApplied, setPromoApplied, promoError, promoLoading,

@@ -425,6 +425,8 @@ class PrintJobService
                     ? $order->pickup_slot_at->copy()->timezone(config('app.timezone', 'Indian/Maldives'))->format('H:i')
                     : null,
                 'customer_notes' => $order->customer_notes,
+                // A gift (feature 10): the slip says GIFT, who for and the message; it never carries prices.
+                'gift' => \App\Domains\Orders\Support\GiftOrder::forSlip($order),
                 'items' => $lines,
             ],
         ];
