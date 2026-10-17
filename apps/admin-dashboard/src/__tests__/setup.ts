@@ -4,8 +4,10 @@ import { configure } from '@testing-library/react';
 // The Content Hub page mounts a lot at once (layout editor, hero carousel,
 // rich-text editors). Under a full-suite run one findBy per file can brush the
 // 1s default and fail on timing alone — the interactions themselves measure in
-// single-digit milliseconds. Give the whole suite headroom.
-configure({ asyncUtilTimeout: 5000 });
+// single-digit milliseconds. Give the whole suite headroom. 10 s since
+// 2026-10-17: on CI runners under a full run, Telegram's shop-group test (5.3 s)
+// and the recipe editor's save brushed the old 5 s and failed on timing alone.
+configure({ asyncUtilTimeout: 10000 });
 
 // vitest 4 + jsdom 28 doesn't always expose a working Storage API on
 // the global `localStorage`. Tests that called `localStorage.setItem`
