@@ -42,7 +42,11 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
   exit 1
 fi
 
+# The commit this deploy started from, for a rollback if the smoke test fails.
+PREV_COMMIT="$(git rev-parse HEAD)"
+
 git pull --ff-only origin main
+NEW_COMMIT="$(git rev-parse HEAD)"
 cd backend
 composer install --no-dev --optimize-autoloader
 
@@ -70,6 +74,10 @@ if [[ "$ENV" == "production" || "$ENV" == "prod" ]] && [[ "${SKIP_PREDEPLOY_BACK
     php artisan backup:run --only-db --disable-notifications
   fi
 fi
+
+# Whether this deploy changes the schema: old code may not run on new tables,
+# so a failed smoke test after a migration stops instead of rolling back.
+PENDING_MIGRATIONS="$(php artisan migrate:status --no-ansi 2>/dev/null | grep -c 'Pending' || true)"
 
 php artisan migrate --force
 
@@ -137,8 +145,57 @@ else
   echo "WARN: write-deploy-stamp.sh missing — app will report unknown commit"
 fi
 
+# Smoke test (iruali import plan, feature 16): the pages answer, and the site
+# still takes an order (app:smoke places and cancels one inside a rolled-back
+# transaction; nothing reaches the kitchen, a printer or a customer).
+# SKIP_SMOKE_ORDER=1 skips the order part for an emergency deploy.
+smoke_failed=0
 if [[ -x ./scripts/post-deploy-smoke.sh ]]; then
-  ./scripts/post-deploy-smoke.sh "$ENV"
+  ./scripts/post-deploy-smoke.sh "$ENV" || smoke_failed=1
+fi
+if [[ "${SKIP_SMOKE_ORDER:-0}" != "1" ]]; then
+  (cd backend && php artisan app:smoke) || smoke_failed=1
+fi
+
+if [[ "$smoke_failed" -ne 0 ]]; then
+  echo "=== Smoke test FAILED after deploying ${NEW_COMMIT:0:7} ==="
+  # Roll back only when it is safe and wanted: the code changed, no migration
+  # ran, and either this is TEST or SMOKE_ROLLBACK=1 was given (production
+  # alerts and stops by default until the smoke test has proved itself on TEST).
+  rollback=0
+  if [[ "$PREV_COMMIT" != "$NEW_COMMIT" && "${PENDING_MIGRATIONS:-0}" -eq 0 ]]; then
+    if [[ "$ENV" == "test" || "${SMOKE_ROLLBACK:-0}" == "1" ]]; then
+      rollback=1
+    fi
+  fi
+
+  if [[ "$rollback" -eq 1 ]]; then
+    echo "Rolling back to ${PREV_COMMIT:0:7}..."
+    git reset --hard "$PREV_COMMIT"
+    (
+      cd backend
+      composer install --no-dev --optimize-autoloader
+      php artisan config:cache
+      php artisan route:cache
+      php artisan view:clear
+      php artisan queue:restart
+    )
+    [[ -f ./scripts/write-deploy-stamp.sh ]] && bash ./scripts/write-deploy-stamp.sh "$ROOT" || true
+    if (cd backend && php artisan app:smoke); then
+      after="The smoke test passes again on ${PREV_COMMIT:0:7}."
+    else
+      after="The smoke test still fails on ${PREV_COMMIT:0:7}: look now."
+    fi
+    (cd backend && php artisan deploy:alert "$ENV: ${NEW_COMMIT:0:7} failed its smoke test and was rolled back to ${PREV_COMMIT:0:7}. $after") || true
+    echo "=== Rolled back. Fix the failure, then deploy again. ==="
+  else
+    why="a migration ran, so it was not rolled back"
+    [[ "$PREV_COMMIT" == "$NEW_COMMIT" ]] && why="nothing new was pulled"
+    [[ "$ENV" != "test" && "${SMOKE_ROLLBACK:-0}" != "1" && "${PENDING_MIGRATIONS:-0}" -eq 0 && "$PREV_COMMIT" != "$NEW_COMMIT" ]] && why="production rolls back only with SMOKE_ROLLBACK=1"
+    (cd backend && php artisan deploy:alert "$ENV: ${NEW_COMMIT:0:7} failed its smoke test; $why. Check the site now.") || true
+    echo "=== Not rolled back ($why). The pre-deploy backup is the way back for the database. ==="
+  fi
+  exit 1
 fi
 
 echo "=== Full deploy complete ==="

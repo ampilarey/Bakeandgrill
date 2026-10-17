@@ -317,6 +317,7 @@ final class SmsTypeRegistry
             self::def('owner_error_digest', 'Owner: daily error report', 'staff', true, false, null, 'sms_owner_error_digest_enabled', null, false, 'Owner phone(s)', false),
             self::def('owner_payment_error', 'Owner: payment error', 'staff', true, false, null, 'sms_owner_payment_error_enabled', null, false, 'Owner phone(s)', false),
             self::def('owner_restore_drill', 'Owner: backup restore drill', 'staff', true, false, null, 'sms_owner_restore_drill_enabled', null, false, 'Owner phone(s)', false),
+            self::def('owner_deploy_rollback', 'Owner: deploy failed its smoke test', 'staff', true, false, null, 'sms_owner_deploy_rollback_enabled', null, false, 'Owner phone(s)', false),
             self::def('owner_price_rise', 'Owner: supplier price rises', 'staff', true, false, null, 'sms_owner_price_rise_enabled', null, false, 'Owners & managers', false),
             self::def('owner_delivery_delays', 'Owner: deliveries past ETA', 'staff', true, false, null, 'sms_owner_delivery_delays_enabled', null, false, 'Business phone', false),
             self::def('owner_device_approval', 'Owner: POS device waiting for approval', 'staff', true, false, null, 'sms_owner_device_approval_enabled', null, false, 'Business phone', false),

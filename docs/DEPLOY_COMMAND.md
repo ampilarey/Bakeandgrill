@@ -144,6 +144,26 @@ Changing the cron line does not replace a running worker — `--max-time=3600`
 keeps it alive for up to an hour and flock stops a replacement starting. To
 apply a change now: `pkill -f "artisan queue:work"` and wait a minute.
 
+### The smoke test at the end of every deploy (`app:smoke`)
+
+After the page checks, `full-deploy.sh` runs `php artisan app:smoke`: it reads the menu
+through the app and places one takeaway order through the normal order code, checks it and
+cancels it, all inside a database transaction that is always rolled back, with printing,
+the kitchen screen, texts, emails, Telegram and queue jobs switched off for that run. No
+order, order number or message is left.
+
+If a page check or `app:smoke` fails, the deploy ends with exit 1 and the owner is told
+("Owner: deploy failed its smoke test"). On TEST it also puts the code back to the commit
+the deploy started from, reinstalls and recaches, and checks again, as long as no
+migration ran (old code may not work on new tables; then the pre-deploy database backup
+is the way back). Production does the same only when run with `SMOKE_ROLLBACK=1`:
+
+```bash
+SMOKE_ROLLBACK=1 ./scripts/full-deploy.sh production
+```
+
+`SKIP_SMOKE_ORDER=1` skips the order part for an emergency deploy.
+
 ### Is the site ready? (`app:ready`) and the monthly restore drill
 
 `php artisan app:ready` lists database, Redis, queue worker, scheduler, uploaded

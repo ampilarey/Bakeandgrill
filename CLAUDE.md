@@ -24,7 +24,12 @@ That one script is the whole deploy: `git pull`, `composer install --no-dev`,
 pending (production; the deploy stops if it fails, `SKIP_PREDEPLOY_BACKUP=1` to
 override), `migrate --force`, `storage:link`, `config:cache`,
 `route:cache`, `view:clear`, `queue:restart`, queue-worker keepalive, deploy stamp,
-and `post-deploy-smoke.sh production`. There is nothing to run before or after it.
+`post-deploy-smoke.sh production` and `app:smoke` (places and cancels one order inside
+a rolled-back transaction, nothing sent or printed). If the smoke test fails the script
+alerts the owner (row `owner_deploy_rollback`) and stops with exit 1; TEST, or production
+with `SMOKE_ROLLBACK=1`, also rolls the code back to the commit it started from when no
+migration ran (`SKIP_SMOKE_ORDER=1` skips the order part). There is nothing to run before
+or after it.
 
 Call out anything in the merge that changes what the deploy has to do — a migration,
 a new `.env` key, a rebuilt SPA bundle, a new system dependency — since those are the
