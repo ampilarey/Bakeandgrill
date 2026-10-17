@@ -7,15 +7,22 @@ file to a print shop and watches it after it is up.
 ## Make a poster
 
 1. **What is it for.** Twenty purposes in five groups. "Tell us how we did" opens the
-   existing complaint poster (`/complain/poster`); Posters takes that design over in Phase 2.
+   existing complaint poster (`/complain/poster/sheet`, with its sizes and many-up sheets),
+   so only one engine draws it; a poster can never be made with that purpose here.
 2. **Fill it in.** Mood, language, sizes A5–A2, and the dish, offer, category or table it
-   binds to. A dish with sizes prints "From MVR x". The GST line follows
+   binds to. A dish with sizes prints "From MVR x". **The photo** is, in order: a poster
+   photo uploaded on this page (kept up to 4800 px; menu photos are untouched), else the
+   dish's full-size original (`image_original_url`, up to 3200 px), else its 1200 × 900 web
+   photo, which preflight refuses for print and says what to do. The GST line follows
    `GstSettingsService` and can be moved, not removed. Leave the table blank on a table
    card and the file has one page per active table.
 3. **Check and download.** Red preflight checks block the ZIP. Amber warns. The ZIP holds
    one PDF/X-4 per size, the spec sheet, and (if ticked) the white mask and, when gloss is
    set, the gloss mask. Layout on the sheet: one per page, tent (two A5 on A4, the second
-   turned 180°), 2-up or 4-up. Send the ZIP by WhatsApp, Viber or email. Sending to a print
+   turned 180°), 2-up or 4-up. **Mounting:** none, tape, or stand-offs or eyelets at the
+   corners; with the last two the layout moves in past a corner circle (15 mm, 20 mm on A2,
+   one circle in from the cut), the preview draws the circles, and a preflight check keeps
+   them clear. Send the ZIP by WhatsApp, Viber or email. Sending to a print
    shop from the app is Phase 2.
 
 My posters keeps each one with its take-down date and place (Window, Door, Counter,
@@ -25,9 +32,12 @@ is another download. Templates can be saved and, with `posters.manage`, locked.
 Permissions: `posters.make` (managers and anyone granted it) and `posters.manage`
 (owner; lock and delete templates).
 
-Exports run on the queue (`ExportPosterJob`). With the queue on `sync` (local, tests) the
-ZIP is ready in the same request. On the server the worker must be running; the row stays
-"queued" until it is. Sending to a shop waits for that file in the same request.
+Exports run on the queue (`ExportPosterJob`). **Download for print** waits for the file:
+the page asks `GET /api/posters/exports/{id}` every 2 seconds, downloads once it is ready,
+says "Taking longer than usual: the file is queued" after 3 minutes and gives up after 15.
+On the server the worker must be running (crontab keepalive, full deploys). **Send to print
+shop** makes the order at once with the file queued; once the file is ready the job emails
+the shop (or asks for the proof), and a shop with no email gets a note on the order.
 
 ## Print shops
 
@@ -44,9 +54,8 @@ A changed price, dish or hours marks the poster out of date, with the diff
 ("price MVR 45.00 → MVR 50.00"). `posters:alert` each morning texts
 `owner_poster_stale` and `owner_poster_ending` (due down today or tomorrow).
 
-**Tell us how we did** is a poster on this page. Its code opens `/p/{code}`,
-which counts the scan and then opens `/complain`. The old `/complain/poster`
-sheet pages stay, so a bookmark or a many-up print link still opens them.
+**Tell us how we did** opens the complaint poster's own page; the complaint poster is not
+made on this page, so there is one design and one engine.
 
 ## Everywhere
 

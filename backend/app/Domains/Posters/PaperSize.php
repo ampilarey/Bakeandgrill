@@ -51,6 +51,28 @@ final class PaperSize
         return new self($key, $w, $h, $safe, $bleed, $landscape);
     }
 
+    /** Stand-offs and eyelets sit at the corners; the circle is this many mm across (docs/POSTER_PLAN.md § 3). */
+    public function keepOutMm(): float
+    {
+        return $this->name === 'A2' ? 20.0 : 15.0;
+    }
+
+    /**
+     * The same size for a poster mounted with stand-offs or eyelets: the safe
+     * zone grows past the corner circles (centred one circle in from the cut,
+     * reaching one and a half across), so the layout keeps its logo, QR and
+     * text clear of the hardware. Any other mounting changes nothing.
+     */
+    public function mounted(string $mounting): self
+    {
+        if (!in_array($mounting, ['standoffs', 'eyelets'], true)) {
+            return $this;
+        }
+        $safe = max($this->safe, $this->keepOutMm() * 1.5 + 1.0);
+
+        return new self($this->name, $this->trimWidth, $this->trimHeight, $safe, $this->bleed, $this->landscape);
+    }
+
     /** A sheet that is already its final size, with no extra bleed of its own. */
     public static function custom(float $width, float $height): self
     {

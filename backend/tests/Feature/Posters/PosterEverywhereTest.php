@@ -32,8 +32,8 @@ class PosterEverywhereTest extends TestCase
     {
         Sanctum::actingAs($this->makeOwner(), ['staff']);
         $id = $this->postJson('/api/posters', [
-            'name' => 'How we did',
-            'template_key' => 'how_we_did',
+            'name' => 'Scan to order',
+            'template_key' => 'scan_to_order',
             'layout' => 'qr_card',
             'sizes' => ['A5'],
             'take_down_on' => now()->addDay()->toDateString(),
@@ -51,8 +51,10 @@ class PosterEverywhereTest extends TestCase
         ]);
         $this->assertStringStartsWith('WIFI:T:WPA;', (string) $wifi['qr_url']);
 
-        $this->get('/p/' . $poster->code())->assertRedirect('/complain');
-        $this->get('/p/' . $poster->code())->assertRedirect('/complain');
+        $target = PosterContent::livePath($poster->toArray());
+        $this->assertNotSame('', $target);
+        $this->get('/p/' . $poster->code())->assertRedirect($target);
+        $this->get('/p/' . $poster->code())->assertRedirect($target);
         $this->get('/p/NOPE')->assertRedirect('/menu');
 
         $this->assertSame(2, PosterScan::query()->count());

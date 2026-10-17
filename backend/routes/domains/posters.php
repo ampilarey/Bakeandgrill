@@ -13,6 +13,7 @@ Route::middleware(['auth:sanctum', 'staff.token', 'permission:posters.make'])
         Route::get('/catalog', [PosterController::class, 'catalog']);
         Route::get('/lookups', [PosterController::class, 'lookups']);
         Route::post('/preview', [PosterController::class, 'preview']);
+        Route::post('/photo', [PosterController::class, 'uploadPhoto']);
         Route::get('/templates', [PosterController::class, 'templates']);
         Route::post('/templates', [PosterController::class, 'storeTemplate']);
         Route::put('/templates/{template}', [PosterController::class, 'updateTemplate']);
@@ -27,6 +28,7 @@ Route::middleware(['auth:sanctum', 'staff.token', 'permission:posters.make'])
         Route::post('/orders/{order}/quote', [PosterShopController::class, 'quote']);
         Route::post('/orders/{order}/approve-quote', [PosterShopController::class, 'approveQuote']);
         Route::post('/orders/{order}/state', [PosterShopController::class, 'advance']);
+        Route::get('/exports/{export}', [PosterController::class, 'exportStatus']);
         Route::get('/exports/{export}/download', [PosterController::class, 'download']);
         Route::post('/{poster}/orders', [PosterShopController::class, 'send']);
         Route::post('/{poster}/tv', [PosterEverywhereController::class, 'tv']);

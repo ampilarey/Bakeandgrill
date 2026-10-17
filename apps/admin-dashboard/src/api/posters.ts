@@ -75,6 +75,9 @@ export type PosterOrderRow = {
   material: string;
   quote_mvr: string | null;
   proof_url?: string;
+  /** The print file: made on the queue, then the shop is emailed (or the proof asked for). */
+  file?: 'queued' | 'ready' | 'failed' | string | null;
+  file_error?: string | null;
 };
 
 export type PosterPreview = {
@@ -123,6 +126,15 @@ export const duplicatePoster = (id: number) => req<PosterRow>(`/posters/${id}/du
 
 export const exportPoster = (id: number, job: Record<string, unknown>) =>
   req<PosterExportRow>(`/posters/${id}/export`, { method: 'POST', body: JSON.stringify(job) });
+
+export const fetchPosterExport = (exportId: number) => req<PosterExportRow>(`/posters/exports/${exportId}`);
+
+/** A photo kept for posters only, up to 4800 px; put the path in the poster's `photo_path` slot. */
+export function uploadPosterPhoto(file: File) {
+  const form = new FormData();
+  form.append('photo', file);
+  return req<{ photo_path: string; width: number; height: number }>('/posters/photo', { method: 'POST', body: form });
+}
 
 export const downloadPosterZip = (exportId: number) => requestBlob(`/posters/exports/${exportId}/download`);
 

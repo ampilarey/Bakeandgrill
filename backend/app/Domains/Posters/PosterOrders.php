@@ -53,10 +53,20 @@ final class PosterOrders
         $job['gloss_name'] = $prefs['gloss_name'];
         $job['mirror'] = (bool) ($job['mirror'] ?? (PosterPreflight::MATERIALS[$material]['mirror'] ?? false));
 
-        $export = self::exportNow($poster, $job);
-        if ($export->status !== 'ready') {
-            throw new RuntimeException($export->error ?: 'Preflight failed.');
+        // A quick preflight of the first size here, so a red check is said at once; the file
+        // itself is made on the queue (an A2 with big photos is too heavy for a web request).
+        $paper = PaperSize::named((string) (($job['sizes'] ?? $poster->sizes ?? ['A4'])[0] ?? 'A4'), (bool) $poster->landscape)->mounted((string) ($job['mounting'] ?? 'none'));
+        $content = PosterContent::resolve($poster->toArray());
+        $checks = PosterPreflight::check($poster->toArray(), $content, PosterPieces::build($poster->toArray(), $paper, $content), $paper, $job);
+        if (PosterPreflight::blocked($checks)) {
+            throw new RuntimeException('Preflight failed. Fix the red checks and try again.');
         }
+        $export = PosterExport::query()->create([
+            'poster_id' => $poster->id,
+            'version' => $poster->version,
+            'status' => 'queued',
+            'request' => $job,
+        ]);
 
         $order = PosterOrder::query()->create([
             'poster_id' => $poster->id,
@@ -75,18 +85,45 @@ final class PosterOrders
             'state_log' => [],
             'created_by' => $userId,
         ]);
-        self::push($order, 'draft', $userId, 'Opened');
+        self::push($order, 'draft', $userId, 'Opened; preparing the print file');
+        ExportPosterJob::dispatch($export->id, $order->id);
 
+        return $order->fresh(['poster', 'shop', 'export']);
+    }
+
+    /**
+     * The order's print file is ready (ExportPosterJob): ask for the proof when
+     * proof approval is on, else email the shop. A shop with no email is noted on
+     * the order, so the ZIP can be sent by hand from My posters.
+     */
+    public static function exportFinished(int $orderId): void
+    {
+        $order = PosterOrder::query()->with('shop', 'poster', 'export')->find($orderId);
+        if ($order === null || $order->state !== 'draft') {
+            return;
+        }
         if (self::proofRequired()) {
             self::askForProof($order);
 
-            return $order->fresh(['poster', 'shop']);
+            return;
         }
+        try {
+            self::emailShop($order);
+        } catch (RuntimeException $e) {
+            self::push($order, 'draft', null, 'Not emailed: ' . $e->getMessage());
 
-        self::emailShop($order);
-        self::push($order, 'sent', $userId, 'Emailed the shop');
+            return;
+        }
+        self::push($order, 'sent', $order->created_by, 'Emailed the shop');
+    }
 
-        return $order->fresh(['poster', 'shop']);
+    /** The order's print file could not be made: said on the order. */
+    public static function exportFailed(int $orderId, string $why): void
+    {
+        $order = PosterOrder::query()->find($orderId);
+        if ($order !== null && $order->state === 'draft') {
+            self::push($order, 'draft', null, 'The print file failed: ' . $why);
+        }
     }
 
     public static function approveProof(PosterOrder $order, ?int $userId = null): PosterOrder
@@ -94,6 +131,9 @@ final class PosterOrders
         $order->loadMissing('shop', 'poster', 'export');
         if ($order->state !== 'draft') {
             return $order;
+        }
+        if ($order->export?->status !== 'ready') {
+            throw new RuntimeException('The print file is still being made. Try again in a minute.');
         }
         self::push($order, 'proof_approved', $userId, 'Proof approved');
         self::emailShop($order);
@@ -177,20 +217,6 @@ final class PosterOrders
     public static function proofLink(PosterOrder $order): string
     {
         return URL::temporarySignedRoute('posters.proof', now()->addDay(), ['order' => $order->id]);
-    }
-
-    /** @param array<string, mixed> $job */
-    private static function exportNow(Poster $poster, array $job): PosterExport
-    {
-        $export = PosterExport::query()->create([
-            'poster_id' => $poster->id,
-            'version' => $poster->version,
-            'status' => 'queued',
-            'request' => $job,
-        ]);
-        ExportPosterJob::dispatchSync($export->id);
-
-        return $export->fresh();
     }
 
     private static function emailShop(PosterOrder $order): void

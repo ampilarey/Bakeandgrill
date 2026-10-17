@@ -13,16 +13,17 @@ use Tests\TestCase;
 
 class PosterPiecesTest extends TestCase
 {
-    public function test_every_purpose_is_drawn_on_this_engine(): void
+    public function test_every_purpose_but_the_complaint_poster_is_drawn_on_this_engine(): void
     {
         $this->assertCount(8, PosterPurposes::layouts());
         $this->assertGreaterThan(20, count(PosterPurposes::all()));
-        $this->assertNull(PosterPurposes::get('how_we_did')['external']);
+        $this->assertSame('/complain/poster/sheet', PosterPurposes::get('how_we_did')['external']);
         foreach (['bogo', 'wifi', 'wash_hands', 'eid', 'we_cater', 'chefs_pick'] as $key) {
             $this->assertNotNull(PosterPurposes::get($key), $key);
         }
         foreach (PosterPurposes::all() as $key => $purpose) {
-            $this->assertNull($purpose['external'], $key);
+            // The complaint poster alone is drawn on its own page, so one engine draws it.
+            $this->assertSame($key === 'how_we_did' ? '/complain/poster/sheet' : null, $purpose['external'], $key);
             $this->assertContains($purpose['layout'], PosterPurposes::layouts(), $key);
         }
     }

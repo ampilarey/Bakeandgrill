@@ -174,4 +174,61 @@ final class PosterPhoto
 
         return $im;
     }
+
+    /** The longest edge a poster photo is kept at (docs/POSTER_PLAN.md § 7); menu masters stop at 3200. */
+    public const POSTER_MAX_EDGE = 4800;
+
+    /** Where poster uploads live, under storage/app. */
+    public const UPLOAD_DIR = 'posters/photos';
+
+    /**
+     * Keep an uploaded photo for posters only: turned upright from its EXIF
+     * orientation, scaled down to POSTER_MAX_EDGE on the long edge (never up),
+     * and saved as a high-quality JPEG. Menu uploads are untouched. Returns the
+     * path to keep in the poster's `photo_path` slot.
+     */
+    public static function storeUpload(string $sourcePath): string
+    {
+        $img = self::open($sourcePath);
+        if (function_exists('exif_read_data')) {
+            $exif = @exif_read_data($sourcePath);
+            $angle = match ((int) ($exif['Orientation'] ?? 1)) {
+                3 => 180, 6 => -90, 8 => 90, default => 0
+            };
+            if ($angle !== 0) {
+                $rotated = imagerotate($img, $angle, 0);
+                if ($rotated !== false) {
+                    $img = $rotated;
+                }
+            }
+        }
+        $w = imagesx($img);
+        $h = imagesy($img);
+        $scale = min(1.0, self::POSTER_MAX_EDGE / max($w, $h));
+        if ($scale < 1.0) {
+            $scaled = imagescale($img, max(1, (int) round($w * $scale)), max(1, (int) round($h * $scale)), IMG_BICUBIC);
+            if ($scaled !== false) {
+                $img = $scaled;
+            }
+        }
+        $dir = storage_path('app/' . self::UPLOAD_DIR);
+        if (!is_dir($dir)) {
+            mkdir($dir, 0775, true);
+        }
+        $name = bin2hex(random_bytes(12)) . '.jpg';
+        imagejpeg($img, $dir . '/' . $name, 92);
+
+        return self::UPLOAD_DIR . '/' . $name;
+    }
+
+    /** The file behind a kept `photo_path`, or null when it is not one of ours or is gone. */
+    public static function uploadPath(string $relative): ?string
+    {
+        if (preg_match('#^' . preg_quote(self::UPLOAD_DIR, '#') . '/[a-f0-9]{24}\.jpg$#', $relative) !== 1) {
+            return null;
+        }
+        $file = storage_path('app/' . $relative);
+
+        return is_file($file) ? $file : null;
+    }
 }

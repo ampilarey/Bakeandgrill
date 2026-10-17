@@ -128,11 +128,11 @@ class PosterShopTest extends TestCase
         $this->assertSame(1, SmsLog::query()->where('type', 'owner_poster_stale')->count());
     }
 
-    public function test_spot_layers_without_a_name_are_blocked_and_the_complaint_card_stays_here(): void
+    public function test_spot_layers_without_a_name_are_blocked_and_the_complaint_poster_is_made_on_its_own_page(): void
     {
         Sanctum::actingAs($this->makeOwner(), ['staff']);
         $preview = $this->postJson('/api/posters/preview', [
-            'template_key' => 'how_we_did',
+            'template_key' => 'scan_to_order',
             'layout' => 'qr_card',
             'mood' => 'dark',
             'language' => 'en',
@@ -146,10 +146,12 @@ class PosterShopTest extends TestCase
             'material' => 'clear',
             'white' => 'under all printed areas',
         ])->assertOk();
-        $this->assertStringContainsString('/complain', (string) $preview->json('content.qr_url'));
         $ids = collect($preview->json('preflight'))->where('level', 'red')->pluck('id');
         $this->assertTrue($ids->contains('spots'));
-        $this->get('/complain/poster')->assertOk();
+        // "Tell us how we did" opens the existing complaint poster; it is never made here.
+        $this->postJson('/api/posters', ['template_key' => 'how_we_did', 'layout' => 'qr_card', 'sizes' => ['A5']])
+            ->assertStatus(422)->assertJsonPath('message', 'This poster is made on its own page: /complain/poster/sheet');
+        $this->get('/complain/poster/sheet')->assertOk();
     }
 
     /** @return array<string, mixed> */

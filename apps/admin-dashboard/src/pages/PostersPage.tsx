@@ -4,7 +4,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { PageHeader, Btn } from '../components/SharedUI';
 import {
-  advancePosterOrder, approvePosterQuote, createPoster, deletePoster, deletePosterTemplate, downloadPosterZip, duplicatePoster, exportPoster,
+  advancePosterOrder, approvePosterQuote, createPoster, deletePoster, deletePosterTemplate, downloadPosterZip, duplicatePoster, exportPoster, fetchPosterExport, uploadPosterPhoto,
   fetchPosterCatalog, fetchPosterLookups, fetchPosterOrders, fetchPosters, fetchPosterTemplates, fetchPrintShops, lockPosterTemplate,
   draftPosterSocial, previewPoster, quotePosterOrder, savePosterTemplate, savePrintShop, sendPosterToShop, sendPosterToTv, setPosterHomeBanner, setPosterProofApproval, updatePoster,
   type PosterCheck, type PosterDraft, type PosterOrderRow, type PosterPiece, type PosterPurpose, type PosterRow, type PosterTemplateRow, type PrintShop,
@@ -68,6 +68,8 @@ function MakeTab({ manage }: { manage: boolean }) {
   const [material, setMaterial] = useState('foam');
   const [imposition, setImposition] = useState('single');
   const [masks, setMasks] = useState(false);
+  const [mounting, setMounting] = useState('none');
+  const [photoSource, setPhotoSource] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState('');
 
@@ -87,15 +89,16 @@ function MakeTab({ manage }: { manage: boolean }) {
     const handle = setTimeout(() => {
       const shop = shops.find((s) => s.id === shopId);
       previewPoster({
-        ...draft, material, imposition,
+        ...draft, material, imposition, mounting,
         layers: shop?.print_prefs.layers, white_name: shop?.print_prefs.white_name, gloss_name: shop?.print_prefs.gloss_name, gloss,
       }).then((res) => {
         setSheet(res.sheet);
         setChecks(res.preflight);
+        setPhotoSource(typeof res.content.photo_source === 'string' ? res.content.photo_source : null);
       }).catch(() => setNote('Preview failed.'));
     }, 250);
     return () => clearTimeout(handle);
-  }, [draft, step, material, imposition, shopId, shops, gloss]);
+  }, [draft, step, material, imposition, mounting, shopId, shops, gloss]);
 
   const grouped = useMemo(() => GROUPS.map((g) => ({ g, rows: purposes.filter((p) => p.group === g) })), [purposes]);
   const purpose = purposes.find((p) => p.key === draft?.template_key);
@@ -123,6 +126,7 @@ function MakeTab({ manage }: { manage: boolean }) {
       white_name: shop?.print_prefs.white_name,
       gloss_name: shop?.print_prefs.gloss_name,
       supplier_id: shopId || undefined,
+      mounting,
     };
   }
 
@@ -132,7 +136,19 @@ function MakeTab({ manage }: { manage: boolean }) {
     try {
       const id = await save();
       if (!id) return;
-      const exp = await exportPoster(id, job());
+      // The file is made on the queue: wait for it, then download (POSTER_PLAN § 12.5).
+      setNote('Preparing your file…');
+      let exp = await exportPoster(id, job());
+      const started = Date.now();
+      while (exp.status === 'queued') {
+        if (Date.now() - started > 15 * 60_000) {
+          setNote('The file is still queued. Try Download again later; the server may need its queue worker restarted.');
+          return;
+        }
+        if (Date.now() - started > 3 * 60_000) setNote('Taking longer than usual: the file is queued. It downloads here once it is ready.');
+        await new Promise((r) => setTimeout(r, 2000));
+        exp = await fetchPosterExport(exp.id);
+      }
       if (exp.status === 'failed') {
         setNote(exp.error || 'Export failed.');
         return;
@@ -161,7 +177,11 @@ function MakeTab({ manage }: { manage: boolean }) {
       const order = await sendPosterToShop(id, job());
       setNote(order.proof_url
         ? `Waiting for approval. Open this on your phone: ${order.proof_url}`
-        : `Sent to ${order.shop ?? 'the shop'}. The order is ${order.state.replace(/_/g, ' ')}.`);
+        : order.state === 'sent'
+          ? `Sent to ${order.shop ?? 'the shop'}.`
+          : order.file === 'queued'
+            ? `Preparing the print file. ${order.shop ?? 'The shop'} is emailed once it is ready, or you get a link to approve it first when proof approval is on. My posters shows the order.`
+            : `The order is ${order.state.replace(/_/g, ' ')}. ${order.file === 'failed' ? (order.file_error ?? 'The print file failed.') : 'See My posters for its notes.'}`);
     } catch (e) {
       setNote(e instanceof Error ? e.message : 'Could not send.');
     } finally {
@@ -238,6 +258,7 @@ function MakeTab({ manage }: { manage: boolean }) {
                 <input style={inputStyle} value={draft.slots[key] ?? ''} onChange={(e) => setDraft({ ...draft, slots: { ...draft.slots, [key]: e.target.value } })} />
               </label>
             ))}
+            <PosterPhotoField draft={draft} source={photoSource} onChange={(path) => setDraft({ ...draft, slots: { ...draft.slots, photo_path: path } })} />
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <label style={labelStyle}>Take down
                 <input type="date" style={inputStyle} value={draft.take_down_on ?? ''} onChange={(e) => setDraft({ ...draft, take_down_on: e.target.value || null })} />
@@ -253,6 +274,12 @@ function MakeTab({ manage }: { manage: boolean }) {
                   { value: 'tent', label: 'Tent (two A5 on A4)' },
                   { value: '2up', label: '2-up' },
                   { value: '4up', label: '4-up' },
+                ]} />
+                <Select label="Mounting" value={mounting} onChange={setMounting} options={[
+                  { value: 'none', label: 'None (leans or sits in a stand)' },
+                  { value: 'standoffs', label: 'Stand-offs at the corners' },
+                  { value: 'eyelets', label: 'Eyelets at the corners' },
+                  { value: 'tape', label: 'Tape on the back' },
                 ]} />
                 <Select label="Gloss" value={gloss} onChange={setGloss} options={[{ value: 'none', label: 'No gloss' }, { value: 'logo and price', label: 'Gloss on logo and large type' }]} />
                 <Select label="Print shop" value={shopId} onChange={(v) => setShopId(v ? Number(v) : '')} options={shops.map((s) => ({ value: s.id, label: s.name }))} />
@@ -276,13 +303,46 @@ function MakeTab({ manage }: { manage: boolean }) {
           </>
         )}
       </div>
-      <Preview sheet={sheet} gloss={gloss !== 'none'} />
+      <Preview sheet={sheet} gloss={gloss !== 'none'} keepOut={mounting === 'standoffs' || mounting === 'eyelets' ? keepOutMm(draft?.sizes[0]) : 0} />
       <style>{`@media (max-width: 800px) { .poster-make { grid-template-columns: 1fr !important; } }`}</style>
     </div>
   );
 }
 
-function Preview({ sheet, gloss }: { sheet: { w: number; h: number; hex_bg: string; pieces: PosterPiece[] } | null; gloss: boolean }) {
+/** The corner circle for stand-offs and eyelets, mm across (PaperSize::keepOutMm). */
+const keepOutMm = (size?: string) => (size === 'A2' ? 20 : 15);
+
+const PHOTO_SOURCE_WORDS: Record<string, string> = {
+  upload: 'Using the poster photo.',
+  master: "Using the dish's full-size photo.",
+  crop: "Only the dish's small website photo: upload a poster photo for print.",
+};
+
+/** A photo kept for posters only (up to 4800 px), sharper than the menu's, and which photo prints now. */
+function PosterPhotoField({ draft, source, onChange }: { draft: PosterDraft; source: string | null; onChange: (path: string) => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const has = Boolean(draft.slots.photo_path);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <label style={labelStyle}>Poster photo (optional, sharper than the menu photo)
+        <input type="file" accept="image/jpeg,image/png,image/webp" disabled={busy} style={inputStyle} onChange={async (e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          setBusy(true); setError('');
+          try { onChange((await uploadPosterPhoto(file)).photo_path); } catch (err) { setError(err instanceof Error ? err.message : 'Upload failed.'); } finally { setBusy(false); }
+        }} />
+      </label>
+      <span style={{ fontSize: 13, color: source === 'crop' ? 'var(--color-danger)' : 'var(--color-text-secondary)' }}>
+        {busy ? 'Uploading…' : source ? PHOTO_SOURCE_WORDS[source] : ''}
+        {has && !busy && <> <button type="button" onClick={() => onChange('')} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--color-primary)', cursor: 'pointer', fontSize: 13 }}>Use the dish photo instead</button></>}
+      </span>
+      {error && <span role="alert" style={{ fontSize: 13, color: 'var(--color-danger)' }}>{error}</span>}
+    </div>
+  );
+}
+
+function Preview({ sheet, gloss, keepOut = 0 }: { sheet: { w: number; h: number; hex_bg: string; pieces: PosterPiece[] } | null; gloss: boolean; keepOut?: number }) {
   if (!sheet) {
     return <aside style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>The preview appears once a purpose is filled in. Screen colours follow the brand; the file uses the press mixes.</aside>;
   }
@@ -291,6 +351,14 @@ function Preview({ sheet, gloss }: { sheet: { w: number; h: number; hex_bg: stri
     <aside>
       <div style={{ width: sheet.w * scale, height: sheet.h * scale, position: 'relative', background: sheet.hex_bg, borderRadius: 4, overflow: 'hidden', margin: '0 auto' }}>
         {gloss && <div style={{ position: 'absolute', inset: 0, background: 'repeating-linear-gradient(135deg, transparent, transparent 6px, var(--color-text) 6px, var(--color-text) 7px)', opacity: 0.28, pointerEvents: 'none' }} />}
+        {/* Where the stand-offs or eyelets go: drawn faintly, kept clear by the layout (§ 3). */}
+        {keepOut > 0 && [[0, 0], [1, 0], [0, 1], [1, 1]].map(([right, bottom]) => {
+          const bleed = 3;
+          const c = bleed + keepOut;
+          const cx = right ? sheet.w - c : c;
+          const cy = bottom ? sheet.h - c : c;
+          return <div key={`${right}${bottom}`} data-testid="poster-keepout" style={{ position: 'absolute', left: (cx - keepOut / 2) * scale, top: (cy - keepOut / 2) * scale, width: keepOut * scale, height: keepOut * scale, borderRadius: '50%', border: '1px dashed var(--color-text-muted)', opacity: 0.8, pointerEvents: 'none', zIndex: 2 }} />;
+        })}
         {sheet.pieces.map((p, i) => (
           <div key={i} style={{
             position: 'absolute', left: p.x * scale, top: p.y * scale, width: p.w * scale, height: p.h * scale,

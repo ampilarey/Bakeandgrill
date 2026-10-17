@@ -88,7 +88,9 @@ final class PosterContent
             'gst' => $gst,
             'gst_dv' => $gstDv,
             'qr_url' => self::qrUrl($poster, $slots, $bindings, $table),
-            'photo' => self::photoFile($item),
+            // Poster-grade upload first, then the dish's full-size original, then its small web crop (docs/POSTER_PLAN.md § 7).
+            'photo' => ($photo = self::photoSource($slots, $item))['path'],
+            'photo_source' => $photo['source'],
             'photo_url' => $item?->image_url,
             'rows' => self::rows($poster, $category),
             'hours' => self::hours(),
@@ -298,9 +300,32 @@ final class PosterContent
         return [$line, $dv];
     }
 
-    private static function photoFile(?Item $item): ?string
+    /**
+     * The photo a poster prints: one uploaded for posters (kept up to 4800 px,
+     * PosterPhoto::storeUpload), else the dish's full-size original
+     * (`image_original_url`, up to 3200 px), else its 1200 × 900 web crop, which
+     * preflight refuses for print. Source is 'upload', 'master', 'crop' or null.
+     *
+     * @param array<string, mixed> $slots
+     * @return array{path: ?string, source: ?string}
+     */
+    private static function photoSource(array $slots, ?Item $item): array
     {
-        $url = $item?->image_url;
+        $upload = PosterPhoto::uploadPath((string) ($slots['photo_path'] ?? ''));
+        if ($upload !== null) {
+            return ['path' => $upload, 'source' => 'upload'];
+        }
+        $master = self::photoFile($item?->image_original_url);
+        if ($master !== null) {
+            return ['path' => $master, 'source' => 'master'];
+        }
+        $crop = self::photoFile($item?->image_url);
+
+        return ['path' => $crop, 'source' => $crop !== null ? 'crop' : null];
+    }
+
+    private static function photoFile(?string $url): ?string
+    {
         if (!is_string($url) || $url === '') {
             return null;
         }

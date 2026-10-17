@@ -56,6 +56,9 @@ final class PosterPreflight
             if (($mood['photo'] ?? false) && ($photo['bleed'] ?? false) !== true) {
                 $checks[] = self::row('bleed', 'red', 'The photo stops at the trim. It needs to run to the bleed.');
             }
+            if (($content['photo_source'] ?? null) === 'crop') {
+                $checks[] = self::row('photo', 'red', 'This dish only has its small website photo. Upload a poster photo, or upload the dish photo again on the menu so its full-size original is kept.');
+            }
         } elseif (($mood['photo'] ?? false) || ($poster['layout'] ?? '') === 'hero_photo') {
             $checks[] = self::row('photo', 'amber', 'No photo on this one. The panel is a flat colour.');
         }
@@ -174,8 +177,34 @@ final class PosterPreflight
             $checks[] = self::row('white', 'ok', 'White ink: ' . $job['white'] . '.');
         }
 
-        if (($job['mounting'] ?? 'none') === 'eyelets') {
-            $checks[] = self::row('keepout', 'ok', 'Eyelets sit in the bleed, outside the safe zone.');
+        $mounting = (string) ($job['mounting'] ?? 'none');
+        if (in_array($mounting, ['standoffs', 'eyelets'], true)) {
+            // A circle at each corner for the stand-off or eyelet (docs/POSTER_PLAN.md § 3):
+            // 15 mm across (20 mm on A2), centred that far in from the cut.
+            $d = $size->keepOutMm();
+            $r = $d / 2;
+            $b = $size->bleed;
+            $centres = [
+                [$b + $d, $b + $d], [$b + $size->trimWidth - $d, $b + $d],
+                [$b + $d, $b + $size->trimHeight - $d], [$b + $size->trimWidth - $d, $b + $size->trimHeight - $d],
+            ];
+            $hit = false;
+            foreach ($pieces as $piece) {
+                if (!in_array((string) ($piece['type'] ?? ''), ['text', 'qr', 'logo'], true)) {
+                    continue;
+                }
+                foreach ($centres as [$cx, $cy]) {
+                    $nx = max((float) $piece['x'], min($cx, (float) $piece['x'] + (float) $piece['w']));
+                    $ny = max((float) $piece['y'], min($cy, (float) $piece['y'] + (float) $piece['h']));
+                    if (($nx - $cx) ** 2 + ($ny - $cy) ** 2 < $r * $r) {
+                        $hit = true;
+                    }
+                }
+            }
+            $what = $mounting === 'standoffs' ? 'stand-off' : 'eyelet';
+            $checks[] = $hit
+                ? self::row('keepout', 'red', 'Text, the logo or the QR sits where a corner ' . $what . ' goes.')
+                : self::row('keepout', 'ok', 'The corners are clear for the ' . $what . 's.');
         }
 
         if (($job['layers'] ?? 'masks') === 'spots') {

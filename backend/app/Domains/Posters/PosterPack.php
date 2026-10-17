@@ -34,7 +34,7 @@ final class PosterPack
         $blocked = false;
         $pages = [];
         foreach ($sizes as $sizeName) {
-            $paper = PaperSize::named($sizeName, (bool) $poster->landscape);
+            $paper = PaperSize::named($sizeName, (bool) $poster->landscape)->mounted((string) ($job['mounting'] ?? 'none'));
             $sheets = self::sheets($poster, $paper);
             $checks = PosterPreflight::check($poster->toArray(), self::content($poster), $sheets[0], $paper, $job);
             $preflight[$sizeName] = $checks;

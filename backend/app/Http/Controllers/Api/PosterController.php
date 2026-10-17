@@ -9,6 +9,7 @@ use App\Domains\Posters\PosterBanner;
 use App\Domains\Posters\PosterContent;
 use App\Domains\Posters\PosterImposition;
 use App\Domains\Posters\PosterMoods;
+use App\Domains\Posters\PosterPhoto;
 use App\Domains\Posters\PosterPieces;
 use App\Domains\Posters\PosterPreflight;
 use App\Domains\Posters\PosterPurposes;
@@ -88,7 +89,7 @@ class PosterController extends Controller
     {
         $poster = $this->validated($request);
         $sizeName = (string) ($poster['sizes'][0] ?? 'A4');
-        $paper = PaperSize::named($sizeName, (bool) $poster['landscape']);
+        $paper = PaperSize::named($sizeName, (bool) $poster['landscape'])->mounted((string) $request->input('mounting', 'none'));
         $content = PosterContent::resolve($poster);
         $built = PosterPieces::build($poster, $paper, $content);
         $job = $request->only(['material', 'white', 'gloss', 'mounting', 'layers', 'white_name', 'gloss_name']);
@@ -142,7 +143,13 @@ class PosterController extends Controller
 
     public function destroy(Poster $poster): JsonResponse
     {
+        $photo = (string) (($poster->slots ?? [])['photo_path'] ?? '');
         $poster->delete();
+        // Its poster photo goes too, unless a copy of the poster still uses it.
+        $file = PosterPhoto::uploadPath($photo);
+        if ($file !== null && !Poster::query()->where('slots', 'like', '%' . basename($photo) . '%')->exists()) {
+            @unlink($file);
+        }
 
         return response()->json(['ok' => true]);
     }
@@ -183,7 +190,7 @@ class PosterController extends Controller
         $job['mounting'] = $job['mounting'] ?? 'none';
         $job['finish'] = $job['finish'] ?? 'matte';
 
-        $paper = PaperSize::named((string) ($job['sizes'][0] ?? 'A4'), (bool) $poster->landscape);
+        $paper = PaperSize::named((string) ($job['sizes'][0] ?? 'A4'), (bool) $poster->landscape)->mounted((string) $job['mounting']);
         $content = PosterContent::resolve($poster->toArray());
         $built = PosterPieces::build($poster->toArray(), $paper, $content);
         $checks = PosterPreflight::check($poster->toArray(), $content, $built, $paper, $job);
@@ -201,6 +208,30 @@ class PosterController extends Controller
         ExportPosterJob::dispatch($export->id);
 
         return response()->json($export->fresh(), 202);
+    }
+
+    /**
+     * A photo for posters only (docs/POSTER_PLAN.md § 7): kept up to 4800 px on
+     * the long edge, where menu photos stop at 3200. The page puts the returned
+     * path in the poster's `photo_path` slot.
+     */
+    public function uploadPhoto(Request $request): JsonResponse
+    {
+        $request->validate(['photo' => ['required', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:30720']]);
+        try {
+            $path = PosterPhoto::storeUpload((string) $request->file('photo')->getRealPath());
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => 'That picture could not be read. Try a JPEG or PNG.'], 422);
+        }
+        $info = @getimagesize((string) PosterPhoto::uploadPath($path));
+
+        return response()->json(['photo_path' => $path, 'width' => (int) ($info[0] ?? 0), 'height' => (int) ($info[1] ?? 0)], 201);
+    }
+
+    /** Where an export stands (queued, ready, failed), for the page to wait on before downloading. */
+    public function exportStatus(PosterExport $export): JsonResponse
+    {
+        return response()->json($export->only(['id', 'poster_id', 'version', 'status', 'error', 'preflight', 'bytes', 'created_at', 'updated_at']));
     }
 
     public function download(PosterExport $export): BinaryFileResponse|JsonResponse
@@ -354,8 +385,13 @@ class PosterController extends Controller
         ]);
         if (!$partial || array_key_exists('template_key', $data)) {
             $key = (string) ($data['template_key'] ?? '');
-            if (PosterPurposes::get($key) === null) {
+            $purpose = PosterPurposes::get($key);
+            if ($purpose === null) {
                 abort(422, 'Unknown purpose.');
+            }
+            // A purpose drawn elsewhere (the complaint poster) is opened there, never made here, so one engine draws it.
+            if (($purpose['external'] ?? null) !== null) {
+                abort(422, 'This poster is made on its own page: ' . $purpose['external']);
             }
         }
         if (!$partial) {

@@ -710,8 +710,14 @@ Posters render through TCPDF via `App\Domains\Posters\Pdf\PdfX4Document`, not do
 Helvetica), pass Dhivehi in visual order with TCPDF bidi off, and run
 `scripts/install-poster-icc.sh` once per host so the FOGRA39 output intent is embedded.
 TCPDF fonts are made into `storage/app/posters/fonts/` on first use; nothing to commit.
-Exports run on the queue (`ExportPosterJob`). Print shops are suppliers with
-`kind = print_shop`. Send, proof links, quotes-as-expenses and the morning
+Exports run on the queue (`ExportPosterJob`): the page waits on `GET /posters/exports/{id}`
+before downloading, and a shop order is emailed by the job once its file is ready
+(`PosterOrders::exportFinished()`), never in the web request. A poster prints an upload kept
+for posters (`PosterPhoto::storeUpload()`, 4800 px, the `photo_path` slot), else the dish's
+`image_original_url`, never only its 1200 × 900 web crop (preflight red). Stand-offs and
+eyelets grow the safe zone past the corner circles (`PaperSize::mounted()`). "Tell us how we
+did" is `external` (the complaint poster's own page): never made here. Print shops are
+suppliers with `kind = print_shop`. Send, proof links, quotes-as-expenses and the morning
 `posters:alert` command are Phase 2. Phase 3 adds `/p/{code}` scan counts,
 a 1920×1080 image slide on the dining playlist (`date_end` is the take-down
 date), a social draft (approval, best time, channel rules) plus WhatsApp and

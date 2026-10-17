@@ -7,8 +7,9 @@ namespace App\Domains\Posters;
 /**
  * Every purpose in docs/POSTER_PLAN.md § 4.3: a preset on one of the eight
  * layouts, with default words in both languages and the thing it binds to.
- * "Tell us how we did" is a qr card on this engine. The public complaint
- * sheet pages stay so bookmarks and the many-up print links keep working.
+ * "Tell us how we did" opens the complaint poster that already exists
+ * (/complain/poster/sheet, App\Support\PosterCardSpec), with its sizes and
+ * many-up sheets, so one engine draws it (docs/POSTER_PLAN.md § 4.3).
  */
 final class PosterPurposes
 {
@@ -207,7 +208,7 @@ final class PosterPurposes
             'how_we_did' => self::row('Tell us how we did', 'Ordering', 'qr_card', 'none', [
                 'headline' => 'Tell us how we did', 'headline_dv' => 'ކަންކަން ކިހިނެއްތޯ ބުނެދީ',
                 'subhead' => 'Scan and leave a note',
-            ], true),
+            ], true, '/complain/poster/sheet'),
         ];
     }
 

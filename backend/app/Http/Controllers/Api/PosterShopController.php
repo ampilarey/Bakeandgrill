@@ -72,7 +72,7 @@ class PosterShopController extends Controller
 
     public function orders(): JsonResponse
     {
-        $rows = PosterOrder::query()->with(['poster', 'shop'])->orderByDesc('id')->limit(100)->get()
+        $rows = PosterOrder::query()->with(['poster', 'shop', 'export'])->orderByDesc('id')->limit(100)->get()
             ->map(fn (PosterOrder $order) => $this->order($order));
 
         return response()->json(['orders' => $rows]);
@@ -103,8 +103,10 @@ class PosterShopController extends Controller
         } catch (RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
-        $payload = $this->order($order->load('poster', 'shop'));
-        if ($order->state === 'draft') {
+        $payload = $this->order($order->load('poster', 'shop', 'export'));
+        // The proof link once the file is ready (with a running queue worker, that is a minute later:
+        // the owner then gets it in the proof alert).
+        if ($order->state === 'draft' && PosterOrders::proofRequired() && $order->export?->status === 'ready') {
             $payload['proof_url'] = PosterOrders::proofLink($order);
         }
 
@@ -205,6 +207,9 @@ class PosterShopController extends Controller
             'quote_mvr' => $order->quote_mvr,
             'expense_id' => $order->expense_id,
             'state_log' => $order->state_log,
+            // The print file: queued, ready or failed (the file is made on the queue).
+            'file' => $order->export?->status,
+            'file_error' => $order->export?->error,
         ];
     }
 }

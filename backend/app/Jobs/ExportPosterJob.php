@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Domains\Posters\PosterOrders;
 use App\Domains\Posters\PosterPack;
 use App\Domains\Posters\PosterStaleness;
 use App\Models\PosterExport;
@@ -19,7 +20,8 @@ class ExportPosterJob implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct(public int $exportId) {}
+    /** @param ?int $orderId a print-shop order waiting for this file (PosterOrders::exportFinished) */
+    public function __construct(public int $exportId, public ?int $orderId = null) {}
 
     public function handle(): void
     {
@@ -35,6 +37,9 @@ class ExportPosterJob implements ShouldQueue
                     'preflight' => $result['preflight'],
                     'error' => 'Preflight failed. Fix the red checks and try again.',
                 ]);
+                if ($this->orderId !== null) {
+                    PosterOrders::exportFailed($this->orderId, 'a red preflight check');
+                }
 
                 return;
             }
@@ -64,6 +69,14 @@ class ExportPosterJob implements ShouldQueue
             ]);
         } catch (Throwable $e) {
             $export->update(['status' => 'failed', 'error' => $e->getMessage()]);
+            if ($this->orderId !== null) {
+                PosterOrders::exportFailed($this->orderId, $e->getMessage());
+            }
+
+            return;
+        }
+        if ($this->orderId !== null) {
+            PosterOrders::exportFinished($this->orderId);
         }
     }
 }
