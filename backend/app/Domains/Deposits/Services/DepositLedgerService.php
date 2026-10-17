@@ -573,6 +573,56 @@ final class DepositLedgerService
         });
     }
 
+    /**
+     * A refund paid out as store credit (iruali import plan, feature 12): one
+     * ledger entry linked to the refund. Once per refund.
+     */
+    public function creditFromRefund(Customer $customer, int $amountLaar, User $actor, Refund $refund): CustomerDepositLedger
+    {
+        if ($amountLaar <= 0) {
+            abort(422, 'Refund amount must be greater than zero.');
+        }
+        $existing = CustomerDepositLedger::query()->where('refund_id', $refund->id)->where('method', 'store_credit')->first();
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        return DB::transaction(function () use ($customer, $amountLaar, $actor, $refund) {
+            $account = $this->getOrCreateAccount($customer, $actor);
+            $locked = CustomerDepositAccount::lockForUpdate()->findOrFail($account->id);
+            $before = (int) $locked->balance_laar;
+            $after = $before + $amountLaar;
+            $locked->update(['balance_laar' => $after, 'updated_by' => $actor->id]);
+            $ledger = $this->writeLedger($locked, 'refund', $amountLaar, $before, $after, $actor, [
+                'method' => 'store_credit',
+                'order_id' => $refund->order_id,
+                'refund_id' => $refund->id,
+                'notes' => 'Refund ' . $refund->id . ' paid out as store credit',
+            ]);
+            $this->audit->log('customer.deposit.store_credit', 'Customer', $customer->id, [], ['amount_laar' => $amountLaar, 'balance_after_laar' => $after], ['ledger_id' => $ledger->id, 'refund_id' => $refund->id]);
+
+            return $ledger;
+        });
+    }
+
+    /** A gift card's balance moved into the wallet (feature 12). */
+    public function creditFromGiftCard(Customer $customer, int $amountLaar, User $actor, string $last4): CustomerDepositLedger
+    {
+        return DB::transaction(function () use ($customer, $amountLaar, $actor, $last4) {
+            $account = $this->getOrCreateAccount($customer, $actor);
+            $locked = CustomerDepositAccount::lockForUpdate()->findOrFail($account->id);
+            $before = (int) $locked->balance_laar;
+            $after = $before + $amountLaar;
+            $locked->update(['balance_laar' => $after, 'updated_by' => $actor->id]);
+
+            return $this->writeLedger($locked, 'top_up', $amountLaar, $before, $after, $actor, [
+                'method' => 'gift_card',
+                'reference' => 'Gift card ' . $last4,
+                'notes' => 'Gift card ending ' . $last4 . ' added to the wallet',
+            ]);
+        });
+    }
+
     public function transferToCredit(
         Customer $customer,
         int $amountLaar,

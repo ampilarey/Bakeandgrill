@@ -221,6 +221,7 @@ export function CheckoutPage() {
     partySize, setPartySize,
     delivery, setDelivery, notes, setNotes,
     gift, setGift,
+    walletBalanceLaar, useWallet, setUseWallet,
     savedAddresses, selectedAddressId, applySavedAddress, markAddressAsNew,
     saveAddress, setSaveAddress, addressLabel, setAddressLabel, usingAutoDefaultAddress,
     promoCode, setPromoCode, promoApplied,
@@ -831,6 +832,23 @@ export function CheckoutPage() {
   // Discounts: promo + loyalty + friend referral + gift card stacked in one panel
   const bodyDiscounts = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {walletBalanceLaar > 0 && (
+        <div data-testid="checkout-wallet">
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: walletBalanceLaar >= amountDueLaar ? 'pointer' : 'not-allowed', fontWeight: 700, fontSize: 14, color: 'var(--color-text)' }}>
+            <input
+              type="checkbox"
+              checked={useWallet && walletBalanceLaar >= amountDueLaar}
+              disabled={walletBalanceLaar < amountDueLaar}
+              onChange={(e) => setUseWallet(e.target.checked)}
+              data-testid="checkout-wallet-toggle"
+            />
+            {t('wallet.pay_toggle').replace('{amount}', (walletBalanceLaar / 100).toFixed(2))}
+          </label>
+          {walletBalanceLaar < amountDueLaar && (
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>{t('wallet.pay_short').replace('{amount}', (walletBalanceLaar / 100).toFixed(2))}</p>
+          )}
+        </div>
+      )}
       {autoPromo && autoPromoDelta > 0 && (
         <div style={S.promoApplied} data-testid="checkout-auto-promo">
           <span style={{ fontSize: 'var(--text-base)' }}>

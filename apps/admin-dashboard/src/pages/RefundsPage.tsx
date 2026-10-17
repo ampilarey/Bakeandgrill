@@ -547,6 +547,11 @@ export default function RefundsPage() {
                 {REFUND_PAYOUT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
               </select>
             </label>
+            {paidOutMethod === 'store_credit' && (
+              <p data-testid="store-credit-note" style={{ margin: 0, fontSize: 12, color: 'var(--color-text-secondary)' }}>
+                {mvrL(paidOutOpen.external_tender_laar)} goes into the customer's wallet and they are texted that it is there. The order needs a customer. No cash leaves the drawer.
+              </p>
+            )}
             <label>
               <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Reference (transfer or reversal number)</span>
               <input aria-label="Payout reference" value={paidOutRef} onChange={e => setPaidOutRef(e.target.value)} placeholder="e.g. BML transfer ref" style={{ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />

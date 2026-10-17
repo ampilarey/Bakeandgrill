@@ -475,6 +475,16 @@ class RefundWorkflowService
             if ($locked->paid_out_at !== null) {
                 abort(422, 'This refund was already marked paid out on ' . $locked->paid_out_at->format('j M Y H:i') . '.');
             }
+            // Store credit (feature 12): the external share goes into the
+            // customer's wallet, one ledger entry linked to the refund.
+            if ($method === 'store_credit') {
+                $customer = $locked->order?->customer;
+                if ($customer === null) {
+                    abort(422, 'Store credit needs a customer on the order.');
+                }
+                app(\App\Domains\Deposits\Services\DepositLedgerService::class)
+                    ->creditFromRefund($customer, (int) $locked->external_tender_laar, $actor, $locked);
+            }
             $locked->update([
                 'paid_out_at' => now(),
                 'paid_out_method' => $method,
@@ -496,7 +506,12 @@ class RefundWorkflowService
         );
 
         $updated->load('order.customer');
-        $this->notifications->notifyCustomerCompleted($updated);
+        // One event, one message: store credit says where the money went instead.
+        if ($method === 'store_credit') {
+            $this->notifications->notifyCustomerStoreCredit($updated);
+        } else {
+            $this->notifications->notifyCustomerCompleted($updated);
+        }
 
         return $updated->fresh(['order', 'user', 'approver', 'paidOutBy']);
     }

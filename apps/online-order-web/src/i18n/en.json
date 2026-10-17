@@ -1096,5 +1096,12 @@
   "giftOrder.message": "Gift message (up to 200 characters)",
   "giftOrder.hint_delivery": "We deliver to the address above and call the receiver. The bag has your message and no prices; your receipt comes to you.",
   "giftOrder.hint_pickup": "The bag has your message and no prices; your receipt comes to you.",
-  "giftOrder.err_receiver": "Add the receiver's name and a 7-digit phone number for the gift."
+  "giftOrder.err_receiver": "Add the receiver's name and a 7-digit phone number for the gift.",
+  "wallet.add_gift": "Add a gift card",
+  "wallet.add_gift_hint": "Moves the card's whole balance into your wallet. You can also use a gift card straight at checkout.",
+  "wallet.add": "Add",
+  "wallet.gift_added": "MVR {amount} added to your wallet.",
+  "wallet.gift_error": "Could not add that card. Check the code and try again.",
+  "wallet.pay_toggle": "Pay from my wallet (MVR {amount})",
+  "wallet.pay_short": "Your wallet has MVR {amount}. It pays an order only when it covers all of it."
 }

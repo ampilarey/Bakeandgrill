@@ -74,6 +74,31 @@ class RefundNotificationService
         ));
     }
 
+    /** A refund paid out into the customer's wallet (iruali import plan, feature 12). */
+    public function notifyCustomerStoreCredit(Refund $refund): void
+    {
+        $order = $refund->order;
+        $phone = $this->resolveRefundPhone($refund);
+        if (!$order || $phone === null || !\App\Domains\Notifications\Support\AlertSwitch::isOn('customer_refund_to_wallet')) {
+            return;
+        }
+        $amount = number_format(((int) $refund->external_tender_laar) / 100, 2);
+        $body = $this->renderTemplate('customer_refund_to_wallet', [
+            'order_number' => $order->order_number ?? (string) $order->id,
+            'amount' => $amount,
+        ], "Bake & Grill: MVR {$amount} from your refund on order {$order->order_number} is in your wallet. Use it on your next order.");
+
+        $this->sms->send(new SmsMessage(
+            to: $phone,
+            message: $body,
+            type: 'customer_refund_to_wallet',
+            customerId: $order->customer_id,
+            referenceType: 'refund',
+            referenceId: (string) $refund->id,
+            idempotencyKey: 'refund-to-wallet:' . $refund->id,
+        ));
+    }
+
     /**
      * Refund audit, 2026-09-25: approved, but part of it is owed by card /
      * online / bank and has not been sent yet.

@@ -137,6 +137,9 @@ Route::middleware(['auth:sanctum', 'customer.token'])->prefix('customer')->group
     Route::get('/orders/{id}', [CustomerController::class, 'show']);
     Route::post('/orders/{id}/cancel', [CustomerController::class, 'cancelOrder']);
     Route::post('/orders', [OrderCreationController::class, 'storeCustomer']);
+    // The wallet (iruali import plan, feature 12): a gift card into it, and paying an order from it.
+    Route::post('/wallet/gift-card', [App\Http\Controllers\Api\CustomerWalletController::class, 'addGiftCard'])->middleware('throttle:10,10');
+    Route::post('/orders/{id}/pay-wallet', [App\Http\Controllers\Api\CustomerWalletController::class, 'payOrder'])->whereNumber('id')->middleware('throttle:20,1');
     Route::patch('/profile', [CustomerController::class, 'update']);
     // Prove the account's email with a 6-digit code (iruali import plan, feature 2).
     Route::post('/email/send-code', [App\Http\Controllers\Api\CustomerEmailController::class, 'sendCode'])->middleware('throttle:6,10');

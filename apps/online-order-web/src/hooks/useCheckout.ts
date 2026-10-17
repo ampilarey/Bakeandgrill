@@ -31,6 +31,8 @@ import {
   removeReferralFromOrder,
   fetchCustomerAddresses,
   cancelCustomerOrder,
+  getCustomerDeposit,
+  payOrderFromWallet,
   type CustomerAddress,
   type LoyaltyAccount,
 } from "../api";
@@ -376,6 +378,17 @@ export function useCheckout() {
   const [partySize, setPartySize] = useState(2);
   const [delivery, setDelivery]     = useState<DeliveryForm>(EMPTY_DELIVERY);
   const [notes, setNotes]           = useState("");
+  // The wallet (iruali import plan, feature 12): pays the order when it covers all of it.
+  const [walletBalanceLaar, setWalletBalanceLaar] = useState(0);
+  const [useWallet, setUseWallet] = useState(false);
+  useEffect(() => {
+    if (!isAuthenticated) { setWalletBalanceLaar(0); return; }
+    let live = true;
+    getCustomerDeposit()
+      .then((r) => { if (live) setWalletBalanceLaar(r.deposit && r.deposit.can_use ? Math.round(Number(r.deposit.balance_mvr) * 100) : 0); })
+      .catch(() => {});
+    return () => { live = false; };
+  }, [isAuthenticated]);
   // "This is a gift" (iruali import plan, feature 10): delivery and pickup only, never at a table.
   const [gift, setGift] = useState<{ on: boolean; name: string; phone: string; message: string }>({ on: false, name: '', phone: '', message: '' });
 
@@ -1393,6 +1406,18 @@ export function useCheckout() {
       // Defer to server remaining balance (settled payments + gift tender).
       const dueLaar = dueLaarFromOrder(freshOrder);
 
+      // The wallet covers it all: the server takes it and completes the order (feature 12).
+      if (useWallet && dueLaar > 0 && walletBalanceLaar >= dueLaar) {
+        await payOrderFromWallet(orderId);
+        loyaltyHeldForOrderId = null;
+        giftCardAttachedOrderId = null;
+        setPendingOrderId(null);
+        writeCheckoutAttempt(null);
+        navigate(`/orders/${orderId}`);
+        setIsPlacing(false);
+        return;
+      }
+
       if (dueLaar <= 0) {
         // Genuine zero-balance (gift card / loyalty) — complete without card.
         loyaltyHeldForOrderId = null;
@@ -1505,6 +1530,7 @@ export function useCheckout() {
     partySize, setPartySize,
     delivery, setDelivery, notes, setNotes,
     gift, setGift,
+    walletBalanceLaar, useWallet, setUseWallet,
     savedAddresses, selectedAddressId, setSelectedAddressId, applySavedAddress, markAddressAsNew,
     saveAddress, setSaveAddress, addressLabel, setAddressLabel, usingAutoDefaultAddress,
     promoCode, setPromoCode, promoApplied, setPromoApplied, promoError, promoLoading,

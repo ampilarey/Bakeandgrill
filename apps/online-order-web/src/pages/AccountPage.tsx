@@ -1,3 +1,4 @@
+import { AddGiftCardToWallet } from '../components/AddGiftCardToWallet';
 import { ReviewPhotoPicker } from '../components/ReviewPhotoPicker';
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -691,6 +692,7 @@ export function AccountPage() {
 
           {panel === 'deposit' && (
             <>
+              <AddGiftCardToWallet onAdded={() => setDepositLoaded(false)} />
               {depositError && <p style={{ color: 'var(--color-error, #dc2626)', fontSize: 13 }}>{depositError}</p>}
               {depositLoading ? (
                 <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--color-text-muted)' }}>{t('account.loading')}</div>

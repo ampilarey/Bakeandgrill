@@ -105,7 +105,8 @@ class RefundController extends Controller
         Gate::authorize('refund.process');
 
         $validated = $request->validate([
-            'method' => 'required|in:bank_transfer,card_terminal,cash,other',
+            // store_credit: into the customer's wallet (iruali import plan, feature 12).
+            'method' => 'required|in:bank_transfer,card_terminal,cash,other,store_credit',
             'reference' => 'nullable|string|max:120',
         ]);
         $refund = Refund::findOrFail($id);
@@ -115,7 +116,9 @@ class RefundController extends Controller
         $arr['phone_flags'] = $this->workflow->phoneFlags($updated);
         $arr['owed_externally'] = false;
 
-        return response()->json(['refund' => $arr, 'message' => 'Marked paid out. The customer has been told the refund is complete.']);
+        return response()->json(['refund' => $arr, 'message' => $validated['method'] === 'store_credit'
+            ? 'Added to the customer\'s wallet. They have been told.'
+            : 'Marked paid out. The customer has been told the refund is complete.']);
     }
 
     public function show($id)

@@ -294,3 +294,15 @@ export async function getCustomerDepositLedger(): Promise<{
 }> {
   return request('/customer/deposit/ledger');
 }
+
+// ── Wallet (iruali import plan, feature 12) ─────────────────────────────────
+
+/** A gift card's whole balance into the wallet; the card is used up. */
+export async function addGiftCardToWallet(code: string): Promise<{ added_laar: number; balance_laar: number; message: string }> {
+  return request('/customer/wallet/gift-card', { method: 'POST', body: JSON.stringify({ code }) });
+}
+
+/** Pay what an order still owes from the wallet; refused unless the wallet covers all of it. */
+export async function payOrderFromWallet(orderId: number): Promise<{ order: { id: number; status: string; payment_status: string }; balance_laar: number }> {
+  return request(`/customer/orders/${orderId}/pay-wallet`, { method: 'POST' });
+}

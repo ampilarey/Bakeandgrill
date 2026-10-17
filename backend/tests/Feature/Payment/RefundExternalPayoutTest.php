@@ -313,4 +313,24 @@ class RefundExternalPayoutTest extends TestCase
         $third = $make();
         $pay($third, ['method' => 'card', 'amount' => $total, 'reference_number' => 'APPR-4471'])->assertOk();
     }
+
+    /** iruali import plan, feature 12: the card share paid out as store credit. */
+    public function test_store_credit_puts_the_refund_in_the_wallet_and_says_so(): void
+    {
+        $order = $this->paidOrder(['card' => 3000]);
+        $this->actingAsStaff($this->owner);
+        $this->openShift($this->owner);
+        $id = (int) $this->postJson("/api/orders/{$order->id}/refunds", ['amount' => 30, 'reason_category' => 'wrong_item', 'reason' => 'Wrong'])->assertCreated()->json('refund.id');
+
+        $this->postJson("/api/refunds/{$id}/paid-out", ['method' => 'store_credit'])->assertOk()
+            ->assertJsonPath('refund.paid_out_method', 'store_credit');
+        $this->postJson("/api/refunds/{$id}/paid-out", ['method' => 'store_credit'])->assertStatus(422);
+
+        $ledger = CustomerDepositLedger::query()->where('refund_id', $id)->get();
+        $this->assertCount(1, $ledger);
+        $this->assertSame(3000, (int) $ledger->first()->amount_laar);
+        $this->assertSame(3000, (int) \App\Models\CustomerDepositAccount::query()->where('customer_id', $this->customer->id)->value('balance_laar'));
+        $this->assertContains('customer_refund_to_wallet', $this->smsTypes());
+        $this->assertNotContains('customer_refund_completed', $this->smsTypes(), 'one message for the event');
+    }
 }

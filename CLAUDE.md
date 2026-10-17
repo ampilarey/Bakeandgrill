@@ -768,6 +768,22 @@ prices. The buyer's receipt is unchanged and goes to the buyer. The till marks t
 row `customer_gift_on_the_way`, SMS only, off by default, `gift_sms_sent_at`). Order app
 strings are `giftOrder.*` (`gift.*` is gift cards). `GiftOrdersTest`.
 
+## Store credit and the wallet
+
+iruali import plan, feature 12 (2026-10-17). A refund's card or online share can be paid out as
+**Store credit (customer wallet)** (`store_credit` on `POST /refunds/{id}/paid-out`): one
+`customer_deposit_ledger` entry with the refund's id (`DepositLedgerService::creditFromRefund`,
+once per refund), needs a customer on the order, and the customer gets
+`customer_refund_to_wallet` instead of "refund completed" (one event, one message). No cash
+leaves the drawer. The order app's Account → Wallet has Add a gift card
+(`POST /api/customer/wallet/gift-card`, `AddGiftCardToWallet`): the whole balance moves in and the
+card is used up; a card held on an unpaid order is refused. Checkout offers Pay from my wallet
+(`POST /api/customer/orders/{id}/pay-wallet`, payment method `customer_deposit`, then
+`completeZeroBalanceOnlineOrder`) **only when the wallet covers everything due**, so a card
+payment that fails can never strand wallet money on a cancelled order. The ledger names the
+owner as actor, as gateway settlements do. `CustomerWalletTest`,
+`RefundExternalPayoutTest::test_store_credit_puts_the_refund_in_the_wallet_and_says_so`.
+
 ## POS order type colours
 
 Owner, 2026-10-11: "add more visual colors to differentiate between order type in

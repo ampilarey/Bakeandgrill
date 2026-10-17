@@ -294,6 +294,8 @@ export const REFUND_PAYOUT_METHODS = [
   { value: 'bank_transfer', label: 'Bank transfer' },
   { value: 'card_terminal', label: 'Card terminal reversal' },
   { value: 'cash', label: 'Cash handed over' },
+  // iruali import plan, feature 12: into the customer's wallet, spent on a later order.
+  { value: 'store_credit', label: 'Store credit (customer wallet)' },
   { value: 'other', label: 'Other' },
 ] as const;
 
