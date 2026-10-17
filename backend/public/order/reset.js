@@ -17,7 +17,7 @@
  * in index.html is silently refused.
  */
 (function () {
-  var BUILD = '5f9a7b15829b';
+  var BUILD = 'aba35d7893a6';
   var loc = window.location;
   var path = String(loc.pathname || '').replace(/\/+$/, '');
   var wanted = path === '/order/reset' || /[?&]fresh=1(&|$)/.test(loc.search || '');

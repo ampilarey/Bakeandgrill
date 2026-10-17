@@ -107,7 +107,7 @@ export async function completeProfile(
 }
 
 export async function updateCustomerProfile(
-  data: { name?: string; email?: string; date_of_birth?: string | null; sms_opt_out?: boolean },
+  data: { name?: string; email?: string; date_of_birth?: string | null; sms_opt_out?: boolean; preferred_language?: 'en' | 'dv' },
 ): Promise<{ customer: AuthCustomer }> {
   return request(ENDPOINTS.CUSTOMER_PROFILE, {
     method: 'PATCH',

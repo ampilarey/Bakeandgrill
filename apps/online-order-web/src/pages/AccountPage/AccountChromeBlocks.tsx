@@ -2,6 +2,8 @@ import type { CSSProperties, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { isLanguageSwitcherEnabled } from '../../components/LanguageSwitcherGate';
 import { useLanguage } from '../../context/LanguageContext';
+import { useAuth } from '../../context/AuthContext';
+import { updateCustomerProfile } from '../../api';
 import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
 import { useTheme } from '../../hooks/useTheme';
 import { PrayerBar } from '../../components/PrayerBar';
@@ -68,8 +70,15 @@ type PromoSmsProps = {
 /** Settings group: dark mode, optional push notifications row, promotional SMS. */
 export function AccountSettingsBlock({ push, promoSms, hub }: { push?: PushProps; promoSms?: PromoSmsProps; hub?: boolean }) {
   const { t, lang, setLang } = useLanguage();
+  const { isAuthenticated } = useAuth();
   const { settings } = useSiteSettingsContext();
   const { darkMode, setDarkMode } = useTheme();
+  // The account keeps the language, so it follows the customer to another
+  // phone and their messages can use it (iruali import plan, feature 3a).
+  const pickLang = (next: 'en' | 'dv') => {
+    setLang(next);
+    if (isAuthenticated) void updateCustomerProfile({ preferred_language: next }).catch(() => {});
+  };
   const languageSwitcherEnabled = isLanguageSwitcherEnabled(settings);
 
   return (
@@ -131,7 +140,7 @@ export function AccountSettingsBlock({ push, promoSms, hub }: { push?: PushProps
                 <button
                   key={option}
                   type="button"
-                  onClick={() => setLang(option)}
+                  onClick={() => pickLang(option)}
                   aria-pressed={active}
                   data-testid={`account-lang-${option}`}
                   style={{

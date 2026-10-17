@@ -117,10 +117,10 @@ if (isSignagePath(window.location.pathname)) {
       <LanguageProvider>
         <SiteSettingsProvider>
           <PageBlocksProvider>
-          <LanguageSwitcherGate />
           <CartProvider>
             <ToastProvider>
             <AuthProvider>
+            <LanguageSwitcherGate />
             <AbandonedCartTracker />
             <OrderModeProvider>
             <TableSessionProvider>

@@ -598,6 +598,18 @@ place of the framework class in `AppServiceProvider` (so
 limiters are unchanged (`RateLimitPerRouteTest` fails if the binding goes). The order app retries a refused read once after
 `Retry-After` and says the menu is busy rather than blaming the connection.
 
+## Order app strings: English and Dhivehi
+
+iruali import plan, feature 3a (2026-10-17). The order app's copy is
+`apps/online-order-web/src/i18n/en.json` and `dv.json`; `t()` (`LanguageContext`) shows
+the Dhivehi where it exists and the English otherwise, and only while Admin's language
+switch (`language_switcher_enabled`) is on (`LanguageSwitcherGate` puts English back when
+it is off). A new key goes into both files: `dv-missing.json` lists the keys that had no
+Dhivehi on 2026-10-17 and may only shrink, and `i18n.test.ts` fails on a new key without
+Dhivehi, a stale key or a lost `{placeholder}`. The account keeps the language
+(`customers.preferred_language`, saved by Account → Settings, taken on sign-in). Dhivehi
+copy is drafted and must be read by a Dhivehi speaker before the switch goes on.
+
 ## Ordering from the table (QR)
 
 Admin → Tables prints a card per table whose QR encodes `APP_URL/order/?table=<token>`
