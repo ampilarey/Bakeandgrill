@@ -11,6 +11,10 @@ best practice, so nothing has to be known up front: the defaults in § 13 work w
 typical outsourced UV print shop, and each one can be changed later in the app (per print
 shop) without new code. Each phase starts only on the owner's go.
 
+Reviewed against the code on 2026-10-17: § 14 lists what the code already has, four facts
+the plan had wrong, where it can be made smaller, what to add, and a revised Phase 0 and 1.
+Read § 14 before starting Phase 0.
+
 ---
 
 ## 1. The goal in one paragraph
@@ -312,6 +316,8 @@ Because printing is outsourced, the plan includes the hand-off:
 - Reused from Labels: `LabelText` measuring and fonts, `ThaanaVisual` and the composed
   Noto Sans Thaana files, `QrSvg` and `BatchLink`-style codes, `LabelBadges`,
   `BrandImages`, the media library's full-size masters, the drag designer's overrides.
+  The logos `BrandImages` serves are 1080 × 1080 PNGs; a poster needs the logo as a
+  vector (§ 14.2).
 - Admin: `components/posters/` (`MakePosterWizard`, `PosterEditor`, `PosterPreflightCard`,
   `PrintShopsCard`, `PosterOrders`), the Posters tab in `LabelsHub`.
 
@@ -333,7 +339,7 @@ or output intents, so it cannot make a PDF/X file with white and gloss layers. O
 
 | Option | Spot colours, overprint, boxes | Thaana | New dependency | Notes |
 |---|---|---|---|---|
-| **TCPDF** (PHP library via Composer) | Yes (spot colours, overprint, CMYK, ICC output intent) | Through the composed font already built for labels | One Composer package | Pure PHP, runs on cPanel; PDF/X validity must be proven in a spike |
+| **TCPDF** (PHP library via Composer) | Yes (spot colours, overprint, CMYK, page boxes); an ICC output intent only in its PDF/A mode, so PDF/X needs a small override (§ 14.2) | Through the composed font already built for labels, fed in visual order with TCPDF's own bidi off | One Composer package (not installed today; `composer.lock` only lists it as a suggestion) | Pure PHP, runs on cPanel; PDF/X validity must be proven in a spike |
 | Ghostscript after dompdf | Can convert to CMYK and PDF/X | As now | A system binary on the server | May not be on the host; no spot layers |
 | Headless Chrome | No spot colours | Good shaping | Chrome on the server | Not on cPanel; no spot layers |
 | A paid PDF API | Varies | Varies | External service and fees | Sends artwork outside |
@@ -350,7 +356,10 @@ PNG/JPG rendered with GD (as `LabelRaster` does), so the browser never needs the
 
 ### 11.4 Images
 
-- Photos come from the media library's **full-size masters**, never the web crops.
+- Photos come from the media library's **full-size masters**, never the web crops. Masters
+  are capped at 3200 px on the long edge today (`MenuImageProcessor::MASTER_MAX_EDGE`),
+  which is under the § 6.1 targets for a full-bleed A2 and for A4 at 300 ppi; § 14.2 says
+  what to do about it.
 - The cut-out style uses the dish photo packs (`scripts/food-photo-pack.py`) or a new
   cut-out made on upload.
 - Large photos are scaled once per export at the target ppi and cached by hash.
@@ -423,3 +432,204 @@ if a shop says otherwise, its card in § 8 is changed and every file after follo
 
 Optional later: once a print shop shares its artwork guide or template file, its card in
 § 8 can be filled from it in a few minutes.
+
+## 14. Review against the code (2026-10-17)
+
+The plan was read next to the code it means to build on. Nothing below changes the goal in
+§ 1 or the principles in § 2; it changes how much has to be built to get there, corrects
+four facts, and adds what the first real posters will need.
+
+### 14.1 What the code already has (verified)
+
+Each of these is in the repository today and should be reused rather than rebuilt:
+
+| Already there | Where | What it gives Posters |
+|---|---|---|
+| A poster laid out from real text, with floors on type size and a QR, at several sizes | `App\Support\PosterCardSpec`, `complain-poster.blade.php`, `complain-poster-sheet.blade.php` | The complaint-box poster is a one-template poster engine already: a header, a footer that never gives way, a middle that drops lines in a fixed order, and n-up sheets. Its fit rules are the model for § 4.1. |
+| Pieces in millimetres drawn three ways: HTML/SVG on screen, dompdf for the PDF, GD for a bitmap | `StickerDesign`, `LabelSheetController`, `LabelRaster` | The screen preview and the JPG proof. GD draws the label fonts, Thaana in visual order with the composed face, pictures dithered or full colour. |
+| Text measuring and the fonts, with ascent and descent | `LabelText` | Fit-to-slot and "Too long for A5" without rendering. |
+| A share-able picture drawn with GD at a fixed size with brand colours | `Social\Services\WeeklyMenuCard` (1200 × 630) | The Phase 3 social sizes are this with different dimensions. |
+| A per-print short code that opens a public page | `Labels\BatchLink` (`/b/{code}`) | The poster QR and scan count (§ 9): `/p/{code}` done the same way. |
+| A scan/share event table with no personal data | `ItemShareEvent` (`item_id, channel, surface, created_at`) | The shape of `poster_scans`. |
+| Signed approve/reject links that open a small page with the thing to approve | `Social\Services\SocialPostApproval` (`temporarySignedRoute`, 24 h), `SocialApprovalPageController` | Proof approval (§ 8) from the owner's phone, including from the Telegram alert. |
+| An alert registry with one switch per channel | `SmsTypeRegistry`, `AlertSwitch`, `AlertAudience` | `owner_poster_stale` and `owner_poster_ending` are two rows, nothing else. |
+| Screens that take an `image` element with a URL binding, and campaigns with a `date_end` | `Signage\Services\SignageTemplateFactory`, `SignageScheduleMatcher` | "Send to TV" is one 1920 × 1080 PNG and one slide; no new signage element type. |
+| Shops the business pays, with phones, email, bank details and lead days; expenses that point at a supplier | `Supplier`, `Expense` (`supplier_id`) | A print shop is a supplier. |
+| Opening hours as text, prayer times per island and day, Hijri dates | `OpeningHoursText`, `PrayerTimes` domain, Signage's `hijri` date format | The hours, Ramadan and Eid templates. |
+| Offers with periods, days and times; specials with badges and sold counts | `Promotion` (`starts_at, expires_at, days_of_week, starts_time, ends_time, auto_apply, scope`), `DailySpecial`, `SpecialPricingService` | The offer templates and the "ends soon" check. |
+| A dish's price with a "from" flag for sized dishes | `Item::displayPriceInfo()` | The price slot must print "From MVR 45.00" for a dish with sizes; the labels work on 2026-10-16 fixed exactly this mistake on stickers. |
+| Saved jobs with a request hash, pin, print count and Print again | `LabelJob`, `Labels\Reprint` | My posters is the same list. |
+
+### 14.2 Four facts the plan had wrong
+
+1. **Photos are not big enough for the resolution targets in § 6.1.** Masters are capped at
+   3200 px on the long edge. What that gives at the sizes with bleed:
+
+   | Size with bleed | At the § 6.1 target | From a 3200 px master | Result under § 7 |
+   |---|---|---|---|
+   | A5, 154 × 216 mm, 300 ppi | 1819 × 2551 px | 376 ppi | fine |
+   | A4, 216 × 303 mm, 300 ppi | 2551 × 3579 px | 268 ppi | amber |
+   | A3, 303 × 426 mm, 150 ppi | 1789 × 2516 px | 191 ppi | fine |
+   | A2, 426 × 600 mm, 150 ppi | 2516 × 3543 px | 135 ppi | amber |
+
+   So every full-bleed A2 and every A4 would come out amber from the first day. Two changes,
+   both cheap: set the amber line to **200 ppi on A5 and A4 and 120 ppi on A3 and A2** (red
+   stays at 100; a poster is read from arm's length or further, and 250 ppi is the usual
+   large-format comfort line), and let the poster photo picker **accept a poster-grade upload
+   kept at up to 4800 px** (a second cap in `MenuImageProcessor`, used only by that picker,
+   so menu uploads stay as they are). A photo that is only a web crop (no master) is red.
+
+2. **The logo is a bitmap.** `BrandImages` serves 1080 × 1080 PNGs. On an A2 a 250 mm
+   logo from that file is 110 ppi and prints soft. `public/brand/logo-animated.svg` holds the
+   mark as vector paths, so Phase 0 adds a **static `logo.svg`** (the animated file with its
+   `<style>` and animation removed, both colourways) and the PDF places the logo with
+   TCPDF's `ImageSVG()`. The label stickers can keep the PNG; at label sizes it is fine.
+
+3. **TCPDF does not have a PDF/X mode.** It has spot colours (`AddSpotColor`,
+   `SetFillSpotColor`, `SetTextSpotColor`), overprint (`setOverprint`), CMYK fills, and
+   page boxes (`setPageBoxes` or a `format` array with `MediaBox`, `BleedBox`, `TrimBox` on
+   `AddPage`). An ICC **output intent** and the XMP block are written only in its PDF/A
+   mode. PDF/X-4 needs an `OutputIntents` entry with `GTS_PDFX`, a `pdfxid` XMP block, a
+   `Trapped` key in the info dictionary and no encryption. That is one subclass overriding
+   `_putcatalog`, `_putXMP` and `_putinfo`; a known-size job, but the spike must include it
+   and prove the result in Acrobat Preflight. Fonts must be converted once with
+   `TCPDF_FONTS::addTTFfont()` for the four Plus Jakarta Sans weights, the two DM Serif
+   Display faces, the two composed Thaana faces and `LabelSymbols` (all open licences, all
+   embeddable); the converted files are committed under `public/fonts/pdf/tcpdf/`. Thaana is
+   passed in visual order from `ThaanaVisual`, as the labels do, with TCPDF's own bidi off
+   (`setRTL(false)`, `$rtl = false`), or the fili would be reordered twice.
+
+4. **White and gloss layers are usually the shop's job, not the file's.** The UV flatbeds a
+   small shop runs (Roland, Mimaki, Mutoh) make the white underlay in their RIP software
+   from the artwork itself: "white under all printed areas", "flood white" or "white under
+   image" is a menu setting for the operator. A named spot layer in the file is needed only
+   for **selective** white (white as a design colour on clear acrylic) and for **spot gloss**,
+   and even then the layer name differs by RIP (`RDG_WHITE` on Roland VersaWorks,
+   `SpotColor_White` on Mimaki RasterLink, `White` elsewhere). So § 6.3 is reordered:
+   - Phase 1 ships white and gloss as **words on the spec sheet** ("White ink under all
+     printed areas; nothing in see-through parts. Gloss over the logo and the price.") and,
+     when the shop asks for a file, a **separate mask PDF** per layer (black where ink goes,
+     same page size and boxes, file name `…-WHITE.pdf` / `…-GLOSS.pdf`). Every RIP takes a
+     mask; none depends on a spot name.
+   - Spot layers inside the one file, with the shop's names, move to **Phase 2 and are
+     built only after a shop confirms it wants them**. The "Spot names" preflight check
+     goes with them.
+
+   This takes the hardest part out of the Phase 0 spike: the spike proves TrimBox/BleedBox,
+   embedded fonts, CMYK text, an RGB photo with its profile, the output intent and a mask
+   file. Spot colours and overprint are tried in the same spike but do not gate it.
+
+### 14.3 Make it smaller
+
+- **Archetypes, not 45 layouts.** A template in § 4 is a layout × 4 sizes × 2 orientations ×
+  up to 5 moods × 3 languages: 120 variants each, 5400 for the library, all of which § 11.6
+  snapshots. Split the idea in two: about **eight layout archetypes** (`hero_photo`: full
+  photo, shaded panel, headline, price; `price_card`: big price, old price struck, dish
+  cut-out; `list`: dishes and prices in one or two columns; `hours_grid`: days and times;
+  `qr_card`: a code with a short instruction; `notice`: headline and body; `compare`: two
+  dishes or two prices side by side; `collage`: three to five photos with a band), and the
+  **purposes** of § 4.2 as presets on top of them: which archetype, default words in both
+  languages, which data to bind, which moods suit. "Happy hour" is `price_card` with a
+  promotion bound and "Happy hour" as the fixed headline; "Dish of the day" is `hero_photo`
+  with a Daily Special bound. The user still picks from the purpose cards in § 5; the test
+  matrix shrinks to eight layouts, and a new purpose is a few lines of configuration (like a
+  `LabelTemplates::BUILTIN` row), not a new layout.
+- **A print shop is a supplier.** Add a `kind` (`supplier` | `print_shop`) and a JSON
+  `print_prefs` column to `suppliers` instead of a `print_shops` table. A print order's
+  quote and final cost then become an `Expense` with `supplier_id` set, so the monthly
+  poster cost in § 8 is already in Finance, and the shop's phones, email and bank details
+  are typed once.
+- **Posters get their own hub.** Labels already has seven tabs, each with sub-tabs; a
+  Posters tab holding My posters, Templates and Print shops nests three deep, which the
+  admin nav audit flagged as the pattern that confuses. The plan already gives posters their
+  own permissions and a different print path (a shop, not a roll). Put `/posters` under
+  **Customers & Marketing** next to TV Signage and the Social Hub, with tabs Make a poster,
+  My posters, Templates, Print shops; add one link card on Labels → Make a label ("Making a
+  poster? Posters are here"). `LabelsHub` and `navConfig.ts` stay untouched otherwise.
+- **Fewer order states.** Draft → Sent → Approved → Received → Up → Taken down. "Quote
+  received" is a cost typed on the Sent row; "Printed" is a date the shop rarely reports.
+- **Exports run on the queue.** An A2 with two 4800 px photos is a 60–120 MB GD job and a
+  few seconds of TCPDF; on shared hosting that can pass `max_execution_time`. Export is a
+  queued job with a "Preparing your file…" row and a toast when done (the queue worker and
+  `AlertSwitch` already exist); the proof JPG is made at 1200 px on the long edge, never at
+  print size. The PDF embeds the JPEG bytes as they are (TCPDF does not re-encode), so GD is
+  needed only for the one-time scale to the target ppi, cached by hash as § 11.4 says.
+
+### 14.4 Add
+
+Print and hand-off:
+
+- **Imposition.** A table tent is an A5 folded from an A4 sheet with the second panel upside
+  down and a fold line; A5 fliers are printed 4-up on A3 and A4 fliers 2-up on A3, because
+  shops charge per sheet. One `PosterImposition` step: `tent` (2 panels, one rotated 180°,
+  fold mark), `2up`, `4up`, with crop marks on the sheet. The complaint-box sheet already
+  does n-up; reuse its arithmetic.
+- **Keep-out for mounting.** A board hung on stand-offs loses its corners: a 15 mm circle
+  in each corner, 20 mm on A2. Mounting is a choice in § 5 step 4 (stand-offs, tape, eyelets,
+  none); stand-offs and eyelets add a corner keep-out that preflight treats like the safe
+  zone and the preview shows as faint circles.
+- **A swatch card in Phase 0.** UV inks and the shop's profile both shift the rust. Before
+  any poster, send an A5 card with the brand colours as five CMYK candidates each, the hex
+  beside them, and pick the one that matches the logo under shop lights. The chosen CMYK
+  values go into `docs/brand/PALETTE.md` and into `BrandPalette` as `cmyk()`; every poster
+  then uses them. This is the cheapest way to meet principle 2.
+- **All sizes in one go.** "Download for print" offers A5 + A4 + A3 as one ZIP from one
+  design; each file keeps its own preflight result.
+- **Never gloss a QR,** and QR error correction at level M (H when a logo sits in it): a
+  gloss layer over a code stops it scanning in sunlight. One line in `PosterLayers` and one
+  preflight red.
+- **Mirrored output** for window vinyl printed from inside is a flag on the material, applied
+  at export; the preview stays readable.
+
+Words and data:
+
+- **GST line.** Maldives GST law requires displayed prices to include GST. Every template
+  with a price carries a small fixed footer line, "Prices include GST" with the live rate
+  from settings (`gst_rate_bp`), in the chosen language. It cannot be removed, only moved.
+- **"From" prices.** A sized dish prints "From MVR 45.00" (`displayPriceInfo()['from']`),
+  or the size's own price when a size is chosen; the price slot never shows the base price
+  of a dish whose sizes differ.
+- **Dhivehi minimum size.** Thaana fili are small marks; a Thaana line needs about 1.2× the
+  Latin minimum to read at the same distance, and Latin runs inside Dhivehi text already set
+  at 0.82 em on labels. The text-size-for-distance check in § 7 gets a Dhivehi column, and
+  a template set to "both" flags any typed slot missing its Dhivehi twin.
+- **A take-down date on every poster,** defaulting to the bound offer's `expires_at` or the
+  typed event date; "Up" posters past it are listed on My posters under "Should be down" and
+  drive the `owner_poster_ending` alert. Where it is up is a short pick-list the owner edits
+  (Window, Door, Counter, Tables, Kitchen, Outside), not free text, so the list groups.
+- **Version history.** Each export keeps the bound data's hash and a readable summary;
+  My posters shows "v3: price MVR 45 → 50" between versions, which is also the text of the
+  out-of-date alert.
+
+Where else the design goes:
+
+- **Social via the Social Hub,** not only Share to WhatsApp: the square, portrait and story
+  images become a **draft post** through `SocialPublisher` so the existing approval, best
+  time and channel rules apply. The animated logo is already a social asset there.
+- **TV via one slide:** a 1920 × 1080 PNG into an `image` element with the poster's
+  take-down date as the slide end, offered on the same Check and send screen.
+- **Proof approval from the phone:** the Telegram alert carries the signed approve link,
+  as social posts do.
+- **Template use counts** (the plan mentions them) come free from `posters.template_key`;
+  show them on the Templates tab so unused purposes can be retired.
+
+### 14.5 Revised Phase 0 and Phase 1
+
+| Phase | What changes | Done when |
+|---|---|---|
+| **0. Spike** | TCPDF with the PDF/X-4 override from § 14.2; one A3 `hero_photo` with Dhivehi, the vector logo, CMYK brand colours and an RGB photo; TrimBox/BleedBox; a `-WHITE.pdf` mask; the swatch card; spot colours and overprint tried but not gating; a host check for Imagick and Ghostscript | Acrobat Preflight passes PDF/X-4; the shop prints the A3 and the swatch card without asking for changes; the owner picks the rust |
+| **1. Make and send** | The `/posters` hub; eight archetypes; the 20 purposes of § 12 as presets; live data with "from" prices and the GST line; A5–A2 and the imposition step (tent, 2-up, 4-up); preflight with the § 14.2 resolution lines and keep-outs; queued export; spec sheet with white and gloss as words; all sizes in one ZIP; My posters with take-down dates | The owner makes and sends a real happy hour poster and a table-tent set in under 5 minutes, and the shop prints both first time |
+| **2. UV and the shop** | As § 12, plus: print shop as supplier with costs into Expenses; spot layers in-file **only** for a shop that confirms it wants them; proof approval by signed link | As § 12 |
+| **3. Everywhere** | As § 12, with social through `SocialPublisher` and TV through an `image` slide | As § 12 |
+
+### 14.6 Risks that stay
+
+- **Shared hosting limits.** Memory and execution time on cPanel bound the export size; the
+  queue and the 4800 px cap are the answer, and Phase 0 measures a worst-case A2 on TEST.
+- **The PDF/X override.** TCPDF's internals are stable but undocumented; the subclass is
+  small but must be re-checked on each TCPDF upgrade (one test parses the catalog for the
+  output intent and the XMP for `pdfxid`).
+- **Template drift.** Eight archetypes still need care at A5 and in Dhivehi; the CI PNG
+  artifact in § 11.6 is kept, one per archetype × size × language.
+- **Shops differ.** The per-shop card in § 8 is the safety valve; nothing in the file format
+  is hard-coded beyond the defaults in § 13.
