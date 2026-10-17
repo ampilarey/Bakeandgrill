@@ -6,6 +6,7 @@ import {
 import type { useAccountProfile } from './useAccountProfile';
 import { loyaltyAvailablePoints } from '../../utils/loyalty';
 import { Star } from 'lucide-react';
+import { EmailCheck } from './EmailCheck';
 
 type ProfileSectionProps = {
   profile: ReturnType<typeof useAccountProfile>;
@@ -97,6 +98,9 @@ export function ProfileSection({ profile, loyalty, loyaltyError }: ProfileSectio
                 onChange={(e) => setProfileForm((f) => ({ ...f, email: e.target.value }))}
                 placeholder={t('account.profile_email_ph')}
               />
+              {customer?.email && profileForm.email.trim().toLowerCase() === customer.email.toLowerCase() ? (
+                <EmailCheck email={customer.email} verified={Boolean(customer.email_verified)} onVerified={profile.markEmailVerified} />
+              ) : null}
             </FieldRow>
 
             <FieldRow label={t('account.profile_dob')}>

@@ -22,6 +22,7 @@ class Customer extends Model implements AuthenticatableContract
         'name',
         'phone',
         'email',
+        'email_verified_at',
         'tin',
         'is_gst_registered',
         'billing_address',
@@ -71,6 +72,7 @@ class Customer extends Model implements AuthenticatableContract
         'internal_notes',
         'sms_opt_out_at',
         'credit_notes',
+        'email_verified_at',
     ];
 
     protected $casts = [
@@ -84,6 +86,7 @@ class Customer extends Model implements AuthenticatableContract
         'preferences' => 'array',
         'sms_opt_out' => 'boolean',
         'sms_opt_out_at' => 'datetime',
+        'email_verified_at' => 'datetime',
         'is_gst_registered' => 'boolean',
         'credit_enabled' => 'boolean',
         'credit_approved_at' => 'datetime',
@@ -92,6 +95,22 @@ class Customer extends Model implements AuthenticatableContract
         'credit_payment_terms_days' => 'integer',
         'credit_reminder_sms' => 'boolean',
     ];
+
+    protected static function booted(): void
+    {
+        // A proven email stops being proven when it changes (iruali import plan, feature 2).
+        static::saving(function (Customer $customer): void {
+            if ($customer->isDirty('email') && !$customer->isDirty('email_verified_at')) {
+                $customer->email_verified_at = null;
+            }
+        });
+    }
+
+    /** The email was proven with a code and has not changed since. */
+    public function hasVerifiedEmail(): bool
+    {
+        return $this->email !== null && $this->email !== '' && $this->email_verified_at !== null;
+    }
 
     protected $attributes = [
         'credit_enabled' => false,

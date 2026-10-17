@@ -1,4 +1,11 @@
 {
+  "account.email_check_code": "6 އަކުރުގެ ކޯޑު",
+  "account.email_check_confirm": "ޗެކްކުރޭ",
+  "account.email_check_done": "ޗެކްކުރެވިއްޖެ",
+  "account.email_check_needed": "އަދި ޗެކްކޮށްފައެއް ނުވޭ. މި އީމެއިލަށް 6 އަކުރުގެ ކޯޑެއް ފޮނުވާނަން.",
+  "account.email_check_ok": "ޝުކުރިއްޔާ. ތިބާގެ އީމެއިލް ޗެކްކުރެވިއްޖެ.",
+  "account.email_check_send": "ކޯޑު ފޮނުވާ",
+  "account.email_check_sent": "{email} އަށް ކޯޑެއް ފޮނުވީމެވެ.",
   "cart.checkout": "ޗެކްއައުޓަށް",
   "cart.checkout_short": "ޗެކްއައުޓް",
   "cart.edit": "ބަދަލުކުރޭ",

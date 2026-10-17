@@ -1,4 +1,4 @@
-{{ $isReset ? 'Your ' . $brandName . ' password reset code' : 'Your ' . $brandName . ' sign-in code' }}
+{{ $w['h1'] }} ({{ $brandName }})
 
 {{ $otpCode }}
 
@@ -9,6 +9,6 @@ Account: {{ $maskedPhone }}
 Asked for: {{ $requestedAt->format('j M Y, g:i a') }} Malé time
 
 Keep this code to yourself. {{ $brandName }} staff will never ask for it.
-Didn't ask for it? Ignore this email: nobody can sign in without the code.
+Didn't ask for it? Ignore this email: {{ $w['nobody'] }}.
 
 {{ \App\Support\EmailBrand::variables()['websiteUrl'] }}

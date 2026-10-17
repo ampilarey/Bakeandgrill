@@ -4,7 +4,7 @@ import type { Customer } from '@shared/types';
 import { csrfHeadersForMutation } from '@shared/api';
 import { API_ORIGIN, request } from './client';
 
-export type AuthCustomer = Customer & { is_profile_complete: boolean };
+export type AuthCustomer = Customer & { is_profile_complete: boolean; email_verified?: boolean };
 export type AuthResponse = {
   customer: AuthCustomer;
   is_new_customer?: boolean;
@@ -113,6 +113,16 @@ export async function updateCustomerProfile(
     method: 'PATCH',
     body: JSON.stringify(data),
   });
+}
+
+/** Send a 6-digit code to the account's email (iruali import plan, feature 2). */
+export async function sendEmailCheckCode(): Promise<{ email_verified: boolean; sent_to?: string; message: string }> {
+  return request('/customer/email/send-code', { method: 'POST' });
+}
+
+/** Prove the account's email with the code that was sent to it. */
+export async function verifyEmailCheckCode(code: string): Promise<{ email_verified: boolean; message: string }> {
+  return request('/customer/email/verify', { method: 'POST', body: JSON.stringify({ code }) });
 }
 
 export async function changeCustomerPassword(

@@ -1,19 +1,17 @@
 @extends('emails.layout')
 
-@section('title', $isReset ? 'Password reset code' : 'Sign-in code')
-@section('preheader', ($isReset ? 'Use ' . $otpCode . ' to set a new password.' : 'Use ' . $otpCode . ' to sign in.') . ' It works for ' . $expiresMinutes . ' minutes. Never share it.')
-@section('band', $isReset ? 'Password reset' : 'Sign in')
+@section('title', $w['title'])
+@section('preheader', 'Use ' . $otpCode . ' to ' . $w['action'] . '. It works for ' . $expiresMinutes . ' minutes. Never share it.')
+@section('band', $w['band'])
 @section('hide_complaint', '1')
 
 @section('content')
     <h1 class="eb-h1" style="margin:0 0 8px; font-family:Arial, Helvetica, sans-serif; font-size:23px; line-height:30px; font-weight:bold; color:#1C1408;">
-        {{ $isReset ? 'Your password reset code' : 'Your sign-in code' }}
+        {{ $w['h1'] }}
     </h1>
     @php
         $acct = $maskedPhone ? ' for the account on <strong style="color:#1C1408; white-space:nowrap;">' . e($maskedPhone) . '</strong>' : '';
-        $lead = $isReset
-            ? 'Enter this code in ' . e($brandName) . ' to set a new password' . $acct . '.'
-            : 'Enter this code in ' . e($brandName) . ' to sign in' . $acct . '.';
+        $lead = 'Enter this code in ' . e($brandName) . ' to ' . e($w['action']) . $acct . '.';
         if ($alsoTexted) {
             $lead .= ' The same code was sent to your phone by SMS; use whichever arrives first.';
         }
@@ -36,7 +34,7 @@
     @include('emails.partials.rows', ['rows' => array_values(array_filter([
         ['Asked for', $requestedAt->format('j M Y, g:i a') . ' Malé time'],
         $maskedPhone ? ['Account', $maskedPhone] : null,
-        ['For', $isReset ? 'Setting a new password' : 'Signing in'],
+        ['For', $w['for']],
     ]))])
 
     {{-- How to tell a real one, and what to do if it was not you. --}}
@@ -44,7 +42,7 @@
         <tr>
             <td style="border-left:4px solid #1C1408; background:#F8F6F3; border-radius:0 12px 12px 0; padding:14px 16px; font-family:Arial, Helvetica, sans-serif; font-size:13px; line-height:20px; color:#1C1408;">
                 <strong>Keep this code to yourself.</strong> {{ $brandName }} staff will never ask for it, by phone, SMS or chat.
-                <br><span style="color:#6B5D4F;">Didn't ask for it? Someone may have typed your number by mistake. Ignore this email: nobody can sign in without the code{{ $isReset ? ', and your password has not changed' : '' }}.</span>
+                <br><span style="color:#6B5D4F;">Didn't ask for it? Someone may have typed your number by mistake. Ignore this email: {{ $w['nobody'] }}.</span>
             </td>
         </tr>
     </table>

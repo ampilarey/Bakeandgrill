@@ -610,6 +610,17 @@ Dhivehi, a stale key or a lost `{placeholder}`. The account keeps the language
 (`customers.preferred_language`, saved by Account → Settings, taken on sign-in). Dhivehi
 copy is drafted and must be read by a Dhivehi speaker before the switch goes on.
 
+## A customer's email is checked with a code
+
+iruali import plan, feature 2 (2026-10-17). `customers.email_verified_at` is set when the
+customer types the 6-digit code sent to the account's email (`POST /api/customer/email/
+send-code` and `/verify`, `CustomerEmailController`; codes from `CustomerOtpService` with
+purpose `verify_email`, 10 minutes, 5 tries, one a minute; the email reads "Check your
+email"). Changing the email clears it (`Customer::booted`), and a code sent to the old
+email does not prove the new one. `Customer::hasVerifiedEmail()` is what offers and
+newsletters by email and social sign-in ask; receipts still go to any email given.
+Account → Profile shows Checked or Send code under the email (`EmailCheck.tsx`).
+
 ## Ordering from the table (QR)
 
 Admin → Tables prints a card per table whose QR encodes `APP_URL/order/?table=<token>`

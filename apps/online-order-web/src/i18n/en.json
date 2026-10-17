@@ -1032,5 +1032,12 @@
   "account.addr_add": "Add address",
   "account.addr_line1": "Address *",
   "account.addr_island": "Island *",
-  "account.addr_set_default_check": "Set as default address"
+  "account.addr_set_default_check": "Set as default address",
+  "account.email_check_done": "Checked",
+  "account.email_check_needed": "Not checked yet. We send a 6-digit code to this email.",
+  "account.email_check_send": "Send code",
+  "account.email_check_sent": "We sent a code to {email}.",
+  "account.email_check_code": "6-digit code",
+  "account.email_check_confirm": "Check",
+  "account.email_check_ok": "Thanks. Your email is checked."
 }

@@ -96,8 +96,11 @@ export function useAccountProfile(isAuthenticated: boolean, authReady: boolean) 
     }
   };
 
+  const markEmailVerified = () => setCustomer((c) => (c ? { ...c, email_verified: true } : c));
+
   return {
     customer,
+    markEmailVerified,
     hasTradeAccount,
     loadingProfile,
     profileForm,
