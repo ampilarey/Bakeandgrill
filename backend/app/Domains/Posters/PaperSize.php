@@ -51,6 +51,12 @@ final class PaperSize
         return new self($key, $w, $h, $safe, $bleed, $landscape);
     }
 
+    /** A sheet that is already its final size, with no extra bleed of its own. */
+    public static function custom(float $width, float $height): self
+    {
+        return new self('SHEET', $width, $height, 0.0, 0.0, $width > $height);
+    }
+
     public function bleedWidth(): float
     {
         return $this->trimWidth + 2 * $this->bleed;

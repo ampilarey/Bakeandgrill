@@ -144,6 +144,9 @@ class ManagerPermissionAllowlistTest extends TestCase
         'pos.time_clock',
         'pos.view_all_station_orders',
         'pos.view_this_device_orders',
+        // Posters (2026-10-17, intentional): managers make and download
+        // posters. posters.manage (locking templates) stays owner-only.
+        'posters.make',
         'promotions.apply_promo_code',
         'promotions.discount_override',
         'promotions.discounts',

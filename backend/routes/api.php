@@ -230,5 +230,6 @@ Route::get('/currency-images', [App\Http\Controllers\Api\CurrencyImageController
     ->middleware('throttle:60,1');
 
 require __DIR__ . '/domains/signage.php';
+require __DIR__ . '/domains/posters.php';
 
 Route::get('/system/health', [App\Http\Controllers\Api\SystemHealthController::class, 'public']);

@@ -576,7 +576,18 @@ function TypesTabWithPermission() {
 
 function MakeTabWithPermission() {
   const { can } = useCurrentUserPermissions();
-  return <MakeLabelWizard canManage={can('labels.manage')} />;
+  const navigate = useNavigate();
+  return (
+    <>
+      {can('posters.make') && (
+        <button type="button" onClick={() => navigate('/posters')} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', textAlign: 'left', width: '100%', minHeight: 44, marginBottom: 12, padding: '12px 14px', borderRadius: 12, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', cursor: 'pointer' }}>
+          <span><strong>Making a poster?</strong><span style={{ display: 'block', color: 'var(--color-text-muted)', fontSize: 13 }}>Posters — A5 to A2, with the menu's prices, ready for the print shop.</span></span>
+          <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>Open</span>
+        </button>
+      )}
+      <MakeLabelWizard canManage={can('labels.manage')} />
+    </>
+  );
 }
 
 export const LABELS_TABS: HubTab[] = [
