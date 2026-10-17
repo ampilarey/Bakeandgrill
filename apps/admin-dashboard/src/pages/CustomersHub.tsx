@@ -18,6 +18,7 @@ const CreditAccountsPage = lazy(() => import('./CreditAccountsPage'));
 const ReferralsPage = lazy(() => import('./ReferralsPage'));
 const ReviewsPage = lazy(() => import('./ReviewsPage'));
 const DishQuestionsPage = lazy(() => import('./DishQuestionsPage'));
+const NewsletterPage = lazy(() => import('./NewsletterPage'));
 const ComplaintsPage = lazy(() => import('./ComplaintsPage'));
 const ComplaintBoxPage = lazy(() => import('./ComplaintBoxPage'));
 
@@ -30,6 +31,8 @@ export const CUSTOMERS_TABS: HubTab[] = [
   { id: 'reviews', label: 'Reviews', permissions: ['customers.manage'], desc: 'Ratings to moderate', render: () => <ReviewsPage /> },
   // iruali import plan, feature 7: next to Reviews, one place for both.
   { id: 'questions', label: 'Dish questions', permissions: ['customers.manage'], desc: 'Questions customers ask about a dish', render: () => <DishQuestionsPage /> },
+  // iruali import plan, feature 4: the email newsletter.
+  { id: 'newsletter', label: 'Newsletter', permissions: ['newsletter.manage'], desc: 'Email news and offers to subscribers', render: () => <NewsletterPage /> },
   { id: 'complaints', label: 'Order complaints', permissions: ['complaints.view'], desc: 'Problems with a specific receipt or invoice', render: () => <ComplaintsPage /> },
   { id: 'complaint-box', label: 'Complaint box', permissions: ['complaints.view'], desc: 'Staff, food and service complaints from the public form — anonymous or with a number', render: () => <ComplaintBoxPage /> },
 ];

@@ -1292,6 +1292,13 @@
         }
         .footer-col p { min-height: 0; padding: 0; margin-bottom: 0.5rem; }
         .footer-col a:hover { color: white; }
+        .footer-newsletter { margin-top: 1rem; }
+        .footer-newsletter label { display: block; font-size: 0.85rem; color: rgba(255,255,255,0.8); margin-bottom: 0.4rem; }
+        .footer-newsletter-row { display: flex; gap: 0.4rem; }
+        .footer-newsletter-row input[type="email"] { flex: 1; min-width: 0; min-height: 40px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.08); color: white; padding: 0 0.7rem; font: inherit; font-size: 16px; }
+        .footer-newsletter-row button { min-height: 40px; border-radius: 10px; border: 0; background: var(--amber); color: white; font: inherit; font-weight: 700; padding: 0 0.9rem; cursor: pointer; }
+        .footer-newsletter-hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+        .footer-newsletter-note { font-size: 0.8rem; color: rgba(255,255,255,0.85); margin-top: 0.4rem !important; }
         .footer-legal {
             margin-top: 0.875rem;
             padding-top: 0.875rem;
@@ -2000,6 +2007,18 @@
             <a href="/contact">Contact Us</a>
             <a href="/complain?from=footer">Make a Complaint</a>
             @if(trim((string) content('complaint_prompt_text', '')) !== '')<p class="footer-complain-line" data-testid="footer-complain-line">{{ trim((string) content('complaint_prompt_text', '')) }}</p>@endif
+            {{-- The email newsletter (iruali import plan, feature 4): double opt-in. --}}
+            <form method="post" action="{{ route('newsletter.subscribe') }}" class="footer-newsletter" data-testid="footer-newsletter">
+                @csrf
+                <label for="footer-newsletter-email">Get our news and offers by email</label>
+                <div class="footer-newsletter-row">
+                    <input id="footer-newsletter-email" type="email" name="email" required maxlength="190" placeholder="you@example.com" autocomplete="email">
+                    <input type="text" name="website" value="" tabindex="-1" autocomplete="off" aria-hidden="true" class="footer-newsletter-hp">
+                    <input type="hidden" name="locale" value="{{ app()->getLocale() === 'dv' ? 'dv' : 'en' }}">
+                    <button type="submit">Sign up</button>
+                </div>
+                @if(session('newsletter_status'))<p class="footer-newsletter-note" role="status">{{ session('newsletter_status') }}</p>@endif
+            </form>
         </div>
         <div class="footer-col footer-col--hours" data-footer-hours>
             <h4>{{ $footerHoursHeading }}</h4>

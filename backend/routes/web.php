@@ -78,6 +78,13 @@ Route::get('/robots.txt', fn (Illuminate\Http\Request $request) => response(
 Route::get('/sitemap.xml', [App\Http\Controllers\SitemapController::class, 'index'])
     ->name('sitemap');
 
+// The email newsletter (iruali import plan, feature 4): double opt-in and a button to stop.
+Route::post('/newsletter/subscribe', [App\Http\Controllers\NewsletterController::class, 'subscribe'])->middleware('throttle:5,10')->name('newsletter.subscribe');
+Route::get('/newsletter/confirm/{token}', [App\Http\Controllers\NewsletterController::class, 'confirm'])->where('token', '[A-Za-z0-9]{20,64}')->name('newsletter.confirm');
+Route::get('/newsletter/unsubscribe/{token}', [App\Http\Controllers\NewsletterController::class, 'unsubscribeForm'])->where('token', '[A-Za-z0-9]{20,64}')->name('newsletter.unsubscribe');
+Route::post('/newsletter/unsubscribe/{token}', [App\Http\Controllers\NewsletterController::class, 'unsubscribe'])->where('token', '[A-Za-z0-9]{20,64}')
+    ->withoutMiddleware([Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class, Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class]);
+
 // Catalogue feeds behind a secret link (iruali import plan, feature 11).
 Route::get('/feeds/{token}/google.xml', [App\Http\Controllers\CatalogFeedController::class, 'google'])
     ->where('token', '[A-Za-z0-9]{32,64}')->middleware('throttle:30,1');

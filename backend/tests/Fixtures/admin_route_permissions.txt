@@ -332,11 +332,12 @@ backend/routes/domains/staff.php:227:integrations.webhooks
 backend/routes/domains/staff.php:251:website.manage
 backend/routes/domains/staff.php:290:roles_permissions.manage
 backend/routes/domains/staff.php:299:reports.view
-backend/routes/domains/staff.php:307:website.manage
-backend/routes/domains/staff.php:313:website.manage
-backend/routes/domains/staff.php:316:website.manage
-backend/routes/domains/staff.php:319:website.manage
+backend/routes/domains/staff.php:307:newsletter.manage
+backend/routes/domains/staff.php:321:website.manage
+backend/routes/domains/staff.php:327:website.manage
 backend/routes/domains/staff.php:330:website.manage
+backend/routes/domains/staff.php:333:website.manage
+backend/routes/domains/staff.php:344:website.manage
 backend/routes/domains/staff.php:38:pos.ring_sales
 backend/routes/domains/staff.php:44:menu.manage
 backend/routes/domains/staff.php:50:settings.update

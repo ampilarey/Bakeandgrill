@@ -570,3 +570,55 @@ export async function fetchSuggestionPerformance(days = 30): Promise<{
 }> {
   return req(`/admin/marketing/suggestion-performance?days=${days}`);
 }
+
+// ── Email newsletter (iruali import plan, feature 4) ────────────────────────
+
+export type NewsletterSections = { new?: boolean; new_days?: number; specials?: boolean; coming?: boolean; offer_id?: number | null };
+export type NewsletterDish = { id: number; name: string; price: number; image: string | null; launch_at?: string };
+export interface NewsletterIssueSummary {
+  id: number;
+  subject_en: string;
+  subject_dv: string | null;
+  status: 'draft' | 'sending' | 'sent';
+  sent_at: string | null;
+  created_at: string;
+  counts: { sent: number; failed: number; pending: number };
+}
+export interface NewsletterIssue extends NewsletterIssueSummary {
+  body_en: string | null;
+  body_dv: string | null;
+  header_image_url: string | null;
+  sections: NewsletterSections;
+  removed_item_ids: number[];
+  picks: { new: NewsletterDish[]; coming: NewsletterDish[]; specials: { name: string; price: number }[]; offer: { name: string } | null };
+}
+export type NewsletterDraft = Pick<NewsletterIssue, 'subject_en' | 'subject_dv' | 'body_en' | 'body_dv' | 'header_image_url' | 'sections' | 'removed_item_ids'>;
+
+export async function fetchNewsletterIssues(): Promise<{ issues: NewsletterIssueSummary[]; audience: number }> {
+  return req('/admin/newsletter/issues');
+}
+export async function fetchNewsletterIssue(id: number): Promise<{ issue: NewsletterIssue }> {
+  return req(`/admin/newsletter/issues/${id}`);
+}
+export async function saveNewsletterIssue(id: number | null, draft: NewsletterDraft): Promise<{ issue: NewsletterIssue }> {
+  return req(id ? `/admin/newsletter/issues/${id}` : '/admin/newsletter/issues', { method: id ? 'PUT' : 'POST', body: JSON.stringify(draft) });
+}
+export async function fetchNewsletterPreview(id: number, locale: 'en' | 'dv'): Promise<Blob> {
+  return requestBlob(`/admin/newsletter/issues/${id}/preview?locale=${locale}`);
+}
+export async function sendNewsletterTest(id: number, email: string, locale: 'en' | 'dv'): Promise<{ message: string }> {
+  return req(`/admin/newsletter/issues/${id}/test`, { method: 'POST', body: JSON.stringify({ email, locale }) });
+}
+export async function sendNewsletter(id: number): Promise<{ queued: number; message: string }> {
+  return req(`/admin/newsletter/issues/${id}/send`, { method: 'POST' });
+}
+export async function retryNewsletter(id: number): Promise<{ queued: number }> {
+  return req(`/admin/newsletter/issues/${id}/retry`, { method: 'POST' });
+}
+export type NewsletterSubscriberRow = { id: number; email: string; locale: string; source: string; confirmed_at: string | null; unsubscribed_at: string | null; created_at: string };
+export async function fetchNewsletterSubscribers(q: string, page = 1): Promise<{ data: NewsletterSubscriberRow[]; meta: { current_page: number; last_page: number; total: number } }> {
+  return req(`/admin/newsletter/subscribers?${new URLSearchParams({ q, page: String(page) })}`);
+}
+export async function downloadNewsletterSubscribers(): Promise<Blob> {
+  return requestBlob('/admin/newsletter/subscribers.csv');
+}

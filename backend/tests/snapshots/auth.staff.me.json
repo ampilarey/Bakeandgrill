@@ -85,6 +85,7 @@
             "menu.manage",
             "menu.prepared_stock",
             "menu.view",
+            "newsletter.manage",
             "orders.create",
             "orders.manage",
             "orders.receipts",

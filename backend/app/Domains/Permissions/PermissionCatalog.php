@@ -232,6 +232,7 @@ final class PermissionCatalog
             ['group' => 'Marketing', 'slug' => 'sms_marketing.view', 'name' => 'View SMS marketing'],
             ['group' => 'Marketing', 'slug' => 'sms_marketing.manage', 'name' => 'Manage SMS marketing'],
             ['group' => 'Marketing', 'slug' => 'integrations.sms', 'name' => 'SMS campaigns (legacy)'],
+            ['group' => 'Marketing', 'slug' => 'newsletter.manage', 'name' => 'Email newsletter', 'description' => 'Write, test and send the newsletter, and see the subscriber list'],
             ['group' => 'Marketing', 'slug' => 'signage.manage', 'name' => 'Manage TV signage', 'description' => 'TV menu boards, playlists, screens, campaigns & emergency'],
             ['group' => 'Marketing', 'slug' => 'posters.make', 'name' => 'Make posters', 'description' => 'Make, edit and download print files'],
             ['group' => 'Marketing', 'slug' => 'posters.manage', 'name' => 'Manage poster templates', 'description' => 'Save, lock and delete poster templates'],
@@ -389,6 +390,8 @@ final class PermissionCatalog
             'pos.customers_tab',
             // Templates, print shops and proof approval (docs/POSTER_PLAN.md § 12.6).
             'posters.manage',
+            // The newsletter reaches every subscriber at once (iruali import plan, feature 4).
+            'newsletter.manage',
             // Owner-only by default (2026-10-03): it rewrites what the drawer and the tender report say.
             'payments.correct_tender',
             // Audit 2026-09-03 (F2): customers.credit.repay moved to managers

@@ -800,6 +800,26 @@ snoozed as out of stock, cached 30 minutes under the menu's last change. System 
 → Catalogue feeds (`website.manage`, `GET /api/admin/feeds`, `POST /api/admin/feeds/rotate`)
 shows, copies and renews the links. `StructuredDataAndFeedsTest`.
 
+## Email newsletter
+
+iruali import plan, feature 4 (2026-10-17). Sign-up is the website footer's box
+(`POST /newsletter/subscribe`, honeypot, `throttle:5,10`), double opt-in: a confirm email
+(`NewsletterConfirmMail`, `/newsletter/confirm/{token}`) and nothing goes until it is clicked.
+An issue reaches confirmed `newsletter_subscribers` plus customers with a checked email who allow
+offers by email (feature 5's switch is the order app's newsletter switch), once per address and
+never an address that stopped (`App\Domains\Newsletter\Newsletter::audience()`, which gives each
+customer a subscriber row so every email has its own unsubscribe link). Customers & Marketing →
+Newsletter (`NewsletterPage`, `newsletter.manage`, owner-only by default; `/api/admin/newsletter/*`)
+writes an issue in English and Dhivehi with a header picture and ticked sections (new dishes in N
+days, specials, an offer, coming soon; dishes removable one by one), previews both languages at
+phone and computer width, sends tests, sends, retries failed rows and lists or downloads
+subscribers. Send freezes the picks, writes one `newsletter_deliveries` row per address (unique per
+issue and address) and queues `SendNewsletterBatch` jobs of 100, five seconds apart; each claims a
+row (pending → sending) before mailing, so a retried batch never sends twice. Every issue carries
+`List-Unsubscribe` one-click; `/newsletter/unsubscribe/{token}` asks first and also turns off the
+customer's offers email. Needs the queue worker; on TEST that relies on TEST's own `REDIS_DB` and
+prefix (above, checked by `app:ready`). No bounce webhook yet. `NewsletterTest`.
+
 ## POS order type colours
 
 Owner, 2026-10-11: "add more visual colors to differentiate between order type in

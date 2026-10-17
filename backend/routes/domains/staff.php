@@ -303,6 +303,20 @@ if (routes_domain_section_is('staff', 'admin') && !routes_domain_loaded('staff.a
         Route::get('/audit-logs/actions', [App\Http\Controllers\Api\AuditLogController::class, 'actions']);
     });
 
+    // Customers & Marketing → Newsletter (iruali import plan, feature 4).
+    Route::middleware(['auth:sanctum', 'staff.token', 'permission:newsletter.manage'])->prefix('admin/newsletter')->group(function () {
+        Route::get('/issues', [App\Http\Controllers\Api\AdminNewsletterController::class, 'index']);
+        Route::post('/issues', [App\Http\Controllers\Api\AdminNewsletterController::class, 'store']);
+        Route::get('/issues/{id}', [App\Http\Controllers\Api\AdminNewsletterController::class, 'show'])->whereNumber('id');
+        Route::put('/issues/{id}', [App\Http\Controllers\Api\AdminNewsletterController::class, 'update'])->whereNumber('id');
+        Route::get('/issues/{id}/preview', [App\Http\Controllers\Api\AdminNewsletterController::class, 'preview'])->whereNumber('id');
+        Route::post('/issues/{id}/test', [App\Http\Controllers\Api\AdminNewsletterController::class, 'test'])->whereNumber('id')->middleware('throttle:10,1');
+        Route::post('/issues/{id}/send', [App\Http\Controllers\Api\AdminNewsletterController::class, 'send'])->whereNumber('id');
+        Route::post('/issues/{id}/retry', [App\Http\Controllers\Api\AdminNewsletterController::class, 'retry'])->whereNumber('id');
+        Route::get('/subscribers', [App\Http\Controllers\Api\AdminNewsletterController::class, 'subscribers']);
+        Route::get('/subscribers.csv', [App\Http\Controllers\Api\AdminNewsletterController::class, 'csv']);
+    });
+
     // Website → Feeds: the catalogue feed links and a new secret (feature 11).
     Route::middleware(['auth:sanctum', 'staff.token', 'permission:website.manage'])->group(function () {
         Route::get('/admin/feeds', [App\Http\Controllers\CatalogFeedController::class, 'links']);
