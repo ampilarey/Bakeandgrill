@@ -129,6 +129,14 @@ anniversary, we cater, order ahead.
 deliver, ways to pay, Wi-Fi card (a QR that joins the network), tell us how we did (the
 complaints box QR), follow us.
 
+**The complaint poster already exists** on the labels engine (dompdf): `/complain/poster`,
+`/complain/poster/sheet` and `/complain/poster/sheet.pdf` (`backend/routes/web.php` lines
+88 to 92, `ComplaintBoxPageController`, `App\Support\PosterCardSpec`,
+`complain-poster*.blade.php`). So two engines never draw the same poster: in Phase 1 the
+"tell us how we did" card opens the existing complaint poster as it is; in **Phase 2 Posters
+takes it over**. Its fit rules (`PosterCardSpec`) become the `qr_card` layout's, and the old
+routes forward to the new poster so printed links and bookmarks keep working.
+
 **Inside the shop:** we're hiring, wash your hands, staff only, storage temperatures, plain
 notice.
 
@@ -173,8 +181,9 @@ a poster? Posters" that opens it.
    with labels). Pick a dish, offer or category and it fills. Tap a part of the preview to
    edit only that part. Choices: mood, photo style (full, cut-out, none), language, sizes.
 4. **Check and send.** Preflight (§ 8), material and finish (§ 6), mounting, layout on the
-   sheet (§ 6.5), the spec sheet, then **Download for print** (one ZIP) or **Send to print
-   shop** (§ 9).
+   sheet (§ 6.5), the spec sheet, then **Download for print** (one ZIP), and from Phase 2
+   **Send to print shop** (§ 9). In Phase 1 the ZIP holds everything the shop needs, ready to
+   send by WhatsApp, Viber or email by hand.
 
 **My posters:** every poster with its state, take-down date and place (Window, Door,
 Counter, Tables, Kitchen, Outside: a list the owner edits, not free text), a **Should be
@@ -192,7 +201,7 @@ tones on chips, lucide icons, `Btn` sizes, dark mode.
 | File type | PDF/X-4, one page per file, one file per size | The print standard: fonts embedded, colour defined |
 | Page boxes | MediaBox and BleedBox at trim + 3 mm, TrimBox at trim | The shop's software reads them |
 | Crop marks | Off by default, on per shop | Most shops add their own |
-| Colour | CMYK for text, shapes and logo; photos RGB with their profile (allowed in PDF/X-4) | Exact brand colours; photos keep their range |
+| Colour | CMYK for text and shapes; the logo as Phase 0 decides (§ 6.4); photos RGB with their profile (allowed in PDF/X-4) | Exact brand colours; photos keep their range |
 | Profile | Output intent FOGRA39 (ISO Coated v2) by default, per shop | Tells the shop what the colours mean |
 | Black | Small text 100 % K; large black areas rich black (C60 M40 Y40 K100) | Sharp text, deep blacks |
 | Total ink | At most 300 % | Safe UV curing |
@@ -243,8 +252,25 @@ spot layers in the file matter only for **selective** white on clear material an
 The logos served today are 1080 × 1080 PNGs (`backend/public/brand/logo-light.png`,
 `logo-dark.png`; `App\Domains\Content\BrandImages`): a 250 mm logo on A2 would be 110 ppi.
 `backend/public/brand/logo-animated.svg` and `logo-animated-dark.svg` hold the mark as
-vector paths (no text or bitmap inside). Phase 0 makes a static `logo.svg` in both colourways
-(animation and `<style>` removed, wordmark confirmed present) and the PDF places it as vector.
+vector paths: seven paths, the wordmark included as paths (ids `text-bg`, `text-amp`,
+`text-cafe`), and no `<text>` or `<image>` elements, so the wordmark check is done.
+
+Two things stop the file going straight into the PDF as CMYK:
+
+- It fills two shapes with **gradients** (`<linearGradient>` ids `bgl-drop` and `bgl-amp`), and
+  TCPDF's SVG reader (`ImageSVG()`) writes RGB colours and handles gradients only partly.
+- Its rust is **`#B84B0C`**, one step off the palette's **`#B74B0C`** (`docs/brand/PALETTE.md`).
+
+Phase 0 makes a static `logo.svg` in both colourways (animation and `<style>` removed, the rust
+set to the palette's `#B74B0C`) and decides one of two ways to put it in the print PDF:
+
+- **(a) Redraw the seven paths** with TCPDF's own path drawing in the swatch-card CMYK
+  (`BrandPalette::cmyk()`), the two gradients flattened to solid fills. The logo prints in exact
+  brand colour; the cost is losing its slight shading, so Phase 0 shows the flat version beside
+  the original for the owner to judge. **Recommended.**
+- **(b) Keep the logo RGB** under the FOGRA39 output intent, gradients and all, and say so in
+  § 14. Simpler, but the shop's conversion decides the rust.
+
 An uploaded logo that is only a PNG prints with an amber warning above A4.
 
 ### 6.5 Layout on the sheet (imposition)
@@ -314,11 +340,12 @@ Distance rule: about 25 mm of letter height for every 3 m away. Window posters g
   code, sizes, quantity per size, material, thickness, finish, white and gloss in words,
   mounting, layout on the sheet, deadline, delivery or collection, contact). Sent by email,
   or downloaded as one ZIP to send by WhatsApp or Viber.
-- **Order states:** Draft → Sent → Approved → Received → Up → Taken down, each timed and signed.
-  A quote is typed on the Sent step.
+- **Order states:** Draft → Proof approved (only when proof approval is on) → Sent → Quote
+  approved → Received → Up → Taken down, each timed and signed. A quote is typed on the Sent
+  step; **Quote approved** is the owner's yes to the shop's price.
 - **Costs** become an `App\Models\Expense` with the shop's `supplier_id`, so monthly poster
   spend is already in Finance.
-- **Proof approval** (a switch, off by default): the owner approves from the phone through a
+- **Proof approval** (a switch, off by default; the step is **Proof approved**): the owner approves the poster before it is sent, from the phone through a
   signed link valid 24 hours, the way social posts are approved
   (`App\Domains\Social\Services\SocialPostApproval`, `SocialApprovalPageController`),
   including from the Telegram alert.
@@ -420,14 +447,22 @@ browser never needs the print engine.
 
 An A2 with two 4800 px photos is a 60 to 120 MB GD job plus TCPDF on shared hosting, so exports
 run as a queued job (`ExportPosterJob`) with a "Preparing your file…" row and a toast when ready.
-The queue worker is already kept alive by the deploy. Proofs are 1200 px; photos are scaled once
-and cached by hash.
+The job needs the **queue worker** running. On this host it is restarted every minute by the
+crontab keepalive (`pgrep -f "queue:work.*public_html" || … queue:work redis`, in
+`.cursor/rules/deploy-commands.mdc` § Crontab keepalive) and by `scripts/full-deploy.sh` on a
+full deploy; a quick pull does not restart a stopped worker. So the "Preparing your file…" row
+says "Taking longer than usual: the file is queued" after 3 minutes, and the existing queue worker
+heartbeat (`QueueWorkerHeartbeat`, read by `SystemHealthService`) covers the rest. Proofs are 1200 px; photos are scaled once and cached by hash.
 
 ### 12.6 Permissions
 
-Two new permissions under Customers & Marketing in the role editor (`permissionSections.ts`):
-`posters.make` (make, export, send; through approval when that switch is on) and `posters.manage`
-(templates, print shops, approve, settings). Owner only until a role is given them. The new routes
+Two new permissions: `posters.make` (make, export, send; through proof approval when that switch
+is on) and `posters.manage` (templates, print shops, approve proofs and quotes, settings). The role
+editor places permissions by **group name**, not by section: the "Customers and marketing" section
+is built from the groups Customers, Complaints, Loyalty, Promotions, Events, Marketing, SMS and
+Media (`apps/admin-dashboard/src/pages/SettingsPage/permissionSections.ts`). So both are seeded with
+**group `Marketing`**, which lands them there with no change to that file; a group of their own
+would need adding to that section's `groups` list, or they fall into "Other". Owner only until a role is given them. The new routes
 add lines to `backend/tests/Fixtures/admin_route_permissions.txt`, asked once at the start of
 Phase 1 (`CLAUDE.md`: route permissions change only with the owner's yes).
 
@@ -446,9 +481,9 @@ Phase 1 (`CLAUDE.md`: route permissions change only with the owner's yes).
 
 | Phase | What | Done when |
 |---|---|---|
-| **0. Prove the file** | TCPDF with the PDF/X-4 subclass; one A3 `hero_photo` with Dhivehi, vector logo, CMYK brand colours and an RGB photo; page boxes; a `-WHITE.pdf` mask; the swatch card; spot layers and overprint tried but not required; host check for Imagick and Ghostscript; a worst-case A2 export timed on TEST | Acrobat Preflight passes PDF/X-4 and the shop prints the A3 and the swatch card without changes |
-| **1. Make and send** | The `/posters` page; 8 layouts; 20 purposes (happy hour, dish on discount, new lower price, meal deal, % off everything, flier with a coupon, new dish, dish of the day, best sellers, category, mini menu, opening hours, holiday hours, Ramadan, scan to order, table card, we deliver, we're hiring, plain notice, tell us how we did); live data with "From" prices and the GST line; A5 to A2 and layout on the sheet; preflight with the revised lines and keep-outs; queued export; spec sheet with white and gloss in words and optional masks; ZIP of all sizes; My posters with take-down dates and places | The owner sends a real happy hour poster and a table card set in under 5 minutes, and the shop prints both first time |
-| **2. The shop and staying true** | Print shops as suppliers with preferences, send by email, order states, costs as expenses, proof approval by signed link, spot layers inside the file on a shop's request, out-of-date and should-be-down alerts, versions and diffs, your own templates, the rest of the purposes | A clear acrylic poster with white and gloss comes back right first time |
+| **0. Prove the file** | TCPDF with the PDF/X-4 subclass; one A3 `hero_photo` with Dhivehi, the logo by way (a) or (b) of § 6.4 (decided here, with the flat logo beside the original), CMYK brand colours and an RGB photo; page boxes; a `-WHITE.pdf` mask; the swatch card; spot layers and overprint tried but not required; host check for Imagick and Ghostscript; a worst-case A2 export timed on TEST | Acrobat Preflight passes PDF/X-4 and the shop prints the A3 and the swatch card without changes |
+| **1. Make and send** | The `/posters` page; 8 layouts; 20 purposes (happy hour, dish on discount, new lower price, meal deal, % off everything, flier with a coupon, new dish, dish of the day, best sellers, category, mini menu, opening hours, holiday hours, Ramadan, scan to order, table card, we deliver, we're hiring, plain notice, tell us how we did, opening the existing complaint poster); live data with "From" prices and the GST line; A5 to A2 and layout on the sheet; preflight with the revised lines and keep-outs; queued export; spec sheet with white and gloss in words and optional masks; ZIP of all sizes; My posters with take-down dates and places | The owner sends a real happy hour poster and a table card set in under 5 minutes, and the shop prints both first time |
+| **2. The shop and staying true** | Print shops as suppliers with preferences, **Send to print shop** by email, order states with Proof approved and Quote approved, costs as expenses, proof approval by signed link, spot layers inside the file on a shop's request, out-of-date and should-be-down alerts, versions and diffs, your own templates, the rest of the purposes, the complaint poster taken over (old routes forward) | A clear acrylic poster with white and gloss comes back right first time |
 | **3. Everywhere** | TV slide, social drafts through `SocialPublisher`, scan counts per poster, website banner, A2 menu board | One offer goes on the window, the TV and Instagram from one design |
 
 Each phase ends with tests, the admin build, `docs/POSTERS.md` (how to use it), the `CLAUDE.md`
@@ -465,7 +500,8 @@ its card in § 9 changes and every file after follows it.
 | Bleed | 3 mm each side | The most common ask; 5 mm per shop |
 | Crop marks | Off | Most shops add their own |
 | Colour profile | FOGRA39 (ISO Coated v2) | The usual default for coated stock outside North America |
-| Text and logo colour | CMYK from the swatch card (`BrandPalette::cmyk()`) | Exact brand colour every time |
+| Text and shape colour | CMYK from the swatch card (`BrandPalette::cmyk()`) | Exact brand colour every time |
+| Logo colour | Way (a): redrawn in swatch-card CMYK, gradients flattened, rust `#B74B0C`; if Phase 0 picks (b), RGB under FOGRA39 and this row says so | Exact brand colour unless the owner prefers the shading |
 | Photos | RGB with sRGB profile | Allowed in PDF/X-4; the shop converts for its inks |
 | Black | 100 % K text, rich black (60/40/40/100) for large areas | Sharp text, deep black |
 | Total ink | 300 % at most | Safe UV curing |
@@ -478,7 +514,7 @@ its card in § 9 changes and every file after follows it.
 | Finish | Matte | No glare under shop lights |
 | Mounting | None; keep-outs when stand-offs or eyelets are picked | |
 | Spec sheet | Always sent | Everything on one page |
-| Approval | Off; the owner can switch it on | Starts simple |
+| Proof approval | Off; the owner can switch it on (quotes are always approved by the owner) | Starts simple |
 | Permissions | New `posters.make` and `posters.manage`, owner only at first | Posters separate from labels |
 | PDF library | TCPDF with a PDF/X-4 subclass | Pure PHP, runs on this host |
 | Place list | Window, Door, Counter, Tables, Kitchen, Outside | Editable |
@@ -517,3 +553,11 @@ Corrected from the review:
 - **`BrandPalette::cmyk()`** does not exist yet (`App\Domains\Content\BrandPalette`); it is new.
 - **The vector logo** has no text or bitmap elements, so the whole mark should be paths; Phase 0
   confirms the wordmark is there.
+
+Second review (2026-10-17), six changes, each checked in the code: the logo's two gradients and
+off-palette rust (`logo-animated.svg`: `bgl-drop`, `bgl-amp`, `#B84B0C`) mean Phase 0 picks
+redrawn CMYK (recommended) or RGB, and the wordmark check is done; the existing complaint poster
+(`backend/routes/web.php` 88 to 92) stays in Phase 1 and is taken over in Phase 2; permissions are
+seeded in group `Marketing` (`permissionSections.ts`); "Proof approved" and "Quote approved" are
+named apart; Send to print shop is marked Phase 2; the queue worker is kept up by the crontab
+keepalive and full deploys, not quick pulls, and a stuck export says so.
