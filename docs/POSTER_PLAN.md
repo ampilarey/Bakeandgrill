@@ -4,41 +4,52 @@ Owner, 2026-10-17: "Sometimes I print different types of posters. Now I use othe
 make posters. How about adding a poster feature to labels so all the posters will be in the
 server, and it will be easier to use branding and logo. I use A5, A4, A3 and A2 mainly.
 Many templates, easy to edit. We use UV printing." Then: "I outsource everything, so make
-a detailed plan using best practices. Don't implement yet."
+a detailed plan using best practices. Don't implement yet." And: "I told u I don't know
+details. Just make the plan based on best practices."
 
 Status: **plan only, nothing built.** Every choice below is made from print and design
-best practice, so nothing has to be known up front: the defaults in § 13 work with a
+best practice, so nothing has to be known up front: the defaults in § 14 work with a
 typical outsourced UV print shop, and each one can be changed later in the app (per print
 shop) without new code. Each phase starts only on the owner's go.
+
+Revised 2026-10-17 after a review checked every claim against the code on `main`. Where a
+point rests on the code, the file is named. The review's corrections that were kept, and
+the three it got slightly wrong, are listed in § 16.
 
 ---
 
 ## 1. The goal in one paragraph
 
-Admin → Labels gets a **Posters** tab. Anyone with permission picks what the poster is for,
-picks one of many templates, and fills it in. The poster pulls the dish, photo, price,
-offer and hours from the system, so it is right when it is made. It reflows to A5, A4, A3
-or A2, and comes out as a **print-ready file the print shop accepts first time**: correct
-bleed, colour, resolution, and white-ink and gloss layers for UV. A spec sheet goes with
-each file. Every poster stays on the server and can be reprinted or changed. The system
-says when a poster is out of date (price changed, offer ended) and when it should come down.
+A new **Posters** page (Customers & Marketing → Posters, beside TV Signage and Social Hub,
+with a card on Labels → Make a label pointing to it; § 5.1 says why it is not a Labels tab).
+Anyone with permission picks what the poster is for, picks a look, and fills it in. The
+poster pulls the dish, photo, price, offer and hours from the system, so it is right when it
+is made. It reflows to A5, A4, A3 or A2 and comes out as a **print-ready file the print shop
+accepts first time**: correct bleed, colour and resolution, a sharp vector logo, and white
+and gloss instructions for UV. A spec sheet goes with each file. Every poster stays on the
+server and can be reprinted or changed. The system says when a poster is out of date (price
+changed, offer ended) and when it should come down.
 
 ## 2. Principles
 
-1. **The data lives in one place.** Prices from the menu, offers from Promotions, hours from
-   the Admin schedule, Ramadan times from Prayer Times, table QR codes from Tables. A poster
-   stores *which* dish or offer it shows, never a copy of the price.
-2. **Brand locked, words free.** Templates use only the palette in `docs/brand/PALETTE.md`,
-   the logos from Business Details and the label fonts (Dhivehi included). The layout rules
-   are fixed in the template. Staff change words, photos and numbers.
-3. **No blank canvas.** Choices, not tools: template, mood, photo style, language, size.
-   The drag designer from labels (round 8) is offered only for fine-tuning.
-4. **The print shop gets what it asks for.** Every export passes a preflight check before
-   it can be sent (§ 7). A file that would come back from the shop never leaves.
-5. **Same habits as Labels.** Make a poster works like Make a label: picture cards, a live
-   preview, tap to edit, Save as template, a saved list with Print again.
-6. **Plain words on screen** (Labels round 4): "Bleed", "White layer" and "Gloss layer" each
-   carry a one-line explanation.
+1. **The data lives in one place.** Prices from the menu (`Item::displayPriceInfo()`),
+   offers from Promotions (`App\Models\Promotion`) and Daily Specials, hours from the Admin
+   schedule (`App\Support\OpeningHoursText`), Ramadan times from `App\Domains\PrayerTimes`,
+   table QR codes from `RestaurantTable::qrUrl`. A poster stores *which* dish or offer it
+   shows, never a copy of the price.
+2. **Brand locked, words free.** Only the palette in `docs/brand/PALETTE.md`, the vector
+   logo (§ 6.4) and the label fonts in `backend/public/fonts/pdf/` (Plus Jakarta Sans,
+   DM Serif Display, Noto Sans Thaana). The layout rules are fixed. Staff change words,
+   photos and numbers.
+3. **No blank canvas.** Choices, not tools: purpose, layout, mood, photo style, language,
+   size. The labels drag designer is offered only for fine-tuning.
+4. **The print shop gets what it asks for.** Every export passes a preflight check (§ 8).
+   A file that would come back from the shop never leaves.
+5. **Same habits as Labels.** Picture cards, a live preview, tap to edit, Save as
+   template, a saved list with Print again (`App\Models\LabelJob`, `App\Domains\Labels\Reprint`).
+6. **Reuse before building.** § 12 lists what already exists and is reused.
+7. **Plain words on screen.** "Bleed", "White layer" and "Gloss layer" each carry a
+   one-line explanation.
 
 ## 3. Sizes
 
@@ -49,140 +60,128 @@ says when a poster is out of date (price changed, offer ended) and when it shoul
 | A3 | 297 × 420 | 303 × 426 | Wall, window, menu board |
 | A2 | 420 × 594 | 426 × 600 | Window, entrance, big promotions |
 
-Each also comes in landscape. A custom size is allowed from 90 × 50 mm to 841 × 1189 mm
-(A0), for banners and odd boards. Screen sizes come from the same design in Phase 3:
-1080 × 1080 (square post), 1080 × 1350 (portrait post), 1080 × 1920 (story) and
-1920 × 1080 (TV slide).
+Each also comes landscape. A custom size from 90 × 50 mm to A0 (841 × 1189 mm) covers
+banners and odd boards. **One design gives every size**, downloaded as one ZIP with a
+preflight result per size. Screen sizes come from the same design in Phase 3: 1080 × 1080,
+1080 × 1350, 1080 × 1920 (social) and 1920 × 1080 (TV).
 
-**Margins:** 3 mm bleed beyond the cut, a safe zone 5 mm inside the cut on A5 and A4 and
-8 mm on A3 and A2. Nothing that must be read sits outside the safe zone.
+**Margins:** 3 mm bleed beyond the cut; a safe zone 5 mm inside the cut on A5 and A4 and
+8 mm on A3 and A2. **Mounting keep-outs:** when the poster is mounted with stand-offs or
+eyelets (a step 4 choice), each corner gets a 15 mm circle (20 mm on A2) treated like the
+safe zone and drawn faintly in the preview.
 
-## 4. Templates
+## 4. Layouts and purposes
 
-### 4.1 How a template is built
+### 4.1 Eight layouts, many purposes
 
-A template is a definition in code (like `LabelTemplates::BUILTIN`), not a drawing:
+Forty-five separate layouts would be 45 × 4 sizes × 2 orientations × up to 5 moods × 3
+languages, about 5,400 combinations to test. Instead there are **eight layouts**, and each
+purpose is a **preset** on top of one (like `LabelTemplates::BUILTIN` rows): the layout,
+the default words in both languages, what it binds to, and the moods that suit it. People
+still pick purpose cards; the tests cover eight layouts.
 
-- **Slots**, each with a type: `headline`, `subhead`, `price`, `old_price`, `badge`,
-  `photo`, `cutout` (a dish on a clear background), `logo`, `qr`, `body`, `list` (dishes
-  with prices), `dates` (a range or times), `footer` (address, phone, website), `strip`
-  (a coloured band).
-- **Frames in relative units** (a share of the safe area), so one template fits every size.
-- **Per-size rules**: on A5 the body text may drop and the list may shorten. On A2 the
-  photo may run full bleed. The template says which slots are optional at which size.
-- **Fit rules for text**: each text slot has a largest and smallest size and shrinks to
-  fit. Below the smallest it does not overflow: the editor says "Too long for A5" and the
-  preflight refuses it.
-- **Moods**: each template supports some of `rust` (rust background, cream text), `cream`
-  (cream background, rust and brown), `dark` (near-black, for night and photos), `gold`
-  (gold accents, for festive) and `photo` (full photo with a shaded panel for text).
-- **Languages**: English, Dhivehi, or both. A Dhivehi-only poster mirrors the layout right
-  to left.
-
-### 4.2 The first library (about 45 templates)
-
-**Offers and prices**
-
-| Key | Name on screen | Fills from |
+| Layout | Shape | Used by |
 |---|---|---|
-| `happy_hour` | Happy hour | A promotion (percent, days, times) |
-| `item_discount` | Dish on discount | A dish + promotion: old price struck, new price big |
-| `price_drop` | New lower price | A dish (price) |
-| `bogo` | Buy one, get one | A promotion or typed |
-| `two_for` | 2 for MVR x | Typed price, one or two dishes |
-| `combo` | Meal deal | Two or three dishes, one price |
-| `percent_off_all` | x% off everything | An automatic promotion with its period |
-| `weekend_special` | Weekend special | A dish or promotion, the days |
-| `student_offer` | Student / staff offer | A promotion code |
-| `loyalty` | Loyalty points | Loyalty settings |
-| `gift_card` | Gift cards | Typed amounts |
-| `referral` | Bring a friend | Referral settings |
-| `coupon_flier` | Flier with a coupon | A promotion code, shown big with its end date |
+| `hero_photo` | One big photo or cut-out, headline, price or line | New dish, dish of the day, chef's pick, event |
+| `price_card` | Big number (price or percent), what it is, the period | Happy hour, discount, price drop, % off all, 2 for x, BOGO |
+| `list` | Rows of dishes with prices, optional small photos | Category, mini menu, drinks, menu board, best sellers |
+| `hours_grid` | Days and times, a note | Opening hours, holiday hours, Ramadan, Eid |
+| `qr_card` | A large QR, what it does, short words | Scan to order, table tent, review, Wi-Fi, social, pay |
+| `notice` | Headline and text, no photo | Hiring, hygiene, staff only, plain notice |
+| `compare` | Old against new, or two to three dishes side by side | Item discount, combo, meal deal |
+| `collage` | Two to four photos with one headline | Iftar menu, catering, grand opening |
 
-**Dishes**
+### 4.2 How a layout fits
 
-| Key | Name on screen | Fills from |
-|---|---|---|
-| `new_dish` | New on the menu | A dish (photo, name, price, short text) |
-| `dish_of_day` | Dish of the day / week | A dish or a Daily Special |
-| `best_sellers` | Best sellers | Real sales, top 3 or 5 (honours "Keep out of best sellers") |
-| `chefs_pick` | Chef's pick | A dish |
-| `spicy` | Spicy challenge | A dish (spice level) |
-| `category` | A whole category | A category: every dish with its price |
-| `mini_menu` | Mini menu | Chosen categories, A4 or A3 |
-| `full_menu_board` | Menu board | The live menu, A2 |
-| `drink_menu` | Drinks and juices | A category, with sizes and prices |
-| `allergens` | Allergen guide | Each dish's allergens, from Details |
-| `halal` | Halal / dietary marks | Badges |
+Modelled on the complaint poster, which already does this for one design
+(`App\Support\PosterCardSpec`, `resources/views/complain-poster.blade.php`,
+`complain-poster-sheet.blade.php`):
 
-**Times and seasons**
+- **Slots**, each typed: headline, subhead, price, old price, badge, photo, cut-out, logo,
+  QR, body, list, dates, footer, strip.
+- **Header and footer never give way.** The middle drops lines in a fixed order when space
+  runs out, like `PosterCardSpec`'s drop order.
+- **Type-size floors** per size (§ 8 distance rule), and a minimum QR size.
+- **Frames in relative units** of the safe area, so one layout fits every size.
+- **Text measured before drawing**, with ascent and descent (`App\Domains\Labels\LabelText`),
+  so fit is decided without rendering.
+- **Moods**: `rust`, `cream`, `dark`, `gold`, `photo` (a full photo with a shaded panel).
+- **Languages**: English, Dhivehi, or both. Dhivehi alone mirrors the layout right to left.
+  With "both", any typed slot missing its Dhivehi twin is flagged.
 
-| Key | Name on screen | Fills from |
-|---|---|---|
-| `opening_hours` | Opening hours | The Admin schedule (`OpeningHoursText`) |
-| `holiday_hours` | Holiday hours / closed | Typed dates and hours |
-| `ramadan` | Ramadan hours | Prayer Times (iftar, suhoor) + the schedule |
-| `iftar_menu` | Iftar menu / platter | Dishes or a platter |
-| `eid` | Eid greetings / hours | Typed |
-| `independence_day` | National day | Typed |
-| `event_night` | Event night | Typed date, time, place |
-| `grand_opening` | Opening / anniversary | Typed |
-| `catering` | We cater | Catering contact and minimums |
-| `preorder` | Order ahead | Pre-order rules (cut-off time) |
+### 4.3 The purposes (presets)
 
-**Ordering and service**
+**Offers and prices:** happy hour, dish on discount, new lower price, buy one get one,
+2 for MVR x, meal deal, x% off everything (from an automatic promotion with its period),
+weekend special, student or staff offer, loyalty points, gift cards, bring a friend,
+flier with a coupon code.
 
-| Key | Name on screen | Fills from |
-|---|---|---|
-| `scan_to_order` | Scan to order | The order app link (QR) |
-| `table_tent` | Table card | One per table, its own QR (`RestaurantTable::qrUrl`); A5 folded |
-| `delivery` | We deliver | Delivery areas, minimum, fee |
-| `pay_options` | Ways to pay | Enabled payment methods |
-| `wifi` | Wi-Fi card | Typed network and password (QR that joins the network) |
-| `review` | Tell us how we did | The complaints box link (QR) |
-| `social` | Follow us | Social links from Business Details |
+**Dishes:** new on the menu, dish of the day or week (a dish or a Daily Special), best
+sellers (real sales, honouring "Keep out of best sellers"), chef's pick, spicy challenge,
+a whole category, mini menu, menu board, drinks and juices, allergen guide, halal and
+dietary marks.
 
-**Inside the shop**
+**Times and seasons:** opening hours, holiday hours or closed, Ramadan hours (iftar and
+suhoor from Prayer Times), iftar menu, Eid, national day, event night, opening or
+anniversary, we cater, order ahead.
 
-| Key | Name on screen | Fills from |
-|---|---|---|
-| `hiring` | We're hiring | Typed roles, a phone or QR |
-| `hygiene` | Wash your hands | Fixed wording, both languages |
-| `staff_only` | Staff only / notices | Typed |
-| `storage_chart` | Storage temperatures | Label settings (storage lines) |
-| `notice` | Plain notice | Typed headline and text |
+**Ordering and service:** scan to order, table card (one per table, its own QR), we
+deliver, ways to pay, Wi-Fi card (a QR that joins the network), tell us how we did (the
+complaints box QR), follow us.
 
-Each template ships with at least two moods and works in all four sizes. More come later
-from real use: the editor shows which templates are used most.
+**Inside the shop:** we're hiring, wash your hands, staff only, storage temperatures, plain
+notice.
 
-### 4.3 Templates of your own
+The Templates tab shows how often each purpose is used (from `posters.template_key`), so the
+library grows from real use.
 
-- **Save as template** on any poster keeps its template, mood, slot settings and fixed
-  words, without the dish, photo or offer (Labels round 7 rules).
-- **Start from** offers built-in templates, saved ones and any earlier poster.
-- A saved template can be locked (`posters.manage`) so staff can only fill it.
+### 4.4 Words and data on every poster
 
-## 5. Making a poster (screens)
+- **Prices:** a dish with sizes prints "From MVR x" (`Item::displayPriceInfo()['from']`),
+  or the chosen size's own price. The labels fixed exactly this mistake on 2026-10-16.
+- **GST line:** every poster with a price carries a footer line in both languages. When
+  menu prices include GST (`GstSettingsService::taxInclusive()`), it says "Prices include
+  GST"; otherwise "GST x% is added" with the live rate (`GstSettingsService::defaultTaxRateBp()`).
+  It can be moved, not removed.
+- **Offer times** come from the promotion (`starts_at`, `expires_at`, `days_of_week`,
+  `starts_time`, `ends_time`), and Hijri dates from Signage's `hijri` date format.
+- **Take-down date** on every poster: the bound offer's end, or a typed event date.
 
-Labels → **Posters** tab, with the same shape as Make a label:
+### 4.5 Templates of your own
 
-1. **What is it for?** Picture cards in groups (Offers, Dishes, Times, Ordering, Inside).
-2. **Which template?** Thumbnails drawn from the real template with the chosen data.
-3. **Fill it in.** One live preview beside the form (pinned bar under the header below
-   1024 px, as with labels). Pick a dish, an offer or a category, and the poster fills.
-   **Tap a part of the preview** to edit just that part (headline, photo, price). Choices:
-   mood, photo style (full, cut-out, none), language, size and orientation.
-4. **Check and send.** The preflight result (§ 7), the material and finish (§ 6), the
-   spec sheet, then **Download for print** or **Send to print shop** (§ 8).
+Save as template on any poster keeps its purpose, layout, mood and fixed words, without the
+dish, photo or offer (Labels round 7 rules). Start from offers built-in purposes, saved
+templates and earlier posters. A saved template can be locked (`posters.manage`) so staff can
+only fill it.
 
-Other tabs inside Posters:
-- **My posters**: every poster, with its state (Draft, Ready, Sent, Up, Out of date,
-  Taken down), Print again, Duplicate, Rename in place, Pin.
-- **Templates**: built-in and your own.
-- **Print shops**: the shops you use and their file preferences (§ 8).
+## 5. Screens
 
-The admin layout rules apply: phone, tablet and computer layouts, nothing scrolls
-sideways, brand tones on chips, lucide icons, `Btn` sizes, dark mode.
+### 5.1 Where it lives
+
+Its own page, **Posters** (`/posters`), in Customers & Marketing next to TV Signage and Social
+Hub (`components/navConfig.ts`), with tabs **Make a poster**, **My posters**, **Templates** and
+**Print shops**. Labels already has seven tabs (`LABELS_TABS` in `pages/LabelsHub.tsx`), and a
+Posters tab with its own tabs inside would nest three deep, which the 2026-10-16 nav audit
+flagged. The owner asked for it "in labels", so Labels → Make a label carries a card "Making
+a poster? Posters" that opens it.
+
+### 5.2 Make a poster
+
+1. **What is it for?** Purpose cards in groups (Offers, Dishes, Times, Ordering, Inside).
+2. **Pick a look.** Thumbnails of the suitable layouts and moods, drawn with the chosen data.
+3. **Fill it in.** A live preview beside the form (a bar under the header below 1024 px, as
+   with labels). Pick a dish, offer or category and it fills. Tap a part of the preview to
+   edit only that part. Choices: mood, photo style (full, cut-out, none), language, sizes.
+4. **Check and send.** Preflight (§ 8), material and finish (§ 6), mounting, layout on the
+   sheet (§ 6.5), the spec sheet, then **Download for print** (one ZIP) or **Send to print
+   shop** (§ 9).
+
+**My posters:** every poster with its state, take-down date and place (Window, Door,
+Counter, Tables, Kitchen, Outside: a list the owner edits, not free text), a **Should be
+down** list, Print again, Duplicate, Rename in place, Pin, and the version history (§ 10).
+
+The admin rules apply: phone, tablet and computer layouts, nothing scrolls sideways, brand
+tones on chips, lucide icons, `Btn` sizes, dark mode.
 
 ## 6. Printing for UV, outsourced
 
@@ -190,236 +189,331 @@ sideways, brand tones on chips, lucide icons, `Btn` sizes, dark mode.
 
 | What | Best practice | Why |
 |---|---|---|
-| File type | **PDF/X-4**, one page per file, one file per size | The print standard: fonts embedded, colour defined |
-| Page size | The trim size plus 3 mm bleed each side, with the TrimBox and BleedBox set | The shop's software reads the boxes |
-| Crop marks | Off by default, on per shop | Most shops add their own; some want them |
-| Colour | CMYK for text, shapes and the logo; photos RGB with an ICC profile (allowed in PDF/X-4), or CMYK if the shop asks | Brand colours stay exact; photos keep their range |
-| Profile | Output intent **FOGRA39** (ISO Coated v2) by default, per shop | Tells the shop what the colours mean |
-| Black | Small text 100 % K only; large black areas rich black (C60 M40 Y40 K100) | Sharp text, deep blacks |
-| Total ink | At most 300 % | Avoids smudging and slow curing |
-| Resolution | Photos at 150 ppi at final size or better on A3 and A2 (seen from a distance), 300 ppi on A5 and A4 | The usual large-format rule |
+| File type | PDF/X-4, one page per file, one file per size | The print standard: fonts embedded, colour defined |
+| Page boxes | MediaBox and BleedBox at trim + 3 mm, TrimBox at trim | The shop's software reads them |
+| Crop marks | Off by default, on per shop | Most shops add their own |
+| Colour | CMYK for text, shapes and logo; photos RGB with their profile (allowed in PDF/X-4) | Exact brand colours; photos keep their range |
+| Profile | Output intent FOGRA39 (ISO Coated v2) by default, per shop | Tells the shop what the colours mean |
+| Black | Small text 100 % K; large black areas rich black (C60 M40 Y40 K100) | Sharp text, deep blacks |
+| Total ink | At most 300 % | Safe UV curing |
 | Fonts | Embedded, subset | Nothing changes at the shop |
-| White ink | A spot colour layer named as the shop says (often `White` or `RDG_WHITE`), set to overprint | UV printers lay white under the colours on clear, dark or metal boards |
-| Gloss (spot UV) | A spot colour layer named as the shop says (often `Spot UV` or `Varnish`), same size and position as the artwork, overprint | A raised, shiny logo or price |
-| File name | `BG-POSTER-<code>-<size>-<material>-v<n>.pdf` | The shop and you can tell versions apart |
+| Logo | Vector (§ 6.4) | Sharp at any size |
+| QR | Error correction M; H when the logo sits in it; never glossed | Scans from a distance and through glare |
+| Mirroring | A material flag for window vinyl printed from inside; the preview stays readable | Read correctly from the street |
+| File name | `BG-POSTER-<code>-<size>-<material>-v<n>.pdf`, masks `…-WHITE.pdf` / `…-GLOSS.pdf` | Clear versions for both sides |
 
-Sources: vendor guides differ on names and bleed, so these are defaults that each print shop
-can override in § 8: [Publication Station flatbed guide](https://ps.wdka.nl/wiki/Flatbedprinter),
+Vendor guides differ on names and bleed, so these are defaults each shop can override in § 9:
+[Publication Station flatbed guide](https://ps.wdka.nl/wiki/Flatbedprinter),
 [Tayda UV printing guide](https://www.taydaelectronics.com/uv-printing-service-guide-v1),
 [4OVER4 white ink set-up](https://v2.4over4.com/guide/how-to-setup-white-ink-printing-with-spot-colors-in-adobe-illustrator),
 [RW Marketing artwork guide](https://cbs.rwmarketing.com.au/resources/artwork).
 
 ### 6.2 Materials and finishes
 
-Each material sets defaults. Each print shop can turn materials off.
-
-| Material | White layer | Gloss | Notes |
+| Material | White | Gloss | Notes |
 |---|---|---|---|
-| Paper / poster paper | No | Optional | Fliers, short-lived offers |
-| Foam board (5 mm) | No | Optional | Counter and wall posters |
+| Paper / poster paper | No | Optional | Fliers, short offers |
+| Foam board (5 mm) | No | Optional | Counter and wall |
 | PVC board | No | Optional | Long-lived, wipe-clean |
 | White acrylic | No | Yes | Menu boards |
-| Clear acrylic | **Yes, under everything printed** | Optional | Window and door signs; see-through areas get no white |
-| Aluminium composite (ACP) | Yes on brushed silver, no on white | Optional | Outdoor |
-| Window vinyl (from outside) | Yes, plus mirrored print | No | Printed reversed, white behind |
-| Self-adhesive vinyl | No | Optional | Table tops, doors |
+| Clear acrylic | Yes, under printed areas only | Optional | Window and door signs |
+| Aluminium composite (ACP) | Yes on brushed silver | Optional | Outdoor |
+| Window vinyl, read from outside | Yes, plus mirrored | No | Printed reversed |
+| Self-adhesive vinyl | No | Optional | Tables, doors |
 
-### 6.3 How the layers are made
+### 6.3 White and gloss: mostly the shop's job
 
-- **White layer**: made by the server from the artwork. Under every printed area (photos,
-  logo, text, colour bands) on clear or dark materials, nothing in see-through areas. A
-  choke (slightly smaller, 0.2 mm by default) so white never shows at the edges.
-- **Gloss layer**: off by default. One switch, "Gloss the logo and price", puts gloss over
-  the logo and the price. A template may also mark slots as glossable. Thin lines and text
-  below 14 pt are never glossed (UV gloss does not hold fine detail).
-- Both layers are previewed on screen as a striped overlay you can switch on and off.
+Small-shop UV flatbeds (Roland, Mimaki, Mutoh) build the white underlay in their RIP
+software from the artwork; "white under all printed areas" is an operator setting. Named
+spot layers in the file matter only for **selective** white on clear material and for
+**spot gloss**, and each RIP names them differently (`RDG_WHITE` in VersaWorks,
+`SpotColor_White` in RasterLink, `White` elsewhere). So:
 
-## 7. Preflight: checked before anything is sent
+- **Phase 1:** white and gloss are **words on the spec sheet** ("White under all printed
+  areas", "Gloss on logo and price"), plus an optional **mask PDF per layer**: the same page
+  boxes, black where the ink goes (`…-WHITE.pdf`, `…-GLOSS.pdf`). Every RIP can use a mask.
+  The white mask is choked 0.2 mm so white never shows at the edges.
+- **Phase 2:** spot layers inside the file, named per shop and set to overprint, built only
+  once a shop says it wants them. The "Spot names" preflight check comes with them.
+- Gloss is never put on a QR or on text under 14 pt, and both layers are previewed on screen
+  as a striped overlay.
 
-A poster cannot be sent until every red check passes. Amber checks warn.
+### 6.4 The logo as vector
+
+The logos served today are 1080 × 1080 PNGs (`backend/public/brand/logo-light.png`,
+`logo-dark.png`; `App\Domains\Content\BrandImages`): a 250 mm logo on A2 would be 110 ppi.
+`backend/public/brand/logo-animated.svg` and `logo-animated-dark.svg` hold the mark as
+vector paths (no text or bitmap inside). Phase 0 makes a static `logo.svg` in both colourways
+(animation and `<style>` removed, wordmark confirmed present) and the PDF places it as vector.
+An uploaded logo that is only a PNG prints with an amber warning above A4.
+
+### 6.5 Layout on the sheet (imposition)
+
+Shops charge per sheet, so a step 4 choice lays posters out on the printed sheet
+(`PosterImposition`, reusing the complaint sheet's n-up arithmetic in
+`complain-poster-sheet.blade.php`): **tent** (two A5 panels on A4, the second turned 180°,
+a fold mark), **2-up**, **4-up**, with crop marks on the sheet.
+
+### 6.6 Brand colours in CMYK
+
+The brand colours are defined in RGB (`App\Domains\Content\BrandPalette`). Phase 0 prints a
+**swatch card**: an A5 with five CMYK candidates for each brand colour, the hex beside each.
+The owner picks the best under shop lights, and the chosen values go into
+`docs/brand/PALETTE.md` and a new `BrandPalette::cmyk()`. It is the cheapest way to keep the
+rust looking like the rust.
+
+## 7. Photos
+
+Media masters are capped at **3200 px on the long edge** (`MenuImageProcessor::MASTER_MAX_EDGE`).
+Across a full-bleed poster that is 376 ppi on A5, 268 on A4, 191 on A3 and 135 on A2.
+
+- **A poster-grade upload** in the poster photo picker keeps up to **4800 px**. Menu uploads
+  are untouched.
+- A photo with no master (only a web crop) cannot be used on a poster.
+- The cut-out style uses the dish photo packs (`scripts/food-photo-pack.py`) or a cut-out made
+  on upload.
+- Colour: photos stay RGB with their sRGB profile under PDF/X-4. The server has GD and no
+  Imagick (`docs/IPHONE_MEDIA_UPLOAD_FIX_PLAN.md`), so CMYK photo conversion is not planned;
+  a shop asking for PDF/X-1a is handled in Phase 2 if the host can run Ghostscript.
+- GD is used once per export to scale a photo to its target ppi, cached by hash. The PDF
+  embeds the JPEG as it is.
+
+## 8. Preflight: checked before anything is sent
+
+A poster cannot be sent until every red check passes. Amber warns.
 
 | Check | Red | Amber |
 |---|---|---|
 | Bleed | A full-bleed photo or band stops at the trim | |
-| Safe zone | Text, logo, price or QR outside the safe zone | |
-| Photo resolution | Under 100 ppi at final size | Under 150 ppi (A3, A2) or 300 ppi (A5, A4) |
-| Text size for distance | Body below the minimum for the size: A5 9 pt, A4 11 pt, A3 16 pt, A2 22 pt | Headline under 3× body |
-| Contrast | Text against its background below 4.5 : 1 | Below 7 : 1 on A2 window posters |
-| Text fit | A slot overflowed | A slot shrank to its smallest size |
-| QR | Smaller than 20 mm, or quiet zone cut | Smaller than 30 mm on A3 and A2 |
-| Data | A bound dish is hidden or deleted, or an offer has ended | An offer ends within 2 days |
-| Wording | Allergen guide or price not matching live data | |
-| White layer | Clear material with no white layer | |
-| Spot names | A layer name not matching the shop's settings | |
-| Total ink | Above 300 % anywhere | Above 280 % |
+| Safe zone and keep-outs | Text, logo, price or QR outside the safe zone or in a mounting circle | |
+| Photo resolution | Under 100 ppi, or no master | Under 200 ppi on A5 and A4, under 120 ppi on A3 and A2 |
+| Logo | | A bitmap logo above A4 |
+| Text size for distance | Body below A5 9 pt, A4 11 pt, A3 16 pt, A2 22 pt; Dhivehi 1.2× those | Headline under 3× body |
+| Contrast | Text below 4.5 : 1 on its background | Below 7 : 1 on A2 window posters |
+| Text fit | A slot overflowed | A slot shrank to its floor |
+| Languages | | "Both" with a typed slot missing its Dhivehi twin |
+| QR | Under 20 mm, quiet zone cut, or glossed | Under 30 mm on A3 and A2 |
+| Data | A bound dish hidden or deleted, an offer already ended | An offer ends within 2 days |
+| Prices | A printed price not matching live data | |
+| White | Clear material with no white instruction | |
+| Spot names (Phase 2) | A layer name not matching the shop's settings | |
+| Total ink | Above 300 % | Above 280 % |
 
-The rule of thumb for distance: about 25 mm of letter height for every 3 m away.
-Window posters get "Seen from the street" checks with larger minimums.
+Distance rule: about 25 mm of letter height for every 3 m away. Window posters get larger
+"seen from the street" minimums.
 
-## 8. Print shops: sending and tracking
+## 9. Print shops: sending and tracking
 
-Because printing is outsourced, the plan includes the hand-off:
+- **A print shop is a supplier.** `App\Models\Supplier` already holds phones, email, bank
+  details and `lead_days`; it gains a `kind` (`supplier` or `print_shop`) and `print_prefs`
+  JSON: PDF/X flavour, colour profile, bleed (3 or 5 mm), crop marks, white and gloss names,
+  masks or spot layers, materials offered. Purchasing lists only `supplier`; Posters only
+  `print_shop`.
+- **Send to print shop** makes one order: the print PDF per size, the masks if chosen, a proof
+  JPG (1200 px on the long edge, never print size), and a one-page **spec sheet** (poster
+  code, sizes, quantity per size, material, thickness, finish, white and gloss in words,
+  mounting, layout on the sheet, deadline, delivery or collection, contact). Sent by email,
+  or downloaded as one ZIP to send by WhatsApp or Viber.
+- **Order states:** Draft → Sent → Approved → Received → Up → Taken down, each timed and signed.
+  A quote is typed on the Sent step.
+- **Costs** become an `App\Models\Expense` with the shop's `supplier_id`, so monthly poster
+  spend is already in Finance.
+- **Proof approval** (a switch, off by default): the owner approves from the phone through a
+  signed link valid 24 hours, the way social posts are approved
+  (`App\Domains\Social\Services\SocialPostApproval`, `SocialApprovalPageController`),
+  including from the Telegram alert.
 
-- **Print shops** (Labels → Posters → Print shops): name, contact, email, WhatsApp, and the
-  shop's file preferences: PDF/X flavour, colour profile, bleed (3 or 5 mm), crop marks,
-  spot names for white and gloss, materials they offer, and typical turnaround.
-- **Send to print shop** makes one order with:
-  - the print-ready PDF for each size,
-  - a **low-resolution proof** (JPG) for a quick look,
-  - a **spec sheet** (PDF, one page): poster code, sizes, quantity per size, material,
-    thickness, finish (matte, gloss, spot UV), white layer yes/no, mounting (stand-offs,
-    tape, eyelets), deadline, delivery or collection, contact person and phone,
-  - sent by email from the system (the shop's address), or downloaded as one ZIP to send
-    by WhatsApp or Viber from the phone.
-- **Order states**: Draft → Sent → Quote received (amount, typed) → Approved → Printed →
-  Received → Up (where, typed: "Window, front") → Taken down. Each change is timed and
-  signed by who made it.
-- **Costs**: the quote and the final amount are kept per order, so the owner sees what
-  posters cost per month. Optionally linked to an expense in Finance later.
-- **Proof approval**: a poster can need the owner's approval before it is sent (a switch,
-  as with the wording lock on labels).
+## 10. Staying true after printing
 
-## 9. Staying true after printing
+- **Versions:** every export keeps a hash of the bound data and a readable diff ("v3: price
+  MVR 45 → 50"). The diff is also the out-of-date alert text.
+- **Out of date:** a changed price, dish, offer or opening hour marks the poster, with
+  **Make the new one**.
+- **Should be down:** posters past their take-down date are listed on My posters and the owner
+  is reminded the day before and on the day.
+- **Alerts:** two registry rows, `owner_poster_stale` and `owner_poster_ending`, each with a
+  default audience in `AlertAudience::DEFAULT_GROUPS`, asked through `AlertSwitch::isOn()`
+  (`SmsTypeRegistry`). Nothing else: no settings key, no second switch.
+- **Scans:** every printed poster carries a small code; scanning `/p/{code}` opens the dish or
+  offer and counts the scan per poster. Modelled on `App\Domains\Labels\BatchLink` (`/b/{code}`)
+  and `App\Models\ItemShareEvent` (item, channel, surface, time; no personal data).
 
-- **Out of date**: when a bound price, dish, offer or opening hour changes, the poster turns
-  "Out of date" with what changed ("Price is now MVR 50.00, poster says MVR 45.00") and a
-  **Make the new one** button that makes a new version and a new print order.
-- **Ending soon**: an offer poster that is up gets a reminder the day before and on the day
-  the offer ends: "Happy hour poster ends today: take it down".
-- **Alerts** follow the notification rules in `CLAUDE.md`: new rows in the alert registry
-  (`owner_poster_stale`, `owner_poster_ending`) with a default audience in
-  `AlertAudience::DEFAULT_GROUPS`, one switch per channel on System → Notifications, the
-  sender asking `AlertSwitch::isOn()`. No settings key of its own and no second switch.
-- **QR on the poster**: every printed poster carries a small code. Scanning it opens the
-  dish or offer, and the system counts scans per poster, so the owner sees which posters work.
+## 11. More than paper (Phase 3)
 
-## 10. More than paper (Phase 3)
+- **TV:** "Send to TV" makes one 1920 × 1080 PNG and one image slide. Signage already has an
+  image element bound to a URL (`SignageTemplateFactory`) and a `date_end` in its schedule
+  (`SignageScheduleMatcher`); the take-down date becomes `date_end`. No new element type.
+- **Social:** a draft post through `SocialPublisher`, so approval, best time and channel rules
+  apply. The images are `App\Domains\Social\Services\WeeklyMenuCard` (a GD brand card at
+  1200 × 630) with other sizes. Share to WhatsApp and Viber from a phone too.
+- **Website:** optionally an offer poster as the home banner for the offer's period.
 
-- **TV slide**: send a poster to Signage as a slide (1920 × 1080), with its end date as the
-  slide's end.
-- **Social media**: square, portrait and story images, using the animated logo for stories;
-  Share to WhatsApp and Viber from a phone.
-- **Website**: optionally show an offer poster as the home page banner for the offer's period.
+## 12. Technical design
 
-## 11. Technical design
+### 12.1 Reused, not rebuilt
 
-### 11.1 Where the code goes
+| Need | Already there |
+|---|---|
+| Fit with drop order, type floors, QR minimum, n-up | `App\Support\PosterCardSpec`, `complain-poster*.blade.php` |
+| Pieces in mm drawn as HTML/SVG and as a bitmap | `App\Domains\Labels\StickerDesign`, `LabelRaster` |
+| Text measuring with ascent and descent | `App\Domains\Labels\LabelText` |
+| Dhivehi in visual order, composed font | `App\Support\ThaanaVisual`, `NotoSansThaana-*-composed.ttf` |
+| QR | `QrSvg`, `BatchLink` |
+| Saved list, Print again | `App\Models\LabelJob`, `App\Domains\Labels\Reprint` |
+| Badges | `App\Domains\Labels\LabelBadges` |
+| Social card | `App\Domains\Social\Services\WeeklyMenuCard` |
+| Approval by signed link | `SocialPostApproval`, `SocialApprovalPageController` |
+| Alerts | `SmsTypeRegistry`, `AlertSwitch`, `AlertAudience` |
+| TV slide | Signage image element, `SignageScheduleMatcher` `date_end` |
+| Print shop, costs | `App\Models\Supplier`, `App\Models\Expense` |
+| Hours, Ramadan, Hijri | `OpeningHoursText`, `App\Domains\PrayerTimes`, Signage `hijri` |
+| Offers, specials, prices | `Promotion`, `DailySpecial`, `App\Services\SpecialPricingService`, `Item::displayPriceInfo()` |
+| GST wording | `App\Domains\Gst\Services\GstSettingsService` |
 
-- `App\Domains\Posters`: `PosterTemplates` (the built-in library), `PosterLayout` (slots and
-  fit into pieces, reusing the piece model of Labels: text, img, rect, line), `PosterData`
-  (binds dishes, offers, hours), `PosterPreflight`, `PosterLayers` (white and gloss),
-  `PosterExport` (the print PDF), `PosterProof` (JPG/PNG), `PosterStaleness`.
-- Reused from Labels: `LabelText` measuring and fonts, `ThaanaVisual` and the composed
-  Noto Sans Thaana files, `QrSvg` and `BatchLink`-style codes, `LabelBadges`,
-  `BrandImages`, the media library's full-size masters, the drag designer's overrides.
-- Admin: `components/posters/` (`MakePosterWizard`, `PosterEditor`, `PosterPreflightCard`,
-  `PrintShopsCard`, `PosterOrders`), the Posters tab in `LabelsHub`.
+### 12.2 New code
 
-### 11.2 Data
+- `App\Domains\Posters`: `PosterLayouts` (the eight), `PosterPurposes` (the presets),
+  `PosterLayout` (slots and fit to pieces), `PosterData` (bindings), `PosterPreflight`,
+  `PosterMasks` (white and gloss masks), `PosterImposition`, `PosterExport` (print PDF),
+  `PosterProof` (JPG), `PosterStaleness`, and `ExportPosterJob`.
+- Admin `components/posters/`: `MakePosterWizard`, `PosterEditor`, `PosterPreflightCard`,
+  `PrintShopsCard`, `PosterOrders`; the page `pages/PostersHub.tsx`.
+
+### 12.3 Data
 
 | Table | Holds |
 |---|---|
-| `posters` | name, template key, mood, language, sizes, orientation, slot values (JSON), bindings (dish ids, promotion id, category ids), layout overrides, state, version, created_by |
-| `poster_templates` | your own templates: base template key, fixed values, locked flag |
-| `poster_exports` | each file made: poster, version, size, material, layers, file path, preflight result, a hash of the bound data at export time |
-| `print_shops` | the shop and its file preferences (JSON) |
-| `poster_orders` | shop, exports, quantities, material, finish, deadline, state history, quote and cost, where it went up |
-| `poster_scans` | poster code, time (no personal data) |
+| `posters` | name, `template_key` (purpose), layout, mood, language, sizes, orientation, slot values (JSON), bindings (dish, size, promotion, category ids), overrides, state, take-down date, place, version, created_by |
+| `poster_templates` | your own templates: base purpose, fixed values, locked flag |
+| `poster_exports` | poster, version, size, material, masks, file paths, preflight result, bound-data hash, readable diff |
+| `poster_orders` | supplier (a print shop), exports, quantities, material, finish, mounting, layout on sheet, deadline, state history, quote, expense id, place |
+| `poster_scans` | poster code, time |
+| `suppliers` (existing) | gains `kind` and `print_prefs` |
 
-### 11.3 The print PDF: the one hard part
+### 12.4 The print PDF: the one hard part
 
-The labels PDF engine (dompdf) draws only RGB, with no spot colours, overprint, trim boxes
-or output intents, so it cannot make a PDF/X file with white and gloss layers. Options:
+The labels engine (dompdf) draws only RGB, with no spot colours, overprint, page boxes or
+output intent. **TCPDF** is the choice: pure PHP, runs on the current host, with CMYK colours,
+`AddSpotColor` / `SetFillSpotColor`, `setOverprint`, page boxes (`setPageBoxes`, or the
+`AddPage` format array) and SVG placement (`ImageSVG()`). It is **not installed**:
+`backend/composer.lock` lists `tecnickcom/tcpdf` only as another package's dev requirement
+and suggestion, so it is one new Composer dependency.
 
-| Option | Spot colours, overprint, boxes | Thaana | New dependency | Notes |
-|---|---|---|---|---|
-| **TCPDF** (PHP library via Composer) | Yes (spot colours, overprint, CMYK, ICC output intent) | Through the composed font already built for labels | One Composer package | Pure PHP, runs on cPanel; PDF/X validity must be proven in a spike |
-| Ghostscript after dompdf | Can convert to CMYK and PDF/X | As now | A system binary on the server | May not be on the host; no spot layers |
-| Headless Chrome | No spot colours | Good shaping | Chrome on the server | Not on cPanel; no spot layers |
-| A paid PDF API | Varies | Varies | External service and fees | Sends artwork outside |
+TCPDF has **no PDF/X mode**. It writes the ICC output intent and XMP only in PDF/A mode. PDF/X-4
+needs an `OutputIntents` entry with `GTS_PDFX`, a `pdfxid` XMP block, `Trapped` in the info
+dictionary and no encryption, so Phase 0 builds a small subclass that overrides `_putcatalog`,
+`_putXMP` and `_putinfo`, and proves it in Acrobat Preflight. A test parses every export for
+the output intent and the `pdfxid` block, so a TCPDF upgrade cannot quietly break it.
 
-**Recommendation: TCPDF**, proven first by a spike (Phase 0): one A3 poster with a photo,
-Dhivehi text, a white layer and a gloss layer, checked in Acrobat Preflight (PDF/X-4) and
-**sent with a first real order** (the spec sheet asks the shop to confirm the file is
-fine). If a shop asks for something else, its preferences are changed in § 8 and the next
-file follows them; if it needs a format TCPDF cannot make, fall back to Ghostscript conversion where the host allows, or deliver RGB PDF plus layer files
-if the shop prefers that.
+**Fonts:** converted once with `TCPDF_FONTS::addTTFfont()` from `backend/public/fonts/pdf/`
+(Plus Jakarta Sans 400, 500, 700, 800; DM Serif Display regular and italic;
+`NotoSansThaana-Regular-composed` and `-Bold-composed`; `LabelSymbols`) and committed under
+`backend/public/fonts/pdf/tcpdf/`.
 
-The **on-screen preview** stays HTML/SVG from the same pieces (like labels), and proofs are
-PNG/JPG rendered with GD (as `LabelRaster` does), so the browser never needs the print engine.
+**Dhivehi:** passed in visual order from `ThaanaVisual` with TCPDF's own right-to-left handling
+off (`setRTL(false)`), or the fili are reordered twice.
 
-### 11.4 Images
+The **on-screen preview** stays HTML/SVG from the same pieces, and proofs come from GD, so the
+browser never needs the print engine.
 
-- Photos come from the media library's **full-size masters**, never the web crops.
-- The cut-out style uses the dish photo packs (`scripts/food-photo-pack.py`) or a new
-  cut-out made on upload.
-- Large photos are scaled once per export at the target ppi and cached by hash.
-- Colour: photos kept RGB with their sRGB profile under PDF/X-4. CMYK conversion only if the
-  shop needs PDF/X-1a, which needs Imagick or Ghostscript on the host (checked in Phase 0).
+### 12.5 Exports on the queue
 
-### 11.5 Permissions
+An A2 with two 4800 px photos is a 60 to 120 MB GD job plus TCPDF on shared hosting, so exports
+run as a queued job (`ExportPosterJob`) with a "Preparing your file…" row and a toast when ready.
+The queue worker is already kept alive by the deploy. Proofs are 1200 px; photos are scaled once
+and cached by hash.
 
-Two new permissions, placed under Marketing in the role editor (`permissionSections.ts`):
+### 12.6 Permissions
 
-- `posters.make`: make posters, export, send orders with the owner's approval if that switch is on.
-- `posters.manage`: templates, print shops, approve orders, settings.
+Two new permissions under Customers & Marketing in the role editor (`permissionSections.ts`):
+`posters.make` (make, export, send; through approval when that switch is on) and `posters.manage`
+(templates, print shops, approve, settings). Owner only until a role is given them. The new routes
+add lines to `backend/tests/Fixtures/admin_route_permissions.txt`, asked once at the start of
+Phase 1 (`CLAUDE.md`: route permissions change only with the owner's yes).
 
-New routes add lines to `backend/tests/Fixtures/admin_route_permissions.txt`, which needs
-the owner's yes (`CLAUDE.md` § Who may change something may see it): asked once, at the
-start of Phase 1. Until a role is given them, only the owner has them.
+### 12.7 Tests
 
-### 11.6 Tests
+- Layout: each of the 8 layouts × 4 sizes × 3 languages with long sample text, no overflow
+  (snapshot of pieces); every purpose preset lays out.
+- Preflight: one test per check, red and amber.
+- Export: page boxes, output intent, `pdfxid` XMP, `Trapped`, embedded fonts, CMYK text, RGB
+  photo with profile, vector logo; masks with the same boxes.
+- Staleness: a price change or an ended offer marks bound posters and sends one alert per person.
+- Admin: wizard, tap to edit, preflight card, send flow at 390, 768, 1024 and 1366 px.
+- Visual proofs: CI renders a PNG of each layout × size × language as an artifact.
 
-- Layout: every template × size × mood × language lays out without overflow for a long
-  sample (snapshot of pieces).
-- Preflight: one test per check (red and amber).
-- Export: the PDF has the TrimBox and BleedBox, the output intent, embedded fonts, and spot
-  colours with the shop's names, set to overprint (parsed in the test).
-- Staleness: changing a price or ending an offer marks bound posters out of date and sends
-  one alert per person (`OneMessagePerEventTest` style).
-- Admin: wizard, tap to edit, preflight card, send flow; phone, tablet and computer widths.
-- Visual proofs: CI renders a PNG of every template at A4 as an artifact to look at.
-
-## 12. Phases
+## 13. Phases
 
 | Phase | What | Done when |
 |---|---|---|
-| **0. Spike** | TCPDF test poster with white and gloss layers; Acrobat preflight; a first real order printed from it; host check for Imagick and Ghostscript | The shop prints it without changes |
-| **1. Make and send** | Posters tab, wizard and editor, 20 templates (happy hour, item discount, price drop, combo, % off all, coupon flier, new dish, dish of the day, best sellers, category, mini menu, opening hours, holiday hours, Ramadan, scan to order, table tent, delivery, hiring, notice, review), live data, A5 to A2, preflight, print PDF with bleed, spec sheet, ZIP download, My posters | The owner makes and sends a real happy hour poster in under 5 minutes |
-| **2. UV and the shop** | Materials, white and gloss layers, print shops with preferences, send by email, order states and costs, proof approval, out-of-date and ending-soon alerts, your own templates | A clear acrylic poster with white and gloss comes back right first time |
-| **3. Everywhere** | The rest of the library (45+), TV slide, social sizes, scan counts per poster, website banner, menu board A2 | One offer goes on the window, the TV and Instagram from one design |
+| **0. Prove the file** | TCPDF with the PDF/X-4 subclass; one A3 `hero_photo` with Dhivehi, vector logo, CMYK brand colours and an RGB photo; page boxes; a `-WHITE.pdf` mask; the swatch card; spot layers and overprint tried but not required; host check for Imagick and Ghostscript; a worst-case A2 export timed on TEST | Acrobat Preflight passes PDF/X-4 and the shop prints the A3 and the swatch card without changes |
+| **1. Make and send** | The `/posters` page; 8 layouts; 20 purposes (happy hour, dish on discount, new lower price, meal deal, % off everything, flier with a coupon, new dish, dish of the day, best sellers, category, mini menu, opening hours, holiday hours, Ramadan, scan to order, table card, we deliver, we're hiring, plain notice, tell us how we did); live data with "From" prices and the GST line; A5 to A2 and layout on the sheet; preflight with the revised lines and keep-outs; queued export; spec sheet with white and gloss in words and optional masks; ZIP of all sizes; My posters with take-down dates and places | The owner sends a real happy hour poster and a table card set in under 5 minutes, and the shop prints both first time |
+| **2. The shop and staying true** | Print shops as suppliers with preferences, send by email, order states, costs as expenses, proof approval by signed link, spot layers inside the file on a shop's request, out-of-date and should-be-down alerts, versions and diffs, your own templates, the rest of the purposes | A clear acrylic poster with white and gloss comes back right first time |
+| **3. Everywhere** | TV slide, social drafts through `SocialPublisher`, scan counts per poster, website banner, A2 menu board | One offer goes on the window, the TV and Instagram from one design |
 
-Each phase ends with tests, the admin build, `docs/POSTERS.md` (how to use it), the
-`CLAUDE.md` note, merge, and the deploy command, as usual.
+Each phase ends with tests, the admin build, `docs/POSTERS.md` (how to use it), the `CLAUDE.md`
+note, merge, and the deploy command, as usual.
 
-## 13. Defaults chosen (best practice)
+## 14. Defaults chosen (best practice)
 
-Nothing here needs to be known now. These are the settings a new print shop starts with;
-if a shop says otherwise, its card in § 8 is changed and every file after follows it.
+Nothing here needs to be known now. A new print shop starts with these; if it says otherwise,
+its card in § 9 changes and every file after follows it.
 
-| Setting | Default | Why this one |
+| Setting | Default | Why |
 |---|---|---|
-| File | PDF/X-4, one page per file | The current print standard; accepts photos with their colour profile |
-| Bleed | 3 mm each side | The most common ask; 5 mm switchable per shop |
+| File | PDF/X-4, one page per file | The current print standard; accepts photos with their profile |
+| Bleed | 3 mm each side | The most common ask; 5 mm per shop |
 | Crop marks | Off | Most shops add their own |
 | Colour profile | FOGRA39 (ISO Coated v2) | The usual default for coated stock outside North America |
-| Text and logo colour | CMYK, brand colours converted once and fixed | Exact brand colour on every poster |
-| Photos | RGB with sRGB profile | Allowed in PDF/X-4; the shop's printer converts best for its inks |
-| Black | 100 % K for text, rich black (60/40/40/100) for large areas | Sharp text, deep black |
-| Total ink | 300 % at most | Safe for UV curing on every material |
-| Resolution | 300 ppi on A5 and A4, 150 ppi on A3 and A2 | Viewing distance rule for posters |
-| White layer name | `White` | The most common name; changeable per shop |
-| Gloss layer name | `Spot UV` | The most common name; changeable per shop |
+| Text and logo colour | CMYK from the swatch card (`BrandPalette::cmyk()`) | Exact brand colour every time |
+| Photos | RGB with sRGB profile | Allowed in PDF/X-4; the shop converts for its inks |
+| Black | 100 % K text, rich black (60/40/40/100) for large areas | Sharp text, deep black |
+| Total ink | 300 % at most | Safe UV curing |
+| Photo lines | Amber under 200 ppi (A5, A4) and 120 ppi (A3, A2); red under 100 | What the 3200 px masters and the 4800 px poster uploads allow |
+| White and gloss | Words on the spec sheet, optional masks; spot layers only on request | Most shop RIPs make the white themselves |
+| Layer names (Phase 2) | `White`, `Spot UV` | The most common; per shop |
 | White choke | 0.2 mm | Hides white at edges without thinning text |
-| Material | Foam board 5 mm for A3 and A2, paper for A5 and A4 | Common, cheap, matches most use |
+| QR | Error correction M, H with a logo inside, never glossed | Scans through glare |
+| Material | Foam board 5 mm for A3 and A2, paper for A5 and A4 | Common and cheap |
 | Finish | Matte | No glare under shop lights |
-| Spec sheet | Always sent with the file | The shop has everything in one page |
-| File name | `BG-POSTER-<code>-<size>-<material>-v<n>.pdf` | Clear versions for both sides |
-| Approval | Off; a switch for the owner to turn on | Starts simple |
-| Permissions | New `posters.make` and `posters.manage`, owner only until given | Keeps posters separate from labels |
-| PDF library | TCPDF through Composer | Pure PHP, runs on the current host, does spot colours and PDF/X |
-| First 20 templates | The list in Phase 1 | The posters a restaurant prints most |
-| Look | Matches the brand palette and the label designs | One brand across stickers, posters and screens |
+| Mounting | None; keep-outs when stand-offs or eyelets are picked | |
+| Spec sheet | Always sent | Everything on one page |
+| Approval | Off; the owner can switch it on | Starts simple |
+| Permissions | New `posters.make` and `posters.manage`, owner only at first | Posters separate from labels |
+| PDF library | TCPDF with a PDF/X-4 subclass | Pure PHP, runs on this host |
+| Place list | Window, Door, Counter, Tables, Kitchen, Outside | Editable |
 
-Optional later: once a print shop shares its artwork guide or template file, its card in
-§ 8 can be filled from it in a few minutes.
+## 15. Risks
+
+- **Hosting limits:** memory and time on shared cPanel. Mitigated by the queue, the 4800 px cap,
+  scaled and cached photos, and the A2 timing in Phase 0.
+- **The PDF/X subclass** depends on TCPDF internals. Re-checked on every TCPDF upgrade by the test
+  that parses the catalog and XMP.
+- **Layout drift** at A5 and in Dhivehi. The CI proof PNG per layout × size × language catches it.
+- **Shops differ.** The per-shop card in § 9 is the safety valve, and masks work with every RIP.
+
+## 16. What changed in this revision
+
+Kept from the review, each checked in the code:
+
+- Photo lines lowered and a 4800 px poster upload added (`MenuImageProcessor::MASTER_MAX_EDGE` = 3200).
+- A vector logo from `logo-animated.svg`; the served logos are 1080 × 1080 PNGs.
+- TCPDF is not installed and has no PDF/X mode; a subclass is part of Phase 0.
+- White and gloss start as spec-sheet words and masks; spot layers move to Phase 2.
+- Reuse of `PosterCardSpec`, `WeeklyMenuCard`, `BatchLink`, `ItemShareEvent`, `SocialPostApproval`,
+  Signage, `Supplier`, `Expense`, `OpeningHoursText`, Prayer Times, `Promotion`, `DailySpecial`.
+- Eight layouts with purpose presets instead of 45 layouts.
+- Print shops as suppliers, costs as expenses, shorter order states.
+- Its own page under Customers & Marketing, with a card on Labels.
+- Queued exports, small proofs, imposition, mounting keep-outs, the swatch card, one ZIP of all
+  sizes, QR rules, mirroring, "From" prices, the Dhivehi size factor, take-down dates, places,
+  versions, social through `SocialPublisher`, TV through one image slide, use counts.
+
+Corrected from the review:
+
+- **GST line.** There is no `gst_rate_bp` setting for this. The rate is
+  `GstSettingsService::defaultTaxRateBp()`, and there is a `tax_inclusive` switch, so the line
+  says "Prices include GST" only when it is on, and "GST x% is added" otherwise.
+- **`BrandPalette::cmyk()`** does not exist yet (`App\Domains\Content\BrandPalette`); it is new.
+- **The vector logo** has no text or bitmap elements, so the whole mark should be paths; Phase 0
+  confirms the wordmark is there.
