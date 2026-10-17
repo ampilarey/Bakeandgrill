@@ -1,0 +1,56 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Poster extends Model
+{
+    /** Where a printed poster can stand. A list, not free text (docs/POSTER_PLAN.md § 5.2). */
+    public const PLACES = ['Window', 'Door', 'Counter', 'Tables', 'Kitchen', 'Outside'];
+
+    public const STATES = ['draft', 'ready', 'up', 'down'];
+
+    protected $fillable = [
+        'name', 'template_key', 'layout', 'mood', 'language', 'landscape',
+        'sizes', 'slots', 'bindings', 'state', 'take_down_on', 'place',
+        'pinned', 'version', 'created_by',
+    ];
+
+    protected $casts = [
+        'landscape' => 'boolean',
+        'sizes' => 'array',
+        'slots' => 'array',
+        'bindings' => 'array',
+        'pinned' => 'boolean',
+        'take_down_on' => 'date',
+        'version' => 'integer',
+    ];
+
+    public function exports(): HasMany
+    {
+        return $this->hasMany(PosterExport::class);
+    }
+
+    public function author(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function code(): string
+    {
+        return 'P' . str_pad((string) $this->id, 4, '0', STR_PAD_LEFT);
+    }
+
+    /** Past its take-down date and not marked down. */
+    public function shouldBeDown(): bool
+    {
+        return $this->take_down_on !== null
+            && $this->take_down_on->toDateString() < now()->toDateString()
+            && $this->state !== 'down';
+    }
+}

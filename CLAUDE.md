@@ -705,10 +705,12 @@ ticket or moves under the cashier's finger.
 ## Poster print PDFs (PDF/X-4)
 
 Posters render through TCPDF via `App\Domains\Posters\Pdf\PdfX4Document`, not dompdf
-(`docs/POSTERS.md`, `docs/POSTER_PLAN.md`). Keep core fonts out (the subclass drops
+(`docs/POSTERS.md`, `docs/POSTER_PLAN.md`). The admin page is `/posters`
+(`posters.make` / `posters.manage`). Keep core fonts out (the subclass drops
 Helvetica), pass Dhivehi in visual order with TCPDF bidi off, and run
 `scripts/install-poster-icc.sh` once per host so the FOGRA39 output intent is embedded.
 TCPDF fonts are made into `storage/app/posters/fonts/` on first use; nothing to commit.
+Exports run on the queue (`ExportPosterJob`).
 
 ## Queue worker vs synchronous SMS
 

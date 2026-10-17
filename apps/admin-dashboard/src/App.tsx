@@ -62,6 +62,7 @@ const SystemHub               = lazyWithRetry(() => import('./pages/SystemHub').
 const MyAccountPage           = lazyWithRetry(() => import('./pages/MyAccountPage').then((m) => ({ default: m.MyAccountPage })));
 const MediaLibraryPage        = lazyWithRetry(() => import('./pages/MediaLibraryPage').then((m) => ({ default: m.MediaLibraryPage })));
 const SignagePage             = lazyWithRetry(() => import('./pages/SignagePage').then((m) => ({ default: m.SignagePage })));
+const PostersPage             = lazyWithRetry(() => import('./pages/PostersPage').then((m) => ({ default: m.PostersPage })));
 const SocialHubPage           = lazyWithRetry(() => import('./pages/SocialHubPage').then((m) => ({ default: m.SocialHubPage })));
 const WholesaleAccountPage    = lazyWithRetry(() => import('./pages/WholesaleAccountPage'));
 const WholesaleInvoicingPage  = lazyWithRetry(() => import('./pages/WholesaleInvoicingPage'));
@@ -533,6 +534,11 @@ export default function App() {
                 <Route path="signage" element={
                   <PermissionGuard user={user} permission="signage.manage">
                     <SignagePage />
+                  </PermissionGuard>
+                } />
+                <Route path="posters" element={
+                  <PermissionGuard user={user} permissions={['posters.make', 'posters.manage']}>
+                    <PostersPage />
                   </PermissionGuard>
                 } />
                 <Route path="social" element={

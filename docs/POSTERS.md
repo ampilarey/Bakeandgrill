@@ -1,4 +1,34 @@
-# Posters: Phase 0, the print file
+# Posters
+
+Phase 0 proved the print file (`php artisan posters:spike`, below). Phase 1 is the
+page: Admin → Posters, or the card on Labels → Make a label.
+
+## Make a poster
+
+1. **What is it for.** Twenty purposes in five groups. "Tell us how we did" opens the
+   existing complaint poster (`/complain/poster`); Posters takes that design over in Phase 2.
+2. **Fill it in.** Mood, language, sizes A5–A2, and the dish, offer, category or table it
+   binds to. A dish with sizes prints "From MVR x". The GST line follows
+   `GstSettingsService` and can be moved, not removed. Leave the table blank on a table
+   card and the file has one page per active table.
+3. **Check and download.** Red preflight checks block the ZIP. Amber warns. The ZIP holds
+   one PDF/X-4 per size, the spec sheet, and (if ticked) the white mask and, when gloss is
+   set, the gloss mask. Layout on the sheet: one per page, tent (two A5 on A4, the second
+   turned 180°), 2-up or 4-up. Send the ZIP by WhatsApp, Viber or email. Sending to a print
+   shop from the app is Phase 2.
+
+My posters keeps each one with its take-down date and place (Window, Door, Counter,
+Tables, Kitchen, Outside). Past the date, it is listed under "should be down". Print again
+is another download. Templates can be saved and, with `posters.manage`, locked.
+
+Permissions: `posters.make` (managers and anyone granted it) and `posters.manage`
+(owner; lock and delete templates).
+
+Exports run on the queue (`ExportPosterJob`). With the queue on `sync` (local, tests) the
+ZIP is ready in the same request. On the server the worker must be running; the row stays
+"queued" until it is.
+
+## Phase 0, the print file
 
 The plan is `docs/POSTER_PLAN.md`; this is how to run what Phase 0 built and what to send
 to the print shop. Code lives in `backend/app/Domains/Posters/` (PDF engine, geometry,

@@ -233,6 +233,8 @@ final class PermissionCatalog
             ['group' => 'Marketing', 'slug' => 'sms_marketing.manage', 'name' => 'Manage SMS marketing'],
             ['group' => 'Marketing', 'slug' => 'integrations.sms', 'name' => 'SMS campaigns (legacy)'],
             ['group' => 'Marketing', 'slug' => 'signage.manage', 'name' => 'Manage TV signage', 'description' => 'TV menu boards, playlists, screens, campaigns & emergency'],
+            ['group' => 'Marketing', 'slug' => 'posters.make', 'name' => 'Make posters', 'description' => 'Make, edit and download print files'],
+            ['group' => 'Marketing', 'slug' => 'posters.manage', 'name' => 'Manage poster templates', 'description' => 'Save, lock and delete poster templates'],
             ['group' => 'Marketing', 'slug' => 'social.view', 'name' => 'View Social Hub', 'description' => 'See social posts, queue and history'],
             ['group' => 'Marketing', 'slug' => 'social.compose', 'name' => 'Compose social posts', 'description' => 'Create and edit social post drafts'],
             ['group' => 'Marketing', 'slug' => 'social.schedule', 'name' => 'Schedule social posts', 'description' => 'Schedule drafts for later publishing'],
@@ -385,6 +387,8 @@ final class PermissionCatalog
             'telegram.manage',
             // Off by default for managers too (owner, 2026-10-02).
             'pos.customers_tab',
+            // Templates, print shops and proof approval (docs/POSTER_PLAN.md § 12.6).
+            'posters.manage',
             // Owner-only by default (2026-10-03): it rewrites what the drawer and the tender report say.
             'payments.correct_tender',
             // Audit 2026-09-03 (F2): customers.credit.repay moved to managers
@@ -535,6 +539,10 @@ final class PermissionCatalog
             'pos.time_clock',
             'pos.view_all_station_orders',
             'pos.view_this_device_orders',
+            // Posters (2026-10-17, intentional): a manager who already runs
+            // the floor can make and download a poster. Locking a template
+            // (posters.manage) stays owner-only.
+            'posters.make',
             'promotions.apply_promo_code',
             'promotions.discount_override',
             'promotions.discounts',

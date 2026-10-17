@@ -8,7 +8,7 @@ import {
   Boxes, LayoutGrid, Wallet, Clock, Monitor, Share2,
   Link, ShoppingBag, Zap,
   ConciergeBell, Wrench, ClipboardCheck, HeartPulse, UserCircle, Utensils,
-  LayoutTemplate, Shield, UserCog, Images, Tv, Store, Tags, Send, Bell,
+  LayoutTemplate, Shield, UserCog, Images, Tv, Store, Tags, Send, Bell, Frame,
 } from 'lucide-react';
 import type { StaffUser } from '../api';
 
@@ -129,6 +129,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/sms',        icon: MessageSquare, label: 'SMS campaigns', permissions: ['integrations.sms', 'sms_marketing.manage', 'sms.settings.manage', 'sms.logs.view'], description: 'Campaigns, contacts, scheduled texts & templates' },
       { to: '/social', icon: Share2, label: 'Social Hub', permission: 'social.view', description: 'Post to Facebook, Instagram, Telegram & Viber' },
       { to: '/signage', icon: Tv, label: 'TV Signage', permission: 'signage.manage', description: 'Digital menu boards' },
+      { to: '/posters', icon: Frame, label: 'Posters', permissions: ['posters.make', 'posters.manage'], description: 'Print-ready posters for the shop' },
       { to: '/content/website', icon: LayoutTemplate, label: 'Website Content', permission: 'website.manage', description: 'Public website copy, branding & visuals' },
       { to: '/content/order-app', icon: ShoppingBag, label: 'Order App Content', permission: 'website.manage', description: 'Ordering app copy, branding & visuals' },
       { to: '/media', icon: Images, label: 'Media Library', permission: 'media.view', description: 'Uploaded images, video, audio & documents' },
