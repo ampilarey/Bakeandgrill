@@ -2,11 +2,81 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
-  PageHeader, PageShell, TableCard, TD, Badge, Btn, Pagination, EmptyState, StatCard,
+  PageHeader, PageShell, TableCard, TD, Badge, Btn, Pagination, EmptyState, StatCard, Modal, ModalActions,
 } from '../components/SharedUI';
 import { SortFilterHead, useSortFilter } from '../components/TableControls';
-import { fetchAdminReviews, moderateReview, type Review } from '../api';
-import { Star, ChevronDown, ChevronUp } from 'lucide-react';
+import { fetchAdminReviews, fetchReviewPhoto, moderateReview, replyToReview, type Review } from '../api';
+import { Star, ChevronDown, ChevronUp, BadgeCheck, ThumbsUp } from 'lucide-react';
+
+/** A review's photos as thumbnails, loaded through the staff route; a tap opens the full one (feature 6). */
+function ReviewPhotos({ review }: { review: Review }) {
+  const count = review.photos?.length ?? 0;
+  const [thumbs, setThumbs] = useState<string[]>([]);
+  const [full, setFull] = useState<string | null>(null);
+  useEffect(() => {
+    if (count === 0) return;
+    let live = true;
+    const urls: string[] = [];
+    Promise.all(Array.from({ length: count }, (_, n) => fetchReviewPhoto(review.id, n, true).then((b) => URL.createObjectURL(b)).catch(() => '')))
+      .then((list) => { urls.push(...list); if (live) setThumbs(list); });
+    return () => { live = false; urls.forEach((u) => u && URL.revokeObjectURL(u)); };
+  }, [review.id, count]);
+  useEffect(() => () => { if (full) URL.revokeObjectURL(full); }, [full]);
+  if (count === 0) return null;
+  const open = async (n: number) => {
+    try { setFull(URL.createObjectURL(await fetchReviewPhoto(review.id, n))); } catch { /* the thumbnail stays */ }
+  };
+  return (
+    <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }} data-testid={`review-photos-${review.id}`}>
+      {thumbs.map((src, n) => (
+        <button key={n} type="button" onClick={() => void open(n)} aria-label={`Photo ${n + 1}`} style={{ padding: 0, border: '1px solid var(--color-border)', borderRadius: 8, overflow: 'hidden', width: 48, height: 48, background: 'var(--color-bg)', cursor: 'zoom-in' }}>
+          {src && <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
+        </button>
+      ))}
+      {full && (
+        <Modal title="Review photo" onClose={() => setFull(null)} maxWidth={720}>
+          <img src={full} alt="" style={{ width: '100%', borderRadius: 10, display: 'block', background: 'var(--color-backdrop)' }} />
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+/** Admin → Reviews → Reply: shown under the review as "Reply from Bake & Grill". */
+function ReplyModal({ review, onClose, onSaved }: { review: Review; onClose: () => void; onSaved: () => void }) {
+  const [text, setText] = useState(review.reply?.text ?? '');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const save = async (value: string | null) => {
+    setSaving(true); setError('');
+    try { await replyToReview(review.id, value); onSaved(); onClose(); }
+    catch (e) { setError((e as Error).message); }
+    finally { setSaving(false); }
+  };
+  return (
+    <Modal title={`Reply to ${review.author}`} onClose={onClose} maxWidth={520}>
+      {review.comment && <p style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--color-text-secondary)' }}>“{review.comment}”</p>}
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        maxLength={1000}
+        rows={5}
+        data-testid="review-reply-text"
+        aria-label="Reply"
+        style={{ width: '100%', boxSizing: 'border-box', padding: 10, borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 14, fontFamily: 'inherit' }}
+      />
+      <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
+        Everyone who reads the review sees it. {review.reply ? 'The customer was told about your first reply.' : 'The customer is told by SMS.'}
+      </p>
+      {error && <p style={{ color: 'var(--color-danger)', fontSize: 13 }}>{error}</p>}
+      <ModalActions>
+        {review.reply && <Btn variant="danger-outline" onClick={() => void save(null)} disabled={saving}>Remove reply</Btn>}
+        <Btn variant="secondary" onClick={onClose} disabled={saving}>Cancel</Btn>
+        <Btn onClick={() => void save(text.trim())} disabled={saving || text.trim() === ''}>Save reply</Btn>
+      </ModalActions>
+    </Modal>
+  );
+}
 
 function StarRating({ rating }: { rating: number }) {
   return (
@@ -49,6 +119,7 @@ export default function ReviewsPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [acting, setActing] = useState<number | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [replying, setReplying] = useState<Review | null>(null);
 
   const load = async () => {
     setLoading(true); setError('');
@@ -128,6 +199,18 @@ export default function ReviewsPage() {
                       )}
                     </div>
                   ) : <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>No comment</span>}
+                  <ReviewPhotos review={review} />
+                  {(review.verified || (review.helpful_count ?? 0) > 0) && (
+                    <div style={{ display: 'flex', gap: 10, marginTop: 6, fontSize: 12, color: 'var(--color-text-secondary)', flexWrap: 'wrap' }}>
+                      {review.verified && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><BadgeCheck size={13} aria-hidden /> Verified order</span>}
+                      {(review.helpful_count ?? 0) > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><ThumbsUp size={12} aria-hidden /> {review.helpful_count} found it helpful</span>}
+                    </div>
+                  )}
+                  {review.reply && (
+                    <p data-testid={`review-reply-${review.id}`} style={{ margin: '6px 0 0', padding: '6px 8px', borderLeft: '3px solid var(--color-primary)', background: 'var(--color-bg)', fontSize: 12, color: 'var(--color-text)' }}>
+                      <strong>Your reply:</strong> {review.reply.text}
+                    </p>
+                  )}
                 </td>
                 <td style={{ ...TD, fontSize: 12 }}>
                   {review.item ? <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{review.item.name}</span> : null}
@@ -149,6 +232,9 @@ export default function ReviewsPage() {
                       Approve
                     </Btn>
                   )}
+                  <Btn small variant="secondary" onClick={() => setReplying(review)} style={{ marginRight: 6 }}>
+                    {review.reply ? 'Edit reply' : 'Reply'}
+                  </Btn>
                   {review.status !== 'rejected' && (
                     <Btn small variant="danger-outline" onClick={() => handleModerate(review.id, 'rejected')} disabled={acting === review.id}>
                       Reject
@@ -162,6 +248,7 @@ export default function ReviewsPage() {
       </TableCard>
 
       <Pagination page={page} totalPages={meta.last_page} onChange={setPage} />
+      {replying && <ReplyModal review={replying} onClose={() => setReplying(null)} onSaved={() => void load()} />}
     </div>
 
     </PageShell>

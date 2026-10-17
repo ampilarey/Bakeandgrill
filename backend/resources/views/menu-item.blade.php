@@ -285,6 +285,38 @@
             </ul>
         </div>
     @endif
+
+    @php
+        $itemReviews = $itemReviews ?? collect();
+        $reviewCount = (int) ($reviewStats->review_count ?? 0);
+        $reviewAvg = $reviewCount > 0 ? round((float) $reviewStats->average_rating, 1) : null;
+    @endphp
+    @if($itemReviews->isNotEmpty())
+        <section class="menu-item-reviews" data-testid="item-reviews" aria-labelledby="item-reviews-h">
+            <h2 id="item-reviews-h">Reviews <span class="menu-item-reviews-avg">{{ number_format($reviewAvg, 1) }} ★ · {{ $reviewCount }}</span></h2>
+            @foreach($itemReviews as $rv)
+                <div class="menu-item-review">
+                    <p class="menu-item-review-head">
+                        <span class="menu-item-review-stars" aria-label="{{ $rv->rating }} out of 5">{{ str_repeat('★', $rv->rating) }}<span class="menu-item-review-off">{{ str_repeat('★', 5 - $rv->rating) }}</span></span>
+                        <span>{{ $rv->is_anonymous ? 'Anonymous' : ($rv->customer?->name ?? 'Guest') }}</span>
+                        @if($rv->isVerified())<span class="menu-item-review-verified">{!! \App\Support\UiIcon::svg('badge-check', 13) !!} Verified order</span>@endif
+                    </p>
+                    @if(filled($rv->comment))<p class="menu-item-review-text">{{ $rv->comment }}</p>@endif
+                    @if(! empty($rv->photos))
+                        <div class="menu-item-review-photos">
+                            @foreach(array_keys($rv->photos) as $n)
+                                <a href="/api/reviews/{{ $rv->id }}/photos/{{ $n }}" target="_blank" rel="noopener"><img src="/api/reviews/{{ $rv->id }}/photos/{{ $n }}?thumb=1" alt="Photo {{ $n + 1 }}" loading="lazy" width="64" height="64"></a>
+                            @endforeach
+                        </div>
+                    @endif
+                    @if($rv->helpful_count > 0)<p class="menu-item-review-helpful">{{ $rv->helpful_count }} found this helpful</p>@endif
+                    @if(filled($rv->reply))
+                        <div class="menu-item-review-reply"><strong>Reply from Bake &amp; Grill</strong><p>{{ $rv->reply }}</p></div>
+                    @endif
+                </div>
+            @endforeach
+        </section>
+    @endif
 </article>
 
 @php
@@ -300,6 +332,11 @@
             'price' => number_format($price['price'], 2, '.', ''),
             'priceCurrency' => 'MVR',
         ],
+        'aggregateRating' => $reviewCount > 0 ? [
+            '@type' => 'AggregateRating',
+            'ratingValue' => number_format((float) $reviewAvg, 1, '.', ''),
+            'reviewCount' => $reviewCount,
+        ] : null,
     ], fn ($v) => $v !== null);
 @endphp
 @unless($isFragment)

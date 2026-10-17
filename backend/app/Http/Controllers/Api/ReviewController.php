@@ -4,16 +4,31 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Notifications\DTOs\SmsMessage;
+use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Notifications\Support\AlertSwitch;
+use App\Domains\Reviews\ReviewPhotos;
 use App\Models\Customer;
 use App\Models\Item;
 use App\Models\Order;
 use App\Models\Review;
+use App\Models\ReviewVote;
+use App\Models\User;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\Response;
 
 class ReviewController extends Controller
 {
+    public const TYPE_REPLY = 'customer_review_reply';
+
+    public function __construct(private readonly ReviewPhotos $photos) {}
+
     // ── Public: list reviews for an item ─────────────────────────────────────
 
     public function itemReviews(int $itemId): JsonResponse
@@ -28,7 +43,9 @@ class ReviewController extends Controller
 
         $reviews = Review::where('item_id', $item->id)
             ->where('status', 'approved')
-            ->with('customer:id,name')
+            ->with('customer:id,name', 'item:id,name', 'order:id,order_number')
+            // Most helpful first, then newest (feature 6).
+            ->orderByDesc('helpful_count')
             ->orderByDesc('created_at')
             ->limit(50)
             ->get();
@@ -49,7 +66,7 @@ class ReviewController extends Controller
             ->where('status', 'approved')
             ->whereNotNull('comment')
             ->where('comment', '!=', '')
-            ->with(['customer:id,name', 'item:id,name'])
+            ->with(['customer:id,name', 'item:id,name', 'order:id,order_number'])
             ->orderByDesc('rating')
             ->orderByDesc('created_at')
             ->limit($limit)
@@ -71,6 +88,8 @@ class ReviewController extends Controller
             'type' => ['sometimes', 'in:order,item'],
             'item_id' => ['nullable', 'integer', 'exists:items,id'],
             'is_anonymous' => ['sometimes', 'boolean'],
+            'photos' => ['sometimes', 'array', 'max:' . ReviewPhotos::MAX],
+            'photos.*' => ['file', 'image', 'max:5120'],
         ]);
 
         $user = $request->user();
@@ -92,20 +111,29 @@ class ReviewController extends Controller
             return response()->json(['message' => 'You can only review completed orders.'], 422);
         }
 
-        $review = Review::updateOrCreate(
-            [
-                'customer_id' => $customerId,
-                'order_id' => $validated['order_id'],
-                'item_id' => $validated['item_id'] ?? null,
-            ],
-            [
-                'rating' => $validated['rating'],
-                'comment' => $validated['comment'] ?? null,
-                'type' => $validated['type'] ?? (($validated['item_id'] ?? null) ? 'item' : 'order'),
-                'is_anonymous' => (bool) ($validated['is_anonymous'] ?? false),
-                'status' => 'pending',
-            ],
-        );
+        $review = Review::query()->firstOrNew([
+            'customer_id' => $customerId,
+            'order_id' => $validated['order_id'],
+            'item_id' => $validated['item_id'] ?? null,
+        ]);
+        $review->fill([
+            'rating' => $validated['rating'],
+            'comment' => $validated['comment'] ?? null,
+            'type' => $validated['type'] ?? (($validated['item_id'] ?? null) ? 'item' : 'order'),
+            'is_anonymous' => (bool) ($validated['is_anonymous'] ?? false),
+            // Every review, with photos or without, waits for staff.
+            'status' => 'pending',
+        ]);
+        // New photos replace the old ones; none sent keeps what is there.
+        $files = array_values(array_filter((array) $request->file('photos', [])));
+        if ($files !== []) {
+            $old = $review->photos;
+            $review->photos = array_map(fn ($file) => $this->photos->store($file), $files);
+            $review->save();
+            $this->photos->delete($old);
+        } else {
+            $review->save();
+        }
 
         return response()->json(['review' => $this->format($review)], 201);
     }
@@ -162,7 +190,92 @@ class ReviewController extends Controller
         return response()->json(['review' => $this->format($review)]);
     }
 
+    /** POST /api/admin/reviews/{id}/reply: the restaurant's answer, shown under the review (feature 6). */
+    public function reply(Request $request, int $id): JsonResponse
+    {
+        $validated = $request->validate(['reply' => ['present', 'nullable', 'string', 'max:1000']]);
+        $review = Review::with('customer')->findOrFail($id);
+        $text = trim((string) ($validated['reply'] ?? ''));
+        $first = blank($review->reply);
+        $user = $request->user();
+        $review->forceFill([
+            'reply' => $text !== '' ? $text : null,
+            'replied_at' => $text !== '' ? now() : null,
+            'replied_by' => $text !== '' && $user instanceof User ? $user->id : null,
+        ])->save();
+        if ($text !== '' && $first) {
+            $this->tellCustomer($review);
+        }
+
+        return response()->json(['review' => $this->format($review->fresh(['customer', 'item', 'order']))]);
+    }
+
+    /** POST /api/reviews/{id}/helpful: once per customer, never on their own review. */
+    public function helpful(Request $request, int $id): JsonResponse
+    {
+        $customer = $request->user();
+        abort_unless($customer instanceof Customer, 403);
+        $review = Review::query()->where('status', 'approved')->findOrFail($id);
+        if ((int) $review->customer_id === (int) $customer->id) {
+            return response()->json(['message' => 'You cannot vote on your own review.'], 422);
+        }
+        try {
+            DB::transaction(function () use ($review, $customer): void {
+                ReviewVote::query()->create(['review_id' => $review->id, 'customer_id' => $customer->id]);
+                Review::query()->whereKey($review->id)->increment('helpful_count');
+            });
+        } catch (UniqueConstraintViolationException) {
+            // Already counted.
+        }
+
+        return response()->json(['helpful_count' => (int) $review->fresh()?->helpful_count, 'voted' => true]);
+    }
+
+    /** GET /api/reviews/{id}/photos/{n}: approved reviews only; ?thumb=1 for the small one. */
+    public function photo(Request $request, int $id, int $n): Response
+    {
+        $review = Review::query()->where('status', 'approved')->findOrFail($id);
+
+        return $this->streamPhoto($review, $n, $request->boolean('thumb'), true);
+    }
+
+    /** GET /api/admin/reviews/{id}/photos/{n}: any review, for moderation. */
+    public function adminPhoto(Request $request, int $id, int $n): Response
+    {
+        return $this->streamPhoto(Review::findOrFail($id), $n, $request->boolean('thumb'), false);
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private function streamPhoto(Review $review, int $n, bool $thumb, bool $public): Response
+    {
+        $photo = ($review->photos ?? [])[$n] ?? null;
+        abort_unless(is_array($photo), 404);
+
+        return $this->photos->stream((string) ($thumb ? ($photo['thumb'] ?? $photo['path']) : $photo['path']), $public);
+    }
+
+    private function tellCustomer(Review $review): void
+    {
+        $customer = $review->customer;
+        if ($customer === null || blank($customer->phone) || !AlertSwitch::isOn(self::TYPE_REPLY)) {
+            return;
+        }
+        $url = rtrim((string) config('app.url'), '/') . '/order/account';
+        try {
+            app(SmsService::class)->send(new SmsMessage(
+                to: (string) $customer->phone,
+                message: 'Bake & Grill replied to your review: "' . Str::limit((string) $review->reply, 90) . "\" See it: {$url}",
+                type: self::TYPE_REPLY,
+                customerId: $customer->id,
+                referenceType: 'review',
+                referenceId: (string) $review->id,
+                idempotencyKey: 'review-reply:' . $review->id,
+            ));
+        } catch (\Throwable $e) {
+            Log::warning('Review reply could not be sent', ['review_id' => $review->id, 'error' => $e->getMessage()]);
+        }
+    }
 
     private function format(Review $r): array
     {
@@ -177,6 +290,13 @@ class ReviewController extends Controller
             'item' => $r->item ? ['id' => $r->item->id,  'name' => $r->item->name] : null,
             'order' => $r->order ? ['id' => $r->order->id, 'order_number' => $r->order->order_number] : null,
             'created_at' => $r->created_at,
+            'verified' => $r->isVerified(),
+            'photos' => array_map(fn (int $n) => [
+                'url' => "/api/reviews/{$r->id}/photos/{$n}",
+                'thumb_url' => "/api/reviews/{$r->id}/photos/{$n}?thumb=1",
+            ], array_keys(array_values($r->photos ?? []))),
+            'helpful_count' => (int) $r->helpful_count,
+            'reply' => $r->reply !== null ? ['text' => $r->reply, 'at' => $r->replied_at] : null,
         ];
     }
 }

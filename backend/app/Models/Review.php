@@ -18,12 +18,25 @@ class Review extends Model
         'type',
         'status',
         'is_anonymous',
+        'photos',
+        'reply',
+        'replied_at',
+        'replied_by',
     ];
 
     protected $casts = [
         'rating' => 'integer',
         'is_anonymous' => 'boolean',
+        'photos' => 'array',
+        'helpful_count' => 'integer',
+        'replied_at' => 'datetime',
     ];
+
+    /** From a real order, not typed in by staff (feature 6). */
+    public function isVerified(): bool
+    {
+        return $this->order_id !== null;
+    }
 
     public function customer(): BelongsTo
     {

@@ -32,6 +32,7 @@ import { AnimatedItemTile } from './AnimatedItemTile';
 import { isStandardItemTile } from '../lib/brandLogo';
 import { PlatterPicker } from './PlatterPicker';
 import { ItemAlertButton, canAskForItemAlert } from './ItemAlertButton';
+import { ItemReviewList } from './ItemReviewList';
 import { ShareControl } from './ShareControl';
 import { publicMenuItemUrl } from '../utils/publicMenuItemUrl';
 import { HeartIcon, SPICE_LEVELS, SpiceFlames } from '../utils/emojiIcon';
@@ -951,21 +952,7 @@ export function ItemSheet({
             {reviews.length > 0 && (
               <div style={{ marginTop: '1.25rem', borderTop: '1px solid var(--color-border)', paddingTop: '1rem' }}>
                 <p style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-dark)', margin: '0 0 0.75rem' }}>Customer reviews</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-                  {reviews.map((rv) => (
-                    <div key={rv.id} style={{ background: 'var(--color-surface-alt)', borderRadius: 10, padding: '0.75rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <span key={i} style={{ fontSize: 11, color: i < rv.rating ? '#F59E0B' : 'var(--color-border)' }}>★</span>
-                        ))}
-                        <span style={{ fontSize: 11, color: 'var(--color-text-muted)', marginLeft: 4 }}>
-                          {new Date(rv.created_at).toLocaleDateString()}
-                        </span>
-                      </div>
-                      {rv.comment && <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>{rv.comment}</p>}
-                    </div>
-                  ))}
-                </div>
+                <ItemReviewList reviews={reviews} />
               </div>
             )}
           </div>

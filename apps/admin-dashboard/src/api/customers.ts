@@ -520,6 +520,11 @@ export interface Review {
   item: { id: number; name: string } | null;
   order: { id: number; order_number: string } | null;
   created_at: string;
+  /** From a real order (iruali import plan, feature 6). */
+  verified?: boolean;
+  photos?: { url: string; thumb_url: string }[];
+  helpful_count?: number;
+  reply?: { text: string; at: string | null } | null;
 }
 
 export async function fetchAdminReviews(params?: { status?: string; page?: number }): Promise<{ data: Review[]; meta: { current_page: number; last_page: number; total: number } }> {
@@ -531,6 +536,16 @@ export async function fetchAdminReviews(params?: { status?: string; page?: numbe
 
 export async function moderateReview(id: number, status: 'approved' | 'rejected'): Promise<{ review: Review }> {
   return req(`/admin/reviews/${id}/moderate`, { method: 'PATCH', body: JSON.stringify({ status }) });
+}
+
+/** The restaurant's reply under a review; null removes it. The customer is told on the first one. */
+export async function replyToReview(id: number, reply: string | null): Promise<{ review: Review }> {
+  return req(`/admin/reviews/${id}/reply`, { method: 'POST', body: JSON.stringify({ reply }) });
+}
+
+/** A review's photo, pending ones too (staff route). */
+export async function fetchReviewPhoto(id: number, n: number, thumb = false): Promise<Blob> {
+  return requestBlob(`/admin/reviews/${id}/photos/${n}${thumb ? '?thumb=1' : ''}`);
 }
 
 // ── Referrals ─────────────────────────────────────────────────────────────────

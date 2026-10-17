@@ -190,12 +190,26 @@ export interface CustomerReview {
 }
 
 export async function submitReview(
-  payload: { order_id: number; rating: number; comment: string; is_anonymous: boolean },
+  payload: { order_id: number; rating: number; comment: string; is_anonymous: boolean; photos?: File[] },
 ): Promise<void> {
-  await request<void>(ENDPOINTS.REVIEWS, {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
+  const { photos = [], ...fields } = payload;
+  if (photos.length === 0) {
+    await request<void>(ENDPOINTS.REVIEWS, { method: 'POST', body: JSON.stringify(fields) });
+    return;
+  }
+  // Up to three photos (iruali import plan, feature 6).
+  const body = new FormData();
+  body.append('order_id', String(fields.order_id));
+  body.append('rating', String(fields.rating));
+  body.append('comment', fields.comment);
+  body.append('is_anonymous', fields.is_anonymous ? '1' : '0');
+  photos.slice(0, 3).forEach((file) => body.append('photos[]', file));
+  await request<void>(ENDPOINTS.REVIEWS, { method: 'POST', body });
+}
+
+/** "Helpful" on someone else's review, once (feature 6). */
+export async function markReviewHelpful(reviewId: number): Promise<{ helpful_count: number; voted: boolean }> {
+  return request(`/reviews/${reviewId}/helpful`, { method: 'POST' });
 }
 
 export async function getMyReviews(

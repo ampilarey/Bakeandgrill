@@ -252,6 +252,20 @@ html.js .menu-item-page .menu-fav { display: inline-flex; }
 .menu-item-alts h2 { margin: 0 0 0.6rem; font-size: 1rem; }
 .menu-item-alts ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
 .menu-item-alts a { color: var(--amber); font-weight: 600; text-decoration: none; }
+.menu-item-reviews { margin: 1.5rem 0 0; }
+.menu-item-reviews h2 { margin: 0 0 0.6rem; font-size: 1rem; }
+.menu-item-reviews-avg { font-size: 0.85rem; font-weight: 600; color: var(--muted); margin-left: 0.35rem; }
+.menu-item-review { padding: 0.75rem 0; border-top: 1px solid var(--border); }
+.menu-item-review-head { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--dark); font-weight: 600; }
+.menu-item-review-stars { color: var(--amber); letter-spacing: 1px; }
+.menu-item-review-off { color: var(--border); }
+.menu-item-review-verified { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; color: var(--muted); }
+.menu-item-review-text { margin: 0.3rem 0 0; font-size: 0.9rem; color: var(--dark); line-height: 1.45; overflow-wrap: anywhere; }
+.menu-item-review-photos { display: flex; gap: 0.4rem; margin-top: 0.4rem; }
+.menu-item-review-photos img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; display: block; }
+.menu-item-review-helpful { margin: 0.3rem 0 0; font-size: 0.75rem; color: var(--muted); }
+.menu-item-review-reply { margin-top: 0.45rem; padding: 0.5rem 0.7rem; border-left: 3px solid var(--amber); background: var(--amber-light); border-radius: 0 8px 8px 0; font-size: 0.85rem; color: var(--dark); }
+.menu-item-review-reply p { margin: 0.15rem 0 0; }
 @media (max-width: 768px) {
     .menu-item-page { padding: 1rem 1rem 5rem; }
 }

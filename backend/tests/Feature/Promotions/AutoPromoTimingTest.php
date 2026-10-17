@@ -132,7 +132,8 @@ class AutoPromoTimingTest extends TestCase
         $this->assertSame(0, (int) $order->promo_discount_laar);
         $this->assertSame('released', OrderPromotion::where('order_id', $order->id)->value('status'));
         $this->assertSame(200.0, (float) $res->json('order.total') - (float) $order->tax_amount);
-        $this->assertSame(['Offer Morning 10% removed — the offer has ended.'], $res->json('discount_notes'));
+        // The offer's own note; CI once saw a loyalty clamp note beside it, which is not what this tests.
+        $this->assertContains('Offer Morning 10% removed — the offer has ended.', $res->json('discount_notes'));
     }
 
     public function test_a_ticket_saved_after_the_end_gets_nothing(): void

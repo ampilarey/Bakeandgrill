@@ -217,6 +217,8 @@ final class SmsTypeRegistry
             self::def('marketing_birthday', 'Birthday offer', 'marketing', true, true, null, 'marketing_birthday_enabled', 'sms.campaigns.send', false, 'Customers with birthday today', false),
             // iruali import plan, feature 8: a customer asked to be told (items:alerts). Asked for, so no offer opt-out applies.
             self::def('customer_back_in_stock', 'Dish back on the menu (asked for)', 'transactional', true, false, null, 'customer_back_in_stock_enabled', null, false, 'Customers who asked to be told', false),
+            // iruali import plan, feature 6: Admin → Reviews → Reply, once per review.
+            self::def('customer_review_reply', 'Reply to a review', 'transactional', true, false, null, 'customer_review_reply_enabled', null, false, 'The customer who wrote the review', false),
             self::def('customer_item_launched', 'Coming-soon dish on sale (asked for)', 'transactional', true, false, null, 'customer_item_launched_enabled', null, false, 'Customers who asked to be told', false),
             // iruali import plan, feature 13: a month before earned points expire (loyalty:warn-expiring).
             self::def('customer_points_expiring', 'Points about to expire', 'marketing', true, true, null, 'customer_points_expiring_enabled', 'sms.campaigns.send', false, 'Customers with points expiring within 30 days', false),

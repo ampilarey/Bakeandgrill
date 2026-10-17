@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { submitReview } from "../api";
 import { useLanguage } from "../context/LanguageContext";
 import { Star } from "lucide-react";
+import { ReviewPhotoPicker } from "./ReviewPhotoPicker";
 
 interface Props {
   orderId: number;
@@ -14,6 +15,7 @@ export function ReviewForm({ orderId, onDone }: Props) {
   const [hovered, setHovered] = useState(0);
   const [comment, setComment] = useState("");
   const [anon, setAnon]       = useState(false);
+  const [photos, setPhotos]   = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState("");
   const [done, setDone]       = useState(false);
@@ -26,7 +28,7 @@ export function ReviewForm({ orderId, onDone }: Props) {
     setLoading(true);
     setError("");
     try {
-      await submitReview({ order_id: orderId, rating, comment, is_anonymous: anon });
+      await submitReview({ order_id: orderId, rating, comment, is_anonymous: anon, photos });
       setDone(true);
       doneTimer.current = setTimeout(onDone, 2000);
     } catch (e) {
@@ -74,6 +76,8 @@ export function ReviewForm({ orderId, onDone }: Props) {
         rows={3}
         maxLength={500}
       />
+
+      <ReviewPhotoPicker photos={photos} onChange={setPhotos} />
 
       <label style={s.checkRow}>
         <input type="checkbox" checked={anon} onChange={e => setAnon(e.target.checked)} />

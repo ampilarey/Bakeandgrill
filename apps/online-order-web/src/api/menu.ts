@@ -433,6 +433,13 @@ export interface ItemReview {
   rating: number;
   comment: string | null;
   created_at: string;
+  author?: string;
+  /** From a real order (iruali import plan, feature 6). */
+  verified?: boolean;
+  /** Paths under the API origin. */
+  photos?: { url: string; thumb_url: string }[];
+  helpful_count?: number;
+  reply?: { text: string; at: string | null } | null;
 }
 
 export async function getItemReviews(itemId: number): Promise<{ reviews: ItemReview[]; average_rating: number | null; review_count: number }> {

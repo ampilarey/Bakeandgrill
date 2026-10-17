@@ -712,6 +712,20 @@ how many are waiting (`alerts_waiting`). `items:alerts` (every five minutes,
 customer once (`item_alerts.sent_at`), only while the shop is open; rows
 `customer_back_in_stock` and `customer_item_launched`. `ItemAlertsTest`.
 
+## Reviews: photos, verified, helpful, reply
+
+iruali import plan, feature 6 (2026-10-17). A review carries up to three photos
+(`App\Domains\Reviews\ReviewPhotos`: GD re-encode so EXIF is gone, 1600 px and a 480 px
+thumbnail on the private disk), served by `GET /api/reviews/{id}/photos/{n}` (`?thumb=1`) only
+once approved, and to staff by `/api/admin/reviews/{id}/photos/{n}`. Every review waits for
+staff. "Verified order" is `Review::isVerified()` (it came from an order). A signed-in customer
+marks another's review Helpful once (`review_votes`, `helpful_count`); lists sort by helpful,
+then newest. Admin → Reviews → Reply (`POST /api/admin/reviews/{id}/reply`) shows under the
+review as "Reply from Bake & Grill" and texts the customer on the first reply (row
+`customer_review_reply`, kind orders). Shown in the order app's dish sheet (`ItemReviewList`),
+on the website dish page with `aggregateRating` in its JSON-LD, and picked on both review
+forms with `ReviewPhotoPicker`. `BetterReviewsTest`.
+
 ## POS order type colours
 
 Owner, 2026-10-11: "add more visual colors to differentiate between order type in

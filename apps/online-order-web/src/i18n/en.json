@@ -1064,5 +1064,13 @@
   "itemAlert.waiting_back": "We'll text you when it's back. Tap to stop.",
   "itemAlert.waiting_launch": "We'll text you when it's on sale. Tap to stop.",
   "itemAlert.sign_in": "Sign in to be told when you can order it",
-  "itemAlert.error": "Could not save that. Please try again."
+  "itemAlert.error": "Could not save that. Please try again.",
+  "review.verified": "Verified order",
+  "review.helpful": "Helpful",
+  "review.helpful_sign_in": "Sign in to mark a review helpful.",
+  "review.reply_from": "Reply from Bake & Grill",
+  "review.photo_n": "Photo {n}",
+  "review.add_photos": "Add photos",
+  "review.photo_remove": "Remove photo",
+  "review.photos_hint": "Up to 3 photos. Staff check reviews before they show."
 }

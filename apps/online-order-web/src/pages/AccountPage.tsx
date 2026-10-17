@@ -1,3 +1,4 @@
+import { ReviewPhotoPicker } from '../components/ReviewPhotoPicker';
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -98,6 +99,7 @@ export function AccountPage() {
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
   const [reviewAnon, setReviewAnon] = useState(false);
+  const [reviewPhotos, setReviewPhotos] = useState<File[]>([]);
   const [submittingReview, setSubmittingReview] = useState(false);
   const [reviewSubmitError, setReviewSubmitError] = useState('');
 
@@ -479,6 +481,7 @@ export function AccountPage() {
                       style={{ width: '100%', padding: '10px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
                     />
                   </div>
+                  <div style={{ marginBottom: 12 }}><ReviewPhotoPicker photos={reviewPhotos} onChange={setReviewPhotos} /></div>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 16, cursor: 'pointer' }}>
                     <input type="checkbox" checked={reviewAnon} onChange={(e) => setReviewAnon(e.target.checked)} />
                     {t('account.rv_anon')}
@@ -496,8 +499,9 @@ export function AccountPage() {
                         if (!isAuthenticated || !reviewOrderId) return;
                         setSubmittingReview(true); setReviewSubmitError('');
                         try {
-                          await submitReview({ order_id: reviewOrderId, rating: reviewRating, comment: reviewComment, is_anonymous: reviewAnon });
+                          await submitReview({ order_id: reviewOrderId, rating: reviewRating, comment: reviewComment, is_anonymous: reviewAnon, photos: reviewPhotos });
                           setShowReviewForm(false);
+                          setReviewPhotos([]);
                           setReviewableOrders((rs) => rs.filter((o) => o.id !== reviewOrderId));
                           setReviews([]);
                           setReviewsLoading(true);

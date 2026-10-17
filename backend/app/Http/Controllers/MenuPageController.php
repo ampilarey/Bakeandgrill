@@ -803,6 +803,11 @@ class MenuPageController extends Controller
                 : (in_array($verdict?->reasonCode, ['out_of_stock', 'snoozed', 'item_unavailable'], true) ? 'Tell me when it’s back' : null)),
             'menuSizeSoldOut' => $this->soldOutSizes($row),
             'alternatives' => $alternatives,
+            // Approved reviews, most helpful first (iruali import plan, feature 6).
+            'itemReviews' => \App\Models\Review::query()->where('item_id', $row->id)->where('status', 'approved')
+                ->with('customer:id,name')->orderByDesc('helpful_count')->orderByDesc('created_at')->limit(5)->get(),
+            'reviewStats' => \App\Models\Review::query()->where('item_id', $row->id)->where('status', 'approved')
+                ->selectRaw('COUNT(*) as review_count, AVG(rating) as average_rating')->first(),
             'menuPhotos' => $this->displayPhotos($priced),
             'menuSpecialsByItemId' => $specialsByItemId,
             'menuPriceByItemId' => $this->effectivePrices($priced),
