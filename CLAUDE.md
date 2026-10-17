@@ -801,7 +801,7 @@ each check pass / warn / fail / skip with a one-line fix: the live checks from
 `SystemHealthService` plus debug mode, mail, BML keys and callbacks, SMS keys and recent
 sends, the last `backup:run` (26 h), the last restore drill and, off production, the TEST
 Redis separation above. `php artisan app:ready` prints it (exit 1 on a fail) and System →
-Health shows it as System status (`ready` on the detailed health; a fail counts as an issue).
+Health shows it as System status (`ready` on the detailed health; shown, not added to the page's overall status).
 `backup:restore-drill` (monthly, 1st, 04:10; `RestoreDrill`) restores the newest backup into
 `BACKUP_DRILL_DATABASE`, compares key tables with live, empties it again, keeps the result in
 the site setting `system_restore_drill_last` and tells the owner (`owner_restore_drill`).

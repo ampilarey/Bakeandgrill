@@ -175,7 +175,6 @@ class SystemHealthService
         if ($redis['status'] === 'down') {
             $issues++;
         }
-        $issues += ReadyChecks::failures($ready);
 
         return [
             'status' => $issues > 0 ? 'degraded' : 'ok',

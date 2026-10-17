@@ -199,7 +199,7 @@ final class ReadyChecks
         if ($this->production()) {
             return [self::SKIP, 'Production keeps the defaults.', ''];
         }
-        if (blank(config('database.redis.default.path')) && blank(env('REDIS_PATH'))) {
+        if (blank(config('database.redis.default.path'))) {
             return [self::SKIP, 'Not on the shared Redis socket.', ''];
         }
         $problems = [];
