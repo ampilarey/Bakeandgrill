@@ -61,7 +61,7 @@ export function OrderMessagesPanel({ orderId }: { orderId: number }) {
             <div style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{m.body}</div>
             {m.photo_url && (
               <a href={m.photo_url} target="_blank" rel="noopener noreferrer">
-                <img src={m.photo_url} alt="Customer photo" style={{ marginTop: 6, maxWidth: 160, borderRadius: 8, display: 'block' }} />
+                <img src={m.photo_url} alt="Sent by the customer" style={{ marginTop: 6, maxWidth: 160, borderRadius: 8, display: 'block' }} />
               </a>
             )}
             {m.from === 'customer' && can('complaints.manage') && (
