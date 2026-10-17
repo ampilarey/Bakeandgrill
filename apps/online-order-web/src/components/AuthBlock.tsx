@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { SocialPendingNote, SocialSignIn, socialErrorFromUrl } from "./SocialSignIn";
 import {
   checkPhone,
   requestOtp,
@@ -325,7 +326,7 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false, intro }: Props)
   const [password, setPassword]   = useState("");
   const [otp, setOtp]         = useState("");
   const [hint, setHint]       = useState<string | null>(null);
-  const [error, setError]     = useState("");
+  const [error, setError]     = useState(() => socialErrorFromUrl() ?? "");
   const [loading, setLoading] = useState(false);
 
   const [setupName, setSetupName]   = useState("");
@@ -675,6 +676,7 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false, intro }: Props)
         <>
           <h2 className="auth__title">{t("auth.title_phone")}</h2>
           <p className="auth__sub">{intro?.trim() || t("auth.sub_phone")}</p>
+          <SocialPendingNote />
           {errorMsg}
           <PhoneInput
             value={phone}
@@ -685,6 +687,7 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false, intro }: Props)
           <PrimaryButton onClick={handleCheckPhone} disabled={!phoneOk} loading={loading}>
             {loading ? t("auth.checking") : t("auth.continue")}
           </PrimaryButton>
+          <SocialSignIn />
           {skipProfileSetup && (
             <button type="button" className="auth__btn auth__btn--outline" onClick={() => { go("guest"); setError(""); }}>
               {t("auth.guest_cta")}

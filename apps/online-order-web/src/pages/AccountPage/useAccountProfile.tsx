@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getCustomerMe, updateCustomerProfile, changeCustomerPassword } from '../../api';
+import { getCustomerMe, updateCustomerProfile, changeCustomerPassword, unlinkSocialAccount } from '../../api';
 import type { AuthCustomer } from '../../api';
 import { useLanguage } from '../../context/LanguageContext';
 
@@ -67,6 +67,21 @@ export function useAccountProfile(isAuthenticated: boolean, authReady: boolean) 
     }
   };
 
+  /** Account → Sign-in methods: unlink a Google, Facebook or Apple sign-in (feature 1). */
+  const [unlinking, setUnlinking] = useState(false);
+  const handleUnlinkSocial = async (provider: string) => {
+    if (!isAuthenticated || !customer) return;
+    setUnlinking(true);
+    try {
+      const res = await unlinkSocialAccount(provider);
+      setCustomer((c) => (c ? { ...c, social_accounts: res.social_accounts } : c));
+    } catch (e) {
+      setProfileMsg({ type: 'error', text: (e as Error).message || t('account.profile_err_save') });
+    } finally {
+      setUnlinking(false);
+    }
+  };
+
   const handleChangePassword = async () => {
     if (!isAuthenticated) return;
     if (!pwForm.current_password || !pwForm.new_password) {
@@ -115,5 +130,7 @@ export function useAccountProfile(isAuthenticated: boolean, authReady: boolean) 
     handleChangePassword,
     savingMessages,
     handleMessageChoice,
+    unlinking,
+    handleUnlinkSocial,
   };
 }

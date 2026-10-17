@@ -85,6 +85,9 @@ Route::prefix('auth/customer')
         // Called once per app open by every phone behind the same public IP
         // (phone audit, 2026-09-21). It reads a session and writes nothing, so
         // it is budgeted like the other public reads, not like the OTP routes.
+        // Which social sign-in buttons to show, and a sign-in waiting for the phone (iruali import plan, feature 1).
+        Route::get('/social', [App\Http\Controllers\Api\CustomerSocialController::class, 'show'])
+            ->middleware('throttle:60,1');
         Route::get('/check', [CustomerAuthController::class, 'check'])
             ->middleware('throttle:120,1');
 
@@ -137,6 +140,8 @@ Route::middleware(['auth:sanctum', 'customer.token'])->prefix('customer')->group
     Route::patch('/profile', [CustomerController::class, 'update']);
     // Prove the account's email with a 6-digit code (iruali import plan, feature 2).
     Route::post('/email/send-code', [App\Http\Controllers\Api\CustomerEmailController::class, 'sendCode'])->middleware('throttle:6,10');
+    Route::delete('/social/{provider}', [App\Http\Controllers\Api\CustomerSocialController::class, 'unlink'])
+        ->whereIn('provider', ['google', 'facebook', 'apple']);
     Route::post('/email/verify', [App\Http\Controllers\Api\CustomerEmailController::class, 'verify'])->middleware('throttle:12,10');
     Route::post('/cart/snapshot', [App\Http\Controllers\Api\CustomerCartController::class, 'snapshot']);
     Route::get('/addresses', [App\Http\Controllers\Api\CustomerAddressController::class, 'index']);

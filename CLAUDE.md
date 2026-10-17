@@ -610,6 +610,19 @@ Dhivehi, a stale key or a lost `{placeholder}`. The account keeps the language
 (`customers.preferred_language`, saved by Account → Settings, taken on sign-in). Dhivehi
 copy is drafted and must be read by a Dhivehi speaker before the switch goes on.
 
+## Customers can sign in with Google, Facebook and Apple
+
+iruali import plan, feature 1 (2026-10-17; `docs/SOCIAL_SIGN_IN.md`). A button shows only
+when its keys are in `.env` (`services.google|facebook|apple`). `/auth/social/{provider}`
+→ provider → `/callback` (Apple's form post hands over through the cache, without the
+session). `SocialLoginService::resolve()`: a linked sign-in, else a customer whose
+checked email matches when the provider vouches for it; anything else waits in the
+session (`customer_social.pending`) and the order app asks for the phone, then
+`CustomerAuthController::establishCustomerSession` links it after the phone code or
+password (never after a guest session). A phone is needed for every order, so a social
+sign-in never makes a customer without one; an email or phone that belongs to active staff
+is refused. `customer_social_accounts`, Account → Sign-in methods with Unlink.
+
 ## A customer's email is checked with a code
 
 iruali import plan, feature 2 (2026-10-17). `customers.email_verified_at` is set when the

@@ -26,7 +26,7 @@ import { PageHeader } from '../components/shell/PageHeader';
 import { AddressesSection } from './AccountPage/AddressesSection';
 import { ProfileSection } from './AccountPage/ProfileSection';
 import { OrderHistorySection } from './AccountPage/OrderHistorySection';
-import { AccountSettingsBlock, AccountMessagesBlock, AccountMoreBlock, BlockShell } from './AccountPage/AccountChromeBlocks';
+import { AccountSettingsBlock, AccountMessagesBlock, AccountMoreBlock, BlockShell, SignInMethodsBlock } from './AccountPage/AccountChromeBlocks';
 import {
   SectionCard, btnStyle, inputStyle, statusBadge,
 } from './AccountPage/accountShared';
@@ -937,6 +937,14 @@ export function AccountPage() {
                   emailChecked={Boolean(customer.email_verified)}
                   saving={profile.savingMessages}
                   onChange={(kind, channel, on) => void profile.handleMessageChoice(kind, channel, on)}
+                />
+              ) : null}
+              {customer?.social_accounts ? (
+                <SignInMethodsBlock
+                  hub
+                  accounts={customer.social_accounts}
+                  busy={profile.unlinking}
+                  onUnlink={(provider) => void profile.handleUnlinkSocial(provider)}
                 />
               ) : null}
             </div>

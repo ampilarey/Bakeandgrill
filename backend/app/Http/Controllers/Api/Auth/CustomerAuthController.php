@@ -49,13 +49,20 @@ class CustomerAuthController extends Controller
         ];
     }
 
-    private function establishCustomerSession(Request $request, Customer $customer): void
+    /** @param bool $phoneProved false for a guest session, which never links a waiting social sign-in */
+    private function establishCustomerSession(Request $request, Customer $customer, bool $phoneProved = true): void
     {
         Auth::guard('customer')->login($customer);
         if ($request->hasSession()) {
             $request->session()->regenerate();
+            // A Google, Facebook or Apple sign-in that was waiting for the
+            // phone is linked to the customer the phone proved (feature 1).
+            $this->socialLinked = !$phoneProved ? null : app(\App\Domains\Auth\Services\SocialLoginService::class)->completePending($customer, $request->session());
         }
     }
+
+    /** The provider a waiting social sign-in was just linked to, for the reply. */
+    private ?string $socialLinked = null;
 
     /**
      * @return array{message: string, customer: array<string, mixed>}
@@ -65,7 +72,7 @@ class CustomerAuthController extends Controller
         return [
             'message' => $message,
             'customer' => $this->customerResponse($customer),
-        ];
+        ] + ($this->socialLinked !== null ? ['social_linked' => $this->socialLinked] : []);
     }
 
     // ── Public endpoints ──────────────────────────────────────────────────────
@@ -467,7 +474,7 @@ class CustomerAuthController extends Controller
         ]);
 
         $customer->update(['last_login_at' => now()]);
-        $this->establishCustomerSession($request, $customer);
+        $this->establishCustomerSession($request, $customer, phoneProved: false);
 
         return response()->json([
             ...$this->authenticatedPayload('Guest session started', $customer),

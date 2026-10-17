@@ -33,7 +33,8 @@
                 "email": "__VOLATILE__",
                 "locked": true
             }
-        }
+        },
+        "social_accounts": []
     },
     "has_trade_account": false,
     "credit": null,

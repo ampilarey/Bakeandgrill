@@ -1048,5 +1048,12 @@
   "account.msg_email": "Email",
   "account.msg_security_locked": "Always on, to keep your account safe.",
   "account.msg_offers_email_check": "Check your email in Profile to get offers by email.",
-  "account.msg_orders_off_warn": "You will not hear when your order is ready."
+  "account.msg_orders_off_warn": "You will not hear when your order is ready.",
+  "auth.social_or": "or",
+  "auth.social_continue": "Continue with {provider}",
+  "auth.social_pending": "Almost done. Enter your phone number to finish signing in with {provider}.",
+  "account.signin_methods": "Sign-in methods",
+  "account.signin_phone": "Phone number (always works)",
+  "account.signin_unlink": "Unlink",
+  "account.signin_none": "No Google, Facebook or Apple sign-in linked."
 }

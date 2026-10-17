@@ -64,6 +64,30 @@ return [
         'subject' => env('VAPID_SUBJECT', env('APP_URL')),
     ],
 
+    /*
+    | Customer sign-in with Google, Facebook and Apple (iruali import plan,
+    | feature 1; docs/SOCIAL_SIGN_IN.md). A button shows only when its keys
+    | are set. The redirect URL to register with each is
+    | {APP_URL}/auth/social/{google|facebook|apple}/callback.
+    */
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+    ],
+    'facebook' => [
+        'client_id' => env('FACEBOOK_CLIENT_ID'),
+        'client_secret' => env('FACEBOOK_CLIENT_SECRET'),
+        'graph_version' => env('FACEBOOK_GRAPH_VERSION', 'v25.0'),
+        'pkce' => filter_var(env('FACEBOOK_PKCE', true), FILTER_VALIDATE_BOOL),
+    ],
+    'apple' => [
+        'client_id' => env('APPLE_CLIENT_ID'),
+        'team_id' => env('APPLE_TEAM_ID'),
+        'key_id' => env('APPLE_KEY_ID'),
+        'private_key' => env('APPLE_PRIVATE_KEY'),
+        'private_key_path' => env('APPLE_PRIVATE_KEY_PATH'),
+    ],
+
     'xero' => [
         'client_id' => env('XERO_CLIENT_ID'),
         'client_secret' => env('XERO_CLIENT_SECRET'),

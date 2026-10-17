@@ -330,6 +330,7 @@ class CustomerController extends Controller
                 'has_trade_account' => $hasTradeAccount,
                 'sms_opt_out' => (bool) $customer->sms_opt_out,
                 'message_choices' => MessageChoices::for($customer),
+                'social_accounts' => app(\App\Domains\Auth\Services\SocialLoginService::class)->linked($customer),
             ],
             'has_trade_account' => $hasTradeAccount,
             'credit' => $customer->credit_enabled

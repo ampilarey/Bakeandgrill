@@ -266,6 +266,46 @@ export function AccountMessagesBlock({ choices, emailChecked, saving, onChange, 
   );
 }
 
+/**
+ * Account → Sign-in methods (iruali import plan, feature 1): the phone always,
+ * and each linked Google, Facebook or Apple sign-in with Unlink.
+ */
+export function SignInMethodsBlock({ accounts, busy, onUnlink, hub }: {
+  accounts: { provider: string; label: string; email: string | null }[];
+  busy: boolean;
+  onUnlink: (provider: string) => void;
+  hub?: boolean;
+}) {
+  const { t } = useLanguage();
+
+  return (
+    <BlockShell title={t('account.signin_methods')} hub={hub}>
+      <div style={{ ...linkRowStyle, borderBottom: '1px solid var(--color-border)' }}>
+        <span>{t('account.signin_phone')}</span>
+      </div>
+      {accounts.length === 0 ? (
+        <p style={{ margin: '0.6rem 0', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>{t('account.signin_none')}</p>
+      ) : accounts.map((a, i) => (
+        <div key={a.provider} data-testid={`signin-${a.provider}`} style={{ ...linkRowStyle, borderBottom: i < accounts.length - 1 ? '1px solid var(--color-border)' : 'none' }}>
+          <span>
+            {a.label}
+            {a.email && <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 400, color: 'var(--color-text-muted)' }}>{a.email}</span>}
+          </span>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => onUnlink(a.provider)}
+            data-testid={`signin-unlink-${a.provider}`}
+            style={{ minHeight: 36, padding: '0 0.8rem', borderRadius: 999, border: '1.5px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontWeight: 700, fontSize: '0.75rem', cursor: busy ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}
+          >
+            {t('account.signin_unlink')}
+          </button>
+        </div>
+      ))}
+    </BlockShell>
+  );
+}
+
 /** More links group: Hours, Contact, About, legal links, WhatsApp, Viber. */
 export function AccountMoreBlock({ hub, skip = [] }: { hub?: boolean; skip?: string[] } = {}) {
   const { t } = useLanguage();

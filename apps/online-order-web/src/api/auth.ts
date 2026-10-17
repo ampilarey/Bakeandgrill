@@ -9,7 +9,30 @@ export type AuthCustomer = Customer & {
   email_verified?: boolean;
   /** Account → Messages: each kind by SMS and email (iruali import plan, feature 5). */
   message_choices?: Record<'orders' | 'delivery' | 'offers' | 'security', { sms: boolean; email: boolean; locked: boolean }>;
+  /** Google, Facebook and Apple sign-ins linked to the account (iruali import plan, feature 1). */
+  social_accounts?: SocialAccount[];
 };
+
+export type SocialAccount = { provider: 'google' | 'facebook' | 'apple'; label: string; email: string | null };
+export type SocialSignIn = {
+  providers: { provider: 'google' | 'facebook' | 'apple'; label: string }[];
+  /** A sign-in waiting for the phone to finish it. */
+  pending: { provider: string; label: string; name: string | null; email: string | null } | null;
+};
+
+/** Which social sign-in buttons to show, and a sign-in waiting for the phone. */
+export async function getSocialSignIn(): Promise<SocialSignIn> {
+  return request('/auth/customer/social');
+}
+
+export async function unlinkSocialAccount(provider: string): Promise<{ social_accounts: SocialAccount[] }> {
+  return request(`/customer/social/${provider}`, { method: 'DELETE' });
+}
+
+/** The browser page that starts a social sign-in and comes back to `returnTo`. */
+export function socialSignInUrl(provider: string, returnTo: string): string {
+  return `/auth/social/${provider}?return=${encodeURIComponent(returnTo)}`;
+}
 export type AuthResponse = {
   customer: AuthCustomer;
   is_new_customer?: boolean;

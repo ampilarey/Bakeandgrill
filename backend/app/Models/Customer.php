@@ -109,6 +109,12 @@ class Customer extends Model implements AuthenticatableContract
         });
     }
 
+    /** Google, Facebook and Apple sign-ins linked to this customer (iruali import plan, feature 1). */
+    public function socialAccounts(): HasMany
+    {
+        return $this->hasMany(CustomerSocialAccount::class);
+    }
+
     /** The email was proven with a code and has not changed since. */
     public function hasVerifiedEmail(): bool
     {

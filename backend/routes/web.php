@@ -212,6 +212,26 @@ Route::post('/customer/complete-profile', [CustomerPortalController::class, 'com
 
 // Forgot / reset password via OTP
 Route::get('/customer/forgot-password', [CustomerPortalController::class, 'showForgotPassword'])->name('customer.forgot-password');
+
+// Customer sign-in with Google, Facebook and Apple (iruali import plan, feature 1;
+// docs/SOCIAL_SIGN_IN.md). Register {APP_URL}/auth/social/{provider}/callback with each.
+Route::middleware('throttle:20,1')->group(function () {
+    Route::get('/auth/social/{provider}', [App\Http\Controllers\Auth\CustomerSocialLoginController::class, 'redirect'])
+        ->whereIn('provider', ['google', 'facebook', 'apple'])->name('customer.social.redirect');
+    Route::get('/auth/social/{provider}/callback', [App\Http\Controllers\Auth\CustomerSocialLoginController::class, 'callback'])
+        ->whereIn('provider', ['google', 'facebook', 'apple'])->name('customer.social.callback');
+});
+// Apple answers with a cross-site form post, which arrives without the session
+// cookie: this one route runs without the session and CSRF, keeps what Apple
+// sent under a one-time key, and hands over to the callback (its state check
+// protects it).
+Route::post('/auth/social/apple/callback', [App\Http\Controllers\Auth\CustomerSocialLoginController::class, 'applePost'])
+    ->withoutMiddleware([
+        Illuminate\Session\Middleware\StartSession::class,
+        Illuminate\View\Middleware\ShareErrorsFromSession::class,
+        Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
+    ])
+    ->middleware('throttle:20,1')->name('customer.social.apple');
 Route::post('/customer/forgot-password', [CustomerPortalController::class, 'forgotPassword'])
     ->middleware('throttle:5,1')
     ->name('customer.forgot-password.post');
