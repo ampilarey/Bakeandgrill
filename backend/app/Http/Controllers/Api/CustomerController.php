@@ -559,6 +559,8 @@ class CustomerController extends Controller
             'order' => array_merge([
                 'id' => $order->id,
                 'order_number' => $order->order_number,
+                // The key for "Message us" on the order page (feature 9); the owner already has it in their links.
+                'tracking_token' => $order->tracking_token,
                 'status' => $order->status,
                 'payment_status' => $order->payment_status,
                 'type' => $order->type,

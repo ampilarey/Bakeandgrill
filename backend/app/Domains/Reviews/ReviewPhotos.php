@@ -26,8 +26,11 @@ class ReviewPhotos
 
     private const THUMB_EDGE = 480;
 
+    /** Folders on the private disk whose pictures this class writes and serves (order messages share it, feature 9). */
+    public const DIRS = ['review-photos', 'order-message-photos'];
+
     /** @return array{path: string, thumb: string} */
-    public function store(UploadedFile $file): array
+    public function store(UploadedFile $file, string $dir = 'review-photos'): array
     {
         $raw = file_get_contents($file->getRealPath());
         $src = $raw === false ? false : @imagecreatefromstring($raw);
@@ -41,8 +44,9 @@ class ReviewPhotos
             throw ValidationException::withMessages(['photos' => 'That photo is too large.']);
         }
         $id = (string) Str::uuid();
-        $path = "review-photos/{$id}.jpg";
-        $thumb = "review-photos/{$id}-t.jpg";
+        $dir = in_array($dir, self::DIRS, true) ? $dir : 'review-photos';
+        $path = "{$dir}/{$id}.jpg";
+        $thumb = "{$dir}/{$id}-t.jpg";
         Storage::disk(self::DISK)->put($path, $this->jpeg($src, $w, $h, self::EDGE));
         Storage::disk(self::DISK)->put($thumb, $this->jpeg($src, $w, $h, self::THUMB_EDGE));
         imagedestroy($src);
@@ -60,7 +64,8 @@ class ReviewPhotos
 
     public function stream(string $path, bool $public): Response
     {
-        abort_unless(str_starts_with($path, 'review-photos/') && Storage::disk(self::DISK)->exists($path), 404);
+        $inside = collect(self::DIRS)->contains(fn (string $dir) => str_starts_with($path, $dir . '/'));
+        abort_unless($inside && !str_contains($path, '..') && Storage::disk(self::DISK)->exists($path), 404);
 
         return Storage::disk(self::DISK)->response($path, null, [
             'Content-Type' => 'image/jpeg',

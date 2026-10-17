@@ -367,3 +367,33 @@ export async function sendReceiptForOrder(
     }),
   });
 }
+
+// ── Order messages (iruali import plan, feature 9) ──────────────────────────
+
+export interface OrderMessage {
+  id: number;
+  from: 'customer' | 'staff';
+  body: string;
+  /** Signed link, good for 30 minutes. */
+  photo_url: string | null;
+  read: boolean;
+  created_at: string;
+  staff_name: string | null;
+  complaint_id: number | null;
+}
+
+export async function fetchOrderMessages(orderId: number): Promise<{ messages: OrderMessage[] }> {
+  return req(`/admin/orders/${orderId}/messages`);
+}
+
+export async function replyToOrderMessage(orderId: number, body: string): Promise<{ message: OrderMessage }> {
+  return req(`/admin/orders/${orderId}/messages`, { method: 'POST', body: JSON.stringify({ body }) });
+}
+
+export async function orderMessageToComplaint(messageId: number): Promise<{ complaint_id: number; reference?: string }> {
+  return req(`/admin/order-messages/${messageId}/complaint`, { method: 'POST' });
+}
+
+export async function fetchUnansweredOrderMessages(): Promise<{ data: { order: { id: number; order_number: string; status: string; customer: string | null }; message: OrderMessage }[] }> {
+  return req('/admin/order-messages');
+}

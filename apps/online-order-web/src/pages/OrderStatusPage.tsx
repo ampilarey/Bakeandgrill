@@ -9,6 +9,7 @@ import { useCart } from "../context/CartContext";
 import { usePushNotifications } from "../hooks/usePushNotifications";
 import { useSiteSettings } from "../context/SiteSettingsContext";
 import { complaintUrl } from "../utils/complaintLink";
+import { OrderMessages } from "../components/OrderMessages";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { isGiftCardOrder } from "../utils/giftCardOrder";
@@ -1320,6 +1321,8 @@ export function OrderStatusPage() {
                 )}
               </div>
             </div>
+
+            {(trackingToken || order.tracking_token) && <OrderMessages token={(trackingToken || order.tracking_token) as string} />}
 
             {/* The complaint box against this order, once it is in the
                 customer's hands (owner, 2026-09-21). Tagged "order" and

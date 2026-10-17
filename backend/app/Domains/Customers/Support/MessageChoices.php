@@ -43,7 +43,7 @@ final class MessageChoices
 
     private const ORDER_TYPES = [
         'customer_order_confirmed', 'customer_order_preparing', 'customer_order_ready',
-        'customer_payment_confirmed_pos', 'customer_payment_confirmed_online', 'customer_completion_receipt', 'customer_review_reply',
+        'customer_payment_confirmed_pos', 'customer_payment_confirmed_online', 'customer_completion_receipt', 'customer_review_reply', 'customer_order_message_reply',
     ];
 
     private const DELIVERY_TYPES = ['customer_order_on_the_way', 'customer_order_delivered'];

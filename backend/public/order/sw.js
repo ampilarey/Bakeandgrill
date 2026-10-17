@@ -20,7 +20,7 @@
  * a hand-edited constant: a worker whose bytes never change is a worker the
  * browser never replaces, and its caches then outlive every deploy.
  */
-const CACHE_VERSION = 'bg-pwa-71fe3075155c';
+const CACHE_VERSION = 'bg-pwa-f70a1e7a7794';
 
 /**
  * How old a cached menu response may be and still be served after a failed

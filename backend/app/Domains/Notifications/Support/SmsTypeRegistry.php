@@ -193,6 +193,8 @@ final class SmsTypeRegistry
             // message, unsubscribe line and daily marketing limit included.
             self::def('staff_order_confirmed', 'Staff: order confirmed (paid or started)', 'staff', true, false, 'order_confirmed', 'staff_sms_order_confirmed_enabled', 'sms.transactional.manage', false, 'Assigned / on-shift staff (or fallback)', false),
             self::def('staff_shift_reminder', 'Staff: shift reminder (an hour before)', 'staff', true, false, 'shift_reminder', 'staff_sms_shift_reminder_enabled', 'sms.transactional.manage', false, 'The rostered staff member', false),
+            // iruali import plan, feature 9: a customer's message about their order.
+            self::def('staff_order_message', 'Staff: customer message about an order', 'staff', true, false, null, 'sms_staff_order_message_enabled', 'sms.transactional.manage', false, 'Staff on shift', false),
             self::def('staff_new_question', 'Staff: new dish question', 'staff', true, false, null, 'sms_staff_new_question_enabled', 'sms.transactional.manage', false, 'Staff with customers.manage', false),
             self::def('staff_refund_requested', 'Staff: refund awaiting approval', 'staff', true, false, 'staff_refund_requested', 'sms_staff_refund_requested_enabled', 'sms.transactional.manage', false, 'Staff with orders.refund', false),
             self::def('owner_daily_refund_summary', 'Owner: daily refund summary', 'staff', true, false, 'owner_daily_refund_summary', 'sms_owner_daily_refund_summary_enabled', 'sms.transactional.manage', false, 'Owner phone(s)', false),
@@ -218,6 +220,7 @@ final class SmsTypeRegistry
             self::def('marketing_birthday', 'Birthday offer', 'marketing', true, true, null, 'marketing_birthday_enabled', 'sms.campaigns.send', false, 'Customers with birthday today', false),
             // iruali import plan, feature 8: a customer asked to be told (items:alerts). Asked for, so no offer opt-out applies.
             self::def('customer_back_in_stock', 'Dish back on the menu (asked for)', 'transactional', true, false, null, 'customer_back_in_stock_enabled', null, false, 'Customers who asked to be told', false),
+            self::def('customer_order_message_reply', 'Reply to an order message', 'transactional', true, false, null, 'customer_order_message_reply_enabled', null, false, 'The customer who wrote', false),
             // iruali import plan, feature 7: a dish question answered in Admin → Customers → Dish questions.
             self::def('customer_question_answered', 'Dish question answered', 'transactional', true, false, null, 'customer_question_answered_enabled', null, false, 'The customer who asked', false),
             // iruali import plan, feature 6: Admin → Reviews → Reply, once per review.

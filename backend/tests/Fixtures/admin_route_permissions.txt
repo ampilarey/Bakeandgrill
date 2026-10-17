@@ -255,6 +255,8 @@ backend/routes/domains/orders.php:201:orders.manage
 backend/routes/domains/orders.php:219:pos.ring_sales
 backend/routes/domains/orders.php:246:devices.approve
 backend/routes/domains/orders.php:25:pos.ring_sales
+backend/routes/domains/orders.php:266:orders.view
+backend/routes/domains/orders.php:272:complaints.manage
 backend/routes/domains/orders.php:27:pos.ring_sales
 backend/routes/domains/orders.php:29:pos.view_all_station_orders
 backend/routes/domains/orders.php:32:pos.hold_resume

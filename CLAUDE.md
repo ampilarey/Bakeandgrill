@@ -738,6 +738,21 @@ carries "Please tell staff about any allergy when you order." Rows `staff_new_qu
 (audience `perm:customers.manage`, so whoever is told can answer) and
 `customer_question_answered` (first answer only). `ItemQuestionsTest`.
 
+## Order messages
+
+iruali import plan, feature 9 (2026-10-17). "Message us" on the order app's order page
+(`OrderMessages`): up to 1000 characters and one photo, keyed by the order's tracking token
+(`/api/orders/track/{token}/messages`, so guests can write; the owner's order detail carries
+`tracking_token`), open while the order is and for two days after `completed_at`, never once
+cancelled (`OrderMessageController::canWrite`). Photos sit on the private disk
+(`order-message-photos/`, through `ReviewPhotos`) and open only through a signed link that
+lasts 30 minutes (`order-messages.photo`). Admin's order drawer has `OrderMessagesPanel`
+(Reply, texted to the customer with a link back; Turn into a complaint, `complaints.manage`,
+`source` order_message); `GET /api/admin/order-messages` lists orders waiting for a reply. The
+till's Active orders card shows "Customer: …" from `customer_message` on the orders list
+(`unreadFor`). Rows `staff_order_message` (audience on shift) and
+`customer_order_message_reply` (kind orders). Complaints stay separate. `OrderMessagesTest`.
+
 ## POS order type colours
 
 Owner, 2026-10-11: "add more visual colors to differentiate between order type in

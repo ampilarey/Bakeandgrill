@@ -2,6 +2,7 @@
     "order": {
         "id": "__VOLATILE__",
         "order_number": "__VOLATILE__",
+        "tracking_token": "__VOLATILE__",
         "status": "pending",
         "payment_status": "unpaid",
         "type": "takeaway",

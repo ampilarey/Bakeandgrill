@@ -1080,5 +1080,14 @@
   "question.thanks": "Thanks. We'll text you when it's answered.",
   "question.error": "Could not send that. Please try again.",
   "question.sign_in": "Sign in to ask a question",
-  "question.allergy": "Please tell staff about any allergy when you order."
+  "question.allergy": "Please tell staff about any allergy when you order.",
+  "orderMsg.title": "Message us",
+  "orderMsg.open": "Write a message",
+  "orderMsg.placeholder": "Please add extra sauce. I'm running 10 minutes late.",
+  "orderMsg.send": "Send",
+  "orderMsg.photo": "Add a photo",
+  "orderMsg.you": "You",
+  "orderMsg.shop": "Bake & Grill",
+  "orderMsg.hint": "We reply here and by text. For a problem with the order, use the complaint link instead.",
+  "orderMsg.error": "Could not send that. Please try again."
 }

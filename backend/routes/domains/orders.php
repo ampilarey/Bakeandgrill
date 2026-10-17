@@ -253,4 +253,21 @@ if (routes_domain_section_is('orders', 'delivery') && !routes_domain_loaded('ord
             Route::delete('/admin/boards/{id}', [App\Http\Controllers\Api\BoardController::class, 'revokeToken'])
                 ->whereNumber('id');
         });
+
+    // Order messages (iruali import plan, feature 9). The customer's side is
+    // keyed by the tracking token, like the tracking page, so guests can write.
+    Route::get('/orders/track/{token}/messages', [App\Http\Controllers\Api\OrderMessageController::class, 'index'])
+        ->middleware('throttle:120,1');
+    Route::post('/orders/track/{token}/messages', [App\Http\Controllers\Api\OrderMessageController::class, 'store'])
+        ->middleware('throttle:10,10');
+    Route::get('/order-messages/{id}/photo', [App\Http\Controllers\Api\OrderMessageController::class, 'photo'])
+        ->whereNumber('id')->middleware('signed')->name('order-messages.photo');
+
+    Route::middleware(['auth:sanctum', 'staff.token', 'permission:orders.view'])->group(function () {
+        Route::get('/admin/order-messages', [App\Http\Controllers\Api\OrderMessageController::class, 'unanswered']);
+        Route::get('/admin/orders/{id}/messages', [App\Http\Controllers\Api\OrderMessageController::class, 'adminThread'])->whereNumber('id');
+        Route::post('/admin/orders/{id}/messages', [App\Http\Controllers\Api\OrderMessageController::class, 'reply'])->whereNumber('id');
+    });
+    Route::post('/admin/order-messages/{id}/complaint', [App\Http\Controllers\Api\OrderMessageController::class, 'toComplaint'])
+        ->whereNumber('id')->middleware(['auth:sanctum', 'staff.token', 'permission:complaints.manage']);
 }

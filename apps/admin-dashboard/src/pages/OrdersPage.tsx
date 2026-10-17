@@ -15,6 +15,7 @@ import {
 import { ADMIN_ORDER_PAYMENT_METHODS } from '../lib/paymentMethods';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
+import { OrderMessagesPanel } from '../components/OrderMessagesPanel';
 import {
   Badge, Btn, Card, EmptyState, TableStateBar, PageHeader, PageShell, Select, Spinner, statColor, ConfirmDialog, useConfirmDialog, Modal, TableCard, InlineIcon,
 } from '../components/SharedUI';
@@ -846,6 +847,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                 <InlineIcon icon={StickyNote} />{order.notes}
               </div>
             )}
+            <OrderMessagesPanel orderId={order.id} />
           </>
         )}
     </Modal>

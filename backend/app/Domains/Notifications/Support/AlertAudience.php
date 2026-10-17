@@ -97,6 +97,7 @@ final class AlertAudience
         'staff_new_customer' => self::OWNERS_MANAGERS,
         'staff_refund_requested' => ['perm:orders.refund'],
         'staff_new_question' => ['perm:customers.manage'],
+        'staff_order_message' => [self::GROUP_ON_SHIFT],
         'staff_low_stock_menu' => self::OWNERS_MANAGERS,
         // Catering: a new request to everyone who manages catering; from then
         // on to the person handling it (everyone until someone does).

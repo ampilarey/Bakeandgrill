@@ -4,6 +4,8 @@ import type { Order, OrderItem, InitiatePaymentResult } from '@shared/types';
 import { API_ORIGIN, request } from './client';
 
 export type OrderDetail = Order & {
+  /** The order's key for "Message us" (feature 9); sent to the order's owner only. */
+  tracking_token?: string;
   items?: OrderItem[];
   payments?: Array<{ method: string; amount: number; status: string }>;
   remaining_balance_laar?: number;
@@ -223,4 +225,29 @@ export async function lookupTableByQr(
   token: string,
 ): Promise<{ table: { name: string; location: string | null } }> {
   return request(`/tables/qr/${encodeURIComponent(token)}`);
+}
+
+// ── Order messages (iruali import plan, feature 9) ──────────────────────────
+
+export interface OrderMessage {
+  id: number;
+  from: 'customer' | 'staff';
+  body: string;
+  /** Signed link, good for 30 minutes. */
+  photo_url: string | null;
+  created_at: string;
+}
+
+export async function getOrderMessages(token: string): Promise<{ messages: OrderMessage[]; can_write: boolean }> {
+  return request(`/orders/track/${encodeURIComponent(token)}/messages`);
+}
+
+export async function sendOrderMessage(token: string, body: string, photo?: File | null): Promise<{ message: OrderMessage }> {
+  if (!photo) {
+    return request(`/orders/track/${encodeURIComponent(token)}/messages`, { method: 'POST', body: JSON.stringify({ body }) });
+  }
+  const form = new FormData();
+  form.append('body', body);
+  form.append('photo', photo);
+  return request(`/orders/track/${encodeURIComponent(token)}/messages`, { method: 'POST', body: form });
 }

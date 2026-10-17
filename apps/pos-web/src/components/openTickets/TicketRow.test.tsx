@@ -133,3 +133,15 @@ describe("TicketRow bill link", () => {
     expect(handleMarkReady).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("TicketRow customer message badge", () => {
+  it("shows the customer's unread message so the cashier sees it (feature 9)", () => {
+    renderRow(ticket({ customer_message: { count: 1, latest: "Running 10 min late" } }));
+    expect(screen.getByTestId("ticket-message-badge")).toHaveTextContent("Customer: Running 10 min late");
+  });
+
+  it("shows nothing without one", () => {
+    renderRow(ticket({}));
+    expect(screen.queryByTestId("ticket-message-badge")).toBeNull();
+  });
+});

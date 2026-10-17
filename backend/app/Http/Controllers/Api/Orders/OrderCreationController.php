@@ -293,8 +293,12 @@ class OrderCreationController extends Controller
         $slim = in_array($request->query('slim'), ['1', 'true', 'yes'], true)
             || ($request->boolean('active_only') && !$request->filled('q'));
 
-        $orders->through(function (Order $order) use ($slim) {
+        // A customer's unread "Message us" lines, for the till's badge (feature 9).
+        $unread = \App\Http\Controllers\Api\OrderMessageController::unreadFor(collect($orders->items())->pluck('id')->map(fn ($id) => (int) $id)->all());
+
+        $orders->through(function (Order $order) use ($slim, $unread) {
             $data = $order->toArray();
+            $data['customer_message'] = $unread[$order->id] ?? null;
             // Decided here rather than re-derived per screen. The POS used to
             // work it out from `type` plus a nullable relation, which is how
             // the list filter and the row label ended up disagreeing.

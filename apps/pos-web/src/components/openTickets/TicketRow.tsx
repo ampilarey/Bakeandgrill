@@ -347,6 +347,24 @@ export function TicketRow({
             >
               {stageBadge.label}
             </span>
+            {t.customer_message && (
+              <span
+                title={`Customer: ${t.customer_message.latest}. Reply from the order in Admin.`}
+                data-testid="ticket-message-badge"
+                style={{
+                  ...badgeBase,
+                  color: palette.warnDark,
+                  background: palette.warnBg,
+                  borderColor: palette.warnBorder,
+                  maxWidth: 220,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Customer: {t.customer_message.latest}
+              </span>
+            )}
             {isPaid && (
               <span
                 title={paidOnline ? "Customer paid online (pay link or invoice)" : "Customer has paid"}
