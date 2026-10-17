@@ -11,11 +11,13 @@ class PosterExport extends Model
 {
     protected $fillable = [
         'poster_id', 'version', 'status', 'request', 'preflight', 'zip_path', 'bytes', 'error',
+        'bound_hash', 'diff', 'snapshot',
     ];
 
     protected $casts = [
         'request' => 'array',
         'preflight' => 'array',
+        'snapshot' => 'array',
         'version' => 'integer',
         'bytes' => 'integer',
     ];

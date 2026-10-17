@@ -86,7 +86,7 @@ final class PosterContent
             'period' => $offer['period'],
             'gst' => $gst,
             'gst_dv' => $gstDv,
-            'qr_url' => $table !== null ? $table->qrUrl() : rtrim((string) config('app.url'), '/') . '/menu',
+            'qr_url' => self::qrUrl($poster, $slots, $table),
             'photo' => self::photoFile($item),
             'photo_url' => $item?->image_url,
             'rows' => self::rows($poster, $category),
@@ -102,6 +102,40 @@ final class PosterContent
         }
 
         return $content;
+    }
+
+    /**
+     * @param array<string, mixed> $poster
+     * @param array<string, mixed> $slots
+     */
+    private static function qrUrl(array $poster, array $slots, ?RestaurantTable $table): string
+    {
+        $base = rtrim((string) config('app.url'), '/');
+        $key = (string) ($poster['template_key'] ?? '');
+        if ($key === 'how_we_did') {
+            return $base . '/complain';
+        }
+        if ($key === 'order_ahead') {
+            return $base . '/order';
+        }
+        if ($key === 'wifi') {
+            $ssid = self::slot($slots, 'ssid', 'BakeAndGrill');
+            $pass = self::slot($slots, 'password', '');
+
+            return 'WIFI:T:WPA;S:' . self::wifiField($ssid) . ';P:' . self::wifiField($pass) . ';;';
+        }
+        if ($key === 'follow') {
+            $url = self::slot($slots, 'url', '');
+
+            return $url !== '' ? $url : $base;
+        }
+
+        return $table !== null ? $table->qrUrl() : $base . '/menu';
+    }
+
+    private static function wifiField(string $value): string
+    {
+        return str_replace([';', ',', ':', '\\'], '', $value);
     }
 
     /** @param array<string, mixed> $slots */
@@ -241,14 +275,15 @@ final class PosterContent
         $key = (string) ($poster['template_key'] ?? '');
         try {
             $query = Item::query()->where('is_active', true)->where('hide_from_bestsellers', false);
-            if ($category !== null && in_array($key, ['category', 'mini_menu'], true)) {
+            $fromCategory = in_array($key, ['category', 'mini_menu', 'menu_board', 'drinks', 'iftar'], true);
+            if ($category !== null && $fromCategory) {
                 $query->where('category_id', $category->id);
             } elseif ($key === 'best_sellers') {
                 $ids = self::bestSellerIds();
                 if ($ids !== []) {
                     $query->whereIn('id', $ids);
                 }
-            } elseif (!in_array($key, ['category', 'mini_menu', 'best_sellers'], true)) {
+            } elseif (!$fromCategory) {
                 return [];
             }
 

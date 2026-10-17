@@ -103,6 +103,16 @@ class PdfX4Document extends TCPDF
     public function fillPath(array $ops, array $cmyk): void
     {
         $this->SetFillColorArray($cmyk);
+        $this->fillPathCurrent($ops);
+    }
+
+    /**
+     * The same path fill, keeping the colour already set (a spot layer).
+     *
+     * @param list<array{0: string, 1: list<float>}> $ops
+     */
+    public function fillPathCurrent(array $ops): void
+    {
         $k = $this->k;
         $h = $this->h;
         $s = '';

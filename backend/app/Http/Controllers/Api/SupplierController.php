@@ -14,7 +14,9 @@ class SupplierController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Supplier::query();
+        $query = Supplier::query()->where(function ($q) {
+            $q->where('kind', 'supplier')->orWhereNull('kind');
+        });
 
         if ($request->has('active_only')) {
             $query->where('is_active', true);

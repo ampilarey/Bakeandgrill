@@ -219,6 +219,12 @@ Schedule::command('labels:check-expiring --days=2')
     ->onFailure($alertOnFailure('labels:check-expiring'))
     ->after($trackSuccess('labels:check-expiring'));
 
+// Posters: out of date, or due down today or tomorrow (docs/POSTER_PLAN.md § 10).
+Schedule::command('posters:alert')
+    ->dailyAt('08:12')
+    ->onFailure($alertOnFailure('posters:alert'))
+    ->after($trackSuccess('posters:alert'));
+
 // Housekeeping: prune expired OTP records daily
 Schedule::command('otp:prune')
     ->dailyAt('02:00')

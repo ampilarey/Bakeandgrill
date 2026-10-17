@@ -23,26 +23,80 @@ final class PosterPdf
 
     /**
      * @param list<list<array{ox: float, oy: float, scale: float, rotate: int, built: array<string, mixed>}>> $sheets
+     * @param array{mirror?: bool, spots?: array{white?: string, gloss?: string}} $options
      * @return array{pdf: string, masks: list<array{rects: list<array{0: float, 1: float, 2: float, 3: float}>, paths: list<list<array{0: string, 1: list<float>}>>}>, gloss: list<array{rects: list<array{0: float, 1: float, 2: float, 3: float}>, paths: list<list<array{0: string, 1: list<float>}>>}>}
      */
-    public static function render(PaperSize $page, array $sheets, string $title): array
+    public static function render(PaperSize $page, array $sheets, string $title, array $options = []): array
     {
         $pdf = new PdfX4Document(OutputIntent::fromConfig(), $title);
         $pdf->SetSubject($title);
+        $spots = is_array($options['spots'] ?? null) ? $options['spots'] : [];
+        $whiteName = trim((string) ($spots['white'] ?? ''));
+        $glossName = trim((string) ($spots['gloss'] ?? ''));
+        if ($whiteName !== '') {
+            $pdf->AddSpotColor($whiteName, 0, 0, 0, 0);
+        }
+        if ($glossName !== '') {
+            $pdf->AddSpotColor($glossName, 0, 0, 0, 0);
+        }
         $masks = [];
         $gloss = [];
         foreach ($sheets as $copies) {
             $pdf->addPosterPage($page);
+            $mirrored = ($options['mirror'] ?? false) === true;
+            if ($mirrored) {
+                $pdf->StartTransform();
+                $pdf->MirrorH($page->bleedWidth() / 2);
+            }
             $ink = ['rects' => [], 'paths' => []];
             $glossInk = ['rects' => [], 'paths' => []];
             foreach ($copies as $copy) {
                 self::drawCopy($pdf, $page, $copy, $ink, $glossInk);
+            }
+            self::paintSpots($pdf, $ink, $glossInk, $whiteName, $glossName);
+            if ($mirrored) {
+                $pdf->StopTransform();
             }
             $masks[] = $ink;
             $gloss[] = $glossInk;
         }
 
         return ['pdf' => $pdf->bytes(), 'masks' => $masks, 'gloss' => $gloss];
+    }
+
+    /**
+     * Spot white under the ink, and spot gloss on type at 14 pt and up
+     * plus the logo. QR is never glossed. Rects are choked like the mask.
+     *
+     * @param array{rects: list<array{0: float, 1: float, 2: float, 3: float}>, paths: list<list<array{0: string, 1: list<float>}>>} $ink
+     * @param array{rects: list<array{0: float, 1: float, 2: float, 3: float}>, paths: list<list<array{0: string, 1: list<float>}>>} $gloss
+     */
+    private static function paintSpots(PdfX4Document $pdf, array $ink, array $gloss, string $whiteName, string $glossName): void
+    {
+        if ($whiteName === '' && $glossName === '') {
+            return;
+        }
+        $pdf->setOverprint(false, true, 0);
+        $c = WhiteMask::CHOKE_MM;
+        $paint = static function (PdfX4Document $pdf, array $layer) use ($c): void {
+            foreach ($layer['rects'] as [$x, $y, $w, $h]) {
+                if ($w <= 2 * $c || $h <= 2 * $c) {
+                    continue;
+                }
+                $pdf->Rect($x + $c, $y + $c, $w - 2 * $c, $h - 2 * $c, 'F');
+            }
+            foreach ($layer['paths'] as $ops) {
+                $pdf->fillPathCurrent($ops);
+            }
+        };
+        if ($whiteName !== '') {
+            $pdf->setSpotColor('fill', $whiteName, 100);
+            $paint($pdf, $ink);
+        }
+        if ($glossName !== '') {
+            $pdf->setSpotColor('fill', $glossName, 100);
+            $paint($pdf, $gloss);
+        }
     }
 
     /**
@@ -113,7 +167,8 @@ final class PosterPdf
             if (in_array($piece['type'], ['rect', 'photo', 'text', 'qr'], true)) {
                 self::inkRect($ink, $x, $y, $w, $h, (bool) ($piece['bleed'] ?? false));
             }
-            if (in_array($piece['type'], ['text', 'qr'], true)) {
+            $pt = (float) ($piece['pt'] ?? 0);
+            if ($piece['type'] === 'text' && $pt >= 14) {
                 self::inkRect($gloss, $x, $y, $w, $h, false);
             }
         }

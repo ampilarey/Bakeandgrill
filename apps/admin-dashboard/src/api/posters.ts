@@ -49,7 +49,30 @@ export type PosterRow = PosterDraft & {
   code: string;
   version: number;
   should_be_down: boolean;
+  stale?: boolean;
+  diff?: string;
+  order?: { id: number; state: string; shop: string | null; quote_mvr: string | null } | null;
   updated_at?: string;
+};
+
+export type PrintShop = {
+  id: number;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  print_prefs: { layers: 'masks' | 'spots' | string; white_name: string; gloss_name: string; bleed_mm: number; crop_marks: boolean };
+};
+
+export type PosterOrderRow = {
+  id: number;
+  poster_id: number;
+  code: string | null;
+  poster_name: string | null;
+  shop: string | null;
+  state: string;
+  material: string;
+  quote_mvr: string | null;
+  proof_url?: string;
 };
 
 export type PosterPreview = {
@@ -72,7 +95,7 @@ export const fetchPosterCatalog = () => req<{
   moods: string[];
   sizes: string[];
   places: string[];
-  materials: { key: string; label: string; white: boolean }[];
+  materials: { key: string; label: string; white: boolean; mirror?: boolean }[];
 }>('/posters/catalog');
 
 export const fetchPosterLookups = (q = '') => req<{
@@ -82,7 +105,7 @@ export const fetchPosterLookups = (q = '') => req<{
   tables: { id: number; name: string }[];
 }>(`/posters/lookups${q ? `?q=${encodeURIComponent(q)}` : ''}`);
 
-export const previewPoster = (draft: PosterDraft & { material?: string; white?: string; imposition?: string }) =>
+export const previewPoster = (draft: PosterDraft & Record<string, unknown>) =>
   req<PosterPreview>('/posters/preview', { method: 'POST', body: JSON.stringify(draft) });
 
 export const fetchPosters = () => req<{ posters: PosterRow[]; should_be_down: PosterRow[] }>('/posters');
@@ -121,3 +144,25 @@ export const lockPosterTemplate = (id: number, locked: boolean) =>
   req(`/posters/templates/${id}`, { method: 'PUT', body: JSON.stringify({ locked }) });
 
 export const deletePosterTemplate = (id: number) => req(`/posters/templates/${id}`, { method: 'DELETE' });
+
+export const fetchPrintShops = () => req<{ shops: PrintShop[]; proof_approval: boolean }>('/posters/shops');
+
+export const savePrintShop = (body: { name: string; email?: string; phone?: string; print_prefs?: PrintShop['print_prefs'] }) =>
+  req<PrintShop>('/posters/shops', { method: 'POST', body: JSON.stringify(body) });
+
+export const setPosterProofApproval = (on: boolean) =>
+  req<{ proof_approval: boolean }>('/posters/proof-approval', { method: 'PUT', body: JSON.stringify({ on }) });
+
+export const fetchPosterOrders = () => req<{ orders: PosterOrderRow[] }>('/posters/orders');
+
+export const sendPosterToShop = (id: number, body: Record<string, unknown>) =>
+  req<PosterOrderRow>(`/posters/${id}/orders`, { method: 'POST', body: JSON.stringify(body) });
+
+export const quotePosterOrder = (id: number, quote_mvr: number, quote_note?: string) =>
+  req<PosterOrderRow>(`/posters/orders/${id}/quote`, { method: 'POST', body: JSON.stringify({ quote_mvr, quote_note }) });
+
+export const approvePosterQuote = (id: number) =>
+  req<PosterOrderRow>(`/posters/orders/${id}/approve-quote`, { method: 'POST', body: JSON.stringify({}) });
+
+export const advancePosterOrder = (id: number, state: 'received' | 'up' | 'down') =>
+  req<PosterOrderRow>(`/posters/orders/${id}/state`, { method: 'POST', body: JSON.stringify({ state }) });

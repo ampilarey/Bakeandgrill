@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
-import { Copy, Download, Pin, Trash2 } from 'lucide-react';
+import { Copy, Download, Pin, Send, Trash2 } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { PageHeader, Btn } from '../components/SharedUI';
 import {
-  createPoster, deletePoster, deletePosterTemplate, downloadPosterZip, duplicatePoster, exportPoster,
-  fetchPosterCatalog, fetchPosterLookups, fetchPosters, fetchPosterTemplates, lockPosterTemplate,
-  previewPoster, savePosterTemplate, updatePoster,
-  type PosterCheck, type PosterDraft, type PosterPiece, type PosterPurpose, type PosterRow, type PosterTemplateRow,
+  advancePosterOrder, approvePosterQuote, createPoster, deletePoster, deletePosterTemplate, downloadPosterZip, duplicatePoster, exportPoster,
+  fetchPosterCatalog, fetchPosterLookups, fetchPosterOrders, fetchPosters, fetchPosterTemplates, fetchPrintShops, lockPosterTemplate,
+  previewPoster, quotePosterOrder, savePosterTemplate, savePrintShop, sendPosterToShop, setPosterProofApproval, updatePoster,
+  type PosterCheck, type PosterDraft, type PosterOrderRow, type PosterPiece, type PosterPurpose, type PosterRow, type PosterTemplateRow, type PrintShop,
 } from '../api';
 
 const MOODS = ['dark', 'cream', 'rust', 'gold', 'photo'] as const;
@@ -33,19 +33,20 @@ export function PostersPage() {
   usePageTitle('Posters');
   const { can } = useCurrentUserPermissions();
   const manage = can('posters.manage');
-  const [tab, setTab] = useState<'make' | 'mine' | 'templates'>('make');
+  const [tab, setTab] = useState<'make' | 'mine' | 'templates' | 'shops'>('make');
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader title="Posters" subtitle="Print-ready files for the shop, with the menu's prices and the brand." />
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {([['make', 'Make a poster'], ['mine', 'My posters'], ['templates', 'Templates']] as const).map(([id, label]) => (
+        {([['make', 'Make a poster'], ['mine', 'My posters'], ['templates', 'Templates'], ['shops', 'Print shops']] as const).map(([id, label]) => (
           <Btn key={id} variant={tab === id ? 'primary' : 'ghost'} onClick={() => setTab(id)}>{label}</Btn>
         ))}
       </div>
       {tab === 'make' && <MakeTab manage={manage} />}
       {tab === 'mine' && <MineTab onEdit={() => setTab('make')} />}
       {tab === 'templates' && <TemplatesTab manage={manage} />}
+      {tab === 'shops' && <ShopsTab manage={manage} />}
     </div>
   );
 }
@@ -54,7 +55,10 @@ function MakeTab({ manage }: { manage: boolean }) {
   const [purposes, setPurposes] = useState<PosterPurpose[]>([]);
   const [sizes, setSizes] = useState<string[]>(['A5', 'A4', 'A3', 'A2']);
   const [places, setPlaces] = useState<string[]>([]);
-  const [materials, setMaterials] = useState<{ key: string; label: string; white: boolean }[]>([]);
+  const [materials, setMaterials] = useState<{ key: string; label: string; white: boolean; mirror?: boolean }[]>([]);
+  const [shops, setShops] = useState<PrintShop[]>([]);
+  const [shopId, setShopId] = useState<number | ''>('');
+  const [gloss, setGloss] = useState('none');
   const [lookups, setLookups] = useState<Awaited<ReturnType<typeof fetchPosterLookups>> | null>(null);
   const [step, setStep] = useState(1);
   const [draft, setDraft] = useState<PosterDraft | null>(null);
@@ -75,18 +79,23 @@ function MakeTab({ manage }: { manage: boolean }) {
       setMaterials(c.materials);
     }).catch(() => setNote('Could not load purposes.'));
     fetchPosterLookups().then(setLookups).catch(() => undefined);
+    fetchPrintShops().then((r) => setShops(r.shops)).catch(() => undefined);
   }, []);
 
   useEffect(() => {
     if (!draft || step < 3) return;
     const handle = setTimeout(() => {
-      previewPoster({ ...draft, material, imposition }).then((res) => {
+      const shop = shops.find((s) => s.id === shopId);
+      previewPoster({
+        ...draft, material, imposition,
+        layers: shop?.print_prefs.layers, white_name: shop?.print_prefs.white_name, gloss_name: shop?.print_prefs.gloss_name, gloss,
+      }).then((res) => {
         setSheet(res.sheet);
         setChecks(res.preflight);
       }).catch(() => setNote('Preview failed.'));
     }, 250);
     return () => clearTimeout(handle);
-  }, [draft, step, material, imposition]);
+  }, [draft, step, material, imposition, shopId, shops, gloss]);
 
   const grouped = useMemo(() => GROUPS.map((g) => ({ g, rows: purposes.filter((p) => p.group === g) })), [purposes]);
   const purpose = purposes.find((p) => p.key === draft?.template_key);
@@ -103,14 +112,27 @@ function MakeTab({ manage }: { manage: boolean }) {
     return row.id;
   }
 
+  function job() {
+    const mat = materials.find((m) => m.key === material);
+    const shop = shops.find((s) => s.id === shopId);
+    return {
+      material, imposition, masks, gloss, sizes: draft?.sizes,
+      white: mat?.white ? 'under all printed areas' : 'none',
+      mirror: mat?.mirror ?? false,
+      layers: shop?.print_prefs.layers,
+      white_name: shop?.print_prefs.white_name,
+      gloss_name: shop?.print_prefs.gloss_name,
+      supplier_id: shopId || undefined,
+    };
+  }
+
   async function download() {
     setBusy(true);
     setNote('');
     try {
       const id = await save();
       if (!id) return;
-      const white = materials.find((m) => m.key === material)?.white ? 'under all printed areas' : 'none';
-      const exp = await exportPoster(id, { material, imposition, masks, white, sizes: draft?.sizes, gloss: 'none' });
+      const exp = await exportPoster(id, job());
       if (exp.status === 'failed') {
         setNote(exp.error || 'Export failed.');
         return;
@@ -125,6 +147,23 @@ function MakeTab({ manage }: { manage: boolean }) {
       setNote('ZIP downloaded. Send it to the shop by WhatsApp, Viber or email.');
     } catch (e) {
       setNote(e instanceof Error ? e.message : 'Export failed.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function send() {
+    setBusy(true);
+    setNote('');
+    try {
+      const id = await save();
+      if (!id || shopId === '') return;
+      const order = await sendPosterToShop(id, job());
+      setNote(order.proof_url
+        ? `Waiting for approval. Open this on your phone: ${order.proof_url}`
+        : `Sent to ${order.shop ?? 'the shop'}. The order is ${order.state.replace(/_/g, ' ')}.`);
+    } catch (e) {
+      setNote(e instanceof Error ? e.message : 'Could not send.');
     } finally {
       setBusy(false);
     }
@@ -194,7 +233,7 @@ function MakeTab({ manage }: { manage: boolean }) {
               <Select label="Table (blank = one card per table)" value={draft.bindings.table_id ?? ''} onChange={(v) => setDraft({ ...draft, bindings: { ...draft.bindings, table_id: v ? Number(v) : null } })}
                 options={lookups.tables.map((t) => ({ value: t.id, label: t.name }))} />
             )}
-            {(['headline', 'headline_dv', 'price', 'old_price', 'subhead', 'body', 'badge'] as const).map((key) => (
+            {(Array.from(new Set([...Object.keys(purpose?.slots ?? {}), 'headline', 'headline_dv', 'price', 'old_price', 'subhead', 'body', 'badge']))).map((key) => (
               <label key={key} style={labelStyle}>{key.replace('_', ' ')}
                 <input style={inputStyle} value={draft.slots[key] ?? ''} onChange={(e) => setDraft({ ...draft, slots: { ...draft.slots, [key]: e.target.value } })} />
               </label>
@@ -215,6 +254,8 @@ function MakeTab({ manage }: { manage: boolean }) {
                   { value: '2up', label: '2-up' },
                   { value: '4up', label: '4-up' },
                 ]} />
+                <Select label="Gloss" value={gloss} onChange={setGloss} options={[{ value: 'none', label: 'No gloss' }, { value: 'logo and price', label: 'Gloss on logo and large type' }]} />
+                <Select label="Print shop" value={shopId} onChange={(v) => setShopId(v ? Number(v) : '')} options={shops.map((s) => ({ value: s.id, label: s.name }))} />
                 <label style={{ display: 'flex', gap: 8, alignItems: 'center', minHeight: 44 }}>
                   <input type="checkbox" checked={masks} onChange={(e) => setMasks(e.target.checked)} /> White and gloss masks
                 </label>
@@ -226,6 +267,7 @@ function MakeTab({ manage }: { manage: boolean }) {
                 </ul>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <Btn onClick={download} disabled={busy || reds.length > 0}><Download size={16} /> {busy ? 'Preparing…' : 'Download for print'}</Btn>
+                  <Btn variant="ghost" onClick={send} disabled={busy || reds.length > 0 || shopId === ''}><Send size={16} /> Send to print shop</Btn>
                   {manage && <Btn variant="ghost" onClick={async () => { await save(); if (draft) { await savePosterTemplate({ name: draft.name || 'Template', template_key: draft.template_key, layout: draft.layout, mood: draft.mood, language: draft.language, slots: draft.slots }); setNote('Saved as a template.'); } }}>Save as template</Btn>}
                 </div>
                 {note && <p style={{ color: 'var(--color-text-secondary)' }}>{note}</p>}
@@ -234,13 +276,13 @@ function MakeTab({ manage }: { manage: boolean }) {
           </>
         )}
       </div>
-      <Preview sheet={sheet} />
+      <Preview sheet={sheet} gloss={gloss !== 'none'} />
       <style>{`@media (max-width: 800px) { .poster-make { grid-template-columns: 1fr !important; } }`}</style>
     </div>
   );
 }
 
-function Preview({ sheet }: { sheet: { w: number; h: number; hex_bg: string; pieces: PosterPiece[] } | null }) {
+function Preview({ sheet, gloss }: { sheet: { w: number; h: number; hex_bg: string; pieces: PosterPiece[] } | null; gloss: boolean }) {
   if (!sheet) {
     return <aside style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>The preview appears once a purpose is filled in. Screen colours follow the brand; the file uses the press mixes.</aside>;
   }
@@ -248,6 +290,7 @@ function Preview({ sheet }: { sheet: { w: number; h: number; hex_bg: string; pie
   return (
     <aside>
       <div style={{ width: sheet.w * scale, height: sheet.h * scale, position: 'relative', background: sheet.hex_bg, borderRadius: 4, overflow: 'hidden', margin: '0 auto' }}>
+        {gloss && <div style={{ position: 'absolute', inset: 0, background: 'repeating-linear-gradient(135deg, transparent, transparent 6px, var(--color-text) 6px, var(--color-text) 7px)', opacity: 0.28, pointerEvents: 'none' }} />}
         {sheet.pieces.map((p, i) => (
           <div key={i} style={{
             position: 'absolute', left: p.x * scale, top: p.y * scale, width: p.w * scale, height: p.h * scale,
@@ -276,7 +319,7 @@ function MineTab({ onEdit }: { onEdit: () => void }) {
         <div key={p.id} style={{ ...cardStyle, display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
           <div>
             <strong>{p.pinned ? '★ ' : ''}{p.code} · {p.name}</strong>
-            <div style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>{p.state} · {(p.sizes ?? []).join(', ')}{p.place ? ` · ${p.place}` : ''}{p.take_down_on ? ` · down ${p.take_down_on}` : ''}{p.should_be_down ? ' · should be down' : ''}</div>
+            <div style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>{p.state} · {(p.sizes ?? []).join(', ')}{p.place ? ` · ${p.place}` : ''}{p.take_down_on ? ` · down ${p.take_down_on}` : ''}{p.should_be_down ? ' · should be down' : ''}{p.stale ? ` · out of date${p.diff ? `: ${p.diff}` : ''}` : ''}{p.order ? ` · ${p.order.shop ?? 'shop'} ${p.order.state.replace(/_/g, ' ')}` : ''}</div>
           </div>
           <div style={{ display: 'flex', gap: 4 }}>
             <Btn variant="ghost" onClick={() => updatePoster(p.id, { pinned: !p.pinned }).then(load)}><Pin size={14} /></Btn>
@@ -288,6 +331,70 @@ function MineTab({ onEdit }: { onEdit: () => void }) {
         </div>
       ))}
       <Btn variant="ghost" onClick={onEdit}>Make a poster</Btn>
+    </div>
+  );
+}
+
+function ShopsTab({ manage }: { manage: boolean }) {
+  const [shops, setShops] = useState<PrintShop[]>([]);
+  const [proof, setProof] = useState(false);
+  const [orders, setOrders] = useState<PosterOrderRow[]>([]);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [layers, setLayers] = useState<'masks' | 'spots'>('masks');
+  const [note, setNote] = useState('');
+  const load = () => {
+    fetchPrintShops().then((r) => { setShops(r.shops); setProof(r.proof_approval); }).catch(() => undefined);
+    fetchPosterOrders().then((r) => setOrders(r.orders)).catch(() => undefined);
+  };
+  useEffect(() => { load(); }, []);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <label style={{ display: 'flex', gap: 8, alignItems: 'center', minHeight: 44 }}>
+        <input type="checkbox" checked={proof} disabled={!manage} onChange={(e) => { setProof(e.target.checked); setPosterProofApproval(e.target.checked).catch(() => setNote('Could not save the proof switch.')); }} />
+        Approve a proof on your phone before the file is emailed
+      </label>
+      {manage && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'end' }}>
+          <label style={labelStyle}>Shop name
+            <input style={inputStyle} value={name} onChange={(e) => setName(e.target.value)} />
+          </label>
+          <label style={labelStyle}>Email
+            <input style={inputStyle} value={email} onChange={(e) => setEmail(e.target.value)} />
+          </label>
+          <Select label="Layers" value={layers} onChange={(v) => setLayers(v === 'spots' ? 'spots' : 'masks')} options={[{ value: 'masks', label: 'Mask PDFs' }, { value: 'spots', label: 'Spot layers in the file' }]} />
+          <Btn onClick={() => savePrintShop({ name, email, print_prefs: { layers, white_name: 'White', gloss_name: 'Spot UV', bleed_mm: 3, crop_marks: false } }).then(() => { setName(''); setEmail(''); load(); }).catch((e) => setNote(e instanceof Error ? e.message : 'Could not save the shop.'))}>Add shop</Btn>
+        </div>
+      )}
+      {shops.map((s) => (
+        <div key={s.id} style={cardStyle}>
+          <strong>{s.name}</strong>
+          <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{s.email || 'No email'} · {s.print_prefs.layers === 'spots' ? `spots ${s.print_prefs.white_name} / ${s.print_prefs.gloss_name}` : 'mask PDFs'}</div>
+        </div>
+      ))}
+      {orders.length > 0 && <h3 style={{ margin: '8px 0 0', fontSize: 16 }}>Orders</h3>}
+      {orders.map((o) => <OrderRow key={o.id} order={o} manage={manage} onChange={load} />)}
+      {note && <p style={{ color: 'var(--color-danger)' }}>{note}</p>}
+    </div>
+  );
+}
+
+function OrderRow({ order, manage, onChange }: { order: PosterOrderRow; manage: boolean; onChange: () => void }) {
+  const [quote, setQuote] = useState('');
+  const next = order.state === 'quote_approved' ? 'received' : order.state === 'received' ? 'up' : order.state === 'up' ? 'down' : null;
+  return (
+    <div style={{ ...cardStyle, cursor: 'default' }}>
+      <strong>{order.code} · {order.poster_name}</strong>
+      <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{order.shop} · {order.state.replace(/_/g, ' ')}{order.quote_mvr ? ` · MVR ${order.quote_mvr}` : ''}</div>
+      {manage && order.state === 'sent' && (
+        <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+          <input style={{ ...inputStyle, maxWidth: 140 }} inputMode="decimal" placeholder="Quote MVR" value={quote} onChange={(e) => setQuote(e.target.value)} />
+          <Btn variant="ghost" onClick={() => quotePosterOrder(order.id, Number(quote)).then(onChange)}>Save quote</Btn>
+          <Btn variant="ghost" onClick={() => approvePosterQuote(order.id).then(onChange)}>Approve quote</Btn>
+        </div>
+      )}
+      {next && <Btn variant="ghost" onClick={() => advancePosterOrder(order.id, next).then(onChange)}>{next === 'received' ? 'Mark received' : next === 'up' ? 'Mark up' : 'Taken down'}</Btn>}
     </div>
   );
 }

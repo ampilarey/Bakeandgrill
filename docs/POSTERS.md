@@ -1,7 +1,8 @@
 # Posters
 
 Phase 0 proved the print file (`php artisan posters:spike`, below). Phase 1 is the
-page: Admin → Posters, or the card on Labels → Make a label.
+page: Admin → Posters, or the card on Labels → Make a label. Phase 2 sends that
+file to a print shop and watches it after it is up.
 
 ## Make a poster
 
@@ -26,7 +27,26 @@ Permissions: `posters.make` (managers and anyone granted it) and `posters.manage
 
 Exports run on the queue (`ExportPosterJob`). With the queue on `sync` (local, tests) the
 ZIP is ready in the same request. On the server the worker must be running; the row stays
-"queued" until it is.
+"queued" until it is. Sending to a shop waits for that file in the same request.
+
+## Print shops
+
+Admin → Posters → Print shops. A shop is a supplier with kind `print_shop`, so it
+does not show in Purchasing. Its card holds the bleed, and whether it wants mask
+PDFs or spot layers named `White` and `Spot UV` (change the names to match the RIP).
+
+**Send to print shop** emails the ZIP and a 1200 px proof. With "Approve a proof on
+your phone" on, the email waits until the signed link (good for a day) is used.
+On a sent order, type the shop's price and approve it: that writes an expense
+under Printing. Then mark it received, up, and taken down.
+
+A changed price, dish or hours marks the poster out of date, with the diff
+("price MVR 45.00 → MVR 50.00"). `posters:alert` each morning texts
+`owner_poster_stale` and `owner_poster_ending` (due down today or tomorrow).
+
+**Tell us how we did** is a poster on this page. Its code opens `/complain`.
+The old `/complain/poster` sheet pages stay, so a bookmark or a many-up print
+link still opens them.
 
 ## Phase 0, the print file
 
