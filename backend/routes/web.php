@@ -78,6 +78,12 @@ Route::get('/robots.txt', fn (Illuminate\Http\Request $request) => response(
 Route::get('/sitemap.xml', [App\Http\Controllers\SitemapController::class, 'index'])
     ->name('sitemap');
 
+// Catalogue feeds behind a secret link (iruali import plan, feature 11).
+Route::get('/feeds/{token}/google.xml', [App\Http\Controllers\CatalogFeedController::class, 'google'])
+    ->where('token', '[A-Za-z0-9]{32,64}')->middleware('throttle:30,1');
+Route::get('/feeds/{token}/facebook.csv', [App\Http\Controllers\CatalogFeedController::class, 'facebook'])
+    ->where('token', '[A-Za-z0-9]{32,64}')->middleware('throttle:30,1');
+
 // Public Website Pages (Customer-facing only)
 // `service.banner` shares $serviceBanner with layout.blade.php and returns the
 // branded maintenance view (503) when the `marketing_site` service key is off.

@@ -360,6 +360,17 @@
          (injected inline scripts are blocked by the CSP nonce). The menu page
          already carries the delegated favourites handler. --}}
     <script type="application/ld+json">@json($itemSchema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)</script>
+    @php
+        // Breadcrumbs (feature 11): Home › Menu › category › dish.
+        $crumbCategory = $item->category_id ? \App\Models\Category::query()->find($item->category_id) : null;
+        $breadcrumbSchema = \App\Support\StructuredData::breadcrumbs(array_values(array_filter([
+            ['Home', url('/')],
+            ['Menu', url('/menu')],
+            $crumbCategory ? [(string) $crumbCategory->name, \App\Http\Controllers\MenuPageController::categoryUrl($crumbCategory)] : null,
+            [$iname['text'], url('/menu/' . $item->id)],
+        ])));
+    @endphp
+    <script type="application/ld+json">@json($breadcrumbSchema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)</script>
     @include('partials.menu-favourite-script')
 @endunless
 @endsection

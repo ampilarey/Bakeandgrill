@@ -784,6 +784,22 @@ payment that fails can never strand wallet money on a cancelled order. The ledge
 owner as actor, as gateway settlements do. `CustomerWalletTest`,
 `RefundExternalPayoutTest::test_store_credit_puts_the_refund_in_the_wallet_and_says_so`.
 
+## Search-engine data and catalogue feeds
+
+iruali import plan, feature 11 (2026-10-17). Every website page carries the Restaurant JSON-LD
+from `App\Support\StructuredData::restaurant()` (business phone and address from Business
+Details, `openingHoursSpecification` from the Admin schedule, the same rows as
+`OpeningHoursText`, an OrderAction to the order app); the menu page keeps its Menu block (coming
+soon dishes left out), the dish page its MenuItem (with `aggregateRating` from feature 6), and
+both a dish page and a shared category link add `BreadcrumbList`
+(`StructuredData::breadcrumbs()`). Compute a JSON-LD array in `@php` first: Blade's `@json`
+splits its argument on commas. Feeds sit behind a secret link, `/feeds/{token}/google.xml` and
+`facebook.csv` (`App\Domains\Menu\Feeds\CatalogFeed`, token in the site setting
+`catalog_feed_token`), one row per dish and size, inactive and coming soon left out, sold out or
+snoozed as out of stock, cached 30 minutes under the menu's last change. System → Integrations
+→ Catalogue feeds (`website.manage`, `GET /api/admin/feeds`, `POST /api/admin/feeds/rotate`)
+shows, copies and renews the links. `StructuredDataAndFeedsTest`.
+
 ## POS order type colours
 
 Owner, 2026-10-11: "add more visual colors to differentiate between order type in

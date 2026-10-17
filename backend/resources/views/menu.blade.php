@@ -1554,14 +1554,14 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
             $section = [
                 '@type' => 'MenuSection',
                 'name' => $categoryName($group['category'])['text'],
-                'hasMenuItem' => $group['items']->map($toMenuItem)->values()->all(),
+                'hasMenuItem' => $group['items']->reject(fn ($i) => $i->isComingSoon())->map($toMenuItem)->values()->all(),
             ];
             $nested = [];
             foreach ($group['subcategories'] ?? [] as $sub) {
                 $nested[] = [
                     '@type' => 'MenuSection',
                     'name' => $categoryName($sub['category'])['text'],
-                    'hasMenuItem' => $sub['items']->map($toMenuItem)->values()->all(),
+                    'hasMenuItem' => $sub['items']->reject(fn ($i) => $i->isComingSoon())->map($toMenuItem)->values()->all(),
                 ];
             }
             if ($nested !== []) {
@@ -1577,6 +1577,12 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
     ];
 @endphp
 <script type="application/ld+json">@json($menuSchema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)</script>
+@if(!empty($menuBreadcrumbs))
+@php
+    $menuBreadcrumbSchema = \App\Support\StructuredData::breadcrumbs($menuBreadcrumbs);
+@endphp
+<script type="application/ld+json">@json($menuBreadcrumbSchema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)</script>
+@endif
 @endif
 
 {{-- Filtering. Every card is already in the HTML; this only hides the ones

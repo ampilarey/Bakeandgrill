@@ -294,3 +294,16 @@ export async function createContentPreviewToken(
     body: JSON.stringify({ app, locale, overrides, include_layout: includeLayout }),
   });
 }
+
+// ── Catalogue feeds (iruali import plan, feature 11) ────────────────────────
+
+export type CatalogFeedLinks = { google: string; facebook: string };
+
+export async function fetchCatalogFeeds(): Promise<{ links: CatalogFeedLinks; count: number }> {
+  return req('/admin/feeds');
+}
+
+/** A new secret; the old links stop working. */
+export async function rotateCatalogFeeds(): Promise<{ links: CatalogFeedLinks }> {
+  return req('/admin/feeds/rotate', { method: 'POST' });
+}

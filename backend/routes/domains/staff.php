@@ -303,6 +303,12 @@ if (routes_domain_section_is('staff', 'admin') && !routes_domain_loaded('staff.a
         Route::get('/audit-logs/actions', [App\Http\Controllers\Api\AuditLogController::class, 'actions']);
     });
 
+    // Website → Feeds: the catalogue feed links and a new secret (feature 11).
+    Route::middleware(['auth:sanctum', 'staff.token', 'permission:website.manage'])->group(function () {
+        Route::get('/admin/feeds', [App\Http\Controllers\CatalogFeedController::class, 'links']);
+        Route::post('/admin/feeds/rotate', [App\Http\Controllers\CatalogFeedController::class, 'rotate']);
+    });
+
     // Protected admin health — returns full details for internal monitoring
     Route::middleware(['auth:sanctum', 'staff.token', 'permission:website.manage'])
         ->get('/admin/system/health', [App\Http\Controllers\Api\SystemHealthController::class, 'admin']);

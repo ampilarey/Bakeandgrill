@@ -69,7 +69,7 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
   { to: '/telegram', permission: 'telegram.manage' },
   { to: '/devices', permission: 'devices.view' },
   // Nav check, 2026-10-17: Webhooks and Xero are tabs of Integrations, each keeping its permission.
-  { to: '/integrations', permissions: ['integrations.webhooks', 'integrations.xero'] },
+  { to: '/integrations', permissions: ['integrations.webhooks', 'integrations.xero', 'website.manage'] },
   { to: '/system-health', permissions: ['website.manage', 'service_availability.view'] },
   { to: '/account' },
 ];
@@ -121,7 +121,7 @@ describe('navConfig', () => {
     expect(byTo['/reservations']?.permission).toBe('reservations.manage');
     expect(byTo['/finance']?.permissions).toEqual(['reports.financial', 'finance.expenses', 'finance.invoices', 'finance.settlements', 'orders.refund']);
     expect(byTo['/sms']?.permissions).toEqual(['integrations.sms', 'sms_marketing.manage', 'sms.settings.manage', 'sms.logs.view']);
-    expect(byTo['/integrations']?.permissions).toEqual(['integrations.webhooks', 'integrations.xero']);
+    expect(byTo['/integrations']?.permissions).toEqual(['integrations.webhooks', 'integrations.xero', 'website.manage']);
   });
 
   it('user holding only the API permission sees the nav link; weaker drift slug does not', () => {

@@ -221,24 +221,10 @@
 
     <!-- Structured Data (JSON-LD) -->
     {{-- @json() emits a quoted JSON string; do not HTML-escape inside JSON-LD. --}}
-    <script type="application/ld+json">
-    {
-      "@@context": "https://schema.org",
-      "@@type": "Restaurant",
-      "name": @json($siteName),
-      "description": @json($metaDesc),
-      "url": @json(url('/')),
-      "logo": @json($logoUrl),
-      "address": {
-        "@@type": "PostalAddress",
-        "addressLocality": "Malé",
-        "addressCountry": "MV"
-      },
-      "servesCuisine": ["Maldivian", "Grills", "Bakery"],
-      "hasMenu": @json(url('/menu')),
-      "acceptsReservations": true
-    }
-    </script>
+    @php
+        $restaurantSchema = \App\Support\StructuredData::restaurant((string) $siteName, (string) $metaDesc, (string) $logoUrl);
+    @endphp
+    <script type="application/ld+json">@json($restaurantSchema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)</script>
 
     <!-- Apply saved theme before first paint to avoid flash -->
     <script nonce="{{ csp_nonce() }}">if(localStorage.getItem('theme')==='dark')document.documentElement.dataset.theme='dark';</script>

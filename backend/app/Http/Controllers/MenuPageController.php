@@ -137,6 +137,8 @@ class MenuPageController extends Controller
             'menuItemCount' => $items->count(),
             'menuCatering' => $catering->values(),
             'menuStart' => $startAnchor,
+            // Breadcrumbs for a shared category link (feature 11).
+            'menuBreadcrumbs' => $start ? [['Home', url('/')], ['Menu', url('/menu')], [(string) $start->name, self::categoryUrl($start)]] : null,
             'menuShare' => $share,
             'menuCategoryUrls' => $this->activeCategories()->map(fn (Category $c) => self::categoryUrl($c))->all()
                 + ['other' => url('/menu/c/other'), 'events' => url('/menu/c/events')],
