@@ -85,6 +85,8 @@ export type LoyaltyTierProgress = {
 export type LoyaltyMeResponse = {
   account: LoyaltyAccount;
   tier_progress?: LoyaltyTierProgress | null;
+  /** The soonest points to expire within 30 days (iruali import plan, feature 13). */
+  expiring?: { points: number; date: string } | null;
   program?: LoyaltyProgramPublic;
   rates?: LoyaltyRates;
 };

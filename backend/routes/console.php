@@ -75,6 +75,12 @@ Schedule::command('app:expire-loyalty-points')
     ->onFailure($alertOnFailure('app:expire-loyalty-points'))
     ->after($trackSuccess('app:expire-loyalty-points'));
 
+// A month before points expire, the customer hears once per batch (iruali import plan, feature 13)
+Schedule::command('loyalty:warn-expiring')
+    ->dailyAt('09:10')
+    ->onFailure($alertOnFailure('loyalty:warn-expiring'))
+    ->after($trackSuccess('loyalty:warn-expiring'));
+
 Schedule::command('app:reconcile-loyalty-balances')
     ->dailyAt('03:00')
     ->withoutOverlapping()

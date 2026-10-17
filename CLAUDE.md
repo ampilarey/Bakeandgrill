@@ -610,6 +610,15 @@ Dhivehi, a stale key or a lost `{placeholder}`. The account keeps the language
 (`customers.preferred_language`, saved by Account → Settings, taken on sign-in). Dhivehi
 copy is drafted and must be read by a Dhivehi speaker before the switch goes on.
 
+## Points about to expire
+
+iruali import plan, feature 13 (2026-10-18). With a points life set
+(`loyalty_points_expiry_days`), `loyalty:warn-expiring` at 09:10 tells each customer once
+per batch (`loyalty_ledger.expiry_warned_at`) how many points (never more than the balance)
+expire within 30 days and when (row `customer_points_expiring`, marketing, so Offers and
+news applies). `App\Domains\Loyalty\Support\ExpiringPoints`; `GET /api/loyalty/me`
+carries `expiring`, shown on the order app's Rewards card.
+
 ## Customers can sign in with Google, Facebook and Apple
 
 iruali import plan, feature 1 (2026-10-17; `docs/SOCIAL_SIGN_IN.md`). A button shows only

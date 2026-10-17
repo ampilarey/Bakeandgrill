@@ -56,6 +56,11 @@ class LoyaltyController extends Controller
                 'lifetime_points' => $account->lifetime_points,
                 'tier' => $account->tier,
             ],
+            // The soonest points to expire within 30 days (iruali import plan, feature 13).
+            'expiring' => ($soon = \App\Domains\Loyalty\Support\ExpiringPoints::forCustomer($customer->id)) === null ? null : [
+                'points' => $soon['points'],
+                'date' => $soon['date']->toDateString(),
+            ],
             'tier_progress' => $tierProgress,
             'program' => $this->settings->publicRates(),
             'rates' => [

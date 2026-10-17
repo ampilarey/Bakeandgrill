@@ -26,11 +26,13 @@ class LoyaltyLedger extends Model
         'occurred_at',
         'expires_at',
         'expiry_processed',
+        'expiry_warned_at',
     ];
 
     protected $casts = [
         'metadata' => 'array',
         'occurred_at' => 'datetime',
+        'expiry_warned_at' => 'datetime',
         'expires_at' => 'datetime',
         'expiry_processed' => 'boolean',
     ];

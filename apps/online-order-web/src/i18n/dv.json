@@ -64,5 +64,6 @@
   "order.status.pending": "އޯޑަރު ލިބިއްޖެ",
   "order.status.preparing": "ތައްޔާރުކުރަނީ",
   "order.status.ready": "ތައްޔާރު",
+  "rewards.expiring": "{n} ޕޮއިންޓް {date} ގައި ހަމަވާނެ. ދެން ކުރާ އޯޑަރުގައި ބޭނުންކުރައްވާ.",
   "sheet.close": "ބަންދުކުރޭ"
 }

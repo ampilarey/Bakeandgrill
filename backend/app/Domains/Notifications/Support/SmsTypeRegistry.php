@@ -215,6 +215,8 @@ final class SmsTypeRegistry
             self::def('admin_direct', 'Admin direct SMS', 'marketing', true, true, null, 'sms_admin_direct_enabled', 'sms.campaigns.send', false, 'Selected customer', true),
             self::def('marketing_abandoned_cart', 'Abandoned cart', 'marketing', true, true, null, 'marketing_abandoned_cart_enabled', 'sms.campaigns.send', false, 'Customers with abandoned carts', false),
             self::def('marketing_birthday', 'Birthday offer', 'marketing', true, true, null, 'marketing_birthday_enabled', 'sms.campaigns.send', false, 'Customers with birthday today', false),
+            // iruali import plan, feature 13: a month before earned points expire (loyalty:warn-expiring).
+            self::def('customer_points_expiring', 'Points about to expire', 'marketing', true, true, null, 'customer_points_expiring_enabled', 'sms.campaigns.send', false, 'Customers with points expiring within 30 days', false),
             self::def('marketing_tier_milestone', 'Tier milestone', 'marketing', true, true, null, 'marketing_tier_milestone_enabled', 'sms.campaigns.send', false, 'Loyalty members hitting a tier', false),
             self::def('sms_scheduled', 'Scheduled / recurring message', 'marketing', true, true, null, 'sms_scheduled_enabled', null, false, 'The contact or group chosen on the message', false),
 

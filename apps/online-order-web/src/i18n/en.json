@@ -1055,5 +1055,6 @@
   "account.signin_methods": "Sign-in methods",
   "account.signin_phone": "Phone number (always works)",
   "account.signin_unlink": "Unlink",
-  "account.signin_none": "No Google, Facebook or Apple sign-in linked."
+  "account.signin_none": "No Google, Facebook or Apple sign-in linked.",
+  "rewards.expiring": "{n} points expire on {date}. Use them on your next order."
 }

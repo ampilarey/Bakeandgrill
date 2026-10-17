@@ -114,6 +114,13 @@ function PointsHero({
       >
         {t('rewards.approx_mvr').replace('{value}', mvrStr)}
       </div>
+      {loyalty.expiring ? (
+        <div data-testid="rewards-expiring" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-warning)' }}>
+          {t('rewards.expiring')
+            .replace('{n}', loyalty.expiring.points.toLocaleString())
+            .replace('{date}', new Date(`${loyalty.expiring.date}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }))}
+        </div>
+      ) : null}
 
       {tp?.enabled && !atMax && progressPct != null && (
         <div>
