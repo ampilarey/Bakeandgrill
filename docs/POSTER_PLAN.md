@@ -6,8 +6,10 @@ server, and it will be easier to use branding and logo. I use A5, A4, A3 and A2 
 Many templates, easy to edit. We use UV printing." Then: "I outsource everything, so make
 a detailed plan using best practices. Don't implement yet."
 
-Status: **plan only, nothing built.** Decisions the owner needs to make are in
-§ 13, and each phase starts only on the owner's go.
+Status: **plan only, nothing built.** Every choice below is made from print and design
+best practice, so nothing has to be known up front: the defaults in § 13 work with a
+typical outsourced UV print shop, and each one can be changed later in the app (per print
+shop) without new code. Each phase starts only on the owner's go.
 
 ---
 
@@ -338,8 +340,9 @@ or output intents, so it cannot make a PDF/X file with white and gloss layers. O
 
 **Recommendation: TCPDF**, proven first by a spike (Phase 0): one A3 poster with a photo,
 Dhivehi text, a white layer and a gloss layer, checked in Acrobat Preflight (PDF/X-4) and
-**sent to the owner's actual print shop for a test print**. If the shop rejects it, fall
-back to Ghostscript conversion where the host allows, or deliver RGB PDF plus layer files
+**sent with a first real order** (the spec sheet asks the shop to confirm the file is
+fine). If a shop asks for something else, its preferences are changed in § 8 and the next
+file follows them; if it needs a format TCPDF cannot make, fall back to Ghostscript conversion where the host allows, or deliver RGB PDF plus layer files
 if the shop prefers that.
 
 The **on-screen preview** stays HTML/SVG from the same pieces (like labels), and proofs are
@@ -362,8 +365,8 @@ Two new permissions, placed under Marketing in the role editor (`permissionSecti
 - `posters.manage`: templates, print shops, approve orders, settings.
 
 New routes add lines to `backend/tests/Fixtures/admin_route_permissions.txt`, which needs
-the owner's yes (`CLAUDE.md` § Who may change something may see it). An alternative is to
-reuse `labels.print` / `labels.manage`, which needs no new permission but mixes two jobs.
+the owner's yes (`CLAUDE.md` § Who may change something may see it): asked once, at the
+start of Phase 1. Until a role is given them, only the owner has them.
 
 ### 11.6 Tests
 
@@ -381,7 +384,7 @@ reuse `labels.print` / `labels.manage`, which needs no new permission but mixes 
 
 | Phase | What | Done when |
 |---|---|---|
-| **0. Spike** | TCPDF test poster with white and gloss layers; Acrobat preflight; a real test print at the owner's shop; host check for Imagick and Ghostscript | The shop prints it without changes |
+| **0. Spike** | TCPDF test poster with white and gloss layers; Acrobat preflight; a first real order printed from it; host check for Imagick and Ghostscript | The shop prints it without changes |
 | **1. Make and send** | Posters tab, wizard and editor, 20 templates (happy hour, item discount, price drop, combo, % off all, coupon flier, new dish, dish of the day, best sellers, category, mini menu, opening hours, holiday hours, Ramadan, scan to order, table tent, delivery, hiring, notice, review), live data, A5 to A2, preflight, print PDF with bleed, spec sheet, ZIP download, My posters | The owner makes and sends a real happy hour poster in under 5 minutes |
 | **2. UV and the shop** | Materials, white and gloss layers, print shops with preferences, send by email, order states and costs, proof approval, out-of-date and ending-soon alerts, your own templates | A clear acrylic poster with white and gloss comes back right first time |
 | **3. Everywhere** | The rest of the library (45+), TV slide, social sizes, scan counts per poster, website banner, menu board A2 | One offer goes on the window, the TV and Instagram from one design |
@@ -389,16 +392,34 @@ reuse `labels.print` / `labels.manage`, which needs no new permission but mixes 
 Each phase ends with tests, the admin build, `docs/POSTERS.md` (how to use it), the
 `CLAUDE.md` note, merge, and the deploy command, as usual.
 
-## 13. Decisions for the owner
+## 13. Defaults chosen (best practice)
 
-1. **Print shop details**: which shop(s), and their file preferences (PDF/X-4 or X-1a,
-   colour profile, bleed, spot names for white and gloss). Ideally their artwork guide or
-   template file.
-2. **Materials** you order most, and whether the shop does white ink and spot gloss.
-3. **Permissions**: new `posters.make` / `posters.manage` (recommended), or reuse the labels
-   permissions. Either way, the new routes need your yes.
-4. **New dependency**: TCPDF through Composer (recommended), and whether Ghostscript or
-   Imagick may be asked for on the server.
-5. **Approval**: should every poster need your approval before it goes to the shop?
-6. **Examples**: 3 or 4 posters you made before, to match the look you like.
-7. **Order of templates**: which 20 you want first, if different from Phase 1's list.
+Nothing here needs to be known now. These are the settings a new print shop starts with;
+if a shop says otherwise, its card in § 8 is changed and every file after follows it.
+
+| Setting | Default | Why this one |
+|---|---|---|
+| File | PDF/X-4, one page per file | The current print standard; accepts photos with their colour profile |
+| Bleed | 3 mm each side | The most common ask; 5 mm switchable per shop |
+| Crop marks | Off | Most shops add their own |
+| Colour profile | FOGRA39 (ISO Coated v2) | The usual default for coated stock outside North America |
+| Text and logo colour | CMYK, brand colours converted once and fixed | Exact brand colour on every poster |
+| Photos | RGB with sRGB profile | Allowed in PDF/X-4; the shop's printer converts best for its inks |
+| Black | 100 % K for text, rich black (60/40/40/100) for large areas | Sharp text, deep black |
+| Total ink | 300 % at most | Safe for UV curing on every material |
+| Resolution | 300 ppi on A5 and A4, 150 ppi on A3 and A2 | Viewing distance rule for posters |
+| White layer name | `White` | The most common name; changeable per shop |
+| Gloss layer name | `Spot UV` | The most common name; changeable per shop |
+| White choke | 0.2 mm | Hides white at edges without thinning text |
+| Material | Foam board 5 mm for A3 and A2, paper for A5 and A4 | Common, cheap, matches most use |
+| Finish | Matte | No glare under shop lights |
+| Spec sheet | Always sent with the file | The shop has everything in one page |
+| File name | `BG-POSTER-<code>-<size>-<material>-v<n>.pdf` | Clear versions for both sides |
+| Approval | Off; a switch for the owner to turn on | Starts simple |
+| Permissions | New `posters.make` and `posters.manage`, owner only until given | Keeps posters separate from labels |
+| PDF library | TCPDF through Composer | Pure PHP, runs on the current host, does spot colours and PDF/X |
+| First 20 templates | The list in Phase 1 | The posters a restaurant prints most |
+| Look | Matches the brand palette and the label designs | One brand across stickers, posters and screens |
+
+Optional later: once a print shop shares its artwork guide or template file, its card in
+§ 8 can be filled from it in a few minutes.
