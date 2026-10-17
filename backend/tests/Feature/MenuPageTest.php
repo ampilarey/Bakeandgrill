@@ -173,7 +173,9 @@ class MenuPageTest extends TestCase
         $page->assertSee('data-testid="item-unavailable"', false);
         $page->assertSee('<p>Sold out</p>', false);
         $page->assertSee('We have run out for now', false);
-        $page->assertDontSee('/order/menu?item=' . $gone->id, false);
+        // No Add to order; the only way to the order app is "Tell me when it's back" (feature 8).
+        $page->assertDontSee('data-add-to-order', false);
+        $page->assertSee('Tell me when it’s back', false);
 
         $this->get('/menu/' . $snoozed->id)->assertOk()->assertSee('<p>Unavailable today</p>', false);
     }

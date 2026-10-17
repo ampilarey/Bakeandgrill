@@ -89,6 +89,10 @@ export type ItemForm = {
   is_signage_promoted: boolean;
   is_featured: boolean;
   hide_from_bestsellers: boolean;
+  /** "YYYY-MM-DDTHH:mm" in local time, or '' (coming soon; feature 8). */
+  launch_at: string;
+  /** Customers waiting for its back-in-stock or launch message; shown, never saved. */
+  alerts_waiting: number;
   track_stock: boolean;
   stock_quantity: string;
   low_stock_threshold: string;
@@ -197,6 +201,8 @@ export function itemToForm(item: MenuItem): ItemForm {
     is_signage_promoted: item.is_signage_promoted ?? false,
     is_featured: item.is_featured ?? false,
     hide_from_bestsellers: item.hide_from_bestsellers ?? false,
+    launch_at: item.launch_at ? toLocalInput(item.launch_at) : '',
+    alerts_waiting: item.alerts_waiting ?? 0,
     combo_discount_pct: item.combo_discount_pct != null ? String(item.combo_discount_pct) : '',
     combo_items: (item.combo_items ?? []).map((row) => ({
       item_id: String(row.item_id),
@@ -326,6 +332,7 @@ export function formToPayload(form: ItemForm, includeChannels: boolean): MenuIte
   payload.is_signage_promoted = form.is_signage_promoted;
   payload.is_featured = form.is_featured;
   payload.hide_from_bestsellers = form.hide_from_bestsellers;
+  payload.launch_at = form.launch_at ? new Date(form.launch_at).toISOString() : null;
   payload.combo_discount_pct = form.combo_discount_pct !== '' ? parseFloat(form.combo_discount_pct) : null;
   if (form.is_combo && form.combo_mode === 'choose') {
     payload.platter_groups = form.platter_groups
@@ -452,11 +459,19 @@ export function emptyItemForm(selectedCat: number | null): ItemForm {
     modifier_ids: [],
     has_variants: false, variants: [],
     is_combo: false, combo_mode: 'fixed', combo_discount_pct: '', combo_items: [], platter_groups: [],
-    show_on_signage: true, is_signage_promoted: false, is_featured: false, hide_from_bestsellers: false,
+    show_on_signage: true, is_signage_promoted: false, is_featured: false, hide_from_bestsellers: false, launch_at: '', alerts_waiting: 0,
     track_stock: false, stock_quantity: '0', low_stock_threshold: '5',
     allow_pre_order: false,
     tomorrow_daily_capacity: '', min_order_qty: '', lead_time_hours: '',
     dietary_tags: '', allergens: '',
     prep_time_minutes: '', calories: '', spice_level: 'none',
   };
+}
+
+/** An ISO time as the value a datetime-local box takes, in the browser's time. */
+function toLocalInput(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }

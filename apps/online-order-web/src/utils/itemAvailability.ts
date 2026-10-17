@@ -87,10 +87,12 @@ export type TranslateFn = (key: string) => string;
 export function itemUnavailableLabel(
   item: Pick<
     MenuItem,
-    'unavailable_reason' | 'available_from' | 'unavailable_reason_note' | 'availability'
+    'unavailable_reason' | 'available_from' | 'unavailable_reason_note' | 'availability' | 'coming_soon_until'
   >,
   t: TranslateFn,
 ): string {
+  // A dish not on sale yet (feature 8): "Coming soon", whatever else keeps it off.
+  if (item.coming_soon_until) return t('menu.coming_soon');
   const reason = item.unavailable_reason ?? item.availability?.reason_code ?? null;
   let base: string;
   switch (reason) {

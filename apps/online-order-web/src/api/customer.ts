@@ -149,6 +149,17 @@ export async function toggleFavourite(itemId: number): Promise<{ is_favourite: b
   return { is_favourite: res.is_favourite ?? res.favorited ?? false };
 }
 
+// ── Tell me when it's back / on sale (iruali import plan, feature 8) ──────────
+
+/** The dishes this customer has asked to hear about. */
+export async function getItemAlerts(): Promise<{ item_ids: number[] }> {
+  return request('/customer/item-alerts');
+}
+
+export async function setItemAlert(itemId: number, on: boolean): Promise<{ waiting: boolean }> {
+  return request(`/customer/items/${itemId}/alert`, { method: on ? 'POST' : 'DELETE' });
+}
+
 // ── Pre-order History ──────────────────────────────────────────────────────────
 
 export interface CustomerPreOrder {

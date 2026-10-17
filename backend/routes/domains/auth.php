@@ -140,6 +140,10 @@ Route::middleware(['auth:sanctum', 'customer.token'])->prefix('customer')->group
     Route::patch('/profile', [CustomerController::class, 'update']);
     // Prove the account's email with a 6-digit code (iruali import plan, feature 2).
     Route::post('/email/send-code', [App\Http\Controllers\Api\CustomerEmailController::class, 'sendCode'])->middleware('throttle:6,10');
+    // "Tell me when it's back / on sale" (iruali import plan, feature 8).
+    Route::get('/item-alerts', [App\Http\Controllers\Api\CustomerItemAlertController::class, 'index']);
+    Route::post('/items/{item}/alert', [App\Http\Controllers\Api\CustomerItemAlertController::class, 'store'])->whereNumber('item')->middleware('throttle:30,1');
+    Route::delete('/items/{item}/alert', [App\Http\Controllers\Api\CustomerItemAlertController::class, 'destroy'])->whereNumber('item');
     Route::delete('/social/{provider}', [App\Http\Controllers\Api\CustomerSocialController::class, 'unlink'])
         ->whereIn('provider', ['google', 'facebook', 'apple']);
     Route::post('/email/verify', [App\Http\Controllers\Api\CustomerEmailController::class, 'verify'])->middleware('throttle:12,10');

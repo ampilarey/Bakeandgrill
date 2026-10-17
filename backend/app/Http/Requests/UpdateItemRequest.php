@@ -135,6 +135,8 @@ class UpdateItemRequest extends FormRequest
             'is_signage_promoted' => 'sometimes|boolean',
             'is_featured' => 'sometimes|boolean',
             'hide_from_bestsellers' => 'sometimes|boolean',
+            // Coming soon: off sale until this moment (iruali import plan, feature 8).
+            'launch_at' => 'sometimes|nullable|date',
             'combo_discount_pct' => 'nullable|numeric|min:0|max:100',
             'combo_items' => 'sometimes|array',
             'combo_items.*.item_id' => 'required_with:combo_items|integer|exists:items,id',

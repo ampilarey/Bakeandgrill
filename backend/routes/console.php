@@ -75,6 +75,13 @@ Schedule::command('app:expire-loyalty-points')
     ->onFailure($alertOnFailure('app:expire-loyalty-points'))
     ->after($trackSuccess('app:expire-loyalty-points'));
 
+// Coming-soon dishes go on sale on their day; customers waiting for a dish hear it is back (iruali import plan, feature 8)
+Schedule::command('items:alerts')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->onFailure($alertOnFailure('items:alerts'))
+    ->after($trackSuccess('items:alerts'));
+
 // A month before points expire, the customer hears once per batch (iruali import plan, feature 13)
 Schedule::command('loyalty:warn-expiring')
     ->dailyAt('09:10')

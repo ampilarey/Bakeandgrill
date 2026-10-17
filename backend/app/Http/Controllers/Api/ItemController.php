@@ -411,6 +411,13 @@ class ItemController extends Controller
                 // 2026-10-13: water bottles). The Admin's switch; customers
                 // only see its effect (sales_30d below, the home page).
                 $data['hide_from_bestsellers'] = (bool) ($item->hide_from_bestsellers ?? false);
+                $data['launch_at'] = $item->launch_at?->toIso8601String();
+                $data['alerts_waiting'] = \App\Domains\Menu\Services\ItemAlerts::waiting((int) $item->id);
+            }
+
+            // Coming soon: the day it goes on sale, only while it is still to come (feature 8).
+            if ($includeAvailability && $item->isComingSoon()) {
+                $data['coming_soon_until'] = $item->launch_at?->toIso8601String();
             }
 
             // Public / POS callers receive availability metadata

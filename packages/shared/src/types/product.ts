@@ -134,6 +134,8 @@ export type MenuItem = {
   available_now?: boolean;
   unavailable_reason?: string | null;
   available_from?: string | null;
+  /** ISO time the dish goes on sale; set only while it is still coming soon. */
+  coming_soon_until?: string | null;
   /** Server-computed — threshold itself is never public. */
   is_low_stock?: boolean;
   /** Optional short staff note shown to customers when the item is unavailable. */

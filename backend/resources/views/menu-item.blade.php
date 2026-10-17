@@ -265,7 +265,10 @@
             <a href="/order/menu?item={{ $item->id }}" class="btn-primary" data-add-to-order data-item="{{ $item->id }}">Add to order</a>
             <a href="/order/menu" class="btn-outline">View cart</a>
         @else
-            <a href="/menu" class="btn-primary">Today’s menu</a>
+            @if(! empty($itemAlertLabel))
+                <a href="/order/menu?item={{ $item->id }}" class="btn-primary" data-testid="item-alert-link">{{ $itemAlertLabel }}</a>
+            @endif
+            <a href="/menu" class="{{ empty($itemAlertLabel) ? 'btn-primary' : 'btn-outline' }}">Today’s menu</a>
             @if($item->category_id)
                 <a href="/menu#cat-{{ $item->category_id }}" class="btn-outline">More in this category</a>
             @endif

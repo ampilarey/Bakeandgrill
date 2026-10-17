@@ -150,6 +150,10 @@ export type MenuItem = {
   is_featured?: boolean;
   /** Kept out of every best-sellers and popular list (owner, 2026-10-13: water bottles). */
   hide_from_bestsellers?: boolean;
+  /** Coming soon: off sale until then (iruali import plan, feature 8). */
+  launch_at?: string | null;
+  /** Customers waiting to hear it is back or on sale. */
+  alerts_waiting?: number;
   combo_discount_pct?: number | null;
   combo_items?: Array<{
     item_id: number;
@@ -260,6 +264,7 @@ export type MenuItemPayload = {
   is_featured?: boolean;
   /** Kept out of every best-sellers and popular list (owner, 2026-10-13: water bottles). */
   hide_from_bestsellers?: boolean;
+  launch_at?: string | null;
   combo_discount_pct?: number | null;
   combo_items?: Array<{ item_id: number; variant_id?: number | null; quantity?: number; is_optional?: boolean; surcharge?: number }>;
   /** Add-ons the customer may pick on this item. */

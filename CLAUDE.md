@@ -699,6 +699,19 @@ count it: a report is not a promotion. The flag is in the model's `$hidden` and 
 by `ItemController` for staff only, so the public contract snapshots do not carry it.
 A new best-sellers or popular surface honours the flag too. `BestSellerOptOutTest`.
 
+## Back in stock and coming soon
+
+iruali import plan, feature 8 (2026-10-17). A dish that is sold out, snoozed or switched off
+offers a signed-in customer "Tell me when it's back" in the order app's dish sheet
+(`ItemAlertButton`, not for closed hours or a channel); a dish with `items.launch_at` in the
+future is kept off sale (`Item::booted` forces `is_available` off), shows "Coming soon" with
+its date (`coming_soon_until` on the public item, only while it is still coming) and offers
+"Tell me when it's on sale". Set in the item editor's Coming soon section, which also shows
+how many are waiting (`alerts_waiting`). `items:alerts` (every five minutes,
+`App\Domains\Menu\Services\ItemAlerts`) puts launched dishes on sale and texts each waiting
+customer once (`item_alerts.sent_at`), only while the shop is open; rows
+`customer_back_in_stock` and `customer_item_launched`. `ItemAlertsTest`.
+
 ## POS order type colours
 
 Owner, 2026-10-11: "add more visual colors to differentiate between order type in

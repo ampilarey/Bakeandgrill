@@ -65,5 +65,13 @@
   "order.status.preparing": "ތައްޔާރުކުރަނީ",
   "order.status.ready": "ތައްޔާރު",
   "rewards.expiring": "{n} ޕޮއިންޓް {date} ގައި ހަމަވާނެ. ދެން ކުރާ އޯޑަރުގައި ބޭނުންކުރައްވާ.",
-  "sheet.close": "ބަންދުކުރޭ"
+  "sheet.close": "ބަންދުކުރޭ",
+  "menu.coming_soon": "ވަރަށް އަވަހަށް",
+  "itemAlert.coming_soon_from": "{date} އިން ފެށިގެން ވިއްކާނެ",
+  "itemAlert.back": "އަނބުރާ ލިބޭއިރު އަންގާ",
+  "itemAlert.launch": "ވިއްކަން ފަށާއިރު އަންގާ",
+  "itemAlert.waiting_back": "އަނބުރާ ލިބޭއިރު މެސެޖަކުން އަންގާނަން. ހުއްޓާލުމަށް ފިއްތާ.",
+  "itemAlert.waiting_launch": "ވިއްކަން ފަށާއިރު މެސެޖަކުން އަންގާނަން. ހުއްޓާލުމަށް ފިއްތާ.",
+  "itemAlert.sign_in": "އޯޑަރު ކުރެވޭއިރު އެންގުމަށް ސައިން އިން ކުރޭ",
+  "itemAlert.error": "ސޭވް ނުކުރެވުނު. އަލުން މަސައްކަތް ކުރޭ."
 }

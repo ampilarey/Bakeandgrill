@@ -659,7 +659,7 @@ function VariantsEditor({
  * is always in reach.
  */
 type SectionId =
-  | 'basics' | 'pricing' | 'card' | 'details' | 'selling' | 'stock' | 'packaging' | 'addons' | 'bundle' | 'signage' | 'featured' | 'bestsellers';
+  | 'basics' | 'pricing' | 'card' | 'details' | 'selling' | 'stock' | 'packaging' | 'addons' | 'bundle' | 'signage' | 'featured' | 'coming-soon' | 'bestsellers';
 
 const SECTIONS: Array<{ id: SectionId; label: string }> = [
   { id: 'basics', label: 'Basics' },
@@ -673,6 +673,7 @@ const SECTIONS: Array<{ id: SectionId; label: string }> = [
   { id: 'bundle', label: 'Bundle' },
   { id: 'signage', label: 'TV board' },
   { id: 'featured', label: 'Featured' },
+  { id: 'coming-soon', label: 'Coming soon' },
   { id: 'bestsellers', label: 'Best sellers' },
 ];
 
@@ -1649,6 +1650,29 @@ export function MenuItemEditorModal({
             <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
               Leads the website menu and the order app in a "Chef's picks" strip ahead of the categories. The dish stays in its own category too.
             </p>
+          </Section>
+          <Section id="coming-soon" title="Coming soon" register={register}>
+            {/* iruali import plan, feature 8: off sale until the day, then on sale by itself. */}
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }} htmlFor="item-launch-at">On sale from</label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <input
+                id="item-launch-at"
+                type="datetime-local"
+                value={form.launch_at}
+                onChange={(e) => set('launch_at', e.target.value)}
+                data-testid="item-launch-at"
+                style={{ minHeight: 44, padding: '0 10px', borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 14 }}
+              />
+              {form.launch_at && <Btn small variant="secondary" onClick={() => set('launch_at', '')}>Clear</Btn>}
+            </div>
+            <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
+              Set a day and the dish shows as "Coming soon" with "Tell me when it's on sale" instead of Add, and goes on sale by itself then. Leave empty for a dish on sale now.
+            </p>
+            {form.alerts_waiting > 0 && (
+              <p data-testid="item-alerts-waiting" style={{ margin: '8px 0 0', fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
+                {form.alerts_waiting} {form.alerts_waiting === 1 ? 'person is' : 'people are'} waiting to hear it is {form.launch_at ? 'on sale' : 'back'}.
+              </p>
+            )}
           </Section>
           <Section id="bestsellers" title="Best sellers" register={register}>
             {/* Owner, 2026-10-13: "Some items like water bottles are always in

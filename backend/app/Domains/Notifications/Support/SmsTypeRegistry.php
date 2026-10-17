@@ -215,6 +215,9 @@ final class SmsTypeRegistry
             self::def('admin_direct', 'Admin direct SMS', 'marketing', true, true, null, 'sms_admin_direct_enabled', 'sms.campaigns.send', false, 'Selected customer', true),
             self::def('marketing_abandoned_cart', 'Abandoned cart', 'marketing', true, true, null, 'marketing_abandoned_cart_enabled', 'sms.campaigns.send', false, 'Customers with abandoned carts', false),
             self::def('marketing_birthday', 'Birthday offer', 'marketing', true, true, null, 'marketing_birthday_enabled', 'sms.campaigns.send', false, 'Customers with birthday today', false),
+            // iruali import plan, feature 8: a customer asked to be told (items:alerts). Asked for, so no offer opt-out applies.
+            self::def('customer_back_in_stock', 'Dish back on the menu (asked for)', 'transactional', true, false, null, 'customer_back_in_stock_enabled', null, false, 'Customers who asked to be told', false),
+            self::def('customer_item_launched', 'Coming-soon dish on sale (asked for)', 'transactional', true, false, null, 'customer_item_launched_enabled', null, false, 'Customers who asked to be told', false),
             // iruali import plan, feature 13: a month before earned points expire (loyalty:warn-expiring).
             self::def('customer_points_expiring', 'Points about to expire', 'marketing', true, true, null, 'customer_points_expiring_enabled', 'sms.campaigns.send', false, 'Customers with points expiring within 30 days', false),
             self::def('marketing_tier_milestone', 'Tier milestone', 'marketing', true, true, null, 'marketing_tier_milestone_enabled', 'sms.campaigns.send', false, 'Loyalty members hitting a tier', false),

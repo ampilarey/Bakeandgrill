@@ -1056,5 +1056,13 @@
   "account.signin_phone": "Phone number (always works)",
   "account.signin_unlink": "Unlink",
   "account.signin_none": "No Google, Facebook or Apple sign-in linked.",
-  "rewards.expiring": "{n} points expire on {date}. Use them on your next order."
+  "rewards.expiring": "{n} points expire on {date}. Use them on your next order.",
+  "menu.coming_soon": "Coming soon",
+  "itemAlert.coming_soon_from": "On sale from {date}",
+  "itemAlert.back": "Tell me when it's back",
+  "itemAlert.launch": "Tell me when it's on sale",
+  "itemAlert.waiting_back": "We'll text you when it's back. Tap to stop.",
+  "itemAlert.waiting_launch": "We'll text you when it's on sale. Tap to stop.",
+  "itemAlert.sign_in": "Sign in to be told when you can order it",
+  "itemAlert.error": "Could not save that. Please try again."
 }

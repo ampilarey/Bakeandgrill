@@ -6,6 +6,7 @@
         "lifetime_points": "__VOLATILE__",
         "tier": "bronze"
     },
+    "expiring": null,
     "tier_progress": null,
     "program": {
         "enabled": true,

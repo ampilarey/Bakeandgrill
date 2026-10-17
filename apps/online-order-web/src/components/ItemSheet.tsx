@@ -31,6 +31,7 @@ import { MenuImageSlider } from './menu/MenuImageSlider';
 import { AnimatedItemTile } from './AnimatedItemTile';
 import { isStandardItemTile } from '../lib/brandLogo';
 import { PlatterPicker } from './PlatterPicker';
+import { ItemAlertButton, canAskForItemAlert } from './ItemAlertButton';
 import { ShareControl } from './ShareControl';
 import { publicMenuItemUrl } from '../utils/publicMenuItemUrl';
 import { HeartIcon, SPICE_LEVELS, SpiceFlames } from '../utils/emojiIcon';
@@ -550,6 +551,11 @@ export function ItemSheet({
                 }}
               >
                 {unavailLabel}
+                {item.coming_soon_until && (
+                  <span data-testid="item-sheet-coming-soon" style={{ display: 'block', marginTop: 2, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+                    {t('itemAlert.coming_soon_from').replace('{date}', new Date(item.coming_soon_until).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }))}
+                  </span>
+                )}
               </p>
             )}
             {itemAvailable && lowStockLabel && (
@@ -999,6 +1005,9 @@ export function ItemSheet({
                       ? 'Select an option first'
                       : 'Select an option first'))}
             </button>
+            {!itemAvailable && orderDay === 'today' && !isEdit && canAskForItemAlert(item) && (
+              <ItemAlertButton itemId={item.id} comingSoon={Boolean(item.coming_soon_until)} />
+            )}
             {item.is_catering && !isEdit && (
               <a
                 href={`/order/events?add=${item.id}`}

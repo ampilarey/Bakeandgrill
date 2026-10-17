@@ -49,6 +49,7 @@ class Item extends Model
         'is_active',
         'is_available',
         'snoozed_until',
+        'launch_at',
         'unavailable_reason_note',
         'sort_order',
         'stock_quantity',
@@ -118,6 +119,8 @@ class Item extends Model
         // The Admin's switch (ItemController lists it for staff); the public
         // menu only sees its effect, so the contract snapshots stay as they are.
         'hide_from_bestsellers',
+        // Coming soon: the public menu gets coming_soon_until while it is still to come (feature 8).
+        'launch_at',
         // Label Hub settings are read through /api/labels, never the menu
         // payloads every app and customer sees.
         'label_enabled',
@@ -337,6 +340,7 @@ class Item extends Model
         'is_active' => 'boolean',
         'is_available' => 'boolean',
         'snoozed_until' => 'datetime',
+        'launch_at' => 'datetime',
         'has_variants' => 'boolean',
         'track_stock' => 'boolean',
         'allow_pre_order' => 'boolean',
@@ -419,8 +423,27 @@ class Item extends Model
         return $this->snoozed_until->gt($at);
     }
 
+    /** On sale from a later day: shown as "Coming soon" (iruali import plan, feature 8). */
+    public function isComingSoon(?\DateTimeInterface $at = null): bool
+    {
+        return $this->launch_at !== null && $this->launch_at->gt($at ?? now());
+    }
+
+    /** Can a customer order it right now: on, not snoozed, not still coming. */
+    public function isOrderableNow(): bool
+    {
+        return (bool) $this->is_active && (bool) $this->is_available && !$this->isSnoozed() && !$this->isComingSoon();
+    }
+
     protected static function booted(): void
     {
+        // A dish coming soon stays off sale until its day (ItemAlerts::launch).
+        static::saving(function (Item $item): void {
+            if ($item->isDirty('launch_at') && $item->isComingSoon()) {
+                $item->is_available = false;
+            }
+        });
+
         static::creating(function (Item $item): void {
             if ($item->menu_group_id === null) {
                 $item->menu_group_id = 1;
