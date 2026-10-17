@@ -34,10 +34,13 @@ class Supplier extends Model
         'lead_days',
         'notes',
         'is_active',
+        'kind',
+        'print_prefs',
     ];
 
     protected $casts = [
         'extra_phones' => 'array',
+        'print_prefs' => 'array',
     ];
 
     /**
@@ -50,6 +53,9 @@ class Supplier extends Model
     protected static function booted(): void
     {
         static::saving(function (self $supplier) {
+            if ($supplier->kind === null || $supplier->kind === '') {
+                $supplier->kind = 'supplier';
+            }
             $extras = $supplier->extra_phones;
             if (!is_array($extras)) {
                 $supplier->extra_phones = null;

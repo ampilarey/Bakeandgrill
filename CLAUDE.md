@@ -710,7 +710,9 @@ Posters render through TCPDF via `App\Domains\Posters\Pdf\PdfX4Document`, not do
 Helvetica), pass Dhivehi in visual order with TCPDF bidi off, and run
 `scripts/install-poster-icc.sh` once per host so the FOGRA39 output intent is embedded.
 TCPDF fonts are made into `storage/app/posters/fonts/` on first use; nothing to commit.
-Exports run on the queue (`ExportPosterJob`).
+Exports run on the queue (`ExportPosterJob`). Print shops are suppliers with
+`kind = print_shop`. Send, proof links, quotes-as-expenses and the morning
+`posters:alert` command are Phase 2.
 
 ## Queue worker vs synchronous SMS
 

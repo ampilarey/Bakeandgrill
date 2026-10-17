@@ -65,7 +65,14 @@ final class PosterPack
                 }
                 $renderSheets[] = $copies;
             }
-            $rendered = PosterPdf::render($plan['page'], $renderSheets, $poster->name);
+            $glossOn = strtolower((string) ($job['gloss'] ?? 'none')) !== 'none';
+            $rendered = PosterPdf::render($plan['page'], $renderSheets, $poster->name, [
+                'mirror' => (bool) ($job['mirror'] ?? (PosterPreflight::MATERIALS[$material]['mirror'] ?? false)),
+                'spots' => ($job['layers'] ?? 'masks') === 'spots' ? [
+                    'white' => (string) ($job['white_name'] ?? ''),
+                    'gloss' => $glossOn ? (string) ($job['gloss_name'] ?? '') : '',
+                ] : [],
+            ]);
             $base = sprintf('BG-%s-%s-%s-v%d', $poster->code(), $sizeName, $material, $poster->version);
             $zip->addFromString($base . '.pdf', $rendered['pdf']);
             if (($job['masks'] ?? false) === true) {

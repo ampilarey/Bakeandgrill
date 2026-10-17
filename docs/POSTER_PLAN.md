@@ -7,8 +7,8 @@ Many templates, easy to edit. We use UV printing." Then: "I outsource everything
 a detailed plan using best practices. Don't implement yet." And: "I told u I don't know
 details. Just make the plan based on best practices."
 
-Status: **Phase 0 and Phase 1 built** (Phase 0: `php artisan posters:spike`, findings in
-§ 17. Phase 1: Admin → Posters, `docs/POSTERS.md`). Phases 2–3 wait for the owner's go.
+Status: **Phase 0, Phase 1 and Phase 2 built** (Phase 0: `php artisan posters:spike`, findings in
+§ 17. Phase 1 and 2: Admin → Posters, `docs/POSTERS.md`). Phase 3 waits for the owner's go.
 Every choice below is made from print and design best practice, so nothing has to be known
 up front: the defaults in § 14 work with a typical outsourced UV print shop, and each one
 can be changed later in the app (per print shop) without new code.
@@ -502,7 +502,7 @@ Phase 1 (`CLAUDE.md`: route permissions change only with the owner's yes).
 |---|---|---|
 | **0. Prove the file** — *built, awaiting the shop's print (§ 17)* | TCPDF with the PDF/X-4 subclass; one A3 `hero_photo` with Dhivehi, the logo by way (a) or (b) of § 6.4 (decided here, with the flat logo beside the original), CMYK brand colours and an RGB photo; page boxes; a `-WHITE.pdf` mask; the swatch card; spot layers and overprint tried but not required; host check for Imagick and Ghostscript; a worst-case A2 export timed on TEST | Acrobat Preflight passes PDF/X-4 and the shop prints the A3 and the swatch card without changes |
 | **1. Make and send** — *built* | The `/posters` page; 8 layouts; 20 purposes (happy hour, dish on discount, new lower price, meal deal, % off everything, flier with a coupon, new dish, dish of the day, best sellers, category, mini menu, opening hours, holiday hours, Ramadan, scan to order, table card, we deliver, we're hiring, plain notice, tell us how we did, opening the existing complaint poster); live data with "From" prices and the GST line; A5 to A2 and layout on the sheet; preflight with the revised lines and keep-outs; queued export; spec sheet with white and gloss in words and optional masks; ZIP of all sizes; My posters with take-down dates and places | The owner sends a real happy hour poster and a table card set in under 5 minutes, and the shop prints both first time |
-| **2. The shop and staying true** | Print shops as suppliers with preferences, **Send to print shop** by email, order states with Proof approved and Quote approved, costs as expenses, proof approval by signed link, spot layers inside the file on a shop's request, out-of-date and should-be-down alerts, versions and diffs, your own templates, the rest of the purposes, the complaint poster taken over (old routes forward) | A clear acrylic poster with white and gloss comes back right first time |
+| **2. The shop and staying true** — *built* | Print shops as suppliers with preferences, **Send to print shop** by email, order states with Proof approved and Quote approved, costs as expenses, proof approval by signed link, spot layers inside the file on a shop's request, out-of-date and should-be-down alerts, versions and diffs, your own templates, the rest of the purposes, the complaint poster taken over (old routes forward) | A clear acrylic poster with white and gloss comes back right first time |
 | **3. Everywhere** | TV slide, social drafts through `SocialPublisher`, scan counts per poster, website banner, A2 menu board | One offer goes on the window, the TV and Instagram from one design |
 
 Each phase ends with tests, the admin build, `docs/POSTERS.md` (how to use it), the `CLAUDE.md`

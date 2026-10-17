@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Domains\Posters\PosterPack;
+use App\Domains\Posters\PosterStaleness;
 use App\Models\PosterExport;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -43,6 +44,13 @@ class ExportPosterJob implements ShouldQueue
             }
             $path = $dir . '/' . $export->id . '.zip';
             file_put_contents($path, $result['bytes']);
+            $snapshot = PosterStaleness::snapshot($export->poster);
+            $previous = PosterExport::query()
+                ->where('poster_id', $export->poster_id)
+                ->where('status', 'ready')
+                ->where('id', '<', $export->id)
+                ->orderByDesc('id')
+                ->first();
             $export->poster->update(['state' => 'ready', 'version' => $export->poster->version + 1]);
             $export->update([
                 'status' => 'ready',
@@ -50,6 +58,9 @@ class ExportPosterJob implements ShouldQueue
                 'zip_path' => $path,
                 'bytes' => strlen($result['bytes']),
                 'error' => null,
+                'snapshot' => $snapshot,
+                'bound_hash' => PosterStaleness::hash($snapshot),
+                'diff' => PosterStaleness::diff($previous?->snapshot, $snapshot),
             ]);
         } catch (Throwable $e) {
             $export->update(['status' => 'failed', 'error' => $e->getMessage()]);

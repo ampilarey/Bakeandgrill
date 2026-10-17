@@ -90,6 +90,8 @@ Route::middleware(['content.locale', 'service.banner'])->group(function () {
     // Owner, 2026-10-03: the poster in other sizes, and several to an A4 sheet.
     Route::get('/complain/poster/sheet', [App\Http\Controllers\ComplaintBoxPageController::class, 'sheet'])->name('complain.poster.sheet');
     Route::get('/complain/poster/sheet.pdf', [App\Http\Controllers\ComplaintBoxPageController::class, 'sheetPdf'])->middleware('throttle:20,1')->name('complain.poster.pdf');
+    Route::get('/posters/proof/{order}', [App\Http\Controllers\PosterProofPageController::class, 'show'])->name('posters.proof');
+    Route::post('/posters/proof/{order}', [App\Http\Controllers\PosterProofPageController::class, 'approve'])->name('posters.proof.approve');
     // The pack's page (2026-10-12): the batch QR on a pack sticker opens it
     // by the print's code. Public, like the complaint box; says nothing
     // about who printed it.

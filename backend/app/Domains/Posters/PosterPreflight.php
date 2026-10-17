@@ -11,11 +11,15 @@ namespace App\Domains\Posters;
 final class PosterPreflight
 {
     public const MATERIALS = [
-        'foam' => ['label' => 'Foam board', 'white' => false],
-        'vinyl' => ['label' => 'Vinyl', 'white' => false],
-        'paper' => ['label' => 'Paper', 'white' => false],
-        'white_acrylic' => ['label' => 'White acrylic', 'white' => false],
-        'clear' => ['label' => 'Clear acrylic', 'white' => true],
+        'foam' => ['label' => 'Foam board', 'white' => false, 'mirror' => false],
+        'vinyl' => ['label' => 'Vinyl', 'white' => false, 'mirror' => false],
+        'paper' => ['label' => 'Paper', 'white' => false, 'mirror' => false],
+        'white_acrylic' => ['label' => 'White acrylic', 'white' => false, 'mirror' => false],
+        'clear' => ['label' => 'Clear acrylic', 'white' => true, 'mirror' => false],
+        'pvc' => ['label' => 'PVC board', 'white' => false, 'mirror' => false],
+        'acp' => ['label' => 'Aluminium composite', 'white' => true, 'mirror' => false],
+        'window_vinyl' => ['label' => 'Window vinyl', 'white' => true, 'mirror' => true],
+        'sticker' => ['label' => 'Self-adhesive vinyl', 'white' => false, 'mirror' => false],
     ];
 
     /**
@@ -174,6 +178,19 @@ final class PosterPreflight
             $checks[] = self::row('keepout', 'ok', 'Eyelets sit in the bleed, outside the safe zone.');
         }
 
+        if (($job['layers'] ?? 'masks') === 'spots') {
+            $whiteName = trim((string) ($job['white_name'] ?? ''));
+            $glossOn = strtolower(trim((string) ($job['gloss'] ?? 'none'))) !== 'none';
+            $glossName = trim((string) ($job['gloss_name'] ?? ''));
+            if ($whiteName === '' || ($glossOn && $glossName === '')) {
+                $checks[] = self::row('spots', 'red', 'This shop wants spot layers, and a layer name is missing.');
+            } elseif (!self::spotNameOk($whiteName) || ($glossOn && !self::spotNameOk($glossName))) {
+                $checks[] = self::row('spots', 'red', 'A spot name has to be letters, numbers and spaces, like White or Spot UV.');
+            } else {
+                $checks[] = self::row('spots', 'ok', 'Spot layers: ' . $whiteName . ($glossOn ? ' and ' . $glossName : '') . '.');
+            }
+        }
+
         return $checks;
     }
 
@@ -186,6 +203,11 @@ final class PosterPreflight
         }
 
         return false;
+    }
+
+    private static function spotNameOk(string $name): bool
+    {
+        return (bool) preg_match('/^[A-Za-z0-9][A-Za-z0-9 _-]{0,31}$/', $name);
     }
 
     /** @return array{id: string, level: string, message: string} */

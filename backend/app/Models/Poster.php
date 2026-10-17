@@ -7,6 +7,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Poster extends Model
 {
@@ -34,6 +35,24 @@ class Poster extends Model
     public function exports(): HasMany
     {
         return $this->hasMany(PosterExport::class);
+    }
+
+    public function latestReady(): HasOne
+    {
+        return $this->hasOne(PosterExport::class)->ofMany(
+            ['id' => 'max'],
+            fn ($query) => $query->where('status', 'ready'),
+        );
+    }
+
+    public function latestOrder(): HasOne
+    {
+        return $this->hasOne(PosterOrder::class)->latestOfMany();
+    }
+
+    public function orders(): HasMany
+    {
+        return $this->hasMany(PosterOrder::class);
     }
 
     public function author(): BelongsTo

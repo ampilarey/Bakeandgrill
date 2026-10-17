@@ -11,6 +11,7 @@ use App\Domains\Posters\PosterMoods;
 use App\Domains\Posters\PosterPieces;
 use App\Domains\Posters\PosterPreflight;
 use App\Domains\Posters\PosterPurposes;
+use App\Domains\Posters\PosterStaleness;
 use App\Http\Controllers\Controller;
 use App\Jobs\ExportPosterJob;
 use App\Models\Category;
@@ -55,7 +56,7 @@ class PosterController extends Controller
             'sizes' => array_keys(PaperSize::SIZES),
             'places' => Poster::PLACES,
             'materials' => collect(PosterPreflight::MATERIALS)->map(fn (array $m, string $key) => [
-                'key' => $key, 'label' => $m['label'], 'white' => $m['white'],
+                'key' => $key, 'label' => $m['label'], 'white' => $m['white'], 'mirror' => (bool) ($m['mirror'] ?? false),
             ])->values(),
         ]);
     }
@@ -89,7 +90,7 @@ class PosterController extends Controller
         $paper = PaperSize::named($sizeName, (bool) $poster['landscape']);
         $content = PosterContent::resolve($poster);
         $built = PosterPieces::build($poster, $paper, $content);
-        $job = $request->only(['material', 'white', 'gloss', 'mounting']);
+        $job = $request->only(['material', 'white', 'gloss', 'mounting', 'layers', 'white_name', 'gloss_name']);
 
         return response()->json([
             'content' => $content,
@@ -101,7 +102,7 @@ class PosterController extends Controller
 
     public function index(): JsonResponse
     {
-        $rows = Poster::query()->orderByDesc('pinned')->orderByDesc('id')->limit(200)->get()
+        $rows = Poster::query()->with(['latestReady', 'latestOrder.shop'])->orderByDesc('pinned')->orderByDesc('id')->limit(200)->get()
             ->map(fn (Poster $p) => $this->summary($p));
 
         return response()->json([
@@ -258,6 +259,17 @@ class PosterController extends Controller
     /** @return array<string, mixed> */
     private function summary(Poster $poster): array
     {
+        $previous = $poster->relationLoaded('latestReady') ? $poster->latestReady : null;
+        $stale = false;
+        $diff = is_string($previous?->diff) ? $previous->diff : '';
+        if ($previous !== null && is_string($previous->bound_hash) && $previous->bound_hash !== '') {
+            $snapshot = PosterStaleness::snapshot($poster);
+            $stale = PosterStaleness::hash($snapshot) !== $previous->bound_hash;
+            if ($stale) {
+                $diff = PosterStaleness::diff(is_array($previous->snapshot) ? $previous->snapshot : null, $snapshot);
+            }
+        }
+
         return [
             'id' => $poster->id,
             'code' => $poster->code(),
@@ -276,6 +288,14 @@ class PosterController extends Controller
             'pinned' => $poster->pinned,
             'version' => $poster->version,
             'should_be_down' => $poster->shouldBeDown(),
+            'stale' => $stale,
+            'diff' => $diff,
+            'order' => $poster->relationLoaded('latestOrder') && $poster->latestOrder ? [
+                'id' => $poster->latestOrder->id,
+                'state' => $poster->latestOrder->state,
+                'shop' => $poster->latestOrder->shop?->name,
+                'quote_mvr' => $poster->latestOrder->quote_mvr,
+            ] : null,
             'updated_at' => $poster->updated_at?->toIso8601String(),
         ];
     }
