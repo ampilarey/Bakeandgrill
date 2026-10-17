@@ -42,7 +42,7 @@ const WholesaleHub            = lazyWithRetry(() => import('./pages/WholesaleHub
 const LabelsHub               = lazyWithRetry(() => import('./pages/LabelsHub').then((m) => ({ default: m.LabelsHub })));
 const TelegramPage            = lazyWithRetry(() => import('./pages/TelegramPage').then((m) => ({ default: m.TelegramPage })));
 const NotificationsHub        = lazyWithRetry(() => import('./pages/NotificationsHub').then((m) => ({ default: m.NotificationsHub })));
-const WebhooksPage            = lazyWithRetry(() => import('./pages/WebhooksPage').then((m) => ({ default: m.WebhooksPage })));
+const IntegrationsHub         = lazyWithRetry(() => import('./pages/IntegrationsHub').then((m) => ({ default: m.IntegrationsHub })));
 const DashboardPage           = lazyWithRetry(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
 const TestChecklistPage       = lazyWithRetry(() => import('./pages/TestChecklistPage'));
 const SettingsPage            = lazyWithRetry(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
@@ -57,7 +57,6 @@ const ActivityPage            = lazyWithRetry(() => import('./pages/ActivityPage
 const ShiftsPage              = lazyWithRetry(() => import('./pages/ShiftsPage'));
 const TimeClockPage           = lazyWithRetry(() => import('./pages/TimeClockPage'));
 const DevicesHub              = lazyWithRetry(() => import('./pages/DevicesHub').then((m) => ({ default: m.DevicesHub })));
-const XeroPage                = lazyWithRetry(() => import('./pages/XeroPage'));
 const SystemHub               = lazyWithRetry(() => import('./pages/SystemHub').then((m) => ({ default: m.SystemHub })));
 const MyAccountPage           = lazyWithRetry(() => import('./pages/MyAccountPage').then((m) => ({ default: m.MyAccountPage })));
 const MediaLibraryPage        = lazyWithRetry(() => import('./pages/MediaLibraryPage').then((m) => ({ default: m.MediaLibraryPage })));
@@ -382,12 +381,14 @@ export default function App() {
                 } />
                 <Route path="kitchen-production" element={<MovedTo to="/kitchen/handover" />} />
                 <Route path="production-plan" element={<MovedTo to="/kitchen/plan" />} />
-                {/* Webhooks */}
-                <Route path="webhooks" element={
-                  <PermissionGuard user={user} permission="integrations.webhooks">
-                    <WebhooksPage />
+                {/* Nav check, 2026-10-17: Webhooks and Xero are one Integrations hub; the old paths forward. */}
+                <Route path="integrations/*" element={
+                  <PermissionGuard user={user} permissions={['integrations.webhooks', 'integrations.xero']}>
+                    <IntegrationsHub />
                   </PermissionGuard>
                 } />
+                <Route path="webhooks" element={<MovedTo to="/integrations/webhooks" />} />
+                <Route path="xero" element={<MovedTo to="/integrations/xero" />} />
                 {/* Dev/staging only — hidden in production builds */}
                 <Route path="checklist" element={
                   <PermissionGuard user={user} permission="website.manage">
@@ -514,11 +515,6 @@ export default function App() {
                   </PermissionGuard>
                 } />
                 <Route path="print-jobs" element={<MovedTo to="/devices/print-queue" />} />
-                <Route path="xero" element={
-                  <PermissionGuard user={user} permission="integrations.xero">
-                    <XeroPage />
-                  </PermissionGuard>
-                } />
                 <Route path="service-availability" element={<MovedTo to="/system-health/controls" />} />
                 {/* Route audit, 2026-09-19: System Health and Service Availability are one hub. */}
                 <Route path="system-health/*" element={

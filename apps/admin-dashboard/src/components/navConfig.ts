@@ -6,7 +6,7 @@ import {
   Heart, MessageSquare, BarChart2, Webhook,
   Target,
   Boxes, LayoutGrid, Wallet, Clock, Monitor, Share2,
-  Link, ShoppingBag, Zap,
+  ShoppingBag, Zap,
   ConciergeBell, Wrench, ClipboardCheck, HeartPulse, UserCircle, Utensils,
   LayoutTemplate, Shield, UserCog, Images, Tv, Store, Tags, Send, Bell, Frame,
 } from 'lucide-react';
@@ -165,8 +165,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/telegram',      icon: Send,        label: 'Telegram',       permission: 'telegram.manage', description: 'Staff bot: alerts, sales, shifts & approvals' },
       { to: '/devices',       icon: Monitor,     label: 'Devices',        permission: 'devices.view',   description: 'POS & KDS devices, and the print queue' },
       { to: '/system-health', icon: HeartPulse,  label: 'System Health',  permissions: ['website.manage', 'service_availability.view'], description: 'Queue, webhooks & alerts, and the maintenance switches' },
-      { to: '/webhooks',      icon: Webhook,     label: 'Webhooks',       permission: 'integrations.webhooks', description: 'Outbound integrations' },
-      { to: '/xero',          icon: Link,        label: 'Xero',           permission: 'integrations.xero',    description: 'Accounting sync' },
+      // Nav check, 2026-10-17: one entry for both, each tab keeps its permission.
+      { to: '/integrations',  icon: Webhook,     label: 'Integrations',   permissions: ['integrations.webhooks', 'integrations.xero'], description: 'Webhooks and Xero accounting sync' },
     ],
   },
   {
@@ -258,6 +258,8 @@ export const NAV_PATH_ALIASES: Record<string, string> = {
   '/refunds': '/finance',
   '/procurement-report': '/purchasing',
   '/print-jobs': '/devices',
+  '/webhooks': '/integrations',
+  '/xero': '/integrations',
   '/service-availability': '/system-health',
   // Notifications audit, 2026-10-10.
   '/settings/notifications': '/notifications',

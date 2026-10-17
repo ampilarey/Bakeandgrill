@@ -75,6 +75,9 @@ describe('App route coverage', () => {
       'procurement-report',
       'print-jobs',
       'service-availability',
+      // Nav check, 2026-10-17: Webhooks and Xero are tabs of Integrations.
+      'webhooks',
+      'xero',
       // The go-live checklist left the sidebar; the Dashboard still links it.
       'checklist',
     ]);

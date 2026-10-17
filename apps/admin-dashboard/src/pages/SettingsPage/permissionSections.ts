@@ -21,8 +21,8 @@ export interface PermissionSection {
 
 export const PERMISSION_SECTIONS: readonly PermissionSection[] = [
   { id: 'till', label: 'Till and orders', icon: ShoppingCart, groups: ['POS', 'Orders', 'Payments', 'Shifts', 'Delivery', 'Reservations'] },
-  { id: 'kitchen', label: 'Kitchen', icon: ChefHat, groups: ['Kitchen / KDS', 'Kitchen Production', 'Labels'] },
-  { id: 'stock', label: 'Menu, stock and buying', icon: Boxes, groups: ['Menu', 'Inventory', 'Purchase Requests', 'Suppliers', 'Wholesale'] },
+  { id: 'kitchen', label: 'Kitchen', icon: ChefHat, groups: ['Kitchen / KDS', 'Kitchen Production'] },
+  { id: 'stock', label: 'Menu, stock and buying', icon: Boxes, groups: ['Menu', 'Inventory', 'Purchase Requests', 'Suppliers', 'Wholesale', 'Labels'] },
   { id: 'customers', label: 'Customers and marketing', icon: Megaphone, groups: ['Customers', 'Complaints', 'Loyalty', 'Promotions', 'Events', 'Marketing', 'SMS', 'Media'] },
   { id: 'money', label: 'Money and reports', icon: BarChart3, groups: ['Reports', 'Finance'] },
   { id: 'system', label: 'Team and system', icon: UserCog, groups: ['Staff', 'System', 'Devices', 'Service Availability', 'Telegram'] },

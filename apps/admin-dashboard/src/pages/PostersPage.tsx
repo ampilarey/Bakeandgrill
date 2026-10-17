@@ -3,6 +3,7 @@ import { Copy, Download, Monitor, Pin, Send, Share2, Trash2 } from 'lucide-react
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { PageHeader, Btn } from '../components/SharedUI';
+import { SeeAlso } from '../components/SeeAlso';
 import {
   advancePosterOrder, approvePosterQuote, createPoster, deletePoster, deletePosterTemplate, downloadPosterZip, duplicatePoster, exportPoster, fetchPosterExport, uploadPosterPhoto,
   fetchPosterCatalog, fetchPosterLookups, fetchPosterOrders, fetchPosters, fetchPosterTemplates, fetchPrintShops, lockPosterTemplate,
@@ -38,6 +39,9 @@ export function PostersPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader title="Posters" subtitle="Print-ready files for the shop, with the menu's prices and the brand." />
+      {can('labels.print') || can('labels.manage') ? (
+        <SeeAlso to="/labels" label="Labels" testId="posters-labels-link">Stickers for packs and boxes are made under</SeeAlso>
+      ) : null}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {([['make', 'Make a poster'], ['mine', 'My posters'], ['templates', 'Templates'], ['shops', 'Print shops']] as const).map(([id, label]) => (
           <Btn key={id} variant={tab === id ? 'primary' : 'ghost'} onClick={() => setTab(id)}>{label}</Btn>

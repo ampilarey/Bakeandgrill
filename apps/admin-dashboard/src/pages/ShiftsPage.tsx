@@ -2,6 +2,7 @@ import { Fragment, useState, useEffect, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { SeeAlso } from '../components/SeeAlso';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
   PageHeader, PageShell, TableCard, TD, TD_NOWRAP, Badge, Btn, Modal, ModalActions, EmptyState,
@@ -312,6 +313,10 @@ export default function ShiftsPage() {
     <PageShell>
     <div>
       <PageHeader section="Team" title="Shifts & Cash Drawer" />
+      {/* Nav check, 2026-10-17: the cash count's photos are set in Settings; said here, where they are used. */}
+      {can('website.manage') && (
+        <SeeAlso to="/settings/currency" label="Settings → Currency photos" testId="shifts-currency-link">The note and coin photos the till shows when cash is counted are under</SeeAlso>
+      )}
       {error && <p style={{ color: 'var(--color-danger)', marginBottom: 16 }}>{error}</p>}
 
       <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: '0 0 16px' }}>

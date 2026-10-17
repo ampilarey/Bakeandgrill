@@ -68,8 +68,8 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
   // Telegram staff bots, 2026-10-06.
   { to: '/telegram', permission: 'telegram.manage' },
   { to: '/devices', permission: 'devices.view' },
-  { to: '/webhooks', permission: 'integrations.webhooks' },
-  { to: '/xero', permission: 'integrations.xero' },
+  // Nav check, 2026-10-17: Webhooks and Xero are tabs of Integrations, each keeping its permission.
+  { to: '/integrations', permissions: ['integrations.webhooks', 'integrations.xero'] },
   { to: '/system-health', permissions: ['website.manage', 'service_availability.view'] },
   { to: '/account' },
 ];
@@ -121,8 +121,7 @@ describe('navConfig', () => {
     expect(byTo['/reservations']?.permission).toBe('reservations.manage');
     expect(byTo['/finance']?.permissions).toEqual(['reports.financial', 'finance.expenses', 'finance.invoices', 'finance.settlements', 'orders.refund']);
     expect(byTo['/sms']?.permissions).toEqual(['integrations.sms', 'sms_marketing.manage', 'sms.settings.manage', 'sms.logs.view']);
-    expect(byTo['/webhooks']?.permission).toBe('integrations.webhooks');
-    expect(byTo['/xero']?.permission).toBe('integrations.xero');
+    expect(byTo['/integrations']?.permissions).toEqual(['integrations.webhooks', 'integrations.xero']);
   });
 
   it('user holding only the API permission sees the nav link; weaker drift slug does not', () => {
@@ -132,8 +131,8 @@ describe('navConfig', () => {
       { to: '/reservations', apiPerm: 'reservations.manage', weakPerm: 'reservations.view' },
       { to: '/finance', apiPerm: 'reports.financial', weakPerm: 'finance.profit_loss' },
       { to: '/sms', apiPerm: 'integrations.sms', weakPerm: 'sms_marketing.view' },
-      { to: '/webhooks', apiPerm: 'integrations.webhooks', weakPerm: 'webhooks.manage' },
-      { to: '/xero', apiPerm: 'integrations.xero', weakPerm: 'xero.manage' },
+      { to: '/integrations', apiPerm: 'integrations.webhooks', weakPerm: 'webhooks.manage' },
+      { to: '/integrations', apiPerm: 'integrations.xero', weakPerm: 'xero.manage' },
     ];
 
     for (const { to, apiPerm, weakPerm } of cases) {
