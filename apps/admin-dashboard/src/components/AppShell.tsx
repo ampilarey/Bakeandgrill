@@ -436,7 +436,6 @@ export function AppShell({ user, onLogout, onLogoutEverywhere, children, onSearc
           </div>
         </div>
       </header>
-      <AppUpdateBanner />
 
       <div className="admin-shell-body">
         <aside
@@ -503,6 +502,10 @@ export function AppShell({ user, onLogout, onLogoutEverywhere, children, onSearc
         </aside>
 
         <div className="admin-main admin-shell-content" style={{ marginLeft: railW }}>
+          {/* Beside the rail, not under it. The rail is position:fixed from
+              the header down, so a full-bleed strip here was covered on the
+              left and Update now looked like it belonged to the page behind. */}
+          <AppUpdateBanner />
           <SystemHealthBanner />
           <main className="admin-shell-main">
             {children}

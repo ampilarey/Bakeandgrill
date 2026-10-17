@@ -24,6 +24,20 @@ Route::get('/admin', function () {
     return redirect('/admin/');
 })->name('admin.redirect');
 
+// Update now leaves the admin service worker's scope (/admin/) and comes
+// straight back. A worker still controlling the tab cannot intercept this
+// address, so the return trip is the server's index.html, not the cached one.
+Route::get('/admin-reload', function () {
+    $stamp = base_convert((string) (int) round(microtime(true) * 1000), 10, 36);
+
+    // A raw Location keeps the trailing slash. redirect('/admin/?_u=') is
+    // rewritten to /admin?_u=, and that second hop drops the cache-buster.
+    return response('', 302, [
+        'Location' => '/admin/?_u=' . $stamp,
+        'Cache-Control' => 'no-store, no-cache, must-revalidate',
+    ]);
+})->name('admin.reload');
+
 // Social Hub: where Facebook sends the browser back after "Connect with
 // Facebook". Public by necessity (the admin token is not a cookie); it
 // trusts only the unguessable state and redirects into the admin app.

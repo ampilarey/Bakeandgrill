@@ -56,7 +56,10 @@ export default defineConfig({
         navigateFallbackDenylist: [/^\/api\//, /^\/sanctum\//, /^\/css\//, /^\/storage\//, /admin-version\.json$/],
         globPatterns: ['**/*.{js,css,ico,png,svg,webp,woff2,webmanifest,json}'],
         // The HEIC converter (heic-to / libheif) is ~3MB and loaded on demand.
-        globIgnores: ['**/index.html', '**/prepareUpload-*.js'],
+        // index.html is never precached (an iPad kept serving the old shell).
+        // admin-version.json is the live stamp the banner compares against —
+        // a precached copy would keep saying "newer" after the update landed.
+        globIgnores: ['**/index.html', '**/admin-version.json', '**/prepareUpload-*.js'],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         runtimeCaching: [
           {
@@ -86,6 +89,9 @@ export default defineConfig({
       '/api': { target: 'http://localhost:8000', changeOrigin: true },
       '/sanctum': { target: 'http://localhost:8000', changeOrigin: true },
       '/css': { target: 'http://localhost:8000', changeOrigin: true },
+      // Update now steps outside the service worker scope, then Laravel
+      // redirects back into /admin/. The dev server has to hand that hop over.
+      '/admin-reload': { target: 'http://localhost:8000', changeOrigin: true },
     },
   },
   build: {
