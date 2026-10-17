@@ -19,7 +19,10 @@ export function OrderMessagesPanel({ orderId }: { orderId: number }) {
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
 
-  const load = () => fetchOrderMessages(orderId).then((r) => setMessages(r.messages)).catch((e: Error) => setError(e.message));
+  const load = async () => {
+    try { setMessages((await fetchOrderMessages(orderId)).messages ?? []); }
+    catch (e) { setError((e as Error).message); }
+  };
   useEffect(() => { void load(); }, [orderId]);
 
   const send = async () => {
