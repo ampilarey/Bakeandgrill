@@ -61,7 +61,7 @@ vi.mock('../../api', () => ({
   createLabelTemplate: (...a: unknown[]) => createLabelTemplate(...a),
 }));
 vi.mock('../MediaPicker', () => ({ MediaPicker: () => null }));
-vi.mock('./TypesAndBrands', () => ({ BrandModal: () => <div data-testid="brand-modal" /> }));
+vi.mock('./TypesAndBrands', () => ({ BrandModal: () => <div data-testid="brand-modal" />, NewTypeButton: () => <button type="button" aria-label="New label type" /> }));
 
 import { CustomLabelModal, CustomLabelsTab } from './CustomLabels';
 import type { CustomLabel } from '../../api';

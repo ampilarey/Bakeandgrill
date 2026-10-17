@@ -15,6 +15,13 @@ const api = vi.hoisted(() => ({
 }));
 vi.mock('../../api', () => api);
 vi.mock('../MediaPicker', () => ({ MediaPicker: () => null }));
+const perms = vi.hoisted(() => ({ manage: true }));
+vi.mock('../../hooks/usePermissions', () => ({ useCurrentUserPermissions: () => ({ can: (p: string) => p !== 'labels.manage' || perms.manage }) }));
+vi.mock('./TypesAndBrands', () => ({
+  NewTypeButton: ({ onSaved }: { onSaved: (t: unknown) => void }) => (
+    <button type="button" aria-label="New label type" onClick={() => onSaved({ id: 44, name: 'Chilled Sauce', storage: 'chilled', brand_name: null, is_active: true })} />
+  ),
+}));
 vi.mock('../ui', async () => {
   const actual = await vi.importActual<typeof import('../ui')>('../ui');
   return { ...actual, useToast: () => ({ toast: vi.fn() }) };
@@ -82,6 +89,22 @@ describe('ItemLabelTab', () => {
     expect(body.size).toBeNull();
     expect(body.fields).toMatchObject({ label_storage: 'chilled', label_heading: 'HOMEMADE SAUCE', label_shelf_life_days: 14, label_pack_unit: 'G' });
     for (const key of ['label_ingredients', 'label_ingredients_dv', 'label_barcode', 'label_photo_media_id', 'label_enabled']) expect(body.fields).not.toHaveProperty(key);
+  });
+
+  // Owner, 2026-10-17: "why no option to add new label type here". The + makes a type and picks it.
+  it('adds a new label type from beside the box and picks it, for those who manage labels', async () => {
+    render(<ItemLabelTab itemId={7} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'New label type' }));
+    expect(screen.getByLabelText('Label type')).toHaveValue('44');
+    expect(screen.getByLabelText('Storage')).toHaveValue('chilled');
+  });
+
+  it('offers no + to someone who cannot manage labels', async () => {
+    perms.manage = false;
+    render(<ItemLabelTab itemId={7} />);
+    await screen.findByLabelText('Label type');
+    expect(screen.queryByRole('button', { name: 'New label type' })).toBeNull();
+    perms.manage = true;
   });
 
   // The drag designer (round 8): a drag on the full sticker's preview is saved to the item at once, like a tap's sheet.

@@ -16,6 +16,8 @@ import { BadgePicker } from './BadgePicker';
 import { clearDesign, hasOverrides, layoutPayload, nudgeSpot } from './labelLayout';
 import { MediaPicker } from '../MediaPicker';
 import { Button } from '../ui';
+import { NewTypeButton } from './TypesAndBrands';
+import { useCurrentUserPermissions } from '../../hooks/usePermissions';
 
 /*
  * A menu item's label settings (owner, 2026-10-04): on labels or not, where
@@ -51,6 +53,7 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
   const [pickerSaves, setPickerSaves] = useState(false);
   const [lang, setLang] = useState<'en' | 'dv'>('en');
   const [types, setTypes] = useState<LabelType[]>([]);
+  const canManageTypes = useCurrentUserPermissions().can('labels.manage');
   // The wrap-around label's parts and marks, as the server lists them (2026-10-12).
   const [catalogue, setCatalogue] = useState<WrapCatalogue | null>(null);
   // The badges an item can carry (round 9), from the layouts.
@@ -162,11 +165,14 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
         {/* v2 point 3: "frozen hedika is a type of food so that label should be easily selected". */}
         <div>
           <label className={labelClass} htmlFor="lbl-type">Label type</label>
-          <select id="lbl-type" value={draft.label_type_id ?? ''} onChange={(e) => { const t = types.find((x) => x.id === Number(e.target.value)); set('label_type_id', t ? t.id : null); if (t) set('label_storage', t.storage); }} className={fieldClass}>
-            <option value="">No type: the usual wording for its storage</option>
-            {types.map((t) => <option key={t.id} value={t.id}>{t.name}{t.brand_name && t.brand_name !== product.defaults.brand ? ` · ${t.brand_name}` : ''}</option>)}
-          </select>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">Brings the heading, storage, dates wording, shelf life, how-to-use and brand ({product.defaults.brand}). Anything typed below prints instead. Types are managed on Labels → Wording and logos.</p>
+          <div className="flex gap-2">
+            <select id="lbl-type" value={draft.label_type_id ?? ''} onChange={(e) => { const t = types.find((x) => x.id === Number(e.target.value)); set('label_type_id', t ? t.id : null); if (t) set('label_storage', t.storage); }} className={fieldClass}>
+              <option value="">No type: the usual wording for its storage</option>
+              {types.map((t) => <option key={t.id} value={t.id}>{t.name}{t.brand_name && t.brand_name !== product.defaults.brand ? ` · ${t.brand_name}` : ''}</option>)}
+            </select>
+            {canManageTypes && <NewTypeButton onSaved={(t) => { setTypes((s) => [...s.filter((x) => x.id !== t.id), t]); set('label_type_id', t.id); set('label_storage', t.storage); }} />}
+          </div>
+          <p className="text-xs text-[var(--color-text-muted)] mt-1">Brings the heading, storage, dates wording, shelf life, how-to-use and brand ({product.defaults.brand}). Anything typed below prints instead. + adds a new type; the rest are edited on Labels → Wording and logos.</p>
         </div>
 
         <div>

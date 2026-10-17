@@ -161,6 +161,30 @@ function TypeModal({ type, brands, footers, onFootersChange, canManage, defaults
   );
 }
 
+/**
+ * A + beside a Label type box (owner, 2026-10-17: "why no option to add new
+ * label type here"): opens the same editor as Wording and logos and hands
+ * the new type back, so the box picks it. Loads its own brands and footers.
+ */
+export function NewTypeButton({ onSaved, testId = 'new-label-type' }: { onSaved: (t: LabelType) => void; testId?: string }) {
+  const [open, setOpen] = useState(false);
+  const [brands, setBrands] = useState<LabelBrand[] | null>(null);
+  const [footers, setFooters] = useState<LabelFooter[]>([]);
+  useEffect(() => {
+    if (!open || brands !== null) return;
+    fetchLabelBrands().then((r) => setBrands(r.data)).catch(() => setBrands([]));
+    fetchLabelFooters().then((r) => setFooters(r.data)).catch(() => setFooters([]));
+  }, [open, brands]);
+  return (
+    <>
+      <Button variant="secondary" icon={<Plus size={16} />} onClick={() => setOpen(true)} aria-label="New label type" title="New label type with its own wording" className="shrink-0" data-testid={testId} />
+      {open && brands !== null && (
+        <TypeModal type={null} brands={brands} footers={footers} onFootersChange={setFooters} canManage defaults={null} onClose={() => setOpen(false)} onSaved={onSaved} />
+      )}
+    </>
+  );
+}
+
 export function BrandModal({ brand, onClose, onSaved }: { brand: LabelBrand | null; onClose: () => void; onSaved: (b: LabelBrand) => void }) {
   const { toast } = useToast();
   const [name, setName] = useState(brand?.name ?? '');
