@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Notifications\Services;
 
+use App\Domains\Customers\Support\MessageChoices;
 use App\Domains\Notifications\Contracts\SmsProviderInterface;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Support\AlertAudience;
@@ -171,6 +172,27 @@ class SmsService
                     'idempotency_key' => $sms->idempotencyKey,
                     'error_message' => 'Recipient opted out of marketing SMS.',
                 ]);
+            }
+        }
+
+        // 5b. The customer's own choice for order and delivery updates
+        //     (Account → Messages; iruali import plan, feature 5). Offers are
+        //     the opt-out above; sign-in codes are never stopped.
+        $kind = MessageChoices::kindOf($sms->type);
+        if (in_array($kind, [MessageChoices::ORDERS, MessageChoices::DELIVERY], true)) {
+            $choosing = $sms->customerId !== null ? Customer::find($sms->customerId) : Customer::where('phone', $normalized)->first();
+            if (!MessageChoices::allows($choosing, $kind, MessageChoices::SMS)) {
+                $reason = 'The customer chose no SMS for ' . ($kind === MessageChoices::ORDERS ? 'order' : 'delivery') . ' updates.';
+                if ($existing !== null) {
+                    $existing->update(['status' => 'suppressed', 'error_message' => $reason, 'message' => $this->messageForLog($sms), 'to' => $normalized, 'cost_estimate_mvr' => 0]);
+                    $log = $existing->fresh();
+                } else {
+                    $log = $this->rowWithStatus($sms, $normalized, $estimate, 'suppressed', $reason);
+                }
+                // Their email may still be wanted for this kind.
+                app(SmsEmailCopier::class)->copy($sms, $normalized, $log, $registryEntry, smsSent: false);
+
+                return $log;
             }
         }
 

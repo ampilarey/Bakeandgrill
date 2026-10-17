@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Notifications\Services;
 
+use App\Domains\Customers\Support\MessageChoices;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Support\AlertOnce;
 use App\Domains\Notifications\Support\NotificationChannels;
@@ -112,6 +113,15 @@ class SmsEmailCopier
                 return false;
             }
             [$email, $audience, $customerId] = $person;
+
+            // The customer's own choice for this kind of message by email
+            // (Account → Messages; iruali import plan, feature 5).
+            if ($audience === 'customer') {
+                $kind = MessageChoices::kindOf($sms->type);
+                if ($kind !== null && !MessageChoices::allows($customerId !== null ? Customer::find($customerId) : null, $kind, MessageChoices::EMAIL)) {
+                    return false;
+                }
+            }
 
             // A staff member is never sent "promotions": a scheduled message
             // to a staff contact (shift reminder) counts as a staff alert.

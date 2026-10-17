@@ -61,14 +61,8 @@ type PushProps = {
   onToggle: () => void;
 };
 
-type PromoSmsProps = {
-  enabled: boolean;
-  saving: boolean;
-  onToggle: () => void;
-};
-
-/** Settings group: dark mode, optional push notifications row, promotional SMS. */
-export function AccountSettingsBlock({ push, promoSms, hub }: { push?: PushProps; promoSms?: PromoSmsProps; hub?: boolean }) {
+/** Settings group: dark mode, language, optional push notifications row. */
+export function AccountSettingsBlock({ push, hub }: { push?: PushProps; hub?: boolean }) {
   const { t, lang, setLang } = useLanguage();
   const { isAuthenticated } = useAuth();
   const { settings } = useSiteSettingsContext();
@@ -86,7 +80,7 @@ export function AccountSettingsBlock({ push, promoSms, hub }: { push?: PushProps
       <div
         style={{
           ...linkRowStyle,
-          borderBottom: languageSwitcherEnabled || push?.supported || promoSms
+          borderBottom: languageSwitcherEnabled || push?.supported
             ? '1px solid var(--color-border)'
             : 'none',
         }}
@@ -118,7 +112,7 @@ export function AccountSettingsBlock({ push, promoSms, hub }: { push?: PushProps
         <div
           style={{
             ...linkRowStyle,
-            borderBottom: push?.supported || promoSms ? '1px solid var(--color-border)' : 'none',
+            borderBottom: push?.supported ? '1px solid var(--color-border)' : 'none',
           }}
         >
           <span>{t('account.language')}</span>
@@ -166,7 +160,7 @@ export function AccountSettingsBlock({ push, promoSms, hub }: { push?: PushProps
       ) : null}
 
       {push?.supported && (
-        <div style={{ ...linkRowStyle, borderBottom: promoSms ? '1px solid var(--color-border)' : 'none' }}>
+        <div style={{ ...linkRowStyle, borderBottom: 'none' }}>
           <span>{t('account.push_notifications')}</span>
           <button
             type="button"
@@ -191,37 +185,83 @@ export function AccountSettingsBlock({ push, promoSms, hub }: { push?: PushProps
           </button>
         </div>
       )}
-      {promoSms && (
-        <div style={{ ...linkRowStyle, borderBottom: 'none' }}>
-          <span>
-            {t('account.promo_sms')}
-            <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 400, color: 'var(--color-text-muted)' }}>{t('account.promo_sms_hint')}</span>
-          </span>
-          <button
-            type="button"
-            onClick={promoSms.onToggle}
-            disabled={promoSms.saving}
-            aria-pressed={promoSms.enabled}
-            aria-label={t('account.promo_sms')}
-            data-testid="promo-sms-toggle"
-            style={{
-              minWidth: 52,
-              minHeight: 44,
-              borderRadius: 999,
-              border: '1.5px solid var(--color-border)',
-              background: promoSms.enabled ? 'var(--color-primary)' : 'var(--color-surface-alt)',
-              color: promoSms.enabled ? '#fff' : 'var(--color-text-muted)',
-              fontWeight: 700,
-              fontSize: '0.75rem',
-              cursor: promoSms.saving ? 'not-allowed' : 'pointer',
-              fontFamily: 'inherit',
-              opacity: promoSms.saving ? 0.6 : 1,
-            }}
-          >
-            {promoSms.enabled ? t('common.on') : t('common.off')}
-          </button>
-        </div>
-      )}
+    </BlockShell>
+  );
+}
+
+export type MessageKind = 'orders' | 'delivery' | 'offers' | 'security';
+export type MessageChoicesMap = Record<MessageKind, { sms: boolean; email: boolean; locked: boolean }>;
+
+const MESSAGE_KINDS: MessageKind[] = ['orders', 'delivery', 'offers', 'security'];
+
+/**
+ * Account → Messages (iruali import plan, feature 5): order, delivery and offer
+ * messages by SMS and email, each on or off; sign-in codes always on. Offers by
+ * SMS is the same switch as the SMS preferences page.
+ */
+export function AccountMessagesBlock({ choices, emailChecked, saving, onChange, hub }: {
+  choices: MessageChoicesMap;
+  emailChecked: boolean;
+  saving: boolean;
+  onChange: (kind: MessageKind, channel: 'sms' | 'email', on: boolean) => void;
+  hub?: boolean;
+}) {
+  const { t } = useLanguage();
+  const pill = (on: boolean, disabled: boolean) => ({
+    minWidth: 56,
+    minHeight: 36,
+    padding: '0 0.6rem',
+    borderRadius: 999,
+    border: '1.5px solid var(--color-border)',
+    background: on ? 'var(--color-primary)' : 'var(--color-surface-alt)',
+    color: on ? '#fff' : 'var(--color-text-muted)',
+    fontWeight: 700,
+    fontSize: '0.75rem',
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    fontFamily: 'inherit',
+    opacity: disabled ? 0.6 : 1,
+  } as CSSProperties);
+
+  return (
+    <BlockShell title={t('account.messages')} hub={hub}>
+      <p style={{ margin: '0.5rem 0', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('account.messages_hint')}</p>
+      {MESSAGE_KINDS.map((kind, i) => {
+        const row = choices[kind];
+        const note = row.locked
+          ? t('account.msg_security_locked')
+          : kind === 'offers' && !emailChecked
+            ? t('account.msg_offers_email_check')
+            : kind === 'orders' && !row.sms && !row.email
+              ? t('account.msg_orders_off_warn')
+              : null;
+        return (
+          <div key={kind} data-testid={`msg-row-${kind}`} style={{ ...linkRowStyle, flexWrap: 'wrap', gap: 8, borderBottom: i < MESSAGE_KINDS.length - 1 ? '1px solid var(--color-border)' : 'none' }}>
+            <span style={{ flex: '1 1 160px' }}>
+              {t(`account.msg_${kind}`)}
+              {note && <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 400, color: 'var(--color-text-muted)' }}>{note}</span>}
+            </span>
+            <span style={{ display: 'inline-flex', gap: 6 }}>
+              {(['sms', 'email'] as const).map((channel) => {
+                const disabled = saving || row.locked || (kind === 'offers' && channel === 'email' && !emailChecked && !row.email);
+                return (
+                  <button
+                    key={channel}
+                    type="button"
+                    aria-pressed={row[channel]}
+                    aria-label={`${t(`account.msg_${kind}`)}: ${t(`account.msg_${channel}`)}`}
+                    data-testid={`msg-${kind}-${channel}`}
+                    disabled={disabled}
+                    onClick={() => onChange(kind, channel, !row[channel])}
+                    style={pill(row[channel], disabled)}
+                  >
+                    {t(`account.msg_${channel}`)}
+                  </button>
+                );
+              })}
+            </span>
+          </div>
+        );
+      })}
     </BlockShell>
   );
 }

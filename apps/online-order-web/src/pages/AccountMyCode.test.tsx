@@ -59,11 +59,11 @@ import { getCustomerMe, getLoyaltyAccount, updateCustomerProfile } from '../api'
 describe('Account page — my code and points', () => {
   beforeEach(() => {
     vi.mocked(getCustomerMe).mockResolvedValue({
-      customer: { id: 1, phone: '+9607700001', name: 'Aisha', is_profile_complete: true, has_trade_account: false, sms_opt_out: false },
+      customer: { id: 1, phone: '+9607700001', name: 'Aisha', is_profile_complete: true, has_trade_account: false, sms_opt_out: false, message_choices: { orders: { sms: true, email: true, locked: false }, delivery: { sms: true, email: false, locked: false }, offers: { sms: true, email: false, locked: false }, security: { sms: true, email: true, locked: true } } },
       has_trade_account: false,
     });
     vi.mocked(updateCustomerProfile).mockResolvedValue({
-      customer: { id: 1, phone: '+9607700001', name: 'Aisha', is_profile_complete: true, has_trade_account: false, sms_opt_out: true },
+      customer: { id: 1, phone: '+9607700001', name: 'Aisha', is_profile_complete: true, has_trade_account: false, sms_opt_out: true, message_choices: { orders: { sms: true, email: true, locked: false }, delivery: { sms: true, email: false, locked: false }, offers: { sms: false, email: false, locked: false }, security: { sms: true, email: true, locked: true } } },
     });
     vi.mocked(getLoyaltyAccount).mockResolvedValue({
       account: { points_balance: 500, points_held: 120, available_points: 380, lifetime_points: 900, tier: 'silver' },
@@ -80,13 +80,14 @@ describe('Account page — my code and points', () => {
     expect(screen.getByText('account.my_code_hint')).toBeInTheDocument();
   });
 
-  it('switches promotional SMS off from Settings and links to the preferences page', async () => {
+  it('turns offers by SMS off from Messages and links to the preferences page', async () => {
     render(<MemoryRouter><AccountPage /></MemoryRouter>);
-    const toggle = await screen.findByTestId('promo-sms-toggle');
+    const toggle = await screen.findByTestId('msg-offers-sms');
     expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('msg-security-sms')).toBeDisabled();
     fireEvent.click(toggle);
-    await waitFor(() => expect(updateCustomerProfile).toHaveBeenCalledWith({ sms_opt_out: true }));
-    await waitFor(() => expect(screen.getByTestId('promo-sms-toggle')).toHaveAttribute('aria-pressed', 'false'));
+    await waitFor(() => expect(updateCustomerProfile).toHaveBeenCalledWith({ message_choices: { offers: { sms: false } } }));
+    await waitFor(() => expect(screen.getByTestId('msg-offers-sms')).toHaveAttribute('aria-pressed', 'false'));
     expect(screen.getByTestId('account-link-leave-/sms/preferences')).toBeInTheDocument();
   });
 

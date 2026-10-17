@@ -37,6 +37,9 @@ type Props = {
   onClose: () => void;
 };
 
+/** Account → Messages, as the customer named them (iruali import plan, feature 5). */
+const MESSAGE_KIND_NAMES: Record<string, string> = { orders: 'Order updates', delivery: 'Delivery updates', offers: 'Offers and news' };
+
 export function Customer360Drawer({ customerId, onClose }: Props) {
   const { can } = useCurrentUserPermissions();
   const [summary, setSummary] = useState<CustomerGrowthSummary | null>(null);
@@ -81,6 +84,8 @@ export function Customer360Drawer({ customerId, onClose }: Props) {
     email?: string;
     internal_notes?: string;
     date_of_birth?: string | null;
+    email_verified?: boolean;
+    message_choices?: Record<string, { sms: boolean; email: boolean; locked: boolean }>;
   } | undefined;
 
   const handleSaveDob = async () => {
@@ -208,6 +213,20 @@ export function Customer360Drawer({ customerId, onClose }: Props) {
                 <div><strong>Last order:</strong> {summary.lifetime.days_since_last_order}d ago</div>
               )}
             </div>
+
+            {profile?.message_choices && (
+              <div data-testid="c360-messages" style={{ fontSize: 13 }}>
+                <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
+                  Messages they want{profile.email ? (profile.email_verified ? ' · email checked' : ' · email not checked') : ''}
+                </p>
+                {(['orders', 'delivery', 'offers'] as const).map((kind) => {
+                  const row = profile.message_choices?.[kind];
+                  if (!row) return null;
+                  const ways = [row.sms ? 'SMS' : null, row.email ? 'Email' : null].filter(Boolean).join(' and ') || 'None';
+                  return <div key={kind}>{MESSAGE_KIND_NAMES[kind]}: {ways}</div>;
+                })}
+              </div>
+            )}
 
             <div>
               <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Date of birth</p>

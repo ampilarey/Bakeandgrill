@@ -336,8 +336,6 @@
   "account.preorders": "Pre-orders",
   "account.reviews": "Reviews",
   "account.push_notifications": "Push notifications",
-  "account.promo_sms": "Promotional SMS",
-  "account.promo_sms_hint": "Offers and news by text. Order, payment and login messages always send.",
   "account.link_sms_prefs": "SMS preferences",
   "account.logout": "Sign out",
   "account.logout_confirm": "Sign out of your account?",
@@ -1039,5 +1037,16 @@
   "account.email_check_sent": "We sent a code to {email}.",
   "account.email_check_code": "6-digit code",
   "account.email_check_confirm": "Check",
-  "account.email_check_ok": "Thanks. Your email is checked."
+  "account.email_check_ok": "Thanks. Your email is checked.",
+  "account.messages": "Messages",
+  "account.messages_hint": "Choose how we tell you things. Codes to sign in always come.",
+  "account.msg_orders": "Order updates",
+  "account.msg_delivery": "Delivery updates",
+  "account.msg_offers": "Offers and news",
+  "account.msg_security": "Sign-in and security",
+  "account.msg_sms": "SMS",
+  "account.msg_email": "Email",
+  "account.msg_security_locked": "Always on, to keep your account safe.",
+  "account.msg_offers_email_check": "Check your email in Profile to get offers by email.",
+  "account.msg_orders_off_warn": "You will not hear when your order is ready."
 }

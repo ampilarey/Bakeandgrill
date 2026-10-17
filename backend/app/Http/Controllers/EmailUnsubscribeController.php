@@ -29,8 +29,8 @@ class EmailUnsubscribeController extends Controller
 
     public function store(Request $request, Customer $customer)
     {
-        if (!$customer->sms_opt_out) {
-            $customer->forceFill(['sms_opt_out' => true, 'sms_opt_out_at' => now(), 'sms_opt_out_source' => 'email_link'])->save();
+        if (!$customer->sms_opt_out || \App\Domains\Customers\Support\MessageChoices::for($customer)['offers']['email']) {
+            \App\Domains\Customers\Support\MessageChoices::stopOffers($customer, 'email_link');
             Log::info('promotions: opt-out from an email link', ['customer_id' => $customer->id]);
         }
 

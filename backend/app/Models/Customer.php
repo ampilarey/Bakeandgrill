@@ -41,6 +41,7 @@ class Customer extends Model implements AuthenticatableContract
         'sms_opt_out',
         'sms_opt_out_at',
         'sms_opt_out_source',
+        'message_prefs',
         'internal_notes',
         // Delivery address fields
         'delivery_address',
@@ -73,6 +74,7 @@ class Customer extends Model implements AuthenticatableContract
         'sms_opt_out_at',
         'credit_notes',
         'email_verified_at',
+        'message_prefs',
     ];
 
     protected $casts = [
@@ -87,6 +89,7 @@ class Customer extends Model implements AuthenticatableContract
         'sms_opt_out' => 'boolean',
         'sms_opt_out_at' => 'datetime',
         'email_verified_at' => 'datetime',
+        'message_prefs' => 'array',
         'is_gst_registered' => 'boolean',
         'credit_enabled' => 'boolean',
         'credit_approved_at' => 'datetime',

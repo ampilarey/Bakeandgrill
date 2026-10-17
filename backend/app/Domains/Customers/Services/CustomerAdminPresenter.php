@@ -21,6 +21,9 @@ final class CustomerAdminPresenter
             'is_active' => (bool) $c->is_active,
             'is_profile_complete' => (bool) $c->is_profile_complete,
             'sms_opt_out' => (bool) $c->sms_opt_out,
+            'email_verified' => $c->hasVerifiedEmail(),
+            // What the customer chose on Account → Messages (iruali import plan, feature 5).
+            'message_choices' => \App\Domains\Customers\Support\MessageChoices::for($c),
             'internal_notes' => $c->internal_notes,
             'preferred_language' => $c->preferred_language,
             'orders_count' => $c->orders_count ?? 0,

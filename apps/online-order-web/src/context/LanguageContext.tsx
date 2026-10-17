@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import EN from "../i18n/en.json";
 import DV from "../i18n/dv.json";
 
@@ -46,12 +46,12 @@ function readStoredLang(): 'en' | 'dv' {
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<'en' | 'dv'>(() => readStoredLang());
 
-  const setLang = (next: 'en' | 'dv') => {
+  const setLang = useCallback((next: 'en' | 'dv') => {
     setLangState(next);
     try { localStorage.setItem(LANG_STORAGE_KEY, next); } catch { /* private mode / quota */ }
     document.documentElement.lang = next === 'dv' ? 'dv' : 'en';
     document.documentElement.dir = next === 'dv' ? 'rtl' : 'ltr';
-  };
+  }, []);
 
   currentLang = lang;
 
@@ -60,7 +60,8 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     document.documentElement.dir = lang === 'dv' ? 'rtl' : 'ltr';
   }, [lang]);
 
-  const t = (key: string) => translate(key, lang);
+  // Stable while the language stays: screens refetch when `t` changes.
+  const t = useCallback((key: string) => translate(key, lang), [lang]);
 
   return (
     <LanguageContext.Provider value={{ t, lang, setLang }}>

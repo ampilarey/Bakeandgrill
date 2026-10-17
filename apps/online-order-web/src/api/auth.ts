@@ -4,7 +4,12 @@ import type { Customer } from '@shared/types';
 import { csrfHeadersForMutation } from '@shared/api';
 import { API_ORIGIN, request } from './client';
 
-export type AuthCustomer = Customer & { is_profile_complete: boolean; email_verified?: boolean };
+export type AuthCustomer = Customer & {
+  is_profile_complete: boolean;
+  email_verified?: boolean;
+  /** Account → Messages: each kind by SMS and email (iruali import plan, feature 5). */
+  message_choices?: Record<'orders' | 'delivery' | 'offers' | 'security', { sms: boolean; email: boolean; locked: boolean }>;
+};
 export type AuthResponse = {
   customer: AuthCustomer;
   is_new_customer?: boolean;
@@ -107,7 +112,7 @@ export async function completeProfile(
 }
 
 export async function updateCustomerProfile(
-  data: { name?: string; email?: string; date_of_birth?: string | null; sms_opt_out?: boolean; preferred_language?: 'en' | 'dv' },
+  data: { name?: string; email?: string; date_of_birth?: string | null; sms_opt_out?: boolean; preferred_language?: 'en' | 'dv'; message_choices?: Record<string, { sms?: boolean; email?: boolean }> },
 ): Promise<{ customer: AuthCustomer }> {
   return request(ENDPOINTS.CUSTOMER_PROFILE, {
     method: 'PATCH',

@@ -47,6 +47,9 @@ class SmsEmailCopyTest extends TestCase
         DeferAfterResponse::flushTestingCallbacks();
     }
 
+    /** A customer who asked for offers by email and checked their email. */
+    private const WANTS_OFFERS_BY_EMAIL = ['email_verified_at' => '2026-10-01 10:00:00', 'message_prefs' => ['offers' => ['email' => true]]];
+
     private function customer(array $attrs = []): Customer
     {
         return Customer::create(array_merge([
@@ -90,7 +93,8 @@ class SmsEmailCopyTest extends TestCase
 
     public function test_promotions_carry_a_working_unsubscribe_and_an_opted_out_customer_gets_neither(): void
     {
-        $c = $this->customer();
+        // Offers by email go only to a checked email that asked for them (iruali import plan, feature 5).
+        $c = $this->customer(self::WANTS_OFFERS_BY_EMAIL);
         $this->text('7771234', 'Weekend deal: 20% off grills. Order: https://bakeandgrill.mv/order', 'marketing_campaign', $c->id);
 
         $url = null;
@@ -198,7 +202,7 @@ class SmsEmailCopyTest extends TestCase
     {
         SmsDeliveryRules::update(['email_copy_hourly_cap' => 4, 'marketing_daily_cap' => 0]);
         foreach (range(1, 6) as $i) {
-            $c = $this->customer(['phone' => '+96077700' . str_pad((string) $i, 2, '0', STR_PAD_LEFT), 'email' => "c{$i}@example.com"]);
+            $c = $this->customer(['phone' => '+96077700' . str_pad((string) $i, 2, '0', STR_PAD_LEFT), 'email' => "c{$i}@example.com"] + self::WANTS_OFFERS_BY_EMAIL);
             $this->text($c->phone, "Deal {$i}", 'marketing_campaign', $c->id);
         }
         Mail::assertSent(SmsCopyMail::class, 2);
@@ -207,6 +211,14 @@ class SmsEmailCopyTest extends TestCase
         $c = $this->customer(['phone' => '+9607779999', 'email' => 'order@example.com']);
         $this->text($c->phone, 'Your order is ready.', 'customer_order_ready', $c->id);
         Mail::assertSent(SmsCopyMail::class, 3);
+    }
+
+    public function test_offers_by_email_need_the_customer_to_ask_and_a_checked_email(): void
+    {
+        $c = $this->customer();
+        $this->text('7771234', 'Weekend deal', 'marketing_campaign', $c->id);
+
+        Mail::assertNotSent(SmsCopyMail::class);
     }
 
     public function test_nobody_with_an_email_means_no_email(): void

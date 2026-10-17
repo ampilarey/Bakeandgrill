@@ -26,7 +26,7 @@ import { PageHeader } from '../components/shell/PageHeader';
 import { AddressesSection } from './AccountPage/AddressesSection';
 import { ProfileSection } from './AccountPage/ProfileSection';
 import { OrderHistorySection } from './AccountPage/OrderHistorySection';
-import { AccountSettingsBlock, AccountMoreBlock, BlockShell } from './AccountPage/AccountChromeBlocks';
+import { AccountSettingsBlock, AccountMessagesBlock, AccountMoreBlock, BlockShell } from './AccountPage/AccountChromeBlocks';
 import {
   SectionCard, btnStyle, inputStyle, statusBadge,
 } from './AccountPage/accountShared';
@@ -929,11 +929,16 @@ export function AccountPage() {
             </div>
 
             <div style={{ order: 6 }}>
-              <AccountSettingsBlock
-                hub
-                push={pushToggle}
-                promoSms={customer ? { enabled: !customer.sms_opt_out, saving: profile.savingPromoSms, onToggle: () => void profile.handleTogglePromoSms() } : undefined}
-              />
+              <AccountSettingsBlock hub push={pushToggle} />
+              {customer?.message_choices ? (
+                <AccountMessagesBlock
+                  hub
+                  choices={customer.message_choices}
+                  emailChecked={Boolean(customer.email_verified)}
+                  saving={profile.savingMessages}
+                  onChange={(kind, channel, on) => void profile.handleMessageChoice(kind, channel, on)}
+                />
+              ) : null}
             </div>
 
             <div style={{ order: 7 }}>

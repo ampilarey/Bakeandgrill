@@ -164,6 +164,7 @@ class PaymentConfirmationNotifier
         // this claim on the receipt is the email's: it went three times
         // (owner, 2026-10-10). A failed send gives the claim back.
         if ($email && \App\Domains\Notifications\Support\SmsTypeRegistry::isEmailEnabled($typeKey)
+            && \App\Domains\Customers\Support\MessageChoices::allows($order->customer, \App\Domains\Customers\Support\MessageChoices::ORDERS, \App\Domains\Customers\Support\MessageChoices::EMAIL)
             && Receipt::whereKey($receipt->id)->whereNull('confirmation_email_sent_at')->update(['confirmation_email_sent_at' => now()]) === 1) {
             try {
                 Mail::to($email)->send(new OrderConfirmationMail($order, $url, $name));

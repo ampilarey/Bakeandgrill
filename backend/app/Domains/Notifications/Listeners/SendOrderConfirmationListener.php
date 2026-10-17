@@ -93,7 +93,8 @@ class SendOrderConfirmationListener implements ShouldQueue
 
         // Email — optional, failure does not affect SMS. Its switch is the
         // row's Email switch in Admin → Notifications (2026-10-10).
-        if ($email && \App\Domains\Notifications\Support\SmsTypeRegistry::isEmailEnabled('customer_order_confirmed')) {
+        if ($email && \App\Domains\Notifications\Support\SmsTypeRegistry::isEmailEnabled('customer_order_confirmed')
+            && \App\Domains\Customers\Support\MessageChoices::allows($data->customerId ? \App\Models\Customer::find($data->customerId) : null, \App\Domains\Customers\Support\MessageChoices::ORDERS, \App\Domains\Customers\Support\MessageChoices::EMAIL)) {
             try {
                 Mail::to($email)->send(new OrderConfirmationMail($order, $url, $name));
             } catch (\Throwable $e) {

@@ -52,18 +52,18 @@ export function useAccountProfile(isAuthenticated: boolean, authReady: boolean) 
     }
   };
 
-  /** Promotional SMS on or off (SMS audit, 2026-09-24). Order and login texts are unaffected. */
-  const [savingPromoSms, setSavingPromoSms] = useState(false);
-  const handleTogglePromoSms = async () => {
+  /** Account → Messages: one kind by one channel, on or off (iruali import plan, feature 5). */
+  const [savingMessages, setSavingMessages] = useState(false);
+  const handleMessageChoice = async (kind: string, channel: 'sms' | 'email', on: boolean) => {
     if (!isAuthenticated || !customer) return;
-    setSavingPromoSms(true);
+    setSavingMessages(true);
     try {
-      const res = await updateCustomerProfile({ sms_opt_out: !customer.sms_opt_out });
+      const res = await updateCustomerProfile({ message_choices: { [kind]: { [channel]: on } } });
       setCustomer((c) => (c ? { ...c, ...res.customer } : res.customer));
     } catch (e) {
       setProfileMsg({ type: 'error', text: (e as Error).message || t('account.profile_err_save') });
     } finally {
-      setSavingPromoSms(false);
+      setSavingMessages(false);
     }
   };
 
@@ -113,7 +113,7 @@ export function useAccountProfile(isAuthenticated: boolean, authReady: boolean) 
     pwMsg,
     handleSaveProfile,
     handleChangePassword,
-    savingPromoSms,
-    handleTogglePromoSms,
+    savingMessages,
+    handleMessageChoice,
   };
 }

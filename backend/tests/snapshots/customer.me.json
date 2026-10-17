@@ -11,7 +11,29 @@
         "preferred_language": "en",
         "last_order_at": null,
         "has_trade_account": false,
-        "sms_opt_out": false
+        "sms_opt_out": false,
+        "message_choices": {
+            "orders": {
+                "sms": true,
+                "email": "__VOLATILE__",
+                "locked": false
+            },
+            "delivery": {
+                "sms": true,
+                "email": "__VOLATILE__",
+                "locked": false
+            },
+            "offers": {
+                "sms": true,
+                "email": "__VOLATILE__",
+                "locked": false
+            },
+            "security": {
+                "sms": true,
+                "email": "__VOLATILE__",
+                "locked": true
+            }
+        }
     },
     "has_trade_account": false,
     "credit": null,

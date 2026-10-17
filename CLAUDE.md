@@ -621,6 +621,22 @@ email does not prove the new one. `Customer::hasVerifiedEmail()` is what offers 
 newsletters by email and social sign-in ask; receipts still go to any email given.
 Account → Profile shows Checked or Send code under the email (`EmailCheck.tsx`).
 
+## A customer chooses which messages, by SMS and email
+
+iruali import plan, feature 5 (2026-10-17). Account → Messages (`AccountMessagesBlock`):
+order updates (both by default), delivery updates (SMS), offers and news (SMS unless
+`sms_opt_out`; email only when asked for and the email is checked) and sign-in and security
+(always on). `App\Domains\Customers\Support\MessageChoices` decides: `kindOf($type)` from
+the registry (fixed order and delivery types; category marketing → offers, auth → security;
+anything else, such as refunds, complaints, credit, catering, reservations and wholesale,
+has no customer say), `allows($customer, $kind, $channel)`, `customers.message_prefs`, saved
+through `message_choices` on `PATCH /customer/profile`. `SmsService` (step 5b), the email
+copier and the order and payment confirmation emails ask it; the shop's switches stay the
+first word. Offers by SMS is still `sms_opt_out` (STOP replies and the SMS page keep
+working), and the one-click link in an offers email stops offers both ways. The admin
+Customer 360 shows the choices. A new customer-facing registry row that the customer
+should be able to turn off goes into `kindOf()`.
+
 ## Ordering from the table (QR)
 
 Admin → Tables prints a card per table whose QR encodes `APP_URL/order/?table=<token>`

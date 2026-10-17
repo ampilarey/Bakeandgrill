@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Domains\Customers\Services\CustomerCreditService;
 use App\Domains\Customers\Services\CustomerSegmentationService;
+use App\Domains\Customers\Support\MessageChoices;
 use App\Domains\Deposits\Services\CustomerDepositService;
 use App\Domains\Loyalty\Services\PointsCalculator;
 use App\Domains\Orders\Services\CustomerOrderCancellationService;
@@ -328,6 +329,7 @@ class CustomerController extends Controller
                 'last_order_at' => $customer->last_order_at,
                 'has_trade_account' => $hasTradeAccount,
                 'sms_opt_out' => (bool) $customer->sms_opt_out,
+                'message_choices' => MessageChoices::for($customer),
             ],
             'has_trade_account' => $hasTradeAccount,
             'credit' => $customer->credit_enabled
@@ -691,7 +693,13 @@ class CustomerController extends Controller
             'date_of_birth' => 'sometimes|nullable|date|before:today|after:1900-01-01',
             // Promotional SMS on or off, from Account → Settings (SMS audit, 2026-09-24).
             'sms_opt_out' => 'sometimes|boolean',
+            // Which messages, by SMS and email (Account → Messages; iruali import plan, feature 5).
+            'message_choices' => 'sometimes|array',
+            'message_choices.*.sms' => 'sometimes|boolean',
+            'message_choices.*.email' => 'sometimes|boolean',
         ]);
+        $choices = $validated['message_choices'] ?? null;
+        unset($validated['message_choices']);
 
         if (array_key_exists('sms_opt_out', $validated) && (bool) $validated['sms_opt_out'] !== (bool) $customer->sms_opt_out) {
             $validated['sms_opt_out_at'] = $validated['sms_opt_out'] ? now() : null;
@@ -699,6 +707,9 @@ class CustomerController extends Controller
         }
 
         $customer->update($validated);
+        if (is_array($choices)) {
+            MessageChoices::update($customer, $choices);
+        }
         $customer->refresh();
 
         return response()->json([
@@ -715,6 +726,7 @@ class CustomerController extends Controller
                 'preferred_language' => $customer->preferred_language,
                 'is_profile_complete' => $customer->is_profile_complete,
                 'sms_opt_out' => (bool) $customer->sms_opt_out,
+                'message_choices' => MessageChoices::for($customer),
             ],
         ]);
     }
