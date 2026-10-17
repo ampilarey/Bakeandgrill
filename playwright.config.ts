@@ -45,7 +45,7 @@ export default defineConfig({
         hasTouch: true,
         userAgent: devices['iPhone 14'].userAgent,
       },
-      testMatch: ['**/mobile.spec.ts', '**/mobile-ordering.spec.ts'],
+      testMatch: ['**/mobile.spec.ts', '**/mobile-ordering.spec.ts', '**/phone-width.spec.ts'],
     },
     // Accessibility — desktop Chromium, axe-core scans
     {

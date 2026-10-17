@@ -386,6 +386,21 @@ jobs:
             --timeout=30000 \
             || true
 
+      - name: Every page fits a 390 px phone
+        env:
+          BASE_URL: https://test.bakeandgrill.mv
+          ADMIN_PIN:    ${{ secrets.E2E_ADMIN_PIN }}
+          TEST_PHONE:   ${{ secrets.E2E_TEST_PHONE }}
+          TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
+        run: |
+          # Website, order app and every admin page in navConfig.ts at 390 px
+          # (iruali import plan, feature 18). Non-blocking like the step above
+          # until a clean run on TEST; each page that scrolls sideways is named.
+          npx playwright test e2e/tests/phone-width.spec.ts \
+            --project=mobile \
+            --reporter=github \
+            || true
+
   e2e-gate:
     name: Playwright E2E (production gate)
     runs-on: ubuntu-latest

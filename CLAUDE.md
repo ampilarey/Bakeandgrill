@@ -108,7 +108,9 @@ Nothing scrolls sideways (owner, 2026-10-09). A row of tabs or filter chips is
 value under its column's name (`utils/tableCards.ts` watches every table, so a new one
 needs nothing; `data-table-scroll="keep"` is the way out). A cell holding a date, a
 time or an amount is `TD_NOWRAP`; a `display: grid` column that holds a table needs
-`minmax(0, 1fr)`. Details: § Stage 3f and § Stage 3h.
+`minmax(0, 1fr)`. Details: § Stage 3f and § Stage 3h. `e2e/tests/phone-width.spec.ts`
+(the e2e job's phone step) loads every website page, every order app route in `main.tsx` and
+every admin page in `navConfig.ts` at 390 px and names each one that scrolls sideways.
 
 ## Brand colours
 
@@ -588,7 +590,7 @@ A numbered `throttle:N,M` counts per route, not one count shared by every
 route on the address: `App\Http\Middleware\ThrottleRequestsPerRoute`, bound in
 place of the framework class in `AppServiceProvider` (so
 `withoutMiddleware(ThrottleRequests::class)` still works in tests). Named
-limiters are unchanged. The order app retries a refused read once after
+limiters are unchanged (`RateLimitPerRouteTest` fails if the binding goes). The order app retries a refused read once after
 `Retry-After` and says the menu is busy rather than blaming the connection.
 
 ## Ordering from the table (QR)
