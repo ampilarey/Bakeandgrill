@@ -618,9 +618,8 @@ iruali import plan, feature 3a (2026-10-17). The order app's copy is
 `apps/online-order-web/src/i18n/en.json` and `dv.json`; `t()` (`LanguageContext`) shows
 the Dhivehi where it exists and the English otherwise, and only while Admin's language
 switch (`language_switcher_enabled`) is on (`LanguageSwitcherGate` puts English back when
-it is off). A new key goes into both files: `dv-missing.json` lists the keys that had no
-Dhivehi on 2026-10-17 and may only shrink, and `i18n.test.ts` fails on a new key without
-Dhivehi, a stale key or a lost `{placeholder}`. The account keeps the language
+it is off). Every key has Dhivehi (3b, 2026-10-18), so a new key goes into both files:
+`i18n.test.ts` fails on a key without Dhivehi, a stale key or a lost `{placeholder}`. The account keeps the language
 (`customers.preferred_language`, saved by Account → Settings, taken on sign-in). Dhivehi
 copy is drafted and must be read by a Dhivehi speaker before the switch goes on.
 

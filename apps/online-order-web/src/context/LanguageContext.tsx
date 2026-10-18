@@ -4,9 +4,8 @@ import DV from "../i18n/dv.json";
 
 /**
  * UI copy (iruali import plan, feature 3a). English is i18n/en.json, Dhivehi
- * i18n/dv.json; a key with no Dhivehi falls back to English. A new key goes
- * into both files: i18n/dv-missing.json lists the keys that had no Dhivehi on
- * 2026-10-17, and i18n.test.ts fails on a new one missing from dv.json. The
+ * i18n/dv.json (every key, 3b); a key with no Dhivehi falls back to English.
+ * A new key goes into both files, and i18n.test.ts fails on one missing from dv.json. The
  * Dhivehi shows only while Admin's language switch is on (LanguageSwitcherGate).
  */
 type Translations = Record<string, string>;
