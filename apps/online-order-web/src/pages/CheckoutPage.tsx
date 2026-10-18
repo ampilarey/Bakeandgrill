@@ -18,6 +18,9 @@ import { useServiceStatusContext } from "../context/ServiceStatusContext";
 import { useOrderMode } from "../context/OrderModeContext";
 import { useToast } from "../context/ToastContext";
 import { AuthBlock } from "../components/AuthBlock";
+import { ConfirmNumberSheet } from "../components/ConfirmNumberSheet";
+import { getPhoneStatus } from "../api";
+import { useAuth } from "../context/AuthContext";
 import { BrandedHeader } from "../components/BrandedHeader";
 import { CartSummary } from "../components/CartSummary";
 import { WhatsAppIcon, ViberIcon } from '../components/icons';
@@ -243,6 +246,20 @@ export function CheckoutPage() {
     handleApplyFriendReferral, handleRemoveFriendReferral,
   } = useCheckout();
 
+  // Guest checkout (owner, 2026-10-18): a number nobody checked is read back once.
+  const { clearAuth } = useAuth();
+  const [unverifiedPhone, setUnverifiedPhone] = useState<string | null>(null);
+  const [phoneConfirmed, setPhoneConfirmed] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  useEffect(() => {
+    if (!isAuthenticated) { setUnverifiedPhone(null); setPhoneConfirmed(false); return; }
+    let live = true;
+    getPhoneStatus()
+      .then((r) => { if (live) setUnverifiedPhone(r.unverified ? r.phone : null); })
+      .catch(() => { if (live) setUnverifiedPhone(null); });
+    return () => { live = false; };
+  }, [isAuthenticated]);
+
   /*
    * Scanning is offered only where the browser can actually do it — Chrome and
    * Android WebView have BarcodeDetector built in, iOS Safari does not. No
@@ -435,7 +452,7 @@ export function CheckoutPage() {
   }
 
   const hasPendingReferral = friendReferralApplied?.pending === true;
-  const guardedPlaceAndPay = () => {
+  const guardedPlaceAndPay = (numberChecked = false) => {
     if (!checkoutServiceAvailable) {
       openUnavailableModal({
         serviceKey: 'online_checkout',
@@ -454,6 +471,11 @@ export function CheckoutPage() {
         retryAt: paymentServiceEntry?.retry_at ?? null,
         notifyEnabled: paymentServiceEntry?.notify_enabled ?? true,
       });
+      return;
+    }
+    // A guest's number nobody has checked: read it back once before the order goes.
+    if (unverifiedPhone && !phoneConfirmed && !numberChecked) {
+      setConfirmOpen(true);
       return;
     }
     void handlePlaceAndPay();
@@ -1618,7 +1640,7 @@ export function CheckoutPage() {
               <StickyCtaBar
                 above={stickyAbove}
                 label={placeLabel}
-                onClick={guardedPlaceAndPay}
+                onClick={() => guardedPlaceAndPay()}
                 disabled={
                   isPlacing
                   || !acceptTerms
@@ -1634,6 +1656,16 @@ export function CheckoutPage() {
             </>
           )}
         </div>
+
+        {unverifiedPhone && (
+          <ConfirmNumberSheet
+            open={confirmOpen}
+            phone={unverifiedPhone}
+            onClose={() => setConfirmOpen(false)}
+            onConfirm={() => { setPhoneConfirmed(true); setConfirmOpen(false); guardedPlaceAndPay(true); }}
+            onChange={() => { setConfirmOpen(false); clearAuth(); }}
+          />
+        )}
 
         {/* Summary aside: cart + order totals + referral share */}
         <aside className="checkout-summary">

@@ -720,6 +720,13 @@ class OrderCreationController extends Controller
             }
 
             $order->load(['items.modifiers', 'payments', 'customer', 'table', 'user:id,name', 'device:id,name,identifier', 'shift:id,opened_at']);
+            // A guest number nobody checked (GuestNumbers): staff calling it should know.
+            if ($order->customer !== null) {
+                $order->setAttribute('customer_phone_unverified', (bool) ($order->customer->phone_unverified || $order->customer->set_aside_at !== null));
+                if ($order->customer->unverified_phone !== null) {
+                    $order->setAttribute('customer_unverified_phone', $order->customer->unverified_phone);
+                }
+            }
 
             return response()->json(['order' => $order]);
         }

@@ -724,6 +724,30 @@ password (never after a guest session). A phone is needed for every order, so a 
 sign-in never makes a customer without one; an email or phone that belongs to active staff
 is refused. `customer_social_accounts`, Account → Sign-in methods with Unlink.
 
+## Guest checkout numbers nobody checked
+
+Owner, 2026-10-18 ("he might enter someone else's number by mistake"; "admin should see the
+history of unverified numbers"; "verify your number to get rewards"). Guest checkout (name and
+phone, no code; Admin → Settings → Ordering → Features → Order app, `guest_checkout_enabled`,
+on by default, `GET /api/auth/customer/guest-rules`) makes an account with
+`customers.phone_unverified`. `App\Domains\Customers\Support\GuestNumbers`: while unchecked the
+account earns no points (`LoyaltyLedgerService::earnPointsForOrder`), its typed email gets no
+code (`CustomerOtpService::accountEmail`, the email channel in `requestOtp`), and the order app
+shows "Verify your number to collect your rewards" (`VerifyNumberCard` on Account, Rewards and
+the order page; `GET /api/customer/phone`, `POST /api/customer/phone/send-code` and `/verify`,
+purpose `verify_phone`, text only). Verifying from the guest's own session is `claim()`: the
+history stays and the held points are added. A code sign-in on that number from anyone else
+(`verifyOtp`, `resetPassword` via `provedPhone()`) is the number's owner: `setAside()` moves the
+guest account out of the way (`phone` becomes `unverified-{id}`, `unverified_phone` keeps the
+typed number, inactive, `set_aside_for_customer_id`) and the owner starts on a clean account,
+so they never see a stranger's orders, address or name. Admin: Customers → Number not verified
+(`?phone=unverified`), a mark on the row, a note on the card (and the owner's card links the
+guest accounts), and "not verified" beside the phone on the order page
+(`customer_phone_unverified`). Before Place order an unchecked guest reads their number back
+(`ConfirmNumberSheet`). Accounts from before 2026-10-18 count as checked. Online orders are
+paid before the kitchen gets them, so there is no cash-on-collection path to guard.
+`GuestNumbersTest`, `VerifyNumberCard.test.tsx`.
+
 ## A customer's email is checked with a code
 
 iruali import plan, feature 2 (2026-10-17). `customers.email_verified_at` is set when the

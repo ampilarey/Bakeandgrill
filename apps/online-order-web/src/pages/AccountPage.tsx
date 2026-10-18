@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useAuth } from '../context/AuthContext';
+import { VerifyNumberCard } from '../components/VerifyNumberCard';
 import { useLanguage } from '../context/LanguageContext';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import {
@@ -894,6 +895,9 @@ export function AccountPage() {
           tierProgress={tierProgress}
           onEdit={go('profile')}
         />
+
+        {/* A guest's unchecked number: verify it, and collect the points held back. */}
+        <VerifyNumberCard />
 
         {customer && (
           <ProfileNudge

@@ -26,7 +26,16 @@ export interface AdminCustomer {
   is_gst_registered?: boolean;
   billing_address?: string | null;
   badges?: string[];
+  /** A guest checkout number nobody has checked with a code (GuestNumbers). */
+  phone_unverified?: boolean;
+  phone_verified_at?: string | null;
+  /** Set on a guest account set aside when the number's owner verified it: the number typed. */
+  unverified_phone?: string | null;
+  set_aside_at?: string | null;
+  set_aside_for_customer_id?: number | null;
 }
+
+export type GuestAccount = { id: number; name: string | null; orders_count: number; set_aside_at: string | null };
 
 export type CustomerCreditInfo = {
   customer_id: number;
@@ -257,8 +266,11 @@ export async function fetchAdminCustomers(params?: {
   is_active?: boolean;
   segment?: string;
   page?: number;
+  /** 'unverified': guest numbers not checked, and guest accounts set aside. */
+  phone?: 'unverified';
 }): Promise<{ data: AdminCustomer[]; meta: { current_page: number; last_page: number; total: number } }> {
   const qs = new URLSearchParams();
+  if (params?.phone)                   qs.set('phone', params.phone);
   if (params?.search)                  qs.set('search', params.search);
   if (params?.is_active !== undefined) qs.set('is_active', String(params.is_active));
   if (params?.segment)                 qs.set('segment', params.segment);
@@ -266,7 +278,7 @@ export async function fetchAdminCustomers(params?: {
   return req(`/admin/customers?${qs}`);
 }
 
-export async function getAdminCustomer(id: number): Promise<{ customer: AdminCustomer; orders: Order[] }> {
+export async function getAdminCustomer(id: number): Promise<{ customer: AdminCustomer; orders: Order[]; guest_accounts?: GuestAccount[] }> {
   return req(`/admin/customers/${id}`);
 }
 

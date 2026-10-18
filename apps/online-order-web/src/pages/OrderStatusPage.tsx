@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { VerifyNumberCard } from '../components/VerifyNumberCard';
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { AlertTriangle, Bell, Bike, CheckCircle2, ChefHat, ClipboardList, Gift, Hourglass, MapPin, PartyPopper, PauseCircle, Phone, RefreshCw, Repeat, Share2, Star, Tag, User, Users, Wallet, XCircle, type LucideIcon } from "lucide-react";
 import { getOrderDetail, getOrderByTrackingToken, getReorderPayload, initiateOnlinePayment, initiatePartialPayment, getWaitTimeEstimate, getMyReferralCode, cancelCustomerOrder, type OrderDetail, type OrderItem as OrderDetailItem, API_ORIGIN } from "../api";
@@ -753,6 +754,9 @@ export function OrderStatusPage() {
             </div>
           </div>
         )}
+
+        {/* A guest's unchecked number: verify it to collect the points for this order. */}
+        {!loading && order && <VerifyNumberCard compact />}
 
         {/* ── Loading ────────────────────────────────────── */}
         {loading && !error && (

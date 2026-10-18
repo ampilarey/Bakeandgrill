@@ -100,6 +100,8 @@ Route::prefix('auth/customer')
         // Guest checkout — name + phone only (no OTP).
         // Gated by customer_registration overlay (does NOT affect otp/verify/login/check
         // so existing customers can always sign in and track orders).
+        Route::get('/guest-rules', [App\Http\Controllers\Api\CustomerPhoneController::class, 'guestRules'])
+            ->middleware('throttle:60,1');
         Route::post('/guest-session', [CustomerAuthController::class, 'guestSession'])
             ->middleware(['throttle:customer-auth-strict', 'service.available:customer_registration']);
     });
@@ -141,6 +143,10 @@ Route::middleware(['auth:sanctum', 'customer.token'])->prefix('customer')->group
     Route::post('/wallet/gift-card', [App\Http\Controllers\Api\CustomerWalletController::class, 'addGiftCard'])->middleware('throttle:10,10');
     Route::post('/orders/{id}/pay-wallet', [App\Http\Controllers\Api\CustomerWalletController::class, 'payOrder'])->whereNumber('id')->middleware('throttle:20,1');
     Route::patch('/profile', [CustomerController::class, 'update']);
+    // A guest checks the number they typed, and collects the points held back (2026-10-18).
+    Route::get('/phone', [App\Http\Controllers\Api\CustomerPhoneController::class, 'show']);
+    Route::post('/phone/send-code', [App\Http\Controllers\Api\CustomerPhoneController::class, 'sendCode'])->middleware('throttle:6,10');
+    Route::post('/phone/verify', [App\Http\Controllers\Api\CustomerPhoneController::class, 'verify'])->middleware('throttle:10,10');
     // Prove the account's email with a 6-digit code (iruali import plan, feature 2).
     Route::post('/email/send-code', [App\Http\Controllers\Api\CustomerEmailController::class, 'sendCode'])->middleware('throttle:6,10');
     // "Tell me when it's back / on sale" (iruali import plan, feature 8).

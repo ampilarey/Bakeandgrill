@@ -125,7 +125,13 @@ class CustomerOtpService
     /** The email saved on this phone's customer account, or null. */
     public function accountEmail(string $phone): ?string
     {
-        $email = Customer::where('phone', $phone)->value('email');
+        // A guest number nobody has checked: its email was typed by the guest, so a
+        // code there would prove nothing about the phone (GuestNumbers, 2026-10-18).
+        $row = Customer::where('phone', $phone)->first(['email', 'phone_unverified']);
+        if ($row === null || $row->phone_unverified) {
+            return null;
+        }
+        $email = $row->email;
         $email = is_string($email) ? trim($email) : '';
 
         return $email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : null;

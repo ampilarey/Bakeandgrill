@@ -65,6 +65,8 @@ class SiteSettingsController extends Controller
         'pos_suggestion_strip_enabled',
         // The order app's "~N min wait" pill (owner, 2026-10-12: off until wanted).
         'order_app_wait_time_enabled',
+        // Guest checkout without a code (owner, 2026-10-18; GuestNumbers).
+        'guest_checkout_enabled',
         'pickup_slots_enabled',
         'pickup_slot_minutes',
         'pickup_slot_capacity',

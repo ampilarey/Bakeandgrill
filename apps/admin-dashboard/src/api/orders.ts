@@ -39,6 +39,9 @@ export type Order = {
   // Flat fields (may be present in other endpoints)
   customer_name?: string | null;
   customer_phone?: string | null;
+  /** The customer's number came from guest checkout and nobody checked it (GuestNumbers). */
+  customer_phone_unverified?: boolean;
+  customer_unverified_phone?: string | null;
   notes?: string | null;
   paid_at?: string | null;
   /** Present on staff order detail (`GET /orders/{id}`) — used to hide Void when money exists. */

@@ -46,7 +46,28 @@ class CustomerAuthController extends Controller
             'loyalty_points' => $customer->loyalty_points,
             'tier' => $customer->tier,
             'is_profile_complete' => (bool) $customer->is_profile_complete,
+            // A guest number not yet checked with a code (GuestNumbers): the app asks them to verify.
+            'phone_unverified' => (bool) $customer->phone_unverified,
         ];
+    }
+
+    /**
+     * A code proved this phone. On a guest account nobody has checked, the guest
+     * verifying from their own session keeps it (GuestNumbers::claim); anyone else
+     * is the number's owner, who gets a clean account while the guest's steps aside.
+     */
+    private function provedPhone(Customer $customer): Customer
+    {
+        if (!$customer->phone_unverified) {
+            return $customer;
+        }
+        if (Auth::guard('customer')->id() === $customer->id) {
+            \App\Domains\Customers\Support\GuestNumbers::claim($customer);
+
+            return $customer->fresh() ?? $customer;
+        }
+
+        return \App\Domains\Customers\Support\GuestNumbers::setAside($customer);
     }
 
     /** @param bool $phoneProved false for a guest session, which never links a waiting social sign-in */
@@ -169,7 +190,9 @@ class CustomerAuthController extends Controller
         // still match it exactly.
         if ($channel === 'email') {
             $emailOwner = Customer::where('phone', $phone)->first();
-            $storedEmail = $emailOwner?->email ? strtolower(trim($emailOwner->email)) : null;
+            // A guest number nobody has checked: its email was typed by the guest, so
+            // a code there proves nothing about the phone (GuestNumbers, 2026-10-18).
+            $storedEmail = $emailOwner?->email && !$emailOwner->phone_unverified ? strtolower(trim($emailOwner->email)) : null;
             if ($storedEmail === null || $storedEmail === '') {
                 throw ValidationException::withMessages([
                     'email' => ['There is no email on this account. Please use the code we texted you.'],
@@ -272,7 +295,7 @@ class CustomerAuthController extends Controller
             $customer = $existing;
             $restoredFromTrash = true;
         } elseif ($existing) {
-            $customer = $existing;
+            $customer = $this->provedPhone($existing);
             if (!$customer->is_active) {
                 throw ValidationException::withMessages([
                     'phone' => ['This account has been deactivated. Please contact support.'],
@@ -286,9 +309,10 @@ class CustomerAuthController extends Controller
                 'loyalty_points' => 0,
                 'tier' => 'bronze',
             ]);
+            $customer->forceFill(['phone_verified_at' => now()])->save();
         }
 
-        $isNew = $customer->wasRecentlyCreated || $restoredFromTrash;
+        $isNew = $customer->wasRecentlyCreated || $restoredFromTrash || $customer->id !== $existing?->id;
 
         // Note: CustomerCreated event is intentionally NOT fired here.
         // OTP registrations are silent/quick-checkout flows — the customer has no name yet
@@ -419,6 +443,7 @@ class CustomerAuthController extends Controller
                 'phone' => ['No account found for this phone number.'],
             ]);
         }
+        $customer = $this->provedPhone($customer);
 
         // Direct attribute assignment — 'password' is excluded from $fillable.
         // The 'hashed' cast handles bcrypt; do NOT pass Hash::make() here or it double-hashes.
@@ -449,6 +474,12 @@ class CustomerAuthController extends Controller
             'name' => 'required|string|max:100',
         ]);
 
+        if (!\App\Domains\Customers\Support\GuestNumbers::guestCheckoutOn()) {
+            throw ValidationException::withMessages([
+                'phone' => ['Guest checkout is off. Please sign in with a one-time code.'],
+            ]);
+        }
+
         $phone = $this->normalizePhone($input['phone']);
         $rateKey = 'guest-checkout:' . $phone . ':' . ($request->ip() ?? 'unknown');
 
@@ -472,6 +503,8 @@ class CustomerAuthController extends Controller
             'loyalty_points' => 0,
             'tier' => 'bronze',
         ]);
+        // Nobody has checked this number (owner, 2026-10-18): GuestNumbers.
+        $customer->forceFill(['phone_unverified' => true])->save();
 
         $customer->update(['last_login_at' => now()]);
         $this->establishCustomerSession($request, $customer, phoneProved: false);

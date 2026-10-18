@@ -322,6 +322,8 @@ class CustomerController extends Controller
                 'name' => $customer->name,
                 'email' => $customer->email,
                 'email_verified' => $customer->hasVerifiedEmail(),
+                // A guest number not yet checked with a code (GuestNumbers, 2026-10-18).
+                'phone_unverified' => (bool) $customer->phone_unverified,
                 'date_of_birth' => $customer->date_of_birth?->format('Y-m-d'),
                 'loyalty_points' => $customer->loyalty_points,
                 'tier' => $customer->tier,

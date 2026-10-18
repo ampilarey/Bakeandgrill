@@ -52,6 +52,11 @@ class AdminCustomerController extends Controller
             $query->where('is_active', filter_var($request->query('is_active'), FILTER_VALIDATE_BOOLEAN));
         }
 
+        // Guest numbers nobody has checked, and guest accounts set aside (2026-10-18).
+        if ($request->query('phone') === 'unverified') {
+            $query->where(fn ($q) => $q->where('phone_unverified', true)->orWhereNotNull('set_aside_at'));
+        }
+
         $paginator = $query->paginate(30);
 
         return response()->json([
@@ -86,6 +91,13 @@ class AdminCustomerController extends Controller
         return response()->json([
             'customer' => $this->format($customer),
             'orders' => $orders,
+            // Guest accounts typed on this number before its owner verified it.
+            'guest_accounts' => Customer::query()
+                ->where('set_aside_for_customer_id', $customer->id)
+                ->withCount('orders')
+                ->get()
+                ->map(fn (Customer $g) => ['id' => $g->id, 'name' => $g->name, 'orders_count' => $g->orders_count, 'set_aside_at' => $g->set_aside_at])
+                ->values(),
         ]);
     }
 
@@ -225,6 +237,12 @@ class AdminCustomerController extends Controller
             'tin' => $c->tin,
             'is_gst_registered' => (bool) ($c->is_gst_registered ?? false),
             'billing_address' => $c->billing_address,
+            // Guest numbers (GuestNumbers): unchecked, or set aside when the owner verified.
+            'phone_unverified' => (bool) $c->phone_unverified,
+            'phone_verified_at' => $c->phone_verified_at,
+            'unverified_phone' => $c->unverified_phone,
+            'set_aside_at' => $c->set_aside_at,
+            'set_aside_for_customer_id' => $c->set_aside_for_customer_id,
         ];
     }
 }

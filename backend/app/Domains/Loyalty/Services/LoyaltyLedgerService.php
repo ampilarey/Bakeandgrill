@@ -258,6 +258,11 @@ class LoyaltyLedgerService
         if (!$this->settings->isProgramActive()) {
             return;
         }
+        // A guest number nobody has checked earns nothing yet: the points wait for the
+        // holder to verify (GuestNumbers::claim), never for whoever owns the number.
+        if ($customer->phone_unverified) {
+            return;
+        }
 
         $idempotencyKey = 'loyalty:earn:' . $order->id . ':' . $customer->id;
 

@@ -9,6 +9,7 @@ import {
   resetPassword,
   completeProfile,
   guestSession,
+  getGuestRules,
   type AuthCustomer,
   type OtpSendResult,
 } from "../api";
@@ -323,6 +324,14 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false, intro }: Props)
   const [step, setStep]       = useState<Step>("phone");
   const [phone, setPhone]     = useState("");
   const [guestName, setGuestName] = useState("");
+  // Admin can turn guest checkout off (Settings → Ordering → Features → Order app).
+  const [guestAllowed, setGuestAllowed] = useState(true);
+  useEffect(() => {
+    if (!skipProfileSetup) return;
+    let live = true;
+    getGuestRules().then((r) => { if (live) setGuestAllowed(r.guest_checkout !== false); }).catch(() => {});
+    return () => { live = false; };
+  }, [skipProfileSetup]);
   const [password, setPassword]   = useState("");
   const [otp, setOtp]         = useState("");
   const [hint, setHint]       = useState<string | null>(null);
@@ -688,7 +697,7 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false, intro }: Props)
             {loading ? t("auth.checking") : t("auth.continue")}
           </PrimaryButton>
           <SocialSignIn />
-          {skipProfileSetup && (
+          {skipProfileSetup && guestAllowed && (
             <button type="button" className="auth__btn auth__btn--outline" onClick={() => { go("guest"); setError(""); }}>
               {t("auth.guest_cta")}
             </button>

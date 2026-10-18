@@ -75,6 +75,12 @@ class Customer extends Model implements AuthenticatableContract
         'credit_notes',
         'email_verified_at',
         'message_prefs',
+        // Guest numbers (GuestNumbers): staff and the customer's own endpoints say so explicitly.
+        'phone_unverified',
+        'phone_verified_at',
+        'unverified_phone',
+        'set_aside_at',
+        'set_aside_for_customer_id',
     ];
 
     protected $casts = [
@@ -97,6 +103,10 @@ class Customer extends Model implements AuthenticatableContract
         'credit_balance_laar' => 'integer',
         'credit_payment_terms_days' => 'integer',
         'credit_reminder_sms' => 'boolean',
+        'phone_unverified' => 'boolean',
+        'phone_verified_at' => 'datetime',
+        'set_aside_at' => 'datetime',
+        'set_aside_for_customer_id' => 'integer',
     ];
 
     protected static function booted(): void

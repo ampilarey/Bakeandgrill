@@ -7,6 +7,8 @@ import { API_ORIGIN, request } from './client';
 export type AuthCustomer = Customer & {
   is_profile_complete: boolean;
   email_verified?: boolean;
+  /** A guest checkout number nobody has checked with a code yet (backend GuestNumbers). */
+  phone_unverified?: boolean;
   /** Account → Messages: each kind by SMS and email (iruali import plan, feature 5). */
   message_choices?: Record<'orders' | 'delivery' | 'offers' | 'security', { sms: boolean; email: boolean; locked: boolean }>;
   /** Google, Facebook and Apple sign-ins linked to the account (iruali import plan, feature 1). */
@@ -168,6 +170,25 @@ export async function changeCustomerPassword(
 
 export async function getCustomerMe(): Promise<{ customer: AuthCustomer; has_trade_account?: boolean }> {
   return request(ENDPOINTS.CUSTOMER_ME);
+}
+
+/** A guest's number: unverified or not, and the orders and points waiting on it. */
+export async function getPhoneStatus(): Promise<{ phone: string; unverified: boolean; held_orders: number; held_points: number }> {
+  return request('/customer/phone');
+}
+
+/** Text a code to the number on the account (never by email: only a text proves a phone). */
+export async function sendPhoneCode(): Promise<{ unverified: boolean; sent_to?: string; message: string }> {
+  return request('/customer/phone/send-code', { method: 'POST' });
+}
+
+export async function verifyPhoneCode(code: string): Promise<{ unverified: boolean; points_added: number; message: string }> {
+  return request('/customer/phone/verify', { method: 'POST', body: JSON.stringify({ code }) });
+}
+
+/** Whether the checkout offers guest checkout (Admin → Settings → Ordering → Features). */
+export async function getGuestRules(): Promise<{ guest_checkout: boolean }> {
+  return request('/auth/customer/guest-rules');
 }
 
 export async function guestSession(payload: { phone: string; name: string }): Promise<AuthResponse> {

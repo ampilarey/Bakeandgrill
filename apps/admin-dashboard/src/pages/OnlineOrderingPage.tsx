@@ -176,6 +176,8 @@ export default function OnlineOrderingPage() {
   // The order app's "~N min wait" pill (owner, 2026-10-12). Off unless set on.
   const [waitTimeOn, setWaitTimeOn] = useState(false);
   const [waitTimeSaving, setWaitTimeSaving] = useState(false);
+  const [guestOn, setGuestOn] = useState(true);
+  const [guestSaving, setGuestSaving] = useState(false);
 
   const [cateringMinLeadHours, setCateringMinLeadHours] = useState('24');
   const [cateringQuoteValidDays, setCateringQuoteValidDays] = useState('7');
@@ -260,6 +262,8 @@ export default function OnlineOrderingPage() {
       setPosSuggestionsOn(suggestions === undefined || suggestions === '1' || suggestions === 'true');
       const waitTime = byKey('order_app_wait_time_enabled');
       setWaitTimeOn(waitTime === '1' || waitTime === 'true');
+      const guest = byKey('guest_checkout_enabled');
+      setGuestOn(guest === undefined || guest === '1' || guest === 'true');
       setSiteSettingsLoaded(true);
     }).catch(() => { /* Save stays off; see siteSettingsLoaded */ })
       .finally(() => setScheduleLoading(false));
@@ -279,6 +283,20 @@ export default function OnlineOrderingPage() {
       showToast('Failed to save till suggestions.', 'err');
     } finally {
       setPosSuggestionsSaving(false);
+    }
+  };
+
+  const toggleGuest = async () => {
+    const next = !guestOn;
+    setGuestSaving(true);
+    try {
+      await updateSiteSettings({ guest_checkout_enabled: next ? '1' : '0' });
+      setGuestOn(next);
+      showToast(next ? 'Guest checkout is on.' : 'Guest checkout is off: every customer signs in with a code.');
+    } catch {
+      showToast('Failed to save guest checkout.', 'err');
+    } finally {
+      setGuestSaving(false);
     }
   };
 
@@ -921,6 +939,17 @@ export default function OnlineOrderingPage() {
           helpOn="The menu, cart and checkout show “~N min wait”, worked out from the open kitchen tickets and each dish's prep time (5 to 60 minutes)."
           helpOff="Customers see no wait estimate. Turn on when the kitchen screen is kept up to date, or the estimate sits at 60."
           onToggle={() => void toggleWaitTime()}
+        />
+      </div>
+      <div className="oc-card" style={S.card} data-testid="guest-checkout-card">
+        <MasterSwitchRow
+          on={guestOn}
+          toggling={guestSaving || !siteSettingsLoaded}
+          titleOn="Guest checkout is ON"
+          titleOff="Guest checkout is OFF"
+          helpOn="New customers can check out with a name and phone number and no code. Their number is marked not verified until they check it, and their points wait until then (Customers → Number not verified)."
+          helpOff="Every customer signs in with a code texted to their phone before checking out."
+          onToggle={() => void toggleGuest()}
         />
       </div>
 

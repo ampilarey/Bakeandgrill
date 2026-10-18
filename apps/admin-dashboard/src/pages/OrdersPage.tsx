@@ -627,7 +627,10 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                 />
               )}
               {(order.customer?.phone ?? order.customer_phone) && (
-                <Row label="Phone" value={(order.customer?.phone ?? order.customer_phone)!} />
+                <Row
+                  label="Phone"
+                  value={(order.customer_unverified_phone ?? order.customer?.phone ?? order.customer_phone)! + (order.customer_phone_unverified ? ' · not verified (typed at guest checkout)' : '')}
+                />
               )}
               {order.paid_at && <Row label="Paid at" value={new Date(order.paid_at).toLocaleString()} />}
               {order.user?.name && (

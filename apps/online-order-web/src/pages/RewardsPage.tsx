@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import { VerifyNumberCard } from '../components/VerifyNumberCard';
 import { PageHeader } from '../components/shell/PageHeader';
 import { AuthBlock } from '../components/AuthBlock';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -735,6 +736,7 @@ export function RewardsPage() {
           <RewardsSkeleton t={t} />
         ) : (
           <>
+            <VerifyNumberCard compact />
             {loyaltyData && <PointsHero loyalty={loyaltyData} t={t} />}
             <Link
               to="/gift-cards"

@@ -4,7 +4,7 @@ import {
   fetchAdminCustomers, getAdminCustomer, updateAdminCustomer, deleteAdminCustomer, eraseAdminCustomer,
   changeAdminCustomerPhone, mergeAdminCustomers,
   fetchCustomerGrowthSummary, fetchCustomerSegments,
-  type AdminCustomer, type Order, type CustomerSegmentMeta,
+  type AdminCustomer, type GuestAccount, type Order, type CustomerSegmentMeta,
 } from '../api';
 import {
   Badge, Btn, Card, EmptyState, ErrorMsg, TableSkeleton, TableStateBar,
@@ -23,6 +23,48 @@ import { StickyNote } from 'lucide-react';
 function fmtDate(iso: string | null | undefined) {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+/** A guest number nobody has checked, or a guest account set aside (GuestNumbers, 2026-10-18). */
+function guestBadge(c: AdminCustomer) {
+  if (c.set_aside_at) return <Badge color="yellow">Guest set aside</Badge>;
+  if (c.phone_unverified) return <Badge color="yellow">Number not verified</Badge>;
+  return null;
+}
+
+/**
+ * Says what a guest number means on the customer's card: not yet verified, set aside
+ * when the number's owner verified it, or (on the owner) the guest accounts typed on
+ * their number before.
+ */
+function GuestNumberNote({ customer, guests, onOpen }: { customer: AdminCustomer; guests: GuestAccount[]; onOpen: (id: number) => void }) {
+  const box: React.CSSProperties = { background: 'var(--color-tone-gold-bg)', border: '1px solid var(--color-tone-gold-border)', color: 'var(--color-text)', borderRadius: 10, padding: '10px 12px', fontSize: 13, lineHeight: 1.5 };
+  if (customer.set_aside_at) {
+    return (
+      <div style={box} data-testid="guest-set-aside">
+        <strong>Guest account set aside.</strong> A guest typed {customer.unverified_phone ?? 'this number'} at checkout without checking it, and on {fmtDate(customer.set_aside_at)} the number&apos;s owner verified it with a code. The owner has their own account, so they never see this guest&apos;s orders or address.
+        {customer.set_aside_for_customer_id && <> <Btn small variant="ghost" onClick={() => onOpen(customer.set_aside_for_customer_id as number)}>Open the owner&apos;s account</Btn></>}
+      </div>
+    );
+  }
+  if (customer.phone_unverified) {
+    return (
+      <div style={box} data-testid="guest-unverified">
+        <strong>Number not verified.</strong> Typed at guest checkout and never checked with a code, so it may not be theirs. Their points wait until they verify it in the order app.
+      </div>
+    );
+  }
+  if (guests.length > 0) {
+    return (
+      <div style={box} data-testid="guest-accounts">
+        <strong>Guest orders on this number before it was verified:</strong>{' '}
+        {guests.map((g) => (
+          <Btn key={g.id} small variant="ghost" onClick={() => onOpen(g.id)}>{g.name ?? 'Guest'} · {g.orders_count} orders</Btn>
+        ))}
+      </div>
+    );
+  }
+  return null;
 }
 
 const TIER_COLOR: Record<string, string> = {
@@ -52,14 +94,14 @@ export function CustomersPage() {
   const [search, setSearch]         = useState('');
   const [page, setPage]             = useState(1);
   const [segmentFilter, setSegmentFilter] = useState('');
-  const [activeFilter, setActiveFilter]   = useState<'all' | 'active' | 'inactive'>('all');
+  const [activeFilter, setActiveFilter]   = useState<'all' | 'active' | 'inactive' | 'unverified'>('all');
   const [segments, setSegments]     = useState<CustomerSegmentMeta[]>([]);
   const [paidSpend, setPaidSpend]   = useState<number | null>(null);
   const [view360Id, setView360Id]   = useState<number | null>(null);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   const [selected, setSelected]          = useState<AdminCustomer | null>(null);
-  const [detail, setDetail]              = useState<{ customer: AdminCustomer; orders: Order[] } | null>(null);
+  const [detail, setDetail]              = useState<{ customer: AdminCustomer; orders: Order[]; guest_accounts?: GuestAccount[] } | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [editing, setEditing]            = useState(false);
   const [saving, setSaving]              = useState(false);
@@ -94,7 +136,8 @@ export function CustomersPage() {
         search: s || undefined,
         page: p,
         segment: segment || undefined,
-        is_active: active === 'all' ? undefined : active === 'active',
+        is_active: active === 'all' || active === 'unverified' ? undefined : active === 'active',
+        phone: active === 'unverified' ? 'unverified' : undefined,
       });
       setCustomers(res.data ?? []);
       setMeta(res.meta ?? { current_page: 1, last_page: 1, total: 0 });
@@ -367,6 +410,7 @@ export function CustomersPage() {
             <option value="all">All status</option>
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
+            <option value="unverified">Number not verified</option>
           </select>
           <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>{meta.total} total</span>
         </div>
@@ -390,10 +434,10 @@ export function CustomersPage() {
               onClick={() => void openDetail(c)}
               accent={c.is_active ? 'var(--color-border)' : 'var(--color-danger)'}
               title={c.name ?? '—'}
-              subtitle={[c.phone, c.email].filter(Boolean).join(' · ')}
-              badge={c.tier
+              badge={guestBadge(c) ?? (c.tier
                 ? <Badge color={TIER_COLOR[c.tier] ?? 'gray'}>{c.tier}</Badge>
-                : (!c.is_active ? <Badge color="red">Inactive</Badge> : undefined)}
+                : (!c.is_active ? <Badge color="red">Inactive</Badge> : undefined))}
+              subtitle={[c.unverified_phone ?? c.phone, c.email].filter(Boolean).join(' · ')}
               fields={[
                 { label: 'Orders', value: c.orders_count },
                 { label: 'Last order', value: fmtDate(c.last_order_at) },
@@ -457,7 +501,10 @@ export function CustomersPage() {
                 <td style={TD}>{c.orders_count}</td>
                 <td style={TD_NOWRAP}>{fmtDate(c.last_order_at)}</td>
                 <td style={TD}>
-                  <Badge color={c.is_active ? 'green' : 'red'}>{c.is_active ? 'Active' : 'Inactive'}</Badge>
+                  <span style={{ display: 'inline-flex', gap: 4, flexWrap: 'wrap' }}>
+                    <Badge color={c.is_active ? 'green' : 'red'}>{c.is_active ? 'Active' : 'Inactive'}</Badge>
+                    {guestBadge(c)}
+                  </span>
                 </td>
                 <td style={TD_NOWRAP}>{fmtDate(c.created_at)}</td>
               </tr>
@@ -531,12 +578,14 @@ export function CustomersPage() {
                   ))}
                 </div>
 
+                <GuestNumberNote customer={detail.customer} guests={detail.guest_accounts ?? []} onOpen={(id) => void openDetail({ id } as AdminCustomer)} />
+
                 {/* Info grid */}
                 {!editing ? (
                   <>
                     <div data-responsive-grid style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                       {([
-                        ['Phone', detail.customer.phone],
+                        ['Phone', detail.customer.unverified_phone ? `${detail.customer.unverified_phone} (typed, not verified)` : detail.customer.phone + (detail.customer.phone_unverified ? ' (not verified)' : '')],
                         ['Email', detail.customer.email ?? '—'],
                         ['Tier', detail.customer.tier ?? '—'],
                         ['Joined', fmtDate(detail.customer.created_at)],
