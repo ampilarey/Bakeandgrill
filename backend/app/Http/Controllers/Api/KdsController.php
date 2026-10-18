@@ -58,6 +58,12 @@ class KdsController extends Controller
             'items.modifiers',
             'items.item:id,menu_group_id,prep_time_minutes,is_available,is_combo',
             'items.item.recipe:id,item_id,instructions',
+            // Bundle contents for the whole board in one go: left to
+            // formatKitchenOrder, each order loaded them only for the dishes
+            // the orders before it had not, one query per new dish per poll.
+            'items.item.comboItems.item:id,name',
+            'items.item.comboItems.variant:id,name',
+            'items.item.platterGroups:id,item_id',
             'table:id,name,location',
             'kitchenDoneBy:id,name',
         ]);

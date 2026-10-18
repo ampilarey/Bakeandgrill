@@ -168,9 +168,11 @@ describe('Website desktop Stage A — rail is the only map', () => {
     openWebsiteDesktop('/content/website');
     await screen.findByTestId('website-content-workspace');
 
+    // The tabs render after the content loads, a beat after the workspace:
+    // wait for each (CI, 2026-10-18, found "Everywhere" not there yet).
     for (const section of websiteDesktopRemovedSectionNames()) {
       expect(
-        screen.getByTestId(`wcw-tab-${section}`),
+        await screen.findByTestId(`wcw-tab-${section}`, {}, { timeout: 5000 }),
         `no page tab for "${section}", required by a removed landing card`,
       ).toBeTruthy();
     }

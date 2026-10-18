@@ -42,13 +42,13 @@ class PollingQueryCountTest extends TestCase
 
     private const BUSY_SERVICE = 40;
 
-    private function seedTickets(int $tickets, int $linesEach = 3): void
+    private function seedTickets(int $tickets, int $linesEach = 3, int $dishes = 8): void
     {
         $category = Category::create(['name' => 'Food', 'is_active' => true]);
         $group = MenuGroup::create(['name' => 'Grill', 'slug' => 'grill', 'is_active' => true]);
 
         $items = [];
-        for ($i = 0; $i < 8; $i++) {
+        for ($i = 0; $i < $dishes; $i++) {
             $items[] = Item::create([
                 'name' => "Dish {$i}",
                 'category_id' => $category->id,
@@ -121,6 +121,20 @@ class PollingQueryCountTest extends TestCase
         $this->seedTickets(self::BUSY_SERVICE);
 
         $this->assertFlat('The kitchen board', '/api/kds/orders', self::BUSY_SERVICE);
+    }
+
+    /**
+     * Nor per dish: bundle contents were loaded order by order, one query for
+     * each dish the earlier orders had not shown yet, so a rush across the
+     * menu cost about two queries per different dish on every poll, and the
+     * count wandered with the order of the tickets (CI saw 37, local 23).
+     */
+    public function test_the_kitchen_board_does_not_query_per_dish(): void
+    {
+        $this->signInAsKitchenManager();
+        $this->seedTickets(self::BUSY_SERVICE, 3, 30);
+
+        $this->assertFlat('The kitchen board with 30 different dishes', '/api/kds/orders', self::BUSY_SERVICE);
     }
 
     public function test_the_open_tickets_list_does_not_query_per_ticket(): void
