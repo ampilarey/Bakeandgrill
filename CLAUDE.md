@@ -867,7 +867,13 @@ issue and address) and queues `SendNewsletterBatch` jobs of 100, five seconds ap
 row (pending → sending) before mailing, so a retried batch never sends twice. Every issue carries
 `List-Unsubscribe` one-click; `/newsletter/unsubscribe/{token}` asks first and also turns off the
 customer's offers email. Needs the queue worker; on TEST that relies on TEST's own `REDIS_DB` and
-prefix (above, checked by `app:ready`). No bounce webhook yet. `NewsletterTest`.
+prefix (above, checked by `app:ready`). Bounces (2026-10-18): the sending mailbox is piped into
+`newsletter:bounce` (cPanel forwarder, `docs/MAIL_SETUP.md` § Newsletter bounces), which reads the
+DSN or spam complaint (`App\Domains\Newsletter\Bounces::parse()`); a hard bounce or three soft
+ones set `newsletter_subscribers.bounced_at` and the address leaves `audience()`, a complaint
+unsubscribes, and an SMTP refusal while sending (`fromSendError`, 450/452/55x only) counts the
+same with the delivery marked `bounced`. Only list addresses are touched; confirming again clears
+it. `NewsletterTest`, `NewsletterBouncesTest`.
 
 ## POS order type colours
 

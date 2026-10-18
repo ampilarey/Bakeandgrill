@@ -45,7 +45,8 @@ final class Newsletter
         $sub->source = $sub->exists ? $sub->source : $source;
         $sub->customer_id ??= $customer?->id;
         $sub->token ??= Str::random(48);
-        $wasOut = $sub->unsubscribed_at !== null;
+        // An address that bounced or left confirms again before anything goes.
+        $wasOut = $sub->unsubscribed_at !== null || $sub->bounced_at !== null;
         $sub->unsubscribed_at = null;
         if ($wasOut) {
             $sub->confirmed_at = null;
@@ -62,7 +63,7 @@ final class Newsletter
     {
         $sub = NewsletterSubscriber::query()->where('token', $token)->first();
         if ($sub !== null && $sub->confirmed_at === null) {
-            $sub->forceFill(['confirmed_at' => now(), 'unsubscribed_at' => null])->save();
+            $sub->forceFill(['confirmed_at' => now(), 'unsubscribed_at' => null, 'bounced_at' => null, 'bounce_count' => 0])->save();
         }
 
         return $sub;
@@ -85,8 +86,8 @@ final class Newsletter
      */
     public function audience(): Collection
     {
-        $out = NewsletterSubscriber::query()->whereNotNull('confirmed_at')->whereNull('unsubscribed_at')->get()->keyBy('email');
-        $blocked = NewsletterSubscriber::query()->whereNotNull('unsubscribed_at')->pluck('email')->flip();
+        $out = NewsletterSubscriber::query()->whereNotNull('confirmed_at')->whereNull('unsubscribed_at')->whereNull('bounced_at')->get()->keyBy('email');
+        $blocked = NewsletterSubscriber::query()->where(fn ($q) => $q->whereNotNull('unsubscribed_at')->orWhereNotNull('bounced_at'))->pluck('email')->flip();
         Customer::query()->whereNotNull('email')->whereNotNull('email_verified_at')->where('is_active', true)->orderBy('id')
             ->chunk(500, function ($customers) use ($out, $blocked): void {
                 foreach ($customers as $customer) {

@@ -11,7 +11,7 @@ class NewsletterSubscriber extends Model
 {
     protected $fillable = ['email', 'locale', 'token', 'confirmed_at', 'unsubscribed_at', 'source', 'customer_id'];
 
-    protected $casts = ['confirmed_at' => 'datetime', 'unsubscribed_at' => 'datetime'];
+    protected $casts = ['confirmed_at' => 'datetime', 'unsubscribed_at' => 'datetime', 'bounced_at' => 'datetime', 'bounce_count' => 'integer'];
 
     protected $hidden = ['token'];
 }

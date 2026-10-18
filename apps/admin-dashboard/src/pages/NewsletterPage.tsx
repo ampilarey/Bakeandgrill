@@ -166,7 +166,7 @@ function Editor({ id, onBack }: { id: number | null; onBack: () => void }) {
           )}
           {issue && issue.status !== 'draft' && (
             <p style={{ marginTop: 12, fontSize: 13 }}>
-              Sent {issue.counts.sent} · waiting {issue.counts.pending} · failed {issue.counts.failed}
+              Sent {issue.counts.sent} · waiting {issue.counts.pending} · failed {issue.counts.failed}{issue.counts.bounced ? ` · bounced ${issue.counts.bounced}` : ''}
               {issue.counts.failed > 0 && <> <Btn small variant="secondary" disabled={busy} onClick={() => void run(async () => `${(await retryNewsletter(issueId)).queued} queued again.`)}>Retry failed</Btn></>}
             </p>
           )}
@@ -206,7 +206,10 @@ function Subscribers() {
                 <tr key={r.id}>
                   <td>{r.email}</td><td>{r.locale}</td><td>{r.source}</td>
                   <td style={{ whiteSpace: 'nowrap' }}>{r.confirmed_at ? new Date(r.confirmed_at).toLocaleDateString() : 'Not yet'}</td>
-                  <td style={{ whiteSpace: 'nowrap' }}>{r.unsubscribed_at ? new Date(r.unsubscribed_at).toLocaleDateString() : ''}</td>
+                  <td style={{ whiteSpace: 'nowrap' }} title={r.bounce_reason ?? undefined}>
+                    {r.unsubscribed_at ? new Date(r.unsubscribed_at).toLocaleDateString()
+                      : r.bounced_at ? `Bounced ${new Date(r.bounced_at).toLocaleDateString()}` : ''}
+                  </td>
                 </tr>
               ))}
             </tbody>

@@ -42,7 +42,7 @@ class SendNewsletterBatch implements ShouldQueue
                 continue;
             }
             $row = NewsletterDelivery::query()->with('subscriber')->find($id);
-            if ($row === null || $row->subscriber === null || $row->subscriber->unsubscribed_at !== null) {
+            if ($row === null || $row->subscriber === null || $row->subscriber->unsubscribed_at !== null || $row->subscriber->bounced_at !== null) {
                 $row?->forceFill(['status' => 'skipped'])->save();
 
                 continue;
@@ -51,7 +51,9 @@ class SendNewsletterBatch implements ShouldQueue
                 Mail::to($row->email)->send(new NewsletterIssueMail($issue, $row->subscriber, $picks));
                 $row->forceFill(['status' => 'sent', 'sent_at' => now(), 'error' => null])->save();
             } catch (\Throwable $e) {
-                $row->forceFill(['status' => 'failed', 'error' => mb_substr($e->getMessage(), 0, 500)])->save();
+                // The server refusing the address is a bounce: not retried, and remembered.
+                $bounce = \App\Domains\Newsletter\Bounces::fromSendError($row->email, $e);
+                $row->forceFill(['status' => $bounce !== null ? 'bounced' : 'failed', 'error' => mb_substr($e->getMessage(), 0, 500)])->save();
             }
         }
         $newsletter->finishIfDone($issue->fresh());

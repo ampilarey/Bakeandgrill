@@ -63,6 +63,34 @@ working; the failure is logged as `OTP email could not be sent`.
 TEST (`test.bakeandgrill.mv`) has its own `.env` and needs the same lines if TEST
 should send e-mail; it can use the same mailbox.
 
+## Newsletter bounces (2026-10-18)
+
+The site sends through the cPanel mailbox over SMTP, so a bounce comes back as an email to
+the sending address (`MAIL_FROM_ADDRESS`, today `no-reply@bakeandgrill.mv`). Pipe that
+mailbox into the site so bounced newsletter addresses stop getting it
+(`App\Domains\Newsletter\Bounces`):
+
+1. cPanel → **Email → Forwarders → Add Forwarder**.
+2. Address to forward: the sending address (`no-reply`), domain `bakeandgrill.mv`.
+3. Destination: **Advanced Options → Pipe to a Program**, and enter (production):
+   `/opt/alt/php84/usr/bin/php -q /home/bakeandgrill/public_html/backend/artisan newsletter:bounce`
+   For TEST, the same with `/home/bakeandgrill/test.bakeandgrill.mv/backend/artisan`, on TEST's
+   own sending address if it has one.
+4. Add Forwarder. The mailbox still keeps its copy; the pipe only reads it.
+
+What it does: a hard bounce (no such mailbox, domain gone) stops the address at once; a soft
+one (mailbox full, try later) after three; a "this is spam" complaint unsubscribes it (and
+turns off the customer's offers email). Only addresses already on the list are touched; any
+other mail to the box (a customer replying to no-reply) is ignored. The command always exits
+0, so the mail server never bounces the bounce. A refusal while sending (the server answers
+550 for the address) counts the same, and the delivery shows as "bounced", not "failed", so
+Retry failed does not send to it again. Newsletter → Subscribers shows "Bounced" with the
+reason on hover, and the CSV has the columns. Signing up again and tapping the confirm link
+clears it.
+
+To test the pipe on the server: save a bounce email as a file and run
+`php artisan newsletter:bounce --file=/path/to/bounce.eml`.
+
 ## Every text also by email (2026-10-06)
 
 Owner: "All. And not customers only. Admin and all staffs too receive email in all

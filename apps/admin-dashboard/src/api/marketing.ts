@@ -582,7 +582,7 @@ export interface NewsletterIssueSummary {
   status: 'draft' | 'sending' | 'sent';
   sent_at: string | null;
   created_at: string;
-  counts: { sent: number; failed: number; pending: number };
+  counts: { sent: number; failed: number; bounced?: number; pending: number };
 }
 export interface NewsletterIssue extends NewsletterIssueSummary {
   body_en: string | null;
@@ -615,7 +615,7 @@ export async function sendNewsletter(id: number): Promise<{ queued: number; mess
 export async function retryNewsletter(id: number): Promise<{ queued: number }> {
   return req(`/admin/newsletter/issues/${id}/retry`, { method: 'POST' });
 }
-export type NewsletterSubscriberRow = { id: number; email: string; locale: string; source: string; confirmed_at: string | null; unsubscribed_at: string | null; created_at: string };
+export type NewsletterSubscriberRow = { id: number; email: string; locale: string; source: string; confirmed_at: string | null; unsubscribed_at: string | null; created_at: string; bounced_at?: string | null; bounce_count?: number; bounce_reason?: string | null };
 export async function fetchNewsletterSubscribers(q: string, page = 1): Promise<{ data: NewsletterSubscriberRow[]; meta: { current_page: number; last_page: number; total: number } }> {
   return req(`/admin/newsletter/subscribers?${new URLSearchParams({ q, page: String(page) })}`);
 }

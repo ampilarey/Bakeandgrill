@@ -102,6 +102,7 @@ class AdminNewsletterController extends Controller
             'data' => collect($page->items())->map(fn (NewsletterSubscriber $s) => [
                 'id' => $s->id, 'email' => $s->email, 'locale' => $s->locale, 'source' => $s->source,
                 'confirmed_at' => $s->confirmed_at, 'unsubscribed_at' => $s->unsubscribed_at, 'created_at' => $s->created_at,
+                'bounced_at' => $s->bounced_at, 'bounce_count' => $s->bounce_count, 'bounce_reason' => $s->bounce_reason,
             ])->values(),
             'meta' => ['current_page' => $page->currentPage(), 'last_page' => $page->lastPage(), 'total' => $page->total()],
         ]);
@@ -111,10 +112,10 @@ class AdminNewsletterController extends Controller
     {
         return response()->streamDownload(function (): void {
             $out = fopen('php://output', 'w');
-            fputcsv($out, ['email', 'language', 'source', 'signed_up', 'confirmed', 'unsubscribed']);
+            fputcsv($out, ['email', 'language', 'source', 'signed_up', 'confirmed', 'unsubscribed', 'bounced', 'bounce_reason']);
             NewsletterSubscriber::query()->orderBy('id')->chunk(500, function ($rows) use ($out): void {
                 foreach ($rows as $s) {
-                    fputcsv($out, [$s->email, $s->locale, $s->source, $s->created_at?->toDateTimeString(), $s->confirmed_at?->toDateTimeString(), $s->unsubscribed_at?->toDateTimeString()]);
+                    fputcsv($out, [$s->email, $s->locale, $s->source, $s->created_at?->toDateTimeString(), $s->confirmed_at?->toDateTimeString(), $s->unsubscribed_at?->toDateTimeString(), $s->bounced_at?->toDateTimeString(), $s->bounce_reason]);
                 }
             });
             fclose($out);
@@ -151,7 +152,7 @@ class AdminNewsletterController extends Controller
         return [
             'id' => $i->id, 'subject_en' => $i->subject_en, 'subject_dv' => $i->subject_dv,
             'status' => $i->status, 'sent_at' => $i->sent_at, 'created_at' => $i->created_at,
-            'counts' => ['sent' => (int) ($counts['sent'] ?? 0), 'failed' => (int) ($counts['failed'] ?? 0), 'pending' => (int) (($counts['pending'] ?? 0) + ($counts['sending'] ?? 0))],
+            'counts' => ['sent' => (int) ($counts['sent'] ?? 0), 'failed' => (int) ($counts['failed'] ?? 0), 'bounced' => (int) ($counts['bounced'] ?? 0), 'pending' => (int) (($counts['pending'] ?? 0) + ($counts['sending'] ?? 0))],
         ];
     }
 
