@@ -57,6 +57,7 @@ const ActivityPage            = lazyWithRetry(() => import('./pages/ActivityPage
 const ShiftsPage              = lazyWithRetry(() => import('./pages/ShiftsPage'));
 const TimeClockPage           = lazyWithRetry(() => import('./pages/TimeClockPage'));
 const DevicesHub              = lazyWithRetry(() => import('./pages/DevicesHub').then((m) => ({ default: m.DevicesHub })));
+const NeedsAttentionPage      = lazyWithRetry(() => import('./pages/NeedsAttentionPage'));
 const SystemHub               = lazyWithRetry(() => import('./pages/SystemHub').then((m) => ({ default: m.SystemHub })));
 const MyAccountPage           = lazyWithRetry(() => import('./pages/MyAccountPage').then((m) => ({ default: m.MyAccountPage })));
 const MediaLibraryPage        = lazyWithRetry(() => import('./pages/MediaLibraryPage').then((m) => ({ default: m.MediaLibraryPage })));
@@ -516,6 +517,8 @@ export default function App() {
                 } />
                 <Route path="print-jobs" element={<MovedTo to="/devices/print-queue" />} />
                 <Route path="service-availability" element={<MovedTo to="/system-health/controls" />} />
+                {/* iruali import plan, feature 14: every row checks its own page's permission. */}
+                <Route path="needs-attention" element={<NeedsAttentionPage />} />
                 {/* Route audit, 2026-09-19: System Health and Service Availability are one hub. */}
                 <Route path="system-health/*" element={
                   <PermissionGuard user={user} permissions={['website.manage', 'service_availability.view']}>

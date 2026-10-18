@@ -59,6 +59,7 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
   { to: '/content/website', permission: 'website.manage' },
   { to: '/content/order-app', permission: 'website.manage' },
   { to: '/media', permission: 'media.view' },
+  { to: '/needs-attention', permissions: ['orders.refund', 'complaints.view', 'finance.settlements', 'customers.manage', 'website.manage', 'labels.manage', 'labels.print'] },
   { to: '/settings', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'] },
   // Notifications audit, 2026-10-10: every text, email and Telegram alert in
   // one place; each tab keeps the permission its old page used.

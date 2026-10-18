@@ -303,6 +303,11 @@ if (routes_domain_section_is('staff', 'admin') && !routes_domain_loaded('staff.a
         Route::get('/audit-logs/actions', [App\Http\Controllers\Api\AuditLogController::class, 'actions']);
     });
 
+    // Needs attention (iruali import plan, feature 14): every row checks the
+    // permission of the page it links to, so the route itself needs only a staff sign-in.
+    Route::middleware(['auth:sanctum', 'staff.token', 'throttle:120,1'])
+        ->get('/admin/inbox', [App\Http\Controllers\Api\AdminInboxController::class, 'index']);
+
     // Customers & Marketing → Newsletter (iruali import plan, feature 4).
     Route::middleware(['auth:sanctum', 'staff.token', 'permission:newsletter.manage'])->prefix('admin/newsletter')->group(function () {
         Route::get('/issues', [App\Http\Controllers\Api\AdminNewsletterController::class, 'index']);

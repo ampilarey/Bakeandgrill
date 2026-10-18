@@ -1,3 +1,5 @@
+import { useInbox } from '../hooks/useInbox';
+import { InboxList } from '../components/InboxList';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -88,6 +90,21 @@ const STATUS_BG: Record<string, string> = {
 
 // ── sub-components ────────────────────────────────────────────────────────────
 
+
+/** Needs attention (feature 14): the top rows on the dashboard. */
+function DashboardInbox() {
+  const { rows, loaded } = useInbox();
+  if (!loaded || rows.length === 0) return null;
+  return (
+    <Card style={{ marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 8 }}>
+        <strong style={{ fontSize: 15 }}>Needs attention</strong>
+        <Link to="/needs-attention" style={{ fontSize: 13, color: 'var(--color-primary)' }}>See all</Link>
+      </div>
+      <InboxList rows={rows} limit={4} />
+    </Card>
+  );
+}
 
 function OrderCard({ order, now }: { order: Order; now: number }) {
   void now;
@@ -684,6 +701,7 @@ export function DashboardPage() {
           </div>
         }
       />
+      <DashboardInbox />
 
       <SiteStatsSection />
 

@@ -8,7 +8,7 @@ import {
   Boxes, LayoutGrid, Wallet, Clock, Monitor, Share2,
   ShoppingBag, Zap,
   ConciergeBell, Wrench, ClipboardCheck, HeartPulse, UserCircle, Utensils,
-  LayoutTemplate, Shield, UserCog, Images, Tv, Store, Tags, Send, Bell, Frame,
+  LayoutTemplate, Shield, UserCog, Images, Tv, Store, Tags, Send, Bell, Frame, Inbox,
 } from 'lucide-react';
 import type { StaffUser } from '../api';
 
@@ -155,6 +155,8 @@ export const NAV_GROUPS: NavGroup[] = [
     icon: Wrench,
     order: 5,
     items: [
+      // iruali import plan, feature 14: what wants a person today. Each row checks its own page's permission.
+      { to: '/needs-attention', icon: Inbox, label: 'Needs attention', permissions: ['orders.refund', 'complaints.view', 'finance.settlements', 'customers.manage', 'website.manage', 'labels.manage', 'labels.print'], description: 'Refunds, complaints, reviews, questions, messages and more, waiting for someone' },
       // Every switch not owned by a domain page: business record, ordering,
       // delivery, charges, credit, currency photos, roles.
       { to: '/settings', icon: Shield, label: 'Settings', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'], description: 'Business, ordering, delivery, fees, credit & roles' },

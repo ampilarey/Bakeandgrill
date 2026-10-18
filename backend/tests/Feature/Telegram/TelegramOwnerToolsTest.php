@@ -73,7 +73,7 @@ class TelegramOwnerToolsTest extends TestCase
     {
         $this->say('5550001', '🧰 More');
         $labels = array_merge(...array_map(fn (array $r) => array_column($r, 'text'), $this->last('5550001')['reply_markup']['inline_keyboard']));
-        $this->assertSame(['👷 Who\'s working', '📉 Low stock', '🔍 Find an order', '📣 Message staff'], $labels);
+        $this->assertSame(['📋 Needs attention', '👷 Who\'s working', '📉 Low stock', '🔍 Find an order', '📣 Message staff'], $labels);
 
         $this->say('5550002', '/help');
         $keyboard = array_merge(...array_map(fn (array $r) => array_column($r, 'text'), $this->last('5550002')['reply_markup']['keyboard']));
@@ -82,6 +82,19 @@ class TelegramOwnerToolsTest extends TestCase
         $labels = array_merge(...array_map(fn (array $r) => array_column($r, 'text'), $this->last('5550002')['reply_markup']['inline_keyboard']));
         $this->assertNotContains('📣 Message staff', $labels);
         $this->assertNotContains('👷 Who\'s working', $labels);
+    }
+
+    /** iruali import plan, feature 14: the same rows as Admin → Needs attention. */
+    public function test_needs_attention_lists_what_waits(): void
+    {
+        $this->say('5550001', '/attention');
+        $this->assertStringContainsString('Nothing waiting', $this->lastText('5550001'));
+
+        \App\Models\ItemQuestion::create(['item_id' => \App\Models\Item::factory()->create()->id, 'question' => 'Spicy?', 'status' => 'pending']);
+        $this->say('5550001', '/attention');
+        $text = $this->lastText('5550001');
+        $this->assertStringContainsString('Dish questions not answered', $text);
+        $this->assertStringContainsString('/admin/customers/questions', $text);
     }
 
     public function test_whos_working(): void

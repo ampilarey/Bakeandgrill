@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useInbox } from '../hooks/useInbox';
 import type { StaffUser } from '../api';
 import { fetchLowStockItems } from '../api';
 import {
-  Bell, BellOff, ChevronLeft, ChevronRight, Info, Moon, Package, Search, ShoppingBag, Sun, TriangleAlert, UserCircle, X,
+  Bell, BellOff, ChevronLeft, ChevronRight, Inbox, Info, Moon, Package, Search, ShoppingBag, Sun, TriangleAlert, UserCircle, X,
   type LucideIcon,
 } from 'lucide-react';
 import { isAudioEnabled, setAudioEnabled } from '../utils/audio';
@@ -97,6 +98,25 @@ type PanelBox = { top: number; left: number; width: number; maxHeight: number };
  * measured from the bell. No ancestor's overflow can reach it, in any
  * browser, and it stays on screen on a narrow phone.
  */
+/** Needs attention (feature 14): how many things wait, beside the bell; opens the list. */
+function InboxButton() {
+  const { total } = useInbox();
+  const navigate = useNavigate();
+  return (
+    <button
+      type="button"
+      onClick={() => navigate('/needs-attention')}
+      title="Needs attention"
+      aria-label={total > 0 ? `Needs attention: ${total} waiting` : 'Needs attention'}
+      className="admin-shell-icon-btn admin-shell-notif-wrap"
+      data-testid="inbox-button"
+    >
+      <Inbox size={16} />
+      {total > 0 && <span className="admin-shell-notif-dot">{total > 99 ? '99+' : total}</span>}
+    </button>
+  );
+}
+
 function NotificationsBell() {
   const [open, setOpen] = useState(false);
   const [box, setBox] = useState<PanelBox | null>(null);
@@ -342,6 +362,7 @@ export function AppShell({ user, onLogout, onLogoutEverywhere, children, onSearc
       >
         {audioOn ? <Bell size={16} /> : <BellOff size={16} />}
       </button>
+      <InboxButton />
       <NotificationsBell />
     </>
   );

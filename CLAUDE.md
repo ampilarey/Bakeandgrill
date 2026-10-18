@@ -926,6 +926,22 @@ a 1920×1080 image slide on the dining playlist (`date_end` is the take-down
 date), a social draft (approval, best time, channel rules) plus WhatsApp and
 Viber share links, and an optional home hero slide for the offer's period.
 
+## Needs attention
+
+iruali import plan, feature 14 (2026-10-18). One list of what wants a person today:
+`App\Domains\System\AdminInbox` rows (refunds to approve or pay out, complaints not answered,
+red after a day, bank lines to match, reviews, dish questions, customer order messages, online
+orders paid and not started for 10 minutes, failed jobs, label rolls low, packed stock near its
+use-by), each with a label, count, link, level and **the permission of the page it links to**,
+so nobody sees a row they cannot open. A row that throws is logged and skipped; a domain adds one
+with `AdminInbox::register()`. `GET /api/admin/inbox` (any staff sign-in, allowlisted in
+`StaffRouteAuthCoverageTest`; the rows do the checking). Admin: System → Needs attention
+(`NeedsAttentionPage`), the inbox button with its count beside the bell (`InboxButton` in
+`AppShell`), and the top rows on the dashboard (`DashboardInbox`), all through `useInbox`
+(every minute); empty, it says "Nothing waiting. Good job." Telegram: 🧰 More → 📋 Needs
+attention and `/attention` on the owner bot (`TelegramOwnerTools::needsAttention`). A new kind of
+work waiting for staff becomes a row here, not a page of its own.
+
 ## Errors are counted here, Sentry or not
 
 iruali import plan, feature 17 (2026-10-17). Every reported exception except the everyday

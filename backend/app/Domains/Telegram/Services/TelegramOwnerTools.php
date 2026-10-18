@@ -66,6 +66,10 @@ class TelegramOwnerTools
     private function tools(User $user): array
     {
         $t = [];
+        // iruali import plan, feature 14: the same rows as Admin → Needs attention.
+        if ($this->can($user, 'dashboard.view')) {
+            $t[] = ['📋 Needs attention', 'mo:n'];
+        }
         if ($this->can($user, 'staff.view')) {
             $t[] = ['👷 Who\'s working', 'mo:w'];
         }
@@ -96,7 +100,7 @@ class TelegramOwnerTools
         }
         $names = implode(', ', array_map(fn (array $x) => $x[0], $this->tools($user)));
 
-        return ['<b>' . self::BTN_MORE . '</b>: ' . T::e($names) . '. Also <code>/working</code>, <code>/lowstock</code>, <code>/order 1042</code>, <code>/tell kitchen Gas comes at 3</code>.'];
+        return ['<b>' . self::BTN_MORE . '</b>: ' . T::e($names) . '. Also <code>/attention</code>, <code>/working</code>, <code>/lowstock</code>, <code>/order 1042</code>, <code>/tell kitchen Gas comes at 3</code>.'];
     }
 
     public function handleText(TelegramLink $link, User $user, string $raw, ?string $command): bool
@@ -104,6 +108,11 @@ class TelegramOwnerTools
         $arg = trim((string) preg_replace('/^\/\S+\s*/u', '', $raw));
         if ($raw === self::BTN_MORE || $command === 'more') {
             $this->more($link, $user);
+
+            return true;
+        }
+        if ($command === 'attention') {
+            $this->needsAttention($link, $user);
 
             return true;
         }
@@ -141,6 +150,30 @@ class TelegramOwnerTools
         }
         $rows = array_map(fn (array $pair) => array_map(fn (array $x) => T::button($x[0], $x[1]), $pair), array_chunk($tools, 2));
         $this->c()->send($link, '🧰 <b>More</b>', [], $rows);
+    }
+
+    // ── Needs attention ──────────────────────────────────────────────────
+
+    public function needsAttention(TelegramLink $link, User $user): void
+    {
+        if (!$this->can($user, 'dashboard.view')) {
+            $this->c()->refuse($link);
+
+            return;
+        }
+        $rows = \App\Domains\System\AdminInbox::rowsFor($user);
+        if ($rows === []) {
+            $this->c()->send($link, '📋 <b>Nothing waiting.</b> Good job.');
+
+            return;
+        }
+        $base = rtrim((string) config('app.url'), '/') . '/admin';
+        $icon = ['danger' => '🔴', 'warn' => '🟠', 'info' => '🔵'];
+        $lines = ['📋 <b>Needs attention</b>', ''];
+        foreach ($rows as $r) {
+            $lines[] = ($icon[$r['level']] ?? '•') . ' <b>' . $r['count'] . '</b> ' . T::e($r['label']) . ' · <a href="' . T::e($base . $r['link']) . '">open</a>';
+        }
+        $this->c()->send($link, implode("\n", $lines));
     }
 
     // ── Who's working ────────────────────────────────────────────────────
@@ -457,6 +490,7 @@ class TelegramOwnerTools
             case 'mo':
                 $answer();
                 match ($arg) {
+                    'n' => $this->needsAttention($link, $user),
                     'w' => $this->working($link, $user),
                     'l' => $this->lowStock($link, $user),
                     'f' => $this->askOrder($link, $user),

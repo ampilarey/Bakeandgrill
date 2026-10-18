@@ -122,3 +122,11 @@ export async function startCloneLiveToTest(): Promise<{ message: string }> {
     body: JSON.stringify({ confirm: 'CLONE FROM LIVE' }),
   });
 }
+
+// ── Needs attention (iruali import plan, feature 14) ────────────────────────
+
+export type InboxRow = { key: string; label: string; count: number; link: string; level: 'info' | 'warn' | 'danger' };
+
+export async function fetchInbox(): Promise<{ rows: InboxRow[]; total: number }> {
+  return req('/admin/inbox');
+}

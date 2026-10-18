@@ -1,0 +1,132 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domains\System;
+
+use App\Domains\Labels\ExpiringPrints;
+use App\Domains\Labels\LabelRolls;
+use App\Models\BankStatementLine;
+use App\Models\Complaint;
+use App\Models\ItemQuestion;
+use App\Models\Order;
+use App\Models\OrderMessage;
+use App\Models\Refund;
+use App\Models\Review;
+use App\Models\User;
+use App\Services\PermissionService;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+
+/**
+ * "Needs attention": one list of what wants a person today (iruali import
+ * plan, feature 14). Each row has a label, a count, a link, a level and the
+ * permission of the page it links to, so nobody sees a row for a page they
+ * cannot open. A row that throws is logged and skipped. A domain adds a row
+ * with AdminInbox::register().
+ */
+final class AdminInbox
+{
+    /** @var array<string, array{label: string, link: string, permission: string, count: \Closure(): int, level?: \Closure(int): string}> */
+    private static array $extra = [];
+
+    /** @param array{label: string, link: string, permission: string, count: \Closure(): int, level?: \Closure(int): string} $row */
+    public static function register(string $key, array $row): void
+    {
+        self::$extra[$key] = $row;
+    }
+
+    /** @return array<string, array{label: string, link: string, permission: string, count: \Closure(): int, level?: \Closure(int): string}> */
+    private static function definitions(): array
+    {
+        $warn = fn (int $n) => 'warn';
+
+        return [
+            'refunds_approval' => [
+                'label' => 'Refunds waiting for approval', 'link' => '/finance/refunds', 'permission' => 'orders.refund',
+                'count' => fn () => Refund::query()->where('status', 'pending')->count(), 'level' => $warn,
+            ],
+            'refunds_payout' => [
+                'label' => 'Refunds to pay out by card, bank or store credit', 'link' => '/finance/refunds?owed=1', 'permission' => 'orders.refund',
+                'count' => fn () => Refund::query()->whereIn('status', ['approved', 'processed'])->where('external_tender_laar', '>', 0)->whereNull('paid_out_at')->count(),
+                'level' => $warn,
+            ],
+            'complaints_open' => [
+                'label' => 'Complaints not answered', 'link' => '/customers/complaints', 'permission' => 'complaints.view',
+                'count' => fn () => Complaint::query()->where('status', Complaint::STATUS_NEW)->count(),
+                'level' => fn (int $n) => Complaint::query()->where('status', Complaint::STATUS_NEW)->where('created_at', '<', now()->subDay())->exists() ? 'danger' : 'warn',
+            ],
+            'bank_lines' => [
+                'label' => 'Bank lines to match', 'link' => '/finance/settlements', 'permission' => 'finance.settlements',
+                'count' => fn () => BankStatementLine::query()->where('match_status', BankStatementLine::MATCH_UNMATCHED)->count(),
+            ],
+            'reviews' => [
+                'label' => 'Reviews waiting for moderation', 'link' => '/customers/reviews', 'permission' => 'customers.manage',
+                'count' => fn () => Review::query()->where('status', 'pending')->count(),
+            ],
+            'questions' => [
+                'label' => 'Dish questions not answered', 'link' => '/customers/questions', 'permission' => 'customers.manage',
+                'count' => fn () => ItemQuestion::query()->where('status', ItemQuestion::PENDING)->count(),
+            ],
+            'order_messages' => [
+                'label' => 'Customer messages about orders', 'link' => '/orders', 'permission' => 'orders.view',
+                'count' => function (): int {
+                    $latest = OrderMessage::query()->selectRaw('MAX(id) as id')->groupBy('order_id');
+
+                    return OrderMessage::query()->whereIn('id', $latest)->where('sender', OrderMessage::CUSTOMER)->count();
+                },
+                'level' => $warn,
+            ],
+            'orders_unaccepted' => [
+                'label' => 'Online orders paid but not started', 'link' => '/orders', 'permission' => 'orders.view',
+                'count' => fn () => Order::query()->whereIn('type', ['online_pickup', 'delivery'])->where('payment_status', 'paid')
+                    ->where('status', 'pending')->where('paid_at', '<', now()->subMinutes(10))->count(),
+                'level' => fn (int $n) => 'danger',
+            ],
+            'failed_jobs' => [
+                'label' => 'Background jobs that failed', 'link' => '/system-health', 'permission' => 'website.manage',
+                'count' => fn () => (int) DB::table('failed_jobs')->count(),
+                'level' => $warn,
+            ],
+            'label_rolls' => [
+                'label' => 'Label rolls running low', 'link' => '/labels/settings', 'permission' => 'labels.manage',
+                'count' => fn () => count(array_filter(LabelRolls::presentAll(), fn (array $r) => !empty($r['low_now']))),
+            ],
+            'expiring_stock' => [
+                'label' => 'Packed stock near its use-by', 'link' => '/labels/stickers', 'permission' => 'labels.print',
+                'count' => fn () => count(ExpiringPrints::groups(2)),
+                'level' => $warn,
+            ],
+        ] + self::$extra;
+    }
+
+    /**
+     * The rows this person may open that have something waiting, most urgent first.
+     *
+     * @return list<array{key: string, label: string, count: int, link: string, level: string}>
+     */
+    public static function rowsFor(User $user): array
+    {
+        $perms = app(PermissionService::class);
+        $rows = [];
+        foreach (self::definitions() as $key => $def) {
+            try {
+                if (!$perms->hasPermission($user, $def['permission'])) {
+                    continue;
+                }
+                $count = (int) ($def['count'])();
+                if ($count <= 0) {
+                    continue;
+                }
+                $level = isset($def['level']) ? ($def['level'])($count) : 'info';
+                $rows[] = ['key' => $key, 'label' => $def['label'], 'count' => $count, 'link' => $def['link'], 'level' => $level];
+            } catch (\Throwable $e) {
+                Log::warning('Needs attention: a row could not be counted', ['row' => $key, 'error' => $e->getMessage()]);
+            }
+        }
+        $rank = ['danger' => 0, 'warn' => 1, 'info' => 2];
+        usort($rows, fn ($a, $b) => [$rank[$a['level']] ?? 3, -$a['count']] <=> [$rank[$b['level']] ?? 3, -$b['count']]);
+
+        return $rows;
+    }
+}
