@@ -1312,7 +1312,7 @@
         .footer-newsletter-row { display: flex; gap: 0.4rem; }
         .footer-newsletter-row input[type="email"] { flex: 1; min-width: 0; min-height: 40px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.08); color: white; padding: 0 0.7rem; font: inherit; font-size: 16px; }
         .footer-newsletter-row button { min-height: 40px; border-radius: 10px; border: 0; background: var(--amber); color: white; font: inherit; font-weight: 700; padding: 0 0.9rem; cursor: pointer; }
-        .footer-newsletter-hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+        .footer-newsletter-hp { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); opacity: 0; }
         .footer-newsletter-note { font-size: 0.8rem; color: rgba(255,255,255,0.85); margin-top: 0.4rem !important; }
         .footer-legal {
             margin-top: 0.875rem;

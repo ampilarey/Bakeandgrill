@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Content;
 
+use App\Domains\Content\ContentResolver;
+use App\Domains\Content\ContentWriter;
 use App\Models\SiteSetting;
 use App\Support\LocaleUrl;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -54,5 +56,25 @@ class DhivehiUrlsTest extends TestCase
         $this->assertSame('/menu', LocaleUrl::to('/dv/menu', 'en'));
         $this->assertSame('/dv', LocaleUrl::to('/', 'dv'));
         $this->assertSame('/order/menu', LocaleUrl::to('/order/menu', 'dv'), 'not public: no dv address');
+    }
+
+    public function test_the_switch_is_one_switch_for_the_website_and_the_order_app(): void
+    {
+        // Saved from the order app's hub, it turns both on.
+        app(ContentWriter::class)->write('language_switcher_enabled', 'order_app', 'true');
+        $this->assertSame('true', SiteSetting::getScoped('language_switcher_enabled', 'website', 'en'));
+        $this->assertSame('true', ContentResolver::for('order_app')->get('language_switcher_enabled'));
+
+        // The order app follows the website even if its own row says otherwise.
+        SiteSetting::set('language_switcher_enabled', 'false', 'website', 'en');
+        $this->assertSame('false', ContentResolver::for('order_app')->get('language_switcher_enabled'));
+    }
+
+    public function test_the_prayer_times_page_reads_right_to_left_in_dhivehi(): void
+    {
+        $this->dhivehi(true);
+        $this->get('/dv/prayer-times')->assertOk()->assertSee('<html lang="dv" dir="rtl">', false)
+            ->assertSee('<link rel="canonical" href="' . url('/dv/prayer-times') . '">', false);
+        $this->get('/prayer-times')->assertOk()->assertSee('<html lang="en" dir="ltr">', false);
     }
 }

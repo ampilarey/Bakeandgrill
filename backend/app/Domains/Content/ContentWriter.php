@@ -17,6 +17,13 @@ use Illuminate\Http\Request;
  */
 final class ContentWriter
 {
+    /**
+     * Keys that are one switch for both apps (feature 3b: "Dhivehi on the website and
+     * in the order app"): a write in either app's hub is written to both, and the
+     * order app reads the website's value (ContentResolver).
+     */
+    public const ONE_SWITCH = ['language_switcher_enabled'];
+
     public function __construct(
         private readonly AuditLogService $audit,
         private readonly ContentValidationService $validator,
@@ -52,6 +59,13 @@ final class ContentWriter
         }
 
         SiteSetting::set($key, $value, $scope, $locale);
+        if (in_array($key, self::ONE_SWITCH, true)) {
+            foreach (ContentRegistry::APPS as $other) {
+                if ($other !== $scope && ContentRegistry::targetsApp($key, $other)) {
+                    SiteSetting::set($key, $value, $other, $locale);
+                }
+            }
+        }
 
         // hero_slides is the sole source of truth — blank legacy slots so an
         // empty array cannot resurrect old hero_slide_1/2/3 on the public site.
@@ -111,18 +125,18 @@ final class ContentWriter
 
     private static function sanitizeJsonRichFields(string $key, string $value): string
     {
-        if ($value === '' || ! ContentRegistry::isRich($key)) {
+        if ($value === '' || !ContentRegistry::isRich($key)) {
             return $value;
         }
 
         $decoded = json_decode($value, true);
-        if (! is_array($decoded)) {
+        if (!is_array($decoded)) {
             return $value;
         }
 
         if ($key === 'hero_slides' && array_is_list($decoded)) {
             foreach ($decoded as $i => $slide) {
-                if (! is_array($slide)) {
+                if (!is_array($slide)) {
                     continue;
                 }
                 foreach (['eyebrow', 'title', 'subtitle', 'cta_text', 'cta2_text', 'image_alt'] as $field) {
@@ -145,5 +159,4 @@ final class ContentWriter
             SiteSetting::set($legacyKey, '{}', $scope, $locale);
         }
     }
-
 }

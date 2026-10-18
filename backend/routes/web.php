@@ -60,7 +60,7 @@ Route::middleware(['signed', 'throttle:30,1'])->group(function () {
 // Prayer Times standalone page
 use App\Http\Controllers\PrayerTimesWebController;
 
-Route::get('/prayer-times', [PrayerTimesWebController::class, 'index'])->name('prayer-times.index');
+Route::get('/prayer-times', [PrayerTimesWebController::class, 'index'])->middleware(['content.locale'])->name('prayer-times.index');
 
 // sitemap.xml — deliberately outside the service.banner group. A crawler
 // asking for the sitemap during a maintenance window should get the sitemap,

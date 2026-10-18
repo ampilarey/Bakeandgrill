@@ -338,6 +338,8 @@ export interface SiteSettingsContextValue {
   footerLinks: FooterLinkRow[];
   /** Read a setting with fallback when empty. */
   text: (key: keyof SiteSettings | string, fallback: string) => string;
+  /** True once the server's settings have arrived (until then `settings` are the defaults). */
+  loaded: boolean;
 }
 
 const defaultContextValue: SiteSettingsContextValue = {
@@ -349,6 +351,7 @@ const defaultContextValue: SiteSettingsContextValue = {
   aboutValues: [],
   footerLinks: [],
   text: (_k, fallback) => fallback,
+  loaded: true,
 };
 
 const SiteSettingsContext = createContext<SiteSettingsContextValue>(defaultContextValue);
@@ -357,6 +360,7 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
   const { lang } = useLanguage();
   const [onSignageBoard] = useState(() => typeof window !== 'undefined' && isSignagePath(window.location.pathname));
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
+  const [loaded, setLoaded] = useState(false);
   const requestSeq = useRef(0);
 
   useEffect(() => {
@@ -371,6 +375,7 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
           Object.entries(s).filter(([, v]) => v != null)
         ) as SiteSettings;
         setSettings({ ...DEFAULT_SETTINGS, ...nonNull });
+        setLoaded(true);
       }
     };
 
@@ -456,8 +461,9 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
       aboutValues,
       footerLinks,
       text,
+      loaded,
     }),
-    [settings, trustItems, heroSlides, homepageCategories, proofDetails, aboutValues, footerLinks, text],
+    [settings, trustItems, heroSlides, homepageCategories, proofDetails, aboutValues, footerLinks, text, loaded],
   );
 
   return (

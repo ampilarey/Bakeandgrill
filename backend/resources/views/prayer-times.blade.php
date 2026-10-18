@@ -3,13 +3,13 @@
     $siteName = content('site_name', 'Bake & Grill');
 @endphp
 <!DOCTYPE html>
-<html lang="en" dir="ltr">
+<html lang="{{ app()->getLocale() }}" dir="{{ app()->getLocale() === 'dv' ? 'rtl' : 'ltr' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Accurate daily prayer times for all islands of Maldives.">
-    <title>Prayer Times — {{ $siteName }}</title>
-    <link rel="canonical" href="{{ url('/prayer-times') }}">
+    <meta name="description" content="{{ __('Accurate daily prayer times for all islands of Maldives.') }}">
+    <title>{{ __('Prayer Times') }} — {{ $siteName }}</title>
+    <link rel="canonical" href="{{ url(\App\Support\LocaleUrl::to('/prayer-times', app()->getLocale())) }}">
     <link rel="icon" type="image/png" href="{{ content('favicon', '') ?: asset('favicon-32.png') }}">
 
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}">

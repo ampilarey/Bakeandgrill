@@ -582,7 +582,13 @@ contact, terms, refund, privacy, offers, prayer times; never `/menu/print`) is a
 public page is a 301 to its `/dv` address. Each public page carries `hreflang` en, dv and
 x-default and a canonical in its own language; the sitemap lists `/dv/...`; the header's EN / ދވ
 links go to the two addresses. The order app keeps the language in the account. A new public page
-goes into `LocaleUrl::PUBLIC` and the sitemap. `DhivehiUrlsTest`.
+goes into `LocaleUrl::PUBLIC` and the sitemap. `DhivehiUrlsTest`. It is **one switch** for both
+apps (`ContentWriter::ONE_SWITCH`): a save in either hub writes both, and the order app reads the
+website's value. The order app's `LanguageSwitcherGate` puts English back only once the settings
+have loaded (`loaded` on the settings context), never on the defaults. The phone-width spec runs
+every website page under `/dv` and the order app in Dhivehi, checking right to left as well as
+width; it skips while the switch is off on the server. Never hide something at `left: -9999px`:
+in right to left it widens the page by that much (hide above the page, or clip it).
 
 ## Customer pages: icons, hours, request limits
 

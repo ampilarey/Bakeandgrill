@@ -322,7 +322,11 @@ img.brand-logo--dark { display: none; }
 .home-promo-hero__track {
   display: flex;
   height: 100%;
+  /* The track slides with translateX, which counts from the left: keep it left
+     to right in Dhivehi too, and let each slide's words run right to left. */
+  direction: ltr;
 }
+[dir="rtl"] .home-promo-hero__slide { direction: rtl; }
 .home-promo-hero__slide {
   position: relative;
   overflow: hidden;
@@ -946,8 +950,10 @@ a { text-decoration: none; color: inherit; }
 /* ── Skip link ────────────────────────────────────────── */
 .skip-link {
   position: absolute;
-  left: -9999px;
-  top: 8px;
+  /* Hidden above the page, not far to the left: in Dhivehi (right to left) a
+     left: -9999px link made every page 10,000 px wide (3b phone check). */
+  inset-inline-start: 8px;
+  top: -200px;
   z-index: 9999; /* always on top for accessibility */
   padding: 8px 16px;
   background: var(--color-primary);
@@ -956,7 +962,7 @@ a { text-decoration: none; color: inherit; }
   text-decoration: none;
   font-weight: 600;
 }
-.skip-link:focus { left: 8px; }
+.skip-link:focus { top: 8px; }
 
 /* ════════════════════════════════════════════════════════════
    BUTTONS

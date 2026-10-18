@@ -66,6 +66,11 @@ final class ContentResolver
             return $this->dv($default);
         }
 
+        // One switch for both apps: the order app follows the website's value.
+        if ($this->app !== 'website' && in_array($key, ContentWriter::ONE_SWITCH, true)) {
+            return self::for('website', $this->locale)->get($key, $default);
+        }
+
         // Ordering Control mirrors (e.g. free-delivery label) — never content copies.
         $derived = OpsOwnedContent::deriveResolvedValue($key);
         if ($derived !== null) {

@@ -149,7 +149,7 @@ export function CateringPage() {
               aria-hidden
               value={website}
               onChange={(e) => setWebsite(e.target.value)}
-              style={{ position: 'absolute', left: -9999, opacity: 0, height: 0, width: 0 }}
+              style={{ position: 'absolute', opacity: 0, height: 0, width: 0, overflow: 'hidden', clipPath: 'inset(50%)' }}
             />
 
             {items.length > 0 && (

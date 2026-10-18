@@ -17,17 +17,20 @@ export function isLanguageSwitcherEnabled(settings: { language_switcher_enabled?
  * (preferred_language), once per sign-in (iruali import plan, feature 3a).
  */
 export function LanguageSwitcherGate() {
-  const { settings } = useSiteSettingsContext();
+  const { settings, loaded } = useSiteSettingsContext();
   const { lang, setLang } = useLanguage();
   const { isAuthenticated } = useAuth();
   const enabled = isLanguageSwitcherEnabled(settings);
   const adopted = useRef(false);
 
+  // Only once the server has answered: before that the settings are the
+  // defaults (switch off), and acting on them reset every Dhivehi customer to
+  // English on each page load (found by the Dhivehi phone-width check, 3b).
   useEffect(() => {
-    if (!enabled && lang !== 'en') {
+    if (loaded && !enabled && lang !== 'en') {
       setLang('en');
     }
-  }, [enabled, lang, setLang]);
+  }, [loaded, enabled, lang, setLang]);
 
   useEffect(() => {
     if (!isAuthenticated) {
