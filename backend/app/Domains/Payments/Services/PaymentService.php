@@ -92,6 +92,7 @@ class PaymentService
         ?int $amountLaar = null,
         ?string $idempotencyKey = null,
         ?string $returnUrl = null,
+        bool $retried = false,
     ): array {
         $amountLaar = $amountLaar ?? $this->orderTotalLaar($order);
         $idempotencyKey = $idempotencyKey ?? ('bml:init:' . $order->id . ':' . $amountLaar);
@@ -159,13 +160,22 @@ class PaymentService
         $payment = $claim['payment'];
 
         if ($claim['mode'] === 'reuse') {
-            return $this->bmlReuseResponse($payment, $order);
+            $reused = $this->bmlReuseResponse($payment, $order);
+            if ($reused !== null) {
+                return $reused;
+            }
+            if ($retried === false && $this->closeLostBmlSession($payment)) {
+                return $this->initiateBmlPayment($order, $amountLaar, $idempotencyKey, $returnUrl, retried: true);
+            }
+
+            throw new \RuntimeException('This payment could not be reopened. Please try again in a minute.');
         }
 
         if ($claim['mode'] === 'wait') {
             $ready = $this->waitForBmlProviderId($payment);
-            if ($ready && $ready->provider_transaction_id) {
-                return $this->bmlReuseResponse($ready, $order);
+            $reused = $ready && $ready->provider_transaction_id ? $this->bmlReuseResponse($ready, $order) : null;
+            if ($reused !== null) {
+                return $reused;
             }
 
             throw new \RuntimeException('A payment session is already being started for this order. Please retry in a moment.');
@@ -194,6 +204,8 @@ class PaymentService
 
         PaymentStateMachine::for($payment->fresh())->transition('initiated', [
             'provider_transaction_id' => $result['transaction_id'],
+            // The gateway's own link, so a second Pay tap reopens this very page.
+            'gateway_response' => ['payment_url' => $result['payment_url'], 'transaction_id' => $result['transaction_id']],
         ]);
 
         Log::info('BML: Payment initiated', [
@@ -254,27 +266,30 @@ class PaymentService
         return ['mode' => 'reuse', 'payment' => $payment];
     }
 
-    private function bmlReuseResponse(Payment $payment, Order $order): array
+    /**
+     * The payment page of a session already started for this order.
+     *
+     * Owner, 2026-10-18: a customer tapping Pay on a sent invoice got BML's
+     * {"message":"Forbidden"}. A second tap reused the session and built its link as
+     * "{api host}/pay/{id}", the API's own host, which a browser may not open. The
+     * link is now the one BML gave when the session started (kept on the payment),
+     * else the one BML gives for the transaction now; null when neither is known,
+     * and the caller starts a new session instead.
+     */
+    private function bmlReuseResponse(Payment $payment, Order $order): ?array
     {
-        $configured = config('bml.base_url');
-        $baseUrl = rtrim(
-            (is_string($configured) && $configured !== ''
-                ? $configured
-                : 'https://api.merchants.bankofmaldives.com.mv/public'),
-            '/',
-        );
-        // Pay URLs use the merchant portal host (strip trailing /public if present).
-        $payBase = preg_replace('#/public$#', '', $baseUrl) ?: $baseUrl;
-        $payUrl = $payment->provider_transaction_id
-            ? "{$payBase}/pay/{$payment->provider_transaction_id}"
-            : null;
+        $payUrl = $this->bmlPayUrl($payment);
 
         Log::info('BML: Reusing existing initiated payment', [
             'payment_id' => $payment->id,
             'order_id' => $order->id,
             'transaction_id' => $payment->provider_transaction_id,
-            'payment_url' => $payUrl,
+            'payment_url_host' => $payUrl !== null ? parse_url($payUrl, PHP_URL_HOST) : null,
         ]);
+
+        if ($payUrl === null) {
+            return null;
+        }
 
         return [
             'payment_url' => $payUrl,
@@ -282,6 +297,62 @@ class PaymentService
             'local_id' => $payment->local_id,
             'reused' => true,
         ];
+    }
+
+    /** BML's own payment page for a started session, or null. Never a link built by hand. */
+    private function bmlPayUrl(Payment $payment): ?string
+    {
+        $stored = is_array($payment->gateway_response) ? $payment->gateway_response : [];
+        foreach (['payment_url', 'url', 'shortUrl'] as $key) {
+            if (is_string($stored[$key] ?? null) && str_starts_with((string) $stored[$key], 'http')) {
+                return (string) $stored[$key];
+            }
+        }
+        if (!filled($payment->provider_transaction_id)) {
+            return null;
+        }
+        try {
+            $tx = $this->bml->getTransactionStatus((string) $payment->provider_transaction_id);
+        } catch (\Throwable $e) {
+            Log::warning('BML: could not look up the payment link', ['payment_id' => $payment->id, 'error' => $e->getMessage()]);
+
+            return null;
+        }
+        $url = $tx['url'] ?? $tx['shortUrl'] ?? $tx['paymentUrl'] ?? null;
+        if (!is_string($url) || !str_starts_with($url, 'http')) {
+            return null;
+        }
+        $payment->forceFill(['gateway_response' => array_merge($stored, ['payment_url' => $url])])->save();
+
+        return $url;
+    }
+
+    /**
+     * A started session whose page cannot be found any more is closed, unless BML
+     * says it was paid, so the next attempt starts a new one.
+     */
+    private function closeLostBmlSession(Payment $payment): bool
+    {
+        if (filled($payment->provider_transaction_id)) {
+            try {
+                $state = strtoupper((string) ($this->bml->getTransactionStatus((string) $payment->provider_transaction_id)['state'] ?? ''));
+                if (in_array($state, ['CONFIRMED', 'PAID', 'COMPLETED', 'AUTHORIZED'], true)) {
+                    return false;
+                }
+            } catch (\Throwable) {
+                // Unknown state: keep it closed only if the gateway cannot even be asked.
+            }
+        }
+        $fresh = Payment::query()->find($payment->id);
+        if ($fresh && PaymentStateMachine::for($fresh)->can('cancelled')) {
+            PaymentStateMachine::for($fresh)->transition('cancelled', [
+                'gateway_response' => array_merge(is_array($fresh->gateway_response) ? $fresh->gateway_response : [], ['closed' => 'payment page lost; a new session was started']),
+            ]);
+
+            return true;
+        }
+
+        return false;
     }
 
     private function waitForBmlProviderId(Payment $payment): ?Payment

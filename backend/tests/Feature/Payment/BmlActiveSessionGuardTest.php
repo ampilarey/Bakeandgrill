@@ -159,4 +159,78 @@ class BmlActiveSessionGuardTest extends TestCase
             app(PaymentService::class)->resolveOnlinePaymentReservation($order, 'stripe', 10000);
         });
     }
+
+    /**
+     * Owner, 2026-10-18: Pay on a sent invoice opened BML's {"message":"Forbidden"}. The
+     * second tap built "{api host}/pay/{id}"; it must hand back the link BML gave.
+     */
+    public function test_a_reused_session_opens_the_page_bml_gave_never_the_api_host(): void
+    {
+        config(['bml.base_url' => 'https://api.merchants.bankofmaldives.com.mv/public']);
+        $order = $this->makeBmlGuardOrder();
+        $this->mockBmlGateway(1);
+
+        $first = app(PaymentService::class)->initiateBmlPayment($order, 10000, 'invoice-tap-1');
+        $second = app(PaymentService::class)->initiateBmlPayment($order, 10000, 'invoice-tap-2');
+
+        $this->assertTrue($second['reused']);
+        $this->assertSame($first['payment_url'], $second['payment_url']);
+        $this->assertStringNotContainsString('api.merchants', (string) $second['payment_url']);
+    }
+
+    public function test_a_session_started_before_links_were_kept_asks_bml_for_its_page(): void
+    {
+        $order = $this->makeBmlGuardOrder();
+        Payment::create([
+            'idempotency_key' => 'bml:old:' . $order->id,
+            'order_id' => $order->id,
+            'method' => 'bml_connect',
+            'gateway' => 'bml',
+            'currency' => 'MVR',
+            'amount' => 100,
+            'amount_laar' => 10000,
+            'local_id' => 'BGOLD1',
+            'status' => 'initiated',
+            'provider_transaction_id' => 'TXN-OLD',
+            'processed_at' => now(),
+        ]);
+        $mock = Mockery::mock(BmlConnectService::class);
+        $mock->shouldReceive('normalizeLocalId')->andReturnUsing(fn (string $id) => preg_replace('/[^A-Za-z0-9]/', '', $id));
+        $mock->shouldReceive('getTransactionStatus')->with('TXN-OLD')->andReturn(['state' => 'QR_CODE_GENERATED', 'url' => 'https://pay.example/TXN-OLD']);
+        $mock->shouldNotReceive('createPayment');
+        $this->app->instance(BmlConnectService::class, $mock);
+
+        $res = app(PaymentService::class)->initiateBmlPayment($order, 10000, 'invoice-tap');
+
+        $this->assertSame('https://pay.example/TXN-OLD', $res['payment_url']);
+        $this->assertSame('https://pay.example/TXN-OLD', Payment::query()->where('provider_transaction_id', 'TXN-OLD')->value('gateway_response')['payment_url'] ?? null);
+    }
+
+    public function test_a_session_whose_page_is_lost_is_closed_and_a_new_one_started(): void
+    {
+        $order = $this->makeBmlGuardOrder();
+        Payment::create([
+            'idempotency_key' => 'bml:lost:' . $order->id,
+            'order_id' => $order->id,
+            'method' => 'bml_connect',
+            'gateway' => 'bml',
+            'currency' => 'MVR',
+            'amount' => 100,
+            'amount_laar' => 10000,
+            'local_id' => 'BGLOST1',
+            'status' => 'initiated',
+            'provider_transaction_id' => 'TXN-LOST',
+            'processed_at' => now(),
+        ]);
+        $mock = Mockery::mock(BmlConnectService::class);
+        $mock->shouldReceive('normalizeLocalId')->andReturnUsing(fn (string $id) => preg_replace('/[^A-Za-z0-9]/', '', $id));
+        $mock->shouldReceive('getTransactionStatus')->andReturn(['state' => 'QR_CODE_GENERATED']);
+        $mock->shouldReceive('createPayment')->once()->andReturn(['transaction_id' => 'TXN-NEW', 'payment_url' => 'https://pay.example/TXN-NEW', 'local_id' => 'x']);
+        $this->app->instance(BmlConnectService::class, $mock);
+
+        $res = app(PaymentService::class)->initiateBmlPayment($order, 10000, 'invoice-tap');
+
+        $this->assertSame('https://pay.example/TXN-NEW', $res['payment_url']);
+        $this->assertSame('cancelled', Payment::query()->where('provider_transaction_id', 'TXN-LOST')->value('status'));
+    }
 }

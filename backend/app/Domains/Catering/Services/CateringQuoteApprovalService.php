@@ -10,7 +10,6 @@ use App\Domains\Orders\Services\OrderCreationService;
 use App\Domains\Payments\Services\PaymentService;
 use App\Models\CateringRequest;
 use App\Models\Order;
-use App\Models\Payment;
 use App\Services\OrderStatusTransitionService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -65,25 +64,9 @@ class CateringQuoteApprovalService
                     // disagreed with it must not be paid on a retry either.
                     $this->assertQuotedAmountStillMatchesOrder($request, $existing, $amountLaar);
 
-                    $payment = Payment::query()
-                        ->where('order_id', $existing->id)
-                        ->where('status', 'initiated')
-                        ->whereNotNull('provider_transaction_id')
-                        ->orderByDesc('id')
-                        ->first();
-
-                    if ($payment) {
-                        $baseUrl = rtrim((string) config('bml.base_url', 'https://api.merchants.bankofmaldives.com.mv'), '/');
-                        $payUrl = "{$baseUrl}/pay/{$payment->provider_transaction_id}";
-
-                        return [
-                            'request' => $request->fresh(['lines']),
-                            'order' => $existing,
-                            'payment_url' => $payUrl,
-                            'payment_id' => (int) $payment->id,
-                        ];
-                    }
-
+                    // initiateBmlPayment reopens a session already started with BML's own
+                    // link; a link built here by hand pointed at the API host, which
+                    // answers a browser with "Forbidden" (2026-10-18).
                     $idempotency = 'bml:event:' . $request->id . ':v' . $request->quote_version;
                     $result = $this->payments->initiateBmlPayment($existing, $amountLaar, $idempotency);
 
