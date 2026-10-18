@@ -52,6 +52,40 @@ final class HeroSlides
         return $legacy;
     }
 
+    /** The words a translated slide may carry; everything else is the English slide's. */
+    public const TEXT_FIELDS = ['eyebrow', 'title', 'subtitle', 'cta_text', 'cta2_text', 'image_alt'];
+
+    /**
+     * The English slides with the words of their translation laid over: a translated
+     * slide counts only while it sits at the same place with the same picture or video,
+     * so a translation left from an older set of slides never brings those slides back.
+     */
+    public static function localize(string $enJson, mixed $translated): string
+    {
+        [$en, $enIsList] = self::decodeSlideArray($enJson);
+        if (!$enIsList) {
+            return $enJson;
+        }
+        [$tr] = self::decodeSlideArray($translated);
+
+        $out = [];
+        foreach ($en as $i => $slide) {
+            $other = $tr[$i] ?? null;
+            if (is_array($slide) && is_array($other)
+                && ($other['image'] ?? '') === ($slide['image'] ?? '')
+                && ($other['video'] ?? '') === ($slide['video'] ?? '')) {
+                foreach (self::TEXT_FIELDS as $field) {
+                    if (isset($other[$field]) && is_string($other[$field]) && trim($other[$field]) !== '') {
+                        $slide[$field] = $other[$field];
+                    }
+                }
+            }
+            $out[] = $slide;
+        }
+
+        return json_encode($out, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: $enJson;
+    }
+
     /**
      * Build a hero_slides JSON array from legacy scoped rows (migration helper).
      *

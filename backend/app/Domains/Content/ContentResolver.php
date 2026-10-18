@@ -102,6 +102,16 @@ final class ContentResolver
             return $default;
         }
 
+        // Hero slides: which slides, their pictures and order follow the English list; a
+        // Dhivehi row only lends its words to the slide it was written for (owner,
+        // 2026-10-18: one slide in English, three old ones in Dhivehi).
+        if ($key === 'hero_slides' && $this->locale !== 'en') {
+            $en = SiteSetting::getScoped($key, $this->app, 'en');
+            if ($this->isPresentScopedValue($en)) {
+                return HeroSlides::localize((string) $en, SiteSetting::getScoped($key, $this->app, $this->locale));
+            }
+        }
+
         foreach ($this->lookupChain($key) as [$scope, $locale]) {
             $val = SiteSetting::getScoped($key, $scope, $locale);
             // Present = not null and not ''. "[]" and other JSON empties win.

@@ -647,7 +647,9 @@ iruali import plan, feature 3b, part 3 (2026-10-18). On a Dhivehi page (`/dv/...
 fallbacks follow the same file: when a dv lookup in `ContentResolver` ends on English (the en
 row, the registry default or the `content()` default) it goes through `DhivehiText::of()`, so
 built-in wording reads in Dhivehi and English the owner typed stays as typed until they type
-a Dhivehi version. A new string on a public page is `__()` with its Dhivehi in `lang/dv.json`
+a Dhivehi version. Hero slides are the English list on a Dhivehi page (`HeroSlides::localize()`
+in `ContentResolver`): a dv row only lends its words to the slide at the same place with the same
+picture (owner, 2026-10-18: one slide in English, three old ones in Dhivehi). A new string on a public page is `__()` with its Dhivehi in `lang/dv.json`
 (`WebsiteDhivehiWordingTest` fails otherwise); in a script use `@json(__('…'))`. The legal
 pages (privacy, terms, refund) have Dhivehi drafts in `resources/views/legal/dv/`, shown only
 once **Dhivehi legal pages approved** (`legal_dv_approved`, Website → Legal) is on
