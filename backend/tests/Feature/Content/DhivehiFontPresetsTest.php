@@ -40,7 +40,7 @@ class DhivehiFontPresetsTest extends TestCase
         $this->assertStringContainsString("url('/fonts/noto-sans-thaana-700.woff2')", $css);
         $this->assertStringContainsString("--font-thaana: 'BG Noto Sans Thaana', 'A_Faruma'", $css);
 
-        SiteSetting::set('dhivehi_font', 'preset:device', 'order_app', 'en');
+        SiteSetting::set('dhivehi_font', 'preset:device', 'website', 'en');
         $this->assertStringContainsString("--font-thaana: 'Noto Sans Thaana', 'MV Faseyha'", DhivehiFont::stylesheet('order_app'));
         $this->assertStringNotContainsString('@font-face', DhivehiFont::stylesheet('order_app'));
     }

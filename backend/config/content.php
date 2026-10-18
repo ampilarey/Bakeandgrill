@@ -515,7 +515,7 @@ return [
             'shareable' => true,
             'public' => true,
             'rich' => false,
-            'description' => 'The font for Dhivehi text: Faruma, Noto Sans Thaana, FreeSerif, the phone\'s own, or a file you upload. Website and Order App each keep their own.',
+            'description' => 'The font for Dhivehi text: Faruma, Noto Sans Thaana, FreeSerif, the phone\'s own, or a file you upload. One font for both the website and the order app.',
             'validate' => 'nullable|string|max:2048',
             'default' => '',
         ],

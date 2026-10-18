@@ -20,9 +20,10 @@ final class ContentWriter
     /**
      * Keys that are one switch for both apps (feature 3b: "Dhivehi on the website and
      * in the order app"): a write in either app's hub is written to both, and the
-     * order app reads the website's value (ContentResolver).
+     * order app reads the website's value (ContentResolver). The Dhivehi font too
+     * (owner, 2026-10-18: a font picked on the website hub never reached the order app).
      */
-    public const ONE_SWITCH = ['language_switcher_enabled'];
+    public const ONE_SWITCH = ['language_switcher_enabled', 'dhivehi_font'];
 
     public function __construct(
         private readonly AuditLogService $audit,

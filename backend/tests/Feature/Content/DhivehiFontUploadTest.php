@@ -172,11 +172,21 @@ class DhivehiFontUploadTest extends TestCase
         $this->assertStringContainsString("--font-dhivehi: 'BakeDhivehi'", $website);
         $this->assertStringNotContainsString(str_repeat('cd', 32), $website);
 
+        // One font for both apps (2026-10-18): the order app follows the website's pick,
+        // whatever an older order-app row still holds.
         $order = $this->get('/css/dhivehi-font.css?app=order_app')
             ->assertOk()
             ->getContent();
-        $this->assertStringContainsString($orderUrl, $order);
-        $this->assertStringNotContainsString(str_repeat('ab', 32), $order);
+        $this->assertStringContainsString($websiteUrl, $order);
+        $this->assertStringNotContainsString(str_repeat('cd', 32), $order);
+    }
+
+    public function test_a_font_saved_in_either_hub_is_the_font_of_both_apps(): void
+    {
+        app(\App\Domains\Content\ContentWriter::class)->write('dhivehi_font', 'order_app', 'preset:noto');
+        $this->assertSame('preset:noto', SiteSetting::getScoped('dhivehi_font', 'website', 'en'));
+        $this->assertStringContainsString("'BG Noto Sans Thaana'", DhivehiFont::stylesheet('website'));
+        $this->assertSame(DhivehiFont::stylesheet('website'), DhivehiFont::stylesheet('order_app'));
     }
 
     public function test_css_route_sets_no_session_cookie(): void

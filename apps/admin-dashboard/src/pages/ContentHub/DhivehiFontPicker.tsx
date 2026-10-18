@@ -9,7 +9,7 @@ export const FONT_CHOICES: { value: string; label: string; note: string; family:
   { value: '', label: 'Faruma', note: 'The classic Dhivehi face.', family: 'A_Faruma', files: [{ w: 400, url: '/fonts/a_faruma.woff2' }] },
   { value: 'preset:noto', label: 'Noto Sans Thaana', note: 'Clean and modern, with a true bold.', family: 'BG Noto Sans Thaana', files: [{ w: 400, url: '/fonts/noto-sans-thaana-400.woff2' }, { w: 700, url: '/fonts/noto-sans-thaana-700.woff2' }] },
   { value: 'preset:freeserif', label: 'FreeSerif', note: 'Book style, with a bold.', family: 'BG FreeSerif Thaana', files: [{ w: 400, url: '/fonts/freeserif-thaana-400.woff2' }, { w: 700, url: '/fonts/freeserif-thaana-700.woff2' }] },
-  { value: 'preset:device', label: "The phone's own", note: "Each phone's built-in Dhivehi font; Faruma where it has none.", family: "'Noto Sans Thaana', 'MV Faseyha', 'MV Waheed', 'MV Boli', A_Faruma" },
+  { value: 'preset:device', label: "The phone's own", note: "Each phone's built-in Dhivehi font. A phone or computer without one (often iPhones and Macs) shows Faruma.", family: "'Noto Sans Thaana', 'MV Faseyha', 'MV Waheed', 'MV Boli', A_Faruma" },
 ];
 
 const SAMPLE = 'ބޭކް އެންޑް ގްރިލް — ހެދިކާ، ބާޖިޔާ';
@@ -31,6 +31,7 @@ export function DhivehiFontPicker({ value, onPick, onUpload }: {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }} data-testid="dhivehi-font-picker">
       <style>{faces.join('')}</style>
+      <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)' }}>One font for the website and the order app: a pick here changes both.</p>
       <div role="radiogroup" aria-label="Dhivehi font" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 220px), 1fr))', gap: 8 }}>
         {cards.map((c) => {
           const on = c.value === picked;

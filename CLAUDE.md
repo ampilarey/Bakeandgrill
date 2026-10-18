@@ -161,7 +161,8 @@ rejected). Automated default tests use SQLite in-memory via `phpunit.xml`.
 
 The Dhivehi font is picked in Content Hub → Everywhere → Dhivehi font (2026-10-18:
 "faruma font is not showing"): Faruma, Noto Sans Thaana, FreeSerif, the phone's own, or an
-upload (`DhivehiFontPicker.tsx`; the value is '', `preset:<key>` or the file's URL;
+upload (`DhivehiFontPicker.tsx`; the value is '', `preset:<key>` or the file's URL; one font
+for both apps, `ContentWriter::ONE_SWITCH`, so the order app reads the website's pick;
 `App\Domains\Content\DhivehiFont::PRESETS`, which `FONT_CHOICES` mirrors). Every stack in
 `fonts.css` (both copies) carries `var(--font-thaana)` behind its Latin face, limited to
 Thaana by unicode-range, and `/css/dhivehi-font.css` repoints it with `:root:root` (the order
