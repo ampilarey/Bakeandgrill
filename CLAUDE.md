@@ -172,7 +172,11 @@ pyftsubset of GNU FreeFont (`public/fonts/FREEFONT-LICENSE.txt`). A new face goe
 `PRESETS`, `FONT_CHOICES` and, to print on labels, `DV_FACES`. `DhivehiFontPresetsTest`.
 Content Hub `dhivehi_font` accepts TTF/OTF natively. WOFF/WOFF2 inspection and
 TTF→WOFF2 conversion need Python `fontTools` + `brotli` (`scripts/install-fonttools.sh`).
-That pair is a deploy dependency (CI, TEST, production). The CSS override route
+That pair is a deploy dependency (CI, TEST, production). Under `[lang="dv"]` / `[dir="rtl"]`
+the stacks put the Thaana face first and its range includes the space (U+0020, U+00A0), so
+Dhivehi words take the Dhivehi font's wide space, and letter-spacing is reset there
+(owner, 2026-10-18: words ran together under Plus Jakarta's narrow space and the headings'
+negative tracking). Faruma's lean is its real design; Noto Sans Thaana is the upright choice. The CSS override route
 `GET /css/dhivehi-font.css` is registered outside the `web` group so it stays
 cookie-less.
 

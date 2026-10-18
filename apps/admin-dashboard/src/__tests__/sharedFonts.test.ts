@@ -32,7 +32,7 @@ describe('shared typography (fonts.css)', () => {
     expect(fontsCss).toMatch(/\[dir=["']rtl["']\]/);
     expect(fontsCss).toMatch(/font-family:\s*var\(--font-dhivehi\)/);
     expect(fontsCss).toContain("url('/fonts/a_faruma.woff2')");
-    expect(fontsCss).toContain('unicode-range: U+0780-07BF, U+060C, U+061B, U+061F, U+FDF2');
+    expect(fontsCss).toContain('unicode-range: U+0020, U+00A0, U+0780-07BF, U+060C, U+061B, U+061F, U+FDF2');
     // Every stack carries the Dhivehi face, so Dhivehi text uses it wherever it sits (2026-10-18).
     expect(fontsCss).toMatch(/--font-ui:\s*'Plus Jakarta Sans',\s*var\(--font-thaana\)/);
 

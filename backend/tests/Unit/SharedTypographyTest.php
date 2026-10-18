@@ -39,7 +39,7 @@ final class SharedTypographyTest extends TestCase
         $this->assertStringContainsString('[dir="rtl"]', $css);
         $this->assertStringContainsString('var(--font-dhivehi)', $css);
         $this->assertStringContainsString("url('/fonts/a_faruma.woff2')", $css);
-        $this->assertStringContainsString('unicode-range: U+0780-07BF, U+060C, U+061B, U+061F, U+FDF2', $css);
+        $this->assertStringContainsString('unicode-range: U+0020, U+00A0, U+0780-07BF, U+060C, U+061B, U+061F, U+FDF2', $css);
         // Every stack carries the Dhivehi face behind its Latin one, so Dhivehi text is
         // set in it wherever it sits, not only inside [lang="dv"] (2026-10-18).
         $this->assertMatchesRegularExpression("/--font-ui:\\s*'Plus Jakarta Sans',\\s*var\\(--font-thaana\\)/", $css);

@@ -24,8 +24,12 @@ final class DhivehiFont
 
     public const DEFAULT_STACK = "'A_Faruma', 'MV Faseyha', 'MV Waheed', serif";
 
-    /** Thaana, and the Arabic comma, semicolon, question mark and salawat Dhivehi writes with. */
-    public const UNICODE_RANGE = 'U+0780-07BF, U+060C, U+061B, U+061F, U+FDF2';
+    /**
+     * Thaana, the Arabic comma, semicolon, question mark and salawat Dhivehi writes with,
+     * and the space: on a Dhivehi page the Dhivehi face comes first in the stacks
+     * (fonts.css), so word spaces are its own, not the narrower Latin face's.
+     */
+    public const UNICODE_RANGE = 'U+0020, U+00A0, U+0780-07BF, U+060C, U+061B, U+061F, U+FDF2';
 
     public const PRESET_PREFIX = 'preset:';
 
