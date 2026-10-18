@@ -4,7 +4,7 @@
 <section
     class="home-mode-cards"
     data-home-block="mode_cards"
-    aria-label="Choose order mode"
+    aria-label="{{ __('Choose order mode') }}"
 >
     <div class="home-mode-cards__row mode-entry-cards">
         @foreach($modeCards as $card)
@@ -39,11 +39,11 @@
                 <form method="dialog" class="home-mode-info__panel">
                     <header class="home-mode-info__head">
                         <h2 class="home-mode-info__title">{{ $card['label'] }}</h2>
-                        <button type="submit" class="home-mode-info__close" aria-label="Close">×</button>
+                        <button type="submit" class="home-mode-info__close" aria-label="{{ __('Close') }}">×</button>
                     </header>
                     <p class="home-mode-info__status" data-testid="mode-info-status">{{ $card['status_line'] }}</p>
                     <p class="home-mode-info__body" data-testid="mode-info-body">{{ $card['info'] }}</p>
-                    <button type="submit" class="home-mode-info__done">Close</button>
+                    <button type="submit" class="home-mode-info__done">{{ __('Close') }}</button>
                 </form>
             </dialog>
         @endunless

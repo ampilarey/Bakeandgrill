@@ -164,7 +164,7 @@
     @endif
 
     @php
-        $days  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+        $days  = array_map(fn (string $d): string => __($d), ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']);
         $today = now(config('opening_hours.timezone'))->dayOfWeek;
     @endphp
 
@@ -176,7 +176,7 @@
                     <div class="day-dot"></div>
                     <span class="day-name">{{ $day }}</span>
                     @if($index === $today)
-                        <span class="today-tag">Today</span>
+                        <span class="today-tag">{{ __('Today') }}</span>
                     @endif
                 </div>
                 @php $dayRange = \App\Support\OpeningHoursText::range(is_array($dayHours) ? $dayHours : null); @endphp
@@ -187,7 +187,7 @@
 
     <p class="hours-note">
         {{ content('hours_page_note', 'Hours may vary on public holidays.') }}<br>
-        {{ content('hours_call_confirm_label', 'Call us to confirm:') }} <a href="tel:{{ preg_replace('/[^0-9+]/', '', content('business_phone', config('business.phone'))) }}">{{ content('business_phone', config('business.phone')) }}</a> &nbsp;·&nbsp;
+        {{ content('hours_call_confirm_label', 'Call us to confirm:') }} <a href="tel:{{ preg_replace('/[^0-9+]/', '', content('business_phone', config('business.phone'))) }}">{{ content('business_phone', config('business.phone')) }}</a>  · 
         <a href="/contact">{{ content('hours_contact_page_label', 'Contact page →') }}</a>
     </p>
 

@@ -45,7 +45,7 @@
                         @if($isBestSeller)
                             <span class="product-badge badge-bestseller">{{ \App\Support\UiIcon::svg('flame', 12) }} Best Seller</span>
                         @else
-                            <span class="product-badge badge-fresh">Fresh Daily</span>
+                            <span class="product-badge badge-fresh">{{ __('Fresh Daily') }}</span>
                         @endif
                     </div>
 
@@ -62,20 +62,20 @@
                             {{-- An item with sizes keeps its money on the variants, so
                                  base_price is 0 and printing it read "MVR 0.00". --}}
                             @if($priceInfo['from'])
-                                <span class="product-from">From</span>
+                                <span class="product-from">{{ __('From') }}</span>
                             @endif
                             <span class="product-currency">MVR</span>
                             <span class="product-price">{{ number_format($priceInfo['price'], 2) }}</span>
                         </div>
 
-                        <a href="/order/menu" class="add-btn">Order Now →</a>
+                        <a href="/order/menu" class="add-btn">{{ __('Order Now →') }}</a>
                     </div>
                 </div>
             @endforeach
         </div>
 
         <div class="view-all">
-            <a href="/order/menu" class="btn-primary">Browse Full Menu →</a>
+            <a href="/order/menu" class="btn-primary">{{ __('Browse Full Menu →') }}</a>
         </div>
     </div>
 </section>

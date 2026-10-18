@@ -46,7 +46,7 @@
             document.querySelectorAll('.menu-fav[data-item="' + id + '"]').forEach(function (el) {
                 el.classList.toggle('is-on', on);
                 el.setAttribute('aria-pressed', on ? 'true' : 'false');
-                el.setAttribute('aria-label', on ? 'Remove from favourites' : 'Add to favourites');
+                el.setAttribute('aria-label', on ? @json(__('Remove from favourites')) : @json(__('Add to favourites')));
                 // The is-on class fills the drawn heart.
             });
         }).catch(function () { /* offline — the heart just does not move */ });

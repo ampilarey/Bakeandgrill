@@ -612,6 +612,19 @@ place of the framework class in `AppServiceProvider` (so
 limiters are unchanged (`RateLimitPerRouteTest` fails if the binding goes). The order app retries a refused read once after
 `Retry-After` and says the menu is busy rather than blaming the connection.
 
+## Website wording in Dhivehi
+
+iruali import plan, feature 3b, part 3 (2026-10-18). On a Dhivehi page (`/dv/...`, switch on)
+`SetContentLocale` sets the app locale, so the fixed wording in the public views, wrapped in
+`__('English')`, reads from `backend/lang/dv.json` (keyed by the English as written). Content
+fallbacks follow the same file: when a dv lookup in `ContentResolver` ends on English (the en
+row, the registry default or the `content()` default) it goes through `DhivehiText::of()`, so
+built-in wording reads in Dhivehi and English the owner typed stays as typed until they type
+a Dhivehi version. A new string on a public page is `__()` with its Dhivehi in `lang/dv.json`
+(`WebsiteDhivehiWordingTest` fails otherwise); in a script use `@json(__('…'))`. The legal
+pages (privacy, terms, refund) stay English: a drafted translation of legal text is not
+published; the owner can type a Dhivehi body in Content.
+
 ## Order app strings: English and Dhivehi
 
 iruali import plan, feature 3a (2026-10-17). The order app's copy is

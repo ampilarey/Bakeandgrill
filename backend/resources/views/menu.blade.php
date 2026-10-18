@@ -1004,7 +1004,7 @@ body.menu-sheet-open { overflow: hidden; }
     };
 
     $categoryName = function ($category) use ($menuLocale) {
-        if (! $category) return ['text' => 'Other', 'dv' => false];
+        if (! $category) return ['text' => __('Other'), 'dv' => false];
         if ($menuLocale === 'dv') {
             $dv = trim((string) ($category->name_dv ?: ''));
             if ($dv !== '') return ['text' => $dv, 'dv' => true];
@@ -1059,9 +1059,9 @@ body.menu-sheet-open { overflow: hidden; }
         return [
             'shareUrl' => $menuCategoryUrls[$key] ?? url('/menu/c/' . $key),
             'shareTitle' => $text . ' – Bake & Grill menu',
-            'shareText' => 'See our ' . $text . ' menu at Bake & Grill',
+            'shareText' => __('See our :name menu at Bake & Grill', ['name' => $text]),
             'shareId' => 'share-cat-' . $key,
-            'shareLabel' => 'Share ' . $text,
+            'shareLabel' => __('Share :name', ['name' => $text]),
             'shareCategoryId' => is_numeric($key) ? (int) $key : null,
         ];
     };
@@ -1111,12 +1111,12 @@ body.menu-sheet-open { overflow: hidden; }
      The <h1> stays, visually hidden. It is the page's only level-one
      heading, so removing it outright would leave the outline starting at h2
      and give search results nothing to title the page with. --}}
-<h1 class="visually-hidden">Bake &amp; Grill menu</h1>
+<h1 class="visually-hidden">{{ __('Bake & Grill menu') }}</h1>
 
 @if($menuCategories->isEmpty() && $menuOffers->isEmpty() && $menuCatering->isEmpty())
     <div class="menu-empty">
-        <p>The menu is being updated. Please check back shortly, or call us to order.</p>
-        <p style="margin-top:1rem"><a href="/contact" class="btn-primary">Contact us →</a></p>
+        <p>{{ __('The menu is being updated. Please check back shortly, or call us to order.') }}</p>
+        <p style="margin-top:1rem"><a href="/contact" class="btn-primary">{{ __('Contact us →') }}</a></p>
     </div>
 @else
 {{-- Rail side, before the shell paints so a remembered "right" never jumps. --}}
@@ -1139,7 +1139,7 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
             'share' => null, 'subs' => [], 'rail' => 'featured'];
     }
     if ($menuOffers->isNotEmpty()) {
-        $secs[] = ['id' => 'menu-view-offers', 'name' => 'Offers', 'dv' => false, 'image' => null,
+        $secs[] = ['id' => 'menu-view-offers', 'name' => __('Offers'), 'dv' => false, 'image' => null,
             'tint' => 'linear-gradient(135deg, hsl(14 70% 46%) 0%, hsl(0 62% 32%) 100%)', 'count' => $menuOffers->count(),
             'share' => null, 'subs' => [], 'rail' => 'offers'];
     }
@@ -1176,7 +1176,7 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
     {{-- The rail: main categories only. The highlight glides between them as
          the page scrolls (owner, 2026-10-07). Plain anchor links, so it works
          before any script runs. --}}
-    <nav class="menu-rail" aria-label="Menu categories">
+    <nav class="menu-rail" aria-label="{{ __('Menu categories') }}">
         <div class="menu-rail-scroll">
         <div class="menu-rail-list">
             <span class="menu-rail-pill" aria-hidden="true"></span>
@@ -1192,9 +1192,9 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                         <span class="menu-rail-label">{{ $sec['name'] }}</span>
                     </a>
                 @elseif($sec['rail'] === 'offers')
-                    <a href="#menu-view-offers" data-testid="menu-offers-pill" data-sec="menu-view-offers" aria-label="Offers">
+                    <a href="#menu-view-offers" data-testid="menu-offers-pill" data-sec="menu-view-offers" aria-label="{{ __('Offers') }}">
                         <span class="menu-rail-thumb" aria-hidden="true">%</span>
-                        <span class="menu-rail-label">Offers</span>
+                        <span class="menu-rail-label">{{ __('Offers') }}</span>
                     </a>
                 @elseif($sec['rail'] === 'category')
                     {{-- The count is a bare numeral beside a name; spoken aloud it
@@ -1219,7 +1219,7 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
             <a href="{{ $menuCatering->isNotEmpty() ? '#cat-events' : '/order/events' }}"
                class="menu-rail-events" data-testid="cat-rail-events"
                @if($menuCatering->isNotEmpty()) data-sec="cat-events" @endif
-               aria-label="{{ $menuCatering->isNotEmpty() ? 'Events, ' . $menuCatering->count() . ' ' . Str::plural('item', $menuCatering->count()) : 'Events' }}">
+               aria-label="{{ $menuCatering->isNotEmpty() ? __('Events, :n items', ['n' => $menuCatering->count()]) : __('Events') }}">
                 <span class="menu-rail-thumb" aria-hidden="true">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M5.8 11.3 2 22l10.7-3.79"/>
@@ -1233,7 +1233,7 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                         <path d="M11 13c1.93 1.93 2.83 4.17 2 5-.83.83-3.07-.07-5-2-1.93-1.93-2.83-4.17-2-5 .83-.83 3.07.07 5 2Z"/>
                     </svg>
                 </span>
-                <span class="menu-rail-label">Events</span>
+                <span class="menu-rail-label">{{ __('Events') }}</span>
             </a>
         </div>
         </div>
@@ -1259,7 +1259,7 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                      current one shown. --}}
                 <div class="mh-actions">
                     <button type="button" class="mh-search" id="menuSearchToggle"
-                            aria-expanded="false" aria-controls="menuSearchPanel" aria-label="Search, sort and filter">
+                            aria-expanded="false" aria-controls="menuSearchPanel" aria-label="{{ __('Search, sort and filter') }}">
                         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
                     </button>
                     <div class="mh-shares">
@@ -1291,7 +1291,7 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                     @endforeach
                 </div>
                 <button type="button" class="mh-all" hidden aria-haspopup="dialog" data-testid="menu-all">
-                    All <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                    {{ __('All') }} <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
                 </button>
             </div>
             {{-- Search, layout, sort and filters, behind the search icon so they
@@ -1302,39 +1302,39 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                 <div class="menu-filters" data-testid="menu-filters">
                     <div class="menu-tools">
                         <div class="menu-search" id="menuSearchWrap">
-                            <label class="visually-hidden" for="menuSearch">Search the menu</label>
+                            <label class="visually-hidden" for="menuSearch">{{ __('Search the menu') }}</label>
                             <span class="menu-search-icon" aria-hidden="true">{{ \App\Support\UiIcon::svg('search', 16) }}</span>
-                            <input type="search" id="menuSearch" placeholder="Search the menu"
+                            <input type="search" id="menuSearch" placeholder="{{ __('Search the menu') }}"
                                    autocomplete="off" enterkeyhint="search">
-                            <button type="button" class="menu-search-close" aria-label="Close search">✕</button>
+                            <button type="button" class="menu-search-close" aria-label="{{ __('Close search') }}">✕</button>
                         </div>
                     </div>
                     <div class="menu-tools menu-tools--options">
-                        <div class="menu-view-toggle" role="group" aria-label="Menu layout">
-                            <button type="button" class="menu-view-btn is-active" data-view="grid" aria-pressed="true">Grid</button>
-                            <button type="button" class="menu-view-btn" data-view="list" aria-pressed="false">List</button>
+                        <div class="menu-view-toggle" role="group" aria-label="{{ __('Menu layout') }}">
+                            <button type="button" class="menu-view-btn is-active" data-view="grid" aria-pressed="true">{{ __('Grid') }}</button>
+                            <button type="button" class="menu-view-btn" data-view="list" aria-pressed="false">{{ __('List') }}</button>
                         </div>
                         <button type="button" class="menu-tool menu-rail-side" id="menuRailSide"
                                 data-testid="menu-rail-side"
-                                aria-pressed="false" aria-label="Move the categories to the right side"
-                                title="Swap the category rail to the other side">
+                                aria-pressed="false" aria-label="{{ __('Move the categories to the right side') }}"
+                                title="{{ __('Swap the category rail to the other side') }}">
                             <span class="menu-rail-side__icon" aria-hidden="true">{{ \App\Support\UiIcon::svg('arrow-left-right', 16) }}</span>
                         </button>
                         {{-- The menu on paper (owner, 2026-09-05). A link rather than
                              window.print(): printing this page would put the rail
                              and the pinned banner on the paper. --}}
                         <a href="{{ route('menu.print') }}" class="menu-tool" data-testid="menu-print-link"
-                           title="Print or save the menu">
+                           title="{{ __('Print or save the menu') }}">
                             {{ \App\Support\UiIcon::svg('printer', 16) }} Print
                         </a>
                     </div>
                     <div class="menu-filter-rows">
                     {{-- Sort is one choice, so these are radio-ish: exactly one on at a
                          time. Filters below are independent and combine. --}}
-                    <div class="menu-chips" role="group" aria-label="Sort the menu">
+                    <div class="menu-chips" role="group" aria-label="{{ __('Sort the menu') }}">
                         <button type="button" class="menu-chip menu-sort is-active" data-sort="name" aria-pressed="true">A–Z</button>
-                        <button type="button" class="menu-chip menu-sort" data-sort="price-low" aria-pressed="false">Price ↑</button>
-                        <button type="button" class="menu-chip menu-sort" data-sort="price-high" aria-pressed="false">Price ↓</button>
+                        <button type="button" class="menu-chip menu-sort" data-sort="price-low" aria-pressed="false">{{ __('Price ↑') }}</button>
+                        <button type="button" class="menu-chip menu-sort" data-sort="price-high" aria-pressed="false">{{ __('Price ↓') }}</button>
                     </div>
 
                     @php
@@ -1344,21 +1344,21 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                     @if($hasSpecial || $hasNew || $menuDietaryFilters !== [])
                         {{-- Only chips that can actually match something. A filter that
                              always returns nothing is worse than no filter. --}}
-                        <div class="menu-chips" role="group" aria-label="Filter the menu">
+                        <div class="menu-chips" role="group" aria-label="{{ __('Filter the menu') }}">
                             @if($hasSpecial)
-                                <button type="button" class="menu-chip" data-filter="special" aria-pressed="false">% Offers</button>
+                                <button type="button" class="menu-chip" data-filter="special" aria-pressed="false">{{ __('% Offers') }}</button>
                             @endif
                             @if($hasNew)
-                                <button type="button" class="menu-chip" data-filter="new" aria-pressed="false">New</button>
+                                <button type="button" class="menu-chip" data-filter="new" aria-pressed="false">{{ __('New') }}</button>
                             @endif
                             @foreach($menuDietaryFilters as $chip)
                                 <button type="button" class="menu-chip" data-filter="diet:{{ $chip['slug'] }}" aria-pressed="false">{{ $chip['label'] }}</button>
                             @endforeach
-                            <button type="button" class="menu-chip menu-clear-chip" hidden>Clear</button>
+                            <button type="button" class="menu-chip menu-clear-chip" hidden>{{ __('Clear') }}</button>
                         </div>
                     @else
                         <div class="menu-chips">
-                            <button type="button" class="menu-chip menu-clear-chip" hidden>Clear</button>
+                            <button type="button" class="menu-chip menu-clear-chip" hidden>{{ __('Clear') }}</button>
                         </div>
                     @endif
                     </div>{{-- /.menu-filter-rows --}}
@@ -1369,7 +1369,7 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
         @endif
 
         <p class="menu-no-match" data-testid="menu-no-match" hidden>
-            Nothing on the menu matches that. <button type="button" class="menu-clear">Clear filters</button>
+            {{ __('Nothing on the menu matches that.') }} <button type="button" class="menu-clear">{{ __('Clear filters') }}</button>
         </p>
 
         @foreach($secs as $sec)
@@ -1389,7 +1389,7 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                 </section>
             @elseif($sec['rail'] === 'offers')
                 <section class="menu-sec menu-offers" id="menu-view-offers" data-testid="menu-view-offers" {!! $secAttrs !!}>
-                    <h2 class="visually-hidden">Offers</h2>
+                    <h2 class="visually-hidden">{{ __('Offers') }}</h2>
                     <div class="menu-grid">
                         @foreach($menuOffers as $offer)
                             @php
@@ -1476,10 +1476,10 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                 {{-- Event & catering menu — the same block the order app ends with
                      (owner, 2026-09-21). The wizard is one tap away inside. --}}
                 <section class="menu-sec menu-cat-section menu-cat-section--events" id="cat-events" data-testid="menu-events-section" {!! $secAttrs !!}>
-                    <h2 class="visually-hidden">Event &amp; catering menu</h2>
+                    <h2 class="visually-hidden">{{ __('Event & catering menu') }}</h2>
                     <div class="menu-subcat-block">
                         <p class="menu-events-plan">
-                            <a href="/order/events" class="btn-outline" data-testid="menu-events-plan">Plan an event →</a>
+                            <a href="/order/events" class="btn-outline" data-testid="menu-events-plan">{{ __('Plan an event →') }}</a>
                         </p>
                         <div class="menu-grid">
                             @foreach($menuCatering as $item)
@@ -1491,13 +1491,13 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
             @endif
         @endforeach
         <div class="menu-cta">
-            <a href="/order/menu" class="btn-primary">Start your order →</a>
+            <a href="/order/menu" class="btn-primary">{{ __('Start your order →') }}</a>
         </div>
         {{-- One quiet line, under the food, never on a card or in the rail
              (owner, 2026-09-21: complaint details "shortly" in the menu). --}}
         <p class="menu-complain" data-testid="menu-complain">
             {{ $menuComplaintLine }}
-            <a href="/complain?from=menu">Make a complaint</a>
+            <a href="/complain?from=menu">{{ __('Make a complaint') }}</a>
         </p>
     </div>
 </div>
@@ -1511,7 +1511,7 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
     <div class="mh-sheet-head">
         <h2 id="mhSheetTitle" class="mh-sheet-title"></h2>
         <span class="mh-sheet-count"></span>
-        <button type="button" class="mh-sheet-x" aria-label="Close">×</button>
+        <button type="button" class="mh-sheet-x" aria-label="{{ __('Close') }}">×</button>
     </div>
     <ul class="mh-sheet-list"></ul>
 </div>
@@ -1750,7 +1750,7 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
         if (!railSideBtn) return;
         var right = document.documentElement.classList.contains('rail-right');
         railSideBtn.setAttribute('aria-pressed', right ? 'true' : 'false');
-        railSideBtn.setAttribute('aria-label', right ? 'Move the categories to the left side' : 'Move the categories to the right side');
+        railSideBtn.setAttribute('aria-label', right ? @json(__('Move the categories to the left side')) : @json(__('Move the categories to the right side')));
     }
     if (railSideBtn) {
         railSideBtn.addEventListener('click', function () {
@@ -2249,7 +2249,7 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
      today. That is the whole safety argument for touching the busiest page
      on the site. --}}
 <div class="menu-sheet-backdrop" data-sheet-backdrop hidden></div>
-<div class="menu-sheet" data-sheet role="dialog" aria-modal="true" aria-label="Menu item" hidden>
+<div class="menu-sheet" data-sheet role="dialog" aria-modal="true" aria-label="{{ __('Menu item') }}" hidden>
     {{-- A bar of its own, so the sheet's controls stop competing with the
          item's. Floating the close button over the hero put it on top of the
          favourite heart, and hiding the "Full menu" link left Share stranded
@@ -2296,7 +2296,7 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
         // favourites are delegated from the document and need nothing.
         if (window.__shareInit) window.__shareInit();
         var heading = body.querySelector('h1');
-        if (heading) sheet.setAttribute('aria-label', heading.textContent || 'Menu item');
+        if (heading) sheet.setAttribute('aria-label', heading.textContent || @json(__('Menu item')));
     }
 
     function load(href) {

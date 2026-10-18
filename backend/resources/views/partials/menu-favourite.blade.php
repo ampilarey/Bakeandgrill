@@ -15,11 +15,11 @@
             class="menu-fav{{ $liked ? ' is-on' : '' }}"
             data-item="{{ $item->id }}"
             aria-pressed="{{ $liked ? 'true' : 'false' }}"
-            aria-label="{{ $liked ? 'Remove from favourites' : 'Add to favourites' }}">
+            aria-label="{{ $liked ? __('Remove from favourites') : __('Add to favourites') }}">
         <span class="menu-fav-icon" aria-hidden="true">{{ \App\Support\UiIcon::svg('heart', 18) }}</span>
     </button>
 @else
-    <a class="menu-fav" href="/customer/login" aria-label="Sign in to save favourites">
+    <a class="menu-fav" href="/customer/login" aria-label="{{ __('Sign in to save favourites') }}">
         <span class="menu-fav-icon" aria-hidden="true">{{ \App\Support\UiIcon::svg('heart', 18) }}</span>
     </a>
 @endauth

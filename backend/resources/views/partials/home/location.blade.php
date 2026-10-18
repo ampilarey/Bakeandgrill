@@ -33,7 +33,7 @@
                             <span style="color:var(--danger-text);font-weight:700;">{{ $homeClosedBadgeText }}</span>
                             @if($todayHours) · Opens {{ $todayHours['open'] }} @endif
                         @endif
-                        <small><a href="/hours" style="color:var(--amber);">See full schedule →</a></small>
+                        <small><a href="/hours" style="color:var(--amber);">{{ __('See full schedule →') }}</a></small>
                     </div>
                 </div>
 
@@ -41,7 +41,7 @@
                     <div class="loc-detail-dot"></div>
                     <div class="loc-detail-text">
                         {{ $phone }}
-                        <small>Call to reserve or ask about custom orders</small>
+                        <small>{{ __('Call to reserve or ask about custom orders') }}</small>
                     </div>
                 </div>
 

@@ -15,7 +15,7 @@
     // Separate address line + city for the card display
     $addressParts = array_map('trim', explode(',', $address, 2));
     $addressLine1 = $addressParts[0] ?? $address;
-    $addressLine2 = $addressParts[1] ?? 'Maldives';
+    $addressLine2 = $addressParts[1] ?? __('Maldives');
     // The schedule set in Admin, the same one the Hours page and footer show
     // (UI audit, 2026-10-10: this card printed a fixed 7 AM to 11 PM).
     $hoursGroups = \App\Support\OpeningHoursText::groups();
@@ -252,9 +252,9 @@
 {{-- The complaint box (owner, 2026-09-19): straight to the owner, anonymous or with a number. --}}
 <section class="contact-events-cta" data-testid="contact-complaint-cta">
     <div style="background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:1.75rem 2rem; text-align:center;">
-        <h2 style="font-size:1.35rem; font-weight:800; color:var(--dark); margin:0 0 0.5rem;">Something to complain about?</h2>
-        <p style="margin:0 0 1rem; color:var(--muted); font-size:0.95rem;">Staff, food, service or cleanliness — tell the owner directly. Stay anonymous, or leave your number and we will message you back.</p>
-        <a href="/complain" class="btn-primary" style="display:inline-flex; min-height:44px; align-items:center; padding:0 1.25rem;">Make a complaint →</a>
+        <h2 style="font-size:1.35rem; font-weight:800; color:var(--dark); margin:0 0 0.5rem;">{{ __('Something to complain about?') }}</h2>
+        <p style="margin:0 0 1rem; color:var(--muted); font-size:0.95rem;">{{ __('Staff, food, service or cleanliness — tell the owner directly. Stay anonymous, or leave your number and we will message you back.') }}</p>
+        <a href="/complain" class="btn-primary" style="display:inline-flex; min-height:44px; align-items:center; padding:0 1.25rem;">{{ __('Make a complaint →') }}</a>
     </div>
 </section>
 
@@ -262,7 +262,7 @@
     <div style="background:var(--amber-light); border:1px solid var(--border); border-radius:16px; padding:1.75rem 2rem; text-align:center;">
         <h2 style="font-size:1.35rem; font-weight:800; color:var(--dark); margin:0 0 0.5rem;">{{ $contactEventsHeadline }}</h2>
         <p style="margin:0 0 1rem; color:var(--muted); font-size:0.95rem;">{{ $contactEventsText }}</p>
-        <a href="/order/events" class="btn-primary" style="display:inline-flex; min-height:44px; align-items:center; padding:0 1.25rem;">Plan your event →</a>
+        <a href="/order/events" class="btn-primary" style="display:inline-flex; min-height:44px; align-items:center; padding:0 1.25rem;">{{ __('Plan your event →') }}</a>
     </div>
 </section>
 
@@ -270,7 +270,7 @@
     <h2 class="map-heading">{{ \App\Support\UiIcon::label((string) content('contact_map_heading', 'Find Us on the Map'), 'map-pin', 20) }}</h2>
     <div class="map-wrap">
         <iframe
-            title="Bake & Grill location on Google Maps"
+            title="{{ __('Bake & Grill location on Google Maps') }}"
             src="{{ $mapsEmbedUrl }}"
             allowfullscreen=""
             loading="lazy"

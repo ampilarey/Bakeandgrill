@@ -22,9 +22,9 @@
 <section class="{{ $reviewSectionClass }}">
     <div class="section-inner">
         <div class="section-header">
-            <span class="section-eyebrow">What guests say</span>
-            <h2 class="section-title">Recent reviews</h2>
-            <p class="section-sub">Real feedback from people who ordered with us.</p>
+            <span class="section-eyebrow">{{ __('What guests say') }}</span>
+            <h2 class="section-title">{{ __('Recent reviews') }}</h2>
+            <p class="section-sub">{{ __('Real feedback from people who ordered with us.') }}</p>
         </div>
         <div class="location-grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));">
             @foreach($featuredReviews as $review)
@@ -35,7 +35,7 @@
                     </p>
                     <p style="margin:0 0 0.75rem;line-height:1.5;color:var(--ink);">“{{ \Illuminate\Support\Str::limit($review->comment, 160) }}”</p>
                     <p style="margin:0;font-size:0.85rem;color:var(--muted);">
-                        — {{ $review->is_anonymous ? 'Guest' : ($review->customer?->name ?: 'Guest') }}
+                        — {{ $review->is_anonymous ? __('Guest') : ($review->customer?->name ?: __('Guest')) }}
                         @if($review->item?->name)
                             · {{ $review->item->name }}
                         @endif

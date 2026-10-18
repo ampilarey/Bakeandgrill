@@ -12,13 +12,13 @@
             ->first(['id', 'order_number', 'status']);
     }
     $orderBarStatuses = [
-        'payment_pending' => ['label' => 'Awaiting payment', 'color' => '#92400e', 'dot' => '#f59e0b', 'active' => true],
-        'pending'         => ['label' => 'Payment received',  'color' => '#1e40af', 'dot' => '#3b82f6', 'active' => true],
-        'paid'            => ['label' => 'Confirmed',          'color' => '#065f46', 'dot' => '#10b981', 'active' => true],
-        'preparing'       => ['label' => 'Being prepared',     'color' => '#1e40af', 'dot' => '#3b82f6', 'active' => true],
-        'ready'           => ['label' => 'Ready for pickup',   'color' => '#065f46', 'dot' => '#10b981', 'active' => true],
-        'completed'       => ['label' => 'Completed',          'color' => '#374151', 'dot' => '#9ca3af', 'active' => false],
-        'cancelled'       => ['label' => 'Cancelled',          'color' => '#991b1b', 'dot' => '#ef4444', 'active' => false],
+        'payment_pending' => ['label' => __('Awaiting payment'), 'color' => '#92400e', 'dot' => '#f59e0b', 'active' => true],
+        'pending'         => ['label' => __('Payment received'),  'color' => '#1e40af', 'dot' => '#3b82f6', 'active' => true],
+        'paid'            => ['label' => __('Confirmed'),          'color' => '#065f46', 'dot' => '#10b981', 'active' => true],
+        'preparing'       => ['label' => __('Being prepared'),     'color' => '#1e40af', 'dot' => '#3b82f6', 'active' => true],
+        'ready'           => ['label' => __('Ready for pickup'),   'color' => '#065f46', 'dot' => '#10b981', 'active' => true],
+        'completed'       => ['label' => __('Completed'),          'color' => '#374151', 'dot' => '#9ca3af', 'active' => false],
+        'cancelled'       => ['label' => __('Cancelled'),          'color' => '#991b1b', 'dot' => '#ef4444', 'active' => false],
     ];
     $orderBarMeta = $orderBar ? ($orderBarStatuses[$orderBar->status] ?? ['label' => $orderBar->status, 'color' => '#374151', 'dot' => '#9ca3af', 'active' => false]) : null;
     $orderBarLink = $orderBar
@@ -123,11 +123,13 @@
     $openingHoursSvc         = app(\App\Services\OpeningHoursService::class);
     $footerHours             = $openingHoursSvc->getHoursForDisplay();
     $footerHoursToday        = now(config('opening_hours.timezone'))->dayOfWeek;
-    $footerDayNames          = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    $footerDayNames          = array_map(fn (string $d): string => __($d), ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']);
+    // Dhivehi day names are not cut to three letters.
+    $footerDayShort          = fn (string $d): string => app()->getLocale() === 'dv' ? $d : \Illuminate\Support\Str::substr($d, 0, 3);
     $footerRamadanActive     = $openingHoursSvc->isRamadanHoursActive();
     $footerRamadanNote       = content('footer_ramadan_note', 'Ramadan hours — open after Maghrib.');
     $footerTodayHours        = $footerHours[$footerHoursToday] ?? null;
-    $footerTodayLabel        = \App\Support\OpeningHoursText::range(is_array($footerTodayHours) ? $footerTodayHours : null) ?? 'Closed';
+    $footerTodayLabel        = \App\Support\OpeningHoursText::range(is_array($footerTodayHours) ? $footerTodayHours : null) ?? __('Closed');
     $homeChatLabel           = trim((string) content('home_chat_label', 'Chat with us'));
     // Compact mobile footer legal links — shared with Order App BrandFooter.
     $footerLinksRaw = content('footer_links', '[]');
@@ -1810,13 +1812,13 @@
             <span>{{ $siteName }}</span>
         </a>
         {{-- Desktop nav: discovery links. Prayer sits in-row like order-app TopNav. --}}
-        <nav class="header-nav" aria-label="Main navigation">
+        <nav class="header-nav" aria-label="{{ __('Main navigation') }}">
             {{-- Discovery links, so Menu is the server-rendered page. The
                  order CTA in .header-actions below is the one that opens the
                  SPA — same split as the mobile bottom nav. --}}
-            <a href="/menu">Menu</a>
-            <a href="/#offers">Offers</a>
-            <a href="/order/events">Pre-order</a>
+            <a href="/menu">{{ __('Menu') }}</a>
+            <a href="/#offers">{{ __('Offers') }}</a>
+            <a href="/order/events">{{ __('Pre-order') }}</a>
         </nav>
         @if($showPrayerDesktopHeader)
         <div class="header-prayer" data-surface="website.desktop.header" data-block="prayer_bar">
@@ -1840,18 +1842,18 @@
                 </a>
                 <form method="POST" action="{{ route('customer.logout') }}" style="display:inline;">
                     @csrf
-                    <button type="submit" class="hdr-logout-btn">Log out</button>
+                    <button type="submit" class="hdr-logout-btn">{{ __('Log out') }}</button>
                 </form>
             @else
-                <a href="/customer/login" class="hdr-login">Login</a>
+                <a href="/customer/login" class="hdr-login">{{ __('Login') }}</a>
             @endauth
             @if($languageSwitcherEnabled)
-            <div class="lang-switcher" role="group" aria-label="Language">
-                <a href="{{ $langSwitchEnUrl }}" class="{{ $contentLocale === 'en' ? 'is-active' : '' }}" aria-label="Switch to English">EN</a>
-                <a href="{{ $langSwitchDvUrl }}" class="{{ $contentLocale === 'dv' ? 'is-active' : '' }}" aria-label="Switch to Dhivehi">ދވ</a>
+            <div class="lang-switcher" role="group" aria-label="{{ __('Language') }}">
+                <a href="{{ $langSwitchEnUrl }}" class="{{ $contentLocale === 'en' ? 'is-active' : '' }}" aria-label="{{ __('Switch to English') }}">EN</a>
+                <a href="{{ $langSwitchDvUrl }}" class="{{ $contentLocale === 'dv' ? 'is-active' : '' }}" aria-label="{{ __('Switch to Dhivehi') }}">ދވ</a>
             </div>
             @endif
-            <button id="darkToggleDesktop" class="dark-toggle" aria-label="Toggle dark mode" title="Toggle dark mode"><span class="dark-toggle__moon">{{ \App\Support\UiIcon::svg('moon', 18) }}</span><span class="dark-toggle__sun">{{ \App\Support\UiIcon::svg('sun', 18) }}</span></button>
+            <button id="darkToggleDesktop" class="dark-toggle" aria-label="{{ __('Toggle dark mode') }}" title="{{ __('Toggle dark mode') }}"><span class="dark-toggle__moon">{{ \App\Support\UiIcon::svg('moon', 18) }}</span><span class="dark-toggle__sun">{{ \App\Support\UiIcon::svg('sun', 18) }}</span></button>
             <a href="/order/menu" class="hdr-order">{{ $navOrderCta }}</a>
         </div>
     </div>
@@ -1859,7 +1861,7 @@
     <div class="order-status-bar {{ !$orderBarMeta['active'] ? 'order-status-bar--neutral' : '' }}">
         <a href="/order/order-history" class="osb-left osb-left-link">
             <span class="osb-dot {{ $orderBarMeta['active'] ? 'osb-dot--pulse' : '' }}" style="background:{{ $orderBarMeta['dot'] }};"></span>
-            <span class="osb-label">My orders</span>
+            <span class="osb-label">{{ __('My orders') }}</span>
             <span class="osb-sep">·</span>
             <span class="osb-num">#{{ $orderBar->order_number ?? $orderBar->id }}</span>
             <span class="osb-sep">·</span>
@@ -1884,7 +1886,7 @@
 <div
     class="site-announcement site-announcement--{{ e($annStyle) }}{{ $showAnnouncementDesktop ? '' : ' site-announcement--mobile-only' }}{{ $showAnnouncementMobile ? '' : ' site-announcement--desktop-only' }}"
     role="banner"
-    aria-label="Site announcement"
+    aria-label="{{ __('Site announcement') }}"
     data-block="announcement"
 >
     @if($annUrl)
@@ -1932,12 +1934,12 @@
                     </span>
                 </a>
             @else
-                <a href="/customer/login" style="font-size:0.8rem;color:var(--muted);font-weight:500;padding:0.4rem 0.75rem;">Login</a>
+                <a href="/customer/login" style="font-size:0.8rem;color:var(--muted);font-weight:500;padding:0.4rem 0.75rem;">{{ __('Login') }}</a>
             @endauth
             @if($languageSwitcherEnabled)
-            <div class="lang-switcher" role="group" aria-label="Language">
-                <a href="{{ $langSwitchEnUrl }}" class="{{ $contentLocale === 'en' ? 'is-active' : '' }}" aria-label="Switch to English">EN</a>
-                <a href="{{ $langSwitchDvUrl }}" class="{{ $contentLocale === 'dv' ? 'is-active' : '' }}" aria-label="Switch to Dhivehi">ދވ</a>
+            <div class="lang-switcher" role="group" aria-label="{{ __('Language') }}">
+                <a href="{{ $langSwitchEnUrl }}" class="{{ $contentLocale === 'en' ? 'is-active' : '' }}" aria-label="{{ __('Switch to English') }}">EN</a>
+                <a href="{{ $langSwitchDvUrl }}" class="{{ $contentLocale === 'dv' ? 'is-active' : '' }}" aria-label="{{ __('Switch to Dhivehi') }}">ދވ</a>
             </div>
             @endif
         </div>
@@ -1949,7 +1951,7 @@
 <div class="order-status-bar order-status-bar-mob {{ !$orderBarMeta['active'] ? 'order-status-bar--neutral' : '' }}">
     <a href="/order/order-history" class="osb-left osb-left-link">
         <span class="osb-dot {{ $orderBarMeta['active'] ? 'osb-dot--pulse' : '' }}" style="background:{{ $orderBarMeta['dot'] }};"></span>
-        <span class="osb-label">My orders</span>
+        <span class="osb-label">{{ __('My orders') }}</span>
         <span class="osb-sep">·</span>
         <span class="osb-num">#{{ $orderBar->order_number ?? $orderBar->id }}</span>
         <span class="osb-sep">·</span>
@@ -2013,22 +2015,22 @@
         </div>
         <div class="footer-col footer-col--links">
             <h4>{{ $footerQuickLinksHeading }}</h4>
-            <a href="/">Home</a>
-            <a href="/order/menu">Order Online</a>
-            <a href="/order/events">Catering &amp; Events</a>
-            <a href="/hours">Opening Hours</a>
-            <a href="/contact">Contact Us</a>
-            <a href="/complain?from=footer">Make a Complaint</a>
+            <a href="/">{{ __('Home') }}</a>
+            <a href="/order/menu">{{ __('Order Online') }}</a>
+            <a href="/order/events">{{ __('Catering & Events') }}</a>
+            <a href="/hours">{{ __('Opening Hours') }}</a>
+            <a href="/contact">{{ __('Contact Us') }}</a>
+            <a href="/complain?from=footer">{{ __('Make a Complaint') }}</a>
             @if(trim((string) content('complaint_prompt_text', '')) !== '')<p class="footer-complain-line" data-testid="footer-complain-line">{{ trim((string) content('complaint_prompt_text', '')) }}</p>@endif
             {{-- The email newsletter (iruali import plan, feature 4): double opt-in. --}}
             <form method="post" action="{{ route('newsletter.subscribe') }}" class="footer-newsletter" data-testid="footer-newsletter">
                 @csrf
-                <label for="footer-newsletter-email">Get our news and offers by email</label>
+                <label for="footer-newsletter-email">{{ __('Get our news and offers by email') }}</label>
                 <div class="footer-newsletter-row">
                     <input id="footer-newsletter-email" type="email" name="email" required maxlength="190" placeholder="you@example.com" autocomplete="email">
                     <input type="text" name="website" value="" tabindex="-1" autocomplete="off" aria-hidden="true" class="footer-newsletter-hp">
                     <input type="hidden" name="locale" value="{{ app()->getLocale() === 'dv' ? 'dv' : 'en' }}">
-                    <button type="submit">Sign up</button>
+                    <button type="submit">{{ __('Sign up') }}</button>
                 </div>
                 @if(session('newsletter_status'))<p class="footer-newsletter-note" role="status">{{ session('newsletter_status') }}</p>@endif
             </form>
@@ -2038,8 +2040,8 @@
             <div class="footer-hours-today" data-footer-hours-today>
                 <div class="footer-hours-row is-today">
                     <span class="footer-hours-day">
-                        {{ \Illuminate\Support\Str::substr($footerDayNames[$footerHoursToday] ?? 'Today', 0, 3) }}
-                        <span class="footer-hours-today-tag">Today</span>
+                        {{ $footerDayShort($footerDayNames[$footerHoursToday] ?? __('Today')) }}
+                        <span class="footer-hours-today-tag">{{ __('Today') }}</span>
                     </span>
                     <span>{{ $footerTodayLabel }}</span>
                 </div>
@@ -2049,19 +2051,19 @@
                     @php $dayHours = $footerHours[$index] ?? null; @endphp
                     <div class="footer-hours-row {{ $index === $footerHoursToday ? 'is-today' : '' }}">
                         <span class="footer-hours-day">
-                            {{ \Illuminate\Support\Str::substr($day, 0, 3) }}
+                            {{ $footerDayShort($day) }}
                             @if($index === $footerHoursToday)
-                                <span class="footer-hours-today-tag">Today</span>
+                                <span class="footer-hours-today-tag">{{ __('Today') }}</span>
                             @endif
                         </span>
-                        <span>{{ \App\Support\OpeningHoursText::range(is_array($dayHours) ? $dayHours : null) ?? 'Closed' }}</span>
+                        <span>{{ \App\Support\OpeningHoursText::range(is_array($dayHours) ? $dayHours : null) ?? __('Closed') }}</span>
                     </div>
                 @endforeach
             </div>
             @if($footerRamadanActive && trim((string) $footerRamadanNote) !== '')
                 <p class="footer-ramadan-note">{{ $footerRamadanNote }}</p>
             @endif
-            <a href="/hours" class="footer-full-hours-link">Full hours →</a>
+            <a href="/hours" class="footer-full-hours-link">{{ __('Full hours →') }}</a>
         </div>
         <div class="footer-col footer-col--location">
             <h4>{{ $footerLocationHeading }}</h4>
@@ -2069,16 +2071,16 @@
             @if(trim((string) $landmark) !== '')
                 <p>{{ $landmark }}</p>
             @endif
-            <a href="{{ $mapsUrl }}" target="_blank" rel="noopener">Get directions</a>
+            <a href="{{ $mapsUrl }}" target="_blank" rel="noopener">{{ __('Get directions') }}</a>
         </div>
         <div class="footer-col footer-col--contact">
             <h4>{{ $footerContactHeading }}</h4>
             <a href="{{ $phoneTel }}">{{ $phone }}</a>
             <a href="mailto:{{ $email }}">{{ $email }}</a>
             <div class="footer-legal">
-                <a href="/order/privacy">Privacy Policy</a>
-                <a href="/terms">Terms &amp; Conditions</a>
-                <a href="/refund">Refund Policy</a>
+                <a href="/order/privacy">{{ __('Privacy Policy') }}</a>
+                <a href="/terms">{{ __('Terms & Conditions') }}</a>
+                <a href="/refund">{{ __('Refund Policy') }}</a>
             </div>
         </div>
     </div>
@@ -2088,7 +2090,7 @@
     </div>
     <div class="footer-bottom">
         <span>© {{ date('Y') }} {{ $siteName }}. {{ $footerRightsSuffix }}</span>
-        <span>Malé, Maldives</span>
+        <span>{{ __('Malé, Maldives') }}</span>
     </div>
     </div>{{-- /.footer-desktop --}}
     @endif
@@ -2142,12 +2144,12 @@
                 </div>
                 <div class="brand-footer__col">
                     <h4 class="brand-footer__heading">{{ $footerQuickLinksHeading }}</h4>
-                    <a href="/" class="brand-footer__link">Home</a>
-                    <a href="/order/menu" class="brand-footer__link">Order Online</a>
-                    <a href="/order/events" class="brand-footer__link">Catering &amp; Events</a>
-                    <a href="/hours" class="brand-footer__link">Opening Hours</a>
-                    <a href="/contact" class="brand-footer__link">Contact Us</a>
-                    <a href="/complain?from=footer" class="brand-footer__link">Make a Complaint</a>
+                    <a href="/" class="brand-footer__link">{{ __('Home') }}</a>
+                    <a href="/order/menu" class="brand-footer__link">{{ __('Order Online') }}</a>
+                    <a href="/order/events" class="brand-footer__link">{{ __('Catering & Events') }}</a>
+                    <a href="/hours" class="brand-footer__link">{{ __('Opening Hours') }}</a>
+                    <a href="/contact" class="brand-footer__link">{{ __('Contact Us') }}</a>
+                    <a href="/complain?from=footer" class="brand-footer__link">{{ __('Make a Complaint') }}</a>
                     @if(trim((string) content('complaint_prompt_text', '')) !== '')<p class="footer-complain-line" data-testid="footer-complain-line">{{ trim((string) content('complaint_prompt_text', '')) }}</p>@endif
                 </div>
                 <div class="brand-footer__col">
@@ -2158,7 +2160,7 @@
                     @if(trim((string) $landmark) !== '')
                         <p class="brand-footer__meta brand-footer__meta--muted">{{ $landmark }}</p>
                     @endif
-                    <a href="{{ $mapsUrl }}" target="_blank" rel="noopener" class="brand-footer__link">Get directions</a>
+                    <a href="{{ $mapsUrl }}" target="_blank" rel="noopener" class="brand-footer__link">{{ __('Get directions') }}</a>
                     <a href="{{ $phoneTel }}" class="brand-footer__link">{{ $phone }}</a>
                     <a href="mailto:{{ $email }}" class="brand-footer__link">{{ $email }}</a>
                 </div>
@@ -2167,14 +2169,14 @@
                 <span>{{ $footerPaymentsText }}</span>
                 <span>{{ $footerDeliveryText }}</span>
             </div>
-            <nav class="brand-footer__legal" aria-label="Legal">
+            <nav class="brand-footer__legal" aria-label="{{ __('Legal') }}">
                 @foreach($footerLegalLinks as $legalLink)
                     <a href="{{ $legalLink['url'] }}" class="brand-footer__legal-link">{{ $legalLink['label'] }}</a>
                 @endforeach
             </nav>
             <div class="brand-footer__bottom">
                 <span>© {{ date('Y') }} {{ $siteName }}. {{ $footerRightsSuffix }}</span>
-                <span>Malé, Maldives</span>
+                <span>{{ __('Malé, Maldives') }}</span>
             </div>
         </div>
     </div>
@@ -2189,13 +2191,13 @@
         && \App\Domains\Content\Blocks\BlockDeviceSettings::showMobile($websiteBottomNav['settings']);
 @endphp
 @if($showWebsiteBottomNav)
-<nav class="mobile-bottom-nav" aria-label="Mobile navigation" data-mobile-bottom-nav data-block="bottom_nav">
+<nav class="mobile-bottom-nav" aria-label="{{ __('Mobile navigation') }}" data-mobile-bottom-nav data-block="bottom_nav">
     <a href="/" class="mob-nav-item" data-nav="home">
         <span class="mob-nav-icon" aria-hidden="true">
             <img class="mob-nav-brand-logo brand-logo--light" src="{{ $logoUrl }}" alt="" width="24" height="24" decoding="async">
             <img class="mob-nav-brand-logo brand-logo--dark" src="{{ $logoDarkUrl }}" alt="" width="24" height="24" decoding="async">
         </span>
-        <span class="mob-nav-label">Home</span>
+        <span class="mob-nav-label">{{ __('Home') }}</span>
     </a>
     {{-- Menu = read the food, on the server-rendered page. Order = the SPA
          with the cart. Both pointed at /order/menu until 2026-08-22, so the
@@ -2204,33 +2206,33 @@
         <span class="mob-nav-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
         </span>
-        <span class="mob-nav-label">Menu</span>
+        <span class="mob-nav-label">{{ __('Menu') }}</span>
     </a>
     <a href="/order/menu" class="mob-nav-item mob-nav-order" data-nav="order">
         <span class="mob-nav-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
         </span>
-        <span class="mob-nav-label">Order</span>
+        <span class="mob-nav-label">{{ __('Order') }}</span>
     </a>
     <a href="/#offers" class="mob-nav-item" data-nav="offers">
         <span class="mob-nav-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
         </span>
-        <span class="mob-nav-label">Offers</span>
+        <span class="mob-nav-label">{{ __('Offers') }}</span>
     </a>
     <a href="/order/account" class="mob-nav-item" data-nav="account">
         <span class="mob-nav-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
         </span>
-        <span class="mob-nav-label">Account</span>
+        <span class="mob-nav-label">{{ __('Account') }}</span>
     </a>
 </nav>
 @endif
 
 {{-- Shared floating island dropdown (used by prayer banners) --}}
-<div id="hptPanel" class="hpt-panel" role="listbox" aria-label="Select island">
+<div id="hptPanel" class="hpt-panel" role="listbox" aria-label="{{ __('Select island') }}">
     <div class="hpt-search-row">
-        <input type="text" id="hptSearch" class="hpt-search-input" placeholder="Search island or atoll…" autocomplete="off" spellcheck="false">
+        <input type="text" id="hptSearch" class="hpt-search-input" placeholder="{{ __('Search island or atoll…') }}" autocomplete="off" spellcheck="false">
     </div>
     <div class="hpt-list" id="hptList"></div>
 </div>
@@ -2305,7 +2307,7 @@ window.bgFold = function (el, open, done) {
 
     /* Matches order-app PrayerBar: expandable banner + island picker */
     var PRAYERS   = ['fajr', 'sunrise', 'dhuhr', 'asr', 'maghrib', 'isha'];
-    var PRAYER_EN = { fajr: 'Fajr', sunrise: 'Sunrise', dhuhr: 'Dhuhr', asr: 'Asr', maghrib: 'Maghrib', isha: 'Isha' };
+    var PRAYER_EN = { fajr: @json(__('Fajr')), sunrise: @json(__('Sunrise')), dhuhr: @json(__('Dhuhr')), asr: @json(__('Asr')), maghrib: @json(__('Maghrib')), isha: @json(__('Isha')) };
     var ATOLL_ABBR = {
         'Haa Alif':'HA','Haa Dhaalu':'HDh','Shaviyani':'Sh','Noonu':'N','Raa':'R',
         'Baa':'B','Lhaviyani':'Lh','Kaafu':'K','Alif Alif':'AA','Alif Dhaalu':'ADh',
@@ -2406,7 +2408,7 @@ window.bgFold = function (el, open, done) {
             var tFajr = (tomorrowPrayers && tomorrowPrayers.fajr) ? tomorrowPrayers.fajr : prayers.fajr;
             var fajrMin=parseHHMM(tFajr);
             var msToMidnight=(24*60-nowMin)*60000-mv.getUTCSeconds()*1000;
-            pName='Fajr'; pTime=tFajr; cdStr=fmtCountdown(msToMidnight+fajrMin*60000);
+            pName=PRAYER_EN.fajr; pTime=tFajr; cdStr=fmtCountdown(msToMidnight+fajrMin*60000);
         }
         return { pName: pName, pTime: pTime, cdStr: cdStr };
     }
@@ -2531,12 +2533,12 @@ window.bgFold = function (el, open, done) {
             vis.forEach(function(isl){
                 var opt=document.createElement('div');
                 opt.className='hpt-option'+(currentIsland&&isl.id===currentIsland.id?' selected':'');
-                opt.textContent=isl.name_latin||'Island';
+                opt.textContent=isl.name_latin||@json(__('Island'));
                 opt.addEventListener('click', function(e){ e.stopPropagation(); closeDropdown(); selectIsland(isl); });
                 list.appendChild(opt);
             });
         });
-        if(!any){ var nr=document.createElement('div'); nr.className='hpt-no-results'; nr.textContent='No islands found'; list.appendChild(nr); }
+        if(!any){ var nr=document.createElement('div'); nr.className='hpt-no-results'; nr.textContent=@json(__('No islands found')); list.appendChild(nr); }
     }
 
     function openDropdown(trigger) {
@@ -2715,8 +2717,8 @@ window.bgFold = function (el, open, done) {
         // The button carries both drawn icons; CSS shows the one for the theme.
         var dt = document.getElementById('darkToggleDesktop');
         var dm = document.getElementById('darkToggleMobile');
-        if (dt) { dt.setAttribute('aria-label', d ? 'Switch to light mode' : 'Switch to dark mode'); }
-        if (dm) { dm.setAttribute('aria-label', d ? 'Switch to light mode' : 'Switch to dark mode'); }
+        if (dt) { dt.setAttribute('aria-label', d ? @json(__('Switch to light mode')) : @json(__('Switch to dark mode'))); }
+        if (dm) { dm.setAttribute('aria-label', d ? @json(__('Switch to light mode')) : @json(__('Switch to dark mode'))); }
     }
     applyTheme(dark);
     function toggleDark() {

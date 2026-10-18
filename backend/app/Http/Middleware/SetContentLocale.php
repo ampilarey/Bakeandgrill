@@ -27,6 +27,7 @@ class SetContentLocale
         // When the admin toggle is off, always serve English (ignore cookie / ?lang=).
         if (!$switcherOn) {
             app()->instance('content.locale', 'en');
+            app()->setLocale('en');
 
             /** @var Response $response */
             $response = $next($request);
@@ -53,6 +54,8 @@ class SetContentLocale
         $locale = $queryLocale ?? $cookieLocale ?? 'en';
 
         app()->instance('content.locale', $locale);
+        // The page's own wording (__() in the views, lang/dv.json; feature 3b).
+        app()->setLocale($locale);
 
         /** @var Response $response */
         $response = $next($request);

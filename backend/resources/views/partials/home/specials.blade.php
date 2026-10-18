@@ -10,7 +10,7 @@
 <section class="{{ $sectionClass }}" id="offers">
     <div class="section-inner">
         <div class="section-header">
-            <span class="section-eyebrow">Limited time</span>
+            <span class="section-eyebrow">{{ __('Limited time') }}</span>
             <h2 class="section-title">{{ $offersHeadline }}</h2>
             <p class="section-sub">{{ $offersSubtext }}</p>
         </div>
@@ -55,7 +55,7 @@
                         ])
                     </div>
                     @endif
-                    <span class="cat-link" style="display: inline-flex; margin-top: 0.75rem; font-size: 0.8rem;">Order now →</span>
+                    <span class="cat-link" style="display: inline-flex; margin-top: 0.75rem; font-size: 0.8rem;">{{ __('Order now →') }}</span>
                 </div>
             </a>
             @endforeach
@@ -72,7 +72,7 @@
         <div class="section-header">
             <span class="section-eyebrow">{{ $homeSpecialsEyebrow }}</span>
             <h2 class="section-title">{{ $homeSpecialsTitle }}</h2>
-            <p class="section-sub">Deals running right now — order before they're gone.</p>
+            <p class="section-sub">{{ __('Deals running right now — order before they\'re gone.') }}</p>
         </div>
         <div class="specials-scroll">
             @foreach($todaysSpecials as $sp)
@@ -126,7 +126,7 @@
                                 : null,
                         ])
                     </div>
-                    <span class="cat-link" style="display: inline-flex; margin-top: 0.75rem; font-size: 0.8rem;">Order now →</span>
+                    <span class="cat-link" style="display: inline-flex; margin-top: 0.75rem; font-size: 0.8rem;">{{ __('Order now →') }}</span>
                 </div>
             </a>
             @endforeach

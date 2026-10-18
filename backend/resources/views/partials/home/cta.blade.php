@@ -8,7 +8,7 @@
         <p>{{ $ctaSubtext }}</p>
         <div class="cta-band-btns">
             <a href="/order/" class="btn-primary">{{ \App\Support\UiIcon::svg('shopping-bag', 18) }} Order Now</a>
-            <a href="/order/menu" class="btn-outline">Browse Menu</a>
+            <a href="/order/menu" class="btn-outline">{{ __('Browse Menu') }}</a>
         </div>
     </div>
 </section>

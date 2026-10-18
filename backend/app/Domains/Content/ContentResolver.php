@@ -22,6 +22,11 @@ use App\Support\ResilientCache;
  *   (`"[]"`). An app-scoped empty array is a deliberate “show nothing here”
  *   value, not a missing value. With no shared step in the chain, the old
  *   “[] masks shared items” trap no longer applies to website / order_app.
+ *
+ * Dhivehi (iruali import plan, feature 3b): when a dv lookup ends on English (the
+ * en row, the registry default or the caller's default), that English goes through
+ * lang/dv.json, so the site's built-in wording reads in Dhivehi until the owner
+ * types their own. English the owner typed that is not in the file stays as typed.
  */
 final class ContentResolver
 {
@@ -57,8 +62,8 @@ final class ContentResolver
         // Unregistered keys must not silently read the shared business record
         // from Website / Order App rendering. Callers that need ops data should
         // use SiteSetting::get() explicitly outside these apps.
-        if (! ContentRegistry::has($key)) {
-            return $default;
+        if (!ContentRegistry::has($key)) {
+            return $this->dv($default);
         }
 
         // Ordering Control mirrors (e.g. free-delivery label) — never content copies.
@@ -67,9 +72,9 @@ final class ContentResolver
             return $derived;
         }
 
-        if (! ContentRegistry::targetsApp($key, $this->app)
-            && ! OpsOwnedContent::resolvesFromBusinessDetails($key)) {
-            return $default ?? ContentRegistry::default($key);
+        if (!ContentRegistry::targetsApp($key, $this->app)
+            && !OpsOwnedContent::resolvesFromBusinessDetails($key)) {
+            return $this->dv($default ?? ContentRegistry::default($key));
         }
 
         // Business Details identity/contact — shared is authoritative for both apps.
@@ -96,16 +101,26 @@ final class ContentResolver
             $val = SiteSetting::getScoped($key, $scope, $locale);
             // Present = not null and not ''. "[]" and other JSON empties win.
             if ($this->isPresentScopedValue($val)) {
-                return $val;
+                return $locale === $this->locale ? $val : $this->dv($val);
             }
         }
 
         $registryDefault = ContentRegistry::default($key);
         if ($registryDefault !== null) {
-            return $registryDefault;
+            return $this->dv($registryDefault);
         }
 
-        return $default;
+        return $this->dv($default);
+    }
+
+    /** English wording in Dhivehi from lang/dv.json, on a dv lookup; anything else as it is. */
+    private function dv(mixed $value): mixed
+    {
+        if ($this->locale !== 'dv' || !is_string($value) || $value === '' || strlen($value) > 2000) {
+            return $value;
+        }
+
+        return DhivehiText::of($value);
     }
 
     /**

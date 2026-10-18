@@ -4,6 +4,6 @@
         {{ content('order_home_reviews_title', content('home_proof_eyebrow', 'What guests say')) }}
     </h2>
     <p style="color:var(--muted); margin:0; font-size:0.95rem;">
-        Guest reviews appear live in the order app. See our story and stats in Social proof above, or leave a review after your next meal.
+        {{ __('Guest reviews appear live in the order app. See our story and stats in Social proof above, or leave a review after your next meal.') }}
     </p>
 </section>

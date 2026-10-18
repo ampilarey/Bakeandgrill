@@ -21,7 +21,7 @@
                     loop
                     playsinline
                     preload="metadata"
-                    aria-label="{{ $vidData['alt'] !== '' ? $vidData['alt'] : ($vidCaption !== '' ? $vidCaption : 'Video') }}"
+                    aria-label="{{ $vidData['alt'] !== '' ? $vidData['alt'] : ($vidCaption !== '' ? $vidCaption : __('Video')) }}"
                     style="display:block; width:100%; height:auto; border-radius:14px; background:#000;"
                 ></video>
                 @if($vidCaption !== '')

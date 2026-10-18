@@ -27,7 +27,7 @@
         {{-- An icon instead of the word where space is tight (the menu's
              banner and sub-category labels); the label keeps it named. --}}
         @if(!empty($shareIconHtml))
-            {!! $shareIconHtml !!}<span class="visually-hidden">Share</span>
+            {!! $shareIconHtml !!}<span class="visually-hidden">{{ __('Share') }}</span>
         @else
             Share
         @endif
@@ -35,7 +35,7 @@
     <div id="{{ $shareId }}-popover"
          class="share-popover"
          role="dialog"
-         aria-label="Share this page"
+         aria-label="{{ __('Share this page') }}"
          hidden
          data-share-popover
          data-share-url="{{ $shareUrl }}"
@@ -43,9 +43,9 @@
          data-share-text="{{ $shareText }}"
          @if($shareItemId) data-share-item="{{ $shareItemId }}" @endif
          @if($shareCategoryId) data-share-category="{{ $shareCategoryId }}" @endif>
-        <button type="button" class="share-copy" data-share-copy data-testid="share-copy">Copy link</button>
+        <button type="button" class="share-copy" data-share-copy data-testid="share-copy">{{ __('Copy link') }}</button>
         <label class="share-fallback-label" hidden data-share-fallback-wrap>
-            Link
+            {{ __('Link') }}
             <input class="share-fallback-input" type="text" readonly value="{{ $shareUrl }}" data-share-fallback data-testid="share-fallback-input">
         </label>
         <p class="share-copy-status" data-share-status hidden></p>
@@ -56,7 +56,7 @@
             <li><a href="https://www.facebook.com/sharer/sharer.php?u={{ $shareEncodedUrl }}" rel="noopener noreferrer" target="_blank" data-share-channel="facebook">Facebook</a></li>
             <li><a href="https://twitter.com/intent/tweet?url={{ $shareEncodedUrl }}&amp;text={{ $shareEncodedText }}" rel="noopener noreferrer" target="_blank" data-share-channel="x">X</a></li>
         </ul>
-        <button type="button" class="share-close" data-share-close>Close</button>
+        <button type="button" class="share-close" data-share-close>{{ __('Close') }}</button>
     </div>
 </div>
 {{-- One copy of the styles and script however many controls a page has. --}}
@@ -159,14 +159,14 @@
                 }
                 if (status) {
                     status.hidden = false;
-                    status.textContent = 'Select and copy the link';
+                    status.textContent = @json(__('Select and copy the link'));
                 }
             }
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(url).then(function () {
                     if (status) {
                         status.hidden = false;
-                        status.textContent = 'Link copied';
+                        status.textContent = @json(__('Link copied'));
                     }
                     report('copy');
                 }).catch(showFallback);

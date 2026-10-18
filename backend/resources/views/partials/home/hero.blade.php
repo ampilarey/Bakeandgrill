@@ -175,10 +175,10 @@
                     <div class="banner-copy">
                     <span class="banner-eyebrow">{{ \App\Support\UiIcon::svg('wheat', 13) }} Fresh daily from 5am</span>
                     <h1 class="banner-title"><span class="hero-title-line">{{ $siteName }}</span><br><span class="hero-title-line"><em>{{ $tagline }}</em></span></h1>
-                    <p class="banner-sub">Real food, proper char — order online or visit us in Malé.</p>
+                    <p class="banner-sub">{{ __('Real food, proper char — order online or visit us in Malé.') }}</p>
                     <div class="banner-ctas">
-                        <a href="/order/" class="banner-cta-primary">Order Now →</a>
-                        <a href="/order/menu" class="banner-cta-secondary">View Menu</a>
+                        <a href="/order/" class="banner-cta-primary">{{ __('Order Now →') }}</a>
+                        <a href="/order/menu" class="banner-cta-secondary">{{ __('View Menu') }}</a>
                     </div>
                     </div>
                 </div>
@@ -187,10 +187,10 @@
     </div>
 
     @if($slideCount > 1)
-    <button class="banner-btn prev" aria-label="Previous slide">‹</button>
-    <button class="banner-btn next" aria-label="Next slide">›</button>
+    <button class="banner-btn prev" aria-label="{{ __('Previous slide') }}">‹</button>
+    <button class="banner-btn next" aria-label="{{ __('Next slide') }}">›</button>
 
-    <div class="banner-dots" id="bannerDots" role="tablist" aria-label="Slides">
+    <div class="banner-dots" id="bannerDots" role="tablist" aria-label="{{ __('Slides') }}">
         @for($d = 0; $d < $slideCount; $d++)
             <button
                 type="button"

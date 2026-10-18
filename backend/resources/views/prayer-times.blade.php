@@ -637,8 +637,8 @@
             <img src="{{ $logoUrl }}" alt="{{ $siteName }}">
             <span>{{ $siteName }}</span>
         </a>
-        <h1 class="pt-page-title">Prayer Times</h1>
-        <a href="/" class="pt-back-btn">← Back to website</a>
+        <h1 class="pt-page-title">{{ __('Prayer Times') }}</h1>
+        <a href="/" class="pt-back-btn">{{ __('← Back to website') }}</a>
     </div>
 </header>
 
@@ -652,26 +652,26 @@
 
             {{-- Island picker --}}
             <div class="pt-field">
-                <label class="pt-label">Island — ރަށް</label>
+                <label class="pt-label">{{ __('Island — ރަށް') }}</label>
                 <x-prayer.island-picker :grouped="$viewModel->grouped" :selectedIsland="$viewModel->selectedIsland"/>
             </div>
 
             {{-- Date picker --}}
             <div class="pt-field-date">
-                <label class="pt-label">Date</label>
+                <label class="pt-label">{{ __('Date') }}</label>
                 <x-prayer.date-picker :selectedDate="$viewModel->selectedDate"/>
             </div>
 
             {{-- Geolocation --}}
             <div class="pt-field-geo">
-                <button type="button" class="pt-geo-btn" id="geoBtn" title="Use my location">
+                <button type="button" class="pt-geo-btn" id="geoBtn" title="{{ __('Use my location') }}">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <circle cx="12" cy="12" r="3"/>
                         <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
                         <circle cx="12" cy="12" r="9" opacity=".25"/>
                     </svg>
-                    My Location
+                    {{ __('My Location') }}
                 </button>
                 <div class="pt-geo-toast" id="geoToast" role="alert" aria-live="polite"></div>
             </div>
@@ -690,7 +690,7 @@
         <div class="pt-greg">{{ $viewModel->selectedDate->format('l, jS F Y') }}</div>
         <div class="pt-hijri" id="hijriDate">…</div>
         <div class="pt-clock">
-            <span class="pt-clock-label">Maldives Time</span>
+            <span class="pt-clock-label">{{ __('Maldives Time') }}</span>
             <span id="clockDisplay">––:––:––</span>
         </div>
     </div>
@@ -699,7 +699,7 @@
 
         {{-- ════════════ Next Prayer Hero ════════════ --}}
         <div class="pt-hero" id="heroBox">
-            <div class="pt-hero-label" id="heroLabel">Next Prayer</div>
+            <div class="pt-hero-label" id="heroLabel">{{ __('Next Prayer') }}</div>
             <div>
                 <div class="pt-hero-prayer" id="heroName">–</div>
                 <div class="pt-hero-time" id="heroTime"></div>
@@ -745,7 +745,7 @@
 </main>
 
 <footer class="pt-footer">
-    Prayer times for all islands of Maldives &mdash;
+    {{ __('Prayer times for all islands of Maldives —') }}
     <a href="/">{{ $siteName }}</a> &mdash;
     {{ date('Y') }}
 </footer>
@@ -884,7 +884,7 @@
         }
 
         btn.addEventListener('click', function () {
-            if (!navigator.geolocation) { showToast('Geolocation not supported.', true); return; }
+            if (!navigator.geolocation) { showToast(@json(__('Geolocation not supported.')), true); return; }
             btn.disabled = true;
             const nodes = [...btn.childNodes];
             const t = nodes.find(n => n.nodeType === 3 && n.textContent.trim());
@@ -900,15 +900,15 @@
                                 document.getElementById('island_id').value = data.island.id;
                                 document.getElementById('ptForm').submit();
                             } else {
-                                showToast('No nearby island found.', true);
+                                showToast(@json(__('No nearby island found.')), true);
                                 resetBtn();
                             }
                         })
                         .catch(() => { showToast('Could not connect. Please try again.', true); resetBtn(); });
                 },
                 err => {
-                    const msgs = { 1: 'Location permission denied.', 2: 'Location unavailable.', 3: 'Location request timed out.' };
-                    showToast(msgs[err.code] ?? 'Could not get location.', true);
+                    const msgs = { 1: @json(__('Location permission denied.')), 2: @json(__('Location unavailable.')), 3: @json(__('Location request timed out.')) };
+                    showToast(msgs[err.code] ?? @json(__('Could not get location.')), true);
                     resetBtn();
                 },
                 { timeout: 10000 }
@@ -1021,7 +1021,7 @@
             const heroBox = document.getElementById('heroBox');
 
             if (next) {
-                document.getElementById('heroLabel').textContent = next.isSalah ? 'Next Prayer' : 'Next';
+                document.getElementById('heroLabel').textContent = next.isSalah ? @json(__('Next Prayer')) : @json(__('Next'));
                 document.getElementById('heroName').textContent = PRAYER_NAMES_DV[next.key] ?? next.key;
                 document.getElementById('heroTime').textContent = PRAYER_NAMES_EN[next.key] + ' — ' + next.time;
 
@@ -1061,7 +1061,7 @@
                 } else {
                     if (heroBox) heroBox.style.opacity = '.55';
                     document.getElementById('heroName').textContent     = 'ތިން ދަމު ދިޔަ';
-                    document.getElementById('heroTime').textContent      = 'All prayers completed for today';
+                    document.getElementById('heroTime').textContent      = @json(__('All prayers completed for today'));
                     document.getElementById('heroCountdown').textContent = '––:––:––';
                     document.getElementById('heroAfter').textContent     = '';
                 }

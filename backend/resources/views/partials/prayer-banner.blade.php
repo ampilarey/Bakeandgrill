@@ -1,5 +1,5 @@
 {{-- Expandable prayer banner — matches order-app PrayerBar UI --}}
-<section class="prayer-banner is-loading" data-pt-banner aria-label="Prayer times">
+<section class="prayer-banner is-loading" data-pt-banner aria-label="{{ __('Prayer times') }}">
     <div class="prayer-banner-skeleton" data-pt-skeleton aria-hidden="true">
         <span class="prayer-banner-skeleton-bar"></span>
     </div>
@@ -16,7 +16,7 @@
                 <span class="prayer-banner-chevron" data-pt-chevron aria-hidden="true">▾</span>
             </button>
             <button type="button" class="prayer-banner-island" data-pt-island>
-                <span data-pt-loc>K. Malé</span> ▾
+                <span data-pt-loc>{{ __('K. Malé') }}</span> ▾
             </button>
         </div>
         <div class="prayer-banner-panel" data-pt-panel hidden>
@@ -27,10 +27,10 @@
                         <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
                         <circle cx="12" cy="12" r="8" opacity=".18"/>
                     </svg>
-                    Use my location
+                    {{ __('Use my location') }}
                 </button>
                 <button type="button" class="prayer-banner-action" data-pt-change-island>
-                    Change island
+                    {{ __('Change island') }}
                 </button>
             </div>
         </div>

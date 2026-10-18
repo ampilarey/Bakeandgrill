@@ -1,7 +1,7 @@
 @extends('layout')
 
 @php
-    $headline = $headline ?? 'Offer';
+    $headline = $headline ?? __('Offer');
     $offerActive = $offerActive ?? false;
     $canonical = url($canonicalPath ?? '/menu');
     $socialImage = $socialImage ?? ['url' => '', 'alt' => $headline];
@@ -134,13 +134,12 @@
 @section('content')
 <article class="offer-page" data-testid="offer-page" data-offer-active="{{ $offerActive ? '1' : '0' }}">
     <div class="offer-topbar">
-        <a class="offer-back" href="/menu">← Full menu</a>
+        <a class="offer-back" href="/menu">{{ __('← Full menu') }}</a>
         @include('partials.share-control', [
             'shareUrl' => $canonical,
             'shareTitle' => $headline,
             'shareText' => $headline . ' at Bake & Grill',
-            'shareButtonClass' => 'btn-outline share-control-btn',
-        ])
+            'shareButtonClass' => 'btn-outline share-control-btn', ])
     </div>
 
     <div class="offer-hero{{ $photoIsPlaceholder ? ' offer-hero--placeholder' : '' }}">
@@ -164,7 +163,7 @@
 
     @if($price)
         <p class="offer-price">
-            @if($price['from'])<span class="offer-from">From</span>@endif
+            @if($price['from'])<span class="offer-from">{{ __('From') }}</span>@endif
             <span>MVR {{ number_format($price['price'], 2) }}</span>
             @if($price['was'] !== null)
                 <s class="offer-was">MVR {{ number_format($price['was'], 2) }}</s>
@@ -174,7 +173,7 @@
 
     @if(! $offerActive)
         <div class="offer-ended" data-testid="offer-ended">
-            <p>{{ $endedLabel ?? 'This offer has ended' }}</p>
+            <p>{{ $endedLabel ?? __('This offer has ended') }}</p>
         </div>
     @endif
 
@@ -184,18 +183,18 @@
 
     <div class="offer-actions">
         @if($item && $offerActive && ! $item->trashed() && $item->is_active && $item->is_available)
-            <a href="{{ $addToOrderHref }}" class="btn-primary">Add to order</a>
+            <a href="{{ $addToOrderHref }}" class="btn-primary">{{ __('Add to order') }}</a>
         @endif
-        <a href="/menu" class="btn-outline">Today’s menu</a>
+        <a href="/menu" class="btn-outline">{{ __('Today’s menu') }}</a>
     </div>
 
     @if(! $offerActive && is_array($currentOffers) && $currentOffers !== [])
         <div class="offer-more">
-            <h2>Current offers</h2>
+            <h2>{{ __('Current offers') }}</h2>
             <ul>
                 @foreach($currentOffers as $row)
                     <li>
-                        <a href="{{ \App\Support\PublicOfferUrl::fromFeedRow($row) }}">{{ $row['title'] ?? 'Offer' }}</a>
+                        <a href="{{ \App\Support\PublicOfferUrl::fromFeedRow($row) }}">{{ $row['title'] ?? __('Offer') }}</a>
                     </li>
                 @endforeach
             </ul>

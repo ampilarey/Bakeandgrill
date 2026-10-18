@@ -25,7 +25,7 @@
                     <div class="cat-label">{{ $cat['label'] ?? '' }}</div>
                     <div class="cat-name">{{ $cat['name'] ?? '' }}</div>
                     <p class="cat-hook">{{ $cat['hook'] ?? '' }}</p>
-                    <span class="cat-link">Order now →</span>
+                    <span class="cat-link">{{ __('Order now →') }}</span>
                 </div>
             </a>
             @endforeach

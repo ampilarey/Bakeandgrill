@@ -63,7 +63,7 @@
     $pageTitle = $iname['text'] . ' – Menu – Bake & Grill';
     $pageDesc = $desc !== '' ? \Illuminate\Support\Str::limit($desc, 160) : $iname['text'] . ' at Bake & Grill. Prices in MVR.';
     $itemAvailable = $itemAvailable ?? true;
-    $itemUnavailableLabel = $itemUnavailableLabel ?? 'Currently unavailable';
+    $itemUnavailableLabel = $itemUnavailableLabel ?? __('Currently unavailable');
     $itemUnavailableNote = $itemUnavailableNote ?? 'This item is not on the menu right now. You can still share the page, or browse something else.';
     $menuSizeSoldOut = $menuSizeSoldOut ?? [];
     $alternatives = $alternatives ?? collect();
@@ -90,19 +90,18 @@
 @section('content')
 <article class="menu-item-page">
     <div class="menu-item-topbar">
-        <a class="menu-item-back" href="/menu"><span aria-hidden="true">←</span> Full menu</a>
+        <a class="menu-item-back" href="/menu"><span aria-hidden="true">←</span> {{ __('Full menu') }}</a>
         {{-- The sheet's way out, in the same slot the link holds on the page.
              Hidden unless the markup is inside a sheet (see menu.blade.php). --}}
         <button type="button" class="menu-sheet-back" data-sheet-close>
-            <span aria-hidden="true">←</span> Full menu
+            <span aria-hidden="true">←</span> {{ __('Full menu') }}
         </button>
         @include('partials.share-control', [
             'shareUrl' => $shareUrl,
             'shareTitle' => $iname['text'],
             'shareText' => $iname['text'] . ' at Bake & Grill',
             'shareButtonClass' => 'btn-outline',
-            'shareItemId' => $item->id,
-        ])
+            'shareItemId' => $item->id, ])
     </div>
 
     <div class="menu-item-hero @if($photo && $photoIsPlaceholder)menu-item-hero--placeholder @endif">
@@ -135,7 +134,7 @@
     @endif
 
     <div class="menu-item-price">
-        @if($price['from'])<span class="menu-item-from">From</span> @endif
+        @if($price['from'])<span class="menu-item-from">{{ __('From') }}</span> @endif
         MVR {{ number_format($price['price'], 2) }}
         @if($price['was'] !== null)
             <s class="menu-item-was">MVR {{ number_format($price['was'], 2) }}</s>
@@ -173,7 +172,7 @@
 
     @if($allergens !== [])
         <div class="menu-item-allergens">
-            <p class="menu-item-allergens-label">CONTAINS</p>
+            <p class="menu-item-allergens-label">{{ __('CONTAINS') }}</p>
             <p class="menu-item-allergens-list">{{ collect($allergens)->map(fn ($a) => str_replace('-', ' ', $a))->implode(' · ') }}</p>
         </div>
     @endif
@@ -181,7 +180,7 @@
     @php $bundle = $menuBundle ?? null; @endphp
     @if($bundle && $bundle['kind'] === 'fixed')
         <div class="menu-item-bundle">
-            <p class="menu-item-bundle-label">What’s inside</p>
+            <p class="menu-item-bundle-label">{{ __('What’s inside') }}</p>
             <ul class="menu-item-bundle-list">
                 @foreach($bundle['contents'] as $row)
                     <li>
@@ -189,7 +188,7 @@
                         <span @if($menuLocale === 'dv' && $row['name_dv']) lang="dv" @endif>
                             {{ $menuLocale === 'dv' && $row['name_dv'] ? $row['name_dv'] : $row['name'] }}
                             @if($row['optional'])
-                                <span class="menu-item-bundle-optional">optional</span>
+                                <span class="menu-item-bundle-optional">{{ __('optional') }}</span>
                             @endif
                         </span>
                     </li>
@@ -208,7 +207,7 @@
         </div>
     @elseif($bundle && $bundle['kind'] === 'choice')
         <div class="menu-item-bundle">
-            <p class="menu-item-bundle-label">Choose your own</p>
+            <p class="menu-item-bundle-label">{{ __('Choose your own') }}</p>
             @foreach($bundle['groups'] as $group)
                 <div class="menu-item-bundle-group">
                     <p class="menu-item-bundle-group-head">
@@ -228,7 +227,7 @@
              already decided on Large does not decide again on the next screen.
              Owner, 2026-09-01. --}}
         <div class="menu-item-sizes" data-sizes>
-            <p class="menu-item-sizes-label">Choose size</p>
+            <p class="menu-item-sizes-label">{{ __('Choose size') }}</p>
             <div class="menu-item-size-chips">
                 @foreach($variants as $variant)
                     @php
@@ -262,22 +261,22 @@
 
     <div class="menu-item-actions">
         @if($itemAvailable)
-            <a href="/order/menu?item={{ $item->id }}" class="btn-primary" data-add-to-order data-item="{{ $item->id }}">Add to order</a>
-            <a href="/order/menu" class="btn-outline">View cart</a>
+            <a href="/order/menu?item={{ $item->id }}" class="btn-primary" data-add-to-order data-item="{{ $item->id }}">{{ __('Add to order') }}</a>
+            <a href="/order/menu" class="btn-outline">{{ __('View cart') }}</a>
         @else
             @if(! empty($itemAlertLabel))
                 <a href="/order/menu?item={{ $item->id }}" class="btn-primary" data-testid="item-alert-link">{{ $itemAlertLabel }}</a>
             @endif
-            <a href="/menu" class="{{ empty($itemAlertLabel) ? 'btn-primary' : 'btn-outline' }}">Today’s menu</a>
+            <a href="/menu" class="{{ empty($itemAlertLabel) ? 'btn-primary' : 'btn-outline' }}">{{ __('Today’s menu') }}</a>
             @if($item->category_id)
-                <a href="/menu#cat-{{ $item->category_id }}" class="btn-outline">More in this category</a>
+                <a href="/menu#cat-{{ $item->category_id }}" class="btn-outline">{{ __('More in this category') }}</a>
             @endif
         @endif
     </div>
 
     @if(! $itemAvailable && $alternatives->isNotEmpty())
         <div class="menu-item-alts">
-            <h2>You might like</h2>
+            <h2>{{ __('You might like') }}</h2>
             <ul>
                 @foreach($alternatives as $alt)
                     <li><a href="/menu/{{ $alt->id }}">{{ $alt->card_name ?: $alt->name }}</a></li>
@@ -293,12 +292,12 @@
     @endphp
     @if($itemReviews->isNotEmpty())
         <section class="menu-item-reviews" data-testid="item-reviews" aria-labelledby="item-reviews-h">
-            <h2 id="item-reviews-h">Reviews <span class="menu-item-reviews-avg">{{ number_format($reviewAvg, 1) }} ★ · {{ $reviewCount }}</span></h2>
+            <h2 id="item-reviews-h">{{ __('Reviews') }} <span class="menu-item-reviews-avg">{{ number_format($reviewAvg, 1) }} ★ · {{ $reviewCount }}</span></h2>
             @foreach($itemReviews as $rv)
                 <div class="menu-item-review">
                     <p class="menu-item-review-head">
                         <span class="menu-item-review-stars" aria-label="{{ $rv->rating }} out of 5">{{ str_repeat('★', $rv->rating) }}<span class="menu-item-review-off">{{ str_repeat('★', 5 - $rv->rating) }}</span></span>
-                        <span>{{ $rv->is_anonymous ? 'Anonymous' : ($rv->customer?->name ?? 'Guest') }}</span>
+                        <span>{{ $rv->is_anonymous ? __('Anonymous') : ($rv->customer?->name ?? __('Guest')) }}</span>
                         @if($rv->isVerified())<span class="menu-item-review-verified">{!! \App\Support\UiIcon::svg('badge-check', 13) !!} Verified order</span>@endif
                     </p>
                     @if(filled($rv->comment))<p class="menu-item-review-text">{{ $rv->comment }}</p>@endif
@@ -311,7 +310,7 @@
                     @endif
                     @if($rv->helpful_count > 0)<p class="menu-item-review-helpful">{{ $rv->helpful_count }} found this helpful</p>@endif
                     @if(filled($rv->reply))
-                        <div class="menu-item-review-reply"><strong>Reply from Bake &amp; Grill</strong><p>{{ $rv->reply }}</p></div>
+                        <div class="menu-item-review-reply"><strong>{{ __('Reply from Bake & Grill') }}</strong><p>{{ $rv->reply }}</p></div>
                     @endif
                 </div>
             @endforeach
@@ -322,7 +321,7 @@
         $itemQuestions = $itemQuestions ?? collect();
     @endphp
     <section class="menu-item-reviews menu-item-questions" data-testid="item-questions" aria-labelledby="item-questions-h">
-        <h2 id="item-questions-h">Questions</h2>
+        <h2 id="item-questions-h">{{ __('Questions') }}</h2>
         @foreach($itemQuestions as $q)
             <div class="menu-item-review">
                 <p class="menu-item-review-head">{{ $q->question }}</p>
@@ -330,7 +329,7 @@
                 @if($q->mentionsAllergens())<p class="menu-item-review-helpful">{{ \App\Http\Controllers\Api\ItemQuestionController::ALLERGY_LINE }}</p>@endif
             </div>
         @endforeach
-        <p class="menu-item-review-helpful"><a href="/order/menu?item={{ $item->id }}" class="menu-item-ask" data-testid="item-ask-link">Ask a question</a> about this dish. We answer here and text you.</p>
+        <p class="menu-item-review-helpful"><a href="/order/menu?item={{ $item->id }}" class="menu-item-ask" data-testid="item-ask-link">{{ __('Ask a question') }}</a> {{ __('about this dish. We answer here and text you.') }}</p>
     </section>
 </article>
 

@@ -92,7 +92,7 @@
                 </div>
             @elseif($isNew)
                 <div class="menu-card-image-badges menu-card-image-badges--circle">
-                    <span class="menu-badge-new">New</span>
+                    <span class="menu-badge-new">{{ __('New') }}</span>
                 </div>
             @endif
         </div>
@@ -111,7 +111,7 @@
             <div class="menu-card-price">
                 {{-- An item with sizes keeps its money on the variants, so
                      base_price is 0 and printing it would read "MVR 0.00". --}}
-                @if($price['from'])<span class="menu-card-from">From</span> @endif
+                @if($price['from'])<span class="menu-card-from">{{ __('From') }}</span> @endif
                 MVR {{ number_format($price['price'], 2) }}
                 @if($price['was'] !== null)
                     <s class="menu-card-price-was">MVR {{ number_format($price['was'], 2) }}</s>
