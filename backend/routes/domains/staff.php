@@ -249,7 +249,6 @@ if (routes_domain_section_is('staff', 'admin') && !routes_domain_loaded('staff.a
         Route::get('/site-settings', [App\Http\Controllers\Api\SiteSettingsController::class, 'index']);
     });
     Route::middleware(['auth:sanctum', 'staff.token', 'permission:website.manage'])->group(function () {
-
         Route::get('/admin/business-details', [App\Http\Controllers\Api\BusinessDetailsController::class, 'show']);
         Route::put('/admin/business-details', [App\Http\Controllers\Api\BusinessDetailsController::class, 'update']);
 

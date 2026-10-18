@@ -86,7 +86,7 @@ class StaffRouteAuthCoverageTest extends TestCase
 
             $methods = array_values(array_diff($route->methods(), ['HEAD']));
             foreach ($methods as $method) {
-                $key = $method.' '.$route->uri();
+                $key = $method . ' ' . $route->uri();
                 $ungated[$key] = $route->getActionName();
             }
         }
@@ -96,7 +96,7 @@ class StaffRouteAuthCoverageTest extends TestCase
         $missingAllowlist = [];
         foreach ($ungated as $key => $action) {
             if (!isset(self::ALLOWLIST[$key])) {
-                $missingAllowlist[] = $key.' → '.$action;
+                $missingAllowlist[] = $key . ' → ' . $action;
             }
         }
 
@@ -106,14 +106,14 @@ class StaffRouteAuthCoverageTest extends TestCase
             [],
             $missingAllowlist,
             "Staff routes without permission middleware must be justified in StaffRouteAuthCoverageTest::ALLOWLIST.\n"
-            .implode("\n", $missingAllowlist)
+            . implode("\n", $missingAllowlist),
         );
 
         $this->assertSame(
             [],
             $staleAllowlist,
             'ALLOWLIST entries that are no longer ungated staff routes (remove or they hide real gaps): '
-            .implode(', ', $staleAllowlist)
+            . implode(', ', $staleAllowlist),
         );
 
         foreach (self::ALLOWLIST as $key => $reason) {
