@@ -870,17 +870,7 @@ export function PromotionsPage() {
                         {p.is_active ? 'Disable' : 'Enable'}
                       </Btn>
                       <Btn small variant="secondary" onClick={() => { setEditing(p); setCreating(false); }}>Edit</Btn>
-                      <Btn small variant="secondary" onClick={() => setPrintCard({
-                        type: 'promo',
-                        code: p.code ?? 'AUTO',
-                        title: p.name,
-                        subtitle: formatDiscount(p),
-                        expiry: p.expires_at ?? null,
-                        note: p.auto_apply
-                          ? 'Automatic offer — applied at checkout'
-                          : (p.restricted_customer_id ? 'Personal discount — non-transferable' : 'Enter code at checkout'),
-                        logoText: 'Bake & Grill',
-                      })}><Printer size={14} aria-hidden />Print</Btn>
+                      <Btn small variant="secondary" onClick={() => setPrintCard(p.code ? { kind: 'promo', source: { type: 'promotion', id: p.id }, label: p.name } : { kind: 'plain', source: { type: 'none' }, label: p.name, headline: formatDiscount(p) })}><Printer size={14} aria-hidden />Print</Btn>
                       <Btn small variant="danger-outline" onClick={() => handleDelete(p.id)}>Delete</Btn>
                     </div>
                   </td>

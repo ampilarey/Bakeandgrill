@@ -228,6 +228,11 @@ final class ThaanaVisual
             if (($c === '-' || $c === '+' || $c === '−') && isset($clusters[$i + 1]) && preg_match('/^\p{N}/u', $clusters[$i + 1])) {
                 $dir[$i] = 'l';
             }
+            // A percent sign or currency after a number stays with it ("15%"), as the
+            // Unicode bidi rules keep a European terminator with its digits.
+            if (($c === '%' || $c === '٪') && $i > 0 && preg_match('/\p{N}$/u', $clusters[$i - 1])) {
+                $dir[$i] = 'l';
+            }
         }
 
         return $dir;

@@ -80,6 +80,7 @@ import {
   writeCheckoutPendingOrderId,
 } from '../utils/checkoutPendingOrder';
 import { firstName } from "../utils/displayName";
+import { cardCode, clearCardCode } from "../lib/cardCode";
 
 export type CartItem = {
   id: number;
@@ -392,7 +393,7 @@ export function useCheckout() {
   // "This is a gift" (iruali import plan, feature 10): delivery and pickup only, never at a table.
   const [gift, setGift] = useState<{ on: boolean; name: string; phone: string; message: string }>({ on: false, name: '', phone: '', message: '' });
 
-  const [promoCode, setPromoCode]   = useState("");
+  const [promoCode, setPromoCode]   = useState(() => cardCode("promo"));
   const [promoApplied, setPromoApplied] = useState<{
     code: string; discountLaar: number; promotionId?: number; pending?: boolean;
   } | null>(null);
@@ -409,7 +410,7 @@ export function useCheckout() {
 
   const [useLoyalty, setUseLoyalty]   = useState(false);
 
-  const [giftCardCode, setGiftCardCodeState] = useState("");
+  const [giftCardCode, setGiftCardCodeState] = useState(() => cardCode("gift"));
   const [giftCardApplied, setGiftCardApplied] = useState<{
     code: string; discountLaar: number; pending?: boolean;
   } | null>(null);
@@ -857,6 +858,8 @@ export function useCheckout() {
           estLaar = Math.round(subtotalLaar * p.discount_value / 100);
         }
         setPromoApplied({ code: promoCode.trim().toUpperCase(), discountLaar: estLaar, pending: true });
+        clearCardCode("promo");
+        clearCardCode("promo");
         setPromoCode("");
       } catch (e) {
         setPromoError((e as Error).message);
@@ -868,6 +871,8 @@ export function useCheckout() {
     try {
       const res = await applyPromoCode(pendingOrderId, promoCode.trim().toUpperCase());
       setPromoApplied({ code: promoCode.trim().toUpperCase(), discountLaar: res.discount_laar, promotionId: res.promotion_id });
+      clearCardCode("promo");
+      clearCardCode("promo");
       setPromoCode("");
     } catch (e) {
       setPromoError((e as Error).message);
@@ -946,6 +951,7 @@ export function useCheckout() {
       // Cap tender against grand total (after tax/fees), not merchandise subtotal.
       const capped = Math.min(balanceLaar, totalLaar);
       setGiftCardApplied({ code: giftCardCode.trim().toUpperCase(), discountLaar: capped, pending: true });
+      clearCardCode("gift");
       setGiftCardError("");
       return;
     }
@@ -953,6 +959,7 @@ export function useCheckout() {
     try {
       const res = await applyGiftCard(pendingOrderId, giftCardCode.trim().toUpperCase());
       setGiftCardApplied({ code: giftCardCode.trim().toUpperCase(), discountLaar: res.discount_laar });
+      clearCardCode("gift");
       setGiftCardCode("");
     } catch (e) {
       setGiftCardError(mapGiftCardError(e));

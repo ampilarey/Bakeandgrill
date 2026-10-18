@@ -375,15 +375,7 @@ export default function GiftCardsPage() {
     finally { setExpirySaving(false); }
   };
 
-  const printDataFor = (card: GiftCard, fullCode?: string): PrintCardData => ({
-    type: 'gift_card',
-    code: fullCode ?? card.masked_code,
-    title: 'Gift Card',
-    subtitle: `MVR ${Number(card.initial_balance).toFixed(2)}`,
-    expiry: card.expires_at ?? null,
-    note: fullCode ? 'Redeem online or in-store' : 'Masked code — print full code only at issue time',
-    logoText: 'Bake & Grill',
-  });
+  const printDataFor = (code: string): PrintCardData => ({ kind: 'gift', source: { type: 'gift_card', code }, label: 'Gift card' });
 
   return (
     <PageShell>
@@ -710,7 +702,7 @@ export default function GiftCardsPage() {
 
               <div style={{ marginTop: 20, display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
                 {issuedCard.code && (
-                  <Btn variant="secondary" onClick={() => setPrintCard(printDataFor(issuedCard, issuedCard.code))}>
+                  <Btn variant="secondary" onClick={() => setPrintCard(printDataFor(issuedCard.code ?? ''))}>
                     Print card
                   </Btn>
                 )}

@@ -19,6 +19,7 @@ import { AbandonedCartTracker } from './components/AbandonedCartTracker';
 import { ScrollToTop } from './components/ScrollToTop';
 import { ServiceUnavailableModal } from './components/ServiceUnavailableModal';
 import { registerServiceWorker } from './lib/registerServiceWorker';
+import { captureCardCode } from './lib/cardCode';
 import { isSignagePath } from './lib/signageBoard';
 import '@shared/styles/fonts.css';
 import { refreshDhivehiFont } from '@shared/utils/dhivehiFont';
@@ -39,6 +40,9 @@ try {
 // Offline shell, push, and the update-on-deploy path all hang off this. It
 // was an inline script in index.html that the page's CSP refused.
 registerServiceWorker();
+
+// A printed card's QR (?promo= / ?gift=) fills its code in at checkout.
+captureCardCode();
 
 const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
 if (sentryDsn) {

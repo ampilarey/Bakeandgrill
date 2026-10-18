@@ -59,7 +59,7 @@ export default function DiscountCardsPage() {
   const [note, setNote] = useState('');
 
   const [issuedCodes, setIssuedCodes] = useState<Array<{ id: number; code: string; name: string; expires_at: string | null }>>([]);
-  const [issuedSubtitle, setIssuedSubtitle] = useState('');
+  const [issuedBatchId, setIssuedBatchId] = useState<number | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
 
   const [detailBatch, setDetailBatch] = useState<DiscountCardBatch | null>(null);
@@ -144,7 +144,7 @@ export default function DiscountCardsPage() {
         max_uses_per_card: Math.max(1, parseInt(maxUses, 10) || 1),
         note: note.trim() || null,
       });
-      setIssuedSubtitle(formatDiscount(type, discount_value));
+      setIssuedBatchId(res.batch?.id ?? null);
       setIssuedCodes(res.cards);
       setIssueOpen(false);
       resetIssue();
@@ -297,14 +297,7 @@ export default function DiscountCardsPage() {
                 <Btn
                   variant="ghost"
                   small
-                  onClick={() => setPrintCard({
-                    type: 'discount_card',
-                    code: c.code,
-                    title: c.name,
-                    subtitle: issuedSubtitle,
-                    expiry: c.expires_at,
-                    note: 'Valid online & in-store',
-                  })}
+                  onClick={() => setPrintCard({ kind: 'discount', source: { type: 'promotion', id: c.id }, label: c.code })}
                 >
                   Print
                 </Btn>
@@ -315,6 +308,7 @@ export default function DiscountCardsPage() {
             <Btn variant="secondary" onClick={() => void copyCodes(issuedCodes.map((c) => c.code))}>
               {copiedAll ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy all</>}
             </Btn>
+            {issuedBatchId && <Btn variant="secondary" onClick={() => setPrintCard({ kind: 'discount', source: { type: 'discount_batch', id: issuedBatchId }, label: `All ${issuedCodes.length} cards` })}>Print all cards</Btn>}
             <Btn onClick={() => setIssuedCodes([])}>Done</Btn>
           </ModalActions>
         </Modal>
@@ -335,6 +329,9 @@ export default function DiscountCardsPage() {
                 {detailBatch.min_order_laar > 0 ? ` · min MVR ${(detailBatch.min_order_laar / 100).toFixed(0)}` : ''}
               </p>
               {actionMsg && <p style={{ fontSize: 13 }}>{actionMsg}</p>}
+              <div style={{ marginBottom: 10 }}>
+                <Btn small variant="secondary" onClick={() => setPrintCard({ kind: 'discount', source: { type: 'discount_batch', id: detailBatch.id }, label: `${detailBatch.name} · all cards` })}>Print all cards</Btn>
+              </div>
               <div style={{ display: 'grid', gap: 8, maxHeight: 320, overflow: 'auto' }}>
                 {detailCards.map((c) => (
                   <div key={c.id} style={{
@@ -354,14 +351,7 @@ export default function DiscountCardsPage() {
                           <Btn
                             variant="ghost"
                             small
-                            onClick={() => setPrintCard({
-                              type: 'discount_card',
-                              code: c.code,
-                              title: c.name,
-                              subtitle: formatDiscount(c.type, c.discount_value),
-                              expiry: c.expires_at,
-                              note: 'Valid online & in-store',
-                            })}
+                            onClick={() => setPrintCard({ kind: 'discount', source: { type: 'promotion', id: c.id }, label: c.code })}
                           >
                             Print
                           </Btn>

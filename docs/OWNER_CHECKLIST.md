@@ -109,6 +109,10 @@ them run `php artisan config:cache`.
 
 ## 8. Optional
 
+- **Printed cards on the Matica 210** (or any card printer): Promotions → Printed cards. Install the
+  printer's driver on the computer you print from, set its card size to CR80 (and edge to edge),
+  and print the PDF at Actual size / 100%. Try one card first. Steps: `docs/PRINTED_CARDS.md`.
+
 - **Google and Facebook shopping catalogue**: System → Integrations → Catalogue feeds shows two
   private links. Paste them into Google Merchant Center and Facebook Commerce Manager if you
   want your dishes listed there.

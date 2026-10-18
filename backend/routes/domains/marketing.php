@@ -114,6 +114,16 @@ if (routes_domain_section_is('marketing', 'public') && !routes_domain_loaded('ma
         Route::patch('/admin/marketing/automation', [App\Http\Controllers\Api\AdminMarketingAutomationController::class, 'update']);
     });
 
+    // Printed cards (CR80 and any card printer): designs, preview, PDF and the print log.
+    Route::middleware(['auth:sanctum', 'staff.token', 'permission:promotions.manage'])->group(function () {
+        Route::get('/admin/cards', [App\Http\Controllers\Api\CardController::class, 'index']);
+        Route::post('/admin/cards/designs', [App\Http\Controllers\Api\CardController::class, 'store']);
+        Route::put('/admin/cards/designs/{id}', [App\Http\Controllers\Api\CardController::class, 'update']);
+        Route::delete('/admin/cards/designs/{id}', [App\Http\Controllers\Api\CardController::class, 'destroy']);
+        Route::post('/admin/cards/preview', [App\Http\Controllers\Api\CardController::class, 'preview'])->middleware('throttle:120,1');
+        Route::post('/admin/cards/pdf', [App\Http\Controllers\Api\CardController::class, 'pdf'])->middleware('throttle:30,1');
+    });
+
     // Owner-only: discount cards (unique codes; redeem via existing promo path)
     Route::middleware(['auth:sanctum', 'staff.token', 'permission:promotions.discount_cards'])->group(function () {
         Route::get('/admin/discount-cards/batches', [App\Http\Controllers\Api\DiscountCardController::class, 'indexBatches']);

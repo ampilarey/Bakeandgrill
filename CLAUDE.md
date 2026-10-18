@@ -426,6 +426,21 @@ signed nutrition line carries the serving size and the per-serving values. Batch
 use it and where everything lives: `docs/LABELS.md`; design and decisions:
 `docs/LABEL_HUB_PLAN.md` and `docs/LABEL_HUB_V2_PLAN.md`.
 
+## Printed cards (CR80 and A4)
+
+Promotions → Printed cards (owner, 2026-10-18: a Matica 210 card printer, "should not limit to a
+specific card brand"): saved designs (`card_designs`, `App\Domains\Cards\CardSpec`), a live
+preview and a PDF that is one card face per page at the card's exact size, which every card
+printer's driver takes, or an A4 sheet with cut marks (`CardSheet`, `cards/sheet.blade.php`, the
+same boxes for preview and PDF). Codes come from `CardSource`: a discount batch (a code per card,
+numbered, a range to reprint), a promo, a gift card just issued (checked by hash) or none; the QR
+opens the order app with the code filled in (`?promo=` / `?gift=`, `lib/cardCode.ts`). The PDF
+comes back in the reply, never by link (a gift code spends money); each print is logged in
+`card_prints`. Every Print button on gift cards, promotions and discount cards opens
+`PrintCardModal`, which uses the same designs; never draw a card a second way. A new design goes
+into `CardSpec::TEMPLATES`, `CardSheet::front()` / `back()` and `CARD_TEMPLATES` in `cardSpec.ts`.
+`docs/PRINTED_CARDS.md`, `PrintedCardsTest`.
+
 ## Telegram staff bots
 
 Admin → Telegram (owner-only, `telegram.manage`): bots, links and groups; which

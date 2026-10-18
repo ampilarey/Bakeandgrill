@@ -13,11 +13,13 @@ const PromotionsPage = lazy(() => import('./PromotionsPage').then((m) => ({ defa
 const GiftCardsPage = lazy(() => import('./GiftCardsPage'));
 const DiscountCardsPage = lazy(() => import('./DiscountCardsPage'));
 const DiscountControlsPage = lazy(() => import('./DiscountControlsPage'));
+const PrintedCardsPage = lazy(() => import('./PrintedCardsPage'));
 
 export const PROMOTIONS_TABS: HubTab[] = [
   { id: 'offers', label: 'Offers', permissions: ['promotions.manage'], desc: 'Discounts, offers and promo codes', render: () => <PromotionsPage /> },
   { id: 'gift-cards', label: 'Gift cards', permissions: ['promotions.manage'], desc: 'Issue and manage gift cards', render: () => <GiftCardsPage /> },
   { id: 'discount-cards', label: 'Discount cards', permissions: ['promotions.discount_cards'], desc: 'Owner-issued percentage and fixed cards', render: () => <DiscountCardsPage /> },
+  { id: 'cards', label: 'Printed cards', permissions: ['promotions.manage'], desc: 'Design and print discount, gift and stamp cards on a card printer or A4', render: () => <PrintedCardsPage /> },
   { id: 'controls', label: 'Controls', permissions: ['discounts.settings.manage'], desc: 'POS discount caps, reasons and SMS approval', render: () => <DiscountControlsPage /> },
 ];
 
