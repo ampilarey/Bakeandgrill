@@ -136,7 +136,7 @@ export const WEBSITE_PAGE_GROUPS: Record<string, FieldGroup[]> = {
         'privacy_meta_title',
       ],
     },
-    { label: 'On all three pages', keys: ['legal_last_updated_date'] },
+    { label: 'On all three pages', keys: ['legal_last_updated_date', 'legal_dv_approved'] },
   ],
   Everywhere: [
     { label: 'Header', keys: ['nav_order_cta_text', 'language_switcher_enabled'] },

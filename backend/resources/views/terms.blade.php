@@ -93,7 +93,13 @@
         <div class="cms-body-override">
             {!! nl2br(e($termsBodyOverride)) !!}
         </div>
+    @elseif(\App\Support\LegalDhivehi::show())
+        @include('legal.dv.terms')
     @else
+        @if(\App\Support\LegalDhivehi::notice())
+            @include('legal.dv.notice')
+        @endif
+        <div @if(\App\Support\LegalDhivehi::notice()) dir="ltr" lang="en" @endif>
         {{-- BML Req 2: Description of goods/services --}}
         <h2>1. About Our Services</h2>
         <p>Bake &amp; Grill operates a café and restaurant in Malé, Maldives, offering dine-in, takeaway, and delivery of freshly prepared food and beverages. Online ordering is available through our website at <strong>bakeandgrill.mv/order</strong>. Products are prepared fresh and may vary subject to availability.</p>
@@ -141,6 +147,7 @@
 
         <h2>9. Governing Law</h2>
         <p>These terms are governed by the laws of the Republic of Maldives. Any disputes will be resolved through the relevant Maldivian courts or authority.</p>
+        </div>
     @endif
 
 @php $legalUpdatedDate = trim((string) content('legal_last_updated_date')); @endphp

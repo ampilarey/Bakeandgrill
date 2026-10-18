@@ -97,6 +97,7 @@ export const WEBSITE_HUB_GROUP_BY_KEY: Record<string, string> = {
   "hours_page_title": "Hours page",
   "hours_special_closure_label": "Hours page",
   "language_switcher_enabled": "Everywhere",
+  "legal_dv_approved": "Legal",
   "legal_last_updated_date": "Legal",
   "legal_privacy_body": "Legal",
   "legal_refund_body": "Legal",

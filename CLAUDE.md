@@ -628,8 +628,13 @@ row, the registry default or the `content()` default) it goes through `DhivehiTe
 built-in wording reads in Dhivehi and English the owner typed stays as typed until they type
 a Dhivehi version. A new string on a public page is `__()` with its Dhivehi in `lang/dv.json`
 (`WebsiteDhivehiWordingTest` fails otherwise); in a script use `@json(__('…'))`. The legal
-pages (privacy, terms, refund) stay English: a drafted translation of legal text is not
-published; the owner can type a Dhivehi body in Content.
+pages (privacy, terms, refund) have Dhivehi drafts in `resources/views/legal/dv/`, shown only
+once **Dhivehi legal pages approved** (`legal_dv_approved`, Website → Legal) is on
+(`App\Support\LegalDhivehi`); until then a `/dv` legal page shows the English with a note
+(`legal/dv/notice`), and a body the owner typed in Content wins over both. A change to an English
+legal page needs the same change in its Dhivehi draft. `LegalDhivehiTest`. What only the owner can
+do (deploys, switches, cPanel steps, keys) is listed in `docs/OWNER_CHECKLIST.md`: add to it when
+a change needs the owner.
 
 ## Customer texts and emails in Dhivehi
 

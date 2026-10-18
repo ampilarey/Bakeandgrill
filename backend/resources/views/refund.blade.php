@@ -79,7 +79,13 @@
         <div class="cms-body-override">
             {!! nl2br(e($refundBodyOverride)) !!}
         </div>
+    @elseif(\App\Support\LegalDhivehi::show())
+        @include('legal.dv.refund')
     @else
+        @if(\App\Support\LegalDhivehi::notice())
+            @include('legal.dv.notice')
+        @endif
+        <div @if(\App\Support\LegalDhivehi::notice()) dir="ltr" lang="en" @endif>
         <div class="callout">
             <strong>Key point:</strong> You can cancel your order free of charge <em>before</em> the kitchen confirms it. Once preparation begins, cancellations are not accepted.
         </div>
@@ -119,6 +125,7 @@
         <p>If you believe a charge on your BML card is incorrect, please contact us within <strong>7 days</strong> of the transaction date. We will investigate and respond within 3 business days. If the issue is not resolved, you may raise a dispute directly with your card issuer (Bank of Maldives).</p>
 
         <p>All transactions are in <strong>MVR (Maldivian Rufiyaa)</strong>. No import/export charges or customs duties apply to our food and beverage products.</p>
+        </div>
     @endif
 
 @php $legalUpdatedDate = trim((string) content('legal_last_updated_date')); @endphp

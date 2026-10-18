@@ -82,7 +82,13 @@
         <div class="cms-body-override">
             {!! nl2br(e($privacyBodyOverride)) !!}
         </div>
+    @elseif(\App\Support\LegalDhivehi::show())
+        @include('legal.dv.privacy')
     @else
+        @if(\App\Support\LegalDhivehi::notice())
+            @include('legal.dv.notice')
+        @endif
+        <div @if(\App\Support\LegalDhivehi::notice()) dir="ltr" lang="en" @endif>
         <h2>Introduction</h2>
         <p>Bake & Grill ("we", "us", "our") operates the Bake & Grill café and online ordering system. This Privacy Policy explains how we collect, use, and protect your personal information when you use our services.</p>
 
@@ -151,6 +157,7 @@
         <p><strong>{{ $privacyEmailLabel }}</strong> {{ $privacyEmail }}</p>
         <p><strong>{{ $privacyPhoneLabel }}</strong> {{ $privacyPhone }}</p>
         <p><strong>{{ $privacyAddressLabel }}</strong> {{ $privacyAddress }}</p>
+        </div>
     @endif
 </div>
 @endsection

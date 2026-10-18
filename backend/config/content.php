@@ -2092,6 +2092,18 @@ return [
             'validate' => 'nullable|string|max:120',
             'default' => 'Order via app',
         ],
+        'legal_dv_approved' => [
+            'label' => 'Dhivehi legal pages approved',
+            'group' => 'Legal',
+            'type' => 'boolean',
+            'apps' => ['website'],
+            'shareable' => false,
+            'public' => true,
+            'rich' => false,
+            'validate' => 'nullable|in:true,false,0,1',
+            'default' => 'false',
+            'description' => 'Turn on only after the Dhivehi privacy, terms and refund pages have been read and approved. Off, the Dhivehi pages show the English text with a note.',
+        ],
         'legal_last_updated_date' => [
             'label' => 'Legal — Last updated date',
             'group' => 'Legal',

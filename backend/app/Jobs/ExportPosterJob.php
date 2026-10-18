@@ -43,7 +43,7 @@ class ExportPosterJob implements ShouldQueue
 
                 return;
             }
-            $dir = storage_path('app/posters/exports');
+            $dir = (string) config('posters.export_dir', storage_path('app/posters/exports'));
             if (!is_dir($dir)) {
                 mkdir($dir, 0775, true);
             }

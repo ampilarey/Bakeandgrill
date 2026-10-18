@@ -2,7 +2,7 @@
     "generated_for_commit": "a377ebc37",
     "audited_at": "2026-08-13",
     "website": {
-        "page_count_keys": 157,
+        "page_count_keys": 158,
         "pages": {
             "everywhere": {
                 "title": "Everywhere (layout chrome)",
@@ -304,6 +304,7 @@
                 "keys": [
                     "legal_privacy_body",
                     "legal_last_updated_date",
+                    "legal_dv_approved",
                     "privacy_address_label",
                     "privacy_email",
                     "privacy_email_label",
@@ -315,6 +316,7 @@
                 "renderers": {
                     "legal_privacy_body": "backend/resources/views/privacy.blade.php (unrouted publicly)",
                     "legal_last_updated_date": "backend/resources/views/privacy.blade.php (unrouted publicly)",
+                    "legal_dv_approved": "backend/resources/views/privacy.blade.php (unrouted publicly)",
                     "privacy_address_label": "backend/resources/views/privacy.blade.php (unrouted publicly)",
                     "privacy_email": "backend/resources/views/privacy.blade.php (unrouted publicly)",
                     "privacy_email_label": "backend/resources/views/privacy.blade.php (unrouted publicly)",
@@ -1284,6 +1286,13 @@
                 "page": "legal_privacy",
                 "order": 2,
                 "label": "Legal — Last updated date",
+                "group": "Legal",
+                "renderer": "backend/resources/views/privacy.blade.php (unrouted publicly)"
+            },
+            "legal_dv_approved": {
+                "page": "legal_privacy",
+                "order": 2,
+                "label": "Dhivehi legal pages approved",
                 "group": "Legal",
                 "renderer": "backend/resources/views/privacy.blade.php (unrouted publicly)"
             },

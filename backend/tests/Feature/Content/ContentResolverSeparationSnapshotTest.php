@@ -27,7 +27,8 @@ class ContentResolverSeparationSnapshotTest extends TestCase
         // 183 since 2026-10-01: the two thumbnail-circle keys (website scope).
         // 181 since 2026-10-10: the Contact page's two old hours fields are
         // retired; it lists the Admin schedule (UI audit).
-        $this->assertCount(181, $keys, 'Expected 181 non-deprecated content.php keys');
+        // 182 since 2026-10-18: legal_dv_approved (Dhivehi legal pages approved).
+        $this->assertCount(182, $keys, 'Expected 182 non-deprecated content.php keys');
 
         $actual = ContentResolverSnapshot::capture();
         $this->assertSame(

@@ -32,6 +32,8 @@ return [
     // Where TCPDF's converted font files live (made on first use from
     // public/fonts/pdf, never committed).
     'font_cache' => storage_path('app/posters/fonts'),
+    // Where finished export zips are kept (one file per export id).
+    'export_dir' => storage_path('app/posters/exports'),
 
     // The brand mark as vector paths.
     'logo_svg' => public_path('brand/logo-animated.svg'),

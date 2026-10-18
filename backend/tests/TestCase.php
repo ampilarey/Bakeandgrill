@@ -26,7 +26,9 @@ abstract class TestCase extends BaseTestCase
      * pointing at metrics another process had not written yet, and every
      * label PDF test failed with "fopen(…labelj4_normal_….ufm): No such file".
      * The poster renderer's TCPDF font cache (posters.font_cache) is split the
-     * same way.
+     * same way, and so are its export zips (posters.export_dir): every process's
+     * first export is id 1, and four writing exports/1.zip at once left a test
+     * opening another process's zip (PosterMakeTest, PosterShopTest).
      */
     private function giveDompdfItsOwnFontFolder(): void
     {
@@ -40,6 +42,7 @@ abstract class TestCase extends BaseTestCase
         }
         config(['dompdf.options.font_dir' => $dir, 'dompdf.options.font_cache' => $dir]);
         config(['posters.font_cache' => storage_path('app/posters/fonts/test-worker-' . $token)]);
+        config(['posters.export_dir' => storage_path('app/posters/exports/test-worker-' . $token)]);
     }
 
     /**
