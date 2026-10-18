@@ -1,11 +1,12 @@
 import type { MenuItem, MenuItemPayload, MenuVariant } from '../../api';
 
 export const SALES_CHANNELS = [
-  { id: 'dine_in', label: 'Dine-in' },
-  { id: 'takeaway', label: 'Takeaway (POS)' },
+  // Plain words (owner, 2026-10-18: "can u explain this"); ids stay the data's.
+  { id: 'dine_in', label: 'Eat in' },
+  { id: 'takeaway', label: 'Takeaway at the till' },
   { id: 'online_pickup', label: 'Online pickup' },
   { id: 'delivery', label: 'Delivery' },
-  { id: 'catering', label: 'Catering / events' },
+  { id: 'catering', label: 'Catering and events' },
 ] as const;
 
 export type VariantRow = MenuVariant & { _key: string };

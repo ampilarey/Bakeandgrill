@@ -70,7 +70,7 @@ describe('offOrderingChannels', () => {
     // KitchenMenuResolver::isItemVisibleForChannel returns false for a null
     // row. An item with no rows at all is orderable nowhere.
     expect(offOrderingChannels(item({ channel_availabilities: [] })))
-      .toEqual(['Dine-in', 'Takeaway (POS)', 'Online pickup', 'Delivery']);
+      .toEqual(['Eat in', 'Takeaway at the till', 'Online pickup', 'Delivery']);
   });
 
   it('stays silent when the payload carried no channel data', () => {

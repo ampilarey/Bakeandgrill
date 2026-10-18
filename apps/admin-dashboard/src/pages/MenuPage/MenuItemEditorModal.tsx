@@ -1175,12 +1175,12 @@ export function MenuItemEditorModal({
           <Section
             id="selling"
             title="Where sold"
-            hint="Which channels can order it, and whether it is on sale right now."
+            hint="Where customers can order this dish, and whether it can be ordered right now."
             register={register}
           >
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 8 }}>
-                Where can this be ordered? (channel matrix)
+                Who can order it
               </label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px 20px' }}>
                 {SALES_CHANNELS.map(({ id, label }) => (
@@ -1198,29 +1198,34 @@ export function MenuItemEditorModal({
                 ))}
               </div>
               <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '8px 0 0', lineHeight: 1.45 }}>
-                Immediate sale needs dine-in / takeaway / pickup / delivery. Catering alone = event menu only
-                (not orderable at the till or online until you also enable an immediate channel). Delivery also
-                needs the global delivery switch and active menu duty above.
+                Eat in covers the till and guests ordering from the table QR. Catering and events on its own puts the
+                dish on the event menu only: it does not show at the till or in the order app. Delivery also needs
+                delivery switched on for the shop (Settings → Delivery).
               </p>
             </div>
-            <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
-                <input type="checkbox" checked={form.is_active} onChange={(e) => set('is_active', e.target.checked)} />
-                On menu (exists in system)
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>
+                Is it on sale?
               </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
-                <input type="checkbox" checked={form.is_available} onChange={(e) => set('is_available', e.target.checked)} />
-                Selling today (orderable now)
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={form.allow_pre_order}
-                  onChange={(e) => set('allow_pre_order', e.target.checked)}
-                  data-testid="allow-pre-order-toggle"
-                />
-                Can be ordered for tomorrow
-              </label>
+              {([
+                { key: 'is_active', label: 'On menu', help: 'Untick to hide it everywhere. It is kept, so you can bring it back.', testId: undefined },
+                { key: 'is_available', label: 'Selling today', help: 'Untick when it runs out: it shows as sold out until you tick it again.', testId: undefined },
+                { key: 'allow_pre_order', label: 'Take orders for tomorrow', help: 'Customers can order it today, to collect or have delivered tomorrow.', testId: 'allow-pre-order-toggle' },
+              ] as const).map((row) => (
+                <label key={row.key} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 14, cursor: 'pointer', padding: '6px 0' }}>
+                  <input
+                    type="checkbox"
+                    style={{ marginTop: 3 }}
+                    checked={form[row.key]}
+                    onChange={(e) => set(row.key, e.target.checked)}
+                    data-testid={row.testId}
+                  />
+                  <span>
+                    {row.label}
+                    <span style={{ display: 'block', fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>{row.help}</span>
+                  </span>
+                </label>
+              ))}
             </div>
             {/* Owner, 2026-09-21: "catering does not require stock, but there
                 might be a limit to order." Three numbers, read by the menu,
