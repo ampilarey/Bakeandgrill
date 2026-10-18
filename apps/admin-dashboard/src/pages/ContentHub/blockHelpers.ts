@@ -43,7 +43,7 @@ const KEY_HELPERS: Record<string, string> = {
   menu_featured_title: 'Heading over the items ticked “Featured”, shown ahead of the categories on both menus.',
   menu_cutout_backdrop_color: 'The circle drawn behind a cut-out thumbnail on the website menu and the order app menu cards (the POS shows the cut-out on its own, with no circle). A category or an item can set its own.',
   menu_cutout_backdrop_strength: 'How solid that circle is: 100 paints it fully, 40 leaves a faint tint, 0 hides it.',
-  language_switcher_enabled: 'Show the EN / ދވ language toggle on the website and order app. Off by default.',
+  language_switcher_enabled: "Turns on Dhivehi: the EN / ދވ button on the website and in the order app, and the website's /dv pages. Off: English on the website and in the order app, Dhivehi text kept for later. Have a Dhivehi speaker read the copy first.",
   announcement_enabled: 'Show or hide the announcement banner.',
   announcement_text: 'Message inside the announcement banner.',
   announcement_url: 'Optional link when someone taps the announcement.',

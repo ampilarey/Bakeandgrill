@@ -93,7 +93,7 @@ class SitemapTest extends TestCase
 
     public function test_both_languages_are_declared_for_each_page(): void
     {
-        // Dhivehi is served off the same path via ?lang=dv. Without the
+        // Dhivehi is served under /dv/... (feature 3b). Without the
         // alternates Google treats the two as separate pages competing with
         // each other rather than one page in two languages.
         $body = $this->get('/sitemap.xml')->getContent();
@@ -101,9 +101,9 @@ class SitemapTest extends TestCase
         $this->assertStringContainsString('hreflang="x-default"', $body);
 
         // Not just that the attributes exist — that they carry the real URL.
-        foreach (['en', 'dv'] as $lang) {
+        foreach (['en' => url('/'), 'dv' => url('/dv')] as $lang => $href) {
             $this->assertStringContainsString(
-                sprintf('hreflang="%s" href="%s"', $lang, url('/') . '?lang=' . $lang),
+                sprintf('hreflang="%s" href="%s"', $lang, $href),
                 $body,
                 "the {$lang} version of the home page must be declared",
             );

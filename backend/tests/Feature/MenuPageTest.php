@@ -1463,7 +1463,7 @@ class MenuPageTest extends TestCase
         $cat = $this->category('Shorteats');
         $this->item($cat, 'Bajiya', 5, ['name_dv' => 'ބަޖިޔާ']);
 
-        $this->get('/menu?lang=dv')
+        $this->get('/dv/menu')
             ->assertOk()
             ->assertSee('ބަޖިޔާ', false);
     }
@@ -1482,7 +1482,7 @@ class MenuPageTest extends TestCase
         ]);
         $this->item($cat, 'Bajiya', 5);
 
-        $this->get('/menu?lang=dv')
+        $this->get('/dv/menu')
             ->assertOk()
             ->assertSee('ހެދިކާ', false);
     }
@@ -1494,7 +1494,7 @@ class MenuPageTest extends TestCase
         $cat = $this->category('Shorteats');
         $this->item($cat, 'Cutlet', 6);
 
-        $this->get('/menu?lang=dv')
+        $this->get('/dv/menu')
             ->assertOk()
             ->assertSee('Cutlet', false);
     }

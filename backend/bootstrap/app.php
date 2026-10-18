@@ -45,6 +45,8 @@ return Application::configure(basePath: dirname(__DIR__))
             App\Http\Middleware\ValidateCsrfToken::class,
         );
 
+        // Dhivehi addresses for public pages, before routing (iruali import plan, feature 3b).
+        $middleware->prepend(App\Http\Middleware\LocalePrefix::class);
         $middleware->append(App\Http\Middleware\SecurityHeaders::class);
         $middleware->append(App\Http\Middleware\SearchEngineDirectives::class);
         $middleware->append(App\Http\Middleware\RejectOversizedUploads::class);

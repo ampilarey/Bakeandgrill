@@ -86,7 +86,7 @@ class SitemapController extends Controller
     /**
      * One <url> block, with both language versions declared.
      *
-     * The site serves Dhivehi off the same path via ?lang=dv. Without these
+     * The site serves Dhivehi under /dv/... (feature 3b). Without these
      * alternates Google treats the two as unrelated pages competing with each
      * other, rather than one page in two languages.
      */
@@ -105,9 +105,12 @@ class SitemapController extends Controller
             . "  </url>\n";
     }
 
+    /** Dhivehi is the page's /dv address (feature 3b); English is the page itself. */
     private function withLang(string $url, string $lang): string
     {
-        return $url . (str_contains($url, '?') ? '&' : '?') . 'lang=' . $lang;
+        $path = (string) (parse_url($url, PHP_URL_PATH) ?: '/');
+
+        return url(\App\Support\LocaleUrl::to($path, $lang));
     }
 
     /** Bare `&` is not legal in XML, and every alternate URL carries one. */

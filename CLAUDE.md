@@ -570,6 +570,20 @@ adds the dish in the same tap; the cards' quick "+" goes through the same questi
 and opens the sheet instead for a dish with sizes, extras, a platter, packaging or a
 minimum quantity.
 
+## Dhivehi addresses on the website
+
+iruali import plan, feature 3b, part 1 (2026-10-18). With **"Dhivehi on the website and in the
+order app"** on (the content key `language_switcher_enabled`, Admin → Website), a public page
+answers in English at its usual address and in Dhivehi under `/dv/...`: `App\Http\Middleware\LocalePrefix`
+runs before routing, strips the prefix and marks the request Dhivehi (read by `SetContentLocale`).
+A page that is not public (`App\Support\LocaleUrl::isPublic`: home, menu and dishes, hours,
+contact, terms, refund, privacy, offers, prayer times; never `/menu/print`) is a 404 under
+`/dv`; switched off, every `/dv` address is a 302 to its English page; an old `?lang=dv` link on a
+public page is a 301 to its `/dv` address. Each public page carries `hreflang` en, dv and
+x-default and a canonical in its own language; the sitemap lists `/dv/...`; the header's EN / ދވ
+links go to the two addresses. The order app keeps the language in the account. A new public page
+goes into `LocaleUrl::PUBLIC` and the sitemap. `DhivehiUrlsTest`.
+
 ## Customer pages: icons, hours, request limits
 
 UI audit, 2026-10-10. Icons on the website and in the order app are drawn

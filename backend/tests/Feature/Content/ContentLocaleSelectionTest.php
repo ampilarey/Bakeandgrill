@@ -28,7 +28,9 @@ class ContentLocaleSelectionTest extends TestCase
         SiteSetting::set('site_name', 'Bake English', 'shared', 'en');
         SiteSetting::set('site_name', 'ބޭކް ދިވެހި', 'shared', 'dv');
 
-        $this->get('/?lang=dv')
+        // An old ?lang=dv link moves to the page's /dv address (feature 3b).
+        $this->get('/?lang=dv')->assertStatus(301)->assertRedirect('/dv');
+        $this->get('/dv')
             ->assertOk()
             ->assertCookie('content_locale', 'dv')
             ->assertSee('<html lang="dv" dir="rtl">', false)

@@ -25,7 +25,7 @@ class SetContentLocale
         );
 
         // When the admin toggle is off, always serve English (ignore cookie / ?lang=).
-        if (! $switcherOn) {
+        if (!$switcherOn) {
             app()->instance('content.locale', 'en');
 
             /** @var Response $response */
@@ -45,7 +45,10 @@ class SetContentLocale
             return $response;
         }
 
-        $queryLocale = $this->normalizeLocale($request->query('lang'));
+        // A /dv address (LocalePrefix) is Dhivehi whatever the cookie says, and remembered.
+        $queryLocale = $request->attributes->get('locale_prefix') === 'dv'
+            ? 'dv'
+            : $this->normalizeLocale($request->query('lang'));
         $cookieLocale = $this->normalizeLocale($request->cookie(self::COOKIE_NAME));
         $locale = $queryLocale ?? $cookieLocale ?? 'en';
 
@@ -73,7 +76,7 @@ class SetContentLocale
 
     private function normalizeLocale(mixed $locale): ?string
     {
-        if (! is_string($locale)) {
+        if (!is_string($locale)) {
             return null;
         }
 

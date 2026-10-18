@@ -34,8 +34,16 @@
         : (app()->bound('content.draft_locale') ? (string) app('content.draft_locale') : 'en');
     $contentLocale = ($languageSwitcherEnabled && $contentLocale === 'dv') ? 'dv' : 'en';
     $contentDir = $contentLocale === 'dv' ? 'rtl' : 'ltr';
-    $langSwitchEnUrl = request()->fullUrlWithQuery(['lang' => 'en']);
-    $langSwitchDvUrl = request()->fullUrlWithQuery(['lang' => 'dv']);
+    // A public page has a /dv address (feature 3b); other pages keep ?lang=.
+    $localePath = '/' . ltrim(request()->getPathInfo(), '/');
+    $localePublic = \App\Support\LocaleUrl::isPublic($localePath);
+    $localeQuery = \Illuminate\Support\Arr::except(request()->query(), ['lang']);
+    $langSwitchEnUrl = $localePublic
+        ? url($localePath) . '?' . http_build_query($localeQuery + ['lang' => 'en'])
+        : request()->fullUrlWithQuery(['lang' => 'en']);
+    $langSwitchDvUrl = $localePublic
+        ? url(\App\Support\LocaleUrl::to($localePath, 'dv')) . ($localeQuery ? '?' . http_build_query($localeQuery) : '')
+        : request()->fullUrlWithQuery(['lang' => 'dv']);
 
     $siteName    = content('site_name',        'Bake & Grill');
     $siteTagline = content('site_tagline',     'Authentic Dhivehi cuisine, artisan pastries, and expertly grilled specialties — freshly made every day in the heart of Malé.');
@@ -184,7 +192,7 @@
         $pageOgAlt = $yieldPlain('og_image_alt');
         $pageOgAlt = $pageOgAlt !== '' ? $pageOgAlt : $siteName;
         $pageOgUrl = $yieldPlain('og_url');
-        $pageOgUrl = $pageOgUrl !== '' ? $pageOgUrl : url()->current();
+        $pageOgUrl = $pageOgUrl !== '' ? $pageOgUrl : url(\App\Support\LocaleUrl::to($localePath, $contentLocale === 'dv' && $localePublic ? 'dv' : 'en'));
         $pageTwitterImage = $yieldPlain('twitter_image');
         $pageTwitterImage = $pageTwitterImage !== '' ? $pageTwitterImage : $pageOgImage;
     @endphp
@@ -218,6 +226,11 @@
          indexed multiple times by Google, splitting page-rank. Use
          the current URL stripped of query string. --}}
     <link rel="canonical" href="{{ $pageOgUrl }}">
+    @if($languageSwitcherEnabled && $localePublic)
+        @foreach(\App\Support\LocaleUrl::alternates($localePath) as $hreflang => $altUrl)
+    <link rel="alternate" hreflang="{{ $hreflang }}" href="{{ $altUrl }}">
+        @endforeach
+    @endif
 
     <!-- Structured Data (JSON-LD) -->
     {{-- @json() emits a quoted JSON string; do not HTML-escape inside JSON-LD. --}}

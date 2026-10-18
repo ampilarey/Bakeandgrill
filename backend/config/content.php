@@ -1902,7 +1902,7 @@ return [
         // 'section_proof_enabled', 'section_cta_enabled',
         // 'section_location_enabled', 'section_reviews_enabled' => …
         'language_switcher_enabled' => [
-            'label' => 'Show language switcher (EN / ދވ)',
+            'label' => 'Dhivehi on the website and in the order app',
             'group' => 'Everywhere',
             'type' => 'boolean',
             'apps' => ['website', 'order_app'],
