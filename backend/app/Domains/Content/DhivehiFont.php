@@ -103,6 +103,30 @@ final class DhivehiFont
         ];
     }
 
+    /**
+     * The stylesheet's link with a version that changes with the font (2026-10-18: a new
+     * pick showed only in a private window; the browser, Cloudflare's 4-hour browser TTL
+     * and the order app's service worker all kept the old sheet under the same address).
+     */
+    public static function href(string $app = 'website'): string
+    {
+        if (!in_array($app, ContentRegistry::APPS, true)) {
+            $app = 'website';
+        }
+
+        return '/css/dhivehi-font.css?app=' . $app . '&v=' . substr(sha1(self::stylesheet($app)), 0, 12);
+    }
+
+    /** Version every link to the stylesheet in an app's built index.html. */
+    public static function versionLinks(string $html): string
+    {
+        return (string) preg_replace_callback(
+            '#/css/dhivehi-font\.css\?app=(website|order_app)(?=["\'])#',
+            static fn (array $m): string => self::href($m[1]),
+            $html,
+        );
+    }
+
     public static function stylesheet(string $app = 'website'): string
     {
         if (!in_array($app, ContentRegistry::APPS, true)) {

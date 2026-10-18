@@ -19,18 +19,24 @@ class DhivehiFontCssController extends Controller
         }
 
         $css = DhivehiFont::stylesheet($app);
-        $etag = '"' . sha1($css) . '"';
+        $sha = sha1($css);
+        $etag = '"' . $sha . '"';
+        // A link carrying this very sheet's version (DhivehiFont::href) never changes, so
+        // it may be kept; the bare address, or an old version, must be asked again.
+        $cache = $request->query('v') === substr($sha, 0, 12)
+            ? 'public, max-age=31536000, immutable'
+            : 'public, max-age=60, must-revalidate';
         if ($request->header('If-None-Match') === $etag) {
             return response('', 304, [
                 'ETag' => $etag,
-                'Cache-Control' => 'public, max-age=60, must-revalidate',
+                'Cache-Control' => $cache,
                 'Content-Type' => 'text/css; charset=UTF-8',
             ]);
         }
 
         return response($css, 200, [
             'Content-Type' => 'text/css; charset=UTF-8',
-            'Cache-Control' => 'public, max-age=60, must-revalidate',
+            'Cache-Control' => $cache,
             'ETag' => $etag,
         ]);
     }

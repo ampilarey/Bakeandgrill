@@ -164,6 +164,13 @@ self.addEventListener('fetch', (event) => {
     // 5b. Video / range responses — network only (never cache.put 206s).
     if (isVideoRequest(request, url)) return;
 
+    // 5c. The Dhivehi font sheet says which font the owner picked, so it goes to
+    //     the network first; a stale copy kept a changed font away (2026-10-18).
+    if (url.pathname === '/css/dhivehi-font.css') {
+        event.respondWith(networkFirst(request, RUNTIME_CACHE));
+        return;
+    }
+
     // 6. Static files (images, fonts, styles) — stale-while-revalidate.
     //    Only things that are files: a dynamic response caught here is
     //    served stale to a live page, which is how the sign-in broke.

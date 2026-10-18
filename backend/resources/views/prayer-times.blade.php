@@ -13,7 +13,7 @@
     <link rel="icon" type="image/png" href="{{ content('favicon', '') ?: asset('favicon-32.png') }}">
 
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}">
-    <link rel="stylesheet" href="{{ url('/css/dhivehi-font.css') }}?app=website">
+    <link rel="stylesheet" href="{{ url(\App\Domains\Content\DhivehiFont::href('website')) }}">
 
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }

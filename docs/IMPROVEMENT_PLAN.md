@@ -187,6 +187,9 @@ URI Path equals /css/dhivehi-font.css  →  Browser Cache TTL: Respect Origin
 Targeted to this one path, because everything else is Vite-hashed filenames
 where a 4-hour browser TTL is correct.
 
+No longer needed (2026-10-18): every link now carries the sheet's version
+(`DhivehiFont::href()`, `refreshDhivehiFont()`), so a changed font is a new address.
+
 ---
 
 ## 5. Alerting for a dead scheduler or queue worker — **done**

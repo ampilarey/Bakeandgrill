@@ -4,7 +4,11 @@ import App from './App';
 import { ErrorBoundary } from './ErrorBoundary';
 import { startPosViewportHeight } from './posViewportHeight';
 import '@shared/styles/fonts.css';
+import { refreshDhivehiFont } from '@shared/utils/dhivehiFont';
 import './index.css';
+
+// A changed Dhivehi font shows on the next visit, past every cache.
+void refreshDhivehiFont();
 
 // Load Sentry only when a DSN is configured — keeps the cashier first-load
 // chunk free of the SDK when monitoring is off (common on till images).

@@ -176,7 +176,12 @@ That pair is a deploy dependency (CI, TEST, production). Under `[lang="dv"]` / `
 the stacks put the Thaana face first and its range includes the space (U+0020, U+00A0), so
 Dhivehi words take the Dhivehi font's wide space, and letter-spacing is reset there
 (owner, 2026-10-18: words ran together under Plus Jakarta's narrow space and the headings'
-negative tracking). Faruma's lean is its real design; Noto Sans Thaana is the upright choice. The CSS override route
+negative tracking). Faruma's lean is its real design; Noto Sans Thaana is the upright choice. A changed font
+shows on the next ordinary visit (owner, 2026-10-18: it showed only in a private window): every
+link to the sheet carries its version (`DhivehiFont::href()`, `versionLinks()` on the SPA
+routes, kept a year; the bare address 60 s), each app's `main.tsx` runs `refreshDhivehiFont()`
+(`packages/shared/src/utils/dhivehiFont.ts`) for the app roots Apache serves untouched, and the
+order app's service worker asks the network first for it. Link to the sheet through `href()`. The CSS override route
 `GET /css/dhivehi-font.css` is registered outside the `web` group so it stays
 cookie-less.
 

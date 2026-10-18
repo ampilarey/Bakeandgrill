@@ -65,4 +65,25 @@ class DhivehiFontPresetsTest extends TestCase
         $this->assertSame('freeserif', $face['key']);
         $this->assertNotNull($face['bold_pdf']);
     }
+
+    public function test_the_link_changes_with_the_font_so_no_cache_keeps_the_old_one(): void
+    {
+        $before = DhivehiFont::href('website');
+        $this->assertMatchesRegularExpression('#^/css/dhivehi-font\.css\?app=website&v=[0-9a-f]{12}$#', $before);
+        $this->get('/')->assertSee(e($before), false);
+
+        SiteSetting::set('dhivehi_font', 'preset:noto', 'website', 'en');
+        $after = DhivehiFont::href('website');
+        $this->assertNotSame($before, $after);
+        $this->get('/')->assertSee(e($after), false);
+
+        // The version in the link is the sheet's own: kept for a year; the bare address and
+        // an old version are asked again every minute.
+        $this->get($after)->assertHeader('Cache-Control', 'immutable, max-age=31536000, public');
+        $this->get($before)->assertHeader('Cache-Control', 'max-age=60, must-revalidate, public');
+        $this->get('/css/dhivehi-font.css?app=website')->assertHeader('Cache-Control', 'max-age=60, must-revalidate, public');
+
+        $html = '<link rel="stylesheet" href="/css/dhivehi-font.css?app=order_app" />';
+        $this->assertStringContainsString('href="' . DhivehiFont::href('order_app') . '"', DhivehiFont::versionLinks($html));
+    }
 }

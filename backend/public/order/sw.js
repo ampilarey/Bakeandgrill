@@ -20,7 +20,7 @@
  * a hand-edited constant: a worker whose bytes never change is a worker the
  * browser never replaces, and its caches then outlive every deploy.
  */
-const CACHE_VERSION = 'bg-pwa-f8c8111d6814';
+const CACHE_VERSION = 'bg-pwa-6357f5679b71';
 
 /**
  * How old a cached menu response may be and still be served after a failed
@@ -163,6 +163,13 @@ self.addEventListener('fetch', (event) => {
 
     // 5b. Video / range responses — network only (never cache.put 206s).
     if (isVideoRequest(request, url)) return;
+
+    // 5c. The Dhivehi font sheet says which font the owner picked, so it goes to
+    //     the network first; a stale copy kept a changed font away (2026-10-18).
+    if (url.pathname === '/css/dhivehi-font.css') {
+        event.respondWith(networkFirst(request, RUNTIME_CACHE));
+        return;
+    }
 
     // 6. Static files (images, fonts, styles) — stale-while-revalidate.
     //    Only things that are files: a dynamic response caught here is

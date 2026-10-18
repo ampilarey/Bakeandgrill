@@ -21,8 +21,12 @@ import { ServiceUnavailableModal } from './components/ServiceUnavailableModal';
 import { registerServiceWorker } from './lib/registerServiceWorker';
 import { isSignagePath } from './lib/signageBoard';
 import '@shared/styles/fonts.css';
+import { refreshDhivehiFont } from '@shared/utils/dhivehiFont';
 // Custom Thaana override: /css/dhivehi-font.css?app=order_app reads content key dhivehi_font.
 import './index.css';
+
+// A changed Dhivehi font shows on the next visit, past every cache.
+void refreshDhivehiFont();
 
 // Apply saved theme before first paint — useTheme only mounts on Account.
 try {

@@ -352,7 +352,7 @@ Route::get('/order/{any}', function () {
     $path = public_path('order/index.html');
     abort_if(!file_exists($path), 503, 'Order app not deployed.');
 
-    return response(file_get_contents($path), 200, [
+    return response(App\Domains\Content\DhivehiFont::versionLinks((string) file_get_contents($path)), 200, [
         'Content-Type' => 'text/html; charset=utf-8',
         'Cache-Control' => 'no-store, no-cache, must-revalidate',
     ]);
@@ -379,7 +379,7 @@ Route::get('/admin/{any}', function () {
     $path = public_path('admin/index.html');
     abort_if(!file_exists($path), 503, 'Admin app not deployed.');
 
-    return response(file_get_contents($path), 200, [
+    return response(App\Domains\Content\DhivehiFont::versionLinks((string) file_get_contents($path)), 200, [
         'Content-Type' => 'text/html; charset=utf-8',
         'Cache-Control' => 'no-store, no-cache, must-revalidate',
     ]);
@@ -393,7 +393,7 @@ Route::get('/kds/{any}', function () {
     $path = public_path('kds/index.html');
     abort_if(!file_exists($path), 503, 'KDS app not deployed.');
 
-    return response(file_get_contents($path), 200, [
+    return response(App\Domains\Content\DhivehiFont::versionLinks((string) file_get_contents($path)), 200, [
         'Content-Type' => 'text/html; charset=utf-8',
         'Cache-Control' => 'no-store, no-cache, must-revalidate',
     ]);
@@ -407,7 +407,7 @@ Route::get('/pos/{any}', function () {
     $path = public_path('pos/index.html');
     abort_if(!file_exists($path), 503, 'POS app not deployed.');
 
-    return response(file_get_contents($path), 200, [
+    return response(App\Domains\Content\DhivehiFont::versionLinks((string) file_get_contents($path)), 200, [
         'Content-Type' => 'text/html; charset=utf-8',
         'Cache-Control' => 'no-store, no-cache, must-revalidate',
     ]);
@@ -421,7 +421,7 @@ Route::get('/driver/{any}', function () {
     $path = public_path('driver/index.html');
     abort_if(!file_exists($path), 503, 'Driver app not deployed.');
 
-    return response(file_get_contents($path), 200, [
+    return response(App\Domains\Content\DhivehiFont::versionLinks((string) file_get_contents($path)), 200, [
         'Content-Type' => 'text/html; charset=utf-8',
         'Cache-Control' => 'no-store, no-cache, must-revalidate',
     ]);

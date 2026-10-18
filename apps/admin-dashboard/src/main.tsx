@@ -3,10 +3,14 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import '@shared/styles/fonts.css';
+import { refreshDhivehiFont } from '@shared/utils/dhivehiFont';
 import './index.css';
 import App from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { startTableCards } from './utils/tableCards';
+
+// A changed Dhivehi font shows on the next visit, past every cache.
+void refreshDhivehiFont();
 
 const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
 if (sentryDsn) {
