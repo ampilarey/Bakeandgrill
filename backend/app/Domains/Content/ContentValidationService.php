@@ -175,8 +175,11 @@ final class ContentValidationService
             return '';
         }
 
+        if (DhivehiFont::presetOf($value) !== null) {
+            return $value;
+        }
         if (!DhivehiFont::isSafePublicUrl($value)) {
-            $this->fail('value', 'Dhivehi font must be a file uploaded through Content Hub.');
+            $this->fail('value', 'Dhivehi font must be one of the fonts offered or a file uploaded through Content Hub.');
         }
 
         return $value;

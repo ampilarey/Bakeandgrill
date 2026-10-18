@@ -55,13 +55,22 @@
   font-display: swap;
   src: url('/fonts/a_faruma.woff2') format('woff2'),
        url('/fonts/a_faruma.ttf') format('truetype');
-  unicode-range: U+0780-U+07BF;
+  unicode-range: U+0780-07BF, U+060C, U+061B, U+061F, U+FDF2;
 }
 
 :root {
-  --font-ui: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-display: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-dhivehi: 'A_Faruma', 'MV Faseyha', 'MV Waheed', serif;
+  /*
+   * The Dhivehi face rides in every stack, right behind the Latin one: its
+   * unicode-range covers only Thaana, so Latin text never reaches it and Dhivehi
+   * text always does, whatever element it sits in. Before 2026-10-18 only
+   * [lang="dv"] used it, the body's own stack won, and phones drew Dhivehi in
+   * whatever font they had. /css/dhivehi-font.css repoints --font-thaana at the
+   * face the owner picks (App\Domains\Content\DhivehiFont).
+   */
+  --font-thaana: 'A_Faruma';
+  --font-ui: 'Plus Jakarta Sans', var(--font-thaana), -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: 'Plus Jakarta Sans', var(--font-thaana), -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-dhivehi: var(--font-thaana), 'MV Faseyha', 'MV Waheed', serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
 }
 

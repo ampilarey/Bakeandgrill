@@ -515,7 +515,7 @@ return [
             'shareable' => true,
             'public' => true,
             'rich' => false,
-            'description' => 'Thaana webfont for Dhivehi pages. Empty = shipped A_Faruma. Website and Order App each keep their own file.',
+            'description' => 'The font for Dhivehi text: Faruma, Noto Sans Thaana, FreeSerif, the phone\'s own, or a file you upload. Website and Order App each keep their own.',
             'validate' => 'nullable|string|max:2048',
             'default' => '',
         ],

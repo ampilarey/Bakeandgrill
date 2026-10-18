@@ -52,6 +52,9 @@ final class LabelText
     public const DV_FACES = [
         'noto' => ['fonts/pdf/NotoSansThaana-Regular.ttf', 'fonts/noto-sans-thaana-400.woff2', 1.069, 0.424, 'fonts/pdf/NotoSansThaana-Bold.ttf', 'fonts/noto-sans-thaana-700.woff2'],
         'faruma' => ['fonts/a_faruma.ttf', 'fonts/a_faruma.woff2', 1.139, 0.472, null, null],
+        // GNU FreeSerif's Thaana (GPL with the font exception, public/fonts/FREEFONT-LICENSE.txt),
+        // subset by pyftsubset; picked for the website in Content Hub and followed here by "site".
+        'freeserif' => ['fonts/pdf/FreeSerifThaana-400.ttf', 'fonts/freeserif-thaana-400.woff2', 0.9, 0.302, 'fonts/pdf/FreeSerifThaana-700.ttf', 'fonts/freeserif-thaana-700.woff2'],
     ];
 
     /**
@@ -94,6 +97,13 @@ final class LabelText
     public static function dvFace(): array
     {
         $key = LabelSettings::dhivehiFont();
+        if ($key === 'site') {
+            // The website's pick of a shipped face prints in that face.
+            $preset = \App\Domains\Content\DhivehiFont::presetOf(trim((string) content(\App\Domains\Content\DhivehiFont::CONTENT_KEY, '')));
+            if ($preset !== null && isset(self::DV_FACES[$preset])) {
+                $key = $preset;
+            }
+        }
         if ($key === 'site') {
             $faruma = self::DV_FACES['faruma'];
             $url = trim((string) content(\App\Domains\Content\DhivehiFont::CONTENT_KEY, ''));

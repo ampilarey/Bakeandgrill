@@ -9,10 +9,14 @@ use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
 
 /**
- * Validate, store, and emit CSS for the owner-uploaded Dhivehi webfont.
+ * The Dhivehi webfont: one of the shipped faces (PRESETS), or one the owner uploaded.
  *
- * Serving model matches Akuru: woff2 preferred, Thaana unicode-range,
- * shipped A_Faruma remains the fallback. env() is never used here.
+ * The content key holds '' (Faruma), "preset:<key>" or an uploaded file's URL. Every
+ * font stack in fonts.css carries var(--font-thaana) behind its Latin face, limited to
+ * Thaana by unicode-range, so Dhivehi text anywhere is set in it; this stylesheet only
+ * says which face that is (2026-10-18: --font-dhivehi alone reached only elements
+ * marked lang="dv", and the body's own stack won, so Faruma never showed).
+ * Serving model matches Akuru: woff2 preferred. env() is never used here.
  */
 final class DhivehiFont
 {
@@ -20,7 +24,35 @@ final class DhivehiFont
 
     public const DEFAULT_STACK = "'A_Faruma', 'MV Faseyha', 'MV Waheed', serif";
 
-    public const UNICODE_RANGE = 'U+0780-U+07BF';
+    /** Thaana, and the Arabic comma, semicolon, question mark and salawat Dhivehi writes with. */
+    public const UNICODE_RANGE = 'U+0780-07BF, U+060C, U+061B, U+061F, U+FDF2';
+
+    public const PRESET_PREFIX = 'preset:';
+
+    /**
+     * The shipped faces the owner picks from: label, regular file, bold file (or null),
+     * the PDF file, and a family name that cannot clash with an installed font. 'device'
+     * ships nothing: the phone's own Dhivehi font, Faruma where it has none.
+     *
+     * @var array<string, array{label: string, regular: ?string, bold: ?string, pdf: ?string, family: ?string}>
+     */
+    public const PRESETS = [
+        'faruma' => ['label' => 'Faruma', 'regular' => '/fonts/a_faruma.woff2', 'bold' => null, 'pdf' => 'fonts/a_faruma.ttf', 'family' => 'A_Faruma'],
+        'noto' => ['label' => 'Noto Sans Thaana', 'regular' => '/fonts/noto-sans-thaana-400.woff2', 'bold' => '/fonts/noto-sans-thaana-700.woff2', 'pdf' => 'fonts/pdf/NotoSansThaana-Regular.ttf', 'family' => 'BG Noto Sans Thaana'],
+        'freeserif' => ['label' => 'FreeSerif', 'regular' => '/fonts/freeserif-thaana-400.woff2', 'bold' => '/fonts/freeserif-thaana-700.woff2', 'pdf' => 'fonts/pdf/FreeSerifThaana-400.ttf', 'family' => 'BG FreeSerif Thaana'],
+        'device' => ['label' => "The phone's own", 'regular' => null, 'bold' => null, 'pdf' => 'fonts/a_faruma.ttf', 'family' => null],
+    ];
+
+    /** The preset a stored value names, or null for '' (Faruma) and an uploaded file. */
+    public static function presetOf(string $value): ?string
+    {
+        if (!str_starts_with($value, self::PRESET_PREFIX)) {
+            return null;
+        }
+        $key = substr($value, strlen(self::PRESET_PREFIX));
+
+        return isset(self::PRESETS[$key]) ? $key : null;
+    }
 
     public const THAANA_START = 0x0780;
 
@@ -74,6 +106,10 @@ final class DhivehiFont
         }
 
         $url = trim((string) ContentResolver::for($app)->get(self::CONTENT_KEY, ''));
+        $preset = self::presetOf($url);
+        if ($preset !== null) {
+            return self::presetStylesheet($preset);
+        }
         if ($url === '' || !self::isSafePublicUrl($url)) {
             return "/* default A_Faruma — no custom Dhivehi font */\n";
         }
@@ -94,11 +130,42 @@ final class DhivehiFont
   src: url('{$src}') format('{$format}');
   unicode-range: {$range};
 }
-:root {
+:root:root {
+  --font-thaana: '{$family}', 'A_Faruma';
   --font-dhivehi: '{$family}', {$stack};
 }
 
 CSS;
+    }
+
+    /**
+     * The CSS for a shipped face: its @font-face rules and the stacks pointed at it.
+     * `:root:root` outranks fonts.css's `:root`, which an app's own bundle may load after
+     * this sheet (the order app does).
+     */
+    public static function presetStylesheet(string $preset): string
+    {
+        $p = self::PRESETS[$preset] ?? self::PRESETS['faruma'];
+        $range = self::UNICODE_RANGE;
+        if ($preset === 'faruma') {
+            return "/* A_Faruma (fonts.css) */\n";
+        }
+        if ($p['family'] === null) {
+            // The phone's own: the Dhivehi fonts phones and computers ship, Faruma last.
+            $faces = "'Noto Sans Thaana', 'MV Faseyha', 'MV Waheed', 'MV Boli', 'A_Faruma'";
+
+            return ":root:root {\n  --font-thaana: {$faces};\n  --font-dhivehi: {$faces}, serif;\n}\n";
+        }
+        $css = '';
+        foreach ([400 => $p['regular'], 700 => $p['bold']] as $weight => $file) {
+            if ($file === null) {
+                continue;
+            }
+            $css .= "@font-face {\n  font-family: '{$p['family']}';\n  font-style: normal;\n  font-weight: {$weight};\n  font-display: swap;\n"
+                . "  src: url('{$file}') format('woff2');\n  unicode-range: {$range};\n}\n";
+        }
+
+        return $css . ":root:root {\n  --font-thaana: '{$p['family']}', 'A_Faruma';\n  --font-dhivehi: '{$p['family']}', 'A_Faruma', serif;\n}\n";
     }
 
     /**
@@ -112,6 +179,10 @@ CSS;
     public static function pdfFile(): ?string
     {
         $custom = trim((string) content(self::CONTENT_KEY, ''));
+        $preset = self::presetOf($custom);
+        if ($preset !== null && self::PRESETS[$preset]['pdf'] !== null && is_file(public_path(self::PRESETS[$preset]['pdf']))) {
+            return public_path(self::PRESETS[$preset]['pdf']);
+        }
         if ($custom !== '' && self::isSafePublicUrl($custom) && preg_match('/\.(ttf|otf)$/', $custom)) {
             $file = public_path(ltrim($custom, '/'));
             if (is_file($file) && is_readable($file)) {

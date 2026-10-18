@@ -159,6 +159,17 @@ rejected). Automated default tests use SQLite in-memory via `phpunit.xml`.
 
 ## Dhivehi webfont inspector
 
+The Dhivehi font is picked in Content Hub → Everywhere → Dhivehi font (2026-10-18:
+"faruma font is not showing"): Faruma, Noto Sans Thaana, FreeSerif, the phone's own, or an
+upload (`DhivehiFontPicker.tsx`; the value is '', `preset:<key>` or the file's URL;
+`App\Domains\Content\DhivehiFont::PRESETS`, which `FONT_CHOICES` mirrors). Every stack in
+`fonts.css` (both copies) carries `var(--font-thaana)` behind its Latin face, limited to
+Thaana by unicode-range, and `/css/dhivehi-font.css` repoints it with `:root:root` (the order
+app's bundle loads after it). Before, only `[lang="dv"]` used the Dhivehi face and the body's
+stack won, so Faruma never loaded. Labels on "site" and the menu PDF follow the pick
+(`LabelText::DV_FACES['freeserif']`, `DhivehiFont::pdfFile()`). FreeSerif's Thaana is a
+pyftsubset of GNU FreeFont (`public/fonts/FREEFONT-LICENSE.txt`). A new face goes into
+`PRESETS`, `FONT_CHOICES` and, to print on labels, `DV_FACES`. `DhivehiFontPresetsTest`.
 Content Hub `dhivehi_font` accepts TTF/OTF natively. WOFF/WOFF2 inspection and
 TTF→WOFF2 conversion need Python `fontTools` + `brotli` (`scripts/install-fonttools.sh`).
 That pair is a deploy dependency (CI, TEST, production). The CSS override route
