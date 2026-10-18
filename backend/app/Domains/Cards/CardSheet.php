@@ -162,7 +162,7 @@ final class CardSheet
         }
         $photo = $tpl === 'photo' ? CardSpec::localImage((string) $spec['photo']) : null;
         if ($tpl === 'photo') {
-            [$bg, $ink, $soft] = ['#1C1408', '#FFFDF9', '#E9DCCB'];
+            [$bg, $ink, $soft] = ['#1C1408', '#FFFDF9', '#E8E0D8'];
         }
 
         $b = [['t' => 'rect', 'x' => 0, 'y' => 0, 'w' => $w, 'h' => $h, 'fill' => $bg]];
@@ -185,7 +185,12 @@ final class CardSheet
         $lang = $spec['lang'];
         $title = $this->pick($spec, 'title', $lang);
         // The headline is the typed one, else the card's value ("20% OFF", "MVR 500.00").
-        $headline = $this->pick(array_merge($spec, ['headline' => $spec['headline'] !== '' ? $spec['headline'] : (string) ($entry['value'] ?? '')]), 'headline', $lang);
+        // A stamp card with no value of its own says what the stamps earn.
+        $value = (string) ($entry['value'] ?? '');
+        if ($value === '' && $tpl === 'stamp' && $spec['stamps'] > 0) {
+            $value = 'Every ' . self::ordinal((int) $spec['stamps']) . ' one free';
+        }
+        $headline = $this->pick(array_merge($spec, ['headline' => $spec['headline'] !== '' ? $spec['headline'] : $value]), 'headline', $lang);
         $note = $this->pick($spec, 'note', $lang);
         $headFont = $tpl === 'minimal' ? 'ds' : 'j8';
 
@@ -282,7 +287,7 @@ final class CardSheet
     {
         $ink = '#1C1408';
         $soft = '#6B5D4F';
-        $accent = CardSpec::ACCENTS[$spec['accent']][0] === '#F7F5F2' ? '#B74B0C' : CardSpec::ACCENTS[$spec['accent']][0];
+        $accent = CardSpec::RUST;
         $m = 4.5;
         $inner = $w - 2 * $m;
         $lang = $spec['lang'];
@@ -311,10 +316,10 @@ final class CardSheet
                 $cx = $gx + ($i % $perRow) * ($d + $gap);
                 $cy = $y + intdiv($i, $perRow) * ($d + $gap);
                 $last = $i === $n - 1;
-                $b[] = ['t' => 'rect', 'x' => $cx, 'y' => $cy, 'w' => $d, 'h' => $d, 'fill' => $last ? $accent : '#FFFFFF', 'r' => $d / 2, 'stroke' => $last ? $accent : '#CDBFAE'];
+                $b[] = ['t' => 'rect', 'x' => $cx, 'y' => $cy, 'w' => $d, 'h' => $d, 'fill' => $last ? $accent : '#FFFDF9', 'r' => $d / 2, 'stroke' => $last ? $accent : '#9C8E7E'];
                 $label = $last ? 'FREE' : (string) ($i + 1);
                 $pt = $last ? LabelText::fitPt('FREE', 'j8', $d - 1.2, 7, 4) : min(7.0, $d * 0.9);
-                $b[] = $this->text($label, $cx, $cy + ($d - $pt * LabelText::PT) / 2 - 0.3, $d, $pt, $last ? 'j8' : 'j5', $last ? '#FFFDF9' : '#CDBFAE', 'center', $forPdf);
+                $b[] = $this->text($label, $cx, $cy + ($d - $pt * LabelText::PT) / 2 - 0.3, $d, $pt, $last ? 'j8' : 'j5', $last ? '#FFFDF9' : '#9C8E7E', 'center', $forPdf);
             }
             $y += 2 * ($d + $gap) + 0.4;
             $reward = $this->pick($spec, 'stamp_reward', $lang);
@@ -364,6 +369,13 @@ final class CardSheet
         }
 
         return $b;
+    }
+
+    private static function ordinal(int $n): string
+    {
+        $suffix = in_array($n % 100, [11, 12, 13], true) ? 'th' : (['th', 'st', 'nd', 'rd'][$n % 10] ?? 'th');
+
+        return $n . $suffix;
     }
 
     /** Expiry and card number, as one small line. */
@@ -461,7 +473,8 @@ final class CardSheet
     private function logo(float $x, float $y, float $size, string $bg, bool $dark): array
     {
         $out = [];
-        $rust = strtoupper($bg) === '#B74B0C';
+        // The mark's own rust and gold vanish into a rust or golden card: a cream disc under it.
+        $rust = in_array(strtoupper($bg), ['#B74B0C', '#CA7D1C'], true);
         if ($rust) {
             $out[] = ['t' => 'rect', 'x' => $x, 'y' => $y, 'w' => $size, 'h' => $size, 'fill' => '#F7F5F2', 'r' => $size / 2];
         }

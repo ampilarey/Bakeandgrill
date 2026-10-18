@@ -97,7 +97,8 @@ final class CardSource
     {
         return match ($type) {
             'percentage', 'percent' => $value . '% OFF',
-            'fixed', 'fixed_amount' => 'MVR ' . rtrim(rtrim(number_format($value / 100, 2, '.', ''), '0'), '.') . ' OFF',
+            // Money reads "MVR 12.50" everywhere (docs/brand/PALETTE.md § Menu colours).
+            'fixed', 'fixed_amount' => 'MVR ' . number_format($value / 100, 2) . ' OFF',
             'free_delivery' => 'FREE DELIVERY',
             'free_item', 'buy_x_get_y' => 'FREE ITEM',
             default => '',

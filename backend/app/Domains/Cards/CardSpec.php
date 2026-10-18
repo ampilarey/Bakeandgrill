@@ -25,13 +25,20 @@ final class CardSpec
 
     public const TEMPLATES = ['classic', 'photo', 'minimal', 'stamp'];
 
-    /** key => [background, ink, soft ink, chip background, chip ink] from docs/brand/PALETTE.md. */
+    /**
+     * key => [background, ink, soft ink, chip background, chip ink], every one a colour of
+     * docs/brand/PALETTE.md: rust #B74B0C, dark brown #1C1408, golden amber #CA7D1C, cream
+     * #F7F5F2 / #FFFDF9, the rust tint #F9F1EC, and the admin's text and border tones.
+     */
     public const ACCENTS = [
-        'rust' => ['#B74B0C', '#FFFDF9', '#F3DCCB', '#1C1408', '#FFFDF9'],
-        'brown' => ['#1C1408', '#FFFDF9', '#D8C9B4', '#B74B0C', '#FFFDF9'],
-        'gold' => ['#CA7D1C', '#1C1408', '#3A2810', '#1C1408', '#FFFDF9'],
+        'rust' => ['#B74B0C', '#FFFDF9', '#F9F1EC', '#1C1408', '#FFFDF9'],
+        'brown' => ['#1C1408', '#FFFDF9', '#E8E0D8', '#B74B0C', '#FFFDF9'],
+        'gold' => ['#CA7D1C', '#1C1408', '#1C1408', '#1C1408', '#FFFDF9'],
         'cream' => ['#F7F5F2', '#1C1408', '#6B5D4F', '#B74B0C', '#FFFDF9'],
     ];
+
+    /** The brand accent: badges, the stamp that is free, the strip on every back (PALETTE.md: badges are solid rust). */
+    public const RUST = '#B74B0C';
 
     public const KINDS = ['discount', 'gift', 'promo', 'loyalty', 'plain'];
 

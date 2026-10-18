@@ -25,6 +25,14 @@ print at **Actual size / 100%**, never Fit.
   stack over, feed it again. Backs carry no code, so their order does not matter.
 - **A4 sheet**: as many cards as fit (ten CR80) with cut marks; a back sheet mirrors its columns.
 
+## Brand
+
+Every colour on a card is one of `docs/brand/PALETTE.md` (`CardSpec::ACCENTS`). The back's strip,
+the free stamp and the code chip on a dark card are always the rust; the logo sits on a cream disc
+on a rust or golden card, where its own rust and gold would vanish; the dark-surface logo goes on
+dark brown and photos; money reads "MVR 50.00". Checked 2026-10-18 by drawing every design in
+every colour.
+
 ## What is on a card
 
 Designs (`card_designs`, `App\Domains\Cards\CardSpec`): Classic, Photo (a picture from the media
