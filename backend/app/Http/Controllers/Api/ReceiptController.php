@@ -251,7 +251,7 @@ class ReceiptController extends Controller
             ));
             $sent = in_array($log->status, ['sent', 'demo'], true);
         } else {
-            Mail::to($recipient)->send(new ReceiptMail($receipt));
+            Mail::to($recipient)->locale(\App\Domains\Notifications\Support\CustomerSmsText::languageFor($receipt->order?->customer?->phone, $recipient))->send(new ReceiptMail($receipt));
             $sent = true;
         }
 
@@ -301,6 +301,7 @@ class ReceiptController extends Controller
                 CustomerSmsMessageBuilder::SLUG_RECEIPT_RESEND,
                 ['receipt_url' => $link],
                 $fallback,
+                $order?->customer?->phone,
             );
         }
 

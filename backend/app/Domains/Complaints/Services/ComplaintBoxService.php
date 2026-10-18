@@ -145,7 +145,7 @@ class ComplaintBoxService
 
         $body = $this->renderTemplate('customer_complaint_box_acknowledged', [
             'reference' => $entry->reference_number,
-        ], "Bake & Grill: thank you, we have received your complaint ({$entry->reference_number}). We will look into it and message you here.");
+        ], "Bake & Grill: thank you, we have received your complaint ({$entry->reference_number}). We will look into it and message you here.", $entry->phone);
 
         $this->sendToCustomer($entry, $body, 'customer_complaint_box_acknowledged', 'complaint-box-ack:' . $entry->id, null);
     }
@@ -235,7 +235,7 @@ class ComplaintBoxService
         $body = $this->renderTemplate('customer_complaint_box_update', [
             'reference' => $entry->reference_number,
             'message' => $message,
-        ], "Bake & Grill ({$entry->reference_number}): {$message}");
+        ], "Bake & Grill ({$entry->reference_number}): {$message}", $entry->phone);
 
         $event = ComplaintBoxEvent::create([
             'entry_id' => $entry->id,
@@ -290,10 +290,12 @@ class ComplaintBoxService
     }
 
     /** @param array<string, string> $vars */
-    private function renderTemplate(string $slug, array $vars, string $fallback): string
+    private function renderTemplate(string $slug, array $vars, string $fallback, ?string $to = null): string
     {
         $tpl = SmsTemplate::query()->where('slug', $slug)->first();
         $body = is_string($tpl?->body) && trim($tpl->body) !== '' ? $tpl->body : $fallback;
+        // A customer who keeps Dhivehi gets the Dhivehi wording (feature 3b).
+        $body = \App\Domains\Notifications\Support\CustomerSmsText::body($slug, (string) $body, $to);
         foreach ($vars as $key => $value) {
             $body = str_replace('{{' . $key . '}}', $value, $body);
         }

@@ -111,6 +111,7 @@ class PaymentConfirmationNotifier
                     'tracking_url' => $url,
                 ],
                 $fallback,
+                $phone,
             );
             $typeKey = 'customer_payment_confirmed_online';
         } else {
@@ -127,6 +128,7 @@ class PaymentConfirmationNotifier
                     'receipt_url' => $url,
                 ],
                 $fallback,
+                $phone,
             );
             $typeKey = 'customer_payment_confirmed_pos';
         }
@@ -167,7 +169,7 @@ class PaymentConfirmationNotifier
             && \App\Domains\Customers\Support\MessageChoices::allows($order->customer, \App\Domains\Customers\Support\MessageChoices::ORDERS, \App\Domains\Customers\Support\MessageChoices::EMAIL)
             && Receipt::whereKey($receipt->id)->whereNull('confirmation_email_sent_at')->update(['confirmation_email_sent_at' => now()]) === 1) {
             try {
-                Mail::to($email)->send(new OrderConfirmationMail($order, $url, $name));
+                Mail::to($email)->locale(\App\Domains\Notifications\Support\CustomerSmsText::languageFor($phone, $email))->send(new OrderConfirmationMail($order, $url, $name));
             } catch (\Throwable $e) {
                 Receipt::whereKey($receipt->id)->update(['confirmation_email_sent_at' => null]);
                 Log::error('PaymentConfirmationNotifier: email failed', [

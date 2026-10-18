@@ -625,6 +625,23 @@ a Dhivehi version. A new string on a public page is `__()` with its Dhivehi in `
 pages (privacy, terms, refund) stay English: a drafted translation of legal text is not
 published; the owner can type a Dhivehi body in Content.
 
+## Customer texts and emails in Dhivehi
+
+iruali import plan, feature 3b, part 4 (2026-10-18). With the switch on, a customer whose
+account keeps Dhivehi (`customers.preferred_language`) gets texts and emails in Dhivehi.
+Texts: `App\Domains\Notifications\Support\CustomerSmsText` (`language($phone)`, matched on the
+last seven digits; `body($slug, $english, $phone)`): the template's `sms_templates.body_dv`,
+typed under the row's wording in Admin → Notifications → Messages (`DhivehiWording`,
+`dv_templates` on `PATCH /admin/sms/types/{key}`), else the built-in draft in
+`CustomerSmsText::DEFAULTS`, else the English. `CustomerSmsMessageBuilder::build()` takes the
+number it sends to as its fourth argument, and the refund, complaint and credit senders pass it
+to their own `renderTemplate`; a new customer message passes its number the same way and adds
+its draft to `DEFAULTS` (a slug there is what offers the Dhivehi box). The drafts leave out
+English-only fragments (`{{greeting}}`, `{{ready_hint}}`). Emails: each customer mail is sent
+with `->locale(CustomerSmsText::languageFor($phone, $email))`; its views and subject use `__()`
+from `lang/dv.json`, and the layout turns right to left. Staff alerts, campaigns and the
+newsletter issue (the owner's own words) are not translated.
+
 ## Order app strings: English and Dhivehi
 
 iruali import plan, feature 3a (2026-10-17). The order app's copy is

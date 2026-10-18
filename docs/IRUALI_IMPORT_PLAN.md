@@ -592,6 +592,12 @@ change: yes.
 
 **Apps:** order app, website, backend. No migration beyond 3a.
 
+**Built (2026-10-18):** `/dv` addresses, hreflang and the sitemap; every order app string in
+`dv.json`; the website's fixed wording and built-in content in `lang/dv.json`; customer texts
+(`sms_templates.body_dv`, the one migration) and emails in the customer's language. The legal
+pages stay English, and all the Dhivehi is a draft for a Dhivehi speaker to read before the
+switch goes on.
+
 ---
 
 ## Decisions taken (best-practice defaults)

@@ -613,7 +613,7 @@ class CateringQuoteService
         $email = trim((string) ($request->email ?? ''));
         if ($email !== '' && \App\Domains\Notifications\Support\SmsTypeRegistry::isEmailEnabled('catering_quote_customer')) {
             try {
-                Mail::to($email)->send(new EventQuoteSentMail($request, $link, $this->taxPreview($request)));
+                Mail::to($email)->locale(\App\Domains\Notifications\Support\CustomerSmsText::languageFor((string) $request->phone, $email))->send(new EventQuoteSentMail($request, $link, $this->taxPreview($request)));
             } catch (\Throwable $e) {
                 Log::warning('CateringQuoteService: customer quote email failed', [
                     'id' => $request->id,

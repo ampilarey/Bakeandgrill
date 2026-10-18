@@ -22,7 +22,7 @@ class EventRequestReceivedMail extends Mailable
     {
         $ref = $this->cateringRequest->reference ?? ('#' . $this->cateringRequest->id);
 
-        return $this->subject("Event request {$ref} received — Bake & Grill")
+        return $this->subject(__('Event request :ref received — Bake & Grill', ['ref' => $ref]))
             ->view('emails.event_request_received');
     }
 }

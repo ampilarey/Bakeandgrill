@@ -13,6 +13,7 @@ class SmsTemplate extends Model
         'name',
         'slug',
         'body',
+        'body_dv',
         'type',
         'description',
         'is_system',

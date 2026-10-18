@@ -387,6 +387,18 @@ function MessageEditor({
               </button>
             </div>
           </div>
+          {row.template?.dv_default && (
+            <DhivehiWording
+              row={row}
+              slug={row.template.slug}
+              label="Dhivehi wording"
+              saved={row.template.body_dv ?? ''}
+              draft={row.template.dv_default}
+              disabled={disabled}
+              onSaved={(value) => row.template && onUpdated({ template: { ...row.template, body_dv: value } })}
+              onError={onError}
+            />
+          )}
         </>
       ) : (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -522,11 +534,97 @@ function ExtraWording({ row, wording, disabled, onSaved, onError }: {
           </button>
         </div>
       </div>
+      {wording.dv_default && (
+        <DhivehiWording
+          row={row}
+          slug={wording.slug}
+          label={`Dhivehi wording: ${wording.label}`}
+          saved={wording.body_dv ?? ''}
+          draft={wording.dv_default}
+          disabled={disabled}
+          onSaved={(value) => onSaved({ ...wording, body_dv: value })}
+          onError={onError}
+        />
+      )}
       {preview && (
         <div style={{ marginTop: 10, padding: 10, background: 'var(--color-bg)', borderRadius: 8, fontSize: 13, whiteSpace: 'pre-wrap' }}>
           {preview}
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * A customer message in Dhivehi (iruali import plan, feature 3b). It goes to a
+ * customer whose account keeps Dhivehi while Dhivehi is on (Website); left
+ * empty, the built-in draft shown in grey goes.
+ */
+function DhivehiWording({ row, slug, label, saved, draft, disabled, onSaved, onError }: {
+  row: SmsControlCenterType;
+  slug: string;
+  label: string;
+  saved: string;
+  draft: string;
+  disabled: boolean;
+  onSaved: (value: string | null) => void;
+  onError: (msg: string) => void;
+}) {
+  const [body, setBody] = useState(saved);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => { setBody(saved); }, [slug, saved]);
+
+  const dirty = body !== saved;
+  const count = smsCharCount(body || draft);
+
+  const save = async () => {
+    if (disabled || !dirty) return;
+    setSaving(true);
+    try {
+      const res = await updateSmsType(row.key, { dv_templates: { [slug]: body } });
+      onSaved(res.dv_templates?.[slug] ?? null);
+    } catch (e: unknown) {
+      onError((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ marginTop: 12 }} data-testid={`dv-wording-${slug}`}>
+      <label style={{ ...fieldLabel, marginBottom: 0 }}>
+        {label}
+        <textarea
+          value={body}
+          dir="rtl"
+          lang="dv"
+          placeholder={draft}
+          aria-label={`${row.label} ${label.toLowerCase()}`}
+          onChange={(e) => setBody(e.target.value)}
+          disabled={disabled}
+          rows={3}
+          style={{
+            width: '100%', boxSizing: 'border-box', border: '1px solid var(--color-border)', borderRadius: 8,
+            padding: '10px 12px', fontSize: 14, fontFamily: 'inherit', resize: 'vertical', opacity: disabled ? 0.65 : 1,
+            background: 'var(--color-surface)', color: 'var(--color-text)',
+          }}
+        />
+      </label>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, gap: 8, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+          For customers who keep Dhivehi, while Dhivehi is on. Empty sends the draft in grey.
+          {' '}{count.chars} chars · {count.segments} segment{count.segments === 1 ? '' : 's'}
+        </span>
+        <button
+          type="button"
+          onClick={() => void save()}
+          disabled={disabled || saving || !dirty}
+          style={{ ...primaryBtn, ...(disabled || saving || !dirty ? { opacity: 0.45, cursor: 'default' } : {}) }}
+        >
+          {saving ? 'Saving…' : 'Save Dhivehi'}
+        </button>
+      </div>
     </div>
   );
 }

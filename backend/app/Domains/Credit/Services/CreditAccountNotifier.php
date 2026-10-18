@@ -84,6 +84,7 @@ class CreditAccountNotifier
         }
 
         $body = SmsTemplate::query()->where('slug', $type)->value('body') ?: $fallback;
+        $body = \App\Domains\Notifications\Support\CustomerSmsText::body($type, (string) $body, $phone);
         foreach ($vars as $key => $value) {
             $body = str_replace('{{' . $key . '}}', $value, $body);
         }

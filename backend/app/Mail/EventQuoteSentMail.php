@@ -24,7 +24,7 @@ class EventQuoteSentMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Your event quote ' . $this->request->reference . ' — Bake & Grill',
+            subject: __('Your event quote :ref — Bake & Grill', ['ref' => $this->request->reference]),
         );
     }
 

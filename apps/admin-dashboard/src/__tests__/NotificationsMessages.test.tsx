@@ -376,6 +376,31 @@ describe('Notifications → Messages', () => {
     await waitFor(() => expect(within(screen.getByTestId('extra-wording-giftcard_delivery_alt')).getByRole('button', { name: 'Save wording' })).toBeDisabled());
   });
 
+  it('keeps a customer message\'s Dhivehi wording beside the English (3b)', async () => {
+    mockControlCenter({
+      types: typesFixture.map((t) => (t.key === 'giftcard_delivery'
+        ? { ...t, template: { ...t.template!, body_dv: null, dv_default: 'ގިފްޓް ކާޑު {{amount}}' } }
+        : t)),
+    });
+    vi.mocked(api.updateSmsType).mockResolvedValueOnce({ key: 'giftcard_delivery', dv_templates: { giftcard_delivery: 'ހަދިޔާ {{amount}}' } });
+    renderWithRouter(<MessagesTab />);
+    await expand('giftcard_delivery');
+    const box = screen.getByRole('textbox', { name: 'Gift card delivery dhivehi wording' });
+    expect(box).toHaveValue('');
+    expect(box).toHaveAttribute('placeholder', 'ގިފްޓް ކާޑު {{amount}}');
+    expect(box).toHaveAttribute('dir', 'rtl');
+    fireEvent.change(box, { target: { value: 'ހަދިޔާ {{amount}}' } });
+    fireEvent.click(within(screen.getByTestId('dv-wording-giftcard_delivery')).getByRole('button', { name: 'Save Dhivehi' }));
+    await waitFor(() => expect(api.updateSmsType).toHaveBeenCalledWith('giftcard_delivery', { dv_templates: { giftcard_delivery: 'ހަދިޔާ {{amount}}' } }));
+    await waitFor(() => expect(within(screen.getByTestId('dv-wording-giftcard_delivery')).getByRole('button', { name: 'Save Dhivehi' })).toBeDisabled());
+  });
+
+  it('offers no Dhivehi box for a message without one', async () => {
+    renderWithRouter(<MessagesTab />);
+    await expand('giftcard_delivery');
+    expect(screen.queryByTestId('dv-wording-giftcard_delivery')).toBeNull();
+  });
+
   it('changes who may send it by hand', async () => {
     renderWithRouter(<MessagesTab />);
     await expand('giftcard_delivery');

@@ -2,13 +2,13 @@
 
 {{ $otpCode }}
 
-Works until {{ $expiresAt->format('g:i a') }} ({{ $expiresMinutes }} minutes), once.
+{{ __('Works until :time (:minutes minutes), once.', ['time' => $expiresAt->format('g:i a'), 'minutes' => $expiresMinutes]) }}
 @if ($maskedPhone)
-Account: {{ $maskedPhone }}
+{{ __('Account') }}: {{ $maskedPhone }}
 @endif
-Asked for: {{ $requestedAt->format('j M Y, g:i a') }} Malé time
+{{ __('Asked for') }}: {{ $requestedAt->format('j M Y, g:i a') }} {{ __('Malé time') }}
 
-Keep this code to yourself. {{ $brandName }} staff will never ask for it.
-Didn't ask for it? Ignore this email: {{ $w['nobody'] }}.
+{{ __('Keep this code to yourself.') }} {{ __(':brand staff will never ask for it.', ['brand' => $brandName]) }}
+{!! __('Didn\'t ask for it? Ignore this email: :nobody.', ['nobody' => $w['nobody']]) !!}
 
 {{ \App\Support\EmailBrand::variables()['websiteUrl'] }}

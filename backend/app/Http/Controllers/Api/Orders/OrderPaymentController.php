@@ -129,6 +129,7 @@ class OrderPaymentController extends Controller
                     'pay_url' => $payPageUrl,
                 ],
                 $fallback,
+                $phone,
             );
             app(SmsService::class)->send(new SmsMessage(
                 to: $phone,
@@ -335,6 +336,7 @@ class OrderPaymentController extends Controller
                     'invoice_url' => $link,
                 ],
                 $fallback,
+                $phone,
             );
 
             // Debounce only (~45s): cashiers need to resend after edits or

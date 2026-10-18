@@ -45,7 +45,7 @@ final class GiftCardEmailDelivery
         $redeemUrl = rtrim((string) config('app.url'), '/') . '/order';
 
         try {
-            Mail::to($normalized)->send(new GiftCardMail(
+            Mail::to($normalized)->locale(\App\Domains\Notifications\Support\CustomerSmsText::languageFor(null, $normalized))->send(new GiftCardMail(
                 $card,
                 strtoupper(trim($plainCode)),
                 $redeemUrl,

@@ -24,7 +24,7 @@
         : \App\Support\ComplaintBoxLink::url('email', trim($__env->yieldContent('complaint_order')) ?: null);
 @endphp
 <!DOCTYPE html>
-<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<html lang="{{ app()->getLocale() }}" dir="{{ app()->getLocale() === 'dv' ? 'rtl' : 'ltr' }}" xmlns="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -72,7 +72,7 @@
 
                     {{-- Card --}}
                     <tr>
-                        <td class="eb-pad" style="background:#FFFFFF; padding:32px 36px 30px; font-family:Arial, Helvetica, sans-serif; font-size:15px; line-height:23px; color:#1C1408;">
+                        <td class="eb-pad" dir="{{ app()->getLocale() === 'dv' ? 'rtl' : 'ltr' }}" style="background:#FFFFFF; padding:32px 36px 30px; font-family:Arial, Helvetica, sans-serif; font-size:15px; line-height:23px; color:#1C1408;">
                             @yield('content')
                         </td>
                     </tr>
@@ -80,18 +80,18 @@
                     {{-- Contact strip --}}
                     <tr>
                         <td class="eb-pad" align="center" style="background:#FEF3E8; border-top:1px solid #EDE4D4; border-radius:0 0 18px 18px; padding:18px 36px; font-family:Arial, Helvetica, sans-serif; font-size:13px; line-height:20px; color:#6B5D4F;">
-                            Questions? We're happy to help.<br>
+                            {{ __('Questions? We\'re happy to help.') }}<br>
                             @if ($brand['whatsappUrl'])
                                 <a href="{{ $brand['whatsappUrl'] }}" style="color:{{ $rust }}; font-weight:bold; text-decoration:none;">WhatsApp</a>
                             @endif
                             @if ($brand['whatsappUrl'] && $brand['phone']) &nbsp;·&nbsp; @endif
                             @if ($brand['phone'])
-                                <a href="{{ $brand['phoneHref'] }}" style="color:{{ $rust }}; font-weight:bold; text-decoration:none;">Call {{ $brand['phone'] }}</a>
+                                <a href="{{ $brand['phoneHref'] }}" style="color:{{ $rust }}; font-weight:bold; text-decoration:none;">{{ __('Call :phone', ['phone' => $brand['phone']]) }}</a>
                             @endif
                             &nbsp;·&nbsp;
-                            <a href="{{ $brand['orderUrl'] }}" style="color:{{ $rust }}; font-weight:bold; text-decoration:none;">Order online</a>
+                            <a href="{{ $brand['orderUrl'] }}" style="color:{{ $rust }}; font-weight:bold; text-decoration:none;">{{ __('Order online') }}</a>
                             @if ($complaintUrl)
-                                <br><span style="display:inline-block; margin-top:8px;">Something not right? <a href="{{ $complaintUrl }}" style="color:{{ $rust }}; font-weight:bold; text-decoration:underline;">Tell us in the complaint box</a>.</span>
+                                <br><span style="display:inline-block; margin-top:8px;">{{ __('Something not right?') }} <a href="{{ $complaintUrl }}" style="color:{{ $rust }}; font-weight:bold; text-decoration:underline;">{{ __('Tell us in the complaint box') }}</a>.</span>
                             @endif
                         </td>
                     </tr>

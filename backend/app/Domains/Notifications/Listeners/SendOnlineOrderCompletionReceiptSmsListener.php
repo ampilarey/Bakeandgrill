@@ -74,6 +74,7 @@ final class SendOnlineOrderCompletionReceiptSmsListener
                 'receipt_url' => $link,
             ],
             $fallback,
+            $phone,
         );
 
         try {

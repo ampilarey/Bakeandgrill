@@ -26,7 +26,7 @@ class GiftCardMail extends Mailable
     {
         $amount = number_format((float) $this->card->initial_balance, 2);
 
-        return $this->subject("Your Bake & Grill gift card — MVR {$amount}")
+        return $this->subject(__('Your Bake & Grill gift card — MVR :amount', ['amount' => $amount]))
             ->view('emails.gift_card');
     }
 }

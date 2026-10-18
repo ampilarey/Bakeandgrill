@@ -21,7 +21,7 @@ class OrderConfirmationMail extends Mailable
 
     public function build(): self
     {
-        return $this->subject("Your Bake & Grill order #{$this->order->order_number} is confirmed!")
+        return $this->subject(__('Your Bake & Grill order #:number is confirmed!', ['number' => $this->order->order_number]))
             ->view('emails.order_confirmation');
     }
 }

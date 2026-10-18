@@ -55,6 +55,7 @@ class CateringEventCreatedNotifier
                     'contact_name' => (string) ($request->contact_name ?? ''),
                 ],
                 $fallback,
+                $phone,
             );
             $log = $this->sms->send(new SmsMessage(
                 to: $phone,
@@ -77,7 +78,7 @@ class CateringEventCreatedNotifier
         $email = trim((string) ($request->email ?? ''));
         if ($email !== '' && SmsTypeRegistry::isEmailEnabled('catering_request_received')) {
             try {
-                Mail::to($email)->send(new EventRequestReceivedMail(
+                Mail::to($email)->locale(\App\Domains\Notifications\Support\CustomerSmsText::languageFor((string) $request->phone, $email))->send(new EventRequestReceivedMail(
                     $request,
                     $request->contact_name ?: 'there',
                 ));

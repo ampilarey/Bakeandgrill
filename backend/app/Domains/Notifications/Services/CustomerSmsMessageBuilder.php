@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Notifications\Services;
 
+use App\Domains\Notifications\Support\CustomerSmsText;
 use App\Domains\Sms\Services\SmsTemplateRenderer;
 use App\Models\SmsTemplate;
 
@@ -35,13 +36,15 @@ final class CustomerSmsMessageBuilder
 
     public function __construct(private readonly SmsTemplateRenderer $renderer) {}
 
-    public function build(string $slug, array $variables, string $fallback): string
+    /**
+     * The message for $slug. Given the number it goes to, a customer who keeps
+     * Dhivehi gets the Dhivehi wording while the switch is on (CustomerSmsText).
+     */
+    public function build(string $slug, array $variables, string $fallback, ?string $to = null): string
     {
         $template = SmsTemplate::where('slug', $slug)->first();
-        if ($template === null || trim($template->body) === '') {
-            return $this->renderer->renderRaw($fallback, $variables);
-        }
+        $english = ($template === null || trim($template->body) === '') ? $fallback : (string) $template->body;
 
-        return $this->renderer->render($template, $variables);
+        return $this->renderer->renderRaw(CustomerSmsText::body($slug, $english, $to), $variables);
     }
 }

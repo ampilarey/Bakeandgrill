@@ -25,7 +25,7 @@ class EventConfirmedMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Event confirmed ' . $this->request->reference . ' — Bake & Grill',
+            subject: __('Event confirmed :ref — Bake & Grill', ['ref' => $this->request->reference]),
         );
     }
 

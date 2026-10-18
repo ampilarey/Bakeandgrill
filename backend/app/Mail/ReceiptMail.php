@@ -19,7 +19,7 @@ class ReceiptMail extends Mailable
     {
         $orderNumber = $this->receipt->order?->order_number ?? 'order';
 
-        return $this->subject("Your Bake & Grill receipt {$orderNumber}")
+        return $this->subject(__('Your Bake & Grill receipt :number', ['number' => $orderNumber]))
             ->view('emails.receipt')
             ->with([
                 'receipt' => $this->receipt,

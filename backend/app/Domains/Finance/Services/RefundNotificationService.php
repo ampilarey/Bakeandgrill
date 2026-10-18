@@ -61,7 +61,7 @@ class RefundNotificationService
 
         $body = $this->renderTemplate('customer_refund_completed', [
             'order_number' => $order->order_number ?? (string) $order->id,
-        ], "Bake & Grill: your refund on order {$order->order_number} has been processed.");
+        ], "Bake & Grill: your refund on order {$order->order_number} has been processed.", $phone);
 
         $this->sms->send(new SmsMessage(
             to: $phone,
@@ -86,7 +86,7 @@ class RefundNotificationService
         $body = $this->renderTemplate('customer_refund_to_wallet', [
             'order_number' => $order->order_number ?? (string) $order->id,
             'amount' => $amount,
-        ], "Bake & Grill: MVR {$amount} from your refund on order {$order->order_number} is in your wallet. Use it on your next order.");
+        ], "Bake & Grill: MVR {$amount} from your refund on order {$order->order_number} is in your wallet. Use it on your next order.", $phone);
 
         $this->sms->send(new SmsMessage(
             to: $phone,
@@ -114,7 +114,7 @@ class RefundNotificationService
         $body = $this->renderTemplate('customer_refund_on_its_way', [
             'order_number' => $order->order_number ?? (string) $order->id,
             'amount' => $amount,
-        ], "Bake & Grill: your refund of MVR {$amount} on order {$order->order_number} is approved. The part paid by card or online is being returned to you and we will message you when it is sent.");
+        ], "Bake & Grill: your refund of MVR {$amount} on order {$order->order_number} is approved. The part paid by card or online is being returned to you and we will message you when it is sent.", $phone);
 
         $this->sms->send(new SmsMessage(
             to: $phone,
@@ -136,7 +136,7 @@ class RefundNotificationService
         }
         $body = $this->renderTemplate('customer_refund_rejected', [
             'order_number' => $order->order_number ?? (string) $order->id,
-        ], "Bake & Grill: the refund requested on order {$order->order_number} was not approved. Please contact us if you have questions.");
+        ], "Bake & Grill: the refund requested on order {$order->order_number} was not approved. Please contact us if you have questions.", $phone);
 
         $this->sms->send(new SmsMessage(
             to: $phone,
@@ -179,7 +179,7 @@ class RefundNotificationService
             'code' => $issued['plain'],
             'order_number' => $orderLabel,
             'minutes' => (string) $issued['ttl_minutes'],
-        ], $fallback);
+        ], $fallback, $phone);
 
         $log = $this->sms->send(new SmsMessage(
             to: $phone,
@@ -244,10 +244,12 @@ class RefundNotificationService
     }
 
     /** @param  array<string, string>  $vars */
-    private function renderTemplate(string $slug, array $vars, string $fallback): string
+    private function renderTemplate(string $slug, array $vars, string $fallback, ?string $to = null): string
     {
         $template = SmsTemplate::query()->where('slug', $slug)->first();
         $body = $template?->body ?: $fallback;
+        // A customer who keeps Dhivehi gets the Dhivehi wording (feature 3b).
+        $body = \App\Domains\Notifications\Support\CustomerSmsText::body($slug, (string) $body, $to);
         foreach ($vars as $key => $value) {
             $body = str_replace('{{' . $key . '}}', $value, $body);
         }

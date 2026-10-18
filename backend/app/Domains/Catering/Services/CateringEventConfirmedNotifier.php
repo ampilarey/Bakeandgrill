@@ -47,7 +47,7 @@ class CateringEventConfirmedNotifier
         ];
 
         $customerFallback = "Event confirmed - ref {$ref}, paid MVR {$paidMvr}{$balanceBit}. {$when}{$venue}";
-        $customerMsg = $this->messages->build('catering_confirmed_customer', $vars, $customerFallback);
+        $customerMsg = $this->messages->build('catering_confirmed_customer', $vars, $customerFallback, (string) $request->phone);
         $this->notifyCustomer($request, $customerMsg, $baseKey, $paidLaar, $balanceLaar);
 
         $staffFallback = "Event confirmed {$ref}: paid MVR {$paidMvr}{$balanceBit}. {$when}";
@@ -88,7 +88,7 @@ class CateringEventConfirmedNotifier
         $email = trim((string) ($request->email ?? ''));
         if ($email !== '' && \App\Domains\Notifications\Support\SmsTypeRegistry::isEmailEnabled('catering_confirmed_customer')) {
             try {
-                Mail::to($email)->send(new EventConfirmedMail($request, $paidLaar, $balanceLaar));
+                Mail::to($email)->locale(\App\Domains\Notifications\Support\CustomerSmsText::languageFor((string) $request->phone, $email))->send(new EventConfirmedMail($request, $paidLaar, $balanceLaar));
             } catch (\Throwable $e) {
                 Log::warning('CateringEventConfirmedNotifier: customer email failed', [
                     'id' => $request->id,

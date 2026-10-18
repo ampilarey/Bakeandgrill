@@ -138,6 +138,7 @@ final class SendCustomerOrderStatusSmsListener
                 'receipt_url' => $receiptUrl,
             ],
             $fallback,
+            $phone,
         );
         // A wording the owner changed may leave the receipt out: add it.
         if ($receiptUrl !== '' && !str_contains($message, $receiptUrl)) {

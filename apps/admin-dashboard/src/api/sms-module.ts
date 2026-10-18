@@ -330,6 +330,10 @@ export type SmsControlCenterType = {
     slug: string;
     body: string;
     variables: { name: string; description?: string }[];
+    /** A customer message's own Dhivehi wording (feature 3b); null sends the built-in draft. */
+    body_dv?: string | null;
+    /** The built-in Dhivehi draft; null for a message that has no Dhivehi (staff alerts). */
+    dv_default?: string | null;
   } | null;
   /** The message's other wordings (delivery vs pickup, urgent, each credit reminder), edited on its row (2026-10-10). */
   extra_templates?: SmsExtraTemplate[];
@@ -352,6 +356,8 @@ export type SmsExtraTemplate = {
   label: string;
   body: string;
   variables: { name: string; description?: string }[];
+  body_dv?: string | null;
+  dv_default?: string | null;
 };
 
 export type SmsDeliveryRules = {
@@ -438,6 +444,8 @@ export type SmsTypeUpdatePayload = {
   body?: string;
   /** slug => body, for the row's other wordings. */
   extra_templates?: Record<string, string>;
+  /** slug => Dhivehi wording (empty sends the built-in draft). */
+  dv_templates?: Record<string, string>;
   send_permission?: string | null;
   /** Who gets it; null puts the default back. */
   audience?: Partial<AlertAudience> | null;
@@ -459,6 +467,7 @@ export async function updateSmsType(
   send_permission_label?: string;
   template?: SmsControlCenterType['template'];
   extra_templates?: SmsExtraTemplate[];
+  dv_templates?: Record<string, string | null>;
   estimate?: { encoding: string; segments: number; cost_mvr: number; length: number };
   audience?: AlertAudience;
   audience_custom?: boolean;

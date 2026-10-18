@@ -213,6 +213,7 @@ class OrderStatusController extends Controller
                         'invoice_line' => $invoiceLine,
                     ],
                     $fallback,
+                    $phone,
                 );
 
                 app(SmsService::class)->send(new SmsMessage(

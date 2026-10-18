@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
 use App\Domains\Notifications\Support\AlertAudience;
+use App\Domains\Notifications\Support\CustomerSmsText;
 use App\Domains\Notifications\Support\SmsBudgetGate;
 use App\Domains\Notifications\Support\SmsDeliveryRules;
 use App\Domains\Notifications\Support\SmsTypeRegistry;
@@ -142,6 +143,9 @@ class SmsControlCenterController extends Controller
                         'slug' => $tpl->slug,
                         'body' => $tpl->body,
                         'variables' => $tpl->variables ?? [],
+                        // A customer message's Dhivehi (feature 3b): the owner's, and the built-in draft.
+                        'body_dv' => $tpl->body_dv,
+                        'dv_default' => CustomerSmsText::DEFAULTS[$tpl->slug] ?? null,
                     ];
                     // When body is blank, send path uses code/config fallback.
                     if (trim((string) $tpl->body) === '') {
@@ -162,6 +166,8 @@ class SmsControlCenterController extends Controller
                         'label' => $when,
                         'body' => $tpl->body,
                         'variables' => $tpl->variables ?? [],
+                        'body_dv' => $tpl->body_dv,
+                        'dv_default' => CustomerSmsText::DEFAULTS[$tpl->slug] ?? null,
                     ];
                 }
             }
@@ -334,6 +340,9 @@ class SmsControlCenterController extends Controller
             'email_enabled' => 'sometimes|boolean',
             'telegram_enabled' => 'sometimes|boolean',
             'body' => 'sometimes|nullable|string|max:1000',
+            // Dhivehi wording per template slug of this message (main or extra); empty uses the built-in draft.
+            'dv_templates' => 'sometimes|array|min:1',
+            'dv_templates.*' => 'nullable|string|max:1000',
             'extra_templates' => 'sometimes|array|min:1',
             'extra_templates.*' => 'nullable|string|max:1000',
             'send_permission' => [
@@ -519,6 +528,36 @@ class SmsControlCenterController extends Controller
                 $saved[] = ['id' => $tpl->id, 'slug' => $tpl->slug, 'label' => $allowed[$extraSlug], 'body' => $tpl->body, 'variables' => $tpl->variables ?? []];
             }
             $response['extra_templates'] = $saved;
+        }
+
+        if (array_key_exists('dv_templates', $validated)) {
+            $allowed = array_filter([$entry['template_slug'] ?? null, ...array_keys(SmsTypeRegistry::EXTRA_TEMPLATES[$key] ?? [])]);
+            $allowed = array_values(array_filter($allowed, fn ($s) => isset(CustomerSmsText::DEFAULTS[$s])));
+            $unknown = array_diff(array_keys($validated['dv_templates']), $allowed);
+            if ($unknown !== []) {
+                return response()->json(['message' => 'This message has no Dhivehi wording called ' . implode(', ', $unknown) . '.'], 422);
+            }
+            $saved = [];
+            foreach ($validated['dv_templates'] as $dvSlug => $body) {
+                $tpl = SmsTemplate::query()->firstOrCreate(
+                    ['slug' => $dvSlug],
+                    ['name' => $entry['label'], 'type' => 'customer_notification', 'body' => '', 'description' => $entry['label'], 'is_system' => true, 'variables' => []],
+                );
+                $old = $tpl->body_dv;
+                $tpl->body_dv = trim((string) $body) === '' ? null : (string) $body;
+                $tpl->save();
+                $this->audit->log(
+                    'sms.type.wording_dv.updated',
+                    'SmsTemplate',
+                    $tpl->id,
+                    ['body_dv' => $old, 'type' => $key],
+                    ['body_dv' => $tpl->body_dv, 'type' => $key],
+                    ['sms_type' => $key, 'slug' => $dvSlug],
+                    $request,
+                );
+                $saved[$dvSlug] = $tpl->body_dv;
+            }
+            $response['dv_templates'] = $saved;
         }
 
         if (array_key_exists('send_permission', $validated)) {

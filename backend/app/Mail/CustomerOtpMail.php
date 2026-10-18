@@ -59,6 +59,13 @@ class CustomerOtpMail extends Mailable
      */
     public function words(): array
     {
+        // In the reader's language (feature 3b): the mail is sent with their locale.
+        return array_map(fn (string $s): string => __($s), $this->englishWords());
+    }
+
+    /** @return array{title: string, h1: string, action: string, band: string, for: string, nobody: string} */
+    private function englishWords(): array
+    {
         if ($this->isVerify()) {
             return ['title' => 'Email check code', 'h1' => 'Check your email', 'action' => 'check this email address', 'band' => 'Email check', 'for' => 'Checking this email address', 'nobody' => 'nobody can add this address to an account without the code'];
         }
@@ -75,9 +82,9 @@ class CustomerOtpMail extends Mailable
         $requested = Carbon::parse($this->requestedAtIso)->timezone(config('app.timezone'));
 
         return $this->subject(match (true) {
-            $this->isReset() => "{$this->otpCode} is your {$name} password reset code",
-            $this->isVerify() => "{$this->otpCode} is your {$name} email check code",
-            default => "{$this->otpCode} is your {$name} code",
+            $this->isReset() => __(':code is your :name password reset code', ['code' => $this->otpCode, 'name' => $name]),
+            $this->isVerify() => __(':code is your :name email check code', ['code' => $this->otpCode, 'name' => $name]),
+            default => __(':code is your :name code', ['code' => $this->otpCode, 'name' => $name]),
         })
             ->view('emails.customer_otp')
             ->text('emails.customer_otp_text')

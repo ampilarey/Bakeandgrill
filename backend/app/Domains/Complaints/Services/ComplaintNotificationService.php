@@ -200,7 +200,7 @@ class ComplaintNotificationService
 
         $body = $this->renderTemplate($templateSlug, $vars === [] ? [
             'reference' => $complaint->reference_number,
-        ] : $vars, $defaultBody);
+        ] : $vars, $defaultBody, $phone);
 
         try {
             $this->sms->send(new SmsMessage(
@@ -245,10 +245,12 @@ class ComplaintNotificationService
     }
 
     /** @param array<string, string> $vars */
-    private function renderTemplate(string $slug, array $vars, string $fallback): string
+    private function renderTemplate(string $slug, array $vars, string $fallback, ?string $to = null): string
     {
         $tpl = SmsTemplate::query()->where('slug', $slug)->first();
         $body = is_string($tpl?->body) && trim($tpl->body) !== '' ? $tpl->body : $fallback;
+        // A customer who keeps Dhivehi gets the Dhivehi wording (feature 3b).
+        $body = \App\Domains\Notifications\Support\CustomerSmsText::body($slug, (string) $body, $to);
         foreach ($vars as $key => $value) {
             $body = str_replace('{{' . $key . '}}', (string) $value, $body);
         }

@@ -43,8 +43,8 @@ final class CreditChaseService
         $text = trim((string) $message) !== ''
             ? $this->builder->build('credit_reminder_manual', $vars, (string) $message)
             : ($invoice !== null
-                ? $this->builder->build('credit_reminder_overdue', $vars, 'Bake & Grill: Credit invoice {{invoice_number}} - MVR {{amount}}, due {{due_date}}. Your balance is MVR {{balance}}. View: {{link}}')
-                : $this->builder->build('credit_balance_reminder', $vars, 'Bake & Grill: your credit account balance is MVR {{balance}}. Please settle at your earliest convenience. Thank you!'));
+                ? $this->builder->build('credit_reminder_overdue', $vars, 'Bake & Grill: Credit invoice {{invoice_number}} - MVR {{amount}}, due {{due_date}}. Your balance is MVR {{balance}}. View: {{link}}', (string) $customer->phone)
+                : $this->builder->build('credit_balance_reminder', $vars, 'Bake & Grill: your credit account balance is MVR {{balance}}. Please settle at your earliest convenience. Thank you!', (string) $customer->phone));
 
         return $this->send($customer, $staff, $text, $invoice, 'reminder');
     }
@@ -63,6 +63,7 @@ final class CreditChaseService
             'credit_pay_link',
             $vars,
             'Bake & Grill: pay credit invoice {{invoice_number}} (MVR {{amount}}) online by card: {{link}} - thank you!',
+            (string) $customer->phone,
         );
 
         return $this->send($customer, $staff, $text, $invoice, 'pay_link');

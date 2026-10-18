@@ -64,7 +64,7 @@ class CustomerOtpService
 
         if ($channel === 'email') {
             try {
-                Mail::to((string) $email)->send(new CustomerOtpMail($otpCode, self::TTL_MINUTES, $purpose, $phone));
+                Mail::to((string) $email)->locale(\App\Domains\Notifications\Support\CustomerSmsText::language($phone))->send(new CustomerOtpMail($otpCode, self::TTL_MINUTES, $purpose, $phone));
             } catch (\Throwable $e) {
                 // Only the newest code counts, so a row for an email that
                 // never left would cancel the SMS code the customer already
@@ -85,6 +85,7 @@ class CustomerOtpService
             'auth_customer_otp',
             ['code' => $otpCode, 'minutes' => (string) self::TTL_MINUTES, 'brand' => 'Bake & Grill'],
             $fallback,
+            $phone,
         );
 
         // Idempotency key must be unique per OTP row, otherwise back-to-back
@@ -111,7 +112,7 @@ class CustomerOtpService
             $otpRow->forceFill(['email' => $email])->save();
             DeferAfterResponse::run(function () use ($email, $otpCode, $phone, $purpose): void {
                 try {
-                    Mail::to($email)->send(new CustomerOtpMail($otpCode, self::TTL_MINUTES, $purpose, $phone, alsoTexted: true));
+                    Mail::to($email)->locale(\App\Domains\Notifications\Support\CustomerSmsText::language($phone))->send(new CustomerOtpMail($otpCode, self::TTL_MINUTES, $purpose, $phone, alsoTexted: true));
                 } catch (\Throwable $e) {
                     logger()->warning('OTP copy by email could not be sent', ['phone' => $phone, 'error' => $e->getMessage()]);
                 }
@@ -144,9 +145,9 @@ class CustomerOtpService
      * (at most LIVE_CODES) and, on a match, mark all of them used so neither
      * can be replayed.
      *
-     * @param  list<string>|null  $allowedPurposes  Only match OTPs issued for
-     *         one of these purposes. Null keeps legacy any-purpose behaviour
-     *         and must not be used for auth-sensitive flows.
+     * @param list<string>|null $allowedPurposes Only match OTPs issued for
+     *                                           one of these purposes. Null keeps legacy any-purpose behaviour
+     *                                           and must not be used for auth-sensitive flows.
      *
      * @throws ValidationException
      */

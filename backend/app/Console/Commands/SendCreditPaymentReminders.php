@@ -106,7 +106,7 @@ class SendCreditPaymentReminders extends Command
 
                     $sms->send(new SmsMessage(
                         to: (string) $customer->phone,
-                        message: $builder->build($slug, $vars, $fallback),
+                        message: $builder->build($slug, $vars, $fallback, (string) $customer->phone),
                         type: 'credit_payment_reminder',
                         customerId: $customer->id,
                         referenceType: 'invoice',
