@@ -1119,8 +1119,10 @@ within two minutes is ignored, an open punch older than 16 hours is closed at no
 note, punches from before the clock was allowed stay history; the clock's in / out keys are not
 trusted. A staff member's number on the clock is `users.clock_user_no` ("007" is "7"); numbers
 nobody has wait, show under Numbers nobody has and in Needs attention (`clock_machine`), and go
-on the time clock when given. The clock keeps Maldives time (`TimeZone=5`). Cloudflare must let
-`/iclock/` through on HTTP (`docs/OWNER_CHECKLIST.md` § 7c). `ClockMachineTest`,
+on the time clock when given. The clock keeps Maldives time (`TimeZone=5`). The HTTPS redirect
+is the root `.htaccess`'s, which lets `/iclock/` through; cPanel's Force HTTPS Redirect
+and Cloudflare's Always Use HTTPS stay off, as neither can leave a path out
+(`docs/OWNER_CHECKLIST.md` § 7c). `ClockMachineTest`,
 `ClockMachinePanel.test.tsx`.
 
 ## Queue worker vs synchronous SMS

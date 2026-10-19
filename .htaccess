@@ -5,6 +5,14 @@
 
     RewriteEngine On
 
+    # Every visit on HTTPS, except the fingerprint clock (ZKTeco ADMS), which can only
+    # send plain HTTP to /iclock/. This replaces cPanel's "Force HTTPS Redirect", which
+    # cannot leave a path out (docs/OWNER_CHECKLIST.md § 7c).
+    RewriteCond %{HTTPS} !=on
+    RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+    RewriteCond %{REQUEST_URI} !^/iclock/
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]

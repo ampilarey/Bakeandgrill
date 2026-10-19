@@ -117,16 +117,14 @@ first. In the BML merchant portal, copy the webhook secret, add
 
 ## 7c. Link the fingerprint clock (ZKTeco P160/ID, 15 minutes)
 
-The clock can only send plain HTTP, and Cloudflare now turns every HTTP visit into HTTPS,
-which the clock cannot follow. Let `/iclock/` through, and keep everything else on HTTPS:
+The clock can only send plain HTTP. The HTTPS redirect was cPanel's **Force HTTPS
+Redirect**, which cannot leave one path out, so the site's own `.htaccess` now does it,
+with `/iclock/` let through (2026-10-19):
 
-1. Cloudflare → bakeandgrill.mv → **Rules → Redirect Rules → Create rule**, named
-   "HTTPS except the clock". Custom filter expression:
-   `(not ssl and not starts_with(http.request.uri.path, "/iclock/"))`.
-   Then: Dynamic redirect, expression `concat("https://", http.host, http.request.uri.path)`,
-   status 301, **Preserve query string** ticked. Deploy.
-2. Cloudflare → **SSL/TLS → Edge Certificates → Always Use HTTPS: Off** (the rule above
-   now does that job, minus the clock).
+1. Deploy (the command at the top), so the new `.htaccess` is on the server.
+2. cPanel → **Domains** → bakeandgrill.mv → **Force HTTPS Redirect: Off**. The site stays
+   on HTTPS through `.htaccess`; check `http://bakeandgrill.mv/menu` still jumps to https.
+   Leave Cloudflare's **Always Use HTTPS** off (it is off today), or it does the same thing.
 3. Check: open `http://bakeandgrill.mv/iclock/ping` in a browser. It should show `OK`,
    not jump to https.
 4. On the clock: Menu → Comm. → Cloud Server Setting: Server Mode ADMS, Enable Domain

@@ -121,7 +121,7 @@ export default function ClockMachinePanel({ canEdit }: { canEdit: boolean }) {
             <li>Enrol each person on the clock as usual, then type the number the clock gave them under <strong>Numbers on the clock</strong>.</li>
           </ol>
           <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
-            The clock sends plain HTTP, so the site must let <code>/iclock/</code> through without moving it to HTTPS (owner checklist, clock machine).
+            The clock sends plain HTTP, so the site lets <code>/iclock/</code> through without moving it to HTTPS (owner checklist 7c).
             The first punch of a shift clocks in and the next clocks out; the clock's in and out keys are not needed.
           </p>
         </details>
