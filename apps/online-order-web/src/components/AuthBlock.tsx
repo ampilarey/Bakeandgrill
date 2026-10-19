@@ -1,7 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { SocialPendingNote, SocialSignIn, socialErrorFromUrl } from "./SocialSignIn";
 import {
-  checkPhone,
   requestOtp,
   verifyOtp,
   passwordLogin,
@@ -21,6 +20,7 @@ import "./AuthBlock.css";
 
 type Step =
   | "phone"
+  | "method"
   | "guest"
   | "password"
   | "otp"
@@ -413,21 +413,22 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false, intro }: Props)
     if (s === "otp" || s === "forgot_otp") setResendIn(30);
   };
 
-  const handleCheckPhone = async () => {
+  const handleCheckPhone = () => {
+    if (!phoneOk || loading) return;
+    setError("");
+    persistGuestPhone(phone);
+    go("method");
+  };
+
+  const handleTextCode = async () => {
     if (!phoneOk || loading) return;
     setError("");
     setLoading(true);
     try {
-      persistGuestPhone(phone);
-      const res = await checkPhone(phone);
-      if (res.has_password) {
-        go("password");
-      } else {
-        const r = await requestOtp(phone, "register");
-        noteTexted(r);
-        if (import.meta.env.DEV && r.otp) setHint(`Dev OTP: ${r.otp}`);
-        go("otp");
-      }
+      const r = await requestOtp(phone, "register");
+      noteTexted(r);
+      if (import.meta.env.DEV && r.otp) setHint(`Dev OTP: ${r.otp}`);
+      go("otp");
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -449,25 +450,10 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false, intro }: Props)
       // Backend refuses guest sessions for existing accounts (takeover guard).
       // Route the customer into the verified login flow instead of dead-ending.
       if (/already has an account/i.test(msg)) {
-        try {
-          const res = await checkPhone(phone);
-          if (res.has_password) {
-            setHint(msg);
-            go("password");
-            return;
-          }
-          const r = await requestOtp(phone, "register");
-          noteTexted(r);
-          if (import.meta.env.DEV && r.otp) setHint(`Dev OTP: ${r.otp}`);
-          else setHint(t("auth.hint_code_sent"));
-          go("otp");
-          return;
-        } catch (e2) {
-          setError((e2 as Error).message);
-          return;
-        } finally {
-          setLoading(false);
-        }
+        setHint(msg);
+        go("method");
+        setLoading(false);
+        return;
       }
       setError(msg);
     } finally {
@@ -706,6 +692,24 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false, intro }: Props)
             <IconLock />
             <span>{text("order_auth_privacy_line", t("auth.privacy_line"))}</span>
           </p>
+        </>
+      )}
+
+      {step === "method" && (
+        <>
+          <h2 className="auth__title">{t("auth.choose_title")}</h2>
+          <p className="auth__sub">{t("auth.choose_sub")}</p>
+          {errorMsg}
+          {hintMsg}
+          <PrimaryButton onClick={() => void handleTextCode()} disabled={loading} loading={loading}>
+            {loading ? t("auth.checking") : t("auth.text_code")}
+          </PrimaryButton>
+          <button type="button" className="auth__btn auth__btn--outline" onClick={() => go("password")}>
+            {t("auth.use_password")}
+          </button>
+          <button type="button" className="auth__link" onClick={() => go("phone")}>
+            {t("auth.change")}
+          </button>
         </>
       )}
 

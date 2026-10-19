@@ -14,8 +14,8 @@ use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\Permission;
 use App\Models\Role;
-use App\Models\TradeAccount;
 use App\Models\SmsLog;
+use App\Models\TradeAccount;
 use App\Models\User;
 use App\Support\InvoicePagePresenter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -409,6 +409,30 @@ class CreditAccountsPageTest extends TestCase
         $this->assertNull($payment->order_id);
         $this->assertSame('initiated', (string) $payment->status);
         $this->assertSame('txn-c-1', $payment->provider_transaction_id);
+    }
+
+    public function test_a_second_pay_reopens_the_same_bml_page(): void
+    {
+        $aisha = $this->account('Aisha', '+9607771111');
+        $invoice = $this->creditInvoice($aisha, 12000, now()->addDays(5)->toDateString());
+
+        $mock = Mockery::mock(BmlConnectService::class);
+        $mock->shouldReceive('normalizeLocalId')->andReturnUsing(fn ($v) => (string) $v);
+        $mock->shouldReceive('createPayment')->once()->andReturn([
+            'payment_url' => 'https://bml.test/pay/c1',
+            'transaction_id' => 'txn-c-1',
+            'local_id' => 'BGINV1',
+        ]);
+        $mock->shouldNotReceive('getTransactionStatus');
+        $this->app->instance(BmlConnectService::class, $mock);
+
+        $this->post('/invoices/' . $invoice->token . '/pay')->assertRedirect('https://bml.test/pay/c1');
+        $this->post('/invoices/' . $invoice->token . '/pay')->assertRedirect('https://bml.test/pay/c1');
+
+        $payments = Payment::where('invoice_id', $invoice->id)->get();
+        $this->assertCount(1, $payments);
+        $this->assertSame('txn-c-1', $payments->first()->provider_transaction_id);
+        $this->assertSame('initiated', (string) $payments->first()->status);
     }
 
     public function test_a_gateway_answer_without_a_link_sends_the_customer_back_with_a_message(): void

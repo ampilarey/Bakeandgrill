@@ -1,4 +1,3 @@
 {
-    "exists": true,
-    "has_password": true
+    "next": "continue"
 }

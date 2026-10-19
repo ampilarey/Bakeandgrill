@@ -37,6 +37,7 @@ class AdminCustomerController extends Controller
         }
 
         $query = Customer::withCount('orders')
+            ->withExists(['erasureRequests as erasure_requested' => fn ($q) => $q->where('status', 'pending')])
             ->orderByDesc('created_at');
 
         if ($search = $request->query('search')) {
@@ -80,7 +81,9 @@ class AdminCustomerController extends Controller
      */
     public function show(int $id): JsonResponse
     {
-        $customer = Customer::withCount('orders')->findOrFail($id);
+        $customer = Customer::withCount('orders')
+            ->withExists(['erasureRequests as erasure_requested' => fn ($q) => $q->where('status', 'pending')])
+            ->findOrFail($id);
 
         $orders = $customer->orders()
             ->select('id', 'order_number', 'status', 'type', 'total', 'created_at', 'paid_at')
@@ -243,6 +246,7 @@ class AdminCustomerController extends Controller
             'unverified_phone' => $c->unverified_phone,
             'set_aside_at' => $c->set_aside_at,
             'set_aside_for_customer_id' => $c->set_aside_for_customer_id,
+            'erasure_requested' => (bool) ($c->erasure_requested ?? false),
         ];
     }
 }

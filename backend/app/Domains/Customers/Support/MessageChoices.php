@@ -145,13 +145,16 @@ final class MessageChoices
         $customer->forceFill(['message_prefs' => $stored])->save();
     }
 
-    /** Turn offers off by both ways (the one-click link in an offers email). */
-    public static function stopOffers(Customer $customer, string $source): void
+    /**
+     * Stop offer emails. SMS offers stay unless $sms is set — a "stop emails"
+     * link must not also silence order texts' sibling, the SMS promo switch.
+     */
+    public static function stopOffers(Customer $customer, string $source, bool $sms = false): void
     {
         $stored = self::stored($customer);
         $stored[self::OFFERS]['email'] = false;
         $customer->forceFill(['message_prefs' => $stored]);
-        if (!$customer->sms_opt_out) {
+        if ($sms && !$customer->sms_opt_out) {
             $customer->forceFill(['sms_opt_out' => true, 'sms_opt_out_at' => now(), 'sms_opt_out_source' => $source]);
         }
         $customer->save();

@@ -24,6 +24,8 @@ final class SearchVisibility
         '/receipts/', '/invoices/', '/pay/', '/payments/', '/social/approve/', '/sms',
         '/customer/', '/admin', '/pos', '/kds', '/driver', '/board', '/dashboard',
         '/menu/print',
+        // The order app is the till, not a second home page for search engines.
+        '/order/',
         // Order app pages that belong to one customer.
         '/order/track/', '/order/orders/', '/order/checkout', '/order/quote/', '/order/gift-cards/v/',
         '/order/account', '/order/order-history', '/order/events/mine',

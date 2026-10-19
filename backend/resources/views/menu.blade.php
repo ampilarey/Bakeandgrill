@@ -1424,6 +1424,10 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                                         @if(!empty($offer['original_price']) && (float) $offer['original_price'] > (float) $offer['effective_price'])
                                             <s class="menu-card-price-was">MVR {{ number_format((float) $offer['original_price'], 2) }}</s>
                                         @endif
+                                        @php $gstNote = \App\Support\GstShelfNote::text(); @endphp
+                                        @if($gstNote !== '')
+                                            <span class="price-gst-note" style="display:block;font-size:0.72rem;font-weight:600;color:var(--muted, #8B7355);">{{ $gstNote }}</span>
+                                        @endif
                                     </div>
                                 @endif
                             </a>

@@ -116,6 +116,10 @@
                 @if($price['was'] !== null)
                     <s class="menu-card-price-was">MVR {{ number_format($price['was'], 2) }}</s>
                 @endif
+                @php $gstNote = \App\Support\GstShelfNote::text(); @endphp
+                @if($gstNote !== '')
+                    <span class="price-gst-note" style="display:block;font-size:0.72rem;font-weight:600;color:var(--muted, #8B7355);">{{ $gstNote }}</span>
+                @endif
             </div>
         </div>
     </a>

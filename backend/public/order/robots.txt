@@ -1,6 +1,4 @@
 User-agent: *
-Allow: /order/
-Disallow: /order/checkout
-Disallow: /order/orders/
+Disallow: /
 
-Sitemap: https://bakeandgrill.mv/order/sitemap.xml
+# The restaurant home is the marketing site, not this order app.

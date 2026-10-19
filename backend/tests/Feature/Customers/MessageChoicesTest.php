@@ -97,11 +97,23 @@ class MessageChoicesTest extends TestCase
         Mail::assertNotSent(SmsCopyMail::class);
     }
 
-    public function test_the_link_in_an_offers_email_stops_offers_both_ways(): void
+    public function test_the_link_in_an_offers_email_stops_email_and_leaves_sms(): void
     {
         $this->customer->forceFill(['email_verified_at' => now(), 'message_prefs' => ['offers' => ['email' => true]]])->save();
 
         $this->post(URL::signedRoute('email.unsubscribe.store', ['customer' => $this->customer->id]))->assertOk();
+
+        $choices = MessageChoices::for($this->customer->fresh());
+        $this->assertFalse($choices['offers']['email']);
+        $this->assertTrue($choices['offers']['sms']);
+        $this->assertFalse($this->customer->fresh()->sms_opt_out);
+    }
+
+    public function test_the_link_can_also_stop_offer_sms(): void
+    {
+        $this->customer->forceFill(['email_verified_at' => now(), 'message_prefs' => ['offers' => ['email' => true]]])->save();
+
+        $this->post(URL::signedRoute('email.unsubscribe.store', ['customer' => $this->customer->id]), ['also_sms' => '1'])->assertOk();
 
         $choices = MessageChoices::for($this->customer->fresh());
         $this->assertFalse($choices['offers']['email']);

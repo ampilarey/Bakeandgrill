@@ -1,9 +1,9 @@
-import type { CSSProperties, ReactNode } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { isLanguageSwitcherEnabled } from '../../components/LanguageSwitcherGate';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
-import { updateCustomerProfile } from '../../api';
+import { requestAccountErasure, updateCustomerProfile } from '../../api';
 import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
 import { useTheme } from '../../hooks/useTheme';
 import { PrayerBar } from '../../components/PrayerBar';
@@ -139,7 +139,7 @@ export function AccountSettingsBlock({ push, hub }: { push?: PushProps; hub?: bo
                   data-testid={`account-lang-${option}`}
                   style={{
                     minWidth: 42,
-                    minHeight: 38,
+                    minHeight: 44,
                     padding: '0 0.75rem',
                     borderRadius: 999,
                     border: 'none',
@@ -309,7 +309,10 @@ export function SignInMethodsBlock({ accounts, busy, onUnlink, hub }: {
 /** More links group: Hours, Contact, About, legal links, WhatsApp, Viber. */
 export function AccountMoreBlock({ hub, skip = [] }: { hub?: boolean; skip?: string[] } = {}) {
   const { t } = useLanguage();
+  const { isAuthenticated } = useAuth();
   const { settings, footerLinks } = useSiteSettingsContext();
+  const [erasure, setErasure] = useState<'idle' | 'busy' | 'sent'>('idle');
+  const [erasureError, setErasureError] = useState('');
 
   const legalFallback = [
     { label: t('account.link_privacy'), url: '/privacy' },
@@ -396,6 +399,44 @@ export function AccountMoreBlock({ hub, skip = [] }: { hub?: boolean; skip?: str
           </a>
         );
       })}
+      {isAuthenticated && (
+        <div style={{ padding: '0.75rem 0.25rem 0.25rem' }}>
+          {erasure === 'sent' ? (
+            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>{t('account.delete_data_done')}</p>
+          ) : (
+            <button
+              type="button"
+              data-testid="account-delete-data"
+              disabled={erasure === 'busy'}
+              onClick={() => {
+                if (!window.confirm(t('account.delete_data_confirm'))) return;
+                setErasureError('');
+                setErasure('busy');
+                void requestAccountErasure()
+                  .then(() => setErasure('sent'))
+                  .catch((e: unknown) => {
+                    setErasure('idle');
+                    setErasureError(e instanceof Error ? e.message : t('common.try_again'));
+                  });
+              }}
+              style={{
+                minHeight: 44,
+                width: '100%',
+                borderRadius: 12,
+                border: '1.5px solid var(--color-border)',
+                background: 'var(--color-surface)',
+                color: 'var(--color-text)',
+                fontWeight: 700,
+                fontFamily: 'inherit',
+                cursor: erasure === 'busy' ? 'wait' : 'pointer',
+              }}
+            >
+              {erasure === 'busy' ? t('account.delete_data_busy') : t('account.delete_data')}
+            </button>
+          )}
+          {erasureError ? <p style={{ margin: '0.4rem 0 0', fontSize: '0.8rem', color: 'var(--color-error)' }}>{erasureError}</p> : null}
+        </div>
+      )}
     </BlockShell>
   );
 }

@@ -137,6 +137,14 @@ function localPhone(phone: string): string {
   return phone.trim().replace(/^(?:00960|\+?960)/, "");
 }
 
+/** Same rule as sign-in (MaldivesPhone): 7 digits starting 3, 6, 7 or 9. */
+export function deliveryPhoneProblem(phone: string): string | null {
+  const digits = localPhone(phone);
+  if (!digits) return "Contact phone is required";
+  if (!/^[3679]\d{6}$/.test(digits)) return "Enter a 7-digit Maldives mobile number";
+  return null;
+}
+
 function addressToDelivery(a: CustomerAddress): DeliveryForm {
   return {
     address_line1: a.address_line1,
@@ -1110,7 +1118,8 @@ export function useCheckout() {
     if (!delivery.address_line1.trim()) errs.address_line1 = "Address is required";
     if (!delivery.island.trim())        errs.island        = "Island is required";
     if (!delivery.contact_name.trim())  errs.contact_name  = "Contact name is required";
-    if (!delivery.contact_phone.trim()) errs.contact_phone = "Contact phone is required";
+    const phoneProblem = deliveryPhoneProblem(delivery.contact_phone);
+    if (phoneProblem) errs.contact_phone = phoneProblem;
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };

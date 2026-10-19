@@ -143,6 +143,8 @@ Route::middleware(['auth:sanctum', 'customer.token'])->prefix('customer')->group
     Route::post('/wallet/gift-card', [App\Http\Controllers\Api\CustomerWalletController::class, 'addGiftCard'])->middleware('throttle:10,10');
     Route::post('/orders/{id}/pay-wallet', [App\Http\Controllers\Api\CustomerWalletController::class, 'payOrder'])->whereNumber('id')->middleware('throttle:20,1');
     Route::patch('/profile', [CustomerController::class, 'update']);
+    Route::post('/erasure-request', [App\Http\Controllers\Api\CustomerErasureRequestController::class, 'store'])
+        ->middleware('throttle:6,10');
     // A guest checks the number they typed, and collects the points held back (2026-10-18).
     Route::get('/phone', [App\Http\Controllers\Api\CustomerPhoneController::class, 'show']);
     Route::post('/phone/send-code', [App\Http\Controllers\Api\CustomerPhoneController::class, 'sendCode'])->middleware('throttle:6,10');

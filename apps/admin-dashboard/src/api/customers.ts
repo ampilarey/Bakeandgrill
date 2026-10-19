@@ -26,6 +26,8 @@ export interface AdminCustomer {
   is_gst_registered?: boolean;
   billing_address?: string | null;
   badges?: string[];
+  /** The customer asked to be erased; an owner still completes it. */
+  erasure_requested?: boolean;
   /** A guest checkout number nobody has checked with a code (GuestNumbers). */
   phone_unverified?: boolean;
   phone_verified_at?: string | null;

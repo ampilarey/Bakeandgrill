@@ -63,9 +63,7 @@ class CustomerPortalController extends Controller
 
         $otpCode = $this->otpService->issue($phone, 'web-login');
 
-        if (!app()->environment('production')) {
-            session()->flash('otp_hint', "Dev mode – SMS not sent. OTP: {$otpCode}");
-        }
+        $this->flashDevOtp($otpCode);
 
         return back()->with('otp_requested', true)->with('phone', $phone);
     }
@@ -95,9 +93,7 @@ class CustomerPortalController extends Controller
 
         $otpCode = $this->otpService->issue($phone, 'web-reset');
 
-        if (!app()->environment('production')) {
-            session()->flash('otp_hint', "Dev mode – SMS not sent. OTP: {$otpCode}");
-        }
+        $this->flashDevOtp($otpCode);
 
         return back()
             ->with('reset_otp_requested', true)
@@ -112,6 +108,17 @@ class CustomerPortalController extends Controller
         ]);
 
         $phone = $this->normalizePhone($request->phone);
+
+        $verifyKey = 'otp-web-reset-verify:' . $phone;
+        $limited = $this->otpRateLimited($verifyKey, 5);
+        if ($limited !== null) {
+            return back()
+                ->with('reset_otp_requested', true)
+                ->with('phone', $phone)
+                ->withErrors([
+                    'otp' => 'Too many attempts. Try again in ' . ceil($limited / 60) . ' minutes.',
+                ]);
+        }
 
         try {
             $this->otpService->verifyAndConsume($phone, $request->otp, CustomerOtpService::RESET_PURPOSES);
@@ -439,6 +446,14 @@ class CustomerPortalController extends Controller
             'loyalty_points' => 0,
             'tier' => 'bronze',
         ]);
+    }
+
+    /** The same gate as the API: a code on screen only in the local harness. */
+    private function flashDevOtp(string $otpCode): void
+    {
+        if (app()->environment(['local', 'testing']) && (bool) config('system.otp_dev_return')) {
+            session()->flash('otp_hint', "Dev mode – SMS not sent. OTP: {$otpCode}");
+        }
     }
 
     /**

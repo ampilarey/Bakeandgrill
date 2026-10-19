@@ -42,6 +42,8 @@ Route::post('/telegram/webhook/{bot}', [App\Http\Controllers\Api\TelegramWebhook
 // Named limiter is token-keyed (CGNAT-safe); polling + WhatsApp preview must not 429.
 Route::get('/orders/track/{token}', [OrderTrackingController::class, 'trackByToken'])
     ->middleware('throttle:public-order-track');
+Route::post('/orders/track/{token}/pay', [OrderTrackingController::class, 'payByToken'])
+    ->middleware('throttle:10,1');
 
 // The order app reads /content, /page-blocks and /site-settings/public on
 // every open, and a café full of phones shares one public IP (Wi-Fi NAT,

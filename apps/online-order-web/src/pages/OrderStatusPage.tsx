@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { VerifyNumberCard } from '../components/VerifyNumberCard';
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { AlertTriangle, Bell, Bike, CheckCircle2, ChefHat, ClipboardList, Gift, Hourglass, MapPin, PartyPopper, PauseCircle, Phone, RefreshCw, Repeat, Share2, Star, Tag, User, Users, Wallet, XCircle, type LucideIcon } from "lucide-react";
-import { getOrderDetail, getOrderByTrackingToken, getReorderPayload, initiateOnlinePayment, initiatePartialPayment, getWaitTimeEstimate, getMyReferralCode, cancelCustomerOrder, type OrderDetail, type OrderItem as OrderDetailItem, API_ORIGIN } from "../api";
+import { getOrderDetail, getOrderByTrackingToken, getReorderPayload, initiateOnlinePayment, initiatePartialPayment, payOrderByTrackingToken, getWaitTimeEstimate, getMyReferralCode, cancelCustomerOrder, type OrderDetail, type OrderItem as OrderDetailItem, API_ORIGIN } from "../api";
 import { ReviewForm } from "../components/ReviewForm";
 import { BrandedHeader } from "../components/BrandedHeader";
 import { WhatsAppIcon, ViberIcon } from "../components/icons";
@@ -401,7 +401,7 @@ export function OrderStatusPage() {
 
   const needsRemainingPayment =
     !!order &&
-    !!isAuthenticated &&
+    (!!isAuthenticated || !!trackingToken) &&
     remainingLaar > 0 &&
     !['cancelled', 'refunded', 'completed'].includes(order.status) &&
     order.payment_status !== 'paid';
@@ -417,7 +417,8 @@ export function OrderStatusPage() {
   };
 
   const handlePayAgain = async () => {
-    if (!order || !isAuthenticated) {
+    if (!order) return;
+    if (!isAuthenticated && !trackingToken) {
       setPayError(t("track.err_sign_in_pay"));
       navigate("/checkout");
       return;
@@ -426,7 +427,9 @@ export function OrderStatusPage() {
     setPayError("");
     try {
       writeCheckoutPendingOrderId(order.id);
-      const payment = await initiateOnlinePayment(order.id);
+      const payment = trackingToken
+        ? await payOrderByTrackingToken(trackingToken)
+        : await initiateOnlinePayment(order.id);
       redirectToPayment(payment.payment_url);
     } catch (e) {
       setPayError((e as Error).message);

@@ -97,6 +97,15 @@ final class CustomerErasureService
             ])->save();
             $customer->delete();
 
+            \App\Models\CustomerErasureRequest::query()
+                ->where('customer_id', $id)
+                ->where('status', 'pending')
+                ->update([
+                    'status' => 'completed',
+                    'completed_at' => now(),
+                    'completed_by' => $actor->id,
+                ]);
+
             // Nothing personal in the record of it: only that it happened.
             $this->audit->log('customer.erased', 'Customer', $id, [], [], [
                 'orders_scrubbed' => $scrubbedOrders,

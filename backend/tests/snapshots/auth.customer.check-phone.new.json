@@ -1,4 +1,3 @@
 {
-    "exists": false,
-    "has_password": false
+    "next": "continue"
 }

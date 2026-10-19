@@ -2,6 +2,9 @@
 
 @php
     $siteName = \App\Models\SiteSetting::get('site_name', 'Bake & Grill');
+    $gstRow = \App\Models\GstSetting::query()->first();
+    $isTaxInvoice = (bool) ($invoice->is_tax_invoice ?? false);
+    $docLabel = $invoice->type === 'credit_note' ? 'Credit Note' : ($isTaxInvoice ? 'Tax Invoice' : 'Invoice');
     $onCredit = $invoice->isOnCreditAccount();
     $page = $page ?? \App\Support\InvoicePagePresenter::present($invoice);
     $balanceDueMvr = (float) $page['display_balance_mvr'];
@@ -68,12 +71,12 @@
         .'. Mistake: ';
 @endphp
 
-@section('title', 'Invoice ' . $invoice->invoice_number . ' — ' . $siteName)
+@section('title', $docLabel . ' ' . $invoice->invoice_number . ' — ' . $siteName)
 
 @section('content')
 <div class="doc-card">
     @include('partials.document-masthead', [
-        'docType' => 'Invoice',
+        'docType' => $docLabel,
         'docNumber' => $invoice->invoice_number,
         'docBadge' => $displayStatus,
         'docBadgeClass' => $badgeClass,
@@ -88,6 +91,18 @@
         @endif
 
         <div class="doc-meta-grid">
+            @if ($isTaxInvoice && $gstRow)
+                <div data-tax-invoice-from>
+                    <p class="doc-eyebrow">From</p>
+                    <p style="font-weight:700; margin:0;">{{ $gstRow->seller_name ?: $siteName }}</p>
+                    @if ($gstRow->seller_address)
+                        <p class="doc-subtitle" style="margin:0;">{{ $gstRow->seller_address }}</p>
+                    @endif
+                    @if ($gstRow->seller_tin)
+                        <p class="doc-subtitle" style="margin:0;" data-seller-tin>TIN: {{ $gstRow->seller_tin }}</p>
+                    @endif
+                </div>
+            @endif
             @if ($invoice->customer || $invoice->recipient_name)
                 <div>
                     <p class="doc-eyebrow">Bill to</p>
@@ -175,7 +190,7 @@
             <p><span>Subtotal</span><span>MVR {{ number_format($displaySubtotal, 2) }}</span></p>
             @include('partials.order-fee-lines', ['order' => $invoice->order])
             @if ($displayTax > 0)
-                <p><span>Tax</span><span>MVR {{ number_format($displayTax, 2) }}</span></p>
+                <p><span>{{ $isTaxInvoice ? 'GST' : 'Tax' }}</span><span>MVR {{ number_format($displayTax, 2) }}</span></p>
             @endif
             @if ($displayDiscount > 0)
                 <p><span>Discount</span><span>− MVR {{ number_format($displayDiscount, 2) }}</span></p>

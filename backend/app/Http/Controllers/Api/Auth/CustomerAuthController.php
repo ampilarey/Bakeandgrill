@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 
@@ -99,8 +100,10 @@ class CustomerAuthController extends Controller
     // ── Public endpoints ──────────────────────────────────────────────────────
 
     /**
-     * Check whether a phone number has an account and has set a password.
-     * Used by the React app to decide whether to show the password field or OTP flow.
+     * The phone step used to answer whether the number already had an account.
+     * That let a caller list customers. The next step is the same for every
+     * number: the app offers a texted code or a password, and only a correct
+     * password or code proves the account. Attempts are logged and throttled.
      */
     public function checkPhone(Request $request)
     {
@@ -109,11 +112,13 @@ class CustomerAuthController extends Controller
         ]);
 
         $phone = $this->normalizePhone($request->phone);
-        $customer = Customer::where('phone', $phone)->first();
+        Log::info('customer.check_phone', [
+            'ip' => $request->ip(),
+            'phone_hash' => hash('sha256', $phone),
+        ]);
 
         return response()->json([
-            'exists' => $customer !== null,
-            'has_password' => $customer !== null && !empty($customer->password),
+            'next' => 'continue',
         ]);
     }
 

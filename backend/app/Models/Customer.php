@@ -119,6 +119,12 @@ class Customer extends Model implements AuthenticatableContract
         });
     }
 
+    /** Asks to be erased. An owner completes the latest pending one. */
+    public function erasureRequests(): HasMany
+    {
+        return $this->hasMany(CustomerErasureRequest::class);
+    }
+
     /** Google, Facebook and Apple sign-ins linked to this customer (iruali import plan, feature 1). */
     public function socialAccounts(): HasMany
     {

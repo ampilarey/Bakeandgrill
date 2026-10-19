@@ -306,3 +306,8 @@ export async function addGiftCardToWallet(code: string): Promise<{ added_laar: n
 export async function payOrderFromWallet(orderId: number): Promise<{ order: { id: number; status: string; payment_status: string }; balance_laar: number }> {
   return request(`/customer/orders/${orderId}/pay-wallet`, { method: 'POST' });
 }
+
+/** Ask an owner to erase this account's personal data. Orders and amounts stay. */
+export async function requestAccountErasure(): Promise<{ message: string }> {
+  return request('/customer/erasure-request', { method: 'POST' });
+}

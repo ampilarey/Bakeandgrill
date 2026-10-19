@@ -130,4 +130,36 @@ class ReceiptDocumentStateTest extends TestCase
         $this->assertSame('Paid', $doc['badge']);
         $this->assertTrue($doc['is_final_paid']);
     }
+
+    public function test_a_gift_card_hold_counts_toward_the_balance_before_a_gift_card_payment_exists(): void
+    {
+        $order = Order::create([
+            'order_number' => 'BG-GIFT-HOLD',
+            'type' => 'online_pickup',
+            'status' => 'pending',
+            'payment_status' => 'unpaid',
+            'subtotal' => 100,
+            'tax_amount' => 0,
+            'discount_amount' => 0,
+            'total' => 100,
+            'total_laar' => 10000,
+            'gift_card_discount_laar' => 3000,
+        ]);
+
+        $doc = ReceiptDocumentState::forOrder($order);
+
+        $this->assertSame(70.0, $doc['balance_due']);
+
+        Payment::create([
+            'order_id' => $order->id,
+            'method' => 'gift_card',
+            'amount' => 30,
+            'amount_laar' => 3000,
+            'status' => 'confirmed',
+            'processed_at' => now(),
+        ]);
+
+        $settled = ReceiptDocumentState::forOrder($order->fresh());
+        $this->assertSame(70.0, $settled['balance_due']);
+    }
 }

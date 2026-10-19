@@ -20,15 +20,28 @@
 <div class="eu-wrap">
     <div class="eu-card">
         <p class="eu-eyebrow">Your messages</p>
-        <h1>Stop promotional messages</h1>
+        <h1>Stop promotional email</h1>
         @if ($done)
-            <div class="eu-done" data-testid="email-unsub-done">Done. You will get no more offers or news from us, by SMS or email.</div>
+            <div class="eu-done" data-testid="email-unsub-done">Done. You will get no more offers or news from us, by email or SMS.</div>
             <p class="eu-lead">Order, payment and sign-in messages still come, so you never miss what matters.</p>
+        @elseif (!empty($emailStopped))
+            <div class="eu-done" data-testid="email-unsub-done">Done. Offer emails have stopped.</div>
+            <p class="eu-lead">Offer texts can still arrive. Order, payment and sign-in messages still come.</p>
+            <form method="post" action="{{ $action }}" style="margin-top:1rem;">
+                @csrf
+                <input type="hidden" name="also_sms" value="1">
+                <button type="submit" class="eu-btn">Also stop offer SMS</button>
+            </form>
         @else
-            <p class="eu-lead">You will stop getting offers and news, by SMS and by email. Order, payment and sign-in messages still come.</p>
+            <p class="eu-lead">This stops offer emails. Order, payment and sign-in messages still come. Offer texts stay on unless you also stop those.</p>
             <form method="post" action="{{ $action }}">
                 @csrf
-                <button type="submit" class="eu-btn">Stop promotional messages</button>
+                <button type="submit" class="eu-btn">Stop offer emails</button>
+            </form>
+            <form method="post" action="{{ $action }}" style="margin-top:0.75rem;">
+                @csrf
+                <input type="hidden" name="also_sms" value="1">
+                <button type="submit" class="eu-btn" style="background:transparent;color:var(--dark);border:1.5px solid var(--border);">Stop offer emails and SMS</button>
             </form>
         @endif
         <p class="eu-fine">Changed your mind? Message us and we will switch them back on.</p>

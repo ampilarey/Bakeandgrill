@@ -96,13 +96,25 @@ class PaymentService
     ): array {
         $amountLaar = $amountLaar ?? $this->orderTotalLaar($order);
         $idempotencyKey = $idempotencyKey ?? ('bml:init:' . $order->id . ':' . $amountLaar);
-        $localId = $this->bml->normalizeLocalId('BG-' . $order->order_number . '-' . now()->format('His'));
+        $localId = $this->bml->normalizeLocalId('BG-' . $order->order_number . '-' . now()->format('His') . ($retried ? bin2hex(random_bytes(2)) : ''));
 
         // Order-level reservation: under a row lock, at most one in-flight online
         // payment (any gateway/amount). Same BML amount may be reused; exclusive
         // `initiating` claim ensures only one request calls the gateway.
         $claim = DB::transaction(function () use ($order, $idempotencyKey, $localId, $amountLaar): array {
-            Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
+            $lockedOrder = Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
+
+            // The amount on an open session is frozen. When the bill has moved
+            // and this request is for the new balance, drop that session
+            // instead of refusing a second one for the old figure.
+            $active = $this->findInFlightOnlinePayment($order->id);
+            if ($active
+                && (string) $active->gateway === 'bml'
+                && (int) $active->amount_laar !== $amountLaar
+                && $this->bmlDueMoved($lockedOrder, $active, $amountLaar)
+            ) {
+                return ['mode' => 'stale_due', 'payment' => $active];
+            }
 
             $reserved = $this->resolveOnlinePaymentReservation($order, 'bml', $amountLaar);
             if ($reserved) {
@@ -132,7 +144,7 @@ class PaymentService
                 ]);
 
                 $retryKey = $idempotencyKey . ':retry:' . now()->timestamp;
-                $retryLocal = $this->bml->normalizeLocalId('BG-' . $order->order_number . '-' . now()->format('His'));
+                $retryLocal = $this->bml->normalizeLocalId('BG-' . $order->order_number . '-' . now()->format('His') . bin2hex(random_bytes(2)));
 
                 // Re-check order-level reservation (another tab may have claimed).
                 $reserved = $this->resolveOnlinePaymentReservation($order, 'bml', $amountLaar);
@@ -158,6 +170,14 @@ class PaymentService
         });
 
         $payment = $claim['payment'];
+
+        if ($claim['mode'] === 'stale_due') {
+            if ($retried || !$this->closeLostBmlSession($payment, 'due_changed')) {
+                abort(409, 'An online payment session is already in progress for this order. Complete or cancel it before starting another.');
+            }
+
+            return $this->initiateBmlPayment($order, $amountLaar, $idempotencyKey, $returnUrl, retried: true);
+        }
 
         if ($claim['mode'] === 'reuse') {
             $reused = $this->bmlReuseResponse($payment, $order);
@@ -205,7 +225,12 @@ class PaymentService
         PaymentStateMachine::for($payment->fresh())->transition('initiated', [
             'provider_transaction_id' => $result['transaction_id'],
             // The gateway's own link, so a second Pay tap reopens this very page.
-            'gateway_response' => ['payment_url' => $result['payment_url'], 'transaction_id' => $result['transaction_id']],
+            // due_laar is the balance this session was opened against.
+            'gateway_response' => [
+                'payment_url' => $result['payment_url'],
+                'transaction_id' => $result['transaction_id'],
+                'due_laar' => $this->getRemainingBalanceLaar($order->fresh() ?? $order),
+            ],
         ]);
 
         Log::info('BML: Payment initiated', [
@@ -331,7 +356,7 @@ class PaymentService
      * A started session whose page cannot be found any more is closed, unless BML
      * says it was paid, so the next attempt starts a new one.
      */
-    private function closeLostBmlSession(Payment $payment): bool
+    private function closeLostBmlSession(Payment $payment, string $reason = 'payment page lost; a new session was started'): bool
     {
         if (filled($payment->provider_transaction_id)) {
             try {
@@ -346,13 +371,40 @@ class PaymentService
         $fresh = Payment::query()->find($payment->id);
         if ($fresh && PaymentStateMachine::for($fresh)->can('cancelled')) {
             PaymentStateMachine::for($fresh)->transition('cancelled', [
-                'gateway_response' => array_merge(is_array($fresh->gateway_response) ? $fresh->gateway_response : [], ['closed' => 'payment page lost; a new session was started']),
+                'gateway_response' => array_merge(is_array($fresh->gateway_response) ? $fresh->gateway_response : [], ['closed' => $reason]),
             ]);
 
             return true;
         }
 
         return false;
+    }
+
+    /**
+     * The open session was started against a different balance, and this
+     * request is for the balance as it stands now.
+     */
+    private function bmlDueMoved(Order $order, Payment $active, int $requestedLaar): bool
+    {
+        $dueNow = $this->getRemainingBalanceLaar($order);
+        if ($requestedLaar !== $dueNow) {
+            return false;
+        }
+        $stored = is_array($active->gateway_response) ? $active->gateway_response : [];
+        if (isset($stored['due_laar'])) {
+            return (int) $stored['due_laar'] !== $dueNow;
+        }
+
+        // Rows opened before due_laar was stored: only a charge above today's
+        // balance is stale. A smaller in-flight amount is a partial payment.
+        return (int) $active->amount_laar > $dueNow;
+    }
+
+    private function paymentClosedBecauseDueChanged(Payment $payment): bool
+    {
+        $stored = is_array($payment->gateway_response) ? $payment->gateway_response : [];
+
+        return ($stored['closed'] ?? null) === 'due_changed';
     }
 
     private function waitForBmlProviderId(Payment $payment): ?Payment
@@ -664,11 +716,13 @@ class PaymentService
                 'idempotency_key' => $idempotencyKey,
             ]);
 
-            if (
-                config('app.env') === 'production'
-                || config('bml.enforce_signature', true)
-                || filled(config('bml.webhook_secret'))
-            ) {
+            // Unsigned payloads are accepted only by the automated test harness
+            // (APP_ENV=testing, enforcement off, no secret). Anywhere else a
+            // missing signature must not mark a charge paid.
+            $harness = app()->environment('testing')
+                && config('bml.enforce_signature', true) === false
+                && !filled(config('bml.webhook_secret'));
+            if (!$harness) {
                 throw new \RuntimeException('BML webhook signature verification failed — rejecting payload.');
             }
         }
@@ -919,6 +973,12 @@ class PaymentService
                 ->where('order_id', $orderId)
                 ->lockForUpdate()
                 ->first();
+            // The bill moved and we closed this session, but the bank still
+            // took the money. Bring the row back so the charge is recorded
+            // and any extra is owed back, instead of dropping the webhook.
+            if ($locked && (string) $locked->status === 'cancelled' && $this->paymentClosedBecauseDueChanged($locked)) {
+                $locked->forceFill(['status' => 'initiated'])->save();
+            }
             $sm = $locked ? PaymentStateMachine::for($locked) : null;
 
             if (!$locked || !$sm->can('confirmed')) {
@@ -979,6 +1039,12 @@ class PaymentService
                 if ($giftPaidLaar <= 0) {
                     $paidLaar += $giftTenderLaar;
                 }
+            }
+
+            $excessLaar = $paidLaar - $orderLaar;
+            if ($excessLaar > 0) {
+                app(\App\Domains\Finance\Services\RefundWorkflowService::class)
+                    ->recordOverpayRefund($order, $locked, $excessLaar);
             }
 
             Log::info('BML: Payment confirmed', [
@@ -1222,6 +1288,41 @@ class PaymentService
         });
     }
 
+    /** Close in-flight invoice sessions whose frozen amount is no longer the balance due. */
+    private function dropStaleInvoiceBmlSessions(\App\Models\Invoice $invoice, int $amountLaar): void
+    {
+        $stale = Payment::query()
+            ->where('invoice_id', $invoice->id)
+            ->whereNull('order_id')
+            ->where('gateway', 'bml')
+            ->whereIn('status', self::IN_FLIGHT_STATUSES)
+            ->where('amount_laar', '!=', $amountLaar)
+            ->get();
+
+        foreach ($stale as $old) {
+            if (!$this->closeLostBmlSession($old, 'due_changed')) {
+                throw new \RuntimeException('A payment for the previous amount is still open at the bank. Please try again in a minute.');
+            }
+        }
+    }
+
+    private function mintInvoiceBmlPayment(\App\Models\Invoice $invoice, string $idempotencyKey, int $amountLaar): Payment
+    {
+        return $this->payments->create([
+            'idempotency_key' => $idempotencyKey . ':retry:' . now()->timestamp,
+            'order_id' => null,
+            'invoice_id' => $invoice->id,
+            'method' => 'bml_connect',
+            'gateway' => 'bml',
+            'currency' => config('bml.default_currency', 'MVR'),
+            'amount' => round($amountLaar / 100, 2),
+            'amount_laar' => $amountLaar,
+            'local_id' => $this->bml->normalizeLocalId('BG-INV-' . $invoice->invoice_number . '-' . now()->format('His') . bin2hex(random_bytes(2))),
+            'status' => 'created',
+            'processed_at' => now(),
+        ]);
+    }
+
     /** Prefer persisted laari total; fall back to decimal MVR only for legacy rows. */
     private function orderTotalLaar(Order $order): int
     {
@@ -1257,6 +1358,7 @@ class PaymentService
         }
 
         $idempotencyKey = $idempotencyKey ?? ('bml:inv:' . $invoice->id . ':' . $amountLaar);
+        $this->dropStaleInvoiceBmlSessions($invoice, $amountLaar);
         $localId = $this->bml->normalizeLocalId('BG-INV-' . $invoice->invoice_number . '-' . now()->format('His'));
 
         $payment = DB::transaction(function () use ($invoice, $idempotencyKey, $localId, $amountLaar) {
@@ -1287,6 +1389,31 @@ class PaymentService
             ];
         }
 
+        // A second Pay on the same balance reopens the page BML already gave.
+        // Do not call the gateway again, and do not replace the transaction id.
+        if (in_array((string) $payment->status, ['initiated', 'pending'], true) && filled($payment->provider_transaction_id)) {
+            $payUrl = $this->bmlPayUrl($payment);
+            if ($payUrl !== null) {
+                Log::info('BML: Reusing existing invoice payment', [
+                    'payment_id' => $payment->id,
+                    'invoice_id' => $invoice->id,
+                    'transaction_id' => $payment->provider_transaction_id,
+                ]);
+
+                return [
+                    'payment_url' => $payUrl,
+                    'payment_id' => $payment->id,
+                    'reused' => true,
+                ];
+            }
+            if (!$this->closeLostBmlSession($payment)) {
+                throw new \RuntimeException('This payment could not be reopened. Please try again in a minute.');
+            }
+            $payment = $this->mintInvoiceBmlPayment($invoice, $idempotencyKey, $amountLaar);
+        } elseif (in_array((string) $payment->status, ['failed', 'cancelled', 'expired', 'refunded'], true)) {
+            $payment = $this->mintInvoiceBmlPayment($invoice, $idempotencyKey, $amountLaar);
+        }
+
         $bmlReturnUrl = $returnUrl ?? (rtrim((string) config('bml.return_url'), '/') . '?invoiceId=' . $invoice->id);
 
         try {
@@ -1310,11 +1437,15 @@ class PaymentService
         // fallback for anything that hands the raw response through.
         $transactionId = $result['transaction_id'] ?? $result['transactionId'] ?? $result['id'] ?? null;
         $paymentUrl = (string) ($result['payment_url'] ?? $result['url'] ?? $result['paymentUrl'] ?? '');
+        $stored = is_array($result) ? $result : [];
+        if ($paymentUrl !== '') {
+            $stored['payment_url'] = $paymentUrl;
+        }
 
         $payment->update([
             'status' => 'initiated',
             'provider_transaction_id' => $transactionId !== null && $transactionId !== '' ? (string) $transactionId : null,
-            'gateway_response' => $result,
+            'gateway_response' => $stored,
         ]);
 
         if ($paymentUrl === '') {

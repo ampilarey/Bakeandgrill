@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeReferralRoomLaar, mapGiftCardError } from './useCheckout';
+import { computeReferralRoomLaar, deliveryPhoneProblem, mapGiftCardError } from './useCheckout';
 import { ApiRequestError } from '@shared/api';
 
 describe('FIX 3 — computeReferralRoomLaar ignores gift-card tender', () => {
@@ -54,5 +54,19 @@ describe('FIX 7 — mapGiftCardError translates expired card errors', () => {
     expect(mapGiftCardError(e)).toBe(
       'This gift card is fully held on other unpaid orders.',
     );
+  });
+});
+
+describe('delivery phone', () => {
+  it('accepts a 7-digit Maldives mobile, including a country code', () => {
+    expect(deliveryPhoneProblem('7771234')).toBeNull();
+    expect(deliveryPhoneProblem('+9607771234')).toBeNull();
+    expect(deliveryPhoneProblem('9123456')).toBeNull();
+  });
+
+  it('refuses an empty, short, or wrong-prefix number before place-order', () => {
+    expect(deliveryPhoneProblem('')).toMatch(/required/i);
+    expect(deliveryPhoneProblem('1234567')).toMatch(/7-digit/);
+    expect(deliveryPhoneProblem('777123')).toMatch(/7-digit/);
   });
 });

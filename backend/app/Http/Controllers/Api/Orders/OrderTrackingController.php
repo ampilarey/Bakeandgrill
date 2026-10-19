@@ -4,9 +4,15 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Orders;
 
+use App\Domains\Payments\Services\PaymentService;
+use App\Domains\System\Services\ServiceAvailabilityService;
 use App\Http\Controllers\Controller;
+use App\Models\Customer;
 use App\Models\Order;
+use App\Services\OrderStatusTransitionService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class OrderTrackingController extends Controller
 {
@@ -15,17 +21,12 @@ class OrderTrackingController extends Controller
      *
      * Public order tracking — no authentication required.
      *
-     * The 32-character token is the credential, so this is a capability URL:
-     * whoever holds the link sees the order. That includes the delivery name,
-     * phone and address, which the recipient needs to check we have them
-     * right — but it means the link is as sensitive as those details. It gets
-     * forwarded, screenshotted and left in browser history, so do not widen
-     * this payload casually.
-     *
-     * (This docblock used to claim it exposed no customer PII while returning
-     * four fields of it. Whatever you add here, keep the two in agreement.)
+     * The 32-character token is the credential. Whoever holds the link sees
+     * status, items and totals. The delivery name, phone and street are only
+     * included when the signed-in customer owns the order — the link is
+     * forwarded and left in history.
      */
-    public function trackByToken(string $token): JsonResponse
+    public function trackByToken(string $token, PaymentService $payments): JsonResponse
     {
         $order = Order::with(['items.modifiers'])
             ->where('tracking_token', $token)
@@ -34,6 +35,9 @@ class OrderTrackingController extends Controller
         if (!$order) {
             return response()->json(['message' => 'Order not found'], 404);
         }
+
+        $viewer = Auth::guard('customer')->user();
+        $showDelivery = $viewer instanceof Customer && (int) $viewer->id === (int) $order->customer_id;
 
         return response()->json([
             'order' => [
@@ -50,13 +54,14 @@ class OrderTrackingController extends Controller
                 'referral_discount_laar' => $order->referral_discount_laar,
                 'delivery_fee' => $order->delivery_fee,
                 'total' => $order->total,
+                'total_laar' => $order->total_laar,
+                'remaining_balance_laar' => $payments->getRemainingBalanceLaar($order),
                 'paid_at' => $order->paid_at,
                 'estimated_wait_minutes' => $order->estimated_wait_minutes,
-                // Delivery info (customer already knows their own address)
-                'delivery_address_line1' => $order->delivery_address_line1,
-                'delivery_island' => $order->delivery_island,
-                'delivery_contact_name' => $order->delivery_contact_name,
-                'delivery_contact_phone' => $order->delivery_contact_phone,
+                'delivery_address_line1' => $showDelivery ? $order->delivery_address_line1 : null,
+                'delivery_island' => $showDelivery ? $order->delivery_island : null,
+                'delivery_contact_name' => $showDelivery ? $order->delivery_contact_name : null,
+                'delivery_contact_phone' => $showDelivery ? $order->delivery_contact_phone : null,
                 'items' => $order->items->map(fn ($item) => [
                     'id' => $item->id,
                     'item_id' => $item->item_id,
@@ -76,6 +81,58 @@ class OrderTrackingController extends Controller
                     ])->values(),
                 ])->values(),
             ],
+        ]);
+    }
+
+    /**
+     * POST /api/orders/track/{token}/pay
+     *
+     * The tracking link is enough to pay the remaining balance. A guest who
+     * abandoned the card page can finish without a new sign-in.
+     */
+    public function payByToken(string $token, PaymentService $payments): JsonResponse
+    {
+        app(ServiceAvailabilityService::class)->assertAvailable('online_payment');
+
+        $order = Order::where('tracking_token', $token)->first();
+        if (!$order) {
+            return response()->json(['message' => 'Order not found'], 404);
+        }
+
+        if (in_array((string) $order->status, ['cancelled', 'refunded', 'completed', 'paid'], true)
+            || (string) $order->payment_status === 'paid') {
+            return response()->json(['message' => 'This order cannot be paid.'], 422);
+        }
+
+        $dueLaar = $payments->getRemainingBalanceLaar($order);
+        if ($dueLaar <= 0) {
+            return response()->json([
+                'message' => 'Nothing to pay — this order is already fully covered.',
+                'code' => 'zero_balance',
+            ], 422);
+        }
+
+        try {
+            $result = $payments->initiateBmlPayment($order, $dueLaar);
+        } catch (\RuntimeException $e) {
+            Log::error('Order track pay: BML initiation failed', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Payment gateway unavailable. Please try again in a moment.',
+                'code' => 'gateway_error',
+            ], 503);
+        }
+
+        if (!in_array((string) $order->status, ['payment_pending', 'paid', 'completed'], true)) {
+            app(OrderStatusTransitionService::class)->transition($order, 'payment_pending');
+        }
+
+        return response()->json([
+            'payment_url' => $result['payment_url'],
+            'payment_id' => $result['payment_id'],
         ]);
     }
 }

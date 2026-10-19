@@ -550,6 +550,11 @@ export function CustomersPage() {
             </ModalActions>
           )}
         >
+            {detail?.customer.erasure_requested && (
+              <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--color-danger)', fontWeight: 700 }}>
+                This customer asked to be erased. Erase personal data completes that request.
+              </p>
+            )}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
               <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'rgba(183,75,12,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 17, color: 'var(--color-primary)', flexShrink: 0 }}>
                 {(detail?.customer.name ?? selected.name ?? '?').charAt(0).toUpperCase()}

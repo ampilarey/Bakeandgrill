@@ -233,4 +233,37 @@ class BmlActiveSessionGuardTest extends TestCase
         $this->assertSame('https://pay.example/TXN-NEW', $res['payment_url']);
         $this->assertSame('cancelled', Payment::query()->where('provider_transaction_id', 'TXN-LOST')->value('status'));
     }
+
+    public function test_a_smaller_bill_closes_the_open_session_and_starts_one_for_the_new_balance(): void
+    {
+        $order = $this->makeBmlGuardOrder(10000);
+        $mock = Mockery::mock(BmlConnectService::class);
+        $mock->shouldReceive('normalizeLocalId')->andReturnUsing(
+            fn (string $id) => substr(preg_replace('/[^A-Za-z0-9]/', '', $id) ?? $id, 0, 50),
+        );
+        $mock->shouldReceive('createPayment')->twice()->andReturnUsing(function (int $amount) {
+            static $n = 0;
+            $n++;
+
+            return [
+                'transaction_id' => 'TXN-DUE-' . $n,
+                'payment_url' => 'https://bml.example/pay/TXN-DUE-' . $n,
+                'local_id' => 'DUE' . $n,
+            ];
+        });
+        $mock->shouldReceive('getTransactionStatus')->once()->andReturn(['state' => 'QR_CODE_GENERATED']);
+        $this->app->instance(BmlConnectService::class, $mock);
+
+        $first = app(PaymentService::class)->initiateBmlPayment($order, 10000, 'due-open');
+        $order->update(['total' => 80, 'subtotal' => 80, 'total_laar' => 8000]);
+
+        $second = app(PaymentService::class)->initiateBmlPayment($order->fresh(), 8000, 'due-new');
+
+        $old = Payment::findOrFail($first['payment_id']);
+        $this->assertSame('cancelled', (string) $old->status);
+        $this->assertSame('due_changed', $old->gateway_response['closed'] ?? null);
+        $this->assertNotSame($first['payment_id'], $second['payment_id']);
+        $this->assertSame(8000, (int) Payment::findOrFail($second['payment_id'])->amount_laar);
+        $this->assertSame('https://bml.example/pay/TXN-DUE-2', $second['payment_url']);
+    }
 }

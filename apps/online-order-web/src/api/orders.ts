@@ -165,9 +165,11 @@ export async function cancelCustomerOrder(orderId: number): Promise<CancelCustom
 }
 
 export async function getOrderByTrackingToken(trackingToken: string): Promise<{ order: OrderDetail }> {
-  // Public endpoint — bypass shared request() to avoid baseUrl concatenation issues
+  // Public endpoint. Credentials so a signed-in owner can see their own
+  // delivery details; everyone else gets status, items and totals only.
   const res = await fetch(`${API_ORIGIN}/api/orders/track/${trackingToken}`, {
     headers: { Accept: 'application/json' },
+    credentials: 'include',
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({})) as { message?: string };
@@ -180,6 +182,13 @@ export async function getOrderByTrackingToken(trackingToken: string): Promise<{ 
 
 export async function getReorderPayload(orderId: number): Promise<ReorderPayload> {
   return request(`/customer/orders/${orderId}/reorder`);
+}
+
+/** Pay the remaining balance from a tracking link, without a sign-in. */
+export async function payOrderByTrackingToken(trackingToken: string): Promise<InitiatePaymentResult> {
+  return request<InitiatePaymentResult>(`/orders/track/${encodeURIComponent(trackingToken)}/pay`, {
+    method: 'POST',
+  });
 }
 
 export async function initiateOnlinePayment(orderId: number): Promise<InitiatePaymentResult> {

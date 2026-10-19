@@ -588,6 +588,57 @@ class RefundWorkflowService
         return $refund;
     }
 
+    /**
+     * The bank took more than the bill is now. The order can still be marked
+     * paid; the difference is an approved refund under Refunds → Owed.
+     * Idempotent per payment.
+     */
+    public function recordOverpayRefund(Order $order, \App\Models\Payment $payment, int $excessLaar): Refund
+    {
+        $excessLaar = max(0, $excessLaar);
+        $marker = 'Payment #' . $payment->id . ' was more than the bill after the balance changed';
+        $existing = Refund::where('order_id', $order->id)->where('reason', $marker)->first();
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $order->loadMissing('customer');
+        $refund = Refund::create([
+            'order_id' => $order->id,
+            'user_id' => null,
+            'approved_by' => null,
+            'shift_id' => null,
+            'customer_id' => $order->customer_id,
+            'initiated_by' => 'system',
+            'amount' => round($excessLaar / 100, 2),
+            'drawer_cash_out_laar' => 0,
+            'tender_breakdown' => self::storedBreakdown(['external_tender_laar' => $excessLaar]),
+            'external_tender_laar' => $excessLaar,
+            'status' => 'approved',
+            'reason' => $marker,
+            'reason_category' => 'duplicate_charge',
+            'requested_at' => now(),
+            'approved_at' => now(),
+            'no_customer_contact' => false,
+            'refund_phone' => $this->resolveOrderContactPhone($order) ?? $order->customer?->phone,
+            'phone_added_at_refund' => false,
+            'otp_owner_override' => false,
+            'otp_verified_at' => null,
+            'otp_code_hash' => null,
+        ]);
+
+        app(AuditLogService::class)->log(
+            'refund.overpay_recorded',
+            'Refund',
+            $refund->id,
+            [],
+            ['amount_laar' => $excessLaar, 'payment_id' => $payment->id],
+            ['order_id' => $order->id, 'payment_id' => $payment->id],
+        );
+
+        return $refund;
+    }
+
     /** Tell the customer their money is on its way back (same text as any card refund). */
     public function notifyLatePaymentRefund(Refund $refund): void
     {
