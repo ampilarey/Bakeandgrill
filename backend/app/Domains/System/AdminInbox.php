@@ -92,6 +92,14 @@ final class AdminInbox
                 'label' => 'Label rolls running low', 'link' => '/labels/settings', 'permission' => 'labels.manage',
                 'count' => fn () => count(array_filter(LabelRolls::presentAll(), fn (array $r) => !empty($r['low_now']))),
             ],
+            // A fingerprint clock that called and is not allowed yet, or a number on a clock
+            // that belongs to nobody (its punches wait off the time clock).
+            'clock_machine' => [
+                'label' => 'Clock machine: waiting clocks and numbers nobody has', 'link' => '/time-clock?tab=machine', 'permission' => 'staff.update',
+                'count' => fn () => \App\Models\ClockDevice::query()->whereNull('allowed_at')->count()
+                    + (int) \App\Models\ClockDevicePunch::query()->whereNull('user_id')->where('punched_at', '>=', now()->subDays(14))->distinct()->count('device_user_no'),
+                'level' => $warn,
+            ],
             // Only an owner can erase (AdminCustomerController::erase); settings.manage is
             // owner-only by default, so the row reaches the people who can act on it.
             'erasure_requests' => [

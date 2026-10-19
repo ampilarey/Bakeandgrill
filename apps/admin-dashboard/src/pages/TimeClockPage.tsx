@@ -9,6 +9,7 @@ import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import { downloadCSV } from '../utils/csvExport';
 import { today } from '../utils/dateHelpers';
 import { getTimeClockHistory, getTimeClockSummary, type TimeEntry } from '../api';
+import ClockMachinePanel from './ClockMachinePanel';
 
 const S = {
   tab: (active: boolean): React.CSSProperties => ({
@@ -31,7 +32,10 @@ export default function TimeClockPage() {
   const { can } = useCurrentUserPermissions();
   const canViewSummary = can('staff.view');
 
-  const [tab, setTab] = useState<'history' | 'summary'>('history');
+  const canEditStaff = can('staff.update');
+
+  const [tab, setTab] = useState<'history' | 'summary' | 'machine'>(() =>
+    new URLSearchParams(window.location.search).get('tab') === 'machine' ? 'machine' : 'history');
 
   const todayStr = today();
   const [entries, setEntries] = useState<TimeEntry[]>([]);
@@ -78,7 +82,7 @@ export default function TimeClockPage() {
   }, [tab, sumFrom, sumTo, canViewSummary]);
 
   useEffect(() => {
-    if (tab === 'summary' && !canViewSummary) setTab('history');
+    if ((tab === 'summary' || tab === 'machine') && !canViewSummary) setTab('history');
   }, [tab, canViewSummary]);
 
   return (
@@ -100,13 +104,16 @@ export default function TimeClockPage() {
       />
 
       <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: '0 0 16px' }}>
-        To clock in or out, use the <strong>POS terminal</strong> (Time Clock on the login screen or side menu).
+        To clock in or out, use the <strong>POS terminal</strong> (Time Clock on the login screen or side menu) or a fingerprint clock (Clock machine).
       </p>
 
       <div role="tablist" style={{ display: 'flex', gap: 8, marginBottom: 24, background: 'var(--color-border-light)', borderRadius: 10, padding: 4, width: 'fit-content' }}>
         <button role="tab" aria-selected={tab === 'history'} style={S.tab(tab === 'history')} onClick={() => setTab('history')}>History</button>
         {canViewSummary && (
           <button role="tab" aria-selected={tab === 'summary'} style={S.tab(tab === 'summary')} onClick={() => setTab('summary')}>Summary</button>
+        )}
+        {canViewSummary && (
+          <button role="tab" aria-selected={tab === 'machine'} style={S.tab(tab === 'machine')} onClick={() => setTab('machine')}>Clock machine</button>
         )}
       </div>
 
@@ -147,6 +154,8 @@ export default function TimeClockPage() {
           </TableCard>
         </>
       )}
+
+      {tab === 'machine' && canViewSummary && <ClockMachinePanel canEdit={canEditStaff} />}
 
       {tab === 'summary' && canViewSummary && (
         <>

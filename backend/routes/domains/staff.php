@@ -212,6 +212,14 @@ if (routes_domain_section_is('staff', 'admin') && !routes_domain_loaded('staff.a
             ->middleware('permission:staff.view');
     });
 
+    // ─── Clock machines (fingerprint / palm, ADMS push) ───────────────────────
+    Route::middleware(['auth:sanctum', 'staff.token'])->prefix('admin/clock-machine')->group(function () {
+        Route::get('/', [App\Http\Controllers\Api\ClockMachineController::class, 'index'])->middleware('permission:staff.view');
+        Route::patch('/devices/{id}', [App\Http\Controllers\Api\ClockMachineController::class, 'updateDevice'])->middleware('permission:staff.update');
+        Route::delete('/devices/{id}', [App\Http\Controllers\Api\ClockMachineController::class, 'destroyDevice'])->middleware('permission:staff.update');
+        Route::put('/staff/{userId}', [App\Http\Controllers\Api\ClockMachineController::class, 'assign'])->middleware('permission:staff.update');
+    });
+
     // ─── Xero OAuth ─────────────────────────────────────────────────────────────
     Route::middleware(['auth:sanctum', 'staff.token', 'permission:integrations.xero'])->group(function () {
         Route::get('/xero/connect', [App\Http\Controllers\Api\XeroController::class, 'connect']);

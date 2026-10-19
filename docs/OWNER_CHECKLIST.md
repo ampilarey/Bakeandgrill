@@ -115,6 +115,30 @@ first. In the BML merchant portal, copy the webhook secret, add
 `BML_WEBHOOK_SECRET=...` to `backend/.env` on TEST and on the live site, then run
 `php artisan config:cache`. `php artisan app:ready` says whether it is set.
 
+## 7c. Link the fingerprint clock (ZKTeco P160/ID, 15 minutes)
+
+The clock can only send plain HTTP, and Cloudflare now turns every HTTP visit into HTTPS,
+which the clock cannot follow. Let `/iclock/` through, and keep everything else on HTTPS:
+
+1. Cloudflare → bakeandgrill.mv → **Rules → Redirect Rules → Create rule**, named
+   "HTTPS except the clock". Custom filter expression:
+   `(not ssl and not starts_with(http.request.uri.path, "/iclock/"))`.
+   Then: Dynamic redirect, expression `concat("https://", http.host, http.request.uri.path)`,
+   status 301, **Preserve query string** ticked. Deploy.
+2. Cloudflare → **SSL/TLS → Edge Certificates → Always Use HTTPS: Off** (the rule above
+   now does that job, minus the clock).
+3. Check: open `http://bakeandgrill.mv/iclock/ping` in a browser. It should show `OK`,
+   not jump to https.
+4. On the clock: Menu → Comm. → Cloud Server Setting: Server Mode ADMS, Enable Domain
+   Name ON, Server Address `bakeandgrill.mv`, Server Port `80`, Proxy OFF. Save and
+   restart it.
+5. Admin → Team → Time Clock → **Clock machine**: the clock shows as Waiting within a
+   minute. Switch it to Allowed, then type each person's number on the clock beside their
+   name (or use "Give to…" under Numbers nobody has).
+
+Punches stored on the clock before the day it was allowed stay history and do not go on
+the time clock.
+
 ## 8. Optional
 
 - **Printed cards on the Matica 210** (or any card printer): Promotions → Printed cards. Install the

@@ -18,6 +18,13 @@ return Application::configure(basePath: dirname(__DIR__))
             // Cookie-less: public Cache-Control + no session. Do not move into web.php.
             Illuminate\Support\Facades\Route::get('/css/dhivehi-font.css', [App\Http\Controllers\DhivehiFontCssController::class, 'show'])
                 ->name('css.dhivehi-font');
+            // Fingerprint and palm clocks (ZKTeco ADMS push): plain HTTP, no session, no CSRF.
+            Illuminate\Support\Facades\Route::middleware('throttle:240,1')->group(function (): void {
+                Illuminate\Support\Facades\Route::match(['get', 'post'], '/iclock/cdata', [App\Http\Controllers\ClockMachinePushController::class, 'cdata'])->name('iclock.cdata');
+                Illuminate\Support\Facades\Route::get('/iclock/getrequest', [App\Http\Controllers\ClockMachinePushController::class, 'getrequest'])->name('iclock.getrequest');
+                Illuminate\Support\Facades\Route::match(['get', 'post'], '/iclock/{any}', [App\Http\Controllers\ClockMachinePushController::class, 'other'])
+                    ->where('any', '[A-Za-z0-9_.]+')->name('iclock.other');
+            });
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {

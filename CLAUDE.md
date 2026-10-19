@@ -1106,6 +1106,23 @@ the site setting `system_restore_drill_last` and tells the owner (`owner_restore
 A new thing the site needs to run unattended becomes a check here, not a page of its own.
 Setup: `docs/DEPLOY_COMMAND.md`.
 
+## Fingerprint clock (ZKTeco ADMS)
+
+Owner, 2026-10-19: a ZKTeco P160/ID (fingerprint, palm, card). The clock pushes over plain
+HTTP to `/iclock/cdata` and `/iclock/getrequest` (`ClockMachinePushController`, registered in
+`bootstrap/app.php` outside the web group: no session, no CSRF), known by its serial alone: an
+unknown serial waits in `clock_devices` (at most ten) until Admin → Time Clock → Clock machine
+allows it, and a refused clock keeps its punches. `App\Domains\Shifts\ClockMachine\ClockMachine`
+keeps every punch once (`clock_device_punches`, unique per clock, number and time) and turns it
+into the till's `time_punches`: no open punch clocks in, an open one clocks out, a second scan
+within two minutes is ignored, an open punch older than 16 hours is closed at no hours with a
+note, punches from before the clock was allowed stay history; the clock's in / out keys are not
+trusted. A staff member's number on the clock is `users.clock_user_no` ("007" is "7"); numbers
+nobody has wait, show under Numbers nobody has and in Needs attention (`clock_machine`), and go
+on the time clock when given. The clock keeps Maldives time (`TimeZone=5`). Cloudflare must let
+`/iclock/` through on HTTP (`docs/OWNER_CHECKLIST.md` § 7c). `ClockMachineTest`,
+`ClockMachinePanel.test.tsx`.
+
 ## Queue worker vs synchronous SMS
 
 The queue worker (`php artisan queue:work redis`) is only needed for async listeners

@@ -269,3 +269,32 @@ export async function getTimeClockSummary(params: {
     })),
   };
 }
+
+// ─── Clock machines (fingerprint / palm clocks, ZKTeco ADMS) ─────────────────
+export type ClockDeviceRow = {
+  id: number; serial: string; name: string | null; allowed: boolean; allowed_at: string | null;
+  last_seen_at: string | null; punches_today: number; enrolled: number;
+};
+export type ClockStaffRow = { id: number; name: string; clock_user_no: string | null; name_on_clock: string | null };
+export type ClockUnmatched = { no: string; punches: number; last_at: string; name: string | null };
+export type ClockRecentPunch = { id: number; no: string; staff: string | null; punched_at: string; result: string | null };
+export type ClockMachineState = {
+  devices: ClockDeviceRow[]; staff: ClockStaffRow[]; unmatched: ClockUnmatched[];
+  recent: ClockRecentPunch[]; push_url: string;
+};
+
+export function getClockMachine(): Promise<ClockMachineState> {
+  return req<ClockMachineState>('/admin/clock-machine');
+}
+
+export function updateClockDevice(id: number, body: { name?: string | null; allowed?: boolean }): Promise<{ ok: boolean }> {
+  return req(`/admin/clock-machine/devices/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
+}
+
+export function removeClockDevice(id: number): Promise<{ ok: boolean }> {
+  return req(`/admin/clock-machine/devices/${id}`, { method: 'DELETE' });
+}
+
+export function setClockUserNo(userId: number, clockUserNo: string | null): Promise<{ ok: boolean; clock_user_no: string | null }> {
+  return req(`/admin/clock-machine/staff/${userId}`, { method: 'PUT', body: JSON.stringify({ clock_user_no: clockUserNo }) });
+}
