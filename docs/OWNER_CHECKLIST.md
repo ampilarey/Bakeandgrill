@@ -107,6 +107,14 @@ register, are in `docs/SOCIAL_SIGN_IN.md`. The keys are `GOOGLE_CLIENT_ID` /
 `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` (or `APPLE_PRIVATE_KEY_PATH`). After adding
 them run `php artisan config:cache`.
 
+## 7b. BML webhook secret on TEST and live (5 minutes)
+
+Payment notices from BML that are not signed are now refused. Without the secret, a payment
+is still confirmed when the customer returns from the bank page, but not if they close it
+first. In the BML merchant portal, copy the webhook secret, add
+`BML_WEBHOOK_SECRET=...` to `backend/.env` on TEST and on the live site, then run
+`php artisan config:cache`. `php artisan app:ready` says whether it is set.
+
 ## 8. Optional
 
 - **Printed cards on the Matica 210** (or any card printer): Promotions → Printed cards. Install the

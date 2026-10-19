@@ -14,7 +14,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 
@@ -100,10 +99,11 @@ class CustomerAuthController extends Controller
     // ── Public endpoints ──────────────────────────────────────────────────────
 
     /**
-     * The phone step used to answer whether the number already had an account.
-     * That let a caller list customers. The next step is the same for every
-     * number: the app offers a texted code or a password, and only a correct
-     * password or code proves the account. Attempts are logged and throttled.
+     * Check whether a phone number has an account and has set a password.
+     * Used by the React app to decide whether to show the password field or OTP flow.
+     * Guest checkout and the code request must refuse a number that has an account
+     * anyway, so hiding it here alone would only cost every customer a step
+     * (review of the code audit, 2026-10-19). Throttled.
      */
     public function checkPhone(Request $request)
     {
@@ -112,13 +112,11 @@ class CustomerAuthController extends Controller
         ]);
 
         $phone = $this->normalizePhone($request->phone);
-        Log::info('customer.check_phone', [
-            'ip' => $request->ip(),
-            'phone_hash' => hash('sha256', $phone),
-        ]);
+        $customer = Customer::where('phone', $phone)->first();
 
         return response()->json([
-            'next' => 'continue',
+            'exists' => $customer !== null,
+            'has_password' => $customer !== null && !empty($customer->password),
         ]);
     }
 

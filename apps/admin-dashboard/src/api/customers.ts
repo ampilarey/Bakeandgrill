@@ -270,9 +270,12 @@ export async function fetchAdminCustomers(params?: {
   page?: number;
   /** 'unverified': guest numbers not checked, and guest accounts set aside. */
   phone?: 'unverified';
+  /** Customers who asked to be erased and are still waiting. */
+  erasure?: boolean;
 }): Promise<{ data: AdminCustomer[]; meta: { current_page: number; last_page: number; total: number } }> {
   const qs = new URLSearchParams();
   if (params?.phone)                   qs.set('phone', params.phone);
+  if (params?.erasure)                 qs.set('erasure', '1');
   if (params?.search)                  qs.set('search', params.search);
   if (params?.is_active !== undefined) qs.set('is_active', String(params.is_active));
   if (params?.segment)                 qs.set('segment', params.segment);

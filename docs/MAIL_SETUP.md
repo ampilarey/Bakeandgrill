@@ -101,7 +101,7 @@ also goes by email to that person's saved address:
 |---|---|
 | Customer texts (orders, payments, refunds, bookings, credit, complaints, events, wholesale shops) | The customer account's email |
 | Staff and owner alerts | The staff account's email (matched by the phone number the alert went to) |
-| Promotions (campaigns, birthday, abandoned cart, tier) | The customer account's email, with a **Stop promotional messages** link and a one-click unsubscribe header |
+| Promotions (campaigns, birthday, abandoned cart, tier) | The customer account's email, with a **Stop offer emails** link and a one-click unsubscribe header |
 
 - The copy follows the SMS rules: a switched-off type, an opted-out customer, the
   marketing cap and quiet hours stop the email too, because the copy is made only once
@@ -117,8 +117,8 @@ also goes by email to that person's saved address:
   promotions may use at most half, so order and staff emails always have room.
 - **Switches:** Admin → SMS → Control Center → Delivery rules → Email copies: customers,
   staff and owner alerts, promotions, and the hourly cap.
-- Unsubscribing from the email link sets the same opt-out as the SMS page, so
-  promotional texts and emails both stop; order, payment and sign-in messages continue.
+- The email link stops offer emails; its page has a second button that stops offer
+  texts too (the SMS page's opt-out). Order, payment and sign-in messages continue.
 
 ### SMS and email switches are separate (2026-10-06)
 

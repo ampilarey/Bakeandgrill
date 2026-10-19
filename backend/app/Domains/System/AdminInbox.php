@@ -92,6 +92,13 @@ final class AdminInbox
                 'label' => 'Label rolls running low', 'link' => '/labels/settings', 'permission' => 'labels.manage',
                 'count' => fn () => count(array_filter(LabelRolls::presentAll(), fn (array $r) => !empty($r['low_now']))),
             ],
+            // Only an owner can erase (AdminCustomerController::erase); settings.manage is
+            // owner-only by default, so the row reaches the people who can act on it.
+            'erasure_requests' => [
+                'label' => 'Customers asking to be erased', 'link' => '/customers?erasure=1', 'permission' => 'settings.manage',
+                'count' => fn () => \App\Models\CustomerErasureRequest::query()->where('status', 'pending')->count(),
+                'level' => fn (int $n) => \App\Models\CustomerErasureRequest::query()->where('status', 'pending')->where('requested_at', '<', now()->subDays(7))->exists() ? 'danger' : 'warn',
+            ],
             'expiring_stock' => [
                 'label' => 'Packed stock near its use-by', 'link' => '/labels/stickers', 'permission' => 'labels.print',
                 'count' => fn () => count(ExpiringPrints::groups(2)),

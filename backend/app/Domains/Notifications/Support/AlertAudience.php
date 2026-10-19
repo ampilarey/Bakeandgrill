@@ -126,6 +126,7 @@ final class AlertAudience
         'owner_error_digest' => self::OWNERS,
         'owner_payment_error' => self::OWNERS,
         'owner_restore_drill' => self::OWNERS,
+        'owner_erasure_request' => self::OWNERS,
         'owner_deploy_rollback' => self::OWNERS,
         'owner_price_rise' => self::OWNERS_MANAGERS,
         'owner_social_digest' => self::OWNERS_MANAGERS,

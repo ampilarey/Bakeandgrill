@@ -53,6 +53,11 @@ class AdminCustomerController extends Controller
             $query->where('is_active', filter_var($request->query('is_active'), FILTER_VALIDATE_BOOLEAN));
         }
 
+        // Customers who asked to be erased and are still waiting (review, 2026-10-19).
+        if ($request->boolean('erasure')) {
+            $query->whereHas('erasureRequests', fn ($q) => $q->where('status', 'pending'));
+        }
+
         // Guest numbers nobody has checked, and guest accounts set aside (2026-10-18).
         if ($request->query('phone') === 'unverified') {
             $query->where(fn ($q) => $q->where('phone_unverified', true)->orWhereNotNull('set_aside_at'));

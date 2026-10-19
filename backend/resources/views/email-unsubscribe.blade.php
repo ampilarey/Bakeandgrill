@@ -1,7 +1,7 @@
 @extends('layout')
 
-@section('title', 'Stop promotional messages – ' . content('site_name', 'Bake & Grill'))
-@section('description', 'Stop promotional SMS and email from ' . content('site_name', 'Bake & Grill') . '.')
+@section('title', 'Stop offer emails – ' . content('site_name', 'Bake & Grill'))
+@section('description', 'Stop offer emails, and offer texts if you like, from ' . content('site_name', 'Bake & Grill') . '.')
 
 @section('styles')
 <style>

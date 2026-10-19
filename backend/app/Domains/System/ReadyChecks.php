@@ -129,6 +129,12 @@ final class ReadyChecks
             'BML_WEBHOOK_SECRET' => config('bml.webhook_secret'),
             'BML_RETURN_URL' => config('bml.return_url'),
         ], fn ($v) => blank($v)));
+        if ($missing === ['BML_WEBHOOK_SECRET']) {
+            // Unsigned payment notices are refused outside the test harness (code audit,
+            // 2026-10-19): without the secret a payment is confirmed only when the
+            // customer comes back from the bank page.
+            return [$this->production() ? self::FAIL : self::WARN, 'BML_WEBHOOK_SECRET is not set, so BML\'s payment notices are refused. A payment is confirmed only when the customer returns from the bank page.', 'Copy the webhook secret from the BML merchant portal into .env as BML_WEBHOOK_SECRET, then php artisan config:cache.'];
+        }
         if ($missing !== []) {
             return [$this->production() ? self::FAIL : self::WARN, 'Not set: ' . implode(', ', $missing) . '. Online card payments will not work.', 'Add the BML keys to .env, then php artisan config:cache.'];
         }

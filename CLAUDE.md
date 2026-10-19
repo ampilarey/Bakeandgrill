@@ -771,7 +771,8 @@ has no customer say), `allows($customer, $kind, $channel)`, `customers.message_p
 through `message_choices` on `PATCH /customer/profile`. `SmsService` (step 5b), the email
 copier and the order and payment confirmation emails ask it; the shop's switches stay the
 first word. Offers by SMS is still `sms_opt_out` (STOP replies and the SMS page keep
-working), and the one-click link in an offers email stops offers both ways. The admin
+working), and the one-click link in an offers email stops offer emails only (its page offers a
+second button for offer texts, code audit 2026-10-19). The admin
 Customer 360 shows the choices. A new customer-facing registry row that the customer
 should be able to turn off goes into `kindOf()`.
 
@@ -1063,6 +1064,22 @@ with `AdminInbox::register()`. `GET /api/admin/inbox` (any staff sign-in, allowl
 (every minute); empty, it says "Nothing waiting. Good job." Telegram: 🧰 More → 📋 Needs
 attention and `/attention` on the owner bot (`TelegramOwnerTools::needsAttention`). A new kind of
 work waiting for staff becomes a row here, not a page of its own.
+
+## Code audit fixes (PR #132, 2026-10-19)
+
+A tracking link (`POST /api/orders/track/{token}/pay`, `OrderTrackingController::payByToken`)
+pays only an online order still waiting for payment (`payment_pending`, online pickup,
+delivery or dine-in, not paid); a till ticket is refused before any BML session opens.
+The public tracking reply leaves out the delivery name, phone and street unless the
+signed-in owner asks. `POST /api/auth/customer/check-phone` still says whether a number
+has an account: guest checkout and the code request refuse such numbers anyway, so
+hiding it in one place only adds a step. A customer can ask to be erased
+(`customer_erasure_requests`); the owners are texted once per request (row
+`owner_erasure_request`), Needs attention shows it (`erasure_requests`, `settings.manage`,
+red after 7 days) and Customers → Asked to be erased (`?erasure=1`) lists them. BML
+webhooks without a valid signature are refused outside the test harness, so
+`BML_WEBHOOK_SECRET` is a fail in `app:ready` on production and a warning elsewhere.
+`CodeAuditFindingsTest`.
 
 ## Errors are counted here, Sentry or not
 

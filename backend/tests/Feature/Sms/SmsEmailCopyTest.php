@@ -104,15 +104,16 @@ class SmsEmailCopyTest extends TestCase
 
             return $url !== null
                 && ($m->headers()->text['List-Unsubscribe'] ?? null) === '<' . $url . '>'
-                && str_contains($html, 'Stop promotional messages (SMS and email)')
+                && str_contains($html, 'Stop offer emails')
                 // The SMS's own "Stop: …/sms" line is not repeated in the email.
                 && !str_contains($html, '/sms</a>');
         });
 
         // One-click unsubscribe, as a mail app sends it.
+        // It stops offer emails only; offer texts stay (code audit, 2026-10-19).
         $this->post($url, ['List-Unsubscribe' => 'One-Click'])->assertNoContent();
-        $this->assertTrue((bool) $c->fresh()->sms_opt_out);
-        $this->assertSame('email_link', $c->fresh()->sms_opt_out_source);
+        $this->assertFalse(\App\Domains\Customers\Support\MessageChoices::for($c->fresh())['offers']['email']);
+        $this->assertFalse((bool) $c->fresh()->sms_opt_out);
 
         Mail::fake();
         $this->travel(2)->days();
@@ -126,11 +127,15 @@ class SmsEmailCopyTest extends TestCase
         $url = URL::signedRoute('email.unsubscribe', ['customer' => $c->id]);
 
         $this->get(route('email.unsubscribe', ['customer' => $c->id]))->assertForbidden();
-        $this->get($url)->assertOk()->assertSee('Stop promotional messages');
+        $this->get($url)->assertOk()->assertSee('Stop offer emails');
         $this->assertFalse((bool) $c->fresh()->sms_opt_out, 'opening the link alone must not unsubscribe');
 
         $this->post($url)->assertOk()->assertSee('email-unsub-done', false);
+        $this->assertFalse((bool) $c->fresh()->sms_opt_out, 'the plain button stops emails only');
+
+        $this->post($url, ['also_sms' => 1])->assertOk()->assertSee('no more offers or news', false);
         $this->assertTrue((bool) $c->fresh()->sms_opt_out);
+        $this->assertSame('email_link', $c->fresh()->sms_opt_out_source);
     }
 
     public function test_texts_that_already_have_their_own_email_are_not_copied(): void

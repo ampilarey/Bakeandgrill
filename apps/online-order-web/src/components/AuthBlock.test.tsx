@@ -117,15 +117,15 @@ describe('AuthBlock number step', () => {
   });
 
   it('sends the plain digits and shows the number on the code step, with a way back', async () => {
+    vi.mocked(checkPhone).mockResolvedValue({ exists: false, has_password: false } as never);
     vi.mocked(requestOtp).mockResolvedValue({} as never);
     render(<AuthBlock onSuccess={() => {}} />);
 
     fireEvent.change(field(), { target: { value: '7771234' } });
     fireEvent.click(continueBtn());
-    fireEvent.click(await screen.findByRole('button', { name: 'auth.text_code' }));
 
     await waitFor(() => expect(screen.getByText('auth.title_otp')).toBeTruthy());
-    expect(checkPhone).not.toHaveBeenCalled();
+    expect(checkPhone).toHaveBeenCalledWith('7771234');
     expect(requestOtp).toHaveBeenCalledWith('7771234', 'register');
     expect(screen.getByText('+960 777 1234')).toBeTruthy();
 
@@ -134,11 +134,11 @@ describe('AuthBlock number step', () => {
   });
 
   it('fills all six boxes when the phone autofills the code into the first one', async () => {
+    vi.mocked(checkPhone).mockResolvedValue({ exists: false, has_password: false } as never);
     vi.mocked(requestOtp).mockResolvedValue({} as never);
     render(<AuthBlock onSuccess={() => {}} />);
     fireEvent.change(field(), { target: { value: '7771234' } });
     fireEvent.click(continueBtn());
-    fireEvent.click(await screen.findByRole('button', { name: 'auth.text_code' }));
     await waitFor(() => expect(screen.getByText('auth.title_otp')).toBeTruthy());
 
     const first = screen.getAllByLabelText('auth.digit_aria')[0] as HTMLInputElement;
@@ -162,11 +162,11 @@ describe('AuthBlock email the code instead', () => {
   });
 
   async function toCodeStep(emailHint?: string) {
+    vi.mocked(checkPhone).mockResolvedValue({ exists: true, has_password: false } as never);
     vi.mocked(requestOtp).mockResolvedValueOnce({ channel: 'sms', ...(emailHint ? { email_hint: emailHint } : {}) });
     render(<AuthBlock onSuccess={() => {}} />);
     fireEvent.change(screen.getByLabelText('auth.label_phone_cc'), { target: { value: '7771234' } });
     fireEvent.click(screen.getByRole('button', { name: /auth\.continue/ }));
-    fireEvent.click(await screen.findByRole('button', { name: 'auth.text_code' }));
     await waitFor(() => expect(screen.getByText('auth.title_otp')).toBeTruthy());
   }
 
@@ -202,10 +202,10 @@ describe('AuthBlock email the code instead', () => {
   });
 
   it('is offered for a password reset code too', async () => {
+    vi.mocked(checkPhone).mockResolvedValue({ exists: true, has_password: true } as never);
     render(<AuthBlock onSuccess={() => {}} />);
     fireEvent.change(screen.getByLabelText('auth.label_phone_cc'), { target: { value: '7771234' } });
     fireEvent.click(screen.getByRole('button', { name: /auth\.continue/ }));
-    fireEvent.click(await screen.findByRole('button', { name: 'auth.use_password' }));
     await waitFor(() => expect(screen.getByText('auth.title_password')).toBeTruthy());
 
     fireEvent.click(screen.getByRole('button', { name: 'auth.forgot' }));
@@ -226,11 +226,11 @@ describe('AuthBlock email the code instead', () => {
  */
 describe('AuthBlock reset code error', () => {
   it('takes the customer back to the code boxes with the message', async () => {
+    vi.mocked(checkPhone).mockResolvedValue({ exists: true, has_password: true } as never);
     vi.mocked(forgotPassword).mockResolvedValueOnce({});
     render(<AuthBlock onSuccess={() => {}} />);
     fireEvent.change(screen.getByLabelText('auth.label_phone_cc'), { target: { value: '7771234' } });
     fireEvent.click(screen.getByRole('button', { name: /auth\.continue/ }));
-    fireEvent.click(await screen.findByRole('button', { name: 'auth.use_password' }));
     await waitFor(() => expect(screen.getByText('auth.title_password')).toBeTruthy());
     fireEvent.click(screen.getByRole('button', { name: 'auth.forgot' }));
     fireEvent.click(screen.getByRole('button', { name: /auth\.send_reset/ }));
@@ -254,11 +254,11 @@ describe('AuthBlock reset code error', () => {
   });
 
   it('stays on the password screen for a password problem', async () => {
+    vi.mocked(checkPhone).mockResolvedValue({ exists: true, has_password: true } as never);
     vi.mocked(forgotPassword).mockResolvedValueOnce({});
     render(<AuthBlock onSuccess={() => {}} />);
     fireEvent.change(screen.getByLabelText('auth.label_phone_cc'), { target: { value: '7771234' } });
     fireEvent.click(screen.getByRole('button', { name: /auth\.continue/ }));
-    fireEvent.click(await screen.findByRole('button', { name: 'auth.use_password' }));
     await waitFor(() => expect(screen.getByText('auth.title_password')).toBeTruthy());
     fireEvent.click(screen.getByRole('button', { name: 'auth.forgot' }));
     fireEvent.click(screen.getByRole('button', { name: /auth\.send_reset/ }));
@@ -285,11 +285,11 @@ describe('AuthBlock reset code error', () => {
  */
 describe('AuthBlock code sent to phone and email together', () => {
   it('names both places and hides the email button', async () => {
+    vi.mocked(checkPhone).mockReset().mockResolvedValue({ exists: true, has_password: false } as never);
     vi.mocked(requestOtp).mockReset().mockResolvedValueOnce({ channel: 'sms', email_hint: 'a•••@g•••.com', also_emailed_to: 'a•••@g•••.com' });
     render(<AuthBlock onSuccess={() => {}} />);
     fireEvent.change(screen.getByLabelText('auth.label_phone_cc'), { target: { value: '7771234' } });
     fireEvent.click(screen.getByRole('button', { name: /auth\.continue/ }));
-    fireEvent.click(await screen.findByRole('button', { name: 'auth.text_code' }));
     await waitFor(() => expect(screen.getByText('auth.title_otp')).toBeTruthy());
 
     const line = screen.getByText((_, el) => el?.classList.contains('auth__sub') ?? false);

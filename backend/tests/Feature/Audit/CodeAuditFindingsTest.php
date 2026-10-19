@@ -71,6 +71,7 @@ class CodeAuditFindingsTest extends TestCase
         $order = $this->deliveryOrder(Customer::create([
             'name' => 'Aisha', 'phone' => '+9607773333', 'is_active' => true,
         ]));
+        $order->update(['status' => 'payment_pending']);
         $this->mockBml();
 
         $this->postJson('/api/orders/track/' . $order->tracking_token . '/pay')
@@ -82,6 +83,48 @@ class CodeAuditFindingsTest extends TestCase
 
         $order->update(['status' => 'paid', 'payment_status' => 'paid']);
         $this->postJson('/api/orders/track/' . $order->tracking_token . '/pay')->assertStatus(422);
+    }
+
+    /** Every order has a tracking link, the till's too: a ticket open or in the kitchen is not paid this way. */
+    public function test_a_till_ticket_cannot_be_paid_from_its_tracking_link(): void
+    {
+        $order = $this->deliveryOrder(Customer::create(['name' => 'Till', 'phone' => '+9607773334', 'is_active' => true]));
+        $order->update(['type' => 'takeaway', 'status' => 'in_progress']);
+        $this->mockBml();
+
+        $this->postJson('/api/orders/track/' . $order->tracking_token . '/pay')->assertStatus(422);
+        $this->assertSame(0, Payment::where('order_id', $order->id)->count());
+        $this->assertSame('in_progress', $order->fresh()->status);
+    }
+
+    /** Review, 2026-10-19: nobody was told, so a request could wait unseen. */
+    public function test_an_erasure_request_reaches_the_owners_and_needs_attention(): void
+    {
+        $owner = $this->makeOwner();
+        $owner->forceFill(['phone' => '+9607779999'])->save();
+        $manager = $this->makeManager();
+        $sent = [];
+        $sms = Mockery::mock(\App\Domains\Notifications\Services\SmsService::class);
+        $sms->shouldReceive('send')->andReturnUsing(function ($m) use (&$sent) { $sent[] = $m; return null; });
+        $this->app->instance(\App\Domains\Notifications\Services\SmsService::class, $sms);
+
+        $customer = Customer::create(['name' => 'Aisha', 'phone' => '+9607774445', 'is_active' => true]);
+        Sanctum::actingAs($customer, ['customer']);
+        $this->postJson('/api/customer/erasure-request')->assertCreated();
+        $this->postJson('/api/customer/erasure-request')->assertOk();
+
+        $this->assertNotEmpty($sent, 'the owners were not told');
+        $this->assertSame(\App\Http\Controllers\Api\CustomerErasureRequestController::ALERT, $sent[0]->type);
+        $this->assertStringNotContainsString('7774445', $sent[0]->message);
+        // One text per owner phone, and none for the second ask.
+        $this->assertCount(count(\App\Support\OwnerPhones::for(\App\Http\Controllers\Api\CustomerErasureRequestController::ALERT)), $sent);
+
+        $keys = fn (User $u) => array_column(\App\Domains\System\AdminInbox::rowsFor($u), 'key');
+        $this->assertContains('erasure_requests', $keys($owner));
+        $this->assertNotContains('erasure_requests', $keys($manager));
+
+        $this->app['auth']->forgetGuards();
+        $this->getJson('/api/admin/customers?erasure=1', $this->staffHeaders($owner))->assertOk()->assertJsonPath('data.0.id', $customer->id);
     }
 
     public function test_a_customer_can_ask_to_be_erased_and_an_owner_completes_it(): void

@@ -109,9 +109,8 @@ class AuthContractTest extends ContractTestCase
         ])->assertStatus(200);
 
         $data = $response->json();
-        $this->assertSame('continue', $data['next']);
-        $this->assertArrayNotHasKey('exists', $data);
-        $this->assertArrayNotHasKey('has_password', $data);
+        $this->assertTrue($data['exists']);
+        $this->assertFalse($data['has_password']);
     }
 
     // ── GET /api/auth/me ──────────────────────────────────────────────────────

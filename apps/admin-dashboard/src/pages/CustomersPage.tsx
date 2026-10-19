@@ -94,7 +94,7 @@ export function CustomersPage() {
   const [search, setSearch]         = useState('');
   const [page, setPage]             = useState(1);
   const [segmentFilter, setSegmentFilter] = useState('');
-  const [activeFilter, setActiveFilter]   = useState<'all' | 'active' | 'inactive' | 'unverified'>('all');
+  const [activeFilter, setActiveFilter]   = useState<'all' | 'active' | 'inactive' | 'unverified' | 'erasure'>(() => (searchParams.get('erasure') === '1' ? 'erasure' : 'all'));
   const [segments, setSegments]     = useState<CustomerSegmentMeta[]>([]);
   const [paidSpend, setPaidSpend]   = useState<number | null>(null);
   const [view360Id, setView360Id]   = useState<number | null>(null);
@@ -136,8 +136,9 @@ export function CustomersPage() {
         search: s || undefined,
         page: p,
         segment: segment || undefined,
-        is_active: active === 'all' || active === 'unverified' ? undefined : active === 'active',
+        is_active: active === 'all' || active === 'unverified' || active === 'erasure' ? undefined : active === 'active',
         phone: active === 'unverified' ? 'unverified' : undefined,
+        erasure: active === 'erasure' || undefined,
       });
       setCustomers(res.data ?? []);
       setMeta(res.meta ?? { current_page: 1, last_page: 1, total: 0 });
@@ -411,6 +412,7 @@ export function CustomersPage() {
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
             <option value="unverified">Number not verified</option>
+            <option value="erasure">Asked to be erased</option>
           </select>
           <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>{meta.total} total</span>
         </div>

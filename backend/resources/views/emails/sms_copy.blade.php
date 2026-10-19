@@ -47,6 +47,6 @@
         {{ $smsSent ? 'A copy of the text we sent to ' . ($maskedPhone ?? 'your phone') . '.' : 'Sent to you by email.' }}
     @endif
     @if ($unsubscribeUrl)
-        <br><a href="{{ $unsubscribeUrl }}" style="color:#9C8E7E; text-decoration:underline;">Stop promotional messages (SMS and email)</a>. Order, payment and sign-in messages still come.
+        <br><a href="{{ $unsubscribeUrl }}" style="color:#9C8E7E; text-decoration:underline;">Stop offer emails</a> (you can stop offer texts there too). Order, payment and sign-in messages still come.
     @endif
 @endsection

@@ -9,7 +9,6 @@ use App\Domains\System\Services\ServiceAvailabilityService;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\Order;
-use App\Services\OrderStatusTransitionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -99,7 +98,11 @@ class OrderTrackingController extends Controller
             return response()->json(['message' => 'Order not found'], 404);
         }
 
-        if (in_array((string) $order->status, ['cancelled', 'refunded', 'completed', 'paid'], true)
+        // Only an order placed online and still waiting for its card payment. Every
+        // order has a tracking link, the till's too, and a till ticket that is open or
+        // in the kitchen cannot move back to payment_pending (review, 2026-10-19).
+        if ((string) $order->status !== 'payment_pending'
+            || !in_array((string) $order->type, ['online_pickup', 'delivery', 'dine_in'], true)
             || (string) $order->payment_status === 'paid') {
             return response()->json(['message' => 'This order cannot be paid.'], 422);
         }
@@ -124,10 +127,6 @@ class OrderTrackingController extends Controller
                 'message' => 'Payment gateway unavailable. Please try again in a moment.',
                 'code' => 'gateway_error',
             ], 503);
-        }
-
-        if (!in_array((string) $order->status, ['payment_pending', 'paid', 'completed'], true)) {
-            app(OrderStatusTransitionService::class)->transition($order, 'payment_pending');
         }
 
         return response()->json([
