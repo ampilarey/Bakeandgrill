@@ -9,10 +9,10 @@ use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
 use App\Domains\Notifications\Support\SmsDeliveryRules;
 use App\Domains\Notifications\Support\SmsTypeRegistry;
-use App\Models\SiteSetting;
-use App\Models\SmsLog;
 use App\Mail\SmsCopyMail;
 use App\Models\Customer;
+use App\Models\SiteSetting;
+use App\Models\SmsLog;
 use App\Models\User;
 use App\Support\DeferAfterResponse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -42,7 +42,11 @@ class SmsEmailCopyTest extends TestCase
     private function text(string $to, string $message, string $type, ?int $customerId = null, ?string $key = null): void
     {
         app(SmsService::class)->send(new SmsMessage(
-            to: $to, message: $message, type: $type, customerId: $customerId, idempotencyKey: $key,
+            to: $to,
+            message: $message,
+            type: $type,
+            customerId: $customerId,
+            idempotencyKey: $key,
         ));
         DeferAfterResponse::flushTestingCallbacks();
     }
@@ -348,5 +352,4 @@ class SmsEmailCopyTest extends TestCase
 
         Mail::assertNotSent(SmsCopyMail::class);
     }
-
 }

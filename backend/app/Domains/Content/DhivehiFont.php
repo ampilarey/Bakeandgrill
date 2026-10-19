@@ -117,14 +117,24 @@ final class DhivehiFont
         return '/css/dhivehi-font.css?app=' . $app . '&v=' . substr(sha1(self::stylesheet($app)), 0, 12);
     }
 
-    /** Version every link to the stylesheet in an app's built index.html. */
+    /**
+     * Version every link to the stylesheet in an app's built index.html. The app
+     * shell still loads when the font setting cannot be read (database down): the
+     * links stay as built, unversioned.
+     */
     public static function versionLinks(string $html): string
     {
-        return (string) preg_replace_callback(
-            '#/css/dhivehi-font\.css\?app=(website|order_app)(?=["\'])#',
-            static fn (array $m): string => self::href($m[1]),
-            $html,
-        );
+        try {
+            return (string) preg_replace_callback(
+                '#/css/dhivehi-font\.css\?app=(website|order_app)(?=["\'])#',
+                static fn (array $m): string => self::href($m[1]),
+                $html,
+            );
+        } catch (\Throwable $e) {
+            report($e);
+
+            return $html;
+        }
     }
 
     public static function stylesheet(string $app = 'website'): string

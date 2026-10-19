@@ -105,7 +105,11 @@ class CodeAuditFindingsTest extends TestCase
         $manager = $this->makeManager();
         $sent = [];
         $sms = Mockery::mock(\App\Domains\Notifications\Services\SmsService::class);
-        $sms->shouldReceive('send')->andReturnUsing(function ($m) use (&$sent) { $sent[] = $m; return null; });
+        $sms->shouldReceive('send')->andReturnUsing(function ($m) use (&$sent) {
+            $sent[] = $m;
+
+            return null;
+        });
         $this->app->instance(\App\Domains\Notifications\Services\SmsService::class, $sms);
 
         $customer = Customer::create(['name' => 'Aisha', 'phone' => '+9607774445', 'is_active' => true]);
