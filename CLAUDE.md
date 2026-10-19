@@ -117,6 +117,18 @@ time or an amount is `TD_NOWRAP`; a `display: grid` column that holds a table ne
 (the e2e job's phone step) loads every website page, every order app route in `main.tsx` and
 every admin page in `navConfig.ts` at 390 px and names each one that scrolls sideways.
 
+## Mobile first
+
+Owner, 2026-10-20: "I want change everything mobile 1st rule. Not now. Slowly." Every new
+screen, in every app and on the website, is written for the phone first: the plain styles are
+the 390 px layout and wider screens add to it with `min-width` (a tablet band with both is
+fine), or better, layouts that size themselves (`repeat(auto-fit, minmax(min(100%, N), 1fr))`,
+`flex-wrap`, `minmax(0, 1fr)`); never a bare `@media (max-width: …)` that squeezes a computer
+layout down. Old screens are converted only when a change touches them anyway, one file at a
+time, never as a rewrite. `scripts/check-mobile-first.mjs` (CI) holds each file to its count
+in `scripts/mobile-first-baseline.json` (a new file has none); run it with `--update` after
+converting a file. Model: `ClockMachinePanel.tsx`. Details: `docs/MOBILE_FIRST.md`.
+
 ## Brand colours
 
 The accent everywhere is the rust from the logo, `#B74B0C`; on a dark surface it is
