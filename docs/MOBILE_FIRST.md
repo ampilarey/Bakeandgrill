@@ -97,6 +97,20 @@ then `@media screen and (min-width: 701px) { … }`, because dompdf reads screen
 ignores width conditions. **Emails stay desktop first** (`emails/layout.blade.php`): many mail
 apps drop `@media` altogether, so the plain rules must be the computer layout there.
 
+### In the order app
+
+Tailwind 3 compiles without cascade layers, so the order app's stylesheet has the same
+`revert` trap as the website. Three more things found turning it round (2026-10-20):
+
+- A phone block that sat *above* its own base rule (the header bar, the category rail) only
+  ever won where the base said nothing; its restore stays in the same place so that order
+  holds.
+- A base made of several rules (the opening-hours badge and its two-line `.has-tomorrow`
+  form, the cart button and back-to-top corners with the rail on the right) is written back
+  rule by rule, each at its own weight.
+- A phone `!important` that only beat an inline style (the header logo, wordmark and gap in
+  `BrandedHeader.tsx`) became a stylesheet value: the inline property moved into the class.
+
 ## Where it stands
 
 Baseline written 2026-10-20: 123 desktop-first rules in 24 files. The same day the admin
@@ -126,14 +140,18 @@ maintenance page, the document layout (terms, refund, privacy) and the printable
 the email layout, which stays (above). Screenshots of 19 pages at 24 widths, either side of
 every breakpoint, and the printable menu's six layouts at eight widths unchanged.
 
+Order app (2026-10-20): `index.css` and the account hub; 24 to 0. Every element's computed
+style on every route in `main.tsx`, signed out, signed in, with the rail on the right and with
+a cart, at 14 widths either side of every breakpoint: unchanged.
+
 | Area | Rules left |
 |---|---|
 | Website views (`backend/resources`) | 1 (emails, on purpose) |
 | Admin (`apps/admin-dashboard`) | 0 |
-| Order app (`apps/online-order-web`) | 24 |
+| Order app (`apps/online-order-web`) | 0 |
 | Till (`apps/pos-web`) | 12 |
 | Kitchen screen (`apps/kds-web`) | 3 |
 
 `scripts/mobile-first-baseline.json` has the per-file list. Already mobile first: the Clock
 machine tab (`ClockMachinePanel.tsx`), the whole admin stylesheet (`index.css`) and every
-website view but the email layout.
+website view but the email layout, and the order app.
