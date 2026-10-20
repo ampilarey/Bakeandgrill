@@ -163,9 +163,11 @@
             text-decoration: none;
         }
         .maintenance-social a:hover { text-decoration: underline; }
-        @media (max-width: 480px) {
-            .maintenance-card { padding: 1.5rem 1.25rem; }
-            .maintenance-title { font-size: 1.4rem; }
+        .maintenance-card { padding: 1.5rem 1.25rem; }
+        .maintenance-title { font-size: 1.4rem; }
+        @media (min-width: 481px) {
+          .maintenance-card { padding: 2.25rem 1.75rem; }
+          .maintenance-title { font-size: 1.75rem; }
         }
     </style>
 </head>

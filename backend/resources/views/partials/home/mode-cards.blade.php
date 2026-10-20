@@ -154,14 +154,17 @@
 .home-mode-card[data-available="false"] .home-mode-card__cta {
     color: var(--muted);
 }
-/* Phones: one row per order type, photo on the left, as the order app does
-   (three columns left the pickup address cut off). */
-@media (max-width: 520px) {
-    .home-mode-cards__row { flex-direction: column; flex-wrap: nowrap; gap: 0.625rem; }
-    .home-mode-card { flex: 0 0 auto; flex-direction: row; }
-    .home-mode-card__media { width: 104px; height: auto; min-height: 104px; }
-    .home-mode-card__body { padding: 0.75rem 0.875rem; }
-    .home-mode-card__cta { padding-top: 0.375rem; }
+.home-mode-cards__row { flex-direction: column; flex-wrap: nowrap; gap: 0.625rem; }
+.home-mode-card { flex: 0 0 auto; flex-direction: row; }
+.home-mode-card__media { width: 104px; height: auto; min-height: 104px; }
+.home-mode-card__body { padding: 0.75rem 0.875rem; }
+.home-mode-card__cta { padding-top: 0.375rem; }
+@media (min-width: 521px) {
+  .home-mode-cards__row { flex-direction: revert; flex-wrap: wrap; gap: 0.875rem; }
+  .home-mode-card { flex: 1 1 0; flex-direction: column; }
+  .home-mode-card__media { width: revert; height: 120px; min-height: revert; }
+  .home-mode-card__body { padding: 0.875rem 1rem 1rem; }
+  .home-mode-card__cta { padding-top: 0.625rem; }
 }
 .home-mode-info {
     border: none;

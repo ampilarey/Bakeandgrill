@@ -281,7 +281,10 @@
         .doc-meta-row span:first-child { color: var(--muted); font-weight: 600; flex-shrink: 0; }
         .doc-meta-row span:last-child { text-align: right; min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
         .doc-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1.5rem; margin: 1rem 0; font-size: 0.9rem; }
-        @media (max-width: 540px) { .doc-meta-grid { grid-template-columns: 1fr; } }
+        .doc-meta-grid { grid-template-columns: 1fr; } 
+        @media (min-width: 541px) {
+          .doc-meta-grid { grid-template-columns: 1fr 1fr; }
+        }
         .doc-table-scroll {
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
@@ -310,12 +313,15 @@
         .doc-table .amount { text-align: right; font-weight: 700; white-space: nowrap; width: 6.75rem; }
         .doc-table--wide { min-width: 520px; table-layout: auto; }
         .doc-unit-inline { display: none; }
-        @media (max-width: 540px) {
-            /* Four money columns do not fit a phone: the unit price moves under
-               the description and the table stays inside the screen. */
-            .doc-table--wide { min-width: 0; table-layout: fixed; }
-            .doc-table .col-unit { display: none; }
-            .doc-unit-inline { display: block; }
+        /* Four money columns do not fit a phone: the unit price moves under
+           the description and the table stays inside the screen. */
+        .doc-table--wide { min-width: 0; table-layout: fixed; }
+        .doc-table .col-unit { display: none; }
+        .doc-unit-inline { display: block; }
+        @media (min-width: 541px) {
+          .doc-table--wide { min-width: 520px; table-layout: auto; }
+          .doc-table .col-unit { display: revert; }
+          .doc-unit-inline { display: none; }
         }
         .doc-mods { font-size: 0.8rem; color: var(--muted); margin-top: 0.25rem; overflow-wrap: anywhere; }
         .doc-totals { margin-top: 1rem; padding-top: 0.75rem; border-top: 2px solid var(--border); }
@@ -532,8 +538,9 @@
             font-size: 0.85rem;
             min-height: 44px;
         }
-        @media (max-width: 420px) {
-            .doc-complaint-cats { grid-template-columns: 1fr; }
+        .doc-complaint-cats { grid-template-columns: 1fr; }
+        @media (min-width: 421px) {
+          .doc-complaint-cats { grid-template-columns: 1fr 1fr; }
         }
         .doc-qr {
             display: flex;
@@ -616,21 +623,37 @@
         }
         .doc-footer strong { color: var(--dark); font-size: 0.95rem; }
         .doc-footer-logo { width: 40px; height: 40px; border-radius: 10px; margin: 0 auto 0.5rem; display: block; background: var(--logo-well); box-shadow: 0 0 0 2px var(--logo-ring); object-fit: cover; }
-        @media (max-width: 540px) {
-            .doc-header-inner { padding: 0.625rem 0.875rem; gap: 0.625rem; }
-            .doc-brand { font-size: 1rem; }
-            .doc-brand img { width: 32px; height: 32px; }
-            .doc-header-links { flex-shrink: 0; }
-            .doc-link { padding: 0.4rem 0.65rem; font-size: 0.8125rem; }
-            .doc-main { padding: 0.75rem 0.75rem calc(1rem + env(safe-area-inset-bottom, 0px)); }
-            .doc-card-body { padding: 1rem 1rem 1.25rem; }
-            .doc-masthead { padding: 1rem; }
-            .doc-title { font-size: 1.15rem; }
-            .doc-table { font-size: 0.85rem; }
-            .doc-table th, .doc-table td { padding: 0.5rem 0.4rem; }
-            .doc-table .amount { width: 6.25rem; }
-            .doc-table .qty { width: 2.5rem; }
-            .doc-actions .doc-btn, .doc-actions form { flex: 1 1 100%; }
+        .doc-header-inner { padding: 0.625rem 0.875rem; gap: 0.625rem; }
+        .doc-brand { font-size: 1rem; }
+        .doc-brand img { width: 32px; height: 32px; }
+        .doc-header-links { flex-shrink: 0; }
+        .doc-link { padding: 0.4rem 0.65rem; font-size: 0.8125rem; }
+        .doc-main { padding: 0.75rem 0.75rem calc(1rem + env(safe-area-inset-bottom, 0px)); }
+        .doc-card-body { padding: 1rem 1rem 1.25rem; }
+        .doc-masthead { padding: 1rem; }
+        .doc-title { font-size: 1.15rem; }
+        .doc-table { font-size: 0.85rem; }
+        .doc-table th, .doc-table td { padding: 0.5rem 0.4rem; }
+        .doc-table .amount { width: 6.25rem; }
+        .doc-table .qty { width: 2.5rem; }
+        .doc-actions .doc-btn, .doc-actions form { flex: 1 1 100%; }
+        @media (min-width: 541px) {
+          .doc-header-inner { padding: 0.75rem 1.25rem; gap: 1rem; }
+          .doc-brand { font-size: 1.15rem; }
+          .doc-brand img { width: 38px; height: 38px; }
+          .doc-header-links { flex-shrink: revert; }
+          .doc-link { padding: 0.45rem 0.85rem; font-size: 0.875rem; }
+          .doc-main { padding: 1rem 1rem calc(1.25rem + env(safe-area-inset-bottom, 0px)); }
+          .doc-card-body { padding: 1.25rem 1.125rem 1.5rem; }
+          .doc-masthead { padding: 1.125rem 1.25rem; }
+          .doc-title { font-size: 1.35rem; }
+          .doc-table { font-size: 0.9rem; }
+          .doc-table th { padding: 0.625rem 0.5rem; }
+          .doc-table td { padding: 0.625rem 0.5rem; }
+          .doc-table .amount { width: 6.75rem; }
+          .doc-table .qty { width: 3rem; }
+          .doc-actions .doc-btn { flex: 1 1 calc(50% - 0.35rem); }
+          .doc-actions form { flex: 1 1 calc(50% - 0.35rem); }
         }
         @media print {
             .doc-header, .doc-footer, .doc-header-links, .doc-actions, .doc-mistake-cta, .doc-feedback, .doc-alert { display: none !important; }

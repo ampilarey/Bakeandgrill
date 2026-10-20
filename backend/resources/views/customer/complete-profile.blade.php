@@ -109,10 +109,13 @@
 
     .alert-error   { background: var(--danger-bg); color: var(--danger-text); border: 1px solid color-mix(in srgb, var(--danger-text) 30%, transparent); }
 
-    @media (max-width: 768px) {
-        .setup-container { padding: 2rem 1rem; }
-        .setup-card { padding: 2rem 1.5rem; }
-        .setup-card h1 { font-size: 1.6rem; }
+    .setup-container { padding: 2rem 1rem; }
+    .setup-card { padding: 2rem 1.5rem; }
+    .setup-card h1 { font-size: 1.6rem; }
+    @media (min-width: 769px) {
+      .setup-container { padding: 3rem 2rem; }
+      .setup-card { padding: 3rem; }
+      .setup-card h1 { font-size: 2rem; }
     }
     .auth-badge {
         width: 64px; height: 64px; margin: 0 auto 1rem; border-radius: 50%;

@@ -516,7 +516,7 @@
          * width conditions, so a mobile block left in the stylesheet would
          * quietly reformat every PDF.
          */
-        @media screen and (max-width: 700px) {
+        @media screen {
             body { padding-bottom: 1.5rem; }
 
             .toolbar {
@@ -595,6 +595,45 @@
             .foot, .foot tbody, .foot tr, .foot td { display: block; width: auto; }
             .foot__qr { text-align: left; padding-top: 10px; }
             .foot__qr img { width: 88px; height: 88px; }
+        }
+        @media screen and (min-width: 701px) {
+          body { padding-bottom: 3rem; }
+          .toolbar { gap: 0.5rem; padding: 0.6rem 1rem; }
+          .toolbar__label { display: revert; }
+          .toolbar__spacer { margin-left: auto; }
+          .toolbar__hint { display: revert; }
+          .toolbar a.toolbar__back { margin-right: 0.4rem; }
+          .toolbar a { font-size: 0.875rem; padding: 0.45rem 0.8rem; border-radius: 8px; }
+          .toolbar button { font-size: 0.875rem; padding: 0.45rem 0.8rem; border-radius: 8px; }
+          /* .toolbar a above now comes after the group's own padding, so that is written back. */
+          .toolbar__group a { padding: 0.3rem 0.65rem; }
+          .sheet { margin: 1.25rem auto; padding: 14mm; border-radius: revert; }
+          .body { column-count: {{ $columns }}; }
+          .masthead__logo { width: 74px; height: 74px; }
+          .masthead h1 { font-size: 2rem; letter-spacing: 0.08em; }
+          .masthead__tagline { font-size: 0.8rem; }
+          .rule-mark { margin: 8px 0 3px; }
+          .rule-line { margin-bottom: 12px; }
+          .row td.row__name { white-space: nowrap; }
+          .row td.row__dots { display: revert; }
+          .row--priced { border-bottom: revert; padding-bottom: revert; }
+          .row { margin-bottom: 5px; }
+          .row--priced { margin-bottom: 5px; }
+          .style-short .row { font-size: 0.9rem; }
+          .style-full .row { font-size: revert; }
+          .style-wall { font-size: 1.3rem; }
+          .style-wall .masthead h1 { font-size: 2.8rem; }
+          .style-wall .cat { font-size: 1.4rem; }
+          .cat { font-size: 1rem; letter-spacing: 0.1em; }
+          .foot { display: revert; width: 100%; }
+          .foot tbody { display: revert; width: revert; }
+          .foot tr { display: revert; width: revert; }
+          .foot td { display: revert; width: auto; }
+          /* .foot td above out-specifies these cells' own widths, so they are written back. */
+          .foot td.foot__qr { width: 80px; }
+          .back .foot td.foot__qr { width: 50%; }
+          .foot__qr { text-align: center; padding-top: 0; }
+          .foot__qr img { width: 62px; height: 62px; }
         }
 @endunless
 

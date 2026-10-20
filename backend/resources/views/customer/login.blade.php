@@ -137,10 +137,13 @@
     }
     .link-muted:hover { text-decoration: underline; }
 
-    @media (max-width: 768px) {
-        .login-container { padding: 2rem 1rem; }
-        .login-card { padding: 2rem 1.5rem; }
-        .login-card h1 { font-size: 1.75rem; }
+    .login-container { padding: 2rem 1rem; }
+    .login-card { padding: 2rem 1.5rem; }
+    .login-card h1 { font-size: 1.75rem; }
+    @media (min-width: 769px) {
+      .login-container { padding: 3rem 2rem; }
+      .login-card { padding: 3rem; }
+      .login-card h1 { font-size: 2.25rem; }
     }
     .auth-badge {
         width: 64px; height: 64px; margin: 0 auto 1rem; border-radius: 50%;

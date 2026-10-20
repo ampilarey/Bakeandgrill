@@ -125,8 +125,9 @@
 .offer-more h2 { margin: 0 0 0.6rem; font-size: 1rem; }
 .offer-more ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
 .offer-more a { color: var(--amber); font-weight: 600; text-decoration: none; }
-@media (max-width: 768px) {
-    .offer-page { padding: 1rem 1rem 5rem; }
+.offer-page { padding: 1rem 1rem 5rem; }
+@media (min-width: 769px) {
+  .offer-page { padding: 1.25rem 1.25rem 4rem; }
 }
 </style>
 @endsection

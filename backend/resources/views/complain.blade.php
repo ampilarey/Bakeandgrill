@@ -17,7 +17,10 @@
 }
 .page-hero h1 { font-size: 2.25rem; font-weight: 800; letter-spacing: -0.04em; color: var(--dark); margin-bottom: 0.6rem; }
 .page-hero p { font-size: 1rem; color: var(--muted); max-width: 34rem; margin: 0 auto; }
-@media (max-width: 600px) { .page-hero h1 { font-size: 1.8rem; } }
+.page-hero h1 { font-size: 1.8rem; } 
+@media (min-width: 601px) {
+  .page-hero h1 { font-size: 2.25rem; }
+}
 
 .cb-wrap { max-width: 560px; margin: 0 auto; padding: 2rem 1rem 4rem; box-sizing: border-box; }
 .cb-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 1.25rem; }

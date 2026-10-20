@@ -446,17 +446,21 @@
             .site-announcement--mobile-only,
             .site-footer--mobile-only { display: none !important; }
         }
-        @media (max-width: 767px) {
-            .site-announcement--desktop-only,
-            .site-footer--desktop-only { display: none !important; }
+        .site-announcement--desktop-only,
+        .site-footer--desktop-only { display: none !important; }
+        @media (min-width: 768px) {
+          .site-announcement--desktop-only { display: revert !important; }
+          .site-footer--desktop-only { display: revert !important; }
         }
 
         /* Home slot blocks with per-device visibility (Surface Builder) */
         .home-block--desktop-only { display: contents; }
         .home-block--mobile-only { display: none; }
-        @media (max-width: 767px) {
-            .home-block--desktop-only { display: none; }
-            .home-block--mobile-only { display: contents; }
+        .home-block--desktop-only { display: none; }
+        .home-block--mobile-only { display: contents; }
+        @media (min-width: 768px) {
+          .home-block--desktop-only { display: contents; }
+          .home-block--mobile-only { display: none; }
         }
 
         /* min-height (not height) so expanded prayer can grow — matches order-app .top-nav__inner */
@@ -1349,8 +1353,9 @@
             background: transparent;
             border: none;
         }
-        @media (max-width: 768px) {
-            .site-prayer-wrap--mobile { display: block; }
+        .site-prayer-wrap--mobile { display: block; }
+        @media (min-width: 769px) {
+          .site-prayer-wrap--mobile { display: none; }
         }
 
         .prayer-banner {
@@ -1615,40 +1620,53 @@
             .footer-grid { grid-template-columns: 1.4fr 1fr 1fr 1fr; }
             .footer-col--hours { grid-column: 1 / -1; }
         }
-        @media (max-width: 768px) {
-            html { scroll-padding-top: 130px; }
-            .site-header   { display: none; }
-            .mobile-header { display: block; }
-            .mobile-bottom-nav { display: flex; }
-            .order-status-bar-mob { display: flex; }
-            /* Mobile: compact BrandFooter twin (same stack as Order App). */
-            .site-footer {
-                padding: 0;
-                margin-top: 3rem;
-                background: transparent;
-            }
-            .footer-desktop {
-                display: none !important;
-            }
-            .brand-footer--website {
-                display: block;
-                background: var(--inverse-section-bg, #1C1408);
-                color: #fff8f0;
-                padding: 2rem 1.25rem calc(2.5rem + var(--bottom-nav-height, 64px) + env(safe-area-inset-bottom, 0px));
-            }
+        html { scroll-padding-top: 130px; }
+        .site-header   { display: none; }
+        .mobile-header { display: block; }
+        .mobile-bottom-nav { display: flex; }
+        .order-status-bar-mob { display: flex; }
+        /* Mobile: compact BrandFooter twin (same stack as Order App). */
+        .site-footer {
+            padding: 0;
+            margin-top: 3rem;
+            background: transparent;
         }
-        @media (max-width: 480px) {
-            .mob-logo span { max-width: 9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .footer-desktop {
+            display: none !important;
         }
-        @media (max-width: 390px) {
-            .mob-logo span { display: none; }
-            .mob-order-btn { padding: 0.45rem 0.65rem; font-size: 0.75rem; }
-            .mob-hdr-btns a[href="/customer/login"] { padding: 0.35rem 0.5rem; font-size: 0.75rem; }
+        .brand-footer--website {
+            display: block;
+            background: var(--inverse-section-bg, #1C1408);
+            color: #fff8f0;
+            padding: 2rem 1.25rem calc(2.5rem + var(--bottom-nav-height, 64px) + env(safe-area-inset-bottom, 0px));
+        }
+        @media (min-width: 769px) {
+          html { scroll-padding-top: 75px; }
+          .site-header { display: revert; }
+          .mobile-header { display: none; }
+          .mobile-bottom-nav { display: none; }
+          .order-status-bar-mob { display: none; }
+          .site-footer { padding: 4rem 2rem 2rem; margin-top: 5rem; background: var(--inverse-section-bg); }
+          .footer-desktop { display: revert !important; }
+          .brand-footer--website { display: none; background: revert; color: revert; padding: revert; }
+        }
+        .mob-logo span { max-width: 9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        @media (min-width: 481px) {
+          .mob-logo span { max-width: revert; overflow: revert; text-overflow: revert; white-space: revert; }
+        }
+        .mob-logo span { display: none; }
+        .mob-order-btn { padding: 0.45rem 0.65rem; font-size: 0.75rem; }
+        @media (min-width: 391px) {
+          .mob-logo span { display: revert; }
+          .mob-order-btn { padding: 0.45rem 0.875rem; font-size: 0.8rem; }
         }
 
         /* ─── Shared Utility ─────────────────────────────────────── */
         .container { max-width: 1280px; margin: 0 auto; padding: 0 2rem; }
-        @media (max-width: 768px) { .container { padding: 0 1rem; } }
+        .container { padding: 0 1rem; } 
+        @media (min-width: 769px) {
+          .container { padding: 0 2rem; }
+        }
 
         /*
          * Desktop-only centred content rail (Website).

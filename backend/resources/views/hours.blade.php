@@ -22,7 +22,10 @@
     letter-spacing: -0.04em; color: var(--dark);
     margin-bottom: 1rem;
 }
-@media (max-width: 600px) { .page-hero h1 { font-size: 2rem; } }
+.page-hero h1 { font-size: 2rem; } 
+@media (min-width: 601px) {
+  .page-hero h1 { font-size: 2.75rem; }
+}
 
 .hours-wrap {
     max-width: 600px;
@@ -104,10 +107,16 @@
     white-space: nowrap; margin-left: auto;
 }
 .hours-row { flex-wrap: wrap; gap: 0.25rem 0.75rem; }
-@media (max-width: 480px) {
-    .hours-wrap { padding-inline: 1rem; }
-    .hours-row { padding: 0.95rem 1rem; }
-    .hours-time { font-size: 0.875rem; }
+.hours-wrap { padding-inline: 1rem; }
+.hours-row { padding: 0.95rem 1rem; }
+.hours-time { font-size: 0.875rem; }
+@media (min-width: 481px) {
+  .hours-wrap { padding-inline: 2rem; }
+  .hours-row { padding: 1.1rem 1.75rem; }
+  .hours-time { font-size: 0.95rem; }
+}
+@media (min-width: 769px) {
+  .hours-wrap { padding-inline: var(--desktop-page-gutter, 2rem); }
 }
 .hours-closed { color: var(--muted); font-weight: 500; }
 

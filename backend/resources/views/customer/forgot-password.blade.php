@@ -41,9 +41,11 @@
     .alert-info    { background: var(--amber-light); color: var(--text); border: 1px solid var(--border); }
     .link-muted { color: var(--amber); font-weight: 500; text-decoration: none; font-size: 0.9rem; }
     .link-muted:hover { text-decoration: underline; }
-    @media (max-width: 768px) {
-        .login-container { padding: 2rem 1rem; }
-        .login-card { padding: 2rem 1.5rem; }
+    .login-container { padding: 2rem 1rem; }
+    .login-card { padding: 2rem 1.5rem; }
+    @media (min-width: 769px) {
+      .login-container { padding: 3rem 2rem; }
+      .login-card { padding: 3rem; }
     }
     .auth-badge {
         width: 64px; height: 64px; margin: 0 auto 1rem; border-radius: 50%;

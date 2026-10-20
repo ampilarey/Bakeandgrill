@@ -131,7 +131,9 @@ converting a file. Model: `ClockMachinePanel.tsx`. The admin stylesheet is mobil
 throughout (2026-10-20): a page that needs a different computer value hands it over as a
 custom property (`'--cols'`, `'--card-pad'`, `px()` for units), never an `!important` phone
 override of an inline style, and every input, select and textarea style goes through
-`inputFont()` so a phone keeps 16px. Details: `docs/MOBILE_FIRST.md`.
+`inputFont()` so a phone keeps 16px. The website views are mobile first too (2026-10-20), all
+but `emails/layout.blade.php`, which stays desktop first because many mail apps drop `@media`.
+Details: `docs/MOBILE_FIRST.md`.
 
 ## Brand colours
 

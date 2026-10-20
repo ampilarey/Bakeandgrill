@@ -480,9 +480,11 @@
             font-weight: 500;
         }
 
-        @media (max-width: 480px) {
-            .pt-hero { grid-template-columns: 1fr; border-left: none; border-top: 4px solid var(--amber); }
-            .pt-hero-countdown { font-size: 2.2rem; }
+        .pt-hero { grid-template-columns: 1fr; border-left: none; border-top: 4px solid var(--amber); }
+        .pt-hero-countdown { font-size: 2.2rem; }
+        @media (min-width: 481px) {
+          .pt-hero { grid-template-columns: 1fr auto; border-left: 5px solid var(--amber); border-top: 1.5px solid var(--next-border); }
+          .pt-hero-countdown { font-size: 2.6rem; }
         }
 
         /* ═══ Prayer Grid ══════════════════════════════════════════════════ */
@@ -621,11 +623,13 @@
         .pt-footer a { color: rgba(255,255,255,0.65); transition: color 0.15s; }
         .pt-footer a:hover { color: white; }
 
-        /* ═══ Responsive ════════════════════════════════════════════════════ */
-        @media (max-width: 640px) {
-            .pt-page-title { display: none; }
-            .pt-controls { gap: 0.75rem; }
-            .pt-field-date { flex: 1 1 140px; }
+        .pt-page-title { display: none; }
+        .pt-controls { gap: 0.75rem; }
+        .pt-field-date { flex: 1 1 140px; }
+        @media (min-width: 641px) {
+          .pt-page-title { display: revert; }
+          .pt-controls { gap: 1rem; }
+          .pt-field-date { flex: 0 0 180px; }
         }
     </style>
 </head>

@@ -79,6 +79,24 @@ Never convert as a project of its own. When a change touches a screen anyway:
 Order, when there is a choice: the screens customers and staff use most on a phone first, the
 order app, then the till, then the admin's daily pages, then the website, then the rest.
 
+### On the website (Blade views)
+
+The website's CSS is plain and unlayered, so `revert` and `revert-layer` both fall back to the
+browser's own style, past every rule in the file. A restore is the page's own value written
+out; `revert` only where no rule anywhere sets that property for the element. Two traps found
+by screenshot (2026-10-20):
+
+- A restore block comes after every rule above it, so it can now beat a rule of the same
+  weight that used to win on a computer (`.toolbar a` over `.toolbar__group a` on the menu
+  print page). Write that rule back inside the restore block too.
+- A phone rule that overrode a base `!important` (`display: none !important`) needs
+  `revert !important` or the base value with `!important` in its restore.
+
+The printable menu keeps its phone rules inside `@unless ($forPdf)`, as `@media screen { … }`
+then `@media screen and (min-width: 701px) { … }`, because dompdf reads screen rules and
+ignores width conditions. **Emails stay desktop first** (`emails/layout.blade.php`): many mail
+apps drop `@media` altogether, so the plain rules must be the computer layout there.
+
 ## Where it stands
 
 Baseline written 2026-10-20: 123 desktop-first rules in 24 files. The same day the admin
@@ -103,13 +121,19 @@ rule that sizes an input's text does so from 768px. A spanning table cell's alig
 `--ta`; the page header and its action rows are phone first, with the hub's own controls
 written back from 768px. The admin stylesheet has no desktop-first rule left.
 
+Website (2026-10-20): every public page, the customer sign-in pages, the pack page, the
+maintenance page, the document layout (terms, refund, privacy) and the printable menu; 46 to 1,
+the email layout, which stays (above). Screenshots of 19 pages at 24 widths, either side of
+every breakpoint, and the printable menu's six layouts at eight widths unchanged.
+
 | Area | Rules left |
 |---|---|
-| Website views (`backend/resources`) | 46 |
+| Website views (`backend/resources`) | 1 (emails, on purpose) |
 | Admin (`apps/admin-dashboard`) | 0 |
 | Order app (`apps/online-order-web`) | 24 |
 | Till (`apps/pos-web`) | 12 |
 | Kitchen screen (`apps/kds-web`) | 3 |
 
 `scripts/mobile-first-baseline.json` has the per-file list. Already mobile first: the Clock
-machine tab (`ClockMachinePanel.tsx`) and the whole admin stylesheet (`index.css`).
+machine tab (`ClockMachinePanel.tsx`), the whole admin stylesheet (`index.css`) and every
+website view but the email layout.

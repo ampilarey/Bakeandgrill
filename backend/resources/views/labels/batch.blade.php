@@ -36,7 +36,10 @@
 .bp-hero h1 { font-size: 2rem; font-weight: 800; letter-spacing: -0.04em; color: var(--dark); margin: 0 0 0.3rem; }
 .bp-hero .bp-dv { font-size: 1.25rem; color: var(--muted); direction: rtl; margin: 0 0 0.5rem; }
 .bp-hero p { font-size: 0.95rem; color: var(--muted); max-width: 32rem; margin: 0 auto; }
-@media (max-width: 600px) { .bp-hero h1 { font-size: 1.6rem; } }
+.bp-hero h1 { font-size: 1.6rem; } 
+@media (min-width: 601px) {
+  .bp-hero h1 { font-size: 2rem; }
+}
 .bp-wrap { max-width: 560px; margin: 0 auto; padding: 1.5rem 1rem 4rem; box-sizing: border-box; }
 .bp-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 1.1rem 1.25rem; margin-bottom: 1rem; }
 .bp-status { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.9rem; border-radius: 999px; font-weight: 700; font-size: 0.95rem; margin-top: 0.75rem; }

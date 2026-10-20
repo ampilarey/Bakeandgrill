@@ -411,18 +411,30 @@ html.js .mh-panel .menu-filters { background: transparent; padding: 0.7rem 0 0.7
 .menu-sec { padding-top: 0.25rem; }
 .menu-sec + .menu-sec { margin-top: 1.1rem; padding-top: 0.9rem; border-top: 6px solid color-mix(in srgb, var(--border) 45%, transparent); }
 
-@media (max-width: 768px) {
-    .mh-banner { height: 60px; border-radius: 12px; }
-    .mh-copy { padding: 0 5.6rem 0 0.9rem; gap: 0.45rem; }
-    .mh-title { height: 1.6rem; }
-    .mh-title span { font-size: 1.15rem; line-height: 1.6rem; }
-    .mh-count { font-size: 0.72rem; }
-    .mh-share-btn, .mh-search { width: 34px; height: 34px; }
-    .mh { --mh-bar-h: 52px; }
-    .mh-bar { gap: 0.4rem; }
-    .mh-chip { height: 36px; padding: 0 0.75rem; font-size: 0.8125rem; }
-    .mh-pill { height: 36px; margin-top: -18px; }
-    .mh-all { height: 36px; padding: 0 0.6rem; }
+.mh-banner { height: 60px; border-radius: 12px; }
+.mh-copy { padding: 0 5.6rem 0 0.9rem; gap: 0.45rem; }
+.mh-title { height: 1.6rem; }
+.mh-title span { font-size: 1.15rem; line-height: 1.6rem; }
+.mh-count { font-size: 0.72rem; }
+.mh-share-btn, .mh-search { width: 34px; height: 34px; }
+.mh { --mh-bar-h: 52px; }
+.mh-bar { gap: 0.4rem; }
+.mh-chip { height: 36px; padding: 0 0.75rem; font-size: 0.8125rem; }
+.mh-pill { height: 36px; margin-top: -18px; }
+.mh-all { height: 36px; padding: 0 0.6rem; }
+@media (min-width: 769px) {
+  .mh-banner { height: 88px; border-radius: 14px; }
+  .mh-copy { padding: 0 6.75rem 0 1.1rem; gap: 0.6rem; }
+  .mh-title { height: 2rem; }
+  .mh-title span { font-size: 1.5rem; line-height: 2rem; }
+  .mh-count { font-size: 0.8rem; }
+  .mh-share-btn { width: 38px; height: 38px; }
+  .mh-search { width: 38px; height: 38px; }
+  .mh { --mh-bar-h: 56px; }
+  .mh-bar { gap: 0.5rem; }
+  .mh-chip { height: 38px; padding: 0 0.9rem; font-size: 0.875rem; }
+  .mh-pill { height: 38px; margin-top: -19px; }
+  .mh-all { height: 38px; padding: 0 0.75rem; }
 }
 @media (prefers-reduced-motion: reduce) {
     .mh, .menu-rail, .mobile-header { transition: none !important; }
@@ -877,28 +889,50 @@ html.js .menu-fav { display: inline-flex; }
    otherwise English page — an item name is content, not chrome. */
 [lang="dv"] { font-family: var(--font-dhivehi); direction: rtl; }
 
-@media (max-width: 768px) {
-    /* The mobile header is the only sticky chrome — the order status bar
-       under it scrolls away — so the rail clears ~64px, not the layout's
-       more generous scroll-padding-top. */
-    :root { --menu-rail-w: 70px; --menu-sticky: 64px; }
-    /* The site header slides away while scrolling down the menu and comes
-       back on the way up (owner, 2026-10-07), as the order app's brand row
-       scrolls away. The banner and rail follow it up to the top. */
-    .mobile-header { transition: transform 0.3s cubic-bezier(.2,.7,.2,1); }
-    html.menu-header-away .mobile-header { transform: translateY(-100%); }
-    html.menu-header-away { --menu-sticky: 0px; }
-    .mh, .menu-rail { transition: top 0.3s cubic-bezier(.2,.7,.2,1); }
-    .menu-shell { gap: 0.5rem; padding: 0 0.75rem 5rem; }
-    /* minmax(0, 1fr), not 1fr: a bare 1fr will not shrink below a card's
-       own minimum, and two 143px cards plus the gap ran 4px past a 390px
-       phone, so the whole page wobbled sideways under a thumb. */
-    .menu-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .menu-rail-label { font-size: 0.6875rem; }
-    /* The 76px rail: a narrower list inset so two-word labels still fit. */
-    .menu-rail-list { padding: 0 3px; }
-    .menu-rail-list > a { border-radius: 12px; }
-
+/* The mobile header is the only sticky chrome — the order status bar
+   under it scrolls away — so the rail clears ~64px, not the layout's
+   more generous scroll-padding-top. */
+:root { --menu-rail-w: 70px; --menu-sticky: 64px; }
+/* The site header slides away while scrolling down the menu and comes
+   back on the way up (owner, 2026-10-07), as the order app's brand row
+   scrolls away. The banner and rail follow it up to the top. */
+.mobile-header { transition: transform 0.3s cubic-bezier(.2,.7,.2,1); }
+html.menu-header-away .mobile-header { transform: translateY(-100%); }
+html.menu-header-away { --menu-sticky: 0px; }
+.mh, .menu-rail { transition: top 0.3s cubic-bezier(.2,.7,.2,1); }
+.menu-shell { gap: 0.5rem; padding: 0 0.75rem 5rem; }
+/* minmax(0, 1fr), not 1fr: a bare 1fr will not shrink below a card's
+   own minimum, and two 143px cards plus the gap ran 4px past a 390px
+   phone, so the whole page wobbled sideways under a thumb. */
+.menu-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.menu-rail-label { font-size: 0.6875rem; }
+/* The 76px rail: a narrower list inset so two-word labels still fit. */
+.menu-rail-list { padding: 0 3px; }
+.menu-rail-list > a { border-radius: 12px; }
+@media (min-width: 769px) {
+  :root { --menu-rail-w: 92px; --menu-sticky: 76px; }
+  .mobile-header { transition: padding 0.2s ease; }
+  html.menu-header-away .mobile-header { transform: revert; }
+  html.menu-header-away { --menu-sticky: 76px; }
+  .mh { transition: revert; }
+  .menu-rail { transition: revert; }
+  .menu-shell { gap: 1rem; padding: 0.75rem 1.25rem 4rem; }
+  .menu-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .menu-rail-label { font-size: 0.75rem; }
+  .menu-rail-list { padding: 0 4px; }
+  .menu-rail-list > a { border-radius: 14px; }
+}
+@media (prefers-reduced-motion: reduce) and (min-width: 769px) {
+  .mobile-header { transition: none; }
+}
+@media (prefers-reduced-motion: reduce) and (min-width: 769px) {
+  .mobile-header { transition: none !important; }
+}
+@media (prefers-reduced-motion: reduce) and (min-width: 769px) {
+  .mh { transition: none !important; }
+}
+@media (prefers-reduced-motion: reduce) and (min-width: 769px) {
+  .menu-rail { transition: none !important; }
 }
 
 /* ── Item sheet ─────────────────────────────────────────────────────────

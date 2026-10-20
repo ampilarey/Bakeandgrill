@@ -3,22 +3,5 @@
   "apps/online-order-web/src/index.css": 23,
   "apps/online-order-web/src/pages/AccountPage/AccountHub.css": 1,
   "apps/pos-web/src/index.css": 12,
-  "backend/resources/views/complain.blade.php": 1,
-  "backend/resources/views/contact.blade.php": 5,
-  "backend/resources/views/customer/complete-profile.blade.php": 1,
-  "backend/resources/views/customer/forgot-password.blade.php": 1,
-  "backend/resources/views/customer/login.blade.php": 1,
-  "backend/resources/views/emails/layout.blade.php": 1,
-  "backend/resources/views/home.blade.php": 13,
-  "backend/resources/views/hours.blade.php": 2,
-  "backend/resources/views/labels/batch.blade.php": 1,
-  "backend/resources/views/layout.blade.php": 7,
-  "backend/resources/views/layouts/document.blade.php": 4,
-  "backend/resources/views/maintenance.blade.php": 1,
-  "backend/resources/views/menu-print.blade.php": 1,
-  "backend/resources/views/menu.blade.php": 2,
-  "backend/resources/views/offer.blade.php": 1,
-  "backend/resources/views/partials/home/mode-cards.blade.php": 1,
-  "backend/resources/views/partials/menu-item-styles.blade.php": 1,
-  "backend/resources/views/prayer-times.blade.php": 2
+  "backend/resources/views/emails/layout.blade.php": 1
 }

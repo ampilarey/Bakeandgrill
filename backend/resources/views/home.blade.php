@@ -39,16 +39,16 @@
        declaration here keeps them the same shape. */
     border-radius: 1.25rem;
 }
-/* Mobile: inset rounded container (no border), soft portrait 4:5 */
-@media (max-width: 768px) {
-    .hero-banner {
-        width: auto;
-        margin: 0.5rem 1rem 0;
-        border: none;
-        height: min(68vh, calc((100vw - 2rem) * 1.25), 500px);
-        height: min(68dvh, calc((100vw - 2rem) * 1.25), 500px);
-        min-height: 340px;
-    }
+.hero-banner {
+    width: auto;
+    margin: 0.5rem 1rem 0;
+    border: none;
+    height: min(68vh, calc((100vw - 2rem) * 1.25), 500px);
+    height: min(68dvh, calc((100vw - 2rem) * 1.25), 500px);
+    min-height: 340px;
+}
+@media (min-width: 769px) {
+  .hero-banner { width: revert; margin: revert; border: revert; height: 600px; min-height: revert; }
 }
 
 .banner-track {
@@ -437,8 +437,9 @@
     0%, 100% { opacity: 1; }
     50% { opacity: 0.4; }
 }
-@media (max-width: 768px) {
-    .hero-status { top: 0.85rem; right: 0.85rem; }
+.hero-status { top: 0.85rem; right: 0.85rem; }
+@media (min-width: 769px) {
+  .hero-status { top: 1.5rem; right: 1.5rem; }
 }
 
 /* Carousel nav */
@@ -467,9 +468,9 @@
     position: absolute;
     inset: -4px;
 }
-/* Phones: swipe + dots only — hide chevrons */
-@media (max-width: 768px) {
-    .banner-btn { display: none; }
+.banner-btn { display: none; }
+@media (min-width: 769px) {
+  .banner-btn { display: flex; }
 }
 
 .banner-dots {
@@ -505,8 +506,9 @@
 .banner-dot.active { width: 42px; }
 .banner-dot.active::after { width: 26px; background: var(--amber); }
 .banner-dot:focus-visible { outline: 2px solid #fff; outline-offset: -4px; border-radius: 99px; }
-@media (max-width: 768px) {
-    .banner-dots { bottom: 0.4rem; }
+.banner-dots { bottom: 0.4rem; }
+@media (min-width: 769px) {
+  .banner-dots { bottom: 1rem; }
 }
 
 /* ── Desktop-only hero / banner polish (mobile unchanged) ───────── */
@@ -853,13 +855,20 @@
 .trust-text strong { display: block; font-size: 0.875rem; font-weight: 700; color: var(--dark); line-height: 1.3; }
 /* Its own line height: the page's tall one spread a two-line subtitle wide apart on phones (UI audit, 2026-10-10). */
 .trust-text span   { display: block; font-size: 0.75rem; color: var(--muted); line-height: 1.4; margin-top: 0.1rem; }
-@media (max-width: 900px) {
-    .trust-inner { grid-template-columns: repeat(2, 1fr); }
-    .trust-item:nth-child(2) { border-right: none; }
+.trust-inner { grid-template-columns: repeat(2, 1fr); }
+.trust-item:nth-child(2) { border-right: none; }
+@media (min-width: 901px) {
+  .trust-inner { grid-template-columns: repeat(4, 1fr); }
+  .trust-item:nth-child(2) { border-right: 1px solid var(--border); }
 }
-@media (max-width: 480px) {
-    .trust-inner { grid-template-columns: 1fr 1fr; }
-    .trust-item  { padding: 1rem 1rem; }
+.trust-inner { grid-template-columns: 1fr 1fr; }
+.trust-item  { padding: 1rem 1rem; }
+@media (min-width: 481px) {
+  .trust-inner { grid-template-columns: repeat(4, 1fr); }
+  .trust-item { padding: 1.375rem 1.5rem; }
+}
+@media (max-width: 900px) and (min-width: 481px) {
+  .trust-inner { grid-template-columns: repeat(2, 1fr); }
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -897,9 +906,14 @@
     font-size: 1rem; color: var(--muted);
     margin-top: 0.625rem; max-width: 540px; line-height: 1.7;
 }
-@media (max-width: 600px) {
-    .section { padding: 3.5rem 1.25rem; }
-    .section-title { font-size: 1.75rem; }
+.section { padding: 3.5rem 1.25rem; }
+.section-title { font-size: 1.75rem; }
+@media (min-width: 601px) {
+  .section { padding: 5rem 2rem; }
+  .section-title { font-size: 2.25rem; }
+}
+@media (min-width: 769px) {
+  .section { padding-left: 0; padding-right: 0; }
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -910,8 +924,17 @@
     grid-template-columns: repeat(4, 1fr);
     gap: 1.25rem;
 }
-@media (max-width: 900px) { .categories-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 480px) { .categories-grid { grid-template-columns: 1fr 1fr; gap: 0.875rem; } }
+.categories-grid { grid-template-columns: repeat(2, 1fr); } 
+@media (min-width: 901px) {
+  .categories-grid { grid-template-columns: repeat(4, 1fr); }
+}
+.categories-grid { grid-template-columns: 1fr 1fr; gap: 0.875rem; } 
+@media (min-width: 481px) {
+  .categories-grid { grid-template-columns: repeat(4, 1fr); gap: 1.25rem; }
+}
+@media (max-width: 900px) and (min-width: 481px) {
+  .categories-grid { grid-template-columns: repeat(2, 1fr); }
+}
 
 .cat-card {
     position: relative;
@@ -974,10 +997,13 @@
     transition: gap 0.15s;
 }
 .cat-card:hover .cat-link { gap: 0.5rem; }
-@media (max-width: 480px) {
-    .cat-img  { height: 130px; }
-    .cat-name { font-size: 1rem; }
-    .cat-hook { font-size: 0.78rem; }
+.cat-img  { height: 130px; }
+.cat-name { font-size: 1rem; }
+.cat-hook { font-size: 0.78rem; }
+@media (min-width: 481px) {
+  .cat-img { height: 180px; }
+  .cat-name { font-size: 1.15rem; }
+  .cat-hook { font-size: 0.85rem; }
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -1227,7 +1253,10 @@
     margin-bottom: 0.75rem;
 }
 .proof-stat span { color: var(--amber); }
-@media (max-width: 600px) { .proof-stat { font-size: 3.5rem; } }
+.proof-stat { font-size: 3.5rem; } 
+@media (min-width: 601px) {
+  .proof-stat { font-size: 5.5rem; }
+}
 .proof-label {
     font-size: 1.2rem; color: rgba(255,255,255,0.65);
     font-weight: 400; line-height: 1.6;
@@ -1255,7 +1284,10 @@
     grid-template-columns: 1fr 1fr;
     gap: 1.5rem;
 }
-@media (max-width: 700px) { .location-grid { grid-template-columns: 1fr; } }
+.location-grid { grid-template-columns: 1fr; } 
+@media (min-width: 701px) {
+  .location-grid { grid-template-columns: 1fr 1fr; }
+}
 
 .loc-card {
     background: var(--surface);
@@ -1400,9 +1432,12 @@
 /* .btn-primary / .btn-outline now live in layout.blade.php, so every page
    that uses them gets them. The wider padding this page wants is kept here. */
 .btn-primary, .btn-outline { padding: 0.95rem 2.25rem; }
-@media (max-width: 600px) {
-    .cta-band h2 { font-size: 1.875rem; }
-    .btn-primary, .btn-outline { width: 100%; justify-content: center; }
+.cta-band h2 { font-size: 1.875rem; }
+.btn-primary, .btn-outline { width: 100%; justify-content: center; }
+@media (min-width: 601px) {
+  .cta-band h2 { font-size: 2.5rem; }
+  .btn-primary { width: revert; justify-content: center; }
+  .btn-outline { width: revert; justify-content: center; }
 }
 
 /* ─── Dark mode: fix light-only section backgrounds & readability ─── */
