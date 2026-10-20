@@ -32,6 +32,29 @@ file has none. After converting a file, run `node scripts/check-mobile-first.mjs
 the lower count becomes the new ceiling. The script only reads CSS; a width check in script
 (`useIsMobile`, `matchMedia('(max-width…')`) is reviewed by hand.
 
+## How a desktop-first block is turned round
+
+Learned converting the admin stylesheet (2026-10-20):
+
+- The phone rules come out of `@media (max-width: …)` and stay **where the block was**, so
+  the cascade on a phone is unchanged; a `@media (min-width: …)` block right after puts the
+  computer back.
+- The computer value is the stylesheet's own base rule for that selector, written out. Where
+  there is none (the phone rule only added something), use **`revert-layer`, never
+  `revert`**: Tailwind 4 keeps its reset and utilities (`flex`, `gap-2`, `p-5`) in cascade
+  layers, and `revert-layer` from unlayered CSS falls back to them, while `revert` skips them
+  (a `<p>` got 16px margin back instead of Tailwind's 0). Both still skip other unlayered
+  rules, so a base written under another selector (`.page-header--embedded`,
+  `.admin-mobile-header`'s padding) is written out by hand.
+- Several tiers (phone, tablet up to 1024, computer) become one sequence: the phone rule,
+  then `min-width: 768px`, then `min-width: 1025px`, in that order.
+- A class drawn only on a phone (`PhonePreviewBar`, the phone header, the Content Studio
+  publish bar) needs no query at all.
+- `!important` phone rules beat styles written in the page's code; they stay in a small
+  `max-width` block marked "Page batch" until the page moves those styles into classes.
+- Check with screenshots of every page at 390, 767, 768, 1023, 1024, 1199, 1200 and 1440
+  px before and after; the conversion must change nothing.
+
 ## Converting slowly
 
 Never convert as a project of its own. When a change touches a screen anyway:
@@ -46,12 +69,18 @@ order app, then the till, then the admin's daily pages, then the website, then t
 
 ## Where it stands
 
-Baseline written 2026-10-20: 123 desktop-first rules in 24 files.
+Baseline written 2026-10-20: 123 desktop-first rules in 24 files. The same day the admin
+stylesheet was turned round wherever the stylesheet alone decides (37 blocks to 14,
+screenshots of every admin page at eight widths unchanged); what is left there beats styles
+written in the page code (`!important`, marked "Page batch") and goes page by page, about
+ten pages at a time, as each page moves those styles into classes. The page header block
+(`.page-header-actions`) waits for its own batch: its broad selectors reach into every
+page's own button rows.
 
 | Area | Rules left |
 |---|---|
 | Website views (`backend/resources`) | 46 |
-| Admin (`apps/admin-dashboard`) | 38 |
+| Admin (`apps/admin-dashboard`) | 15 |
 | Order app (`apps/online-order-web`) | 24 |
 | Till (`apps/pos-web`) | 12 |
 | Kitchen screen (`apps/kds-web`) | 3 |

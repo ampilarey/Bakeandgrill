@@ -527,9 +527,6 @@ input[type="checkbox"], input[type="radio"], input[type="range"], progress, mete
   border: 1px solid var(--color-signage-canvas-border);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
 }
-.signage-designer-sticky-actions {
-  display: none;
-}
 
 /* ── Mobile & Responsive Breakpoints ───────────────────────── */
 
@@ -572,6 +569,102 @@ input[type="file"]::file-selector-button:hover {
 }
 
 /* Mobile: < 768px */
+/* Buttons keep their own size on a phone (owner, 2026-10-10: "change all
+     the big buttons to small buttons"); every button was stretched to 44px,
+     chips, tabs and a row's Edit included. A bare one is at least 32px. */
+button, a[role="button"], [data-touch-target] { min-height: 32px; }
+/* …and a close icon (a pop-up's "×") is a 36px square. */
+button[aria-label="Close"], button.icon-button { min-height: 36px; }
+/* Toggle switches are fixed-size pills: stretching them breaks the thumb */
+button[role="switch"] { min-height: 0; }
+/* Inputs/selects/textareas: 16px font prevents iOS zoom-on-focus; 44px touch height */
+input, select, textarea { min-height: 44px; }
+/* …but not tick boxes and radios: a 44px-tall box pushed them off the line of
+     their own label. A little larger than the browser's 13px instead (zero
+     specificity, so any page's own size wins). */
+input[type="checkbox"], input[type="radio"] { min-height: 0; }
+:where(input[type="checkbox"], input[type="radio"]) { width: 18px; height: 18px; }
+textarea { min-height: 88px; }
+/*
+   * width:100% on tables was compressing columns instead of scrolling.
+   * Let tables grow to content width; wrapper (or table itself) scrolls.
+   */
+.table-scroll > table, :not(.table-scroll) > table { width: max-content; min-width: 100%; }
+/*
+   * Any <table> whose direct parent is NOT already a .table-scroll wrapper
+   * gets the block+overflow treatment so it scrolls horizontally on narrow screens.
+   * This covers pages that render <table> directly inside <Card> or other divs.
+   */
+:not(.table-scroll) > table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
+/* …and a message block inside one (EmptyState centres its own text across
+     the whole table) is held to the visible width at the left edge. */
+table td[colspan] > div:only-child { position: sticky; left: 0; max-width: calc(100vw - 48px); box-sizing: border-box; }
+/* Section / sub-tab rows sit closer on a phone; they wrap at every width
+     (.tab-scroll-row, below). */
+.tab-scroll-row { gap: 4px; }
+/* Orders (and similar): collapsible filter panel on mobile */
+.mobile-filters { margin-bottom: 20px; border: 1.5px solid var(--color-border); border-radius: 12px; background: var(--color-surface); overflow: hidden; }
+.mobile-filters > summary { list-style: none; cursor: pointer; padding: 12px 16px; font-size: 14px; font-weight: 700; color: var(--color-text); display: flex; align-items: center; justify-content: space-between; }
+.mobile-filters > summary::-webkit-details-marker { display: none; }
+.mobile-filters > summary::after { content: '▾'; color: var(--color-text-muted); font-size: 12px; }
+.mobile-filters[open] > summary::after { transform: rotate(180deg); }
+.mobile-filters-body { display: flex; flex-direction: column; gap: 10px; padding: 0 16px 16px; }
+/* Sticky actions sit above the measured tab bar; extra pad for the sticky row itself. */
+.signage-designer { padding-bottom: calc(var(--admin-tabbar-h, 56px) + 72px); }
+.signage-designer-sticky-actions { display: flex; position: sticky; bottom: var(--admin-tabbar-h, 56px); z-index: var(--z-overlay); gap: 8px; padding: 10px 0; background: var(--color-bg); border-top: 1px solid var(--color-border); }
+.signage-designer-sticky-actions > button { flex: 1 1 0; justify-content: center; }
+.signage-tab-row { -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; scrollbar-width: none; }
+.signage-tab-row::-webkit-scrollbar { display: none; }
+.signage-tab-row > button { flex-shrink: 0; scroll-snap-align: start; }
+.modal-backdrop .modal-footer .modal-actions > button { flex: 1 1 0; justify-content: center; }
+.media-picker-footer-pager { justify-content: center; width: 100%; }
+.media-picker-footer-selected { order: -1; text-align: center; }
+.media-picker-footer-actions { width: 100%; }
+.media-picker-footer-actions > button { flex: 1 1 0; justify-content: center; }
+/* Reports filters: the dates side by side, the pickers two to a row, the
+     quick ranges on a line of their own. */
+.report-filters > * { flex: 1 1 140px; min-width: 0; }
+.report-filters input, .report-filters select { width: 100%; }
+.report-filters > .report-quick-ranges { flex-basis: 100%; }
+/* SharedUI DateInput: From and To side by side, filling the row. */
+.date-input { flex: 1 1 140px; min-width: 0; }
+.date-input input { width: 100%; }
+@media (min-width: 768px) {
+  button, a[role="button"], [data-touch-target] { min-height: revert-layer; }
+  button[aria-label="Close"], button.icon-button { min-height: revert-layer; }
+  button[role="switch"] { min-height: revert-layer; }
+  input, select, textarea { min-height: revert-layer; }
+  input[type="checkbox"], input[type="radio"] { min-height: revert-layer; }
+  :where(input[type="checkbox"], input[type="radio"]) { width: revert-layer; height: revert-layer; }
+  textarea { min-height: revert-layer; }
+  .table-scroll > table, :not(.table-scroll) > table { width: revert-layer; min-width: revert-layer; }
+  :not(.table-scroll) > table { display: revert-layer; overflow-x: revert-layer; -webkit-overflow-scrolling: revert-layer; max-width: revert-layer; }
+  table td[colspan] > div:only-child { position: revert-layer; left: revert-layer; max-width: revert-layer; box-sizing: revert-layer; }
+  .tab-scroll-row { gap: revert-layer; }
+  .mobile-filters { margin-bottom: revert-layer; border: revert-layer; border-radius: revert-layer; background: revert-layer; overflow: revert-layer; }
+  .mobile-filters > summary { list-style: revert-layer; cursor: revert-layer; padding: revert-layer; font-size: revert-layer; font-weight: revert-layer; color: revert-layer; display: revert-layer; align-items: revert-layer; justify-content: revert-layer; }
+  .mobile-filters > summary::-webkit-details-marker { display: revert-layer; }
+  .mobile-filters > summary::after { content: revert-layer; color: revert-layer; font-size: revert-layer; }
+  .mobile-filters[open] > summary::after { transform: revert-layer; }
+  .mobile-filters-body { display: revert-layer; flex-direction: revert-layer; gap: revert-layer; padding: revert-layer; }
+  .signage-designer { padding-bottom: revert-layer; }
+  .signage-designer-sticky-actions { display: none; position: revert-layer; bottom: revert-layer; z-index: revert-layer; gap: revert-layer; padding: revert-layer; background: revert-layer; border-top: revert-layer; }
+  .signage-designer-sticky-actions > button { flex: revert-layer; justify-content: revert-layer; }
+  .signage-tab-row { -webkit-overflow-scrolling: revert-layer; scroll-snap-type: revert-layer; scrollbar-width: revert-layer; }
+  .signage-tab-row::-webkit-scrollbar { display: revert-layer; }
+  .signage-tab-row > button { flex-shrink: revert-layer; scroll-snap-align: revert-layer; }
+  .modal-backdrop .modal-footer .modal-actions > button { flex: revert-layer; justify-content: revert-layer; }
+  .media-picker-footer-pager { justify-content: revert-layer; width: revert-layer; }
+  .media-picker-footer-selected { order: revert-layer; text-align: revert-layer; }
+  .media-picker-footer-actions { width: revert-layer; }
+  .media-picker-footer-actions > button { flex: revert-layer; justify-content: revert-layer; }
+  .report-filters > * { flex: revert-layer; min-width: revert-layer; }
+  .report-filters input, .report-filters select { width: revert-layer; }
+  .report-filters > .report-quick-ranges { flex-basis: revert-layer; }
+  .date-input { flex: revert-layer; min-width: revert-layer; }
+  .date-input input { width: revert-layer; }
+}
+/* Page batch: these beat styles set in the page code. */
 @media (max-width: 767px) {
   /*
    * Generic page padding. Must NOT win over shell clearance — the previous
@@ -579,282 +672,50 @@ input[type="file"]::file-selector-button:hover {
    * on .admin-shell-main--mobile, so bumping 80→112px never reached the device.
    */
   main { padding: 12px !important; }
-  main.admin-shell-main--mobile {
-    padding: 16px !important;
-    padding-bottom: calc(var(--admin-tabbar-h, 56px) + 16px) !important;
-  }
-
+  main.admin-shell-main--mobile { padding: 16px !important; padding-bottom: calc(var(--admin-tabbar-h, 56px) + 16px) !important; }
   /* Stat grids: two-col on mobile */
-  .stat-grid {
-    grid-template-columns: 1fr 1fr !important;
-  }
-
-  /* Buttons keep their own size on a phone (owner, 2026-10-10: "change all
-     the big buttons to small buttons"); every button was stretched to 44px,
-     chips, tabs and a row's Edit included. A bare one is at least 32px. */
-  button,
-  a[role="button"],
-  [data-touch-target] {
-    min-height: 32px;
-  }
-  /* …and a close icon (a pop-up's "×") is a 36px square. */
-  button[aria-label="Close"],
-  button.icon-button {
-    min-height: 36px;
-  }
-  /* Toggle switches are fixed-size pills: stretching them breaks the thumb */
-  button[role="switch"] {
-    min-height: 0;
-  }
-
+  .stat-grid { grid-template-columns: 1fr 1fr !important; }
   /* Inputs/selects/textareas: 16px font prevents iOS zoom-on-focus; 44px touch height */
-  input, select, textarea {
-    font-size: 16px !important;
-    min-height: 44px;
-  }
-  /* …but not tick boxes and radios: a 44px-tall box pushed them off the line of
-     their own label. A little larger than the browser's 13px instead (zero
-     specificity, so any page's own size wins). */
-  input[type="checkbox"], input[type="radio"] {
-    min-height: 0;
-  }
-  :where(input[type="checkbox"], input[type="radio"]) {
-    width: 18px;
-    height: 18px;
-  }
-  textarea {
-    min-height: 88px;
-  }
-
-  /*
-   * width:100% on tables was compressing columns instead of scrolling.
-   * Let tables grow to content width; wrapper (or table itself) scrolls.
-   */
-  .table-scroll > table,
-  :not(.table-scroll) > table {
-    width: max-content;
-    min-width: 100%;
-  }
-
-  /*
-   * Any <table> whose direct parent is NOT already a .table-scroll wrapper
-   * gets the block+overflow treatment so it scrolls horizontally on narrow screens.
-   * This covers pages that render <table> directly inside <Card> or other divs.
-   */
-  :not(.table-scroll) > table {
-    display: block;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    max-width: 100%;
-  }
+  input, select, textarea { font-size: 16px !important; }
   /* A row that spans every column is a message ("No reviews yet.", a total,
      a group heading). Centred across a table wider than the phone it sat
      off-screen ("No re…", phone sweep 2026-10-08), so it starts at the left,
      where the phone is looking. */
-  table td[colspan] {
-    text-align: left !important;
-  }
-  /* …and a message block inside one (EmptyState centres its own text across
-     the whole table) is held to the visible width at the left edge. */
-  table td[colspan] > div:only-child {
-    position: sticky;
-    left: 0;
-    max-width: calc(100vw - 48px);
-    box-sizing: border-box;
-  }
-  /* Section / sub-tab rows sit closer on a phone; they wrap at every width
-     (.tab-scroll-row, below). */
-  .tab-scroll-row {
-    gap: 4px;
-  }
-
-  /* Orders (and similar): collapsible filter panel on mobile */
-  .mobile-filters {
-    margin-bottom: 20px;
-    border: 1.5px solid var(--color-border);
-    border-radius: 12px;
-    background: var(--color-surface);
-    overflow: hidden;
-  }
-  .mobile-filters > summary {
-    list-style: none;
-    cursor: pointer;
-    padding: 12px 16px;
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--color-text);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .mobile-filters > summary::-webkit-details-marker {
-    display: none;
-  }
-  .mobile-filters > summary::after {
-    content: '▾';
-    color: var(--color-text-muted);
-    font-size: 12px;
-  }
-  .mobile-filters[open] > summary::after {
-    transform: rotate(180deg);
-  }
-  .mobile-filters-body {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding: 0 16px 16px;
-  }
-  .mobile-filters-body input[type="search"],
-  .mobile-filters-body select,
-  .mobile-filters-body label {
-    width: 100% !important;
-    max-width: none !important;
-    min-width: 0 !important;
-    flex: none !important;
-  }
+  table td[colspan] { text-align: left !important; }
+  .mobile-filters-body input[type="search"], .mobile-filters-body select, .mobile-filters-body label { width: 100% !important; max-width: none !important; min-width: 0 !important; flex: none !important; }
   /* A select beside its own words ("Per page: [25]") takes the space left
      after them; at 100% it ran past the panel's edge. */
-  .mobile-filters-body .mobile-filters-inline select {
-    width: auto !important;
-    flex: 1 1 auto !important;
-  }
-
+  .mobile-filters-body .mobile-filters-inline select { width: auto !important; flex: 1 1 auto !important; }
   /* Order detail drawer: full-width on mobile (was 420px fixed) */
-  .order-detail-drawer {
-    width: 100vw !important;
-    max-width: 100vw !important;
-  }
-
+  .order-detail-drawer { width: 100vw !important; max-width: 100vw !important; }
   /* KDS columns: auto-fit on mobile (was hardcoded 3-col) */
-  .kds-grid {
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
-  }
-
+  .kds-grid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important; }
   /* Form grids: single column on mobile */
-  .form-grid-2,
-  .form-grid-3 {
-    grid-template-columns: 1fr !important;
-  }
-
+  .form-grid-2, .form-grid-3 { grid-template-columns: 1fr !important; }
   /* TV Signage designer — single-column stack (toolbar is outside the grid) */
-  .signage-designer-grid {
-    grid-template-columns: 1fr !important;
-  }
-  .signage-designer-canvas-wrap {
-    order: 1 !important;
-    min-height: auto !important;
-  }
-  .signage-designer-props {
-    order: 2 !important;
-  }
-  .signage-designer-palette {
-    order: 3 !important;
-  }
-  .signage-designer-preview-size {
-    display: none !important;
-  }
-  /* Sticky actions sit above the measured tab bar; extra pad for the sticky row itself. */
-  .signage-designer {
-    padding-bottom: calc(var(--admin-tabbar-h, 56px) + 72px);
-  }
-  .signage-designer-sticky-actions {
-    display: flex !important;
-    position: sticky;
-    bottom: var(--admin-tabbar-h, 56px);
-    z-index: var(--z-overlay);
-    gap: 8px;
-    padding: 10px 0;
-    background: var(--color-bg);
-    border-top: 1px solid var(--color-border);
-  }
-  .signage-designer-sticky-actions > button {
-    flex: 1 1 0;
-    justify-content: center;
-  }
-  .signage-tab-row {
-    flex-wrap: nowrap !important;
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch;
-    scroll-snap-type: x proximity;
-    scrollbar-width: none;
-  }
-  .signage-tab-row::-webkit-scrollbar {
-    display: none;
-  }
-  .signage-tab-row > button {
-    flex-shrink: 0;
-    scroll-snap-align: start;
-  }
-
+  .signage-designer-grid { grid-template-columns: 1fr !important; }
+  .signage-designer-canvas-wrap { order: 1 !important; min-height: auto !important; }
+  .signage-designer-props { order: 2 !important; }
+  .signage-designer-palette { order: 3 !important; }
+  .signage-designer-preview-size { display: none !important; }
+  .signage-tab-row { flex-wrap: nowrap !important; overflow-x: auto !important; }
   /* Modal: full-width bottom sheet on mobile (scoped to SharedUI Modal only) */
-  .modal-backdrop {
-    align-items: flex-end !important;
-    /* Four-sided safe area (footer still owns inset-bottom padding) */
-    padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) 0 env(safe-area-inset-left, 0px) !important;
-  }
-  .modal-backdrop .modal-container {
-    max-width: 100vw !important;
-    margin: 0 !important;
-    border-radius: 20px 20px 0 0 !important;
-    max-height: min(92dvh, 92vh) !important;
-    height: min(92dvh, 92vh) !important;
-  }
-  .modal-backdrop .modal-footer {
-    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
-  }
-  .modal-backdrop .modal-footer .modal-actions > button {
-    flex: 1 1 0;
-    justify-content: center;
-  }
-
+  .modal-backdrop { align-items: flex-end !important; padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) 0 env(safe-area-inset-left, 0px) !important; }
+  .modal-backdrop .modal-container { max-width: 100vw !important; margin: 0 !important; border-radius: 20px 20px 0 0 !important; max-height: min(92dvh, 92vh) !important; height: min(92dvh, 92vh) !important; }
+  .modal-backdrop .modal-footer { padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important; }
   /*
    * MediaPicker (hero / Content Hub / menu image pick):
    * On phones the footer used to keep Prev/Next + "Selected: …" + Cancel +
    * "Use this file" on one row, pushing the confirm button off-screen.
    */
-  .media-picker-backdrop {
-    align-items: flex-end !important;
-    padding: 0 !important;
-  }
-  .media-picker-shell {
-    width: 100% !important;
-    max-width: 100vw !important;
-    max-height: min(92dvh, 92vh) !important;
-    height: min(92dvh, 92vh) !important;
-    border-radius: 20px 20px 0 0 !important;
-  }
-  .media-picker-sidebar {
-    display: none !important;
-  }
-  .media-picker-footer {
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 10px !important;
-    padding: 12px 14px calc(12px + env(safe-area-inset-bottom, 0px)) !important;
-  }
-  .media-picker-footer-pager {
-    justify-content: center;
-    width: 100%;
-  }
-  .media-picker-footer-selected {
-    order: -1;
-    max-width: 100% !important;
-    text-align: center;
-  }
-  .media-picker-footer-actions {
-    margin-left: 0 !important;
-    width: 100%;
-  }
-  .media-picker-footer-actions > button {
-    flex: 1 1 0;
-    justify-content: center;
-  }
-
+  .media-picker-backdrop { align-items: flex-end !important; padding: 0 !important; }
+  .media-picker-shell { width: 100% !important; max-width: 100vw !important; max-height: min(92dvh, 92vh) !important; height: min(92dvh, 92vh) !important; border-radius: 20px 20px 0 0 !important; }
+  .media-picker-sidebar { display: none !important; }
+  .media-picker-footer { flex-direction: column !important; align-items: stretch !important; gap: 10px !important; padding: 12px 14px calc(12px + env(safe-area-inset-bottom, 0px)) !important; }
+  .media-picker-footer-selected { max-width: 100% !important; }
+  .media-picker-footer-actions { margin-left: 0 !important; }
   /* Page-level stat card rows: responsive with min-width */
-  .page-stat-row {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important;
-  }
-
+  .page-stat-row { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important; }
   /*
    * Inline-styled grids: many pages use inline `gridTemplateColumns`
    * like `repeat(N, 1fr)` with N=2..4. On phones these become 80–100px
@@ -862,23 +723,10 @@ input[type="file"]::file-selector-button:hover {
    * helper class, collapse anything tagged `data-responsive-grid` to a
    * sensible auto-fit layout.
    */
-  [data-responsive-grid] {
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)) !important;
-  }
-
+  [data-responsive-grid] { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)) !important; }
   /* Sticky page headers can swallow the viewport — cap their height */
   .page-header { padding: 8px 0 !important; }
-
-  /* Reports filters: the dates side by side, the pickers two to a row, the
-     quick ranges on a line of their own. */
-  .report-filters > * { flex: 1 1 140px; min-width: 0; }
-  .report-filters input,
-  .report-filters select { width: 100%; max-width: none !important; }
-  .report-filters > .report-quick-ranges { flex-basis: 100%; }
-
-  /* SharedUI DateInput: From and To side by side, filling the row. */
-  .date-input { flex: 1 1 140px; min-width: 0; }
-  .date-input input { width: 100%; }
+  .report-filters input, .report-filters select { max-width: none !important; }
 }
 
 @media (min-width: 768px) {
@@ -939,84 +787,35 @@ input[type="file"]::file-selector-button:hover {
   flex: 1 1 auto;
 }
 
+.svc-avail-page .svc-avail-card-blurb { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.svc-avail-page .svc-avail-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+.svc-avail-page .svc-avail-actions > button { width: 100%; justify-content: center; }
+/* Primary Pause/Restore spans full width */
+.svc-avail-page .svc-avail-actions > button[data-primary-action="true"] { grid-column: 1 / -1; }
+.svc-avail-page .svc-avail-preset-btn { width: 100%; }
+.svc-avail-page .svc-avail-preset-desc { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.svc-avail-page .svc-avail-chips > span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (min-width: 768px) {
+  .svc-avail-page .svc-avail-card-blurb { display: revert-layer; -webkit-line-clamp: revert-layer; -webkit-box-orient: revert-layer; overflow: revert-layer; }
+  .svc-avail-page .svc-avail-actions { display: flex; grid-template-columns: revert-layer; gap: 6px; margin-top: revert-layer; }
+  .svc-avail-page .svc-avail-actions > button { width: revert-layer; justify-content: revert-layer; }
+  .svc-avail-page .svc-avail-actions > button[data-primary-action="true"] { grid-column: revert-layer; }
+  .svc-avail-page .svc-avail-preset-btn { width: revert-layer; }
+  .svc-avail-page .svc-avail-preset-desc { display: revert-layer; -webkit-line-clamp: revert-layer; -webkit-box-orient: revert-layer; overflow: revert-layer; }
+  .svc-avail-page .svc-avail-chips > span { max-width: revert-layer; overflow: revert-layer; text-overflow: revert-layer; white-space: revert-layer; }
+}
+/* Page batch: these beat styles set in the page code. */
 @media (max-width: 767px) {
-  .svc-avail-page .svc-avail-hide-mobile {
-    display: none !important;
-  }
-
-  .svc-avail-page .svc-avail-section {
-    padding: 12px !important;
-  }
-
-  .svc-avail-page .svc-avail-list {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 10px !important;
-  }
-
-  .svc-avail-page .svc-avail-preset-list {
-    grid-template-columns: 1fr !important;
-  }
-
-  .svc-avail-page .svc-avail-card {
-    min-height: 0 !important;
-    padding: 12px !important;
-    gap: 8px !important;
-  }
-
-  .svc-avail-page .svc-avail-card-blurb {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  .svc-avail-page .svc-avail-actions {
-    display: grid !important;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    margin-top: 4px;
-  }
-
-  .svc-avail-page .svc-avail-actions > button {
-    width: 100%;
-    min-height: 32px !important;
-    justify-content: center;
-  }
-
-  /* Primary Pause/Restore spans full width */
-  .svc-avail-page .svc-avail-actions > button[data-primary-action="true"] {
-    grid-column: 1 / -1;
-  }
-
-  .svc-avail-page .svc-avail-preset-btn {
-    width: 100%;
-    padding: 12px 14px !important;
-  }
-
-  .svc-avail-page .svc-avail-preset-desc {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  .svc-avail-page .svc-avail-chips {
-    gap: 4px !important;
-  }
-
-  .svc-avail-page .svc-avail-chips > span {
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
+  .svc-avail-page .svc-avail-hide-mobile { display: none !important; }
+  .svc-avail-page .svc-avail-section { padding: 12px !important; }
+  .svc-avail-page .svc-avail-list { display: flex !important; flex-direction: column !important; gap: 10px !important; }
+  .svc-avail-page .svc-avail-preset-list { grid-template-columns: 1fr !important; }
+  .svc-avail-page .svc-avail-card { min-height: 0 !important; padding: 12px !important; gap: 8px !important; }
+  .svc-avail-page .svc-avail-actions > button { min-height: 32px !important; }
+  .svc-avail-page .svc-avail-preset-btn { padding: 12px 14px !important; }
+  .svc-avail-page .svc-avail-chips { gap: 4px !important; }
   /* Compact StatCards inside this page */
-  .svc-avail-page .stat-grid > div {
-    padding: 12px !important;
-    gap: 6px !important;
-  }
+  .svc-avail-page .stat-grid > div { padding: 12px !important; gap: 6px !important; }
 }
 
 /* ── Ordering Control — flow layout (online, delivery, pre-order) ── */
@@ -1255,175 +1054,84 @@ input[type="file"]::file-selector-button:hover {
   font-family: inherit;
 }
 
+.oc-time-box input[type="time"] { padding: 8px 4px; }
+@media (min-width: 768px) {
+  .oc-time-box input[type="time"] { padding: 8px 6px; }
+}
+/* Page batch: these beat styles set in the page code. */
 @media (max-width: 767px) {
-  .oc-day {
-    padding: 10px !important; /* equal L/R */
-  }
-  .oc-window-row {
-    gap: 8px !important; /* equal space between Open and Close */
-  }
-  .oc-time-box input[type="time"] {
-    padding: 8px 4px;
-  }
+  .oc-day { padding: 10px !important; }
+  .oc-window-row { gap: 8px !important; }
 }
 
+.ordering-page .page-header-title { overflow-wrap: anywhere; }
+/*
+   * Tab bar: five equal columns in ONE row — fits a 360px phone with
+   * compact type, no sideways scroll, no uneven 3+2 wrap.
+   */
+.ordering-page .oc-tabbar { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.ordering-page .oc-tabbar > button { word-break: break-word; }
+/* Status groups stack cleanly on narrow screens */
+.ordering-page .oc-status-overview { gap: 8px; margin-bottom: 12px; }
+.ordering-page .oc-status-group { flex-direction: column; gap: 4px; }
+.ordering-page .oc-status-group-label { flex: none; margin-top: 0; }
+.ordering-page .oc-chip-strip > * { white-space: nowrap; max-width: 100%; }
+.ordering-page .oc-card p, .ordering-page .oc-card label, .ordering-page .oc-card span { overflow-wrap: anywhere; }
+.ordering-page .oc-card input, .ordering-page .oc-card select, .ordering-page .oc-card textarea, .ordering-page .oc-card button { max-width: 100%; }
+/* Nested UI Cards (service charge / commission) — keep inner padding off the edges */
+.ordering-page .oc-nested-settings { min-width: 0; max-width: 100%; }
+.ordering-page .oc-feature-head > button[role="switch"] { margin-top: 8px; }
+/* Uppercase section titles can get long — wrap them */
+.ordering-page .oc-card > p, .ordering-page .oc-section-title { overflow-wrap: anywhere; }
+@media (min-width: 768px) {
+  .ordering-page .page-header-title { overflow-wrap: revert-layer; }
+  .ordering-page .oc-tabbar { grid-template-columns: revert-layer; }
+  .ordering-page .oc-tabbar > button { word-break: revert-layer; }
+  .ordering-page .oc-status-overview { gap: revert-layer; margin-bottom: revert-layer; }
+  .ordering-page .oc-status-group { flex-direction: revert-layer; gap: revert-layer; }
+  .ordering-page .oc-status-group-label { flex: revert-layer; margin-top: revert-layer; }
+  .ordering-page .oc-chip-strip > * { white-space: revert-layer; max-width: revert-layer; }
+  .ordering-page .oc-card p, .ordering-page .oc-card label, .ordering-page .oc-card span { overflow-wrap: revert-layer; }
+  .ordering-page .oc-card input, .ordering-page .oc-card select, .ordering-page .oc-card textarea, .ordering-page .oc-card button { max-width: revert-layer; }
+  .ordering-page .oc-nested-settings { min-width: revert-layer; max-width: revert-layer; }
+  .ordering-page .oc-feature-head > button[role="switch"] { margin-top: revert-layer; }
+  .ordering-page .oc-card > p, .ordering-page .oc-section-title { overflow-wrap: revert-layer; }
+}
+/* Page batch: these beat styles set in the page code. */
 @media (max-width: 767px) {
   /* Subtitle is decorative — reclaim the vertical space on phones */
   .ordering-page .page-header-subtitle { display: none !important; }
   .ordering-page .page-header { margin-bottom: 10px !important; }
-  .ordering-page .page-header-title {
-    font-size: 1.25rem !important;
-    line-height: 1.25 !important;
-    overflow-wrap: anywhere;
-  }
-
+  .ordering-page .page-header-title { font-size: 1.25rem !important; line-height: 1.25 !important; }
   /*
    * Tab bar: five equal columns in ONE row — fits a 360px phone with
    * compact type, no sideways scroll, no uneven 3+2 wrap.
    */
-  .ordering-page .oc-tabbar {
-    display: grid !important;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 3px !important;
-    padding: 3px !important;
-    margin: 0 0 12px !important;
-    border-radius: 12px !important;
-    overflow: visible !important;
-  }
-  .ordering-page .oc-tabbar > button {
-    width: 100% !important;
-    min-width: 0 !important;
-    padding: 6px 2px !important;
-    font-size: 11px !important;
-    line-height: 1.15 !important;
-    white-space: normal !important;
-    word-break: break-word;
-    min-height: 34px !important;
-  }
-
-  /* Status groups stack cleanly on narrow screens */
-  .ordering-page .oc-status-overview {
-    gap: 8px;
-    margin-bottom: 12px;
-  }
-  .ordering-page .oc-status-group {
-    flex-direction: column;
-    gap: 4px;
-  }
-  .ordering-page .oc-status-group-label {
-    flex: none;
-    margin-top: 0;
-  }
-
+  .ordering-page .oc-tabbar { display: grid !important; gap: 3px !important; padding: 3px !important; margin: 0 0 12px !important; border-radius: 12px !important; overflow: visible !important; }
+  .ordering-page .oc-tabbar > button { width: 100% !important; min-width: 0 !important; padding: 6px 2px !important; font-size: 11px !important; line-height: 1.15 !important; white-space: normal !important; min-height: 34px !important; }
   /* Chips wrap; never force a sideways strip */
-  .ordering-page .oc-chip-strip {
-    margin: 0 0 12px !important;
-    padding: 0 !important;
-    overflow: visible !important;
-  }
-  .ordering-page .oc-status-group .oc-chip-strip {
-    margin: 0 !important;
-  }
-  .ordering-page .oc-chip-strip > * {
-    white-space: nowrap;
-    max-width: 100%;
-  }
-
+  .ordering-page .oc-chip-strip { margin: 0 0 12px !important; padding: 0 !important; overflow: visible !important; }
+  .ordering-page .oc-status-group .oc-chip-strip { margin: 0 !important; }
   /* Cards: compact padding — keep overflow visible so right borders aren’t clipped */
-  .ordering-page .oc-card {
-    padding: 12px !important;
-    border-radius: 12px !important;
-    margin-bottom: 12px !important;
-    min-width: 0 !important;
-    overflow: visible !important;
-  }
-  .ordering-page .oc-card p,
-  .ordering-page .oc-card label,
-  .ordering-page .oc-card span {
-    overflow-wrap: anywhere;
-  }
-  .ordering-page .oc-card input,
-  .ordering-page .oc-card select,
-  .ordering-page .oc-card textarea,
-  .ordering-page .oc-card button {
-    max-width: 100%;
-  }
-
-  /* Nested UI Cards (service charge / commission) — keep inner padding off the edges */
-  .ordering-page .oc-nested-settings {
-    min-width: 0;
-    max-width: 100%;
-  }
-  .ordering-page .oc-nested-settings > div {
-    max-width: 100% !important;
-    min-width: 0 !important;
-    gap: 12px !important;
-  }
-  .ordering-page .oc-nested-settings .p-5,
-  .ordering-page .oc-nested-settings .p-4 {
-    padding: 12px !important;
-  }
-  .ordering-page .oc-nested-settings input,
-  .ordering-page .oc-nested-settings select {
-    max-width: 100% !important;
-  }
-
+  .ordering-page .oc-card { padding: 12px !important; border-radius: 12px !important; margin-bottom: 12px !important; min-width: 0 !important; overflow: visible !important; }
+  .ordering-page .oc-nested-settings > div { max-width: 100% !important; min-width: 0 !important; gap: 12px !important; }
+  .ordering-page .oc-nested-settings .p-5, .ordering-page .oc-nested-settings .p-4 { padding: 12px !important; }
+  .ordering-page .oc-nested-settings input, .ordering-page .oc-nested-settings select { max-width: 100% !important; }
   /* Force common 2-col form layouts into a single column */
-  .ordering-page .oc-form-grid,
-  .ordering-page [data-responsive-grid] {
-    grid-template-columns: 1fr !important;
-    gap: 12px !important;
-  }
-
+  .ordering-page .oc-form-grid, .ordering-page [data-responsive-grid] { grid-template-columns: 1fr !important; gap: 12px !important; }
   .ordering-page .oc-day-windows { padding-left: 0 !important; }
-  .ordering-page .oc-time-field,
-  .ordering-page .oc-time-box,
-  .ordering-page .oc-time-box input[type="time"] {
-    width: 100% !important;
-    min-width: 0 !important;
-    max-width: 100% !important;
-  }
-
+  .ordering-page .oc-time-field, .ordering-page .oc-time-box, .ordering-page .oc-time-box input[type="time"] { width: 100% !important; min-width: 0 !important; max-width: 100% !important; }
   /* Feature gate header: title/status wrap; toggle stays visible */
-  .ordering-page .oc-feature-head {
-    flex-wrap: nowrap !important;
-    align-items: flex-start !important;
-    gap: 8px !important;
-  }
-  .ordering-page .oc-feature-head > button[aria-expanded] {
-    flex: 1 1 auto !important;
-    min-width: 0 !important;
-  }
-  .ordering-page .oc-feature-head > button[role="switch"] {
-    margin-top: 8px;
-  }
-
-  /* Uppercase section titles can get long — wrap them */
-  .ordering-page .oc-card > p,
-  .ordering-page .oc-section-title {
-    overflow-wrap: anywhere;
-  }
-
+  .ordering-page .oc-feature-head { flex-wrap: nowrap !important; align-items: flex-start !important; gap: 8px !important; }
+  .ordering-page .oc-feature-head > button[aria-expanded] { flex: 1 1 auto !important; min-width: 0 !important; }
   /* Delivery zone rows: name on its own line, fee+MVR underneath */
-  /* A zone is one line on a phone too: name, fee, MVR, remove (settings
+/* A zone is one line on a phone too: name, fee, MVR, remove (settings
      audit, 2026-10-09; it was two). */
-  .ordering-page .oc-zone-row {
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) 150px !important;
-    gap: 8px !important;
-  }
-  .ordering-page .oc-zone-fee {
-    display: grid !important;
-    grid-template-columns: 1fr auto auto !important;
-    gap: 8px !important;
-    align-items: center !important;
-  }
-
+  .ordering-page .oc-zone-row { display: grid !important; grid-template-columns: minmax(0, 1fr) 150px !important; gap: 8px !important; }
+  .ordering-page .oc-zone-fee { display: grid !important; grid-template-columns: 1fr auto auto !important; gap: 8px !important; align-items: center !important; }
   /* Save buttons keep the width of their words on a phone too (they were
      full-width bars until the owner asked for small buttons, 2026-10-10). */
-  .ordering-page .oc-btn-block {
-    justify-content: center !important;
-  }
+  .ordering-page .oc-btn-block { justify-content: center !important; }
 }
 
 /* Desktop default for zone rows */
@@ -2157,27 +1865,13 @@ input[type="file"]::file-selector-button:hover {
   inset: -12px -8px;
 }
 
-@media (max-width: 374px) {
-  /* iPhone SE / 320 CSS px — drop shortcut chrome so avatar fits. */
-  .admin-shell-mobile-top {
-    gap: 6px;
-    padding: 0 10px;
-  }
-  .admin-shell-mobile-top .admin-shell-search-btn {
-    width: 34px;
-    min-width: 34px;
-    padding: 0;
-    justify-content: center;
-  }
-  .admin-shell-mobile-top .admin-shell-search-label,
-  .admin-shell-mobile-top .admin-shell-kbd {
-    display: none;
-  }
-  .admin-shell-mobile-top .admin-shell-avatar {
-    width: 28px;
-    height: 28px;
-    font-size: 12px;
-  }
+/* iPhone SE / 320 CSS px: a tighter header so the avatar fits; 375 and up get the
+   usual spacing (the search box is icon-only on every phone, below). */
+.admin-shell-mobile-top { gap: 6px; padding: 0 10px; }
+.admin-shell-mobile-top .admin-shell-avatar { width: 28px; height: 28px; font-size: 12px; }
+@media (min-width: 375px) {
+  .admin-shell-mobile-top { gap: 10px; padding: 0 16px; } /* .admin-mobile-header's */
+  .admin-shell-mobile-top .admin-shell-avatar { width: 32px; height: 32px; font-size: 13px; }
 }
 
 .admin-shell-brand-btn {
@@ -2544,54 +2238,56 @@ input[type="file"]::file-selector-button:hover {
    of sight with no hint that the strip scrolls. The search box, the name chip and
    the brand words shrink to icons, and on an upright tablet only the open section
    keeps its name. */
-@media (max-width: 1199px) {
+/* Phone first. Below 1200px the header has the computer layout but not its width,
+   so the search box, the name chip and the brand words shrink to icons (from 1200 they
+   show). Below 1024 every section tab keeps its name stacked under its icon, like the
+   phone's tab bar (owner, 2026-10-12), instead of unnamed icons: six such tabs are about
+   380px, which fits beside the logo and the header icons at 768. The phone header
+   reuses the search control, icon-only. */
+.admin-shell-search-label,
+.admin-shell-topbar .admin-shell-kbd { display: none; }
+.admin-shell-topbar .admin-shell-search-btn {
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  padding: 0;
+  justify-content: center;
+}
+.admin-shell-user-name,
+.admin-shell-user-role { display: none; }
+.admin-shell-topbar .admin-shell-user-chip { padding: 4px; }
+.admin-shell-brand span { display: none; }
+.admin-shell-section-tab {
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-width: 56px;
+  padding: 4px 6px;
+}
+.admin-shell-section-tab .admin-shell-section-tab-label {
+  font-size: 10px;
+  line-height: 1.1;
+}
+.admin-shell-mobile-top .admin-shell-kbd { display: none; }
+.admin-shell-mobile-top .admin-shell-search-btn {
+  width: 34px;
+  min-width: 34px;
+  padding: 0;
+  justify-content: center;
+}
+@media (min-width: 1024px) {
+  .admin-shell-section-tab { flex-direction: row; justify-content: normal; gap: 6px; min-width: auto; padding: 0 10px; }
+  .admin-shell-section-tab .admin-shell-section-tab-label { font-size: revert-layer; line-height: revert-layer; }
+}
+@media (min-width: 1200px) {
   .admin-shell-search-label,
-  .admin-shell-topbar .admin-shell-kbd { display: none; }
-  .admin-shell-topbar .admin-shell-search-btn {
-    width: 40px;
-    min-width: 40px;
-    height: 40px;
-    padding: 0;
-    justify-content: center;
-  }
+  .admin-shell-topbar .admin-shell-kbd { display: revert-layer; }
+  .admin-shell-topbar .admin-shell-search-btn { width: auto; min-width: auto; height: auto; padding: 6px 12px; justify-content: normal; }
   .admin-shell-user-name,
-  .admin-shell-user-role { display: none; }
-  .admin-shell-topbar .admin-shell-user-chip { padding: 4px; }
-  .admin-shell-brand span { display: none; }
-  .admin-shell-section-tab { padding: 0 10px; }
-}
-
-/* Tablet band: every section keeps its name, stacked under the icon like the
-   phone's tab bar, instead of the unnamed icons that hid Manage, Customers,
-   Analyze, System and Team from a finger (owner, 2026-10-12). Six such tabs
-   are about 380px, which fits beside the logo and the header icons at 768. */
-@media (max-width: 1023px) {
-  .admin-shell-section-tab {
-    flex-direction: column;
-    justify-content: center;
-    gap: 2px;
-    min-width: 56px;
-    padding: 4px 6px;
-  }
-  .admin-shell-section-tab .admin-shell-section-tab-label {
-    font-size: 10px;
-    line-height: 1.1;
-  }
-}
-
-@media (max-width: 1023px) {
-  .admin-shell-search-label { display: none; }
-  .admin-shell-user-name,
-  .admin-shell-user-role { display: none; }
-  .admin-shell-brand span { display: none; }
-  /* Mobile header reuses the desktop search control — icon-only. */
-  .admin-shell-mobile-top .admin-shell-kbd { display: none; }
-  .admin-shell-mobile-top .admin-shell-search-btn {
-    width: 34px;
-    min-width: 34px;
-    padding: 0;
-    justify-content: center;
-  }
+  .admin-shell-user-role { display: revert-layer; }
+  .admin-shell-topbar .admin-shell-user-chip { padding: 6px 12px; }
+  .admin-shell-brand span { display: revert-layer; }
+  .admin-shell-section-tab { padding: 0 12px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2816,73 +2512,28 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
 }
 
 /* ── Content Studio — mobile layout ─────────────────────────── */
-.content-studio-sticky-bar {
-  display: none;
+/* The publish bar is only drawn on a phone (HubPublishBar); hidden from 768 up below. */
+
+.content-studio-page.content-studio-page--dirty { padding-bottom: calc(var(--admin-tabbar-h, 56px) + 72px); }
+.content-studio-page .content-studio-sticky-bar { display: flex; position: fixed; left: 12px; right: 12px; bottom: calc(var(--admin-tabbar-h, 56px) + 8px); z-index: calc(var(--z-overlay) - 1); gap: 10px; align-items: center; padding: 10px 12px; border-radius: 14px; background: var(--color-text); color: var(--color-bg); box-shadow: 0 8px 24px rgba(28, 20, 8, 0.28); }
+.content-studio-page .content-studio-sticky-bar-label { font-size: 12px; font-weight: 700; white-space: normal; flex-shrink: 1; max-width: 42%; line-height: 1.25; color: var(--color-warning); }
+.content-studio-page .content-studio-publish-sticky { font-weight: 700; }
+.content-studio-page .content-editor-row > .content-editor-icon { align-self: flex-start; }
+@media (min-width: 768px) {
+  .content-studio-page.content-studio-page--dirty { padding-bottom: revert-layer; }
+  .content-studio-page .content-studio-sticky-bar { position: revert-layer; left: revert-layer; right: revert-layer; bottom: revert-layer; z-index: revert-layer; gap: revert-layer; align-items: revert-layer; padding: revert-layer; border-radius: revert-layer; background: revert-layer; color: revert-layer; box-shadow: revert-layer; }
+  .content-studio-page .content-studio-sticky-bar-label { font-size: revert-layer; font-weight: revert-layer; white-space: revert-layer; flex-shrink: revert-layer; max-width: revert-layer; line-height: revert-layer; color: revert-layer; }
+  .content-studio-page .content-studio-publish-sticky { font-weight: revert-layer; }
+  .content-studio-page .content-editor-row > .content-editor-icon { align-self: revert-layer; }
 }
-
+/* Page batch: these beat styles set in the page code. */
 @media (max-width: 767px) {
-  .content-studio-page.content-studio-page--dirty {
-    padding-bottom: calc(var(--admin-tabbar-h, 56px) + 72px);
-  }
-
-  .content-studio-page .content-studio-publish-desktop {
-    display: none !important;
-  }
-
-  .content-studio-page .content-studio-block {
-    padding: 12px !important;
-  }
-
-  .content-studio-page .content-studio-sticky-bar {
-    display: flex !important;
-    position: fixed;
-    left: 12px;
-    right: 12px;
-    bottom: calc(var(--admin-tabbar-h, 56px) + 8px);
-    /* Below editor sheets (50+) — landing-only; open sheets use their own Publish footer. */
-    z-index: calc(var(--z-overlay) - 1);
-    gap: 10px;
-    align-items: center;
-    padding: 10px 12px;
-    border-radius: 14px;
-    background: var(--color-text);
-    color: var(--color-bg);
-    box-shadow: 0 8px 24px rgba(28, 20, 8, 0.28);
-  }
-
-  .content-studio-page .content-studio-sticky-bar-label {
-    font-size: 12px;
-    font-weight: 700;
-    white-space: normal;
-    flex-shrink: 1;
-    max-width: 42%;
-    line-height: 1.25;
-    color: var(--color-warning);
-  }
-  .content-studio-page .content-studio-publish-sticky {
-    font-weight: 700;
-  }
-
-  .content-studio-page .content-editor-row {
-    flex-direction: column !important;
-    align-items: stretch !important;
-  }
-
-  .content-studio-page .content-editor-row > input:not(.content-editor-icon),
-  .content-studio-page .content-editor-row > button {
-    width: 100% !important;
-    min-width: 0 !important;
-    flex: none !important;
-  }
-
-  .content-studio-page .content-editor-row > .content-editor-icon {
-    width: 48px !important;
-    align-self: flex-start;
-  }
-
-  .content-studio-page .content-preview-grid {
-    grid-template-columns: 1fr !important;
-  }
+  .content-studio-page .content-studio-publish-desktop { display: none !important; }
+  .content-studio-page .content-studio-block { padding: 12px !important; }
+  .content-studio-page .content-editor-row { flex-direction: column !important; align-items: stretch !important; }
+  .content-studio-page .content-editor-row > input:not(.content-editor-icon), .content-studio-page .content-editor-row > button { width: 100% !important; min-width: 0 !important; flex: none !important; }
+  .content-studio-page .content-editor-row > .content-editor-icon { width: 48px !important; }
+  .content-studio-page .content-preview-grid { grid-template-columns: 1fr !important; }
 }
 /* Website editor header: "View live site" and the Desktop / Mobile switch. */
 .hub-view-live-site {
@@ -4354,49 +4005,7 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
 }
 
 /* ── Responsive — brand kit 1-col mobile ─────────────────────── */
-@media (max-width: 767px) {
-  .hub-brand-kit-grid {
-    grid-template-columns: 1fr;
-  }
-  .hub-desktop-shell {
-    display: none !important;
-  }
 
-  /* Bug 4: stack block card title / mode control / ⋯ on mobile */
-  .hub-block-card-top {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .hub-block-card-titles {
-    width: 100%;
-    flex: none;
-  }
-  .hub-block-card-actions {
-    width: 100%;
-    flex-shrink: 1;
-    flex-wrap: wrap;
-    justify-content: space-between;
-  }
-  .hub-section-enable {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .hub-section-enable-face,
-  .hub-section-enable-switches,
-  .hub-section-enable-switches--split {
-    flex: none;
-    width: 100%;
-  }
-
-  .hub-section-order-top {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .hub-section-order-titles {
-    flex: none;
-    width: 100%;
-  }
-}
 
 @media (min-width: 768px) {
   .content-studio-sticky-bar {
@@ -4462,21 +4071,7 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
 }
 
 /* Mobile: keep stacked Stage 7 — panels are invisible chrome */
-@media (max-width: 767px) {
-  .hub-landing-primary-btn,
-  .hub-landing-row {
-    max-width: 100%;
-  }
-  .hub-landing-row-meta {
-    max-width: 36%;
-  }
-  .hub-landing-v7 .hub-landing-panel {
-    background: transparent;
-    border: none;
-    padding: 0;
-    border-radius: 0;
-  }
-}
+
 
 /* Desktop workspace — open composition (no nested panel boxes) */
 @media (min-width: 768px) {
@@ -4674,25 +4269,8 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   font-size: 12px;
 }
 /* Mobile Admin Content Hub: single column, no horizontal overflow */
-@media (max-width: 767px) {
-  .hub-surface-devices {
-    grid-template-columns: 1fr;
-  }
-  .hub-surface-slots {
-    grid-template-columns: 1fr;
-  }
-  .hub-surface-landing,
-  .hub-task-landing,
-  .hub-surface-card,
-  .hub-task-card {
-    max-width: 100%;
-    min-width: 0;
-  }
-  .hub-task-card-title,
-  .hub-task-card-desc {
-    overflow-wrap: anywhere;
-  }
-}
+/* The Content Hub chooser: never wider than a phone (its own maxWidth wins above). */
+.hub-task-landing { max-width: 100%; min-width: 0; }
 /* Tablet: compact two-column slots, no forced three-column squeeze */
 @media (min-width: 768px) and (max-width: 1199px) {
   .hub-surface-devices {
@@ -4717,27 +4295,28 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   margin-left: 0.25rem;
 }
 
-@media (max-width: 767px) {
+/* Phone first: the More control shows its icon only (stops header overflow on narrow
+   phones); the computer shows the word too. */
+.hub-more-trigger-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.hub-draft-status { min-width: 0; max-width: min(160px, 42vw); }
+.hub-header-actions { row-gap: 0.4rem; }
+@media (min-width: 768px) {
   .hub-more-trigger-label {
-    /* Icon-only More control — stops header overflow on narrow phones */
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
+    position: static; width: auto; height: auto; padding: 0; margin: 0 0 0 0.25rem;
+    overflow: visible; clip: auto; white-space: normal; border: 0;
   }
-  .hub-draft-status {
-    min-width: 0;
-    max-width: min(160px, 42vw);
-  }
-  .hub-header-actions {
-    flex-wrap: wrap;
-    row-gap: 0.4rem;
-  }
+  .hub-draft-status { min-width: 140px; max-width: 280px; }
+  .hub-header-actions { row-gap: 8px; }
 }
 
 /* ── Daily Specials — mobile ops layout ─────────────────────── */
@@ -4762,9 +4341,6 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   font-weight: 700;
 }
 
-.specials-page .specials-mobile-list {
-  display: none;
-}
 
 .specials-day-row {
   display: grid;
@@ -4811,155 +4387,145 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   line-height: 1.4;
 }
 
-@media (max-width: 767px) {
-  .specials-page .specials-intro {
-    margin: -4px 0 14px !important;
-    font-size: 13px !important;
-  }
-
-  .specials-page .page-stat-row {
-    gap: 10px !important;
-    margin-bottom: 16px !important;
-  }
-  .specials-page .page-stat-row > div {
-    padding: 12px 14px !important;
-  }
-
-  .specials-page .specials-desktop-table {
-    display: none !important;
-  }
-  .specials-page .specials-mobile-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .specials-page .specials-mobile-card {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 14px;
-    padding: 14px;
-    box-shadow: 0 1px 2px rgba(28, 20, 8, 0.05);
-  }
-  .specials-page .specials-mobile-card--muted {
-    text-align: center;
-    color: var(--color-text-muted);
-    padding: 28px 14px;
-  }
-  .specials-page .specials-mobile-card-top {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 10px;
-  }
-  .specials-page .specials-mobile-card-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    min-width: 0;
-    flex: 1;
-  }
-  .specials-page .specials-mobile-thumb {
-    width: 44px;
-    height: 44px;
-    border-radius: 10px;
-    object-fit: cover;
-    flex-shrink: 0;
-  }
-  .specials-page .specials-mobile-title {
-    margin: 0 0 6px;
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--color-text);
-    line-height: 1.3;
-  }
-  .specials-page .specials-mobile-badges {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-  .specials-page .specials-mobile-card-actions {
-    display: flex;
-    gap: 6px;
-    flex-shrink: 0;
-  }
-  .specials-page .specials-mobile-meta {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px 12px;
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px solid var(--color-border-light);
-  }
-  .specials-page .specials-mobile-meta-label {
-    display: block;
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--color-text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.02em;
-    margin-bottom: 2px;
-  }
-  .specials-page .specials-mobile-meta-value {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--color-text);
-    line-height: 1.35;
-  }
-
-  .form-grid-keep-2 {
-    /* minmax(0, …): a date field's own minimum width pushed the second
-       column past the pop-up's edge. */
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 10px !important;
-  }
-  .form-grid-keep-2 > * { min-width: 0; }
-  .form-grid-keep-2 input { min-width: 0; max-width: 100%; }
-
-  .specials-day-chip {
-    min-height: 32px;
-    font-size: 11px;
-  }
-
-  .specials-active-toggle {
-    padding-top: 0;
-  }
-
+/* Phone first: the phone list of specials; the computer shows the table instead. */
+.specials-page .specials-desktop-table { display: none; }
+.specials-page .specials-mobile-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.specials-page .specials-mobile-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 1px 2px rgba(28, 20, 8, 0.05);
+}
+.specials-page .specials-mobile-card--muted {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: 28px 14px;
+}
+.specials-page .specials-mobile-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.specials-page .specials-mobile-card-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+.specials-page .specials-mobile-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.specials-page .specials-mobile-title {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1.3;
+}
+.specials-page .specials-mobile-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.specials-page .specials-mobile-card-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.specials-page .specials-mobile-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border-light);
+}
+.specials-page .specials-mobile-meta-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin-bottom: 2px;
+}
+.specials-page .specials-mobile-meta-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  line-height: 1.35;
+}
+.specials-variant-table,
+.specials-variant-table tbody,
+.specials-variant-table tr,
+.specials-variant-table td {
+  display: block;
+  width: 100%;
+}
+.specials-variant-table thead {
+  display: none;
+}
+.specials-variant-table tr {
+  padding: 12px;
+  border-bottom: 1px solid var(--color-border-light);
+}
+.specials-variant-table tr:last-child {
+  border-bottom: none;
+}
+.specials-variant-table td[data-label="Discount %"],
+.specials-variant-table td[data-label="Special price"] {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  align-items: center;
+  gap: 8px;
+}
+.specials-variant-table td[data-label="Discount %"]::before,
+.specials-variant-table td[data-label="Special price"]::before {
+  content: attr(data-label);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+.form-grid-keep-2 > * { min-width: 0; }
+.form-grid-keep-2 input { min-width: 0; max-width: 100%; }
+.specials-day-chip { min-height: 32px; font-size: 11px; }
+.specials-active-toggle { padding-top: 0; }
+@media (min-width: 768px) {
+  .specials-page .specials-desktop-table { display: revert-layer; }
+  .specials-page .specials-mobile-list { display: none; }
+  .form-grid-keep-2 > * { min-width: revert-layer; }
+  .form-grid-keep-2 input { min-width: revert-layer; max-width: revert-layer; }
+  .specials-day-chip { font-size: 12px; }
+  .specials-active-toggle { padding-top: 20px; }
   .specials-variant-table,
   .specials-variant-table tbody,
   .specials-variant-table tr,
-  .specials-variant-table td {
-    display: block;
-    width: 100%;
-  }
-  .specials-variant-table thead {
-    display: none;
-  }
-  .specials-variant-table tr {
-    padding: 12px;
-    border-bottom: 1px solid var(--color-border-light);
-  }
-  .specials-variant-table tr:last-child {
-    border-bottom: none;
-  }
-  .specials-variant-table td {
-    border: none !important;
-    padding: 4px 0 !important;
-  }
+  .specials-variant-table td { display: revert-layer; width: revert-layer; }
+  .specials-variant-table thead { display: revert-layer; }
+  .specials-variant-table tr { padding: revert-layer; border-bottom: revert-layer; }
   .specials-variant-table td[data-label="Discount %"],
-  .specials-variant-table td[data-label="Special price"] {
-    display: grid;
-    grid-template-columns: 96px 1fr;
-    align-items: center;
-    gap: 8px;
-  }
+  .specials-variant-table td[data-label="Special price"] { display: revert-layer; grid-template-columns: revert-layer; align-items: revert-layer; gap: revert-layer; }
   .specials-variant-table td[data-label="Discount %"]::before,
-  .specials-variant-table td[data-label="Special price"]::before {
-    content: attr(data-label);
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--color-text-secondary);
-  }
+  .specials-variant-table td[data-label="Special price"]::before { content: none; }
+}
+/* Page batch: these beat styles set in the page code. */
+@media (max-width: 767px) {
+  .specials-page .specials-intro { margin: -4px 0 14px !important; font-size: 13px !important; }
+  .specials-page .page-stat-row { gap: 10px !important; margin-bottom: 16px !important; }
+  .specials-page .page-stat-row > div { padding: 12px 14px !important; }
+  .form-grid-keep-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
+  .specials-variant-table td { border: none !important; padding: 4px 0 !important; }
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -4988,11 +4554,9 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
  * have to swipe to find is a page you never open. Found by the real-browser
  * band test, which jsdom could never have caught.
  */
-@media (max-width: 1023px) {
-  .wcw-tabs {
-    flex-wrap: wrap;
-    overflow-x: visible;
-  }
+.wcw-tabs { flex-wrap: wrap; overflow-x: visible; }
+@media (min-width: 1024px) {
+  .wcw-tabs { flex-wrap: revert-layer; overflow-x: auto; }
 }
 .wcw-tab {
   appearance: none;
@@ -5173,15 +4737,11 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
  * 375 and up still fit on one line. Found by the real-browser phone test;
  * jsdom has no layout engine and could never have measured it.
  */
-@media (max-width: 360px) {
-  .wcw-sec-head {
-    flex-wrap: wrap;
-    padding-right: 8px;
-  }
-  .wcw-sec-meta {
-    padding: 0 0 12px 46px;
-    flex-wrap: wrap;
-  }
+.wcw-sec-head { flex-wrap: wrap; padding-right: 8px; }
+.wcw-sec-meta { padding: 0 0 12px 46px; flex-wrap: wrap; }
+@media (min-width: 361px) {
+  .wcw-sec-head { flex-wrap: revert-layer; padding-right: 14px; }
+  .wcw-sec-meta { padding: revert-layer; flex-wrap: revert-layer; }
 }
 
 .wcw-sec-where[disabled] { opacity: 0.5; cursor: default; }
@@ -5299,13 +4859,6 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   padding: 0;
 }
 
-@media (max-width: 1024px) {
-  .wcw-grid { grid-template-columns: 1fr; }
-  .wcw-form { padding: 6px 16px 20px; }
-  .wcw-sec-body { padding: 4px 14px 18px; }
-  /* Keep the settings count — only the device badge needs the room back. */
-  .wcw-sec-count { display: none; }
-}
 
 /* ── phone: the five pages are a list, not a row ───────────── */
 .wcw-pagelist {
@@ -5382,23 +4935,36 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   letter-spacing: -0.01em;
 }
 
-@media (max-width: 767px) {
-  /* Belt and braces: the wide hero editor sets its three columns as an inline
-     style, so only !important can beat it. A phone must never get three
-     columns, whichever path renders the editor. */
-  .hero-slides-wide-columns {
-    grid-template-columns: 1fr !important;
-  }
-
-  /* One column, and the row meta drops to the settings count alone — a phone
-     row has no room for a badge as well as a name and a description. */
-  .wcw-sec-row { padding: 13px 13px; gap: 11px; }
-  .wcw-sec-name { font-size: 15px; }
-  .wcw-sec-body { padding: 4px 12px 18px; }
-  .wcw-form { padding: 4px 12px 18px; }
-  .wcw-group-head { margin-top: 20px; }
-  .wcw--mobile .wcw-blurb { margin-bottom: 12px; }
+/* Phone first: one column; the row meta drops to the settings count alone (a phone
+   row has no room for a badge as well as a name and a description). The tablet band
+   (768–1024) keeps one column and the count; the computer gets the grid. */
+.wcw-grid { grid-template-columns: 1fr; }
+/* Keep the settings count — only the device badge needs the room back. */
+.wcw-sec-count { display: none; }
+.wcw-sec-row { padding: 13px 13px; gap: 11px; }
+.wcw-sec-body { padding: 4px 12px 18px; }
+.wcw-form { padding: 4px 12px 18px; }
+.wcw-group-head { margin-top: 20px; }
+/* .wcw--mobile is only set by the phone layout (ContentWorkspace). */
+.wcw--mobile .wcw-blurb { margin-bottom: 12px; }
+@media (min-width: 768px) {
+  .wcw-sec-row { padding: 14px 16px; gap: 14px; }
+  .wcw-sec-body { padding: 4px 14px 18px; }
+  .wcw-form { padding: 6px 16px 20px; }
+  .wcw-group-head { margin-top: 24px; }
 }
+@media (min-width: 1025px) {
+  .wcw-grid { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+  .wcw-form { padding: 6px 22px 24px; }
+  .wcw-sec-body { padding: 4px 18px 22px; }
+  .wcw-sec-count { display: revert-layer; }
+}
+/* Page batch: the wide hero editor sets its three columns as an inline style, so only
+   !important can beat it. A phone must never get three columns. */
+@media (max-width: 767px) {
+  .hero-slides-wide-columns { grid-template-columns: 1fr !important; }
+}
+
 
 /* ════════════════════════════════════════════════════════════
    BUSINESS DETAILS — one record, two columns on a desk, one on a phone
@@ -5591,22 +5157,29 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   color: var(--color-text-secondary);
 }
 
-@media (max-width: 767px) {
-  .business-details-grid { grid-template-columns: 1fr; }
-  .business-details-card { padding: 14px; }
-  /* Three short rows of section buttons, all in sight. */
-  .business-details-tab { font-size: 12.5px; padding: 6px 11px; }
-  /* A picture beside its controls, not a 120px box above them. */
-  .business-details-image-preview { width: 72px; height: 56px; }
-  .business-details-image-preview--square { width: 56px; height: 56px; }
-  .business-details-savebar {
-    position: fixed;
-    left: 12px;
-    right: 12px;
-    bottom: calc(var(--admin-tabbar-h, 56px) + 12px);
-    margin-top: 0;
-    z-index: 40;
-  }
+/* Phone first: Business details on a phone; the computer layout is restored below. */
+.business-details-grid { grid-template-columns: 1fr; }
+.business-details-card { padding: 14px; }
+/* Three short rows of section buttons, all in sight. */
+.business-details-tab { font-size: 12.5px; padding: 6px 11px; }
+/* A picture beside its controls, not a 120px box above them. */
+.business-details-image-preview { width: 72px; height: 56px; }
+.business-details-image-preview--square { width: 56px; height: 56px; }
+.business-details-savebar {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(var(--admin-tabbar-h, 56px) + 12px);
+  margin-top: 0;
+  z-index: 40;
+}
+@media (min-width: 768px) {
+  .business-details-grid { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+  .business-details-card { padding: 18px 20px; }
+  .business-details-tab { font-size: 13px; padding: 7px 14px; }
+  .business-details-image-preview { width: 96px; height: 64px; }
+  .business-details-image-preview--square { width: 64px; height: 64px; }
+  .business-details-savebar { position: sticky; left: auto; right: auto; bottom: 0; margin-top: 16px; z-index: 5; }
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -6105,23 +5678,32 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   white-space: nowrap;
 }
 
-@media (max-width: 767px) {
-  .perm-mode { padding: 4px 11px; }
-  .perm-help-toggle { padding: 4px 10px; }
-  /* All four roles in sight, two by two, rather than Owner off the edge. */
-  .perm-roles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-self: stretch; }
-  .perm-role { justify-content: space-between; }
-  .perm-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .perm-rows { grid-template-columns: minmax(0, 1fr); }
-  .perm-savebar {
-    position: fixed;
-    left: 12px;
-    right: 12px;
-    bottom: calc(var(--admin-tabbar-h, 56px) + 12px);
-    z-index: 40;
-  }
-  /* Room under the last tile for the bar that floats over it. */
-  .perm-page:has(.perm-savebar) { padding-bottom: 84px; }
+/* Phone first: the role editor on a phone; the computer layout is restored below. */
+.perm-mode { padding: 4px 11px; }
+.perm-help-toggle { padding: 4px 10px; }
+/* All four roles in sight, two by two, rather than Owner off the edge. */
+.perm-roles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-self: stretch; }
+.perm-role { justify-content: space-between; }
+.perm-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.perm-rows { grid-template-columns: minmax(0, 1fr); }
+.perm-savebar {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(var(--admin-tabbar-h, 56px) + 12px);
+  z-index: 40;
+}
+/* Room under the last tile for the bar that floats over it. */
+.perm-page:has(.perm-savebar) { padding-bottom: 84px; }
+@media (min-width: 768px) {
+  .perm-mode { padding: 4px 12px; }
+  .perm-help-toggle { padding: 4px 12px; } /* .perm-chip's */
+  .perm-roles { display: flex; grid-template-columns: none; align-self: flex-start; }
+  .perm-role { justify-content: normal; }
+  .perm-tiles { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+  .perm-rows { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+  .perm-savebar { position: sticky; left: auto; right: auto; bottom: 12px; z-index: 5; }
+  .perm-page:has(.perm-savebar) { padding-bottom: 8px; }
 }
 
 /* The line under a hub's tabs ("More settings: Buying · Kitchen · SMS on/off"):
@@ -6138,8 +5720,11 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
 ════════════════════════════════════════════════════════════ */
 .currency-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+@media (min-width: 768px) {
+  .currency-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
 }
 .currency-card {
   display: flex;
@@ -6173,9 +5758,7 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
 .currency-card-coin { width: 60px; height: 60px; object-fit: cover; border-radius: 50%; }
 .currency-card-actions { display: flex; gap: 6px; }
 .currency-card-actions > button { flex: 1 1 auto; justify-content: center; }
-@media (max-width: 767px) {
-  .currency-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
+
 
 /* ── Section order & visibility header ─────────────────────────
    On a phone the heading text and the Reorder / Publish / Discard buttons
@@ -6269,18 +5852,19 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 16px;
+  gap: 8px 10px;
 }
 .menu-duty-heading {
   display: flex;
   flex-direction: column;
   gap: 1px;
   min-width: 0;
+  width: 100%;
 }
 .menu-duty-help {
   font-size: 11px;
   color: var(--color-text-muted);
-  white-space: nowrap;
+  white-space: normal;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -6317,7 +5901,7 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   color: var(--color-text);
 }
 .menu-duty-chip[data-disabled="true"] { cursor: default; opacity: 0.7; }
-.menu-duty-save { margin-left: auto; }
+.menu-duty-save { margin-left: 0; width: 100%; justify-content: center; }
 
 /* Toolbar: search grows, the rest keeps its width */
 .menu-items-toolbar {
@@ -6339,9 +5923,9 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   font: inherit;
   font-size: 14px;
 }
-.menu-items-search { flex: 1 1 240px; min-width: 0; }
-.menu-items-category { flex: 0 1 220px; min-width: 0; cursor: pointer; }
-.menu-items-sort { flex: 0 1 190px; min-width: 0; cursor: pointer; }
+.menu-items-search { flex: 1 1 100%; min-width: 0; }
+.menu-items-category { flex: 1 1 0; min-width: 0; cursor: pointer; }
+.menu-items-sort { flex: 1 1 0; min-width: 0; cursor: pointer; }
 
 /* Sortable column headers on the item table: the header text is the button. */
 .menu-item-sort-th {
@@ -6528,13 +6112,15 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
   gap: 10px 16px;
   margin-top: 14px;
   font-size: 13px;
   color: var(--color-text-secondary);
 }
-.menu-items-count { flex: 1 1 auto; }
-.menu-items-pager { display: flex; gap: 8px; }
+.menu-items-count { flex: 1 1 100%; text-align: center; }
+.menu-items-pager { display: flex; gap: 8px; flex: 1 1 auto; }
+.menu-items-pager > button { flex: 1 1 auto; justify-content: center; }
 .menu-items-per-page {
   display: inline-flex;
   align-items: center;
@@ -6560,21 +6146,32 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   gap: 8px;
 }
 .qe-toolbar-search {
-  flex: 1 1 240px;
+  flex: 1 1 100%;
   min-width: 200px;
   position: relative;
 }
 .qe-toolbar-count {
+  order: 2;
+  width: 100%;
   font-size: 12px;
   color: var(--color-text-muted);
   white-space: nowrap;
 }
+/* Button rows wrap on a phone; none of them scroll sideways. */
 .qe-toolbar-actions {
+  order: 1;
+  width: 100%;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
+.qe-toolbar-actions > button, .qe-toolbar-actions > label > button {
+  flex: 1 1 auto;
+  justify-content: center;
+  white-space: nowrap;
+}
+.qe-toolbar-actions > label { display: flex; flex: 1 1 auto; }
 .qe-hint {
   margin-bottom: 14px;
 }
@@ -6584,10 +6181,11 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   margin-bottom: 12px;
   border-bottom: 1px solid var(--color-border);
 }
+/* The page scrolls on a phone; a nested scroll box fights the keyboard. */
 .qe-scroll {
   overflow: auto;
-  max-height: calc(100dvh - 240px);
-  min-height: 160px;
+  max-height: none;
+  min-height: 0;
 }
 /* A column filter menu opens under its header; a short sheet must not
    clip it. */
@@ -6625,7 +6223,8 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   position: sticky;
   left: 34px;
   z-index: 2;
-  min-width: 220px;
+  min-width: 160px;
+  max-width: 200px;
   box-shadow: 1px 0 0 var(--color-border);
 }
 .qe-table thead .qe-col-select,
@@ -6640,11 +6239,11 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
 }
 .qe-savebar {
   position: sticky;
-  bottom: 0;
+  bottom: var(--admin-tabbar-h, 56px);
   z-index: var(--z-overlay);
   margin-top: 14px;
   padding: 10px 14px;
-  border-radius: 10px;
+  border-radius: 10px 10px 0 0;
   border: 1px solid var(--color-border);
   background: var(--color-bg);
   box-shadow: 0 -6px 18px rgba(28, 20, 8, 0.06);
@@ -6668,7 +6267,9 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
 .qe-savebar-actions {
   display: flex;
   gap: 8px;
+  width: 100%;
 }
+.qe-savebar-actions > button { flex: 1 1 0; justify-content: center; }
 .qe-savebar-error {
   margin-bottom: 8px;
   padding: 8px 12px;
@@ -6679,33 +6280,18 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   border: 1px solid var(--color-danger);
 }
 
-@media (max-width: 767px) {
-  .qe-toolbar-search { flex-basis: 100%; }
-  .qe-toolbar-count { order: 2; width: 100%; }
-  /* Button rows wrap on a phone; none of them scroll sideways. */
-  .qe-toolbar-actions {
-    order: 1;
-    width: 100%;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-  .qe-toolbar-actions > button, .qe-toolbar-actions > label > button {
-    flex: 1 1 auto;
-    justify-content: center;
-    white-space: nowrap;
-  }
-  .qe-toolbar-actions > label { display: flex; flex: 1 1 auto; }
-  .qe-bulk-tabs { flex-wrap: wrap; }
-  /* The page scrolls on a phone; a nested scroll box fights the keyboard. */
-  .qe-scroll { max-height: none; min-height: 0; }
+@media (min-width: 768px) {
+  .qe-toolbar-search { flex-basis: 240px; }
+  .qe-toolbar-count { order: 0; width: auto; }
+  .qe-toolbar-actions { order: 0; width: auto; gap: 8px; }
+  .qe-toolbar-actions > button, .qe-toolbar-actions > label > button { flex: revert-layer; justify-content: revert-layer; white-space: revert-layer; }
+  .qe-toolbar-actions > label { display: revert-layer; flex: revert-layer; }
+  .qe-scroll { max-height: calc(100dvh - 240px); min-height: 160px; }
   .qe-scroll.has-menu { min-height: 420px; }
-  .qe-table .qe-col-name { min-width: 160px; max-width: 200px; }
-  .qe-savebar {
-    bottom: var(--admin-tabbar-h, 56px);
-    border-radius: 10px 10px 0 0;
-  }
-  .qe-savebar-actions { width: 100%; }
-  .qe-savebar-actions > button { flex: 1 1 0; justify-content: center; }
+  .qe-table .qe-col-name { min-width: 220px; max-width: none; }
+  .qe-savebar { bottom: 0; border-radius: 10px; }
+  .qe-savebar-actions { width: auto; }
+  .qe-savebar-actions > button { flex: revert-layer; justify-content: revert-layer; }
 }
 
 /* Item editor: the form in named sections with a chip row that jumps to
@@ -6715,27 +6301,30 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   flex-direction: column;
   gap: 14px;
 }
+/* Owner, 2026-09-02: "I have to scroll horizontally in filter buttons". The chips
+   wrap into rows; three rows pinned to the top of a phone sheet would eat it, so the
+   row is sticky from the tablet up only. */
 .mie-nav {
-  position: sticky;
+  position: static;
   top: -4px;
   z-index: 5;
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin: 0 -4px;
-  padding: 6px 4px 8px;
+  gap: 5px;
+  margin: 0;
+  padding: 0 0 8px;
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border-light);
 }
 .mie-nav-chip {
-  min-height: 32px;
-  padding: 0 12px;
+  min-height: 30px;
+  padding: 0 10px;
   border: 1px solid var(--color-border);
   border-radius: 999px;
   background: var(--color-bg);
   color: var(--color-text-secondary);
   font: inherit;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
@@ -6746,7 +6335,7 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   color: var(--color-primary);
 }
 .mie-section {
-  padding: 14px 16px;
+  padding: 12px;
   border: 1px solid var(--color-border);
   border-radius: 12px;
   background: var(--color-bg);
@@ -6789,17 +6378,20 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
 }
 .mie-card-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 148px;
+  grid-template-columns: 1fr;
   gap: 16px;
   align-items: start;
 }
 .mie-pack-row {
   display: grid;
-  grid-template-columns: 1.4fr 1fr 80px 44px;
+  grid-template-columns: 1fr 1fr;
   gap: 8px;
   align-items: end;
   margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border-light);
 }
+.mie-pack-row > :first-child { grid-column: 1 / -1; }
 .mie-add-dashed {
   margin-top: 4px;
   min-height: 32px;
@@ -6815,31 +6407,17 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
 }
 .mie-add-dashed:hover { border-color: var(--color-primary); color: var(--color-primary); }
 
+@media (min-width: 768px) {
+  .mie-nav { position: sticky; gap: 6px; margin: 0 -4px; padding: 6px 4px 8px; }
+  .mie-nav-chip { min-height: 32px; padding: 0 12px; font-size: 12px; }
+  .mie-section { padding: 14px 16px; }
+  .mie-card-grid { grid-template-columns: minmax(0, 1fr) 148px; }
+  .mie-pack-row { grid-template-columns: 1.4fr 1fr 80px 44px; padding-bottom: 0; border-bottom: none; }
+  .mie-pack-row > :first-child { grid-column: auto; }
+}
+/* Page batch: the preview's sticky position is set in the item editor's code. */
 @media (max-width: 767px) {
-  /* Owner, 2026-09-02: "I have to scroll horizontally in filter buttons".
-     The chips wrap into rows instead. Three rows pinned to the top of a
-     phone sheet would eat it, so on a phone the row is not sticky. */
-  .mie-nav {
-    position: static;
-    flex-wrap: wrap;
-    gap: 5px;
-    margin: 0;
-    padding: 0 0 8px;
-  }
-  .mie-nav-chip {
-    min-height: 30px;
-    padding: 0 10px;
-    font-size: 11px;
-  }
-  .mie-section { padding: 12px; }
-  .mie-card-grid { grid-template-columns: 1fr; }
   .mie-card-preview { position: static !important; margin: 0 auto; }
-  .mie-pack-row {
-    grid-template-columns: 1fr 1fr;
-    padding-bottom: 8px;
-    border-bottom: 1px solid var(--color-border-light);
-  }
-  .mie-pack-row > :first-child { grid-column: 1 / -1; }
 }
 
 /* Categories tab: one card per top-level category, sub-categories inside */
@@ -6854,12 +6432,13 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
 }
 .menu-cat-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 14px;
-  padding: 14px 18px;
+  gap: 10px 12px;
+  padding: 12px 14px;
 }
 .menu-cat-row--sub {
-  padding: 10px 18px 10px 18px;
+  padding: 12px 14px;
   border-top: 1px solid var(--color-border-light);
   background: var(--color-bg);
 }
@@ -6922,7 +6501,7 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   color: var(--color-text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
 }
 .menu-cat-meta {
   margin-top: 2px;
@@ -6933,41 +6512,37 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   display: flex;
   flex-shrink: 0;
   gap: 6px;
+  width: 100%;
+  padding-top: 2px;
+}
+.menu-cat-actions > button {
+  flex: 1 1 auto;
+  justify-content: center;
+  padding-left: 6px;
+  padding-right: 6px;
 }
 .menu-cat-actions .menu-cat-delete { color: var(--color-danger-strong); }
 
-@media (max-width: 767px) {
-  .menu-cat-row {
-    flex-wrap: wrap;
-    padding: 12px 14px;
-    gap: 10px 12px;
-  }
-  .menu-cat-row--sub { padding-left: 14px; }
-  .menu-cat-desc { white-space: normal; }
-  .menu-cat-actions {
-    width: 100%;
-    padding-top: 2px;
-  }
-  .menu-cat-actions > button {
-    flex: 1 1 auto;
-    justify-content: center;
-    padding-left: 6px;
-    padding-right: 6px;
-  }
+@media (min-width: 768px) {
+  .menu-cat-row { flex-wrap: nowrap; padding: 14px 18px; gap: 14px; }
+  .menu-cat-row--sub { padding: 10px 18px; }
+  .menu-cat-desc { white-space: nowrap; }
+  .menu-cat-actions { width: auto; padding-top: 0; }
+  .menu-cat-actions > button { flex: revert-layer; justify-content: revert-layer; padding-left: revert-layer; padding-right: revert-layer; }
 
-  .menu-duty { gap: 8px 10px; }
-  .menu-duty-heading { width: 100%; }
-  .menu-duty-help { white-space: normal; }
-  .menu-duty-save { margin-left: 0; width: 100%; justify-content: center; }
+  .menu-duty { gap: 8px 16px; }
+  .menu-duty-heading { width: auto; }
+  .menu-duty-help { white-space: nowrap; }
+  .menu-duty-save { margin-left: auto; width: auto; justify-content: revert-layer; }
 
-  .menu-items-search { flex-basis: 100%; }
-  .menu-items-category,
-  .menu-items-sort { flex: 1 1 0; }
+  .menu-items-search { flex-basis: 240px; }
+  .menu-items-category { flex: 0 1 220px; }
+  .menu-items-sort { flex: 0 1 190px; }
 
-  .menu-items-footer { justify-content: space-between; }
-  .menu-items-count { flex-basis: 100%; text-align: center; }
-  .menu-items-pager { flex: 1 1 auto; }
-  .menu-items-pager > button { flex: 1 1 auto; justify-content: center; }
+  .menu-items-footer { justify-content: normal; }
+  .menu-items-count { flex-basis: auto; text-align: revert-layer; }
+  .menu-items-pager { flex: revert-layer; }
+  .menu-items-pager > button { flex: revert-layer; justify-content: revert-layer; }
 }
 
 /* ── Phones: header controls that do not fit beside the title ────────────
@@ -6977,9 +6552,8 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
    only; on a 440px phone (owner's, 2026-09-17) five controls still sat in
    the bar and the sound toggle read as a second notifications bell. Every
    phone now gets the same two: search and notifications. */
-@media (max-width: 767px) {
-  .admin-shell-mobile-top .admin-shell-icon-btn--secondary { display: none; }
-}
+/* .admin-shell-mobile-top is only drawn by AppShell's phone layout, so no query. */
+.admin-shell-mobile-top .admin-shell-icon-btn--secondary { display: none; }
 
 .admin-shell-sheet-prefs {
   display: grid;
@@ -7021,7 +6595,7 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
    so the modal never scrolls sideways. */
 .po-edit-line {
   display: grid;
-  grid-template-columns: 1fr 90px 110px auto auto;
+  grid-template-columns: 1fr 1fr auto auto;
   gap: 8px;
   /* The name cell carries the pack picker and its conversion hint, so it is
      the tall one; the boxes sit at its top rather than floating mid-height. */
@@ -7030,13 +6604,12 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   border-radius: 10px;
   padding: 8px 10px;
 }
-@media (max-width: 767px) {
-  .po-edit-line {
-    grid-template-columns: 1fr 1fr auto auto;
-  }
-  .po-edit-line > :first-child {
-    grid-column: 1 / -1;
-  }
+.po-edit-line > :first-child {
+  grid-column: 1 / -1;
+}
+@media (min-width: 768px) {
+  .po-edit-line { grid-template-columns: 1fr 90px 110px auto auto; }
+  .po-edit-line > :first-child { grid-column: auto; }
 }
 
 /* A newer admin build is waiting — the dot on the avatar and the sheet row
@@ -7063,9 +6636,12 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
  * while the long list scrolls, and every control is thumb-sized. */
 .sms-cc-overview {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  grid-template-columns: 1fr;
   gap: 10px;
   margin-bottom: 14px;
+}
+@media (min-width: 480px) {
+  .sms-cc-overview { grid-template-columns: 1fr 1fr; }
 }
 .sms-cc-toolbar {
   position: sticky;
@@ -7144,20 +6720,26 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 10px;
-  padding: 12px 14px;
+  padding: 10px 12px;
 }
 .sms-cc-row.is-off { background: var(--color-bg); }
 .sms-cc-row-main {
   display: flex;
+  flex-direction: column;
   justify-content: space-between;
   align-items: flex-start;
   gap: 12px;
 }
+/* Phone: the switches take a row of their own under the wording. */
 .sms-cc-row-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
   flex-shrink: 0;
+  width: 100%;
+  justify-content: space-between;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border-light);
 }
 /* SMS and Email switches side by side, each labelled (owner, 2026-10-06). */
 .sms-cc-channel {
@@ -7193,19 +6775,15 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   gap: 10px;
   align-items: flex-end;
 }
-@media (max-width: 767px) {
-  .sms-cc-overview { grid-template-columns: 1fr 1fr; }
-  .sms-cc-row-main { flex-direction: column; }
-  .sms-cc-row-actions {
-    width: 100%;
-    justify-content: flex-end;
-    padding-top: 8px;
-    border-top: 1px solid var(--color-border-light);
-  }
-  .sms-cc-fields > label { flex: 1 1 100%; min-width: 0 !important; }
+@media (min-width: 768px) {
+  .sms-cc-overview { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+  .sms-cc-row { padding: 12px 14px; }
+  .sms-cc-row-main { flex-direction: row; }
+  .sms-cc-row-actions { gap: 10px; width: auto; justify-content: normal; padding-top: 0; border-top: none; }
 }
-@media (max-width: 479px) {
-  .sms-cc-overview { grid-template-columns: 1fr; }
+/* Page batch: min-width overrides the fields' own inline width. */
+@media (max-width: 767px) {
+  .sms-cc-fields > label { flex: 1 1 100%; min-width: 0 !important; }
 }
 
 /*
@@ -7239,22 +6817,21 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
  * where the finger is. Inside a pop-up the body scrolls, so it pins to its
  * top; on the Labels page it sits under the 56px header.
  */
-@media (max-width: 1023px) {
-  .labels-phone-preview {
-    position: sticky;
-    top: 0;
-    z-index: 12;
-    margin: 0 0 12px;
-    padding: 8px 0 10px;
-    background: var(--color-surface);
-    border-bottom: 1px solid var(--color-border);
-  }
-  .labels-sticky .labels-phone-preview {
-    top: 56px;
-    margin: -16px -16px 12px;
-    padding: 10px 16px;
-    border-radius: 14px 14px 0 0;
-  }
+/* PhonePreviewBar is only drawn below 1024px (useIsBelowDesktop), so no query. */
+.labels-phone-preview {
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  margin: 0 0 12px;
+  padding: 8px 0 10px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+.labels-sticky .labels-phone-preview {
+  top: 56px;
+  margin: -16px -16px 12px;
+  padding: 10px 16px;
+  border-radius: 14px 14px 0 0;
 }
 
 /* ── Telegram (Admin → Telegram, 2026-10-06) ─────────────────────────── */
@@ -7298,16 +6875,16 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
 .tg-inline-field { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 0.8125rem; color: var(--color-text-secondary); }
 .tg-inline-field input { width: 90px; padding: 4px 8px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); color: var(--color-text); font: inherit; }
 .tg-people { list-style: none; margin: 0; padding: 0; }
-.tg-person { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--color-border-light); }
+.tg-person { display: flex; flex-direction: column; justify-content: space-between; align-items: stretch; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--color-border-light); }
 .tg-person:last-child { border-bottom: none; }
 .tg-person__main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .tg-person__name { font-weight: 700; color: var(--color-text); }
 .tg-person__status { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 2px; }
 .tg-person__status .tg-muted { margin: 0; }
-.tg-person__actions { display: flex; gap: 6px; flex-shrink: 0; }
-@media (max-width: 560px) {
-  .tg-person { flex-direction: column; align-items: stretch; }
-  .tg-person__actions { justify-content: flex-start; }
+.tg-person__actions { display: flex; justify-content: flex-start; gap: 6px; flex-shrink: 0; }
+@media (min-width: 561px) {
+  .tg-person { flex-direction: row; align-items: center; }
+  .tg-person__actions { justify-content: normal; }
 }
 .tg-link { display: flex; flex-direction: column; gap: 12px; align-items: center; text-align: center; }
 .tg-qr { padding: 12px; border-radius: 14px; background: #fff; border: 1px solid var(--color-border); line-height: 0; }
@@ -7336,7 +6913,8 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
 .nc-roles { display: flex; flex-direction: column; }
 .nc-role {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   padding: 10px 0;
@@ -7359,18 +6937,20 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
 }
 .nc-pill.is-on { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
 .nc-pill:disabled { cursor: not-allowed; opacity: 0.6; }
-.nc-people-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+.nc-people-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
 .nc-people-head .nc-h3 { margin: 0; }
 .nc-search {
   display: flex; align-items: center; gap: 6px;
   border: 1px solid var(--color-border); border-radius: 8px;
   padding: 0 10px; min-height: 36px; color: var(--color-text-muted);
   background: var(--color-surface);
+  width: 100%;
 }
-.nc-search input { border: none; outline: none; background: transparent; font: inherit; font-size: 13px; color: var(--color-text); width: 160px; }
+.nc-search input { border: none; outline: none; background: transparent; font: inherit; font-size: 13px; color: var(--color-text); width: 100%; }
 .nc-people { list-style: none; margin: 0; padding: 0; }
 .nc-person {
   display: flex;
+  flex-direction: column;
   justify-content: space-between;
   align-items: flex-start;
   gap: 14px;
@@ -7387,20 +6967,20 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
 .nc-note.is-ok { color: var(--color-success-strong); }
 .nc-note.is-warn { color: var(--color-warning-strong); }
 .nc-note.is-danger { color: var(--color-danger); }
-.nc-person-set { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
+.nc-person-set { display: flex; flex-direction: column; align-items: stretch; width: 100%; gap: 8px; flex-shrink: 0; }
 .nc-select {
   min-height: 36px; padding: 6px 10px; border-radius: 8px;
   border: 1px solid var(--color-border); background: var(--color-surface);
-  color: var(--color-text); font: inherit; font-size: 13px; max-width: 260px;
+  color: var(--color-text); font: inherit; font-size: 13px; width: 100%;
 }
-@media (max-width: 767px) {
-  .nc-role { flex-direction: column; align-items: flex-start; }
-  .nc-person { flex-direction: column; }
-  .nc-person-set { align-items: stretch; width: 100%; }
-  .nc-select { max-width: none; width: 100%; }
-  .nc-people-head { flex-wrap: wrap; }
-  .nc-search { width: 100%; }
-  .nc-search input { width: 100%; }
+@media (min-width: 768px) {
+  .nc-role { flex-direction: row; align-items: center; }
+  .nc-person { flex-direction: row; }
+  .nc-person-set { align-items: flex-end; width: auto; }
+  .nc-select { max-width: 260px; width: auto; }
+  .nc-people-head { flex-wrap: nowrap; }
+  .nc-search { width: auto; }
+  .nc-search input { width: 160px; }
 }
 
 /*
@@ -7411,7 +6991,7 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
 .sms-cc-row-text { min-width: 0; flex: 1; }
 .sms-cc-row-title { margin: 0; font-weight: 700; font-size: 14px; color: var(--color-text); }
 .sms-cc-row-to { overflow-wrap: anywhere; }
-.sms-cc-count { font-size: 12px; color: var(--color-text-muted); white-space: nowrap; }
+.sms-cc-count { display: none; font-size: 12px; color: var(--color-text-muted); white-space: nowrap; }
 .sms-cc-group { margin-bottom: 24px; }
 .sms-cc-group-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin: 0 0 10px; }
 .sms-cc-fold {
@@ -7436,18 +7016,16 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
 .aud-typed { display: flex; flex-wrap: wrap; gap: 10px 16px; }
 .aud-typed > label, .aud-typed > p { flex: 1 1 240px; min-width: 0; }
 .nc-role-alerts { margin-left: 8px; font-size: 12px; font-weight: 600; color: var(--color-primary); }
-.nc-person-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.nc-person-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-start; }
 .nc-person-orders { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--color-text); cursor: pointer; }
 .pa-h { margin: 12px 0 4px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-muted); }
 .pa-list { list-style: none; margin: 0; padding: 0; }
-.pa-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-top: 1px solid var(--color-border-light); }
+.pa-row { display: flex; flex-direction: column; align-items: stretch; justify-content: space-between; gap: 10px; padding: 8px 0; border-top: 1px solid var(--color-border-light); }
 .pa-row:first-child { border-top: none; }
-@media (max-width: 767px) {
-  .sms-cc-count { display: none; }
-  .sms-cc-row { padding: 10px 12px; }
-  .sms-cc-row-actions { gap: 14px; justify-content: space-between; }
-  .nc-person-row { justify-content: flex-start; }
-  .pa-row { flex-direction: column; align-items: stretch; }
+@media (min-width: 768px) {
+  .sms-cc-count { display: revert-layer; }
+  .nc-person-row { justify-content: flex-end; }
+  .pa-row { flex-direction: row; align-items: center; }
 }
 
 /* ── Custom label editor folds (audit, 2026-10-12) ─────────────────────── */
