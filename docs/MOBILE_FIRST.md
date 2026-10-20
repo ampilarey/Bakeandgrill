@@ -160,19 +160,25 @@ tokens, the stacked cart (dock and sheet), Active orders, the item configure pop
 discounts pop-up and the close-shift sheet; 12 to 2. Every element's computed style in
 fourteen till states (sale, ticket, delivery, sheet, Charge, discounts, Active orders,
 receipts, shift, shift history, operations, reports, close shift and its review) at 22
-screen sizes, phone landscape included, and the kitchen board at nine: unchanged. Left for
-batch 2: the phone's Charge popup and the receipts, shift history and operations panes,
-whose phone rules beat `ChargeOverlay.tsx`'s and those panes' inline styles with
-`!important`; the inline styles move into classes first.
+screen sizes, phone landscape included, and the kitchen board at nine: unchanged. 
+Till, batch 2 (2026-10-20): the phone's Charge popup and the shift history and operations
+panes; 2 to 0. `ChargeOverlay.tsx` no longer sets inline the values the phone and the
+computer differ on (padding, type sizes, gaps, the summary's and breakdown's colours, the
+Confirm button's flex); the stylesheet holds both, the phone's plain and the computer's from
+841px. The small grey headings in the tender column carry `pos-charge-tiny-label`, so the
+restore gives them their 6px and every other line there none. The operations panes' grids
+hand their computer columns over as `--cols`, and Receipts needed nothing (it switches to one
+column in its own code at the same 760px). Checked as before, with the Charge popup also on
+Card, Transfer, QR, split with cash and a picked note, and every operations tab: unchanged.
 
 | Area | Rules left |
 |---|---|
 | Website views (`backend/resources`) | 1 (emails, on purpose) |
 | Admin (`apps/admin-dashboard`) | 0 |
 | Order app (`apps/online-order-web`) | 0 |
-| Till (`apps/pos-web`) | 2 |
+| Till (`apps/pos-web`) | 0 |
 | Kitchen screen (`apps/kds-web`) | 0 |
 
 `scripts/mobile-first-baseline.json` has the per-file list. Already mobile first: the Clock
 machine tab (`ClockMachinePanel.tsx`), the whole admin stylesheet (`index.css`) and every
-website view but the email layout, the order app and the kitchen screen.
+website view but the email layout, the order app, the kitchen screen and the till.

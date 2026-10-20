@@ -133,8 +133,8 @@ custom property (`'--cols'`, `'--card-pad'`, `px()` for units), never an `!impor
 override of an inline style, and every input, select and textarea style goes through
 `inputFont()` so a phone keeps 16px. The website views are mobile first too (2026-10-20), all
 but `emails/layout.blade.php`, which stays desktop first because many mail apps drop `@media`. So are the
-order app and the kitchen screen (2026-10-20); the till is but for its Charge popup and the
-receipts, shift history and operations panes.
+order app, the kitchen screen and the till (2026-10-20); the till's phone-landscape band
+`(max-width: 900px) and (max-height: 500px)` caps the height, so the guard lets it be.
 Details: `docs/MOBILE_FIRST.md`.
 
 ## Brand colours

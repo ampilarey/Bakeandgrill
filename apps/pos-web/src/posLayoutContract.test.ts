@@ -37,11 +37,13 @@ function phoneFirst(): string {
   return css.slice(from, css.indexOf('@media (min-width: 841px)', from));
 }
 
-/** The same, for a rule inside the ≤840px (phone / portrait tablet) Charge popup block. */
+/** The same, for a rule of the phone's Charge popup (phone first, up to its 841px restore). */
 function phoneRule(selector: string): string {
-  const phone = css.slice(css.indexOf('@media (max-width: 840px)'));
-  const at = phone.indexOf(`  ${selector} {`);
-  expect(at, `${selector} not found in the 840px block`).toBeGreaterThan(-1);
+  const from = css.indexOf("The phone's Charge popup, phone first");
+  expect(from, 'the Charge popup section not found').toBeGreaterThan(-1);
+  const phone = css.slice(from, css.indexOf('@media (min-width: 841px)', from));
+  const at = phone.indexOf(`\n${selector} {`);
+  expect(at, `${selector} not found in the Charge popup section`).toBeGreaterThan(-1);
   const start = phone.indexOf('{', at);
 
   return phone.slice(start + 1, phone.indexOf('}', start));

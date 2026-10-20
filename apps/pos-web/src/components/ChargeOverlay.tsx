@@ -636,23 +636,25 @@ export function ChargeOverlay({
           display: "flex", alignItems: "center", justifyContent: "space-between",
           borderBottom: "1px solid #E2E8F0",
         }}>
-          <h2 style={{ margin: 0, fontSize: 18, color: "#0F172A" }}>Charge</h2>
+          {/* font-size: .pos-charge-header h2 in index.css (16px on a phone, 18px from 841px). */}
+          <h2 style={{ margin: 0, color: "#0F172A" }}>Charge</h2>
           <button
             className="pos-charge-close-btn"
             onClick={onClose}
             disabled={submitting}
             style={{
             background: "none", border: "none", color: "#64748B",
-            fontSize: 20, cursor: "pointer", lineHeight: 1,
+            cursor: "pointer", lineHeight: 1,
           }} aria-label="Close charge screen">×</button>
         </div>
 
         {/* Body */}
         <div className="pos-charge-grid">
-          {/* LEFT: total + change */}
+          {/* LEFT: total + change. Padding, justify-content and background are in
+              index.css (.pos-charge-summary): the phone's, then the computer's from 841px. */}
           <div className="pos-charge-summary" style={{
-            padding: 24, display: "flex", flexDirection: "column",
-            justifyContent: "center", alignItems: "stretch", background: "#0F172A",
+            display: "flex", flexDirection: "column",
+            alignItems: "stretch",
             color: "#fff",
           }}>
             {/* On phones: Received | Subtotal/GST share one row. iPad/desktop
@@ -701,13 +703,8 @@ export function ChargeOverlay({
                     isPhoneCharge && hasExtraBreakdown && !breakdownOpen ? "is-collapsed" : "",
                     isPhoneCharge && breakdownOpen ? "is-expanded" : "",
                   ].filter(Boolean).join(" ")}
-                  style={{
-                  marginBottom: 18, padding: "10px 14px", borderRadius: 10,
-                  background: "rgba(255,255,255,0.06)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  fontSize: 13, color: "#CBD5E1",
-                  display: "grid", rowGap: 4,
-                }}>
+                  // Box, type and colours: .pos-charge-breakdown in index.css.
+                  style={{ display: "grid" }}>
                   <Line label="Subtotal" value={subtotal ?? 0} />
                   {/* Phone collapsed: only Subtotal + GST. Extras expand on tap.
                       iPad / expanded phone: full stack. */}
@@ -748,23 +745,24 @@ export function ChargeOverlay({
             </div>
             <div className={`pos-charge-amounts${method === "cash" ? " pos-charge-amounts--cash" : ""}`}>
               <div className="pos-charge-due-block">
-                <p className="pos-charge-due-label" style={{ margin: 0, fontSize: 12, fontWeight: 600,
-                  textTransform: "uppercase", letterSpacing: "0.08em", color: "#94A3B8" }}>
+                <p className="pos-charge-due-label" style={{ margin: 0, fontWeight: 600,
+                  textTransform: "uppercase", color: "#94A3B8" }}>
                   Amount due
                 </p>
-                <p className="pos-charge-due-value" style={{ margin: "8px 0 0", fontSize: 48, fontWeight: 800, letterSpacing: "-0.02em" }}>
+                {/* margin-top, font-size and line-height: index.css (.pos-charge-due-value). */}
+                <p className="pos-charge-due-value" style={{ marginRight: 0, marginBottom: 0, marginLeft: 0, fontWeight: 800, letterSpacing: "-0.02em" }}>
                   MVR {total.toFixed(2)}
                 </p>
               </div>
 
               {method === "cash" && (
                 <div className="pos-charge-change-block">
-                  <p className="pos-charge-change-label" style={{ margin: "28px 0 0", fontSize: 12, fontWeight: 600,
-                    textTransform: "uppercase", letterSpacing: "0.08em", color: "#94A3B8" }}>
+                  <p className="pos-charge-change-label" style={{ marginRight: 0, marginBottom: 0, marginLeft: 0, fontWeight: 600,
+                    textTransform: "uppercase", color: "#94A3B8" }}>
                     Change due
                   </p>
                   <p className="pos-charge-change-value" style={{
-                    margin: "8px 0 0", fontSize: 40, fontWeight: 800,
+                    marginRight: 0, marginBottom: 0, marginLeft: 0, fontWeight: 800,
                     color: change > 0 ? "#FCD34D" : "#fff",
                   }}>
                     MVR {change.toFixed(2)}
@@ -776,13 +774,14 @@ export function ChargeOverlay({
 
           {/* RIGHT: tender + amount entry */}
           <div className="pos-charge-tender" style={{
-            padding: 20, display: "flex", flexDirection: "column", gap: 14,
+            // Padding, gap and overflow: .pos-charge-tender in index.css.
+            display: "flex", flexDirection: "column",
             // overscrollBehavior: no iOS bounce inside the payment column —
             // see the note on .pos-charge-tender in index.css.
-            background: "#F8FAFC", overflow: "auto", overscrollBehavior: "contain",
+            background: "#F8FAFC", overscrollBehavior: "contain",
           }}>
             <div>
-              <p style={tinyLabel}>Tender</p>
+              <p className="pos-charge-tiny-label" style={tinyLabel}>Tender</p>
               {/* Base tenders share one equal-width row. On phones, Credit
                   joins this row (short label); iPad keeps Credit Account
                   on the secondary row below (see .pos-charge-credit-*). */}
@@ -795,7 +794,7 @@ export function ChargeOverlay({
                 // ignores — the grid stayed at four columns and Credit wrapped
                 // onto a second row on top of the amount chips (2026-09-04).
                 gridTemplateColumns: `repeat(${Math.max(tenderColumnCount, 1)}, minmax(0, 1fr))`,
-                gap: 8,
+                // gap: .pos-charge-tenders in index.css.
               }}>
                 {visibleMethods.map((m) => (
                   <button
@@ -803,12 +802,12 @@ export function ChargeOverlay({
                     type="button"
                     className={`pos-charge-tender-btn${method === m ? " pos-charge-tender-btn--active" : ""}`}
                     onClick={() => setMethod(m)}
+                    // Padding, corners and type size: .pos-charge-tender-btn in index.css.
                     style={{
-                      padding: "12px 6px", borderRadius: 10,
                       background: method === m ? "#0F172A" : "#fff",
                       color: method === m ? "#fff" : "#0F172A",
                       border: `1px solid ${method === m ? "#0F172A" : "#CBD5E1"}`,
-                      fontWeight: 700, fontSize: 13, cursor: "pointer",
+                      fontWeight: 700, cursor: "pointer",
                       minWidth: 0,
                     }}
                   >{METHOD_LABEL[m]}</button>
@@ -831,11 +830,10 @@ export function ChargeOverlay({
                       onSelectCredit?.();
                     }}
                     style={{
-                      padding: "12px 6px", borderRadius: 10,
                       background: method === "house_account" ? "#0F172A" : "#fff",
                       color: method === "house_account" ? "#fff" : "#0F172A",
                       border: `1px solid ${method === "house_account" ? "#0F172A" : "#CBD5E1"}`,
-                      fontWeight: 700, fontSize: 13, cursor: "pointer",
+                      fontWeight: 700, cursor: "pointer",
                       minWidth: 0,
                     }}
                   >
@@ -960,7 +958,7 @@ export function ChargeOverlay({
 
             {method === "digital_wallet" && (
               <div className="pos-charge-sender">
-                <p style={tinyLabel}>Sender's name</p>
+                <p className="pos-charge-tiny-label" style={tinyLabel}>Sender's name</p>
                 <input
                   type="text"
                   autoComplete="off"
@@ -1001,7 +999,7 @@ export function ChargeOverlay({
 
             {split && method !== "cash" && method !== "house_account" && method !== "wallet" && !isOffline && tenderAllowed.split && (
               <div>
-                <p style={tinyLabel}>{METHOD_LABEL[method]} amount (rest paid in cash)</p>
+                <p className="pos-charge-tiny-label" style={tinyLabel}>{METHOD_LABEL[method]} amount (rest paid in cash)</p>
                 <CashInput
                   value={splitAmount}
                   onChange={setSplitAmount}
@@ -1031,7 +1029,7 @@ export function ChargeOverlay({
                     Received in the top card and a numpad-only control below. */}
                 {!isPhoneCharge && (
                   <div className="pos-charge-received-desktop">
-                    <p style={tinyLabel}>Received from customer</p>
+                    <p className="pos-charge-tiny-label" style={tinyLabel}>Received from customer</p>
                     <CashInput
                       autoFocus
                       value={received}
@@ -1045,7 +1043,7 @@ export function ChargeOverlay({
                 )}
 
                 <div className="pos-charge-quick-amounts">
-                  <p style={tinyLabel}>Quick amounts</p>
+                  <p className="pos-charge-tiny-label" style={tinyLabel}>Quick amounts</p>
                   <div className="pos-charge-quick-grid">
                     <button
                       type="button"
@@ -1138,8 +1136,9 @@ export function ChargeOverlay({
         </div>
 
         {/* Footer */}
+        {/* padding: .pos-charge-footer in index.css. */}
         <div className="pos-charge-footer" style={{
-          padding: 16, borderTop: "1px solid #E2E8F0", background: "#fff",
+          borderTop: "1px solid #E2E8F0", background: "#fff",
           display: "flex", flexDirection: "column", gap: 10,
         }}>
           {/* Inline error banner — surfaces anything handleCharge sets
@@ -1177,27 +1176,30 @@ export function ChargeOverlay({
               ⛔ {errorMessage}
             </div>
           )}
-          <div className="pos-charge-footer-actions" style={{ display: "flex", gap: 10 }}>
+          {/* gap: .pos-charge-footer-actions in index.css. */}
+          <div className="pos-charge-footer-actions" style={{ display: "flex" }}>
             <button
               type="button"
               className="pos-charge-cancel"
               onClick={onClose}
               disabled={submitting}
+              // Corners and type size: .pos-charge-cancel in index.css.
               style={{
-              flex: 1, padding: "14px 18px", borderRadius: 12,
+              flex: 1, padding: "14px 18px",
               background: "#fff", border: "1px solid #CBD5E1", color: "#475569",
-              fontWeight: 600, fontSize: 15, cursor: "pointer",
+              fontWeight: 600, cursor: "pointer",
             }}>Cancel</button>
             <button
               type="button"
               className="pos-charge-confirm"
               onClick={confirm}
               disabled={(!enough && !splitValid && !canConfirmAccountTender) || submitting || creditOverLimit || walletOverLimit}
+              // flex, corners and type size: .pos-charge-confirm in index.css.
               style={{
-              flex: 2, padding: "14px 18px", borderRadius: 12,
+              padding: "14px 18px",
               background: ((!enough && !splitValid && !canConfirmAccountTender) || submitting || creditOverLimit || walletOverLimit) ? "#A7F3D0" : "#10B981",
               color: "#fff", border: "none",
-              fontWeight: 800, fontSize: 16, letterSpacing: "0.04em",
+              fontWeight: 800, letterSpacing: "0.04em",
               cursor: ((!enough && !splitValid && !canConfirmAccountTender) || submitting || creditOverLimit || walletOverLimit) ? "not-allowed" : "pointer",
               display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
               flexWrap: "wrap",
@@ -1263,8 +1265,9 @@ function formatRefreshAge(ts: number): string {
   return `${mins} min ago`;
 }
 
+/** margin-bottom: .pos-charge-tiny-label in index.css (4px on a phone, 6px from 841px). */
 const tinyLabel: React.CSSProperties = {
-  margin: "0 0 6px", fontSize: 11, fontWeight: 700,
+  marginTop: 0, marginRight: 0, marginLeft: 0, fontSize: 11, fontWeight: 700,
   color: "#64748B", textTransform: "uppercase", letterSpacing: "0.08em",
 };
 
@@ -1272,7 +1275,8 @@ function Line({ label, value, accent }: { label: string; value: number; accent?:
   const sign = value < 0 ? "− " : "";
   return (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
-      <span style={{ color: "#94A3B8", fontWeight: 600 }}>{label}</span>
+      {/* colour: .pos-charge-breakdown > div > span:first-child in index.css. */}
+      <span style={{ fontWeight: 600 }}>{label}</span>
       <span style={{ color: accent ?? "#F8FAFC", fontVariantNumeric: "tabular-nums" }}>
         {sign}MVR {Math.abs(value).toFixed(2)}
       </span>
