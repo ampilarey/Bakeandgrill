@@ -116,7 +116,8 @@ export function ShiftHistoryPanel({ onClose, staffRole = null, canViewAll = fals
 
   return (
     <PanelShell title="Shift history" subtitle={subtitle} onClose={onClose}>
-      <div className="pos-shift-history" style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 12, minHeight: 0, height: "100%" }}>
+      {/* Columns: index.css (.pos-shift-history), one column up to 760px. */}
+      <div className="pos-shift-history" style={{ display: "grid", gap: 12, minHeight: 0, height: "100%" }}>
         <div style={{ overflow: "auto", display: "flex", flexDirection: "column", gap: 4 }}>
           {canViewAll && (
             <div data-testid="shift-history-filters" style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "0 0 6px" }}>

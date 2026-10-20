@@ -1365,54 +1365,69 @@ html, body, #root {
  * the panes vertically so each pane gets the full width. The
  * receipt list is given a max-height so it doesn't push the
  * detail pane off-screen. */
-@media (max-width: 760px) {
-  /* Receipts: one pane at a time on a phone — the list, then the detail
-   * with a Back button — rather than both squeezed into one column. The
-   * component switches panes; this just drops the two-column grid. */
-  .pos-receipts {
-    grid-template-columns: 1fr !important;
-  }
+/* Phone first up to 760px; the master/detail and rail layouts from 761px. The
+ * columns a pane wants on a computer come from the pane as `--cols`.
+ * Receipts switches to one column in ReceiptsPanel itself (isNarrow, the same
+ * 760px), so it needs nothing here. */
 
-  /* Shift history — same master/detail stack as receipts. */
+/* Shift history — the list over the detail on a phone. */
+.pos-shift-history {
+  grid-template-columns: 1fr;
+  grid-template-rows: minmax(140px, 35vh) 1fr;
+}
+
+/* Ops: horizontal tab rail on top, content below. */
+.pos-ops {
+  flex-direction: column;
+}
+.pos-ops-nav {
+  width: 100%;
+  flex-direction: row;
+  flex-shrink: 0;
+  overflow-x: auto;
+  border-bottom: 1px solid #E2E8F0;
+  padding: 8px;
+  gap: 6px;
+}
+/* !important for the same reason as before: .pos-shell button (40px) further
+   down out-ranks it otherwise. */
+.pos-ops-nav button {
+  flex-shrink: 0;
+  white-space: nowrap;
+  min-height: 44px !important;
+}
+.pos-ops-grid {
+  grid-template-columns: 1fr;
+}
+/* Inventory table scrolls horizontally instead of crushing columns. */
+.pos-ops-table-wrap {
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (min-width: 761px) {
   .pos-shift-history {
-    grid-template-columns: 1fr !important;
-    grid-template-rows: minmax(140px, 35vh) 1fr !important;
+    grid-template-columns: 300px 1fr;
+    grid-template-rows: none;
   }
-
-  /* Ops: horizontal tab rail on top, content below. */
-  .pos-ops {
-    flex-direction: column !important;
-  }
+  .pos-ops { flex-direction: row; }
   .pos-ops-nav {
-    width: 100% !important;
-    flex-direction: row !important;
-    flex-shrink: 0 !important;
-    overflow-x: auto !important;
-    border-right: none !important;
-    border-bottom: 1px solid #E2E8F0 !important;
-    padding: 8px !important;
-    gap: 6px !important;
+    width: 200px;
+    flex-direction: column;
+    overflow-x: visible;
+    border-bottom: none;
+    border-right: 1px solid #E2E8F0;
+    padding: 12px 8px;
+    gap: 4px;
   }
   .pos-ops-nav button {
-    flex-shrink: 0 !important;
-    white-space: nowrap !important;
-    min-height: 44px !important;
+    flex-shrink: 1;
+    white-space: normal;
+    min-height: 40px !important;
   }
-  .pos-ops-grid {
-    grid-template-columns: 1fr !important;
-  }
-  .pos-ops-grid-4 {
-    grid-template-columns: repeat(2, 1fr) !important;
-  }
-  .pos-ops-grid-3 {
-    grid-template-columns: 1fr !important;
-  }
-  /* Inventory table scrolls horizontally instead of crushing columns. */
-  .pos-ops-table-wrap {
-    overflow-x: auto !important;
-    overflow-y: visible !important;
-    -webkit-overflow-scrolling: touch;
-  }
+  .pos-ops-grid { grid-template-columns: var(--cols, none); }
+  .pos-ops-table-wrap { overflow: hidden; }
 }
 
 /* Touch targets minimum 40px — applied as a safety net to any

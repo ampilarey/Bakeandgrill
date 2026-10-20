@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import {
   adjustPreparedStock,
   fetchPosMenu,
@@ -89,13 +89,14 @@ export function OpsPanel(props: OpsState & {
     <div className="pos-ops" style={{
       flex: 1, minHeight: 0,
       background: C.panel, borderRadius: 12, border: `1px solid ${C.border}`,
+      // flex-direction: index.css (.pos-ops), the tab rail on top up to 760px.
       display: "flex", overflow: "hidden",
     }}>
       {/* ── Left rail ─────────────────────────────────────────────── */}
+      {/* Size, direction, edge and padding: index.css (.pos-ops-nav), a row of
+          tabs on a phone and a 200px rail from 761px. */}
       <nav className="pos-ops-nav" style={{
-        width: 200, flexShrink: 0,
-        background: "#F8FAFC", borderRight: `1px solid ${C.border}`,
-        padding: "12px 8px", display: "flex", flexDirection: "column", gap: 4,
+        background: "#F8FAFC", display: "flex",
       }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
           {tabs.map((t) => (
@@ -366,7 +367,7 @@ function PreparedStockTab({ setOpsMessage }: { setOpsMessage: (msg: string) => v
           help="Positive adds (e.g. baked 12 croissants). Negative removes. Applies to items with Track quantity enabled in Admin."
           onCancel={() => setShowForm(false)}
         >
-          <div className="pos-ops-grid" style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 10 }}>
+          <div className="pos-ops-grid" style={{ display: "grid", "--cols": "2fr 1fr", gap: 10 } as CSSProperties}>
             <select
               value={selectedKey}
               onChange={(e) => setSelectedKey(e.target.value)}
@@ -550,9 +551,9 @@ function InventoryTab({ ops, onRequestItem }: { ops: OpsState; onRequestItem?: (
       )}
 
       {/* Inventory table */}
+      {/* Overflow: index.css (.pos-ops-table-wrap), scrolls sideways up to 760px. */}
       <div className="pos-ops-table-wrap" style={{
         background: C.panel, border: `1px solid ${C.border}`, borderRadius: 10,
-        overflow: "hidden",
       }}>
         <div style={{
           display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
@@ -616,7 +617,7 @@ function InventoryActionForm({
 }) {
   return (
     <FormCard title={title} help={help} onCancel={onCancel}>
-      <div className="pos-ops-grid" style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 10 }}>
+      <div className="pos-ops-grid" style={{ display: "grid", "--cols": "2fr 1fr", gap: 10 } as CSSProperties}>
         <select
           value={itemId ?? ""}
           onChange={(e) => setItemId(e.target.value ? Number(e.target.value) : null)}
@@ -670,7 +671,7 @@ function WasteForm({ ops, onDone }: { ops: OpsState; onDone: () => void }) {
       help="Enter a positive quantity. This writes a waste log for finance and removes stock."
       onCancel={onDone}
     >
-      <div className="pos-ops-grid" style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 10 }}>
+      <div className="pos-ops-grid" style={{ display: "grid", "--cols": "2fr 1fr", gap: 10 } as CSSProperties}>
         <select
           value={ops.adjustItemId ?? ""}
           onChange={(e) => ops.setAdjustItemId(e.target.value ? Number(e.target.value) : null)}
@@ -724,7 +725,7 @@ function WasteForm({ ops, onDone }: { ops: OpsState; onDone: () => void }) {
 function ReceivePurchaseForm({ ops, onDone }: { ops: OpsState; onDone: () => void }) {
   return (
     <FormCard title="Receive stock" help="Pick inventory SKUs — stock on hand updates immediately when you save." onCancel={onDone}>
-      <div className="pos-ops-grid" style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 10 }}>
+      <div className="pos-ops-grid" style={{ display: "grid", "--cols": "1.5fr 1fr", gap: 10 } as CSSProperties}>
         <select
           value={ops.purchaseSupplierId ?? ""}
           onChange={(e) => ops.setPurchaseSupplierId(e.target.value ? Number(e.target.value) : null)}
@@ -746,7 +747,7 @@ function ReceivePurchaseForm({ ops, onDone }: { ops: OpsState; onDone: () => voi
           <div
             key={line.key}
             className="pos-ops-grid"
-            style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8, alignItems: "center" }}
+            style={{ display: "grid", "--cols": "repeat(auto-fit, minmax(150px, 1fr))", gap: 8, alignItems: "center" } as CSSProperties}
           >
             <select
               value={line.inventoryItemId ?? ""}
@@ -1518,7 +1519,7 @@ function RefundsTab({ ops, canApprove }: { ops: OpsState; canApprove: boolean })
           </div>
         )}
 
-        <div className="pos-ops-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
+        <div className="pos-ops-grid" style={{ display: "grid", "--cols": "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 } as CSSProperties}>
           <input
             value={ops.refundAmount}
             onChange={(e) => ops.setRefundAmount(e.target.value)}
