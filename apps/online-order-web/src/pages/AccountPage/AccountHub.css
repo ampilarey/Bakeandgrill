@@ -516,11 +516,17 @@
 
 /* ── Small phones ─────────────────────────────────────────── */
 
-@media (max-width: 360px) {
-  .acct-hero__edit span { display: none; }
-  .acct-hero__edit { padding: 0 0.6rem; }
-  .acct-quick { gap: 6px; }
-  .acct-quick__label { font-size: 0.7rem; }
+/* Phone first: the narrowest phones (360px and under) get these; from 361px
+   the edit button shows its word again. */
+.acct-hero__edit span { display: none; }
+.acct-hero__edit { padding: 0 0.6rem; }
+.acct-quick { gap: 6px; }
+.acct-quick__label { font-size: 0.7rem; }
+@media (min-width: 361px) {
+  .acct-hero__edit span { display: inline; }
+  .acct-hero__edit { padding: 0 0.85rem; }
+  .acct-quick { gap: 10px; }
+  .acct-quick__label { font-size: 0.75rem; }
 }
 
 /* ── Computer ─────────────────────────────────────────────── */

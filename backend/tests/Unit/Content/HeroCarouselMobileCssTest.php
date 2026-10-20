@@ -83,9 +83,9 @@ class HeroCarouselMobileCssTest extends TestCase
             $css,
         );
 
-        // Dots remain on phones.
+        // Dots remain on phones: the plain rule (mobile first) shows them.
         $this->assertMatchesRegularExpression(
-            '/@media\s*\(max-width:\s*768px\)[\s\S]*?\.home-promo-hero__dots/',
+            '/(^|\n)\.home-promo-hero__dots\s*\{[^}]*display:\s*flex/',
             $css,
         );
         $this->assertStringContainsString('.home-promo-hero__dot', $css);

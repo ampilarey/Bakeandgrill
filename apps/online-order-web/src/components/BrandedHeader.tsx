@@ -66,7 +66,7 @@ export function BrandedHeader({ rightSlot, onBack, backLabel }: Props) {
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '0.55rem',
+              // gap: .order-header-brand in index.css (0.45rem on a phone, 0.55rem from 769px)
               textDecoration: 'none',
               flexShrink: 0,
               minHeight: 44,
@@ -85,7 +85,7 @@ export function BrandedHeader({ rightSlot, onBack, backLabel }: Props) {
             <span
               className="order-header-brand-name"
               style={{
-                fontSize: '1.2rem',
+                // font-size: .order-header-brand-name in index.css (1.05rem on a phone, 1.2rem from 769px)
                 fontWeight: 800,
                 color: 'var(--color-dark)',
                 letterSpacing: '-0.02em',

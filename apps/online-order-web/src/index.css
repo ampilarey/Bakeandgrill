@@ -184,49 +184,58 @@ img.brand-logo--dark { display: none; }
 /* ════════════════════════════════════════════════════════════
    RESPONSIVE TOKEN OVERRIDES
 ════════════════════════════════════════════════════════════ */
-@media (max-width: 768px) {
-  :root { --page-gutter: 1rem; }
+/* Phone first: the plain value is the phone's, wider screens add to it. */
+:root { --page-gutter: 1rem; }
+@media (min-width: 769px) {
+  :root { --page-gutter: 2rem; }
 }
 
 /* ════════════════════════════════════════════════════════════
-   MOBILE HEADER PARITY (≤768px)
+   MOBILE HEADER PARITY (phone first, computer from 769px)
    Matches Blade .mobile-header: padding 0.75rem 1rem,
    no fixed 68px bar, logo 32×32, wordmark 1.05rem, blur 12px.
 ════════════════════════════════════════════════════════════ */
-@media (max-width: 768px) {
-  /* Override fixed 68px height → flexible bar like Blade */
-  .order-header-inner {
-    height: auto;
-    min-height: 0;
-    padding: 0.75rem var(--page-gutter);
-    gap: 0.5rem;
-  }
-
-  /* Logo image: 38px → 32px + tighter radius (Blade .mob-logo img) */
-  .order-header-brand-logo {
-    width: 32px !important;
-    height: 32px !important;
-  }
-
-  /* Wordmark: 1.2rem → 1.05rem (Blade .mob-logo) */
-  .order-header-brand-name {
-    font-size: 1.05rem !important;
-  }
-
-  /* Tighten brand link gap to match Blade .mob-logo gap: 0.45rem */
-  .order-header-brand {
-    gap: 0.45rem !important;
-  }
-
-  /* Backdrop blur: 14px → 12px (matches Blade .mobile-header) */
-  .order-app-header {
-    -webkit-backdrop-filter: blur(12px);
-    backdrop-filter: blur(12px);
-  }
+/* Override fixed 68px height → flexible bar like Blade. Sits before the
+   .order-header-inner base below, which still wins on height, padding and gap. */
+.order-header-inner {
+  height: auto;
+  min-height: 0;
+  padding: 0.75rem var(--page-gutter);
+  gap: 0.5rem;
 }
 
-@media (max-width: 390px) {
-  .order-header-brand-name { display: none !important; }
+/* Logo image: 32px on a phone, 38px from 769px (Blade .mob-logo img) */
+.order-header-brand-logo {
+  width: 32px;
+  height: 32px;
+}
+
+/* Wordmark: 1.05rem on a phone, 1.2rem from 769px (Blade .mob-logo) */
+.order-header-brand-name {
+  font-size: 1.05rem;
+}
+
+/* Brand link gap: 0.45rem on a phone (Blade .mob-logo gap), 0.55rem from 769px */
+.order-header-brand {
+  gap: 0.45rem;
+}
+
+/* Backdrop blur: 12px on a phone (Blade .mobile-header), 14px from 769px */
+.order-app-header {
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+@media (min-width: 769px) {
+  .order-header-inner { min-height: revert; }
+  .order-header-brand-logo { width: 38px; height: 38px; }
+  .order-header-brand-name { font-size: 1.2rem; }
+  .order-header-brand { gap: 0.55rem; }
+  .order-app-header { -webkit-backdrop-filter: revert; backdrop-filter: revert; }
+}
+
+.order-header-brand-name { display: none; }
+@media (min-width: 391px) {
+  .order-header-brand-name { display: inline; }
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -258,10 +267,15 @@ img.brand-logo--dark { display: none; }
   padding-top: 5rem;
   padding-bottom: 5rem;
 }
-@media (max-width: 600px) {
+/* Phone first: 3.5rem, 5rem from 601px */
+.home-section {
+  padding-top: 3.5rem;
+  padding-bottom: 3.5rem;
+}
+@media (min-width: 601px) {
   .home-section {
-    padding-top: 3.5rem;
-    padding-bottom: 3.5rem;
+    padding-top: 5rem;
+    padding-bottom: 5rem;
   }
 }
 
@@ -293,30 +307,45 @@ img.brand-logo--dark { display: none; }
   background: var(--color-surface-alt);
 }
 
-/* Mobile inset — AFTER base so width/height are not overridden (was the bug) */
-@media (max-width: 768px) {
-  .home-hero {
-    min-height: min(68dvh, calc((100vw - 2rem) * 1.25), 500px);
-    padding-top: 2rem;
-    padding-bottom: 2rem;
-  }
+/* Phone inset — AFTER base so width/height are not overridden (was the bug).
+   Phone first: these are the phone's values; from 769px the base comes back
+   (and the 769px block further down takes over). The __media and status-stack
+   values here lose to their own base rules further down at every width. */
+.home-hero {
+  min-height: min(68dvh, calc((100vw - 2rem) * 1.25), 500px);
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+}
+.home-promo-hero {
+  width: auto;
+  margin: 0.5rem 1rem 0;
+  border: none;
+  height: min(68vh, calc((100vw - 2rem) * 1.25), 500px);
+  height: min(68dvh, calc((100vw - 2rem) * 1.25), 500px);
+  min-height: 340px;
+}
+.home-promo-hero--empty {
+  border: none;
+}
+.home-promo-hero__media {
+  opacity: calc(0.45 + 0.55 * var(--hero-photo, 0));
+}
+.home-ordering-status-stack {
+  top: 0.85rem;
+  right: 0.85rem;
+}
+@media (min-width: 769px) {
+  .home-hero { min-height: revert; padding-top: revert; padding-bottom: revert; }
   .home-promo-hero {
-    width: auto;
-    margin: 0.5rem 1rem 0;
-    border: none;
-    height: min(68vh, calc((100vw - 2rem) * 1.25), 500px);
-    height: min(68dvh, calc((100vw - 2rem) * 1.25), 500px);
-    min-height: 340px;
+    width: 100%;
+    margin: 0;
+    border: revert;
+    height: min(68vh, calc(100vw * 1.25), 500px);
+    height: min(68dvh, calc(100vw * 1.25), 500px);
   }
   .home-promo-hero--empty {
-    border: none;
-  }
-  .home-promo-hero__media {
-    opacity: calc(0.45 + 0.55 * var(--hero-photo, 0));
-  }
-  .home-ordering-status-stack {
-    top: 0.85rem;
-    right: 0.85rem;
+    border-top: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
   }
 }
 .home-promo-hero__track {
@@ -910,14 +939,22 @@ img.brand-logo--dark { display: none; }
   font-family: inherit;
   cursor: pointer;
 }
-@media (max-width: 768px) {
-  .home-banner-title { font-size: 2rem; max-width: 100%; }
-  .home-banner-sub { font-size: 0.9rem; max-width: 100%; }
-  /* Full-width only outside the hero — hero CTAs size to their label. */
+/* Phone first: these sizes, the base ones above from 769px. */
+.home-banner-title { font-size: 2rem; max-width: 100%; }
+.home-banner-sub { font-size: 0.9rem; max-width: 100%; }
+/* Full-width only outside the hero — hero CTAs size to their label. */
+.home-banner-ctas .home-banner-cta-primary,
+.home-banner-ctas .home-banner-cta-secondary {
+  width: 100%;
+  justify-content: center;
+}
+@media (min-width: 769px) {
+  .home-banner-title { font-size: 3.5rem; max-width: 600px; }
+  .home-banner-sub { font-size: 1.05rem; max-width: 480px; }
   .home-banner-ctas .home-banner-cta-primary,
   .home-banner-ctas .home-banner-cta-secondary {
-    width: 100%;
-    justify-content: center;
+    width: revert;
+    justify-content: revert;
   }
 }
 
@@ -1400,27 +1437,42 @@ a { text-decoration: none; color: inherit; }
   white-space: nowrap;
 }
 
-@media (max-width: 768px) {
-  .home-ordering-status-stack {
-    top: 1rem;
-    right: 1rem;
-  }
-  .opening-status-badge-hero.opening-status-badge {
-    top: 1rem;
-    right: 1rem;
-  }
-  .home-ordering-status-stack .opening-status-badge {
-    font-size: 0.68rem;
-    padding: 0.32rem 0.7rem;
-  }
-  .tomorrow-ordering-badge {
-    font-size: 0.6875rem;
-    padding: 0.25rem 0.55rem;
-  }
+/* Phone first: these sizes on a phone; from 769px the base rules above are
+   written back, including the two-line (.has-tomorrow) badge's own padding,
+   which these selectors would otherwise out-rank. */
+.home-ordering-status-stack {
+  top: 1rem;
+  right: 1rem;
+}
+.opening-status-badge-hero.opening-status-badge {
+  top: 1rem;
+  right: 1rem;
+}
+.home-ordering-status-stack .opening-status-badge {
+  font-size: 0.68rem;
+  padding: 0.32rem 0.7rem;
+}
+.tomorrow-ordering-badge {
+  font-size: 0.6875rem;
+  padding: 0.25rem 0.55rem;
+}
+.opening-status-badge:not(.opening-status-badge-hero) {
+  font-size: 0.75rem;
+  padding: 0.35rem 0.875rem;
+}
+@media (min-width: 769px) {
+  .home-ordering-status-stack { top: 1.5rem; right: 1.5rem; }
+  .opening-status-badge-hero.opening-status-badge { top: 1.5rem; right: 1.5rem; }
+  .home-ordering-status-stack .opening-status-badge,
   .opening-status-badge:not(.opening-status-badge-hero) {
-    font-size: 0.75rem;
-    padding: 0.35rem 0.875rem;
+    font-size: 0.72rem;
+    padding: 0.35rem 0.75rem;
   }
+  .home-ordering-status-stack .opening-status-badge.has-tomorrow,
+  .opening-status-badge.has-tomorrow:not(.opening-status-badge-hero) {
+    padding: 0.4rem 0.75rem;
+  }
+  .tomorrow-ordering-badge { padding: 0.28rem 0.65rem; }
 }
 
 /* dark theme: colours stay the same intentionally (badge is always dark-bg pill) */
@@ -1985,18 +2037,24 @@ textarea.field-input {
   .order-site-footer .footer-col--hours { grid-column: 1 / -1; }
 }
 
-@media (max-width: 767.98px) {
+/* Phone first: the footer runs under the bottom nav (and the cart bar); from
+   768px, where the phone footer is hidden anyway, the .brand-footer base. */
+.app-shell__main .order-site-footer .brand-footer {
+  margin-bottom: calc(-1 * (var(--bottom-nav-height) + var(--safe-bottom) + 0.5rem));
+  padding-bottom: calc(2.5rem + var(--bottom-nav-height) + var(--safe-bottom));
+}
+.app-shell--with-cart .app-shell__main .order-site-footer .brand-footer {
+  margin-bottom: calc(
+    -1 * (var(--bottom-nav-height) + var(--safe-bottom) + var(--float-cart-height) + 0.75rem)
+  );
+  padding-bottom: calc(
+    2.5rem + var(--bottom-nav-height) + var(--safe-bottom) + var(--float-cart-height)
+  );
+}
+@media (min-width: 768px) {
   .app-shell__main .order-site-footer .brand-footer {
-    margin-bottom: calc(-1 * (var(--bottom-nav-height) + var(--safe-bottom) + 0.5rem));
-    padding-bottom: calc(2.5rem + var(--bottom-nav-height) + var(--safe-bottom));
-  }
-  .app-shell--with-cart .app-shell__main .order-site-footer .brand-footer {
-    margin-bottom: calc(
-      -1 * (var(--bottom-nav-height) + var(--safe-bottom) + var(--float-cart-height) + 0.75rem)
-    );
-    padding-bottom: calc(
-      2.5rem + var(--bottom-nav-height) + var(--safe-bottom) + var(--float-cart-height)
-    );
+    margin-bottom: 0;
+    padding-bottom: 2.5rem;
   }
 }
 
@@ -2084,32 +2142,41 @@ textarea.field-input {
 /* ════════════════════════════════════════════════════════════
    LAYOUT RESPONSIVE
 ════════════════════════════════════════════════════════════ */
-.desktop-nav { display: flex !important; }
-.show-desktop { display: inline !important; }
-.show-mobile { display: none !important; }
-.menu-sidebar { display: block !important; }
-.mobile-category-pills { display: none !important; }
-
-@media (max-width: 900px) {
-  .menu-sidebar { display: none !important; }
-  .mobile-category-pills { display: flex !important; }
+.desktop-nav { display: none !important; }
+.show-desktop { display: none !important; }
+.show-mobile { display: inline-flex !important; }
+@media (min-width: 769px) {
+  .desktop-nav { display: flex !important; }
+  .show-desktop { display: inline !important; }
+  .show-mobile { display: none !important; }
+}
+.menu-sidebar { display: none !important; }
+.mobile-category-pills { display: flex !important; }
+@media (min-width: 901px) {
+  .menu-sidebar { display: block !important; }
+  .mobile-category-pills { display: none !important; }
 }
 
-@media (max-width: 768px) {
-  .nav a:not(.logout-btn) { display: none !important; }
-  .nav { gap: 0.5rem; }
-  .header-content { padding: 0.75rem 1rem; }
-  .logo { font-size: 1.1rem; }
-  .logo img { width: 36px; height: 36px; }
-  .footer-content { grid-template-columns: 1fr !important; gap: 2rem; text-align: center; }
+/* Phone first; the computer values come back from 769px. */
+.nav a:not(.logout-btn) { display: none !important; }
+.nav { gap: 0.5rem; }
+.header-content { padding: 0.75rem 1rem; }
+.logo { font-size: 1.1rem; }
+.logo img { width: 36px; height: 36px; }
+.footer-content { grid-template-columns: 1fr !important; gap: 2rem; text-align: center; }
+@media (min-width: 769px) {
+  .nav a:not(.logout-btn) { display: revert !important; }
+  .nav { gap: 0.25rem; }
+  .header-content { padding: 0.875rem 1.5rem; }
+  .logo { font-size: 1.25rem; }
+  .logo img { width: 40px; height: 40px; }
+  .footer-content { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important; gap: 2.5rem; text-align: revert; }
 }
 
-@media (max-width: 768px) {
-  .desktop-nav { display: none !important; }
-  .show-desktop { display: none !important; }
-  .show-mobile { display: inline-flex !important; }
-  /* No hamburger: logged-in users use header + bottom nav for navigation */
-  html { scroll-padding-top: 130px; }
+/* No hamburger: logged-in users use header + bottom nav for navigation */
+html { scroll-padding-top: 130px; }
+@media (min-width: 769px) {
+  html { scroll-padding-top: 75px; }
 }
 
 /* Phase 7 cleanup: old mobile nav and category sheet rules removed here */
@@ -2175,7 +2242,8 @@ textarea.field-input {
   transition: border-color 0.15s;
   flex-shrink: 0;
 }
-.order-pt-pill.pt-loaded { display: inline-flex; }
+/* The pill is the computer's; a phone has the strip below instead. */
+@media (min-width: 769px) { .order-pt-pill.pt-loaded { display: inline-flex; } }
 .order-pt-pill:hover { border-color: var(--amber); }
 
 /* ── Mobile Strip ──────────────────────────────────────────── */
@@ -2192,7 +2260,6 @@ textarea.field-input {
 }
 .order-pt-strip.pt-loaded { display: flex; }
 @media (min-width: 769px) { .order-pt-strip { display: none !important; } }
-@media (max-width: 768px)  { .order-pt-pill  { display: none !important; } }
 
 .order-pt-strip-controls { display: flex; align-items: center; gap: 0.15rem; }
 .order-pt-strip-info {
@@ -2710,28 +2777,35 @@ textarea.field-input {
   flex-shrink: 0;
 }
 
-@media (max-width: 900px) {
-  .top-nav__brand-name {
-    display: none;
-  }
-  .top-nav__link {
-    padding: 0.4rem 0.55rem;
-    font-size: 0.85rem;
-  }
-  .top-nav__account {
-    padding: 0.4rem 0.55rem;
-    font-size: 0.8125rem;
-    max-width: 6.5rem;
-  }
-  .top-nav__account-phone {
-    font-size: 0.8125rem;
-  }
-  .top-nav__prayer {
-    max-width: 16rem;
-  }
-  .top-nav__prayer .prayer-banner-island {
-    display: none; /* island picker still available when expanded */
-  }
+/* Narrow first: the top bar's tight values up to 900px, its roomy ones from 901px. */
+.top-nav__brand-name {
+  display: none;
+}
+.top-nav__link {
+  padding: 0.4rem 0.55rem;
+  font-size: 0.85rem;
+}
+.top-nav__account {
+  padding: 0.4rem 0.55rem;
+  font-size: 0.8125rem;
+  max-width: 6.5rem;
+}
+.top-nav__account-phone {
+  font-size: 0.8125rem;
+}
+.top-nav__prayer {
+  max-width: 16rem;
+}
+.top-nav__prayer .prayer-banner-island {
+  display: none; /* island picker still available when expanded */
+}
+@media (min-width: 901px) {
+  .top-nav__brand-name { display: inline; }
+  .top-nav__link { padding: 0.4rem 0.85rem; font-size: 0.9rem; }
+  .top-nav__account { padding: 0.4rem 0.85rem; font-size: 0.875rem; max-width: 9rem; }
+  .top-nav__account-phone { font-size: 0.875rem; }
+  .top-nav__prayer { max-width: 28rem; }
+  .top-nav__prayer .prayer-banner-island { display: inline-block; }
 }
 
 /* ── Phone home sticky header (brand + account; welcome scrolls below) ─ */
@@ -3031,16 +3105,20 @@ textarea.field-input {
    back-to-top goes with them, or it would end up under the cart button.
    `rail-right` is set on <html> by the menu page while it is open, so off
    the menu (no rail to clash with) both return to their usual corners. */
-@media (max-width: 767px) {
-  html.rail-right .float-cart-fab {
-    right: auto;
-    left: max(var(--page-gutter), calc(50% - (var(--shell-max) / 2) + var(--page-gutter)));
-  }
+html.rail-right .float-cart-fab {
+  right: auto;
+  left: max(var(--page-gutter), calc(50% - (var(--shell-max) / 2) + var(--page-gutter)));
+}
 
-  html.rail-right .back-to-top {
-    left: auto;
-    right: max(var(--page-gutter), 1rem);
-  }
+html.rail-right .back-to-top {
+  left: auto;
+  right: max(var(--page-gutter), 1rem);
+}
+/* From 768px the rail does not reach the corners: back where .float-cart-fab
+   (its 768px rule) and .back-to-top put them. */
+@media (min-width: 768px) {
+  html.rail-right .float-cart-fab { right: var(--page-gutter); left: auto; }
+  html.rail-right .back-to-top { left: max(var(--page-gutter), 1rem); right: auto; }
 }
 
 .float-cart-fab__logo-wrap {
@@ -3061,13 +3139,15 @@ textarea.field-input {
    cart" message landed on the cart button it was talking about, so on a
    phone it now sits above the bottom bar, and above the cart button while
    that shows. */
-.toast-stack { bottom: 5rem; }
-@media (max-width: 767px) {
-  .toast-stack { bottom: calc(var(--bottom-nav-height) + var(--safe-bottom) + 12px); }
-  body:has(.app-shell--hide-nav) .toast-stack { bottom: calc(var(--safe-bottom) + 5rem); }
-  body:has(.float-cart-fab) .toast-stack {
-    bottom: calc(var(--bottom-nav-height) + var(--safe-bottom) + 10px + var(--float-cart-height) + 12px);
-  }
+.toast-stack { bottom: calc(var(--bottom-nav-height) + var(--safe-bottom) + 12px); }
+body:has(.app-shell--hide-nav) .toast-stack { bottom: calc(var(--safe-bottom) + 5rem); }
+body:has(.float-cart-fab) .toast-stack {
+  bottom: calc(var(--bottom-nav-height) + var(--safe-bottom) + 10px + var(--float-cart-height) + 12px);
+}
+@media (min-width: 768px) {
+  .toast-stack,
+  body:has(.app-shell--hide-nav) .toast-stack,
+  body:has(.float-cart-fab) .toast-stack { bottom: 5rem; }
 }
 
 .float-cart-fab__logo {
@@ -4044,39 +4124,60 @@ textarea.field-input {
   padding-top: 0.35rem !important;
 }
 
-/* Mobile: keep ZUS-style rail — icon + short label (never hide labels) */
-@media (max-width: 767px) {
+/* Phone: keep ZUS-style rail — icon + short label (never hide labels).
+   Phone first: these are the phone's values, the computer's come back from
+   768px. (The compact rail tiles further down out-rank most of them.) */
+:root {
+  --cat-rail-width: 76px;
+  /* Shared height: rail item (thumb + 2-line label) ↔ category banner.
+     Owner, 2026-09-02: bigger picture and text in the rail without a
+     wider rail — 44px thumb + two 11px lines needs the extra 10px. */
+  --cat-rail-item-height: 86px;
+}
+
+.cat-rail__item {
+  padding: 0.45rem 0;
+  gap: 0.25rem;
+  font-size: 0.6875rem;
+  min-height: var(--cat-rail-item-height);
+}
+
+.cat-rail__label {
+  font-size: 0.6875rem !important;
+  font-weight: 600;
+  line-height: 1.15;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  max-width: 100%;
+  word-break: break-word;
+}
+
+.cat-rail__item img,
+.cat-rail__thumb {
+  width: 60px !important;
+  height: 60px !important;
+}
+@media (min-width: 768px) {
   :root {
-    --cat-rail-width: 76px;
-    /* Shared height: rail item (thumb + 2-line label) ↔ category banner.
-       Owner, 2026-09-02: bigger picture and text in the rail without a
-       wider rail — 44px thumb + two 11px lines needs the extra 10px. */
-    --cat-rail-item-height: 86px;
+    --cat-rail-width: 90px;
+    --cat-rail-item-height: initial;
   }
-
   .cat-rail__item {
-    padding: 0.45rem 0;
-    gap: 0.25rem;
+    padding: 0.55rem 0;
+    gap: 0.35rem;
     font-size: 0.6875rem;
-    min-height: var(--cat-rail-item-height);
+    min-height: var(--touch-target);
   }
-
   .cat-rail__label {
-    font-size: 0.6875rem !important;
-    font-weight: 600;
-    line-height: 1.15;
-    display: -webkit-box !important;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    max-width: 100%;
-    word-break: break-word;
+    font-size: 0.75rem !important;
+    line-height: 1.25;
   }
-
   .cat-rail__item img,
   .cat-rail__thumb {
-    width: 60px !important;
-    height: 60px !important;
+    width: 64px !important;
+    height: 64px !important;
   }
 }
 
@@ -4238,17 +4339,16 @@ textarea.field-input {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 45%, transparent);
 }
 
-/* Must come AFTER the base .menu-cat-promo rule or mobile height is overridden */
-@media (max-width: 767px) {
-  .menu-cat-promo {
-    /* The website band's 76px on every width (owner, 2026-09-21: "make same"). */
-    height: 76px;
-    max-height: 76px;
-  }
+/* Must come AFTER the base .menu-cat-promo rule or the phone height is overridden.
+   Phone first: these values, the 768px block below for wider screens. */
+.menu-cat-promo {
+  /* The website band's 76px on every width (owner, 2026-09-21: "make same"). */
+  height: 76px;
+  max-height: 76px;
+}
 
-  .menu-cat-promo__title {
-    font-size: 1rem;
-  }
+.menu-cat-promo__title {
+  font-size: 1rem;
 }
 
 @media (min-width: 768px) {
@@ -4445,17 +4545,22 @@ textarea.field-input {
   font-weight: 500;
 }
 .cat-rail__item.cat-rail__sub.is-active .cat-rail__sub-label { font-weight: 700; }
-@media (max-width: 767px) {
-  /* The 76px rail: a narrower list inset so two-word labels still fit. */
-  .cat-rail__list { padding: 0 3px; }
-  .cat-rail__group, .cat-rail__list > .cat-rail__item { border-radius: 12px; }
-  .cat-rail__item.cat-rail__sub { --sub-thumb: 36px; padding-left: 12px; }
+/* The 76px phone rail: a narrower list inset so two-word labels still fit;
+   the 90px rail's values from 768px. */
+.cat-rail__list { padding: 0 3px; }
+.cat-rail__group, .cat-rail__list > .cat-rail__item { border-radius: 12px; }
+.cat-rail__item.cat-rail__sub { --sub-thumb: 36px; padding-left: 12px; }
+.cat-rail__item.cat-rail__sub::before,
+.cat-rail__item.cat-rail__sub::after { left: 7px; }
+.cat-rail__item.cat-rail__sub::after { width: 8px; }
+@media (min-width: 768px) {
+  .cat-rail__list { padding: 0 4px; }
+  .cat-rail__group { border-radius: 14px; }
+  .cat-rail__list > .cat-rail__item { border-radius: 14px; }
+  .cat-rail__item.cat-rail__sub { --sub-thumb: 40px; padding-left: 14px; }
   .cat-rail__item.cat-rail__sub::before,
-  .cat-rail__item.cat-rail__sub::after { left: 7px; }
-  .cat-rail__item.cat-rail__sub::after { width: 8px; }
-  .cat-rail__sub-label {
-    font-size: 0.6875rem !important;
-  }
+  .cat-rail__item.cat-rail__sub::after { left: 9px; }
+  .cat-rail__item.cat-rail__sub::after { width: 9px; }
 }
 
 .stat-chip {
@@ -4771,22 +4876,42 @@ textarea.field-input {
   to   { opacity: 1; }
 }
 
-@media (max-width: 360px) {
-  :root {
-    --cat-rail-width: 70px;
-  }
+/* The narrowest phones (360px and under): one-line labels, smaller photos.
+   From 361px the 76px phone rail's values, from 768px the computer's. */
+:root {
+  --cat-rail-width: 70px;
+}
 
-  .cat-rail__label {
-    -webkit-line-clamp: 1;
-    font-size: 0.6875rem !important;
-  }
+.cat-rail__label {
+  -webkit-line-clamp: 1;
+  font-size: 0.6875rem !important;
+}
 
+.cat-rail__item img,
+.cat-rail__thumb {
+  width: 54px !important;
+  height: 54px !important;
+}
+.cat-rail__item.cat-rail__sub { --sub-thumb: 32px; }
+@media (min-width: 361px) {
+  :root { --cat-rail-width: 76px; }
+  .cat-rail__label { -webkit-line-clamp: 2; }
   .cat-rail__item img,
   .cat-rail__thumb {
-    width: 54px !important;
-    height: 54px !important;
+    width: 60px !important;
+    height: 60px !important;
   }
-  .cat-rail__item.cat-rail__sub { --sub-thumb: 32px; }
+  .cat-rail__item.cat-rail__sub { --sub-thumb: 36px; }
+}
+@media (min-width: 768px) {
+  :root { --cat-rail-width: 90px; }
+  .cat-rail__label { font-size: 0.75rem !important; }
+  .cat-rail__item img,
+  .cat-rail__thumb {
+    width: 64px !important;
+    height: 64px !important;
+  }
+  .cat-rail__item.cat-rail__sub { --sub-thumb: 40px; }
 }
 
 /* Tablet shell at exactly 768 — preserve prior edge-to-edge tokens (mobile audit). */
@@ -5206,14 +5331,21 @@ textarea.field-input {
 
 /* Phones: one row per order type, photo on the left (UI audit, 2026-10-10:
    three columns left the pickup address six lines tall and split "Learn
-   more →"). Keep in step with the website's partials/home/mode-cards. */
-@media (max-width: 520px) {
-  .mode-entry-cards { flex-direction: column; gap: 0.625rem; }
-  .mode-entry-card { flex: 0 0 auto; flex-direction: row; }
-  .mode-entry-card__media { width: 104px; height: auto; min-height: 104px; }
-  .mode-entry-card__img { height: 100%; min-height: 104px; }
-  .mode-entry-card__body { padding: 0.75rem 0.875rem; }
-  .mode-entry-card__cta { padding-top: 0.375rem; }
+   more →"). Keep in step with the website's partials/home/mode-cards.
+   Phone first: from 521px the three cards sit side by side again. */
+.mode-entry-cards { flex-direction: column; gap: 0.625rem; }
+.mode-entry-card { flex: 0 0 auto; flex-direction: row; }
+.mode-entry-card__media { width: 104px; height: auto; min-height: 104px; }
+.mode-entry-card__img { height: 100%; min-height: 104px; }
+.mode-entry-card__body { padding: 0.75rem 0.875rem; }
+.mode-entry-card__cta { padding-top: 0.375rem; }
+@media (min-width: 521px) {
+  .mode-entry-cards { flex-direction: row; gap: 0.875rem; }
+  .mode-entry-card { flex: 1 1 0; flex-direction: column; }
+  .mode-entry-card__media { width: 100%; height: 120px; min-height: auto; }
+  .mode-entry-card__img { height: 120px; min-height: auto; }
+  .mode-entry-card__body { padding: 0.875rem 1rem 1rem; }
+  .mode-entry-card__cta { padding-top: 0.625rem; }
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -5820,6 +5952,26 @@ textarea.field-input {
 .mh-sheet-list button span { margin-inline-start: auto; color: var(--color-text-muted); font-weight: 500; font-size: 0.8rem; }
 .mh-sheet-list button.is-active { color: var(--color-primary); }
 .mh-sheet-list button.is-active i { background: var(--color-primary); }
+/* Phone first: the menu head's phone sizes, its base sizes from 768px, its
+   computer sizes from 769px (below). */
+.mh-banner { height: 60px; border-radius: 12px; }
+.mh-copy { padding: 0 5.4rem 0 0.9rem; gap: 0.45rem; }
+.mh-title { height: 1.6rem; }
+.mh-title > span { font-size: 1.15rem; line-height: 1.6rem; }
+.mh-count { font-size: 0.72rem; }
+.mh-search, .mh .share-control-btn.mh-share-btn { width: 34px; height: 34px; }
+.mh { --mh-bar-h: 52px; }
+.mh-bar { gap: 0.4rem; }
+@media (min-width: 768px) {
+  .mh-banner { height: 76px; border-radius: 14px; }
+  .mh-copy { padding: 0 6.5rem 0 1rem; gap: 0.6rem; }
+  .mh-title { height: 1.9rem; }
+  .mh-title > span { font-size: 1.35rem; line-height: 1.9rem; }
+  .mh-count { font-size: 0.78rem; }
+  .mh-search, .mh .share-control-btn.mh-share-btn { width: 36px; height: 36px; }
+  .mh { --mh-bar-h: 54px; }
+  .mh-bar { gap: 0.5rem; }
+}
 @media (min-width: 769px) {
   .mh-banner { height: 88px; }
   .mh-title { height: 2rem; }
@@ -5838,16 +5990,6 @@ textarea.field-input {
   .mh-sheet.is-open { transform: none; opacity: 1; }
   .mh-sheet-grab { display: none; }
   .mh-scrim { background: transparent; }
-}
-@media (max-width: 767px) {
-  .mh-banner { height: 60px; border-radius: 12px; }
-  .mh-copy { padding: 0 5.4rem 0 0.9rem; gap: 0.45rem; }
-  .mh-title { height: 1.6rem; }
-  .mh-title > span { font-size: 1.15rem; line-height: 1.6rem; }
-  .mh-count { font-size: 0.72rem; }
-  .mh-search, .mh .share-control-btn.mh-share-btn { width: 34px; height: 34px; }
-  .mh { --mh-bar-h: 52px; }
-  .mh-bar { gap: 0.4rem; }
 }
 
 /* Sections land under the pinned bar and banner. */
@@ -5889,8 +6031,10 @@ textarea.field-input {
 .cat-rail__pill.is-on { opacity: 1; }
 .cat-rail__list > .cat-rail__item.is-active { box-shadow: none; }
 .cat-rail__list > .cat-rail__item.is-active .cat-rail__thumb { outline: 0; box-shadow: none; }
-@media (max-width: 767px) {
-  .cat-rail__pill { left: 3px; right: 3px; border-radius: 12px; }
+/* Phone first: the 76px rail's inset; the 90px rail's from 768px. */
+.cat-rail__pill { left: 3px; right: 3px; border-radius: 12px; }
+@media (min-width: 768px) {
+  .cat-rail__pill { left: 4px; right: 4px; border-radius: 14px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -6092,8 +6236,9 @@ textarea.field-input {
    A narrower rail on a phone; each tile a rounded photo inset in a soft card
    over a small bold name, no taller than its content. The chosen tile fills
    rust with its name in white, and the ring glides to it from the last. */
-@media (max-width: 767px) {
-  :root { --cat-rail-width: 70px; --cat-rail-item-height: 0px; }
+:root { --cat-rail-width: 70px; --cat-rail-item-height: 0px; }
+@media (min-width: 768px) {
+  :root { --cat-rail-width: 90px; --cat-rail-item-height: initial; }
 }
 .cat-rail__list { gap: 7px; }
 .cat-rail__list > .cat-rail__item {
