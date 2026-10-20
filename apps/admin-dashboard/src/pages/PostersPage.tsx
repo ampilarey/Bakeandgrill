@@ -10,6 +10,7 @@ import {
   draftPosterSocial, previewPoster, quotePosterOrder, savePosterTemplate, savePrintShop, sendPosterToShop, sendPosterToTv, setPosterHomeBanner, setPosterProofApproval, updatePoster,
   type PosterCheck, type PosterDraft, type PosterOrderRow, type PosterPiece, type PosterPurpose, type PosterRow, type PosterTemplateRow, type PrintShop,
 } from '../api';
+import { inputFont } from '../utils/cssVars';
 
 const MOODS = ['dark', 'cream', 'rust', 'gold', 'photo'] as const;
 const GROUPS = ['Offers', 'Dishes', 'Times', 'Ordering', 'Inside'];
@@ -222,7 +223,7 @@ function MakeTab({ manage }: { manage: boolean }) {
               <span style={{ color: 'var(--color-text-secondary)' }}>{purpose?.label}</span>
             </div>
             <label style={labelStyle}>Name
-              <input style={inputStyle} value={draft.name ?? ''} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+              <input style={inputFont(inputStyle)} value={draft.name ?? ''} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
             </label>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {MOODS.map((m) => (
@@ -259,13 +260,13 @@ function MakeTab({ manage }: { manage: boolean }) {
             )}
             {(Array.from(new Set([...Object.keys(purpose?.slots ?? {}), 'headline', 'headline_dv', 'price', 'old_price', 'subhead', 'body', 'badge']))).map((key) => (
               <label key={key} style={labelStyle}>{key.replace('_', ' ')}
-                <input style={inputStyle} value={draft.slots[key] ?? ''} onChange={(e) => setDraft({ ...draft, slots: { ...draft.slots, [key]: e.target.value } })} />
+                <input style={inputFont(inputStyle)} value={draft.slots[key] ?? ''} onChange={(e) => setDraft({ ...draft, slots: { ...draft.slots, [key]: e.target.value } })} />
               </label>
             ))}
             <PosterPhotoField draft={draft} source={photoSource} onChange={(path) => setDraft({ ...draft, slots: { ...draft.slots, photo_path: path } })} />
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <label style={labelStyle}>Take down
-                <input type="date" style={inputStyle} value={draft.take_down_on ?? ''} onChange={(e) => setDraft({ ...draft, take_down_on: e.target.value || null })} />
+                <input type="date" style={inputFont(inputStyle)} value={draft.take_down_on ?? ''} onChange={(e) => setDraft({ ...draft, take_down_on: e.target.value || null })} />
               </label>
               <Select label="Place" value={draft.place ?? ''} onChange={(v) => setDraft({ ...draft, place: v || null })} options={places.map((p) => ({ value: p, label: p }))} />
             </div>
@@ -329,7 +330,7 @@ function PosterPhotoField({ draft, source, onChange }: { draft: PosterDraft; sou
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <label style={labelStyle}>Poster photo (optional, sharper than the menu photo)
-        <input type="file" accept="image/jpeg,image/png,image/webp" disabled={busy} style={inputStyle} onChange={async (e) => {
+        <input type="file" accept="image/jpeg,image/png,image/webp" disabled={busy} style={inputFont(inputStyle)} onChange={async (e) => {
           const file = e.target.files?.[0];
           if (!file) return;
           setBusy(true); setError('');
@@ -441,10 +442,10 @@ function ShopsTab({ manage }: { manage: boolean }) {
       {manage && (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'end' }}>
           <label style={labelStyle}>Shop name
-            <input style={inputStyle} value={name} onChange={(e) => setName(e.target.value)} />
+            <input style={inputFont(inputStyle)} value={name} onChange={(e) => setName(e.target.value)} />
           </label>
           <label style={labelStyle}>Email
-            <input style={inputStyle} value={email} onChange={(e) => setEmail(e.target.value)} />
+            <input style={inputFont(inputStyle)} value={email} onChange={(e) => setEmail(e.target.value)} />
           </label>
           <Select label="Layers" value={layers} onChange={(v) => setLayers(v === 'spots' ? 'spots' : 'masks')} options={[{ value: 'masks', label: 'Mask PDFs' }, { value: 'spots', label: 'Spot layers in the file' }]} />
           <Btn onClick={() => savePrintShop({ name, email, print_prefs: { layers, white_name: 'White', gloss_name: 'Spot UV', bleed_mm: 3, crop_marks: false } }).then(() => { setName(''); setEmail(''); load(); }).catch((e) => setNote(e instanceof Error ? e.message : 'Could not save the shop.'))}>Add shop</Btn>
@@ -472,7 +473,7 @@ function OrderRow({ order, manage, onChange }: { order: PosterOrderRow; manage: 
       <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{order.shop} · {order.state.replace(/_/g, ' ')}{order.quote_mvr ? ` · MVR ${order.quote_mvr}` : ''}</div>
       {manage && order.state === 'sent' && (
         <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-          <input style={{ ...inputStyle, maxWidth: 140 }} inputMode="decimal" placeholder="Quote MVR" value={quote} onChange={(e) => setQuote(e.target.value)} />
+          <input style={inputFont({ ...inputStyle, maxWidth: 140 })} inputMode="decimal" placeholder="Quote MVR" value={quote} onChange={(e) => setQuote(e.target.value)} />
           <Btn variant="ghost" onClick={() => quotePosterOrder(order.id, Number(quote)).then(onChange)}>Save quote</Btn>
           <Btn variant="ghost" onClick={() => approvePosterQuote(order.id).then(onChange)}>Approve quote</Btn>
         </div>
@@ -507,7 +508,7 @@ function TemplatesTab({ manage }: { manage: boolean }) {
 function Select({ label, value, onChange, options }: { label: string; value: string | number; onChange: (v: string) => void; options: { value: string | number; label: string }[] }) {
   return (
     <label style={labelStyle}>{label}
-      <select style={inputStyle} value={value} onChange={(e) => onChange(e.target.value)}>
+      <select style={inputFont(inputStyle)} value={value} onChange={(e) => onChange(e.target.value)}>
         <option value="">—</option>
         {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>

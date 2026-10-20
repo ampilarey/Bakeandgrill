@@ -8,6 +8,7 @@ import { fetchWasteLogs, fetchWasteSummary, createWasteLog, type WasteLog, type 
 import { ItemSearch, type MenuItemSelection, type InventoryItemSelection } from '../components/ItemSearch';
 import { downloadCSV } from '../utils/csvExport';
 import { today, daysAgo } from '../utils/dateHelpers';
+import { inputFont } from '../utils/cssVars';
 
 const REASONS = ['spoilage', 'over_prep', 'drop', 'expired', 'quality', 'other'] as const;
 type Reason = typeof REASONS[number];
@@ -207,7 +208,7 @@ export default function WasteLogsPage({ embedded = false }: { embedded?: boolean
               <SortFilterHead controls={wasteCtl} allRows={logs} />
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={7} style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-muted)' }}>Loading…</td></tr>
+                  <tr><td colSpan={7} style={{ '--ta': 'center', padding: 40, color: 'var(--color-text-muted)' }}>Loading…</td></tr>
                 ) : logs.length === 0 ? (
                   <tr><td colSpan={7}><EmptyState message="No waste logs for this period." /></td></tr>
                 ) : wasteCtl.rows.map(log => (
@@ -446,26 +447,26 @@ export default function WasteLogsPage({ embedded = false }: { embedded?: boolean
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
               <label>
                 <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Quantity *</span>
-                <input type="number" min="0.001" step="any" placeholder="1" value={form.quantity} onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                <input type="number" min="0.001" step="any" placeholder="1" value={form.quantity} onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))} style={inputFont({ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' })} />
               </label>
               <label>
                 <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Unit</span>
-                <input type="text" placeholder="pcs" value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                <input type="text" placeholder="pcs" value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} style={inputFont({ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' })} />
               </label>
             </div>
             <label>
               <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Reason *</span>
-              <select value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value as Reason }))} style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit' }}>
+              <select value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value as Reason }))} style={inputFont({ width: '100%', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit' })}>
                 {REASONS.map(r => <option key={r} value={r}>{REASON_LABELS[r]}</option>)}
               </select>
             </label>
             <label>
               <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Cost Estimate (MVR)</span>
-              <input type="number" min="0" step="0.01" placeholder="Optional" value={form.cost_estimate} onChange={e => setForm(f => ({ ...f, cost_estimate: e.target.value }))} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+              <input type="number" min="0" step="0.01" placeholder="Optional" value={form.cost_estimate} onChange={e => setForm(f => ({ ...f, cost_estimate: e.target.value }))} style={inputFont({ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' })} />
             </label>
             <label>
               <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Notes</span>
-              <textarea placeholder="Any additional details…" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }} />
+              <textarea placeholder="Any additional details…" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} style={inputFont({ width: '100%', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' })} />
             </label>
           </div>
           <ModalActions>

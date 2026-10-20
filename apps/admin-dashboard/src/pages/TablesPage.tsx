@@ -10,6 +10,7 @@ import {
   type RestaurantTable,
 } from '../api';
 import { LayoutGrid, Map, QrCode } from 'lucide-react';
+import { inputFont } from '../utils/cssVars';
 
 const S = {
   input: { width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' as const },
@@ -317,15 +318,15 @@ export default function TablesPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <label>
               <span style={S.label}>Table Name *</span>
-              <input type="text" placeholder="e.g. 1, A1, VIP1" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} style={S.input} />
+              <input type="text" placeholder="e.g. 1, A1, VIP1" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} style={inputFont(S.input)} />
             </label>
             <label>
               <span style={S.label}>Capacity *</span>
-              <input type="number" min="1" value={form.capacity} onChange={e => setForm(f => ({ ...f, capacity: e.target.value }))} style={S.input} />
+              <input type="number" min="1" value={form.capacity} onChange={e => setForm(f => ({ ...f, capacity: e.target.value }))} style={inputFont(S.input)} />
             </label>
             <label>
               <span style={S.label}>Location / Zone</span>
-              <input type="text" placeholder="e.g. Indoor, Terrace, VIP…" value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} style={S.input} />
+              <input type="text" placeholder="e.g. Indoor, Terrace, VIP…" value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} style={inputFont(S.input)} />
             </label>
           </div>
           <ModalActions>

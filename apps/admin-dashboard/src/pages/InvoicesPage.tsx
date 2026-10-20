@@ -17,6 +17,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { today } from '../utils/dateHelpers';
 import { ADMIN_INVOICE_PAYMENT_METHODS } from '../lib/paymentMethods';
 import { MessageSquare, RefreshCw, CloudUpload, FileDown, Ban, Check, X } from 'lucide-react';
+import { inputFont } from '../utils/cssVars';
 
 const TYPE_COLOR: Record<string, string> = { sale: 'teal', purchase: 'blue', credit_note: 'orange' };
 
@@ -398,15 +399,15 @@ export function InvoicesPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search invoice #, recipient…"
-          style={{ ...selectStyle, minWidth: 220 }}
+          style={inputFont({ ...selectStyle, minWidth: 220 })}
         />
-        <select value={typeFilter} onChange={(e) => setType(e.target.value)} style={selectStyle}>
+        <select value={typeFilter} onChange={(e) => setType(e.target.value)} style={inputFont(selectStyle)}>
           <option value="all">All Types</option>
           <option value="sale">Sale</option>
           <option value="purchase">Purchase</option>
           <option value="credit_note">Credit Note</option>
         </select>
-        <select value={statusFilter} onChange={(e) => setStatus(e.target.value)} style={selectStyle}>
+        <select value={statusFilter} onChange={(e) => setStatus(e.target.value)} style={inputFont(selectStyle)}>
           <option value="all">All Statuses</option>
           {['draft', 'sent', 'paid', 'overdue', 'void'].map((s) => (
             <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
@@ -593,7 +594,7 @@ export function InvoicesPage() {
             <select
               value={payMethod}
               onChange={(e) => setPayMethod(e.target.value)}
-              style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', outline: 'none' }}
+              style={inputFont({ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', outline: 'none' })}
             >
               {ADMIN_INVOICE_PAYMENT_METHODS.map((m) => (
                 <option key={m.value} value={m.value}>{m.label}</option>
@@ -637,7 +638,7 @@ export function InvoicesPage() {
                   value={smsPhone}
                   onChange={(e) => setSmsPhone(e.target.value)}
                   placeholder="7654321"
-                  style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', outline: 'none', boxSizing: 'border-box' }}
+                  style={inputFont({ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', outline: 'none', boxSizing: 'border-box' })}
                 />
               </div>
               {smsError && <p style={{ color: 'var(--color-danger)', fontSize: 13, marginBottom: 8 }}>{smsError}</p>}
@@ -700,7 +701,7 @@ export function InvoicesPage() {
                 type={type}
                 value={editForm[key]}
                 onChange={(e) => setEditForm((f) => ({ ...f, [key]: e.target.value }))}
-                style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', outline: 'none', boxSizing: 'border-box' }}
+                style={inputFont({ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', outline: 'none', boxSizing: 'border-box' })}
               />
             </div>
           ))}
@@ -710,7 +711,7 @@ export function InvoicesPage() {
               value={editForm.notes}
               onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
               rows={3}
-              style={{ width: '100%', padding: '8px 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
+              style={inputFont({ width: '100%', padding: '8px 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' })}
             />
           </div>
           <ModalActions>
@@ -736,13 +737,13 @@ export function InvoicesPage() {
               <div key={key}>
                 <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>{label}</label>
                 <input type={type} value={manualForm[key]} onChange={(e) => setManualForm((f) => ({ ...f, [key]: e.target.value }))}
-                  style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                  style={inputFont({ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' })} />
               </div>
             ))}
             <div>
               <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Type *</label>
               <select value={manualForm.type} onChange={(e) => setManualForm((f) => ({ ...f, type: e.target.value as typeof manualForm.type }))}
-                style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}>
+                style={inputFont({ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' })}>
                 <option value="sale">Sale</option>
                 <option value="purchase">Purchase</option>
                 <option value="credit_note">Credit Note</option>
@@ -751,13 +752,13 @@ export function InvoicesPage() {
             <div>
               <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Tax Rate (basis points, e.g. 600 = 6%)</label>
               <input type="number" min="0" max="10000" value={manualForm.tax_rate_bp} onChange={(e) => setManualForm((f) => ({ ...f, tax_rate_bp: e.target.value }))}
-                style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                style={inputFont({ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' })} />
             </div>
           </div>
           <div style={{ marginBottom: 14 }}>
             <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Notes</label>
             <textarea value={manualForm.notes} onChange={(e) => setManualForm((f) => ({ ...f, notes: e.target.value }))} rows={2}
-              style={{ width: '100%', padding: '8px 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }} />
+              style={inputFont({ width: '100%', padding: '8px 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' })} />
           </div>
           <div style={{ marginBottom: 8 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
@@ -773,11 +774,11 @@ export function InvoicesPage() {
             {manualLines.map((line, i) => (
               <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 6, alignItems: 'center' }}>
                 <input value={line.description} onChange={(e) => setManualLines((ls) => ls.map((l, j) => j === i ? { ...l, description: e.target.value } : l))}
-                  placeholder="Description" style={{ flex: 3, height: 34, padding: '0 8px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                  placeholder="Description" style={inputFont({ flex: 3, height: 34, padding: '0 8px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' })} />
                 <input type="number" min="0.001" step="0.001" value={line.quantity} onChange={(e) => setManualLines((ls) => ls.map((l, j) => j === i ? { ...l, quantity: parseFloat(e.target.value) || 0 } : l))}
-                  style={{ width: 70, height: 34, padding: '0 8px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                  style={inputFont({ width: 70, height: 34, padding: '0 8px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' })} />
                 <input type="number" min="0" step="0.01" value={line.unit_price} onChange={(e) => setManualLines((ls) => ls.map((l, j) => j === i ? { ...l, unit_price: parseFloat(e.target.value) || 0 } : l))}
-                  style={{ width: 90, height: 34, padding: '0 8px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                  style={inputFont({ width: 90, height: 34, padding: '0 8px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' })} />
                 {manualLines.length > 1 && (
                   <button onClick={() => setManualLines((ls) => ls.filter((_, j) => j !== i))}
                     style={{ width: 28, height: 28, border: 'none', borderRadius: 6, background: 'var(--color-danger-bg)', color: 'var(--color-danger-strong)', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
@@ -809,7 +810,7 @@ export function InvoicesPage() {
               value={cnForm.reason}
               onChange={(e) => setCnForm((f) => ({ ...f, reason: e.target.value }))}
               placeholder="e.g. Overcharge, returned item…"
-              style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', outline: 'none', boxSizing: 'border-box' }}
+              style={inputFont({ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', outline: 'none', boxSizing: 'border-box' })}
             />
           </div>
           <div style={{ marginBottom: 14 }}>
@@ -819,7 +820,7 @@ export function InvoicesPage() {
               value={cnForm.amount}
               onChange={(e) => setCnForm((f) => ({ ...f, amount: e.target.value }))}
               placeholder="0.00"
-              style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', outline: 'none', boxSizing: 'border-box' }}
+              style={inputFont({ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', outline: 'none', boxSizing: 'border-box' })}
             />
           </div>
           <ModalActions>

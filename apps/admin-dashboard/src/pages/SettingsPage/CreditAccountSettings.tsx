@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Save } from 'lucide-react';
 import { Button, Card } from '../../components/ui';
 import { getSiteSettings, updateSiteSettings } from '../../api';
+import { inputFont } from '../../utils/cssVars';
 
 /**
  * House policy for customer credit accounts.
@@ -131,7 +132,7 @@ export function CreditAccountSettings() {
               value={maxLimit}
               onChange={(e) => setMaxLimit(e.target.value)}
               inputMode="decimal"
-              style={FIELD}
+              style={inputFont(FIELD)}
             />
             <p style={HINT}>
               A manager cannot approve a customer above this. You can, with a reason
@@ -149,7 +150,7 @@ export function CreditAccountSettings() {
               value={terms}
               onChange={(e) => setTerms(e.target.value)}
               inputMode="numeric"
-              style={{ ...FIELD, maxWidth: 160 }}
+              style={inputFont({ ...FIELD, maxWidth: 160 })}
             />
             <p style={HINT}>
               How long a new account gets to pay, unless the approver sets otherwise.

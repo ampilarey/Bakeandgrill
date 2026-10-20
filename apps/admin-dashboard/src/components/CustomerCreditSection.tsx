@@ -13,6 +13,7 @@ import {
 } from '../api';
 import { Badge, Btn, ErrorMsg } from './SharedUI';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
+import { inputFont } from '../utils/cssVars';
 
 type Props = {
   customerId: number;
@@ -238,7 +239,7 @@ export function CustomerCreditSection({ customerId }: Props) {
                 )}
               </label>
               <input
-                style={inputStyle}
+                style={inputFont(inputStyle)}
                 type="number"
                 min="0"
                 max={credit.limit_max_mvr ?? undefined}
@@ -248,19 +249,19 @@ export function CustomerCreditSection({ customerId }: Props) {
                 placeholder="e.g. 5000"
               />
               <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>Payment terms</label>
-              <select style={inputStyle} value={approveTerms} onChange={(e) => setApproveTerms(Number(e.target.value))}>
+              <select style={inputFont(inputStyle)} value={approveTerms} onChange={(e) => setApproveTerms(Number(e.target.value))}>
                 {CREDIT_PAYMENT_TERMS_OPTIONS.map((days) => (
                   <option key={days} value={days}>Net {days} days</option>
                 ))}
               </select>
-              <textarea style={{ ...inputStyle, height: 60, resize: 'vertical' }} value={approveNotes} onChange={(e) => setApproveNotes(e.target.value)} placeholder="Credit notes (optional)" />
+              <textarea style={inputFont({ ...inputStyle, height: 60, resize: 'vertical' })} value={approveNotes} onChange={(e) => setApproveNotes(e.target.value)} placeholder="Credit notes (optional)" />
               {credit.limit_max_mvr != null && parseFloat(approveLimit) > credit.limit_max_mvr && (
                 <>
                   <p style={{ margin: 0, fontSize: 11, color: 'var(--color-warning-strong)' }}>
                     Above max — owner audit override. Reason (5+ chars) required.
                   </p>
                   <input
-                    style={inputStyle}
+                    style={inputFont(inputStyle)}
                     value={approveReason}
                     onChange={(e) => setApproveReason(e.target.value)}
                     placeholder="Reason for exceeding maximum"
@@ -349,7 +350,7 @@ export function CustomerCreditSection({ customerId }: Props) {
                 )}
               </label>
               <input
-                style={inputStyle}
+                style={inputFont(inputStyle)}
                 type="number"
                 min="0"
                 max={credit.limit_max_mvr ?? undefined}
@@ -365,7 +366,7 @@ export function CustomerCreditSection({ customerId }: Props) {
                 Reason for change <span style={{ color: 'var(--color-warning-strong)' }}>(required, 5+ chars)</span>
               </label>
               <input
-                style={inputStyle}
+                style={inputFont(inputStyle)}
                 value={limitReason}
                 onChange={(e) => setLimitReason(e.target.value)}
                 placeholder="Why is this limit changing?"
@@ -401,7 +402,7 @@ export function CustomerCreditSection({ customerId }: Props) {
           {canManage && credit.enabled && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>Payment terms</label>
-              <select style={inputStyle} value={editTerms} onChange={(e) => setEditTerms(Number(e.target.value))}>
+              <select style={inputFont(inputStyle)} value={editTerms} onChange={(e) => setEditTerms(Number(e.target.value))}>
                 {CREDIT_PAYMENT_TERMS_OPTIONS.map((days) => (
                   <option key={days} value={days}>Net {days} days</option>
                 ))}
@@ -450,14 +451,14 @@ export function CustomerCreditSection({ customerId }: Props) {
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--color-bg)', borderRadius: 10, padding: 12 }}>
                   <p style={{ margin: 0, fontWeight: 700, fontSize: 12 }}>Record credit repayment</p>
-                  <input style={inputStyle} type="number" min="0.01" step="0.01" value={repayAmount} onChange={(e) => setRepayAmount(e.target.value)} placeholder="Amount (MVR)" />
-                  <select style={inputStyle} value={repayMethod} onChange={(e) => setRepayMethod(e.target.value as typeof repayMethod)}>
+                  <input style={inputFont(inputStyle)} type="number" min="0.01" step="0.01" value={repayAmount} onChange={(e) => setRepayAmount(e.target.value)} placeholder="Amount (MVR)" />
+                  <select style={inputFont(inputStyle)} value={repayMethod} onChange={(e) => setRepayMethod(e.target.value as typeof repayMethod)}>
                     <option value="cash">Cash</option>
                     <option value="card">Card</option>
                     <option value="bank_transfer">Transfer</option>
                   </select>
-                  <input style={inputStyle} value={repayReference} onChange={(e) => setRepayReference(e.target.value)} placeholder="Reference (optional)" />
-                  <textarea style={{ ...inputStyle, height: 50, resize: 'vertical' }} value={repayNotes} onChange={(e) => setRepayNotes(e.target.value)} placeholder="Notes (optional)" />
+                  <input style={inputFont(inputStyle)} value={repayReference} onChange={(e) => setRepayReference(e.target.value)} placeholder="Reference (optional)" />
+                  <textarea style={inputFont({ ...inputStyle, height: 50, resize: 'vertical' })} value={repayNotes} onChange={(e) => setRepayNotes(e.target.value)} placeholder="Notes (optional)" />
                   {openInvoices.length > 0 && (
                     <div>
                       <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)' }}>Apply to invoices (optional)</p>
@@ -498,7 +499,7 @@ export function CustomerCreditSection({ customerId }: Props) {
                     Max: MVR {credit.balance_mvr.toFixed(2)}.
                   </p>
                   <input
-                    style={inputStyle}
+                    style={inputFont(inputStyle)}
                     type="number"
                     min="0.01"
                     max={credit.balance_mvr}
@@ -508,7 +509,7 @@ export function CustomerCreditSection({ customerId }: Props) {
                     placeholder="Amount (MVR)"
                   />
                   <input
-                    style={inputStyle}
+                    style={inputFont(inputStyle)}
                     value={writeOffReason}
                     onChange={(e) => setWriteOffReason(e.target.value)}
                     placeholder="Reason (required, 5+ chars)"

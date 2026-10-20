@@ -6,6 +6,7 @@ import { PageHeader, PageShell, InlineIcon } from '../components/SharedUI';
 import { TwoFactorCard } from '../components/TwoFactorCard';
 import { AppUpdatePanel } from '../components/AppUpdatePanel';
 import { Button, Card } from '../components/ui';
+import { inputFont } from '../utils/cssVars';
 
 const LOCK_OPTIONS: Array<{ value: number; label: string }> = [
   { value: 2, label: '2 minutes' },
@@ -113,10 +114,10 @@ export function MyAccountPage() {
             value={idleLockMinutes}
             disabled={loading || saving}
             onChange={(e) => setIdleLockMinutes(Number(e.target.value))}
-            style={{
+            style={inputFont({
               width: '100%', padding: '10px 12px', borderRadius: 8,
               border: '1px solid var(--color-border)', fontSize: 14, background: 'var(--color-surface)',
-            }}
+            })}
           >
             {LOCK_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>

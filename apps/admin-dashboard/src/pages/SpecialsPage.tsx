@@ -13,6 +13,7 @@ import { today } from '../utils/dateHelpers';
 import { Pencil, Share2, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
+import { inputFont } from '../utils/cssVars';
 
 /** A variant row's cell: the table's lines and padding come from index.css
  *  (none on a phone, where each row is a card). */
@@ -707,7 +708,7 @@ export default function SpecialsPage() {
             <SortFilterHead controls={specialCtl} allRows={specials} />
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-muted)' }}>Loading…</td></tr>
+                <tr><td colSpan={9} style={{ '--ta': 'center', padding: 40, color: 'var(--color-text-muted)' }}>Loading…</td></tr>
               ) : specials.length === 0 ? (
                 <tr><td colSpan={9}><EmptyState message={emptyMessage} /></td></tr>
               ) : specialCtl.rows.map(s => (
@@ -943,21 +944,21 @@ export default function SpecialsPage() {
             <div className="form-grid-2 form-grid-keep-2" style={{ display: 'grid', '--cols': '1fr 1fr' }}>
               <label>
                 <span style={fieldLabel}>Start Date *</span>
-                <input type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} style={dateFieldStyle} />
+                <input type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} style={inputFont(dateFieldStyle)} />
               </label>
               <label>
                 <span style={fieldLabel}>End Date *</span>
-                <input type="date" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} style={dateFieldStyle} />
+                <input type="date" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} style={inputFont(dateFieldStyle)} />
               </label>
             </div>
             <div className="form-grid-2 form-grid-keep-2" style={{ display: 'grid', '--cols': '1fr 1fr' }}>
               <label>
                 <span style={fieldLabel}>Start Time</span>
-                <input type="time" value={form.start_time} onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))} style={dateFieldStyle} />
+                <input type="time" value={form.start_time} onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))} style={inputFont(dateFieldStyle)} />
               </label>
               <label>
                 <span style={fieldLabel}>End Time</span>
-                <input type="time" value={form.end_time} onChange={e => setForm(f => ({ ...f, end_time: e.target.value }))} style={dateFieldStyle} />
+                <input type="time" value={form.end_time} onChange={e => setForm(f => ({ ...f, end_time: e.target.value }))} style={inputFont(dateFieldStyle)} />
               </label>
             </div>
             <div>
@@ -1000,7 +1001,7 @@ export default function SpecialsPage() {
                 value={form.description}
                 onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                 rows={2}
-                style={{ width: '100%', padding: '10px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 14, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
+                style={inputFont({ width: '100%', padding: '10px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 14, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' })}
               />
             </label>
           </div>

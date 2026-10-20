@@ -16,6 +16,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { RecordCard, RecordCardList } from '../components/RecordCard';
 import { RefreshCw, Scale, Trophy, Check } from 'lucide-react';
+import { inputFont } from '../utils/cssVars';
 
 function Stars({ rating, max = 5 }: { rating: number | null; max?: number }) {
   if (rating === null) return <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>Not rated</span>;
@@ -596,7 +597,7 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
               value={rateForm.notes}
               onChange={(e) => setRateForm((f) => ({ ...f, notes: e.target.value }))}
               rows={2}
-              style={{ display: 'block', width: '100%', marginTop: 6, padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, resize: 'vertical', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+              style={inputFont({ display: 'block', width: '100%', marginTop: 6, padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, resize: 'vertical', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' })}
             />
           </label>
           <ModalActions>
@@ -612,13 +613,13 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
           {supplierFormError && <ErrorMsg message={supplierFormError} />}
           <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Name *</label>
           <input value={supplierForm.name} onChange={(e) => setSupplierForm((f) => ({ ...f, name: e.target.value }))}
-            style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', marginBottom: 12, boxSizing: 'border-box' }} />
+            style={inputFont({ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', marginBottom: 12, boxSizing: 'border-box' })} />
           <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Contact name</label>
           <input value={supplierForm.contact_name} onChange={(e) => setSupplierForm((f) => ({ ...f, contact_name: e.target.value }))}
-            style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', marginBottom: 12, boxSizing: 'border-box' }} />
+            style={inputFont({ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', marginBottom: 12, boxSizing: 'border-box' })} />
           <label htmlFor="supplier-phone" style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Phone</label>
           <input id="supplier-phone" value={supplierForm.phone} onChange={(e) => setSupplierForm((f) => ({ ...f, phone: e.target.value }))}
-            style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', marginBottom: 8, boxSizing: 'border-box' }} />
+            style={inputFont({ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', marginBottom: 8, boxSizing: 'border-box' })} />
 
           {/* Owner, 2026-09-08: "add option to add more than one contact
               number." A shop is a mobile, a landline and whoever is on the
@@ -634,7 +635,7 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
                   ...f,
                   extra_phones: f.extra_phones.map((n, j) => (j === i ? e.target.value : n)),
                 }))}
-                style={{ flex: 1, minWidth: 0, padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                style={inputFont({ flex: 1, minWidth: 0, padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' })} />
               <Btn
                 small
                 variant="ghost"
@@ -657,7 +658,7 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
           </div>
           <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Email</label>
           <input type="email" value={supplierForm.email} onChange={(e) => setSupplierForm((f) => ({ ...f, email: e.target.value }))}
-            style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', marginBottom: 16, boxSizing: 'border-box' }} />
+            style={inputFont({ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', marginBottom: 16, boxSizing: 'border-box' })} />
 
           {/* Owner, 2026-09-08: "add supplier acc number option". The number
               on its own does not pay anybody — two banks issue them, and the
@@ -673,14 +674,14 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
             value={supplierForm.bank_name}
             placeholder="BML, MIB…"
             onChange={(e) => setSupplierForm((f) => ({ ...f, bank_name: e.target.value }))}
-            style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', marginBottom: 12, boxSizing: 'border-box' }} />
+            style={inputFont({ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', marginBottom: 12, boxSizing: 'border-box' })} />
           <label htmlFor="supplier-bank-account-name" style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Account name</label>
           <input
             id="supplier-bank-account-name"
             value={supplierForm.bank_account_name}
             placeholder="Whose name the account is in"
             onChange={(e) => setSupplierForm((f) => ({ ...f, bank_account_name: e.target.value }))}
-            style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', marginBottom: 12, boxSizing: 'border-box' }} />
+            style={inputFont({ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', marginBottom: 12, boxSizing: 'border-box' })} />
           <label htmlFor="supplier-bank-account-number" style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Account number</label>
           <input
             id="supplier-bank-account-number"
@@ -689,7 +690,7 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
             autoComplete="off"
             placeholder="7730000123456"
             onChange={(e) => setSupplierForm((f) => ({ ...f, bank_account_number: e.target.value }))}
-            style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', marginBottom: 16, boxSizing: 'border-box', fontVariantNumeric: 'tabular-nums' }} />
+            style={inputFont({ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', marginBottom: 16, boxSizing: 'border-box', fontVariantNumeric: 'tabular-nums' })} />
           <ModalActions>
             <Btn variant="ghost" onClick={() => setSupplierModal(null)}>Cancel</Btn>
             <Btn onClick={() => void handleSaveSupplier()} disabled={supplierSaving}>{supplierSaving ? 'Saving…' : 'Save'}</Btn>

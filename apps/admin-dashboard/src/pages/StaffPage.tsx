@@ -14,6 +14,7 @@ import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import { useToast } from '../components/ui';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
+import { inputFont } from '../utils/cssVars';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -33,7 +34,7 @@ function RoleSelect({ value, onChange, roles }: {
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      style={{ width: '100%', border: '1px solid var(--color-border)', borderRadius: 9, padding: '9px 12px', fontSize: 14, minHeight: 44 }}
+      style={inputFont({ width: '100%', border: '1px solid var(--color-border)', borderRadius: 9, padding: '9px 12px', fontSize: 14, minHeight: 44 })}
     >
       <option value="">— Select role —</option>
       {roles.map((r) => <option key={r.id} value={String(r.id)}>{r.name}</option>)}
@@ -660,15 +661,15 @@ export function StaffPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search name, email, phone…"
-              style={{ ...filterStyle, flex: '1 1 220px', maxWidth: 320 }}
+              style={inputFont({ ...filterStyle, flex: '1 1 220px', maxWidth: 320 })}
             />
-            <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} style={filterStyle}>
+            <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} style={inputFont(filterStyle)}>
               <option value="all">All roles</option>
               {roles.map((r) => (
                 <option key={r.id} value={r.slug}>{roleDisplayLabel(r.slug, r.name)}</option>
               ))}
             </select>
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)} style={filterStyle}>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)} style={inputFont(filterStyle)}>
               <option value="all">All status</option>
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>

@@ -579,8 +579,11 @@ input[type="checkbox"], input[type="radio"], input[type="range"], progress, mete
    chosen", wider than a phone; give it the admin's secondary button. */
 input[type="file"] {
   max-width: 100%;
-  font-size: 13px;
+  font-size: 16px;
   color: var(--color-text-secondary);
+}
+@media (min-width: 768px) {
+  input[type="file"] { font-size: 13px; }
 }
 input[type="file"]::file-selector-button {
   margin-right: 10px;
@@ -606,8 +609,11 @@ button, a[role="button"], [data-touch-target] { min-height: 32px; }
 button[aria-label="Close"], button.icon-button { min-height: 36px; }
 /* Toggle switches are fixed-size pills: stretching them breaks the thumb */
 button[role="switch"] { min-height: 0; }
-/* Inputs/selects/textareas: 16px font prevents iOS zoom-on-focus; 44px touch height */
-input, select, textarea { min-height: 44px; }
+/* Inputs/selects/textareas: 16px font prevents iOS zoom-on-focus; 44px touch height.
+   From 768px an input takes the size its page gave it (inputFont() hands it over as
+   --fs) or, with none, its class or Tailwind's. A rule that sizes an input's text
+   sets it from 768px only, so this 16px stands on a phone. */
+input, select, textarea { min-height: 44px; font-size: 16px; }
 /* …but not tick boxes and radios: a 44px-tall box pushed them off the line of
      their own label. A little larger than the browser's 13px instead (zero
      specificity, so any page's own size wins). */
@@ -625,6 +631,12 @@ textarea { min-height: 88px; }
    * This covers pages that render <table> directly inside <Card> or other divs.
    */
 :not(.table-scroll) > table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
+/* A row that spans every column is a message ("No reviews yet.", a total,
+     a group heading). Centred across a table wider than the phone it sat
+     off-screen ("No re…", phone sweep 2026-10-08), so on a phone it starts at
+     the left, where the phone is looking; from 768px it lines up as the page
+     says (--ta). */
+table td[colspan] { text-align: left; }
 /* …and a message block inside one (EmptyState centres its own text across
      the whole table) is held to the visible width at the left edge. */
 table td[colspan] > div:only-child { position: sticky; left: 0; max-width: calc(100vw - 48px); box-sizing: border-box; }
@@ -678,12 +690,13 @@ table td[colspan] > div:only-child { position: sticky; left: 0; max-width: calc(
   button, a[role="button"], [data-touch-target] { min-height: revert-layer; }
   button[aria-label="Close"], button.icon-button { min-height: revert-layer; }
   button[role="switch"] { min-height: revert-layer; }
-  input, select, textarea { min-height: revert-layer; }
+  input, select, textarea { min-height: revert-layer; font-size: var(--fs, revert-layer); }
   input[type="checkbox"], input[type="radio"] { min-height: revert-layer; }
   :where(input[type="checkbox"], input[type="radio"]) { width: revert-layer; height: revert-layer; }
   textarea { min-height: revert-layer; }
   .table-scroll > table, :not(.table-scroll) > table { width: revert-layer; min-width: revert-layer; }
   :not(.table-scroll) > table { display: revert-layer; overflow-x: revert-layer; -webkit-overflow-scrolling: revert-layer; max-width: revert-layer; }
+  table td[colspan] { text-align: var(--ta, revert-layer); }
   table td[colspan] > div:only-child { position: revert-layer; left: revert-layer; max-width: revert-layer; box-sizing: revert-layer; }
   .tab-scroll-row { gap: revert-layer; }
   .mobile-filters { margin-bottom: revert-layer; border: revert-layer; border-radius: revert-layer; background: revert-layer; overflow: revert-layer; }
@@ -715,18 +728,6 @@ table td[colspan] > div:only-child { position: sticky; left: 0; max-width: calc(
   .report-filters > .report-quick-ranges { flex-basis: revert-layer; }
   .date-input { flex: revert-layer; min-width: revert-layer; }
   .date-input input { width: revert-layer; }
-}
-/* Page batch: these beat styles set in the page code. */
-@media (max-width: 767px) {
-  /* Inputs/selects/textareas: 16px font prevents iOS zoom-on-focus; 44px touch height */
-  input, select, textarea { font-size: 16px !important; }
-  /* A row that spans every column is a message ("No reviews yet.", a total,
-     a group heading). Centred across a table wider than the phone it sat
-     off-screen ("No re…", phone sweep 2026-10-08), so it starts at the left,
-     where the phone is looking. */
-  table td[colspan] { text-align: left !important; }
-  /* Sticky page headers can swallow the viewport — cap their height */
-  .page-header { padding: 8px 0 !important; }
 }
 
 @media (min-width: 768px) {
@@ -1077,13 +1078,6 @@ table td[colspan] > div:only-child { position: sticky; left: 0; max-width: calc(
   .ordering-page .oc-feature-head > button[role="switch"] { margin-top: revert-layer; }
   .ordering-page .oc-card > p, .ordering-page .oc-section-title { overflow-wrap: revert-layer; }
 }
-/* Page batch: these beat styles set in the page code. */
-@media (max-width: 767px) {
-  /* Subtitle is decorative — reclaim the vertical space on phones */
-  .ordering-page .page-header-subtitle { display: none !important; }
-  .ordering-page .page-header { margin-bottom: 10px !important; }
-  .ordering-page .page-header-title { font-size: 1.25rem !important; line-height: 1.25 !important; }
-}
 
 /* Desktop default for zone rows */
 .oc-zone-row {
@@ -1320,10 +1314,13 @@ table td[colspan] > div:only-child { position: sticky; left: 0; max-width: calc(
   flex: 1;
   border: none;
   outline: none;
-  font-size: 15px;
+  font-size: 16px;
   color: var(--color-text);
   font-family: inherit;
   background: transparent;
+}
+@media (min-width: 768px) {
+  .command-palette-input { font-size: 15px; }
 }
 
 .command-palette-loading {
@@ -2121,90 +2118,121 @@ table td[colspan] > div:only-child { position: sticky; left: 0; max-width: calc(
 @media (min-width: 768px) {
   .admin-card { padding: var(--card-pad, 1.25rem); }
 }
-@media (max-width: 767px) {
-  /* Confirmed defect: flex-shrink:0 overflowed search / EN·DV / publish status */
-  .page-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  /*
-   * On a phone the top bar already says "Team · My Account", so the
-   * breadcrumb under it said the same thing a third time, with the title.
-   * Owner, 2026-09-17: three lines of chrome before the first card. The
-   * breadcrumb goes; the title and its one-line subtitle stay, smaller.
-   */
-  .page-header-breadcrumb { display: none; }
-  .page-header-title { font-size: 1.2rem; line-height: 1.25; }
-  .page-header-subtitle { font-size: 0.8125rem; margin-top: 0.15rem; }
-  .page-header { margin-bottom: 1rem; }
-  /* A form's single primary action reaches across the phone, as a thumb does. */
-  .mobile-full-btn { width: 100%; justify-content: center; }
-  /*
-   * The filter boxes under a table's headings squeezed to sixty pixels on a
-   * phone — "contains…" cut to "conta" — because the columns shared the
-   * viewport. A box needs room for a word; the table scrolls sideways anyway.
-   */
-  [data-testid$="-filter-row"] input,
-  [data-testid$="-filter-row"] select { min-width: 120px !important; } /* the box carries minWidth: 0 inline */
-  /* Cards: 16px a side on a phone rather than 20. Both card components. */
+/* Page header, phone first. On a phone the header stacks and its buttons wrap; from
+   768px the computer layout, written out from the base rules above (revert-layer would
+   skip them). The action rows' descendants are the pages' own: their own inline styles
+   win at every width, and a component with its own display or flex rule gets it back
+   explicitly below. */
+/* Confirmed defect: flex-shrink:0 overflowed search / EN·DV / publish status */
+.page-header { flex-direction: column; align-items: stretch; margin-bottom: 1rem; padding: 8px 0; }
+/*
+ * On a phone the top bar already says "Team · My Account", so the
+ * breadcrumb under it said the same thing a third time, with the title.
+ * Owner, 2026-09-17: three lines of chrome before the first card. The
+ * breadcrumb goes; the title and its one-line subtitle stay, smaller.
+ */
+.page-header-breadcrumb { display: none; }
+.page-header-title { font-size: 1.2rem; line-height: 1.25; }
+.page-header-subtitle { font-size: 0.8125rem; margin-top: 0.15rem; }
+/* A form's single primary action reaches across the phone, as a thumb does. */
+.mobile-full-btn { width: 100%; justify-content: center; }
+/* Cards: 16px a side on a phone rather than 20 (ui/Card; SharedUI Card above). */
+.admin-ui-card > .p-5,
+.admin-ui-card > .p-6 { padding: 1rem; }
+/*
+ * The filter boxes under a table's headings squeezed to sixty pixels on a
+ * phone ("contains…" cut to "conta") because the columns shared the
+ * viewport. A box needs room for a word; the table scrolls sideways anyway.
+ */
+/* A filter box may shrink to nothing (TableControls' FilterBox); under a table's
+   headings on a phone it keeps 120px. */
+.sf-filter-box { min-width: 0; }
+[data-testid$="-filter-row"] input,
+[data-testid$="-filter-row"] select { min-width: 120px; }
+/*
+ * Hub chrome on a phone: breadcrumb, title, subtitle and a tab strip all
+ * stacked before any content. The subtitle is the line that can go.
+ */
+.hub-page .page-header { margin-bottom: 0.75rem; }
+.hub-page .page-header-subtitle { display: none; }
+.page-header-actions { width: 100%; }
+/*
+ * Phone sweep, 2026-09-14: pages hand the header three or four buttons in
+ * one `display:flex` div, and at 390px they were squeezed into 80px
+ * columns with the labels broken across lines ("+ Create / Manual PO").
+ * Let the row wrap and let each button take a fair share of its line:
+ * two across, or one full-width when the label is long.
+ */
+.page-header-actions,
+.page-header-actions > div,
+.admin-btn-row { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; margin-left: 0; }
+.page-header-actions > *,
+.page-header-actions > div > *,
+.admin-btn-row > * { flex: 1 1 auto; min-width: 0; }
+/* Buttons keep the size of their label rather than stretching across the
+   line (owner, 2026-10-10: "change all the big buttons to small buttons"). */
+.page-header-actions > button,
+.page-header-actions > a,
+.page-header-actions > div > button,
+.page-header-actions > div > a,
+.admin-btn-row > button,
+.admin-btn-row > a { flex: 0 1 auto; }
+.page-header-actions button,
+.admin-btn-row button { justify-content: center; white-space: nowrap; }
+/* A segmented control (Cards | Floor Plan) is one unit: keep it a row. */
+.page-header-actions > div > div { display: flex; }
+.page-header-actions > div > div > button { flex: 1 1 auto; }
+@media (min-width: 768px) {
+  .page-header { flex-direction: row; align-items: flex-start; margin-bottom: 1.5rem; padding: revert-layer; }
+  .page-header--embedded { margin-bottom: 0.75rem; }
+  .page-header-breadcrumb { display: flex; }
+  .page-header-title { font-size: 1.35rem; line-height: revert-layer; }
+  .page-header-subtitle { font-size: 0.875rem; margin-top: 0.25rem; }
+  .mobile-full-btn { width: revert-layer; justify-content: revert-layer; }
   .admin-ui-card > .p-5,
-  .admin-ui-card > .p-6 { padding: 1rem; }
-  /*
-   * Hub chrome on a phone: breadcrumb, title, subtitle and a tab strip all
-   * stacked before any content. The subtitle is the line that can go.
-   */
-  .hub-page .page-header { margin-bottom: 0.75rem; }
-  .page-header-actions {
-    flex-shrink: 1;
-    min-width: 0;
-    width: 100%;
-    max-width: 100%;
-  }
-  .hub-page .page-header-subtitle {
-    display: none;
-  }
-  /*
-   * Phone sweep, 2026-09-14: pages hand the header three or four buttons in
-   * one `display:flex` div, and at 390px they were squeezed into 80px
-   * columns with the labels broken across lines ("+ Create / Manual PO").
-   * Let the row wrap and let each button take a fair share of its line —
-   * two across, or one full-width when the label is long.
-   */
+  .admin-ui-card > .p-6 { padding: revert-layer; }
+  [data-testid$="-filter-row"] input,
+  [data-testid$="-filter-row"] select { min-width: 0; }
+  .hub-page .page-header { margin-bottom: 1.5rem; }
+  .hub-page .page-header--embedded { margin-bottom: 0.75rem; }
+  .hub-page .page-header-subtitle { display: revert-layer; }
+  .page-header-actions { width: revert-layer; }
   .page-header-actions,
   .page-header-actions > div,
-  .admin-btn-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    width: 100%;
-    margin-left: 0 !important;
-  }
+  .admin-btn-row { display: revert-layer; flex-wrap: revert-layer; gap: revert-layer; width: revert-layer; margin-left: var(--ml, revert-layer); }
   .page-header-actions > *,
   .page-header-actions > div > *,
-  .admin-btn-row > * {
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-  /* Buttons keep the size of their label rather than stretching across the
-     line (owner, 2026-10-10: "change all the big buttons to small buttons"). */
+  .admin-btn-row > * { flex: revert-layer; min-width: revert-layer; }
   .page-header-actions > button,
   .page-header-actions > a,
   .page-header-actions > div > button,
   .page-header-actions > div > a,
   .admin-btn-row > button,
-  .admin-btn-row > a {
-    flex: 0 1 auto;
-  }
+  .admin-btn-row > a { flex: revert-layer; }
   .page-header-actions button,
-  .admin-btn-row button {
-    justify-content: center;
-    white-space: nowrap;
-  }
-  /* A segmented control (Cards | Floor Plan) is one unit: keep it a row. */
-  .page-header-actions > div > div {
-    display: flex;
-  }
-  .page-header-actions > div > div > button { flex: 1 1 auto; }
+  .admin-btn-row button { justify-content: revert-layer; white-space: revert-layer; }
+  .page-header-actions > div > div { display: revert-layer; }
+  .page-header-actions > div > div > button { flex: revert-layer; }
+  /* revert-layer skips these components' own rules, so they are written back. */
+  .page-header-actions > .hub-header-actions { display: flex; gap: 8px; flex-wrap: wrap; min-width: 0; }
+  .page-header-actions .hub-draft-status { min-width: 140px; }
+  .page-header-actions .hub-search-wrap { min-width: 180px; }
+  .page-header-actions .hub-locale-seg { display: inline-flex; gap: 0; }
+  .page-header-actions .hub-device-filter { display: inline-flex; gap: 2px; }
+  .page-header-actions .hub-preview-toggle { display: inline-flex; gap: 6px; }
+  .page-header-actions .hub-search-toggle,
+  .page-header-actions .hub-more-trigger { display: inline-flex; justify-content: center; gap: 6px; }
+}
+/* Ordering Control's header on a phone: the subtitle is decorative, so it goes,
+   and the title and gap shrink. After the header rules above, so it wins their ties. */
+.ordering-page .page-header-subtitle { display: none; }
+.ordering-page .page-header { margin-bottom: 10px; }
+.ordering-page .page-header-title { font-size: 1.25rem; line-height: 1.25; }
+@media (min-width: 768px) {
+  .ordering-page .page-header-subtitle { display: revert-layer; }
+  .ordering-page .page-header { margin-bottom: 1.5rem; }
+  .ordering-page .page-header--embedded { margin-bottom: 0.75rem; }
+  .ordering-page .page-header-title { font-size: 1.35rem; line-height: revert-layer; }
 }
 
 .scroll-x,
@@ -3885,11 +3913,14 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   border: none;
   background: none;
   font-family: inherit;
-  font-size: 13px;
+  font-size: 16px;
   padding: 0 8px;
   outline: none;
   min-width: 0;
   height: 100%;
+}
+@media (min-width: 768px) {
+  .hub-search-input { font-size: 13px; }
 }
 .hub-search-clear {
   display: inline-flex;
@@ -3999,7 +4030,10 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   border: 1px solid var(--color-border);
   padding: 0 10px;
   font-family: inherit;
-  font-size: 13px;
+  font-size: 16px;
+}
+@media (min-width: 768px) {
+  .hub-more-schedule-input { font-size: 13px; }
 }
 .hub-more-schedule-btn {
   height: 36px;
@@ -5370,7 +5404,10 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   background: transparent;
   color: var(--color-text);
   font: inherit;
-  font-size: 14px;
+  font-size: 16px;
+}
+@media (min-width: 768px) {
+  .perm-search input { font-size: 14px; }
 }
 .perm-search input::-webkit-search-cancel-button { display: none; }
 .perm-search-clear {
@@ -5591,7 +5628,10 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   background: var(--color-surface);
   color: var(--color-text);
   font: inherit;
-  font-size: 14px;
+  font-size: 16px;
+}
+@media (min-width: 768px) {
+  .perm-person-select { font-size: 14px; }
 }
 .perm-person-line {
   margin: 0;
@@ -5945,9 +5985,7 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   gap: 10px;
   margin-bottom: 14px;
 }
-.menu-items-search,
-.menu-items-category,
-.menu-items-sort {
+.menu-items-search, .menu-items-category, .menu-items-sort {
   min-height: 44px;
   padding: 0 12px;
   border: 1.5px solid var(--color-border);
@@ -5955,7 +5993,10 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   background: var(--color-surface);
   color: var(--color-text);
   font: inherit;
-  font-size: 14px;
+  font-size: 16px;
+}
+@media (min-width: 768px) {
+  .menu-items-search, .menu-items-category, .menu-items-sort { font-size: 14px; }
 }
 .menu-items-search { flex: 1 1 100%; min-width: 0; }
 .menu-items-category { flex: 1 1 0; min-width: 0; cursor: pointer; }
@@ -6168,7 +6209,10 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   background: var(--color-surface);
   color: var(--color-text);
   font: inherit;
-  font-size: 13px;
+  font-size: 16px;
+}
+@media (min-width: 768px) {
+  .menu-items-per-page select { font-size: 13px; }
 }
 
 /* Quick edit: the spreadsheet. Header and name column pinned, save bar
@@ -6708,8 +6752,11 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   outline: none;
   background: transparent;
   font: inherit;
-  font-size: 14px;
+  font-size: 16px;
   color: var(--color-text);
+}
+@media (min-width: 768px) {
+  .sms-cc-search input { font-size: 14px; }
 }
 /* Wraps rather than scrolling sideways (owner, 2026-10-09). */
 .sms-cc-chips {
@@ -6750,7 +6797,10 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   background: var(--color-surface);
   color: var(--color-text-secondary);
   font: inherit;
-  font-size: 13px;
+  font-size: 16px;
+}
+@media (min-width: 768px) {
+  .sms-cc-status { font-size: 13px; }
 }
 .sms-cc-row {
   background: var(--color-surface);
@@ -6914,7 +6964,10 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
 .tg-setting:last-child { border-bottom: none; padding-bottom: 0; }
 .tg-setting__title { font-weight: 700; font-size: 0.875rem; color: var(--color-text); }
 .tg-inline-field { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 0.8125rem; color: var(--color-text-secondary); }
-.tg-inline-field input { width: 90px; padding: 4px 8px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); color: var(--color-text); font: inherit; }
+.tg-inline-field input { width: 90px; padding: 4px 8px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); color: var(--color-text); font: inherit; font-size: 16px; }
+@media (min-width: 768px) {
+  .tg-inline-field input { font-size: inherit; }
+}
 .tg-people { list-style: none; margin: 0; padding: 0; }
 .tg-person { display: flex; flex-direction: column; justify-content: space-between; align-items: stretch; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--color-border-light); }
 .tg-person:last-child { border-bottom: none; }
@@ -6987,7 +7040,10 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   background: var(--color-surface);
   width: 100%;
 }
-.nc-search input { border: none; outline: none; background: transparent; font: inherit; font-size: 13px; color: var(--color-text); width: 100%; }
+.nc-search input { border: none; outline: none; background: transparent; font: inherit; font-size: 16px; color: var(--color-text); width: 100%; }
+@media (min-width: 768px) {
+  .nc-search input { font-size: 13px; }
+}
 .nc-people { list-style: none; margin: 0; padding: 0; }
 .nc-person {
   display: flex;
@@ -7012,7 +7068,10 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
 .nc-select {
   min-height: 36px; padding: 6px 10px; border-radius: 8px;
   border: 1px solid var(--color-border); background: var(--color-surface);
-  color: var(--color-text); font: inherit; font-size: 13px; width: 100%;
+  color: var(--color-text); font: inherit; font-size: 16px; width: 100%;
+}
+@media (min-width: 768px) {
+  .nc-select { font-size: 13px; }
 }
 @media (min-width: 768px) {
   .nc-role { flex-direction: row; align-items: center; }

@@ -13,6 +13,7 @@ import {
 import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import { Toggle } from '../components/ui';
 import { downloadCSV } from '../utils/csvExport';
+import { inputFont } from '../utils/cssVars';
 
 const TIER_COLOR: Record<string, string> = {
   bronze: 'orange', silver: 'gray', gold: 'yellow', platinum: 'blue',
@@ -274,7 +275,7 @@ function ProgramSettingsPanel() {
             type="datetime-local"
             value={toDatetimeLocal(settings.program_starts_at)}
             onChange={(e) => patch('program_starts_at', e.target.value ? new Date(e.target.value).toISOString() : null)}
-            style={{ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit' }}
+            style={inputFont({ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit' })}
           />
         </div>
         <div>
@@ -283,7 +284,7 @@ function ProgramSettingsPanel() {
             type="datetime-local"
             value={toDatetimeLocal(settings.program_ends_at)}
             onChange={(e) => patch('program_ends_at', e.target.value ? new Date(e.target.value).toISOString() : null)}
-            style={{ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit' }}
+            style={inputFont({ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit' })}
           />
         </div>
       </div>
@@ -302,7 +303,7 @@ function ProgramSettingsPanel() {
           onChange={(e) => patch('customer_message', e.target.value)}
           placeholder="Optional note shown to customers about the loyalty program"
           rows={3}
-          style={{ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', resize: 'vertical' }}
+          style={inputFont({ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', resize: 'vertical' })}
         />
       </div>
 

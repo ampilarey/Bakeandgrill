@@ -18,6 +18,7 @@ import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { enteredOn } from '../utils/dateHelpers';
 import { CreditRepaymentsView } from '../components/credit/CreditRepaymentsView';
+import { inputFont } from '../utils/cssVars';
 
 /*
  * Customers → Credit accounts (owner, 2026-10-05: "Is there any place to
@@ -257,7 +258,7 @@ export function CreditAccountsPage() {
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search name or phone"
           aria-label="Search credit accounts"
-          style={{ flex: '1 1 200px', maxWidth: 320, padding: '8px 12px', borderRadius: 10, border: '1px solid var(--color-border)', fontSize: 14, background: 'var(--color-surface)', color: 'var(--color-text)' }}
+          style={inputFont({ flex: '1 1 200px', maxWidth: 320, padding: '8px 12px', borderRadius: 10, border: '1px solid var(--color-border)', fontSize: 14, background: 'var(--color-surface)', color: 'var(--color-text)' })}
         />
       </div>
 
@@ -371,7 +372,7 @@ export function CreditAccountsPage() {
             maxLength={500}
             rows={4}
             placeholder="Leave empty to send the standard reminder. You can use {{name}}, {{balance}}, {{invoice_number}}, {{amount}}, {{due_date}} and {{link}}."
-            style={{ width: '100%', boxSizing: 'border-box', marginTop: 4, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 14, resize: 'vertical', background: 'var(--color-surface)', color: 'var(--color-text)' }}
+            style={inputFont({ width: '100%', boxSizing: 'border-box', marginTop: 4, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 14, resize: 'vertical', background: 'var(--color-surface)', color: 'var(--color-text)' })}
           />
           <ModalActions>
             <Btn variant="secondary" onClick={() => setRemind(null)}>Cancel</Btn>

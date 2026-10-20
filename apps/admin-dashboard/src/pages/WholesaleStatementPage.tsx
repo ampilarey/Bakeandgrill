@@ -16,6 +16,7 @@ import {
   type TradeStatementInvoice,
 } from '../api';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
+import { inputFont } from '../utils/cssVars';
 
 function mvr(laar: number | null | undefined): string {
   if (laar == null) return '—';
@@ -429,7 +430,7 @@ export default function WholesaleStatementPage() {
                 value={creditReason}
                 onChange={(e) => setCreditReason(e.target.value)}
                 rows={2}
-                style={textareaStyle}
+                style={inputFont(textareaStyle)}
                 placeholder="Why this invoice is being credited"
               />
             </div>
@@ -481,7 +482,7 @@ export default function WholesaleStatementPage() {
               <select
                 value={payMethod}
                 onChange={(e) => setPayMethod(e.target.value as typeof payMethod)}
-                style={selectStyle}
+                style={inputFont(selectStyle)}
               >
                 <option value="cash">Cash</option>
                 <option value="card">Card</option>
@@ -498,7 +499,7 @@ export default function WholesaleStatementPage() {
                 value={payNotes}
                 onChange={(e) => setPayNotes(e.target.value)}
                 rows={2}
-                style={textareaStyle}
+                style={inputFont(textareaStyle)}
               />
             </div>
           </div>

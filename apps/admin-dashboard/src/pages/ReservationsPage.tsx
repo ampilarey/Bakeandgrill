@@ -9,6 +9,7 @@ import {
 } from '../components/SharedUI';
 import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { inputFont } from '../utils/cssVars';
 
 const STATUS_COLOR: Record<string, string> = {
   pending:   'yellow',
@@ -191,7 +192,7 @@ function ReservationsList() {
           <select
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-            style={{ height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)', outline: 'none', cursor: 'pointer' }}
+            style={inputFont({ height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)', outline: 'none', cursor: 'pointer' })}
           >
             <option value="">All Statuses</option>
             {['pending', 'confirmed', 'seated', 'completed', 'cancelled', 'no_show'].map((s) => (
@@ -280,27 +281,27 @@ function ReservationsList() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <label style={{ gridColumn: '1 / -1' }}>
               <span style={labelStyle}>Guest name</span>
-              <input aria-label="Guest name" value={newForm.customer_name} onChange={(e) => setNewForm((f) => ({ ...f, customer_name: e.target.value }))} style={inputStyle} />
+              <input aria-label="Guest name" value={newForm.customer_name} onChange={(e) => setNewForm((f) => ({ ...f, customer_name: e.target.value }))} style={inputFont(inputStyle)} />
             </label>
             <label>
               <span style={labelStyle}>Phone</span>
-              <input aria-label="Guest phone" inputMode="tel" placeholder="7XXXXXX" value={newForm.customer_phone} onChange={(e) => setNewForm((f) => ({ ...f, customer_phone: e.target.value }))} style={inputStyle} />
+              <input aria-label="Guest phone" inputMode="tel" placeholder="7XXXXXX" value={newForm.customer_phone} onChange={(e) => setNewForm((f) => ({ ...f, customer_phone: e.target.value }))} style={inputFont(inputStyle)} />
             </label>
             <label>
               <span style={labelStyle}>Party size</span>
-              <input aria-label="Party size" type="number" min={1} max={200} value={newForm.party_size} onChange={(e) => setNewForm((f) => ({ ...f, party_size: e.target.value }))} style={inputStyle} />
+              <input aria-label="Party size" type="number" min={1} max={200} value={newForm.party_size} onChange={(e) => setNewForm((f) => ({ ...f, party_size: e.target.value }))} style={inputFont(inputStyle)} />
             </label>
             <label>
               <span style={labelStyle}>Date</span>
-              <input aria-label="Booking date" type="date" value={newForm.date} onChange={(e) => setNewForm((f) => ({ ...f, date: e.target.value }))} style={inputStyle} />
+              <input aria-label="Booking date" type="date" value={newForm.date} onChange={(e) => setNewForm((f) => ({ ...f, date: e.target.value }))} style={inputFont(inputStyle)} />
             </label>
             <label>
               <span style={labelStyle}>Time</span>
-              <input aria-label="Booking time" type="time" value={newForm.time_slot} onChange={(e) => setNewForm((f) => ({ ...f, time_slot: e.target.value }))} style={inputStyle} />
+              <input aria-label="Booking time" type="time" value={newForm.time_slot} onChange={(e) => setNewForm((f) => ({ ...f, time_slot: e.target.value }))} style={inputFont(inputStyle)} />
             </label>
             <label style={{ gridColumn: '1 / -1' }}>
               <span style={labelStyle}>Notes</span>
-              <input aria-label="Booking notes" value={newForm.notes} onChange={(e) => setNewForm((f) => ({ ...f, notes: e.target.value }))} style={inputStyle} placeholder="Birthday, high chair, window seat…" />
+              <input aria-label="Booking notes" value={newForm.notes} onChange={(e) => setNewForm((f) => ({ ...f, notes: e.target.value }))} style={inputFont(inputStyle)} placeholder="Birthday, high chair, window seat…" />
             </label>
           </div>
           <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '10px 0 0' }}>
@@ -417,7 +418,7 @@ function ReservationSettingsTab() {
             <label style={labelStyle}>Max Party Size</label>
             <input
               type="number" min={1} max={50}
-              style={inputStyle}
+              style={inputFont(inputStyle)}
               value={form.max_party_size}
               onChange={(e) => set('max_party_size', Number(e.target.value))}
             />
@@ -427,7 +428,7 @@ function ReservationSettingsTab() {
             <input
               type="number" min={0} max={168}
               aria-label="Online cancel cut-off hours"
-              style={inputStyle}
+              style={inputFont(inputStyle)}
               value={form.cancel_cutoff_hours ?? 2}
               onChange={(e) => set('cancel_cutoff_hours', Number(e.target.value))}
             />
@@ -436,7 +437,7 @@ function ReservationSettingsTab() {
             <label style={labelStyle}>Advance Booking (days ahead)</label>
             <input
               type="number" min={1} max={365}
-              style={inputStyle}
+              style={inputFont(inputStyle)}
               value={form.advance_booking_days}
               onChange={(e) => set('advance_booking_days', Number(e.target.value))}
             />
@@ -445,7 +446,7 @@ function ReservationSettingsTab() {
             <label style={labelStyle}>Auto No-Show (minutes after slot)</label>
             <input
               type="number" min={5} max={120}
-              style={inputStyle}
+              style={inputFont(inputStyle)}
               value={form.auto_cancel_minutes}
               onChange={(e) => set('auto_cancel_minutes', Number(e.target.value))}
             />
@@ -460,7 +461,7 @@ function ReservationSettingsTab() {
             <label style={labelStyle}>Opening Time</label>
             <input
               type="time"
-              style={inputStyle}
+              style={inputFont(inputStyle)}
               value={form.opening_time}
               onChange={(e) => set('opening_time', e.target.value)}
             />
@@ -469,7 +470,7 @@ function ReservationSettingsTab() {
             <label style={labelStyle}>Closing Time</label>
             <input
               type="time"
-              style={inputStyle}
+              style={inputFont(inputStyle)}
               value={form.closing_time}
               onChange={(e) => set('closing_time', e.target.value)}
             />
@@ -477,7 +478,7 @@ function ReservationSettingsTab() {
           <div style={fieldStyle}>
             <label style={labelStyle}>Slot Duration (minutes)</label>
             <select
-              style={{ ...inputStyle, cursor: 'pointer' }}
+              style={inputFont({ ...inputStyle, cursor: 'pointer' })}
               value={form.slot_duration_minutes}
               onChange={(e) => set('slot_duration_minutes', Number(e.target.value))}
             >
@@ -490,7 +491,7 @@ function ReservationSettingsTab() {
             <label style={labelStyle}>Buffer Between Slots (minutes)</label>
             <input
               type="number" min={0} max={120}
-              style={inputStyle}
+              style={inputFont(inputStyle)}
               value={form.buffer_minutes_between}
               onChange={(e) => set('buffer_minutes_between', Number(e.target.value))}
             />

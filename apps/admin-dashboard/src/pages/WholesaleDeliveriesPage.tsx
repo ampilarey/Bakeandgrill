@@ -12,6 +12,7 @@ import {
   fetchTradeDelivery,
   type TradeDelivery,
 } from '../api';
+import { inputFont } from '../utils/cssVars';
 
 function mvr(laar: number | null | undefined): string {
   if (laar == null) return '—';
@@ -90,7 +91,7 @@ function DeliveryList() {
         <select
           value={status}
           onChange={(e) => setStatus(e.target.value)}
-          style={selectStyle}
+          style={inputFont(selectStyle)}
         >
           <option value="">All statuses</option>
           <option value="dispatched">Out with shop</option>

@@ -8,7 +8,7 @@ import {
 import { createPortal } from 'react-dom';
 import { X, type LucideIcon } from 'lucide-react';
 import { useInHub } from './hubContext';
-import { px } from '../utils/cssVars';
+import { inputFont, px } from '../utils/cssVars';
 
 // ─── Spinner ──────────────────────────────────────────────────────────────────
 export function Spinner({ size = 24 }: { size?: number }) {
@@ -443,7 +443,7 @@ export function Input({ label, id, style, onChange, ...rest }: InputProps) {
         id={inputId}
         {...rest}
         onChange={onChange ? (e) => onChange(e.target.value) : undefined}
-        style={{
+        style={inputFont({
           minHeight: 44, height: 44, padding: '0 0.75rem',
           border: '1.5px solid var(--color-border)', borderRadius: 10,
           fontSize: '0.9rem', fontFamily: 'inherit',
@@ -451,7 +451,7 @@ export function Input({ label, id, style, onChange, ...rest }: InputProps) {
           outline: 'none',
           ...(grows ? { width: '100%', minWidth: 0 } : {}),
           ...inputStyle,
-        }}
+        })}
       />
     </div>
   );
@@ -473,14 +473,14 @@ export function Select({ options, value, onChange, label, style, ...rest }: Sele
         value={value}
         onChange={(e) => onChange(e.target.value)}
         {...rest}
-        style={{
+        style={inputFont({
           minHeight: 44, height: 44, padding: '0 0.75rem',
           border: '1.5px solid var(--color-border)', borderRadius: 10,
           fontSize: '0.875rem', fontFamily: 'inherit',
           background: 'var(--color-surface)', color: 'var(--color-text)',
           cursor: 'pointer', outline: 'none',
           ...style,
-        }}
+        })}
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>{o.label}</option>
@@ -756,12 +756,12 @@ export function DateInput({ value, onChange, label, max }: {
         value={value}
         max={max}
         onChange={(e) => onChange(e.target.value)}
-        style={{
+        style={inputFont({
           height: 36, padding: '0 10px',
           border: '1.5px solid var(--color-border)', borderRadius: 10,
           fontSize: 13, fontFamily: 'inherit',
           background: 'var(--color-surface)', color: 'var(--color-text)', outline: 'none',
-        }}
+        })}
       />
     </div>
   );

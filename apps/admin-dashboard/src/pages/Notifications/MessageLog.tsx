@@ -6,6 +6,7 @@ import {
   Badge, Btn, DateInput, EmptyState, Pagination, Select, Spinner, StatCard, TableCard, TD, statColor,
 } from '../../components/SharedUI';
 import { CATEGORY_LABELS as GROUP_LABELS } from './shared';
+import { inputFont } from '../../utils/cssVars';
 
 /**
  * Every message the system tried to send (SMS audit, 2026-09-24). The old
@@ -121,7 +122,7 @@ export function MessageLog({ initialFilters }: { initialFilters?: Partial<SmsLog
           value={draft.q ?? ''}
           onChange={(e) => setDraft((d) => ({ ...d, q: e.target.value }))}
           onKeyDown={(e) => { if (e.key === 'Enter') apply(); }}
-          style={{ minHeight: 44, padding: '0 12px', borderRadius: 10, border: '1.5px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontFamily: 'inherit', fontSize: 13, flex: '1 1 220px' }}
+          style={inputFont({ minHeight: 44, padding: '0 12px', borderRadius: 10, border: '1.5px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontFamily: 'inherit', fontSize: 13, flex: '1 1 220px' })}
         />
         <Select aria-label="Category" value={draft.category ?? ''} onChange={(v) => setDraft((d) => ({ ...d, category: v, type: '' }))} options={[
           { value: '', label: 'All categories' },

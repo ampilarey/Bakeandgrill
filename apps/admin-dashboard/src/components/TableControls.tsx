@@ -22,6 +22,7 @@ import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { Btn, TH } from './SharedUI';
 import { parseNumberFilter } from '../utils/inventoryFilter';
 import { Filter } from 'lucide-react';
+import { inputFont } from '../utils/cssVars';
 
 export type CellValue = string | number | boolean | Date | null | undefined;
 
@@ -164,7 +165,7 @@ export function useSortFilter<T>(
 }
 
 const boxStyle: CSSProperties = {
-  width: '100%', minWidth: 0, padding: '5px 8px', fontSize: 12, fontFamily: 'inherit',
+  width: '100%', padding: '5px 8px', fontSize: 12, fontFamily: 'inherit',
   border: '1px solid var(--color-border)', borderRadius: 8, boxSizing: 'border-box',
   background: 'var(--color-surface)', color: 'var(--color-text)', fontWeight: 400, textTransform: 'none',
 };
@@ -188,7 +189,7 @@ export function FilterBox<T>({ controls, column, allRows }: { controls: SortFilt
       .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true }))
       .map((v) => ({ value: v, label: v === 'yes' ? 'Yes' : v === 'no' ? 'No' : v }));
     return (
-      <select aria-label={aria} data-testid={testId} value={value} onChange={(e) => controls.setFilter(column.key, e.target.value)} style={boxStyle}>
+      <select aria-label={aria} data-testid={testId} value={value} onChange={(e) => controls.setFilter(column.key, e.target.value)} className="sf-filter-box" style={inputFont(boxStyle)}>
         <option value="">All</option>
         {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
@@ -202,7 +203,8 @@ export function FilterBox<T>({ controls, column, allRows }: { controls: SortFilt
       title={kind === 'number' ? NUMBER_FILTER_HINT : undefined}
       value={value}
       onChange={(e) => controls.setFilter(column.key, e.target.value)}
-      style={boxStyle}
+      className="sf-filter-box"
+      style={inputFont(boxStyle)}
     />
   );
 }
@@ -340,7 +342,7 @@ export function SortFilterPanel<T>({ controls, allRows, open, onToggle }: {
             const [key, dir] = e.target.value.split(':');
             setSort(key ? { key, dir: dir === 'desc' ? 'desc' : 'asc' } : null);
           }}
-          style={{ ...boxStyle, width: 'auto', minHeight: 40, fontSize: 14 }}
+          style={inputFont({ ...boxStyle, width: 'auto', minHeight: 40, fontSize: 14 })}
         >
           <option value="">Sort: as listed</option>
           {sortable.map((c) => (

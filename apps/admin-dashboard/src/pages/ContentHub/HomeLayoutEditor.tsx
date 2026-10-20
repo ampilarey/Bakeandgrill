@@ -45,6 +45,7 @@ import {
   typesForSlot,
   type SurfaceFilter,
 } from './surfaceCatalog';
+import { inputFont } from '../../utils/cssVars';
 
 export type LayoutDraftSignal = {
   hasDraft: boolean;
@@ -1257,7 +1258,7 @@ function DevicePlacementFields({
               if (v === 'off') set(field.showKey, false);
               else setBoth(field.showKey, true, field.placeKey, v);
             }}
-            style={selectStyle}
+            style={inputFont(selectStyle)}
             data-testid={`home-layout-placement-${field.id}`}
           >
             {field.options.map((opt) => (

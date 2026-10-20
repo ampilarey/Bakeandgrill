@@ -1,4 +1,5 @@
 import type { InputHTMLAttributes, ReactNode } from 'react';
+import { inputFont } from '../../utils/cssVars';
 
 interface Props extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -23,6 +24,7 @@ export function Input({ label, error, helper, leftIcon, className = '', id, ...p
         <input
           id={inputId}
           {...props}
+          style={inputFont(props.style)}
           className={[
             'w-full h-9 rounded-[10px] border border-[var(--color-border)] bg-white px-3 text-sm text-[var(--color-text)]',
             'placeholder:text-[var(--color-text-muted)] outline-none transition-all duration-150',

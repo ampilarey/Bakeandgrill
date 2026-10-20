@@ -16,6 +16,7 @@ import {
 } from '@shared/signage';
 import type { MenuCategory, SignageDaypartBag, SignageLayoutBag, SignageSleepBag } from '../../api';
 import { Btn } from '../../components/SharedUI';
+import { inputFont } from '../../utils/cssVars';
 
 export type LookTheme = {
   primary?: string;
@@ -278,21 +279,21 @@ export function LookPanel({ kind, layout, theme, inherited, inheritedLabel, cate
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginTop: 12 }}>
               <div>
                 <label style={label}>Columns</label>
-                <select data-testid={`${testId}-columns`} style={field} value={String(effective.columns)} onChange={(e) => patch({ columns: Number(e.target.value) })}>
+                <select data-testid={`${testId}-columns`} style={inputFont(field)} value={String(effective.columns)} onChange={(e) => patch({ columns: Number(e.target.value) })}>
                   {[1, 2, 3, 4].map((n) => <option key={n} value={n}>{n}</option>)}
                 </select>
               </div>
               <div>
                 <label style={label}>Rows per slide</label>
-                <input data-testid={`${testId}-rows`} type="number" min={1} max={40} style={field} value={effective.rows_per_slide} onChange={(e) => patch({ rows_per_slide: Number(e.target.value) || 1 })} />
+                <input data-testid={`${testId}-rows`} type="number" min={1} max={40} style={inputFont(field)} value={effective.rows_per_slide} onChange={(e) => patch({ rows_per_slide: Number(e.target.value) || 1 })} />
               </div>
               <div>
                 <label style={label}>Showcases per loop</label>
-                <input data-testid={`${testId}-cap`} type="number" min={0} max={30} style={field} value={effective.showcase_cap} onChange={(e) => patch({ showcase_cap: Math.max(0, Number(e.target.value) || 0) })} />
+                <input data-testid={`${testId}-cap`} type="number" min={0} max={30} style={inputFont(field)} value={effective.showcase_cap} onChange={(e) => patch({ showcase_cap: Math.max(0, Number(e.target.value) || 0) })} />
               </div>
               <div>
                 <label style={label}>Showcase card</label>
-                <select data-testid={`${testId}-card`} style={field} value={effective.card_style} onChange={(e) => patch({ card_style: e.target.value === 'stack' ? 'stack' : 'split' })}>
+                <select data-testid={`${testId}-card`} style={inputFont(field)} value={effective.card_style} onChange={(e) => patch({ card_style: e.target.value === 'stack' ? 'stack' : 'split' })}>
                   <option value="split">Photo beside the words</option>
                   <option value="stack">Words under a round photo</option>
                 </select>
@@ -344,19 +345,19 @@ export function LookPanel({ kind, layout, theme, inherited, inheritedLabel, cate
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10 }}>
                     <div style={{ gridColumn: 'span 2' }}>
                       <label style={label}>Name</label>
-                      <input data-testid={`${testId}-daypart-${i}-label`} style={field} value={dp.label} placeholder="Breakfast" onChange={(e) => patchDaypart(dp.id, { label: e.target.value })} />
+                      <input data-testid={`${testId}-daypart-${i}-label`} style={inputFont(field)} value={dp.label} placeholder="Breakfast" onChange={(e) => patchDaypart(dp.id, { label: e.target.value })} />
                     </div>
                     <div>
                       <label style={label}>From</label>
-                      <input data-testid={`${testId}-daypart-${i}-start`} type="time" style={field} value={w.start} onChange={(e) => patchWindow(dp, 'start', e.target.value)} />
+                      <input data-testid={`${testId}-daypart-${i}-start`} type="time" style={inputFont(field)} value={w.start} onChange={(e) => patchWindow(dp, 'start', e.target.value)} />
                     </div>
                     <div>
                       <label style={label}>Until</label>
-                      <input data-testid={`${testId}-daypart-${i}-end`} type="time" style={field} value={w.end} onChange={(e) => patchWindow(dp, 'end', e.target.value)} />
+                      <input data-testid={`${testId}-daypart-${i}-end`} type="time" style={inputFont(field)} value={w.end} onChange={(e) => patchWindow(dp, 'end', e.target.value)} />
                     </div>
                     <div>
                       <label style={label}>Layout</label>
-                      <select data-testid={`${testId}-daypart-${i}-preset`} style={field} value={dp.preset ?? ''} onChange={(e) => patchDaypart(dp.id, { preset: e.target.value || null })}>
+                      <select data-testid={`${testId}-daypart-${i}-preset`} style={inputFont(field)} value={dp.preset ?? ''} onChange={(e) => patchDaypart(dp.id, { preset: e.target.value || null })}>
                         <option value="">Keep the look</option>
                         {LAYOUT_PRESET_KEYS.map((p) => <option key={p} value={p}>{LAYOUT_PRESETS[p].label}</option>)}
                       </select>
@@ -406,11 +407,11 @@ export function LookPanel({ kind, layout, theme, inherited, inheritedLabel, cate
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10 }}>
                 <div>
                   <label style={label}>Off at</label>
-                  <input data-testid={`${testId}-sleep-off`} type="time" style={field} value={sleep.off} onChange={(e) => setSleep((s) => ({ ...s, off: e.target.value }))} />
+                  <input data-testid={`${testId}-sleep-off`} type="time" style={inputFont(field)} value={sleep.off} onChange={(e) => setSleep((s) => ({ ...s, off: e.target.value }))} />
                 </div>
                 <div>
                   <label style={label}>Back on at</label>
-                  <input data-testid={`${testId}-sleep-back`} type="time" style={field} value={sleep.on} onChange={(e) => setSleep((s) => ({ ...s, on: e.target.value }))} />
+                  <input data-testid={`${testId}-sleep-back`} type="time" style={inputFont(field)} value={sleep.on} onChange={(e) => setSleep((s) => ({ ...s, on: e.target.value }))} />
                 </div>
                 <div style={{ gridColumn: 'span 2', display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
                   <span style={{ ...label, marginBottom: 0, marginRight: 6 }}>Nights</span>
@@ -444,13 +445,13 @@ export function LookPanel({ kind, layout, theme, inherited, inheritedLabel, cate
                         onChange={(e) => setColors((c) => ({ ...c, [k]: e.target.value }))}
                         style={{ width: 44, height: 44, padding: 2, border: '1px solid var(--color-border)', borderRadius: 10, background: 'transparent' }}
                       />
-                      <input style={{ ...field, minHeight: 40 }} value={colors[k]} onChange={(e) => setColors((c) => ({ ...c, [k]: e.target.value }))} />
+                      <input style={inputFont({ ...field, minHeight: 40 })} value={colors[k]} onChange={(e) => setColors((c) => ({ ...c, [k]: e.target.value }))} />
                     </div>
                   </div>
                 ))}
                 <div>
                   <label style={label}>Fonts</label>
-                  <select data-testid={`${testId}-font`} style={field} value={font} onChange={(e) => setFont(e.target.value)}>
+                  <select data-testid={`${testId}-font`} style={inputFont(field)} value={font} onChange={(e) => setFont(e.target.value)}>
                     {FONT_CHOICES.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
                   </select>
                 </div>

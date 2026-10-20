@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { fetchPosStaffOptions, fetchShiftHistory, fetchDevices } from '../../api';
 import { Btn, Card, DateInput } from '../../components/SharedUI';
 import { daysAgo, tabNeedsDate, today, type Tab } from './reportsShared';
+import { inputFont } from '../../utils/cssVars';
 
 export function useReportsFilters(tab: Tab) {
   const [from, setFrom]       = useState(daysAgo(7));
@@ -101,21 +102,21 @@ export function ReportsFilters({
           <>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--color-text-secondary)' }}>
               Cashier
-              <select value={cashierId} onChange={(e) => setCashierId(e.target.value)} style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontFamily: 'inherit', fontSize: 13 }}>
+              <select value={cashierId} onChange={(e) => setCashierId(e.target.value)} style={inputFont({ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontFamily: 'inherit', fontSize: 13 })}>
                 <option value="">All</option>
                 {staffOptions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             </label>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--color-text-secondary)' }}>
               Shift
-              <select value={shiftId} onChange={(e) => setShiftId(e.target.value)} style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontFamily: 'inherit', fontSize: 13, '--max-w': '220px' }}>
+              <select value={shiftId} onChange={(e) => setShiftId(e.target.value)} style={inputFont({ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontFamily: 'inherit', fontSize: 13, '--max-w': '220px' })}>
                 <option value="">All</option>
                 {shiftOptions.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
               </select>
             </label>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--color-text-secondary)' }}>
               Station
-              <select value={deviceId} onChange={(e) => setDeviceId(e.target.value)} style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontFamily: 'inherit', fontSize: 13 }}>
+              <select value={deviceId} onChange={(e) => setDeviceId(e.target.value)} style={inputFont({ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontFamily: 'inherit', fontSize: 13 })}>
                 <option value="">All</option>
                 {deviceOptions.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>

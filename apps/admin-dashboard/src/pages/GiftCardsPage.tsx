@@ -25,6 +25,7 @@ import {
 import { Gift, Search, Copy, Check } from 'lucide-react';
 import { PrintCardModal, type PrintCardData } from '../components/PrintCardModal';
 import { fmt } from '../utils/fmt';
+import { inputFont } from '../utils/cssVars';
 
 const STATUS_COLOR: Record<string, string> = {
   active: 'green',
@@ -66,7 +67,7 @@ function PaidByFields({ paidBy, onPaidBy, reference, onReference }: {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, margin: '12px 0' }}>
       <label>
         <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Paid by *</span>
-        <select data-testid="gift-card-paid-by" value={paidBy} onChange={(e) => onPaidBy(e.target.value as GiftCardPaidBy | '')} style={PAID_FIELD}>
+        <select data-testid="gift-card-paid-by" value={paidBy} onChange={(e) => onPaidBy(e.target.value as GiftCardPaidBy | '')} style={inputFont(PAID_FIELD)}>
           <option value="">Choose…</option>
           {(Object.keys(PAID_BY_LABEL) as GiftCardPaidBy[]).map((k) => (
             <option key={k} value={k}>{PAID_BY_LABEL[k]}</option>
@@ -79,7 +80,7 @@ function PaidByFields({ paidBy, onPaidBy, reference, onReference }: {
       {(paidBy === 'card' || paidBy === 'bank_transfer') && (
         <label>
           <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Slip or transfer reference</span>
-          <input value={reference} onChange={(e) => onReference(e.target.value)} maxLength={100} style={PAID_FIELD} />
+          <input value={reference} onChange={(e) => onReference(e.target.value)} maxLength={100} style={inputFont(PAID_FIELD)} />
         </label>
       )}
     </div>
@@ -404,7 +405,7 @@ export default function GiftCardsPage() {
         <select
           value={statusFilter}
           onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
-          style={{ padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)' }}
+          style={inputFont({ padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)' })}
         >
           <option value="">All statuses</option>
           <option value="active">Active</option>
@@ -419,7 +420,7 @@ export default function GiftCardsPage() {
           onKeyDown={e => {
             if (e.key === 'Enter') { setSearchQ(searchInput.trim()); setPage(1); }
           }}
-          style={{ padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', minWidth: 200 }}
+          style={inputFont({ padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', minWidth: 200 })}
         />
         <Btn variant="secondary" onClick={() => { setSearchQ(searchInput.trim()); setPage(1); }}>Search</Btn>
       </div>
@@ -438,7 +439,7 @@ export default function GiftCardsPage() {
             value={balanceCode}
             onChange={e => { setBalanceCode(e.target.value.toUpperCase()); setBalanceResult(null); setBalanceError(''); }}
             onKeyDown={e => e.key === 'Enter' && void handleCheckBalance()}
-            style={{ fontFamily: 'monospace', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, maxWidth: 260, textTransform: 'uppercase' }}
+            style={inputFont({ fontFamily: 'monospace', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, maxWidth: 260, textTransform: 'uppercase' })}
           />
           <Btn variant="secondary" onClick={() => void handleCheckBalance()} disabled={checkingBalance}>
             <Search size={14} style={{ marginRight: 6 }} />{checkingBalance ? 'Checking…' : 'Check'}
@@ -466,7 +467,7 @@ export default function GiftCardsPage() {
           <SortFilterHead controls={cardCtl} allRows={cards} />
           <tbody>
             {loading ? (
-              <tr><td colSpan={8} style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-muted)' }}>Loading…</td></tr>
+              <tr><td colSpan={8} style={{ '--ta': 'center', padding: 40, color: 'var(--color-text-muted)' }}>Loading…</td></tr>
             ) : cards.length === 0 ? (
               <tr><td colSpan={8}><EmptyState message="No gift cards yet." /></td></tr>
             ) : cardCtl.rows.map(card => (
@@ -680,7 +681,7 @@ export default function GiftCardsPage() {
                     placeholder="Phone — 7XXXXXX or +9607XXXXXX"
                     value={smsResendPhone}
                     onChange={e => setSmsResendPhone(e.target.value)}
-                    style={{ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', marginBottom: 8, boxSizing: 'border-box' }}
+                    style={inputFont({ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', marginBottom: 8, boxSizing: 'border-box' })}
                   />
                   <Btn variant="secondary" onClick={() => void handleResendSms()} disabled={smsSending}>
                     {smsSending ? 'Sending…' : 'SMS code now'}
@@ -691,7 +692,7 @@ export default function GiftCardsPage() {
                     placeholder="Email — name@example.com"
                     value={emailResendTo}
                     onChange={e => setEmailResendTo(e.target.value)}
-                    style={{ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', margin: '12px 0 8px', boxSizing: 'border-box' }}
+                    style={inputFont({ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', margin: '12px 0 8px', boxSizing: 'border-box' })}
                   />
                   <Btn variant="secondary" onClick={() => void handleResendEmail()} disabled={emailSending}>
                     {emailSending ? 'Sending…' : 'Email code now'}
@@ -738,7 +739,7 @@ export default function GiftCardsPage() {
                 </label>
                 <label>
                   <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Expiry date (optional)</span>
-                  <input type="date" value={expiresAt} onChange={e => setExpiresAt(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit' }} />
+                  <input type="date" value={expiresAt} onChange={e => setExpiresAt(e.target.value)} style={inputFont({ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit' })} />
                 </label>
 
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
@@ -785,7 +786,7 @@ export default function GiftCardsPage() {
                       onChange={e => setDeliveryNote(e.target.value)}
                       maxLength={sendSms ? 160 : 500}
                       placeholder="Happy birthday from…"
-                      style={{ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
+                      style={inputFont({ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' })}
                     />
                   </label>
                 )}

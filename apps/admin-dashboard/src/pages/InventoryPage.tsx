@@ -45,6 +45,7 @@ import {
 } from '../api';
 import { fmt } from '../utils/fmt';
 import { AlertTriangle, BadgeCheck, Camera, Filter, History, Pencil, ShoppingCart, SlidersHorizontal, Tag, TrendingUp, Check } from 'lucide-react';
+import { inputFont } from '../utils/cssVars';
 
 // Waste used to be its own sidebar entry. It is a stock question — what left
 // the shelf without being sold — so it lives here now (purchasing audit,
@@ -945,17 +946,17 @@ export default function InventoryPage() {
         // The name filter is the search box: one thing, two places.
         return (
           <input aria-label="Filter by name" data-testid="inventory-filter-name" placeholder="contains…"
-            value={search} onChange={(e) => setSearch(e.target.value)} style={filterBoxStyle} />
+            value={search} onChange={(e) => setSearch(e.target.value)} style={inputFont(filterBoxStyle)} />
         );
       case 'sku':
         return (
           <input aria-label="Filter by SKU" data-testid="inventory-filter-sku" placeholder="contains…"
-            value={filters.sku} onChange={(e) => setFilter('sku', e.target.value)} style={filterBoxStyle} />
+            value={filters.sku} onChange={(e) => setFilter('sku', e.target.value)} style={inputFont(filterBoxStyle)} />
         );
       case 'category':
         return (
           <select aria-label="Filter by category" data-testid="inventory-filter-category"
-            value={filters.category} onChange={(e) => setFilter('category', e.target.value)} style={filterBoxStyle}>
+            value={filters.category} onChange={(e) => setFilter('category', e.target.value)} style={inputFont(filterBoxStyle)}>
             <option value="">All</option>
             {categoryOptions.names.map((n) => <option key={n} value={n}>{n}</option>)}
             {categoryOptions.uncategorised && <option value={NO_CATEGORY}>No category</option>}
@@ -964,7 +965,7 @@ export default function InventoryPage() {
       case 'status':
         return (
           <select aria-label="Filter by status" data-testid="inventory-filter-status"
-            value={filters.status} onChange={(e) => setFilter('status', e.target.value as InventoryStatusFilter)} style={filterBoxStyle}>
+            value={filters.status} onChange={(e) => setFilter('status', e.target.value as InventoryStatusFilter)} style={inputFont(filterBoxStyle)}>
             <option value="">All</option>
             <option value="low">Low stock</option>
             <option value="ok">OK</option>
@@ -981,7 +982,7 @@ export default function InventoryPage() {
             title={NUMBER_FILTER_HINT}
             value={filters[col]}
             onChange={(e) => setFilter(col, e.target.value)}
-            style={filterBoxStyle}
+            style={inputFont(filterBoxStyle)}
           />
         );
     }
@@ -1383,13 +1384,13 @@ export default function InventoryPage() {
               placeholder="Search items…"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              style={{ ...S.input, maxWidth: 320 }}
+              style={inputFont({ ...S.input, maxWidth: 320 })}
             />
             <select
               aria-label="Sort items"
               value={sortKey}
               onChange={(e) => changeSort(e.target.value as InventorySortKey)}
-              style={{ ...S.select, width: 'auto', minHeight: 40 }}
+              style={inputFont({ ...S.select, width: 'auto', minHeight: 40 })}
             >
               {INVENTORY_SORTS.map((o) => <option key={o.key} value={o.key}>Sort: {o.label}</option>)}
             </select>
@@ -1818,7 +1819,7 @@ export default function InventoryPage() {
               </thead>
               <tbody>
                 {catsLoading ? (
-                  <tr><td colSpan={2} style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-muted)' }}>Loading…</td></tr>
+                  <tr><td colSpan={2} style={{ '--ta': 'center', padding: 40, color: 'var(--color-text-muted)' }}>Loading…</td></tr>
                 ) : cats.length === 0 ? (
                   <tr><td colSpan={2}><EmptyState message="No categories yet." /></td></tr>
                 ) : cats.map(cat => (
@@ -1845,7 +1846,7 @@ export default function InventoryPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <label>
               <span style={S.label}>Adjustment Type</span>
-              <select value={adjForm.type} onChange={e => setAdjForm(f => ({ ...f, type: e.target.value as 'add' | 'remove' | 'set' }))} style={S.select}>
+              <select value={adjForm.type} onChange={e => setAdjForm(f => ({ ...f, type: e.target.value as 'add' | 'remove' | 'set' }))} style={inputFont(S.select)}>
                 <option value="add">Add (increase)</option>
                 <option value="remove">Remove (decrease)</option>
                 <option value="set">Set to exact amount</option>
@@ -1853,11 +1854,11 @@ export default function InventoryPage() {
             </label>
             <label>
               <span style={S.label}>Quantity *</span>
-              <input type="number" min="0" step="any" placeholder={adjForm.type === 'set' ? 'New total' : 'Amount'} value={adjForm.quantity} onChange={e => setAdjForm(f => ({ ...f, quantity: e.target.value }))} style={S.input} />
+              <input type="number" min="0" step="any" placeholder={adjForm.type === 'set' ? 'New total' : 'Amount'} value={adjForm.quantity} onChange={e => setAdjForm(f => ({ ...f, quantity: e.target.value }))} style={inputFont(S.input)} />
             </label>
             <label>
               <span style={S.label}>Reason</span>
-              <input type="text" placeholder="e.g. Stock count, received delivery…" value={adjForm.reason} onChange={e => setAdjForm(f => ({ ...f, reason: e.target.value }))} style={S.input} />
+              <input type="text" placeholder="e.g. Stock count, received delivery…" value={adjForm.reason} onChange={e => setAdjForm(f => ({ ...f, reason: e.target.value }))} style={inputFont(S.input)} />
             </label>
           </div>
           <ModalActions>
@@ -1874,7 +1875,7 @@ export default function InventoryPage() {
           <div style={{ display: 'grid', gap: 12 }}>
             <label>
               <span style={S.label}>Name *</span>
-              <input style={S.input} value={editForm.name} aria-label="Item name"
+              <input style={inputFont(S.input)} value={editForm.name} aria-label="Item name"
                 onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} />
             </label>
             <div>
@@ -1925,7 +1926,7 @@ export default function InventoryPage() {
             />
             <label>
               <span style={S.label}>SKU</span>
-              <input style={S.input} value={editForm.sku} aria-label="SKU"
+              <input style={inputFont(S.input)} value={editForm.sku} aria-label="SKU"
                 onChange={(e) => setEditForm((f) => ({ ...f, sku: e.target.value }))} />
             </label>
             {/* Add Item has had the camera since 2026-09-02; Edit never did,
@@ -1934,7 +1935,7 @@ export default function InventoryPage() {
             <label>
               <span style={S.label}>Barcode</span>
               <div style={{ display: 'flex', gap: 6 }}>
-                <input style={{ ...S.input, flex: 1 }} value={editForm.barcode} aria-label="Barcode" inputMode="numeric" autoComplete="off"
+                <input style={inputFont({ ...S.input, flex: 1 })} value={editForm.barcode} aria-label="Barcode" inputMode="numeric" autoComplete="off"
                   onChange={(e) => setEditForm((f) => ({ ...f, barcode: e.target.value }))} />
                 <Btn variant="secondary" onClick={() => setScanEditBarcode(true)} aria-label="Scan the item barcode with the camera" title="Scan with the camera"><Camera size={16} aria-hidden /></Btn>
               </div>
@@ -1979,28 +1980,28 @@ export default function InventoryPage() {
             </div>
             <label>
               <span style={S.label}>Reorder point</span>
-              <input type="number" min="0" step="any" style={S.input} value={editForm.reorder_point} aria-label="Reorder point"
+              <input type="number" min="0" step="any" style={inputFont(S.input)} value={editForm.reorder_point} aria-label="Reorder point"
                 onChange={(e) => setEditForm((f) => ({ ...f, reorder_point: e.target.value }))} />
             </label>
             <label>
               <span style={S.label}>Supplier lead days</span>
-              <input type="number" min="0" max="30" step="1" style={S.input} value={editForm.lead_days} aria-label="Lead days"
+              <input type="number" min="0" max="30" step="1" style={inputFont(S.input)} value={editForm.lead_days} aria-label="Lead days"
                 onChange={(e) => setEditForm((f) => ({ ...f, lead_days: e.target.value }))} />
             </label>
             <label>
               <span style={S.label}>Cover days (order horizon)</span>
-              <input type="number" min="1" max="90" step="1" style={S.input} value={editForm.cover_days} aria-label="Cover days"
+              <input type="number" min="1" max="90" step="1" style={inputFont(S.input)} value={editForm.cover_days} aria-label="Cover days"
                 onChange={(e) => setEditForm((f) => ({ ...f, cover_days: e.target.value }))} />
             </label>
             <GstToggle checked={editForm.gst} onChange={(v) => setEditForm((f) => ({ ...f, gst: v }))} />
             <label>
               <span style={S.label}>Storage location</span>
-              <input style={S.input} value={editForm.storage_location} aria-label="Storage location"
+              <input style={inputFont(S.input)} value={editForm.storage_location} aria-label="Storage location"
                 onChange={(e) => setEditForm((f) => ({ ...f, storage_location: e.target.value }))} />
             </label>
             <label>
               <span style={S.label}>Notes</span>
-              <input style={S.input} value={editForm.notes} aria-label="Notes"
+              <input style={inputFont(S.input)} value={editForm.notes} aria-label="Notes"
                 onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))} />
             </label>
           </div>
@@ -2111,11 +2112,11 @@ export default function InventoryPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <label>
               <span style={S.label}>Name *</span>
-              <input style={S.input} value={createForm.name} onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))} />
+              <input style={inputFont(S.input)} value={createForm.name} onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))} />
             </label>
             <label>
               <span style={S.label}>SKU</span>
-              <input style={S.input} value={createForm.sku} onChange={(e) => setCreateForm((f) => ({ ...f, sku: e.target.value }))} />
+              <input style={inputFont(S.input)} value={createForm.sku} onChange={(e) => setCreateForm((f) => ({ ...f, sku: e.target.value }))} />
             </label>
             {/* The supplier's barcode, so a delivery is received by scanning
                 the packet. Type it, scan it with a gun into the box, or use
@@ -2124,7 +2125,7 @@ export default function InventoryPage() {
               <span style={S.label}>Barcode</span>
               <div style={{ display: 'flex', gap: 6 }}>
                 <input
-                  style={{ ...S.input, flex: 1 }}
+                  style={inputFont({ ...S.input, flex: 1 })}
                   value={createForm.barcode}
                   onChange={(e) => setCreateForm((f) => ({ ...f, barcode: e.target.value }))}
                   placeholder="Scan or type the packet barcode"
@@ -2212,11 +2213,11 @@ export default function InventoryPage() {
             />
             <label>
               <span style={S.label}>Opening stock</span>
-              <input type="number" min="0" step="any" style={S.input} value={createForm.current_stock} onChange={(e) => setCreateForm((f) => ({ ...f, current_stock: e.target.value }))} />
+              <input type="number" min="0" step="any" style={inputFont(S.input)} value={createForm.current_stock} onChange={(e) => setCreateForm((f) => ({ ...f, current_stock: e.target.value }))} />
             </label>
             <label>
               <span style={S.label}>Reorder point</span>
-              <input type="number" min="0" step="any" style={S.input} value={createForm.reorder_point} onChange={(e) => setCreateForm((f) => ({ ...f, reorder_point: e.target.value }))} />
+              <input type="number" min="0" step="any" style={inputFont(S.input)} value={createForm.reorder_point} onChange={(e) => setCreateForm((f) => ({ ...f, reorder_point: e.target.value }))} />
             </label>
             <label>
               <span style={S.label}>Supplier lead days</span>
@@ -2225,7 +2226,7 @@ export default function InventoryPage() {
                 min="0"
                 max="30"
                 step="1"
-                style={S.input}
+                style={inputFont(S.input)}
                 value={createForm.lead_days}
                 onChange={(e) => setCreateForm((f) => ({ ...f, lead_days: e.target.value }))}
                 placeholder="Default 3 on Restock Plan"
@@ -2238,7 +2239,7 @@ export default function InventoryPage() {
                 min="1"
                 max="90"
                 step="1"
-                style={S.input}
+                style={inputFont(S.input)}
                 value={createForm.cover_days}
                 onChange={(e) => setCreateForm((f) => ({ ...f, cover_days: e.target.value }))}
                 placeholder="Default 14 on Restock Plan"
@@ -2246,16 +2247,16 @@ export default function InventoryPage() {
             </label>
             <label>
               <span style={S.label}>Unit cost (MVR)</span>
-              <input type="number" min="0" step="any" style={S.input} value={createForm.unit_cost} onChange={(e) => setCreateForm((f) => ({ ...f, unit_cost: e.target.value }))} />
+              <input type="number" min="0" step="any" style={inputFont(S.input)} value={createForm.unit_cost} onChange={(e) => setCreateForm((f) => ({ ...f, unit_cost: e.target.value }))} />
             </label>
             <GstToggle checked={createForm.gst} onChange={(v) => setCreateForm((f) => ({ ...f, gst: v }))} />
             <label>
               <span style={S.label}>Storage location</span>
-              <input style={S.input} value={createForm.storage_location} onChange={(e) => setCreateForm((f) => ({ ...f, storage_location: e.target.value }))} placeholder="e.g. Cold room, Dry store" />
+              <input style={inputFont(S.input)} value={createForm.storage_location} onChange={(e) => setCreateForm((f) => ({ ...f, storage_location: e.target.value }))} placeholder="e.g. Cold room, Dry store" />
             </label>
             <label>
               <span style={S.label}>Notes</span>
-              <input style={S.input} value={createForm.notes} onChange={(e) => setCreateForm((f) => ({ ...f, notes: e.target.value }))} />
+              <input style={inputFont(S.input)} value={createForm.notes} onChange={(e) => setCreateForm((f) => ({ ...f, notes: e.target.value }))} />
             </label>
           </div>
           {/* Owner, 2026-09-09: "why 2 items in same name". Both answers are
@@ -2312,7 +2313,7 @@ export default function InventoryPage() {
           {catError && <p style={{ color: 'var(--color-danger)', marginBottom: 12 }}>{catError}</p>}
           <label>
             <span style={S.label}>Category Name *</span>
-            <input type="text" placeholder="e.g. Produce, Dairy…" value={catName} onChange={e => setCatName(e.target.value)} style={S.input} />
+            <input type="text" placeholder="e.g. Produce, Dairy…" value={catName} onChange={e => setCatName(e.target.value)} style={inputFont(S.input)} />
           </label>
           <ModalActions>
             <Btn variant="secondary" onClick={() => setCatModal(false)}>Cancel</Btn>
@@ -2332,7 +2333,7 @@ export default function InventoryPage() {
                 <input value={convForm[k]} onChange={(e) => setConvForm((f) => ({ ...f, [k]: e.target.value }))}
                   type={k === 'factor' ? 'number' : 'text'} min="0.000001" step="0.001"
                   placeholder={k === 'factor' ? '1.0' : k === 'from_unit' ? 'kg' : 'g'}
-                  style={S.input} />
+                  style={inputFont(S.input)} />
               </div>
             ))}
             <Btn onClick={() => void handleAddConversion()} disabled={convSaving}>{convSaving ? '…' : '+ Add'}</Btn>
@@ -2408,7 +2409,7 @@ export default function InventoryPage() {
                   autoComplete="off"
                   value={countScanCode}
                   onChange={(e) => setCountScanCode(e.target.value)}
-                  style={{ ...S.input, flex: '1 1 220px', width: 'auto' }}
+                  style={inputFont({ ...S.input, flex: '1 1 220px', width: 'auto' })}
                 />
                 <Btn small variant="secondary" onClick={() => { setCountScanMsg(''); setCountScanOpen(true); }} type="button">
                   <InlineIcon icon={Camera} />Camera
@@ -2446,13 +2447,13 @@ export default function InventoryPage() {
                           <input type="number" min="0" step="0.001"
                             value={countQtys[item.id] ?? ''}
                             onChange={(e) => setCountQtys((q) => ({ ...q, [item.id]: e.target.value }))}
-                            style={{ width: 90, padding: '5px 8px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit' }} />
+                            style={inputFont({ width: 90, padding: '5px 8px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit' })} />
                         </td>
                         <td style={TD}>
                           <input value={countNotes[item.id] ?? ''}
                             onChange={(e) => setCountNotes((n) => ({ ...n, [item.id]: e.target.value }))}
                             placeholder="Optional note"
-                            style={{ width: 160, padding: '5px 8px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit' }} />
+                            style={inputFont({ width: 160, padding: '5px 8px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit' })} />
                         </td>
                       </tr>
                     ))}
@@ -2477,9 +2478,9 @@ export default function InventoryPage() {
             Current on hand: <strong>{prepAdjust.stock}</strong>. Use positive to add, negative to remove.
           </p>
           <label style={S.label}>Delta (+/−)</label>
-          <input type="number" value={prepDelta} onChange={(e) => setPrepDelta(e.target.value)} style={{ ...S.input, marginBottom: 12 }} />
+          <input type="number" value={prepDelta} onChange={(e) => setPrepDelta(e.target.value)} style={inputFont({ ...S.input, marginBottom: 12 })} />
           <label style={S.label}>Notes (optional)</label>
-          <input value={prepNotes} onChange={(e) => setPrepNotes(e.target.value)} style={{ ...S.input, marginBottom: 16 }} />
+          <input value={prepNotes} onChange={(e) => setPrepNotes(e.target.value)} style={inputFont({ ...S.input, marginBottom: 16 })} />
           <ModalActions>
             <Btn variant="secondary" onClick={() => setPrepAdjust(null)}>Cancel</Btn>
             <Btn onClick={() => void handlePrepAdjust()} disabled={prepSaving}>{prepSaving ? 'Saving…' : 'Apply'}</Btn>

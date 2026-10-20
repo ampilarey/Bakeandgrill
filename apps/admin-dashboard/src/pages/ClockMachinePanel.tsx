@@ -7,6 +7,7 @@ import {
   getClockMachine, removeClockDevice, setClockUserNo, updateClockDevice,
   type ClockDeviceRow, type ClockMachineState, type ClockRecentPunch, type ClockStaffRow,
 } from '../api';
+import { inputFont } from '../utils/cssVars';
 
 /**
  * Time Clock → Clock machine (owner, 2026-10-19: a ZKTeco P160/ID). A fingerprint or palm
@@ -223,7 +224,7 @@ export default function ClockMachinePanel({ canEdit }: { canEdit: boolean }) {
                       const id = Number(e.target.value);
                       if (id) void run(() => setClockUserNo(id, u.no));
                     }}
-                    style={{ ...field, width: '100%' }}
+                    style={inputFont({ ...field, width: '100%' })}
                   >
                     <option value="">Give to…</option>
                     {free.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -251,7 +252,7 @@ export default function ClockMachinePanel({ canEdit }: { canEdit: boolean }) {
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search name or number"
               aria-label="Search staff"
-              style={{ ...field, width: '100%', paddingLeft: 36 }}
+              style={inputFont({ ...field, width: '100%', paddingLeft: 36 })}
             />
           </div>
           <TabScrollRow fit style={{ gap: 6 }} role="tablist" aria-label="Show">
@@ -291,7 +292,7 @@ export default function ClockMachinePanel({ canEdit }: { canEdit: boolean }) {
                     }}
                     onKeyDown={(e) => { if (e.key === 'Enter' && changed) void saveNumber(u); }}
                     placeholder="—"
-                    style={{ ...field, width: 76, flex: '0 0 auto', textAlign: 'center' }}
+                    style={inputFont({ ...field, width: 76, flex: '0 0 auto', textAlign: 'center' })}
                   />
                   {canEdit && changed && (
                     <Btn small disabled={busy} onClick={() => void saveNumber(u)}>Save</Btn>
@@ -343,7 +344,7 @@ function ClockCard({ device: d, canEdit, busy, onRename, onAllow, onRemove }: {
                 placeholder="Name, e.g. Kitchen door"
                 onChange={(e) => setName(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { setName(d.name ?? ''); setEditing(false); } }}
-                style={{ ...field, flex: '1 1 auto', minWidth: 0 }}
+                style={inputFont({ ...field, flex: '1 1 auto', minWidth: 0 })}
               />
               <Btn small onClick={save} aria-label="Save name"><Check size={14} aria-hidden /></Btn>
               <Btn small variant="ghost" onClick={() => { setName(d.name ?? ''); setEditing(false); }} aria-label="Cancel"><X size={14} aria-hidden /></Btn>

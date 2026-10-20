@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { MediaPicker } from '../../components/MediaPicker';
 import type { MediaAsset } from '../../api/media';
 import type { PageBlockRow } from '../../api/pageBlocks';
+import { inputFont } from '../../utils/cssVars';
 
 /** Block types whose content is edited right here, in the layout builder. */
 export const GENERIC_BLOCK_TYPES = [
@@ -353,7 +354,7 @@ function FaqEditor({
             disabled={disabled}
             placeholder="Question"
             onChange={(e) => patch(index, 'question', e.target.value)}
-            style={inputStyle}
+            style={inputFont(inputStyle)}
           />
           <textarea
             value={item.answer}
@@ -361,7 +362,7 @@ function FaqEditor({
             placeholder="Answer"
             rows={3}
             onChange={(e) => patch(index, 'answer', e.target.value)}
-            style={{ ...inputStyle, minHeight: 64, padding: 8, resize: 'vertical' }}
+            style={inputFont({ ...inputStyle, minHeight: 64, padding: 8, resize: 'vertical' })}
           />
           <button
             type="button"
@@ -407,7 +408,7 @@ function TextField({
         placeholder={placeholder}
         aria-label={label}
         onChange={(e) => onChange(e.target.value)}
-        style={inputStyle}
+        style={inputFont(inputStyle)}
       />
     </div>
   );
@@ -435,7 +436,7 @@ function TextArea({
         rows={rows}
         aria-label={label}
         onChange={(e) => onChange(e.target.value)}
-        style={{ ...inputStyle, minHeight: 80, padding: 8, resize: 'vertical' }}
+        style={inputFont({ ...inputStyle, minHeight: 80, padding: 8, resize: 'vertical' })}
       />
     </div>
   );
@@ -462,7 +463,7 @@ function SelectField({
         disabled={disabled}
         aria-label={label}
         onChange={(e) => onChange(e.target.value)}
-        style={inputStyle}
+        style={inputFont(inputStyle)}
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>{opt.label}</option>

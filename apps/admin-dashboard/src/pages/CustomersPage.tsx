@@ -19,6 +19,7 @@ import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { RecordCard, RecordCardList } from '../components/RecordCard';
 import { StickyNote } from 'lucide-react';
+import { inputFont } from '../utils/cssVars';
 
 function fmtDate(iso: string | null | undefined) {
   if (!iso) return '—';
@@ -388,13 +389,13 @@ export function CustomersPage() {
       <Card style={{ padding: '12px 16px' }}>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           <input
-            style={{ ...inputStyle, maxWidth: 320 }}
+            style={inputFont({ ...inputStyle, maxWidth: 320 })}
             placeholder="Search name, phone or email…"
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
           />
           <select
-            style={{ ...inputStyle, maxWidth: 200 }}
+            style={inputFont({ ...inputStyle, maxWidth: 200 })}
             value={segmentFilter}
             onChange={(e) => { setSegmentFilter(e.target.value); setPage(1); }}
           >
@@ -404,7 +405,7 @@ export function CustomersPage() {
             ))}
           </select>
           <select
-            style={{ ...inputStyle, maxWidth: 140 }}
+            style={inputFont({ ...inputStyle, maxWidth: 140 })}
             value={activeFilter}
             onChange={(e) => { setActiveFilter(e.target.value as typeof activeFilter); setPage(1); }}
           >
@@ -623,9 +624,9 @@ export function CustomersPage() {
                       <div key={key}>
                         <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4, textTransform: key === 'tin' ? 'uppercase' : 'capitalize' }}>{key === 'billing_address' ? 'Billing address' : key === 'tin' ? 'TIN' : key}</label>
                         {key === 'billing_address' ? (
-                          <textarea style={{ ...inputStyle, height: 60, resize: 'vertical' }} value={form.billing_address} onChange={(e) => setForm((f) => ({ ...f, billing_address: e.target.value }))} />
+                          <textarea style={inputFont({ ...inputStyle, height: 60, resize: 'vertical' })} value={form.billing_address} onChange={(e) => setForm((f) => ({ ...f, billing_address: e.target.value }))} />
                         ) : (
-                          <input style={inputStyle} value={form[key]} onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))} />
+                          <input style={inputFont(inputStyle)} value={form[key]} onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))} />
                         )}
                       </div>
                     ))}
@@ -635,7 +636,7 @@ export function CustomersPage() {
                     </label>
                     <div>
                       <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Internal Notes</label>
-                      <textarea style={{ ...inputStyle, height: 80, resize: 'vertical' }} value={form.internal_notes} onChange={(e) => setForm((f) => ({ ...f, internal_notes: e.target.value }))} />
+                      <textarea style={inputFont({ ...inputStyle, height: 80, resize: 'vertical' })} value={form.internal_notes} onChange={(e) => setForm((f) => ({ ...f, internal_notes: e.target.value }))} />
                     </div>
                     <div style={{ display: 'flex', gap: 20 }}>
                       {([['Active', 'is_active'], ['SMS opt-out', 'sms_opt_out']] as [string, 'is_active' | 'sms_opt_out'][]).map(([label, key]) => (

@@ -7,6 +7,7 @@ import {
 import { Bike, Car, MapPin, User, Phone, RefreshCw } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { today, daysAgo } from '../utils/dateHelpers';
+import { inputFont } from '../utils/cssVars';
 
 type Driver = {
   id: number;
@@ -418,11 +419,11 @@ function QuickAssignDriver({ order, drivers, onAssigned }: { order: Order; drive
         disabled={saving}
         defaultValue=""
         onChange={(e) => void handleChange(e.target.value)}
-        style={{
+        style={inputFont({
           width: '100%', padding: '6px 10px', borderRadius: 8,
           border: '1.5px solid var(--color-border)', fontSize: 13, color: 'var(--color-text)',
           background: saving ? 'var(--color-bg)' : 'var(--color-surface)', cursor: 'pointer', fontFamily: 'inherit',
-        }}
+        })}
       >
         <option value="" disabled>Assign driver…</option>
         {drivers.filter((d) => d.is_active).map((d) => (
@@ -470,7 +471,7 @@ function AssignDriverInline({
         <select
           value={driverId}
           onChange={(e) => setDriverId(e.target.value)}
-          style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }}
+          style={inputFont({ flex: 1, padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' })}
         >
           <option value="">— Unassigned —</option>
           {drivers.filter((d) => d.is_active).map((d) => (
@@ -566,7 +567,7 @@ function DriversPanel({ drivers, onRefresh }: { drivers: Driver[]; onRefresh: ()
             placeholder="Name *"
             value={form.name}
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-            style={{ ...inputStyle, flex: '2 1 200px', minWidth: 0 }}
+            style={inputFont({ ...inputStyle, flex: '2 1 200px', minWidth: 0 })}
           />
           {/* Each field takes a line of its own on a phone instead of two
               squeezed side by side ("Vehicle typ", "PIN (4–6 digi", 2026-10-08). */}
@@ -574,14 +575,14 @@ function DriversPanel({ drivers, onRefresh }: { drivers: Driver[]; onRefresh: ()
             placeholder="Phone"
             value={form.phone}
             onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-            style={{ ...inputStyle, flex: '1 1 160px', minWidth: 0 }}
+            style={inputFont({ ...inputStyle, flex: '1 1 160px', minWidth: 0 })}
           />
         </div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
           <select
             value={form.vehicle_type}
             onChange={(e) => setForm((f) => ({ ...f, vehicle_type: e.target.value }))}
-            style={{ ...inputStyle, flex: '1 1 160px', minWidth: 0, color: form.vehicle_type ? 'var(--color-text)' : 'var(--color-text-muted)' }}
+            style={inputFont({ ...inputStyle, flex: '1 1 160px', minWidth: 0, color: form.vehicle_type ? 'var(--color-text)' : 'var(--color-text-muted)' })}
           >
             <option value="">Vehicle type…</option>
             <option value="bike">Bike</option>
@@ -596,7 +597,7 @@ function DriversPanel({ drivers, onRefresh }: { drivers: Driver[]; onRefresh: ()
             maxLength={6}
             value={form.pin}
             onChange={(e) => setForm((f) => ({ ...f, pin: e.target.value.replace(/\D/g, '') }))}
-            style={{ ...inputStyle, flex: '1 1 160px', minWidth: 0 }}
+            style={inputFont({ ...inputStyle, flex: '1 1 160px', minWidth: 0 })}
           />
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>
             <input type="checkbox" checked={form.is_active} onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))} />

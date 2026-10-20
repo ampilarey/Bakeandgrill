@@ -4,6 +4,7 @@ import { BrandThumb } from './BrandPhotos';
 import { ScanSheet } from './ScanSheet';
 import { brandKey, packNameConflict } from '../api/operations';
 import { Camera } from 'lucide-react';
+import { inputFont } from '../utils/cssVars';
 
 /*
  * Brands, and under each one the packs it comes in and what each usually costs.
@@ -420,7 +421,7 @@ export function BrandPacks({
               aria-label={`Name of ${p.name}`}
               value={packEdit.name}
               onChange={(e) => setPackEdit((f) => (f ? { ...f, name: e.target.value } : f))}
-              style={{ ...S.input, flex: '1 1 110px', width: 'auto' }}
+              style={inputFont({ ...S.input, flex: '1 1 110px', width: 'auto' })}
             />
             <span style={S.secondary}>=</span>
             <input
@@ -428,7 +429,7 @@ export function BrandPacks({
               type="number" min="0.000001" step="any"
               value={packEdit.qty}
               onChange={(e) => setPackEdit((f) => (f ? { ...f, qty: e.target.value } : f))}
-              style={{ ...S.input, width: 90 }}
+              style={inputFont({ ...S.input, width: 90 })}
             />
             <span style={S.secondary}>{unit}</span>
             <span style={S.secondary}>· MVR</span>
@@ -437,7 +438,7 @@ export function BrandPacks({
               type="number" min="0" step="any" placeholder="price"
               value={packEdit.price}
               onChange={(e) => setPackEdit((f) => (f ? { ...f, price: e.target.value } : f))}
-              style={{ ...S.input, width: 90 }}
+              style={inputFont({ ...S.input, width: 90 })}
             />
             <input
               aria-label={`Barcode of ${p.name}`}
@@ -445,7 +446,7 @@ export function BrandPacks({
               inputMode="numeric"
               value={packEdit.barcode}
               onChange={(e) => setPackEdit((f) => (f ? { ...f, barcode: e.target.value } : f))}
-              style={{ ...S.input, flex: '1 1 130px', width: 'auto' }}
+              style={inputFont({ ...S.input, flex: '1 1 130px', width: 'auto' })}
             />
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
@@ -477,7 +478,7 @@ export function BrandPacks({
         placeholder="Name, e.g. 500 ml tin or Case"
         value={packForm.name}
         onChange={(e) => setPackForm((f) => ({ ...f, name: e.target.value }))}
-        style={S.input}
+        style={inputFont(S.input)}
       />
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <span style={S.secondary}>Usually costs MVR</span>
@@ -486,7 +487,7 @@ export function BrandPacks({
           type="number" min="0" step="any" placeholder="185"
           value={packForm.price}
           onChange={(e) => setPackForm((f) => ({ ...f, price: e.target.value }))}
-          style={{ ...S.input, width: 110 }}
+          style={inputFont({ ...S.input, width: 110 })}
         />
         <span style={S.muted}>
           per pack — a purchase order opens at this, and follows whatever you actually pay
@@ -499,7 +500,7 @@ export function BrandPacks({
           type="number" min="0.000001" step="any" placeholder="how many"
           value={packForm.qty}
           onChange={(e) => setPackForm((f) => ({ ...f, qty: e.target.value }))}
-          style={{ ...S.input, width: 100 }}
+          style={inputFont({ ...S.input, width: 100 })}
         />
         {/* A case is 7 trays. Defining a big pack from a small one is how
             people describe a box, and beats multiplying it out. With no
@@ -513,7 +514,7 @@ export function BrandPacks({
             aria-label="Measured in"
             value={packForm.ofKey}
             onChange={(e) => setPackForm((f) => ({ ...f, ofKey: e.target.value }))}
-            style={{ ...S.select, minWidth: 120 }}
+            style={inputFont({ ...S.select, minWidth: 120 })}
           >
             <option value="">{unit || 'unit'}</option>
             {measurableIn(brand).map((p) => <option key={p.key} value={p.key}>of a {p.name.toLowerCase()}</option>)}
@@ -572,7 +573,7 @@ export function BrandPacks({
           autoComplete="off"
           value={packForm.barcode}
           onChange={(e) => setPackForm((f) => ({ ...f, barcode: e.target.value }))}
-          style={{ ...S.input, flex: 1, width: 'auto' }}
+          style={inputFont({ ...S.input, flex: 1, width: 'auto' })}
         />
         <Btn small variant="secondary" onClick={() => setScanning(true)} aria-label="Scan the pack barcode"><Camera size={15} aria-hidden />Scan</Btn>
         <Btn small variant="ghost" onClick={closePackForm} aria-label="Close the pack boxes">Done</Btn>
@@ -693,7 +694,7 @@ export function BrandPacks({
                   value={brandForm.brand}
                   onChange={(e) => setBrandForm((f) => ({ ...f, brand: e.target.value }))}
                   onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void addBrand(brandForm.brand, brandForm.file); } }}
-                  style={{ ...S.input, flex: '1 1 160px', width: 'auto' }}
+                  style={inputFont({ ...S.input, flex: '1 1 160px', width: 'auto' })}
                 />
                 <datalist id="brand-packs-known-brands">
                   {knownBrands.map((b) => <option key={b} value={b} />)}

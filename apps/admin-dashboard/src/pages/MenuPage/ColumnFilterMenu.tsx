@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Btn } from '../../components/SharedUI';
+import { inputFont } from '../../utils/cssVars';
 
 /**
  * A spreadsheet's autofilter, on one column.
@@ -62,11 +63,11 @@ export function ColumnFilterMenu({
         onChange={(e) => setNeedle(e.target.value)}
         placeholder="Find a value…"
         aria-label={`Find a value in ${label}`}
-        style={{
+        style={inputFont({
           width: '100%', padding: '6px 8px', fontSize: 12, borderRadius: 7,
           border: '1px solid var(--color-border)', marginBottom: 8,
           background: 'var(--color-surface)', color: 'var(--color-text)', fontFamily: 'inherit',
-        }}
+        })}
       />
       <div style={{ maxHeight: 220, overflowY: 'auto', marginBottom: 8 }}>
         {shown.length === 0 ? (

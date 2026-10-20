@@ -28,6 +28,7 @@ import {
   type HeroSlideRow,
   type LibraryTarget,
 } from './heroSlidesModel';
+import { inputFont } from '../../../utils/cssVars';
 
 export type HeroSlidesEditorProps = ContentEditorWithUploadProps & {
   uploadImage?: (cropped: File, original: File) => Promise<ContentImageUploadResult>;
@@ -362,7 +363,7 @@ export function HeroSlidesEditor({
             max={100}
             value={presentation.photo_brightness}
             onChange={(e) => applyPresentation(idx, { photo_brightness: Number(e.target.value) })}
-            style={rangeStyle}
+            style={inputFont(rangeStyle)}
             aria-label="Photo brightness"
           />
           <p style={mutedStyle}>Higher keeps the photo looking like the photo. Lower knocks it back.</p>
@@ -405,7 +406,7 @@ export function HeroSlidesEditor({
               // were split keeps moving at exactly one tempo until touched.
               value={Number(row.photo_motion_speed ?? row.motion_speed ?? 33)}
               onChange={(e) => applyPresentation(idx, { photo_motion_speed: Number(e.target.value) } as unknown as HeroPresentationPatch)}
-              style={rangeStyle}
+              style={inputFont(rangeStyle)}
             />
             <p style={mutedStyle}>A drift usually wants to be slower than the words.</p>
           </div>
@@ -483,7 +484,7 @@ export function HeroSlidesEditor({
             max={100}
             value={presentation.text_background}
             onChange={(e) => applyPresentation(idx, { text_background: Number(e.target.value) })}
-            style={{ ...rangeStyle, opacity: presentation.copy_scrim ? 1 : 0.45 }}
+            style={inputFont({ ...rangeStyle, opacity: presentation.copy_scrim ? 1 : 0.45 })}
             aria-label="Text background"
           />
           <div role="radiogroup" aria-label="Shade behind all the text" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -527,7 +528,7 @@ export function HeroSlidesEditor({
             data-testid={`hero-motion-speed-${idx}`}
             value={Number(row.motion_speed ?? 33)}
             onChange={(e) => applyPresentation(idx, { motion_speed: Number(e.target.value) } as unknown as HeroPresentationPatch)}
-            style={rangeStyle}
+            style={inputFont(rangeStyle)}
           />
           <p style={mutedStyle}>
             How fast the copy arrives and any background effects move. The photo has
@@ -864,7 +865,7 @@ export function HeroSlidesEditor({
           onChange={(e) => update({ [f.key]: e.target.value } as Partial<HeroSlideRow>)}
           placeholder={f.placeholder}
           rows={f.key === 'title' || f.key === 'subtitle' ? 3 : 2}
-          style={{
+          style={inputFont({
             minHeight: 44,
             borderRadius: 8,
             border: '1px solid var(--color-border)',
@@ -877,7 +878,7 @@ export function HeroSlidesEditor({
             resize: 'vertical',
             width: '100%',
             overflowWrap: 'anywhere',
-          }}
+          })}
         />
       </div>
     );

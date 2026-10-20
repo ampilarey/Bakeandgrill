@@ -96,14 +96,20 @@ Batch 2: every grid whose columns a page chooses (`form-grid-2/3`, `stat-grid`,
 `data-responsive-grid`, `kds-grid`, the signage designer; 107 elements, now `--cols`),
 Ordering Control and Delivery, SharedUI `Modal` (`--modal-align` / `--modal-pad` /
 `--modal-max`), `MediaPicker`, the Orders filter panel and Reports filters; 6 to 3.
+Batch 3: inputs keep 16px on a phone through one rule; every input, select and textarea
+style goes through `inputFont()` (`utils/cssVars.ts`), which hands its `fontSize` over as
+`--fs` (SharedUI and ui `Input` / `Select` / `DateInput` do it themselves), and a stylesheet
+rule that sizes an input's text does so from 768px. A spanning table cell's alignment is
+`--ta`; the page header and its action rows are phone first, with the hub's own controls
+written back from 768px. The admin stylesheet has no desktop-first rule left.
 
 | Area | Rules left |
 |---|---|
 | Website views (`backend/resources`) | 46 |
-| Admin (`apps/admin-dashboard`) | 3 |
+| Admin (`apps/admin-dashboard`) | 0 |
 | Order app (`apps/online-order-web`) | 24 |
 | Till (`apps/pos-web`) | 12 |
 | Kitchen screen (`apps/kds-web`) | 3 |
 
 `scripts/mobile-first-baseline.json` has the per-file list. Already mobile first: the Clock
-machine tab (`ClockMachinePanel.tsx`).
+machine tab (`ClockMachinePanel.tsx`) and the whole admin stylesheet (`index.css`).

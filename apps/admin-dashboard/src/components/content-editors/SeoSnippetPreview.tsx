@@ -1,3 +1,4 @@
+import { inputFont } from '../../utils/cssVars';
 type Props = {
   title: string;
   description: string;
@@ -41,10 +42,10 @@ export function SeoSnippetPreview({
         <input
           value={title}
           onChange={(e) => onTitleChange(e.target.value)}
-          style={{
+          style={inputFont({
             width: '100%', height: 44, borderRadius: 10, border: '1px solid var(--color-border)',
             padding: '0 12px', fontFamily: 'inherit', fontSize: 14,
-          }}
+          })}
         />
       </div>
       <div>
@@ -56,10 +57,10 @@ export function SeoSnippetPreview({
           value={description}
           onChange={(e) => onDescriptionChange(e.target.value)}
           rows={3}
-          style={{
+          style={inputFont({
             width: '100%', borderRadius: 10, border: '1px solid var(--color-border)', padding: 10,
             fontFamily: 'inherit', fontSize: 13, resize: 'vertical',
-          }}
+          })}
         />
       </div>
       {/* Preview fidelity: mocks a Google SERP — must not follow admin theme */}

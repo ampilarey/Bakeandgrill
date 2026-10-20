@@ -23,6 +23,7 @@ import {
   type TradeSettlementMode,
 } from '../api';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
+import { inputFont } from '../utils/cssVars';
 
 const SETTLEMENT_OPTIONS: { value: TradeSettlementMode; label: string; help: string }[] = [
   {
@@ -351,7 +352,7 @@ export default function WholesaleAccountPage() {
               value={account.settlement_mode}
               disabled={!canManageAccounts}
               onChange={(e) => void patch({ settlement_mode: e.target.value as TradeSettlementMode })}
-              style={selectStyle}
+              style={inputFont(selectStyle)}
             >
               {SETTLEMENT_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
@@ -367,7 +368,7 @@ export default function WholesaleAccountPage() {
               value={account.billing_cycle}
               disabled={!canManageAccounts}
               onChange={(e) => void patch({ billing_cycle: e.target.value as TradeBillingCycle })}
-              style={selectStyle}
+              style={inputFont(selectStyle)}
             >
               {BILLING_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
@@ -405,7 +406,7 @@ export default function WholesaleAccountPage() {
               value={account.missing_policy}
               disabled={!canManageAccounts}
               onChange={(e) => void patch({ missing_policy: e.target.value as TradeMissingPolicy })}
-              style={selectStyle}
+              style={inputFont(selectStyle)}
             >
               {MISSING_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
@@ -476,7 +477,7 @@ export default function WholesaleAccountPage() {
               rows={3}
               onChange={(e) => setAccount({ ...account, notes: e.target.value })}
               onBlur={() => canManageAccounts && void patch({ notes: account.notes || null })}
-              style={{
+              style={inputFont({
                 width: '100%',
                 padding: '10px 12px',
                 borderRadius: 8,
@@ -486,7 +487,7 @@ export default function WholesaleAccountPage() {
                 fontSize: 13,
                 fontFamily: 'inherit',
                 resize: 'vertical',
-              }}
+              })}
             />
           </Field>
         </section>

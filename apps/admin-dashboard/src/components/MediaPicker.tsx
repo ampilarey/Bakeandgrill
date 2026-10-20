@@ -6,6 +6,7 @@ import {
   type MediaAsset, type MediaCollection, type MediaType,
 } from '../api';
 import { Spinner, useDialogChrome } from './SharedUI';
+import { inputFont } from '../utils/cssVars';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -192,7 +193,7 @@ function MediaPickerPanel({ onClose, onPick, mediaType, collection, title = 'Pic
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search…"
-              style={{ width: '100%', height: 34, paddingLeft: 26, borderRadius: 9, border: '1px solid var(--color-border)', fontSize: 12, fontFamily: 'inherit', boxSizing: 'border-box' }}
+              style={inputFont({ width: '100%', height: 34, paddingLeft: 26, borderRadius: 9, border: '1px solid var(--color-border)', fontSize: 12, fontFamily: 'inherit', boxSizing: 'border-box' })}
             />
           </div>
         </div>

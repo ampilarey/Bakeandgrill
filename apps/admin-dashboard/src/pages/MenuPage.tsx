@@ -15,6 +15,7 @@ import { QuickEditGrid } from './MenuPage/QuickEditGrid';
 import { RecipeEditorModal } from './MenuPage/RecipeEditorModal';
 import { EMPTY_CAT, type CatForm, useMenuPage, type View } from './MenuPage/useMenuPage';
 import { Printer } from 'lucide-react';
+import { inputFont } from '../utils/cssVars';
 
 function BannerLivePreview({
   label,
@@ -131,7 +132,7 @@ function CategoryFormModal({
           </Field>
         </div>
         <Field label="Parent Category — optional">
-          <select value={form.parent_id} onChange={(e) => set('parent_id', e.target.value)} style={selectStyle}>
+          <select value={form.parent_id} onChange={(e) => set('parent_id', e.target.value)} style={inputFont(selectStyle)}>
             <option value="">— None (top-level category) —</option>
             {parentOptions.map((c) => (
               <option key={c.id} value={String(c.id)}>{c.name}</option>

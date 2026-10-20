@@ -7,6 +7,7 @@ import {
 } from '../../api';
 import { Badge, Btn, Card, EmptyState, Input, Modal, ModalActions, Spinner } from '../../components/SharedUI';
 import { smsCharCount } from '../../utils/smsCharCount';
+import { inputFont } from '../../utils/cssVars';
 
 type TemplateForm = {
   name: string;
@@ -185,7 +186,7 @@ export function TemplatesTab() {
               <div>
                 <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Type</label>
                 <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as TemplateForm['type'] }))}
-                  style={{ width: '100%', border: '1px solid var(--color-border)', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}>
+                  style={inputFont({ width: '100%', border: '1px solid var(--color-border)', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' })}>
                   <option value="order_notification">Order Notification</option>
                   <option value="schedule_reminder">Schedule Reminder</option>
                   <option value="duty_reminder">Duty Reminder</option>
@@ -206,7 +207,7 @@ export function TemplatesTab() {
               </div>
               <textarea value={form.body} onChange={e => setForm(f => ({ ...f, body: e.target.value }))}
                 rows={4} placeholder={'Use {{variable_name}} for dynamic values\ne.g. Order #{{order_number}} is ready.'}
-                style={{ width: '100%', border: '1px solid var(--color-border)', borderRadius: 8, padding: '10px 12px', fontSize: 13, fontFamily: 'monospace', resize: 'vertical', boxSizing: 'border-box' }} />
+                style={inputFont({ width: '100%', border: '1px solid var(--color-border)', borderRadius: 8, padding: '10px 12px', fontSize: 13, fontFamily: 'monospace', resize: 'vertical', boxSizing: 'border-box' })} />
               <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 4 }}>Use {'{{variable}}'} syntax for dynamic values.</div>
             </div>
           </div>

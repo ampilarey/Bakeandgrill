@@ -5,6 +5,7 @@ import {
 } from '../../api';
 import { Btn, ErrorMsg, Input, Modal, ModalActions, Select, Spinner } from '../../components/SharedUI';
 import { PLATFORM_LABELS, fromLocalDateTimeInput } from './composer';
+import { inputFont } from '../../utils/cssVars';
 
 const TV_DURATIONS = [
   { value: '30', label: '30 minutes' },
@@ -160,10 +161,10 @@ export function AnnouncementModal({ onClose, onSaved, canCompose, canSchedule, c
               rows={3}
               aria-label="Announcement"
               placeholder="We're closed today…"
-              style={{
+              style={inputFont({
                 width: '100%', padding: 10, borderRadius: 10, fontFamily: 'inherit', fontSize: 13, boxSizing: 'border-box',
                 border: '1.5px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', resize: 'vertical',
-              }}
+              })}
             />
           </div>
           <div>
@@ -174,10 +175,10 @@ export function AnnouncementModal({ onClose, onSaved, canCompose, canSchedule, c
               rows={2}
               dir="rtl"
               aria-label="Announcement in Dhivehi"
-              style={{
+              style={inputFont({
                 width: '100%', padding: 10, borderRadius: 10, fontFamily: 'inherit', fontSize: 14, boxSizing: 'border-box',
                 border: '1.5px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', resize: 'vertical',
-              }}
+              })}
             />
           </div>
 

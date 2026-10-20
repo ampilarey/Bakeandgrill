@@ -9,6 +9,7 @@ import {
 } from '../../api';
 import { MasterSwitchRow, S } from '../OnlineOrderingPage/orderingControlUi';
 import { LoadFailed } from './LoadFailed';
+import { inputFont } from '../../utils/cssVars';
 
 function Toggle({ on, onClick, disabled }: { on: boolean; onClick: () => void; disabled?: boolean }) {
   return <Switch checked={on} onChange={onClick} disabled={disabled} />;
@@ -117,7 +118,7 @@ export function PaymentCommissionSettings({ embedded = false }: { embedded?: boo
               step={0.1}
               value={form.pos_card_rate_percent}
               onChange={(e) => setForm({ ...form, pos_card_rate_percent: parseFloat(e.target.value) || 0 })}
-              style={S.input}
+              style={inputFont(S.input)}
             />
             <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
               Example: MVR 100 → MVR {posExample.fee.toFixed(2)} fee → MVR {posExample.net.toFixed(2)} net
@@ -132,7 +133,7 @@ export function PaymentCommissionSettings({ embedded = false }: { embedded?: boo
               step={0.1}
               value={form.online_gateway_rate_percent}
               onChange={(e) => setForm({ ...form, online_gateway_rate_percent: parseFloat(e.target.value) || 0 })}
-              style={S.input}
+              style={inputFont(S.input)}
             />
             <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
               Example: MVR 100 → MVR {gwExample.fee.toFixed(2)} fee → MVR {gwExample.net.toFixed(2)} net

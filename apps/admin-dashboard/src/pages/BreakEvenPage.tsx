@@ -7,6 +7,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { mvr } from '../utils/fmt';
 import { today, daysAgo } from '../utils/dateHelpers';
 import { breakEvenRevenue } from './breakEven';
+import { inputFont } from '../utils/cssVars';
 
 /**
  * Estimated break-even.
@@ -173,7 +174,7 @@ export function BreakEvenPage() {
                     value={line.label}
                     placeholder="Cost name"
                     onChange={(e) => setLineLabel(i, e.target.value)}
-                    style={{ ...S.input, flex: 1, minWidth: 0 }}
+                    style={inputFont({ ...S.input, flex: 1, minWidth: 0 })}
                   />
                   <div style={{ position: 'relative', width: 140 }}>
                     <span style={{ position: 'absolute', left: 10, top: 10, fontSize: 12, color: 'var(--color-text-muted)' }}>MVR</span>
@@ -183,7 +184,7 @@ export function BreakEvenPage() {
                       step="100"
                       value={Math.round(line.monthly)}
                       onChange={(e) => setLineAmount(i, parseFloat(e.target.value) || 0)}
-                      style={{ ...S.input, paddingLeft: 44, textAlign: 'right' }}
+                      style={inputFont({ ...S.input, paddingLeft: 44, textAlign: 'right' })}
                     />
                   </div>
                   <button
@@ -216,7 +217,7 @@ export function BreakEvenPage() {
                 step="0.5"
                 value={marginPct}
                 onChange={(e) => { setMarginOverride(parseFloat(e.target.value) || 0); setEdited(true); }}
-                style={S.input}
+                style={inputFont(S.input)}
               />
               <span style={S.hint}>
                 Share of each rufiyaa of sales left after the cost of stock. Seeded at{' '}

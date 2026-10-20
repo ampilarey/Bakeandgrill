@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { type CutoutBackdrop, normalizeBackdrop } from '../api/cutout';
+import { inputFont } from '../utils/cssVars';
 
 const FALLBACK_COLOR = '#F3EAE1';
 const FALLBACK_STRENGTH = 100;
@@ -153,7 +154,7 @@ export function CutoutBackdropField({
                   else if (next.trim() === '') emit({ color: null });
                 }}
                 aria-label="Circle colour hex"
-                style={{ width: 96, border: '1px solid var(--color-border)', borderRadius: 6, padding: '6px 8px', fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)' }}
+                style={inputFont({ width: 96, border: '1px solid var(--color-border)', borderRadius: 6, padding: '6px 8px', fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)' })}
               />
               {value?.color == null && (
                 <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>inherits {baseColor}</span>

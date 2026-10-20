@@ -17,6 +17,7 @@ import type { MediaAsset } from '../api/media';
 import { ScopeMismatchNotices, type ScopeMismatch } from '../components/ScopeMismatchNotices';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast } from '../components/ui';
+import { inputFont } from '../utils/cssVars';
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'failed';
 
@@ -494,7 +495,7 @@ function FieldEditor({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           rows={3}
-          style={{ ...inputStyle, ...(error ? inputErrorStyle : null) }}
+          style={inputFont({ ...inputStyle, ...(error ? inputErrorStyle : null) })}
           aria-invalid={Boolean(error)}
         />
       ) : field.type === 'boolean' ? (
@@ -523,7 +524,7 @@ function FieldEditor({
             type="text"
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            style={{ ...inputStyle, ...(error ? inputErrorStyle : null), flex: 1, minWidth: 0 }}
+            style={inputFont({ ...inputStyle, ...(error ? inputErrorStyle : null), flex: 1, minWidth: 0 })}
             aria-invalid={Boolean(error)}
           />
         </div>
@@ -550,7 +551,7 @@ function FieldEditor({
               value={value}
               onChange={(e) => onChange(e.target.value)}
               placeholder="/storage/…"
-              style={{ ...inputStyle, ...(error ? inputErrorStyle : null) }}
+              style={inputFont({ ...inputStyle, ...(error ? inputErrorStyle : null) })}
               aria-invalid={Boolean(error)}
             />
             <span className="business-details-image-actions">
@@ -610,7 +611,7 @@ function FieldEditor({
           autoComplete={keyboard.autoComplete}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          style={{ ...inputStyle, ...(error ? inputErrorStyle : null) }}
+          style={inputFont({ ...inputStyle, ...(error ? inputErrorStyle : null) })}
           aria-invalid={Boolean(error)}
         />
       )}

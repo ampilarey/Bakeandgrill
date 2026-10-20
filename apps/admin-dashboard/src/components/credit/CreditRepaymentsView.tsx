@@ -7,6 +7,7 @@ import {
 } from '../../api';
 import { Badge, Btn, DateInput, EmptyState, ErrorMsg, TableCard, TableSkeleton, TabScrollRow, TD, TH } from '../SharedUI';
 import { useIsMobile } from '../../hooks/useIsMobile';
+import { inputFont } from '../../utils/cssVars';
 // Days in Male time, whatever clock the device keeps: the server counts the
 // day in Indian/Maldives, so "today" here must be the same day.
 const SHOP_TZ = 'Indian/Maldives';
@@ -155,7 +156,7 @@ export function CreditRepaymentsView() {
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search name or phone"
           aria-label="Search repayments"
-          style={{ flex: '1 1 200px', maxWidth: 320, padding: '8px 12px', borderRadius: 10, border: '1px solid var(--color-border)', fontSize: 14, background: 'var(--color-surface)', color: 'var(--color-text)' }}
+          style={inputFont({ flex: '1 1 200px', maxWidth: 320, padding: '8px 12px', borderRadius: 10, border: '1px solid var(--color-border)', fontSize: 14, background: 'var(--color-surface)', color: 'var(--color-text)' })}
         />
       </div>
 

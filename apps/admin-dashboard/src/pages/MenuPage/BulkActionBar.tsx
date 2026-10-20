@@ -3,6 +3,7 @@ import type { MenuCategory, MenuGroupRow } from '../../api';
 import { Btn } from '../../components/SharedUI';
 import type { BulkAction, PriceMode, RoundMode } from './bulkEdit';
 import { PACKAGING_MODES, SPICE_LEVELS, TAX_CODES, categoryOptions, menuGroupOptions } from './gridColumns';
+import { inputFont } from '../../utils/cssVars';
 
 /**
  * Everything you can do to a whole selection at once.
@@ -144,11 +145,11 @@ export function BulkActionBar({
         <div style={{ display: 'grid', gap: 10 }}>
           <div style={row}>
             <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', minWidth: 66 }}>Price</span>
-            <select aria-label="Price change" value={priceMode} onChange={(e) => setPriceMode(e.target.value as PriceMode)} style={control}>
+            <select aria-label="Price change" value={priceMode} onChange={(e) => setPriceMode(e.target.value as PriceMode)} style={inputFont(control)}>
               {PRICE_MODES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
             </select>
-            <input aria-label="Price amount" type="number" min="0" step="0.01" value={priceValue} onChange={(e) => setPriceValue(e.target.value)} style={numberControl} />
-            <select aria-label="Rounding" value={round} onChange={(e) => setRound(e.target.value as RoundMode)} style={control}>
+            <input aria-label="Price amount" type="number" min="0" step="0.01" value={priceValue} onChange={(e) => setPriceValue(e.target.value)} style={inputFont(numberControl)} />
+            <select aria-label="Rounding" value={round} onChange={(e) => setRound(e.target.value as RoundMode)} style={inputFont(control)}>
               {ROUND_MODES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
             </select>
             <Btn small onClick={() => onPropose({ kind: 'price', mode: priceMode, value: parseFloat(priceValue) || 0, round })}>
@@ -160,10 +161,10 @@ export function BulkActionBar({
             <>
               <div style={row}>
                 <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', minWidth: 66 }}>Cost</span>
-                <select aria-label="Cost change" value={costMode} onChange={(e) => setCostMode(e.target.value as PriceMode)} style={control}>
+                <select aria-label="Cost change" value={costMode} onChange={(e) => setCostMode(e.target.value as PriceMode)} style={inputFont(control)}>
                   {PRICE_MODES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
                 </select>
-                <input aria-label="Cost amount" type="number" min="0" step="0.01" value={costValue} onChange={(e) => setCostValue(e.target.value)} style={numberControl} />
+                <input aria-label="Cost amount" type="number" min="0" step="0.01" value={costValue} onChange={(e) => setCostValue(e.target.value)} style={inputFont(numberControl)} />
                 <Btn small variant="secondary" onClick={() => onPropose({ kind: 'cost', mode: costMode, value: parseFloat(costValue) || 0, round })}>
                   Preview cost change
                 </Btn>
@@ -171,9 +172,9 @@ export function BulkActionBar({
               <div style={row}>
                 <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', minWidth: 66 }}>Margin</span>
                 <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Set price for a target margin of</span>
-                <input aria-label="Target margin" type="number" min="0" max="99" step="1" value={margin} onChange={(e) => setMargin(e.target.value)} style={{ ...numberControl, width: 70 }} />
+                <input aria-label="Target margin" type="number" min="0" max="99" step="1" value={margin} onChange={(e) => setMargin(e.target.value)} style={inputFont({ ...numberControl, width: 70 })} />
                 <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>%</span>
-                <select aria-label="Margin rounding" value={round} onChange={(e) => setRound(e.target.value as RoundMode)} style={control}>
+                <select aria-label="Margin rounding" value={round} onChange={(e) => setRound(e.target.value as RoundMode)} style={inputFont(control)}>
                   {ROUND_MODES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
                 </select>
                 <Btn small variant="secondary" onClick={() => onPropose({ kind: 'margin', marginPct: parseFloat(margin) || 0, round })}>
@@ -188,17 +189,17 @@ export function BulkActionBar({
 
           <div style={row}>
             <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', minWidth: 66 }}>GST</span>
-            <select aria-label="Set GST treatment" value="" onChange={(e) => e.target.value && onPropose({ kind: 'tax_code', taxCode: e.target.value })} style={control}>
+            <select aria-label="Set GST treatment" value="" onChange={(e) => e.target.value && onPropose({ kind: 'tax_code', taxCode: e.target.value })} style={inputFont(control)}>
               <option value="">Set GST…</option>
               {TAX_CODES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
             <span style={{ width: 1, height: 24, background: 'var(--color-border)' }} />
             <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Packaging fee</span>
-            <input aria-label="Packaging fee" type="number" min="0" step="0.01" value={packagingValue} onChange={(e) => setPackagingValue(e.target.value)} style={numberControl} />
+            <input aria-label="Packaging fee" type="number" min="0" step="0.01" value={packagingValue} onChange={(e) => setPackagingValue(e.target.value)} style={inputFont(numberControl)} />
             <Btn small variant="secondary" onClick={() => onPropose(field('Packaging fee', 'packaging_fee', parseFloat(packagingValue) || 0))}>
               Set fee
             </Btn>
-            <select aria-label="Packaging mode" value="" onChange={(e) => e.target.value && onPropose(field('Packaging mode', 'packaging_fee_mode', e.target.value))} style={control}>
+            <select aria-label="Packaging mode" value="" onChange={(e) => e.target.value && onPropose(field('Packaging mode', 'packaging_fee_mode', e.target.value))} style={inputFont(control)}>
               <option value="">Packaging mode…</option>
               {PACKAGING_MODES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
             </select>
@@ -209,11 +210,11 @@ export function BulkActionBar({
       {tab === 'organise' && (
         <div style={{ display: 'grid', gap: 10 }}>
           <div style={row}>
-            <select aria-label="Move to category" value="" onChange={(e) => e.target.value && onPropose({ kind: 'category', categoryId: Number(e.target.value) })} style={control}>
+            <select aria-label="Move to category" value="" onChange={(e) => e.target.value && onPropose({ kind: 'category', categoryId: Number(e.target.value) })} style={inputFont(control)}>
               <option value="">Move to category…</option>
               {categoryOptions(categories).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
-            <select aria-label="Move to menu group" value="" onChange={(e) => e.target.value && onPropose({ kind: 'menu_group', menuGroupId: Number(e.target.value) })} style={control}>
+            <select aria-label="Move to menu group" value="" onChange={(e) => e.target.value && onPropose({ kind: 'menu_group', menuGroupId: Number(e.target.value) })} style={inputFont(control)}>
               <option value="">Move to menu group…</option>
               {menuGroupOptions(menuGroups).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
@@ -227,7 +228,7 @@ export function BulkActionBar({
               aria-label="Also show in category"
               value=""
               onChange={(e) => e.target.value && onPropose({ kind: 'also_in', mode: 'add', categoryId: Number(e.target.value), names: categoryNames })}
-              style={control}
+              style={inputFont(control)}
             >
               <option value="">Add to…</option>
               {categoryOptions(categories).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -236,7 +237,7 @@ export function BulkActionBar({
               aria-label="Remove from also-show-in category"
               value=""
               onChange={(e) => e.target.value && onPropose({ kind: 'also_in', mode: 'remove', categoryId: Number(e.target.value), names: categoryNames })}
-              style={control}
+              style={inputFont(control)}
             >
               <option value="">Remove from…</option>
               {categoryOptions(categories).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -247,7 +248,7 @@ export function BulkActionBar({
           </div>
           <div style={row}>
             <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Renumber the selection in the order shown, in steps of</span>
-            <input aria-label="Renumber step" type="number" min="1" step="1" value={renumberStep} onChange={(e) => setRenumberStep(e.target.value)} style={{ ...numberControl, width: 70 }} />
+            <input aria-label="Renumber step" type="number" min="1" step="1" value={renumberStep} onChange={(e) => setRenumberStep(e.target.value)} style={inputFont({ ...numberControl, width: 70 })} />
             <Btn small variant="secondary" onClick={() => onPropose({ kind: 'renumber', step: Math.max(1, parseInt(renumberStep, 10) || 10) })}>
               Preview renumber
             </Btn>
@@ -281,13 +282,13 @@ export function BulkActionBar({
           </div>
           <div style={row}>
             <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Set stock to</span>
-            <input aria-label="Stock quantity" type="number" min="0" step="1" value={stockValue} onChange={(e) => setStockValue(e.target.value)} style={numberControl} />
+            <input aria-label="Stock quantity" type="number" min="0" step="1" value={stockValue} onChange={(e) => setStockValue(e.target.value)} style={inputFont(numberControl)} />
             <Btn small variant="secondary" onClick={() => onPropose(field('Stock', 'stock_quantity', Math.max(0, parseInt(stockValue, 10) || 0)))}>
               Set stock
             </Btn>
             <span style={{ width: 1, height: 24, background: 'var(--color-border)' }} />
             <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Low-stock alert at</span>
-            <input aria-label="Low stock threshold" type="number" min="0" step="1" value={thresholdValue} onChange={(e) => setThresholdValue(e.target.value)} style={numberControl} />
+            <input aria-label="Low stock threshold" type="number" min="0" step="1" value={thresholdValue} onChange={(e) => setThresholdValue(e.target.value)} style={inputFont(numberControl)} />
             <Btn small variant="secondary" onClick={() => onPropose(field('Alert at', 'low_stock_threshold', Math.max(0, parseInt(thresholdValue, 10) || 0)))}>
               Set threshold
             </Btn>
@@ -301,17 +302,17 @@ export function BulkActionBar({
       {tab === 'kitchen' && (
         <div style={row}>
           <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Prep time</span>
-          <input aria-label="Prep time" type="number" min="0" max="480" step="1" value={prepValue} onChange={(e) => setPrepValue(e.target.value)} style={numberControl} />
+          <input aria-label="Prep time" type="number" min="0" max="480" step="1" value={prepValue} onChange={(e) => setPrepValue(e.target.value)} style={inputFont(numberControl)} />
           <Btn small variant="secondary" onClick={() => onPropose(field('Prep min', 'prep_time_minutes', Math.max(0, parseInt(prepValue, 10) || 0)))}>Set prep time</Btn>
-          <select aria-label="Set spice level" value="" onChange={(e) => e.target.value && onPropose(field('Spice', 'spice_level', e.target.value))} style={control}>
+          <select aria-label="Set spice level" value="" onChange={(e) => e.target.value && onPropose(field('Spice', 'spice_level', e.target.value))} style={inputFont(control)}>
             <option value="">Spice level…</option>
             {SPICE_LEVELS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
           <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Calories</span>
-          <input aria-label="Calories" type="number" min="0" step="1" value={caloriesValue} onChange={(e) => setCaloriesValue(e.target.value)} style={numberControl} />
+          <input aria-label="Calories" type="number" min="0" step="1" value={caloriesValue} onChange={(e) => setCaloriesValue(e.target.value)} style={inputFont(numberControl)} />
           <Btn small variant="secondary" onClick={() => onPropose(field('Calories', 'calories', caloriesValue === '' ? null : Math.max(0, parseInt(caloriesValue, 10) || 0)))}>Set calories</Btn>
           <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Tomorrow cap</span>
-          <input aria-label="Tomorrow capacity" type="number" min="1" step="1" value={capacityValue} onChange={(e) => setCapacityValue(e.target.value)} style={numberControl} />
+          <input aria-label="Tomorrow capacity" type="number" min="1" step="1" value={capacityValue} onChange={(e) => setCapacityValue(e.target.value)} style={inputFont(numberControl)} />
           <Btn small variant="secondary" onClick={() => onPropose(field('Tomorrow cap', 'tomorrow_daily_capacity', capacityValue === '' ? null : Math.max(1, parseInt(capacityValue, 10) || 1)))}>Set cap</Btn>
         </div>
       )}

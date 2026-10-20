@@ -27,6 +27,7 @@ import { nonGsm7Characters, smsCharCount } from '../../utils/smsCharCount';
 import {
   CHANNEL_LABEL, audienceSummary, badgeStyle, fieldLabel, groupLabel, inputStyle, primaryBtn, rowChannelList, rowChannels, rowLine, secondaryBtn, subHeading,
 } from './shared';
+import { inputFont } from '../../utils/cssVars';
 
 /*
  * One message: who gets it, its SMS / Email / Telegram switches (the only
@@ -322,7 +323,7 @@ function MessageEditor({
       {!telegramOnly && (
         <label style={{ ...fieldLabel, marginBottom: 12 }}>
           Who can send
-          <select value={perm} disabled={disabled || saving} onChange={(e) => void savePermission(e.target.value)} style={inputStyle}>
+          <select value={perm} disabled={disabled || saving} onChange={(e) => void savePermission(e.target.value)} style={inputFont(inputStyle)}>
             {permissionOptions.map((p) => (
               <option key={p.slug} value={p.slug}>{p.slug === '__system__' ? p.name : `${p.name} (${p.slug})`}</option>
             ))}
@@ -340,11 +341,11 @@ function MessageEditor({
               onChange={(e) => { setBody(e.target.value); setPreview(null); }}
               disabled={disabled}
               rows={4}
-              style={{
+              style={inputFont({
                 width: '100%', boxSizing: 'border-box', border: '1px solid var(--color-border)', borderRadius: 8,
                 padding: '10px 12px', fontSize: 14, fontFamily: 'inherit', resize: 'vertical', opacity: disabled ? 0.65 : 1,
                 background: 'var(--color-surface)', color: 'var(--color-text)',
-              }}
+              })}
             />
           </label>
           {row.code_fallback_note && body.trim() === '' && (
@@ -502,11 +503,11 @@ function ExtraWording({ row, wording, disabled, onSaved, onError }: {
           onChange={(e) => { setBody(e.target.value); setPreview(null); }}
           disabled={disabled}
           rows={3}
-          style={{
+          style={inputFont({
             width: '100%', boxSizing: 'border-box', border: '1px solid var(--color-border)', borderRadius: 8,
             padding: '10px 12px', fontSize: 14, fontFamily: 'inherit', resize: 'vertical', opacity: disabled ? 0.65 : 1,
             background: 'var(--color-surface)', color: 'var(--color-text)',
-          }}
+          })}
         />
       </label>
       {wording.variables.length > 0 && (
@@ -604,11 +605,11 @@ function DhivehiWording({ row, slug, label, saved, draft, disabled, onSaved, onE
           onChange={(e) => setBody(e.target.value)}
           disabled={disabled}
           rows={3}
-          style={{
+          style={inputFont({
             width: '100%', boxSizing: 'border-box', border: '1px solid var(--color-border)', borderRadius: 8,
             padding: '10px 12px', fontSize: 14, fontFamily: 'inherit', resize: 'vertical', opacity: disabled ? 0.65 : 1,
             background: 'var(--color-surface)', color: 'var(--color-text)',
-          }}
+          })}
         />
       </label>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, gap: 8, flexWrap: 'wrap' }}>
@@ -737,7 +738,7 @@ function TimingEditor({ typeKey, def, onError }: { typeKey: string; def: TimingD
             value={value ?? ''}
             disabled={value === null || busy}
             onChange={(e) => { setValue(e.target.value); setNote(''); }}
-            style={inputStyle}
+            style={inputFont(inputStyle)}
           />
         </label>
         <button type="button" onClick={() => void save()} disabled={!valid || value === saved || busy} style={secondaryBtn}>
@@ -909,7 +910,7 @@ function AudienceEditor({ row, disabled, staffOptions, groupOptions, onUpdated, 
           <label style={{ ...fieldLabel, flex: '1 1 220px' }}>
             Numbers that are not staff
             <div style={{ display: 'flex', gap: 6 }}>
-              <input value={phones} disabled={disabled || saving} onChange={(e) => setPhones(e.target.value)} placeholder="7771234, 9601234" aria-label={`Numbers for ${row.label}`} style={{ ...inputStyle, flex: 1, minWidth: 0 }} />
+              <input value={phones} disabled={disabled || saving} onChange={(e) => setPhones(e.target.value)} placeholder="7771234, 9601234" aria-label={`Numbers for ${row.label}`} style={inputFont({ ...inputStyle, flex: 1, minWidth: 0 })} />
               <button type="button" onClick={() => void save({ phones: split(phones) })} disabled={disabled || saving || !phonesDirty} style={{ ...secondaryBtn, minHeight: 44 }}>Save</button>
             </div>
           </label>
@@ -917,7 +918,7 @@ function AudienceEditor({ row, disabled, staffOptions, groupOptions, onUpdated, 
         <label style={{ ...fieldLabel, flex: '1 1 220px' }}>
           Email addresses that are not staff
           <div style={{ display: 'flex', gap: 6 }}>
-            <input value={emails} disabled={disabled || saving} onChange={(e) => setEmails(e.target.value)} placeholder="events@example.com" aria-label={`Emails for ${row.label}`} style={{ ...inputStyle, flex: 1, minWidth: 0 }} />
+            <input value={emails} disabled={disabled || saving} onChange={(e) => setEmails(e.target.value)} placeholder="events@example.com" aria-label={`Emails for ${row.label}`} style={inputFont({ ...inputStyle, flex: 1, minWidth: 0 })} />
             <button type="button" onClick={() => void save({ emails: split(emails) })} disabled={disabled || saving || !emailsDirty} style={{ ...secondaryBtn, minHeight: 44 }}>Save</button>
           </div>
         </label>

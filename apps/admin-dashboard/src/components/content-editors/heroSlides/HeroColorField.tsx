@@ -8,6 +8,7 @@
  * and a row of quick swatches, and every colour setting on a slide uses it.
  */
 import type { CSSProperties } from 'react';
+import { inputFont } from '../../../utils/cssVars';
 
 /** Restaurant palette first, then neutrals — the colours actually used here. */
 export const HERO_QUICK_COLORS: ReadonlyArray<{ hex: string; label: string }> = [
@@ -101,7 +102,7 @@ export function HeroColorField({
             }
             onChange(HEX_RE.test(v) ? v.toLowerCase() : v);
           }}
-          style={{
+          style={inputFont({
             height: 40,
             width: 108,
             borderRadius: 8,
@@ -111,7 +112,7 @@ export function HeroColorField({
             fontSize: 13,
             background: 'var(--color-surface)',
             color: 'var(--color-text)',
-          }}
+          })}
           aria-label={`${label} hex value`}
         />
         {value ? (

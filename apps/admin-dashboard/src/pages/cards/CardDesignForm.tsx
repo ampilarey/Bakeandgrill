@@ -4,6 +4,7 @@ import { Btn, Input, Select, Switch } from '../../components/SharedUI';
 import { MediaPicker } from '../../components/MediaPicker';
 import type { CardSettings } from '../../api/cards';
 import { CARD_ACCENTS, CARD_SIZES, CARD_TEMPLATES, localPath } from './cardSpec';
+import { inputFont } from '../../utils/cssVars';
 
 type Props = { value: CardSettings; onChange: (next: CardSettings) => void };
 
@@ -21,7 +22,7 @@ function TextArea({ label, value, onChange, dir }: { label: string; value: strin
         dir={dir}
         rows={3}
         onChange={(e) => onChange(e.target.value)}
-        style={{ fontSize: 16, padding: 10, borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontFamily: 'inherit', resize: 'vertical' }}
+        style={inputFont({ fontSize: 16, padding: 10, borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontFamily: 'inherit', resize: 'vertical' })}
       />
     </label>
   );

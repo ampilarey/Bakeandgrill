@@ -15,6 +15,7 @@ import {
 import { getInvoices, type Invoice } from '../api/finance';
 import { today } from '../utils/dateHelpers';
 import { ApiRequestError } from '@shared/api';
+import { inputFont } from '../utils/cssVars';
 
 const mvr = (laar: number) => `MVR ${(laar / 100).toFixed(2)}`;
 
@@ -641,7 +642,7 @@ export default function GstPage() {
               <label key={key} style={{ fontSize: 13 }}>
                 {label}
                 <input
-                  style={settingsField}
+                  style={inputFont(settingsField)}
                   value={String((settings as unknown as Record<string, string | null | boolean | number>)[key] ?? '')}
                   onChange={(e) => setSettings({ ...settings, [key]: e.target.value })}
                 />
@@ -650,7 +651,7 @@ export default function GstPage() {
             <label style={{ fontSize: 13 }}>
               Accounting basis
               <select
-                style={settingsField}
+                style={inputFont(settingsField)}
                 value={settings.accounting_basis}
                 onChange={(e) => setSettings({ ...settings, accounting_basis: e.target.value as GstSettings['accounting_basis'] })}
               >
@@ -662,12 +663,12 @@ export default function GstPage() {
             </label>
             <label style={{ fontSize: 13 }}>
               GST rate (basis points)
-              <input type="number" value={settings.default_tax_rate_bp} onChange={(e) => setSettings({ ...settings, default_tax_rate_bp: parseInt(e.target.value, 10) || 800 })} style={settingsField} />
+              <input type="number" value={settings.default_tax_rate_bp} onChange={(e) => setSettings({ ...settings, default_tax_rate_bp: parseInt(e.target.value, 10) || 800 })} style={inputFont(settingsField)} />
               <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Bake &amp; Grill General Sector: 800 bp (8%). Tourism sector was 16% (1 Jan 2023–30 Jun 2025) and 17% from 1 Jul 2025 — not used unless a tourism activity is added.</span>
             </label>
             <label style={{ fontSize: 13 }}>
               Taxable period
-              <select value={settings.taxable_period} onChange={(e) => setSettings({ ...settings, taxable_period: e.target.value as 'monthly' | 'quarterly' })} style={settingsField}>
+              <select value={settings.taxable_period} onChange={(e) => setSettings({ ...settings, taxable_period: e.target.value as 'monthly' | 'quarterly' })} style={inputFont(settingsField)}>
                 <option value="monthly">Monthly</option>
                 <option value="quarterly">Quarterly</option>
               </select>
@@ -687,7 +688,7 @@ export default function GstPage() {
                 aria-label="Return due on day"
                 value={settings.filing_due_day ?? 28}
                 onChange={(e) => setSettings({ ...settings, filing_due_day: Math.min(28, Math.max(1, parseInt(e.target.value, 10) || 28)) })}
-                style={settingsField}
+                style={inputFont(settingsField)}
               />
               <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Of the month after the period ends.</span>
             </label>

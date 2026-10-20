@@ -9,6 +9,7 @@ import { CutoutSlot } from './CutoutSlot';
 import { ImageUploadField, type ImageUrls } from './menuFormPrimitives';
 import { prepareImageForCrop, prepareUploadFromFile, resolveMediaUrl, revokeCropSrc } from './mediaUrl';
 import { MENU_VIDEO_LIMITS, prepareVideoClip } from './videoClip';
+import { inputFont } from '../../utils/cssVars';
 
 /**
  * Every picture of an item on one tab, each section saying where it shows
@@ -436,11 +437,11 @@ function Gallery({ itemId }: { itemId: number }) {
                       void setAltText(ph.id, next);
                     }
                   }}
-                  style={{
+                  style={inputFont({
                     width: '100%', boxSizing: 'border-box', minHeight: 32,
                     border: '1px solid var(--color-border)', borderRadius: 6, padding: '4px 6px',
                     fontSize: 11, fontFamily: 'inherit', color: 'var(--color-text)', background: 'var(--color-surface)',
-                  }}
+                  })}
                 />
               </div>
               <div style={{ display: 'flex', gap: 4, padding: '6px', flexWrap: 'wrap' }}>

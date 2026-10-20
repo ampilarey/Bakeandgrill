@@ -14,6 +14,7 @@ import {
   REFUND_REASON_CATEGORIES, REFUND_PAYOUT_METHODS, type AdminRefund, type RefundReasonCategory, type RefundTenderBreakdown,
 } from '../api';
 import { fmt } from '../utils/fmt';
+import { inputFont } from '../utils/cssVars';
 
 const STATUS_COLOR: Record<string, string> = {
   pending: 'orange', approved: 'green', rejected: 'red', cancelled: 'gray',
@@ -278,19 +279,19 @@ export default function RefundsPage() {
           aria-label="Refund status"
           value={statusFilter}
           onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
-          style={{ height: 36, padding: '0 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)', cursor: 'pointer' }}
+          style={inputFont({ height: 36, padding: '0 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)', cursor: 'pointer' })}
         >
           {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
-        <input type="date" aria-label="From date" value={fromDate} onChange={e => { setFromDate(e.target.value); setPage(1); }} style={{ height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit' }} />
-        <input type="date" aria-label="To date" value={toDate} onChange={e => { setToDate(e.target.value); setPage(1); }} style={{ height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit' }} />
+        <input type="date" aria-label="From date" value={fromDate} onChange={e => { setFromDate(e.target.value); setPage(1); }} style={inputFont({ height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit' })} />
+        <input type="date" aria-label="To date" value={toDate} onChange={e => { setToDate(e.target.value); setPage(1); }} style={inputFont({ height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit' })} />
         <input
           aria-label="Search refunds"
           placeholder="Order no., phone, reason, reference"
           value={search}
           onChange={e => setSearch(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') { setSearchApplied(search.trim()); setPage(1); } }}
-          style={{ height: 36, padding: '0 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', minWidth: 220 }}
+          style={inputFont({ height: 36, padding: '0 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', minWidth: 220 })}
         />
         <Btn variant="secondary" small onClick={() => { setSearchApplied(search.trim()); setPage(1); }}>Search</Btn>
         {filtersActive && (
@@ -402,14 +403,14 @@ export default function RefundsPage() {
             </label>
             <label>
               <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Refund Amount (MVR) *</span>
-              <input type="number" min="0.01" step="0.01" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+              <input type="number" min="0.01" step="0.01" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} style={inputFont({ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' })} />
             </label>
             <label>
               <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Reason category *</span>
               <select
                 value={reasonCategory}
                 onChange={e => setReasonCategory(e.target.value as RefundReasonCategory | '')}
-                style={{ width: '100%', height: 40, padding: '0 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', boxSizing: 'border-box' }}
+                style={inputFont({ width: '100%', height: 40, padding: '0 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', boxSizing: 'border-box' })}
               >
                 <option value="">Select category…</option>
                 {REFUND_REASON_CATEGORIES.map(c => (
@@ -421,7 +422,7 @@ export default function RefundsPage() {
               <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>
                 Details *{reasonCategory === 'other' ? ' (required for Other)' : ''}
               </span>
-              <textarea placeholder="Describe what happened…" value={reason} onChange={e => setReason(e.target.value)} rows={3} style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }} />
+              <textarea placeholder="Describe what happened…" value={reason} onChange={e => setReason(e.target.value)} rows={3} style={inputFont({ width: '100%', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' })} />
             </label>
             <label>
               <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>
@@ -432,7 +433,7 @@ export default function RefundsPage() {
                 placeholder="7XXXXXX"
                 value={refundPhone}
                 onChange={e => setRefundPhone(e.target.value)}
-                style={{ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
+                style={inputFont({ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' })}
               />
             </label>
             <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>
@@ -481,7 +482,7 @@ export default function RefundsPage() {
                   onChange={e => setApproveOtp(e.target.value)}
                   placeholder="4-digit code from customer"
                   inputMode="numeric"
-                  style={{ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 16, letterSpacing: 4, fontFamily: 'inherit', boxSizing: 'border-box' }}
+                  style={inputFont({ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 16, letterSpacing: 4, fontFamily: 'inherit', boxSizing: 'border-box' })}
                 />
               </label>
             )}
@@ -522,7 +523,7 @@ export default function RefundsPage() {
               value={rejectionReason}
               onChange={e => setRejectionReason(e.target.value)}
               placeholder="Why is this refund declined?"
-              style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
+              style={inputFont({ width: '100%', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' })}
             />
           </label>
           <ModalActions>
@@ -543,7 +544,7 @@ export default function RefundsPage() {
             </p>
             <label>
               <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>How was it returned? *</span>
-              <select aria-label="Payout method" value={paidOutMethod} onChange={e => setPaidOutMethod(e.target.value)} style={{ width: '100%', height: 40, padding: '0 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', boxSizing: 'border-box' }}>
+              <select aria-label="Payout method" value={paidOutMethod} onChange={e => setPaidOutMethod(e.target.value)} style={inputFont({ width: '100%', height: 40, padding: '0 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', boxSizing: 'border-box' })}>
                 {REFUND_PAYOUT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
               </select>
             </label>
@@ -554,7 +555,7 @@ export default function RefundsPage() {
             )}
             <label>
               <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Reference (transfer or reversal number)</span>
-              <input aria-label="Payout reference" value={paidOutRef} onChange={e => setPaidOutRef(e.target.value)} placeholder="e.g. BML transfer ref" style={{ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+              <input aria-label="Payout reference" value={paidOutRef} onChange={e => setPaidOutRef(e.target.value)} placeholder="e.g. BML transfer ref" style={inputFont({ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' })} />
             </label>
           </div>
           <ModalActions>

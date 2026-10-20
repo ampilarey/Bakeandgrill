@@ -23,6 +23,7 @@ import {
   type TradeInvoicePreview,
 } from '../api';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
+import { inputFont } from '../utils/cssVars';
 
 function mvr(laar: number | null | undefined): string {
   if (laar == null) return '—';
@@ -519,7 +520,7 @@ export default function WholesaleInvoicingPage() {
                 value={invoiceNotes}
                 onChange={(e) => setInvoiceNotes(e.target.value)}
                 rows={2}
-                style={textareaStyle}
+                style={inputFont(textareaStyle)}
                 placeholder="Anything the shop should see on the tax invoice"
               />
               <Btn onClick={() => void handleRaise()} disabled={saving} style={{ alignSelf: 'flex-start' }}>
@@ -580,7 +581,7 @@ export default function WholesaleInvoicingPage() {
             value={resolveText}
             onChange={(e) => setResolveText(e.target.value)}
             rows={3}
-            style={textareaStyle}
+            style={inputFont(textareaStyle)}
             placeholder="Decision and notes…"
             aria-label="Mismatch decision"
           />
@@ -600,7 +601,7 @@ export default function WholesaleInvoicingPage() {
             value={chargeReason}
             onChange={(e) => setChargeReason(e.target.value)}
             rows={3}
-            style={textareaStyle}
+            style={inputFont(textareaStyle)}
             placeholder="Reason for charging…"
             aria-label="Charge reason"
           />
@@ -620,7 +621,7 @@ export default function WholesaleInvoicingPage() {
             value={waiveReason}
             onChange={(e) => setWaiveReason(e.target.value)}
             rows={3}
-            style={textareaStyle}
+            style={inputFont(textareaStyle)}
             placeholder="Reason for waiving…"
           />
           <ModalActions>

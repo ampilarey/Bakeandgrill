@@ -6,6 +6,7 @@ import {
   fetchPromotions, retryNewsletter, saveNewsletterIssue, sendNewsletter, sendNewsletterTest,
   type NewsletterDraft, type NewsletterIssue, type NewsletterIssueSummary, type NewsletterSubscriberRow, type Promotion,
 } from '../api';
+import { inputFont } from '../utils/cssVars';
 
 /*
  * Customers & Marketing → Newsletter (iruali import plan, feature 4). Write an
@@ -96,10 +97,10 @@ function Editor({ id, onBack }: { id: number | null; onBack: () => void }) {
           <Input label="Subject (English)" value={draft.subject_en} maxLength={150} disabled={!draftOnly} onChange={(v) => set('subject_en', v)} />
           <Input label="Subject (Dhivehi)" value={draft.subject_dv ?? ''} maxLength={150} dir="rtl" disabled={!draftOnly} onChange={(v) => set('subject_dv', v)} />
           <label style={{ fontSize: 13, fontWeight: 600 }}>Message (English)
-            <textarea style={{ ...textarea, marginTop: 4 }} rows={4} value={draft.body_en ?? ''} disabled={!draftOnly} onChange={(e) => set('body_en', e.target.value)} />
+            <textarea style={inputFont({ ...textarea, marginTop: 4 })} rows={4} value={draft.body_en ?? ''} disabled={!draftOnly} onChange={(e) => set('body_en', e.target.value)} />
           </label>
           <label style={{ fontSize: 13, fontWeight: 600 }}>Message (Dhivehi)
-            <textarea style={{ ...textarea, marginTop: 4 }} dir="rtl" rows={4} value={draft.body_dv ?? ''} disabled={!draftOnly} onChange={(e) => set('body_dv', e.target.value)} />
+            <textarea style={inputFont({ ...textarea, marginTop: 4 })} dir="rtl" rows={4} value={draft.body_dv ?? ''} disabled={!draftOnly} onChange={(e) => set('body_dv', e.target.value)} />
           </label>
           <Input label="Header picture (link to an image)" value={draft.header_image_url ?? ''} disabled={!draftOnly} onChange={(v) => set('header_image_url', v)} placeholder="https://…" />
           <fieldset disabled={!draftOnly} style={{ border: '1px solid var(--color-border-light)', borderRadius: 10, padding: 12, display: 'grid', gap: 8 }}>

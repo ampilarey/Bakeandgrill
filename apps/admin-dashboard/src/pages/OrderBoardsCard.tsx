@@ -5,6 +5,7 @@ import {
 import {
   fetchOrderBoards, createOrderBoard, revokeOrderBoard, claimOrderBoard, type OrderBoard,
 } from '../api';
+import { inputFont } from '../utils/cssVars';
 
 /**
  * The wall screens at /board — kitchen and cash register.
@@ -172,7 +173,7 @@ export default function OrderBoardsCard({ canManage }: { canManage: boolean }) {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={canManage ? 4 : 3} style={{ textAlign: 'center', padding: 32, color: 'var(--color-text-muted)' }}>Loading…</td></tr>
+              <tr><td colSpan={canManage ? 4 : 3} style={{ '--ta': 'center', padding: 32, color: 'var(--color-text-muted)' }}>Loading…</td></tr>
             ) : boards.length === 0 ? (
               <tr><td colSpan={canManage ? 4 : 3}><EmptyState message="No order boards yet." /></td></tr>
             ) : boards.map(b => (
@@ -250,10 +251,10 @@ export default function OrderBoardsCard({ canManage }: { canManage: boolean }) {
                   autoCorrect="off"
                   spellCheck={false}
                   maxLength={8}
-                  style={{
+                  style={inputFont({
                     ...S.input, fontSize: 22, letterSpacing: '0.28em',
                     textAlign: 'center', fontWeight: 700, padding: '12px',
-                  }}
+                  })}
                 />
               </label>
               <label>
@@ -264,7 +265,7 @@ export default function OrderBoardsCard({ canManage }: { canManage: boolean }) {
                   value={name}
                   onChange={e => setName(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') void handlePair(); }}
-                  style={S.input}
+                  style={inputFont(S.input)}
                 />
               </label>
               <ModalActions>
@@ -339,7 +340,7 @@ export default function OrderBoardsCard({ canManage }: { canManage: boolean }) {
                   onChange={e => setName(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') void handleCreate(); }}
                   autoFocus
-                  style={S.input}
+                  style={inputFont(S.input)}
                 />
               </label>
               <ModalActions>

@@ -45,6 +45,7 @@ import {
   withAllDays,
   type Schedule,
 } from './OnlineOrderingPage/orderingControlUi';
+import { inputFont } from '../utils/cssVars';
 
 const SETTINGS_NOT_LOADED = 'The current settings did not load, so Save is off: saving now would replace them with what is shown.';
 
@@ -855,7 +856,7 @@ export default function OnlineOrderingPage() {
             <label style={S.label}>Cutoff (HH:mm)</label>
             <input
               type="time"
-              style={S.input}
+              style={inputFont(S.input)}
               value={tomorrowCutoff}
               onChange={(e) => setTomorrowCutoff(e.target.value)}
               data-testid="tomorrow-cutoff-input"
@@ -1010,20 +1011,20 @@ export default function OnlineOrderingPage() {
           <div className="oc-form-grid" style={{ marginTop: 16 }}>
             <div>
               <label style={S.label}>Packaging label</label>
-              <input style={S.input} value={feeSettings.packaging_label} onChange={(e) => setFeeSettings({ ...feeSettings, packaging_label: e.target.value })} />
+              <input style={inputFont(S.input)} value={feeSettings.packaging_label} onChange={(e) => setFeeSettings({ ...feeSettings, packaging_label: e.target.value })} />
             </div>
             <div>
               <label style={S.label}>Max orders / 15 min</label>
-              <input style={S.input} type="number" min={0} max={500} value={feeSettings.ordering_max_per_15min} onChange={(e) => setFeeSettings({ ...feeSettings, ordering_max_per_15min: parseInt(e.target.value, 10) || 0 })} />
+              <input style={inputFont(S.input)} type="number" min={0} max={500} value={feeSettings.ordering_max_per_15min} onChange={(e) => setFeeSettings({ ...feeSettings, ordering_max_per_15min: parseInt(e.target.value, 10) || 0 })} />
               <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--color-text-muted)' }}>0 = unlimited</p>
             </div>
             <div>
               <label style={S.label}>Small-order threshold (MVR)</label>
-              <input style={S.input} type="number" min={0} value={feeSettings.small_order_threshold_mvr} onChange={(e) => setFeeSettings({ ...feeSettings, small_order_threshold_mvr: parseFloat(e.target.value) || 0 })} disabled={!feeSettings.small_order_enabled} />
+              <input style={inputFont(S.input)} type="number" min={0} value={feeSettings.small_order_threshold_mvr} onChange={(e) => setFeeSettings({ ...feeSettings, small_order_threshold_mvr: parseFloat(e.target.value) || 0 })} disabled={!feeSettings.small_order_enabled} />
             </div>
             <div>
               <label style={S.label}>Small-order fee (MVR)</label>
-              <input style={S.input} type="number" min={0} value={feeSettings.small_order_amount_mvr} onChange={(e) => setFeeSettings({ ...feeSettings, small_order_amount_mvr: parseFloat(e.target.value) || 0 })} disabled={!feeSettings.small_order_enabled} />
+              <input style={inputFont(S.input)} type="number" min={0} value={feeSettings.small_order_amount_mvr} onChange={(e) => setFeeSettings({ ...feeSettings, small_order_amount_mvr: parseFloat(e.target.value) || 0 })} disabled={!feeSettings.small_order_enabled} />
             </div>
           </div>
           <div style={{ marginTop: 16 }}>
@@ -1053,7 +1054,7 @@ export default function OnlineOrderingPage() {
             <div>
               <label style={S.label}>Slot length (minutes)</label>
               <input
-                style={S.input}
+                style={inputFont(S.input)}
                 type="number"
                 min={PICKUP_MINUTES.min}
                 max={PICKUP_MINUTES.max}
@@ -1067,7 +1068,7 @@ export default function OnlineOrderingPage() {
             <div>
               <label style={S.label}>Orders per slot</label>
               <input
-                style={S.input}
+                style={inputFont(S.input)}
                 type="number"
                 min={PICKUP_CAPACITY.min}
                 max={PICKUP_CAPACITY.max}
@@ -1158,7 +1159,7 @@ export default function OnlineOrderingPage() {
           <div style={{ gridColumn: '1 / -1' }}>
             <label style={S.label}>Closed message</label>
             <input
-              style={S.input}
+              style={inputFont(S.input)}
               value={cateringClosedMessage}
               onChange={(e) => setCateringClosedMessage(e.target.value)}
               placeholder="Shown when pre-order is closed"
@@ -1176,7 +1177,7 @@ export default function OnlineOrderingPage() {
           <div>
             <label style={S.label}>Min lead hours</label>
             <input
-              style={S.input}
+              style={inputFont(S.input)}
               type="number"
               min={0}
               max={720}
@@ -1187,7 +1188,7 @@ export default function OnlineOrderingPage() {
           <div>
             <label style={S.label}>Quote valid (days)</label>
             <input
-              style={S.input}
+              style={inputFont(S.input)}
               type="number"
               min={1}
               max={60}
@@ -1198,7 +1199,7 @@ export default function OnlineOrderingPage() {
           <div>
             <label style={S.label}>Quote cutoff before event (hours)</label>
             <input
-              style={S.input}
+              style={inputFont(S.input)}
               type="number"
               min={0}
               max={168}

@@ -5,6 +5,7 @@ import {
   twoFactorChallenge,
   type StaffUser,
 } from '../api';
+import { inputFont } from '../utils/cssVars';
 
 type Screen = 'login' | 'two-factor' | 'reset-phone' | 'reset-otp';
 type LoginMode = 'password' | 'pin';
@@ -218,7 +219,7 @@ export function LoginPage({ onLogin }: { onLogin: (user: StaffUser, returnTo?: s
                 placeholder="7820288 or you@example.com"
                 autoComplete="username"
                 autoFocus
-                style={INPUT}
+                style={inputFont(INPUT)}
               />
             </div>
 
@@ -234,7 +235,7 @@ export function LoginPage({ onLogin }: { onLogin: (user: StaffUser, returnTo?: s
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Your admin password"
                   autoComplete="current-password"
-                  style={{ ...INPUT, paddingRight: 48 }}
+                  style={inputFont({ ...INPUT, paddingRight: 48 })}
                 />
                 <button
                   type="button"
@@ -261,7 +262,7 @@ export function LoginPage({ onLogin }: { onLogin: (user: StaffUser, returnTo?: s
                 onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 8))}
                 placeholder="4–8 digit staff PIN"
                 autoComplete="one-time-code"
-                style={INPUT}
+                style={inputFont(INPUT)}
               />
             </div>
             )}
@@ -324,13 +325,13 @@ export function LoginPage({ onLogin }: { onLogin: (user: StaffUser, returnTo?: s
               // manager has nothing useful to offer here.
               autoComplete="one-time-code"
               autoFocus
-              style={{
+              style={inputFont({
                 ...INPUT,
                 letterSpacing: '0.3em',
                 textAlign: 'center',
                 fontSize: 22,
                 fontVariantNumeric: 'tabular-nums',
-              }}
+              })}
             />
 
             {codeError && (
@@ -383,7 +384,7 @@ export function LoginPage({ onLogin }: { onLogin: (user: StaffUser, returnTo?: s
               onChange={(e) => setResetPhone(e.target.value)}
               placeholder="+960 7XX XXXX"
               autoFocus
-              style={INPUT}
+              style={inputFont(INPUT)}
             />
             {resetMsg && (
               <div style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger-strong)', borderRadius: 10, padding: '10px 14px', fontSize: 13, textAlign: 'center' }}>
@@ -423,15 +424,15 @@ export function LoginPage({ onLogin }: { onLogin: (user: StaffUser, returnTo?: s
           <form onSubmit={handleResetVerify} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>OTP Code</label>
-              <input type="text" inputMode="numeric" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="6-digit code" autoFocus style={{ ...INPUT, letterSpacing: '0.3em', textAlign: 'center', fontSize: 20 }} />
+              <input type="text" inputMode="numeric" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="6-digit code" autoFocus style={inputFont({ ...INPUT, letterSpacing: '0.3em', textAlign: 'center', fontSize: 20 })} />
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>New Password</label>
-              <input type="password" value={newPass} onChange={(e) => setNewPass(e.target.value)} placeholder="Min 8 characters" style={INPUT} />
+              <input type="password" value={newPass} onChange={(e) => setNewPass(e.target.value)} placeholder="Min 8 characters" style={inputFont(INPUT)} />
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Confirm Password</label>
-              <input type="password" value={confirmPass} onChange={(e) => setConfirmPass(e.target.value)} placeholder="Repeat new password" style={INPUT} />
+              <input type="password" value={confirmPass} onChange={(e) => setConfirmPass(e.target.value)} placeholder="Repeat new password" style={inputFont(INPUT)} />
             </div>
 
             {otpError && (

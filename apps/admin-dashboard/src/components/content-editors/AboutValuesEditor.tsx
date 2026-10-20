@@ -1,6 +1,7 @@
 import type { ContentEditorProps } from './types';
 import { RepeaterShell } from './RepeaterShell';
 import { rowSize } from './rowSize';
+import { inputFont } from '../../utils/cssVars';
 
 type Row = { initial: string; title: string; description: string };
 const empty = (): Row => ({ initial: '', title: '', description: '' });
@@ -23,12 +24,12 @@ export function AboutValuesEditor({ label, description, value, onChange }: Conte
           <>
             <div className="content-editor-row">
               <input className="content-editor-icon" value={item.initial} onChange={(e) => update({ initial: e.target.value })} placeholder="F" title="Initial letter"
-                style={{ height: 32, borderRadius: 8, border: '1px solid var(--color-border)', textAlign: 'center', fontSize: 14, fontWeight: 700, fontFamily: 'inherit', outline: 'none', flexShrink: 0 }} />
+                style={inputFont({ height: 32, borderRadius: 8, border: '1px solid var(--color-border)', textAlign: 'center', fontSize: 14, fontWeight: 700, fontFamily: 'inherit', outline: 'none', flexShrink: 0 })} />
               <input value={item.title} onChange={(e) => update({ title: e.target.value })} placeholder="Title"
-                style={{ ...rowSize('1', 120), height: 32, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text)' }} />
+                style={inputFont({ ...rowSize('1', 120), height: 32, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text)' })} />
             </div>
             <input value={item.description} onChange={(e) => update({ description: e.target.value })} placeholder="Description"
-              style={{ width: '100%', height: 32, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text)', boxSizing: 'border-box' }} />
+              style={inputFont({ width: '100%', height: 32, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text)', boxSizing: 'border-box' })} />
           </>
         )}
       />

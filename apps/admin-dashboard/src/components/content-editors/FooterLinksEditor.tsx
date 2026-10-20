@@ -1,6 +1,7 @@
 import type { ContentEditorProps } from './types';
 import { RepeaterShell } from './RepeaterShell';
 import { rowSize } from './rowSize';
+import { inputFont } from '../../utils/cssVars';
 
 type Row = { label: string; url: string };
 const empty = (): Row => ({ label: '', url: '' });
@@ -24,9 +25,9 @@ export function FooterLinksEditor({ label, description, value, onChange }: Conte
         renderItem={(item, _idx, update) => (
           <div className="content-editor-row">
             <input value={item.label} onChange={(e) => update({ label: e.target.value })} placeholder="Label"
-              style={{ ...rowSize('1', 100), height: 32, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text)' }} />
+              style={inputFont({ ...rowSize('1', 100), height: 32, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text)' })} />
             <input value={item.url} onChange={(e) => update({ url: e.target.value })} placeholder="/privacy"
-              style={{ ...rowSize('1', 100), height: 32, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text)' }} />
+              style={inputFont({ ...rowSize('1', 100), height: 32, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text)' })} />
           </div>
         )}
       />

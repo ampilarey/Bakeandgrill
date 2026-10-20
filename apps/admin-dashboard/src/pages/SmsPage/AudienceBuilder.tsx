@@ -1,4 +1,5 @@
 import type { MenuCategory, SmsAudience, SmsAudienceCriteria } from '../../api';
+import { inputFont } from '../../utils/cssVars';
 
 /*
  * SMS audit, 2026-09-24: the owner asked for "advanced promotions based on
@@ -55,7 +56,7 @@ function IdPicker({ title, options, values, onChange, single, addLabel }: {
             if (!id) return;
             onChange(single ? [id] : [...values, id]);
           }}
-          style={field}
+          style={inputFont(field)}
         >
           <option value="">{addLabel}</option>
           {groups.map((g) => (
@@ -109,7 +110,7 @@ export function AudienceBuilder({ value, onChange, categories, segments, orderTy
       {audiences.length > 0 && (
         <div style={{ gridColumn: '1 / -1' }}>
           <label style={label}>Start from a saved audience</label>
-          <select aria-label="Saved audience" value={value.audience_id ?? ''} onChange={(e) => set({ audience_id: e.target.value ? Number(e.target.value) : undefined })} style={field}>
+          <select aria-label="Saved audience" value={value.audience_id ?? ''} onChange={(e) => set({ audience_id: e.target.value ? Number(e.target.value) : undefined })} style={inputFont(field)}>
             <option value="">None — build from scratch</option>
             {audiences.map((a) => <option key={a.id} value={a.id}>{a.name} ({a.count})</option>)}
           </select>
@@ -119,7 +120,7 @@ export function AudienceBuilder({ value, onChange, categories, segments, orderTy
 
       <div>
         <label style={label}>Customer group</label>
-        <select aria-label="Customer group" value={value.segment ?? ''} onChange={(e) => set({ segment: e.target.value || undefined })} style={field}>
+        <select aria-label="Customer group" value={value.segment ?? ''} onChange={(e) => set({ segment: e.target.value || undefined })} style={inputFont(field)}>
           <option value="">Any customer</option>
           {segments.map((s) => <option key={s.slug} value={s.slug}>{s.label}</option>)}
         </select>
@@ -156,29 +157,29 @@ export function AudienceBuilder({ value, onChange, categories, segments, orderTy
 
       <div>
         <label style={label}>Purchase window (days)</label>
-        <input type="number" aria-label="Purchase window days" min={1} max={3650} value={value.window_days ?? 90} onChange={num('window_days')} style={field} />
+        <input type="number" aria-label="Purchase window days" min={1} max={3650} value={value.window_days ?? 90} onChange={num('window_days')} style={inputFont(field)} />
         <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '4px 0 0' }}>Applies to bought, likes and ordered-this-way. Spend and order counts are all time.</p>
       </div>
 
       <div>
         <label style={label}>Spent at least (MVR, all time)</label>
-        <input type="number" aria-label="Minimum spend MVR" min={0} value={value.min_spend_mvr ?? ''} onChange={num('min_spend_mvr')} style={field} placeholder="e.g. 500" />
+        <input type="number" aria-label="Minimum spend MVR" min={0} value={value.min_spend_mvr ?? ''} onChange={num('min_spend_mvr')} style={inputFont(field)} placeholder="e.g. 500" />
       </div>
       <div>
         <label style={label}>Paid orders at least</label>
-        <input type="number" aria-label="Minimum paid orders" min={1} value={value.min_orders ?? ''} onChange={num('min_orders')} style={field} placeholder="e.g. 3" />
+        <input type="number" aria-label="Minimum paid orders" min={1} value={value.min_orders ?? ''} onChange={num('min_orders')} style={inputFont(field)} placeholder="e.g. 3" />
       </div>
       <div>
         <label style={label}>Ordered in the last N days</label>
-        <input type="number" aria-label="Ordered in the last days" min={1} value={value.last_order_days ?? ''} onChange={num('last_order_days')} style={field} placeholder="e.g. 30" />
+        <input type="number" aria-label="Ordered in the last days" min={1} value={value.last_order_days ?? ''} onChange={num('last_order_days')} style={inputFont(field)} placeholder="e.g. 30" />
       </div>
       <div>
         <label style={label}>No order for N+ days (dormant)</label>
-        <input type="number" aria-label="Dormant days" min={1} value={value.dormant_days ?? ''} onChange={num('dormant_days')} style={field} placeholder="e.g. 60" />
+        <input type="number" aria-label="Dormant days" min={1} value={value.dormant_days ?? ''} onChange={num('dormant_days')} style={inputFont(field)} placeholder="e.g. 60" />
       </div>
       <div>
         <label style={label}>Birthday in</label>
-        <select aria-label="Birthday month" value={value.birthday_month ?? ''} onChange={(e) => set({ birthday_month: e.target.value ? Number(e.target.value) : undefined })} style={field}>
+        <select aria-label="Birthday month" value={value.birthday_month ?? ''} onChange={(e) => set({ birthday_month: e.target.value ? Number(e.target.value) : undefined })} style={inputFont(field)}>
           <option value="">Any month</option>
           {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
         </select>

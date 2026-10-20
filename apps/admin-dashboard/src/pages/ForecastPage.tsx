@@ -21,6 +21,7 @@ import {
   type RestockPlanDefaults,
 } from '../utils/restockDefaults';
 import { fmt } from '../utils/fmt';
+import { inputFont } from '../utils/cssVars';
 
 type RestockFilter = 'due_soon' | 'all' | 'price_up' | 'alerts' | 'snoozed' | 'excluded';
 
@@ -1045,10 +1046,10 @@ export function ForecastPage() {
         {/* One unit, so "to" never lands on a line of its own on a phone. */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, maxWidth: '100%' }}>
           <input type="date" value={from} onChange={e => setFrom(e.target.value)} aria-label="From date"
-            style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 14, minWidth: 0, flex: '1 1 0' }} />
+            style={inputFont({ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 14, minWidth: 0, flex: '1 1 0' })} />
           <span style={{ color: 'var(--color-text-muted)', flexShrink: 0 }}>to</span>
           <input type="date" value={to} onChange={e => setTo(e.target.value)} aria-label="To date"
-            style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 14, minWidth: 0, flex: '1 1 0' }} />
+            style={inputFont({ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 14, minWidth: 0, flex: '1 1 0' })} />
         </div>
         <div style={{ display: 'flex', background: 'var(--color-border-light)', borderRadius: 8, overflow: 'hidden' }}>
           {(['daily', 'weekly', 'monthly'] as const).map(g => (
@@ -1239,10 +1240,10 @@ export function ForecastPage() {
                       value={restockParamDrafts[f.key]}
                       disabled={restockBusy || loading}
                       onChange={(e) => setRestockParamDrafts((d) => ({ ...d, [f.key]: e.target.value }))}
-                      style={{
+                      style={inputFont({
                         width: 72, padding: '6px 8px', borderRadius: 6, border: '1px solid var(--color-border)',
                         fontSize: 13, fontFamily: 'inherit', color: 'var(--color-text)',
-                      }}
+                      })}
                     />
                   </label>
                 ))}
@@ -1668,10 +1669,10 @@ export function ForecastPage() {
                                   disabled={restockBusy}
                                   onChange={(e) => setLeadDrafts((d) => ({ ...d, [item.id]: e.target.value }))}
                                   aria-label={`Lead days for ${item.name}`}
-                                  style={{
+                                  style={inputFont({
                                     width: 52, height: 28, padding: '0 6px', borderRadius: 6,
                                     border: '1px solid var(--color-border)', fontSize: 12, fontFamily: 'inherit',
-                                  }}
+                                  })}
                                 />
                                 <button
                                   type="button"
@@ -1712,10 +1713,10 @@ export function ForecastPage() {
                                   disabled={restockBusy}
                                   onChange={(e) => setCoverDrafts((d) => ({ ...d, [item.id]: e.target.value }))}
                                   aria-label={`Cover days for ${item.name}`}
-                                  style={{
+                                  style={inputFont({
                                     width: 52, height: 28, padding: '0 6px', borderRadius: 6,
                                     border: '1px solid var(--color-border)', fontSize: 12, fontFamily: 'inherit',
-                                  }}
+                                  })}
                                 />
                                 <button
                                   type="button"
@@ -1753,13 +1754,13 @@ export function ForecastPage() {
                               disabled={restockBusy || item.excluded}
                               onChange={(e) => setQtyDrafts((d) => ({ ...d, [item.id]: e.target.value }))}
                               aria-label={`Order qty for ${item.name}`}
-                              style={{
+                              style={inputFont({
                                 width: 72, height: 28, padding: '0 6px', borderRadius: 6,
                                 border: qtyIsEdited(item) || qtyHasSavedPack(item) ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
                                 fontSize: 12, fontFamily: 'inherit', fontWeight: 700,
                                 color: 'var(--color-success-strong)',
                                 background: qtyIsEdited(item) ? 'var(--color-warning-bg)' : qtyHasSavedPack(item) ? 'var(--color-tone-gold-bg)' : 'var(--color-surface)',
-                              }}
+                              })}
                             />
                             <span style={{ color: 'var(--color-text-muted)' }}>{item.unit}</span>
                           </div>
@@ -1893,22 +1894,22 @@ export function ForecastPage() {
                       </tr>
                     ))}
                     {restock.items.length === 0 && (
-                      <tr><td colSpan={11} style={{ padding: 32, textAlign: 'center', color: 'var(--color-text-muted)' }}>No usage or purchase history yet.</td></tr>
+                      <tr><td colSpan={11} style={{ padding: 32, '--ta': 'center', color: 'var(--color-text-muted)' }}>No usage or purchase history yet.</td></tr>
                     )}
                     {restockFilter === 'due_soon' && restock.totals.due_soon === 0 && restock.items.length > 0 && (
-                      <tr><td colSpan={11} style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-muted)' }}>Nothing due soon — switch to All tracked items.</td></tr>
+                      <tr><td colSpan={11} style={{ padding: 24, '--ta': 'center', color: 'var(--color-text-muted)' }}>Nothing due soon — switch to All tracked items.</td></tr>
                     )}
                     {restockFilter === 'price_up' && (restock.totals.price_up ?? 0) === 0 && (
-                      <tr><td colSpan={11} style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-muted)' }}>No items priced above last purchase (≥1%).</td></tr>
+                      <tr><td colSpan={11} style={{ padding: 24, '--ta': 'center', color: 'var(--color-text-muted)' }}>No items priced above last purchase (≥1%).</td></tr>
                     )}
                     {restockFilter === 'alerts' && (restock.totals.open_alerts ?? 0) === 0 && (
-                      <tr><td colSpan={11} style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-muted)' }}>No open reorder alerts. Scheduler creates them when stock hits ROP.</td></tr>
+                      <tr><td colSpan={11} style={{ padding: 24, '--ta': 'center', color: 'var(--color-text-muted)' }}>No open reorder alerts. Scheduler creates them when stock hits ROP.</td></tr>
                     )}
                     {restockFilter === 'snoozed' && (restock.totals.snoozed ?? 0) === 0 && (
-                      <tr><td colSpan={11} style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-muted)' }}>No snoozed items. Use 7d / 14d / 30d on a due-soon row to hide it temporarily.</td></tr>
+                      <tr><td colSpan={11} style={{ padding: 24, '--ta': 'center', color: 'var(--color-text-muted)' }}>No snoozed items. Use 7d / 14d / 30d on a due-soon row to hide it temporarily.</td></tr>
                     )}
                     {restockFilter === 'excluded' && (restock.totals.excluded ?? 0) === 0 && (
-                      <tr><td colSpan={11} style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-muted)' }}>No excluded items. Use Exclude on a due-soon row to hide it permanently.</td></tr>
+                      <tr><td colSpan={11} style={{ padding: 24, '--ta': 'center', color: 'var(--color-text-muted)' }}>No excluded items. Use Exclude on a due-soon row to hide it permanently.</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -1990,7 +1991,7 @@ export function ForecastPage() {
                       </tr>
                     ))}
                     {invForecast.items.length === 0 && (
-                      <tr><td colSpan={6} style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>No inventory data available</td></tr>
+                      <tr><td colSpan={6} style={{ padding: 40, '--ta': 'center', color: 'var(--color-text-muted)' }}>No inventory data available</td></tr>
                     )}
                   </tbody>
                 </table>

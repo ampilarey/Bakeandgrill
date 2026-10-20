@@ -139,7 +139,7 @@ export default function AnalyticsPage() {
                   </tr>
                 ))}
                 {retention.length === 0 && (
-                  <tr><td colSpan={3} style={{ ...TD, color: 'var(--color-text-muted)', textAlign: 'center' }}>No data yet.</td></tr>
+                  <tr><td colSpan={3} style={{ ...TD, color: 'var(--color-text-muted)', '--ta': 'center' }}>No data yet.</td></tr>
                 )}
               </tbody>
             </table>
@@ -164,7 +164,7 @@ export default function AnalyticsPage() {
                   </tr>
                 ))}
                 {ltvCustomers.length === 0 && (
-                  <tr><td colSpan={3} style={{ ...TD, color: 'var(--color-text-muted)', textAlign: 'center' }}>No data yet.</td></tr>
+                  <tr><td colSpan={3} style={{ ...TD, color: 'var(--color-text-muted)', '--ta': 'center' }}>No data yet.</td></tr>
                 )}
               </tbody>
             </table>
@@ -199,7 +199,7 @@ export default function AnalyticsPage() {
                 </tr>
               ))}
               {profitItems.length === 0 && (
-                <tr><td colSpan={5} style={{ ...TD, color: 'var(--color-text-muted)', textAlign: 'center' }}>No profitability data yet.</td></tr>
+                <tr><td colSpan={5} style={{ ...TD, color: 'var(--color-text-muted)', '--ta': 'center' }}>No profitability data yet.</td></tr>
               )}
             </tbody>
           </table>

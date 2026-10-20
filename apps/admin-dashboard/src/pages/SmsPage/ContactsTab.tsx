@@ -10,6 +10,7 @@ import {
   Badge, Btn, Card, EmptyState, Input, Modal, ModalActions, Spinner, TableCard, TD,
 } from '../../components/SharedUI';
 import { SortFilterHead, useSortFilter } from '../../components/TableControls';
+import { inputFont } from '../../utils/cssVars';
 
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 const DAY_LABEL: Record<string, string> = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' };
@@ -271,7 +272,7 @@ export function ContactsTab() {
               <div>
                 <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Type</label>
                 <select value={contactForm.type} onChange={e => setContactForm(f => ({ ...f, type: e.target.value as 'staff' | 'external' }))}
-                  style={{ width: '100%', border: '1px solid var(--color-border)', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}>
+                  style={inputFont({ width: '100%', border: '1px solid var(--color-border)', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' })}>
                   <option value="external">External (raw number)</option>
                   <option value="staff">Staff (linked to account)</option>
                 </select>
@@ -349,7 +350,7 @@ export function ContactsTab() {
           <div>
             <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Select Contact</label>
             <select value={memberContactId} onChange={e => setMemberContactId(e.target.value)}
-              style={{ width: '100%', border: '1px solid var(--color-border)', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}>
+              style={inputFont({ width: '100%', border: '1px solid var(--color-border)', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' })}>
               <option value="">— Choose contact —</option>
               {contacts
                 .filter(c => !memberModal.contacts.find(m => m.id === c.id))

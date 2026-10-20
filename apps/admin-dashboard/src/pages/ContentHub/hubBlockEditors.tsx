@@ -28,6 +28,7 @@ import {
   valueForScope,
   type DraftMap,
 } from './hubDraftUtils';
+import { inputFont } from '../../utils/cssVars';
 
 /**
  * The field editors, shared by every Content & Branding layout.
@@ -190,14 +191,14 @@ export function renderPlainEditor(
         onChange={(e) => deps.setDraft(scope, block.key, e.target.value)}
         rows={block.type === 'json' ? 6 : 4}
         dir={deps.locale === 'dv' ? 'rtl' : 'ltr'}
-        style={{
+        style={inputFont({
           width: '100%',
           borderRadius: 10,
           border: '1px solid var(--color-border)',
           padding: 10,
           fontFamily: block.type === 'json' ? 'ui-monospace, monospace' : 'inherit',
           fontSize: 13,
-        }}
+        })}
       />
     );
   }
@@ -206,7 +207,7 @@ export function renderPlainEditor(
       value={val}
       onChange={(e) => deps.setDraft(scope, block.key, e.target.value)}
       dir={deps.locale === 'dv' ? 'rtl' : 'ltr'}
-      style={{
+      style={inputFont({
         width: '100%',
         height: 44,
         borderRadius: 10,
@@ -214,7 +215,7 @@ export function renderPlainEditor(
         padding: '0 12px',
         fontFamily: 'inherit',
         fontSize: 14,
-      }}
+      })}
     />
   );
 }

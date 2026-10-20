@@ -14,6 +14,7 @@ import {
 } from '../api';
 import { CreditCard, Copy, Check } from 'lucide-react';
 import { PrintCardModal, type PrintCardData } from '../components/PrintCardModal';
+import { inputFont } from '../utils/cssVars';
 
 const STATUS_COLOR: Record<string, string> = {
   active: 'green',
@@ -250,7 +251,7 @@ export default function DiscountCardsPage() {
                 <select
                   value={type}
                   onChange={(e) => setType(e.target.value as 'percentage' | 'fixed')}
-                  style={selectStyle}
+                  style={inputFont(selectStyle)}
                 >
                   <option value="percentage">Percentage</option>
                   <option value="fixed">Fixed MVR</option>

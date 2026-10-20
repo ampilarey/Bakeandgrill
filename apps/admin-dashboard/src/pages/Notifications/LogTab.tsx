@@ -8,6 +8,7 @@ import {
 import { Badge, Btn, EmptyState, Spinner, StatCard, TableCard, TD, TH, TabScrollRow } from '../../components/SharedUI';
 import { MessageLog } from './MessageLog';
 import { errorBox } from './shared';
+import { inputFont } from '../../utils/cssVars';
 
 /*
  * Notifications → Log (notifications audit, 2026-10-10): every message the
@@ -113,7 +114,7 @@ function OrderAlertLog() {
             aria-label="Status"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            style={{ minHeight: 32, border: '1px solid var(--color-border)', borderRadius: 8, padding: '4px 10px', fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)' }}
+            style={inputFont({ minHeight: 32, border: '1px solid var(--color-border)', borderRadius: 8, padding: '4px 10px', fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)' })}
           >
             <option value="">All statuses</option>
             <option value="sent">Sent</option>

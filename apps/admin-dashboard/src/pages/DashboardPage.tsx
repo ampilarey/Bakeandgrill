@@ -41,6 +41,7 @@ import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { monthStart, today } from '../utils/dateHelpers';
 import { readRestockDefaults } from '../utils/restockDefaults';
 import { showDevNavItems } from '../components/navConfig';
+import { inputFont } from '../utils/cssVars';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -262,7 +263,7 @@ function MaintenancePanel({ onDone }: { onDone: () => void }) {
           <select
             value={days}
             onChange={(e) => setDays(Number(e.target.value))}
-            style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 12, fontFamily: 'inherit' }}
+            style={inputFont({ padding: '4px 8px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 12, fontFamily: 'inherit' })}
           >
             {[1, 2, 3, 7, 14].map((d) => (
               <option key={d} value={d}>{d} day{d !== 1 ? 's' : ''}</option>
@@ -688,7 +689,7 @@ export function DashboardPage() {
               value={summaryDate}
               max={today()}
               onChange={(e) => e.target.value && setSummaryDate(e.target.value)}
-              style={{ padding: '6px 10px', borderRadius: 10, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', background: 'var(--color-bg)', color: 'var(--color-text)', cursor: 'pointer' }}
+              style={inputFont({ padding: '6px 10px', borderRadius: 10, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', background: 'var(--color-bg)', color: 'var(--color-text)', cursor: 'pointer' })}
             />
             {summaryDate !== today() && (
               <button

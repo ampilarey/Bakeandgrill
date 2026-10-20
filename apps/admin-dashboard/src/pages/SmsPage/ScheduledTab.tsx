@@ -9,6 +9,7 @@ import {
 import {
   Badge, Btn, EmptyState, Input, Modal, ModalActions, Spinner, TableCard, TD, TH,
 } from '../../components/SharedUI';
+import { inputFont } from '../../utils/cssVars';
 
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 const DAY_LABEL: Record<string, string> = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' };
@@ -225,14 +226,14 @@ export function ScheduledTab() {
               {form.to_type === 'phone' && <Input value={form.to_phone} onChange={v => setForm(f => ({ ...f, to_phone: v }))} placeholder="+9607xxxxxx" />}
               {form.to_type === 'contact' && (
                 <select value={form.to_contact_id} onChange={e => setForm(f => ({ ...f, to_contact_id: e.target.value }))}
-                  style={{ width: '100%', border: '1px solid var(--color-border)', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}>
+                  style={inputFont({ width: '100%', border: '1px solid var(--color-border)', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' })}>
                   <option value="">— Select contact —</option>
                   {contacts.map(c => <option key={c.id} value={c.id}>{c.name} ({c.phone})</option>)}
                 </select>
               )}
               {form.to_type === 'group' && (
                 <select value={form.to_group_id} onChange={e => setForm(f => ({ ...f, to_group_id: e.target.value }))}
-                  style={{ width: '100%', border: '1px solid var(--color-border)', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}>
+                  style={inputFont({ width: '100%', border: '1px solid var(--color-border)', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' })}>
                   <option value="">— Select group —</option>
                   {groups.map(g => <option key={g.id} value={g.id}>{g.name} ({g.contacts_count} members)</option>)}
                 </select>
@@ -243,7 +244,7 @@ export function ScheduledTab() {
             <div>
               <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Template (optional)</label>
               <select value={form.template_id} onChange={e => setForm(f => ({ ...f, template_id: e.target.value }))}
-                style={{ width: '100%', border: '1px solid var(--color-border)', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}>
+                style={inputFont({ width: '100%', border: '1px solid var(--color-border)', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' })}>
                 <option value="">— Use custom message below —</option>
                 {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
@@ -253,7 +254,7 @@ export function ScheduledTab() {
                 <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Custom Message *</label>
                 <textarea value={form.body} onChange={e => setForm(f => ({ ...f, body: e.target.value }))} rows={3}
                   placeholder="Type your SMS message…"
-                  style={{ width: '100%', border: '1px solid var(--color-border)', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }} />
+                  style={inputFont({ width: '100%', border: '1px solid var(--color-border)', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' })} />
               </div>
             )}
 
@@ -277,7 +278,7 @@ export function ScheduledTab() {
                   <div>
                     <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Repeat *</label>
                     <select value={form.recurrence_type} onChange={e => setForm(f => ({ ...f, recurrence_type: e.target.value as ScheduleForm['recurrence_type'] }))}
-                      style={{ width: '100%', border: '1px solid var(--color-border)', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}>
+                      style={inputFont({ width: '100%', border: '1px solid var(--color-border)', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' })}>
                       <option value="">— Select —</option>
                       <option value="daily">Daily</option>
                       <option value="weekly">Weekly</option>

@@ -9,6 +9,7 @@ import {
   type HeroPresentationPatch,
 } from '../../../utils/heroSlidePresentation';
 import { BG_SWATCHES, btnStyle, ELEMENT_LABELS, type HeroSlideRow } from './heroSlidesModel';
+import { inputFont } from '../../../utils/cssVars';
 
 export type HeroElementBgEditorProps = {
   slide: HeroSlideRow;
@@ -504,7 +505,7 @@ export function HeroElementBgEditor({
                       [`${key}_bg_strength`]: strength,
                     } as HeroPresentationPatch);
                   }}
-                  style={{
+                  style={inputFont({
                     height: 40,
                     borderRadius: 8,
                     border: '1px solid var(--color-border)',
@@ -515,7 +516,7 @@ export function HeroElementBgEditor({
                     color: 'var(--color-text)',
                     width: '100%',
                     maxWidth: 200,
-                  }}
+                  })}
                 />
               </div>
             ) : null}

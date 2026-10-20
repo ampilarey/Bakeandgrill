@@ -129,7 +129,7 @@ export default function TimeClockPage() {
               <SortFilterHead controls={entryCtl} allRows={entries} />
               <tbody>
                 {histLoading ? (
-                  <tr><td colSpan={5} style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-muted)' }}>Loading…</td></tr>
+                  <tr><td colSpan={5} style={{ '--ta': 'center', padding: 40, color: 'var(--color-text-muted)' }}>Loading…</td></tr>
                 ) : entries.length === 0 ? (
                   <tr><td colSpan={5}><EmptyState message="No time entries for this period." /></td></tr>
                 ) : entryCtl.rows.map(e => (
@@ -182,7 +182,7 @@ export default function TimeClockPage() {
               </thead>
               <tbody>
                 {sumLoading ? (
-                  <tr><td colSpan={3} style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-muted)' }}>Loading…</td></tr>
+                  <tr><td colSpan={3} style={{ '--ta': 'center', padding: 40, color: 'var(--color-text-muted)' }}>Loading…</td></tr>
                 ) : summary.length === 0 ? (
                   <tr><td colSpan={3}><EmptyState message="No data for this period." /></td></tr>
                 ) : summary.map((row, i) => (

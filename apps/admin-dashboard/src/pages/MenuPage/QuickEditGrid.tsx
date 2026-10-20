@@ -37,6 +37,7 @@ import {
   type GridFilters, type SortState,
 } from './gridFilters';
 import { csvFilename, csvToDrafts, itemsToCsv, parseCsv, type CsvImportResult } from './menuCsv';
+import { inputFont } from '../../utils/cssVars';
 
 /**
  * Spreadsheet-style editing for the menu.
@@ -1008,7 +1009,7 @@ function ItemCell({
             value={String(value ?? '')}
             onChange={(e) => onChange(e.target.value)}
             aria-label={`Name for ${item.name}`}
-            style={inputStyle(dirty, !!errors)}
+            style={inputFont(inputStyle(dirty, !!errors))}
           />
         </div>
         {errors && <FieldError messages={errors} />}
@@ -1165,7 +1166,7 @@ function VariantCell({
             value={String(value ?? '')}
             onChange={(e) => onChange(e.target.value)}
             aria-label={`Size name for ${itemName} — ${variant.name}`}
-            style={inputStyle(dirty, !!errors)}
+            style={inputFont(inputStyle(dirty, !!errors))}
           />
         </div>
         {errors && <FieldError messages={errors} />}
@@ -1222,7 +1223,7 @@ function Editor({
           value={String(value ?? '')}
           onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
           aria-label={label}
-          style={{ ...style, textAlign: 'right' }}
+          style={inputFont({ ...style, textAlign: 'right' })}
         />
       );
     case 'decimal':
@@ -1233,7 +1234,7 @@ function Editor({
           onChange={(e) => onChange(e.target.value === '' ? 1 : Math.max(0, Number(e.target.value)))}
           aria-label={label}
           title="How much of the recipe one of this size uses — full 1, half 0.5"
-          style={{ ...style, textAlign: 'right' }}
+          style={inputFont({ ...style, textAlign: 'right' })}
         />
       );
     case 'int':
@@ -1243,7 +1244,7 @@ function Editor({
           value={String(value ?? '')}
           onChange={(e) => onChange(e.target.value === '' ? null : Math.round(Number(e.target.value)))}
           aria-label={label}
-          style={{ ...style, textAlign: 'right' }}
+          style={inputFont({ ...style, textAlign: 'right' })}
         />
       );
     case 'select':
@@ -1252,7 +1253,7 @@ function Editor({
           value={String(value ?? '')}
           onChange={(e) => onChange(e.target.value === '' ? null : e.target.value)}
           aria-label={label}
-          style={style}
+          style={inputFont(style)}
         >
           <option value="">—</option>
           {(column.options ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -1264,7 +1265,7 @@ function Editor({
           value={String(value ?? '')}
           onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
           aria-label={label}
-          style={style}
+          style={inputFont(style)}
         >
           <option value="">—</option>
           {categoryOptions(categories).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -1276,7 +1277,7 @@ function Editor({
           value={String(value ?? '')}
           onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
           aria-label={label}
-          style={style}
+          style={inputFont(style)}
         >
           <option value="">—</option>
           {menuGroupOptions(menuGroups).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -1288,7 +1289,7 @@ function Editor({
           value={String(value ?? '')}
           onChange={(e) => onChange(e.target.value === '' ? null : e.target.value)}
           aria-label={label}
-          style={style}
+          style={inputFont(style)}
         />
       );
   }

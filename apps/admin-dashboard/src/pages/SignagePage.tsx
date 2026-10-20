@@ -50,6 +50,7 @@ import { nearestPresetValue } from './signage/bannerAppearanceUx';
 import { SignageDesigner, type DesignerSlide } from './signage/SignageDesigner';
 import { LookPanel, type LookSave } from './signage/LookPanel';
 import { NoticesPanel } from './signage/NoticesPanel';
+import { inputFont } from '../utils/cssVars';
 
 const BANNER_FIELD_OPTS = [
   { value: 'date', label: 'Date' },
@@ -1028,7 +1029,7 @@ export function SignagePage() {
                         <select
                           value={String(groupDrafts[group.id] ?? '')}
                           onChange={(e) => setGroupDrafts((prev) => ({ ...prev, [group.id]: e.target.value === '' ? '' : Number(e.target.value) }))}
-                          style={fieldStyle}
+                          style={inputFont(fieldStyle)}
                           data-testid={`signage-group-playlist-${group.id}`}
                         >
                           <option value="">— inherit / none —</option>
@@ -1118,7 +1119,7 @@ export function SignagePage() {
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end' }}>
                   <div style={{ flex: '2 1 260px' }}>
                     <label style={labelStyle}>Template</label>
-                    <select value={templateKey} onChange={(e) => setTemplateKey(e.target.value)} style={fieldStyle}>
+                    <select value={templateKey} onChange={(e) => setTemplateKey(e.target.value)} style={inputFont(fieldStyle)}>
                       <option value="">Select template…</option>
                       {templates.map((t) => (
                         <option key={t.key} value={t.key}>{t.label}</option>
@@ -1165,7 +1166,7 @@ export function SignagePage() {
                             const val = Number(e.target.value);
                             setSlides((prev) => prev.map((s, i) => (i === index ? { ...s, seconds: val } : s)));
                           }}
-                          style={fieldStyle}
+                          style={inputFont(fieldStyle)}
                         />
                       </div>
                       <div>
@@ -1179,7 +1180,7 @@ export function SignagePage() {
                             const val = Number(e.target.value);
                             setSlides((prev) => prev.map((s, i) => (i === index ? { ...s, weight: val } : s)));
                           }}
-                          style={fieldStyle}
+                          style={inputFont(fieldStyle)}
                         />
                       </div>
                       <div>
@@ -1190,7 +1191,7 @@ export function SignagePage() {
                             const val = e.target.value;
                             setSlides((prev) => prev.map((s, i) => (i === index ? { ...s, transition: val } : s)));
                           }}
-                          style={fieldStyle}
+                          style={inputFont(fieldStyle)}
                         >
                           {TRANSITIONS.map((t) => (
                             <option key={t} value={t}>{t}</option>
@@ -1290,7 +1291,7 @@ export function SignagePage() {
                 data-testid="signage-emergency-select"
                 value={emergencyMode}
                 onChange={(e) => setEmergencyMode(e.target.value)}
-                style={{ ...fieldStyle, maxWidth: 420, marginBottom: 16 }}
+                style={inputFont({ ...fieldStyle, maxWidth: 420, marginBottom: 16 })}
               >
                 {EMERGENCY_MODES.map((m) => (
                   <option key={m.value} value={m.value}>{m.label}</option>

@@ -16,6 +16,7 @@ import { TagChipField, parseTagsCsv, tagsToCsv } from './TagChipField';
 import { ItemSnoozeControls, type ItemSnoozeControlsHandle } from './ItemSnoozeControls';
 import type { SnoozeUntil } from '../../api';
 import { cardDescriptionPreview } from '@shared/utils';
+import { inputFont } from '../../utils/cssVars';
 
 function MenuCardLivePreview({ form }: { form: ItemForm }) {
   const previewName = (form.card_name.trim() || form.name.trim() || 'Item name');
@@ -396,7 +397,7 @@ function TaxCodeField({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        style={selectStyle}
+        style={inputFont(selectStyle)}
       >
         {TAX_CODE_OPTIONS.map((o) => (
           <option key={o.value} value={o.value}>
@@ -543,7 +544,7 @@ function VariantsEditor({
                       value={row.name}
                       onChange={(e) => update(row._key, 'name', e.target.value)}
                       placeholder="e.g. Large"
-                      style={{ width: '100%', border: '1px solid var(--color-border)', borderRadius: 6, padding: '5px 8px', fontSize: 12 }}
+                      style={inputFont({ width: '100%', border: '1px solid var(--color-border)', borderRadius: 6, padding: '5px 8px', fontSize: 12 })}
                     />
                   </td>
                   <td style={{ ...cellStyle, paddingLeft: 4 }}>
@@ -551,7 +552,7 @@ function VariantsEditor({
                       type="number" min="0" step="0.01"
                       value={row.price}
                       onChange={(e) => update(row._key, 'price', parseFloat(e.target.value) || 0)}
-                      style={{ width: 68, border: '1px solid var(--color-border)', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right' }}
+                      style={inputFont({ width: 68, border: '1px solid var(--color-border)', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right' })}
                     />
                   </td>
                   <td style={{ ...cellStyle, paddingLeft: 4 }}>
@@ -560,7 +561,7 @@ function VariantsEditor({
                       value={row.cost ?? ''}
                       onChange={(e) => update(row._key, 'cost', e.target.value !== '' ? parseFloat(e.target.value) : null)}
                       placeholder="—"
-                      style={{ width: 68, border: '1px solid var(--color-border)', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right' }}
+                      style={inputFont({ width: 68, border: '1px solid var(--color-border)', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right' })}
                     />
                   </td>
                   <td style={{ ...cellStyle, paddingLeft: 4 }}>
@@ -568,7 +569,7 @@ function VariantsEditor({
                       value={row.sku ?? ''}
                       onChange={(e) => update(row._key, 'sku', e.target.value || null)}
                       placeholder="optional"
-                      style={{ width: 86, border: '1px solid var(--color-border)', borderRadius: 6, padding: '5px 6px', fontSize: 12 }}
+                      style={inputFont({ width: 86, border: '1px solid var(--color-border)', borderRadius: 6, padding: '5px 6px', fontSize: 12 })}
                     />
                   </td>
                   <td style={{ ...cellStyle, paddingLeft: 4 }}>
@@ -577,7 +578,7 @@ function VariantsEditor({
                       value={row.stock_qty ?? 0}
                       onChange={(e) => update(row._key, 'stock_qty', parseInt(e.target.value) || 0)}
                       disabled={!row.track_stock}
-                      style={{ width: 52, border: '1px solid var(--color-border)', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right', opacity: row.track_stock ? 1 : 0.4 }}
+                      style={inputFont({ width: 52, border: '1px solid var(--color-border)', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right', opacity: row.track_stock ? 1 : 0.4 })}
                     />
                   </td>
                   <td style={{ ...cellStyle, paddingLeft: 4 }}>
@@ -587,7 +588,7 @@ function VariantsEditor({
                       onChange={(e) => update(row._key, 'low_stock_threshold', parseInt(e.target.value) || 0)}
                       disabled={!row.track_stock}
                       title="Low-stock alert threshold"
-                      style={{ width: 52, border: '1px solid var(--color-border)', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right', opacity: row.track_stock ? 1 : 0.4 }}
+                      style={inputFont({ width: 52, border: '1px solid var(--color-border)', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right', opacity: row.track_stock ? 1 : 0.4 })}
                     />
                   </td>
                   <td style={{ ...cellStyle, textAlign: 'center' }}>
@@ -604,7 +605,7 @@ function VariantsEditor({
                       value={row.consumption_factor ?? 1}
                       onChange={(e) => update(row._key, 'consumption_factor', e.target.value !== '' ? Math.max(0, parseFloat(e.target.value)) : 1)}
                       title="How much of the recipe one of this size uses — full 1, half 0.5. Lets sizes share one pool of ingredients."
-                      style={{ width: 56, border: '1px solid var(--color-border)', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right' }}
+                      style={inputFont({ width: 56, border: '1px solid var(--color-border)', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right' })}
                     />
                   </td>
                   <td style={{ ...cellStyle, textAlign: 'center' }}>
@@ -905,7 +906,7 @@ export function MenuItemEditorModal({
                 <select
                   value={form.category_id}
                   onChange={(e) => set('category_id', e.target.value)}
-                  style={selectStyle}
+                  style={inputFont(selectStyle)}
                 >
                   <option value="">— No category —</option>
                   {categories.filter((c) => !c.parent_id).map((parent) => (
@@ -974,7 +975,7 @@ export function MenuItemEditorModal({
                 <select
                   value={form.menu_group_id}
                   onChange={(e) => set('menu_group_id', e.target.value)}
-                  style={selectStyle}
+                  style={inputFont(selectStyle)}
                 >
                   {menuGroups.map((g) => (
                     <option key={g.id} value={String(g.id)}>{g.name}</option>
@@ -1142,7 +1143,7 @@ export function MenuItemEditorModal({
                 <select
                   value={form.spice_level}
                   onChange={(e) => set('spice_level', e.target.value as ItemForm['spice_level'])}
-                  style={selectStyle}
+                  style={inputFont(selectStyle)}
                 >
                   <option value="none">None / not spicy</option>
                   <option value="mild">Mild</option>
@@ -1324,7 +1325,7 @@ export function MenuItemEditorModal({
                 <select
                   value={form.packaging_fee_mode}
                   onChange={(e) => set('packaging_fee_mode', e.target.value as 'per_unit' | 'per_line')}
-                  style={selectStyle}
+                  style={inputFont(selectStyle)}
                 >
                   <option value="per_unit">Per unit (× qty)</option>
                   <option value="per_line">Per line (once)</option>
@@ -1664,7 +1665,7 @@ export function MenuItemEditorModal({
                 value={form.launch_at}
                 onChange={(e) => set('launch_at', e.target.value)}
                 data-testid="item-launch-at"
-                style={{ minHeight: 44, padding: '0 10px', borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 14 }}
+                style={inputFont({ minHeight: 44, padding: '0 10px', borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 14 })}
               />
               {form.launch_at && <Btn small variant="secondary" onClick={() => set('launch_at', '')}>Clear</Btn>}
             </div>

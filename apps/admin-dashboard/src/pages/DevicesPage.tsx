@@ -12,6 +12,7 @@ import {
 } from '../api';
 import OrderBoardsCard from './OrderBoardsCard';
 import { Ban, Bell, Check, Trash2, Undo2, X } from 'lucide-react';
+import { inputFont } from '../utils/cssVars';
 
 const S = {
   input: { width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' as const },
@@ -286,7 +287,7 @@ export default function DevicesPage() {
           <SortFilterHead controls={deviceCtl} allRows={approved} />
           <tbody>
             {loading ? (
-              <tr><td colSpan={canManage ? 7 : 6} style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-muted)' }}>Loading…</td></tr>
+              <tr><td colSpan={canManage ? 7 : 6} style={{ '--ta': 'center', padding: 40, color: 'var(--color-text-muted)' }}>Loading…</td></tr>
             ) : approved.length === 0 ? (
               <tr><td colSpan={canManage ? 7 : 6}><EmptyState message="No approved devices yet." /></td></tr>
             ) : deviceCtl.rows.map(d => (
@@ -406,7 +407,7 @@ export default function DevicesPage() {
                     placeholder="e.g. Kitchen Screen, Manager Display…"
                     value={form.name}
                     onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                    style={S.input}
+                    style={inputFont(S.input)}
                   />
                 </label>
                 <label>
@@ -414,7 +415,7 @@ export default function DevicesPage() {
                   <select
                     value={form.type}
                     onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
-                    style={S.select}
+                    style={inputFont(S.select)}
                   >
                     {DEVICE_TYPES.map(t => <option key={t} value={t}>{t.toUpperCase()}</option>)}
                   </select>
@@ -426,7 +427,7 @@ export default function DevicesPage() {
                     placeholder="Leave blank to auto-generate (e.g. KDS-7F3A9C2B)"
                     value={form.identifier}
                     onChange={e => setForm(f => ({ ...f, identifier: e.target.value }))}
-                    style={{ ...S.input, fontFamily: 'monospace' }}
+                    style={inputFont({ ...S.input, fontFamily: 'monospace' })}
                   />
                   <span style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4, display: 'block' }}>
                     Letters, numbers, hyphens and underscores only. Match an existing identifier to re-bind a lost device.
@@ -461,7 +462,7 @@ export default function DevicesPage() {
               onChange={e => setApproveName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && confirmApprove()}
               autoFocus
-              style={S.input}
+              style={inputFont(S.input)}
             />
           </label>
           <ModalActions>

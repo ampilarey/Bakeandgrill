@@ -9,6 +9,7 @@ import {
 } from '../../api';
 import { MasterSwitchRow, S } from '../OnlineOrderingPage/orderingControlUi';
 import { LoadFailed } from './LoadFailed';
+import { inputFont } from '../../utils/cssVars';
 
 function Toggle({ on, onClick, disabled }: { on: boolean; onClick: () => void; disabled?: boolean }) {
   return <Switch checked={on} onChange={onClick} disabled={disabled} />;
@@ -107,7 +108,7 @@ export function ServiceChargeSettings({ embedded = false }: { embedded?: boolean
               value={form.label}
               onChange={(e) => setForm({ ...form, label: e.target.value })}
               maxLength={50}
-              style={S.input}
+              style={inputFont(S.input)}
             />
           </div>
           <div>
@@ -115,7 +116,7 @@ export function ServiceChargeSettings({ embedded = false }: { embedded?: boolean
             <select
               value={form.type}
               onChange={(e) => setForm({ ...form, type: e.target.value as 'percent' | 'fixed' })}
-              style={S.input}
+              style={inputFont(S.input)}
             >
               <option value="percent">Percentage</option>
               <option value="fixed">Fixed amount (MVR)</option>
@@ -130,7 +131,7 @@ export function ServiceChargeSettings({ embedded = false }: { embedded?: boolean
               step={form.type === 'percent' ? 0.1 : 1}
               value={form.value}
               onChange={(e) => setForm({ ...form, value: parseFloat(e.target.value) || 0 })}
-              style={S.input}
+              style={inputFont(S.input)}
             />
           </div>
         </div>

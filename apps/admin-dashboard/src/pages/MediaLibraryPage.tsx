@@ -34,6 +34,7 @@ import {
   toggleFlipAxis,
   type MediaFlip,
 } from '../utils/mediaEditHelpers';
+import { inputFont } from '../utils/cssVars';
 
 const RESIZE_PRESETS = [1200, 800, 512, 256];
 
@@ -199,7 +200,7 @@ function TagInput({ value, onChange }: { value: string[]; onChange: (v: string[]
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTag(); } }}
         onBlur={addTag}
         placeholder={value.length === 0 ? 'Add tags…' : ''}
-        style={{ flex: 1, minWidth: 80, border: 'none', outline: 'none', fontSize: 13, fontFamily: 'inherit', background: 'transparent' }}
+        style={inputFont({ flex: 1, minWidth: 80, border: 'none', outline: 'none', fontSize: 13, fontFamily: 'inherit', background: 'transparent' })}
       />
     </div>
   );
@@ -519,12 +520,12 @@ function RotateEditPanel({
             value={degrees}
             onChange={(e) => commit(e.target.value === '' ? 0 : Number(e.target.value), flip)}
             data-testid="rotate-degrees-input"
-            style={{
+            style={inputFont({
               display: 'block', width: '100%', marginTop: 4, height: 44, minHeight: 44,
               border: '1px solid var(--color-border)', borderRadius: 8, padding: '0 10px',
               fontFamily: 'inherit', fontSize: 13, boxSizing: 'border-box',
               background: 'var(--color-surface)', color: 'var(--color-text)',
-            }}
+            })}
           />
         </label>
         <button type="button" onClick={() => onChange({})} style={{ ...chip(false), height: 38 }}>
@@ -637,7 +638,7 @@ function ResizeEditPanel({
             onChange={(e) => commit({ ...params, width: e.target.value ? Number(e.target.value) : undefined })}
             placeholder="auto"
             data-testid="resize-width"
-            style={{ ...inputStyle, marginTop: 4 }}
+            style={inputFont({ ...inputStyle, marginTop: 4 })}
           />
         </label>
         <label style={labelStyle}>Height (px)
@@ -648,7 +649,7 @@ function ResizeEditPanel({
             onChange={(e) => commit({ ...params, height: e.target.value ? Number(e.target.value) : undefined })}
             placeholder="auto"
             data-testid="resize-height"
-            style={{ ...inputStyle, marginTop: 4 }}
+            style={inputFont({ ...inputStyle, marginTop: 4 })}
           />
         </label>
       </div>
@@ -684,14 +685,14 @@ function EditOpPanel({
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <label style={labelStyle}>Output format
-            <select value={(params.format as string) || 'jpeg'} onChange={(e) => set('format', e.target.value)} style={{ ...inputStyle, marginTop: 4 }}>
+            <select value={(params.format as string) || 'jpeg'} onChange={(e) => set('format', e.target.value)} style={inputFont({ ...inputStyle, marginTop: 4 })}>
               <option value="jpeg">JPEG</option>
               <option value="png">PNG</option>
               <option value="webp">WebP</option>
             </select>
           </label>
           <label style={labelStyle}>Quality (1–100)
-            <input type="number" min={1} max={100} value={(params.quality as number) ?? 85} onChange={(e) => set('quality', Number(e.target.value))} style={{ ...inputStyle, marginTop: 4 }} />
+            <input type="number" min={1} max={100} value={(params.quality as number) ?? 85} onChange={(e) => set('quality', Number(e.target.value))} style={inputFont({ ...inputStyle, marginTop: 4 })} />
           </label>
         </div>
       );
@@ -735,10 +736,10 @@ function EditOpPanel({
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             <label style={labelStyle}>Width (px)
-              <input type="number" min={1} value={tw} onChange={(e) => set('width', Number(e.target.value))} style={{ ...inputStyle, marginTop: 4 }} />
+              <input type="number" min={1} value={tw} onChange={(e) => set('width', Number(e.target.value))} style={inputFont({ ...inputStyle, marginTop: 4 })} />
             </label>
             <label style={labelStyle}>Height (px)
-              <input type="number" min={1} value={th} onChange={(e) => set('height', Number(e.target.value))} style={{ ...inputStyle, marginTop: 4 }} />
+              <input type="number" min={1} value={th} onChange={(e) => set('height', Number(e.target.value))} style={inputFont({ ...inputStyle, marginTop: 4 })} />
             </label>
           </div>
         </div>
@@ -747,7 +748,7 @@ function EditOpPanel({
     case 'optimize':
       return (
         <label style={labelStyle}>Quality (1–100)
-          <input type="number" min={1} max={100} value={(params.quality as number) ?? 80} onChange={(e) => set('quality', Number(e.target.value))} style={{ ...inputStyle, marginTop: 4 }} />
+          <input type="number" min={1} max={100} value={(params.quality as number) ?? 80} onChange={(e) => set('quality', Number(e.target.value))} style={inputFont({ ...inputStyle, marginTop: 4 })} />
         </label>
       );
     default:
@@ -1299,7 +1300,7 @@ export function MediaLibraryPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search media…"
-            style={{ width: '100%', height: isMobile ? 44 : 38, paddingLeft: 30, borderRadius: 10, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
+            style={inputFont({ width: '100%', height: isMobile ? 44 : 38, paddingLeft: 30, borderRadius: 10, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' })}
           />
         </div>
       </div>
@@ -1360,7 +1361,7 @@ export function MediaLibraryPage() {
                     autoFocus
                     value={renamingName}
                     onChange={(e) => setRenamingName(e.target.value)}
-                    style={{ flex: 1, minWidth: 0, height: 44, border: '1px solid var(--color-primary)', borderRadius: 6, padding: '0 6px', fontSize: 12, fontFamily: 'inherit' }}
+                    style={inputFont({ flex: 1, minWidth: 0, height: 44, border: '1px solid var(--color-primary)', borderRadius: 6, padding: '0 6px', fontSize: 12, fontFamily: 'inherit' })}
                   />
                   <button type="submit" disabled={colSaving} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-primary)', padding: '0 2px', minWidth: 44, minHeight: 38 }}><Check size={14} /></button>
                   <button type="button" onClick={() => setRenamingId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: '0 2px', minWidth: 44, minHeight: 38 }}><X size={14} /></button>
@@ -1408,7 +1409,7 @@ export function MediaLibraryPage() {
                 value={newCollectionName}
                 onChange={(e) => setNewCollectionName(e.target.value)}
                 placeholder="New collection…"
-                style={{ flex: 1, minWidth: 0, height: 32, border: '1px solid var(--color-border)', borderRadius: 6, padding: '0 8px', fontSize: 12, fontFamily: 'inherit' }}
+                style={inputFont({ flex: 1, minWidth: 0, height: 32, border: '1px solid var(--color-border)', borderRadius: 6, padding: '0 8px', fontSize: 12, fontFamily: 'inherit' })}
               />
               <button type="submit" disabled={!newCollectionName.trim() || colSaving} style={{ height: 32, width: 32, border: '1px solid var(--color-primary)', borderRadius: 6, background: 'var(--color-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <Plus size={14} style={{ color: '#fff' }} />
@@ -1452,7 +1453,7 @@ export function MediaLibraryPage() {
                   <select
                     value={uploadCollectionId}
                     onChange={(e) => setUploadCollectionId(e.target.value ? Number(e.target.value) : '')}
-                    style={{ height: 30, borderRadius: 6, border: '1px solid var(--color-border)', padding: '0 8px', fontSize: 12, fontFamily: 'inherit' }}
+                    style={inputFont({ height: 30, borderRadius: 6, border: '1px solid var(--color-border)', padding: '0 8px', fontSize: 12, fontFamily: 'inherit' })}
                   >
                     <option value="">None</option>
                     {collections.map((c) => (
@@ -1676,10 +1677,10 @@ export function MediaLibraryPage() {
                   <select
                     value={useAsKey}
                     onChange={(e) => setUseAsKey(e.target.value as MediaUseAsKey)}
-                    style={{
+                    style={inputFont({
                       flex: 1, height: 38, borderRadius: 8, border: '1px solid var(--color-border)',
                       padding: '0 10px', fontFamily: 'inherit', fontSize: 13, background: 'var(--color-surface)',
-                    }}
+                    })}
                   >
                     {USE_AS_OPTIONS.map((opt) => (
                       <option key={opt.key} value={opt.key}>{opt.label}</option>
@@ -1722,7 +1723,7 @@ export function MediaLibraryPage() {
                   value={detailTitle}
                   onChange={(e) => setDetailTitle(e.target.value)}
                   placeholder="Descriptive title"
-                  style={{ display: 'block', width: '100%', marginTop: 4, height: 38, border: '1px solid var(--color-border)', borderRadius: 8, padding: '0 10px', fontFamily: 'inherit', fontSize: 13, boxSizing: 'border-box' }}
+                  style={inputFont({ display: 'block', width: '100%', marginTop: 4, height: 38, border: '1px solid var(--color-border)', borderRadius: 8, padding: '0 10px', fontFamily: 'inherit', fontSize: 13, boxSizing: 'border-box' })}
                 />
               </label>
               <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>Alt text
@@ -1730,7 +1731,7 @@ export function MediaLibraryPage() {
                   value={detailAlt}
                   onChange={(e) => setDetailAlt(e.target.value)}
                   placeholder="Describe for screen readers"
-                  style={{ display: 'block', width: '100%', marginTop: 4, height: 38, border: '1px solid var(--color-border)', borderRadius: 8, padding: '0 10px', fontFamily: 'inherit', fontSize: 13, boxSizing: 'border-box' }}
+                  style={inputFont({ display: 'block', width: '100%', marginTop: 4, height: 38, border: '1px solid var(--color-border)', borderRadius: 8, padding: '0 10px', fontFamily: 'inherit', fontSize: 13, boxSizing: 'border-box' })}
                 />
               </label>
               <div>

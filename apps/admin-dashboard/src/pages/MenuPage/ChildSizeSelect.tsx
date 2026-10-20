@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react';
 import { fetchAdminItems } from '../../api';
 import type { MenuItemSelection } from '../../components/ItemSearch';
 import type { ChildSizeOption } from './menuItemForm';
+import { inputFont } from '../../utils/cssVars';
 
 type Row = {
   item_id: string;
@@ -81,10 +82,10 @@ export function ChildSizeSelect({
           const picked = options.find((o) => String(o.id) === e.target.value);
           onChange(e.target.value, picked?.name);
         }}
-        style={{
+        style={inputFont({
           width: '100%', minHeight: 36, borderRadius: 8, border: '1px solid var(--color-border)',
           padding: '6px 10px', fontSize: 13, background: 'var(--color-surface)', color: 'var(--color-text)',
-        }}
+        })}
       >
         <option value="">— pick a size —</option>
         {options.map((o) => <option key={o.id} value={String(o.id)}>{o.name}</option>)}

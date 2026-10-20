@@ -41,6 +41,7 @@ import {
   type ServiceStatus,
   type ServiceStateUpdatePayload,
 } from '../api';
+import { inputFont } from '../utils/cssVars';
 
 // ── Catalog (human labels — mirrors config/service_availability.php) ─────────
 
@@ -911,7 +912,7 @@ function EditServiceModal({
               rows={3}
               maxLength={500}
               placeholder={defaultPauseMessage(row.service_key)}
-              style={textareaStyle}
+              style={inputFont(textareaStyle)}
             />
             <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 4 }}>
               {publicMessage.length}/500 · shown on the order app banner / website
@@ -941,7 +942,7 @@ function EditServiceModal({
               rows={2}
               maxLength={500}
               placeholder="Why this was paused — not shown to customers"
-              style={textareaStyle}
+              style={inputFont(textareaStyle)}
             />
           </div>
 

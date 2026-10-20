@@ -23,6 +23,7 @@ import { Btn } from '../../components/SharedUI';
 import { useToast } from '../../components/ui';
 import { MediaPicker } from '../../components/MediaPicker';
 import { useIsMobile } from '../../hooks/useIsMobile';
+import { inputFont } from '../../utils/cssVars';
 
 /** Shared element type; locked/hidden are editor fields already on SignageElement. */
 export type DesignerElement = SignageElement;
@@ -369,7 +370,7 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
           className="signage-designer-preview-size"
           value={previewSize}
           onChange={(e) => setPreviewSize(e.target.value as typeof previewSize)}
-          style={{ ...input, width: 120 }}
+          style={inputFont({ ...input, width: 120 })}
           data-testid="signage-designer-preview-size"
         >
           <option value="desktop">Desktop</option>
@@ -500,17 +501,17 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
         <div className="signage-designer-props" style={{ ...panel, display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ fontWeight: 700 }}>Slide</div>
           <label style={label}>Name</label>
-          <input style={input} value={local.name || ''} onChange={(e) => setLocal({ ...local, name: e.target.value })} />
+          <input style={inputFont(input)} value={local.name || ''} onChange={(e) => setLocal({ ...local, name: e.target.value })} />
           <label style={label}>Duration (s)</label>
-          <input type="number" min={3} style={input} value={local.seconds ?? 12} onChange={(e) => setLocal({ ...local, seconds: Number(e.target.value) })} />
+          <input type="number" min={3} style={inputFont(input)} value={local.seconds ?? 12} onChange={(e) => setLocal({ ...local, seconds: Number(e.target.value) })} />
           <label style={label}>Weight</label>
-          <input type="number" min={1} style={input} value={local.weight ?? 1} onChange={(e) => setLocal({ ...local, weight: Number(e.target.value) })} />
+          <input type="number" min={1} style={inputFont(input)} value={local.weight ?? 1} onChange={(e) => setLocal({ ...local, weight: Number(e.target.value) })} />
           <label style={label}>Transition</label>
-          <select style={input} value={local.transition || 'fade'} onChange={(e) => setLocal({ ...local, transition: e.target.value })}>
+          <select style={inputFont(input)} value={local.transition || 'fade'} onChange={(e) => setLocal({ ...local, transition: e.target.value })}>
             {TRANSITIONS.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
           <label style={label}>Background</label>
-          <input style={input} value={local.background?.value || '#1C1408'} onChange={(e) => setLocal({ ...local, background: { type: 'solid', value: e.target.value, opacity: 1 } })} />
+          <input style={inputFont(input)} value={local.background?.value || '#1C1408'} onChange={(e) => setLocal({ ...local, background: { type: 'solid', value: e.target.value, opacity: 1 } })} />
 
           {isAuto && (
             <div data-testid="signage-auto-menu-controls" style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
@@ -526,7 +527,7 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
                     min={1}
                     max={60}
                     data-testid="auto-showcase-cap"
-                    style={input}
+                    style={inputFont(input)}
                     value={Number(autoBinding.showcase_cap ?? 6)}
                     onChange={(e) => patchAutoBinding({ showcase_cap: Math.max(1, Number(e.target.value) || 1) })}
                   />
@@ -538,7 +539,7 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
                     min={1}
                     max={40}
                     data-testid="auto-rows-per-slide"
-                    style={input}
+                    style={inputFont(input)}
                     value={Number(autoBinding.rows_per_slide ?? 14)}
                     onChange={(e) => patchAutoBinding({ rows_per_slide: Math.max(1, Number(e.target.value) || 1) })}
                   />
@@ -550,7 +551,7 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
                     min={1}
                     max={120}
                     data-testid="auto-showcase-seconds"
-                    style={input}
+                    style={inputFont(input)}
                     value={Number(autoBinding.showcase_seconds ?? 10)}
                     onChange={(e) => patchAutoBinding({ showcase_seconds: Math.max(1, Number(e.target.value) || 1) })}
                   />
@@ -562,7 +563,7 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
                     min={1}
                     max={120}
                     data-testid="auto-category-seconds"
-                    style={input}
+                    style={inputFont(input)}
                     value={Number(autoBinding.category_seconds ?? 14)}
                     onChange={(e) => patchAutoBinding({ category_seconds: Math.max(1, Number(e.target.value) || 1) })}
                   />
@@ -611,7 +612,7 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
                     max={100}
                     step={0.5}
                     data-testid="designer-xywh-x"
-                    style={input}
+                    style={inputFont(input)}
                     value={selEl.x}
                     disabled={Boolean(selEl.locked)}
                     onChange={(e) => patchSelected({ x: Math.max(0, Math.min(100 - selEl.w, Number(e.target.value))) })}
@@ -625,7 +626,7 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
                     max={100}
                     step={0.5}
                     data-testid="designer-xywh-y"
-                    style={input}
+                    style={inputFont(input)}
                     value={selEl.y}
                     disabled={Boolean(selEl.locked)}
                     onChange={(e) => patchSelected({ y: Math.max(0, Math.min(100 - selEl.h, Number(e.target.value))) })}
@@ -639,7 +640,7 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
                     max={100}
                     step={0.5}
                     data-testid="designer-xywh-w"
-                    style={input}
+                    style={inputFont(input)}
                     value={selEl.w}
                     disabled={Boolean(selEl.locked)}
                     onChange={(e) => patchSelected({ w: Math.max(4, Math.min(100 - selEl.x, Number(e.target.value))) })}
@@ -653,7 +654,7 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
                     max={100}
                     step={0.5}
                     data-testid="designer-xywh-h"
-                    style={input}
+                    style={inputFont(input)}
                     value={selEl.h}
                     disabled={Boolean(selEl.locked)}
                     onChange={(e) => patchSelected({ h: Math.max(4, Math.min(100 - selEl.y, Number(e.target.value))) })}
@@ -665,22 +666,22 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
                   <label style={label}>Text</label>
                   <textarea
                     data-testid="designer-text"
-                    style={{ ...input, minHeight: 72, padding: 10 }}
+                    style={inputFont({ ...input, minHeight: 72, padding: 10 })}
                     value={selEl.text || ''}
                     onChange={(e) => patchSelected({ text: e.target.value })}
                   />
                 </>
               )}
               <label style={label}>Font size (vmin)</label>
-              <input type="number" style={input} value={Number(selEl.style?.fontSize ?? 3.5)} onChange={(e) => patchSelected({ style: { fontSize: Number(e.target.value) } })} />
+              <input type="number" style={inputFont(input)} value={Number(selEl.style?.fontSize ?? 3.5)} onChange={(e) => patchSelected({ style: { fontSize: Number(e.target.value) } })} />
               <label style={label}>Color</label>
-              <input style={input} value={String(selEl.style?.color ?? '#FFF8F0')} onChange={(e) => patchSelected({ style: { color: e.target.value } })} />
+              <input style={inputFont(input)} value={String(selEl.style?.color ?? '#FFF8F0')} onChange={(e) => patchSelected({ style: { color: e.target.value } })} />
               <label style={label}>Entrance</label>
-              <select style={input} value={selEl.animation?.entrance || 'fade'} onChange={(e) => patchSelected({ animation: { entrance: e.target.value } })}>
+              <select style={inputFont(input)} value={selEl.animation?.entrance || 'fade'} onChange={(e) => patchSelected({ animation: { entrance: e.target.value } })}>
                 {ENTRANCES.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
               <label style={label}>Emphasis</label>
-              <select style={input} value={selEl.animation?.emphasis || ''} onChange={(e) => patchSelected({ animation: { emphasis: e.target.value } })}>
+              <select style={inputFont(input)} value={selEl.animation?.emphasis || ''} onChange={(e) => patchSelected({ animation: { emphasis: e.target.value } })}>
                 {EMPHASES.map((t) => <option key={t || 'none'} value={t}>{t || 'none'}</option>)}
               </select>
               {(selEl.type === 'image' || selEl.type === 'video') && (
@@ -692,7 +693,7 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
                 <>
                   <label style={label}>Smart type</label>
                   <select
-                    style={input}
+                    style={inputFont(input)}
                     value={String(selEl.binding?.smart_type ?? 'bestsellers')}
                     onChange={(e) => patchSelected({ binding: { type: 'smart', smart_type: e.target.value, limit: Number(selEl.binding?.limit ?? 8) } })}
                   >
@@ -703,9 +704,9 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
                 </>
               )}
               <label style={label}>Z-order</label>
-              <input type="number" style={input} value={selEl.z ?? 1} onChange={(e) => patchSelected({ z: Number(e.target.value) })} />
+              <input type="number" style={inputFont(input)} value={selEl.z ?? 1} onChange={(e) => patchSelected({ z: Number(e.target.value) })} />
               <label style={label}>Rotation</label>
-              <input type="number" style={input} value={selEl.rotation ?? 0} onChange={(e) => patchSelected({ rotation: Number(e.target.value) })} />
+              <input type="number" style={inputFont(input)} value={selEl.rotation ?? 0} onChange={(e) => patchSelected({ rotation: Number(e.target.value) })} />
             </>
           )}
         </div>

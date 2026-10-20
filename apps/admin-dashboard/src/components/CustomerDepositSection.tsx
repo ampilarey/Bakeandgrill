@@ -14,6 +14,7 @@ import {
 import { Badge, Btn, ErrorMsg } from './SharedUI';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { paymentMethodLabel } from '../lib/paymentMethods';
+import { inputFont } from '../utils/cssVars';
 
 type Props = {
   customerId: number;
@@ -301,14 +302,14 @@ export function CustomerDepositSection({ customerId }: Props) {
           {canReceive && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Receive deposit</p>
-              <input style={inputStyle} type="number" min="0" step="0.01" value={topUpAmount} onChange={(e) => setTopUpAmount(e.target.value)} placeholder="Amount MVR" />
-              <select style={inputStyle} value={topUpMethod} onChange={(e) => setTopUpMethod(e.target.value as typeof topUpMethod)}>
+              <input style={inputFont(inputStyle)} type="number" min="0" step="0.01" value={topUpAmount} onChange={(e) => setTopUpAmount(e.target.value)} placeholder="Amount MVR" />
+              <select style={inputFont(inputStyle)} value={topUpMethod} onChange={(e) => setTopUpMethod(e.target.value as typeof topUpMethod)}>
                 <option value="cash">Cash</option>
                 <option value="card">Card</option>
                 <option value="bank_transfer">Transfer</option>
               </select>
-              <input style={inputStyle} value={topUpReference} onChange={(e) => setTopUpReference(e.target.value)} placeholder="Reference (optional)" />
-              <textarea style={{ ...inputStyle, height: 48, resize: 'vertical' }} value={topUpNotes} onChange={(e) => setTopUpNotes(e.target.value)} placeholder="Notes (optional)" />
+              <input style={inputFont(inputStyle)} value={topUpReference} onChange={(e) => setTopUpReference(e.target.value)} placeholder="Reference (optional)" />
+              <textarea style={inputFont({ ...inputStyle, height: 48, resize: 'vertical' })} value={topUpNotes} onChange={(e) => setTopUpNotes(e.target.value)} placeholder="Notes (optional)" />
               <Btn small onClick={() => void handleTopUp()} disabled={saving}>Record deposit</Btn>
             </div>
           )}
@@ -316,13 +317,13 @@ export function CustomerDepositSection({ customerId }: Props) {
           {canRefund && deposit.balance_laar > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Refund deposit (payout to customer)</p>
-              <input style={inputStyle} type="number" min="0" step="0.01" max={deposit.balance_mvr} value={refundAmount} onChange={(e) => setRefundAmount(e.target.value)} placeholder="Amount MVR" />
-              <select style={inputStyle} value={refundMethod} onChange={(e) => setRefundMethod(e.target.value as typeof refundMethod)}>
+              <input style={inputFont(inputStyle)} type="number" min="0" step="0.01" max={deposit.balance_mvr} value={refundAmount} onChange={(e) => setRefundAmount(e.target.value)} placeholder="Amount MVR" />
+              <select style={inputFont(inputStyle)} value={refundMethod} onChange={(e) => setRefundMethod(e.target.value as typeof refundMethod)}>
                 <option value="cash">Cash</option>
                 <option value="card">Card</option>
                 <option value="bank_transfer">Transfer</option>
               </select>
-              <textarea style={{ ...inputStyle, height: 48, resize: 'vertical' }} value={refundReason} onChange={(e) => setRefundReason(e.target.value)} placeholder="Reason (required)" />
+              <textarea style={inputFont({ ...inputStyle, height: 48, resize: 'vertical' })} value={refundReason} onChange={(e) => setRefundReason(e.target.value)} placeholder="Reason (required)" />
               <Btn small variant="secondary" onClick={() => void handleRefund()} disabled={saving}>Payout deposit</Btn>
             </div>
           )}
@@ -336,7 +337,7 @@ export function CustomerDepositSection({ customerId }: Props) {
                 One-way: deposit is applied to reduce credit balance. Not a sale.
               </p>
               <input
-                style={inputStyle}
+                style={inputFont(inputStyle)}
                 type="number"
                 min="0"
                 step="0.01"
@@ -345,7 +346,7 @@ export function CustomerDepositSection({ customerId }: Props) {
                 onChange={(e) => setTransferAmount(e.target.value)}
                 placeholder="Amount MVR"
               />
-              <textarea style={{ ...inputStyle, height: 40, resize: 'vertical' }} value={transferNotes} onChange={(e) => setTransferNotes(e.target.value)} placeholder="Notes (optional)" />
+              <textarea style={inputFont({ ...inputStyle, height: 40, resize: 'vertical' })} value={transferNotes} onChange={(e) => setTransferNotes(e.target.value)} placeholder="Notes (optional)" />
               <Btn small variant="secondary" onClick={() => void handleTransfer()} disabled={saving}>Transfer to credit</Btn>
             </div>
           )}
@@ -353,8 +354,8 @@ export function CustomerDepositSection({ customerId }: Props) {
           {canAdjust && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Manual adjustment (laari)</p>
-              <input style={inputStyle} type="number" value={adjustLaar} onChange={(e) => setAdjustLaar(e.target.value)} placeholder="e.g. -5000 to deduct MVR 50" />
-              <textarea style={{ ...inputStyle, height: 48, resize: 'vertical' }} value={adjustNotes} onChange={(e) => setAdjustNotes(e.target.value)} placeholder="Reason (required)" />
+              <input style={inputFont(inputStyle)} type="number" value={adjustLaar} onChange={(e) => setAdjustLaar(e.target.value)} placeholder="e.g. -5000 to deduct MVR 50" />
+              <textarea style={inputFont({ ...inputStyle, height: 48, resize: 'vertical' })} value={adjustNotes} onChange={(e) => setAdjustNotes(e.target.value)} placeholder="Reason (required)" />
               <Btn small variant="secondary" onClick={() => void handleAdjust()} disabled={saving}>Post adjustment</Btn>
             </div>
           )}

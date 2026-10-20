@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { getMonthlySheet, type MonthlySheet, type MonthlySheetMonth } from '../api';
 import { Btn, Card, ErrorMsg, PageHeader, PageShell, Spinner } from '../components/SharedUI';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { inputFont } from '../utils/cssVars';
 
 /*
  * The owner's accounting model, on one screen.
@@ -98,11 +99,11 @@ export function MonthlySheetPage() {
           max={currentMonth()}
           onChange={(e) => e.target.value && setMonth(e.target.value)}
           aria-label="Month"
-          style={{
+          style={inputFont({
             minHeight: 44, padding: '0 12px', fontSize: 14, fontFamily: 'inherit',
             border: '1.5px solid var(--color-border)', borderRadius: 10,
             background: 'var(--color-surface)', color: 'var(--color-text)',
-          }}
+          })}
         />
         <Btn
           small

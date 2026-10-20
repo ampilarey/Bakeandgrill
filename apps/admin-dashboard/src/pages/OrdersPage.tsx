@@ -22,6 +22,7 @@ import {
 import { RecordCard, RecordCardList } from '../components/RecordCard';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { downloadCSV } from '../utils/csvExport';
+import { inputFont } from '../utils/cssVars';
 
 const REFUNDABLE_STATUSES = new Set([
   // `pending` = paid online / collect-tomorrow waiting for kitchen — still refundable.
@@ -447,10 +448,10 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                   onChange={(e) => setBillPhoneOverride(e.target.value)}
                   placeholder="7XXXXXX or +9607XXXXXX"
                   aria-label="Bill SMS phone"
-                  style={{
+                  style={inputFont({
                     gridColumn: '1 / -1', padding: '6px 10px',
                     borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13,
-                  }}
+                  })}
                 />
               )}
               {canRecordPayment && !['paid', 'completed', 'cancelled'].includes(order.status) && (
@@ -507,7 +508,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                             value={fix.method}
                             onChange={(e) => setTenderFix((f) => f && { ...f, method: e.target.value })}
                             aria-label="Correct tender to"
-                            style={{ border: '1px solid var(--color-border)', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit', minHeight: 40 }}
+                            style={inputFont({ border: '1px solid var(--color-border)', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit', minHeight: 40 })}
                           >
                             <option value="">Paid by…</option>
                             {CORRECTABLE_TENDERS.filter((t) => t.value !== p.method).map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
@@ -518,7 +519,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                             placeholder="Why (e.g. customer paid by QR, cashier tapped card)"
                             aria-label="Reason for the tender correction"
                             maxLength={200}
-                            style={{ border: '1px solid var(--color-border)', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit', minHeight: 40 }}
+                            style={inputFont({ border: '1px solid var(--color-border)', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit', minHeight: 40 })}
                           />
                           {fix.err && <div style={{ fontSize: 12, color: 'var(--color-danger-strong)' }}>{fix.err}</div>}
                           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
@@ -681,7 +682,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                       defaultValue={order.driver?.id ?? ''}
                       onChange={(e) => { if (e.target.value) void handleAssignDriver(Number(e.target.value)); }}
                       disabled={driverAssigning}
-                      style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', background: 'var(--color-bg)', color: 'var(--color-text)', cursor: 'pointer' }}
+                      style={inputFont({ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', background: 'var(--color-bg)', color: 'var(--color-text)', cursor: 'pointer' })}
                     >
                       <option value="">— select driver —</option>
                       {drivers.map((d) => (
@@ -758,7 +759,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                     type="number" min="0.01" step="0.01"
                     value={refundAmount}
                     onChange={(e) => setRefundAmount(e.target.value)}
-                    style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
+                    style={inputFont({ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' })}
                   />
                 </label>
                 <label style={{ display: 'block', marginBottom: 10 }}>
@@ -766,7 +767,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                   <select
                     value={refundCategory}
                     onChange={(e) => setRefundCategory(e.target.value as RefundReasonCategory | '')}
-                    style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', boxSizing: 'border-box' }}
+                    style={inputFont({ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', boxSizing: 'border-box' })}
                   >
                     <option value="">Select…</option>
                     {REFUND_REASON_CATEGORIES.map((c) => (
@@ -781,7 +782,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                     placeholder="Describe what happened…"
                     value={refundReason}
                     onChange={(e) => setRefundReason(e.target.value)}
-                    style={{ width: '100%', padding: '8px 10px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
+                    style={inputFont({ width: '100%', padding: '8px 10px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' })}
                   />
                 </label>
                 <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
@@ -804,7 +805,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                     <select
                       value={row.method}
                       onChange={(e) => setPayRows((rs) => rs.map((r, j) => j === i ? { ...r, method: e.target.value } : r))}
-                      style={{ height: 34, padding: '0 8px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 12, fontFamily: 'inherit', background: 'var(--color-surface)', flex: '0 0 110px' }}
+                      style={inputFont({ height: 34, padding: '0 8px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 12, fontFamily: 'inherit', background: 'var(--color-surface)', flex: '0 0 110px' })}
                     >
                       {ADMIN_ORDER_PAYMENT_METHODS.map((m) => (
                         <option key={m.value} value={m.value}>{m.label}</option>
@@ -815,7 +816,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                       placeholder="0.00"
                       value={row.amount}
                       onChange={(e) => setPayRows((rs) => rs.map((r, j) => j === i ? { ...r, amount: e.target.value } : r))}
-                      style={{ flex: 1, height: 34, padding: '0 8px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit' }}
+                      style={inputFont({ flex: 1, height: 34, padding: '0 8px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit' })}
                     />
                     {payRows.length > 1 && (
                       <button onClick={() => setPayRows((rs) => rs.filter((_, j) => j !== i))}
@@ -1124,14 +1125,14 @@ export function OrdersPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search order # or customer…"
-          style={{ '--flex': '1 1 200px', '--min-w': '180px', '--max-w': '280px', padding: '7px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)', outline: 'none' }}
+          style={inputFont({ '--flex': '1 1 200px', '--min-w': '180px', '--max-w': '280px', padding: '7px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)', outline: 'none' })}
         />
         <Select value={statusFilter} onChange={(v) => { setStatusFilter(v); setPage(1); }} options={STATUS_OPTIONS} style={{ '--w': '160px' }} />
         <Select value={typeFilter} onChange={(v) => { setTypeFilter(v); setPage(1); }} options={TYPE_OPTIONS} style={{ '--w': '160px' }} />
         <select
           value={cashierFilter}
           onChange={(e) => { setCashierFilter(e.target.value); setPage(1); }}
-          style={{ padding: '7px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', '--min-w': '140px' }}
+          style={inputFont({ padding: '7px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', '--min-w': '140px' })}
         >
           <option value="">All cashiers</option>
           {staffOptions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -1139,7 +1140,7 @@ export function OrdersPage() {
         <select
           value={deviceFilter}
           onChange={(e) => { setDeviceFilter(e.target.value); setPage(1); }}
-          style={{ padding: '7px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', '--min-w': '140px' }}
+          style={inputFont({ padding: '7px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', '--min-w': '140px' })}
         >
           <option value="">All stations</option>
           {deviceOptions.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
@@ -1164,7 +1165,7 @@ export function OrdersPage() {
           <select
             value={perPage}
             onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }}
-            style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }}
+            style={inputFont({ padding: '4px 8px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' })}
           >
             {[10, 25, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
           </select>

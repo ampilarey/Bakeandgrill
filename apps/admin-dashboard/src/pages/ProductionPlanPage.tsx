@@ -31,6 +31,7 @@ import {
   type PlanSlotRow,
   type ProductionPlan,
 } from '../api/production-plan';
+import { inputFont } from '../utils/cssVars';
 
 /*
  * Production plan — owner, 2026-09-08: "for Friday evening we will need to
@@ -440,11 +441,11 @@ function PlannedBox({ item, slotKey, slotLabel, value, onChange }: {
       onChange={(e) => onChange(e.target.value)}
       aria-label={`${item.name} ${slotLabel} planned`}
       data-testid={`plan-cell-${item.key}-${slotKey}`}
-      style={{
+      style={inputFont({
         width: 72, height: 38, textAlign: 'center', fontWeight: 700, fontSize: 15,
         border: '1.5px solid var(--color-border)', borderRadius: 8,
         background: 'var(--color-surface)', color: 'var(--color-text)',
-      }}
+      })}
     />
   );
 }
@@ -1160,10 +1161,10 @@ function ItemDials({ items, defaultServiceLevel, onSaved }: { items: PlanItem[];
                   <td style={TD}>
                     <Toggle checked={d.enabled} onChange={(v) => void save(item, { enabled: v })} label={d.enabled ? 'yes' : 'no'} size="sm" />
                   </td>
-                  <td style={TD}><input aria-label={`${item.name} service level`} type="number" min={50} max={99} value={d.service_level_pct} onChange={(e) => patch(item, { service_level_pct: e.target.value })} style={dialInput} /></td>
-                  <td style={TD}><input aria-label={`${item.name} tray of`} type="number" min={1} max={500} value={d.round_to} onChange={(e) => patch(item, { round_to: e.target.value })} style={dialInput} /></td>
-                  <td style={TD}><input aria-label={`${item.name} daily floor`} type="number" min={0} max={5000} value={d.min_qty} onChange={(e) => patch(item, { min_qty: e.target.value })} style={dialInput} /></td>
-                  <td style={TD}><input aria-label={`${item.name} notes`} value={d.notes} onChange={(e) => patch(item, { notes: e.target.value })} style={{ ...dialInput, width: 160, textAlign: 'left' }} /></td>
+                  <td style={TD}><input aria-label={`${item.name} service level`} type="number" min={50} max={99} value={d.service_level_pct} onChange={(e) => patch(item, { service_level_pct: e.target.value })} style={inputFont(dialInput)} /></td>
+                  <td style={TD}><input aria-label={`${item.name} tray of`} type="number" min={1} max={500} value={d.round_to} onChange={(e) => patch(item, { round_to: e.target.value })} style={inputFont(dialInput)} /></td>
+                  <td style={TD}><input aria-label={`${item.name} daily floor`} type="number" min={0} max={5000} value={d.min_qty} onChange={(e) => patch(item, { min_qty: e.target.value })} style={inputFont(dialInput)} /></td>
+                  <td style={TD}><input aria-label={`${item.name} notes`} value={d.notes} onChange={(e) => patch(item, { notes: e.target.value })} style={inputFont({ ...dialInput, width: 160, textAlign: 'left' })} /></td>
                   <td style={TD}>
                     <Btn small onClick={() => void save(item)} disabled={busy === item.key || !dirty} aria-label={`Save ${item.name} dials`}>
                       {busy === item.key ? '…' : 'Save'}

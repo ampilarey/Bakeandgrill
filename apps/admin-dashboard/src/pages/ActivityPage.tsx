@@ -13,6 +13,7 @@ import {
 } from '../api/pos-admin';
 import { downloadCSV } from '../utils/csvExport';
 import { today } from '../utils/dateHelpers';
+import { inputFont } from '../utils/cssVars';
 
 function auditRecordPath(modelType: string, modelId: number | null | undefined): string | null {
   if (!modelId) return null;
@@ -123,11 +124,11 @@ export default function ActivityPage() {
       />
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
-        <select value={userId} onChange={(e) => setUserId(e.target.value)} style={selectStyle}>
+        <select value={userId} onChange={(e) => setUserId(e.target.value)} style={inputFont(selectStyle)}>
           <option value="">All staff</option>
           {staff.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
-        <select value={action} onChange={(e) => setAction(e.target.value)} style={{ ...selectStyle, minWidth: 180 }}>
+        <select value={action} onChange={(e) => setAction(e.target.value)} style={inputFont({ ...selectStyle, minWidth: 180 })}>
           <option value="">All actions</option>
           {actions.map((a) => <option key={a} value={a}>{formatAuditAction(a)}</option>)}
         </select>
@@ -138,7 +139,7 @@ export default function ActivityPage() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-          style={{ ...selectStyle, flex: 1, minWidth: 200 }}
+          style={inputFont({ ...selectStyle, flex: 1, minWidth: 200 })}
         />
         <Btn onClick={handleSearch}>Filter</Btn>
       </div>

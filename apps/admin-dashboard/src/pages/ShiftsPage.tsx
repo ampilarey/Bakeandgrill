@@ -12,6 +12,7 @@ import {
   fetchLiveShifts, fetchShiftHistory, forceCloseShift, voidCashMovement,
 } from '../api';
 import type { ShiftHistoryRow } from '../api/pos-admin';
+import { inputFont } from '../utils/cssVars';
 
 const S = {
   input: { width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' as const },
@@ -356,11 +357,11 @@ export default function ShiftsPage() {
               <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 12 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'flex', flexDirection: 'column', gap: 4 }}>
                   From
-                  <input type="date" aria-label="Shift history from" value={historyFrom} onChange={(e) => setHistoryFrom(e.target.value)} style={{ ...S.input, width: 170 }} />
+                  <input type="date" aria-label="Shift history from" value={historyFrom} onChange={(e) => setHistoryFrom(e.target.value)} style={inputFont({ ...S.input, width: 170 })} />
                 </label>
                 <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'flex', flexDirection: 'column', gap: 4 }}>
                   To
-                  <input type="date" aria-label="Shift history to" value={historyTo} onChange={(e) => setHistoryTo(e.target.value)} style={{ ...S.input, width: 170 }} />
+                  <input type="date" aria-label="Shift history to" value={historyTo} onChange={(e) => setHistoryTo(e.target.value)} style={inputFont({ ...S.input, width: 170 })} />
                 </label>
                 <Btn small variant="secondary" onClick={() => void loadHistory()}>Apply</Btn>
                 {(historyFrom || historyTo) && <Btn small variant="ghost" onClick={() => { setHistoryFrom(''); setHistoryTo(''); }}>Clear</Btn>}
@@ -383,7 +384,7 @@ export default function ShiftsPage() {
           </p>
           <label>
             <span style={S.label}>Reason</span>
-            <textarea aria-label="Void reason" value={voidReason} onChange={(e) => setVoidReason(e.target.value)} rows={3} style={{ ...S.input, resize: 'vertical' }} placeholder="e.g. entered 150 instead of 15" />
+            <textarea aria-label="Void reason" value={voidReason} onChange={(e) => setVoidReason(e.target.value)} rows={3} style={inputFont({ ...S.input, resize: 'vertical' })} placeholder="e.g. entered 150 instead of 15" />
           </label>
           <ModalActions>
             <Btn variant="secondary" onClick={() => setVoidTarget(null)}>Cancel</Btn>
@@ -403,7 +404,7 @@ export default function ShiftsPage() {
               value={forceNotes}
               onChange={(e) => setForceNotes(e.target.value)}
               rows={3}
-              style={{ ...S.input, resize: 'vertical' }}
+              style={inputFont({ ...S.input, resize: 'vertical' })}
               placeholder="Reason for force close…"
             />
           </label>

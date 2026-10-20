@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { Btn, EmptyState, Pagination, TabScrollRow } from '../components/SharedUI';
 import { answerItemQuestion, fetchItemQuestions, hideItemQuestion, type ItemQuestion } from '../api';
+import { inputFont } from '../utils/cssVars';
 
 /*
  * Questions customers ask about a dish ("Is it spicy?", "Does it have nuts?"),
@@ -60,7 +61,7 @@ function QuestionCard({ q, onChanged }: { q: ItemQuestion; onChanged: () => void
             maxLength={1000}
             aria-label="Answer"
             placeholder="Your answer, as the customer will read it"
-            style={{ marginTop: 10, width: '100%', boxSizing: 'border-box', padding: 10, borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 14, fontFamily: 'inherit' }}
+            style={inputFont({ marginTop: 10, width: '100%', boxSizing: 'border-box', padding: 10, borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 14, fontFamily: 'inherit' })}
           />
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginTop: 6, cursor: 'pointer' }}>
             <input type="checkbox" checked={addToDetails} onChange={(e) => setAddToDetails(e.target.checked)} />

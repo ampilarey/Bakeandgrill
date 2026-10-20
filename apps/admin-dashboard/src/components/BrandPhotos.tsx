@@ -3,6 +3,7 @@ import { Btn, ErrorMsg, Spinner } from './SharedUI';
 import {
   deleteBrandPhoto, getBrandPhotos, uploadBrandPhoto, type BrandPhoto,
 } from '../api/operations';
+import { inputFont } from '../utils/cssVars';
 
 /*
  * Pictures of the brands an ingredient gets bought as. Owner, 2026-09-09:
@@ -198,11 +199,11 @@ export function BrandPhotos({ itemId, itemName, canManage, knownBrands = [] }: {
                 placeholder="Brand name"
                 aria-label="Brand for the picture"
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void upload(null); } }}
-                style={{
+                style={inputFont({
                   height: 38, padding: '0 10px', minWidth: 160,
                   border: '1.5px solid var(--color-border)', borderRadius: 8,
                   background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 13,
-                }}
+                })}
               />
               <datalist id={`brands-${itemId}`}>
                 {knownBrands.map((b) => <option key={b} value={b} />)}

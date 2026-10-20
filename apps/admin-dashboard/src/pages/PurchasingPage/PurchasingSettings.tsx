@@ -7,6 +7,7 @@ import {
   type PurchasingSettings as Settings,
   type PurchasingSettingsPatch,
 } from '../../api';
+import { inputFont } from '../../utils/cssVars';
 
 /*
  * Purchasing → Settings: every switch that governs buying, in the order the
@@ -91,7 +92,7 @@ function NumberField({
         onChange={(e) => setDraft(e.target.value)}
         onBlur={commit}
         onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-        style={S.input}
+        style={inputFont(S.input)}
       />
       <span style={{ fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 600 }}>{unit}</span>
     </>
@@ -263,7 +264,7 @@ export function PurchasingSettings({ canEdit }: { canEdit: boolean }) {
               value={s.default_expense_category_id ?? ''}
               disabled={off}
               onChange={(e) => void save({ default_expense_category_id: e.target.value ? Number(e.target.value) : null })}
-              style={S.select}
+              style={inputFont(S.select)}
             >
               <option value="">First category</option>
               {s.expense_categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}

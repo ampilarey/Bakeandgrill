@@ -7,6 +7,7 @@ import {
 import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import { fetchAdminReviews, fetchReviewPhoto, moderateReview, replyToReview, type Review } from '../api';
 import { Star, ChevronDown, ChevronUp, BadgeCheck, ThumbsUp } from 'lucide-react';
+import { inputFont } from '../utils/cssVars';
 
 /** A review's photos as thumbnails, loaded through the staff route; a tap opens the full one (feature 6). */
 function ReviewPhotos({ review }: { review: Review }) {
@@ -63,7 +64,7 @@ function ReplyModal({ review, onClose, onSaved }: { review: Review; onClose: () 
         rows={5}
         data-testid="review-reply-text"
         aria-label="Reply"
-        style={{ width: '100%', boxSizing: 'border-box', padding: 10, borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 14, fontFamily: 'inherit' }}
+        style={inputFont({ width: '100%', boxSizing: 'border-box', padding: 10, borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 14, fontFamily: 'inherit' })}
       />
       <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
         Everyone who reads the review sees it. {review.reply ? 'The customer was told about your first reply.' : 'The customer is told by SMS.'}
@@ -165,7 +166,7 @@ export default function ReviewsPage() {
         <select
           value={statusFilter}
           onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
-          style={{ height: 36, padding: '0 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)', cursor: 'pointer' }}
+          style={inputFont({ height: 36, padding: '0 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)', cursor: 'pointer' })}
         >
           {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
@@ -176,7 +177,7 @@ export default function ReviewsPage() {
           <SortFilterHead controls={reviewCtl} allRows={reviews} />
           <tbody>
             {loading ? (
-              <tr><td colSpan={7} style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-muted)' }}>Loading…</td></tr>
+              <tr><td colSpan={7} style={{ '--ta': 'center', padding: 40, color: 'var(--color-text-muted)' }}>Loading…</td></tr>
             ) : reviews.length === 0 ? (
               <tr><td colSpan={7}><EmptyState message="No reviews found." /></td></tr>
             ) : reviewCtl.rows.map(review => (

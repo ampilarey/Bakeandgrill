@@ -4,6 +4,7 @@ import {
   type InventoryItem, type ItemWithRecipe, type UnitConversion,
 } from '../../api';
 import { Btn, Modal, ModalActions, Spinner } from '../../components/SharedUI';
+import { inputFont } from '../../utils/cssVars';
 
 interface Row {
   key: string;
@@ -403,7 +404,7 @@ export function RecipeEditorModal({
                             missing: false,
                           });
                         }}
-                        style={{ ...control, cursor: 'pointer', border: `1.5px solid ${r.missing ? 'var(--color-danger)' : 'var(--color-border)'}` }}
+                        style={inputFont({ ...control, cursor: 'pointer', border: `1.5px solid ${r.missing ? 'var(--color-danger)' : 'var(--color-border)'}` })}
                       >
                         <option value="">{r.missing ? 'Ingredient was deleted — pick another' : 'Select ingredient…'}</option>
                         {options.map((o) => (
@@ -425,7 +426,7 @@ export function RecipeEditorModal({
                         aria-label="Quantity"
                         value={r.quantity}
                         onChange={(e) => setRow(r.key, { quantity: e.target.value })}
-                        style={control}
+                        style={inputFont(control)}
                       />
                     </td>
                     <td style={td}>
@@ -437,7 +438,7 @@ export function RecipeEditorModal({
                         value={r.unit ? norm(r.unit) : stockUnit}
                         disabled={!id}
                         onChange={(e) => setRow(r.key, { unit: e.target.value })}
-                        style={{ ...control, cursor: id ? 'pointer' : 'default', border: `1.5px solid ${unitKnown ? 'var(--color-border)' : 'var(--color-danger)'}` }}
+                        style={inputFont({ ...control, cursor: id ? 'pointer' : 'default', border: `1.5px solid ${unitKnown ? 'var(--color-border)' : 'var(--color-danger)'}` })}
                       >
                         {!id && <option value="">—</option>}
                         {choices.map((u) => <option key={u} value={u}>{u}</option>)}
@@ -477,7 +478,7 @@ export function RecipeEditorModal({
                 aria-label="This recipe makes"
                 value={yieldQty}
                 onChange={(e) => setYieldQty(e.target.value)}
-                style={{ ...control, width: 84 }}
+                style={inputFont({ ...control, width: 84 })}
               />
               <span style={{ color: 'var(--color-text-muted)' }}>{yieldNum === 1 ? 'dish' : 'dishes'}</span>
             </label>

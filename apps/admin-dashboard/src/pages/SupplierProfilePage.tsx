@@ -17,6 +17,7 @@ import { useIsMobile } from '../hooks/useIsMobile';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { downloadCSV } from '../utils/csvExport';
 import { fmt } from '../utils/fmt';
+import { inputFont } from '../utils/cssVars';
 
 /*
  * One supplier — everything we have bought from them.
@@ -291,11 +292,11 @@ function OrdersTab({ supplier, isMobile, canPay }: { supplier: SupplierCard; isM
   return (
     <div data-testid="supplier-orders">
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
-        <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} aria-label="Status" style={selectStyle}>
+        <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} aria-label="Status" style={inputFont(selectStyle)}>
           {['all', 'draft', 'ordered', 'partial', 'received', 'cancelled'].map((s) => <option key={s} value={s}>{s === 'all' ? 'All statuses' : s[0].toUpperCase() + s.slice(1)}</option>)}
         </select>
-        <input type="date" value={from} onChange={(e) => { setFrom(e.target.value); setPage(1); }} aria-label="From" style={selectStyle} />
-        <input type="date" value={to} onChange={(e) => { setTo(e.target.value); setPage(1); }} aria-label="To" style={selectStyle} />
+        <input type="date" value={from} onChange={(e) => { setFrom(e.target.value); setPage(1); }} aria-label="From" style={inputFont(selectStyle)} />
+        <input type="date" value={to} onChange={(e) => { setTo(e.target.value); setPage(1); }} aria-label="To" style={inputFont(selectStyle)} />
         <Btn small variant="secondary" onClick={exportCsv} disabled={rows.length === 0}><Download size={13} /> CSV</Btn>
       </div>
 
@@ -423,15 +424,15 @@ function PaymentModal({ purchase, onClose, onSaved }: { purchase: Purchase; onCl
       </p>
       {error && <p style={{ color: 'var(--color-danger-strong)', fontSize: 13 }}>{error}</p>}
       <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }} htmlFor="pay-amount">Amount (MVR)</label>
-      <input id="pay-amount" type="number" min={0.01} step={0.01} max={owedNow} value={amount} onChange={(e) => setAmount(e.target.value)} style={{ ...selectStyle, width: '100%', boxSizing: 'border-box', marginBottom: 10 }} />
+      <input id="pay-amount" type="number" min={0.01} step={0.01} max={owedNow} value={amount} onChange={(e) => setAmount(e.target.value)} style={inputFont({ ...selectStyle, width: '100%', boxSizing: 'border-box', marginBottom: 10 })} />
       <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }} htmlFor="pay-date">Paid on</label>
-      <input id="pay-date" type="date" value={paidOn} onChange={(e) => setPaidOn(e.target.value)} style={{ ...selectStyle, width: '100%', boxSizing: 'border-box', marginBottom: 10 }} />
+      <input id="pay-date" type="date" value={paidOn} onChange={(e) => setPaidOn(e.target.value)} style={inputFont({ ...selectStyle, width: '100%', boxSizing: 'border-box', marginBottom: 10 })} />
       <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }} htmlFor="pay-method">How</label>
-      <select id="pay-method" value={method} onChange={(e) => setMethod(e.target.value as PurchasePaymentMethod)} style={{ ...selectStyle, width: '100%', marginBottom: 10 }}>
+      <select id="pay-method" value={method} onChange={(e) => setMethod(e.target.value as PurchasePaymentMethod)} style={inputFont({ ...selectStyle, width: '100%', marginBottom: 10 })}>
         <option value="cash">Cash</option><option value="transfer">Bank transfer</option><option value="other">Other</option>
       </select>
       <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }} htmlFor="pay-ref">Reference (optional)</label>
-      <input id="pay-ref" value={reference} onChange={(e) => setReference(e.target.value)} placeholder="Transfer ref, receipt no…" style={{ ...selectStyle, width: '100%', boxSizing: 'border-box' }} />
+      <input id="pay-ref" value={reference} onChange={(e) => setReference(e.target.value)} placeholder="Transfer ref, receipt no…" style={inputFont({ ...selectStyle, width: '100%', boxSizing: 'border-box' })} />
       <ModalActions>
         <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
         <Btn onClick={() => void save()} disabled={saving || !valid}>{saving ? 'Saving…' : num + 0.005 >= owedNow ? 'Mark paid' : 'Record part payment'}</Btn>
@@ -489,7 +490,7 @@ function ItemsTab({ supplier, isMobile, canOrder }: { supplier: SupplierCard; is
   return (
     <div data-testid="supplier-items">
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search items…" aria-label="Search items" style={{ ...selectStyle, flex: '1 1 180px', maxWidth: 300 }} />
+        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search items…" aria-label="Search items" style={inputFont({ ...selectStyle, flex: '1 1 180px', maxWidth: 300 })} />
         {cheaperCount > 0 && <Badge color="orange" label={`${cheaperCount} cheaper elsewhere`} />}
         {canOrder && (
           <Btn small onClick={() => void reorder()} disabled={picked.length === 0 || ordering}>
@@ -659,7 +660,7 @@ function RatingsTab({ supplier }: { supplier: SupplierCard }) {
           <Score label="Price" field="price_score" />
         </div>
         <textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Anything worth remembering (optional)" aria-label="Rating notes" rows={2}
-          style={{ width: '100%', boxSizing: 'border-box', padding: 8, border: '1.5px solid var(--color-border)', borderRadius: 10, fontFamily: 'inherit', fontSize: 13, marginBottom: 8 }} />
+          style={inputFont({ width: '100%', boxSizing: 'border-box', padding: 8, border: '1.5px solid var(--color-border)', borderRadius: 10, fontFamily: 'inherit', fontSize: 13, marginBottom: 8 })} />
         <Btn small onClick={() => void save()} disabled={saving}>{saving ? 'Saving…' : 'Submit rating'}</Btn>
       </Card>
 
@@ -728,12 +729,12 @@ function DetailsTab({ supplier, canEdit }: { supplier: SupplierCard; canEdit: bo
       <Card>
         <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>How they work</p>
         <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }} htmlFor="sup-terms">Payment terms</label>
-        <input id="sup-terms" value={terms} onChange={(e) => setTerms(e.target.value)} disabled={!canEdit} placeholder="Cash on delivery, 30 days…" style={{ ...selectStyle, width: '100%', boxSizing: 'border-box', marginBottom: 10 }} />
+        <input id="sup-terms" value={terms} onChange={(e) => setTerms(e.target.value)} disabled={!canEdit} placeholder="Cash on delivery, 30 days…" style={inputFont({ ...selectStyle, width: '100%', boxSizing: 'border-box', marginBottom: 10 })} />
         <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }} htmlFor="sup-lead">Days from order to delivery</label>
-        <input id="sup-lead" type="number" min={0} max={365} value={lead} onChange={(e) => setLead(e.target.value)} disabled={!canEdit} style={{ ...selectStyle, width: 120, marginBottom: 10 }} />
+        <input id="sup-lead" type="number" min={0} max={365} value={lead} onChange={(e) => setLead(e.target.value)} disabled={!canEdit} style={inputFont({ ...selectStyle, width: 120, marginBottom: 10 })} />
         <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }} htmlFor="sup-notes">Notes</label>
         <textarea id="sup-notes" value={notes} onChange={(e) => setNotes(e.target.value)} disabled={!canEdit} rows={4} placeholder="Closed Fridays, delivers after 2pm, ask for Ali…"
-          style={{ width: '100%', boxSizing: 'border-box', padding: 8, border: '1.5px solid var(--color-border)', borderRadius: 10, fontFamily: 'inherit', fontSize: 13, marginBottom: 8 }} />
+          style={inputFont({ width: '100%', boxSizing: 'border-box', padding: 8, border: '1.5px solid var(--color-border)', borderRadius: 10, fontFamily: 'inherit', fontSize: 13, marginBottom: 8 })} />
         {canEdit && (
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             <Btn small onClick={() => void save()} disabled={saving || !dirty}>{saving ? 'Saving…' : 'Save'}</Btn>

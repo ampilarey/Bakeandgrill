@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { inputFont } from '../../utils/cssVars';
 
 type Props = {
   value: string[];
@@ -106,14 +107,14 @@ export function TagChipField({
             }
           }}
           placeholder={placeholder}
-          style={{
+          style={inputFont({
             flex: 1,
             minHeight: 40,
             border: '1px solid var(--color-border)',
             borderRadius: 8,
             padding: '0 10px',
             fontSize: 13,
-          }}
+          })}
         />
         <button
           type="button"

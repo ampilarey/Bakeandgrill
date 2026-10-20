@@ -4,6 +4,7 @@ import { MessageSquare } from 'lucide-react';
 import { Btn } from './SharedUI';
 import { fetchOrderMessages, orderMessageToComplaint, replyToOrderMessage, type OrderMessage } from '../api';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
+import { inputFont } from '../utils/cssVars';
 
 /*
  * The order's messages with the customer ("Please add extra sauce", "running
@@ -82,7 +83,7 @@ export function OrderMessagesPanel({ orderId }: { orderId: number }) {
         maxLength={1000}
         aria-label="Reply to the customer"
         placeholder="Reply to the customer (sent by SMS with a link to the order)"
-        style={{ width: '100%', boxSizing: 'border-box', padding: 8, borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 14, fontFamily: 'inherit' }}
+        style={inputFont({ width: '100%', boxSizing: 'border-box', padding: 8, borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 14, fontFamily: 'inherit' })}
       />
       {error && <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-danger)' }}>{error}</p>}
       {note && <p role="status" style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-success)' }}>{note}</p>}

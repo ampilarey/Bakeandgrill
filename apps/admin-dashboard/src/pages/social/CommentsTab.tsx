@@ -5,6 +5,7 @@ import {
 } from '../../api';
 import { Badge, Btn, Card, ErrorMsg, Pagination, Spinner } from '../../components/SharedUI';
 import { PLATFORM_SHORT } from './composer';
+import { inputFont } from '../../utils/cssVars';
 
 /**
  * The comment inbox (owner's shortlist, 2026-09-24). Comments on recent
@@ -142,7 +143,7 @@ export function CommentsTab({ canReply }: { canReply: boolean }) {
                     onChange={(e) => setReplyText(e.target.value)}
                     rows={2}
                     aria-label={`Reply to ${c.author ?? 'comment'}`}
-                    style={{ flex: 1, padding: 8, borderRadius: 10, fontFamily: 'inherit', fontSize: 13, border: '1.5px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
+                    style={inputFont({ flex: 1, padding: 8, borderRadius: 10, fontFamily: 'inherit', fontSize: 13, border: '1.5px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' })}
                   />
                   <Btn small disabled={busy || replyText.trim() === ''} onClick={() => { void sendReply(c); }}>Send</Btn>
                   <Btn small variant="secondary" disabled={busy} onClick={() => setReplying(null)}>Cancel</Btn>

@@ -14,6 +14,7 @@ import {
   DEFAULT_RULES, KILL_SWITCH_WARNING, errorBox, fieldLabel, fieldsetStyle, inputStyle, legendStyle,
   panelLead, panelNote, panelStyle, sectionTitle, useControlCenter,
 } from './shared';
+import { inputFont } from '../../utils/cssVars';
 
 /* A field in a .sms-cc-fields row: the row's CSS gives the width, a full line on
    a phone and at least 160px from 768px. */
@@ -219,11 +220,11 @@ export function RulesTab() {
             <div className="sms-cc-fields">
               <label style={ccLabel}>
                 Monthly segments
-                <input type="number" min={0} value={budgetDraft.monthly} onChange={(e) => setBudgetDraft((d) => ({ ...d, monthly: e.target.value }))} placeholder="Unlimited" style={inputStyle} />
+                <input type="number" min={0} value={budgetDraft.monthly} onChange={(e) => setBudgetDraft((d) => ({ ...d, monthly: e.target.value }))} placeholder="Unlimited" style={inputFont(inputStyle)} />
               </label>
               <label style={ccLabel}>
                 Per-campaign segments
-                <input type="number" min={0} value={budgetDraft.campaign} onChange={(e) => setBudgetDraft((d) => ({ ...d, campaign: e.target.value }))} placeholder="Unlimited" style={inputStyle} />
+                <input type="number" min={0} value={budgetDraft.campaign} onChange={(e) => setBudgetDraft((d) => ({ ...d, campaign: e.target.value }))} placeholder="Unlimited" style={inputFont(inputStyle)} />
               </label>
               <Btn variant="secondary" onClick={() => void saveBudget()} disabled={budgetSaving}>
                 {budgetSaving ? 'Saving…' : 'Save limits'}
@@ -260,11 +261,11 @@ export function RulesTab() {
                   </label>
                   <label style={ccLabel}>
                     From
-                    <input type="time" value={rulesDraft.quiet_hours_start} onChange={(e) => setRulesDraft((d) => ({ ...d, quiet_hours_start: e.target.value }))} style={inputStyle} />
+                    <input type="time" value={rulesDraft.quiet_hours_start} onChange={(e) => setRulesDraft((d) => ({ ...d, quiet_hours_start: e.target.value }))} style={inputFont(inputStyle)} />
                   </label>
                   <label style={ccLabel}>
                     Until
-                    <input type="time" value={rulesDraft.quiet_hours_end} onChange={(e) => setRulesDraft((d) => ({ ...d, quiet_hours_end: e.target.value }))} style={inputStyle} />
+                    <input type="time" value={rulesDraft.quiet_hours_end} onChange={(e) => setRulesDraft((d) => ({ ...d, quiet_hours_end: e.target.value }))} style={inputFont(inputStyle)} />
                   </label>
                   <label style={{ ...ccLabel, flexDirection: 'row', alignItems: 'center', minWidth: 0 }}>
                     <input type="checkbox" checked={rulesDraft.quiet_hours_alerts} onChange={(e) => setRulesDraft((d) => ({ ...d, quiet_hours_alerts: e.target.checked }))} />
@@ -277,15 +278,15 @@ export function RulesTab() {
                 <div className="sms-cc-fields">
                   <label style={ccLabel}>
                     Marketing texts per number per day
-                    <input type="number" min={0} max={50} value={rulesDraft.marketing_daily_cap} onChange={(e) => setRulesDraft((d) => ({ ...d, marketing_daily_cap: Math.max(0, Math.min(50, Number(e.target.value) || 0)) }))} style={inputStyle} />
+                    <input type="number" min={0} max={50} value={rulesDraft.marketing_daily_cap} onChange={(e) => setRulesDraft((d) => ({ ...d, marketing_daily_cap: Math.max(0, Math.min(50, Number(e.target.value) || 0)) }))} style={inputFont(inputStyle)} />
                   </label>
                   <label style={ccLabel}>
                     Campaign recipients per day, all campaigns (0 = no limit)
-                    <input type="number" min={0} max={1000000} value={rulesDraft.bulk_daily_recipient_cap ?? 5000} onChange={(e) => setRulesDraft((d) => ({ ...d, bulk_daily_recipient_cap: Math.max(0, Math.min(1000000, Number(e.target.value) || 0)) }))} style={inputStyle} />
+                    <input type="number" min={0} max={1000000} value={rulesDraft.bulk_daily_recipient_cap ?? 5000} onChange={(e) => setRulesDraft((d) => ({ ...d, bulk_daily_recipient_cap: Math.max(0, Math.min(1000000, Number(e.target.value) || 0)) }))} style={inputFont(inputStyle)} />
                   </label>
                   <label style={{ ...ccLabel, flex: '1 1 220px' }}>
                     Unsubscribe line on marketing texts ({'{url}'} = the short link)
-                    <input value={rulesDraft.marketing_opt_out_line ?? ''} maxLength={80} onChange={(e) => setRulesDraft((d) => ({ ...d, marketing_opt_out_line: e.target.value }))} placeholder="Empty = no line" style={inputStyle} />
+                    <input value={rulesDraft.marketing_opt_out_line ?? ''} maxLength={80} onChange={(e) => setRulesDraft((d) => ({ ...d, marketing_opt_out_line: e.target.value }))} placeholder="Empty = no line" style={inputFont(inputStyle)} />
                   </label>
                 </div>
               </fieldset>
@@ -298,7 +299,7 @@ export function RulesTab() {
                 <div className="sms-cc-fields">
                   <label style={ccLabel}>
                     Emails per hour, all together (0 = no limit)
-                    <input type="number" min={0} max={100000} value={rulesDraft.email_copy_hourly_cap ?? 300} onChange={(e) => setRulesDraft((d) => ({ ...d, email_copy_hourly_cap: Math.max(0, Math.min(100000, Number(e.target.value) || 0)) }))} style={inputStyle} />
+                    <input type="number" min={0} max={100000} value={rulesDraft.email_copy_hourly_cap ?? 300} onChange={(e) => setRulesDraft((d) => ({ ...d, email_copy_hourly_cap: Math.max(0, Math.min(100000, Number(e.target.value) || 0)) }))} style={inputFont(inputStyle)} />
                   </label>
                 </div>
               </fieldset>
@@ -307,7 +308,7 @@ export function RulesTab() {
                 <div className="sms-cc-fields">
                   <label style={ccLabel}>
                     Keep the log for (days, 0 = forever)
-                    <input type="number" min={0} max={3650} value={rulesDraft.log_retention_days ?? 365} onChange={(e) => setRulesDraft((d) => ({ ...d, log_retention_days: Math.max(0, Math.min(3650, Number(e.target.value) || 0)) }))} style={inputStyle} />
+                    <input type="number" min={0} max={3650} value={rulesDraft.log_retention_days ?? 365} onChange={(e) => setRulesDraft((d) => ({ ...d, log_retention_days: Math.max(0, Math.min(3650, Number(e.target.value) || 0)) }))} style={inputFont(inputStyle)} />
                   </label>
                 </div>
               </fieldset>

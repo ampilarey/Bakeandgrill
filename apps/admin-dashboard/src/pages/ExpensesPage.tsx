@@ -15,6 +15,7 @@ import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import { PurchaseSearch, type PurchaseSearchSelection } from '../components/PurchaseSearch';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { Paperclip, Check, X } from 'lucide-react';
+import { inputFont } from '../utils/cssVars';
 
 const STATUS_COLOR: Record<string, string> = { approved: 'green', pending: 'yellow', rejected: 'red' };
 
@@ -60,31 +61,31 @@ function GstExpenseFields({ form, setForm, fieldStyle }: {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
             Supplier TIN *
-            <input value={form.supplier_tin} onChange={(e) => setForm((f) => ({ ...f, supplier_tin: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }} />
+            <input value={form.supplier_tin} onChange={(e) => setForm((f) => ({ ...f, supplier_tin: e.target.value }))} style={inputFont({ ...fieldStyle, marginTop: 4 })} />
           </label>
           <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 12 }}>
             <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
               Supplier invoice no. *
-              <input value={form.supplier_invoice_no} onChange={(e) => setForm((f) => ({ ...f, supplier_invoice_no: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }} />
+              <input value={form.supplier_invoice_no} onChange={(e) => setForm((f) => ({ ...f, supplier_invoice_no: e.target.value }))} style={inputFont({ ...fieldStyle, marginTop: 4 })} />
             </label>
             <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
               Invoice date *
-              <input type="date" value={form.supplier_invoice_date} onChange={(e) => setForm((f) => ({ ...f, supplier_invoice_date: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }} />
+              <input type="date" value={form.supplier_invoice_date} onChange={(e) => setForm((f) => ({ ...f, supplier_invoice_date: e.target.value }))} style={inputFont({ ...fieldStyle, marginTop: 4 })} />
             </label>
           </div>
           <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 12 }}>
             <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
               Amount ex-GST (MVR)
-              <input type="number" value={form.amount_ex_gst} onChange={(e) => setForm((f) => ({ ...f, amount_ex_gst: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }} />
+              <input type="number" value={form.amount_ex_gst} onChange={(e) => setForm((f) => ({ ...f, amount_ex_gst: e.target.value }))} style={inputFont({ ...fieldStyle, marginTop: 4 })} />
             </label>
             <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
               GST amount (MVR, 8%)
-              <input type="number" value={form.gst_amount} onChange={(e) => setForm((f) => ({ ...f, gst_amount: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }} />
+              <input type="number" value={form.gst_amount} onChange={(e) => setForm((f) => ({ ...f, gst_amount: e.target.value }))} style={inputFont({ ...fieldStyle, marginTop: 4 })} />
             </label>
           </div>
           <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
             Revenue or capital
-            <select value={form.revenue_or_capital} onChange={(e) => setForm((f) => ({ ...f, revenue_or_capital: e.target.value as 'revenue' | 'capital' }))} style={{ ...fieldStyle, marginTop: 4 }}>
+            <select value={form.revenue_or_capital} onChange={(e) => setForm((f) => ({ ...f, revenue_or_capital: e.target.value as 'revenue' | 'capital' }))} style={inputFont({ ...fieldStyle, marginTop: 4 })}>
               <option value="revenue">Revenue expense</option>
               <option value="capital">Capital expense</option>
             </select>
@@ -386,11 +387,11 @@ export function ExpensesPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search expense #, description…"
-          style={{
+          style={inputFont({
             height: 36, minWidth: 0, flex: '1 1 220px', maxWidth: 420, padding: '0 12px',
             border: '1.5px solid var(--color-border)', borderRadius: 10,
             fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)', outline: 'none',
-          }}
+          })}
         />
         {debouncedSearch && (
           <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Date range paused while searching</span>
@@ -510,28 +511,28 @@ export function ExpensesPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
               Category *
-              <select value={form.expense_category_id} onChange={(e) => setForm((f) => ({ ...f, expense_category_id: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }}>
+              <select value={form.expense_category_id} onChange={(e) => setForm((f) => ({ ...f, expense_category_id: e.target.value }))} style={inputFont({ ...fieldStyle, marginTop: 4 })}>
                 <option value="">Select category</option>
                 {cats.map((c) => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
               </select>
             </label>
             <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
               Description *
-              <input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }} />
+              <input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} style={inputFont({ ...fieldStyle, marginTop: 4 })} />
             </label>
             <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 12 }}>
               <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
                 Amount (MVR) *
-                <input type="number" value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }} />
+                <input type="number" value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))} style={inputFont({ ...fieldStyle, marginTop: 4 })} />
               </label>
               <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
                 Date *
-                <input type="date" value={form.expense_date} onChange={(e) => setForm((f) => ({ ...f, expense_date: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }} />
+                <input type="date" value={form.expense_date} onChange={(e) => setForm((f) => ({ ...f, expense_date: e.target.value }))} style={inputFont({ ...fieldStyle, marginTop: 4 })} />
               </label>
             </div>
             <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
               Payment Method
-              <select value={form.payment_method} onChange={(e) => setForm((f) => ({ ...f, payment_method: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }}>
+              <select value={form.payment_method} onChange={(e) => setForm((f) => ({ ...f, payment_method: e.target.value }))} style={inputFont({ ...fieldStyle, marginTop: 4 })}>
                 {ADMIN_EXPENSE_PAYMENT_METHODS.map((m) => (
                   <option key={m.value} value={m.value}>{m.label}</option>
                 ))}
@@ -539,7 +540,7 @@ export function ExpensesPage() {
             </label>
             <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
               Notes
-              <textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} rows={2} style={{ ...fieldStyle, height: 'auto', padding: '8px 10px', resize: 'vertical', marginTop: 4 }} />
+              <textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} rows={2} style={inputFont({ ...fieldStyle, height: 'auto', padding: '8px 10px', resize: 'vertical', marginTop: 4 })} />
             </label>
             {editingExpense.purchase && (
               <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
@@ -572,7 +573,7 @@ export function ExpensesPage() {
               <select
                 value={form.expense_category_id}
                 onChange={(e) => setForm((f) => ({ ...f, expense_category_id: e.target.value }))}
-                style={{ ...fieldStyle, marginTop: 4 }}
+                style={inputFont({ ...fieldStyle, marginTop: 4 })}
               >
                 <option value="">Select category</option>
                 {cats.map((c) => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
@@ -583,7 +584,7 @@ export function ExpensesPage() {
               <input
                 value={form.description}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                style={{ ...fieldStyle, marginTop: 4 }}
+                style={inputFont({ ...fieldStyle, marginTop: 4 })}
               />
             </label>
             <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 12 }}>
@@ -593,7 +594,7 @@ export function ExpensesPage() {
                   type="number"
                   value={form.amount}
                   onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
-                  style={{ ...fieldStyle, marginTop: 4 }}
+                  style={inputFont({ ...fieldStyle, marginTop: 4 })}
                 />
               </label>
               <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
@@ -602,7 +603,7 @@ export function ExpensesPage() {
                   type="date"
                   value={form.expense_date}
                   onChange={(e) => setForm((f) => ({ ...f, expense_date: e.target.value }))}
-                  style={{ ...fieldStyle, marginTop: 4 }}
+                  style={inputFont({ ...fieldStyle, marginTop: 4 })}
                 />
               </label>
             </div>
@@ -611,7 +612,7 @@ export function ExpensesPage() {
               <select
                 value={form.payment_method}
                 onChange={(e) => setForm((f) => ({ ...f, payment_method: e.target.value }))}
-                style={{ ...fieldStyle, marginTop: 4 }}
+                style={inputFont({ ...fieldStyle, marginTop: 4 })}
               >
                 {ADMIN_EXPENSE_PAYMENT_METHODS.map((m) => (
                   <option key={m.value} value={m.value}>{m.label}</option>
@@ -624,7 +625,7 @@ export function ExpensesPage() {
                 value={form.notes}
                 onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
                 rows={2}
-                style={{ ...fieldStyle, height: 'auto', padding: '8px 10px', resize: 'vertical', marginTop: 4 }}
+                style={inputFont({ ...fieldStyle, height: 'auto', padding: '8px 10px', resize: 'vertical', marginTop: 4 })}
               />
             </label>
             <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block' }}>

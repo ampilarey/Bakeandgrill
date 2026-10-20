@@ -14,6 +14,7 @@ import {
 } from './cropImage';
 import { ImageCropModal } from './ImageCropModal';
 import { prepareImageForCrop, prepareUploadFromFile, resolveMediaUrl, revokeCropSrc } from './mediaUrl';
+import { inputFont } from '../../utils/cssVars';
 
 export type ImageUrls = {
   url: string;
@@ -342,11 +343,11 @@ export function FormTextarea({ value, onChange, placeholder, rows = 3 }: {
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       rows={rows}
-      style={{
+      style={inputFont({
         width: '100%', border: '1px solid var(--color-border)', borderRadius: 9,
         padding: '9px 12px', fontSize: 14, fontFamily: 'inherit', resize: 'vertical',
         boxSizing: 'border-box',
-      }}
+      })}
     />
   );
 }

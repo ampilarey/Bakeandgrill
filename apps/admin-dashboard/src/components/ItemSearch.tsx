@@ -8,6 +8,7 @@ import {
   type InventoryItem,
 } from '../api';
 import { Input } from './SharedUI';
+import { inputFont } from '../utils/cssVars';
 
 export type MenuItemSelection = {
   id: number;
@@ -245,11 +246,11 @@ export function ItemSearch(props: Props) {
           <select
             value={categoryId === '' ? '' : String(categoryId)}
             onChange={(e) => selectCategory(e.target.value)}
-            style={{
+            style={inputFont({
               width: '100%', minHeight: 44, height: 44, padding: '0 12px',
               border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 14,
               fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)',
-            }}
+            })}
           >
             <option value="">All categories</option>
             {categories.map((c) => (

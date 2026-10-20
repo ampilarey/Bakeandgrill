@@ -12,6 +12,7 @@ import { downloadCSV } from '../utils/csvExport';
 import { mvr } from '../utils/fmt';
 import { tidyNumber } from '../utils/packDetails';
 import { today } from '../utils/dateHelpers';
+import { inputFont } from '../utils/cssVars';
 
 /*
  * Every line ever bought, one table.
@@ -150,14 +151,14 @@ export default function PurchaseLinesPage({ embedded = false }: { embedded?: boo
             type="date" aria-label="From date" data-testid="purchase-lines-from"
             value={range.from === '2000-01-01' ? '' : range.from} max={range.to || today()}
             onChange={(e) => setRange((r) => ({ ...r, from: e.target.value }))}
-            style={{ height: 36, padding: '0 8px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)', minWidth: 0, width: 140 }}
+            style={inputFont({ height: 36, padding: '0 8px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)', minWidth: 0, width: 140 })}
           />
           <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>to</span>
           <input
             type="date" aria-label="To date" data-testid="purchase-lines-to"
             value={range.to} min={range.from === '2000-01-01' ? undefined : range.from} max={today()}
             onChange={(e) => setRange((r) => ({ ...r, to: e.target.value }))}
-            style={{ height: 36, padding: '0 8px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)', minWidth: 0, width: 140 }}
+            style={inputFont({ height: 36, padding: '0 8px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)', minWidth: 0, width: 140 })}
           />
         </div>
         <div style={{ marginLeft: 'auto' }}>

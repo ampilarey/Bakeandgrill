@@ -22,6 +22,7 @@ import { CommentsTab } from './social/CommentsTab';
 import { ComposeModal } from './social/ComposeModal';
 import { PLATFORM_LABELS, bestTimesHint, navigateTo } from './social/composer';
 import { Heart, MessageCircle, MousePointerClick, Share2, ShoppingBag } from 'lucide-react';
+import { inputFont } from '../utils/cssVars';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All statuses' },
@@ -777,11 +778,11 @@ function AutomationCard({ meta, config: initial, options, canEdit, hint, onSaved
             onChange={(e) => set({ template: e.target.value })}
             rows={4}
             maxLength={2200}
-            style={{
+            style={inputFont({
               width: '100%', padding: 10, borderRadius: 10, fontFamily: 'inherit', fontSize: 13,
               border: '1.5px solid var(--color-border)', background: 'var(--color-surface)',
               color: 'var(--color-text)', resize: 'vertical', boxSizing: 'border-box',
-            }}
+            })}
           />
         </div>
         {meta.kind === 'hours' && (
@@ -799,11 +800,11 @@ function AutomationCard({ meta, config: initial, options, canEdit, hint, onSaved
               onChange={(e) => set({ template_hours: e.target.value })}
               rows={3}
               maxLength={2200}
-              style={{
+              style={inputFont({
                 width: '100%', padding: 10, borderRadius: 10, fontFamily: 'inherit', fontSize: 13,
                 border: '1.5px solid var(--color-border)', background: 'var(--color-surface)',
                 color: 'var(--color-text)', resize: 'vertical', boxSizing: 'border-box',
-              }}
+              })}
             />
           </div>
         )}
@@ -1368,11 +1369,11 @@ function ChannelModal({ channel, platforms, onClose, onSaved }: {
             <select
               value={platform}
               onChange={(e) => { setPlatform(e.target.value); setCreds({}); }}
-              style={{
+              style={inputFont({
                 width: '100%', minHeight: 44, padding: '0 10px', borderRadius: 10, fontSize: 13,
                 border: '1.5px solid var(--color-border)', background: 'var(--color-surface)',
                 color: 'var(--color-text)', cursor: 'pointer',
-              }}
+              })}
             >
               {platformKeys.map((p) => (
                 <option key={p} value={p}>{PLATFORM_LABELS[p] ?? p}</option>

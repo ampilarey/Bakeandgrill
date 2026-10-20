@@ -7,6 +7,7 @@ import {
   type TwoFactorStatus,
 } from '../api';
 import { Button, Card } from './ui';
+import { inputFont } from '../utils/cssVars';
 
 /**
  * Enrolling this account's second factor, from My Account.
@@ -275,7 +276,7 @@ export function TwoFactorCard() {
               onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
               placeholder="000000"
               autoComplete="one-time-code"
-              style={{ ...FIELD, letterSpacing: '0.3em', textAlign: 'center', fontSize: 18 }}
+              style={inputFont({ ...FIELD, letterSpacing: '0.3em', textAlign: 'center', fontSize: 18 })}
             />
           </label>
 
@@ -336,7 +337,7 @@ export function TwoFactorCard() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       autoComplete="current-password"
-                      style={FIELD}
+                      style={inputFont(FIELD)}
                     />
                   </label>
                   <p style={HINT}>

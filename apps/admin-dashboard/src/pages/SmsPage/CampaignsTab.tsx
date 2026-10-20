@@ -13,6 +13,7 @@ import { SortFilterHead, useSortFilter } from '../../components/TableControls';
 import { smsCharCount } from '../../utils/smsCharCount';
 import { AudienceBuilder, criteriaIsEmpty } from './AudienceBuilder';
 import { Eye } from 'lucide-react';
+import { inputFont } from '../../utils/cssVars';
 
 type PreviewResult = {
   recipient_count: number;
@@ -385,7 +386,7 @@ export function CampaignsTab({ prefill, onViewLog }: { prefill?: CampaignPrefill
             </div>
             <div>
               <label style={labelStyle}>Start from a recipe</label>
-              <select aria-label="Recipe" value={recipeKey} onChange={(e) => applyRecipe(e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)' }}>
+              <select aria-label="Recipe" value={recipeKey} onChange={(e) => applyRecipe(e.target.value)} style={inputFont({ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)' })}>
                 <option value="">Blank</option>
                 {recipes.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
               </select>
@@ -443,7 +444,7 @@ export function CampaignsTab({ prefill, onViewLog }: { prefill?: CampaignPrefill
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Type your SMS message here… {name} becomes the customer's first name."
               rows={4}
-              style={textareaStyle}
+              style={inputFont(textareaStyle)}
             />
             <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
               {'{name}'} becomes the customer's first name. The unsubscribe line from Notifications → Rules is added to the end automatically.
@@ -466,7 +467,7 @@ export function CampaignsTab({ prefill, onViewLog }: { prefill?: CampaignPrefill
                   onChange={(e) => setMessageB(e.target.value)}
                   placeholder="Alternative message to test…"
                   rows={4}
-                  style={textareaStyle}
+                  style={inputFont(textareaStyle)}
                 />
               </div>
               <div style={{ marginBottom: 16 }}>
@@ -481,7 +482,7 @@ export function CampaignsTab({ prefill, onViewLog }: { prefill?: CampaignPrefill
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, marginBottom: 14 }}>
             <div>
               <label style={labelStyle}>Repeat</label>
-              <select aria-label="Repeat" value={repeat} onChange={(e) => setRepeat(e.target.value as Repeat)} style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)' }}>
+              <select aria-label="Repeat" value={repeat} onChange={(e) => setRepeat(e.target.value as Repeat)} style={inputFont({ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)' })}>
                 <option value="off">Send once</option>
                 <option value="daily">Every day</option>
                 <option value="weekly">Every week</option>
@@ -491,7 +492,7 @@ export function CampaignsTab({ prefill, onViewLog }: { prefill?: CampaignPrefill
             {repeat === 'off' && (
               <div>
                 <label style={labelStyle}>Send at (optional)</label>
-                <input type="datetime-local" aria-label="Send at" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }} />
+                <input type="datetime-local" aria-label="Send at" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} style={inputFont({ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' })} />
                 <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '4px 0 0' }}>Leave empty to send by hand from the list.</p>
               </div>
             )}
@@ -511,18 +512,18 @@ export function CampaignsTab({ prefill, onViewLog }: { prefill?: CampaignPrefill
             {repeat === 'monthly' && (
               <div>
                 <label style={labelStyle}>Day of month</label>
-                <input type="number" aria-label="Day of month" min={1} max={31} value={repeatDayOfMonth} onChange={(e) => setRepeatDayOfMonth(Math.max(1, Math.min(31, Number(e.target.value) || 1)))} style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }} />
+                <input type="number" aria-label="Day of month" min={1} max={31} value={repeatDayOfMonth} onChange={(e) => setRepeatDayOfMonth(Math.max(1, Math.min(31, Number(e.target.value) || 1)))} style={inputFont({ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' })} />
               </div>
             )}
             {repeat !== 'off' && (
               <>
                 <div>
                   <label style={labelStyle}>At</label>
-                  <input type="time" aria-label="Repeat time" value={repeatTime} onChange={(e) => setRepeatTime(e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }} />
+                  <input type="time" aria-label="Repeat time" value={repeatTime} onChange={(e) => setRepeatTime(e.target.value)} style={inputFont({ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' })} />
                 </div>
                 <div>
                   <label style={labelStyle}>Skip anyone texted by this in the last (days)</label>
-                  <input type="number" aria-label="Cooldown days" min={1} max={3650} value={cooldownDays} onChange={(e) => setCooldownDays(Math.max(1, Math.min(3650, Number(e.target.value) || 1)))} style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }} />
+                  <input type="number" aria-label="Cooldown days" min={1} max={3650} value={cooldownDays} onChange={(e) => setCooldownDays(Math.max(1, Math.min(3650, Number(e.target.value) || 1)))} style={inputFont({ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' })} />
                 </div>
                 <p style={{ gridColumn: '1 / -1', fontSize: 11, color: 'var(--color-text-muted)', margin: 0 }}>
                   Each run is an ordinary campaign built from this audience on the day, minus anyone it texted inside the cooldown. Quiet hours, the per-number cap and the daily bulk cap all still apply.

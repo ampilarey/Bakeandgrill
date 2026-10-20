@@ -1,6 +1,7 @@
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import { AlertTriangle, CheckCircle2, ChevronDown, Lock, RefreshCw, Unlock } from 'lucide-react';
 import { Switch } from '../../components/SharedUI';
+import { inputFont } from '../../utils/cssVars';
 
 export const DAYS = [
   { key: 'mon', label: 'Monday' },
@@ -211,7 +212,7 @@ export function ForceOpenOverride({
           <label style={S.label}>{label}</label>
           <input
             type="datetime-local"
-            style={S.input}
+            style={inputFont(S.input)}
             value={value}
             onChange={(e) => onChange(e.target.value)}
           />

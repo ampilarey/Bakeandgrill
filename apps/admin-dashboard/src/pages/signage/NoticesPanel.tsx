@@ -16,6 +16,7 @@ import {
 } from '../../api';
 import { useToast } from '../../components/ui';
 import { Btn, Card } from '../../components/SharedUI';
+import { inputFont } from '../../utils/cssVars';
 
 type Props = {
   notices: SignageNotice[];
@@ -137,11 +138,11 @@ export function NoticesPanel({ notices, settings, onNotices, onSettings }: Props
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
           <div style={{ gridColumn: '1 / -1' }}>
             <label style={label} htmlFor="signage-notice-text">Notice</label>
-            <input id="signage-notice-text" data-testid="signage-notice-text" style={field} maxLength={160} value={text} placeholder="Kitchen closes in 20 minutes" onChange={(e) => setText(e.target.value)} />
+            <input id="signage-notice-text" data-testid="signage-notice-text" style={inputFont(field)} maxLength={160} value={text} placeholder="Kitchen closes in 20 minutes" onChange={(e) => setText(e.target.value)} />
           </div>
           <div style={{ gridColumn: '1 / -1' }}>
             <label style={label} htmlFor="signage-notice-text-dv">Dhivehi (optional)</label>
-            <input id="signage-notice-text-dv" data-testid="signage-notice-text-dv" style={{ ...field, textAlign: 'right' }} lang="dv" dir="rtl" maxLength={160} value={textDv} onChange={(e) => setTextDv(e.target.value)} />
+            <input id="signage-notice-text-dv" data-testid="signage-notice-text-dv" style={inputFont({ ...field, textAlign: 'right' })} lang="dv" dir="rtl" maxLength={160} value={textDv} onChange={(e) => setTextDv(e.target.value)} />
           </div>
           <div>
             <label style={label}>Look</label>
@@ -155,13 +156,13 @@ export function NoticesPanel({ notices, settings, onNotices, onSettings }: Props
           </div>
           <div>
             <label style={label} htmlFor="signage-notice-show">Show as</label>
-            <select id="signage-notice-show" data-testid="signage-notice-show" style={field} value={show} onChange={(e) => setShow(e.target.value)}>
+            <select id="signage-notice-show" data-testid="signage-notice-show" style={inputFont(field)} value={show} onChange={(e) => setShow(e.target.value)}>
               {SHOWS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
           </div>
           <div>
             <label style={label} htmlFor="signage-notice-minutes">For</label>
-            <select id="signage-notice-minutes" data-testid="signage-notice-minutes" style={field} value={String(minutes)} onChange={(e) => setMinutes(Number(e.target.value))}>
+            <select id="signage-notice-minutes" data-testid="signage-notice-minutes" style={inputFont(field)} value={String(minutes)} onChange={(e) => setMinutes(Number(e.target.value))}>
               {DURATIONS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
             </select>
           </div>
@@ -204,7 +205,7 @@ export function NoticesPanel({ notices, settings, onNotices, onSettings }: Props
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <div style={{ width: 160 }}>
             <label style={label} htmlFor="signage-sold-out-minutes">Minutes</label>
-            <input id="signage-sold-out-minutes" data-testid="signage-sold-out-minutes" type="number" min={0} max={240} style={field} value={soldOutMinutes} onChange={(e) => setSoldOutMinutes(e.target.value)} />
+            <input id="signage-sold-out-minutes" data-testid="signage-sold-out-minutes" type="number" min={0} max={240} style={inputFont(field)} value={soldOutMinutes} onChange={(e) => setSoldOutMinutes(e.target.value)} />
           </div>
           <Btn onClick={() => void saveSettings()} disabled={savingSettings} data-testid="signage-sold-out-save">
             {savingSettings ? 'Saving…' : 'Save'}

@@ -12,6 +12,7 @@ import {
   PLATFORM_LABELS, PLATFORM_SHORT, captionForLanguage, fromLocalDateTimeInput, platformsNeedingImage,
   suggestCaption, tightestForChannels, toLocalDateTimeInput,
 } from './composer';
+import { inputFont } from '../../utils/cssVars';
 
 type Action = 'draft' | 'schedule' | 'now' | 'save';
 
@@ -361,11 +362,11 @@ export function ComposeModal({ post, initial, onClose, onSaved, canCompose, canP
                 onChange={(e) => setCaption(e.target.value)}
                 rows={5}
                 aria-label="Caption"
-                style={{
+                style={inputFont({
                   width: '100%', padding: 10, borderRadius: 10, fontFamily: 'inherit', fontSize: 13,
                   border: `1.5px solid ${over ? 'var(--color-danger)' : 'var(--color-border)'}`, background: 'var(--color-surface)',
                   color: 'var(--color-text)', resize: 'vertical', boxSizing: 'border-box',
-                }}
+                })}
               />
               {over && limit && (
                 <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-danger)' }}>
@@ -382,11 +383,11 @@ export function ComposeModal({ post, initial, onClose, onSaved, canCompose, canP
                   rows={3}
                   dir="rtl"
                   aria-label="Caption in Dhivehi"
-                  style={{
+                  style={inputFont({
                     width: '100%', padding: 10, borderRadius: 10, fontFamily: 'inherit', fontSize: 14,
                     border: '1.5px solid var(--color-border)', background: 'var(--color-surface)',
                     color: 'var(--color-text)', resize: 'vertical', boxSizing: 'border-box',
-                  }}
+                  })}
                 />
               </div>
             </div>

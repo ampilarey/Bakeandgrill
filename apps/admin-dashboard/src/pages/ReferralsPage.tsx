@@ -8,6 +8,7 @@ import {
 } from '../components/SharedUI';
 import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import { fetchAdminReferrals, setReferralCodeActive, validateReferralCode, type ReferralCode } from '../api';
+import { inputFont } from '../utils/cssVars';
 
 // Rows are referral *codes* (one per customer), not redemption events.
 // Active/inactive can be toggled; Validate-Code uses the public endpoint.
@@ -136,11 +137,11 @@ export default function ReferralsPage() {
               onChange={(e) => setCheckCode(e.target.value.toUpperCase())}
               placeholder="e.g. JOHND123"
               onKeyDown={(e) => e.key === 'Enter' && void handleCheck()}
-              style={{
+              style={inputFont({
                 width: '100%', height: 38, padding: '0 12px', border: '1.5px solid var(--color-border)',
                 borderRadius: 10, fontSize: 14, fontFamily: 'monospace', background: 'var(--color-surface)',
                 outline: 'none', boxSizing: 'border-box', textTransform: 'uppercase', letterSpacing: '0.08em',
-              }}
+              })}
             />
           </div>
 

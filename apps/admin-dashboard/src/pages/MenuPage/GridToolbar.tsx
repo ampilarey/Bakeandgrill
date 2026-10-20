@@ -10,6 +10,7 @@ import {
   menuGroupOptions,
 } from './gridColumns';
 import { EMPTY_FILTERS, activeFilterCount, type GridFilters } from './gridFilters';
+import { inputFont } from '../../utils/cssVars';
 
 /**
  * Search, filters and the column chooser.
@@ -93,7 +94,7 @@ export function GridToolbar({
             placeholder="Search name, Dhivehi name, SKU, barcode or size…"
             aria-label="Search the grid"
             data-testid="grid-search"
-            style={{ ...control, width: '100%', paddingRight: 30 }}
+            style={inputFont({ ...control, width: '100%', paddingRight: 30 })}
           />
           {filters.search !== '' && (
             <button
@@ -187,7 +188,7 @@ export function GridToolbar({
               value={filters.categoryId ?? ''}
               onChange={(e) => set('categoryId', e.target.value ? Number(e.target.value) : null)}
               aria-label="Filter by category"
-              style={{ ...control, width: '100%' }}
+              style={inputFont({ ...control, width: '100%' })}
             >
               <option value="">Any category</option>
               {categoryOptions(categories).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -198,7 +199,7 @@ export function GridToolbar({
               value={filters.menuGroupId ?? ''}
               onChange={(e) => set('menuGroupId', e.target.value ? Number(e.target.value) : null)}
               aria-label="Filter by menu group"
-              style={{ ...control, width: '100%' }}
+              style={inputFont({ ...control, width: '100%' })}
             >
               <option value="">Any group</option>
               {menuGroupOptions(menuGroups).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -209,7 +210,7 @@ export function GridToolbar({
               value={filters.taxCode}
               onChange={(e) => set('taxCode', e.target.value)}
               aria-label="Filter by GST"
-              style={{ ...control, width: '100%' }}
+              style={inputFont({ ...control, width: '100%' })}
             >
               <option value="">Any GST</option>
               {TAX_CODES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
@@ -223,7 +224,7 @@ export function GridToolbar({
               value={filters.availability}
               onChange={(e) => set('availability', e.target.value as GridFilters['availability'])}
               aria-label="Filter by availability"
-              style={{ ...control, width: '100%' }}
+              style={inputFont({ ...control, width: '100%' })}
             >
               <option value="any">Any</option>
               <option value="available">Selling today</option>
@@ -235,7 +236,7 @@ export function GridToolbar({
               value={filters.status}
               onChange={(e) => set('status', e.target.value as GridFilters['status'])}
               aria-label="Filter by status"
-              style={{ ...control, width: '100%' }}
+              style={inputFont({ ...control, width: '100%' })}
             >
               <option value="any">Any</option>
               <option value="active">On menu</option>
@@ -247,7 +248,7 @@ export function GridToolbar({
               value={filters.sizes}
               onChange={(e) => set('sizes', e.target.value as GridFilters['sizes'])}
               aria-label="Filter by sizes"
-              style={{ ...control, width: '100%' }}
+              style={inputFont({ ...control, width: '100%' })}
             >
               <option value="any">Any</option>
               <option value="with">Has sizes</option>
@@ -259,7 +260,7 @@ export function GridToolbar({
               value={filters.stock}
               onChange={(e) => set('stock', e.target.value as GridFilters['stock'])}
               aria-label="Filter by stock"
-              style={{ ...control, width: '100%' }}
+              style={inputFont({ ...control, width: '100%' })}
             >
               <option value="any">Any</option>
               <option value="tracked">Tracked</option>
@@ -276,14 +277,14 @@ export function GridToolbar({
                 value={filters.minPrice}
                 onChange={(e) => set('minPrice', e.target.value)}
                 aria-label="Minimum price"
-                style={{ ...control, width: '100%', textAlign: 'right' }}
+                style={inputFont({ ...control, width: '100%', textAlign: 'right' })}
               />
               <input
                 type="number" min="0" step="0.01" placeholder="max"
                 value={filters.maxPrice}
                 onChange={(e) => set('maxPrice', e.target.value)}
                 aria-label="Maximum price"
-                style={{ ...control, width: '100%', textAlign: 'right' }}
+                style={inputFont({ ...control, width: '100%', textAlign: 'right' })}
               />
             </div>
           </Labelled>

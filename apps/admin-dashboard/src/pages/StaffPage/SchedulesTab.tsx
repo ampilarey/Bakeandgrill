@@ -3,6 +3,7 @@ import { fetchSchedules, createSchedule, updateSchedule, deleteSchedule, type St
 import {
   Btn, ConfirmDialog, EmptyState, ErrorMsg, Modal, ModalActions, Spinner, TableCard, useConfirmDialog,
 } from '../../components/SharedUI';
+import { inputFont } from '../../utils/cssVars';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -210,29 +211,29 @@ export function SchedulesTab({ staff }: { staff: StaffMember[] }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <label>
               <span style={LS}>Staff Member *</span>
-              <select value={form.staff_id} onChange={(e) => setForm((f) => ({ ...f, staff_id: e.target.value }))} style={{ ...FS, border: '1px solid var(--color-border)', borderRadius: 8 }}>
+              <select value={form.staff_id} onChange={(e) => setForm((f) => ({ ...f, staff_id: e.target.value }))} style={inputFont({ ...FS, border: '1px solid var(--color-border)', borderRadius: 8 })}>
                 <option value="">Select staff…</option>
                 {activeStaff.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             </label>
             <label>
               <span style={LS}>Date *</span>
-              <input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} style={FS} />
+              <input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} style={inputFont(FS)} />
             </label>
             <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 12 }}>
               <label>
                 <span style={LS}>Start Time *</span>
-                <input type="time" value={form.start_time} onChange={(e) => setForm((f) => ({ ...f, start_time: e.target.value }))} style={FS} />
+                <input type="time" value={form.start_time} onChange={(e) => setForm((f) => ({ ...f, start_time: e.target.value }))} style={inputFont(FS)} />
               </label>
               <label>
                 <span style={LS}>End Time *</span>
-                <input type="time" value={form.end_time} onChange={(e) => setForm((f) => ({ ...f, end_time: e.target.value }))} style={FS} />
+                <input type="time" value={form.end_time} onChange={(e) => setForm((f) => ({ ...f, end_time: e.target.value }))} style={inputFont(FS)} />
               </label>
             </div>
             <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>Overnight shifts (end before start) are not supported.</p>
             <label>
               <span style={LS}>Notes</span>
-              <input type="text" placeholder="Optional note…" value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} style={FS} />
+              <input type="text" placeholder="Optional note…" value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} style={inputFont(FS)} />
             </label>
           </div>
           <ModalActions>

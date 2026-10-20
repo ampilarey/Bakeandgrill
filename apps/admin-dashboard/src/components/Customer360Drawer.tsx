@@ -13,6 +13,7 @@ import { CustomerCreditSection } from './CustomerCreditSection';
 import { CustomerDepositSection } from './CustomerDepositSection';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { smsCharCount } from '../utils/smsCharCount';
+import { inputFont } from '../utils/cssVars';
 
 function timelineEventPath(ev: CustomerActivityEvent): string | null {
   if (!ev.source_id) return null;
@@ -285,7 +286,7 @@ export function Customer360Drawer({ customerId, onClose }: Props) {
                 value={followNote}
                 onChange={(e) => setFollowNote(e.target.value)}
                 rows={2}
-                style={{ width: '100%', padding: 8, borderRadius: 8, border: '1px solid var(--color-border)', fontFamily: 'inherit', fontSize: 13 }}
+                style={inputFont({ width: '100%', padding: 8, borderRadius: 8, border: '1px solid var(--color-border)', fontFamily: 'inherit', fontSize: 13 })}
                 placeholder="Call back about…"
               />
               <Btn small onClick={handleFollowUp} disabled={saving} style={{ marginTop: 8 }}>Save note</Btn>
@@ -309,7 +310,7 @@ export function Customer360Drawer({ customerId, onClose }: Props) {
                   onChange={(e) => setSmsMessage(e.target.value)}
                   rows={3}
                   disabled={summary.sms.opt_out}
-                  style={{ width: '100%', padding: 8, borderRadius: 8, border: '1px solid var(--color-border)', fontFamily: 'inherit', fontSize: 13 }}
+                  style={inputFont({ width: '100%', padding: 8, borderRadius: 8, border: '1px solid var(--color-border)', fontFamily: 'inherit', fontSize: 13 })}
                   placeholder="Message to customer…"
                 />
                 <Btn small onClick={handleSendSms} disabled={saving || summary.sms.opt_out} style={{ marginTop: 8 }}>Send SMS</Btn>

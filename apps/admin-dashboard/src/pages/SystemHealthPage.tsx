@@ -14,6 +14,7 @@ import { Card, ErrorMsg, PageHeader, PageShell, SectionLabel, Spinner, StatCard 
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { fmt } from '../utils/fmt';
+import { inputFont } from '../utils/cssVars';
 
 /** System status words and colours (ReadyChecks: pass, warn, fail, skip). */
 const READY_WORDS: Record<string, string> = { pass: 'OK', warn: 'Check', fail: 'Fix', skip: 'Not set' };
@@ -202,11 +203,11 @@ export function SystemHealthPage() {
               placeholder='Type CLONE FROM LIVE'
               disabled={cloneBusy || !!cloneInfo?.running}
               aria-label="Confirm clone phrase"
-              style={{
+              style={inputFont({
                 minHeight: 44, flex: '1 1 220px', padding: '8px 12px', borderRadius: 10,
                 border: '1px solid var(--color-border)', background: 'var(--color-surface)',
                 color: 'var(--color-text)', fontFamily: 'inherit', fontSize: 13,
-              }}
+              })}
             />
             <button
               type="button"

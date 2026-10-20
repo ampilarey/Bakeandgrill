@@ -135,6 +135,7 @@ function editLineBase(line: { quantity: string; purchase_unit_id: string; packs:
 import { today, enteredOn, enteredAt } from '../utils/dateHelpers';
 import { mvr } from '../utils/fmt';
 import { Camera, FolderOpen, Lightbulb, Paperclip, Upload, RefreshCw, X, Check } from 'lucide-react';
+import { inputFont } from '../utils/cssVars';
 
 type ManualPoLine = {
   selection: InventoryItemSelection | null;
@@ -1206,14 +1207,14 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search PO number or supplier…"
-          style={{
+          style={inputFont({
             height: 36, minWidth: 220, padding: '0 12px',
             border: '1.5px solid var(--color-border)', borderRadius: 10,
             fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)', outline: 'none',
-          }}
+          })}
         />
         <Btn variant="secondary" onClick={load}><RefreshCw size={15} aria-hidden />Refresh</Btn>
-        <div className="admin-btn-row" style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+        <div className="admin-btn-row" style={{ '--ml': 'auto', display: 'flex', gap: 8 }}>
           <Btn variant="secondary" onClick={() => void openManualPo()}>+ Create Manual PO</Btn>
           <Btn variant="secondary" onClick={() => setShowImport(true)}><Upload size={16} aria-hidden />Import CSV</Btn>
           <Btn onClick={loadSuggestions} disabled={sugLoading}>
@@ -1445,7 +1446,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                           max={item.quantity - item.received_quantity}
                           value={receiveQtys[item.id] ?? 0}
                           onChange={(e) => { const v = parseFloat(e.target.value); setReceiveQtys((q) => ({ ...q, [item.id]: isNaN(v) ? 0 : Math.max(0, v) })); }}
-                          style={{ width: '100%', height: 44, padding: '0 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 16, fontFamily: 'inherit', boxSizing: 'border-box' }}
+                          style={inputFont({ width: '100%', height: 44, padding: '0 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 16, fontFamily: 'inherit', boxSizing: 'border-box' })}
                         />
                         {asPacks(receiveQtys[item.id] ?? 0, item, item.inventory_item?.unit) && (
                           <span style={{ fontSize: 12, fontWeight: 400, textTransform: 'none', color: 'var(--color-text-muted)' }} data-testid={`receiving-packs-${item.id}`}>
@@ -1514,7 +1515,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                           max={item.quantity - item.received_quantity}
                           value={receiveQtys[item.id] ?? 0}
                           onChange={(e) => { const v = parseFloat(e.target.value); setReceiveQtys((q) => ({ ...q, [item.id]: isNaN(v) ? 0 : Math.max(0, v) })); }}
-                          style={{ width: 70, height: 30, padding: '0 6px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', textAlign: 'center' }}
+                          style={inputFont({ width: 70, height: 30, padding: '0 6px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', textAlign: 'center' })}
                         />
                         {/* The box takes base units, because that is what the
                             server takes. This says what the typed number is in
@@ -1552,7 +1553,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                   aria-label="Scan a packet barcode"
                   inputMode="numeric"
                   autoComplete="off"
-                  style={{ flex: '1 1 240px', height: 40, padding: '0 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 14, fontFamily: 'inherit' }}
+                  style={inputFont({ flex: '1 1 240px', height: 40, padding: '0 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 14, fontFamily: 'inherit' })}
                 />
                 <Btn variant="secondary" onClick={() => setScanCamera(true)} aria-label="Scan with the camera" title="Scan with the camera"><Camera size={16} aria-hidden />Camera</Btn>
                 {scanMsg && <span role="status" style={{ fontSize: 13, color: 'var(--color-text-secondary)', flexBasis: '100%' }}>{scanMsg}</span>}
@@ -1576,7 +1577,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                 rows={2}
                 value={receiveNotes}
                 onChange={(e) => setReceiveNotes(e.target.value)}
-                style={{ width: '100%', padding: '8px 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
+                style={inputFont({ width: '100%', padding: '8px 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' })}
               />
             </div>
             <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--color-border)' }} data-testid="po-gst-panel">
@@ -1596,10 +1597,10 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                   </label>
                   {gstForm.is_input_tax_claimable && (
                     <div style={{ display: 'grid', gap: 10 }}>
-                      <input placeholder="Supplier TIN" aria-label="Supplier TIN" value={gstForm.supplier_tin} onChange={(e) => setGstForm((f) => ({ ...f, supplier_tin: e.target.value }))} style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, boxSizing: 'border-box' }} />
+                      <input placeholder="Supplier TIN" aria-label="Supplier TIN" value={gstForm.supplier_tin} onChange={(e) => setGstForm((f) => ({ ...f, supplier_tin: e.target.value }))} style={inputFont({ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, boxSizing: 'border-box' })} />
                       <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 10 }}>
-                        <input placeholder="Supplier invoice no." aria-label="Supplier invoice number" value={gstForm.supplier_invoice_no} onChange={(e) => setGstForm((f) => ({ ...f, supplier_invoice_no: e.target.value }))} style={{ padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13 }} />
-                        <input type="date" aria-label="Supplier invoice date" value={gstForm.supplier_invoice_date} onChange={(e) => setGstForm((f) => ({ ...f, supplier_invoice_date: e.target.value }))} style={{ padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13 }} />
+                        <input placeholder="Supplier invoice no." aria-label="Supplier invoice number" value={gstForm.supplier_invoice_no} onChange={(e) => setGstForm((f) => ({ ...f, supplier_invoice_no: e.target.value }))} style={inputFont({ padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13 })} />
+                        <input type="date" aria-label="Supplier invoice date" value={gstForm.supplier_invoice_date} onChange={(e) => setGstForm((f) => ({ ...f, supplier_invoice_date: e.target.value }))} style={inputFont({ padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13 })} />
                       </div>
                     </div>
                   )}
@@ -1679,12 +1680,12 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
             <div>
               <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Purchase Date</label>
               <input type="date" value={importDate} onChange={(e) => setImportDate(e.target.value)}
-                style={{ width: '100%', padding: '8px 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                style={inputFont({ width: '100%', padding: '8px 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' })} />
             </div>
             <div>
               <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Notes (optional)</label>
               <input value={importNotes} onChange={(e) => setImportNotes(e.target.value)} placeholder="e.g. Weekly stock"
-                style={{ width: '100%', padding: '8px 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                style={inputFont({ width: '100%', padding: '8px 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' })} />
             </div>
           </div>
           <ModalActions>
@@ -1738,7 +1739,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
               <input id="manual-po-purchase-date" type="date" value={manualPoForm.purchase_date} max={today()}
                 data-testid="manual-po-purchase-date"
                 onChange={(e) => setManualPoForm((f) => ({ ...f, purchase_date: e.target.value }))}
-                style={manualBoxStyle} />
+                style={inputFont(manualBoxStyle)} />
               {manualPoForm.purchase_date && manualPoForm.purchase_date < today() && (
                 <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
                   Backdated — stock, cost and the price will be filed under this date.
@@ -1772,7 +1773,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                       placeholder="Find…"
                       value={frequentFind}
                       onChange={(e) => setFrequentFind(e.target.value)}
-                      style={{ ...manualBoxStyle, marginBottom: 8 }}
+                      style={inputFont({ ...manualBoxStyle, marginBottom: 8 })}
                     />
                   )}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 6 }}>
@@ -1918,7 +1919,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                           lines: f.lines.map((l, i) => i === idx && l.newItem
                             ? { ...l, newItem: { ...l.newItem, name: e.target.value } } : l),
                         }))}
-                        style={manualBoxStyle}
+                        style={inputFont(manualBoxStyle)}
                       />
                       <input
                         aria-label={`New item unit for item ${idx + 1}`}
@@ -1930,7 +1931,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                           lines: f.lines.map((l, i) => i === idx && l.newItem
                             ? { ...l, newItem: { ...l.newItem, unit: e.target.value } } : l),
                         }))}
-                        style={manualBoxStyle}
+                        style={inputFont(manualBoxStyle)}
                       />
                     </div>
                     <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '6px 0 0', lineHeight: 1.45 }}>
@@ -1985,7 +1986,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                         }))}
                       />
                     ) : (
-                      <input disabled placeholder="Pick an item first" aria-label={`Brand for item ${idx + 1}`} style={{ ...manualBoxStyle, opacity: 0.6 }} />
+                      <input disabled placeholder="Pick an item first" aria-label={`Brand for item ${idx + 1}`} style={inputFont({ ...manualBoxStyle, opacity: 0.6 })} />
                     )}
                     {/* The packet itself. A brand name is only a name until you
                         are standing in front of the shelf (owner, 2026-09-09). */}
@@ -2012,7 +2013,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                         aria-label={`Quantity for item ${idx + 1}`}
                         value={line.quantity}
                         onChange={(e) => setManualPoForm((f) => ({ ...f, lines: f.lines.map((l, i) => i === idx ? { ...l, quantity: e.target.value } : l) }))}
-                        style={{ ...manualBoxStyle, width: 84, flexShrink: 0 }} />
+                        style={inputFont({ ...manualBoxStyle, width: 84, flexShrink: 0 })} />
                       {/*
                         The unit, as a search-and-pick box like the brand's.
                         This was a text box with a browser datalist, and a
@@ -2050,7 +2051,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                       aria-label={`Unit cost for item ${idx + 1}`}
                       value={line.unit_cost}
                       onChange={(e) => setManualPoForm((f) => ({ ...f, lines: f.lines.map((l, i) => i === idx ? { ...l, unit_cost: e.target.value, costTyped: true } : l) }))}
-                      style={manualBoxStyle} />
+                      style={inputFont(manualBoxStyle)} />
                   </div>
                 </div>
 
@@ -2103,7 +2104,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                               ...f,
                               lines: f.lines.map((l, i) => i === idx ? { ...l, newPackQty: e.target.value } : l),
                             }))}
-                            style={{ ...manualBoxStyle, width: 90 }}
+                            style={inputFont({ ...manualBoxStyle, width: 90 })}
                           />
                           <span>{line.selection?.item.unit}</span>
                           <Btn small onClick={() => void saveNewPack(idx)} disabled={manualPoSaving}>Save</Btn>
@@ -2185,7 +2186,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
           </Btn>
           <label htmlFor="manual-po-notes" style={lineLabelStyle}>Notes (optional)</label>
           <textarea id="manual-po-notes" rows={1} value={manualPoForm.notes} onChange={(e) => setManualPoForm((f) => ({ ...f, notes: e.target.value }))}
-            style={{ ...manualBoxStyle, resize: 'vertical', marginBottom: 12 }} />
+            style={inputFont({ ...manualBoxStyle, resize: 'vertical', marginBottom: 12 })} />
           {/* The total lives in the footer, which stays on screen however
               long the order is: the number to check against the receipt in
               your hand, before you save rather than after. Incomplete lines
@@ -2223,7 +2224,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
             value={rejectReason}
             onChange={(e) => setRejectReason(e.target.value)}
             placeholder="e.g. Supplier out of stock, ordered twice, price too high…"
-            style={{ width: '100%', padding: '8px 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box', marginBottom: 4 }}
+            style={inputFont({ width: '100%', padding: '8px 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box', marginBottom: 4 })}
           />
           <ModalActions>
             <Btn variant="ghost" onClick={() => setRejectId(null)}>Keep it</Btn>
@@ -2262,7 +2263,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                 id="po-edit-purchase-date" type="date" value={editHeader.purchase_date} max={today()}
                 data-testid="po-edit-purchase-date"
                 onChange={(e) => setEditHeader((h) => ({ ...h, purchase_date: e.target.value }))}
-                style={manualBoxStyle}
+                style={inputFont(manualBoxStyle)}
               />
             </div>
             <div>
@@ -2271,7 +2272,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                 id="po-edit-expected-date" type="date" value={editHeader.expected_delivery_date}
                 data-testid="po-edit-expected-date"
                 onChange={(e) => setEditHeader((h) => ({ ...h, expected_delivery_date: e.target.value }))}
-                style={manualBoxStyle}
+                style={inputFont(manualBoxStyle)}
               />
             </div>
             <div style={{ gridColumn: '1 / -1' }}>
@@ -2279,7 +2280,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
               <textarea
                 id="po-edit-notes" aria-label="Notes" value={editHeader.notes} rows={2}
                 onChange={(e) => setEditHeader((h) => ({ ...h, notes: e.target.value }))}
-                style={{ ...manualBoxStyle, minHeight: 56, padding: '8px 12px', resize: 'vertical' }}
+                style={inputFont({ ...manualBoxStyle, minHeight: 56, padding: '8px 12px', resize: 'vertical' })}
               />
             </div>
           </div>
@@ -2302,7 +2303,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                       data-testid={`po-edit-pack-${idx}`}
                       value={line.purchase_unit_id}
                       onChange={(e) => setEditLines((rows) => rows.map((r, i) => i === idx ? { ...r, purchase_unit_id: e.target.value, lostPack: null } : r))}
-                      style={{ display: 'block', marginTop: 4, padding: '4px 6px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 12, fontFamily: 'inherit', maxWidth: '100%' }}
+                      style={inputFont({ display: 'block', marginTop: 4, padding: '4px 6px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 12, fontFamily: 'inherit', maxWidth: '100%' })}
                     >
                       <option value="">{line.base_unit ? `by the ${line.base_unit}` : 'by the unit'}</option>
                       {line.packs.map((pack) => (
@@ -2340,13 +2341,13 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                   aria-label={`Quantity for ${line.name}`}
                   type="number" min="0" step="any" value={line.quantity}
                   onChange={(e) => setEditLines((rows) => rows.map((r, i) => i === idx ? { ...r, quantity: e.target.value } : r))}
-                  style={{ padding: '6px 8px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, width: '100%', boxSizing: 'border-box' }}
+                  style={inputFont({ padding: '6px 8px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, width: '100%', boxSizing: 'border-box' })}
                 />
                 <input
                   aria-label={`Unit cost for ${line.name}`}
                   type="number" min="0" step="any" value={line.unit_cost}
                   onChange={(e) => setEditLines((rows) => rows.map((r, i) => i === idx ? { ...r, unit_cost: e.target.value } : r))}
-                  style={{ padding: '6px 8px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, width: '100%', boxSizing: 'border-box' }}
+                  style={inputFont({ padding: '6px 8px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, width: '100%', boxSizing: 'border-box' })}
                 />
                 <label style={{ display: 'flex', gap: 4, alignItems: 'center', fontSize: 12, whiteSpace: 'nowrap', cursor: 'pointer' }} title="8% GST inside this price, claimable with the supplier's tax invoice">
                   <input
@@ -2443,12 +2444,12 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
               onChange={(e) => setUndoReason(e.target.value)}
               placeholder="Received against the wrong order"
               aria-label="Reason for undoing the delivery"
-              style={{
+              style={inputFont({
                 width: '100%', minHeight: 44, padding: '0 12px', boxSizing: 'border-box',
                 border: '1.5px solid var(--color-border)', borderRadius: 10,
                 fontSize: 14, fontFamily: 'inherit',
                 background: 'var(--color-surface)', color: 'var(--color-text)',
-              }}
+              })}
             />
           </label>
           <ModalActions>

@@ -17,6 +17,7 @@ import { Minus, Plus } from 'lucide-react';
 import { PageHeader, PageShell, Btn } from '../components/SharedUI';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { fmt } from '../utils/fmt';
+import { inputFont } from '../utils/cssVars';
 
 type DraftLine = {
   key: string;
@@ -338,7 +339,7 @@ export function CateringDetailPage() {
                     <input
                       data-testid={l.is_custom ? 'custom-price-input' : 'catalog-price-input'}
                       disabled={!l.is_custom}
-                      style={{ ...fieldStyle, background: l.is_custom ? 'var(--color-surface)' : 'var(--color-border-light)' }}
+                      style={inputFont({ ...fieldStyle, background: l.is_custom ? 'var(--color-surface)' : 'var(--color-border-light)' })}
                       value={l.unit_price}
                       onChange={(e) => {
                         const v = e.target.value;
@@ -354,7 +355,7 @@ export function CateringDetailPage() {
                         Packaging
                         <select
                           data-testid={`packaging-select-${idx}`}
-                          style={fieldStyle}
+                          style={inputFont(fieldStyle)}
                           value={l.packaging_option_id ?? ''}
                           onChange={(e) => {
                             const id = e.target.value ? Number(e.target.value) : null;
@@ -394,7 +395,7 @@ export function CateringDetailPage() {
                 Custom line
                 <input
                   data-testid="custom-line-name"
-                  style={fieldStyle}
+                  style={inputFont(fieldStyle)}
                   value={customName}
                   onChange={(e) => setCustomName(e.target.value)}
                   placeholder="e.g. Delivery / setup fee"
@@ -411,7 +412,7 @@ export function CateringDetailPage() {
               <label style={labelStyle}>
                 Method
                 <select
-                  style={fieldStyle}
+                  style={inputFont(fieldStyle)}
                   value={row.fulfillment_method ?? 'pickup'}
                   onChange={(e) => void patchField({ fulfillment_method: e.target.value })}
                 >
@@ -421,45 +422,45 @@ export function CateringDetailPage() {
               </label>
               <label style={labelStyle}>
                 Event date
-                <input type="date" style={fieldStyle} value={row.event_date ?? ''} onChange={(e) => void patchField({ event_date: e.target.value || null })} />
+                <input type="date" style={inputFont(fieldStyle)} value={row.event_date ?? ''} onChange={(e) => void patchField({ event_date: e.target.value || null })} />
               </label>
               <label style={labelStyle}>
                 Event time
-                <input type="time" style={fieldStyle} value={row.fulfillment_time ?? ''} onChange={(e) => void patchField({ fulfillment_time: e.target.value || null })} />
+                <input type="time" style={inputFont(fieldStyle)} value={row.fulfillment_time ?? ''} onChange={(e) => void patchField({ fulfillment_time: e.target.value || null })} />
               </label>
               <label style={labelStyle}>
                 Setup time
-                <input type="time" style={fieldStyle} value={row.setup_time ?? ''} onChange={(e) => void patchField({ setup_time: e.target.value || null })} />
+                <input type="time" style={inputFont(fieldStyle)} value={row.setup_time ?? ''} onChange={(e) => void patchField({ setup_time: e.target.value || null })} />
               </label>
               <label style={labelStyle}>
                 Venue
-                <input style={fieldStyle} value={row.venue_name ?? ''} onChange={(e) => setRow({ ...row, venue_name: e.target.value })} onBlur={(e) => void patchField({ venue_name: e.target.value || null })} />
+                <input style={inputFont(fieldStyle)} value={row.venue_name ?? ''} onChange={(e) => setRow({ ...row, venue_name: e.target.value })} onBlur={(e) => void patchField({ venue_name: e.target.value || null })} />
               </label>
               <label style={labelStyle}>
                 Headcount
-                <input type="number" style={fieldStyle} value={row.headcount ?? ''} onChange={(e) => setRow({ ...row, headcount: e.target.value === '' ? null : Number(e.target.value) })} onBlur={() => void patchField({ headcount: row.headcount })} />
+                <input type="number" style={inputFont(fieldStyle)} value={row.headcount ?? ''} onChange={(e) => setRow({ ...row, headcount: e.target.value === '' ? null : Number(e.target.value) })} onBlur={() => void patchField({ headcount: row.headcount })} />
               </label>
               <label style={{ ...labelStyle, gridColumn: '1 / -1' }}>
                 Delivery address
-                <input style={fieldStyle} value={row.delivery_address ?? ''} onChange={(e) => setRow({ ...row, delivery_address: e.target.value })} onBlur={(e) => void patchField({ delivery_address: e.target.value || null })} />
+                <input style={inputFont(fieldStyle)} value={row.delivery_address ?? ''} onChange={(e) => setRow({ ...row, delivery_address: e.target.value })} onBlur={(e) => void patchField({ delivery_address: e.target.value || null })} />
               </label>
               <label style={labelStyle}>
                 Island
-                <input style={fieldStyle} value={row.delivery_island ?? ''} onChange={(e) => setRow({ ...row, delivery_island: e.target.value })} onBlur={(e) => void patchField({ delivery_island: e.target.value || null })} />
+                <input style={inputFont(fieldStyle)} value={row.delivery_island ?? ''} onChange={(e) => setRow({ ...row, delivery_island: e.target.value })} onBlur={(e) => void patchField({ delivery_island: e.target.value || null })} />
               </label>
               <label style={labelStyle}>
                 On-site contact
-                <input style={fieldStyle} value={row.onsite_contact_name ?? ''} onChange={(e) => setRow({ ...row, onsite_contact_name: e.target.value })} onBlur={(e) => void patchField({ onsite_contact_name: e.target.value || null })} />
+                <input style={inputFont(fieldStyle)} value={row.onsite_contact_name ?? ''} onChange={(e) => setRow({ ...row, onsite_contact_name: e.target.value })} onBlur={(e) => void patchField({ onsite_contact_name: e.target.value || null })} />
               </label>
               <label style={labelStyle}>
                 On-site phone
-                <input style={fieldStyle} value={row.onsite_contact_phone ?? ''} onChange={(e) => setRow({ ...row, onsite_contact_phone: e.target.value })} onBlur={(e) => void patchField({ onsite_contact_phone: e.target.value || null })} />
+                <input style={inputFont(fieldStyle)} value={row.onsite_contact_phone ?? ''} onChange={(e) => setRow({ ...row, onsite_contact_phone: e.target.value })} onBlur={(e) => void patchField({ onsite_contact_phone: e.target.value || null })} />
               </label>
               <label style={{ ...labelStyle, gridColumn: '1 / -1', color: 'var(--color-warning-strong)', background: 'var(--color-warning-bg)', padding: 10, borderRadius: 8 }}>
                 Dietary notes (prominent)
                 <textarea
                   data-testid="dietary-notes"
-                  style={{ ...fieldStyle, minHeight: 72, padding: 10 }}
+                  style={inputFont({ ...fieldStyle, minHeight: 72, padding: 10 })}
                   value={row.dietary_notes ?? ''}
                   onChange={(e) => setRow({ ...row, dietary_notes: e.target.value })}
                   onBlur={(e) => void patchField({ dietary_notes: e.target.value || null })}
@@ -503,7 +504,7 @@ export function CateringDetailPage() {
             </div>
             <label style={{ ...labelStyle, display: 'block', marginTop: 14 }}>
               Payment amount (MVR)
-              <input data-testid="payment-amount" style={fieldStyle} value={paymentMvr} onChange={(e) => setPaymentMvr(e.target.value)} />
+              <input data-testid="payment-amount" style={inputFont(fieldStyle)} value={paymentMvr} onChange={(e) => setPaymentMvr(e.target.value)} />
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, minHeight: 44, fontSize: 13 }}>
               <input data-testid="deposit-toggle" type="checkbox" checked={isDeposit} onChange={(e) => setIsDeposit(e.target.checked)} />
@@ -528,7 +529,7 @@ export function CateringDetailPage() {
               Assigned to
               <select
                 data-testid="assignee-select"
-                style={fieldStyle}
+                style={inputFont(fieldStyle)}
                 value={row.handled_by ?? ''}
                 onChange={(e) => void patchField({ handled_by: e.target.value === '' ? null : Number(e.target.value) })}
               >
@@ -540,14 +541,14 @@ export function CateringDetailPage() {
             </label>
             <label style={{ ...labelStyle, display: 'block', marginTop: 10 }}>
               Status
-              <select style={fieldStyle} value={row.status} onChange={(e) => void patchField({ status: e.target.value })}>
+              <select style={inputFont(fieldStyle)} value={row.status} onChange={(e) => void patchField({ status: e.target.value })}>
                 {CATERING_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
             </label>
             <label style={{ ...labelStyle, display: 'block', marginTop: 10 }}>
               Staff notes
               <textarea
-                style={{ ...fieldStyle, minHeight: 72, padding: 10 }}
+                style={inputFont({ ...fieldStyle, minHeight: 72, padding: 10 })}
                 value={row.staff_notes ?? ''}
                 onChange={(e) => setRow({ ...row, staff_notes: e.target.value })}
                 onBlur={(e) => void patchField({ staff_notes: e.target.value || null })}
@@ -556,7 +557,7 @@ export function CateringDetailPage() {
             <label style={{ ...labelStyle, display: 'block', marginTop: 10 }}>
               POS order ID
               <input
-                style={fieldStyle}
+                style={inputFont(fieldStyle)}
                 value={row.pos_order_id ?? ''}
                 onChange={(e) => setRow({ ...row, pos_order_id: e.target.value === '' ? null : Number(e.target.value) })}
                 onBlur={() => void patchField({ pos_order_id: row.pos_order_id })}

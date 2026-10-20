@@ -16,6 +16,7 @@ import {
   S,
   StatusChipStrip,
 } from './OnlineOrderingPage/orderingControlUi';
+import { inputFont } from '../utils/cssVars';
 
 type ZoneFeeRow = { name: string; fee: string };
 
@@ -238,7 +239,7 @@ export default function DeliverySettingsPage() {
               step="0.01"
               value={defaultFee}
               onChange={(e) => setDefaultFee(e.target.value)}
-              style={S.input}
+              style={inputFont(S.input)}
             />
           </div>
           <div>
@@ -249,7 +250,7 @@ export default function DeliverySettingsPage() {
               onChange={(e) => setDeliveryTime(e.target.value)}
               placeholder="30–45 min"
               data-testid="delivery-time-input"
-              style={S.input}
+              style={inputFont(S.input)}
             />
             <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
               What customers are told on the Website and Order App. Kept here beside the free-delivery threshold so the two cannot disagree. Content &amp; Branding cannot edit a separate copy.
@@ -264,7 +265,7 @@ export default function DeliverySettingsPage() {
               step="0.01"
               value={freeThreshold}
               onChange={(e) => setFreeThreshold(e.target.value)}
-              style={S.input}
+              style={inputFont(S.input)}
             />
             <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
               Authoritative free-delivery threshold for checkout, invoices, receipts, Website and Order App messaging. Content & Branding cannot edit a separate copy.
@@ -281,7 +282,7 @@ export default function DeliverySettingsPage() {
               step="0.01"
               value={minOrder}
               onChange={(e) => setMinOrder(e.target.value)}
-              style={S.input}
+              style={inputFont(S.input)}
             />
             <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
               The food total, before the delivery fee, that an online delivery order must reach. Checkout tells the customer how much more to add. 0 means no minimum. Orders rung at the till are not affected.
@@ -313,7 +314,7 @@ export default function DeliverySettingsPage() {
                 placeholder="Island / area"
                 value={row.name}
                 onChange={(e) => updateZoneRow(idx, 'name', e.target.value)}
-                style={S.input}
+                style={inputFont(S.input)}
               />
               <div className="oc-zone-fee">
                 <input
@@ -323,7 +324,7 @@ export default function DeliverySettingsPage() {
                   placeholder="Fee"
                   value={row.fee}
                   onChange={(e) => updateZoneRow(idx, 'fee', e.target.value)}
-                  style={S.input}
+                  style={inputFont(S.input)}
                 />
                 <span style={{ fontSize: 12, color: 'var(--color-text-muted)', flexShrink: 0 }}>MVR</span>
                 <button
@@ -374,7 +375,7 @@ export default function DeliverySettingsPage() {
               max={500}
               value={maxActiveOrders}
               onChange={(e) => setMaxActiveOrders(e.target.value)}
-              style={{ ...S.input, width: 120 }}
+              style={inputFont({ ...S.input, width: 120 })}
             />
           </div>
           <button type="button" style={S.btnPrimary} onClick={() => void saveCapacity()} disabled={capacitySaving}>

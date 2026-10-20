@@ -5,6 +5,7 @@ import { MediaPicker } from '../MediaPicker';
 import type { MediaAsset } from '../../api';
 import { ImageCropModal } from '../../pages/MenuPage/ImageCropModal';
 import { MENU_IMAGE_ASPECT, MENU_IMAGE_HEIGHT, MENU_IMAGE_WIDTH } from '../../pages/MenuPage/cropImage';
+import { inputFont } from '../../utils/cssVars';
 
 export type ContentImageUploadResult = {
   url: string;
@@ -150,7 +151,7 @@ export function ContentImageField({
           value={imageAlt}
           onChange={(e) => onChange({ image_alt: e.target.value })}
           placeholder="Alt text (accessibility)"
-          style={{ height: 32, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 10px', fontSize: 12, fontFamily: 'inherit' }}
+          style={inputFont({ height: 32, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 10px', fontSize: 12, fontFamily: 'inherit' })}
         />
       ) : null}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>

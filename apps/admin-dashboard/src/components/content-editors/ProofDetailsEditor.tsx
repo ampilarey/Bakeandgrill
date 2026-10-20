@@ -1,6 +1,7 @@
 import type { ContentEditorProps } from './types';
 import { RepeaterShell } from './RepeaterShell';
 import { rowSize } from './rowSize';
+import { inputFont } from '../../utils/cssVars';
 
 type Row = { value: string; label: string };
 const empty = (): Row => ({ value: '', label: '' });
@@ -22,9 +23,9 @@ export function ProofDetailsEditor({ label, description, value, onChange }: Cont
         renderItem={(item, _idx, update) => (
           <div className="content-editor-row content-editor-row--center">
             <input value={item.value} onChange={(e) => update({ value: e.target.value })} placeholder="500+"
-              style={{ ...rowSize('0 0 auto', undefined, 90), height: 32, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 10px', fontSize: 14, fontWeight: 700, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text)' }} />
+              style={inputFont({ ...rowSize('0 0 auto', undefined, 90), height: 32, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 10px', fontSize: 14, fontWeight: 700, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text)' })} />
             <input value={item.label} onChange={(e) => update({ label: e.target.value })} placeholder="Label"
-              style={{ ...rowSize('1', 120), height: 32, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text)' }} />
+              style={inputFont({ ...rowSize('1', 120), height: 32, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text)' })} />
           </div>
         )}
       />

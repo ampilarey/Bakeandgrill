@@ -1,4 +1,5 @@
 import type { ContentEditorProps } from './types';
+import { inputFont } from '../../utils/cssVars';
 
 const WEEK_DAYS = [
   { key: 'mon', label: 'Monday' },
@@ -31,7 +32,7 @@ export function BusinessHoursEditor({ label, description, value, onChange }: Con
                 value={val}
                 onChange={(e) => update(key, e.target.value)}
                 placeholder="e.g. 8:00 AM – 8:00 PM or Closed"
-                style={{ flex: 1, height: 32, padding: '0 10px', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', outline: 'none', color: isClosed ? 'var(--color-text-muted)' : 'var(--color-text)', background: 'var(--color-surface)' }}
+                style={inputFont({ flex: 1, height: 32, padding: '0 10px', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', outline: 'none', color: isClosed ? 'var(--color-text-muted)' : 'var(--color-text)', background: 'var(--color-surface)' })}
               />
             </div>
           );

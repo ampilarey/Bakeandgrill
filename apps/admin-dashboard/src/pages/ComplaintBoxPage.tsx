@@ -19,6 +19,7 @@ import {
   type ComplaintBoxStatus,
   type ComplaintStaffRow,
 } from '../api';
+import { inputFont } from '../utils/cssVars';
 
 /** The admin's field look. These fields had none: the CSS reset strips the
  *  border, and the status filter read as plain text with an arrow. */
@@ -288,10 +289,10 @@ export default function ComplaintBoxPage() {
         onSubmit={(e) => { e.preventDefault(); setPage(1); void load(); }}
         style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}
       >
-        <select aria-label="Status" value={status} onChange={(e) => { setPage(1); setStatus(e.target.value); }} style={FIELD}>
+        <select aria-label="Status" value={status} onChange={(e) => { setPage(1); setStatus(e.target.value); }} style={inputFont(FIELD)}>
           {STATUS_FILTERS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
-        <select aria-label="About" value={category} onChange={(e) => { setPage(1); setCategory(e.target.value); }} style={FIELD}>
+        <select aria-label="About" value={category} onChange={(e) => { setPage(1); setCategory(e.target.value); }} style={inputFont(FIELD)}>
           <option value="">Everything</option>
           <option value="staff">Staff (any)</option>
           {categoryOptions.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
@@ -398,7 +399,7 @@ export default function ComplaintBoxPage() {
               <div style={{ display: 'grid', gap: 10, borderTop: '1px solid var(--color-border)', paddingTop: 12 }}>
                 <label>
                   Status
-                  <select aria-label="New status" value={nextStatus} onChange={(e) => setNextStatus(e.target.value as ComplaintBoxStatus)} style={{ ...FIELD, display: 'block', width: '100%', marginTop: 4 }}>
+                  <select aria-label="New status" value={nextStatus} onChange={(e) => setNextStatus(e.target.value as ComplaintBoxStatus)} style={inputFont({ ...FIELD, display: 'block', width: '100%', marginTop: 4 })}>
                     {(['new', 'in_progress', 'resolved', 'closed'] as ComplaintBoxStatus[]).map((s) => (
                       <option key={s} value={s}>{STATUS_LABEL[s]}</option>
                     ))}
@@ -407,7 +408,7 @@ export default function ComplaintBoxPage() {
                 <label>
                   Note for staff
                   <span style={{ display: 'block', fontSize: 12, color: 'var(--color-text-muted)', margin: '2px 0 6px' }}>Never sent to the customer.</span>
-                  <textarea aria-label="Note for staff" value={internalNote} onChange={(e) => setInternalNote(e.target.value)} rows={2} style={{ ...FIELD, width: '100%' }} />
+                  <textarea aria-label="Note for staff" value={internalNote} onChange={(e) => setInternalNote(e.target.value)} rows={2} style={inputFont({ ...FIELD, width: '100%' })} />
                 </label>
                 {/* Not a <label> around the whole block: a <button> is a
                     labelable element, so the label would attach itself to the
@@ -434,7 +435,7 @@ export default function ComplaintBoxPage() {
                     maxLength={600}
                     disabled={detail.is_anonymous || !detail.phone}
                     placeholder="What should the customer hear?"
-                    style={{ ...FIELD, width: '100%' }}
+                    style={inputFont({ ...FIELD, width: '100%' })}
                   />
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
