@@ -194,7 +194,7 @@ function MakeTab({ manage }: { manage: boolean }) {
   }
 
   return (
-    <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'minmax(0, 1fr) minmax(220px, 320px)' }} className="poster-make">
+    <div className="poster-make">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {step === 1 && grouped.map(({ g, rows }) => (
           <section key={g}>
@@ -308,7 +308,6 @@ function MakeTab({ manage }: { manage: boolean }) {
         )}
       </div>
       <Preview sheet={sheet} gloss={gloss !== 'none'} keepOut={mounting === 'standoffs' || mounting === 'eyelets' ? keepOutMm(draft?.sizes[0]) : 0} />
-      <style>{`@media (max-width: 800px) { .poster-make { grid-template-columns: 1fr !important; } }`}</style>
     </div>
   );
 }

@@ -40,8 +40,6 @@ function MenuCardLivePreview({ form }: { form: ItemForm }) {
         border: '1px solid var(--color-border)',
         background: 'radial-gradient(120% 90% at 50% 0%, var(--color-tone-rust-bg) 0%, var(--color-surface) 55%)',
         textAlign: 'center',
-        position: 'sticky',
-        top: 8,
       }}
     >
       <p style={{ margin: '0 0 8px', fontSize: 10, fontWeight: 700, color: 'var(--color-text-muted)', letterSpacing: '0.04em' }}>

@@ -15,6 +15,10 @@ import {
   panelLead, panelNote, panelStyle, sectionTitle, useControlCenter,
 } from './shared';
 
+/* A field in a .sms-cc-fields row: the row's CSS gives the width, a full line on
+   a phone and at least 160px from 768px. */
+const ccLabel = { ...fieldLabel, minWidth: undefined };
+
 /*
  * Notifications → Rules: what applies to every message at once
  * (notifications audit, 2026-10-10). Stop all SMS, Telegram alerts on or
@@ -213,11 +217,11 @@ export function RulesTab() {
           </p>
           {canManage && (
             <div className="sms-cc-fields">
-              <label style={fieldLabel}>
+              <label style={ccLabel}>
                 Monthly segments
                 <input type="number" min={0} value={budgetDraft.monthly} onChange={(e) => setBudgetDraft((d) => ({ ...d, monthly: e.target.value }))} placeholder="Unlimited" style={inputStyle} />
               </label>
-              <label style={fieldLabel}>
+              <label style={ccLabel}>
                 Per-campaign segments
                 <input type="number" min={0} value={budgetDraft.campaign} onChange={(e) => setBudgetDraft((d) => ({ ...d, campaign: e.target.value }))} placeholder="Unlimited" style={inputStyle} />
               </label>
@@ -250,19 +254,19 @@ export function RulesTab() {
               <fieldset style={fieldsetStyle}>
                 <legend style={legendStyle}>Quiet hours</legend>
                 <div className="sms-cc-fields">
-                  <label style={{ ...fieldLabel, flexDirection: 'row', alignItems: 'center', minWidth: 0 }}>
+                  <label style={{ ...ccLabel, flexDirection: 'row', alignItems: 'center', minWidth: 0 }}>
                     <input type="checkbox" checked={rulesDraft.quiet_hours_enabled} onChange={(e) => setRulesDraft((d) => ({ ...d, quiet_hours_enabled: e.target.checked }))} />
                     Quiet hours
                   </label>
-                  <label style={fieldLabel}>
+                  <label style={ccLabel}>
                     From
                     <input type="time" value={rulesDraft.quiet_hours_start} onChange={(e) => setRulesDraft((d) => ({ ...d, quiet_hours_start: e.target.value }))} style={inputStyle} />
                   </label>
-                  <label style={fieldLabel}>
+                  <label style={ccLabel}>
                     Until
                     <input type="time" value={rulesDraft.quiet_hours_end} onChange={(e) => setRulesDraft((d) => ({ ...d, quiet_hours_end: e.target.value }))} style={inputStyle} />
                   </label>
-                  <label style={{ ...fieldLabel, flexDirection: 'row', alignItems: 'center', minWidth: 0 }}>
+                  <label style={{ ...ccLabel, flexDirection: 'row', alignItems: 'center', minWidth: 0 }}>
                     <input type="checkbox" checked={rulesDraft.quiet_hours_alerts} onChange={(e) => setRulesDraft((d) => ({ ...d, quiet_hours_alerts: e.target.checked }))} />
                     Hold staff and owner alerts too, order alerts included (a till waiting for approval and shift reminders still go)
                   </label>
@@ -271,15 +275,15 @@ export function RulesTab() {
               <fieldset style={fieldsetStyle}>
                 <legend style={legendStyle}>Limits</legend>
                 <div className="sms-cc-fields">
-                  <label style={fieldLabel}>
+                  <label style={ccLabel}>
                     Marketing texts per number per day
                     <input type="number" min={0} max={50} value={rulesDraft.marketing_daily_cap} onChange={(e) => setRulesDraft((d) => ({ ...d, marketing_daily_cap: Math.max(0, Math.min(50, Number(e.target.value) || 0)) }))} style={inputStyle} />
                   </label>
-                  <label style={fieldLabel}>
+                  <label style={ccLabel}>
                     Campaign recipients per day, all campaigns (0 = no limit)
                     <input type="number" min={0} max={1000000} value={rulesDraft.bulk_daily_recipient_cap ?? 5000} onChange={(e) => setRulesDraft((d) => ({ ...d, bulk_daily_recipient_cap: Math.max(0, Math.min(1000000, Number(e.target.value) || 0)) }))} style={inputStyle} />
                   </label>
-                  <label style={{ ...fieldLabel, flex: '1 1 220px' }}>
+                  <label style={{ ...ccLabel, flex: '1 1 220px' }}>
                     Unsubscribe line on marketing texts ({'{url}'} = the short link)
                     <input value={rulesDraft.marketing_opt_out_line ?? ''} maxLength={80} onChange={(e) => setRulesDraft((d) => ({ ...d, marketing_opt_out_line: e.target.value }))} placeholder="Empty = no line" style={inputStyle} />
                   </label>
@@ -292,7 +296,7 @@ export function RulesTab() {
                   hourly limit protects the mail server, and promotions use at most half of it.
                 </p>
                 <div className="sms-cc-fields">
-                  <label style={fieldLabel}>
+                  <label style={ccLabel}>
                     Emails per hour, all together (0 = no limit)
                     <input type="number" min={0} max={100000} value={rulesDraft.email_copy_hourly_cap ?? 300} onChange={(e) => setRulesDraft((d) => ({ ...d, email_copy_hourly_cap: Math.max(0, Math.min(100000, Number(e.target.value) || 0)) }))} style={inputStyle} />
                   </label>
@@ -301,7 +305,7 @@ export function RulesTab() {
               <fieldset style={fieldsetStyle}>
                 <legend style={legendStyle}>Log</legend>
                 <div className="sms-cc-fields">
-                  <label style={fieldLabel}>
+                  <label style={ccLabel}>
                     Keep the log for (days, 0 = forever)
                     <input type="number" min={0} max={3650} value={rulesDraft.log_retention_days ?? 365} onChange={(e) => setRulesDraft((d) => ({ ...d, log_retention_days: Math.max(0, Math.min(3650, Number(e.target.value) || 0)) }))} style={inputStyle} />
                   </label>

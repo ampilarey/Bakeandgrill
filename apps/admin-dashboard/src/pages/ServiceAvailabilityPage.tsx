@@ -465,15 +465,7 @@ export default function ServiceAvailabilityPage() {
                 <p className="svc-avail-hide-mobile" style={{ ...sectionSub, margin: '0 0 10px' }}>
                   Preview exactly which services change before anything is applied.
                 </p>
-                <div
-                  className="svc-avail-preset-list"
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-                    gap: 8,
-                    width: '100%',
-                  }}
-                >
+                <div className="svc-avail-preset-list">
                   {PRESETS.map((preset) => (
                     <button
                       key={preset.id}
@@ -661,14 +653,7 @@ function ServiceSection({
         <h3 style={sectionTitle}>{title}</h3>
         <p className="svc-avail-hide-mobile" style={sectionSub}>{subtitle}</p>
       </div>
-      <div
-        className="svc-avail-list"
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: 10,
-        }}
-      >
+      <div className="svc-avail-list">
         {rows.map((row) => (
           <ServiceCard
             key={row.service_key}
@@ -709,10 +694,8 @@ function ServiceCard({
         background: 'var(--color-surface)',
         border: `1.5px solid ${down ? 'color-mix(in srgb, var(--color-danger) 35%, transparent)' : 'var(--color-border)'}`,
         borderRadius: 12,
-        padding: 14,
         display: 'flex',
         flexDirection: 'column',
-        gap: 10,
         minWidth: 0,
       }}
     >
@@ -733,7 +716,7 @@ function ServiceCard({
 
       <div
         className="svc-avail-chips"
-        style={{ display: 'flex', flexWrap: 'wrap', gap: 6, fontSize: 12, color: 'var(--color-text-secondary)' }}
+        style={{ display: 'flex', flexWrap: 'wrap', fontSize: 12, color: 'var(--color-text-secondary)' }}
       >
         <span style={chipStyle(down ? 'red' : 'green')}>
           {down ? `Blocked · ${row.resolved_source}` : 'Open'}

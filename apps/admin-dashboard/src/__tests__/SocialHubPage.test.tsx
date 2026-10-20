@@ -146,7 +146,7 @@ describe('SocialHubPage — posts list', () => {
   it('offers Edit only for posts that have not gone out', async () => {
     renderWithRouter(<SocialHubPage />);
     await screen.findByText('Fresh masroshi today');
-    const cards = screen.getAllByText(/Fresh masroshi today|Second/).map((el) => el.closest('div[style*="padding"]') as HTMLElement);
+    const cards = screen.getAllByText(/Fresh masroshi today|Second/).map((el) => el.closest('.admin-card') as HTMLElement);
     expect(within(cards[0]).getByText('Edit')).toBeInTheDocument();
     expect(within(cards[1]).queryByText('Edit')).toBeNull();
   });

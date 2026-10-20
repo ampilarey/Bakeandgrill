@@ -2,6 +2,7 @@ import { Upload } from 'lucide-react';
 import { Button } from '../ui';
 import type { ContentEditorWithUploadProps } from './types';
 import { RepeaterShell } from './RepeaterShell';
+import { rowSize } from './rowSize';
 
 type Cat = {
   icon: string;
@@ -31,19 +32,19 @@ export function CategoriesEditor({ label, description, value, onChange, triggerU
         itemLabel="category"
         renderItem={(item, idx, update) => (
           <>
-            <div className="content-editor-row" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <div className="content-editor-row content-editor-row--center">
               <input className="content-editor-icon" value={item.icon} onChange={(e) => update({ icon: e.target.value })} placeholder="🥐" title="Emoji icon"
-                style={{ width: 40, height: 32, borderRadius: 8, border: '1px solid var(--color-border)', textAlign: 'center', fontSize: 18, fontFamily: 'inherit', outline: 'none', flexShrink: 0 }} />
+                style={{ height: 32, borderRadius: 8, border: '1px solid var(--color-border)', textAlign: 'center', fontSize: 18, fontFamily: 'inherit', outline: 'none', flexShrink: 0 }} />
               <input value={item.label} onChange={(e) => update({ label: e.target.value })} placeholder="Label tag"
-                style={{ flex: 1, minWidth: 80, height: 32, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text)' }} />
+                style={{ ...rowSize('1', 80), height: 32, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text)' }} />
               <input value={item.name} onChange={(e) => update({ name: e.target.value })} placeholder="Card title"
-                style={{ flex: 2, minWidth: 100, height: 32, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text)' }} />
+                style={{ ...rowSize('2', 100), height: 32, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text)' }} />
               <input value={item.link} onChange={(e) => update({ link: e.target.value })} placeholder="/menu" title="Link URL"
-                style={{ width: 80, height: 32, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 8px', fontSize: 12, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text)', flexShrink: 0 }} />
+                style={{ ...rowSize('0 0 auto', undefined, 80), height: 32, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 8px', fontSize: 12, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text)' }} />
             </div>
             <input value={item.hook} onChange={(e) => update({ hook: e.target.value })} placeholder="Short hook text shown on the card"
               style={{ height: 32, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text)' }} />
-            <div className="content-editor-row" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <div className="content-editor-row content-editor-row--center">
               {item.image_url ? (
                 <img src={item.image_url} alt={item.image_alt || item.name || ''} style={{ height: 36, width: 56, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--color-border)', flexShrink: 0 }} />
               ) : (
@@ -52,7 +53,7 @@ export function CategoriesEditor({ label, description, value, onChange, triggerU
               <Button variant="secondary" size="sm" icon={<Upload size={13} />}
                 onClick={() => triggerUpload(`cat_${idx + 1}_image`, (url) => update({ image_url: url }))}>Upload</Button>
               <input value={item.image_url} onChange={(e) => update({ image_url: e.target.value })} placeholder="/images/cafe/photo.jpg"
-                style={{ flex: 1, minWidth: 140, height: 32, borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', padding: '0 10px', fontSize: 12, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text-secondary)' }} />
+                style={{ ...rowSize('1', 140), height: 32, borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', padding: '0 10px', fontSize: 12, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text-secondary)' }} />
             </div>
             <input
               value={item.image_alt || ''}

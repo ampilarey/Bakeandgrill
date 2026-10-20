@@ -1,6 +1,5 @@
 {
-  "apps/admin-dashboard/src/index.css": 14,
-  "apps/admin-dashboard/src/pages/PostersPage.tsx": 1,
+  "apps/admin-dashboard/src/index.css": 6,
   "apps/kds-web/src/index.css": 3,
   "apps/online-order-web/src/index.css": 23,
   "apps/online-order-web/src/pages/AccountPage/AccountHub.css": 1,

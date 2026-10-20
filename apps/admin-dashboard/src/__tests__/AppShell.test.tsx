@@ -199,8 +199,10 @@ describe('admin mobile tab-bar clearance CSS', () => {
     expect(css).not.toMatch(/padding-bottom:\s*calc\(72px\s*\+\s*56px/);
     expect(css).not.toMatch(/bottom:\s*calc\(56px\s*\+\s*env\(safe-area/);
     expect(css).not.toMatch(/bottom:\s*calc\(72px\s*\+\s*env\(safe-area/);
-    // Blanket main padding must be overridden for the shell main.
-    expect(css).toMatch(/main\.admin-shell-main--mobile\s*\{[\s\S]*?padding-bottom:\s*calc\(var\(--admin-tabbar-h/);
+    // The phone shell's <main> clears the measured tab bar, and no blanket
+    // `main { padding }` rule sits over it (mobile first, 2026-10-20).
+    expect(css).toMatch(/\.admin-shell-main--mobile\s*\{[\s\S]*?padding-bottom:\s*calc\(var\(--admin-tabbar-h/);
+    expect(css).not.toMatch(/(^|\n)\s*main\s*\{[^}]*padding/);
   });
 });
 

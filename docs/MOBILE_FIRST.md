@@ -50,8 +50,20 @@ Learned converting the admin stylesheet (2026-10-20):
   then `min-width: 768px`, then `min-width: 1025px`, in that order.
 - A class drawn only on a phone (`PhonePreviewBar`, the phone header, the Content Studio
   publish bar) needs no query at all.
-- `!important` phone rules beat styles written in the page's code; they stay in a small
-  `max-width` block marked "Page batch" until the page moves those styles into classes.
+- An inline style beats every stylesheet rule, so a phone rule that used `!important` to
+  override the page's own `style={{…}}` needs the page changed. `revert-layer` cannot help: it
+  skips inline styles (tried, 2026-10-20). Two ways, both pixel for pixel:
+  - **One element, one page:** move the property into the stylesheet, under the element's
+    class (the Posters grid, the home layout header, the Ordering tab buttons).
+  - **Many elements, each its own value:** the page hands the stylesheet its computer value
+    as a custom property and the stylesheet picks per width:
+    `style={{ display: 'grid', '--cols': '1fr 1fr' }}` with
+    `.form-grid-2 { grid-template-columns: 1fr }` and, from 768px,
+    `grid-template-columns: var(--cols, none)`. When the page may set nothing, the fallback is
+    `var(--x, revert-layer)`, which behaves as `revert-layer`. React writes a custom property
+    as given, so a length needs its unit (`px()` in `utils/cssVars.ts`); `css-vars.d.ts` lets
+    `style={{…}}` take `--*` keys without a cast. In use: `--card-pad` (SharedUI `Card`),
+    `--ce-flex` / `--ce-min` / `--ce-w` (content editor rows, `rowSize.ts`).
 - Check with screenshots of every page at 390, 767, 768, 1023, 1024, 1199, 1200 and 1440
   px before and after; the conversion must change nothing.
 
@@ -77,10 +89,14 @@ ten pages at a time, as each page moves those styles into classes. The page head
 (`.page-header-actions`) waits for its own batch: its broad selectors reach into every
 page's own button rows.
 
+Admin page batch 1 (2026-10-20): Posters, Content Studio (editor rows, header Publish),
+Specials, the home layout header, Labels' action row, the item editor's card preview,
+Notifications → Rules, Service Availability, and SharedUI `Card` and `StatCard`; 15 to 6.
+
 | Area | Rules left |
 |---|---|
 | Website views (`backend/resources`) | 46 |
-| Admin (`apps/admin-dashboard`) | 15 |
+| Admin (`apps/admin-dashboard`) | 6 |
 | Order app (`apps/online-order-web`) | 24 |
 | Till (`apps/pos-web`) | 12 |
 | Kitchen screen (`apps/kds-web`) | 3 |

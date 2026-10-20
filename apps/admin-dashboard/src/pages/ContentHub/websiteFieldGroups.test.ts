@@ -176,7 +176,7 @@ describe('every repeater editor opts into the phone stacking rule', () => {
       // The class on the element, not the words in a comment — the first
       // version of this test passed on its own explanatory comment.
       expect(
-        source.includes('className="content-editor-row"'),
+        /className="content-editor-row[ "]/.test(source),
         `[${name}] must carry className="content-editor-row" so its row stacks on a phone`,
       ).toBe(true);
     }

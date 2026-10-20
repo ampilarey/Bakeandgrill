@@ -1,6 +1,20 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { HomeLayoutEditor } from './HomeLayoutEditor';
+
+/** One rule's declarations from index.css: the unindented one (the phone layout),
+ *  or with `desk` the indented one inside its `@media (min-width: 768px)`. */
+function cssRule(selector: string, desk = false): string {
+  const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../../index.css'), 'utf8');
+  const esc = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`(^|\\n)([ \\t]*)${esc}\\s*\\{([^}]*)\\}`, 'g');
+  const hits = [...css.matchAll(re)];
+  const hit = hits.find((m) => (desk ? m[2].length > 0 : m[2].length === 0));
+  return hit ? hit[3] : '';
+}
 
 const fetchAdminPageBlocks = vi.fn();
 const reorderPageBlocks = vi.fn();
@@ -375,18 +389,20 @@ describe('HomeLayoutEditor', () => {
     render(<HomeLayoutEditor initialApp="website" />);
     await waitFor(() => expect(screen.getByTestId('home-components-overview')).toBeInTheDocument());
 
+    // The layout is in index.css (mobile first, 2026-10-20), so the rules are read there.
     const actions = screen.getByTestId('home-layout-reorder-toggle').parentElement as HTMLElement;
     expect(actions.className).toContain('home-layout-head-actions');
-    expect(actions.style.alignItems).toBe('flex-start');
+    expect(cssRule('.home-layout-head-actions')).toMatch(/align-items:\s*flex-start/);
 
     const head = actions.parentElement as HTMLElement;
     expect(head.className).toContain('home-layout-head');
-    expect(head.style.alignItems).toBe('flex-start');
-    expect(head.style.flexWrap).toBe('wrap');
+    expect(cssRule('.home-layout-head', true)).toMatch(/align-items:\s*flex-start/);
+    expect(cssRule('.home-layout-head')).toMatch(/flex-wrap:\s*wrap/);
 
     // The text beside them keeps a floor, so the row wraps instead of crushing it.
     const text = head.firstElementChild as HTMLElement;
-    expect(Number.parseInt(text.style.minWidth, 10)).toBeGreaterThanOrEqual(200);
+    const floor = /min-width:\s*(\d+)px/.exec(cssRule('.home-layout-head-text', true));
+    expect(Number(floor?.[1] ?? 0)).toBeGreaterThanOrEqual(200);
 
     // …and it must be reachable from CSS, because that floor is a WIDTH only
     // while the header is a row. Stacked into a column the same flex-basis

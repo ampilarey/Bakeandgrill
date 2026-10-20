@@ -8,6 +8,7 @@ import {
 import { createPortal } from 'react-dom';
 import { X, type LucideIcon } from 'lucide-react';
 import { useInHub } from './hubContext';
+import { px } from '../utils/cssVars';
 
 // ─── Spinner ──────────────────────────────────────────────────────────────────
 export function Spinner({ size = 24 }: { size?: number }) {
@@ -31,19 +32,21 @@ export function Spinner({ size = 24 }: { size?: number }) {
 export function Card({
   children, style, className, ...rest
 }: { children: ReactNode; style?: React.CSSProperties; className?: string } & React.HTMLAttributes<HTMLDivElement>) {
+  const { padding, ...ownStyle } = style ?? {};
   return (
     <div
-      // `admin-card` lets the stylesheet trim the padding on a phone, where
-      // twenty pixels a side out of 390 is a fifth of the card gone.
+      // `admin-card` takes its padding from the stylesheet: 16px on a phone, where
+      // twenty pixels a side out of 390 is a fifth of the card gone, and from 768px
+      // the card's own (`--card-pad`, 1.25rem unless the page passes one).
       className={['admin-card', className].filter(Boolean).join(' ')}
       {...rest}
       style={{
         background: 'var(--color-surface)',
         border: '1px solid var(--color-border)',
         borderRadius: 14,
-        padding: '1.25rem',
         boxShadow: '0 1px 2px rgba(28,20,8,0.05)',
-        ...style,
+        ...ownStyle,
+        '--card-pad': px(padding) ?? '1.25rem',
       }}
     >
       {children}
@@ -658,16 +661,15 @@ export function StatCard({
   trend?: { value: string; positive?: boolean };
 }) {
   return (
-    <div style={{
+    // Padding and gap in index.css (.stat-card), so a page can tighten them on a phone.
+    <div className="stat-card" style={{
       background: 'var(--color-surface)',
       border: '1px solid var(--color-border)',
       borderRadius: 14,
-      padding: '16px 20px',
       boxShadow: '0 1px 2px rgba(28,20,8,0.05)',
       minWidth: 0,
       display: 'flex',
       flexDirection: 'column',
-      gap: 10,
     }}>
       {/* Label row */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

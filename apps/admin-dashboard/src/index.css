@@ -538,6 +538,9 @@ input[type="checkbox"], input[type="radio"], input[type="range"], progress, mete
 }
 .order-drawer-actions > button { width: 100%; justify-content: center; }
 
+/* SharedUI StatCard */
+.stat-card { padding: 16px 20px; gap: 10px; }
+
 /* Tablet: 768px–1023px */
 @media (max-width: 1023px) {
   /* Stat cards: 2-col grid instead of forced 4-col */
@@ -666,13 +669,6 @@ table td[colspan] > div:only-child { position: sticky; left: 0; max-width: calc(
 }
 /* Page batch: these beat styles set in the page code. */
 @media (max-width: 767px) {
-  /*
-   * Generic page padding. Must NOT win over shell clearance — the previous
-   * `padding: 12px !important` shorthand zeroed out --admin-tabbar-h padding
-   * on .admin-shell-main--mobile, so bumping 80→112px never reached the device.
-   */
-  main { padding: 12px !important; }
-  main.admin-shell-main--mobile { padding: 16px !important; padding-bottom: calc(var(--admin-tabbar-h, 56px) + 16px) !important; }
   /* Stat grids: two-col on mobile */
   .stat-grid { grid-template-columns: 1fr 1fr !important; }
   /* Inputs/selects/textareas: 16px font prevents iOS zoom-on-focus; 44px touch height */
@@ -714,8 +710,6 @@ table td[colspan] > div:only-child { position: sticky; left: 0; max-width: calc(
   .media-picker-footer { flex-direction: column !important; align-items: stretch !important; gap: 10px !important; padding: 12px 14px calc(12px + env(safe-area-inset-bottom, 0px)) !important; }
   .media-picker-footer-selected { max-width: 100% !important; }
   .media-picker-footer-actions { margin-left: 0 !important; }
-  /* Page-level stat card rows: responsive with min-width */
-  .page-stat-row { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important; }
   /*
    * Inline-styled grids: many pages use inline `gridTemplateColumns`
    * like `repeat(N, 1fr)` with N=2..4. On phones these become 80–100px
@@ -804,18 +798,22 @@ table td[colspan] > div:only-child { position: sticky; left: 0; max-width: calc(
   .svc-avail-page .svc-avail-preset-desc { display: revert-layer; -webkit-line-clamp: revert-layer; -webkit-box-orient: revert-layer; overflow: revert-layer; }
   .svc-avail-page .svc-avail-chips > span { max-width: revert-layer; overflow: revert-layer; text-overflow: revert-layer; white-space: revert-layer; }
 }
-/* Page batch: these beat styles set in the page code. */
-@media (max-width: 767px) {
-  .svc-avail-page .svc-avail-hide-mobile { display: none !important; }
-  .svc-avail-page .svc-avail-section { padding: 12px !important; }
-  .svc-avail-page .svc-avail-list { display: flex !important; flex-direction: column !important; gap: 10px !important; }
-  .svc-avail-page .svc-avail-preset-list { grid-template-columns: 1fr !important; }
-  .svc-avail-page .svc-avail-card { min-height: 0 !important; padding: 12px !important; gap: 8px !important; }
-  .svc-avail-page .svc-avail-actions > button { min-height: 32px !important; }
-  .svc-avail-page .svc-avail-preset-btn { padding: 12px 14px !important; }
-  .svc-avail-page .svc-avail-chips { gap: 4px !important; }
-  /* Compact StatCards inside this page */
-  .svc-avail-page .stat-grid > div { padding: 12px !important; gap: 6px !important; }
+.svc-avail-page .svc-avail-hide-mobile { display: none; }
+.svc-avail-page .svc-avail-section { padding: 12px; }
+.svc-avail-page .svc-avail-list { display: flex; flex-direction: column; gap: 10px; }
+.svc-avail-page .svc-avail-preset-list { display: grid; grid-template-columns: 1fr; gap: 8px; width: 100%; }
+.svc-avail-page .svc-avail-card { min-height: 0; padding: 12px; gap: 8px; }
+.svc-avail-page .svc-avail-chips { gap: 4px; }
+/* Compact StatCards inside this page */
+.svc-avail-page .stat-grid > .stat-card { padding: 12px; gap: 6px; }
+@media (min-width: 768px) {
+  .svc-avail-page .svc-avail-hide-mobile { display: revert-layer; }
+  .svc-avail-page .svc-avail-section { padding: var(--card-pad, 1.25rem); }
+  .svc-avail-page .svc-avail-list { display: grid; flex-direction: revert-layer; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .svc-avail-page .svc-avail-preset-list { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .svc-avail-page .svc-avail-card { min-height: revert-layer; padding: 14px; gap: 10px; }
+  .svc-avail-page .svc-avail-chips { gap: 6px; }
+  .svc-avail-page .stat-grid > .stat-card { padding: 16px 20px; gap: 10px; }
 }
 
 /* ── Ordering Control — flow layout (online, delivery, pre-order) ── */
@@ -1057,11 +1055,6 @@ table td[colspan] > div:only-child { position: sticky; left: 0; max-width: calc(
 .oc-time-box input[type="time"] { padding: 8px 4px; }
 @media (min-width: 768px) {
   .oc-time-box input[type="time"] { padding: 8px 6px; }
-}
-/* Page batch: these beat styles set in the page code. */
-@media (max-width: 767px) {
-  .oc-day { padding: 10px !important; }
-  .oc-window-row { gap: 8px !important; }
 }
 
 .ordering-page .page-header-title { overflow-wrap: anywhere; }
@@ -1637,7 +1630,7 @@ table td[colspan] > div:only-child { position: sticky; left: 0; max-width: calc(
 
 .admin-shell-main--mobile {
   padding: 16px;
-  /* Measured tab bar + breathing room. Overridden with !important in the mobile media block. */
+  /* Measured tab bar + breathing room. The phone shell is the only <main> below 768px. */
   padding-bottom: calc(var(--admin-tabbar-h, 56px) + 16px);
 }
 
@@ -2111,6 +2104,12 @@ table td[colspan] > div:only-child { position: sticky; left: 0; max-width: calc(
 .tab-scroll-row > button { flex-shrink: 0; }
 .tab-scroll-wrap--fit { width: fit-content; }
 
+/* SharedUI Card: 16px a side on a phone rather than 20; from 768px the card's own
+   padding, which the page passes as --card-pad (SharedUI.tsx). */
+.admin-card { padding: 1rem; }
+@media (min-width: 768px) {
+  .admin-card { padding: var(--card-pad, 1.25rem); }
+}
 @media (max-width: 767px) {
   /* Confirmed defect: flex-shrink:0 overflowed search / EN·DV / publish status */
   .page-header {
@@ -2137,7 +2136,6 @@ table td[colspan] > div:only-child { position: sticky; left: 0; max-width: calc(
   [data-testid$="-filter-row"] input,
   [data-testid$="-filter-row"] select { min-width: 120px !important; } /* the box carries minWidth: 0 inline */
   /* Cards: 16px a side on a phone rather than 20. Both card components. */
-  .admin-card { padding: 1rem !important; }
   .admin-ui-card > .p-5,
   .admin-ui-card > .p-6 { padding: 1rem; }
   /*
@@ -2526,14 +2524,27 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   .content-studio-page .content-studio-publish-sticky { font-weight: revert-layer; }
   .content-studio-page .content-editor-row > .content-editor-icon { align-self: revert-layer; }
 }
-/* Page batch: these beat styles set in the page code. */
-@media (max-width: 767px) {
-  .content-studio-page .content-studio-publish-desktop { display: none !important; }
-  .content-studio-page .content-studio-block { padding: 12px !important; }
-  .content-studio-page .content-editor-row { flex-direction: column !important; align-items: stretch !important; }
-  .content-studio-page .content-editor-row > input:not(.content-editor-icon), .content-studio-page .content-editor-row > button { width: 100% !important; min-width: 0 !important; flex: none !important; }
-  .content-studio-page .content-editor-row > .content-editor-icon { width: 48px !important; }
-  .content-studio-page .content-preview-grid { grid-template-columns: 1fr !important; }
+/* A repeater row in the content editors. Each control's size from 768px comes from
+   the page as --ce-flex / --ce-min / --ce-w (rowSize.ts); on a phone the row
+   stacks and every control takes the full width. */
+.content-editor-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.content-editor-row--center { align-items: center; }
+.content-editor-row > input:not(.content-editor-icon),
+.content-editor-row > button { flex: var(--ce-flex, 0 1 auto); min-width: var(--ce-min, auto); width: var(--ce-w, auto); }
+.content-editor-row > .content-editor-icon { width: 40px; }
+.content-studio-page .content-editor-row { flex-direction: column; align-items: stretch; }
+.content-studio-page .content-editor-row > input:not(.content-editor-icon),
+.content-studio-page .content-editor-row > button { width: 100%; min-width: 0; flex: none; }
+.content-studio-page .content-editor-row > .content-editor-icon { width: 48px; }
+/* The header's Publish shows from 768px; a phone publishes from the bar at the foot. */
+.content-studio-page .content-studio-publish-desktop { display: none; }
+@media (min-width: 768px) {
+  .content-studio-page .content-editor-row { flex-direction: row; align-items: normal; }
+  .content-studio-page .content-editor-row--center { align-items: center; }
+  .content-studio-page .content-editor-row > input:not(.content-editor-icon),
+  .content-studio-page .content-editor-row > button { flex: var(--ce-flex, 0 1 auto); min-width: var(--ce-min, auto); width: var(--ce-w, auto); }
+  .content-studio-page .content-editor-row > .content-editor-icon { width: 40px; }
+  .content-studio-page .content-studio-publish-desktop { display: contents; }
 }
 /* Website editor header: "View live site" and the Desktop / Mobile switch. */
 .hub-view-live-site {
@@ -4497,6 +4508,14 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   font-weight: 600;
   color: var(--color-text-secondary);
 }
+/* A variant row's cells: no rules or padding of their own on a phone, the
+   table's lines and padding from 768px. */
+.specials-variant-table td { border: none; padding: 4px 0; }
+.specials-page .specials-intro { margin: -4px 0 14px; font-size: 13px; }
+/* Page-level stat card row (Specials): as many 140px tiles as fit on a phone. */
+.page-stat-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+.specials-page .page-stat-row { gap: 10px; margin-bottom: 16px; }
+.specials-page .page-stat-row > div { padding: 12px 14px; }
 .form-grid-keep-2 > * { min-width: 0; }
 .form-grid-keep-2 input { min-width: 0; max-width: 100%; }
 .specials-day-chip { min-height: 32px; font-size: 11px; }
@@ -4514,6 +4533,13 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   .specials-variant-table td { display: revert-layer; width: revert-layer; }
   .specials-variant-table thead { display: revert-layer; }
   .specials-variant-table tr { padding: revert-layer; border-bottom: revert-layer; }
+  .specials-variant-table td { border-bottom: 1px solid var(--color-border-light); padding: 12px 16px; }
+  .specials-variant-table td[data-label="Discount %"],
+  .specials-variant-table td[data-label="Special price"] { padding: 6px 8px; }
+  .specials-page .specials-intro { margin: -8px 0 20px; font-size: 14px; }
+  .page-stat-row { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+  .specials-page .page-stat-row { gap: 16px; margin-bottom: 24px; }
+  .specials-page .page-stat-row > div { padding: 16px 20px; }
   .specials-variant-table td[data-label="Discount %"],
   .specials-variant-table td[data-label="Special price"] { display: revert-layer; grid-template-columns: revert-layer; align-items: revert-layer; gap: revert-layer; }
   .specials-variant-table td[data-label="Discount %"]::before,
@@ -4521,11 +4547,7 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
 }
 /* Page batch: these beat styles set in the page code. */
 @media (max-width: 767px) {
-  .specials-page .specials-intro { margin: -4px 0 14px !important; font-size: 13px !important; }
-  .specials-page .page-stat-row { gap: 10px !important; margin-bottom: 16px !important; }
-  .specials-page .page-stat-row > div { padding: 12px 14px !important; }
   .form-grid-keep-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
-  .specials-variant-table td { border: none !important; padding: 4px 0 !important; }
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -4958,11 +4980,6 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   .wcw-form { padding: 6px 22px 24px; }
   .wcw-sec-body { padding: 4px 18px 22px; }
   .wcw-sec-count { display: revert-layer; }
-}
-/* Page batch: the wide hero editor sets its three columns as an inline style, so only
-   !important can beat it. A phone must never get three columns. */
-@media (max-width: 767px) {
-  .hero-slides-wide-columns { grid-template-columns: 1fr !important; }
 }
 
 
@@ -5765,30 +5782,38 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
    cannot share a line: the text is allowed to shrink and the buttons are not,
    so the text was crushed to one character per line while the buttons grew
    into full-height columns. Stack them. */
-@media (max-width: 767px) {
-  .home-layout-head {
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 10px;
-  }
-  /*
-   * Once the row becomes a column, `flex: 1 1 260px` stops meaning "at least
-   * 260px wide" and starts meaning "at least 260px TALL" — flex-basis follows
-   * the main axis. That left a block of empty space between "Draft saved" and
-   * the Reorder button. The basis is for the side-by-side layout only.
-   */
-  .home-layout-head-text {
-    flex: none !important;
-    min-width: 0 !important;
-  }
-  .home-layout-head-actions {
-    width: 100%;
-    justify-content: flex-start !important;
-  }
-  .home-layout-head-actions > button {
-    flex: 1 1 auto;
-    min-width: 0;
-  }
+/* Its layout lives here, not in the editor's code. On a phone the heading and
+   the buttons stack; from 768px they share a row, buttons on the right. */
+.home-layout-head {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: stretch;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+/*
+ * Once the row becomes a column, `flex: 1 1 260px` stops meaning "at least
+ * 260px wide" and starts meaning "at least 260px TALL": flex-basis follows
+ * the main axis. That left a block of empty space between "Draft saved" and
+ * the Reorder button. The basis is for the side-by-side layout only.
+ */
+.home-layout-head-text { flex: none; min-width: 0; }
+.home-layout-head-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  width: 100%;
+}
+.home-layout-head-actions > button { flex: 1 1 auto; min-width: 0; }
+@media (min-width: 768px) {
+  .home-layout-head { flex-direction: row; align-items: flex-start; }
+  .home-layout-head-text { flex: 1 1 260px; min-width: 200px; }
+  .home-layout-head-actions { justify-content: flex-end; width: auto; }
+  .home-layout-head-actions > button { flex: revert-layer; min-width: revert-layer; }
 }
 
 /* ── Section order & visibility: panels open in the page, not beside it ──
@@ -6415,9 +6440,11 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   .mie-pack-row { grid-template-columns: 1.4fr 1fr 80px 44px; padding-bottom: 0; border-bottom: none; }
   .mie-pack-row > :first-child { grid-column: auto; }
 }
-/* Page batch: the preview's sticky position is set in the item editor's code. */
-@media (max-width: 767px) {
-  .mie-card-preview { position: static !important; margin: 0 auto; }
+/* The card preview sits centred under the fields on a phone and follows the
+   scroll beside them from 768px. */
+.mie-card-preview { margin: 0 auto; }
+@media (min-width: 768px) {
+  .mie-card-preview { position: sticky; top: 8px; margin: 0; }
 }
 
 /* Categories tab: one card per top-level category, sub-categories inside */
@@ -6781,9 +6808,9 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   .sms-cc-row-main { flex-direction: row; }
   .sms-cc-row-actions { gap: 10px; width: auto; justify-content: normal; padding-top: 0; border-top: none; }
 }
-/* Page batch: min-width overrides the fields' own inline width. */
-@media (max-width: 767px) {
-  .sms-cc-fields > label { flex: 1 1 100%; min-width: 0 !important; }
+.sms-cc-fields > label { flex: 1 1 100%; min-width: 0; }
+@media (min-width: 768px) {
+  .sms-cc-fields > label { flex: revert-layer; min-width: 160px; }
 }
 
 /*
@@ -6793,22 +6820,27 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
  * Labels page's own cards (.labels-sticky, padding "sm"): inside a modal
  * (production line, delivery) the sheet already ends at the buttons.
  */
-@media (max-width: 767px) {
-  .labels-sticky .labels-actions {
-    position: sticky;
-    bottom: var(--admin-tabbar-h, 56px);
-    z-index: var(--z-overlay);
-    margin: 0 -16px -16px;
-    padding: 10px 16px;
-    background: var(--color-surface);
-    border-top: 1px solid var(--color-border);
-    border-radius: 0 0 14px 14px;
-  }
-
-  .labels-actions .labels-actions-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .labels-actions .labels-actions-row > button { justify-content: center; width: 100%; }
+.labels-sticky .labels-actions {
+  position: sticky;
+  bottom: var(--admin-tabbar-h, 56px);
+  z-index: var(--z-overlay);
+  margin: 0 -16px -16px;
+  padding: 10px 16px;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  border-radius: 0 0 14px 14px;
+}
+.labels-actions .labels-actions-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.labels-actions .labels-actions-row > button { justify-content: center; width: 100%; }
+.labels-actions .labels-actions-row > button:only-child,
+.labels-actions .labels-actions-row > button.labels-actions-wide { grid-column: 1 / -1; }
+/* From 768px the row is the page's own Tailwind row again (flex, gap-2). */
+@media (min-width: 768px) {
+  .labels-sticky .labels-actions { position: revert-layer; bottom: revert-layer; z-index: revert-layer; margin: revert-layer; padding: revert-layer; background: revert-layer; border-top: revert-layer; border-radius: revert-layer; }
+  .labels-actions .labels-actions-row { display: revert-layer; grid-template-columns: revert-layer; gap: revert-layer; }
+  .labels-actions .labels-actions-row > button { justify-content: revert-layer; width: revert-layer; }
   .labels-actions .labels-actions-row > button:only-child,
-  .labels-actions .labels-actions-row > button.labels-actions-wide { grid-column: 1 / -1; }
+  .labels-actions .labels-actions-row > button.labels-actions-wide { grid-column: revert-layer; }
 }
 
 /*
@@ -7033,3 +7065,9 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
 .cl-section .cl-chev { transition: transform 0.15s; }
 .cl-section[open] .cl-chev { transform: rotate(180deg); }
 .cl-section[open] > summary { border-bottom: 1px solid var(--color-border-light); margin-bottom: 10px; }
+
+/* ── Posters: the form, then the preview beside it from 801px ─────────── */
+.poster-make { display: grid; gap: 16px; grid-template-columns: 1fr; }
+@media (min-width: 801px) {
+  .poster-make { grid-template-columns: minmax(0, 1fr) minmax(220px, 320px); }
+}

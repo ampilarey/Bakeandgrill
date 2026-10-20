@@ -14,6 +14,10 @@ import { Pencil, Share2, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 
+/** A variant row's cell: the table's lines and padding come from index.css
+ *  (none on a phone, where each row is a card). */
+const VARIANT_TD = { ...TD, padding: undefined, borderBottom: undefined };
+
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 type VariantOverrideForm = Record<number, { discount_pct: string; special_price: string }>;
@@ -663,7 +667,7 @@ export default function SpecialsPage() {
     <PageShell className="specials-page">
       <ConfirmDialog state={dlg} close={closeDlg} />
       <PageHeader section="Manage" title="Daily Specials" action={<Btn onClick={openCreate}>+ Add Discount</Btn>} />
-      <p className="specials-intro" style={{ margin: '-8px 0 20px', fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.55, maxWidth: 720 }}>
+      <p className="specials-intro" style={{ color: 'var(--color-text-secondary)', lineHeight: 1.55, maxWidth: 720 }}>
         Schedule a <strong>discount %</strong> or fixed sale price on specific menu items for any date range.
         Active discounts show on the order app menu (badge + sale price), POS, and optionally in Today&apos;s Specials on the homepage.
       </p>
@@ -672,12 +676,12 @@ export default function SpecialsPage() {
       </SeeAlso>
       {error && <p style={{ color: 'var(--color-danger)', marginBottom: 16 }}>{error}</p>}
 
-      <div className="page-stat-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '16px 20px' }}>
+      <div className="page-stat-row">
+        <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12 }}>
           <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 4px', fontWeight: 600 }}>TOTAL SPECIALS</p>
           <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>{meta.total}</p>
         </div>
-        <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '16px 20px' }}>
+        <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12 }}>
           <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 4px', fontWeight: 600 }}>ACTIVE TODAY</p>
           <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--color-success)', margin: 0 }}>{activeCount}</p>
         </div>
@@ -906,12 +910,12 @@ export default function SpecialsPage() {
                         const row = form.variant_overrides[v.id] ?? { discount_pct: '', special_price: '' };
                         return (
                           <tr key={v.id}>
-                            <td data-label="Variant" style={{ ...TD, fontWeight: 600, fontSize: 12 }}>{v.name}</td>
-                            <td data-label="Catalog" style={{ ...TD, fontSize: 12, color: 'var(--color-text-secondary)' }}>MVR {parseFloat(String(v.price)).toFixed(2)}</td>
-                            <td data-label="Discount %" style={{ ...TD, padding: '6px 8px' }}>
+                            <td data-label="Variant" style={{ ...VARIANT_TD, fontWeight: 600, fontSize: 12 }}>{v.name}</td>
+                            <td data-label="Catalog" style={{ ...VARIANT_TD, fontSize: 12, color: 'var(--color-text-secondary)' }}>MVR {parseFloat(String(v.price)).toFixed(2)}</td>
+                            <td data-label="Discount %" style={VARIANT_TD}>
                               <Input type="number" min="1" max="100" placeholder="%" value={row.discount_pct} onChange={val => setVariantField(v.id, 'discount_pct', val, Number(v.price))} />
                             </td>
-                            <td data-label="Special price" style={{ ...TD, padding: '6px 8px' }}>
+                            <td data-label="Special price" style={VARIANT_TD}>
                               <Input type="number" min="0" step="0.01" placeholder="MVR" value={row.special_price} onChange={val => setVariantField(v.id, 'special_price', val, Number(v.price))} />
                             </td>
                           </tr>

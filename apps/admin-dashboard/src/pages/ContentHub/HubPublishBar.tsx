@@ -409,20 +409,24 @@ export function HubHeaderActions({
       ) : null}
 
       {effectiveDirtyCount > 0 ? (
-        <Btn
-          onClick={onPublish}
-          disabled={saving || effectiveDirtyCount === 0 || autosaveFailed}
-          className="content-studio-publish-desktop content-studio-publish-desktop--needed"
-          data-testid="publish-live-btn"
-          title={autosaveFailed
-            ? 'Retry draft save before publishing'
-            : layoutDraft && dirtyCount === 0
-              ? `Publishes unpublished ${hubApp === 'website' ? 'Website' : 'Order App'} Home layout changes`
-              : undefined}
-        >
-          <Save size={16} />
-          {saving ? `Publishing ${hubLabel}…` : publishFailed ? 'Publish failed — Try again' : `Publish ${hubLabel}`}
-        </Btn>
+        // The phone publishes from its own bar at the foot of the page, so this
+        // one shows from 768px (the span is display: contents there).
+        <span className="content-studio-publish-desktop">
+          <Btn
+            onClick={onPublish}
+            disabled={saving || effectiveDirtyCount === 0 || autosaveFailed}
+            className="content-studio-publish-desktop--needed"
+            data-testid="publish-live-btn"
+            title={autosaveFailed
+              ? 'Retry draft save before publishing'
+              : layoutDraft && dirtyCount === 0
+                ? `Publishes unpublished ${hubApp === 'website' ? 'Website' : 'Order App'} Home layout changes`
+                : undefined}
+          >
+            <Save size={16} />
+            {saving ? `Publishing ${hubLabel}…` : publishFailed ? 'Publish failed — Try again' : `Publish ${hubLabel}`}
+          </Btn>
+        </span>
       ) : null}
 
       <div className="hub-more-wrap" ref={moreMenuRef}>
