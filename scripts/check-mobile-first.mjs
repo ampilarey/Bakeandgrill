@@ -2,7 +2,9 @@
 /**
  * Mobile-first guard (owner, 2026-10-20: "I want change everything mobile 1st rule. Not
  * now. Slowly"). A desktop-first rule is an `@media` that narrows with `max-width` and has
- * no `min-width` (a band such as `(min-width: 768px) and (max-width: 1023px)` is fine).
+ * no `min-width` (a band such as `(min-width: 768px) and (max-width: 1023px)` is fine, and so
+ * is a short-screen band that also caps the height, such as the till's phone-landscape
+ * `(max-width: 900px) and (max-height: 500px)`: no computer layout is squeezed by it).
  * Old files keep the count they had in `scripts/mobile-first-baseline.json`; a file may
  * only go down, and a new file has none. Rules and how to convert a page:
  * docs/MOBILE_FIRST.md.
@@ -38,8 +40,8 @@ function walk(dir, out = []) {
 function desktopFirst(text) {
   let n = 0;
   for (const m of text.matchAll(/@media\s+([^{]*)\{/g)) {
-    const q = m[1];
-    if (/max-width/.test(q) && !/min-width/.test(q)) n++;
+    const branches = m[1].split(',');
+    if (branches.some((q) => /max-width/.test(q) && !/min-width/.test(q) && !/max-height/.test(q))) n++;
   }
   return n;
 }

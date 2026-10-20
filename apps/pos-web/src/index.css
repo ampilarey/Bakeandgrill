@@ -188,18 +188,31 @@ html, body, #root {
  * Below this the header cannot carry labels beside the title and the status
  * pill, so a shortcut is its icon alone. They are the same icons the drawer
  * shows, so the mapping is already learned by the time anybody pins one. */
-@media (max-width: 640px) {
-  .pos-topbar-shortcut-label { display: none; }
+/* Phone first: the icon alone up to 640px, the labelled pill from 641px. */
+.pos-topbar-shortcut-label { display: none; }
+.pos-topbar-shortcut {
+  padding: 0;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
+  justify-content: center;
+}
+.pos-topbar-shortcut-icon { font-size: 17px; }
+.pos-topbar-shortcut-icon svg { width: 20px; height: 20px; }
+@media (min-width: 641px) {
+  .pos-topbar-shortcut-label { display: inline; }
   .pos-topbar-shortcut {
-    padding: 0;
-    width: 40px;
-    min-width: 40px;
-    height: 40px;
-    min-height: 40px;
-    justify-content: center;
+    padding: 6px 12px;
+    width: auto;
+    min-width: auto;
+    height: auto;
+    min-height: 36px;
+    justify-content: normal;
   }
-  .pos-topbar-shortcut-icon { font-size: 17px; }
-  .pos-topbar-shortcut-icon svg { width: 20px; height: 20px; }
+  .pos-topbar-shortcut-icon { font-size: 15px; }
+  /* PaneIcon's own size (size={18} in HeaderShortcuts.tsx). */
+  .pos-topbar-shortcut-icon svg { width: 18px; height: 18px; }
 }
 
 .pos-header-btn {
@@ -286,13 +299,28 @@ html, body, #root {
    * Halving env() is self-scoping: a desktop browser reports 0, so this only
    * moves on the iPads and phones that actually have an indicator. */
   --pos-safe-bottom: calc(env(safe-area-inset-bottom, 0px) / 2);
-  --pos-cart-width: 420px;
-  /* Ticket-line quantity pill button size; 44px on a phone (900px rule). */
-  --pos-qty-btn: 36px;
-  --pos-main-pad: 12px;
-  --pos-main-gap: 12px;
-  --pos-menu-tile-min: 120px;
-  --pos-menu-grid-gap: 10px;
+  /* Phone first: the phone's sizes here, wider screens below. */
+  --pos-cart-width: 360px;
+  /* Ticket-line quantity pill button size; 36px from 901px. */
+  --pos-qty-btn: 44px;
+  --pos-main-pad: 8px;
+  --pos-main-gap: 8px;
+  --pos-menu-tile-min: 104px;
+  --pos-menu-grid-gap: 8px;
+}
+@media (min-width: 841px) {
+  :root {
+    --pos-main-pad: 12px;
+    --pos-main-gap: 12px;
+    --pos-menu-tile-min: 120px;
+    --pos-menu-grid-gap: 10px;
+  }
+}
+@media (min-width: 901px) {
+  :root { --pos-qty-btn: 36px; }
+}
+@media (min-width: 1101px) {
+  :root { --pos-cart-width: 420px; }
 }
 
 .pos-main {
@@ -578,24 +606,19 @@ html, body, #root {
   }
 }
 
-@media (max-width: 1100px) {
-  :root {
-    --pos-cart-width: 360px;
-  }
+/* Phone first: bigger targets up to 900px (the qty pill's size is with the
+   layout tokens above). */
+.pos-category-pill {
+  min-height: 44px;
+  padding: 10px 14px;
 }
-
-@media (max-width: 900px) {
-  .pos-category-pill {
-    min-height: 44px;
-    padding: 10px 14px;
-  }
-  :root {
-    --pos-qty-btn: 44px;
-  }
-  .pos-line-action-btn {
-    width: 40px;
-    height: 40px;
-  }
+.pos-line-action-btn {
+  width: 40px;
+  height: 40px;
+}
+@media (min-width: 901px) {
+  .pos-category-pill { min-height: auto; padding: revert; }
+  .pos-line-action-btn { width: auto; height: auto; }
 }
 
 /* "CONFIRM PAYMENT" and the amount are two spans. On phones they stack (see
@@ -608,204 +631,254 @@ html, body, #root {
   gap: 4px 10px;
 }
 
-@media (max-width: 840px) {
-  :root {
-    --pos-main-pad: 8px;
-    --pos-main-gap: 8px;
-    --pos-menu-tile-min: 104px;
-    --pos-menu-grid-gap: 8px;
-  }
+/* Phone + iPad portrait (up to 840px) first; the side-by-side till from 841px.
+   Its sizes are with the layout tokens above. */
 
-  /* Phone + iPad portrait: menu on top, cart docked below. The pane's own
-   * bottom padding is halved too — the cart is the last thing in it, and a
-   * full gap under a docked bar is space the menu could have used. */
-  .pos-main {
-    flex-direction: column;
-    padding-bottom: calc(var(--pos-main-pad) / 2);
-  }
-  .pos-menu {
-    order: 1;
-    flex: 1 1 auto;
-    min-height: 0;
-  }
-  .pos-cart {
-    order: 2;
-    width: 100%;
-    max-height: 48vh;
-    flex-shrink: 0;
-  }
+/* Phone + iPad portrait: menu on top, cart docked below. The pane's own
+ * bottom padding is halved too — the cart is the last thing in it, and a
+ * full gap under a docked bar is space the menu could have used. */
+.pos-main {
+  flex-direction: column;
+  padding-bottom: calc(var(--pos-main-pad) / 2);
+}
+.pos-menu {
+  order: 1;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.pos-cart {
+  order: 2;
+  width: 100%;
+  max-height: 48vh;
+  flex-shrink: 0;
+}
 
-  /* Every pixel the totals block gives back is a pixel of cart the cashier
-   * can see, so the padding round it comes in and the Charge button loses
-   * the height it does not need. It stays well over the 44px touch target,
-   * and the till on a counter is untouched — this is phone widths only. */
-  .pos-cart-footer {
-    padding: 10px;
-  }
-  .pos-cart-charge-btn {
-    margin-top: 8px;
-    padding: 12px 14px;
-    min-height: 48px;
-  }
+/* Every pixel the totals block gives back is a pixel of cart the cashier
+ * can see, so the padding round it comes in and the Charge button loses
+ * the height it does not need. It stays well over the 44px touch target,
+ * and the till on a counter is untouched — this is phone widths only. */
+.pos-cart-footer {
+  padding: 10px;
+}
+.pos-cart-charge-btn {
+  margin-top: 8px;
+  padding: 12px 14px;
+  min-height: 48px;
+}
 
-  /* Collapsed dock — slim sticky bar; menu keeps most of the screen. */
-  .pos-cart.pos-cart--dock {
-    max-height: none;
-    height: auto;
-    border-radius: 14px 14px 0 0;
-    box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.12);
-  }
-  .pos-cart.pos-cart--dock > :not(.pos-cart-dock-bar) {
-    display: none !important;
-  }
-  .pos-cart.pos-cart--dock .pos-cart-dock-bar {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    min-height: 56px;
-    /* No safe-area inset here — the shell above it already pads the screen
-     * edge, and adding it again is what put a white band under the row. The
-     * bottom is half the top: this row is the last thing on the screen, and
-     * the shell's own inset sits under it. */
-    padding: 10px 12px 5px;
-    box-sizing: border-box;
-    background: #FFFFFF;
-  }
-  .pos-cart.pos-cart--dock .pos-cart-dock-items {
-    transform: translateY(-2px);
-  }
-  .pos-cart.pos-cart--dock .pos-cart-dock-amount {
-    margin-top: 3px;
-    transform: translateY(1px);
-  }
+/* The dock and the sheet are classes OrderCart sets only on a stacked screen
+   (840px wide or less and over 500px tall), so they need no query. */
 
-  /* Expanded sheet — full cart as bottom sheet (customer-picker pattern). */
-  .pos-cart-sheet-backdrop.pos-cart-sheet-backdrop--open {
-    display: block;
-    position: fixed;
-    inset: 0;
-    z-index: 799;
-    margin: 0;
-    padding: 0;
-    border: none;
-    background: rgba(15, 23, 42, 0.45);
-    cursor: pointer;
-  }
-  .pos-cart.pos-cart--sheet {
-    position: fixed;
-    left: 0;
-    right: 0;
-    /*
-     * Anchored to the bottom of the VISIBLE screen, not of the layout
-     * viewport. For a fixed element `100%` here is the layout viewport height
-     * — the screen as it would be with Safari's toolbar hidden — and
-     * `--pos-vh` is the visible height, so the difference is exactly what the
-     * toolbar is covering. With the toolbar up, `bottom: 0` put this sheet
-     * behind it by that amount; with it collapsed, or on an installed app,
-     * the two are equal and this is `bottom: 0`. Same fault as the Charge
-     * overlay, 2026-09-04; see the note there.
-     */
-    bottom: calc(100% - var(--pos-vh, 100dvh));
-    z-index: 800;
-    width: 100%;
-    max-height: min(calc(var(--pos-vh, 100dvh) * 0.85), 720px);
-    border-radius: 16px 16px 0 0;
-    padding-bottom: var(--pos-safe-bottom);
-    box-shadow: 0 -8px 32px rgba(15, 23, 42, 0.18);
-  }
-  .pos-cart.pos-cart--sheet .pos-cart-dock-bar {
-    display: none;
-  }
+/* Collapsed dock — slim sticky bar; menu keeps most of the screen. */
+.pos-cart.pos-cart--dock {
+  max-height: none;
+  height: auto;
+  border-radius: 14px 14px 0 0;
+  box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.12);
+}
+.pos-cart.pos-cart--dock > :not(.pos-cart-dock-bar) {
+  display: none !important;
+}
+.pos-cart.pos-cart--dock .pos-cart-dock-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 56px;
+  /* No safe-area inset here — the shell above it already pads the screen
+   * edge, and adding it again is what put a white band under the row. The
+   * bottom is half the top: this row is the last thing on the screen, and
+   * the shell's own inset sits under it. */
+  padding: 10px 12px 5px;
+  box-sizing: border-box;
+  background: #FFFFFF;
+}
+.pos-cart.pos-cart--dock .pos-cart-dock-items {
+  transform: translateY(-2px);
+}
+.pos-cart.pos-cart--dock .pos-cart-dock-amount {
+  margin-top: 3px;
+  transform: translateY(1px);
+}
 
-  .pos-header-btn {
-    width: 44px;
-    height: 44px;
-    min-height: 44px;
-  }
-  .pos-topbar-chip { display: none; }
+/* Expanded sheet — full cart as bottom sheet (customer-picker pattern). */
+.pos-cart-sheet-backdrop.pos-cart-sheet-backdrop--open {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 799;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: rgba(15, 23, 42, 0.45);
+  cursor: pointer;
+}
+.pos-cart.pos-cart--sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  /*
+   * Anchored to the bottom of the VISIBLE screen, not of the layout
+   * viewport. For a fixed element `100%` here is the layout viewport height
+   * — the screen as it would be with Safari's toolbar hidden — and
+   * `--pos-vh` is the visible height, so the difference is exactly what the
+   * toolbar is covering. With the toolbar up, `bottom: 0` put this sheet
+   * behind it by that amount; with it collapsed, or on an installed app,
+   * the two are equal and this is `bottom: 0`. Same fault as the Charge
+   * overlay, 2026-09-04; see the note there.
+   */
+  bottom: calc(100% - var(--pos-vh, 100dvh));
+  z-index: 800;
+  width: 100%;
+  max-height: min(calc(var(--pos-vh, 100dvh) * 0.85), 720px);
+  border-radius: 16px 16px 0 0;
+  padding-bottom: var(--pos-safe-bottom);
+  box-shadow: 0 -8px 32px rgba(15, 23, 42, 0.18);
+}
+.pos-cart.pos-cart--sheet .pos-cart-dock-bar {
+  display: none;
+}
+
+.pos-header-btn {
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+}
+.pos-topbar-chip { display: none; }
+.pos-topbar {
+  padding: 8px 10px;
+  padding-top: max(8px, env(safe-area-inset-top, 0px));
+  gap: 8px;
+}
+.pos-topbar-right { gap: 6px; }
+.pos-status-pill { padding: 6px 8px; font-size: 10px; }
+/* Keep search + refresh on one row (was wrapping refresh underneath). */
+.pos-menu-toolbar {
+  flex-wrap: nowrap;
+  align-items: center;
+}
+.pos-menu-search-form {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.pos-menu-refresh-btn {
+  flex-shrink: 0;
+  margin-left: 0;
+}
+.pos-update-banner {
+  margin: 0 8px;
+  max-width: calc(100% - 16px);
+}
+.pos-ticket-action-btn {
+  min-height: 44px;
+}
+
+/* Active Orders — cancel main padding so the panel sits flush under the topbar */
+.pos-open-tickets-shell {
+  margin: calc(-1 * var(--pos-main-pad, 8px));
+  width: calc(100% + 2 * var(--pos-main-pad, 8px));
+  max-width: none;
+  align-self: stretch;
+}
+.pos-open-tickets-chip-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.pos-open-tickets-chip-row::-webkit-scrollbar {
+  display: none;
+}
+.pos-open-tickets-chip-row > button {
+  flex-shrink: 0;
+}
+.pos-open-tickets-meta-clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.pos-cart-delivery-row {
+  flex-direction: column;
+}
+.pos-shift-cash-grid,
+.pos-shift-summary-grid {
+  grid-template-columns: 1fr;
+}
+
+/* Configure item — keep centered on phones (not a bottom sheet). */
+.pos-configure-backdrop {
+  align-items: center;
+  justify-content: center;
+  padding: max(12px, env(safe-area-inset-top, 0px))
+           max(12px, env(safe-area-inset-right, 0px))
+           max(12px, env(safe-area-inset-bottom, 0px))
+           max(12px, env(safe-area-inset-left, 0px));
+}
+.pos-configure-panel {
+  width: min(100%, 420px);
+  max-width: 420px;
+  max-height: min(78dvh, 640px);
+  border-radius: 16px;
+  padding-bottom: 0;
+}
+
+@media (min-width: 841px) {
+  .pos-main { flex-direction: row; padding-bottom: var(--pos-main-pad); }
+  .pos-menu { order: 0; flex: 1; min-height: auto; }
+  .pos-cart { order: 0; width: var(--pos-cart-width); max-height: none; flex-shrink: 0; }
+  .pos-cart-footer { padding: 14px; }
+  .pos-cart-charge-btn { margin-top: 12px; padding: 18px; min-height: 56px; }
+  .pos-header-btn { width: 44px; height: 44px; min-height: 44px; }
+  .pos-topbar-chip { display: revert; }
   .pos-topbar {
-    padding: 8px 10px;
-    padding-top: max(8px, env(safe-area-inset-top, 0px));
-    gap: 8px;
+    padding: 10px 16px;
+    padding-top: max(10px, env(safe-area-inset-top, 0px));
+    gap: 12px;
   }
-  .pos-topbar-right { gap: 6px; }
-  .pos-status-pill { padding: 6px 8px; font-size: 10px; }
-  /* Keep search + refresh on one row (was wrapping refresh underneath). */
-  .pos-menu-toolbar {
-    flex-wrap: nowrap;
-    align-items: center;
-  }
-  .pos-menu-search-form {
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-  .pos-menu-refresh-btn {
-    flex-shrink: 0;
-    margin-left: 0;
-  }
-  .pos-update-banner {
-    margin: 0 8px;
-    max-width: calc(100% - 16px);
-  }
-  .pos-ticket-action-btn {
-    min-height: 44px;
-  }
-
-  /* Active Orders — cancel main padding so the panel sits flush under the topbar */
-  .pos-open-tickets-shell {
-    margin: calc(-1 * var(--pos-main-pad, 8px));
-    width: calc(100% + 2 * var(--pos-main-pad, 8px));
-    max-width: none;
-    align-self: stretch;
-  }
+  .pos-topbar-right { gap: 8px; }
+  .pos-status-pill { padding: 4px 10px; font-size: 11px; }
+  .pos-menu-toolbar { flex-wrap: revert; align-items: center; }
+  .pos-menu-search-form { flex: 1; min-width: 0; }
+  .pos-menu-refresh-btn { flex-shrink: revert; margin-left: revert; }
+  .pos-update-banner { margin: 0 12px; max-width: calc(100% - 24px); }
+  .pos-ticket-action-btn { min-height: revert; }
+  .pos-open-tickets-shell { margin: revert; width: revert; max-width: revert; align-self: revert; }
   .pos-open-tickets-chip-row {
-    display: flex;
-    flex-wrap: nowrap;
-    align-items: center;
-    gap: 6px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    padding-bottom: 2px;
+    display: revert;
+    flex-wrap: revert;
+    align-items: revert;
+    gap: revert;
+    overflow-x: revert;
+    -webkit-overflow-scrolling: revert;
+    scrollbar-width: revert;
+    padding-bottom: revert;
   }
-  .pos-open-tickets-chip-row::-webkit-scrollbar {
-    display: none;
-  }
-  .pos-open-tickets-chip-row > button {
-    flex-shrink: 0;
-  }
-  .pos-open-tickets-meta-clamp {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-  .pos-cart-delivery-row {
-    flex-direction: column;
-  }
+  .pos-open-tickets-chip-row::-webkit-scrollbar { display: revert; }
+  .pos-open-tickets-chip-row > button { flex-shrink: revert; }
+  .pos-open-tickets-meta-clamp { display: revert; -webkit-line-clamp: revert; -webkit-box-orient: revert; overflow: revert; }
+  .pos-cart-delivery-row { flex-direction: revert; }
   .pos-shift-cash-grid,
-  .pos-shift-summary-grid {
-    grid-template-columns: 1fr;
-  }
-
-  /* Configure item — keep centered on phones (not a bottom sheet). */
+  .pos-shift-summary-grid { grid-template-columns: revert; }
   .pos-configure-backdrop {
     align-items: center;
     justify-content: center;
-    padding: max(12px, env(safe-area-inset-top, 0px))
-             max(12px, env(safe-area-inset-right, 0px))
-             max(12px, env(safe-area-inset-bottom, 0px))
-             max(12px, env(safe-area-inset-left, 0px));
+    padding: max(16px, env(safe-area-inset-top, 0px))
+             max(16px, env(safe-area-inset-right, 0px))
+             max(16px, env(safe-area-inset-bottom, 0px))
+             max(16px, env(safe-area-inset-left, 0px));
   }
-  .pos-configure-panel {
-    width: min(100%, 420px);
-    max-width: 420px;
-    max-height: min(78dvh, 640px);
-    border-radius: 16px;
-    padding-bottom: 0;
-  }
+  .pos-configure-panel { width: 100%; max-width: 480px; max-height: min(78dvh, 640px); border-radius: 16px; padding-bottom: revert; }
+}
 
+/* The phone's Charge popup. Still desktop first (a later batch): it beats
+   ChargeOverlay.tsx's inline styles, which have to move into classes before
+   it can be turned round. */
+@media (max-width: 840px) {
   /*
    * Charge on a phone is a popup, not a full-screen page.
    *
@@ -1185,9 +1258,12 @@ html, body, #root {
   }
 }
 
-@media (max-width: 480px) {
-  .pos-topbar-subtitle { display: none; }
-  .pos-topbar-title { font-size: 13px; }
+/* Phone first: the smallest phones drop the subtitle; from 481px it shows. */
+.pos-topbar-subtitle { display: none; }
+.pos-topbar-title { font-size: 13px; }
+@media (min-width: 481px) {
+  .pos-topbar-subtitle { display: block; }
+  .pos-topbar-title { font-size: 14px; }
 }
 
 /* Short landscape phones — keep menu + cart side-by-side (~300px cart);
@@ -1264,10 +1340,11 @@ html, body, #root {
  * On a phone and an iPad in portrait it is a fixed-height sheet instead: the
  * body inside it scrolls, so nothing the cashier types moves the dialog. On
  * a wide till there is room to spare, so it stays snug to its content. */
-@media (max-width: 840px) {
-  .pos-discounts-modal {
-    height: min(92dvh, 860px);
-  }
+.pos-discounts-modal {
+  height: min(92dvh, 860px);
+}
+@media (min-width: 841px) {
+  .pos-discounts-modal { height: auto; }
 }
 
 /* Surfaces outside .pos-shell (login, lock, kitchen landing). */
@@ -2219,210 +2296,254 @@ html, body, #root {
  * total) and the − / + steppers disappear: the keypad does that job and
  * the width is needed for the columns. Tapping a cell selects it.
  * Default state must fit 390×844 with no scrolling. */
-@media (max-width: 699px) {
+/* Phone first (up to 699px); the tablet and computer sheet from 700px. */
+.close-shift-overlay {
+  padding: 0 !important;
+  align-items: stretch !important;
+}
+
+.close-shift-sheet {
+  width: 100%;
+  max-width: none;
+  /* Stretched by the overlay above (fixed, inset 0, align-items: stretch)
+   * rather than sized from a viewport number — same reason as the charge
+   * sheet, see `.pos-charge` in the 840px block. `100%` here is the
+   * overlay's own box, which the engine has already measured. */
+  max-height: 100%;
+  border-radius: 0;
+  margin: 0;
+}
+
+.close-shift-sheet__header {
+  padding: max(10px, env(safe-area-inset-top, 0px)) 14px 10px;
+  background: #F8FAFC;
+}
+
+.close-shift-sheet__title {
+  font-size: 18px;
+}
+
+.close-shift-sheet__content {
+  display: flex;
+  flex-direction: column;
+}
+
+.close-shift-rail {
+  flex: 0 0 auto;
+  max-height: 52dvh;
+  gap: 8px;
+  padding: 10px 12px max(10px, env(safe-area-inset-bottom, 0px));
+  border-left: none;
+  border-top: 1px solid #E2E8F0;
+  background: #0F172A;
+  box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.12);
+}
+
+.close-shift-totals__counted {
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #94A3B8;
+}
+
+.close-shift-totals__counted strong {
+  font-size: 22px;
+  color: #fff;
+}
+
+.close-shift-btn--secondary {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #E2E8F0;
+}
+
+/* Two-column cells WITH − / + steppers.
+ * The footer keypad is gone on phones: counting is increments here, and
+ * typing a number is what "Enter total instead" is for.
+ * Sections flex-grow 3:2; grid rows stretch into freed height. */
+.close-shift-sheet__body {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 12px 12px;
+  background: #F1F5F9;
+}
+
+.close-shift-denoms {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.close-shift-denom-section {
+  display: flex;
+  flex-direction: column;
+  flex: 0 1 auto;
+}
+
+/* Grow 3:2 into spare height, but NEVER shrink below content — with the
+ * "More" section open the body scrolls instead of sections overlapping. */
+.close-shift-denom-section:nth-child(1) {
+  flex: 3 1 0;
+  min-height: max-content;
+}
+
+.close-shift-denom-section:nth-child(2) {
+  flex: 2 1 0;
+  min-height: max-content;
+}
+
+.close-shift-denom-section__title {
+  flex: 0 0 auto;
+  padding: 0 2px 6px;
+}
+
+/* Phone: 2-across cards, sized so Notes (3 rows) + Coins (2 rows) fit
+ * 390×844 without scrolling. */
+.close-shift-denom-grid {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: minmax(78px, 1fr);
+  gap: 8px;
+}
+
+.close-shift-denom-row {
+  grid-template-columns: minmax(0, 1fr) 56px;
+  min-height: 78px;
+  padding: 6px;
+  gap: 6px;
+  border-radius: 14px;
+}
+
+.close-shift-denom-photo {
+  border-radius: 10px;
+}
+
+.close-shift-denom-photo--note .close-shift-denom-photo__img {
+  border-radius: 10px;
+}
+
+
+
+.close-shift-denom-row__meta {
+  gap: 3px;
+}
+
+.close-shift-denom-row__count {
+  font-size: 12px;
+}
+
+.close-shift-stepper-btn {
+  max-width: 54px;
+  height: 22px;
+  font-size: 13px;
+}
+
+.close-shift-denom-row__line {
+  font-size: 12px;
+}
+
+/* "Enter total instead" fills and centres instead of leaving a blank
+ * bottom half. */
+.close-shift-plain-total {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* Review & close is the main action; Cancel is secondary. */
+.close-shift-btn--danger,
+.close-shift-btn--primary {
+  flex: 1.7;
+}
+
+/* No footer keypad on phones — "Enter total instead" covers typing. */
+.close-shift-pad {
+  display: none;
+}
+
+.close-shift-btn {
+  min-height: 48px;
+}
+
+.close-shift-review-backdrop {
+  padding: 12px;
+  align-items: flex-end;
+}
+
+.close-shift-review {
+  margin-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+}
+
+.close-shift-fx-row {
+  grid-template-columns: 1fr 1fr;
+}
+
+.close-shift-fx-remove {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+@media (min-width: 700px) {
   .close-shift-overlay {
-    padding: 0 !important;
+    padding: max(10px, env(safe-area-inset-top, 0px)) 12px max(10px, env(safe-area-inset-bottom, 0px)) !important;
     align-items: stretch !important;
   }
-
-  .close-shift-sheet {
-    width: 100%;
-    max-width: none;
-    /* Stretched by the overlay above (fixed, inset 0, align-items: stretch)
-     * rather than sized from a viewport number — same reason as the charge
-     * sheet, see `.pos-charge` in the 840px block. `100%` here is the
-     * overlay's own box, which the engine has already measured. */
-    max-height: 100%;
-    border-radius: 0;
-    margin: 0;
-  }
-
-  .close-shift-sheet__header {
-    padding: max(10px, env(safe-area-inset-top, 0px)) 14px 10px;
-    background: #F8FAFC;
-  }
-
-  .close-shift-sheet__title {
-    font-size: 18px;
-  }
-
-  .close-shift-sheet__content {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .close-shift-rail {
-    flex: 0 0 auto;
-    max-height: 52dvh;
-    gap: 8px;
-    padding: 10px 12px max(10px, env(safe-area-inset-bottom, 0px));
-    border-left: none;
-    border-top: 1px solid #E2E8F0;
-    background: #0F172A;
-    box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.12);
-  }
-
-  .close-shift-totals__counted {
-    padding: 10px 12px;
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.14);
-    color: #94A3B8;
-  }
-
-  .close-shift-totals__counted strong {
-    font-size: 22px;
-    color: #fff;
-  }
-
-  .close-shift-btn--secondary {
-    background: transparent;
-    border-color: rgba(255, 255, 255, 0.28);
-    color: #E2E8F0;
-  }
-
-  /* Two-column cells WITH − / + steppers.
-   * The footer keypad is gone on phones: counting is increments here, and
-   * typing a number is what "Enter total instead" is for.
-   * Sections flex-grow 3:2; grid rows stretch into freed height. */
-  .close-shift-sheet__body {
-    display: flex;
-    flex-direction: column;
-    padding: 10px 12px 12px;
-    background: #F1F5F9;
-  }
-
-  .close-shift-denoms {
-    flex: 1 0 auto;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .close-shift-denom-section {
-    display: flex;
-    flex-direction: column;
-    flex: 0 1 auto;
-  }
-
-  /* Grow 3:2 into spare height, but NEVER shrink below content — with the
-   * "More" section open the body scrolls instead of sections overlapping. */
-  .close-shift-denom-section:nth-child(1) {
-    flex: 3 1 0;
-    min-height: max-content;
-  }
-
-  .close-shift-denom-section:nth-child(2) {
-    flex: 2 1 0;
-    min-height: max-content;
-  }
-
-  .close-shift-denom-section__title {
-    flex: 0 0 auto;
-    padding: 0 2px 6px;
-  }
-
-  /* Phone: 2-across cards, sized so Notes (3 rows) + Coins (2 rows) fit
-   * 390×844 without scrolling. */
-  .close-shift-denom-grid {
-    flex: 1 1 auto;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-auto-rows: minmax(78px, 1fr);
-    gap: 8px;
-  }
-
-  .close-shift-denom-row {
-    grid-template-columns: minmax(0, 1fr) 56px;
-    min-height: 78px;
-    padding: 6px;
-    gap: 6px;
-    border-radius: 14px;
-  }
-
-  .close-shift-denom-photo {
-    border-radius: 10px;
-  }
-
-  .close-shift-denom-photo--note .close-shift-denom-photo__img {
-    border-radius: 10px;
-  }
-
-
-
-  .close-shift-denom-row__meta {
-    gap: 3px;
-  }
-
-  .close-shift-denom-row__count {
-    font-size: 12px;
-  }
-
-  .close-shift-stepper-btn {
-    max-width: 54px;
-    height: 22px;
-    font-size: 13px;
-  }
-
-  .close-shift-denom-row__line {
-    font-size: 12px;
-  }
-
-  /* "Enter total instead" fills and centres instead of leaving a blank
-   * bottom half. */
-  .close-shift-plain-total {
-    flex: 1 1 auto;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-  }
-
-  /* Review & close is the main action; Cancel is secondary. */
+  .close-shift-sheet { width: min(100%, 800px); max-width: revert; max-height: min(94dvh, 860px); border-radius: 16px; margin: auto; }
+  .close-shift-sheet__header { padding: 14px 16px 12px; background: #fff; }
+  .close-shift-sheet__title { font-size: 19px; }
+  .close-shift-sheet__content { display: grid; flex-direction: revert; }
+  .close-shift-rail { flex: revert; max-height: revert; gap: 12px; padding: 14px; border-left: 1px solid #E2E8F0; border-top: revert; background: #F8FAFC; box-shadow: revert; }
+  /* The base rules' border shorthands, written back. */
+  .close-shift-totals__counted { padding: 12px 14px; background: #fff; border-color: #E2E8F0; color: #64748B; }
+  .close-shift-totals__counted strong { font-size: 22px; color: #0F172A; }
+  .close-shift-btn--secondary { background: #fff; border-color: #CBD5E1; color: #475569; }
+  .close-shift-sheet__body { display: revert; flex-direction: revert; padding: 10px 14px 12px; background: revert; }
+  .close-shift-denoms { flex: revert; display: flex; flex-direction: column; gap: 12px; }
+  .close-shift-denom-section { display: revert; flex-direction: revert; flex: revert; }
+  .close-shift-denom-section:nth-child(1),
+  .close-shift-denom-section:nth-child(2) { flex: revert; min-height: revert; }
+  .close-shift-denom-section__title { flex: revert; padding: 2px 2px 8px; }
+  .close-shift-denom-grid { flex: revert; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(88px, 1fr); gap: 10px; }
+  .close-shift-denom-row { grid-template-columns: minmax(0, 1fr) 68px; min-height: 88px; padding: 8px; gap: 8px; border-radius: 16px; }
+  .close-shift-denom-photo { border-radius: 12px; }
+  .close-shift-denom-photo--note .close-shift-denom-photo__img { border-radius: revert; }
+  .close-shift-denom-row__meta { gap: 4px; }
+  .close-shift-denom-row__count { font-size: 14px; }
+  .close-shift-stepper-btn { max-width: 60px; height: 24px; font-size: 17px; }
+  .close-shift-denom-row__line { font-size: 14px; }
+  .close-shift-plain-total { flex: revert; display: revert; flex-direction: revert; justify-content: revert; }
+  /* .close-shift-btn's own flex, written back. */
   .close-shift-btn--danger,
-  .close-shift-btn--primary {
-    flex: 1.7;
-  }
-
-  /* No footer keypad on phones — "Enter total instead" covers typing. */
-  .close-shift-pad {
-    display: none;
-  }
-
-  .close-shift-btn {
-    min-height: 48px;
-  }
-
-  .close-shift-review-backdrop {
-    padding: 12px;
-    align-items: flex-end;
-  }
-
-  .close-shift-review {
-    margin-bottom: max(8px, env(safe-area-inset-bottom, 0px));
-  }
-
-  .close-shift-fx-row {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .close-shift-fx-remove {
-    grid-column: 1 / -1;
-    width: 100%;
-  }
+  .close-shift-btn--primary { flex: 1; }
+  .close-shift-pad { display: flex; }
+  .close-shift-btn { min-height: 48px; }
+  .close-shift-review-backdrop { padding: 16px; align-items: center; }
+  .close-shift-review { margin-bottom: revert; }
+  .close-shift-fx-row { grid-template-columns: 70px 1fr 70px 1fr 44px; }
+  .close-shift-fx-remove { grid-column: revert; width: 44px; }
 }
 
 /* Narrow phones (down to 320px) */
-@media (max-width: 480px) {
-  .close-shift-sheet__subtitle {
-    display: none;
-  }
-
+/* Phone first: the smallest phones drop the subtitle; from 481px it shows. */
+.close-shift-sheet__subtitle {
+  display: none;
+}
+@media (min-width: 481px) {
+  .close-shift-sheet__subtitle { display: revert; }
 }
 
-/* Very narrow (320–360px): keep the − control touchable without overflow. */
-@media (max-width: 360px) {
-  .close-shift-denom-row {
-    grid-template-columns: minmax(0, 1fr) 48px;
-  }
+/* Very narrow (320–360px): keep the − control touchable without overflow;
+   from 361px the phone's 56px, from 700px the tablet's 68px. */
+.close-shift-denom-row {
+  grid-template-columns: minmax(0, 1fr) 48px;
+}
+@media (min-width: 361px) {
+  .close-shift-denom-row { grid-template-columns: minmax(0, 1fr) 56px; }
+}
+@media (min-width: 700px) {
+  .close-shift-denom-row { grid-template-columns: minmax(0, 1fr) 68px; }
 }
 
 /* ── Tablets (width-based fallback: iPad mini/9th-gen portrait 768–834 and

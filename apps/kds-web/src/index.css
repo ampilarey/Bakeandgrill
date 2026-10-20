@@ -46,11 +46,16 @@
   --kds-tap: 48px;
 }
 
-/* A laptop or a phone in the pass — same board, smaller type. */
-@media (max-width: 1279px) {
+/* A laptop or a phone in the pass — same board, smaller type; the wall
+   display's full size from 1280px. */
+:root {
+  --kds-dish: 19px;
+  --kds-qty: 22px;
+}
+@media (min-width: 1280px) {
   :root {
-    --kds-dish: 19px;
-    --kds-qty: 22px;
+    --kds-dish: 22px;
+    --kds-qty: 26px;
   }
 }
 
@@ -155,25 +160,26 @@ button {
 .kds-live[data-state="live"] { color: var(--kds-ok); }
 .kds-live[data-state="polling"] { color: var(--kds-warn); }
 
-/* The lesser buttons — sound, requests, activity, logout — flow inline in
-   the bar on a screen with room. On a phone they fold behind "More". */
+/* The lesser buttons — sound, requests, activity, logout — fold behind
+   "More" on a phone and flow inline in the bar from 901px. */
 .kds-topbar-tools {
-  display: contents;
+  display: none;
+}
+.kds-topbar[data-more="true"] .kds-topbar-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
 }
 
 .kds-more {
-  display: none;
+  display: inline-block;
 }
 
-@media (max-width: 900px) {
-  .kds-more { display: inline-block; }
-  .kds-topbar-tools { display: none; }
-  .kds-topbar[data-more="true"] .kds-topbar-tools {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    width: 100%;
-  }
+@media (min-width: 901px) {
+  .kds-topbar-tools,
+  .kds-topbar[data-more="true"] .kds-topbar-tools { display: contents; }
+  .kds-more { display: none; }
 }
 
 /* ── Buttons ────────────────────────────────────────────────────────────── */
@@ -230,19 +236,25 @@ button {
 }
 
 /* One dish at a time on a phone: tabs would hide the queue, and a kitchen
-   phone is a glance at what is next rather than a working surface. */
-@media (max-width: 900px) {
-  .kds-board { grid-template-columns: minmax(0, 1fr); }
-  body { overflow: auto; }
-  .kds-shell { height: auto; min-height: 100%; }
-  .kds-lane { max-height: none; }
+   phone is a glance at what is next rather than a working surface. Three
+   lanes that scroll on their own from 901px. */
+.kds-board { grid-template-columns: minmax(0, 1fr); }
+body { overflow: auto; }
+.kds-shell { height: auto; min-height: 100%; }
 
-  /* Averages and the device name wrapped the top bar onto five rows and cost
-     a third of a phone screen before the first ticket. The lane counts say
-     how busy it is; the rest is a manager's question, asked on a bigger
-     screen. */
-  .kds-vitals,
-  .kds-who { display: none; }
+/* Averages and the device name wrapped the top bar onto five rows and cost
+   a third of a phone screen before the first ticket. The lane counts say
+   how busy it is; the rest is a manager's question, asked on a bigger
+   screen. */
+.kds-vitals,
+.kds-who { display: none; }
+
+@media (min-width: 901px) {
+  .kds-board { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  body { overflow: hidden; }
+  .kds-shell { height: 100%; min-height: 0; }
+  .kds-vitals { display: flex; }
+  .kds-who { display: inline; }
 }
 
 /* The production screen is one long column, not three lanes that scroll on
