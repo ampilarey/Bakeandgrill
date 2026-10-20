@@ -1271,7 +1271,6 @@ html, body, #root {
     flex-direction: row;
   }
   .pos-charge-tenders { gap: 8px !important; }
-  .pos-charge-credit-inline { display: none !important; }
   .pos-charge-credit-row-btn { display: inline-block !important; }
   .pos-charge-extra-tenders:not(.has-wallet) { display: flex !important; }
   /* min-height: the till's 40px floor for a button (.pos-shell button). */
@@ -1289,6 +1288,8 @@ html, body, #root {
     text-overflow: clip;
   }
   .pos-charge-tender-btn--active { box-shadow: none; }
+  /* After .pos-charge-tender-btn: the inline Credit chip is one too, and stays the phone's. */
+  .pos-charge-credit-inline { display: none !important; }
   .pos-charge-confirm-label { display: inline-flex; flex-direction: row; align-items: normal; gap: 4px 10px; font-size: inherit; }
   .pos-charge-header { flex-shrink: 1; background: transparent; }
   .pos-charge-header h2 { font-size: 18px !important; font-weight: bold; line-height: normal; }
