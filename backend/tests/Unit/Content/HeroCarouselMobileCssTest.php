@@ -20,15 +20,15 @@ class HeroCarouselMobileCssTest extends TestCase
         $heroPartial = file_get_contents(resource_path('views/partials/home/hero.blade.php'));
         $this->assertIsString($heroPartial);
 
-        // Phones: chevrons hidden — swipe + dots only.
+        // Phones (the plain rule, mobile first): chevrons hidden — swipe + dots only.
         $this->assertMatchesRegularExpression(
-            '/@media\s*\(max-width:\s*768px\)\s*\{\s*\.banner-btn\s*\{\s*display:\s*none/',
+            '/(^|\n)\s*\.banner-btn\s*\{\s*display:\s*none;\s*\}\s*@media\s*\(min-width:\s*769px\)\s*\{\s*\.banner-btn\s*\{\s*display:\s*flex/',
             $blade,
         );
 
         // Must not reintroduce the temporary "visible on phones" sizing block.
         $this->assertDoesNotMatchRegularExpression(
-            '/@media\s*\(max-width:\s*768px\)\s*\{[^}]*\.banner-btn\s*\{[^}]*width:\s*36px/s',
+            '/\.banner-btn\s*\{[^}]*width:\s*36px/s',
             $blade,
         );
 

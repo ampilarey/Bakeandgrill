@@ -367,7 +367,8 @@ class PrintableMenuTest extends TestCase
 
         $html = $this->get('/menu/print')->assertOk()->getContent();
 
-        $this->assertStringContainsString('@media screen and (max-width: 700px)', $html);
+        $this->assertStringContainsString('@media screen {', $html);
+        $this->assertStringContainsString('@media screen and (min-width: 701px)', $html);
         $this->assertStringContainsString('.body { column-count: 1; }', $html);
     }
 
@@ -386,7 +387,7 @@ class PrintableMenuTest extends TestCase
             ['forPdf' => true],
         ))->render();
 
-        $this->assertStringNotContainsString('max-width: 700px', $rendered);
+        $this->assertStringNotContainsString('min-width: 701px', $rendered);
         $this->assertStringNotContainsString('column-count: 1', $rendered);
     }
 
