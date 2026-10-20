@@ -1,7 +1,5 @@
 {
   "apps/kds-web/src/index.css": 3,
-  "apps/online-order-web/src/index.css": 23,
-  "apps/online-order-web/src/pages/AccountPage/AccountHub.css": 1,
   "apps/pos-web/src/index.css": 12,
   "backend/resources/views/emails/layout.blade.php": 1
 }
