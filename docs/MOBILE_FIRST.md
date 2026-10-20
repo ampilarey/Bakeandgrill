@@ -111,6 +111,17 @@ Tailwind 3 compiles without cascade layers, so the order app's stylesheet has th
 - A phone `!important` that only beat an inline style (the header logo, wordmark and gap in
   `BrandedHeader.tsx`) became a stylesheet value: the inline property moved into the class.
 
+### In the till and the kitchen screen
+
+- A class the code sets only on a phone needs no query (the docked cart and its sheet,
+  `pos-cart--dock` / `--sheet`, which `OrderCart.tsx` sets only at 840px or less and over
+  500px tall).
+- A short-screen band that also caps the height, the till's phone landscape
+  `(max-width: 900px) and (max-height: 500px)`, is not desktop first: no computer layout
+  is squeezed by it, and the guard lets it be.
+- The layout tokens on `:root` are the phone's, with one `min-width` tier per step (841,
+  901, 1101, 1400px).
+
 ## Where it stands
 
 Baseline written 2026-10-20: 123 desktop-first rules in 24 files. The same day the admin
@@ -144,14 +155,24 @@ Order app (2026-10-20): `index.css` and the account hub; 24 to 0. Every element'
 style on every route in `main.tsx`, signed out, signed in, with the rail on the right and with
 a cart, at 14 widths either side of every breakpoint: unchanged.
 
+Kitchen screen (2026-10-20): 3 to 0. Till, batch 1: the top bar shortcuts, the layout
+tokens, the stacked cart (dock and sheet), Active orders, the item configure pop-up, the
+discounts pop-up and the close-shift sheet; 12 to 2. Every element's computed style in
+fourteen till states (sale, ticket, delivery, sheet, Charge, discounts, Active orders,
+receipts, shift, shift history, operations, reports, close shift and its review) at 22
+screen sizes, phone landscape included, and the kitchen board at nine: unchanged. Left for
+batch 2: the phone's Charge popup and the receipts, shift history and operations panes,
+whose phone rules beat `ChargeOverlay.tsx`'s and those panes' inline styles with
+`!important`; the inline styles move into classes first.
+
 | Area | Rules left |
 |---|---|
 | Website views (`backend/resources`) | 1 (emails, on purpose) |
 | Admin (`apps/admin-dashboard`) | 0 |
 | Order app (`apps/online-order-web`) | 0 |
-| Till (`apps/pos-web`) | 12 |
-| Kitchen screen (`apps/kds-web`) | 3 |
+| Till (`apps/pos-web`) | 2 |
+| Kitchen screen (`apps/kds-web`) | 0 |
 
 `scripts/mobile-first-baseline.json` has the per-file list. Already mobile first: the Clock
 machine tab (`ClockMachinePanel.tsx`), the whole admin stylesheet (`index.css`) and every
-website view but the email layout, and the order app.
+website view but the email layout, the order app and the kitchen screen.
